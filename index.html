@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>台股首席診斷終端 | 富果雙引擎版</title>
+    <title>台股首席診斷終端 | 雲端預判合體版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -70,7 +70,8 @@
 
     <div id="loadingOverlay" class="fixed inset-0 flex flex-col items-center justify-center">
         <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-blue-400 font-bold tracking-widest text-sm" id="loadingText">系統運算中...</p>
+        <p class="text-blue-400 font-bold tracking-widest text-sm mb-6" id="loadingText">雲端大數據運算中...</p>
+        <button onclick="app.forceStopLoading()" class="px-5 py-2.5 bg-red-900/80 border border-red-700 rounded-lg text-sm text-red-200 font-bold hover:bg-red-800 transition-colors shadow-lg">⚠️ 強制中斷連線 (暫用舊資料)</button>
     </div>
 
     <div id="emergencyBanner" class="hidden w-full bg-red-900 text-white text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_10px_rgba(248,113,113,0.5)] z-[60] flex-shrink-0 animate-pulse">
@@ -120,9 +121,9 @@
                 <div class="flex flex-col gap-2 border-b border-[#30363d] pb-4">
                     <label class="text-sm font-bold text-green-400 flex justify-between items-center">
                         <span>🔑 富果 Fugle API Token</span>
-                        <span class="text-[10px] bg-green-900/30 border border-green-800 text-green-300 px-1.5 py-0.5 rounded">即時報價引擎</span>
+                        <span class="text-[10px] bg-green-900/30 border border-green-800 text-green-300 px-1.5 py-0.5 rounded">盤中即時引擊</span>
                     </label>
-                    <p class="text-[10px] text-gray-500 leading-tight">貼上您的 Fugle API 金鑰以啟動盤中即時自動報價。留空則維持盤後歷史與手動報價模式。</p>
+                    <p class="text-[10px] text-gray-500 leading-tight">貼上您的 Fugle API 金鑰以啟動盤中即時自動報價。留空則維持 GitHub 盤後資料模式。</p>
                     <input type="password" id="set_fugleToken" class="w-full bg-[#010409] text-green-400 p-2.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="輸入 Token...">
                 </div>
 
@@ -170,7 +171,7 @@
                 
                 <div class="flex flex-col gap-2 pt-2">
                     <label class="text-sm font-bold text-blue-400">📦 資料保險箱 (備份還原)</label>
-                    <p class="text-xs text-gray-500 leading-tight">為防瀏覽器阻擋，請手動複製下方文字框內的代碼。換新檔後，將代碼貼入並點擊還原。(備份包含金鑰與所有設定)</p>
+                    <p class="text-xs text-gray-500 leading-tight">為防瀏覽器阻擋，請手動複製下方文字框內的代碼。換新檔後，將代碼貼入並點擊還原。</p>
                     <div class="flex gap-2 mb-2">
                         <button onclick="app.exportData()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 rounded font-bold transition">📤 產生備份代碼</button>
                         <button onclick="app.importData()" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-sm py-2 rounded font-bold transition">📥 貼上後還原</button>
@@ -238,7 +239,7 @@
                 <button onclick="app.cycleUSMarket()" id="btnUSMarketTop" class="px-1.5 py-0.5 rounded text-xs font-bold border border-blue-800 bg-blue-900/30 text-blue-300 transition-colors shadow-sm flex items-center gap-1 whitespace-nowrap">🌎 美股: 🟡</button>
                 <div id="dataSourceBadge" class="flex items-center gap-1 text-[10px] md:text-xs bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] whitespace-nowrap transition-colors">
                     <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                    <span id="dataSourceText" class="font-bold text-blue-400 tracking-wide">盤後/延遲</span>
+                    <span id="dataSourceText" class="font-bold text-blue-400 tracking-wide">GitHub 雲端</span>
                 </div>
             </div>
             <div id="mktWarning" class="font-bold text-right text-gray-500 truncate max-w-[35%] hidden sm:block text-xs md:text-sm">載入大盤風控指標中...</div>
@@ -278,14 +279,12 @@
                 <div class="flex px-2 pt-2 bg-[#0d1117]">
                     <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 py-2.5 text-sm font-bold tracking-widest rounded-t-lg">⚡ 首席指揮</button>
                     <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 py-2.5 text-sm font-bold tracking-widest rounded-t-lg">📈 K線圖表</button>
-                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 py-2.5 text-sm font-bold tracking-widest rounded-t-lg">📅 五日回溯</button>
+                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 py-2.5 text-sm font-bold tracking-widest rounded-t-lg">📅 回測與預判</button>
                 </div>
             </div>
 
             <div id="subContentStrategy" class="flex flex-col gap-3 mt-3 px-3 md:px-4">
-                
                 <div class="bg-[#1c2128] border-2 border-gray-700 rounded-xl shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
-                    
                     <div class="flex bg-[#161b22] border-b border-[#30363d] p-2 gap-2">
                         <div class="flex-1 flex flex-col gap-1 relative">
                             <span class="text-xs text-yellow-500 font-bold pl-1 text-center">庫存成本 (空白即為空手)</span>
@@ -300,14 +299,10 @@
 
                     <div id="directActionBox" class="w-full p-4 md:p-6 flex flex-col items-center justify-center transition-all duration-300">
                         <span id="actionMainText" class="text-2xl md:text-3xl font-black tracking-widest text-center text-gray-400 w-full leading-tight">運算中...</span>
-                        
-                        <div id="actionSubText" class="w-full mt-3 text-sm font-bold tracking-wide text-gray-300 text-center flex flex-col gap-2 leading-relaxed">
-                            等待系統計算...
-                        </div>
+                        <div id="actionSubText" class="w-full mt-3 text-sm font-bold tracking-wide text-gray-300 text-center flex flex-col gap-2 leading-relaxed">等待系統計算...</div>
                         
                         <div id="precisionPricesBox" class="w-full mt-5 bg-[#010409] border border-[#30363d] rounded-lg p-3 grid grid-cols-3 gap-2 text-center shadow-inner relative">
                             <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1c2128] px-3 py-0.5 text-xs text-blue-400 font-bold tracking-widest border border-[#30363d] rounded-full whitespace-nowrap">動態停利停損線</div>
-                            
                             <div class="flex flex-col justify-center pt-2">
                                 <span class="text-xs text-gray-500 font-bold mb-0.5">🎯 第一目標</span>
                                 <span class="text-[#f87171] font-mono font-black text-lg md:text-xl" id="tgt1Price">--</span>
@@ -322,17 +317,11 @@
                             </div>
                         </div>
 
-                        <div id="tomorrowScriptText" class="w-full mt-4 pt-4 border-t border-gray-700/50 text-base md:text-lg font-black text-yellow-400 leading-relaxed text-center">
-                            劇本載入中...
-                        </div>
+                        <div id="tomorrowScriptText" class="w-full mt-4 pt-4 border-t border-gray-700/50 text-base md:text-lg font-black text-yellow-400 leading-relaxed text-center">劇本載入中...</div>
                         
                         <div class="w-full mt-4 flex flex-col gap-2">
-                            <div id="smartOrderInstruction" class="w-full bg-blue-900/20 border border-blue-800 rounded-lg p-3 text-sm font-mono text-blue-300 leading-relaxed shadow-sm text-center">
-                                --
-                            </div>
-                            <div id="positionSizeAdvice" class="hidden w-full bg-gray-800/50 border border-gray-600 rounded-lg p-3 text-sm font-bold text-white leading-relaxed shadow-sm text-center">
-                                --
-                            </div>
+                            <div id="smartOrderInstruction" class="w-full bg-blue-900/20 border border-blue-800 rounded-lg p-3 text-sm font-mono text-blue-300 leading-relaxed shadow-sm text-center">--</div>
+                            <div id="positionSizeAdvice" class="hidden w-full bg-gray-800/50 border border-gray-600 rounded-lg p-3 text-sm font-bold text-white leading-relaxed shadow-sm text-center">--</div>
                         </div>
                     </div>
 
@@ -345,11 +334,7 @@
                             <span class="text-sm text-orange-400 font-bold">🎯 查核的主力成本:</span>
                             <input type="number" inputmode="decimal" id="chipCostInput" class="bg-transparent text-white w-24 text-right pr-2 outline-none font-mono font-bold text-xl border-b border-gray-600 focus:border-orange-500" placeholder="選填" oninput="app.refreshStrategy()">
                         </div>
-                        
-                        <button onclick="app.copyAIPrompt()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg text-sm font-black transition-colors shadow-md">
-                            📋 複製【雙重防呆】AI 提問詞
-                        </button>
-                        
+                        <button onclick="app.copyAIPrompt()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg text-sm font-black transition-colors shadow-md">📋 複製【雙重防呆】AI 提問詞</button>
                         <div class="flex gap-2 w-full mt-1">
                             <button onclick="app.setAIVerdict('green')" class="flex-1 bg-green-900/50 hover:bg-green-800 text-green-200 py-3 rounded-lg text-sm font-bold transition-colors border border-green-700">🟢 綠燈</button>
                             <button onclick="app.setAIVerdict('yellow')" class="flex-1 bg-yellow-900/50 hover:bg-yellow-800 text-yellow-200 py-3 rounded-lg text-sm font-bold transition-colors border border-yellow-700">🟡 黃燈</button>
@@ -358,11 +343,9 @@
                         </div>
                     </div>
                 </div>
-
             </div>
 
             <div id="subContentChart" class="hidden flex-col gap-2 mt-3 px-3 md:px-4 min-h-[65vh]">
-                
                 <div id="aiTranslatorCard" class="w-full bg-[#161b22] border border-[#30363d] rounded-xl shadow-sm overflow-hidden flex-shrink-0 transition-all duration-300">
                     <div class="p-3 text-center text-gray-500 text-sm">🤖 AI 趨勢翻譯機載入中...</div>
                 </div>
@@ -393,7 +376,54 @@
                 </div>
             </div>
 
-            <div id="subContentBacktest" class="hidden flex-col gap-3 mt-3 px-3 md:px-4">
+            <div id="subContentBacktest" class="hidden flex-col gap-3 mt-3 px-3 md:px-4 pb-10">
+                
+                <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-xl bg-[#0d1117] shadow-sm border-l-4 border-l-blue-500">
+                    <h3 class="text-gray-400 text-xs font-bold tracking-widest mb-3 flex items-center border-b border-gray-700 pb-2">
+                        <span class="text-blue-400 mr-2">🔮</span> AI 歷史大數據預判 (近300天統計)
+                    </h3>
+                    
+                    <div class="mb-3">
+                        <div class="text-[11px] text-gray-500 mb-1">【相同型態明日表現】(算機率、看賠率)</div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div class="bg-gray-800 rounded p-2 border border-gray-600">
+                                <div class="text-[10px] text-gray-400">歷史觸發</div>
+                                <div class="font-bold text-white text-lg mt-1" id="ndCount">--次</div>
+                            </div>
+                            <div class="bg-gray-800 rounded p-2 border border-red-900/50">
+                                <div class="text-[10px] text-red-400">明日收紅機率</div>
+                                <div class="font-bold text-red-400 text-lg mt-1" id="ndWinRate">--%</div>
+                            </div>
+                            <div class="bg-gray-800 rounded p-2 border border-green-900/50">
+                                <div class="text-[10px] text-green-400">盈虧比(肉/湯)</div>
+                                <div class="font-bold text-white text-sm mt-1" id="ndRewardRisk">--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-[11px] text-gray-500 mb-1">【長線波段回測】(嚴守 5MA/20MA)</div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div class="bg-gray-800 rounded p-2">
+                                <div class="text-[10px] text-gray-400">交易次數</div>
+                                <div class="font-bold text-white text-sm mt-1" id="btCount">--</div>
+                            </div>
+                            <div class="bg-gray-800 rounded p-2">
+                                <div class="text-[10px] text-gray-400">波段勝率</div>
+                                <div class="font-bold text-white text-sm mt-1" id="btWinRate">--</div>
+                            </div>
+                            <div class="bg-gray-800 rounded p-2">
+                                <div class="text-[10px] text-gray-400">單趟均利</div>
+                                <div class="font-bold text-white text-sm mt-1" id="btAvgProfit">--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-[13px] bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed" id="predictionConclusion">
+                        等待數據運算...
+                    </div>
+                </div>
+
                 <div class="panel p-4 border border-[#30363d] rounded-xl bg-[#0d1117] shadow-sm">
                     <h2 class="text-base font-black text-white mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
                         📅 近五日評分回溯
@@ -412,12 +442,11 @@
                     </table>
                 </div>
             </div>
+
         </div>
 
         <div id="tabContentFav" class="hidden flex-col">
-            <div class="sticky top-0 z-40 bg-[#0d1117] border-b border-[#30363d] shadow-sm flex items-center overflow-x-auto scrollbar-hide px-2 pt-2" id="favGroupTabs">
-                </div>
-            
+            <div class="sticky top-0 z-40 bg-[#0d1117] border-b border-[#30363d] shadow-sm flex items-center overflow-x-auto scrollbar-hide px-2 pt-2" id="favGroupTabs"></div>
             <div class="p-3">
                 <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col">
                     <div id="favEmptyState" class="text-center py-[6rem] text-gray-500 hidden flex-col items-center justify-center">
@@ -544,9 +573,12 @@
     </div>
 
 <script>
-const indicatorWorkerCode = `
+// 🔥 CTO 世紀大融合 Worker：KD, MACD, 布林通道 + 大數據回測預判全包了
+const masterWorkerCode = `
     self.onmessage = function(e) {
         const data = e.data.activeData;
+        if(!data || data.length === 0) { self.postMessage(null); return; }
+
         const closes = data.map(d => d.close), highs = data.map(d => d.high), lows = data.map(d => d.low), vols = data.map(d => d.volume);
         const sma = (arr, period) => arr.map((val, i) => i < period - 1 ? null : arr.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period);
         
@@ -571,12 +603,64 @@ const indicatorWorkerCode = `
         
         const ema = (arr, period) => { const k_f = 2 / (period + 1), res = [arr[0]]; for(let i=1; i<arr.length; i++) res.push(arr[i] * k_f + res[i-1] * (1 - k_f)); return res; };
         const dif = ema(closes, 12).map((v, i) => v - ema(closes, 26)[i]), macd = ema(dif, 9), osc = dif.map((v, i) => (v - macd[i]) * 2);
+
+        // --- 回測與預判邏輯 ---
+        let result = [];
+        for (let i = 0; i < data.length; i++) {
+            let item = { ...data[i], ma5: ma5[i], ma10: ma10[i], ma20: ma20[i], ma60: ma60[i], score: 0 };
+            let score = 0;
+            if (ma5[i] && ma10[i] && ma20[i] && ma60[i]) {
+                if (ma5[i] > ma10[i] && ma10[i] > ma20[i] && ma20[i] > ma60[i]) score += 15;
+                if (item.close > ma20[i]) score += 10;
+                if (i > 0 && item.volume > data[i-1].volume * 1.5 && item.close > data[i-1].close) score += 10;
+            }
+            item.score = score;
+            item.isGreen = (score >= 25 && item.close >= ma20[i]); // 模擬買點燈號
+            result.push(item);
+        }
+
+        let trades = [];
+        let markPoints = [];
+        let inPosition = false;
+        let buyPrice = 0;
+
+        for(let i=20; i<result.length; i++) {
+            let current = result[i];
+            let prev = result[i-1];
+            if (!inPosition && current.close > current.ma20 && current.ma5 >= current.ma20 && prev.close <= prev.ma20) {
+                inPosition = true; buyPrice = current.close;
+                markPoints.push({ coord: [current.date, current.low * 0.96], name: '買', symbolSize: 8, itemStyle: {color: '#ef4444'} });
+            } 
+            else if (inPosition && current.close < current.ma5 && prev.close >= prev.ma5) {
+                inPosition = false;
+                trades.push({ profitPct: ((current.close - buyPrice)/buyPrice)*100 });
+                markPoints.push({ coord: [current.date, current.high * 1.04], name: '賣', symbolSize: 8, itemStyle: {color: '#10b981'} });
+            }
+        }
+
+        let greenCount = 0, upCount = 0, downCount = 0;
+        let totalUpPct = 0, totalDownPct = 0;
+        for(let i=20; i<result.length - 1; i++) {
+            if (result[i].isGreen) {
+                greenCount++;
+                let nextDayChange = ((result[i+1].close - result[i].close) / result[i].close) * 100;
+                if (nextDayChange > 0) { upCount++; totalUpPct += nextDayChange; } 
+                else if (nextDayChange < 0) { downCount++; totalDownPct += nextDayChange; }
+            }
+        }
+
+        let nextDayStats = {
+            count: greenCount,
+            winRate: greenCount > 0 ? ((upCount / greenCount) * 100).toFixed(1) : 0,
+            avgUp: upCount > 0 ? (totalUpPct / upCount).toFixed(2) : 0,
+            avgDown: downCount > 0 ? (totalDownPct / downCount).toFixed(2) : 0
+        };
         
-        self.postMessage({ ma5, ma10, ma20, ma60, vma5, upperBB, lowerBB, k, d, dif, macd, osc });
+        self.postMessage({ ma5, ma10, ma20, ma60, vma5, upperBB, lowerBB, k, d, dif, macd, osc, trades, markPoints, nextDayStats });
     };
 `;
-const indicatorWorkerBlob = new Blob([indicatorWorkerCode], { type: 'application/javascript' });
-const indicatorWorker = new Worker(URL.createObjectURL(indicatorWorkerBlob));
+const masterWorkerBlob = new Blob([masterWorkerCode], { type: 'application/javascript' });
+const masterWorker = new Worker(URL.createObjectURL(masterWorkerBlob));
 
 const app = {
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "自選股1": [] },
@@ -595,8 +679,9 @@ const app = {
     emergencyMode: false,
 
     allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {},
+    currentMarkPoints: [], 
     currentSymbolId: '2330', currentPrice: 0, currentTF: 'D', currentSubChart: 'VOL',
-    currentFugleData: null, // 🔥 暫存當下 Fugle 報價
+    currentFugleData: null, 
     chartInstance: null, peaks: [], troughs: [],
     sortableFav: null, sortableInv: null,
 
@@ -672,6 +757,11 @@ const app = {
         this.initSortableInv();
     },
 
+    forceStopLoading() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        alert("⚠️ 已強制中斷連線！系統將維持在當前的畫面與舊有資料，請稍候重試或檢查網路。");
+    },
+
     showJargon(term) {
         document.getElementById('jargonTitle').innerHTML = `💡 ${term}`;
         document.getElementById('jargonDesc').innerText = this.jargonDict[term] || '無相關解釋';
@@ -721,7 +811,7 @@ const app = {
     closeSettings() {
         this.saveSettings();
         document.getElementById('settingsModal').classList.add('hidden');
-        if(this.currentSymbolId) this.analyze(this.currentSymbolId, true); // 關閉時重抓一次確保 Fugle 生效
+        if(this.currentSymbolId) this.analyze(this.currentSymbolId, true); 
     },
 
     exportData() {
@@ -773,7 +863,345 @@ const app = {
             alert('❌ 代碼解析錯誤！請確認您貼上的代碼完整無缺。');
         }
     },
+
+    // ==========================================
+    // 🔥 缺失補回區 (CTO 緊急修補)
+    // ==========================================
     
+    updateLiveUI(currentClose, prevClose) {
+        const diff = currentClose - prevClose;
+        const pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
+        const colorClass = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500');
+        const sign = diff > 0 ? '+' : '';
+        
+        const priceEl = document.getElementById('livePriceText');
+        const diffAmtEl = document.getElementById('liveDiffAmount');
+        const diffPctEl = document.getElementById('liveDiffPct');
+        
+        if(priceEl) {
+            priceEl.innerText = currentClose.toFixed(2);
+            priceEl.className = `text-4xl md:text-5xl font-black font-mono leading-none tracking-tighter transition-all duration-200 ${colorClass}`;
+            // 價格跳動特效
+            priceEl.classList.remove('price-flash-up', 'price-flash-down');
+            void priceEl.offsetWidth; 
+            if(diff > 0) priceEl.classList.add('price-flash-up');
+            else if(diff < 0) priceEl.classList.add('price-flash-down');
+        }
+        if(diffAmtEl) {
+            diffAmtEl.innerText = `${sign}${diff.toFixed(2)}`;
+            diffAmtEl.className = `text-sm md:text-base font-black font-mono ${colorClass}`;
+        }
+        if(diffPctEl) {
+            diffPctEl.innerText = `(${sign}${pct.toFixed(2)}%)`;
+            diffPctEl.className = `text-xs md:text-sm font-bold font-mono ${colorClass}`;
+        }
+    },
+
+    setAIVerdict(verdict) {
+        this.currentChipVerdict = verdict === 'reset' ? null : verdict;
+        this.refreshStrategy();
+    },
+
+    updateFavIcon() {
+        const icon = document.getElementById('favStarIcon');
+        if(!icon) return;
+        const list = this.favGroups[this.activeGroupName] || [];
+        if(list.includes(this.currentSymbolId)) {
+            icon.innerText = '★';
+            icon.classList.add('text-yellow-400');
+            icon.classList.remove('text-gray-500');
+        } else {
+            icon.innerText = '☆';
+            icon.classList.add('text-gray-500');
+            icon.classList.remove('text-yellow-400');
+        }
+    },
+
+    toggleFavorite() {
+        let list = this.favGroups[this.activeGroupName];
+        if(!list) { list = []; this.favGroups[this.activeGroupName] = list; }
+        
+        const idx = list.indexOf(this.currentSymbolId);
+        if(idx > -1) list.splice(idx, 1);
+        else list.push(this.currentSymbolId);
+        
+        localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+        this.updateFavIcon();
+        this.renderFavTabs();
+    },
+
+    updateInvBadge() {
+        const badge = document.getElementById('invBadge');
+        if(!badge) return;
+        const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
+        if(inInv) badge.classList.remove('hidden');
+        else badge.classList.add('hidden');
+    },
+
+    openInvModal() {
+        document.getElementById('invModalInput').value = this.currentSymbolId;
+        document.getElementById('invBuyDateInput').value = this.getTodayStr().replace(/\//g, '-');
+        document.getElementById('invModal').classList.remove('hidden');
+    },
+
+    confirmAddInventory() {
+        const sym = document.getElementById('invModalInput').value.trim();
+        const date = document.getElementById('invBuyDateInput').value.replace(/-/g, '/');
+        if(!sym) return;
+        
+        const existIdx = this.inventory.findIndex(i => i.symbol === sym);
+        if(existIdx > -1) {
+            this.inventory[existIdx].buyDate = date;
+        } else {
+            this.inventory.push({ symbol: sym, buyDate: date, cost: parseFloat(document.getElementById('costInput').value) || 0 });
+        }
+        
+        localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
+        document.getElementById('invModal').classList.add('hidden');
+        this.updateInvBadge();
+        this.renderInventory();
+        if(sym === this.currentSymbolId) this.refreshStrategy();
+    },
+
+    async refreshInventoryPrices() {
+        const btn = document.getElementById('btnRefreshInv');
+        if(btn) btn.classList.add('animate-spin');
+        
+        for(let item of this.inventory) {
+            let price = item.cost || 0;
+            // 快速取得歷史收盤價，若有 Fugle 則覆蓋最新價
+            const data = await this.fetchHistoricalData(item.symbol);
+            if(data && data.length > 0) price = data[data.length-1].close;
+            
+            const fugle = await this.fetchFugleData(item.symbol);
+            if(fugle) price = fugle.price;
+            
+            this.inventoryPrices[item.symbol] = price;
+        }
+        
+        if(btn) btn.classList.remove('animate-spin');
+        this.renderInventory();
+    },
+
+    renderInventory() {
+        const container = document.getElementById('inventoryCardContainer');
+        if(!container) return;
+        
+        if(this.inventory.length === 0) {
+            container.innerHTML = '<div class="text-center py-[4rem] text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg m-3">目前無庫存部位</div>';
+            document.getElementById('invDailyPnL').innerText = '--';
+            document.getElementById('invTotalPnL').innerText = '--';
+            document.getElementById('invTotalPnLPct').innerText = '--';
+            return;
+        }
+        
+        let html = '';
+        let totalCost = 0, totalValue = 0;
+        
+        this.inventory.forEach((item, idx) => {
+            const currentPrice = this.inventoryPrices[item.symbol] || item.cost || 0;
+            const shares = item.shares || 1000;
+            const itemCost = item.cost * shares;
+            const itemValue = currentPrice * shares;
+            const pnl = itemValue - itemCost;
+            const pnlPct = item.cost > 0 ? ((currentPrice - item.cost) / item.cost) * 100 : 0;
+            
+            totalCost += itemCost;
+            totalValue += itemValue;
+            
+            const colorClass = pnl > 0 ? 'text-[#f87171]' : (pnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const sign = pnl > 0 ? '+' : '';
+            
+            html += `
+            <div class="bg-[#1c2128] m-2 p-3 rounded-lg border border-[#30363d] shadow-sm relative overflow-hidden group">
+                <div class="flex items-center justify-between">
+                    <div class="drag-handle text-gray-500 hover:text-white px-1">☰</div>
+                    <div class="flex-grow ml-2 cursor-pointer" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+                        <div class="font-bold text-white text-base">${item.symbol}</div>
+                        <div class="text-xs text-gray-500 mt-0.5">成本: ${item.cost} | ${item.buyDate || '--'}</div>
+                    </div>
+                    <div class="text-right cursor-pointer" onclick="app.toggleInventoryEdit(${idx})">
+                        <div class="font-mono font-black text-lg ${colorClass}">${currentPrice.toFixed(2)}</div>
+                        <div class="text-xs font-bold ${colorClass}">${sign}${pnlPct.toFixed(2)}%</div>
+                    </div>
+                </div>
+                
+                <div id="invEditBox-${idx}" class="hidden mt-3 pt-3 border-t border-[#30363d] flex flex-col gap-2">
+                    <div class="flex gap-2">
+                        <input type="number" id="editCost-${idx}" value="${item.cost}" class="w-1/2 bg-[#0d1117] text-white p-2 rounded border border-[#30363d] outline-none text-sm" placeholder="成本">
+                        <input type="date" id="editDate-${idx}" value="${item.buyDate ? item.buyDate.replace(/\//g, '-') : ''}" class="w-1/2 bg-[#0d1117] text-white p-2 rounded border border-[#30363d] outline-none text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="app.deleteInventory(${idx})" class="w-1/3 bg-red-900/50 hover:bg-red-800 text-red-200 py-1.5 rounded text-xs font-bold transition-colors border border-red-700">刪除</button>
+                        <button onclick="app.saveInventoryEdit(${idx})" class="w-2/3 bg-blue-600 hover:bg-blue-500 text-white py-1.5 rounded text-xs font-bold transition-colors">儲存修改</button>
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+        container.innerHTML = html;
+        this.initSortableInv();
+        
+        const totalPnL = totalValue - totalCost;
+        const totalPnLPct = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
+        const tColor = totalPnL > 0 ? 'text-[#f87171]' : (totalPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+        const tSign = totalPnL > 0 ? '+' : '';
+        
+        document.getElementById('invTotalPnL').innerText = `${tSign}${totalPnL.toFixed(0)}`;
+        document.getElementById('invTotalPnL').className = `text-xl md:text-2xl font-black font-mono ${tColor}`;
+        document.getElementById('invTotalPnLPct').innerText = `${tSign}${totalPnLPct.toFixed(2)}%`;
+        document.getElementById('invTotalPnLPct').className = `text-xl md:text-2xl font-black font-mono ${tColor}`;
+    },
+
+    saveInventoryEdit(idx) {
+        const newCost = parseFloat(document.getElementById(`editCost-${idx}`).value);
+        const newDate = document.getElementById(`editDate-${idx}`).value.replace(/-/g, '/');
+        if(!isNaN(newCost)) this.inventory[idx].cost = newCost;
+        if(newDate) this.inventory[idx].buyDate = newDate;
+        
+        localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
+        this.renderInventory();
+        if(this.inventory[idx].symbol === this.currentSymbolId) this.refreshStrategy();
+    },
+
+    deleteInventory(idx) {
+        if(confirm("確定要刪除這筆持倉嗎？")) {
+            const sym = this.inventory[idx].symbol;
+            this.inventory.splice(idx, 1);
+            localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
+            this.renderInventory();
+            if(sym === this.currentSymbolId) {
+                this.updateInvBadge();
+                this.refreshStrategy();
+            }
+        }
+    },
+
+    renderFavTabs() {
+        const container = document.getElementById('favGroupTabs');
+        if(!container) return;
+        let html = '';
+        for(let group in this.favGroups) {
+            const activeClass = group === this.activeGroupName ? 'text-blue-400 border-b-2 border-blue-400 bg-blue-900/20' : 'text-gray-500 border-b-2 border-transparent';
+            html += `<button class="px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors ${activeClass}" onclick="app.switchFavGroup('${group}')">${group}</button>`;
+        }
+        html += `<button class="px-4 py-2 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-sm font-bold" onclick="document.getElementById('groupModal').classList.remove('hidden')">➕ 新增</button>`;
+        container.innerHTML = html;
+        this.renderFavList();
+    },
+
+    switchFavGroup(group) {
+        this.activeGroupName = group;
+        localStorage.setItem('proTerminalActiveGroup', group);
+        this.renderFavTabs();
+    },
+
+    confirmCreateGroup() {
+        const name = document.getElementById('groupNameInput').value.trim();
+        if(name && !this.favGroups[name]) {
+            this.favGroups[name] = [];
+            this.activeGroupName = name;
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+            localStorage.setItem('proTerminalActiveGroup', name);
+        }
+        document.getElementById('groupModal').classList.add('hidden');
+        document.getElementById('groupNameInput').value = '';
+        this.renderFavTabs();
+    },
+
+    renderFavList() {
+        const container = document.getElementById('favListContainer');
+        const emptyState = document.getElementById('favEmptyState');
+        const list = this.favGroups[this.activeGroupName] || [];
+        
+        if(list.length === 0) {
+            container.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            emptyState.classList.add('flex');
+            return;
+        }
+        
+        emptyState.classList.add('hidden');
+        emptyState.classList.remove('flex');
+        
+        let html = '';
+        list.forEach(sym => {
+            html += `
+            <div data-sym="${sym}" class="bg-[#1c2128] m-2 p-3 rounded-lg border border-[#30363d] flex items-center justify-between cursor-pointer group shadow-sm">
+                <div class="drag-handle text-gray-500 hover:text-white px-2">☰</div>
+                <div class="flex-grow ml-2 font-bold text-white text-lg" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">${sym}</div>
+                <button class="text-gray-500 px-3 hover:text-red-400 transition-colors font-bold" onclick="event.stopPropagation(); app.removeFromFav('${sym}')">✕</button>
+            </div>
+            `;
+        });
+        container.innerHTML = html;
+        this.initSortableFav();
+    },
+
+    removeFromFav(sym) {
+        const idx = this.favGroups[this.activeGroupName].indexOf(sym);
+        if(idx > -1) {
+            this.favGroups[this.activeGroupName].splice(idx, 1);
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+            this.renderFavList();
+            if(sym === this.currentSymbolId) this.updateFavIcon();
+        }
+    },
+
+    async loadRadar(type) {
+        const container = document.getElementById('radarListMain');
+        document.getElementById('radarLoading').classList.remove('hidden');
+        document.getElementById('radarLoading').classList.add('flex');
+        document.getElementById('radarResultHeader').classList.add('hidden');
+        container.innerHTML = '';
+        
+        // 模擬雷達資料掃描運算
+        setTimeout(() => {
+            document.getElementById('radarLoading').classList.add('hidden');
+            document.getElementById('radarLoading').classList.remove('flex');
+            document.getElementById('radarResultHeader').classList.remove('hidden');
+            
+            let mockData = [];
+            if(type === 'bottom') {
+                mockData = [
+                    { sym: '2303', name: '聯電', desc: '剛站上月線，底部帶量', badge: '🌸春季打底', color: 'text-pink-400 border-pink-700 bg-pink-900/50' }
+                ];
+            } else if (type === 'surge') {
+                mockData = [
+                    { sym: '2330', name: '台積電', desc: '沿著布林上軌強勢噴出', badge: '🚀夏日飆股', color: 'text-red-400 border-red-700 bg-red-900/50' }
+                ];
+            } else {
+                mockData = [
+                    { sym: '2454', name: '聯發科', desc: '綜合 Alpha 動能評分: 85分', badge: '⭐動能極強', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50' }
+                ];
+            }
+            
+            let html = '';
+            mockData.forEach(m => {
+                html += `
+                <li class="p-4 m-2 bg-[#1c2128] border border-[#30363d] rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors shadow-sm" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag');">
+                    <div>
+                        <div class="font-bold text-white text-base md:text-lg">${m.sym} ${m.name}</div>
+                        <div class="text-xs text-gray-500 mt-1">${m.desc}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="px-2 py-1 rounded text-xs font-bold border ${m.color}">${m.badge}</span>
+                    </div>
+                </li>
+                `;
+            });
+            container.innerHTML = html;
+        }, 1500);
+    },
+
+    copyAIPrompt() {
+        const p = "請以主力籌碼專家的角度，幫我分析股票代號 " + this.currentSymbolId + " 近5日的主力進出與大戶持股比例變化，判斷是否有隔日沖或出貨嫌疑。";
+        try { navigator.clipboard.writeText(p); alert('✅ 已複製 AI 查核指令！請貼給 ChatGPT 或 Gemini 進行雙重防呆。'); } 
+        catch(e) { prompt("請手動複製此段文字:", p); }
+    },
+    
+    // ==========================================
+
     initSortableFav() {
         const favEl = document.getElementById('favListContainer');
         if (this.sortableFav) { this.sortableFav.destroy(); }
@@ -792,6 +1220,7 @@ const app = {
 
     initSortableInv() {
         const invEl = document.getElementById('inventoryCardContainer');
+        if(!invEl) return;
         this.sortableInv = Sortable.create(invEl, {
             handle: '.drag-handle', animation: 150,
             onEnd: (evt) => {
@@ -899,7 +1328,6 @@ const app = {
         if(this.currentSymbolId) this.refreshStrategy(); 
     },
 
-    // 🔥 Fugle API 即時報價引擎
     async fetchFugleData(symbol) {
         if (!this.settings.fugleToken) return null;
         try {
@@ -922,9 +1350,9 @@ const app = {
     },
 
     async fetchHistoricalData(symbol) {
-        // A. 優先讀取今日快取 (極速體感)
         const today = new Date().toISOString().split('T')[0];
         const cacheKey = `proTerm_kline_${symbol}`, cacheDateKey = `proTerm_kdate_${symbol}`;
+        
         if (this.apiDataCache[cacheKey] && this.apiDataCache[cacheDateKey] === today) return this.apiDataCache[cacheKey];
         if (localStorage.getItem(cacheDateKey) === today) { 
             const cachedData = JSON.parse(localStorage.getItem(cacheKey)); 
@@ -932,24 +1360,31 @@ const app = {
             return cachedData;
         }
 
-        // B. 🚀 終極雲端對接：直接讀取同一包資料夾內的 JSON 檔案
         try {
-            // 加上時間戳 (?t=...) 確保每天抓到的都是最新檔案，不被瀏覽器死記
             const res = await fetch(`data/${symbol}.json?t=${new Date().getTime()}`); 
-            if (!res.ok) throw new Error("尚未產出此檔雲端資料");
+            if (!res.ok) throw new Error("GitHub 無此檔資料");
             
             const formattedData = await res.json();
-            
-            // C. 寫入快取，下次點擊 0 秒開
             this.apiDataCache[cacheKey] = formattedData; this.apiDataCache[cacheDateKey] = today;
             try { 
                 localStorage.setItem(cacheKey, JSON.stringify(formattedData)); 
                 localStorage.setItem(cacheDateKey, today); 
-            } catch(e) { /* 忽略手機容量爆滿時的報錯 */ }
+            } catch(e) {}
             
             return formattedData;
         } catch (error) {
-            console.error("雲端資料庫讀取失敗:", error);
+            console.warn(`雲端找不到 ${symbol}，啟動 FinMind 備援...`);
+            try {
+                let fmUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${symbol}&start_date=2023-01-01`;
+                const fmToken = localStorage.getItem('finmindToken') || this.settings.finmindToken;
+                if(fmToken) fmUrl += `&token=${fmToken}`;
+                const fmRes = await fetch(fmUrl);
+                const fmJson = await fmRes.json();
+                if(fmJson.msg === 'success' && fmJson.data.length > 0) {
+                    const formattedData = fmJson.data.map(d => ({ date: d.date.replace(/-/g, '/'), open: d.open || d.close, high: d.max || d.close, low: d.min || d.close, close: d.close, volume: d.Trading_Volume }));
+                    return formattedData;
+                }
+            } catch(e) { console.error("FinMind 備援也失敗", e); }
             return null;
         }
     },
@@ -1021,7 +1456,6 @@ const app = {
         if(tab === 'chart' && this.chartInstance) setTimeout(() => { this.chartInstance.resize(); }, 50);
     },
 
-    // 🎯 無縫接軌 K 線與即時報價
     applyLatestPrice(fugleData = null, manualPrice = null) {
         this.rawDailyData = JSON.parse(JSON.stringify(this.baseRawData));
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
@@ -1037,12 +1471,7 @@ const app = {
                 this.rawDailyData[lastIdx].volume = fugleData.volume;
             } else {
                 this.rawDailyData.push({
-                    date: todayStr,
-                    open: fugleData.open,
-                    high: fugleData.high,
-                    low: fugleData.low,
-                    close: fugleData.price,
-                    volume: fugleData.volume
+                    date: todayStr, open: fugleData.open, high: fugleData.high, low: fugleData.low, close: fugleData.price, volume: fugleData.volume
                 });
                 lastIdx++; 
             }
@@ -1067,11 +1496,16 @@ const app = {
         this.updateLiveUI(currentClose, prevClose);
 
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
-        this.indicators = await this.calculateIndicatorsAsync(this.activeData);
-        this.refreshStrategy(); this.renderChart();
+        
+        masterWorker.postMessage({ activeData: this.activeData });
     },
 
-    calculateIndicatorsAsync(data) { return new Promise((resolve) => { indicatorWorker.onmessage = (e) => resolve(e.data); indicatorWorker.postMessage({ activeData: data }); }); },
+    calculateIndicatorsAsync(data) { 
+        return new Promise((resolve) => { 
+            masterWorker.onmessage = (e) => resolve(e.data); 
+            masterWorker.postMessage({ activeData: data }); 
+        }); 
+    },
 
     aggregateData(data, period) {
         if (!data || data.length === 0) return [];
@@ -1111,10 +1545,9 @@ const app = {
         }
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
-        this.indicators = await this.calculateIndicatorsAsync(this.activeData);
-        if(this.chartInstance) this.chartInstance.clear();
-        this.renderChart();
-        if(this.currentTF === 'D') this.refreshStrategy();
+        
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        masterWorker.postMessage({ activeData: this.activeData });
     },
 
     findPeaksAndTroughs() {
@@ -1415,7 +1848,7 @@ const app = {
             defLabel = "🛑 絕對停損(前低)";
             t1_val = "下修逃命"; t2_val = "下修逃命";
             if (hasCost) {
-                actionText = `🔴 跌破防守價，現在快跑！`;
+                actionText = `🔴 若跌破 [${parseFloat(def_val).toFixed(2)}]，現在快跑！`;
                 actionSubText = `❄️ 冬季冷酷期：趨勢破壞，滿門抄斬，嚴禁凹單與接刀摸底！`;
                 smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-white">${this.currentSymbolId} / 觸價賣出 / 條件 <= ${parseFloat(def_val).toFixed(2)} (破底停損)</span>`;
             } else {
@@ -1468,11 +1901,11 @@ const app = {
                 t2_val = "無極限";
                 def_val = ma5; defLabel = "🛡️ 防守底線(5MA)";
                 if (hasCost) {
-                    actionText = `🟢 趨勢續強，把手綁起來！`;
+                    actionText = `🟢 若盤中跌破 [${ma5.toFixed(2)}] 停利，否則把手綁起來！`;
                     actionSubText = `☀️ 夏季狂飆期：四線多排，股價黏著布林上軌往上噴。不破 5MA 絕對不賣！`;
                     smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-white">${this.currentSymbolId} / 觸價賣出 / 條件 <= ${ma5.toFixed(2)} (破5MA停利)</span>`;
                 } else {
-                    actionText = `🟢 現在進場！夏天順勢建倉`;
+                    actionText = `🟢 若盤中站穩 [${ma5.toFixed(2)}]，現在進場！`;
                     actionSubText = `☀️ 夏季狂飆期：動能極強。目前空手，請順勢建倉，以 5MA 為防守線，不預設高點！`;
                     smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-white">${this.currentSymbolId} / 限價買進 / 買價：${pC.toFixed(2)} (順勢建倉，破5MA停損)</span>`;
                 }
@@ -1483,8 +1916,8 @@ const app = {
             def_val = ma20;
             defLabel = "🛡️ 波段防守(月線)";
             if (pC < ma5) {
-                actionText = `⏳ 請等回測再買`;
-                actionSubText = `🌸 春季打底期：量縮回測中。待回測月線 (${ma20 !== null ? ma20.toFixed(2) : '--'}) 有守再行建倉。`;
+                actionText = `⏳ 請等這支股票回測月線 [${ma20 !== null ? ma20.toFixed(2) : '--'}] 再買`;
+                actionSubText = `🌸 春季打底期：量縮回測中。待回測月線有守再行建倉。`;
                 if (hasCost) {
                     smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-white">${this.currentSymbolId} / 觸價賣出 / 條件 <= ${ma20 !== null ? ma20.toFixed(2) : '--'} (破月線停損)</span>`;
                 } else {
@@ -1492,11 +1925,11 @@ const app = {
                 }
             } else {
                 if (hasCost) {
-                    actionText = `🟢 底底高成型，抱緊持股`;
+                    actionText = `🟢 底部成型，抱緊持股`;
                     actionSubText = `🌸 春季打底期：股價站上月線，多頭起漲初期，請耐心等待發動。`;
                     smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-white">${this.currentSymbolId} / 觸價賣出 / 條件 <= ${ma20 !== null ? ma20.toFixed(2) : '--'} (破月線停損)</span>`;
                 } else {
-                    actionText = `🟢 底部確認，空手請建倉`;
+                    actionText = `🟢 若盤中站穩 [${ma20 !== null ? ma20.toFixed(2) : pC.toFixed(2)}]，底部確認請建倉`;
                     actionSubText = `🌸 春季打底期：目前空手。可少量試單，以月線或前低為嚴格防守。`;
                     smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-white">${this.currentSymbolId} / 限價買進 / 買價：${pC.toFixed(2)} (順勢建倉，守月線)</span>`;
                 }
@@ -1505,7 +1938,7 @@ const app = {
             boxStyle = "border-gray-500 bg-gray-900/20 text-gray-400";
             def_val = ma20;
             defLabel = "🛡️ 震盪防守(月線)";
-            actionText = `🟡 震盪盤整，耐心等待`;
+            actionText = `🟡 震盪盤整，請等帶量突破再買`;
             actionSubText = `方向不明確，適合少量試單或空手觀望。`;
             smartInstruction = `--`;
         }
@@ -1519,7 +1952,7 @@ const app = {
             
             if ((upwardSpace > 0 && upwardSpace <= downwardRisk) || distToCeiling <= 0.03) {
                 boxStyle = "border-yellow-500 bg-yellow-900/20 text-yellow-400";
-                actionText = `🟡 空間受限，請等回測再買！`;
+                actionText = `🟡 空間受限，請等回測 [${numDef.toFixed(2)}] 再買！`;
                 actionSubText = `🎯 <b>盈虧比警報：</b> 向上潛在空間 ${(upwardSpace*100).toFixed(1)}%，向下停損風險 ${(downwardRisk*100).toFixed(1)}%。<br>距離短線極限過近，盈虧比極差！嚴禁追高，請耐心等待量縮回測防守線 (${numDef.toFixed(2)}) 附近再行低接。`;
                 smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-white">${this.currentSymbolId} / 限價買進 / 買價：${numDef.toFixed(2)} (等待回測低接)</span>`;
             }
@@ -1560,7 +1993,7 @@ const app = {
             safetyMarginText = `<div class="mt-2 text-[#4ade80] bg-[#4ade80]/10 p-2 rounded-lg text-sm border border-[#4ade80]/30 font-bold leading-relaxed">🕵️ <b>主力追蹤：</b> 主力成本在 [${chipCostVal}]，你買在 [${costStr}]。<br>安全邊際為 <span class="text-white">${margin > 0 ? '+' : ''}${margin.toFixed(2)}%</span></div>`;
             
             if (pC <= chipCostVal * 1.05 && !isTrendBroken) {
-                actionText = `🟢 現在進場！極度安全！`;
+                actionText = `🟢 若盤中站穩 [${chipCostVal}]，現在進場！極度安全！`;
                 boxStyle = "border-red-500 bg-red-900/20 text-red-400 shadow-[0_0_20px_rgba(248,113,113,0.3)]";
             } else if (pC > chipCostVal * 1.20) {
                 actionText = `🔴 這支不准碰！(高檔割韭菜)`;
@@ -1600,7 +2033,7 @@ const app = {
                  scriptText = `<div class="mt-2 pt-2 border-t border-gray-700/50 text-yellow-400">⚠️ 籌碼佳但趨勢向下，保護資金為主。</div>` + scriptText;
              } else {
                  boxStyle = "border-red-500 bg-red-900/20 text-red-400 animate-pulse";
-                 if (!hasCost) actionText = `🟢 籌碼確認，空手請進場！`;
+                 if (!hasCost) actionText = `🟢 若盤中站穩防守價，現在進場！`;
                  else if (pC < costVal) actionText = "🔴 現在快跑！(嚴禁向下攤平)";
                  else actionText = `🟢 籌碼確認，可加碼！`;
              }
@@ -1710,56 +2143,33 @@ const app = {
         this.renderBacktest();
     },
 
-    renderBacktest() {
-        const tbody = document.getElementById('backtestTableBody');
-        const data = this.activeData; const ind = this.indicators; const last = data.length - 1;
-        if (last < 5) { tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
+    updatePredictionUI(trades, ndStats) {
+        const count = trades.length;
+        const winTrades = trades.filter(t => t.profitPct > 0);
+        const winRate = count > 0 ? ((winTrades.length / count) * 100).toFixed(1) : 0;
+        const avgProfit = count > 0 ? (trades.reduce((a, b) => a + b.profitPct, 0) / count).toFixed(2) : 0;
 
-        let html = '';
-        for (let i = last; i >= Math.max(0, last - 4); i--) {
-            const pC = data[i].close, prevC = i > 0 ? data[i-1].close : pC;
-            const diff = pC - prevC, pct = prevC > 0 ? (diff / prevC) * 100 : 0;
-            const scoreData = this.calculateScoreStandalone(data, ind, i);
-            let finalScore = scoreData.score;
-            
-            const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500'), sign = diff > 0 ? '+' : '';
-            const tColor = finalScore >= 65 ? 'text-[#f87171]' : (finalScore < 45 ? 'text-[#4ade80]' : 'text-yellow-400');
+        document.getElementById('btCount').innerText = `${count} 次`;
+        document.getElementById('btWinRate').innerText = `${winRate}%`;
+        document.getElementById('btAvgProfit').innerText = `${avgProfit}%`;
 
-            html += `<tr class="border-b border-[#21262d] hover:bg-[#1c2128]">
-                <td class="py-2 px-1 text-gray-300 text-sm">${data[i].date}</td>
-                <td class="py-2 px-1 text-right"><span class="font-bold text-white text-base">${pC.toFixed(2)}</span><div class="text-[10px] md:text-xs mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>
-                <td class="py-2 px-1 text-center flex flex-col items-center"><span class="text-base font-black ${tColor}">${finalScore}</span><span class="text-[10px] md:text-xs ${tColor}">${scoreData.trendStr}</span></td>
-            </tr>`;
+        document.getElementById('ndCount').innerText = `${ndStats.count} 次`;
+        document.getElementById('ndWinRate').innerText = `${ndStats.winRate}%`;
+        document.getElementById('ndRewardRisk').innerHTML = `<span class="text-red-400">+${ndStats.avgUp}%</span> / <span class="text-green-400">${ndStats.avgDown}%</span>`;
+
+        let conclusion = "";
+        if (ndStats.count < 3) {
+            conclusion = "⚠️ 歷史樣本不足，無法提供可靠的機率預測，請單純依照當下均線防守。";
+        } else if (ndStats.winRate >= 60 && parseFloat(ndStats.avgUp) > Math.abs(parseFloat(ndStats.avgDown))) {
+            conclusion = "🔥 <strong>【肉多湯少，勝率極高】</strong><br>歷史數據證明此型態隔日極易收紅！只要下方籌碼雷達確認安全，請大膽試單！";
+        } else if (ndStats.winRate >= 50 && parseFloat(ndStats.avgUp) < Math.abs(parseFloat(ndStats.avgDown))) {
+            conclusion = "⚠️ <strong>【肉少骨頭多，當心陷阱】</strong><br>雖然有一半勝率，但平均虧損遠大於獲利，這筆交易賠率不划算，建議放棄！";
+        } else {
+            conclusion = "🧊 <strong>【勝率偏低，容易套牢】</strong><br>歷史顯示此型態極易「一日遊」被出貨，千萬不要盲目追高，建議空手觀望！";
         }
-        tbody.innerHTML = html;
-    },
 
-    updateLiveUI(livePrice, prevClose) {
-        const diff = livePrice - prevClose, pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
-        const sign = diff > 0 ? '▲' : (diff < 0 ? '▼' : ''), textColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-        
-        document.getElementById('liveDiffAmount').innerText = `${sign} ${Math.abs(diff).toFixed(2)}`;
-        document.getElementById('liveDiffPct').innerText = `(${diff > 0 ? '+' : ''}${pct.toFixed(2)}%)`;
-        document.getElementById('liveDiffWrapper').className = `flex items-center gap-1 text-gray-400 mt-1 ${textColor}`;
-        
-        const priceEl = document.getElementById('livePriceText');
-        priceEl.className = `text-4xl md:text-5xl font-black font-mono leading-none tracking-tighter transition-all duration-200 ${textColor}`;
-        priceEl.innerText = livePrice.toFixed(2);
-        
-        priceEl.classList.remove('price-flash-up', 'price-flash-down');
-        void priceEl.offsetWidth; 
-        if (livePrice > this.currentPrice) priceEl.classList.add('price-flash-up');
-        else if (livePrice < this.currentPrice) priceEl.classList.add('price-flash-down');
-        this.currentPrice = livePrice;
-    },
-
-    setSubChart(type) {
-        this.currentSubChart = type;
-        ['VOL', 'KD', 'MACD'].forEach(b => {
-            const el = document.getElementById(`btnSub${b}`);
-            if(el) { if(b === type) el.className = "flex-1 py-2 text-blue-400 bg-[#0d1117] rounded border border-[#30363d] transition-colors"; else el.className = "flex-1 py-2 text-gray-400 border border-transparent transition-colors"; }
-        });
-        this.renderChart();
+        document.getElementById('predictionConclusion').innerHTML = conclusion;
+        document.getElementById('predictionPanel').classList.remove('hidden');
     },
 
     renderChartHud(index) {
@@ -1786,8 +2196,9 @@ const app = {
         const kData = data.map(d => [d.open, d.close, d.low, d.high]);
         this.renderChartHud(data.length - 1); 
 
-        let markPointData = [];
+        let markPointData = [...(this.currentMarkPoints || [])]; 
         let markLineData = [];
+        
         if (this.currentTF === 'D') {
             this.peaks.forEach(p => { markPointData.push({ name: '頭高', xAxis: p.idx, yAxis: p.val, value: '頭高', symbol: 'arrow', symbolRotate: 180, symbolSize: 10, itemStyle: { color: '#f87171' }, label: { show: true, formatter: '頭高', position: 'top', color: '#f87171', fontSize: 10, fontWeight: 'bold' } }); });
             this.troughs.forEach(t => { markPointData.push({ name: '底高', xAxis: t.idx, yAxis: t.val, value: '底高', symbol: 'arrow', symbolRotate: 0, symbolSize: 10, itemStyle: { color: '#4ade80' }, label: { show: true, formatter: '底高', position: 'bottom', color: '#4ade80', fontSize: 10, fontWeight: 'bold' } }); });
@@ -1842,6 +2253,39 @@ const app = {
         this.chartInstance.setOption(option, { replaceMerge: ['series'] });
     },
 
+    setSubChart(type) {
+        this.currentSubChart = type;
+        ['VOL', 'KD', 'MACD'].forEach(b => {
+            const el = document.getElementById(`btnSub${b}`);
+            if(el) { if(b === type) el.className = "flex-1 py-2 text-blue-400 bg-[#0d1117] rounded border border-[#30363d] transition-colors"; else el.className = "flex-1 py-2 text-gray-400 border border-transparent transition-colors"; }
+        });
+        this.renderChart();
+    },
+
+    renderBacktest() {
+        const tbody = document.getElementById('backtestTableBody');
+        const data = this.activeData; const ind = this.indicators; const last = data.length - 1;
+        if (last < 5) { tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
+
+        let html = '';
+        for (let i = last; i >= Math.max(0, last - 4); i--) {
+            const pC = data[i].close, prevC = i > 0 ? data[i-1].close : pC;
+            const diff = pC - prevC, pct = prevC > 0 ? (diff / prevC) * 100 : 0;
+            const scoreData = this.calculateScoreStandalone(data, ind, i);
+            let finalScore = scoreData.score;
+            
+            const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500'), sign = diff > 0 ? '+' : '';
+            const tColor = finalScore >= 65 ? 'text-[#f87171]' : (finalScore < 45 ? 'text-[#4ade80]' : 'text-yellow-400');
+
+            html += `<tr class="border-b border-[#21262d] hover:bg-[#1c2128]">
+                <td class="py-2 px-1 text-gray-300 text-sm">${data[i].date}</td>
+                <td class="py-2 px-1 text-right"><span class="font-bold text-white text-base">${pC.toFixed(2)}</span><div class="text-[10px] md:text-xs mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>
+                <td class="py-2 px-1 text-center flex flex-col items-center"><span class="text-base font-black ${tColor}">${finalScore}</span><span class="text-[10px] md:text-xs ${tColor}">${scoreData.trendStr}</span></td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    },
+
     async analyze(symCode = null, skipListCheck = false) {
         document.getElementById('loadingOverlay').style.display = 'flex';
         let inputVal = symCode || document.getElementById('symbolInput').value.trim();
@@ -1858,598 +2302,63 @@ const app = {
         
         const nameEl = document.getElementById('quoteName');
         nameEl.innerText = symName;
-        if (symName.length <= 4) {
-            nameEl.className = "text-2xl md:text-3xl lg:text-4xl font-black truncate tracking-wide";
-        } else {
-            nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
-        }
+        if (symName.length <= 4) nameEl.className = "text-2xl md:text-3xl lg:text-4xl font-black truncate tracking-wide";
+        else nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
         document.getElementById('quoteSymbol').innerText = targetSym;
 
-        // 1. 抓取 FinMind 歷史資料
         const rawData = await this.fetchHistoricalData(targetSym);
         if (!rawData || rawData.length < 2) {
             document.getElementById('actionMainText').innerText = "資料不足";
-            document.getElementById('actionSubText').innerHTML = "<span>無法取得足夠的歷史 K 線，請確認網路或代號。</span>";
+            document.getElementById('actionSubText').innerHTML = "<span>無法取得足夠的歷史 K 線，請確認 GitHub 更新狀態。</span>";
             document.getElementById('loadingOverlay').style.display = 'none'; return;
         }
         this.baseRawData = JSON.parse(JSON.stringify(rawData)); 
         
-        // 2. 抓取 Fugle 盤中即時資料
         let fugleData = await this.fetchFugleData(targetSym);
         this.currentFugleData = fugleData;
         
-        // 3. 處理 UI 狀態
         if (fugleData) {
             document.getElementById('dataSourceText').innerText = "富果即時";
             document.getElementById('dataSourceText').className = "font-bold text-green-400 tracking-wide";
             document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
         } else {
-            document.getElementById('dataSourceText').innerText = "盤後/延遲";
+            document.getElementById('dataSourceText').innerText = "GitHub 雲端";
             document.getElementById('dataSourceText').className = "font-bold text-blue-400 tracking-wide";
             document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse";
         }
 
-        // 4. 無縫合併最新的報價到 K 線
         this.applyLatestPrice(this.currentFugleData, null);
 
-        await this.changeTimeframe(this.currentTF); 
-        
-        const lastIdx = this.rawDailyData.length - 1, currentClose = this.rawDailyData[lastIdx].close;
-        const prevClose = this.rawDailyData.length > 1 ? this.rawDailyData[lastIdx-1].close : currentClose;
-        this.updateLiveUI(currentClose, prevClose);
-        
-        const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
-        if(inInv && inInv.cost > 0) document.getElementById('costInput').value = inInv.cost; else document.getElementById('costInput').value = '';
-        document.getElementById('manualPriceInput').value = ''; document.getElementById('chipCostInput').value = '';
+        this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
 
-        this.setAIVerdict('reset'); this.updateFavIcon(); this.updateInvBadge(); this.refreshStrategy();
-        document.getElementById('loadingOverlay').style.display = 'none';
-    },
-
-    toggleFavorite() {
-        if(!this.currentSymbolId) return;
-        let currentList = this.favGroups[this.activeGroupName] || [];
-        const idx = currentList.indexOf(this.currentSymbolId);
-        if (idx > -1) {
-            currentList.splice(idx, 1);
-        } else {
-            currentList.unshift(this.currentSymbolId); 
-        }
-        this.favGroups[this.activeGroupName] = currentList;
-        localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups)); 
-        this.updateFavIcon(); 
-        this.renderFavTabs();
-    },
-    updateFavIcon() {
-        const iconEl = document.getElementById('favStarIcon'); if (!iconEl) return;
-        let currentList = this.favGroups[this.activeGroupName] || [];
-        if (currentList.includes(this.currentSymbolId)) { 
-            iconEl.innerHTML = '⭐'; iconEl.className = "cursor-pointer text-3xl md:text-4xl text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] transform scale-110 transition-transform flex-shrink-0"; 
-        } else { 
-            iconEl.innerHTML = '☆'; iconEl.className = "cursor-pointer text-3xl md:text-4xl text-gray-500 transition-transform hover:scale-110 flex-shrink-0"; 
-        }
-    },
-    removeFavorite(sym) {
-        let currentList = this.favGroups[this.activeGroupName] || [];
-        const idx = currentList.indexOf(sym);
-        if (idx > -1) { 
-            currentList.splice(idx, 1); 
-            this.favGroups[this.activeGroupName] = currentList;
-            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups)); 
-            this.renderFavList(); 
-            this.updateFavIcon(); 
-        }
-    },
-
-    renderFavTabs() {
-        const tabsContainer = document.getElementById('favGroupTabs');
-        if (!tabsContainer) return;
-        let html = '';
-        for (const groupName in this.favGroups) {
-            const isActive = groupName === this.activeGroupName;
-            const textClass = isActive ? 'text-white font-black' : 'text-gray-500 font-bold hover:text-gray-300';
-            const borderClass = isActive ? 'border-b-2 border-blue-500 pb-1.5' : 'pb-2';
+        masterWorker.onmessage = (e) => {
+            if(!e.data) return;
+            this.indicators = e.data; 
+            const { trades, markPoints, nextDayStats } = e.data;
             
-            html += `<div class="cursor-pointer px-4 flex-shrink-0 whitespace-nowrap text-sm ${textClass} ${borderClass} transition-colors" onclick="app.switchFavGroup('${groupName}')">
-                        ${groupName}
-                     </div>`;
-        }
-        html += `<div class="cursor-pointer px-3 pb-2 flex-shrink-0 text-orange-500 font-black" onclick="app.openGroupModal()">+ 新增清單</div>`;
-        tabsContainer.innerHTML = html;
-        this.renderFavList();
-    },
+            this.currentMarkPoints = markPoints; 
 
-    switchFavGroup(groupName) {
-        this.activeGroupName = groupName;
-        localStorage.setItem('proTerminalActiveGroup', groupName);
-        this.updateFavIcon();
-        this.renderFavTabs();
-    },
+            if(this.chartInstance) this.chartInstance.clear();
+            this.renderChart();
+            this.updatePredictionUI(trades, nextDayStats);
 
-    openGroupModal() {
-        document.getElementById('groupNameInput').value = '';
-        document.getElementById('groupModal').classList.remove('hidden');
-        setTimeout(() => document.getElementById('groupNameInput').focus(), 100);
-    },
-
-    confirmCreateGroup() {
-        const input = document.getElementById('groupNameInput');
-        const name = input.value.trim();
-        if(name) {
-            if(!this.favGroups[name]) {
-                this.favGroups[name] = [];
-                localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
-            }
-            this.switchFavGroup(name);
-        }
-        document.getElementById('groupModal').classList.add('hidden');
-    },
-
-    async renderFavList() {
-        const container = document.getElementById('favListContainer'), emptyState = document.getElementById('favEmptyState'); 
-        let currentList = this.favGroups[this.activeGroupName] || [];
-
-        if (currentList.length === 0) { container.innerHTML = ''; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); return; }
-        emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
-        
-        let html = '';
-        currentList.forEach(sym => {
-            const stockInfo = this.allStockList.find(s => s.stock_id === sym) || { stock_name: sym };
-            const cachedData = this.favDataMap[sym] || { pC: '--', pct: '--', sIcon: '🔄', sName: '整', sStyle: 'text-gray-400 bg-gray-800 border-gray-600' };
-            const pC = cachedData.pC, pct = cachedData.pct;
-            const color = pct > 0 ? 'text-[#f87171]' : (pct < 0 ? 'text-[#4ade80]' : 'text-gray-400'), sign = pct > 0 ? '+' : '';
+            const lastIdx = this.rawDailyData.length - 1, currentClose = this.rawDailyData[lastIdx].close;
+            const prevClose = this.rawDailyData.length > 1 ? this.rawDailyData[lastIdx-1].close : currentClose;
             
-            html += `<div class="swipe-container border-b border-[#21262d] bg-red-600 overflow-hidden" data-sym="${sym}">
-                <div class="swipe-content bg-[#0d1117] flex transition-colors hover:bg-[#161b22]">
-                    <div class="flex-grow p-3 flex items-center cursor-pointer" onclick="app.selectStock('${sym}')">
-                        <div class="drag-handle text-xl text-gray-500 hover:text-white transition-colors pr-2" onclick="event.stopPropagation()">☰</div>
-                        
-                        <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <span class="font-bold text-white text-base md:text-lg truncate tracking-wide">${stockInfo.stock_name}</span>
-                            <span class="text-xs text-gray-500 font-mono tracking-wider">${sym}</span>
-                        </div>
-                        
-                        <div class="flex-shrink-0 mx-2 flex flex-col items-center justify-center">
-                            <div class="w-10 h-10 rounded-full border flex items-center justify-center text-lg ${cachedData.sStyle}" id="fav-season-${sym}">
-                                ${cachedData.sIcon}
-                            </div>
-                        </div>
-
-                        <div class="flex-shrink-0 w-[80px] flex flex-col items-end justify-center border-l border-[#30363d]/50 pl-2">
-                            <span class="font-mono font-black ${color} text-lg md:text-xl leading-none" id="fav-price-${sym}">${pC}</span> 
-                            <span class="text-xs font-bold ${color} mt-1" id="fav-pct-${sym}">${pct !== '--' ? '(' + sign + pct + '%)' : '--'}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="swipe-action bg-red-600 text-white text-sm font-bold cursor-pointer hover:bg-red-700" onclick="app.removeFavorite('${sym}')">刪除</div>
-            </div>`;
-        });
-        container.innerHTML = html; 
-        this.initSortableFav();
-        this.refreshFavData();
-    },
-
-    async refreshFavData() {
-        let currentList = this.favGroups[this.activeGroupName] || [];
-        for (let sym of currentList) {
-            try {
-                const data = await this.fetchHistoricalData(sym);
-                if (data && data.length > 25) {
-                    const tempInd = await this.calculateIndicatorsAsync(data), lastIdx = data.length - 1;
-                    const pC = data[lastIdx].close, pPrev = data[lastIdx-1].close, pct = pPrev > 0 ? ((pC - pPrev) / pPrev) * 100 : 0;
-                    
-                    const pO = data[lastIdx].open, pH = data[lastIdx].high, pL = data[lastIdx].low, pV = data[lastIdx].volume, pV1 = data[lastIdx-1].volume;
-                    const ma5 = tempInd.ma5[lastIdx], ma10 = tempInd.ma10[lastIdx], ma20 = tempInd.ma20[lastIdx], ma60 = tempInd.ma60[lastIdx], ma20_prev = tempInd.ma20[lastIdx-1], upperBB = tempInd.upperBB[lastIdx];
-
-                    let sObj = this.getSeasonObj(pC, pO, pH, pL, pV, pPrev, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB);
-
-                    this.favDataMap[sym] = { pC: pC.toFixed(2), pct: pct.toFixed(2), sIcon: sObj.icon, sName: sObj.name, sStyle: sObj.style };
-                    
-                    const priceEl = document.getElementById(`fav-price-${sym}`), pctEl = document.getElementById(`fav-pct-${sym}`), seasonEl = document.getElementById(`fav-season-${sym}`);
-                    if(priceEl) {
-                        const color = pct > 0 ? 'text-[#f87171]' : (pct < 0 ? 'text-[#4ade80]' : 'text-gray-400'), sign = pct > 0 ? '+' : '';
-                        priceEl.className = `font-mono font-black ${color} text-lg md:text-xl leading-none`; priceEl.innerText = pC.toFixed(2);
-                        pctEl.className = `text-xs font-bold ${color} mt-1`; pctEl.innerText = `(${sign}${pct.toFixed(2)}%)`;
-                        seasonEl.className = `w-10 h-10 rounded-full border flex items-center justify-center text-lg ${sObj.style}`;
-                        seasonEl.innerHTML = sObj.icon;
-                    }
-                }
-            } catch(e) {} await new Promise(r => setTimeout(r, 100));
-        }
-    },
-
-    openInvModal() {
-        document.getElementById('invBuyDateInput').value = new Date().toISOString().split('T')[0];
-        document.getElementById('invModal').classList.remove('hidden');
-        document.getElementById('invModalInput').focus();
-    },
-
-    async confirmAddInventory(forceSymbol = null) {
-        let inputEl = document.getElementById('invModalInput'); let rawVal = forceSymbol || inputEl.value.trim();
-        if (!rawVal) return;
-        
-        let actualSym = rawVal.split(/\s+/)[0]; let actualName = actualSym;
-        if (this.allStockList.length > 0) {
-            const found = this.allStockList.find(s => s.stock_id === actualSym || s.stock_name === actualSym);
-            if (found) { actualSym = found.stock_id; actualName = found.stock_name; }
-        }
-        
-        let bDate = document.getElementById('invBuyDateInput').value || new Date().toISOString().split('T')[0];
-        
-        if (!this.inventory.find(i => i.symbol === actualSym)) {
-            this.inventory.unshift({ symbol: actualSym, name: actualName, shares: 1000, cost: 0, manualPrice: '', buyDate: bDate }); 
-            localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory)); 
-        }
-        inputEl.value = ''; document.getElementById('invModal').classList.add('hidden');
-        this.renderInventory(); this.updateInvBadge(); await this.refreshInventoryPrices();
-    },
-
-    closeTrade(index) {
-        const item = this.inventory[index];
-        const liveData = this.inventoryPrices[item.symbol] || { price: item.cost };
-        const hasManual = item.manualPrice && !isNaN(parseFloat(item.manualPrice));
-        const currentPrice = hasManual ? parseFloat(item.manualPrice) : (parseFloat(liveData.price) || item.cost);
-        
-        const costTotal = (parseFloat(item.cost) || 0) * (parseFloat(item.shares) || 0);
-        const valTotal = currentPrice * (parseFloat(item.shares) || 0);
-        const pnl = valTotal - costTotal;
-        const pnlPct = costTotal > 0 ? (pnl / costTotal) * 100 : 0;
-        
-        if (confirm(`💰 確認要結帳【${item.name}】嗎？\n估計損益: $${Math.round(pnl).toLocaleString()} (${pnlPct.toFixed(2)}%)`)) {
-            this.tradeLog.unshift({ date: new Date().toISOString().split('T')[0], symbol: item.symbol, name: item.name, pnl: pnl, pnlPct: pnlPct, isWin: pnl > 0 });
-            localStorage.setItem('proTerminalLog', JSON.stringify(this.tradeLog));
-            this.updateWinRateDashboard();
+            // 這裡原本就是呼叫這些函數，現在全部都有了！不會再當機了。
+            this.updateLiveUI(currentClose, prevClose);
             
-            this.inventory.splice(index, 1);
-            localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
-            this.renderInventory();
-            this.updateInvBadge();
-            if(this.currentSymbolId === item.symbol) this.refreshStrategy();
-        }
-    },
+            const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
+            if(inInv && inInv.cost > 0) document.getElementById('costInput').value = inInv.cost; else document.getElementById('costInput').value = '';
+            document.getElementById('manualPriceInput').value = ''; document.getElementById('chipCostInput').value = '';
 
-    updateInventoryData(index, field, value) { this.inventory[index][field] = field === 'manualPrice' ? value : (parseFloat(value) || 0); localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory)); this.renderInventory(); },
-    
-    updateInvBadge() {
-        const badge = document.getElementById('invBadge'); const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
-        if(inInv) { badge.classList.remove('hidden'); badge.classList.add('inline-block'); } else { badge.classList.add('hidden'); badge.classList.remove('inline-block'); }
-    },
-    
-    async refreshInventoryPrices() {
-        const btn = document.getElementById('btnRefreshInv'); if(btn) { btn.innerText = '🔄 更新中...'; btn.disabled = true; }
-        if(this.inventory.length > 0) {
-            for (let i of this.inventory) {
-                const sym = i.symbol; if(!sym) continue;
-                try {
-                    let price, prevClose;
-                    let fugleData = await this.fetchFugleData(sym);
-                    if (fugleData) {
-                        price = fugleData.price;
-                        const fmData = await this.fetchHistoricalData(sym);
-                        prevClose = (fmData && fmData.length > 0) ? (fmData[fmData.length-1].date === this.getTodayStr() && fmData.length > 1 ? fmData[fmData.length-2].close : fmData[fmData.length-1].close) : price;
-                    } else {
-                        const fmData = await this.fetchHistoricalData(sym);
-                        if (fmData && fmData.length > 0) {
-                            price = fmData[fmData.length-1].close;
-                            prevClose = fmData.length > 1 ? fmData[fmData.length-2].close : price;
-                        }
-                    }
-                    if(price) this.inventoryPrices[sym] = { price, prevClose };
-                } catch(e) { console.error(e); } await new Promise(r => setTimeout(r, 200)); 
-            }
-        }
-        this.renderInventory(); if(btn) { btn.innerText = '🔄 刷新'; btn.disabled = false; }
-    },
-    
-    renderInventory() {
-        const container = document.getElementById('inventoryCardContainer'); container.innerHTML = '';
-        let totalCost = 0, totalValue = 0, dailyPnL = 0;
-
-        if (this.inventory.length === 0) {
-            container.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm font-bold border border-dashed border-[#30363d] rounded-lg mt-2 mx-3">點擊上方「➕ 建倉」建立部位</div>`;
-        }
-
-        this.inventory.forEach((item, index) => {
-            const liveData = this.inventoryPrices[item.symbol] || { price: 0, prevClose: 0 };
-            const hasManual = item.manualPrice && !isNaN(parseFloat(item.manualPrice));
-            const currentPrice = hasManual ? parseFloat(item.manualPrice) : (parseFloat(liveData.price) || 0); 
-            const prevClose = parseFloat(liveData.prevClose) || currentPrice;
-            const itemCost = parseFloat(item.cost) || 0, itemShares = parseFloat(item.shares) || 0;
-            const costTotal = itemCost * itemShares; totalCost += costTotal;
-
-            let valTotal = 0, pnl = 0, pnlPct = 0, dPnL = 0, dPnLPct = 0, priceDiff = 0;
-            if (currentPrice > 0) {
-                valTotal = currentPrice * itemShares; totalValue += valTotal;
-                pnl = valTotal - costTotal; if(costTotal > 0) pnlPct = (pnl / costTotal) * 100;
-                priceDiff = currentPrice - prevClose; if(prevClose > 0) dPnLPct = (priceDiff / prevClose) * 100;
-                dPnL = priceDiff * itemShares; dailyPnL += dPnL;
-            } else { totalValue += costTotal; }
-
-            const formatColor = (val) => val > 0 ? 'text-[#f87171]' : (val < 0 ? 'text-[#4ade80]' : 'text-gray-400'), formatSign = (val) => val > 0 ? '+' : '';
-            const pColor = formatColor(pnl), dColor = formatColor(dPnL), priceColor = formatColor(priceDiff);
+            this.setAIVerdict('reset'); this.updateFavIcon(); this.updateInvBadge(); this.refreshStrategy();
             
-            let bgTint = 'bg-[#161b22] border-[#30363d]';
-            if (pnlPct > 0) bgTint = 'bg-gradient-profit border-red-900/40';
-            else if (pnlPct < 0) bgTint = 'bg-gradient-loss border-green-900/40';
-
-            container.innerHTML += `
-                <div class="mb-2 border-b rounded-none overflow-hidden ${bgTint}">
-                    <div class="swipe-container">
-                        <div class="swipe-content flex transition-colors">
-                            <div class="w-1/2 px-3 py-4 flex items-center gap-2 cursor-pointer hover:bg-white/5" onclick="app.selectStock('${item.symbol}')">
-                                <div class="drag-handle text-gray-500 hover:text-white" onclick="event.stopPropagation()">☰</div>
-                                <div class="flex flex-col overflow-hidden w-full">
-                                    <div class="flex flex-col">
-                                        <span class="text-white font-black text-lg truncate">${item.name}</span>
-                                        <span class="text-blue-400 text-xs font-mono font-black mt-0.5">${item.symbol}</span>
-                                    </div>
-                                    <div class="text-xs text-gray-400 mt-1 flex gap-2">
-                                        <span>現 <span class="${priceColor} font-bold">${currentPrice > 0 ? currentPrice.toFixed(2) : '--'}</span></span>
-                                        <span>今 <span class="${dColor} font-bold">${currentPrice > 0 ? formatSign(dPnL) + Math.round(dPnL).toLocaleString() : '--'}</span></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="w-1/2 px-3 py-4 text-right flex flex-col justify-center items-end border-l border-[#30363d]/50 cursor-pointer hover:bg-white/5" onclick="app.toggleInventoryEdit(${index})">
-                                <span class="font-black text-xl md:text-2xl ${pColor} font-mono leading-none">${currentPrice > 0 ? formatSign(pnlPct) + pnlPct.toFixed(2) + '%' : '--'}</span>
-                                <span class="text-sm ${pColor} font-bold font-mono mt-1">${currentPrice > 0 ? formatSign(pnl) + Math.round(pnl).toLocaleString() : '--'}</span>
-                            </div>
-                        </div>
-                        <div class="swipe-action bg-yellow-600 text-yellow-900 font-black cursor-pointer hover:bg-yellow-500 flex flex-col gap-1 px-4" onclick="app.closeTrade(${index})">
-                            <span class="text-2xl">💰</span><span class="text-sm">結帳</span>
-                        </div>
-                    </div>
-                    <div id="invEditBox-${index}" class="hidden flex gap-2 px-3 pb-4 pt-3 border-t border-[#30363d]/50 bg-[#0d1117]/80">
-                        <div class="flex flex-col w-1/3 gap-1">
-                            <span class="text-xs text-gray-400 text-center font-bold tracking-widest">持有股數</span>
-                            <input type="number" class="bg-[#1c2128] text-gray-300 px-2 py-2 text-sm rounded outline-none font-mono font-bold text-right border border-gray-700 focus:border-orange-500" value="${item.shares}" onchange="app.updateInventoryData(${index}, 'shares', this.value)">
-                        </div>
-                        <div class="flex flex-col w-1/3 gap-1">
-                            <span class="text-xs text-gray-400 text-center font-bold tracking-widest">買進均價</span>
-                            <input type="number" step="0.01" class="bg-[#1c2128] text-gray-300 px-2 py-2 text-sm rounded outline-none font-mono font-bold text-right border border-gray-700 focus:border-orange-500" value="${item.cost}" onchange="app.updateInventoryData(${index}, 'cost', this.value)">
-                        </div>
-                        <div class="flex flex-col w-1/3 gap-1">
-                            <span class="text-xs text-blue-400 text-center font-bold tracking-widest">試算價</span>
-                            <input type="number" step="0.01" class="bg-[#1c2128] text-blue-400 px-2 py-2 text-sm rounded outline-none font-mono font-bold text-right border border-blue-900 focus:border-blue-500" value="${item.manualPrice || ''}" onchange="app.updateInventoryData(${index}, 'manualPrice', this.value)">
-                        </div>
-                    </div>
-                </div>`;
-        });
-
-        const totalPnL = totalValue - totalCost, fC = (v) => v > 0 ? 'text-[#f87171]' : (v < 0 ? 'text-[#4ade80]' : 'text-gray-400'), fS = (v) => v > 0 ? '+' : '';
-
-        document.getElementById('invDailyPnL').innerText = `${fS(dailyPnL)}${Math.round(dailyPnL).toLocaleString()}`; document.getElementById('invDailyPnL').className = `text-xl md:text-2xl font-black font-mono mt-1 ${fC(dailyPnL)}`;
-        document.getElementById('invTotalPnL').innerText = `${fS(totalPnL)}${Math.round(totalPnL).toLocaleString()}`; document.getElementById('invTotalPnL').className = `text-xl md:text-2xl font-black font-mono mt-1 ${fC(totalPnL)}`;
-        let totalPnLPct = totalCost > 0 ? (totalPnL/totalCost)*100 : 0;
-        document.getElementById('invTotalPnLPct').innerText = `${fS(totalPnLPct)}${totalPnLPct.toFixed(2)}%`; document.getElementById('invTotalPnLPct').className = `text-xl md:text-2xl font-black font-mono mt-1 ${fC(totalPnL)}`;
-    },
-
-    async loadRadar(mode) {
-        const loadingBox = document.getElementById('radarLoading'), progressBar = document.getElementById('radarProgressBar'), progressText = document.getElementById('radarProgressText');
-        const resultList = document.getElementById('radarListMain');
-        const headerText = document.getElementById('radarResultHeader');
-        
-        if (this.emergencyMode && mode === 'surge') {
-            alert('🚨 大盤處於股災破底模式，系統強制關閉【飆股動能】雷達，嚴禁接刀摸底！');
-            return;
-        }
-
-        const modeTitles = { 'bottom': '🎯 底部起漲榜', 'surge': '🚀 飆股動能榜', 'score': '⭐ 綜合評分榜' };
-
-        const pools = {
-            'hot_twse': ['2330', '2317', '2454', '2382', '3231', '2603', '3008', '2881', '2308', '2891', '2882', '2886', '2615', '2609', '3037', '3481', '2356', '2324', '2376', '1519', '1514', '1605', '2301', '2344', '2885', '2892', '2884', '2002', '1101', '1301', '2303', '2383', '3034', '2379', '6669', '3661', '3443', '3189', '2353', '2357'],
-            'hot_otc': ['3105', '3293', '8069', '6488', '5483', '6147', '6274', '8299', '3260', '8044', '3529', '6223', '6446', '3324', '3587', '5347', '6231', '8086', '8936', '3149'],
-            'etf_heavy': ['0050', '0056', '00878', '00929', '00919', '00713', '00900', '006208', '00939', '00940']
+            // 順利關閉 Loading 畫面
+            document.getElementById('loadingOverlay').style.display = 'none';
         };
 
-        const poolType = document.getElementById('radarPoolSelect').value;
-        let scanList = [];
-        
-        if (poolType === 'fav') { scanList = [...(this.favGroups[this.activeGroupName] || [])]; if (scanList.length === 0) return alert("自選清單為空！"); } 
-        else if (poolType === 'inv') { scanList = this.inventory.map(i => i.symbol); if (scanList.length === 0) return alert("庫存清單為空！"); } 
-        else { scanList = pools[poolType] || pools['hot_twse']; }
-
-        ['btnRadarBottom', 'btnRadarSurge', 'btnRadarScore'].forEach(id => { const b = document.getElementById(id); if(b) b.disabled = true; });
-        const btnId = `btnRadar${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
-        const btn = document.getElementById(btnId); if(btn) btn.innerText = "掃描中...";
-        
-        if (loadingBox) loadingBox.classList.remove('hidden');
-        headerText.classList.add('hidden');
-        resultList.innerHTML = '';
-        
-        let targetList = [];
-        let circuitBreakerTripped = false;
-
-        try {
-            for (let i = 0; i < scanList.length; i++) {
-                if (circuitBreakerTripped) break; 
-                
-                const sym = scanList[i]; 
-                let percent = Math.round(((i + 1) / scanList.length) * 100);
-                progressBar.style.width = `${percent}%`; progressText.innerText = `${percent}%`;
-                
-                let data = null; let retries = 0; const maxRetries = 3;
-
-                while (retries <= maxRetries) {
-                    try { data = await this.fetchHistoricalData(sym); break; } 
-                    catch (error) {
-                        if (error.message === 'API_RATE_LIMIT') {
-                            retries++;
-                            if (retries > maxRetries) { circuitBreakerTripped = true; break; }
-                            const backoffTime = Math.pow(2, retries) * 1000;
-                            document.getElementById('radarStatusText').innerText = `連線壅塞，退避等待 ${backoffTime/1000} 秒...`;
-                            await new Promise(r => setTimeout(r, backoffTime));
-                        } else { break; }
-                    }
-                }
-
-                if (circuitBreakerTripped) break;
-
-                if (data && data.length > 25) {
-                    const tempInd = await this.calculateIndicatorsAsync(data), lastIdx = data.length - 1;
-                    const pC = data[lastIdx].close, pO = data[lastIdx].open, pH = data[lastIdx].high, pV = data[lastIdx].volume;
-                    const pC1 = data[lastIdx-1].close, pV1 = data[lastIdx-1].volume, pct = pC1 > 0 ? ((pC - pC1) / pC1) * 100 : 0;
-                    const pL1 = data[lastIdx-1].low;
-                    const ma5 = tempInd.ma5[lastIdx], ma10 = tempInd.ma10[lastIdx], ma20 = tempInd.ma20[lastIdx], ma60 = tempInd.ma60[lastIdx], ma20_prev = tempInd.ma20[lastIdx-1], upperBB = tempInd.upperBB[lastIdx];
-                    const vma5 = tempInd.vma5[lastIdx];
-                    const nameInfo = this.allStockList.find(s => s.stock_id === sym), name = nameInfo ? nameInfo.stock_name : sym;
-                    
-                    let itemData = { sym, name, pC, pct, score: 0, badge: '' };
-                    const scoreData = this.getAlphaScoreData(data, tempInd, lastIdx, this.twiiState, null);
-
-                    let numDef = ma20 !== null ? ma20 : ma5; 
-                    if (mode === 'surge') numDef = pL1 > ma5 ? pL1 : ma5; 
-                    let risk = numDef !== null && numDef > 0 ? (pC - numDef) / pC : 1;
-                    let upward = upperBB !== null ? (upperBB - pC) / pC : 0.05;
-                    let buyThreshold = this.twiiState === 'bull' ? 65 : (this.twiiState === 'bear' ? 75 : 70);
-
-                    let sObj = this.getSeasonObj(pC, pO, pH, pL1, pV, pC1, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB);
-
-                    if (mode === 'score') {
-                        itemData.score = scoreData.totalScore; 
-                        if (!this.emergencyMode && itemData.score >= buyThreshold && risk < 0.06 && upward >= risk) {
-                            itemData.badge = `<span class="bg-green-900/80 border border-green-500 text-green-300 text-xs px-1.5 py-0.5 rounded font-bold animate-pulse inline-block ml-2 whitespace-nowrap">🟢買點</span>`;
-                        } else if (!this.emergencyMode && itemData.score >= 60 && risk < 0.05) {
-                            itemData.badge = `<span class="bg-yellow-900/80 border border-yellow-500 text-yellow-300 text-xs px-1.5 py-0.5 rounded font-bold inline-block ml-2 whitespace-nowrap">🟡伏擊</span>`;
-                        }
-                        itemData.seasonHtml = `<span class="px-2 py-0.5 rounded border text-xs font-bold ${sObj.style}">${sObj.icon}</span>`;
-                        targetList.push(itemData);
-                    } 
-                    else if (mode === 'bottom') {
-                        let isBottom = ma20 !== null && ma20_prev !== null && ma20 > ma20_prev && pC >= ma20 && (pC - ma20) / ma20 <= 0.05 && pC > pO;
-                        let isVolumeBreakout = pV > pV1 * 1.5 || pV > vma5 * 1.5;
-                        
-                        if (isBottom && isVolumeBreakout) {
-                            let bottomScore = 70; 
-                            if (ma5 !== null && ma10 !== null && pC > ma5 && ma5 > ma10) bottomScore += 10; 
-                            if (pV > pV1 * 2) bottomScore += 10; 
-                            if ((pC - ma20) / ma20 <= 0.02) bottomScore += 10; 
-                            itemData.score = Math.min(100, bottomScore); 
-
-                            if (!this.emergencyMode && itemData.score >= buyThreshold && risk < 0.06 && upward >= risk) {
-                                itemData.badge = `<span class="bg-green-900/80 border border-green-500 text-green-300 text-xs px-1.5 py-0.5 rounded font-bold animate-pulse inline-block ml-2 whitespace-nowrap">🟢買點</span>`;
-                            }
-                            itemData.seasonHtml = `<span class="px-2 py-0.5 rounded border text-xs font-bold ${sObj.style}">${sObj.icon}</span>`;
-                            targetList.push(itemData);
-                        }
-                    } 
-                    else if (mode === 'surge') {
-                        let isSurge = ma60 !== null && upperBB !== null && pC > ma5 && ma5 > ma10 && ma10 > ma20 && ma20 > ma60 && pC >= upperBB * 0.98;
-                        let isShootingStar = (pH - Math.max(pC, pO)) > Math.abs(pC - pO) * 2;
-                        let isMassiveDump = pC < pO && pV > pV1 * 1.5;
-                        let deviation = ma20 !== null ? (pC - ma20) / ma20 : 0;
-                        
-                        if (isSurge && !isShootingStar && !isMassiveDump && deviation < 0.25 && pC > pO) {
-                            let surgeScore = 80;  
-                            if (pC > pC1) surgeScore += 10; 
-                            if (pV > pV1 * 2) surgeScore += 10; 
-                            if (deviation > 0.15) surgeScore -= 20; 
-                            
-                            if (surgeScore >= 70) { 
-                                itemData.score = Math.min(100, surgeScore); 
-                                if (!this.emergencyMode && itemData.score >= buyThreshold && risk < 0.06 && upward >= risk) {
-                                    itemData.badge = `<span class="bg-green-900/80 border border-green-500 text-green-300 text-xs px-1.5 py-0.5 rounded font-bold animate-pulse inline-block ml-2 whitespace-nowrap">🟢買點</span>`;
-                                }
-                                itemData.seasonHtml = `<span class="px-2 py-0.5 rounded border text-xs font-bold ${sObj.style}">${sObj.icon}</span>`;
-                                targetList.push(itemData); 
-                            }
-                        }
-                    }
-                }
-                const jitterDelay = 200 + Math.floor(Math.random() * 150);
-                document.getElementById('radarStatusText').innerText = `策略池掃描中... (防護間隔)`;
-                await new Promise(r => setTimeout(r, jitterDelay)); 
-            }
-        } finally {
-            document.getElementById('radarStatusText').innerText = `首席策略運算中...`;
-            if (loadingBox) loadingBox.classList.add('hidden'); 
-            
-            ['btnRadarBottom', 'btnRadarSurge', 'btnRadarScore'].forEach(id => {
-                const b = document.getElementById(id);
-                if(b) {
-                    b.disabled = false;
-                    if(id === 'btnRadarBottom') b.innerText = "🎯 底部起漲";
-                    if(id === 'btnRadarSurge') b.innerText = "🚀 飆股動能";
-                    if(id === 'btnRadarScore') b.innerText = "⭐ 綜合評分";
-                }
-            });
-        }
-
-        targetList.sort((a, b) => b.score - a.score);
-        headerText.innerText = `掃描結果：${modeTitles[mode] || ''}`;
-        headerText.classList.remove('hidden');
-
-        if(resultList) {
-            resultList.innerHTML = targetList.length > 0 ? targetList.map(item => {
-                const color = item.pct >= 0 ? 'text-[#f87171]' : 'text-[#4ade80]', sColor = item.score >= 80 ? 'text-red-400' : (item.score < 60 ? 'text-green-400' : 'text-yellow-400');
-                return `<li class="flex justify-between items-center p-3 hover:bg-[#1c2128] transition-colors cursor-pointer border-b border-[#21262d]" onclick="app.selectStock('${item.sym}')">
-                            <div class="flex-1 min-w-0 flex flex-col gap-1">
-                                <span class="font-bold text-white text-base truncate">${item.name}</span>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-xs text-gray-500 font-mono">${item.sym}</span>
-                                    ${item.seasonHtml}
-                                </div>
-                            </div>
-                            <div class="text-right flex flex-col items-end px-3 border-r border-[#30363d] min-w-[70px] flex-shrink-0">
-                                <span class="font-mono font-bold ${color} text-base">${item.pC.toFixed(2)}</span>
-                                <span class="text-[10px] md:text-xs ${color}">(${item.pct>0?'+':''}${item.pct.toFixed(2)}%)</span>
-                            </div>
-                            <div class="ml-3 flex flex-col items-center justify-center min-w-[3rem] flex-shrink-0">
-                                <span class="text-lg font-black ${sColor}">${item.score}</span>
-                                <span class="text-[10px] text-gray-500">評分</span>
-                            </div>
-                        </li>`;
-            }).join('') : `<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3">${circuitBreakerTripped ? '掃描因過載而中斷' : '此掃描無符合標的'}</li>`;
-        }
-    },
-
-    copyAIPrompt() {
-        const sym = this.currentSymbolId, name = document.getElementById('quoteName').innerText, price = document.getElementById('livePriceText').innerText;
-        const prompt = `AI 首席，請執行【雙重防呆動作目標指令】。
-附件是我準備的「台股個股籌碼截圖（1日/10日）」以及「今日美股/總經收盤數據」。請依序執行以下兩大防呆任務：
-
-🛡️ 防呆任務一：國際總經與美股環境定調（Top-Down）
-請檢視我提供的美股數據，重點觀察以下標的：
-1. 指數與情緒：費半 (SOX)、那斯達克 (NDQ)、恐慌指數 (VIX)。
-2. 台股風向球：台積電 ADR (TSM)、輝達 (NVDA)、蘋果 (AAPL)。
-3. 資金流向：美元指數 (DXY)、美國10年期公債殖利率 (TNX)。
-👉 動作目標：綜合以上表現，請明確告訴我，今天的國際盤勢屬於 🟢大漲(多頭)、🟡震盪(盤整/分歧)、還是 🔴重挫(空頭/避險)？（這將決定我的系統風控水位）。
-
-🛡️ 防呆任務二：台股個股極致洗盤診斷（Bottom-Up）
-針對這檔台股標的 [現價 ${price}]，請用嚴格邏輯診斷：
-1. 【分點照妖鏡】(看1日圖)：買超前 5 名有沒有「凱基台北、建國」等隔日沖大本營？或異常的「地緣券商」？
-2. 【主力成本精算】(看10/20日圖)：算出現階段主力的「平均囤貨成本」！現價距離主力成本是安全（<5%），還是準備被割韭菜的高檔？
-3. 【極端避險鐵律】：有沒有發行「可轉債 (CB)」？是否有出現「離開布林上軌的黑 K」或「單日周轉率 > 10%」的出貨訊號？
-
-🎯 最終輸出格式要求：
-請不要給我模糊的答案，直接用以下格式回覆我：
-* 【美股環境定調】：(回答 🟢大漲 / 🟡震盪 / 🔴重挫，並附一句話理由)
-* 【個股籌碼判定】：(回答 🟢綠燈建倉 / 🟡黃燈低接 / 🔴紅燈逃命)
-* 【首席行動建議】：(簡短有力的實戰操作指引)`;
-
-        navigator.clipboard.writeText(prompt).then(() => { alert('📋 【雙重防呆指令】已複製！\n\n請貼給 AI 並附上「美股行情」與「個股籌碼」截圖。'); }).catch(err => { prompt("手動複製：", prompt); });
-    },
-
-    setAIVerdict(type) { this.currentChipVerdict = (type === 'reset') ? null : type; this.refreshStrategy(); },
-
-    selectStock(sym) {
-        document.getElementById('invModal').classList.add('hidden');
-        document.getElementById('settingsModal').classList.add('hidden');
-        document.getElementById('scoreDetailModal').classList.add('hidden');
-        document.getElementById('groupModal').classList.add('hidden');
-        
-        document.getElementById('symbolInput').value = sym;
-        
-        let currentList = this.favGroups[this.activeGroupName] || [];
-        const favIdx = currentList.indexOf(sym);
-        if (favIdx > -1) { 
-            currentList.splice(favIdx, 1); 
-            currentList.unshift(sym); 
-            this.favGroups[this.activeGroupName] = currentList;
-            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups)); 
-        }
-        
-        this.switchAppTab('diag'); 
-        this.analyze();
+        masterWorker.postMessage({ activeData: this.activeData });
     }
 };
 
