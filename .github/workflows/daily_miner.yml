@@ -1,0 +1,39 @@
+name: Daily Stock Miner
+
+# 設定觸發條件
+on:
+  schedule:
+    # 每天台灣時間下午 3:30 執行 (UTC 時間早上 7:30)
+    - cron: '30 7 * * 1-5' 
+  workflow_dispatch: # 允許我們手動點擊按鈕執行
+
+permissions:
+  contents: write # 允許機器人把檔案寫回倉庫
+
+jobs:
+  mine-and-commit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 下載目前的倉庫代碼
+      uses: actions/checkout@v4
+      
+    - name: 🐍 設定 Python 環境
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: 📦 安裝必備套件
+      run: |
+        python -m pip install --upgrade pip
+        pip install yfinance pandas requests
+        
+    - name: ⛏️ 執行雲端採礦腳本 (這會花一些時間)
+      run: python miner.py
+      
+    - name: 📤 自動提交並推送到 GitHub
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "🤖 自動更新台股大數據 (JSON)"
+        branch: main
+        file_pattern: 'data/*.json'
