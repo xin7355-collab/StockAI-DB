@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>散戶救星 | AI 司令部終極大一統 V6.7</title>
+    <title>散戶救星 | AI 司令部終極大一統 V6.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -212,10 +212,10 @@
                 <div id="mktTWOII" class="text-gray-400 whitespace-nowrap text-[11px] md:text-xs">櫃買 載入中...</div>
                 <div id="mktMacro" class="text-gray-400 whitespace-nowrap text-[11px] md:text-xs border-l border-gray-700 pl-2">外資期指 讀取中...</div>
                 <div id="dataSourceBadge" class="text-[10px] px-2 py-0.5 rounded border whitespace-nowrap transition-colors font-bold tracking-widest border-gray-600 text-gray-400 bg-gray-800 ml-auto hidden sm:block">
-                    <span id="dataSourceText">系統就緒</span>
+                    <span id="dataSourceText">讀取中...</span>
                 </div>
             </div>
-            <div id="mktWarning" class="font-bold text-right text-gray-500 truncate max-w-[35%] hidden md:block text-xs">大盤趨勢偵測中...</div>
+            <div id="mktWarning" class="font-bold text-right text-gray-500 truncate max-w-[35%] hidden md:block text-xs">載入大盤風控指標中...</div>
         </div>
     </div>
 
@@ -232,7 +232,7 @@
                         <div class="flex flex-col gap-1.5 mt-1 w-full overflow-hidden">
                             <div id="stockTags" class="flex items-center gap-1.5 flex-wrap"><span class="bg-gray-800 text-gray-500 text-xs px-1.5 py-0.5 rounded font-bold">讀取中...</span></div>
                             <div id="fundamentalBadges" class="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
-                                <span class="text-gray-500 animate-pulse border border-gray-700 px-1 rounded bg-gray-800">📡 背景抓取基本面與籌碼中...</span>
+                                <span class="text-gray-500 animate-pulse border border-gray-700 px-1 rounded bg-gray-800">📡 基本面與籌碼掃描中...</span>
                             </div>
                         </div>
                     </div>
@@ -595,7 +595,7 @@ const app = {
 
     jargonDict: {
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。像火箭加速衝刺的階段。',
-        '多頭排列': '幾條均線由上到下依序排列：最短的在最上面、最長的在最下面，而且每條縮上。代表股價有很強的支撐力量。',
+        '多頭排列': '幾條均線由上到下依序排列：最短的在最上面、最長的在最下面，而且每條都朝上。代表股價有很強的支撐力量。',
         '爆量': '今天的成交量比昨天多一倍以上。注意！高檔爆大量代表有很多人在買，但也代表有很多人（通常是主力）在偷偷賣。',
         '多頭': '「股價一直往上爬樓梯」，股價整體方向是往上走的，就像爬山一樣越爬越高。',
         '支撐': '因為有人願意在這個價位買進，把股價撐住，就像地板一樣，股價跌到這裡就被擋住、跌不下去了。',
@@ -859,7 +859,7 @@ const app = {
         const btn = document.getElementById('btnRefreshInv'); if(btn) btn.classList.add('animate-spin');
         for(let item of this.inventory) {
             let price = item.cost || 0;
-            const data = await this.fetchHistoricalData(item.symbol, false);
+            const data = await this.fetchHistoricalData(item.symbol);
             if(data && data.length > 0) price = data[data.length-1].close;
             const intraday = await this.fetchIntradayData(item.symbol);
             if(intraday) price = intraday.price;
@@ -1004,7 +1004,7 @@ const app = {
                 const stockInfo = this.allStockList.find(s => s.stock_id === sym);
                 if(stockInfo && document.getElementById(`fav-name-${sym}`)) document.getElementById(`fav-name-${sym}`).innerText = stockInfo.stock_name;
 
-                const rawData = await this.fetchHistoricalData(sym, true); 
+                const rawData = await this.fetchHistoricalData(sym); 
                 if(rawData && rawData.length > 20) {
                     const closes = rawData.map(d=>d.close), lastC = closes[closes.length-1], prevC = closes[closes.length-2];
                     const diff = lastC - prevC, pct = prevC > 0 ? (diff / prevC) * 100 : 0;
@@ -1020,7 +1020,7 @@ const app = {
                     document.getElementById(`fav-season-${sym}`).innerHTML = `<span class="px-1.5 py-0.5 rounded text-[10px] border font-bold ${sColor}">${season}</span>`;
                 } else { priceEl.innerHTML = `<span class="text-gray-500">無資料</span>`; }
             } catch(e) { priceEl.innerHTML = `<span class="text-red-400">連線異常</span>`; }
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 100)); // 降低等待時間加速載入
         }
     },
 
@@ -1047,7 +1047,6 @@ const app = {
         catch(e) { prompt("請手動複製此段文字:", p); }
     },
 
-    // V6.7: Polygon
     async fetchUSMarket() {
         const btn = document.getElementById('btnUSMarketTop');
         if(!this.settings.polygonToken) { 
@@ -1072,115 +1071,150 @@ const app = {
         if(btn) btn.innerHTML = `🌎 美股: 讀取失敗`;
     },
 
-    // V6.7: 大盤 (Fugle優先 -> FinMind備援 -> 捨棄Yahoo防卡死)
-    async fetchMarketData() {
-        let twiiTrend = null; this.emergencyMode = false;
+    // ==========================================
+    // 🔥 V6.8 核心修復：大盤與空單穩定連線模組 (致敬 index1.html)
+    // ==========================================
+    
+    // 大道至簡的 FinMind 抓大盤邏輯 (不經過 Proxy 與 Timeout 包裝)
+    async fetchFinMindIndex(data_id) {
+        const date = new Date(); date.setDate(date.getDate() - 60);
+        let url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${data_id}&start_date=${date.toISOString().split('T')[0]}`;
         
-        const fetchIndex = async (fugleId, fmId) => {
-            if(this.settings.fugleToken) {
-                try {
-                    const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${fugleId}?X-API-KEY=${this.settings.fugleToken}`, {}, 2500);
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json.data?.quote?.trade?.price) {
-                            return { price: json.data.quote.trade.price, prev: json.data.quote.priceOpen?.price || json.data.quote.trade.price };
-                        }
-                    }
-                } catch(e) {}
+        // 綁定金鑰，突破次數限制
+        const token = document.getElementById('set_finmindToken') ? document.getElementById('set_finmindToken').value : (this.settings ? this.settings.finmindToken : '');
+        if (token) url += `&token=${token}`;
+
+        try {
+            const res = await fetch(url);
+            const json = await res.json();
+            if (json.msg === 'success' && json.data) return json.data;
+        } catch(e) { 
+            console.warn(`大盤 ${data_id} 讀取失敗:`, e); 
+        }
+        return null;
+    },
+
+    async fetchMarketData() {
+        const taiexData = await this.fetchFinMindIndex('TAIEX');
+        let twiiTrend = null; this.emergencyMode = false;
+
+        if (taiexData && taiexData.length > 0) {
+            const last = taiexData[taiexData.length - 1];
+            const prev = taiexData.length > 1 ? taiexData[taiexData.length - 2] : last;
+            const price = last.close;
+            const diff = price - prev.close;
+            const pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+
+            const closes = taiexData.map(d => d.close);
+            let ma20 = price, ma20_prev = price;
+            if (closes.length >= 20) {
+                ma20 = closes.slice(-20).reduce((a,b)=>a+b,0)/20;
+                ma20_prev = closes.slice(-21, -1).reduce((a,b)=>a+b,0)/20;
             }
-            try {
-                const tkn = this.settings.finmindToken ? `&token=${this.settings.finmindToken}` : '';
-                const res = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${fmId}&start_date=${this.getNDaysAgoStr(5)}${tkn}`, {}, 2500);
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json.data && json.data.length >= 2) {
-                        const last = json.data[json.data.length - 1];
-                        const prev = json.data[json.data.length - 2];
-                        return { price: last.close, prev: prev.close };
-                    }
-                }
-            } catch(e) {}
-            return null;
-        };
 
-        const [twii, twoii] = await Promise.all([fetchIndex('IX0001', 'TAIEX'), fetchIndex('IX0043', 'TPEx')]);
-
-        if(twii) {
-            const diff = twii.price - twii.prev, pct = (diff / twii.prev) * 100;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWII').innerHTML = `加權 <span class="${color}">${twii.price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
-            if (diff > 0) { twiiTrend = `🔥大盤多頭：資金放寬。`; this.twiiState = 'bull'; }
-            else if (pct < -1.5) { twiiTrend = `❄️大盤弱勢：破線，嚴格控管！`; this.twiiState = 'bear'; this.emergencyMode = true; }
-            else { twiiTrend = `⚠️震盪盤整：測試支撐。`; this.twiiState = 'neutral'; }
-        } else {
-            document.getElementById('mktTWII').innerHTML = `加權 <span class="text-gray-500">快取讀取中</span>`;
+            document.getElementById('mktTWII').innerHTML = `加權 <span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+
+            if (price > ma20 && ma20 > ma20_prev) { twiiTrend = `🔥大盤多頭：站上月線，資金放寬。`; this.twiiState = 'bull'; }
+            else if (price < ma20 && ma20 < ma20_prev) {
+                twiiTrend = `❄️大盤弱勢：跌破月線，嚴格控管！`;
+                this.twiiState = 'bear';
+                if(price < closes.slice(-60).reduce((a,b)=>a+b,0)/60) { this.emergencyMode = true; }
+            }
+            else { twiiTrend = `⚠️震盪盤整：大盤測試月線。`; this.twiiState = 'neutral'; }
         }
 
-        if(twoii) {
-            const diff = twoii.price - twoii.prev, pct = (diff / twoii.prev) * 100;
+        const tpexData = await this.fetchFinMindIndex('TPEx');
+        if (tpexData && tpexData.length > 0) {
+            const last = tpexData[tpexData.length - 1];
+            const prev = tpexData.length > 1 ? tpexData[tpexData.length - 2] : last;
+            const price = last.close;
+            const diff = price - prev.close;
+            const pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWOII').innerHTML = `櫃買 <span class="${color}">${twoii.price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+            document.getElementById('mktTWOII').innerHTML = `櫃買 <span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
 
         const warningEl = document.getElementById('mktWarning');
+        const emergencyBanner = document.getElementById('emergencyBanner');
+
         if (twiiTrend) {
             warningEl.innerText = twiiTrend;
             if (twiiTrend.includes('🔥')) warningEl.className = "font-bold text-right text-[#f87171] truncate max-w-[35%] hidden md:block text-xs";
             else if (twiiTrend.includes('❄️')) warningEl.className = "font-bold text-right text-[#4ade80] truncate max-w-[35%] hidden md:block text-xs";
             else warningEl.className = "font-bold text-right text-yellow-400 truncate max-w-[35%] hidden md:block text-xs";
         }
+
+        if (this.emergencyMode) { emergencyBanner.classList.remove('hidden'); }
+        else { emergencyBanner.classList.add('hidden'); }
+
+        // 啟動外資空單的抓取
         await this.fetchMacroData();
+
+        if(this.currentSymbolId) this.refreshStrategy();
     },
 
+    // 專屬外資空單 (Macro Data) 穩定版連線
     async fetchMacroData() {
         const today = this.getTodayStr();
-        const cacheKey = 'proTerm_macroCache', cacheDateKey = 'proTerm_macroDate';
-        let foreignOI = null; let cached = JSON.parse(localStorage.getItem(cacheKey));
-        
+        const cacheKey = 'proTerm_macroCache';
+        const cacheDateKey = 'proTerm_macroDate';
+
+        let cached = JSON.parse(localStorage.getItem(cacheKey));
+        let foreignOI = null;
+
+        // 快取優先：如果今天抓過，直接用
         if (localStorage.getItem(cacheDateKey) === today && cached && cached.foreignOI !== null) {
-            foreignOI = cached.foreignOI; if(cached.trend) this.twiiState = cached.trend; 
+            foreignOI = cached.foreignOI;
         } else {
             try {
-                let d = new Date(); d.setDate(d.getDate() - 5); 
+                // 回推 10 天確保能抓到最近一個交易日的資料
+                let d = new Date(); d.setDate(d.getDate() - 10); 
                 let startDate = d.toISOString().split('T')[0];
                 let url = `https://api.finmindtrade.com/api/v4/data?dataset=InstitutionalInvestorsFutures&data_id=TX&start_date=${startDate}`;
-                if(this.settings && this.settings.finmindToken) url += `&token=${this.settings.finmindToken}`;
-                
-                const res = await this.fetchWithTimeout(url, {}, 4000);
+
+                const token = document.getElementById('set_finmindToken') ? document.getElementById('set_finmindToken').value : (this.settings ? this.settings.finmindToken : '');
+                if (token) url += `&token=${token}`;
+
+                const res = await fetch(url);
                 const json = await res.json();
-                if (json.msg === 'success' && json.data.length > 0) {
+
+                if (json.msg === 'success' && json.data && json.data.length > 0) {
+                    // 過濾出外資
                     const foreignData = json.data.filter(item => item.name === '外資及陸資');
-                    if (foreignData.length > 0) foreignOI = foreignData[foreignData.length - 1].open_interest_net || 0;
+                    if (foreignData.length > 0) {
+                        const latest = foreignData[foreignData.length - 1];
+                        // 取得未平倉淨口數
+                        foreignOI = latest.open_interest_net || (latest.open_interest_long_volume - latest.open_interest_short_volume) || 0;
+
+                        // 存入快取
+                        localStorage.setItem(cacheKey, JSON.stringify({ foreignOI: foreignOI }));
+                        localStorage.setItem(cacheDateKey, today);
+                    }
                 }
-            } catch(e) {}
-            
-            const mockTrend = document.getElementById('mktTWII').innerText.includes('-') ? 'bear' : 'bull';
-            if(this.twiiState === 'neutral') this.twiiState = mockTrend;
-            localStorage.setItem(cacheKey, JSON.stringify({ trend: this.twiiState, foreignOI: foreignOI }));
-            localStorage.setItem(cacheDateKey, today);
+            } catch (e) {
+                console.warn("外資空單讀取失敗，嘗試使用歷史快取", e);
+                if (cached) foreignOI = cached.foreignOI;
+            }
         }
 
         this.foreignShortOI = foreignOI;
-        const banner = document.getElementById('emergencyBanner'), mktMacro = document.getElementById('mktMacro');
+        const mktMacro = document.getElementById('mktMacro');
         
-        if (foreignOI !== null) {
-            let oiColor = 'text-gray-300';
-            if (this.foreignShortOI <= -30000) oiColor = 'text-[#4ade80] font-black animate-pulse'; 
-            else if (this.foreignShortOI >= 10000) oiColor = 'text-[#f87171] font-black';
-            if (mktMacro) mktMacro.innerHTML = `外資期指 <span class="${oiColor}">${this.foreignShortOI > 0 ? '+' : ''}${this.foreignShortOI}口</span>`;
-            
-            if (this.foreignShortOI <= -30000 && this.twiiState === 'bear') {
-                this.emergencyMode = true; 
-                if(banner) { banner.innerHTML = '🔴 系統性風險警戒：大盤破線且外資重兵佈空，大盤傾巢之下無完卵，嚴禁接刀摸底！'; banner.classList.remove('hidden'); }
-            } else { this.emergencyMode = false; if(banner) banner.classList.add('hidden'); }
-        } else {
-            if (mktMacro) mktMacro.innerHTML = `外資期指 <span class="text-gray-500">[快取讀取中]</span>`;
-            this.emergencyMode = false; if(banner) banner.classList.add('hidden');
+        if (mktMacro) {
+            if (foreignOI !== null) {
+                let oiColor = 'text-gray-300';
+                if (foreignOI <= -30000) oiColor = 'text-[#4ade80] font-black animate-pulse'; // 空單滿手 (跌勢)
+                else if (foreignOI >= 10000) oiColor = 'text-[#f87171] font-black'; // 多單滿手 (漲勢)
+                mktMacro.innerHTML = `外資期指 <span class="${oiColor}">${foreignOI > 0 ? '+' : ''}${foreignOI}口</span>`;
+            } else {
+                mktMacro.innerHTML = `外資期指 <span class="text-gray-500">[無資料]</span>`;
+            }
         }
-        if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
+    
+    // ==========================================
 
-    // V6.7: 基本面 API 降頻與背景處理
     async fetchDeepFundamentals(symbol) {
         let fund = { pe: null, yield: null, roe: null, bigHolderTrend: 0, retailTrend: 0, industry: '未知' };
         document.getElementById('fundamentalBadges').innerHTML = '<span class="text-gray-500 animate-pulse border border-gray-700 px-1 rounded bg-gray-800">📡 背景抓取基本面與籌碼中...</span>';
@@ -1203,7 +1237,7 @@ const app = {
                 }
             } catch(e) {}
             
-            await new Promise(r => setTimeout(r, 300)); // 降頻保護
+            await new Promise(r => setTimeout(r, 300)); 
             
             try {
                 const roeRes = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${symbol}&start_date=2023-01-01${tkn}`, {}, 3000);
@@ -1230,7 +1264,6 @@ const app = {
         this.refreshStrategy();
     },
 
-    // V6.7: 即時資料 API (只管 Fugle 或快速直連 Yahoo)
     async fetchIntradayData(symbol) {
         if (this.settings.fugleToken) {
             try {
@@ -1246,7 +1279,8 @@ const app = {
         }
         
         try {
-            const res = await this.fetchWithTimeout(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1d&interval=1m`, {}, 2500);
+            const proxy = 'https://api.allorigins.win/raw?url=';
+            const res = await this.fetchWithTimeout(`${proxy}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1d&interval=1m`)}`, {}, 2500);
             if (res.ok) {
                 const json = await res.json(), meta = json.chart.result[0].meta;
                 if (meta && meta.regularMarketPrice) {
@@ -1257,7 +1291,6 @@ const app = {
         return null;
     },
 
-    // V6.7: 歷史資料快取優先 (Cache-First)
     async fetchHistoricalData(symbol) {
         const cacheKey = `proTerm_kline_${symbol}`;
         const cachedStr = localStorage.getItem(cacheKey);
@@ -1286,7 +1319,6 @@ const app = {
         }
     },
     
-    // V6.7: 背景靜默更新快取 (Stale-while-revalidate)
     async backgroundUpdateKLine(symbol) {
         try {
             const cacheKey = `proTerm_kline_${symbol}`;
@@ -1307,7 +1339,7 @@ const app = {
             alert("💡 AI 題材翻譯官功能需要您的專屬 Gemini 金鑰。\n請至上方『⚙️ 設定』中填寫。");
             this.openSettings(); return;
         }
-        document.getElementById('aiLoadingOverlay').classList.remove('hidden'); document.getElementById('aiLoadingOverlay').classList.add('flex');
+        document.getElementById('aiLoadingOverlay').classList.remove('hidden'); document.getElementById('aiLoadingOverlay').style.display = 'flex';
         const data = this.activeData, ind = this.indicators, last = data.length - 1;
         const pC = data[last].close, fund = this.currentFundamentals;
         
@@ -1327,7 +1359,7 @@ const app = {
             
             aiScriptContent.innerHTML = this.parseMarkdown(script);
             document.getElementById('aiScriptBox').classList.remove('hidden'); 
-            document.getElementById('aiLoadingOverlay').classList.add('hidden'); document.getElementById('aiLoadingOverlay').classList.remove('flex');
+            document.getElementById('aiLoadingOverlay').classList.add('hidden'); document.getElementById('aiLoadingOverlay').style.display = 'none';
         }, 1500);
     },
 
@@ -1672,13 +1704,6 @@ const app = {
                 }
                 actionSubText += `<div class="mt-2 text-blue-300 bg-blue-900/40 p-2 rounded text-xs border border-blue-700 font-bold">🛡️ 獲利已達標，防守線上移至成本，此單立於不敗！</div>`;
             }
-            if(inInv && inInv.buyDate && this.settings.timeStop.active) {
-                const days = Math.floor((new Date() - new Date(inInv.buyDate)) / 86400000);
-                if (days >= this.settings.timeStop.val && Math.abs(pnlPct) <= 2) {
-                    actionSubText += `<div class="mt-2 text-yellow-300 bg-yellow-900/40 p-2 rounded text-xs border border-yellow-700 font-bold">⏳ <b>時間停損警報：</b> 持倉達 ${days} 天未發動，資金效率低落。建議考慮換股操作！</div>`;
-                    if(!boxStyle.includes('green-500') && !boxStyle.includes('orange-500') && !boxStyle.includes('red-500 shadow')) { boxStyle = "border-yellow-500 bg-yellow-900/20 text-yellow-400"; }
-                }
-            }
         }
 
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC);
@@ -1724,29 +1749,6 @@ const app = {
                  if (!hasCost) actionText = `🟢 籌碼確認，空手請進場！`; else if (pC < costVal) actionText = "🔴 現在快跑！(嚴禁向下攤平)"; else actionText = `🟢 籌碼確認，可加碼！`;
              }
         }
-
-        let positionAdvice = ""; const posAdviceEl = document.getElementById('positionSizeAdvice');
-        let isActionableBuy = actionText.includes('🟢') && (actionText.includes('進場') || actionText.includes('建倉') || actionText.includes('加碼') || actionText.includes('把手綁起來') || actionText.includes('底底高成型'));
-        if (isActionableBuy && !isIlliquid && !isTrendBroken && !this.emergencyMode && !isNaN(numDef) && pC > numDef) {
-            let riskPct = ((pC - numDef) / pC) * 100, recentWinRate = this.getRecentWinRate(), recPos = 1.0;
-            if (riskPct > 8) recPos = 0.33; else if (riskPct > 4) recPos = 0.5;
-            let maxPos = 1.0, limits = [];
-            if(this.twiiState === 'bear') { maxPos = 0.3; limits.push('大盤空頭'); } else if(this.twiiState === 'neutral') { maxPos = Math.min(maxPos, 0.5); limits.push('大盤震盪'); }
-            if(this.settings.winRateAlert.active && recentWinRate < this.settings.winRateAlert.val) { maxPos = maxPos * 0.5; limits.push(`勝率偏低(${recentWinRate.toFixed(0)}%)`); }
-            
-            let finalPos = Math.min(recPos, maxPos);
-            if(limits.length > 0) {
-                positionAdvice = `🚨 <b>風控降降溫：</b> 由於 [${limits.join(' + ')}]，強制將最高部位限制為 ${(finalPos*100).toFixed(0)}%！嚴格保護本金。`;
-                posAdviceEl.className = "w-full bg-purple-900/30 border border-purple-700 rounded-lg p-3 text-sm font-bold text-purple-300 leading-relaxed shadow-sm text-center animate-pulse";
-            } else if (finalPos === 1) {
-                positionAdvice = `🛡️ 停損距離僅 ${riskPct.toFixed(1)}%，大盤健康，可滿配建倉 (100% 部位)！`;
-                posAdviceEl.className = "w-full bg-[#4ade80]/10 border border-[#4ade80] rounded-lg p-3 text-sm font-bold text-[#4ade80] leading-relaxed shadow-sm text-center";
-            } else {
-                positionAdvice = `⚠️ 距離防守價 ${riskPct.toFixed(1)}%，建議投入資金縮減至 ${(finalPos*10).toFixed(0)} 成。`;
-                posAdviceEl.className = "w-full bg-yellow-900/30 border border-yellow-700 rounded-lg p-3 text-sm font-bold text-yellow-300 leading-relaxed shadow-sm text-center";
-            }
-            posAdviceEl.innerHTML = positionAdvice; posAdviceEl.classList.remove('hidden');
-        } else { posAdviceEl.classList.add('hidden'); }
 
         actionBox.className = `w-full p-4 md:p-6 rounded-xl flex flex-col items-center justify-center border-2 transition-all duration-300 ${boxStyle}`;
         document.getElementById('actionMainText').innerHTML = actionText; document.getElementById('actionMainText').className = `text-2xl md:text-3xl font-black tracking-widest text-center w-full leading-tight ${boxStyle.split(' ')[2]}`;
@@ -1896,7 +1898,6 @@ const app = {
         else nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
         document.getElementById('quoteSymbol').innerText = '';
         
-        // 核心：快取優先 (Cache-First)
         const rawData = await this.fetchHistoricalData(targetSym);
         if (!rawData || rawData.length < 2) {
             document.getElementById('actionMainText').innerText = "資料不足";
@@ -1907,7 +1908,6 @@ const app = {
         }
         this.baseRawData = JSON.parse(JSON.stringify(rawData)); 
         
-        // 背景更新最新資料 (Stale-while-revalidate)
         if (!isInitialLoad) this.backgroundUpdateKLine(targetSym);
 
         let intradayData = null;
@@ -1944,7 +1944,6 @@ const app = {
 
             this.setAIVerdict('reset'); this.updateFavIcon(); this.updateInvBadge(); this.refreshStrategy();
             
-            // 延遲背景載入基本面，避免瞬間 429
             setTimeout(() => { this.fetchDeepFundamentals(targetSym); }, 1500);
             
             document.getElementById('loadingOverlay').style.display = 'none';
