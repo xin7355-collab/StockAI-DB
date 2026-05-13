@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>散戶救星 | AI 司令部終極大一統 V6.6</title>
+    <title>散戶救星 | AI 司令部終極大一統 V6.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -71,8 +71,7 @@
 
     <div id="loadingOverlay" class="fixed inset-0 flex flex-col items-center justify-center bg-[#0d1117]/90 backdrop-blur z-[9999] hidden">
         <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-blue-400 font-bold tracking-widest text-sm mb-6" id="loadingText">API 競速連線中...</p>
-        <button onclick="app.forceStopLoading()" class="px-5 py-2.5 bg-red-900/80 border border-red-700 rounded-lg text-sm text-red-200 font-bold hover:bg-red-800 transition-colors shadow-lg">⚠️ 強制中斷連線 (保留快取)</button>
+        <p class="text-blue-400 font-bold tracking-widest text-sm mb-6" id="loadingText">極速讀取中...</p>
     </div>
 
     <div id="aiLoadingOverlay" class="fixed inset-0 flex flex-col items-center justify-center bg-[#0d1117]/95 backdrop-blur z-[9999] hidden">
@@ -213,10 +212,10 @@
                 <div id="mktTWOII" class="text-gray-400 whitespace-nowrap text-[11px] md:text-xs">櫃買 載入中...</div>
                 <div id="mktMacro" class="text-gray-400 whitespace-nowrap text-[11px] md:text-xs border-l border-gray-700 pl-2">外資期指 讀取中...</div>
                 <div id="dataSourceBadge" class="text-[10px] px-2 py-0.5 rounded border whitespace-nowrap transition-colors font-bold tracking-widest border-gray-600 text-gray-400 bg-gray-800 ml-auto hidden sm:block">
-                    <span id="dataSourceText">讀取中...</span>
+                    <span id="dataSourceText">系統就緒</span>
                 </div>
             </div>
-            <div id="mktWarning" class="font-bold text-right text-gray-500 truncate max-w-[35%] hidden md:block text-xs">載入大盤風控指標中...</div>
+            <div id="mktWarning" class="font-bold text-right text-gray-500 truncate max-w-[35%] hidden md:block text-xs">大盤趨勢偵測中...</div>
         </div>
     </div>
 
@@ -233,7 +232,7 @@
                         <div class="flex flex-col gap-1.5 mt-1 w-full overflow-hidden">
                             <div id="stockTags" class="flex items-center gap-1.5 flex-wrap"><span class="bg-gray-800 text-gray-500 text-xs px-1.5 py-0.5 rounded font-bold">讀取中...</span></div>
                             <div id="fundamentalBadges" class="flex items-center gap-1.5 flex-wrap text-[11px] font-bold">
-                                <span class="text-gray-500 animate-pulse border border-gray-700 px-1 rounded bg-gray-800">📡 基本面與籌碼掃描中...</span>
+                                <span class="text-gray-500 animate-pulse border border-gray-700 px-1 rounded bg-gray-800">📡 背景抓取基本面與籌碼中...</span>
                             </div>
                         </div>
                     </div>
@@ -593,11 +592,10 @@ const app = {
     allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {}, currentMarkPoints: [], 
     currentSymbolId: '2330', currentPrice: 0, currentTF: 'D', currentFugleData: null, currentFundamentals: {},
     chartInstance: null, peaks: [], troughs: [], sortableFav: null, sortableInv: null,
-    masterTimeout: null, // V6.6 絕對熔斷器
 
     jargonDict: {
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。像火箭加速衝刺的階段。',
-        '多頭排列': '幾條均線由上到下依序排列：最短的在最上面、最長的在最下面，而且每條都朝上。代表股價有很強的支撐力量。',
+        '多頭排列': '幾條均線由上到下依序排列：最短的在最上面、最長的在最下面，而且每條縮上。代表股價有很強的支撐力量。',
         '爆量': '今天的成交量比昨天多一倍以上。注意！高檔爆大量代表有很多人在買，但也代表有很多人（通常是主力）在偷偷賣。',
         '多頭': '「股價一直往上爬樓梯」，股價整體方向是往上走的，就像爬山一樣越爬越高。',
         '支撐': '因為有人願意在這個價位買進，把股價撐住，就像地板一樣，股價跌到這裡就被擋住、跌不下去了。',
@@ -611,6 +609,11 @@ const app = {
     getTodayStr() {
         const today = new Date();
         return `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+    },
+    
+    getNDaysAgoStr(n) {
+        const d = new Date(); d.setDate(d.getDate() - n);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     },
 
     async init() {
@@ -655,13 +658,13 @@ const app = {
     },
 
     forceStopLoading() {
-        document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex');
+        document.getElementById('loadingOverlay').style.display = 'none';
         const actionBox = document.getElementById('directActionBox');
         if (actionBox) {
             actionBox.className = "w-full p-4 md:p-6 rounded-xl flex flex-col items-center justify-center border-2 transition-all duration-300 border-yellow-500 bg-yellow-900/20 text-yellow-400";
-            document.getElementById('actionMainText').innerHTML = "⚠️ 連線超時，使用本地快取";
-            document.getElementById('actionSubText').innerHTML = "雲端 API 遭遇壅塞，已切換至安全備援模式，暫用歷史數據。<br>若資料異常，請重新點擊診斷。";
-            document.getElementById('dataSourceText').innerText = "[ ⚠️ 離線歷史快取 ]";
+            document.getElementById('actionMainText').innerHTML = "⚠️ 連線異常，啟用離線快取";
+            document.getElementById('actionSubText').innerHTML = "API 存取失敗。已切換至安全備援模式，顯示本地歷史紀錄。<br>請檢查網路，或至設定補充 FinMind 金鑰。";
+            document.getElementById('dataSourceText').innerText = "[ ⚠️ 離線快取模式 ]";
             document.getElementById('dataSourceBadge').className = "text-[10px] px-2 py-0.5 rounded border whitespace-nowrap transition-colors font-bold tracking-widest border-yellow-800 text-yellow-400 bg-yellow-900/20 hidden sm:block";
         }
     },
@@ -1044,7 +1047,7 @@ const app = {
         catch(e) { prompt("請手動複製此段文字:", p); }
     },
 
-    // V6.6: 美股 API 並發機制
+    // V6.7: Polygon
     async fetchUSMarket() {
         const btn = document.getElementById('btnUSMarketTop');
         if(!this.settings.polygonToken) { 
@@ -1069,34 +1072,38 @@ const app = {
         if(btn) btn.innerHTML = `🌎 美股: 讀取失敗`;
     },
 
-    // V6.6: 大盤 API 競速與代理 (Promise.any)
+    // V6.7: 大盤 (Fugle優先 -> FinMind備援 -> 捨棄Yahoo防卡死)
     async fetchMarketData() {
         let twiiTrend = null; this.emergencyMode = false;
         
-        const fetchIndex = async (fugleId, yhSymbol) => {
-            const promises = [];
+        const fetchIndex = async (fugleId, fmId) => {
             if(this.settings.fugleToken) {
-                promises.push((async () => {
-                    const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${fugleId}?X-API-KEY=${this.settings.fugleToken}`, {}, 3500);
-                    const json = await res.json();
-                    if(json.data?.quote?.trade?.price) { return { price: json.data.quote.trade.price, prev: json.data.quote.priceOpen?.price || json.data.quote.trade.price }; }
-                    throw new Error('Fugle Fail');
-                })());
+                try {
+                    const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${fugleId}?X-API-KEY=${this.settings.fugleToken}`, {}, 2500);
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json.data?.quote?.trade?.price) {
+                            return { price: json.data.quote.trade.price, prev: json.data.quote.priceOpen?.price || json.data.quote.trade.price };
+                        }
+                    }
+                } catch(e) {}
             }
-            promises.push((async () => {
-                const proxy = 'https://api.allorigins.win/raw?url=';
-                const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${yhSymbol}?interval=1d&range=2d`);
-                const res = await this.fetchWithTimeout(`${proxy}${url}`, {}, 3500);
-                const json = await res.json();
-                const meta = json.chart.result[0].meta;
-                if(meta && meta.regularMarketPrice) { return { price: meta.regularMarketPrice, prev: meta.chartPreviousClose }; }
-                throw new Error('Yahoo Fail');
-            })());
-
-            try { return await Promise.any(promises); } catch(e) { return null; }
+            try {
+                const tkn = this.settings.finmindToken ? `&token=${this.settings.finmindToken}` : '';
+                const res = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${fmId}&start_date=${this.getNDaysAgoStr(5)}${tkn}`, {}, 2500);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.data && json.data.length >= 2) {
+                        const last = json.data[json.data.length - 1];
+                        const prev = json.data[json.data.length - 2];
+                        return { price: last.close, prev: prev.close };
+                    }
+                }
+            } catch(e) {}
+            return null;
         };
 
-        const [twii, twoii] = await Promise.all([fetchIndex('IX0001', '^TWII'), fetchIndex('IX0043', '^TWOII')]);
+        const [twii, twoii] = await Promise.all([fetchIndex('IX0001', 'TAIEX'), fetchIndex('IX0043', 'TPEx')]);
 
         if(twii) {
             const diff = twii.price - twii.prev, pct = (diff / twii.prev) * 100;
@@ -1105,6 +1112,8 @@ const app = {
             if (diff > 0) { twiiTrend = `🔥大盤多頭：資金放寬。`; this.twiiState = 'bull'; }
             else if (pct < -1.5) { twiiTrend = `❄️大盤弱勢：破線，嚴格控管！`; this.twiiState = 'bear'; this.emergencyMode = true; }
             else { twiiTrend = `⚠️震盪盤整：測試支撐。`; this.twiiState = 'neutral'; }
+        } else {
+            document.getElementById('mktTWII').innerHTML = `加權 <span class="text-gray-500">快取讀取中</span>`;
         }
 
         if(twoii) {
@@ -1123,7 +1132,6 @@ const app = {
         await this.fetchMacroData();
     },
 
-    // V6.6: FinMind 總經數據 (保持隔離不卡死主線程)
     async fetchMacroData() {
         const today = this.getTodayStr();
         const cacheKey = 'proTerm_macroCache', cacheDateKey = 'proTerm_macroDate';
@@ -1166,15 +1174,16 @@ const app = {
                 if(banner) { banner.innerHTML = '🔴 系統性風險警戒：大盤破線且外資重兵佈空，大盤傾巢之下無完卵，嚴禁接刀摸底！'; banner.classList.remove('hidden'); }
             } else { this.emergencyMode = false; if(banner) banner.classList.add('hidden'); }
         } else {
-            if (mktMacro) mktMacro.innerHTML = `外資期指 <span class="text-gray-500">[無資料]</span>`;
+            if (mktMacro) mktMacro.innerHTML = `外資期指 <span class="text-gray-500">[快取讀取中]</span>`;
             this.emergencyMode = false; if(banner) banner.classList.add('hidden');
         }
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
 
+    // V6.7: 基本面 API 降頻與背景處理
     async fetchDeepFundamentals(symbol) {
         let fund = { pe: null, yield: null, roe: null, bigHolderTrend: 0, retailTrend: 0, industry: '未知' };
-        document.getElementById('fundamentalBadges').innerHTML = '<span class="text-gray-500 animate-pulse border border-gray-700 px-1 rounded bg-gray-800">📡 基本面與籌碼掃描中...</span>';
+        document.getElementById('fundamentalBadges').innerHTML = '<span class="text-gray-500 animate-pulse border border-gray-700 px-1 rounded bg-gray-800">📡 背景抓取基本面與籌碼中...</span>';
         
         try {
             const stockInfo = this.allStockList.find(s => s.stock_id === symbol);
@@ -1183,25 +1192,30 @@ const app = {
             const tkn = this.settings.finmindToken ? `&token=${this.settings.finmindToken}` : '';
             const d = new Date(); d.setMonth(d.getMonth() - 1); const sDate = d.toISOString().split('T')[0];
             
-            const p1 = this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPER&data_id=${symbol}&start_date=${sDate}${tkn}`, {}, 3000).catch(()=>null);
-            const p2 = this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${symbol}&start_date=2023-01-01${tkn}`, {}, 3000).catch(()=>null);
-            
-            const [peRes, roeRes] = await Promise.all([p1, p2]);
-            
-            if (peRes && peRes.ok) {
-                const peJson = await peRes.json();
-                if(peJson.data && peJson.data.length > 0) {
-                    const latest = peJson.data[peJson.data.length - 1];
-                    fund.pe = latest.PE_ratio; fund.yield = latest.yield;
+            try {
+                const peRes = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPER&data_id=${symbol}&start_date=${sDate}${tkn}`, {}, 3000);
+                if (peRes.ok) {
+                    const peJson = await peRes.json();
+                    if(peJson.data && peJson.data.length > 0) {
+                        const latest = peJson.data[peJson.data.length - 1];
+                        fund.pe = latest.PE_ratio; fund.yield = latest.yield;
+                    }
                 }
-            }
-            if (roeRes && roeRes.ok) {
-                const roeJson = await roeRes.json();
-                if(roeJson.data) {
-                    const roeData = roeJson.data.filter(item => item.type === 'ROE');
-                    if(roeData.length > 0) fund.roe = roeData[roeData.length - 1].value;
+            } catch(e) {}
+            
+            await new Promise(r => setTimeout(r, 300)); // 降頻保護
+            
+            try {
+                const roeRes = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${symbol}&start_date=2023-01-01${tkn}`, {}, 3000);
+                if (roeRes.ok) {
+                    const roeJson = await roeRes.json();
+                    if(roeJson.data) {
+                        const roeData = roeJson.data.filter(item => item.type === 'ROE');
+                        if(roeData.length > 0) fund.roe = roeData[roeData.length - 1].value;
+                    }
                 }
-            }
+            } catch(e){}
+
             if(Math.random() > 0.5) { fund.bigHolderTrend = 1; fund.retailTrend = -1; } else { fund.bigHolderTrend = -1; fund.retailTrend = 1; }
 
         } catch(e) { console.warn("基本面載入失敗"); }
@@ -1216,71 +1230,76 @@ const app = {
         this.refreshStrategy();
     },
 
-    // V6.6: 即時資料 API 競速引擎
+    // V6.7: 即時資料 API (只管 Fugle 或快速直連 Yahoo)
     async fetchIntradayData(symbol) {
-        const promises = [];
         if (this.settings.fugleToken) {
-            promises.push((async () => {
-                const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}?X-API-KEY=${this.settings.fugleToken}`, {}, 3500);
-                const json = await res.json();
-                if (json.data?.quote?.trade?.price) {
-                    const q = json.data.quote;
-                    return { price: q.trade.price, open: q.priceOpen?.price || q.trade.price, high: q.priceHigh?.price || q.trade.price, low: q.priceLow?.price || q.trade.price, volume: q.total?.tradeVolume || 0, source: 'Fugle' };
+            try {
+                const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}?X-API-KEY=${this.settings.fugleToken}`, {}, 2500);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.data?.quote?.trade?.price) {
+                        const q = json.data.quote;
+                        return { price: q.trade.price, open: q.priceOpen?.price || q.trade.price, high: q.priceHigh?.price || q.trade.price, low: q.priceLow?.price || q.trade.price, volume: q.total?.tradeVolume || 0, source: 'Fugle' };
+                    }
                 }
-                throw new Error('Fugle Fail');
-            })());
+            } catch(e) {}
         }
-        promises.push((async () => {
-            const proxy = 'https://api.allorigins.win/raw?url=';
-            const res = await this.fetchWithTimeout(`${proxy}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1d&interval=1m`)}`, {}, 3500);
-            const json = await res.json(), meta = json.chart.result[0].meta;
-            if (meta && meta.regularMarketPrice) {
-                return { price: meta.regularMarketPrice, open: meta.regularMarketDayHigh || meta.regularMarketPrice, high: meta.regularMarketDayHigh || meta.regularMarketPrice, low: meta.regularMarketDayLow || meta.regularMarketPrice, volume: meta.regularMarketVolume || 0, source: 'Yahoo' };
-            }
-            throw new Error('Yahoo Fail');
-        })());
         
-        try { return await Promise.any(promises); } catch(e) { return null; }
+        try {
+            const res = await this.fetchWithTimeout(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1d&interval=1m`, {}, 2500);
+            if (res.ok) {
+                const json = await res.json(), meta = json.chart.result[0].meta;
+                if (meta && meta.regularMarketPrice) {
+                    return { price: meta.regularMarketPrice, open: meta.regularMarketDayHigh || meta.regularMarketPrice, high: meta.regularMarketDayHigh || meta.regularMarketPrice, low: meta.regularMarketDayLow || meta.regularMarketPrice, volume: meta.regularMarketVolume || 0, source: 'Yahoo' };
+                }
+            }
+        } catch(e) {} 
+        return null;
     },
 
-    // V6.6: 歷史資料 API 競速引擎
-    async fetchHistoricalData(symbol, isInitialLoad = false) {
-        const today = new Date().toISOString().split('T')[0];
-        const cacheKey = `proTerm_kline_${symbol}`, cacheDateKey = `proTerm_kdate_${symbol}`;
-        if (this.apiDataCache[cacheKey] && this.apiDataCache[cacheDateKey] === today) return this.apiDataCache[cacheKey];
-
-        const tkn = this.settings.finmindToken ? `&token=${this.settings.finmindToken}` : '';
+    // V6.7: 歷史資料快取優先 (Cache-First)
+    async fetchHistoricalData(symbol) {
+        const cacheKey = `proTerm_kline_${symbol}`;
+        const cachedStr = localStorage.getItem(cacheKey);
+        let cachedData = null;
         
-        const fetchFM = async () => {
-            const fmRes = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${symbol}&start_date=2023-01-01${tkn}`, {}, 4500);
-            const fmJson = await fmRes.json();
-            if(fmJson.msg === 'success' && fmJson.data.length > 0) {
-                return fmJson.data.map(d => ({ date: d.date.replace(/-/g, '/'), open: d.open || d.close, high: d.max || d.close, low: d.min || d.close, close: d.close, volume: d.Trading_Volume }));
-            }
-            throw new Error('FM Fail');
-        };
-
-        const fetchYH = async () => {
-            const proxy = 'https://api.allorigins.win/raw?url=';
-            const yhRes = await this.fetchWithTimeout(`${proxy}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1y&interval=1d`)}`, {}, 4500);
-            const yhJson = await yhRes.json(), result = yhJson.chart.result[0];
-            if(result && result.timestamp) {
-                const quotes = result.indicators.quote[0];
-                return result.timestamp.map((t, i) => { const d = new Date(t * 1000); return { date: `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i], volume: quotes.volume[i] }; }).filter(d => d.close !== null);
-            }
-            throw new Error('YH Fail');
-        };
-
-        try {
-            const formattedData = await Promise.any([fetchFM(), fetchYH()]);
-            this.apiDataCache[cacheKey] = formattedData; this.apiDataCache[cacheDateKey] = today;
-            try { localStorage.setItem(cacheKey, JSON.stringify(formattedData)); localStorage.setItem(cacheDateKey, today); } catch(e){}
-            return formattedData;
-        } catch (e) {
-            const cachedData = localStorage.getItem(cacheKey);
-            if (cachedData) return JSON.parse(cachedData);
-            return null; 
+        if (cachedStr) {
+            try { cachedData = JSON.parse(cachedStr); } catch(e){}
         }
+
+        if (!cachedData || cachedData.length < 20) {
+            try {
+                const tkn = this.settings.finmindToken ? `&token=${this.settings.finmindToken}` : '';
+                const fmRes = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${symbol}&start_date=2023-01-01${tkn}`, {}, 4500);
+                if (fmRes.ok) {
+                    const fmJson = await fmRes.json();
+                    if(fmJson.msg === 'success' && fmJson.data.length > 0) {
+                        const formattedData = fmJson.data.map(d => ({ date: d.date.replace(/-/g, '/'), open: d.open || d.close, high: d.max || d.close, low: d.min || d.close, close: d.close, volume: d.Trading_Volume }));
+                        localStorage.setItem(cacheKey, JSON.stringify(formattedData));
+                        return formattedData;
+                    }
+                }
+            } catch (e) {}
+            return null; 
+        } else {
+            return cachedData;
+        }
+    },
+    
+    // V6.7: 背景靜默更新快取 (Stale-while-revalidate)
+    async backgroundUpdateKLine(symbol) {
+        try {
+            const cacheKey = `proTerm_kline_${symbol}`;
+            const tkn = this.settings.finmindToken ? `&token=${this.settings.finmindToken}` : '';
+            const fmRes = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${symbol}&start_date=2023-01-01${tkn}`, {}, 6000);
+            if (fmRes.ok) {
+                const fmJson = await fmRes.json();
+                if(fmJson.msg === 'success' && fmJson.data.length > 0) {
+                    const formattedData = fmJson.data.map(d => ({ date: d.date.replace(/-/g, '/'), open: d.open || d.close, high: d.max || d.close, low: d.min || d.close, close: d.close, volume: d.Trading_Volume }));
+                    localStorage.setItem(cacheKey, JSON.stringify(formattedData));
+                }
+            }
+        } catch(e) {}
     },
 
     async callGeminiAI() {
@@ -1396,8 +1415,7 @@ const app = {
         }
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
-        document.getElementById('loadingOverlay').classList.remove('hidden'); document.getElementById('loadingOverlay').classList.add('flex');
-        masterWorker.postMessage({ activeData: this.activeData });
+        document.getElementById('loadingOverlay').style.display = 'flex'; masterWorker.postMessage({ activeData: this.activeData });
     },
 
     findPeaksAndTroughs() {
@@ -1654,6 +1672,13 @@ const app = {
                 }
                 actionSubText += `<div class="mt-2 text-blue-300 bg-blue-900/40 p-2 rounded text-xs border border-blue-700 font-bold">🛡️ 獲利已達標，防守線上移至成本，此單立於不敗！</div>`;
             }
+            if(inInv && inInv.buyDate && this.settings.timeStop.active) {
+                const days = Math.floor((new Date() - new Date(inInv.buyDate)) / 86400000);
+                if (days >= this.settings.timeStop.val && Math.abs(pnlPct) <= 2) {
+                    actionSubText += `<div class="mt-2 text-yellow-300 bg-yellow-900/40 p-2 rounded text-xs border border-yellow-700 font-bold">⏳ <b>時間停損警報：</b> 持倉達 ${days} 天未發動，資金效率低落。建議考慮換股操作！</div>`;
+                    if(!boxStyle.includes('green-500') && !boxStyle.includes('orange-500') && !boxStyle.includes('red-500 shadow')) { boxStyle = "border-yellow-500 bg-yellow-900/20 text-yellow-400"; }
+                }
+            }
         }
 
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC);
@@ -1700,6 +1725,29 @@ const app = {
              }
         }
 
+        let positionAdvice = ""; const posAdviceEl = document.getElementById('positionSizeAdvice');
+        let isActionableBuy = actionText.includes('🟢') && (actionText.includes('進場') || actionText.includes('建倉') || actionText.includes('加碼') || actionText.includes('把手綁起來') || actionText.includes('底底高成型'));
+        if (isActionableBuy && !isIlliquid && !isTrendBroken && !this.emergencyMode && !isNaN(numDef) && pC > numDef) {
+            let riskPct = ((pC - numDef) / pC) * 100, recentWinRate = this.getRecentWinRate(), recPos = 1.0;
+            if (riskPct > 8) recPos = 0.33; else if (riskPct > 4) recPos = 0.5;
+            let maxPos = 1.0, limits = [];
+            if(this.twiiState === 'bear') { maxPos = 0.3; limits.push('大盤空頭'); } else if(this.twiiState === 'neutral') { maxPos = Math.min(maxPos, 0.5); limits.push('大盤震盪'); }
+            if(this.settings.winRateAlert.active && recentWinRate < this.settings.winRateAlert.val) { maxPos = maxPos * 0.5; limits.push(`勝率偏低(${recentWinRate.toFixed(0)}%)`); }
+            
+            let finalPos = Math.min(recPos, maxPos);
+            if(limits.length > 0) {
+                positionAdvice = `🚨 <b>風控降降溫：</b> 由於 [${limits.join(' + ')}]，強制將最高部位限制為 ${(finalPos*100).toFixed(0)}%！嚴格保護本金。`;
+                posAdviceEl.className = "w-full bg-purple-900/30 border border-purple-700 rounded-lg p-3 text-sm font-bold text-purple-300 leading-relaxed shadow-sm text-center animate-pulse";
+            } else if (finalPos === 1) {
+                positionAdvice = `🛡️ 停損距離僅 ${riskPct.toFixed(1)}%，大盤健康，可滿配建倉 (100% 部位)！`;
+                posAdviceEl.className = "w-full bg-[#4ade80]/10 border border-[#4ade80] rounded-lg p-3 text-sm font-bold text-[#4ade80] leading-relaxed shadow-sm text-center";
+            } else {
+                positionAdvice = `⚠️ 距離防守價 ${riskPct.toFixed(1)}%，建議投入資金縮減至 ${(finalPos*10).toFixed(0)} 成。`;
+                posAdviceEl.className = "w-full bg-yellow-900/30 border border-yellow-700 rounded-lg p-3 text-sm font-bold text-yellow-300 leading-relaxed shadow-sm text-center";
+            }
+            posAdviceEl.innerHTML = positionAdvice; posAdviceEl.classList.remove('hidden');
+        } else { posAdviceEl.classList.add('hidden'); }
+
         actionBox.className = `w-full p-4 md:p-6 rounded-xl flex flex-col items-center justify-center border-2 transition-all duration-300 ${boxStyle}`;
         document.getElementById('actionMainText').innerHTML = actionText; document.getElementById('actionMainText').className = `text-2xl md:text-3xl font-black tracking-widest text-center w-full leading-tight ${boxStyle.split(' ')[2]}`;
         document.getElementById('actionSubText').innerHTML = actionSubText + safetyMarginText;
@@ -1736,7 +1784,7 @@ const app = {
             scoreSummary = "極端危險，強烈建議空手觀望，嚴禁進場。";
         } else if (totalScore >= 75) scoreSummary = "技術籌碼雙主流，動能極強，請依防守線勇敢建倉。";
         else if (totalScore >= 45) scoreSummary = "動能溫吞或高檔面臨壓力，建議縮小部位或短線操作。";
-        else scoreSummary = "多頭動能耗盡或均弱勢，嚴禁追高，持股準備結帳。";
+        else scoreSummary = "多頭動能耗盡或均線弱勢，嚴禁追高，持股準備結帳。";
 
         sHtml.push(`<div class="border-t border-gray-700 my-2"></div><div class="flex justify-between items-center py-1 text-yellow-400 font-black text-lg"><span>總合動能評分</span><span>${totalScore}</span></div>`);
         sHtml.push(`<div class="mt-1 pt-2 border-t border-gray-700 text-gray-300 font-bold text-xs italic leading-relaxed">💡 系統總評：${scoreSummary}</div>`);
@@ -1831,14 +1879,9 @@ const app = {
     },
 
     async analyze(symCode = null, skipListCheck = false, isInitialLoad = false) {
-        document.getElementById('loadingOverlay').classList.remove('hidden'); document.getElementById('loadingOverlay').classList.add('flex');
-        
-        // V6.6 絕對熔斷器機制 (避免卡死轉圈)
-        if(this.masterTimeout) clearTimeout(this.masterTimeout);
-        this.masterTimeout = setTimeout(() => { this.forceStopLoading(); }, 6000);
-
+        document.getElementById('loadingOverlay').style.display = 'flex';
         let inputVal = symCode || document.getElementById('symbolInput').value.trim();
-        if(!inputVal) { document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex'); clearTimeout(this.masterTimeout); return; }
+        if(!inputVal) { document.getElementById('loadingOverlay').style.display = 'none'; return; }
         
         let targetSym = inputVal, symName = inputVal;
         if (!skipListCheck && this.allStockList.length > 0) {
@@ -1853,16 +1896,20 @@ const app = {
         else nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
         document.getElementById('quoteSymbol').innerText = '';
         
-        const rawData = await this.fetchHistoricalData(targetSym, isInitialLoad);
+        // 核心：快取優先 (Cache-First)
+        const rawData = await this.fetchHistoricalData(targetSym);
         if (!rawData || rawData.length < 2) {
             document.getElementById('actionMainText').innerText = "資料不足";
             document.getElementById('actionSubText').innerHTML = "<span>無法取得足夠的歷史 K 線，請確認網路或 API 狀態。</span>";
             document.getElementById('dataSourceText').innerText = "[ ⚠️ 資料連線異常 ]";
             document.getElementById('dataSourceBadge').className = "text-[10px] md:text-xs px-2 py-0.5 rounded border whitespace-nowrap transition-colors font-bold tracking-widest border-red-800 text-red-400 bg-red-900/20";
-            document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex'); clearTimeout(this.masterTimeout); return;
+            document.getElementById('loadingOverlay').style.display = 'none'; return;
         }
         this.baseRawData = JSON.parse(JSON.stringify(rawData)); 
         
+        // 背景更新最新資料 (Stale-while-revalidate)
+        if (!isInitialLoad) this.backgroundUpdateKLine(targetSym);
+
         let intradayData = null;
         if (!isInitialLoad) intradayData = await this.fetchIntradayData(targetSym);
         this.currentFugleData = intradayData;
@@ -1879,7 +1926,6 @@ const app = {
 
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
         masterWorker.onmessage = (e) => {
-            clearTimeout(this.masterTimeout);
             if(!e.data) return;
             this.indicators = e.data; 
             const { trades, markPoints, nextDayStats } = e.data;
@@ -1896,9 +1942,12 @@ const app = {
             if(inInv && inInv.cost > 0) document.getElementById('costInput').value = inInv.cost; else document.getElementById('costInput').value = '';
             document.getElementById('manualPriceInput').value = ''; document.getElementById('chipCostInput').value = '';
 
-            this.setAIVerdict('reset'); this.updateFavIcon(); this.updateInvBadge(); 
-            this.fetchDeepFundamentals(targetSym);
-            document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex');
+            this.setAIVerdict('reset'); this.updateFavIcon(); this.updateInvBadge(); this.refreshStrategy();
+            
+            // 延遲背景載入基本面，避免瞬間 429
+            setTimeout(() => { this.fetchDeepFundamentals(targetSym); }, 1500);
+            
+            document.getElementById('loadingOverlay').style.display = 'none';
         };
         masterWorker.postMessage({ activeData: this.activeData });
     }
