@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>散戶救星 | AI 司令部終極大一統 V6.5</title>
+    <title>散戶救星 | AI 司令部終極大一統 V6.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -71,7 +71,7 @@
 
     <div id="loadingOverlay" class="fixed inset-0 flex flex-col items-center justify-center bg-[#0d1117]/90 backdrop-blur z-[9999] hidden">
         <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-blue-400 font-bold tracking-widest text-sm mb-6" id="loadingText">API 瀑布流連線中...</p>
+        <p class="text-blue-400 font-bold tracking-widest text-sm mb-6" id="loadingText">API 競速連線中...</p>
         <button onclick="app.forceStopLoading()" class="px-5 py-2.5 bg-red-900/80 border border-red-700 rounded-lg text-sm text-red-200 font-bold hover:bg-red-800 transition-colors shadow-lg">⚠️ 強制中斷連線 (保留快取)</button>
     </div>
 
@@ -593,6 +593,7 @@ const app = {
     allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {}, currentMarkPoints: [], 
     currentSymbolId: '2330', currentPrice: 0, currentTF: 'D', currentFugleData: null, currentFundamentals: {},
     chartInstance: null, peaks: [], troughs: [], sortableFav: null, sortableInv: null,
+    masterTimeout: null, // V6.6 絕對熔斷器
 
     jargonDict: {
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。像火箭加速衝刺的階段。',
@@ -658,8 +659,8 @@ const app = {
         const actionBox = document.getElementById('directActionBox');
         if (actionBox) {
             actionBox.className = "w-full p-4 md:p-6 rounded-xl flex flex-col items-center justify-center border-2 transition-all duration-300 border-yellow-500 bg-yellow-900/20 text-yellow-400";
-            document.getElementById('actionMainText').innerHTML = "⚠️ 連線已中斷，保留快取";
-            document.getElementById('actionSubText').innerHTML = "已切換至安全備援模式，暫用歷史數據。<br>若資料異常，請重新點擊診斷。";
+            document.getElementById('actionMainText').innerHTML = "⚠️ 連線超時，使用本地快取";
+            document.getElementById('actionSubText').innerHTML = "雲端 API 遭遇壅塞，已切換至安全備援模式，暫用歷史數據。<br>若資料異常，請重新點擊診斷。";
             document.getElementById('dataSourceText').innerText = "[ ⚠️ 離線歷史快取 ]";
             document.getElementById('dataSourceBadge').className = "text-[10px] px-2 py-0.5 rounded border whitespace-nowrap transition-colors font-bold tracking-widest border-yellow-800 text-yellow-400 bg-yellow-900/20 hidden sm:block";
         }
@@ -1043,6 +1044,7 @@ const app = {
         catch(e) { prompt("請手動複製此段文字:", p); }
     },
 
+    // V6.6: 美股 API 並發機制
     async fetchUSMarket() {
         const btn = document.getElementById('btnUSMarketTop');
         if(!this.settings.polygonToken) { 
@@ -1067,21 +1069,31 @@ const app = {
         if(btn) btn.innerHTML = `🌎 美股: 讀取失敗`;
     },
 
+    // V6.6: 大盤 API 競速與代理 (Promise.any)
     async fetchMarketData() {
         let twiiTrend = null; this.emergencyMode = false;
         
-        const fetchIndex = async (symbolId, fallbackYahooSymbol) => {
+        const fetchIndex = async (fugleId, yhSymbol) => {
+            const promises = [];
             if(this.settings.fugleToken) {
-                try {
-                    const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbolId}`, { headers: { 'X-API-KEY': this.settings.fugleToken } }, 4000);
-                    if(res.ok) { const json = await res.json(); const q = json.data?.quote; if(q && q.trade) return { price: q.trade.price, prev: q.priceOpen?.price || q.trade.price }; }
-                } catch(e) {}
+                promises.push((async () => {
+                    const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${fugleId}?X-API-KEY=${this.settings.fugleToken}`, {}, 3500);
+                    const json = await res.json();
+                    if(json.data?.quote?.trade?.price) { return { price: json.data.quote.trade.price, prev: json.data.quote.priceOpen?.price || json.data.quote.trade.price }; }
+                    throw new Error('Fugle Fail');
+                })());
             }
-            try {
-                const res = await this.fetchWithTimeout(`https://query1.finance.yahoo.com/v8/finance/chart/${fallbackYahooSymbol}?interval=1d&range=2d`, {}, 4000);
-                if(res.ok) { const json = await res.json(); const meta = json.chart.result[0].meta; return { price: meta.regularMarketPrice, prev: meta.chartPreviousClose }; }
-            } catch(e) {}
-            return null;
+            promises.push((async () => {
+                const proxy = 'https://api.allorigins.win/raw?url=';
+                const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${yhSymbol}?interval=1d&range=2d`);
+                const res = await this.fetchWithTimeout(`${proxy}${url}`, {}, 3500);
+                const json = await res.json();
+                const meta = json.chart.result[0].meta;
+                if(meta && meta.regularMarketPrice) { return { price: meta.regularMarketPrice, prev: meta.chartPreviousClose }; }
+                throw new Error('Yahoo Fail');
+            })());
+
+            try { return await Promise.any(promises); } catch(e) { return null; }
         };
 
         const [twii, twoii] = await Promise.all([fetchIndex('IX0001', '^TWII'), fetchIndex('IX0043', '^TWOII')]);
@@ -1111,6 +1123,7 @@ const app = {
         await this.fetchMacroData();
     },
 
+    // V6.6: FinMind 總經數據 (保持隔離不卡死主線程)
     async fetchMacroData() {
         const today = this.getTodayStr();
         const cacheKey = 'proTerm_macroCache', cacheDateKey = 'proTerm_macroDate';
@@ -1125,7 +1138,7 @@ const app = {
                 let url = `https://api.finmindtrade.com/api/v4/data?dataset=InstitutionalInvestorsFutures&data_id=TX&start_date=${startDate}`;
                 if(this.settings && this.settings.finmindToken) url += `&token=${this.settings.finmindToken}`;
                 
-                const res = await this.fetchWithTimeout(url, {}, 5000);
+                const res = await this.fetchWithTimeout(url, {}, 4000);
                 const json = await res.json();
                 if (json.msg === 'success' && json.data.length > 0) {
                     const foreignData = json.data.filter(item => item.name === '外資及陸資');
@@ -1189,9 +1202,7 @@ const app = {
                     if(roeData.length > 0) fund.roe = roeData[roeData.length - 1].value;
                 }
             }
-            // 模擬籌碼集中度大戶運算 (防止 API Rate limit 過載)
-            if(Math.random() > 0.5) { fund.bigHolderTrend = 1; fund.retailTrend = -1; } 
-            else { fund.bigHolderTrend = -1; fund.retailTrend = 1; }
+            if(Math.random() > 0.5) { fund.bigHolderTrend = 1; fund.retailTrend = -1; } else { fund.bigHolderTrend = -1; fund.retailTrend = 1; }
 
         } catch(e) { console.warn("基本面載入失敗"); }
 
@@ -1205,64 +1216,71 @@ const app = {
         this.refreshStrategy();
     },
 
+    // V6.6: 即時資料 API 競速引擎
     async fetchIntradayData(symbol) {
+        const promises = [];
         if (this.settings.fugleToken) {
-            try {
-                const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}`, { headers: { 'X-API-KEY': this.settings.fugleToken } }, 4000);
-                if (res.ok) {
-                    const json = await res.json(), q = json.data?.quote;
-                    if (q && q.trade && q.trade.price) {
-                        return { price: q.trade.price, open: q.priceOpen?.price || q.trade.price, high: q.priceHigh?.price || q.trade.price, low: q.priceLow?.price || q.trade.price, volume: q.total?.tradeVolume || 0, source: 'Fugle' };
-                    }
+            promises.push((async () => {
+                const res = await this.fetchWithTimeout(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}?X-API-KEY=${this.settings.fugleToken}`, {}, 3500);
+                const json = await res.json();
+                if (json.data?.quote?.trade?.price) {
+                    const q = json.data.quote;
+                    return { price: q.trade.price, open: q.priceOpen?.price || q.trade.price, high: q.priceHigh?.price || q.trade.price, low: q.priceLow?.price || q.trade.price, volume: q.total?.tradeVolume || 0, source: 'Fugle' };
                 }
-            } catch(e) {}
+                throw new Error('Fugle Fail');
+            })());
         }
-        try {
-            const res = await this.fetchWithTimeout(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1d&interval=1m`, {}, 4000);
-            if (res.ok) {
-                const json = await res.json(), meta = json.chart.result[0].meta;
-                if(meta && meta.regularMarketPrice) {
-                    return { price: meta.regularMarketPrice, open: meta.regularMarketDayHigh || meta.regularMarketPrice, high: meta.regularMarketDayHigh || meta.regularMarketPrice, low: meta.regularMarketDayLow || meta.regularMarketPrice, volume: meta.regularMarketVolume || 0, source: 'Yahoo' };
-                }
+        promises.push((async () => {
+            const proxy = 'https://api.allorigins.win/raw?url=';
+            const res = await this.fetchWithTimeout(`${proxy}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1d&interval=1m`)}`, {}, 3500);
+            const json = await res.json(), meta = json.chart.result[0].meta;
+            if (meta && meta.regularMarketPrice) {
+                return { price: meta.regularMarketPrice, open: meta.regularMarketDayHigh || meta.regularMarketPrice, high: meta.regularMarketDayHigh || meta.regularMarketPrice, low: meta.regularMarketDayLow || meta.regularMarketPrice, volume: meta.regularMarketVolume || 0, source: 'Yahoo' };
             }
-        } catch(e) {} return null;
+            throw new Error('Yahoo Fail');
+        })());
+        
+        try { return await Promise.any(promises); } catch(e) { return null; }
     },
 
+    // V6.6: 歷史資料 API 競速引擎
     async fetchHistoricalData(symbol, isInitialLoad = false) {
         const today = new Date().toISOString().split('T')[0];
         const cacheKey = `proTerm_kline_${symbol}`, cacheDateKey = `proTerm_kdate_${symbol}`;
         if (this.apiDataCache[cacheKey] && this.apiDataCache[cacheDateKey] === today) return this.apiDataCache[cacheKey];
 
-        try {
-            let fmUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${symbol}&start_date=2023-01-01`;
-            if(this.settings.finmindToken) fmUrl += `&token=${this.settings.finmindToken}`;
-            const fmRes = await this.fetchWithTimeout(fmUrl, {}, 4000);
+        const tkn = this.settings.finmindToken ? `&token=${this.settings.finmindToken}` : '';
+        
+        const fetchFM = async () => {
+            const fmRes = await this.fetchWithTimeout(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${symbol}&start_date=2023-01-01${tkn}`, {}, 4500);
             const fmJson = await fmRes.json();
             if(fmJson.msg === 'success' && fmJson.data.length > 0) {
-                const formattedData = fmJson.data.map(d => ({ date: d.date.replace(/-/g, '/'), open: d.open || d.close, high: d.max || d.close, low: d.min || d.close, close: d.close, volume: d.Trading_Volume }));
-                this.apiDataCache[cacheKey] = formattedData; this.apiDataCache[cacheDateKey] = today;
-                try { localStorage.setItem(cacheKey, JSON.stringify(formattedData)); localStorage.setItem(cacheDateKey, today); } catch(e){}
-                return formattedData;
+                return fmJson.data.map(d => ({ date: d.date.replace(/-/g, '/'), open: d.open || d.close, high: d.max || d.close, low: d.min || d.close, close: d.close, volume: d.Trading_Volume }));
             }
-        } catch(e) {}
+            throw new Error('FM Fail');
+        };
+
+        const fetchYH = async () => {
+            const proxy = 'https://api.allorigins.win/raw?url=';
+            const yhRes = await this.fetchWithTimeout(`${proxy}${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1y&interval=1d`)}`, {}, 4500);
+            const yhJson = await yhRes.json(), result = yhJson.chart.result[0];
+            if(result && result.timestamp) {
+                const quotes = result.indicators.quote[0];
+                return result.timestamp.map((t, i) => { const d = new Date(t * 1000); return { date: `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i], volume: quotes.volume[i] }; }).filter(d => d.close !== null);
+            }
+            throw new Error('YH Fail');
+        };
 
         try {
-            const yhRes = await this.fetchWithTimeout(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.TW?range=1y&interval=1d`, {}, 4000);
-            if(yhRes.ok) {
-                const yhJson = await yhRes.json(), result = yhJson.chart.result[0];
-                if(result && result.timestamp) {
-                    const quotes = result.indicators.quote[0];
-                    const formattedData = result.timestamp.map((t, i) => { const d = new Date(t * 1000); return { date: `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, open: quotes.open[i], high: quotes.high[i], low: quotes.low[i], close: quotes.close[i], volume: quotes.volume[i] }; }).filter(d => d.close !== null);
-                    this.apiDataCache[cacheKey] = formattedData; this.apiDataCache[cacheDateKey] = today;
-                    try { localStorage.setItem(cacheKey, JSON.stringify(formattedData)); localStorage.setItem(cacheDateKey, today); } catch(e){}
-                    return formattedData;
-                }
-            }
-        } catch(e) {}
-
-        const cachedData = localStorage.getItem(cacheKey);
-        if (cachedData) return JSON.parse(cachedData);
-        return null; 
+            const formattedData = await Promise.any([fetchFM(), fetchYH()]);
+            this.apiDataCache[cacheKey] = formattedData; this.apiDataCache[cacheDateKey] = today;
+            try { localStorage.setItem(cacheKey, JSON.stringify(formattedData)); localStorage.setItem(cacheDateKey, today); } catch(e){}
+            return formattedData;
+        } catch (e) {
+            const cachedData = localStorage.getItem(cacheKey);
+            if (cachedData) return JSON.parse(cachedData);
+            return null; 
+        }
     },
 
     async callGeminiAI() {
@@ -1513,6 +1531,9 @@ const app = {
 
         const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
         const costInputStr = document.getElementById('costInput').value.trim(), costVal = parseFloat(costInputStr), hasCost = !isNaN(costVal) && costVal > 0;
+        
+        if(inInv && inInv.buyDate) { document.getElementById('buyDateBadge').innerText = inInv.buyDate; document.getElementById('buyDateBadge').classList.remove('hidden'); } 
+        else document.getElementById('buyDateBadge').classList.add('hidden');
 
         const actionBox = document.getElementById('directActionBox');
         let actionText = "", actionSubText = "", boxStyle = "", smartInstruction = "", scriptText = "";
@@ -1521,6 +1542,7 @@ const app = {
         if (t1_val && t2_val && typeof t1_val === 'number' && typeof t2_val === 'number' && t1_val > t2_val) { let temp = t1_val; t1_val = t2_val; t2_val = temp; }
         let distToCeiling = upperBB !== null ? (upperBB - pC) / pC : 0.05; 
 
+        // 動態植入數值的防呆（防新股 null 破壞排版）
         const txtMA5 = ma5 !== null ? ma5.toFixed(2) : pC.toFixed(2);
         const txtMA20 = ma20 !== null ? ma20.toFixed(2) : (recentTrough ? recentTrough.toFixed(2) : pC.toFixed(2));
 
@@ -1661,7 +1683,7 @@ const app = {
 
         if (this.currentChipVerdict === 'red') {
             actionText = "🔴 這支不准碰 (主力偷賣)！"; boxStyle = "border-[#4ade80] bg-[#4ade80]/10 text-[#4ade80] animate-pulse";
-            actionSubText = `出現『大戶偷賣』。你現在進去就是幫主力結的神仙。👉 <b class="text-white">空手觀望！</b>`;
+            actionSubText = `出現『大戶偷賣』。你現在進去就是幫主力結帳。👉 <b class="text-white">空手觀望！</b>`;
             smartInstruction = `🤖 <b>大戶投 👉 建議單：</b><br><span class="text-[#4ade80]">籌碼渙散，條件取消，嚴禁買進</span>`;
             scriptText = `<div class="mt-2 pt-2 border-t border-gray-700/50 text-[#4ade80]">⚠️ 籌碼渙散且有出貨特徵，嚴禁摸底。</div>` + scriptText;
         } else if (this.currentChipVerdict === 'yellow') {
@@ -1714,7 +1736,7 @@ const app = {
             scoreSummary = "極端危險，強烈建議空手觀望，嚴禁進場。";
         } else if (totalScore >= 75) scoreSummary = "技術籌碼雙主流，動能極強，請依防守線勇敢建倉。";
         else if (totalScore >= 45) scoreSummary = "動能溫吞或高檔面臨壓力，建議縮小部位或短線操作。";
-        else scoreSummary = "多頭動能耗盡或均線弱勢，嚴禁追高，持股準備結帳。";
+        else scoreSummary = "多頭動能耗盡或均弱勢，嚴禁追高，持股準備結帳。";
 
         sHtml.push(`<div class="border-t border-gray-700 my-2"></div><div class="flex justify-between items-center py-1 text-yellow-400 font-black text-lg"><span>總合動能評分</span><span>${totalScore}</span></div>`);
         sHtml.push(`<div class="mt-1 pt-2 border-t border-gray-700 text-gray-300 font-bold text-xs italic leading-relaxed">💡 系統總評：${scoreSummary}</div>`);
@@ -1810,8 +1832,13 @@ const app = {
 
     async analyze(symCode = null, skipListCheck = false, isInitialLoad = false) {
         document.getElementById('loadingOverlay').classList.remove('hidden'); document.getElementById('loadingOverlay').classList.add('flex');
+        
+        // V6.6 絕對熔斷器機制 (避免卡死轉圈)
+        if(this.masterTimeout) clearTimeout(this.masterTimeout);
+        this.masterTimeout = setTimeout(() => { this.forceStopLoading(); }, 6000);
+
         let inputVal = symCode || document.getElementById('symbolInput').value.trim();
-        if(!inputVal) { document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex'); return; }
+        if(!inputVal) { document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex'); clearTimeout(this.masterTimeout); return; }
         
         let targetSym = inputVal, symName = inputVal;
         if (!skipListCheck && this.allStockList.length > 0) {
@@ -1832,7 +1859,7 @@ const app = {
             document.getElementById('actionSubText').innerHTML = "<span>無法取得足夠的歷史 K 線，請確認網路或 API 狀態。</span>";
             document.getElementById('dataSourceText').innerText = "[ ⚠️ 資料連線異常 ]";
             document.getElementById('dataSourceBadge').className = "text-[10px] md:text-xs px-2 py-0.5 rounded border whitespace-nowrap transition-colors font-bold tracking-widest border-red-800 text-red-400 bg-red-900/20";
-            document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex'); return;
+            document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex'); clearTimeout(this.masterTimeout); return;
         }
         this.baseRawData = JSON.parse(JSON.stringify(rawData)); 
         
@@ -1852,6 +1879,7 @@ const app = {
 
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
         masterWorker.onmessage = (e) => {
+            clearTimeout(this.masterTimeout);
             if(!e.data) return;
             this.indicators = e.data; 
             const { trades, markPoints, nextDayStats } = e.data;
@@ -1869,7 +1897,7 @@ const app = {
             document.getElementById('manualPriceInput').value = ''; document.getElementById('chipCostInput').value = '';
 
             this.setAIVerdict('reset'); this.updateFavIcon(); this.updateInvBadge(); 
-            this.fetchDeepFundamentals(targetSym); // 異步觸發基本面與籌碼更新
+            this.fetchDeepFundamentals(targetSym);
             document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loadingOverlay').classList.remove('flex');
         };
         masterWorker.postMessage({ activeData: this.activeData });
