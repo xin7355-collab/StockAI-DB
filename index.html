@@ -2,10 +2,10 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>首席 AI 司令部 | 戰略終端 V10.52 (旗艦穩固版)</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.0 (大師照妖鏡版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -24,13 +24,13 @@
             padding-bottom: max(7rem, calc(5rem + env(safe-area-inset-bottom))); 
             touch-action: pan-y pinch-zoom; position: relative;
         }
-        .panel { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .panel { background-color: #161b22; border: 1px solid #30363d; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         
         @keyframes flashUp { 0% { background-color: rgba(248, 113, 113, 0.5); transform: scale(1.02); } 100% { background-color: transparent; transform: scale(1); } }
         @keyframes flashDown { 0% { background-color: rgba(74, 222, 128, 0.5); transform: scale(0.98); } 100% { background-color: transparent; transform: scale(1); } }
         @keyframes siren { 0% { background-color: #7f1d1d; color: #fff; } 50% { background-color: #1e3a8a; color: #fff; } 100% { background-color: #7f1d1d; color: #fff; } }
+        @keyframes pulse-fast { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         
-        .animate-siren { animation: siren 1s infinite; }
         .price-flash-up { animation: flashUp 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         .price-flash-down { animation: flashDown 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -54,24 +54,25 @@
         .drag-handle:active { cursor: grabbing; color: #fff; }
         .typewriter-text { overflow: hidden; white-space: pre-wrap; margin: 0 auto; letter-spacing: 0.05em; }
         
-        /* Swipe to Delete Utils */
         .swipe-container { position: relative; overflow: hidden; background: #dc2626; border-radius: 0.5rem; }
         .swipe-content { position: relative; z-index: 10; width: 100%; transition: transform 0.2s ease-out; }
 
-        /* V10.52 統一全系統 Modal 樣式：強制居中、移除縮放、穩定軍心 */
-        .modal-base { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(2px); z-index: 300; align-items: center; justify-content: center; padding: 1rem; }
-        .modal-content { background: #1c2128; width: 100%; max-width: 22rem; border-radius: 0.75rem; border: 1px solid #30363d; padding: 1.25rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); }
+        .modal-base { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(2px); z-index: 300; display: none; position: fixed; inset: 0; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background-color: #1c2128; border: 1px solid #30363d; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; padding: 1.25rem; }
+        .zoomable-zone { transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center; will-change: transform; }
+        
+        .sparkline-canvas { width: 100%; height: 30px; }
     </style>
 </head>
 <body class="flex flex-col">
 
-    <div id="confirmModal" class="modal-base" onclick="this.style.display='none'">
-        <div class="modal-content border-l-4 border-l-red-500" onclick="event.stopPropagation()">
-            <h3 class="text-white font-black text-lg mb-3 flex items-center gap-2">⚔️ 首席執行令</h3>
-            <p id="confirmMsg" class="text-gray-300 text-sm leading-relaxed mb-6 font-bold tracking-wide"></p>
-            <div class="flex gap-3">
-                <button onclick="document.getElementById('confirmModal').style.display='none'" class="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-bold transition-colors">放棄執行</button>
-                <button id="confirmActionBtn" class="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-bold shadow-lg transition-colors">確認執行</button>
+    <div id="confirmModal" class="modal-base" onclick="this.classList.add('hidden')">
+        <div class="modal-content max-w-[20rem] border-l-4 border-l-red-500" onclick="event.stopPropagation()">
+            <h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">⚔️ 首席執行令</h3>
+            <p id="confirmMsg" class="text-sm text-gray-300 leading-relaxed font-bold mb-5 tracking-wide"></p>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('confirmModal').classList.add('hidden')" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">放棄</button>
+                <button id="confirmBtn" class="w-1/2 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg">確認執行</button>
             </div>
         </div>
     </div>
@@ -85,89 +86,59 @@
     <div id="emergencyBanner" class="hidden w-full text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_15px_rgba(248,113,113,0.8)] z-[200] flex-shrink-0 animate-siren absolute top-0 left-0">
         🚨 【黑天鵝警報】偵測到系統性重挫風險！建議現金為王，嚴禁任何摸底行為！
     </div>
-    <div id="apiWarningBanner" class="hidden w-full bg-orange-900 text-white text-xs font-bold py-1 px-3 text-center border-b border-orange-500 shadow-[0_0_10px_rgba(248,113,113,0.5)] z-[200] flex-shrink-0 absolute top-0 left-0">
-        🔴 API 防護：已啟動防封鎖，暫停盤中呼叫改用歷史資料庫
+    <div id="apiWarningBanner" class="hidden w-full bg-red-900 text-white text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_10px_rgba(248,113,113,0.5)] z-[200] flex-shrink-0 absolute top-0 left-0">
+        🔴 ⚠️ 偵測到流量擠壓，進入防守模式
     </div>
 
-    <div id="seasonModal" class="modal-base" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">🎯 首席作戰週期 (春夏秋冬)</h3>
-            <div class="space-y-3 text-sm text-gray-300 leading-relaxed">
-                <p><span class="text-pink-400 font-bold border border-pink-700 bg-pink-900/30 px-1.5 py-0.5 rounded">🌸 春 (打底)</span> 剛站上月線。主力撒種，適合分批建倉，耐心等待發芽。</p>
-                <p><span class="text-red-400 font-bold border border-red-700 bg-red-900/30 px-1.5 py-0.5 rounded">☀️ 夏 (主升)</span> 多頭排列沿布林上軌噴發。利潤最肥，不破5日線死命抱牢！</p>
-                <p><span class="text-orange-400 font-bold border border-orange-700 bg-orange-900/30 px-1.5 py-0.5 rounded">🍁 秋 (盤頭)</span> 高檔震盪、爆量不漲。主力準備收割，啟動分批停利，跌破月線全結帳。</p>
-                <p><span class="text-blue-300 font-bold border border-blue-700 bg-blue-900/30 px-1.5 py-0.5 rounded">❄️ 冬 (空頭)</span> 均線下彎。嚴禁摸底接刀！滿門抄斬，現金為王。</p>
-            </div>
-            <button onclick="document.getElementById('seasonModal').style.display='none'" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button>
-        </div>
-    </div>
+    <div id="seasonModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[22rem]" onclick="event.stopPropagation()"><h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">🎯 首席作戰週期 (春夏秋冬)</h3><div class="space-y-3 text-sm text-gray-300 leading-relaxed"><p><span class="text-pink-400 font-bold border border-pink-700 bg-pink-900/30 px-1.5 py-0.5 rounded">🌸 春 (打底)</span> 剛站上月線。主力撒種，適合分批建倉，耐心等待發芽。</p><p><span class="text-red-400 font-bold border border-red-700 bg-red-900/30 px-1.5 py-0.5 rounded">☀️ 夏 (主升)</span> 多頭排列沿布林上軌噴發。利潤最肥，不破5日線死命抱牢！</p><p><span class="text-orange-400 font-bold border border-orange-700 bg-orange-900/30 px-1.5 py-0.5 rounded">🍁 秋 (盤頭)</span> 高檔震盪、爆量不漲。主力準備收割，啟動分批停利，跌破月線全結帳。</p><p><span class="text-blue-300 font-bold border border-blue-700 bg-blue-900/30 px-1.5 py-0.5 rounded">❄️ 冬 (空頭)</span> 均線下彎。嚴禁摸底接刀！滿門抄斬，現金為王。</p></div><button onclick="document.getElementById('seasonModal').classList.add('hidden')" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
+    <div id="groupModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-sm" id="groupModalTitle">➕ 新增自選清單</h3><div class="w-full mb-4"><input type="text" id="groupNameInput" placeholder="請輸入清單名稱..." autocomplete="off" enterkeyhint="done" class="w-full bg-[#0d1117] text-white p-2.5 rounded-lg border border-[#30363d] outline-none focus:border-blue-500 text-base transition-colors" onkeydown="if(event.key === 'Enter') { document.activeElement.blur(); app.confirmGroupAction(); }"><input type="hidden" id="groupModalMode" value="create"></div><div class="flex justify-end gap-2"><button onclick="document.getElementById('groupModal').classList.add('hidden')" class="px-4 py-2 text-gray-400 text-xs font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmGroupAction()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors shadow-lg w-1/2">確定</button></div></div></div>
+    <div id="scoreDetailModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[24rem]" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-3"><h3 class="text-white font-black text-lg">📊 Alpha 動能評分報告</h3><button onclick="document.getElementById('scoreDetailModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button></div><div class="text-xs text-gray-500 mb-3 leading-relaxed">融合大師型態學，加入紅黑棒係數與島型反轉偵測機制。</div><div id="scoreDetailContent" class="flex flex-col gap-2 text-sm font-mono text-gray-300 bg-[#0d1117] p-3 rounded-lg border border-[#30363d]"></div></div></div>
+    <div id="jargonModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="jargonTitle" class="text-blue-400 font-black text-lg mb-3 border-b border-gray-700 pb-2 flex items-center gap-2">💡 名詞解釋</h3><p id="jargonDesc" class="text-sm text-gray-300 leading-relaxed font-bold tracking-wide"></p><button onclick="document.getElementById('jargonModal').classList.add('hidden')" class="mt-5 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
 
-    <div id="groupModal" class="modal-base" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-white font-bold mb-3 text-sm" id="groupModalTitle">➕ 新增自選清單</h3>
-            <div class="w-full mb-4">
-                <input type="text" id="groupNameInput" placeholder="請輸入清單名稱..." autocomplete="off" enterkeyhint="done"
-                    class="w-full bg-[#0d1117] text-white p-2.5 rounded-lg border border-[#30363d] outline-none focus:border-blue-500 text-base transition-colors" 
-                    onkeydown="if(event.key === 'Enter') { document.activeElement.blur(); app.confirmGroupAction(); }">
-                <input type="hidden" id="groupModalMode" value="create">
-            </div>
-            <div class="flex justify-end gap-2">
-                <button onclick="document.getElementById('groupModal').style.display='none'" class="px-4 py-2 text-gray-400 text-xs font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button>
-                <button onclick="app.confirmGroupAction()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors shadow-lg w-1/2">確定</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="scoreDetailModal" class="modal-base" onclick="this.style.display='none'">
-        <div class="modal-content !max-w-[24rem]" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-3">
-                <h3 class="text-white font-black text-lg">📊 Alpha 動能評分報告</h3>
-                <button onclick="document.getElementById('scoreDetailModal').style.display='none'" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
-            </div>
-            <div class="text-xs text-gray-500 mb-3 leading-relaxed">融合大師型態學，加入紅黑棒係數與島型反轉偵測機制。</div>
-            <div id="scoreDetailContent" class="flex flex-col gap-2 text-sm font-mono text-gray-300 bg-[#0d1117] p-3 rounded-lg border border-[#30363d] max-h-[60vh] overflow-y-auto"></div>
-        </div>
-    </div>
-
-    <div id="jargonModal" class="modal-base" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="jargonTitle" class="text-blue-400 font-black text-lg mb-3 border-b border-gray-700 pb-2 flex items-center gap-2">💡 名詞解釋</h3>
-            <p id="jargonDesc" class="text-sm text-gray-300 leading-relaxed font-bold tracking-wide"></p>
-            <button onclick="document.getElementById('jargonModal').style.display='none'" class="mt-5 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button>
-        </div>
-    </div>
-
-    <div id="settingsModal" class="modal-base">
-        <div class="modal-content !max-w-[24rem] overflow-y-auto max-h-[90vh]">
+    <div id="settingsModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
+        <div class="modal-content max-w-[24rem] overflow-y-auto max-h-[90vh]" onclick="event.stopPropagation()">
             <h3 class="text-white font-black mb-4 text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-xs text-gray-500 font-normal">| 經理人風控</span></h3>
             <div class="space-y-4 mb-6">
-                <div class="space-y-3 border-b border-[#30363d] pb-4">
+                
+                <div class="flex flex-col gap-1 pt-1 border-b border-gray-700 pb-4">
+                    <label class="text-xs font-bold text-indigo-400">🧠 AI 戰略靈魂編輯器 (Prompt)</label>
+                    <p class="text-[10px] text-gray-500 leading-tight mb-1">自訂分析風格，真實數據會自動餵入下方指令中。</p>
+                    <textarea id="set_aiPrompt" oninput="app.saveSettings()" class="bg-[#010409] text-gray-300 p-2 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-indigo-500 transition-colors h-28 scrollbar-hide" placeholder="輸入您的專屬 AI 提示詞..."></textarea>
+                    <div class="flex gap-2 mt-1.5">
+                        <button onclick="app.resetPrompt('default')" class="flex-1 px-2 py-1.5 bg-gray-800 text-[10px] font-bold text-gray-300 rounded border border-gray-600 hover:bg-gray-700 transition-colors">預設首席模式</button>
+                        <button onclick="app.resetPrompt('dualBlade')" class="flex-1 px-2 py-1.5 bg-indigo-900/50 text-[10px] font-bold text-indigo-300 border border-indigo-700 rounded hover:bg-indigo-800/50 transition-colors">🔥小哥雙刀流強化</button>
+                    </div>
+                </div>
+
+                <div class="space-y-4 border-b border-[#30363d] pb-4">
                     <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-purple-400">🧠 Groq API Key (AI 戰略大腦)</label>
+                        <label class="text-xs font-bold text-purple-400">🧠 Groq API Key (大腦金鑰)</label>
                         <div class="flex gap-2 items-center">
                             <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="輸入 Groq Key...">
                             <button onclick="app.verifyAPI('groq')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
                             <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq"></div>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-cyan-400">🌐 Massive API Key (美股備援)</label>
-                        <div class="flex gap-2 items-center">
-                            <input type="password" id="set_massiveKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-cyan-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="輸入 Massive Key...">
-                            <button onclick="app.verifyAPI('massive')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_massive"></div>
+                    
+                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                        <label class="text-xs font-bold text-green-400 mb-1">🔑 Fugle 輪動金鑰池 (台股即時)</label>
+                        <div class="flex gap-2 items-center mb-1.5">
+                            <input type="password" id="set_fugleToken1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 1...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle1"></div>
                         </div>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-green-400">🔑 Fugle API Token (台股即時現價)</label>
-                        <div class="flex gap-2 items-center">
-                            <input type="password" id="set_fugleToken" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="輸入 Token...">
-                            <button onclick="app.verifyAPI('fugle')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle"></div>
+                        <div class="flex gap-2 items-center mb-1.5">
+                            <input type="password" id="set_fugleToken2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 2 (選填)...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle2"></div>
                         </div>
+                        <div class="flex gap-2 items-center mb-1.5">
+                            <input type="password" id="set_fugleToken3" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 3 (選填)...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle3"></div>
+                        </div>
+                        <button onclick="app.verifyFugleKeys()" class="w-full px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition text-gray-300">驗證金鑰群</button>
                     </div>
+
                     <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-yellow-400">🔑 FinMind API Key (重訊/財報/籌碼)</label>
+                        <label class="text-xs font-bold text-yellow-400">🔑 FinMind API Key (備援快照)</label>
                         <div class="flex gap-2 items-center">
                             <input type="password" id="set_finmindKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="輸入 Key...">
                             <button onclick="app.verifyAPI('finmind')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
@@ -175,44 +146,28 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
                     <label class="text-sm font-bold text-blue-400">📦 資料保險箱 (備份還原)</label>
-                    <p class="text-xs text-gray-500 leading-tight">產生的代碼包含所有自選與庫存，換手機時貼入即可還原。</p>
+                    <p class="text-[10px] text-gray-500 leading-tight">可產生含金鑰或純策略之代碼，換機還原專用。</p>
                     <div class="flex gap-2 mb-1">
-                        <button onclick="app.exportData(); app.vibrate(50);" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 rounded font-bold transition">📤 產生備份代碼</button>
-                        <button onclick="app.importData(); app.vibrate(50);" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-sm py-2 rounded font-bold transition">📥 貼上後還原</button>
+                        <button onclick="app.exportData(); app.vibrate(50);" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 rounded font-bold transition">📤 產生備份</button>
+                        <button onclick="app.importData(); app.vibrate(50);" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-sm py-2 rounded font-bold transition">📥 貼上還原</button>
                     </div>
-                    <div id="exportAreaContainer" class="hidden flex flex-col gap-1">
-                        <textarea id="exportArea" class="w-full h-20 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="請將代碼貼於此處..."></textarea>
+                    <div id="exportAreaContainer" class="hidden flex gap-1">
+                        <textarea id="exportArea" class="flex-1 h-20 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="請將代碼貼於此處..."></textarea>
+                        <button onclick="app.copyExportData()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 rounded text-xs font-bold border border-gray-600 transition-colors break-words w-[4rem]">複製<br>代碼</button>
                     </div>
                 </div>
             </div>
             <div class="flex justify-end gap-2 border-t border-[#30363d] pt-3">
-                <button onclick="app.saveAndCloseSettings()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded transition-colors w-2/3 shadow-sm">💾 儲存</button>
-                <button onclick="app.cancelSettings()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 text-sm font-bold rounded transition-colors w-1/3 shadow-sm">❌ 關閉</button>
+                <button onclick="app.saveAndCloseSettings()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded transition-colors w-2/3 shadow-sm">💾 儲存並關閉</button>
+                <button onclick="app.cancelSettings()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 text-sm font-bold rounded transition-colors w-1/3 shadow-sm">❌ 取消</button>
             </div>
         </div>
     </div>
 
-    <div id="invModal" class="modal-base" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3>
-            <div class="relative w-full mb-3" id="invSearchInputWrapper">
-                <span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span>
-                <input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)"
-                    class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base">
-                <ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul>
-            </div>
-            <div class="w-full mb-4">
-                <span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span>
-                <input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base">
-            </div>
-            <div class="flex justify-end gap-2">
-                <button onclick="document.getElementById('invModal').style.display='none'" class="px-4 py-2 text-gray-400 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button>
-                <button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button>
-            </div>
-        </div>
-    </div>
+    <div id="invModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="document.getElementById('invModal').classList.add('hidden')" class="px-4 py-2 text-gray-400 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <div class="header-fixed w-full flex flex-col shadow-md">
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
@@ -221,7 +176,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V10.52</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.0</span>
                 </div>
             </div>
             
@@ -246,18 +201,17 @@
                 <span id="mktTWII" class="border-l border-gray-700 pl-2 flex-shrink-0">加權 --</span>
                 <span id="mktTWOII" class="border-l border-gray-700 pl-2 flex-shrink-0">櫃買 --</span>
                 <span class="border-l border-gray-700 pl-2 text-gray-500 hidden sm:inline flex-shrink-0">昨收 <span id="headerLastClose" class="text-gray-300 font-bold">--</span></span>
-                <button id="btnUSMarketTop" onclick="app.checkUSMarketAI(); app.vibrate(30);" class="ml-1 px-1.5 py-0.5 rounded font-bold border border-gray-600 bg-gray-800 text-gray-400 shadow-sm flex items-center gap-1 flex-shrink-0">🌎 美股: ⏰待分析</button>
             </div>
             <div class="pl-2 ml-auto flex-shrink-0">
                 <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] cursor-pointer hover:bg-gray-800 transition-colors" onclick="app.manualDataRefresh(); app.vibrate(50);">
                     <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                    <span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">自動更新(10s)</span>
+                    <span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時現價(10s)</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <main class="scrollable-main max-w-7xl mx-auto w-full relative">
+    <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
                 <div class="px-3 pt-3 pb-1.5 flex justify-between items-center">
@@ -268,7 +222,7 @@
                         </div>
                         <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-xs px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
-                            <span id="headerScoreStatus" class="hidden text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').style.display='flex'">--</span>
+                            <span id="headerScoreStatus" class="hidden text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').classList.remove('hidden')">--</span>
                             <span id="invBadge" class="hidden bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
                         </div>
                     </div>
@@ -287,7 +241,6 @@
             </div>
 
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
-
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <div class="flex bg-[#161b22] border-b border-[#30363d] p-2 gap-2">
                         <div class="flex-1 flex flex-col gap-1 relative">
@@ -301,6 +254,11 @@
                     </div>
                     
                     <div id="directActionBox" class="w-full p-4 md:p-5 flex flex-col items-center justify-center transition-all duration-300">
+                        <div id="confidenceLedBox" class="flex items-center justify-center gap-2 mb-3 px-3 py-1 bg-[#010409] rounded-full border border-[#30363d] shadow-inner">
+                            <div id="confLed" class="w-3 h-3 rounded-full bg-gray-500"></div>
+                            <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
+                        </div>
+
                         <span id="actionMainText" class="text-2xl md:text-3xl font-black tracking-widest text-center text-gray-400 w-full leading-tight">運算中...</span>
                         <div id="actionSubText" class="w-full mt-2 text-sm font-bold tracking-wide text-gray-300 text-center flex flex-col gap-1 leading-relaxed">等待系統計算...</div>
                         
@@ -321,9 +279,9 @@
 
                     <div class="p-3 bg-[#0d1117] flex flex-col gap-3 relative">
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-3 rounded-lg text-base font-black shadow-lg flex justify-center items-center gap-2 transition-all">
-                            🧠 請求 Groq AI 戰情總裁示 (含庫存)
+                            🧠 請求 Groq 戰情總裁示 (含庫存分析)
                         </button>
-                        <div id="geminiResultBox" class="hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-sm text-gray-300 leading-relaxed shadow-inner overflow-y-auto max-h-96"></div>
+                        <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-sm text-gray-300 leading-relaxed shadow-inner overflow-y-auto max-h-[30rem]"></div>
                     </div>
                 </div>
                 
@@ -344,7 +302,7 @@
                         </div>
                     </div>
                 </div>
-                </div>
+            </div>
 
             <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
@@ -362,7 +320,9 @@
                         </div>
                     </div>
                     <div id="chartHud" class="px-2 py-1.5 bg-[#000000] border-b border-[#30363d] min-h-[3rem] text-xs font-mono leading-relaxed flex flex-col gap-0.5">點擊 K 棒顯示詳細數據...</div>
-                    <div id="mainChart" class="w-full flex-grow min-h-[350px] bg-[#000000]"></div>
+                    <div id="mainChartWrap" class="zoomable-zone w-full flex-grow relative bg-[#000000]">
+                        <div id="mainChart" class="w-full h-full min-h-[350px]"></div>
+                    </div>
                     <div class="flex justify-between items-center bg-[#161b22] border-t border-[#30363d] p-1 text-xs font-bold mt-auto">
                         <button onclick="app.setSubChart('VOL')" id="btnSubVOL" class="flex-1 py-2 text-blue-400 bg-[#0d1117] rounded border border-[#30363d] transition-colors">成交量</button>
                         <button onclick="app.setSubChart('KD')" id="btnSubKD" class="flex-1 py-2 text-gray-400 border border-transparent transition-colors">KD</button>
@@ -464,7 +424,6 @@
                             <p><b class="text-pink-400">🎯 底部起漲 (春)：</b>剛站上月線且帶量點火。👉 <span class="text-gray-400">大盤震盪時安全買點。</span></p>
                             <p><b class="text-red-400">🚀 飆股動能 (夏)：</b>多頭排列沿布林上軌飛。👉 <span class="text-gray-400">大漲時賺快錢(破防守跑)。</span></p>
                             <p><b class="text-yellow-400">⭐ 綜合強勢：</b>直接體檢動能，分數達標代表盈虧比極佳。</p>
-                            <p class="text-[10px] text-gray-500 border-t border-gray-700 pt-1 mt-1 font-bold">🛡️ 系統防護：雷達全程使用歷史雲端數據庫掃描，不呼叫盤中 API。</p>
                         </div>
                     </div>
 
@@ -489,6 +448,38 @@
                 </div>
             </div>
         </div>
+
+        <div id="tabContentWar" class="hidden flex-col p-2 relative pb-10">
+            <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
+                <div class="px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm flex justify-between items-center">
+                    <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide"><span class="bg-indigo-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">照妖鏡</span> 大師戰情室</h2>
+                    <button onclick="app.refreshWarRoomPrices(); app.vibrate(30);" class="bg-[#21262d] hover:bg-gray-700 text-white px-3 py-1.5 rounded border border-[#30363d] text-xs font-bold transition-colors">🔄 刷新追蹤</button>
+                </div>
+                
+                <div class="p-3 bg-[#161b22] border-b border-[#30363d] flex flex-col gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-indigo-400 flex items-center gap-1"><span class="text-base">🤖</span> 智慧情報導入 (AI 自動解析)</label>
+                        <textarea id="warSmartInput" class="bg-[#010409] text-gray-300 p-2 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-indigo-500 transition-colors h-16 scrollbar-hide" placeholder="貼上 YouTube 逐字稿、新聞段落或老師說的話..."></textarea>
+                        <button onclick="app.smartParseWarRoom()" class="mt-1 w-full bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 border border-indigo-700 py-2 rounded text-xs font-bold transition-colors">⚡ Groq 自動萃取填入</button>
+                    </div>
+
+                    <div class="border-t border-[#30363d] pt-3 flex flex-col gap-2 relative">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="warAnalyst" placeholder="分析師 (如郭哲榮)" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm">
+                            <input type="text" id="warSymbol" placeholder="股票代號" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm font-mono text-center">
+                            <input type="number" id="warPrice" placeholder="當時價位" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm font-mono text-center">
+                            <input type="text" id="warReason" placeholder="推薦理由/喊盤內容" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm">
+                        </div>
+                        <button onclick="app.addWarRoomEntry()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-sm font-bold transition-colors shadow-lg">➕ 啟動五日監控追蹤</button>
+                    </div>
+                </div>
+
+                <div class="flex-grow bg-[#0d1117] p-2 overflow-y-auto">
+                    <div id="warRoomList" class="flex flex-col gap-3 pb-8"></div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <div class="nav-fixed w-full">
@@ -497,13 +488,45 @@
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[10px] mt-0.5 font-bold">自選</span></button>
             <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">💼</span><span class="text-[10px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[10px] mt-0.5 font-bold">雷達</span></button>
+            <button onclick="app.switchAppTab('war'); app.vibrate(30);" id="navBtnWar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">🕵️</span><span class="text-[10px] mt-0.5 font-bold">戰情</span></button>
         </nav>
     </div>
 
 <script>
 // ==========================================
-// V10.52 Web Worker 核心大腦演算法
+// 🧠 V14.0 首席 AI 戰略指令箱 (可抽換區)
 // ==========================================
+const AI_PROMPT_TEMPLATES = {
+    default: `你是「台股首席資安策略長」，融合權證小哥籌碼流與朱家泓技術位階學。語氣霸氣且幽默，杜絕 AI 幻想。
+
+【洗盤與信心邏輯】：
+- 偵測到「信心燈號為藍燈」時，必須強化用戶信心：「這是獵人洗盤，隱藏消息面偏多，依照防守線抱緊，不要被震掉！」
+- 偵測到「信心燈號為紅燈」且「散戶瘋狂追高」，必須發出絕殺令：「警告！利多出貨，這是小羊屠宰場，立刻撤退！」
+
+請根據【當下戰情參數】，給出：
+1. **【戰況與消息體檢】**：分析籌碼與基本面背離。
+2. **【關鍵價位與庫存策略】**：給出操作建議（強制針對庫存狀態建議）。
+3. **【操盤指令】**：一句話定調。
+4. **【最終判定燈號】**：獨立一行輸出 🟢強力買進 / 🟡觀望或減碼 / 🔴強制撤退。`,
+
+    dualBlade: `你是「台股首席資安策略長」，融合權證小哥籌碼流與朱家泓技術位階學。語氣霸氣且幽默，杜絕 AI 幻想。
+
+【小哥雙刀流：大哥被關找小弟】：
+1. 處置股偵測：若標的被標記為『處置股』或『注意股』（禁閉室），必須執行『擒賊先擒王』邏輯。
+2. 戰場轉移：主動告知：『目前大哥被抓去關，流動性受限。請注意同族群小弟是否有連動。』(舉例：安國被關注意神盾/安格；PCB被關注意記憶體)。
+3. 買盤竭盡：若同族群小弟跟著急拉但沒鎖死漲停，提示『買盤竭盡』的反手放空轉折點。
+
+【洗盤與信心邏輯】：
+- 偵測到「信心燈號為藍燈」時，提示：「這是獵人洗盤，隱藏消息面偏多，不要被震掉！」
+- 偵測到「信心燈號為紅燈」時，發出絕殺令：「警告！利多出貨，這是小羊屠宰場，立刻撤退！」
+
+請根據【當下戰情參數】，給出：
+1. **【戰況與消息體檢】**：分析籌碼與基本面背離。
+2. **【關鍵價位與雙刀流策略】**：給出操作建議（強制針對庫存狀態與連動族群建議）。
+3. **【操盤指令】**：一句話定調。
+4. **【最終判定燈號】**：獨立一行輸出 🟢強力買進 / 🟡觀望或減碼 / 🔴強制撤退。`
+};
+
 const masterWorkerCode = `
     self.onmessage = function(e) {
         const data = e.data.activeData;
@@ -574,7 +597,7 @@ const masterWorkerCode = `
                     let vPct = histAvgV > 0 ? data[i+j].volume / histAvgV : 1;
                     vDist += Math.pow(vPct - last5VPct[j-1], 2);
                 }
-                dist = dist + (vDist * 0.3); 
+                dist = dist + (vDist * 0.3);
                 matches.push({ idx: i+4, dist: dist, nextRet: ((data[i+5].close - data[i+4].close)/data[i+4].close) * 100 });
             }
             matches.sort((a,b) => a.dist - b.dist);
@@ -591,11 +614,12 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken: '', groqKey: '', finmindKey: '', massiveKey: '' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', groqKey: '', finmindKey: '', aiPrompt: '' },
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
     inventory: JSON.parse(localStorage.getItem('proTerminalInv')) || [],
+    warRoomData: JSON.parse(localStorage.getItem('proTerminalWarRoom')) || [],
     apiDataCache: {}, allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {},
     navStack: ['diag'], currentSymbolId: '2330', currentTF: 'D', currentSubChart: 'VOL',
     chartInstance: null, edgeSwipeStartX: 999,
@@ -603,6 +627,10 @@ const app = {
     peaks: [], troughs: [], twiiState: 'neutral', fiShortQty: 0, currentMarkPoints: [],
     sortableFav: null, sortableInv: null, apiRateLimited: false, emergencyMode: false,
     latestNewsCache: "", latestYoyCache: "", autoRefreshTimer: null,
+    
+    fugleKeyIndex: 0,
+    lastFugleReqTime: 0,
+    confidenceMsgCache: "等待運算",
 
     jargonDict: {
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。就像火箭加速衝刺的階段，遇到務必抱緊處理！',
@@ -627,22 +655,24 @@ const app = {
 
     vibrate(ms) { if(navigator.vibrate) navigator.vibrate(ms); },
 
-    // V10.52 首席執行令確認視窗
-    showConfirm(msg, onConfirm) {
+    showConfirm(msg, callback) {
         document.getElementById('confirmMsg').innerText = msg;
         const modal = document.getElementById('confirmModal');
+        modal.classList.remove('hidden');
         modal.style.display = 'flex';
-        document.getElementById('confirmActionBtn').onclick = () => {
-            onConfirm();
-            modal.style.display = 'none';
-        };
+        const btn = document.getElementById('confirmBtn');
+        btn.onclick = () => { modal.classList.add('hidden'); modal.style.display = 'none'; callback(); };
     },
 
     async init() {
         let saved = JSON.parse(localStorage.getItem('proTerminalSettings'));
         if (saved) {
-            if(saved.geminiKey && !saved.groqKey) saved.groqKey = saved.geminiKey; 
+            if(saved.fugleToken && !saved.fugleToken1) saved.fugleToken1 = saved.fugleToken;
             this.settings = { ...this.settings, ...saved };
+        }
+        
+        if (!this.settings.aiPrompt) {
+            this.settings.aiPrompt = AI_PROMPT_TEMPLATES.default;
         }
 
         this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
@@ -666,10 +696,77 @@ const app = {
         this.refreshInventoryPrices();
         this.renderFavTabs();
         this.renderRadarCache();
+        this.refreshWarRoomPrices();
         
         this.setupAutoRefresh();
-        this.checkUSMarketAI();
         this.initSwipeToDelete();
+        this.initSwipeNavigation();
+        this.initSpringBackZoom('mainChartWrap');
+        this.initSpringBackZoom('geminiResultBox');
+    },
+
+    initSwipeNavigation() {
+        let startX = 0, startY = 0;
+        const threshold = 50;
+        const edgeWidth = window.innerWidth * 0.15; 
+        const tabs = ['diag', 'fav', 'inv', 'radar', 'war'];
+
+        document.addEventListener('touchstart', e => {
+            if(e.target.closest('.swipe-container') || e.target.closest('.drag-handle') || e.target.closest('.zoomable-zone') || e.target.closest('textarea')) return;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        }, {passive: true});
+
+        document.addEventListener('touchend', e => {
+            if(e.target.closest('.swipe-container') || e.target.closest('.drag-handle') || e.target.closest('.zoomable-zone') || e.target.closest('textarea')) return;
+            let endX = e.changedTouches[0].clientX;
+            let endY = e.changedTouches[0].clientY;
+            let diffX = endX - startX;
+            let diffY = Math.abs(endY - startY);
+
+            if (Math.abs(diffX) > threshold && diffY < threshold * 2) {
+                let currentIdx = tabs.indexOf(this.navStack[this.navStack.length - 1] || 'diag');
+                if (diffX > 0 && startX < edgeWidth) {
+                    if (currentIdx > 0) { this.switchAppTab(tabs[currentIdx - 1]); this.vibrate(30); }
+                } else if (diffX < 0 && startX > window.innerWidth - edgeWidth) {
+                    if (currentIdx < tabs.length - 1) { this.switchAppTab(tabs[currentIdx + 1]); this.vibrate(30); }
+                }
+            }
+        });
+    },
+
+    initSpringBackZoom(elementId) {
+        const el = document.getElementById(elementId);
+        if(!el) return;
+        let initialDist = 0;
+        
+        el.addEventListener('touchstart', e => {
+            if(e.touches.length === 2) {
+                initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                el.style.transition = 'none';
+            }
+        }, {passive: false});
+
+        el.addEventListener('touchmove', e => {
+            if(e.touches.length === 2 && initialDist > 0) {
+                e.preventDefault();
+                let currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                let scale = currDist / initialDist;
+                if(scale < 1) scale = 1;
+                if(scale > 3) scale = 3;
+                el.style.transform = `scale(${scale})`;
+                el.style.zIndex = '100';
+            }
+        }, {passive: false});
+
+        el.addEventListener('touchend', e => {
+            if(e.touches.length < 2) {
+                initialDist = 0;
+                el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                el.style.transform = 'scale(1)';
+                setTimeout(() => { if(el.style.transform === 'scale(1)') el.style.zIndex = 'auto'; }, 400);
+            }
+        });
     },
     
     initSwipeToDelete() {
@@ -703,6 +800,9 @@ const app = {
     setupAutoRefresh() {
         if (this.autoRefreshTimer) clearInterval(this.autoRefreshTimer);
         this.autoRefreshTimer = setInterval(() => {
+            const hasOpenModal = Array.from(document.querySelectorAll('.modal-base')).some(m => !m.classList.contains('hidden') || m.style.display === 'flex');
+            if (hasOpenModal) return; 
+
             if (this.isMarketOpen() && this.currentSymbolId && this.navStack[this.navStack.length - 1] === 'diag') {
                 this.analyze(this.currentSymbolId, true, true, true); 
             }
@@ -712,12 +812,12 @@ const app = {
     forceStopLoading() { document.getElementById('loadingOverlay').style.display = 'none'; },
 
     switchAppTab(tabId, isGoBack = false) {
-        if(tabId !== 'diag' && document.getElementById('settingsModal').style.display === 'flex') {
-            this.saveSettings(); document.getElementById('settingsModal').style.display='none';
+        if(tabId !== 'diag' && !document.getElementById('settingsModal').classList.contains('hidden')) {
+            this.saveSettings(); document.getElementById('settingsModal').classList.add('hidden');
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         
-        ['Diag', 'Fav', 'Inv', 'Radar'].forEach(tab => {
+        ['Diag', 'Fav', 'Inv', 'Radar', 'War'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             document.getElementById(`tabContent${tab}`).style.display = isMatch ? 'flex' : 'none';
             document.getElementById(`navBtn${tab}`).classList.toggle('active', isMatch);
@@ -730,6 +830,7 @@ const app = {
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
         if (tabId === 'radar') this.renderRadarCache();
+        if (tabId === 'war') this.renderWarRoom();
     },
 
     switchSubTab(tab) {
@@ -741,30 +842,45 @@ const app = {
     },
 
     openSettings() { 
+        document.getElementById('set_aiPrompt').value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
         document.getElementById('set_groqKey').value = this.settings.groqKey || '';
-        document.getElementById('set_fugleToken').value = this.settings.fugleToken || '';
+        document.getElementById('set_fugleToken1').value = this.settings.fugleToken1 || '';
+        document.getElementById('set_fugleToken2').value = this.settings.fugleToken2 || '';
+        document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
         document.getElementById('set_finmindKey').value = this.settings.finmindKey || '';
-        document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         document.getElementById('exportAreaContainer').classList.add('hidden');
-        document.getElementById('settingsModal').style.display = 'flex'; 
+        const modal = document.getElementById('settingsModal');
+        modal.classList.remove('hidden'); modal.style.display = 'flex';
     },
     
+    resetPrompt(type) {
+        this.settings.aiPrompt = AI_PROMPT_TEMPLATES[type];
+        document.getElementById('set_aiPrompt').value = this.settings.aiPrompt;
+        this.saveSettings();
+        this.vibrate(30);
+    },
+
     cancelSettings() { 
-        this.saveSettings(); document.getElementById('settingsModal').style.display = 'none'; 
+        this.saveSettings(); 
+        const modal = document.getElementById('settingsModal');
+        modal.classList.add('hidden'); modal.style.display = 'none';
     },
 
     saveSettings() {
+        this.settings.aiPrompt = document.getElementById('set_aiPrompt').value.trim();
         this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
-        this.settings.fugleToken = document.getElementById('set_fugleToken').value.trim();
+        this.settings.fugleToken1 = document.getElementById('set_fugleToken1').value.trim();
+        this.settings.fugleToken2 = document.getElementById('set_fugleToken2').value.trim();
+        this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
         this.settings.finmindKey = document.getElementById('set_finmindKey').value.trim();
-        this.settings.massiveKey = document.getElementById('set_massiveKey').value.trim();
         localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
 
     saveAndCloseSettings() {
-        this.saveSettings(); document.getElementById('settingsModal').style.display = 'none';
-        this.checkUSMarketAI(); 
+        this.saveSettings(); 
+        const modal = document.getElementById('settingsModal');
+        modal.classList.add('hidden'); modal.style.display = 'none';
     },
 
     async verifyAPI(type) {
@@ -776,30 +892,55 @@ const app = {
                 if(!this.settings.groqKey) throw new Error();
                 const res = await fetch(`https://api.groq.com/openai/v1/models`, { headers: { 'Authorization': `Bearer ${this.settings.groqKey}` } });
                 if(res.ok) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
-            } else if (type === 'fugle') {
-                if(!this.settings.fugleToken) throw new Error();
-                const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/2330`, { headers: { 'X-API-KEY': this.settings.fugleToken } });
-                if(res.ok) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
             } else if (type === 'finmind') {
                 if(!this.settings.finmindKey) throw new Error();
                 const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${this.settings.finmindKey}`);
                 if(res.ok) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
-            } else if (type === 'massive') {
-                if(!this.settings.massiveKey) throw new Error();
-                if(this.settings.massiveKey.length > 5) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
             }
         } catch(e) {
             led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
         }
     },
 
+    async verifyFugleKeys() {
+        this.saveSettings();
+        const keys = [
+            { id: 'fugle1', token: this.settings.fugleToken1 },
+            { id: 'fugle2', token: this.settings.fugleToken2 },
+            { id: 'fugle3', token: this.settings.fugleToken3 }
+        ];
+
+        for (let k of keys) {
+            const led = document.getElementById(`led_${k.id}`);
+            if(!k.token) {
+                led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 bg-gray-600";
+                continue;
+            }
+            led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
+            try {
+                const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/2330`, { headers: { 'X-API-KEY': k.token } });
+                if(res.ok) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500";
+                else throw new Error();
+            } catch(e) {
+                led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
+            }
+        }
+    },
+
     exportData() {
         this.saveSettings();
-        const data = { inv: this.inventory, favGroups: this.favGroups, set: this.settings };
+        const data = { inv: this.inventory, favGroups: this.favGroups, set: this.settings, war: this.warRoomData };
         const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
         document.getElementById('exportAreaContainer').classList.remove('hidden'); 
         document.getElementById('exportArea').value = encoded;
-        try { navigator.clipboard.writeText(encoded); } catch(e) {}
+    },
+
+    copyExportData() {
+        const area = document.getElementById('exportArea');
+        if(!area.value) return;
+        area.select();
+        document.execCommand('copy');
+        alert('✅ API Key 與設定代碼已複製到剪貼簿！');
     },
 
     importData() {
@@ -810,17 +951,23 @@ const app = {
             const data = JSON.parse(decodeURIComponent(escape(atob(str))));
             if(data.inv) this.inventory = data.inv;
             if(data.favGroups) this.favGroups = data.favGroups;
-            if(data.set) this.settings = { ...this.settings, ...data.set };
+            if(data.war) this.warRoomData = data.war;
+            if(data.set) {
+                if(data.set.fugleToken && !data.set.fugleToken1) data.set.fugleToken1 = data.set.fugleToken;
+                this.settings = { ...this.settings, ...data.set };
+            }
             
             localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
             localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
             localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
+            localStorage.setItem('proTerminalWarRoom', JSON.stringify(this.warRoomData));
             this.activeGroupName = Object.keys(this.favGroups)[0] || "首席自選清單";
             localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
 
             alert('✅ 資料與金鑰已完美還原！');
+            document.getElementById('settingsModal').classList.add('hidden');
             document.getElementById('settingsModal').style.display = 'none';
-            this.refreshInventoryPrices(); this.renderFavTabs();
+            this.refreshInventoryPrices(); this.renderFavTabs(); this.renderWarRoom();
             if(this.currentSymbolId) this.analyze(this.currentSymbolId, true);
         } catch(e) { alert('❌ 代碼解析錯誤！'); }
     },
@@ -854,6 +1001,11 @@ const app = {
         if (this.apiRateLimited) return;
         this.apiRateLimited = true;
         document.getElementById('apiWarningBanner').classList.remove('hidden');
+        
+        document.getElementById('dataSourceText').innerText = "擁擠(防守模式)";
+        document.getElementById('dataSourceText').className = "font-bold text-red-400 text-[10px] font-mono tracking-wide";
+        document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse";
+        
         setTimeout(() => { this.apiRateLimited = false; document.getElementById('apiWarningBanner').classList.add('hidden'); }, 300000); 
     },
 
@@ -868,37 +1020,20 @@ const app = {
         try {
             const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 5000);
             
-            // V10.52: 外資空單雙軌備援抓取
-            let taifexRes, taifexData = null;
+            let taifexData = null;
             try {
-                taifexRes = await fetch('https://openapi.taifex.com.tw/v1/DailyFuturesInstitutionalInvestors', {signal: controller.signal});
-                if(taifexRes.ok) {
-                    const rawTaifex = await taifexRes.json();
-                    const txData = rawTaifex.filter(d => (d.CommodityId === 'TXF' || d.CommodityName === '臺股期貨') && d.Identity === '外資及陸資');
-                    if(txData.length > 0) {
-                        txData.sort((a,b) => new Date(b.Date) - new Date(a.Date));
-                        taifexData = parseInt(txData[0].NetOpenInterest);
-                        if(isNaN(taifexData)) taifexData = null;
-                    }
-                }
-            } catch(e) { console.log("TAIFEX OpenAPI Failed"); }
-
-            // 備援：若官方 OpenAPI 斷訊，改用 FinMind
-            if (taifexData === null) {
-                try {
-                    let fmRes = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date=${startDate}${tokenStr}`, {signal: controller.signal});
-                    if (fmRes.ok) {
-                        const fmJson = await fmRes.json();
-                        if (fmJson.data && fmJson.data.length > 0) {
-                            const foreign = fmJson.data.filter(x => x.institutional_investors === '外資及陸資');
-                            if (foreign.length > 0) {
-                                taifexData = parseInt(foreign[foreign.length - 1].open_interest_net_volume);
-                                if(isNaN(taifexData)) taifexData = null;
-                            }
+                let fmRes = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date=${startDate}${tokenStr}`, {signal: controller.signal});
+                if (fmRes.ok) {
+                    const fmJson = await fmRes.json();
+                    if (fmJson.data && fmJson.data.length > 0) {
+                        const foreign = fmJson.data.filter(x => x.institutional_investors === '外資及陸資' || x.institutional_investors === '外資');
+                        if (foreign.length > 0) {
+                            taifexData = parseInt(foreign[foreign.length - 1].open_interest_net_volume);
+                            if(isNaN(taifexData)) taifexData = null;
                         }
                     }
-                } catch(e) { console.log("FinMind Fallback Failed"); }
-            }
+                }
+            } catch(e) { console.log("FinMind TX API Failed"); }
 
             const [resTaiex, resTpex] = await Promise.all([
                 fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=TAIEX&start_date=${startDate}${tokenStr}`, {signal: controller.signal}),
@@ -944,7 +1079,7 @@ const app = {
 
         const emergencyBanner = document.getElementById('emergencyBanner');
         if (this.emergencyMode) { 
-            emergencyBanner.innerHTML = `🔴 系統性風險警戒：外資空單高達 ${Math.abs(this.fiShortQty)} 口！強制進入現金避險模式，嚴禁接刀摸底！`; 
+            emergencyBanner.innerHTML = `🚨 【黑天鵝警報】外資空單高達 ${Math.abs(this.fiShortQty)} 口！現金避險，嚴禁摸底！`; 
             emergencyBanner.classList.remove('hidden'); document.body.classList.add('bg-red-950/20'); 
         } else { 
             emergencyBanner.classList.add('hidden'); document.body.classList.remove('bg-red-950/20');
@@ -1003,14 +1138,34 @@ const app = {
         }
     },
 
+    getFugleToken() {
+        const keys = [this.settings.fugleToken1, this.settings.fugleToken2, this.settings.fugleToken3].filter(k => k && k.trim() !== '');
+        if (keys.length === 0) return null;
+        const token = keys[this.fugleKeyIndex % keys.length];
+        this.fugleKeyIndex++;
+        return token;
+    },
+
     async fetchFugleData(symbol) {
-        if (!this.settings.fugleToken || this.apiRateLimited) return null;
+        if (this.apiRateLimited) return null;
+        const token = this.getFugleToken();
+        if (!token) return null;
+
+        const now = Date.now();
+        const timeSinceLast = now - this.lastFugleReqTime;
+        if (timeSinceLast < 1100) {
+            await new Promise(resolve => setTimeout(resolve, 1100 - timeSinceLast));
+        }
+        this.lastFugleReqTime = Date.now();
+
         try {
-            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}`, { headers: { 'X-API-KEY': this.settings.fugleToken }, signal: controller.signal });
+            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 4000);
+            const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}`, { headers: { 'X-API-KEY': token }, signal: controller.signal });
             clearTimeout(timeoutId);
+            
             if (res.status === 429) { this.triggerApiLock(); return null; }
             if (!res.ok) return null;
+            
             const q = (await res.json()).data?.quote;
             if (!q || !q.trade || !q.trade.price) return null;
             return { price: q.trade.price, open: q.priceOpen?.price || q.trade.price, high: q.priceHigh?.price || q.trade.price, low: q.priceLow?.price || q.trade.price, volume: q.total?.tradeVolume || 0 };
@@ -1083,9 +1238,8 @@ const app = {
             divBox.innerHTML = html;
         } catch(e) { divBox.innerHTML = `<span class="text-gray-500 text-xs">股利連線失敗</span>`; }
 
-        // V10.52: 營收 YoY 強攻邏輯與容錯計算
         try {
-            let d = new Date(); d.setMonth(d.getMonth() - 15); // 退後 15 個月確保抓到去年資料
+            let d = new Date(); d.setMonth(d.getMonth() - 15);
             let startDate = d.toISOString().split('T')[0];
             const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${startDate}${tokenStr}`);
             const data = await res.json();
@@ -1093,7 +1247,6 @@ const app = {
                 let latest = data.data[data.data.length - 1];
                 let yoy = latest.revenue_year_growth ?? latest.revenue_YearExchangeRate ?? latest.revenue_month_growth;
                 
-                // 容錯計算：如果 API 沒給 YoY 欄位，我們自己算
                 if (yoy === null || yoy === undefined || yoy === "N/A" || yoy === "") {
                     const lastYearRecord = data.data.find(x => x.revenue_month === latest.revenue_month && x.revenue_year === (latest.revenue_year - 1));
                     if (lastYearRecord && lastYearRecord.revenue > 0) {
@@ -1120,7 +1273,7 @@ const app = {
                 recent.forEach(d => {
                     if(!seenTitles.has(d.title)) {
                         seenTitles.add(d.title);
-                        let isImportant = d.title.includes('營收') || d.title.includes('處置') || d.title.includes('法說');
+                        let isImportant = d.title.includes('營收') || d.title.includes('處置') || d.title.includes('注意') || d.title.includes('法說');
                         if(d.title.includes('法說')) hasConf = true;
                         
                         let dObj = new Date(d.date);
@@ -1145,7 +1298,6 @@ const app = {
         document.getElementById('loadingText').innerText = "強制同步最新雲端資料...";
         document.getElementById('loadingOverlay').style.display = 'flex';
         await this.analyze(this.currentSymbolId, true, true);
-        this.checkUSMarketAI(); 
         document.getElementById('loadingOverlay').style.display = 'none';
         document.getElementById('loadingText').innerText = "雲端大數據運算中...";
     },
@@ -1188,10 +1340,10 @@ const app = {
         if(this.isMarketOpen()) {
             fugleData = await this.fetchFugleData(targetSym);
             if(fugleData) {
-                document.getElementById('dataSourceText').innerText = "自動更新(10s)";
+                document.getElementById('dataSourceText').innerText = "自動更新(輪動)";
                 document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
                 document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
-            } else {
+            } else if (!this.apiRateLimited) {
                 document.getElementById('dataSourceText').innerText = "即時連線異常";
                 document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
                 document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
@@ -1337,7 +1489,8 @@ const app = {
         const desc = this.jargonDict[term]; if(!desc) return;
         document.getElementById('jargonTitle').innerHTML = `💡 ${term}`;
         document.getElementById('jargonDesc').innerText = desc;
-        document.getElementById('jargonModal').style.display = 'flex';
+        const modal = document.getElementById('jargonModal');
+        modal.classList.remove('hidden'); modal.style.display = 'flex';
     },
 
     getPriceHTML(targetVal, currentPrice) {
@@ -1391,6 +1544,33 @@ const app = {
         document.getElementById('aiTranslatorCard').innerHTML = statusHtml + bodyHtml;
     },
 
+    updateConfidenceLed(yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx) {
+        let isYoYGood = !isNaN(yoyNum) && yoyNum > 15;
+        let isChipGood = hasChipCost && pC > (chipCostVal * 0.95);
+        let isPriceDropping = pC < ma5;
+        let isHighRisk = (ma20 !== null && pC < ma20) || this.emergencyMode || ctx.isIslandReversal || ctx.isBigBlackK;
+
+        let ledClass = "bg-gray-500", confMsg = "震盪觀望";
+
+        if (isYoYGood && isChipGood && isPriceDropping && !isHighRisk) {
+            ledClass = "bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)] animate-pulse";
+            confMsg = "藍燈：基本面籌碼雙支撐，高機率大戶洗盤，請抱緊！";
+        } else if (isHighRisk) {
+            ledClass = "bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-pulse-fast";
+            confMsg = "紅燈：主力棄守或型態破壞，請準備撤退！";
+        } else if (ctx.season === '夏') {
+            ledClass = "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]";
+            confMsg = "綠燈：趨勢狂飆中，不破 5MA 不賣。";
+        } else {
+            ledClass = "bg-white shadow-[0_0_10px_rgba(255,255,255,0.4)]";
+            confMsg = "白燈：多空拉鋸，請嚴守均線紀律。";
+        }
+
+        document.getElementById('confLed').className = `w-3 h-3 rounded-full ${ledClass}`;
+        document.getElementById('confText').innerText = confMsg;
+        this.confidenceMsgCache = confMsg;
+    },
+
     refreshStrategy() {
         if (!this.activeData || !this.activeData.length || !this.indicators.ma20) return;
         this.findPeaksAndTroughs();
@@ -1421,8 +1601,13 @@ const app = {
 
         let sObj = this.getSeasonObj(pC, pO, pH, pL, pV, pC1, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB), season = sObj.name;
         
-        let tagsHtml = `<span onclick="document.getElementById('seasonModal').style.display='flex'" class="px-2 py-0.5 rounded border text-xs font-bold flex items-center gap-1 ${sObj.style}"><span>${sObj.icon}</span>${sObj.name} <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span></span>`;
-        if (isIslandReversal) tagsHtml += `<span class="bg-purple-900/80 text-purple-200 border border-purple-500 text-[10px] px-1.5 py-0.5 rounded font-bold animate-pulse">💀島型反轉</span>`;
+        let tagsHtml = `<span onclick="document.getElementById('seasonModal').classList.remove('hidden'); document.getElementById('seasonModal').style.display='flex';" class="px-2 py-0.5 rounded border text-xs font-bold flex items-center gap-1 ${sObj.style}"><span>${sObj.icon}</span>${sObj.name} <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span></span>`;
+        
+        if (this.latestNewsCache.includes('處置') || this.latestNewsCache.includes('注意')) {
+            tagsHtml += `<span class="bg-yellow-900/80 text-yellow-200 border border-yellow-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 animate-pulse">🔒禁閉室</span>`;
+        }
+        if (isIslandReversal) tagsHtml += `<span class="bg-purple-900/80 text-purple-200 border border-purple-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 animate-pulse">💀島型反轉</span>`;
+        
         document.getElementById('stockTags').innerHTML = tagsHtml;
         
         const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
@@ -1482,7 +1667,7 @@ const app = {
             boxStyle = "border-orange-500 bg-orange-900/20 text-orange-400 animate-pulse";
             t1_val = pC; t2_val = null; def_val = ma20; defLabel = "🛡️ 波段防守(月線)";
             actionText = `⚠️ 準備結帳，分批停利`; actionSubText = `🍁 秋季盤頭期：股價進入末升段高檔，動能衰退或爆量。請嚴格執行分批停利，準備收割。`;
-            smartInstruction = `🤖 <b>建議：</b> 啟 পণ্ডিত動分批結帳。`;
+            smartInstruction = `🤖 <b>建議：</b> 啟動分批結帳。`;
         }
         else if (season === '春') {
             boxStyle = "border-pink-500 bg-pink-900/10 text-pink-400";
@@ -1515,6 +1700,9 @@ const app = {
 
         this.currentStrategyContext = { season, def_val, t1_val, isIslandReversal, isBigBlackK };
 
+        let yoyNum = parseFloat(this.latestYoyCache.replace(/[^0-9.-]/g, ''));
+        this.updateConfidenceLed(yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, this.currentStrategyContext);
+
         actionBox.className = `w-full p-3 md:p-4 flex flex-col items-center justify-center transition-all duration-300 border-b border-[#30363d] ${boxStyle}`;
         document.getElementById('actionMainText').innerHTML = actionText; document.getElementById('actionMainText').className = `text-xl md:text-2xl font-black tracking-widest text-center w-full leading-tight ${boxStyle.split(' ')[2]}`;
         document.getElementById('actionSubText').innerHTML = actionSubText + safetyMarginText;
@@ -1545,7 +1733,7 @@ const app = {
         if (alpha.isFatal) { sHtml.push(`<div class="mt-3 p-2 bg-red-900/30 border border-red-800 rounded text-red-400 text-xs font-bold text-center">💀 致命風險：觸發一票否決，總分歸零。</div>`); scoreSummary = "極端危險，強烈建議空手觀望，嚴禁進場。"; } 
         else if (totalScore >= 75) scoreSummary = "天時地利人和，動能極強，請依防守線勇敢建倉。";
         else if (totalScore >= 45) scoreSummary = "動能溫吞或高檔面臨壓力，建議縮小部位或短線操作。";
-        else scoreSummary = "多頭動能耗盡或均線弱勢，嚴禁追高，持股準備結帳。";
+        else scoreSummary = "多頭動能耗盡或均弱勢，嚴禁追高，持股準備結帳。";
 
         sHtml.push(`<div class="border-t border-gray-700 my-2"></div><div class="flex justify-between items-center py-1 text-yellow-400 font-black text-xl"><span>綜合動能評分</span><span>${totalScore}</span></div>`);
         sHtml.push(`<div class="mt-1 pt-2 border-t border-gray-700 text-gray-300 font-bold text-xs italic leading-relaxed">💡 系統總評：${scoreSummary}</div>`);
@@ -1603,7 +1791,7 @@ const app = {
         }
 
         const option = {
-            animation: false, backgroundColor: '#000000', tooltip: { trigger: 'axis', triggerOn: 'click', axisPointer: { type: 'cross' }, showContent: false },
+            animation: false, backgroundColor: 'transparent', tooltip: { trigger: 'axis', triggerOn: 'click', axisPointer: { type: 'cross' }, showContent: false },
             axisPointer: { link: [{ xAxisIndex: 'all' }] },
             grid: [{ left: '12%', right: '2%', top: '5%', height: '55%' }, { left: '12%', right: '2%', top: '65%', height: '30%' }],
             xAxis: [{ type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { color: '#8b949e', fontSize: 10 } }],
@@ -1763,7 +1951,7 @@ const app = {
             html += `</div>`;
         }
         if (!this.isFavEditMode) {
-            html += `<button class="px-3 py-2 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-sm font-bold" onclick="document.getElementById('groupModalTitle').innerText='➕ 新增自選清單'; document.getElementById('groupModalMode').value='create'; document.getElementById('groupModal').style.display='flex'">➕ 新增</button>`;
+            html += `<button class="px-3 py-2 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-sm font-bold" onclick="document.getElementById('groupModalTitle').innerText='➕ 新增自選清單'; document.getElementById('groupModalMode').value='create'; document.getElementById('groupModal').classList.remove('hidden'); document.getElementById('groupModal').style.display='flex';">➕ 新增</button>`;
         }
         html += `</div>`;
         container.innerHTML = html;
@@ -1788,14 +1976,15 @@ const app = {
         
         localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
         localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
-        document.getElementById('groupModal').style.display='none'; document.getElementById('groupNameInput').value = ''; this.renderFavTabs();
+        document.getElementById('groupModal').classList.add('hidden'); document.getElementById('groupModal').style.display='none'; document.getElementById('groupNameInput').value = ''; this.renderFavTabs();
     },
 
     renameFavGroup(oldName) {
         document.getElementById('groupModalTitle').innerText = `✏️ 重新命名 [${oldName}]`;
         document.getElementById('groupModalMode').value = `rename:${oldName}`;
         document.getElementById('groupNameInput').value = oldName;
-        document.getElementById('groupModal').style.display='flex';
+        const modal = document.getElementById('groupModal');
+        modal.classList.remove('hidden'); modal.style.display='flex';
     },
 
     deleteFavGroup(group) {
@@ -1857,7 +2046,12 @@ const app = {
         }
     },
 
-    openInvModal() { document.getElementById('invModalInput').value = this.currentSymbolId; document.getElementById('invBuyDateInput').value = this.getTodayStr().replace(/\//g, '-'); document.getElementById('invModal').style.display='flex'; },
+    openInvModal() { 
+        document.getElementById('invModalInput').value = this.currentSymbolId; 
+        document.getElementById('invBuyDateInput').value = this.getTodayStr().replace(/\//g, '-'); 
+        const modal = document.getElementById('invModal');
+        modal.classList.remove('hidden'); modal.style.display='flex'; 
+    },
     
     confirmAddInventory() {
         const sym = document.getElementById('invModalInput').value.trim();
@@ -1865,7 +2059,8 @@ const app = {
         if(!sym) return;
         this.inventory.push({ symbol: sym, cost: parseFloat(document.getElementById('costInput').value) || 0, buyDate: date });
         localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
-        document.getElementById('invModal').style.display='none';
+        const modal = document.getElementById('invModal');
+        modal.classList.add('hidden'); modal.style.display='none';
         this.refreshInventoryPrices();
     },
 
@@ -2000,7 +2195,7 @@ const app = {
         if (!this.activeData || this.activeData.length === 0) { alert("⚠️ 請先確認股票資料已完整載入！"); return; }
 
         box.classList.remove('hidden');
-        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ Groq 雙軌推論引擎啟動中... <br><span class="text-[10px] text-gray-500">正在分析庫存部位、基本面與消息情緒</span></div>';
+        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ Groq 雙軌推論引擎啟動中... <br><span class="text-[10px] text-gray-500">正在打包最新戰情資料...</span></div>';
 
         const lastC = this.activeData[this.activeData.length - 1].close;
         const name = this.getStockName(this.currentSymbolId);
@@ -2029,26 +2224,21 @@ const app = {
         
         const chipCost = document.getElementById('chipCostInput').value || '未提供';
 
-        const prompt = `你是頂級台股操盤手與首席資安策略長。請對「${name}(${this.currentSymbolId})」給出【三段式作戰計畫】。
+        const basePrompt = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
+        const prompt = `${basePrompt}
         
-        【情報與庫存狀態】：
+        【當下戰情參數】：
+        - 標的：${name}(${this.currentSymbolId})
         - 現價: ${lastC}
         - 系統判定趨勢位階: ${ctx.season || '不明'}季
         - 系統防守底線: ${ctx.def_val || '無'}
         - 島型反轉/大黑K風險: ${ctx.isIslandReversal || ctx.isBigBlackK ? '是' : '否'}
         - 主力成本線: ${chipCost}
+        - 系統信心燈號: ${this.confidenceMsgCache}
         - 庫存狀態: ${invStatusText}
         - 跌破防守且虧損狀態: ${isLosingAndBroken ? '【是！已嚴重違紀】' : '否'}
         - 最新營收 YoY: ${this.latestYoyCache || '無最新資料'}
-        - 近期重大訊息: ${this.latestNewsCache || '無'}
-        
-        【任務】：
-        請嚴格以 Markdown 格式輸出以下三個段落，文字必須精簡、權威霸氣，絕不使用簡體字與贅字：
-        1. **【戰況與消息體檢】**：綜合分析籌碼、營收 YoY 與新聞。必須執行情緒過濾：若發布利多但跌破主力成本或股價不漲，務必警告「利多鈍化或主力洗盤」；若利空不跌則提示「低檔洗盤」。
-        2. **【關鍵價位與庫存策略】**：精確指出防守價。並「強制針對使用者的庫存狀態」給出建議。若為持有且虧損，且跌破防守線，務必強制輸出「絕對停損，不准回頭」；若為空手，給出獵殺建倉點位。
-        3. **【操盤指令】**：一句話定調。
-        
-        結尾必須獨立一行給出：【最終判定燈號】：🟢強力買進 / 🟡觀望或減碼 / 🔴強制撤退。`;
+        - 近期重大訊息: ${this.latestNewsCache || '無'}`;
         
         try {
             const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
@@ -2076,59 +2266,262 @@ const app = {
         } 
     },
 
-    async checkUSMarketAI() {
-        const btn = document.getElementById('btnUSMarketTop');
-        const banner = document.getElementById('emergencyBanner');
+    // ==========================================
+    // 🕵️ V14.0 大師戰情室 (War Room)
+    // ==========================================
 
-        if (this.settings.massiveKey) {
-            btn.innerHTML = `🌎 美股: 🟡(Massive對接中)`;
-            try {
-                const res = await fetch(`https://api.massiveapi.com/v1/us-market?key=${this.settings.massiveKey}`).catch(() => null);
-                btn.innerHTML = `🌎 美股: 🟢大漲`;
-                btn.className = "ml-1 px-1.5 py-0.5 rounded font-bold border border-green-800 bg-green-900/30 text-green-300 transition-colors shadow-sm whitespace-nowrap flex-shrink-0 text-[10px]";
-                this.currentUSMarket = 'bull';
-                return; 
-            } catch(e) { console.log("Massive API 抓取失敗，啟動備援"); }
-        }
+    generateId() { return '_' + Math.random().toString(36).substr(2, 9); },
 
-        if(!this.settings.groqKey) {
-            btn.innerHTML = `🌎 美股: ⏰待分析(需Key)`;
-            btn.className = "ml-1 px-1.5 py-0.5 rounded font-bold border border-gray-600 bg-gray-800 text-gray-400 shadow-sm flex items-center gap-1 whitespace-nowrap flex-shrink-0 text-[10px]";
-            return;
-        }
+    async smartParseWarRoom() {
+        const text = document.getElementById('warSmartInput').value.trim();
+        const key = this.settings.groqKey;
+        if(!key) { alert("⚠️ 請先至設定中心填寫 Groq API Key！"); return; }
+        if(!text) { alert("⚠️ 請貼上逐字稿或老師語錄"); return; }
 
-        btn.innerHTML = `🌎 美股: 🟡(AI分析中)`;
+        document.getElementById('loadingText').innerText = "AI 正在解析大師語錄...";
+        document.getElementById('loadingOverlay').style.display = 'flex';
+
+        const prompt = `你是一個金融情報提取器。請從以下文字中提取股票推薦資訊。
+輸出必須是純 JSON 格式，不含任何 Markdown 標記，直接輸出 JSON 物件。
+格式要求：
+{
+  "analyst": "分析師名字(如郭哲榮, 李兆華, 或未提及)",
+  "symbol": "四碼股票代號(若只有名稱請轉為代號，找不到填null)",
+  "price": 數字(當時提及的價位，找不到填null),
+  "reason": "推薦理由(限20字內)"
+}
+文字內容：${text}`;
+
         try {
-            const prompt = "Please respond with exactly one word: 'bull', 'bear', 'crash', or 'neutral' describing the current or yesterday's US stock market performance (S&P 500/Nasdaq). If it dropped more than 2.5% or has a systemic risk, say 'crash'.";
-            const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, { 
+            const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
                 method: 'POST', 
-                headers: { 'Authorization': `Bearer ${this.settings.groqKey}`, 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: "user", content: prompt }]}) 
+                headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: "user", content: prompt }],
+                    temperature: 0.1
+                })
             });
             const data = await res.json();
-            const text = data.choices[0].message.content.toLowerCase();
+            if (!res.ok || data.error) throw new Error(data.error?.message);
             
-            if(text.includes('crash')) {
-                btn.innerHTML = `🌎 美股: 💀崩盤`;
-                btn.className = "ml-1 px-1.5 py-0.5 rounded font-bold border border-red-800 bg-red-900 text-white animate-pulse shadow-sm whitespace-nowrap flex-shrink-0 text-[10px]";
-                banner.classList.remove('hidden'); banner.classList.add('animate-siren');
-                this.currentUSMarket = 'crash';
-            } else if(text.includes('bear')) {
-                btn.innerHTML = `🌎 美股: 🔴重挫`;
-                btn.className = "ml-1 px-1.5 py-0.5 rounded font-bold border border-red-800 bg-red-900/30 text-red-300 transition-colors shadow-sm whitespace-nowrap flex-shrink-0 text-[10px]";
-                this.currentUSMarket = 'bear';
-            } else if(text.includes('bull')) {
-                btn.innerHTML = `🌎 美股: 🟢大漲`;
-                btn.className = "ml-1 px-1.5 py-0.5 rounded font-bold border border-green-800 bg-green-900/30 text-green-300 transition-colors shadow-sm whitespace-nowrap flex-shrink-0 text-[10px]";
-                this.currentUSMarket = 'bull';
+            let resultStr = data.choices[0].message.content.trim();
+            resultStr = resultStr.replace(/```json/g, '').replace(/```/g, '');
+            const parsed = JSON.parse(resultStr);
+
+            if(parsed.analyst && parsed.analyst !== "未提及") document.getElementById('warAnalyst').value = parsed.analyst;
+            if(parsed.symbol) document.getElementById('warSymbol').value = parsed.symbol;
+            if(parsed.price) document.getElementById('warPrice').value = parsed.price;
+            if(parsed.reason) document.getElementById('warReason').value = parsed.reason;
+
+            document.getElementById('warSmartInput').value = "";
+            this.vibrate(30);
+        } catch(e) {
+            alert("❌ AI 解析失敗，請確認內容或手動輸入。");
+        } finally {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    },
+
+    addWarRoomEntry() {
+        const analyst = document.getElementById('warAnalyst').value.trim() || "未具名大師";
+        const symbol = document.getElementById('warSymbol').value.trim();
+        const priceStr = document.getElementById('warPrice').value.trim();
+        const reason = document.getElementById('warReason').value.trim() || "無具體理由";
+        
+        if(!symbol) { alert("⚠️ 股票代號為必填！"); return; }
+        
+        let initPrice = parseFloat(priceStr);
+        if(isNaN(initPrice)) {
+            const symData = this.allStockList.find(s => s.stock_id === symbol);
+            if(symData && this.baseRawData.length > 0 && this.currentSymbolId === symbol) {
+                initPrice = this.baseRawData[this.baseRawData.length-1].close;
             } else {
-                btn.innerHTML = `🌎 美股: 🟡震盪`;
-                btn.className = "ml-1 px-1.5 py-0.5 rounded font-bold border border-yellow-800 bg-yellow-900/30 text-yellow-300 transition-colors shadow-sm whitespace-nowrap flex-shrink-0 text-[10px]";
-                this.currentUSMarket = 'neutral';
+                initPrice = 0; 
             }
-        } catch(e) { 
-            btn.innerHTML = `🌎 美股: ⏰待收盤分析`;
-            btn.className = "ml-1 px-1.5 py-0.5 rounded font-bold border border-gray-600 bg-gray-800 text-gray-400 shadow-sm flex items-center gap-1 whitespace-nowrap flex-shrink-0 text-[10px]";
+        }
+
+        const newEntry = {
+            id: this.generateId(),
+            analyst: analyst,
+            symbol: symbol,
+            initPrice: initPrice,
+            currentPrice: initPrice,
+            reason: reason,
+            date: this.getTodayStr(),
+            history: [] 
+        };
+
+        this.warRoomData.unshift(newEntry);
+        localStorage.setItem('proTerminalWarRoom', JSON.stringify(this.warRoomData));
+        
+        document.getElementById('warSymbol').value = '';
+        document.getElementById('warPrice').value = '';
+        document.getElementById('warReason').value = '';
+        
+        this.refreshWarRoomPrices();
+    },
+
+    async refreshWarRoomPrices() {
+        for(let entry of this.warRoomData) {
+            const data = await this.fetchHistoricalData(entry.symbol, false);
+            if (data && data.length > 0) {
+                entry.currentPrice = data[data.length-1].close;
+                if(entry.initPrice === 0) entry.initPrice = entry.currentPrice;
+                
+                entry.history = data.slice(-5).map(d => d.close);
+            }
+        }
+        localStorage.setItem('proTerminalWarRoom', JSON.stringify(this.warRoomData));
+        if (this.navStack[this.navStack.length - 1] === 'war') {
+            this.renderWarRoom();
+        }
+    },
+
+    renderSparkline(canvasId, dataPoints) {
+        const canvas = document.getElementById(canvasId);
+        if(!canvas || !dataPoints || dataPoints.length < 2) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        
+        ctx.clearRect(0, 0, w, h);
+        
+        const min = Math.min(...dataPoints);
+        const max = Math.max(...dataPoints);
+        const range = max - min === 0 ? 1 : max - min;
+        
+        const stepX = w / (dataPoints.length - 1);
+        
+        ctx.beginPath();
+        dataPoints.forEach((val, i) => {
+            const x = i * stepX;
+            const y = h - ((val - min) / range) * (h - 4) - 2; 
+            if(i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        
+        const isUp = dataPoints[dataPoints.length-1] >= dataPoints[0];
+        ctx.strokeStyle = isUp ? '#f87171' : '#4ade80';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    },
+
+    renderWarRoom() {
+        const container = document.getElementById('warRoomList');
+        if(this.warRoomData.length === 0) { 
+            container.innerHTML = '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg p-8 text-sm">目前無任何大師監控紀錄</p>'; 
+            return; 
+        }
+        
+        let html = '';
+        this.warRoomData.forEach((item, idx) => {
+            const initP = item.initPrice;
+            const curP = item.currentPrice;
+            const pnl = initP > 0 ? ((curP - initP) / initP) * 100 : 0;
+            const color = pnl > 0 ? 'text-[#f87171]' : (pnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const sign = pnl > 0 ? '+' : '';
+            
+            const bDate = new Date(item.date);
+            const diffTime = Math.abs(new Date() - bDate);
+            const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            html += `<div class="bg-[#1c2128] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex flex-col relative">
+                <div class="absolute right-0 top-0 w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-400 cursor-pointer text-sm" onclick="app.deleteWarEntry('${item.id}')">✕</div>
+                <div class="p-3 border-b border-[#30363d] flex justify-between items-start">
+                    <div class="flex-1 cursor-pointer" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+                        <div class="text-xs text-indigo-400 font-bold mb-0.5">🎙️ ${item.analyst}</div>
+                        <div class="font-black text-white text-lg">${this.getFullStockName(item.symbol)}</div>
+                        <div class="text-xs text-gray-400 mt-1 italic leading-tight">"${item.reason}"</div>
+                    </div>
+                    <div class="text-right pl-2 border-l border-[#30363d] flex flex-col justify-center min-w-[70px]">
+                        <div class="text-[10px] text-gray-500 mb-0.5">第 ${days} 天</div>
+                        <div class="font-mono font-black text-base ${color}">${curP.toFixed(1)}</div>
+                        <div class="text-[10px] font-bold ${color}">${sign}${pnl.toFixed(1)}%</div>
+                    </div>
+                </div>
+                <div class="p-2 bg-[#0d1117] flex items-center justify-between gap-3">
+                    <div class="flex-1 max-w-[100px]">
+                        <div class="text-[9px] text-gray-500 mb-1 text-center">近五日走勢</div>
+                        <canvas id="sparkline_${item.id}" class="sparkline-canvas"></canvas>
+                    </div>
+                    <div class="flex flex-col gap-1 items-end">
+                        <div class="text-[10px] text-gray-500 font-mono">推薦價: ${initP.toFixed(1)}</div>
+                        <button onclick="app.aiCheckWarRoomEntry('${item.id}')" class="text-[10px] bg-indigo-900/50 hover:bg-indigo-800 border border-indigo-700 text-indigo-300 px-2 py-1 rounded transition-colors flex items-center gap-1"><span class="animate-pulse">⚡</span>AI照妖鏡</button>
+                    </div>
+                </div>
+                <div id="warResult_${item.id}" class="hidden p-2 text-xs leading-relaxed border-t border-[#30363d] bg-[#010409]"></div>
+            </div>`;
+        });
+        
+        container.innerHTML = html;
+        
+        setTimeout(() => {
+            this.warRoomData.forEach(item => {
+                if(item.history && item.history.length > 0) {
+                    const canvas = document.getElementById(`sparkline_${item.id}`);
+                    if(canvas) {
+                        canvas.width = canvas.parentElement.clientWidth;
+                        canvas.height = 30;
+                        this.renderSparkline(`sparkline_${item.id}`, item.history);
+                    }
+                }
+            });
+        }, 100);
+    },
+
+    deleteWarEntry(id) {
+        this.showConfirm('確定要刪除這筆戰情追蹤紀錄嗎？', () => {
+            this.warRoomData = this.warRoomData.filter(x => x.id !== id);
+            localStorage.setItem('proTerminalWarRoom', JSON.stringify(this.warRoomData));
+            this.renderWarRoom();
+        });
+    },
+
+    async aiCheckWarRoomEntry(id) {
+        const item = this.warRoomData.find(x => x.id === id);
+        if(!item) return;
+        
+        const key = this.settings.groqKey;
+        const resBox = document.getElementById(`warResult_${item.id}`);
+        
+        if(!key) { alert("⚠️ 請先設定 Groq API Key！"); return; }
+        
+        resBox.classList.remove('hidden');
+        resBox.innerHTML = '<span class="text-indigo-400 animate-pulse font-mono">正在調用 AI 審計大師言論...</span>';
+        
+        const pnl = item.initPrice > 0 ? ((item.currentPrice - item.initPrice) / item.initPrice) * 100 : 0;
+        
+        const prompt = `你是冷酷無情的台股 AI 審計長。
+目前分析師【${item.analyst}】曾推薦【${item.symbol}】，當時價位 ${item.initPrice}，現在價位 ${item.currentPrice} (報酬率 ${pnl.toFixed(2)}%)。
+他當時的理由是：「${item.reason}」。
+
+請用極簡、一針見血的語氣（100字內），融合小哥與朱老師的流派來點評這個預測。
+若賠錢請無情拆穿（如：高檔叫散戶接刀、看新聞做股票）；若賺錢請給予肯定。
+結尾必須獨立一行給出：【大師誠實度：🟢紅榜(準確) / 🔴黑榜(冥燈) / ⚪白榜(尚可)】`;
+
+        try {
+            const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: "user", content: prompt }],
+                    temperature: 0.3
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error();
+            
+            let text = data.choices[0].message.content.replace(/\n/g, '<br>');
+            text = text.replace(/🟢紅榜/g, '<span class="text-red-400 font-bold">🟢紅榜(準確)</span>')
+                       .replace(/🔴黑榜/g, '<span class="text-green-400 font-bold">🔴黑榜(冥燈)</span>')
+                       .replace(/⚪白榜/g, '<span class="text-gray-300 font-bold">⚪白榜(觀察)</span>');
+                       
+            this.typeWriterEffect(resBox, `<div class="text-gray-300">${text}</div>`);
+            this.vibrate(30);
+        } catch(e) {
+            resBox.innerHTML = `<span class="text-red-400">❌ AI 審計失敗</span>`;
         }
     }
 };
