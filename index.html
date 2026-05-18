@@ -2,24 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="首席 AI 股票分析終端，整合即時台股數據、AI 策略分析、技術指標與自選清單管理。">
-    <meta property="og:title" content="首席 AI 司令部 | 戰略終端">
-    <meta property="og:description" content="整合即時台股數據、AI 策略分析、技術指標與自選清單管理的智能股票分析工具。">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="首席 AI 司令部 | 戰略終端">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>首席 AI 司令部 | 戰略終端 V14.0</title>
-    <link rel="preconnect" href="https://cdn.tailwindcss.com">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link rel="dns-prefetch" href="https://api.fugle.tw">
-    <link rel="dns-prefetch" href="https://api.groq.com">
-    <link rel="dns-prefetch" href="https://api.finmindtrade.com">
+    <title>首席 AI 司令部 | 戰略終端 V14.0 (大師照妖鏡版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" defer crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js" defer crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         html { font-size: max(16px, 1rem); touch-action: manipulation; } 
         html, body { 
@@ -77,9 +66,9 @@
 </head>
 <body class="flex flex-col">
 
-    <div id="confirmModal" class="modal-base" role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle" onclick="this.classList.add('hidden')">
+    <div id="confirmModal" class="modal-base" onclick="this.classList.add('hidden')">
         <div class="modal-content max-w-[20rem] border-l-4 border-l-red-500" onclick="event.stopPropagation()">
-            <h3 id="confirmModalTitle" class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">⚔️ 首席執行令</h3>
+            <h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">⚔️ 首席執行令</h3>
             <p id="confirmMsg" class="text-sm text-gray-300 leading-relaxed font-bold mb-5 tracking-wide"></p>
             <div class="flex justify-end gap-2">
                 <button onclick="document.getElementById('confirmModal').classList.add('hidden')" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">放棄</button>
@@ -88,16 +77,16 @@
         </div>
     </div>
 
-    <div id="loadingOverlay" class="fixed inset-0 flex flex-col items-center justify-center" role="status" aria-live="polite" aria-label="資料載入中">
+    <div id="loadingOverlay" class="fixed inset-0 flex flex-col items-center justify-center">
         <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
         <p class="text-blue-400 font-bold tracking-widest text-sm mb-6" id="loadingText">雲端大數據運算中...</p>
         <button onclick="app.forceStopLoading()" class="px-5 py-2.5 bg-red-900/80 border border-red-700 rounded-lg text-xs text-red-200 font-bold hover:bg-red-800 transition-colors shadow-lg">⚠️ 強制中斷連線</button>
     </div>
 
-    <div id="emergencyBanner" role="alert" aria-live="assertive" class="hidden w-full text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_15px_rgba(248,113,113,0.8)] z-[200] flex-shrink-0 animate-siren absolute top-0 left-0">
+    <div id="emergencyBanner" class="hidden w-full text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_15px_rgba(248,113,113,0.8)] z-[200] flex-shrink-0 animate-siren absolute top-0 left-0">
         🚨 【黑天鵝警報】偵測到系統性重挫風險！建議現金為王，嚴禁任何摸底行為！
     </div>
-    <div id="apiWarningBanner" role="status" aria-live="polite" class="hidden w-full bg-red-900 text-white text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_10px_rgba(248,113,113,0.5)] z-[200] flex-shrink-0 absolute top-0 left-0">
+    <div id="apiWarningBanner" class="hidden w-full bg-red-900 text-white text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_10px_rgba(248,113,113,0.5)] z-[200] flex-shrink-0 absolute top-0 left-0">
         🔴 ⚠️ 偵測到流量擠壓，進入防守模式
     </div>
 
@@ -264,7 +253,7 @@
                         </div>
                     </div>
                     
-                    <div id="directActionBox" aria-live="polite" aria-atomic="true" class="w-full p-4 md:p-5 flex flex-col items-center justify-center transition-all duration-300">
+                    <div id="directActionBox" class="w-full p-4 md:p-5 flex flex-col items-center justify-center transition-all duration-300">
                         <div id="confidenceLedBox" class="flex items-center justify-center gap-2 mb-3 px-3 py-1 bg-[#010409] rounded-full border border-[#30363d] shadow-inner">
                             <div id="confLed" class="w-3 h-3 rounded-full bg-gray-500"></div>
                             <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
@@ -686,11 +675,7 @@ const app = {
             this.settings.aiPrompt = AI_PROMPT_TEMPLATES.default;
         }
 
-        if (window.echarts) {
-            this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
-        } else {
-            console.error('[init] ECharts 尚未載入，圖表功能停用');
-        }
+        this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
@@ -953,13 +938,9 @@ const app = {
     copyExportData() {
         const area = document.getElementById('exportArea');
         if(!area.value) return;
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(area.value).then(() => alert('✅ API Key 與設定代碼已複製到剪貼簿！'));
-        } else {
-            area.select();
-            document.execCommand('copy');
-            alert('✅ API Key 與設定代碼已複製到剪貼簿！');
-        }
+        area.select();
+        document.execCommand('copy');
+        alert('✅ API Key 與設定代碼已複製到剪貼簿！');
     },
 
     importData() {
@@ -996,61 +977,24 @@ const app = {
     },
     getFullStockName(sym) { return `${this.getStockName(sym)} (${sym})`; },
 
-    _debounce(fn, delay) {
-        let timer;
-        return function(...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); };
-    },
-
-    _escHtml(str) {
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    },
-
     handleSearchInput(event) {
-        if (!this._debouncedSearch) {
-            this._debouncedSearch = this._debounce((val) => {
-                const dropdown = document.getElementById('searchDropdown');
-                if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
-                const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 8);
-                if (matches.length > 0) {
-                    const fragment = document.createDocumentFragment();
-                    matches.forEach(m => {
-                        const li = document.createElement('li');
-                        li.className = 'px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors';
-                        li.innerHTML = `<span class="font-bold text-blue-400 w-16 text-sm">${this._escHtml(m.stock_id)}</span> <span class="ml-1 font-bold text-sm">${this._escHtml(m.stock_name)}</span>`;
-                        li.addEventListener('click', () => { document.getElementById('symbolInput').value = m.stock_id; dropdown.classList.add('hidden'); this.analyze(); });
-                        fragment.appendChild(li);
-                    });
-                    dropdown.innerHTML = '';
-                    dropdown.appendChild(fragment);
-                    dropdown.classList.remove('hidden');
-                } else dropdown.classList.add('hidden');
-            }, 150);
-        }
-        this._debouncedSearch(event.target.value.trim().toLowerCase());
+        const val = event.target.value.trim().toLowerCase(), dropdown = document.getElementById('searchDropdown');
+        if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
+        const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 8);
+        if (matches.length > 0) {
+            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze();"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
+            dropdown.classList.remove('hidden');
+        } else dropdown.classList.add('hidden');
     },
 
     handleInvSearchInput(event) {
-        if (!this._debouncedInvSearch) {
-            this._debouncedInvSearch = this._debounce((val) => {
-                const dropdown = document.getElementById('invSearchDropdown');
-                if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
-                const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 5);
-                if (matches.length > 0) {
-                    const fragment = document.createDocumentFragment();
-                    matches.forEach(m => {
-                        const li = document.createElement('li');
-                        li.className = 'px-3 py-2 border-b border-[#30363d] text-white cursor-pointer hover:bg-orange-600 text-sm flex items-center transition-colors';
-                        li.innerHTML = `<span class="font-bold text-orange-200 w-16">${this._escHtml(m.stock_id)}</span> <span class="ml-1">${this._escHtml(m.stock_name)}</span>`;
-                        li.addEventListener('click', () => { document.getElementById('invModalInput').value = m.stock_id; dropdown.classList.add('hidden'); });
-                        fragment.appendChild(li);
-                    });
-                    dropdown.innerHTML = '';
-                    dropdown.appendChild(fragment);
-                    dropdown.classList.remove('hidden');
-                } else dropdown.classList.add('hidden');
-            }, 150);
-        }
-        this._debouncedInvSearch(event.target.value.trim().toLowerCase());
+        const val = event.target.value.trim().toLowerCase(), dropdown = document.getElementById('invSearchDropdown');
+        if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
+        const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 5);
+        if (matches.length > 0) {
+            dropdown.innerHTML = matches.map(m => `<li class="px-3 py-2 border-b border-[#30363d] text-white cursor-pointer hover:bg-orange-600 text-sm flex items-center transition-colors" onclick="document.getElementById('invModalInput').value='${m.stock_id}'; document.getElementById('invSearchDropdown').classList.add('hidden');"><span class="font-bold text-orange-200 w-16">${m.stock_id}</span> <span class="ml-1">${m.stock_name}</span></li>`).join('');
+            dropdown.classList.remove('hidden');
+        } else dropdown.classList.add('hidden');
     },
 
     triggerApiLock() {
@@ -1353,13 +1297,9 @@ const app = {
     async manualDataRefresh() {
         document.getElementById('loadingText').innerText = "強制同步最新雲端資料...";
         document.getElementById('loadingOverlay').style.display = 'flex';
-        try {
-            await this.analyze(this.currentSymbolId, true, true);
-        } catch(e) {
-            document.getElementById('loadingOverlay').style.display = 'none';
-        } finally {
-            document.getElementById('loadingText').innerText = "雲端大數據運算中...";
-        }
+        await this.analyze(this.currentSymbolId, true, true);
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('loadingText').innerText = "雲端大數據運算中...";
     },
 
     async analyze(symCode = null, skipCheck = false, forceRefresh = false, silent = false) {
@@ -1367,71 +1307,63 @@ const app = {
         let inputVal = symCode || document.getElementById('symbolInput').value.trim();
         if(!inputVal) { document.getElementById('loadingOverlay').style.display = 'none'; return; }
 
-        this.currentMarkPoints = [];
+        let targetSym = inputVal, symName = inputVal;
+        if (!skipCheck && this.allStockList.length > 0) {
+            const found = this.allStockList.find(s => s.stock_id === inputVal || s.stock_name === inputVal);
+            if (found) { targetSym = found.stock_id; symName = found.stock_name; }
+        }
 
-        try {
-            let targetSym = inputVal, symName = inputVal;
-            if (!skipCheck && this.allStockList.length > 0) {
-                const found = this.allStockList.find(s => s.stock_id === inputVal || s.stock_name === inputVal);
-                if (found) { targetSym = found.stock_id; symName = found.stock_name; }
+        this.currentSymbolId = targetSym;
+        if(!silent) document.getElementById('symbolInput').value = targetSym;
+        
+        symName = this.getFullStockName(targetSym);
+        const nameEl = document.getElementById('quoteName');
+        nameEl.innerText = symName;
+        if (symName.length <= 10) nameEl.className = "text-2xl md:text-3xl font-black truncate tracking-wide";
+        else nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
+        
+        const rawData = await this.fetchHistoricalData(targetSym, forceRefresh);
+        if (!rawData) {
+            document.getElementById('actionMainText').innerText = "資料連線失敗";
+            document.getElementById('dataSourceBadge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span class="font-bold text-red-400 text-[10px] font-mono tracking-wide">無資料</span>`;
+            if(!silent) document.getElementById('loadingOverlay').style.display = 'none'; return;
+        }
+
+        this.baseRawData = JSON.parse(JSON.stringify(rawData));
+        
+        if (this.baseRawData.length > 1) {
+            const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
+            document.getElementById('headerLastClose').innerText = prevCloseVal.toFixed(2);
+        }
+
+        let fugleData = null;
+        if(this.isMarketOpen()) {
+            fugleData = await this.fetchFugleData(targetSym);
+            if(fugleData) {
+                document.getElementById('dataSourceText').innerText = "自動更新(輪動)";
+                document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
+                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
+            } else if (!this.apiRateLimited) {
+                document.getElementById('dataSourceText').innerText = "即時連線異常";
+                document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
+                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
             }
+        } else {
+            document.getElementById('dataSourceText').innerText = "歷史昨收";
+            document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
+            document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
+        }
 
-            this.currentSymbolId = targetSym;
-            if(!silent) document.getElementById('symbolInput').value = targetSym;
-
-            symName = this.getFullStockName(targetSym);
-            const nameEl = document.getElementById('quoteName');
-            nameEl.innerText = symName;
-            if (symName.length <= 10) nameEl.className = "text-2xl md:text-3xl font-black truncate tracking-wide";
-            else nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
-
-            const rawData = await this.fetchHistoricalData(targetSym, forceRefresh);
-            if (!rawData) {
-                document.getElementById('actionMainText').innerText = "資料連線失敗";
-                document.getElementById('dataSourceBadge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span class="font-bold text-red-400 text-[10px] font-mono tracking-wide">無資料</span>`;
-                if(!silent) document.getElementById('loadingOverlay').style.display = 'none'; return;
-            }
-
-            this.baseRawData = JSON.parse(JSON.stringify(rawData));
-
-            if (this.baseRawData.length > 1) {
-                const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
-                document.getElementById('headerLastClose').innerText = prevCloseVal.toFixed(2);
-            }
-
-            let fugleData = null;
-            if(this.isMarketOpen()) {
-                fugleData = await this.fetchFugleData(targetSym);
-                if(fugleData) {
-                    document.getElementById('dataSourceText').innerText = "自動更新(輪動)";
-                    document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
-                    document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
-                } else if (!this.apiRateLimited) {
-                    document.getElementById('dataSourceText').innerText = "即時連線異常";
-                    document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
-                    document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
-                }
-            } else {
-                document.getElementById('dataSourceText').innerText = "歷史昨收";
-                document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
-            }
-
-            this.applyLatestPrice(fugleData, null);
-            this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
-
-            if(!silent) {
-                document.getElementById('chipCostInput').value = '';
-                this.fetchCorpEvents(targetSym);
-                this.fetchChipCost(targetSym);
-                masterWorker.postMessage({ activeData: this.activeData });
-            } else {
-                masterWorker.postMessage({ activeData: this.activeData });
-            }
-        } catch(e) {
-            console.error('[analyze]', e);
-            document.getElementById('actionMainText').innerText = '⚠️ 系統錯誤，請重試';
-            if(!silent) document.getElementById('loadingOverlay').style.display = 'none';
+        this.applyLatestPrice(fugleData, null);
+        this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
+        
+        if(!silent) {
+            document.getElementById('chipCostInput').value = '';
+            this.fetchCorpEvents(targetSym);
+            this.fetchChipCost(targetSym); 
+            masterWorker.postMessage({ activeData: this.activeData });
+        } else {
+            masterWorker.postMessage({ activeData: this.activeData });
         }
     },
 
@@ -1460,18 +1392,9 @@ const app = {
         if (period === 'D') return JSON.parse(JSON.stringify(data));
         const aggregated = []; let currentPeriod = null, currentCandle = null;
         data.forEach(d => {
-            const parts = d.date.split(/[-\/]/);
-            const y = +parts[0], m = +parts[1] - 1, day = +parts[2];
-            const dateObj = new Date(y, m, day);
-            let periodKey;
-            if (period === 'W') {
-                const dow = dateObj.getDay();
-                const mondayDiff = dow === 0 ? -6 : 1 - dow;
-                const monday = new Date(y, m, day + mondayDiff);
-                periodKey = `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
-            } else if (period === 'M') {
-                periodKey = d.date.substring(0, 7);
-            }
+            const dateObj = new Date(d.date); let periodKey;
+            if (period === 'W') { const day = dateObj.getDay(), diff = dateObj.getDate() - day + (day === 0 ? -6 : 1); periodKey = new Date(dateObj.setDate(diff)).toISOString().split('T')[0]; } 
+            else if (period === 'M') { periodKey = d.date.substring(0, 7); }
 
             if (currentPeriod !== periodKey) {
                 if (currentCandle) aggregated.push(currentCandle);
@@ -2081,14 +2004,12 @@ const app = {
     },
 
     async renderFavList() {
-        if (this._renderFavInProgress) return;
-        this._renderFavInProgress = true;
         const list = this.favGroups[this.activeGroupName] || [];
         const container = document.getElementById('favListContainer');
         const emptyState = document.getElementById('favEmptyState');
-        if(list.length === 0) { container.innerHTML = ''; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); this._renderFavInProgress = false; return; }
+        if(list.length === 0) { container.innerHTML = ''; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); return; }
         emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
-
+        
         let html = '';
         for (let sym of list) {
             let prevCloseText = "--";
@@ -2110,9 +2031,8 @@ const app = {
             </div>`;
         }
         container.innerHTML = html;
-        if (this.sortableFav) { try { this.sortableFav.destroy(); } catch(e) {} }
-        this.sortableFav = window.Sortable ? Sortable.create(container, { handle: '.drag-handle', animation: 150 }) : null;
-        this._renderFavInProgress = false;
+        if (this.sortableFav) this.sortableFav.destroy();
+        this.sortableFav = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
     },
 
     removeFromFav(sym) {
@@ -2137,12 +2057,7 @@ const app = {
         const sym = document.getElementById('invModalInput').value.trim();
         const date = document.getElementById('invBuyDateInput').value.replace(/-/g, '/');
         if(!sym) return;
-        const cost = parseFloat(document.getElementById('costInput').value);
-        if(!cost || cost <= 0) {
-            alert('⚠️ 請先在診斷頁面的「我的成本」欄位輸入買進價格，再新增到庫存！');
-            return;
-        }
-        this.inventory.push({ symbol: sym, cost, buyDate: date });
+        this.inventory.push({ symbol: sym, cost: parseFloat(document.getElementById('costInput').value) || 0, buyDate: date });
         localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
         const modal = document.getElementById('invModal');
         modal.classList.add('hidden'); modal.style.display='none';
@@ -2196,8 +2111,8 @@ const app = {
             </div>`;
         });
         container.innerHTML = html;
-        if (this.sortableInv) { try { this.sortableInv.destroy(); } catch(e) {} }
-        this.sortableInv = window.Sortable ? Sortable.create(container, { handle: '.drag-handle', animation: 150 }) : null;
+        if (this.sortableInv) this.sortableInv.destroy();
+        this.sortableInv = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
         
         const tPnl = totalVal - totalCost, tPct = totalCost > 0 ? (tPnl/totalCost)*100 : 0;
         const tCol = tPnl > 0 ? 'text-[#f87171]' : (tPnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
@@ -2540,19 +2455,19 @@ const app = {
         });
         
         container.innerHTML = html;
-
-        requestAnimationFrame(() => requestAnimationFrame(() => {
+        
+        setTimeout(() => {
             this.warRoomData.forEach(item => {
                 if(item.history && item.history.length > 0) {
                     const canvas = document.getElementById(`sparkline_${item.id}`);
                     if(canvas) {
-                        canvas.width = canvas.parentElement.clientWidth || 100;
+                        canvas.width = canvas.parentElement.clientWidth;
                         canvas.height = 30;
                         this.renderSparkline(`sparkline_${item.id}`, item.history);
                     }
                 }
             });
-        }));
+        }, 100);
     },
 
     deleteWarEntry(id) {
@@ -2611,7 +2526,7 @@ const app = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => app.init());
+window.onload = () => app.init();
 </script>
 </body>
 </html>
