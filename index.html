@@ -90,7 +90,7 @@
         🔴 ⚠️ 偵測到流量擠壓，進入防守模式
     </div>
 
-    <div id="seasonModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[22rem]" onclick="event.stopPropagation()"><h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">🎯 首席作戰週期 (春夏秋冬)</h3><div class="space-y-3 text-sm text-gray-300 leading-relaxed"><p><span class="text-pink-400 font-bold border border-pink-700 bg-pink-900/30 px-1.5 py-0.5 rounded">🌸 春 (打底)</span> 剛站上月線。主力撒種，適合分批建倉，耐心等待發芽。</p><p><span class="text-red-400 font-bold border border-red-700 bg-red-900/30 px-1.5 py-0.5 rounded">☀️ 夏 (主升)</span> 多頭排列沿布林上軌噴發。利潤最肥，不破5日線死命抱牢！</p><p><span class="text-orange-400 font-bold border border-orange-700 bg-orange-900/30 px-1.5 py-0.5 rounded">🍁 秋 (盤頭)</span> 高檔震盪、爆量不漲。主力準備收割，啟動分批停利，跌破月線全結帳。</p><p><span class="text-blue-300 font-bold border border-blue-700 bg-blue-900/30 px-1.5 py-0.5 rounded">❄️ 冬 (空頭)</span> 均線下彎。嚴禁摸底接刀！滿門抄斬，現金為王。</p></div><button onclick="document.getElementById('seasonModal').classList.add('hidden')" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
+    <div id="seasonModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[22rem]" onclick="event.stopPropagation()"><h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">🎯 首席作戰週期 (春夏秋冬)</h3><div class="space-y-3 text-sm text-gray-300 leading-relaxed"><p><span class="text-pink-400 font-bold border border-pink-700 bg-pink-900/30 px-1.5 py-0.5 rounded">🌸 春 (打底)</span> 剛站上月線。主力撒種，適合分批建倉，耐心等待發芽。</p><p><span class="text-red-400 font-bold border border-red-700 bg-red-900/30 px-1.5 py-0.5 rounded">☀️ 夏 (主升)</span> 多頭排列沿布林上軌噴發。利潤最肥，不破5日線死命抱牢！</p><p><span class="text-orange-400 font-bold border border-orange-700 bg-orange-900/30 px-1.5 py-0.5 rounded">🍁 秋 (盤頭)</span> 高檔震盪、爆量不漲。主力準備收割，啟動分批停利，跌破月線全結帳。</p><p><span class="text-blue-300 font-bold border border-blue-700 bg-blue-900/30 px-1.5 py-0.5 rounded">❄️ 冬 (空頭)</span> 均線下彎。嚴禁摸底接刀！滿門抄斬，現金為王。</p></div><button onclick="document.getElementById('seasonModal').classList.add('hidden'); document.getElementById('seasonModal').style.display='none';" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
     <div id="groupModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-sm" id="groupModalTitle">➕ 新增自選清單</h3><div class="w-full mb-4"><input type="text" id="groupNameInput" placeholder="請輸入清單名稱..." autocomplete="off" enterkeyhint="done" class="w-full bg-[#0d1117] text-white p-2.5 rounded-lg border border-[#30363d] outline-none focus:border-blue-500 text-base transition-colors" onkeydown="if(event.key === 'Enter') { document.activeElement.blur(); app.confirmGroupAction(); }"><input type="hidden" id="groupModalMode" value="create"></div><div class="flex justify-end gap-2"><button onclick="document.getElementById('groupModal').classList.add('hidden')" class="px-4 py-2 text-gray-400 text-xs font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmGroupAction()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors shadow-lg w-1/2">確定</button></div></div></div>
     <div id="scoreDetailModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[24rem]" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-3"><h3 class="text-white font-black text-lg">📊 Alpha 動能評分報告</h3><button onclick="document.getElementById('scoreDetailModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button></div><div class="text-xs text-gray-500 mb-3 leading-relaxed">融合大師型態學，加入紅黑棒係數與島型反轉偵測機制。</div><div id="scoreDetailContent" class="flex flex-col gap-2 text-sm font-mono text-gray-300 bg-[#0d1117] p-3 rounded-lg border border-[#30363d]"></div></div></div>
     <div id="jargonModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="jargonTitle" class="text-blue-400 font-black text-lg mb-3 border-b border-gray-700 pb-2 flex items-center gap-2">💡 名詞解釋</h3><p id="jargonDesc" class="text-sm text-gray-300 leading-relaxed font-bold tracking-wide"></p><button onclick="document.getElementById('jargonModal').classList.add('hidden')" class="mt-5 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
@@ -200,7 +200,7 @@
                 <span id="mktFI" class="flex-shrink-0 text-yellow-200">外資空單 --</span>
                 <span id="mktTWII" class="border-l border-gray-700 pl-2 flex-shrink-0">加權 --</span>
                 <span id="mktTWOII" class="border-l border-gray-700 pl-2 flex-shrink-0">櫃買 --</span>
-                <span class="border-l border-gray-700 pl-2 text-gray-500 hidden sm:inline flex-shrink-0">昨收 <span id="headerLastClose" class="text-gray-300 font-bold">--</span></span>
+                <span class="border-l border-gray-700 pl-2 text-gray-500 hidden sm:inline flex-shrink-0">收盤 <span id="headerLastClose" class="text-gray-300 font-bold">--</span></span>
             </div>
             <div class="pl-2 ml-auto flex-shrink-0">
                 <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] cursor-pointer hover:bg-gray-800 transition-colors" onclick="app.manualDataRefresh(); app.vibrate(50);">
@@ -895,7 +895,8 @@ const app = {
             } else if (type === 'finmind') {
                 if(!this.settings.finmindKey) throw new Error();
                 const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${this.settings.finmindKey}`);
-                if(res.ok) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
+                const json = await res.json();
+                if(res.ok && json.status === 200) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
             }
         } catch(e) {
             led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
@@ -1356,11 +1357,11 @@ const app = {
 
         this.applyLatestPrice(fugleData, null);
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
-        
+
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
             this.fetchCorpEvents(targetSym);
-            this.fetchChipCost(targetSym); 
+            this.fetchChipCost(targetSym);
             masterWorker.postMessage({ activeData: this.activeData });
         } else {
             masterWorker.postMessage({ activeData: this.activeData });
@@ -2003,6 +2004,27 @@ const app = {
         });
     },
 
+    _getQuickSeasonTag(data) {
+        if (!data || data.length < 21) return '';
+        const len = data.length, last = len - 1;
+        const pC = data[last].close, pO = data[last].open;
+        const ma5 = data.slice(len-5,len).reduce((a,d)=>a+d.close,0)/5;
+        const ma10 = data.slice(len-10,len).reduce((a,d)=>a+d.close,0)/10;
+        const ma20 = data.slice(len-20,len).reduce((a,d)=>a+d.close,0)/20;
+        const ma20prev = data.slice(len-21,len-1).reduce((a,d)=>a+d.close,0)/20;
+        const vma5 = data.slice(len-5,len).reduce((a,d)=>a+d.volume,0)/5;
+        const curVol = data[last].volume;
+        const isBreakdown = pC < ma20 && ma20 < ma20prev;
+        const isUptrend = ma5 > ma10 && ma10 > ma20 && ma20 > ma20prev;
+        const isAboveMa20 = pC > ma20;
+        const isVolumeBreakout = curVol > vma5 * 1.5 && pC > pO;
+        if (isBreakdown) return `<span class="text-[9px] bg-blue-900/40 text-blue-300 border border-blue-800 px-1.5 py-0.5 rounded font-bold">❄️ 冬-空手</span>`;
+        if (isUptrend && isVolumeBreakout) return `<span class="text-[9px] bg-red-900/40 text-red-300 border border-red-700 px-1.5 py-0.5 rounded font-bold">🔥 飆股動能</span>`;
+        if (isUptrend) return `<span class="text-[9px] bg-red-900/30 text-red-400 border border-red-800 px-1.5 py-0.5 rounded font-bold">☀️ 夏-抱牢</span>`;
+        if (isAboveMa20) return `<span class="text-[9px] bg-pink-900/30 text-pink-400 border border-pink-800 px-1.5 py-0.5 rounded font-bold">🌸 春-建倉</span>`;
+        return `<span class="text-[9px] bg-gray-800 text-gray-400 border border-gray-600 px-1.5 py-0.5 rounded font-bold">🔄 整理觀望</span>`;
+    },
+
     async renderFavList() {
         const list = this.favGroups[this.activeGroupName] || [];
         const container = document.getElementById('favListContainer');
@@ -2013,9 +2035,11 @@ const app = {
         let html = '';
         for (let sym of list) {
             let prevCloseText = "--";
+            let seasonTag = '';
             try {
                 const data = await this.fetchHistoricalData(sym, false);
                 if (data && data.length > 1) { prevCloseText = data[data.length-2].close.toFixed(2); }
+                seasonTag = this._getQuickSeasonTag(data);
             } catch(e) {}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
@@ -2024,7 +2048,7 @@ const app = {
                     <div class="drag-handle text-gray-600 hover:text-white px-2 text-lg">☰</div>
                     <div class="font-bold text-white text-lg cursor-pointer flex-1 flex flex-col justify-center gap-0.5" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
                         <div class="flex items-baseline gap-2"><span>${this.getFullStockName(sym)}</span></div>
-                        <div class="text-xs text-gray-500 font-mono">昨收: ${prevCloseText}</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">${seasonTag}<span class="text-xs text-gray-500 font-mono">收 ${prevCloseText}</span></div>
                     </div>
                     ${this.isFavEditMode ? `<button class="text-gray-500 px-3 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 px-3 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
                 </div>
