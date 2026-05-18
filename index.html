@@ -686,7 +686,11 @@ const app = {
             this.settings.aiPrompt = AI_PROMPT_TEMPLATES.default;
         }
 
-        this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
+        if (window.echarts) {
+            this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
+        } else {
+            console.error('[init] ECharts 尚未載入，圖表功能停用');
+        }
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
@@ -1349,9 +1353,13 @@ const app = {
     async manualDataRefresh() {
         document.getElementById('loadingText').innerText = "強制同步最新雲端資料...";
         document.getElementById('loadingOverlay').style.display = 'flex';
-        await this.analyze(this.currentSymbolId, true, true);
-        document.getElementById('loadingOverlay').style.display = 'none';
-        document.getElementById('loadingText').innerText = "雲端大數據運算中...";
+        try {
+            await this.analyze(this.currentSymbolId, true, true);
+        } catch(e) {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        } finally {
+            document.getElementById('loadingText').innerText = "雲端大數據運算中...";
+        }
     },
 
     async analyze(symCode = null, skipCheck = false, forceRefresh = false, silent = false) {
@@ -1359,63 +1367,71 @@ const app = {
         let inputVal = symCode || document.getElementById('symbolInput').value.trim();
         if(!inputVal) { document.getElementById('loadingOverlay').style.display = 'none'; return; }
 
-        let targetSym = inputVal, symName = inputVal;
-        if (!skipCheck && this.allStockList.length > 0) {
-            const found = this.allStockList.find(s => s.stock_id === inputVal || s.stock_name === inputVal);
-            if (found) { targetSym = found.stock_id; symName = found.stock_name; }
-        }
+        this.currentMarkPoints = [];
 
-        this.currentSymbolId = targetSym;
-        if(!silent) document.getElementById('symbolInput').value = targetSym;
-        
-        symName = this.getFullStockName(targetSym);
-        const nameEl = document.getElementById('quoteName');
-        nameEl.innerText = symName;
-        if (symName.length <= 10) nameEl.className = "text-2xl md:text-3xl font-black truncate tracking-wide";
-        else nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
-        
-        const rawData = await this.fetchHistoricalData(targetSym, forceRefresh);
-        if (!rawData) {
-            document.getElementById('actionMainText').innerText = "資料連線失敗";
-            document.getElementById('dataSourceBadge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span class="font-bold text-red-400 text-[10px] font-mono tracking-wide">無資料</span>`;
-            if(!silent) document.getElementById('loadingOverlay').style.display = 'none'; return;
-        }
-
-        this.baseRawData = JSON.parse(JSON.stringify(rawData));
-        
-        if (this.baseRawData.length > 1) {
-            const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
-            document.getElementById('headerLastClose').innerText = prevCloseVal.toFixed(2);
-        }
-
-        let fugleData = null;
-        if(this.isMarketOpen()) {
-            fugleData = await this.fetchFugleData(targetSym);
-            if(fugleData) {
-                document.getElementById('dataSourceText').innerText = "自動更新(輪動)";
-                document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
-            } else if (!this.apiRateLimited) {
-                document.getElementById('dataSourceText').innerText = "即時連線異常";
-                document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
+        try {
+            let targetSym = inputVal, symName = inputVal;
+            if (!skipCheck && this.allStockList.length > 0) {
+                const found = this.allStockList.find(s => s.stock_id === inputVal || s.stock_name === inputVal);
+                if (found) { targetSym = found.stock_id; symName = found.stock_name; }
             }
-        } else {
-            document.getElementById('dataSourceText').innerText = "歷史昨收";
-            document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
-            document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
-        }
 
-        this.applyLatestPrice(fugleData, null);
-        this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
-        
-        if(!silent) {
-            document.getElementById('chipCostInput').value = '';
-            this.fetchCorpEvents(targetSym);
-            this.fetchChipCost(targetSym); 
-            masterWorker.postMessage({ activeData: this.activeData });
-        } else {
-            masterWorker.postMessage({ activeData: this.activeData });
+            this.currentSymbolId = targetSym;
+            if(!silent) document.getElementById('symbolInput').value = targetSym;
+
+            symName = this.getFullStockName(targetSym);
+            const nameEl = document.getElementById('quoteName');
+            nameEl.innerText = symName;
+            if (symName.length <= 10) nameEl.className = "text-2xl md:text-3xl font-black truncate tracking-wide";
+            else nameEl.className = "text-xl md:text-2xl font-black whitespace-normal leading-tight max-w-[200px] md:max-w-[300px]";
+
+            const rawData = await this.fetchHistoricalData(targetSym, forceRefresh);
+            if (!rawData) {
+                document.getElementById('actionMainText').innerText = "資料連線失敗";
+                document.getElementById('dataSourceBadge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span class="font-bold text-red-400 text-[10px] font-mono tracking-wide">無資料</span>`;
+                if(!silent) document.getElementById('loadingOverlay').style.display = 'none'; return;
+            }
+
+            this.baseRawData = JSON.parse(JSON.stringify(rawData));
+
+            if (this.baseRawData.length > 1) {
+                const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
+                document.getElementById('headerLastClose').innerText = prevCloseVal.toFixed(2);
+            }
+
+            let fugleData = null;
+            if(this.isMarketOpen()) {
+                fugleData = await this.fetchFugleData(targetSym);
+                if(fugleData) {
+                    document.getElementById('dataSourceText').innerText = "自動更新(輪動)";
+                    document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
+                    document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
+                } else if (!this.apiRateLimited) {
+                    document.getElementById('dataSourceText').innerText = "即時連線異常";
+                    document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
+                    document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
+                }
+            } else {
+                document.getElementById('dataSourceText').innerText = "歷史昨收";
+                document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
+                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
+            }
+
+            this.applyLatestPrice(fugleData, null);
+            this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
+
+            if(!silent) {
+                document.getElementById('chipCostInput').value = '';
+                this.fetchCorpEvents(targetSym);
+                this.fetchChipCost(targetSym);
+                masterWorker.postMessage({ activeData: this.activeData });
+            } else {
+                masterWorker.postMessage({ activeData: this.activeData });
+            }
+        } catch(e) {
+            console.error('[analyze]', e);
+            document.getElementById('actionMainText').innerText = '⚠️ 系統錯誤，請重試';
+            if(!silent) document.getElementById('loadingOverlay').style.display = 'none';
         }
     },
 
@@ -1444,9 +1460,18 @@ const app = {
         if (period === 'D') return JSON.parse(JSON.stringify(data));
         const aggregated = []; let currentPeriod = null, currentCandle = null;
         data.forEach(d => {
-            const dateObj = new Date(d.date); let periodKey;
-            if (period === 'W') { const day = dateObj.getDay(), diff = dateObj.getDate() - day + (day === 0 ? -6 : 1); periodKey = new Date(dateObj.setDate(diff)).toISOString().split('T')[0]; } 
-            else if (period === 'M') { periodKey = d.date.substring(0, 7); }
+            const parts = d.date.split(/[-\/]/);
+            const y = +parts[0], m = +parts[1] - 1, day = +parts[2];
+            const dateObj = new Date(y, m, day);
+            let periodKey;
+            if (period === 'W') {
+                const dow = dateObj.getDay();
+                const mondayDiff = dow === 0 ? -6 : 1 - dow;
+                const monday = new Date(y, m, day + mondayDiff);
+                periodKey = `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
+            } else if (period === 'M') {
+                periodKey = d.date.substring(0, 7);
+            }
 
             if (currentPeriod !== periodKey) {
                 if (currentCandle) aggregated.push(currentCandle);
@@ -2056,12 +2081,14 @@ const app = {
     },
 
     async renderFavList() {
+        if (this._renderFavInProgress) return;
+        this._renderFavInProgress = true;
         const list = this.favGroups[this.activeGroupName] || [];
         const container = document.getElementById('favListContainer');
         const emptyState = document.getElementById('favEmptyState');
-        if(list.length === 0) { container.innerHTML = ''; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); return; }
+        if(list.length === 0) { container.innerHTML = ''; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); this._renderFavInProgress = false; return; }
         emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
-        
+
         let html = '';
         for (let sym of list) {
             let prevCloseText = "--";
@@ -2083,8 +2110,9 @@ const app = {
             </div>`;
         }
         container.innerHTML = html;
-        if (this.sortableFav) this.sortableFav.destroy();
-        this.sortableFav = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
+        if (this.sortableFav) { try { this.sortableFav.destroy(); } catch(e) {} }
+        this.sortableFav = window.Sortable ? Sortable.create(container, { handle: '.drag-handle', animation: 150 }) : null;
+        this._renderFavInProgress = false;
     },
 
     removeFromFav(sym) {
@@ -2109,7 +2137,12 @@ const app = {
         const sym = document.getElementById('invModalInput').value.trim();
         const date = document.getElementById('invBuyDateInput').value.replace(/-/g, '/');
         if(!sym) return;
-        this.inventory.push({ symbol: sym, cost: parseFloat(document.getElementById('costInput').value) || 0, buyDate: date });
+        const cost = parseFloat(document.getElementById('costInput').value);
+        if(!cost || cost <= 0) {
+            alert('⚠️ 請先在診斷頁面的「我的成本」欄位輸入買進價格，再新增到庫存！');
+            return;
+        }
+        this.inventory.push({ symbol: sym, cost, buyDate: date });
         localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
         const modal = document.getElementById('invModal');
         modal.classList.add('hidden'); modal.style.display='none';
@@ -2163,8 +2196,8 @@ const app = {
             </div>`;
         });
         container.innerHTML = html;
-        if (this.sortableInv) this.sortableInv.destroy();
-        this.sortableInv = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
+        if (this.sortableInv) { try { this.sortableInv.destroy(); } catch(e) {} }
+        this.sortableInv = window.Sortable ? Sortable.create(container, { handle: '.drag-handle', animation: 150 }) : null;
         
         const tPnl = totalVal - totalCost, tPct = totalCost > 0 ? (tPnl/totalCost)*100 : 0;
         const tCol = tPnl > 0 ? 'text-[#f87171]' : (tPnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
@@ -2507,19 +2540,19 @@ const app = {
         });
         
         container.innerHTML = html;
-        
-        setTimeout(() => {
+
+        requestAnimationFrame(() => requestAnimationFrame(() => {
             this.warRoomData.forEach(item => {
                 if(item.history && item.history.length > 0) {
                     const canvas = document.getElementById(`sparkline_${item.id}`);
                     if(canvas) {
-                        canvas.width = canvas.parentElement.clientWidth;
+                        canvas.width = canvas.parentElement.clientWidth || 100;
                         canvas.height = 30;
                         this.renderSparkline(`sparkline_${item.id}`, item.history);
                     }
                 }
             });
-        }, 100);
+        }));
     },
 
     deleteWarEntry(id) {
@@ -2578,7 +2611,7 @@ const app = {
     }
 };
 
-window.onload = () => app.init();
+document.addEventListener('DOMContentLoaded', () => app.init());
 </script>
 </body>
 </html>
