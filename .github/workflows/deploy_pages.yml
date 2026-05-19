@@ -1,0 +1,40 @@
+name: 🚀 部署到 GitHub Pages
+
+on:
+  push:
+    branches:
+      - claude/optimize-html-c20DA
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🔧 設定 GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: 📦 上傳頁面資產
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: 🌐 部署到 GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
