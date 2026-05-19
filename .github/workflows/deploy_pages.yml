@@ -8,33 +8,39 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4
-
-      - name: 🔧 設定 GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: 📦 上傳頁面資產
-        uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          fetch-depth: 0
 
-      - name: 🌐 部署到 GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+      - name: 🌐 部署到 gh-pages 分支
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 建立暫存目錄，複製要部署的檔案
+          mkdir -p /tmp/deploy
+          cp index.html /tmp/deploy/
+          cp sw.js      /tmp/deploy/
+
+          # 切到 gh-pages orphan 分支
+          git checkout --orphan gh-pages
+          git rm -rf --cached . -q 2>/dev/null || true
+          find . -maxdepth 1 -not -name '.git' -not -name '.' | xargs rm -rf 2>/dev/null || true
+
+          # 複製檔案進來
+          cp /tmp/deploy/index.html .
+          cp /tmp/deploy/sw.js      .
+
+          git add index.html sw.js
+          git commit -m "🚀 部署 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push origin gh-pages --force
+
+          echo "✅ gh-pages 已更新"
