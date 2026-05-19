@@ -219,17 +219,47 @@
             </div>
         </header>
 
-        <div class="bg-[#010409]/95 backdrop-blur border-t border-[#30363d] px-2 py-1 flex items-center w-full max-w-7xl mx-auto overflow-x-auto scrollbar-hide whitespace-nowrap text-[10px] md:text-[11px]">
-            <div class="flex items-center gap-2 font-mono text-gray-400 flex-1">
-                <span id="mktFI" class="flex-shrink-0 text-yellow-200">外資空單 --</span>
-                <span id="mktTWII" class="border-l border-gray-700 pl-2 flex-shrink-0">加權 --</span>
-                <span id="mktTWOII" class="border-l border-gray-700 pl-2 flex-shrink-0">櫃買 --</span>
-                <span class="border-l border-gray-700 pl-2 text-gray-500 hidden sm:inline flex-shrink-0">收盤 <span id="headerLastClose" class="text-gray-300 font-bold">--</span></span>
-            </div>
-            <div class="pl-2 ml-auto flex-shrink-0">
-                <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] cursor-pointer hover:bg-gray-800 transition-colors" onclick="app.manualDataRefresh(); app.vibrate(50);">
-                    <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                    <span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時現價(10s)</span>
+        <div class="w-full max-w-7xl mx-auto">
+            <div id="marketAlertBanner" class="hidden px-3 py-1 text-[10px] font-bold text-center border-b border-red-800"></div>
+            <div class="flex items-center overflow-x-auto scrollbar-hide px-2 py-1 gap-0 bg-[#010409]/95 backdrop-blur border-t border-[#30363d] text-[10px] font-mono">
+                <div class="flex-shrink-0 pr-3 mr-1 border-r border-gray-800">
+                    <div class="text-[8px] text-gray-600 leading-none mb-0.5">外資期貨</div>
+                    <div id="mktFI" class="text-yellow-300 font-bold leading-none whitespace-nowrap">--</div>
+                </div>
+                <div class="flex-shrink-0 px-3 border-r border-gray-800">
+                    <div class="text-[8px] text-gray-600 leading-none mb-0.5">加權</div>
+                    <div id="mktTWII" class="text-gray-300 font-bold leading-none whitespace-nowrap">--</div>
+                </div>
+                <div class="flex-shrink-0 px-3 border-r border-gray-800">
+                    <div class="text-[8px] text-gray-600 leading-none mb-0.5">櫃買</div>
+                    <div id="mktTWOII" class="text-gray-300 font-bold leading-none whitespace-nowrap">--</div>
+                </div>
+                <div class="flex-shrink-0 px-3 border-r border-gray-800">
+                    <div class="text-[8px] text-gray-600 leading-none mb-0.5">S&P 500</div>
+                    <div id="usBar_spx" class="font-bold leading-none text-gray-300">--</div>
+                    <div id="usBar_spx_chg" class="text-[8px] text-gray-500 leading-none">--</div>
+                </div>
+                <div class="flex-shrink-0 px-3 border-r border-gray-800">
+                    <div class="text-[8px] text-gray-600 leading-none mb-0.5">NASDAQ</div>
+                    <div id="usBar_ndx" class="font-bold leading-none text-gray-300">--</div>
+                    <div id="usBar_ndx_chg" class="text-[8px] text-gray-500 leading-none">--</div>
+                </div>
+                <div class="flex-shrink-0 px-3 border-r border-gray-800">
+                    <div class="text-[8px] text-gray-600 leading-none mb-0.5">VIX 恐慌</div>
+                    <div id="usBar_vix" class="font-bold leading-none text-gray-300">--</div>
+                    <div id="usBar_vix_chg" class="text-[8px] text-gray-500 leading-none">--</div>
+                </div>
+                <div class="flex-shrink-0 px-3 border-r border-gray-800">
+                    <div class="text-[8px] text-gray-600 leading-none mb-0.5">TSM ADR</div>
+                    <div id="usBar_tsm" class="font-bold leading-none text-gray-300">--</div>
+                    <div id="usBar_tsm_chg" class="text-[8px] text-gray-500 leading-none">--</div>
+                </div>
+                <div class="flex-shrink-0 pl-3 ml-auto flex items-center gap-2">
+                    <button onclick="app.refreshAllMarketData()" class="text-[8px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                    <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] cursor-pointer hover:bg-gray-800 transition-colors" onclick="app.manualDataRefresh(); app.vibrate(50);">
+                        <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                        <span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -237,29 +267,6 @@
 
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
-            <div id="usMarketBar" class="flex gap-2 overflow-x-auto px-2 pt-2 pb-0 scrollbar-hide">
-                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
-                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">S&P 500</div>
-                    <div id="usBar_spx" class="text-sm font-black font-mono text-gray-400">--</div>
-                    <div id="usBar_spx_chg" class="text-[9px] font-bold text-gray-500">--</div>
-                </div>
-                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
-                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">NASDAQ</div>
-                    <div id="usBar_ndx" class="text-sm font-black font-mono text-gray-400">--</div>
-                    <div id="usBar_ndx_chg" class="text-[9px] font-bold text-gray-500">--</div>
-                </div>
-                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
-                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">VIX 恐慌</div>
-                    <div id="usBar_vix" class="text-sm font-black font-mono text-gray-400">--</div>
-                    <div id="usBar_vix_chg" class="text-[9px] font-bold text-gray-500">--</div>
-                </div>
-                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
-                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">TSM ADR</div>
-                    <div id="usBar_tsm" class="text-sm font-black font-mono text-gray-400">--</div>
-                    <div id="usBar_tsm_chg" class="text-[9px] font-bold text-gray-500">--</div>
-                </div>
-                <button onclick="app.refreshUSMarketBar()" class="flex-shrink-0 bg-gray-800 border border-[#30363d] rounded-lg px-3 py-2 min-w-[60px] text-center text-[9px] text-gray-400 hover:text-white transition-colors font-bold">🔄<br>刷新</button>
-            </div>
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
                 <div class="px-3 pt-3 pb-1.5 flex justify-between items-center">
                     <div class="flex flex-col w-[55%] justify-center overflow-hidden">
@@ -905,6 +912,33 @@ const app = {
         };
         setBar('spx', data.spx); setBar('ndx', data.ndx);
         setBar('vix', data.vix, true); setBar('tsm', data.tsm);
+        this._checkMarketAlerts(data);
+    },
+
+    async refreshAllMarketData() {
+        await Promise.all([
+            this.fetchMacroData(),
+            this.refreshUSMarketBar()
+        ]);
+    },
+
+    _checkMarketAlerts(usData) {
+        const banner = document.getElementById('marketAlertBanner');
+        if (!banner) return;
+        const alerts = [];
+        if (usData?.vix?.price != null && parseFloat(usData.vix.price) > 25) {
+            alerts.push(`⚠️ VIX 恐慌指數 ${parseFloat(usData.vix.price).toFixed(2)} 警戒！市場波動偏高，注意風險`);
+        }
+        if (this.fiShortQty !== null && this.fiShortQty <= -20000) {
+            alerts.push(`🔴 外資期貨空單 ${Math.abs(this.fiShortQty).toLocaleString()} 口，市場偏空壓力大`);
+        }
+        if (alerts.length > 0) {
+            banner.innerHTML = alerts.join('　｜　');
+            banner.className = 'px-3 py-1 text-[10px] font-bold text-center border-b bg-red-950/80 text-red-400 border-red-800 animate-pulse';
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
     },
 
     forceStopLoading() { document.getElementById('loadingOverlay').style.display = 'none'; },
@@ -1142,17 +1176,26 @@ const app = {
                 }
             } catch(e) { console.log("FinMind TX API Failed"); }
 
-            const [resTaiex, resTpex] = await Promise.all([
-                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=TAIEX&start_date=${startDate}${tokenStr}`, {signal: controller.signal}),
-                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=TPEx&start_date=${startDate}${tokenStr}`, {signal: controller.signal})
-            ].map(p => p.catch(e => null)));
-            
             clearTimeout(timeoutId);
 
-            const dataTaiex = resTaiex && resTaiex.ok ? await resTaiex.json() : null;
-            const dataTpex = resTpex && resTpex.ok ? await resTpex.json() : null;
+            // TWSE OpenAPI for 加權指數 (free, CORS-enabled, no auth)
+            let taiexEntry = null, tpexEntry = null;
+            try {
+                const twseRes = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX', { signal: AbortSignal.timeout(8000) });
+                if (twseRes.ok) {
+                    const twseJson = await twseRes.json();
+                    taiexEntry = twseJson.find(x => (x.index || x.Index || '').includes('發行量加權'));
+                }
+            } catch(e) {}
+            try {
+                const tpexRes = await fetch('https://www.tpex.org.tw/openapi/v1/tpex_mi_index', { signal: AbortSignal.timeout(8000) });
+                if (tpexRes.ok) {
+                    const tpexJson = await tpexRes.json();
+                    tpexEntry = tpexJson[0] || null;
+                }
+            } catch(e) {}
 
-            const macroData = { taiex: dataTaiex?.data || [], tpex: dataTpex?.data || [], fiShort: taifexData };
+            const macroData = { taiexEntry, tpexEntry, fiShort: taifexData };
             localStorage.setItem(cacheKey, JSON.stringify({ date: todayStr, ts: now, data: macroData }));
             this.processMacroData(macroData);
         } catch(e) { if (cache) this.processMacroData(cache.data); }
@@ -1162,23 +1205,27 @@ const app = {
         this.emergencyMode = false;
         this.fiShortQty = (macro.fiShort !== null && macro.fiShort !== undefined) ? macro.fiShort : null;
 
-        if (macro.taiex && macro.taiex.length > 0) {
-            const taiex = macro.taiex, last = taiex[taiex.length - 1], prev = taiex.length > 1 ? taiex[taiex.length - 2] : last;
-            const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+        if (macro.taiexEntry) {
+            const e = macro.taiexEntry;
+            const price = parseFloat((e.ClosingIndex || e.closingIndex || '0').replace(/,/g, '')) || 0;
+            const chgStr = (e.Change || e.change || '0').replace(/,/g, '');
+            const diff = parseFloat(chgStr) || 0;
+            const pct = price > 0 ? (diff / (price - diff)) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWII').innerHTML = `加權 <span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
-
-            const fq = this.fiShortQty;
-            if (fq !== null && fq <= -35000)      { this.twiiState = 'bear'; this.emergencyMode = true; }
-            else if (fq !== null && fq <= -20000) { this.twiiState = 'neutral'; }
-            else                                  { this.twiiState = 'bull'; }
+            document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
+        const fq = this.fiShortQty;
+        if (fq !== null && fq <= -35000)      { this.twiiState = 'bear'; this.emergencyMode = true; }
+        else if (fq !== null && fq <= -20000) { this.twiiState = 'neutral'; }
+        else                                  { this.twiiState = 'bull'; }
 
-        if (macro.tpex && macro.tpex.length > 0) {
-            const tpex = macro.tpex, last = tpex[tpex.length - 1], prev = tpex.length > 1 ? tpex[tpex.length - 2] : last;
-            const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+        if (macro.tpexEntry) {
+            const e = macro.tpexEntry;
+            const price = parseFloat((e.ClosingIndex || e.closingIndex || e.close || '0').replace(/,/g, '')) || 0;
+            const diff = parseFloat((e.Change || e.change || '0').replace(/,/g, '')) || 0;
+            const pct = price > 0 ? (diff / (price - diff)) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWOII').innerHTML = `櫃買 <span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+            document.getElementById('mktTWOII').innerHTML = `<span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
 
         const fiNet = this.fiShortQty;
@@ -1190,7 +1237,7 @@ const app = {
             else if (fiNet >= -35000) { fiLabel = '🔴 紅色警戒'; fiColor = 'text-orange-400'; }
             else                      { fiLabel = '🚨 黑天鵝核彈'; fiColor = 'text-[#f87171] animate-pulse'; }
         }
-        document.getElementById('mktFI').innerHTML = `外資期貨 <span class="${fiColor} font-bold">${fiDisplay}口 ${fiLabel}</span>`;
+        document.getElementById('mktFI').innerHTML = `<span class="${fiColor} font-bold">${fiDisplay}口</span><span class="text-[8px] ${fiColor} ml-0.5">${fiLabel}</span>`;
 
         const emergencyBanner = document.getElementById('emergencyBanner');
         if (this.emergencyMode) { 
@@ -2260,7 +2307,8 @@ ${marginText}
         else { lightStatus = "❄️偏空"; scoreStyle = "text-green-400 border-green-800 bg-green-900/30"; }
         
         const headerScoreStatus = document.getElementById('headerScoreStatus');
-        headerScoreStatus.innerHTML = `${lightStatus} ${totalScore}分 <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span>`;
+        headerScoreStatus.innerHTML = `${lightStatus}｜${totalScore}/100 <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span>`;
+        headerScoreStatus.title = `綜合動能評分 ${totalScore}/100。點此查看各指標評分明細。`;
         headerScoreStatus.className = `text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity ${scoreStyle}`;
         headerScoreStatus.classList.remove('hidden');
         
@@ -2383,12 +2431,18 @@ ${marginText}
         }
 
         if (patternStats) {
-            document.getElementById('patCount').innerText = `${patternStats.count} 次`; document.getElementById('patWinRate').innerText = `${patternStats.winRate}%`;
+            const cnt = patternStats.count;
+            const confidence = cnt >= 20 ? '高信心' : cnt >= 10 ? '中信心' : '⚠️ 樣本不足';
+            const confColor = cnt >= 20 ? 'text-green-400' : cnt >= 10 ? 'text-yellow-400' : 'text-orange-400';
+            document.getElementById('patCount').innerHTML = `${cnt} 次 <span class="text-[9px] ${confColor}">(${confidence})</span>`;
+            document.getElementById('patWinRate').innerText = `${patternStats.winRate}%`;
             document.getElementById('patAvgRet').innerHTML = patternStats.avgRet > 0 ? `<span class="text-red-400">+${patternStats.avgRet}%</span>` : `<span class="text-green-400">${patternStats.avgRet}%</span>`;
         } else {
             document.getElementById('patCount').innerText = `--`; document.getElementById('patWinRate').innerText = `--`; document.getElementById('patAvgRet').innerText = `--`;
         }
-        document.getElementById('predictionConclusion').innerHTML = "長線勝率回測完畢，請依據歷史勝率分配投入資金部位。";
+        const btCount = parseInt(document.getElementById('btCount').innerText) || 0;
+        const btNote = btCount < 10 ? '樣本數偏少，僅供參考。' : '長線勝率回測完畢。';
+        document.getElementById('predictionConclusion').innerHTML = `${btNote} 請依據歷史勝率分配投入資金部位。`;
     },
 
     onWorkerMessage(data) {
