@@ -281,7 +281,14 @@
                         </div>
                     </div>
                     <div class="text-right flex flex-col justify-center items-end flex-grow">
-                        <span id="livePriceText" class="text-4xl md:text-5xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <span id="livePriceText" class="text-4xl md:text-5xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
+                            <button onclick="app.toggleManualPriceInput()" title="手動輸入現價" class="text-gray-600 hover:text-gray-400 text-sm transition-colors flex-shrink-0 mb-1">✏️</button>
+                        </div>
+                        <div id="manualPriceInputWrap" class="hidden flex items-center gap-1 mt-1">
+                            <input type="number" inputmode="decimal" id="manualPriceInput" class="bg-[#010409] text-white px-2 py-1 rounded border border-gray-600 outline-none font-mono text-sm w-24 text-right focus:border-blue-500 transition-colors" placeholder="手動現價" oninput="app.onManualPriceInput()">
+                            <button onclick="app.clearManualPrice()" class="text-gray-500 hover:text-red-400 text-xs transition-colors">✕</button>
+                        </div>
                         <div id="liveDiffWrapper" class="flex items-center gap-1 text-gray-400 mt-1">
                             <span id="liveDiffAmount" class="text-sm md:text-base font-black font-mono">--</span><span id="liveDiffPct" class="text-xs md:text-sm font-bold font-mono">(--%)</span>
                         </div>
@@ -365,6 +372,10 @@
                     <div class="text-xs md:text-sm text-gray-300 font-mono flex flex-col gap-2">
                         <div id="dividendInfo" class="flex flex-col gap-0.5"></div>
                         <div id="yoyInfo" class="flex flex-col gap-0.5 border-b border-[#30363d] pb-2"></div>
+                        <div id="financialAIBox" class="flex flex-col gap-1 py-1 border-b border-[#30363d]">
+                            <button onclick="app.runFinancialAI(app.currentSymbolId)" id="financialAIBtn" class="text-left text-[10px] text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-1">🧠 AI 財務白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span></button>
+                            <div id="financialAIResult" class="hidden text-[11px] text-gray-200 leading-relaxed bg-[#0d1117] rounded p-2 border border-indigo-900/30"></div>
+                        </div>
                         <div id="newsInfo" class="flex flex-col gap-1 pt-1">
                             <div class="text-gray-400 font-bold text-xs">📰 焦點動態快訊：</div>
                             <div id="newsList" class="text-gray-400 text-xs space-y-2 leading-relaxed max-h-40 overflow-y-auto pr-1 scrollbar-hide">
@@ -938,6 +949,35 @@ const app = {
             banner.classList.remove('hidden');
         } else {
             banner.classList.add('hidden');
+        }
+    },
+
+    toggleManualPriceInput() {
+        const wrap = document.getElementById('manualPriceInputWrap');
+        wrap.classList.toggle('hidden');
+        if (!wrap.classList.contains('hidden')) document.getElementById('manualPriceInput').focus();
+    },
+
+    onManualPriceInput() {
+        const val = parseFloat(document.getElementById('manualPriceInput').value);
+        if (!isNaN(val) && val > 0 && this.baseRawData?.length > 0) {
+            this.applyLatestPrice(null, val);
+            this.refreshStrategy();
+            document.getElementById('dataSourceText').textContent = '手動現價';
+            document.getElementById('dataSourceDot').className = 'w-1.5 h-1.5 rounded-full bg-yellow-400';
+            document.getElementById('livePriceText').textContent = val.toFixed(2);
+            document.getElementById('livePriceText').className = 'text-4xl md:text-5xl font-black font-mono text-yellow-400 leading-none tracking-tighter transition-all duration-200';
+        }
+    },
+
+    clearManualPrice() {
+        document.getElementById('manualPriceInput').value = '';
+        document.getElementById('manualPriceInputWrap').classList.add('hidden');
+        document.getElementById('dataSourceText').textContent = '收盤價(盤後)';
+        document.getElementById('dataSourceDot').className = 'w-1.5 h-1.5 rounded-full bg-gray-500';
+        if (this.baseRawData?.length > 0) {
+            this.applyLatestPrice(this._getHistoricalLatestAsPrice());
+            this.refreshStrategy();
         }
     },
 
@@ -1747,6 +1787,83 @@ ${marginText}
         btn.disabled = false;
     },
 
+    async runFinancialAI(sym) {
+        if (!sym) return;
+        const groqKey = this.settings.groqKey;
+        if (!groqKey) { alert('請先設定 Groq API Key'); return; }
+        const btn = document.getElementById('financialAIBtn');
+        const result = document.getElementById('financialAIResult');
+        btn.textContent = '🧠 分析中...';
+        result.classList.remove('hidden');
+        result.innerHTML = '<span class="animate-pulse text-indigo-400 text-[10px]">讀取財務數據...</span>';
+        const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const d = new Date(); d.setFullYear(d.getFullYear() - 2);
+        const startDate = d.toISOString().split('T')[0];
+        const d2 = new Date(); d2.setMonth(d2.getMonth() - 18);
+        const revenueStart = d2.toISOString().split('T')[0];
+        try {
+            const [fsRes, revRes] = await Promise.all([
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r => r.json()).catch(() => ({ data: [] })),
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revenueStart}${tokenStr}`).then(r => r.json()).catch(() => ({ data: [] }))
+            ]);
+            // Build quarterly EPS / gross margin summary
+            const byQuarter = {};
+            for (const row of (fsRes.data || [])) {
+                const q = `${row.date?.substring(0,7) || row.year}`;
+                if (!byQuarter[q]) byQuarter[q] = {};
+                if (row.type === 'EPS') byQuarter[q].eps = row.value;
+                if (row.type === 'GrossProfit' || row.type === 'gross_profit') byQuarter[q].gross = row.value;
+                if (row.type === 'Revenue' || row.type === 'revenue') byQuarter[q].rev = row.value;
+                if (row.type === 'OperatingIncome' || row.type === 'operating_income') byQuarter[q].opinc = row.value;
+            }
+            const quarters = Object.keys(byQuarter).sort().slice(-6);
+            const qText = quarters.map(q => {
+                const v = byQuarter[q];
+                const parts = [];
+                if (v.eps != null) parts.push(`EPS ${v.eps}`);
+                if (v.gross != null && v.rev != null && v.rev > 0) parts.push(`毛利率 ${((v.gross / v.rev) * 100).toFixed(1)}%`);
+                if (v.opinc != null && v.rev != null && v.rev > 0) parts.push(`營益率 ${((v.opinc / v.rev) * 100).toFixed(1)}%`);
+                return `${q}: ${parts.join(', ') || '無資料'}`;
+            }).join('\n') || '無季報資料';
+            // YoY from monthly revenue
+            const revData = (revRes.data || []).sort((a, b) => `${a.revenue_year}${String(a.revenue_month).padStart(2,'0')}` > `${b.revenue_year}${String(b.revenue_month).padStart(2,'0')}` ? 1 : -1);
+            let revText = '無月營收資料';
+            if (revData.length > 0) {
+                const last6 = revData.slice(-6);
+                revText = last6.map(r => {
+                    const yoy = r.revenue_year_growth != null ? `YoY ${r.revenue_year_growth > 0 ? '+' : ''}${r.revenue_year_growth}%` : '';
+                    return `${r.revenue_year}/${r.revenue_month}: ${(r.revenue / 1e8).toFixed(1)}億 ${yoy}`;
+                }).join('\n');
+            }
+            const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length - 1].close : '未知';
+            const prompt = `你是台股基本面分析師，語氣親切直白，用投資人能懂的話解釋。請分析以下財務數據（200字以內）：
+
+股票：${sym}，現價：${currentPrice}
+
+【近6季財務數據】
+${qText}
+
+【近6個月月營收（含 YoY）】
+${revText}
+
+請輸出：
+1. 獲利能力：EPS 趨勢是在成長還是衰退？毛利率有沒有擴張？
+2. 營收動能：月營收 YoY 加速還是減速？有沒有轉折訊號？
+3. 白話結論：現在基本面是「轉強」「持穩」還是「轉弱」？值不值得持有？`;
+            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 500, temperature: 0.6 })
+            });
+            const groqData = await groqRes.json();
+            const text = groqData.choices?.[0]?.message?.content || '分析失敗，請稍後再試';
+            result.innerHTML = `<div class="text-indigo-400 font-bold text-[9px] mb-1">🧠 AI 財務白話解讀 — ${sym}</div><div class="whitespace-pre-wrap">${text}</div>`;
+        } catch(e) {
+            result.innerHTML = '<span class="text-red-400 text-[10px]">分析失敗，請確認 API Key</span>';
+        }
+        btn.innerHTML = '🧠 AI 財務白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span>';
+    },
+
     async fetchCorpEvents(sym) {
         const divBox = document.getElementById('dividendInfo');
         const yoyBox = document.getElementById('yoyInfo');
@@ -1813,10 +1930,11 @@ ${marginText}
 
                         let dObj = new Date(d.date);
                         let formattedDate = `${String(dObj.getMonth() + 1).padStart(2, '0')}/${String(dObj.getDate()).padStart(2, '0')} ${String(dObj.getHours()).padStart(2, '0')}:${String(dObj.getMinutes()).padStart(2, '0')}`;
-                        const url = d.link || d.url || '';
+                        const url = (d && (d.link || d.url)) ? String(d.link || d.url).trim() : '';
+                        const safeTitle = (d.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                         const titleHtml = url
-                            ? `<a href="${url}" target="_blank" rel="noopener" class="leading-snug hover:text-blue-300 underline decoration-gray-600 transition-colors">${d.title}</a>`
-                            : `<span class="leading-snug">${d.title}</span>`;
+                            ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="leading-snug hover:text-blue-300 underline decoration-gray-600 transition-colors">${safeTitle}</a>`
+                            : `<span class="leading-snug">${safeTitle}</span>`;
 
                         nHtml += `<div class="${isImportant?'text-blue-300 font-bold':'text-gray-400'} border-b border-gray-800 pb-1.5">
                             <span class="text-[10px] text-gray-500 mr-1">[${formattedDate}]</span>${titleHtml}
