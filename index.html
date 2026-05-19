@@ -1757,17 +1757,22 @@ ${marginText}
 
             if (data && data.data && data.data.length > 0) {
                 const recent = data.data.slice(-15).reverse();
+                let confDate = '';
                 recent.forEach(d => {
                     if(!seenTitles.has(d.title)) {
                         seenTitles.add(d.title);
                         let isImportant = d.title.includes('營收') || d.title.includes('處置') || d.title.includes('注意') || d.title.includes('法說');
-                        if(d.title.includes('法說')) hasConf = true;
-                        
+                        if(d.title.includes('法說') && !hasConf) { hasConf = true; confDate = d.date; }
+
                         let dObj = new Date(d.date);
                         let formattedDate = `${String(dObj.getMonth() + 1).padStart(2, '0')}/${String(dObj.getDate()).padStart(2, '0')} ${String(dObj.getHours()).padStart(2, '0')}:${String(dObj.getMinutes()).padStart(2, '0')}`;
-                        
+                        const url = d.link || d.url || '';
+                        const titleHtml = url
+                            ? `<a href="${url}" target="_blank" rel="noopener" class="leading-snug hover:text-blue-300 underline decoration-gray-600 transition-colors">${d.title}</a>`
+                            : `<span class="leading-snug">${d.title}</span>`;
+
                         nHtml += `<div class="${isImportant?'text-blue-300 font-bold':'text-gray-400'} border-b border-gray-800 pb-1.5">
-                            <span class="text-[10px] text-gray-500 mr-1">[${formattedDate}]</span><span class="leading-snug">${d.title}</span>
+                            <span class="text-[10px] text-gray-500 mr-1">[${formattedDate}]</span>${titleHtml}
                         </div>`;
                         fullNewsText += `[${formattedDate}] ${d.title}\n`;
                     }
@@ -1777,7 +1782,14 @@ ${marginText}
             newsBox.innerHTML = nHtml;
 
             const badge = document.getElementById('corpEventBadge');
-            if(hasConf) badge.classList.remove('hidden'); else badge.classList.add('hidden');
+            if (hasConf) {
+                const cd = new Date(confDate);
+                const dateStr = confDate ? ` ${cd.getMonth()+1}/${cd.getDate()}` : '';
+                badge.textContent = `即將法說${dateStr}`;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
         } catch(e) { newsBox.innerHTML = `<span class="text-gray-500 text-xs">新聞檔案庫連線失敗</span>`; this.latestNewsCache = "";}
     },
 
