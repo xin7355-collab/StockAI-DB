@@ -295,8 +295,24 @@
                             <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 px-2 py-1.5 rounded w-full text-right pr-2 font-mono text-sm font-bold border border-gray-700 outline-none focus:border-yellow-500 transition-colors" placeholder="🫱 空手" oninput="app.refreshStrategy()">
                         </div>
                         <div class="flex-1 flex flex-col gap-1 relative">
-                            <span class="text-xs text-orange-400 font-bold pl-1 text-center">10日主力防守線</span>
+                            <span class="text-xs text-orange-400 font-bold pl-1 text-center cursor-pointer" onclick="document.getElementById('chipRadarPanel').classList.toggle('hidden')">10日籌碼雷達 🔬</span>
                             <input type="number" inputmode="decimal" id="chipCostInput" class="bg-[#010409] text-orange-400 px-2 py-1.5 rounded w-full text-right pr-2 font-mono text-sm font-bold border border-gray-700 outline-none focus:border-orange-500 transition-colors" placeholder="計算中..." oninput="app.refreshStrategy()">
+                        </div>
+                    </div>
+                    <div id="chipRadarPanel" class="hidden w-full mt-2 bg-[#0d1117] border border-orange-900/40 rounded-lg overflow-hidden">
+                        <div class="px-3 py-1.5 bg-orange-950/30 border-b border-orange-900/30 flex items-center justify-between">
+                            <span class="text-[10px] font-black text-orange-400 tracking-wide">🔬 三合一籌碼雷達</span>
+                            <button onclick="document.getElementById('chipRadarPanel').classList.add('hidden')" class="text-gray-500 text-xs hover:text-white">✕</button>
+                        </div>
+                        <div class="p-2 space-y-2">
+                            <div>
+                                <div class="text-[9px] text-gray-500 font-bold mb-1 px-1">🏦 三大法人10日估算成本</div>
+                                <div id="chipInstTable" class="space-y-0.5"></div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] text-gray-500 font-bold mb-1 px-1">🎯 前5大主力分點成本</div>
+                                <div id="chipBrokerTable" class="space-y-0.5"></div>
+                            </div>
                         </div>
                     </div>
                     
@@ -1359,29 +1375,128 @@ const app = {
 
     async fetchChipCost(sym) {
         const input = document.getElementById('chipCostInput');
-        input.placeholder = "10日分點掃描中...";
+        input.placeholder = "籌碼掃描中...";
+        const token = this.settings.finmindKey ? `&token=${this.settings.finmindKey}` : '';
+        let d = new Date(); d.setDate(d.getDate() - 20);
+        const sDate = d.toISOString().split('T')[0];
+
+        // Build price lookup from already-loaded rawDailyData
+        const priceByDate = {};
+        (this.rawDailyData || []).forEach(r => {
+            // r.date is "2024/01/02", convert to "2024-01-02"
+            const key = r.date.replace(/\//g, '-');
+            priceByDate[key] = r.close;
+        });
+
         try {
-            let d = new Date(); d.setDate(d.getDate() - 15);
-            let sDate = d.toISOString().split('T')[0];
-            let token = this.settings.finmindKey ? `&token=${this.settings.finmindKey}` : '';
-            const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockBrokerTrading&data_id=${sym}&start_date=${sDate}${token}`);
-            const json = await res.json();
-            if(json && json.data && json.data.length > 0) {
-                let brokers = {};
-                json.data.forEach(row => {
-                    if(!brokers[row.broker_id]) brokers[row.broker_id] = {buy:0, vol:0};
-                    brokers[row.broker_id].buy += row.buy_price * row.buy;
-                    brokers[row.broker_id].vol += row.buy;
+            // ── Fetch A+C: broker trading (for market VWAP + branch breakdown) ──
+            const [brokerRes, instRes] = await Promise.all([
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockBrokerTrading&data_id=${sym}&start_date=${sDate}${token}`).then(r => r.json()).catch(() => null),
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${sDate}${token}`).then(r => r.json()).catch(() => null)
+            ]);
+
+            // ── Type A: Market-wide VWAP ──────────────────────────────────────
+            let marketVwap = 0;
+            const brokers = {};
+            if (brokerRes?.data?.length > 0) {
+                brokerRes.data.forEach(row => {
+                    const id = row.broker_id;
+                    if (!brokers[id]) brokers[id] = { name: row.broker_name || id, buyAmt: 0, buyVol: 0, sellAmt: 0, sellVol: 0 };
+                    brokers[id].buyAmt  += (row.buy_price || 0) * (row.buy || 0);
+                    brokers[id].buyVol  += (row.buy || 0);
+                    brokers[id].sellAmt += (row.sell_price || 0) * (row.sell || 0);
+                    brokers[id].sellVol += (row.sell || 0);
                 });
-                let totalBuy = 0, totalVol = 0;
-                Object.values(brokers).forEach(b => { totalBuy += b.buy; totalVol += b.vol; });
-                let vwap = totalVol > 0 ? (totalBuy / totalVol) : 0;
-                if(vwap > 0) {
-                    input.value = vwap.toFixed(2);
-                    this.refreshStrategy();
-                } else { input.placeholder = "輸入成本"; }
-            } else { input.placeholder = "輸入成本"; }
-        } catch(e) { input.placeholder = "無籌碼(請手動)"; }
+                let totalAmt = 0, totalVol = 0;
+                Object.values(brokers).forEach(b => { totalAmt += b.buyAmt; totalVol += b.buyVol; });
+                marketVwap = totalVol > 0 ? totalAmt / totalVol : 0;
+                if (marketVwap > 0) { input.value = marketVwap.toFixed(2); this.refreshStrategy(); }
+                else input.placeholder = "無分點資料";
+            } else {
+                input.placeholder = "需要 FinMind Token";
+            }
+
+            // ── Type B: Institutional estimated cost ─────────────────────────
+            const instCosts = { '外資及陸資': { buyAmt: 0, buyVol: 0 }, '投信': { buyAmt: 0, buyVol: 0 }, '自營商': { buyAmt: 0, buyVol: 0 } };
+            if (instRes?.data?.length > 0) {
+                instRes.data.forEach(row => {
+                    const net = (row.buy || 0) - (row.sell || 0);
+                    if (net <= 0) return; // only count net-buying days
+                    const price = priceByDate[row.date] || 0;
+                    if (!price) return;
+                    const name = row.name || '';
+                    if (name.includes('外資')) {
+                        instCosts['外資及陸資'].buyAmt += net * price;
+                        instCosts['外資及陸資'].buyVol += net;
+                    } else if (name === '投信') {
+                        instCosts['投信'].buyAmt += net * price;
+                        instCosts['投信'].buyVol += net;
+                    } else if (name.includes('自營')) {
+                        instCosts['自營商'].buyAmt += net * price;
+                        instCosts['自營商'].buyVol += net;
+                    }
+                });
+            }
+
+            // ── Type C: Top 5 net-buying broker branches ──────────────────────
+            const brokerList = Object.values(brokers).map(b => ({
+                name: b.name,
+                vwap: b.buyVol > 0 ? b.buyAmt / b.buyVol : 0,
+                net: b.buyVol - b.sellVol,
+                netAmt: b.buyAmt - b.sellAmt
+            })).filter(b => b.net > 0 && b.vwap > 0)
+               .sort((a, b) => b.netAmt - a.netAmt)
+               .slice(0, 5);
+
+            // ── Render the panel ──────────────────────────────────────────────
+            this._renderChipPanel(instCosts, brokerList, marketVwap);
+
+        } catch(e) { input.placeholder = "籌碼載入失敗"; }
+    },
+
+    _renderChipPanel(instCosts, brokerList, marketVwap) {
+        const pC = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : 0;
+        const panel = document.getElementById('chipRadarPanel');
+        const instEl = document.getElementById('chipInstTable');
+        const brokerEl = document.getElementById('chipBrokerTable');
+        if (!instEl || !brokerEl) return;
+
+        // Show panel if we have data
+        if ((brokerList.length > 0 || Object.values(instCosts).some(v => v.buyVol > 0)) && panel) {
+            panel.classList.remove('hidden');
+        }
+
+        // Render institutional table
+        const instNames = { '外資及陸資': '外資', '投信': '投信', '自營商': '自營' };
+        instEl.innerHTML = Object.entries(instCosts).map(([key, val]) => {
+            const cost = val.buyVol > 0 ? (val.buyAmt / val.buyVol) : 0;
+            if (cost === 0) return `<div class="flex justify-between items-center px-2 py-0.5 rounded text-[10px]"><span class="text-gray-600">${instNames[key]}</span><span class="text-gray-600 font-mono">無淨買超</span></div>`;
+            const diff = pC > 0 ? ((pC - cost) / cost * 100) : 0;
+            const col = diff > 0 ? 'text-[#f87171]' : 'text-[#4ade80]';
+            return `<div class="flex justify-between items-center px-2 py-0.5 bg-gray-900/50 rounded text-[10px]">
+                <span class="text-gray-400 font-bold">${instNames[key]}</span>
+                <span class="font-mono font-black text-orange-300">${cost.toFixed(2)}</span>
+                <span class="font-mono font-bold ${col}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span>
+            </div>`;
+        }).join('');
+
+        // Render broker table
+        if (brokerList.length === 0) {
+            brokerEl.innerHTML = `<div class="text-[10px] text-gray-600 px-2 py-1">需要 FinMind Token 才能顯示分點資料</div>`;
+        } else {
+            brokerEl.innerHTML = brokerList.map((b, i) => {
+                const diff = pC > 0 && b.vwap > 0 ? ((pC - b.vwap) / b.vwap * 100) : 0;
+                const col = diff > 0 ? 'text-[#f87171]' : 'text-[#4ade80]';
+                const medal = ['🥇','🥈','🥉','4️⃣','5️⃣'][i];
+                const name = b.name.length > 8 ? b.name.substring(0, 8) : b.name;
+                return `<div class="flex items-center gap-1 px-2 py-0.5 bg-gray-900/50 rounded text-[10px]">
+                    <span class="flex-shrink-0">${medal}</span>
+                    <span class="text-gray-300 flex-1 truncate">${name}</span>
+                    <span class="font-mono font-black text-orange-300 flex-shrink-0">${b.vwap.toFixed(2)}</span>
+                    <span class="font-mono font-bold ${col} flex-shrink-0 w-14 text-right">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span>
+                </div>`;
+            }).join('');
+        }
     },
 
     async fetchCorpEvents(sym) {
