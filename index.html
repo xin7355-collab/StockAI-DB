@@ -1997,7 +1997,7 @@ ${revText}
         
         if (this.baseRawData.length > 1) {
             const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
-            document.getElementById('headerLastClose').innerText = prevCloseVal.toFixed(2);
+            const hLC = document.getElementById('headerLastClose'); if (hLC) hLC.innerText = prevCloseVal.toFixed(2);
         }
 
         let fugleData = null;
@@ -2730,13 +2730,16 @@ ${revText}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
                 <div class="absolute inset-y-0 right-0 w-[80px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer delete-btn text-sm" onclick="app.removeFromFav('${sym}')">刪除</div>
-                <div class="swipe-content relative bg-gradient-to-r from-[#1c2128] to-[#161b22] p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
-                    <div class="drag-handle text-gray-600 hover:text-white px-2 text-lg">☰</div>
-                    <div class="font-bold text-white text-lg cursor-pointer flex-1 flex flex-col justify-center gap-0.5" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
-                        <div class="flex items-baseline gap-2"><span>${this.getFullStockName(sym)}</span></div>
-                        <div class="flex items-center gap-1.5 mt-0.5">${seasonTag}<span class="text-xs text-gray-500 font-mono">收 ${prevCloseText}</span></div>
+                <div class="swipe-content relative bg-gradient-to-r from-[#1c2128] to-[#161b22] px-3 py-2.5 flex items-center gap-2 w-full" style="transform: translateX(0px);">
+                    <div class="drag-handle text-gray-600 hover:text-white text-lg flex-shrink-0">☰</div>
+                    <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
+                            ${seasonTag ? `<span class="flex-shrink-0">${seasonTag}</span>` : ''}
+                        </div>
+                        <div class="text-xs text-gray-500 font-mono mt-0.5">收 ${prevCloseText}</div>
                     </div>
-                    ${this.isFavEditMode ? `<button class="text-gray-500 px-3 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 px-3 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
+                    ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
                 </div>
             </div>`;
         }
