@@ -145,6 +145,16 @@
                             <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind"></div>
                         </div>
                     </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-blue-300">🌐 Massive API Key (美股/VIX/ADR)</label>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">massive.com — 用於 S&amp;P500、NASDAQ、VIX、台積電ADR即時快照</p>
+                        <div class="flex gap-2 items-center">
+                            <input type="password" id="set_massiveKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-blue-300 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-blue-400 transition-colors" placeholder="輸入 Massive API Key...">
+                            <button onclick="app.verifyAPI('massive')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_massive"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
@@ -621,7 +631,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey: '', aiPrompt: '', voiceAlert: false },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey: '', massiveKey: '', aiPrompt: '', voiceAlert: false },
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
@@ -863,6 +873,7 @@ const app = {
         document.getElementById('set_fugleToken2').value = this.settings.fugleToken2 || '';
         document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
         document.getElementById('set_finmindKey').value = this.settings.finmindKey || '';
+        document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         document.getElementById('exportAreaContainer').classList.add('hidden');
         const modal = document.getElementById('settingsModal');
@@ -889,6 +900,7 @@ const app = {
         this.settings.fugleToken2 = document.getElementById('set_fugleToken2').value.trim();
         this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
         this.settings.finmindKey = document.getElementById('set_finmindKey').value.trim();
+        this.settings.massiveKey = document.getElementById('set_massiveKey').value.trim();
         localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
@@ -913,6 +925,10 @@ const app = {
                 const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${this.settings.finmindKey}`);
                 const json = await res.json();
                 if(res.ok && json.status === 200) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
+            } else if (type === 'massive') {
+                if(!this.settings.massiveKey) throw new Error();
+                const res = await fetch(`https://api.massive.com/v1/marketstatus/now`, { headers: { 'Authorization': `Bearer ${this.settings.massiveKey}` } });
+                if(res.ok) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
             }
         } catch(e) {
             led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
@@ -1205,6 +1221,52 @@ const app = {
         if (!this.rawDailyData || this.rawDailyData.length === 0) return null;
         const last = this.rawDailyData[this.rawDailyData.length - 1];
         return { price: last.close, open: last.open, high: last.high, low: last.low, volume: last.volume, isHistorical: true };
+    },
+
+    // Fetch US market snapshot (S&P500, NASDAQ, VIX, TSM ADR) via Massive API
+    // Throttle: caller is responsible for not calling more than once per 2 minutes
+    async fetchMassiveUSMarket() {
+        const key = this.settings.massiveKey;
+        if (!key) return null;
+        const headers = { 'Authorization': `Bearer ${key}` };
+        const tickers = ['I:SPX', 'I:NDX', 'I:VIX', 'TSM'];
+        try {
+            const [spx, ndx, vix, tsm] = await Promise.all(tickers.map(t => {
+                const isIndex = t.startsWith('I:');
+                const url = isIndex
+                    ? `https://api.massive.com/v2/snapshot/locale/us/markets/indices/tickers/${t}`
+                    : `https://api.massive.com/v2/snapshot/locale/us/markets/stocks/tickers/${t}`;
+                return fetch(url, { headers }).then(r => r.ok ? r.json() : null).catch(() => null);
+            }));
+            const extract = (json, ticker) => {
+                const r = json?.results?.ticker ?? json?.ticker ?? json?.results ?? null;
+                if (!r) return null;
+                const day = r.day ?? r.lastTrade ?? r;
+                return {
+                    ticker,
+                    price: r.lastTrade?.p ?? r.last?.price ?? day?.c ?? null,
+                    changePercent: r.todaysChangePerc ?? r.change_percent ?? null,
+                    prevClose: r.prevDay?.c ?? r.prev?.c ?? null
+                };
+            };
+            const result = {
+                spx: extract(spx, 'SPX'),
+                ndx: extract(ndx, 'NASDAQ'),
+                vix: extract(vix, 'VIX'),
+                tsm: extract(tsm, 'TSM'),
+                fetchedAt: Date.now()
+            };
+            // Cache in localStorage with 2-minute TTL (free tier: 5 req/min)
+            localStorage.setItem('proTerminalUSMarket', JSON.stringify(result));
+            return result;
+        } catch(e) { return null; }
+    },
+
+    // Read US market from cache (max 2 min old) or fetch fresh
+    async getUSMarketData() {
+        const cached = JSON.parse(localStorage.getItem('proTerminalUSMarket') || 'null');
+        if (cached && (Date.now() - cached.fetchedAt) < 120000) return cached;
+        return await this.fetchMassiveUSMarket();
     },
 
     async fetchStockList() { 
