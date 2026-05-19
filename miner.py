@@ -1,84 +1,149 @@
+"""
+首席 AI 司令部 — 雲端籌碼採礦機
+策略：每天只需 3 次 FinMind batch API 呼叫，即可更新全台 2000+ 檔
+      OHLCV + 法人三大買賣超 + 融資融券，省流量、不被 Ban。
+"""
 import os
 import json
-import yfinance as yf
-import pandas as pd
 import requests
 import time
-import random
-from datetime import datetime, timedelta
+from datetime import date, timedelta
+from pathlib import Path
 
-# 建立存放 JSON 檔案的資料夾
 DATA_DIR = "data"
-os.makedirs(DATA_DIR, exist_ok=True)
+FINMIND_TOKEN = os.environ.get('FINMIND_TOKEN', '')
+BASE_URL = 'https://api.finmindtrade.com/api/v4/data'
 
-def download_stock_data(symbol, years=3):
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=years*365)
-    
-    start_str = start_date.strftime('%Y-%m-%d')
-    end_str = end_date.strftime('%Y-%m-%d')
-    
-    df = pd.DataFrame()
-    # 雙軌備援：先試上市 (.TW)，再試上櫃 (.TWO)
-    for suffix in ['.TW', '.TWO']:
+Path(DATA_DIR).mkdir(exist_ok=True)
+
+
+def fm_get(dataset, **params):
+    """FinMind API wrapper — returns data list or [] on failure."""
+    p = {'dataset': dataset, **params}
+    if FINMIND_TOKEN:
+        p['token'] = FINMIND_TOKEN
+    for attempt in range(3):
         try:
-            ticker = yf.Ticker(f"{symbol}{suffix}")
-            temp_df = ticker.history(start=start_str, end=end_str)
-            if not temp_df.empty:
-                df = temp_df
-                break
-        except:
-            continue
+            res = requests.get(BASE_URL, params=p, timeout=60)
+            j = res.json()
+            if j.get('status') == 200:
+                return j.get('data', [])
+            print(f"  ⚠️  FinMind {dataset} status={j.get('status')} msg={j.get('msg')}")
+            return []
+        except Exception as e:
+            print(f"  ⚠️  FinMind {dataset} attempt {attempt+1} failed: {e}")
+            time.sleep(5 * (attempt + 1))
+    return []
 
-    if df.empty:
-        return False
-        
-    records = []
-    for date, row in df.iterrows():
-        close_price = row.get('Close', None)
-        if pd.isna(close_price) or close_price == 0: continue
-            
-        records.append({
-            "date": date.strftime('%Y/%m/%d'), # 直接轉成前端 ECharts 要的格式
-            "open": float(row.get('Open', close_price)),
-            "high": float(row.get('High', close_price)),
-            "low": float(row.get('Low', close_price)),
-            "close": float(close_price),
-            "volume": int(row.get('Volume', 0))
-        })
-        
-    if not records:
-        return False
 
-    # 將這檔股票的歷史資料存成獨立的 JSON 檔
-    file_path = os.path.join(DATA_DIR, f"{symbol}.json")
-    with open(file_path, 'w', encoding='utf-8') as f:
-        json.dump(records, f, ensure_ascii=False)
-        
-    print(f"🟢 {symbol} 更新完成，共 {len(records)} 筆")
-    return True
+def load_json(symbol):
+    p = Path(DATA_DIR) / f"{symbol}.json"
+    if p.exists():
+        with open(p, encoding='utf-8') as f:
+            return json.load(f)
+    return []
 
-if __name__ == "__main__":
-    print("🔍 從 FinMind 獲取最新台股名單...")
-    target_stocks = ["2330", "2317", "2454", "3231", "2603"] # 預設名單
-    try:
-        res = requests.get('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo', timeout=10)
-        if res.status_code == 200:
-            json_data = res.json()
-            if json_data.get('msg') == 'success':
-                target_stocks = [s['stock_id'] for s in json_data['data'] if len(s['stock_id']) == 4 and s['stock_id'].isdigit()]
-    except:
-        pass
 
-    print(f"🚀 啟動 GitHub Actions 雲端採礦機，預計掃描 {len(target_stocks)} 檔...")
-    success_count = 0
-    
-    for i, sym in enumerate(target_stocks):
-        if download_stock_data(sym, years=3):
-            success_count += 1
-            time.sleep(random.uniform(0.1, 0.5)) # 節流閥，防止被 Yahoo 鎖 IP
-            
-        if (i + 1) % 100 == 0:
-            time.sleep(5) # 每 100 檔稍微深呼吸
-            
-    print(f"🎉 雲端採礦完結！成功更新 {success_count} 檔股票。")
+def save_json(symbol, records):
+    p = Path(DATA_DIR) / f"{symbol}.json"
+    with open(p, 'w', encoding='utf-8') as f:
+        json.dump(records, f, ensure_ascii=False, separators=(',', ':'))
+
+
+def run():
+    today = date.today()
+    # Fetch a rolling 15-day window so we catch any delayed settlement data
+    start = (today - timedelta(days=15)).strftime('%Y-%m-%d')
+    end = today.strftime('%Y-%m-%d')
+
+    # ── 1. OHLCV (全台股，一次拿完) ──────────────────────────────────
+    print(f"📊 [1/3] TaiwanStockPrice {start}~{end} ...")
+    prices = fm_get('TaiwanStockPrice', start_date=start, end_date=end)
+    print(f"       {len(prices)} 筆")
+
+    # ── 2. 法人三大買賣超 ──────────────────────────────────────────────
+    print(f"🏦 [2/3] TaiwanStockInstitutionalInvestors {start}~{end} ...")
+    inst_raw = fm_get('TaiwanStockInstitutionalInvestors', start_date=start, end_date=end)
+    print(f"       {len(inst_raw)} 筆")
+
+    # ── 3. 融資融券 ────────────────────────────────────────────────────
+    print(f"💳 [3/3] TaiwanStockMarginPurchaseShortSale {start}~{end} ...")
+    margin_raw = fm_get('TaiwanStockMarginPurchaseShortSale', start_date=start, end_date=end)
+    print(f"       {len(margin_raw)} 筆")
+
+    # ── Build lookup: (date_str, stock_id) ───────────────────────────
+    inst = {}
+    for r in inst_raw:
+        k = (r['date'], r['stock_id'])
+        if k not in inst:
+            inst[k] = {'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0}
+        net = int(r.get('buy', 0)) - int(r.get('sell', 0))
+        name = r.get('name', '')
+        if '外資' in name:
+            inst[k]['foreign_net'] = net
+        elif '投信' in name:
+            inst[k]['trust_net'] = net
+        elif '自營' in name:
+            inst[k]['dealer_net'] = net
+
+    margin = {}
+    for r in margin_raw:
+        margin[(r['date'], r['stock_id'])] = {
+            'margin_balance': int(r.get('MarginPurchaseToday', 0)),
+            'short_balance':  int(r.get('ShortSaleToday', 0))
+        }
+
+    # ── Group prices by symbol ────────────────────────────────────────
+    by_sym = {}
+    for r in prices:
+        sym = r['stock_id']
+        by_sym.setdefault(sym, []).append(r)
+
+    # ── Merge & save each symbol ──────────────────────────────────────
+    print(f"\n💾 合併寫入 {len(by_sym)} 檔股票...")
+    updated = 0
+    for sym, rows in by_sym.items():
+        existing = load_json(sym)
+        existing_dates = {rec['date'] for rec in existing}
+
+        new_recs = []
+        for r in rows:
+            raw_date = r['date']                         # "2024-01-02"
+            fmt_date = raw_date.replace('-', '/')        # "2024/01/02"
+            if fmt_date in existing_dates:
+                continue
+
+            close = float(r.get('close', 0))
+            if close == 0:
+                continue
+
+            rec = {
+                'date':   fmt_date,
+                'open':   float(r.get('open', close)),
+                'high':   float(r.get('max',  close)),
+                'low':    float(r.get('min',  close)),
+                'close':  close,
+                'volume': int(r.get('Trading_Volume', 0)),
+                # 法人籌碼
+                'foreign_net': inst.get((raw_date, sym), {}).get('foreign_net', 0),
+                'trust_net':   inst.get((raw_date, sym), {}).get('trust_net',   0),
+                'dealer_net':  inst.get((raw_date, sym), {}).get('dealer_net',  0),
+                # 融資融券
+                'margin_balance': margin.get((raw_date, sym), {}).get('margin_balance', 0),
+                'short_balance':  margin.get((raw_date, sym), {}).get('short_balance',  0),
+            }
+            new_recs.append(rec)
+
+        if new_recs:
+            combined = sorted(existing + new_recs, key=lambda x: x['date'])
+            combined = combined[-800:]   # 保留約 3 年 (800 個交易日)
+            save_json(sym, combined)
+            updated += 1
+
+    print(f"\n🎉 採礦完成！更新 {updated} 檔，略過 {len(by_sym)-updated} 檔（已是最新）。")
+
+
+if __name__ == '__main__':
+    print("🚀 首席 AI 司令部 — 雲端籌碼採礦機")
+    print(f"🔑 FinMind Token: {'✅ 有（完整模式）' if FINMIND_TOKEN else '⚠️  無（限速模式）'}\n")
+    run()
