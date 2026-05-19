@@ -283,7 +283,8 @@
                 <div class="flex px-2 pt-1.5 bg-[#0d1117]">
                     <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 py-2 text-sm font-bold tracking-widest rounded-t-lg">⚡ 首席指揮</button>
                     <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 py-2 text-sm font-bold tracking-widest rounded-t-lg">📈 K線圖表</button>
-                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 py-2 text-sm font-bold tracking-widest rounded-t-lg">📅 回測預判</button>
+                    <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 py-2 text-sm font-bold tracking-widest rounded-t-lg">🔬 籌碼</button>
+                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 py-2 text-sm font-bold tracking-widest rounded-t-lg">📅 回測</button>
                 </div>
             </div>
 
@@ -363,6 +364,29 @@
                                 <span class="animate-pulse">讀取中...</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 10日籌碼走勢圖 -->
+            <div id="subContentChip" class="hidden flex-col gap-0 mt-2 px-2 md:px-4">
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                    <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
+                        <h4 class="text-xs font-black text-orange-400 tracking-wide">📊 10日籌碼走勢</h4>
+                        <div class="flex gap-2 items-center">
+                            <span id="chipTimelineStatus" class="text-[9px] text-gray-500"></span>
+                            <button onclick="app.fetchChipTimeline(app.currentSymbolId, true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                        </div>
+                    </div>
+                    <!-- 法人三大淨買賣條形圖 -->
+                    <div class="px-3 pt-2 pb-0">
+                        <div class="text-[9px] text-gray-500 font-bold mb-1">三大法人每日淨買賣超（千股）</div>
+                        <div id="chipInstChart" style="height:110px;width:100%;"></div>
+                    </div>
+                    <!-- 融資融券走勢 -->
+                    <div class="px-3 pt-1 pb-2">
+                        <div class="text-[9px] text-gray-500 font-bold mb-1">融資／融券餘額趨勢（千股）</div>
+                        <div id="chipMarginChart" style="height:90px;width:100%;"></div>
                     </div>
                 </div>
             </div>
@@ -695,7 +719,7 @@ const app = {
     navStack: ['diag'], currentSymbolId: '2330', currentTF: 'D', currentSubChart: 'VOL',
     chartInstance: null, edgeSwipeStartX: 999,
     currentUSMarket: 'neutral', currentStrategyContext: {},
-    peaks: [], troughs: [], twiiState: 'neutral', fiShortQty: 0, currentMarkPoints: [],
+    peaks: [], troughs: [], twiiState: 'neutral', fiShortQty: null, currentMarkPoints: [],
     sortableFav: null, sortableInv: null, apiRateLimited: false, emergencyMode: false,
     latestNewsCache: "", latestYoyCache: "", autoRefreshTimer: null,
     
@@ -942,11 +966,14 @@ const app = {
     },
 
     switchSubTab(tab) {
-        ['Strategy', 'Chart', 'Backtest'].forEach(t => {
-            document.getElementById(`subContent${t}`).style.display = t.toLowerCase() === tab ? 'flex' : 'none';
-            document.getElementById(`subTabBtn${t}`).classList.toggle('active', t.toLowerCase() === tab);
+        ['Strategy', 'Chart', 'Chip', 'Backtest'].forEach(t => {
+            const el = document.getElementById(`subContent${t}`);
+            if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
+            const btn = document.getElementById(`subTabBtn${t}`);
+            if (btn) btn.classList.toggle('active', t.toLowerCase() === tab);
         });
-        if(tab === 'chart' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
+        if (tab === 'chart' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
+        if (tab === 'chip') this.fetchChipTimeline(this.currentSymbolId);
     },
 
     openSettings() {
@@ -1169,10 +1196,8 @@ const app = {
     },
 
     processMacroData(macro) {
-        this.emergencyMode = false; this.fiShortQty = 0;
-        if (macro.fiShort !== null && macro.fiShort !== undefined) {
-            this.fiShortQty = macro.fiShort;
-        }
+        this.emergencyMode = false;
+        this.fiShortQty = (macro.fiShort !== null && macro.fiShort !== undefined) ? macro.fiShort : null;
 
         if (macro.taiex && macro.taiex.length > 0) {
             const taiex = macro.taiex, last = taiex[taiex.length - 1], prev = taiex.length > 1 ? taiex[taiex.length - 2] : last;
@@ -1180,9 +1205,10 @@ const app = {
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             document.getElementById('mktTWII').innerHTML = `加權 <span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
 
-            if (this.fiShortQty <= -35000) { this.twiiState = 'bear'; this.emergencyMode = true; } 
-            else if (this.fiShortQty <= -20000) { this.twiiState = 'neutral'; } 
-            else { this.twiiState = 'bull'; }
+            const fq = this.fiShortQty;
+            if (fq !== null && fq <= -35000)      { this.twiiState = 'bear'; this.emergencyMode = true; }
+            else if (fq !== null && fq <= -20000) { this.twiiState = 'neutral'; }
+            else                                  { this.twiiState = 'bull'; }
         }
 
         if (macro.tpex && macro.tpex.length > 0) {
@@ -1193,12 +1219,15 @@ const app = {
         }
 
         const fiNet = this.fiShortQty;
-        let fiLabel, fiColor;
-        if (fiNet > -10000) { fiLabel = '多方無憂'; fiColor = 'text-[#4ade80]'; }
-        else if (fiNet >= -25000) { fiLabel = '⚠️ 暗流湧動'; fiColor = 'text-yellow-300'; }
-        else if (fiNet >= -35000) { fiLabel = '🔴 紅色警戒'; fiColor = 'text-orange-400'; }
-        else { fiLabel = '🚨 黑天鵝核彈'; fiColor = 'text-[#f87171] animate-pulse'; }
-        document.getElementById('mktFI').innerHTML = `外資期貨 <span class="${fiColor} font-bold">${fiNet !== null ? fiNet : '--'} ${fiLabel}</span>`;
+        let fiLabel = '', fiColor = 'text-gray-400', fiDisplay = '--';
+        if (fiNet !== null && fiNet !== undefined) {
+            fiDisplay = fiNet.toLocaleString();
+            if (fiNet > -10000)       { fiLabel = '多方無憂';     fiColor = 'text-[#4ade80]'; }
+            else if (fiNet >= -25000) { fiLabel = '⚠️ 暗流湧動'; fiColor = 'text-yellow-300'; }
+            else if (fiNet >= -35000) { fiLabel = '🔴 紅色警戒'; fiColor = 'text-orange-400'; }
+            else                      { fiLabel = '🚨 黑天鵝核彈'; fiColor = 'text-[#f87171] animate-pulse'; }
+        }
+        document.getElementById('mktFI').innerHTML = `外資期貨 <span class="${fiColor} font-bold">${fiDisplay}口 ${fiLabel}</span>`;
 
         const emergencyBanner = document.getElementById('emergencyBanner');
         if (this.emergencyMode) { 
@@ -1497,6 +1526,122 @@ const app = {
                 </div>`;
             }).join('');
         }
+    },
+
+    async fetchChipTimeline(sym, forceRefresh) {
+        if (!sym) return;
+        const statusEl = document.getElementById('chipTimelineStatus');
+        const cacheKey = `chipTimeline_${sym}`;
+        const CACHE_TTL = 6 * 3600 * 1000;
+
+        if (!forceRefresh) {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                try {
+                    const { ts, instData, marginData } = JSON.parse(cached);
+                    if (Date.now() - ts < CACHE_TTL) {
+                        this._renderChipTimeline(instData, marginData);
+                        if (statusEl) statusEl.textContent = '快取';
+                        return;
+                    }
+                } catch(e) {}
+            }
+        }
+
+        if (statusEl) statusEl.textContent = '載入中…';
+        const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const d = new Date();
+        d.setDate(d.getDate() - 20);
+        const startDate = d.toISOString().split('T')[0];
+
+        try {
+            const [instRes, marginRes] = await Promise.all([
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r => r.json()),
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r => r.json())
+            ]);
+
+            // Build per-date institutional net buy/sell
+            const instByDate = {};
+            for (const r of (instRes.data || [])) {
+                if (!instByDate[r.date]) instByDate[r.date] = { foreign: 0, trust: 0, dealer: 0 };
+                const net = (parseInt(r.buy) || 0) - (parseInt(r.sell) || 0);
+                const n = r.name || '';
+                if (n.includes('外資')) instByDate[r.date].foreign = net;
+                else if (n.includes('投信')) instByDate[r.date].trust = net;
+                else if (n.includes('自營')) instByDate[r.date].dealer = net;
+            }
+            const instDates = Object.keys(instByDate).sort().slice(-10);
+            const instData = instDates.map(d => ({
+                date: d,
+                foreign: Math.round((instByDate[d].foreign || 0) / 1000),
+                trust:   Math.round((instByDate[d].trust   || 0) / 1000),
+                dealer:  Math.round((instByDate[d].dealer  || 0) / 1000),
+            }));
+
+            // Build margin/short timeline
+            const marginByDate = {};
+            for (const r of (marginRes.data || [])) {
+                marginByDate[r.date] = {
+                    margin: Math.round((parseInt(r.MarginPurchaseToday) || 0) / 1000),
+                    short:  Math.round((parseInt(r.ShortSaleToday)      || 0) / 1000),
+                };
+            }
+            const marginDates = Object.keys(marginByDate).sort().slice(-10);
+            const marginData = marginDates.map(d => ({ date: d, ...marginByDate[d] }));
+
+            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), instData, marginData }));
+            this._renderChipTimeline(instData, marginData);
+            if (statusEl) statusEl.textContent = `更新 ${new Date().toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' })}`;
+        } catch(e) {
+            if (statusEl) statusEl.textContent = '載入失敗';
+        }
+    },
+
+    _renderChipTimeline(instData, marginData) {
+        const instEl = document.getElementById('chipInstChart');
+        const marginEl = document.getElementById('chipMarginChart');
+        if (!instEl || !marginEl) return;
+
+        const labelStyle = { color: '#9ca3af', fontSize: 9 };
+        const gridCfg = { top: 8, bottom: 22, left: 40, right: 8 };
+
+        // ── 三大法人每日淨買賣超 bar chart ──────────────────────────
+        const instChart = echarts.init(instEl, 'dark');
+        instChart.setOption({
+            backgroundColor: 'transparent',
+            tooltip: {
+                trigger: 'axis', axisPointer: { type: 'shadow' },
+                textStyle: { fontSize: 10 },
+                formatter: params => {
+                    const d = params[0].axisValue;
+                    return params.map(p => `${p.marker}${p.seriesName} ${p.value > 0 ? '+' : ''}${p.value}K`).join('<br>');
+                }
+            },
+            legend: { data: ['外資','投信','自營'], top: 2, right: 4, textStyle: { color: '#9ca3af', fontSize: 9 }, itemWidth: 10, itemHeight: 8 },
+            grid: { top: 20, bottom: 22, left: 40, right: 8 },
+            xAxis: { type: 'category', data: instData.map(d => d.date.slice(5)), axisLabel: { ...labelStyle, rotate: 0 }, axisLine: { lineStyle: { color: '#374151' } } },
+            yAxis: { type: 'value', axisLabel: { ...labelStyle, formatter: v => v + 'K' }, splitLine: { lineStyle: { color: '#1f2937' } } },
+            series: [
+                { name: '外資', type: 'bar', stack: 'inst', data: instData.map(d => d.foreign), itemStyle: { color: d => d.value >= 0 ? '#f87171' : '#4ade80' }, barMaxWidth: 12 },
+                { name: '投信', type: 'bar', stack: 'inst', data: instData.map(d => d.trust),   itemStyle: { color: d => d.value >= 0 ? '#fb923c' : '#34d399' }, barMaxWidth: 12 },
+                { name: '自營', type: 'bar', stack: 'inst', data: instData.map(d => d.dealer),  itemStyle: { color: d => d.value >= 0 ? '#fbbf24' : '#a3e635' }, barMaxWidth: 12 },
+            ]
+        });
+
+        // ── 融資融券餘額趨勢 line chart ───────────────────────────────
+        const marginChart = echarts.init(marginEl, 'dark');
+        marginChart.setOption({
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: params => params.map(p => `${p.marker}${p.seriesName} ${p.value}K`).join('<br>') },
+            legend: { data: ['融資','融券'], top: 2, right: 4, textStyle: { color: '#9ca3af', fontSize: 9 }, itemWidth: 10, itemHeight: 8 },
+            grid: gridCfg,
+            xAxis: { type: 'category', data: marginData.map(d => d.date.slice(5)), axisLabel: { ...labelStyle }, axisLine: { lineStyle: { color: '#374151' } } },
+            yAxis: { type: 'value', axisLabel: { ...labelStyle, formatter: v => v + 'K' }, splitLine: { lineStyle: { color: '#1f2937' } } },
+            series: [
+                { name: '融資', type: 'line', data: marginData.map(d => d.margin), smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#f87171', width: 1.5 }, itemStyle: { color: '#f87171' } },
+                { name: '融券', type: 'line', data: marginData.map(d => d.short),  smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#60a5fa', width: 1.5 }, itemStyle: { color: '#60a5fa' } },
+            ]
+        });
     },
 
     async fetchCorpEvents(sym) {
