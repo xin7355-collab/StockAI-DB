@@ -143,7 +143,36 @@ def run():
     print(f"\n🎉 採礦完成！更新 {updated} 檔，略過 {len(by_sym)-updated} 檔（已是最新）。")
 
 
+def fetch_futures_cache():
+    """每日抓取外資台指期未平倉淨口數，存為 futures_cache.json 供前端讀取。"""
+    today = date.today()
+    start = (today - timedelta(days=10)).strftime('%Y-%m-%d')
+    print(f"\n🔮 抓取外資台指期淨口數 {start}~{today} ...")
+    rows = fm_get('TaiwanFuturesInstitutionalInvestors', data_id='TX', start_date=start)
+    foreign = [r for r in rows if r.get('name') == '外資及陸資']
+    if not foreign:
+        print("  ⚠️  無外資期貨資料，跳過寫入")
+        return
+    last = foreign[-1]
+    try:
+        net = int(last['long_open_interest_balance']) - int(last['short_open_interest_balance'])
+    except (KeyError, ValueError):
+        print("  ⚠️  欄位解析失敗")
+        return
+    cache = {
+        'date': last.get('date', today.strftime('%Y-%m-%d')),
+        'fi_net': net,
+        'long': int(last.get('long_open_interest_balance', 0)),
+        'short': int(last.get('short_open_interest_balance', 0)),
+        'generated': today.strftime('%Y-%m-%d'),
+    }
+    with open('futures_cache.json', 'w', encoding='utf-8') as f:
+        json.dump(cache, f, ensure_ascii=False)
+    print(f"  ✅ 外資台指期淨口數: {net:+,} 口  ({cache['date']})")
+
+
 if __name__ == '__main__':
     print("🚀 首席 AI 司令部 — 雲端籌碼採礦機")
     print(f"🔑 FinMind Token: {'✅ 有（完整模式）' if FINMIND_TOKEN else '⚠️  無（限速模式）'}\n")
     run()
+    fetch_futures_cache()
