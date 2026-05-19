@@ -309,26 +309,11 @@
                             <span class="text-xs text-yellow-500 font-bold pl-1 text-center">我的庫存成本</span>
                             <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 px-2 py-1.5 rounded w-full text-right pr-2 font-mono text-sm font-bold border border-gray-700 outline-none focus:border-yellow-500 transition-colors" placeholder="🫱 空手" oninput="app.refreshStrategy()">
                         </div>
-                        <div class="flex-1 flex flex-col gap-1 relative">
-                            <span class="text-xs text-orange-400 font-bold pl-1 text-center cursor-pointer" onclick="document.getElementById('chipRadarPanel').classList.toggle('hidden')">10日籌碼雷達 🔬</span>
-                            <input type="number" inputmode="decimal" id="chipCostInput" class="bg-[#010409] text-orange-400 px-2 py-1.5 rounded w-full text-right pr-2 font-mono text-sm font-bold border border-gray-700 outline-none focus:border-orange-500 transition-colors" placeholder="計算中..." oninput="app.refreshStrategy()">
-                        </div>
                     </div>
-                    <div id="chipRadarPanel" class="hidden w-full mt-2 bg-[#0d1117] border border-orange-900/40 rounded-lg overflow-hidden">
-                        <div class="px-3 py-1.5 bg-orange-950/30 border-b border-orange-900/30 flex items-center justify-between">
-                            <span class="text-[10px] font-black text-orange-400 tracking-wide">🔬 三合一籌碼雷達</span>
-                            <button onclick="document.getElementById('chipRadarPanel').classList.add('hidden')" class="text-gray-500 text-xs hover:text-white">✕</button>
-                        </div>
-                        <div class="p-2 space-y-2">
-                            <div>
-                                <div class="text-[9px] text-gray-500 font-bold mb-1 px-1">🏦 三大法人10日估算成本</div>
-                                <div id="chipInstTable" class="space-y-0.5"></div>
-                            </div>
-                            <div>
-                                <div class="text-[9px] text-gray-500 font-bold mb-1 px-1">📈 三大法人連續買超統計</div>
-                                <div id="chipBrokerTable" class="space-y-0.5"></div>
-                            </div>
-                        </div>
+                    <input type="hidden" id="chipCostInput" oninput="app.refreshStrategy()">
+                    <div id="chipRadarPanel" class="hidden">
+                        <div id="chipInstTable"></div>
+                        <div id="chipBrokerTable"></div>
                     </div>
                     
                     <div id="directActionBox" class="w-full p-4 md:p-5 flex flex-col items-center justify-center transition-all duration-300">
@@ -371,9 +356,9 @@
                     </h4>
                     <div class="text-xs md:text-sm text-gray-300 font-mono flex flex-col gap-2">
                         <div id="dividendInfo" class="flex flex-col gap-0.5"></div>
-                        <div id="yoyInfo" class="flex flex-col gap-0.5 border-b border-[#30363d] pb-2"></div>
+                        <div id="yoyInfo" class="hidden"></div>
                         <div id="financialAIBox" class="flex flex-col gap-1 py-1 border-b border-[#30363d]">
-                            <button onclick="app.runFinancialAI(app.currentSymbolId)" id="financialAIBtn" class="text-left text-[10px] text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-1">🧠 AI 財務白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span></button>
+                            <button onclick="app.runFinancialAI(app.currentSymbolId)" id="financialAIBtn" class="text-left text-[10px] text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-1">🧠 AI基本面白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span></button>
                             <div id="financialAIResult" class="hidden text-[11px] text-gray-200 leading-relaxed bg-[#0d1117] rounded p-2 border border-indigo-900/30"></div>
                         </div>
                         <div id="newsInfo" class="flex flex-col gap-1 pt-1">
@@ -702,7 +687,7 @@ const app = {
     currentUSMarket: 'neutral', currentStrategyContext: {},
     peaks: [], troughs: [], twiiState: 'neutral', fiShortQty: null, currentMarkPoints: [],
     sortableFav: null, sortableInv: null, apiRateLimited: false, emergencyMode: false,
-    latestNewsCache: "", latestYoyCache: "", autoRefreshTimer: null,
+    latestNewsCache: "", latestYoyCache: "", latestFinancialAICache: "", autoRefreshTimer: null,
     
     fugleKeyIndex: 0,
     lastFugleReqTime: 0,
@@ -1236,7 +1221,9 @@ const app = {
             } catch(e) {}
 
             const macroData = { taiexEntry, tpexEntry, fiShort: taifexData };
-            localStorage.setItem(cacheKey, JSON.stringify({ date: todayStr, ts: now, data: macroData }));
+            if (taiexEntry || tpexEntry || taifexData !== null) {
+                localStorage.setItem(cacheKey, JSON.stringify({ date: todayStr, ts: now, data: macroData }));
+            }
             this.processMacroData(macroData);
         } catch(e) { if (cache) this.processMacroData(cache.data); }
     },
@@ -1248,8 +1235,9 @@ const app = {
         if (macro.taiexEntry) {
             const e = macro.taiexEntry;
             const price = parseFloat((e.ClosingIndex || e.closingIndex || '0').replace(/,/g, '')) || 0;
-            const chgStr = (e.Change || e.change || '0').replace(/,/g, '');
-            const diff = parseFloat(chgStr) || 0;
+            const rawChg = (e.Change || e.change || '0');
+            const chgSign = /[▽▼]/.test(rawChg) ? -1 : 1;
+            const diff = chgSign * (parseFloat(rawChg.replace(/[^0-9.]/g, '')) || 0);
             const pct = price > 0 ? (diff / (price - diff)) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
@@ -1261,11 +1249,13 @@ const app = {
 
         if (macro.tpexEntry) {
             const e = macro.tpexEntry;
-            const price = parseFloat((e.ClosingIndex || e.closingIndex || e.close || '0').replace(/,/g, '')) || 0;
-            const diff = parseFloat((e.Change || e.change || '0').replace(/,/g, '')) || 0;
-            const pct = price > 0 ? (diff / (price - diff)) * 100 : 0;
-            const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWOII').innerHTML = `<span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+            const price = parseFloat((e.CloseIndex || e.ClosingIndex || e.closingIndex || e.close || '0').replace(/,/g, '')) || 0;
+            const rawChg2 = (e.Change || e.change || '0');
+            const chgSign2 = /[▽▼]/.test(rawChg2) ? -1 : 1;
+            const diff2 = chgSign2 * (parseFloat(rawChg2.replace(/[^0-9.]/g, '')) || 0);
+            const pct2 = price > 0 ? (diff2 / (price - diff2)) * 100 : 0;
+            const color2 = diff2 > 0 ? 'text-[#f87171]' : (diff2 < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            document.getElementById('mktTWOII').innerHTML = `<span class="${color2}">${price.toFixed(2)} ${diff2 > 0 ? '+' : ''}${pct2.toFixed(2)}%</span>`;
         }
 
         const fiNet = this.fiShortQty;
@@ -1667,7 +1657,11 @@ const app = {
             this._renderChipTimeline(instData, marginData);
             if (statusEl) statusEl.textContent = `更新 ${new Date().toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' })}`;
         } catch(e) {
-            if (statusEl) statusEl.textContent = '載入失敗';
+            if (statusEl) statusEl.textContent = '載入失敗，請確認網路或 FinMind Token';
+            const instEl = document.getElementById('chipInstChart');
+            const marginEl = document.getElementById('chipMarginChart');
+            if (instEl) instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-xs p-4 text-center">載入失敗<br>請至設定填入 FinMind Token 或重試</div>';
+            if (marginEl) marginEl.innerHTML = '';
         }
     },
 
@@ -1675,6 +1669,11 @@ const app = {
         const instEl = document.getElementById('chipInstChart');
         const marginEl = document.getElementById('chipMarginChart');
         if (!instEl || !marginEl) return;
+        if (!instData || instData.length === 0) {
+            instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">無三大法人資料<br><span class="text-gray-600">需要 FinMind Token 或今日尚無數據</span></div>';
+            marginEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-xs p-2 text-center">無融資融券資料</div>';
+            return;
+        }
 
         const labelStyle = { color: '#9ca3af', fontSize: 9 };
         const gridCfg = { top: 8, bottom: 22, left: 40, right: 8 };
@@ -1858,10 +1857,11 @@ ${revText}
             const groqData = await groqRes.json();
             const text = groqData.choices?.[0]?.message?.content || '分析失敗，請稍後再試';
             result.innerHTML = `<div class="text-indigo-400 font-bold text-[9px] mb-1">🧠 AI 財務白話解讀 — ${sym}</div><div class="whitespace-pre-wrap">${text}</div>`;
+            this.latestFinancialAICache = text.substring(0, 500);
         } catch(e) {
             result.innerHTML = '<span class="text-red-400 text-[10px]">分析失敗，請確認 API Key</span>';
         }
-        btn.innerHTML = '🧠 AI 財務白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span>';
+        btn.innerHTML = '🧠 AI基本面白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span>';
     },
 
     async fetchCorpEvents(sym) {
@@ -2552,7 +2552,7 @@ ${revText}
             const cnt = patternStats.count;
             const confidence = cnt >= 20 ? '高信心' : cnt >= 10 ? '中信心' : '⚠️ 樣本不足';
             const confColor = cnt >= 20 ? 'text-green-400' : cnt >= 10 ? 'text-yellow-400' : 'text-orange-400';
-            document.getElementById('patCount').innerHTML = `${cnt} 次 <span class="text-[9px] ${confColor}">(${confidence})</span>`;
+            document.getElementById('patCount').innerHTML = `${cnt} 次<br><span class="text-[9px] ${confColor}">${confidence}</span>`;
             document.getElementById('patWinRate').innerText = `${patternStats.winRate}%`;
             document.getElementById('patAvgRet').innerHTML = patternStats.avgRet > 0 ? `<span class="text-red-400">+${patternStats.avgRet}%</span>` : `<span class="text-green-400">${patternStats.avgRet}%</span>`;
         } else {
@@ -2560,7 +2560,7 @@ ${revText}
         }
         const btCount = parseInt(document.getElementById('btCount').innerText) || 0;
         const btNote = btCount < 10 ? '樣本數偏少，僅供參考。' : '長線勝率回測完畢。';
-        document.getElementById('predictionConclusion').innerHTML = `${btNote} 請依據歷史勝率分配投入資金部位。`;
+        document.getElementById('predictionConclusion').innerHTML = `${btNote}<br><span class="text-gray-400 font-normal">請依據歷史勝率分配投入資金部位。（資料來源：本地歷史K線，非預測性建議）</span>`;
     },
 
     onWorkerMessage(data) {
@@ -3062,7 +3062,9 @@ ${revText}
         - 庫存狀態: ${invStatusText}
         - 跌破防守且虧損狀態: ${isLosingAndBroken ? '【是！已嚴重違紀】' : '否'}
         - 最新營收 YoY: ${this.latestYoyCache || '無最新資料'}
-        - 近期重大訊息: ${this.latestNewsCache || '無'}`;
+        - 近期重大訊息: ${this.latestNewsCache || '無'}
+        - AI基本面白話解讀: ${this.latestFinancialAICache || (document.getElementById('financialAIResult')?.innerText?.trim() || '尚未執行')}
+        - 籌碼AI研判: ${document.getElementById('chipAIResult')?.innerText?.trim() || '尚未執行'}`;
         
         try {
             const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
