@@ -1345,37 +1345,33 @@ const app = {
     // Fetch US market snapshot (S&P500, NASDAQ, VIX, TSM ADR) via Massive API
     // Throttle: caller is responsible for not calling more than once per 2 minutes
     async fetchMassiveUSMarket() {
-        const key = this.settings.massiveKey;
-        if (!key) return null;
-        const headers = { 'Authorization': `Bearer ${key}` };
-        const tickers = ['I:SPX', 'I:NDX', 'I:VIX', 'TSM'];
+        // Yahoo Finance — CORS-friendly, no key required, free
+        const yf = sym => fetch(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d`,
+            { headers: { 'Accept': 'application/json' } }
+        ).then(r => r.ok ? r.json() : null).catch(() => null);
+
         try {
-            const [spx, ndx, vix, tsm] = await Promise.all(tickers.map(t => {
-                const isIndex = t.startsWith('I:');
-                const url = isIndex
-                    ? `https://api.massive.com/v2/snapshot/locale/us/markets/indices/tickers/${t}`
-                    : `https://api.massive.com/v2/snapshot/locale/us/markets/stocks/tickers/${t}`;
-                return fetch(url, { headers }).then(r => r.ok ? r.json() : null).catch(() => null);
-            }));
-            const extract = (json, ticker) => {
-                const r = json?.results?.ticker ?? json?.ticker ?? json?.results ?? null;
-                if (!r) return null;
-                const day = r.day ?? r.lastTrade ?? r;
-                return {
-                    ticker,
-                    price: r.lastTrade?.p ?? r.last?.price ?? day?.c ?? null,
-                    changePercent: r.todaysChangePerc ?? r.change_percent ?? null,
-                    prevClose: r.prevDay?.c ?? r.prev?.c ?? null
-                };
+            const [spxJ, ndxJ, vixJ, tsmJ] = await Promise.all([
+                yf('^GSPC'), yf('^IXIC'), yf('^VIX'), yf('TSM')
+            ]);
+            const extract = (json, label) => {
+                const meta = json?.chart?.result?.[0]?.meta;
+                if (!meta) return null;
+                const price = meta.regularMarketPrice ?? meta.previousClose ?? null;
+                const prev  = meta.chartPreviousClose ?? meta.previousClose ?? price;
+                const chgPct = (price != null && prev && prev !== 0)
+                    ? ((price - prev) / prev * 100)
+                    : (meta.regularMarketChangePercent ?? null);
+                return { ticker: label, price, changePercent: chgPct, prevClose: prev };
             };
             const result = {
-                spx: extract(spx, 'SPX'),
-                ndx: extract(ndx, 'NASDAQ'),
-                vix: extract(vix, 'VIX'),
-                tsm: extract(tsm, 'TSM'),
+                spx: extract(spxJ, 'SPX'),
+                ndx: extract(ndxJ, 'NASDAQ'),
+                vix: extract(vixJ, 'VIX'),
+                tsm: extract(tsmJ, 'TSM'),
                 fetchedAt: Date.now()
             };
-            // Cache in localStorage with 2-minute TTL (free tier: 5 req/min)
             localStorage.setItem('proTerminalUSMarket', JSON.stringify(result));
             return result;
         } catch(e) { return null; }
