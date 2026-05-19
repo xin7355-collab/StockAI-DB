@@ -230,6 +230,29 @@
 
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
+            <div id="usMarketBar" class="flex gap-2 overflow-x-auto px-2 pt-2 pb-0 scrollbar-hide">
+                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
+                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">S&P 500</div>
+                    <div id="usBar_spx" class="text-sm font-black font-mono text-gray-400">--</div>
+                    <div id="usBar_spx_chg" class="text-[9px] font-bold text-gray-500">--</div>
+                </div>
+                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
+                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">NASDAQ</div>
+                    <div id="usBar_ndx" class="text-sm font-black font-mono text-gray-400">--</div>
+                    <div id="usBar_ndx_chg" class="text-[9px] font-bold text-gray-500">--</div>
+                </div>
+                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
+                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">VIX 恐慌</div>
+                    <div id="usBar_vix" class="text-sm font-black font-mono text-gray-400">--</div>
+                    <div id="usBar_vix_chg" class="text-[9px] font-bold text-gray-500">--</div>
+                </div>
+                <div class="flex-shrink-0 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 min-w-[90px] text-center">
+                    <div class="text-[9px] text-gray-500 font-bold mb-0.5">TSM ADR</div>
+                    <div id="usBar_tsm" class="text-sm font-black font-mono text-gray-400">--</div>
+                    <div id="usBar_tsm_chg" class="text-[9px] font-bold text-gray-500">--</div>
+                </div>
+                <button onclick="app.refreshUSMarketBar()" class="flex-shrink-0 bg-gray-800 border border-[#30363d] rounded-lg px-3 py-2 min-w-[60px] text-center text-[9px] text-gray-400 hover:text-white transition-colors font-bold">🔄<br>刷新</button>
+            </div>
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
                 <div class="px-3 pt-3 pb-1.5 flex justify-between items-center">
                     <div class="flex flex-col w-[55%] justify-center overflow-hidden">
@@ -1059,9 +1082,10 @@ const app = {
                 if (fmRes.ok) {
                     const fmJson = await fmRes.json();
                     if (fmJson.data && fmJson.data.length > 0) {
-                        const foreign = fmJson.data.filter(x => x.institutional_investors === '外資及陸資' || x.institutional_investors === '外資');
+                        const foreign = fmJson.data.filter(d => d.name === '外資及陸資');
                         if (foreign.length > 0) {
-                            taifexData = parseInt(foreign[foreign.length - 1].open_interest_net_volume);
+                            const last = foreign[foreign.length - 1];
+                            taifexData = parseInt(last.long_open_interest_balance) - parseInt(last.short_open_interest_balance);
                             if(isNaN(taifexData)) taifexData = null;
                         }
                     }
@@ -1108,7 +1132,13 @@ const app = {
             document.getElementById('mktTWOII').innerHTML = `櫃買 <span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
 
-        document.getElementById('mktFI').innerHTML = `外資空單 <span class="${this.fiShortQty <= -20000 ? 'text-[#4ade80]' : 'text-yellow-200'}">${this.fiShortQty !== null ? this.fiShortQty : '--'}</span>`;
+        const fiNet = this.fiShortQty;
+        let fiLabel, fiColor;
+        if (fiNet > -10000) { fiLabel = '多方無憂'; fiColor = 'text-[#4ade80]'; }
+        else if (fiNet >= -25000) { fiLabel = '⚠️ 暗流湧動'; fiColor = 'text-yellow-300'; }
+        else if (fiNet >= -35000) { fiLabel = '🔴 紅色警戒'; fiColor = 'text-orange-400'; }
+        else { fiLabel = '🚨 黑天鵝核彈'; fiColor = 'text-[#f87171] animate-pulse'; }
+        document.getElementById('mktFI').innerHTML = `外資期貨 <span class="${fiColor} font-bold">${fiNet !== null ? fiNet : '--'} ${fiLabel}</span>`;
 
         const emergencyBanner = document.getElementById('emergencyBanner');
         if (this.emergencyMode) { 
@@ -2660,11 +2690,11 @@ const app = {
 
     renderWarRoom() {
         const container = document.getElementById('warRoomList');
-        if(this.warRoomData.length === 0) { 
-            container.innerHTML = '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg p-8 text-sm">目前無任何大師監控紀錄</p>'; 
-            return; 
+        if(this.warRoomData.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg p-8 text-sm">目前無任何大師監控紀錄</p>';
+            return;
         }
-        
+
         let html = '';
         this.warRoomData.forEach((item, idx) => {
             const initP = item.initPrice;
@@ -2672,25 +2702,44 @@ const app = {
             const pnl = initP > 0 ? ((curP - initP) / initP) * 100 : 0;
             const color = pnl > 0 ? 'text-[#f87171]' : (pnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             const sign = pnl > 0 ? '+' : '';
-            
+
             const bDate = new Date(item.date);
             const diffTime = Math.abs(new Date() - bDate);
             const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+            // 師定調 badge
+            const reason = item.reason || '';
+            let sentimentBadge;
+            if (/看多|做多|買進|強力推薦|突破|漲|飆/.test(reason)) {
+                sentimentBadge = `<span class="bg-red-900/60 text-red-300 border border-red-700 text-[9px] px-1.5 py-0.5 rounded font-bold">🔥 看多</span>`;
+            } else if (/看空|做空|賣出|警示|跌|危險|注意/.test(reason)) {
+                sentimentBadge = `<span class="bg-blue-900/60 text-blue-300 border border-blue-700 text-[9px] px-1.5 py-0.5 rounded font-bold">❄️ 看空</span>`;
+            } else {
+                sentimentBadge = `<span class="bg-gray-800 text-gray-400 border border-gray-600 text-[9px] px-1.5 py-0.5 rounded font-bold">🔍 待觀察</span>`;
+            }
+
+            // 法人對考盤 badge
             const conflict = item.institutionalConflict;
-            const conflictHtml = conflict ? (conflict.isConflict
-                ? `<div class="px-3 py-1.5 bg-yellow-900/40 border border-yellow-600 rounded text-[10px] text-yellow-300 font-bold flex items-center gap-1"><span class="text-base">⚠️</span><span>偵測到大師推薦期間，外資淨${conflict.foreignNet > 0 ? '買超' : '賣超'} ${Math.abs(conflict.foreignNet).toLocaleString()} 股，自營商淨${conflict.dealerNet > 0 ? '買超' : '賣超'} ${Math.abs(conflict.dealerNet).toLocaleString()} 股。${conflict.isConflict ? '<br>🔴 疑似誘多出貨！主力與大師對做！' : ''}</span></div>`
-                : `<div class="px-2 py-1 bg-green-900/30 border border-green-800 rounded text-[10px] text-green-400 font-bold">✅ 法人動向：外資 ${conflict.foreignNet > 0 ? '+' : ''}${conflict.foreignNet.toLocaleString()} 股，與推薦方向一致</div>`)
-                : '';
+            let conflictBadge;
+            if (conflict && conflict.isConflict === true) {
+                conflictBadge = `<span class="bg-red-900/60 text-red-300 border border-red-700 text-[9px] px-1.5 py-0.5 rounded font-bold animate-pulse">🔴 主力誘多出貨</span>`;
+            } else if (conflict && conflict.isConflict === false) {
+                conflictBadge = `<span class="bg-green-900/60 text-green-300 border border-green-700 text-[9px] px-1.5 py-0.5 rounded font-bold">✅ 法人同向</span>`;
+            } else {
+                conflictBadge = `<span class="bg-gray-800 text-gray-500 border border-gray-600 text-[9px] px-1.5 py-0.5 rounded font-bold">⏳ 籌碼偵測中</span>`;
+            }
+
+            const shortReason = reason.length > 20 ? reason.slice(0, 20) + '…' : reason;
+            const aiSummaryHtml = item.aiSummary ? `<div class="px-3 py-2 border-t border-[#30363d] bg-[#010409] text-[10px] text-indigo-300 font-mono leading-relaxed whitespace-pre-wrap">${item.aiSummary}</div>` : '';
 
             html += `<div class="bg-[#1c2128] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex flex-col relative">
                 <div class="absolute right-0 top-0 w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-400 cursor-pointer text-sm" onclick="app.deleteWarEntry('${item.id}')">✕</div>
                 <div class="p-3 border-b border-[#30363d] flex justify-between items-start">
                     <div class="flex-1 cursor-pointer" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
-                        <div class="text-xs text-indigo-400 font-bold mb-0.5">🎙️ ${item.analyst}</div>
-                        <div class="font-black text-white text-lg">${this.getFullStockName(item.symbol)}</div>
-                        <div class="text-xs text-gray-400 mt-1 italic leading-tight">"${item.reason}"</div>
-                        ${conflictHtml}
+                        <div class="text-xs text-indigo-400 font-bold mb-1">🎙️ ${item.analyst}</div>
+                        <div class="font-black text-white text-base mb-1">${this.getFullStockName(item.symbol)}</div>
+                        <div class="flex flex-wrap gap-1 mb-1">${sentimentBadge}${conflictBadge}</div>
+                        <div class="text-[10px] text-gray-400 italic leading-tight">"${shortReason}"</div>
                     </div>
                     <div class="text-right pl-2 border-l border-[#30363d] flex flex-col justify-center min-w-[70px]">
                         <div class="text-[10px] text-gray-500 mb-0.5">第 ${days} 天</div>
@@ -2705,13 +2754,17 @@ const app = {
                     </div>
                     <div class="flex flex-col gap-1 items-end">
                         <div class="text-[10px] text-gray-500 font-mono">推薦價: ${initP.toFixed(1)}</div>
-                        <button onclick="app.aiCheckWarRoomEntry('${item.id}')" class="text-[10px] bg-indigo-900/50 hover:bg-indigo-800 border border-indigo-700 text-indigo-300 px-2 py-1 rounded transition-colors flex items-center gap-1"><span class="animate-pulse">⚡</span>AI照妖鏡</button>
+                        <div class="flex gap-1">
+                            <button onclick="app.aiCheckWarRoomEntry('${item.id}')" class="text-[10px] bg-indigo-900/50 hover:bg-indigo-800 border border-indigo-700 text-indigo-300 px-2 py-1 rounded transition-colors flex items-center gap-1"><span class="animate-pulse">⚡</span>照妖鏡</button>
+                            <button onclick="app.analyzeWarEntry(${JSON.stringify(item).replace(/"/g,'&quot;')})" class="text-[10px] bg-purple-900/50 hover:bg-purple-800 border border-purple-700 text-purple-300 px-2 py-1 rounded transition-colors">🤖 AI解析</button>
+                        </div>
                     </div>
                 </div>
                 <div id="warResult_${item.id}" class="hidden p-2 text-xs leading-relaxed border-t border-[#30363d] bg-[#010409]"></div>
+                ${aiSummaryHtml}
             </div>`;
         });
-        
+
         container.innerHTML = html;
         
         setTimeout(() => {
