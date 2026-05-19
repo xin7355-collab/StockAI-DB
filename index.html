@@ -191,7 +191,7 @@
         </div>
     </div>
 
-    <div id="invModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有張數 (1張=1000股)</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：2 (張)" min="0.001" step="0.001" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="document.getElementById('invModal').classList.add('hidden')" class="px-4 py-2 text-gray-400 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
+    <div id="invModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有張數 (1張=1000股)</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：2 (張)" min="0.001" step="0.001" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="document.getElementById('invModal').classList.add('hidden')" class="px-4 py-2 text-gray-400 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <div class="header-fixed w-full flex flex-col shadow-md">
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
@@ -516,7 +516,7 @@
                 <div class="sticky top-0 z-50 bg-[#0d1117] border-b border-[#30363d] p-3 shadow-md flex flex-col gap-3 rounded-t-[8px]">
                     <div class="flex justify-between items-center gap-2">
                         <h2 class="text-base font-bold text-red-500 flex items-center gap-1 flex-shrink-0">🔥 資金動能雷達</h2>
-                        <select id="radarPoolSelect" class="bg-[#1c2128] text-blue-400 font-bold border border-[#30363d] rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500 w-full max-w-[180px]">
+                        <select id="radarPoolSelect" onchange="app.resetRadarResults()" class="bg-[#1c2128] text-blue-400 font-bold border border-[#30363d] rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500 w-full max-w-[180px]">
                             <option value="hot_twse">🔥 上市熱門大將 (40檔)</option>
                             <option value="hot_otc">🚀 上櫃活潑中小型 (20檔)</option>
                             <option value="etf_heavy">💰 高股息與權值 (10檔)</option>
@@ -1255,8 +1255,8 @@ const app = {
             document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
         const fq = this.fiShortQty;
-        if (fq !== null && fq <= -35000)      { this.twiiState = 'bear'; this.emergencyMode = true; }
-        else if (fq !== null && fq <= -20000) { this.twiiState = 'neutral'; }
+        if (fq !== null && fq <= -40000)      { this.twiiState = 'bear'; this.emergencyMode = true; }
+        else if (fq !== null && fq <= -25000) { this.twiiState = 'neutral'; }
         else                                  { this.twiiState = 'bull'; }
 
         if (macro.tpexEntry) {
@@ -1272,9 +1272,9 @@ const app = {
         let fiLabel = '', fiColor = 'text-gray-400', fiDisplay = '--';
         if (fiNet !== null && fiNet !== undefined) {
             fiDisplay = fiNet.toLocaleString();
-            if (fiNet > -10000)       { fiLabel = '多方無憂';     fiColor = 'text-[#4ade80]'; }
-            else if (fiNet >= -25000) { fiLabel = '⚠️ 暗流湧動'; fiColor = 'text-yellow-300'; }
-            else if (fiNet >= -35000) { fiLabel = '🔴 紅色警戒'; fiColor = 'text-orange-400'; }
+            if (fiNet > -10000)       { fiLabel = '多方無憂';      fiColor = 'text-[#4ade80]'; }
+            else if (fiNet > -25000)  { fiLabel = '⚠️ 暗流湧動';  fiColor = 'text-yellow-300'; }
+            else if (fiNet > -40000)  { fiLabel = '🔴 紅色警戒';  fiColor = 'text-orange-400'; }
             else                      { fiLabel = '🚨 黑天鵝核彈'; fiColor = 'text-[#f87171] animate-pulse'; }
         }
         document.getElementById('mktFI').innerHTML = `<span class="${fiColor} font-bold">${fiDisplay}口</span><span class="text-[8px] ${fiColor} ml-0.5">${fiLabel}</span>`;
@@ -2759,21 +2759,24 @@ ${revText}
         }
     },
 
-    openInvModal() { 
-        document.getElementById('invModalInput').value = this.currentSymbolId; 
-        document.getElementById('invBuyDateInput').value = this.getTodayStr().replace(/\//g, '-'); 
+    openInvModal() {
+        document.getElementById('invModalInput').value = this.currentSymbolId;
+        document.getElementById('invBuyDateInput').value = this.getTodayStr().replace(/\//g, '-');
+        const existingCost = document.getElementById('costInput').value.trim();
+        document.getElementById('invCostInput').value = existingCost || '';
         const modal = document.getElementById('invModal');
-        modal.classList.remove('hidden'); modal.style.display='flex'; 
+        modal.classList.remove('hidden'); modal.style.display='flex';
     },
     
     confirmAddInventory() {
         const sym = document.getElementById('invModalInput').value.trim();
         const date = document.getElementById('invBuyDateInput').value.replace(/-/g, '/');
         if(!sym) return;
-        const cost = parseFloat(document.getElementById('costInput').value) || 0;
+        const cost = parseFloat(document.getElementById('invCostInput').value) || 0;
         const shares = parseFloat(document.getElementById('invSharesInput').value) || 1;
         this.inventory.push({ symbol: sym, cost, shares, buyDate: date });
         localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
+        document.getElementById('invCostInput').value = '';
         document.getElementById('invSharesInput').value = '';
         const modal = document.getElementById('invModal');
         modal.classList.add('hidden'); modal.style.display='none';
@@ -2815,8 +2818,9 @@ ${revText}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
                 <div class="absolute inset-y-0 right-0 flex">
-                    <div class="w-[70px] bg-gray-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.removeInventoryEntry(${idx})">✏️<br>修正</div>
-                    <div class="w-[70px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.settleInventory(${idx})">🎯<br>結算</div>
+                    <div class="w-[60px] bg-gray-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.editInventoryCost(${idx})">✏️<br>成本</div>
+                    <div class="w-[60px] bg-orange-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.settleInventory(${idx})">🎯<br>結算</div>
+                    <div class="w-[55px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
                 </div>
                 <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
@@ -2853,6 +2857,19 @@ ${revText}
             this.renderInventory();
             this.refreshStrategy();
         });
+    },
+
+    editInventoryCost(idx) {
+        const item = this.inventory[idx];
+        if (!item) return;
+        const newCostStr = prompt(`✏️ 修改 ${this.getStockName(item.symbol)} 持倉成本\n\n目前成本: ${item.cost}\n\n請輸入新的每股成本價格：`);
+        if (newCostStr === null) return;
+        const newCost = parseFloat(newCostStr);
+        if (isNaN(newCost) || newCost <= 0) { alert('請輸入有效的數字。'); return; }
+        this.inventory[idx].cost = newCost;
+        localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
+        this.renderInventory();
+        this.refreshStrategy();
     },
 
     settleInventory(idx) {
@@ -2948,17 +2965,34 @@ ${revText}
                 results.push({ sym, name: this.getStockName(sym), desc: lbl.desc, badge: lbl.badge, color: lbl.color });
             }
         }
-        localStorage.setItem('proTerminalRadarCache', JSON.stringify(results));
+        localStorage.setItem('proTerminalRadarCache', JSON.stringify({ type, pool: poolType, results }));
         document.getElementById('radarLoading').classList.add('hidden'); document.getElementById('radarLoading').classList.remove('flex');
         this.renderRadarCache();
     },
 
+    resetRadarResults() {
+        const container = document.getElementById('radarListMain'), header = document.getElementById('radarResultHeader');
+        header.classList.add('hidden');
+        container.innerHTML = '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">彈藥庫已切換，請點擊上方掃描按鈕重新啟動。</li>';
+        localStorage.removeItem('proTerminalRadarCache');
+    },
+
     renderRadarCache() {
         const container = document.getElementById('radarListMain'), header = document.getElementById('radarResultHeader');
-        let cache = JSON.parse(localStorage.getItem('proTerminalRadarCache'));
+        let cacheRaw = localStorage.getItem('proTerminalRadarCache');
+        let cacheObj = cacheRaw ? JSON.parse(cacheRaw) : null;
+        const cache = Array.isArray(cacheObj) ? cacheObj : (cacheObj && cacheObj.results ? cacheObj.results : null);
+        const meta = (cacheObj && cacheObj.type) ? cacheObj : null;
+
         if (!cache || cache.length === 0) { header.classList.add('hidden'); container.innerHTML = '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">無符合條件之標的，請更換彈藥庫重試。</li>'; return; }
 
-        header.classList.remove('hidden'); let html = '';
+        const typeLabels = { bottom: '底部起漲', surge: '飆股動能', score: '綜合強勢' };
+        const poolLabels = { hot_twse: '上市熱門', hot_otc: '上櫃中小型', etf_heavy: '高股息權值', fav: '自選清單', inv: '庫存部位' };
+        const scanInfo = meta ? ` · ${typeLabels[meta.type] || meta.type} · ${poolLabels[meta.pool] || meta.pool} · 共 ${cache.length} 檔` : ` · 共 ${cache.length} 檔`;
+        header.classList.remove('hidden');
+        header.innerText = `上次掃描結果：${scanInfo}`;
+
+        let html = '';
         cache.forEach(m => {
             html += `
             <li class="p-4 m-2 bg-[#1c2128] border border-[#30363d] rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors shadow-sm" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
@@ -2966,7 +3000,7 @@ ${revText}
                 <div class="text-right"><span class="px-2 py-1 rounded text-xs font-bold border ${m.color}">${m.badge}</span></div>
             </li>`;
         });
-        html += `<div class="text-center mt-4 mb-2"><button onclick="app.loadRadar('score'); app.vibrate(30);" class="text-xs text-gray-400 bg-gray-800 px-4 py-2 rounded-full border border-gray-600 hover:text-white transition-colors">🔄 重新啟動掃描</button></div>`;
+        html += `<div class="text-center mt-4 mb-2"><button onclick="app.loadRadar('${meta ? meta.type : 'score'}'); app.vibrate(30);" class="text-xs text-gray-400 bg-gray-800 px-4 py-2 rounded-full border border-gray-600 hover:text-white transition-colors">🔄 重新啟動掃描</button></div>`;
         container.innerHTML = html;
     },
 
