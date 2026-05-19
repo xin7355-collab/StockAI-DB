@@ -352,27 +352,29 @@
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-3 rounded-lg text-base font-black shadow-lg flex justify-center items-center gap-2 transition-all">
                             🧠 請求 Groq 戰情總裁示 (含庫存分析)
                         </button>
-                        <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-sm text-gray-300 leading-relaxed shadow-inner overflow-y-auto max-h-[30rem]"></div>
+                        <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner overflow-y-auto max-h-[35rem]"></div>
                     </div>
                 </div>
                 
                 <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm relative overflow-hidden mt-1">
                     <div class="absolute right-0 top-0 w-20 h-20 bg-blue-500/10 blur-2xl rounded-full pointer-events-none"></div>
-                    <h4 class="text-blue-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
+                    <h4 class="text-blue-400 font-bold text-base mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
                         <div class="flex items-center gap-1.5"><span class="text-lg">🏢</span> 企業情報網與消息體檢</div>
-                        <span id="corpEventBadge" class="hidden text-[10px] bg-yellow-900/80 text-yellow-300 px-1.5 py-0.5 rounded border border-yellow-700 animate-pulse">即將法說</span>
+                        <span id="corpEventBadge" class="hidden text-xs bg-yellow-900/80 text-yellow-300 px-1.5 py-0.5 rounded border border-yellow-700 animate-pulse">即將法說</span>
                     </h4>
-                    <div class="text-xs md:text-sm text-gray-300 font-mono flex flex-col gap-2">
+                    <div class="text-sm text-gray-200 flex flex-col gap-2">
                         <div id="dividendInfo" class="flex flex-col gap-0.5"></div>
                         <div id="yoyInfo" class="hidden"></div>
-                        <div id="financialAIBox" class="flex flex-col gap-1 py-1 border-b border-[#30363d]">
-                            <button onclick="app.runFinancialAI(app.currentSymbolId)" id="financialAIBtn" class="text-left text-[10px] text-indigo-400 hover:text-indigo-300 font-bold transition-colors flex items-center gap-1">🧠 AI基本面白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span></button>
-                            <div id="financialAIResult" class="hidden text-[11px] text-gray-200 leading-relaxed bg-[#0d1117] rounded p-2 border border-indigo-900/30"></div>
+                        <div id="financialAIBox" class="flex flex-col gap-2 py-1.5 border-b border-[#30363d]">
+                            <button onclick="app.runFinancialAI(app.currentSymbolId); app.vibrate(30);" id="financialAIBtn" class="w-full bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
+                                🧠 AI基本面白話解讀
+                            </button>
+                            <div id="financialAIResult" class="hidden text-sm text-gray-200 leading-relaxed bg-[#0d1117] rounded-lg p-3 border border-indigo-900/40"></div>
                         </div>
                         <div id="newsInfo" class="flex flex-col gap-1 pt-1">
-                            <div class="text-gray-400 font-bold text-xs">📰 焦點動態快訊：</div>
-                            <div id="newsList" class="text-gray-400 text-xs space-y-2 leading-relaxed max-h-40 overflow-y-auto pr-1 scrollbar-hide">
-                                <span class="animate-pulse">讀取中...</span>
+                            <div class="text-gray-400 font-bold text-sm">📰 焦點動態快訊：</div>
+                            <div id="newsList" class="text-gray-300 text-sm space-y-2 leading-relaxed max-h-48 overflow-y-auto pr-1 scrollbar-hide">
+                                <span class="animate-pulse text-gray-500">讀取中...</span>
                             </div>
                         </div>
                     </div>
@@ -1193,68 +1195,52 @@ const app = {
 
     async fetchMacroData() {
         const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMacroCache_v3';
-        // clear legacy null-data caches
-        ['proTerminalMacroCache', 'proTerminalMacroCache_v2'].forEach(k => localStorage.removeItem(k));
         let cache = JSON.parse(localStorage.getItem(cacheKey));
-        if (cache && cache.date === todayStr && (now - cache.ts < 172800000) && (cache.data?.taiexEntry || cache.data?.fiShort !== null)) { this.processMacroData(cache.data); return; }
+        if (cache && cache.date === todayStr && (now - cache.ts < 172800000) && (cache.data?.taiex?.length > 0 || cache.data?.fiShort !== null)) { this.processMacroData(cache.data); return; }
 
-        const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 30);
+        const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 10);
         const startDate = pastDate.toISOString().split('T')[0], fmToken = this.settings.finmindKey || '', tokenStr = fmToken ? `&token=${fmToken}` : '';
 
         try {
             let taifexData = null;
 
-            // ── Strategy 1: Read pre-fetched cache from gh-pages (updated daily by GitHub Actions) ──
+            // ── Strategy 1: Read pre-fetched gh-pages cache (updated daily by GitHub Actions) ──
             try {
                 const cacheRes = await fetch('https://xin7355-collab.github.io/futures_cache.json', { signal: AbortSignal.timeout(4000) });
                 if (cacheRes.ok) {
                     const cj = await cacheRes.json();
-                    if (cj.fi_net !== undefined && cj.date) {
-                        taifexData = cj.fi_net;
-                        console.log(`外資期貨快取 (gh-pages): ${taifexData} 口 (${cj.date})`);
-                    }
+                    if (cj.fi_net !== undefined) { taifexData = cj.fi_net; }
                 }
-            } catch(e) { console.log('gh-pages futures cache unavailable, trying FinMind'); }
+            } catch(e) {}
 
-            // ── Strategy 2: Fallback to FinMind direct API ──
+            // ── Strategy 2: FinMind direct API fallback ──
             if (taifexData === null) {
                 try {
-                    const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 5000);
-                    let fmRes = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date=${startDate}${tokenStr}`, {signal: controller.signal});
-                    clearTimeout(timeoutId);
+                    const fmRes = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date=${startDate}${tokenStr}`, { signal: AbortSignal.timeout(5000) });
                     if (fmRes.ok) {
                         const fmJson = await fmRes.json();
-                        if (fmJson.data && fmJson.data.length > 0) {
-                            const foreign = fmJson.data.filter(d => d.name === '外資及陸資');
-                            if (foreign.length > 0) {
-                                const last = foreign[foreign.length - 1];
-                                taifexData = parseInt(last.long_open_interest_balance) - parseInt(last.short_open_interest_balance);
-                                if(isNaN(taifexData)) taifexData = null;
-                            }
+                        const foreign = (fmJson.data || []).filter(d => (d.name || d.institutional_investors || '').includes('外資'));
+                        if (foreign.length > 0) {
+                            const last = foreign[foreign.length - 1];
+                            taifexData = last.open_interest_net_volume != null
+                                ? parseInt(last.open_interest_net_volume)
+                                : (parseInt(last.long_open_interest_balance || 0) - parseInt(last.short_open_interest_balance || 0));
+                            if (isNaN(taifexData)) taifexData = null;
                         }
                     }
-                } catch(e) { console.log('FinMind TX API Failed'); }
+                } catch(e) {}
             }
 
-            // TWSE OpenAPI for 加權指數 (free, CORS-enabled, no auth)
-            let taiexEntry = null, tpexEntry = null;
-            try {
-                const twseRes = await fetch('https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX', { signal: AbortSignal.timeout(8000) });
-                if (twseRes.ok) {
-                    const twseJson = await twseRes.json();
-                    taiexEntry = twseJson.find(x => (x.index || x.Index || '').includes('發行量加權'));
-                }
-            } catch(e) {}
-            try {
-                const tpexRes = await fetch('https://www.tpex.org.tw/openapi/v1/tpex_mi_index', { signal: AbortSignal.timeout(8000) });
-                if (tpexRes.ok) {
-                    const tpexJson = await tpexRes.json();
-                    tpexEntry = tpexJson[0] || null;
-                }
-            } catch(e) {}
+            // ── 加權/櫃買：FinMind TaiwanStockPrice（同主線作法，最穩定）──
+            const [resTaiex, resTpex] = await Promise.all([
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=TAIEX&start_date=${startDate}${tokenStr}`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=TPEx&start_date=${startDate}${tokenStr}`, { signal: AbortSignal.timeout(8000) }).catch(() => null)
+            ]);
+            const dataTaiex = resTaiex?.ok ? await resTaiex.json().catch(() => null) : null;
+            const dataTpex  = resTpex?.ok  ? await resTpex.json().catch(() => null)  : null;
 
-            const macroData = { taiexEntry, tpexEntry, fiShort: taifexData };
-            if (taiexEntry || tpexEntry || taifexData !== null) {
+            const macroData = { taiex: dataTaiex?.data || [], tpex: dataTpex?.data || [], fiShort: taifexData };
+            if (macroData.taiex.length > 0 || macroData.tpex.length > 0 || taifexData !== null) {
                 localStorage.setItem(cacheKey, JSON.stringify({ date: todayStr, ts: now, data: macroData }));
             }
             this.processMacroData(macroData);
@@ -1265,12 +1251,18 @@ const app = {
         this.emergencyMode = false;
         this.fiShortQty = (macro.fiShort !== null && macro.fiShort !== undefined) ? macro.fiShort : null;
 
+        if (macro.taiex && macro.taiex.length > 0) {
+            const taiex = macro.taiex, last = taiex[taiex.length-1], prev = taiex.length > 1 ? taiex[taiex.length-2] : last;
+            const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+            const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+        }
         if (macro.taiexEntry) {
+            // legacy cache compatibility
             const e = macro.taiexEntry;
             const price = parseFloat((e.ClosingIndex || e.closingIndex || '0').replace(/,/g, '')) || 0;
             const rawChg = (e.Change || e.change || '0');
-            const chgSign = /[▽▼]/.test(rawChg) ? -1 : 1;
-            const diff = chgSign * (parseFloat(rawChg.replace(/[^0-9.]/g, '')) || 0);
+            const diff = (/[▽▼]/.test(rawChg) ? -1 : 1) * (parseFloat(rawChg.replace(/[^0-9.]/g, '')) || 0);
             const pct = price > 0 ? (diff / (price - diff)) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
@@ -1280,12 +1272,18 @@ const app = {
         else if (fq !== null && fq <= -25000) { this.twiiState = 'neutral'; }
         else                                  { this.twiiState = 'bull'; }
 
+        if (macro.tpex && macro.tpex.length > 0) {
+            const tpex = macro.tpex, last = tpex[tpex.length-1], prev = tpex.length > 1 ? tpex[tpex.length-2] : last;
+            const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+            const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            document.getElementById('mktTWOII').innerHTML = `<span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+        }
         if (macro.tpexEntry) {
+            // legacy cache compatibility
             const e = macro.tpexEntry;
             const price = parseFloat((e.CloseIndex || e.ClosingIndex || e.closingIndex || e.close || '0').replace(/,/g, '')) || 0;
             const rawChg2 = (e.Change || e.change || '0');
-            const chgSign2 = /[▽▼]/.test(rawChg2) ? -1 : 1;
-            const diff2 = chgSign2 * (parseFloat(rawChg2.replace(/[^0-9.]/g, '')) || 0);
+            const diff2 = (/[▽▼]/.test(rawChg2) ? -1 : 1) * (parseFloat(rawChg2.replace(/[^0-9.]/g, '')) || 0);
             const pct2 = price > 0 ? (diff2 / (price - diff2)) * 100 : 0;
             const color2 = diff2 > 0 ? 'text-[#f87171]' : (diff2 < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             document.getElementById('mktTWOII').innerHTML = `<span class="${color2}">${price.toFixed(2)} ${diff2 > 0 ? '+' : ''}${pct2.toFixed(2)}%</span>`;
@@ -1894,7 +1892,7 @@ ${revText}
         } catch(e) {
             result.innerHTML = '<span class="text-red-400 text-[10px]">分析失敗，請確認 API Key</span>';
         }
-        btn.innerHTML = '🧠 AI基本面白話解讀 <span class="text-gray-600 font-normal">（含 YoY + 季報）</span>';
+        btn.innerHTML = '🧠 AI基本面白話解讀';
     },
 
     async fetchCorpEvents(sym) {
