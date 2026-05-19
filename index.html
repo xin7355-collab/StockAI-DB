@@ -1176,17 +1176,35 @@ const app = {
         this.lastFugleReqTime = Date.now();
 
         try {
-            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 4000);
+            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 5000);
             const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}`, { headers: { 'X-API-KEY': token }, signal: controller.signal });
             clearTimeout(timeoutId);
-            
+
             if (res.status === 429) { this.triggerApiLock(); return null; }
             if (!res.ok) return null;
-            
-            const q = (await res.json()).data?.quote;
-            if (!q || !q.trade || !q.trade.price) return null;
-            return { price: q.trade.price, open: q.priceOpen?.price || q.trade.price, high: q.priceHigh?.price || q.trade.price, low: q.priceLow?.price || q.trade.price, volume: q.total?.tradeVolume || 0 };
+
+            const json = await res.json();
+            // Fugle API v1.0 returns a flat object; older versions used .data.quote nesting
+            const q = (json.data && json.data.quote) ? json.data.quote : json;
+            // Field names differ between API versions: try both layouts
+            const price = q.lastPrice ?? q.trade?.price ?? q.closePrice ?? null;
+            if (!price) return null;
+            return {
+                price,
+                open:   q.openPrice  ?? q.priceOpen?.price  ?? price,
+                high:   q.highPrice  ?? q.priceHigh?.price  ?? price,
+                low:    q.lowPrice   ?? q.priceLow?.price   ?? price,
+                volume: q.total?.tradeVolume ?? q.total?.tradeShares ?? 0
+            };
         } catch(e) { return null; }
+    },
+
+    // Returns a synthetic "current price" object from the last historical bar
+    // so that off-market screens still show a meaningful price without an API call.
+    _getHistoricalLatestAsPrice() {
+        if (!this.rawDailyData || this.rawDailyData.length === 0) return null;
+        const last = this.rawDailyData[this.rawDailyData.length - 1];
+        return { price: last.close, open: last.open, high: last.high, low: last.low, volume: last.volume, isHistorical: true };
     },
 
     async fetchStockList() { 
@@ -1357,16 +1375,20 @@ const app = {
         if(this.isMarketOpen()) {
             fugleData = await this.fetchFugleData(targetSym);
             if(fugleData) {
-                document.getElementById('dataSourceText').innerText = "自動更新(輪動)";
+                document.getElementById('dataSourceText').innerText = "即時報價(盤中)";
                 document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
                 document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
             } else if (!this.apiRateLimited) {
-                document.getElementById('dataSourceText').innerText = "即時連線異常";
-                document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
+                // Live fetch failed: fall back to last historical bar so the price field is never blank
+                fugleData = this._getHistoricalLatestAsPrice();
+                document.getElementById('dataSourceText').innerText = "Fugle連線異常(盤後收盤)";
+                document.getElementById('dataSourceText').className = "font-bold text-yellow-400 text-[10px] font-mono tracking-wide";
+                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
             }
         } else {
-            document.getElementById('dataSourceText').innerText = "收盤(盤後)";
+            // Off-market: use the last historical close as a static "current price" display
+            fugleData = this._getHistoricalLatestAsPrice();
+            document.getElementById('dataSourceText').innerText = "收盤價(盤後)";
             document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
             document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
         }
@@ -1388,16 +1410,18 @@ const app = {
         this.rawDailyData = JSON.parse(JSON.stringify(this.baseRawData));
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
         const todayStr = this.getTodayStr(); let lastIdx = this.rawDailyData.length - 1;
-        
-        if (fugleData) {
+
+        if (fugleData && !fugleData.isHistorical) {
+            // Real live data: update or append today's bar
             if (this.rawDailyData[lastIdx].date === todayStr) {
                 this.rawDailyData[lastIdx].close = fugleData.price; this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, fugleData.high);
                 this.rawDailyData[lastIdx].low = Math.min(this.rawDailyData[lastIdx].low, fugleData.low); this.rawDailyData[lastIdx].volume = fugleData.volume;
             } else {
                 this.rawDailyData.push({ date: todayStr, open: fugleData.open, high: fugleData.high, low: fugleData.low, close: fugleData.price, volume: fugleData.volume });
-                lastIdx++; 
+                lastIdx++;
             }
         }
+        // When fugleData.isHistorical === true the rawDailyData is already correct — no modification needed
         if (manualPrice !== null && !isNaN(manualPrice) && manualPrice > 0) {
             this.rawDailyData[lastIdx].close = manualPrice; this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, manualPrice);
             this.rawDailyData[lastIdx].low = Math.min(this.rawDailyData[lastIdx].low, manualPrice);
