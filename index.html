@@ -536,45 +536,6 @@
             </div>
         </div>
 
-        <div id="tabContentWar" class="hidden flex-col p-2 relative pb-10">
-            <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
-                <div class="px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm flex justify-between items-center">
-                    <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide"><span class="bg-indigo-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">照妖鏡</span> 大師戰情室</h2>
-                    <button onclick="app.refreshWarRoomPrices(); app.vibrate(30);" class="bg-[#21262d] hover:bg-gray-700 text-white px-3 py-1.5 rounded border border-[#30363d] text-xs font-bold transition-colors">🔄 刷新追蹤</button>
-                </div>
-                
-                <div class="p-3 bg-[#161b22] border-b border-[#30363d] flex flex-col gap-3">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-indigo-400 flex items-center gap-1"><span class="text-base">🤖</span> 智慧情報導入 (AI 自動解析)</label>
-                        <textarea id="warSmartInput" class="bg-[#010409] text-gray-300 p-2 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-indigo-500 transition-colors h-16 scrollbar-hide" placeholder="貼上 YouTube 逐字稿、新聞段落或老師說的話..."></textarea>
-                        <button onclick="app.smartParseWarRoom()" class="mt-1 w-full bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 border border-indigo-700 py-2 rounded text-xs font-bold transition-colors">⚡ Groq 自動萃取填入</button>
-                    </div>
-
-                    <div class="border-t border-[#30363d] pt-3 flex flex-col gap-2 relative">
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="text" id="warAnalyst" placeholder="分析師 (如郭哲榮)" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm">
-                            <input type="text" id="warSymbol" placeholder="股票代號" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm font-mono text-center">
-                            <input type="number" id="warPrice" placeholder="當時價位" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm font-mono text-center">
-                            <input type="text" id="warReason" placeholder="推薦理由/喊盤內容" class="bg-[#010409] text-white p-2 rounded border border-[#30363d] outline-none focus:border-indigo-500 text-sm">
-                        </div>
-                        <button onclick="app.addWarRoomEntry()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-sm font-bold transition-colors shadow-lg">➕ 啟動五日監控追蹤</button>
-                    </div>
-                </div>
-
-                <div class="mx-2 mt-2 mb-3 bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
-                    <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
-                        <span class="text-xs font-bold text-purple-400">📡 市場情緒雷達</span>
-                        <button onclick="app.refreshNewsPanel()" class="text-[10px] text-gray-500 hover:text-white transition-colors">🔄 更新</button>
-                    </div>
-                    <div id="newsSummaryBox" class="px-3 py-2 text-[11px] text-gray-300 leading-relaxed font-mono">載入中...</div>
-                    <div id="newsHeadlinesList" class="px-3 pb-2 space-y-1 max-h-32 overflow-y-auto"></div>
-                </div>
-                <div class="flex-grow bg-[#0d1117] p-2 overflow-y-auto">
-                    <div id="warRoomList" class="flex flex-col gap-3 pb-8"></div>
-                </div>
-            </div>
-        </div>
-
     </main>
 
     <div class="nav-fixed w-full">
@@ -583,7 +544,6 @@
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[10px] mt-0.5 font-bold">自選</span></button>
             <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">💼</span><span class="text-[10px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[10px] mt-0.5 font-bold">雷達</span></button>
-            <button onclick="app.switchAppTab('war'); app.vibrate(30);" id="navBtnWar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">🕵️</span><span class="text-[10px] mt-0.5 font-bold">戰情</span></button>
         </nav>
     </div>
 
@@ -714,7 +674,6 @@ const app = {
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
     inventory: JSON.parse(localStorage.getItem('proTerminalInv')) || [],
-    warRoomData: JSON.parse(localStorage.getItem('proTerminalWarRoom')) || [],
     apiDataCache: {}, allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {},
     navStack: ['diag'], currentSymbolId: '2330', currentTF: 'D', currentSubChart: 'VOL',
     chartInstance: null, edgeSwipeStartX: 999,
@@ -799,8 +758,7 @@ const app = {
         this.refreshInventoryPrices();
         this.renderFavTabs();
         this.renderRadarCache();
-        this.refreshWarRoomPrices();
-        
+
         this.setupAutoRefresh();
         this.initSwipeToDelete();
         this.initSwipeNavigation();
@@ -814,7 +772,7 @@ const app = {
         let startX = 0, startY = 0;
         const threshold = 50;
         const edgeWidth = window.innerWidth * 0.15; 
-        const tabs = ['diag', 'fav', 'inv', 'radar', 'war'];
+        const tabs = ['diag', 'fav', 'inv', 'radar'];
 
         document.addEventListener('touchstart', e => {
             if(e.target.closest('.swipe-container') || e.target.closest('.drag-handle') || e.target.closest('.zoomable-zone') || e.target.closest('textarea')) return;
@@ -949,7 +907,7 @@ const app = {
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         
-        ['Diag', 'Fav', 'Inv', 'Radar', 'War'].forEach(tab => {
+        ['Diag', 'Fav', 'Inv', 'Radar'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             document.getElementById(`tabContent${tab}`).style.display = isMatch ? 'flex' : 'none';
             document.getElementById(`navBtn${tab}`).classList.toggle('active', isMatch);
@@ -957,12 +915,11 @@ const app = {
             document.getElementById(`navBtn${tab}`).classList.toggle('text-gray-500', !isMatch);
             document.getElementById(`navBtn${tab}`).querySelector('span').classList.toggle('grayscale-[80%]', !isMatch);
         });
-        
+
         if (tabId === 'diag' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
         if (tabId === 'radar') this.renderRadarCache();
-        if (tabId === 'war') { this.renderWarRoom(); this.refreshNewsPanel(); }
     },
 
     switchSubTab(tab) {
@@ -1072,7 +1029,7 @@ const app = {
 
     exportData() {
         this.saveSettings();
-        const data = { inv: this.inventory, favGroups: this.favGroups, set: this.settings, war: this.warRoomData };
+        const data = { inv: this.inventory, favGroups: this.favGroups, set: this.settings };
         const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
         document.getElementById('exportAreaContainer').classList.remove('hidden'); 
         document.getElementById('exportArea').value = encoded;
@@ -1094,7 +1051,6 @@ const app = {
             const data = JSON.parse(decodeURIComponent(escape(atob(str))));
             if(data.inv) this.inventory = data.inv;
             if(data.favGroups) this.favGroups = data.favGroups;
-            if(data.war) this.warRoomData = data.war;
             if(data.set) {
                 if(data.set.fugleToken && !data.set.fugleToken1) data.set.fugleToken1 = data.set.fugleToken;
                 this.settings = { ...this.settings, ...data.set };
@@ -1103,14 +1059,13 @@ const app = {
             localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
             localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
             localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
-            localStorage.setItem('proTerminalWarRoom', JSON.stringify(this.warRoomData));
             this.activeGroupName = Object.keys(this.favGroups)[0] || "首席自選清單";
             localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
 
             alert('✅ 資料與金鑰已完美還原！');
             document.getElementById('settingsModal').classList.add('hidden');
             document.getElementById('settingsModal').style.display = 'none';
-            this.refreshInventoryPrices(); this.renderFavTabs(); this.renderWarRoom();
+            this.refreshInventoryPrices(); this.renderFavTabs();
             if(this.currentSymbolId) this.analyze(this.currentSymbolId, true);
         } catch(e) { alert('❌ 代碼解析錯誤！'); }
     },
