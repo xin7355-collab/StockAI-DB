@@ -175,6 +175,13 @@
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-yellow-500"></div>
                         </label>
                     </div>
+                    <div class="flex items-center justify-between pt-2">
+                        <div>
+                            <label class="text-xs font-bold text-purple-400">🔔 手機推播告警 (iOS 26+)</label>
+                            <p class="text-[10px] text-gray-500">關螢幕 / Apple Watch 同步震動</p>
+                        </div>
+                        <button id="pushSubscribeBtn" onclick="app.togglePushSubscription()" class="px-3 py-1.5 bg-purple-900 hover:bg-purple-800 text-white text-xs font-bold rounded border border-purple-700 transition-colors">啟用推播</button>
+                    </div>
                 </div>
             </div>
             <div class="flex justify-end gap-2 border-t border-[#30363d] pt-3">
@@ -514,6 +521,14 @@
                     </div>
                 </div>
 
+                <div class="mx-2 mt-2 mb-3 bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                    <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
+                        <span class="text-xs font-bold text-purple-400">📡 市場情緒雷達</span>
+                        <button onclick="app.refreshNewsPanel()" class="text-[10px] text-gray-500 hover:text-white transition-colors">🔄 更新</button>
+                    </div>
+                    <div id="newsSummaryBox" class="px-3 py-2 text-[11px] text-gray-300 leading-relaxed font-mono">載入中...</div>
+                    <div id="newsHeadlinesList" class="px-3 pb-2 space-y-1 max-h-32 overflow-y-auto"></div>
+                </div>
                 <div class="flex-grow bg-[#0d1117] p-2 overflow-y-auto">
                     <div id="warRoomList" class="flex flex-col gap-3 pb-8"></div>
                 </div>
@@ -751,6 +766,8 @@ const app = {
         this.initSwipeNavigation();
         this.initSpringBackZoom('mainChartWrap');
         this.initSpringBackZoom('geminiResultBox');
+        this.refreshUSMarketBar();
+        this.registerServiceWorker();
     },
 
     initSwipeNavigation() {
@@ -852,9 +869,36 @@ const app = {
             if (hasOpenModal) return; 
 
             if (this.isMarketOpen() && this.currentSymbolId && this.navStack[this.navStack.length - 1] === 'diag') {
-                this.analyze(this.currentSymbolId, true, true, true); 
+                this.analyze(this.currentSymbolId, true, true, true);
+            }
+            if (this.isMarketOpen()) {
+                this.refreshUSMarketBar();
             }
         }, 10000);
+    },
+
+    async refreshUSMarketBar() {
+        const data = await this.getUSMarketData();
+        if (!data) return;
+        const fmt = (item, isVix = false) => {
+            if (!item || item.price == null) return { price: '--', chg: '--', color: 'text-gray-400' };
+            const price = parseFloat(item.price);
+            const chgPct = parseFloat(item.changePercent);
+            const color = isVix
+                ? (price > 25 ? 'text-[#f87171]' : price > 18 ? 'text-yellow-400' : 'text-[#4ade80]')
+                : (chgPct > 0 ? 'text-[#f87171]' : chgPct < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const chgStr = isNaN(chgPct) ? '--' : `${chgPct > 0 ? '+' : ''}${chgPct.toFixed(2)}%`;
+            return { price: price.toFixed(isVix ? 2 : 0), chg: chgStr, color };
+        };
+        const setBar = (id, item, isVix = false) => {
+            const f = fmt(item, isVix);
+            const el = document.getElementById(`usBar_${id}`);
+            const chgEl = document.getElementById(`usBar_${id}_chg`);
+            if (el) { el.innerText = f.price; el.className = `text-sm font-black font-mono ${f.color}`; }
+            if (chgEl) { chgEl.innerText = f.chg; chgEl.className = `text-[9px] font-bold ${f.color}`; }
+        };
+        setBar('spx', data.spx); setBar('ndx', data.ndx);
+        setBar('vix', data.vix, true); setBar('tsm', data.tsm);
     },
 
     forceStopLoading() { document.getElementById('loadingOverlay').style.display = 'none'; },
@@ -878,7 +922,7 @@ const app = {
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
         if (tabId === 'radar') this.renderRadarCache();
-        if (tabId === 'war') this.renderWarRoom();
+        if (tabId === 'war') { this.renderWarRoom(); this.refreshNewsPanel(); }
     },
 
     switchSubTab(tab) {
@@ -1841,6 +1885,8 @@ const app = {
 
         this.currentStrategyContext = { season, def_val, t1_val, isIslandReversal, isBigBlackK };
 
+        if (defValNum > 0) this._updateSWAlertConfig();
+
         let yoyNum = parseFloat(this.latestYoyCache.replace(/[^0-9.-]/g, ''));
         this.updateConfidenceLed(yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, this.currentStrategyContext);
 
@@ -2789,6 +2835,36 @@ const app = {
         });
     },
 
+    async analyzeWarEntry(entry) {
+        const key = this.settings.groqKey;
+        if (!key) { alert('請先設定 Groq API Key'); return; }
+        const prompt = `你是台股籌碼分析師。根據以下資訊，用繁體中文回覆，格式嚴格如下：
+定調: [看多/看空/中立]
+理由: [最多20個中文字，說明核心邏輯]
+風險: [最多15個中文字，最大風險]
+
+分析師: ${entry.analyst}
+股票: ${entry.symbol}
+推薦原因: ${entry.reason}
+當時價: ${entry.initPrice} 現價: ${entry.currentPrice}
+法人動向: ${entry.institutionalConflict ? JSON.stringify(entry.institutionalConflict) : '未知'}`;
+
+        try {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 150, temperature: 0.3 })
+            });
+            const json = await res.json();
+            const text = json.choices?.[0]?.message?.content || '分析失敗';
+            const idx = this.warRoomData.findIndex(x => x.id === entry.id);
+            if (idx !== -1) {
+                this.warRoomData[idx].aiSummary = text;
+                localStorage.setItem('proTerminalWarRoom', JSON.stringify(this.warRoomData));
+                this.renderWarRoom();
+            }
+        } catch(e) { alert('Groq 呼叫失敗'); }
+    },
+
     async aiCheckWarRoomEntry(id) {
         const item = this.warRoomData.find(x => x.id === id);
         if(!item) return;
@@ -2834,6 +2910,131 @@ const app = {
         } catch(e) {
             resBox.innerHTML = `<span class="text-red-400">❌ AI 審計失敗</span>`;
         }
+    },
+
+    async fetchAndCacheNews() {
+        const cached = JSON.parse(localStorage.getItem('proTerminalNewsCache') || 'null');
+        if (cached && (Date.now() - cached.fetchedAt) < 6 * 3600 * 1000) return cached;
+
+        const rssUrls = [
+            'https://api.allorigins.win/get?url=' + encodeURIComponent('https://feeds.cnyes.com/market/tw/news.rss'),
+            'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.moneydj.com/rss/news.aspx?svc=NW')
+        ];
+
+        let headlines = [];
+        for (const url of rssUrls) {
+            try {
+                const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+                const json = await res.json();
+                const xml = json.contents || '';
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xml, 'text/xml');
+                const items = doc.querySelectorAll('item');
+                items.forEach((item, i) => {
+                    if (i >= 8) return;
+                    const title = item.querySelector('title')?.textContent || '';
+                    const pubDate = item.querySelector('pubDate')?.textContent || '';
+                    if (title) headlines.push({ title: title.replace(/<[^>]+>/g,'').trim(), pubDate });
+                });
+            } catch(e) {}
+        }
+
+        if (headlines.length === 0) return cached;
+
+        let summary = '新聞載入中...';
+        const groqKey = this.settings.groqKey;
+        if (groqKey && headlines.length > 0) {
+            try {
+                const headlineText = headlines.slice(0,12).map((h,i) => `${i+1}. ${h.title}`).join('\n');
+                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'llama-3.3-70b-versatile',
+                        messages: [{ role: 'user', content: `你是台股市場情緒分析師。根據以下今日財經新聞標題，用繁體中文輸出：
+1. 市場情緒：[極度恐慌/偏空/中性/偏多/極度樂觀]
+2. 核心主題：[2個關鍵詞，用逗號分隔]
+3. 一句話總結：[最多30字]
+
+新聞標題：
+${headlineText}` }],
+                        max_tokens: 120, temperature: 0.2
+                    })
+                });
+                const json = await res.json();
+                summary = json.choices?.[0]?.message?.content || '分析失敗';
+            } catch(e) { summary = '新聞已載入，Groq 分析失敗'; }
+        }
+
+        const existingArticles = cached?.articles || [];
+        const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
+        const freshArticles = existingArticles.filter(a => a.savedAt > sevenDaysAgo);
+        headlines.forEach(h => freshArticles.push({ ...h, savedAt: Date.now() }));
+
+        const newCache = { fetchedAt: Date.now(), summary, articles: freshArticles.slice(-140) };
+        localStorage.setItem('proTerminalNewsCache', JSON.stringify(newCache));
+        return newCache;
+    },
+
+    async refreshNewsPanel() {
+        const box = document.getElementById('newsSummaryBox');
+        const list = document.getElementById('newsHeadlinesList');
+        if (!box) return;
+        box.innerText = '⏳ AI 正在分析市場情緒...';
+        const data = await this.fetchAndCacheNews();
+        if (!data) { box.innerText = '無法取得新聞資料'; return; }
+        box.innerText = data.summary;
+        if (list && data.articles) {
+            list.innerHTML = data.articles.slice(-8).reverse().map(a =>
+                `<div class="text-[10px] text-gray-500 truncate border-l-2 border-gray-700 pl-2">${a.title}</div>`
+            ).join('');
+        }
+    },
+
+    async registerServiceWorker() {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+            const reg = await navigator.serviceWorker.register('/sw.js');
+            this._swReg = reg;
+            const sub = await reg.pushManager.getSubscription();
+            const btn = document.getElementById('pushSubscribeBtn');
+            if (btn) btn.innerText = sub ? '✅ 推播已啟用' : '啟用推播';
+        } catch(e) {}
+    },
+
+    async togglePushSubscription() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            alert('您的瀏覽器不支援 Web Push，請使用 iOS 16.4+ Safari 並將此頁面加入主畫面。'); return;
+        }
+        try {
+            const reg = this._swReg || await navigator.serviceWorker.ready;
+            const existing = await reg.pushManager.getSubscription();
+            if (existing) {
+                await existing.unsubscribe();
+                const btn = document.getElementById('pushSubscribeBtn');
+                if (btn) btn.innerText = '啟用推播';
+                alert('✅ 已取消推播訂閱');
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') { alert('⚠️ 請允許通知權限才能啟用推播告警。'); return; }
+            await this._updateSWAlertConfig();
+            const btn = document.getElementById('pushSubscribeBtn');
+            if (btn) btn.innerText = '✅ 推播已啟用';
+            alert('✅ 推播告警已啟用！當價格跌破防守底線時，即使畫面關閉也會收到告警。');
+        } catch(e) { alert('推播啟用失敗：' + e.message); }
+    },
+
+    async _updateSWAlertConfig() {
+        if (!('caches' in window)) return;
+        const alerts = this.inventory.map(item => ({
+            symbol: item.symbol,
+            name: this.getStockName(item.symbol),
+            currentPrice: parseFloat(item.currentPrice) || 0,
+            defPrice: parseFloat(item.cost) * 0.95
+        })).filter(a => a.defPrice > 0);
+        const cache = await caches.open('stockai-v1');
+        await cache.put('/sw-alert-config', new Response(JSON.stringify({ alerts, updatedAt: Date.now() }), { headers: { 'Content-Type': 'application/json' } }));
     }
 };
 
