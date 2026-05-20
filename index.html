@@ -199,7 +199,7 @@
         </div>
     </div>
 
-    <div id="invModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有張數 (1張=1000股)</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：2 (張)" min="0.001" step="0.001" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="document.getElementById('invModal').classList.add('hidden')" class="px-4 py-2 text-gray-400 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
+    <div id="invModal" class="modal-base hidden" onclick="this.classList.add('hidden')"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：2000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <div class="header-fixed w-full flex flex-col shadow-md">
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
@@ -233,14 +233,17 @@
                 <div class="flex-shrink-0 pr-3 mr-1 border-r border-gray-800">
                     <div class="text-[8px] text-gray-600 leading-none mb-0.5">外資期貨</div>
                     <div id="mktFI" class="text-yellow-300 font-bold leading-none whitespace-nowrap">--</div>
+                    <div id="mktFI_label" class="text-[8px] text-gray-500 leading-none">多空未定</div>
                 </div>
                 <div class="flex-shrink-0 px-3 border-r border-gray-800">
                     <div class="text-[8px] text-gray-600 leading-none mb-0.5">加權</div>
                     <div id="mktTWII" class="text-gray-300 font-bold leading-none whitespace-nowrap">--</div>
+                    <div id="mktTWII_chg" class="text-[8px] text-gray-500 leading-none">--</div>
                 </div>
                 <div class="flex-shrink-0 px-3 border-r border-gray-800">
                     <div class="text-[8px] text-gray-600 leading-none mb-0.5">櫃買</div>
                     <div id="mktTWOII" class="text-gray-300 font-bold leading-none whitespace-nowrap">--</div>
+                    <div id="mktTWOII_chg" class="text-[8px] text-gray-500 leading-none">--</div>
                 </div>
                 <div class="flex-shrink-0 px-3 border-r border-gray-800">
                     <div class="text-[8px] text-gray-600 leading-none mb-0.5">S&P 500</div>
@@ -261,13 +264,6 @@
                     <div class="text-[8px] text-gray-600 leading-none mb-0.5">TSM ADR</div>
                     <div id="usBar_tsm" class="font-bold leading-none text-gray-300">--</div>
                     <div id="usBar_tsm_chg" class="text-[8px] text-gray-500 leading-none">--</div>
-                </div>
-                <div class="flex-shrink-0 pl-3 ml-auto flex items-center gap-2">
-                    <button onclick="app.refreshAllMarketData()" class="text-[8px] text-gray-500 hover:text-white transition-colors">🔄</button>
-                    <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] cursor-pointer hover:bg-gray-800 transition-colors" onclick="app.manualDataRefresh(); app.vibrate(50);">
-                        <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                        <span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -300,6 +296,13 @@
                         </div>
                         <div id="liveDiffWrapper" class="flex items-center gap-1 text-gray-400 mt-1">
                             <span id="liveDiffAmount" class="text-sm md:text-base font-black font-mono">--</span><span id="liveDiffPct" class="text-xs md:text-sm font-bold font-mono">(--%)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1">
+                            <button onclick="app.refreshAllMarketData()" class="text-[9px] text-gray-500 hover:text-white transition-colors bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d]">🔄</button>
+                            <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] cursor-pointer hover:bg-gray-800 transition-colors" onclick="app.manualDataRefresh(); app.vibrate(50);">
+                                <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                                <span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -472,9 +475,9 @@
                     <div class="text-sm bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-3 border-b border-gray-700 pb-2 flex items-center gap-1.5">📅 近五日動能評分回溯</h2>
+                    <h2 class="text-base font-black text-white mb-3 border-b border-gray-700 pb-2 flex items-center gap-1.5">📅 推薦隔日上漲機率</h2>
                     <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">評分</th></tr></thead>
+                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">隔日漲機率</th></tr></thead>
                         <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="3" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
                     </table>
                 </div>
@@ -581,6 +584,10 @@
                     </span>
                 </div>
                 <button id="huntScanBtn" onclick="app.scanAllMonitored(); app.vibrate(50);" class="bg-red-900/50 hover:bg-red-800 text-red-300 border border-red-800 text-xs px-3 py-1.5 rounded font-bold transition-colors">🔄 立即掃描</button>
+            </div>
+            <div id="huntScanStatus" class="hidden text-xs text-gray-500 px-1 pb-1 flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                <span id="huntScanStatusText">掃描中...</span>
             </div>
 
             <!-- Monitor List -->
@@ -925,30 +932,49 @@ const app = {
     },
     
     initSwipeToDelete() {
-        let swipeStartX = 0, activeSwipeEl = null;
+        let swipeStartX = 0, activeSwipeEl = null, swipeDir = null;
+        const REVEAL = 72;
+
         document.addEventListener('touchstart', e => {
-            if(e.target.closest('.delete-btn') || e.target.closest('.drag-handle')) return; 
+            if (e.target.closest('.delete-btn') || e.target.closest('.drag-handle')) return;
             const el = e.target.closest('.swipe-content');
-            if(activeSwipeEl && activeSwipeEl !== el) {
-                activeSwipeEl.style.transform = `translateX(0px)`; activeSwipeEl = null;
+            if (activeSwipeEl && activeSwipeEl !== el) {
+                activeSwipeEl.style.transform = 'translateX(0px)';
+                activeSwipeEl = null; swipeDir = null;
             }
-            if(!el) return;
-            swipeStartX = e.touches[0].clientX; activeSwipeEl = el; el.style.transition = 'none';
-        }, {passive: true});
+            if (!el) return;
+            swipeStartX = e.touches[0].clientX;
+            activeSwipeEl = el;
+            el.style.transition = 'none';
+            swipeDir = null;
+        }, { passive: true });
 
         document.addEventListener('touchmove', e => {
-            if(!activeSwipeEl) return;
+            if (!activeSwipeEl) return;
             let diff = e.touches[0].clientX - swipeStartX;
-            if(diff > 0) diff = 0; if(diff < -80) diff = -80;
+            if (swipeDir === null) swipeDir = diff < 0 ? 'left' : 'right';
+            if (swipeDir === 'left') {
+                if (diff > 0) diff = 0;
+                if (diff < -REVEAL) diff = -REVEAL;
+            } else {
+                if (diff < 0) diff = 0;
+                if (diff > REVEAL) diff = REVEAL;
+            }
             activeSwipeEl.style.transform = `translateX(${diff}px)`;
-        }, {passive: true});
+        }, { passive: true });
 
         document.addEventListener('touchend', e => {
-            if(!activeSwipeEl) return;
+            if (!activeSwipeEl) return;
             activeSwipeEl.style.transition = 'transform 0.2s ease-out';
-            let diff = e.changedTouches[0].clientX - swipeStartX; 
-            if(diff < -40) { activeSwipeEl.style.transform = `translateX(-80px)`; } 
-            else { activeSwipeEl.style.transform = `translateX(0px)`; activeSwipeEl = null; }
+            const diff = e.changedTouches[0].clientX - swipeStartX;
+            if (swipeDir === 'left' && diff < -30) {
+                activeSwipeEl.style.transform = `translateX(-${REVEAL}px)`;
+            } else if (swipeDir === 'right' && diff > 30) {
+                activeSwipeEl.style.transform = `translateX(${REVEAL}px)`;
+            } else {
+                activeSwipeEl.style.transform = 'translateX(0px)';
+                activeSwipeEl = null; swipeDir = null;
+            }
         });
     },
 
@@ -1279,7 +1305,21 @@ const app = {
     async fetchMacroData() {
         const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMacroCache_v3';
         let cache = JSON.parse(localStorage.getItem(cacheKey));
-        if (cache && cache.date === todayStr && (now - cache.ts < 172800000) && (cache.data?.taiex?.length > 0 || cache.data?.fiShort !== null)) { this.processMacroData(cache.data); return; }
+        if (cache && cache.date === todayStr && (now - cache.ts < 172800000) && (cache.data?.taiex?.length > 0 || cache.data?.fiShort !== null)) {
+            this.processMacroData(cache.data);
+            // If fiShort is null in cache, still try to fetch it in background
+            if (cache.data?.fiShort === null) {
+                fetch('https://xin7355-collab.github.io/stockai-db/futures_cache.json', { signal: AbortSignal.timeout(4000) })
+                    .then(r => r.json()).then(cj => {
+                        if (cj.fi_net !== undefined && cj.fi_net !== null) {
+                            cache.data.fiShort = cj.fi_net;
+                            localStorage.setItem('proTerminalMacroCache_v3', JSON.stringify(cache));
+                            this.processMacroData(cache.data);
+                        }
+                    }).catch(() => {});
+            }
+            return;
+        }
 
         const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 10);
         const startDate = pastDate.toISOString().split('T')[0], fmToken = this.settings.finmindKey || '', tokenStr = fmToken ? `&token=${fmToken}` : '';
@@ -1348,7 +1388,8 @@ const app = {
             const taiex = macro.taiex, last = taiex[taiex.length-1], prev = taiex.length > 1 ? taiex[taiex.length-2] : last;
             const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+            document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)}</span>`;
+            document.getElementById('mktTWII_chg').innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
         if (macro.taiexEntry) {
             // legacy cache compatibility
@@ -1358,7 +1399,8 @@ const app = {
             const diff = (/[▽▼]/.test(rawChg) ? -1 : 1) * (parseFloat(rawChg.replace(/[^0-9.]/g, '')) || 0);
             const pct = price > 0 ? (diff / (price - diff)) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+            document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)}</span>`;
+            document.getElementById('mktTWII_chg').innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
         const fq = this.fiShortQty;
         if (fq !== null && fq <= -40000)      { this.twiiState = 'bear'; this.emergencyMode = true; }
@@ -1369,7 +1411,8 @@ const app = {
             const tpex = macro.tpex, last = tpex[tpex.length-1], prev = tpex.length > 1 ? tpex[tpex.length-2] : last;
             const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWOII').innerHTML = `<span class="${color}">${price.toFixed(2)} ${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+            document.getElementById('mktTWOII').innerHTML = `<span class="${color}">${price.toFixed(2)}</span>`;
+            document.getElementById('mktTWOII_chg').innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
         }
         if (macro.tpexEntry) {
             // legacy cache compatibility
@@ -1379,7 +1422,8 @@ const app = {
             const diff2 = (/[▽▼]/.test(rawChg2) ? -1 : 1) * (parseFloat(rawChg2.replace(/[^0-9.]/g, '')) || 0);
             const pct2 = price > 0 ? (diff2 / (price - diff2)) * 100 : 0;
             const color2 = diff2 > 0 ? 'text-[#f87171]' : (diff2 < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            document.getElementById('mktTWOII').innerHTML = `<span class="${color2}">${price.toFixed(2)} ${diff2 > 0 ? '+' : ''}${pct2.toFixed(2)}%</span>`;
+            document.getElementById('mktTWOII').innerHTML = `<span class="${color2}">${price.toFixed(2)}</span>`;
+            document.getElementById('mktTWOII_chg').innerHTML = `<span class="${color2}">${diff2 > 0 ? '+' : ''}${pct2.toFixed(2)}%</span>`;
         }
 
         const fiNet = this.fiShortQty;
@@ -1391,7 +1435,8 @@ const app = {
             else if (fiNet > -40000)  { fiLabel = '🔴 紅色警戒';  fiColor = 'text-orange-400'; }
             else                      { fiLabel = '🚨 黑天鵝核彈'; fiColor = 'text-[#f87171] animate-pulse'; }
         }
-        document.getElementById('mktFI').innerHTML = `<span class="${fiColor} font-bold">${fiDisplay}口</span><span class="text-[8px] ${fiColor} ml-0.5">${fiLabel}</span>`;
+        document.getElementById('mktFI').innerHTML = `<span class="${fiColor} font-bold">${fiDisplay}口</span>`;
+        document.getElementById('mktFI_label').innerHTML = `<span class="${fiColor}">${fiLabel}</span>`;
 
         const emergencyBanner = document.getElementById('emergencyBanner');
         if (this.emergencyMode) { 
@@ -1637,7 +1682,7 @@ const app = {
                 if (marketVwap > 0) { input.value = marketVwap.toFixed(2); this.refreshStrategy(); }
                 else input.placeholder = "無分點資料";
             } else {
-                input.placeholder = "需要 FinMind Token";
+                input.placeholder = "每日16:30自動更新";
             }
 
             // ── Type B: Institutional estimated cost ─────────────────────────
@@ -1832,7 +1877,7 @@ const app = {
             if (statusEl) statusEl.textContent = '無法載入';
             const instEl = document.getElementById('chipInstChart');
             const marginEl = document.getElementById('chipMarginChart');
-            if (instEl) instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">籌碼資料載入失敗<br><span class="text-gray-600">建議在設定填入 FinMind Token</span></div>';
+            if (instEl) instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">籌碼資料尚未採礦<br><span class="text-gray-600">每日16:30自動更新，或點🔄手動重整</span></div>';
             if (marginEl) marginEl.innerHTML = '';
         }
     },
@@ -1842,7 +1887,7 @@ const app = {
         const marginEl = document.getElementById('chipMarginChart');
         if (!instEl || !marginEl) return;
         if (!instData || instData.length === 0) {
-            instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">無三大法人資料<br><span class="text-gray-600">需要 FinMind Token 或今日尚無數據</span></div>';
+            instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">籌碼資料尚未採礦<br><span class="text-gray-600">每日16:30自動更新，或點🔄手動重整</span></div>';
             marginEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-xs p-2 text-center">無融資融券資料</div>';
             return;
         }
@@ -2700,7 +2745,7 @@ ${revText}
         let lightStatus = "", scoreStyle = "text-gray-300 border-gray-600 bg-gray-800";
         if(totalScore >= 75) { lightStatus = "🔥強多"; scoreStyle = "text-red-400 border-red-800 bg-red-900/30"; } 
         else if (totalScore >= 45) { lightStatus = "⚠️震盪"; scoreStyle = "text-yellow-400 border-yellow-800 bg-yellow-900/30"; } 
-        else { lightStatus = "❄️偏空"; scoreStyle = "text-green-400 border-green-800 bg-green-900/30"; }
+        else { lightStatus = "⏳觀望"; scoreStyle = "text-gray-400 border-gray-700 bg-gray-800/30"; }
         
         const headerScoreStatus = document.getElementById('headerScoreStatus');
         headerScoreStatus.innerHTML = `${lightStatus}｜${totalScore}/100 <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span>`;
@@ -2803,16 +2848,35 @@ ${revText}
         const tbody = document.getElementById('backtestTableBody');
         const data = this.activeData, last = data.length - 1;
         if (last < 5) { tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
-        
+
+        // Calculate historical next-day win rate by score range using all available data
+        const scoreWinMap = { high: { wins: 0, total: 0 }, mid: { wins: 0, total: 0 }, low: { wins: 0, total: 0 } };
+        for (let i = Math.max(0, last - 200); i < last; i++) {
+            const alpha = this.getAlphaScoreData(data, this.indicators, i, this.twiiState);
+            const s = alpha.totalScore;
+            const nextUp = data[i + 1].close > data[i].close;
+            const bucket = s >= 75 ? 'high' : s >= 45 ? 'mid' : 'low';
+            scoreWinMap[bucket].total++;
+            if (nextUp) scoreWinMap[bucket].wins++;
+        }
+        const getWinPct = (bucket) => {
+            const b = scoreWinMap[bucket];
+            return b.total > 0 ? Math.round(b.wins / b.total * 100) : null;
+        };
+
         let html = '';
         for (let i = last; i >= Math.max(0, last - 4); i--) {
             const pC = data[i].close, prevC = i > 0 ? data[i-1].close : pC, diff = pC - prevC, pct = prevC > 0 ? (diff / prevC) * 100 : 0;
             const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500'), sign = diff > 0 ? '+' : '';
             const alpha = this.getAlphaScoreData(data, this.indicators, i, this.twiiState);
+            const bucket = alpha.totalScore >= 75 ? 'high' : alpha.totalScore >= 45 ? 'mid' : 'low';
+            const wp = getWinPct(bucket);
+            const wpColor = wp !== null ? (wp >= 65 ? 'text-red-400' : wp >= 45 ? 'text-yellow-400' : 'text-green-400') : 'text-gray-500';
+            const wpText = wp !== null ? `${wp}%` : '--';
             html += `<tr class="border-b border-[#21262d] hover:bg-[#1c2128]">
                 <td class="py-2 px-1 text-gray-300 text-xs">${data[i].date}</td>
                 <td class="py-2 px-1 text-right"><span class="font-bold text-white text-sm">${pC.toFixed(2)}</span><div class="text-[10px] mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>
-                <td class="py-2 px-1 text-center"><span class="text-sm font-black ${alpha.totalScore>=75?'text-red-400':(alpha.totalScore>=45?'text-yellow-400':'text-green-400')}">${alpha.totalScore}</span></td>
+                <td class="py-2 px-1 text-center"><span class="text-base font-black ${wpColor}">${wpText}</span></td>
             </tr>`;
         }
         tbody.innerHTML = html;
@@ -2837,8 +2901,20 @@ ${revText}
             document.getElementById('patCount').innerText = `--`; document.getElementById('patWinRate').innerText = `--`; document.getElementById('patAvgRet').innerText = `--`;
         }
         const btCount = parseInt(document.getElementById('btCount').innerText) || 0;
-        const btNote = btCount < 5 ? '交易樣本數偏少，結果僅供參考。' : '長線波段勝率回測完畢。';
-        document.getElementById('predictionConclusion').innerHTML = `${btNote}<br><span class="text-gray-400 font-normal">請依據歷史勝率分配投入資金部位。（資料來源：本地歷史K線，非預測性建議）</span>`;
+        const btNote = btCount < 5 ? '⚠️ 交易樣本偏少，參考性有限' : `✅ 已回測 ${btCount} 次歷史信號`;
+        const winRateNum = parseFloat(document.getElementById('btWinRate').innerText) || 0;
+        const avgProfitNum = parseFloat(document.getElementById('btAvgProfit').innerText) || 0;
+        let advice = '';
+        if (btCount < 5) {
+            advice = '資料不足，建議等待更多交易日後再參考。';
+        } else if (winRateNum >= 65) {
+            advice = `📈 歷史勝率 ${winRateNum}% 屬於<b class="text-red-400">高勝率</b>策略，可積極布局。均獲利 ${avgProfitNum > 0 ? '+' : ''}${avgProfitNum}%，風險報酬比佳。`;
+        } else if (winRateNum >= 50) {
+            advice = `⚡ 歷史勝率 ${winRateNum}%，屬<b class="text-yellow-400">中等</b>表現，建議輕倉試探、嚴守停損。均獲利 ${avgProfitNum}%。`;
+        } else {
+            advice = `❄️ 歷史勝率僅 ${winRateNum}%，<b class="text-green-400">偏低</b>，目前趨勢不利，建議觀望或縮小部位。`;
+        }
+        document.getElementById('predictionConclusion').innerHTML = `<div class="text-xs text-gray-500 mb-1">${btNote}</div><div class="text-sm leading-relaxed">${advice}</div>`;
     },
 
     onWorkerMessage(data) {
@@ -3047,12 +3123,18 @@ ${revText}
         modal.classList.remove('hidden'); modal.style.display='flex';
     },
     
+    closeInvModal() {
+        const m = document.getElementById('invModal');
+        if (m) { m.classList.add('hidden'); m.style.display = ''; }
+    },
+
     confirmAddInventory() {
         const sym = document.getElementById('invModalInput').value.trim();
         const date = document.getElementById('invBuyDateInput').value.replace(/-/g, '/');
         if(!sym) return;
         const cost = parseFloat(document.getElementById('invCostInput').value) || 0;
-        const shares = parseFloat(document.getElementById('invSharesInput').value) || 1;
+        const sharesInput = parseFloat(document.getElementById('invSharesInput').value) || 0;
+        const shares = sharesInput / 1000; // convert 股 to 張 for internal storage
         this.inventory.push({ symbol: sym, cost, shares, buyDate: date });
         localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
         document.getElementById('invCostInput').value = '';
@@ -3097,15 +3179,16 @@ ${revText}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
                 <div class="absolute inset-y-0 right-0 flex">
-                    <div class="w-[60px] bg-gray-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.editInventoryCost(${idx})">✏️<br>成本</div>
-                    <div class="w-[60px] bg-orange-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.settleInventory(${idx})">🎯<br>結算</div>
-                    <div class="w-[55px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
+                    <div class="w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
+                </div>
+                <div class="absolute inset-y-0 left-0 flex hidden" id="invEditReveal_${idx}">
+                    <div class="w-[72px] bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.editInventoryCost(${idx})">✏️<br>修改</div>
                 </div>
                 <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
                     <div class="cursor-pointer flex-grow ml-2" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                         <div class="font-bold text-white text-base">${this.getFullStockName(item.symbol)}</div>
-                        <div class="text-xs text-gray-500 mt-1">成本: ${cost} | ${shares}張 | ${item.buyDate || '--'}</div>
+                        <div class="text-xs text-gray-500 mt-1">成本: ${cost} | ${(shares*1000).toLocaleString()}股 | ${item.buyDate || '--'}</div>
                     </div>
                     <div class="text-right flex items-center gap-3">
                         <div>
@@ -3670,20 +3753,28 @@ ${revText}
 
     async scanAllMonitored() {
         const scanBtn = document.getElementById('huntScanBtn');
-        if (scanBtn) { scanBtn.disabled = true; scanBtn.innerText = '掃描中...'; }
+        const statusDiv = document.getElementById('huntScanStatus');
+        const statusText = document.getElementById('huntScanStatusText');
+        if (scanBtn) { scanBtn.disabled = true; scanBtn.innerText = '⏳ 掃描中'; }
+        if (statusDiv) statusDiv.classList.remove('hidden');
+
         const today = new Date().toISOString().split('T')[0];
         const newAlerts = [];
-        for (const entry of this.monitorList) {
+        const total = this.monitorList.length;
+
+        for (let idx = 0; idx < this.monitorList.length; idx++) {
+            const entry = this.monitorList[idx];
+            if (statusText) statusText.textContent = `掃描 ${idx + 1}/${total}：${entry.name}(${entry.sym})`;
             try {
                 const data = await this.fetchHistoricalData(entry.sym, false);
                 if (!data || data.length < 25) continue;
                 const tech = this._calcTechFromData(data);
                 if (!tech) continue;
                 entry.chipCostAtAdd = this._getChipCost10d(data);
-                const n = tech.n;
-                entry.currentPrice = tech.closes[n - 1];
-                entry.currentMA5   = tech.ma5arr[n - 1];
-                entry.currentMA20  = tech.ma20arr[n - 1];
+                const { closes, n, ma5arr, ma20arr } = tech;
+                entry.currentPrice = closes[n - 1];
+                entry.currentMA5   = ma5arr[n - 1];
+                entry.currentMA20  = ma20arr[n - 1];
                 const checks = [
                     this._checkPullbackRelaunch(tech, entry),
                     this._checkFalseBreakdown(tech, entry),
@@ -3694,7 +3785,9 @@ ${revText}
                 for (const alert of checks) {
                     const alertKey = `${entry.sym}_${alert.strategy}_${today}`;
                     if (!entry.firedAlerts.includes(alertKey)) {
-                        entry.firedAlerts = entry.firedAlerts.filter(k => !k.startsWith(`${entry.sym}_${alert.strategy}_`)).concat(alertKey);
+                        entry.firedAlerts = entry.firedAlerts
+                            .filter(k => !k.startsWith(`${entry.sym}_${alert.strategy}_`))
+                            .concat(alertKey);
                         newAlerts.push({ ...alert, sym: entry.sym, name: entry.name, date: today });
                     }
                 }
@@ -3702,8 +3795,20 @@ ${revText}
         }
         this.saveMonitorList();
         for (const alert of newAlerts) this._fireHuntNotification(alert);
-        this.renderHuntTab();
+
+        if (statusDiv) statusDiv.classList.add('hidden');
         if (scanBtn) { scanBtn.disabled = false; scanBtn.innerText = '🔄 立即掃描'; }
+
+        this.renderHuntTab();
+
+        // Show summary
+        if (total > 0) {
+            const statusMsg = newAlerts.length > 0
+                ? `✅ 掃描完成！發現 ${newAlerts.length} 個獵殺訊號`
+                : `✅ 掃描完成，${total} 檔均無訊號`;
+            if (statusText) { statusText.textContent = statusMsg; statusDiv.classList.remove('hidden'); }
+            setTimeout(() => { if (statusDiv) statusDiv.classList.add('hidden'); }, 4000);
+        }
         return newAlerts.length;
     },
 
