@@ -24,3 +24,4 @@ Thumbs.db
 
 # 新聞快取（由後端動態生成）
 news_cache.json
+.claude/
