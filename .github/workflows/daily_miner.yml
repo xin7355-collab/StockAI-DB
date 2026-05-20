@@ -72,7 +72,10 @@ jobs:
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
 
-          git add -f index.html broker_names.json futures_cache.json macro_cache.json data/
+          git add -f index.html data/
+          [ -f broker_names.json ]  && git add -f broker_names.json  || true
+          [ -f futures_cache.json ] && git add -f futures_cache.json || true
+          [ -f macro_cache.json ]   && git add -f macro_cache.json   || true
           git commit -m "📡 網站更新 ${DATE}（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           git push origin HEAD:gh-pages --force
           echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔"
