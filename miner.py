@@ -334,14 +334,10 @@ def _massive_scrape(url, api_key):
 def fetch_broker_chips():
     """
     每天17:00後抓取分點籌碼，存入 data/chips/{sym}.json。
-    ‧ 第一盾：FinMind TaiwanStockBrokerTrading 批次（同 OHLCV 作法，一次拿全台股）
-    ‧ 第二盾：Massive API → TWSE 逐日批次檔（一天一次請求，拿全市場）
+    ‧ 第一盾：FinMind TaiwanStockBrokerTrading 逐股查（CHIP_WATCHLIST，需帶 data_id）
+    ‧ 第二盾：TWSE T86 直連（JSON API，不需代理，完全免費）
     ‧ 滾動視窗：只保留最近 20 個交易日，超過自動刪除
     """
-    if not FINMIND_TOKEN and not MASSIVE_API_KEY:
-        print("\n⚠️  FINMIND_TOKEN 與 MASSIVE_API_KEY 均未設定，跳過分點籌碼")
-        return
-
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
 
@@ -350,14 +346,13 @@ def fetch_broker_chips():
     today_str    = date.today().strftime('%Y-%m-%d')
 
     # ── 判斷已有哪些日期（避免重複下載）─────────────────────────────
-    # 掃描現有所有 chips 檔案，找出已完整涵蓋的日期
     have_dates: set = set()
     for f in chips_dir.glob('*.json'):
         try:
             for rec in json.loads(f.read_text(encoding='utf-8')):
                 have_dates.add(rec.get('date', ''))
         except Exception:
-            break  # 任一檔出錯就重新全量更新
+            break
 
     missing_days = [d for d in trading_days if d.strftime('%Y-%m-%d') not in have_dates]
     if not missing_days:
@@ -366,46 +361,63 @@ def fetch_broker_chips():
         return
 
     fetch_start = missing_days[0].strftime('%Y-%m-%d')
-    print(f"\n🔍 分點籌碼批次採礦（{fetch_start} ~ {today_str}）全台股...")
+    print(f"\n🔍 分點籌碼採礦（{fetch_start} ~ {today_str}，{len(CHIP_WATCHLIST)} 檔監控清單）...")
+
+    def _int(v):
+        try: return int(str(v).replace(',', ''))
+        except: return 0
 
     all_rows = []
 
-    # ── 第一盾：FinMind 全台股批次（不帶 data_id，同 OHLCV 作法）──────
+    # ── 第一盾：FinMind 逐股查（必須帶 data_id，批次不帶 data_id 無效）──
     if FINMIND_TOKEN:
-        all_rows = fm_get('TaiwanStockBrokerTrading',
-                          start_date=fetch_start, end_date=today_str)
-        print(f"  FinMind 回傳 {len(all_rows)} 筆")
+        for sym in CHIP_WATCHLIST:
+            rows = fm_get('TaiwanStockBrokerTrading',
+                          data_id=sym, start_date=fetch_start, end_date=today_str)
+            for r in rows:
+                all_rows.append({
+                    'date':        str(r.get('date', ''))[:10],
+                    'stock_id':    str(r.get('stock_id', sym)),
+                    'broker_id':   str(r.get('broker_id', '')),
+                    'broker_name': str(r.get('broker_name', '')),
+                    'buy':         _int(r.get('buy', 0)),
+                    'sell':        _int(r.get('sell', 0)),
+                })
+            time.sleep(0.3)
+        print(f"  FinMind 逐股回傳 {len(all_rows)} 筆（{len(CHIP_WATCHLIST)} 檔）")
 
-    # ── 第二盾：Massive API → TWSE T86 分點資料（每檔每日一次請求）──
-    # T86 endpoint 回傳該股票當日所有券商的買賣分點明細
-    if not all_rows and MASSIVE_API_KEY:
-        def _int(v):
-            try: return int(str(v).replace(',', ''))
-            except: return 0
+    # ── 第二盾：TWSE T86 直連（不需 Massive API，GitHub Actions 可直達）──
+    if not all_rows:
+        print(f"  FinMind 無資料，改用 TWSE T86 直連...")
+        headers = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/1.0)'}
         total = 0
         for target_day in missing_days:
             day_str = target_day.strftime('%Y%m%d')
             day_iso = target_day.strftime('%Y-%m-%d')
             for sym in CHIP_WATCHLIST:
-                twse_url = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
-                            f'?response=json&date={day_str}&stock_no={sym}')
-                data = _massive_scrape(twse_url, MASSIVE_API_KEY)
-                if data and data.get('stat') == 'OK':
-                    for row in (data.get('data') or []):
-                        # T86 columns: [序號, 券商代號, 券商名稱, 買進股數, 賣出股數, 買賣差]
-                        if len(row) < 5:
-                            continue
-                        all_rows.append({
-                            'date':        day_iso,
-                            'stock_id':    sym,
-                            'broker_id':   str(row[1]),
-                            'broker_name': str(row[2]),
-                            'buy':         _int(row[3]),
-                            'sell':        _int(row[4]),
-                        })
-                        total += 1
-                time.sleep(0.5)  # 每檔禮貌性間隔，避免被 TWSE 封鎖
-        print(f"  Massive API T86 回傳 {total} 筆（{len(missing_days)} 天 × {len(CHIP_WATCHLIST)} 檔）")
+                try:
+                    url = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
+                           f'?response=json&date={day_str}&stock_no={sym}')
+                    resp = requests.get(url, headers=headers, timeout=15)
+                    data = resp.json()
+                    if data.get('stat') == 'OK':
+                        for row in (data.get('data') or []):
+                            # T86: [序號, 券商代號, 券商名稱, 買進股數, 賣出股數, 買賣差]
+                            if len(row) < 5:
+                                continue
+                            all_rows.append({
+                                'date':        day_iso,
+                                'stock_id':    sym,
+                                'broker_id':   str(row[1]),
+                                'broker_name': str(row[2]),
+                                'buy':         _int(row[3]),
+                                'sell':        _int(row[4]),
+                            })
+                            total += 1
+                except Exception as e:
+                    print(f"    ⚠️  T86 {sym} {day_str}: {e}")
+                time.sleep(0.6)  # 禮貌間隔，避免被 TWSE 封鎖
+        print(f"  TWSE T86 直連回傳 {total} 筆（{len(missing_days)} 天 × {len(CHIP_WATCHLIST)} 檔）")
 
     if not all_rows:
         print("  ⚠️  無分點資料，跳過")
