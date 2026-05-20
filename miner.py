@@ -85,22 +85,32 @@ def write_radar_to_db(results):
 
 
 def fm_get(dataset, **params):
-    """FinMind API wrapper — returns data list or [] on failure."""
-    p = {'dataset': dataset, **params}
-    if FINMIND_TOKEN:
-        p['token'] = FINMIND_TOKEN
-    for attempt in range(3):
-        try:
-            res = requests.get(BASE_URL, params=p, timeout=60)
-            j = res.json()
-            if j.get('status') == 200:
-                return j.get('data', [])
-            print(f"  ⚠️  FinMind {dataset} status={j.get('status')} msg={j.get('msg')}")
-            return []
-        except Exception as e:
-            print(f"  ⚠️  FinMind {dataset} attempt {attempt+1} failed: {e}")
-            time.sleep(5 * (attempt + 1))
-    return []
+    """FinMind API wrapper — returns data list or [] on failure.
+    Automatically falls back to anonymous (no token) if register-level 400 is returned."""
+    def _try(use_token: bool):
+        p = {'dataset': dataset, **params}
+        if use_token and FINMIND_TOKEN:
+            p['token'] = FINMIND_TOKEN
+        for attempt in range(3):
+            try:
+                res = requests.get(BASE_URL, params=p, timeout=60)
+                j = res.json()
+                msg = str(j.get('msg', '') or '')
+                if res.status_code == 400 and ('register' in msg.lower() or 'level' in msg.lower()):
+                    return None  # signal to retry anonymously
+                if j.get('status') == 200:
+                    return j.get('data', [])
+                print(f"  ⚠️  FinMind {dataset} status={j.get('status')} msg={msg}")
+                return []
+            except Exception as e:
+                print(f"  ⚠️  FinMind {dataset} attempt {attempt+1} failed: {e}")
+                time.sleep(5 * (attempt + 1))
+        return []
+    result = _try(True)
+    if result is None:
+        print(f"  ↩️  FinMind {dataset} 付費牆，改用匿名請求...")
+        result = _try(False)
+    return result or []
 
 
 def load_json(symbol):
@@ -171,19 +181,33 @@ def run():
     updated = 0
     for sym, rows in by_sym.items():
         existing = load_json(sym)
-        existing_dates = {rec['date'] for rec in existing}
+        existing_map = {rec['date']: rec for rec in existing}
 
-        new_recs = []
+        changed = False
         for r in rows:
             raw_date = r['date']                         # "2024-01-02"
             fmt_date = raw_date.replace('-', '/')        # "2024/01/02"
-            if fmt_date in existing_dates:
-                continue
 
             close = float(r.get('close', 0))
             if close == 0:
                 continue
 
+            chip_data = {
+                'foreign_net': inst.get((raw_date, sym), {}).get('foreign_net', 0),
+                'trust_net':   inst.get((raw_date, sym), {}).get('trust_net',   0),
+                'dealer_net':  inst.get((raw_date, sym), {}).get('dealer_net',  0),
+                'margin_balance': margin.get((raw_date, sym), {}).get('margin_balance', 0),
+                'short_balance':  margin.get((raw_date, sym), {}).get('short_balance',  0),
+            }
+
+            if fmt_date in existing_map:
+                # Patch existing record if it's missing chip fields
+                if 'foreign_net' not in existing_map[fmt_date]:
+                    existing_map[fmt_date].update(chip_data)
+                    changed = True
+                continue
+
+            # New record
             rec = {
                 'date':   fmt_date,
                 'open':   float(r.get('open', close)),
@@ -191,18 +215,13 @@ def run():
                 'low':    float(r.get('min',  close)),
                 'close':  close,
                 'volume': int(r.get('Trading_Volume', 0)),
-                # 法人籌碼
-                'foreign_net': inst.get((raw_date, sym), {}).get('foreign_net', 0),
-                'trust_net':   inst.get((raw_date, sym), {}).get('trust_net',   0),
-                'dealer_net':  inst.get((raw_date, sym), {}).get('dealer_net',  0),
-                # 融資融券
-                'margin_balance': margin.get((raw_date, sym), {}).get('margin_balance', 0),
-                'short_balance':  margin.get((raw_date, sym), {}).get('short_balance',  0),
+                **chip_data,
             }
-            new_recs.append(rec)
+            existing_map[fmt_date] = rec
+            changed = True
 
-        if new_recs:
-            combined = sorted(existing + new_recs, key=lambda x: x['date'])
+        if changed:
+            combined = sorted(existing_map.values(), key=lambda x: x['date'])
             combined = combined[-800:]   # 保留約 3 年 (800 個交易日)
             save_json(sym, combined)
             updated += 1
