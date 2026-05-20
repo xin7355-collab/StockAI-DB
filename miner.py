@@ -376,31 +376,36 @@ def fetch_broker_chips():
                           start_date=fetch_start, end_date=today_str)
         print(f"  FinMind 回傳 {len(all_rows)} 筆")
 
-    # ── 第二盾：Massive API → TWSE 逐日批次（每天1次，涵蓋全市場）──
+    # ── 第二盾：Massive API → TWSE T86 分點資料（每檔每日一次請求）──
+    # T86 endpoint 回傳該股票當日所有券商的買賣分點明細
     if not all_rows and MASSIVE_API_KEY:
+        def _int(v):
+            try: return int(str(v).replace(',', ''))
+            except: return 0
+        total = 0
         for target_day in missing_days:
-            day_str  = target_day.strftime('%Y%m%d')
-            twse_url = (f'https://www.twse.com.tw/rwd/zh/fund/fundQueryDate'
-                        f'?date={day_str}&response=json&selectType=ALLBUT0999')
-            data = _massive_scrape(twse_url, MASSIVE_API_KEY)
-            if data and data.get('stat') == 'OK':
-                day_iso = target_day.strftime('%Y-%m-%d')
-                def _int(v):
-                    try: return int(str(v).replace(',', ''))
-                    except: return 0
-                for row in (data.get('data') or []):
-                    if len(row) < 5:
-                        continue
-                    all_rows.append({
-                        'date':        day_iso,
-                        'stock_id':    str(row[0]),
-                        'broker_id':   str(row[2]),
-                        'broker_name': str(row[3]),
-                        'buy':         _int(row[4]) if len(row) > 4 else 0,
-                        'sell':        _int(row[5]) if len(row) > 5 else 0,
-                    })
-            time.sleep(1)  # TWSE 每日一請求，禮貌性間隔
-        print(f"  Massive API 回傳 {len(all_rows)} 筆（{len(missing_days)} 天）")
+            day_str = target_day.strftime('%Y%m%d')
+            day_iso = target_day.strftime('%Y-%m-%d')
+            for sym in CHIP_WATCHLIST:
+                twse_url = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
+                            f'?response=json&date={day_str}&stock_no={sym}')
+                data = _massive_scrape(twse_url, MASSIVE_API_KEY)
+                if data and data.get('stat') == 'OK':
+                    for row in (data.get('data') or []):
+                        # T86 columns: [序號, 券商代號, 券商名稱, 買進股數, 賣出股數, 買賣差]
+                        if len(row) < 5:
+                            continue
+                        all_rows.append({
+                            'date':        day_iso,
+                            'stock_id':    sym,
+                            'broker_id':   str(row[1]),
+                            'broker_name': str(row[2]),
+                            'buy':         _int(row[3]),
+                            'sell':        _int(row[4]),
+                        })
+                        total += 1
+                time.sleep(0.5)  # 每檔禮貌性間隔，避免被 TWSE 封鎖
+        print(f"  Massive API T86 回傳 {total} 筆（{len(missing_days)} 天 × {len(CHIP_WATCHLIST)} 檔）")
 
     if not all_rows:
         print("  ⚠️  無分點資料，跳過")
