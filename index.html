@@ -666,17 +666,25 @@
 // 🧠 V14.0 首席 AI 戰略指令箱 (可抽換區)
 // ==========================================
 const AI_PROMPT_TEMPLATES = {
-    default: `你是「台股首席資安策略長」，融合權證小哥籌碼流與朱家泓技術位階學。語氣霸氣且幽默，杜絕 AI 幻想。
+    default: `你是「台股首席操盤手」，說話風格完全模仿權證小哥：直接、有個性、白話、毫不廢話。禁止使用「根據資料」「以下分析」等 AI 套話。
 
-【洗盤與信心邏輯】：
-- 偵測到「信心燈號為藍燈」時，必須強化用戶信心：「這是獵人洗盤，隱藏消息面偏多，依照防守線抱緊，不要被震掉！」
-- 偵測到「信心燈號為紅燈」且「散戶瘋狂追高」，必須發出絕殺令：「警告！利多出貨，這是小羊屠宰場，立刻撤退！」
+請依照下方【當下戰情參數】，**嚴格按照以下五個段落輸出，每段開頭必須保留【】標題**：
 
-請根據【當下戰情參數】，給出：
-1. **【戰況與消息體檢】**：分析籌碼與基本面背離。
-2. **【關鍵價位與庫存策略】**：給出操作建議（強制針對庫存狀態建議）。
-3. **【操盤指令】**：一句話定調。
-4. **【最終判定燈號】**：獨立一行輸出 🟢強力買進 / 🟡觀望或減碼 / 🔴強制撤退。`,
+【📊 技術面】
+分析均線系統、K線型態、量能。直接說「5日線在 XXXX，現在收在上面/下面」，說明短中長期趨勢。
+
+【💹 籌碼面】
+分析三大法人與主力分點動向。若外資連買，就說「外資這幾天一直在吃貨」；若主力買超，說「照妖鏡照出主力積極進場」。
+
+【🌏 全球觀】
+分析美股、VIX、外資期貨口數對台股的影響。一句話點出風險或機會。
+
+【🏭 產品需求面】
+根據公司名稱與產業，判斷目前景氣循環與訂單動能。若資料不足，根據股票代號推估產業給出看法。
+
+【⚔️ 綜合評析】
+整合以上四面向，給出明確操作建議（含持倉建議、重要支撐壓力數字）。
+最後**獨立一行**輸出最終判定：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退`,
 
     dualBlade: `你是「台股首席資安策略長」，融合權證小哥籌碼流與朱家泓技術位階學。語氣霸氣且幽默，杜絕 AI 幻想。
 
@@ -3577,78 +3585,182 @@ ${revText}
         if (!this.activeData || this.activeData.length === 0) { alert("⚠️ 請先確認股票資料已完整載入！"); return; }
 
         box.classList.remove('hidden');
-        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ Groq 雙軌推論引擎啟動中... <br><span class="text-[10px] text-gray-500">正在打包最新戰情資料...</span></div>';
+        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ 首席 AI 五維分析啟動中... <br><span class="text-[10px] text-gray-500">正在計算均線、整合籌碼、讀取全球行情...</span></div>';
 
-        const lastC = this.activeData[this.activeData.length - 1].close;
-        const name = this.getStockName(this.currentSymbolId);
-        const ctx = this.currentStrategyContext || {};
-        
-        const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
-        const costVal = document.getElementById('costInput').value.trim();
-        let invStatusText = "使用者目前空手。";
-        let isLosingAndBroken = false;
+        // ── 基本資料 ──────────────────────────────────────────────────────
+        const sym  = this.currentSymbolId;
+        const name = this.getStockName(sym);
+        const data = this.rawDailyData || this.activeData;
+        const n    = data.length;
+        const lastC = data[n - 1].close;
+        const ctx  = this.currentStrategyContext || {};
 
+        // ── 均線計算（由原始資料直接算） ────────────────────────────────
+        const calcMA = (period) => {
+            if (n < period) return null;
+            return data.slice(n - period, n).reduce((s, d) => s + d.close, 0) / period;
+        };
+        const ma5   = calcMA(5);
+        const ma10  = calcMA(10);
+        const ma20  = calcMA(20);
+        const ma60  = calcMA(60);
+        const ma120 = calcMA(120);
+        const ma240 = calcMA(240);
+        const maFmt = (label, val) => {
+            if (!val) return null;
+            const diff = ((lastC - val) / val * 100);
+            const sign = diff >= 0 ? '+' : '';
+            const rel  = diff >= 0 ? '現價高於' : '現價低於';
+            return `  ${label}：${val.toFixed(1)}（${rel} ${Math.abs(diff).toFixed(1)}%）`;
+        };
+        const maLines = [
+            maFmt('5日均（週線）  ', ma5),
+            maFmt('20日均（月線） ', ma20),
+            maFmt('60日均（季線） ', ma60),
+            maFmt('120日均（半年）', ma120),
+            maFmt('240日均（年線）', ma240),
+        ].filter(Boolean).join('\n');
+
+        let maOrder = '⚪ 均線糾結';
+        if (ma5 && ma20 && ma60) {
+            if (ma5 > ma20 && ma20 > ma60)       maOrder = '✅ 多頭排列（5>20>60，趨勢向上）';
+            else if (ma5 < ma20 && ma20 < ma60)  maOrder = '❌ 空頭排列（5<20<60，趨勢向下）';
+            else if (lastC > ma20 && lastC > ma60) maOrder = '🔄 轉折初期（股價回到長均線之上）';
+        }
+        if (ma5 && ma10 && ma20) {
+            const prevMa5  = n >= 6  ? data.slice(n-6,  n-1).reduce((s,d)=>s+d.close,0)/5  : ma5;
+            const prevMa20 = n >= 21 ? data.slice(n-21, n-1).reduce((s,d)=>s+d.close,0)/20 : ma20;
+            if (ma5 > prevMa5)   maOrder += '，5日均上揚';
+            if (ma20 < prevMa20) maOrder += '，月線下彎⚠️';
+        }
+
+        // 量能
+        const vol5avg = n >= 5 ? data.slice(-5).reduce((s,d)=>s+d.volume,0)/5 : null;
+        const todayVol = data[n-1].volume;
+        const volRatioStr = vol5avg ? `今日成交量 ${(todayVol/1e6).toFixed(1)}M，為5日均量的 ${(todayVol/vol5avg).toFixed(1)} 倍` : '';
+
+        // ── 籌碼面：三大法人（從 rawDailyData 取最近5日） ────────────────
+        const recentD = data.slice(-5);
+        const hasInst = recentD.some(d => d.foreign_net !== undefined && d.foreign_net !== 0);
+        let instText = hasInst
+            ? recentD.filter(d => d.foreign_net !== undefined).map(d => {
+                const f = Math.round((d.foreign_net||0)/1000);
+                const t = Math.round((d.trust_net||0)/1000);
+                const de= Math.round((d.dealer_net||0)/1000);
+                return `  ${d.date}: 外資${f>=0?'+':''}${f}K 投信${t>=0?'+':''}${t}K 自營${de>=0?'+':''}${de}K`;
+              }).join('\n')
+            : '  （三大法人資料採礦中，下次更新後可見）';
+
+        // 主力分點（照妖鏡資料）
+        const bs = this._brokerChipSummary;
+        const brokerText = (bs && bs.sym === sym)
+            ? `  整體傾向：${bs.verdict}，買超合計 ${bs.totalBuyK}股 / 賣超合計 ${bs.totalSelK}股（近${bs.days}日）`
+            : '  （照妖鏡：請先切到籌碼分頁載入分點資料）';
+
+        // 融資融券（若有）
+        const lastMargin = recentD.filter(d => d.margin_balance).slice(-1)[0];
+        const marginText = lastMargin
+            ? `  融資餘額 ${Math.round(lastMargin.margin_balance/1000)}K 張，融券 ${Math.round(lastMargin.short_balance/1000)}K 張`
+            : '  融資融券資料採礦中';
+
+        // ── 全球觀 ────────────────────────────────────────────────────────
+        const m = this.usMacroCache;
+        const macroText = m
+            ? `S&P500 ${m.sp500?.close?.toLocaleString()||'--'} (${(m.sp500?.chg_pct||0)>=0?'+':''}${(m.sp500?.chg_pct||0).toFixed(2)}%)，NASDAQ ${m.nasdaq?.close?.toLocaleString()||'--'} (${(m.nasdaq?.chg_pct||0)>=0?'+':''}${(m.nasdaq?.chg_pct||0).toFixed(2)}%)，VIX ${m.vix?.close?.toFixed(1)||'--'}`
+            : '美股數據載入中';
+        const futText = this.futuresCacheData
+            ? `外資台指期未平倉：${this.futuresCacheData.net_oi > 0 ? '+' : ''}${this.futuresCacheData.net_oi?.toLocaleString() || '--'} 口`
+            : '';
+
+        // ── 庫存狀態 ──────────────────────────────────────────────────────
+        const inInv  = this.inventory.find(i => i.symbol === sym);
+        const costVal = document.getElementById('costInput')?.value?.trim();
+        let invText = '目前空手';
         if (inInv || (costVal && !isNaN(parseFloat(costVal)))) {
             const cost = inInv ? inInv.cost : parseFloat(costVal);
-            const pnl = ((lastC - cost) / cost) * 100;
-            let days = "數";
-            if (inInv && inInv.buyDate) {
-                const bDate = new Date(inInv.buyDate);
-                const diffTime = Math.abs(new Date() - bDate);
-                days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            }
-            invStatusText = `使用者【持有中】，持有成本為 ${cost}，已持有約 ${days} 天，目前帳面損益 ${pnl.toFixed(2)}%。`;
-            
-            if (pnl < 0 && ctx.def_val && lastC < ctx.def_val) {
-                isLosingAndBroken = true;
-            }
+            const pnl  = ((lastC - cost) / cost * 100).toFixed(2);
+            invText    = `持有成本 ${cost}，帳面損益 ${pnl}%`;
         }
-        
-        const chipCost = document.getElementById('chipCostInput').value || '未提供';
 
+        // ── 產品需求面（來自財務 AI 快取） ──────────────────────────────
+        const fundamentalHint = this.latestFinancialAICache
+            ? this.latestFinancialAICache.substring(0, 300)
+            : '（請先在 K線圖表分頁執行財務 AI 分析以取得資料，或由 AI 根據產業推估）';
+
+        // ── 組合 Prompt ───────────────────────────────────────────────────
         const basePrompt = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
         const prompt = `${basePrompt}
-        
-        【當下戰情參數】：
-        - 標的：${name}(${this.currentSymbolId})
-        - 現價: ${lastC}
-        - 系統判定趨勢位階: ${ctx.season || '不明'}季
-        - 系統防守底線: ${ctx.def_val || '無'}
-        - 島型反轉/大黑K風險: ${ctx.isIslandReversal || ctx.isBigBlackK ? '是' : '否'}
-        - 主力成本線: ${chipCost}
-        - 系統信心燈號: ${this.confidenceMsgCache}
-        - 庫存狀態: ${invStatusText}
-        - 跌破防守且虧損狀態: ${isLosingAndBroken ? '【是！已嚴重違紀】' : '否'}
-        - 最新營收 YoY: ${this.latestYoyCache || '無最新資料'}
-        - 近期重大訊息: ${this.latestNewsCache || '無'}
-        ${this.usMacroCache ? `- 美股總經: S&P500 ${this.usMacroCache.sp500?.close?.toLocaleString() || '--'}(${this.usMacroCache.sp500?.chg_pct > 0 ? '+' : ''}${(this.usMacroCache.sp500?.chg_pct || 0).toFixed(2)}%) / NASDAQ ${this.usMacroCache.nasdaq?.close?.toLocaleString() || '--'}(${this.usMacroCache.nasdaq?.chg_pct > 0 ? '+' : ''}${(this.usMacroCache.nasdaq?.chg_pct || 0).toFixed(2)}%) / VIX ${this.usMacroCache.vix?.close?.toFixed(2) || '--'} / TSM ADR ${this.usMacroCache.tsm?.close?.toFixed(2) || '--'}(${this.usMacroCache.tsm?.chg_pct > 0 ? '+' : ''}${(this.usMacroCache.tsm?.chg_pct || 0).toFixed(2)}%)` : ''}
-        ${(this.latestFinancialAICache || document.getElementById('financialAIResult')?.innerText?.trim()) ? `- AI基本面白話解讀: ${this.latestFinancialAICache || document.getElementById('financialAIResult').innerText.trim().substring(0,400)}` : ''}
-        ${document.getElementById('chipAIResult')?.innerText?.trim() ? `- 籌碼AI研判: ${document.getElementById('chipAIResult').innerText.trim().substring(0,300)}` : ''}`;
-        
+
+【當下戰情參數】
+標的：${name}（${sym}）｜現價：${lastC}｜趨勢季節：${ctx.season || '不明'}季｜防守底線：${ctx.def_val || '無'}
+庫存：${invText}
+${this.latestNewsCache ? `近期重大消息：${this.latestNewsCache}` : ''}
+
+━━ 📊 技術面數據 ━━
+【均線系統（請幫使用者解讀，說清楚現在是多頭還是空頭格局）】
+${maLines}
+  排列狀況：${maOrder}
+  ${volRatioStr}
+  系統判定：${ctx.season || '不明'}季（${ctx.season === '夏' ? '主升段，強勢上攻' : ctx.season === '春' ? '打底期，謹慎建倉' : ctx.season === '秋' ? '高檔整理，準備停利' : '空頭期，現金為王'}）
+
+━━ 💹 籌碼面數據 ━━
+三大法人近5日（外資投信自營）：
+${instText}
+主力分點動向：
+${brokerText}
+${marginText}
+
+━━ 🌏 全球觀數據 ━━
+美股：${macroText}
+${futText}
+
+━━ 🏭 產品需求面 ━━
+${fundamentalHint}
+
+━━ 操盤補充 ━━
+信心燈號：${this.confidenceMsgCache || '無'}
+最新營收 YoY：${this.latestYoyCache || '無資料'}`;
+
         try {
             const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
-                method: 'POST', 
-                headers: { 'Authorization': `Bearer ${this.settings.groqKey}`, 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ 
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     model: 'llama-3.3-70b-versatile',
-                    messages: [{ role: "user", content: prompt }],
-                    temperature: 0.2
+                    messages: [{ role: 'user', content: prompt }],
+                    max_tokens: 900,
+                    temperature: 0.3
                 })
             });
-            const data = await res.json();
+            const resp = await res.json();
+            if (!res.ok || resp.error) throw new Error(resp.error?.message || '未知錯誤');
 
-            if (!res.ok || data.error) { throw new Error(data.error ? data.error.message : '未知錯誤'); }
-            
-            let text = data.choices[0].message.content.replace(/\n/g, '<br>');
-            text = text.replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-base shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
-                       .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-base">🔴強制撤退</span>')
-                       .replace(/🟡觀望或減碼/g, '<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-base">🟡觀望或減碼</span>');
-            
-            this.typeWriterEffect(box, `<div class="text-indigo-100 typewriter-text font-mono text-[13px] leading-relaxed">${text}</div>`);
-            
-        } catch(e) { 
+            let text = resp.choices[0].message.content;
+
+            // 格式化輸出：給各段落加上顏色
+            const sections = {
+                '【📊 技術面】': { border: 'border-blue-500',   title: 'text-blue-400',   bg: 'bg-blue-950/20'  },
+                '【💹 籌碼面】': { border: 'border-red-500',    title: 'text-red-400',    bg: 'bg-red-950/20'   },
+                '【🌏 全球觀】': { border: 'border-cyan-500',   title: 'text-cyan-400',   bg: 'bg-cyan-950/20'  },
+                '【🏭 產品需求面】': { border: 'border-yellow-500', title: 'text-yellow-400', bg: 'bg-yellow-950/20'},
+                '【⚔️ 綜合評析】': { border: 'border-purple-500', title: 'text-purple-300', bg: 'bg-purple-950/20'},
+            };
+            for (const [marker, c] of Object.entries(sections)) {
+                const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                text = text.replace(new RegExp(escaped, 'g'),
+                    `\n<div class="mt-3 ${c.border} border-l-2 pl-2 ${c.bg} rounded-r py-1"><span class="${c.title} font-bold text-xs">${marker}</span></div>`);
+            }
+            text = text
+                .replace(/\n/g, '<br>')
+                .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
+                .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-sm">🔴強制撤退</span>')
+                .replace(/🟡觀望或減碼/g, '<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望或減碼</span>');
+
+            this.typeWriterEffect(box, `<div class="text-indigo-100 typewriter-text font-mono text-[12px] leading-loose">${text}</div>`);
+
+        } catch(e) {
             box.innerHTML = `<div class="text-red-400 font-bold bg-red-900/30 p-3 rounded border border-red-800">❌ Groq AI 連線失敗：<br><span class="text-xs text-red-300">${e.message}</span></div>`;
-        } 
+        }
     },
 
     renderSparkline(canvasId, dataPoints) {
