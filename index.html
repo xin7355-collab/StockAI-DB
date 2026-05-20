@@ -408,6 +408,20 @@
                 </div>
             </div>
 
+            <!-- 照妖鏡：主力分點追蹤 -->
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden mt-2">
+                <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
+                    <h4 class="text-xs font-black text-red-400 tracking-wide">🔍 照妖鏡 · 主力分點追蹤</h4>
+                    <div class="flex gap-2 items-center">
+                        <span id="brokerChipDate" class="text-[9px] text-gray-500"></span>
+                        <button onclick="app.loadBrokerChips(app.currentSymbolId, true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                    </div>
+                </div>
+                <div id="brokerChipContent" class="px-3 py-2">
+                    <div class="text-center py-4 text-gray-600 text-xs">切換到籌碼分頁自動載入</div>
+                </div>
+            </div>
+
             <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
                     <div class="flex justify-between items-center px-1 py-1 border-b border-[#30363d] flex-wrap gap-1">
@@ -1010,7 +1024,10 @@ const app = {
             if (btn) btn.classList.toggle('active', t.toLowerCase() === tab);
         });
         if (tab === 'chart' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
-        if (tab === 'chip') this.fetchChipTimeline(this.currentSymbolId);
+        if (tab === 'chip') {
+            this.fetchChipTimeline(this.currentSymbolId);
+            this.loadBrokerChips(this.currentSymbolId);
+        }
     },
 
     openSettings() {
@@ -1804,6 +1821,98 @@ const app = {
                 { name: '融券', type: 'line', data: marginData.map(d => d.short),  smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#60a5fa', width: 1.5 }, itemStyle: { color: '#60a5fa' } },
             ]
         });
+    },
+
+    async loadBrokerChips(sym, forceRefresh) {
+        if (!sym) return;
+        const box    = document.getElementById('brokerChipContent');
+        const dateLbl = document.getElementById('brokerChipDate');
+        if (!box) return;
+
+        // 快取 TTL：6小時
+        const cacheKey = `brokerChips_${sym}`;
+        if (!forceRefresh) {
+            const c = localStorage.getItem(cacheKey);
+            if (c) {
+                try {
+                    const { ts, html, dateLabel } = JSON.parse(c);
+                    if (Date.now() - ts < 6 * 3600 * 1000) {
+                        box.innerHTML = html;
+                        if (dateLbl) dateLbl.textContent = dateLabel;
+                        return;
+                    }
+                } catch(e) {}
+            }
+        }
+
+        box.innerHTML = '<div class="text-center py-4 text-gray-500 text-xs animate-pulse">調閱主力分點資料...</div>';
+
+        try {
+            let base = window.location.href.split('?')[0].split('#')[0];
+            if (!base.endsWith('/')) base = base.substring(0, base.lastIndexOf('/') + 1);
+            const url = new URL(`data/chips/${sym}.json`, base).href;
+            const res = await fetch(url + `?v=${Date.now()}`);
+            if (!res.ok) throw new Error('no_data');
+            const records = await res.json();
+            if (!records || records.length === 0) throw new Error('empty');
+
+            // 取最新一天有資料的記錄
+            const latest = records[records.length - 1];
+            const dateLabel = latest.date;
+            if (dateLbl) dateLbl.textContent = dateLabel;
+
+            // 計算20天累積買超（主力進場方向）
+            const cumBuy = {}, cumSel = {};
+            for (const rec of records) {
+                for (const b of (rec.buyers || [])) {
+                    cumBuy[b.bnm] = (cumBuy[b.bnm] || 0) + b.net;
+                }
+                for (const s of (rec.sellers || [])) {
+                    cumSel[s.bnm] = (cumSel[s.bnm] || 0) + Math.abs(s.net);
+                }
+            }
+            const topBuyers  = Object.entries(cumBuy).sort((a,b) => b[1]-a[1]).slice(0,10);
+            const topSellers = Object.entries(cumSel).sort((a,b) => b[1]-a[1]).slice(0,10);
+            const maxBuy = topBuyers[0]?.[1] || 1;
+            const maxSel = topSellers[0]?.[1] || 1;
+
+            const rowFn = (name, val, maxVal, isBuy) => {
+                const pct  = Math.round(val / maxVal * 100);
+                const col  = isBuy ? 'bg-red-500/60' : 'bg-green-500/60';
+                const tcol = isBuy ? 'text-red-300' : 'text-green-300';
+                const valK = val >= 1000 ? (val/1000).toFixed(0)+'K' : val.toString();
+                return `<div class="flex items-center gap-1.5 py-0.5">
+                    <span class="text-[10px] text-gray-400 w-20 truncate flex-shrink-0">${name}</span>
+                    <div class="flex-1 bg-gray-800 rounded-sm h-2 overflow-hidden">
+                        <div class="${col} h-full rounded-sm" style="width:${pct}%"></div>
+                    </div>
+                    <span class="text-[10px] font-mono ${tcol} w-10 text-right flex-shrink-0">${valK}</span>
+                </div>`;
+            };
+
+            const days = records.length;
+            const html = `
+            <div class="text-[9px] text-gray-500 mb-2">📊 近 ${days} 日累積主力動向（股）</div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <div class="text-[10px] text-red-400 font-bold mb-1">▲ 主力買超 Top10</div>
+                    ${topBuyers.map(([n,v]) => rowFn(n, v, maxBuy, true)).join('')}
+                </div>
+                <div>
+                    <div class="text-[10px] text-green-400 font-bold mb-1">▼ 主力賣超 Top10</div>
+                    ${topSellers.map(([n,v]) => rowFn(n, v, maxSel, false)).join('')}
+                </div>
+            </div>`;
+
+            box.innerHTML = html;
+            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html, dateLabel }));
+
+        } catch(e) {
+            const msg = e.message === 'no_data'
+                ? `<div class="text-center py-3 text-gray-600 text-xs">此標的不在監控清單或資料尚未採礦<br><span class="text-[9px]">（監控清單：${this.CHIP_WATCHLIST?.length || 0} 檔，每日16:30後更新）</span></div>`
+                : `<div class="text-center py-3 text-gray-600 text-xs">暫無分點資料</div>`;
+            box.innerHTML = msg;
+        }
     },
 
     async analyzeChipWithAI(sym) {

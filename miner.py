@@ -12,7 +12,22 @@ from pathlib import Path
 
 DATA_DIR = "data"
 FINMIND_TOKEN = os.environ.get('FINMIND_TOKEN', '')
+MASSIVE_API_KEY = os.environ.get('MASSIVE_API_KEY', '')
 BASE_URL = 'https://api.finmindtrade.com/api/v4/data'
+
+# ── 分點籌碼監控清單（對應前端雷達池，保持同步）────────────────────
+CHIP_WATCHLIST = [
+    # 上市熱門大將
+    '2330','2317','2454','2382','3231','2303','2881','2886','2002','2603',
+    '2308','3711','1301','1303','2801','2884','2885','2892','6505','1216',
+    '2207','2301','2327','6415','2357','2395','3034','2379','2376','4938',
+    # 上櫃活潑中小型
+    '3105','3529','8069','5347','8299','3293','6142','6274',
+    '6488','6515','6770','3037','8046','4977','6278','6191',
+    # 高股息與權值 ETF
+    '0050','0056','00878','00929','00919',
+]
+CHIP_WATCHLIST = sorted(set(CHIP_WATCHLIST))
 
 Path(DATA_DIR).mkdir(exist_ok=True)
 
@@ -228,9 +243,167 @@ def fetch_us_macro_cache():
     print(f"  ✅ macro_cache.json 寫入完成（{len(result)-1} 個指標）")
 
 
+def get_trading_days(n=20):
+    """回傳最近 n 個交易日（跳過週末；不處理國定假日，容忍少量空值）"""
+    days, d = [], date.today()
+    while len(days) < n:
+        if d.weekday() < 5:
+            days.append(d)
+        d -= timedelta(days=1)
+    return sorted(days)
+
+
+def _massive_scrape(url, api_key):
+    """透過 Massive API residential IP 代爬目標 URL，回傳已解析的 dict 或 None。"""
+    try:
+        resp = requests.post(
+            'https://api.massiveapi.com/v1/scrape',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'url': url, 'method': 'GET', 'anti_bot': True,
+                  'proxy_type': 'residential', 'render_js': False},
+            timeout=30
+        )
+        if resp.status_code != 200:
+            print(f"  ⚠️  Massive API HTTP {resp.status_code}")
+            return None
+        outer = resp.json()
+        # Massive API 可能將內容放在 body / content / html 欄位
+        raw = outer.get('body') or outer.get('content') or outer.get('html') or ''
+        if isinstance(raw, dict):
+            return raw
+        if raw:
+            return json.loads(raw)
+        return None
+    except Exception as e:
+        print(f"  ⚠️  Massive API 例外: {e}")
+        return None
+
+
+def fetch_broker_chips():
+    """
+    每天17:00後抓取分點籌碼，存入 data/chips/{sym}.json。
+    ‧ 第一盾：FinMind TaiwanStockBrokerTrading（一次拿完整日期範圍，免逐日打）
+    ‧ 第二盾：Massive API → TWSE 官方端點（residential IP，不被 Ban）
+    ‧ 滾動視窗：只保留最近 20 個交易日，超過自動刪除
+    """
+    if not FINMIND_TOKEN and not MASSIVE_API_KEY:
+        print("\n⚠️  FINMIND_TOKEN 與 MASSIVE_API_KEY 均未設定，跳過分點籌碼")
+        return
+
+    chips_dir = Path(DATA_DIR) / 'chips'
+    chips_dir.mkdir(parents=True, exist_ok=True)
+
+    trading_days = get_trading_days(20)
+    cutoff_str   = trading_days[0].strftime('%Y-%m-%d')
+    today_str    = date.today().strftime('%Y-%m-%d')
+
+    # ── 自動剪枝：刪除超過 20 個交易日的舊檔 ─────────────────────────
+    for f in chips_dir.glob('*.json'):
+        try:
+            existing_data = json.loads(f.read_text(encoding='utf-8'))
+            pruned = [r for r in existing_data if r.get('date', '') >= cutoff_str]
+            if len(pruned) != len(existing_data):
+                f.write_text(json.dumps(pruned, ensure_ascii=False, separators=(',', ':')),
+                             encoding='utf-8')
+        except Exception:
+            pass
+
+    print(f"\n🔍 分點籌碼採礦（{cutoff_str} ~ {today_str}），監控 {len(CHIP_WATCHLIST)} 檔...")
+    updated = 0
+
+    for sym in CHIP_WATCHLIST:
+        out_file = chips_dir / f'{sym}.json'
+
+        # 載入既有資料，建立 date → record 字典
+        existing: dict = {}
+        if out_file.exists():
+            try:
+                for rec in json.loads(out_file.read_text(encoding='utf-8')):
+                    existing[rec['date']] = rec
+            except Exception:
+                pass
+
+        # 判斷需要補齊的最早日期
+        missing = [d for d in trading_days if d.strftime('%Y-%m-%d') not in existing]
+        if not missing:
+            continue
+
+        fetch_start = missing[0].strftime('%Y-%m-%d')
+        rows = []
+
+        # ── 第一盾：FinMind ────────────────────────────────────────────
+        if FINMIND_TOKEN:
+            rows = fm_get('TaiwanStockBrokerTrading',
+                          data_id=sym, start_date=fetch_start, end_date=today_str)
+
+        # ── 第二盾：Massive API → TWSE ────────────────────────────────
+        if not rows and MASSIVE_API_KEY:
+            start_twse = missing[0].strftime('%Y%m%d')
+            end_twse   = today_str.replace('-', '')
+            twse_url   = (f'https://www.twse.com.tw/rwd/zh/fund/fundQueryDate'
+                          f'?stockNo={sym}&startDate={start_twse}&endDate={end_twse}&response=json')
+            data = _massive_scrape(twse_url, MASSIVE_API_KEY)
+            if data and data.get('stat') == 'OK':
+                fields = data.get('fields', [])
+                # TWSE 回傳整段期間的彙總（非逐日），以今天為日期掛上
+                for row in (data.get('data') or []):
+                    def _int(v):
+                        try: return int(str(v).replace(',', ''))
+                        except: return 0
+                    rows.append({
+                        'date':        today_str,
+                        'stock_id':    sym,
+                        'broker_id':   row[0] if len(row) > 0 else '',
+                        'broker_name': row[1] if len(row) > 1 else '',
+                        'buy':         _int(row[2]) if len(row) > 2 else 0,
+                        'sell':        _int(row[3]) if len(row) > 3 else 0,
+                    })
+
+        if not rows:
+            continue
+
+        # ── 整理成每日前 15 買超 / 前 15 賣超 ────────────────────────
+        by_date: dict = {}
+        for r in rows:
+            d_str = str(r.get('date', ''))[:10]
+            if not d_str or d_str < cutoff_str:
+                continue
+            by_date.setdefault(d_str, []).append({
+                'bid': str(r.get('broker_id', '')),
+                'bnm': str(r.get('broker_name', '')),
+                'buy': int(r.get('buy', 0)),
+                'sel': int(r.get('sell', 0)),
+                'net': int(r.get('buy', 0)) - int(r.get('sell', 0)),
+            })
+
+        for d_str, brokers in by_date.items():
+            buyers  = sorted([b for b in brokers if b['net'] > 0], key=lambda x: -x['net'])[:15]
+            sellers = sorted([b for b in brokers if b['net'] < 0], key=lambda x:  x['net'])[:15]
+            existing[d_str] = {
+                'date':    d_str,
+                'buyers':  buyers,
+                'sellers': sellers,
+                'tot_buy': sum(b['buy'] for b in brokers),
+                'tot_sel': sum(b['sel'] for b in brokers),
+            }
+
+        # 只保留 trading_days 範圍內的日期
+        keep = {d.strftime('%Y-%m-%d') for d in trading_days}
+        final = sorted([v for k, v in existing.items() if k in keep], key=lambda x: x['date'])
+
+        out_file.write_text(json.dumps(final, ensure_ascii=False, separators=(',', ':')),
+                            encoding='utf-8')
+        updated += 1
+        time.sleep(0.3)  # 禮貌性間隔
+
+    print(f"  ✅ 分點籌碼完成：更新 {updated}/{len(CHIP_WATCHLIST)} 檔")
+
+
 if __name__ == '__main__':
     print("🚀 首席 AI 司令部 — 雲端籌碼採礦機")
-    print(f"🔑 FinMind Token: {'✅ 有（完整模式）' if FINMIND_TOKEN else '⚠️  無（限速模式）'}\n")
+    print(f"🔑 FinMind Token:  {'✅ 有' if FINMIND_TOKEN  else '⚠️  無'}")
+    print(f"🔑 Massive API Key: {'✅ 有' if MASSIVE_API_KEY else '⚠️  無'}\n")
     run()
     fetch_futures_cache()
     fetch_us_macro_cache()
+    fetch_broker_chips()
