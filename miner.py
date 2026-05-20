@@ -5,6 +5,7 @@
 """
 import os
 import json
+import sqlite3
 import requests
 import time
 from datetime import date, timedelta
@@ -30,6 +31,57 @@ CHIP_WATCHLIST = [
 CHIP_WATCHLIST = sorted(set(CHIP_WATCHLIST))
 
 Path(DATA_DIR).mkdir(exist_ok=True)
+
+DB_PATH = "stock_hunter.db"
+
+def init_db():
+    """Create SQLite tables if they don't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.executescript('''
+        CREATE TABLE IF NOT EXISTS stock_history (
+            symbol TEXT, trade_date TEXT, open REAL, high REAL, low REAL,
+            close REAL, volume INTEGER, foreign_inv INTEGER, invest_trust INTEGER,
+            dealer_inv INTEGER, margin_bal INTEGER,
+            PRIMARY KEY (symbol, trade_date)
+        );
+        CREATE TABLE IF NOT EXISTS broker_chips (
+            symbol TEXT, date TEXT, broker_id TEXT, broker_name TEXT,
+            buy_vol INTEGER, sell_vol INTEGER, net_vol INTEGER,
+            PRIMARY KEY (symbol, date, broker_id)
+        );
+        CREATE TABLE IF NOT EXISTS radar_results (
+            strategy TEXT, symbol TEXT, close REAL, signal_date TEXT, extra_data TEXT,
+            PRIMARY KEY (strategy, symbol)
+        );
+        CREATE TABLE IF NOT EXISTS market_macro (
+            trade_date TEXT PRIMARY KEY,
+            fi_net INTEGER, taiex_close REAL, taiex_chg_pct REAL,
+            tpex_close REAL, tpex_chg_pct REAL,
+            sp500_close REAL, sp500_chg_pct REAL,
+            nasdaq_close REAL, nasdaq_chg_pct REAL,
+            vix REAL, tsm_close REAL, tsm_chg_pct REAL
+        );
+    ''')
+    conn.commit()
+    conn.close()
+
+
+def write_radar_to_db(results):
+    """Write pre-computed radar signals to SQLite radar_results table."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    today = date.today().isoformat()
+    c.execute("DELETE FROM radar_results")
+    for strategy, items in results.items():
+        for item in items:
+            c.execute(
+                "INSERT OR REPLACE INTO radar_results (strategy, symbol, close, signal_date, extra_data) VALUES (?,?,?,?,?)",
+                (strategy, item['sym'], item.get('close', 0), today, json.dumps({k:v for k,v in item.items() if k != 'sym'}))
+            )
+    conn.commit()
+    conn.close()
+    print(f"  ✅ 雷達快取寫入 SQLite radar_results ({sum(len(v) for v in results.values())} 筆)")
 
 
 def fm_get(dataset, **params):
@@ -503,11 +555,13 @@ def build_radar_cache():
         json.dumps({'updated': date.today().isoformat(), 'data': results}, ensure_ascii=False, separators=(',', ':')),
         encoding='utf-8'
     )
+    write_radar_to_db(results)
     total = sum(len(v) for v in results.values())
     print(f"  ✅ 雷達快取完成：掃描 {processed} 檔，底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} 檔 → data/radar.json")
 
 
 if __name__ == '__main__':
+    init_db()
     print("🚀 首席 AI 司令部 — 雲端籌碼採礦機")
     print(f"🔑 FinMind Token:  {'✅ 有' if FINMIND_TOKEN  else '⚠️  無'}")
     print(f"🔑 Massive API Key: {'✅ 有' if MASSIVE_API_KEY else '⚠️  無'}\n")

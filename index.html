@@ -168,6 +168,13 @@
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
+                    <label class="text-sm font-bold text-green-400">🖥️ 本地 API 伺服器 (可選)</label>
+                    <p class="text-[10px] text-gray-500 leading-tight">若在同一 WiFi 且電腦有啟動 api.py，填入電腦 IP 可啟用極速本地模式。空白時自動使用雲端模式。</p>
+                    <input type="url" id="set_localApiUrl" oninput="app.settings.localApiUrl=this.value.trim(); app.saveSettings();" class="w-full bg-[#010409] text-green-300 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-400 transition-colors" placeholder="例：http://192.168.1.100:8000">
+                    <p class="text-[10px] text-green-600 leading-tight">啟用後：雷達秒讀 / 照妖鏡快取 / 大盤同步全走本地 SQLite</p>
+                </div>
+
+                <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
                     <label class="text-sm font-bold text-blue-400">📦 資料保險箱 (備份還原)</label>
                     <p class="text-[10px] text-gray-500 leading-tight">可產生含金鑰或純策略之代碼，換機還原專用。</p>
                     <div class="flex gap-2 mb-1">
@@ -412,19 +419,19 @@
                     <button onclick="app.analyzeChipWithAI(app.currentSymbolId)" id="chipAIBtn" class="w-full bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 border border-indigo-700 py-2.5 rounded-lg text-xs font-bold transition-colors tracking-widest">⚡ Groq AI 籌碼研判</button>
                     <div id="chipAIResult" class="hidden mt-2 bg-[#0d1117] border border-indigo-900/50 rounded-lg p-3 text-xs text-gray-300 leading-relaxed"></div>
                 </div>
-            </div>
 
-            <!-- 照妖鏡：主力分點追蹤 -->
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden mt-2">
-                <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
-                    <h4 class="text-xs font-black text-red-400 tracking-wide">🔍 照妖鏡 · 主力分點追蹤</h4>
-                    <div class="flex gap-2 items-center">
-                        <span id="brokerChipDate" class="text-[9px] text-gray-500"></span>
-                        <button onclick="app.loadBrokerChips(app.currentSymbolId, true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                <!-- 照妖鏡：主力分點追蹤 -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden mt-2">
+                    <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
+                        <h4 class="text-xs font-black text-red-400 tracking-wide">🔍 照妖鏡 · 主力分點追蹤</h4>
+                        <div class="flex gap-2 items-center">
+                            <span id="brokerChipDate" class="text-[9px] text-gray-500"></span>
+                            <button onclick="app.loadBrokerChips(app.currentSymbolId, true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                        </div>
                     </div>
-                </div>
-                <div id="brokerChipContent" class="px-3 py-2">
-                    <div class="text-center py-4 text-gray-600 text-xs">切換到籌碼分頁自動載入</div>
+                    <div id="brokerChipContent" class="px-3 py-2">
+                        <div class="text-center py-4 text-gray-600 text-xs">切換到籌碼分頁自動載入</div>
+                    </div>
                 </div>
             </div>
 
@@ -768,7 +775,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey: '', massiveKey: '', aiPrompt: '', voiceAlert: false },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '' },
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
@@ -1127,6 +1134,7 @@ const app = {
         document.getElementById('set_fugleToken5').value = this.settings.fugleToken5 || '';
         document.getElementById('set_finmindKey').value = this.settings.finmindKey || '';
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
+        document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         document.getElementById('exportAreaContainer').classList.add('hidden');
         const modal = document.getElementById('settingsModal');
@@ -1971,12 +1979,38 @@ const app = {
         box.innerHTML = '<div class="text-center py-4 text-gray-500 text-xs animate-pulse">調閱主力分點資料...</div>';
 
         try {
-            let base = window.location.href.split('?')[0].split('#')[0];
-            if (!base.endsWith('/')) base = base.substring(0, base.lastIndexOf('/') + 1);
-            const url = new URL(`data/chips/${sym}.json`, base).href;
-            const res = await fetch(url + `?v=${Date.now()}`);
-            if (!res.ok) throw new Error('no_data');
-            const records = await res.json();
+            let records = null;
+            const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
+
+            // Strategy 1: local api.py (if configured) — SQLite, instant
+            if (apiBase) {
+                try {
+                    const res = await fetch(`${apiBase}/api/chips/${sym}`, { signal: AbortSignal.timeout(3000) });
+                    if (res.ok) {
+                        const rows = await res.json();
+                        // Convert flat rows to grouped-by-date format expected by renderer
+                        const byDate = {};
+                        for (const r of rows) {
+                            if (!byDate[r.date]) byDate[r.date] = { date: r.date, buyers: [], sellers: [] };
+                            if (r.net_vol > 0) byDate[r.date].buyers.push({ bnm: r.broker_name || r.broker_id, net: r.net_vol });
+                            else byDate[r.date].sellers.push({ bnm: r.broker_name || r.broker_id, net: Math.abs(r.net_vol) });
+                        }
+                        records = Object.values(byDate).sort((a,b) => a.date.localeCompare(b.date)).slice(-20);
+                    }
+                } catch(e) {}
+            }
+
+            // Strategy 2: gh-pages static JSON (always available)
+            if (!records) {
+                let base = window.location.href.split('?')[0].split('#')[0];
+                if (!base.endsWith('/')) base = base.substring(0, base.lastIndexOf('/') + 1);
+                const ghBase = base.includes('github.io') ? base : 'https://xin7355-collab.github.io/stockai-db/';
+                const url = new URL(`data/chips/${sym}.json`, ghBase).href;
+                const res = await fetch(url + `?v=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+                if (!res.ok) throw new Error('no_data');
+                records = await res.json();
+            }
+
             if (!records || records.length === 0) throw new Error('empty');
 
             // 取最新一天有資料的記錄
@@ -3196,11 +3230,11 @@ ${revText}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
                 <div class="absolute inset-y-0 right-0 flex">
-                    <div class="swipe-action-btn w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
+                    <div class="swipe-action-btn delete-btn w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
                 </div>
                 <div class="absolute inset-y-0 left-0 flex flex-col" id="invEditReveal_${idx}">
-                    <div class="swipe-action-btn w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.editInventoryCost(${idx})">✏️<br>修改</div>
-                    <div class="swipe-action-btn w-[72px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
+                    <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.editInventoryCost(${idx})">✏️<br>修改</div>
+                    <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
                 </div>
                 <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
@@ -3310,6 +3344,25 @@ ${revText}
             surge:  { badge: '🚀飆股動能', color: 'text-red-400 border-red-700 bg-red-900/50',   desc: '貼近布林上軌 + 連3日爆量' },
             score:  { badge: '⭐綜合強勢', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50', desc: 'Alpha 技術評分達標' }
         };
+
+            // ── 策略 0: 本地 api.py（若有設定，秒讀 SQLite）──
+            const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
+            if (apiBase && ['hot_twse','hot_otc','etf_heavy'].includes(poolType)) {
+                try {
+                    document.getElementById('radarStatusText').innerText = '本地伺服器秒讀中...';
+                    const res = await fetch(`${apiBase}/api/radar/${type}`, { signal: AbortSignal.timeout(3000) });
+                    if (res.ok) {
+                        const rows = await res.json();
+                        const lbl = filterLabels[type];
+                        const results = rows.map(r => ({ sym: r.symbol, name: this.getStockName(r.symbol), desc: lbl.desc, badge: lbl.badge, color: lbl.color }));
+                        localStorage.setItem('proTerminalRadarCache', JSON.stringify({ type, pool: poolType, results, src: 'local_api' }));
+                        loadingEl.classList.add('hidden'); loadingEl.classList.remove('flex');
+                        this.isRadarScanning = false;
+                        this.renderRadarCache();
+                        return;
+                    }
+                } catch(e) { /* fall through */ }
+            }
 
         try {
             // ── 策略 1：讀取後端預運算雷達快取（1次請求，涵蓋全市場）──

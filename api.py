@@ -56,13 +56,52 @@ def get_macro_data():
     """
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM market_macro ORDER BY trade_date DESC LIMIT 1")
-    row = c.fetchone()
+    c.execute("SELECT * FROM market_macro ORDER BY trade_date DESC LIMIT 5")
+    rows = c.fetchall()
     conn.close()
-    
-    if not row:
-        return {"status": "no_data"}
-    return dict(row)
+
+    return [dict(r) for r in rows] if rows else []
+
+
+@app.get("/api/radar/{strategy}")
+def get_radar(strategy: str):
+    valid = {'bottom', 'surge', 'score'}
+    if strategy not in valid:
+        raise HTTPException(status_code=400, detail=f"strategy must be one of {valid}")
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            SELECT symbol, close, signal_date, extra_data
+            FROM radar_results
+            WHERE strategy = ?
+            ORDER BY signal_date DESC, symbol ASC
+        ''', (strategy,))
+        rows = c.fetchall()
+    except Exception:
+        rows = []
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@app.get("/api/chips/{symbol}")
+def get_broker_chips(symbol: str):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            SELECT date, broker_id, broker_name, buy_vol, sell_vol, net_vol
+            FROM broker_chips
+            WHERE symbol = ?
+            ORDER BY date DESC
+            LIMIT 300
+        ''', (symbol,))
+        rows = c.fetchall()
+    except Exception:
+        rows = []
+    conn.close()
+    return [dict(r) for r in rows]
+
 
 if __name__ == "__main__":
     import uvicorn
