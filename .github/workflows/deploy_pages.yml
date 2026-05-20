@@ -20,27 +20,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🌐 部署到 gh-pages 分支
+      - name: 🌐 部署到 gh-pages（只更新 index.html 與 sw.js，保留股票資料）
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 建立暫存目錄，複製要部署的檔案
+          # 暫存最新的前端檔案
           mkdir -p /tmp/deploy
           cp index.html /tmp/deploy/
           cp sw.js      /tmp/deploy/
 
-          # 切到 gh-pages orphan 分支
-          git checkout --orphan gh-pages
-          git rm -rf --cached . -q 2>/dev/null || true
-          find . -maxdepth 1 -not -name '.git' -not -name '.' | xargs rm -rf 2>/dev/null || true
+          # 切到現有的 gh-pages（保留所有資料，不用 --orphan）
+          git fetch origin gh-pages 2>/dev/null || true
+          git checkout gh-pages 2>/dev/null || {
+            # gh-pages 不存在時才建立 orphan
+            git checkout --orphan gh-pages
+            git rm -rf --cached . -q 2>/dev/null || true
+            find . -maxdepth 1 -not -name '.git' -not -name '.' | xargs rm -rf 2>/dev/null || true
+          }
 
-          # 複製檔案進來
+          # 只更新前端檔案，資料目錄 data/ 保持不動
           cp /tmp/deploy/index.html .
           cp /tmp/deploy/sw.js      .
 
           git add index.html sw.js
-          git commit -m "🚀 部署 $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push origin gh-pages --force
+          git diff --cached --quiet && echo "無變更，跳過" || {
+            git commit -m "🚀 前端更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push origin gh-pages
+          }
 
-          echo "✅ gh-pages 已更新"
+          echo "✅ gh-pages index.html 已更新（股票資料完整保留）"
