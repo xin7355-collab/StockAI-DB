@@ -424,6 +424,89 @@ def _prune_chips(chips_dir: Path, cutoff_str: str):
             pass
 
 
+def _quick_ind(data):
+    """Compute quick technical indicators for one stock (same logic as frontend)."""
+    if len(data) < 22:
+        return None
+    closes = [d['close'] for d in data if isinstance(d.get('close'), (int, float))]
+    vols   = [d.get('volume', 0) for d in data]
+    if len(closes) < 22:
+        return None
+    ma  = lambda n, arr=closes: sum(arr[-n:]) / n
+    pma = lambda n, arr=closes: sum(arr[-n-1:-1]) / n
+    ma5, ma10, ma20 = ma(5), ma(10), ma(20)
+    pma5, pma10, pma20 = pma(5), pma(10), pma(20)
+    vma5 = sum(vols[-5:]) / 5 if vols else 0
+    var20 = sum((c - ma20) ** 2 for c in closes[-20:]) / 20
+    upper_bb = ma20 + 2 * var20 ** 0.5
+    return {
+        'close': closes[-1], 'prev_close': closes[-2],
+        'ma5': ma5, 'ma10': ma10, 'ma20': ma20,
+        'pma5': pma5, 'pma10': pma10, 'pma20': pma20,
+        'vma5': vma5, 'upper_bb': upper_bb,
+        'recent_vols': vols[-3:],
+    }
+
+
+def build_radar_cache():
+    """
+    Pre-compute radar signals for all saved stock JSONs.
+    Outputs data/radar.json — frontend reads this instead of scanning one-by-one.
+    """
+    data_dir = Path(DATA_DIR)
+    files = sorted(data_dir.glob('*.json'))
+    results = {'bottom': [], 'surge': [], 'score': []}
+    processed = 0
+
+    for f in files:
+        sym = f.stem
+        if sym in ('radar',):
+            continue
+        try:
+            data = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        if not data or len(data) < 22:
+            continue
+
+        ind = _quick_ind(data)
+        if not ind:
+            continue
+        processed += 1
+
+        c, pc = ind['close'], ind['prev_close']
+        ma5, ma10, ma20 = ind['ma5'], ind['ma10'], ind['ma20']
+        pma5, pma10, pma20 = ind['pma5'], ind['pma10'], ind['pma20']
+        vma5, upper_bb = ind['vma5'], ind['upper_bb']
+        rv = ind['recent_vols']
+
+        # 底部起漲：站上月線 or 黃金交叉 + 今日收紅
+        crossed_ma20 = c > ma20 and pc <= pma20
+        golden_cross = ma5 > ma10 and pma5 <= pma10
+        if (crossed_ma20 or golden_cross) and c > pc:
+            results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2)})
+
+        # 飆股動能：貼近布林上軌 + 連3日爆量
+        near_upper = c >= upper_bb * 0.97
+        vol_surge  = all(v > vma5 for v in rv) if rv and vma5 > 0 else False
+        if near_upper and vol_surge:
+            results['surge'].append({'sym': sym, 'close': round(c, 2), 'bb_upper': round(upper_bb, 2)})
+
+        # 綜合強勢：多頭排列 + 爆量 + 收紅
+        bullish  = c > ma20 and ma5 > ma10 and ma10 > ma20
+        vol_ok   = rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False
+        if bullish and vol_ok and c > pc:
+            results['score'].append({'sym': sym, 'close': round(c, 2), 'ma5': round(ma5, 2)})
+
+    out_path = data_dir / 'radar.json'
+    out_path.write_text(
+        json.dumps({'updated': date.today().isoformat(), 'data': results}, ensure_ascii=False, separators=(',', ':')),
+        encoding='utf-8'
+    )
+    total = sum(len(v) for v in results.values())
+    print(f"  ✅ 雷達快取完成：掃描 {processed} 檔，底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} 檔 → data/radar.json")
+
+
 if __name__ == '__main__':
     print("🚀 首席 AI 司令部 — 雲端籌碼採礦機")
     print(f"🔑 FinMind Token:  {'✅ 有' if FINMIND_TOKEN  else '⚠️  無'}")
@@ -432,3 +515,4 @@ if __name__ == '__main__':
     fetch_futures_cache()
     fetch_us_macro_cache()
     fetch_broker_chips()
+    build_radar_cache()

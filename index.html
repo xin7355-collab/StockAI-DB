@@ -56,6 +56,7 @@
         
         .swipe-container { position: relative; overflow: hidden; background: #dc2626; border-radius: 0.5rem; }
         .swipe-content { position: relative; z-index: 10; width: 100%; transition: transform 0.2s ease-out; }
+        .swipe-action-btn { position: relative; z-index: 5; }
 
         .modal-base { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(2px); z-index: 300; display: none; position: fixed; inset: 0; align-items: center; justify-content: center; padding: 1rem; }
         .modal-base.hidden { display: none !important; }
@@ -937,7 +938,7 @@ const app = {
         const REVEAL = 72;
 
         document.addEventListener('touchstart', e => {
-            if (e.target.closest('.delete-btn') || e.target.closest('.drag-handle')) return;
+            if (e.target.closest('.swipe-action-btn') || e.target.closest('.delete-btn') || e.target.closest('.drag-handle')) return;
             const el = e.target.closest('.swipe-content');
             if (activeSwipeEl && activeSwipeEl !== el) {
                 activeSwipeEl.style.transform = 'translateX(0px)';
@@ -3099,7 +3100,7 @@ ${revText}
             } catch(e) {}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
-                <div class="absolute inset-y-0 right-0 w-[80px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer delete-btn text-sm" onclick="app.removeFromFav('${sym}')">刪除</div>
+                <div class="absolute inset-y-0 right-0 w-[80px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer delete-btn swipe-action-btn text-sm" onclick="event.stopPropagation(); app.removeFromFav('${sym}')">刪除</div>
                 <div class="swipe-content relative bg-gradient-to-r from-[#1c2128] to-[#161b22] px-3 py-2.5 flex items-center gap-2 w-full" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-600 hover:text-white text-lg flex-shrink-0">☰</div>
                     <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
@@ -3180,13 +3181,14 @@ ${revText}
         let html = '', totalCostNTD = 0, totalValNTD = 0;
 
         this.inventory.forEach((item, idx) => {
-            const price = parseFloat(item.currentPrice) || 0;
-            const cost = parseFloat(item.cost) || 0;
-            const shares = parseFloat(item.shares) || 1;
+            if (!item || !item.symbol) return;
+            const price = isFinite(parseFloat(item.currentPrice)) ? parseFloat(item.currentPrice) : 0;
+            const cost = isFinite(parseFloat(item.cost)) ? parseFloat(item.cost) : 0;
+            const shares = isFinite(parseFloat(item.shares)) && parseFloat(item.shares) > 0 ? parseFloat(item.shares) : 1;
             const totalCostItemNTD = cost * shares * 1000;
             const totalValItemNTD = price * shares * 1000;
             const pnlNTD = totalValItemNTD - totalCostItemNTD;
-            const pnl = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+            const pnl = cost > 0 && price > 0 ? ((price - cost) / cost) * 100 : 0;
             const color = pnl > 0 ? 'text-[#f87171]' : (pnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             const bgClass = pnl <= -5 ? 'bg-red-950/20' : 'bg-[#1c2128]';
 
@@ -3194,11 +3196,11 @@ ${revText}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
                 <div class="absolute inset-y-0 right-0 flex">
-                    <div class="w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
+                    <div class="swipe-action-btn w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
                 </div>
                 <div class="absolute inset-y-0 left-0 flex flex-col" id="invEditReveal_${idx}">
-                    <div class="w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.editInventoryCost(${idx})">✏️<br>修改</div>
-                    <div class="w-[72px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.settleInventory(${idx})">🎯<br>結算</div>
+                    <div class="swipe-action-btn w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.editInventoryCost(${idx})">✏️<br>修改</div>
+                    <div class="swipe-action-btn w-[72px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
                 </div>
                 <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
@@ -3274,18 +3276,22 @@ ${revText}
         const len = data.length;
         if (len < 22) return null;
         const last = len - 1;
+        const safeClose = (d) => (d && isFinite(d.close) ? d.close : null);
+        const safeVol   = (d) => (d && isFinite(d.volume) ? d.volume : 0);
         const slice = (n) => data.slice(len-n, len);
-        const ma = (n) => slice(n).reduce((a,d)=>a+d.close,0)/n;
-        const prevMa = (n) => data.slice(len-n-1, len-1).reduce((a,d)=>a+d.close,0)/n;
+        const ma = (n) => { const vals = slice(n).map(d => safeClose(d)).filter(v => v !== null); return vals.length === n ? vals.reduce((a,v)=>a+v,0)/n : null; };
+        const prevMa = (n) => { const vals = data.slice(len-n-1, len-1).map(d => safeClose(d)).filter(v => v !== null); return vals.length === n ? vals.reduce((a,v)=>a+v,0)/n : null; };
         const ma5=ma(5), ma10=ma(10), ma20=ma(20);
+        if (!ma5 || !ma10 || !ma20) return null;
         const prevMa5=prevMa(5), prevMa10=prevMa(10), prevMa20=prevMa(20);
-        const vma5=slice(5).reduce((a,d)=>a+d.volume,0)/5;
-        const variance=slice(20).reduce((a,d)=>a+Math.pow(d.close-ma20,2),0)/20;
+        const vma5 = slice(5).reduce((a,d)=>a+safeVol(d),0)/5;
+        const variance = slice(20).reduce((a,d)=>{ const c=safeClose(d); return a+(c!==null ? Math.pow(c-ma20,2) : 0); },0)/20;
         const upperBB = ma20 + 2*Math.sqrt(variance);
-        const recentVols = data.slice(last-2, last+1).map(d=>d.volume);
+        const close = safeClose(data[last]), prevClose = safeClose(data[last-1]);
+        if (!close || !prevClose) return null;
+        const recentVols = data.slice(last-2, last+1).map(d=>safeVol(d));
         return { ma5, ma10, ma20, prevMa5, prevMa10, prevMa20, vma5, upperBB,
-                 close: data[last].close, open: data[last].open,
-                 prevClose: data[last-1].close, recentVols };
+                 close, open: data[last].open || close, prevClose, recentVols };
     },
 
     async loadRadar(type) {
@@ -3294,65 +3300,87 @@ ${revText}
         this.isRadarScanning = true;
         this.lastRadarType = type;
         const container = document.getElementById('radarListMain');
-        document.getElementById('radarLoading').classList.remove('hidden'); document.getElementById('radarLoading').classList.add('flex');
+        const loadingEl = document.getElementById('radarLoading');
         document.getElementById('radarResultHeader').classList.add('hidden'); container.innerHTML = '';
+        loadingEl.classList.remove('hidden'); loadingEl.classList.add('flex');
 
         const poolType = document.getElementById('radarPoolSelect').value;
-        let pool = [];
-        if (poolType === 'hot_twse') pool = ['2330','2317','2454','2382','3231','2303','2881','2886','2002','2603'];
-        else if (poolType === 'hot_otc') pool = ['3105','3529','8069','5347','8299','3293','6142','6274'];
-        else if (poolType === 'etf_heavy') pool = ['0050','0056','00878','00929','00919'];
-        else if (poolType === 'fav') pool = this.favGroups[this.activeGroupName] || [];
-        else if (poolType === 'inv') pool = this.inventory.map(i => i.symbol);
-
         const filterLabels = {
             bottom: { badge: '🌸底部起漲', color: 'text-pink-400 border-pink-700 bg-pink-900/50', desc: '剛站上月線 / 5MA 黃金交叉' },
             surge:  { badge: '🚀飆股動能', color: 'text-red-400 border-red-700 bg-red-900/50',   desc: '貼近布林上軌 + 連3日爆量' },
             score:  { badge: '⭐綜合強勢', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50', desc: 'Alpha 技術評分達標' }
         };
 
-        let results = [];
-        for (let i=0; i<pool.length; i++) {
-            if(this.apiRateLimited) break;
-            const sym = pool[i];
-            document.getElementById('radarStatusText').innerText = `雲端佇列歷史掃描: ${sym} (${i+1}/${pool.length})`;
-            document.getElementById('radarProgressBar').style.width = `${((i+1)/pool.length)*100}%`;
-
-            let data = await this.fetchHistoricalData(sym, false);
-            if (!data || data.length < 22) continue;
-
-            const ind = this._computeQuickIndicators(data);
-            if (!ind) continue;
-
-            let pass = false;
-            if (type === 'bottom') {
-                const crossedAboveMa20 = ind.close > ind.ma20 && ind.prevClose <= ind.prevMa20;
-                const goldenCross = ind.ma5 > ind.ma10 && ind.prevMa5 <= ind.prevMa10;
-                pass = (crossedAboveMa20 || goldenCross) && ind.close > ind.prevClose;
-            } else if (type === 'surge') {
-                const nearUpperBB = ind.close >= ind.upperBB * 0.97;
-                const consecutiveVolume = ind.recentVols.every(v => v > ind.vma5);
-                pass = nearUpperBB && consecutiveVolume;
-            } else if (type === 'score') {
-                const structScore = (ind.close > ind.ma20 && ind.ma5 > ind.ma10 && ind.ma10 > ind.ma20) ? 40 : 0;
-                const vpScore = ind.recentVols[2] > ind.vma5 * 1.2 ? 15 : 0;
-                const rsScore = ind.close > ind.prevClose ? 15 : 0;
-                pass = (structScore + vpScore + rsScore) >= 55;
-            }
-
-            if (pass) {
-                const lbl = filterLabels[type];
-                results.push({ sym, name: this.getStockName(sym), desc: lbl.desc, badge: lbl.badge, color: lbl.color });
-            }
-        }
         try {
+            // ── 策略 1：讀取後端預運算雷達快取（1次請求，涵蓋全市場）──
+            // For hot_twse / hot_otc / etf_heavy pools, try server pre-computed radar.json first
+            if (['hot_twse','hot_otc','etf_heavy'].includes(poolType)) {
+                try {
+                    document.getElementById('radarStatusText').innerText = '讀取雲端雷達快取...';
+                    document.getElementById('radarProgressBar').style.width = '50%';
+                    const radarRes = await fetch('https://xin7355-collab.github.io/stockai-db/data/radar.json', { signal: AbortSignal.timeout(5000) });
+                    if (radarRes.ok) {
+                        const radarJson = await radarRes.json();
+                        const preList = (radarJson.data?.[type] || []);
+                        // Filter to the selected pool
+                        let poolSyms = new Set();
+                        if (poolType === 'hot_twse') poolSyms = new Set(['2330','2317','2454','2382','3231','2303','2881','2886','2002','2603','2308','3711','1301','1303','2801','2884','2885','2892','6505','1216','2207','2301','2327','6415','2357','2395','3034','2379','2376','4938']);
+                        else if (poolType === 'hot_otc') poolSyms = new Set(['3105','3529','8069','5347','8299','3293','6142','6274','6488','6515','6770','3037','8046','4977','6278','6191']);
+                        else poolSyms = new Set(['0050','0056','00878','00929','00919']);
+                        const lbl = filterLabels[type];
+                        const results = preList
+                            .filter(r => poolSyms.has(r.sym))
+                            .map(r => ({ sym: r.sym, name: this.getStockName(r.sym), desc: lbl.desc, badge: lbl.badge, color: lbl.color }));
+                        document.getElementById('radarProgressBar').style.width = '100%';
+                        localStorage.setItem('proTerminalRadarCache', JSON.stringify({ type, pool: poolType, results, src: 'cloud', updated: radarJson.updated }));
+                        loadingEl.classList.add('hidden'); loadingEl.classList.remove('flex');
+                        this.renderRadarCache();
+                        return;
+                    }
+                } catch(e) { /* fall through to live scan */ }
+            }
+
+            // ── 策略 2：即時掃描（自選/庫存 pool，或雲端快取不可用時）──
+            let pool = [];
+            if (poolType === 'hot_twse') pool = ['2330','2317','2454','2382','3231','2303','2881','2886','2002','2603'];
+            else if (poolType === 'hot_otc') pool = ['3105','3529','8069','5347','8299','3293','6142','6274'];
+            else if (poolType === 'etf_heavy') pool = ['0050','0056','00878','00929','00919'];
+            else if (poolType === 'fav') pool = this.favGroups[this.activeGroupName] || [];
+            else if (poolType === 'inv') pool = this.inventory.map(i => i.symbol);
+
+            const results = [];
+            for (let i=0; i<pool.length; i++) {
+                if(this.apiRateLimited) break;
+                const sym = pool[i];
+                document.getElementById('radarStatusText').innerText = `即時掃描: ${sym} (${i+1}/${pool.length})`;
+                document.getElementById('radarProgressBar').style.width = `${((i+1)/pool.length)*100}%`;
+
+                const data = await this.fetchHistoricalData(sym, false);
+                if (!data || data.length < 22) continue;
+                const ind = this._computeQuickIndicators(data);
+                if (!ind) continue;
+
+                let pass = false;
+                if (type === 'bottom') {
+                    pass = (ind.close > ind.ma20 && ind.prevClose <= ind.prevMa20 || ind.ma5 > ind.ma10 && ind.prevMa5 <= ind.prevMa10) && ind.close > ind.prevClose;
+                } else if (type === 'surge') {
+                    pass = ind.close >= ind.upperBB * 0.97 && ind.recentVols.every(v => v > ind.vma5);
+                } else if (type === 'score') {
+                    const s = (ind.close > ind.ma20 && ind.ma5 > ind.ma10 && ind.ma10 > ind.ma20 ? 40 : 0) + (ind.recentVols[2] > ind.vma5 * 1.2 ? 15 : 0) + (ind.close > ind.prevClose ? 15 : 0);
+                    pass = s >= 55;
+                }
+                if (pass) {
+                    const lbl = filterLabels[type];
+                    results.push({ sym, name: this.getStockName(sym), desc: lbl.desc, badge: lbl.badge, color: lbl.color });
+                }
+            }
             localStorage.setItem('proTerminalRadarCache', JSON.stringify({ type, pool: poolType, results }));
-            document.getElementById('radarLoading').classList.add('hidden'); document.getElementById('radarLoading').classList.remove('flex');
-            this.renderRadarCache();
         } catch(e) {
-            document.getElementById('radarLoading').classList.add('hidden'); document.getElementById('radarLoading').classList.remove('flex');
+            console.warn('loadRadar error', e);
         } finally {
+            loadingEl.classList.add('hidden'); loadingEl.classList.remove('flex');
             this.isRadarScanning = false;
+            this.renderRadarCache();
         }
     },
 

@@ -66,7 +66,7 @@ jobs:
           mkdir -p /tmp/gh_deploy/data/chips
           [ -f futures_cache.json ] && cp futures_cache.json /tmp/gh_deploy/
           [ -f macro_cache.json   ] && cp macro_cache.json   /tmp/gh_deploy/
-          # 股票 K 線資料（fetchHistoricalData 需要）
+          # 股票 K 線資料 + 雷達快取
           [ -d data ] && cp data/*.json /tmp/gh_deploy/data/ 2>/dev/null || true
           # 分點籌碼資料（照妖鏡需要）
           [ -d data/chips ] && cp data/chips/*.json /tmp/gh_deploy/data/chips/ 2>/dev/null || true
@@ -85,11 +85,13 @@ jobs:
           [ "$(ls /tmp/gh_deploy/data/chips/*.json 2>/dev/null | wc -l)" -gt 0 ] && \
             cp /tmp/gh_deploy/data/chips/*.json data/chips/ 2>/dev/null || true
 
-          STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
+          STOCKS=$(ls data/*.json 2>/dev/null | grep -v radar | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
+          RADAR_B=$(python3 -c "import json; d=json.load(open('data/radar.json')); print(len(d['data']['bottom']))" 2>/dev/null || echo 0)
+          RADAR_S=$(python3 -c "import json; d=json.load(open('data/radar.json')); print(len(d['data']['score']))" 2>/dev/null || echo 0)
 
           git add futures_cache.json macro_cache.json data/ 2>/dev/null || true
           git diff --cached --quiet && echo "無更新" || \
-            git commit -m "📡 資料更新 $(date -u '+%Y-%m-%d %H:%M UTC')（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
+            git commit -m "📡 資料更新 $(date -u '+%Y-%m-%d %H:%M UTC')（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔 / 雷達底部 ${RADAR_B} 飆股 ${RADAR_S}）"
           git push origin gh-pages
-          echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔"
+          echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔，雷達已預算完成"
