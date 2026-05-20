@@ -3181,7 +3181,7 @@ ${revText}
                 <div class="absolute inset-y-0 right-0 flex">
                     <div class="w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
                 </div>
-                <div class="absolute inset-y-0 left-0 flex hidden" id="invEditReveal_${idx}">
+                <div class="absolute inset-y-0 left-0 flex" id="invEditReveal_${idx}">
                     <div class="w-[72px] bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="app.editInventoryCost(${idx})">✏️<br>修改</div>
                 </div>
                 <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
