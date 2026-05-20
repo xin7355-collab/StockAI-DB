@@ -1141,9 +1141,16 @@ const app = {
     copyExportData() {
         const area = document.getElementById('exportArea');
         if(!area.value) return;
-        area.select();
-        document.execCommand('copy');
-        alert('✅ API Key 與設定代碼已複製到剪貼簿！');
+        const txt = area.value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(() => alert('✅ 備份代碼已複製！貼到新手機的「貼上還原」即可。')).catch(() => {
+                area.select(); document.execCommand('copy');
+                alert('✅ 備份代碼已複製！');
+            });
+        } else {
+            area.select(); document.execCommand('copy');
+            alert('✅ 備份代碼已複製！');
+        }
     },
 
     importData() {
