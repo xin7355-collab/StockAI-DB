@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>首席 AI 司令部 | 戰略終端 V14.0 (大師照妖鏡版)</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -171,7 +171,7 @@
                     <label class="text-sm font-bold text-green-400">🖥️ 本地 API 伺服器 (可選)</label>
                     <p class="text-[10px] text-gray-500 leading-tight">若在同一 WiFi 且電腦有啟動 api.py，填入電腦 IP 可啟用極速本地模式。空白時自動使用雲端模式。</p>
                     <input type="url" id="set_localApiUrl" oninput="app.settings.localApiUrl=this.value.trim(); app.saveSettings();" class="w-full bg-[#010409] text-green-300 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-400 transition-colors" placeholder="例：http://192.168.1.100:8000">
-                    <p class="text-[10px] text-green-600 leading-tight">啟用後：雷達秒讀 / 照妖鏡快取 / 大盤同步全走本地 SQLite</p>
+                    <p class="text-[10px] text-green-600 leading-tight">啟用後：雷達秒讀 / 分點快取 / 大盤同步全走本地 SQLite</p>
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
@@ -423,10 +423,10 @@
                     <!-- 分隔線 -->
                     <div class="border-t border-[#30363d] mx-0"></div>
 
-                    <!-- ③ 照妖鏡・主力分點 -->
+                    <!-- ③ 主力分點 -->
                     <div class="px-3 pt-2 pb-1">
                         <div class="flex items-center justify-between mb-1.5">
-                            <div class="text-[10px] text-red-300 font-bold">🔍 照妖鏡・主力分點追蹤</div>
+                            <div class="text-[10px] text-red-300 font-bold">🔍 主力分點追蹤</div>
                             <div class="flex gap-1.5 items-center">
                                 <span id="brokerChipDate" class="text-[9px] text-gray-500"></span>
                                 <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
@@ -3678,7 +3678,7 @@ ${revText}
         const bs = this._brokerChipSummary;
         const brokerText = (bs && bs.sym === sym)
             ? `  整體傾向：${bs.verdict}，買超合計 ${bs.totalBuyK}股 / 賣超合計 ${bs.totalSelK}股（近${bs.days}日）`
-            : '  （照妖鏡：請先切到籌碼分頁載入分點資料）';
+            : '  （主力分點：請先切到籌碼分頁載入資料）';
 
         // 融資融券（若有）
         const lastMargin = recentD.filter(d => d.margin_balance).slice(-1)[0];
