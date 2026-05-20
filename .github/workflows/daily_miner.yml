@@ -54,17 +54,12 @@ jobs:
           cp index.html            /tmp/mine/                2>/dev/null || true
           echo "備份完成：$(ls /tmp/mine/data/*.json 2>/dev/null | wc -l) K線，$(ls /tmp/mine/data/chips/*.json 2>/dev/null | wc -l) 分點"
 
-          # ── Step 2: 清除 index，讓 checkout gh-pages 不衝突 ──
-          git reset HEAD 2>/dev/null || true
-          git checkout -- . 2>/dev/null || true
+          # ── Step 2: 用 orphan 分支 force-push，永遠只保留一個 commit，不累積歷史 ──
+          git checkout main 2>/dev/null || true
+          git checkout --orphan _pages_deploy
+          git rm -rf --cached . -q 2>/dev/null || true
 
-          # ── Step 3: 切換到 gh-pages ──
-          git fetch origin gh-pages 2>/dev/null || true
-          git checkout gh-pages 2>/dev/null || \
-          git checkout -b gh-pages origin/gh-pages 2>/dev/null || \
-          { echo "gh-pages 不存在，跳過"; exit 0; }
-
-          # ── Step 4: 複製資料 + 更新網站檔案 ──
+          # 複製所有網站所需檔案
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/           2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/     2>/dev/null || true
@@ -75,11 +70,11 @@ jobs:
 
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
 
-          git add index.html broker_names.json futures_cache.json macro_cache.json data/ 2>/dev/null || true
-          git diff --cached --quiet && echo "無更新" || \
-            git commit -m "📡 資料更新 $(date -u '+%Y-%m-%d %H:%M UTC')（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
-          git push origin gh-pages
+          git add -f index.html broker_names.json futures_cache.json macro_cache.json data/
+          git commit -m "📡 網站更新 ${DATE}（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
+          git push origin HEAD:gh-pages --force
           echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔"
 
       - name: 📤 推送到獨立 data 分支（永遠只保留一個 commit，不累積歷史）
