@@ -12,16 +12,16 @@ permissions:
 jobs:
   mine-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: 📥 下載程式碼（只要最新的腳本）
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
 
       - name: 🐍 設定 Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
           python-version: '3.11'
 
@@ -39,59 +39,63 @@ jobs:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
         run: python miner.py
 
-      - name: 📤 推送到獨立 data 分支（永遠只保留一個 commit，不累積歷史）
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git checkout --orphan _data_deploy
-          git rm -rf --cached . -q 2>/dev/null || true
-
-          git add -f data/
-
-          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
-          STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
-          git commit -m "🤖 籌碼快照 ${DATE}（${STOCKS} 檔）"
-
-          git push origin HEAD:data --force
-
-          echo "✅ data 分支已更新，共 ${STOCKS} 檔"
-
       - name: 📡 部署所有資料到 gh-pages（股票K線 + 分點籌碼 + 快取）
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # ── 暫存所有要更新的檔案 ──
-          mkdir -p /tmp/gh_deploy/data/chips
-          [ -f futures_cache.json ] && cp futures_cache.json /tmp/gh_deploy/
-          [ -f macro_cache.json   ] && cp macro_cache.json   /tmp/gh_deploy/
-          # 股票 K 線資料 + 雷達快取
-          [ -d data ] && cp data/*.json /tmp/gh_deploy/data/ 2>/dev/null || true
-          # 分點籌碼資料（照妖鏡需要）
-          [ -d data/chips ] && cp data/chips/*.json /tmp/gh_deploy/data/chips/ 2>/dev/null || true
+          # ── Step 1: 備份採礦結果到 /tmp（後續步驟都從這裡取）──
+          mkdir -p /tmp/mine/data/chips
+          cp data/*.json           /tmp/mine/data/          2>/dev/null || true
+          cp data/chips/*.json     /tmp/mine/data/chips/    2>/dev/null || true
+          cp futures_cache.json    /tmp/mine/                2>/dev/null || true
+          cp macro_cache.json      /tmp/mine/                2>/dev/null || true
+          echo "備份完成：$(ls /tmp/mine/data/*.json 2>/dev/null | wc -l) K線，$(ls /tmp/mine/data/chips/*.json 2>/dev/null | wc -l) 分點"
 
+          # ── Step 2: 清除 index，讓 checkout gh-pages 不衝突 ──
+          git reset HEAD 2>/dev/null || true
+          git checkout -- . 2>/dev/null || true
+
+          # ── Step 3: 切換到 gh-pages ──
           git fetch origin gh-pages 2>/dev/null || true
-          git checkout gh-pages 2>/dev/null || { echo "gh-pages 不存在，跳過"; exit 0; }
+          git checkout gh-pages 2>/dev/null || \
+          git checkout -b gh-pages origin/gh-pages 2>/dev/null || \
+          { echo "gh-pages 不存在，跳過"; exit 0; }
 
-          # 複製快取檔案
-          [ -f /tmp/gh_deploy/futures_cache.json ] && cp /tmp/gh_deploy/futures_cache.json .
-          [ -f /tmp/gh_deploy/macro_cache.json   ] && cp /tmp/gh_deploy/macro_cache.json .
-
-          # 複製股票資料（保持 data/ 目錄同步）
+          # ── Step 4: 複製資料 ──
           mkdir -p data/chips
-          [ "$(ls /tmp/gh_deploy/data/*.json 2>/dev/null | wc -l)" -gt 0 ] && \
-            cp /tmp/gh_deploy/data/*.json data/ 2>/dev/null || true
-          [ "$(ls /tmp/gh_deploy/data/chips/*.json 2>/dev/null | wc -l)" -gt 0 ] && \
-            cp /tmp/gh_deploy/data/chips/*.json data/chips/ 2>/dev/null || true
+          cp /tmp/mine/data/*.json          data/           2>/dev/null || true
+          cp /tmp/mine/data/chips/*.json    data/chips/     2>/dev/null || true
+          cp /tmp/mine/futures_cache.json   .               2>/dev/null || true
+          cp /tmp/mine/macro_cache.json     .               2>/dev/null || true
 
-          STOCKS=$(ls data/*.json 2>/dev/null | grep -v radar | wc -l)
+          STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
-          RADAR_B=$(python3 -c "import json; d=json.load(open('data/radar.json')); print(len(d['data']['bottom']))" 2>/dev/null || echo 0)
-          RADAR_S=$(python3 -c "import json; d=json.load(open('data/radar.json')); print(len(d['data']['score']))" 2>/dev/null || echo 0)
 
           git add futures_cache.json macro_cache.json data/ 2>/dev/null || true
           git diff --cached --quiet && echo "無更新" || \
-            git commit -m "📡 資料更新 $(date -u '+%Y-%m-%d %H:%M UTC')（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔 / 雷達底部 ${RADAR_B} 飆股 ${RADAR_S}）"
+            git commit -m "📡 資料更新 $(date -u '+%Y-%m-%d %H:%M UTC')（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           git push origin gh-pages
-          echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔，雷達已預算完成"
+          echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔"
+
+      - name: 📤 推送到獨立 data 分支（永遠只保留一個 commit，不累積歷史）
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 回到乾淨狀態後建 orphan 分支
+          git checkout main 2>/dev/null || true
+          git checkout --orphan _data_deploy
+          git rm -rf --cached . -q 2>/dev/null || true
+
+          # 從 /tmp 備份還原 data/
+          mkdir -p data/chips
+          cp /tmp/mine/data/*.json          data/        2>/dev/null || true
+          cp /tmp/mine/data/chips/*.json    data/chips/  2>/dev/null || true
+          git add -f data/
+
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+          STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
+          git commit -m "🤖 籌碼快照 ${DATE}（${STOCKS} 檔）"
+          git push origin HEAD:data --force
+          echo "✅ data 分支已更新，共 ${STOCKS} 檔"
