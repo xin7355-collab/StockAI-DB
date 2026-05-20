@@ -44,12 +44,13 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # ── Step 1: 備份採礦結果到 /tmp（後續步驟都從這裡取）──
+          # ── Step 1: 備份採礦結果 + 網站檔案到 /tmp（後續步驟都從這裡取）──
           mkdir -p /tmp/mine/data/chips
           cp data/*.json           /tmp/mine/data/          2>/dev/null || true
           cp data/chips/*.json     /tmp/mine/data/chips/    2>/dev/null || true
           cp futures_cache.json    /tmp/mine/                2>/dev/null || true
           cp macro_cache.json      /tmp/mine/                2>/dev/null || true
+          cp index.html            /tmp/mine/                2>/dev/null || true
           echo "備份完成：$(ls /tmp/mine/data/*.json 2>/dev/null | wc -l) K線，$(ls /tmp/mine/data/chips/*.json 2>/dev/null | wc -l) 分點"
 
           # ── Step 2: 清除 index，讓 checkout gh-pages 不衝突 ──
@@ -62,17 +63,18 @@ jobs:
           git checkout -b gh-pages origin/gh-pages 2>/dev/null || \
           { echo "gh-pages 不存在，跳過"; exit 0; }
 
-          # ── Step 4: 複製資料 ──
+          # ── Step 4: 複製資料 + 更新網站檔案 ──
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/           2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/     2>/dev/null || true
           cp /tmp/mine/futures_cache.json   .               2>/dev/null || true
           cp /tmp/mine/macro_cache.json     .               2>/dev/null || true
+          cp /tmp/mine/index.html           .               2>/dev/null || true
 
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
 
-          git add futures_cache.json macro_cache.json data/ 2>/dev/null || true
+          git add index.html futures_cache.json macro_cache.json data/ 2>/dev/null || true
           git diff --cached --quiet && echo "無更新" || \
             git commit -m "📡 資料更新 $(date -u '+%Y-%m-%d %H:%M UTC')（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           git push origin gh-pages
