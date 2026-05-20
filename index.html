@@ -439,22 +439,22 @@
                 <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-blue-500">
                     <h3 class="text-gray-400 text-xs font-bold tracking-widest mb-3 flex items-center border-b border-gray-700 pb-2"><span class="text-blue-400 mr-1.5">🔮</span> AI 雲端大數據波段回測預判</h3>
                     <div class="mb-3">
-                        <div class="text-[10px] text-gray-500 mb-1.5 leading-relaxed">【系統已結合近5日K線特徵、<span class="text-yellow-400">成交量能配合度</span>、與歷史趨勢連動性進行掃描比對】</div>
+                        <div class="text-xs text-gray-500 mb-1.5 leading-relaxed">【系統已結合近5日K線特徵、<span class="text-yellow-400">成交量能配合度</span>、與歷史趨勢連動性進行掃描比對】</div>
                         <div class="grid grid-cols-3 gap-1.5 text-center mt-1.5">
-                            <div class="bg-gray-800 rounded p-2 border border-gray-600"><div class="text-[10px] text-gray-400">高度相似樣本</div><div class="font-bold text-white text-base mt-0.5" id="patCount">--次</div></div>
-                            <div class="bg-gray-800 rounded p-2 border border-red-900/50"><div class="text-[10px] text-red-400">隔日上漲機率</div><div class="font-bold text-red-400 text-base mt-0.5" id="patWinRate">--%</div></div>
-                            <div class="bg-gray-800 rounded p-2 border border-green-900/50"><div class="text-[10px] text-green-400">隔日平均漲幅</div><div class="font-bold text-white text-sm mt-0.5" id="patAvgRet">--</div></div>
+                            <div class="bg-gray-800 rounded p-2 border border-gray-600"><div class="text-xs text-gray-400">高度相似樣本</div><div class="font-bold text-white text-lg mt-0.5" id="patCount">--次</div></div>
+                            <div class="bg-gray-800 rounded p-2 border border-red-900/50"><div class="text-xs text-red-400">隔日上漲機率</div><div class="font-bold text-red-400 text-lg mt-0.5" id="patWinRate">--%</div></div>
+                            <div class="bg-gray-800 rounded p-2 border border-green-900/50"><div class="text-xs text-green-400">隔日平均漲幅</div><div class="font-bold text-white text-base mt-0.5" id="patAvgRet">--</div></div>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <div class="text-[10px] text-gray-500 mb-1.5">【長線波段回測】(依據 5MA/20MA 進出場)</div>
+                        <div class="text-xs text-gray-500 mb-1.5">【長線波段回測】(依據 5MA/20MA 進出場)</div>
                         <div class="grid grid-cols-3 gap-1.5 text-center">
-                            <div class="bg-gray-800 rounded p-2"><div class="text-[10px] text-gray-400">交易次數</div><div class="font-bold text-white text-base mt-0.5" id="btCount">--</div></div>
-                            <div class="bg-gray-800 rounded p-2"><div class="text-[10px] text-gray-400">波段勝率</div><div class="font-bold text-white text-base mt-0.5" id="btWinRate">--</div></div>
-                            <div class="bg-gray-800 rounded p-2"><div class="text-[10px] text-gray-400">單趟均利</div><div class="font-bold text-white text-base mt-0.5" id="btAvgProfit">--</div></div>
+                            <div class="bg-gray-800 rounded p-2"><div class="text-xs text-gray-400">交易次數</div><div class="font-bold text-white text-lg mt-0.5" id="btCount">--</div></div>
+                            <div class="bg-gray-800 rounded p-2"><div class="text-xs text-gray-400">波段勝率</div><div class="font-bold text-white text-lg mt-0.5" id="btWinRate">--</div></div>
+                            <div class="bg-gray-800 rounded p-2"><div class="text-xs text-gray-400">單趟均利</div><div class="font-bold text-white text-lg mt-0.5" id="btAvgProfit">--</div></div>
                         </div>
                     </div>
-                    <div class="text-xs bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
+                    <div class="text-sm bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
                     <h2 class="text-base font-black text-white mb-3 border-b border-gray-700 pb-2 flex items-center gap-1.5">📅 近五日動能評分回溯</h2>
@@ -1626,9 +1626,34 @@ const app = {
     async fetchChipTimeline(sym, forceRefresh) {
         if (!sym) return;
         const statusEl = document.getElementById('chipTimelineStatus');
+
+        // ── 第一盾：直接從已載入的 rawDailyData 讀取（miner.py 每日採礦已內建）──
+        const daily = this.rawDailyData || [];
+        const hasChip = daily.length > 0 && daily[daily.length - 1].foreign_net !== undefined;
+        if (hasChip && !forceRefresh) {
+            const slice = daily.slice(-15);
+            const instData = slice.map(r => {
+                const rawDate = (r.date || '').replace(/\//g, '-');
+                return {
+                    date: rawDate,
+                    foreign: Math.round((r.foreign_net || 0) / 1000),
+                    trust:   Math.round((r.trust_net   || 0) / 1000),
+                    dealer:  Math.round((r.dealer_net  || 0) / 1000),
+                };
+            });
+            const marginData = slice.map(r => ({
+                date: (r.date || '').replace(/\//g, '-'),
+                margin: Math.round((r.margin_balance || 0) / 1000),
+                short:  Math.round((r.short_balance  || 0) / 1000),
+            }));
+            this._renderChipTimeline(instData, marginData);
+            if (statusEl) statusEl.textContent = '雲端採礦資料';
+            return;
+        }
+
+        // ── 第二盾：FinMind API（需 Token 或有額度時使用）──
         const cacheKey = `chipTimeline_${sym}`;
         const CACHE_TTL = 6 * 3600 * 1000;
-
         if (!forceRefresh) {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
@@ -1645,8 +1670,7 @@ const app = {
 
         if (statusEl) statusEl.textContent = '載入中…';
         const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
-        const d = new Date();
-        d.setDate(d.getDate() - 20);
+        const d = new Date(); d.setDate(d.getDate() - 20);
         const startDate = d.toISOString().split('T')[0];
 
         try {
@@ -1655,7 +1679,6 @@ const app = {
                 fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r => r.json())
             ]);
 
-            // Build per-date institutional net buy/sell
             const instByDate = {};
             for (const r of (instRes.data || [])) {
                 if (!instByDate[r.date]) instByDate[r.date] = { foreign: 0, trust: 0, dealer: 0 };
@@ -1665,7 +1688,7 @@ const app = {
                 else if (n.includes('投信')) instByDate[r.date].trust = net;
                 else if (n.includes('自營')) instByDate[r.date].dealer = net;
             }
-            const instDates = Object.keys(instByDate).sort().slice(-10);
+            const instDates = Object.keys(instByDate).sort().slice(-15);
             const instData = instDates.map(d => ({
                 date: d,
                 foreign: Math.round((instByDate[d].foreign || 0) / 1000),
@@ -1673,7 +1696,6 @@ const app = {
                 dealer:  Math.round((instByDate[d].dealer  || 0) / 1000),
             }));
 
-            // Build margin/short timeline
             const marginByDate = {};
             for (const r of (marginRes.data || [])) {
                 marginByDate[r.date] = {
@@ -1681,17 +1703,17 @@ const app = {
                     short:  Math.round((parseInt(r.ShortSaleToday)      || 0) / 1000),
                 };
             }
-            const marginDates = Object.keys(marginByDate).sort().slice(-10);
+            const marginDates = Object.keys(marginByDate).sort().slice(-15);
             const marginData = marginDates.map(d => ({ date: d, ...marginByDate[d] }));
 
             localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), instData, marginData }));
             this._renderChipTimeline(instData, marginData);
             if (statusEl) statusEl.textContent = `更新 ${new Date().toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' })}`;
         } catch(e) {
-            if (statusEl) statusEl.textContent = '載入失敗，請確認網路或 FinMind Token';
+            if (statusEl) statusEl.textContent = '無法載入';
             const instEl = document.getElementById('chipInstChart');
             const marginEl = document.getElementById('chipMarginChart');
-            if (instEl) instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-xs p-4 text-center">載入失敗<br>請至設定填入 FinMind Token 或重試</div>';
+            if (instEl) instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">籌碼資料載入失敗<br><span class="text-gray-600">建議在設定填入 FinMind Token</span></div>';
             if (marginEl) marginEl.innerHTML = '';
         }
     },
@@ -1945,9 +1967,22 @@ ${revText}
         } catch(e) { yoyBox.innerHTML = `<span class="text-gray-500 text-xs">營收連線失敗</span>`; this.latestYoyCache = ""; }
 
         try {
-            const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 5);
-            const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockNews&data_id=${sym}&start_date=${pastDate.toISOString().split('T')[0]}${tokenStr}`);
-            const data = await res.json();
+            const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 30);
+            const newsUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockNews&data_id=${sym}&start_date=${pastDate.toISOString().split('T')[0]}${tokenStr}`;
+            let data = null;
+            // 直連嘗試
+            try {
+                const r = await fetch(newsUrl, { signal: AbortSignal.timeout(6000) });
+                if (r.ok) { const j = await r.json(); if (j.status === 200) data = j; }
+            } catch(e1) {}
+            // 備援：allorigins 代理（避免 CORS / 限速）
+            if (!data) {
+                try {
+                    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(newsUrl)}`;
+                    const r2 = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+                    if (r2.ok) { const j2 = await r2.json(); data = JSON.parse(j2.contents || '{}'); }
+                } catch(e2) {}
+            }
             let nHtml = "", fullNewsText = "", seenTitles = new Set(), hasConf = false;
 
             if (data && data.data && data.data.length > 0) {
@@ -1974,7 +2009,8 @@ ${revText}
                     }
                 });
                 this.latestNewsCache = fullNewsText;
-            } else { nHtml = `<div class="text-gray-500 text-xs">近五日無重大訊息。</div>`; this.latestNewsCache = ""; }
+            } else if (!data) { nHtml = `<div class="text-gray-500 text-xs">新聞服務暫時無法連線，請稍後再試。</div>`; this.latestNewsCache = ""; }
+            else { nHtml = `<div class="text-gray-500 text-xs">近期無重大訊息公告。</div>`; this.latestNewsCache = ""; }
             newsBox.innerHTML = nHtml;
 
             const badge = document.getElementById('corpEventBadge');
@@ -2581,8 +2617,8 @@ ${revText}
 
         if (patternStats) {
             const cnt = patternStats.count;
-            const confidence = cnt >= 20 ? '高信心' : cnt >= 10 ? '中信心' : '⚠️ 樣本不足';
-            const confColor = cnt >= 20 ? 'text-green-400' : cnt >= 10 ? 'text-yellow-400' : 'text-orange-400';
+            const confidence = cnt >= 10 ? '✅ 高信心' : cnt >= 5 ? '⚡ 中信心' : '⚠️ 樣本偏少';
+            const confColor = cnt >= 10 ? 'text-green-400' : cnt >= 5 ? 'text-yellow-400' : 'text-orange-400';
             document.getElementById('patCount').innerHTML = `${cnt} 次<br><span class="text-[9px] ${confColor}">${confidence}</span>`;
             document.getElementById('patWinRate').innerText = `${patternStats.winRate}%`;
             document.getElementById('patAvgRet').innerHTML = patternStats.avgRet > 0 ? `<span class="text-red-400">+${patternStats.avgRet}%</span>` : `<span class="text-green-400">${patternStats.avgRet}%</span>`;
@@ -2590,7 +2626,7 @@ ${revText}
             document.getElementById('patCount').innerText = `--`; document.getElementById('patWinRate').innerText = `--`; document.getElementById('patAvgRet').innerText = `--`;
         }
         const btCount = parseInt(document.getElementById('btCount').innerText) || 0;
-        const btNote = btCount < 10 ? '樣本數偏少，僅供參考。' : '長線勝率回測完畢。';
+        const btNote = btCount < 5 ? '交易樣本數偏少，結果僅供參考。' : '長線波段勝率回測完畢。';
         document.getElementById('predictionConclusion').innerHTML = `${btNote}<br><span class="text-gray-400 font-normal">請依據歷史勝率分配投入資金部位。（資料來源：本地歷史K線，非預測性建議）</span>`;
     },
 

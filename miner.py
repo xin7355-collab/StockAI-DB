@@ -149,21 +149,28 @@ def fetch_futures_cache():
     start = (today - timedelta(days=10)).strftime('%Y-%m-%d')
     print(f"\n🔮 抓取外資台指期淨口數 {start}~{today} ...")
     rows = fm_get('TaiwanFuturesInstitutionalInvestors', data_id='TX', start_date=start)
-    foreign = [r for r in rows if r.get('name') == '外資及陸資']
+    # FinMind 欄位名稱曾多次微調，用包含比對更穩定
+    foreign = [r for r in rows if '外資' in r.get('name', '') or '外資' in r.get('institutional_investors', '')]
     if not foreign:
-        print("  ⚠️  無外資期貨資料，跳過寫入")
+        print(f"  ⚠️  無外資期貨資料，跳過寫入（共 {len(rows)} 筆，name 值：{list(set(r.get('name','?') for r in rows[:5]))}）")
         return
     last = foreign[-1]
     try:
-        net = int(last['long_open_interest_balance']) - int(last['short_open_interest_balance'])
-    except (KeyError, ValueError):
-        print("  ⚠️  欄位解析失敗")
+        # 優先用直接淨口數欄位，再退回長短相減
+        if last.get('open_interest_net_volume') is not None:
+            net = int(last['open_interest_net_volume'])
+        else:
+            net = int(last.get('long_open_interest_balance', 0)) - int(last.get('short_open_interest_balance', 0))
+    except (KeyError, ValueError) as e:
+        print(f"  ⚠️  欄位解析失敗: {e}，原始資料: {last}")
         return
+    long_val  = int(last.get('long_open_interest_balance', 0))
+    short_val = int(last.get('short_open_interest_balance', 0))
     cache = {
         'date': last.get('date', today.strftime('%Y-%m-%d')),
         'fi_net': net,
-        'long': int(last.get('long_open_interest_balance', 0)),
-        'short': int(last.get('short_open_interest_balance', 0)),
+        'long': long_val,
+        'short': short_val,
         'generated': today.strftime('%Y-%m-%d'),
     }
     with open('futures_cache.json', 'w', encoding='utf-8') as f:
