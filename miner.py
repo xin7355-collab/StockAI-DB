@@ -282,8 +282,8 @@ def _massive_scrape(url, api_key):
 def fetch_broker_chips():
     """
     每天17:00後抓取分點籌碼，存入 data/chips/{sym}.json。
-    ‧ 第一盾：FinMind TaiwanStockBrokerTrading（一次拿完整日期範圍，免逐日打）
-    ‧ 第二盾：Massive API → TWSE 官方端點（residential IP，不被 Ban）
+    ‧ 第一盾：FinMind TaiwanStockBrokerTrading 批次（同 OHLCV 作法，一次拿全台股）
+    ‧ 第二盾：Massive API → TWSE 逐日批次檔（一天一次請求，拿全市場）
     ‧ 滾動視窗：只保留最近 20 個交易日，超過自動刪除
     """
     if not FINMIND_TOKEN and not MASSIVE_API_KEY:
@@ -297,24 +297,86 @@ def fetch_broker_chips():
     cutoff_str   = trading_days[0].strftime('%Y-%m-%d')
     today_str    = date.today().strftime('%Y-%m-%d')
 
-    # ── 自動剪枝：刪除超過 20 個交易日的舊檔 ─────────────────────────
+    # ── 判斷已有哪些日期（避免重複下載）─────────────────────────────
+    # 掃描現有所有 chips 檔案，找出已完整涵蓋的日期
+    have_dates: set = set()
     for f in chips_dir.glob('*.json'):
         try:
-            existing_data = json.loads(f.read_text(encoding='utf-8'))
-            pruned = [r for r in existing_data if r.get('date', '') >= cutoff_str]
-            if len(pruned) != len(existing_data):
-                f.write_text(json.dumps(pruned, ensure_ascii=False, separators=(',', ':')),
-                             encoding='utf-8')
+            for rec in json.loads(f.read_text(encoding='utf-8')):
+                have_dates.add(rec.get('date', ''))
         except Exception:
-            pass
+            break  # 任一檔出錯就重新全量更新
 
-    print(f"\n🔍 分點籌碼採礦（{cutoff_str} ~ {today_str}），監控 {len(CHIP_WATCHLIST)} 檔...")
+    missing_days = [d for d in trading_days if d.strftime('%Y-%m-%d') not in have_dates]
+    if not missing_days:
+        print(f"\n🔍 分點籌碼已是最新，跳過（{cutoff_str} ~ {today_str}）")
+        _prune_chips(chips_dir, cutoff_str)
+        return
+
+    fetch_start = missing_days[0].strftime('%Y-%m-%d')
+    print(f"\n🔍 分點籌碼批次採礦（{fetch_start} ~ {today_str}）全台股...")
+
+    all_rows = []
+
+    # ── 第一盾：FinMind 全台股批次（不帶 data_id，同 OHLCV 作法）──────
+    if FINMIND_TOKEN:
+        all_rows = fm_get('TaiwanStockBrokerTrading',
+                          start_date=fetch_start, end_date=today_str)
+        print(f"  FinMind 回傳 {len(all_rows)} 筆")
+
+    # ── 第二盾：Massive API → TWSE 逐日批次（每天1次，涵蓋全市場）──
+    if not all_rows and MASSIVE_API_KEY:
+        for target_day in missing_days:
+            day_str  = target_day.strftime('%Y%m%d')
+            twse_url = (f'https://www.twse.com.tw/rwd/zh/fund/fundQueryDate'
+                        f'?date={day_str}&response=json&selectType=ALLBUT0999')
+            data = _massive_scrape(twse_url, MASSIVE_API_KEY)
+            if data and data.get('stat') == 'OK':
+                day_iso = target_day.strftime('%Y-%m-%d')
+                def _int(v):
+                    try: return int(str(v).replace(',', ''))
+                    except: return 0
+                for row in (data.get('data') or []):
+                    if len(row) < 5:
+                        continue
+                    all_rows.append({
+                        'date':        day_iso,
+                        'stock_id':    str(row[0]),
+                        'broker_id':   str(row[2]),
+                        'broker_name': str(row[3]),
+                        'buy':         _int(row[4]) if len(row) > 4 else 0,
+                        'sell':        _int(row[5]) if len(row) > 5 else 0,
+                    })
+            time.sleep(1)  # TWSE 每日一請求，禮貌性間隔
+        print(f"  Massive API 回傳 {len(all_rows)} 筆（{len(missing_days)} 天）")
+
+    if not all_rows:
+        print("  ⚠️  無分點資料，跳過")
+        return
+
+    # ── 按股票代號分組 ────────────────────────────────────────────────
+    by_sym_date: dict = {}
+    for r in all_rows:
+        sym   = str(r.get('stock_id', ''))
+        d_str = str(r.get('date', ''))[:10]
+        if not sym or not d_str or d_str < cutoff_str:
+            continue
+        key = (sym, d_str)
+        by_sym_date.setdefault(key, []).append({
+            'bid': str(r.get('broker_id', '')),
+            'bnm': str(r.get('broker_name', '')),
+            'buy': int(r.get('buy', 0)),
+            'sel': int(r.get('sell', 0)),
+            'net': int(r.get('buy', 0)) - int(r.get('sell', 0)),
+        })
+
+    # ── 彙整每股每日前15買超/賣超，合併既有資料後寫檔 ───────────────
+    keep   = {d.strftime('%Y-%m-%d') for d in trading_days}
+    syms   = {k[0] for k in by_sym_date}
     updated = 0
 
-    for sym in CHIP_WATCHLIST:
+    for sym in syms:
         out_file = chips_dir / f'{sym}.json'
-
-        # 載入既有資料，建立 date → record 字典
         existing: dict = {}
         if out_file.exists():
             try:
@@ -323,60 +385,10 @@ def fetch_broker_chips():
             except Exception:
                 pass
 
-        # 判斷需要補齊的最早日期
-        missing = [d for d in trading_days if d.strftime('%Y-%m-%d') not in existing]
-        if not missing:
-            continue
-
-        fetch_start = missing[0].strftime('%Y-%m-%d')
-        rows = []
-
-        # ── 第一盾：FinMind ────────────────────────────────────────────
-        if FINMIND_TOKEN:
-            rows = fm_get('TaiwanStockBrokerTrading',
-                          data_id=sym, start_date=fetch_start, end_date=today_str)
-
-        # ── 第二盾：Massive API → TWSE ────────────────────────────────
-        if not rows and MASSIVE_API_KEY:
-            start_twse = missing[0].strftime('%Y%m%d')
-            end_twse   = today_str.replace('-', '')
-            twse_url   = (f'https://www.twse.com.tw/rwd/zh/fund/fundQueryDate'
-                          f'?stockNo={sym}&startDate={start_twse}&endDate={end_twse}&response=json')
-            data = _massive_scrape(twse_url, MASSIVE_API_KEY)
-            if data and data.get('stat') == 'OK':
-                fields = data.get('fields', [])
-                # TWSE 回傳整段期間的彙總（非逐日），以今天為日期掛上
-                for row in (data.get('data') or []):
-                    def _int(v):
-                        try: return int(str(v).replace(',', ''))
-                        except: return 0
-                    rows.append({
-                        'date':        today_str,
-                        'stock_id':    sym,
-                        'broker_id':   row[0] if len(row) > 0 else '',
-                        'broker_name': row[1] if len(row) > 1 else '',
-                        'buy':         _int(row[2]) if len(row) > 2 else 0,
-                        'sell':        _int(row[3]) if len(row) > 3 else 0,
-                    })
-
-        if not rows:
-            continue
-
-        # ── 整理成每日前 15 買超 / 前 15 賣超 ────────────────────────
-        by_date: dict = {}
-        for r in rows:
-            d_str = str(r.get('date', ''))[:10]
-            if not d_str or d_str < cutoff_str:
+        for d_str in keep:
+            brokers = by_sym_date.get((sym, d_str))
+            if not brokers:
                 continue
-            by_date.setdefault(d_str, []).append({
-                'bid': str(r.get('broker_id', '')),
-                'bnm': str(r.get('broker_name', '')),
-                'buy': int(r.get('buy', 0)),
-                'sel': int(r.get('sell', 0)),
-                'net': int(r.get('buy', 0)) - int(r.get('sell', 0)),
-            })
-
-        for d_str, brokers in by_date.items():
             buyers  = sorted([b for b in brokers if b['net'] > 0], key=lambda x: -x['net'])[:15]
             sellers = sorted([b for b in brokers if b['net'] < 0], key=lambda x:  x['net'])[:15]
             existing[d_str] = {
@@ -387,16 +399,29 @@ def fetch_broker_chips():
                 'tot_sel': sum(b['sel'] for b in brokers),
             }
 
-        # 只保留 trading_days 範圍內的日期
-        keep = {d.strftime('%Y-%m-%d') for d in trading_days}
         final = sorted([v for k, v in existing.items() if k in keep], key=lambda x: x['date'])
+        if final:
+            out_file.write_text(json.dumps(final, ensure_ascii=False, separators=(',', ':')),
+                                encoding='utf-8')
+            updated += 1
 
-        out_file.write_text(json.dumps(final, ensure_ascii=False, separators=(',', ':')),
-                            encoding='utf-8')
-        updated += 1
-        time.sleep(0.3)  # 禮貌性間隔
+    _prune_chips(chips_dir, cutoff_str)
+    print(f"  ✅ 分點籌碼完成：寫入 {updated} 檔（全台股）")
 
-    print(f"  ✅ 分點籌碼完成：更新 {updated}/{len(CHIP_WATCHLIST)} 檔")
+
+def _prune_chips(chips_dir: Path, cutoff_str: str):
+    """刪除各檔案中早於 cutoff_str 的紀錄，並移除空檔。"""
+    for f in chips_dir.glob('*.json'):
+        try:
+            data = json.loads(f.read_text(encoding='utf-8'))
+            pruned = [r for r in data if r.get('date', '') >= cutoff_str]
+            if not pruned:
+                f.unlink()
+            elif len(pruned) != len(data):
+                f.write_text(json.dumps(pruned, ensure_ascii=False, separators=(',', ':')),
+                             encoding='utf-8')
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':
