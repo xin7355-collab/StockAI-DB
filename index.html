@@ -394,54 +394,60 @@
                 </div>
             </div>
 
-            <!-- 10日籌碼走勢圖 -->
+            <!-- 籌碼全面追蹤（三大法人 + 主力分點合併）-->
             <div id="subContentChip" class="hidden flex-col gap-0 mt-2 px-2 md:px-4">
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+
+                    <!-- 統一標頭 -->
                     <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
-                        <h4 class="text-xs font-black text-orange-400 tracking-wide">📊 10日籌碼走勢</h4>
-                        <div class="flex gap-2 items-center">
-                            <span id="chipTimelineStatus" class="text-[9px] text-gray-500"></span>
-                            <button onclick="app.fetchChipTimeline(app.currentSymbolId, true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
-                        </div>
+                        <h4 class="text-xs font-black text-orange-400 tracking-wide">📊 籌碼全面追蹤</h4>
+                        <button onclick="app.fetchChipTimeline(app.currentSymbolId,true);app.loadBrokerChips(app.currentSymbolId,true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄 重整全部</button>
                     </div>
-                    <!-- 法人三大淨買賣條形圖 -->
+
+                    <!-- ① 三大法人走勢 -->
                     <div class="px-3 pt-2 pb-0">
-                        <div class="text-[9px] text-gray-500 font-bold mb-1">三大法人每日淨買賣超（千股）</div>
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-[10px] text-orange-300 font-bold">📈 三大法人淨買賣（近10日）</div>
+                            <span id="chipTimelineStatus" class="text-[9px] text-gray-500"></span>
+                        </div>
+                        <div class="text-[9px] text-gray-500 mb-1">每日淨買賣超（千股）</div>
                         <div id="chipInstChart" style="height:110px;width:100%;"></div>
                     </div>
-                    <!-- 融資融券走勢 -->
+
+                    <!-- ② 融資融券走勢 -->
                     <div class="px-3 pt-1 pb-2">
-                        <div class="text-[9px] text-gray-500 font-bold mb-1">融資／融券餘額趨勢（千股）</div>
+                        <div class="text-[9px] text-gray-500 mb-1">融資／融券餘額趨勢（千股）</div>
                         <div id="chipMarginChart" style="height:90px;width:100%;"></div>
                     </div>
-                </div>
-                <div class="px-3 pb-3 mt-2">
-                    <button onclick="app.analyzeChipWithAI(app.currentSymbolId)" id="chipAIBtn" class="w-full bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 border border-indigo-700 py-2.5 rounded-lg text-xs font-bold transition-colors tracking-widest">⚡ Groq AI 籌碼研判</button>
-                    <div id="chipAIResult" class="hidden mt-2 bg-[#0d1117] border border-indigo-900/50 rounded-lg p-3 text-xs text-gray-300 leading-relaxed"></div>
-                </div>
 
-                <!-- 照妖鏡：主力分點追蹤 -->
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden mt-2">
-                    <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
-                        <h4 class="text-xs font-black text-red-400 tracking-wide">🔍 照妖鏡 · 主力分點追蹤</h4>
-                        <div class="flex gap-2 items-center">
-                            <span id="brokerChipDate" class="text-[9px] text-gray-500"></span>
-                            <button onclick="app.loadBrokerChips(app.currentSymbolId, true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
-                        </div>
-                    </div>
-                    <!-- 白話說明 -->
+                    <!-- 分隔線 -->
+                    <div class="border-t border-[#30363d] mx-0"></div>
+
+                    <!-- ③ 照妖鏡・主力分點 -->
                     <div class="px-3 pt-2 pb-1">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="text-[10px] text-red-300 font-bold">🔍 照妖鏡・主力分點追蹤</div>
+                            <div class="flex gap-1.5 items-center">
+                                <span id="brokerChipDate" class="text-[9px] text-gray-500"></span>
+                                <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                            </div>
+                        </div>
                         <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-200/70 leading-relaxed">
-                            💡 <b class="text-amber-300">主力分點</b>是指每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
+                            💡 <b class="text-amber-300">主力分點</b>是每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
                         </div>
                     </div>
-                    <div id="brokerChipContent" class="px-3 py-2">
+                    <div id="brokerChipContent" class="px-3 pb-2">
                         <div class="text-center py-4 text-gray-600 text-xs">切換到籌碼分頁自動載入</div>
                     </div>
-                    <!-- AI 白話解析 -->
-                    <div class="px-3 pb-3">
-                        <button onclick="app.analyzeBrokerWithAI(app.currentSymbolId)" id="brokerAIBtn" class="w-full bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-800/50 py-2 rounded-lg text-xs font-bold transition-colors">🤖 AI 白話解析 — 告訴我該怎麼看！</button>
-                        <div id="brokerAIResult" class="hidden mt-2 bg-[#0d1117] border border-red-900/30 rounded-lg p-3 text-xs text-gray-300 leading-relaxed"></div>
+
+                    <!-- ④ 統一 AI 解析按鈕 -->
+                    <div class="px-3 pb-3 pt-1 border-t border-[#30363d]">
+                        <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
+                            class="w-full py-2.5 rounded-lg text-xs font-bold transition-colors tracking-widest text-white border border-indigo-600/50"
+                            style="background:linear-gradient(90deg,rgba(49,46,129,0.7),rgba(127,29,29,0.5))">
+                            🤖 AI 籌碼全面解析 — 法人 + 主力一次看！
+                        </button>
+                        <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#0d1117] border border-indigo-900/50 rounded-lg p-3 text-xs text-gray-300 leading-relaxed"></div>
                     </div>
                 </div>
             </div>
@@ -2146,124 +2152,114 @@ const app = {
         }
     },
 
-    async analyzeChipWithAI(sym) {
+    async analyzeChipUnified(sym) {
         if (!sym) return;
         const groqKey = this.settings.groqKey;
         if (!groqKey) { alert('請先至設定填寫 Groq API Key'); return; }
-        const btn = document.getElementById('chipAIBtn');
-        const result = document.getElementById('chipAIResult');
-        btn.textContent = '⚡ 分析中...';
+        const btn = document.getElementById('chipUnifiedAIBtn');
+        const result = document.getElementById('chipUnifiedAIResult');
+        btn.textContent = '🤖 分析中，請稍候...';
         btn.disabled = true;
         result.classList.remove('hidden');
-        result.innerHTML = '<span class="animate-pulse text-indigo-400">Groq 引擎啟動，讀取籌碼數據...</span>';
+        result.innerHTML = '<span class="animate-pulse text-indigo-400 text-[10px]">AI 正在整合法人 + 主力分點資料...</span>';
+
+        const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length - 1].close : '未知';
         const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
         const d = new Date(); d.setDate(d.getDate() - 20);
         const startDate = d.toISOString().split('T')[0];
-        try {
-            const [instRes, marginRes] = await Promise.all([
-                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r => r.json()).catch(() => ({ data: [] })),
-                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r => r.json()).catch(() => ({ data: [] }))
-            ]);
-            const instByDate = {};
-            for (const r of (instRes.data || [])) {
-                if (!instByDate[r.date]) instByDate[r.date] = { foreign: 0, trust: 0, dealer: 0 };
-                const net = (parseInt(r.buy) || 0) - (parseInt(r.sell) || 0);
-                if (r.name.includes('外資')) instByDate[r.date].foreign = net;
-                else if (r.name.includes('投信')) instByDate[r.date].trust = net;
-                else if (r.name.includes('自營')) instByDate[r.date].dealer = net;
+
+        // 1. 從 OHLCV 快取取近10日法人資料（優先，不耗 FinMind 配額）
+        let instText = '無資料';
+        let marginText = '無資料';
+        if (this.rawDailyData?.length > 0) {
+            const recent = this.rawDailyData.slice(-10);
+            const hasChip = recent.some(r => r.foreign_net !== undefined);
+            if (hasChip) {
+                instText = recent.filter(r => r.foreign_net !== undefined).map(r => {
+                    const fK = Math.round((r.foreign_net||0)/1000);
+                    const tK = Math.round((r.trust_net||0)/1000);
+                    const dK = Math.round((r.dealer_net||0)/1000);
+                    return `${r.date}: 外資${fK>=0?'+':''}${fK}K 投信${tK>=0?'+':''}${tK}K 自營${dK>=0?'+':''}${dK}K`;
+                }).join('\n');
+                marginText = recent.filter(r => r.margin_balance !== undefined).map(r =>
+                    `${r.date}: 融資${Math.round((r.margin_balance||0)/1000)}K 融券${Math.round((r.short_balance||0)/1000)}K`
+                ).join('\n') || '無資料';
             }
-            const instDates = Object.keys(instByDate).sort().slice(-10);
-            const instText = instDates.map(date => {
-                const v = instByDate[date];
-                const fK = Math.round(v.foreign / 1000), tK = Math.round(v.trust / 1000), dK = Math.round(v.dealer / 1000);
-                return `${date}: 外資${fK >= 0 ? '+' : ''}${fK}K 投信${tK >= 0 ? '+' : ''}${tK}K 自營${dK >= 0 ? '+' : ''}${dK}K`;
-            }).join('\n') || '無資料';
-            const marginByDate = {};
-            for (const r of (marginRes.data || [])) marginByDate[r.date] = { margin: parseInt(r.MarginPurchaseToday) || 0, short: parseInt(r.ShortSaleToday) || 0 };
-            const marginDates = Object.keys(marginByDate).sort().slice(-5);
-            const marginText = marginDates.map(date => {
-                const v = marginByDate[date];
-                return `${date}: 融資${Math.round(v.margin / 1000)}K 融券${Math.round(v.short / 1000)}K`;
-            }).join('\n') || '無資料';
-            const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length - 1].close : '未知';
-            const prompt = `你是台股籌碼分析專家，語氣直接果斷。請分析以下籌碼資料並給出明確操作建議（200字以內）。
+        }
 
-股票代號：${sym}，現價：${currentPrice}
+        // 2. 若 OHLCV 無籌碼欄位，fallback 到 FinMind API
+        if (instText === '無資料') {
+            try {
+                const [instRes, marginRes] = await Promise.all([
+                    fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r=>r.json()).catch(()=>({data:[]})),
+                    fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r=>r.json()).catch(()=>({data:[]}))
+                ]);
+                const instByDate = {};
+                for (const r of (instRes.data||[])) {
+                    if (!instByDate[r.date]) instByDate[r.date] = {foreign:0,trust:0,dealer:0};
+                    const net = (parseInt(r.buy)||0)-(parseInt(r.sell)||0);
+                    if (r.name.includes('外資')) instByDate[r.date].foreign = net;
+                    else if (r.name.includes('投信')) instByDate[r.date].trust = net;
+                    else if (r.name.includes('自營')) instByDate[r.date].dealer = net;
+                }
+                instText = Object.keys(instByDate).sort().slice(-10).map(date => {
+                    const v = instByDate[date];
+                    return `${date}: 外資${v.foreign>=0?'+':''}${Math.round(v.foreign/1000)}K 投信${v.trust>=0?'+':''}${Math.round(v.trust/1000)}K 自營${v.dealer>=0?'+':''}${Math.round(v.dealer/1000)}K`;
+                }).join('\n') || '無資料';
+                const marginByDate = {};
+                for (const r of (marginRes.data||[])) marginByDate[r.date] = {margin:parseInt(r.MarginPurchaseToday)||0,short:parseInt(r.ShortSaleToday)||0};
+                marginText = Object.keys(marginByDate).sort().slice(-5).map(date => {
+                    const v = marginByDate[date];
+                    return `${date}: 融資${Math.round(v.margin/1000)}K 融券${Math.round(v.short/1000)}K`;
+                }).join('\n') || '無資料';
+            } catch(e) {}
+        }
 
-【近10日三大法人每日淨買賣超（張）】
+        // 3. 主力分點摘要
+        let brokerText = '主力分點資料尚未載入（請先切到籌碼分頁等待載入）';
+        const bd = this._brokerChipSummary;
+        if (bd && bd.sym === sym) {
+            const topB = bd.topBuyers.slice(0,5).map(([,v],i)=>`${bd.buyLabels[i]}買入${Math.round(v/1000)}K股`).join('、');
+            const topS = bd.topSellers.slice(0,5).map(([,v],i)=>`${bd.selLabels[i]}賣出${Math.round(v/1000)}K股`).join('、');
+            brokerText = `近${bd.days}日累計：買超${bd.totalBuyK}K股，賣超${bd.totalSelK}K股\n積極買進：${topB||'無'}\n積極賣出：${topS||'無'}\n整體傾向：${bd.verdict}`;
+        }
+
+        const prompt = `你是台股籌碼分析老師（以權證小哥的風格），請用白話文幫初學者看懂以下所有籌碼資料，給出完整解析與明確建議。
+
+【股票代號：${sym}｜現價：${currentPrice} 元】
+
+📈【三大法人近10日淨買賣超（千股）】
 ${instText}
 
-【近5日融資融券餘額（張）】
+💰【融資融券近5日】
 ${marginText}
 
-請輸出：
-1. 法人方向研判：誰在買/賣，連續幾天，力道如何
-2. 融資券訊號：散戶情緒判讀
-3. 操作建議：明確說「適合買進/持有/減碼」，並給出具體參考價位`;
-            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 500, temperature: 0.6 })
-            });
-            const groqData = await groqRes.json();
-            const text = groqData.choices?.[0]?.message?.content || '分析失敗，請稍後再試';
-            result.innerHTML = `<div class="text-indigo-400 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">⚡ AI 籌碼研判 — ${sym}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap">${text}</div>`;
-        } catch(e) {
-            result.innerHTML = '<span class="text-red-400 text-xs">分析失敗，請確認 Groq API Key 是否正確</span>';
-        }
-        btn.textContent = '⚡ Groq AI 籌碼研判';
-        btn.disabled = false;
-    },
-
-    async analyzeBrokerWithAI(sym) {
-        if (!sym) return;
-        const groqKey = this.settings.groqKey;
-        if (!groqKey) { alert('請先至設定填寫 Groq API Key'); return; }
-        const btn = document.getElementById('brokerAIBtn');
-        const result = document.getElementById('brokerAIResult');
-        btn.textContent = '🤖 分析中...';
-        btn.disabled = true;
-        result.classList.remove('hidden');
-        result.innerHTML = '<span class="animate-pulse text-amber-400 text-[10px]">AI 正在解讀主力動向...</span>';
-
-        const d = this._brokerChipSummary;
-        const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length - 1].close : '未知';
-
-        let brokerText = '無分點資料';
-        if (d && d.sym === sym) {
-            const topB = d.topBuyers.slice(0,5).map(([,v],i)=>`${d.buyLabels[i]}買入${Math.round(v/1000)}K股`).join('、');
-            const topS = d.topSellers.slice(0,5).map(([,v],i)=>`${d.selLabels[i]}賣出${Math.round(v/1000)}K股`).join('、');
-            brokerText = `近${d.days}日：主力買超合計${d.totalBuyK}股，賣超合計${d.totalSelK}股\n積極買進：${topB||'無'}\n積極賣出：${topS||'無'}\n整體傾向：${d.verdict}`;
-        }
-
-        const prompt = `你是一位親切的股市老師，請用最簡單的白話文幫初學者看懂以下主力分點資料。
-
-股票代號：${sym}，現在股價：${currentPrice} 元
-
-【主力分點追蹤資料】
+🔍【主力分點照妖鏡（近20日累積）】
 ${brokerText}
 
-請回答以下三個問題（每題1-2句話，用國中生都看得懂的語言）：
-1. 主力現在在做什麼？（買進還是賣出，力道大不大？）
-2. 散戶應該注意什麼？（有沒有危險信號？）
-3. 現在這支股票適合「買進 / 繼續持有 / 小心減碼」？為什麼？
+請依序輸出（每段2-3句話，用國中生都看得懂的語言）：
+1️⃣ 外資在做什麼？連買還是連賣？力道強不強？
+2️⃣ 投信和自營商呢？有沒有配合外資的動作？
+3️⃣ 融資融券怎麼說？散戶現在情緒樂觀還是悲觀？
+4️⃣ 主力分點照妖鏡：主力有沒有在偷偷買進或出貨？
+5️⃣ 綜合建議：這檔現在適合「買進 / 繼續持有 / 小心減碼」？請給明確理由。
 
-最後加一行提醒：「⚠️ 投資有風險，以上僅供參考，請自行判斷。」`;
+最後一行：⚠️ 投資有風險，以上僅供參考，請自行判斷。`;
 
         try {
             const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 600, temperature: 0.7 })
+                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{role:'user',content:prompt}], max_tokens: 800, temperature: 0.7 })
             });
             const groqData = await groqRes.json();
             const text = groqData.choices?.[0]?.message?.content || '分析失敗，請稍後再試';
             const escaped = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            result.innerHTML = `<div class="text-amber-400 font-bold text-[10px] mb-1.5 border-b border-amber-900/40 pb-1">🤖 AI 白話解析 — ${sym}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-[11px]">${escaped}</div>`;
+            result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-[11px]">${escaped}</div>`;
         } catch(e) {
             result.innerHTML = '<span class="text-red-400 text-xs">分析失敗，請確認 Groq API Key 是否正確</span>';
         }
-        btn.textContent = '🤖 AI 白話解析 — 告訴我該怎麼看！';
+        btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
         btn.disabled = false;
     },
 
