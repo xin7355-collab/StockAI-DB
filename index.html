@@ -1973,6 +1973,30 @@ const app = {
         });
     },
 
+    async _loadBrokerNames() {
+        if (this._brokerNames) return this._brokerNames;
+        try {
+            let base = window.location.href.split('?')[0].split('#')[0];
+            if (!base.endsWith('/')) base = base.substring(0, base.lastIndexOf('/') + 1);
+            const ghBase = base.includes('github.io') ? base : 'https://xin7355-collab.github.io/stockai-db/';
+            const res = await fetch(new URL('data/broker_names.json', ghBase).href + `?v=${Math.floor(Date.now()/3600000)}`, { signal: AbortSignal.timeout(4000) });
+            if (res.ok) this._brokerNames = await res.json();
+        } catch(e) {}
+        return this._brokerNames || {};
+    },
+
+    _resolveBrokerName(bid, bnm, brokerNames, rank) {
+        // If bnm is a proper name (non-numeric), use it directly
+        if (bnm && !/^[\d,.\s]+$/.test(bnm.trim())) return bnm;
+        // Try lookup table
+        const cleaned = String(bid).replace(/,/g, '').trim();
+        if (brokerNames[cleaned]) return brokerNames[cleaned];
+        if (brokerNames[bid])     return brokerNames[bid];
+        // Fall back to anonymous label
+        const labels = ['甲','乙','丙','丁','戊','己','庚','辛'];
+        return `主力${labels[rank] || rank+1}`;
+    },
+
     async loadBrokerChips(sym, forceRefresh) {
         if (!sym) return;
         const box    = document.getElementById('brokerChipContent');
@@ -1998,6 +2022,7 @@ const app = {
         box.innerHTML = '<div class="text-center py-4 text-gray-500 text-xs animate-pulse">調閱主力分點資料...</div>';
 
         try {
+            const brokerNames = await this._loadBrokerNames();
             let records = null;
             const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
 
@@ -2038,25 +2063,28 @@ const app = {
             if (dateLbl) dateLbl.textContent = dateLabel;
 
             // 計算 N 天累積買超（主力進場方向）
+            // key = bid，value = [累積量, bnm]
             const cumBuyMap = {}, cumSelMap = {};
             for (const rec of records) {
                 for (const b of (rec.buyers || [])) {
                     const key = b.bid || b.bnm || '';
-                    cumBuyMap[key] = (cumBuyMap[key] || 0) + (b.net || 0);
+                    if (!cumBuyMap[key]) cumBuyMap[key] = [0, b.bnm || ''];
+                    cumBuyMap[key][0] += (b.net || 0);
                 }
                 for (const s of (rec.sellers || [])) {
                     const key = s.bid || s.bnm || '';
-                    cumSelMap[key] = (cumSelMap[key] || 0) + Math.abs(s.net || 0);
+                    if (!cumSelMap[key]) cumSelMap[key] = [0, s.bnm || ''];
+                    cumSelMap[key][0] += Math.abs(s.net || 0);
                 }
             }
-            const topBuyers  = Object.entries(cumBuyMap).sort((a,b) => b[1]-a[1]).slice(0,8);
-            const topSellers = Object.entries(cumSelMap).sort((a,b) => b[1]-a[1]).slice(0,8);
-            const maxBuy = topBuyers[0]?.[1] || 1;
-            const maxSel = topSellers[0]?.[1] || 1;
+            const topBuyers  = Object.entries(cumBuyMap).sort((a,b) => b[1][0]-a[1][0]).slice(0,8);
+            const topSellers = Object.entries(cumSelMap).sort((a,b) => b[1][0]-a[1][0]).slice(0,8);
+            const maxBuy = topBuyers[0]?.[1][0] || 1;
+            const maxSel = topSellers[0]?.[1][0] || 1;
 
             // 計算整體方向
-            const totalBuy = topBuyers.reduce((s,[,v])=>s+v,0);
-            const totalSel = topSellers.reduce((s,[,v])=>s+v,0);
+            const totalBuy = topBuyers.reduce((s,[,v])=>s+v[0],0);
+            const totalSel = topSellers.reduce((s,[,v])=>s+v[0],0);
             const totalBuyK = totalBuy>=1000 ? (totalBuy/1000).toFixed(0)+'K' : totalBuy;
             const totalSelK = totalSel>=1000 ? (totalSel/1000).toFixed(0)+'K' : totalSel;
             const ratio = totalBuy / (totalBuy + totalSel + 1);
@@ -2065,9 +2093,9 @@ const app = {
             else if (ratio < 0.45) { verdict='🟢 主力積極出脫'; verdictBg='bg-green-900/30'; verdictText='text-green-300'; }
             else                   { verdict='⚪ 多空拉鋸觀望'; verdictBg='bg-gray-800/40'; verdictText='text-gray-300'; }
 
-            // 友善名稱：若是純數字/長代碼，改用「主力A」「主力B」
-            const buyLabels = topBuyers.map(([k],i)=> /^[\d,.\s]+$/.test(k) ? `主力${String.fromCharCode(65+i)}` : (k.length>6?k.slice(0,6):k));
-            const selLabels = topSellers.map(([k],i)=> /^[\d,.\s]+$/.test(k) ? `主力${String.fromCharCode(97+i)}` : (k.length>6?k.slice(0,6):k));
+            // 解析券商名稱：優先用 broker_names.json 對照表
+            const buyLabels = topBuyers.map(([bid,[,bnm]],i) => this._resolveBrokerName(bid, bnm, brokerNames, i));
+            const selLabels = topSellers.map(([bid,[,bnm]],i) => this._resolveBrokerName(bid, bnm, brokerNames, i));
 
             const rowFn = (label, val, maxVal, isBuy) => {
                 const pct  = Math.round(val / maxVal * 100);
@@ -2084,7 +2112,6 @@ const app = {
             };
 
             const days = records.length;
-            // store data for AI use
             this._brokerChipSummary = { sym, totalBuy, totalSel, totalBuyK, totalSelK, verdict, days, topBuyers, topSellers, buyLabels, selLabels };
 
             const html = `
@@ -2100,11 +2127,11 @@ const app = {
             <div class="grid grid-cols-2 gap-2">
                 <div>
                     <div class="text-[10px] text-red-400 font-bold mb-1">▲ 積極買進</div>
-                    ${topBuyers.map(([,v],i) => rowFn(buyLabels[i], v, maxBuy, true)).join('')}
+                    ${topBuyers.map(([,[v]],i) => rowFn(buyLabels[i], v, maxBuy, true)).join('')}
                 </div>
                 <div>
                     <div class="text-[10px] text-green-400 font-bold mb-1">▼ 積極賣出</div>
-                    ${topSellers.map(([,v],i) => rowFn(selLabels[i], v, maxSel, false)).join('')}
+                    ${topSellers.map(([,[v]],i) => rowFn(selLabels[i], v, maxSel, false)).join('')}
                 </div>
             </div>`;
 

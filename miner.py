@@ -353,9 +353,10 @@ def _massive_scrape(url, api_key):
 def fetch_broker_chips():
     """
     每天17:00後抓取分點籌碼，存入 data/chips/{sym}.json。
-    ‧ 第一盾：FinMind TaiwanStockBrokerTrading 逐股查（CHIP_WATCHLIST，需帶 data_id）
-    ‧ 第二盾：TWSE T86 直連（JSON API，不需代理，完全免費）
-    ‧ 滾動視窗：只保留最近 20 個交易日，超過自動刪除
+    - 第一盾：TWSE T86 直連（有真實券商名稱，同時建立代碼對照表）
+    - 第二盾：FinMind 逐股查（T86 完全失敗時備用）
+    - 附產出：broker_names.json（券商代碼->名稱全表，供前端顯示真名）
+    - 滾動視窗：只保留最近 20 個交易日，超過自動刪除
     """
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
@@ -364,7 +365,7 @@ def fetch_broker_chips():
     cutoff_str   = trading_days[0].strftime('%Y-%m-%d')
     today_str    = date.today().strftime('%Y-%m-%d')
 
-    # ── 判斷已有哪些日期（避免重複下載）─────────────────────────────
+    # 判斷哪些日期尚未有資料
     have_dates: set = set()
     for f in chips_dir.glob('*.json'):
         try:
@@ -375,74 +376,99 @@ def fetch_broker_chips():
 
     missing_days = [d for d in trading_days if d.strftime('%Y-%m-%d') not in have_dates]
     if not missing_days:
-        print(f"\n🔍 分點籌碼已是最新，跳過（{cutoff_str} ~ {today_str}）")
+        print(f"\n分點籌碼已是最新，跳過（{cutoff_str} ~ {today_str}）")
         _prune_chips(chips_dir, cutoff_str)
         return
 
     fetch_start = missing_days[0].strftime('%Y-%m-%d')
-    print(f"\n🔍 分點籌碼採礦（{fetch_start} ~ {today_str}，{len(CHIP_WATCHLIST)} 檔監控清單）...")
+    print(f"\n分點籌碼採礦（{fetch_start} ~ {today_str}，{len(CHIP_WATCHLIST)} 檔監控清單）...")
 
     def _int(v):
         try: return int(str(v).replace(',', ''))
         except: return 0
 
     all_rows = []
+    # 券商代碼->名稱累積對照表（從 T86 蒐集）
+    broker_lookup: dict = {}
 
-    # ── 第一盾：FinMind 逐股查（必須帶 data_id，批次不帶 data_id 無效）──
-    if FINMIND_TOKEN:
+    # 載入既有對照表（合併累積）
+    lookup_file = Path(DATA_DIR) / 'broker_names.json'
+    if lookup_file.exists():
+        try:
+            broker_lookup = json.loads(lookup_file.read_text(encoding='utf-8'))
+        except Exception:
+            pass
+
+    # 第一盾：TWSE T86 直連（有真實券商名稱）
+    t86_headers = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/1.0)'}
+    t86_total = 0
+    for target_day in missing_days:
+        day_str = target_day.strftime('%Y%m%d')
+        day_iso = target_day.strftime('%Y-%m-%d')
+        for sym in CHIP_WATCHLIST:
+            try:
+                url = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
+                       f'?response=json&date={day_str}&stock_no={sym}')
+                resp = requests.get(url, headers=t86_headers, timeout=15)
+                data = resp.json()
+                if data.get('stat') == 'OK':
+                    for row in (data.get('data') or []):
+                        # T86: [序號, 券商代號, 券商名稱, 買進股數, 賣出股數, 買賣差]
+                        if len(row) < 5:
+                            continue
+                        bid = str(row[1]).strip()
+                        bnm = str(row[2]).strip()
+                        if bid and bnm:
+                            broker_lookup[bid] = bnm  # 累積對照表
+                        all_rows.append({
+                            'date':        day_iso,
+                            'stock_id':    sym,
+                            'broker_id':   bid,
+                            'broker_name': bnm,
+                            'buy':         _int(row[3]),
+                            'sell':        _int(row[4]),
+                        })
+                        t86_total += 1
+            except Exception as e:
+                print(f"    T86 {sym} {day_str}: {e}")
+            time.sleep(0.5)
+    print(f"  TWSE T86 回傳 {t86_total} 筆（{len(missing_days)} 天 x {len(CHIP_WATCHLIST)} 檔）")
+
+    # 第二盾：FinMind 逐股查（T86 完全沒資料時備用）
+    if not all_rows and FINMIND_TOKEN:
+        print(f"  T86 無資料，改用 FinMind 逐股查...")
         for sym in CHIP_WATCHLIST:
             rows = fm_get('TaiwanStockBrokerTrading',
                           data_id=sym, start_date=fetch_start, end_date=today_str)
             for r in rows:
+                bid = str(r.get('broker_id', ''))
+                bnm = str(r.get('broker_name', ''))
+                if bid and bnm:
+                    broker_lookup[bid] = bnm
                 all_rows.append({
                     'date':        str(r.get('date', ''))[:10],
                     'stock_id':    str(r.get('stock_id', sym)),
-                    'broker_id':   str(r.get('broker_id', '')),
-                    'broker_name': str(r.get('broker_name', '')),
+                    'broker_id':   bid,
+                    'broker_name': bnm or broker_lookup.get(bid, ''),
                     'buy':         _int(r.get('buy', 0)),
                     'sell':        _int(r.get('sell', 0)),
                 })
             time.sleep(0.3)
         print(f"  FinMind 逐股回傳 {len(all_rows)} 筆（{len(CHIP_WATCHLIST)} 檔）")
 
-    # ── 第二盾：TWSE T86 直連（不需 Massive API，GitHub Actions 可直達）──
     if not all_rows:
-        print(f"  FinMind 無資料，改用 TWSE T86 直連...")
-        headers = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/1.0)'}
-        total = 0
-        for target_day in missing_days:
-            day_str = target_day.strftime('%Y%m%d')
-            day_iso = target_day.strftime('%Y-%m-%d')
-            for sym in CHIP_WATCHLIST:
-                try:
-                    url = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
-                           f'?response=json&date={day_str}&stock_no={sym}')
-                    resp = requests.get(url, headers=headers, timeout=15)
-                    data = resp.json()
-                    if data.get('stat') == 'OK':
-                        for row in (data.get('data') or []):
-                            # T86: [序號, 券商代號, 券商名稱, 買進股數, 賣出股數, 買賣差]
-                            if len(row) < 5:
-                                continue
-                            all_rows.append({
-                                'date':        day_iso,
-                                'stock_id':    sym,
-                                'broker_id':   str(row[1]),
-                                'broker_name': str(row[2]),
-                                'buy':         _int(row[3]),
-                                'sell':        _int(row[4]),
-                            })
-                            total += 1
-                except Exception as e:
-                    print(f"    ⚠️  T86 {sym} {day_str}: {e}")
-                time.sleep(0.6)  # 禮貌間隔，避免被 TWSE 封鎖
-        print(f"  TWSE T86 直連回傳 {total} 筆（{len(missing_days)} 天 × {len(CHIP_WATCHLIST)} 檔）")
-
-    if not all_rows:
-        print("  ⚠️  無分點資料，跳過")
+        print("  無分點資料，跳過")
         return
 
-    # ── 按股票代號分組 ────────────────────────────────────────────────
+    # 儲存更新後的券商代碼對照表
+    if broker_lookup:
+        lookup_file.write_text(
+            json.dumps(broker_lookup, ensure_ascii=False, separators=(',', ':')),
+            encoding='utf-8'
+        )
+        print(f"  券商代碼對照表更新：{len(broker_lookup)} 筆")
+
+    # 按股票代號分組
     by_sym_date: dict = {}
     for r in all_rows:
         sym   = str(r.get('stock_id', ''))
@@ -450,15 +476,17 @@ def fetch_broker_chips():
         if not sym or not d_str or d_str < cutoff_str:
             continue
         key = (sym, d_str)
+        bid = str(r.get('broker_id', ''))
+        bnm = str(r.get('broker_name', '')) or broker_lookup.get(bid, '')
         by_sym_date.setdefault(key, []).append({
-            'bid': str(r.get('broker_id', '')),
-            'bnm': str(r.get('broker_name', '')),
+            'bid': bid,
+            'bnm': bnm,
             'buy': int(r.get('buy', 0)),
             'sel': int(r.get('sell', 0)),
             'net': int(r.get('buy', 0)) - int(r.get('sell', 0)),
         })
 
-    # ── 彙整每股每日前15買超/賣超，合併既有資料後寫檔 ───────────────
+    # 彙整每股每日前15買超/賣超，合併既有資料後寫檔
     keep   = {d.strftime('%Y-%m-%d') for d in trading_days}
     syms   = {k[0] for k in by_sym_date}
     updated = 0
@@ -494,7 +522,7 @@ def fetch_broker_chips():
             updated += 1
 
     _prune_chips(chips_dir, cutoff_str)
-    print(f"  ✅ 分點籌碼完成：寫入 {updated} 檔（全台股）")
+    print(f"  分點籌碼完成：寫入 {updated} 檔（{len(CHIP_WATCHLIST)} 檔監控清單）")
 
 
 def _prune_chips(chips_dir: Path, cutoff_str: str):

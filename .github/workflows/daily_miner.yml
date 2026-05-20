@@ -50,6 +50,7 @@ jobs:
           cp data/chips/*.json     /tmp/mine/data/chips/    2>/dev/null || true
           cp futures_cache.json    /tmp/mine/                2>/dev/null || true
           cp macro_cache.json      /tmp/mine/                2>/dev/null || true
+          cp broker_names.json     /tmp/mine/                2>/dev/null || true
           cp index.html            /tmp/mine/                2>/dev/null || true
           echo "備份完成：$(ls /tmp/mine/data/*.json 2>/dev/null | wc -l) K線，$(ls /tmp/mine/data/chips/*.json 2>/dev/null | wc -l) 分點"
 
@@ -70,11 +71,12 @@ jobs:
           cp /tmp/mine/futures_cache.json   .               2>/dev/null || true
           cp /tmp/mine/macro_cache.json     .               2>/dev/null || true
           cp /tmp/mine/index.html           .               2>/dev/null || true
+          cp /tmp/mine/broker_names.json    .               2>/dev/null || true
 
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
 
-          git add index.html futures_cache.json macro_cache.json data/ 2>/dev/null || true
+          git add index.html broker_names.json futures_cache.json macro_cache.json data/ 2>/dev/null || true
           git diff --cached --quiet && echo "無更新" || \
             git commit -m "📡 資料更新 $(date -u '+%Y-%m-%d %H:%M UTC')（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           git push origin gh-pages
