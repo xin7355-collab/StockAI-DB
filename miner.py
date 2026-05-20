@@ -149,10 +149,15 @@ def fetch_futures_cache():
     start = (today - timedelta(days=10)).strftime('%Y-%m-%d')
     print(f"\n🔮 抓取外資台指期淨口數 {start}~{today} ...")
     rows = fm_get('TaiwanFuturesInstitutionalInvestors', data_id='TX', start_date=start)
-    # FinMind 欄位名稱曾多次微調，用包含比對更穩定
-    foreign = [r for r in rows if '外資' in r.get('name', '') or '外資' in r.get('institutional_investors', '')]
+    # 優先比對 FinMind 正式欄位 institutional_investors，再 fallback 舊版 name 欄
+    foreign = [r for r in rows if
+               r.get('institutional_investors') == '外資及陸資' or
+               r.get('name') == '外資及陸資' or
+               '外資' in r.get('institutional_investors', '') or
+               '外資' in r.get('name', '')]
     if not foreign:
-        print(f"  ⚠️  無外資期貨資料，跳過寫入（共 {len(rows)} 筆，name 值：{list(set(r.get('name','?') for r in rows[:5]))}）")
+        all_names = list(set(r.get('institutional_investors', r.get('name', '?')) for r in rows[:10]))
+        print(f"  ⚠️  無外資期貨資料，跳過寫入（共 {len(rows)} 筆，法人欄位值：{all_names}）")
         return
     last = foreign[-1]
     try:
@@ -178,8 +183,54 @@ def fetch_futures_cache():
     print(f"  ✅ 外資台指期淨口數: {net:+,} 口  ({cache['date']})")
 
 
+def fetch_us_macro_cache():
+    """抓取美股大盤與台積電 ADR 昨收資料，存為 macro_cache.json 供前端靜態讀取。"""
+    try:
+        import yfinance as yf
+    except ImportError:
+        print("\n⚠️  yfinance 未安裝，跳過美股快取（pip install yfinance）")
+        return
+
+    today = date.today()
+    symbols = {
+        'sp500':  '^GSPC',
+        'nasdaq': '^NDX',
+        'tsm':    'TSM',
+        'dji':    '^DJI',
+        'vix':    '^VIX',
+    }
+    print(f"\n🌐 抓取美股昨收資料（{today}）...")
+    result = {}
+    for key, ticker in symbols.items():
+        try:
+            hist = yf.Ticker(ticker).history(period='5d')
+            if hist.empty:
+                continue
+            prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
+            last = hist.iloc[-1]
+            result[key] = {
+                'date':    str(last.name.date()),
+                'close':   round(float(last['Close']), 2),
+                'prev':    round(float(prev['Close']), 2),
+                'chg_pct': round((float(last['Close']) - float(prev['Close'])) / float(prev['Close']) * 100, 2),
+            }
+            print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
+        except Exception as e:
+            print(f"  ⚠️  {ticker} 失敗: {e}")
+
+    if not result:
+        print("  ⚠️  美股資料全部失敗，跳過寫入")
+        return
+
+    result['generated'] = today.strftime('%Y-%m-%d')
+    with open('macro_cache.json', 'w', encoding='utf-8') as f:
+        json.dump(result, f, ensure_ascii=False)
+    print(f"  ✅ macro_cache.json 寫入完成（{len(result)-1} 個指標）")
+
+
 if __name__ == '__main__':
     print("🚀 首席 AI 司令部 — 雲端籌碼採礦機")
     print(f"🔑 FinMind Token: {'✅ 有（完整模式）' if FINMIND_TOKEN else '⚠️  無（限速模式）'}\n")
     run()
     fetch_futures_cache()
+    fetch_us_macro_cache()

@@ -1206,10 +1206,20 @@ const app = {
 
             // ── Strategy 1: Read pre-fetched gh-pages cache (updated daily by GitHub Actions) ──
             try {
-                const cacheRes = await fetch('https://xin7355-collab.github.io/futures_cache.json', { signal: AbortSignal.timeout(4000) });
+                const cacheRes = await fetch('https://xin7355-collab.github.io/stockai-db/futures_cache.json', { signal: AbortSignal.timeout(4000) });
                 if (cacheRes.ok) {
                     const cj = await cacheRes.json();
                     if (cj.fi_net !== undefined) { taifexData = cj.fi_net; }
+                }
+            } catch(e) {}
+
+            // ── Strategy 1b: 美股大盤 gh-pages 靜態快取 ──
+            try {
+                const macroRes = await fetch('https://xin7355-collab.github.io/stockai-db/macro_cache.json', { signal: AbortSignal.timeout(4000) });
+                if (macroRes.ok) {
+                    const mj = await macroRes.json();
+                    this.usMacroCache = mj;
+                    this._renderUSBar(mj);
                 }
             } catch(e) {}
 
@@ -1308,6 +1318,32 @@ const app = {
             emergencyBanner.classList.add('hidden'); document.body.classList.remove('bg-red-950/20');
         }
         if(this.currentSymbolId) this.refreshStrategy();
+    },
+
+    _renderUSBar(m) {
+        const fmt = (val, chg) => {
+            if (val == null) return;
+            const col = chg > 0 ? 'text-[#f87171]' : (chg < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const sign = chg > 0 ? '+' : '';
+            return { val: val.toLocaleString(), chg: `${sign}${chg.toFixed(2)}%`, col };
+        };
+        const set = (id, valId, chgId, key) => {
+            const d = fmt(m[key]?.close, m[key]?.chg_pct);
+            if (!d) return;
+            const el = document.getElementById(valId); const ec = document.getElementById(chgId);
+            if (el) { el.innerHTML = `<span class="${d.col}">${d.val}</span>`; }
+            if (ec) { ec.innerHTML = `<span class="${d.col}">${d.chg}</span>`; }
+        };
+        set(null, 'usBar_spx', 'usBar_spx_chg', 'sp500');
+        set(null, 'usBar_ndx', 'usBar_ndx_chg', 'nasdaq');
+        set(null, 'usBar_tsm', 'usBar_tsm_chg', 'tsm');
+        // VIX 特殊：漲是空頭警示（紅），跌是多頭（綠）
+        if (m.vix) {
+            const vEl = document.getElementById('usBar_vix'), vcEl = document.getElementById('usBar_vix_chg');
+            const col = m.vix.close > 25 ? 'text-[#f87171]' : (m.vix.close < 15 ? 'text-[#4ade80]' : 'text-yellow-300');
+            if (vEl) vEl.innerHTML = `<span class="${col}">${m.vix.close.toFixed(2)}</span>`;
+            if (vcEl) { const sign = m.vix.chg_pct > 0 ? '+' : ''; vcEl.innerHTML = `<span class="${col}">${sign}${m.vix.chg_pct.toFixed(2)}%</span>`; }
+        }
     },
 
     async fetchHistoricalData(symbol, forceRefresh = false) {

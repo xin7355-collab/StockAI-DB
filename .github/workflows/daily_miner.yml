@@ -27,7 +27,7 @@ jobs:
           cache: 'pip'
 
       - name: 📦 安裝相依套件
-        run: pip install requests
+        run: pip install requests yfinance
 
       - name: 📂 還原昨天的 data/ 快取（加速增量更新）
         run: |
@@ -57,25 +57,27 @@ jobs:
 
           echo "✅ data 分支已更新，共 ${STOCKS} 檔"
 
-      - name: 🔮 更新 gh-pages 外資期貨快取
+      - name: 🔮 更新 gh-pages 快取（外資期貨 + 美股大盤）
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if [ ! -f futures_cache.json ]; then
-            echo "⚠️  futures_cache.json 不存在，跳過"
+          # 暫存要更新的檔案
+          mkdir -p /tmp/gh_pages_update
+          [ -f futures_cache.json ] && cp futures_cache.json /tmp/gh_pages_update/ || echo "futures_cache.json 不存在"
+          [ -f macro_cache.json   ] && cp macro_cache.json   /tmp/gh_pages_update/ || echo "macro_cache.json 不存在"
+
+          if [ ! -f /tmp/gh_pages_update/futures_cache.json ] && [ ! -f /tmp/gh_pages_update/macro_cache.json ]; then
+            echo "⚠️  無快取檔案需更新，跳過"
             exit 0
           fi
-
-          # 拉取 gh-pages 現有內容
-          mkdir -p /tmp/gh_pages_update
-          cp futures_cache.json /tmp/gh_pages_update/
 
           git fetch origin gh-pages 2>/dev/null || true
           git checkout gh-pages 2>/dev/null || { echo "gh-pages 不存在，跳過"; exit 0; }
 
-          cp /tmp/gh_pages_update/futures_cache.json .
-          git add futures_cache.json
-          git diff --cached --quiet && echo "無更新" || git commit -m "🔮 外資期貨快取 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          [ -f /tmp/gh_pages_update/futures_cache.json ] && cp /tmp/gh_pages_update/futures_cache.json .
+          [ -f /tmp/gh_pages_update/macro_cache.json   ] && cp /tmp/gh_pages_update/macro_cache.json .
+          git add futures_cache.json macro_cache.json 2>/dev/null || true
+          git diff --cached --quiet && echo "無更新" || git commit -m "📡 快取更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push origin gh-pages
-          echo "✅ gh-pages futures_cache.json 已更新"
+          echo "✅ gh-pages 快取已更新"
