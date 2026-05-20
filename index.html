@@ -279,6 +279,7 @@
                 <div class="px-3 pt-3 pb-1.5 flex justify-between items-center">
                     <div class="flex flex-col w-[55%] justify-center overflow-hidden">
                         <div class="text-white font-bold flex items-baseline gap-2 truncate pb-0.5">
+                            <span id="monitorHuntIcon" class="cursor-pointer text-2xl md:text-3xl text-gray-500 transition-transform hover:scale-110 flex-shrink-0" onclick="app.toggleMonitor(); app.vibrate(30);" title="加入/移除獵殺監控">🗡️</span>
                             <span id="favStarIcon" class="cursor-pointer text-3xl md:text-4xl text-gray-500 transition-transform hover:scale-110 flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
                             <span id="quoteName" class="text-2xl md:text-3xl font-black truncate tracking-wide">載入中...</span>
                         </div>
@@ -567,6 +568,60 @@
             </div>
         </div>
 
+        <div id="tabContentHunt" class="hidden flex-col p-2 gap-3">
+            <!-- Active Alerts Banner -->
+            <div id="huntAlertBox" class="hidden flex-col gap-2"></div>
+
+            <!-- Header -->
+            <div class="flex justify-between items-center px-1">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-base font-black text-red-400">⚔️ 獵殺監控清單</h3>
+                    <span class="text-xs text-gray-500 bg-[#1c2128] px-2 py-0.5 rounded-full border border-[#30363d]">
+                        <span id="huntCount">0</span> 檔
+                    </span>
+                </div>
+                <button id="huntScanBtn" onclick="app.scanAllMonitored(); app.vibrate(50);" class="bg-red-900/50 hover:bg-red-800 text-red-300 border border-red-800 text-xs px-3 py-1.5 rounded font-bold transition-colors">🔄 立即掃描</button>
+            </div>
+
+            <!-- Monitor List -->
+            <div id="huntMonitorList" class="flex flex-col gap-2">
+                <div class="text-center py-10 text-gray-600">
+                    <div class="text-4xl mb-3">🗡️</div>
+                    <div class="text-sm font-bold">監控清單為空</div>
+                    <div class="text-xs mt-1 text-gray-700">在「診斷」頁看到心儀標的後<br>按 🗡️ 圖示加入監控</div>
+                </div>
+            </div>
+
+            <!-- Strategy Guide -->
+            <div class="bg-[#1c2128] border border-[#30363d] rounded-lg overflow-hidden">
+                <button onclick="document.getElementById('huntGuide').classList.toggle('hidden')" class="w-full text-left p-3 text-sm font-bold text-gray-400 hover:text-white flex justify-between items-center transition-colors">
+                    <span>📖 四大獵殺策略說明（點擊展開）</span><span>▼</span>
+                </button>
+                <div id="huntGuide" class="hidden p-3 pt-0 text-xs text-gray-300 space-y-3 border-t border-[#30363d] mt-1 pt-3 leading-relaxed">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-red-400 font-black">⚔️ 主策略：回落月線再起漲（黃金轉折獵殺）</span>
+                        <span class="text-gray-400">判斷時機：股票先漲一波，然後開始回檔休息（洗盤）。等到價格跌近<span class="text-purple-300">月線（20日均線）</span>後，若當天出現<span class="text-red-300">實體紅K棒</span>且<span class="text-cyan-300">成交量大於5日均量</span>，同時月線還在往上走，就是主力洗盤結束、重新點火的黃金買點——第二隻腳起漲！</span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <span class="text-orange-400 font-black">⚔️ 策略一：破底翻（誘空反殺獵殺）</span>
+                        <span class="text-gray-400">判斷時機：股票跌破一個重要支撐（大家都看到的「地板線」），讓散戶嚇到賣股票（割肉）。但主力其實在偷偷低價買進。若跌破後2~3天內股價重新站回原來的地板線，且當天是帶量紅K棒，就是「假跌破真反殺」的黃金坑確認！</span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <span class="text-yellow-400 font-black">🚀 策略二：三日量縮惜售（飆股二次上車）</span>
+                        <span class="text-gray-400">判斷時機：飆股漲了一波後，停下來橫盤休息。重點在於「縮量」——連續3天成交量越來越少，遠低於5日均量。這代表主力根本沒有在賣股票，只是散戶自己在互相踩。等成交量開始放大、股價觸碰<span class="text-cyan-300">5日線</span>收紅K，就是主力重新點火！</span>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <span class="text-blue-400 font-black">🔥 策略三：布林縮口噴發（暴風雨前寧靜）</span>
+                        <span class="text-gray-400">判斷時機：布林通道（股價的波動軌道）上下兩條線靠得越來越近，像橡皮筋被拉緊。這是主力在靜悄悄地吸貨。當某天股價突然帶量長紅K衝破<span class="text-blue-300">布林上軌</span>，就像橡皮筋突然彈開——主力幾個月的吃貨完成，大波段要發動了！</span>
+                    </div>
+                    <div class="bg-[#0d1117] rounded p-2 mt-1">
+                        <span class="text-green-400 font-bold">💡 注意：</span>
+                        <span class="text-gray-400">以上所有均線數字都會顯示實際價格（如「月線 ¥920」），讓你一眼看清楚多遠才回到安全位置。</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <div class="nav-fixed w-full">
@@ -575,6 +630,7 @@
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[10px] mt-0.5 font-bold">自選</span></button>
             <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">💼</span><span class="text-[10px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[10px] mt-0.5 font-bold">雷達</span></button>
+            <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-2xl drop-shadow grayscale-[80%]">⚔️</span><span class="text-[10px] mt-0.5 font-bold">獵殺</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
         </nav>
     </div>
 
@@ -705,6 +761,7 @@ const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode],
 const app = {
     settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey: '', massiveKey: '', aiPrompt: '', voiceAlert: false },
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
+    monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
     inventory: JSON.parse(localStorage.getItem('proTerminalInv')) || [],
@@ -800,13 +857,14 @@ const app = {
         this.initSpringBackZoom('geminiResultBox');
         this.refreshUSMarketBar();
         this.registerServiceWorker();
+        setTimeout(() => this.scanAllMonitored(), 8000);
     },
 
     initSwipeNavigation() {
         let startX = 0, startY = 0;
         const threshold = 50;
         const edgeWidth = window.innerWidth * 0.15; 
-        const tabs = ['diag', 'fav', 'inv', 'radar'];
+        const tabs = ['diag', 'fav', 'inv', 'radar', 'hunt'];
 
         document.addEventListener('touchstart', e => {
             if(e.target.closest('.swipe-container') || e.target.closest('.drag-handle') || e.target.closest('.zoomable-zone') || e.target.closest('textarea')) return;
@@ -1001,7 +1059,7 @@ const app = {
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         
-        ['Diag', 'Fav', 'Inv', 'Radar'].forEach(tab => {
+        ['Diag', 'Fav', 'Inv', 'Radar', 'Hunt'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             document.getElementById(`tabContent${tab}`).style.display = isMatch ? 'flex' : 'none';
             document.getElementById(`navBtn${tab}`).classList.toggle('active', isMatch);
@@ -1014,6 +1072,7 @@ const app = {
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
         if (tabId === 'radar') this.renderRadarCache();
+        if (tabId === 'hunt') this.renderHuntTab();
     },
 
     switchSubTab(tab) {
@@ -2807,6 +2866,7 @@ ${revText}
         if(inInv && inInv.cost > 0) document.getElementById('costInput').value = inInv.cost; else document.getElementById('costInput').value = '';
 
         this.updateFavIcon();
+        this.updateMonitorIcon();
         this.refreshStrategy();
         this.renderChart();
         this.updatePredictionUI(trades, patternStats);
@@ -3384,7 +3444,371 @@ ${revText}
         })).filter(a => a.defPrice > 0);
         const cache = await caches.open('stockai-v1');
         await cache.put('/sw-alert-config', new Response(JSON.stringify({ alerts, updatedAt: Date.now() }), { headers: { 'Content-Type': 'application/json' } }));
-    }
+    },
+
+    saveMonitorList() {
+        localStorage.setItem('proTerminalHunt', JSON.stringify(this.monitorList));
+    },
+
+    toggleMonitor() {
+        const sym = this.currentSymbolId;
+        if (!sym) return;
+        const idx = this.monitorList.findIndex(m => m.sym === sym);
+        if (idx > -1) {
+            this.monitorList.splice(idx, 1);
+            this.saveMonitorList();
+            this.updateMonitorIcon();
+            this.vibrate(30);
+            return;
+        }
+        const data = this.rawDailyData;
+        if (!data || data.length < 20) { alert('資料不足，至少需要20天資料'); return; }
+        const tech = this._calcTechFromData(data);
+        if (!tech) return;
+        const { closes, n, ma5arr, ma10arr, ma20arr, ma60arr, vma5arr } = tech;
+        const pC = closes[n-1];
+        const ma5  = ma5arr[n-1], ma10 = ma10arr[n-1], ma20 = ma20arr[n-1], ma60 = ma60arr[n-1];
+        const chipCost = this._getChipCost10d(data);
+        const recentLow = Math.min(...closes.slice(-20));
+        const entry = {
+            sym, name: this.getStockName(sym),
+            addDate: new Date().toISOString().split('T')[0],
+            addPrice: pC, ma5AtAdd: ma5, ma10AtAdd: ma10, ma20AtAdd: ma20, ma60AtAdd: ma60,
+            chipCostAtAdd: chipCost, recentLow,
+            currentPrice: pC, currentMA5: ma5, currentMA20: ma20,
+            firedAlerts: [],
+        };
+        this.monitorList.push(entry);
+        this.saveMonitorList();
+        this.updateMonitorIcon();
+        this.vibrate([50, 50, 50]);
+        const lines = [
+            `✅ 已加入獵殺監控！`,
+            ``,
+            `📊 加入時技術位階快照：`,
+            `• 現價：${pC.toFixed(2)}`,
+            `• 5日線(MA5)：${ma5 ? ma5.toFixed(2) : '--'}`,
+            `• 月線(MA20)：${ma20 ? ma20.toFixed(2) : '--'}`,
+            `• 季線(MA60)：${ma60 ? ma60.toFixed(2) : '--'}`,
+            `• 主力10日加權成本：${chipCost ? chipCost.toFixed(2) : '--'}`,
+            ``,
+            `系統將自動偵測4種獵殺訊號並提醒你！`,
+        ];
+        alert(lines.join('\n'));
+        this.renderHuntTab();
+    },
+
+    updateMonitorIcon() {
+        const sym = this.currentSymbolId;
+        const isMonitored = this.monitorList.some(m => m.sym === sym);
+        const icon = document.getElementById('monitorHuntIcon');
+        if (!icon) return;
+        icon.innerText = isMonitored ? '⚔️' : '🗡️';
+        icon.className = isMonitored
+            ? 'cursor-pointer text-2xl md:text-3xl text-red-400 transition-transform hover:scale-110 flex-shrink-0'
+            : 'cursor-pointer text-2xl md:text-3xl text-gray-500 transition-transform hover:scale-110 flex-shrink-0';
+    },
+
+    _getChipCost10d(data) {
+        const slice = data.slice(-10);
+        let totalValue = 0, totalVol = 0;
+        for (const d of slice) {
+            const vol = d.volume || 0;
+            const tp = (d.high + d.low + d.close) / 3;
+            totalValue += tp * vol;
+            totalVol += vol;
+        }
+        return totalVol > 0 ? totalValue / totalVol : null;
+    },
+
+    _smaArr(arr, period) {
+        return arr.map((_, i) => i >= period - 1
+            ? arr.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period
+            : null);
+    },
+
+    _calcTechFromData(data) {
+        if (!data || data.length < 5) return null;
+        const closes = data.map(r => r.close);
+        const vols   = data.map(r => r.volume || 0);
+        const highs  = data.map(r => r.high);
+        const lows   = data.map(r => r.low);
+        const opens  = data.map(r => r.open);
+        const n = closes.length;
+        const ma5arr  = this._smaArr(closes, 5);
+        const ma10arr = this._smaArr(closes, 10);
+        const ma20arr = this._smaArr(closes, 20);
+        const ma60arr = this._smaArr(closes, 60);
+        const vma5arr = this._smaArr(vols, 5);
+        const upperArr = [], lowerArr = [], midArr = [];
+        for (let i = 0; i < n; i++) {
+            if (i < 19) { upperArr.push(null); lowerArr.push(null); midArr.push(null); continue; }
+            const slice = closes.slice(i - 19, i + 1);
+            const mean = slice.reduce((a, b) => a + b, 0) / 20;
+            const sd = Math.sqrt(slice.reduce((a, b) => a + (b - mean) ** 2, 0) / 20);
+            upperArr.push(mean + 2 * sd);
+            lowerArr.push(mean - 2 * sd);
+            midArr.push(mean);
+        }
+        return { closes, vols, highs, lows, opens, n, ma5arr, ma10arr, ma20arr, ma60arr, vma5arr, upperArr, lowerArr, midArr };
+    },
+
+    _checkPullbackRelaunch(tech, entry) {
+        const { closes, vols, opens, n, ma5arr, ma20arr, vma5arr } = tech;
+        const i = n - 1;
+        if (!ma20arr[i] || !vma5arr[i] || i < 5) return null;
+        const pC = closes[i], pO = opens[i], ma20 = ma20arr[i], vma5 = vma5arr[i];
+        const ma20prev = ma20arr[i - 1];
+        const pullbackDepth = (pC - ma20) / ma20;
+        const wasPulledBack = closes.slice(Math.max(0, i - 6), i).some(c => {
+            const d = (c - ma20arr[Math.min(n-1, i)]) / ma20arr[Math.min(n-1, i)];
+            return d >= -0.07 && d <= 0.03;
+        });
+        const nearMA20 = pullbackDepth >= -0.03 && pullbackDepth <= 0.06;
+        const isRedCandle = pC > pO;
+        const bodyPct = Math.abs(pC - pO) / pO * 100;
+        const isHighVol = vols[i] > vma5 * 1.05;
+        const isAboveMA20 = pC > ma20;
+        const isMA20Rising = ma20prev !== null && ma20 > ma20prev;
+        if ((nearMA20 || wasPulledBack) && isRedCandle && bodyPct > 0.5 && isHighVol && isAboveMA20 && isMA20Rising) {
+            const chipStr = entry.chipCostAtAdd ? `主力成本${entry.chipCostAtAdd.toFixed(2)}，` : '';
+            return {
+                strategy: 'pullback',
+                label: '⚔️ 首席特急獵殺令',
+                title: '【第二隻腳起漲點】成型',
+                msg: `帶量紅K站穩月線（${ma20.toFixed(2)}），${chipStr}回檔洗盤結束，主力重新點火！`,
+                fullMsg: `⚔️ 首席特急獵殺令：已完成回檔洗盤！今日帶量紅K站穩月線（${ma20.toFixed(2)}），${chipStr}【第二隻腳起漲點】成型，速至券商App執行建倉！`,
+            };
+        }
+        return null;
+    },
+
+    _checkFalseBreakdown(tech, entry) {
+        const { closes, opens, vols, n, ma20arr, vma5arr } = tech;
+        if (n < 10) return null;
+        const recentLow = entry.recentLow || Math.min(...closes.slice(-25, -3));
+        if (!recentLow || recentLow <= 0) return null;
+        const i = n - 1;
+        const pC = closes[i], pO = opens[i];
+        const brokeBelow = closes.slice(Math.max(0, i - 7), i).some(c => c < recentLow * 0.985);
+        if (!brokeBelow) return null;
+        const isRedCandle = pC > pO;
+        const isAboveSupport = pC > recentLow;
+        const bodyPct = Math.abs(pC - pO) / pO * 100;
+        const vma5 = vma5arr[i];
+        const isHighVol = vma5 ? vols[i] > vma5 * 1.0 : true;
+        if (isRedCandle && isAboveSupport && bodyPct > 1.0 && isHighVol) {
+            return {
+                strategy: 'breakdown',
+                label: '⚔️ 首席破底翻令',
+                title: '【假跌破反殺】確認',
+                msg: `跌破支撐${recentLow.toFixed(2)}後強勢收復！散戶割肉完畢，主力低位吸籌，黃金坑確認！`,
+                fullMsg: `⚔️ 首席破底翻令：成功發動假跌破反殺！散戶已割肉，主力在低位（${recentLow.toFixed(2)}附近）吃飽籌碼。今日重新強勢站回防守線，黃金坑確認，建議啟動建倉！`,
+            };
+        }
+        return null;
+    },
+
+    _checkVolumeContraction(tech, entry) {
+        const { closes, vols, opens, highs, lows, n, ma5arr, vma5arr } = tech;
+        if (n < 8) return null;
+        const i = n - 1;
+        const pC = closes[i], pO = opens[i], pL = lows[i];
+        const ma5 = ma5arr[i], vma5 = vma5arr[i];
+        if (!ma5 || !vma5) return null;
+        const vol1 = vols[i - 3], vol2 = vols[i - 2], vol3 = vols[i - 1];
+        const isContracting = vol2 < vol1 && vol3 < vol2 && vol3 < vma5 * 0.75;
+        if (!isContracting) return null;
+        const isRedCandle = pC > pO;
+        const nearMA5 = pL <= ma5 * 1.02 && pC >= ma5 * 0.985;
+        const volPickup = vols[i] > vols[i - 1] * 1.15;
+        const bodyPct = Math.abs(pC - pO) / pO * 100;
+        if (isContracting && isRedCandle && nearMA5 && volPickup && bodyPct > 0.3) {
+            return {
+                strategy: 'contraction',
+                label: '🚀 首席飆股接力令',
+                title: '【主力量縮洗盤完成】',
+                msg: `連續3日量縮後今日回測5日線（${ma5.toFixed(2)}）帶量點火，籌碼極度惜售，主升段第二波啟動！`,
+                fullMsg: `🚀 首席飆股接力令：完成主力極致量縮洗盤！籌碼極度惜售，今日回測5日線（${ma5.toFixed(2)}）點火再起，主升段第二波發動，通知建倉！`,
+            };
+        }
+        return null;
+    },
+
+    _checkBollingerSqueeze(tech, entry) {
+        const { closes, vols, opens, n, upperArr, lowerArr, midArr, vma5arr } = tech;
+        if (n < 25) return null;
+        const i = n - 1;
+        const pC = closes[i], pO = opens[i];
+        const upper = upperArr[i], lower = lowerArr[i], mid = midArr[i], vma5 = vma5arr[i];
+        if (!upper || !lower || !mid || !vma5) return null;
+        const bwArr = [];
+        for (let j = Math.max(20, i - 15); j < i; j++) {
+            if (upperArr[j] && lowerArr[j] && midArr[j]) {
+                bwArr.push((upperArr[j] - lowerArr[j]) / midArr[j]);
+            }
+        }
+        if (bwArr.length < 5) return null;
+        const minBW = Math.min(...bwArr);
+        const wasSqueezed = minBW < 0.07;
+        const breakoutAboveUpper = pC > upper;
+        const isRedCandle = pC > pO;
+        const isHighVol = vols[i] > vma5 * 1.4;
+        const bodyPct = Math.abs(pC - pO) / pO * 100;
+        if (wasSqueezed && breakoutAboveUpper && isRedCandle && isHighVol && bodyPct > 1.0) {
+            const bw = ((upper - lower) / mid * 100).toFixed(1);
+            return {
+                strategy: 'bollinger',
+                label: '🔥 首席雷霆出擊令',
+                title: '【布林縮口大爆發】',
+                msg: `布林帶寬${bw}%縮口後今日帶量決裂突破上軌（${upper.toFixed(2)}），主力發動總攻擊！`,
+                fullMsg: `🔥 首席雷霆出擊令：長達數月之布林縮口（帶寬${bw}%）今日帶量決裂！通道大開，突破布林上軌${upper.toFixed(2)}，主力發動總攻擊，高勝率爆發點成型，請立刻建倉！`,
+            };
+        }
+        return null;
+    },
+
+    async scanAllMonitored() {
+        const scanBtn = document.getElementById('huntScanBtn');
+        if (scanBtn) { scanBtn.disabled = true; scanBtn.innerText = '掃描中...'; }
+        const today = new Date().toISOString().split('T')[0];
+        const newAlerts = [];
+        for (const entry of this.monitorList) {
+            try {
+                const data = await this.fetchHistoricalData(entry.sym, false);
+                if (!data || data.length < 25) continue;
+                const tech = this._calcTechFromData(data);
+                if (!tech) continue;
+                entry.chipCostAtAdd = this._getChipCost10d(data);
+                const n = tech.n;
+                entry.currentPrice = tech.closes[n - 1];
+                entry.currentMA5   = tech.ma5arr[n - 1];
+                entry.currentMA20  = tech.ma20arr[n - 1];
+                const checks = [
+                    this._checkPullbackRelaunch(tech, entry),
+                    this._checkFalseBreakdown(tech, entry),
+                    this._checkVolumeContraction(tech, entry),
+                    this._checkBollingerSqueeze(tech, entry),
+                ].filter(Boolean);
+                if (!entry.firedAlerts) entry.firedAlerts = [];
+                for (const alert of checks) {
+                    const alertKey = `${entry.sym}_${alert.strategy}_${today}`;
+                    if (!entry.firedAlerts.includes(alertKey)) {
+                        entry.firedAlerts = entry.firedAlerts.filter(k => !k.startsWith(`${entry.sym}_${alert.strategy}_`)).concat(alertKey);
+                        newAlerts.push({ ...alert, sym: entry.sym, name: entry.name, date: today });
+                    }
+                }
+            } catch (e) { console.warn('hunt scan error', entry.sym, e); }
+        }
+        this.saveMonitorList();
+        for (const alert of newAlerts) this._fireHuntNotification(alert);
+        this.renderHuntTab();
+        if (scanBtn) { scanBtn.disabled = false; scanBtn.innerText = '🔄 立即掃描'; }
+        return newAlerts.length;
+    },
+
+    _fireHuntNotification(alert) {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try {
+                new Notification(alert.label, {
+                    body: `${alert.name}(${alert.sym})\n${alert.msg}`,
+                    tag: `hunt_${alert.sym}_${alert.strategy}`,
+                });
+            } catch (e) {}
+        }
+    },
+
+    _strategyLabel(s) {
+        return { pullback: '⚔️ 月線再起漲', breakdown: '⚔️ 破底翻', contraction: '🚀 量縮惜售', bollinger: '🔥 布林噴發' }[s] || s;
+    },
+
+    removeFromMonitor(sym) {
+        this.monitorList = this.monitorList.filter(m => m.sym !== sym);
+        this.saveMonitorList();
+        this.renderHuntTab();
+        if (this.currentSymbolId === sym) this.updateMonitorIcon();
+        this.vibrate(30);
+    },
+
+    renderHuntTab() {
+        const today = new Date().toISOString().split('T')[0];
+        const countEl = document.getElementById('huntCount');
+        if (countEl) countEl.innerText = this.monitorList.length;
+        const allAlerts = [];
+        for (const entry of this.monitorList) {
+            for (const k of (entry.firedAlerts || [])) {
+                if (k.includes(`_${today}`)) {
+                    const parts = k.split('_');
+                    allAlerts.push({ sym: entry.sym, name: entry.name, strategy: parts[1] });
+                }
+            }
+        }
+        const alertCountEl = document.getElementById('huntAlertCount');
+        if (alertCountEl) {
+            alertCountEl.innerText = allAlerts.length || '';
+            alertCountEl.style.display = allAlerts.length > 0 ? '' : 'none';
+        }
+        const alertBox = document.getElementById('huntAlertBox');
+        if (alertBox) {
+            if (allAlerts.length > 0) {
+                alertBox.innerHTML = allAlerts.map(a => `
+                    <div class="bg-red-900/60 border border-red-500 rounded-lg p-3 flex items-start gap-2 cursor-pointer" onclick="app.analyze('${a.sym}'); app.switchAppTab('diag');">
+                        <span class="text-2xl flex-shrink-0">⚔️</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-red-300 font-black text-sm">${a.name}(${a.sym})</div>
+                            <div class="text-red-400 text-xs mt-0.5">${this._strategyLabel(a.strategy)} — 點擊進入診斷 →</div>
+                        </div>
+                    </div>`).join('');
+                alertBox.classList.remove('hidden');
+                alertBox.style.display = 'flex';
+                alertBox.style.flexDirection = 'column';
+                alertBox.style.gap = '8px';
+            } else {
+                alertBox.classList.add('hidden');
+            }
+        }
+        const container = document.getElementById('huntMonitorList');
+        if (!container) return;
+        if (this.monitorList.length === 0) {
+            container.innerHTML = `<div class="text-center py-10 text-gray-600"><div class="text-4xl mb-3">🗡️</div><div class="text-sm font-bold">監控清單為空</div><div class="text-xs mt-1 text-gray-700">在「診斷」頁看到心儀標的後<br>按 🗡️ 圖示加入監控</div></div>`;
+            return;
+        }
+        container.innerHTML = this.monitorList.map(entry => {
+            const pC = entry.currentPrice || entry.addPrice;
+            const ma20 = entry.currentMA20 || entry.ma20AtAdd;
+            const ma5  = entry.currentMA5  || entry.ma5AtAdd;
+            const chip = entry.chipCostAtAdd;
+            const pctFromMA20 = ma20 && pC ? ((pC - ma20) / ma20 * 100) : null;
+            let seasonBadge = '';
+            if (ma20 && pC) {
+                if (pC > ma20 * 1.05) seasonBadge = `<span class="text-[9px] bg-red-900/50 text-red-400 px-1 rounded border border-red-800">🚀夏</span>`;
+                else if (pC > ma20) seasonBadge = `<span class="text-[9px] bg-pink-900/50 text-pink-400 px-1 rounded border border-pink-800">📈春</span>`;
+                else if (pC > ma20 * 0.95) seasonBadge = `<span class="text-[9px] bg-yellow-900/50 text-yellow-400 px-1 rounded border border-yellow-800">🍁秋</span>`;
+                else seasonBadge = `<span class="text-[9px] bg-blue-900/50 text-blue-400 px-1 rounded border border-blue-800">❄️冬</span>`;
+            }
+            const todayFired = (entry.firedAlerts || []).filter(k => k.includes(`_${today}`));
+            const alertBadge = todayFired.length > 0 ? `<span class="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">${todayFired.length} 告警</span>` : '';
+            const hasBorder = todayFired.length > 0;
+            return `<div class="bg-[#1c2128] border ${hasBorder ? 'border-red-500' : 'border-[#30363d]'} rounded-lg p-3 flex items-center gap-3">
+                <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${entry.sym}'); app.switchAppTab('diag');">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-white font-black text-sm">${entry.name}</span>
+                        <span class="text-gray-500 text-xs">${entry.sym}</span>
+                        ${seasonBadge}
+                        ${alertBadge}
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-1.5 text-[10px] font-mono">
+                        <span class="text-gray-400">現價 <span class="text-white font-bold">${pC ? pC.toFixed(2) : '--'}</span></span>
+                        <span class="text-purple-400">月線 <span class="font-bold">${ma20 ? ma20.toFixed(2) : '--'}</span>${pctFromMA20 !== null ? ` <span class="${pctFromMA20 >= 0 ? 'text-red-400' : 'text-green-400'}">(${pctFromMA20 >= 0 ? '+' : ''}${pctFromMA20.toFixed(1)}%)</span>` : ''}</span>
+                        <span class="text-cyan-400">5日線 <span class="font-bold">${ma5 ? ma5.toFixed(2) : '--'}</span></span>
+                        ${chip ? `<span class="text-yellow-400">主力成本 <span class="font-bold">${chip.toFixed(2)}</span></span>` : ''}
+                    </div>
+                    <div class="text-[9px] text-gray-600 mt-1">加入 ${entry.addDate}，加入時價 ${entry.addPrice ? entry.addPrice.toFixed(2) : '--'}</div>
+                </div>
+                <button onclick="app.removeFromMonitor('${entry.sym}')" class="text-gray-600 hover:text-red-400 transition-colors text-lg font-bold flex-shrink-0 px-1">✕</button>
+            </div>`;
+        }).join('');
+    },
 };
 
 window.onload = () => app.init();
