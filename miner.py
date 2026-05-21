@@ -291,6 +291,29 @@ def run():
 
     print(f"\n🎉 採礦完成！更新 {updated} 檔，略過 {len(by_sym)-updated} 檔（已是最新）。")
 
+    # ── 補丁模式：TaiwanStockPrice 無新資料時，直接將 TWSE 法人資料 patch 進現有檔案 ──
+    if not by_sym and inst:
+        print(f"\n💉 價格資料為空，啟動法人欄位補丁模式（patch {len(inst)} 筆法人資料到現有檔案）...")
+        patch_count = 0
+        for f in Path(DATA_DIR).glob('*.json'):
+            sym = f.stem
+            if sym in ('radar',): continue
+            existing = load_json(sym)
+            if not existing: continue
+            existing_map = {rec['date']: rec for rec in existing}
+            changed = False
+            for (raw_date, sid), chip_data in inst.items():
+                if sid != sym: continue
+                fmt_date = raw_date.replace('-', '/')
+                if fmt_date in existing_map and 'foreign_net' not in existing_map[fmt_date]:
+                    existing_map[fmt_date].update(chip_data)
+                    changed = True
+            if changed:
+                combined = sorted(existing_map.values(), key=lambda x: x['date'])
+                save_json(sym, combined)
+                patch_count += 1
+        print(f"  ✅ 法人補丁完成：{patch_count} 檔已更新法人欄位")
+
 
 def fetch_futures_cache():
     """每日抓取外資台指期未平倉淨口數，存為 futures_cache.json 供前端讀取。"""
