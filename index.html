@@ -1345,12 +1345,15 @@ const app = {
 
     async fetchMacroData() {
         const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMacroCache_v3';
+        const _ghBase = window.location.href.split('?')[0].split('#')[0];
+        const _futuresUrl  = new URL('futures_cache.json', _ghBase).href;
+        const _macroUrl    = new URL('macro_cache.json',   _ghBase).href;
         let cache = JSON.parse(localStorage.getItem(cacheKey));
         if (cache && cache.date === todayStr && (now - cache.ts < 172800000) && (cache.data?.taiex?.length > 0 || cache.data?.fiShort !== null)) {
             this.processMacroData(cache.data);
             // If fiShort is null in cache, still try to fetch it in background
             if (cache.data?.fiShort === null) {
-                fetch('https://xin7355-collab.github.io/stockai-db/futures_cache.json', { signal: AbortSignal.timeout(4000) })
+                fetch(_futuresUrl, { signal: AbortSignal.timeout(4000) })
                     .then(r => r.json()).then(cj => {
                         if (cj.fi_net !== undefined && cj.fi_net !== null) {
                             cache.data.fiShort = cj.fi_net;
@@ -1370,7 +1373,7 @@ const app = {
 
             // ── Strategy 1: Read pre-fetched gh-pages cache (updated daily by GitHub Actions) ──
             try {
-                const cacheRes = await fetch('https://xin7355-collab.github.io/stockai-db/futures_cache.json', { signal: AbortSignal.timeout(4000) });
+                const cacheRes = await fetch(_futuresUrl, { signal: AbortSignal.timeout(4000) });
                 if (cacheRes.ok) {
                     const cj = await cacheRes.json();
                     if (cj.fi_net !== undefined) { taifexData = cj.fi_net; }
@@ -1379,7 +1382,7 @@ const app = {
 
             // ── Strategy 1b: 美股大盤 gh-pages 靜態快取 ──
             try {
-                const macroRes = await fetch('https://xin7355-collab.github.io/stockai-db/macro_cache.json', { signal: AbortSignal.timeout(4000) });
+                const macroRes = await fetch(_macroUrl, { signal: AbortSignal.timeout(4000) });
                 if (macroRes.ok) {
                     const mj = await macroRes.json();
                     this.usMacroCache = mj;
@@ -3493,7 +3496,8 @@ ${revText}
                 try {
                     document.getElementById('radarStatusText').innerText = '讀取雲端雷達快取...';
                     document.getElementById('radarProgressBar').style.width = '50%';
-                    const radarRes = await fetch('https://xin7355-collab.github.io/stockai-db/data/radar.json', { signal: AbortSignal.timeout(5000) });
+                    const radarBase = window.location.href.split('?')[0].split('#')[0];
+                    const radarRes = await fetch(new URL('data/radar.json', radarBase).href, { signal: AbortSignal.timeout(5000) });
                     if (radarRes.ok) {
                         const radarJson = await radarRes.json();
                         const preList = (radarJson.data?.[type] || []);
