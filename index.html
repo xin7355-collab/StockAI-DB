@@ -1207,14 +1207,14 @@ const app = {
         try {
             if(type === 'groq') {
                 if(!this.settings.groqKey) throw new Error();
-                const res = await fetch(`https://api.groq.com/openai/v1/models`, { headers: { 'Authorization': `Bearer ${this.settings.groqKey}` } });
+                const res = await this.safeFetch(`https://api.groq.com/openai/v1/models`, { headers: { 'Authorization': `Bearer ${this.settings.groqKey}` } }, { timeout: 8000, maxRetries: 1 });
                 if(res.status === 200) {
                     const json = await res.json();
                     if (json && json.data && json.data.length > 0) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
                 } else throw new Error(`HTTP ${res.status}`);
             } else if (type === 'finmind') {
                 if(!this.settings.finmindKey) throw new Error();
-                const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${this.settings.finmindKey}`);
+                const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${this.settings.finmindKey}`, {}, { timeout: 8000, maxRetries: 1 });
                 const json = await res.json();
                 if(res.ok && json.status === 200) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
             } else if (type === 'massive') {
@@ -1394,7 +1394,7 @@ const app = {
             // ── Strategy 2: FinMind direct API fallback ──
             if (taifexData === null) {
                 try {
-                    const fmRes = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date=${startDate}${tokenStr}`, { signal: AbortSignal.timeout(5000) });
+                    const fmRes = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
                     if (fmRes.ok) {
                         const fmJson = await fmRes.json();
                         const allRows = fmJson.data || [];
@@ -1523,53 +1523,163 @@ const app = {
         }
     },
 
+    // ═══════════════════════════════════════════════════════════════════
+    // IndexedDB 非同步儲存管理器
+    // 用途：取代 localStorage 儲存 K 線等大型資料，避免 QuotaExceededError
+    // DB: proTerminalDB  Store: klineCache  Key: string  Value: any JSON
+    // ═══════════════════════════════════════════════════════════════════
+    idb: (() => {
+        const DB_NAME    = 'proTerminalDB';
+        const STORE_NAME = 'klineCache';
+        const DB_VER     = 1;
+        let _db = null;
+
+        // 開啟（或建立）資料庫，回傳 Promise<IDBDatabase>
+        function _open() {
+            if (_db) return Promise.resolve(_db);
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VER);
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+                req.onerror   = e => reject(e.target.error);
+            });
+        }
+
+        return {
+            // 讀取快取。找不到回傳 null
+            async get(key) {
+                try {
+                    const db = await _open();
+                    return new Promise((resolve, reject) => {
+                        const tx  = db.transaction(STORE_NAME, 'readonly');
+                        const req = tx.objectStore(STORE_NAME).get(key);
+                        req.onsuccess = e => resolve(e.target.result ?? null);
+                        req.onerror   = e => reject(e.target.error);
+                    });
+                } catch (e) {
+                    console.warn('[IDB] get 失敗，降級為 null:', e);
+                    return null;
+                }
+            },
+            // 寫入快取
+            async put(key, value) {
+                try {
+                    const db = await _open();
+                    return new Promise((resolve, reject) => {
+                        const tx  = db.transaction(STORE_NAME, 'readwrite');
+                        const req = tx.objectStore(STORE_NAME).put(value, key);
+                        req.onsuccess = () => resolve();
+                        req.onerror   = e => reject(e.target.error);
+                    });
+                } catch (e) {
+                    console.warn('[IDB] put 失敗，略過快取寫入:', e);
+                }
+            },
+        };
+    })(),
+
+    // ═══════════════════════════════════════════════════════════════════
+    // safeFetch：全域安全 fetch，內建 Timeout + 429 Exponential Backoff
+    // 用法：await app.safeFetch(url, fetchOptions, { timeout, maxRetries })
+    //   timeout    預設 8000 ms
+    //   maxRetries 針對 429 最多重試次數，預設 3
+    // 回傳 Response 物件（與原生 fetch 相同介面）
+    // 非 429 的錯誤狀態不自動重試，由呼叫方自行判斷 res.ok
+    // ═══════════════════════════════════════════════════════════════════
+    async safeFetch(url, options = {}, { timeout = 8000, maxRetries = 3 } = {}) {
+        let attempt = 0;
+        while (true) {
+            // 每次嘗試建立獨立的 AbortController，避免訊號污染
+            const ctrl   = new AbortController();
+            const timerId = setTimeout(() => ctrl.abort(), timeout);
+            try {
+                const res = await fetch(url, { ...options, signal: ctrl.signal });
+                clearTimeout(timerId);
+
+                // 429：依照 Retry-After 或指數退避等待後重試
+                if (res.status === 429) {
+                    if (attempt >= maxRetries) {
+                        console.warn(`[safeFetch] 429 超過最大重試（${maxRetries}）：${url}`);
+                        return res;  // 讓呼叫方知道被限流
+                    }
+                    const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
+                    const backoffMs  = retryAfter > 0
+                        ? retryAfter * 1000
+                        : (1000 * Math.pow(2, attempt));  // 1s → 2s → 4s
+                    console.warn(`[safeFetch] 429，第 ${attempt + 1} 次重試，等待 ${backoffMs}ms`);
+                    await new Promise(r => setTimeout(r, backoffMs));
+                    attempt++;
+                    continue;
+                }
+
+                return res;
+            } catch (err) {
+                clearTimeout(timerId);
+                // AbortError = timeout，不重試（避免無限等待）
+                if (err.name === 'AbortError') {
+                    throw new Error(`[safeFetch] 逾時 (${timeout}ms)：${url}`);
+                }
+                throw err;  // 其他網路錯誤直接拋出
+            }
+        }
+    },
+
     async fetchHistoricalData(symbol, forceRefresh = false) {
-        const today = this.getTodayStr().replace(/\//g, '-');
+        const today    = this.getTodayStr().replace(/\//g, '-');
         const cacheKey = `proTerm_kline_${symbol}`;
-        
+
+        // ── 讀取 IndexedDB 快取（取代 localStorage，避免 QuotaExceededError）──
         if (!forceRefresh) {
-            let lCache = localStorage.getItem(cacheKey);
-            if (lCache) {
-                let parsed = JSON.parse(lCache);
-                this.apiDataCache[cacheKey] = parsed;
-                return parsed;
+            const cached = await this.idb.get(cacheKey);
+            if (cached) {
+                this.apiDataCache[cacheKey] = cached;
+                return cached;
             }
         }
 
         try {
-            let finalUrl = `./data/${symbol}.json?t=${new Date().getTime()}`;
-            if (window.location.protocol !== 'file:') {
-                let base = window.location.href.split('?')[0].split('#')[0];
-                if (!base.endsWith('/')) base = base.substring(0, base.lastIndexOf('/') + 1);
-                finalUrl = new URL(`data/${symbol}.json?v=${today}`, base).href;
-            }
-            const localRes = await fetch(finalUrl);
+            // 優先使用 gh-pages 靜態 JSON（不佔 API 配額）
+            const ghBase  = window.location.href.split('?')[0].split('#')[0];
+            const fileUrl = window.location.protocol === 'file:'
+                ? `./data/${symbol}.json?t=${Date.now()}`
+                : new URL(`data/${symbol}.json?v=${today}`, ghBase).href;
+
+            const localRes = await fetch(fileUrl);
             if (localRes.ok) {
                 const data = await localRes.json();
                 this.apiDataCache[cacheKey] = data;
+                // 寫入 IndexedDB（非同步，不阻塞 UI）
+                this.idb.put(cacheKey, data).catch(() => {});
                 return data;
             }
-            throw new Error("Local fail");
-        } catch (error) {
-            if(this.apiRateLimited) return null;
+            throw new Error('Local JSON not found');
+        } catch {
+            // gh-pages JSON 找不到時 fallback 到 FinMind（盡量不走這條）
+            if (this.apiRateLimited) return null;
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
                 let fmUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${symbol}&start_date=2023-01-01`;
-                if(this.settings.finmindKey) fmUrl += `&token=${this.settings.finmindKey}`;
-                
-                const fmRes = await fetch(fmUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
+                if (this.settings.finmindKey) fmUrl += `&token=${this.settings.finmindKey}`;
+
+                const fmRes = await this.safeFetch(fmUrl, {}, { timeout: 8000, maxRetries: 2 });
                 if (fmRes.status === 429) { this.triggerApiLock(); return null; }
+                if (!fmRes.ok) return null;
+
                 const fmJson = await fmRes.json();
-                if(fmJson.data && fmJson.data.length > 0) {
-                    const parsed = fmJson.data.map(d => ({ date: d.date.replace(/-/g, '/'), open: d.open, high: d.max, low: d.min, close: d.close, volume: d.Trading_Volume }));
-                    localStorage.setItem(cacheKey, JSON.stringify(parsed));
+                if (fmJson.data?.length > 0) {
+                    const parsed = fmJson.data.map(d => ({
+                        date: d.date.replace(/-/g, '/'),
+                        open: d.open, high: d.max, low: d.min,
+                        close: d.close, volume: d.Trading_Volume,
+                    }));
+                    this.idb.put(cacheKey, parsed).catch(() => {});
                     return parsed;
                 }
-            } catch(e) { console.log("Cloud API fail"); }
+            } catch (e) { console.warn('[fetchHistoricalData] FinMind fallback 失敗:', e); }
             return null;
         }
     },
@@ -1680,7 +1790,7 @@ const app = {
     async fetchStockList() { 
         if (localStorage.getItem('proTerm_stockList')) { this.allStockList = JSON.parse(localStorage.getItem('proTerm_stockList')); return; }
         try {
-            const res = await fetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo');
+            const res = await this.safeFetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo', {}, { timeout: 10000, maxRetries: 2 });
             const json = await res.json();
             if (json.msg === 'success') {
                 const map = new Map();
@@ -2196,8 +2306,8 @@ const app = {
         if (instText === '無資料') {
             try {
                 const [instRes, marginRes] = await Promise.all([
-                    fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r=>r.json()).catch(()=>({data:[]})),
-                    fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r=>r.json()).catch(()=>({data:[]}))
+                    this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 }).then(r=>r.json()).catch(()=>({data:[]})),
+                    this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 }).then(r=>r.json()).catch(()=>({data:[]}))
                 ]);
                 const instByDate = {};
                 for (const r of (instRes.data||[])) {
@@ -2252,17 +2362,18 @@ ${brokerText}
 最後一行：⚠️ 投資有風險，以上僅供參考，請自行判斷。`;
 
         try {
-            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const groqRes = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{role:'user',content:prompt}], max_tokens: 800, temperature: 0.7 })
-            });
+            }, { timeout: 30000, maxRetries: 2 });
+            if (!groqRes.ok) throw new Error(`HTTP ${groqRes.status}`);
             const groqData = await groqRes.json();
             const text = groqData.choices?.[0]?.message?.content || '分析失敗，請稍後再試';
             const escaped = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
             result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-[11px]">${escaped}</div>`;
         } catch(e) {
-            result.innerHTML = '<span class="text-red-400 text-xs">分析失敗，請確認 Groq API Key 是否正確</span>';
+            result.innerHTML = `<span class="text-red-400 text-xs">分析失敗：${e.message || '請確認 Groq API Key 是否正確'}</span>`;
         }
         btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
         btn.disabled = false;
@@ -2284,8 +2395,8 @@ ${brokerText}
         const revenueStart = d2.toISOString().split('T')[0];
         try {
             const [fsRes, revRes] = await Promise.all([
-                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`).then(r => r.json()).catch(() => ({ data: [] })),
-                fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revenueStart}${tokenStr}`).then(r => r.json()).catch(() => ({ data: [] }))
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] })),
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revenueStart}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] }))
             ]);
             // Build quarterly EPS / gross margin summary
             const byQuarter = {};
@@ -2331,17 +2442,18 @@ ${revText}
 1. 獲利能力：EPS 趨勢是在成長還是衰退？毛利率有沒有擴張？
 2. 營收動能：月營收 YoY 加速還是減速？有沒有轉折訊號？
 3. 白話結論：現在基本面是「轉強」「持穩」還是「轉弱」？值不值得持有？`;
-            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const groqRes = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 500, temperature: 0.6 })
-            });
+            }, { timeout: 30000, maxRetries: 2 });
+            if (!groqRes.ok) throw new Error(`HTTP ${groqRes.status}`);
             const groqData = await groqRes.json();
             const text = groqData.choices?.[0]?.message?.content || '分析失敗，請稍後再試';
             result.innerHTML = `<div class="text-indigo-400 font-bold text-[9px] mb-1">🧠 AI 財務白話解讀 — ${sym}</div><div class="whitespace-pre-wrap">${text}</div>`;
             this.latestFinancialAICache = text.substring(0, 500);
         } catch(e) {
-            result.innerHTML = '<span class="text-red-400 text-[10px]">分析失敗，請確認 API Key</span>';
+            result.innerHTML = `<span class="text-red-400 text-[10px]">分析失敗：${e.message || '請確認 API Key'}</span>`;
         }
         btn.innerHTML = '🧠 AI基本面白話解讀';
     },
@@ -2359,7 +2471,7 @@ ${revText}
 
         try {
             let year = new Date().getFullYear();
-            const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${year-1}-01-01${tokenStr}`);
+            const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${year-1}-01-01${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
             const data = await res.json();
             let html = "";
             if (data && data.data && data.data.length > 0) {
@@ -2374,7 +2486,7 @@ ${revText}
         try {
             let d = new Date(); d.setMonth(d.getMonth() - 15);
             let startDate = d.toISOString().split('T')[0];
-            const res = await fetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${startDate}${tokenStr}`);
+            const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
             const data = await res.json();
             if(data.data && data.data.length > 0) {
                 let latest = data.data[data.data.length - 1];
@@ -3753,7 +3865,7 @@ ${fundamentalHint}
 最新營收 YoY：${this.latestYoyCache || '無資料'}`;
 
         try {
-            const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+            const res = await this.safeFetch(`https://api.groq.com/openai/v1/chat/completions`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -3762,7 +3874,7 @@ ${fundamentalHint}
                     max_tokens: 900,
                     temperature: 0.3
                 })
-            });
+            }, { timeout: 40000, maxRetries: 2 });
             const resp = await res.json();
             if (!res.ok || resp.error) throw new Error(resp.error?.message || '未知錯誤');
 
