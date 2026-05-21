@@ -1988,10 +1988,10 @@ const app = {
     async _loadBrokerNames() {
         if (this._brokerNames) return this._brokerNames;
         try {
-            let base = window.location.href.split('?')[0].split('#')[0];
-            if (!base.endsWith('/')) base = base.substring(0, base.lastIndexOf('/') + 1);
-            const ghBase = base.includes('github.io') ? base : 'https://xin7355-collab.github.io/stockai-db/';
-            const res = await fetch(new URL('data/broker_names.json', ghBase).href + `?v=${Math.floor(Date.now()/3600000)}`, { signal: AbortSignal.timeout(4000) });
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/broker_names.json', ghBase).href
+                      + `?v=${Math.floor(Date.now()/3600000)}`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
             if (res.ok) this._brokerNames = await res.json();
         } catch(e) {}
         return this._brokerNames || {};
