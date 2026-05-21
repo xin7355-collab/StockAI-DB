@@ -7,13 +7,18 @@
 #      降低每秒 DB 讀取壓力；maxsize=256 控制記憶體上限約 ~10MB。
 #   3. 零外部依賴：TTLCache 純標準庫實作，不需安裝 cachetools。
 # ════════════════════════════════════════════════════════════════════════════
+import json
+import os
 import sqlite3
 import time
+import urllib.error
+import urllib.request
 from threading import Lock
-from typing import Generator
+from typing import Any, Generator
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 app = FastAPI(title="台股首席策略 API 伺服器")
 
@@ -26,6 +31,9 @@ app.add_middleware(
 )
 
 DB_PATH = "stock_hunter.db"
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 # ── 輕量級 TTL 記憶體快取（無外部依賴）───────────────────────────────────────
@@ -222,6 +230,50 @@ def invalidate_cache(symbol: str):
     """
     _stock_cache.invalidate(f"{symbol}:300")
     return {"status": "ok", "message": f"{symbol} 快取已清除"}
+
+
+# ── AI 分析端點（後端代理 Groq，避免金鑰暴露在前端）────────────────────────────
+class AIRequest(BaseModel):
+    prompt:      str
+    model:       str   = "llama-3.3-70b-versatile"
+    max_tokens:  int   = 900
+    temperature: float = 0.3
+
+
+@app.post("/api/ai/analyze")
+def ai_analyze(req: AIRequest):
+    """
+    代理呼叫 Groq LLM API，回傳 {content: str}。
+    GROQ_API_KEY 設定在伺服器環境變數，不需前端填寫。
+    """
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="伺服器未設定 GROQ_API_KEY 環境變數，請聯絡管理員。")
+
+    payload = json.dumps({
+        "model":       req.model,
+        "messages":    [{"role": "user", "content": req.prompt}],
+        "max_tokens":  req.max_tokens,
+        "temperature": req.temperature,
+    }).encode()
+
+    http_req = urllib.request.Request(
+        GROQ_API_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type":  "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(http_req, timeout=60) as resp:
+            result: Any = json.loads(resp.read())
+        content = result["choices"][0]["message"]["content"]
+        return {"content": content}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        raise HTTPException(status_code=502, detail=f"Groq API 錯誤：{body[:300]}")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # ── 本機啟動 ─────────────────────────────────────────────────────────────────
