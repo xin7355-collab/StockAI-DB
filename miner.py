@@ -86,7 +86,7 @@ def write_radar_to_db(results):
 
 def fm_get(dataset, **params):
     """FinMind API wrapper — returns data list or [] on failure.
-    Automatically falls back to anonymous (no token) if register-level 400 is returned."""
+    Always falls back to anonymous when token request returns any non-200 status."""
     def _try(use_token: bool):
         p = {'dataset': dataset, **params}
         if use_token and FINMIND_TOKEN:
@@ -95,22 +95,64 @@ def fm_get(dataset, **params):
             try:
                 res = requests.get(BASE_URL, params=p, timeout=60)
                 j = res.json()
-                msg = str(j.get('msg', '') or '')
-                if res.status_code == 400 and ('register' in msg.lower() or 'level' in msg.lower()):
-                    return None  # signal to retry anonymously
                 if j.get('status') == 200:
                     return j.get('data', [])
+                msg = str(j.get('msg', '') or '')
                 print(f"  ⚠️  FinMind {dataset} status={j.get('status')} msg={msg}")
-                return []
+                return None  # always signal fallback on any non-200
             except Exception as e:
                 print(f"  ⚠️  FinMind {dataset} attempt {attempt+1} failed: {e}")
                 time.sleep(5 * (attempt + 1))
-        return []
-    result = _try(True)
-    if result is None:
-        print(f"  ↩️  FinMind {dataset} 付費牆，改用匿名請求...")
+        return None
+
+    if FINMIND_TOKEN:
+        result = _try(True)
+        if result is None:
+            print(f"  ↩️  FinMind {dataset} 失敗，改用匿名請求...")
+            result = _try(False)
+    else:
         result = _try(False)
     return result or []
+
+
+def twse_institutional(date_str: str) -> dict:
+    """TWSE MI_QFIIS：三大法人每日全市場買賣超，回傳 {stock_id: {foreign_net, trust_net, dealer_net}}。"""
+    url = (f'https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS'
+           f'?response=json&date={date_str}&selectType=ALL')
+    try:
+        resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=20)
+        j = resp.json()
+        if j.get('stat') != 'OK':
+            return {}
+        fields = j.get('fields', [])
+        # 找欄位索引
+        def fi(kw):
+            for i, f in enumerate(fields):
+                if kw in f: return i
+            return -1
+        idx_id    = fi('證券代號')
+        idx_fnet  = fi('外資及陸資淨')
+        idx_tnet  = fi('投信淨')
+        idx_dnet  = fi('自營商淨')
+        if idx_id < 0: return {}
+        result = {}
+        for row in (j.get('data') or []):
+            try:
+                sid = str(row[idx_id]).strip()
+                def to_int(idx):
+                    if idx < 0 or idx >= len(row): return 0
+                    return int(str(row[idx]).replace(',', '').replace('+', '') or 0)
+                result[sid] = {
+                    'foreign_net': to_int(idx_fnet),
+                    'trust_net':   to_int(idx_tnet),
+                    'dealer_net':  to_int(idx_dnet),
+                }
+            except Exception:
+                continue
+        return result
+    except Exception as e:
+        print(f"  ⚠️  TWSE MI_QFIIS {date_str} 失敗: {e}")
+        return {}
 
 
 def load_json(symbol):
@@ -142,6 +184,23 @@ def run():
     print(f"🏦 [2/3] TaiwanStockInstitutionalInvestors {start}~{end} ...")
     inst_raw = fm_get('TaiwanStockInstitutionalInvestors', start_date=start, end_date=end)
     print(f"       {len(inst_raw)} 筆")
+    # TWSE 備援：FinMind 拿不到時，改抓 TWSE 官方每日全市場法人資料
+    twse_inst: dict = {}  # {(date, stock_id): {foreign_net, trust_net, dealer_net}}
+    if not inst_raw:
+        print(f"  ↩️  FinMind 法人資料空，改從 TWSE MI_QFIIS 取得...")
+        from datetime import datetime
+        cur = datetime.strptime(start, '%Y-%m-%d').date()
+        end_d = datetime.strptime(end, '%Y-%m-%d').date()
+        while cur <= end_d:
+            if cur.weekday() < 5:  # 只抓工作日
+                d_str = cur.strftime('%Y%m%d')
+                daily = twse_institutional(d_str)
+                if daily:
+                    for sid, v in daily.items():
+                        twse_inst[(cur.strftime('%Y-%m-%d'), sid)] = v
+                    print(f"    TWSE {d_str}: {len(daily)} 檔")
+                time.sleep(0.5)
+            cur += timedelta(days=1)
 
     # ── 3. 融資融券 ────────────────────────────────────────────────────
     print(f"💳 [3/3] TaiwanStockMarginPurchaseShortSale {start}~{end} ...")
@@ -162,6 +221,10 @@ def run():
             inst[k]['trust_net'] = net
         elif '自營' in name:
             inst[k]['dealer_net'] = net
+    # 合併 TWSE 備援資料
+    for k, v in twse_inst.items():
+        if k not in inst:
+            inst[k] = v
 
     margin = {}
     for r in margin_raw:
@@ -378,6 +441,8 @@ def fetch_broker_chips():
     if not missing_days:
         print(f"\n分點籌碼已是最新，跳過（{cutoff_str} ~ {today_str}）")
         _prune_chips(chips_dir, cutoff_str)
+        # 即使跳過，仍呼叫 T86 更新 broker_names.json（讓券商名稱顯示正確）
+        _refresh_broker_names(chips_dir, trading_days[-1])
         return
 
     fetch_start = missing_days[0].strftime('%Y-%m-%d')
@@ -523,6 +588,47 @@ def fetch_broker_chips():
 
     _prune_chips(chips_dir, cutoff_str)
     print(f"  分點籌碼完成：寫入 {updated} 檔（{len(CHIP_WATCHLIST)} 檔監控清單）")
+
+
+def _refresh_broker_names(chips_dir: Path, latest_day):
+    """呼叫 TWSE T86 取得最新一天的券商名稱，更新 broker_names.json。"""
+    lookup_file = Path(DATA_DIR) / 'broker_names.json'
+    broker_lookup: dict = {}
+    if lookup_file.exists():
+        try:
+            broker_lookup = json.loads(lookup_file.read_text(encoding='utf-8'))
+        except Exception:
+            pass
+
+    day_str = latest_day.strftime('%Y%m%d')
+    t86_headers = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/1.0)'}
+    new_count = 0
+    # 只取前幾檔熱門標的，快速建立名稱表
+    sample = CHIP_WATCHLIST[:10]
+    for sym in sample:
+        try:
+            url = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
+                   f'?response=json&date={day_str}&stock_no={sym}')
+            resp = requests.get(url, headers=t86_headers, timeout=15)
+            data = resp.json()
+            if data.get('stat') == 'OK':
+                for row in (data.get('data') or []):
+                    if len(row) < 3: continue
+                    bid = str(row[1]).strip()
+                    bnm = str(row[2]).strip()
+                    if bid and bnm and bid not in broker_lookup:
+                        broker_lookup[bid] = bnm
+                        new_count += 1
+            time.sleep(0.3)
+        except Exception:
+            pass
+
+    if broker_lookup:
+        lookup_file.write_text(
+            json.dumps(broker_lookup, ensure_ascii=False, separators=(',', ':')),
+            encoding='utf-8'
+        )
+        print(f"  券商名稱對照表更新：共 {len(broker_lookup)} 筆（新增 {new_count} 筆）")
 
 
 def _prune_chips(chips_dir: Path, cutoff_str: str):
