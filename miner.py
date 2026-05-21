@@ -288,27 +288,89 @@ def taifex_tx_net(target_date) -> int | None:
         return None
 
 
-# ── JSON 讀寫 ─────────────────────────────────────────────────────────────────
-def load_json(symbol):
-    p = Path(DATA_DIR) / f'{symbol}.json'
-    if p.exists():
-        with open(p, encoding='utf-8') as f:
-            return json.load(f)
-    return []
+# ── SQLite ↔ JSON 橋接（gh-pages 靜態部署用）────────────────────────────────
+# load_json / save_json 已廢除，K 線資料以 SQLite 為唯一持久層。
+# export_json() 在每次採礦結束後一次性匯出，供 gh-pages workflow 複製使用。
 
+def export_json():
+    """
+    從 SQLite stock_history 匯出每支股票的 JSON 檔案。
+    【唯一的 JSON 寫入點】── 批次寫入，取代舊的逐筆 save_json。
+    gh-pages workflow 的 'cp data/*.json' 步驟仍可正常使用。
+    """
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
 
-def save_json(symbol, records):
-    p = Path(DATA_DIR) / f'{symbol}.json'
-    with open(p, 'w', encoding='utf-8') as f:
-        json.dump(records, f, ensure_ascii=False, separators=(',', ':'))
+    # 取得所有有資料的股票代號
+    symbols = [row[0] for row in
+               conn.execute("SELECT DISTINCT symbol FROM stock_history")]
+
+    exported = 0
+    for sym in symbols:
+        rows = conn.execute("""
+            SELECT trade_date, open, high, low, close, volume,
+                   foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal
+            FROM stock_history
+            WHERE symbol = ?
+            ORDER BY trade_date ASC
+            LIMIT 800
+        """, (sym,)).fetchall()
+
+        if not rows:
+            continue
+
+        # 統一用 foreign_net / trust_net / dealer_net / margin_balance / short_balance
+        # 前端 index.html 兩組欄位名稱都相容（?? fallback）
+        records = [{
+            'date':           r['trade_date'].replace('-', '/'),
+            'open':           r['open'],  'high': r['high'],
+            'low':            r['low'],   'close': r['close'],
+            'volume':         r['volume'],
+            'foreign_net':    r['foreign_inv']   or 0,
+            'trust_net':      r['invest_trust']  or 0,
+            'dealer_net':     r['dealer_inv']    or 0,
+            'margin_balance': r['margin_bal']    or 0,
+            'short_balance':  r['short_bal']     or 0,
+        } for r in rows]
+
+        p = Path(DATA_DIR) / f'{sym}.json'
+        p.write_text(
+            json.dumps(records, ensure_ascii=False, separators=(',', ':')),
+            encoding='utf-8')
+        exported += 1
+
+    conn.close()
+    print(f"  ✅ JSON 匯出完成：{exported} 檔（供 gh-pages 靜態部署）")
 
 
 # ── 動態監控清單 ──────────────────────────────────────────────────────────────
 def get_active_symbols():
+    """
+    動態監控清單：CHIP_WATCHLIST 基礎 + 使用者自行新增的個股。
+    優先從 SQLite 讀取（主要來源），再從 data/*.json 補充（向後相容）。
+    最多額外加 50 檔，避免 API 呼叫爆炸。
+    """
     base = set(CHIP_WATCHLIST)
     skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names'}
-    extra = {f.stem for f in Path(DATA_DIR).glob('*.json')
-             if f.stem not in skip and f.stem not in base}
+    extra: set = set()
+
+    # 從 SQLite 讀出使用者曾採礦過的個股（DB 存在時）
+    if Path(DB_PATH).exists():
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            for row in conn.execute("SELECT DISTINCT symbol FROM stock_history"):
+                sym = row[0]
+                if sym not in base and sym not in skip:
+                    extra.add(sym)
+            conn.close()
+        except Exception:
+            pass
+
+    # 也從 data/*.json 補充（首次執行時 DB 可能為空）
+    extra |= {f.stem for f in Path(DATA_DIR).glob('*.json')
+              if f.stem not in skip and f.stem not in base}
+
     return sorted(base | set(sorted(extra)[:50]))
 
 
@@ -357,12 +419,51 @@ def run():
             print(f"  融券 {dd}: {len(marg)} 筆")
         time.sleep(0.8)
 
-    # Step 2：個股 OHLCV（TWSE → TPEX fallback）
+    # Step 2：個股 OHLCV — SQLite 讀取既有資料，處理完後批次寫回
+    # ─────────────────────────────────────────────────────────────────
+    # 【架構說明】
+    #   舊版：load_json(sym) → 處理 → save_json(sym) + 逐筆寫 SQLite (只寫5筆)
+    #   新版：SQLite 讀取 → 處理 → executemany 批次寫入 SQLite → export_json() 一次匯出
+    #   好處：
+    #     ① 消除數千個小 JSON 檔案的高頻 Disk I/O
+    #     ② SQLite 取代 JSON 成為唯一持久層，api.py 直接讀取不再有 404
+    #     ③ 每股使用 executemany 一次寫完最多 800 筆，DB 只開一個連線
+    # ─────────────────────────────────────────────────────────────────
     print(f"\n📈 個股 OHLCV 採礦 ({len(watchlist)} 檔)...")
+
+    db_conn = sqlite3.connect(DB_PATH)
+    db_conn.row_factory = sqlite3.Row
+    db_cur  = db_conn.cursor()
+
     updated_total = 0
+
     for idx, sym in enumerate(watchlist):
         print(f"  🛰️  [{idx+1}/{len(watchlist)}] {sym} ...", end=' ', flush=True)
 
+        # ── 從 SQLite 讀取既有資料（取代 load_json）────────────────
+        db_cur.execute("""
+            SELECT trade_date, open, high, low, close, volume,
+                   foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal
+            FROM stock_history
+            WHERE symbol = ?
+            ORDER BY trade_date ASC
+        """, (sym,))
+        existing_map: dict = {}   # {YYYY/MM/DD: record_dict}
+        for row in db_cur.fetchall():
+            fmt_date = row['trade_date'].replace('-', '/')
+            existing_map[fmt_date] = {
+                'date':           fmt_date,
+                'open':           row['open'],  'high': row['high'],
+                'low':            row['low'],   'close': row['close'],
+                'volume':         row['volume'],
+                'foreign_net':    row['foreign_inv']  or 0,
+                'trust_net':      row['invest_trust'] or 0,
+                'dealer_net':     row['dealer_inv']   or 0,
+                'margin_balance': row['margin_bal']   or 0,
+                'short_balance':  row['short_bal']    or 0,
+            }
+
+        # ── 抓取 OHLCV（TWSE 上市 → TPEX 上櫃 fallback）──────────
         new_rows = []
         for ym in months:
             rows = twse_ohlcv(sym, ym)
@@ -371,13 +472,11 @@ def run():
             new_rows.extend(rows)
             time.sleep(0.4)
 
-        existing     = load_json(sym)
-        existing_map = {rec['date']: rec for rec in existing}
         changed = False
 
         for r in new_rows:
-            fmt_date  = r['date']               # YYYY/MM/DD
-            date_dash = fmt_date.replace('/', '-')  # YYYY-MM-DD
+            fmt_date  = r['date']                   # YYYY/MM/DD
+            date_dash = fmt_date.replace('/', '-')  # YYYY-MM-DD（批次快取的 key 格式）
 
             chip = {
                 'foreign_net':    inst_cache.get(date_dash, {}).get(sym, {}).get('foreign_net', 0),
@@ -388,12 +487,14 @@ def run():
             }
 
             if fmt_date in existing_map:
+                # 記錄已存在：只補缺少的籌碼欄位
                 rec = existing_map[fmt_date]
                 if rec.get('foreign_net', 0) == 0 and chip.get('foreign_net', 0) != 0:
                     rec.update(chip)
                     changed = True
                 continue
 
+            # 全新記錄
             existing_map[fmt_date] = {
                 'date': fmt_date, 'open': r['open'], 'high': r['high'],
                 'low': r['low'], 'close': r['close'], 'volume': r['volume'],
@@ -401,7 +502,7 @@ def run():
             }
             changed = True
 
-        # 補丁：針對已存在但 chip=0 的記錄，用批次快取補入
+        # ── 補丁：既有記錄 chip=0 時，用本次批次快取回填 ──────────
         for date_dash, by_sym in inst_cache.items():
             if sym not in by_sym:
                 continue
@@ -425,29 +526,39 @@ def run():
                 changed = True
 
         if changed:
+            # 保留最近 800 筆（約3年），按日期排序
             combined = sorted(existing_map.values(), key=lambda x: x['date'])[-800:]
-            save_json(sym, combined)
+
+            # ── executemany 批次寫入 SQLite（取代 save_json + 逐筆 INSERT）──
+            # 一次寫完該股所有記錄，避免迴圈中反覆開關連線
+            batch = [
+                (sym,
+                 r['date'].replace('/', '-'),   # trade_date: YYYY-MM-DD
+                 r.get('open'),   r.get('high'),  r.get('low'),
+                 r.get('close'),  r.get('volume'),
+                 r.get('foreign_net',    0),      # → foreign_inv 欄
+                 r.get('trust_net',      0),      # → invest_trust 欄
+                 r.get('dealer_net',     0),      # → dealer_inv 欄
+                 r.get('margin_balance', 0),      # → margin_bal 欄
+                 r.get('short_balance',  0))      # → short_bal 欄
+                for r in combined
+            ]
             try:
-                conn = sqlite3.connect(DB_PATH)
-                c = conn.cursor()
-                for nr in combined[-5:]:
-                    dt_s = nr['date'].replace('/', '-')
-                    c.execute(
-                        "INSERT OR REPLACE INTO stock_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (sym, dt_s, nr.get('open'), nr.get('high'), nr.get('low'),
-                         nr.get('close'), nr.get('volume'),
-                         nr.get('foreign_net', 0), nr.get('trust_net', 0),
-                         nr.get('dealer_net', 0), nr.get('margin_balance', 0),
-                         nr.get('short_balance', 0)))
-                conn.commit()
-                conn.close()
+                db_cur.executemany(
+                    "INSERT OR REPLACE INTO stock_history "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    batch)
+                db_conn.commit()
+                updated_total += 1
+                print("✅")
             except Exception as e:
-                print(f"\n    ⚠️ SQLite {sym}: {e}")
-            updated_total += 1
-            print("✅")
+                db_conn.rollback()
+                print(f"⚠️ SQLite {sym}: {e}")
         else:
             print("skip")
 
+    # 採礦全部完成後，關閉 DB 連線
+    db_conn.close()
     print(f"\n🎉 採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
 
 
@@ -739,26 +850,42 @@ def _quick_ind(data):
 
 
 def build_radar_cache():
-    data_dir = Path(DATA_DIR)
-    results  = {'bottom': [], 'surge': [], 'score': []}
+    """
+    雷達預運算：直接從 SQLite 讀取 K 線，不再依賴 JSON 檔案。
+    結果同時寫入 SQLite (radar_results) 與 data/radar.json (供 gh-pages)。
+    """
+    results   = {'bottom': [], 'surge': [], 'score': []}
     processed = 0
-    skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names'}
-    for f in sorted(data_dir.glob('*.json')):
-        if f.stem in skip: continue
-        try:
-            data = json.loads(f.read_text(encoding='utf-8'))
-        except Exception:
+
+    conn = sqlite3.connect(DB_PATH)
+    # 取得所有有資料的股票代號
+    symbols = [row[0] for row in
+               conn.execute("SELECT DISTINCT symbol FROM stock_history")]
+
+    for sym in sorted(symbols):
+        # 每次只取最近 25 筆（_quick_ind 需要 22 筆）
+        rows = conn.execute("""
+            SELECT close, volume FROM stock_history
+            WHERE symbol = ?
+            ORDER BY trade_date DESC
+            LIMIT 25
+        """, (sym,)).fetchall()
+
+        if len(rows) < 22:
             continue
-        if not data or len(data) < 22: continue
-        ind = _quick_ind(data)
-        if not ind: continue
+
+        # SQLite 回傳為 DESC，反轉為時間正序後再計算指標
+        data = [{'close': r[0], 'volume': r[1]} for r in reversed(rows)]
+        ind  = _quick_ind(data)
+        if not ind:
+            continue
+
         processed += 1
-        c, pc = ind['close'], ind['prev_close']
-        ma5, ma10, ma20 = ind['ma5'], ind['ma10'], ind['ma20']
-        pma5, pma10, pma20 = ind['pma5'], ind['pma10'], ind['pma20']
-        vma5, upper_bb = ind['vma5'], ind['upper_bb']
-        rv = ind['recent_vols']
-        sym = f.stem
+        c,   pc   = ind['close'],   ind['prev_close']
+        ma5, ma10, ma20         = ind['ma5'],  ind['ma10'],  ind['ma20']
+        pma5, pma10, pma20      = ind['pma5'], ind['pma10'], ind['pma20']
+        vma5, upper_bb, rv      = ind['vma5'], ind['upper_bb'], ind['recent_vols']
+
         if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc:
             results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2)})
         if c >= upper_bb * 0.97 and (all(v > vma5 for v in rv) if rv and vma5 > 0 else False):
@@ -767,7 +894,11 @@ def build_radar_cache():
            (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False):
             results['score'].append({'sym': sym, 'close': round(c, 2), 'ma5': round(ma5, 2)})
 
-    data_dir.joinpath('radar.json').write_text(
+    conn.close()
+
+    # 寫入 gh-pages radar.json
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    Path(DATA_DIR).joinpath('radar.json').write_text(
         json.dumps({'updated': date.today().isoformat(), 'data': results},
                    ensure_ascii=False, separators=(',', ':')),
         encoding='utf-8')
@@ -780,8 +911,9 @@ def build_radar_cache():
 if __name__ == '__main__':
     init_db()
     print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
-    run()
-    fetch_futures_cache()
-    fetch_us_macro_cache()
-    fetch_broker_chips()
-    build_radar_cache()
+    run()                   # 採礦：OHLCV + 法人 → SQLite
+    export_json()           # 從 SQLite 一次性匯出 data/*.json（gh-pages 用）
+    fetch_futures_cache()   # 外資期貨 → futures_cache.json
+    fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
+    fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
+    build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
