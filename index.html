@@ -2429,7 +2429,7 @@ ${brokerText}
             const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.7 });
             if (!text) throw new Error('未設定 Groq Key，請至設定填入');
             const escaped = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-[11px]">${escaped}</div>`;
+            result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-sm">${escaped}</div>`;
         } catch(e) {
             result.innerHTML = `<span class="text-red-400 text-xs">分析失敗：${e.message}</span>`;
         }
@@ -2452,27 +2452,36 @@ ${brokerText}
             return;
         }
 
-        result.innerHTML = '<span class="animate-pulse text-indigo-400 text-[10px]">讀取財務數據中，請稍候...</span>';
-        const tokenStr   = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
-        const d          = new Date(); d.setFullYear(d.getFullYear() - 2);
-        const startDate  = d.toISOString().split('T')[0];
-        const d2         = new Date(); d2.setMonth(d2.getMonth() - 18);
+        result.innerHTML = '<span class="animate-pulse text-indigo-400 text-sm">讀取財務 / 產業 / 股東資料中，請稍候...</span>';
+        const tokenStr     = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const d            = new Date(); d.setFullYear(d.getFullYear() - 2);
+        const startDate    = d.toISOString().split('T')[0];
+        const d2           = new Date(); d2.setMonth(d2.getMonth() - 18);
         const revenueStart = d2.toISOString().split('T')[0];
+        const d3           = new Date(); d3.setMonth(d3.getMonth() - 3);
+        const shStart      = d3.toISOString().split('T')[0];
 
         try {
-            const [fsRes, revRes] = await Promise.all([
+            // ── 四路並行：季報 / 月營收 / 股票產業資訊 / 股東持股分布 ──
+            const [fsRes, revRes, infoRes, shRes] = await Promise.all([
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] })),
-                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revenueStart}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] }))
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revenueStart}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] })),
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&data_id=${sym}${tokenStr}`, {}, { timeout: 8000, maxRetries: 1 }).then(r => r.json()).catch(() => ({ data: [] })),
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockShareholderStructure&data_id=${sym}&start_date=${shStart}${tokenStr}`, {}, { timeout: 8000, maxRetries: 1 }).then(r => r.json()).catch(() => ({ data: [] })),
             ]);
+
+            // ── 產業類別 ────────────────────────────────────────────────
+            const infoRow      = (infoRes.data || [])[0] || {};
+            const industryCategory = infoRow.industry_category || infoRow.type || null;
 
             // ── 季報：EPS / 毛利率 / 營益率（近6季）─────────────────────
             const byQuarter = {};
             for (const row of (fsRes.data || [])) {
                 const q = row.date?.substring(0, 7) || String(row.year);
                 if (!byQuarter[q]) byQuarter[q] = {};
-                if (row.type === 'EPS')                                           byQuarter[q].eps   = row.value;
-                if (row.type === 'GrossProfit'    || row.type === 'gross_profit') byQuarter[q].gross = row.value;
-                if (row.type === 'Revenue'        || row.type === 'revenue')      byQuarter[q].rev   = row.value;
+                if (row.type === 'EPS')                                               byQuarter[q].eps   = row.value;
+                if (row.type === 'GrossProfit'    || row.type === 'gross_profit')     byQuarter[q].gross = row.value;
+                if (row.type === 'Revenue'        || row.type === 'revenue')          byQuarter[q].rev   = row.value;
                 if (row.type === 'OperatingIncome'|| row.type === 'operating_income') byQuarter[q].opinc = row.value;
             }
             const quarters = Object.keys(byQuarter).sort().slice(-6);
@@ -2498,75 +2507,95 @@ ${brokerText}
                 }).join('\n')
                 : null;
 
-            // ── 動態參數對應 ────────────────────────────────────────────
+            // ── 股東持股分布（最新日期，大戶 400張以上 / 千張以上占比）──
+            let shareholderText = null;
+            const shData = (shRes.data || []);
+            if (shData.length > 0) {
+                // 取最新日期的資料
+                const latestShDate = shData.reduce((acc, r) => r.date > acc ? r.date : acc, '');
+                const latestSh     = shData.filter(r => r.date === latestShDate);
+                // 各區間持股比例加總（400張以上視為大戶）
+                const BIG_LOTS   = ['400-599','600-799','800-999','1,000張以上','1000張以上',
+                                    '>=1000','over1000','1000-'];
+                const SUPER_LOTS = ['1,000張以上','1000張以上','>=1000','over1000','1000-'];
+                const bigPct     = latestSh.filter(r => BIG_LOTS.some(k  => (r.shareholder_category||'').includes(k.replace(',','')))).reduce((s,r)=>s+(r.percent||0),0);
+                const superPct   = latestSh.filter(r => SUPER_LOTS.some(k => (r.shareholder_category||'').includes(k.replace(',','')))).reduce((s,r)=>s+(r.percent||0),0);
+                const totalShareholders = latestSh.reduce((s,r)=>s+(r.number_of_shareholders||0),0);
+                if (bigPct > 0 || superPct > 0) {
+                    shareholderText = `  資料日期：${latestShDate}` +
+                        (bigPct  > 0 ? `\n  400張以上大戶持股占比：${bigPct.toFixed(2)}%`    : '') +
+                        (superPct > 0 ? `\n  千張以上超大戶持股占比：${superPct.toFixed(2)}%` : '') +
+                        (totalShareholders > 0 ? `\n  總股東人數：${totalShareholders.toLocaleString()} 人` : '');
+                }
+            }
+
+            // ── 動態參數組合 ──────────────────────────────────────────
             const stockName    = this.getStockName(sym);
             const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : '未知';
             const latestYoy    = revText || this.latestYoyCache || null;
+            const financialSum = qText ? `近6季季報：\n${qText}` : null;
+            const newsStr      = this.latestNewsCache || null;
 
-            const inInv    = this.inventory.find(i => i.symbol === sym);
-            const costVal  = document.getElementById('costInput')?.value?.trim();
+            const inInv   = this.inventory.find(i => i.symbol === sym);
+            const costVal = document.getElementById('costInput')?.value?.trim();
             let costStr = '空手未持有', pnlStr = '—';
             if (inInv || (costVal && !isNaN(parseFloat(costVal)))) {
                 const cost = inInv ? inInv.cost : parseFloat(costVal);
                 const pnl  = typeof currentPrice === 'number' ? ((currentPrice - cost) / cost * 100).toFixed(2) : '—';
-                costStr    = String(cost);
-                pnlStr     = pnl !== '—' ? `${pnl >= 0 ? '+' : ''}${pnl}%` : '—';
+                costStr = String(cost);
+                pnlStr  = pnl !== '—' ? `${Number(pnl) >= 0 ? '+' : ''}${pnl}%` : '—';
             }
 
-            const newsStr      = this.latestNewsCache || null;
-            const financialSum = qText ? `近6季季報摘要：\n${qText}` : null;
-
-            // ── 組合提示詞（未拿到的動態欄位整段略過）───────────────────
-            const revenueBlock   = latestYoy   ? `- 營收動能：最新月營收 YoY%：\n${latestYoy}` : null;
-            const financialBlock = financialSum ? `- 財務現況：\n${financialSum}`                : null;
-            const newsBlock      = newsStr      ? `- 近期重大消息：${newsStr}`                   : null;
-            const dynamicParams  = [
+            const dynamicParams = [
                 `- 股票代號/名稱：${stockName}（${sym}）`,
+                industryCategory ? `- 產業類別：${industryCategory}` : null,
                 `- 最新股價：${currentPrice}`,
-                revenueBlock,
-                financialBlock,
+                latestYoy    ? `- 最新月營收 YoY%：\n${latestYoy}` : null,
+                financialSum ? `- 財務現況摘要：\n${financialSum}` : null,
+                shareholderText ? `- 股東持股與大戶分布（FinMind 最新）：\n${shareholderText}` : null,
                 `- 庫存與損益現況：成本 ${costStr} / 帳面損益 ${pnlStr}`,
-                newsBlock,
+                newsStr ? `- 近期重大消息：${newsStr}` : null,
             ].filter(Boolean).join('\n');
 
-            const prompt = `你是一位「資深科技產業首席分析師（專精供應鏈與技術壁壘）」兼「精通企業護城河理論的價值投資總監」。你的任務是針對使用者提供的個股數據與財務摘要，進行深度產業面與商業護城河剖析。
+            // ── 新版提示詞（已移除網路搜尋指令）─────────────────────────
+            const prompt = `你是一位「資深科技產業首席分析師（專精全球供應鏈與技術壁壘）」兼「精通大戶籌碼心理學的價值投資總監」。你的任務是針對使用者提供的個股數據進行極度嚴苛、客觀的商業與籌碼剖析。你抱持著「懷疑一切、數據說話」的市場老手精神，嚴禁盲目吹捧。
 
 核心分析原則：
-1. 深入淺出（引路人風格）：保持頂級專業度的同時，必須使用白話、生動的「商業比喻」來解釋複雜的技術壁壘（例如：將先進封裝比喻為高檔別墅的空間堆疊；將規模經濟比喻為大麥克指數的壓倒性採購優勢），讓沒有科技背景的投資人也能一眼看懂核心價值。
-2. 數據與技術強綁定：必須將傳入的「營收創新高/毛利率擴張」等財務數字，直接連結到其底層「領先技術、專利壁壘或商業模式」的變現能力上，嚴禁只複述數字。
-3. 傳產自動切換：若遇到傳統產業股（如鋼鐵、水泥、食品），請自動將分析重心切換為「規模經濟」、「品牌通路」或「高轉換成本」護城河，絕對不瞎編科技技術術語。
-4. 防幻覺容錯：若動態參數（營收 YoY、財務摘要、近期消息）為空，直接完全略過該項，絕不捏造數字。
-5. 時效約束：在分析未來展望時，若有傳入近期重大消息，請以新聞脈絡為主、歷史知識為輔，克服知識截止點限制。
-6. 長度硬限制：下方四大段落**每段嚴格控制 150～250 字**，關鍵核心詞彙必須使用 **粗體** 標示。
+1. 全球對手硬核對比：必須點名主要競爭對手。若屬高科技產業（半導體、AI、光電、關鍵零組件），對手視野拉高至全球（如台積電對手含 Intel、Samsung），並明確說跟對手比是**更好**還是**更壞**，差距在哪。
+2. 消息面精準定性：針對近期重大消息，必須定性為【實質利多】、【實質利空】、【利多出盡】或【利空出盡】其中一種，並分析市場大眾與主力的博弈心理。
+3. 股東籌碼心理學：若有股東持股分布數據，深度解讀大戶占比高低與趨勢，明確判定為**正常現象**或**異常訊號**。
+4. 傳產自動切換：遇到傳統產業（鋼鐵、水泥、食品等）自動切換為規模經濟、品牌通路、高轉換成本護城河分析，禁止亂套科技術語。
+5. 防幻覺容錯：動態參數為空者直接略過，嚴禁憑空捏造任何財務數字。
+6. 長度硬限制：四大段落每段嚴格控制 180～250 字，關鍵結論、核心數字、對手名稱、定性詞彙必須使用 **粗體** 標示，嚴禁在【】標題加粗。
 
-禁止任何 AI 套話（如「好的，以下是分析」「根據以上資料」）。
+禁止任何 AI 套話。
 
 【動態戰情參數】
 ${dynamicParams}
 
 請嚴格按照以下四個段落輸出，每段開頭必須保留【】標題：
 
-【🏗️ 核心業務與市場定位】
-說明該公司目前主要靠什麼產品或服務賺錢？在該產業中是否為龍頭？請用最白話且帶有生動商業比喻的方式，解釋它憑什麼坐穩這個位置。
+【🏗️ 核心業務、對手與全球定位】
+白話說明靠什麼賺錢，直接點名國內外主要競爭對手。若為高科技業，進行全球對手比對，用粗體明確指出跟對手相比**更好**還是**更壞**及具體差距。
 
-【🛡️ 商業護城河深挖】
-深度剖析該公司的核心壁壘。科技股聚焦在專利布局、先進製程、供應鏈控制等技術壁壘；傳產股自動切換為規模經濟、通路優勢或不可替代性。
+【👥 股東籌碼與大戶動向解讀】
+解讀股東持股分布（若有傳入數據）。分析大戶與董監事近期動作，直接定性為**正常現象**或**異常訊號**，並拆解主力背後的真實意圖。若持股資料為空，根據產業特性與估值水位推估機構投資人的可能態度。
 
-【⚙️ 領先技術與未來藍圖】
-揭示該公司目前掌握哪些最關鍵的領先技術，並高度結合近期重大消息，解讀未來的擴廠計畫、技術突破時程或業務展望。
+【⚠️ 消息面定性與市場隱憂】
+針對近期重大消息，精準定性為【實質利多 / 實質利空 / 利多出盡 / 利空出盡】之一。指出該公司或行業目前最大的地雷或隱憂（如原料暴漲、景氣下行、地緣政治）。若無消息傳入，根據產業週期推估當前最大風險因子。
 
-【📊 財報與產業交叉驗證】
-將傳入的最新營收 YoY 與財務摘要，與其底層的技術/商業變現能力做交叉驗證。說明這樣的財報結果，如何證明其護城河地位的增強或轉弱。`;
+【📊 財報與商業變現交叉驗證】
+將最新營收動能與財務摘要進行利弊對比。總結這樣的財報與籌碼動向，究竟代表競爭力在**實質轉強**，還是主力在**高檔拉高出貨、散戶進場接刀**？給出最終警示結論。`;
 
-            const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.5 });
+            const text = await this._callAI({ prompt, max_tokens: 900, temperature: 0.5 });
             if (!text) throw new Error('未設定 Groq Key，請至設定填入');
 
             // ── 渲染：段落色塊 + Markdown 粗體 ──────────────────────────
             const sectionMap = {
-                '【🏗️ 核心業務與市場定位】':{ border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
-                '【🛡️ 商業護城河深挖】':    { border:'border-green-500',  title:'text-green-400',  bg:'bg-green-950/20'  },
-                '【⚙️ 領先技術與未來藍圖】': { border:'border-yellow-500', title:'text-yellow-400', bg:'bg-yellow-950/20' },
-                '【📊 財報與產業交叉驗證】': { border:'border-purple-500', title:'text-purple-300', bg:'bg-purple-950/20' },
+                '【🏗️ 核心業務、對手與全球定位】':{ border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
+                '【👥 股東籌碼與大戶動向解讀】':   { border:'border-green-500',  title:'text-green-400',  bg:'bg-green-950/20'  },
+                '【⚠️ 消息面定性與市場隱憂】':     { border:'border-orange-500', title:'text-orange-400', bg:'bg-orange-950/20' },
+                '【📊 財報與商業變現交叉驗證】':   { border:'border-purple-500', title:'text-purple-300', bg:'bg-purple-950/20' },
             };
             let rendered = text;
             for (const [marker, c] of Object.entries(sectionMap)) {
@@ -2578,11 +2607,19 @@ ${dynamicParams}
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-white">$1</b>')
                 .replace(/\n/g, '<br>');
 
-            result.innerHTML = `<div class="text-indigo-100 font-mono text-[11px] leading-loose">${rendered}</div>`;
+            const dataNote = [
+                industryCategory  ? null : '產業類別（AI 知識庫推估）',
+                shareholderText   ? null : '股東持股分布（未取得，AI 推估）',
+            ].filter(Boolean);
+            const noteBar = dataNote.length
+                ? `<div class="mb-2 text-[10px] text-gray-500 bg-gray-800/60 border border-gray-700 rounded px-2 py-1">ℹ️ 以下維度無實際資料，由 AI 推估補全：${dataNote.join('、')}</div>`
+                : '';
+
+            result.innerHTML = `<div class="text-indigo-100 font-mono text-sm leading-loose">${noteBar}${rendered}</div>`;
             this.latestFinancialAICache = text.substring(0, 500);
 
         } catch(e) {
-            result.innerHTML = `<span class="text-red-400 text-[10px]">分析失敗：${e.message}</span>`;
+            result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
         }
         btn.innerHTML = '🧠 AI基本面白話解讀';
     },
@@ -4141,7 +4178,7 @@ ${keyLevels ? keyLevels : ''}${chipBlock}${globalBlock}${fundamentalBlock}`;
                 : '';
 
             this.typeWriterEffect(box,
-                `<div class="text-indigo-100 typewriter-text font-mono text-[12px] leading-loose">${missingBadge}${text}</div>`);
+                `<div class="text-indigo-100 typewriter-text font-mono text-sm leading-loose">${missingBadge}${text}</div>`);
 
         } catch(e) {
             box.innerHTML = `<div class="text-red-400 font-bold bg-red-900/30 p-3 rounded border border-red-800">❌ AI 分析失敗：<br><span class="text-xs text-red-300">${e.message}</span></div>`;
