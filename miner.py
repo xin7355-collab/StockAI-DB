@@ -315,36 +315,92 @@ def run():
         print(f"  ✅ 法人補丁完成：{patch_count} 檔已更新法人欄位")
 
 
+def taifex_tx_net(target_date) -> int | None:
+    """TAIFEX 官網抓 TX 外資未平倉淨口數（完全免費，不需帳號）。"""
+    import re
+    try:
+        date_slash = target_date.strftime('%Y/%m/%d')
+        url = 'https://www.taifex.com.tw/cht/3/futContractsDate'
+        form = {'queryType': '1', 'marketCode': '0', 'contractCode': 'TX',
+                'dateaddcnt': '0', 'queryDate': date_slash}
+        hdrs = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64)',
+                'Referer': url, 'Accept-Encoding': 'gzip, deflate, br'}
+        r = requests.post(url, data=form, headers=hdrs, timeout=30)
+        r.raise_for_status()
+        html = r.text
+
+        # 在 <tr> 層找「外資及陸資」那行
+        rows_html = re.findall(r'<tr[^>]*>(.*?)</tr>', html, re.DOTALL)
+        for row_html in rows_html:
+            if '外資及陸資' not in row_html:
+                continue
+            cells = re.findall(r'<td[^>]*>(.*?)</td>', row_html, re.DOTALL)
+            nums = []
+            for c in cells:
+                val = re.sub(r'<[^>]+>', '', c).strip().replace(',', '').replace('+', '')
+                if val.lstrip('-').isdigit() and len(val.lstrip('-')) >= 2:
+                    nums.append(int(val))
+            print(f'  🔍 TAIFEX 外資TX數字序列: {nums}')
+            # 欄位順序: 多方口數, 多方金額(百萬), 空方口數, 空方金額(百萬), 淨多空口數, 淨多空金額
+            if len(nums) >= 5:
+                return nums[4]   # 多空淨額口數
+            if len(nums) >= 3:
+                return nums[0] - nums[2]  # long - short
+        print('  ⚠️  TAIFEX: 找不到外資及陸資 TX 資料')
+        return None
+    except Exception as e:
+        print(f'  ⚠️  TAIFEX TX fallback 失敗: {e}')
+        return None
+
+
 def fetch_futures_cache():
-    """每日抓取外資台指期未平倉淨口數，存為 futures_cache.json 供前端讀取。"""
+    """每日抓取外資台指期未平倉淨口數，存為 futures_cache.json 供前端讀取。
+    策略：FinMind → TAIFEX 直連備援。若全部失敗保留舊快取不覆寫。"""
     today = date.today()
     start = (today - timedelta(days=10)).strftime('%Y-%m-%d')
     print(f"\n🔮 抓取外資台指期淨口數 {start}~{today} ...")
+
+    net, long_val, short_val, last_date = None, 0, 0, today.strftime('%Y-%m-%d')
+
+    # ── 1. FinMind ──────────────────────────────────────────────────────
     rows = fm_get('TaiwanFuturesInstitutionalInvestors', data_id='TX', start_date=start)
-    # 優先比對 FinMind 正式欄位 institutional_investors，再 fallback 舊版 name 欄
     foreign = [r for r in rows if
-               r.get('institutional_investors') == '外資及陸資' or
-               r.get('name') == '外資及陸資' or
                '外資' in r.get('institutional_investors', '') or
                '外資' in r.get('name', '')]
-    if not foreign:
-        all_names = list(set(r.get('institutional_investors', r.get('name', '?')) for r in rows[:10]))
-        print(f"  ⚠️  無外資期貨資料，跳過寫入（共 {len(rows)} 筆，法人欄位值：{all_names}）")
-        return
-    last = foreign[-1]
-    try:
-        # 優先用直接淨口數欄位，再退回長短相減
-        if last.get('open_interest_net_volume') is not None:
-            net = int(last['open_interest_net_volume'])
+    if foreign:
+        last = foreign[-1]
+        last_date = last.get('date', last_date)
+        lv = int(last.get('long_open_interest_balance', 0))
+        sv = int(last.get('short_open_interest_balance', 0))
+        nv = last.get('open_interest_net_volume')
+        calc_net = int(nv) if nv is not None else (lv - sv)
+        print(f'  FinMind 外資TX: long={lv:,} short={sv:,} net={calc_net:+,}')
+        if calc_net != 0 or lv != 0 or sv != 0:
+            net, long_val, short_val = calc_net, lv, sv
         else:
-            net = int(last.get('long_open_interest_balance', 0)) - int(last.get('short_open_interest_balance', 0))
-    except (KeyError, ValueError) as e:
-        print(f"  ⚠️  欄位解析失敗: {e}，原始資料: {last}")
-        return
-    long_val  = int(last.get('long_open_interest_balance', 0))
-    short_val = int(last.get('short_open_interest_balance', 0))
+            print(f'  ⚠️  FinMind 回傳全零（匿名配額不含餘額欄位），改用 TAIFEX...')
+    else:
+        all_names = list(set(r.get('institutional_investors', r.get('name', '?')) for r in rows[:10]))
+        print(f'  ⚠️  FinMind 無外資期貨列（{len(rows)} 筆，名稱: {all_names}），改用 TAIFEX...')
+
+    # ── 2. TAIFEX 直連備援（免費，不需帳號）──────────────────────────────
+    if net is None:
+        yesterday = today - timedelta(days=1)
+        target = yesterday if today.weekday() == 0 else today  # 週一抓週五
+        # 往前找最近交易日（跳過週末）
+        while target.weekday() >= 5:
+            target -= timedelta(days=1)
+        taifex_net = taifex_tx_net(target)
+        if taifex_net is not None:
+            net = taifex_net
+            last_date = target.strftime('%Y-%m-%d')
+            print(f'  ✅ TAIFEX TX 外資淨口數: {net:+,} 口  ({last_date})')
+        else:
+            print(f'  ⚠️  TAIFEX 也失敗，保留舊快取不覆寫')
+            return  # 不覆寫，保留舊值
+
     cache = {
-        'date': last.get('date', today.strftime('%Y-%m-%d')),
+        'date': last_date,
         'fi_net': net,
         'long': long_val,
         'short': short_val,
@@ -352,7 +408,7 @@ def fetch_futures_cache():
     }
     with open('futures_cache.json', 'w', encoding='utf-8') as f:
         json.dump(cache, f, ensure_ascii=False)
-    print(f"  ✅ 外資台指期淨口數: {net:+,} 口  ({cache['date']})")
+    print(f"  ✅ 外資台指期淨口數: {net:+,} 口  ({last_date})")
 
 
 def fetch_us_macro_cache():
