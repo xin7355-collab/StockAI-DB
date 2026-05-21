@@ -557,9 +557,9 @@
                 <div class="sticky top-0 z-50 bg-[#0d1117] border-b border-[#30363d] p-3 shadow-md flex flex-col gap-3 rounded-t-[8px]">
                     <div class="flex justify-between items-center gap-2">
                         <h2 class="text-base font-bold text-red-500 flex items-center gap-1 flex-shrink-0">🔥 資金動能雷達</h2>
-                        <select id="radarPoolSelect" onchange="app.resetRadarResults()" class="bg-[#1c2128] text-blue-400 font-bold border border-[#30363d] rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500 w-full max-w-[180px]">
+                        <select id="radarPoolSelect" onchange="app._filterAndRenderRadar()" class="bg-[#1c2128] text-blue-400 font-bold border border-[#30363d] rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500 w-full max-w-[180px]">
                             <option value="hot_twse">🔥 上市熱門大將 (40檔)</option>
-                            <option value="hot_otc">🚀 上櫃活潑中小型 (20檔)</option>
+                            <option value="hot_otc">🚀 上櫃活潑中小型 (24檔)</option>
                             <option value="etf_heavy">💰 高股息與權值 (10檔)</option>
                             <option value="fav">⭐ 當前自選清單</option>
                             <option value="inv">💼 我的庫存部位</option>
@@ -814,6 +814,7 @@ const app = {
     currentUSMarket: 'neutral', currentStrategyContext: {},
     peaks: [], troughs: [], twiiState: 'neutral', fiShortQty: null, currentMarkPoints: [],
     sortableFav: null, sortableInv: null, apiRateLimited: false, emergencyMode: false, isRadarScanning: false,
+    currentRadarResults: null, lastRadarType: null, _radarUpdatedAt: '',
     latestNewsCache: "", latestYoyCache: "", latestFinancialAICache: "", autoRefreshTimer: null,
     
     fugleKeyIndex: 0,
@@ -899,7 +900,7 @@ const app = {
         await this.analyze('2330', true);
         this.refreshInventoryPrices();
         this.renderFavTabs();
-        this.renderRadarCache();
+        this._filterAndRenderRadar();
 
         this.setupAutoRefresh();
         this.initSwipeToDelete();
@@ -1141,7 +1142,7 @@ const app = {
         if (tabId === 'diag' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
-        if (tabId === 'radar') this.renderRadarCache();
+        if (tabId === 'radar') this._filterAndRenderRadar();
         if (tabId === 'hunt') this.renderHuntTab();
     },
 
@@ -3616,150 +3617,216 @@ ${revText}
                  close, open: data[last].open || close, prevClose, recentVols };
     },
 
+    // ═══════════════════════════════════════════════════════════════════
+    // 【雷達彈藥庫定義】靜態白名單，前端過濾用
+    // 採礦機會對全市場所有股票執行指標運算並寫入 SQLite / radar.json
+    // 前端只需用這些 Set 在本地端秒切換彈藥庫，不用重打 API
+    // ═══════════════════════════════════════════════════════════════════
+    _RADAR_POOLS: {
+        hot_twse: new Set([
+            '2330','2317','2454','2382','3231','2303','2881','2886','2002','2603',
+            '2308','3711','1301','1303','2801','2884','2885','2892','6505','1216',
+            '2207','2301','2327','6415','2357','2395','3034','2379','2376','4938',
+            '3008','2912','1402','2105','2615','5880','2823','2408','3045','5438'
+        ]),
+        hot_otc: new Set([
+            '3105','3529','8069','5347','8299','3293','6142','6274',
+            '6488','6515','6770','3037','8046','4977','6278','6191',
+            '6669','3443','5264','6679','4763','6582','6803','8942'
+        ]),
+        etf_heavy: new Set([
+            '0050','0056','00878','00929','00919','00713','00692','006208','00900','00939'
+        ]),
+    },
+
     async loadRadar(type) {
-        if(this.apiRateLimited) { alert("⚠️ API 處於防封鎖冷卻期，請稍後再試。"); return; }
-        if(this.isRadarScanning) { alert('⚠️ 掃描進行中，請稍候'); return; }
+        if (this.isRadarScanning) { alert('⚠️ 掃描進行中，請稍候'); return; }
         this.isRadarScanning = true;
-        this.lastRadarType = type;
-        const container = document.getElementById('radarListMain');
-        const loadingEl = document.getElementById('radarLoading');
-        document.getElementById('radarResultHeader').classList.add('hidden'); container.innerHTML = '';
-        loadingEl.classList.remove('hidden'); loadingEl.classList.add('flex');
+        this.lastRadarType   = type;
 
-        const poolType = document.getElementById('radarPoolSelect').value;
-        const filterLabels = {
-            bottom: { badge: '🌸底部起漲', color: 'text-pink-400 border-pink-700 bg-pink-900/50', desc: '剛站上月線 / 5MA 黃金交叉' },
-            surge:  { badge: '🚀飆股動能', color: 'text-red-400 border-red-700 bg-red-900/50',   desc: '貼近布林上軌 + 連3日爆量' },
-            score:  { badge: '⭐綜合強勢', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50', desc: 'Alpha 技術評分達標' }
-        };
+        const loadingEl   = document.getElementById('radarLoading');
+        const statusText  = document.getElementById('radarStatusText');
+        const progressBar = document.getElementById('radarProgressBar');
+        const container   = document.getElementById('radarListMain');
+        const header      = document.getElementById('radarResultHeader');
 
-            // ── 策略 0: 本地 api.py（設定了 localApiUrl 即優先，不限 pool 類型）──
-            const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
-            if (apiBase) {
-                try {
-                    document.getElementById('radarStatusText').innerText = '本地伺服器秒讀中...';
-                    const res = await this.safeFetch(`${apiBase}/api/radar/${type}`, {}, { timeout: 5000, maxRetries: 1 });
-                    if (res.ok) {
-                        const rows = await res.json();
-                        const lbl = filterLabels[type];
-                        const results = rows.map(r => ({ sym: r.symbol, name: this.getStockName(r.symbol), desc: lbl.desc, badge: lbl.badge, color: lbl.color }));
-                        localStorage.setItem('proTerminalRadarCache', JSON.stringify({ type, pool: poolType, results, src: 'local_api' }));
-                        loadingEl.classList.add('hidden'); loadingEl.classList.remove('flex');
-                        this.isRadarScanning = false;
-                        this.renderRadarCache();
-                        return;
-                    }
-                } catch(e) {
-                    this.showToast('⚠️ 本地雷達 API 連線失敗，切換至雲端快取模式');
-                }
-            }
+        // ── 顯示 Loading，清空舊結果 ────────────────────────────────
+        header.classList.add('hidden');
+        container.innerHTML = '';
+        progressBar.style.width = '0%';
+        loadingEl.classList.remove('hidden');
+        loadingEl.classList.add('flex');
 
         try {
-            // ── 策略 1：讀取後端預運算雷達快取（1次請求，涵蓋全市場）──
-            // For hot_twse / hot_otc / etf_heavy pools, try server pre-computed radar.json first
-            if (['hot_twse','hot_otc','etf_heavy'].includes(poolType)) {
-                try {
-                    document.getElementById('radarStatusText').innerText = '讀取雲端雷達快取...';
-                    document.getElementById('radarProgressBar').style.width = '50%';
-                    const radarBase = window.location.href.split('?')[0].split('#')[0];
-                    const radarRes = await fetch(new URL('data/radar.json', radarBase).href, { signal: AbortSignal.timeout(5000) });
-                    if (radarRes.ok) {
-                        const radarJson = await radarRes.json();
-                        const preList = (radarJson.data?.[type] || []);
-                        // Filter to the selected pool
-                        let poolSyms = new Set();
-                        if (poolType === 'hot_twse') poolSyms = new Set(['2330','2317','2454','2382','3231','2303','2881','2886','2002','2603','2308','3711','1301','1303','2801','2884','2885','2892','6505','1216','2207','2301','2327','6415','2357','2395','3034','2379','2376','4938']);
-                        else if (poolType === 'hot_otc') poolSyms = new Set(['3105','3529','8069','5347','8299','3293','6142','6274','6488','6515','6770','3037','8046','4977','6278','6191']);
-                        else poolSyms = new Set(['0050','0056','00878','00929','00919']);
-                        const lbl = filterLabels[type];
-                        const results = preList
-                            .filter(r => poolSyms.has(r.sym))
-                            .map(r => ({ sym: r.sym, name: this.getStockName(r.sym), desc: lbl.desc, badge: lbl.badge, color: lbl.color }));
-                        document.getElementById('radarProgressBar').style.width = '100%';
-                        localStorage.setItem('proTerminalRadarCache', JSON.stringify({ type, pool: poolType, results, src: 'cloud', updated: radarJson.updated }));
-                        loadingEl.classList.add('hidden'); loadingEl.classList.remove('flex');
-                        this.renderRadarCache();
-                        return;
-                    }
-                } catch(e) { /* fall through to live scan */ }
+            const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
+            let rawList = [];
+
+            if (apiBase) {
+                // ── 模式 A：本地後端秒讀（SQLite 預運算，含全市場）──────
+                // 一次請求取得全策略達標清單，後續切換彈藥庫只做前端 filter
+                statusText.innerText = '⚡ 首席資料庫秒讀中...';
+                const res = await this.safeFetch(
+                    `${apiBase}/api/radar/${type}`,
+                    {},
+                    { timeout: 6000, maxRetries: 1 }
+                );
+                if (!res.ok) throw new Error(`後端回傳 HTTP ${res.status}`);
+                // 後端格式：[{ symbol, close, signal_date, extra_data }]
+                const rows = await res.json();
+                rawList = rows.map(r => ({ sym: r.symbol, close: r.close, signal_date: r.signal_date }));
+
+            } else {
+                // ── 模式 B：gh-pages 靜態 radar.json（GitHub Actions 每日更新）
+                // 同樣一次請求涵蓋全市場，前端 filter 秒切換彈藥庫
+                statusText.innerText = '☁️ 讀取雲端雷達快取...';
+                const ghBase   = window.location.href.split('?')[0].split('#')[0];
+                const radarRes = await this.safeFetch(
+                    new URL('data/radar.json', ghBase).href,
+                    {},
+                    { timeout: 8000, maxRetries: 1 }
+                );
+                if (!radarRes.ok) throw new Error('雲端 radar.json 讀取失敗，請先執行採礦');
+                const radarJson = await radarRes.json();
+                // 雲端格式：{ data: { bottom:[{sym,close}], surge:[...], score:[...] }, updated:'...' }
+                rawList = (radarJson.data?.[type] || []).map(r => ({
+                    sym:   r.sym || r.symbol,
+                    close: r.close,
+                }));
+                this._radarUpdatedAt = radarJson.updated || '';
             }
 
-            // ── 策略 2：即時掃描（自選/庫存 pool，或雲端快取不可用時）──
-            let pool = [];
-            if (poolType === 'hot_twse') pool = ['2330','2317','2454','2382','3231','2303','2881','2886','2002','2603'];
-            else if (poolType === 'hot_otc') pool = ['3105','3529','8069','5347','8299','3293','6142','6274'];
-            else if (poolType === 'etf_heavy') pool = ['0050','0056','00878','00929','00919'];
-            else if (poolType === 'fav') pool = this.favGroups[this.activeGroupName] || [];
-            else if (poolType === 'inv') pool = this.inventory.map(i => i.symbol);
+            // 進度條飛到底（秒讀 API 無中間進度，直接 100%）
+            progressBar.style.width = '100%';
 
-            const results = [];
-            for (let i=0; i<pool.length; i++) {
-                if(this.apiRateLimited) break;
-                const sym = pool[i];
-                document.getElementById('radarStatusText').innerText = `即時掃描: ${sym} (${i+1}/${pool.length})`;
-                document.getElementById('radarProgressBar').style.width = `${((i+1)/pool.length)*100}%`;
+            // 全市場結果暫存：切換彈藥庫時直接從這裡 filter，不重打 API
+            this.currentRadarResults = { type, rawList };
 
-                const data = await this.fetchHistoricalData(sym, false);
-                if (!data || data.length < 22) continue;
-                const ind = this._computeQuickIndicators(data);
-                if (!ind) continue;
-
-                let pass = false;
-                if (type === 'bottom') {
-                    pass = (ind.close > ind.ma20 && ind.prevClose <= ind.prevMa20 || ind.ma5 > ind.ma10 && ind.prevMa5 <= ind.prevMa10) && ind.close > ind.prevClose;
-                } else if (type === 'surge') {
-                    pass = ind.close >= ind.upperBB * 0.97 && ind.recentVols.every(v => v > ind.vma5);
-                } else if (type === 'score') {
-                    const s = (ind.close > ind.ma20 && ind.ma5 > ind.ma10 && ind.ma10 > ind.ma20 ? 40 : 0) + (ind.recentVols[2] > ind.vma5 * 1.2 ? 15 : 0) + (ind.close > ind.prevClose ? 15 : 0);
-                    pass = s >= 55;
-                }
-                if (pass) {
-                    const lbl = filterLabels[type];
-                    results.push({ sym, name: this.getStockName(sym), desc: lbl.desc, badge: lbl.badge, color: lbl.color });
-                }
-            }
-            localStorage.setItem('proTerminalRadarCache', JSON.stringify({ type, pool: poolType, results }));
-        } catch(e) {
-            console.warn('loadRadar error', e);
+        } catch (e) {
+            console.warn('[loadRadar]', e);
+            this.currentRadarResults = null;
+            // 顯示紅色錯誤卡片，提供重試按鈕
+            header.classList.add('hidden');
+            container.innerHTML = `
+                <li class="m-3 p-5 bg-red-900/30 border border-red-700 rounded-lg text-center list-none">
+                    <div class="text-red-400 font-bold text-sm mb-1">❌ 雷達資料讀取失敗</div>
+                    <div class="text-red-300 text-xs">${e.message}</div>
+                    <button onclick="app.loadRadar('${type}'); app.vibrate(30);"
+                            class="mt-3 px-4 py-1.5 bg-gray-800 text-xs text-gray-300 rounded-full border border-gray-600 hover:text-white transition-colors">
+                        🔄 重試
+                    </button>
+                </li>`;
+            return;   // 提前返回，跳過 finally 後的渲染
         } finally {
-            loadingEl.classList.add('hidden'); loadingEl.classList.remove('flex');
+            // 無論成功或失敗都關閉 Loading
+            loadingEl.classList.add('hidden');
+            loadingEl.classList.remove('flex');
             this.isRadarScanning = false;
-            this.renderRadarCache();
         }
+
+        // 成功：執行彈藥庫過濾 + 渲染（不打 API，純前端 Set.has()）
+        this._filterAndRenderRadar();
     },
 
-    resetRadarResults() {
-        const container = document.getElementById('radarListMain'), header = document.getElementById('radarResultHeader');
-        header.classList.add('hidden');
-        container.innerHTML = '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">彈藥庫已切換，請點擊上方掃描按鈕重新啟動。</li>';
-        localStorage.removeItem('proTerminalRadarCache');
+    // ── 彈藥庫過濾器：從全市場快取裁切出當前 pool，秒切換 ─────────────────────
+    _filterAndRenderRadar() {
+        const container = document.getElementById('radarListMain');
+        const header    = document.getElementById('radarResultHeader');
+
+        // 尚未掃描，顯示引導提示
+        if (!this.currentRadarResults) {
+            header.classList.add('hidden');
+            container.innerHTML = '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">請選擇上方彈藥庫並點擊掃描按鈕啟動雷達</li>';
+            return;
+        }
+
+        const { type, rawList } = this.currentRadarResults;
+        const poolType = document.getElementById('radarPoolSelect').value;
+
+        // 根據彈藥庫類型決定過濾邏輯
+        let filtered;
+        if (poolType === 'fav') {
+            // 自選清單：動態讀取當前群組
+            const favSet = new Set(this.favGroups[this.activeGroupName] || []);
+            filtered = rawList.filter(r => favSet.has(r.sym));
+        } else if (poolType === 'inv') {
+            // 庫存部位：動態讀取庫存
+            const invSet = new Set(this.inventory.map(i => i.symbol));
+            filtered = rawList.filter(r => invSet.has(r.sym));
+        } else {
+            // 靜態彈藥庫：用預設 Set 做 O(1) 查找
+            const symSet = this._RADAR_POOLS[poolType];
+            filtered = symSet ? rawList.filter(r => symSet.has(r.sym)) : rawList;
+        }
+
+        this.renderRadarResults(filtered, type, poolType);
     },
 
-    renderRadarCache() {
-        const container = document.getElementById('radarListMain'), header = document.getElementById('radarResultHeader');
-        let cacheRaw = localStorage.getItem('proTerminalRadarCache');
-        let cacheObj = cacheRaw ? JSON.parse(cacheRaw) : null;
-        const cache = Array.isArray(cacheObj) ? cacheObj : (cacheObj && cacheObj.results ? cacheObj.results : null);
-        const meta = (cacheObj && cacheObj.type) ? cacheObj : null;
+    // ── 雷達結果渲染器：接收過濾後陣列，生成 HTML ────────────────────────────
+    renderRadarResults(items, type, poolType) {
+        const container = document.getElementById('radarListMain');
+        const header    = document.getElementById('radarResultHeader');
 
-        if (!cache || cache.length === 0) { header.classList.add('hidden'); container.innerHTML = '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">無符合條件之標的，請更換彈藥庫重試。</li>'; return; }
+        const FILTER_LABELS = {
+            bottom: { badge: '🌸底部起漲', color: 'text-pink-400 border-pink-700 bg-pink-900/50',   desc: '剛站上月線 / 5MA 黃金交叉' },
+            surge:  { badge: '🚀飆股動能', color: 'text-red-400 border-red-700 bg-red-900/50',     desc: '貼近布林上軌 + 連3日爆量'  },
+            score:  { badge: '⭐綜合強勢', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50', desc: 'Alpha 技術評分達標'   },
+        };
+        const TYPE_LABELS = { bottom: '底部起漲', surge: '飆股動能', score: '綜合強勢' };
+        const POOL_LABELS = { hot_twse: '上市熱門', hot_otc: '上櫃中小型', etf_heavy: '高股息權值', fav: '自選清單', inv: '庫存部位' };
 
-        const typeLabels = { bottom: '底部起漲', surge: '飆股動能', score: '綜合強勢' };
-        const poolLabels = { hot_twse: '上市熱門', hot_otc: '上櫃中小型', etf_heavy: '高股息權值', fav: '自選清單', inv: '庫存部位' };
-        const scanInfo = meta ? ` · ${typeLabels[meta.type] || meta.type} · ${poolLabels[meta.pool] || meta.pool} · 共 ${cache.length} 檔` : ` · 共 ${cache.length} 檔`;
+        // 空結果：給出對應引導
+        if (!items || items.length === 0) {
+            header.classList.add('hidden');
+            const isPersonal = (poolType === 'fav' || poolType === 'inv');
+            container.innerHTML = `<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">
+                ${isPersonal ? '您的' + POOL_LABELS[poolType] + '中目前無達標標的' : '此彈藥庫無達標標的'}，
+                可切換策略或彈藥庫重試。
+            </li>`;
+            return;
+        }
+
+        const lbl     = FILTER_LABELS[type] || FILTER_LABELS.score;
+        const updated = this._radarUpdatedAt
+            ? `<span class="text-gray-600 text-[10px] font-normal ml-1">更新：${this._radarUpdatedAt}</span>`
+            : '';
+
         header.classList.remove('hidden');
-        header.innerText = `上次掃描結果：${scanInfo}`;
+        header.innerHTML = `⚡ ${TYPE_LABELS[type] || type} · ${POOL_LABELS[poolType] || poolType} · 共 <b class="text-white">${items.length}</b> 檔${updated}`;
 
         let html = '';
-        cache.forEach(m => {
+        items.forEach(m => {
+            const price = m.close ? `<div class="text-xs text-gray-500 font-mono mt-0.5">${m.close}</div>` : '';
             html += `
-            <li class="p-4 m-2 bg-[#1c2128] border border-[#30363d] rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors shadow-sm" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
-                <div><div class="font-bold text-white text-base md:text-lg">${this.getFullStockName(m.sym)}</div><div class="text-xs text-gray-500 mt-1">${m.desc}</div></div>
-                <div class="text-right"><span class="px-2 py-1 rounded text-xs font-bold border ${m.color}">${m.badge}</span></div>
+            <li class="p-4 m-2 bg-[#1c2128] border border-[#30363d] rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors shadow-sm"
+                onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
+                <div>
+                    <div class="font-bold text-white text-base md:text-lg">${this.getFullStockName(m.sym)}</div>
+                    <div class="text-xs text-gray-500 mt-1">${lbl.desc}</div>
+                </div>
+                <div class="text-right flex-shrink-0 ml-3">
+                    <span class="px-2 py-1 rounded text-xs font-bold border ${lbl.color}">${lbl.badge}</span>
+                    ${price}
+                </div>
             </li>`;
         });
-        html += `<div class="text-center mt-4 mb-2"><button onclick="app.loadRadar('${meta ? meta.type : 'score'}'); app.vibrate(30);" class="text-xs text-gray-400 bg-gray-800 px-4 py-2 rounded-full border border-gray-600 hover:text-white transition-colors">🔄 重新啟動掃描</button></div>`;
+        html += `
+        <div class="text-center mt-4 mb-2">
+            <button onclick="app.loadRadar('${type}'); app.vibrate(30);"
+                    class="text-xs text-gray-400 bg-gray-800 px-4 py-2 rounded-full border border-gray-600 hover:text-white transition-colors">
+                🔄 重新掃描
+            </button>
+        </div>`;
         container.innerHTML = html;
+    },
+
+    // 主動清除全市場快取（測試用 / 版本更新後強制重抓）
+    resetRadarResults() {
+        this.currentRadarResults = null;
+        this.lastRadarType       = null;
+        this._radarUpdatedAt     = '';
+        document.getElementById('radarResultHeader').classList.add('hidden');
+        document.getElementById('radarListMain').innerHTML =
+            '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">彈藥庫已切換，請點擊上方掃描按鈕重新啟動。</li>';
     },
 
     typeWriterEffect(element, htmlText, speed = 10) {
