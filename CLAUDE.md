@@ -1,0 +1,123 @@
+# StockAI-DB — Claude Code 專案說明
+
+## 專案是什麼
+台股 AI 終端機，單一 `index.html` 靜態網站 + Python 採礦機，部署在 GitHub Pages。
+網站網址：`https://xin7355-collab.github.io/StockAI-DB/`
+
+---
+
+## Git 分支架構（三分支，各司其職）
+
+| 分支 | 用途 | 更新方式 |
+|------|------|----------|
+| `main` | 程式碼（miner.py、index.html、workflow） | 手動 commit |
+| `data` | 採礦後的 JSON 資料（orphan，永遠只有1個commit） | GitHub Actions force-push |
+| `gh-pages` | 網站 + 資料（orphan，永遠只有1個commit） | GitHub Actions force-push |
+
+**重要**：gh-pages 和 data 分支都用 orphan force-push，不累積歷史，空間不會爆炸。
+
+## 開發分支
+目前所有修改都在 `claude/optimize-html-c20DA`，尚未合併到 main。
+GitHub Actions workflow 需要從這個分支觸發才會用到最新程式碼。
+
+---
+
+## GitHub Actions Workflow
+檔案：`.github/workflows/daily_miner.yml`
+- 每個交易日台灣時間 16:30 自動執行
+- 可手動觸發：Actions → 每日籌碼採礦機 → Run workflow → 選 `claude/optimize-html-c20DA`
+- 執行順序：採礦(miner.py) → 部署 gh-pages → 部署 data 分支
+
+---
+
+## 資料檔案位置
+
+```
+data/*.json          每支股票的 OHLCV + 法人籌碼（最多800筆，約3年）
+data/chips/*.json    主力分點籌碼（滾動20個交易日）
+data/broker_names.json  券商代碼→名稱對照表（從 TWSE T86 累積建立）
+data/radar.json      雷達預運算結果（底部/飆股/綜合強勢）
+futures_cache.json   外資台指期未平倉淨口數
+macro_cache.json     美股大盤日收資料（SP500/NASDAQ/VIX/TSM）
+```
+
+---
+
+## 採礦機重點（miner.py）
+
+### 資料來源優先順序
+1. **OHLCV**：FinMind（付費→匿名fallback）
+2. **三大法人**：FinMind → 失敗時改用 TWSE MI_QFIIS（官方全市場每日法人資料）
+3. **融資融券**：FinMind（付費→匿名fallback）
+4. **分點籌碼**：TWSE T86 直連（主力）→ FinMind 逐股（備用）
+5. **外資期貨**：FinMind TaiwanFuturesInstitutionalInvestors
+6. **美股大盤**：yfinance
+
+### 重要規則
+- `fm_get()` 任何非200回應都會 fallback 到匿名請求
+- 分點籌碼「已是最新跳過」時，仍呼叫 `_refresh_broker_names()` 更新對照表
+- OHLCV 補丁邏輯：若舊記錄缺少 `foreign_net` 欄位，下次採礦時自動補上
+
+### 監控清單
+`CHIP_WATCHLIST` = 約50檔上市上櫃熱門股 + ETF，分點籌碼只追蹤這些。
+
+---
+
+## 前端重點（index.html）
+
+### 資料載入 URL 規則
+**所有 fetch URL 必須用動態 ghBase，不可硬編碼路徑**
+```javascript
+const ghBase = window.location.href.split('?')[0].split('#')[0];
+// 正確：new URL('data/xxx.json', ghBase).href
+// 錯誤：'https://xin7355-collab.github.io/stockai-db/data/xxx.json'  ← 大小寫錯誤
+```
+過去曾因為硬編碼小寫 `stockai-db` 導致 futures_cache、macro_cache、radar.json 全部 fetch 失敗。
+
+### 籌碼頁面結構
+「籌碼全面追蹤」為單一卡片，由上到下：
+1. 三大法人淨買賣（近10日圖表）
+2. 融資融券走勢（圖表）
+3. 主力分點追蹤（買超/賣超 Top10）
+4. 🤖 AI 籌碼全面解析（一個按鈕，涵蓋法人+分點）
+
+### AI 分析風格
+- 口吻：**權證小哥風格**，白話文，國中生都看得懂
+- 首席分析：技術面 → 籌碼面 → 全球觀 → 產品需求面 → 綜合評析
+- 均線數字要預先計算好，讓使用者直接看到數字
+
+### 外資期貨顯示邏輯
+- `fi_net > -10000`：多方無憂（綠色）
+- `-25000 < fi_net <= -10000`：⚠️ 暗流湧動（黃色）
+- `-40000 < fi_net <= -25000`：🔴 紅色警戒（橙色）
+- `fi_net <= -40000`：🚨 黑天鵝警報（緊急橫幅）
+
+---
+
+## 使用者偏好
+
+- **語言**：繁體中文回答
+- **風格**：直接給答案，不要長篇解釋，重點條列
+- **分析口吻**：白話文，像在跟初學者解釋
+- **功能方向**：以初學者友善為主，複雜功能要有白話說明
+- **命名習慣**：不用「照妖鏡」這三個字（已從 UI 移除）
+
+---
+
+## 常見問題與已知解法
+
+| 問題 | 原因 | 解法 |
+|------|------|------|
+| gh-pages 部署失敗 exit 128 | 首次執行 broker_names.json 不存在 | git add 前先判斷檔案存在 |
+| 三大法人空白 | FinMind status=None 不 fallback | fm_get 改為任何非200都 fallback |
+| 外資期貨/美股無資料 | URL 硬編碼小寫路徑 | 改用動態 ghBase |
+| 主力顯示 ABC 而非券商名 | 資料已最新跳過→T86未呼叫 | 跳過時仍呼叫 _refresh_broker_names |
+| broker_names.json 不存在 | T86 被雲端 sandbox 阻擋 | GitHub Actions 環境可存取 TWSE |
+
+---
+
+## GitHub 帳號
+- 帳號：`xin7355-collab`
+- 主要 repo：`StockAI-DB`（此專案）
+- 其他：`gdp-dashboard`（保留）、`pro-terminal-v4`（已刪除）
+- GitHub Pages 1GB 限制：目前使用約 100MB，無虞
