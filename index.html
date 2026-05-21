@@ -835,6 +835,12 @@ const app = {
         '利多鈍化': '明明公司發布大好消息（如營收創新高），但股價卻不漲反跌。這代表主力趁散戶看到新聞搶進時，偷偷倒貨出局。'
     },
 
+    // 統一 API base URL 解析：window.API_BASE_URL（雲端部署注入）優先，
+    // 其次 settings.localApiUrl（使用者手動填入），兩者皆空則純靜態模式
+    get _apiBase() {
+        return ((window.API_BASE_URL || '') || (this.settings.localApiUrl || '')).replace(/\/$/, '');
+    },
+
     getTodayStr() { const d = new Date(); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; },
     
     isMarketOpen() {
@@ -1650,8 +1656,8 @@ const app = {
             }
         }
 
-        // ── 本地 API（設定了 localApiUrl 時優先，SQLite 全量資料）──
-        const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
+        // ── 後端 API（window.API_BASE_URL 或 localApiUrl，SQLite 全量資料）──
+        const apiBase = this._apiBase;
         if (apiBase) {
             try {
                 const res = await this.safeFetch(`${apiBase}/api/stock/${symbol}`, {}, { timeout: 5000, maxRetries: 1 });
@@ -1701,12 +1707,12 @@ const app = {
 
     // ═══════════════════════════════════════════════════════════════════
     // 雙模式 AI 呼叫輔助（後端優先，純手機直打 Groq）
-    // 模式 A：有 localApiUrl → POST ${apiBase}/api/ai/analyze（金鑰在伺服器）
-    // 模式 B：無 localApiUrl 但有 groqKey → 前端直打 Groq（純手機模式）
+    // 模式 A：_apiBase 有值 → POST /api/ai/analyze（金鑰在伺服器）
+    // 模式 B：無後端但有 groqKey → 前端直打 Groq（純手機模式）
     // 兩者皆無 → 回傳 null，呼叫方顯示引導訊息
     // ═══════════════════════════════════════════════════════════════════
     async _callAI({ prompt, max_tokens = 900, temperature = 0.3 }) {
-        const apiBase  = (this.settings.localApiUrl || '').replace(/\/$/, '');
+        const apiBase  = this._apiBase;
         const groqKey  = this.settings.groqKey || '';
 
         // 模式 A：後端代理
@@ -2196,9 +2202,9 @@ const app = {
         try {
             const brokerNames = await this._loadBrokerNames();
             let records = null;
-            const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
+            const apiBase = this._apiBase;
 
-            // Strategy 1: local api.py (if configured) — SQLite, instant
+            // Strategy 1: backend api.py (if configured) — SQLite, instant
             if (apiBase) {
                 try {
                     const res = await fetch(`${apiBase}/api/chips/${sym}`, { signal: AbortSignal.timeout(3000) });
@@ -2325,7 +2331,7 @@ const app = {
         btn.textContent = '🤖 分析中，請稍候...';
         btn.disabled = true;
         result.classList.remove('hidden');
-        const hasBackend = !!(this.settings.localApiUrl || '').trim();
+        const hasBackend = !!this._apiBase;
         const hasGroqKey = !!(this.settings.groqKey || '').trim();
         if (!hasBackend && !hasGroqKey) {
             result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key（免費：console.groq.com），即可在手機直接使用 AI 分析。</span>';
@@ -2436,7 +2442,7 @@ ${brokerText}
         const result = document.getElementById('financialAIResult');
         btn.textContent = '🧠 分析中...';
         result.classList.remove('hidden');
-        const hasBackend = !!(this.settings.localApiUrl || '').trim();
+        const hasBackend = !!this._apiBase;
         const hasGroqKey = !!(this.settings.groqKey || '').trim();
         if (!hasBackend && !hasGroqKey) {
             result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key（免費：console.groq.com）。</span>';
@@ -3658,12 +3664,12 @@ ${revText}
         loadingEl.classList.add('flex');
 
         try {
-            const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
+            const apiBase = this._apiBase;
             let rawList = [];
 
             if (apiBase) {
-                // ── 模式 A：本地後端秒讀（SQLite 預運算，含全市場）──────
-                // 一次請求取得全策略達標清單，後續切換彈藥庫只做前端 filter
+                // ── 模式 A：後端秒讀（SQLite 預運算，含全市場）─────────────
+                // Path Parameter：/api/radar/{type}（非 query string）
                 statusText.innerText = '⚡ 首席資料庫秒讀中...';
                 const res = await this.safeFetch(
                     `${apiBase}/api/radar/${type}`,
@@ -3671,13 +3677,13 @@ ${revText}
                     { timeout: 6000, maxRetries: 1 }
                 );
                 if (!res.ok) throw new Error(`後端回傳 HTTP ${res.status}`);
-                // 後端格式：[{ symbol, close, signal_date, extra_data }]
+                // 後端格式：[{ symbol, close, signal_date }]
                 const rows = await res.json();
                 rawList = rows.map(r => ({ sym: r.symbol, close: r.close, signal_date: r.signal_date }));
 
             } else {
                 // ── 模式 B：gh-pages 靜態 radar.json（GitHub Actions 每日更新）
-                // 同樣一次請求涵蓋全市場，前端 filter 秒切換彈藥庫
+                // 全市場一次拉回，前端 Set.has() 秒切彈藥庫，零 API 呼叫
                 statusText.innerText = '☁️ 讀取雲端雷達快取...';
                 const ghBase   = window.location.href.split('?')[0].split('#')[0];
                 const radarRes = await this.safeFetch(
@@ -3687,7 +3693,7 @@ ${revText}
                 );
                 if (!radarRes.ok) throw new Error('雲端 radar.json 讀取失敗，請先執行採礦');
                 const radarJson = await radarRes.json();
-                // 雲端格式：{ data: { bottom:[{sym,close}], surge:[...], score:[...] }, updated:'...' }
+                // 靜態格式：{ data: { bottom:[{sym,close}], surge:[...], score:[...] }, updated:'...' }
                 rawList = (radarJson.data?.[type] || []).map(r => ({
                     sym:   r.sym || r.symbol,
                     close: r.close,
@@ -3843,7 +3849,7 @@ ${revText}
         if (!this.activeData || this.activeData.length === 0) { alert("⚠️ 請先確認股票資料已完整載入！"); return; }
 
         // 預先檢查是否有任何 AI 方式可用
-        const hasBackend = !!(this.settings.localApiUrl || '').trim();
+        const hasBackend = !!this._apiBase;
         const hasGroqKey = !!(this.settings.groqKey || '').trim();
         if (!hasBackend && !hasGroqKey) {
             box.classList.remove('hidden');
