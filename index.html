@@ -2439,10 +2439,11 @@ ${brokerText}
 
     async runFinancialAI(sym) {
         if (!sym) return;
-        const btn = document.getElementById('financialAIBtn');
+        const btn    = document.getElementById('financialAIBtn');
         const result = document.getElementById('financialAIResult');
         btn.textContent = '🧠 分析中...';
         result.classList.remove('hidden');
+
         const hasBackend = !!this._apiBase;
         const hasGroqKey = !!(this.settings.groqKey || '').trim();
         if (!hasBackend && !hasGroqKey) {
@@ -2450,65 +2451,136 @@ ${brokerText}
             btn.innerHTML = '🧠 AI基本面白話解讀';
             return;
         }
-        result.innerHTML = '<span class="animate-pulse text-indigo-400 text-[10px]">讀取財務數據...</span>';
-        const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
-        const d = new Date(); d.setFullYear(d.getFullYear() - 2);
-        const startDate = d.toISOString().split('T')[0];
-        const d2 = new Date(); d2.setMonth(d2.getMonth() - 18);
+
+        result.innerHTML = '<span class="animate-pulse text-indigo-400 text-[10px]">讀取財務數據中，請稍候...</span>';
+        const tokenStr   = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const d          = new Date(); d.setFullYear(d.getFullYear() - 2);
+        const startDate  = d.toISOString().split('T')[0];
+        const d2         = new Date(); d2.setMonth(d2.getMonth() - 18);
         const revenueStart = d2.toISOString().split('T')[0];
+
         try {
             const [fsRes, revRes] = await Promise.all([
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] })),
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revenueStart}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] }))
             ]);
-            // Build quarterly EPS / gross margin summary
+
+            // ── 季報：EPS / 毛利率 / 營益率（近6季）─────────────────────
             const byQuarter = {};
             for (const row of (fsRes.data || [])) {
-                const q = `${row.date?.substring(0,7) || row.year}`;
+                const q = row.date?.substring(0, 7) || String(row.year);
                 if (!byQuarter[q]) byQuarter[q] = {};
-                if (row.type === 'EPS') byQuarter[q].eps = row.value;
-                if (row.type === 'GrossProfit' || row.type === 'gross_profit') byQuarter[q].gross = row.value;
-                if (row.type === 'Revenue' || row.type === 'revenue') byQuarter[q].rev = row.value;
-                if (row.type === 'OperatingIncome' || row.type === 'operating_income') byQuarter[q].opinc = row.value;
+                if (row.type === 'EPS')                                           byQuarter[q].eps   = row.value;
+                if (row.type === 'GrossProfit'    || row.type === 'gross_profit') byQuarter[q].gross = row.value;
+                if (row.type === 'Revenue'        || row.type === 'revenue')      byQuarter[q].rev   = row.value;
+                if (row.type === 'OperatingIncome'|| row.type === 'operating_income') byQuarter[q].opinc = row.value;
             }
             const quarters = Object.keys(byQuarter).sort().slice(-6);
-            const qText = quarters.map(q => {
-                const v = byQuarter[q];
-                const parts = [];
-                if (v.eps != null) parts.push(`EPS ${v.eps}`);
-                if (v.gross != null && v.rev != null && v.rev > 0) parts.push(`毛利率 ${((v.gross / v.rev) * 100).toFixed(1)}%`);
-                if (v.opinc != null && v.rev != null && v.rev > 0) parts.push(`營益率 ${((v.opinc / v.rev) * 100).toFixed(1)}%`);
-                return `${q}: ${parts.join(', ') || '無資料'}`;
-            }).join('\n') || '無季報資料';
-            // YoY from monthly revenue
-            const revData = (revRes.data || []).sort((a, b) => `${a.revenue_year}${String(a.revenue_month).padStart(2,'0')}` > `${b.revenue_year}${String(b.revenue_month).padStart(2,'0')}` ? 1 : -1);
-            let revText = '無月營收資料';
-            if (revData.length > 0) {
-                const last6 = revData.slice(-6);
-                revText = last6.map(r => {
-                    const yoy = r.revenue_year_growth != null ? `YoY ${r.revenue_year_growth > 0 ? '+' : ''}${r.revenue_year_growth}%` : '';
-                    return `${r.revenue_year}/${r.revenue_month}: ${(r.revenue / 1e8).toFixed(1)}億 ${yoy}`;
-                }).join('\n');
+            const qText = quarters.length
+                ? quarters.map(q => {
+                    const v = byQuarter[q], parts = [];
+                    if (v.eps   != null) parts.push(`EPS ${v.eps}`);
+                    if (v.gross != null && v.rev > 0) parts.push(`毛利率 ${((v.gross/v.rev)*100).toFixed(1)}%`);
+                    if (v.opinc != null && v.rev > 0) parts.push(`營益率 ${((v.opinc/v.rev)*100).toFixed(1)}%`);
+                    return `  ${q}: ${parts.join(' / ') || '無資料'}`;
+                }).join('\n')
+                : null;
+
+            // ── 月營收 YoY（近6個月）──────────────────────────────────
+            const revData = (revRes.data || []).sort((a, b) =>
+                (`${a.revenue_year}${String(a.revenue_month).padStart(2,'0')}` >
+                 `${b.revenue_year}${String(b.revenue_month).padStart(2,'0')}`) ? 1 : -1);
+            const revText = revData.length
+                ? revData.slice(-6).map(r => {
+                    const yoy = r.revenue_year_growth != null
+                        ? `YoY ${r.revenue_year_growth > 0 ? '+' : ''}${r.revenue_year_growth}%` : '';
+                    return `  ${r.revenue_year}/${r.revenue_month}: ${(r.revenue/1e8).toFixed(1)}億 ${yoy}`;
+                }).join('\n')
+                : null;
+
+            // ── 動態參數對應 ────────────────────────────────────────────
+            const stockName    = this.getStockName(sym);
+            const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : '未知';
+            const latestYoy    = revText || this.latestYoyCache || null;
+
+            const inInv    = this.inventory.find(i => i.symbol === sym);
+            const costVal  = document.getElementById('costInput')?.value?.trim();
+            let costStr = '空手未持有', pnlStr = '—';
+            if (inInv || (costVal && !isNaN(parseFloat(costVal)))) {
+                const cost = inInv ? inInv.cost : parseFloat(costVal);
+                const pnl  = typeof currentPrice === 'number' ? ((currentPrice - cost) / cost * 100).toFixed(2) : '—';
+                costStr    = String(cost);
+                pnlStr     = pnl !== '—' ? `${pnl >= 0 ? '+' : ''}${pnl}%` : '—';
             }
-            const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length - 1].close : '未知';
-            const prompt = `你是台股基本面分析師，語氣親切直白，用投資人能懂的話解釋。請分析以下財務數據（200字以內）：
 
-股票：${sym}，現價：${currentPrice}
+            const newsStr      = this.latestNewsCache || null;
+            const financialSum = qText ? `近6季季報摘要：\n${qText}` : null;
 
-【近6季財務數據】
-${qText}
+            // ── 組合提示詞（未拿到的動態欄位整段略過）───────────────────
+            const revenueBlock   = latestYoy   ? `- 營收動能：最新月營收 YoY%：\n${latestYoy}` : null;
+            const financialBlock = financialSum ? `- 財務現況：\n${financialSum}`                : null;
+            const newsBlock      = newsStr      ? `- 近期重大消息：${newsStr}`                   : null;
+            const dynamicParams  = [
+                `- 股票代號/名稱：${stockName}（${sym}）`,
+                `- 最新股價：${currentPrice}`,
+                revenueBlock,
+                financialBlock,
+                `- 庫存與損益現況：成本 ${costStr} / 帳面損益 ${pnlStr}`,
+                newsBlock,
+            ].filter(Boolean).join('\n');
 
-【近6個月月營收（含 YoY）】
-${revText}
+            const prompt = `你是一位「資深科技產業首席分析師（專精供應鏈與技術壁壘）」兼「精通企業護城河理論的價值投資總監」。你的任務是針對使用者提供的個股數據與財務摘要，進行深度產業面與商業護城河剖析。
 
-請輸出：
-1. 獲利能力：EPS 趨勢是在成長還是衰退？毛利率有沒有擴張？
-2. 營收動能：月營收 YoY 加速還是減速？有沒有轉折訊號？
-3. 白話結論：現在基本面是「轉強」「持穩」還是「轉弱」？值不值得持有？`;
-            const text = await this._callAI({ prompt, max_tokens: 500, temperature: 0.6 });
+核心分析原則：
+1. 深入淺出（引路人風格）：保持頂級專業度的同時，必須使用白話、生動的「商業比喻」來解釋複雜的技術壁壘（例如：將先進封裝比喻為高檔別墅的空間堆疊；將規模經濟比喻為大麥克指數的壓倒性採購優勢），讓沒有科技背景的投資人也能一眼看懂核心價值。
+2. 數據與技術強綁定：必須將傳入的「營收創新高/毛利率擴張」等財務數字，直接連結到其底層「領先技術、專利壁壘或商業模式」的變現能力上，嚴禁只複述數字。
+3. 傳產自動切換：若遇到傳統產業股（如鋼鐵、水泥、食品），請自動將分析重心切換為「規模經濟」、「品牌通路」或「高轉換成本」護城河，絕對不瞎編科技技術術語。
+4. 防幻覺容錯：若動態參數（營收 YoY、財務摘要、近期消息）為空，直接完全略過該項，絕不捏造數字。
+5. 時效約束：在分析未來展望時，若有傳入近期重大消息，請以新聞脈絡為主、歷史知識為輔，克服知識截止點限制。
+6. 長度硬限制：下方四大段落**每段嚴格控制 150～250 字**，關鍵核心詞彙必須使用 **粗體** 標示。
+
+禁止任何 AI 套話（如「好的，以下是分析」「根據以上資料」）。
+
+【動態戰情參數】
+${dynamicParams}
+
+請嚴格按照以下四個段落輸出，每段開頭必須保留【】標題：
+
+【🏗️ 核心業務與市場定位】
+說明該公司目前主要靠什麼產品或服務賺錢？在該產業中是否為龍頭？請用最白話且帶有生動商業比喻的方式，解釋它憑什麼坐穩這個位置。
+
+【🛡️ 商業護城河深挖】
+深度剖析該公司的核心壁壘。科技股聚焦在專利布局、先進製程、供應鏈控制等技術壁壘；傳產股自動切換為規模經濟、通路優勢或不可替代性。
+
+【⚙️ 領先技術與未來藍圖】
+揭示該公司目前掌握哪些最關鍵的領先技術，並高度結合近期重大消息，解讀未來的擴廠計畫、技術突破時程或業務展望。
+
+【📊 財報與產業交叉驗證】
+將傳入的最新營收 YoY 與財務摘要，與其底層的技術/商業變現能力做交叉驗證。說明這樣的財報結果，如何證明其護城河地位的增強或轉弱。`;
+
+            const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.5 });
             if (!text) throw new Error('未設定 Groq Key，請至設定填入');
-            result.innerHTML = `<div class="text-indigo-400 font-bold text-[9px] mb-1">🧠 AI 財務白話解讀 — ${sym}</div><div class="whitespace-pre-wrap">${text}</div>`;
+
+            // ── 渲染：段落色塊 + Markdown 粗體 ──────────────────────────
+            const sectionMap = {
+                '【🏗️ 核心業務與市場定位】':{ border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
+                '【🛡️ 商業護城河深挖】':    { border:'border-green-500',  title:'text-green-400',  bg:'bg-green-950/20'  },
+                '【⚙️ 領先技術與未來藍圖】': { border:'border-yellow-500', title:'text-yellow-400', bg:'bg-yellow-950/20' },
+                '【📊 財報與產業交叉驗證】': { border:'border-purple-500', title:'text-purple-300', bg:'bg-purple-950/20' },
+            };
+            let rendered = text;
+            for (const [marker, c] of Object.entries(sectionMap)) {
+                const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                rendered = rendered.replace(new RegExp(esc, 'g'),
+                    `\n<div class="mt-3 ${c.border} border-l-2 pl-2 ${c.bg} rounded-r py-1"><span class="${c.title} font-bold text-xs">${marker}</span></div>`);
+            }
+            rendered = rendered
+                .replace(/\*\*(.+?)\*\*/g, '<b class="text-white">$1</b>')
+                .replace(/\n/g, '<br>');
+
+            result.innerHTML = `<div class="text-indigo-100 font-mono text-[11px] leading-loose">${rendered}</div>`;
             this.latestFinancialAICache = text.substring(0, 500);
+
         } catch(e) {
             result.innerHTML = `<span class="text-red-400 text-[10px]">分析失敗：${e.message}</span>`;
         }
