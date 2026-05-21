@@ -28,10 +28,15 @@ jobs:
       - name: 📦 安裝相依套件
         run: pip install requests yfinance
 
-      - name: 📂 還原昨天的 data/ 快取（加速增量更新）
+      - name: 📂 還原昨天的快取（data/ + futures/macro cache）
         run: |
-          git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立，首次全量下載"
+          git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
           git checkout origin/data -- data/ 2>/dev/null || echo "首次執行，從零開始"
+          # 還原 futures_cache.json / macro_cache.json（存在 gh-pages 根目錄）
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout origin/gh-pages -- futures_cache.json 2>/dev/null || true
+          git checkout origin/gh-pages -- macro_cache.json   2>/dev/null || true
+          echo "快取還原完成：$(ls futures_cache.json macro_cache.json 2>/dev/null | tr '\n' ' ')"
 
       - name: ⛏️ 執行採礦（OHLCV + 法人籌碼 + 融資融券 + 分點 + 美股）
         env:

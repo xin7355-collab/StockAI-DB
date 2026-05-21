@@ -1998,15 +1998,14 @@ const app = {
     },
 
     _resolveBrokerName(bid, bnm, brokerNames, rank) {
-        // If bnm is a proper name (non-numeric), use it directly
-        if (bnm && !/^[\d,.\s]+$/.test(bnm.trim())) return bnm;
-        // Try lookup table
+        // 優先用 lookup table（已清洗，只含 4 碼有效券商代碼）
         const cleaned = String(bid).replace(/,/g, '').trim();
         if (brokerNames[cleaned]) return brokerNames[cleaned];
         if (brokerNames[bid])     return brokerNames[bid];
-        // Fall back to anonymous label
-        const labels = ['甲','乙','丙','丁','戊','己','庚','辛'];
-        return `主力${labels[rank] || rank+1}`;
+        // bnm 是正常中文名稱才用（排除純數字）
+        if (bnm && !/^[\d,.\s]+$/.test(bnm.trim())) return bnm;
+        // 最後顯示原始代碼，不用主力甲乙丙
+        return cleaned || bid || `分點${rank + 1}`;
     },
 
     async loadBrokerChips(sym, forceRefresh) {

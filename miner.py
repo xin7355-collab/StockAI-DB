@@ -1,15 +1,8 @@
 """
-首席 AI 司令部 — 雲端籌碼採礦機 (方案 A 完全體 + 備援強化版)
-策略：
-  1. 動態清單：CHIP_WATCHLIST 基礎 + data/ 中使用者自行新增的個股
-  2. 個股精準狙擊：每股獨立 API 呼叫 (data_id=sym)，完美繞過批次限制
-  3. TWSE MI_QFIIS 備援：FinMind 三大法人空值時自動切換官方資料
-  4. TAIFEX 備援：外資期貨 FinMind 回零時改爬 TAIFEX 官網
-  5. 多 Token 彈匣：FINMIND_TOKENS 逗號分隔，自動輪替不中斷
-  6. 30 天滾動視窗：分點籌碼超期自動裁切
-  7. 籌碼戰術分點：小哥邏輯完全體（隔日沖、外資、權證總公司、波段抄底）
+首席 AI 司令部 — 雲端籌碼採礦機 (完全免費版)
+資料來源：TWSE / TPEX / TAIFEX 官方免費 API + yfinance
+無需任何 API Token。
 """
-import os
 import json
 import re
 import sqlite3
@@ -19,14 +12,12 @@ from datetime import date, timedelta
 from pathlib import Path
 
 DATA_DIR = "data"
-BASE_URL  = 'https://api.finmindtrade.com/api/v4/data'
-MASSIVE_API_KEY = os.environ.get('MASSIVE_API_KEY', '')
+Path(DATA_DIR).mkdir(exist_ok=True)
+DB_PATH = "stock_hunter.db"
 
-# ── 多 Token 彈匣：支援 FINMIND_TOKENS（逗號分隔）或舊版 FINMIND_TOKEN ──
-_raw = os.environ.get('FINMIND_TOKENS', '') or os.environ.get('FINMIND_TOKEN', '')
-FINMIND_TOKENS: list = [t.strip() for t in _raw.split(',') if t.strip()] if _raw else []
+_HDRS = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/2.0)'}
 
-# ── 基礎監控清單（方案 A 種子；data/ 中的使用者個股會自動附加）────────────
+# ── 監控清單 ──────────────────────────────────────────────────────────────────
 CHIP_WATCHLIST = sorted(set([
     '2330','2317','2454','2382','3231','2303','2881','2886','2002','2603',
     '2308','3711','1301','1303','2801','2884','2885','2892','6505','1216',
@@ -36,11 +27,49 @@ CHIP_WATCHLIST = sorted(set([
     '0050','0056','00878','00929','00919',
 ]))
 
-Path(DATA_DIR).mkdir(exist_ok=True)
-DB_PATH = "stock_hunter.db"
+# ── 券商戰術標籤庫 ────────────────────────────────────────────────────────────
+TACTICAL_TAGS = {
+    '9268': '凱基-台北(🔥全台最大最兇隔日沖)',
+    '984e': '元大-土城永寧(⚡極速隔日沖/常鎖漲停)',
+    '700b': '富邦-建國(🏹隔日沖大戶/常跟土城永寧聯手)',
+    '9211': '凱基-松山(🔥虎爺/知名當沖隔日沖)',
+    '7004': '富邦-嘉義(⚡傳統中南部老牌隔日沖)',
+    '075a': '康和-永和(⚡知名隔日沖/喜歡鎖漲停)',
+    '9a08': '永豐金-三重(⚡短線暴力隔日沖)',
+    '8881': '國泰-敦南(⚡短線隔日沖大戶)',
+    '585d': '統一-城中(⚡短線主力)',
+    '9216': '凱基-信義(⚡隔日沖大戶)',
+    '9132': '群益金鼎-東門(⚡短線大戶)',
+    '1480': '美商美林(⚡外資最大隔日沖/常大買大賣)',
+    '8440': '摩根大通(⚡小摩/外資極速短線客)',
+    '1560': '港商野村(⚡外資短線/常跟美林聯手)',
+    '1520': '美商高盛(🏛️波段與短線交錯)',
+    '1470': '台灣摩根士丹利(🏛️大摩/外資波段指標)',
+    '9800': '元大-總公司(🛡️權證最大避險分點)',
+    '9200': '凱基-總公司(🛡️權證避險)',
+    '7000': '富邦-總公司(🛡️權證避險)',
+    '9100': '群益金鼎-總公司(🛡️權證避險)',
+    '5850': '統一-總公司(🛡️權證避險)',
+    '8880': '國泰-總公司(🛡️權證避險)',
+    '5920': '元富-總公司(🛡️權證避險)',
+    '7750': '兆豐-總公司(🛡️權證避險)',
+    '9a00': '永豐金-總公司(🛡️權證避險)',
+    '9130': '群益金鼎-大安(🧙波段高勝率大戶)',
+    '9240': '凱基-板橋(🧙短線與波段高手/擅長低接)',
+    '1260': '宏遠-綜合(🧙特定主力/波段發動點)',
+    '9a14': '永豐金-忠孝(🧙波段操作勝率極高)',
+    '7002': '富邦-台南(🧙傳說中低買高賣抄底王)',
+    '9203': '凱基-市政(🐋中台灣超級大鯨魚)',
+    '9282': '凱基-復興(🎯關鍵波段大戶)',
+    '1040': '臺銀-證券(🛡️官股護盤大哥)',
+    '5360': '第一金-綜合(🛡️八大官股)',
+    '5440': '華南永昌-綜合(🛡️八大官股)',
+    '0040': '臺灣銀行(🛡️八大官股)',
+    '5700': '合庫-綜合(🛡️八大官股)',
+}
 
 
-# ── 資料庫 ─────────────────────────────────────────────────────────────────
+# ── 資料庫 ────────────────────────────────────────────────────────────────────
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -90,89 +119,144 @@ def write_radar_to_db(results):
     print(f"  ✅ 雷達寫入 SQLite（{sum(len(v) for v in results.values())} 筆）")
 
 
-# ── FinMind API（多 Token 輪替 + 匿名 fallback）────────────────────────────
-def fm_get(dataset, **params):
-    """FinMind API 核心引擎：多 Token 自動輪替，全部失敗改匿名。"""
-    def _try(token: str):
-        p = {'dataset': dataset, **params}
-        if token:
-            p['token'] = token
-        for attempt in range(3):
+# ── TWSE OHLCV（上市股票月資料）──────────────────────────────────────────────
+def _roc_to_gregorian(roc_date: str) -> str:
+    """'115/05/02' → '2026/05/02'"""
+    parts = roc_date.strip().split('/')
+    return f'{int(parts[0]) + 1911}/{parts[1]}/{parts[2]}'
+
+
+def twse_ohlcv(symbol: str, year_month: str) -> list:
+    """TWSE 上市股月 OHLCV。year_month='YYYYMM'。"""
+    url = (f'https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY'
+           f'?response=json&date={year_month}01&stockNo={symbol}')
+    try:
+        j = requests.get(url, headers=_HDRS, timeout=20).json()
+        if j.get('stat') != 'OK':
+            return []
+        fields = j.get('fields', [])
+        fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), -1)
+        i_dt = fi('日期'); i_op = fi('開盤'); i_hi = fi('最高')
+        i_lo = fi('最低'); i_cl = fi('收盤'); i_vo = fi('成交股數')
+        out = []
+        for row in (j.get('data') or []):
             try:
-                res = requests.get(BASE_URL, params=p, timeout=60)
-                j   = res.json()
-                msg = str(j.get('msg', '') or '').lower()
-                if res.status_code == 429 or 'limit' in msg:
-                    return 'RATE_LIMITED'
-                if j.get('status') == 200:
-                    return j.get('data', [])
-                print(f"  ⚠️  FinMind {dataset} status={j.get('status')} msg={msg[:80]}")
-                return None
-            except Exception as e:
-                print(f"  ⚠️  FinMind {dataset} attempt {attempt+1}: {e}")
-                time.sleep(5 * (attempt + 1))
-        return None
-
-    # 逐一嘗試所有 Token
-    for tok in FINMIND_TOKENS:
-        result = _try(tok)
-        if result == 'RATE_LIMITED':
-            print(f"  🔄 Token 額度耗盡，嘗試下一把...")
-            continue
-        if result is not None:
-            return result
-
-    # 所有 Token 耗盡或無 Token → 匿名
-    if FINMIND_TOKENS:
-        print(f"  ↩️  所有 Token 失敗，改用匿名...")
-    result = _try('')
-    if result in ('RATE_LIMITED', None):
+                fmt_date = _roc_to_gregorian(str(row[i_dt]))
+                def num(i, t=float):
+                    v = str(row[i]).replace(',', '').strip() if i >= 0 else ''
+                    try: return t(v) if v not in ('--', '') else 0
+                    except: return 0
+                c = num(i_cl)
+                if c == 0:
+                    continue
+                out.append({'date': fmt_date,
+                            'open': num(i_op) or c, 'high': num(i_hi) or c,
+                            'low':  num(i_lo) or c, 'close': c,
+                            'volume': num(i_vo, int)})
+            except Exception:
+                continue
+        return out
+    except Exception as e:
+        print(f"  ⚠️  TWSE STOCK_DAY {symbol} {year_month}: {e}")
         return []
-    return result or []
 
 
-# ── TWSE 備援：三大法人每日全市場（免費，不需帳號）────────────────────────
+def tpex_ohlcv(symbol: str, year_month: str) -> list:
+    """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。"""
+    y, m = int(year_month[:4]), year_month[4:]
+    roc_year = y - 1911
+    url = (f'https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/'
+           f'st43_result.php?l=zh-tw&d={roc_year}/{m}&stkno={symbol}&o=json')
+    try:
+        j = requests.get(url, headers=_HDRS, timeout=20).json()
+        aa = j.get('aaData') or []
+        # row: [日期, 成交股數, 成交金額, 開盤, 最高, 最低, 收盤, 漲跌, 筆數]
+        out = []
+        for row in aa:
+            try:
+                fmt_date = _roc_to_gregorian(str(row[0]))
+                def num(i, t=float):
+                    v = str(row[i]).replace(',', '').strip()
+                    try: return t(v) if v not in ('--', '') else 0
+                    except: return 0
+                c = num(6)
+                if c == 0:
+                    continue
+                out.append({'date': fmt_date,
+                            'open': num(3) or c, 'high': num(4) or c,
+                            'low':  num(5) or c, 'close': c,
+                            'volume': num(1, int)})
+            except Exception:
+                continue
+        return out
+    except Exception as e:
+        print(f"  ⚠️  TPEX {symbol} {year_month}: {e}")
+        return []
+
+
+# ── TWSE 三大法人（每日全市場批次）──────────────────────────────────────────
 def twse_institutional(date_str: str) -> dict:
-    """TWSE MI_QFIIS 全市場法人資料。date_str: 'YYYYMMDD'。"""
+    """TWSE MI_QFIIS 全市場法人資料。date_str='YYYYMMDD'。回傳 {stock_id: {...}}"""
     url = (f'https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS'
            f'?response=json&date={date_str}&selectType=ALL')
     try:
-        resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=20)
-        j = resp.json()
+        j = requests.get(url, headers=_HDRS, timeout=20).json()
         if j.get('stat') != 'OK':
             return {}
         fields = j.get('fields', [])
-        def fi(kw):
-            for i, f in enumerate(fields):
-                if kw in f: return i
-            return -1
-        idx_id   = fi('證券代號')
-        idx_fnet = fi('外資及陸資淨')
-        idx_tnet = fi('投信淨')
-        idx_dnet = fi('自營商淨')
+        fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), -1)
+        idx_id = fi('證券代號'); idx_fn = fi('外資及陸資淨')
+        idx_tn = fi('投信淨');   idx_dn = fi('自營商淨')
         if idx_id < 0:
             return {}
-        result = {}
-        for row in (j.get('data') or []):
-            try:
-                sid = str(row[idx_id]).strip()
-                def to_int(idx):
-                    if idx < 0 or idx >= len(row): return 0
-                    return int(str(row[idx]).replace(',', '').replace('+', '') or 0)
-                result[sid] = {
-                    'foreign_net': to_int(idx_fnet),
-                    'trust_net':   to_int(idx_tnet),
-                    'dealer_net':  to_int(idx_dnet),
-                }
-            except Exception:
-                continue
-        return result
+        def to_int(row, idx):
+            if idx < 0 or idx >= len(row): return 0
+            try: return int(str(row[idx]).replace(',', '').replace('+', '') or 0)
+            except: return 0
+        return {
+            str(row[idx_id]).strip(): {
+                'foreign_net': to_int(row, idx_fn),
+                'trust_net':   to_int(row, idx_tn),
+                'dealer_net':  to_int(row, idx_dn),
+            }
+            for row in (j.get('data') or [])
+        }
     except Exception as e:
-        print(f"  ⚠️  TWSE MI_QFIIS {date_str} 失敗: {e}")
+        print(f"  ⚠️  TWSE MI_QFIIS {date_str}: {e}")
         return {}
 
 
-# ── TAIFEX 備援：外資期貨未平倉淨口數（免費，不需帳號）──────────────────
+# ── TWSE 融資融券（每日全市場批次）──────────────────────────────────────────
+def twse_margin(date_str: str) -> dict:
+    """TWSE MI_MARGN 全市場融資融券。date_str='YYYYMMDD'。回傳 {stock_id: {...}}"""
+    url = (f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN'
+           f'?response=json&date={date_str}&selectType=ALL')
+    try:
+        j = requests.get(url, headers=_HDRS, timeout=20).json()
+        if j.get('stat') != 'OK':
+            return {}
+        fields = j.get('fields', [])
+        fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), -1)
+        idx_id = fi('股票代號'); idx_mb = fi('融資今日餘額'); idx_sb = fi('融券今日餘額')
+        if idx_id < 0:
+            return {}
+        def to_int(row, idx):
+            if idx < 0 or idx >= len(row): return 0
+            try: return int(str(row[idx]).replace(',', '') or 0)
+            except: return 0
+        return {
+            str(row[idx_id]).strip(): {
+                'margin_balance': to_int(row, idx_mb),
+                'short_balance':  to_int(row, idx_sb),
+            }
+            for row in (j.get('data') or [])
+        }
+    except Exception as e:
+        print(f"  ⚠️  TWSE MI_MARGN {date_str}: {e}")
+        return {}
+
+
+# ── TAIFEX 外資期貨（直連官網）───────────────────────────────────────────────
 def taifex_tx_net(target_date) -> int | None:
     """TAIFEX TX 外資未平倉淨口數。target_date: date object。"""
     try:
@@ -180,12 +264,10 @@ def taifex_tx_net(target_date) -> int | None:
         url  = 'https://www.taifex.com.tw/cht/3/futContractsDate'
         form = {'queryType': '1', 'marketCode': '0', 'contractCode': 'TX',
                 'dateaddcnt': '0', 'queryDate': date_slash}
-        hdrs = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64)',
-                'Referer': url, 'Accept-Encoding': 'gzip, deflate, br'}
+        hdrs = {**_HDRS, 'Referer': url, 'Accept-Encoding': 'gzip, deflate, br'}
         r = requests.post(url, data=form, headers=hdrs, timeout=30)
         r.raise_for_status()
-        rows_html = re.findall(r'<tr[^>]*>(.*?)</tr>', r.text, re.DOTALL)
-        for row_html in rows_html:
+        for row_html in re.findall(r'<tr[^>]*>(.*?)</tr>', r.text, re.DOTALL):
             if '外資及陸資' not in row_html:
                 continue
             cells = re.findall(r'<td[^>]*>(.*?)</td>', row_html, re.DOTALL)
@@ -194,8 +276,7 @@ def taifex_tx_net(target_date) -> int | None:
                 val = re.sub(r'<[^>]+>', '', c).strip().replace(',', '').replace('+', '')
                 if val.lstrip('-').isdigit() and len(val.lstrip('-')) >= 2:
                     nums.append(int(val))
-            print(f'  🔍 TAIFEX 外資TX數字序列: {nums}')
-            # 欄位順序：多方口數, 多方金額, 空方口數, 空方金額, 淨多空口數, 淨多空金額
+            print(f'  🔍 TAIFEX TX數字: {nums}')
             if len(nums) >= 5:
                 return nums[4]
             if len(nums) >= 3:
@@ -203,13 +284,13 @@ def taifex_tx_net(target_date) -> int | None:
         print('  ⚠️  TAIFEX: 找不到外資及陸資 TX 資料')
         return None
     except Exception as e:
-        print(f'  ⚠️  TAIFEX TX fallback 失敗: {e}')
+        print(f'  ⚠️  TAIFEX TX 失敗: {e}')
         return None
 
 
-# ── JSON 讀寫 ───────────────────────────────────────────────────────────────
+# ── JSON 讀寫 ─────────────────────────────────────────────────────────────────
 def load_json(symbol):
-    p = Path(DATA_DIR) / f"{symbol}.json"
+    p = Path(DATA_DIR) / f'{symbol}.json'
     if p.exists():
         with open(p, encoding='utf-8') as f:
             return json.load(f)
@@ -217,233 +298,184 @@ def load_json(symbol):
 
 
 def save_json(symbol, records):
-    p = Path(DATA_DIR) / f"{symbol}.json"
+    p = Path(DATA_DIR) / f'{symbol}.json'
     with open(p, 'w', encoding='utf-8') as f:
         json.dump(records, f, ensure_ascii=False, separators=(',', ':'))
 
 
-# ── 動態監控清單 ────────────────────────────────────────────────────────────
+# ── 動態監控清單 ──────────────────────────────────────────────────────────────
 def get_active_symbols():
-    """
-    方案 A 核心：CHIP_WATCHLIST 種子 + data/ 中使用者自行新增的個股。
-    上限 100 檔，避免 API 呼叫爆炸。
-    """
-    base  = set(CHIP_WATCHLIST)
-    extra = set()
-    skip  = {'radar', 'futures_cache', 'macro_cache', 'broker_names'}
-    for f in Path(DATA_DIR).glob('*.json'):
-        if f.stem not in skip and f.stem not in base:
-            extra.add(f.stem)
-    # 保留最多 50 個額外個股（使用者新增）
+    base = set(CHIP_WATCHLIST)
+    skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names'}
+    extra = {f.stem for f in Path(DATA_DIR).glob('*.json')
+             if f.stem not in skip and f.stem not in base}
     return sorted(base | set(sorted(extra)[:50]))
 
 
-# ── 主採礦：個股精準狙擊 + TWSE 備援 ───────────────────────────────────────
+def get_trading_days(n=30):
+    """最近 n 個交易日（跳週末）"""
+    days, d = [], date.today()
+    while len(days) < n:
+        if d.weekday() < 5:
+            days.append(d)
+        d -= timedelta(days=1)
+    return sorted(days)
+
+
+# ── 主採礦：TWSE 完全免費版 ──────────────────────────────────────────────────
 def run():
-    """
-    方案 A 精準採礦：每股獨立呼叫 data_id=sym，完美繞過批次配額限制。
-    FinMind 三大法人空值時自動啟用 TWSE MI_QFIIS 備援（只抓一次，多股共用）。
-    """
     today = date.today()
-    start = (today - timedelta(days=30)).strftime('%Y-%m-%d')
-    end   = today.strftime('%Y-%m-%d')
-
     watchlist = get_active_symbols()
-    print(f"\n🎯 偵測到 {len(watchlist)} 檔個股，執行精準採礦（{start}~{end}）...")
 
-    # TWSE MI_QFIIS 批次備援快取（懶載入：第一個需要時才抓，之後所有股票共用）
-    twse_cache: dict = {}   # {(date_str, symbol): {foreign_net, trust_net, dealer_net}}
-    twse_fetched = False
+    # 本月 + 上個月
+    months = []
+    cur = today.replace(day=1)
+    for _ in range(2):
+        months.append(cur.strftime('%Y%m'))
+        cur = (cur - timedelta(days=1)).replace(day=1)
 
-    def _load_twse_if_needed():
-        nonlocal twse_fetched
-        if twse_fetched:
-            return
-        twse_fetched = True
-        print(f"  ↩️  啟用 TWSE MI_QFIIS 批次備援（{start}~{end}）...")
-        from datetime import datetime as dt_cls
-        cur   = dt_cls.strptime(start, '%Y-%m-%d').date()
-        end_d = dt_cls.strptime(end,   '%Y-%m-%d').date()
-        total = 0
-        while cur <= end_d:
-            if cur.weekday() < 5:
-                d_str = cur.strftime('%Y%m%d')
-                daily = twse_institutional(d_str)
-                if daily:
-                    for sid, v in daily.items():
-                        twse_cache[(cur.strftime('%Y-%m-%d'), sid)] = v
-                    total += len(daily)
-                time.sleep(0.5)
-            cur += timedelta(days=1)
-        print(f"  TWSE 備援完成：{total} 筆")
+    # 最近 10 個交易日做批次法人/融資
+    trading_days = get_trading_days(10)
 
+    print(f"\n🎯 {len(watchlist)} 檔個股 | 月份: {months}")
+
+    # Step 1：批次抓取三大法人 + 融資融券（一次拿全市場，所有股票共用）
+    print(f"\n📊 批次抓取三大法人 + 融資融券（{len(trading_days)} 個交易日）...")
+    inst_cache:   dict = {}  # {date_dash: {stock_id: {foreign_net, trust_net, dealer_net}}}
+    margin_cache: dict = {}  # {date_dash: {stock_id: {margin_balance, short_balance}}}
+    for d in trading_days:
+        d8 = d.strftime('%Y%m%d')
+        dd = d.strftime('%Y-%m-%d')
+        inst = twse_institutional(d8)
+        if inst:
+            inst_cache[dd] = inst
+            print(f"  法人 {dd}: {len(inst)} 筆")
+        time.sleep(0.8)
+        marg = twse_margin(d8)
+        if marg:
+            margin_cache[dd] = marg
+            print(f"  融券 {dd}: {len(marg)} 筆")
+        time.sleep(0.8)
+
+    # Step 2：個股 OHLCV（TWSE → TPEX fallback）
+    print(f"\n📈 個股 OHLCV 採礦 ({len(watchlist)} 檔)...")
     updated_total = 0
     for idx, sym in enumerate(watchlist):
         print(f"  🛰️  [{idx+1}/{len(watchlist)}] {sym} ...", end=' ', flush=True)
 
-        prices_raw = fm_get('TaiwanStockPrice',
-                            data_id=sym, start_date=start, end_date=end)
-        inst_raw   = fm_get('TaiwanStockInstitutionalInvestors',
-                            data_id=sym, start_date=start, end_date=end)
-        margin_raw = fm_get('TaiwanStockMarginPurchaseShortSale',
-                            data_id=sym, start_date=start, end_date=end)
+        new_rows = []
+        for ym in months:
+            rows = twse_ohlcv(sym, ym)
+            if not rows:
+                rows = tpex_ohlcv(sym, ym)
+            new_rows.extend(rows)
+            time.sleep(0.4)
 
-        # 若 FinMind 三大法人回空，啟動 TWSE 批次備援（只抓一次）
-        if not inst_raw:
-            _load_twse_if_needed()
-
-        # 建立法人查詢表 {date_str: {foreign_net, trust_net, dealer_net}}
-        inst: dict = {}
-        for r in inst_raw:
-            dt_s = r['date']
-            if dt_s not in inst:
-                inst[dt_s] = {'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0}
-            net  = int(r.get('buy', 0)) - int(r.get('sell', 0))
-            name = r.get('name', '')
-            if   '外資' in name: inst[dt_s]['foreign_net'] = net
-            elif '投信' in name: inst[dt_s]['trust_net']   = net
-            elif '自營' in name: inst[dt_s]['dealer_net']  = net
-        # 補入 TWSE 備援
-        for (dt_s, sid), v in twse_cache.items():
-            if sid == sym and dt_s not in inst:
-                inst[dt_s] = v
-
-        # 融資融券查詢表
-        margin: dict = {}
-        for r in margin_raw:
-            margin[r['date']] = {
-                'margin_balance': int(r.get('MarginPurchaseToday', 0)),
-                'short_balance':  int(r.get('ShortSaleToday', 0)),
-            }
-
-        # 合併現有資料
         existing     = load_json(sym)
         existing_map = {rec['date']: rec for rec in existing}
         changed = False
 
-        for r in prices_raw:
-            raw_date = r['date']
-            fmt_date = raw_date.replace('-', '/')
-            close    = float(r.get('close', 0))
-            if close == 0:
-                continue
+        for r in new_rows:
+            fmt_date  = r['date']               # YYYY/MM/DD
+            date_dash = fmt_date.replace('/', '-')  # YYYY-MM-DD
 
-            chip_data = {
-                'foreign_net':    inst.get(raw_date, {}).get('foreign_net', 0),
-                'trust_net':      inst.get(raw_date, {}).get('trust_net',   0),
-                'dealer_net':     inst.get(raw_date, {}).get('dealer_net',  0),
-                'margin_balance': margin.get(raw_date, {}).get('margin_balance', 0),
-                'short_balance':  margin.get(raw_date, {}).get('short_balance',  0),
+            chip = {
+                'foreign_net':    inst_cache.get(date_dash, {}).get(sym, {}).get('foreign_net', 0),
+                'trust_net':      inst_cache.get(date_dash, {}).get(sym, {}).get('trust_net', 0),
+                'dealer_net':     inst_cache.get(date_dash, {}).get(sym, {}).get('dealer_net', 0),
+                'margin_balance': margin_cache.get(date_dash, {}).get(sym, {}).get('margin_balance', 0),
+                'short_balance':  margin_cache.get(date_dash, {}).get(sym, {}).get('short_balance', 0),
             }
 
             if fmt_date in existing_map:
-                if 'foreign_net' not in existing_map[fmt_date]:
-                    existing_map[fmt_date].update(chip_data)
+                rec = existing_map[fmt_date]
+                if rec.get('foreign_net', 0) == 0 and chip.get('foreign_net', 0) != 0:
+                    rec.update(chip)
                     changed = True
                 continue
 
             existing_map[fmt_date] = {
-                'date':   fmt_date,
-                'open':   float(r.get('open', close)),
-                'high':   float(r.get('max',  close)),
-                'low':    float(r.get('min',  close)),
-                'close':  close,
-                'volume': int(r.get('Trading_Volume', 0)),
-                **chip_data,
+                'date': fmt_date, 'open': r['open'], 'high': r['high'],
+                'low': r['low'], 'close': r['close'], 'volume': r['volume'],
+                **chip,
             }
             changed = True
 
-        # 補丁模式：TaiwanStockPrice 無新資料但有 TWSE 法人資料時，直接 patch 現有記錄
-        if not prices_raw and inst:
-            for dt_s, chip_data in inst.items():
-                fmt_date = dt_s.replace('-', '/')
-                if fmt_date in existing_map and 'foreign_net' not in existing_map[fmt_date]:
-                    existing_map[fmt_date].update(chip_data)
-                    changed = True
+        # 補丁：針對已存在但 chip=0 的記錄，用批次快取補入
+        for date_dash, by_sym in inst_cache.items():
+            if sym not in by_sym:
+                continue
+            fmt_date = date_dash.replace('-', '/')
+            if fmt_date in existing_map and existing_map[fmt_date].get('foreign_net', 0) == 0:
+                existing_map[fmt_date].update({
+                    'foreign_net': by_sym[sym].get('foreign_net', 0),
+                    'trust_net':   by_sym[sym].get('trust_net', 0),
+                    'dealer_net':  by_sym[sym].get('dealer_net', 0),
+                })
+                changed = True
+        for date_dash, by_sym in margin_cache.items():
+            if sym not in by_sym:
+                continue
+            fmt_date = date_dash.replace('-', '/')
+            if fmt_date in existing_map and existing_map[fmt_date].get('margin_balance', 0) == 0:
+                existing_map[fmt_date].update({
+                    'margin_balance': by_sym[sym].get('margin_balance', 0),
+                    'short_balance':  by_sym[sym].get('short_balance', 0),
+                })
+                changed = True
 
         if changed:
-            combined = sorted(existing_map.values(), key=lambda x: x['date'])
-            combined = combined[-800:]
+            combined = sorted(existing_map.values(), key=lambda x: x['date'])[-800:]
             save_json(sym, combined)
-            # 同步 SQLite
             try:
                 conn = sqlite3.connect(DB_PATH)
-                c    = conn.cursor()
-                for nr in combined[-5:]:   # 只寫最新 5 筆，避免太慢
+                c = conn.cursor()
+                for nr in combined[-5:]:
                     dt_s = nr['date'].replace('/', '-')
                     c.execute(
                         "INSERT OR REPLACE INTO stock_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                         (sym, dt_s, nr.get('open'), nr.get('high'), nr.get('low'),
                          nr.get('close'), nr.get('volume'),
                          nr.get('foreign_net', 0), nr.get('trust_net', 0),
-                         nr.get('dealer_net', 0),  nr.get('margin_balance', 0),
-                         nr.get('short_balance', 0))
-                    )
+                         nr.get('dealer_net', 0), nr.get('margin_balance', 0),
+                         nr.get('short_balance', 0)))
                 conn.commit()
                 conn.close()
             except Exception as e:
-                print(f"\n    ⚠️ SQLite 寫入 {sym}: {e}")
+                print(f"\n    ⚠️ SQLite {sym}: {e}")
             updated_total += 1
             print("✅")
         else:
             print("skip")
 
-        time.sleep(0.3)
-
-    print(f"\n🎉 精準採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
+    print(f"\n🎉 採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
 
 
-# ── 外資期貨（FinMind → TAIFEX 備援，全零不覆寫）──────────────────────────
+# ── 外資期貨（TAIFEX 直連）───────────────────────────────────────────────────
 def fetch_futures_cache():
-    """外資台指期未平倉淨口數。FinMind → TAIFEX 備援。全部失敗保留舊快取。"""
+    """外資台指期未平倉淨口數（TAIFEX 官網直連，無需帳號）。"""
     today = date.today()
-    start = (today - timedelta(days=10)).strftime('%Y-%m-%d')
-    print(f"\n🔮 抓取外資台指期淨口數 {start}~{today} ...")
-
-    net, long_val, short_val, last_date = None, 0, 0, today.strftime('%Y-%m-%d')
-
-    # 1. FinMind
-    rows    = fm_get('TaiwanFuturesInstitutionalInvestors', data_id='TX', start_date=start)
-    foreign = [r for r in rows if
-               '外資' in r.get('institutional_investors', '') or
-               '外資' in r.get('name', '')]
-    if foreign:
-        last      = foreign[-1]
-        last_date = last.get('date', last_date)
-        lv = int(last.get('long_open_interest_balance',  0))
-        sv = int(last.get('short_open_interest_balance', 0))
-        nv = last.get('open_interest_net_volume')
-        calc = int(nv) if nv is not None else (lv - sv)
-        print(f'  FinMind 外資TX: long={lv:,} short={sv:,} net={calc:+,}')
-        if calc != 0 or lv != 0 or sv != 0:
-            net, long_val, short_val = calc, lv, sv
-        else:
-            print(f'  ⚠️  FinMind 全零（匿名層無餘額欄位），改用 TAIFEX...')
-    else:
-        names = list(set(r.get('institutional_investors', r.get('name', '?')) for r in rows[:5]))
-        print(f'  ⚠️  FinMind 無外資列（{len(rows)} 筆，名稱: {names}），改用 TAIFEX...')
-
-    # 2. TAIFEX 直連備援
+    # 找最近一個交易日
+    target = today - timedelta(days=1)
+    while target.weekday() >= 5:
+        target -= timedelta(days=1)
+    print(f"\n🔮 抓取外資台指期（{target}）...")
+    net = taifex_tx_net(target)
     if net is None:
-        target = today - timedelta(days=1)
-        while target.weekday() >= 5:   # 跳過週末
-            target -= timedelta(days=1)
-        taifex_net = taifex_tx_net(target)
-        if taifex_net is not None:
-            net, last_date = taifex_net, target.strftime('%Y-%m-%d')
-            print(f'  ✅ TAIFEX TX 外資淨口數: {net:+,} 口  ({last_date})')
-        else:
-            print(f'  ⚠️  TAIFEX 也失敗，保留舊快取不覆寫')
-            return
-
-    cache = {'date': last_date, 'fi_net': net, 'long': long_val,
-             'short': short_val, 'generated': today.strftime('%Y-%m-%d')}
+        print('  ⚠️  TAIFEX 失敗，保留舊快取不覆寫')
+        return
+    cache = {
+        'date': target.strftime('%Y-%m-%d'),
+        'fi_net': net,
+        'long': 0, 'short': 0,
+        'generated': today.strftime('%Y-%m-%d'),
+    }
     with open('futures_cache.json', 'w', encoding='utf-8') as f:
         json.dump(cache, f, ensure_ascii=False)
-    print(f"  ✅ 外資台指期淨口數: {net:+,} 口  ({last_date})")
+    print(f"  ✅ 外資台指期淨口數: {net:+,} 口  ({target})")
 
 
-# ── 美股大盤快取 ────────────────────────────────────────────────────────────
+# ── 美股大盤快取 ──────────────────────────────────────────────────────────────
 def fetch_us_macro_cache():
     try:
         import yfinance as yf
@@ -454,7 +486,7 @@ def fetch_us_macro_cache():
     symbols = {'sp500': '^GSPC', 'nasdaq': '^NDX', 'tsm': 'TSM',
                'dji': '^DJI', 'vix': '^VIX'}
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
-    result  = {}
+    result = {}
     for key, ticker in symbols.items():
         try:
             hist = yf.Ticker(ticker).history(period='5d')
@@ -480,114 +512,29 @@ def fetch_us_macro_cache():
     print(f"  ✅ macro_cache.json（{len(result)-1} 指標）")
 
 
-# ── 分點籌碼 ────────────────────────────────────────────────────────────────
-def get_trading_days(n=30):
-    """最近 n 個交易日（跳週末）"""
-    days, d = [], date.today()
-    while len(days) < n:
-        if d.weekday() < 5:
-            days.append(d)
-        d -= timedelta(days=1)
-    return sorted(days)
+# ── 分點籌碼（TWSE T86 直連，唯一資料來源）──────────────────────────────────
+def _is_valid_broker_id(bid: str) -> bool:
+    """有效券商代碼：4 碼英數字（如 9268、984e）"""
+    return len(bid) == 4 and bid.isalnum()
 
 
 def get_all_taiwan_brokers() -> dict:
-    """
-    動態下載全台券商分點名冊。
-    優先線上 FinMind，失敗時用本地快取，最後追加戰術標籤。
-    """
+    """載入本地快取（已過濾乾淨）+ 戰術標籤。"""
     broker_map: dict = {}
-
-    # 先載入本地快取
     lookup_file = Path(DATA_DIR) / 'broker_names.json'
     if lookup_file.exists():
         try:
-            broker_map = json.loads(lookup_file.read_text(encoding='utf-8'))
+            cached = json.loads(lookup_file.read_text(encoding='utf-8'))
+            # 只載入有效的 4 碼券商代碼，過濾掉股票名稱等污染資料
+            broker_map = {k: v for k, v in cached.items() if _is_valid_broker_id(k)}
         except Exception:
             pass
-
-    # 嘗試線上下載（匿名即可）
-    try:
-        url = f"{BASE_URL}?dataset=TaiwanBrokerList"
-        res = requests.get(url, timeout=15)
-        if res.status_code == 200:
-            for item in res.json().get('data', []):
-                b_id = str(item.get('broker_id', '')).strip()
-                b_nm = str(item.get('broker_name', '')).strip()
-                if b_id and b_nm:
-                    broker_map[b_id] = b_nm
-            if broker_map:
-                print(f"  🏢 線上下載 {len(broker_map)} 家券商名冊")
-    except Exception as e:
-        print(f"  ⚠️  線上券商清單失敗: {e}")
-
-    # =====================================================================
-    # 🎯 籌碼小哥戰術分點庫 (完全體版)
-    # =====================================================================
-    TACTICAL_TAGS = {
-        # 🚀 【一級戰區：極度兇狠隔日沖大戶】(看到大量買進，隔天追高必死)
-        '9268': '凱基-台北(🔥全台最大最兇隔日沖)',
-        '984e': '元大-土城永寧(⚡極速隔日沖/常鎖漲停)',
-        '700b': '富邦-建國(🏹隔日沖大戶/常跟土城永寧聯手)',
-        '9211': '凱基-松山(🔥虎爺/知名當沖隔日沖)',
-        '7004': '富邦-嘉義(⚡傳統中南部老牌隔日沖)',
-        '075a': '康和-永和(⚡知名隔日沖/喜歡鎖漲停)',
-        '9a08': '永豐金-三重(⚡短線暴力隔日沖)',
-        '8881': '國泰-敦南(⚡短線隔日沖大戶)',
-        '585d': '統一-城中(⚡短線主力)',
-        '9216': '凱基-信義(⚡隔日沖大戶)',
-        '9132': '群益金鼎-東門(⚡短線大戶)',
-        
-        # 🛸 【外資皮台資骨 / 外資短線隔日沖客】
-        '1480': '美商美林(⚡外資最大隔日沖/常大買大賣)',
-        '8440': '摩根大通(⚡小摩/外資極速短線客)',
-        '1560': '港商野村(⚡外資短線/常跟美林聯手)',
-        '1520': '美商高盛(🏛️波段與短線交錯)',
-        '1470': '台灣摩根士丹利(🏛️大摩/外資波段指標)',
-        
-        # 🧙‍♂️ 【權證小哥核心：發行商避險分點】(主力大買權證，發行商被迫買現股的足跡)
-        '9800': '元大-總公司(🛡️權證最大避險分點)',
-        '9200': '凱基-總公司(🛡️權證避險)',
-        '7000': '富邦-總公司(🛡️權證避險)',
-        '9100': '群益金鼎-總公司(🛡️權證避險)',
-        '5850': '統一-總公司(🛡️權證避險)',
-        '8880': '國泰-總公司(🛡️權證避險)',
-        '5920': '元富-總公司(🛡️權證避險)',
-        '7750': '兆豐-總公司(🛡️權證避險)',
-        '9A00': '永豐金-總公司(🛡️權證避險)',
-        
-        # 🎯 【高勝率波段神人 / 地緣大戶抄底】(右側打底翻揚的關鍵觀察指標)
-        '9130': '群益金鼎-大安(🧙‍♂️小哥常提/波段高勝率大戶)',
-        '9240': '凱基-板橋(🧙‍♂️短線與波段高手/擅長低接)',
-        '1260': '宏遠-綜合(🧙‍♂️特定主力/波段發動點)',
-        '9A14': '永豐金-忠孝(🧙‍♂️波段操作勝率極高)',
-        '7002': '富邦-台南(🧙‍♂️傳說中低買高賣抄底王)',
-        '5380': '盈溢-綜合(🧙‍♂️神祕低調大戶/眼光精準)',
-        '9203': '凱基-市政(🐋中台灣超級大鯨魚)',
-        '9282': '凱基-復興(🎯關鍵波段大戶)',
-        '1020': '合庫-綜合(🎯神祕波段大戶)',
-        
-        # 🏛️ 【國家隊護盤 / 八大官股】(大跌時的定海神針，右側建倉的底氣來源)
-        '1040': '臺銀-證券(🛡️官股護盤大哥)',
-        '5360': '第一金-綜合(🛡️八大官股)',
-        '2810': '彰化銀行(🛡️八大官股)',
-        '5440': '華南永昌-綜合(🛡️八大官股)',
-        '0040': '臺灣銀行(🛡️八大官股)', 
-        '7750': '兆豐-綜合(🛡️八大官股)',
-        '5700': '合庫-綜合(🛡️八大官股)',
-        '5380': '台企銀-綜合(🛡️八大官股)',
-    }
     broker_map.update(TACTICAL_TAGS)
     return broker_map
 
 
 def fetch_broker_chips():
-    """
-    分點籌碼採礦：30 天滾動視窗。
-    第一盾：FinMind 全市場批次（有 token 才用，一次拿完最快）
-    第二盾：FinMind 逐日全市場（批次失敗時）
-    第三盾：TWSE T86 直連（完全無 token 時最後防線）
-    """
+    """分點籌碼採礦：TWSE T86 直連（30 天滾動視窗）。"""
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
 
@@ -614,94 +561,58 @@ def fetch_broker_chips():
     fetch_start = missing_days[0].strftime('%Y-%m-%d')
     print(f"\n分點籌碼採礦（{fetch_start}~{today_str}，{len(missing_days)} 個交易日）...")
 
-    # 動態載入全台券商名冊（線上 + 本地快取 + 戰術標籤）
     ALL_BROKERS   = get_all_taiwan_brokers()
     broker_lookup = dict(ALL_BROKERS)
-    print(f"  🏢 券商名冊 {len(ALL_BROKERS)} 筆已就緒")
+    print(f"  🏢 券商名冊 {len(ALL_BROKERS)} 筆就緒")
 
     def _int(v):
         try: return int(str(v).replace(',', ''))
         except: return 0
 
-    def _parse_rows(rows, fallback_sym=''):
-        out = []
-        for r in rows:
-            bid      = str(r.get('broker_id', '')).strip()
-            raw_name = str(r.get('broker_name', '')).strip()
-            bnm = ALL_BROKERS.get(bid) or (raw_name if raw_name and not raw_name.isdigit()
-                                           else f'未知分點_{bid}')
-            if bid: broker_lookup[bid] = bnm
-            out.append({
-                'date':        str(r.get('date', ''))[:10],
-                'stock_id':    str(r.get('stock_id', fallback_sym)),
-                'broker_id':   bid,
-                'broker_name': bnm,
-                'buy':  _int(r.get('buy',  0)),
-                'sell': _int(r.get('sell', 0)),
-            })
-        return out
-
     all_rows = []
+    watchlist = get_active_symbols()
+    print(f"  【T86】{len(watchlist)} 檔 × {len(missing_days)} 天...")
+    t86_total = 0
+    for target_day in missing_days:
+        day_str = target_day.strftime('%Y%m%d')
+        day_iso = target_day.strftime('%Y-%m-%d')
+        for sym in watchlist:
+            try:
+                url  = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
+                        f'?response=json&date={day_str}&stock_no={sym}')
+                data = requests.get(url, headers=_HDRS, timeout=15).json()
+                if data.get('stat') == 'OK':
+                    for row in (data.get('data') or []):
+                        if len(row) < 5:
+                            continue
+                        bid = str(row[1]).strip()
+                        bnm = str(row[2]).strip()
+                        # 只記錄有效的 4 碼券商代碼，防止股票名稱污染
+                        if _is_valid_broker_id(bid):
+                            resolved = TACTICAL_TAGS.get(bid) or TACTICAL_TAGS.get(bid.lower()) or bnm or f'分點{bid}'
+                            broker_lookup[bid] = resolved
+                        else:
+                            resolved = ALL_BROKERS.get(bid, bid or f'分點{bid}')
+                        all_rows.append({
+                            'date': day_iso, 'stock_id': sym,
+                            'broker_id':   bid,
+                            'broker_name': resolved,
+                            'buy': _int(row[3]), 'sell': _int(row[4]),
+                        })
+                        t86_total += 1
+            except Exception as e:
+                print(f"    T86 {sym} {day_str}: {e}")
+            time.sleep(0.5)
+    print(f"  T86 共 {t86_total} 筆")
 
-    # ── 第一盾：FinMind 全市場批次（最快，需 token）──────────────────────
-    if FINMIND_TOKENS:
-        print(f"  【第一盾】FinMind 批次（{fetch_start}~{today_str}）...")
-        rows     = fm_get('TaiwanStockBrokerTrading',
-                          start_date=fetch_start, end_date=today_str)
-        all_rows = _parse_rows(rows)
-        print(f"  第一盾回傳 {len(all_rows)} 筆")
-
-    # ── 第二盾：FinMind 逐日（批次失敗時）──────────────────────────────
-    if not all_rows and FINMIND_TOKENS:
-        print(f"  【第二盾】FinMind 逐日（{len(missing_days)} 天）...")
-        for target_day in missing_days:
-            day_iso = target_day.strftime('%Y-%m-%d')
-            rows    = fm_get('TaiwanStockBrokerTrading', date=day_iso)
-            day_rows = _parse_rows(rows)
-            all_rows.extend(day_rows)
-            print(f"    {day_iso}: {len(day_rows)} 筆")
-            time.sleep(1)
-        print(f"  第二盾共 {len(all_rows)} 筆")
-
-    # ── 第三盾：TWSE T86 直連（完全無 token 時的免費防線）──────────────
-    if not all_rows:
-        watchlist = get_active_symbols()
-        print(f"  【第三盾】TWSE T86（{len(watchlist)} 檔 × {len(missing_days)} 天）...")
-        t86_hdrs  = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/1.0)'}
-        t86_total = 0
-        for target_day in missing_days:
-            day_str = target_day.strftime('%Y%m%d')
-            day_iso = target_day.strftime('%Y-%m-%d')
-            for sym in watchlist:
-                try:
-                    url  = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
-                            f'?response=json&date={day_str}&stock_no={sym}')
-                    data = requests.get(url, headers=t86_hdrs, timeout=15).json()
-                    if data.get('stat') == 'OK':
-                        for row in (data.get('data') or []):
-                            if len(row) < 5: continue
-                            bid = str(row[1]).strip()
-                            bnm = str(row[2]).strip()
-                            if bid and bnm: broker_lookup[bid] = bnm
-                            all_rows.append({
-                                'date': day_iso, 'stock_id': sym,
-                                'broker_id': bid,
-                                'broker_name': ALL_BROKERS.get(bid, bnm),
-                                'buy': _int(row[3]), 'sell': _int(row[4]),
-                            })
-                            t86_total += 1
-                except Exception as e:
-                    print(f"    T86 {sym} {day_str}: {e}")
-                time.sleep(0.5)
-        print(f"  T86 共 {t86_total} 筆")
-
-    # 儲存更新的券商名冊
-    if broker_lookup:
+    # 儲存乾淨的券商名冊（只含 4 碼有效代碼）
+    clean_lookup = {k: v for k, v in broker_lookup.items() if _is_valid_broker_id(k)}
+    if clean_lookup:
         lookup_file = Path(DATA_DIR) / 'broker_names.json'
         lookup_file.write_text(
-            json.dumps(broker_lookup, ensure_ascii=False, separators=(',', ':')),
+            json.dumps(clean_lookup, ensure_ascii=False, separators=(',', ':')),
             encoding='utf-8')
-        print(f"  券商名冊更新：{len(broker_lookup)} 筆")
+        print(f"  券商名冊更新：{len(clean_lookup)} 筆")
 
     if not all_rows:
         print("  ⚠️  無分點資料，跳過")
@@ -711,19 +622,19 @@ def fetch_broker_chips():
     by_sym_date: dict = {}
     for r in all_rows:
         sym   = str(r.get('stock_id', ''))
-        d_str = str(r.get('date',     ''))[:10]
+        d_str = str(r.get('date', ''))[:10]
         if not sym or not d_str or d_str < cutoff_str:
             continue
-        bid = str(r.get('broker_id',   ''))
-        bnm = str(r.get('broker_name', '')) or broker_lookup.get(bid, '')
+        bid = str(r.get('broker_id', ''))
+        bnm = str(r.get('broker_name', '')) or broker_lookup.get(bid, bid)
         by_sym_date.setdefault((sym, d_str), []).append({
             'bid': bid, 'bnm': bnm,
-            'buy': int(r.get('buy',  0)), 'sel': int(r.get('sell', 0)),
-            'net': int(r.get('buy',  0)) - int(r.get('sell', 0)),
+            'buy': int(r.get('buy', 0)), 'sel': int(r.get('sell', 0)),
+            'net': int(r.get('buy', 0)) - int(r.get('sell', 0)),
         })
 
-    keep    = {d.strftime('%Y-%m-%d') for d in trading_days}
-    syms    = {k[0] for k in by_sym_date}
+    keep = {d.strftime('%Y-%m-%d') for d in trading_days}
+    syms = {k[0] for k in by_sym_date}
     updated = 0
     for sym in syms:
         out_file = chips_dir / f'{sym}.json'
@@ -736,7 +647,8 @@ def fetch_broker_chips():
                 pass
         for d_str in keep:
             brokers = by_sym_date.get((sym, d_str))
-            if not brokers: continue
+            if not brokers:
+                continue
             buyers  = sorted([b for b in brokers if b['net'] > 0], key=lambda x: -x['net'])[:15]
             sellers = sorted([b for b in brokers if b['net'] < 0], key=lambda x:  x['net'])[:15]
             existing[d_str] = {
@@ -752,42 +664,43 @@ def fetch_broker_chips():
             updated += 1
 
     _prune_chips(chips_dir, cutoff_str)
-    print(f"  ✅ 分點籌碼完成：{updated} 檔（全台股）")
+    print(f"  ✅ 分點籌碼完成：{updated} 檔")
 
 
 def _refresh_broker_names(chips_dir: Path, latest_day):
-    """最新一天的 T86 快速更新 broker_names.json。"""
+    """最新一天 T86 快速更新 broker_names.json（只補新代碼，不覆寫舊的）。"""
     lookup_file = Path(DATA_DIR) / 'broker_names.json'
     broker_lookup: dict = {}
     if lookup_file.exists():
         try:
-            broker_lookup = json.loads(lookup_file.read_text(encoding='utf-8'))
+            cached = json.loads(lookup_file.read_text(encoding='utf-8'))
+            broker_lookup = {k: v for k, v in cached.items() if _is_valid_broker_id(k)}
         except Exception:
             pass
+    broker_lookup.update(TACTICAL_TAGS)
     day_str = latest_day.strftime('%Y%m%d')
-    hdrs    = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/1.0)'}
     new_cnt = 0
     for sym in CHIP_WATCHLIST[:10]:
         try:
             url  = (f'https://www.twse.com.tw/rwd/zh/fund/T86'
                     f'?response=json&date={day_str}&stock_no={sym}')
-            data = requests.get(url, headers=hdrs, timeout=15).json()
+            data = requests.get(url, headers=_HDRS, timeout=15).json()
             if data.get('stat') == 'OK':
                 for row in (data.get('data') or []):
-                    if len(row) < 3: continue
+                    if len(row) < 3:
+                        continue
                     bid = str(row[1]).strip()
                     bnm = str(row[2]).strip()
-                    if bid and bnm and bid not in broker_lookup:
+                    if _is_valid_broker_id(bid) and bid not in broker_lookup:
                         broker_lookup[bid] = bnm
                         new_cnt += 1
             time.sleep(0.3)
         except Exception:
             pass
-    if broker_lookup:
-        lookup_file.write_text(
-            json.dumps(broker_lookup, ensure_ascii=False, separators=(',', ':')),
-            encoding='utf-8')
-        print(f"  券商名稱更新：{len(broker_lookup)} 筆（新增 {new_cnt} 筆）")
+    lookup_file.write_text(
+        json.dumps(broker_lookup, ensure_ascii=False, separators=(',', ':')),
+        encoding='utf-8')
+    print(f"  券商名稱更新：{len(broker_lookup)} 筆（新增 {new_cnt} 筆）")
 
 
 def _prune_chips(chips_dir: Path, cutoff_str: str):
@@ -806,7 +719,7 @@ def _prune_chips(chips_dir: Path, cutoff_str: str):
             pass
 
 
-# ── 雷達預運算 ──────────────────────────────────────────────────────────────
+# ── 雷達預運算 ────────────────────────────────────────────────────────────────
 def _quick_ind(data):
     if len(data) < 22: return None
     closes = [d['close'] for d in data if isinstance(d.get('close'), (int, float))]
@@ -863,13 +776,10 @@ def build_radar_cache():
           f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])}")
 
 
-# ── 主程式 ──────────────────────────────────────────────────────────────────
+# ── 主程式 ────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     init_db()
-    has_token = bool(FINMIND_TOKENS)
-    print("🚀 首席 AI 司令部 — 方案A完全體採礦機")
-    print(f"🔑 FinMind Token: {'✅ ' + str(len(FINMIND_TOKENS)) + ' 把' if has_token else '⚠️  無（建議免費註冊）'}")
-    print(f"🔑 Massive API:   {'✅ 有' if MASSIVE_API_KEY else '⚠️  無'}\n")
+    print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
     run()
     fetch_futures_cache()
     fetch_us_macro_cache()
