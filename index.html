@@ -1842,20 +1842,22 @@ const app = {
 
         // ── 第一盾：直接從已載入的 rawDailyData 讀取（miner.py 每日採礦已內建）──
         const daily = this.rawDailyData || [];
-        const hasChip = daily.length > 0 && daily[daily.length - 1].foreign_net !== undefined;
+        // 相容舊欄位(foreign_inv/invest_trust/dealer_inv)與新欄位(foreign_net/trust_net/dealer_net)
+        const _fi  = r => r.foreign_net ?? r.foreign_inv ?? 0;
+        const _ti  = r => r.trust_net   ?? r.invest_trust ?? 0;
+        const _di  = r => r.dealer_net  ?? r.dealer_inv   ?? 0;
+        const hasChip = daily.length > 0 &&
+            (daily[daily.length-1].foreign_net !== undefined || daily[daily.length-1].foreign_inv !== undefined);
         if (hasChip && !forceRefresh) {
             const slice = daily.slice(-15);
-            const instData = slice.map(r => {
-                const rawDate = (r.date || '').replace(/\//g, '-');
-                return {
-                    date: rawDate,
-                    foreign: Math.round((r.foreign_net || 0) / 1000),
-                    trust:   Math.round((r.trust_net   || 0) / 1000),
-                    dealer:  Math.round((r.dealer_net  || 0) / 1000),
-                };
-            });
+            const instData = slice.map(r => ({
+                date:    (r.date || '').replace(/\//g, '-'),
+                foreign: Math.round(_fi(r) / 1000),
+                trust:   Math.round(_ti(r) / 1000),
+                dealer:  Math.round(_di(r) / 1000),
+            }));
             const marginData = slice.map(r => ({
-                date: (r.date || '').replace(/\//g, '-'),
+                date:   (r.date || '').replace(/\//g, '-'),
                 margin: Math.round((r.margin_balance || 0) / 1000),
                 short:  Math.round((r.short_balance  || 0) / 1000),
             }));
@@ -2177,12 +2179,12 @@ const app = {
         let marginText = '無資料';
         if (this.rawDailyData?.length > 0) {
             const recent = this.rawDailyData.slice(-10);
-            const hasChip = recent.some(r => r.foreign_net !== undefined);
+            const hasChip = recent.some(r => r.foreign_net !== undefined || r.foreign_inv !== undefined);
             if (hasChip) {
-                instText = recent.filter(r => r.foreign_net !== undefined).map(r => {
-                    const fK = Math.round((r.foreign_net||0)/1000);
-                    const tK = Math.round((r.trust_net||0)/1000);
-                    const dK = Math.round((r.dealer_net||0)/1000);
+                instText = recent.filter(r => r.foreign_net !== undefined || r.foreign_inv !== undefined).map(r => {
+                    const fK = Math.round(((r.foreign_net ?? r.foreign_inv ?? 0))/1000);
+                    const tK = Math.round(((r.trust_net   ?? r.invest_trust ?? 0))/1000);
+                    const dK = Math.round(((r.dealer_net  ?? r.dealer_inv   ?? 0))/1000);
                     return `${r.date}: 外資${fK>=0?'+':''}${fK}K 投信${tK>=0?'+':''}${tK}K 自營${dK>=0?'+':''}${dK}K`;
                 }).join('\n');
                 marginText = recent.filter(r => r.margin_balance !== undefined).map(r =>
@@ -3669,12 +3671,14 @@ ${revText}
 
         // ── 籌碼面：三大法人（從 rawDailyData 取最近5日） ────────────────
         const recentD = data.slice(-5);
-        const hasInst = recentD.some(d => d.foreign_net !== undefined && d.foreign_net !== 0);
+        const hasInst = recentD.some(d =>
+            (d.foreign_net !== undefined && d.foreign_net !== 0) ||
+            (d.foreign_inv !== undefined && d.foreign_inv !== 0));
         let instText = hasInst
-            ? recentD.filter(d => d.foreign_net !== undefined).map(d => {
-                const f = Math.round((d.foreign_net||0)/1000);
-                const t = Math.round((d.trust_net||0)/1000);
-                const de= Math.round((d.dealer_net||0)/1000);
+            ? recentD.filter(d => d.foreign_net !== undefined || d.foreign_inv !== undefined).map(d => {
+                const f  = Math.round(((d.foreign_net ?? d.foreign_inv ?? 0))/1000);
+                const t  = Math.round(((d.trust_net   ?? d.invest_trust ?? 0))/1000);
+                const de = Math.round(((d.dealer_net  ?? d.dealer_inv   ?? 0))/1000);
                 return `  ${d.date}: 外資${f>=0?'+':''}${f}K 投信${t>=0?'+':''}${t}K 自營${de>=0?'+':''}${de}K`;
               }).join('\n')
             : '  （三大法人資料採礦中，下次更新後可見）';

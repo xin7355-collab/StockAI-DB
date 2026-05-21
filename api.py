@@ -23,44 +23,42 @@ def get_db_connection():
 @app.get("/api/stock/{symbol}")
 def get_stock_data(symbol: str, days: int = 300):
     """
-    提供給前端雷達與 ECharts K 線圖的核心 API (含法人籌碼)
+    提供給前端雷達與 ECharts K 線圖的核心 API (含法人與融資券籌碼)
     """
     conn = get_db_connection()
     c = conn.cursor()
-    
-    # 提取該股票最新的 N 天資料 (按日期排序)
+
     c.execute('''
-        SELECT trade_date as date, open, high, low, close, adj_close, volume, 
-               turnover_rate, foreign_inv, invest_trust, dealer_inv, margin_bal
+        SELECT trade_date as date, open, high, low, close, volume,
+               foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal
         FROM stock_history
         WHERE symbol = ?
         ORDER BY trade_date DESC
         LIMIT ?
     ''', (symbol, days))
-    
+
     rows = c.fetchall()
     conn.close()
-    
+
     if not rows:
         raise HTTPException(status_code=404, detail="本地資料庫找不到此股票，請確認是否已下載。")
-        
-    # 因為是 DESC 撈出來的，傳給前端要反轉回 ASC (時間由舊到新)
+
     data = [dict(row) for row in reversed(rows)]
-    
     return data
 
 @app.get("/api/macro")
 def get_macro_data():
     """
-    獲取宏觀風控數據 (VIX, 費半等)
+    獲取宏觀風控數據（VIX、美股大盤等），回傳最新一筆
     """
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM market_macro ORDER BY trade_date DESC LIMIT 5")
-    rows = c.fetchall()
+    c.execute("SELECT * FROM market_macro ORDER BY trade_date DESC LIMIT 1")
+    row = c.fetchone()
     conn.close()
-
-    return [dict(r) for r in rows] if rows else []
+    if not row:
+        return {"status": "no_data"}
+    return dict(row)
 
 
 @app.get("/api/radar/{strategy}")
