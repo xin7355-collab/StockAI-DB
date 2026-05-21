@@ -113,6 +113,16 @@
                 </div>
 
                 <div class="space-y-4 border-b border-[#30363d] pb-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-purple-400">🧠 Groq API Key（AI 大腦，純手機必填）</label>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">免費申請：<span class="text-purple-400">console.groq.com</span> → API Keys → Create。填入後 AI 分析功能直接在手機上執行。</p>
+                        <div class="flex gap-2 items-center">
+                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
+                            <button onclick="app.verifyAPI('groq')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq"></div>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-green-400 mb-1">🔑 Fugle 輪動金鑰池 (台股即時)</label>
                         <div class="flex gap-2 items-center mb-1.5">
@@ -792,7 +802,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', finmindKey: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '' },
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
@@ -1151,6 +1161,7 @@ const app = {
 
     openSettings() {
         document.getElementById('set_aiPrompt').value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
+        document.getElementById('set_groqKey').value = this.settings.groqKey || '';
         document.getElementById('set_fugleToken1').value = this.settings.fugleToken1 || '';
         document.getElementById('set_fugleToken2').value = this.settings.fugleToken2 || '';
         document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
@@ -1180,6 +1191,7 @@ const app = {
 
     saveSettings() {
         this.settings.aiPrompt = document.getElementById('set_aiPrompt').value.trim();
+        this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
         this.settings.fugleToken1 = document.getElementById('set_fugleToken1').value.trim();
         this.settings.fugleToken2 = document.getElementById('set_fugleToken2').value.trim();
         this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
@@ -1202,7 +1214,11 @@ const app = {
         const led = document.getElementById(`led_${type}`);
         led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
         try {
-            if (type === 'finmind') {
+            if (type === 'groq') {
+                if (!this.settings.groqKey) throw new Error('未填寫');
+                const res = await this.safeFetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${this.settings.groqKey}` } }, { timeout: 8000, maxRetries: 1 });
+                if (res.status === 200) { const j = await res.json(); if (j?.data?.length > 0) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error(); } else throw new Error(`HTTP ${res.status}`);
+            } else if (type === 'finmind') {
                 if(!this.settings.finmindKey) throw new Error();
                 const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${this.settings.finmindKey}`, {}, { timeout: 8000, maxRetries: 1 });
                 const json = await res.json();
@@ -1680,6 +1696,50 @@ const app = {
         const token = keys[this.fugleKeyIndex % keys.length];
         this.fugleKeyIndex++;
         return token;
+    },
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 雙模式 AI 呼叫輔助（後端優先，純手機直打 Groq）
+    // 模式 A：有 localApiUrl → POST ${apiBase}/api/ai/analyze（金鑰在伺服器）
+    // 模式 B：無 localApiUrl 但有 groqKey → 前端直打 Groq（純手機模式）
+    // 兩者皆無 → 回傳 null，呼叫方顯示引導訊息
+    // ═══════════════════════════════════════════════════════════════════
+    async _callAI({ prompt, max_tokens = 900, temperature = 0.3 }) {
+        const apiBase  = (this.settings.localApiUrl || '').replace(/\/$/, '');
+        const groqKey  = this.settings.groqKey || '';
+
+        // 模式 A：後端代理
+        if (apiBase) {
+            const res = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, max_tokens, temperature })
+            }, { timeout: 60000, maxRetries: 1 });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `後端錯誤 HTTP ${res.status}`);
+            }
+            const data = await res.json();
+            return data.content;
+        }
+
+        // 模式 B：前端直打 Groq（純手機）
+        if (groqKey) {
+            const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens, temperature })
+            }, { timeout: 60000, maxRetries: 2 });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error?.message || `Groq 錯誤 HTTP ${res.status}`);
+            }
+            const data = await res.json();
+            return data.choices[0].message.content;
+        }
+
+        // 兩者都沒設定
+        return null;
     },
 
     async fetchFugleData(symbol) {
@@ -2259,14 +2319,15 @@ const app = {
 
     async analyzeChipUnified(sym) {
         if (!sym) return;
-        const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
         const btn = document.getElementById('chipUnifiedAIBtn');
         const result = document.getElementById('chipUnifiedAIResult');
         btn.textContent = '🤖 分析中，請稍候...';
         btn.disabled = true;
         result.classList.remove('hidden');
-        if (!apiBase) {
-            result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先在設定中填入「本地 API 伺服器」URL，AI 分析功能需透過後端執行。</span>';
+        const hasBackend = !!(this.settings.localApiUrl || '').trim();
+        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        if (!hasBackend && !hasGroqKey) {
+            result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key（免費：console.groq.com），即可在手機直接使用 AI 分析。</span>';
             btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
             btn.disabled = false;
             return;
@@ -2357,18 +2418,12 @@ ${brokerText}
 最後一行：⚠️ 投資有風險，以上僅供參考，請自行判斷。`;
 
         try {
-            const groqRes = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, max_tokens: 800, temperature: 0.7 })
-            }, { timeout: 45000, maxRetries: 1 });
-            if (!groqRes.ok) throw new Error(groqRes.statusText || `HTTP ${groqRes.status}`);
-            const groqData = await groqRes.json();
-            const text = groqData.content || '分析失敗，請稍後再試';
+            const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.7 });
+            if (!text) throw new Error('未設定 Groq Key，請至設定填入');
             const escaped = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
             result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-[11px]">${escaped}</div>`;
         } catch(e) {
-            result.innerHTML = `<span class="text-red-400 text-xs">分析失敗：${e.message || '請確認本地 API 伺服器是否運行中'}</span>`;
+            result.innerHTML = `<span class="text-red-400 text-xs">分析失敗：${e.message}</span>`;
         }
         btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
         btn.disabled = false;
@@ -2376,13 +2431,14 @@ ${brokerText}
 
     async runFinancialAI(sym) {
         if (!sym) return;
-        const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
         const btn = document.getElementById('financialAIBtn');
         const result = document.getElementById('financialAIResult');
         btn.textContent = '🧠 分析中...';
         result.classList.remove('hidden');
-        if (!apiBase) {
-            result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先在設定中填入「本地 API 伺服器」URL，AI 分析功能需透過後端執行。</span>';
+        const hasBackend = !!(this.settings.localApiUrl || '').trim();
+        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        if (!hasBackend && !hasGroqKey) {
+            result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key（免費：console.groq.com）。</span>';
             btn.innerHTML = '🧠 AI基本面白話解讀';
             return;
         }
@@ -2441,18 +2497,12 @@ ${revText}
 1. 獲利能力：EPS 趨勢是在成長還是衰退？毛利率有沒有擴張？
 2. 營收動能：月營收 YoY 加速還是減速？有沒有轉折訊號？
 3. 白話結論：現在基本面是「轉強」「持穩」還是「轉弱」？值不值得持有？`;
-            const groqRes = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, max_tokens: 500, temperature: 0.6 })
-            }, { timeout: 45000, maxRetries: 1 });
-            if (!groqRes.ok) throw new Error(groqRes.statusText || `HTTP ${groqRes.status}`);
-            const groqData = await groqRes.json();
-            const text = groqData.content || '分析失敗，請稍後再試';
+            const text = await this._callAI({ prompt, max_tokens: 500, temperature: 0.6 });
+            if (!text) throw new Error('未設定 Groq Key，請至設定填入');
             result.innerHTML = `<div class="text-indigo-400 font-bold text-[9px] mb-1">🧠 AI 財務白話解讀 — ${sym}</div><div class="whitespace-pre-wrap">${text}</div>`;
             this.latestFinancialAICache = text.substring(0, 500);
         } catch(e) {
-            result.innerHTML = `<span class="text-red-400 text-[10px]">分析失敗：${e.message || '請確認本地 API 伺服器是否運行中'}</span>`;
+            result.innerHTML = `<span class="text-red-400 text-[10px]">分析失敗：${e.message}</span>`;
         }
         btn.innerHTML = '🧠 AI基本面白話解讀';
     },
@@ -3722,12 +3772,16 @@ ${revText}
     },
 
     async runUnifiedGroqAnalysis() {
-        const apiBase = (this.settings.localApiUrl || '').replace(/\/$/, '');
         const box = document.getElementById('geminiResultBox');
         if (!this.activeData || this.activeData.length === 0) { alert("⚠️ 請先確認股票資料已完整載入！"); return; }
-        if (!apiBase) {
+
+        // 預先檢查是否有任何 AI 方式可用
+        const hasBackend = !!(this.settings.localApiUrl || '').trim();
+        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        if (!hasBackend && !hasGroqKey) {
             box.classList.remove('hidden');
-            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800">⚠️ 請先在「⚙️ 戰情設定中心」填入「本地 API 伺服器」URL（例：http://192.168.1.100:8000），AI 分析功能需透過後端伺服器執行。</div>';
+            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 戰情設定中心」填入 <b>Groq API Key</b>（純手機模式）<br>或填入「本地 API 伺服器」URL（有主機時）。<br>Groq Key 免費申請：console.groq.com</div>';
+            this.openSettings();
             return;
         }
 
@@ -3871,15 +3925,8 @@ ${fundamentalHint}
 最新營收 YoY：${this.latestYoyCache || '無資料'}`;
 
         try {
-            const res = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, max_tokens: 900, temperature: 0.3 })
-            }, { timeout: 60000, maxRetries: 1 });
-            const resp = await res.json();
-            if (!res.ok || resp.error) throw new Error(resp.detail || resp.error || '後端 AI 錯誤');
-
-            let text = resp.content;
+            let text = await this._callAI({ prompt, max_tokens: 900, temperature: 0.3 });
+            if (!text) throw new Error('未設定 Groq Key 或本地 API，請先至設定填入');
 
             // 格式化輸出：給各段落加上顏色
             const sections = {
