@@ -328,7 +328,7 @@
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <div class="p-3 bg-[#0d1117] flex flex-col gap-3 relative border-b border-[#30363d]">
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-3 rounded-lg text-base font-black shadow-lg flex justify-center items-center gap-2 transition-all">
-                            🧠 請求 Groq 戰情總裁示 (含庫存分析)
+                            🧠 首席 AI 五維全盤分析
                         </button>
                         <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner overflow-y-auto max-h-[35rem]"></div>
                     </div>
@@ -674,25 +674,26 @@
 // 🧠 V14.0 首席 AI 戰略指令箱 (可抽換區)
 // ==========================================
 const AI_PROMPT_TEMPLATES = {
-    default: `你是「台股首席操盤手」，說話風格完全模仿權證小哥：直接、有個性、白話、毫不廢話。禁止使用「根據資料」「以下分析」等 AI 套話。
+    default: `你是「台股首席操盤手」，說話風格完全模仿權證小哥：直接、有個性、白話、毫不廢話。禁止使用「根據資料」「以下分析」等 AI 套話。每個數字都要直接講出來，不要叫使用者自己去看。
 
-請依照下方【當下戰情參數】，**嚴格按照以下五個段落輸出，每段開頭必須保留【】標題**：
+請依照下方【當下戰情參數】，嚴格按照以下五個段落輸出，每段開頭必須保留【】標題，禁止合併或跳過任何一段：
 
-【📊 技術面】
-分析均線系統、K線型態、量能。直接說「5日線在 XXXX，現在收在上面/下面」，說明短中長期趨勢。
+【📊 技術位階學】
+直接講出現價在哪條均線上面/下面、幾MA在哪、趨勢是幾季（春夏秋冬）代表什麼意思。說清楚量能今天放大還是縮小、是不是爆量。若有波峰壓力或波谷支撐數字，直接說「上面壓著 XX，下面撐在 XX」。若偵測到島型反轉或大黑K，必須警告「這根K線很危險」。
 
-【💹 籌碼面】
-分析三大法人與主力分點動向。若外資連買，就說「外資這幾天一直在吃貨」；若主力買超，說「照妖鏡照出主力積極進場」。
+【💹 籌碼照妖鏡】
+把外資、投信、自營近5日的方向講清楚，是一路買還是在倒貨。融資增加是散戶搶進的訊號，要提醒風險；融券多代表空方來了。若有主力分點資料，說出前三名券商在幹嘛——是悄悄吃貨還是出貨跑路。若此維度資料不足，根據季節與產業類型推估法人可能的動向，禁止說「資料不足」。
 
-【🌏 全球觀】
-分析美股、VIX、外資期貨口數對台股的影響。一句話點出風險或機會。
+【🌏 全球獵場觀】
+說出S&P500、NASDAQ今天漲跌方向，VIX高不高（高於20要警戒，高於30要緊張）。外資台指期淨口數是多方還是空方，口數多寡代表信心強弱。整體給出一句話：台股今天是站在順風還是逆風上。若此維度資料不足，根據近期全球局勢推估，禁止說「資料不足」。
 
-【🏭 產品需求面】
-根據公司名稱與產業，判斷目前景氣循環與訂單動能。若資料不足，根據股票代號推估產業給出看法。
+【🏭 基本與消息面】
+說出最新月營收年增率是正還是負、幅度大不大。財務摘要有沒有特別異常（毛利率、EPS趨勢）。近期有沒有重大消息——是利多還是利空？處置股或注意股要特別提醒。若此維度資料不足，根據股票代號推估產業景氣現況，禁止說「資料不足」。
 
-【⚔️ 綜合評析】
-整合以上四面向，給出明確操作建議（含持倉建議、重要支撐壓力數字）。
-最後**獨立一行**輸出最終判定：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退`,
+【⚔️ 總監戰術室】
+對比庫存成本與現價，算出帳面損益%並明確說「現在是賺還是賠、賺多少%」。若空手則給出建議進場價位區間。直接說出防守底線是多少（跌破就停損），目標價T1是多少（到了就考慮減碼）。最後整合以上四面向給一句話操作指令，白話到國中生都聽得懂。
+
+最後**獨立一行**輸出最終判定（只能三選一）：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退`,
 
     dualBlade: `你是「台股首席資安策略長」，融合權證小哥籌碼流與朱家泓技術位階學。語氣霸氣且幽默，杜絕 AI 幻想。
 
@@ -4043,11 +4044,11 @@ ${keyLevels ? keyLevels : ''}${chipBlock}${globalBlock}${fundamentalBlock}`;
             if (!text) throw new Error('未設定 Groq Key 或本地 API，請先至設定填入');
 
             const sections = {
-                '【📊 技術面】':    { border: 'border-blue-500',   title: 'text-blue-400',   bg: 'bg-blue-950/20'   },
-                '【💹 籌碼面】':    { border: 'border-red-500',    title: 'text-red-400',    bg: 'bg-red-950/20'    },
-                '【🌏 全球觀】':    { border: 'border-cyan-500',   title: 'text-cyan-400',   bg: 'bg-cyan-950/20'   },
-                '【🏭 產品需求面】':{ border: 'border-yellow-500', title: 'text-yellow-400', bg: 'bg-yellow-950/20' },
-                '【⚔️ 綜合評析】': { border: 'border-purple-500', title: 'text-purple-300', bg: 'bg-purple-950/20' },
+                '【📊 技術位階學】':  { border: 'border-blue-500',   title: 'text-blue-400',   bg: 'bg-blue-950/20'   },
+                '【💹 籌碼照妖鏡】':  { border: 'border-red-500',    title: 'text-red-400',    bg: 'bg-red-950/20'    },
+                '【🌏 全球獵場觀】':  { border: 'border-cyan-500',   title: 'text-cyan-400',   bg: 'bg-cyan-950/20'   },
+                '【🏭 基本與消息面】':{ border: 'border-yellow-500', title: 'text-yellow-400', bg: 'bg-yellow-950/20' },
+                '【⚔️ 總監戰術室】': { border: 'border-purple-500', title: 'text-purple-300', bg: 'bg-purple-950/20' },
             };
             for (const [marker, c] of Object.entries(sections)) {
                 const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
