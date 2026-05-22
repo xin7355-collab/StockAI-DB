@@ -260,33 +260,35 @@
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
-                <div class="px-3 pt-3 pb-1.5 flex justify-between items-center">
-                    <div class="flex flex-col w-[55%] justify-center overflow-hidden">
-                        <div class="text-white font-bold flex items-center gap-2 pb-0.5">
-                            <span id="monitorHuntIcon" class="cursor-pointer text-2xl md:text-3xl text-gray-500 transition-transform hover:scale-110 flex-shrink-0" onclick="app.toggleMonitor(); app.vibrate(30);" title="加入/移除獵殺監控">🗡️</span>
-                            <span id="favStarIcon" class="cursor-pointer text-3xl md:text-4xl text-gray-500 transition-transform hover:scale-110 flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
-                            <div class="flex flex-col min-w-0 overflow-hidden">
-                                <span id="quoteName" class="font-black leading-tight tracking-wide" style="font-size: clamp(1rem, 5vw, 1.75rem); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">載入中...</span>
-                                <span id="quoteCode" class="text-[11px] text-gray-500 font-mono font-bold leading-none mt-0.5"></span>
+                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2">
+                    <!-- 左側：圖示 + 名稱 + 標籤 -->
+                    <div class="flex items-start gap-1.5 flex-1 min-w-0 overflow-hidden">
+                        <div class="flex flex-col items-center gap-0.5 flex-shrink-0 pt-0.5">
+                            <span id="monitorHuntIcon" class="cursor-pointer text-xl text-gray-500 transition-transform hover:scale-110 leading-none" onclick="app.toggleMonitor(); app.vibrate(30);" title="加入/移除獵殺監控">🗡️</span>
+                            <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
+                        </div>
+                        <div class="flex flex-col min-w-0 overflow-hidden">
+                            <span id="quoteName" class="font-black leading-tight tracking-wide" style="font-size: clamp(1rem, 4.5vw, 1.6rem); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">載入中...</span>
+                            <span id="quoteCode" class="text-[11px] text-gray-500 font-mono font-bold leading-none mt-0.5"></span>
+                            <div class="flex items-center gap-1 mt-1 flex-wrap">
+                                <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
+                                <span id="headerScoreStatus" class="hidden text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').classList.remove('hidden')">--</span>
+                                <span id="invBadge" class="hidden bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-xs px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
-                            <span id="headerScoreStatus" class="hidden text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').classList.remove('hidden')">--</span>
-                            <span id="invBadge" class="hidden bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
-                        </div>
                     </div>
-                    <div class="text-right flex flex-col justify-center items-end flex-grow">
-                        <div class="flex items-center gap-1.5 justify-end">
+                    <!-- 右側：價格 + 漲跌 + 來源 + 更新 -->
+                    <div class="text-right flex flex-col items-end flex-shrink-0">
+                        <div class="flex items-center gap-1 justify-end">
                             <span id="livePriceText" class="text-4xl md:text-5xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
-                            <button onclick="app.toggleManualPriceInput()" title="手動輸入現價" class="text-gray-600 hover:text-gray-400 text-sm transition-colors flex-shrink-0 mb-1">✏️</button>
+                            <button onclick="app.toggleManualPriceInput()" title="手動輸入現價" class="text-gray-600 hover:text-gray-400 text-sm transition-colors flex-shrink-0">✏️</button>
                         </div>
                         <div id="manualPriceInputWrap" class="hidden flex items-center gap-1 mt-1">
                             <input type="number" inputmode="decimal" id="manualPriceInput" class="bg-[#010409] text-white px-2 py-1 rounded border border-gray-600 outline-none font-mono text-sm w-24 text-right focus:border-blue-500 transition-colors" placeholder="手動現價" oninput="app.onManualPriceInput()">
                             <button onclick="app.clearManualPrice()" class="text-gray-500 hover:text-red-400 text-xs transition-colors">✕</button>
                         </div>
-                        <div id="liveDiffWrapper" class="flex items-center gap-1 text-gray-400 mt-1">
-                            <span id="liveDiffAmount" class="text-sm md:text-base font-black font-mono">--</span><span id="liveDiffPct" class="text-xs md:text-sm font-bold font-mono">(--%)</span>
+                        <div id="liveDiffWrapper" class="flex items-center gap-1 text-gray-400 mt-0.5">
+                            <span id="liveDiffAmount" class="text-sm font-black font-mono">--</span><span id="liveDiffPct" class="text-xs font-bold font-mono">(--%)</span>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1">
                             <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d]">
@@ -453,9 +455,11 @@
                         <div class="text-xs text-gray-500 mb-1.5 leading-relaxed">【系統已結合近5日K線特徵、<span class="text-yellow-400">成交量能配合度</span>、與歷史趨勢連動性進行掃描比對】</div>
                         <div class="grid grid-cols-3 gap-1.5 text-center mt-1.5">
                             <div class="bg-gray-800 rounded p-2 border border-gray-600"><div class="text-xs text-gray-400">高度相似樣本</div><div class="font-bold text-white text-lg mt-0.5" id="patCount">--次</div></div>
-                            <div class="bg-gray-800 rounded p-2 border border-red-900/50"><div class="text-xs text-red-400">隔日上漲機率</div><div class="font-bold text-red-400 text-lg mt-0.5" id="patWinRate">--%</div></div>
+                            <div class="bg-gray-800 rounded p-2 border border-gray-600" id="patWinRateCard"><div class="text-xs text-gray-400">隔日上漲機率</div><div class="font-bold text-gray-300 text-lg mt-0.5" id="patWinRate">--%</div></div>
                             <div class="bg-gray-800 rounded p-2 border border-green-900/50"><div class="text-xs text-green-400">隔日平均漲幅</div><div class="font-bold text-white text-base mt-0.5" id="patAvgRet">--</div></div>
                         </div>
+                        <div class="col-span-3 text-[9px] text-gray-500 text-center mt-1.5 leading-relaxed">🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 &lt;50% 偏低（台股：紅=漲=好）</div>
+                        <div id="patHighAlert" class="hidden text-xs font-bold text-center text-[#f87171] bg-red-950/40 border border-red-800/50 rounded px-2 py-1.5 mt-1.5 animate-pulse"></div>
                     </div>
                     <div class="mb-3">
                         <div class="text-xs text-gray-500 mb-1.5">【長線波段回測】(依據 5MA/20MA 進出場)</div>
@@ -508,6 +512,11 @@
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-20">
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
+                <h4 class="text-purple-400 font-bold text-sm mb-2 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">🤖 AI 全球市場解析</h4>
+                <button onclick="app.runGlobalMarketAI(); app.vibrate(50);" id="btnGlobalAI" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">🌐 一鍵解析全球市場對台股影響</button>
+                <div id="globalAIResult" class="hidden mt-3 w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-sm text-gray-200 leading-relaxed overflow-y-auto max-h-[30rem]"></div>
+            </div>
+            <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
                 <h4 class="text-yellow-400 font-bold text-sm mb-3 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">📡 外資期貨部位</h4>
                 <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 flex items-center justify-between">
                     <div>
@@ -552,6 +561,8 @@
                         <div class="text-[10px] text-gray-500 font-bold mb-1">VIX 恐慌指數</div>
                         <div id="usBar_vix_main" class="text-xl font-black font-mono text-gray-300">--</div>
                         <div id="usBar_vix_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
+                        <div id="usBar_vix_annotation_main" class="text-[9px] font-bold mt-1 text-gray-500">--</div>
+                        <div class="text-[9px] text-gray-600 mt-0.5 leading-relaxed">&lt;15 平靜 / 15-25 正常 / 25+ 警戒 / 30+ 恐慌</div>
                     </div>
                     <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
                         <div class="text-[10px] text-gray-500 font-bold mb-1">TSM ADR</div>
@@ -1605,6 +1616,14 @@ const app = {
             const vM = document.getElementById('usBar_vix_main'), vcM = document.getElementById('usBar_vix_chg_main');
             if (vM) { vM.innerText = m.vix.close.toFixed(2); vM.className = `text-xl font-black font-mono ${col}`; }
             if (vcM) { const sign = m.vix.chg_pct > 0 ? '+' : ''; vcM.innerText = `${sign}${m.vix.chg_pct.toFixed(2)}%`; vcM.className = `text-xs font-bold mt-0.5 ${col}`; }
+            const annEl = document.getElementById('usBar_vix_annotation_main');
+            if (annEl) {
+                const v = m.vix.close;
+                if (v > 30)       { annEl.textContent = '🔴 恐慌！市場極度不安'; annEl.className = 'text-[9px] font-bold mt-1 text-[#f87171] animate-pulse'; }
+                else if (v > 25)  { annEl.textContent = '🟠 警戒：波動偏大'; annEl.className = 'text-[9px] font-bold mt-1 text-orange-400'; }
+                else if (v >= 15) { annEl.textContent = '🟡 正常波動'; annEl.className = 'text-[9px] font-bold mt-1 text-yellow-300'; }
+                else              { annEl.textContent = '🟢 市場平靜'; annEl.className = 'text-[9px] font-bold mt-1 text-[#4ade80]'; }
+            }
         }
     },
 
@@ -2787,7 +2806,7 @@ ${dynamicParams}
                     }
                 });
                 this.latestNewsCache = fullNewsText;
-            } else if (!data) { nHtml = `<div class="text-gray-500 text-xs">新聞服務暫時無法連線，請稍後再試。</div>`; this.latestNewsCache = ""; }
+            } else if (!data) { nHtml = `<div class="text-gray-500 text-xs">新聞服務暫時無法連線，請稍後再試。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></div>`; this.latestNewsCache = ""; }
             else { nHtml = `<div class="text-gray-500 text-xs">近期無重大訊息公告。</div>`; this.latestNewsCache = ""; }
             newsBox.innerHTML = nHtml;
 
@@ -2800,7 +2819,7 @@ ${dynamicParams}
             } else {
                 badge.classList.add('hidden');
             }
-        } catch(e) { newsBox.innerHTML = `<span class="text-gray-500 text-xs">新聞檔案庫連線失敗</span>`; this.latestNewsCache = "";}
+        } catch(e) { newsBox.innerHTML = `<span class="text-gray-500 text-xs">新聞服務暫時異常，請切換其他頁籤後再試。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></span>`; this.latestNewsCache = "";}
     },
 
     async manualDataRefresh() {
@@ -3456,7 +3475,11 @@ ${dynamicParams}
             const count = trades.length, winTrades = trades.filter(t => t.profitPct > 0);
             const winRate = count > 0 ? ((winTrades.length / count) * 100).toFixed(1) : 0;
             const avgProfit = count > 0 ? (trades.reduce((a, b) => a + b.profitPct, 0) / count).toFixed(2) : 0;
-            document.getElementById('btCount').innerText = `${count} 次`; document.getElementById('btWinRate').innerText = `${winRate}%`; document.getElementById('btAvgProfit').innerText = `${avgProfit}%`;
+            const btWrNum = parseFloat(winRate) || 0;
+            const btWrCol = btWrNum >= 65 ? 'text-[#f87171]' : (btWrNum >= 50 ? 'text-yellow-300' : 'text-[#4ade80]');
+            document.getElementById('btCount').innerText = `${count} 次`;
+            document.getElementById('btWinRate').innerHTML = `<span class="${btWrCol}">${winRate}%</span>`;
+            document.getElementById('btAvgProfit').innerText = `${avgProfit}%`;
         }
 
         if (patternStats) {
@@ -3464,10 +3487,20 @@ ${dynamicParams}
             const confidence = cnt >= 10 ? '✅ 高信心' : cnt >= 5 ? '⚡ 中信心' : '⚠️ 樣本偏少';
             const confColor = cnt >= 10 ? 'text-green-400' : cnt >= 5 ? 'text-yellow-400' : 'text-orange-400';
             document.getElementById('patCount').innerHTML = `${cnt} 次<br><span class="text-[9px] ${confColor}">${confidence}</span>`;
-            document.getElementById('patWinRate').innerText = `${patternStats.winRate}%`;
+            const wr = parseFloat(patternStats.winRate) || 0;
+            const wrCol = wr >= 65 ? 'text-[#f87171]' : (wr >= 50 ? 'text-yellow-300' : 'text-[#4ade80]');
+            const wrCard = document.getElementById('patWinRateCard');
+            if (wrCard) wrCard.className = `bg-gray-800 rounded p-2 border ${wr >= 65 ? 'border-red-600/70' : wr >= 50 ? 'border-yellow-600/50' : 'border-gray-600'}`;
+            document.getElementById('patWinRate').innerHTML = `<span class="${wrCol}">${patternStats.winRate}%</span>`;
             document.getElementById('patAvgRet').innerHTML = patternStats.avgRet > 0 ? `<span class="text-red-400">+${patternStats.avgRet}%</span>` : `<span class="text-green-400">${patternStats.avgRet}%</span>`;
+            const alertEl = document.getElementById('patHighAlert');
+            if (alertEl) {
+                if (wr >= 65) { alertEl.innerHTML = `🚨 高勝率訊號！歷史上此型態隔日上漲機率達 <b>${patternStats.winRate}%</b>，注意布局機會！`; alertEl.classList.remove('hidden'); }
+                else { alertEl.classList.add('hidden'); }
+            }
         } else {
             document.getElementById('patCount').innerText = `--`; document.getElementById('patWinRate').innerText = `--`; document.getElementById('patAvgRet').innerText = `--`;
+            const alertEl = document.getElementById('patHighAlert'); if (alertEl) alertEl.classList.add('hidden');
         }
         const btCount = parseInt(document.getElementById('btCount').innerText) || 0;
         const btNote = btCount < 5 ? '⚠️ 交易樣本偏少，參考性有限' : `✅ 已回測 ${btCount} 次歷史信號`;
@@ -4255,6 +4288,30 @@ ${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損�
             box.innerHTML = `<span class="text-red-400 text-sm">審計失敗：${e.message}</span>`;
         }
         btn.innerHTML = '📐 朱家泓技術審計 × 郭榮哲折數過濾';
+    },
+
+    async runGlobalMarketAI() {
+        const btn = document.getElementById('btnGlobalAI');
+        const result = document.getElementById('globalAIResult');
+        btn.innerHTML = '⏳ AI 分析中...'; btn.disabled = true;
+        result.classList.remove('hidden');
+        result.innerHTML = '<span class="text-gray-500 animate-pulse">AI 司令部正在整合全球數據，請稍候...</span>';
+        const fi = this.fiShortQty;
+        const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
+        const twii = document.getElementById('mktTWII_main')?.innerText || '--';
+        const twoii = document.getElementById('mktTWOII_main')?.innerText || '--';
+        const spx = document.getElementById('usBar_spx_main')?.innerText || '--';
+        const ndx = document.getElementById('usBar_ndx_main')?.innerText || '--';
+        const vix = document.getElementById('usBar_vix_main')?.innerText || '--';
+        const tsm = document.getElementById('usBar_tsm_main')?.innerText || '--';
+        const prompt = `你是台股首席策略師，請用白話文、權證小哥風格分析以下全球市場數據對台股的影響：\n\n外資台指期未平倉：${fiLabel}\n加權指數：${twii}\n上櫃指數：${twoii}\nS&P 500：${spx}\nNASDAQ：${ndx}\nVIX 恐慌指數：${vix}\n台積電 ADR：${tsm}\n\n請依序分析：\n1. 整體市場氛圍（偏多/偏空/中性），用一句話說\n2. 外資期貨部位解讀：外資到底在幹嘛\n3. 美股對台股的連動影響（尤其台積電ADR訊號）\n4. VIX 解讀：現在市場怕不怕\n5. 今明兩日台股操作建議（要有具體策略，不是廢話）\n\n每段不超過3句，用**粗體**標出關鍵數字和結論。`;
+        try {
+            const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.4 });
+            result.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>').replace(/\n/g, '<br>');
+        } catch(e) {
+            result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
+        }
+        btn.innerHTML = '🌐 一鍵解析全球市場對台股影響'; btn.disabled = false;
     },
 
     async runUnifiedGroqAnalysis() {
