@@ -254,6 +254,16 @@
             <span id="usBar_vix_chg" class="hidden"></span>
             <span id="usBar_tsm" class="hidden"></span>
             <span id="usBar_tsm_chg" class="hidden"></span>
+            <span id="usBar_dji" class="hidden"></span>
+            <span id="usBar_dji_chg" class="hidden"></span>
+            <span id="usBar_sox" class="hidden"></span>
+            <span id="usBar_sox_chg" class="hidden"></span>
+            <span id="usBar_nvda" class="hidden"></span>
+            <span id="usBar_nvda_chg" class="hidden"></span>
+            <span id="usBar_aapl" class="hidden"></span>
+            <span id="usBar_aapl_chg" class="hidden"></span>
+            <span id="usBar_msft" class="hidden"></span>
+            <span id="usBar_msft_chg" class="hidden"></span>
         </div>
     </div>
 
@@ -546,28 +556,64 @@
             </div>
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
                 <h4 class="text-green-400 font-bold text-sm mb-3 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">🇺🇸 美股市場</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">S&amp;P 500</div>
-                        <div id="usBar_spx_main" class="text-xl font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_spx_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">NASDAQ</div>
-                        <div id="usBar_ndx_main" class="text-xl font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_ndx_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">VIX 恐慌指數</div>
-                        <div id="usBar_vix_main" class="text-xl font-black font-mono text-gray-300">--</div>
+                <!-- VIX 恐慌指數 -->
+                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mb-2 flex items-center justify-between">
+                    <div>
+                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">🔥 VIX 恐慌指數</div>
+                        <div id="usBar_vix_main" class="text-2xl font-black font-mono text-gray-300">--</div>
                         <div id="usBar_vix_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
-                        <div id="usBar_vix_annotation_main" class="text-[9px] font-bold mt-1 text-gray-500">--</div>
-                        <div class="text-[9px] text-gray-600 mt-0.5 leading-relaxed">&lt;15 平靜 / 15-25 正常 / 25+ 警戒 / 30+ 恐慌</div>
                     </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">TSM ADR</div>
-                        <div id="usBar_tsm_main" class="text-xl font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_tsm_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
+                    <div class="text-right">
+                        <div id="usBar_vix_annotation_main" class="text-[10px] font-bold text-gray-500">--</div>
+                        <div class="text-[9px] text-gray-600 mt-1 leading-relaxed">&lt;15 平靜 / 15-25 正常<br>25+ 警戒 / 30+ 恐慌</div>
+                    </div>
+                </div>
+                <!-- 四大指數 -->
+                <div class="text-[10px] text-gray-500 font-bold mb-1.5">📊 四大指數（美股大盤風向球）</div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">S&amp;P 500 ^GSPC</div>
+                        <div id="usBar_spx_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_spx_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">道瓊 ^DJI</div>
+                        <div id="usBar_dji_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_dji_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">那斯達克 ^IXIC</div>
+                        <div id="usBar_ndx_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_ndx_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-blue-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-blue-400 font-bold mb-0.5">費半 ^SOX ⚡台股先行</div>
+                        <div id="usBar_sox_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_sox_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                </div>
+                <!-- 關鍵巨頭與 ADR -->
+                <div class="text-[10px] text-gray-500 font-bold mb-1.5">💎 關鍵巨頭與 ADR</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-[#0d1117] border border-yellow-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-yellow-500 font-bold mb-0.5">台積電 ADR TSM</div>
+                        <div id="usBar_tsm_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_tsm_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-green-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-green-400 font-bold mb-0.5">輝達 NVDA 🤖AI總司令</div>
+                        <div id="usBar_nvda_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_nvda_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">蘋果 AAPL</div>
+                        <div id="usBar_aapl_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_aapl_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">微軟 MSFT</div>
+                        <div id="usBar_msft_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_msft_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
                     </div>
                 </div>
                 <button onclick="app.refreshAllMarketData(); app.vibrate(30);" class="mt-3 w-full text-[10px] text-gray-500 hover:text-white bg-[#161b22] border border-[#30363d] rounded py-1.5 font-bold transition-colors">🔄 重新整理市場數據</button>
@@ -1111,6 +1157,19 @@ const app = {
         };
         setBar('spx', data.spx); setBar('ndx', data.ndx);
         setBar('vix', data.vix, true); setBar('tsm', data.tsm);
+        setBar('dji', data.dji); setBar('sox', data.sox);
+        setBar('nvda', data.nvda); setBar('aapl', data.aapl); setBar('msft', data.msft);
+        // VIX annotation update (same logic as _renderUSBar)
+        if (data.vix?.price != null) {
+            const v = parseFloat(data.vix.price);
+            const annEl = document.getElementById('usBar_vix_annotation_main');
+            if (annEl) {
+                if (v > 30)       { annEl.textContent = '🔴 恐慌！市場極度不安'; annEl.className = 'text-[10px] font-bold text-[#f87171] animate-pulse'; }
+                else if (v > 25)  { annEl.textContent = '🟠 警戒：波動偏大'; annEl.className = 'text-[10px] font-bold text-orange-400'; }
+                else if (v >= 15) { annEl.textContent = '🟡 正常波動'; annEl.className = 'text-[10px] font-bold text-yellow-300'; }
+                else              { annEl.textContent = '🟢 市場平靜'; annEl.className = 'text-[10px] font-bold text-[#4ade80]'; }
+            }
+        }
         this._checkMarketAlerts(data);
     },
 
@@ -1228,6 +1287,16 @@ const app = {
         copy('usBar_vix_chg', 'usBar_vix_chg_main');
         copy('usBar_tsm', 'usBar_tsm_main');
         copy('usBar_tsm_chg', 'usBar_tsm_chg_main');
+        copy('usBar_dji', 'usBar_dji_main');
+        copy('usBar_dji_chg', 'usBar_dji_chg_main');
+        copy('usBar_sox', 'usBar_sox_main');
+        copy('usBar_sox_chg', 'usBar_sox_chg_main');
+        copy('usBar_nvda', 'usBar_nvda_main');
+        copy('usBar_nvda_chg', 'usBar_nvda_chg_main');
+        copy('usBar_aapl', 'usBar_aapl_main');
+        copy('usBar_aapl_chg', 'usBar_aapl_chg_main');
+        copy('usBar_msft', 'usBar_msft_main');
+        copy('usBar_msft_chg', 'usBar_msft_chg_main');
     },
 
     openSettings() {
@@ -1606,6 +1675,11 @@ const app = {
         set(null, 'usBar_spx', 'usBar_spx_chg', 'sp500');
         set(null, 'usBar_ndx', 'usBar_ndx_chg', 'nasdaq');
         set(null, 'usBar_tsm', 'usBar_tsm_chg', 'tsm');
+        set(null, 'usBar_dji', 'usBar_dji_chg', 'dji');
+        set(null, 'usBar_sox', 'usBar_sox_chg', 'sox');
+        set(null, 'usBar_nvda', 'usBar_nvda_chg', 'nvda');
+        set(null, 'usBar_aapl', 'usBar_aapl_chg', 'aapl');
+        set(null, 'usBar_msft', 'usBar_msft_chg', 'msft');
         // VIX 特殊：漲是空頭警示（紅），跌是多頭（綠）
         if (m.vix) {
             const col = m.vix.close > 25 ? 'text-[#f87171]' : (m.vix.close < 15 ? 'text-[#4ade80]' : 'text-yellow-300');
@@ -1903,8 +1977,9 @@ const app = {
         const yf = sym => proxyFetch(sym);
 
         try {
-            const [spxJ, ndxJ, vixJ, tsmJ] = await Promise.all([
-                yf('^GSPC'), yf('^IXIC'), yf('^VIX'), yf('TSM')
+            const [spxJ, ndxJ, vixJ, tsmJ, djiJ, soxJ, nvdaJ, aaplJ, msftJ] = await Promise.all([
+                yf('^GSPC'), yf('^IXIC'), yf('^VIX'), yf('TSM'),
+                yf('^DJI'), yf('^SOX'), yf('NVDA'), yf('AAPL'), yf('MSFT')
             ]);
             const extract = (json, label) => {
                 const meta = json?.chart?.result?.[0]?.meta;
@@ -1921,6 +1996,11 @@ const app = {
                 ndx: extract(ndxJ, 'NASDAQ'),
                 vix: extract(vixJ, 'VIX'),
                 tsm: extract(tsmJ, 'TSM'),
+                dji: extract(djiJ, 'DJI'),
+                sox: extract(soxJ, 'SOX'),
+                nvda: extract(nvdaJ, 'NVDA'),
+                aapl: extract(aaplJ, 'AAPL'),
+                msft: extract(msftJ, 'MSFT'),
                 fetchedAt: Date.now()
             };
             localStorage.setItem('proTerminalUSMarket', JSON.stringify(result));
@@ -4298,13 +4378,14 @@ ${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損�
         result.innerHTML = '<span class="text-gray-500 animate-pulse">AI 司令部正在整合全球數據，請稍候...</span>';
         const fi = this.fiShortQty;
         const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
-        const twii = document.getElementById('mktTWII_main')?.innerText || '--';
-        const twoii = document.getElementById('mktTWOII_main')?.innerText || '--';
-        const spx = document.getElementById('usBar_spx_main')?.innerText || '--';
-        const ndx = document.getElementById('usBar_ndx_main')?.innerText || '--';
-        const vix = document.getElementById('usBar_vix_main')?.innerText || '--';
-        const tsm = document.getElementById('usBar_tsm_main')?.innerText || '--';
-        const prompt = `你是台股首席策略師，請用白話文、權證小哥風格分析以下全球市場數據對台股的影響：\n\n外資台指期未平倉：${fiLabel}\n加權指數：${twii}\n上櫃指數：${twoii}\nS&P 500：${spx}\nNASDAQ：${ndx}\nVIX 恐慌指數：${vix}\n台積電 ADR：${tsm}\n\n請依序分析：\n1. 整體市場氛圍（偏多/偏空/中性），用一句話說\n2. 外資期貨部位解讀：外資到底在幹嘛\n3. 美股對台股的連動影響（尤其台積電ADR訊號）\n4. VIX 解讀：現在市場怕不怕\n5. 今明兩日台股操作建議（要有具體策略，不是廢話）\n\n每段不超過3句，用**粗體**標出關鍵數字和結論。`;
+        const g = id => document.getElementById(id)?.innerText?.trim() || '--';
+        const twii = g('mktTWII_main'), twoii = g('mktTWOII_main');
+        const spx = g('usBar_spx_main'), dji = g('usBar_dji_main'), ndx = g('usBar_ndx_main'), sox = g('usBar_sox_main');
+        const vix = g('usBar_vix_main');
+        const tsm = g('usBar_tsm_main'), nvda = g('usBar_nvda_main'), aapl = g('usBar_aapl_main'), msft = g('usBar_msft_main');
+        const spxChg = g('usBar_spx_chg_main'), ndxChg = g('usBar_ndx_chg_main'), soxChg = g('usBar_sox_chg_main');
+        const tsmChg = g('usBar_tsm_chg_main'), nvdaChg = g('usBar_nvda_chg_main');
+        const prompt = `你是台股首席策略師，請用白話文、權證小哥風格分析以下全球市場數據對台股的影響：\n\n【外資籌碼】\n外資台指期未平倉：${fiLabel}\n\n【台股指數】\n加權指數：${twii} / 上櫃指數：${twoii}\n\n【美股四大指數】\nS&P 500：${spx}（${spxChg}）\n道瓊 DJI：${dji}\n那斯達克 NASDAQ：${ndx}（${ndxChg}）\n費城半導體 SOX：${sox}（${soxChg}）⚡台股電子先行指標\n\n【VIX 恐慌指數】${vix}\n\n【關鍵巨頭 ADR】\n台積電 ADR：${tsm}（${tsmChg}）\n輝達 NVDA：${nvda}（${nvdaChg}）\n蘋果 AAPL：${aapl} / 微軟 MSFT：${msft}\n\n請依序分析（每段不超過3句，用**粗體**標出關鍵數字和結論）：\n1. 整體市場氛圍（偏多/偏空/中性），用一句話說\n2. 費半 SOX 訊號：AI/半導體資金流向對台股電子的意義\n3. 台積電 ADR 解讀：外資用腳投票的訊號\n4. VIX 解讀：現在市場怕不怕，影響隔日台股走勢\n5. 今明兩日台股操作建議（要有具體策略，不是廢話）`;
         try {
             const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.4 });
             result.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>').replace(/\n/g, '<br>');

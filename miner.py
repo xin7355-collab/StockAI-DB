@@ -576,8 +576,9 @@ def fetch_us_macro_cache():
         print("\n⚠️  yfinance 未安裝，跳過美股快取")
         return
     today   = date.today()
-    symbols = {'sp500': '^GSPC', 'nasdaq': '^NDX', 'tsm': 'TSM',
-               'dji': '^DJI', 'vix': '^VIX'}
+    symbols = {'sp500': '^GSPC', 'nasdaq': '^IXIC', 'tsm': 'TSM',
+               'dji': '^DJI', 'vix': '^VIX',
+               'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT'}
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
     result = {}
     for key, ticker in symbols.items():
