@@ -4008,23 +4008,34 @@ ${dynamicParams}
                             : isFourBear ? '❌ 空頭排列（MA5<10<20<60）'
                             : '⚪ 均線糾結或多空混合';
 
-        // ── 趨勢：用近期波峰波谷判斷 頭頭高底底高 ────────────────
-        const peaks   = this.peaks   || [];
-        const troughs = this.troughs || [];
-        let trendJudge = '⚪ 盤整（波峰波谷資料不足）';
-        let peaksDesc  = '無法識別近期波峰';
-        let troughsDesc = '無法識別近期波谷';
-        if (peaks.length >= 2) {
-            const p1 = peaks[peaks.length-2], p2 = peaks[peaks.length-1];
+        // ── 趨勢：±N日最高/最低收盤識別波峰波谷（朱家泓目視對應法）──
+        // N=10：前後各10根K線，即前後各2週，符合朱老師波段視覺判斷習慣
+        // 只掃近120日資料，聚焦近期波動結構
+        const SWING_N  = 10;
+        const scanFrom = Math.max(0, n - 120);
+        const swingPeaks = [], swingTroughs = [];
+        for (let i = scanFrom + SWING_N; i <= last - SWING_N; i++) {
+            const window = data.slice(i - SWING_N, i + SWING_N + 1);
+            const maxC   = Math.max(...window.map(d => d.close));
+            const minC   = Math.min(...window.map(d => d.close));
+            if (data[i].close === maxC) swingPeaks.push({ idx: i, val: data[i].close, date: data[i].date });
+            if (data[i].close === minC) swingTroughs.push({ idx: i, val: data[i].close, date: data[i].date });
+        }
+        // 最近2波峰 / 2波谷
+        let trendJudge  = '⚪ 盤整（120日內未找到足夠波峰波谷）';
+        let peaksDesc   = `無法在近120日識別≥2個波峰（視窗 ±${SWING_N}日）`;
+        let troughsDesc = `無法在近120日識別≥2個波谷（視窗 ±${SWING_N}日）`;
+        if (swingPeaks.length >= 2) {
+            const p1 = swingPeaks[swingPeaks.length-2], p2 = swingPeaks[swingPeaks.length-1];
             const peakUp = p2.val > p1.val;
-            peaksDesc = `近2波峰：${p1.val.toFixed(1)} → ${p2.val.toFixed(1)}（${peakUp ? '✅頭頭高' : '❌頭頭低'}）`;
-            if (troughs.length >= 2) {
-                const t1 = troughs[troughs.length-2], t2 = troughs[troughs.length-1];
+            peaksDesc = `近2波峰收盤：${p1.val.toFixed(1)}（${p1.date}）→ ${p2.val.toFixed(1)}（${p2.date}）  ${peakUp ? '✅頭頭高' : '❌頭頭低'}`;
+            if (swingTroughs.length >= 2) {
+                const t1 = swingTroughs[swingTroughs.length-2], t2 = swingTroughs[swingTroughs.length-1];
                 const troughUp = t2.val > t1.val;
-                troughsDesc = `近2波谷：${t1.val.toFixed(1)} → ${t2.val.toFixed(1)}（${troughUp ? '✅底底高' : '❌底底低'}）`;
+                troughsDesc = `近2波谷收盤：${t1.val.toFixed(1)}（${t1.date}）→ ${t2.val.toFixed(1)}（${t2.date}）  ${troughUp ? '✅底底高' : '❌底底低'}`;
                 if (peakUp && troughUp)        trendJudge = '✅ 多頭趨勢確認（頭頭高 + 底底高）';
                 else if (!peakUp && !troughUp) trendJudge = '❌ 空頭趨勢確認（頭頭低 + 底底低）';
-                else                           trendJudge = '⚠️ 趨勢轉折警戒（六字口訣出現破口，停止做多）';
+                else                           trendJudge = '⚠️ 趨勢轉折警戒（六字口訣出現破口，嚴禁做多）';
             }
         }
 
