@@ -237,39 +237,39 @@
             </div>
         </header>
 
-        <div class="w-full max-w-7xl mx-auto">
-            <div id="marketAlertBanner" class="hidden px-3 py-1 text-[10px] font-bold text-center border-b border-red-800"></div>
-            <!-- hidden data holders for all market IDs (shown in 全球 tab) -->
-            <span id="mktFI" class="hidden"></span>
-            <span id="mktFI_label" class="hidden"></span>
-            <span id="mktTWII" class="hidden"></span>
-            <span id="mktTWII_chg" class="hidden"></span>
-            <span id="mktTWOII" class="hidden"></span>
-            <span id="mktTWOII_chg" class="hidden"></span>
-            <span id="usBar_spx" class="hidden"></span>
-            <span id="usBar_spx_chg" class="hidden"></span>
-            <span id="usBar_ndx" class="hidden"></span>
-            <span id="usBar_ndx_chg" class="hidden"></span>
-            <span id="usBar_vix" class="hidden"></span>
-            <span id="usBar_vix_chg" class="hidden"></span>
-            <span id="usBar_tsm" class="hidden"></span>
-            <span id="usBar_tsm_chg" class="hidden"></span>
-            <span id="usBar_dji" class="hidden"></span>
-            <span id="usBar_dji_chg" class="hidden"></span>
-            <span id="usBar_sox" class="hidden"></span>
-            <span id="usBar_sox_chg" class="hidden"></span>
-            <span id="usBar_nvda" class="hidden"></span>
-            <span id="usBar_nvda_chg" class="hidden"></span>
-            <span id="usBar_aapl" class="hidden"></span>
-            <span id="usBar_aapl_chg" class="hidden"></span>
-            <span id="usBar_msft" class="hidden"></span>
-            <span id="usBar_msft_chg" class="hidden"></span>
-            <span id="usBar_us02y" class="hidden"></span>
-            <span id="usBar_us02y_chg" class="hidden"></span>
-            <span id="usBar_ukoil" class="hidden"></span>
-            <span id="usBar_ukoil_chg" class="hidden"></span>
-            <span id="usBar_dxy" class="hidden"></span>
-            <span id="usBar_dxy_chg" class="hidden"></span>
+        <div id="marketAlertBanner" class="hidden w-full max-w-7xl mx-auto px-3 py-1 text-[10px] font-bold text-center border-b border-red-800"></div>
+        <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
+        <div style="display:none" aria-hidden="true">
+            <span id="mktFI"></span>
+            <span id="mktFI_label"></span>
+            <span id="mktTWII"></span>
+            <span id="mktTWII_chg"></span>
+            <span id="mktTWOII"></span>
+            <span id="mktTWOII_chg"></span>
+            <span id="usBar_spx"></span>
+            <span id="usBar_spx_chg"></span>
+            <span id="usBar_ndx"></span>
+            <span id="usBar_ndx_chg"></span>
+            <span id="usBar_vix"></span>
+            <span id="usBar_vix_chg"></span>
+            <span id="usBar_tsm"></span>
+            <span id="usBar_tsm_chg"></span>
+            <span id="usBar_dji"></span>
+            <span id="usBar_dji_chg"></span>
+            <span id="usBar_sox"></span>
+            <span id="usBar_sox_chg"></span>
+            <span id="usBar_nvda"></span>
+            <span id="usBar_nvda_chg"></span>
+            <span id="usBar_aapl"></span>
+            <span id="usBar_aapl_chg"></span>
+            <span id="usBar_msft"></span>
+            <span id="usBar_msft_chg"></span>
+            <span id="usBar_us02y"></span>
+            <span id="usBar_us02y_chg"></span>
+            <span id="usBar_ukoil"></span>
+            <span id="usBar_ukoil_chg"></span>
+            <span id="usBar_dxy"></span>
+            <span id="usBar_dxy_chg"></span>
         </div>
     </div>
 
@@ -4429,10 +4429,56 @@ ${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損�
         const spxChg = g('usBar_spx_chg_main'), ndxChg = g('usBar_ndx_chg_main'), soxChg = g('usBar_sox_chg_main');
         const tsmChg = g('usBar_tsm_chg_main'), nvdaChg = g('usBar_nvda_chg_main');
         const us02yChg = g('usBar_us02y_chg_main'), dxyChg = g('usBar_dxy_chg_main');
-        const prompt = `你是台股首席策略師，請用白話文、權證小哥風格分析以下全球市場數據對台股的影響：\n\n【外資籌碼】\n外資台指期未平倉：${fiLabel}\n\n【台股指數】\n加權指數：${twii} / 上櫃指數：${twoii}\n\n【美股四大指數】\nS&P 500：${spx}（${spxChg}）\n道瓊 DJI：${dji}\n那斯達克 NASDAQ：${ndx}（${ndxChg}）\n費城半導體 SOX：${sox}（${soxChg}）⚡台股電子先行指標\n\n【VIX 恐慌指數】${vix}\n\n【關鍵巨頭 ADR】\n台積電 ADR：${tsm}（${tsmChg}）\n輝達 NVDA：${nvda}（${nvdaChg}）\n蘋果 AAPL：${aapl} / 微軟 MSFT：${msft}\n\n【宏觀關鍵指標】\n美債2Y短期利率：${us02y}%（${us02yChg}）— 升=Fed 鷹派=台股承壓\n布蘭特原油：${ukoil} USD/桶\n美元指數 DXY：${dxy}（${dxyChg}）— 升=外資撤離新興市場⚠️\n\n請依序分析（每段不超過3句，用**粗體**標出關鍵數字和結論）：\n1. 整體市場氛圍（偏多/偏空/中性），用一句話說\n2. 費半 SOX + NVDA：AI/半導體資金流向，這是台股電子今日的先行指標\n3. 台積電 ADR：外資用腳投票的明確訊號\n4. 宏觀三角：美債利率 × 美元強弱 × 油價，合力對台股的影響\n5. VIX 解讀 + 今明兩日台股操作建議（具體策略，不說廢話）`;
+
+        // 雷達選股摘要（若已掃描則附上，否則說明）
+        const radarSection = (() => {
+            const r = this.currentRadarResults;
+            if (!r || !r.rawList || r.rawList.length === 0)
+                return '（雷達尚未掃描，或本次無符合條件個股）';
+            const typeLabel = r.type === 'bottom' ? '底部起漲' : r.type === 'surge' ? '飆股動能' : '綜合強勢';
+            const top5 = r.rawList.slice(0, 5).map(s => {
+                const name = this.getStockName(s.sym);
+                return name && name !== s.sym ? `${s.sym}${name}` : s.sym;
+            }).join('、');
+            return `已掃描「${typeLabel}」共 ${r.rawList.length} 檔，前5強：${top5}`;
+        })();
+
+        const prompt = `你是台股首席策略師，用白話文、權證小哥風格，根據以下昨晚全球數據，告訴我明日台股開盤情況與操作策略：
+
+【外資籌碼】外資台指期未平倉：${fiLabel}
+【台股指數】加權 ${twii} / 上櫃 ${twoii}
+【美股四大指數】S&P500 ${spx}（${spxChg}）/ 道瓊 ${dji} / 那斯達克 ${ndx}（${ndxChg}）/ 費半SOX ${sox}（${soxChg}）⚡
+【VIX 恐慌指數】${vix}
+【關鍵巨頭ADR】台積電 ${tsm}（${tsmChg}）/ 輝達NVDA ${nvda}（${nvdaChg}）/ 蘋果 ${aapl} / 微軟 ${msft}
+【宏觀三角】美債2Y ${us02y}%（${us02yChg}）/ 布蘭特原油 ${ukoil}桶 / 美元指數DXY ${dxy}（${dxyChg}）
+【雷達選股】${radarSection}
+
+請依序輸出以下6段，每段用「▌標題」開頭，2-3句，**粗體**標關鍵數字：
+
+▌1. 市場氛圍總結
+一句話：今晚美股氣氛偏多/偏空/中性，最關鍵的訊號是什麼
+
+▌2. 半導體與AI資金流向
+費半SOX + NVDA 的動向，直接預告明日台積電與電子板塊的開盤方向
+
+▌3. 台積電ADR與外資籌碼
+TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
+
+▌4. 宏觀三角壓力診斷
+美債利率升降 × 美元強弱 × 油價，這三個因子今天對台股是加分還是扣分
+
+▌5. 🔮 台股開盤展望
+根據上述所有訊號，明日台股最可能：高開/平開/低開（給出大約點數方向或漲跌幅估計），說明最關鍵的支撐與壓力位
+
+▌6. 🎯 雷達個股共鳴評估
+針對上方雷達選股，在當前全球環境下，這些個股的底部/飆股訊號是否依然有效？操作上要注意什麼風險或加乘效果？若雷達尚未掃描，說明在這個市場環境下應優先關注哪個板塊方向`;
+
         try {
-            const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.4 });
-            result.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>').replace(/\n/g, '<br>');
+            const text = await this._callAI({ prompt, max_tokens: 1000, temperature: 0.4 });
+            result.innerHTML = text
+                .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
+                .replace(/▌(\d+\.\s*.+)/g, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">▌$1</div>')
+                .replace(/\n/g, '<br>');
         } catch(e) {
             result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
         }
