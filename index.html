@@ -1252,7 +1252,7 @@ const app = {
     clearManualPrice() {
         document.getElementById('manualPriceInput').value = '';
         document.getElementById('manualPriceInputWrap').classList.add('hidden');
-        document.getElementById('dataSourceText').textContent = '收盤價(盤後)';
+        document.getElementById('dataSourceText').textContent = '限價';
         document.getElementById('dataSourceDot').className = 'w-1.5 h-1.5 rounded-full bg-gray-500';
         if (this.baseRawData?.length > 0) {
             this.applyLatestPrice(this._getHistoricalLatestAsPrice());
@@ -3035,7 +3035,7 @@ ${dynamicParams}
         } else {
             // Off-market: use the last historical close as a static "current price" display
             fugleData = this._getHistoricalLatestAsPrice();
-            document.getElementById('dataSourceText').innerText = "收盤價(盤後)";
+            document.getElementById('dataSourceText').innerText = "限價";
             document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
             document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
         }

@@ -380,10 +380,10 @@ def run():
         months.append(cur.strftime('%Y%m'))
         cur = (cur - timedelta(days=1)).replace(day=1)
 
-    trading_days = get_trading_days(1)
+    trading_days = get_trading_days(3)
     print(f"\n🎯 {len(watchlist)} 檔個股 | 月份: {months}")
 
-    print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日 | 共 4 次請求）...")
+    print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日 | 共 12 次請求）...")
     inst_cache:   dict = {}  
     margin_cache: dict = {}  
     for d in trading_days:
@@ -610,37 +610,24 @@ def fetch_us_macro_cache():
     print(f"  ✅ macro_cache.json（{len(result)-1} 指標）")
 
 
-# ── 分點籌碼（FinMind 註冊免費帳戶版）─────────────────────────────────────────
+# ── 分點籌碼（FinMind 匿名公開額度版）────────────────────────────────────────
 def fetch_broker_chips():
     """
-    分點籌碼採礦：使用 FinMind 註冊免費帳戶 Token。
-    連線穩定度大幅提升，但為保護免費額度，仍保留 2 秒的優雅延遲。
+    分點籌碼採礦：由於台灣官方無免費分點 API，
+    此處使用 FinMind 匿名公開額度 (每小時 300 次限制)。
     """
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
     today_str = date.today().strftime('%Y-%m-%d')
     watchlist = get_active_symbols()
-    
-    # 讀取你的專屬 Token
-    fm_token = os.environ.get('FINMIND_TOKEN', '')
-    token_param = f"&token={fm_token}" if fm_token else ""
-    
-    status_msg = "✅ 已掛載專屬 Token" if fm_token else "⚠️ 未偵測到 Token (退回匿名模式)"
-    print(f"\n🕵️ 啟動分點籌碼探測 (FinMind 免費帳戶 | {status_msg})...")
-    
+
+    print(f"\n🕵️ 啟動分點籌碼探測 (FinMind 免費通道，請耐心等候避免限流)...")
+
     updated = 0
     for sym in watchlist:
-        # 只抓最近 1 天，網址後方自動接上 Token
-        url = f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockLocalSecuritiesBrokerTransactions&data_id={sym}&start_date={today_str}{token_param}'
+        url = f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockLocalSecuritiesBrokerTransactions&data_id={sym}&start_date={today_str}'
         try:
             res = requests.get(url, headers=_HDRS, timeout=15)
-            
-            # 若不小心打太快觸發限流，優雅排隊等待
-            if res.status_code == 429:
-                print(f"    ⚠️ 觸發 FinMind 速率限制，進入 60 秒冷卻...")
-                time.sleep(60)
-                continue
-                
             j = res.json()
             if j.get('status') == 200 and j.get('data'):
                 raw_data = j['data']
@@ -654,11 +641,11 @@ def fetch_broker_chips():
                     brokers_net[bid]['buy'] += int(r.get('buy', 0))
                     brokers_net[bid]['sel'] += int(r.get('sell', 0))
                     brokers_net[bid]['net'] += net
-                
+
                 brokers_list = list(brokers_net.values())
                 buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
                 sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
-                
+
                 if buyers or sellers:
                     out_file = chips_dir / f'{sym}.json'
                     record = [{
@@ -670,13 +657,12 @@ def fetch_broker_chips():
                     }]
                     out_file.write_text(json.dumps(record, ensure_ascii=False), encoding='utf-8')
                     updated += 1
-            
-            # 延遲 2 秒，因為有註冊帳戶，可以比純匿名稍微快一點點
-            time.sleep(2)
+
+            time.sleep(3)
         except Exception as e:
-            print(f"    ⚠️ 分點籌碼 {sym} 連線失敗: {e}")
+            print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
             time.sleep(5)
-            
+
     print(f"  ✅ 分點籌碼完成：更新了 {updated} 檔股票的主力動向")
 
 
