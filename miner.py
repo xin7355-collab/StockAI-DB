@@ -17,7 +17,8 @@ DATA_DIR = "data"
 Path(DATA_DIR).mkdir(exist_ok=True)
 DB_PATH = "stock_hunter.db"
 
-_HDRS = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
+_HDRS          = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
+FINMIND_TOKEN  = os.getenv('FINMIND_TOKEN', '')
 
 # ── 監控清單 ──────────────────────────────────────────────────────────────────
 CHIP_WATCHLIST = sorted(set([
@@ -522,50 +523,56 @@ def run():
     print(f"\n🎉 採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
 
 
-# ── 外資期貨（TAIFEX 直連 CSV）───────────────────────────────────────────────────
-def taifex_tx_net(target_date) -> int | None:
-    """TAIFEX TX 外資未平倉淨口數 (官方 CSV 端點)"""
-    try:
-        date_slash = target_date.strftime('%Y/%m/%d')
-        url = 'https://www.taifex.com.tw/cht/3/futContractsDateDown'
-        form = {'queryStartDate': date_slash, 'queryEndDate': date_slash, 'commodityId': 'TX'}
-        
-        r = requests.post(url, data=form, headers=_HDRS, timeout=30)
-        r.raise_for_status()
-        
-        decoded_content = r.content.decode('big5', errors='ignore').splitlines()
-        reader = csv.reader(decoded_content)
-        
-        for row in reader:
-            if len(row) >= 14 and '外資及陸資' in row[2]:
-                return int(row[13].strip().replace(',', ''))
-                
-        print(f'  ⚠️ TAIFEX: {target_date} 找不到外資 TX 數據')
-        return 0
-    except Exception as e:
-        print(f'  ⚠️ TAIFEX TX 解析失敗: {e}')
-        return None
-
+# ── 外資期貨（改用 FinMind API 防 Ban 版）────────────────────────────────────
 def fetch_futures_cache():
-    """外資台指期未平倉淨口數。"""
-    today = date.today()
-    target = today - timedelta(days=1)
-    while target.weekday() >= 5:
-        target -= timedelta(days=1)
-    print(f"\n🔮 抓取外資台指期（{target}）...")
-    net = taifex_tx_net(target)
-    if net is None:
-        print('  ⚠️  TAIFEX 失敗，保留舊快取不覆寫')
-        return
-    cache = {
-        'date': target.strftime('%Y-%m-%d'),
-        'fi_net': net,
-        'long': 0, 'short': 0,
-        'generated': today.strftime('%Y-%m-%d'),
-    }
-    with open('futures_cache.json', 'w', encoding='utf-8') as f:
-        json.dump(cache, f, ensure_ascii=False)
-    print(f"  ✅ 外資台指期淨口數: {net:+,} 口  ({target})")
+    """
+    外資台指期未平倉淨口數：放棄容易被 Ban 的期交所爬蟲，
+    全面改用 FinMind 官方通道，穩定、合法且帶有你的專屬 Token。
+    """
+    today_str = date.today().strftime('%Y-%m-%d')
+    start_str = (date.today() - timedelta(days=7)).strftime('%Y-%m-%d')
+
+    token_param = f"&token={FINMIND_TOKEN}" if FINMIND_TOKEN and "請" not in FINMIND_TOKEN else ""
+
+    url = f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date={start_str}&end_date={today_str}{token_param}'
+
+    print(f"\n🔮 抓取外資台指期 (使用 FinMind {'Token' if token_param else '匿名'} 防封鎖通道)...")
+    try:
+        res = requests.get(url, headers=_HDRS, timeout=15)
+
+        if res.status_code == 429:
+            print("  ⚠️ 觸發 FinMind 速率限制，保留舊快取，請稍後再試。")
+            return
+
+        j = res.json()
+        if j.get('status') == 200 and j.get('data'):
+            foreign_data = [d for d in j['data'] if '外資' in d.get('name', '')]
+
+            if foreign_data:
+                latest = foreign_data[-1]
+                target_date = latest.get('date')
+
+                long_oi  = int(latest.get('buy_open_interest',  0))
+                short_oi = int(latest.get('sell_open_interest', 0))
+                net_oi   = long_oi - short_oi
+
+                cache = {
+                    'date':      target_date,
+                    'fi_net':    net_oi,
+                    'long':      long_oi,
+                    'short':     short_oi,
+                    'generated': today_str,
+                }
+
+                with open('futures_cache.json', 'w', encoding='utf-8') as f:
+                    json.dump(cache, f, ensure_ascii=False)
+
+                print(f"  ✅ 外資台指期淨口數: {net_oi:+,} 口 ({target_date})")
+                return
+
+        print("  ⚠️ FinMind 目前查無最新外資期貨資料，可能今日盤後尚未更新。")
+    except Exception as e:
+        print(f"  ⚠️ 外資期貨連線失敗: {e}")
 
 
 # ── 美股大盤快取 ──────────────────────────────────────────────────────────────
