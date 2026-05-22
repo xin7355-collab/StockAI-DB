@@ -2434,9 +2434,7 @@ const app = {
 
             // Strategy 2: gh-pages static JSON (always available)
             if (!records) {
-                let base = window.location.href.split('?')[0].split('#')[0];
-                if (!base.endsWith('/')) base = base.substring(0, base.lastIndexOf('/') + 1);
-                const ghBase = base.includes('github.io') ? base : 'https://xin7355-collab.github.io/stockai-db/';
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
                 const url = new URL(`data/chips/${sym}.json`, ghBase).href;
                 const res = await fetch(url + `?v=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
                 if (!res.ok) throw new Error('no_data');
@@ -2561,7 +2559,11 @@ const app = {
         let marginText = '無資料';
         if (this.rawDailyData?.length > 0) {
             const recent = this.rawDailyData.slice(-10);
-            const hasChip = recent.some(r => r.foreign_net !== undefined || r.foreign_inv !== undefined);
+            const hasChip = recent.some(r =>
+                Math.abs(r.foreign_net ?? r.foreign_inv ?? 0) > 0 ||
+                Math.abs(r.trust_net   ?? r.invest_trust ?? 0) > 0 ||
+                Math.abs(r.dealer_net  ?? r.dealer_inv   ?? 0) > 0
+            );
             if (hasChip) {
                 instText = recent.filter(r => r.foreign_net !== undefined || r.foreign_inv !== undefined).map(r => {
                     const fK = Math.round(((r.foreign_net ?? r.foreign_inv ?? 0))/1000);
@@ -3022,7 +3024,7 @@ ${dynamicParams}
             } else if (!this.apiRateLimited) {
                 // Live fetch failed: fall back to last historical bar so the price field is never blank
                 fugleData = this._getHistoricalLatestAsPrice();
-                document.getElementById('dataSourceText').innerText = "Fugle連線異常(盤後收盤)";
+                document.getElementById('dataSourceText').innerText = "連線異常(歷史收盤)";
                 document.getElementById('dataSourceText').className = "font-bold text-yellow-400 text-[10px] font-mono tracking-wide";
                 document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
             }

@@ -138,9 +138,11 @@ def twse_ohlcv(symbol: str, year_month: str) -> list:
         if j.get('stat') != 'OK':
             return []
         fields = j.get('fields', [])
-        fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), -1)
+        fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), None)
         i_dt = fi('日期'); i_op = fi('開盤'); i_hi = fi('最高')
         i_lo = fi('最低'); i_cl = fi('收盤'); i_vo = fi('成交股數')
+        if i_dt is None:
+            print(f"  ⚠️ TWSE OHLCV '日期' 欄位找不到，headers={fields[:5]}"); return []
         out = []
         for row in (j.get('data') or []):
             try:
@@ -211,20 +213,22 @@ def fetch_market_institutional(d: date) -> dict:
         j = requests.get(url, headers=_HDRS, timeout=15).json()
         if j.get('stat') == 'OK':
             fields = j.get('fields', [])
-            idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), -1)
-            idx_f  = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f), -1)
-            idx_t  = next((i for i, f in enumerate(fields) if '投信買賣超' in f), -1)
-            idx_d  = next((i for i, f in enumerate(fields) if '自營商買賣超股數' in f and '自行' not in f and '避險' not in f), -1)
-            if idx_d == -1: idx_d = next((i for i, f in enumerate(fields) if '自營商買賣超' in f), -1)
-            
+            idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), None)
+            idx_f  = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f), None)
+            idx_t  = next((i for i, f in enumerate(fields) if '投信買賣超' in f), None)
+            idx_d  = next((i for i, f in enumerate(fields) if '自營商買賣超股數' in f and '自行' not in f and '避險' not in f), None)
+            if idx_d is None: idx_d = next((i for i, f in enumerate(fields) if '自營商買賣超' in f), None)
+            if None in (idx_id, idx_f, idx_t, idx_d):
+                print(f"  ⚠️ 上市法人欄位找不到，headers={fields[:5]}")
+                return res
             for r in (j.get('data') or []):
                 try:
                     res[str(r[idx_id]).strip()] = {
                         'foreign_net': int(str(r[idx_f]).replace(',','')),
-                        'trust_net': int(str(r[idx_t]).replace(',','')),
-                        'dealer_net': int(str(r[idx_d]).replace(',',''))
+                        'trust_net':   int(str(r[idx_t]).replace(',','')),
+                        'dealer_net':  int(str(r[idx_d]).replace(',',''))
                     }
-                except: pass
+                except (ValueError, IndexError): pass
     except Exception as e: print(f"  ⚠️ 上市法人失敗: {e}")
 
     # 2. 抓取上櫃 (TPEX)
@@ -552,8 +556,12 @@ def fetch_futures_cache():
                 latest = foreign_data[-1]
                 target_date = latest.get('date')
 
-                long_oi  = int(latest.get('long_open_interest_balance') or latest.get('long_open_interest') or latest.get('buy_open_interest')  or 0)
-                short_oi = int(latest.get('short_open_interest_balance') or latest.get('short_open_interest') or latest.get('sell_open_interest') or 0)
+                long_oi_val  = latest.get('long_open_interest_balance') or latest.get('long_open_interest') or latest.get('buy_open_interest')
+                short_oi_val = latest.get('short_open_interest_balance') or latest.get('short_open_interest') or latest.get('sell_open_interest')
+                if not long_oi_val and not short_oi_val:
+                    print(f"  ⚠️ FinMind 期貨 OI 欄位找不到，available keys: {list(latest.keys())}")
+                long_oi  = int(long_oi_val  or 0)
+                short_oi = int(short_oi_val or 0)
                 net_oi   = long_oi - short_oi
 
                 cache = {
