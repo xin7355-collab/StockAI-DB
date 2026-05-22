@@ -330,7 +330,11 @@
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-3 rounded-lg text-base font-black shadow-lg flex justify-center items-center gap-2 transition-all">
                             🧠 首席 AI 五維全盤分析
                         </button>
+                        <button onclick="app.runKlineAudit(app.currentSymbolId); app.vibrate(30);" id="klineAuditBtn" class="w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
+                            📐 朱家泓技術審計 × 郭榮哲折數過濾
+                        </button>
                         <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner overflow-y-auto max-h-[35rem]"></div>
+                        <div id="klineAuditResult" class="hidden w-full bg-[#010409] border border-amber-500/40 rounded-lg p-4 text-sm text-gray-200 leading-loose overflow-y-auto max-h-[40rem]"></div>
                     </div>
                     <div class="flex bg-[#161b22] border-b border-[#30363d] p-2 gap-2">
                         <div class="flex-1 flex flex-col gap-1 relative">
@@ -3952,6 +3956,181 @@ ${dynamicParams}
         element.style.opacity = 0;
         element.style.transition = "opacity 0.5s ease-in";
         setTimeout(() => element.style.opacity = 1, 50);
+    },
+
+    async runKlineAudit(sym) {
+        const btn = document.getElementById('klineAuditBtn');
+        const box = document.getElementById('klineAuditResult');
+        if (!this.activeData || this.activeData.length < 60) {
+            box.classList.remove('hidden');
+            box.innerHTML = '<span class="text-yellow-400 text-sm">⚠️ 資料不足60日，請先載入完整 K 線資料。</span>';
+            return;
+        }
+        const hasBackend = !!this._apiBase;
+        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        if (!hasBackend && !hasGroqKey) {
+            box.classList.remove('hidden');
+            box.innerHTML = '<span class="text-yellow-400 text-sm font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key 或後端 URL。</span>';
+            return;
+        }
+        btn.textContent = '📐 審計中...';
+        box.classList.remove('hidden');
+        box.innerHTML = '<span class="animate-pulse text-amber-400 text-sm">⚡ 朱家泓 SOP 運算中，計算趨勢、均線、折數、發動信號...</span>';
+
+        // ══════════════════════════════════════════════════════════════
+        // 一、預先計算所有技術數據，全部轉為確定數字再餵給 AI
+        // ══════════════════════════════════════════════════════════════
+        const data = this.rawDailyData || this.activeData;
+        const ind  = this.indicators;
+        const n    = data.length;
+        const last = n - 1;
+        const prev = n - 2;
+
+        const pC  = data[last].close, pO = data[last].open;
+        const pH  = data[last].high,  pL = data[last].low, pV = data[last].volume;
+        const pC1 = data[prev].close, pH1 = data[prev].high, pV1 = data[prev].volume;
+
+        const ma5  = ind.ma5?.[last],  ma10 = ind.ma10?.[last];
+        const ma20 = ind.ma20?.[last], ma60 = ind.ma60?.[last];
+        const ma5p5  = ind.ma5?.[last-5]  || ma5;
+        const ma20p5 = ind.ma20?.[last-5] || ma20;
+        const ma60p5 = ind.ma60?.[last-5] || ma60;
+
+        // ── 均線排列判斷 ───────────────────────────────────────────
+        const isFourBull = ma5 && ma10 && ma20 && ma60 &&
+                           ma5 > ma10 && ma10 > ma20 && ma20 > ma60 &&
+                           ma20 > ma20p5 && ma60 > ma60p5;
+        const isFourBear = ma5 && ma10 && ma20 && ma60 &&
+                           ma5 < ma10 && ma10 < ma20 && ma20 < ma60;
+        const ma20Dir = ma20 && ma20p5 ? (ma20 > ma20p5 ? '↑上揚' : '↓下彎') : '不明';
+        const ma60Dir = ma60 && ma60p5 ? (ma60 > ma60p5 ? '↑上揚' : '↓下彎') : '不明';
+        const maArrangement = isFourBull ? '✅ 四線多排（MA5>10>20>60，月線季線同步上揚）'
+                            : isFourBear ? '❌ 空頭排列（MA5<10<20<60）'
+                            : '⚪ 均線糾結或多空混合';
+
+        // ── 趨勢：用近期波峰波谷判斷 頭頭高底底高 ────────────────
+        const peaks   = this.peaks   || [];
+        const troughs = this.troughs || [];
+        let trendJudge = '⚪ 盤整（波峰波谷資料不足）';
+        let peaksDesc  = '無法識別近期波峰';
+        let troughsDesc = '無法識別近期波谷';
+        if (peaks.length >= 2) {
+            const p1 = peaks[peaks.length-2], p2 = peaks[peaks.length-1];
+            const peakUp = p2.val > p1.val;
+            peaksDesc = `近2波峰：${p1.val.toFixed(1)} → ${p2.val.toFixed(1)}（${peakUp ? '✅頭頭高' : '❌頭頭低'}）`;
+            if (troughs.length >= 2) {
+                const t1 = troughs[troughs.length-2], t2 = troughs[troughs.length-1];
+                const troughUp = t2.val > t1.val;
+                troughsDesc = `近2波谷：${t1.val.toFixed(1)} → ${t2.val.toFixed(1)}（${troughUp ? '✅底底高' : '❌底底低'}）`;
+                if (peakUp && troughUp)        trendJudge = '✅ 多頭趨勢確認（頭頭高 + 底底高）';
+                else if (!peakUp && !troughUp) trendJudge = '❌ 空頭趨勢確認（頭頭低 + 底底低）';
+                else                           trendJudge = '⚠️ 趨勢轉折警戒（六字口訣出現破口，停止做多）';
+            }
+        }
+
+        // ── 高檔拉回折數（近60日波段最高點）──────────────────────
+        const high60  = Math.max(...data.slice(-60).map(d => d.high));
+        const foldRatio = (pC / high60);
+        const foldPct  = (foldRatio * 10).toFixed(2);
+        let foldZone;
+        if (foldRatio >= 0.95)       foldZone = '🔴 高檔過熱區（近頂，嚴防追高）';
+        else if (foldRatio >= 0.85)  foldZone = '🟡 85折強勢區（飆股黃金回檔觀察帶）';
+        else if (foldRatio >= 0.75)  foldZone = '🟢 75折深水支撐區（一般股月線支撐帶）';
+        else                          foldZone = '⛔ 跌深轉空區（跌深非買點，等確認訊號）';
+
+        // ── 三盞明燈發動信號 ───────────────────────────────────────
+        const chgPct   = pC1 > 0 ? ((pC - pC1) / pC1 * 100) : 0;
+        const isRedK   = pC > pO;
+        const sig1     = isRedK && chgPct >= 5;
+        const volChg   = pV1 > 0 ? ((pV - pV1) / pV1 * 100) : 0;
+        const sig2     = volChg >= 20;
+        const sig3     = ma5 ? (pC > ma5 && pC > pH1) : false;
+        const sigCount = [sig1, sig2, sig3].filter(Boolean).length;
+        const sigLabel = sigCount === 3 ? '🚀 三燈全亮！高勝率發動點'
+                       : sigCount === 2 ? '⚠️ 兩燈亮，尚缺一項條件確認'
+                       : '❌ 發動條件未達標，耐心等待球棒出棒';
+
+        // ══════════════════════════════════════════════════════════════
+        // 二、組合 prompt（所有數字已預計算，AI 只做解讀和策略建議）
+        // ══════════════════════════════════════════════════════════════
+        const name = this.getStockName(sym);
+        const ctx  = this.currentStrategyContext || {};
+
+        const prompt = `你是一位精通台股量化投資與經典技術分析的「朱家泓流派 K線技術分析司令」。請嚴格運用朱家泓四大核心技術（趨勢、均線、K線、成交量）SOP，結合郭榮哲「高檔拉回折數法則」，對下方已預算好的技術數據進行審計與戰術指引。
+
+禁止重複述說輸入數字，直接給出解讀與決策。嚴禁模稜兩可。
+
+【已預算技術數據 — ${name}（${sym}）】
+
+▌現價與日 K 數據
+  當日：開 ${pO} / 高 ${pH} / 低 ${pL} / 收 ${pC}（${isRedK ? '紅K' : '黑K'}）
+  昨收：${pC1}，昨高：${pH1}
+  今日漲幅：${chgPct.toFixed(2)}%
+
+▌均線系統（朱老師第二核心）
+  5MA：${ma5?.toFixed(1)||'—'}  10MA：${ma10?.toFixed(1)||'—'}  20MA（月線）：${ma20?.toFixed(1)||'—'}（${ma20Dir}）  60MA（季線）：${ma60?.toFixed(1)||'—'}（${ma60Dir}）
+  排列結果：${maArrangement}
+
+▌趨勢判斷（朱老師第一核心：天大地大趨勢最大）
+  ${peaksDesc}
+  ${troughsDesc}
+  趨勢結論：${trendJudge}
+
+▌郭榮哲高檔拉回折數計算
+  近60日波段最高點：${high60.toFixed(1)}
+  當前折數：${foldPct} 折（${(foldRatio*100).toFixed(1)}%）
+  落點判定：${foldZone}
+
+▌三盞明燈發動信號檢核
+  🔵 信號①（紅K + 漲幅>5%）：${sig1 ? `✅ 是（今漲 ${chgPct.toFixed(2)}%，${isRedK?'紅K':'非紅K'}）` : `❌ 否（漲幅 ${chgPct.toFixed(2)}%，${isRedK?'紅K':'黑K'}）`}
+  🔵 信號②（量增>20%）：${sig2 ? `✅ 是（量增 ${volChg.toFixed(1)}%）` : `❌ 否（量${volChg>=0?'+':''}${volChg.toFixed(1)}%）`}
+  🔵 信號③（站上5MA + 過昨高）：${sig3 ? '✅ 是' : `❌ 否（5MA：${ma5?.toFixed(1)||'—'}，昨高：${pH1}）`}
+  綜合判定：${sigLabel}
+
+${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損）` : ''}
+
+請嚴格按照以下三個段落輸出，每段開頭保留【】標題，犀利不廢話：
+
+【📊 技術指標全面審計】
+逐項解讀趨勢、均線、折數的含義。說清楚現在是多頭、空頭還是盤整。均線是否有效支撐。折數落在哪個安全區。
+
+【🎯 發動訊號檢核結論】
+解讀三盞明燈的結果。若未全亮：明確說「現在不是進場時機，等待哪個條件到位」。若全亮：說「發動條件確認，但仍需確認哪個關鍵位置」。用朱老師的話：「那根球棒出來了嗎？」
+
+【⚔️ 戰術總裁決策指示】
+根據上述，給出具體的操作紀律指引：當前是否適合進場？短線防守點（5MA = ${ma5?.toFixed(1)||'—'}）、波段防守點（月線 = ${ma20?.toFixed(1)||'—'}）、若持有應設在哪裡。若空手，說明等待哪根K線確認才進場。語氣嚴格、像老手訓練新手。`;
+
+        try {
+            let text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.2 });
+            if (!text) throw new Error('未設定 Groq Key，請至設定填入');
+
+            const secMap = {
+                '【📊 技術指標全面審計】': { border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
+                '【🎯 發動訊號檢核結論】': { border:'border-amber-500',  title:'text-amber-400',  bg:'bg-amber-950/20'  },
+                '【⚔️ 戰術總裁決策指示】': { border:'border-red-500',    title:'text-red-400',    bg:'bg-red-950/20'    },
+            };
+            for (const [marker, c] of Object.entries(secMap)) {
+                const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                text = text.replace(new RegExp(esc, 'g'),
+                    `\n<div class="mt-3 ${c.border} border-l-2 pl-2 ${c.bg} rounded-r py-1"><span class="${c.title} font-bold text-xs">${marker}</span></div>`);
+            }
+            text = text
+                .replace(/\*\*(.+?)\*\*/g, '<b class="text-white">$1</b>')
+                .replace(/\n/g, '<br>');
+
+            // 前置數據摘要卡（給使用者確認計算數字）
+            const summary = `<div class="mb-3 text-[10px] font-mono text-gray-500 bg-gray-900/60 border border-gray-700 rounded p-2 grid grid-cols-2 gap-x-4 gap-y-0.5">
+                <span>趨勢：<b class="text-gray-300">${trendJudge.substring(0,8)}</b></span>
+                <span>折數：<b class="text-gray-300">${foldPct}折 ${foldZone.substring(0,4)}</b></span>
+                <span>均線：<b class="text-gray-300">${isFourBull?'四線多排':isFourBear?'空頭排列':'糾結'}</b></span>
+                <span>信號：<b class="text-gray-300">${sigCount}/3 燈亮</b></span>
+            </div>`;
+
+            box.innerHTML = `<div class="text-indigo-100 font-mono text-sm leading-loose">${summary}${text}</div>`;
+        } catch(e) {
+            box.innerHTML = `<span class="text-red-400 text-sm">審計失敗：${e.message}</span>`;
+        }
+        btn.innerHTML = '📐 朱家泓技術審計 × 郭榮哲折數過濾';
     },
 
     async runUnifiedGroqAnalysis() {
