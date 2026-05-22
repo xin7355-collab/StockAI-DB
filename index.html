@@ -1053,7 +1053,6 @@ const app = {
         setTimeout(() => this.scanAllMonitored(), 8000);
     },
 
-    initSwipeNavigation() {},
 
     initSpringBackZoom(elementId) {
         const el = document.getElementById(elementId);
@@ -1882,16 +1881,20 @@ const app = {
                 : new URL(`data/${symbol}.json?v=${today}`, ghBase).href;
 
             const localRes = await fetch(fileUrl);
+            if (localRes.status === 404) {
+                if (!apiBase) this.showToast(`⚠️ ${symbol} 尚無採礦資料，請點 🔄 或等待每日 16:30 自動更新`);
+                return null;
+            }
             if (localRes.ok) {
                 const data = await localRes.json();
                 this.apiDataCache[cacheKey] = data;
                 this.idb.put(cacheKey, data).catch(() => {});
                 return data;
             }
-            throw new Error('gh-pages JSON 找不到');
+            throw new Error(`HTTP ${localRes.status}`);
         } catch(e) {
             if (!apiBase) {
-                this.showToast(`⚠️ 無法載入 ${symbol} 資料，請確認網路或執行採礦`);
+                this.showToast(`⚠️ 無法載入 ${symbol} 資料，請確認網路連線`);
             }
             return null;
         }
@@ -2944,15 +2947,25 @@ ${dynamicParams}
     },
 
     async manualDataRefresh() {
+        this.apiRateLimited = false;
         document.getElementById('loadingText').innerText = "強制同步最新雲端資料...";
         document.getElementById('loadingOverlay').style.display = 'flex';
-        await this.analyze(this.currentSymbolId, true, true);
-        document.getElementById('loadingOverlay').style.display = 'none';
-        document.getElementById('loadingText').innerText = "雲端大數據運算中...";
+        const safety = setTimeout(() => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('loadingText').innerText = "雲端大數據運算中...";
+        }, 15000);
+        try {
+            await this.analyze(this.currentSymbolId, true, true);
+        } finally {
+            clearTimeout(safety);
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('loadingText').innerText = "雲端大數據運算中...";
+        }
     },
 
     async analyze(symCode = null, skipCheck = false, forceRefresh = false, silent = false) {
         if(!silent) document.getElementById('loadingOverlay').style.display = 'flex';
+        try {
         let inputVal = symCode || document.getElementById('symbolInput').value.trim();
         if(!inputVal) { document.getElementById('loadingOverlay').style.display = 'none'; return; }
 
@@ -3002,7 +3015,7 @@ ${dynamicParams}
         
         const rawData = await this.fetchHistoricalData(targetSym, forceRefresh);
         if (!rawData) {
-            document.getElementById('actionMainText').innerText = "資料連線失敗";
+            document.getElementById('actionMainText').innerText = "尚無採礦資料";
             document.getElementById('dataSourceBadge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span class="font-bold text-red-400 text-[10px] font-mono tracking-wide">無資料</span>`;
             if(!silent) document.getElementById('loadingOverlay').style.display = 'none'; return;
         }
@@ -3053,6 +3066,10 @@ ${dynamicParams}
             masterWorker.postMessage({ activeData: this.activeData });
         } else {
             masterWorker.postMessage({ activeData: this.activeData });
+        }
+        } catch(e) {
+            console.error('[analyze] 未預期錯誤:', e);
+            if(!silent) document.getElementById('loadingOverlay').style.display = 'none';
         }
     },
 
@@ -4907,24 +4924,6 @@ ${keyLevels ? keyLevels : ''}${chipBlock}${globalBlock}${fundamentalBlock}`;
         ];
         alert(lines.join('\n'));
         this.renderHuntTab();
-    },
-
-    _headerSwipeStart(e) {
-        this._swipeStartX = e.touches[0].clientX;
-    },
-    _headerSwipeEnd(e) {
-        const dx = e.changedTouches[0].clientX - (this._swipeStartX || 0);
-        if (dx > 50) {
-            const p = document.getElementById('huntRevealPanel');
-            if (!p) return;
-            if (p.classList.contains('hidden')) {
-                p.classList.remove('hidden');
-                p.classList.add('flex');
-            } else {
-                p.classList.add('hidden');
-                p.classList.remove('flex');
-            }
-        }
     },
 
     updateMonitorIcon() {
