@@ -2,9 +2,18 @@ name: 🤖 每日籌碼採礦機
 
 on:
   schedule:
-    # 每個交易日 台灣時間 16:30（UTC 08:30）執行，確保法人資料已公布
-    - cron: '30 8 * * 1-5'
-  workflow_dispatch:   # 允許手動在 GitHub 介面點擊觸發
+    # 全台股分 5 批次，每 30 分鐘一批（台灣時間 16:30～18:30）
+    - cron: '30 8 * * 1-5'   # 16:30 TW → 批次 0
+    - cron: '0 9 * * 1-5'    # 17:00 TW → 批次 1
+    - cron: '30 9 * * 1-5'   # 17:30 TW → 批次 2
+    - cron: '0 10 * * 1-5'   # 18:00 TW → 批次 3
+    - cron: '30 10 * * 1-5'  # 18:30 TW → 批次 4
+  workflow_dispatch:
+    inputs:
+      batch_index:
+        description: '批次索引 0-4（留空自動從時間判斷）'
+        required: false
+        default: 'auto'
 
 permissions:
   contents: write
@@ -19,6 +28,29 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
+
+      - name: 🔢 判斷批次索引
+        run: |
+          INPUT="${{ github.event.inputs.batch_index }}"
+          if [ -n "$INPUT" ] && [ "$INPUT" != "auto" ]; then
+            echo "BATCH_INDEX=$INPUT" >> $GITHUB_ENV
+            echo "TOTAL_BATCHES=5"   >> $GITHUB_ENV
+          else
+            python3 - <<'PYEOF'
+import datetime, os
+now = datetime.datetime.utcnow()
+m = now.hour * 60 + now.minute
+if   m < 8*60+50:  idx = 0
+elif m < 9*60+20:  idx = 1
+elif m < 9*60+50:  idx = 2
+elif m < 10*60+20: idx = 3
+else:              idx = 4
+with open(os.environ['GITHUB_ENV'], 'a') as f:
+    f.write(f"BATCH_INDEX={idx}\n")
+    f.write("TOTAL_BATCHES=5\n")
+PYEOF
+          fi
+          echo "▶ 本次批次：BATCH_INDEX=${BATCH_INDEX:-?}"
 
       - name: 🐍 設定 Python 3.11
         uses: actions/setup-python@v5.6.0
@@ -44,6 +76,8 @@ jobs:
         env:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          BATCH_INDEX: ${{ env.BATCH_INDEX }}
+          TOTAL_BATCHES: ${{ env.TOTAL_BATCHES }}
         run: python miner.py
 
       - name: 📡 部署所有資料到 gh-pages（股票K線 + 分點籌碼 + 快取）
@@ -83,7 +117,7 @@ jobs:
           [ -f broker_names.json ]  && git add -f broker_names.json  || true
           [ -f futures_cache.json ] && git add -f futures_cache.json || true
           [ -f macro_cache.json ]   && git add -f macro_cache.json   || true
-          git commit -m "📡 網站更新 ${DATE}（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
+          git commit -m "📡 網站更新 ${DATE}（批次 ${BATCH_INDEX}/${TOTAL_BATCHES} | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           git push origin HEAD:gh-pages --force
           echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔"
 
@@ -105,6 +139,6 @@ jobs:
 
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
-          git commit -m "🤖 籌碼快照 ${DATE}（${STOCKS} 檔）"
+          git commit -m "🤖 籌碼快照 ${DATE}（批次 ${BATCH_INDEX}/${TOTAL_BATCHES}，${STOCKS} 檔）"
           git push origin HEAD:data --force
           echo "✅ data 分支已更新，共 ${STOCKS} 檔"

@@ -5,6 +5,7 @@
 """
 import csv
 import json
+import math
 import os
 import re
 import sqlite3
@@ -19,6 +20,8 @@ DB_PATH = "stock_hunter.db"
 
 _HDRS          = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
 FINMIND_TOKEN  = os.getenv('FINMIND_TOKEN', '')
+BATCH_INDEX    = int(os.getenv('BATCH_INDEX', '0'))
+TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
 
 # ── 監控清單 ──────────────────────────────────────────────────────────────────
 CHIP_WATCHLIST = sorted(set([
@@ -341,27 +344,37 @@ def export_json():
     print(f"  ✅ JSON 匯出完成：{exported} 檔（供 gh-pages 靜態部署）")
 
 
-# ── 動態監控清單 ──────────────────────────────────────────────────────────────
-def get_active_symbols():
-    base = set(CHIP_WATCHLIST)
-    skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names'}
-    extra: set = set()
+# ── 動態監控清單（全市場批次版）────────────────────────────────────────────
+def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> list:
+    """從法人批次資料衍生全市場清單，再依批次分割。
+    inst_cache 的 keys 即為當日所有活躍股票代號（~1800 檔）。
+    非交易日 fallback 到舊 DB / JSON 資料。
+    """
+    all_syms: set = set()
+    for day_data in inst_cache.values():
+        all_syms.update(day_data.keys())
 
-    if Path(DB_PATH).exists():
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            for row in conn.execute("SELECT DISTINCT symbol FROM stock_history"):
-                sym = row[0]
-                if sym not in base and sym not in skip:
-                    extra.add(sym)
-            conn.close()
-        except Exception:
-            pass
+    if not all_syms:
+        # 非交易日或法人 API 失敗 → fallback 舊有資料
+        all_syms = set(CHIP_WATCHLIST)
+        skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names'}
+        if Path(DB_PATH).exists():
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                for row in conn.execute("SELECT DISTINCT symbol FROM stock_history"):
+                    all_syms.add(row[0])
+                conn.close()
+            except Exception:
+                pass
+        all_syms |= {f.stem for f in Path(DATA_DIR).glob('*.json') if f.stem not in skip}
 
-    extra |= {f.stem for f in Path(DATA_DIR).glob('*.json')
-              if f.stem not in skip and f.stem not in base}
-
-    return sorted(base | set(sorted(extra)[:50]))
+    sorted_syms = sorted(all_syms)
+    if total <= 1:
+        return sorted_syms
+    size  = math.ceil(len(sorted_syms) / total)
+    start = batch_idx * size
+    end   = min(start + size, len(sorted_syms))
+    return sorted_syms[start:end]
 
 
 def get_trading_days(n=30):
@@ -377,7 +390,6 @@ def get_trading_days(n=30):
 # ── 主採礦：TWSE 完全免費版 ──────────────────────────────────────────────────
 def run():
     today = date.today()
-    watchlist = get_active_symbols()
 
     months = []
     cur = today.replace(day=1)
@@ -385,14 +397,12 @@ def run():
         months.append(cur.strftime('%Y%m'))
         cur = (cur - timedelta(days=1)).replace(day=1)
 
-    trading_days = get_trading_days(3)
-    print(f"\n🎯 {len(watchlist)} 檔個股 | 月份: {months}")
+    trading_days = get_trading_days(10)
 
-    print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日 | 共 12 次請求）...")
-    inst_cache:   dict = {}  
-    margin_cache: dict = {}  
+    print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日）...")
+    inst_cache:   dict = {}
+    margin_cache: dict = {}
     for d in trading_days:
-        d8 = d.strftime('%Y%m%d')
         dd = d.strftime('%Y-%m-%d')
         inst = fetch_market_institutional(d)
         if inst:
@@ -404,6 +414,10 @@ def run():
             margin_cache[dd] = marg
             print(f"  融券 {dd}: {len(marg)} 筆")
         time.sleep(0.8)
+
+    # 從法人資料衍生全市場清單，依批次分割
+    watchlist = get_batch_symbols(inst_cache, BATCH_INDEX, TOTAL_BATCHES)
+    print(f"\n🎯 批次 {BATCH_INDEX}/{TOTAL_BATCHES}：{len(watchlist)} 檔個股 | 月份: {months}")
 
     print(f"\n📈 個股 OHLCV 採礦 ({len(watchlist)} 檔)...")
     db_conn = sqlite3.connect(DB_PATH)
@@ -441,7 +455,11 @@ def run():
         for ym in months:
             rows = twse_ohlcv(sym, ym)
             if not rows:
+                time.sleep(1.0); rows = twse_ohlcv(sym, ym)  # retry
+            if not rows:
                 rows = tpex_ohlcv(sym, ym)
+            if not rows:
+                time.sleep(1.0); rows = tpex_ohlcv(sym, ym)  # retry
             new_rows.extend(rows)
             time.sleep(0.4)
 
@@ -634,9 +652,9 @@ def fetch_broker_chips():
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
     today_str = date.today().strftime('%Y-%m-%d')
-    watchlist = get_active_symbols()
+    watchlist = sorted(CHIP_WATCHLIST)  # 分點籌碼僅追蹤監控清單，FinMind 每小時 300 次限制
 
-    print(f"\n🕵️ 啟動分點籌碼探測 (FinMind 免費通道，請耐心等候避免限流)...")
+    print(f"\n🕵️ 啟動分點籌碼探測 ({len(watchlist)} 檔，FinMind 免費通道，請耐心等候避免限流)...")
 
     updated = 0
     for sym in watchlist:
@@ -663,14 +681,23 @@ def fetch_broker_chips():
 
                 if buyers or sellers:
                     out_file = chips_dir / f'{sym}.json'
-                    record = [{
+                    # 讀取舊紀錄，合併今日資料，保留最近 20 個交易日
+                    existing = []
+                    if out_file.exists():
+                        try: existing = json.loads(out_file.read_text(encoding='utf-8'))
+                        except Exception: pass
+                    records_map = {r['date']: r for r in existing if isinstance(r, dict)}
+                    records_map[today_str] = {
                         'date': today_str,
                         'buyers': buyers,
                         'sellers': sellers,
                         'tot_buy': sum(b['buy'] for b in brokers_list),
                         'tot_sel': sum(b['sel'] for b in brokers_list)
-                    }]
-                    out_file.write_text(json.dumps(record, ensure_ascii=False), encoding='utf-8')
+                    }
+                    recent_dates = sorted(records_map.keys())[-20:]
+                    out_file.write_text(
+                        json.dumps([records_map[d] for d in recent_dates], ensure_ascii=False),
+                        encoding='utf-8')
                     updated += 1
 
             time.sleep(3)
