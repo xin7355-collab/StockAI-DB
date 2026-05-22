@@ -695,6 +695,260 @@ async def morning_brief(db: sqlite3.Connection = Depends(get_db)):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# 【自主代理人】Agent Skills（同步函式，由 asyncio.to_thread 包裝執行）
+# ══════════════════════════════════════════════════════════════════════════════
+
+def get_radar_list() -> str:
+    """
+    從 SQLite 的 radar_results 表撈取最新一批雷達強勢股名單。
+    回傳三個策略（底部/飆股/綜合強勢）各自的股票清單，含代號、收盤價與股票名稱。
+    若查無資料，回傳「查無雷達資料，可能今日尚未採礦」。
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT MAX(signal_date) FROM radar_results")
+        row = cur.fetchone()
+        if not row or not row[0]:
+            conn.close()
+            return "查無雷達資料，可能今日尚未採礦"
+        latest_date = row[0]
+        cur.execute(
+            "SELECT strategy, symbol, close, extra_data FROM radar_results WHERE signal_date = ?",
+            (latest_date,)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return "查無雷達資料，可能今日尚未採礦"
+        buckets: dict = {"bottom": [], "surge": [], "score": []}
+        for strategy, symbol, close, extra_data in rows:
+            name = symbol
+            try:
+                ed = json.loads(extra_data or "{}")
+                name = ed.get("name") or ed.get("股名") or symbol
+            except Exception:
+                pass
+            buckets.setdefault(strategy, []).append(f"{symbol}({name}) 收{close}")
+        label_map = {"bottom": "底部訊號", "surge": "飆股訊號", "score": "綜合強勢"}
+        lines = [f"雷達日期：{latest_date}"]
+        for key, label in label_map.items():
+            items = buckets.get(key, [])
+            lines.append(f"【{label}】{'、'.join(items) if items else '無'}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"查詢雷達資料失敗：{e}"
+
+
+def query_stock_data(symbol: str) -> str:
+    """
+    從 SQLite 的 stock_history 表查詢指定股票最近 5 天的收盤價、MA5、MA20 與成交量。
+    需取最近 25 筆資料才能計算 MA20；回傳最後 5 筆的格式化結果。
+    若查無資料，回傳「查無 {symbol} 的歷史資料」。
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT trade_date, close, volume FROM stock_history "
+            "WHERE symbol = ? ORDER BY trade_date DESC LIMIT 25",
+            (symbol,)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return f"查無 {symbol} 的歷史資料"
+        rows = list(reversed(rows))  # 轉為時間正序
+        closes = [r[1] for r in rows]
+        ma5  = round(sum(closes[-5:]) / min(5, len(closes)), 2) if len(closes) >= 1 else None
+        ma20 = round(sum(closes[-20:]) / min(20, len(closes)), 2) if len(closes) >= 1 else None
+        recent5 = rows[-5:]
+        lines = [f"股票代號：{symbol}（最近 {len(recent5)} 天數據）"]
+        lines.append(f"MA5={ma5}  MA20={ma20}")
+        for date, close, vol in recent5:
+            lines.append(f"  {date}  收盤={close}  成交量={vol:,}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"查詢 {symbol} 股價失敗：{e}"
+
+
+def search_latest_news(symbol: str) -> str:
+    """
+    使用 DuckDuckGo 搜尋指定股票最近的 3 則台股新聞標題與摘要。
+    回傳每則新聞的標題與內文摘要，以換行分隔。
+    若搜尋失敗，回傳「新聞搜尋失敗：{錯誤訊息}」。
+    """
+    try:
+        from duckduckgo_search import DDGS
+        query = f"{symbol} 台股 新聞"
+        results = DDGS().text(query, max_results=3)
+        if not results:
+            return f"查無 {symbol} 相關新聞"
+        lines = []
+        for i, r in enumerate(results, 1):
+            title = r.get("title", "")
+            body  = r.get("body", "")[:120]
+            lines.append(f"[新聞{i}] {title}\n{body}")
+        return "\n\n".join(lines)
+    except Exception as e:
+        return f"新聞搜尋失敗：{e}"
+
+
+# ── Tool Schema（傳給 Groq 的 JSON 結構定義）────────────────────────────────
+CHAT_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_radar_list",
+            "description": "從資料庫撈取今日最新的雷達強勢股名單（底部/飆股/綜合分數三類）",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_stock_data",
+            "description": "查詢指定股票最近5天的收盤價、MA5、MA20與成交量",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "台股股票代號，如 '2330'"}
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_latest_news",
+            "description": "搜尋指定股票最近的3則台股新聞標題與摘要",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "台股股票代號，如 '2330'"}
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+]
+
+_CHAT_SKILL_DISPATCH = {
+    "get_radar_list":    get_radar_list,
+    "query_stock_data":  query_stock_data,
+    "search_latest_news": search_latest_news,
+}
+
+_CHAT_SYSTEM_PROMPT = (
+    "你是台股首席 AI 總裁，精通朱家泓技術分析。"
+    "你可以使用工具查資料，請根據工具回傳的真實數據，"
+    "給出犀利、有紀律的決策，絕不瞎掰數據。"
+)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 【自主代理人】POST /api/chat — Groq Tool Calling 迴圈
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ChatRequest(BaseModel):
+    message:     str
+    model:       str   = GROQ_MODEL
+    max_tokens:  int   = Field(default=1200, ge=100, le=4096)
+    temperature: float = Field(default=0.4, ge=0.0, le=2.0)
+
+
+@app.post("/api/chat")
+async def agent_chat(req: ChatRequest):
+    """
+    自主代理人聊天端點。
+    接收使用者提問，透過 Groq Tool Calling 迴圈自動查詢雷達、股價、新聞，
+    最終回傳基於真實數據的分析報告。
+    回傳格式：{"status": "success", "reply": "..."}
+    """
+    if not GROQ_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="伺服器未設定 GROQ_API_KEY 環境變數，請聯絡系統管理員。"
+        )
+
+    messages: list[dict] = [
+        {"role": "system", "content": _CHAT_SYSTEM_PROMPT},
+        {"role": "user",   "content": req.message},
+    ]
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type":  "application/json",
+    }
+
+    MAX_ITERS = 5
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+        for _iter in range(MAX_ITERS):
+            await _groq_limiter.acquire()
+
+            payload = {
+                "model":       req.model,
+                "messages":    messages,
+                "tools":       CHAT_TOOLS,
+                "tool_choice": "auto",
+                "max_tokens":  req.max_tokens,
+                "temperature": req.temperature,
+            }
+
+            try:
+                resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
+                if resp.status_code == 429:
+                    retry_after = int(resp.headers.get("Retry-After", 4))
+                    await asyncio.sleep(retry_after)
+                    continue
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise HTTPException(status_code=502, detail=f"Groq API 錯誤：{e}")
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                raise HTTPException(status_code=502, detail=f"Groq 連線失敗：{e}")
+
+            data = resp.json()
+            choice = data["choices"][0]
+            finish_reason = choice.get("finish_reason", "")
+            assistant_msg = choice["message"]
+
+            tool_calls = assistant_msg.get("tool_calls") or []
+
+            # ── 無 tool_calls → Groq 給出最終回覆，直接回傳 ────────────────
+            if not tool_calls:
+                return {"status": "success", "reply": assistant_msg.get("content", "")}
+
+            # ── 有 tool_calls → 執行各 Skill，結果回填後繼續迴圈 ───────────
+            messages.append(assistant_msg)  # 含 tool_calls 的 assistant 訊息
+
+            for tc in tool_calls:
+                fn_name = tc["function"]["name"]
+                fn_args_raw = tc["function"].get("arguments", "{}")
+                try:
+                    fn_args = json.loads(fn_args_raw)
+                except json.JSONDecodeError:
+                    fn_args = {}
+
+                skill_fn = _CHAT_SKILL_DISPATCH.get(fn_name)
+                if skill_fn is None:
+                    tool_result = f"未知工具：{fn_name}"
+                else:
+                    try:
+                        tool_result = await asyncio.to_thread(skill_fn, **fn_args)
+                    except Exception as e:
+                        tool_result = f"工具執行失敗：{e}"
+
+                messages.append({
+                    "role":         "tool",
+                    "tool_call_id": tc["id"],
+                    "content":      str(tool_result),
+                })
+
+    # 超過最大迭代仍未回覆（極少發生）
+    return {"status": "success", "reply": "AI 迭代次數已達上限，無法產生最終回覆，請稍後重試。"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 本機啟動
 # ══════════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
