@@ -17,7 +17,7 @@ DATA_DIR = "data"
 Path(DATA_DIR).mkdir(exist_ok=True)
 DB_PATH = "stock_hunter.db"
 
-_HDRS = {'User-Agent': 'Mozilla/5.0 (compatible; StockBot/2.0)'}
+_HDRS = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
 
 # ── 監控清單 ──────────────────────────────────────────────────────────────────
 CHIP_WATCHLIST = sorted(set([
@@ -380,10 +380,10 @@ def run():
         months.append(cur.strftime('%Y%m'))
         cur = (cur - timedelta(days=1)).replace(day=1)
 
-    trading_days = get_trading_days(10)
+    trading_days = get_trading_days(1)
     print(f"\n🎯 {len(watchlist)} 檔個股 | 月份: {months}")
 
-    print(f"\n📊 批次抓取三大法人 + 融資融券（{len(trading_days)} 個交易日）...")
+    print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日 | 共 4 次請求）...")
     inst_cache:   dict = {}  
     margin_cache: dict = {}  
     for d in trading_days:
