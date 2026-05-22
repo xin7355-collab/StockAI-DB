@@ -578,7 +578,11 @@ def fetch_us_macro_cache():
     today   = date.today()
     symbols = {'sp500': '^GSPC', 'nasdaq': '^IXIC', 'tsm': 'TSM',
                'dji': '^DJI', 'vix': '^VIX',
-               'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT'}
+               'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT',
+               'us02y': '^IRX',     # 13W T-Bill 短債利率（Fed 政策風向）
+               'ukoil': 'BZ=F',     # 布蘭特原油期貨
+               'dxy':   'DX-Y.NYB'  # 美元指數
+               }
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
     result = {}
     for key, ticker in symbols.items():

@@ -559,6 +559,142 @@ async def ai_audit(req: AuditRequest):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# 開盤戰略日報（GET /api/morning_brief）
+# ══════════════════════════════════════════════════════════════════════════════
+# 12 小時 TTL 快取：全天所有使用者共享同一份日報，只消耗一次 Groq Token。
+# 使用現有 _TTLCache（純標準庫，無外部依賴，符合 1GB RAM 防禦準則）。
+_brief_cache = _TTLCache(ttl=12 * 3600, maxsize=4)
+_BRIEF_CACHE_KEY = "morning_brief_v1"
+
+
+@app.get("/api/morning_brief")
+async def morning_brief(db: sqlite3.Connection = Depends(get_db)):
+    """
+    開盤前宏觀戰略日報。
+
+    資料來源：
+      ① market_macro 表 — 最新一天：台指期淨口數、台股/美股指數、VIX
+      ② radar_results 表 — 最多 3 檔最新 bottom / surge 訊號股
+      ③ macro_cache.json — 新增指標（SOX / NVDA / US02Y / UKOIL / DXY）
+
+    快取：12 小時 TTL，全天共用，只呼叫一次 Groq。
+    回傳：{"status": "success"|"error", "report": "...", "cached": bool}
+    """
+    # ── ① 命中快取則直接返回 ─────────────────────────────────────────────────
+    cached = _brief_cache.get(_BRIEF_CACHE_KEY)
+    if cached is not None:
+        return {**cached, "cached": True}
+
+    # ── ② 從 SQLite 撈取最新宏觀數據 ─────────────────────────────────────────
+    macro_row = db.execute(
+        "SELECT * FROM market_macro ORDER BY trade_date DESC LIMIT 1"
+    ).fetchone()
+
+    if not macro_row:
+        return {
+            "status": "error",
+            "report": "⚠️ 尚無宏觀資料，請先執行採礦機 (miner.py)。",
+            "cached": False,
+        }
+
+    macro = dict(macro_row)
+
+    # ── ③ 從 SQLite 撈取雷達強勢股（最多 3 檔 bottom + surge）────────────────
+    radar_rows = db.execute("""
+        SELECT symbol, strategy, close, signal_date, extra_data
+        FROM   radar_results
+        WHERE  strategy IN ('bottom', 'surge')
+        ORDER  BY signal_date DESC, strategy ASC
+        LIMIT  3
+    """).fetchall()
+
+    radar_stocks = []
+    for r in radar_rows:
+        try:
+            extra = json.loads(r["extra_data"] or "{}")
+            name = extra.get("name", r["symbol"])
+        except (json.JSONDecodeError, KeyError):
+            name = r["symbol"]
+        label = "底部起漲" if r["strategy"] == "bottom" else "飆股動能"
+        radar_stocks.append(f"{r['symbol']} {name}（{label}，收 {r['close']:.1f}）")
+
+    # ── ④ 補充讀取 macro_cache.json（新增指標：SOX/NVDA/US02Y/UKOIL/DXY）────
+    extra_macro_lines = []
+    try:
+        macro_cache_path = os.path.join(os.path.dirname(DB_PATH) or ".", "macro_cache.json")
+        with open(macro_cache_path, encoding="utf-8") as f:
+            mc = json.load(f)
+        def _mc(key: str) -> str:
+            d = mc.get(key)
+            if not d:
+                return "N/A"
+            sign = "+" if d["chg_pct"] > 0 else ""
+            return f"{d['close']} ({sign}{d['chg_pct']:.2f}%)"
+        extra_macro_lines = [
+            f"費城半導體 SOX：{_mc('sox')}",
+            f"輝達 NVDA：{_mc('nvda')}",
+            f"美債2Y利率：{_mc('us02y')}%",
+            f"布蘭特原油：{_mc('ukoil')} USD/桶",
+            f"美元指數 DXY：{_mc('dxy')}",
+        ]
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        pass   # macro_cache.json 不存在時安靜略過，不影響基本日報
+
+    # ── ⑤ 組合 AI Prompt ─────────────────────────────────────────────────────
+    fi_net    = macro.get("fi_net") or 0
+    fi_label  = ("多方無憂" if fi_net > -10000
+                 else "⚠️ 暗流湧動" if fi_net > -25000
+                 else "🔴 紅色警戒" if fi_net > -40000
+                 else "🚨 黑天鵝")
+
+    vix_val   = macro.get("vix") or 0
+    vix_label = ("恐慌" if vix_val > 30 else "警戒" if vix_val > 25
+                 else "正常" if vix_val >= 15 else "平靜")
+
+    sp500_chg = macro.get("sp500_chg_pct") or 0
+    ndx_chg   = macro.get("nasdaq_chg_pct") or 0
+    tsm_chg   = macro.get("tsm_chg_pct") or 0
+
+    radar_section = (
+        "、".join(radar_stocks) if radar_stocks
+        else "今日無符合條件強勢股"
+    )
+    extra_section = "\n".join(extra_macro_lines) if extra_macro_lines else ""
+
+    prompt = f"""你是台股首席戰略官。請根據以下昨晚的宏觀數據與今日雷達強勢股，寫一份約 150-200 字的「開盤戰略日報」。
+語氣需專業、犀利，直接點出今日台股是該「偏多操作」、「防禦保守」還是「緊盯強勢股」，不說廢話。
+
+【外資台指期】淨口數 {fi_net:+,} 口（{fi_label}）
+【台股】加權 {macro.get('taiex_close', '--')} / 上櫃 {macro.get('tpex_close', '--')}
+【美股】S&P 500 昨漲跌 {sp500_chg:+.2f}% / NASDAQ {ndx_chg:+.2f}%
+【台積電 ADR】{tsm_chg:+.2f}%
+【VIX】{vix_val:.1f}（{vix_label}）
+{extra_section}
+
+【今日雷達強勢股】{radar_section}
+
+請直接輸出日報正文，不要加任何標題或解釋。結尾務必以一句「今日戰略方針：」開頭的總結收尾。"""
+
+    # ── ⑥ 呼叫 Groq，寫入快取後回傳 ─────────────────────────────────────────
+    try:
+        report = await call_groq_api(
+            prompt=prompt,
+            max_tokens=400,
+            temperature=0.4,
+        )
+    except HTTPException as e:
+        return {
+            "status": "error",
+            "report": f"⚠️ AI 服務暫時無法連線（{e.detail}），請稍後再試。",
+            "cached": False,
+        }
+
+    result = {"status": "success", "report": report}
+    _brief_cache.set(_BRIEF_CACHE_KEY, result)
+    return {**result, "cached": False}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 本機啟動
 # ══════════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":

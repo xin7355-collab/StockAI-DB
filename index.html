@@ -264,6 +264,12 @@
             <span id="usBar_aapl_chg" class="hidden"></span>
             <span id="usBar_msft" class="hidden"></span>
             <span id="usBar_msft_chg" class="hidden"></span>
+            <span id="usBar_us02y" class="hidden"></span>
+            <span id="usBar_us02y_chg" class="hidden"></span>
+            <span id="usBar_ukoil" class="hidden"></span>
+            <span id="usBar_ukoil_chg" class="hidden"></span>
+            <span id="usBar_dxy" class="hidden"></span>
+            <span id="usBar_dxy_chg" class="hidden"></span>
         </div>
     </div>
 
@@ -614,6 +620,28 @@
                         <div class="text-[9px] text-gray-500 font-bold mb-0.5">微軟 MSFT</div>
                         <div id="usBar_msft_main" class="text-lg font-black font-mono text-gray-300">--</div>
                         <div id="usBar_msft_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                </div>
+                <!-- 宏觀關鍵指標 -->
+                <div class="text-[10px] text-gray-500 font-bold mb-1.5 mt-2">🏦 宏觀關鍵指標</div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-[#0d1117] border border-orange-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-orange-400 font-bold mb-0.5">美債2Y利率 ^IRX</div>
+                        <div id="usBar_us02y_main" class="text-base font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_us02y_chg_main" class="text-[9px] font-bold text-gray-500 mt-0.5">--</div>
+                        <div class="text-[8px] text-gray-600 mt-0.5">升=Fed 鷹派⚠️</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-400 font-bold mb-0.5">布蘭特原油 BZ=F</div>
+                        <div id="usBar_ukoil_main" class="text-base font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_ukoil_chg_main" class="text-[9px] font-bold text-gray-500 mt-0.5">--</div>
+                        <div class="text-[8px] text-gray-600 mt-0.5">USD/桶</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-purple-900/40 rounded-lg p-2.5">
+                        <div class="text-[9px] text-purple-400 font-bold mb-0.5">美元指數 DXY</div>
+                        <div id="usBar_dxy_main" class="text-base font-black font-mono text-gray-300">--</div>
+                        <div id="usBar_dxy_chg_main" class="text-[9px] font-bold text-gray-500 mt-0.5">--</div>
+                        <div class="text-[8px] text-gray-600 mt-0.5">升=外資撤台⚠️</div>
                     </div>
                 </div>
                 <button onclick="app.refreshAllMarketData(); app.vibrate(30);" class="mt-3 w-full text-[10px] text-gray-500 hover:text-white bg-[#161b22] border border-[#30363d] rounded py-1.5 font-bold transition-colors">🔄 重新整理市場數據</button>
@@ -1159,6 +1187,7 @@ const app = {
         setBar('vix', data.vix, true); setBar('tsm', data.tsm);
         setBar('dji', data.dji); setBar('sox', data.sox);
         setBar('nvda', data.nvda); setBar('aapl', data.aapl); setBar('msft', data.msft);
+        setBar('us02y', data.us02y); setBar('ukoil', data.ukoil); setBar('dxy', data.dxy);
         // VIX annotation update (same logic as _renderUSBar)
         if (data.vix?.price != null) {
             const v = parseFloat(data.vix.price);
@@ -1297,6 +1326,12 @@ const app = {
         copy('usBar_aapl_chg', 'usBar_aapl_chg_main');
         copy('usBar_msft', 'usBar_msft_main');
         copy('usBar_msft_chg', 'usBar_msft_chg_main');
+        copy('usBar_us02y', 'usBar_us02y_main');
+        copy('usBar_us02y_chg', 'usBar_us02y_chg_main');
+        copy('usBar_ukoil', 'usBar_ukoil_main');
+        copy('usBar_ukoil_chg', 'usBar_ukoil_chg_main');
+        copy('usBar_dxy', 'usBar_dxy_main');
+        copy('usBar_dxy_chg', 'usBar_dxy_chg_main');
     },
 
     openSettings() {
@@ -1680,6 +1715,9 @@ const app = {
         set(null, 'usBar_nvda', 'usBar_nvda_chg', 'nvda');
         set(null, 'usBar_aapl', 'usBar_aapl_chg', 'aapl');
         set(null, 'usBar_msft', 'usBar_msft_chg', 'msft');
+        set(null, 'usBar_us02y', 'usBar_us02y_chg', 'us02y');
+        set(null, 'usBar_ukoil', 'usBar_ukoil_chg', 'ukoil');
+        set(null, 'usBar_dxy', 'usBar_dxy_chg', 'dxy');
         // VIX 特殊：漲是空頭警示（紅），跌是多頭（綠）
         if (m.vix) {
             const col = m.vix.close > 25 ? 'text-[#f87171]' : (m.vix.close < 15 ? 'text-[#4ade80]' : 'text-yellow-300');
@@ -1977,9 +2015,10 @@ const app = {
         const yf = sym => proxyFetch(sym);
 
         try {
-            const [spxJ, ndxJ, vixJ, tsmJ, djiJ, soxJ, nvdaJ, aaplJ, msftJ] = await Promise.all([
+            const [spxJ, ndxJ, vixJ, tsmJ, djiJ, soxJ, nvdaJ, aaplJ, msftJ, us02yJ, ukoilJ, dxyJ] = await Promise.all([
                 yf('^GSPC'), yf('^IXIC'), yf('^VIX'), yf('TSM'),
-                yf('^DJI'), yf('^SOX'), yf('NVDA'), yf('AAPL'), yf('MSFT')
+                yf('^DJI'), yf('^SOX'), yf('NVDA'), yf('AAPL'), yf('MSFT'),
+                yf('^IRX'), yf('BZ=F'), yf('DX-Y.NYB')
             ]);
             const extract = (json, label) => {
                 const meta = json?.chart?.result?.[0]?.meta;
@@ -2001,6 +2040,9 @@ const app = {
                 nvda: extract(nvdaJ, 'NVDA'),
                 aapl: extract(aaplJ, 'AAPL'),
                 msft: extract(msftJ, 'MSFT'),
+                us02y: extract(us02yJ, 'US02Y'),
+                ukoil: extract(ukoilJ, 'UKOIL'),
+                dxy:   extract(dxyJ,   'DXY'),
                 fetchedAt: Date.now()
             };
             localStorage.setItem('proTerminalUSMarket', JSON.stringify(result));
@@ -4383,9 +4425,11 @@ ${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損�
         const spx = g('usBar_spx_main'), dji = g('usBar_dji_main'), ndx = g('usBar_ndx_main'), sox = g('usBar_sox_main');
         const vix = g('usBar_vix_main');
         const tsm = g('usBar_tsm_main'), nvda = g('usBar_nvda_main'), aapl = g('usBar_aapl_main'), msft = g('usBar_msft_main');
+        const us02y = g('usBar_us02y_main'), ukoil = g('usBar_ukoil_main'), dxy = g('usBar_dxy_main');
         const spxChg = g('usBar_spx_chg_main'), ndxChg = g('usBar_ndx_chg_main'), soxChg = g('usBar_sox_chg_main');
         const tsmChg = g('usBar_tsm_chg_main'), nvdaChg = g('usBar_nvda_chg_main');
-        const prompt = `你是台股首席策略師，請用白話文、權證小哥風格分析以下全球市場數據對台股的影響：\n\n【外資籌碼】\n外資台指期未平倉：${fiLabel}\n\n【台股指數】\n加權指數：${twii} / 上櫃指數：${twoii}\n\n【美股四大指數】\nS&P 500：${spx}（${spxChg}）\n道瓊 DJI：${dji}\n那斯達克 NASDAQ：${ndx}（${ndxChg}）\n費城半導體 SOX：${sox}（${soxChg}）⚡台股電子先行指標\n\n【VIX 恐慌指數】${vix}\n\n【關鍵巨頭 ADR】\n台積電 ADR：${tsm}（${tsmChg}）\n輝達 NVDA：${nvda}（${nvdaChg}）\n蘋果 AAPL：${aapl} / 微軟 MSFT：${msft}\n\n請依序分析（每段不超過3句，用**粗體**標出關鍵數字和結論）：\n1. 整體市場氛圍（偏多/偏空/中性），用一句話說\n2. 費半 SOX 訊號：AI/半導體資金流向對台股電子的意義\n3. 台積電 ADR 解讀：外資用腳投票的訊號\n4. VIX 解讀：現在市場怕不怕，影響隔日台股走勢\n5. 今明兩日台股操作建議（要有具體策略，不是廢話）`;
+        const us02yChg = g('usBar_us02y_chg_main'), dxyChg = g('usBar_dxy_chg_main');
+        const prompt = `你是台股首席策略師，請用白話文、權證小哥風格分析以下全球市場數據對台股的影響：\n\n【外資籌碼】\n外資台指期未平倉：${fiLabel}\n\n【台股指數】\n加權指數：${twii} / 上櫃指數：${twoii}\n\n【美股四大指數】\nS&P 500：${spx}（${spxChg}）\n道瓊 DJI：${dji}\n那斯達克 NASDAQ：${ndx}（${ndxChg}）\n費城半導體 SOX：${sox}（${soxChg}）⚡台股電子先行指標\n\n【VIX 恐慌指數】${vix}\n\n【關鍵巨頭 ADR】\n台積電 ADR：${tsm}（${tsmChg}）\n輝達 NVDA：${nvda}（${nvdaChg}）\n蘋果 AAPL：${aapl} / 微軟 MSFT：${msft}\n\n【宏觀關鍵指標】\n美債2Y短期利率：${us02y}%（${us02yChg}）— 升=Fed 鷹派=台股承壓\n布蘭特原油：${ukoil} USD/桶\n美元指數 DXY：${dxy}（${dxyChg}）— 升=外資撤離新興市場⚠️\n\n請依序分析（每段不超過3句，用**粗體**標出關鍵數字和結論）：\n1. 整體市場氛圍（偏多/偏空/中性），用一句話說\n2. 費半 SOX + NVDA：AI/半導體資金流向，這是台股電子今日的先行指標\n3. 台積電 ADR：外資用腳投票的明確訊號\n4. 宏觀三角：美債利率 × 美元強弱 × 油價，合力對台股的影響\n5. VIX 解讀 + 今明兩日台股操作建議（具體策略，不說廢話）`;
         try {
             const text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.4 });
             result.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>').replace(/\n/g, '<br>');
