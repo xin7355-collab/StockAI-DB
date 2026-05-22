@@ -226,10 +226,10 @@
                 <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.4rem] transition-transform hover:rotate-90 flex-shrink-0 mr-0.5 relative">⚙️</button>
                 <div class="relative flex-1 max-w-[180px] min-w-[90px] flex-shrink" id="searchContainer">
                     <div class="flex items-center bg-[#010409] border border-[#30363d] rounded overflow-hidden shadow-inner w-full">
-                        <input type="search" id="symbolInput" value="2330" inputmode="search" enterkeyhint="search" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
+                        <input type="search" id="symbolInput" value="" inputmode="search" enterkeyhint="search" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
                             class="bg-transparent text-white px-2 py-1.5 outline-none w-full text-right pr-2 font-mono font-bold placeholder-gray-600 text-sm min-w-0" 
                             placeholder="代號" oninput="app.handleSearchInput(event)" onfocus="app.handleSearchInput(event)"
-                            onkeydown="if(event.key === 'Enter') { document.getElementById('searchDropdown').classList.add('hidden'); document.activeElement.blur(); app.analyze(); }">
+                            onkeydown="if(event.key === 'Enter') { document.getElementById('searchDropdown').classList.add('hidden'); document.activeElement.blur(); app.analyze(); document.getElementById('symbolInput').value=''; }">
                         <button onclick="app.analyze(); app.vibrate(50);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-xs transition font-bold cursor-pointer flex-shrink-0">診斷</button>
                     </div>
                     <ul id="searchDropdown" class="hidden absolute top-[110%] right-0 mt-1 w-full min-w-[180px] bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-48 z-[300]"></ul>
@@ -276,21 +276,16 @@
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
-                <!-- 右滑顯示獵殺圖示 -->
-                <div id="huntRevealPanel" class="hidden items-center gap-2 px-3 py-1.5 bg-red-950/20 border-b border-red-900/30">
-                    <span id="monitorHuntIcon" class="cursor-pointer text-xl text-gray-500 transition-transform hover:scale-110 leading-none" onclick="app.toggleMonitor(); app.vibrate(30);" title="加入/移除獵殺監控">🗡️</span>
-                    <span class="text-[10px] text-gray-500">加入／移除獵殺監控</span>
-                    <button onclick="document.getElementById('huntRevealPanel').classList.remove('flex'); document.getElementById('huntRevealPanel').classList.add('hidden');" class="ml-auto text-gray-600 hover:text-gray-400 text-xs transition-colors px-1">✕</button>
-                </div>
-                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2" ontouchstart="app._headerSwipeStart(event)" ontouchend="app._headerSwipeEnd(event)">
+                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2">
                     <!-- 左側：☆ + 名稱 + 標籤 -->
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-center gap-1.5 min-w-0 overflow-hidden">
                             <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
                             <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0" style="font-size: clamp(1rem, 4.5vw, 1.6rem); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">載入中...</span>
                         </div>
-                        <span id="quoteCode" class="text-[11px] text-gray-500 font-mono font-bold leading-none mt-0.5 ml-8"></span>
-                        <div class="flex items-center gap-1 mt-1 flex-wrap ml-8">
+                        <span id="quoteCode" class="text-[11px] text-gray-500 font-mono font-bold leading-none mt-0.5"></span>
+                        <div class="flex items-center gap-1 mt-1 flex-wrap">
+                            <span id="monitorHuntIcon" class="cursor-pointer text-base text-gray-500 hover:scale-110 leading-none flex-shrink-0 transition-transform" onclick="app.toggleMonitor(); app.vibrate(30);" title="加入/移除獵殺監控">🗡️</span>
                             <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
                             <span id="headerScoreStatus" class="hidden text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').classList.remove('hidden')">--</span>
                             <span id="invBadge" class="hidden bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
@@ -1043,7 +1038,6 @@ const app = {
         await this.fetchStockList();
         await this.fetchMacroData();
         
-        document.getElementById('symbolInput').value = '2330';
         await this.analyze('2330', true);
         this.refreshInventoryPrices();
         this.renderFavTabs();
@@ -1501,7 +1495,7 @@ const app = {
         if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
         const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 8);
         if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze();"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
+            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
             dropdown.classList.remove('hidden');
         } else dropdown.classList.add('hidden');
     },
@@ -2230,7 +2224,7 @@ const app = {
         const _ti  = r => r.trust_net   ?? r.invest_trust ?? 0;
         const _di  = r => r.dealer_net  ?? r.dealer_inv   ?? 0;
         const hasChip = daily.length > 0 &&
-            (daily[daily.length-1].foreign_net !== undefined || daily[daily.length-1].foreign_inv !== undefined);
+            daily.slice(-10).some(r => Math.abs(_fi(r)) > 0 || Math.abs(_ti(r)) > 0 || Math.abs(_di(r)) > 0);
         if (hasChip && !forceRefresh) {
             const slice = daily.slice(-15);
             const instData = slice.map(r => ({
@@ -2972,7 +2966,7 @@ ${dynamicParams}
         this.latestNewsCache = '';
         this.latestYoyCache = '';
         this.latestFinancialAICache = '';
-        if(!silent) document.getElementById('symbolInput').value = targetSym;
+        if(!silent) document.getElementById('symbolInput').value = '';
 
         // Clear AI result boxes when switching stocks (avoids stale results misleading user)
         if (isNewStock) {
@@ -3033,11 +3027,18 @@ ${dynamicParams}
                 document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
             }
         } else {
-            // Off-market: use the last historical close as a static "current price" display
-            fugleData = this._getHistoricalLatestAsPrice();
-            document.getElementById('dataSourceText').innerText = "限價";
-            document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
-            document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
+            // Off-market: try Fugle first (can return today's close after market), fall back to historical
+            fugleData = await this.fetchFugleData(targetSym);
+            if (fugleData) {
+                document.getElementById('dataSourceText').innerText = "限價";
+                document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
+                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
+            } else {
+                fugleData = this._getHistoricalLatestAsPrice();
+                document.getElementById('dataSourceText').innerText = "歷史收盤";
+                document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
+                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
+            }
         }
 
         this.applyLatestPrice(fugleData, null);
@@ -4232,9 +4233,9 @@ ${dynamicParams}
     async runKlineAudit(sym) {
         const btn = document.getElementById('klineAuditBtn');
         const box = document.getElementById('klineAuditResult');
-        if (!this.activeData || this.activeData.length < 60) {
+        if (!this.activeData || this.activeData.length < 30) {
             box.classList.remove('hidden');
-            box.innerHTML = '<span class="text-yellow-400 text-sm">⚠️ 資料不足60日，請先載入完整 K 線資料。</span>';
+            box.innerHTML = '<span class="text-yellow-400 text-sm">⚠️ 資料不足30日，請先載入完整 K 線資料。</span>';
             return;
         }
         const hasBackend = !!this._apiBase;
@@ -4913,6 +4914,7 @@ ${keyLevels ? keyLevels : ''}${chipBlock}${globalBlock}${fundamentalBlock}`;
         const dx = e.changedTouches[0].clientX - (this._swipeStartX || 0);
         if (dx > 50) {
             const p = document.getElementById('huntRevealPanel');
+            if (!p) return;
             if (p.classList.contains('hidden')) {
                 p.classList.remove('hidden');
                 p.classList.add('flex');

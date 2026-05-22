@@ -552,8 +552,8 @@ def fetch_futures_cache():
                 latest = foreign_data[-1]
                 target_date = latest.get('date')
 
-                long_oi  = int(latest.get('buy_open_interest',  0))
-                short_oi = int(latest.get('sell_open_interest', 0))
+                long_oi  = int(latest.get('long_open_interest_balance') or latest.get('long_open_interest') or latest.get('buy_open_interest')  or 0)
+                short_oi = int(latest.get('short_open_interest_balance') or latest.get('short_open_interest') or latest.get('sell_open_interest') or 0)
                 net_oi   = long_oi - short_oi
 
                 cache = {
