@@ -212,6 +212,24 @@
         </div>
     </div>
 
+    <!-- ✨ 技術面 AI 診斷 Modal -->
+    <div id="techAIModal" class="modal-base hidden" style="display:none"
+         onclick="if(event.target===this){app.closeTechAIModal();}">
+        <div class="modal-content bg-[#161b22] border border-gray-700 rounded-xl p-4 w-full max-w-sm mx-4 shadow-2xl" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <span id="techAIModalTitle" class="text-white font-bold text-sm">✨ 技術面診斷</span>
+                    <span id="techAIModalSym" class="ml-2 text-gray-400 text-xs font-mono"></span>
+                </div>
+                <button onclick="app.closeTechAIModal()"
+                        class="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
+            </div>
+            <div id="techAIModalBody"
+                 class="bg-[#0d1117] rounded-lg p-3 text-gray-200 text-sm leading-relaxed min-h-[100px] font-mono whitespace-pre-wrap">
+            </div>
+        </div>
+    </div>
+
     <div id="invModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：2000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <div class="header-fixed w-full flex flex-col shadow-md">
@@ -563,6 +581,31 @@
                 <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
                     <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
                     <div id="xrayAIResult" class="text-gray-200 text-sm leading-relaxed"></div>
+                </div>
+            </div>
+
+            <!-- ✨ 一鍵技術面 AI 診斷 -->
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
+                <h4 class="text-blue-400 font-bold text-sm mb-2 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">
+                    <span>✨</span> 一鍵技術面 AI 診斷
+                </h4>
+                <div class="flex overflow-x-auto gap-2 pb-1" style="scrollbar-width:none">
+                    <button onclick="app.triggerTechAI('trend');app.vibrate(30);"
+                            class="flex-shrink-0 px-3 py-1.5 bg-blue-900/30 text-blue-400 rounded-full text-xs whitespace-nowrap border border-blue-800/50 hover:bg-blue-800/50 transition-colors">
+                        📈 均線多頭起漲
+                    </button>
+                    <button onclick="app.triggerTechAI('pullback');app.vibrate(30);"
+                            class="flex-shrink-0 px-3 py-1.5 bg-purple-900/30 text-purple-400 rounded-full text-xs whitespace-nowrap border border-purple-800/50 hover:bg-purple-800/50 transition-colors">
+                        📉 跌深打折回測
+                    </button>
+                    <button onclick="app.triggerTechAI('breakout');app.vibrate(30);"
+                            class="flex-shrink-0 px-3 py-1.5 bg-orange-900/30 text-orange-400 rounded-full text-xs whitespace-nowrap border border-orange-800/50 hover:bg-orange-800/50 transition-colors">
+                        🔥 爆量突破表態
+                    </button>
+                    <button onclick="app.triggerTechAI('defense');app.vibrate(30);"
+                            class="flex-shrink-0 px-3 py-1.5 bg-red-900/30 text-red-400 rounded-full text-xs whitespace-nowrap border border-red-800/50 hover:bg-red-800/50 transition-colors">
+                        🚨 破線停損防守
+                    </button>
                 </div>
             </div>
 
@@ -2934,6 +2977,54 @@ ${dynamicParams}
             const fund = Array.isArray(raw) ? null : (raw.fundamentals || null);
             if (fund) this._applyFundamentalsToXray(fund);
         } catch(e) {}
+    },
+
+    triggerTechAI(queryType) {
+        const titles = {
+            trend:    '📈 均線多頭起漲',
+            pullback: '📉 跌深打折回測',
+            breakout: '🔥 爆量突破表態',
+            defense:  '🚨 破線停損防守',
+        };
+        const sym = this.currentSymbolId;
+        document.getElementById('techAIModalTitle').innerText = titles[queryType] || '技術面診斷';
+        document.getElementById('techAIModalSym').innerText = sym;
+        document.getElementById('techAIModalBody').innerHTML =
+            '<span class="animate-pulse text-gray-500">正在調閱資料與運算策略...</span>';
+        const modal = document.getElementById('techAIModal');
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        if (!this._apiBase) {
+            document.getElementById('techAIModalBody').innerHTML =
+                '<span class="text-yellow-400">請先在設定中填入 API 伺服器位址。</span>';
+            return;
+        }
+
+        fetch(`${this._apiBase}/api/tech_ai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol: sym, query_type: queryType }),
+        })
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('techAIModalBody');
+                if (data.status === 'success') {
+                    el.innerHTML = `<span class="text-green-400 font-bold">【總裁決策】</span>\n${data.reply}`;
+                } else {
+                    el.innerHTML = `<span class="text-red-400">錯誤：${data.message || '未知錯誤'}</span>`;
+                }
+            })
+            .catch(() => {
+                document.getElementById('techAIModalBody').innerHTML =
+                    '<span class="text-red-400">連線失敗，請確認 API 伺服器。</span>';
+            });
+    },
+
+    closeTechAIModal() {
+        const modal = document.getElementById('techAIModal');
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
     },
 
     async fetchFundamentalAnalysis(sym) {

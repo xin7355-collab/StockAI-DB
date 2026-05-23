@@ -124,11 +124,12 @@ _groq_limiter = _GroqRateLimiter(rpm=15)
 # 【核心防禦元件 2】Groq 非同步呼叫封裝（含指數退避重試）
 # ══════════════════════════════════════════════════════════════════════════════
 async def call_groq_api(
-    prompt:      str,
-    model:       str   = GROQ_MODEL,
-    max_tokens:  int   = 900,
-    temperature: float = 0.3,
-    json_mode:   bool  = False,
+    prompt:        str,
+    model:         str   = GROQ_MODEL,
+    max_tokens:    int   = 900,
+    temperature:   float = 0.3,
+    json_mode:     bool  = False,
+    system_prompt: str   = "",
 ) -> str:
     """
     非同步呼叫 Groq Chat Completion，內建雙重防禦：
@@ -160,9 +161,13 @@ async def call_groq_api(
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type":  "application/json",
     }
+    _msgs: list[dict] = []
+    if system_prompt:
+        _msgs.append({"role": "system", "content": system_prompt})
+    _msgs.append({"role": "user", "content": prompt})
     payload: dict[str, Any] = {
         "model":       model,
-        "messages":    [{"role": "user", "content": prompt}],
+        "messages":    _msgs,
         "max_tokens":  max_tokens,
         "temperature": temperature,
     }
@@ -860,6 +865,32 @@ class FundamentalsRequest(BaseModel):
     gross_margin_trend: Optional[str]   = None
     payout_ratio:       Optional[float] = None
     max_tokens:         int             = Field(default=280, ge=80, le=600)
+
+
+class TechAIRequest(BaseModel):
+    symbol:     str
+    query_type: str                              # trend / pullback / breakout / defense
+    max_tokens: int = Field(default=200, ge=80, le=400)
+
+
+@app.post("/api/tech_ai")
+async def tech_ai_diagnose(req: TechAIRequest):
+    stock_info = query_stock_data(req.symbol)
+    _prompts = {
+        "trend":    "你是台股技術大師，精通朱家泓操作心法。根據最新 OHLCV 判斷是否符合「頭頭高、底底高」與「均線多頭排列」，給出順勢操作建議。",
+        "pullback": "你是台股技術大師，精通郭哲榮投資長的打折買法。判斷股價是否回測至前波高點的85折或0.382支撐，尋找量縮止跌買點，評估勝率。",
+        "breakout": "你是台股技術大師。分析是否出現「帶量實體長紅K突破盤整區間」，判斷主力換手真假，給出突破買進的停損守則。",
+        "defense":  "你是台股風險控管大師。嚴格檢視是否帶量跌破5MA或20MA月線，若頭部成型，給出犀利且無情的停損防守建議，絕不留戀。",
+    }
+    sys_prompt = _prompts.get(req.query_type, "你是台股實戰大師，給出簡短技術面評估。")
+    user_msg = f"{stock_info}\n\n請用 100 字以內，犀利、專業的台股老手語氣給出大白話結論。"
+    content = await call_groq_api(
+        user_msg,
+        system_prompt=sys_prompt,
+        max_tokens=req.max_tokens,
+        temperature=0.3,
+    )
+    return {"status": "success", "reply": content}
 
 
 @app.post("/api/analyze_fundamentals")
