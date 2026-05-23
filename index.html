@@ -224,6 +224,13 @@
         </div>
     </div>
 
+    <!-- 右邊緣獵殺觸發區（30px 透明觸控條） -->
+    <div id="huntEdgeZone"
+         style="position:fixed; top:80px; right:0; width:30px; height:65vh; z-index:148;"
+         ontouchstart="app._huntSwipeX=event.touches[0].clientX"
+         ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
+    </div>
+
     <!-- ✨ 技術面 AI 診斷 Modal -->
     <div id="techAIModal" class="modal-base hidden" style="display:none"
          onclick="if(event.target===this){app.closeTechAIModal();}">
@@ -309,9 +316,7 @@
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
-                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2"
-                     ontouchstart="app._huntSwipeX=event.touches[0].clientX"
-                     ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>60){app.openHuntPanel();}">
+                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2">
                     <!-- 左側：☆ + 名稱 + 標籤 -->
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-center gap-1.5 min-w-0 overflow-hidden">
@@ -3002,7 +3007,15 @@ ${dynamicParams}
             if (!res.ok) return;
             const raw  = await res.json();
             const fund = Array.isArray(raw) ? null : (raw.fundamentals || null);
-            if (fund) this._applyFundamentalsToXray(fund);
+            if (fund) {
+                this._applyFundamentalsToXray(fund);
+            } else {
+                if (!this._autoFetchedSyms) this._autoFetchedSyms = new Set();
+                if (!this._autoFetchedSyms.has(sym)) {
+                    this._autoFetchedSyms.add(sym);
+                    this.fetchFundamentalAnalysis(sym);
+                }
+            }
         } catch(e) {}
     },
 
@@ -3393,10 +3406,12 @@ ${dynamicParams}
         let fugleData = null;
         fugleData = await this.fetchFugleData(targetSym);
         if (fugleData) {
+            this._hasLivePrice = !!(fugleData && !fugleData.isHistorical);
             document.getElementById('dataSourceText').innerText = "即時報價";
             document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
             document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
         } else {
+            this._hasLivePrice = false;
             fugleData = this._getHistoricalLatestAsPrice();
             if (!this.apiRateLimited) {
                 document.getElementById('dataSourceText').innerText = "連線異常(歷史收盤)";
@@ -3997,12 +4012,16 @@ ${dynamicParams}
             const alertEl = document.getElementById('patHighAlert'); if (alertEl) alertEl.classList.add('hidden');
         }
         const btCount = parseInt(document.getElementById('btCount').innerText) || 0;
-        const btNote = btCount < 5 ? '⚠️ 交易樣本偏少，參考性有限' : `✅ 已回測 ${btCount} 次歷史信號`;
+        const btNote = btCount === 0
+            ? '〰️ 此時段均線未出現交叉訊號'
+            : (btCount < 5 ? `⚠️ 樣本偏少（${btCount} 次），參考性有限` : `✅ 已回測 ${btCount} 次歷史信號`);
         const winRateNum = parseFloat(document.getElementById('btWinRate').innerText) || 0;
         const avgProfitNum = parseFloat(document.getElementById('btAvgProfit').innerText) || 0;
         let advice = '';
-        if (btCount < 5) {
-            advice = '資料不足，建議等待更多交易日後再參考。';
+        if (btCount === 0) {
+            advice = '此時段股價持續在均線強勢區間運行，5MA/20MA 均未出現死叉賣出訊號。若目前在高檔，留意是否有均線跌破風險。';
+        } else if (btCount < 5) {
+            advice = `⚡ 樣本偏少（${btCount} 次），參考性有限，建議等待更多歷史交叉訊號。`;
         } else if (winRateNum >= 65) {
             advice = `📈 歷史勝率 ${winRateNum}% 屬於<b class="text-red-400">高勝率</b>策略，可積極布局。均獲利 ${avgProfitNum > 0 ? '+' : ''}${avgProfitNum}%，風險報酬比佳。`;
         } else if (winRateNum >= 50) {
@@ -4022,7 +4041,7 @@ ${dynamicParams}
         const lastIdx = this.rawDailyData.length - 1, currentClose = this.rawDailyData[lastIdx].close;
         const prevClose = this.rawDailyData.length > 1 ? this.rawDailyData[lastIdx-1].close : currentClose;
         const diff = currentClose - prevClose, pct = prevClose > 0 ? (diff/prevClose)*100 : 0;
-        const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500');
+        const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : (this._hasLivePrice ? 'text-gray-300' : 'text-gray-500'));
         
         const priceEl = document.getElementById('livePriceText');
         priceEl.innerText = currentClose.toFixed(2);
