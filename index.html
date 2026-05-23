@@ -3375,32 +3375,16 @@ ${dynamicParams}
         }
 
         let fugleData = null;
-        if(this.isMarketOpen()) {
-            fugleData = await this.fetchFugleData(targetSym);
-            if(fugleData) {
-                document.getElementById('dataSourceText').innerText = "即時報價(盤中)";
-                document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
-            } else if (!this.apiRateLimited) {
-                // Live fetch failed: fall back to last historical bar so the price field is never blank
-                fugleData = this._getHistoricalLatestAsPrice();
-                document.getElementById('dataSourceText').innerText = "連線異常(歷史收盤)";
-                document.getElementById('dataSourceText').className = "font-bold text-yellow-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
-            }
-        } else {
-            // Off-market: try Fugle first (can return today's close after market), fall back to historical
-            fugleData = await this.fetchFugleData(targetSym);
-            if (fugleData) {
-                document.getElementById('dataSourceText').innerText = "限價";
-                document.getElementById('dataSourceText').className = "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-blue-500";
-            } else {
-                fugleData = this._getHistoricalLatestAsPrice();
-                document.getElementById('dataSourceText').innerText = "歷史收盤";
-                document.getElementById('dataSourceText').className = "font-bold text-gray-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-gray-500";
-            }
+        fugleData = await this.fetchFugleData(targetSym);
+        if (fugleData) {
+            document.getElementById('dataSourceText').innerText = "即時報價";
+            document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
+            document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
+        } else if (!this.apiRateLimited) {
+            fugleData = this._getHistoricalLatestAsPrice();
+            document.getElementById('dataSourceText').innerText = "連線異常(歷史收盤)";
+            document.getElementById('dataSourceText').className = "font-bold text-yellow-400 text-[10px] font-mono tracking-wide";
+            document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
         }
 
         this.applyLatestPrice(fugleData, null);
