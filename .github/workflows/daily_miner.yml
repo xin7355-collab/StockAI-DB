@@ -14,6 +14,10 @@ on:
         description: '批次索引 0-4（留空自動從時間判斷）'
         required: false
         default: 'auto'
+      run_all_batches:
+        description: '🚀 一鍵全市場採礦（5批次全跑，約 60-70 分鐘）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,7 +25,7 @@ permissions:
 jobs:
   mine-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: 📥 下載程式碼（只要最新的腳本）
@@ -74,7 +78,20 @@ jobs:
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
           BATCH_INDEX: ${{ env.BATCH_INDEX }}
           TOTAL_BATCHES: ${{ env.TOTAL_BATCHES }}
-        run: python miner.py
+        run: |
+          if [ "${{ github.event.inputs.run_all_batches }}" == "true" ]; then
+            echo "🚀 全批次採礦模式（5 批次，批次 1-4 略過法人/籌碼/期貨/美股）"
+            for BATCH in 0 1 2 3 4; do
+              echo "=== 批次 $BATCH ==="
+              if [ $BATCH -eq 0 ]; then
+                BATCH_INDEX=$BATCH TOTAL_BATCHES=5 python miner.py
+              else
+                BATCH_INDEX=$BATCH TOTAL_BATCHES=5 SKIP_GLOBAL=1 python miner.py
+              fi
+            done
+          else
+            python miner.py
+          fi
 
       - name: 📡 部署所有資料到 gh-pages（股票K線 + 分點籌碼 + 快取）
         run: |

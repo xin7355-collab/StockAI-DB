@@ -212,6 +212,18 @@
         </div>
     </div>
 
+    <!-- 🗡️ 獵殺監控抽屜（向左滑動顯示，4秒後自動收起） -->
+    <div id="huntSlidePanel"
+         style="position:fixed; top:85px; right:-130px; z-index:150; transition:right 0.3s ease;"
+         onclick="event.stopPropagation()">
+        <div class="bg-[#1c2128] border border-gray-600 border-r-0 rounded-l-xl p-3 shadow-2xl flex flex-col items-center gap-1.5">
+            <span id="monitorHuntIcon"
+                  class="text-2xl cursor-pointer hover:scale-110 transition-transform leading-none"
+                  onclick="app.toggleMonitor();app.vibrate(30);app.closeHuntPanel();">🗡️</span>
+            <span class="text-gray-500 text-[10px] font-mono tracking-wide">獵殺</span>
+        </div>
+    </div>
+
     <!-- ✨ 技術面 AI 診斷 Modal -->
     <div id="techAIModal" class="modal-base hidden" style="display:none"
          onclick="if(event.target===this){app.closeTechAIModal();}">
@@ -297,7 +309,9 @@
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
-                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2">
+                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2"
+                     ontouchstart="app._huntSwipeX=event.touches[0].clientX"
+                     ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>60){app.openHuntPanel();}">
                     <!-- 左側：☆ + 名稱 + 標籤 -->
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-center gap-1.5 min-w-0 overflow-hidden">
@@ -306,7 +320,6 @@
                         </div>
                         <span id="quoteCode" class="text-[11px] text-gray-500 font-mono font-bold leading-none mt-0.5"></span>
                         <div class="flex items-center gap-1 mt-1 flex-wrap">
-                            <span id="monitorHuntIcon" class="cursor-pointer text-base text-gray-500 hover:scale-110 leading-none flex-shrink-0 transition-transform" onclick="app.toggleMonitor(); app.vibrate(30);" title="加入/移除獵殺監控">🗡️</span>
                             <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
                             <span id="headerScoreStatus" class="hidden text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').classList.remove('hidden')">--</span>
                             <span id="invBadge" class="hidden bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
@@ -517,6 +530,50 @@
 
             <!-- 🏢 企業情報與消息體檢 -->
             <div id="subContentCorp" class="hidden flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
+
+                <!-- 🔬 個股基本面 X 光機（置頂） -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
+                    <h4 class="text-purple-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
+                        <div class="flex items-center gap-1.5"><span>🔬</span> 個股基本面 X 光機</div>
+                        <button id="fundamentalXrayBtn"
+                            onclick="app.fetchFundamentalAnalysis(app.currentSymbolId); app.vibrate(30);"
+                            class="text-[10px] font-mono bg-purple-900/30 hover:bg-purple-700/40 text-purple-300 px-2 py-0.5 rounded border border-purple-700/50 transition-colors disabled:opacity-40">
+                            X 光掃描
+                        </button>
+                    </h4>
+                    <div class="grid grid-cols-2 gap-1.5 mb-2">
+                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">EPS（最新季）</span>
+                            <span id="xrayEps" class="font-mono font-bold text-base text-gray-600">--</span>
+                        </div>
+                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">營收 YoY</span>
+                            <span id="xrayYoy" class="font-mono font-bold text-base text-gray-600">--</span>
+                        </div>
+                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">本益比 PE</span>
+                            <span id="xrayPe" class="font-mono font-bold text-base text-gray-600">--</span>
+                        </div>
+                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">殖利率</span>
+                            <span id="xrayYield" class="font-mono font-bold text-base text-gray-600">--</span>
+                        </div>
+                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">毛利率趨勢</span>
+                            <span id="xrayGrossMargin" class="font-mono font-bold text-sm leading-tight text-gray-600">--</span>
+                        </div>
+                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">股利發配率</span>
+                            <span id="xrayPayout" class="font-mono font-bold text-base text-gray-600">--</span>
+                        </div>
+                    </div>
+                    <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
+                        <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
+                        <div id="xrayAIResult" class="text-gray-200 text-sm leading-relaxed"></div>
+                    </div>
+                </div>
+
+                <!-- 🏢 企業情報與消息體檢 -->
                 <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm relative overflow-hidden">
                     <div class="absolute right-0 top-0 w-20 h-20 bg-blue-500/10 blur-2xl rounded-full pointer-events-none"></div>
                     <h4 class="text-blue-400 font-bold text-base mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
@@ -540,73 +597,32 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- 🔬 個股基本面 X 光機 -->
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                <h4 class="text-purple-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
-                    <div class="flex items-center gap-1.5"><span>🔬</span> 個股基本面 X 光機</div>
-                    <button id="fundamentalXrayBtn"
-                        onclick="app.fetchFundamentalAnalysis(app.currentSymbolId); app.vibrate(30);"
-                        class="text-[10px] font-mono bg-purple-900/30 hover:bg-purple-700/40 text-purple-300 px-2 py-0.5 rounded border border-purple-700/50 transition-colors disabled:opacity-40">
-                        X 光掃描
-                    </button>
-                </h4>
-                <div class="grid grid-cols-2 gap-1.5 mb-2">
-                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">EPS（最新季）</span>
-                        <span id="xrayEps" class="font-mono font-bold text-base text-gray-600">--</span>
-                    </div>
-                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">營收 YoY</span>
-                        <span id="xrayYoy" class="font-mono font-bold text-base text-gray-600">--</span>
-                    </div>
-                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">本益比 PE</span>
-                        <span id="xrayPe" class="font-mono font-bold text-base text-gray-600">--</span>
-                    </div>
-                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">殖利率</span>
-                        <span id="xrayYield" class="font-mono font-bold text-base text-gray-600">--</span>
-                    </div>
-                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">毛利率趨勢</span>
-                        <span id="xrayGrossMargin" class="font-mono font-bold text-sm leading-tight text-gray-600">--</span>
-                    </div>
-                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">股利發配率</span>
-                        <span id="xrayPayout" class="font-mono font-bold text-base text-gray-600">--</span>
+                <!-- ✨ 一鍵技術面 AI 診斷 -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
+                    <h4 class="text-blue-400 font-bold text-sm mb-2 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">
+                        <span>✨</span> 一鍵技術面 AI 診斷
+                    </h4>
+                    <div class="flex overflow-x-auto gap-2 pb-1" style="scrollbar-width:none">
+                        <button onclick="app.triggerTechAI('trend');app.vibrate(30);"
+                                class="flex-shrink-0 px-3 py-1.5 bg-blue-900/30 text-blue-400 rounded-full text-xs whitespace-nowrap border border-blue-800/50 hover:bg-blue-800/50 transition-colors">
+                            📈 均線多頭起漲
+                        </button>
+                        <button onclick="app.triggerTechAI('pullback');app.vibrate(30);"
+                                class="flex-shrink-0 px-3 py-1.5 bg-purple-900/30 text-purple-400 rounded-full text-xs whitespace-nowrap border border-purple-800/50 hover:bg-purple-800/50 transition-colors">
+                            📉 跌深打折回測
+                        </button>
+                        <button onclick="app.triggerTechAI('breakout');app.vibrate(30);"
+                                class="flex-shrink-0 px-3 py-1.5 bg-orange-900/30 text-orange-400 rounded-full text-xs whitespace-nowrap border border-orange-800/50 hover:bg-orange-800/50 transition-colors">
+                            🔥 爆量突破表態
+                        </button>
+                        <button onclick="app.triggerTechAI('defense');app.vibrate(30);"
+                                class="flex-shrink-0 px-3 py-1.5 bg-red-900/30 text-red-400 rounded-full text-xs whitespace-nowrap border border-red-800/50 hover:bg-red-800/50 transition-colors">
+                            🚨 破線停損防守
+                        </button>
                     </div>
                 </div>
-                <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
-                    <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
-                    <div id="xrayAIResult" class="text-gray-200 text-sm leading-relaxed"></div>
-                </div>
-            </div>
 
-            <!-- ✨ 一鍵技術面 AI 診斷 -->
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                <h4 class="text-blue-400 font-bold text-sm mb-2 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">
-                    <span>✨</span> 一鍵技術面 AI 診斷
-                </h4>
-                <div class="flex overflow-x-auto gap-2 pb-1" style="scrollbar-width:none">
-                    <button onclick="app.triggerTechAI('trend');app.vibrate(30);"
-                            class="flex-shrink-0 px-3 py-1.5 bg-blue-900/30 text-blue-400 rounded-full text-xs whitespace-nowrap border border-blue-800/50 hover:bg-blue-800/50 transition-colors">
-                        📈 均線多頭起漲
-                    </button>
-                    <button onclick="app.triggerTechAI('pullback');app.vibrate(30);"
-                            class="flex-shrink-0 px-3 py-1.5 bg-purple-900/30 text-purple-400 rounded-full text-xs whitespace-nowrap border border-purple-800/50 hover:bg-purple-800/50 transition-colors">
-                        📉 跌深打折回測
-                    </button>
-                    <button onclick="app.triggerTechAI('breakout');app.vibrate(30);"
-                            class="flex-shrink-0 px-3 py-1.5 bg-orange-900/30 text-orange-400 rounded-full text-xs whitespace-nowrap border border-orange-800/50 hover:bg-orange-800/50 transition-colors">
-                        🔥 爆量突破表態
-                    </button>
-                    <button onclick="app.triggerTechAI('defense');app.vibrate(30);"
-                            class="flex-shrink-0 px-3 py-1.5 bg-red-900/30 text-red-400 rounded-full text-xs whitespace-nowrap border border-red-800/50 hover:bg-red-800/50 transition-colors">
-                        🚨 破線停損防守
-                    </button>
-                </div>
             </div>
 
         </div>
@@ -3025,6 +3041,16 @@ ${dynamicParams}
         const modal = document.getElementById('techAIModal');
         modal.classList.add('hidden');
         modal.style.display = 'none';
+    },
+
+    openHuntPanel() {
+        document.getElementById('huntSlidePanel').style.right = '0px';
+        clearTimeout(this._huntTimer);
+        this._huntTimer = setTimeout(() => this.closeHuntPanel(), 4000);
+    },
+
+    closeHuntPanel() {
+        document.getElementById('huntSlidePanel').style.right = '-130px';
     },
 
     async fetchFundamentalAnalysis(sym) {

@@ -31,6 +31,7 @@ def _rnd_hdrs() -> dict:
 FINMIND_TOKEN  = os.getenv('FINMIND_TOKEN', '')
 BATCH_INDEX    = int(os.getenv('BATCH_INDEX', '0'))
 TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
+SKIP_GLOBAL    = bool(int(os.getenv('SKIP_GLOBAL', '0')))  # 批次 1-4 略過全市場抓取
 
 # ── 監控清單 ──────────────────────────────────────────────────────────────────
 CHIP_WATCHLIST = sorted(set([
@@ -554,21 +555,24 @@ def run():
 
     trading_days = get_trading_days(10)
 
-    print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日）...")
     inst_cache:   dict = {}
     margin_cache: dict = {}
-    for d in trading_days:
-        dd = d.strftime('%Y-%m-%d')
-        inst = fetch_market_institutional(d)
-        if inst:
-            inst_cache[dd] = inst
-            print(f"  法人 {dd}: {len(inst)} 筆")
-        time.sleep(0.8)
-        marg = fetch_market_margin(d)
-        if marg:
-            margin_cache[dd] = marg
-            print(f"  融券 {dd}: {len(marg)} 筆")
-        time.sleep(0.8)
+    if not SKIP_GLOBAL:
+        print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日）...")
+        for d in trading_days:
+            dd = d.strftime('%Y-%m-%d')
+            inst = fetch_market_institutional(d)
+            if inst:
+                inst_cache[dd] = inst
+                print(f"  法人 {dd}: {len(inst)} 筆")
+            time.sleep(0.8)
+            marg = fetch_market_margin(d)
+            if marg:
+                margin_cache[dd] = marg
+                print(f"  融券 {dd}: {len(marg)} 筆")
+            time.sleep(0.8)
+    else:
+        print(f"\n⚡ SKIP_GLOBAL=1：跳過法人/融資券抓取（OHLCV 模式）")
 
     # 從法人資料衍生全市場清單，依批次分割
     watchlist = get_batch_symbols(inst_cache, BATCH_INDEX, TOTAL_BATCHES)
@@ -1000,7 +1004,10 @@ if __name__ == '__main__':
     print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
     inst_cache, margin_cache = run()                        # 採礦：OHLCV + 法人 → SQLite
     export_json(inst_cache, margin_cache)                   # 匯出 JSON：疊上最新法人快取
-    fetch_futures_cache()   # 外資期貨 → futures_cache.json
-    fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
-    fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
-    build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
+    if not SKIP_GLOBAL:
+        fetch_futures_cache()   # 外資期貨 → futures_cache.json
+        fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
+        fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
+        build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
+    else:
+        print("⚡ SKIP_GLOBAL=1：略過籌碼/期貨/美股/雷達（純 OHLCV 批次）")
