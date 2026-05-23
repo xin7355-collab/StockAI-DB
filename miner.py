@@ -308,11 +308,11 @@ def fetch_market_margin(d: date) -> dict:
 
 
 # ── SQLite ↔ JSON 橋接（gh-pages 靜態部署用）────────────────────────────────
-def export_json():
+def export_json(inst_cache: dict = None, margin_cache: dict = None):
     """
     從 SQLite stock_history 匯出每支股票的 JSON 檔案。
-    【唯一的 JSON 寫入點】── 批次寫入，取代舊的逐筆 save_json。
-    gh-pages workflow 的 'cp data/*.json' 步驟仍可正常使用。
+    inst_cache / margin_cache 若傳入，會用最新快取覆蓋 SQLite 中殘留的 0 值，
+    確保全市場每支股票的近 10 天籌碼在當次匯出即正確。
     """
     Path(DATA_DIR).mkdir(exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -346,6 +346,22 @@ def export_json():
             'margin_balance': r['margin_bal']    or 0,
             'short_balance':  r['short_bal']     or 0,
         } for r in rows]
+
+        # 新增：整合法人與融資券資料 ── 用本次採礦快取覆蓋 SQLite 殘留的 0 值
+        if inst_cache or margin_cache:
+            for rec in records:
+                date_dash = rec['date'].replace('/', '-')
+                if inst_cache and rec.get('foreign_net', 0) == 0:
+                    inst_day = (inst_cache.get(date_dash) or {}).get(sym) or {}
+                    if inst_day:
+                        rec['foreign_net'] = inst_day.get('foreign_net', 0)
+                        rec['trust_net']   = inst_day.get('trust_net',   0)
+                        rec['dealer_net']  = inst_day.get('dealer_net',  0)
+                if margin_cache and rec.get('margin_balance', 0) == 0:
+                    marg_day = (margin_cache.get(date_dash) or {}).get(sym) or {}
+                    if marg_day:
+                        rec['margin_balance'] = marg_day.get('margin_balance', 0)
+                        rec['short_balance']  = marg_day.get('short_balance',  0)
 
         p = Path(DATA_DIR) / f'{sym}.json'
         p.write_text(
@@ -559,6 +575,7 @@ def run():
 
     db_conn.close()
     print(f"\n🎉 採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
+    return inst_cache, margin_cache
 
 
 # ── 外資期貨（改用 FinMind API 防 Ban 版）────────────────────────────────────
@@ -797,8 +814,8 @@ def build_radar_cache():
 if __name__ == '__main__':
     init_db()
     print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
-    run()                   # 採礦：OHLCV + 法人 → SQLite
-    export_json()           # 從 SQLite 一次性匯出 data/*.json（gh-pages 用）
+    inst_cache, margin_cache = run()                        # 採礦：OHLCV + 法人 → SQLite
+    export_json(inst_cache, margin_cache)                   # 匯出 JSON：疊上最新法人快取
     fetch_futures_cache()   # 外資期貨 → futures_cache.json
     fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
     fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
