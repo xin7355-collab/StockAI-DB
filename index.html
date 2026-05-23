@@ -2486,7 +2486,11 @@ const app = {
                 const url = new URL(`data/chips/${sym}.json`, ghBase).href;
                 const res = await fetch(url + `?v=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
                 if (!res.ok) throw new Error('no_data');
-                records = await res.json();
+                const raw = await res.json();
+                // 新增：新格式為 {fundamentals, chips}，舊格式為純陣列
+                records = Array.isArray(raw) ? raw : (raw.chips || []);
+                // 順帶填入基本面快取（若有）
+                if (!Array.isArray(raw) && raw.fundamentals) this._applyFundamentalsToXray(raw.fundamentals);
             }
 
             if (!records || records.length === 0) throw new Error('empty');
@@ -2883,6 +2887,55 @@ ${dynamicParams}
         btn.innerHTML = '🧠 AI基本面白話解讀';
     },
 
+    // 新增：將基本面快取物件填入 X 光機 6 格（供自動載入與手動掃描共用）
+    _applyFundamentalsToXray(fund) {
+        if (!fund) return;
+        const set = (id, val, cls) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerText = val ?? '--';
+            if (cls) el.className = el.className.replace(/text-\w+-\d+/g, '') + ' ' + cls;
+        };
+        const eps = fund.eps;
+        set('xrayEps',
+            eps != null ? `${eps} 元` : null,
+            eps == null ? 'text-gray-600' : eps > 0 ? 'text-green-400' : 'text-red-400');
+        const yoy = fund.revenue_yoy;
+        set('xrayYoy',
+            yoy != null ? `${yoy}%` : null,
+            yoy == null ? 'text-gray-600' : yoy > 10 ? 'text-green-400' : yoy < 0 ? 'text-red-400' : 'text-yellow-400');
+        const pe = fund.pe;
+        set('xrayPe',
+            pe != null ? `${pe}x` : null,
+            pe == null ? 'text-gray-600' : pe < 15 ? 'text-green-400' : pe > 40 ? 'text-red-400' : 'text-yellow-400');
+        const yr = fund.yield_rate;
+        set('xrayYield',
+            yr != null ? `${yr}%` : null,
+            yr == null ? 'text-gray-600' : yr > 5 ? 'text-green-400' : yr < 2 ? 'text-gray-500' : 'text-yellow-400');
+        const gm = fund.gross_margin_trend;
+        set('xrayGrossMargin',
+            gm || null,
+            !gm ? 'text-gray-600' : gm.includes('↑') ? 'text-green-400' : 'text-red-400');
+        const pr = fund.payout_ratio;
+        set('xrayPayout',
+            pr != null ? `${pr}%` : null,
+            pr == null ? 'text-gray-600' : pr > 100 ? 'text-red-400' : pr > 70 ? 'text-yellow-400' : 'text-green-400');
+    },
+
+    // 新增：非同步背景讀取 chips JSON 的 fundamentals 快取，填入 X 光機（不阻塞主流程）
+    async _autoLoadFundamentals(sym) {
+        if (!sym) return;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const url  = new URL(`data/chips/${sym}.json`, base).href;
+            const res  = await fetch(url + `?v=${Date.now()}`);
+            if (!res.ok) return;
+            const raw  = await res.json();
+            const fund = Array.isArray(raw) ? null : (raw.fundamentals || null);
+            if (fund) this._applyFundamentalsToXray(fund);
+        } catch(e) {}
+    },
+
     async fetchFundamentalAnalysis(sym) {
         if (!sym) return;
         const btn = document.getElementById('fundamentalXrayBtn');
@@ -3195,7 +3248,10 @@ ${dynamicParams}
         }
 
         this.baseRawData = JSON.parse(JSON.stringify(rawData));
-        
+
+        // 新增：非同步載入基本面快取，填入情報頁 X 光機（不阻塞主流程）
+        this._autoLoadFundamentals(targetSym);
+
         if (this.baseRawData.length > 1) {
             const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
             const hLC = document.getElementById('headerLastClose'); if (hLC) hLC.innerText = prevCloseVal.toFixed(2);

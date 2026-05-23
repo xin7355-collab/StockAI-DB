@@ -307,6 +307,127 @@ def fetch_market_margin(d: date) -> dict:
     return res
 
 
+# ── TWSE 全市場基本面（本益比 / 殖利率 / 股價淨值比）────────────────────────
+def fetch_twse_fundamentals(d: date) -> dict:
+    """一次查全上市股票的 PE / 殖利率 / PBR（TWSE BWIBBU_d）"""
+    d8  = d.strftime('%Y%m%d')
+    url = (f'https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d'
+           f'?response=json&date={d8}&selectType=ALL')
+    res = {}
+    try:
+        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+        if j.get('stat') == 'OK':
+            fields = j.get('fields', [])
+            fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), None)
+            i_id = fi('證券代號')
+            i_yd = fi('殖利率')
+            i_pe = fi('本益比')
+            i_pb = fi('股價淨值比')
+            if None in (i_id, i_yd, i_pe):
+                print(f"  ⚠️ BWIBBU_d 欄位找不到：{fields[:6]}")
+                return res
+            for r in (j.get('data') or []):
+                try:
+                    sym = str(r[i_id]).strip()
+                    def flt(i):
+                        v = str(r[i]).replace(',', '').strip()
+                        return float(v) if v not in ('--', '') else None
+                    res[sym] = {
+                        'yield_rate': flt(i_yd),
+                        'pe':         flt(i_pe),
+                        'pbr':        flt(i_pb) if i_pb is not None else None,
+                    }
+                except Exception: pass
+    except Exception as e:
+        print(f"  ⚠️ TWSE BWIBBU_d 失敗: {e}")
+    time.sleep(random.uniform(1.5, 2.5))
+    return res
+
+
+# ── FinMind 個股基本面（EPS / YoY / 毛利率趨勢 / 發配率）────────────────────
+def fetch_finmind_fundamentals(sym: str, token_param: str) -> dict:
+    """
+    三支 FinMind API（順序呼叫，各帶 2~3.5s 隨機延遲）：
+    1. TaiwanStockFinancialStatements → EPS（最新季）+ 毛利率趨勢（近3季）
+    2. TaiwanStockMonthRevenue        → 最新月 YoY
+    3. TaiwanStockDividend            → 現金+股票股利 → 股利發配率
+    """
+    today_str = date.today().strftime('%Y-%m-%d')
+    start_fs  = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d')
+    start_rev = (date.today() - timedelta(days=90)).strftime('%Y-%m-%d')
+    start_div = (date.today() - timedelta(days=1095)).strftime('%Y-%m-%d')
+    result: dict = {}
+
+    # 1. 財務報表 ─────────────────────────────────────────────────────────────
+    try:
+        url = (f'https://api.finmindtrade.com/api/v4/data'
+               f'?dataset=TaiwanStockFinancialStatements&data_id={sym}'
+               f'&start_date={start_fs}&end_date={today_str}{token_param}')
+        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+        rows = j.get('data') or []
+        # 最新季 EPS
+        eps_rows = sorted([r for r in rows if r.get('type') == 'EPS'],
+                          key=lambda x: x.get('date', ''))
+        if eps_rows:
+            result['eps'] = float(eps_rows[-1].get('value', 0) or 0)
+        # 毛利率趨勢（近3季）
+        rev_rows = sorted([r for r in rows if r.get('type') == 'Revenue'],
+                          key=lambda x: x.get('date', ''))
+        gp_rows  = sorted([r for r in rows if r.get('type') == 'GrossProfit'],
+                          key=lambda x: x.get('date', ''))
+        rev_by_q = {r['date']: float(r.get('value', 0) or 0) for r in rev_rows[-6:]}
+        gp_by_q  = {r['date']: float(r.get('value', 0) or 0) for r in gp_rows[-6:]}
+        common_q = sorted(set(rev_by_q) & set(gp_by_q))[-3:]
+        gms = [round(gp_by_q[q] / rev_by_q[q] * 100, 1)
+               for q in common_q if rev_by_q.get(q, 0) > 0]
+        if len(gms) >= 2:
+            diff  = round(gms[-1] - gms[0], 1)
+            arrow = '↑' if diff > 0 else '↓'
+            result['gross_margin_trend'] = (
+                '→'.join(f'{g}%' for g in gms) + f'（{arrow}{abs(diff)}pp）')
+    except Exception as e:
+        print(f"    ⚠️ FinMind FS {sym}: {e}")
+    time.sleep(random.uniform(2.0, 3.5))
+
+    # 2. 月營收 YoY ─────────────────────────────────────────────────────────
+    try:
+        url = (f'https://api.finmindtrade.com/api/v4/data'
+               f'?dataset=TaiwanStockMonthRevenue&data_id={sym}'
+               f'&start_date={start_rev}&end_date={today_str}{token_param}')
+        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+        rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
+        if rows:
+            latest = rows[-1]
+            yoy = latest.get('revenue_year_growth') or latest.get('RevenueYear')
+            if yoy is not None:
+                result['revenue_yoy'] = round(float(yoy), 1)
+    except Exception as e:
+        print(f"    ⚠️ FinMind Revenue {sym}: {e}")
+    time.sleep(random.uniform(2.0, 3.5))
+
+    # 3. 股利 → 發配率 ────────────────────────────────────────────────────────
+    try:
+        url = (f'https://api.finmindtrade.com/api/v4/data'
+               f'?dataset=TaiwanStockDividend&data_id={sym}'
+               f'&start_date={start_div}&end_date={today_str}{token_param}')
+        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+        rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
+        if rows:
+            latest   = rows[-1]
+            cash_div = float(latest.get('CashDividend',  0) or 0)
+            stk_div  = float(latest.get('StockDividend', 0) or 0)
+            total_div = cash_div + stk_div
+            result['total_dividend'] = total_div
+            eps = result.get('eps')
+            if eps and abs(eps) > 0:
+                result['payout_ratio'] = round(total_div / (abs(eps) * 4) * 100, 1)
+    except Exception as e:
+        print(f"    ⚠️ FinMind Dividend {sym}: {e}")
+    time.sleep(random.uniform(2.0, 3.5))
+
+    return result
+
+
 # ── SQLite ↔ JSON 橋接（gh-pages 靜態部署用）────────────────────────────────
 def export_json(inst_cache: dict = None, margin_cache: dict = None):
     """
@@ -687,12 +808,19 @@ def fetch_broker_chips():
     today_str = date.today().strftime('%Y-%m-%d')
     watchlist = sorted(CHIP_WATCHLIST)  # 分點籌碼僅追蹤監控清單，FinMind 每小時 300 次限制
 
-    print(f"\n🕵️ 啟動分點籌碼探測 ({len(watchlist)} 檔，FinMind 免費通道，請耐心等候避免限流)...")
+    # 新增：一次查全市場 PE / 殖利率（TWSE），以及 FinMind Token
+    print("\n📊 抓取 TWSE 全市場本益比 / 殖利率快取...")
+    twse_fund = fetch_twse_fundamentals(date.today())
+    token_param = f"&token={FINMIND_TOKEN}" if FINMIND_TOKEN and "請" not in FINMIND_TOKEN else ""
+
+    print(f"\n🕵️ 啟動分點籌碼 + 基本面探測 ({len(watchlist)} 檔，請耐心等候避免限流)...")
 
     updated = 0
     for sym in watchlist:
-        url = f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockLocalSecuritiesBrokerTransactions&data_id={sym}&start_date={today_str}'
+        # ── 分點籌碼（現有邏輯，初始化移到 try 前確保例外時仍能寫 fundamentals）──
+        buyers, sellers, brokers_list = [], [], []
         try:
+            url = f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockLocalSecuritiesBrokerTransactions&data_id={sym}&start_date={today_str}'
             res = requests.get(url, headers=_HDRS, timeout=15)
             j = res.json()
             if j.get('status') == 200 and j.get('data'):
@@ -707,36 +835,51 @@ def fetch_broker_chips():
                     brokers_net[bid]['buy'] += int(r.get('buy', 0))
                     brokers_net[bid]['sel'] += int(r.get('sell', 0))
                     brokers_net[bid]['net'] += net
-
                 brokers_list = list(brokers_net.values())
                 buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
                 sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
-
-                if buyers or sellers:
-                    out_file = chips_dir / f'{sym}.json'
-                    # 讀取舊紀錄，合併今日資料，保留最近 20 個交易日
-                    existing = []
-                    if out_file.exists():
-                        try: existing = json.loads(out_file.read_text(encoding='utf-8'))
-                        except Exception: pass
-                    records_map = {r['date']: r for r in existing if isinstance(r, dict)}
-                    records_map[today_str] = {
-                        'date': today_str,
-                        'buyers': buyers,
-                        'sellers': sellers,
-                        'tot_buy': sum(b['buy'] for b in brokers_list),
-                        'tot_sel': sum(b['sel'] for b in brokers_list)
-                    }
-                    recent_dates = sorted(records_map.keys())[-20:]
-                    out_file.write_text(
-                        json.dumps([records_map[d] for d in recent_dates], ensure_ascii=False),
-                        encoding='utf-8')
-                    updated += 1
-
             time.sleep(3)
         except Exception as e:
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
             time.sleep(5)
+
+        # 新增：基本面採礦（EPS / YoY / 毛利率趨勢 / 股利發配率）
+        print(f"  📈 基本面採礦 {sym}...", end=' ', flush=True)
+        fm_fund = fetch_finmind_fundamentals(sym, token_param)
+        tw_fund = twse_fund.get(sym, {})
+        fundamentals = {
+            'eps':                fm_fund.get('eps'),
+            'revenue_yoy':        fm_fund.get('revenue_yoy'),
+            'pe':                 tw_fund.get('pe') or fm_fund.get('pe'),
+            'yield_rate':         tw_fund.get('yield_rate'),
+            'gross_margin_trend': fm_fund.get('gross_margin_trend'),
+            'payout_ratio':       fm_fund.get('payout_ratio'),
+            'generated':          today_str,
+        }
+        print("✅")
+
+        # 新增：寫入新格式 JSON（向下相容舊純陣列格式）
+        out_file = chips_dir / f'{sym}.json'
+        existing_obj: dict = {}
+        if out_file.exists():
+            try:
+                raw = json.loads(out_file.read_text(encoding='utf-8'))
+                existing_obj = {'chips': raw} if isinstance(raw, list) else raw
+            except Exception: pass
+        records_map = {r['date']: r for r in existing_obj.get('chips', []) if isinstance(r, dict)}
+        if buyers or sellers:
+            records_map[today_str] = {
+                'date': today_str, 'buyers': buyers, 'sellers': sellers,
+                'tot_buy': sum(b['buy'] for b in brokers_list),
+                'tot_sel': sum(b['sel'] for b in brokers_list)
+            }
+            updated += 1
+        recent_dates = sorted(records_map.keys())[-20:]
+        output = {
+            'fundamentals': fundamentals,
+            'chips': [records_map[d] for d in recent_dates]
+        }
+        out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')
 
     print(f"  ✅ 分點籌碼完成：更新了 {updated} 檔股票的主力動向")
 
