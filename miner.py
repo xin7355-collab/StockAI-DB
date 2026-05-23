@@ -41,6 +41,8 @@ CHIP_WATCHLIST = sorted(set([
     '6488','6515','6770','3037','8046','4977','6278','6191',
     '0050','0056','00878','00929','00919',
 ]))
+HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調整）
+FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
 
 # ── 券商戰術標籤庫 ────────────────────────────────────────────────────────────
 TACTICAL_TAGS = {
@@ -806,7 +808,28 @@ def fetch_broker_chips():
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
     today_str = date.today().strftime('%Y-%m-%d')
-    watchlist = sorted(CHIP_WATCHLIST)  # 分點籌碼僅追蹤監控清單，FinMind 每小時 300 次限制
+    # ── 動態熱門股清單：CHIP_WATCHLIST（必選）∪ SQLite 近 14 天高量股 ──────────
+    priority_set = set(CHIP_WATCHLIST)   # 用戶精選股永遠優先
+    if Path(DB_PATH).exists():
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            rows = conn.execute("""
+                SELECT symbol, AVG(volume) AS avg_vol
+                FROM stock_history
+                WHERE trade_date >= date('now', '-14 days')
+                  AND volume IS NOT NULL AND volume > 0
+                GROUP BY symbol
+                ORDER BY avg_vol DESC
+            """).fetchall()
+            conn.close()
+            for sym, _ in rows:
+                priority_set.add(sym)
+                if len(priority_set) >= HOT_CHIPS_LIMIT:
+                    break
+        except Exception as e:
+            print(f"  ⚠️ 熱門股查詢失敗，回退至 CHIP_WATCHLIST: {e}")
+    watchlist = sorted(priority_set)[:HOT_CHIPS_LIMIT]
+    print(f"  📋 分點籌碼目標：{len(watchlist)} 檔（精選 {len(CHIP_WATCHLIST)} + 熱門補充）")
 
     # 新增：一次查全市場 PE / 殖利率（TWSE），以及 FinMind Token
     print("\n📊 抓取 TWSE 全市場本益比 / 殖利率快取...")
@@ -817,6 +840,15 @@ def fetch_broker_chips():
 
     updated = 0
     for sym in watchlist:
+        # ① 提前讀取 out_file → existing_obj（供 TTL 判斷和後面寫入共用）
+        out_file = chips_dir / f'{sym}.json'
+        existing_obj: dict = {}
+        if out_file.exists():
+            try:
+                raw = json.loads(out_file.read_text(encoding='utf-8'))
+                existing_obj = {'chips': raw} if isinstance(raw, list) else raw
+            except Exception: pass
+
         # ── 分點籌碼（現有邏輯，初始化移到 try 前確保例外時仍能寫 fundamentals）──
         buyers, sellers, brokers_list = [], [], []
         try:
@@ -843,29 +875,38 @@ def fetch_broker_chips():
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
             time.sleep(5)
 
-        # 新增：基本面採礦（EPS / YoY / 毛利率趨勢 / 股利發配率）
-        print(f"  📈 基本面採礦 {sym}...", end=' ', flush=True)
-        fm_fund = fetch_finmind_fundamentals(sym, token_param)
-        tw_fund = twse_fund.get(sym, {})
-        fundamentals = {
-            'eps':                fm_fund.get('eps'),
-            'revenue_yoy':        fm_fund.get('revenue_yoy'),
-            'pe':                 tw_fund.get('pe') or fm_fund.get('pe'),
-            'yield_rate':         tw_fund.get('yield_rate'),
-            'gross_margin_trend': fm_fund.get('gross_margin_trend'),
-            'payout_ratio':       fm_fund.get('payout_ratio'),
-            'generated':          today_str,
-        }
-        print("✅")
-
-        # 新增：寫入新格式 JSON（向下相容舊純陣列格式）
-        out_file = chips_dir / f'{sym}.json'
-        existing_obj: dict = {}
-        if out_file.exists():
+        # ② 基本面 TTL 快取：若距上次查詢未逾 FUND_CACHE_DAYS 天，跳過 FinMind
+        cached_fund = existing_obj.get('fundamentals') or {}
+        generated_str = cached_fund.get('generated', '')
+        skip_finmind = False
+        if generated_str:
             try:
-                raw = json.loads(out_file.read_text(encoding='utf-8'))
-                existing_obj = {'chips': raw} if isinstance(raw, list) else raw
+                age_days = (date.today() - date.fromisoformat(generated_str)).days
+                skip_finmind = age_days < FUND_CACHE_DAYS
             except Exception: pass
+
+        if skip_finmind:
+            print(f"  ⚡ 基本面快取有效（{generated_str}），跳過 FinMind")
+            tw_fund = twse_fund.get(sym, {})
+            fundamentals = {**cached_fund,
+                            'pe':         tw_fund.get('pe') or cached_fund.get('pe'),
+                            'yield_rate': tw_fund.get('yield_rate') or cached_fund.get('yield_rate')}
+        else:
+            print(f"  📈 基本面採礦 {sym}...", end=' ', flush=True)
+            fm_fund = fetch_finmind_fundamentals(sym, token_param)
+            tw_fund = twse_fund.get(sym, {})
+            fundamentals = {
+                'eps':                fm_fund.get('eps'),
+                'revenue_yoy':        fm_fund.get('revenue_yoy'),
+                'pe':                 tw_fund.get('pe') or fm_fund.get('pe'),
+                'yield_rate':         tw_fund.get('yield_rate'),
+                'gross_margin_trend': fm_fund.get('gross_margin_trend'),
+                'payout_ratio':       fm_fund.get('payout_ratio'),
+                'generated':          today_str,
+            }
+            print("✅")
+
+        # ③ 寫入新格式 JSON（existing_obj 已在迴圈頂部讀取，不重複讀檔）
         records_map = {r['date']: r for r in existing_obj.get('chips', []) if isinstance(r, dict)}
         if buyers or sellers:
             records_map[today_str] = {
