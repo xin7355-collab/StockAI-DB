@@ -36,19 +36,15 @@ jobs:
             echo "BATCH_INDEX=$INPUT" >> $GITHUB_ENV
             echo "TOTAL_BATCHES=5"   >> $GITHUB_ENV
           else
-            python3 - <<'PYEOF'
-import datetime, os
-now = datetime.datetime.utcnow()
-m = now.hour * 60 + now.minute
-if   m < 8*60+50:  idx = 0
-elif m < 9*60+20:  idx = 1
-elif m < 9*60+50:  idx = 2
-elif m < 10*60+20: idx = 3
-else:              idx = 4
-with open(os.environ['GITHUB_ENV'], 'a') as f:
-    f.write(f"BATCH_INDEX={idx}\n")
-    f.write("TOTAL_BATCHES=5\n")
-PYEOF
+            NOW_MIN=$(( $(date -u '+%H') * 60 + $(date -u '+%M') ))
+            if   [ $NOW_MIN -lt 530 ]; then IDX=0
+            elif [ $NOW_MIN -lt 560 ]; then IDX=1
+            elif [ $NOW_MIN -lt 590 ]; then IDX=2
+            elif [ $NOW_MIN -lt 620 ]; then IDX=3
+            else                            IDX=4
+            fi
+            echo "BATCH_INDEX=$IDX" >> $GITHUB_ENV
+            echo "TOTAL_BATCHES=5"  >> $GITHUB_ENV
           fi
           echo "▶ 本次批次：BATCH_INDEX=${BATCH_INDEX:-?}"
 
