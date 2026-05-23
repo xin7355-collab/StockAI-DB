@@ -524,6 +524,48 @@
                 </div>
             </div>
 
+            <!-- 🔬 個股基本面 X 光機 -->
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
+                <h4 class="text-purple-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
+                    <div class="flex items-center gap-1.5"><span>🔬</span> 個股基本面 X 光機</div>
+                    <button id="fundamentalXrayBtn"
+                        onclick="app.fetchFundamentalAnalysis(app.currentSymbolId); app.vibrate(30);"
+                        class="text-[10px] font-mono bg-purple-900/30 hover:bg-purple-700/40 text-purple-300 px-2 py-0.5 rounded border border-purple-700/50 transition-colors disabled:opacity-40">
+                        X 光掃描
+                    </button>
+                </h4>
+                <div class="grid grid-cols-2 gap-1.5 mb-2">
+                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">EPS（最新季）</span>
+                        <span id="xrayEps" class="font-mono font-bold text-base text-gray-600">--</span>
+                    </div>
+                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">營收 YoY</span>
+                        <span id="xrayYoy" class="font-mono font-bold text-base text-gray-600">--</span>
+                    </div>
+                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">本益比 PE</span>
+                        <span id="xrayPe" class="font-mono font-bold text-base text-gray-600">--</span>
+                    </div>
+                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">殖利率</span>
+                        <span id="xrayYield" class="font-mono font-bold text-base text-gray-600">--</span>
+                    </div>
+                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">毛利率趨勢</span>
+                        <span id="xrayGrossMargin" class="font-mono font-bold text-sm leading-tight text-gray-600">--</span>
+                    </div>
+                    <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">股利發配率</span>
+                        <span id="xrayPayout" class="font-mono font-bold text-base text-gray-600">--</span>
+                    </div>
+                </div>
+                <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
+                    <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
+                    <div id="xrayAIResult" class="text-gray-200 text-sm leading-relaxed"></div>
+                </div>
+            </div>
+
         </div>
 
         <!-- 🌐 市場總覽 (top-level tab) -->
@@ -2839,6 +2881,130 @@ ${dynamicParams}
             result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
         }
         btn.innerHTML = '🧠 AI基本面白話解讀';
+    },
+
+    async fetchFundamentalAnalysis(sym) {
+        if (!sym) return;
+        const btn = document.getElementById('fundamentalXrayBtn');
+        btn.textContent = '掃描中...';
+        btn.disabled = true;
+
+        const CELL_IDS = ['xrayEps','xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout'];
+        CELL_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = '<span class="animate-pulse text-gray-600 text-xs">…</span>';
+        });
+
+        const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const d = new Date(); d.setFullYear(d.getFullYear() - 2);
+        const startDate = d.toISOString().split('T')[0];
+        const d2 = new Date(); d2.setMonth(d2.getMonth() - 3);
+        const revStart = d2.toISOString().split('T')[0];
+
+        const setCell = (id, val, unit, colorClass) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (val == null) { el.innerHTML = '<span class="text-gray-600 text-xs">無資料</span>'; return; }
+            const fmt = typeof val === 'number' ? (Math.abs(val) >= 100 ? Math.round(val) : parseFloat(val.toFixed(2))) : val;
+            el.className = `font-mono font-bold ${id === 'xrayGrossMargin' ? 'text-sm leading-tight' : 'text-base'} ${colorClass || 'text-white'}`;
+            el.textContent = `${fmt}${unit || ''}`;
+        };
+
+        try {
+            const [fsRes, revRes, divRes] = await Promise.all([
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]})),
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revStart}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]})),
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}${tokenStr}`, {}, {timeout:8000, maxRetries:1}).then(r=>r.json()).catch(()=>({data:[]})),
+            ]);
+
+            // EPS
+            const epsRows = (fsRes.data||[]).filter(r=>r.type==='EPS').sort((a,b)=>a.date>b.date?1:-1);
+            const latestEps = epsRows.length ? epsRows[epsRows.length-1].value : null;
+
+            // Gross Margin Trend (最近3季)
+            const byQ = {};
+            for (const r of (fsRes.data||[])) {
+                const q = r.date?.substring(0,7) || String(r.year);
+                if (!byQ[q]) byQ[q] = {};
+                if (r.type==='GrossProfit'||r.type==='gross_profit') byQ[q].gross = r.value;
+                if (r.type==='Revenue'    ||r.type==='revenue')      byQ[q].rev   = r.value;
+            }
+            const validQs = Object.keys(byQ).filter(q=>byQ[q].gross!=null&&byQ[q].rev>0).sort().slice(-3);
+            const gmArr = validQs.map(q=>(byQ[q].gross/byQ[q].rev*100));
+            let gmTrend = null, gmTrendStr = null;
+            if (gmArr.length >= 2) {
+                const delta = gmArr[gmArr.length-1] - gmArr[0];
+                gmTrend = delta;
+                gmTrendStr = `${gmArr[0].toFixed(1)}%→${gmArr[gmArr.length-1].toFixed(1)}% (${delta>=0?'↑':'↓'}${Math.abs(delta).toFixed(1)}pp)`;
+            } else if (gmArr.length===1) {
+                gmTrendStr = `${gmArr[0].toFixed(1)}%`;
+            }
+
+            // Revenue YoY
+            const revData = (revRes.data||[]).sort((a,b)=>
+                (`${a.revenue_year}${String(a.revenue_month).padStart(2,'0')}`>
+                 `${b.revenue_year}${String(b.revenue_month).padStart(2,'0')}`) ? 1:-1);
+            const latestRev = revData.length ? revData[revData.length-1] : null;
+            const latestYoy = latestRev?.revenue_year_growth ?? null;
+
+            // Dividend: Yield & Payout
+            const divData = (divRes.data||[]).sort((a,b)=>a.date>b.date?1:-1);
+            const latestDiv = divData.length ? divData[divData.length-1] : null;
+            const totalDiv = latestDiv ? ((latestDiv.cash_dividend||0)+(latestDiv.stock_dividend||0)) : null;
+            const currentClose = this.rawDailyData?.length ? this.rawDailyData[this.rawDailyData.length-1].close : null;
+            const yieldRate = (totalDiv&&currentClose&&currentClose>0) ? (totalDiv/currentClose*100) : null;
+            const annualEps = latestEps ? latestEps*4 : null;
+            const payoutRatio = (totalDiv&&annualEps&&annualEps>0) ? (totalDiv/annualEps*100) : null;
+            const pe = (currentClose&&annualEps&&annualEps>0) ? (currentClose/annualEps) : null;
+
+            // Populate grid
+            setCell('xrayEps', latestEps, ' 元', latestEps==null?null:latestEps>0?'text-green-400':latestEps<0?'text-red-400':'text-gray-400');
+            const yoyPrefix = latestYoy!=null&&latestYoy>0 ? '+' : '';
+            setCell('xrayYoy', latestYoy!=null?`${yoyPrefix}${latestYoy.toFixed(1)}`:null, '%', latestYoy==null?null:latestYoy>10?'text-green-400':latestYoy<0?'text-red-400':'text-yellow-400');
+            setCell('xrayPe', pe, 'x', pe==null?null:pe<15?'text-green-400':pe>40?'text-red-400':'text-yellow-400');
+            setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
+            document.getElementById('xrayGrossMargin').className = `font-mono font-bold text-sm leading-tight ${gmTrend==null?'text-gray-600':gmTrend>0?'text-green-400':gmTrend<0?'text-red-400':'text-gray-400'}`;
+            document.getElementById('xrayGrossMargin').textContent = gmTrendStr || '無資料';
+            setCell('xrayPayout', payoutRatio, '%', payoutRatio==null?null:payoutRatio>100?'text-red-400':payoutRatio>70?'text-yellow-400':'text-green-400');
+
+            // AI
+            const xrayAIBox = document.getElementById('xrayAIBox');
+            const xrayAIResult = document.getElementById('xrayAIResult');
+            xrayAIBox.classList.remove('hidden');
+            xrayAIResult.innerHTML = '<span class="animate-pulse text-purple-400 text-xs">🔬 總裁正在解剖財報...</span>';
+
+            const payload = { symbol:sym, eps:latestEps, yoy:latestYoy!=null?parseFloat(latestYoy.toFixed(1)):null,
+                pe:pe?parseFloat(pe.toFixed(1)):null, yield_rate:yieldRate?parseFloat(yieldRate.toFixed(2)):null,
+                gross_margin_trend:gmTrendStr, payout_ratio:payoutRatio?parseFloat(payoutRatio.toFixed(1)):null, max_tokens:300 };
+
+            let aiText = null;
+            if (this._apiBase) {
+                try {
+                    const res = await this.safeFetch(`${this._apiBase}/api/analyze_fundamentals`, {
+                        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+                    }, {timeout:60000, maxRetries:1});
+                    if (res.ok) aiText = (await res.json()).content;
+                } catch(e2) { /* fallback */ }
+            }
+            if (!aiText) {
+                const yoyStr = latestYoy!=null?`${latestYoy.toFixed(1)}%`:'?';
+                const fallbackPrompt = `你是台股操盤總裁，講話犀利直接。根據${sym}基本面：EPS ${latestEps??'?'}元、YoY ${yoyStr}、PE ${pe?.toFixed(1)??'?'}x、殖利率${yieldRate?.toFixed(1)??'?'}%、毛利率${gmTrendStr??'?'}、發配率${payoutRatio?.toFixed(0)??'?'}%。用100~150字大白話判定是🔥成長火箭/⚠️空氣泡泡/🚨價值陷阱/中性觀察，並給實戰建議。`;
+                aiText = await this._callAI({prompt:fallbackPrompt, max_tokens:300, temperature:0.5}).catch(()=>null);
+            }
+            xrayAIResult.innerHTML = aiText
+                ? aiText.replace(/\n/g,'<br>')
+                : '<span class="text-yellow-400 text-xs">⚠️ 請設定 Groq API Key 或啟動後端伺服器。</span>';
+
+        } catch(e) {
+            console.error('[fetchFundamentalAnalysis]', e);
+            CELL_IDS.forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML='<span class="text-red-500 text-xs">錯</span>'; });
+            const box = document.getElementById('xrayAIBox');
+            box?.classList.remove('hidden');
+            document.getElementById('xrayAIResult').innerHTML = `<span class="text-red-400 text-xs">❌ 資料讀取失敗：${e.message}</span>`;
+        } finally {
+            btn.textContent = 'X 光掃描';
+            btn.disabled = false;
+        }
     },
 
     async fetchCorpEvents(sym) {

@@ -848,6 +848,47 @@ _CHAT_SYSTEM_PROMPT = (
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# 【個股基本面 X 光機】POST /api/analyze_fundamentals
+# ══════════════════════════════════════════════════════════════════════════════
+
+class FundamentalsRequest(BaseModel):
+    symbol:             str
+    eps:                Optional[float] = None
+    yoy:                Optional[float] = None
+    pe:                 Optional[float] = None
+    yield_rate:         Optional[float] = None
+    gross_margin_trend: Optional[str]   = None
+    payout_ratio:       Optional[float] = None
+    max_tokens:         int             = Field(default=280, ge=80, le=600)
+
+
+@app.post("/api/analyze_fundamentals")
+async def analyze_fundamentals(req: FundamentalsRequest):
+    def _v(val, unit=''):
+        return f"{val}{unit}" if val is not None else "無資料"
+
+    prompt = f"""你是台股身經百戰的操盤總裁，講話犀利直接，專門戳破上市公司財報粉飾。
+根據以下 {req.symbol} 的 6 大基本面數據，輸出 100~150 字大白話實戰解析：
+
+EPS（最新季）：{_v(req.eps, ' 元')}
+營收 YoY（最新月）：{_v(req.yoy, '%')}
+本益比 PE：{_v(req.pe, 'x')}
+殖利率：{_v(req.yield_rate, '%')}
+毛利率趨勢：{req.gross_margin_trend or '無資料'}
+股利發配率：{_v(req.payout_ratio, '%')}
+
+解讀矩陣（符合就標記，都不符合就說「中性觀察」）：
+🔥 嚴重低估的成長火箭：高 YoY + PE<15 + 毛利增
+⚠️ 靠題材炒作的空氣泡泡：低/負 YoY + PE>40
+🚨 價值陷阱/掏空資本警告：殖利率>8% + 負YoY 或 發配率>100%
+
+先點判定結果，再大白話解讀體質。"""
+
+    content = await call_groq_api(prompt, max_tokens=req.max_tokens, temperature=0.5)
+    return {"content": content}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 【自主代理人】POST /api/chat — Groq Tool Calling 迴圈
 # ══════════════════════════════════════════════════════════════════════════════
 
