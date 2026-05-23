@@ -17,15 +17,16 @@
 **重要**：gh-pages 和 data 分支都用 orphan force-push，不累積歷史，空間不會爆炸。
 
 ## 開發分支
-目前所有修改都在 `claude/optimize-html-c20DA`，尚未合併到 main。
-GitHub Actions workflow 需要從這個分支觸發才會用到最新程式碼。
+**直接在 `main` 分支開發**。GitHub Actions cron 排程只從 default branch（main）讀取，
+若開新分支會導致採礦機無法用到最新程式碼。
+手動觸發時，永遠選 **`main`** 分支。
 
 ---
 
 ## GitHub Actions Workflow
 檔案：`.github/workflows/daily_miner.yml`
-- 每個交易日台灣時間 16:30 自動執行
-- 可手動觸發：Actions → 每日籌碼採礦機 → Run workflow → 選 `claude/optimize-html-c20DA`
+- 每個交易日台灣時間 16:30～18:30，每 30 分鐘一批，共 5 批次自動執行
+- 可手動觸發：Actions → 每日籌碼採礦機 → Run workflow → 選 **`main`** → 輸入 batch_index（0-4，留空自動）
 - 執行順序：採礦(miner.py) → 部署 gh-pages → 部署 data 分支
 
 ---
