@@ -7,6 +7,7 @@ import csv
 import json
 import math
 import os
+import random
 import re
 import sqlite3
 import requests
@@ -19,6 +20,14 @@ Path(DATA_DIR).mkdir(exist_ok=True)
 DB_PATH = "stock_hunter.db"
 
 _HDRS          = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
+_UA_LIST = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+]
+def _rnd_hdrs() -> dict:
+    return {'User-Agent': random.choice(_UA_LIST)}
 FINMIND_TOKEN  = os.getenv('FINMIND_TOKEN', '')
 BATCH_INDEX    = int(os.getenv('BATCH_INDEX', '0'))
 TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
@@ -213,7 +222,7 @@ def fetch_market_institutional(d: date) -> dict:
     # 1. 抓取上市 (TWSE T86)
     try:
         url = f'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&date={d8}&selectType=ALL'
-        j = requests.get(url, headers=_HDRS, timeout=15).json()
+        j = requests.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
             fields = j.get('fields', [])
             idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), None)
@@ -233,11 +242,12 @@ def fetch_market_institutional(d: date) -> dict:
                     }
                 except (ValueError, IndexError): pass
     except Exception as e: print(f"  ⚠️ 上市法人失敗: {e}")
+    time.sleep(random.uniform(3.0, 5.0))
 
     # 2. 抓取上櫃 (TPEX)
     try:
         url_otc = f'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D&d={d_tpex}'
-        j = requests.get(url_otc, headers=_HDRS, timeout=15).json()
+        j = requests.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
         for r in (j.get('aaData') or []):
             try:
                 res[str(r[0]).strip()] = {
@@ -247,6 +257,7 @@ def fetch_market_institutional(d: date) -> dict:
                 }
             except: pass
     except Exception as e: print(f"  ⚠️ 上櫃法人失敗: {e}")
+    time.sleep(random.uniform(3.0, 5.0))
 
     return res
 
@@ -261,7 +272,7 @@ def fetch_market_margin(d: date) -> dict:
     # 1. 抓取上市 (TWSE MI_MARGN)
     try:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
-        j = requests.get(url, headers=_HDRS, timeout=15).json()
+        j = requests.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
             target_table = next((t for t in j.get('tables', []) if '信用' in t.get('title', '')), None)
             if target_table:
@@ -277,11 +288,12 @@ def fetch_market_margin(d: date) -> dict:
                         }
                     except: pass
     except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
+    time.sleep(random.uniform(3.0, 5.0))
 
     # 2. 抓取上櫃 (TPEX)
     try:
         url_otc = f'https://www.tpex.org.tw/web/stock/margin_trading/margin_balance/margin_bal_result.php?l=zh-tw&o=json&d={d_tpex}'
-        j = requests.get(url_otc, headers=_HDRS, timeout=15).json()
+        j = requests.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
         for r in (j.get('aaData') or []):
             try:
                 res[str(r[0]).strip()] = {
@@ -290,6 +302,7 @@ def fetch_market_margin(d: date) -> dict:
                 }
             except: pass
     except Exception as e: print(f"  ⚠️ 上櫃融資券失敗: {e}")
+    time.sleep(random.uniform(3.0, 5.0))
 
     return res
 
@@ -353,6 +366,9 @@ def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> l
     all_syms: set = set()
     for day_data in inst_cache.values():
         all_syms.update(day_data.keys())
+
+    # 只保留一般股票（4碼純數字）或 ETF（00 開頭純數字），排除認購/售權證
+    all_syms = {s for s in all_syms if s.isdigit() and (len(s) == 4 or s.startswith('00'))}
 
     if not all_syms:
         # 非交易日或法人 API 失敗 → fallback 舊有資料
