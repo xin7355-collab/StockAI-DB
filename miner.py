@@ -906,6 +906,7 @@ def fetch_broker_chips():
                 'yield_rate':         tw_fund.get('yield_rate'),
                 'gross_margin_trend': fm_fund.get('gross_margin_trend'),
                 'payout_ratio':       fm_fund.get('payout_ratio'),
+                'total_dividend':     fm_fund.get('total_dividend'),
                 'generated':          today_str,
             }
             print("✅")

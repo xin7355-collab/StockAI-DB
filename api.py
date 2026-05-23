@@ -864,6 +864,7 @@ class FundamentalsRequest(BaseModel):
     yield_rate:         Optional[float] = None
     gross_margin_trend: Optional[str]   = None
     payout_ratio:       Optional[float] = None
+    dividend:           Optional[float] = None
     max_tokens:         int             = Field(default=280, ge=80, le=600)
 
 
@@ -907,6 +908,7 @@ EPS（最新季）：{_v(req.eps, ' 元')}
 殖利率：{_v(req.yield_rate, '%')}
 毛利率趨勢：{req.gross_margin_trend or '無資料'}
 股利發配率：{_v(req.payout_ratio, '%')}
+最新每股股利：{_v(req.dividend, ' 元')}
 
 解讀矩陣（符合就標記，都不符合就說「中性觀察」）：
 🔥 嚴重低估的成長火箭：高 YoY + PE<15 + 毛利增
