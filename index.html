@@ -212,23 +212,16 @@
         </div>
     </div>
 
-    <!-- 🗡️ 獵殺監控抽屜（向左滑動顯示，4秒後自動收起） -->
+    <!-- 🗡️ 獵殺監控抽屜（向右滑動顯示，從左側滑入，4秒後自動收起） -->
     <div id="huntSlidePanel"
-         style="position:fixed; top:85px; right:-130px; z-index:150; transition:right 0.3s ease;"
+         style="position:fixed; top:85px; left:-130px; z-index:150; transition:left 0.3s ease;"
          onclick="event.stopPropagation()">
-        <div class="bg-[#1c2128] border border-gray-600 border-r-0 rounded-l-xl p-3 shadow-2xl flex flex-col items-center gap-1.5">
+        <div class="bg-[#1c2128] border border-gray-600 border-l-0 rounded-r-xl p-3 shadow-2xl flex flex-col items-center gap-1.5">
             <span id="monitorHuntIcon"
                   class="text-2xl cursor-pointer hover:scale-110 transition-transform leading-none"
                   onclick="app.toggleMonitor();app.vibrate(30);app.closeHuntPanel();">🗡️</span>
             <span class="text-gray-500 text-[10px] font-mono tracking-wide">獵殺</span>
         </div>
-    </div>
-
-    <!-- 右邊緣獵殺觸發區（30px 透明觸控條） -->
-    <div id="huntEdgeZone"
-         style="position:fixed; top:80px; right:0; width:30px; height:65vh; z-index:148;"
-         ontouchstart="app._huntSwipeX=event.touches[0].clientX"
-         ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
     </div>
 
     <!-- ✨ 技術面 AI 診斷 Modal -->
@@ -316,7 +309,9 @@
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
-                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2">
+                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2"
+                     ontouchstart="app._huntSwipeX=event.touches[0].clientX"
+                     ontouchend="if(event.changedTouches[0].clientX-app._huntSwipeX>40){app.openHuntPanel();}">
                     <!-- 左側：☆ + 名稱 + 標籤 -->
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-center gap-1.5 min-w-0 overflow-hidden">
@@ -1647,7 +1642,8 @@ const app = {
             if (cache.data?.fiShort === null) {
                 fetch(_futuresUrl, { signal: AbortSignal.timeout(4000) })
                     .then(r => r.json()).then(cj => {
-                        if (cj.fi_net !== undefined && cj.fi_net !== null) {
+                        const hasValidOI = (parseInt(cj.long || 0) > 0) || (parseInt(cj.short || 0) > 0);
+                        if (cj.fi_net !== undefined && cj.fi_net !== null && hasValidOI) {
                             cache.data.fiShort = cj.fi_net;
                             localStorage.setItem('proTerminalMacroCache_v3', JSON.stringify(cache));
                             this.processMacroData(cache.data);
@@ -1668,7 +1664,8 @@ const app = {
                 const cacheRes = await fetch(_futuresUrl, { signal: AbortSignal.timeout(4000) });
                 if (cacheRes.ok) {
                     const cj = await cacheRes.json();
-                    if (cj.fi_net !== undefined) { taifexData = cj.fi_net; }
+                    const hasValidOI = (parseInt(cj.long || 0) > 0) || (parseInt(cj.short || 0) > 0);
+                    if (cj.fi_net !== undefined && hasValidOI) { taifexData = cj.fi_net; }
                 }
             } catch(e) {}
 
@@ -1748,7 +1745,8 @@ const app = {
         const fq = this.fiShortQty;
         if (fq !== null && fq <= -40000)      { this.twiiState = 'bear'; this.emergencyMode = true; }
         else if (fq !== null && fq <= -25000) { this.twiiState = 'neutral'; }
-        else                                  { this.twiiState = 'bull'; }
+        else if (fq !== null)                 { this.twiiState = 'bull'; }
+        else                                  { this.twiiState = 'neutral'; } // null = no futures data
 
         if (macro.tpex && macro.tpex.length > 0) {
             const tpex = macro.tpex, last = tpex[tpex.length-1], prev = tpex.length > 1 ? tpex[tpex.length-2] : last;
@@ -2431,9 +2429,15 @@ const app = {
         const instEl = document.getElementById('chipInstChart');
         const marginEl = document.getElementById('chipMarginChart');
         if (!instEl || !marginEl) return;
-        if (!instData || instData.length === 0) {
-            instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">籌碼資料尚未採礦<br><span class="text-gray-600">每日16:30自動更新，或點🔄手動重整</span></div>';
-            marginEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-xs p-2 text-center">無融資融券資料</div>';
+        const allInstZero = !instData || instData.length === 0 ||
+            instData.every(d => d.foreign === 0 && d.trust === 0 && d.dealer === 0);
+        if (allInstZero) {
+            instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">尚無法人買賣超資料<br><span class="text-gray-600">每日16:30自動採礦，或至 Actions 手動觸發</span></div>';
+            const allMarginZero = !marginData || marginData.length === 0 ||
+                marginData.every(d => d.margin === 0 && d.short === 0);
+            marginEl.innerHTML = allMarginZero
+                ? '<div class="flex items-center justify-center h-full text-gray-600 text-xs p-2 text-center">尚無融資融券資料</div>'
+                : '';
             return;
         }
 
@@ -3068,13 +3072,13 @@ ${dynamicParams}
     },
 
     openHuntPanel() {
-        document.getElementById('huntSlidePanel').style.right = '0px';
+        document.getElementById('huntSlidePanel').style.left = '0px';
         clearTimeout(this._huntTimer);
         this._huntTimer = setTimeout(() => this.closeHuntPanel(), 4000);
     },
 
     closeHuntPanel() {
-        document.getElementById('huntSlidePanel').style.right = '-130px';
+        document.getElementById('huntSlidePanel').style.left = '-130px';
     },
 
     async fetchFundamentalAnalysis(sym) {
@@ -3407,9 +3411,14 @@ ${dynamicParams}
         fugleData = await this.fetchFugleData(targetSym);
         if (fugleData) {
             this._hasLivePrice = !!(fugleData && !fugleData.isHistorical);
-            document.getElementById('dataSourceText').innerText = "即時報價";
-            document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
-            document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse";
+            const marketOpen = this.isMarketOpen();
+            document.getElementById('dataSourceText').innerText = marketOpen ? "即時報價" : "最新報價";
+            document.getElementById('dataSourceText').className = marketOpen
+                ? "font-bold text-green-400 text-[10px] font-mono tracking-wide"
+                : "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
+            document.getElementById('dataSourceDot').className = marketOpen
+                ? "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
+                : "w-1.5 h-1.5 rounded-full bg-blue-400";
         } else {
             this._hasLivePrice = false;
             fugleData = this._getHistoricalLatestAsPrice();
@@ -3447,10 +3456,11 @@ ${dynamicParams}
             if (this.rawDailyData[lastIdx].date === todayStr) {
                 this.rawDailyData[lastIdx].close = fugleData.price; this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, fugleData.high);
                 this.rawDailyData[lastIdx].low = Math.min(this.rawDailyData[lastIdx].low, fugleData.low); this.rawDailyData[lastIdx].volume = fugleData.volume;
-            } else {
+            } else if (this.isMarketOpen()) {
                 this.rawDailyData.push({ date: todayStr, open: fugleData.open, high: fugleData.high, low: fugleData.low, close: fugleData.price, volume: fugleData.volume });
                 lastIdx++;
             }
+            // 盤後/週末不 append ghost bar — 歷史 diff 正常計算（非 0）
         }
         // When fugleData.isHistorical === true the rawDailyData is already correct — no modification needed
         if (manualPrice !== null && !isNaN(manualPrice) && manualPrice > 0) {
