@@ -1155,6 +1155,7 @@ const app = {
 
         this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
+        this._loadBrokerNames();
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
         document.querySelector('.scrollable-main').addEventListener('scroll', () => {
@@ -2580,14 +2581,33 @@ const app = {
 
     async _loadBrokerNames() {
         if (this._brokerNames) return this._brokerNames;
-        try {
-            const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const url = new URL('data/broker_names.json', ghBase).href
-                      + `?v=${Math.floor(Date.now()/3600000)}`;
-            const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-            if (res.ok) this._brokerNames = await res.json();
-        } catch(e) {}
-        return this._brokerNames || {};
+
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+        const localUrl = new URL('data/broker_names.json', ghBase).href
+                       + `?v=${Math.floor(Date.now()/3600000)}`;
+        const finmindUrl = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockSecuritiesBrokerInfo';
+
+        const [localMap, finmindMap] = await Promise.all([
+            fetch(localUrl, { signal: AbortSignal.timeout(4000) })
+                .then(r => r.ok ? r.json() : {})
+                .catch(() => ({})),
+            fetch(finmindUrl, { signal: AbortSignal.timeout(6000) })
+                .then(r => r.ok ? r.json() : null)
+                .then(j => {
+                    if (!j || !Array.isArray(j.data)) return {};
+                    const map = {};
+                    j.data.forEach(b => {
+                        const id = String(b.broker_id || '').trim();
+                        const nm = String(b.securities_trader || b.broker_name || '').trim();
+                        if (id && nm) map[id] = nm;
+                    });
+                    return map;
+                })
+                .catch(() => ({})),
+        ]);
+
+        this._brokerNames = { ...finmindMap, ...localMap };
+        return this._brokerNames;
     },
 
     _resolveBrokerName(bid, bnm, brokerNames, rank) {
