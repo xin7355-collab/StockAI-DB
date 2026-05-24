@@ -942,7 +942,8 @@ def fetch_broker_chips():
                 brokers_net = {}
                 for r in raw_data:
                     bid = r.get('secBrokerId')
-                    bnm = TACTICAL_TAGS.get(bid, r.get('secBrokerName', bid))
+                    raw_nm = (r.get('secBrokerName') or '').strip()
+                    bnm = TACTICAL_TAGS.get(bid, raw_nm if raw_nm and not raw_nm.isdigit() else bid)
                     net = int(r.get('buy', 0)) - int(r.get('sell', 0))
                     if bid not in brokers_net:
                         brokers_net[bid] = {'bid': bid, 'bnm': bnm, 'buy': 0, 'sel': 0, 'net': 0}
@@ -1077,6 +1078,115 @@ def build_radar_cache():
           f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])}")
 
 
+# ── 三位一體選股 ─────────────────────────────────────────────────────────────
+def generate_top_picks():
+    """三位一體篩選：基本面(YoY>0) + 法人5日淨流入>0 + 分點集中度"""
+    results = []
+    conn = sqlite3.connect(DB_PATH)
+    chips_path = Path(DATA_DIR) / 'chips'
+
+    if not chips_path.exists():
+        print("  ⚠️ chips 目錄不存在，跳過 generate_top_picks")
+        conn.close()
+        return
+
+    for f in sorted(chips_path.glob('*.json')):
+        sym = f.stem
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if isinstance(raw, list):
+                continue
+            fund      = raw.get('fundamentals') or {}
+            chips_list = raw.get('chips') or []
+
+            # ① 基本面：revenue_yoy > 0
+            try:
+                yoy_f = float(fund.get('revenue_yoy') or 0)
+            except Exception:
+                continue
+            if yoy_f <= 0:
+                continue
+
+            # ② 法人5日淨流向 > 0（從 SQLite）
+            rows = conn.execute("""
+                SELECT foreign_inv, invest_trust, dealer_inv
+                FROM stock_history WHERE symbol=?
+                ORDER BY trade_date DESC LIMIT 5
+            """, (sym,)).fetchall()
+            if len(rows) < 3:
+                continue
+            five_day_net = sum((r[0] or 0) + (r[1] or 0) + (r[2] or 0) for r in rows)
+            if five_day_net <= 0:
+                continue
+
+            # ③ 分點集中度（近3日Top3買超 / 總買超）
+            recent = chips_list[-3:]
+            total_buy = sum(c.get('tot_buy', 0) for c in recent)
+            top3_buy  = sum(
+                sum(b.get('buy', 0) for b in
+                    sorted(c.get('buyers', []), key=lambda x: -x.get('net', 0))[:3])
+                for c in recent
+            )
+            concentration = round(top3_buy / total_buy * 100, 1) if total_buy > 0 else 0.0
+
+            # 最新收盤
+            pr = conn.execute(
+                "SELECT close, trade_date FROM stock_history WHERE symbol=? ORDER BY trade_date DESC LIMIT 1",
+                (sym,)
+            ).fetchone()
+
+            # 入選理由 badge
+            reasons = []
+            reasons.append('🔥 營收高速增長' if yoy_f >= 20 else '📈 營收成長')
+            fi_rows = conn.execute(
+                "SELECT foreign_inv FROM stock_history WHERE symbol=? ORDER BY trade_date DESC LIMIT 3",
+                (sym,)
+            ).fetchall()
+            consec_fi = sum(1 for r in fi_rows if (r[0] or 0) > 0)
+            if consec_fi >= 3:
+                reasons.append('💰 外資連買3日')
+            elif five_day_net > 0:
+                reasons.append('💰 法人淨流入')
+            if concentration >= 40:
+                reasons.append('🎯 主力強力建倉')
+            elif concentration >= 20:
+                reasons.append('🎯 分點籌碼集中')
+
+            results.append({
+                'sym':          sym,
+                'close':        round(float(pr[0] or 0), 2) if pr else 0,
+                'trade_date':   pr[1] if pr else '',
+                'revenue_yoy':  round(yoy_f, 1),
+                'five_day_net': five_day_net,
+                'concentration': concentration,
+                'eps':          fund.get('eps'),
+                'pe':           fund.get('pe'),
+                'reasons':      reasons,
+            })
+        except Exception as e:
+            print(f"  ⚠️ top_picks skip {sym}: {e}")
+            continue
+
+    conn.close()
+
+    def _score(x):
+        return (min(x['revenue_yoy'], 100) * 0.3 +
+                min(abs(x['five_day_net']) / 50000, 100) * 0.4 +
+                x['concentration'] * 0.3)
+    results.sort(key=_score, reverse=True)
+
+    output = {
+        'updated': date.today().isoformat(),
+        'count':   len(results),
+        'data':    results[:30],
+    }
+    Path(DATA_DIR).joinpath('top_picks.json').write_text(
+        json.dumps(output, ensure_ascii=False, separators=(',', ':')),
+        encoding='utf-8'
+    )
+    print(f"  ✅ AI 戰略選股：三位一體篩選 {len(results)} 檔，前 {min(30, len(results))} 名 → top_picks.json")
+
+
 # ── 主程式 ────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     init_db()
@@ -1088,5 +1198,6 @@ if __name__ == '__main__':
         fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
         fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
         build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
+        generate_top_picks()    # 三位一體選股 → data/top_picks.json
     else:
         print("⚡ SKIP_GLOBAL=1：略過籌碼/期貨/美股/雷達（純 OHLCV 批次）")

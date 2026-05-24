@@ -823,6 +823,7 @@
                             <option value="etf_heavy">💰 高股息與權值 (10檔)</option>
                             <option value="fav">⭐ 當前自選清單</option>
                             <option value="inv">💼 我的庫存部位</option>
+                            <option value="top_picks">🎯 AI 三位一體選股</option>
                         </select>
                     </div>
 
@@ -2607,6 +2608,8 @@ const app = {
         ]);
 
         this._brokerNames = { ...finmindMap, ...localMap };
+        const cnt = Object.keys(this._brokerNames).length;
+        if (cnt > 0) console.log(`[BrokerNames] 載入 ${cnt} 筆（FinMind:${Object.keys(finmindMap).length} / 本地:${Object.keys(localMap).length}）`);
         return this._brokerNames;
     },
 
@@ -3409,19 +3412,13 @@ ${dynamicParams}
             const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 30);
             const newsUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockNews&data_id=${sym}&start_date=${pastDate.toISOString().split('T')[0]}${tokenStr}`;
             let data = null;
-            // 直連嘗試
             try {
-                const r = await fetch(newsUrl, { signal: AbortSignal.timeout(6000) });
-                if (r.ok) { const j = await r.json(); if (j.status === 200) data = j; }
+                const r = await this.safeFetch(newsUrl, {}, { timeout: 8000, maxRetries: 2 });
+                if (r.ok) {
+                    const j = await r.json();
+                    if (j.msg === 'success' || j.status === 200 || (j.data && Array.isArray(j.data))) data = j;
+                }
             } catch(e1) {}
-            // 備援：allorigins 代理（避免 CORS / 限速）
-            if (!data) {
-                try {
-                    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(newsUrl)}`;
-                    const r2 = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
-                    if (r2.ok) { const j2 = await r2.json(); data = JSON.parse(j2.contents || '{}'); }
-                } catch(e2) {}
-            }
             let nHtml = "", fullNewsText = "", seenTitles = new Set(), hasConf = false;
 
             if (data && data.data && data.data.length > 0) {
@@ -4592,6 +4589,34 @@ ${dynamicParams}
         loadingEl.classList.remove('hidden');
         loadingEl.classList.add('flex');
 
+        // ── top_picks：直接讀 data/top_picks.json，不走 radar API ───────────────
+        if (type === 'top_picks') {
+            const loadingEl2 = document.getElementById('radarLoading');
+            const header2    = document.getElementById('radarResultHeader');
+            const container2 = document.getElementById('radarListMain');
+            loadingEl2.classList.remove('hidden'); loadingEl2.classList.add('flex');
+            header2.classList.add('hidden'); container2.innerHTML = '';
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const tpRes  = await this.safeFetch(new URL('data/top_picks.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 });
+                if (tpRes.status === 404) throw new Error('NOT_FOUND');
+                if (!tpRes.ok) throw new Error(`HTTP ${tpRes.status}`);
+                const tpJson = await tpRes.json();
+                this._radarUpdatedAt = tpJson.updated || '';
+                this.currentRadarResults = { type: 'top_picks', rawList: tpJson.data || [] };
+                this._filterAndRenderRadar();
+            } catch(e) {
+                const msg = e.message === 'NOT_FOUND'
+                    ? '⏳ 今日 AI 戰略選股清單尚未產出，請於每日 16:30 盤後資料更新後再查看。'
+                    : `❌ top_picks.json 讀取失敗：${e.message}`;
+                container2.innerHTML = `<li class="m-3 p-6 text-center text-sm text-gray-400 border border-dashed border-[#30363d] rounded-lg font-bold">${msg}</li>`;
+            } finally {
+                loadingEl2.classList.add('hidden'); loadingEl2.classList.remove('flex');
+                this.isRadarScanning = false;
+            }
+            return;
+        }
+
         try {
             const apiBase = this._apiBase;
             let rawList = [];
@@ -4677,6 +4702,12 @@ ${dynamicParams}
         const { type, rawList } = this.currentRadarResults;
         const poolType = document.getElementById('radarPoolSelect').value;
 
+        // top_picks 由 loadRadar 直接設好，此處直接渲染
+        if (poolType === 'top_picks' || type === 'top_picks') {
+            this.renderRadarResults(rawList, 'top_picks', 'top_picks');
+            return;
+        }
+
         // 根據彈藥庫類型決定過濾邏輯
         let filtered;
         if (poolType === 'fav') {
@@ -4702,12 +4733,13 @@ ${dynamicParams}
         const header    = document.getElementById('radarResultHeader');
 
         const FILTER_LABELS = {
-            bottom: { badge: '🌸底部起漲', color: 'text-pink-400 border-pink-700 bg-pink-900/50',   desc: '剛站上月線 / 5MA 黃金交叉' },
-            surge:  { badge: '🚀飆股動能', color: 'text-red-400 border-red-700 bg-red-900/50',     desc: '貼近布林上軌 + 連3日爆量'  },
-            score:  { badge: '⭐綜合強勢', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50', desc: 'Alpha 技術評分達標'   },
+            bottom:    { badge: '🌸底部起漲', color: 'text-pink-400 border-pink-700 bg-pink-900/50',     desc: '剛站上月線 / 5MA 黃金交叉' },
+            surge:     { badge: '🚀飆股動能', color: 'text-red-400 border-red-700 bg-red-900/50',       desc: '貼近布林上軌 + 連3日爆量'  },
+            score:     { badge: '⭐綜合強勢', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50', desc: 'Alpha 技術評分達標'   },
+            top_picks: { badge: '🎯 AI 三位一體', color: 'text-emerald-400 border-emerald-700 bg-emerald-900/50', desc: '基本面＋法人流向＋主力建倉' },
         };
-        const TYPE_LABELS = { bottom: '底部起漲', surge: '飆股動能', score: '綜合強勢' };
-        const POOL_LABELS = { hot_twse: '上市熱門', hot_otc: '上櫃中小型', etf_heavy: '高股息權值', fav: '自選清單', inv: '庫存部位' };
+        const TYPE_LABELS = { bottom: '底部起漲', surge: '飆股動能', score: '綜合強勢', top_picks: 'AI三位一體選股' };
+        const POOL_LABELS = { hot_twse: '上市熱門', hot_otc: '上櫃中小型', etf_heavy: '高股息權值', fav: '自選清單', inv: '庫存部位', top_picks: 'AI選股' };
 
         // 空結果：給出對應引導
         if (!items || items.length === 0) {
@@ -4729,18 +4761,35 @@ ${dynamicParams}
         header.innerHTML = `⚡ ${TYPE_LABELS[type] || type} · ${POOL_LABELS[poolType] || poolType} · 共 <b class="text-white">${items.length}</b> 檔${updated}`;
 
         let html = '';
+        const isTopPicks = (type === 'top_picks');
         items.forEach(m => {
-            const price = m.close ? `<div class="text-xs text-gray-500 font-mono mt-0.5">${m.close}</div>` : '';
+            let badgesHtml;
+            if (isTopPicks && Array.isArray(m.reasons) && m.reasons.length) {
+                badgesHtml = m.reasons.filter(Boolean).map(r =>
+                    `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${lbl.color} mr-1 mb-0.5">${r}</span>`
+                ).join('');
+            } else {
+                badgesHtml = `<span class="px-2 py-1 rounded text-xs font-bold border ${lbl.color}">${lbl.badge}</span>`;
+            }
+            const meta = [];
+            if (isTopPicks) {
+                if (m.revenue_yoy != null) meta.push(`YoY ${m.revenue_yoy > 0 ? '+' : ''}${m.revenue_yoy}%`);
+                if (m.concentration) meta.push(`集中度 ${m.concentration}%`);
+                if (m.five_day_net) meta.push(`法人 ${m.five_day_net > 0 ? '+' : ''}${Math.round(m.five_day_net/1000)}K`);
+            }
+            const metaStr = meta.length ? `<div class="text-[10px] text-gray-500 font-mono mt-1 space-x-2">${meta.join(' · ')}</div>` : '';
+            const priceStr = m.close ? `<div class="text-xs text-gray-400 font-mono mt-0.5">${m.close}</div>` : '';
+
             html += `
-            <li class="p-4 m-2 bg-[#1c2128] border border-[#30363d] rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors shadow-sm"
+            <li class="p-3 m-2 bg-[#1c2128] border border-[#30363d] rounded-lg cursor-pointer hover:bg-gray-800/60 transition-colors shadow-sm"
                 onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
-                <div>
-                    <div class="font-bold text-white text-base md:text-lg">${this.getFullStockName(m.sym)}</div>
-                    <div class="text-xs text-gray-500 mt-1">${lbl.desc}</div>
-                </div>
-                <div class="text-right flex-shrink-0 ml-3">
-                    <span class="px-2 py-1 rounded text-xs font-bold border ${lbl.color}">${lbl.badge}</span>
-                    ${price}
+                <div class="flex justify-between items-start gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-bold text-white text-sm">${this.getFullStockName(m.sym)}</div>
+                        <div class="mt-1 flex flex-wrap gap-0.5">${badgesHtml}</div>
+                        ${metaStr}
+                    </div>
+                    <div class="text-right flex-shrink-0">${priceStr}</div>
                 </div>
             </li>`;
         });
