@@ -328,7 +328,7 @@
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
                 <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2"
                      ontouchstart="app._huntSwipeX=event.touches[0].clientX"
-                     ontouchend="if(event.changedTouches[0].clientX-app._huntSwipeX>40){app.openHuntPanel();}">
+                     ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
                     <!-- 左側：☆ + 名稱 + 標籤 -->
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-center gap-1.5 min-w-0 overflow-hidden">

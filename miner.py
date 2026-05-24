@@ -252,7 +252,10 @@ def tpex_ohlcv(symbol: str, year_month: str) -> list:
     url = (f'https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/'
            f'st43_result.php?l=zh-tw&d={roc_year}/{m}&stkno={symbol}&o=json')
     try:
-        j = requests.get(url, headers=_HDRS, timeout=20).json()
+        res = requests.get(url, headers=_HDRS, timeout=20)
+        if not res.text.strip():   # 空白回傳 = 當月尚未公布，靜默略過
+            return []
+        j = res.json()
         aa = j.get('aaData') or []
         # row: [日期, 成交股數, 成交金額, 開盤, 最高, 最低, 收盤, 漲跌, 筆數]
         out = []
@@ -679,7 +682,8 @@ def run():
             }
 
         new_rows = []
-        for ym in months:
+        first_ym_empty = False
+        for i, ym in enumerate(months):
             rows = twse_ohlcv(sym, ym)
             if not rows:
                 time.sleep(1.0); rows = twse_ohlcv(sym, ym)  # retry
@@ -687,6 +691,10 @@ def run():
                 rows = tpex_ohlcv(sym, ym)
             if not rows:
                 time.sleep(1.0); rows = tpex_ohlcv(sym, ym)  # retry
+            if i == 0 and not rows:
+                first_ym_empty = True
+            if i == 1 and first_ym_empty and rows:
+                print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
             new_rows.extend(rows)
             time.sleep(0.4)
 
