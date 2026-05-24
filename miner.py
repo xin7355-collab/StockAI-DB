@@ -253,7 +253,8 @@ def tpex_ohlcv(symbol: str, year_month: str) -> list:
            f'st43_result.php?l=zh-tw&d={roc_year}/{m}&stkno={symbol}&o=json')
     try:
         res = requests.get(url, headers=_HDRS, timeout=20)
-        if not res.text.strip():   # 空白回傳 = 當月尚未公布，靜默略過
+        body = res.text.strip()
+        if not body or body[0] == '<':  # 空白或 HTML = 當月尚未公布，靜默略過
             return []
         j = res.json()
         aa = j.get('aaData') or []
@@ -686,17 +687,15 @@ def run():
         for i, ym in enumerate(months):
             rows = twse_ohlcv(sym, ym)
             if not rows:
-                time.sleep(1.0); rows = twse_ohlcv(sym, ym)  # retry
-            if not rows:
                 rows = tpex_ohlcv(sym, ym)
             if not rows:
-                time.sleep(1.0); rows = tpex_ohlcv(sym, ym)  # retry
+                time.sleep(0.5); rows = tpex_ohlcv(sym, ym)  # TPEX 一次 retry
             if i == 0 and not rows:
                 first_ym_empty = True
             if i == 1 and first_ym_empty and rows:
                 print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
             new_rows.extend(rows)
-            time.sleep(0.4)
+            time.sleep(0.15)
 
         changed = False
         for r in new_rows:
