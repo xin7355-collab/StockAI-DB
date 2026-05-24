@@ -1990,41 +1990,63 @@ const app = {
     // ═══════════════════════════════════════════════════════════════════
     async safeFetch(url, options = {}, { timeout = 8000, maxRetries = 3 } = {}) {
         let attempt = 0;
+        const isFinMind = typeof url === 'string' && url.includes('api.finmindtrade.com');
         while (true) {
-            // 每次嘗試建立獨立的 AbortController，避免訊號污染
-            const ctrl   = new AbortController();
+            const ctrl    = new AbortController();
             const timerId = setTimeout(() => ctrl.abort(), timeout);
             try {
-                const res = await fetch(url, { ...options, signal: ctrl.signal });
+                // [Token 輪動] FinMind URL 動態注入當前 Token，確保切換後立即生效
+                let fetchUrl = url;
+                if (isFinMind && /[?&]token=/.test(url)) {
+                    const currentTok = this._getFinmindToken();
+                    if (currentTok) fetchUrl = url.replace(/([?&]token=)[^&]*/, `$1${encodeURIComponent(currentTok)}`);
+                }
+                const res = await fetch(fetchUrl, { ...options, signal: ctrl.signal });
                 clearTimeout(timerId);
 
-                // 429：依照 Retry-After 或指數退避等待後重試
                 if (res.status === 429) {
                     if (attempt >= maxRetries) {
                         console.warn(`[safeFetch] 429 超過最大重試（${maxRetries}）：${url}`);
-                        this.showToast('🔴 網路請求被限流 (429)，請稍後再試');
-                        return res;  // 讓呼叫方知道被限流
+                        this.showToast(isFinMind
+                            ? '🔴 FinMind 4 把金鑰池已全數耗盡，請稍後再試'
+                            : '🔴 網路請求被限流 (429)，請稍後再試');
+                        return res;
                     }
-                    const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
-                    const backoffMs  = retryAfter > 0
-                        ? retryAfter * 1000
-                        : (1000 * Math.pow(2, attempt));  // 1s → 2s → 4s
-                    console.warn(`[safeFetch] 429，第 ${attempt + 1} 次重試，等待 ${backoffMs}ms`);
-                    await new Promise(r => setTimeout(r, backoffMs));
+                    if (isFinMind) {
+                        // ⚡ 核心修復：FinMind 429 強制切換下一把鑰匙，500ms 後重試
+                        console.warn(`[safeFetch] FinMind 429，自動切換下一組 Token`);
+                        this._advanceFinmindToken();
+                        await new Promise(r => setTimeout(r, 500));
+                    } else {
+                        const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
+                        const backoffMs  = retryAfter > 0 ? retryAfter * 1000 : (1000 * Math.pow(2, attempt));
+                        console.warn(`[safeFetch] 429，第 ${attempt + 1} 次重試，等待 ${backoffMs}ms`);
+                        await new Promise(r => setTimeout(r, backoffMs));
+                    }
                     attempt++;
                     continue;
                 }
-
                 return res;
             } catch (err) {
                 clearTimeout(timerId);
-                // AbortError = timeout，不重試（避免無限等待）
                 if (err.name === 'AbortError') {
                     throw new Error(`[safeFetch] 逾時 (${timeout}ms)：${url}`);
                 }
-                throw err;  // 其他網路錯誤直接拋出
+                throw err;
             }
         }
+    },
+
+    async _loadLocalFundamentals(sym) {
+        // 讀取 miner.py 採礦好的 fundamentals block（含 TWSE BWIBBU_d 的 PE / 殖利率）
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const url  = new URL(`data/chips/${sym}.json`, base).href;
+            const res  = await fetch(url + `?v=${Date.now()}`);
+            if (!res.ok) return null;
+            const raw  = await res.json();
+            return Array.isArray(raw) ? null : (raw.fundamentals || null);
+        } catch(e) { return null; }
     },
 
     async fetchHistoricalData(symbol, forceRefresh = false) {
@@ -3223,10 +3245,27 @@ ${dynamicParams}
             const latestDiv = divData.length ? divData[divData.length-1] : null;
             const totalDiv = latestDiv ? ((latestDiv.cash_dividend||0)+(latestDiv.stock_dividend||0)) : null;
             const currentClose = this.rawDailyData?.length ? this.rawDailyData[this.rawDailyData.length-1].close : null;
-            const yieldRate = (totalDiv&&currentClose&&currentClose>0) ? (totalDiv/currentClose*100) : null;
-            const annualEps = latestEps ? latestEps*4 : null;
-            const payoutRatio = (totalDiv&&annualEps&&annualEps>0) ? (totalDiv/annualEps*100) : null;
-            const pe = (currentClose&&annualEps&&annualEps>0) ? (currentClose/annualEps) : null;
+
+            // 優先讀本地 TWSE BWIBBU_d 採礦結果（PE / 殖利率），權威值優先於現價自算
+            const localFund = (await this._loadLocalFundamentals(sym)) || {};
+
+            // TTM EPS：取近 4 季加總（避免單季×4 失真於景氣循環股／營建股）
+            let annualEps = null;
+            if (epsRows.length >= 4) {
+                annualEps = epsRows.slice(-4).reduce((sum, r) => sum + (r.value || 0), 0);
+            } else if (epsRows.length > 0) {
+                annualEps = epsRows[epsRows.length-1].value * 4;   // 不足 4 季妥協做法
+            }
+
+            // PE：本地 TWSE 優先；無則用 現價 / 年化EPS
+            let pe = (localFund.pe != null) ? Number(localFund.pe) : null;
+            if (pe == null && currentClose && annualEps && annualEps > 0) pe = currentClose / annualEps;
+
+            // 殖利率：本地 TWSE 優先；無則用 股利 / 現價
+            let yieldRate = (localFund.yield_rate != null) ? Number(localFund.yield_rate) : null;
+            if (yieldRate == null && totalDiv && currentClose && currentClose > 0) yieldRate = totalDiv / currentClose * 100;
+
+            const payoutRatio = (totalDiv && annualEps && annualEps > 0) ? (totalDiv / annualEps * 100) : null;
 
             // Populate grid
             setCell('xrayEps', latestEps, ' 元', latestEps==null?null:latestEps>0?'text-green-400':latestEps<0?'text-red-400':'text-gray-400');
@@ -3306,7 +3345,7 @@ ${dynamicParams}
 
         try {
             let year = new Date().getFullYear();
-            const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${year-1}-01-01${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
+            const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${year-3}-01-01${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
             const data = await res.json();
             let html = "";
             if (data && data.data && data.data.length > 0) {
