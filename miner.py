@@ -29,8 +29,9 @@ _UA_LIST = [
 def _rnd_hdrs() -> dict:
     return {'User-Agent': random.choice(_UA_LIST)}
 
-# [Token 輪動] 從環境變數讀取逗號分隔的多組 Token，自動 split 成 List
-FINMIND_TOKENS = [t.strip() for t in os.getenv('FINMIND_TOKEN', '').split(',') if t.strip()]
+# [Token 輪動] 優先讀 FINMIND_TOKENS（複數），再 fallback 到 FINMIND_TOKEN（向下相容）
+_fm_env        = os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN', '')
+FINMIND_TOKENS = [t.strip() for t in _fm_env.split(',') if t.strip()]
 FINMIND_TOKEN  = FINMIND_TOKENS[0] if FINMIND_TOKENS else ''  # 向下相容舊引用
 
 # [Token 輪動] 全域輪動狀態

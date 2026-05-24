@@ -74,7 +74,7 @@ jobs:
 
       - name: ⛏️ 執行採礦（OHLCV + 法人籌碼 + 融資融券 + 分點 + 美股）
         env:
-          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
           BATCH_INDEX: ${{ env.BATCH_INDEX }}
           TOTAL_BATCHES: ${{ env.TOTAL_BATCHES }}
