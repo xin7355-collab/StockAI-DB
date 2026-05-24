@@ -331,11 +331,11 @@
                      ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
                     <!-- 左側：☆ + 名稱 + 標籤 -->
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
-                        <div class="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                        <div class="flex items-baseline gap-1.5 min-w-0 overflow-hidden flex-wrap">
                             <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
-                            <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0" style="font-size: clamp(1.3rem, 5.5vw, 2.0rem); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">載入中...</span>
+                            <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0" style="font-size: clamp(1.5rem, 6.5vw, 2.4rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">載入中...</span>
+                            <span id="quoteCode" class="text-[11px] text-gray-400 font-mono font-bold leading-none flex-shrink-0"></span>
                         </div>
-                        <span id="quoteCode" class="text-[11px] text-gray-500 font-mono font-bold leading-none mt-0.5"></span>
                         <div class="flex items-center gap-1 mt-1 flex-wrap">
                             <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
                             <span id="headerScoreStatus" class="hidden text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').classList.remove('hidden')">--</span>
@@ -3249,23 +3249,37 @@ ${dynamicParams}
                 gross_margin_trend:gmTrendStr, payout_ratio:payoutRatio?parseFloat(payoutRatio.toFixed(1)):null,
                 dividend:totalDiv?parseFloat(totalDiv.toFixed(2)):null, max_tokens:300 };
 
+            // 統一走 _callAI（自動雙模式：後端優先 / 前端直打 Groq），用完整 6 維 prompt
+            const epsStr   = latestEps   != null ? `${latestEps} 元`            : '無資料';
+            const yoyStr   = latestYoy   != null ? `${latestYoy.toFixed(1)}%`   : '無資料';
+            const peStr    = pe          != null ? `${pe.toFixed(1)}x`          : '無資料';
+            const yieldStr = yieldRate   != null ? `${yieldRate.toFixed(2)}%`   : '無資料';
+            const paStr    = payoutRatio != null ? `${payoutRatio.toFixed(1)}%` : '無資料';
+            const divStr   = totalDiv    != null ? `${totalDiv.toFixed(2)} 元`  : '無資料';
+            const fullPrompt = `你是台股身經百戰的操盤總裁，講話犀利直接，戳破財報粉飾。
+根據 ${sym} 的 6 大基本面，輸出 100~150 字大白話實戰解析：
+- EPS（最新季）：${epsStr}
+- 營收 YoY：${yoyStr}
+- 本益比 PE：${peStr}
+- 殖利率：${yieldStr}
+- 毛利率趨勢：${gmTrendStr || '無資料'}
+- 股利發配率：${paStr}
+- 最新每股股利：${divStr}
+先點判定（🔥成長火箭 / ⚠️空氣泡泡 / 🚨價值陷阱 / 中性觀察），再大白話解讀體質與操作建議。`;
+
             let aiText = null;
-            if (this._apiBase) {
-                try {
-                    const res = await this.safeFetch(`${this._apiBase}/api/analyze_fundamentals`, {
-                        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
-                    }, {timeout:60000, maxRetries:1});
-                    if (res.ok) aiText = (await res.json()).content;
-                } catch(e2) { /* fallback */ }
+            try {
+                aiText = await this._callAI({prompt: fullPrompt, max_tokens: 350, temperature: 0.5});
+            } catch(e2) {
+                console.error('[fundamentals AI]', e2);
             }
-            if (!aiText) {
-                const yoyStr = latestYoy!=null?`${latestYoy.toFixed(1)}%`:'?';
-                const fallbackPrompt = `你是台股操盤總裁，講話犀利直接。根據${sym}基本面：EPS ${latestEps??'?'}元、YoY ${yoyStr}、PE ${pe?.toFixed(1)??'?'}x、殖利率${yieldRate?.toFixed(1)??'?'}%、毛利率${gmTrendStr??'?'}、發配率${payoutRatio?.toFixed(0)??'?'}%。用100~150字大白話判定是🔥成長火箭/⚠️空氣泡泡/🚨價值陷阱/中性觀察，並給實戰建議。`;
-                aiText = await this._callAI({prompt:fallbackPrompt, max_tokens:300, temperature:0.5}).catch(()=>null);
+            if (aiText) {
+                xrayAIResult.innerHTML = aiText.replace(/\n/g, '<br>');
+            } else if (!this._apiBase && !this.settings.groqKey) {
+                xrayAIResult.innerHTML = '<span class="text-yellow-400 text-xs">⚠️ 請至 ⚙️設定 填入 Groq API Key（免費申請：console.groq.com）</span>';
+            } else {
+                xrayAIResult.innerHTML = '<span class="text-red-400 text-xs">❌ AI 呼叫失敗（可能配額不足或網路異常）</span>';
             }
-            xrayAIResult.innerHTML = aiText
-                ? aiText.replace(/\n/g,'<br>')
-                : '<span class="text-yellow-400 text-xs">⚠️ 請設定 Groq API Key 或啟動後端伺服器。</span>';
 
         } catch(e) {
             console.error('[fetchFundamentalAnalysis]', e);
