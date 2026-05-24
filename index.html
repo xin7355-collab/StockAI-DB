@@ -824,6 +824,7 @@
                             <option value="fav">⭐ 當前自選清單</option>
                             <option value="inv">💼 我的庫存部位</option>
                             <option value="top_picks">🎯 AI 三位一體選股</option>
+                            <option value="news_radar">📡 即時情報雷達 (AI判讀)</option>
                         </select>
                     </div>
 
@@ -4589,6 +4590,34 @@ ${dynamicParams}
         loadingEl.classList.remove('hidden');
         loadingEl.classList.add('flex');
 
+        // ── news_radar：讀 data/radar_news.json，渲染新聞卡片 ─────────────────
+        if (type === 'news_radar') {
+            const loadingEl3 = document.getElementById('radarLoading');
+            const header3    = document.getElementById('radarResultHeader');
+            const container3 = document.getElementById('radarListMain');
+            loadingEl3.classList.remove('hidden'); loadingEl3.classList.add('flex');
+            header3.classList.add('hidden'); container3.innerHTML = '';
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const nrRes  = await this.safeFetch(new URL('data/radar_news.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 });
+                if (nrRes.status === 404) throw new Error('NOT_FOUND');
+                if (!nrRes.ok) throw new Error(`HTTP ${nrRes.status}`);
+                const nrJson = await nrRes.json();
+                this._radarUpdatedAt = nrJson.updated || '';
+                this.currentRadarResults = { type: 'news_radar', rawList: nrJson.data || [] };
+                this._renderNewsRadar(nrJson.data || []);
+            } catch(e) {
+                const msg = e.message === 'NOT_FOUND'
+                    ? '⏳ 情報雷達尚未產出，請於每日 16:30 盤後資料更新後再查看。'
+                    : `❌ radar_news.json 讀取失敗：${e.message}`;
+                container3.innerHTML = `<li class="m-3 p-6 text-center text-sm text-gray-400 border border-dashed border-[#30363d] rounded-lg font-bold">${msg}</li>`;
+            } finally {
+                loadingEl3.classList.add('hidden'); loadingEl3.classList.remove('flex');
+                this.isRadarScanning = false;
+            }
+            return;
+        }
+
         // ── top_picks：直接讀 data/top_picks.json，不走 radar API ───────────────
         if (type === 'top_picks') {
             const loadingEl2 = document.getElementById('radarLoading');
@@ -4707,6 +4736,11 @@ ${dynamicParams}
             this.renderRadarResults(rawList, 'top_picks', 'top_picks');
             return;
         }
+        // news_radar：同樣由 loadRadar 直接設好，呼叫專用 render
+        if (poolType === 'news_radar' || type === 'news_radar') {
+            this._renderNewsRadar(rawList);
+            return;
+        }
 
         // 根據彈藥庫類型決定過濾邏輯
         let filtered;
@@ -4728,6 +4762,55 @@ ${dynamicParams}
     },
 
     // ── 雷達結果渲染器：接收過濾後陣列，生成 HTML ────────────────────────────
+    _renderNewsRadar(items) {
+        const container = document.getElementById('radarListMain');
+        const header    = document.getElementById('radarResultHeader');
+
+        if (!items || items.length === 0) {
+            header.classList.add('hidden');
+            container.innerHTML = `<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">📭 目前無命中關鍵字的情報，請待下批採礦更新。</li>`;
+            return;
+        }
+
+        header.classList.remove('hidden');
+        const updated = this._radarUpdatedAt ? `<span class="text-gray-600 text-[10px] font-normal ml-1">更新：${this._radarUpdatedAt}</span>` : '';
+        header.innerHTML = `📡 即時情報雷達 · AI 判讀 · 共 <b class="text-white">${items.length}</b> 篇${updated}`;
+
+        const SENTI_CFG = {
+            '利多': { badge: '📈 利多', badgeCls: 'bg-red-900/60 text-red-300 border-red-700', borderCls: 'border-red-700/60' },
+            '利空': { badge: '📉 利空', badgeCls: 'bg-green-900/60 text-green-300 border-green-700', borderCls: 'border-green-700/60' },
+            '中立': { badge: '⚪ 中立', badgeCls: 'bg-gray-800 text-gray-300 border-gray-600',     borderCls: 'border-gray-700' },
+        };
+
+        let html = '';
+        items.forEach(it => {
+            const cfg = SENTI_CFG[it.ai_sentiment] || SENTI_CFG['中立'];
+            const safeTitle  = (it.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const safeReason = (it.ai_reason || '系統尚未提供分析').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const link = it.link || '#';
+            const tags = (it.matched_keywords || [])
+                .map(k => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-900/40 text-yellow-300 border border-yellow-700/60 mr-1 mb-0.5">🔥 ${k}</span>`)
+                .join('');
+
+            html += `
+            <li class="m-2 p-3 bg-[#1c2128] border-l-4 ${cfg.borderCls} border border-[#30363d] rounded-lg hover:bg-gray-800/60 transition-colors shadow-sm">
+                <div class="flex justify-between items-start gap-2 mb-1.5">
+                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#0d1117] text-blue-300 border border-blue-800/60">🌐 ${it.source_name || '情報源'}</span>
+                    <span class="text-[10px] text-gray-500 font-mono flex-shrink-0">${it.published_time || '近期'}</span>
+                </div>
+                <a href="${link}" target="_blank" rel="noopener noreferrer" class="block text-white text-sm font-bold leading-snug hover:text-blue-300 mb-2">
+                    ${safeTitle}
+                </a>
+                <div class="mb-2">
+                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${cfg.badgeCls}">AI 判讀: ${cfg.badge}</span>
+                </div>
+                <p class="text-[11px] text-gray-400 mb-2 leading-relaxed">🤖 ${safeReason}</p>
+                <div class="flex flex-wrap">${tags}</div>
+            </li>`;
+        });
+        container.innerHTML = html;
+    },
+
     renderRadarResults(items, type, poolType) {
         const container = document.getElementById('radarListMain');
         const header    = document.getElementById('radarResultHeader');
