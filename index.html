@@ -651,6 +651,51 @@
 
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-20">
+
+            <!-- 🎯 全球市場戰情室 -->
+            <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
+                <h4 class="text-red-400 font-bold text-sm mb-3 border-b border-gray-700 pb-1.5 flex items-center justify-between">
+                    <div class="flex items-center gap-1.5"><span>🎯</span> 全球市場戰情室</div>
+                    <span id="warRoomTs" class="text-[9px] text-gray-600 font-mono">--</span>
+                </h4>
+
+                <!-- 風險指數滑桿 -->
+                <div class="mb-3">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-[10px] text-gray-500 font-bold">⚡ 市場風險指數</span>
+                        <span id="warRiskLabel" class="text-[10px] font-black px-2 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">計算中...</span>
+                    </div>
+                    <div class="relative h-4 rounded-full overflow-hidden"
+                         style="background: linear-gradient(90deg, #14532d 0%, #166534 20%, #ca8a04 45%, #9a3412 70%, #7f1d1d 100%)">
+                        <div id="warRiskDim" class="absolute top-0 right-0 h-full bg-[#0d1117]/65 transition-all duration-700 ease-out" style="width:100%"></div>
+                        <div id="warRiskTick" class="absolute top-0 w-1 h-full bg-white/90 shadow-lg transition-all duration-700 ease-out" style="left:0"></div>
+                    </div>
+                    <div class="flex justify-between text-[8px] text-gray-600 font-mono mt-0.5 px-0.5">
+                        <span>🟢 避險天堂</span><span>⚠️ 中性觀望</span><span>🔴 極度恐慌</span>
+                    </div>
+                </div>
+
+                <!-- 全球市場熱力圖 -->
+                <div class="mb-2">
+                    <div class="text-[10px] text-gray-500 font-bold mb-1.5">🌡️ 全球指標熱力圖（昨收）</div>
+                    <div class="grid grid-cols-4 gap-1" id="mktHeatmap">
+                        <div class="bg-gray-900/40 rounded p-1.5 text-center col-span-4 text-[9px] text-gray-600">等待市場數據載入...</div>
+                    </div>
+                </div>
+
+                <!-- AI 閃電戰報 -->
+                <div class="border border-blue-900/40 rounded-lg bg-[#010409] p-2.5">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-blue-400 text-[10px] font-black">⚡ AI 閃電戰報</span>
+                        <button onclick="app.genWarRoomBrief();" id="btnWarBrief"
+                                class="text-[9px] text-gray-500 hover:text-blue-400 font-bold transition-colors bg-[#161b22] px-2 py-0.5 rounded border border-[#30363d]">生成</button>
+                    </div>
+                    <div id="warBriefContent" class="text-gray-400 text-[11px] leading-relaxed">
+                        <span class="text-gray-600 text-[10px]">← 按「生成」取得 AI 即時戰情分析</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
                 <h4 class="text-purple-400 font-bold text-sm mb-2 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">🤖 AI 全球市場解析</h4>
                 <button onclick="app.runGlobalMarketAI(); app.vibrate(50);" id="btnGlobalAI" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">🌐 一鍵解析全球市場對台股影響</button>
@@ -1330,6 +1375,16 @@ const app = {
             }
         }
         this._checkMarketAlerts(data);
+        // Merge Massive API data into _marketSnapshot for war room
+        if (data) {
+            const conv = k => data[k] ? { close: parseFloat(data[k].price ?? 0), chg_pct: parseFloat(data[k].changePercent ?? 0) } : null;
+            this._marketSnapshot = Object.assign(this._marketSnapshot || {}, {
+                sp500: conv('spx'), nasdaq: conv('ndx'), vix: conv('vix'), tsm: conv('tsm'),
+                dji: conv('dji'), sox: conv('sox'), nvda: conv('nvda'), aapl: conv('aapl'),
+                msft: conv('msft'), us02y: conv('us02y'), ukoil: conv('ukoil'), dxy: conv('dxy'),
+            });
+            this._updateWarRoom();
+        }
     },
 
     async refreshAllMarketData() {
@@ -1871,9 +1926,11 @@ const app = {
             emergencyBanner.classList.add('hidden'); document.body.classList.remove('bg-red-950/20');
         }
         if(this.currentSymbolId) this.refreshStrategy();
+        this._updateWarRoom();
     },
 
     _renderUSBar(m) {
+        this._marketSnapshot = m;
         const fmt = (val, chg) => {
             if (val == null) return;
             const col = chg > 0 ? 'text-[#f87171]' : (chg < 0 ? 'text-[#4ade80]' : 'text-gray-400');
@@ -1921,6 +1978,7 @@ const app = {
                 else              { annEl.textContent = '🟢 市場平靜'; annEl.className = 'text-[9px] font-bold mt-1 text-[#4ade80]'; }
             }
         }
+        this._updateWarRoom();
     },
 
     // ═══════════════════════════════════════════════════════════════════
@@ -5221,6 +5279,179 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
             result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
         }
         btn.innerHTML = '🌐 一鍵解析全球市場對台股影響'; btn.disabled = false;
+    },
+
+    _calcRiskScore() {
+        const m = this._marketSnapshot || {};
+        const vix = m.vix?.close ?? null;
+        const spxChg = m.sp500?.chg_pct ?? null;
+        const dxyChg = m.dxy?.chg_pct ?? null;
+        const fi = this.fiShortQty;
+
+        if (vix === null && fi === null) return null;
+
+        let score = 0;
+
+        // VIX: 0-40 points (biggest weight)
+        if (vix !== null) {
+            if      (vix >= 35) score += 40;
+            else if (vix >= 30) score += 33;
+            else if (vix >= 25) score += 24;
+            else if (vix >= 20) score += 14;
+            else if (vix >= 15) score += 5;
+        }
+
+        // External futures: 0-35 points
+        if (fi !== null) {
+            if      (fi <= -40000) score += 35;
+            else if (fi <= -25000) score += 26;
+            else if (fi <= -10000) score += 16;
+            else if (fi <  0)      score += 8;
+        }
+
+        // DXY change: rising = bad for Taiwan (0-15 points)
+        if (dxyChg !== null) {
+            if      (dxyChg >  1.0) score += 15;
+            else if (dxyChg >  0.5) score += 10;
+            else if (dxyChg >  0)   score += 5;
+            else if (dxyChg < -0.5) score -= 3;
+        }
+
+        // S&P500 direction: falling = bad (0-10 points)
+        if (spxChg !== null) {
+            if      (spxChg < -2) score += 10;
+            else if (spxChg < -1) score += 7;
+            else if (spxChg <  0) score += 3;
+            else if (spxChg >  1) score -= 2;
+        }
+
+        return Math.min(100, Math.max(0, Math.round(score)));
+    },
+
+    _updateWarRoom() {
+        const score = this._calcRiskScore();
+        const tick  = document.getElementById('warRiskTick');
+        const dim   = document.getElementById('warRiskDim');
+        const label = document.getElementById('warRiskLabel');
+
+        if (score !== null && tick && dim && label) {
+            const pct = score;
+            tick.style.left = `calc(${pct}% - 2px)`;
+            dim.style.width = `${100 - pct}%`;
+
+            let lText, lCls;
+            if      (score < 20) { lText = `🟢 避險天堂`; lCls = 'text-green-400 bg-green-900/30 border-green-800/60'; }
+            else if (score < 40) { lText = `🟡 小心謹慎`; lCls = 'text-yellow-300 bg-yellow-900/30 border-yellow-800/60'; }
+            else if (score < 60) { lText = `🟠 警戒備戰`; lCls = 'text-orange-400 bg-orange-900/30 border-orange-800/60'; }
+            else if (score < 80) { lText = `🔴 高度風險`; lCls = 'text-red-400 bg-red-900/30 border-red-800/60'; }
+            else                 { lText = `🚨 極度恐慌`; lCls = 'text-red-300 bg-red-950/80 border-red-700/80 animate-pulse'; }
+            label.textContent = `${lText}  ${score}`;
+            label.className = `text-[10px] font-black px-2 py-0.5 rounded border ${lCls}`;
+        }
+
+        // Heatmap
+        const heatmap = document.getElementById('mktHeatmap');
+        if (!heatmap) return;
+        const m = this._marketSnapshot || {};
+        const fi = this.fiShortQty;
+
+        const cells = [
+            { icon: '📈', name: 'S&P 500',    key: 'sp500',  invert: false },
+            { icon: '💻', name: 'NASDAQ',      key: 'nasdaq', invert: false },
+            { icon: '⚡', name: '費半 SOX',    key: 'sox',    invert: false, hl: true },
+            { icon: '🔥', name: 'VIX',         key: 'vix',    vixMode: true },
+            { icon: '🏭', name: 'TSMC ADR',    key: 'tsm',    invert: false, hl: true },
+            { icon: '🤖', name: 'NVDA',        key: 'nvda',   invert: false },
+            { icon: '🍎', name: 'AAPL',        key: 'aapl',   invert: false },
+            { icon: '🪟', name: 'MSFT',        key: 'msft',   invert: false },
+            { icon: '🏦', name: '美債 2Y',     key: 'us02y',  invert: true  },
+            { icon: '🛢', name: '原油',         key: 'ukoil',  invert: false },
+            { icon: '💵', name: 'DXY',         key: 'dxy',    invert: true  },
+            { icon: '🎯', name: '外資期貨',     key: '__fi',   fiMode: true  },
+        ];
+
+        heatmap.innerHTML = cells.map(c => {
+            let chgSign, displayVal, rawChg;
+
+            if (c.fiMode) {
+                if (fi === null) return `<div class="bg-gray-900/40 rounded p-1.5 text-center"><div class="text-[8px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[9px] text-gray-600 mt-0.5">--</div></div>`;
+                rawChg = fi >= 0 ? 1 : (fi < -25000 ? -2 : -0.5);
+                displayVal = `${fi >= 0 ? '+' : ''}${(fi / 1000).toFixed(1)}K`;
+                chgSign = rawChg;
+            } else if (c.vixMode) {
+                const val = m[c.key];
+                if (!val) return `<div class="bg-gray-900/40 rounded p-1.5 text-center"><div class="text-[8px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[9px] text-gray-600 mt-0.5">--</div></div>`;
+                const v = val.close ?? 0;
+                rawChg = v > 25 ? -2 : v > 20 ? -0.8 : v > 15 ? 0.2 : 1;
+                displayVal = v.toFixed(1);
+                chgSign = rawChg;
+            } else {
+                const val = m[c.key];
+                if (!val) return `<div class="bg-gray-900/40 rounded p-1.5 text-center"><div class="text-[8px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[9px] text-gray-600 mt-0.5">--</div></div>`;
+                rawChg = val.chg_pct ?? 0;
+                chgSign = c.invert ? -rawChg : rawChg;
+                const cl = val.close ?? 0;
+                displayVal = cl >= 1000 ? Math.round(cl).toLocaleString() : cl.toFixed(2);
+            }
+
+            const bgCls = chgSign > 0.5  ? 'bg-green-900/55 border border-green-800/50'
+                        : chgSign > 0    ? 'bg-green-900/30 border border-green-900/30'
+                        : chgSign > -0.5 ? 'bg-red-900/30 border border-red-900/30'
+                        :                  'bg-red-900/55 border border-red-800/50';
+            const txtCls = chgSign > 0.5  ? 'text-[#4ade80]'
+                         : chgSign > 0    ? 'text-green-400'
+                         : chgSign > -0.5 ? 'text-red-400'
+                         :                  'text-[#f87171]';
+            const chgStr = (c.fiMode || c.vixMode) ? '' : `<div class="text-[8px] ${txtCls} opacity-80">${rawChg > 0 ? '+' : ''}${rawChg.toFixed(1)}%</div>`;
+            const ring = c.hl ? ' ring-1 ring-blue-500/40' : '';
+            return `<div class="${bgCls} rounded p-1.5 text-center${ring}">
+                <div class="text-[8px] text-gray-500 leading-tight truncate">${c.icon} ${c.name}</div>
+                <div class="text-[10px] font-black ${txtCls} mt-0.5">${displayVal}</div>
+                ${chgStr}
+            </div>`;
+        }).join('');
+
+        const ts = document.getElementById('warRoomTs');
+        if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    },
+
+    async genWarRoomBrief() {
+        const el  = document.getElementById('warBriefContent');
+        const btn = document.getElementById('btnWarBrief');
+        if (!el) return;
+        el.innerHTML = '<span class="text-blue-400 animate-pulse text-[10px]">⚡ AI 戰情分析中...</span>';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+        const score = this._calcRiskScore() ?? 50;
+        const m     = this._marketSnapshot || {};
+        const fi    = this.fiShortQty;
+
+        const vix     = m.vix?.close?.toFixed(1)    ?? '--';
+        const spxChg  = m.sp500?.chg_pct != null  ? `${m.sp500.chg_pct  > 0 ? '+' : ''}${m.sp500.chg_pct.toFixed(2)}%`  : '--';
+        const soxChg  = m.sox?.chg_pct   != null  ? `${m.sox.chg_pct    > 0 ? '+' : ''}${m.sox.chg_pct.toFixed(2)}%`    : '--';
+        const tsmChg  = m.tsm?.chg_pct   != null  ? `${m.tsm.chg_pct    > 0 ? '+' : ''}${m.tsm.chg_pct.toFixed(2)}%`    : '--';
+        const nvdaChg = m.nvda?.chg_pct  != null  ? `${m.nvda.chg_pct   > 0 ? '+' : ''}${m.nvda.chg_pct.toFixed(2)}%`   : '--';
+        const dxyChg  = m.dxy?.chg_pct   != null  ? `${m.dxy.chg_pct    > 0 ? '+' : ''}${m.dxy.chg_pct.toFixed(2)}%`    : '--';
+        const fiStr   = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()}口` : '--';
+        const riskTxt = score < 20 ? '避險天堂' : score < 40 ? '小心謹慎' : score < 60 ? '警戒備戰' : score < 80 ? '高度風險' : '極度恐慌';
+
+        const prompt = `你是台股AI指揮官，說話精簡犀利如作戰命令。根據下方數據生成5條戰報，每條用▸開頭，最多18字，禁止重複列出數字，直接說操作結論：
+VIX=${vix} | S&P500=${spxChg} | 費半SOX=${soxChg} | TSMC ADR=${tsmChg} | NVDA=${nvdaChg} | DXY=${dxyChg} | 外資台指期=${fiStr}
+整體風險指數：${score}/100（${riskTxt}）
+輸出格式：每行只有「▸結論」，5行，中文，不要加其他說明。`;
+
+        try {
+            const text = await this._callAI({ prompt, max_tokens: 180, temperature: 0.3 });
+            el.innerHTML = text.split('\n').filter(l => l.trim()).map(l => {
+                const isRisk = /空|風險|避|謹慎|警戒|壓力|偏空|小心/.test(l);
+                const isBull = /多|突破|強勢|起漲|上攻|偏多|機會/.test(l);
+                const col = isRisk ? 'text-orange-300' : isBull ? 'text-green-300' : 'text-blue-200';
+                return `<div class="${col} mb-0.5 text-[11px]">${l.replace(/▸/g, '<span class="text-blue-400 mr-0.5">▸</span>')}</div>`;
+            }).join('');
+        } catch(e) {
+            el.innerHTML = '<span class="text-red-400 text-[10px]">AI 分析失敗，請確認 Groq Key 設定</span>';
+        }
+        if (btn) { btn.disabled = false; btn.textContent = '生成'; }
     },
 
     async runUnifiedGroqAnalysis() {
