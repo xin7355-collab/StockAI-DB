@@ -151,13 +151,30 @@
                         <button onclick="app.verifyFugleKeys()" class="w-full px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition text-gray-300">驗證金鑰群</button>
                     </div>
 
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-yellow-400">🔑 FinMind API Key (備援快照)</label>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-bold text-yellow-400">🔑 FinMind Token 輪動池（Token 1 主力，2-4 備援）</label>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">4 組免費帳號輪流使用，每小時額度耗盡自動切換，杜絕採礦中斷</p>
                         <div class="flex gap-2 items-center">
-                            <input type="password" id="set_finmindKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="輸入 Key...">
-                            <button onclick="app.verifyAPI('finmind')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind"></div>
+                            <span class="text-[10px] font-mono text-yellow-600 w-12 flex-shrink-0">Token 1</span>
+                            <input type="password" id="set_finmindKey1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="主力 Token...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind1"></div>
                         </div>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 2</span>
+                            <input type="password" id="set_finmindKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 2...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind2"></div>
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 3</span>
+                            <input type="password" id="set_finmindKey3" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 3...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind3"></div>
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 4</span>
+                            <input type="password" id="set_finmindKey4" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 4...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind4"></div>
+                        </div>
+                        <button onclick="app.verifyAPI('finmind')" class="self-start mt-0.5 px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition text-yellow-400">驗證全部 Token</button>
                     </div>
 
                     <div class="flex flex-col gap-1">
@@ -1047,7 +1064,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '' },
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
@@ -1124,6 +1141,11 @@ const app = {
         let saved = JSON.parse(localStorage.getItem('proTerminalSettings'));
         if (saved) {
             if(saved.fugleToken && !saved.fugleToken1) saved.fugleToken1 = saved.fugleToken;
+            // [Token 輪動] 向下相容：舊版單一 finmindKey 遷移至 finmindKey1
+            if (saved.finmindKey && !saved.finmindKey1) {
+                saved.finmindKey1 = saved.finmindKey;
+                delete saved.finmindKey;
+            }
             this.settings = { ...this.settings, ...saved };
         }
         
@@ -1447,7 +1469,11 @@ const app = {
         document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
         document.getElementById('set_fugleToken4').value = this.settings.fugleToken4 || '';
         document.getElementById('set_fugleToken5').value = this.settings.fugleToken5 || '';
-        document.getElementById('set_finmindKey').value = this.settings.finmindKey || '';
+        // [Token 輪動] 填入 4 組 FinMind Token
+        document.getElementById('set_finmindKey1').value = this.settings.finmindKey1 || '';
+        document.getElementById('set_finmindKey2').value = this.settings.finmindKey2 || '';
+        document.getElementById('set_finmindKey3').value = this.settings.finmindKey3 || '';
+        document.getElementById('set_finmindKey4').value = this.settings.finmindKey4 || '';
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
@@ -1477,10 +1503,37 @@ const app = {
         this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
         this.settings.fugleToken4 = document.getElementById('set_fugleToken4').value.trim();
         this.settings.fugleToken5 = document.getElementById('set_fugleToken5').value.trim();
-        this.settings.finmindKey = document.getElementById('set_finmindKey').value.trim();
+        // [Token 輪動] 儲存 4 組 FinMind Token
+        this.settings.finmindKey1 = document.getElementById('set_finmindKey1').value.trim();
+        this.settings.finmindKey2 = document.getElementById('set_finmindKey2').value.trim();
+        this.settings.finmindKey3 = document.getElementById('set_finmindKey3').value.trim();
+        this.settings.finmindKey4 = document.getElementById('set_finmindKey4').value.trim();
         this.settings.massiveKey = document.getElementById('set_massiveKey').value.trim();
         localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
+    },
+
+    _getFinmindToken() {
+        // [Token 輪動] 依 _finmindTokenIdx 循環取用可用的 FinMind Token
+        const tokens = [
+            this.settings.finmindKey1, this.settings.finmindKey2,
+            this.settings.finmindKey3, this.settings.finmindKey4,
+        ].filter(t => t && t.trim());
+        if (!tokens.length) return '';
+        if (this._finmindTokenIdx == null) this._finmindTokenIdx = 0;
+        return tokens[this._finmindTokenIdx % tokens.length];
+    },
+
+    _advanceFinmindToken() {
+        // [Token 輪動] 收到 429，切換至下一個 Token
+        const count = [
+            this.settings.finmindKey1, this.settings.finmindKey2,
+            this.settings.finmindKey3, this.settings.finmindKey4,
+        ].filter(t => t && t.trim()).length;
+        if (!count) return;
+        if (this._finmindTokenIdx == null) this._finmindTokenIdx = 0;
+        this._finmindTokenIdx = (this._finmindTokenIdx + 1) % count;
+        console.warn(`[Token 輪動] 前端切換至 FinMind Token #${this._finmindTokenIdx + 1}`);
     },
 
     saveAndCloseSettings() {
@@ -1499,10 +1552,30 @@ const app = {
                 const res = await this.safeFetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${this.settings.groqKey}` } }, { timeout: 8000, maxRetries: 1 });
                 if (res.status === 200) { const j = await res.json(); if (j?.data?.length > 0) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error(); } else throw new Error(`HTTP ${res.status}`);
             } else if (type === 'finmind') {
-                if(!this.settings.finmindKey) throw new Error();
-                const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${this.settings.finmindKey}`, {}, { timeout: 8000, maxRetries: 1 });
-                const json = await res.json();
-                if(res.ok && json.status === 200) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error();
+                // [Token 輪動] 逐一驗證 4 組 Token，分別更新各自 LED
+                const finmindEntries = [
+                    { key: this.settings.finmindKey1, ledId: 'led_finmind1' },
+                    { key: this.settings.finmindKey2, ledId: 'led_finmind2' },
+                    { key: this.settings.finmindKey3, ledId: 'led_finmind3' },
+                    { key: this.settings.finmindKey4, ledId: 'led_finmind4' },
+                ];
+                const filled = finmindEntries.filter(e => e.key);
+                if (!filled.length) throw new Error('未填入任何 FinMind Token');
+                for (const entry of finmindEntries) {
+                    const ledEl = document.getElementById(entry.ledId);
+                    if (!ledEl) continue;
+                    if (!entry.key) { ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 bg-gray-600'; continue; }
+                    try {
+                        const r = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${entry.key}`, {}, { timeout: 8000, maxRetries: 1 });
+                        const j2 = await r.json();
+                        ledEl.className = (r.ok && j2.status === 200)
+                            ? 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500'
+                            : 'w-2.5 h-2.5 rounded-full flex-shrink-0 bg-red-500';
+                    } catch { ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 bg-red-500'; }
+                    await new Promise(r => setTimeout(r, 500));
+                }
+                // 驗證結束後，若至少一組有效，主 LED 亮綠（此分支直接跳過主 LED 邏輯）
+                return;
             } else if (type === 'massive') {
                 if(!this.settings.massiveKey) throw new Error();
                 const res = await fetch(`https://api.massive.com/v1/marketstatus/now`, { headers: { 'Authorization': `Bearer ${this.settings.massiveKey}` } });
@@ -1654,7 +1727,7 @@ const app = {
         }
 
         const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 10);
-        const startDate = pastDate.toISOString().split('T')[0], fmToken = this.settings.finmindKey || '', tokenStr = fmToken ? `&token=${fmToken}` : '';
+        const startDate = pastDate.toISOString().split('T')[0], fmToken = this._getFinmindToken(), tokenStr = fmToken ? `&token=${fmToken}` : ''; // [Token 輪動]
 
         try {
             let taifexData = null;
@@ -2186,7 +2259,7 @@ const app = {
     async fetchChipCost(sym) {
         const input = document.getElementById('chipCostInput');
         input.placeholder = "籌碼掃描中...";
-        const token = this.settings.finmindKey ? `&token=${this.settings.finmindKey}` : '';
+        const token = this._getFinmindToken() ? `&token=${this._getFinmindToken()}` : ''; // [Token 輪動]
         let d = new Date(); d.setDate(d.getDate() - 20);
         const sDate = d.toISOString().split('T')[0];
 
@@ -2376,7 +2449,7 @@ const app = {
         }
 
         if (statusEl) statusEl.textContent = '載入中…';
-        const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d = new Date(); d.setDate(d.getDate() - 20);
         const startDate = d.toISOString().split('T')[0];
 
@@ -2675,7 +2748,7 @@ const app = {
         result.innerHTML = '<span class="animate-pulse text-indigo-400 text-[10px]">AI 正在整合法人 + 主力分點資料...</span>';
 
         const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length - 1].close : '未知';
-        const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d = new Date(); d.setDate(d.getDate() - 20);
         const startDate = d.toISOString().split('T')[0];
 
@@ -2789,7 +2862,7 @@ ${brokerText}
         }
 
         result.innerHTML = '<span class="animate-pulse text-indigo-400 text-sm">讀取財務 / 產業 / 股東資料中，請稍候...</span>';
-        const tokenStr     = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const tokenStr     = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d            = new Date(); d.setFullYear(d.getFullYear() - 2);
         const startDate    = d.toISOString().split('T')[0];
         const d2           = new Date(); d2.setMonth(d2.getMonth() - 18);
@@ -3093,7 +3166,7 @@ ${dynamicParams}
             if (el) el.innerHTML = '<span class="animate-pulse text-gray-600 text-xs">…</span>';
         });
 
-        const tokenStr = this.settings.finmindKey ? `&token=${encodeURIComponent(this.settings.finmindKey)}` : '';
+        const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d = new Date(); d.setFullYear(d.getFullYear() - 2);
         const startDate = d.toISOString().split('T')[0];
         const d2 = new Date(); d2.setMonth(d2.getMonth() - 3);
@@ -3215,7 +3288,7 @@ ${dynamicParams}
         yoyBox.innerHTML = '<span class="text-gray-500 animate-pulse text-xs">連線獲取營收 YoY...</span>';
         newsBox.innerHTML = '<span class="animate-pulse text-xs text-gray-500">調閱重大訊息檔案庫...</span>';
 
-        const tokenStr = this.settings.finmindKey ? `&token=${this.settings.finmindKey}` : '';
+        const tokenStr = this._getFinmindToken() ? `&token=${this._getFinmindToken()}` : ''; // [Token 輪動]
 
         try {
             let year = new Date().getFullYear();

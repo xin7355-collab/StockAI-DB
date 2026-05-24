@@ -28,7 +28,70 @@ _UA_LIST = [
 ]
 def _rnd_hdrs() -> dict:
     return {'User-Agent': random.choice(_UA_LIST)}
-FINMIND_TOKEN  = os.getenv('FINMIND_TOKEN', '')
+
+# [Token 輪動] 從環境變數讀取逗號分隔的多組 Token，自動 split 成 List
+FINMIND_TOKENS = [t.strip() for t in os.getenv('FINMIND_TOKEN', '').split(',') if t.strip()]
+FINMIND_TOKEN  = FINMIND_TOKENS[0] if FINMIND_TOKENS else ''  # 向下相容舊引用
+
+# [Token 輪動] 全域輪動狀態
+_finmind_token_idx: int  = 0      # 目前使用的 Token 索引
+_FINMIND_BLOCKED:   bool = False   # 所有 Token 均耗盡時觸發，保護程式不當機
+
+
+def get_finmind_token() -> str:
+    """[Token 輪動] 取得目前輪動中的 FinMind Token；斷路器觸發後回傳空字串"""
+    if _FINMIND_BLOCKED or not FINMIND_TOKENS:
+        return ''
+    return FINMIND_TOKENS[_finmind_token_idx % len(FINMIND_TOKENS)]
+
+
+def rotate_finmind_token(tried: set) -> bool:
+    """
+    [Token 輪動] 切換到下一個 Token。
+    tried: 本輪已嘗試過的 Token 索引集合。
+    回傳 False 表示所有 Token 均已嘗試（觸發斷路器）。
+    """
+    global _finmind_token_idx, _FINMIND_BLOCKED
+    tried.add(_finmind_token_idx % len(FINMIND_TOKENS))
+    _finmind_token_idx = (_finmind_token_idx + 1) % len(FINMIND_TOKENS)
+    if len(tried) >= len(FINMIND_TOKENS):
+        # [Token 輪動] 終極斷路器：4 組 Token 全數耗盡，停止 FinMind 呼叫
+        _FINMIND_BLOCKED = True
+        print(f'  🚫 [Token 輪動] 所有 {len(FINMIND_TOKENS)} 組 FinMind Token 均已耗盡，觸發斷路器')
+        return False
+    print(f'  🔄 [Token 輪動] 切換至 Token #{_finmind_token_idx + 1}（共 {len(FINMIND_TOKENS)} 組）')
+    return True
+
+
+def fm_request(url_base: str, timeout: int = 20):
+    """
+    [Token 輪動] 帶自動輪動的 FinMind API GET 請求統一入口。
+    url_base: 不含 &token= 的完整 URL。
+    遇到 429 自動切換下一組 Token 並重試；斷路器觸發後回傳 None。
+    """
+    if _FINMIND_BLOCKED:
+        return None
+    tried: set = set()
+    while True:
+        tok = get_finmind_token()
+        # [Token 輪動] 有效 Token 才附加，否則匿名請求
+        token_param = f'&token={tok}' if tok and '請' not in tok else ''
+        try:
+            res = requests.get(url_base + token_param, headers=_rnd_hdrs(), timeout=timeout)
+        except Exception as e:
+            print(f'  ⚠️ [fm_request] 連線失敗: {e}')
+            return None
+        if res.status_code == 429:
+            idx = _finmind_token_idx % max(len(FINMIND_TOKENS), 1)
+            print(f'  ⚠️ [Token 輪動] Token #{idx + 1} 收到 429，額度耗盡，自動切換至下一組...')
+            if not FINMIND_TOKENS or not rotate_finmind_token(tried):
+                return None
+            time.sleep(1.0)  # 切換後稍待再打
+            continue
+        try:
+            return res.json()
+        except Exception:
+            return None
 BATCH_INDEX    = int(os.getenv('BATCH_INDEX', '0'))
 TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
 SKIP_GLOBAL    = bool(int(os.getenv('SKIP_GLOBAL', '0')))  # 批次 1-4 略過全市場抓取
@@ -348,12 +411,13 @@ def fetch_twse_fundamentals(d: date) -> dict:
 
 
 # ── FinMind 個股基本面（EPS / YoY / 毛利率趨勢 / 發配率）────────────────────
-def fetch_finmind_fundamentals(sym: str, token_param: str) -> dict:
+def fetch_finmind_fundamentals(sym: str) -> dict:
     """
     三支 FinMind API（順序呼叫，各帶 2~3.5s 隨機延遲）：
     1. TaiwanStockFinancialStatements → EPS（最新季）+ 毛利率趨勢（近3季）
     2. TaiwanStockMonthRevenue        → 最新月 YoY
     3. TaiwanStockDividend            → 現金+股票股利 → 股利發配率
+    [Token 輪動] 改用 fm_request()，遇 429 自動輪換 Token。
     """
     today_str = date.today().strftime('%Y-%m-%d')
     start_fs  = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d')
@@ -365,8 +429,9 @@ def fetch_finmind_fundamentals(sym: str, token_param: str) -> dict:
     try:
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockFinancialStatements&data_id={sym}'
-               f'&start_date={start_fs}&end_date={today_str}{token_param}')
-        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+               f'&start_date={start_fs}&end_date={today_str}')
+        j = fm_request(url, timeout=20)  # [Token 輪動]
+        if j is None: j = {}
         rows = j.get('data') or []
         # 最新季 EPS
         eps_rows = sorted([r for r in rows if r.get('type') == 'EPS'],
@@ -396,8 +461,9 @@ def fetch_finmind_fundamentals(sym: str, token_param: str) -> dict:
     try:
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockMonthRevenue&data_id={sym}'
-               f'&start_date={start_rev}&end_date={today_str}{token_param}')
-        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+               f'&start_date={start_rev}&end_date={today_str}')
+        j = fm_request(url, timeout=20)  # [Token 輪動]
+        if j is None: j = {}
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
         if rows:
             latest = rows[-1]
@@ -412,8 +478,9 @@ def fetch_finmind_fundamentals(sym: str, token_param: str) -> dict:
     try:
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockDividend&data_id={sym}'
-               f'&start_date={start_div}&end_date={today_str}{token_param}')
-        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+               f'&start_date={start_div}&end_date={today_str}')
+        j = fm_request(url, timeout=20)  # [Token 輪動]
+        if j is None: j = {}
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
         if rows:
             latest   = rows[-1]
@@ -714,19 +781,18 @@ def fetch_futures_cache():
     today_str = date.today().strftime('%Y-%m-%d')
     start_str = (date.today() - timedelta(days=7)).strftime('%Y-%m-%d')
 
-    token_param = f"&token={FINMIND_TOKEN}" if FINMIND_TOKEN and "請" not in FINMIND_TOKEN else ""
+    url_base = (f'https://api.finmindtrade.com/api/v4/data'
+                f'?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX'
+                f'&start_date={start_str}&end_date={today_str}')
 
-    url = f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX&start_date={start_str}&end_date={today_str}{token_param}'
-
-    print(f"\n🔮 抓取外資台指期 (使用 FinMind {'Token' if token_param else '匿名'} 防封鎖通道)...")
+    tok_label = f'Token #{_finmind_token_idx + 1}' if FINMIND_TOKENS else '匿名'
+    print(f"\n🔮 抓取外資台指期 (使用 FinMind {tok_label} 防封鎖通道 [Token 輪動])...")
     try:
-        res = requests.get(url, headers=_HDRS, timeout=15)
-
-        if res.status_code == 429:
-            print("  ⚠️ 觸發 FinMind 速率限制，保留舊快取，請稍後再試。")
+        # [Token 輪動] 改用 fm_request，遇 429 自動切換並重試
+        j = fm_request(url_base, timeout=15)
+        if j is None:
+            print("  ⚠️ FinMind 期貨 API 失敗（斷路器觸發或連線錯誤），保留舊快取。")
             return
-
-        j = res.json()
         if j.get('status') == 200 and j.get('data'):
             foreign_data = [d for d in j['data'] if '外資' in d.get('name', '')]
 
@@ -835,10 +901,10 @@ def fetch_broker_chips():
     watchlist = sorted(priority_set)[:HOT_CHIPS_LIMIT]
     print(f"  📋 分點籌碼目標：{len(watchlist)} 檔（精選 {len(CHIP_WATCHLIST)} + 熱門補充）")
 
-    # 新增：一次查全市場 PE / 殖利率（TWSE），以及 FinMind Token
+    # 新增：一次查全市場 PE / 殖利率（TWSE）
     print("\n📊 抓取 TWSE 全市場本益比 / 殖利率快取...")
     twse_fund = fetch_twse_fundamentals(date.today())
-    token_param = f"&token={FINMIND_TOKEN}" if FINMIND_TOKEN and "請" not in FINMIND_TOKEN else ""
+    # [Token 輪動] token_param 已由 fm_request() 統一管理，此處不再需要
 
     print(f"\n🕵️ 啟動分點籌碼 + 基本面探測 ({len(watchlist)} 檔，請耐心等候避免限流)...")
 
@@ -856,9 +922,12 @@ def fetch_broker_chips():
         # ── 分點籌碼（現有邏輯，初始化移到 try 前確保例外時仍能寫 fundamentals）──
         buyers, sellers, brokers_list = [], [], []
         try:
-            url = f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockLocalSecuritiesBrokerTransactions&data_id={sym}&start_date={today_str}'
-            res = requests.get(url, headers=_HDRS, timeout=15)
-            j = res.json()
+            # [Token 輪動] 改用 fm_request，自動帶 Token 並在 429 時切換
+            url_base = (f'https://api.finmindtrade.com/api/v4/data'
+                        f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
+                        f'&data_id={sym}&start_date={today_str}')
+            j = fm_request(url_base, timeout=15)
+            if j is None: j = {}
             if j.get('status') == 200 and j.get('data'):
                 raw_data = j['data']
                 brokers_net = {}
@@ -897,7 +966,7 @@ def fetch_broker_chips():
                             'yield_rate': tw_fund.get('yield_rate') or cached_fund.get('yield_rate')}
         else:
             print(f"  📈 基本面採礦 {sym}...", end=' ', flush=True)
-            fm_fund = fetch_finmind_fundamentals(sym, token_param)
+            fm_fund = fetch_finmind_fundamentals(sym)  # [Token 輪動] token 由 fm_request 統一管理
             tw_fund = twse_fund.get(sym, {})
             fundamentals = {
                 'eps':                fm_fund.get('eps'),
