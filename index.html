@@ -306,13 +306,6 @@
         </header>
 
         <div id="marketAlertBanner" class="hidden w-full max-w-7xl mx-auto px-3 py-1 text-[10px] font-bold text-center border-b border-red-800"></div>
-        <!-- 全域 AI 全球市場解析快捷列 -->
-        <div class="w-full border-b border-indigo-900/50 bg-[#0a0d14]">
-            <button onclick="app.openGlobalAIModal(); app.vibrate(30);" id="btnGlobalAIHeader"
-                    class="w-full text-[11px] text-indigo-300 hover:text-white hover:bg-indigo-900/30 font-bold py-1.5 flex items-center justify-center gap-1.5 transition-colors leading-none">
-                🌐 AI 全球市場解析 <span class="text-gray-600 text-[10px]">→ 一鍵解析全球市場對台股影響</span>
-            </button>
-        </div>
         <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
         <div style="display:none" aria-hidden="true">
             <span id="mktFI"></span>
@@ -685,6 +678,13 @@
 
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-20">
+
+            <!-- 🌐 AI 全球市場解析按鈕 -->
+            <button onclick="app.openGlobalAIModal(); app.vibrate(50);" id="btnGlobalAIHeader"
+                    class="w-full bg-gradient-to-r from-indigo-900/60 to-purple-900/60 hover:from-indigo-800/70 hover:to-purple-800/70 border border-indigo-700/50 rounded-lg py-3 px-4 flex items-center justify-center gap-2 transition-all font-black text-sm text-indigo-200 shadow-lg">
+                🌐 AI 全球市場解析
+                <span class="text-indigo-400 text-[11px] font-bold">→ 一鍵解析全球市場對台股影響</span>
+            </button>
 
             <!-- 🎯 全球市場戰情室 -->
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">

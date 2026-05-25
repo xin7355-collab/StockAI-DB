@@ -3,8 +3,10 @@ name: 🚀 部署到 GitHub Pages
 on:
   push:
     branches:
-      - claude/optimize-html-c20DA
       - main
+    paths:
+      - 'index.html'
+      - 'sw.js'
   workflow_dispatch:
 
 permissions:
