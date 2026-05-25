@@ -5568,9 +5568,12 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
             return { c, chgSign, html };
         });
 
-        // Sort: most bearish (negative chgSign) first (red on top), most bullish last (green on bottom)
-        computed.sort((a, b) => a.chgSign - b.chgSign);
-        heatmap.innerHTML = computed.map(x => x.html).join('');
+        // 外資台指期固定第一格，其餘依空→多排序
+        const fiCell     = computed.find(x => x.c.fiMode);
+        const otherCells = computed.filter(x => !x.c.fiMode);
+        otherCells.sort((a, b) => a.chgSign - b.chgSign);
+        const ordered = fiCell ? [fiCell, ...otherCells] : otherCells;
+        heatmap.innerHTML = ordered.map(x => x.html).join('');
 
         const ts = document.getElementById('warRoomTs');
         if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
