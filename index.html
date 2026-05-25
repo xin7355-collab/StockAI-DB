@@ -1429,7 +1429,7 @@ const app = {
         if (tab === 'chip' && this.currentSymbolId) {
             this.fetchChipTimeline(this.currentSymbolId, true);
             this.loadBrokerChips(this.currentSymbolId, true);
-            this.renderChipGlobal(this._activeChipPeriod || '3d');
+            // renderChipGlobal 由 loadBrokerChips/fetchChipTimeline 非同步完成後呼叫，不在此同步觸發
         }
     },
 
@@ -2653,6 +2653,8 @@ const app = {
     _resolveBrokerName(bid, bnm, brokerNames, rank) {
         // 優先用 lookup table（已清洗，只含 4 碼有效券商代碼）
         const cleaned = String(bid).replace(/,/g, '').trim();
+        // 舊格式 bug：bid 若含中文且無數字，代表誤存了股票名稱（如「台泥」「環泥」），直接忽略
+        if (/[一-鿿]/.test(cleaned) && !/\d/.test(cleaned)) return `未知分點`;
         if (brokerNames[cleaned]) return brokerNames[cleaned];
         if (brokerNames[bid])     return brokerNames[bid];
         // bnm 是正常中文名稱才用（排除純數字）
@@ -2669,6 +2671,7 @@ const app = {
 
         // 快取 TTL：6小時
         const cacheKey = `brokerChips_${sym}`;
+        if (forceRefresh) localStorage.removeItem(cacheKey);  // 強制刷新時清除舊快取（含舊格式壞資料）
         if (!forceRefresh) {
             const c = localStorage.getItem(cacheKey);
             if (c) {
@@ -2916,7 +2919,19 @@ const app = {
 
         // 3. 主力分點排行（需 periods 資料；無則略過，標籤已更新）
         const box = document.getElementById('brokerChipContent');
-        if (!box || !this._chipPeriods) return;
+        if (!box || !this._chipPeriods) {
+            // _chipPeriods 明確為 null：舊格式 JSON，無多週期資料 → 顯示提示
+            if (box && this._chipPeriods === null) {
+                let oldNote = box.querySelector('.old-format-notice');
+                if (!oldNote) {
+                    oldNote = document.createElement('div');
+                    oldNote.className = 'old-format-notice text-[10px] text-amber-500/70 text-center py-1.5 border-t border-[#30363d] mt-2';
+                    oldNote.textContent = '⚠️ 舊格式資料：重新採礦後即可啟用 1/3/5/10 日切換';
+                    box.appendChild(oldNote);
+                }
+            }
+            return;
+        }
 
         const pd = this._chipPeriods[period] || { buy: [], sell: [] };
         const names = this._chipBrokerNames || {};
@@ -3885,8 +3900,11 @@ ${dynamicParams}
             } else if (this.isMarketOpen()) {
                 this.rawDailyData.push({ date: todayStr, open: fugleData.open, high: fugleData.high, low: fugleData.low, close: fugleData.price, volume: fugleData.volume });
                 lastIdx++;
+            } else if (new Date().getDay() % 6 !== 0) {
+                // 盤後（週一~週五）且今日無採礦 bar：插入今日收盤 bar，讓漲跌幅計算正確
+                this.rawDailyData.push({ date: todayStr, open: fugleData.open || fugleData.price, high: fugleData.high || fugleData.price, low: fugleData.low || fugleData.price, close: fugleData.price, volume: fugleData.volume || 0 });
+                lastIdx++;
             }
-            // 盤後/週末不 append ghost bar — 歷史 diff 正常計算（非 0）
         }
         // When fugleData.isHistorical === true the rawDailyData is already correct — no modification needed
         if (manualPrice !== null && !isNaN(manualPrice) && manualPrice > 0) {
@@ -5038,6 +5056,11 @@ ${dynamicParams}
             // 靜態彈藥庫：用預設 Set 做 O(1) 查找
             const symSet = this._RADAR_POOLS[poolType];
             filtered = symSet ? rawList.filter(r => symSet.has(r.sym)) : rawList;
+            // 若上櫃/ETF 池別過濾後無結果且上次掃描非 score，自動補跑 score 掃描
+            if (filtered.length === 0 && rawList.length > 0 && (poolType === 'hot_otc' || poolType === 'etf_heavy') && type !== 'score') {
+                this.loadRadar('score');
+                return;
+            }
         }
 
         this.renderRadarResults(filtered, type, poolType);
