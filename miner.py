@@ -625,7 +625,7 @@ def run():
         months.append(cur.strftime('%Y%m'))
         cur = (cur - timedelta(days=1)).replace(day=1)
 
-    trading_days = get_trading_days(10)
+    trading_days = get_trading_days(20)
 
     inst_cache:   dict = {}
     margin_cache: dict = {}
@@ -1001,6 +1001,7 @@ def fetch_broker_chips():
         recent_dates = sorted(records_map.keys())[-20:]
         output = {
             'fundamentals': fundamentals,
+            'data_date': recent_dates[-1] if recent_dates else None,  # 最新可用交易日
             'chips': [records_map[d] for d in recent_dates]
         }
         out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')

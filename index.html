@@ -444,7 +444,7 @@
                     <!-- ① 三大法人走勢 -->
                     <div class="px-3 pt-2 pb-0">
                         <div class="flex items-center justify-between mb-1">
-                            <div class="text-[10px] text-orange-300 font-bold">📈 三大法人淨買賣（近10日）</div>
+                            <div class="text-[10px] text-orange-300 font-bold">📈 三大法人淨買賣（近10日）<span id="chipInstDate" class="text-[9px] text-gray-500 font-normal ml-1"></span></div>
                             <span id="chipTimelineStatus" class="text-[9px] text-gray-500"></span>
                         </div>
                         <div class="text-[9px] text-gray-500 mb-1">每日淨買賣超（千股）</div>
@@ -453,7 +453,10 @@
 
                     <!-- ② 融資融券走勢 -->
                     <div class="px-3 pt-1 pb-2">
-                        <div class="text-[9px] text-gray-500 mb-1">融資／融券餘額趨勢（千股）</div>
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-[9px] text-gray-500">融資／融券餘額趨勢（千股）</div>
+                            <span id="chipMarginDate" class="text-[9px] text-gray-500"></span>
+                        </div>
                         <div id="chipMarginChart" style="height:90px;width:100%;"></div>
                     </div>
 
@@ -2590,6 +2593,21 @@ const app = {
         const instEl = document.getElementById('chipInstChart');
         const marginEl = document.getElementById('chipMarginChart');
         if (!instEl || !marginEl) return;
+
+        // 標註最新「有資料」日（從尾端往回掃，跳過盤中今日=0 的 bar）
+        const instDateEl   = document.getElementById('chipInstDate');
+        const marginDateEl = document.getElementById('chipMarginDate');
+        const latestNonZero = (arr, keys) => {
+            for (let i = arr.length - 1; i >= 0; i--) {
+                if (keys.some(k => arr[i][k] !== 0)) return arr[i].date;
+            }
+            return null;
+        };
+        const instDate   = instData   ? latestNonZero(instData,   ['foreign','trust','dealer']) : null;
+        const marginDate = marginData ? latestNonZero(marginData, ['margin','short'])           : null;
+        if (instDateEl)   instDateEl.textContent   = instDate   ? `資料日期: ${instDate}`   : '';
+        if (marginDateEl) marginDateEl.textContent = marginDate ? `資料日期: ${marginDate}` : '';
+
         const allInstZero = !instData || instData.length === 0 ||
             instData.every(d => d.foreign === 0 && d.trust === 0 && d.dealer === 0);
         if (allInstZero) {
@@ -2715,6 +2733,7 @@ const app = {
         try {
             const brokerNames = await this._loadBrokerNames();
             let records = null;
+            let objDate = null;
             const apiBase = this._apiBase;
 
             // Strategy 1: backend api.py (if configured) — SQLite, instant
@@ -2744,6 +2763,7 @@ const app = {
                 const raw = await res.json();
                 // 新增：新格式為 {fundamentals, chips}，舊格式為純陣列
                 records = Array.isArray(raw) ? raw : (raw.chips || []);
+                objDate = (!Array.isArray(raw) && raw.data_date) ? raw.data_date : null;
                 // 順帶填入基本面快取（若有）
                 if (!Array.isArray(raw) && raw.fundamentals) this._applyFundamentalsToXray(raw.fundamentals);
             }
@@ -2752,7 +2772,7 @@ const app = {
 
             // 取最新一天有資料的記錄
             const latest = records[records.length - 1];
-            const dateLabel = latest.date;
+            const dateLabel = `資料日期: ${objDate || latest.date}`;
             if (dateLbl) dateLbl.textContent = dateLabel;
 
             // 計算 N 天累積買超（主力進場方向）
