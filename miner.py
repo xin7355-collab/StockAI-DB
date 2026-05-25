@@ -927,31 +927,59 @@ def fetch_broker_chips():
                 existing_obj = {'chips': raw} if isinstance(raw, list) else raw
             except Exception: pass
 
-        # ── 分點籌碼（現有邏輯，初始化移到 try 前確保例外時仍能寫 fundamentals）──
+        # ── 分點籌碼（抓近 10 交易日窗口，算多週期；初始化移到 try 前）──
         buyers, sellers, brokers_list = [], [], []
+        periods: dict = {}
+        latest_chip_date = None
         try:
             # [Token 輪動] 改用 fm_request，自動帶 Token 並在 429 時切換
+            # 抓 14 天（≈10 交易日）窗口，一次請求成本與單日相同，供多週期聚合
+            chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
             url_base = (f'https://api.finmindtrade.com/api/v4/data'
                         f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
-                        f'&data_id={sym}&start_date={today_str}')
+                        f'&data_id={sym}&start_date={chip_start}')
             j = fm_request(url_base, timeout=15)
             if j is None: j = {}
             if j.get('status') == 200 and j.get('data'):
-                raw_data = j['data']
-                brokers_net = {}
-                for r in raw_data:
-                    bid = r.get('secBrokerId')
-                    raw_nm = (r.get('secBrokerName') or '').strip()
+                # ── 依日期分組，券商中文名稱絕不丟棄 ──
+                by_date: dict = {}   # {date: {bid: {'broker_id','broker_name','net','buy','sel'}}}
+                for r in j['data']:
+                    d   = r.get('date') or today_str
+                    bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
+                    raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
                     bnm = TACTICAL_TAGS.get(bid, raw_nm if raw_nm and not raw_nm.isdigit() else bid)
-                    net = int(r.get('buy', 0)) - int(r.get('sell', 0))
-                    if bid not in brokers_net:
-                        brokers_net[bid] = {'bid': bid, 'bnm': bnm, 'buy': 0, 'sel': 0, 'net': 0}
-                    brokers_net[bid]['buy'] += int(r.get('buy', 0))
-                    brokers_net[bid]['sel'] += int(r.get('sell', 0))
-                    brokers_net[bid]['net'] += net
-                brokers_list = list(brokers_net.values())
-                buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
-                sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
+                    buy, sel = int(r.get('buy', 0)), int(r.get('sell', 0))
+                    slot = by_date.setdefault(d, {})
+                    e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0})
+                    e['buy'] += buy; e['sel'] += sel; e['net'] += (buy - sel)
+                    if bnm and not str(bnm).isdigit():
+                        e['broker_name'] = bnm
+
+                if by_date:
+                    # ── 多週期聚合（1/3/5/10 日，各取淨買/淨賣 Top15）──
+                    def _agg_period(n: int) -> dict:
+                        wdates = sorted(by_date.keys())[-n:]
+                        agg: dict = {}
+                        for wd in wdates:
+                            for b, e in by_date[wd].items():
+                                a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0})
+                                a['net'] += e['net']
+                                if e['broker_name'] and not str(e['broker_name']).isdigit():
+                                    a['broker_name'] = e['broker_name']
+                        vals = list(agg.values())
+                        buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
+                        sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
+                        return {'buy': buy_top, 'sell': sell_top}
+                    periods = {f'{n}d': _agg_period(n) for n in (1, 3, 5, 10)}
+
+                    # ── 最新交易日 → 舊格式 buyers/sellers（向後相容 generate_top_picks）──
+                    latest_chip_date = sorted(by_date.keys())[-1]
+                    brokers_list = [
+                        {'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']}
+                        for b, e in by_date[latest_chip_date].items()
+                    ]
+                    buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
+                    sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
             time.sleep(3)
         except Exception as e:
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
@@ -991,17 +1019,21 @@ def fetch_broker_chips():
 
         # ③ 寫入新格式 JSON（existing_obj 已在迴圈頂部讀取，不重複讀檔）
         records_map = {r['date']: r for r in existing_obj.get('chips', []) if isinstance(r, dict)}
+        rec_date = latest_chip_date or today_str   # 以實際最新交易日為 key（非強制今天）
         if buyers or sellers:
-            records_map[today_str] = {
-                'date': today_str, 'buyers': buyers, 'sellers': sellers,
+            records_map[rec_date] = {
+                'date': rec_date, 'buyers': buyers, 'sellers': sellers,
                 'tot_buy': sum(b['buy'] for b in brokers_list),
                 'tot_sel': sum(b['sel'] for b in brokers_list)
             }
             updated += 1
         recent_dates = sorted(records_map.keys())[-20:]
+        # 本次抓取失敗（429/空）時，保留上次的 periods，避免覆蓋成空
+        out_periods = periods if periods else (existing_obj.get('periods') or {})
         output = {
             'fundamentals': fundamentals,
             'data_date': recent_dates[-1] if recent_dates else None,  # 最新可用交易日
+            'periods': out_periods,   # 多週期：{1d,3d,5d,10d}，各含 buy/sell（broker_name）
             'chips': [records_map[d] for d in recent_dates]
         }
         out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')

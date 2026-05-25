@@ -475,6 +475,12 @@
                         <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-200/70 leading-relaxed">
                             💡 <b class="text-amber-300">主力分點</b>是每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
                         </div>
+                        <div id="chipPeriodBtns" class="flex gap-1 mt-2">
+                            <button data-period="1d" onclick="app.renderChipPeriod('1d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">1日</button>
+                            <button data-period="3d" onclick="app.renderChipPeriod('3d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-colors">3日</button>
+                            <button data-period="5d" onclick="app.renderChipPeriod('5d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">5日</button>
+                            <button data-period="10d" onclick="app.renderChipPeriod('10d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">10日</button>
+                        </div>
                     </div>
                     <div id="brokerChipContent" class="px-3 pb-2">
                         <div class="text-center py-4 text-gray-600 text-xs">切換到籌碼分頁自動載入</div>
@@ -2718,10 +2724,21 @@ const app = {
             const c = localStorage.getItem(cacheKey);
             if (c) {
                 try {
-                    const { ts, html, dateLabel } = JSON.parse(c);
+                    const { ts, html, dateLabel, periods } = JSON.parse(c);
                     if (Date.now() - ts < 6 * 3600 * 1000) {
-                        box.innerHTML = html;
                         if (dateLbl) dateLbl.textContent = dateLabel;
+                        if (periods && Object.keys(periods).length) {
+                            // 多週期快取：還原後依當前選取週期渲染
+                            this._chipPeriods    = periods;
+                            this._chipBrokerNames = await this._loadBrokerNames();
+                            this._chipSym        = sym;
+                            document.getElementById('chipPeriodBtns')?.classList.remove('hidden');
+                            this.renderChipPeriod(this._activeChipPeriod || '3d');
+                        } else {
+                            this._chipPeriods = null;
+                            document.getElementById('chipPeriodBtns')?.classList.add('hidden');
+                            box.innerHTML = html;
+                        }
                         return;
                     }
                 } catch(e) {}
@@ -2734,6 +2751,7 @@ const app = {
             const brokerNames = await this._loadBrokerNames();
             let records = null;
             let objDate = null;
+            let chipPeriods = null;
             const apiBase = this._apiBase;
 
             // Strategy 1: backend api.py (if configured) — SQLite, instant
@@ -2764,6 +2782,7 @@ const app = {
                 // 新增：新格式為 {fundamentals, chips}，舊格式為純陣列
                 records = Array.isArray(raw) ? raw : (raw.chips || []);
                 objDate = (!Array.isArray(raw) && raw.data_date) ? raw.data_date : null;
+                chipPeriods = (!Array.isArray(raw) && raw.periods && Object.keys(raw.periods).length) ? raw.periods : null;
                 // 順帶填入基本面快取（若有）
                 if (!Array.isArray(raw) && raw.fundamentals) this._applyFundamentalsToXray(raw.fundamentals);
             }
@@ -2774,6 +2793,20 @@ const app = {
             const latest = records[records.length - 1];
             const dateLabel = `資料日期: ${objDate || latest.date}`;
             if (dateLbl) dateLbl.textContent = dateLabel;
+
+            // ── 多週期模式（新版 JSON 有 periods）：用週期切換按鈕渲染 ──
+            if (chipPeriods) {
+                this._chipPeriods     = chipPeriods;
+                this._chipBrokerNames = brokerNames;
+                this._chipSym         = sym;
+                document.getElementById('chipPeriodBtns')?.classList.remove('hidden');
+                this.renderChipPeriod(this._activeChipPeriod || '3d');
+                localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), periods: chipPeriods, dateLabel }));
+                return;
+            }
+            // 否則（舊格式 / 後端 api 路徑）→ 隱藏週期按鈕，沿用以下累積長條圖 fallback
+            this._chipPeriods = null;
+            document.getElementById('chipPeriodBtns')?.classList.add('hidden');
 
             // 計算 N 天累積買超（主力進場方向）
             // key = bid，value = [累積量, bnm]
@@ -2852,11 +2885,81 @@ const app = {
             localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html, dateLabel }));
 
         } catch(e) {
+            document.getElementById('chipPeriodBtns')?.classList.add('hidden');
             const msg = e.message === 'no_data'
                 ? `<div class="text-center py-3 text-gray-600 text-xs">此標的不在監控清單或資料尚未採礦<br><span class="text-[9px]">（監控清單：${this.CHIP_WATCHLIST?.length || 0} 檔，每日16:30後更新）</span></div>`
                 : `<div class="text-center py-3 text-gray-600 text-xs">暫無分點資料</div>`;
             box.innerHTML = msg;
         }
+    },
+
+    // 多週期切換：渲染 this._chipPeriods[period] 的買/賣 Top（中文 broker_name + 暗色長條圖）
+    renderChipPeriod(period) {
+        const box = document.getElementById('brokerChipContent');
+        if (!box || !this._chipPeriods) return;
+        this._activeChipPeriod = period;
+
+        // 1. 按鈕 active 樣式（紅底=選中）
+        document.querySelectorAll('#chipPeriodBtns .chip-period-btn').forEach(btn => {
+            const on = btn.dataset.period === period;
+            btn.className = 'chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border transition-colors '
+                + (on ? 'border-red-700 bg-red-900/40 text-red-300' : 'border-[#30363d] text-gray-400');
+        });
+
+        const pd = this._chipPeriods[period] || { buy: [], sell: [] };
+        const names = this._chipBrokerNames || {};
+        const buy  = pd.buy  || [];
+        const sell = pd.sell || [];
+        const maxBuy = buy[0]?.net ? Math.abs(buy[0].net) : 1;
+        const maxSel = sell[0]?.net ? Math.abs(sell[0].net) : 1;
+
+        const rowFn = (x, maxVal, isBuy) => {
+            const val  = Math.abs(x.net || 0);
+            const pct  = Math.round(val / maxVal * 100);
+            const col  = isBuy ? 'bg-red-500/70' : 'bg-green-500/70';
+            const tcol = isBuy ? 'text-red-300' : 'text-green-300';
+            const sign = isBuy ? '+' : '-';
+            const valK = val >= 1000 ? (val/1000).toFixed(0)+'K' : val.toString();
+            // 直接讀 broker_name；缺漏才回退對照表（徹底消滅純數字代號）
+            const label = x.broker_name && !String(x.broker_name).match(/^\d+$/)
+                ? x.broker_name
+                : this._resolveBrokerName(x.broker_id, x.broker_name, names, 0);
+            return `<div class="flex items-center gap-1.5 py-0.5">
+                <span class="text-[10px] text-gray-300 w-14 truncate flex-shrink-0 font-medium">${label}</span>
+                <div class="flex-1 bg-gray-800 rounded-sm h-2 overflow-hidden">
+                    <div class="${col} h-full rounded-sm" style="width:${pct}%"></div>
+                </div>
+                <span class="text-[10px] font-mono ${tcol} w-12 text-right flex-shrink-0">${sign}${valK}</span>
+            </div>`;
+        };
+
+        // 綜合方向（以淨額合計判斷）
+        const sumBuy = buy.reduce((s,x)=>s+Math.abs(x.net||0),0);
+        const sumSel = sell.reduce((s,x)=>s+Math.abs(x.net||0),0);
+        const ratio  = sumBuy / (sumBuy + sumSel + 1);
+        let verdict, vBg, vTx;
+        if (ratio > 0.55)      { verdict='🔴 主力積極買進'; vBg='bg-red-900/30';  vTx='text-red-300'; }
+        else if (ratio < 0.45) { verdict='🟢 主力積極出脫'; vBg='bg-green-900/30'; vTx='text-green-300'; }
+        else                   { verdict='⚪ 多空拉鋸觀望'; vBg='bg-gray-800/40';  vTx='text-gray-300'; }
+
+        box.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-[9px] text-gray-500">${period.replace('d','')} 日累積主力動向（張）</div>
+            <div class="px-2 py-0.5 rounded-full text-[10px] font-bold ${vBg} ${vTx}">${verdict}</div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <div class="text-[10px] text-red-400 font-bold mb-1">▲ 積極買進 Top${buy.length}</div>
+                ${buy.length ? buy.map(x => rowFn(x, maxBuy, true)).join('') : '<div class="text-[10px] text-gray-600 py-1">無買超紀錄</div>'}
+            </div>
+            <div>
+                <div class="text-[10px] text-green-400 font-bold mb-1">▼ 積極賣出 Top${sell.length}</div>
+                ${sell.length ? sell.map(x => rowFn(x, maxSel, false)).join('') : '<div class="text-[10px] text-gray-600 py-1">無賣超紀錄</div>'}
+            </div>
+        </div>`;
+
+        // 供 AI 解析讀取多週期摘要
+        this._brokerChipSummary = { sym: this._chipSym, periods: this._chipPeriods, activePeriod: period };
     },
 
     async analyzeChipUnified(sym) {
@@ -2936,9 +3039,20 @@ const app = {
         let brokerText = '主力分點資料尚未載入（請先切到籌碼分頁等待載入）';
         const bd = this._brokerChipSummary;
         if (bd && bd.sym === sym) {
-            const topB = bd.topBuyers.slice(0,5).map(([,v],i)=>`${bd.buyLabels[i]}買入${Math.round(v/1000)}K股`).join('、');
-            const topS = bd.topSellers.slice(0,5).map(([,v],i)=>`${bd.selLabels[i]}賣出${Math.round(v/1000)}K股`).join('、');
-            brokerText = `近${bd.days}日累計：買超${bd.totalBuyK}K股，賣超${bd.totalSelK}K股\n積極買進：${topB||'無'}\n積極賣出：${topS||'無'}\n整體傾向：${bd.verdict}`;
+            if (bd.periods) {
+                // 新版多週期摘要：1/3/5/10 日各列前 3 名買/賣
+                const fmtSide = (arr) => (arr || []).slice(0,3)
+                    .map(x => `${x.broker_name || x.broker_id}${(x.net>=0?'+':'')}${Math.round((x.net||0))}`).join('、') || '無';
+                brokerText = ['1d','3d','5d','10d'].map(p => {
+                    const pd = bd.periods[p] || {};
+                    return `${p.replace('d','')}日：買 ${fmtSide(pd.buy)}｜賣 ${fmtSide(pd.sell)}`;
+                }).join('\n');
+            } else if (bd.topBuyers) {
+                // 舊版累積摘要 fallback
+                const topB = bd.topBuyers.slice(0,5).map(([,v],i)=>`${bd.buyLabels[i]}買入${Math.round(v/1000)}K股`).join('、');
+                const topS = bd.topSellers.slice(0,5).map(([,v],i)=>`${bd.selLabels[i]}賣出${Math.round(v/1000)}K股`).join('、');
+                brokerText = `近${bd.days}日累計：買超${bd.totalBuyK}K股，賣超${bd.totalSelK}K股\n積極買進：${topB||'無'}\n積極賣出：${topS||'無'}\n整體傾向：${bd.verdict}`;
+            }
         }
 
         const prompt = `你是台股籌碼分析老師（以權證小哥的風格），請用白話文幫初學者看懂以下所有籌碼資料，給出完整解析與明確建議。
@@ -2951,14 +3065,17 @@ ${instText}
 💰【融資融券近5日】
 ${marginText}
 
-🔍【主力分點照妖鏡（近20日累積）】
+🔍【主力分點多週期淨買賣超（張，數字為各週期累積淨額）】
 ${brokerText}
 
 請依序輸出（每段2-3句話，用國中生都看得懂的語言）：
 1️⃣ 外資在做什麼？連買還是連賣？力道強不強？
 2️⃣ 投信和自營商呢？有沒有配合外資的動作？
 3️⃣ 融資融券怎麼說？散戶現在情緒樂觀還是悲觀？
-4️⃣ 主力分點照妖鏡：主力有沒有在偷偷買進或出貨？
+4️⃣ 主力分點多週期判讀：請依 1/3/5/10 日變化，明確標出主力處於下列哪種情境並說明：
+    ①【連續建倉】10/5/3/1日皆買超 → 主力穩定吸籌
+    ②【短線突襲】10日無大動作但 1/3日突然急買 → 短線發動
+    ③【高檔出貨】10日為買超但 1/3日轉大量賣超 → 主力高檔派發
 5️⃣ 綜合建議：這檔現在適合「買進 / 繼續持有 / 小心減碼」？請給明確理由。
 
 最後一行：⚠️ 投資有風險，以上僅供參考，請自行判斷。`;
@@ -5571,10 +5688,19 @@ VIX=${vix} | S&P500=${spxChg} | 費半SOX=${soxChg} | TSMC ADR=${tsmChg} | NVDA=
             : null;
 
         const bs = this._brokerChipSummary;
-        const brokerLine = (bs && bs.sym === sym)
-            ? `  主力分點：${bs.verdict}，買超合計 ${bs.totalBuyK}股 / 賣超合計 ${bs.totalSelK}股（近${bs.days}日）` +
-              (bs.topBuyers?.length ? `\n  主要買超券商：${bs.topBuyers.slice(0,3).join('、')}` : '')
-            : null;
+        let brokerLine = null;
+        if (bs && bs.sym === sym) {
+            if (bs.periods) {
+                // 新版多週期：取 5 日摘要前 3 名買/賣
+                const pd = bs.periods['5d'] || bs.periods['3d'] || {};
+                const b3 = (pd.buy  || []).slice(0,3).map(x => x.broker_name || x.broker_id).join('、');
+                const s3 = (pd.sell || []).slice(0,3).map(x => x.broker_name || x.broker_id).join('、');
+                brokerLine = `  主力分點（近5日）：主要買超 ${b3 || '無'}；主要賣超 ${s3 || '無'}`;
+            } else if (bs.topBuyers) {
+                brokerLine = `  主力分點：${bs.verdict}，買超合計 ${bs.totalBuyK}股 / 賣超合計 ${bs.totalSelK}股（近${bs.days}日）` +
+                    (bs.topBuyers?.length ? `\n  主要買超券商：${bs.buyLabels?.slice(0,3).join('、') || ''}` : '');
+            }
+        }
 
         const lastMargin = recentD.filter(d => d.margin_balance).slice(-1)[0];
         const marginLine = lastMargin
