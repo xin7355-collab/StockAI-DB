@@ -2473,9 +2473,11 @@ const app = {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 try {
-                    const { ts, instData, marginData } = JSON.parse(cached);
+                    const { ts, instData, marginData, chipMarginRaw } = JSON.parse(cached);
                     if (Date.now() - ts < CACHE_TTL) {
+                        if (chipMarginRaw) this._chipMarginFromFinmind = chipMarginRaw;
                         this._renderChipTimeline(instData, marginData);
+                        this._renderMarginBars(parseInt(this._activeChipPeriod) || 3);
                         if (statusEl) statusEl.textContent = '快取';
                         return;
                     }
@@ -2512,17 +2514,26 @@ const app = {
             }));
 
             const marginByDate = {};
+            const marginBalByDate = {};
             for (const r of (marginRes.data || [])) {
                 marginByDate[r.date] = {
                     margin: Math.round((parseInt(r.MarginPurchaseToday) || 0) / 1000),
                     short:  Math.round((parseInt(r.ShortSaleToday)      || 0) / 1000),
                 };
+                marginBalByDate[r.date] = {
+                    margin_balance: parseInt(r.MarginPurchaseTodayBalance ?? r.MarginPurchaseTotalBalance) || 0,
+                    short_balance:  parseInt(r.ShortSaleTodayBalance ?? r.ShortSaleTotalBalance) || 0,
+                };
             }
             const marginDates = Object.keys(marginByDate).sort().slice(-15);
             const marginData = marginDates.map(d => ({ date: d, ...marginByDate[d] }));
+            const chipMarginRaw = marginDates.map(d => ({ date: d, ...(marginBalByDate[d] || {}) }));
+            this._chipMarginFromFinmind = chipMarginRaw;
 
-            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), instData, marginData }));
+            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), instData, marginData, chipMarginRaw }));
             this._renderChipTimeline(instData, marginData);
+            // 更新融資券橫條（非同步 FinMind 資料抵達後補繪）
+            this._renderMarginBars(parseInt(this._activeChipPeriod) || 3);
             if (statusEl) statusEl.textContent = `更新 ${new Date().toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' })}`;
         } catch(e) {
             if (statusEl) statusEl.textContent = '無法載入';
@@ -2844,13 +2855,29 @@ const app = {
             out.foreign += f; out.trust += t; out.dealer += d;
             if (Math.abs(f) > 0 || Math.abs(t) > 0 || Math.abs(d) > 0) out.hasInst = true;
         }
-        // 融資券「餘額差值」：最新 - 往前推 n 天
-        const last = arr[len - 1];
-        const past = arr[len - 1 - n] || arr[0];
-        if (last && past && (last.margin_balance !== undefined || last.short_balance !== undefined)) {
-            out.marginDelta = (last.margin_balance || 0) - (past.margin_balance || 0);
-            out.shortDelta  = (last.short_balance  || 0) - (past.short_balance  || 0);
-            if ((last.margin_balance || 0) > 0 || (last.short_balance || 0) > 0) out.hasMargin = true;
+        // 融資券「餘額差值」：掃描找最後一筆有效餘額（跳過盤中今日 bar 的 0 值）
+        let lastMarginIdx = -1;
+        for (let i = len - 1; i >= 0; i--) {
+            if ((arr[i].margin_balance || 0) > 0 || (arr[i].short_balance || 0) > 0) {
+                lastMarginIdx = i; break;
+            }
+        }
+        if (lastMarginIdx >= 0) {
+            const mLast = arr[lastMarginIdx];
+            const mPast = arr[Math.max(0, lastMarginIdx - n)];
+            out.marginDelta = (mLast.margin_balance || 0) - (mPast.margin_balance || 0);
+            out.shortDelta  = (mLast.short_balance  || 0) - (mPast.short_balance  || 0);
+            out.hasMargin = true;
+        } else if (this._chipMarginFromFinmind?.length) {
+            // FinMind fallback（本地無餘額資料時使用）
+            const fm = this._chipMarginFromFinmind;
+            const fmLast = fm[fm.length - 1];
+            const fmPast = fm[Math.max(0, fm.length - 1 - n)];
+            if ((fmLast?.margin_balance || 0) > 0 || (fmLast?.short_balance || 0) > 0) {
+                out.marginDelta = (fmLast.margin_balance || 0) - (fmPast?.margin_balance || 0);
+                out.shortDelta  = (fmLast.short_balance  || 0) - (fmPast?.short_balance  || 0);
+                out.hasMargin = true;
+            }
         }
         // 法人單位股→張 (/1000)；融資券餘額單位股→張 (/1000)
         return {
