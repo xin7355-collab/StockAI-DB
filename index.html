@@ -459,10 +459,21 @@
                         <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#0d1117] border border-indigo-900/50 rounded-lg p-3 text-xs text-gray-300 leading-relaxed"></div>
                     </div>
 
+                    <!-- 全局時間週期切換器 -->
+                    <div class="px-3 pt-2 pb-2 border-b border-[#30363d]">
+                        <div class="text-[9px] text-gray-500 font-bold mb-1">⏱ 時間週期（全局聯動）</div>
+                        <div id="chipPeriodBtns" class="flex gap-1">
+                            <button data-period="1d" onclick="app.renderChipPeriod('1d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">1日</button>
+                            <button data-period="3d" onclick="app.renderChipPeriod('3d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-colors">3日</button>
+                            <button data-period="5d" onclick="app.renderChipPeriod('5d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">5日</button>
+                            <button data-period="10d" onclick="app.renderChipPeriod('10d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">10日</button>
+                        </div>
+                    </div>
+
                     <!-- ① 三大法人走勢 -->
                     <div class="px-3 pt-2 pb-0">
                         <div class="flex items-center justify-between mb-1">
-                            <div class="text-[10px] text-orange-300 font-bold">📈 三大法人淨買賣（近10日）<span id="chipInstDate" class="text-[9px] text-gray-500 font-normal ml-1"></span></div>
+                            <div class="text-[10px] text-orange-300 font-bold">📈 三大法人淨買賣 <span id="instHeaderTitle" class="text-white bg-red-900/50 px-1 rounded ml-1">近3日</span><span id="chipInstDate" class="text-[9px] text-gray-500 font-normal ml-1"></span></div>
                             <span id="chipTimelineStatus" class="text-[9px] text-gray-500"></span>
                         </div>
                         <div class="text-[9px] text-gray-500 mb-1">每日淨買賣超（千股）</div>
@@ -472,7 +483,7 @@
                     <!-- ② 融資融券走勢 -->
                     <div class="px-3 pt-1 pb-2">
                         <div class="flex items-center justify-between mb-1">
-                            <div class="text-[9px] text-gray-500">融資／融券餘額趨勢（千股）</div>
+                            <div class="text-[9px] text-gray-500">融資／融券餘額趨勢 <span id="marginHeaderTitle" class="text-white bg-blue-900/50 px-1 rounded ml-1">近3日</span></div>
                             <span id="chipMarginDate" class="text-[9px] text-gray-500"></span>
                         </div>
                         <div id="chipMarginChart" style="height:90px;width:100%;"></div>
@@ -492,12 +503,6 @@
                         </div>
                         <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-200/70 leading-relaxed">
                             💡 <b class="text-amber-300">主力分點</b>是每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
-                        </div>
-                        <div id="chipPeriodBtns" class="flex gap-1 mt-2">
-                            <button data-period="1d" onclick="app.renderChipPeriod('1d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">1日</button>
-                            <button data-period="3d" onclick="app.renderChipPeriod('3d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-colors">3日</button>
-                            <button data-period="5d" onclick="app.renderChipPeriod('5d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">5日</button>
-                            <button data-period="10d" onclick="app.renderChipPeriod('10d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">10日</button>
                         </div>
                     </div>
                     <div id="brokerChipContent" class="px-3 pb-2">
@@ -2679,8 +2684,8 @@ const app = {
                             this.renderChipPeriod(this._activeChipPeriod || '3d');
                         } else {
                             this._chipPeriods = null;
-                            document.getElementById('chipPeriodBtns')?.classList.add('hidden');
                             box.innerHTML = html;
+                            this.renderChipPeriod(this._activeChipPeriod || '3d');
                         }
                         return;
                     }
@@ -2747,9 +2752,8 @@ const app = {
                 localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), periods: chipPeriods, dateLabel }));
                 return;
             }
-            // 否則（舊格式 / 後端 api 路徑）→ 隱藏週期按鈕，沿用以下累積長條圖 fallback
+            // 否則（舊格式 / 後端 api 路徑）→ 沿用以下累積長條圖 fallback（切換器仍驅動法人/融資標籤）
             this._chipPeriods = null;
-            document.getElementById('chipPeriodBtns')?.classList.add('hidden');
 
             // 計算 N 天累積買超（主力進場方向）
             // key = bid，value = [累積量, bnm]
@@ -2826,9 +2830,9 @@ const app = {
 
             box.innerHTML = html;
             localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html, dateLabel }));
+            this.renderChipPeriod(this._activeChipPeriod || '3d');  // 更新法人/融資週期標籤
 
         } catch(e) {
-            document.getElementById('chipPeriodBtns')?.classList.add('hidden');
             const msg = e.message === 'no_data'
                 ? `<div class="text-center py-3 text-gray-600 text-xs">此標的不在監控清單或資料尚未採礦<br><span class="text-[9px]">（監控清單：${this.CHIP_WATCHLIST?.length || 0} 檔，每日16:30後更新）</span></div>`
                 : `<div class="text-center py-3 text-gray-600 text-xs">暫無分點資料</div>`;
@@ -2836,10 +2840,42 @@ const app = {
         }
     },
 
+    // 從每日陣列取近 n 日，算法人累計（張）+ 融資券餘額差值（張）。供切換器標籤與 AI 餵料共用
+    _chipPeriodSums(dailyArr, n) {
+        const arr = Array.isArray(dailyArr) ? dailyArr : [];
+        const len = arr.length;
+        const out = { foreign: 0, trust: 0, dealer: 0, marginDelta: 0, shortDelta: 0, hasInst: false, hasMargin: false };
+        if (!len) return out;
+        const slice = arr.slice(-n);
+        for (const r of slice) {
+            const f = r.foreign_net ?? r.foreign_inv ?? 0;
+            const t = r.trust_net   ?? r.invest_trust ?? 0;
+            const d = r.dealer_net  ?? r.dealer_inv   ?? 0;
+            out.foreign += f; out.trust += t; out.dealer += d;
+            if (Math.abs(f) > 0 || Math.abs(t) > 0 || Math.abs(d) > 0) out.hasInst = true;
+        }
+        // 融資券「餘額差值」：最新 - 往前推 n 天
+        const last = arr[len - 1];
+        const past = arr[len - 1 - n] || arr[0];
+        if (last && past && (last.margin_balance !== undefined || last.short_balance !== undefined)) {
+            out.marginDelta = (last.margin_balance || 0) - (past.margin_balance || 0);
+            out.shortDelta  = (last.short_balance  || 0) - (past.short_balance  || 0);
+            if ((last.margin_balance || 0) > 0 || (last.short_balance || 0) > 0) out.hasMargin = true;
+        }
+        // 法人單位股→張 (/1000)；融資券餘額單位股→張 (/1000)
+        return {
+            foreign: Math.round(out.foreign / 1000),
+            trust:   Math.round(out.trust   / 1000),
+            dealer:  Math.round(out.dealer  / 1000),
+            marginDelta: Math.round(out.marginDelta / 1000),
+            shortDelta:  Math.round(out.shortDelta  / 1000),
+            hasInst: out.hasInst, hasMargin: out.hasMargin,
+        };
+    },
+
     // 多週期切換：渲染 this._chipPeriods[period] 的買/賣 Top（中文 broker_name + 暗色長條圖）
     renderChipPeriod(period) {
-        const box = document.getElementById('brokerChipContent');
-        if (!box || !this._chipPeriods) return;
+        const n = parseInt(period) || 3;
         this._activeChipPeriod = period;
 
         // 1. 按鈕 active 樣式（紅底=選中）
@@ -2848,6 +2884,22 @@ const app = {
             btn.className = 'chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border transition-colors '
                 + (on ? 'border-red-700 bg-red-900/40 text-red-300' : 'border-[#30363d] text-gray-400');
         });
+
+        // 2. 全局聯動：法人 / 融資券標題標籤即時跳動（即使無主力分點資料也更新）
+        const s = this._chipPeriodSums(this.rawDailyData || [], n);
+        const sgn = v => (v >= 0 ? '+' : '') + v;
+        const instEl = document.getElementById('instHeaderTitle');
+        if (instEl) instEl.textContent = s.hasInst
+            ? `近${n}日 外資${sgn(s.foreign)} 投信${sgn(s.trust)} 自營${sgn(s.dealer)}`
+            : `近${n}日`;
+        const marginEl = document.getElementById('marginHeaderTitle');
+        if (marginEl) marginEl.textContent = s.hasMargin
+            ? `近${n}日 融資${sgn(s.marginDelta)} 融券${sgn(s.shortDelta)}`
+            : `近${n}日`;
+
+        // 3. 主力分點排行（需 periods 資料；無則略過，標籤已更新）
+        const box = document.getElementById('brokerChipContent');
+        if (!box || !this._chipPeriods) return;
 
         const pd = this._chipPeriods[period] || { buy: [], sell: [] };
         const names = this._chipBrokerNames || {};
@@ -2927,55 +2979,48 @@ const app = {
         const d = new Date(); d.setDate(d.getDate() - 20);
         const startDate = d.toISOString().split('T')[0];
 
-        // 1. 從 OHLCV 快取取近10日法人資料（優先，不耗 FinMind 配額）
-        let instText = '無資料';
-        let marginText = '無資料';
+        // 1. 取每日陣列：優先 OHLCV 快取（不耗 FinMind 配額）；無籌碼欄位才 fallback FinMind
+        let dailyArr = [];
         if (this.rawDailyData?.length > 0) {
-            const recent = this.rawDailyData.slice(-10);
-            const hasChip = recent.some(r =>
+            const hasChip = this.rawDailyData.slice(-10).some(r =>
                 Math.abs(r.foreign_net ?? r.foreign_inv ?? 0) > 0 ||
                 Math.abs(r.trust_net   ?? r.invest_trust ?? 0) > 0 ||
                 Math.abs(r.dealer_net  ?? r.dealer_inv   ?? 0) > 0
             );
-            if (hasChip) {
-                instText = recent.filter(r => r.foreign_net !== undefined || r.foreign_inv !== undefined).map(r => {
-                    const fK = Math.round(((r.foreign_net ?? r.foreign_inv ?? 0))/1000);
-                    const tK = Math.round(((r.trust_net   ?? r.invest_trust ?? 0))/1000);
-                    const dK = Math.round(((r.dealer_net  ?? r.dealer_inv   ?? 0))/1000);
-                    return `${r.date}: 外資${fK>=0?'+':''}${fK}K 投信${tK>=0?'+':''}${tK}K 自營${dK>=0?'+':''}${dK}K`;
-                }).join('\n');
-                marginText = recent.filter(r => r.margin_balance !== undefined).map(r =>
-                    `${r.date}: 融資${Math.round((r.margin_balance||0)/1000)}K 融券${Math.round((r.short_balance||0)/1000)}K`
-                ).join('\n') || '無資料';
-            }
+            if (hasChip) dailyArr = this.rawDailyData;
         }
-
-        // 2. 若 OHLCV 無籌碼欄位，fallback 到 FinMind API
-        if (instText === '無資料') {
+        if (!dailyArr.length) {
             try {
                 const [instRes, marginRes] = await Promise.all([
                     this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 }).then(r=>r.json()).catch(()=>({data:[]})),
                     this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 }).then(r=>r.json()).catch(()=>({data:[]}))
                 ]);
-                const instByDate = {};
+                const byDate = {};
                 for (const r of (instRes.data||[])) {
-                    if (!instByDate[r.date]) instByDate[r.date] = {foreign:0,trust:0,dealer:0};
+                    if (!byDate[r.date]) byDate[r.date] = { date: r.date, foreign_net:0, trust_net:0, dealer_net:0 };
                     const net = (parseInt(r.buy)||0)-(parseInt(r.sell)||0);
-                    if (r.name.includes('外資')) instByDate[r.date].foreign = net;
-                    else if (r.name.includes('投信')) instByDate[r.date].trust = net;
-                    else if (r.name.includes('自營')) instByDate[r.date].dealer = net;
+                    if (r.name.includes('外資')) byDate[r.date].foreign_net = net;
+                    else if (r.name.includes('投信')) byDate[r.date].trust_net = net;
+                    else if (r.name.includes('自營')) byDate[r.date].dealer_net = net;
                 }
-                instText = Object.keys(instByDate).sort().slice(-10).map(date => {
-                    const v = instByDate[date];
-                    return `${date}: 外資${v.foreign>=0?'+':''}${Math.round(v.foreign/1000)}K 投信${v.trust>=0?'+':''}${Math.round(v.trust/1000)}K 自營${v.dealer>=0?'+':''}${Math.round(v.dealer/1000)}K`;
-                }).join('\n') || '無資料';
-                const marginByDate = {};
-                for (const r of (marginRes.data||[])) marginByDate[r.date] = {margin:parseInt(r.MarginPurchaseToday)||0,short:parseInt(r.ShortSaleToday)||0};
-                marginText = Object.keys(marginByDate).sort().slice(-5).map(date => {
-                    const v = marginByDate[date];
-                    return `${date}: 融資${Math.round(v.margin/1000)}K 融券${Math.round(v.short/1000)}K`;
-                }).join('\n') || '無資料';
+                // 融資券餘額（取當日餘額供差值計算）
+                for (const r of (marginRes.data||[])) {
+                    if (!byDate[r.date]) byDate[r.date] = { date: r.date, foreign_net:0, trust_net:0, dealer_net:0 };
+                    byDate[r.date].margin_balance = parseInt(r.MarginPurchaseTodayBalance ?? r.MarginPurchaseTotalBalance)||0;
+                    byDate[r.date].short_balance  = parseInt(r.ShortSaleTodayBalance ?? r.ShortSaleTotalBalance)||0;
+                }
+                dailyArr = Object.keys(byDate).sort().map(k => byDate[k]);
             } catch(e) {}
+        }
+
+        // 2. 用共用 helper 算 1/3/5/10 日多週期濃縮數據（張）
+        const sgn = v => (v >= 0 ? '+' : '') + v;
+        let instText = '無資料', marginText = '無資料';
+        if (dailyArr.length) {
+            const ps = {}; [1,3,5,10].forEach(n => ps[n] = this._chipPeriodSums(dailyArr, n));
+            const line = (label, key) => `【${label}】1日:${sgn(ps[1][key])}, 3日:${sgn(ps[3][key])}, 5日:${sgn(ps[5][key])}, 10日:${sgn(ps[10][key])}`;
+            if (ps[10].hasInst) instText = [line('外資','foreign'), line('投信','trust'), line('自營','dealer')].join('\n');
+            if (ps[10].hasMargin) marginText = line('融資變化','marginDelta') + '\n' + line('融券變化','shortDelta');
         }
 
         // 3. 主力分點摘要
@@ -3002,10 +3047,10 @@ const app = {
 
 【股票代號：${sym}｜現價：${currentPrice} 元】
 
-📈【三大法人近10日淨買賣超（千股）】
+📈【三大法人 1/3/5/10 日累積淨買賣超（張）】
 ${instText}
 
-💰【融資融券近5日】
+💰【融資／融券 1/3/5/10 日餘額變化（張）】
 ${marginText}
 
 🔍【主力分點多週期淨買賣超（張，數字為各週期累積淨額）】
