@@ -45,6 +45,7 @@
         @media (display-mode: standalone) {
             .header-fixed { padding-top: env(safe-area-inset-top); }
         }
+        html.ios-standalone .header-fixed { padding-top: env(safe-area-inset-top); }
         .nav-fixed { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background-color: #0d1117; border-top: 1px solid #30363d; box-shadow: 0 -2px 10px rgba(0,0,0,0.8); padding-bottom: env(safe-area-inset-bottom); }
         .sticky-sub { position: sticky; top: 0; z-index: 40; background-color: #0d1117; }
         .sub-tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; color: #8b949e; }
@@ -241,6 +242,23 @@
         </div>
     </div>
 
+    <div id="globalAIModal" class="modal-base hidden" style="display:none"
+         onclick="if(event.target===this){app.closeGlobalAIModal();}">
+        <div class="modal-content max-w-lg mx-4 overflow-y-auto max-h-[85vh]" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-3 border-b border-gray-700 pb-2">
+                <span class="text-indigo-300 font-black text-sm">🌐 AI 全球市場解析</span>
+                <button onclick="app.closeGlobalAIModal()" class="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
+            </div>
+            <div id="globalAIModalBody" class="bg-[#010409] rounded-lg p-3 text-gray-200 text-sm leading-relaxed min-h-[80px]">
+                <span class="text-gray-600 text-xs">按「解析」取得 AI 全球市場分析...</span>
+            </div>
+            <button onclick="app.runGlobalMarketAI(); app.vibrate(50);" id="btnGlobalAIModal"
+                    class="mt-3 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
+                🌐 一鍵解析全球市場對台股影響
+            </button>
+        </div>
+    </div>
+
     <!-- ✨ 技術面 AI 診斷 Modal -->
     <div id="techAIModal" class="modal-base hidden" style="display:none"
          onclick="if(event.target===this){app.closeTechAIModal();}">
@@ -288,6 +306,13 @@
         </header>
 
         <div id="marketAlertBanner" class="hidden w-full max-w-7xl mx-auto px-3 py-1 text-[10px] font-bold text-center border-b border-red-800"></div>
+        <!-- 全域 AI 全球市場解析快捷列 -->
+        <div class="w-full border-b border-indigo-900/50 bg-[#0a0d14]">
+            <button onclick="app.openGlobalAIModal(); app.vibrate(30);" id="btnGlobalAIHeader"
+                    class="w-full text-[11px] text-indigo-300 hover:text-white hover:bg-indigo-900/30 font-bold py-1.5 flex items-center justify-center gap-1.5 transition-colors leading-none">
+                🌐 AI 全球市場解析 <span class="text-gray-600 text-[10px]">→ 一鍵解析全球市場對台股影響</span>
+            </button>
+        </div>
         <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
         <div style="display:none" aria-hidden="true">
             <span id="mktFI"></span>
@@ -670,9 +695,16 @@
 
                 <!-- 風險指數滑桿 -->
                 <div class="mb-3">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-[10px] text-gray-500 font-bold">⚡ 市場風險指數</span>
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-gray-500 font-bold">⚡ 市場風險指數</span>
+                            <span class="text-[9px] text-gray-600 bg-[#0d1117] border border-[#30363d] rounded px-1.5 py-0.5 cursor-pointer" onclick="document.getElementById('riskGaugeHelp').classList.toggle('hidden')" title="說明">❓</span>
+                        </div>
                         <span id="warRiskLabel" class="text-[10px] font-black px-2 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">計算中...</span>
+                    </div>
+                    <div id="riskGaugeHelp" class="hidden mb-2 p-2 bg-[#0d1117] border border-[#30363d] rounded text-[10px] text-gray-400 leading-relaxed">
+                        <b class="text-yellow-300">風險指數說明：</b>根據 VIX恐慌指數、外資台指期未平倉、美元指數升跌、S&P500漲跌 四項綜合計算。<br>
+                        🟢 0-20 避險天堂（可積極佈局）→ 🟡 20-40 小心謹慎 → 🟠 40-60 警戒備戰 → 🔴 60-80 高度風險 → 🚨 80+ 極度恐慌（現金為王）
                     </div>
                     <div class="relative h-4 rounded-full overflow-hidden"
                          style="background: linear-gradient(90deg, #14532d 0%, #166534 20%, #ca8a04 45%, #9a3412 70%, #7f1d1d 100%)">
@@ -684,18 +716,44 @@
                     </div>
                 </div>
 
-                <!-- 全球市場熱力圖 -->
-                <div class="mb-2">
-                    <div class="text-[10px] text-gray-500 font-bold mb-1.5">🌡️ 全球指標熱力圖（昨收）</div>
-                    <div class="grid grid-cols-4 gap-1" id="mktHeatmap">
-                        <div class="bg-gray-900/40 rounded p-1.5 text-center col-span-4 text-[9px] text-gray-600">等待市場數據載入...</div>
+                <!-- 台股指數（合併進來） -->
+                <div class="grid grid-cols-2 gap-1.5 mb-3">
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 加權指數 TWII</div>
+                        <div id="mktTWII_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="mktTWII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 上櫃指數 TWOII</div>
+                        <div id="mktTWOII_main" class="text-lg font-black font-mono text-gray-300">--</div>
+                        <div id="mktTWOII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
+                    </div>
+                </div>
+
+                <!-- 全球市場熱力圖（排序：壞消息優先） -->
+                <div class="mb-3">
+                    <div class="text-[10px] text-gray-500 font-bold mb-1.5">🌡️ 全球指標熱力圖（紅＝利空靠前）</div>
+                    <div class="grid grid-cols-3 gap-1.5" id="mktHeatmap">
+                        <div class="bg-gray-900/40 rounded p-2 text-center col-span-3 text-[9px] text-gray-600">等待市場數據載入...</div>
+                    </div>
+                </div>
+
+                <!-- 外資期貨（合併進來） -->
+                <div class="bg-[#0d1117] border border-yellow-900/30 rounded-lg p-2.5 mb-3 flex items-center justify-between">
+                    <div>
+                        <div class="text-[9px] text-yellow-500 font-bold mb-0.5">🎯 外資台指期未平倉淨口數</div>
+                        <div id="mktFI_main" class="text-2xl font-black font-mono text-yellow-300">--</div>
+                    </div>
+                    <div class="text-right">
+                        <div id="mktFI_label_main" class="text-xs font-bold text-gray-400 bg-[#161b22] px-2.5 py-1 rounded border border-[#30363d]">多空未定</div>
+                        <div class="text-[9px] text-gray-600 mt-1">正數＝偏多 / 負數＝偏空</div>
                     </div>
                 </div>
 
                 <!-- AI 閃電戰報 -->
                 <div class="border border-blue-900/40 rounded-lg bg-[#010409] p-2.5">
                     <div class="flex items-center justify-between mb-1">
-                        <span class="text-blue-400 text-[10px] font-black">⚡ AI 閃電戰報</span>
+                        <span class="text-blue-400 text-[10px] font-black">⚡ AI 閃電戰報（5行精華）</span>
                         <button onclick="app.genWarRoomBrief();" id="btnWarBrief"
                                 class="text-[9px] text-gray-500 hover:text-blue-400 font-bold transition-colors bg-[#161b22] px-2 py-0.5 rounded border border-[#30363d]">生成</button>
                     </div>
@@ -705,125 +763,8 @@
                 </div>
             </div>
 
-            <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                <h4 class="text-purple-400 font-bold text-sm mb-2 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">🤖 AI 全球市場解析</h4>
-                <button onclick="app.runGlobalMarketAI(); app.vibrate(50);" id="btnGlobalAI" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">🌐 一鍵解析全球市場對台股影響</button>
-                <div id="globalAIResult" class="hidden mt-3 w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-sm text-gray-200 leading-relaxed overflow-y-auto max-h-[30rem]"></div>
-            </div>
-            <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                <h4 class="text-yellow-400 font-bold text-sm mb-3 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">📡 外資期貨部位</h4>
-                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 flex items-center justify-between">
-                    <div>
-                        <div class="text-xs text-gray-500 font-bold mb-1">外資台指期未平倉淨口數</div>
-                        <div id="mktFI_main" class="text-3xl font-black font-mono text-yellow-300">--</div>
-                    </div>
-                    <div class="text-right">
-                        <div id="mktFI_label_main" class="text-sm font-bold text-gray-400 bg-[#161b22] px-3 py-1.5 rounded border border-[#30363d]">多空未定</div>
-                        <div class="text-[10px] text-gray-600 mt-2">正數＝外資偏多 / 負數＝外資偏空</div>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                <h4 class="text-blue-400 font-bold text-sm mb-3 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">🌏 台股指數</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">加權指數 TWII</div>
-                        <div id="mktTWII_main" class="text-xl font-black font-mono text-gray-300">--</div>
-                        <div id="mktTWII_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">上櫃指數 TWOII</div>
-                        <div id="mktTWOII_main" class="text-xl font-black font-mono text-gray-300">--</div>
-                        <div id="mktTWOII_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                <h4 class="text-green-400 font-bold text-sm mb-3 border-b border-gray-700 pb-1.5 flex items-center gap-1.5">🇺🇸 美股市場</h4>
-                <!-- VIX 恐慌指數 -->
-                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mb-2 flex items-center justify-between">
-                    <div>
-                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">🔥 VIX 恐慌指數</div>
-                        <div id="usBar_vix_main" class="text-2xl font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_vix_chg_main" class="text-xs font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="text-right">
-                        <div id="usBar_vix_annotation_main" class="text-[10px] font-bold text-gray-500">--</div>
-                        <div class="text-[9px] text-gray-600 mt-1 leading-relaxed">&lt;15 平靜 / 15-25 正常<br>25+ 警戒 / 30+ 恐慌</div>
-                    </div>
-                </div>
-                <!-- 四大指數 -->
-                <div class="text-[10px] text-gray-500 font-bold mb-1.5">📊 四大指數（美股大盤風向球）</div>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">S&amp;P 500 ^GSPC</div>
-                        <div id="usBar_spx_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_spx_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">道瓊 ^DJI</div>
-                        <div id="usBar_dji_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_dji_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">那斯達克 ^IXIC</div>
-                        <div id="usBar_ndx_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_ndx_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-blue-900/40 rounded-lg p-2.5">
-                        <div class="text-[9px] text-blue-400 font-bold mb-0.5">費半 ^SOX ⚡台股先行</div>
-                        <div id="usBar_sox_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_sox_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                </div>
-                <!-- 關鍵巨頭與 ADR -->
-                <div class="text-[10px] text-gray-500 font-bold mb-1.5">💎 關鍵巨頭與 ADR</div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="bg-[#0d1117] border border-yellow-900/40 rounded-lg p-2.5">
-                        <div class="text-[9px] text-yellow-500 font-bold mb-0.5">台積電 ADR TSM</div>
-                        <div id="usBar_tsm_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_tsm_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-green-900/40 rounded-lg p-2.5">
-                        <div class="text-[9px] text-green-400 font-bold mb-0.5">輝達 NVDA 🤖AI總司令</div>
-                        <div id="usBar_nvda_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_nvda_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">蘋果 AAPL</div>
-                        <div id="usBar_aapl_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_aapl_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">微軟 MSFT</div>
-                        <div id="usBar_msft_main" class="text-lg font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_msft_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                </div>
-                <!-- 宏觀關鍵指標 -->
-                <div class="text-[10px] text-gray-500 font-bold mb-1.5 mt-2">🏦 宏觀關鍵指標</div>
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-[#0d1117] border border-orange-900/40 rounded-lg p-2.5">
-                        <div class="text-[9px] text-orange-400 font-bold mb-0.5">美債2Y利率 ^IRX</div>
-                        <div id="usBar_us02y_main" class="text-base font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_us02y_chg_main" class="text-[9px] font-bold text-gray-500 mt-0.5">--</div>
-                        <div class="text-[8px] text-gray-600 mt-0.5">升=Fed 鷹派⚠️</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
-                        <div class="text-[9px] text-gray-400 font-bold mb-0.5">布蘭特原油 BZ=F</div>
-                        <div id="usBar_ukoil_main" class="text-base font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_ukoil_chg_main" class="text-[9px] font-bold text-gray-500 mt-0.5">--</div>
-                        <div class="text-[8px] text-gray-600 mt-0.5">USD/桶</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-purple-900/40 rounded-lg p-2.5">
-                        <div class="text-[9px] text-purple-400 font-bold mb-0.5">美元指數 DXY</div>
-                        <div id="usBar_dxy_main" class="text-base font-black font-mono text-gray-300">--</div>
-                        <div id="usBar_dxy_chg_main" class="text-[9px] font-bold text-gray-500 mt-0.5">--</div>
-                        <div class="text-[8px] text-gray-600 mt-0.5">升=外資撤台⚠️</div>
-                    </div>
-                </div>
-                <button onclick="app.refreshAllMarketData(); app.vibrate(30);" class="mt-3 w-full text-[10px] text-gray-500 hover:text-white bg-[#161b22] border border-[#30363d] rounded py-1.5 font-bold transition-colors">🔄 重新整理市場數據</button>
-            </div>
+            <!-- 🔄 重新整理 -->
+            <button onclick="app.refreshAllMarketData(); app.vibrate(30);" class="w-full text-[10px] text-gray-500 hover:text-white bg-[#161b22] border border-[#30363d] rounded py-1.5 font-bold transition-colors">🔄 重新整理市場數據</button>
         </div>
 
         <div id="tabContentFav" class="hidden flex-col">
@@ -1198,6 +1139,8 @@ const app = {
         const setRealVh = () => document.documentElement.style.setProperty('--real-vh', `${window.innerHeight * 0.01}px`);
         setRealVh();
         window.addEventListener('resize', setRealVh);
+        // Detect iOS PWA standalone mode (navigator.standalone is more reliable than CSS media query on some iOS versions)
+        if (window.navigator.standalone === true) document.documentElement.classList.add('ios-standalone');
 
         let saved = JSON.parse(localStorage.getItem('proTerminalSettings'));
         if (saved) {
@@ -3384,6 +3327,19 @@ ${dynamicParams}
             });
     },
 
+    openGlobalAIModal() {
+        const modal = document.getElementById('globalAIModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+    },
+    closeGlobalAIModal() {
+        const modal = document.getElementById('globalAIModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    },
+
     closeTechAIModal() {
         const modal = document.getElementById('techAIModal');
         modal.classList.add('hidden');
@@ -5292,20 +5248,22 @@ ${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損�
     },
 
     async runGlobalMarketAI() {
-        const btn = document.getElementById('btnGlobalAI');
-        const result = document.getElementById('globalAIResult');
-        btn.innerHTML = '⏳ 掃描中...'; btn.disabled = true;
-        result.classList.remove('hidden');
+        // Support modal (header button) and legacy inline result
+        const btn = document.getElementById('btnGlobalAIModal') || document.getElementById('btnGlobalAI');
+        const result = document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult');
+        if (btn) { btn.innerHTML = '⏳ 掃描中...'; btn.disabled = true; }
+        if (result) result.classList.remove('hidden');
 
         const showProgress = (step, total, label) => {
             const pct = Math.round((step / total) * 100);
-            result.innerHTML = `<div class="flex flex-col gap-2 py-1">
+            const progressHtml = `<div class="flex flex-col gap-2 py-1">
                 <div class="text-gray-400 text-xs animate-pulse">🔍 ${label}</div>
                 <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
                     <div class="bg-purple-500 h-1.5 rounded-full transition-all duration-300" style="width:${pct}%"></div>
                 </div>
                 <div class="text-gray-600 text-[10px] text-right">${pct}%</div>
             </div>`;
+            if (result) result.innerHTML = progressHtml;
         };
 
         // ── 自動掃描三種雷達 ─────────────────────────────────────────────
@@ -5351,15 +5309,16 @@ ${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損�
         showProgress(4, 5, 'AI 司令部整合全球數據...');
         const fi = this.fiShortQty;
         const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
-        const g = id => document.getElementById(id)?.innerText?.trim() || '--';
-        const twii = g('mktTWII_main'), twoii = g('mktTWOII_main');
-        const spx = g('usBar_spx_main'), dji = g('usBar_dji_main'), ndx = g('usBar_ndx_main'), sox = g('usBar_sox_main');
-        const vix = g('usBar_vix_main');
-        const tsm = g('usBar_tsm_main'), nvda = g('usBar_nvda_main'), aapl = g('usBar_aapl_main'), msft = g('usBar_msft_main');
-        const us02y = g('usBar_us02y_main'), ukoil = g('usBar_ukoil_main'), dxy = g('usBar_dxy_main');
-        const spxChg = g('usBar_spx_chg_main'), ndxChg = g('usBar_ndx_chg_main'), soxChg = g('usBar_sox_chg_main');
-        const tsmChg = g('usBar_tsm_chg_main'), nvdaChg = g('usBar_nvda_chg_main');
-        const us02yChg = g('usBar_us02y_chg_main'), dxyChg = g('usBar_dxy_chg_main');
+        // g() tries _main suffix first (legacy), falls back to base id (relay container)
+        const g = id => document.getElementById(id + '_main')?.innerText?.trim() || document.getElementById(id)?.innerText?.trim() || '--';
+        const twii = g('mktTWII'), twoii = g('mktTWOII');
+        const spx = g('usBar_spx'), dji = g('usBar_dji'), ndx = g('usBar_ndx'), sox = g('usBar_sox');
+        const vix = g('usBar_vix');
+        const tsm = g('usBar_tsm'), nvda = g('usBar_nvda'), aapl = g('usBar_aapl'), msft = g('usBar_msft');
+        const us02y = g('usBar_us02y'), ukoil = g('usBar_ukoil'), dxy = g('usBar_dxy');
+        const spxChg = g('usBar_spx_chg'), ndxChg = g('usBar_ndx_chg'), soxChg = g('usBar_sox_chg');
+        const tsmChg = g('usBar_tsm_chg'), nvdaChg = g('usBar_nvda_chg');
+        const us02yChg = g('usBar_us02y_chg'), dxyChg = g('usBar_dxy_chg');
 
         // 三種雷達摘要
         const radarSection = (() => {
@@ -5378,7 +5337,7 @@ ${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損�
         })();
 
         showProgress(5, 5, 'AI 生成報告中...');
-        btn.innerHTML = '⏳ AI 分析中...';
+        if (btn) btn.innerHTML = '⏳ AI 分析中...';
 
         const prompt = `你是台股首席策略師，用白話文、權證小哥風格，根據以下昨晚全球數據，告訴我明日台股開盤情況與操作策略：
 
@@ -5413,14 +5372,18 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
 
         try {
             const text = await this._callAI({ prompt, max_tokens: 1000, temperature: 0.4 });
-            result.innerHTML = text
+            const html = text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/▌(\d+\.\s*.+)/g, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">▌$1</div>')
                 .replace(/\n/g, '<br>');
+            if (result) result.innerHTML = html;
+            // Also update legacy inline result if it exists and differs
+            const legacyResult = document.getElementById('globalAIResult');
+            if (legacyResult && legacyResult !== result) legacyResult.innerHTML = html;
         } catch(e) {
-            result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
+            if (result) result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
         }
-        btn.innerHTML = '🌐 一鍵解析全球市場對台股影響'; btn.disabled = false;
+        if (btn) { btn.innerHTML = '🌐 一鍵解析全球市場對台股影響'; btn.disabled = false; }
     },
 
     _calcRiskScore() {
@@ -5512,24 +5475,25 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
             { icon: '🎯', name: '外資期貨',     key: '__fi',   fiMode: true  },
         ];
 
-        heatmap.innerHTML = cells.map(c => {
+        // Compute all cells with chgSign first, then sort red (bearish) before green (bullish)
+        const computed = cells.map(c => {
             let chgSign, displayVal, rawChg;
 
             if (c.fiMode) {
-                if (fi === null) return `<div class="bg-gray-900/40 rounded p-1.5 text-center"><div class="text-[8px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[9px] text-gray-600 mt-0.5">--</div></div>`;
+                if (fi === null) return { c, chgSign: 0, html: `<div class="bg-gray-900/40 rounded p-2 text-center"><div class="text-[9px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[10px] text-gray-600 mt-0.5">--</div></div>` };
                 rawChg = fi >= 0 ? 1 : (fi < -25000 ? -2 : -0.5);
                 displayVal = `${fi >= 0 ? '+' : ''}${(fi / 1000).toFixed(1)}K`;
                 chgSign = rawChg;
             } else if (c.vixMode) {
                 const val = m[c.key];
-                if (!val) return `<div class="bg-gray-900/40 rounded p-1.5 text-center"><div class="text-[8px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[9px] text-gray-600 mt-0.5">--</div></div>`;
+                if (!val) return { c, chgSign: 0, html: `<div class="bg-gray-900/40 rounded p-2 text-center"><div class="text-[9px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[10px] text-gray-600 mt-0.5">--</div></div>` };
                 const v = val.close ?? 0;
                 rawChg = v > 25 ? -2 : v > 20 ? -0.8 : v > 15 ? 0.2 : 1;
                 displayVal = v.toFixed(1);
                 chgSign = rawChg;
             } else {
                 const val = m[c.key];
-                if (!val) return `<div class="bg-gray-900/40 rounded p-1.5 text-center"><div class="text-[8px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[9px] text-gray-600 mt-0.5">--</div></div>`;
+                if (!val) return { c, chgSign: 0, html: `<div class="bg-gray-900/40 rounded p-2 text-center"><div class="text-[9px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[10px] text-gray-600 mt-0.5">--</div></div>` };
                 rawChg = val.chg_pct ?? 0;
                 chgSign = c.invert ? -rawChg : rawChg;
                 const cl = val.close ?? 0;
@@ -5544,14 +5508,24 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
                          : chgSign > 0    ? 'text-green-400'
                          : chgSign > -0.5 ? 'text-red-400'
                          :                  'text-[#f87171]';
-            const chgStr = (c.fiMode || c.vixMode) ? '' : `<div class="text-[8px] ${txtCls} opacity-80">${rawChg > 0 ? '+' : ''}${rawChg.toFixed(1)}%</div>`;
+            const chgStr = (c.fiMode || c.vixMode) ? '' : `<div class="text-[9px] ${txtCls} opacity-80">${rawChg > 0 ? '+' : ''}${rawChg.toFixed(1)}%</div>`;
             const ring = c.hl ? ' ring-1 ring-blue-500/40' : '';
-            return `<div class="${bgCls} rounded p-1.5 text-center${ring}">
-                <div class="text-[8px] text-gray-500 leading-tight truncate">${c.icon} ${c.name}</div>
-                <div class="text-[10px] font-black ${txtCls} mt-0.5">${displayVal}</div>
-                ${chgStr}
+            // Mini stacked bar: red=bearish extent, green=bullish extent
+            const barPct = Math.min(Math.abs(chgSign) * 25, 100);
+            const barHtml = `<div class="mt-1 h-0.5 rounded overflow-hidden bg-gray-800/80">
+                <div class="h-full rounded transition-all" style="width:${barPct}%; background:${chgSign < 0 ? '#f87171' : '#4ade80'};"></div>
             </div>`;
-        }).join('');
+            const html = `<div class="${bgCls} rounded p-2 text-center${ring}">
+                <div class="text-[9px] text-gray-400 leading-tight truncate">${c.icon} ${c.name}</div>
+                <div class="text-[11px] font-black ${txtCls} mt-0.5">${displayVal}</div>
+                ${chgStr}${barHtml}
+            </div>`;
+            return { c, chgSign, html };
+        });
+
+        // Sort: most bearish (negative chgSign) first (red on top), most bullish last (green on bottom)
+        computed.sort((a, b) => a.chgSign - b.chgSign);
+        heatmap.innerHTML = computed.map(x => x.html).join('');
 
         const ts = document.getElementById('warRoomTs');
         if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
