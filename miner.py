@@ -668,6 +668,7 @@ def run():
             ORDER BY trade_date ASC
         """, (sym,))
         existing_map: dict = {}
+        latest_valid_date = ""
         for row in db_cur.fetchall():
             fmt_date = row['trade_date'].replace('-', '/')
             existing_map[fmt_date] = {
@@ -681,21 +682,29 @@ def run():
                 'margin_balance': row['margin_bal']   or 0,
                 'short_balance':  row['short_bal']    or 0,
             }
+            if row['volume'] is not None and row['volume'] > 0:
+                latest_valid_date = fmt_date  # 記錄最新有成交量的交易日
 
-        new_rows = []
-        first_ym_empty = False
-        for i, ym in enumerate(months):
-            rows = twse_ohlcv(sym, ym)
-            if not rows:
-                rows = tpex_ohlcv(sym, ym)
-            if not rows:
-                time.sleep(0.5); rows = tpex_ohlcv(sym, ym)  # TPEX 一次 retry
-            if i == 0 and not rows:
-                first_ym_empty = True
-            if i == 1 and first_ym_empty and rows:
-                print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
-            new_rows.extend(rows)
-            time.sleep(0.15)
+        # ── 🛡️ 防封鎖機制：今日 K 線已存在則略過 TWSE/TPEX 請求 ──
+        target_today_str = trading_days[-1].strftime('%Y/%m/%d')
+        if latest_valid_date == target_today_str:
+            print(f"⚡ 本日 K 線已存在，略過證交所請求")
+            new_rows = []
+        else:
+            new_rows = []
+            first_ym_empty = False
+            for i, ym in enumerate(months):
+                rows = twse_ohlcv(sym, ym)
+                if not rows:
+                    rows = tpex_ohlcv(sym, ym)
+                if not rows:
+                    time.sleep(0.5); rows = tpex_ohlcv(sym, ym)  # TPEX 一次 retry
+                if i == 0 and not rows:
+                    first_ym_empty = True
+                if i == 1 and first_ym_empty and rows:
+                    print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
+                new_rows.extend(rows)
+                time.sleep(0.15)
 
         changed = False
         for r in new_rows:
