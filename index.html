@@ -440,76 +440,78 @@
             </div>
 
             <!-- 籌碼全面追蹤（三大法人 + 主力分點合併）-->
-            <div id="subContentChip" class="hidden flex-col gap-0 mt-2 px-2 md:px-4">
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+            <div id="subContentChip" class="hidden flex-col gap-3 mt-2 px-2 md:px-4">
 
-                    <!-- 統一標頭 -->
-                    <div class="flex items-center justify-between px-3 py-2 border-b border-[#30363d]">
-                        <h4 class="text-xs font-black text-orange-400 tracking-wide">📊 籌碼全面追蹤</h4>
-                        <button onclick="app.fetchChipTimeline(app.currentSymbolId,true);app.loadBrokerChips(app.currentSymbolId,true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄 重整全部</button>
+                <!-- 【指揮中樞】時間切換器 + AI 狙擊 -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-black text-orange-400 tracking-wide flex items-center gap-2">
+                            <span class="animate-pulse">📡</span> 籌碼三維全息雷達
+                        </h4>
+                        <button onclick="app.fetchChipTimeline(app.currentSymbolId,true);app.loadBrokerChips(app.currentSymbolId,true)" class="text-[10px] text-gray-400 hover:text-white transition-colors bg-[#0d1117] px-2 py-1 rounded border border-[#30363d]">🔄 重整</button>
                     </div>
 
-                    <!-- AI 解析按鈕（置頂）-->
-                    <div class="px-3 pt-3 pb-2 border-b border-[#30363d]">
-                        <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
-                            class="w-full py-2.5 rounded-lg text-xs font-bold transition-colors tracking-widest text-white border border-indigo-600/50"
-                            style="background:linear-gradient(90deg,rgba(49,46,129,0.7),rgba(127,29,29,0.5))">
-                            🤖 AI 籌碼全面解析 — 法人 + 主力一次看！
-                        </button>
-                        <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#0d1117] border border-indigo-900/50 rounded-lg p-3 text-xs text-gray-300 leading-relaxed"></div>
+                    <div id="chipPeriodBtns" class="flex gap-1 w-full mb-3">
+                        <button data-period="1d" onclick="app.renderChipPeriod('1d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">1日</button>
+                        <button data-period="3d" onclick="app.renderChipPeriod('3d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
+                        <button data-period="5d" onclick="app.renderChipPeriod('5d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
+                        <button data-period="10d" onclick="app.renderChipPeriod('10d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
                     </div>
 
-                    <!-- 全局時間週期切換器 -->
-                    <div class="px-3 pt-2 pb-2 border-b border-[#30363d]">
-                        <div class="text-[9px] text-gray-500 font-bold mb-1">⏱ 時間週期（全局聯動）</div>
-                        <div id="chipPeriodBtns" class="flex gap-1">
-                            <button data-period="1d" onclick="app.renderChipPeriod('1d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">1日</button>
-                            <button data-period="3d" onclick="app.renderChipPeriod('3d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-colors">3日</button>
-                            <button data-period="5d" onclick="app.renderChipPeriod('5d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">5日</button>
-                            <button data-period="10d" onclick="app.renderChipPeriod('10d')" class="chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border border-[#30363d] text-gray-400 transition-colors">10日</button>
-                        </div>
-                    </div>
+                    <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
+                        class="w-full py-2.5 rounded-lg text-xs font-bold transition-all tracking-widest text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_15px_rgba(79,70,229,0.4)] flex items-center justify-center gap-2"
+                        style="background:linear-gradient(90deg,rgba(30,27,75,0.8),rgba(127,29,29,0.8))">
+                        🎯 AI 籌碼全面解析 — 法人 + 主力一次看！
+                    </button>
+                    <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-[11px] text-gray-300 leading-relaxed shadow-inner"></div>
+                </div>
 
-                    <!-- ① 三大法人走勢 -->
-                    <div class="px-3 pt-2 pb-0">
-                        <div class="flex items-center justify-between mb-1">
-                            <div class="text-[10px] text-orange-300 font-bold">📈 三大法人淨買賣 <span id="instHeaderTitle" class="text-white bg-red-900/50 px-1 rounded ml-1">近3日</span><span id="chipInstDate" class="text-[9px] text-gray-500 font-normal ml-1"></span></div>
+                <!-- 【宏觀籌碼】三大法人 + 融資券（並排） -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex flex-col relative overflow-hidden hover:border-orange-900/50 transition-colors">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-orange-600/70 rounded-l-lg"></div>
+                        <div class="flex items-center justify-between mb-1 pl-2">
+                            <div class="text-[11px] text-orange-300 font-bold flex items-center gap-2">
+                                📈 三大法人
+                                <span id="instHeaderTitle" class="text-white bg-orange-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-orange-700/50">近3日</span>
+                            </div>
                             <span id="chipTimelineStatus" class="text-[9px] text-gray-500"></span>
                         </div>
-                        <div class="text-[9px] text-gray-500 mb-1">每日淨買賣超（千股）</div>
-                        <div id="chipInstChart" style="height:110px;width:100%;"></div>
+                        <div class="text-[9px] text-gray-500 mb-1 pl-2">淨買賣超(千股) <span id="chipInstDate" class="ml-1"></span></div>
+                        <div id="chipInstChart" class="w-full mt-1" style="height:130px;"></div>
                     </div>
 
-                    <!-- ② 融資融券走勢 -->
-                    <div class="px-3 pt-1 pb-2">
-                        <div class="flex items-center justify-between mb-1">
-                            <div class="text-[9px] text-gray-500">融資／融券餘額趨勢 <span id="marginHeaderTitle" class="text-white bg-blue-900/50 px-1 rounded ml-1">近3日</span></div>
-                            <span id="chipMarginDate" class="text-[9px] text-gray-500"></span>
-                        </div>
-                        <div id="chipMarginChart" style="height:90px;width:100%;"></div>
-                    </div>
-
-                    <!-- 分隔線 -->
-                    <div class="border-t border-[#30363d] mx-0"></div>
-
-                    <!-- ③ 主力分點 -->
-                    <div class="px-3 pt-2 pb-1">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <div class="text-[10px] text-red-300 font-bold">🔍 主力分點追蹤</div>
-                            <div class="flex gap-1.5 items-center">
-                                <span id="brokerChipDate" class="text-[9px] text-gray-500"></span>
-                                <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-[9px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex flex-col relative overflow-hidden hover:border-blue-900/50 transition-colors">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-blue-600/70 rounded-l-lg"></div>
+                        <div class="flex items-center justify-between mb-1 pl-2">
+                            <div class="text-[11px] text-blue-300 font-bold flex items-center gap-2">
+                                ⚖️ 融資券餘額
+                                <span id="marginHeaderTitle" class="text-white bg-blue-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-blue-700/50">近3日</span>
                             </div>
                         </div>
-                        <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-200/70 leading-relaxed">
-                            💡 <b class="text-amber-300">主力分點</b>是每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
-                        </div>
+                        <div class="text-[9px] text-gray-500 mb-1 pl-2">餘額趨勢(千股) <span id="chipMarginDate" class="ml-1"></span></div>
+                        <div id="chipMarginChart" class="w-full mt-1" style="height:130px;"></div>
                     </div>
-                    <div id="brokerChipContent" class="px-3 pb-2">
-                        <div class="text-center py-4 text-gray-600 text-xs">切換到籌碼分頁自動載入</div>
-                    </div>
-
                 </div>
+
+                <!-- 【微觀黑手】主力分點 -->
+                <div class="bg-[#161b22] border border-amber-900/40 rounded-lg p-3 relative overflow-hidden shadow-[0_0_15px_rgba(120,53,15,0.05)]">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-gray-700 to-green-600 opacity-70"></div>
+                    <div class="flex items-center justify-between mb-2 mt-1">
+                        <div class="text-[12px] text-red-300 font-bold flex items-center gap-2">
+                            🕵️ 主力分點追蹤
+                            <span id="brokerChipDate" class="text-[9px] text-gray-500 font-normal"></span>
+                        </div>
+                        <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-[10px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                    </div>
+                    <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-200/70 leading-relaxed mb-2">
+                        💡 <b class="text-amber-300">主力分點</b>是每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
+                    </div>
+                    <div id="brokerChipContent" class="w-full mt-2">
+                        <div class="text-center py-6 text-gray-600 text-xs animate-pulse">📡 正在攔截分點情報...</div>
+                    </div>
+                </div>
+
             </div>
 
             <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
@@ -2881,8 +2883,8 @@ const app = {
         // 1. 按鈕 active 樣式（紅底=選中）
         document.querySelectorAll('#chipPeriodBtns .chip-period-btn').forEach(btn => {
             const on = btn.dataset.period === period;
-            btn.className = 'chip-period-btn flex-1 py-1 rounded text-[10px] font-bold border transition-colors '
-                + (on ? 'border-red-700 bg-red-900/40 text-red-300' : 'border-[#30363d] text-gray-400');
+            btn.className = 'chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border transition-all '
+                + (on ? 'border-red-700 bg-red-900/40 text-red-300 shadow-[0_0_8px_rgba(220,38,38,0.3)]' : 'border-[#30363d] text-gray-400 hover:bg-[#30363d]');
         });
 
         // 2. 全局聯動：法人 / 融資券標題標籤即時跳動（即使無主力分點資料也更新）
