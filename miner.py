@@ -810,11 +810,18 @@ def fetch_futures_cache():
 
                 long_oi_val  = latest.get('long_open_interest_balance') or latest.get('long_open_interest') or latest.get('buy_open_interest')
                 short_oi_val = latest.get('short_open_interest_balance') or latest.get('short_open_interest') or latest.get('sell_open_interest')
-                if not long_oi_val and not short_oi_val:
-                    print(f"  ⚠️ FinMind 期貨 OI 欄位找不到，available keys: {list(latest.keys())}")
-                long_oi  = int(long_oi_val  or 0)
-                short_oi = int(short_oi_val or 0)
-                net_oi   = long_oi - short_oi
+                net_direct   = latest.get('open_interest_net_volume')
+                if not long_oi_val and not short_oi_val and net_direct is not None:
+                    print(f"  ℹ️ OI balance 欄位缺失，改用 open_interest_net_volume: {net_direct}")
+                    net_oi   = int(net_direct)
+                    long_oi  = max(0,  net_oi)
+                    short_oi = max(0, -net_oi)
+                else:
+                    if not long_oi_val and not short_oi_val:
+                        print(f"  ⚠️ FinMind 期貨 OI 欄位找不到，available keys: {list(latest.keys())}")
+                    long_oi  = int(long_oi_val  or 0)
+                    short_oi = int(short_oi_val or 0)
+                    net_oi   = long_oi - short_oi
 
                 cache = {
                     'date':      target_date,
