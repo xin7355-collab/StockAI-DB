@@ -442,65 +442,52 @@
             <!-- 籌碼全面追蹤（三大法人 + 主力分點合併）-->
             <div id="subContentChip" class="hidden flex-col gap-3 mt-2 px-2 md:px-4">
 
-                <!-- 【指揮中樞】時間切換器 + AI 狙擊 -->
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-sm font-black text-orange-400 tracking-wide flex items-center gap-2">
-                            <span class="animate-pulse">📡</span> 籌碼三維全息雷達
-                        </h4>
-                        <button onclick="app.fetchChipTimeline(app.currentSymbolId,true);app.loadBrokerChips(app.currentSymbolId,true)" class="text-[10px] text-gray-400 hover:text-white transition-colors bg-[#0d1117] px-2 py-1 rounded border border-[#30363d]">🔄 重整</button>
+                <!-- 【指揮中樞】週期切換器 + AI 狙擊 -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+                    <div class="flex gap-2 items-center">
+                        <div id="chipGlobalPeriodBtns" class="flex gap-1 flex-1">
+                            <button data-period="1d"  onclick="app.renderChipGlobal('1d')"  class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">1日</button>
+                            <button data-period="3d"  onclick="app.renderChipGlobal('3d')"  class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
+                            <button data-period="5d"  onclick="app.renderChipGlobal('5d')"  class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
+                            <button data-period="10d" onclick="app.renderChipGlobal('10d')" class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
+                        </div>
+                        <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
+                            class="py-1.5 px-3 rounded-lg text-[11px] font-bold tracking-widest text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(79,70,229,0.4)] transition-all flex-shrink-0"
+                            style="background:linear-gradient(90deg,rgba(30,27,75,0.8),rgba(127,29,29,0.8))">🤖 AI 解析</button>
                     </div>
-
-                    <div id="chipPeriodBtns" class="flex gap-1 w-full mb-3">
-                        <button data-period="1d" onclick="app.renderChipPeriod('1d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">1日</button>
-                        <button data-period="3d" onclick="app.renderChipPeriod('3d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
-                        <button data-period="5d" onclick="app.renderChipPeriod('5d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
-                        <button data-period="10d" onclick="app.renderChipPeriod('10d')" class="chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
-                    </div>
-
-                    <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
-                        class="w-full py-2.5 rounded-lg text-xs font-bold transition-all tracking-widest text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_15px_rgba(79,70,229,0.4)] flex items-center justify-center gap-2"
-                        style="background:linear-gradient(90deg,rgba(30,27,75,0.8),rgba(127,29,29,0.8))">
-                        🎯 AI 籌碼全面解析 — 法人 + 主力一次看！
-                    </button>
                     <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-[11px] text-gray-300 leading-relaxed shadow-inner"></div>
                 </div>
 
-                <!-- 【宏觀籌碼】三大法人 + 融資券（並排） -->
+                <!-- 【宏觀籌碼】三大法人 + 融資券（並排）-->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex flex-col relative overflow-hidden hover:border-orange-900/50 transition-colors">
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 relative overflow-hidden hover:border-orange-900/50 transition-colors">
                         <div class="absolute top-0 left-0 w-1 h-full bg-orange-600/70 rounded-l-lg"></div>
-                        <div class="flex items-center justify-between mb-1 pl-2">
-                            <div class="text-[11px] text-orange-300 font-bold flex items-center gap-2">
-                                📈 三大法人
-                                <span id="instHeaderTitle" class="text-white bg-orange-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-orange-700/50">近3日</span>
-                            </div>
-                            <span id="chipTimelineStatus" class="text-[9px] text-gray-500"></span>
+                        <div class="flex items-center gap-2 mb-2 pl-2">
+                            <span class="text-[11px] text-orange-300 font-bold">📈 三大法人動態</span>
+                            <span id="instHeaderTitle" class="text-white bg-orange-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-orange-700/50">近3日</span>
                         </div>
-                        <div class="text-[9px] text-gray-500 mb-1 pl-2">淨買賣超(千股) <span id="chipInstDate" class="ml-1"></span></div>
-                        <div id="chipInstChart" class="w-full mt-1" style="height:130px;"></div>
+                        <div id="chipInstVisualBars" class="pl-2 space-y-1.5" style="min-height:90px">
+                            <div class="text-center text-gray-700 text-[10px] pt-4">載入中...</div>
+                        </div>
                     </div>
-
-                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex flex-col relative overflow-hidden hover:border-blue-900/50 transition-colors">
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 relative overflow-hidden hover:border-blue-900/50 transition-colors">
                         <div class="absolute top-0 left-0 w-1 h-full bg-blue-600/70 rounded-l-lg"></div>
-                        <div class="flex items-center justify-between mb-1 pl-2">
-                            <div class="text-[11px] text-blue-300 font-bold flex items-center gap-2">
-                                ⚖️ 融資券餘額
-                                <span id="marginHeaderTitle" class="text-white bg-blue-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-blue-700/50">近3日</span>
-                            </div>
+                        <div class="flex items-center gap-2 mb-2 pl-2">
+                            <span class="text-[11px] text-blue-300 font-bold">⚖️ 融資券變化</span>
+                            <span id="marginHeaderTitle" class="text-white bg-blue-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-blue-700/50">近3日</span>
                         </div>
-                        <div class="text-[9px] text-gray-500 mb-1 pl-2">餘額趨勢(千股) <span id="chipMarginDate" class="ml-1"></span></div>
-                        <div id="chipMarginChart" class="w-full mt-1" style="height:130px;"></div>
+                        <div id="chipMarginVisualBars" class="pl-2 space-y-1.5" style="min-height:90px">
+                            <div class="text-center text-gray-700 text-[10px] pt-4">載入中...</div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- 【微觀黑手】主力分點 -->
-                <div class="bg-[#161b22] border border-amber-900/40 rounded-lg p-3 relative overflow-hidden shadow-[0_0_15px_rgba(120,53,15,0.05)]">
+                <div class="bg-[#161b22] border border-amber-900/40 rounded-lg p-3 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-gray-700 to-green-600 opacity-70"></div>
                     <div class="flex items-center justify-between mb-2 mt-1">
                         <div class="text-[12px] text-red-300 font-bold flex items-center gap-2">
-                            🕵️ 主力分點追蹤
-                            <span id="brokerChipDate" class="text-[9px] text-gray-500 font-normal"></span>
+                            🕵️ 主力分點追蹤 <span id="brokerChipDate" class="text-[9px] text-gray-500 font-normal"></span>
                         </div>
                         <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-[10px] text-gray-500 hover:text-white transition-colors">🔄</button>
                     </div>
@@ -1442,6 +1429,7 @@ const app = {
         if (tab === 'chip' && this.currentSymbolId) {
             this.fetchChipTimeline(this.currentSymbolId, true);
             this.loadBrokerChips(this.currentSymbolId, true);
+            this.renderChipGlobal(this._activeChipPeriod || '3d');
         }
     },
 
@@ -2682,12 +2670,12 @@ const app = {
                             this._chipPeriods    = periods;
                             this._chipBrokerNames = await this._loadBrokerNames();
                             this._chipSym        = sym;
-                            document.getElementById('chipPeriodBtns')?.classList.remove('hidden');
-                            this.renderChipPeriod(this._activeChipPeriod || '3d');
+                            document.getElementById('chipGlobalPeriodBtns')?.classList.remove('hidden');
+                            this.renderChipGlobal(this._activeChipPeriod || '3d');
                         } else {
                             this._chipPeriods = null;
                             box.innerHTML = html;
-                            this.renderChipPeriod(this._activeChipPeriod || '3d');
+                            this.renderChipGlobal(this._activeChipPeriod || '3d');
                         }
                         return;
                     }
@@ -2749,8 +2737,8 @@ const app = {
                 this._chipPeriods     = chipPeriods;
                 this._chipBrokerNames = brokerNames;
                 this._chipSym         = sym;
-                document.getElementById('chipPeriodBtns')?.classList.remove('hidden');
-                this.renderChipPeriod(this._activeChipPeriod || '3d');
+                document.getElementById('chipGlobalPeriodBtns')?.classList.remove('hidden');
+                this.renderChipGlobal(this._activeChipPeriod || '3d');
                 localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), periods: chipPeriods, dateLabel }));
                 return;
             }
@@ -2832,7 +2820,7 @@ const app = {
 
             box.innerHTML = html;
             localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html, dateLabel }));
-            this.renderChipPeriod(this._activeChipPeriod || '3d');  // 更新法人/融資週期標籤
+            this.renderChipGlobal(this._activeChipPeriod || '3d');  // 更新法人/融資週期標籤
 
         } catch(e) {
             const msg = e.message === 'no_data'
@@ -2881,9 +2869,9 @@ const app = {
         this._activeChipPeriod = period;
 
         // 1. 按鈕 active 樣式（紅底=選中）
-        document.querySelectorAll('#chipPeriodBtns .chip-period-btn').forEach(btn => {
+        document.querySelectorAll('#chipGlobalPeriodBtns .chip-g-btn').forEach(btn => {
             const on = btn.dataset.period === period;
-            btn.className = 'chip-period-btn flex-1 py-1.5 rounded text-[11px] font-bold border transition-all '
+            btn.className = 'chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border transition-all '
                 + (on ? 'border-red-700 bg-red-900/40 text-red-300 shadow-[0_0_8px_rgba(220,38,38,0.3)]' : 'border-[#30363d] text-gray-400 hover:bg-[#30363d]');
         });
 
@@ -2957,6 +2945,70 @@ const app = {
 
         // 供 AI 解析讀取多週期摘要
         this._brokerChipSummary = { sym: this._chipSym, periods: this._chipPeriods, activePeriod: period };
+    },
+
+    // 全局週期切換：同步按鈕樣式 + 法人條 + 融資券條 + 主力分點
+    renderChipGlobal(period) {
+        const n = parseInt(period) || 3;
+        this._activeChipPeriod = period;
+        document.querySelectorAll('#chipGlobalPeriodBtns .chip-g-btn').forEach(btn => {
+            const on = btn.dataset.period === period;
+            btn.className = 'chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border transition-all '
+                + (on ? 'border-red-700 bg-red-900/40 text-red-300 shadow-[0_0_8px_rgba(220,38,38,0.3)]'
+                      : 'border-[#30363d] text-gray-400 hover:bg-[#30363d]');
+        });
+        this._renderInstBars(n);
+        this._renderMarginBars(n);
+        this.renderChipPeriod(period);
+    },
+
+    _renderInstBars(n) {
+        const el = document.getElementById('chipInstVisualBars');
+        if (!el) return;
+        const s = this._chipPeriodSums(this.rawDailyData || [], n);
+        if (!s.hasInst) {
+            el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-600 text-[10px] text-center">籌碼資料尚未採礦<br>每日16:30自動更新</div>';
+            return;
+        }
+        const maxVal = Math.max(Math.abs(s.foreign), Math.abs(s.trust), Math.abs(s.dealer), 1);
+        const row = (lbl, val, posClr) => {
+            const pct = (Math.min(Math.abs(val) / maxVal * 100, 100)).toFixed(1);
+            const pos = val >= 0;
+            const sign = val > 0 ? '+' : '';
+            return `<div class="flex items-center gap-2">
+                <span class="text-[10px] text-gray-400 w-8 shrink-0 text-right">${lbl}</span>
+                <div class="flex-1 bg-gray-900/50 rounded h-5 relative overflow-hidden">
+                    <div class="h-full rounded ${pos ? posClr : 'bg-green-700/60'}" style="width:${pct}%"></div>
+                    <span class="absolute inset-0 flex items-center px-1.5 text-[10px] font-bold ${pos ? 'text-red-300' : 'text-green-300'}">${sign}${val}K</span>
+                </div></div>`;
+        };
+        el.innerHTML = row('外資', s.foreign, 'bg-orange-600/70')
+                     + row('投信', s.trust,   'bg-amber-600/70')
+                     + row('自營', s.dealer,  'bg-yellow-600/70');
+    },
+
+    _renderMarginBars(n) {
+        const el = document.getElementById('chipMarginVisualBars');
+        if (!el) return;
+        const s = this._chipPeriodSums(this.rawDailyData || [], n);
+        if (!s.hasMargin) {
+            el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-600 text-[10px] text-center">融資券資料尚未採礦<br>每日16:30自動更新</div>';
+            return;
+        }
+        const maxVal = Math.max(Math.abs(s.marginDelta), Math.abs(s.shortDelta), 1);
+        const row = (lbl, val, posClr, negClr) => {
+            const pct = (Math.min(Math.abs(val) / maxVal * 100, 100)).toFixed(1);
+            const pos = val >= 0;
+            const sign = val > 0 ? '+' : '';
+            return `<div class="flex items-center gap-2">
+                <span class="text-[10px] text-gray-400 w-8 shrink-0 text-right">${lbl}</span>
+                <div class="flex-1 bg-gray-900/50 rounded h-5 relative overflow-hidden">
+                    <div class="h-full rounded ${pos ? posClr : negClr}" style="width:${pct}%"></div>
+                    <span class="absolute inset-0 flex items-center px-1.5 text-[10px] font-bold ${pos ? 'text-blue-300' : 'text-red-300'}">${sign}${val}K</span>
+                </div></div>`;
+        };
+        el.innerHTML = row('融資', s.marginDelta, 'bg-blue-600/60',  'bg-red-700/60')
+                     + row('融券', s.shortDelta,  'bg-cyan-600/60',  'bg-orange-700/60');
     },
 
     async analyzeChipUnified(sym) {
