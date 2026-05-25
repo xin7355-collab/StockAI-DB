@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>首席 AI 司令部 | 戰略終端 V14.0</title>
@@ -10,9 +10,9 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
-        html { font-size: max(16px, 1rem); touch-action: manipulation; width: 100%; height: 100%; min-height: 100dvh; overflow: hidden; margin: 0; padding: 0; background-color: #0d1117; }
+        html { font-size: 100%; touch-action: manipulation; width: 100%; height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0d1117; }
         body {
-            width: 100%; height: 100dvh; overflow: hidden; margin: 0; padding: 0;
+            width: 100%; height: 100dvh; height: calc(var(--real-vh, 1dvh) * 100); overflow: hidden; margin: 0; padding: 0;
             background-color: #0d1117; color: #c9d1d9;
             font-family: "PingFang TC", "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
@@ -382,9 +382,9 @@
                         <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner overflow-y-auto max-h-[35rem]"></div>
                     </div>
                     <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
-                        <div class="flex-1 relative">
-                            <span id="costInputLabel" class="absolute top-0.5 right-1.5 text-[10px] text-gray-500 font-bold z-10 pointer-events-none">空手</span>
-                            <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 px-2 py-1.5 rounded w-full text-right pr-2 font-mono text-sm font-bold border border-gray-700 outline-none focus:border-yellow-500 transition-colors" placeholder="成本價" oninput="this.dataset.fromInventory='false'; app.refreshStrategy(); app._updateCostLabel();">
+                        <div class="flex-1 flex flex-col gap-0.5">
+                            <span id="costInputLabel" class="text-[9px] text-gray-500 font-bold text-right pr-1 leading-none">空手</span>
+                            <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 px-2 py-1.5 rounded w-full text-right font-mono text-sm font-bold border border-gray-700 outline-none focus:border-yellow-500 transition-colors" placeholder="成本價" oninput="this.dataset.fromInventory='false'; app.refreshStrategy(); app._updateCostLabel();">
                         </div>
                     </div>
                     <input type="hidden" id="chipCostInput" oninput="app.refreshStrategy()">
@@ -1185,6 +1185,11 @@ const app = {
     },
 
     async init() {
+        // 動態設定真實視窗高度（解決 iOS Safari URL bar 顯示/隱藏時版面跳動）
+        const setRealVh = () => document.documentElement.style.setProperty('--real-vh', `${window.innerHeight * 0.01}px`);
+        setRealVh();
+        window.addEventListener('resize', setRealVh);
+
         let saved = JSON.parse(localStorage.getItem('proTerminalSettings'));
         if (saved) {
             if(saved.fugleToken && !saved.fugleToken1) saved.fugleToken1 = saved.fugleToken;
@@ -3863,13 +3868,13 @@ ${dynamicParams}
         const hasVal = inp.value && parseFloat(inp.value) > 0;
         if (fromInv && hasVal) {
             el.textContent = '💼 庫存帶入';
-            el.className = 'absolute top-0.5 right-1.5 text-[10px] text-green-400 font-bold z-10 pointer-events-none';
+            el.className = 'text-[9px] text-green-400 font-bold text-right pr-1 leading-none';
         } else if (!fromInv && hasVal) {
             el.textContent = '✏️ 手動';
-            el.className = 'absolute top-0.5 right-1.5 text-[10px] text-yellow-400 font-bold z-10 pointer-events-none';
+            el.className = 'text-[9px] text-yellow-400 font-bold text-right pr-1 leading-none';
         } else {
             el.textContent = '空手';
-            el.className = 'absolute top-0.5 right-1.5 text-[10px] text-gray-500 font-bold z-10 pointer-events-none';
+            el.className = 'text-[9px] text-gray-500 font-bold text-right pr-1 leading-none';
         }
     },
 
