@@ -284,7 +284,7 @@
         </div>
     </div>
 
-    <div id="invModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：2000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
+    <div id="invModal" class="modal-base hidden" data-edit-idx="-1" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="invModalTitle" class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：1000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button id="invModalConfirmBtn" onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <div class="header-fixed w-full flex flex-col shadow-md">
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
@@ -4563,7 +4563,17 @@ ${dynamicParams}
         document.getElementById('liveDiffPct').innerText = `(${diff>0?'+':''}${pct.toFixed(2)}%)`; document.getElementById('liveDiffPct').className = `text-xs md:text-sm font-bold font-mono ${color}`;
 
         const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
-        if(inInv && inInv.cost > 0) document.getElementById('costInput').value = inInv.cost; else document.getElementById('costInput').value = '';
+        const costEl = document.getElementById('costInput');
+        if (costEl) {
+            if(inInv && inInv.cost > 0) {
+                costEl.value = inInv.cost;
+                costEl.dataset.fromInventory = 'true';
+            } else {
+                costEl.value = '';
+                costEl.dataset.fromInventory = 'false';
+            }
+            this._updateCostLabel();
+        }
 
         this.updateFavIcon();
         this.updateMonitorIcon();
@@ -4752,8 +4762,10 @@ ${dynamicParams}
             let seasonTag = '';
             try {
                 const data = await this.fetchHistoricalData(sym, false);
-                if (data && data.length > 1) { prevCloseText = data[data.length-2].close.toFixed(2); }
+                if (data && data.length > 0) { prevCloseText = data[data.length-1].close.toFixed(2); }
                 seasonTag = this._getQuickSeasonTag(data);
+                const fugle = await this.fetchFugleData(sym);
+                if (fugle) prevCloseText = fugle.price.toFixed(2);
             } catch(e) {}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
@@ -4765,7 +4777,7 @@ ${dynamicParams}
                             <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
                             ${seasonTag ? `<span class="flex-shrink-0">${seasonTag}</span>` : ''}
                         </div>
-                        <div class="text-xs text-gray-500 font-mono mt-0.5">收 ${prevCloseText}</div>
+                        <div class="text-xs text-gray-500 font-mono mt-0.5">最新 ${prevCloseText}</div>
                     </div>
                     ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
                 </div>
@@ -4788,12 +4800,30 @@ ${dynamicParams}
     },
 
     openInvModal() {
+        const modal = document.getElementById('invModal');
+        modal.dataset.editIdx = '-1';
+        document.getElementById('invModalTitle').innerText = '➕ 新增持倉部位';
+        document.getElementById('invModalConfirmBtn').innerText = '確認建倉';
         document.getElementById('invModalInput').value = this.currentSymbolId;
         document.getElementById('invBuyDateInput').value = this.getTodayStr().replace(/\//g, '-');
         const existingCost = document.getElementById('costInput').value.trim();
         document.getElementById('invCostInput').value = existingCost || '';
-        const modal = document.getElementById('invModal');
+        document.getElementById('invSharesInput').value = '';
         modal.classList.remove('hidden'); modal.style.display='flex';
+    },
+
+    openInvEditModal(idx) {
+        const item = this.inventory[idx];
+        if (!item) return;
+        const modal = document.getElementById('invModal');
+        modal.dataset.editIdx = String(idx);
+        document.getElementById('invModalTitle').innerText = '✏️ 修改持倉部位';
+        document.getElementById('invModalConfirmBtn').innerText = '確認修改';
+        document.getElementById('invModalInput').value = item.symbol;
+        document.getElementById('invBuyDateInput').value = (item.buyDate || '').replace(/\//g, '-');
+        document.getElementById('invCostInput').value = item.cost;
+        document.getElementById('invSharesInput').value = Math.round((item.shares || 0) * 1000);
+        modal.classList.remove('hidden'); modal.style.display = 'flex';
     },
     
     closeInvModal() {
@@ -4808,14 +4838,29 @@ ${dynamicParams}
         const cost = parseFloat(document.getElementById('invCostInput').value) || 0;
         const sharesInput = parseFloat(document.getElementById('invSharesInput').value) || 0;
         const shares = sharesInput / 1000; // convert 股 to 張 for internal storage
-        // Resolve stock name/code to canonical stock_id
-        const found = this.allStockList.find(s => s.stock_id === rawSym || s.stock_name === rawSym);
-        const sym = found ? found.stock_id : rawSym;
-        this.inventory.push({ symbol: sym, cost, shares, buyDate: date });
+
+        const modal = document.getElementById('invModal');
+        const editIdx = parseInt(modal.dataset.editIdx ?? '-1', 10);
+
+        if (editIdx >= 0 && this.inventory[editIdx]) {
+            // Edit mode: update existing entry
+            const found = this.allStockList.find(s => s.stock_id === rawSym || s.stock_name === rawSym);
+            const sym = found ? found.stock_id : rawSym;
+            this.inventory[editIdx].symbol = sym;
+            this.inventory[editIdx].cost = cost;
+            if (shares > 0) this.inventory[editIdx].shares = shares;
+            this.inventory[editIdx].buyDate = date;
+        } else {
+            // Add mode: push new entry
+            const found = this.allStockList.find(s => s.stock_id === rawSym || s.stock_name === rawSym);
+            const sym = found ? found.stock_id : rawSym;
+            this.inventory.push({ symbol: sym, cost, shares, buyDate: date });
+        }
+
         localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
         document.getElementById('invCostInput').value = '';
         document.getElementById('invSharesInput').value = '';
-        const modal = document.getElementById('invModal');
+        modal.dataset.editIdx = '-1';
         modal.classList.add('hidden'); modal.style.display='none';
         this.refreshInventoryPrices();
     },
@@ -4824,10 +4869,8 @@ ${dynamicParams}
         for(let item of this.inventory) {
             const data = await this.fetchHistoricalData(item.symbol, false);
             item.currentPrice = data && data.length > 0 ? data[data.length-1].close : item.cost;
-            if (this.isMarketOpen()) {
-                const fugle = await this.fetchFugleData(item.symbol);
-                if(fugle) item.currentPrice = fugle.price;
-            }
+            const fugle = await this.fetchFugleData(item.symbol);
+            if(fugle) item.currentPrice = fugle.price;
         }
         this.renderInventory();
     },
@@ -4859,7 +4902,7 @@ ${dynamicParams}
                     <div class="swipe-action-btn delete-btn w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
                 </div>
                 <div class="absolute inset-y-0 left-0 flex flex-col" id="invEditReveal_${idx}">
-                    <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.editInventoryCost(${idx})">✏️<br>修改</div>
+                    <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.openInvEditModal(${idx})">✏️<br>修改</div>
                     <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
                 </div>
                 <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
