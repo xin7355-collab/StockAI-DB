@@ -802,10 +802,80 @@ def run():
 
 
 # ── 外資期貨（改用 FinMind API 防 Ban 版）────────────────────────────────────
+def _fetch_futures_taifex_fallback() -> dict | None:
+    """
+    TAIFEX 公開三大法人台指期備援（不需 Token）。
+    抓 TAIFEX 期交所 CSV，解析外資未平倉多空口數。
+    """
+    try:
+        import csv, io
+        today = date.today()
+        for days_back in range(0, 5):
+            d = today - timedelta(days=days_back)
+            if d.weekday() >= 5:   # 跳過週末
+                continue
+            date_tw = d.strftime('%Y/%m/%d')
+            url = 'https://www.taifex.com.tw/cht/3/futContractsDateDown'
+            params = {'queryStartDate': date_tw, 'queryEndDate': date_tw, 'commodityId': 'TX'}
+            res = requests.get(url, params=params, headers=_rnd_hdrs(), timeout=15)
+            body = res.content
+            if not body:
+                continue
+            # TAIFEX CSV 為 UTF-8 with BOM，偶爾為 Big5
+            for enc in ('utf-8-sig', 'big5', 'utf-8'):
+                try:
+                    text = body.decode(enc)
+                    break
+                except Exception:
+                    text = None
+            if not text:
+                continue
+            text = text.strip()
+            if text.startswith('<') or len(text) < 20:   # HTML 回應 = 無資料
+                continue
+            reader = csv.reader(io.StringIO(text))
+            rows = [r for r in reader if r]
+            # 找外資/外資自營商合計列（第1或第2欄含「外資」）
+            for row in rows:
+                name = (row[0] if row else '') + (row[1] if len(row) > 1 else '')
+                if '外資' not in name:
+                    continue
+                # 格式：期貨契約, 身份別, 多方口數, 多方契約金額, 空方口數, 空方契約金額, 多空淨額
+                try:
+                    # 嘗試找到包含數字的欄位群
+                    nums = []
+                    for cell in row[2:]:
+                        v = cell.replace(',', '').strip()
+                        if v.lstrip('-').isdigit():
+                            nums.append(int(v))
+                    if len(nums) >= 5:
+                        long_oi  = nums[0]   # 多方口數
+                        short_oi = nums[2]   # 空方口數
+                        net_oi   = long_oi - short_oi
+                        if long_oi > 0 or short_oi > 0:
+                            print(f"  📡 TAIFEX 備援：外資台指期多={long_oi:,} 空={short_oi:,} 淨={net_oi:+,} ({d})")
+                            return {'long': long_oi, 'short': short_oi, 'net': net_oi, 'date': d.strftime('%Y-%m-%d')}
+                except Exception:
+                    continue
+        return None
+    except Exception as e:
+        print(f"  ⚠️ TAIFEX 備援失敗: {e}")
+        return None
+
+
+def _write_futures_cache(net_oi: int, long_oi: int, short_oi: int, target_date: str):
+    today_str = date.today().strftime('%Y-%m-%d')
+    cache = {'date': target_date, 'fi_net': net_oi, 'long': long_oi, 'short': short_oi, 'generated': today_str}
+    with open('futures_cache.json', 'w', encoding='utf-8') as f:
+        json.dump(cache, f, ensure_ascii=False)
+    print(f"  ✅ 外資台指期淨口數: {net_oi:+,} 口 ({target_date})")
+
+
 def fetch_futures_cache():
     """
-    外資台指期未平倉淨口數：放棄容易被 Ban 的期交所爬蟲，
-    全面改用 FinMind 官方通道，穩定、合法且帶有你的專屬 Token。
+    外資台指期未平倉淨口數。
+    主路徑：FinMind TaiwanFuturesInstitutionalInvestors（需 Token）。
+    備援路徑：TAIFEX 公開 CSV（不需 Token）。
     """
     today_str = date.today().strftime('%Y-%m-%d')
     start_str = (date.today() - timedelta(days=7)).strftime('%Y-%m-%d')
@@ -816,13 +886,13 @@ def fetch_futures_cache():
 
     tok_label = f'Token #{_finmind_token_idx + 1}' if FINMIND_TOKENS else '匿名'
     print(f"\n🔮 抓取外資台指期 (使用 FinMind {tok_label} 防封鎖通道 [Token 輪動])...")
+    finmind_ok = False
     try:
         # [Token 輪動] 改用 fm_request，遇 429 自動切換並重試
         j = fm_request(url_base, timeout=15)
         if j is None:
-            print("  ⚠️ FinMind 期貨 API 失敗（斷路器觸發或連線錯誤），保留舊快取。")
-            return
-        if j.get('status') == 200 and j.get('data'):
+            print("  ⚠️ FinMind 期貨 API 失敗（Token 可能缺失或耗盡），改用 TAIFEX 備援...")
+        elif j.get('status') == 200 and j.get('data'):
             foreign_data = [d for d in j['data'] if '外資' in d.get('name', '')]
 
             if foreign_data:
@@ -844,23 +914,25 @@ def fetch_futures_cache():
                     short_oi = int(short_oi_val or 0)
                     net_oi   = long_oi - short_oi
 
-                cache = {
-                    'date':      target_date,
-                    'fi_net':    net_oi,
-                    'long':      long_oi,
-                    'short':     short_oi,
-                    'generated': today_str,
-                }
-
-                with open('futures_cache.json', 'w', encoding='utf-8') as f:
-                    json.dump(cache, f, ensure_ascii=False)
-
-                print(f"  ✅ 外資台指期淨口數: {net_oi:+,} 口 ({target_date})")
-                return
-
-        print("  ⚠️ FinMind 目前查無最新外資期貨資料，可能今日盤後尚未更新。")
+                if long_oi > 0 or short_oi > 0:
+                    _write_futures_cache(net_oi, long_oi, short_oi, target_date)
+                    finmind_ok = True
+                    return
+                else:
+                    print(f"  ⚠️ FinMind TX 所有 OI 欄位為零，改用 TAIFEX 備援...")
+            else:
+                print("  ⚠️ FinMind TX 無外資資料（可能今日盤後尚未更新），改用 TAIFEX 備援...")
+        else:
+            print(f"  ⚠️ FinMind 回傳異常 status={j.get('status') if j else 'None'}，改用 TAIFEX 備援...")
     except Exception as e:
-        print(f"  ⚠️ 外資期貨連線失敗: {e}")
+        print(f"  ⚠️ FinMind 外資期貨連線失敗: {e}，改用 TAIFEX 備援...")
+
+    if not finmind_ok:
+        result = _fetch_futures_taifex_fallback()
+        if result:
+            _write_futures_cache(result['net'], result['long'], result['short'], result['date'])
+        else:
+            print("  ⚠️ FinMind + TAIFEX 均失敗，保留舊快取。")
 
 
 # ── 美股大盤快取 ──────────────────────────────────────────────────────────────

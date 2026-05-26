@@ -2485,6 +2485,8 @@ const app = {
                 short:  Math.round((r.short_balance  || 0) / 1000),
             }));
             this._renderChipTimeline(instData, marginData);
+            this._renderInstBars(parseInt(this._activeChipPeriod) || 3);
+            this._renderMarginBars(parseInt(this._activeChipPeriod) || 3);
             if (statusEl) statusEl.textContent = '雲端採礦資料';
             return;
         }
@@ -2568,6 +2570,9 @@ const app = {
             const marginEl = document.getElementById('chipMarginChart');
             if (instEl) instEl.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">籌碼資料尚未採礦<br><span class="text-gray-600">每日16:30自動更新，或點🔄手動重整</span></div>';
             if (marginEl) marginEl.innerHTML = '';
+            // FinMind 失敗時仍嘗試從本地採礦資料渲染橫條
+            this._renderInstBars(parseInt(this._activeChipPeriod) || 3);
+            this._renderMarginBars(parseInt(this._activeChipPeriod) || 3);
         }
     },
 
