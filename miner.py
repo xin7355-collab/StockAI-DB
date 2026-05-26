@@ -1045,6 +1045,7 @@ def fetch_broker_chips():
     print(f"\n🕵️ 啟動分點籌碼 + 基本面探測 ({len(watchlist)} 檔，請耐心等候避免限流)...")
 
     updated = 0
+    broker_name_map: dict = {}  # 累積 bid→中文名 供 broker_names.json
     for sym in watchlist:
         # ① 提前讀取 out_file → existing_obj（供 TTL 判斷和後面寫入共用）
         out_file = chips_dir / f'{sym}.json'
@@ -1084,6 +1085,12 @@ def fetch_broker_chips():
                         e['broker_name'] = bnm
 
                 if by_date:
+                    # 累積券商名稱字典（中文名稱）
+                    for d_data in by_date.values():
+                        for bid, e in d_data.items():
+                            if bid and e['broker_name'] and not str(e['broker_name']).isdigit():
+                                broker_name_map[bid] = e['broker_name']
+
                     # ── 多週期聚合（1/3/5/10 日，各取淨買/淨賣 Top15）──
                     def _agg_period(n: int) -> dict:
                         wdates = sorted(by_date.keys())[-n:]
@@ -1167,6 +1174,17 @@ def fetch_broker_chips():
         out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')
 
     print(f"  ✅ 分點籌碼完成：更新了 {updated} 檔股票的主力動向")
+
+    # 寫入券商名稱字典（broker_names.json），合併舊資料再更新
+    if broker_name_map:
+        bn_file = Path(DATA_DIR) / 'broker_names.json'
+        existing_bn: dict = {}
+        if bn_file.exists():
+            try: existing_bn = json.loads(bn_file.read_text(encoding='utf-8'))
+            except Exception: pass
+        merged_bn = {**existing_bn, **broker_name_map}
+        bn_file.write_text(json.dumps(merged_bn, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print(f"  📋 券商名稱字典更新：{len(merged_bn)} 筆（本次新增/更新 {len(broker_name_map)} 筆）→ broker_names.json")
 
 
 # ── 雷達預運算 ────────────────────────────────────────────────────────────────

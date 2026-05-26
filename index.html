@@ -750,14 +750,24 @@
                 </div>
 
                 <!-- 外資期貨（合併進來） -->
-                <div class="bg-[#0d1117] border border-yellow-900/30 rounded-lg p-2.5 mb-3 flex items-center justify-between">
-                    <div>
-                        <div class="text-[9px] text-yellow-500 font-bold mb-0.5">🎯 外資台指期未平倉淨口數</div>
-                        <div id="mktFI_main" class="text-2xl font-black font-mono text-yellow-300">--</div>
-                    </div>
-                    <div class="text-right">
+                <div class="bg-[#0d1117] border border-yellow-900/30 rounded-lg p-2.5 mb-3">
+                    <div class="flex items-start justify-between mb-1.5">
+                        <div>
+                            <div class="text-[9px] text-yellow-500 font-bold mb-0.5">🎯 外資台指期未平倉</div>
+                            <div id="mktFI_main" class="text-2xl font-black font-mono text-yellow-300">--</div>
+                            <div class="text-[9px] text-gray-600 mt-0.5">淨口數（多－空）</div>
+                        </div>
                         <div id="mktFI_label_main" class="text-xs font-bold text-gray-400 bg-[#161b22] px-2.5 py-1 rounded border border-[#30363d]">多空未定</div>
-                        <div class="text-[9px] text-gray-600 mt-1">正數＝偏多 / 負數＝偏空</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <div class="bg-[#161b22] rounded px-2 py-1.5">
+                            <div class="text-[9px] text-gray-500 mb-0.5">📈 多方未平倉</div>
+                            <div id="mktFI_long" class="text-sm font-bold font-mono text-green-400">--</div>
+                        </div>
+                        <div class="bg-[#161b22] rounded px-2 py-1.5">
+                            <div class="text-[9px] text-gray-500 mb-0.5">📉 空方未平倉</div>
+                            <div id="mktFI_short" class="text-sm font-bold font-mono text-red-400">--</div>
+                        </div>
                     </div>
                 </div>
 
@@ -1754,6 +1764,8 @@ const app = {
                                         || (Number.isFinite(cj.fi_net) && cj.fi_net !== 0);
                         if (cj.fi_net !== undefined && cj.fi_net !== null && hasValidOI) {
                             cache.data.fiShort = cj.fi_net;
+                            cache.data.fiLong = parseInt(cj.long || 0) || null;
+                            cache.data.fiShortOI = parseInt(cj.short || 0) || null;
                             localStorage.setItem('proTerminalMacroCache_v3', JSON.stringify(cache));
                             this.processMacroData(cache.data);
                         }
@@ -1766,7 +1778,7 @@ const app = {
         const startDate = pastDate.toISOString().split('T')[0], fmToken = this._getFinmindToken(), tokenStr = fmToken ? `&token=${fmToken}` : ''; // [Token 輪動]
 
         try {
-            let taifexData = null;
+            let taifexData = null, taifexLong = null, taifexShortOI = null;
 
             // ── Strategy 1: Read pre-fetched gh-pages cache (updated daily by GitHub Actions) ──
             try {
@@ -1775,7 +1787,11 @@ const app = {
                     const cj = await cacheRes.json();
                     const hasValidOI = (parseInt(cj.long || 0) > 0) || (parseInt(cj.short || 0) > 0)
                                     || (Number.isFinite(cj.fi_net) && cj.fi_net !== 0);
-                    if (cj.fi_net !== undefined && hasValidOI) { taifexData = cj.fi_net; }
+                    if (cj.fi_net !== undefined && hasValidOI) {
+                        taifexData = cj.fi_net;
+                        taifexLong = parseInt(cj.long || 0) || null;
+                        taifexShortOI = parseInt(cj.short || 0) || null;
+                    }
                 }
             } catch(e) {}
 
@@ -1819,7 +1835,7 @@ const app = {
             const dataTaiex = resTaiex?.ok ? await resTaiex.json().catch(() => null) : null;
             const dataTpex  = resTpex?.ok  ? await resTpex.json().catch(() => null)  : null;
 
-            const macroData = { taiex: dataTaiex?.data || [], tpex: dataTpex?.data || [], fiShort: taifexData };
+            const macroData = { taiex: dataTaiex?.data || [], tpex: dataTpex?.data || [], fiShort: taifexData, fiLong: taifexLong, fiShortOI: taifexShortOI };
             if (macroData.taiex.length > 0 || macroData.tpex.length > 0 || taifexData !== null) {
                 localStorage.setItem(cacheKey, JSON.stringify({ date: todayStr, ts: now, data: macroData }));
             }
@@ -1830,6 +1846,8 @@ const app = {
     processMacroData(macro) {
         this.emergencyMode = false;
         this.fiShortQty = (macro.fiShort !== null && macro.fiShort !== undefined) ? macro.fiShort : null;
+        this.fiFuturesLong  = macro.fiLong    ?? null;
+        this.fiFuturesShort = macro.fiShortOI ?? null;
 
         if (macro.taiex && macro.taiex.length > 0) {
             const taiex = macro.taiex, last = taiex[taiex.length-1], prev = taiex.length > 1 ? taiex[taiex.length-2] : last;
@@ -1896,6 +1914,11 @@ const app = {
         const fiLM = document.getElementById('mktFI_label_main');
         if (fiM) { fiM.innerText = `${fiDisplay}口`; fiM.className = `text-3xl font-black font-mono ${fiColor}`; }
         if (fiLM) { fiLM.innerText = fiLabel; fiLM.className = `text-sm font-bold bg-[#161b22] px-3 py-1.5 rounded border border-[#30363d] ${fiColor}`; }
+        // 多方/空方未平倉口數拆解顯示
+        const fiLongEl = document.getElementById('mktFI_long');
+        const fiShortEl = document.getElementById('mktFI_short');
+        if (fiLongEl) fiLongEl.textContent = this.fiFuturesLong ? this.fiFuturesLong.toLocaleString() : '--';
+        if (fiShortEl) fiShortEl.textContent = this.fiFuturesShort ? this.fiFuturesShort.toLocaleString() : '--';
 
         const emergencyBanner = document.getElementById('emergencyBanner');
         if (this.emergencyMode) { 
