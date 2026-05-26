@@ -650,6 +650,22 @@ def run():
     watchlist = get_batch_symbols(inst_cache, BATCH_INDEX, TOTAL_BATCHES)
     print(f"\n🎯 批次 {BATCH_INDEX}/{TOTAL_BATCHES}：{len(watchlist)} 檔個股 | 月份: {months}")
 
+    PROGRESS_FILE = f'miner_progress_{BATCH_INDEX}.txt'
+
+    # ── 斷點續傳：偵測上次中斷位置 ──────────────────────────────────────────────
+    if os.path.exists(PROGRESS_FILE):
+        try:
+            last_sym = open(PROGRESS_FILE, encoding='utf-8').read().strip()
+            if last_sym in watchlist:
+                resume_idx = watchlist.index(last_sym)
+                watchlist = watchlist[resume_idx + 1:]
+                print(f"🔄 偵測到中斷紀錄（{PROGRESS_FILE}），從 {last_sym} 的下一檔開始，剩餘 {len(watchlist)} 檔待處理")
+            else:
+                print(f"🔄 進度檔紀錄的 {last_sym} 不在本批清單，從頭開始")
+                os.remove(PROGRESS_FILE)
+        except Exception:
+            pass
+
     print(f"\n📈 個股 OHLCV 採礦 ({len(watchlist)} 檔)...")
     db_conn = sqlite3.connect(DB_PATH)
     db_conn.row_factory = sqlite3.Row
@@ -795,6 +811,18 @@ def run():
                 print(f"⚠️ SQLite {sym}: {e}")
         else:
             print("skip")
+
+        # 斷點續傳：記錄已完成的股票代號（覆蓋寫入）
+        try:
+            with open(PROGRESS_FILE, 'w', encoding='utf-8') as _pf:
+                _pf.write(sym)
+        except Exception:
+            pass
+
+    # 全批次完成，清除進度檔讓下次排程從頭開始
+    if os.path.exists(PROGRESS_FILE):
+        os.remove(PROGRESS_FILE)
+        print(f"🗑️  進度檔 {PROGRESS_FILE} 已清除")
 
     db_conn.close()
     print(f"\n🎉 採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
