@@ -579,7 +579,7 @@
                 <!-- 🔬 個股基本面 X 光機（置頂） -->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
                     <h4 class="text-purple-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
-                        <div class="flex items-center gap-1.5"><span>🔬</span> 個股基本面 X 光機</div>
+                        <div class="flex items-center gap-1.5"><span>🔬</span> 個股基本面 X 光機 <span id="xrayDataDate" class="text-[9px] text-gray-600 font-mono font-normal"></span></div>
                         <button id="fundamentalXrayBtn"
                             onclick="app.fetchFundamentalAnalysis(app.currentSymbolId); app.vibrate(30);"
                             class="text-[10px] font-mono bg-purple-900/30 hover:bg-purple-700/40 text-purple-300 px-2 py-0.5 rounded border border-purple-700/50 transition-colors disabled:opacity-40">
@@ -616,6 +616,16 @@
                     <div class="bg-[#0d1117] rounded p-2 flex justify-between items-center mb-2">
                         <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">💰 最新每股股利</span>
                         <span id="xrayDividend" class="font-mono font-bold text-base text-gray-600">--</span>
+                    </div>
+                    <!-- 每季 EPS 趨勢 -->
+                    <div class="bg-[#0d1117] rounded p-2 mb-1.5">
+                        <div class="text-gray-500 text-[10px] font-mono mb-0.5">📊 每季 EPS（最近4季）</div>
+                        <div id="xrayEpsTrend" class="text-gray-600 text-[11px] font-mono leading-relaxed">--</div>
+                    </div>
+                    <!-- 每月營收趨勢 -->
+                    <div class="bg-[#0d1117] rounded p-2 mb-1.5">
+                        <div class="text-gray-500 text-[10px] font-mono mb-0.5">📅 月營收（最近3月）</div>
+                        <div id="xrayRevTrend" class="text-gray-600 text-[11px] font-mono leading-relaxed" style="white-space:pre">--</div>
                     </div>
                     <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
                         <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
@@ -3260,16 +3270,12 @@ ${brokerText}
         const startDate    = d.toISOString().split('T')[0];
         const d2           = new Date(); d2.setMonth(d2.getMonth() - 18);
         const revenueStart = d2.toISOString().split('T')[0];
-        const d3           = new Date(); d3.setMonth(d3.getMonth() - 3);
-        const shStart      = d3.toISOString().split('T')[0];
-
         try {
-            // ── 四路並行：季報 / 月營收 / 股票產業資訊 / 股東持股分布 ──
-            const [fsRes, revRes, infoRes, shRes] = await Promise.all([
+            // ── 三路並行：季報 / 月營收 / 股票產業資訊 ──
+            const [fsRes, revRes, infoRes] = await Promise.all([
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] })),
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revenueStart}${tokenStr}`, {}, { timeout: 10000, maxRetries: 2 }).then(r => r.json()).catch(() => ({ data: [] })),
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&data_id=${sym}${tokenStr}`, {}, { timeout: 8000, maxRetries: 1 }).then(r => r.json()).catch(() => ({ data: [] })),
-                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockShareholderStructure&data_id=${sym}&start_date=${shStart}${tokenStr}`, {}, { timeout: 8000, maxRetries: 1 }).then(r => r.json()).catch(() => ({ data: [] })),
             ]);
 
             // ── 產業類別 ────────────────────────────────────────────────
@@ -3309,28 +3315,6 @@ ${brokerText}
                 }).join('\n')
                 : null;
 
-            // ── 股東持股分布（最新日期，大戶 400張以上 / 千張以上占比）──
-            let shareholderText = null;
-            const shData = (shRes.data || []);
-            if (shData.length > 0) {
-                // 取最新日期的資料
-                const latestShDate = shData.reduce((acc, r) => r.date > acc ? r.date : acc, '');
-                const latestSh     = shData.filter(r => r.date === latestShDate);
-                // 各區間持股比例加總（400張以上視為大戶）
-                const BIG_LOTS   = ['400-599','600-799','800-999','1,000張以上','1000張以上',
-                                    '>=1000','over1000','1000-'];
-                const SUPER_LOTS = ['1,000張以上','1000張以上','>=1000','over1000','1000-'];
-                const bigPct     = latestSh.filter(r => BIG_LOTS.some(k  => (r.shareholder_category||'').includes(k.replace(',','')))).reduce((s,r)=>s+(r.percent||0),0);
-                const superPct   = latestSh.filter(r => SUPER_LOTS.some(k => (r.shareholder_category||'').includes(k.replace(',','')))).reduce((s,r)=>s+(r.percent||0),0);
-                const totalShareholders = latestSh.reduce((s,r)=>s+(r.number_of_shareholders||0),0);
-                if (bigPct > 0 || superPct > 0) {
-                    shareholderText = `  資料日期：${latestShDate}` +
-                        (bigPct  > 0 ? `\n  400張以上大戶持股占比：${bigPct.toFixed(2)}%`    : '') +
-                        (superPct > 0 ? `\n  千張以上超大戶持股占比：${superPct.toFixed(2)}%` : '') +
-                        (totalShareholders > 0 ? `\n  總股東人數：${totalShareholders.toLocaleString()} 人` : '');
-                }
-            }
-
             // ── 動態參數組合 ──────────────────────────────────────────
             const stockName    = this.getStockName(sym);
             const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : '未知';
@@ -3354,7 +3338,6 @@ ${brokerText}
                 `- 最新股價：${currentPrice}`,
                 latestYoy    ? `- 最新月營收 YoY%：\n${latestYoy}` : null,
                 financialSum ? `- 財務現況摘要：\n${financialSum}` : null,
-                shareholderText ? `- 股東持股與大戶分布（FinMind 最新）：\n${shareholderText}` : null,
                 `- 庫存與損益現況：成本 ${costStr} / 帳面損益 ${pnlStr}`,
                 newsStr ? `- 近期重大消息：${newsStr}` : null,
             ].filter(Boolean).join('\n');
@@ -3365,8 +3348,7 @@ ${brokerText}
 核心分析原則：
 1. 全球對手硬核對比：必須點名主要競爭對手。若屬高科技產業（半導體、AI、光電、關鍵零組件），對手視野拉高至全球（如台積電對手含 Intel、Samsung），並明確說跟對手比是**更好**還是**更壞**，差距在哪。
 2. 消息面精準定性：針對近期重大消息，必須定性為【實質利多】、【實質利空】、【利多出盡】或【利空出盡】其中一種，並分析市場大眾與主力的博弈心理。
-3. 股東籌碼心理學：若有股東持股分布數據，深度解讀大戶占比高低與趨勢，明確判定為**正常現象**或**異常訊號**。
-4. 傳產自動切換：遇到傳統產業（鋼鐵、水泥、食品等）自動切換為規模經濟、品牌通路、高轉換成本護城河分析，禁止亂套科技術語。
+3. 傳產自動切換：遇到傳統產業（鋼鐵、水泥、食品等）自動切換為規模經濟、品牌通路、高轉換成本護城河分析，禁止亂套科技術語。
 5. 防幻覺容錯：動態參數為空者直接略過，嚴禁憑空捏造任何財務數字。
 6. 長度硬限制：四大段落每段嚴格控制 180～250 字，關鍵結論、核心數字、對手名稱、定性詞彙必須使用 **粗體** 標示，嚴禁在【】標題加粗。
 
@@ -3380,8 +3362,8 @@ ${dynamicParams}
 【🏗️ 核心業務、對手與全球定位】
 白話說明靠什麼賺錢，直接點名國內外主要競爭對手。若為高科技業，進行全球對手比對，用粗體明確指出跟對手相比**更好**還是**更壞**及具體差距。
 
-【👥 股東籌碼與大戶動向解讀】
-解讀股東持股分布（若有傳入數據）。分析大戶與董監事近期動作，直接定性為**正常現象**或**異常訊號**，並拆解主力背後的真實意圖。若持股資料為空，根據產業特性與估值水位推估機構投資人的可能態度。
+【👥 籌碼面與機構投資人動向】
+根據法人近期買賣動向，分析主力是否持續介入，推估機構投資人態度。直接定性主力意圖為**正常現象**或**異常訊號**，並拆解背後的操作邏輯。
 
 【⚠️ 消息面定性與市場隱憂】
 針對近期重大消息，精準定性為【實質利多 / 實質利空 / 利多出盡 / 利空出盡】之一。指出該公司或行業目前最大的地雷或隱憂（如原料暴漲、景氣下行、地緣政治）。若無消息傳入，根據產業週期推估當前最大風險因子。
@@ -3395,7 +3377,7 @@ ${dynamicParams}
             // ── 渲染：段落色塊 + Markdown 粗體 ──────────────────────────
             const sectionMap = {
                 '【🏗️ 核心業務、對手與全球定位】':{ border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
-                '【👥 股東籌碼與大戶動向解讀】':   { border:'border-green-500',  title:'text-green-400',  bg:'bg-green-950/20'  },
+                '【👥 籌碼面與機構投資人動向】':   { border:'border-green-500',  title:'text-green-400',  bg:'bg-green-950/20'  },
                 '【⚠️ 消息面定性與市場隱憂】':     { border:'border-orange-500', title:'text-orange-400', bg:'bg-orange-950/20' },
                 '【📊 財報與商業變現交叉驗證】':   { border:'border-purple-500', title:'text-purple-300', bg:'bg-purple-950/20' },
             };
@@ -3411,7 +3393,6 @@ ${dynamicParams}
 
             const dataNote = [
                 industryCategory  ? null : '產業類別（AI 知識庫推估）',
-                shareholderText   ? null : '股東持股分布（未取得，AI 推估）',
             ].filter(Boolean);
             const noteBar = dataNote.length
                 ? `<div class="mb-2 text-[10px] text-gray-500 bg-gray-800/60 border border-gray-700 rounded px-2 py-1">ℹ️ 以下維度無實際資料，由 AI 推估補全：${dataNote.join('、')}</div>`
@@ -3462,9 +3443,19 @@ ${dynamicParams}
         const td = fund.total_dividend;
         const tdEl = document.getElementById('xrayDividend');
         if (tdEl) {
-            tdEl.innerText = td != null ? `${Number(td).toFixed(2)} 元` : '--';
-            tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + (td != null ? ' text-yellow-400' : ' text-gray-600');
+            if (td != null && td > 0) {
+                tdEl.innerText = `${Number(td).toFixed(2)} 元`;
+                tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-yellow-400';
+            } else if (td === 0) {
+                tdEl.innerText = '未發放';
+                tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-gray-400';
+            } else {
+                tdEl.innerText = '--';
+                tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-gray-600';
+            }
         }
+        const dateEl = document.getElementById('xrayDataDate');
+        if (dateEl) dateEl.textContent = fund.generated ? `採礦日 ${fund.generated}` : '';
     },
 
     // 新增：非同步背景讀取 chips JSON 的 fundamentals 快取，填入 X 光機（不阻塞主流程）
@@ -3624,10 +3615,20 @@ ${dynamicParams}
             const latestRev = revData.length ? revData[revData.length-1] : null;
             const latestYoy = latestRev?.revenue_year_growth ?? null;
 
-            // Dividend: Yield & Payout
+            // Dividend: Yield & Payout (FinMind uses PascalCase field names)
             const divData = (divRes.data||[]).sort((a,b)=>a.date>b.date?1:-1);
             const latestDiv = divData.length ? divData[divData.length-1] : null;
-            const totalDiv = latestDiv ? ((latestDiv.cash_dividend||0)+(latestDiv.stock_dividend||0)) : null;
+            // totalDiv: 0 = 有拿到但未發放; null = 未拿到資料
+            let totalDiv = null;
+            if (divRes.msg === 'success' || (Array.isArray(divRes.data))) {
+                // API responded successfully (even if empty data)
+                if (latestDiv) {
+                    totalDiv = (latestDiv.CashEarningsDistribution||0) + (latestDiv.StockEarningsDistribution||0)
+                             + (latestDiv.CashStatutorySurplus||0)     + (latestDiv.StockStatutorySurplus||0);
+                } else {
+                    totalDiv = 0; // 有回傳但無股利紀錄 → 未發放
+                }
+            }
             const currentClose = this.rawDailyData?.length ? this.rawDailyData[this.rawDailyData.length-1].close : null;
 
             // 優先讀本地 TWSE BWIBBU_d 採礦結果（PE / 殖利率），權威值優先於現價自算
@@ -3660,6 +3661,55 @@ ${dynamicParams}
             document.getElementById('xrayGrossMargin').className = `font-mono font-bold text-sm leading-tight ${gmTrend==null?'text-gray-600':gmTrend>0?'text-green-400':gmTrend<0?'text-red-400':'text-gray-400'}`;
             document.getElementById('xrayGrossMargin').textContent = gmTrendStr || '無資料';
             setCell('xrayPayout', payoutRatio, '%', payoutRatio==null?null:payoutRatio>100?'text-red-400':payoutRatio>70?'text-yellow-400':'text-green-400');
+
+            // 三態股利顯示
+            const tdEl2 = document.getElementById('xrayDividend');
+            if (tdEl2) {
+                if (totalDiv != null && totalDiv > 0) {
+                    tdEl2.innerText = `${totalDiv.toFixed(2)} 元`;
+                    tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-yellow-400';
+                } else if (totalDiv === 0) {
+                    tdEl2.innerText = '未發放';
+                    tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-gray-400';
+                } else {
+                    tdEl2.innerText = '--';
+                    tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
+                }
+            }
+
+            // 每季 EPS 趨勢（最近4季）
+            const epsSlice = epsRows.slice(-4);
+            const epsTrendEl = document.getElementById('xrayEpsTrend');
+            if (epsTrendEl) {
+                if (epsSlice.length > 0) {
+                    epsTrendEl.textContent = epsSlice.map(r => `${r.date.slice(0,7)} ${Number(r.value).toFixed(2)}`).join(' → ');
+                    epsTrendEl.className = epsTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-300';
+                } else {
+                    epsTrendEl.textContent = '--';
+                    epsTrendEl.className = epsTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
+                }
+            }
+
+            // 每月營收趨勢（最近3月）
+            const rvSlice = revData.slice(-3);
+            const rvTrendEl = document.getElementById('xrayRevTrend');
+            if (rvTrendEl) {
+                if (rvSlice.length > 0) {
+                    rvTrendEl.textContent = rvSlice.map(r => {
+                        const ym = `${r.revenue_year}-${String(r.revenue_month).padStart(2,'0')}`;
+                        const yoy = r.revenue_year_growth != null ? ` (YoY ${Number(r.revenue_year_growth).toFixed(1)}%)` : '';
+                        return `${ym} ${Number(r.revenue/1e8).toFixed(1)}億${yoy}`;
+                    }).join('\n');
+                    rvTrendEl.className = rvTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-300';
+                } else {
+                    rvTrendEl.textContent = '--';
+                    rvTrendEl.className = rvTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
+                }
+            }
+
+            // 標示資料日期
+            const dateEl2 = document.getElementById('xrayDataDate');
+            if (dateEl2) dateEl2.textContent = `即時 ${new Date().toLocaleDateString('zh-TW')}`;
 
             // AI
             const xrayAIBox = document.getElementById('xrayAIBox');
@@ -3732,16 +3782,30 @@ ${dynamicParams}
             const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${year-3}-01-01${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
             const data = await res.json();
             let html = "";
-            if (data && data.data && data.data.length > 0) {
-                const sorted = data.data.sort((a,b) => new Date(b.date) - new Date(a.date));
-                const latest = sorted[0];
-                const totalDiv = (latest.StockEarningsDistribution || 0) + (latest.StockStatutorySurplus || 0) + (latest.CashEarningsDistribution || 0) + (latest.CashStatutorySurplus || 0);
-                const xrayDiv = document.getElementById('xrayDividend');
-                if (xrayDiv) {
-                    xrayDiv.innerText = `${totalDiv.toFixed(2)} 元`;
-                    xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-yellow-400';
+            const xrayDiv = document.getElementById('xrayDividend');
+            if (data && (data.msg === 'success' || Array.isArray(data.data))) {
+                if (data.data && data.data.length > 0) {
+                    const sorted = data.data.sort((a,b) => new Date(b.date) - new Date(a.date));
+                    const latest = sorted[0];
+                    const totalDiv = (latest.StockEarningsDistribution || 0) + (latest.StockStatutorySurplus || 0) + (latest.CashEarningsDistribution || 0) + (latest.CashStatutorySurplus || 0);
+                    if (xrayDiv) {
+                        if (totalDiv > 0) {
+                            xrayDiv.innerText = `${totalDiv.toFixed(2)} 元`;
+                            xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-yellow-400';
+                        } else {
+                            xrayDiv.innerText = '未發放';
+                            xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-gray-400';
+                        }
+                    }
+                } else {
+                    // API 成功但無股利紀錄 → 公司未發放股利
+                    if (xrayDiv) {
+                        xrayDiv.innerText = '未發放';
+                        xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-gray-400';
+                    }
                 }
             }
+            // catch 不覆蓋 xrayDividend（保留現有值）
             divBox.innerHTML = '';
         } catch(e) { divBox.innerHTML = `<span class="text-gray-500 text-xs">股利連線失敗</span>`; }
 
