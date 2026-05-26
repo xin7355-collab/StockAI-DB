@@ -2215,13 +2215,18 @@ const app = {
             // Field names differ between API versions: try both layouts
             const price = q.lastPrice ?? q.trade?.price ?? q.closePrice ?? null;
             if (!price) return null;
+            // Derive prevClose: prefer explicit referencePrice, then back-calculate from changePrice
+            const changePrice = q.changePrice ?? q.priceChange ?? null;
+            let prevClose = q.referencePrice ?? q.previousClose ?? null;
+            if (prevClose == null && changePrice != null) prevClose = price - changePrice;
             return {
                 price,
                 open:      q.openPrice  ?? q.priceOpen?.price  ?? price,
                 high:      q.highPrice  ?? q.priceHigh?.price  ?? price,
                 low:       q.lowPrice   ?? q.priceLow?.price   ?? price,
                 volume:    q.total?.tradeVolume ?? q.total?.tradeShares ?? 0,
-                prevClose: q.referencePrice ?? q.previousClose ?? null,
+                prevClose,
+                changePrice,
             };
         } catch(e) { return null; }
     },
@@ -4548,7 +4553,18 @@ ${dynamicParams}
         this.currentMarkPoints = markPoints;
 
         const lastIdx = this.rawDailyData.length - 1, currentClose = this.rawDailyData[lastIdx].close;
-        const prevClose = this._fuglePrevClose ?? (this.rawDailyData.length > 1 ? this.rawDailyData[lastIdx-1].close : currentClose);
+        // Prefer Fugle referencePrice (set in applyLatestPrice). Fallback: scan backwards for the
+        // last bar with a different date than today (handles appended ghost bars and stale mined data).
+        let prevClose = this._fuglePrevClose;
+        if (prevClose == null && this.rawDailyData.length > 1) {
+            const todayStr = this.getTodayStr();
+            for (let i = lastIdx - 1; i >= 0; i--) {
+                if (this.rawDailyData[i].date !== todayStr && this.rawDailyData[i].close > 0) {
+                    prevClose = this.rawDailyData[i].close; break;
+                }
+            }
+        }
+        if (prevClose == null) prevClose = currentClose;
         const diff = currentClose - prevClose, pct = prevClose > 0 ? (diff/prevClose)*100 : 0;
         const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : (this._hasLivePrice ? 'text-gray-300' : 'text-gray-500'));
         
