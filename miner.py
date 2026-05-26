@@ -12,7 +12,7 @@ import re
 import sqlite3
 import requests
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 DATA_DIR = "data"
@@ -685,22 +685,27 @@ def run():
             if row['volume'] is not None and row['volume'] > 0:
                 latest_valid_date = fmt_date  # 記錄最新有成交量的交易日
 
-        # ── 🛡️ 防封鎖機制：今日 K 線已存在則略過 TWSE/TPEX 請求 ──
+        # ── 🛡️ 防封鎖機制（時間感知版）：盤後才強制覆蓋 ──
         target_today_str = trading_days[-1].strftime('%Y/%m/%d')
-        if latest_valid_date == target_today_str:
-            print(f"⚡ 本日 K 線已存在，略過證交所請求")
+        today_record  = existing_map.get(target_today_str, {})
+        has_final_chips = today_record.get('foreign_net', 0) != 0
+
+        now = datetime.now()
+        is_post_market = (now.hour > 13) or (now.hour == 13 and now.minute >= 40)
+
+        if latest_valid_date == target_today_str and (not is_post_market or has_final_chips):
+            print(f"⚡ 本日 K 線與最終籌碼已完整，安全略過證交所請求")
             new_rows = []
         else:
+            if is_post_market and latest_valid_date == target_today_str and not has_final_chips:
+                print(f"🔄 盤後採礦：K 線存在但籌碼尚未更新，強制重新下載...")
             new_rows = []
             first_ym_empty = False
             for i, ym in enumerate(months):
                 rows = twse_ohlcv(sym, ym)
-                if not rows:
-                    rows = tpex_ohlcv(sym, ym)
-                if not rows:
-                    time.sleep(0.5); rows = tpex_ohlcv(sym, ym)  # TPEX 一次 retry
-                if i == 0 and not rows:
-                    first_ym_empty = True
+                if not rows: rows = tpex_ohlcv(sym, ym)
+                if not rows: time.sleep(0.5); rows = tpex_ohlcv(sym, ym)
+                if i == 0 and not rows: first_ym_empty = True
                 if i == 1 and first_ym_empty and rows:
                     print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
                 new_rows.extend(rows)
@@ -721,7 +726,14 @@ def run():
 
             if fmt_date in existing_map:
                 rec = existing_map[fmt_date]
-                if rec.get('foreign_net', 0) == 0 and chip.get('foreign_net', 0) != 0:
+                # 盤後終極覆蓋：close 或 volume 不同時強制更新 OHLCV
+                price_changed = (rec.get('close') != r.get('close')) or (rec.get('volume') != r.get('volume'))
+                if price_changed:
+                    rec.update({'open': r['open'], 'high': r['high'], 'low': r['low'],
+                                'close': r['close'], 'volume': r['volume']})
+                    changed = True
+                # 補寫尚未有的籌碼資料
+                if rec.get('foreign_net', 0) == 0 and (chip.get('foreign_net', 0) != 0 or chip.get('margin_balance', 0) != 0):
                     rec.update(chip)
                     changed = True
                 continue
