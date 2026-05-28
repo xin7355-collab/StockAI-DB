@@ -415,6 +415,36 @@ def fetch_twse_fundamentals(d: date) -> dict:
     return res
 
 
+# ── FinMind 全台券商代碼→中文名對照（免費無 Token）────────────────────────────
+def _load_broker_info_map() -> dict:
+    """
+    呼叫 FinMind TaiwanBrokerInfo 資料集（完全免費，不消耗 Token 額度），
+    一次取得全台 ~900 家券商代碼 → 中文名稱對照表。
+    優先順序：TACTICAL_TAGS > FinMind 回傳的 raw_nm > 此對照表 > 數字代碼。
+    """
+    try:
+        url = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo'
+        res = requests.get(url, headers=_rnd_hdrs(), timeout=15)
+        body = res.text.strip()
+        if not body or body[0] == '<':
+            return {}
+        j = res.json()
+        if j.get('msg') == 'success' and j.get('data'):
+            mapping: dict = {}
+            for b in j['data']:
+                bid = str(b.get('broker_id') or b.get('securities_trader_id') or '').strip()
+                nm  = str(b.get('broker_name') or b.get('securities_trader') or '').strip()
+                if bid and nm and not nm.isdigit():
+                    mapping[bid] = nm
+            print(f"  📖 TaiwanBrokerInfo 載入：{len(mapping)} 家券商代碼→中文名")
+            return mapping
+        else:
+            print(f"  ⚠️ TaiwanBrokerInfo 回傳異常: {str(j)[:80]}")
+    except Exception as e:
+        print(f"  ⚠️ TaiwanBrokerInfo 載入失敗: {e}")
+    return {}
+
+
 # ── FinMind 個股基本面（EPS / YoY / 毛利率趨勢 / 發配率）────────────────────
 def fetch_finmind_fundamentals(sym: str) -> dict:
     """
@@ -1040,7 +1070,10 @@ def fetch_broker_chips():
     # 新增：一次查全市場 PE / 殖利率（TWSE）
     print("\n📊 抓取 TWSE 全市場本益比 / 殖利率快取...")
     twse_fund = fetch_twse_fundamentals(date.today())
-    # [Token 輪動] token_param 已由 fm_request() 統一管理，此處不再需要
+
+    # 新增：一次查全台券商代碼→中文名對照（FinMind TaiwanBrokerInfo 免費）
+    print("\n📖 載入券商對照表（TaiwanBrokerInfo）...")
+    broker_info_map = _load_broker_info_map()
 
     print(f"\n🕵️ 啟動分點籌碼 + 基本面探測 ({len(watchlist)} 檔，請耐心等候避免限流)...")
 
@@ -1076,7 +1109,15 @@ def fetch_broker_chips():
                     d   = r.get('date') or today_str
                     bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
                     raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
-                    bnm = TACTICAL_TAGS.get(bid, raw_nm if raw_nm and not raw_nm.isdigit() else bid)
+                    # 優先順序：戰術標記 > FinMind 回傳中文名 > TaiwanBrokerInfo 對照 > 數字代碼
+                    if bid in TACTICAL_TAGS:
+                        bnm = TACTICAL_TAGS[bid]
+                    elif raw_nm and not raw_nm.isdigit():
+                        bnm = raw_nm
+                    elif bid in broker_info_map:
+                        bnm = broker_info_map[bid]
+                    else:
+                        bnm = bid  # fallback：前端 _resolveBrokerName 仍可查 brokerNames
                     buy, sel = int(r.get('buy', 0)), int(r.get('sell', 0))
                     slot = by_date.setdefault(d, {})
                     e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0})
@@ -1176,15 +1217,29 @@ def fetch_broker_chips():
     print(f"  ✅ 分點籌碼完成：更新了 {updated} 檔股票的主力動向")
 
     # 寫入券商名稱字典（broker_names.json），合併舊資料再更新
-    if broker_name_map:
-        bn_file = Path(DATA_DIR) / 'broker_names.json'
-        existing_bn: dict = {}
-        if bn_file.exists():
-            try: existing_bn = json.loads(bn_file.read_text(encoding='utf-8'))
-            except Exception: pass
-        merged_bn = {**existing_bn, **broker_name_map}
-        bn_file.write_text(json.dumps(merged_bn, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-        print(f"  📋 券商名稱字典更新：{len(merged_bn)} 筆（本次新增/更新 {len(broker_name_map)} 筆）→ broker_names.json")
+    # 同時用 TaiwanBrokerInfo 白名單清洗舊污染資料（股票公司名誤入）
+    bn_file = Path(DATA_DIR) / 'broker_names.json'
+    existing_bn: dict = {}
+    if bn_file.exists():
+        try: existing_bn = json.loads(bn_file.read_text(encoding='utf-8'))
+        except Exception: pass
+
+    # 合併：本次採礦結果覆蓋舊資料，再補入 TaiwanBrokerInfo 的完整對照
+    merged_bn = {**existing_bn, **broker_name_map, **broker_info_map}
+    # TACTICAL_TAGS 擁有最高優先權（含特殊標記說明）
+    merged_bn.update(TACTICAL_TAGS)
+
+    # 清洗污染：白名單 = TaiwanBrokerInfo + TACTICAL_TAGS；不在其中的移除
+    if broker_info_map:
+        valid_bids = set(broker_info_map.keys()) | set(TACTICAL_TAGS.keys())
+        cleaned_bn = {bid: nm for bid, nm in merged_bn.items() if bid in valid_bids}
+        removed = len(merged_bn) - len(cleaned_bn)
+        if removed:
+            print(f"  🧹 清洗非券商代碼 {removed} 筆（舊污染資料已移除）")
+        merged_bn = cleaned_bn
+
+    bn_file.write_text(json.dumps(merged_bn, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    print(f"  📋 券商名稱字典：{len(merged_bn)} 筆 → broker_names.json")
 
 
 # ── 雷達預運算 ────────────────────────────────────────────────────────────────

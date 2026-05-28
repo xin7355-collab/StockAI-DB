@@ -2696,7 +2696,7 @@ const app = {
         const ghBase = window.location.href.split('?')[0].split('#')[0];
         const localUrl = new URL('data/broker_names.json', ghBase).href
                        + `?v=${Math.floor(Date.now()/3600000)}`;
-        const finmindUrl = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockSecuritiesBrokerInfo';
+        const finmindUrl = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo';
 
         const [localMap, finmindMap] = await Promise.all([
             fetch(localUrl, { signal: AbortSignal.timeout(4000) })
@@ -2705,12 +2705,12 @@ const app = {
             fetch(finmindUrl, { signal: AbortSignal.timeout(6000) })
                 .then(r => r.ok ? r.json() : null)
                 .then(j => {
-                    if (!j || !Array.isArray(j.data)) return {};
+                    if (!j || j.msg !== 'success' || !Array.isArray(j.data)) return {};
                     const map = {};
                     j.data.forEach(b => {
-                        const id = String(b.broker_id || '').trim();
-                        const nm = String(b.securities_trader || b.broker_name || '').trim();
-                        if (id && nm) map[id] = nm;
+                        const id = String(b.broker_id || b.securities_trader_id || '').trim();
+                        const nm = String(b.broker_name || b.securities_trader || '').trim();
+                        if (id && nm && !(/^\d+$/.test(nm))) map[id] = nm;
                     });
                     return map;
                 })
