@@ -699,6 +699,8 @@ def run():
     print(f"\n📈 個股 OHLCV 採礦 ({len(watchlist)} 檔)...")
     db_conn = sqlite3.connect(DB_PATH)
     db_conn.row_factory = sqlite3.Row
+    db_conn.execute("PRAGMA journal_mode=WAL;")
+    db_conn.execute("PRAGMA synchronous=NORMAL;")
     db_cur  = db_conn.cursor()
 
     updated_total = 0

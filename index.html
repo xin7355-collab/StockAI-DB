@@ -1803,7 +1803,24 @@ const app = {
                 }
             } catch(e) {}
 
-            // ── Strategy 1b: 美股大盤 gh-pages 靜態快取 ──
+            // ── Strategy 1b: 後端代理 fallback（gh-pages 失敗 + 有後端時）──
+            if (taifexData === null && this._apiBase) {
+                try {
+                    const bRes = await fetch(`${this._apiBase}/api/macro/futures`, { signal: AbortSignal.timeout(5000) });
+                    if (bRes.ok) {
+                        const cj = await bRes.json();
+                        const hasValidOI = (parseInt(cj.long || 0) > 0) || (parseInt(cj.short || 0) > 0)
+                                        || (Number.isFinite(cj.fi_net) && cj.fi_net !== 0);
+                        if (cj.fi_net !== undefined && hasValidOI) {
+                            taifexData = cj.fi_net;
+                            taifexLong = parseInt(cj.long || 0) || null;
+                            taifexShortOI = parseInt(cj.short || 0) || null;
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            // ── Strategy 1c: 美股大盤 gh-pages 靜態快取 ──
             try {
                 const macroRes = await fetch(_macroUrl, { signal: AbortSignal.timeout(4000) });
                 if (macroRes.ok) {

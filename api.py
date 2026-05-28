@@ -281,6 +281,8 @@ def get_db() -> Generator[sqlite3.Connection, None, None]:
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     try:
         yield conn
     finally:
@@ -382,6 +384,23 @@ def get_macro_data(db: sqlite3.Connection = Depends(get_db)):
         return {"status": "no_data", "message": "尚無宏觀資料，請先執行採礦。"}
 
     return dict(row)
+
+
+@app.get("/api/macro/futures")
+def get_futures_cache():
+    """
+    外資台指期未平倉快取代理路由。
+    讀取 miner.py 每日寫入的 futures_cache.json，
+    讓沒有 gh-pages 存取權的手機端能透過後端代理取得資料，免疫 CORS。
+    """
+    futures_path = os.path.join(os.path.dirname(DB_PATH) or ".", "futures_cache.json")
+    try:
+        with open(futures_path, encoding="utf-8") as f:
+            return json.loads(f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="futures_cache.json 尚未產生，請先執行採礦。")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/radar/{strategy}")
