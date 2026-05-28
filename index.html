@@ -979,6 +979,12 @@ const AI_PROMPT_TEMPLATES = {
 【⚔️ 總監戰術室】
 對比庫存成本與現價，算出帳面損益%並明確說「現在是賺還是賠、賺多少%」。若空手則給出建議進場價位區間。直接說出防守底線是多少（跌破就停損），目標價T1是多少（到了就考慮減碼）。最後整合以上四面向給一句話操作指令，白話到國中生都聽得懂。
 
+【庫存狀態差異化鐵律】——必須嚴格遵守：
+- 若庫存標示「目前空手」：必須給出具體建議進場條件（如：「等 5MA 站回 20MA 上方才進場」），禁止模糊說「可以考慮」
+- 若庫存標示「小幅獲利」或「獲利中＋5%以上」：優先說明何時減碼/停利，目標 T1 必須給出具體數字
+- 若庫存標示「小幅虧損」：判斷是否值得繼續持有，明確說出「守住 XX 元才不停損」
+- 若庫存標示「深度套牢」：先判斷技術面是否已有止跌訊號，再決定停損還是等待，嚴禁無腦建議加碼攤平
+
 最後**獨立一行**輸出最終判定（只能三選一）：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退`,
 
     dualBlade: `你是「台股首席資安策略長」，融合權證小哥籌碼流與朱家泓技術位階學。語氣霸氣且幽默，杜絕 AI 幻想。
@@ -1038,11 +1044,13 @@ const masterWorkerCode = `
         let trades = [], markPoints = [], inPosition = false, buyPrice = 0;
         for(let i=20; i<result.length; i++) {
             let current = result[i], prev = result[i-1];
-            if (!inPosition && current.close > current.ma20 && current.ma5 >= current.ma20 && prev.close <= prev.ma20) {
+            if (!inPosition && prev.ma5 !== null && prev.ma20 !== null && current.ma5 !== null && current.ma20 !== null
+                && prev.ma5 < prev.ma20 && current.ma5 >= current.ma20) {
                 inPosition = true; buyPrice = current.close;
                 markPoints.push({ coord: [current.date, current.low * 0.96], name: '買', symbolSize: 8, itemStyle: {color: '#ef4444'} });
-            } 
-            else if (inPosition && current.close < current.ma5 && prev.close >= prev.ma5) {
+            }
+            else if (inPosition && prev.ma5 !== null && prev.ma20 !== null && current.ma5 !== null && current.ma20 !== null
+                && prev.ma5 >= prev.ma20 && current.ma5 < current.ma20) {
                 inPosition = false;
                 trades.push({ profitPct: ((current.close - buyPrice)/buyPrice)*100 });
                 markPoints.push({ coord: [current.date, current.high * 1.04], name: '賣', symbolSize: 8, itemStyle: {color: '#10b981'} });
@@ -4866,14 +4874,23 @@ ${dynamicParams}
         
         let html = '';
         for (let sym of list) {
-            let prevCloseText = "--";
+            let priceText = "--", diffText = "", priceColor = "text-gray-400";
             let seasonTag = '';
             try {
                 const data = await this.fetchHistoricalData(sym, false);
-                if (data && data.length > 0) { prevCloseText = data[data.length-1].close.toFixed(2); }
+                if (data && data.length > 0) { priceText = data[data.length-1].close.toFixed(2); }
                 seasonTag = this._getQuickSeasonTag(data);
                 const fugle = await this.fetchFugleData(sym);
-                if (fugle) prevCloseText = fugle.price.toFixed(2);
+                if (fugle) {
+                    priceText = fugle.price.toFixed(2);
+                    const base = fugle.prevClose ?? (data && data.length > 1 ? data[data.length-2].close : null);
+                    if (base && base > 0) {
+                        const diff = fugle.price - base, pct = (diff / base * 100);
+                        const sign = diff >= 0 ? '+' : '';
+                        diffText = `${sign}${diff.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+                        priceColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-gray-300';
+                    }
+                }
             } catch(e) {}
 
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
@@ -4885,7 +4902,10 @@ ${dynamicParams}
                             <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
                             ${seasonTag ? `<span class="flex-shrink-0">${seasonTag}</span>` : ''}
                         </div>
-                        <div class="text-xs text-gray-500 font-mono mt-0.5">最新 ${prevCloseText}</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-sm font-bold font-mono ${priceColor}">${priceText}</span>
+                            ${diffText ? `<span class="text-[10px] font-mono ${priceColor}">${diffText}</span>` : ''}
+                        </div>
                     </div>
                     ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
                 </div>
@@ -5991,6 +6011,15 @@ VIX=${vix} | S&P500=${spxChg} | 費半SOX=${soxChg} | TSMC ADR=${tsmChg} | NVDA=
         }
 
         box.classList.remove('hidden');
+        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ 首席 AI 五維分析啟動中...<br><span class="text-[10px] text-gray-500">同步最新資料中（全球觀 / 基本面 / 庫存）...</span></div>';
+
+        // 同步刷新最新資料（macro_cache + 基本面），避免使用舊快取
+        const sym_prefetch = this.currentSymbolId;
+        await Promise.allSettled([
+            this.fetchMacroData().catch(() => {}),
+            this._autoLoadFundamentals(sym_prefetch).catch(() => {}),
+        ]);
+
         box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ 首席 AI 五維分析啟動中...<br><span class="text-[10px] text-gray-500">整合技術 / 籌碼 / 全球觀 / 基本面 / 庫存...</span></div>';
 
         // ══════════════════════════════════════════════════════════════════
@@ -6118,8 +6147,14 @@ VIX=${vix} | S&P500=${spxChg} | 費半SOX=${soxChg} | TSMC ADR=${tsmChg} | NVDA=
         let invLine   = null;
         if (inInv || (costVal && !isNaN(parseFloat(costVal)))) {
             const cost = inInv ? inInv.cost : parseFloat(costVal);
-            const pnl  = ((lastC - cost) / cost * 100).toFixed(2);
-            invLine    = `持有成本 ${cost}，帳面損益 ${pnl >= 0 ? '+' : ''}${pnl}%`;
+            const pnlNum = parseFloat(((lastC - cost) / cost * 100).toFixed(2));
+            const pnlStr = (pnlNum >= 0 ? '+' : '') + pnlNum + '%';
+            let posState = '';
+            if (pnlNum > 5)        posState = '【獲利中＋5%以上，考慮停利／追蹤停損】';
+            else if (pnlNum > 0)   posState = '【小幅獲利，防守優先，勿輕易加碼】';
+            else if (pnlNum > -5)  posState = '【小幅虧損，守住關鍵支撐，切勿恐慌殺出】';
+            else                   posState = '【深度套牢，評估停損或等待解套，嚴禁加碼攤平】';
+            invLine = `持有成本 ${cost}，帳面損益 ${pnlStr} ${posState}`;
         }
 
         const newsLine = this.latestNewsCache ? `近期消息：${this.latestNewsCache}` : null;
@@ -6167,7 +6202,7 @@ ${missingNote.length ? `以下維度無資料，請根據公司名稱與股票�
 
 【當下戰情參數】
 標的：${name}（${sym}）｜現價：${lastC}｜季節：${ctx.season || '不明'}（${seasonDesc[ctx.season] || '觀望'}）｜大盤：${twiiLabel[this.twiiState] || '不明'}
-庫存：${invLine || '目前空手'}${newsLine ? '\n' + newsLine : ''}
+庫存：${invLine || '目前空手【請給出明確建議進場區間與停損點，禁止模糊說「可以考慮」】'}${newsLine ? '\n' + newsLine : ''}
 信心燈號：${this.confidenceMsgCache || '等待運算'}
 ${warningFlags ? '⚠️ 系統告警：' + warningFlags : ''}
 
