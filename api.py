@@ -884,7 +884,9 @@ class FundamentalsRequest(BaseModel):
     gross_margin_trend: Optional[str]   = None
     payout_ratio:       Optional[float] = None
     dividend:           Optional[float] = None
-    max_tokens:         int             = Field(default=280, ge=80, le=600)
+    is_record_high:     Optional[bool]  = None   # 本月營收是否創近24個月新高
+    quarterly_eps:      Optional[list]  = None   # [{period, eps, revenue}, ...] 近4季
+    max_tokens:         int             = Field(default=350, ge=80, le=600)
 
 
 class TechAIRequest(BaseModel):
@@ -918,9 +920,36 @@ async def analyze_fundamentals(req: FundamentalsRequest):
     def _v(val, unit=''):
         return f"{val}{unit}" if val is not None else "無資料"
 
-    prompt = f"""你是台股身經百戰的操盤總裁，講話犀利直接，專門戳破上市公司財報粉飾。
-根據以下 {req.symbol} 的 6 大基本面數據，輸出 100~150 字大白話實戰解析：
+    # Python-side 下季 QoQ 移動平均預測（禁止讓 AI 算複利）
+    next_q_str = "無資料"
+    if req.quarterly_eps and len(req.quarterly_eps) >= 2:
+        revs = [q.get('revenue', 0) or 0 for q in req.quarterly_eps]
+        valid_revs = [(revs[i], revs[i-1]) for i in range(1, len(revs))
+                      if revs[i-1] > 0 and revs[i] > 0]
+        if valid_revs:
+            qoq_list = [(cur / prev - 1) * 100 for cur, prev in valid_revs]
+            avg_qoq = sum(qoq_list) / len(qoq_list)
+            latest_rev = revs[-1] if revs[-1] > 0 else None
+            if latest_rev:
+                next_q_rev = latest_rev * (1 + avg_qoq / 100)
+                next_q_str = f"預估 {next_q_rev / 1e8:.1f} 億元（均值 QoQ {avg_qoq:+.1f}%）"
 
+    # 季報摘要字串（近4季）
+    quarterly_str = "無資料"
+    if req.quarterly_eps:
+        lines = []
+        for q in req.quarterly_eps:
+            rev_b = q.get('revenue', 0) or 0
+            rev_s = f"{rev_b / 1e8:.1f}億" if rev_b > 0 else "--"
+            lines.append(f"  {q.get('period', '?')}：EPS {q.get('eps', 0):.2f} 元 / 營收 {rev_s}")
+        quarterly_str = "\n".join(lines)
+
+    record_high_tag = "🔥 本月營收創近24個月歷史新高！\n" if req.is_record_high else ""
+
+    prompt = f"""你是台股身經百戰的操盤總裁，講話犀利直接，專門戳破上市公司財報粉飾。
+根據以下 {req.symbol} 的基本面數據，輸出 150~200 字大白話實戰解析：
+
+{record_high_tag}【最新基本面】
 EPS（最新季）：{_v(req.eps, ' 元')}
 營收 YoY（最新月）：{_v(req.yoy, '%')}
 本益比 PE：{_v(req.pe, 'x')}
@@ -929,12 +958,19 @@ EPS（最新季）：{_v(req.eps, ' 元')}
 股利發配率：{_v(req.payout_ratio, '%')}
 最新每股股利：{_v(req.dividend, ' 元')}
 
+【近4季季報摘要】（Python 計算，勿自行算）
+{quarterly_str}
+
+【下季營收預測】（Python 移動均值 QoQ，勿自行算）
+{next_q_str}
+
 解讀矩陣（符合就標記，都不符合就說「中性觀察」）：
 🔥 嚴重低估的成長火箭：高 YoY + PE<15 + 毛利增
 ⚠️ 靠題材炒作的空氣泡泡：低/負 YoY + PE>40
 🚨 價值陷阱/掏空資本警告：殖利率>8% + 負YoY 或 發配率>100%
+📐 右下角建倉形態：若下季預測成長 + 目前為均線支撐區，給出具體建倉區間與停損點
 
-先點判定結果，再大白話解讀體質。"""
+先點判定結果，再大白話解讀體質與操作建議。"""
 
     content = await call_groq_api(prompt, max_tokens=req.max_tokens, temperature=0.5)
     return {"content": content}

@@ -456,7 +456,7 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
     """
     today_str = date.today().strftime('%Y-%m-%d')
     start_fs  = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d')
-    start_rev = (date.today() - timedelta(days=90)).strftime('%Y-%m-%d')
+    start_rev = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d')
     start_div = (date.today() - timedelta(days=1095)).strftime('%Y-%m-%d')
     result: dict = {}
 
@@ -488,11 +488,25 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             arrow = '↑' if diff > 0 else '↓'
             result['gross_margin_trend'] = (
                 '→'.join(f'{g}%' for g in gms) + f'（{arrow}{abs(diff)}pp）')
+        # 最近4季 EPS + Revenue 摘要（季別格式：date 欄直接用）
+        rev_sorted = sorted([r for r in rows if r.get('type') == 'Revenue'],
+                            key=lambda x: x.get('date', ''))
+        rev_by_date = {r['date']: float(r.get('value', 0) or 0) for r in rev_sorted}
+        quarterly = []
+        for er in eps_rows[-4:]:
+            qdate = er.get('date', '')
+            quarterly.append({
+                'period':  qdate,
+                'eps':     round(float(er.get('value', 0) or 0), 2),
+                'revenue': rev_by_date.get(qdate, 0),
+            })
+        if quarterly:
+            result['quarterly_eps'] = quarterly
     except Exception as e:
         print(f"    ⚠️ FinMind FS {sym}: {e}")
     time.sleep(random.uniform(2.0, 3.5))
 
-    # 2. 月營收 YoY ─────────────────────────────────────────────────────────
+    # 2. 月營收 YoY + 歷史新高判定 ────────────────────────────────────────────
     try:
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockMonthRevenue&data_id={sym}'
@@ -505,6 +519,14 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             yoy = latest.get('revenue_year_growth') or latest.get('RevenueYear')
             if yoy is not None:
                 result['revenue_yoy'] = round(float(yoy), 1)
+            # 歷史新高判定：當月營收 vs 前 23 個月最大值
+            latest_rev = float(latest.get('revenue', 0) or 0)
+            result['latest_revenue'] = latest_rev
+            if len(rows) >= 2 and latest_rev > 0:
+                prior_max = max(float(r.get('revenue', 0) or 0) for r in rows[:-1])
+                result['is_record_high'] = latest_rev >= prior_max
+            else:
+                result['is_record_high'] = False
     except Exception as e:
         print(f"    ⚠️ FinMind Revenue {sym}: {e}")
     time.sleep(random.uniform(2.0, 3.5))
@@ -1191,6 +1213,9 @@ def fetch_broker_chips():
                 'gross_margin_trend': fm_fund.get('gross_margin_trend'),
                 'payout_ratio':       fm_fund.get('payout_ratio'),
                 'total_dividend':     fm_fund.get('total_dividend'),
+                'is_record_high':     fm_fund.get('is_record_high', False),
+                'latest_revenue':     fm_fund.get('latest_revenue'),
+                'quarterly_eps':      fm_fund.get('quarterly_eps', []),
                 'generated':          today_str,
             }
             print("✅")
