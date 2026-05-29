@@ -1,7 +1,7 @@
 """
 首席 AI 司令部 — 雲端籌碼採礦機 (極速引擎 + 終極 WAL 同步與時間護盾)
 資料來源：TWSE / TPEX / TAIFEX 官方免費 API + MIS 快照 + yfinance + FinMind(匿名)
-特色：無痛部署、無須 API Token、1GB RAM 記憶體極限防禦、SQLite WAL 讀寫分離、智慧市場判定
+特色：無痛部署、無須 API Token、1GB RAM 記憶體極限防禦、SQLite WAL 讀寫分離、智慧市場判定、ETF字母防誤殺
 """
 import csv
 import json
@@ -106,6 +106,7 @@ CHIP_WATCHLIST = sorted(set([
     '3105','3529','8069','5347','8299','3293','6142','6274',
     '6488','6515','6770','3037','8046','4977','6278','6191',
     '0050','0056','00878','00929','00919',
+    '00981A','00988A', # 🛡️ 將新的主動型 ETF 加入重點籌碼監控名單
 ]))
 HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調整）
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
@@ -668,8 +669,8 @@ def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> l
     for day_data in inst_cache.values():
         all_syms.update(day_data.keys())
 
-    # 只保留一般股票（4碼純數字）或 ETF（00 開頭純數字），排除認購/售權證
-    all_syms = {s for s in all_syms if s.isdigit() and (len(s) == 4 or s.startswith('00'))}
+    # 🛡️【核心修復】：只保留一般股票（4碼純數字）或 ETF（00 開頭，不限字母以支援 00981A / 00679B 等），嚴格排除權證
+    all_syms = {s for s in all_syms if (str(s).isdigit() and len(str(s)) == 4) or str(s).startswith('00')}
 
     if not all_syms:
         # 非交易日或法人 API 失敗 → fallback 舊有資料
