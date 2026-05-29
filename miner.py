@@ -1,7 +1,7 @@
 """
-首席 AI 司令部 — 雲端籌碼採礦機 (完全免費旗艦版)
-資料來源：TWSE / TPEX / TAIFEX 官方免費 API + yfinance + FinMind(匿名)
-特色：無痛部署、無須 API Token、1GB RAM 記憶體極限防禦
+首席 AI 司令部 — 雲端籌碼採礦機 (極速引擎 + 終極 WAL 同步與時間護盾)
+資料來源：TWSE / TPEX / TAIFEX 官方免費 API + MIS 快照 + yfinance + FinMind(匿名)
+特色：無痛部署、無須 API Token、1GB RAM 記憶體極限防禦、SQLite WAL 讀寫分離、智慧市場判定
 """
 import csv
 import json
@@ -12,7 +12,7 @@ import re
 import sqlite3
 import requests
 import time
-from datetime import date, timedelta
+from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 
 DATA_DIR = "data"
@@ -93,6 +93,7 @@ def fm_request(url_base: str, timeout: int = 20):
             return res.json()
         except Exception:
             return None
+
 BATCH_INDEX    = int(os.getenv('BATCH_INDEX', '0'))
 TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
 SKIP_GLOBAL    = bool(int(os.getenv('SKIP_GLOBAL', '0')))  # 批次 1-4 略過全市場抓取
@@ -151,9 +152,18 @@ TACTICAL_TAGS = {
 }
 
 
+# ── 【同步 API WAL 防禦裝甲】統一連線管理 ────────────────────────────────────
+def get_db_conn():
+    """確保所有寫入動作皆開啟 WAL 模式，避免與 api.py 的讀取產生衝突鎖死"""
+    conn = sqlite3.connect(DB_PATH, timeout=15.0)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    return conn
+
+
 # ── 資料庫 ────────────────────────────────────────────────────────────────────
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_conn()
     c = conn.cursor()
     c.executescript('''
         CREATE TABLE IF NOT EXISTS stock_history (
@@ -185,7 +195,7 @@ def init_db():
 
 
 def write_radar_to_db(results):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_conn()
     c = conn.cursor()
     today = date.today().isoformat()
     c.execute("DELETE FROM radar_results")
@@ -209,11 +219,11 @@ def _roc_to_gregorian(roc_date: str) -> str:
 
 
 def twse_ohlcv(symbol: str, year_month: str) -> list:
-    """TWSE 上市股月 OHLCV。year_month='YYYYMM'。"""
+    """TWSE 上市股月 OHLCV。year_month='YYYYMM'。將超時降為10秒防卡死"""
     url = (f'https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY'
            f'?response=json&date={year_month}01&stockNo={symbol}')
     try:
-        j = requests.get(url, headers=_HDRS, timeout=20).json()
+        j = requests.get(url, headers=_HDRS, timeout=10).json()
         if j.get('stat') != 'OK':
             return []
         fields = j.get('fields', [])
@@ -246,13 +256,13 @@ def twse_ohlcv(symbol: str, year_month: str) -> list:
 
 
 def tpex_ohlcv(symbol: str, year_month: str) -> list:
-    """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。"""
+    """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。將超時降為10秒防卡死"""
     y, m = int(year_month[:4]), year_month[4:]
     roc_year = y - 1911
     url = (f'https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/'
            f'st43_result.php?l=zh-tw&d={roc_year}/{m}&stkno={symbol}&o=json')
     try:
-        res = requests.get(url, headers=_HDRS, timeout=20)
+        res = requests.get(url, headers=_HDRS, timeout=10)
         body = res.text.strip()
         if not body or body[0] == '<':  # 空白或 HTML = 當月尚未公布，靜默略過
             return []
@@ -280,6 +290,31 @@ def tpex_ohlcv(symbol: str, year_month: str) -> list:
     except Exception as e:
         print(f"  ⚠️  TPEX {symbol} {year_month}: {e}")
         return []
+
+
+# ── TWSE MIS 快照補丁 (盤中防退回昨日) ──────────────────────────────────────
+def fetch_mis_closing_snapshot(sym: str) -> dict:
+    """證交所 MIS 盤中/盤後快照補丁，填補歷史 API 尚未更新的真空期"""
+    url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{sym}.tw|otc_{sym}.tw"
+    try:
+        res = requests.get(url, timeout=5, headers={'User-Agent': random.choice(_UA_LIST)}).json()
+        if res.get('msgArray'):
+            msg = res['msgArray'][0]
+            z = msg.get('z', '-')
+            live_price = float(z) if z != '-' else float(msg.get('y', 0))
+            if live_price > 0:
+                tw_now = datetime.now(timezone(timedelta(hours=8)))
+                return {
+                    'date': tw_now.strftime('%Y/%m/%d'),
+                    'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
+                    'high': float(msg.get('h', live_price) if msg.get('h', '-') != '-' else live_price),
+                    'low': float(msg.get('l', live_price) if msg.get('l', '-') != '-' else live_price),
+                    'close': live_price,
+                    'volume': int(msg.get('v', 0))
+                }
+    except Exception:
+        pass
+    return {}
 
 
 # ── TWSE 三大法人（每日全市場批次）──────────────────────────────────────────
@@ -415,59 +450,60 @@ def fetch_twse_fundamentals(d: date) -> dict:
     return res
 
 
-# ── FinMind 個股基本面（EPS / YoY / 毛利率趨勢 / 發配率）────────────────────
+# ── FinMind 個股基本面（含 Q1~Q4 履歷、次季預估、創新高雷達）────────────────
 def fetch_finmind_fundamentals(sym: str) -> dict:
-    """
-    三支 FinMind API（順序呼叫，各帶 2~3.5s 隨機延遲）：
-    1. TaiwanStockFinancialStatements → EPS（最新季）+ 毛利率趨勢（近3季）
-    2. TaiwanStockMonthRevenue        → 最新月 YoY
-    3. TaiwanStockDividend            → 現金+股票股利 → 股利發配率
-    [Token 輪動] 改用 fm_request()，遇 429 自動輪換 Token。
-    """
     today_str = date.today().strftime('%Y-%m-%d')
-    start_fs  = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d')
-    start_rev = (date.today() - timedelta(days=90)).strftime('%Y-%m-%d')
+    start_fs  = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d') # 近2年財報
+    start_rev = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d') # 近2年營收
     start_div = (date.today() - timedelta(days=1095)).strftime('%Y-%m-%d')
     result: dict = {}
 
-    # 1. 財務報表 ─────────────────────────────────────────────────────────────
+    # 1. 財務報表 (Q1~Q4 EPS 歷史與毛利) ──────────────────────────────
     try:
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockFinancialStatements&data_id={sym}'
                f'&start_date={start_fs}&end_date={today_str}')
-        j = fm_request(url, timeout=20)  # [Token 輪動]
+        j = fm_request(url, timeout=20)
         if j is None: j = {}
         rows = j.get('data') or []
-        # 最新季 EPS
-        eps_rows = sorted([r for r in rows if r.get('type') == 'EPS'],
-                          key=lambda x: x.get('date', ''))
+        
+        # 處理 EPS 與 Q1~Q4 歷史標籤
+        eps_rows = sorted([r for r in rows if r.get('type') == 'EPS'], key=lambda x: x.get('date', ''))
         if eps_rows:
             result['eps'] = float(eps_rows[-1].get('value', 0) or 0)
-        # 毛利率趨勢（近3季）
-        rev_rows = sorted([r for r in rows if r.get('type') == 'Revenue'],
-                          key=lambda x: x.get('date', ''))
-        gp_rows  = sorted([r for r in rows if r.get('type') == 'GrossProfit'],
-                          key=lambda x: x.get('date', ''))
+            eps_history = []
+            for r in eps_rows[-6:]:  # 抓取最近 6 季
+                d_str = r.get('date', '')
+                val = r.get('value', 0)
+                if '-03-' in d_str: q = 'Q1'
+                elif '-06-' in d_str or '-05-' in d_str: q = 'Q2'
+                elif '-09-' in d_str or '-08-' in d_str: q = 'Q3'
+                elif '-12-' in d_str or '-11-' in d_str: q = 'Q4'
+                else: q = 'Q?'
+                eps_history.append(f"{d_str[:4]} {q} EPS: {val}")
+            result['eps_history'] = eps_history
+
+        # 處理毛利率趨勢
+        rev_rows = sorted([r for r in rows if r.get('type') == 'Revenue'], key=lambda x: x.get('date', ''))
+        gp_rows  = sorted([r for r in rows if r.get('type') == 'GrossProfit'], key=lambda x: x.get('date', ''))
         rev_by_q = {r['date']: float(r.get('value', 0) or 0) for r in rev_rows[-6:]}
         gp_by_q  = {r['date']: float(r.get('value', 0) or 0) for r in gp_rows[-6:]}
         common_q = sorted(set(rev_by_q) & set(gp_by_q))[-3:]
-        gms = [round(gp_by_q[q] / rev_by_q[q] * 100, 1)
-               for q in common_q if rev_by_q.get(q, 0) > 0]
+        gms = [round(gp_by_q[q] / rev_by_q[q] * 100, 1) for q in common_q if rev_by_q.get(q, 0) > 0]
         if len(gms) >= 2:
             diff  = round(gms[-1] - gms[0], 1)
             arrow = '↑' if diff > 0 else '↓'
-            result['gross_margin_trend'] = (
-                '→'.join(f'{g}%' for g in gms) + f'（{arrow}{abs(diff)}pp）')
+            result['gross_margin_trend'] = '→'.join(f'{g}%' for g in gms) + f'（{arrow}{abs(diff)}pp）'
     except Exception as e:
         print(f"    ⚠️ FinMind FS {sym}: {e}")
     time.sleep(random.uniform(2.0, 3.5))
 
-    # 2. 月營收 YoY ─────────────────────────────────────────────────────────
+    # 2. 月營收 (YoY, 創新高, 次季預估) ──────────────────────────────
     try:
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockMonthRevenue&data_id={sym}'
                f'&start_date={start_rev}&end_date={today_str}')
-        j = fm_request(url, timeout=20)  # [Token 輪動]
+        j = fm_request(url, timeout=20)
         if j is None: j = {}
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
         if rows:
@@ -475,16 +511,29 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             yoy = latest.get('revenue_year_growth') or latest.get('RevenueYear')
             if yoy is not None:
                 result['revenue_yoy'] = round(float(yoy), 1)
+            
+            # 🚀 營收創新高偵測 (近24個月)
+            rev_values = [float(r.get('revenue', 0)) for r in rows[-24:] if r.get('revenue')]
+            if rev_values and len(rev_values) >= 6:
+                current_rev = rev_values[-1]
+                result['is_revenue_high'] = (current_rev >= max(rev_values))
+                
+                # 🔮 簡易次季營收預估 (近3個月平均營收 * 3)
+                recent_3m_avg = sum(rev_values[-3:]) / 3 if len(rev_values) >= 3 else current_rev
+                result['revenue_est_next_q'] = round(recent_3m_avg * 3)
+            else:
+                result['is_revenue_high'] = False
+                result['revenue_est_next_q'] = 0
     except Exception as e:
         print(f"    ⚠️ FinMind Revenue {sym}: {e}")
     time.sleep(random.uniform(2.0, 3.5))
 
-    # 3. 股利 → 發配率 ────────────────────────────────────────────────────────
+    # 3. 股利與發配率 ──────────────────────────────
     try:
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockDividend&data_id={sym}'
                f'&start_date={start_div}&end_date={today_str}')
-        j = fm_request(url, timeout=20)  # [Token 輪動]
+        j = fm_request(url, timeout=20)
         if j is None: j = {}
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
         if rows:
@@ -511,7 +560,7 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
     確保全市場每支股票的近 10 天籌碼在當次匯出即正確。
     """
     Path(DATA_DIR).mkdir(exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_conn()
     conn.row_factory = sqlite3.Row
 
     symbols = [row[0] for row in
@@ -651,140 +700,181 @@ def run():
     print(f"\n🎯 批次 {BATCH_INDEX}/{TOTAL_BATCHES}：{len(watchlist)} 檔個股 | 月份: {months}")
 
     print(f"\n📈 個股 OHLCV 採礦 ({len(watchlist)} 檔)...")
-    db_conn = sqlite3.connect(DB_PATH)
+    db_conn = get_db_conn()
     db_conn.row_factory = sqlite3.Row
     db_cur  = db_conn.cursor()
 
     updated_total = 0
 
-    for idx, sym in enumerate(watchlist):
-        print(f"  🛰️  [{idx+1}/{len(watchlist)}] {sym} ...", end=' ', flush=True)
+    try:
+        for idx, sym in enumerate(watchlist):
+            print(f"  🛰️  [{idx+1}/{len(watchlist)}] {sym} ...", end=' ', flush=True)
 
-        db_cur.execute("""
-            SELECT trade_date, open, high, low, close, volume,
-                   foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal
-            FROM stock_history
-            WHERE symbol = ?
-            ORDER BY trade_date ASC
-        """, (sym,))
-        existing_map: dict = {}
-        latest_valid_date = ""
-        for row in db_cur.fetchall():
-            fmt_date = row['trade_date'].replace('-', '/')
-            existing_map[fmt_date] = {
-                'date':           fmt_date,
-                'open':           row['open'],  'high': row['high'],
-                'low':            row['low'],   'close': row['close'],
-                'volume':         row['volume'],
-                'foreign_net':    row['foreign_inv']  or 0,
-                'trust_net':      row['invest_trust'] or 0,
-                'dealer_net':     row['dealer_inv']   or 0,
-                'margin_balance': row['margin_bal']   or 0,
-                'short_balance':  row['short_bal']    or 0,
-            }
-            if row['volume'] is not None and row['volume'] > 0:
-                latest_valid_date = fmt_date  # 記錄最新有成交量的交易日
+            db_cur.execute("""
+                SELECT trade_date, open, high, low, close, volume,
+                       foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal
+                FROM stock_history
+                WHERE symbol = ?
+                ORDER BY trade_date ASC
+            """, (sym,))
+            existing_map: dict = {}
+            latest_valid_date = ""
+            for row in db_cur.fetchall():
+                fmt_date = row['trade_date'].replace('-', '/')
+                existing_map[fmt_date] = {
+                    'date':           fmt_date,
+                    'open':           row['open'],  'high': row['high'],
+                    'low':            row['low'],   'close': row['close'],
+                    'volume':         row['volume'],
+                    'foreign_net':    row['foreign_inv']  or 0,
+                    'trust_net':      row['invest_trust'] or 0,
+                    'dealer_net':     row['dealer_inv']   or 0,
+                    'margin_balance': row['margin_bal']   or 0,
+                    'short_balance':  row['short_bal']    or 0,
+                }
+                if row['volume'] is not None and row['volume'] > 0:
+                    latest_valid_date = fmt_date  # 記錄最新有成交量的交易日
 
-        # ── 🛡️ 防封鎖機制：今日 K 線已存在則略過 TWSE/TPEX 請求 ──
-        target_today_str = trading_days[-1].strftime('%Y/%m/%d')
-        if latest_valid_date == target_today_str:
-            print(f"⚡ 本日 K 線已存在，略過證交所請求")
-            new_rows = []
-        else:
-            new_rows = []
-            first_ym_empty = False
-            for i, ym in enumerate(months):
-                rows = twse_ohlcv(sym, ym)
-                if not rows:
-                    rows = tpex_ohlcv(sym, ym)
-                if not rows:
-                    time.sleep(0.5); rows = tpex_ohlcv(sym, ym)  # TPEX 一次 retry
-                if i == 0 and not rows:
-                    first_ym_empty = True
-                if i == 1 and first_ym_empty and rows:
-                    print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
-                new_rows.extend(rows)
-                time.sleep(0.15)
-
-        changed = False
-        for r in new_rows:
-            fmt_date  = r['date']
-            date_dash = fmt_date.replace('/', '-')
-
-            chip = {
-                'foreign_net':    inst_cache.get(date_dash, {}).get(sym, {}).get('foreign_net', 0),
-                'trust_net':      inst_cache.get(date_dash, {}).get(sym, {}).get('trust_net', 0),
-                'dealer_net':     inst_cache.get(date_dash, {}).get(sym, {}).get('dealer_net', 0),
-                'margin_balance': margin_cache.get(date_dash, {}).get(sym, {}).get('margin_balance', 0),
-                'short_balance':  margin_cache.get(date_dash, {}).get(sym, {}).get('short_balance', 0),
-            }
-
-            if fmt_date in existing_map:
-                rec = existing_map[fmt_date]
-                if rec.get('foreign_net', 0) == 0 and chip.get('foreign_net', 0) != 0:
-                    rec.update(chip)
-                    changed = True
-                continue
-
-            existing_map[fmt_date] = {
-                'date': fmt_date, 'open': r['open'], 'high': r['high'],
-                'low': r['low'], 'close': r['close'], 'volume': r['volume'],
-                **chip,
-            }
-            changed = True
-
-        for date_dash, by_sym in inst_cache.items():
-            if sym not in by_sym:
-                continue
-            fmt_date = date_dash.replace('-', '/')
-            if fmt_date in existing_map and existing_map[fmt_date].get('foreign_net', 0) == 0:
-                existing_map[fmt_date].update({
-                    'foreign_net': by_sym[sym].get('foreign_net', 0),
-                    'trust_net':   by_sym[sym].get('trust_net', 0),
-                    'dealer_net':  by_sym[sym].get('dealer_net', 0),
-                })
-                changed = True
+            target_today_str = trading_days[-1].strftime('%Y/%m/%d')
+            if latest_valid_date == target_today_str:
+                print(f"⚡ 本日 K 線已存在，略過證交所請求")
+                new_rows = []
+            else:
+                new_rows = []
+                first_ym_empty = False
+                market_type = None  # 智慧記憶：記錄該股是上市或上櫃，不再盲目瞎猜
                 
-        for date_dash, by_sym in margin_cache.items():
-            if sym not in by_sym:
-                continue
-            fmt_date = date_dash.replace('-', '/')
-            if fmt_date in existing_map and existing_map[fmt_date].get('margin_balance', 0) == 0:
-                existing_map[fmt_date].update({
-                    'margin_balance': by_sym[sym].get('margin_balance', 0),
-                    'short_balance':  by_sym[sym].get('short_balance', 0),
-                })
+                for i, ym in enumerate(months):
+                    rows = []
+                    # 若為上市股或尚未確定，先查 TWSE
+                    if market_type in (None, 'twse'):
+                        rows = twse_ohlcv(sym, ym)
+                        if rows: market_type = 'twse'
+
+                    # 若 TWSE 查無資料，且為上櫃股或尚未確定，再查 TPEX
+                    if not rows and market_type in (None, 'tpex'):
+                        rows = tpex_ohlcv(sym, ym)
+                        if rows: market_type = 'tpex'
+
+                    # TPEX 偶發限流重試
+                    if not rows and market_type == 'tpex':
+                        time.sleep(0.5)
+                        rows = tpex_ohlcv(sym, ym)  
+                        
+                    if i == 0 and not rows:
+                        first_ym_empty = True
+                    if i == 1 and first_ym_empty and rows:
+                        print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
+                        
+                    new_rows.extend(rows)
+                    time.sleep(0.15)
+                    
+                # ── 🛡️ 【時間護盾與 MIS 即時快照補丁】 ──
+                tw_now = datetime.now(timezone(timedelta(hours=8)))
+                current_time = tw_now.time()
+                
+                # 定義敏感時段
+                is_pre_market = (current_time.hour == 8) or (current_time.hour == 9 and current_time.minute == 0)
+                is_post_market_gap = (current_time.hour == 13 and current_time.minute >= 30) or (current_time.hour == 14 and current_time.minute <= 30)
+                is_market_open = (current_time.hour == 9 and current_time.minute > 0) or (9 < current_time.hour < 13) or (current_time.hour == 13 and current_time.minute < 30)
+                
+                if is_pre_market:
+                    # 08:00~09:00 盤前試撮合，系統重置期，嚴禁覆蓋即時價格
+                    pass
+                elif is_post_market_gap or is_market_open:
+                    # 若證交所官方 API 尚未給出今日資料，啟動 MIS 補丁填補真空期
+                    today_slashed = tw_now.strftime('%Y/%m/%d')
+                    if not new_rows or new_rows[-1]['date'] != today_slashed:
+                        snap = fetch_mis_closing_snapshot(sym)
+                        if snap:
+                            new_rows.append(snap)
+                # ────────────────────────────────────
+
+            changed = False
+            for r in new_rows:
+                fmt_date  = r['date']
+                date_dash = fmt_date.replace('/', '-')
+
+                chip = {
+                    'foreign_net':    inst_cache.get(date_dash, {}).get(sym, {}).get('foreign_net', 0),
+                    'trust_net':      inst_cache.get(date_dash, {}).get(sym, {}).get('trust_net', 0),
+                    'dealer_net':     inst_cache.get(date_dash, {}).get(sym, {}).get('dealer_net', 0),
+                    'margin_balance': margin_cache.get(date_dash, {}).get(sym, {}).get('margin_balance', 0),
+                    'short_balance':  margin_cache.get(date_dash, {}).get(sym, {}).get('short_balance', 0),
+                }
+
+                if fmt_date in existing_map:
+                    rec = existing_map[fmt_date]
+                    if rec.get('foreign_net', 0) == 0 and chip.get('foreign_net', 0) != 0:
+                        rec.update(chip)
+                        changed = True
+                    continue
+
+                existing_map[fmt_date] = {
+                    'date': fmt_date, 'open': r['open'], 'high': r['high'],
+                    'low': r['low'], 'close': r['close'], 'volume': r['volume'],
+                    **chip,
+                }
                 changed = True
 
-        if changed:
-            combined = sorted(existing_map.values(), key=lambda x: x['date'])[-800:]
-            batch = [
-                (sym,
-                 r['date'].replace('/', '-'),
-                 r.get('open'),   r.get('high'),  r.get('low'),
-                 r.get('close'),  r.get('volume'),
-                 r.get('foreign_net',    0),
-                 r.get('trust_net',      0),
-                 r.get('dealer_net',     0),
-                 r.get('margin_balance', 0),
-                 r.get('short_balance',  0))
-                for r in combined
-            ]
-            try:
-                db_cur.executemany(
-                    "INSERT OR REPLACE INTO stock_history "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                    batch)
-                db_conn.commit()
-                updated_total += 1
-                print("✅")
-            except Exception as e:
-                db_conn.rollback()
-                print(f"⚠️ SQLite {sym}: {e}")
-        else:
-            print("skip")
+            for date_dash, by_sym in inst_cache.items():
+                if sym not in by_sym:
+                    continue
+                fmt_date = date_dash.replace('-', '/')
+                if fmt_date in existing_map and existing_map[fmt_date].get('foreign_net', 0) == 0:
+                    existing_map[fmt_date].update({
+                        'foreign_net': by_sym[sym].get('foreign_net', 0),
+                        'trust_net':   by_sym[sym].get('trust_net', 0),
+                        'dealer_net':  by_sym[sym].get('dealer_net', 0),
+                    })
+                    changed = True
+                    
+            for date_dash, by_sym in margin_cache.items():
+                if sym not in by_sym:
+                    continue
+                fmt_date = date_dash.replace('-', '/')
+                if fmt_date in existing_map and existing_map[fmt_date].get('margin_balance', 0) == 0:
+                    existing_map[fmt_date].update({
+                        'margin_balance': by_sym[sym].get('margin_balance', 0),
+                        'short_balance':  by_sym[sym].get('short_balance', 0),
+                    })
+                    changed = True
 
-    db_conn.close()
+            if changed:
+                combined = sorted(existing_map.values(), key=lambda x: x['date'])[-800:]
+                batch = [
+                    (sym,
+                     r['date'].replace('/', '-'),
+                     r.get('open'),   r.get('high'),  r.get('low'),
+                     r.get('close'),  r.get('volume'),
+                     r.get('foreign_net',    0),
+                     r.get('trust_net',      0),
+                     r.get('dealer_net',     0),
+                     r.get('margin_balance', 0),
+                     r.get('short_balance',  0))
+                    for r in combined
+                ]
+                try:
+                    db_cur.executemany(
+                        "INSERT OR REPLACE INTO stock_history "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                        batch)
+                    db_conn.commit()
+                    updated_total += 1
+                    print("✅")
+                except Exception as e:
+                    db_conn.rollback()
+                    print(f"⚠️ SQLite {sym}: {e}")
+            else:
+                print("skip")
+
+    except Exception as e:
+        # 當 GitHub Actions 超時被砍斷時，印出最後的斷點，讓您一目了然
+        print(f"\n🚨 任務意外中斷！下次將從 index {idx} (股票代號: {sym}) 繼續。錯誤原因: {e}")
+        raise
+    finally:
+        db_conn.close()
+
     print(f"\n🎉 採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
     return inst_cache, margin_cache
 
@@ -906,7 +996,7 @@ def fetch_broker_chips():
     priority_set = set(CHIP_WATCHLIST)   # 用戶精選股永遠優先
     if Path(DB_PATH).exists():
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = get_db_conn()
             rows = conn.execute("""
                 SELECT symbol, AVG(volume) AS avg_vol
                 FROM stock_history
@@ -1023,7 +1113,10 @@ def fetch_broker_chips():
             tw_fund = twse_fund.get(sym, {})
             fundamentals = {
                 'eps':                fm_fund.get('eps'),
+                'eps_history':        fm_fund.get('eps_history'),
                 'revenue_yoy':        fm_fund.get('revenue_yoy'),
+                'is_revenue_high':    fm_fund.get('is_revenue_high'),
+                'revenue_est_next_q': fm_fund.get('revenue_est_next_q'),
                 'pe':                 tw_fund.get('pe') or fm_fund.get('pe'),
                 'yield_rate':         tw_fund.get('yield_rate'),
                 'gross_margin_trend': fm_fund.get('gross_margin_trend'),
@@ -1080,7 +1173,7 @@ def build_radar_cache():
     results   = {'bottom': [], 'surge': [], 'score': []}
     processed = 0
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_conn()
     symbols = [row[0] for row in
                conn.execute("SELECT DISTINCT symbol FROM stock_history")]
 
@@ -1130,7 +1223,7 @@ def build_radar_cache():
 def generate_top_picks():
     """三位一體篩選：基本面(YoY>0) + 法人5日淨流入>0 + 分點集中度"""
     results = []
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_conn()
     chips_path = Path(DATA_DIR) / 'chips'
 
     if not chips_path.exists():
