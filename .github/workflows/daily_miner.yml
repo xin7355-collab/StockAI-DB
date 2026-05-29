@@ -1,131 +1,132 @@
-name: 🤖 每日籌碼採礦機
+name: 🤖 每日籌碼採礦機 (平行宇宙版)
 
 on:
   schedule:
-    # 全台股分 5 批次，每 30 分鐘一批（台灣時間 16:30～18:30）
-    - cron: '30 8 * * 1-5'   # 16:30 TW → 批次 0
-    - cron: '0 9 * * 1-5'    # 17:00 TW → 批次 1
-    - cron: '30 9 * * 1-5'   # 17:30 TW → 批次 2
-    - cron: '0 10 * * 1-5'   # 18:00 TW → 批次 3
-    - cron: '30 10 * * 1-5'  # 18:30 TW → 批次 4
+    # 既然開啟了平行宇宙，我們只需要一個時間點觸發，5 台機器就會同時開工！
+    # 這裡設定台灣時間 16:30 (UTC 8:30) 啟動全市場併發
+    - cron: '30 8 * * 1-5'
   workflow_dispatch:
-    inputs:
-      batch_index:
-        description: '批次索引 0-4（留空自動從時間判斷）'
-        required: false
-        default: 'auto'
-      run_all_batches:
-        description: '🚀 一鍵全市場採礦（5批次全跑，約 60-70 分鐘）'
-        type: boolean
-        default: false
+    # 手動觸發時，直接點擊 Run workflow，就會自動啟動 5 台機器併發！
 
 permissions:
   contents: write
 
 jobs:
-  mine-and-deploy:
+  # ══════════════════════════════════════════════════════════════════════════
+  # 🚀 階段一：5 機齊發，各自採礦並上傳暫存區 (Artifacts)
+  # ══════════════════════════════════════════════════════════════════════════
+  mine:
+    name: ⛏️ 採礦節點 ${{ matrix.batch }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60  # 每台只負責 20%，絕對不會超過 1 小時
+    strategy:
+      fail-fast: false   # 一台當機不要連累其他台
+      matrix:
+        batch: [0, 1, 2, 3, 4]  # 平行宇宙陣列
 
     steps:
-      - name: 📥 下載程式碼（只要最新的腳本）
+      - name: 📥 下載程式碼
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
 
-      - name: 🔢 判斷批次索引
-        run: |
-          INPUT="${{ github.event.inputs.batch_index }}"
-          if [ -n "$INPUT" ] && [ "$INPUT" != "auto" ]; then
-            echo "BATCH_INDEX=$INPUT" >> $GITHUB_ENV
-            echo "TOTAL_BATCHES=5"   >> $GITHUB_ENV
-          else
-            NOW_MIN=$(( $(date -u '+%H') * 60 + $(date -u '+%M') ))
-            if   [ $NOW_MIN -lt 530 ]; then IDX=0
-            elif [ $NOW_MIN -lt 560 ]; then IDX=1
-            elif [ $NOW_MIN -lt 590 ]; then IDX=2
-            elif [ $NOW_MIN -lt 620 ]; then IDX=3
-            else                            IDX=4
-            fi
-            echo "BATCH_INDEX=$IDX" >> $GITHUB_ENV
-            echo "TOTAL_BATCHES=5"  >> $GITHUB_ENV
-          fi
-          echo "▶ 本次批次：BATCH_INDEX=${BATCH_INDEX:-?}"
-
-      - name: 🐍 設定 Python 3.11（含 pip 快取）
+      - name: 🐍 設定 Python 3.11
         uses: actions/setup-python@v5.6.0
         with:
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: '.github/pip-packages.txt'
 
-      - name: 📦 安裝相依套件（快取命中時幾乎零耗時）
+      - name: 📦 安裝相依套件
         run: |
           pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser
 
-      - name: 📂 還原昨天的快取（data/ + futures/macro cache）
+      - name: 📂 還原昨天的快取 (取得基準資料)
         run: |
           git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
-          git checkout origin/data -- data/ 2>/dev/null || echo "首次執行，從零開始"
-          # 還原 futures_cache.json / macro_cache.json（存在 gh-pages 根目錄）
+          git checkout origin/data -- data/ 2>/dev/null || echo "從零開始"
           git fetch origin gh-pages --depth=1 2>/dev/null || true
           git checkout origin/gh-pages -- futures_cache.json 2>/dev/null || true
           git checkout origin/gh-pages -- macro_cache.json   2>/dev/null || true
-          echo "快取還原完成：$(ls futures_cache.json macro_cache.json 2>/dev/null | tr '\n' ' ')"
 
-      - name: ⛏️ 執行採礦（OHLCV + 法人籌碼 + 融資融券 + 分點 + 美股）
+      - name: ⛏️ 執行採礦 (專屬節點 ${{ matrix.batch }})
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
-          BATCH_INDEX: ${{ env.BATCH_INDEX }}
-          TOTAL_BATCHES: ${{ env.TOTAL_BATCHES }}
+          BATCH_INDEX: ${{ matrix.batch }}
+          TOTAL_BATCHES: 5
         run: |
-          if [ "${{ github.event.inputs.run_all_batches }}" == "true" ]; then
-            echo "🚀 全批次採礦模式（5 批次，批次 1-4 略過法人/籌碼/期貨/美股）"
-            for BATCH in 0 1 2 3 4; do
-              echo "=== 批次 $BATCH ==="
-              if [ $BATCH -eq 0 ]; then
-                BATCH_INDEX=$BATCH TOTAL_BATCHES=5 python miner.py
-              else
-                BATCH_INDEX=$BATCH TOTAL_BATCHES=5 SKIP_GLOBAL=1 python miner.py
-              fi
-            done
-          else
-            python miner.py
+          # 只有節點 0 負責抓取全球總經/期貨/法人等共用資料，節點 1~4 只專心抓個股
+          if [ "${{ matrix.batch }}" != "0" ]; then
+            export SKIP_GLOBAL=1
           fi
+          python miner.py
+
+      - name: 📤 上傳該節點的採礦結果到暫存區
+        uses: actions/upload-artifact@v4
+        with:
+          name: mine-data-${{ matrix.batch }}
+          path: |
+            data/
+            futures_cache.json
+            macro_cache.json
+          retention-days: 1
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # 🧬 階段二：等 5 台機器全數完工後，合併資料並統一發布
+  # ══════════════════════════════════════════════════════════════════════════
+  deploy:
+    name: 🚀 合併與部署總機
+    needs: mine   # 必須等待上面 5 個 mine 節點全部完成才能啟動
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: '.github/pip-packages.txt'
+
+      - name: 📦 安裝相依套件
+        run: pip install requests duckduckgo-search feedparser
+
+      - name: 📥 下載並自動合併 5 個平行宇宙的資料
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mine-data-*
+          merge-multiple: true   # 最關鍵指令：將 5 包檔案完美合併為一個完整的 data/ 資料夾
 
       - name: 📡 通用情報雷達（RSS + Groq AI 情緒判讀）
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          BATCH_INDEX: ${{ env.BATCH_INDEX }}
         run: |
-          if [ "${BATCH_INDEX:-0}" = "0" ]; then
-            python universal_radar.py || echo "⚠️ universal_radar.py 失敗，繼續部署"
-          else
-            echo "⚡ 非批次 0，跳過情報雷達"
-          fi
+          python universal_radar.py || echo "⚠️ universal_radar.py 失敗，繼續部署"
 
-      - name: 📡 部署所有資料到 gh-pages（股票K線 + 分點籌碼 + 快取）
+      - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # ── Step 1: 備份採礦結果 + 網站檔案到 /tmp（後續步驟都從這裡取）──
+          # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips
           cp data/*.json           /tmp/mine/data/          2>/dev/null || true
           cp data/chips/*.json     /tmp/mine/data/chips/    2>/dev/null || true
-          cp futures_cache.json    /tmp/mine/                2>/dev/null || true
-          cp macro_cache.json      /tmp/mine/                2>/dev/null || true
-          cp broker_names.json     /tmp/mine/                2>/dev/null || true
-          cp index.html            /tmp/mine/                2>/dev/null || true
-          echo "備份完成：$(ls /tmp/mine/data/*.json 2>/dev/null | wc -l) K線，$(ls /tmp/mine/data/chips/*.json 2>/dev/null | wc -l) 分點"
+          cp futures_cache.json    /tmp/mine/               2>/dev/null || true
+          cp macro_cache.json      /tmp/mine/               2>/dev/null || true
+          cp broker_names.json     /tmp/mine/               2>/dev/null || true
+          cp index.html            /tmp/mine/               2>/dev/null || true
 
-          # ── Step 2: 用 orphan 分支 force-push，永遠只保留一個 commit，不累積歷史 ──
+          # 切換到發布分支
           git checkout main 2>/dev/null || true
           git checkout --orphan _pages_deploy
           git rm -rf --cached . -q 2>/dev/null || true
 
-          # 複製所有網站所需檔案
+          # 還原資料並提交
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/           2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/     2>/dev/null || true
@@ -142,21 +143,19 @@ jobs:
           [ -f broker_names.json ]  && git add -f broker_names.json  || true
           [ -f futures_cache.json ] && git add -f futures_cache.json || true
           [ -f macro_cache.json ]   && git add -f macro_cache.json   || true
-          git commit -m "📡 網站更新 ${DATE}（批次 ${BATCH_INDEX}/${TOTAL_BATCHES} | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
+          git commit -m "📡 網站更新 ${DATE}（平行宇宙合併 | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           git push origin HEAD:gh-pages --force
-          echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔"
+          echo "✅ gh-pages 已更新：共 ${STOCKS} 檔"
 
-      - name: 📤 推送到獨立 data 分支（永遠只保留一個 commit，不累積歷史）
+      - name: 📤 推送到獨立 data 分支 (資料備份庫)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 回到乾淨狀態後建 orphan 分支
           git checkout main 2>/dev/null || true
           git checkout --orphan _data_deploy
           git rm -rf --cached . -q 2>/dev/null || true
 
-          # 從 /tmp 備份還原 data/
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/        2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/  2>/dev/null || true
@@ -164,6 +163,6 @@ jobs:
 
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
-          git commit -m "🤖 籌碼快照 ${DATE}（批次 ${BATCH_INDEX}/${TOTAL_BATCHES}，${STOCKS} 檔）"
+          git commit -m "🤖 籌碼快照 ${DATE}（平行宇宙合併，共 ${STOCKS} 檔）"
           git push origin HEAD:data --force
-          echo "✅ data 分支已更新，共 ${STOCKS} 檔"
+          echo "✅ data 分支已更新"

@@ -24,6 +24,8 @@ import json
 import os
 import sqlite3
 import time
+import requests
+from datetime import datetime, timezone, timedelta
 from threading import Lock
 from typing import Any, Generator, Optional
 
@@ -272,14 +274,17 @@ _stock_cache = _TTLCache(ttl=300, maxsize=256)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DB 連線管理
+# DB 連線管理 (WAL 並發防禦裝甲)
 # ══════════════════════════════════════════════════════════════════════════════
 def get_db() -> Generator[sqlite3.Connection, None, None]:
     """
     FastAPI Depends yield 模式：路由執行完畢（或拋出例外）後自動關閉連線。
     杜絕 connection leak，在長時間運行的微型主機上至關重要。
+    並啟用 WAL 寫入預前日誌模式防禦併發鎖死。
     """
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15.0)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
@@ -369,6 +374,41 @@ def get_stock_data(
         )
 
     data = [dict(r) for r in reversed(rows)]   # 時間正序（舊→新）
+
+    # ── 【5MA 盤中動態校準補丁】 ──
+    try:
+        tw_now = datetime.now(timezone(timedelta(hours=8)))
+        today_str = tw_now.strftime('%Y/%m/%d')
+        last_db_date = data[-1]['date'].replace('-', '/') if data else ""
+        current_time = tw_now.time()
+
+        is_market_open = (
+            (current_time.hour == 9 and current_time.minute >= 0) or
+            (current_time.hour > 9 and current_time.hour < 14 and not (current_time.hour == 13 and current_time.minute > 30))
+        )
+
+        if last_db_date != today_str and is_market_open:
+            url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
+            res = requests.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
+            if res.get('msgArray'):
+                msg = res['msgArray'][0]
+                z = msg.get('z', '-')
+                live_price = float(z) if z != '-' else float(msg.get('y', 0))
+                if live_price > 0:
+                    data.append({
+                        'date': today_str.replace('/', '-'),
+                        'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
+                        'high': float(msg.get('h', live_price) if msg.get('h', '-') != '-' else live_price),
+                        'low': float(msg.get('l', live_price) if msg.get('l', '-') != '-' else live_price),
+                        'close': live_price,
+                        'volume': int(msg.get('v', 0)),
+                        'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0,
+                        'margin_balance': 0, 'short_balance': 0
+                    })
+    except Exception as e:
+        print(f"⚠️ [盤中校準錯誤] {symbol}: {e}")
+    # ────────────────────────────────
+
     _stock_cache.set(cache_key, data)
     return data
 
@@ -729,7 +769,9 @@ def get_radar_list() -> str:
     若查無資料，回傳「查無雷達資料，可能今日尚未採礦」。
     """
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=15.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
         cur = conn.cursor()
         cur.execute("SELECT MAX(signal_date) FROM radar_results")
         row = cur.fetchone()
@@ -771,7 +813,9 @@ def query_stock_data(symbol: str) -> str:
     若查無資料，回傳「查無 {symbol} 的歷史資料」。
     """
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=15.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
         cur = conn.cursor()
         cur.execute(
             "SELECT trade_date, close, volume FROM stock_history "
@@ -783,14 +827,40 @@ def query_stock_data(symbol: str) -> str:
         if not rows:
             return f"查無 {symbol} 的歷史資料"
         rows = list(reversed(rows))  # 轉為時間正序
+
+        # ── 【AI 5MA 盤中動態校準補丁】 ──
+        try:
+            tw_now = datetime.now(timezone(timedelta(hours=8)))
+            today_str = tw_now.strftime('%Y-%m-%d')
+            last_db_date = rows[-1][0] if rows else ""
+            current_time = tw_now.time()
+
+            is_market_open = (
+                (current_time.hour == 9 and current_time.minute >= 0) or
+                (current_time.hour > 9 and current_time.hour < 14 and not (current_time.hour == 13 and current_time.minute > 30))
+            )
+
+            if last_db_date != today_str and is_market_open:
+                url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
+                res = requests.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
+                if res.get('msgArray'):
+                    msg = res['msgArray'][0]
+                    z = msg.get('z', '-')
+                    live_price = float(z) if z != '-' else float(msg.get('y', 0))
+                    if live_price > 0:
+                        rows.append((today_str, live_price, int(msg.get('v', 0))))
+        except Exception:
+            pass # 備援接口失敗則靜默降級，維持原歷史陣列計算
+        # ────────────────────────────────────────
+
         closes = [r[1] for r in rows]
         ma5  = round(sum(closes[-5:]) / min(5, len(closes)), 2) if len(closes) >= 1 else None
         ma20 = round(sum(closes[-20:]) / min(20, len(closes)), 2) if len(closes) >= 1 else None
         recent5 = rows[-5:]
         lines = [f"股票代號：{symbol}（最近 {len(recent5)} 天數據）"]
         lines.append(f"MA5={ma5}  MA20={ma20}")
-        for date, close, vol in recent5:
-            lines.append(f"  {date}  收盤={close}  成交量={vol:,}")
+        for date_val, close_val, vol in recent5:
+            lines.append(f"  {date_val}  收盤={close_val}  成交量={vol:,}")
         return "\n".join(lines)
     except Exception as e:
         return f"查詢 {symbol} 股價失敗：{e}"
