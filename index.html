@@ -543,7 +543,7 @@
 
             <div id="subContentBacktest" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
                 <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-blue-500">
-                    <h3 class="text-gray-400 text-xs font-bold tracking-widest mb-3 flex items-center border-b border-gray-700 pb-2"><span class="text-blue-400 mr-1.5">🔮</span> AI 雲端大數據波段回測預判</h3>
+                    <h3 class="text-gray-400 text-xs font-bold tracking-widest mb-3 flex items-center border-b border-gray-700 pb-2 cursor-pointer" onclick="alert('【AI 雲端大數據波段回測】\n\n本功能基於台股歷史大數據模型，比對該股目前 K 線型態，模擬過去 20 年在相似型態下的波段勝率與預期獲利空間，作為您抱單信心的參考。\n\n🔴 ≥65% 高勝率：歷史上這種型態隔日漲機率高，可積極關注\n🟡 50-64% 中等：勝率普通，需搭配其他指標佐證\n🟢 <50% 偏低：歷史上這種型態隔日漲機率偏低，宜謹慎\n\n⚠️ 注意：本功能為統計回測，非預測。過去績效不代表未來結果，請務必做好風控。')"><span class="text-blue-400 mr-1.5">🔮</span> AI 雲端大數據波段回測預判 <span class="text-[10px] text-gray-600 ml-1 font-normal">（點擊看說明）</span></h3>
                     <div class="mb-3">
                         <div class="text-xs text-gray-500 mb-1.5 leading-relaxed">【系統已結合近5日K線特徵、<span class="text-yellow-400">成交量能配合度</span>、與歷史趨勢連動性進行掃描比對】</div>
                         <div class="grid grid-cols-3 gap-1.5 text-center mt-1.5">
@@ -565,7 +565,7 @@
                     <div class="text-sm bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-3 border-b border-gray-700 pb-2 flex items-center gap-1.5">📅 推薦隔日上漲機率</h2>
+                    <h2 class="text-base font-black text-white mb-3 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【推薦隔日上漲機率說明】\n\n結合前日主力分點集中度、三大法人近3日籌碼動態，並交叉比對 KD、RSI 等技術面指標，由系統推估出的短線極短線勝率。\n\n如何解讀表格：\n• 日期：歷史交易日\n• 收盤：該日收盤價\n• 隔日漲機率：類似型態下的隔日上漲統計機率\n\n🔴高機率日（≥65%）代表歷史上這種型態隔日收高的可能性高，大於 60% 代表隔日早盤具備強烈動能。')">📅 推薦隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
                     <table class="w-full text-left border-collapse">
                         <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">隔日漲機率</th></tr></thead>
                         <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="3" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
@@ -749,6 +749,35 @@
                     </div>
                 </div>
 
+                <!-- 全球指標戰略指引 -->
+                <div class="bg-[#1c2128] border border-[#30363d] rounded-lg overflow-hidden mb-3">
+                    <button onclick="document.getElementById('globalGuide').classList.toggle('hidden')" class="w-full text-left p-3 text-sm font-bold text-gray-400 hover:text-white flex justify-between items-center transition-colors">
+                        <span>📡 全球指標戰略指引（點擊展開）</span><span>▼</span>
+                    </button>
+                    <div id="globalGuide" class="hidden p-3 pt-0 text-xs text-gray-300 space-y-3 border-t border-[#30363d] leading-relaxed">
+                        <div class="flex flex-col gap-1 pt-3">
+                            <span class="text-purple-300 font-black">📊 費城半導體 SOX — 台積電/聯發科領先指標</span>
+                            <span class="text-gray-400">SOX 指數漲跌往往領先台灣半導體股 1~3 個交易日。<span class="text-red-300">SOX 單日漲幅超過 2%</span>，隔日台積電開盤通常跟漲；<span class="text-green-300">SOX 急跌超過 3%</span>，則要小心台股半導體族群跟跌。台股真正的「外掛引擎」，決定半導體權值股隔日開盤跳空方向。</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-green-300 font-black">🟢 輝達 NVDA — AI 題材溫度計</span>
+                            <span class="text-gray-400">NVDA 是 AI 供應鏈的指標股，影響台灣 CoWoS 封裝（台積電）、HBM（南亞科）、伺服器（廣達/英業達）等族群。NVDA 暴漲時直接帶動鴻海、廣達、緯創旱地拔蔥；財報前後波動大，宜特別留意。</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-blue-300 font-black">🔵 台積電 ADR TSM — 外資預判籌碼</span>
+                            <span class="text-gray-400">TSM 美股 ADR 收盤後換算台幣可大致預判隔日台積電開盤方向。ADR 溢價代表外資看多；折價代表看空。若 ADR 溢價拉高，隔日台股加權指數通常開高，是預判大盤的最強領先指標之一。</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-yellow-300 font-black">📈 美債 2Y US02Y — 升降息風向球</span>
+                            <span class="text-gray-400">2 年期美債殖利率反映市場對聯準會升降息的預期。<span class="text-red-300">殖利率快速上升</span>（預期升息）通常壓制高本益比成長股；<span class="text-green-300">殖利率下降</span>（預期降息）則有利資金流入台股。全球資金「萬有引力」，利率狂飆代表資金被吸回美國。</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-orange-300 font-black">💵 美元指數 DXY — 外資匯率換算</span>
+                            <span class="text-gray-400">DXY 走強（美元升值），外資在台股的持股換算美元報酬下降，容易引發撤資；DXY 走弱（美元貶值）則有利外資加碼台股。<span class="text-cyan-300">台幣升值時</span>通常伴隨外資買超台灣股匯市，是外資留倉意願的關鍵指標。</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 外資期貨（合併進來） -->
                 <div class="bg-[#0d1117] border border-yellow-900/30 rounded-lg p-2.5 mb-3">
                     <div class="flex items-start justify-between mb-1.5">
@@ -903,15 +932,6 @@
                 <span id="huntScanStatusText">掃描中...</span>
             </div>
 
-            <!-- Monitor List -->
-            <div id="huntMonitorList" class="flex flex-col gap-2">
-                <div class="text-center py-10 text-gray-600">
-                    <div class="text-4xl mb-3">🗡️</div>
-                    <div class="text-sm font-bold">監控清單為空</div>
-                    <div class="text-xs mt-1 text-gray-700">在「診斷」頁看到心儀標的後<br>按 🗡️ 圖示加入監控</div>
-                </div>
-            </div>
-
             <!-- Strategy Guide -->
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg overflow-hidden">
                 <button onclick="document.getElementById('huntGuide').classList.toggle('hidden')" class="w-full text-left p-3 text-sm font-bold text-gray-400 hover:text-white flex justify-between items-center transition-colors">
@@ -938,6 +958,15 @@
                         <span class="text-green-400 font-bold">💡 注意：</span>
                         <span class="text-gray-400">以上所有均線數字都會顯示實際價格（如「月線 ¥920」），讓你一眼看清楚多遠才回到安全位置。</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Monitor List -->
+            <div id="huntMonitorList" class="flex flex-col gap-2">
+                <div class="text-center py-10 text-gray-600">
+                    <div class="text-4xl mb-3">🗡️</div>
+                    <div class="text-sm font-bold">監控清單為空</div>
+                    <div class="text-xs mt-1 text-gray-700">在「診斷」頁看到心儀標的後<br>按 🗡️ 圖示加入監控</div>
                 </div>
             </div>
         </div>
@@ -4480,7 +4509,17 @@ ${dynamicParams}
         headerScoreStatus.title = `綜合動能評分 ${totalScore}/100。點此查看各指標評分明細。`;
         headerScoreStatus.className = `text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity ${scoreStyle}`;
         headerScoreStatus.classList.remove('hidden');
-        
+        // 震盪狀態顯示操作說明；其他狀態開評分明細 modal
+        if (lightStatus === "⚠️震盪") {
+            headerScoreStatus.onclick = function() {
+                alert('【⚠️ 震盪說明】\n目前綜合動能評分介於 45~74 分，屬於多空拉鋸的震盪格局。\n\n這代表：\n• 沒有明確趨勢，漲跌都有可能\n• 主力籌碼尚未明顯站隊\n• 操作難度較高，容易被洗出\n\n⚡ 戰略指示：嚴格禁止追高！請耐心等待股價回測 5MA 或布林下軌，採用「右下角建倉法」逢低承接。\n\n點選「評分明細」可看各指標個別得分。');
+            };
+        } else {
+            headerScoreStatus.onclick = function() {
+                document.getElementById('scoreDetailModal').classList.remove('hidden');
+            };
+        }
+
         this.renderBacktest();
     },
 
@@ -6733,6 +6772,21 @@ ${keyLevels ? keyLevels : ''}${chipBlock}${globalBlock}${fundamentalBlock}`;
 };
 
 window.onload = () => app.init();
+</script>
+<script>
+// === 兩指放大後自動彈回原比例 (Snap-back Zoom) ===
+document.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+        if (window.visualViewport && window.visualViewport.scale > 1.01) {
+            const viewportMeta = document.querySelector('meta[name="viewport"]');
+            if (viewportMeta) {
+                const originalContent = viewportMeta.getAttribute('content') || 'width=device-width, initial-scale=1.0, maximum-scale=5.0';
+                viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                setTimeout(() => { viewportMeta.setAttribute('content', originalContent); }, 300);
+            }
+        }
+    }
+}, { passive: true });
 </script>
 </body>
 </html>
