@@ -25,6 +25,20 @@ import os
 import sqlite3
 import time
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# ── 🛡️ 【前線防卡死網路引擎】 ──
+def create_robust_session():
+    session = requests.Session()
+    retry = Retry(total=3, connect=3, read=3, backoff_factor=0.3)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+http_session = create_robust_session()
+# ───────────────────────────────
 from datetime import datetime, timezone, timedelta
 from threading import Lock
 from typing import Any, Generator, Optional
@@ -389,7 +403,7 @@ def get_stock_data(
 
         if last_db_date != today_str and is_market_open:
             url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
-            res = requests.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
+            res = http_session.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
             if res.get('msgArray'):
                 msg = res['msgArray'][0]
                 z = msg.get('z', '-')
@@ -842,7 +856,7 @@ def query_stock_data(symbol: str) -> str:
 
             if last_db_date != today_str and is_market_open:
                 url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
-                res = requests.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
+                res = http_session.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
                 if res.get('msgArray'):
                     msg = res['msgArray'][0]
                     z = msg.get('z', '-')

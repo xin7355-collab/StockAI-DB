@@ -78,7 +78,7 @@ def fm_request(url_base: str, timeout: int = 20):
         # [Token 輪動] 有效 Token 才附加，否則匿名請求
         token_param = f'&token={tok}' if tok and '請' not in tok else ''
         try:
-            res = requests.get(url_base + token_param, headers=_rnd_hdrs(), timeout=timeout)
+            res = http_session.get(url_base + token_param, headers=_rnd_hdrs(), timeout=timeout)
         except Exception as e:
             print(f'  ⚠️ [fm_request] 連線失敗: {e}')
             return None
@@ -224,7 +224,7 @@ def twse_ohlcv(symbol: str, year_month: str) -> list:
     url = (f'https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY'
            f'?response=json&date={year_month}01&stockNo={symbol}')
     try:
-        j = requests.get(url, headers=_HDRS, timeout=10).json()
+        j = http_session.get(url, headers=_HDRS, timeout=10).json()
         if j.get('stat') != 'OK':
             return []
         fields = j.get('fields', [])
@@ -263,7 +263,7 @@ def tpex_ohlcv(symbol: str, year_month: str) -> list:
     url = (f'https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/'
            f'st43_result.php?l=zh-tw&d={roc_year}/{m}&stkno={symbol}&o=json')
     try:
-        res = requests.get(url, headers=_HDRS, timeout=10)
+        res = http_session.get(url, headers=_HDRS, timeout=10)
         body = res.text.strip()
         if not body or body[0] == '<':  # 空白或 HTML = 當月尚未公布，靜默略過
             return []
@@ -298,7 +298,7 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
     """證交所 MIS 盤中/盤後快照補丁，填補歷史 API 尚未更新的真空期"""
     url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{sym}.tw|otc_{sym}.tw"
     try:
-        res = requests.get(url, timeout=5, headers={'User-Agent': random.choice(_UA_LIST)}).json()
+        res = http_session.get(url, timeout=5, headers={'User-Agent': random.choice(_UA_LIST)}).json()
         if res.get('msgArray'):
             msg = res['msgArray'][0]
             z = msg.get('z', '-')
@@ -329,7 +329,7 @@ def fetch_market_institutional(d: date) -> dict:
     # 1. 抓取上市 (TWSE T86)
     try:
         url = f'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&date={d8}&selectType=ALL'
-        j = requests.get(url, headers=_rnd_hdrs(), timeout=15).json()
+        j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
             fields = j.get('fields', [])
             idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), None)
@@ -354,7 +354,7 @@ def fetch_market_institutional(d: date) -> dict:
     # 2. 抓取上櫃 (TPEX)
     try:
         url_otc = f'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D&d={d_tpex}'
-        j = requests.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
+        j = http_session.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
         for r in (j.get('aaData') or []):
             try:
                 res[str(r[0]).strip()] = {
@@ -379,7 +379,7 @@ def fetch_market_margin(d: date) -> dict:
     # 1. 抓取上市 (TWSE MI_MARGN)
     try:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
-        j = requests.get(url, headers=_rnd_hdrs(), timeout=15).json()
+        j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
             target_table = next((t for t in j.get('tables', []) if '信用' in t.get('title', '')), None)
             if target_table:
@@ -400,7 +400,7 @@ def fetch_market_margin(d: date) -> dict:
     # 2. 抓取上櫃 (TPEX)
     try:
         url_otc = f'https://www.tpex.org.tw/web/stock/margin_trading/margin_balance/margin_bal_result.php?l=zh-tw&o=json&d={d_tpex}'
-        j = requests.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
+        j = http_session.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
         for r in (j.get('aaData') or []):
             try:
                 res[str(r[0]).strip()] = {
@@ -422,7 +422,7 @@ def fetch_twse_fundamentals(d: date) -> dict:
            f'?response=json&date={d8}&selectType=ALL')
     res = {}
     try:
-        j = requests.get(url, headers=_rnd_hdrs(), timeout=20).json()
+        j = http_session.get(url, headers=_rnd_hdrs(), timeout=20).json()
         if j.get('stat') == 'OK':
             fields = j.get('fields', [])
             fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), None)
@@ -460,7 +460,7 @@ def _load_broker_info_map() -> dict:
     """
     try:
         url = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo'
-        res = requests.get(url, headers=_rnd_hdrs(), timeout=15)
+        res = http_session.get(url, headers=_rnd_hdrs(), timeout=15)
         body = res.text.strip()
         if not body or body[0] == '<':
             return {}
@@ -842,15 +842,12 @@ def run():
                 current_time = tw_now.time()
                 
                 # 定義敏感時段
+# ── 🛡️ 【時間護盾與 MIS 即時快照補丁】 ──
+                tw_now = datetime.now(timezone(timedelta(hours=8)))
+                current_time = tw_now.time()
                 is_pre_market = (current_time.hour == 8) or (current_time.hour == 9 and current_time.minute == 0)
-                is_post_market_gap = (current_time.hour == 13 and current_time.minute >= 30) or (current_time.hour == 14 and current_time.minute <= 30)
-                is_market_open = (current_time.hour == 9 and current_time.minute > 0) or (9 < current_time.hour < 13) or (current_time.hour == 13 and current_time.minute < 30)
-                
-                if is_pre_market:
-                    # 08:00~09:00 盤前試撮合，系統重置期，嚴禁覆蓋即時價格
-                    pass
-                elif is_post_market_gap or is_market_open:
-                    # 若證交所官方 API 尚未給出今日資料，啟動 MIS 補丁填補真空期
+
+                if not is_pre_market:
                     today_slashed = tw_now.strftime('%Y/%m/%d')
                     if not new_rows or new_rows[-1]['date'] != today_slashed:
                         snap = fetch_mis_closing_snapshot(sym)
@@ -981,7 +978,7 @@ def _fetch_futures_taifex_fallback() -> dict | None:
             date_tw = d.strftime('%Y/%m/%d')
             url = 'https://www.taifex.com.tw/cht/3/futContractsDateDown'
             params = {'queryStartDate': date_tw, 'queryEndDate': date_tw, 'commodityId': 'TX'}
-            res = requests.get(url, params=params, headers=_rnd_hdrs(), timeout=15)
+            res = http_session.get(url, params=params, headers=_rnd_hdrs(), timeout=15)
             body = res.content
             if not body:
                 continue
@@ -1538,11 +1535,20 @@ if __name__ == '__main__':
     print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
     inst_cache, margin_cache = run()                        # 採礦：OHLCV + 法人 → SQLite
     export_json(inst_cache, margin_cache)                   # 匯出 JSON：疊上最新法人快取
+    
     if not SKIP_GLOBAL:
         fetch_futures_cache()   # 外資期貨 → futures_cache.json
         fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
         fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
         build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
         generate_top_picks()    # 三位一體選股 → data/top_picks.json
+        
+        # ── 🧹 【資料庫自動瘦身術】 ──
+        print("\n🧹 執行資料庫碎片重組與瘦身 (VACUUM)...")
+        vac_conn = sqlite3.connect(DB_PATH, timeout=30.0)
+        vac_conn.execute("VACUUM;")
+        vac_conn.close()
+        print("  ✅ 瘦身完成！")
+        # ──────────────────────────────
     else:
         print("⚡ SKIP_GLOBAL=1：略過籌碼/期貨/美股/雷達（純 OHLCV 批次）")
