@@ -1248,47 +1248,12 @@ const app = {
         this.setupAutoRefresh();
         this.initSwipeToDelete();
         // swipe navigation removed per user request
-        this.initSpringBackZoom('mainChartWrap');
-        this.initSpringBackZoom('geminiResultBox');
         this.refreshUSMarketBar();
         this.registerServiceWorker();
         setTimeout(() => this.scanAllMonitored(), 8000);
     },
 
 
-    initSpringBackZoom(elementId) {
-        const el = document.getElementById(elementId);
-        if(!el) return;
-        let initialDist = 0;
-        
-        el.addEventListener('touchstart', e => {
-            if(e.touches.length === 2) {
-                initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                el.style.transition = 'none';
-            }
-        }, {passive: false});
-
-        el.addEventListener('touchmove', e => {
-            if(e.touches.length === 2 && initialDist > 0) {
-                e.preventDefault();
-                let currDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                let scale = currDist / initialDist;
-                if(scale < 1) scale = 1;
-                if(scale > 3) scale = 3;
-                el.style.transform = `scale(${scale})`;
-                el.style.zIndex = '100';
-            }
-        }, {passive: false});
-
-        el.addEventListener('touchend', e => {
-            if(e.touches.length < 2) {
-                initialDist = 0;
-                el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
-                el.style.transform = 'scale(1)';
-                setTimeout(() => { if(el.style.transform === 'scale(1)') el.style.zIndex = 'auto'; }, 400);
-            }
-        });
-    },
     
     initSwipeToDelete() {
         let swipeStartX = 0, activeSwipeEl = null, swipeDir = null;
@@ -4724,14 +4689,27 @@ ${dynamicParams}
         const diff = currentClose - prevClose, pct = prevClose > 0 ? (diff/prevClose)*100 : 0;
         const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : (this._hasLivePrice ? 'text-gray-300' : 'text-gray-500'));
         
+        const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : (this._hasLivePrice ? 'text-gray-300' : 'text-gray-500'));
         const priceEl = document.getElementById('livePriceText');
         priceEl.innerText = currentClose.toFixed(2);
-        priceEl.className = `text-4xl md:text-5xl font-black font-mono leading-none tracking-tighter transition-all duration-200 ${color}`;
-        priceEl.classList.remove('price-flash-up', 'price-flash-down');
-        void priceEl.offsetWidth; 
-        if(diff > 0) priceEl.classList.add('price-flash-up'); else if(diff < 0) priceEl.classList.add('price-flash-down');
         
-        document.getElementById('liveDiffAmount').innerText = (diff>0?'+':'') + diff.toFixed(2); document.getElementById('liveDiffAmount').className = `text-sm md:text-base font-black font-mono ${color}`;
+        // 基礎樣式
+        priceEl.className = `text-4xl md:text-5xl font-black font-mono leading-none tracking-tighter transition-all duration-200`;
+        void priceEl.offsetWidth;
+        
+        // 🚀 漲跌停亮燈邏輯 (>=9.8% 漲停, <=-9.8% 跌停)
+        if (pct >= 9.8) {
+            priceEl.classList.add('bg-red-600', 'text-white', 'px-2', 'py-0.5', 'rounded-lg');
+        } else if (pct <= -9.8) {
+            priceEl.classList.add('bg-green-600', 'text-white', 'px-2', 'py-0.5', 'rounded-lg');
+        } else {
+            // 一般漲跌
+            priceEl.classList.add(color);
+            if(diff > 0) priceEl.classList.add('price-flash-up');
+            else if(diff < 0) priceEl.classList.add('price-flash-down');
+        }
+        
+        document.getElementById('liveDiffAmount').innerText = (diff>0?'+':'') + diff.toFixed(2);
         document.getElementById('liveDiffPct').innerText = `(${diff>0?'+':''}${pct.toFixed(2)}%)`; document.getElementById('liveDiffPct').className = `text-xs md:text-sm font-bold font-mono ${color}`;
 
         const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
