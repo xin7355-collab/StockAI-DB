@@ -12,13 +12,24 @@ import os
 import json
 import time
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import feedparser
 from pathlib import Path
 from datetime import datetime
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL   = "llama-3.1-8b-instant"   # 原規格 llama3-8b-8192 已被 Groq 棄用，自動升級到最新 8B 快速版
+GROQ_MODEL   = "llama-3.1-8b-instant"
+
+# 【防禦機制】建立全域連線池與自動退避重試
+http_session = requests.Session()
+retry_strategy = Retry(
+    total=3,
+    backoff_factor=1.5,
+    status_forcelist=[500, 502, 503, 504]
+)
+http_session.mount("https://", HTTPAdapter(max_retries=retry_strategy))
 
 RSS_SOURCES = {
     "科技新報":         "https://technews.tw/feed/",
@@ -49,11 +60,13 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
     if not GROQ_API_KEY:
         return ("中立", "未設定 GROQ_API_KEY")
 
-    user_prompt = (
-        f"分析以下台股相關情報，判斷對供應鏈或個股是【利多】、【利空】還是【中立】。\n\n"
+user_prompt = (
+        f"你是一個專業的財經情緒分析系統。請分析以下台股情報，判斷其對個股或供應鏈的影響為【利多】、【利空】或【中立】。\n\n"
         f"標題：{title}\n"
         f"摘要：{summary[:SUMMARY_MAXLEN]}\n\n"
-        f"請嚴格回 JSON：{{\"sentiment\":\"利多|利空|中立\",\"reason\":\"一句話20字內理由\"}}"
+        f"輸出要求：\n"
+        f"1. 必須輸出純 JSON 格式，絕對不要包含 Markdown backticks (如 ```json)。\n"
+        f"2. 格式範例：{{\"sentiment\": \"利多\", \"reason\": \"此處填寫20字內具體原因\"}}"
     )
     payload = {
         "model":           GROQ_MODEL,
@@ -67,11 +80,13 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
         "Content-Type":  "application/json",
     }
 
-    for attempt in range(3):
+for attempt in range(3):
         try:
-            res = requests.post(GROQ_URL, json=payload, headers=headers, timeout=15)
+            # 【修復】改用 http_session 享有底層連線池，減少 SSL 握手開銷
+            res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
             if res.status_code == 429:
-                wait = 2 ** attempt
+                # 【修復】Groq 限流恢復較慢，將重試秒數大幅拉長至 5s, 10s, 15s
+                wait = 5 * (attempt + 1)
                 print(f"  ⚠️ Groq 429 限流（第 {attempt+1} 次），{wait}s 後重試")
                 time.sleep(wait)
                 continue
