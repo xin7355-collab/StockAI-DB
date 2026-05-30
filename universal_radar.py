@@ -56,11 +56,11 @@ SUMMARY_MAXLEN = 300
 
 def analyze_sentiment(title: str, summary: str) -> tuple:
     """呼叫 Groq AI 進行利多/利空判讀，回傳 (sentiment, reason)。
-    遇 429 自動重試 (1s/2s/4s)，最終失敗 fallback 為「中立」。"""
+    遇 429 自動退避重試，最終失敗 fallback 為「中立」。"""
     if not GROQ_API_KEY:
         return ("中立", "未設定 GROQ_API_KEY")
 
-user_prompt = (
+    user_prompt = (
         f"你是一個專業的財經情緒分析系統。請分析以下台股情報，判斷其對個股或供應鏈的影響為【利多】、【利空】或【中立】。\n\n"
         f"標題：{title}\n"
         f"摘要：{summary[:SUMMARY_MAXLEN]}\n\n"
@@ -68,6 +68,7 @@ user_prompt = (
         f"1. 必須輸出純 JSON 格式，絕對不要包含 Markdown backticks (如 ```json)。\n"
         f"2. 格式範例：{{\"sentiment\": \"利多\", \"reason\": \"此處填寫20字內具體原因\"}}"
     )
+    
     payload = {
         "model":           GROQ_MODEL,
         "messages":        [{"role": "user", "content": user_prompt}],
@@ -75,12 +76,13 @@ user_prompt = (
         "temperature":     0.3,
         "response_format": {"type": "json_object"},
     }
+    
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type":  "application/json",
     }
 
-for attempt in range(3):
+    for attempt in range(3):
         try:
             # 【修復】改用 http_session 享有底層連線池，減少 SSL 握手開銷
             res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
@@ -93,6 +95,7 @@ for attempt in range(3):
             if res.status_code != 200:
                 print(f"  ⚠️ Groq HTTP {res.status_code}: {res.text[:120]}")
                 return ("中立", f"API 錯誤 {res.status_code}")
+                
             content = res.json()["choices"][0]["message"]["content"].strip()
             parsed  = json.loads(content)
             sentiment = parsed.get("sentiment", "中立")
@@ -100,6 +103,7 @@ for attempt in range(3):
                 sentiment = "中立"
             reason = str(parsed.get("reason", "")).strip()[:30] or "AI 未提供說明"
             return (sentiment, reason)
+            
         except Exception as e:
             print(f"  ⚠️ Groq 第 {attempt+1} 次例外：{e}")
             if attempt < 2:
@@ -159,9 +163,12 @@ def main():
         item["ai_sentiment"] = sentiment
         item["ai_reason"]    = reason
         results.append(item)
-        if (i + 1) % 5 == 0 or i == len(all_matched) - 1:
+if (i + 1) % 5 == 0 or i == len(all_matched) - 1:
             print(f"  進度：{i+1}/{len(all_matched)}（{sentiment} — {reason}）")
-        time.sleep(0.3)
+        
+        # 【致命危機修復】Groq 免費版限制 30 RPM (每分鐘 30 次)。
+        # 強制冷卻 2.5 秒 (相當於一分鐘最多 24 次)，確保絕對不會觸發 429 封鎖！
+        time.sleep(2.5)
 
     output = {
         "updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),

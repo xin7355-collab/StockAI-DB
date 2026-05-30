@@ -25,6 +25,7 @@ import os
 import sqlite3
 import time
 import requests
+import httpx  # 【終極修復】引入真正的非同步網路庫，解除 FastAPI 櫃檯阻塞危機
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -981,7 +982,9 @@ class TechAIRequest(BaseModel):
 
 @app.post("/api/tech_ai")
 async def tech_ai_diagnose(req: TechAIRequest):
-    stock_info = query_stock_data(req.symbol)
+    # 【終極修復】query_stock_data 內含同步的 requests.get 網路請求。
+    # 必須用 to_thread 丟到背景執行緒，否則每次點擊都會讓 FastAPI 全站卡死 5 秒！
+    stock_info = await asyncio.to_thread(query_stock_data, req.symbol)
     _prompts = {
         "trend":    "你是台股技術大師，精通朱家泓操作心法。根據最新 OHLCV 判斷是否符合「頭頭高、底底高」與「均線多頭排列」，給出順勢操作建議。",
         "pullback": "你是台股技術大師，精通郭哲榮投資長的打折買法。判斷股價是否回測至前波高點的85折或0.382支撐，尋找量縮止跌買點，評估勝率。",
@@ -1174,25 +1177,22 @@ class ChipAnalysisRequest(BaseModel):
 
 @app.post("/api/ai/chip_analysis")
 async def ai_chip_analysis(req: ChipAnalysisRequest):
-    """大三元籌碼多週期透視（白話 5 段）"""
-    prompt = f"""你是台股籌碼分析老師（以權證小哥的風格），請用白話文幫初學者看懂以下籌碼資料，給出完整解析與明確建議。
+    """大三元籌碼多週期透視（白話 5 段升級版）"""
+    # 【升級】採用正面約束，去除 AI 廢話，強制精準對齊結構
+    prompt = f"""你是華爾街頂級避險基金的首席籌碼分析師，說話風格完全模仿權證小哥：直接、有個性、白話、切中要害。請用國中生都能秒懂的生活化比喻，為初學者解析籌碼資料，直接將數據融入對話，省略所有 AI 常見套話。
 
 【股票代號：{req.symbol}】
-
 【1/3/5/10 日多週期籌碼動態（張）】
 {req.chip_trends}
 
-請依序輸出（每段2-3句話，用國中生都看得懂的語言）：
-1️⃣ 外資在做什麼？連買還是連賣？力道強不強？
-2️⃣ 投信和自營商呢？有沒有配合外資的動作？
-3️⃣ 融資融券怎麼說？散戶現在情緒樂觀還是悲觀？
-4️⃣ 主力分點多週期判讀：請依 1/3/5/10 日變化，明確標出主力處於下列哪種情境並說明：
-    ①【連續建倉】10/5/3/1日皆買超 → 主力穩定吸籌
-    ②【短線突襲】10日無大動作但 1/3日突然急買 → 短線發動
-    ③【高檔出貨】10日為買超但 1/3日轉大量賣超 → 主力高檔派發
-5️⃣ 綜合建議：這檔現在適合「買進 / 繼續持有 / 小心減碼」？請給明確理由。
+請嚴格依照下列 5 個重點依序輸出（請加上表情符號，標題本身不可加粗）：
+1️⃣ 外資動向：外資目前是在倒貨還是囤貨？力道強弱？
+2️⃣ 內資大哥（投信與自營）：內資有沒有偷偷進場護盤的跡象？
+3️⃣ 散戶指標（融資券）：現在車上是不是太擠了？散戶正在被割韭菜嗎？
+4️⃣ 主力分點建倉：大戶的成本大約落在哪裡？有沒有券商在偷偷吃貨？
+5️⃣ 實戰戰略結論：綜合上述籌碼面，現在該上車、觀望，還是快逃？
 
-最後一行：⚠️ 投資有風險，以上僅供參考，請自行判斷。"""
+最後獨立一行輸出：⚠️ 投資有風險，以上僅供參考，請自行判斷。"""
     content = await call_groq_api(prompt=prompt, max_tokens=req.max_tokens, temperature=0.5)
     return {"status": "success", "reply": content}
 

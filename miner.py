@@ -11,20 +11,27 @@ import random
 import re
 import sqlite3
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import time
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 
+# 【修復】極限防禦準則第 4 條：初始化具備自動退避重試機制的全局 Session
+http_session = requests.Session()
+retry_strategy = Retry(
+    total=3,                # 總共重試 3 次
+    backoff_factor=1.5,     # 每次重試間隔: 1.5s, 3s, 6s...
+    status_forcelist=[429, 500, 502, 503, 504], # 遇到限流或伺服器錯誤自動重試
+    allowed_methods=["HEAD", "GET", "OPTIONS"]
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+http_session.mount("https://", adapter)
+http_session.mount("http://", adapter)
+
 DATA_DIR = "data"
 Path(DATA_DIR).mkdir(exist_ok=True)
 DB_PATH = "stock_hunter.db"
-
-# 共用 HTTP session：keep-alive 連線、降低 TCP 握手成本，並讓所有 fetch 點共用同一 session
-http_session = requests.Session()
-http_session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
-})
 
 _HDRS          = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
 _UA_LIST = [
@@ -973,7 +980,7 @@ def run():
 def _fetch_futures_taifex_fallback() -> dict | None:
     """
     TAIFEX 公開三大法人台指期備援（不需 Token）。
-    抓 TAIFEX 期交所 CSV，解析外資未平倉多空口數。
+    抓 TAIFEX 期交所 CSV，精準定位未平倉欄位。
     """
     try:
         import csv, io
@@ -984,9 +991,52 @@ def _fetch_futures_taifex_fallback() -> dict | None:
                 continue
             date_tw = d.strftime('%Y/%m/%d')
             url = 'https://www.taifex.com.tw/cht/3/futContractsDateDown'
-            params = {'queryStartDate': date_tw, 'queryEndDate': date_tw, 'commodityId': 'TX'}
+            # 【修復】原本的 TX 要改為 TXF 才能精準抓到大台指
+            params = {'queryStartDate': date_tw, 'queryEndDate': date_tw, 'commodityId': 'TXF'}
             res = http_session.get(url, params=params, headers=_rnd_hdrs(), timeout=15)
             body = res.content
+            if not body:
+                continue
+            
+            text = None
+            for enc in ('utf-8-sig', 'big5', 'utf-8'):
+                try:
+                    text = body.decode(enc)
+                    break
+                except Exception:
+                    pass
+            if not text or len(text) < 20 or text.startswith('<'):
+                continue
+                
+            reader = csv.reader(io.StringIO(text.strip()))
+            rows = [r for r in reader if r]
+            
+            for row in rows:
+                if not any('外資' in str(cell) for cell in row):
+                    continue
+                
+                try:
+                    nums = []
+                    for cell in row:
+                        v = str(cell).replace(',', '').strip()
+                        if v.lstrip('-').isdigit():
+                            nums.append(int(v))
+                    
+                    # 【修復】TAIFEX 格式有超過 10 個數字，未平倉在陣列的後半段
+                    # nums[6] = 多方未平倉, nums[8] = 空方未平倉, nums[10] = 多空未平倉淨額
+                    if len(nums) >= 11:
+                        long_oi  = nums[6]
+                        short_oi = nums[8]
+                        net_oi   = nums[10]
+                        if long_oi > 0 or short_oi > 0:
+                            print(f"  📡 TAIFEX 備援：外資期貨多={long_oi:,} 空={short_oi:,} 淨={net_oi:+,} ({d})")
+                            return {'long': long_oi, 'short': short_oi, 'net': net_oi, 'date': d.strftime('%Y-%m-%d')}
+                except Exception:
+                    continue
+        return None
+    except Exception as e:
+        print(f"  ⚠️ TAIFEX 備援失敗: {e}")
+        return None
             if not body:
                 continue
             # TAIFEX CSV 為 UTF-8 with BOM，偶爾為 Big5
@@ -1041,19 +1091,40 @@ def _write_futures_cache(net_oi: int, long_oi: int, short_oi: int, target_date: 
 
 def fetch_futures_cache():
     """
-    外資台指期未平倉淨口數。
-    主路徑：FinMind TaiwanFuturesInstitutionalInvestors（需 Token）。
-    備援路徑：TAIFEX 公開 CSV（不需 Token）。
+def fetch_futures_cache():
     """
+    外資台指期未平倉淨口數。
+    【修復】FinMind 免費版已移除未平倉欄位，改為優先使用 TAIFEX 官方直連。
+    """
+    print(f"\n🔮 抓取外資台指期 (優先使用 TAIFEX 官方直連)...")
+    
+    # 優先使用官方直連
+    result = _fetch_futures_taifex_fallback()
+    if result:
+        _write_futures_cache(result['net'], result['long'], result['short'], result['date'])
+        return
+        
+    print("  ⚠️ TAIFEX 官方失敗，退回 FinMind API...")
     today_str = date.today().strftime('%Y-%m-%d')
     start_str = (date.today() - timedelta(days=7)).strftime('%Y-%m-%d')
-
     url_base = (f'https://api.finmindtrade.com/api/v4/data'
                 f'?dataset=TaiwanFuturesInstitutionalInvestors&data_id=TX'
                 f'&start_date={start_str}&end_date={today_str}')
-
-    tok_label = f'Token #{_finmind_token_idx + 1}' if FINMIND_TOKENS else '匿名'
-    print(f"\n🔮 抓取外資台指期 (使用 FinMind {tok_label} 防封鎖通道 [Token 輪動])...")
+    
+    try:
+        j = fm_request(url_base, timeout=15)
+        if j and j.get('status') == 200 and j.get('data'):
+            foreign_data = [d for d in j['data'] if '外資' in d.get('name', '')]
+            if foreign_data:
+                latest = foreign_data[-1]
+                net_direct = latest.get('open_interest_net_volume')
+                net_oi = int(net_direct) if net_direct is not None else 0
+                long_oi = max(0, net_oi)
+                short_oi = max(0, -net_oi)
+                if long_oi > 0 or short_oi > 0:
+                    _write_futures_cache(net_oi, long_oi, short_oi, latest.get('date'))
+    except Exception as e:
+        print(f"  ⚠️ FinMind 外資期貨連線失敗: {e}")
     finmind_ok = False
     try:
         # [Token 輪動] 改用 fm_request，遇 429 自動切換並重試
@@ -1380,24 +1451,46 @@ def _quick_ind(data):
 def build_radar_cache():
     results   = {'bottom': [], 'surge': [], 'score': []}
     processed = 0
-
-    conn = get_db_conn()
-    symbols = [row[0] for row in
-               conn.execute("SELECT DISTINCT symbol FROM stock_history")]
-
-    for sym in sorted(symbols):
-        rows = conn.execute("""
-            SELECT close, volume FROM stock_history
-            WHERE symbol = ?
-            ORDER BY trade_date DESC
-            LIMIT 25
-        """, (sym,)).fetchall()
-
-        if len(rows) < 22:
+    
+    print("\n🚀 啟動全局雷達掃描 (改為從 JSON 讀取，完美支援分散式合併)...")
+    # 【修復】不再從殘缺的 SQLite 讀取，直接遍歷 data/ 目錄下所有的 JSON，確保抓到 100% 的最新價格
+    for f in Path(DATA_DIR).glob('*.json'):
+        # 排除非個股 JSON
+        if f.name in ('radar.json', 'top_picks.json', 'macro_cache.json', 'futures_cache.json', 'broker_names.json', 'radar_news.json'):
+            continue
+        
+        sym = f.stem
+        if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
             continue
 
-        data = [{'close': r[0], 'volume': r[1]} for r in reversed(rows)]
-        ind  = _quick_ind(data)
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(raw, list) or len(raw) < 22:
+                continue
+                
+            # 擷取最後 25 筆 K 線供技術指標計算
+            data = [{'close': r['close'], 'volume': r['volume']} for r in raw[-25:]]
+            ind  = _quick_ind(data)
+            if not ind:
+                continue
+
+            processed += 1
+            c,   pc   = ind['close'],   ind['prev_close']
+            ma5, ma10, ma20         = ind['ma5'],  ind['ma10'],  ind['ma20']
+            pma5, pma10, pma20      = ind['pma5'], ind['pma10'], ind['pma20']
+            vma5, upper_bb, rv      = ind['vma5'], ind['upper_bb'], ind['recent_vols']
+
+            if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc:
+                results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2)})
+            if c >= upper_bb * 0.97 and (all(v > vma5 for v in rv) if rv and vma5 > 0 else False):
+                results['surge'].append({'sym': sym, 'close': round(c, 2), 'bb_upper': round(upper_bb, 2)})
+            if (c > ma20 and ma5 > ma10 and ma10 > ma20) and c > pc and \
+               (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False):
+                results['score'].append({'sym': sym, 'close': round(c, 2), 'ma5': round(ma5, 2)})
+        except Exception:
+            continue
+            
+    # 【註】：移除原本的 conn 相關寫法
         if not ind:
             continue
 
@@ -1431,8 +1524,91 @@ def build_radar_cache():
 def generate_top_picks():
     """三位一體篩選：基本面(YoY>0) + 法人5日淨流入>0 + 分點集中度"""
     results = []
-    conn = get_db_conn()
     chips_path = Path(DATA_DIR) / 'chips'
+
+    if not chips_path.exists():
+        print("  ⚠️ chips 目錄不存在，跳過 generate_top_picks")
+        return
+
+    print("🚀 啟動三位一體選股 (改為從 JSON 快取合併)...")
+    for f in sorted(chips_path.glob('*.json')):
+        sym = f.stem
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if isinstance(raw, list):
+                continue
+            fund      = raw.get('fundamentals') or {}
+            chips_list = raw.get('chips') or []
+
+            # ① 基本面：revenue_yoy > 0
+            try:
+                yoy_f = float(fund.get('revenue_yoy') or 0)
+            except Exception:
+                continue
+            if yoy_f <= 0:
+                continue
+
+            # 【修復】改從已經合併好的 K 線 JSON 讀取最新收盤與法人動向，不依賴 SQLite
+            kline_file = Path(DATA_DIR) / f'{sym}.json'
+            if not kline_file.exists():
+                continue
+            
+            kline_data = json.loads(kline_file.read_text(encoding='utf-8'))
+            if len(kline_data) < 5:
+                continue
+
+            # ② 法人5日淨流向 > 0
+            recent_5 = kline_data[-5:]
+            five_day_net = sum(
+                (r.get('foreign_net', 0) + r.get('trust_net', 0) + r.get('dealer_net', 0))
+                for r in recent_5
+            )
+            if five_day_net <= 0:
+                continue
+
+            # ③ 分點集中度（近3日Top3買超 / 總買超）
+            recent_chips = chips_list[-3:]
+            total_buy = sum(c.get('tot_buy', 0) for c in recent_chips)
+            top3_buy  = sum(
+                sum(b.get('buy', 0) for b in
+                    sorted(c.get('buyers', []), key=lambda x: -x.get('net', 0))[:3])
+                for c in recent_chips
+            )
+            concentration = round(top3_buy / total_buy * 100, 1) if total_buy > 0 else 0.0
+
+            # 最新收盤價與日期
+            pr_close = kline_data[-1].get('close', 0)
+            pr_date  = kline_data[-1].get('date', '')
+
+            # 入選理由 badge
+            reasons = []
+            reasons.append('🔥 營收高速增長' if yoy_f >= 20 else '📈 營收成長')
+            
+            # 判斷近三日外資是否連買
+            consec_fi = sum(1 for r in kline_data[-3:] if r.get('foreign_net', 0) > 0)
+            if consec_fi >= 3:
+                reasons.append('💰 外資連買3日')
+            elif five_day_net > 0:
+                reasons.append('💰 法人淨流入')
+                
+            if concentration >= 40:
+                reasons.append('🎯 主力強力建倉')
+            elif concentration >= 20:
+                reasons.append('🎯 分點籌碼集中')
+
+            results.append({
+                'sym':          sym,
+                'close':        round(float(pr_close), 2),
+                'trade_date':   pr_date,
+                'revenue_yoy':  round(yoy_f, 1),
+                'five_day_net': five_day_net,
+                'concentration': concentration,
+                'eps':          fund.get('eps'),
+                'pe':           fund.get('pe'),
+                'reasons':      reasons,
+            })
+        except Exception as e:
+            continue
 
     if not chips_path.exists():
         print("  ⚠️ chips 目錄不存在，跳過 generate_top_picks")

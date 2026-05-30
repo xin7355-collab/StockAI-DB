@@ -10,18 +10,53 @@ self.addEventListener('install', () => {
     self.skipWaiting();
 });
 
-// ─── 2. 啟動事件：立即控制所有分頁 ──────────────────────────────────────────
+// ─── 2. 啟動事件：立即清除舊快取並控制所有分頁 ──────────────────────────────
 self.addEventListener('activate', e => {
-    e.waitUntil(clients.claim());
+    e.waitUntil(
+        caches.keys().then(keys => {
+            return Promise.all(
+                keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+            );
+        }).then(() => clients.claim())
+    );
 });
 
-// ─── 3. Push 通知：由伺服器主動推送觸發（WebPush 協議）─────────────────────
+// ─── 3. 網路攔截 (Fetch)：PWA 的靈魂！確保能安裝且支援離線開啟 ───────────────
+// 【修復】加入網路優先 (Network First) 策略。沒加這個，手機不會認定你是合格的 PWA！
+self.addEventListener('fetch', e => {
+    // 排除非 GET 請求，以及跨網域請求 (如 Groq API, 證交所 API) 不做快取
+    if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) {
+        return;
+    }
+
+    e.respondWith(
+        fetch(e.request)
+            .then(response => {
+                // 如果網路通暢，把最新抓到的檔案存進快取備用
+                const resClone = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(e.request, resClone);
+                });
+                return response;
+            })
+            .catch(() => {
+                // 如果斷網（搭捷運、無訊號），退而求其次從快取拿舊畫面，避免恐龍出現
+                return caches.match(e.request);
+            })
+    );
+});
+
+// ─── 4. Push 通知：由伺服器主動推送觸發（WebPush 協議）─────────────────────
 self.addEventListener('push', e => {
     const data  = e.data ? e.data.json() : {};
     const title = data.title || '首席 AI 司令部告警';
     const body  = data.body  || '請立刻檢視您的持倉！';
     const icon  = data.icon  || '/icon-192.png';
     const tag   = data.tag   || 'stockai-alert';
+    
+    // 【修復】使用 self.registration.scope 取代 '/'，完美適應 GitHub Pages 路徑
+    const targetUrl = data.url || self.registration.scope; 
+
     e.waitUntil(
         self.registration.showNotification(title, {
             body,
@@ -30,12 +65,12 @@ self.addEventListener('push', e => {
             badge: icon,
             vibrate: [200, 100, 200, 100, 400],
             requireInteraction: true,
-            data: { url: data.url || '/' }
+            data: { url: targetUrl }
         })
     );
 });
 
-// ─── 4. 通知點擊：聚焦已開啟的分頁，或另開新視窗 ────────────────────────────
+// ─── 5. 通知點擊：聚焦已開啟的分頁，或另開新視窗 ────────────────────────────
 self.addEventListener('notificationclick', e => {
     e.notification.close();
     e.waitUntil(
@@ -50,7 +85,7 @@ self.addEventListener('notificationclick', e => {
     );
 });
 
-// ─── 5. Periodic Background Sync：瀏覽器定期喚醒 SW 執行背景查價 ─────────────
+// ─── 6. Periodic Background Sync：瀏覽器定期喚醒 SW 執行背景查價 ─────────────
 self.addEventListener('periodicsync', e => {
     if (e.tag === 'price-check') {
         e.waitUntil(checkPriceAlerts());
@@ -59,20 +94,6 @@ self.addEventListener('periodicsync', e => {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 【核心函式】背景即時查價告警
-//
-// 資料來源：gh-pages 靜態 JSON（GitHub Actions 每日更新）
-//   GET data/{symbol}.json → 陣列，最後一筆含 close 欄位
-//
-// 流程：
-//   1. 從 Cache Storage 讀取告警設定（由前端寫入 /sw-alert-config）
-//   2. 用 self.location.origin + pathname 推算 gh-pages 根網址
-//   3. 逐一 fetch data/{symbol}.json 取最新收盤價
-//   4. 若現價跌破防守底線（defPrice），立刻推送系統通知
-//
-// 防護設計：
-//   - 每檔獨立 try/catch，單支失敗不中斷整體迴圈
-//   - 每次 fetch 間隔 1 秒，避免瞬間大量請求被 GitHub CDN 限速
-//   - fetch 加 cache:'no-store'，確保拿到最新採礦結果而非瀏覽器舊快取
 // ═══════════════════════════════════════════════════════════════════════════
 async function checkPriceAlerts() {
     // ── 讀取前端存入 Cache Storage 的告警設定 ─────────────────────────────
@@ -84,10 +105,8 @@ async function checkPriceAlerts() {
     if (!config?.alerts?.length) return;
 
     // ── 推算 gh-pages 靜態資料根目錄 ──────────────────────────────────────
-    // SW 的 self.location.href 例如：
-    //   https://xin7355-collab.github.io/StockAI-DB/sw.js
-    // 取到 /sw.js 前的目錄即為根目錄，再拼上 data/ 就是資料位置
-    const ghRoot = self.location.href.replace(/\/sw\.js.*$/, '/');
+    // 【修復】直接使用 Service Worker 註冊的作用域，這是最標準、最安全的做法
+    const ghRoot = self.registration.scope;
 
     // ── 逐一即時查價並比對防守底線 ────────────────────────────────────────
     for (const alert of config.alerts) {

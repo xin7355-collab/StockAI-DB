@@ -25,9 +25,10 @@
 
 ## GitHub Actions Workflow
 檔案：`.github/workflows/daily_miner.yml`
-- 每個交易日台灣時間 16:30～18:30，每 30 分鐘一批，共 5 批次自動執行
-- 可手動觸發：Actions → 每日籌碼採礦機 → Run workflow → 選 **`main`** → 輸入 batch_index（0-4，留空自動）
-- 執行順序：採礦(miner.py) → 部署 gh-pages → 部署 data 分支
+- **執行策略**：採用 **5 個批次同步併發 (Matrix Parallel)** 技術，打破時間限制，大幅縮短全市場採礦時間。
+- **無損合併**：每個子任務 (batch 0~4) 獨立抓取負責的股票後，會觸發 `merge` 任務將 JSON 完美合併。
+- 可手動觸發：Actions → 每日籌碼採礦機 → Run workflow → 選 **`main`**。
+- 執行順序：5 併發獨立採礦(miner.py) → 下載 Artifacts 合併 → 部署 gh-pages 與 data 分支。
 
 ---
 
@@ -46,13 +47,12 @@ macro_cache.json     美股大盤日收資料（SP500/NASDAQ/VIX/TSM）
 
 ## 採礦機重點（miner.py）
 
-### 資料來源優先順序
-1. **OHLCV**：FinMind（付費→匿名fallback）
-2. **三大法人**：FinMind → 失敗時改用 TWSE MI_QFIIS（官方全市場每日法人資料）
-3. **融資融券**：FinMind（付費→匿名fallback）
-4. **分點籌碼**：TWSE T86 直連（主力）→ FinMind 逐股（備用）
-5. **外資期貨**：FinMind TaiwanFuturesInstitutionalInvestors
-6. **美股大盤**：yfinance
+### 資料來源與極限防禦
+1. **OHLCV 與法人**：直接抓取 TWSE/TPEX 免費 API，並具備 SQLite WAL 鎖死防護與 JSON 分散式合併。
+2. **盤中快照補丁**：若當天歷史 K 線尚未產出，會自動去證交所 MIS 抓取即時快照填補。
+3. **分點籌碼**：透過 FinMind 匿名公開額度 (自動 Token 輪動防 429 封鎖)。
+4. **外資期貨**：優先直連 **TAIFEX (期交所) 官方 CSV** 解析多空淨額，不再依賴容易斷線或缺漏的第三方 API。
+5. **美股大盤**：yfinance
 
 ### 重要規則
 - `fm_get()` 任何非200回應都會 fallback 到匿名請求
@@ -82,10 +82,12 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 3. 主力分點追蹤（買超/賣超 Top10）
 4. 🤖 AI 籌碼全面解析（一個按鈕，涵蓋法人+分點）
 
-### AI 分析風格
-- 口吻：**權證小哥風格**，白話文，國中生都看得懂
-- 首席分析：技術面 → 籌碼面 → 全球觀 → 產品需求面 → 綜合評析
-- 均線數字要預先計算好，讓使用者直接看到數字
+### AI 分析風格與防呆約束
+- 口吻：**權證小哥風格**，白話文，國中生都看得懂。
+- 首席分析：技術面 → 籌碼面 → 全球觀 → 產品/消息面 → 總監戰術室。
+- **正面約束**：禁止 AI 使用「根據資料」、「以下為您分析」等廢話，數字需直接預先計算好融入對話。
+- **明確指令**：必須給出具體的支撐壓力價位，以及明確的操盤指令（🟢強力買進 / 🟡觀望或減碼 / 🔴強制撤退）。
+- **JSON 防呆**：在 `universal_radar.py` 等純數據解析中，嚴格要求輸出純 JSON，禁止 Markdown (如 ```json) 標籤導致程式崩潰。
 
 ### 外資期貨顯示邏輯
 - `fi_net > -10000`：多方無憂（綠色）
