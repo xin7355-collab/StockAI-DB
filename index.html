@@ -4724,8 +4724,6 @@ recent.forEach(d => {
         if (prevClose == null) prevClose = currentClose;
         const diff = currentClose - prevClose, pct = prevClose > 0 ? (diff/prevClose)*100 : 0;
         const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : (this._hasLivePrice ? 'text-gray-300' : 'text-gray-500'));
-        
-        const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : (this._hasLivePrice ? 'text-gray-300' : 'text-gray-500'));
         const priceEl = document.getElementById('livePriceText');
         priceEl.innerText = currentClose.toFixed(2);
         
