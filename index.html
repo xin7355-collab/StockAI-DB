@@ -1142,6 +1142,7 @@ const app = {
     
     fugleKeyIndex: 0,
     lastFugleReqTime: 0,
+    _fugleCache: {},   // { symbol: { data, ts } } — 60 秒 TTL，跨頁共享 Fugle 結果，避免重複打 API 或失敗時無資料
     confidenceMsgCache: "等待運算",
 
     jargonDict: {
@@ -2240,6 +2241,10 @@ const app = {
     },
 
     async fetchFugleData(symbol) {
+        // 60 秒內若已有此股的成功結果，直接重用（庫存頁先抓到的價格，個股頁也能拿到）
+        const cached = this._fugleCache[symbol];
+        if (cached && (Date.now() - cached.ts) < 60000) return cached.data;
+
         if (this.apiRateLimited) return null;
         const token = this.getFugleToken();
         if (!token) return null;
@@ -2269,7 +2274,7 @@ const app = {
             const changePrice = q.changePrice ?? q.priceChange ?? null;
             let prevClose = q.referencePrice ?? q.previousClose ?? null;
             if (prevClose == null && changePrice != null) prevClose = price - changePrice;
-            return {
+            const result = {
                 price,
                 open:      q.openPrice  ?? q.priceOpen?.price  ?? price,
                 high:      q.highPrice  ?? q.priceHigh?.price  ?? price,
@@ -2277,7 +2282,10 @@ const app = {
                 volume:    q.total?.tradeVolume ?? q.total?.tradeShares ?? 0,
                 prevClose,
                 changePrice,
+                isHistorical: false,
             };
+            this._fugleCache[symbol] = { data: result, ts: Date.now() };
+            return result;
         } catch(e) { return null; }
     },
 

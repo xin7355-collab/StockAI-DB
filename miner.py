@@ -19,6 +19,13 @@ DATA_DIR = "data"
 Path(DATA_DIR).mkdir(exist_ok=True)
 DB_PATH = "stock_hunter.db"
 
+# 共用 HTTP session：keep-alive 連線、降低 TCP 握手成本，並讓所有 fetch 點共用同一 session
+http_session = requests.Session()
+http_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+})
+
 _HDRS          = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
 _UA_LIST = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
