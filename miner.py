@@ -11,6 +11,9 @@ import random
 import re
 import sqlite3
 import requests
+import ddddocr
+import io
+from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import time
@@ -1115,7 +1118,326 @@ def fetch_us_macro_cache():
     print(f"  ✅ macro_cache.json（{len(result)-1} 指標）")
 
 
-# ── 分點籌碼（FinMind 匿名公開額度版）────────────────────────────────────────
+# ─── 證交所分點日報表 AI 狙擊手 ──────────────────────────────
+def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
+    """使用 ddddocr 破解證交所驗證碼，免費抓取當日分點主力資料"""
+    try:
+        # 必須開啟 beta=True，喚醒新版模型，提高證交所驗證碼的辨識率
+        ocr = ddddocr.DdddOcr(beta=True, show_ad=False)
+    except Exception as e:
+        print(f"  ⚠️ OCR 初始化失敗: {e}")
+        return None
+
+    # 建立具有強偽裝能力的 Session
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': random.choice(_UA_LIST),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Connection': 'keep-alive',
+        'Origin': 'https://bsr.twse.com.tw',
+        'Referer': 'https://bsr.twse.com.tw/bshtm/bsMenu.aspx'
+    })
+
+    for attempt in range(max_retries):
+        try:
+            # 1. 取得首頁，抓取隱藏的防偽金鑰 (__VIEWSTATE 等)
+            res = session.get("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", timeout=10)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            
+            viewstate = soup.find('input', {'name': '__VIEWSTATE'})
+            eventval = soup.find('input', {'name': '__EVENTVALIDATION'})
+            
+            if not viewstate or not eventval:
+                time.sleep(1)
+                continue
+
+            # 2. 獲取驗證碼圖片並交給 AI 破解
+            img_res = session.get("https://bsr.twse.com.tw/bshtm/CaptchaImage.aspx", timeout=10)
+            captcha_text = ocr.classification(img_res.content)
+
+            # 如果 AI 沒看懂，換一張
+            if not captcha_text or len(captcha_text) != 5:
+                time.sleep(1)
+                continue
+
+            # 3. 組合破解 Payload (證交所暗藏了許多防護欄位)
+            payload = {
+                '__EVENTTARGET': '',
+                '__EVENTARGUMENT': '',
+                '__LASTFOCUS': '',
+                '__VIEWSTATE': viewstate['value'],
+                '__EVENTVALIDATION': eventval['value'],
+                'RadioButton_Normal': 'RadioButton_Normal',
+                'txtStkNo': symbol,
+                'CaptchaControl1': captcha_text,
+                'btnOK': '查詢'
+            }
+
+            # POST 送出查詢
+            post_res = session.post("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", data=payload, timeout=10)
+
+            # 判斷結果
+            if "驗證碼錯誤" in post_res.text:
+                time.sleep(1.5)
+                continue
+            if "查無資料" in post_res.text:
+                # 代表這檔是上櫃股，或今天根本沒交易
+                return None 
+
+            # 4. 驗證碼破解成功！下載隱藏的 CSV 報表
+            csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsContent.aspx?v=t", timeout=10)
+            # 必須呼叫正確的下載點 bsCSV.aspx
+            csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsCSV.aspx", timeout=10)
+            
+            if not csv_res.text.strip():
+                time.sleep(1)
+                continue
+
+            # 5. 解析證交所雙欄位 CSV
+            # 台灣證交所 CSV 是 BIG5 編碼，必須強制轉換
+            csv_text = csv_res.content.decode('big5-hkscs', errors='ignore')
+            reader = csv.reader(io.StringIO(csv_text))
+            rows = list(reader)
+            if len(rows) < 3: 
+                return None
+            
+            trade_date = rows[0][0].replace('年', '-').replace('月', '-').replace('日', '')
+            try:
+                parts = trade_date.split('-')
+                trade_date = f"{int(parts[0])+1911}-{int(parts[1]):02d}-{int(parts[2]):02d}"
+            except: pass
+
+            branches = {}
+            for r in rows[2:]:
+                if len(r) < 11: continue
+                # 解析左半部
+                if r[1].strip():
+                    br = r[1].strip()
+                    buy = int(r[3].replace(',', '').strip() or 0)
+                    sell = int(r[4].replace(',', '').strip() or 0)
+                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
+                    branches[br]['buy'] += buy
+                    branches[br]['sell'] += sell
+                # 解析右半部
+                if len(r) > 7 and r[7].strip():
+                    br = r[7].strip()
+                    buy = int(r[9].replace(',', '').strip() or 0)
+                    sell = int(r[10].replace(',', '').strip() or 0)
+                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
+                    branches[br]['buy'] += buy
+                    branches[br]['sell'] += sell
+
+            summary = []
+            for br, data in branches.items():
+                summary.append({'br': br, 'buy': data['buy'], 'sell': data['sell'], 'net': data['buy'] - data['sell']})
+            
+            buyers = sorted([x for x in summary if x['net'] > 0], key=lambda x: x['net'], reverse=True)[:15]
+            sellers = sorted([x for x in summary if x['net'] < 0], key=lambda x: x['net'])[:15]
+            
+            print(f"  🎯 Sniper 命中！{symbol} 分點破解成功 (嘗試 {attempt+1} 次)")
+            return {
+                "date": trade_date,
+                "tot_buy": sum(x['buy'] for x in summary),
+                "tot_sell": sum(x['sell'] for x in summary),
+                "buyers": [{'bnm': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in buyers],
+                "sellers": [{'bnm': x['br'], 'net': abs(x['net']), 'buy': x['buy'], 'sel': x['sell']} for x in sellers]
+            }
+        except Exception as e:
+            time.sleep(1.5)
+            
+    # 如果嘗試 4 次都失敗，回傳 None 讓它跳去 FinMind 備援
+    return None
+
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    })
+
+    for attempt in range(max_retries):
+        try:
+            # 1. 取得首頁與隱藏的驗證金鑰
+            res = session.get("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", timeout=10)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            viewstate = soup.find('input', {'name': '__VIEWSTATE'})
+            eventval = soup.find('input', {'name': '__EVENTVALIDATION'})
+            if not viewstate or not eventval:
+                continue
+
+            # 2. 取得驗證碼圖片並用 AI 破解
+            img_res = session.get("https://bsr.twse.com.tw/bshtm/CaptchaImage.aspx", timeout=10)
+            captcha_text = ocr.classification(img_res.content)
+
+            # 3. 提交查詢表單
+            payload = {
+                '__EVENTTARGET': '',
+                '__EVENTARGUMENT': '',
+                '__VIEWSTATE': viewstate['value'],
+                '__EVENTVALIDATION': eventval['value'],
+                'RadioButton_Normal': 'RadioButton_Normal',
+                'txtStkNo': symbol,
+                'CaptchaControl1': captcha_text,
+                'btnOK': '查詢'
+            }
+            post_res = session.post("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", data=payload, timeout=10)
+
+            # 檢查是否破解失敗或查無資料
+            if "驗證碼錯誤" in post_res.text or captcha_text == "":
+                time.sleep(1)
+                continue
+            if "查無資料" in post_res.text:
+                print(f"  ⚠️ {symbol} 今日尚無分點資料或非上市股。")
+                return None
+
+            # 4. 破解成功，下載隱藏的 CSV 報表
+            csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsCSV.aspx", timeout=10)
+            if not csv_res.text.strip():
+                continue
+
+            # 5. 解析雙欄位 CSV (證交所獨特反人類格式)
+            reader = csv.reader(io.StringIO(csv_res.text))
+            rows = list(reader)
+            if len(rows) < 3: return None
+            
+            trade_date = rows[0][0].replace('年', '-').replace('月', '-').replace('日', '')
+            try:
+                # 民國轉西元
+                parts = trade_date.split('-')
+                trade_date = f"{int(parts[0])+1911}-{int(parts[1]):02d}-{int(parts[2]):02d}"
+            except: pass
+
+            branches = {}
+            for r in rows[2:]:
+                if len(r) < 11: continue
+                # 解析左欄
+                if r[1].strip():
+                    br = r[1].strip()
+                    buy = int(r[3].replace(',', '').strip() or 0)
+                    sell = int(r[4].replace(',', '').strip() or 0)
+                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
+                    branches[br]['buy'] += buy
+                    branches[br]['sell'] += sell
+                # 解析右欄
+                if len(r) > 7 and r[7].strip():
+                    br = r[7].strip()
+                    buy = int(r[9].replace(',', '').strip() or 0)
+                    sell = int(r[10].replace(',', '').strip() or 0)
+                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
+                    branches[br]['buy'] += buy
+                    branches[br]['sell'] += sell
+
+            # 整理出主力買賣超 Top 15
+            summary = []
+            for br, data in branches.items():
+                summary.append({
+                    'br': br, 'buy': data['buy'], 'sell': data['sell'], 'net': data['buy'] - data['sell']
+                })
+            
+            buyers = sorted([x for x in summary if x['net'] > 0], key=lambda x: x['net'], reverse=True)[:15]
+            sellers = sorted([x for x in summary if x['net'] < 0], key=lambda x: x['net'])[:15]
+            
+            print(f"  ✅ {symbol} 分點破解成功！(嘗試 {attempt+1} 次)")
+            return {
+                "date": trade_date,
+                "tot_buy": sum(x['buy'] for x in summary),
+                "tot_sell": sum(x['sell'] for x in summary),
+                "buyers": buyers,
+                "sellers": sellers
+            }
+
+        except Exception as e:
+            time.sleep(2)
+            
+    print(f"  ❌ {symbol} 驗證碼連續破解失敗，放棄。")
+    return None
+# ─── 證交所分點日報表 AI 狙擊手 ──────────────────────────────
+def _fetch_twse_bsr(symbol: str, max_retries=3) -> dict:
+    """使用 ddddocr 破解證交所驗證碼，免費抓取當日分點主力資料"""
+    try:
+        ocr = ddddocr.DdddOcr(show_ad=False)
+    except Exception as e:
+        print(f"  ⚠️ OCR 初始化失敗: {e}")
+        return None
+
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    })
+
+    for attempt in range(max_retries):
+        try:
+            res = session.get("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", timeout=10)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            viewstate = soup.find('input', {'name': '__VIEWSTATE'})
+            eventval = soup.find('input', {'name': '__EVENTVALIDATION'})
+            if not viewstate or not eventval:
+                continue
+
+            img_res = session.get("https://bsr.twse.com.tw/bshtm/CaptchaImage.aspx", timeout=10)
+            captcha_text = ocr.classification(img_res.content)
+
+            payload = {
+                '__EVENTTARGET': '', '__EVENTARGUMENT': '',
+                '__VIEWSTATE': viewstate['value'], '__EVENTVALIDATION': eventval['value'],
+                'RadioButton_Normal': 'RadioButton_Normal',
+                'txtStkNo': symbol, 'CaptchaControl1': captcha_text, 'btnOK': '查詢'
+            }
+            post_res = session.post("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", data=payload, timeout=10)
+
+            if "驗證碼錯誤" in post_res.text or captcha_text == "":
+                time.sleep(1)
+                continue
+            if "查無資料" in post_res.text:
+                return None # 上櫃股或今日無交易，交給備援處理
+
+            csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsCSV.aspx", timeout=10)
+            if not csv_res.text.strip():
+                continue
+
+            reader = csv.reader(io.StringIO(csv_res.text))
+            rows = list(reader)
+            if len(rows) < 3: return None
+            
+            trade_date = rows[0][0].replace('年', '-').replace('月', '-').replace('日', '')
+            try:
+                parts = trade_date.split('-')
+                trade_date = f"{int(parts[0])+1911}-{int(parts[1]):02d}-{int(parts[2]):02d}"
+            except: pass
+
+            branches = {}
+            for r in rows[2:]:
+                if len(r) < 11: continue
+                if r[1].strip():
+                    br = r[1].strip(); buy = int(r[3].replace(',', '').strip() or 0); sell = int(r[4].replace(',', '').strip() or 0)
+                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
+                    branches[br]['buy'] += buy; branches[br]['sell'] += sell
+                if len(r) > 7 and r[7].strip():
+                    br = r[7].strip(); buy = int(r[9].replace(',', '').strip() or 0); sell = int(r[10].replace(',', '').strip() or 0)
+                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
+                    branches[br]['buy'] += buy; branches[br]['sell'] += sell
+
+            summary = []
+            for br, data in branches.items():
+                summary.append({'br': br, 'buy': data['buy'], 'sell': data['sell'], 'net': data['buy'] - data['sell']})
+            
+            buyers = sorted([x for x in summary if x['net'] > 0], key=lambda x: x['net'], reverse=True)[:15]
+            sellers = sorted([x for x in summary if x['net'] < 0], key=lambda x: x['net'])[:15]
+            
+            print(f"  🎯 Sniper 命中！{symbol} 分點破解成功 (嘗試 {attempt+1} 次)")
+            return {
+                "date": trade_date,
+                "tot_buy": sum(x['buy'] for x in summary),
+                "tot_sell": sum(x['sell'] for x in summary),
+                "buyers": [{'bnm': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in buyers],
+                "sellers": [{'bnm': x['br'], 'net': abs(x['net']), 'buy': x['buy'], 'sel': x['sell']} for x in sellers]
+            }
+        except Exception:
+            time.sleep(1)
+    return None
+
+# ── 分點籌碼（混合雙擎：TWSE Sniper + TPEX FinMind）──────────────────────
 def fetch_broker_chips():
     """
     分點籌碼採礦：由於台灣官方無免費分點 API，
@@ -1169,74 +1491,69 @@ def fetch_broker_chips():
                 existing_obj = {'chips': raw} if isinstance(raw, list) else raw
             except Exception: pass
 
-        # ── 分點籌碼（抓近 10 交易日窗口，算多週期；初始化移到 try 前）──
+        # ── 混合雙擎：先用 Sniper 攻堅 TWSE，失敗再用 FinMind 備援 (TPEX) ──
         buyers, sellers, brokers_list = [], [], []
         periods: dict = {}
         latest_chip_date = None
         try:
-            # [Token 輪動] 改用 fm_request，自動帶 Token 並在 429 時切換
-            # 抓 14 天（≈10 交易日）窗口，一次請求成本與單日相同，供多週期聚合
-            chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
-            url_base = (f'https://api.finmindtrade.com/api/v4/data'
-                        f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
-                        f'&data_id={sym}&start_date={chip_start}')
-            j = fm_request(url_base, timeout=15)
-            if j is None: j = {}
-            if j.get('status') == 200 and j.get('data'):
-                # ── 依日期分組，券商中文名稱絕不丟棄 ──
-                by_date: dict = {}   # {date: {bid: {'broker_id','broker_name','net','buy','sel'}}}
-                for r in j['data']:
-                    d   = r.get('date') or today_str
-                    bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
-                    raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
-                    # 優先順序：戰術標記 > FinMind 回傳中文名 > TaiwanBrokerInfo 對照 > 數字代碼
-                    if bid in TACTICAL_TAGS:
-                        bnm = TACTICAL_TAGS[bid]
-                    elif raw_nm and not raw_nm.isdigit():
-                        bnm = raw_nm
-                    elif bid in broker_info_map:
-                        bnm = broker_info_map[bid]
-                    else:
-                        bnm = bid  # fallback：前端 _resolveBrokerName 仍可查 brokerNames
-                    buy, sel = int(r.get('buy', 0)), int(r.get('sell', 0))
-                    slot = by_date.setdefault(d, {})
-                    e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0})
-                    e['buy'] += buy; e['sel'] += sel; e['net'] += (buy - sel)
-                    if bnm and not str(bnm).isdigit():
-                        e['broker_name'] = bnm
+            # 1. 嘗試 AI 狙擊手 (免費、免 Token，但只支援上市股)
+            sniper_data = _fetch_twse_bsr(sym)
+            
+            if sniper_data:
+                latest_chip_date = sniper_data['date']
+                buyers = sniper_data['buyers']
+                sellers = sniper_data['sellers']
+                periods = existing_obj.get('periods') or {} # 保留舊的多週期快取
+                time.sleep(random.uniform(2.0, 4.0)) # 隱蔽防 Ban
+            else:
+                # 2. 狙擊失敗 (上櫃股或無交易)，啟動 FinMind 備援
+                chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
+                url_base = (f'https://api.finmindtrade.com/api/v4/data'
+                            f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
+                            f'&data_id={sym}&start_date={chip_start}')
+                j = fm_request(url_base, timeout=15)
+                if j is None: j = {}
+                if j.get('status') == 200 and j.get('data'):
+                    by_date: dict = {}
+                    for r in j['data']:
+                        d   = r.get('date') or today_str
+                        bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
+                        raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
+                        if bid in TACTICAL_TAGS: bnm = TACTICAL_TAGS[bid]
+                        elif raw_nm and not raw_nm.isdigit(): bnm = raw_nm
+                        elif bid in broker_info_map: bnm = broker_info_map[bid]
+                        else: bnm = bid
+                        buy, sel = int(r.get('buy', 0)), int(r.get('sell', 0))
+                        slot = by_date.setdefault(d, {})
+                        e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0})
+                        e['buy'] += buy; e['sel'] += sel; e['net'] += (buy - sel)
+                        if bnm and not str(bnm).isdigit(): e['broker_name'] = bnm
 
-                if by_date:
-                    # 累積券商名稱字典（中文名稱）
-                    for d_data in by_date.values():
-                        for bid, e in d_data.items():
-                            if bid and e['broker_name'] and not str(e['broker_name']).isdigit():
-                                broker_name_map[bid] = e['broker_name']
+                    if by_date:
+                        for d_data in by_date.values():
+                            for bid, e in d_data.items():
+                                if bid and e['broker_name'] and not str(e['broker_name']).isdigit():
+                                    broker_name_map[bid] = e['broker_name']
 
-                    # ── 多週期聚合（1/3/5/10 日，各取淨買/淨賣 Top15）──
-                    def _agg_period(n: int) -> dict:
-                        wdates = sorted(by_date.keys())[-n:]
-                        agg: dict = {}
-                        for wd in wdates:
-                            for b, e in by_date[wd].items():
-                                a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0})
-                                a['net'] += e['net']
-                                if e['broker_name'] and not str(e['broker_name']).isdigit():
-                                    a['broker_name'] = e['broker_name']
-                        vals = list(agg.values())
-                        buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
-                        sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
-                        return {'buy': buy_top, 'sell': sell_top}
-                    periods = {f'{n}d': _agg_period(n) for n in (1, 3, 5, 10)}
-
-                    # ── 最新交易日 → 舊格式 buyers/sellers（向後相容 generate_top_picks）──
-                    latest_chip_date = sorted(by_date.keys())[-1]
-                    brokers_list = [
-                        {'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']}
-                        for b, e in by_date[latest_chip_date].items()
-                    ]
-                    buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
-                    sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
-            time.sleep(3)
+                        def _agg_period(n: int) -> dict:
+                            wdates = sorted(by_date.keys())[-n:]
+                            agg: dict = {}
+                            for wd in wdates:
+                                for b, e in by_date[wd].items():
+                                    a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0})
+                                    a['net'] += e['net']
+                                    if e['broker_name'] and not str(e['broker_name']).isdigit():
+                                        a['broker_name'] = e['broker_name']
+                            vals = list(agg.values())
+                            buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
+                            sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
+                            return {'buy': buy_top, 'sell': sell_top}
+                        periods = {f'{n}d': _agg_period(n) for n in (1, 3, 5, 10)}
+                        latest_chip_date = sorted(by_date.keys())[-1]
+                        brokers_list = [{'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']} for b, e in by_date[latest_chip_date].items()]
+                        buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
+                        sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
+                time.sleep(3)
         except Exception as e:
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
             time.sleep(5)
