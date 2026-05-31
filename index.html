@@ -509,27 +509,6 @@
             </div>
 
 <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
-                <!-- ✨ 一鍵技術面 AI 診斷 (已移至 K線區塊) -->
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 shadow-sm">
-                    <div class="flex overflow-x-auto gap-2" style="scrollbar-width:none">
-                        <button onclick="app.triggerTechAI('trend');app.vibrate(30);"
-                                class="flex-shrink-0 flex-1 px-2 py-1.5 bg-blue-900/30 text-blue-400 rounded text-[11px] whitespace-nowrap border border-blue-800/50 hover:bg-blue-800/50 transition-colors font-bold text-center">
-                            📈 多頭起漲
-                        </button>
-                        <button onclick="app.triggerTechAI('pullback');app.vibrate(30);"
-                                class="flex-shrink-0 flex-1 px-2 py-1.5 bg-purple-900/30 text-purple-400 rounded text-[11px] whitespace-nowrap border border-purple-800/50 hover:bg-purple-800/50 transition-colors font-bold text-center">
-                            📉 跌深回測
-                        </button>
-                        <button onclick="app.triggerTechAI('breakout');app.vibrate(30);"
-                                class="flex-shrink-0 flex-1 px-2 py-1.5 bg-orange-900/30 text-orange-400 rounded text-[11px] whitespace-nowrap border border-orange-800/50 hover:bg-orange-800/50 transition-colors font-bold text-center">
-                            🔥 爆量突破
-                        </button>
-                        <button onclick="app.triggerTechAI('defense');app.vibrate(30);"
-                                class="flex-shrink-0 flex-1 px-2 py-1.5 bg-red-900/30 text-red-400 rounded text-[11px] whitespace-nowrap border border-red-800/50 hover:bg-red-800/50 transition-colors font-bold text-center">
-                            🚨 破線防守
-                        </button>
-                    </div>
-                </div>
 
                 <div class="bg-[#0d1117] border border-amber-700/40 rounded-lg px-3 py-2.5 flex flex-col gap-2">
                     <button onclick="app.runKlineAudit(app.currentSymbolId); app.vibrate(30);" id="klineAuditBtn" class="w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
@@ -1375,12 +1354,13 @@ const app = {
     },
 
     async refreshAllMarketData() {
+        // 【修復】強制清除舊版快取，讓外資期貨的多空口數真正抓進來
+        localStorage.removeItem('proTerminalMacroCache_v3');
         await Promise.all([
             this.fetchMacroData(),
             this.refreshUSMarketBar()
         ]);
     },
-
     _checkMarketAlerts(usData) {
         const banner = document.getElementById('marketAlertBanner');
         if (!banner) return;
@@ -1936,8 +1916,9 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         // 多方/空方未平倉口數拆解顯示
         const fiLongEl = document.getElementById('mktFI_long');
         const fiShortEl = document.getElementById('mktFI_short');
-        if (fiLongEl) fiLongEl.textContent = this.fiFuturesLong ? this.fiFuturesLong.toLocaleString() : '--';
-        if (fiShortEl) fiShortEl.textContent = this.fiFuturesShort ? this.fiFuturesShort.toLocaleString() : '--';
+        // 【修復】正確顯示多空未平倉口數
+        if (fiLongEl) fiLongEl.textContent = this.fiFuturesLong != null ? this.fiFuturesLong.toLocaleString() : '--';
+        if (fiShortEl) fiShortEl.textContent = this.fiFuturesShort != null ? this.fiFuturesShort.toLocaleString() : '--';
 
         const emergencyBanner = document.getElementById('emergencyBanner');
         if (this.emergencyMode) { 
@@ -2418,7 +2399,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             }
 
             // ── Type B: Institutional estimated cost ─────────────────────────
-            const instCosts = { '外資及陸資': { buyAmt: 0, buyVol: 0 }, '投信': { buyAmt: 0, buyVol: 0 }, '自營商': { buyAmt: 0, buyVol: 0 } };
+            const instCosts = { '外資及陸資': { buyAmt: 0, buyVol: 0 }, '投信': { buyAmt: 0, buyVol: 0 }, '自營': { buyAmt: 0, buyVol: 0 } };
             if (instRes?.data?.length > 0) {
                 instRes.data.forEach(row => {
                     const net = (row.buy || 0) - (row.sell || 0);
@@ -2433,8 +2414,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                         instCosts['投信'].buyAmt += net * price;
                         instCosts['投信'].buyVol += net;
                     } else if (name.includes('自營')) {
-                        instCosts['自營商'].buyAmt += net * price;
-                        instCosts['自營商'].buyVol += net;
+                        instCosts['自營'].buyAmt += net * price;
+                        instCosts['自營'].buyVol += net;
                     }
                 });
             }
@@ -2450,7 +2431,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                .slice(0, 5);
 
             // ── Compute consecutive buy streak per institution ────────────────
-            const instStreak = { '外資及陸資': { days: 0, total: 0, direction: 0 }, '投信': { days: 0, total: 0, direction: 0 }, '自營商': { days: 0, total: 0, direction: 0 } };
+            const instStreak = { '外資及陸資': { days: 0, total: 0, direction: 0 }, '投信': { days: 0, total: 0, direction: 0 }, '自營': { days: 0, total: 0, direction: 0 } };
             if (instRes?.data?.length > 0) {
                 const byName = {};
                 instRes.data.forEach(row => {
@@ -2489,7 +2470,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         }
 
         // Render institutional table
-        const instNames = { '外資及陸資': '外資', '投信': '投信', '自營商': '自營' };
+        const instNames = { '外資及陸資': '外資', '投信': '投信', '自營': '自營' };
         instEl.innerHTML = Object.entries(instCosts).map(([key, val]) => {
             const cost = val.buyVol > 0 ? (val.buyAmt / val.buyVol) : 0;
             if (cost === 0) return `<div class="flex justify-between items-center px-2 py-0.5 rounded text-[10px]"><span class="text-gray-600">${instNames[key]}</span><span class="text-gray-600 font-mono">無淨買超</span></div>`;
@@ -2503,7 +2484,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         }).join('');
 
         // Render streak table
-        const streakNames = { '外資及陸資': '外資', '投信': '投信', '自營商': '自營' };
+        const streakNames = { '外資及陸資': '外資', '投信': '投信', '自營': '自營' };
         brokerEl.innerHTML = Object.entries(streakNames).map(([key, label]) => {
             const s = instStreak[key] || { days: 0, total: 0, direction: 0 };
             if (s.days === 0) return `<div class="flex justify-between items-center px-2 py-0.5 rounded text-[10px]"><span class="text-gray-600">${label}</span><span class="text-gray-600 font-mono">無連續方向</span></div>`;
@@ -2688,9 +2669,9 @@ const marginByDate = {};
             xAxis: { type: 'category', data: instData.map(d => d.date.slice(5)), axisLabel: { ...labelStyle, rotate: 0 }, axisLine: { lineStyle: { color: '#374151' } } },
             yAxis: { type: 'value', axisLabel: { ...labelStyle, formatter: v => v + 'K' }, splitLine: { lineStyle: { color: '#1f2937' } } },
             series: [
-                { name: '外資', type: 'bar', stack: 'inst', data: instData.map(d => d.foreign), itemStyle: { color: d => d.value >= 0 ? '#f87171' : '#4ade80' }, barMaxWidth: 12 },
-                { name: '投信', type: 'bar', stack: 'inst', data: instData.map(d => d.trust),   itemStyle: { color: d => d.value >= 0 ? '#fb923c' : '#34d399' }, barMaxWidth: 12 },
-                { name: '自營', type: 'bar', stack: 'inst', data: instData.map(d => d.dealer),  itemStyle: { color: d => d.value >= 0 ? '#fbbf24' : '#a3e635' }, barMaxWidth: 12 },
+                                { name: '外資', type: 'bar', data: fData, itemStyle: { color: '#3b82f6', borderRadius: [2, 2, 0, 0] } },
+                                { name: '投信', type: 'bar', data: tData, itemStyle: { color: '#ef4444', borderRadius: [2, 2, 0, 0] } },
+                                { name: '自營', type: 'bar', data: dData, itemStyle: { color: '#10b981', borderRadius: [2, 2, 0, 0] } }
             ]
         });
 
@@ -2704,9 +2685,9 @@ const marginByDate = {};
             xAxis: { type: 'category', data: marginData.map(d => d.date.slice(5)), axisLabel: { ...labelStyle }, axisLine: { lineStyle: { color: '#374151' } } },
             yAxis: { type: 'value', axisLabel: { ...labelStyle, formatter: v => v + 'K' }, splitLine: { lineStyle: { color: '#1f2937' } } },
             series: [
-                { name: '融資', type: 'line', data: marginData.map(d => d.margin), smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#f87171', width: 1.5 }, itemStyle: { color: '#f87171' } },
-                { name: '融券', type: 'line', data: marginData.map(d => d.short),  smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#60a5fa', width: 1.5 }, itemStyle: { color: '#60a5fa' } },
-            ]
+                // 【修復】對齊 miner.py 輸出的正確欄位名稱，加入 margin_balance 與 short_balance 防呆
+                { name: '融資', type: 'line', data: marginData.map(d => d.margin_balance ?? d.margin_bal ?? d.margin ?? 0), smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#f87171', width: 1.5 }, itemStyle: { color: '#f87171' } },
+                { name: '融券', type: 'line', data: marginData.map(d => d.short_balance ?? d.short_bal ?? d.short ?? 0),  smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#60a5fa', width: 1.5 }, itemStyle: { color: '#60a5fa' } },
         });
     },
 
@@ -3758,31 +3739,36 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
             }
         }
 
-        // 【修復 3】每月營收趨勢（最近3月）全新網格排版
-        const rvSlice = revData.slice(-3);
-        const rvTrendEl = document.getElementById('xrayRevTrend');
-        if (rvTrendEl) {
-            if (rvSlice.length > 0) {
-                rvTrendEl.style.whiteSpace = 'normal';
-                rvTrendEl.innerHTML = '<div class="flex flex-col gap-1.5 mt-1">' + rvSlice.map(r => {
-                    const ym = `${r.revenue_year}/${String(r.revenue_month).padStart(2,'0')}`;
-                    let yoyVal = r.revenue_year_growth;
-                    if (yoyVal == null) {
-                        const ly = revData.find(x => x.revenue_month === r.revenue_month && x.revenue_year === (r.revenue_year - 1));
-                        if (ly && ly.revenue > 0) yoyVal = ((r.revenue - ly.revenue) / ly.revenue) * 100;
+                    // 【修復 3】每月營收趨勢（最近12月）全新橫向滑動排版
+                    const rvSlice = revData.slice(-12);
+                    const rvTrendEl = document.getElementById('xrayRevTrend');
+                    if (rvTrendEl) {
+                        // 更新標題為 12 個月
+                        const titleEl = rvTrendEl.previousElementSibling;
+                        if (titleEl) titleEl.textContent = '📅 月營收（最近12月）';
+                        
+                        if (rvSlice.length > 0) {
+                            rvTrendEl.style.whiteSpace = 'normal';
+                            rvTrendEl.innerHTML = '<div class="flex overflow-x-auto gap-2 pb-2 snap-x scrollbar-hide mt-1">' + rvSlice.map(r => {
+                                const ym = `${String(r.revenue_month).padStart(2,'0')}月`;
+                                let yoyVal = r.revenue_year_growth;
+                                if (yoyVal == null) {
+                                    const ly = revData.find(x => x.revenue_month === r.revenue_month && x.revenue_year === (r.revenue_year - 1));
+                                    if (ly && ly.revenue > 0) yoyVal = ((r.revenue - ly.revenue) / ly.revenue) * 100;
+                                }
+                                const isPos = yoyVal > 0;
+                                return `
+                                <div class="snap-start flex-shrink-0 bg-[#1c2128] border border-[#30363d] rounded p-2 flex flex-col items-center justify-between min-w-[75px]">
+                                    <div class="text-[10px] text-gray-400 mb-1">${ym}</div>
+                                    <div class="font-mono text-xs font-bold text-gray-200">${(r.revenue/1e8).toFixed(1)}億</div>
+                                    <div class="${isPos ? 'text-red-400' : 'text-green-400'} text-[10px] font-bold mt-0.5">${yoyVal != null ? (isPos?'+':'')+yoyVal.toFixed(1)+'%' : '--'}</div>
+                                </div>`;
+                            }).join('') + '</div>';
+                        } else {
+                            rvTrendEl.textContent = '--';
+                            rvTrendEl.className = rvTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
+                        }
                     }
-                    let yoyHtml = '<span class="text-gray-500 font-bold">--</span>';
-                    if (yoyVal != null) {
-                        const color = yoyVal > 0 ? 'text-red-400' : yoyVal < 0 ? 'text-green-400' : 'text-gray-400';
-                        yoyHtml = `<span class="${color} font-bold">${yoyVal > 0 ? '+' : ''}${yoyVal.toFixed(1)}%</span>`;
-                    }
-                    return `<div class="flex justify-between items-center bg-[#1c2128] px-2 py-1.5 rounded border border-[#30363d]"><span class="text-gray-400 font-bold">${ym}</span><span class="text-gray-200 font-bold tracking-wide">${(r.revenue/1e8).toFixed(2)} 億</span><span class="w-16 text-right">${yoyHtml}</span></div>`;
-                }).join('') + '</div>';
-            } else {
-                rvTrendEl.textContent = '--';
-                rvTrendEl.className = rvTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
-            }
-        }
 
             // 標示資料日期
             const dateEl2 = document.getElementById('xrayDataDate');
@@ -5692,49 +5678,38 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
         const name = this.getStockName(sym);
         const ctx  = this.currentStrategyContext || {};
 
-        const prompt = `你是一位精通台股量化投資與經典技術分析的「朱家泓流派 K線技術分析司令」。請嚴格運用朱家泓四大核心技術（趨勢、均線、K線、成交量）SOP，結合郭榮哲「高檔拉回折數法則」，對下方已預算好的技術數據進行審計與戰術指引。
+// 【新增：自動判定型態，加入小白理解】
+        let klineStatus = '盤整中';
+        if (pC > ma20 && ma5 > ma10) klineStatus = '📈 多頭起漲';
+        else if (pC > ma60 && pC < ma20) klineStatus = '📉 跌深回測';
+        else if (pC > (this.indicators.upperBB?.[this.activeData.length - 1] || pC)) klineStatus = '🔥 爆量突破';
+        else if (pC < ma20) klineStatus = '🚨 破線防守';
 
-禁止重複述說輸入數字，直接給出解讀與決策。嚴禁模稜兩可。
+        const prompt = `你是「台股技術流宗師」，精通朱家泓的【技術位階】與郭榮哲的【折數過濾】。
+請對下方已算好的技術數據進行審計與戰術指引。
+
+禁止重複念稿數字，嚴禁使用艱澀專有名詞。必須用「國中生與股市新手都能秒懂的大白話」來解釋。
 
 【已預算技術數據 — ${name}（${sym}）】
+- 最新收盤價：${pC}
+- 系統 K 線型態自動判定：${klineStatus}
+- MA5: ${ma5?.toFixed(1)||'—'}, MA10: ${ma10?.toFixed(1)||'—'}, MA20(月線): ${ma20?.toFixed(1)||'—'}, MA60(季線): ${ma60?.toFixed(1)||'—'}
+- 趨勢結論：${trendJudge}
+- 當前折數：${foldPct} 折
+- 綜合判定：${sigLabel}
 
-▌現價與日 K 數據
-  當日：開 ${pO} / 高 ${pH} / 低 ${pL} / 收 ${pC}（${isRedK ? '紅K' : '黑K'}）
-  昨收：${pC1}，昨高：${pH1}
-  今日漲幅：${chgPct.toFixed(2)}%
+請嚴格按照以下三個段落輸出，每段開頭保留【】標題，語氣犀利接地氣：
 
-▌均線系統（朱老師第二核心）
-  5MA：${ma5?.toFixed(1)||'—'}  10MA：${ma10?.toFixed(1)||'—'}  20MA（月線）：${ma20?.toFixed(1)||'—'}（${ma20Dir}）  60MA（季線）：${ma60?.toFixed(1)||'—'}（${ma60Dir}）
-  排列結果：${maArrangement}
+【🔍 朱家泓技術審計 × ${klineStatus}】
+用白話文解釋目前的型態（${klineStatus}）與趨勢（${trendJudge}）代表什麼意思？現在均線是支撐還是壓力？請直接告訴小白現在買安不安全。
 
-▌趨勢判斷（朱老師第一核心：天大地大趨勢最大）
-  ${peaksDesc}
-  ${troughsDesc}
-  趨勢結論：${trendJudge}
+【📐 郭榮哲折數過濾 (白話大拍賣解析)】
+絕對不要講深奧術語！請直接告訴小白：「這檔股票從高點跌下來，等於打了 ${foldPct} 折。現在這個價位算不算大拍賣撿便宜？還是依然在半山腰接刀？」請明確評估這折數安不安全。
 
-▌郭榮哲高檔拉回折數計算
-  近60日波段最高點：${high60.toFixed(1)}
-  當前折數：${foldPct} 折（${(foldRatio*100).toFixed(1)}%）
-  落點判定：${foldZone}
+【⚔️ 總監專屬戰術室】
+給出具體的操作紀律指引：當前是否適合進場？短線防守點（5MA = ${ma5?.toFixed(1)||'—'}）、波段防守點（月線 = ${ma20?.toFixed(1)||'—'}）若持有應設在哪裡？若空手，說明等待什麼條件。
 
-▌三盞明燈發動信號檢核
-  🔵 信號①（紅K + 漲幅>5%）：${sig1 ? `✅ 是（今漲 ${chgPct.toFixed(2)}%，${isRedK?'紅K':'非紅K'}）` : `❌ 否（漲幅 ${chgPct.toFixed(2)}%，${isRedK?'紅K':'黑K'}）`}
-  🔵 信號②（量增>20%）：${sig2 ? `✅ 是（量增 ${volChg.toFixed(1)}%）` : `❌ 否（量${volChg>=0?'+':''}${volChg.toFixed(1)}%）`}
-  🔵 信號③（站上5MA + 過昨高）：${sig3 ? '✅ 是' : `❌ 否（5MA：${ma5?.toFixed(1)||'—'}，昨高：${pH1}）`}
-  綜合判定：${sigLabel}
-
-${ctx.def_val ? `▌系統防守底線：${ctx.def_val}（跌破即執行停損）` : ''}
-
-請嚴格按照以下三個段落輸出，每段開頭保留【】標題，犀利不廢話：
-
-【📊 技術指標全面審計】
-逐項解讀趨勢、均線、折數的含義。說清楚現在是多頭、空頭還是盤整。均線是否有效支撐。折數落在哪個安全區。
-
-【🎯 發動訊號檢核結論】
-解讀三盞明燈的結果。若未全亮：明確說「現在不是進場時機，等待哪個條件到位」。若全亮：說「發動條件確認，但仍需確認哪個關鍵位置」。用朱老師的話：「那根球棒出來了嗎？」
-
-【⚔️ 戰術總裁決策指示】
-根據上述，給出具體的操作紀律指引：當前是否適合進場？短線防守點（5MA = ${ma5?.toFixed(1)||'—'}）、波段防守點（月線 = ${ma20?.toFixed(1)||'—'}）、若持有應設在哪裡。若空手，說明等待哪根K線確認才進場。語氣嚴格、像老手訓練新手。`;
+最後獨立一行輸出最終判定：🟢適合建倉 或 🟡觀望等待 或 🔴危險迴避。`;
 
         try {
             let text = await this._callAI({ prompt, max_tokens: 800, temperature: 0.2 });
@@ -6097,254 +6072,144 @@ VIX=${vix} | S&P500=${spxChg} | 費半SOX=${soxChg} | TSMC ADR=${tsmChg} | NVDA=
 
     async runUnifiedGroqAnalysis() {
         const box = document.getElementById('geminiResultBox');
-        if (!this.activeData || this.activeData.length === 0) { alert("⚠️ 請先確認股票資料已完整載入！"); return; }
+        if (!this.activeData || this.activeData.length === 0) {
+            alert("⚠️ 請先確認股票資料已完整載入！");
+            return;
+        }
 
         const hasBackend = !!this._apiBase;
         const hasGroqKey = !!(this.settings.groqKey || '').trim();
         if (!hasBackend && !hasGroqKey) {
             box.classList.remove('hidden');
-            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 戰情設定中心」填入 <b>Groq API Key</b>（純手機模式）<br>或填入「本地 API 伺服器」URL（有主機時）。<br>Groq Key 免費申請：console.groq.com</div>';
+            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 戰情設定中心」填入 <b>Groq API Key</b>（純手機模式）。<br>免費申請：console.groq.com</div>';
             this.openSettings();
             return;
         }
 
         box.classList.remove('hidden');
-        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ 首席 AI 五維分析啟動中...<br><span class="text-[10px] text-gray-500">同步最新資料中（全球觀 / 基本面 / 庫存）...</span></div>';
+        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ 首席 AI 五維分析啟動中...<br><span class="text-[10px] text-gray-500">正在萃取最新K線與財報數據...</span></div>';
 
-        // 同步刷新最新資料（macro_cache + 基本面），避免使用舊快取
-        const sym_prefetch = this.currentSymbolId;
+        // 同步刷新最新資料（避免讀到舊快取）
+        const sym = this.currentSymbolId;
         await Promise.allSettled([
             this.fetchMacroData().catch(() => {}),
-            this._autoLoadFundamentals(sym_prefetch).catch(() => {}),
+            this._autoLoadFundamentals(sym).catch(() => {}),
         ]);
 
-        box.innerHTML = '<div class="text-center text-indigo-400 animate-pulse font-bold py-4 font-mono text-sm">⚡ 首席 AI 五維分析啟動中...<br><span class="text-[10px] text-gray-500">整合技術 / 籌碼 / 全球觀 / 基本面 / 庫存...</span></div>';
-
-        // ══════════════════════════════════════════════════════════════════
-        // 一、蒐集所有可用資料（有就用，無就略過不塞進 prompt）
-        // ══════════════════════════════════════════════════════════════════
-        const sym   = this.currentSymbolId;
-        const name  = this.getStockName(sym);
-        const data  = this.rawDailyData || this.activeData;
-        const n     = data.length;
-        const last  = data[n - 1];
-        const lastC = last.close;
-        const ctx   = this.currentStrategyContext || {};
-
-        // ── 1. 技術面（永遠有資料）────────────────────────────────────
-        const calcMA = (p) => n < p ? null : data.slice(n-p, n).reduce((s,d) => s+d.close, 0) / p;
-        const ma5   = calcMA(5),  ma10  = calcMA(10),  ma20  = calcMA(20);
-        const ma60  = calcMA(60), ma120 = calcMA(120), ma240 = calcMA(240);
-
-        const maFmt = (label, val) => {
-            if (!val) return null;
-            const diff = (lastC - val) / val * 100;
-            return `  ${label}：${val.toFixed(1)}（現價${diff >= 0 ? '高於' : '低於'} ${Math.abs(diff).toFixed(1)}%）`;
-        };
-        const maLines = [
-            maFmt('5MA（週線）  ', ma5),
-            maFmt('20MA（月線） ', ma20),
-            maFmt('60MA（季線） ', ma60),
-            maFmt('120MA（半年）', ma120),
-            maFmt('240MA（年線）', ma240),
-        ].filter(Boolean).join('\n');
-
-        let maOrder = '均線糾結';
-        if (ma5 && ma20 && ma60) {
-            if (ma5 > ma20 && ma20 > ma60)        maOrder = '✅ 多頭排列（5>20>60）';
-            else if (ma5 < ma20 && ma20 < ma60)   maOrder = '❌ 空頭排列（5<20<60）';
-            else if (lastC > ma20 && lastC > ma60) maOrder = '🔄 轉折初期（站回長均線）';
-        }
-        if (ma5 && ma10 && ma20) {
-            const pm5  = n >= 6  ? data.slice(n-6,  n-1).reduce((s,d)=>s+d.close,0)/5  : ma5;
-            const pm20 = n >= 21 ? data.slice(n-21, n-1).reduce((s,d)=>s+d.close,0)/20 : ma20;
-            if (ma5  > pm5)  maOrder += '，5MA上揚';
-            if (ma20 < pm20) maOrder += '，月線下彎⚠️';
-        }
-
-        const vol5avg    = n >= 5 ? data.slice(-5).reduce((s,d)=>s+d.volume,0)/5 : null;
-        const volRatio   = vol5avg ? (last.volume / vol5avg).toFixed(1) : null;
-        const volStr     = volRatio ? `今量 ${(last.volume/1e6).toFixed(1)}M，為5日均量 ${volRatio} 倍` : '';
-
-        const recentPeak   = this.peaks?.length   ? this.peaks[this.peaks.length-1].val   : null;
-        const recentTrough = this.troughs?.length ? this.troughs[this.troughs.length-1].val : null;
-        const keyLevels = [
-            recentPeak   ? `  近期頭高（壓力）：${recentPeak.toFixed(1)}`   : null,
-            recentTrough ? `  近期底低（支撐）：${recentTrough.toFixed(1)}` : null,
-            ctx.def_val  ? `  系統防守底線：${ctx.def_val}`                 : null,
-            ctx.t1_val && typeof ctx.t1_val === 'number' ? `  目標價 T1：${ctx.t1_val}` : null,
-        ].filter(Boolean).join('\n');
-
-        const seasonDesc = { '夏':'主升段，強勢上攻', '春':'打底期，謹慎建倉', '秋':'高檔整理，準備停利', '冬':'空頭期，現金為王' };
-        const twiiLabel  = { 'bull':'大盤多頭', 'neutral':'大盤中性', 'bear':'大盤空頭' };
-        const warningFlags = [
-            ctx.isIslandReversal ? '⚠️ 偵測到島型反轉型態' : null,
-            ctx.isBigBlackK      ? '⚠️ 最新為大黑K，注意賣壓'  : null,
-        ].filter(Boolean).join('  ');
-
-        // ── 2. 籌碼面（有才包含）────────────────────────────────────
-        const recentD  = data.slice(-5);
-        const hasInst  = recentD.some(d => d.foreign_net !== undefined || d.foreign_inv !== undefined);
-        const instLines = hasInst
-            ? recentD.filter(d => d.foreign_net !== undefined || d.foreign_inv !== undefined)
-                     .map(d => {
-                         const f  = Math.round(((d.foreign_net ?? d.foreign_inv ?? 0))/1000);
-                         const t  = Math.round(((d.trust_net   ?? d.invest_trust ?? 0))/1000);
-                         const de = Math.round(((d.dealer_net  ?? d.dealer_inv   ?? 0))/1000);
-                         return `  ${d.date}: 外資${f>=0?'+':''}${f}K 投信${t>=0?'+':''}${t}K 自營${de>=0?'+':''}${de}K`;
-                     }).join('\n')
-            : null;
-
-        const bs = this._brokerChipSummary;
-        let brokerLine = null;
-        if (bs && bs.sym === sym) {
-            if (bs.periods) {
-                // 新版多週期：取 5 日摘要前 3 名買/賣
-                const pd = bs.periods['5d'] || bs.periods['3d'] || {};
-                const b3 = (pd.buy  || []).slice(0,3).map(x => x.broker_name || x.broker_id).join('、');
-                const s3 = (pd.sell || []).slice(0,3).map(x => x.broker_name || x.broker_id).join('、');
-                brokerLine = `  主力分點（近5日）：主要買超 ${b3 || '無'}；主要賣超 ${s3 || '無'}`;
-            } else if (bs.topBuyers) {
-                brokerLine = `  主力分點：${bs.verdict}，買超合計 ${bs.totalBuyK}股 / 賣超合計 ${bs.totalSelK}股（近${bs.days}日）` +
-                    (bs.topBuyers?.length ? `\n  主要買超券商：${bs.buyLabels?.slice(0,3).join('、') || ''}` : '');
-            }
-        }
-
-        const lastMargin = recentD.filter(d => d.margin_balance).slice(-1)[0];
-        const marginLine = lastMargin
-            ? `  融資餘額 ${Math.round(lastMargin.margin_balance/1000)}K 張，融券 ${Math.round(lastMargin.short_balance/1000)}K 張`
-            : null;
-
-        const hasChip = !!(instLines || brokerLine || marginLine);
-
-        // ── 3. 全球觀（有才包含）────────────────────────────────────
-        const m = this.usMacroCache;
-        const macroLine = m
-            ? `  美股：S&P500 ${m.sp500?.close?.toLocaleString()||'--'}（${(m.sp500?.chg_pct||0)>=0?'+':''}${(m.sp500?.chg_pct||0).toFixed(2)}%）` +
-              `  NASDAQ ${m.nasdaq?.close?.toLocaleString()||'--'}（${(m.nasdaq?.chg_pct||0)>=0?'+':''}${(m.nasdaq?.chg_pct||0).toFixed(2)}%）` +
-              `  VIX ${m.vix?.close?.toFixed(1)||'--'}`
-            : null;
-
-        // fiShortQty 是正確變數（非 futuresCacheData，那是不存在的舊 Bug）
-        const futLine = (this.fiShortQty !== null && this.fiShortQty !== undefined)
-            ? `  外資台指期未平倉淨口數：${this.fiShortQty >= 0 ? '+' : ''}${this.fiShortQty.toLocaleString()} 口（${this.twiiState === 'bear' ? '空方主導⚠️' : this.twiiState === 'bull' ? '多方無虞' : '中性觀望'}）`
-            : null;
-
-        const hasGlobal = !!(macroLine || futLine);
-
-        // ── 4. 基本面（有才包含）────────────────────────────────────
-        const yoyLine       = this.latestYoyCache       ? `  營收 YoY：${this.latestYoyCache}` : null;
-        const financialHint = this.latestFinancialAICache
-            ? `  財務分析摘要：${this.latestFinancialAICache.substring(0, 280)}`
-            : null;
-        const hasFundamental = !!(yoyLine || financialHint);
-
-        // ── 5. 補充資訊（動態加入）──────────────────────────────────
-        const inInv   = this.inventory.find(i => i.symbol === sym);
-        const costVal = document.getElementById('costInput')?.value?.trim();
-        let invLine   = null;
-        if (inInv || (costVal && !isNaN(parseFloat(costVal)))) {
-            const cost = inInv ? inInv.cost : parseFloat(costVal);
-            const pnlNum = parseFloat(((lastC - cost) / cost * 100).toFixed(2));
-            const pnlStr = (pnlNum >= 0 ? '+' : '') + pnlNum + '%';
-            let posState = '';
-            if (pnlNum > 5)        posState = '【獲利中＋5%以上，考慮停利／追蹤停損】';
-            else if (pnlNum > 0)   posState = '【小幅獲利，防守優先，勿輕易加碼】';
-            else if (pnlNum > -5)  posState = '【小幅虧損，守住關鍵支撐，切勿恐慌殺出】';
-            else                   posState = '【深度套牢，評估停損或等待解套，嚴禁加碼攤平】';
-            invLine = `持有成本 ${cost}，帳面損益 ${pnlStr} ${posState}`;
-        }
-
-        const newsLine = this.latestNewsCache ? `近期消息：${this.latestNewsCache}` : null;
-
-        // ══════════════════════════════════════════════════════════════════
-        // 二、動態組合 Prompt（只把實際有資料的段落送進去）
-        // ══════════════════════════════════════════════════════════════════
-        const availableSections = [
-            '📊 技術面',
-            ...(hasChip        ? ['💹 籌碼面'] : []),
-            ...(hasGlobal      ? ['🌏 全球觀'] : []),
-            ...(hasFundamental ? ['🏭 產品需求面'] : []),
-        ].join('、');
-
-        const missingNote = [
-            !hasChip        ? '籌碼面（採礦未完成或尚未切到籌碼頁）' : null,
-            !hasGlobal      ? '全球觀（macro_cache 尚未載入）'      : null,
-            !hasFundamental ? '產品需求面（尚未執行財務 AI）'        : null,
-        ].filter(Boolean);
-
-        const basePrompt = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
-
-        const chipBlock = hasChip ? `
-━━ 💹 籌碼面 ━━
-${instLines || '  三大法人：本次資料集不含法人欄位'}
-${brokerLine || '  主力分點：請先至籌碼分頁載入分點資料'}
-${marginLine || '  融資融券：資料集不含融資欄位'}` : '';
-
-        const globalBlock = hasGlobal ? `
-━━ 🌏 全球觀 ━━
-${macroLine || ''}
-${futLine   || ''}` : '';
-
-        const fundamentalBlock = hasFundamental ? `
-━━ 🏭 產品需求面 ━━
-${yoyLine       || ''}
-${financialHint || ''}` : '';
-
-        const prompt = `${basePrompt}
-
-【戰情資料說明】
-本次提供的資料維度：${availableSections}
-${missingNote.length ? `以下維度無資料，請根據公司名稱與股票代號自行推估，禁止說「資料不足無法分析」：${missingNote.join('、')}` : '所有維度資料齊全。'}
-無論資料是否齊全，【⚔️ 綜合評析】段落必須輸出明確操作建議與最終判定燈號。
-
-【當下戰情參數】
-標的：${name}（${sym}）｜現價：${lastC}｜季節：${ctx.season || '不明'}（${seasonDesc[ctx.season] || '觀望'}）｜大盤：${twiiLabel[this.twiiState] || '不明'}
-庫存：${invLine || '目前空手【請給出明確建議進場區間與停損點，禁止模糊說「可以考慮」】'}${newsLine ? '\n' + newsLine : ''}
-信心燈號：${this.confidenceMsgCache || '等待運算'}
-${warningFlags ? '⚠️ 系統告警：' + warningFlags : ''}
-
-━━ 📊 技術面 ━━
-${maLines}
-  排列：${maOrder}
-  ${volStr}
-${keyLevels ? keyLevels : ''}${chipBlock}${globalBlock}${fundamentalBlock}`;
-
-        // ══════════════════════════════════════════════════════════════════
-        // 三、呼叫 AI 並渲染結果
-        // ══════════════════════════════════════════════════════════════════
         try {
+            const data = this.activeData;
+            const ind = this.indicators;
+            const lastIdx = data.length - 1;
+            const currentPrice = data[lastIdx].close;
+            const symName = this.getStockName(sym);
+
+            // 1. 精準提取 MA5, MA20 避免 AI 算數幻覺
+            const ma5 = ind.ma5[lastIdx] ? ind.ma5[lastIdx].toFixed(2) : '--';
+            const ma20 = ind.ma20[lastIdx] ? ind.ma20[lastIdx].toFixed(2) : '--';
+
+            // 2. 自動判別 K 線狀態 (取代舊版 4 顆按鈕)
+            let klineStatus = '盤整中';
+            if (currentPrice > ind.ma20[lastIdx] && ind.ma5[lastIdx] > ind.ma10[lastIdx]) klineStatus = '📈 多頭起漲';
+            else if (currentPrice > ind.ma60[lastIdx] && currentPrice < ind.ma20[lastIdx]) klineStatus = '📉 跌深回測';
+            else if (currentPrice > ind.upperBB[lastIdx]) klineStatus = '🔥 爆量突破';
+            else if (currentPrice < ind.ma20[lastIdx]) klineStatus = '🚨 破線防守';
+
+            // 3. 提取真實 YoY 與 EPS 避免幻覺
+            let trueYoy = '無資料';
+            let epsInfo = '無資料';
+            if (this.latestYoyCache) trueYoy = this.latestYoyCache;
+            const xrayYoyEl = document.getElementById('xrayYoy');
+            if (xrayYoyEl && xrayYoyEl.innerText !== '--') trueYoy = xrayYoyEl.innerText;
+            const xrayEpsEl = document.getElementById('xrayEps');
+            if (xrayEpsEl && xrayEpsEl.innerText !== '--') epsInfo = xrayEpsEl.innerText;
+
+            // 4. 庫存戰術整合
+            const inInv = this.inventory.find(i => i.symbol === sym);
+            const costVal = document.getElementById('costInput')?.value?.trim();
+            let invLine = '目前空手（請提供進場點與停損點）';
+            if (inInv || (costVal && !isNaN(parseFloat(costVal)))) {
+                const cost = inInv ? inInv.cost : parseFloat(costVal);
+                const pnlNum = parseFloat(((currentPrice - cost) / cost * 100).toFixed(2));
+                const pnlStr = (pnlNum >= 0 ? '+' : '') + pnlNum + '%';
+                let posState = '';
+                if (pnlNum > 5) posState = '獲利中＋5%以上，考慮停利或追蹤停損';
+                else if (pnlNum > 0) posState = '小幅獲利，防守優先';
+                else if (pnlNum > -5) posState = '小幅虧損，給予關鍵支撐點';
+                else posState = '深度套牢，評估停損或反彈逃命點';
+                invLine = `持有成本 ${cost} 元，帳面損益 ${pnlStr} (${posState})`;
+            }
+
+            // 5. 籌碼與總經情報
+            const fi = this.fiShortQty;
+            const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
+            const newsLine = this.latestNewsCache ? `近期情報：${this.latestNewsCache.substring(0, 300)}` : '近期無重大情報';
+
+            // 組裝全新 5 維 Prompt
+            const prompt = `你是華爾街首席量化操盤手，講話風格犀利直接，像權證小哥。
+請根據以下【系統已精確計算】的數據，進行五維全盤分析。
+嚴禁自己算數學、嚴禁捏造營收數字！
+
+【戰情資料】
+- 股票代號：${symName} (${sym})
+- 最新收盤價：${currentPrice}
+- 系統精算 5MA：${ma5}
+- 系統精算 20MA(月線)：${ma20}
+- K線現狀判定：${klineStatus}
+- 最新營收 YoY：${trueYoy}
+- 最新 EPS：${epsInfo}
+- 庫存狀態：${invLine}
+- 總經外資期貨：${fiLabel}
+- ${newsLine}
+
+請嚴格依照以下五段格式輸出（加上適當 emoji，口吻犀利）：
+
+【📈 K 線與技術面】
+結合 ${klineStatus} 與現價、均線的關係，點出具體的支撐與壓力價位（請直接講數字）。
+
+【💰 籌碼與基本面照妖鏡】
+根據 YoY 與 EPS，判斷基本面是否支撐股價？還是主力在偷拉出貨？
+
+【🌏 總體位階與大局觀】
+外資期貨 ${fiLabel} 對大盤有什麼影響？大環境是順風還是逆風？
+
+【⚔️ 總監專屬戰術室】
+這段最重要！必須針對使用者的庫存狀態（${invLine}）量身打造！
+- 若空手：給出明確進場價位。
+- 若有庫存：幫他算出防守底線與停利目標，絕對要給出「具體數字」。
+
+【💡 大師白話總結】
+用一句最直白的話，總結這檔股票現在該怎麼做。
+
+最後獨立一行輸出最終判定：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。`;
+
             let text = await this._callAI({ prompt, max_tokens: 1000, temperature: 0.3 });
-            if (!text) throw new Error('未設定 Groq Key 或本地 API，請先至設定填入');
+            if (!text) throw new Error('未設定 Groq Key');
 
             const sections = {
-                '【📊 技術位階學】':  { border: 'border-blue-500',   title: 'text-blue-400',   bg: 'bg-blue-950/20'   },
-                '【💹 籌碼照妖鏡】':  { border: 'border-red-500',    title: 'text-red-400',    bg: 'bg-red-950/20'    },
-                '【🌏 全球獵場觀】':  { border: 'border-cyan-500',   title: 'text-cyan-400',   bg: 'bg-cyan-950/20'   },
-                '【🏭 基本與消息面】':{ border: 'border-yellow-500', title: 'text-yellow-400', bg: 'bg-yellow-950/20' },
-                '【⚔️ 總監戰術室】': { border: 'border-purple-500', title: 'text-purple-300', bg: 'bg-purple-950/20' },
+                '【📈 K 線與技術面】': { border: 'border-blue-500', title: 'text-blue-400', bg: 'bg-blue-950/20' },
+                '【💰 籌碼與基本面照妖鏡】': { border: 'border-red-500', title: 'text-red-400', bg: 'bg-red-950/20' },
+                '【🌏 總體位階與大局觀】': { border: 'border-cyan-500', title: 'text-cyan-400', bg: 'bg-cyan-950/20' },
+                '【⚔️ 總監專屬戰術室】':{ border: 'border-purple-500', title: 'text-purple-400', bg: 'bg-purple-950/20' },
+                '【💡 大師白話總結】': { border: 'border-yellow-500', title: 'text-yellow-300', bg: 'bg-yellow-950/20' },
             };
+
             for (const [marker, c] of Object.entries(sections)) {
                 const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                text = text.replace(new RegExp(esc, 'g'),
-                    `\n<div class="mt-3 ${c.border} border-l-2 pl-2 ${c.bg} rounded-r py-1"><span class="${c.title} font-bold text-xs">${marker}</span></div>`);
+                text = text.replace(new RegExp(esc, 'g'), `\n<div class="mt-3 ${c.border} border-l-2 pl-2 ${c.bg} rounded-r py-1"><span class="${c.title} font-bold text-xs">${marker}</span></div>`);
             }
+
             text = text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/\n/g, '<br>')
-                .replace(/🟢強力買進/g,  '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
-                .replace(/🔴強制撤退/g,  '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-sm">🔴強制撤退</span>')
+                .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
+                .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-sm">🔴強制撤退</span>')
                 .replace(/🟡觀望或減碼/g,'<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望或減碼</span>');
 
-            // 若有缺少維度，在結果最上方加提示條
-            const missingBadge = missingNote.length
-                ? `<div class="mb-2 text-[10px] text-gray-500 bg-gray-800/60 border border-gray-700 rounded px-2 py-1">
-                     ℹ️ 本次缺少資料維度（AI 已根據產業推估補全）：${missingNote.join('、')}
-                   </div>`
-                : '';
-
-            this.typeWriterEffect(box,
-                `<div class="text-indigo-100 typewriter-text font-mono leading-loose" style="font-size:0.9rem">${missingBadge}${text}</div>`);
+            this.typeWriterEffect(box, `<div class="text-indigo-100 typewriter-text font-mono leading-loose" style="font-size:0.9rem">${text}</div>`);
+            
+            // 隱藏舊的大師白話文卡片 (已經完美融合進 AI 了)
+            const translatorCard = document.getElementById('aiTranslatorCard');
+            if (translatorCard) translatorCard.classList.add('hidden');
 
         } catch(e) {
             box.innerHTML = `<div class="text-red-400 font-bold bg-red-900/30 p-3 rounded border border-red-800">❌ AI 分析失敗：<br><span class="text-xs text-red-300">${e.message}</span></div>`;

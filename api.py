@@ -402,11 +402,22 @@ def get_stock_data(
             (current_time.hour > 9 and current_time.hour < 14 and not (current_time.hour == 13 and current_time.minute > 30))
         )
 
-        if last_db_date != today_str and is_market_open:
-            url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
-            res = http_session.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
-            if res.get('msgArray'):
-                msg = res['msgArray'][0]
+# 【效能修復】在同步函式內若要發起網路請求，務必捕捉所有例外，且 timeout 設短一點
+            if last_db_date != today_str and is_market_open:
+                try:
+                    url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
+                    # 將 timeout 縮短至 2 秒，避免證交所 API 緩慢時卡死背景執行緒
+                    res = requests.get(url, timeout=2.0, headers={'User-Agent': 'Mozilla/5.0'})
+                    res.raise_for_status()
+                    res_json = res.json()
+                    if res_json.get('msgArray'):
+                        msg = res_json['msgArray'][0]
+                        z = msg.get('z', '-')
+                        live_price = float(z) if z != '-' else float(msg.get('y', 0))
+                        if live_price > 0:
+                            rows.append((today_str, live_price, int(msg.get('v', 0))))
+                except Exception as e:
+                    print(f"⚠️ [Agent盤中校準錯誤] {symbol}: {e}")
                 z = msg.get('z', '-')
                 live_price = float(z) if z != '-' else float(msg.get('y', 0))
                 if live_price > 0:
@@ -986,10 +997,11 @@ async def tech_ai_diagnose(req: TechAIRequest):
     # 必須用 to_thread 丟到背景執行緒，否則每次點擊都會讓 FastAPI 全站卡死 5 秒！
     stock_info = await asyncio.to_thread(query_stock_data, req.symbol)
     _prompts = {
-        "trend":    "你是台股技術大師，精通朱家泓操作心法。根據最新 OHLCV 判斷是否符合「頭頭高、底底高」與「均線多頭排列」，給出順勢操作建議。",
-        "pullback": "你是台股技術大師，精通郭哲榮投資長的打折買法。判斷股價是否回測至前波高點的85折或0.382支撐，尋找量縮止跌買點，評估勝率。",
-        "breakout": "你是台股技術大師。分析是否出現「帶量實體長紅K突破盤整區間」，判斷主力換手真假，給出突破買進的停損守則。",
-        "defense":  "你是台股風險控管大師。嚴格檢視是否帶量跌破5MA或20MA月線，若頭部成型，給出犀利且無情的停損防守建議，絕不留戀。",
+        "trend":    "你是台股技術大師。請判斷目前是否為「頭頭高、底底高」的多頭排列？請用大白話給出具體的進場條件與防守價位。",
+        # 【體驗優化】將深奧的折數與 0.382 轉化為小白聽得懂的「大拍賣打幾折」
+        "pullback": "你是台股技術大師，精通郭榮哲的折數過濾。請用大白話解釋目前股價從高點跌下來「打了幾折」？現在買算不算撿便宜？並給出停損點。",
+        "breakout": "你是台股技術大師。請判斷目前的突破是否為「主力真金白銀換手」？還是假突破？請給出明確的追價條件與停損守則。",
+        "defense":  "你是台股風險控管大師。請無情且犀利地點出目前的破線危機，並給出絕對不能跌破的逃命價位，絕不留戀。",
     }
     sys_prompt = _prompts.get(req.query_type, "你是台股實戰大師，給出簡短技術面評估。")
     user_msg = f"{stock_info}\n\n請用 100 字以內，犀利、專業的台股老手語氣給出大白話結論。"

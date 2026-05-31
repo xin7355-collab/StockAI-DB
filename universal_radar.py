@@ -163,7 +163,9 @@ def main():
         item["ai_sentiment"] = sentiment
         item["ai_reason"]    = reason
         results.append(item)
-if (i + 1) % 5 == 0 or i == len(all_matched) - 1:
+        
+        # 【修復】縮排對齊！讓印出進度的邏輯正確包在迴圈內
+        if (i + 1) % 5 == 0 or i == len(all_matched) - 1:
             print(f"  進度：{i+1}/{len(all_matched)}（{sentiment} — {reason}）")
         
         # 【致命危機修復】Groq 免費版限制 30 RPM (每分鐘 30 次)。

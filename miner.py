@@ -991,7 +991,6 @@ def _fetch_futures_taifex_fallback() -> dict | None:
                 continue
             date_tw = d.strftime('%Y/%m/%d')
             url = 'https://www.taifex.com.tw/cht/3/futContractsDateDown'
-            # 【修復】原本的 TX 要改為 TXF 才能精準抓到大台指
             params = {'queryStartDate': date_tw, 'queryEndDate': date_tw, 'commodityId': 'TXF'}
             res = http_session.get(url, params=params, headers=_rnd_hdrs(), timeout=15)
             body = res.content
@@ -1014,7 +1013,6 @@ def _fetch_futures_taifex_fallback() -> dict | None:
             for row in rows:
                 if not any('外資' in str(cell) for cell in row):
                     continue
-                
                 try:
                     nums = []
                     for cell in row:
@@ -1022,8 +1020,6 @@ def _fetch_futures_taifex_fallback() -> dict | None:
                         if v.lstrip('-').isdigit():
                             nums.append(int(v))
                     
-                    # 【修復】TAIFEX 格式有超過 10 個數字，未平倉在陣列的後半段
-                    # nums[6] = 多方未平倉, nums[8] = 空方未平倉, nums[10] = 多空未平倉淨額
                     if len(nums) >= 11:
                         long_oi  = nums[6]
                         short_oi = nums[8]
@@ -1037,49 +1033,6 @@ def _fetch_futures_taifex_fallback() -> dict | None:
     except Exception as e:
         print(f"  ⚠️ TAIFEX 備援失敗: {e}")
         return None
-            if not body:
-                continue
-            # TAIFEX CSV 為 UTF-8 with BOM，偶爾為 Big5
-            for enc in ('utf-8-sig', 'big5', 'utf-8'):
-                try:
-                    text = body.decode(enc)
-                    break
-                except Exception:
-                    text = None
-            if not text:
-                continue
-            text = text.strip()
-            if text.startswith('<') or len(text) < 20:   # HTML 回應 = 無資料
-                continue
-            reader = csv.reader(io.StringIO(text))
-            rows = [r for r in reader if r]
-            # 找外資/外資自營商合計列（第1或第2欄含「外資」）
-            for row in rows:
-                name = (row[0] if row else '') + (row[1] if len(row) > 1 else '')
-                if '外資' not in name:
-                    continue
-                # 格式：期貨契約, 身份別, 多方口數, 多方契約金額, 空方口數, 空方契約金額, 多空淨額
-                try:
-                    # 嘗試找到包含數字的欄位群
-                    nums = []
-                    for cell in row[2:]:
-                        v = cell.replace(',', '').strip()
-                        if v.lstrip('-').isdigit():
-                            nums.append(int(v))
-                    if len(nums) >= 5:
-                        long_oi  = nums[0]   # 多方口數
-                        short_oi = nums[2]   # 空方口數
-                        net_oi   = long_oi - short_oi
-                        if long_oi > 0 or short_oi > 0:
-                            print(f"  📡 TAIFEX 備援：外資台指期多={long_oi:,} 空={short_oi:,} 淨={net_oi:+,} ({d})")
-                            return {'long': long_oi, 'short': short_oi, 'net': net_oi, 'date': d.strftime('%Y-%m-%d')}
-                except Exception:
-                    continue
-        return None
-    except Exception as e:
-        print(f"  ⚠️ TAIFEX 備援失敗: {e}")
-        return None
-
 
 def _write_futures_cache(net_oi: int, long_oi: int, short_oi: int, target_date: str):
     today_str = date.today().strftime('%Y-%m-%d')
@@ -1088,17 +1041,10 @@ def _write_futures_cache(net_oi: int, long_oi: int, short_oi: int, target_date: 
         json.dump(cache, f, ensure_ascii=False)
     print(f"  ✅ 外資台指期淨口數: {net_oi:+,} 口 ({target_date})")
 
-
 def fetch_futures_cache():
-    """
-def fetch_futures_cache():
-    """
-    外資台指期未平倉淨口數。
-    【修復】FinMind 免費版已移除未平倉欄位，改為優先使用 TAIFEX 官方直連。
-    """
+    """外資台指期未平倉淨口數。"""
     print(f"\n🔮 抓取外資台指期 (優先使用 TAIFEX 官方直連)...")
     
-    # 優先使用官方直連
     result = _fetch_futures_taifex_fallback()
     if result:
         _write_futures_cache(result['net'], result['long'], result['short'], result['date'])
@@ -1125,53 +1071,6 @@ def fetch_futures_cache():
                     _write_futures_cache(net_oi, long_oi, short_oi, latest.get('date'))
     except Exception as e:
         print(f"  ⚠️ FinMind 外資期貨連線失敗: {e}")
-    finmind_ok = False
-    try:
-        # [Token 輪動] 改用 fm_request，遇 429 自動切換並重試
-        j = fm_request(url_base, timeout=15)
-        if j is None:
-            print("  ⚠️ FinMind 期貨 API 失敗（Token 可能缺失或耗盡），改用 TAIFEX 備援...")
-        elif j.get('status') == 200 and j.get('data'):
-            foreign_data = [d for d in j['data'] if '外資' in d.get('name', '')]
-
-            if foreign_data:
-                latest = foreign_data[-1]
-                target_date = latest.get('date')
-
-                long_oi_val  = latest.get('long_open_interest_balance') or latest.get('long_open_interest') or latest.get('buy_open_interest')
-                short_oi_val = latest.get('short_open_interest_balance') or latest.get('short_open_interest') or latest.get('sell_open_interest')
-                net_direct   = latest.get('open_interest_net_volume')
-                if not long_oi_val and not short_oi_val and net_direct is not None:
-                    print(f"  ℹ️ OI balance 欄位缺失，改用 open_interest_net_volume: {net_direct}")
-                    net_oi   = int(net_direct)
-                    long_oi  = max(0,  net_oi)
-                    short_oi = max(0, -net_oi)
-                else:
-                    if not long_oi_val and not short_oi_val:
-                        print(f"  ⚠️ FinMind 期貨 OI 欄位找不到，available keys: {list(latest.keys())}")
-                    long_oi  = int(long_oi_val  or 0)
-                    short_oi = int(short_oi_val or 0)
-                    net_oi   = long_oi - short_oi
-
-                if long_oi > 0 or short_oi > 0:
-                    _write_futures_cache(net_oi, long_oi, short_oi, target_date)
-                    finmind_ok = True
-                    return
-                else:
-                    print(f"  ⚠️ FinMind TX 所有 OI 欄位為零，改用 TAIFEX 備援...")
-            else:
-                print("  ⚠️ FinMind TX 無外資資料（可能今日盤後尚未更新），改用 TAIFEX 備援...")
-        else:
-            print(f"  ⚠️ FinMind 回傳異常 status={j.get('status') if j else 'None'}，改用 TAIFEX 備援...")
-    except Exception as e:
-        print(f"  ⚠️ FinMind 外資期貨連線失敗: {e}，改用 TAIFEX 備援...")
-
-    if not finmind_ok:
-        result = _fetch_futures_taifex_fallback()
-        if result:
-            _write_futures_cache(result['net'], result['long'], result['short'], result['date'])
-        else:
-            print("  ⚠️ FinMind + TAIFEX 均失敗，保留舊快取。")
 
 
 # ── 美股大盤快取 ──────────────────────────────────────────────────────────────
@@ -1526,7 +1425,7 @@ def generate_top_picks():
         print("  ⚠️ chips 目錄不存在，跳過 generate_top_picks")
         return
 
-    print("🚀 啟動三位一體選股 (改為從 JSON 快取合併)...")
+    print("🚀 啟動三位一體選股 (從 JSON 快取合併)...")
     for f in sorted(chips_path.glob('*.json')):
         sym = f.stem
         try:
@@ -1544,7 +1443,7 @@ def generate_top_picks():
             if yoy_f <= 0:
                 continue
 
-            # 【修復】改從已經合併好的 K 線 JSON 讀取最新收盤與法人動向，不依賴 SQLite
+            # 讀取合併好的 K 線 JSON
             kline_file = Path(DATA_DIR) / f'{sym}.json'
             if not kline_file.exists():
                 continue
@@ -1603,92 +1502,8 @@ def generate_top_picks():
                 'pe':           fund.get('pe'),
                 'reasons':      reasons,
             })
-        except Exception as e:
+        except Exception:
             continue
-
-    if not chips_path.exists():
-        print("  ⚠️ chips 目錄不存在，跳過 generate_top_picks")
-        conn.close()
-        return
-
-    for f in sorted(chips_path.glob('*.json')):
-        sym = f.stem
-        try:
-            raw = json.loads(f.read_text(encoding='utf-8'))
-            if isinstance(raw, list):
-                continue
-            fund      = raw.get('fundamentals') or {}
-            chips_list = raw.get('chips') or []
-
-            # ① 基本面：revenue_yoy > 0
-            try:
-                yoy_f = float(fund.get('revenue_yoy') or 0)
-            except Exception:
-                continue
-            if yoy_f <= 0:
-                continue
-
-            # ② 法人5日淨流向 > 0（從 SQLite）
-            rows = conn.execute("""
-                SELECT foreign_inv, invest_trust, dealer_inv
-                FROM stock_history WHERE symbol=?
-                ORDER BY trade_date DESC LIMIT 5
-            """, (sym,)).fetchall()
-            if len(rows) < 3:
-                continue
-            five_day_net = sum((r[0] or 0) + (r[1] or 0) + (r[2] or 0) for r in rows)
-            if five_day_net <= 0:
-                continue
-
-            # ③ 分點集中度（近3日Top3買超 / 總買超）
-            recent = chips_list[-3:]
-            total_buy = sum(c.get('tot_buy', 0) for c in recent)
-            top3_buy  = sum(
-                sum(b.get('buy', 0) for b in
-                    sorted(c.get('buyers', []), key=lambda x: -x.get('net', 0))[:3])
-                for c in recent
-            )
-            concentration = round(top3_buy / total_buy * 100, 1) if total_buy > 0 else 0.0
-
-            # 最新收盤
-            pr = conn.execute(
-                "SELECT close, trade_date FROM stock_history WHERE symbol=? ORDER BY trade_date DESC LIMIT 1",
-                (sym,)
-            ).fetchone()
-
-            # 入選理由 badge
-            reasons = []
-            reasons.append('🔥 營收高速增長' if yoy_f >= 20 else '📈 營收成長')
-            fi_rows = conn.execute(
-                "SELECT foreign_inv FROM stock_history WHERE symbol=? ORDER BY trade_date DESC LIMIT 3",
-                (sym,)
-            ).fetchall()
-            consec_fi = sum(1 for r in fi_rows if (r[0] or 0) > 0)
-            if consec_fi >= 3:
-                reasons.append('💰 外資連買3日')
-            elif five_day_net > 0:
-                reasons.append('💰 法人淨流入')
-            if concentration >= 40:
-                reasons.append('🎯 主力強力建倉')
-            elif concentration >= 20:
-                reasons.append('🎯 分點籌碼集中')
-
-            results.append({
-                'sym':          sym,
-                'close':        round(float(pr[0] or 0), 2) if pr else 0,
-                'trade_date':   pr[1] if pr else '',
-                'revenue_yoy':  round(yoy_f, 1),
-                'five_day_net': five_day_net,
-                'concentration': concentration,
-                'eps':          fund.get('eps'),
-                'pe':           fund.get('pe'),
-                'reasons':      reasons,
-            })
-        except Exception as e:
-            print(f"  ⚠️ top_picks skip {sym}: {e}")
-            continue
-
-    conn.close()
 
     def _score(x):
         return (min(x['revenue_yoy'], 100) * 0.3 +

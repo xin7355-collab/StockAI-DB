@@ -70,8 +70,10 @@ macro_cache.json     美股大盤日收資料（SP500/NASDAQ/VIX/TSM）
 **所有 fetch URL 必須用動態 ghBase，不可硬編碼路徑**
 ```javascript
 const ghBase = window.location.href.split('?')[0].split('#')[0];
-// 正確：new URL('data/xxx.json', ghBase).href
-// 錯誤：'https://xin7355-collab.github.io/stockai-db/data/xxx.json'  ← 大小寫錯誤
+✂️ **刪除並貼上新代碼**（我們把 `?t=Date.now()` 的鐵律加進去，警告 AI 絕對不准拿掉）：
+```markdown
+// 正確：new URL('data/xxx.json', ghBase).href + `?t=${Date.now()}`
+// 錯誤：'[https://xin7355-collab.github.io/stockai-db/data/xxx.json](https://xin7355-collab.github.io/stockai-db/data/xxx.json)'  ← 大小寫錯誤
 ```
 過去曾因為硬編碼小寫 `stockai-db` 導致 futures_cache、macro_cache、radar.json 全部 fetch 失敗。
 
@@ -83,10 +85,10 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 4. 🤖 AI 籌碼全面解析（一個按鈕，涵蓋法人+分點）
 
 ### AI 分析風格與防呆約束
-- 口吻：**權證小哥風格**，白話文，國中生都看得懂。
+- 口吻：**權證小哥風格**，大白話文，國中生都看得懂（例如把郭榮哲折數解釋為「大拍賣打幾折」）。
 - 首席分析：技術面 → 籌碼面 → 全球觀 → 產品/消息面 → 總監戰術室。
-- **正面約束**：禁止 AI 使用「根據資料」、「以下為您分析」等廢話，數字需直接預先計算好融入對話。
-- **明確指令**：必須給出具體的支撐壓力價位，以及明確的操盤指令（🟢強力買進 / 🟡觀望或減碼 / 🔴強制撤退）。
+- 🛑 **絕對禁止 AI 算數學（防幻覺鐵律）**：語言模型不會算均線！所有 MA5、MA20、營收 YoY、乖離率等數值，**必須在 JS 或 Python 端精確計算好之後，再當作變數塞入 Prompt**。嚴禁把原始 K 線丟給 AI 叫它自己算！
+- **正面約束**：禁止 AI 使用「根據資料」、「以下為您分析」等廢話，必須給出具體點位與操作指令（🟢/🟡/🔴）。
 - **JSON 防呆**：在 `universal_radar.py` 等純數據解析中，嚴格要求輸出純 JSON，禁止 Markdown (如 ```json) 標籤導致程式崩潰。
 
 ### 外資期貨顯示邏輯
