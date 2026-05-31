@@ -2687,7 +2687,8 @@ const marginByDate = {};
             series: [
                 // 【修復】對齊 miner.py 輸出的正確欄位名稱，加入 margin_balance 與 short_balance 防呆
                 { name: '融資', type: 'line', data: marginData.map(d => d.margin_balance ?? d.margin_bal ?? d.margin ?? 0), smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#f87171', width: 1.5 }, itemStyle: { color: '#f87171' } },
-                { name: '融券', type: 'line', data: marginData.map(d => d.short_balance ?? d.short_bal ?? d.short ?? 0),  smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#60a5fa', width: 1.5 }, itemStyle: { color: '#60a5fa' } },
+                { name: '融券', type: 'line', data: marginData.map(d => d.short_balance ?? d.short_bal ?? d.short ?? 0),  smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#60a5fa', width: 1.5 }, itemStyle: { color: '#60a5fa' } }
+            ]
         });
     },
 
@@ -5693,9 +5694,10 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 【已預算技術數據 — ${name}（${sym}）】
 - 最新收盤價：${pC}
 - 系統 K 線型態自動判定：${klineStatus}
-- MA5: ${ma5?.toFixed(1)||'—'}, MA10: ${ma10?.toFixed(1)||'—'}, MA20(月線): ${ma20?.toFixed(1)||'—'}, MA60(季線): ${ma60?.toFixed(1)||'—'}
+- MA5: ${ma5}
+- MA20(月線): ${ma20}
 - 趨勢結論：${trendJudge}
-- 當前折數：${foldPct} 折
+- 當前折數：${foldPct}
 - 綜合判定：${sigLabel}
 
 請嚴格按照以下三個段落輸出，每段開頭保留【】標題，語氣犀利接地氣：
@@ -5704,10 +5706,10 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 用白話文解釋目前的型態（${klineStatus}）與趨勢（${trendJudge}）代表什麼意思？現在均線是支撐還是壓力？請直接告訴小白現在買安不安全。
 
 【📐 郭榮哲折數過濾 (白話大拍賣解析)】
-絕對不要講深奧術語！請直接告訴小白：「這檔股票從高點跌下來，等於打了 ${foldPct} 折。現在這個價位算不算大拍賣撿便宜？還是依然在半山腰接刀？」請明確評估這折數安不安全。
+絕對不要講深奧術語！請直接告訴小白：「這檔股票從高點跌下來，等於打了 ${foldPct}。現在這個價位算不算大拍賣撿便宜？還是依然在半山腰接刀？」請明確評估這折數安不安全。
 
 【⚔️ 總監專屬戰術室】
-給出具體的操作紀律指引：當前是否適合進場？短線防守點（5MA = ${ma5?.toFixed(1)||'—'}）、波段防守點（月線 = ${ma20?.toFixed(1)||'—'}）若持有應設在哪裡？若空手，說明等待什麼條件。
+給出具體的操作紀律指引：當前是否適合進場？短線防守點（5MA = ${ma5}）、波段防守點（月線 = ${ma20}），若持有應設在哪裡？若空手，說明等待什麼條件。
 
 最後獨立一行輸出最終判定：🟢適合建倉 或 🟡觀望等待 或 🔴危險迴避。`;
 
