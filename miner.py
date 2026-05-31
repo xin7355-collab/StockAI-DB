@@ -1452,10 +1452,8 @@ def build_radar_cache():
     results   = {'bottom': [], 'surge': [], 'score': []}
     processed = 0
     
-    print("\n🚀 啟動全局雷達掃描 (改為從 JSON 讀取，完美支援分散式合併)...")
-    # 【修復】不再從殘缺的 SQLite 讀取，直接遍歷 data/ 目錄下所有的 JSON，確保抓到 100% 的最新價格
+    print("\n🚀 啟動全局雷達掃描 (植入高勝率量化三引擎)...")
     for f in Path(DATA_DIR).glob('*.json'):
-        # 排除非個股 JSON
         if f.name in ('radar.json', 'top_picks.json', 'macro_cache.json', 'futures_cache.json', 'broker_names.json', 'radar_news.json'):
             continue
         
@@ -1474,50 +1472,48 @@ def build_radar_cache():
             if not ind:
                 continue
 
+            # 【獲利引擎 2】籌碼動能確認：計算近 5 日三大法人淨買賣
+            recent_5 = raw[-5:]
+            inst_net_5d = sum(r.get('foreign_net', 0) + r.get('trust_net', 0) + r.get('dealer_net', 0) for r in recent_5)
+
             processed += 1
             c,   pc   = ind['close'],   ind['prev_close']
             ma5, ma10, ma20         = ind['ma5'],  ind['ma10'],  ind['ma20']
             pma5, pma10, pma20      = ind['pma5'], ind['pma10'], ind['pma20']
             vma5, upper_bb, rv      = ind['vma5'], ind['upper_bb'], ind['recent_vols']
 
-            if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc:
-                results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2)})
-            if c >= upper_bb * 0.97 and (all(v > vma5 for v in rv) if rv and vma5 > 0 else False):
-                results['surge'].append({'sym': sym, 'close': round(c, 2), 'bb_upper': round(upper_bb, 2)})
+            # 【獲利引擎 1】流動性防護網：5 日均量 < 500 張 (50萬股) 直接淘汰殭屍股
+            if vma5 < 500_000:
+                continue
+                
+            # 【獲利引擎 3】乖離率防守：過濾掉偏離月線大於 15% 的股票，拒絕追高
+            bias_20 = (c - ma20) / ma20 if ma20 > 0 else 0
+            if bias_20 > 0.15:
+                continue
+
+            # 🟢 底部起漲波段股：均線黃金交叉 + 法人近五日「淨買超」
+            if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc and inst_net_5d > 0:
+                results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
+                
+            # 🔥 飆股動能突破股：貼著布林上軌，量能爆發 + 法人強力介入
+            if c >= upper_bb * 0.97 and (all(v > vma5 for v in rv) if rv and vma5 > 0 else False) and inst_net_5d > 0:
+                results['surge'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
+                
+            # ⚡ 綜合多頭強勢股：均線完美多頭排列，且今日爆量 (1.2倍) + 法人資金灌注
             if (c > ma20 and ma5 > ma10 and ma10 > ma20) and c > pc and \
-               (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False):
-                results['score'].append({'sym': sym, 'close': round(c, 2), 'ma5': round(ma5, 2)})
+               (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False) and inst_net_5d > 0:
+                results['score'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
         except Exception:
             continue
             
-    # 【註】：移除原本的 conn 相關寫法
-        if not ind:
-            continue
-
-        processed += 1
-        c,   pc   = ind['close'],   ind['prev_close']
-        ma5, ma10, ma20         = ind['ma5'],  ind['ma10'],  ind['ma20']
-        pma5, pma10, pma20      = ind['pma5'], ind['pma10'], ind['pma20']
-        vma5, upper_bb, rv      = ind['vma5'], ind['upper_bb'], ind['recent_vols']
-
-        if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc:
-            results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2)})
-        if c >= upper_bb * 0.97 and (all(v > vma5 for v in rv) if rv and vma5 > 0 else False):
-            results['surge'].append({'sym': sym, 'close': round(c, 2), 'bb_upper': round(upper_bb, 2)})
-        if (c > ma20 and ma5 > ma10 and ma10 > ma20) and c > pc and \
-           (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False):
-            results['score'].append({'sym': sym, 'close': round(c, 2), 'ma5': round(ma5, 2)})
-
-    conn.close()
-
     Path(DATA_DIR).mkdir(exist_ok=True)
     Path(DATA_DIR).joinpath('radar.json').write_text(
         json.dumps({'updated': date.today().isoformat(), 'data': results},
                    ensure_ascii=False, separators=(',', ':')),
         encoding='utf-8')
-    write_radar_to_db(results)
+        
     print(f"  ✅ 雷達：掃描 {processed} 檔，"
-          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])}")
+          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])}") 
 
 
 # ── 三位一體選股 ─────────────────────────────────────────────────────────────

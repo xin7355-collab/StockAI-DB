@@ -1750,10 +1750,11 @@ const app = {
     },
 
     async fetchMacroData() {
-        const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMacroCache_v3';
+const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMacroCache_v3';
         const _ghBase = window.location.href.split('?')[0].split('#')[0];
-        const _futuresUrl  = new URL('futures_cache.json', _ghBase).href;
-        const _macroUrl    = new URL('macro_cache.json',   _ghBase).href;
+        // 【終極修復】加上 ?t=${Date.now()} 強制破壞快取，保證戰情室即時更新
+        const _futuresUrl  = new URL('futures_cache.json', _ghBase).href + `?t=${Date.now()}`;
+        const _macroUrl    = new URL('macro_cache.json',   _ghBase).href + `?t=${Date.now()}`;
         let cache = JSON.parse(localStorage.getItem(cacheKey));
         if (cache && cache.date === todayStr && (now - cache.ts < 172800000) && (cache.data?.taiex?.length > 0 || cache.data?.fiShort !== null)) {
             this.processMacroData(cache.data);
@@ -2161,12 +2162,13 @@ const app = {
             }
         }
 
-        // ── gh-pages 靜態 JSON（雲端模式主要來源）──
+// ── gh-pages 靜態 JSON（雲端模式主要來源）──
         try {
             const ghBase  = window.location.href.split('?')[0].split('#')[0];
             const fileUrl = window.location.protocol === 'file:'
                 ? `./data/${symbol}.json?t=${Date.now()}`
-                : new URL(`data/${symbol}.json?v=${today}`, ghBase).href;
+                // 【終極修復】強制破壞快取，改用 Date.now() 讓手機永遠抓到最新資料
+                : new URL(`data/${symbol}.json?v=${Date.now()}`, ghBase).href;
 
             const localRes = await fetch(fileUrl);
             if (localRes.status === 404) {
@@ -5277,9 +5279,9 @@ recent.forEach(d => {
             loadingEl2.classList.remove('hidden'); loadingEl2.classList.add('flex');
             header2.classList.add('hidden'); container2.innerHTML = '';
             try {
-                const ghBase = window.location.href.split('?')[0].split('#')[0];
-                const tpRes  = await this.safeFetch(new URL('data/top_picks.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 });
-                if (tpRes.status === 404) throw new Error('NOT_FOUND');
+const ghBase = window.location.href.split('?')[0].split('#')[0];
+                // 【終極修復】加上 ?t=${Date.now()}
+                const tpRes = await this.safeFetch(new URL('data/top_picks.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 });
                 if (!tpRes.ok) throw new Error(`HTTP ${tpRes.status}`);
                 const tpJson = await tpRes.json();
                 this._radarUpdatedAt = tpJson.updated || '';
@@ -5312,26 +5314,26 @@ recent.forEach(d => {
                 );
                 if (!res.ok) throw new Error(`後端回傳 HTTP ${res.status}`);
                 // 後端格式：[{ symbol, close, signal_date }]
-                const rows = await res.json();
-                rawList = rows.map(r => ({ sym: r.symbol, close: r.close, signal_date: r.signal_date }));
+                    const rows = await res.json();
+                    // 【修復】保留所有獲利關鍵指標 (ma20, bb_upper, ma5) 不被刪除
+                    rawList = rows.map(r => ({ sym: r.symbol, ...r }));
 
             } else {
                 // ── 模式 B：gh-pages 靜態 radar.json（GitHub Actions 每日更新）
                 // 全市場一次拉回，前端 Set.has() 秒切彈藥庫，零 API 呼叫
                 statusText.innerText = '☁️ 讀取雲端雷達快取...';
-                const ghBase   = window.location.href.split('?')[0].split('#')[0];
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                // 【終極修復】加上 ?t=${Date.now()}
                 const radarRes = await this.safeFetch(
-                    new URL('data/radar.json', ghBase).href,
-                    {},
-                    { timeout: 8000, maxRetries: 1 }
+                    new URL('data/radar.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 }
                 );
                 if (!radarRes.ok) throw new Error('雲端 radar.json 讀取失敗，請先執行採礦');
-                const radarJson = await radarRes.json();
-                // 靜態格式：{ data: { bottom:[{sym,close}], surge:[...], score:[...] }, updated:'...' }
-                rawList = (radarJson.data?.[type] || []).map(r => ({
-                    sym:   r.sym || r.symbol,
-                    close: r.close,
-                }));
+                    const radarJson = await radarRes.json();
+                    // 【修復】完整保留布林通道與均線等獲利指標
+                    rawList = (radarJson.data?.[type] || []).map(r => ({
+                        sym: r.sym || r.symbol,
+                        ...r
+                    }));
                 this._radarUpdatedAt = radarJson.updated || '';
             }
 
@@ -5501,36 +5503,57 @@ recent.forEach(d => {
 
         let html = '';
         const isTopPicks = (type === 'top_picks');
-        items.forEach(m => {
-            let badgesHtml;
-            if (isTopPicks && Array.isArray(m.reasons) && m.reasons.length) {
-                badgesHtml = m.reasons.filter(Boolean).map(r =>
-                    `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${lbl.color} mr-1 mb-0.5">${r}</span>`
-                ).join('');
-            } else {
-                badgesHtml = `<span class="px-2 py-1 rounded text-xs font-bold border ${lbl.color}">${lbl.badge}</span>`;
-            }
-            const meta = [];
-            if (isTopPicks) {
-                if (m.revenue_yoy != null) meta.push(`YoY ${m.revenue_yoy > 0 ? '+' : ''}${m.revenue_yoy}%`);
-                if (m.concentration) meta.push(`集中度 ${m.concentration}%`);
-                if (m.five_day_net) meta.push(`法人 ${m.five_day_net > 0 ? '+' : ''}${Math.round(m.five_day_net/1000)}K`);
-            }
-            const metaStr = meta.length ? `<div class="text-[10px] text-gray-500 font-mono mt-1 space-x-2">${meta.join(' · ')}</div>` : '';
-            const priceStr = m.close ? `<div class="text-xs text-gray-400 font-mono mt-0.5">${m.close}</div>` : '';
+            items.forEach(m => {
+                let badgesHtml;
+                if (isTopPicks && Array.isArray(m.reasons) && m.reasons.length) {
+                    badgesHtml = m.reasons.filter(Boolean).map(r => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${lbl.color} mr-1 mb-0.5">${r}</span>`).join('');
+                } else {
+                    badgesHtml = `<span class="px-2 py-1 rounded text-[11px] font-bold border ${lbl.color} shadow-sm">${lbl.badge}</span>`;
+                }
 
-            html += `
-            <li class="p-3 m-2 bg-[#1c2128] border border-[#30363d] rounded-lg cursor-pointer hover:bg-gray-800/60 transition-colors shadow-sm"
-                onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
-                <div class="flex justify-between items-start gap-2">
-                    <div class="min-w-0 flex-1">
-                        <div class="font-bold text-white text-sm">${this.getFullStockName(m.sym)}</div>
-                        <div class="mt-1 flex flex-wrap gap-0.5">${badgesHtml}</div>
+                const meta = [];
+                if (isTopPicks) {
+                    if (m.revenue_yoy != null) meta.push(`營收 YoY <span class="${m.revenue_yoy > 0 ? 'text-red-400' : 'text-green-400'} font-bold">${m.revenue_yoy > 0 ? '+' : ''}${m.revenue_yoy}%</span>`);
+                    if (m.concentration) meta.push(`分點集中 <span class="text-yellow-400 font-bold">${m.concentration}%</span>`);
+                    if (m.five_day_net) meta.push(`法人流向 <span class="${m.five_day_net > 0 ? 'text-red-400' : 'text-green-400'} font-bold">${m.five_day_net > 0 ? '+' : ''}${Math.round(m.five_day_net/1000)}K</span>`);
+                } else {
+                    // 【全新實戰指標注入】計算與均線的乖離率，讓小白一眼看出版面風險與空間
+                    if (m.ma20) {
+                        const dist = m.close ? ((m.close - m.ma20)/m.ma20*100).toFixed(1) : 0;
+                        meta.push(`月線: <span class="text-gray-300 font-mono">${m.ma20}</span> <span class="${dist>0?'text-red-400':'text-green-400'} font-mono text-[10px]">(${dist > 0 ? '+' : ''}${dist}%)</span>`);
+                    }
+                    if (m.bb_upper) {
+                        const dist = m.close ? ((m.close - m.bb_upper)/m.bb_upper*100).toFixed(1) : 0;
+                        meta.push(`布林上軌: <span class="text-gray-300 font-mono">${m.bb_upper}</span> <span class="${dist>0?'text-red-400':'text-green-400'} font-mono text-[10px]">(${dist > 0 ? '+' : ''}${dist}%)</span>`);
+                    }
+                    if (m.ma5) {
+                        const dist = m.close ? ((m.close - m.ma5)/m.ma5*100).toFixed(1) : 0;
+                        meta.push(`週線: <span class="text-gray-300 font-mono">${m.ma5}</span> <span class="${dist>0?'text-red-400':'text-green-400'} font-mono text-[10px]">(${dist > 0 ? '+' : ''}${dist}%)</span>`);
+                    }
+                }
+
+                // 將數值資訊變成精美的科技感標籤
+                const metaStr = meta.length ? `<div class="text-[11px] text-gray-500 mt-2 flex flex-wrap gap-2">${meta.map(x => `<div class="bg-[#0d1117] px-2 py-1 rounded border border-[#30363d]">${x}</div>`).join('')}</div>` : '';
+                const priceStr = m.close ? `<div class="text-xl text-white font-black font-mono leading-none">${m.close.toFixed(2)}</div>` : '';
+
+                html += `
+                <li class="p-3.5 m-3 bg-gradient-to-br from-[#1c2128] to-[#161b22] border border-[#30363d] rounded-xl hover:border-blue-500/80 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all cursor-pointer flex justify-between items-center group relative overflow-hidden" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
+                    <div class="absolute left-0 top-0 w-1.5 h-full ${lbl.color.split(' ')[2]} opacity-80"></div>
+                    <div class="flex flex-col pl-3 w-full">
+                        <div class="flex justify-between items-start w-full">
+                            <div class="flex items-center gap-2.5">
+                                <span class="font-black text-gray-100 text-lg tracking-wide group-hover:text-blue-400 transition-colors">${app.getStockName(m.sym)}</span>
+                                <span class="text-xs text-gray-400 font-mono font-bold bg-[#0d1117] px-1.5 py-0.5 rounded border border-[#30363d] shadow-inner">${m.sym}</span>
+                            </div>
+                            <div class="flex flex-col items-end gap-1.5">
+                                ${priceStr}
+                                ${badgesHtml}
+                            </div>
+                        </div>
                         ${metaStr}
                     </div>
-                    <div class="text-right flex-shrink-0">${priceStr}</div>
-                </div>
-            </li>`;
+                </li>`;
+            });
         });
         html += `
         <div class="text-center mt-4 mb-2">
