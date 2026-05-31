@@ -304,8 +304,8 @@
                         <input type="search" id="symbolInput" value="" inputmode="search" enterkeyhint="search" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
                             class="bg-transparent text-white px-2 py-1.5 outline-none w-full text-right pr-2 font-mono font-bold placeholder-gray-600 text-sm min-w-0" 
                             placeholder="代號" oninput="app.handleSearchInput(event)" onfocus="app.handleSearchInput(event)"
-                            onkeydown="if(event.key === 'Enter') { document.getElementById('searchDropdown').classList.add('hidden'); document.activeElement.blur(); app.analyze(); document.getElementById('symbolInput').value=''; }">
-                        <button onclick="app.analyze(); app.vibrate(50);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-xs transition font-bold cursor-pointer flex-shrink-0">診斷</button>
+                            onkeydown="if(event.key === 'Enter') { document.getElementById('searchDropdown').classList.add('hidden'); document.activeElement.blur(); app.analyze(); if(app.switchAppTab) app.switchAppTab('diag'); if(app.switchSubTab) app.switchSubTab('strategy'); document.getElementById('symbolInput').value=''; }">
+                        <button onclick="app.analyze(); if(app.switchAppTab) app.switchAppTab('diag'); if(app.switchSubTab) app.switchSubTab('strategy'); app.vibrate(50);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-xs transition font-bold cursor-pointer flex-shrink-0">診斷</button>
                     </div>
                     <ul id="searchDropdown" class="hidden absolute top-[110%] right-0 mt-1 w-full min-w-[180px] bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-48 z-[300]"></ul>
                 </div>
@@ -1706,7 +1706,7 @@ const app = {
         if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
         const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 8);
         if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
+            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); if(app.switchAppTab) app.switchAppTab('diag'); if(app.switchSubTab) app.switchSubTab('strategy'); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
             dropdown.classList.remove('hidden');
         } else dropdown.classList.add('hidden');
     },
@@ -2226,7 +2226,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens, temperature })
                 }, { timeout: 60000, maxRetries: 2 });
             } catch (e) {
-                throw new Error(`Groq API 連線失敗。可能原因：(1) Groq Key 失效或字串含空白/換行，請到 console.groq.com 重新產生並重新貼上；(2) 網路擋了 api.groq.com；(3) Groq 服務暫不穩。原始錯誤：${e.message}`);
+                throw new Error(`Groq API 連線失敗。最常見根因：Groq 不支援瀏覽器直打（沒有 CORS header），任何純前端的呼叫都會被瀏覽器擋掉，這跟 Key 是否正確無關。解法：到「⚙️ 設定 → 本地 API URL」填入已部署的 api.py URL（例如 http://your-server:8000），讓 AI 呼叫走後端代理。原始錯誤：${e.message}`);
             }
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -3632,7 +3632,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
         const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d = new Date(); d.setFullYear(d.getFullYear() - 2);
         const startDate = d.toISOString().split('T')[0];
-        const d2 = new Date(); d2.setMonth(d2.getMonth() - 3);
+        const d2 = new Date(); d2.setMonth(d2.getMonth() - 18);
         const revStart = d2.toISOString().split('T')[0];
 
         const setCell = (id, val, unit, colorClass) => {
@@ -4631,7 +4631,7 @@ recent.forEach(d => {
             axisPointer: { link: [{ xAxisIndex: 'all' }] },
             grid: [{ left: '12%', right: '2%', top: '5%', height: '55%' }, { left: '12%', right: '2%', top: '65%', height: '30%' }],
             xAxis: [{ type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { color: '#8b949e', fontSize: 10 } }],
-            yAxis: [{ scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 10 } }, { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 10 } }],
+            yAxis: [{ scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 10 } }, { min: 0, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 10 } }],
             dataZoom: [{ type: 'inside', xAxisIndex: [0, 1], start: currentZoomStart, end: currentZoomEnd, zoomLock: false, preventDefaultMouseMove: false, moveOnMouseMove: true, moveOnMouseWheel: true }],
             series: [
                 { name: 'K線', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' }, markPoint: { data: markPointData }, markLine: { symbol: ['none', 'none'], data: markLineData, animation: false } },
