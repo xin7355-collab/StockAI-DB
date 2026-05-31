@@ -1279,7 +1279,8 @@ def fetch_broker_chips():
 
     # 新增：一次查全市場 PE / 殖利率（TWSE）
     print("\n📊 抓取 TWSE 全市場本益比 / 殖利率快取...")
-    twse_fund = fetch_twse_fundamentals(date.today())
+    # 【極限防禦】加上 or {}，確保即使 API 崩潰回傳 None，也絕對不會引發 'NoneType' 錯誤
+    twse_fund = fetch_twse_fundamentals(date.today()) or {}
 
     # 新增：一次查全台券商代碼→中文名對照（FinMind TaiwanBrokerInfo 免費）
     print("\n📖 載入券商對照表（TaiwanBrokerInfo）...")
@@ -1400,16 +1401,17 @@ def fetch_broker_chips():
                 skip_finmind = age_days < FUND_CACHE_DAYS
             except Exception: pass
 
+        # 【極限防爆】提前提取並確保字典絕對不會是 None
+        tw_fund = twse_fund.get(sym, {}) or {}
+
         if skip_finmind:
             print(f"  ⚡ 基本面快取有效（{generated_str}），跳過 FinMind")
-            tw_fund = twse_fund.get(sym, {})
             fundamentals = {**cached_fund,
                             'pe':         tw_fund.get('pe') or cached_fund.get('pe'),
                             'yield_rate': tw_fund.get('yield_rate') or cached_fund.get('yield_rate')}
         else:
             print(f"  📈 基本面採礦 {sym}...", end=' ', flush=True)
-            fm_fund = fetch_finmind_fundamentals(sym)  # [Token 輪動] token 由 fm_request 統一管理
-            tw_fund = twse_fund.get(sym, {})
+            fm_fund = fetch_finmind_fundamentals(sym) or {}  # 加上 or {} 終極防爆
             fundamentals = {
                 'eps':                fm_fund.get('eps'),
                 'eps_history':        fm_fund.get('eps_history'),
