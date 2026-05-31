@@ -304,8 +304,8 @@
                         <input type="search" id="symbolInput" value="" inputmode="search" enterkeyhint="search" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
                             class="bg-transparent text-white px-2 py-1.5 outline-none w-full text-right pr-2 font-mono font-bold placeholder-gray-600 text-sm min-w-0" 
                             placeholder="代號" oninput="app.handleSearchInput(event)" onfocus="app.handleSearchInput(event)"
-                            onkeydown="if(event.key === 'Enter') { document.getElementById('searchDropdown').classList.add('hidden'); document.activeElement.blur(); app.analyze(); document.getElementById('symbolInput').value=''; }">
-                        <button onclick="app.analyze(); app.vibrate(50);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-xs transition font-bold cursor-pointer flex-shrink-0">診斷</button>
+                            onkeydown="if(event.key === 'Enter') { document.getElementById('searchDropdown').classList.add('hidden'); document.activeElement.blur(); app.analyze(); if(app.switchAppTab) app.switchAppTab('diag'); if(app.switchSubTab) app.switchSubTab('strategy'); document.getElementById('symbolInput').value=''; }">
+                        <button onclick="app.analyze(); if(app.switchAppTab) app.switchAppTab('diag'); if(app.switchSubTab) app.switchSubTab('strategy'); app.vibrate(50);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-xs transition font-bold cursor-pointer flex-shrink-0">診斷</button>
                     </div>
                     <ul id="searchDropdown" class="hidden absolute top-[110%] right-0 mt-1 w-full min-w-[180px] bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-48 z-[300]"></ul>
                 </div>
@@ -1706,7 +1706,7 @@ const app = {
         if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
         const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 8);
         if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
+            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); if(app.switchAppTab) app.switchAppTab('diag'); if(app.switchSubTab) app.switchSubTab('strategy'); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
             dropdown.classList.remove('hidden');
         } else dropdown.classList.add('hidden');
     },
@@ -1825,6 +1825,9 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                                 ? parseInt(last.open_interest_net_volume)
                                 : (parseInt(last.long_open_interest_balance || 0) - parseInt(last.short_open_interest_balance || 0));
                             if (isNaN(taifexData)) taifexData = null;
+                            // 補齊 long/short 提取，避免 Strategy 2 fallback 時熱力圖跟未平倉顯示 +0.0K
+                            taifexLong    = parseInt(last.long_open_interest_balance || 0) || null;
+                            taifexShortOI = parseInt(last.short_open_interest_balance || 0) || null;
                         }
                     }
                 } catch(e) {}
@@ -2191,15 +2194,20 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // ═══════════════════════════════════════════════════════════════════
     async _callAI({ prompt, max_tokens = 900, temperature = 0.3 }) {
         const apiBase  = this._apiBase;
-        const groqKey  = this.settings.groqKey || '';
+        const groqKey  = (this.settings.groqKey || '').trim();
 
         // 模式 A：後端代理
         if (apiBase) {
-            const res = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, max_tokens, temperature })
-            }, { timeout: 60000, maxRetries: 1 });
+            let res;
+            try {
+                res = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, max_tokens, temperature })
+                }, { timeout: 60000, maxRetries: 1 });
+            } catch (e) {
+                throw new Error(`本地 API (${apiBase}) 連線失敗。請確認 api.py 已啟動，或清空「本地 API URL」改用 Groq Key 直連。`);
+            }
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.detail || `後端錯誤 HTTP ${res.status}`);
@@ -2210,11 +2218,16 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
 
         // 模式 B：前端直打 Groq（純手機）
         if (groqKey) {
-            const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens, temperature })
-            }, { timeout: 60000, maxRetries: 2 });
+            let res;
+            try {
+                res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens, temperature })
+                }, { timeout: 60000, maxRetries: 2 });
+            } catch (e) {
+                throw new Error(`Groq API 連線失敗。最常見根因：Groq 不支援瀏覽器直打（沒有 CORS header），任何純前端的呼叫都會被瀏覽器擋掉，這跟 Key 是否正確無關。解法：到「⚙️ 設定 → 本地 API URL」填入已部署的 api.py URL（例如 http://your-server:8000），讓 AI 呼叫走後端代理。原始錯誤：${e.message}`);
+            }
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error?.message || `Groq 錯誤 HTTP ${res.status}`);
@@ -3044,6 +3057,20 @@ const marginByDate = {};
         }
 
         const pd = this._chipPeriods[period] || { buy: [], sell: [] };
+        // 偵測污染資料（broker_id 含中文 / 過長 = FinMind 舊 dataset deprecate 後留下的錯誤資料）
+        const allEntries = [...(pd.buy || []), ...(pd.sell || [])];
+        const looksPolluted = allEntries.length > 0 && allEntries.every(x => {
+            const b = String(x.broker_id || '');
+            return b.length > 4 || /[一-龥]/.test(b);
+        });
+        if (looksPolluted) {
+            const box2 = document.getElementById('brokerChipContent');
+            if (box2) box2.innerHTML = `<div class="text-center py-6 text-xs text-amber-400 leading-relaxed">
+                ⚠️ 分點資料來源異常（FinMind 已將 dataset 改為 Sponsor 級）<br>
+                <span class="text-[10px] text-amber-500/70">採礦機已修正，等下次採礦更新會自動清空或填入真實資料</span>
+            </div>`;
+            return;
+        }
         const names = this._chipBrokerNames || {};
         const buy  = pd.buy  || [];
         const sell = pd.sell || [];
@@ -3605,7 +3632,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
         const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d = new Date(); d.setFullYear(d.getFullYear() - 2);
         const startDate = d.toISOString().split('T')[0];
-        const d2 = new Date(); d2.setMonth(d2.getMonth() - 3);
+        const d2 = new Date(); d2.setMonth(d2.getMonth() - 18);
         const revStart = d2.toISOString().split('T')[0];
 
         const setCell = (id, val, unit, colorClass) => {
@@ -3731,13 +3758,36 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
             }
         }
 
-        // 每季 EPS 趨勢（最近4季）
+        // 每季 EPS 趨勢（最近4季）— 4 卡片橫排 + QoQ 顏色 + 迷你比例 bar
         const epsSlice = epsRows.slice(-4);
         const epsTrendEl = document.getElementById('xrayEpsTrend');
         if (epsTrendEl) {
             if (epsSlice.length > 0) {
-                epsTrendEl.textContent = epsSlice.map(r => `${r.date.slice(0,7)} ${Number(r.value).toFixed(2)}`).join(' → ');
-                epsTrendEl.className = epsTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-300';
+                const maxAbs = Math.max(...epsSlice.map(r => Math.abs(Number(r.value) || 0)), 0.01);
+                epsTrendEl.innerHTML = `<div class="grid grid-cols-4 gap-1.5 mt-1">${epsSlice.map((r, idx) => {
+                    const [y, m] = r.date.slice(0, 7).split('-');
+                    const q = Math.ceil(parseInt(m) / 3);
+                    const qLabel = `${y.slice(2)}Q${q}`;
+                    const val = Number(r.value) || 0;
+                    let qoqText = '—', qoqColor = 'text-gray-600';
+                    if (idx > 0) {
+                        const prev = Number(epsSlice[idx-1].value) || 0;
+                        if (prev !== 0) {
+                            const qoqPct = (val - prev) / Math.abs(prev) * 100;
+                            qoqText = `${qoqPct > 0 ? '▲' : (qoqPct < 0 ? '▼' : '─')}${Math.abs(qoqPct).toFixed(1)}%`;
+                            qoqColor = qoqPct > 0 ? 'text-red-400' : (qoqPct < 0 ? 'text-green-400' : 'text-gray-500');
+                        }
+                    }
+                    const barW = Math.round(Math.abs(val) / maxAbs * 100);
+                    const barColor = val >= 0 ? 'bg-blue-500/60' : 'bg-orange-500/60';
+                    const valColor = val >= 0 ? 'text-white' : 'text-orange-300';
+                    return `<div class="bg-[#161b22] border border-[#30363d] rounded px-1.5 py-1.5 text-center">
+                        <div class="text-[9px] text-gray-500 font-mono leading-tight">${qLabel}</div>
+                        <div class="text-base font-black font-mono leading-tight ${valColor}">${val.toFixed(2)}</div>
+                        <div class="h-0.5 rounded-full ${barColor} my-1 mx-auto" style="width:${barW}%"></div>
+                        <div class="text-[9px] font-mono leading-tight ${qoqColor}">${qoqText}</div>
+                    </div>`;
+                }).join('')}</div>`;
             } else {
                 epsTrendEl.textContent = '--';
                 epsTrendEl.className = epsTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
@@ -3754,7 +3804,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
                         
                         if (rvSlice.length > 0) {
                             rvTrendEl.style.whiteSpace = 'normal';
-                            rvTrendEl.innerHTML = '<div class="flex overflow-x-auto gap-2 pb-2 snap-x scrollbar-hide mt-1">' + rvSlice.map(r => {
+                            rvTrendEl.innerHTML = '<div class="flex overflow-x-auto gap-2 pb-2 snap-x scrollbar-hide mt-1">' + rvSlice.map((r, idx) => {
                                 const ym = `${String(r.revenue_month).padStart(2,'0')}月`;
                                 let yoyVal = r.revenue_year_growth;
                                 if (yoyVal == null) {
@@ -3762,11 +3812,18 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
                                     if (ly && ly.revenue > 0) yoyVal = ((r.revenue - ly.revenue) / ly.revenue) * 100;
                                 }
                                 const isPos = yoyVal > 0;
+                                // MoM：優先 API 給的 revenue_month_growth，否則用陣列前一筆反算
+                                let momVal = r.revenue_month_growth;
+                                if (momVal == null && idx > 0 && rvSlice[idx-1].revenue > 0) {
+                                    momVal = (r.revenue - rvSlice[idx-1].revenue) / rvSlice[idx-1].revenue * 100;
+                                }
+                                const momPos = momVal > 0;
                                 return `
                                 <div class="snap-start flex-shrink-0 bg-[#1c2128] border border-[#30363d] rounded p-2 flex flex-col items-center justify-between min-w-[75px]">
                                     <div class="text-[10px] text-gray-400 mb-1">${ym}</div>
                                     <div class="font-mono text-xs font-bold text-gray-200">${(r.revenue/1e8).toFixed(1)}億</div>
-                                    <div class="${isPos ? 'text-red-400' : 'text-green-400'} text-[10px] font-bold mt-0.5">${yoyVal != null ? (isPos?'+':'')+yoyVal.toFixed(1)+'%' : '--'}</div>
+                                    <div class="${isPos ? 'text-red-400' : 'text-green-400'} text-[10px] font-bold mt-0.5">YoY ${yoyVal != null ? (isPos?'+':'')+yoyVal.toFixed(1)+'%' : '--'}</div>
+                                    <div class="${momPos ? 'text-red-400' : 'text-green-400'} text-[9px] font-bold">MoM ${momVal != null ? (momPos?'+':'')+momVal.toFixed(1)+'%' : '--'}</div>
                                 </div>`;
                             }).join('') + '</div>';
                         } else {
@@ -3950,7 +4007,7 @@ recent.forEach(d => {
                         });
                         this.latestNewsCache = fullNewsText;
             } else if (!data) { nHtml = `<div class="text-gray-500 text-xs">新聞服務暫時無法連線，請稍後再試。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></div>`; this.latestNewsCache = ""; }
-            else { nHtml = `<div class="text-gray-500 text-xs">近期無重大訊息公告。</div>`; this.latestNewsCache = ""; }
+            else { nHtml = `<div class="text-gray-500 text-xs">近期 30 天無重大訊息公告（若覺得有遺漏可能是新聞 API 暫不穩）。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></div>`; this.latestNewsCache = ""; }
             newsBox.innerHTML = nHtml;
 
             const badge = document.getElementById('corpEventBadge');
@@ -4094,6 +4151,7 @@ recent.forEach(d => {
         }
     },
 
+    applyLatestPrice(fugleData = null, manualPrice = null) {
         this.rawDailyData = JSON.parse(JSON.stringify(this.baseRawData));
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
         const todayStr = this.getTodayStr(); let lastIdx = this.rawDailyData.length - 1;
@@ -4573,7 +4631,7 @@ recent.forEach(d => {
             axisPointer: { link: [{ xAxisIndex: 'all' }] },
             grid: [{ left: '12%', right: '2%', top: '5%', height: '55%' }, { left: '12%', right: '2%', top: '65%', height: '30%' }],
             xAxis: [{ type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { color: '#8b949e', fontSize: 10 } }],
-            yAxis: [{ scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 10 } }, { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 10 } }],
+            yAxis: [{ scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 10 } }, { min: 0, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 10 } }],
             dataZoom: [{ type: 'inside', xAxisIndex: [0, 1], start: currentZoomStart, end: currentZoomEnd, zoomLock: false, preventDefaultMouseMove: false, moveOnMouseMove: true, moveOnMouseWheel: true }],
             series: [
                 { name: 'K線', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' }, markPoint: { data: markPointData }, markLine: { symbol: ['none', 'none'], data: markLineData, animation: false } },
@@ -4638,7 +4696,23 @@ recent.forEach(d => {
             return b.total > 0 ? Math.round(b.wins / b.total * 100) : null;
         };
 
-        let html = '';
+        // 採礦資料新鮮度檢查：若 mined data 最後一筆距今 > 5 天，顯示警示
+        let warningRow = '';
+        try {
+            const lastBarDate = this.baseRawData[this.baseRawData.length - 1].date;
+            const lastDate = new Date(lastBarDate.replace(/\//g, '-'));
+            const daysGap = Math.floor((Date.now() - lastDate.getTime()) / 86400000);
+            if (daysGap > 5) {
+                warningRow = `<tr class="bg-yellow-900/30">
+                    <td colspan="3" class="py-2 px-2 text-center text-yellow-300 text-xs leading-relaxed">
+                        ⚠️ 採礦資料停在 <b>${lastBarDate}</b>，已 ${daysGap} 天未更新<br>
+                        <span class="text-yellow-500/80 text-[10px]">請至 GitHub Actions 手動觸發「每日籌碼採礦機」補資料</span>
+                    </td>
+                </tr>`;
+            }
+        } catch (e) { /* baseRawData 不存在則跳過警示 */ }
+
+        let html = warningRow;
         for (let i = last; i >= Math.max(0, last - 4); i--) {
             const pC = data[i].close, prevC = i > 0 ? data[i-1].close : pC, diff = pC - prevC, pct = prevC > 0 ? (diff / prevC) * 100 : 0;
             const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500'), sign = diff > 0 ? '+' : '';

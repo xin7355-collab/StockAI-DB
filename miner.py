@@ -365,19 +365,34 @@ def fetch_market_institutional(d: date) -> dict:
         if j.get('stat') == 'OK':
             fields = j.get('fields', [])
             idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), None)
-            idx_f  = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f), None)
+            # 外資：「外陸資買賣超股數(不含外資自營商)」優先；fallback 找含「外」「買賣超」但不含「自營」
+            idx_f  = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f and '自營' not in f), None)
+            if idx_f is None:
+                idx_f = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f), None)
             idx_t  = next((i for i, f in enumerate(fields) if '投信買賣超' in f), None)
-            idx_d  = next((i for i, f in enumerate(fields) if '自營商買賣超股數' in f and '自行' not in f and '避險' not in f), None)
-            if idx_d is None: idx_d = next((i for i, f in enumerate(fields) if '自營商買賣超' in f), None)
-            if None in (idx_id, idx_f, idx_t, idx_d):
-                print(f"  ⚠️ 上市法人欄位找不到，headers={fields[:5]}")
+            # 自營商：先找「總計」欄；找不到就抓「自行買賣」+「避險」分開加總
+            # 注意：必須排除「外」字，否則會抓到「外資自營商買賣超股數」（值通常極小或 0）
+            idx_d  = next((i for i, f in enumerate(fields)
+                           if '自營商買賣超股數' in f and '自行' not in f and '避險' not in f and '外' not in f), None)
+            idx_d_self  = next((i for i, f in enumerate(fields)
+                                if '自營' in f and '自行' in f and '買賣超' in f and '外' not in f), None)
+            idx_d_hedge = next((i for i, f in enumerate(fields)
+                                if '自營' in f and '避險' in f and '買賣超' in f and '外' not in f), None)
+            if None in (idx_id, idx_f, idx_t) or (idx_d is None and idx_d_self is None and idx_d_hedge is None):
+                print(f"  ⚠️ 上市法人欄位找不到，fields={fields}")
                 return res
             for r in (j.get('data') or []):
                 try:
+                    if idx_d is not None:
+                        dealer_net = int(str(r[idx_d]).replace(',',''))
+                    else:
+                        ds = int(str(r[idx_d_self]).replace(',','')) if idx_d_self is not None else 0
+                        dh = int(str(r[idx_d_hedge]).replace(',','')) if idx_d_hedge is not None else 0
+                        dealer_net = ds + dh
                     res[str(r[idx_id]).strip()] = {
                         'foreign_net': int(str(r[idx_f]).replace(',','')),
                         'trust_net':   int(str(r[idx_t]).replace(',','')),
-                        'dealer_net':  int(str(r[idx_d]).replace(',',''))
+                        'dealer_net':  dealer_net,
                     }
                 except (ValueError, IndexError): pass
     except Exception as e: print(f"  ⚠️ 上市法人失敗: {e}")
@@ -413,19 +428,27 @@ def fetch_market_margin(d: date) -> dict:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
-            target_table = next((t for t in j.get('tables', []) if '信用' in t.get('title', '')), None)
-            if target_table:
+            # 放寬：原本只找 title 含「信用」的 table；新版可能改成「融資」「融券」等關鍵字
+            target_table = next((t for t in j.get('tables', [])
+                                 if any(k in t.get('title', '') for k in ['信用', '融資', '融券', '個股'])), None)
+            if target_table is None:
+                titles = [t.get('title', '') for t in j.get('tables', [])]
+                print(f"  ⚠️ 上市融資券找不到 table，tables.title={titles}")
+            else:
                 fields = target_table.get('fields', [])
-                idx_id = next((i for i, f in enumerate(fields) if '股票代號' in f), -1)
+                idx_id = next((i for i, f in enumerate(fields) if '股票代號' in f or '證券代號' in f), -1)
                 idx_mb = next((i for i, f in enumerate(fields) if '融資' in f and '今日餘額' in f), -1)
                 idx_sb = next((i for i, f in enumerate(fields) if '融券' in f and '今日餘額' in f), -1)
-                for r in target_table.get('data', []):
-                    try:
-                        res[str(r[idx_id]).strip()] = {
-                            'margin_balance': int(str(r[idx_mb]).replace(',','')),
-                            'short_balance': int(str(r[idx_sb]).replace(',',''))
-                        }
-                    except: pass
+                if -1 in (idx_id, idx_mb, idx_sb):
+                    print(f"  ⚠️ 上市融資券 fields 抓不到 id/mb/sb（id={idx_id} mb={idx_mb} sb={idx_sb}），fields={fields}")
+                else:
+                    for r in target_table.get('data', []):
+                        try:
+                            res[str(r[idx_id]).strip()] = {
+                                'margin_balance': int(str(r[idx_mb]).replace(',','')),
+                                'short_balance': int(str(r[idx_sb]).replace(',',''))
+                            }
+                        except: pass
     except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
@@ -1364,12 +1387,26 @@ def fetch_broker_chips():
                             f'&data_id={sym}&start_date={chip_start}')
                 j = fm_request(url_base, timeout=15)
                 if j is None: j = {}
-                if j.get('status') == 200 and j.get('data'):
+                # 污染防呆（從 PR #4 帶入）：FinMind 該 dataset 已 deprecate，會回污染資料；嚴格驗證避免寫入錯誤
+                status_code = j.get('status')
+                data_rows = j.get('data') or []
+                if status_code in (402, 403):
+                    print(f"    💰 分點 {sym} FinMind 備援回 {status_code}（{j.get('msg', '需付費')}）— 跳過")
+                    data_rows = []
+                elif status_code == 200 and data_rows:
+                    sample = data_rows[0]
+                    if not any(k in sample for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+                        print(f"    ⚠️ 分點 {sym} FinMind 備援 response 欄位不對，keys={list(sample.keys())[:10]} — 跳過避免污染")
+                        data_rows = []
+                if data_rows:
                     by_date: dict = {}
-                    for r in j['data']:
+                    for r in data_rows:
                         d   = r.get('date') or today_str
                         bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
                         raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
+                        # bid 驗證：必須短碼且不含中文（避免「台泥」這類污染）
+                        if not bid or len(str(bid)) > 6 or any('一' <= ch <= '鿿' for ch in str(bid)):
+                            continue
                         if bid in TACTICAL_TAGS: bnm = TACTICAL_TAGS[bid]
                         elif raw_nm and not raw_nm.isdigit(): bnm = raw_nm
                         elif bid in broker_info_map: bnm = broker_info_map[bid]
