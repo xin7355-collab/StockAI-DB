@@ -39,7 +39,7 @@ jobs:
 
       - name: 📦 安裝相依套件
         run: |
-          pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser
+          pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser beautifulsoup4 pillow ddddocr
 
       - name: 📂 還原昨天的快取 (取得基準資料)
         run: |
