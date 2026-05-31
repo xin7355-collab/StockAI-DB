@@ -4122,6 +4122,7 @@ recent.forEach(d => {
         }
     },
 
+    applyLatestPrice(fugleData, manualPrice) {
         this.rawDailyData = JSON.parse(JSON.stringify(this.baseRawData));
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
         const todayStr = this.getTodayStr(); let lastIdx = this.rawDailyData.length - 1;
