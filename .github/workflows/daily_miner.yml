@@ -139,6 +139,11 @@ jobs:
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
 
+          if [ "$STOCKS" -lt 100 ]; then
+            echo "❌ ABORT: 僅 $STOCKS 檔，拒絕強制覆寫 gh-pages 以保護現有資料"
+            exit 1
+          fi
+
           git add -f index.html data/
           [ -f broker_names.json ]  && git add -f broker_names.json  || true
           [ -f futures_cache.json ] && git add -f futures_cache.json || true
@@ -159,10 +164,16 @@ jobs:
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/        2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/  2>/dev/null || true
-          git add -f data/
 
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
+
+          if [ "$STOCKS" -lt 100 ]; then
+            echo "❌ ABORT: 僅 $STOCKS 檔，拒絕強制覆寫 data 分支以保護現有資料"
+            exit 1
+          fi
+
+          git add -f data/
           git commit -m "🤖 籌碼快照 ${DATE}（平行宇宙合併，共 ${STOCKS} 檔）"
           git push origin HEAD:data --force
           echo "✅ data 分支已更新"

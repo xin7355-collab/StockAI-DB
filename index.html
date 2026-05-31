@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         html { font-size: 100%; touch-action: manipulation; width: 100%; height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0d1117; }
+        html[data-font="large"]  { font-size: 112.5%; }
+        html[data-font="small"]  { font-size: 87.5%; }
         body {
             width: 100%; height: 100dvh; height: calc(var(--real-vh, 1dvh) * 100); overflow: hidden; margin: 0; padding: 0;
             background-color: #0d1117; color: #c9d1d9;
@@ -43,9 +45,13 @@
         
         .header-fixed { flex-shrink: 0; z-index: 150; background-color: #0d1117; padding-top: 4px; position: sticky; top: 0; }
         @media (display-mode: standalone) {
-            .header-fixed { padding-top: env(safe-area-inset-top); }
+            .header-fixed { padding-top: env(safe-area-inset-top, 44px); }
+            .nav-fixed { padding-bottom: max(env(safe-area-inset-bottom, 20px), 20px); }
+            .scrollable-main { padding-bottom: max(8rem, calc(6rem + env(safe-area-inset-bottom, 20px))); }
         }
-        html.ios-standalone .header-fixed { padding-top: env(safe-area-inset-top); }
+        html.ios-standalone .header-fixed { padding-top: env(safe-area-inset-top, 44px); }
+        html.ios-standalone .nav-fixed { padding-bottom: max(env(safe-area-inset-bottom, 20px), 20px); }
+        html.ios-standalone .scrollable-main { padding-bottom: max(8rem, calc(6rem + env(safe-area-inset-bottom, 20px))); }
         .nav-fixed { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background-color: #0d1117; border-top: 1px solid #30363d; box-shadow: 0 -2px 10px rgba(0,0,0,0.8); padding-bottom: env(safe-area-inset-bottom); }
         .sticky-sub { position: sticky; top: 0; z-index: 40; background-color: #0d1117; }
         .sub-tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; color: #8b949e; }
@@ -89,9 +95,6 @@
         <button onclick="app.forceStopLoading()" class="px-5 py-2.5 bg-red-900/80 border border-red-700 rounded-lg text-xs text-red-200 font-bold hover:bg-red-800 transition-colors shadow-lg">⚠️ 強制中斷連線</button>
     </div>
 
-    <div id="emergencyBanner" class="hidden w-full text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_15px_rgba(248,113,113,0.8)] z-[200] flex-shrink-0 animate-siren absolute top-0 left-0">
-        🚨 【黑天鵝警報】偵測到系統性重挫風險！建議現金為王，嚴禁任何摸底行為！
-    </div>
     <div id="apiWarningBanner" class="hidden w-full bg-red-900 text-white text-xs font-bold py-1.5 px-3 text-center border-b border-red-500 shadow-[0_0_10px_rgba(248,113,113,0.5)] z-[200] flex-shrink-0 absolute top-0 left-0">
         🔴 ⚠️ 偵測到流量擠壓，進入防守模式
     </div>
@@ -215,6 +218,14 @@
                         <button onclick="app.copyExportData()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 rounded text-xs font-bold border border-gray-600 transition-colors break-words w-[4rem]">複製<br>代碼</button>
                     </div>
                     <div class="flex items-center justify-between pt-2">
+                        <label class="text-xs font-bold text-cyan-400">🔤 介面字體大小</label>
+                        <div class="flex gap-1" id="fontSizeBtns">
+                            <button onclick="app.setFontSize('small')" id="btn_font_small" class="px-3 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">小</button>
+                            <button onclick="app.setFontSize('medium')" id="btn_font_medium" class="px-3 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors">中</button>
+                            <button onclick="app.setFontSize('large')" id="btn_font_large" class="px-3 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">大</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2">
                         <label class="text-xs font-bold text-yellow-400">🔊 價格語音告警</label>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="set_voiceAlert" onchange="app.settings.voiceAlert=this.checked; app.saveSettings();" class="sr-only peer">
@@ -279,7 +290,7 @@
                         class="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
             </div>
             <div id="techAIModalBody"
-                 class="bg-[#0d1117] rounded-lg p-3 text-gray-200 text-sm leading-relaxed min-h-[100px] font-mono whitespace-pre-wrap">
+                 class="bg-[#0d1117] rounded-lg p-3 text-gray-200 text-base leading-relaxed min-h-[100px] font-mono whitespace-pre-wrap">
             </div>
         </div>
     </div>
@@ -462,7 +473,7 @@
                             class="py-1.5 px-3 rounded-lg text-[11px] font-bold tracking-widest text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(79,70,229,0.4)] transition-all flex-shrink-0"
                             style="background:linear-gradient(90deg,rgba(30,27,75,0.8),rgba(127,29,29,0.8))">🤖 AI 解析</button>
                     </div>
-                    <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-[11px] text-gray-300 leading-relaxed shadow-inner"></div>
+                    <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-[13px] text-gray-300 leading-relaxed shadow-inner"></div>
                 </div>
 
                 <!-- 【宏觀籌碼】三大法人 + 融資券（並排）-->
@@ -563,7 +574,7 @@
                             <div class="bg-gray-800 rounded p-2"><div class="text-xs text-gray-400">單趟均利</div><div class="font-bold text-white text-lg mt-0.5" id="btAvgProfit">--</div></div>
                         </div>
                     </div>
-                    <div class="text-sm bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
+                    <div class="text-base bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
                     <h2 class="text-base font-black text-white mb-3 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【推薦隔日上漲機率說明】\n\n結合前日主力分點集中度、三大法人近3日籌碼動態，並交叉比對 KD、RSI 等技術面指標，由系統推估出的短線極短線勝率。\n\n如何解讀表格：\n• 日期：歷史交易日\n• 收盤：該日收盤價\n• 隔日漲機率：類似型態下的隔日上漲統計機率\n\n🔴高機率日（≥65%）代表歷史上這種型態隔日收高的可能性高，大於 60% 代表隔日早盤具備強烈動能。')">📅 推薦隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
@@ -630,7 +641,7 @@
                     </div>
                     <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
                         <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
-                        <div id="xrayAIResult" class="text-gray-200 text-sm leading-relaxed"></div>
+                        <div id="xrayAIResult" class="text-gray-200 text-base leading-relaxed"></div>
                     </div>
                 </div>
 
@@ -721,7 +732,7 @@
 
                 <!-- 全球市場熱力圖（排序：壞消息優先） -->
                 <div class="mb-3">
-                    <div class="text-[10px] text-gray-500 font-bold mb-1.5">🌡️ 全球指標熱力圖（紅＝利空靠前）</div>
+                    <div class="text-[10px] text-gray-500 font-bold mb-1.5">🌡️ 全球指標熱力圖（紅＝利多靠前）</div>
                     <div class="grid grid-cols-3 gap-1.5" id="mktHeatmap">
                         <div class="bg-gray-900/40 rounded p-2 text-center col-span-3 text-[9px] text-gray-600">等待市場數據載入...</div>
                     </div>
@@ -1103,7 +1114,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '', fontSize: 'medium' },
     MAX_FAV_PER_GROUP: 50,
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
@@ -1204,6 +1215,7 @@ const app = {
         if (!this.settings.aiPrompt) {
             this.settings.aiPrompt = AI_PROMPT_TEMPLATES.default;
         }
+        document.documentElement.setAttribute('data-font', this.settings.fontSize || 'medium');
 
         this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
@@ -1376,8 +1388,8 @@ const app = {
             alerts.push(`🔴 外資期貨空單 ${Math.abs(this.fiShortQty).toLocaleString()} 口，市場偏空壓力大`);
         }
         if (alerts.length > 0) {
-            banner.innerHTML = alerts.join('　｜　');
-            banner.className = 'px-3 py-1 text-[10px] font-bold text-center border-b bg-red-950/80 text-red-400 border-red-800 animate-pulse';
+            banner.innerHTML = `<span class="flex-1 text-center">${alerts.join('　｜　')}</span><button onclick="document.getElementById('marketAlertBanner').classList.add('hidden')" class="ml-2 text-red-300 hover:text-white font-black leading-none flex-shrink-0 text-sm px-1">✕</button>`;
+            banner.className = 'flex items-center px-3 py-1 text-[10px] font-bold border-b bg-red-950/80 text-red-400 border-red-800 animate-pulse';
             banner.classList.remove('hidden');
         } else {
             banner.classList.add('hidden');
@@ -1507,6 +1519,7 @@ const app = {
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
+        this._applyFontSizeUI(this.settings.fontSize || 'medium');
         document.getElementById('exportAreaContainer').classList.add('hidden');
         const modal = document.getElementById('settingsModal');
         modal.classList.remove('hidden'); modal.style.display = 'flex';
@@ -1566,8 +1579,25 @@ const app = {
         console.warn(`[Token 輪動] 前端切換至 FinMind Token #${this._finmindTokenIdx + 1}`);
     },
 
+    setFontSize(size) {
+        this.settings.fontSize = size;
+        document.documentElement.setAttribute('data-font', size);
+        localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
+        this._applyFontSizeUI(size);
+    },
+
+    _applyFontSizeUI(size) {
+        ['small', 'medium', 'large'].forEach(s => {
+            const btn = document.getElementById(`btn_font_${s}`);
+            if (!btn) return;
+            btn.className = s === size
+                ? 'px-3 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors'
+                : 'px-3 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300';
+        });
+    },
+
     saveAndCloseSettings() {
-        this.saveSettings(); 
+        this.saveSettings();
         const modal = document.getElementById('settingsModal');
         modal.classList.add('hidden'); modal.style.display = 'none';
     },
@@ -1924,12 +1954,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (fiLongEl) fiLongEl.textContent = this.fiFuturesLong != null ? this.fiFuturesLong.toLocaleString() : '--';
         if (fiShortEl) fiShortEl.textContent = this.fiFuturesShort != null ? this.fiFuturesShort.toLocaleString() : '--';
 
-        const emergencyBanner = document.getElementById('emergencyBanner');
-        if (this.emergencyMode) { 
-            emergencyBanner.innerHTML = `🚨 【黑天鵝警報】外資空單高達 ${Math.abs(this.fiShortQty)} 口！現金避險，嚴禁摸底！`; 
-            emergencyBanner.classList.remove('hidden'); document.body.classList.add('bg-red-950/20'); 
-        } else { 
-            emergencyBanner.classList.add('hidden'); document.body.classList.remove('bg-red-950/20');
+        if (this.emergencyMode) {
+            document.body.classList.add('bg-red-950/20');
+        } else {
+            document.body.classList.remove('bg-red-950/20');
         }
         if(this.currentSymbolId) this.refreshStrategy();
         this._updateWarRoom();
@@ -6020,20 +6048,20 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
                 displayVal = cl >= 1000 ? Math.round(cl).toLocaleString() : cl.toFixed(2);
             }
 
-            const bgCls = chgSign > 0.5  ? 'bg-green-900/55 border border-green-800/50'
-                        : chgSign > 0    ? 'bg-green-900/30 border border-green-900/30'
-                        : chgSign > -0.5 ? 'bg-red-900/30 border border-red-900/30'
-                        :                  'bg-red-900/55 border border-red-800/50';
-            const txtCls = chgSign > 0.5  ? 'text-[#4ade80]'
-                         : chgSign > 0    ? 'text-green-400'
-                         : chgSign > -0.5 ? 'text-red-400'
-                         :                  'text-[#f87171]';
+            const bgCls = chgSign > 0.5  ? 'bg-red-900/55 border border-red-800/50'
+                        : chgSign > 0    ? 'bg-red-900/30 border border-red-900/30'
+                        : chgSign > -0.5 ? 'bg-green-900/30 border border-green-900/30'
+                        :                  'bg-green-900/55 border border-green-800/50';
+            const txtCls = chgSign > 0.5  ? 'text-[#f87171]'
+                         : chgSign > 0    ? 'text-red-400'
+                         : chgSign > -0.5 ? 'text-green-400'
+                         :                  'text-[#4ade80]';
             const chgStr = (c.fiMode || c.vixMode) ? '' : `<div class="text-[9px] ${txtCls} opacity-80">${rawChg > 0 ? '+' : ''}${rawChg.toFixed(1)}%</div>`;
             const ring = c.hl ? ' ring-1 ring-blue-500/40' : '';
             // Mini stacked bar: red=bearish extent, green=bullish extent
             const barPct = Math.min(Math.abs(chgSign) * 25, 100);
             const barHtml = `<div class="mt-1 h-0.5 rounded overflow-hidden bg-gray-800/80">
-                <div class="h-full rounded transition-all" style="width:${barPct}%; background:${chgSign < 0 ? '#f87171' : '#4ade80'};"></div>
+                <div class="h-full rounded transition-all" style="width:${barPct}%; background:${chgSign > 0 ? '#f87171' : '#4ade80'};"></div>
             </div>`;
             const html = `<div class="${bgCls} rounded p-2 text-center${ring}">
                 <div class="text-[9px] text-gray-400 leading-tight truncate">${c.icon} ${c.name}</div>
@@ -6046,7 +6074,7 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
         // 外資台指期固定第一格，其餘依空→多排序
         const fiCell     = computed.find(x => x.c.fiMode);
         const otherCells = computed.filter(x => !x.c.fiMode);
-        otherCells.sort((a, b) => a.chgSign - b.chgSign);
+        otherCells.sort((a, b) => b.chgSign - a.chgSign);
         const ordered = fiCell ? [fiCell, ...otherCells] : otherCells;
         heatmap.innerHTML = ordered.map(x => x.html).join('');
 
@@ -6712,7 +6740,7 @@ document.addEventListener('touchend', (e) => {
             if (viewportMeta) {
                 const originalContent = viewportMeta.getAttribute('content') || 'width=device-width, initial-scale=1.0, maximum-scale=5.0';
                 viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-                setTimeout(() => { viewportMeta.setAttribute('content', originalContent); }, 300);
+                setTimeout(() => { viewportMeta.setAttribute('content', originalContent); }, 500);
             }
         }
     }
