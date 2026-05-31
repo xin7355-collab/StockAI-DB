@@ -1147,7 +1147,11 @@ const app = {
     getTodayStr() { const d = new Date(); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; },
     
     isMarketOpen() {
-        const now = new Date(); const timeVal = now.getHours() * 100 + now.getMinutes();
+        const now = new Date(); 
+        const day = now.getDay();
+        const timeVal = now.getHours() * 100 + now.getMinutes();
+        // 【防禦降級優化】判斷是否為週末 (0=週日, 6=週六)，徹底阻斷假日無效的 API 狂轟猛炸
+        if (day === 0 || day === 6) return false;
         return timeVal >= 900 && timeVal <= 1330;
     },
 
@@ -4090,23 +4094,28 @@ recent.forEach(d => {
         }
     },
 
-    applyLatestPrice(fugleData = null, manualPrice = null) {
         this.rawDailyData = JSON.parse(JSON.stringify(this.baseRawData));
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
         const todayStr = this.getTodayStr(); let lastIdx = this.rawDailyData.length - 1;
 
         if (fugleData && !fugleData.isHistorical) {
             if (fugleData.prevClose != null) this._fuglePrevClose = fugleData.prevClose;
-            // Real live data: update or append today's bar
+            // 【時間防禦線優化】只要有最新報價，無條件融入時序，確保週末/假日不漏接
             if (this.rawDailyData[lastIdx].date === todayStr) {
-                this.rawDailyData[lastIdx].close = fugleData.price; this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, fugleData.high);
-                this.rawDailyData[lastIdx].low = Math.min(this.rawDailyData[lastIdx].low, fugleData.low); this.rawDailyData[lastIdx].volume = fugleData.volume;
-            } else if (this.isMarketOpen()) {
-                this.rawDailyData.push({ date: todayStr, open: fugleData.open, high: fugleData.high, low: fugleData.low, close: fugleData.price, volume: fugleData.volume });
-                lastIdx++;
-            } else if (new Date().getDay() % 6 !== 0) {
-                // 盤後（週一~週五）且今日無採礦 bar：插入今日收盤 bar，讓漲跌幅計算正確
-                this.rawDailyData.push({ date: todayStr, open: fugleData.open || fugleData.price, high: fugleData.high || fugleData.price, low: fugleData.low || fugleData.price, close: fugleData.price, volume: fugleData.volume || 0 });
+                this.rawDailyData[lastIdx].close = fugleData.price; 
+                this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, fugleData.high);
+                this.rawDailyData[lastIdx].low = Math.min(this.rawDailyData[lastIdx].low, fugleData.low); 
+                this.rawDailyData[lastIdx].volume = fugleData.volume;
+            } else {
+                // 日期不同時直接追加今日快照節點，使非開盤時段的比較基準落在最新一筆歷史交易日
+                this.rawDailyData.push({ 
+                    date: todayStr, 
+                    open: fugleData.open || fugleData.price, 
+                    high: fugleData.high || fugleData.price, 
+                    low: fugleData.low || fugleData.price, 
+                    close: fugleData.price, 
+                    volume: fugleData.volume || 0 
+                });
                 lastIdx++;
             }
         }
@@ -4711,9 +4720,11 @@ recent.forEach(d => {
         // last bar with a different date than today (handles appended ghost bars and stale mined data).
         let prevClose = this._fuglePrevClose;
         if (prevClose == null && this.rawDailyData.length > 1) {
-            const todayStr = this.getTodayStr();
+            // 【時間對齊重構】切斷與系統時間的連結，改用「資料陣列的最後一筆日期」當作基準
+            const targetDate = this.rawDailyData[lastIdx].date;
             for (let i = lastIdx - 1; i >= 0; i--) {
-                if (this.rawDailyData[i].date !== todayStr && this.rawDailyData[i].close > 0) {
+                // 往前找，只要日期不等於最後一筆，這就是最完美的「昨收」
+                if (this.rawDailyData[i].date !== targetDate && this.rawDailyData[i].close > 0) {
                     prevClose = this.rawDailyData[i].close; break;
                 }
             }
