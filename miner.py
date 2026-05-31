@@ -11,7 +11,6 @@ import random
 import re
 import sqlite3
 import requests
-import ddddocr
 import io
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
@@ -19,6 +18,22 @@ from urllib3.util.retry import Retry
 import time
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
+
+# 🛡️ 【終極防爆修復 1】Pillow 10.0+ 移除了 ANTIALIAS，導致 ddddocr 一啟動就直接崩潰 (AttributeError)
+# 這裡我們植入「猴子補丁 (Monkey Patch)」，強行把遺失的屬性補回去！
+try:
+    import PIL.Image
+    if not hasattr(PIL.Image, 'ANTIALIAS'):
+        PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
+except Exception:
+    pass
+
+# 🛡️ 【環境防爆修復 2】如果 GitHub 雲端主機缺少 libGL.so 系統套件，捕捉錯誤，避免整台採礦機死機
+try:
+    import ddddocr
+except Exception as e:
+    print(f"⚠️ ddddocr AI 視覺模組載入失敗: {e}。Sniper 模式自動停用，無痛切換為 FinMind 備援。")
+    ddddocr = None
 
 # 【修復】極限防禦準則第 4 條：初始化具備自動退避重試機制的全局 Session
 http_session = requests.Session()
@@ -1116,6 +1131,9 @@ def fetch_us_macro_cache():
 # ─── 證交所分點日報表 AI 狙擊手 ──────────────────────────────
 def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
     """使用 ddddocr 破解證交所驗證碼，免費抓取當日分點主力資料"""
+    if ddddocr is None:
+        return None  # 🛡️ 若雲端環境不允許，直接放棄 Sniper，讓程式安靜地退回 FinMind 備援
+        
     try:
         # 必須開啟 beta=True，喚醒新版模型，提高證交所驗證碼的辨識率
         ocr = ddddocr.DdddOcr(beta=True, show_ad=False)
