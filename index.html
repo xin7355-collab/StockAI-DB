@@ -4717,7 +4717,17 @@ recent.forEach(d => {
                     prevClose = this.rawDailyData[i].close; break;
                 }
             }
+            // 【安全氣囊 1】如果找了一圈還是找不到昨收（例如新上市股），強迫拿倒數第二筆
+            if (!prevClose || prevClose <= 0) {
+                prevClose = this.rawDailyData[lastIdx - 1].close;
+            }
         }
+
+        // 【安全氣囊 2】極限防禦：如果 prevClose 依然是 0，強迫等於現價，避免跌幅變成 100%
+        if (!prevClose || prevClose <= 0) {
+            prevClose = currentClose; 
+        }
+
         if (prevClose == null) prevClose = currentClose;
         const diff = currentClose - prevClose, pct = prevClose > 0 ? (diff/prevClose)*100 : 0;
         const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : (this._hasLivePrice ? 'text-gray-300' : 'text-gray-500'));
