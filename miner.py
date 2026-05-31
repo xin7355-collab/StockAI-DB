@@ -1200,18 +1200,38 @@ def fetch_broker_chips():
             # [Token 輪動] 改用 fm_request，自動帶 Token 並在 429 時切換
             # 抓 14 天（≈10 交易日）窗口，一次請求成本與單日相同，供多週期聚合
             chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
+            # FinMind 已將舊 dataset TaiwanStockLocalSecuritiesBrokerTransactions deprecate；
+            # 改用 TaiwanStockTradingDailyReport（Sponsor 等級，需付費 token）
             url_base = (f'https://api.finmindtrade.com/api/v4/data'
-                        f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
+                        f'?dataset=TaiwanStockTradingDailyReport'
                         f'&data_id={sym}&start_date={chip_start}')
             j = fm_request(url_base, timeout=15)
             if j is None: j = {}
-            if j.get('status') == 200 and j.get('data'):
+
+            # 嚴格驗證：FinMind Sponsor 級資料需付費 token；不正確欄位拒絕寫入避免污染
+            status_code = j.get('status')
+            data_rows = j.get('data') or []
+            if status_code in (402, 403):
+                print(f"    💰 分點 {sym}：FinMind 回 {status_code}（{j.get('msg', '需付費')}）— TaiwanStockTradingDailyReport 為 Sponsor 級資料，需 FinMind 贊助等級 token")
+                data_rows = []
+            elif status_code == 200 and data_rows:
+                # 驗證第一筆 row 有合理的 broker 識別欄位
+                sample = data_rows[0]
+                has_broker_field = any(k in sample for k in ('securities_trader_id', 'secBrokerId', 'broker_id'))
+                if not has_broker_field:
+                    print(f"    ⚠️ 分點 {sym}：response 欄位不對（缺 securities_trader_id），keys={list(sample.keys())[:10]} — 跳過避免污染 chips JSON")
+                    data_rows = []
+
+            if data_rows:
                 # ── 依日期分組，券商中文名稱絕不丟棄 ──
                 by_date: dict = {}   # {date: {bid: {'broker_id','broker_name','net','buy','sel'}}}
-                for r in j['data']:
+                for r in data_rows:
                     d   = r.get('date') or today_str
-                    bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
-                    raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
+                    bid = r.get('securities_trader_id') or r.get('secBrokerId') or r.get('broker_id') or ''
+                    raw_nm = (r.get('securities_trader') or r.get('secBrokerName') or r.get('broker_name') or '').strip()
+                    # 額外驗證：bid 必須是合理 broker code（短碼，且不是中文股名）
+                    if not bid or len(str(bid)) > 6 or any('一' <= ch <= '鿿' for ch in str(bid)):
+                        continue  # 跳過非法 broker id（例如中文股名）
                     # 優先順序：戰術標記 > FinMind 回傳中文名 > TaiwanBrokerInfo 對照 > 數字代碼
                     if bid in TACTICAL_TAGS:
                         bnm = TACTICAL_TAGS[bid]

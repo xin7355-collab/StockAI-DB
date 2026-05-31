@@ -3053,6 +3053,20 @@ const marginByDate = {};
         }
 
         const pd = this._chipPeriods[period] || { buy: [], sell: [] };
+        // 偵測污染資料（broker_id 含中文 / 過長 = FinMind 舊 dataset deprecate 後留下的錯誤資料）
+        const allEntries = [...(pd.buy || []), ...(pd.sell || [])];
+        const looksPolluted = allEntries.length > 0 && allEntries.every(x => {
+            const b = String(x.broker_id || '');
+            return b.length > 4 || /[一-龥]/.test(b);
+        });
+        if (looksPolluted) {
+            const box2 = document.getElementById('brokerChipContent');
+            if (box2) box2.innerHTML = `<div class="text-center py-6 text-xs text-amber-400 leading-relaxed">
+                ⚠️ 分點資料來源異常（FinMind 已將 dataset 改為 Sponsor 級）<br>
+                <span class="text-[10px] text-amber-500/70">採礦機已修正，等下次採礦更新會自動清空或填入真實資料</span>
+            </div>`;
+            return;
+        }
         const names = this._chipBrokerNames || {};
         const buy  = pd.buy  || [];
         const sell = pd.sell || [];
