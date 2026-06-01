@@ -306,7 +306,7 @@
             </div>
             <button onclick="app.runGlobalMarketAI(); app.vibrate(50);" id="btnGlobalAIModal"
                     class="mt-3 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
-                🌐 一鍵解析全球市場對台股影響
+                🔄 重新解析
             </button>
         </div>
     </div>
@@ -828,8 +828,8 @@
                 <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative overflow-hidden">
                     <div class="text-xs text-gray-500 text-center py-2 border-b border-[#21262d] mb-1 font-bold">💡 點擊標的進行診斷 / 向左滑動可刪除</div>
                     <div class="flex items-center gap-2 px-3 py-2 border-b border-[#30363d] bg-[#161b22]">
-                        <input type="text" id="favDirectInput" placeholder="輸入代號後按 Enter 直接加入此清單..."
-                            autocomplete="off" inputmode="numeric"
+                        <input type="text" id="favDirectInput" placeholder="代號或中文名稱，Enter 加入..."
+                            autocomplete="off" inputmode="text"
                             class="flex-1 bg-[#0d1117] text-white px-2 py-1.5 rounded border border-[#30363d] text-sm outline-none focus:border-blue-500 font-mono"
                             onkeydown="if(event.key==='Enter'){event.preventDefault();app.favDirectAdd();}">
                         <button onclick="app.favDirectAdd()" class="text-blue-400 font-bold text-sm px-2 py-1.5 border border-blue-800 rounded hover:bg-blue-900/30 transition-colors">➕</button>
@@ -2304,24 +2304,37 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (cached && (Date.now() - cached.ts) < 60000) return cached.data;
 
         if (this.apiRateLimited) return null;
-        const token = this.getFugleToken();
-        if (!token) return null;
+        const keys = [this.settings.fugleToken1, this.settings.fugleToken2,
+                      this.settings.fugleToken3, this.settings.fugleToken4,
+                      this.settings.fugleToken5].filter(k => k && k.trim());
+        if (!keys.length) return null;
+        const maxTries = keys.length;
 
-        const now = Date.now();
-        const timeSinceLast = now - this.lastFugleReqTime;
-        if (timeSinceLast < 1100) {
-            await new Promise(resolve => setTimeout(resolve, 1100 - timeSinceLast));
-        }
-        this.lastFugleReqTime = Date.now();
+        for (let attempt = 0; attempt < maxTries; attempt++) {
+            const token = keys[this.fugleKeyIndex % keys.length];
+            this.fugleKeyIndex++;
 
-        try {
-            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 5000);
-            const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}`, { headers: { 'X-API-KEY': token }, signal: controller.signal });
-            clearTimeout(timeoutId);
+            const now = Date.now();
+            const timeSinceLast = now - this.lastFugleReqTime;
+            if (timeSinceLast < 1100) {
+                await new Promise(resolve => setTimeout(resolve, 1100 - timeSinceLast));
+            }
+            this.lastFugleReqTime = Date.now();
 
-            if (res.status === 429) { this.triggerApiLock(); return null; }
+            let res;
+            try {
+                const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 5000);
+                res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${symbol}`, { headers: { 'X-API-KEY': token }, signal: controller.signal });
+                clearTimeout(timeoutId);
+            } catch(e) { return null; }
+
+            if (res.status === 429) {
+                console.warn(`[Fugle 輪動] Token ${(this.fugleKeyIndex % keys.length) || keys.length} 收到 429，切換下一組...`);
+                continue;
+            }
             if (!res.ok) return null;
 
+        try {
             const json = await res.json();
             // Fugle API v1.0 returns a flat object; older versions used .data.quote nesting
             const q = (json.data && json.data.quote) ? json.data.quote : json;
@@ -2345,6 +2358,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             this._fugleCache[symbol] = { data: result, ts: Date.now() };
             return result;
         } catch(e) { return null; }
+        } // end for attempt
+        // 所有 Key 均被 429 封鎖，才鎖定 5 分鐘
+        this.triggerApiLock();
+        return null;
     },
 
     // Returns a synthetic "current price" object from the last historical bar
@@ -3639,6 +3656,10 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
         if (!modal) return;
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
+        // 若尚未分析（顯示佔位文字），自動觸發
+        const body = document.getElementById('globalAIModalBody');
+        const isPlaceholder = !body || body.innerHTML.includes('按「解析」') || body.innerHTML.trim() === '';
+        if (isPlaceholder) this.runGlobalMarketAI();
     },
     closeGlobalAIModal() {
         const modal = document.getElementById('globalAIModal');
@@ -4919,8 +4940,21 @@ recent.forEach(d => {
 
     favDirectAdd() {
         const input = document.getElementById('favDirectInput');
-        const sym = input.value.trim().toUpperCase();
-        if (!sym) return;
+        const raw = input.value.trim();
+        if (!raw) return;
+        let sym = raw.toUpperCase();
+        // 支援中文名稱搜尋：與 analyze() 相同邏輯
+        if (this.allStockList.length > 0) {
+            const found = this.allStockList.find(s =>
+                s.stock_id === raw || s.stock_id === sym || s.stock_name === raw
+            );
+            if (found) sym = found.stock_id;
+            else {
+                // 部分比對（例如只輸入「鴻海」找到「鴻海精密」）
+                const partial = this.allStockList.find(s => s.stock_name.includes(raw));
+                if (partial) sym = partial.stock_id;
+            }
+        }
         this._addToGroup(sym, this.activeGroupName);
         input.value = '';
         input.focus();
@@ -5937,6 +5971,19 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
             return lines.join('\n');
         })();
 
+        // 整合當前查看個股的資料
+        let currentStockSection = '';
+        if (this.currentSymbolId && this.activeData && this.activeData.length >= 2) {
+            const d = this.activeData;
+            const last = d[d.length - 1];
+            const prev5 = d[Math.max(0, d.length - 6)];
+            const chg5 = prev5.close > 0 ? ((last.close / prev5.close - 1) * 100).toFixed(1) : '0.0';
+            const instSum = d.slice(-5).reduce((a, r) => a + (r.foreign_net || 0), 0);
+            const instStr = instSum > 0 ? `+${instSum.toLocaleString()}` : instSum.toLocaleString();
+            const stockName = this.getStockName(this.currentSymbolId);
+            currentStockSection = `\n【目前查看個股】${this.currentSymbolId} ${stockName}，現價 ${last.close}，近5日 ${chg5 > 0 ? '+' : ''}${chg5}%，外資近5日淨 ${instStr} 張`;
+        }
+
         showProgress(5, 5, 'AI 生成報告中...');
         if (btn) btn.innerHTML = '⏳ AI 分析中...';
 
@@ -5949,9 +5996,9 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 【關鍵巨頭ADR】台積電 ${tsm}（${tsmChg}）/ 輝達NVDA ${nvda}（${nvdaChg}）/ 蘋果 ${aapl} / 微軟 ${msft}
 【宏觀三角】美債2Y ${us02y}%（${us02yChg}）/ 布蘭特原油 ${ukoil}桶 / 美元指數DXY ${dxy}（${dxyChg}）
 【雷達選股（自動掃描）】
-${radarSection}
+${radarSection}${currentStockSection}
 
-請依序輸出以下6段，每段用「▌標題」開頭，2-3句，**粗體**標關鍵數字：
+請依序輸出以下${currentStockSection ? '7' : '6'}段，每段用「▌標題」開頭，2-3句，**粗體**標關鍵數字：
 
 ▌1. 市場氛圍總結
 一句話：今晚美股氣氛偏多/偏空/中性，最關鍵的訊號是什麼
@@ -5969,7 +6016,10 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
 根據上述所有訊號，明日台股最可能：高開/平開/低開（給出大約點數方向或漲跌幅估計），說明最關鍵的支撐與壓力位
 
 ▌6. 🎯 雷達個股共鳴評估
-針對上方三類雷達選股，在當前全球環境下，哪類型訊號最強？前幾檔個股的底部/飆股訊號是否依然有效？操作上要注意什麼風險或加乘效果？`;
+針對上方三類雷達選股，在當前全球環境下，哪類型訊號最強？前幾檔個股的底部/飆股訊號是否依然有效？操作上要注意什麼風險或加乘效果？${currentStockSection ? `
+
+▌7. 📌 ${this.currentSymbolId} ${this.getStockName(this.currentSymbolId)} 個股共鳴
+結合以上全球環境，這檔個股明天的走勢預期是什麼？外資籌碼與全球資金流向對它是加分還是扣分？給出具體操作建議（持有/減碼/觀望）。` : ''}`;
 
         try {
             const text = await this._callAI({ prompt, max_tokens: 1000, temperature: 0.4 });
@@ -5984,7 +6034,7 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
         } catch(e) {
             if (result) result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
         }
-        if (btn) { btn.innerHTML = '🌐 一鍵解析全球市場對台股影響'; btn.disabled = false; }
+        if (btn) { btn.innerHTML = '🔄 重新解析'; btn.disabled = false; }
     },
 
     _calcRiskScore() {
@@ -6103,7 +6153,7 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
             if (c.fiMode) {
                 if (fi === null) return { c, chgSign: 0, html: `<div class="bg-gray-900/40 rounded p-2 text-center cursor-pointer" onclick="app.openFiFuturesModal();app.vibrate(30);"><div class="text-[9px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[10px] text-gray-600 mt-0.5">--</div></div>` };
                 rawChg = fi >= 0 ? 1 : (fi < -25000 ? -2 : -0.5);
-                displayVal = `${fi >= 0 ? '+' : ''}${(fi / 1000).toFixed(1)}K`;
+                displayVal = `${fi >= 0 ? '+' : ''}${(fi / 1000).toFixed(1)}K口`;
                 chgSign = rawChg;
             } else if (c.vixMode) {
                 const val = m[c.key];

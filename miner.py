@@ -751,6 +751,7 @@ def run():
 
     inst_cache:   dict = {}
     margin_cache: dict = {}
+    MARGIN_CACHE_FILE = Path('margin_cache_stock.json')
     if not SKIP_GLOBAL:
         print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日）...")
         for d in trading_days:
@@ -765,8 +766,19 @@ def run():
                 margin_cache[dd] = marg
                 print(f"  融券 {dd}: {len(marg)} 筆")
             time.sleep(0.8)
+        # 儲存供批次 1-4 使用（下次執行時從 gh-pages 載入）
+        if margin_cache:
+            MARGIN_CACHE_FILE.write_text(json.dumps(margin_cache, ensure_ascii=False), encoding='utf-8')
+            print(f"  💾 融資券快取已儲存 → {MARGIN_CACHE_FILE}（{len(margin_cache)} 天）")
     else:
         print(f"\n⚡ SKIP_GLOBAL=1：跳過法人/融資券抓取（OHLCV 模式）")
+        # 載入昨天批次 0 儲存的融資券快取（來自 gh-pages checkout）
+        if MARGIN_CACHE_FILE.exists():
+            try:
+                margin_cache = json.loads(MARGIN_CACHE_FILE.read_text(encoding='utf-8'))
+                print(f"  📥 載入昨日融資券快取：{len(margin_cache)} 天，{sum(len(v) for v in margin_cache.values())} 筆")
+            except Exception as e:
+                print(f"  ⚠️ 融資券快取載入失敗：{e}")
 
     # 從法人資料衍生全市場清單，依批次分割
     watchlist = get_batch_symbols(inst_cache, BATCH_INDEX, TOTAL_BATCHES)
