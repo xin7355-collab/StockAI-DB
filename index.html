@@ -408,7 +408,6 @@
                         </div>
                         <div class="flex items-center gap-1 mt-1 flex-wrap">
                             <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
-                            <span id="headerScoreStatus" class="hidden text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('scoreDetailModal').classList.remove('hidden')">--</span>
                             <span id="invBadge" class="hidden bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
                         </div>
                     </div>
@@ -478,9 +477,15 @@
                             <div class="flex flex-col justify-center pt-1 border-l border-r border-[#30363d]"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt2Label">🚀 第二目標</span><span class="text-[#f87171] font-mono font-black text-lg" id="tgt2Price">--</span></div>
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg" id="defPrice">--</span></div>
                         </div>
+                        <div id="institutionTargetBox" class="hidden w-full mt-2 text-center text-xs text-gray-500 italic leading-relaxed px-1"></div>
 
                         <div id="tomorrowScriptText" class="w-full mt-4 pt-4 border-t border-gray-700/50 text-base md:text-lg font-black text-yellow-400 leading-relaxed text-center">劇本載入中...</div>
                         <div id="smartOrderInstruction" class="w-full mt-2 bg-blue-900/20 border border-blue-800 rounded p-3 text-sm font-mono text-blue-300 leading-relaxed shadow-sm text-center">--</div>
+                        <div id="sinopacOrderCard" class="hidden w-full mt-3 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300 leading-relaxed">
+                            <div class="text-yellow-400 font-bold mb-2 text-sm">⚔️ 永豐智慧單快速設定指引</div>
+                            <div id="sinopacOrderContent"></div>
+                            <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
+                        </div>
                     </div>
                     
                     <div id="aiTranslatorCard" class="w-full bg-[#161b22] border-t border-b border-[#30363d] shadow-sm flex-shrink-0 transition-all duration-300">
@@ -666,12 +671,12 @@
                     <!-- 每季 EPS 趨勢 -->
                     <div class="bg-[#0d1117] rounded p-2 mb-1.5">
                         <div class="text-gray-500 text-[10px] font-mono mb-0.5">📊 每季 EPS（最近4季）</div>
-                        <div id="xrayEpsTrend" class="text-gray-600 text-[11px] font-mono leading-relaxed">--</div>
+                        <div id="xrayEpsTrend" style="width:100%;height:110px;"></div>
                     </div>
                     <!-- 每月營收趨勢 -->
                     <div class="bg-[#0d1117] rounded p-2 mb-1.5">
-                        <div class="text-gray-500 text-[10px] font-mono mb-0.5">📅 月營收（最近3月）</div>
-                        <div id="xrayRevTrend" class="text-gray-600 text-[11px] font-mono leading-relaxed" style="white-space:pre">--</div>
+                        <div class="text-gray-500 text-[10px] font-mono mb-0.5">📅 月營收（最近12月）</div>
+                        <div id="xrayRevTrend" style="width:100%;height:120px;"></div>
                     </div>
                     <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
                         <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
@@ -688,6 +693,7 @@
                     </h4>
                     <div class="text-sm text-gray-200 flex flex-col gap-2">
                         <div id="dividendInfo" class="flex flex-col gap-0.5"></div>
+                        <div id="corpDateInfo" class="hidden flex-col gap-1 text-xs border-b border-[#30363d] pb-2"></div>
                         <div id="yoyInfo" class="hidden"></div>
                         <div id="financialAIBox" class="flex flex-col gap-2 py-1.5 border-b border-[#30363d]">
                             <button onclick="app.runFinancialAI(app.currentSymbolId); app.vibrate(30);" id="financialAIBtn" class="w-full bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
@@ -1404,23 +1410,26 @@ const app = {
             if (!r.ok) throw new Error('fetch failed');
             const data = await r.json();
             if (!data.items || !data.items.length) { list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>'; return; }
+            this._globalNewsItems = data.items;
             const srcColor = { Reuters: 'bg-orange-900/60 text-orange-300', MarketWatch: 'bg-blue-900/60 text-blue-300', CNBC: 'bg-red-900/60 text-red-300' };
             const impColor = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-gray-400' };
-            list.innerHTML = data.items.map(item => {
+            const rows = data.items.filter(item => item.impact && item.impact !== '暫無分析').map(item => {
                 const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
                 const ic = impColor[item.impact_level] || 'text-gray-400';
-                const title = (item.title || '').slice(0, 40) + ((item.title || '').length > 40 ? '…' : '');
+                const displayTitle = (item.title_zh || item.title || '').slice(0, 50) + ((item.title_zh || item.title || '').length > 50 ? '…' : '');
                 const impact = (item.impact || '').slice(0, 30);
+                const urlStr = JSON.stringify(item.url || '#');
                 return `<div class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 cursor-pointer hover:bg-gray-800/30 rounded px-1 transition-colors"
-                             onclick="if(confirm('開啟原文？'))window.open(${JSON.stringify(item.url || '#')},'_blank')">
+                             onclick="window.open(${urlStr},'_blank')">
                     <span class="text-[8px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
                     <div class="flex-1 min-w-0">
-                        <div class="text-[10px] text-gray-300 leading-tight">${title}</div>
+                        <div class="text-[10px] text-gray-300 leading-tight">${displayTitle}</div>
                         <div class="text-[9px] ${ic} mt-0.5">${impact}</div>
                     </div>
                     <div class="text-[8px] text-gray-600 flex-shrink-0 mt-0.5">${(item.published || '').slice(5, 11)}</div>
                 </div>`;
-            }).join('');
+            });
+            list.innerHTML = rows.length ? rows.join('') : '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>';
             if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
         } catch(e) {
             list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">情報暫無法取得</div>';
@@ -1509,6 +1518,13 @@ const app = {
             this.fetchChipTimeline(this.currentSymbolId, true);
             this.loadBrokerChips(this.currentSymbolId, true);
             // renderChipGlobal 由 loadBrokerChips/fetchChipTimeline 非同步完成後呼叫，不在此同步觸發
+        }
+        if (tab === 'corp' && this.currentSymbolId) {
+            if (!this._autoFetchedCorpSyms) this._autoFetchedCorpSyms = new Set();
+            if (!this._autoFetchedCorpSyms.has(this.currentSymbolId)) {
+                this._autoFetchedCorpSyms.add(this.currentSymbolId);
+                this.fetchFundamentalAnalysis(this.currentSymbolId);
+            }
         }
     },
 
@@ -3838,49 +3854,51 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
             }
         }
 
-        // 每季 EPS 趨勢（最近4季）
+        // 每季 EPS 趨勢（最近4季）ECharts 柱狀圖
         const epsSlice = epsRows.slice(-4);
         const epsTrendEl = document.getElementById('xrayEpsTrend');
         if (epsTrendEl) {
             if (epsSlice.length > 0) {
-                epsTrendEl.textContent = epsSlice.map(r => `${r.date.slice(0,7)} ${Number(r.value).toFixed(2)}`).join(' → ');
-                epsTrendEl.className = epsTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-300';
+                const epsChart = echarts.getInstanceByDom(epsTrendEl) || echarts.init(epsTrendEl, 'dark');
+                epsChart.setOption({
+                    backgroundColor: 'transparent',
+                    grid: { left: 38, right: 6, top: 14, bottom: 22 },
+                    xAxis: { type: 'category', data: epsSlice.map(r => r.date.slice(2, 7)), axisLabel: { fontSize: 9, color: '#9ca3af' }, axisLine: { lineStyle: { color: '#374151' } }, axisTick: { show: false } },
+                    yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#9ca3af', formatter: v => v.toFixed(1) }, splitLine: { lineStyle: { color: '#1f2937' } } },
+                    series: [{ type: 'bar', data: epsSlice.map(r => ({ value: Number(r.value), itemStyle: { color: Number(r.value) >= 0 ? '#d97706' : '#6b7280' } })), barMaxWidth: 28, label: { show: true, position: 'top', fontSize: 9, color: '#e5e7eb', formatter: p => p.value.toFixed(2) } }],
+                    tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: p => `${p[0].name}<br>EPS: ${p[0].value} 元` }
+                }, true);
             } else {
-                epsTrendEl.textContent = '--';
-                epsTrendEl.className = epsTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
+                epsTrendEl.innerHTML = '<div class="text-gray-600 text-[10px] text-center" style="line-height:110px">無EPS資料</div>';
             }
         }
 
-                    // 【修復 3】每月營收趨勢（最近12月）全新橫向滑動排版
-                    const rvSlice = revData.slice(-12);
-                    const rvTrendEl = document.getElementById('xrayRevTrend');
-                    if (rvTrendEl) {
-                        // 更新標題為 12 個月
-                        const titleEl = rvTrendEl.previousElementSibling;
-                        if (titleEl) titleEl.textContent = '📅 月營收（最近12月）';
-                        
-                        if (rvSlice.length > 0) {
-                            rvTrendEl.style.whiteSpace = 'normal';
-                            rvTrendEl.innerHTML = '<div class="flex overflow-x-auto gap-2 pb-2 snap-x scrollbar-hide mt-1">' + rvSlice.map(r => {
-                                const ym = `${String(r.revenue_month).padStart(2,'0')}月`;
-                                let yoyVal = r.revenue_year_growth;
-                                if (yoyVal == null) {
-                                    const ly = revData.find(x => x.revenue_month === r.revenue_month && x.revenue_year === (r.revenue_year - 1));
-                                    if (ly && ly.revenue > 0) yoyVal = ((r.revenue - ly.revenue) / ly.revenue) * 100;
-                                }
-                                const isPos = yoyVal > 0;
-                                return `
-                                <div class="snap-start flex-shrink-0 bg-[#1c2128] border border-[#30363d] rounded p-2 flex flex-col items-center justify-between min-w-[75px]">
-                                    <div class="text-[10px] text-gray-400 mb-1">${ym}</div>
-                                    <div class="font-mono text-xs font-bold text-gray-200">${(r.revenue/1e8).toFixed(1)}億</div>
-                                    <div class="${isPos ? 'text-red-400' : 'text-green-400'} text-[10px] font-bold mt-0.5">${yoyVal != null ? (isPos?'+':'')+yoyVal.toFixed(1)+'%' : '--'}</div>
-                                </div>`;
-                            }).join('') + '</div>';
-                        } else {
-                            rvTrendEl.textContent = '--';
-                            rvTrendEl.className = rvTrendEl.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
-                        }
+        // 每月營收趨勢（最近12月）ECharts 柱狀圖
+        const rvSlice = revData.slice(-12);
+        const rvTrendEl = document.getElementById('xrayRevTrend');
+        if (rvTrendEl) {
+            if (rvSlice.length > 0) {
+                const rvYoyArr = rvSlice.map(r => {
+                    let yoyVal = r.revenue_year_growth;
+                    if (yoyVal == null) {
+                        const ly = revData.find(x => x.revenue_month === r.revenue_month && x.revenue_year === (r.revenue_year - 1));
+                        if (ly && ly.revenue > 0) yoyVal = ((r.revenue - ly.revenue) / ly.revenue) * 100;
                     }
+                    return yoyVal;
+                });
+                const revChart = echarts.getInstanceByDom(rvTrendEl) || echarts.init(rvTrendEl, 'dark');
+                revChart.setOption({
+                    backgroundColor: 'transparent',
+                    grid: { left: 46, right: 6, top: 8, bottom: 26 },
+                    xAxis: { type: 'category', data: rvSlice.map(r => `${String(r.revenue_month).padStart(2,'0')}月`), axisLabel: { fontSize: 8, color: '#9ca3af', interval: 1 }, axisLine: { lineStyle: { color: '#374151' } }, axisTick: { show: false } },
+                    yAxis: { type: 'value', axisLabel: { fontSize: 8, color: '#9ca3af', formatter: v => (v/1e8).toFixed(0)+'億' }, splitLine: { lineStyle: { color: '#1f2937' } } },
+                    series: [{ type: 'bar', data: rvSlice.map((r, i) => ({ value: r.revenue, itemStyle: { color: rvYoyArr[i] == null ? '#6b7280' : rvYoyArr[i] > 0 ? '#22c55e' : '#ef4444' } })), barMaxWidth: 18 }],
+                    tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: p => { const yoy = rvYoyArr[p[0].dataIndex]; return `${p[0].name}<br>營收: ${(p[0].value/1e8).toFixed(2)}億${yoy != null ? '<br>YoY: ' + (yoy > 0 ? '+' : '') + yoy.toFixed(1) + '%' : ''}`; } }
+                }, true);
+            } else {
+                rvTrendEl.innerHTML = '<div class="text-gray-600 text-[10px] text-center" style="line-height:120px">無營收資料</div>';
+            }
+        }
 
             // 標示資料日期
             const dateEl2 = document.getElementById('xrayDataDate');
@@ -3984,6 +4002,37 @@ const fullPrompt = `你是台股身經百戰的操盤總裁，講話犀利直接
             }
             // catch 不覆蓋 xrayDividend（保留現有值）
             divBox.innerHTML = '';
+
+            // 企業重要日期：除息日 + 重大訊息連結
+            const corpDateBox = document.getElementById('corpDateInfo');
+            if (corpDateBox) {
+                let dateLines = [];
+                // 從 TaiwanStockDividendResult 抓除息日
+                try {
+                    const dr = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividendResult&data_id=${sym}&start_date=${new Date().getFullYear()-1}-01-01${tokenStr}`, {}, { timeout: 6000, maxRetries: 1 });
+                    const dd = await dr.json();
+                    if (dd.data && dd.data.length > 0) {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const upcoming = dd.data.filter(r => r.CashDividendDate && r.CashDividendDate > todayStr).sort((a,b) => a.CashDividendDate > b.CashDividendDate ? 1 : -1);
+                        const future = upcoming[0] || dd.data.sort((a,b) => a.date > b.date ? -1 : 1)[0];
+                        if (future) {
+                            const exDate = future.CashDividendDate || future.date;
+                            const today = new Date(); const ex = new Date(exDate);
+                            const daysLeft = Math.ceil((ex - today) / 86400000);
+                            const daysStr = daysLeft > 0 ? `（${daysLeft}天後）` : daysLeft === 0 ? '（今天！）' : `（${-daysLeft}天前）`;
+                            dateLines.push(`<div class="flex items-center gap-1 text-yellow-300"><span>💰 除息日</span><span class="font-mono font-bold">${exDate}</span><span class="text-gray-500">${daysStr}</span></div>`);
+                        }
+                    }
+                } catch(e) {}
+                // 重大訊息連結（MOPS）
+                const mopsUrl = `https://mops.twse.com.tw/mops/web/ajax_t05sr01?stock_id=${sym}`;
+                dateLines.push(`<div class="flex items-center gap-1 text-blue-400 cursor-pointer hover:text-blue-300 transition-colors" onclick="window.open('${mopsUrl}','_blank')">📋 重大訊息 <span class="underline text-[10px]">→ MOPS 公開資訊</span></div>`);
+                if (dateLines.length) {
+                    corpDateBox.innerHTML = dateLines.join('');
+                    corpDateBox.classList.remove('hidden');
+                    corpDateBox.classList.add('flex');
+                }
+            }
         } catch(e) { divBox.innerHTML = `<span class="text-gray-500 text-xs">股利連線失敗</span>`; }
 
         try {
@@ -4554,6 +4603,18 @@ recent.forEach(d => {
             safetyMarginText = `<div class="mt-2 text-[#4ade80] bg-[#4ade80]/10 p-2 rounded text-sm border border-[#4ade80]/30 font-bold leading-relaxed">🕵️ <b>雲端庫存查核：</b> 查核 10日主力均價在 [${chipCostVal}]，你買在 [${costStr}]。<br>目前耐震安全邊際為 <span class="text-white">${margin > 0 ? '+' : ''}${margin.toFixed(2)}%</span></div>`;
         }
 
+        let costPnlText = "";
+        if (hasCost && !isNaN(pC) && pC > 0) {
+            const profitPct = ((pC - costVal) / costVal) * 100;
+            const profitSign = profitPct >= 0 ? '+' : '';
+            const profitColor = profitPct >= 0 ? 'text-green-400' : 'text-red-400';
+            const profitBg = profitPct >= 0 ? 'bg-green-900/20 border-green-800/50' : 'bg-red-900/20 border-red-800/50';
+            let profitHint = '';
+            if (profitPct > 15) profitHint = '獲利超過 15%，建議分批上移停利點';
+            else if (profitPct < -10) profitHint = '虧損超過 10%，評估是否執行停損';
+            costPnlText = `<div class="mt-2 ${profitBg} border rounded p-2 text-xs font-bold leading-relaxed">💰 <b>持倉損益：</b> 成本 ${costVal} → 現價 ${pC.toFixed(2)} <span class="${profitColor} font-black ml-1">${profitSign}${profitPct.toFixed(1)}%</span>${profitHint ? `<br>💡 ${profitHint}` : ''}</div>`;
+        }
+
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC); document.getElementById('tgt2Price').innerHTML = this.getPriceHTML(t2_val, pC);
         document.getElementById('defPrice').innerHTML = this.getPriceHTML(def_val, pC); document.getElementById('defLabel').innerText = defLabel;
 
@@ -4574,7 +4635,7 @@ recent.forEach(d => {
 
         actionBox.className = `w-full p-3 md:p-4 flex flex-col items-center justify-center transition-all duration-300 border-b border-[#30363d] ${boxStyle}`;
         document.getElementById('actionMainText').innerHTML = actionText; document.getElementById('actionMainText').className = `text-xl md:text-2xl font-black tracking-widest text-center w-full leading-tight ${boxStyle.split(' ')[2]}`;
-        document.getElementById('actionSubText').innerHTML = actionSubText + safetyMarginText;
+        document.getElementById('actionSubText').innerHTML = actionSubText + costPnlText + safetyMarginText;
         document.getElementById('smartOrderInstruction').innerHTML = smartInstruction;
         document.getElementById('tomorrowScriptText').innerHTML = "雲端演算已完成部署，請遵循上述作戰指令。";
 
@@ -4607,29 +4668,63 @@ recent.forEach(d => {
         sHtml.push(`<div class="border-t border-gray-700 my-2"></div><div class="flex justify-between items-center py-1 text-yellow-400 font-black text-xl"><span>綜合動能評分</span><span>${totalScore}</span></div>`);
         sHtml.push(`<div class="mt-1 pt-2 border-t border-gray-700 text-gray-300 font-bold text-xs italic leading-relaxed">💡 系統總評：${scoreSummary}</div>`);
         document.getElementById('scoreDetailContent').innerHTML = sHtml.join('');
-        
-        let lightStatus = "", scoreStyle = "text-gray-300 border-gray-600 bg-gray-800";
-        if(totalScore >= 75) { lightStatus = "🔥強多"; scoreStyle = "text-red-400 border-red-800 bg-red-900/30"; } 
-        else if (totalScore >= 45) { lightStatus = "⚠️震盪"; scoreStyle = "text-yellow-400 border-yellow-800 bg-yellow-900/30"; } 
-        else { lightStatus = "⏳觀望"; scoreStyle = "text-gray-400 border-gray-700 bg-gray-800/30"; }
-        
-        const headerScoreStatus = document.getElementById('headerScoreStatus');
-        headerScoreStatus.innerHTML = `${lightStatus}｜${totalScore}/100 <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span>`;
-        headerScoreStatus.title = `綜合動能評分 ${totalScore}/100。點此查看各指標評分明細。`;
-        headerScoreStatus.className = `text-[10px] px-1.5 py-0.5 rounded shadow-sm font-bold border cursor-pointer hover:opacity-80 transition-opacity ${scoreStyle}`;
-        headerScoreStatus.classList.remove('hidden');
-        // 震盪狀態顯示操作說明；其他狀態開評分明細 modal
-        if (lightStatus === "⚠️震盪") {
-            headerScoreStatus.onclick = function() {
-                alert('【⚠️ 震盪說明】\n目前綜合動能評分介於 45~74 分，屬於多空拉鋸的震盪格局。\n\n這代表：\n• 沒有明確趨勢，漲跌都有可能\n• 主力籌碼尚未明顯站隊\n• 操作難度較高，容易被洗出\n\n⚡ 戰略指示：嚴格禁止追高！請耐心等待股價回測 5MA 或布林下軌，採用「右下角建倉法」逢低承接。\n\n點選「評分明細」可看各指標個別得分。');
-            };
-        } else {
-            headerScoreStatus.onclick = function() {
-                document.getElementById('scoreDetailModal').classList.remove('hidden');
-            };
-        }
 
+        this._renderSinopacCard(pC, def_val, t1_val, t2_val, season);
+        this.fetchInstitutionTarget(this.currentSymbolId, pC);
         this.renderBacktest();
+    },
+
+    _renderSinopacCard(pC, defVal, t1Val, t2Val, season) {
+        const card = document.getElementById('sinopacOrderCard');
+        const content = document.getElementById('sinopacOrderContent');
+        if (!card || !content) return;
+        const def = parseFloat(defVal), t1 = parseFloat(t1Val), t2 = parseFloat(t2Val);
+        if (!pC || !def || !t1) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        const rows = [
+            ['📋 單別', '當沖停損 / ROD'],
+            ['🛡️ 停損觸發', `跌破 <b class="text-red-400">${def.toFixed(2)}</b> → 市價賣出`],
+            ['🎯 第一停利', `漲至 <b class="text-green-400">${t1.toFixed(2)}</b> → 賣出 50%`],
+            t2 ? ['🚀 第二停利', `漲至 <b class="text-green-300">${t2.toFixed(2)}</b> → 賣出餘部位`] : null,
+            ['📊 條件單型態', season === 'summer' ? '追高買（漲停板掛進）' : '回測買（拉回不破5MA）'],
+            ['💡 智慧下單建議', def > 0 ? `買進時同步掛 ${def.toFixed(2)} 停損保護` : '—'],
+        ].filter(Boolean);
+        content.innerHTML = rows.map(([k, v]) =>
+            `<div class="flex items-start gap-2 py-1 border-b border-[#21262d] last:border-0"><span class="text-gray-500 w-28 flex-shrink-0">${k}</span><span>${v}</span></div>`
+        ).join('');
+    },
+
+    async fetchInstitutionTarget(sym, pC) {
+        const box = document.getElementById('institutionTargetBox');
+        if (!box) return;
+        box.classList.remove('hidden');
+        box.textContent = '💡 法人目標價推估中...';
+        const info = this._stockInfo || {};
+        const epsArr = (info.eps || []).slice(-4).map(r => parseFloat(r.value) || 0);
+        const annualEps = epsArr.reduce((a, b) => a + b, 0);
+        const bookValue = parseFloat(info.book_value) || 0;
+        const dividend  = parseFloat(info.dividend)   || 0;
+        const peNow     = annualEps > 0 ? (pC / annualEps).toFixed(1) : 'N/A';
+        const pbNow     = bookValue > 0 ? (pC / bookValue).toFixed(2) : 'N/A';
+        const yieldNow  = dividend  > 0 ? ((dividend / pC) * 100).toFixed(2) : 'N/A';
+        const apiKey = (this.settings.groqKey || '').trim();
+        if (!apiKey) { box.textContent = '💡 法人目標價：請至設定填寫 Groq API Key'; return; }
+        const prompt = `你是法人研究員，請根據以下數據，用台股法人估值方式推估合理目標價區間，不要自己重算數字。\n股票代號：${sym}，現價：${pC}，年化EPS：${annualEps.toFixed(2)}元，當前PE：${peNow}倍，PB：${pbNow}倍，殖利率：${yieldNow}%，近年股利：${dividend}元。\n判斷股票類型（成長股/景氣循環股/成熟收益股），選擇最適合的估值方法，給出目標價低標與高標。\n輸出純JSON，格式：{"stock_type":"成長股","method":"PE法","low":250,"high":300,"reason":"20字以內理由"}`;
+        try {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], max_tokens: 100, temperature: 0.2, response_format: { type: 'json_object' } })
+            });
+            if (!res.ok) { box.textContent = '💡 法人目標價：API 無回應'; return; }
+            const parsed = JSON.parse((await res.json()).choices[0].message.content);
+            const { stock_type = '', method = '', low = 0, high = 0, reason = '' } = parsed;
+            const lowN = parseFloat(low), highN = parseFloat(high);
+            if (!lowN || !highN) { box.textContent = '💡 法人目標價：資料不足無法推估'; return; }
+            box.innerHTML = `💡 法人共識目標價 <span class="text-gray-400 font-semibold">${lowN}～${highN}</span>（${stock_type}・${method}）<br><span class="text-gray-600">${reason}</span>`;
+        } catch(e) {
+            box.textContent = '💡 法人目標價推估失敗';
+        }
     },
 
     renderChartHud(index) {
@@ -5955,6 +6050,18 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
         const tsmChg = g('usBar_tsm_chg'), nvdaChg = g('usBar_nvda_chg');
         const us02yChg = g('usBar_us02y_chg'), dxyChg = g('usBar_dxy_chg');
 
+        // 全球即時新聞摘要
+        const newsSection = (() => {
+            const items = this._globalNewsItems;
+            if (!items || !items.length) return '';
+            const bearish = items.filter(n => n.impact_level === 'bearish').slice(0, 3);
+            const bullish = items.filter(n => n.impact_level === 'bullish').slice(0, 3);
+            const lines = [];
+            if (bearish.length) lines.push('利空：' + bearish.map(n => (n.title_zh || n.title || '').slice(0, 30)).join('；'));
+            if (bullish.length) lines.push('利多：' + bullish.map(n => (n.title_zh || n.title || '').slice(0, 30)).join('；'));
+            return lines.length ? '\n【全球即時情報】\n' + lines.join('\n') : '';
+        })();
+
         // 三種雷達摘要
         const radarSection = (() => {
             const lines = [];
@@ -5994,7 +6101,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 【美股四大指數】S&P500 ${spx}（${spxChg}）/ 道瓊 ${dji} / 那斯達克 ${ndx}（${ndxChg}）/ 費半SOX ${sox}（${soxChg}）⚡
 【VIX 恐慌指數】${vix}
 【關鍵巨頭ADR】台積電 ${tsm}（${tsmChg}）/ 輝達NVDA ${nvda}（${nvdaChg}）/ 蘋果 ${aapl} / 微軟 ${msft}
-【宏觀三角】美債2Y ${us02y}%（${us02yChg}）/ 布蘭特原油 ${ukoil}桶 / 美元指數DXY ${dxy}（${dxyChg}）
+【宏觀三角】美債2Y ${us02y}%（${us02yChg}）/ 布蘭特原油 ${ukoil}桶 / 美元指數DXY ${dxy}（${dxyChg}）${newsSection}
 【雷達選股（自動掃描）】
 ${radarSection}${currentStockSection}
 
@@ -6097,6 +6204,13 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
             if      (goldChg > 2.0) score += 10;
             else if (goldChg > 1.0) score += 6;
             else if (goldChg > 0.5) score += 3;
+        }
+
+        // Global news sentiment: bearish ratio adds up to 10 points
+        const newsItems = this._globalNewsItems;
+        if (newsItems && newsItems.length > 0) {
+            const bearish = newsItems.filter(n => n.impact_level === 'bearish').length;
+            score += Math.round((bearish / newsItems.length) * 10);
         }
 
         return Math.min(100, Math.max(0, Math.round(score)));
