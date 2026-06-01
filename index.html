@@ -2001,11 +2001,6 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (fiLongEl) fiLongEl.textContent = this.fiFuturesLong != null ? this.fiFuturesLong.toLocaleString() : '--';
         if (fiShortEl) fiShortEl.textContent = this.fiFuturesShort != null ? this.fiFuturesShort.toLocaleString() : '--';
 
-        if (this.emergencyMode) {
-            document.body.classList.add('bg-red-950/20');
-        } else {
-            document.body.classList.remove('bg-red-950/20');
-        }
         if(this.currentSymbolId) this.refreshStrategy();
         this._updateWarRoom();
         this._checkMarketAlerts();
@@ -4379,7 +4374,7 @@ recent.forEach(d => {
         let isYoYGood = !isNaN(yoyNum) && yoyNum > 15;
         let isChipGood = hasChipCost && pC > (chipCostVal * 0.95);
         let isPriceDropping = pC < ma5;
-        let isHighRisk = (ma20 !== null && pC < ma20) || this.emergencyMode || ctx.isIslandReversal || ctx.isBigBlackK;
+        let isHighRisk = (ma20 !== null && pC < ma20) || ctx.isIslandReversal || ctx.isBigBlackK;
 
         let ledClass = "bg-gray-500", confMsg = "震盪觀望";
 
@@ -4487,12 +4482,6 @@ recent.forEach(d => {
             def_val = pC; defLabel = "🛑 逃命價"; t1_val = "避險退場"; t2_val = "避險退場";
             actionText = `🚨 島型反轉成型！絕對禁買！`; actionSubText = `高檔出現「左缺右口」的凶險型態，請不計代價立刻退場！`;
             smartInstruction = `🤖 <b>建議：</b> 市價強制退場。`;
-        }
-        else if (this.emergencyMode) {
-            boxStyle = "border-red-500 bg-red-900/20 text-red-400 animate-pulse";
-            def_val = pC; defLabel = "🛑 緊急避險"; t1_val = "退場"; t2_val = "退場";
-            actionText = `🔴 股災降臨，無條件撤退！`; actionSubText = `大盤外資空單飆高破表！保住本金！`;
-            smartInstruction = `🤖 <b>建議：</b> 強制降部位避險。`;
         }
         else if (isBigBlackK && pC < ma20) {
             boxStyle = "border-purple-500 bg-purple-900/20 text-purple-400 animate-pulse";
