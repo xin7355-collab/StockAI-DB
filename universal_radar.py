@@ -184,17 +184,17 @@ def fetch_global_news():
     # 批次呼叫 Groq 分析每則新聞對台股的影響
     analyzed = []
     for i, item in enumerate(items[:15]):
-        impact, level = "暫無分析", "neutral"
+        impact, level, title_zh = "暫無分析", "neutral", ""
         if GROQ_API_KEY:
             prompt = (
-                f"請用一句話（中文，20字以內）說明以下新聞對台股的影響，並判斷是bullish/bearish/neutral。\n"
+                f"請將以下新聞標題翻譯成繁體中文（20字以內），並用一句話說明對台股的影響，判斷bullish/bearish/neutral。\n"
                 f"標題：{item['title']}\n"
-                f"輸出純JSON，格式：{{\"impact\":\"...\",\"impact_level\":\"bullish|bearish|neutral\"}}"
+                f"輸出純JSON，格式：{{\"title_zh\":\"繁體中文標題\",\"impact\":\"...\",\"impact_level\":\"bullish|bearish|neutral\"}}"
             )
             payload = {
                 "model": GROQ_MODEL,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 80,
+                "max_tokens": 100,
                 "temperature": 0.3,
                 "response_format": {"type": "json_object"},
             }
@@ -212,6 +212,7 @@ def fetch_global_news():
                         impact = str(parsed.get("impact", "暫無分析"))[:30]
                         lvl = parsed.get("impact_level", "neutral")
                         level = lvl if lvl in ("bullish", "bearish", "neutral") else "neutral"
+                        title_zh = str(parsed.get("title_zh", ""))[:40]
                     break
                 except Exception as e:
                     print(f"  ⚠️ Groq 例外: {e}")
@@ -219,7 +220,7 @@ def fetch_global_news():
                         time.sleep(1)
             time.sleep(2.5)
 
-        analyzed.append({**item, "impact": impact, "impact_level": level})
+        analyzed.append({**item, "title_zh": title_zh, "impact": impact, "impact_level": level})
         if (i + 1) % 5 == 0:
             print(f"  進度: {i+1}/{min(len(items), 15)}")
 

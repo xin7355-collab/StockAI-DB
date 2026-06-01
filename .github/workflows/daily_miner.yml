@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false   # 一台當機不要連累其他台
       matrix:
-        batch: [0, 1, 2, 3, 4]  # 平行宇宙陣列
+        batch: [0, 1, 2, 3, 4, 5, 6, 7]  # 平行宇宙陣列
 
     steps:
       - name: 📥 下載程式碼
@@ -55,7 +55,7 @@ jobs:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
           BATCH_INDEX: ${{ matrix.batch }}
-          TOTAL_BATCHES: 5
+          TOTAL_BATCHES: 8
         run: |
           # 只有節點 0 負責抓取全球總經/期貨/法人等共用資料，節點 1~4 只專心抓個股
           if [ "${{ matrix.batch }}" != "0" ]; then
