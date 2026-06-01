@@ -477,9 +477,15 @@
                             <div class="flex flex-col justify-center pt-1 border-l border-r border-[#30363d]"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt2Label">🚀 第二目標</span><span class="text-[#f87171] font-mono font-black text-lg" id="tgt2Price">--</span></div>
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg" id="defPrice">--</span></div>
                         </div>
+                        <div id="institutionTargetBox" class="hidden w-full mt-2 text-center text-xs text-gray-500 italic leading-relaxed px-1"></div>
 
                         <div id="tomorrowScriptText" class="w-full mt-4 pt-4 border-t border-gray-700/50 text-base md:text-lg font-black text-yellow-400 leading-relaxed text-center">劇本載入中...</div>
                         <div id="smartOrderInstruction" class="w-full mt-2 bg-blue-900/20 border border-blue-800 rounded p-3 text-sm font-mono text-blue-300 leading-relaxed shadow-sm text-center">--</div>
+                        <div id="sinopacOrderCard" class="hidden w-full mt-3 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300 leading-relaxed">
+                            <div class="text-yellow-400 font-bold mb-2 text-sm">⚔️ 永豐智慧單快速設定指引</div>
+                            <div id="sinopacOrderContent"></div>
+                            <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
+                        </div>
                     </div>
                     
                     <div id="aiTranslatorCard" class="w-full bg-[#161b22] border-t border-b border-[#30363d] shadow-sm flex-shrink-0 transition-all duration-300">
@@ -1512,6 +1518,13 @@ const app = {
             this.fetchChipTimeline(this.currentSymbolId, true);
             this.loadBrokerChips(this.currentSymbolId, true);
             // renderChipGlobal 由 loadBrokerChips/fetchChipTimeline 非同步完成後呼叫，不在此同步觸發
+        }
+        if (tab === 'corp' && this.currentSymbolId) {
+            if (!this._autoFetchedCorpSyms) this._autoFetchedCorpSyms = new Set();
+            if (!this._autoFetchedCorpSyms.has(this.currentSymbolId)) {
+                this._autoFetchedCorpSyms.add(this.currentSymbolId);
+                this.fetchFundamentalAnalysis(this.currentSymbolId);
+            }
         }
     },
 
@@ -4655,8 +4668,63 @@ recent.forEach(d => {
         sHtml.push(`<div class="border-t border-gray-700 my-2"></div><div class="flex justify-between items-center py-1 text-yellow-400 font-black text-xl"><span>綜合動能評分</span><span>${totalScore}</span></div>`);
         sHtml.push(`<div class="mt-1 pt-2 border-t border-gray-700 text-gray-300 font-bold text-xs italic leading-relaxed">💡 系統總評：${scoreSummary}</div>`);
         document.getElementById('scoreDetailContent').innerHTML = sHtml.join('');
-        
+
+        this._renderSinopacCard(pC, def_val, t1_val, t2_val, season);
+        this.fetchInstitutionTarget(this.currentSymbolId, pC);
         this.renderBacktest();
+    },
+
+    _renderSinopacCard(pC, defVal, t1Val, t2Val, season) {
+        const card = document.getElementById('sinopacOrderCard');
+        const content = document.getElementById('sinopacOrderContent');
+        if (!card || !content) return;
+        const def = parseFloat(defVal), t1 = parseFloat(t1Val), t2 = parseFloat(t2Val);
+        if (!pC || !def || !t1) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        const rows = [
+            ['📋 單別', '當沖停損 / ROD'],
+            ['🛡️ 停損觸發', `跌破 <b class="text-red-400">${def.toFixed(2)}</b> → 市價賣出`],
+            ['🎯 第一停利', `漲至 <b class="text-green-400">${t1.toFixed(2)}</b> → 賣出 50%`],
+            t2 ? ['🚀 第二停利', `漲至 <b class="text-green-300">${t2.toFixed(2)}</b> → 賣出餘部位`] : null,
+            ['📊 條件單型態', season === 'summer' ? '追高買（漲停板掛進）' : '回測買（拉回不破5MA）'],
+            ['💡 智慧下單建議', def > 0 ? `買進時同步掛 ${def.toFixed(2)} 停損保護` : '—'],
+        ].filter(Boolean);
+        content.innerHTML = rows.map(([k, v]) =>
+            `<div class="flex items-start gap-2 py-1 border-b border-[#21262d] last:border-0"><span class="text-gray-500 w-28 flex-shrink-0">${k}</span><span>${v}</span></div>`
+        ).join('');
+    },
+
+    async fetchInstitutionTarget(sym, pC) {
+        const box = document.getElementById('institutionTargetBox');
+        if (!box) return;
+        box.classList.remove('hidden');
+        box.textContent = '💡 法人目標價推估中...';
+        const info = this._stockInfo || {};
+        const epsArr = (info.eps || []).slice(-4).map(r => parseFloat(r.value) || 0);
+        const annualEps = epsArr.reduce((a, b) => a + b, 0);
+        const bookValue = parseFloat(info.book_value) || 0;
+        const dividend  = parseFloat(info.dividend)   || 0;
+        const peNow     = annualEps > 0 ? (pC / annualEps).toFixed(1) : 'N/A';
+        const pbNow     = bookValue > 0 ? (pC / bookValue).toFixed(2) : 'N/A';
+        const yieldNow  = dividend  > 0 ? ((dividend / pC) * 100).toFixed(2) : 'N/A';
+        const apiKey = (this.settings.groqKey || '').trim();
+        if (!apiKey) { box.textContent = '💡 法人目標價：請至設定填寫 Groq API Key'; return; }
+        const prompt = `你是法人研究員，請根據以下數據，用台股法人估值方式推估合理目標價區間，不要自己重算數字。\n股票代號：${sym}，現價：${pC}，年化EPS：${annualEps.toFixed(2)}元，當前PE：${peNow}倍，PB：${pbNow}倍，殖利率：${yieldNow}%，近年股利：${dividend}元。\n判斷股票類型（成長股/景氣循環股/成熟收益股），選擇最適合的估值方法，給出目標價低標與高標。\n輸出純JSON，格式：{"stock_type":"成長股","method":"PE法","low":250,"high":300,"reason":"20字以內理由"}`;
+        try {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], max_tokens: 100, temperature: 0.2, response_format: { type: 'json_object' } })
+            });
+            if (!res.ok) { box.textContent = '💡 法人目標價：API 無回應'; return; }
+            const parsed = JSON.parse((await res.json()).choices[0].message.content);
+            const { stock_type = '', method = '', low = 0, high = 0, reason = '' } = parsed;
+            const lowN = parseFloat(low), highN = parseFloat(high);
+            if (!lowN || !highN) { box.textContent = '💡 法人目標價：資料不足無法推估'; return; }
+            box.innerHTML = `💡 法人共識目標價 <span class="text-gray-400 font-semibold">${lowN}～${highN}</span>（${stock_type}・${method}）<br><span class="text-gray-600">${reason}</span>`;
+        } catch(e) {
+            box.textContent = '💡 法人目標價推估失敗';
+        }
     },
 
     renderChartHud(index) {
