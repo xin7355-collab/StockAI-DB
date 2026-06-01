@@ -3,7 +3,7 @@
 // 負責：PWA 快取、Push 通知、背景週期查價告警 (Periodic Background Sync)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'stockai-v1';
+const CACHE_NAME = 'stockai-v2';
 
 // ─── 1. 安裝事件：立即接管，不等舊 SW 失效 ─────────────────────────────────
 self.addEventListener('install', () => {
@@ -26,6 +26,14 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
     // 排除非 GET 請求，以及跨網域請求 (如 Groq API, 證交所 API) 不做快取
     if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) {
+        return;
+    }
+
+    // 【修復 K 線缺資料】動態資料（K線/籌碼/各式 cache JSON）一律走純網路，永不快取，
+    // 杜絕手機 PWA 吃到舊的採礦結果。斷網時才退而求其次拿舊快取。
+    const reqUrl = new URL(e.request.url);
+    if (reqUrl.pathname.includes('/data/') || reqUrl.pathname.endsWith('.json')) {
+        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
         return;
     }
 
