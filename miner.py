@@ -831,10 +831,14 @@ def run():
             today_record  = existing_map.get(target_today_str, {})
             has_final_chips = today_record.get('foreign_net', 0) != 0
 
-            now = datetime.now()
+            now = datetime.now(timezone(timedelta(hours=8)))   # 台灣時間（修正 GitHub Actions UTC 誤判）
             is_post_market = (now.hour > 13) or (now.hour == 13 and now.minute >= 40)
 
-            if latest_valid_date == target_today_str and (not is_post_market or has_final_chips):
+            # 缺口偵測：若最近 10 個交易日有任一天缺資料，不允許跳過（修復 5/24 後資料斷層）
+            recent_10 = {d.strftime('%Y/%m/%d') for d in trading_days[-10:]}
+            has_gap = any(d not in existing_map for d in recent_10)
+
+            if not has_gap and latest_valid_date == target_today_str and (not is_post_market or has_final_chips):
                 print(f"⚡ 本日 K 線與最終籌碼已完整，安全略過證交所請求")
                 new_rows = []
             else:

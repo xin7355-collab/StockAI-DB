@@ -143,6 +143,94 @@ def fetch_feed(source_name: str, url: str) -> list:
     return matched
 
 
+GLOBAL_NEWS_SOURCES = {
+    "Reuters":     "https://feeds.reuters.com/reuters/businessNews",
+    "MarketWatch": "http://feeds.marketwatch.com/marketwatch/topstories/",
+    "CNBC":        "https://www.cnbc.com/id/10000664/device/rss/rss.html",
+}
+GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
+
+
+def fetch_global_news():
+    """抓取全球財經 RSS，用 Groq 批次分析對台股的影響，輸出 data/global_news.json"""
+    print("\n📡 全球即時情報採集中...")
+    from datetime import timezone, timedelta
+    now_utc = datetime.now(timezone.utc)
+    cutoff = now_utc - timedelta(hours=48)
+
+    items = []
+    for source, url in GLOBAL_NEWS_SOURCES.items():
+        try:
+            feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
+            count = 0
+            for entry in feed.entries[:10]:
+                title = (entry.get("title", "") or "").strip()
+                link  = entry.get("link", "") or ""
+                pub   = entry.get("published", "") or entry.get("updated", "") or ""
+                if not title:
+                    continue
+                items.append({"source": source, "title": title, "url": link, "published": pub})
+                count += 1
+                if count >= 5:
+                    break
+            print(f"  {source}: {count} 篇")
+        except Exception as e:
+            print(f"  ⚠️ {source} 失敗: {e}")
+
+    if not items:
+        print("  ⚠️ 無法取得全球新聞")
+        return
+
+    # 批次呼叫 Groq 分析每則新聞對台股的影響
+    analyzed = []
+    for i, item in enumerate(items[:15]):
+        impact, level = "暫無分析", "neutral"
+        if GROQ_API_KEY:
+            prompt = (
+                f"請用一句話（中文，20字以內）說明以下新聞對台股的影響，並判斷是bullish/bearish/neutral。\n"
+                f"標題：{item['title']}\n"
+                f"輸出純JSON，格式：{{\"impact\":\"...\",\"impact_level\":\"bullish|bearish|neutral\"}}"
+            )
+            payload = {
+                "model": GROQ_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 80,
+                "temperature": 0.3,
+                "response_format": {"type": "json_object"},
+            }
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+            for attempt in range(3):
+                try:
+                    res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
+                    if res.status_code == 429:
+                        wait = 5 * (attempt + 1)
+                        print(f"  ⚠️ Groq 429，{wait}s 後重試")
+                        time.sleep(wait)
+                        continue
+                    if res.status_code == 200:
+                        parsed = json.loads(res.json()["choices"][0]["message"]["content"])
+                        impact = str(parsed.get("impact", "暫無分析"))[:30]
+                        lvl = parsed.get("impact_level", "neutral")
+                        level = lvl if lvl in ("bullish", "bearish", "neutral") else "neutral"
+                    break
+                except Exception as e:
+                    print(f"  ⚠️ Groq 例外: {e}")
+                    if attempt < 2:
+                        time.sleep(1)
+            time.sleep(2.5)
+
+        analyzed.append({**item, "impact": impact, "impact_level": level})
+        if (i + 1) % 5 == 0:
+            print(f"  進度: {i+1}/{min(len(items), 15)}")
+
+    output = {
+        "updated": now_utc.strftime("%Y-%m-%d %H:%M UTC"),
+        "items": analyzed,
+    }
+    GLOBAL_NEWS_FILE.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"✅ 全球新聞已輸出 {len(analyzed)} 篇 → {GLOBAL_NEWS_FILE}")
+
+
 def main():
     print("📡 通用型情報監聽雷達啟動")
     print(f"  關鍵字（{len(KEYWORDS)}）：{', '.join(KEYWORDS)}")
@@ -182,6 +270,8 @@ def main():
         encoding="utf-8"
     )
     print(f"\n✅ 已輸出 {len(results)} 篇 → {OUTPUT_FILE}")
+
+    fetch_global_news()
 
 
 if __name__ == "__main__":
