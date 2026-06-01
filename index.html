@@ -639,10 +639,6 @@
                     </h4>
                     <div class="grid grid-cols-2 gap-1.5 mb-2">
                         <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">EPS（最新季）</span>
-                            <span id="xrayEps" class="font-mono font-bold text-base text-gray-600">--</span>
-                        </div>
-                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
                             <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">營收 YoY</span>
                             <span id="xrayYoy" class="font-mono font-bold text-base text-gray-600">--</span>
                         </div>
@@ -676,7 +672,7 @@
                     <!-- 每月營收趨勢 -->
                     <div class="bg-[#0d1117] rounded p-2 mb-1.5">
                         <div class="text-gray-500 text-[10px] font-mono mb-0.5">📅 月營收（最近12月）</div>
-                        <div id="xrayRevTrend" style="width:100%;height:120px;"></div>
+                        <div id="xrayRevTrend" style="width:100%;height:200px;"></div>
                     </div>
                     <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
                         <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
@@ -3541,9 +3537,7 @@ ${dynamicParams}
             if (cls) el.className = el.className.replace(/text-\w+-\d+/g, '') + ' ' + cls;
         };
         const eps = fund.eps;
-        set('xrayEps',
-            eps != null ? `${eps} 元` : null,
-            eps == null ? 'text-gray-600' : eps > 0 ? 'text-green-400' : 'text-red-400');
+        this._latestEpsCache = eps != null ? eps : null;
         const yoy = fund.revenue_yoy;
         set('xrayYoy',
             yoy != null ? `${yoy}%` : null,
@@ -3719,7 +3713,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
         btn.textContent = '掃描中...';
         btn.disabled = true;
 
-        const CELL_IDS = ['xrayEps','xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout'];
+        const CELL_IDS = ['xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout'];
         CELL_IDS.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.innerHTML = '<span class="animate-pulse text-gray-600 text-xs">…</span>';
@@ -3728,7 +3722,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
         const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d = new Date(); d.setFullYear(d.getFullYear() - 2);
         const startDate = d.toISOString().split('T')[0];
-        const d2 = new Date(); d2.setMonth(d2.getMonth() - 3);
+        const d2 = new Date(); d2.setMonth(d2.getMonth() - 25);
         const revStart = d2.toISOString().split('T')[0];
 
         const setCell = (id, val, unit, colorClass) => {
@@ -3744,7 +3738,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
             const [fsRes, revRes, divRes] = await Promise.all([
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]})),
                 this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revStart}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]})),
-                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}${tokenStr}`, {}, {timeout:8000, maxRetries:1}).then(r=>r.json()).catch(()=>({data:[]})),
+                this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${new Date().getFullYear()-4}-01-01${tokenStr}`, {}, {timeout:8000, maxRetries:1}).then(r=>r.json()).catch(()=>({data:[]})),
             ]);
 
             // EPS
@@ -3822,9 +3816,9 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
         const payoutRatio = (totalDiv != null && annualEps && annualEps > 0) ? (totalDiv / annualEps * 100) : null;
 
         // Populate grid
-        setCell('xrayEps', latestEps, ' 元', latestEps==null?null:latestEps>0?'text-green-400':latestEps<0?'text-red-400':'text-gray-400');
+        this._latestEpsCache = latestEps;
         const yoyPrefix = latestYoy!=null&&latestYoy>0 ? '+' : '';
-        setCell('xrayYoy', latestYoy!=null?`${yoyPrefix}${latestYoy.toFixed(1)}`:null, '%', latestYoy==null?null:latestYoy>10?'text-green-400':latestYoy<0?'text-red-400':'text-yellow-400');
+        setCell('xrayYoy', latestYoy!=null?`${yoyPrefix}${latestYoy.toFixed(1)}`:null, '%', latestYoy==null?null:latestYoy>0?'text-red-400':latestYoy<0?'text-green-400':'text-yellow-400');
         setCell('xrayPe', pe, 'x', pe==null?null:pe<15?'text-green-400':pe>40?'text-red-400':'text-yellow-400');
         setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
         
@@ -3865,7 +3859,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
                     grid: { left: 38, right: 6, top: 14, bottom: 22 },
                     xAxis: { type: 'category', data: epsSlice.map(r => r.date.slice(2, 7)), axisLabel: { fontSize: 9, color: '#9ca3af' }, axisLine: { lineStyle: { color: '#374151' } }, axisTick: { show: false } },
                     yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#9ca3af', formatter: v => v.toFixed(1) }, splitLine: { lineStyle: { color: '#1f2937' } } },
-                    series: [{ type: 'bar', data: epsSlice.map(r => ({ value: Number(r.value), itemStyle: { color: Number(r.value) >= 0 ? '#d97706' : '#6b7280' } })), barMaxWidth: 28, label: { show: true, position: 'top', fontSize: 9, color: '#e5e7eb', formatter: p => p.value.toFixed(2) } }],
+                    series: [{ type: 'bar', data: epsSlice.map(r => ({ value: Number(r.value), itemStyle: { color: Number(r.value) >= 0 ? '#ef4444' : '#22c55e' } })), barMaxWidth: 28, label: { show: true, position: 'top', fontSize: 9, color: '#e5e7eb', formatter: p => p.value.toFixed(2) } }],
                     tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: p => `${p[0].name}<br>EPS: ${p[0].value} 元` }
                 }, true);
             } else {
@@ -3873,11 +3867,12 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
             }
         }
 
-        // 每月營收趨勢（最近12月）ECharts 柱狀圖
+        // 每月營收趨勢（最近12月）雙Y軸：左=營收柱、右=月底股價折線
         const rvSlice = revData.slice(-12);
         const rvTrendEl = document.getElementById('xrayRevTrend');
         if (rvTrendEl) {
             if (rvSlice.length > 0) {
+                // YoY array
                 const rvYoyArr = rvSlice.map(r => {
                     let yoyVal = r.revenue_year_growth;
                     if (yoyVal == null) {
@@ -3886,17 +3881,50 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
                     }
                     return yoyVal;
                 });
+                // MoM array（月增率）
+                const rvMomArr = rvSlice.map((r, i) => {
+                    if (i === 0) return null;
+                    const prev = rvSlice[i - 1];
+                    return prev.revenue > 0 ? ((r.revenue - prev.revenue) / prev.revenue) * 100 : null;
+                });
+                // 月底股價（從已載入的 OHLCV 資料取最後一筆收盤）
+                const monthCloseMap = {};
+                (this.activeData || []).forEach(d => {
+                    const parts = d.date.split('/');
+                    if (parts.length === 3) monthCloseMap[`${parts[0]}${parts[1]}`] = d.close;
+                });
+                const priceArr = rvSlice.map(r => monthCloseMap[`${r.revenue_year}${String(r.revenue_month).padStart(2,'0')}`] || null);
+                const hasPrice = priceArr.some(p => p !== null);
+                const xLabels = rvSlice.map(r => `${String(r.revenue_year).slice(2)}/${String(r.revenue_month).padStart(2,'0')}`);
                 const revChart = echarts.getInstanceByDom(rvTrendEl) || echarts.init(rvTrendEl, 'dark');
                 revChart.setOption({
                     backgroundColor: 'transparent',
-                    grid: { left: 46, right: 6, top: 8, bottom: 26 },
-                    xAxis: { type: 'category', data: rvSlice.map(r => `${String(r.revenue_month).padStart(2,'0')}月`), axisLabel: { fontSize: 8, color: '#9ca3af', interval: 1 }, axisLine: { lineStyle: { color: '#374151' } }, axisTick: { show: false } },
-                    yAxis: { type: 'value', axisLabel: { fontSize: 8, color: '#9ca3af', formatter: v => (v/1e8).toFixed(0)+'億' }, splitLine: { lineStyle: { color: '#1f2937' } } },
-                    series: [{ type: 'bar', data: rvSlice.map((r, i) => ({ value: r.revenue, itemStyle: { color: rvYoyArr[i] == null ? '#6b7280' : rvYoyArr[i] > 0 ? '#22c55e' : '#ef4444' } })), barMaxWidth: 18 }],
-                    tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: p => { const yoy = rvYoyArr[p[0].dataIndex]; return `${p[0].name}<br>營收: ${(p[0].value/1e8).toFixed(2)}億${yoy != null ? '<br>YoY: ' + (yoy > 0 ? '+' : '') + yoy.toFixed(1) + '%' : ''}`; } }
+                    grid: { left: 48, right: hasPrice ? 46 : 6, top: 18, bottom: 28 },
+                    xAxis: { type: 'category', data: xLabels, axisLabel: { fontSize: 8, color: '#9ca3af', interval: 0, rotate: 30 }, axisLine: { lineStyle: { color: '#374151' } }, axisTick: { show: false } },
+                    yAxis: [
+                        { type: 'value', axisLabel: { fontSize: 8, color: '#9ca3af', formatter: v => (v/1e8).toFixed(0)+'億' }, splitLine: { lineStyle: { color: '#333', type: 'dashed' } }, axisLine: { show: false } },
+                        ...(hasPrice ? [{ type: 'value', axisLabel: { fontSize: 8, color: '#64748b', formatter: v => v.toFixed(0) }, splitLine: { show: false }, axisLine: { show: false } }] : [])
+                    ],
+                    series: [
+                        { type: 'bar', yAxisIndex: 0, data: rvSlice.map((r, i) => ({ value: r.revenue, itemStyle: { color: rvYoyArr[i] == null ? '#6b7280' : rvYoyArr[i] > 0 ? '#ef4444' : '#22c55e' } })), barMaxWidth: 16 },
+                        ...(hasPrice ? [{ type: 'line', yAxisIndex: 1, data: priceArr, symbol: 'none', lineStyle: { color: '#94a3b8', width: 1.5 }, areaStyle: { color: 'rgba(148,163,184,0.06)' } }] : [])
+                    ],
+                    tooltip: {
+                        trigger: 'axis', backgroundColor: 'rgba(0,0,0,0.85)', borderColor: '#374151',
+                        textStyle: { fontSize: 10, color: '#e5e7eb' },
+                        formatter: params => {
+                            const idx = params[0].dataIndex;
+                            const yoy = rvYoyArr[idx], mom = rvMomArr[idx], price = priceArr[idx];
+                            let html = `<b>${params[0].name}</b><br>營收: ${(rvSlice[idx].revenue/1e8).toFixed(2)}億`;
+                            if (yoy != null) html += `<br>YoY: <span style="color:${yoy>0?'#ef4444':'#22c55e'}">${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
+                            if (mom != null) html += `<br>MoM: <span style="color:${mom>0?'#ef4444':'#22c55e'}">${mom>0?'+':''}${mom.toFixed(1)}%</span>`;
+                            if (price != null) html += `<br>月底股價: ${price}`;
+                            return html;
+                        }
+                    }
                 }, true);
             } else {
-                rvTrendEl.innerHTML = '<div class="text-gray-600 text-[10px] text-center" style="line-height:120px">無營收資料</div>';
+                rvTrendEl.innerHTML = '<div class="text-gray-600 text-[10px] text-center" style="line-height:200px">無營收資料</div>';
             }
         }
 
@@ -6370,8 +6398,7 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
             if (this.latestYoyCache) trueYoy = this.latestYoyCache;
             const xrayYoyEl = document.getElementById('xrayYoy');
             if (xrayYoyEl && xrayYoyEl.innerText !== '--') trueYoy = xrayYoyEl.innerText;
-            const xrayEpsEl = document.getElementById('xrayEps');
-            if (xrayEpsEl && xrayEpsEl.innerText !== '--') epsInfo = xrayEpsEl.innerText;
+            if (this._latestEpsCache != null) epsInfo = `${this._latestEpsCache} 元`;
 
             // 4. 庫存戰術整合
             const inInv = this.inventory.find(i => i.symbol === sym);

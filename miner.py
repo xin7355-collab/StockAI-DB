@@ -743,7 +743,7 @@ def run():
 
     months = []
     cur = today.replace(day=1)
-    for _ in range(2):
+    for _ in range(3):
         months.append(cur.strftime('%Y%m'))
         cur = (cur - timedelta(days=1)).replace(day=1)
 
