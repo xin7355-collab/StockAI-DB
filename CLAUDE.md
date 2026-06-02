@@ -47,6 +47,12 @@
   - 純前端改動：用 workflow 而非 hotfix
   - 或在 daily_miner.yml 加一個 fast-path「只部署 index.html 不採礦」的小 workflow（未實作）
 
+### Claude 的部署工作流（自動化）
+- **Claude 修改後直接 push 到 `main`，不開 PR**（除非是重大架構性變動或拿不準）
+- 每次 push 前必跑 `node --check` (index.html inline JS) + `python3 -m py_compile miner.py` 雙驗證
+- push 後 `daily_miner.yml` 的 `push: [main]` 自動觸發採礦 + 部署，使用者不需要做任何事
+- 出錯時使用者可以 `git revert HEAD` 回退，或叫 Claude 修
+
 ### deploy 階段保護
 `daily_miner.yml` deploy job 內 `if [ "$STOCKS" -lt 100 ] then exit 1`：
 - 採礦結果不足 100 檔（artifact 下載失敗、merge 跑掉）→ 拒絕 force-push
@@ -64,7 +70,7 @@
 ## 資料檔案位置
 
 ```
-data/*.json          每支股票的 OHLCV + 法人籌碼（最多800筆，約3年）
+data/*.json          每支股票的 OHLCV + 法人籌碼（最多1200筆，約5年）
 data/chips/*.json    主力分點籌碼（滾動20個交易日）
 data/broker_names.json  券商代碼→名稱對照表（從 TWSE T86 累積建立）
 data/radar.json      雷達預運算結果（底部/飆股/綜合強勢）

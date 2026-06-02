@@ -15,8 +15,13 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         html { font-size: 100%; touch-action: manipulation; width: 100%; height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0d1117; }
-        html[data-font="large"]  { font-size: 112.5%; }
-        html[data-font="small"]  { font-size: 87.5%; }
+        /* 預設中型字體微放大 6%（內容字 14px → ~15px），維持小於 text-base (16px) 不破格 */
+        html[data-font="medium"] { font-size: 106%; }
+        html[data-font="large"]  { font-size: 118%; }
+        html[data-font="small"]  { font-size: 93%; }
+        /* 3 欄等寬區段（停利停損 / 預測卡片）放寬最小寬度，避免字體放大後欄內數字撐爆 */
+        #precisionPricesBox > div { min-width: 0; }
+        #precisionPricesBox .text-lg { font-size: 1rem; }  /* 鎖回 16px，防止 text-lg 18px × 1.06 = 19.08 擠破 3 欄 */
         body {
             width: 100%; height: 100dvh; height: calc(var(--real-vh, 1dvh) * 100); overflow: hidden; margin: 0; padding: 0;
             background-color: #0d1117; color: #c9d1d9;

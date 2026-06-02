@@ -659,7 +659,7 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
             FROM stock_history
             WHERE symbol = ?
             ORDER BY trade_date ASC
-            LIMIT 800
+            LIMIT 1200
         """, (sym,)).fetchall()
 
         if not rows:
@@ -980,7 +980,7 @@ def run():
                     changed = True
 
             if changed:
-                combined = sorted(existing_map.values(), key=lambda x: x['date'])[-800:]
+                combined = sorted(existing_map.values(), key=lambda x: x['date'])[-1200:]
                 batch = [
                     (sym,
                      r['date'].replace('/', '-'),
