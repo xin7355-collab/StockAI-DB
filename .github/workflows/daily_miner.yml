@@ -7,6 +7,12 @@ on:
     - cron: '30 8 * * 1-5'
   workflow_dispatch:
     # 手動觸發時，直接點擊 Run workflow，就會自動啟動 5 台機器併發！
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'miner.py'
+      - '.github/workflows/daily_miner.yml'
 
 permissions:
   contents: write
