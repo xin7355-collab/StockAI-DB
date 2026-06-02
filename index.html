@@ -3674,27 +3674,53 @@ async triggerTechAI(queryType) {
         const last = data.length - 1;
         const pC = data[last].close;
         const pO = data[last].open;
+        const pH = data[last].high;
+        const pL = data[last].low;
         const pV = data[last].volume;
-        const ma5 = ind.ma5[last] ? ind.ma5[last].toFixed(2) : '無';
+        const ma5  = ind.ma5[last]  ? ind.ma5[last].toFixed(2)  : '無';
         const ma10 = ind.ma10[last] ? ind.ma10[last].toFixed(2) : '無';
         const ma20 = ind.ma20[last] ? ind.ma20[last].toFixed(2) : '無';
-        const pC1 = last > 0 ? data[last-1].close : pC;
+        const bbU  = ind.upperBB?.[last] ? ind.upperBB[last].toFixed(2) : '無';
+        const bbL  = ind.lowerBB?.[last] ? ind.lowerBB[last].toFixed(2) : '無';
+        const pC1  = last > 0 ? data[last-1].close : pC;
         const diff = pC - pC1;
-        const pct = pC1 > 0 ? ((diff / pC1) * 100).toFixed(2) : 0;
-        
-const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
-標的：${sym} ｜ 現價：${pC} ｜ 今日：${diff >= 0 ? '上漲' : '下跌'} ${pct}%
-開盤：${pO} ｜ 成交量：${pV}
-短期均線：5MA=${ma5}, 10MA=${ma10}, 20MA(月線)=${ma20}
+        const pct  = pC1 > 0 ? ((diff / pC1) * 100).toFixed(2) : 0;
+        // 近 20 日均量（防 AI 自己算出錯）
+        const vol20avg = data.slice(Math.max(0, last-19), last+1).reduce((s,r)=>s+(r.volume||0),0) / Math.min(20, last+1);
+        const volRatio = vol20avg > 0 ? (pV / vol20avg).toFixed(2) : '無';
 
-使用者要求針對當前線型進行【${titles[queryType]}】的技術面策略診斷。
-請以實戰角度，用 150 字以內的白話文，針對上述情境給出具體操作建議。請務必明確指出支撐與壓力價位，並點評此策略是否適合當前盤勢。請保持客觀專業，直接給結論。`;
+        // 四個燈號白話說明（讓 AI 主動解釋給散戶聽）
+        const lightExplain = {
+            trend:    '📈【均線多頭起漲】= 5MA > 10MA > 20MA 排列向上，空頭被踩在腳下，是主升段最強訊號，適合追買或加碼。',
+            pullback: '📉【跌深打折回測】= 漲多拉回測試支撐，好比商品打折撿便宜，是老手喜歡等的進場時機，風險比追高小。',
+            breakout: '🔥【爆量突破表態】= 成交量暴增 + 股價突破前高或整理平台，主力現身！量是價的先行指標，此時最可信。',
+            defense:  '🚨【破線停損防守】= 股價跌破關鍵支撐（均線或前低），繼續持有風險極高，按紀律出場才是保本之道。',
+        };
+
+        const prompt = `你是一位台股資深投顧老師，說話像在對散戶學員面授機宜，要口語白話、有溫度，但關鍵時刻必須嚴肅警告。
+
+【今日個股數據】（以下數值均由系統精算，請直接引用，禁止自行重算）
+標的：${sym} ｜ 現價：${pC} ｜ 今日：${diff >= 0 ? '▲上漲' : '▼下跌'} ${pct}%
+開盤：${pO} ｜ 最高：${pH} ｜ 最低：${pL} ｜ 成交量：${pV} 張（近20日均量：${vol20avg.toFixed(0)} 張，量比：${volRatio}倍）
+均線：5MA=${ma5} ｜ 10MA=${ma10} ｜ 月線20MA=${ma20}
+布林通道：上軌=${bbU} ｜ 下軌=${bbL}
+
+【學員此刻在看的訊號】
+${lightExplain[queryType]}
+
+【你的任務】
+1. 先用1句話判斷：目前數據是否符合上述訊號？（符合/部分符合/不符合）
+2. 給出具體的「支撐價」與「壓力價」數字（從均線和高低點推算，不要含糊說「附近」）
+3. 最後一定要用「🟢 進場條件」或「🟡 繼續觀察」或「🔴 停損出場」其中一個下操作指令，並說明理由
+4. 全文不超過180字，禁止廢話，散戶看完必須知道要做什麼
+
+記住：你是老師，要讓完全不懂技術分析的散戶讀完就會操作。`;
 
         try {
-            const text = await this._callAI({ prompt, max_tokens: 350, temperature: 0.6 });
+            const text = await this._callAI({ prompt, max_tokens: 400, temperature: 0.55 });
             if (!text) throw new Error('未設定 Groq Key 或配額耗盡');
             const safeText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-            document.getElementById('techAIModalBody').innerHTML = `<span class="text-green-400 font-bold">【總裁決策】</span><br><div class="mt-2 text-gray-200 leading-relaxed text-sm">${safeText}</div>`;
+            document.getElementById('techAIModalBody').innerHTML = `<div class="text-[10px] text-gray-500 mb-1.5">${lightExplain[queryType].replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="mt-1 text-gray-200 leading-relaxed text-sm border-t border-gray-700 pt-2">${safeText}</div>`;
         } catch (e) {
             document.getElementById('techAIModalBody').innerHTML =
                 `<span class="text-red-400">分析失敗：${e.message}</span>`;
@@ -4845,7 +4871,7 @@ recent.forEach(d => {
         }
 
         const option = {
-            animation: false, backgroundColor: 'transparent', tooltip: { trigger: 'axis', triggerOn: 'click', axisPointer: { type: 'cross' }, showContent: false },
+            animation: false, backgroundColor: 'transparent', tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', axisPointer: { type: 'line', snap: true }, showContent: false },
             axisPointer: { link: [{ xAxisIndex: 'all' }] },
             grid: [{ left: '12%', right: '2%', top: '5%', height: '55%' }, { left: '12%', right: '2%', top: '65%', height: '30%' }],
             xAxis: [{ type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { color: '#c9d1d9', fontSize: 10, hideOverlap: true, interval: 'auto' } }],
