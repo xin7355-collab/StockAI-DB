@@ -144,9 +144,11 @@ def fetch_feed(source_name: str, url: str) -> list:
 
 
 GLOBAL_NEWS_SOURCES = {
-    "Reuters":     "https://feeds.reuters.com/reuters/businessNews",
-    "MarketWatch": "http://feeds.marketwatch.com/marketwatch/topstories/",
-    "CNBC":        "https://www.cnbc.com/id/10000664/device/rss/rss.html",
+    # Reuters/MarketWatch/CNBC block datacenter IPs (403)
+    # Using datacenter-accessible alternatives:
+    "BBC Business":  "https://feeds.bbci.co.uk/news/business/rss.xml",
+    "Google Finance": "https://news.google.com/rss/search?q=stock+market+economy+finance&hl=en&gl=US&ceid=US:en",
+    "Nasdaq News":   "https://www.nasdaq.com/feed/nasdaq-originals/rss.xml",
 }
 GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
 

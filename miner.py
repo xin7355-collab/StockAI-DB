@@ -862,6 +862,18 @@ def run():
             recent_10 = {d.strftime('%Y/%m/%d') for d in trading_days[-10:]}
             has_gap = any(d not in existing_map for d in recent_10)
 
+            # 資料稀疏偵測：若現有記錄不足 60 筆（約 3 個月交易日），延長回溯至 6 個月補齊歷史
+            if len(existing_map) < 60:
+                fetch_months = []
+                _tmp = today.replace(day=1)
+                for _ in range(6):
+                    fetch_months.append(_tmp.strftime('%Y%m'))
+                    _tmp = (_tmp - timedelta(days=1)).replace(day=1)
+                if len(existing_map) < 60:
+                    print(f"  📉 資料稀疏（現有 {len(existing_map)} 筆），延長至 6 個月回溯")
+            else:
+                fetch_months = months
+
             if not has_gap and latest_valid_date == target_today_str and (not is_post_market or has_final_chips):
                 print(f"⚡ 本日 K 線與最終籌碼已完整，安全略過證交所請求")
                 new_rows = []
@@ -871,8 +883,8 @@ def run():
                 new_rows = []
                 first_ym_empty = False
                 market_type = None  # 智慧記憶：記錄該股是上市或上櫃，不再盲目瞎猜
-                
-                for i, ym in enumerate(months):
+
+                for i, ym in enumerate(fetch_months):
                     rows = []
                     # 若為上市股或尚未確定，先查 TWSE
                     if market_type in (None, 'twse'):
@@ -892,7 +904,7 @@ def run():
                     if i == 0 and not rows:
                         first_ym_empty = True
                     if i == 1 and first_ym_empty and rows:
-                        print(f"  📅 {sym} {months[0]} 無資料，改用 {months[1]}（{len(rows)} 筆）")
+                        print(f"  📅 {sym} {fetch_months[0]} 無資料，改用 {fetch_months[1]}（{len(rows)} 筆）")
                         
                     new_rows.extend(rows)
                     time.sleep(0.15)

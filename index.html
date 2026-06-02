@@ -1100,22 +1100,40 @@ const masterWorkerCode = `
             const last5 = data.slice(-5), last5Pct = [];
             const last5Vol = vols.slice(-5), avgV = last5Vol.reduce((a,b)=>a+b,0)/5;
             const last5VPct = last5Vol.map(v => avgV > 0 ? v/avgV : 1);
-            
+
             for(let i=1; i<5; i++) last5Pct.push((last5[i].close - last5[i-1].close)/last5[i-1].close);
-            
-            const currentIsAboveMA20 = closes[closes.length - 1] > ma20[closes.length - 1];
+
+            const lastIdx = closes.length - 1;
+            const currentIsAboveMA20 = closes[lastIdx] > ma20[lastIdx];
+            // Current KD/BB/MACD state for richer pattern matching
+            const curK = k[lastIdx] !== null ? k[lastIdx] : 50;
+            const curD = d[lastIdx] !== null ? d[lastIdx] : 50;
+            const curBBu = upperBB[lastIdx], curBBl = lowerBB[lastIdx];
+            const curBBB = (curBBu !== null && curBBl !== null && curBBu > curBBl)
+                ? (closes[lastIdx] - curBBl) / (curBBu - curBBl) : 0.5;
+            const curOscPos = osc[lastIdx] !== null ? (osc[lastIdx] > 0 ? 1 : 0) : 0.5;
+
             let matches = [];
             for(let i=20; i<data.length - 6; i++) {
                 if(currentIsAboveMA20 !== (closes[i+4] > ma20[i+4])) continue;
                 let dist = 0, vDist = 0;
                 let histAvgV = data.slice(i, i+5).reduce((a,b)=>a+b.volume,0)/5;
-                for(let j=1; j<5; j++) { 
-                    let pct = (data[i+j].close - data[i+j-1].close)/data[i+j-1].close; 
-                    dist += Math.pow(pct - last5Pct[j-1], 2); 
+                for(let j=1; j<5; j++) {
+                    let pct = (data[i+j].close - data[i+j-1].close)/data[i+j-1].close;
+                    dist += Math.pow(pct - last5Pct[j-1], 2);
                     let vPct = histAvgV > 0 ? data[i+j].volume / histAvgV : 1;
                     vDist += Math.pow(vPct - last5VPct[j-1], 2);
                 }
-                dist = dist + (vDist * 0.3);
+                // Additional features: KD state, BB position, MACD direction
+                const histK = k[i+4] !== null ? k[i+4] : 50;
+                const histBBu = upperBB[i+4], histBBl = lowerBB[i+4];
+                const histBBB = (histBBu !== null && histBBl !== null && histBBu > histBBl)
+                    ? (closes[i+4] - histBBl) / (histBBu - histBBl) : 0.5;
+                const histOscPos = osc[i+4] !== null ? (osc[i+4] > 0 ? 1 : 0) : 0.5;
+                const kdContrib = Math.pow((curK - histK) / 100, 2) * 0.02;
+                const bbContrib = Math.pow(curBBB - histBBB, 2) * 0.02;
+                const macdContrib = curOscPos !== histOscPos ? 0.0002 : 0;
+                dist = dist + (vDist * 0.3) + kdContrib + bbContrib + macdContrib;
                 matches.push({ idx: i+4, dist: dist, nextRet: ((data[i+5].close - data[i+4].close)/data[i+4].close) * 100 });
             }
             matches.sort((a,b) => a.dist - b.dist);
@@ -4166,9 +4184,9 @@ const fullPrompt = `你是台股身經百戰的操盤總裁，講話犀利直接
                         }
                     }
                 } catch(e) {}
-                // 重大訊息連結（MOPS）
-                const mopsUrl = `https://mops.twse.com.tw/mops/web/ajax_t05sr01?stock_id=${sym}`;
-                dateLines.push(`<div class="flex items-center gap-1 text-blue-400 cursor-pointer hover:text-blue-300 transition-colors" onclick="window.open('${mopsUrl}','_blank')">📋 重大訊息 <span class="underline text-[10px]">→ MOPS 公開資訊</span></div>`);
+                // 重大訊息連結（Goodinfo）
+                const mopsUrl = `https://goodinfo.tw/tw/StockDetail.php?STOCK_ID=${sym}`;
+                dateLines.push(`<div class="flex items-center gap-1 text-blue-400 cursor-pointer hover:text-blue-300 transition-colors" onclick="window.open('${mopsUrl}','_blank')">📋 重大訊息 <span class="underline text-[10px]">→ Goodinfo 重大訊息</span></div>`);
                 if (dateLines.length) {
                     corpDateBox.innerHTML = dateLines.join('');
                     corpDateBox.classList.remove('hidden');
@@ -6244,6 +6262,10 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
         showProgress(5, 5, 'AI 生成報告中...');
         if (btn) btn.innerHTML = '⏳ AI 分析中...';
 
+        const hasNews = newsSection.trim().length > 0;
+        const totalSections = 6 + (hasNews ? 1 : 0) + (currentStockSection ? 1 : 0);
+        const s = (n) => hasNews ? n : n - 1; // section number offset when no news
+
         const prompt = `你是台股首席策略師，用白話文、權證小哥風格，根據以下昨晚全球數據，告訴我明日台股開盤情況與操作策略：
 
 【外資籌碼】外資台指期未平倉：${fiLabel}
@@ -6255,7 +6277,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 【雷達選股（自動掃描）】
 ${radarSection}${currentStockSection}
 
-請依序輸出以下${currentStockSection ? '7' : '6'}段，每段用「▌標題」開頭，2-3句，**粗體**標關鍵數字：
+請依序輸出以下${totalSections}段，每段用「▌標題」開頭，2-3句，**粗體**標關鍵數字：
 
 ▌1. 市場氛圍總結
 一句話：今晚美股氣氛偏多/偏空/中性，最關鍵的訊號是什麼
@@ -6268,14 +6290,16 @@ TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
 
 ▌4. 宏觀三角壓力診斷
 美債利率升降 × 美元強弱 × 油價，這三個因子今天對台股是加分還是扣分
-
-▌5. 🔮 台股開盤展望
+${hasNews ? `
+▌5. 📰 消息面衝擊
+根據【全球即時情報】，點出最關鍵的1-2條新聞，說明對台灣哪個板塊（半導體/AI/傳產/金融/能源）衝擊最大？對台積電股價是加分還是扣分？` : ''}
+▌${s(6)}. 🔮 台股開盤展望
 根據上述所有訊號，明日台股最可能：高開/平開/低開（給出大約點數方向或漲跌幅估計），說明最關鍵的支撐與壓力位
 
-▌6. 🎯 雷達個股共鳴評估
+▌${s(7)}. 🎯 雷達個股共鳴評估
 針對上方三類雷達選股，在當前全球環境下，哪類型訊號最強？前幾檔個股的底部/飆股訊號是否依然有效？操作上要注意什麼風險或加乘效果？${currentStockSection ? `
 
-▌7. 📌 ${this.currentSymbolId} ${this.getStockName(this.currentSymbolId)} 個股共鳴
+▌${s(8)}. 📌 ${this.currentSymbolId} ${this.getStockName(this.currentSymbolId)} 個股共鳴
 結合以上全球環境，這檔個股明天的走勢預期是什麼？外資籌碼與全球資金流向對它是加分還是扣分？給出具體操作建議（持有/減碼/觀望）。` : ''}`;
 
         try {
