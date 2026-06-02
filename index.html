@@ -3683,14 +3683,17 @@ ${dynamicParams}
             const fund = Array.isArray(raw) ? null : (raw.fundamentals || null);
             if (fund) {
                 this._applyFundamentalsToXray(fund);
-            } else {
-                if (!this._autoFetchedSyms) this._autoFetchedSyms = new Set();
-                if (!this._autoFetchedSyms.has(sym)) {
-                    this._autoFetchedSyms.add(sym);
-                    this.fetchFundamentalAnalysis(sym);
-                }
             }
-        } catch(e) {}
+            // 不管 chips/sym.json 有沒有 fundamentals 都觸發完整 X 光掃描，
+            // 確保「法人共識目標價」的 fundamentals cache (_fundCache) 必有 — 之前因為
+            // 「同股不重打」的 _autoFetchedSyms 防重複造成第一次 FinMind 失敗後永不重試
+            if (!this._fundCache || this._fundCache.sym !== sym) {
+                this.fetchFundamentalAnalysis(sym);
+            }
+        } catch(e) {
+            // chips JSON fetch 失敗時仍嘗試走 fetchFundamentalAnalysis，至少法人目標價有機會算出
+            try { this.fetchFundamentalAnalysis(sym); } catch(_) {}
+        }
     },
 
 async triggerTechAI(queryType) {
@@ -4876,17 +4879,39 @@ recent.forEach(d => {
         if (!box) return;
         box.classList.remove('hidden');
         const fc = this._fundCache;
+        // 把所有「無法推估」的訊息改成橙色加粗 + 具體原因，避免使用者誤以為功能壞掉
+        const showHint = (msg, color = 'text-orange-300') => {
+            box.innerHTML = `<span class="${color} font-bold">${msg}</span>`;
+        };
         // 防呆：沒有真實基本面就不要叫 AI 瞎掰（過去讀不存在的 _stockInfo→全是0→台積電被估成220）
-        if (!fc || fc.sym !== sym) { box.textContent = '💡 法人目標價：基本面載入中…'; return; }
+        if (!fc || fc.sym !== sym) {
+            showHint('📡 法人目標價：X 光掃描中，請稍候…', 'text-blue-300');
+            // 嘗試補打一次 X 光，避免卡死
+            try { this.fetchFundamentalAnalysis(sym); } catch(_) {}
+            return;
+        }
+        if (fc.error) {
+            showHint(`❌ 法人目標價：FinMind 連線失敗（${fc.error}），請稍後再試`);
+            return;
+        }
         const pe = fc.pe != null ? Number(fc.pe) : null;
         // 年化 EPS：優先用快取值，否則用權威 PE 反推（annualEps = 現價 / PE）
         let annualEps = (fc.annualEps != null && Number(fc.annualEps) > 0) ? Number(fc.annualEps) : (pe && pe > 0 && pC ? pC / pe : null);
         const dividend = fc.total_dividend != null ? Number(fc.total_dividend) : null;
         const yieldNow = (dividend && dividend > 0 && pC) ? ((dividend / pC) * 100).toFixed(2) : null;
-        if (!annualEps || annualEps <= 0) { box.textContent = '💡 法人目標價：EPS 資料不足，無法推估'; return; }
+        if (!annualEps || annualEps <= 0) {
+            const reason = (fc.eps != null && Number(fc.eps) < 0)
+                ? '虧損股，TWSE 不提供本益比，故無法用 EPS 法推估目標價'
+                : 'FinMind 季報資料尚未到位（可能該股無季報，或 FinMind 配額用完）';
+            showHint(`⚠️ 法人目標價：${reason}`);
+            return;
+        }
         const apiKey = (this.settings.groqKey || '').trim();
-        if (!apiKey) { box.textContent = '💡 法人目標價：請至設定填寫 Groq API Key'; return; }
-        box.textContent = '💡 法人目標價推估中…';
+        if (!apiKey) {
+            showHint('🔑 法人目標價：請至「⚙️ 設定」填寫 Groq API Key 才能計算', 'text-yellow-300');
+            return;
+        }
+        showHint('💡 法人目標價推估中…', 'text-indigo-300');
         // 配息與否決定可用估值法（無配息→禁用殖利率法）
         const divLine = (dividend && dividend > 0)
             ? `近年股利：${dividend} 元，殖利率：${yieldNow}%。可考慮殖利率法。`

@@ -283,6 +283,9 @@ def twse_ohlcv(symbol: str, year_month: str) -> list:
             except Exception:
                 continue
         return out
+    except (json.JSONDecodeError, ValueError):
+        # 興櫃 006xxx 等 TWSE 無資料的股票會回空字串，靜默略過避免 log 淹沒
+        return []
     except Exception as e:
         print(f"  ⚠️  TWSE STOCK_DAY {symbol} {year_month}: {e}")
         return []
@@ -367,22 +370,32 @@ def fetch_market_institutional(d: date) -> dict:
             idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), None)
             idx_f  = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f), None)
             idx_t  = next((i for i, f in enumerate(fields) if '投信買賣超' in f), None)
-            idx_d  = next((i for i, f in enumerate(fields) if '自營商買賣超股數' in f and '自行' not in f and '避險' not in f), None)
+            idx_d  = next((i for i, f in enumerate(fields) if '自營商買賣超股數' in f and '自行' not in f and '避險' not in f and '外' not in f), None)
             if idx_d is None:
-                # T86 欄位順序：自行買賣 → 避險 → 合計，取最後一個確保是合計欄
-                candidates_d = [i for i, f in enumerate(fields) if '自營商買賣超' in f]
-                idx_d = candidates_d[-1] if candidates_d else None
+                # T86 schema 變動時：「自行買賣」+「避險」加總，明確排除「外」字避免抓到「外資自營商買賣超股數」(極小或 0)
+                idx_d_self  = next((i for i, f in enumerate(fields) if '自營' in f and '自行' in f and '買賣超' in f and '外' not in f), None)
+                idx_d_hedge = next((i for i, f in enumerate(fields) if '自營' in f and '避險' in f and '買賣超' in f and '外' not in f), None)
+            else:
+                idx_d_self = idx_d_hedge = None
             if idx_d is not None:
                 print(f"  [T86] dealer col idx={idx_d}: {fields[idx_d]}")
-            if None in (idx_id, idx_f, idx_t, idx_d):
-                print(f"  ⚠️ 上市法人欄位找不到，headers={fields[:5]}")
+            elif idx_d_self is not None and idx_d_hedge is not None:
+                print(f"  [T86] dealer = self({idx_d_self})+hedge({idx_d_hedge}): {fields[idx_d_self]} + {fields[idx_d_hedge]}")
+            if None in (idx_id, idx_f, idx_t) or (idx_d is None and (idx_d_self is None or idx_d_hedge is None)):
+                print(f"  ⚠️ 上市法人欄位找不到，headers={fields}")
                 return res
             for r in (j.get('data') or []):
                 try:
+                    if idx_d is not None:
+                        dealer_net = int(str(r[idx_d]).replace(',',''))
+                    else:
+                        ds = int(str(r[idx_d_self]).replace(',','')) if idx_d_self is not None else 0
+                        dh = int(str(r[idx_d_hedge]).replace(',','')) if idx_d_hedge is not None else 0
+                        dealer_net = ds + dh
                     res[str(r[idx_id]).strip()] = {
                         'foreign_net': int(str(r[idx_f]).replace(',','')),
                         'trust_net':   int(str(r[idx_t]).replace(',','')),
-                        'dealer_net':  int(str(r[idx_d]).replace(',',''))
+                        'dealer_net':  dealer_net,
                     }
                 except (ValueError, IndexError): pass
     except Exception as e: print(f"  ⚠️ 上市法人失敗: {e}")
@@ -418,10 +431,19 @@ def fetch_market_margin(d: date) -> dict:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
-            target_table = next((t for t in j.get('tables', []) if '信用' in t.get('title', '')), None)
+            # 改用 fields 篩選：只挑「含『股票代號』欄位」的 table（不再靠 title 含「信用」）
+            tables = j.get('tables', []) or []
+            target_table = next(
+                (t for t in tables
+                 if any(('股票代號' in (f or '')) or ('證券代號' in (f or '')) for f in (t.get('fields') or []))),
+                None
+            )
+            if target_table is None:
+                titles = [t.get('title','') for t in tables]
+                print(f"  ⚠️ 上市融資券找不到含『股票代號』的 table；現有 tables 標題={titles}")
             if target_table:
                 fields = target_table.get('fields', [])
-                idx_id = next((i for i, f in enumerate(fields) if '股票代號' in f), None)
+                idx_id = next((i for i, f in enumerate(fields) if '股票代號' in f or '證券代號' in f), None)
                 idx_mb = next((i for i, f in enumerate(fields) if '融資' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
                 idx_sb = next((i for i, f in enumerate(fields) if '融券' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
                 if idx_id is None or idx_mb is None or idx_sb is None:
