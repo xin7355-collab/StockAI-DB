@@ -12,28 +12,11 @@ import re
 import sqlite3
 import requests
 import io
-from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import time
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
-
-# 🛡️ 【終極防爆修復 1】Pillow 10.0+ 移除了 ANTIALIAS，導致 ddddocr 一啟動就直接崩潰 (AttributeError)
-# 這裡我們植入「猴子補丁 (Monkey Patch)」，強行把遺失的屬性補回去！
-try:
-    import PIL.Image
-    if not hasattr(PIL.Image, 'ANTIALIAS'):
-        PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
-except Exception:
-    pass
-
-# 🛡️ 【環境防爆修復 2】如果 GitHub 雲端主機缺少 libGL.so 系統套件，捕捉錯誤，避免整台採礦機死機
-try:
-    import ddddocr
-except Exception as e:
-    print(f"⚠️ ddddocr AI 視覺模組載入失敗: {e}。Sniper 模式自動停用，無痛切換為 FinMind 備援。")
-    ddddocr = None
 
 # 【修復】極限防禦準則第 4 條：初始化具備自動退避重試機制的全局 Session
 http_session = requests.Session()
@@ -326,6 +309,50 @@ def tpex_ohlcv(symbol: str, year_month: str) -> list:
     except Exception as e:
         print(f"  ⚠️  TPEX {symbol} {year_month}: {e}")
         return []
+
+
+# ── yfinance OHLCV 補洞（TWSE/TPEX 回應不全時用 Yahoo Finance 補檔）─────────
+def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) -> list:
+    """
+    用 yfinance 抓近 days_back 天的 OHLCV，回傳跟 twse_ohlcv 同格式的 rows。
+    market_type='twse' → {symbol}.TW，'tpex' → {symbol}.TWO，None 兩個都試。
+    失敗或無資料回 [] 不 raise。
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        return []
+    tickers = []
+    if market_type == 'twse':
+        tickers = [f'{symbol}.TW']
+    elif market_type == 'tpex':
+        tickers = [f'{symbol}.TWO']
+    else:
+        tickers = [f'{symbol}.TW', f'{symbol}.TWO']
+    for tk in tickers:
+        try:
+            hist = yf.Ticker(tk).history(period=f'{days_back}d', auto_adjust=False)
+            if hist is None or hist.empty:
+                continue
+            out = []
+            for idx, row in hist.iterrows():
+                cls = float(row.get('Close', 0) or 0)
+                if cls <= 0:
+                    continue
+                date_str = idx.strftime('%Y/%m/%d')
+                out.append({
+                    'date':   date_str,
+                    'open':   float(row.get('Open',  cls) or cls),
+                    'high':   float(row.get('High',  cls) or cls),
+                    'low':    float(row.get('Low',   cls) or cls),
+                    'close':  cls,
+                    'volume': int(row.get('Volume', 0) or 0),
+                })
+            return out
+        except Exception as e:
+            print(f"  ⚠️ yfinance {tk}: {e}")
+            continue
+    return []
 
 
 # ── TWSE MIS 快照補丁 (盤中防退回昨日) ──────────────────────────────────────
@@ -931,6 +958,26 @@ def run():
                     new_rows.extend(rows)
                     time.sleep(0.15)
                     
+                # ── 🛡️ yfinance OHLCV 補洞：TWSE/TPEX 對 2330 等股回應不全時，自動拿 yfinance 填 ──
+                # 偵測缺漏：對照最近 10 個交易日，看有哪些不在 new_rows
+                got_dates = {r['date'] for r in new_rows} | set(existing_map.keys())
+                missing_recent = [d for d in trading_days[-10:] if d.strftime('%Y/%m/%d') not in got_dates]
+                if missing_recent:
+                    yf_rows = yfinance_ohlcv_fallback(sym, market_type, days_back=30)
+                    if yf_rows:
+                        before_len = len(new_rows)
+                        # 只補在 missing_recent 範圍內、且 new_rows 還沒有的日期
+                        missing_set = {d.strftime('%Y/%m/%d') for d in missing_recent}
+                        existing_dates = {r['date'] for r in new_rows}
+                        for r in yf_rows:
+                            if r['date'] in missing_set and r['date'] not in existing_dates:
+                                new_rows.append(r)
+                                existing_dates.add(r['date'])
+                        added = len(new_rows) - before_len
+                        if added > 0:
+                            new_rows.sort(key=lambda x: x['date'])
+                            print(f"  📈 {sym} yfinance 補洞 {added} 筆 (TWSE/TPEX 缺 {len(missing_recent)} 天)")
+
                 # ── 🛡️ 【時間護盾與 MIS 即時快照補丁】 ──
                 tw_now = datetime.now(timezone(timedelta(hours=8)))
                 current_time = tw_now.time()
@@ -1190,140 +1237,6 @@ def fetch_us_macro_cache():
     print(f"  ✅ macro_cache.json（{len(result)-1} 指標）")
 
 
-# ─── 證交所分點日報表 AI 狙擊手 ──────────────────────────────
-def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
-    """使用 ddddocr 破解證交所驗證碼，免費抓取當日分點主力資料"""
-    if ddddocr is None:
-        return None  # 🛡️ 若雲端環境不允許，直接放棄 Sniper，讓程式安靜地退回 FinMind 備援
-        
-    try:
-        # 必須開啟 beta=True，喚醒新版模型，提高證交所驗證碼的辨識率
-        ocr = ddddocr.DdddOcr(beta=True, show_ad=False)
-    except Exception as e:
-        print(f"  ⚠️ OCR 初始化失敗: {e}")
-        return None
-
-    # 建立具有強偽裝能力的 Session
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': random.choice(_UA_LIST),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Connection': 'keep-alive',
-        'Origin': 'https://bsr.twse.com.tw',
-        'Referer': 'https://bsr.twse.com.tw/bshtm/bsMenu.aspx'
-    })
-
-    for attempt in range(max_retries):
-        try:
-            # 1. 取得首頁，抓取隱藏的防偽金鑰 (__VIEWSTATE 等)
-            res = session.get("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", timeout=10)
-            soup = BeautifulSoup(res.text, 'html.parser')
-            
-            viewstate = soup.find('input', {'name': '__VIEWSTATE'})
-            eventval = soup.find('input', {'name': '__EVENTVALIDATION'})
-            
-            if not viewstate or not eventval:
-                time.sleep(1)
-                continue
-
-            # 2. 獲取驗證碼圖片並交給 AI 破解
-            img_res = session.get("https://bsr.twse.com.tw/bshtm/CaptchaImage.aspx", timeout=10)
-            captcha_text = ocr.classification(img_res.content)
-
-            # 如果 AI 沒看懂，換一張
-            if not captcha_text or len(captcha_text) != 5:
-                time.sleep(1)
-                continue
-
-            # 3. 組合破解 Payload (證交所暗藏了許多防護欄位)
-            payload = {
-                '__EVENTTARGET': '',
-                '__EVENTARGUMENT': '',
-                '__LASTFOCUS': '',
-                '__VIEWSTATE': viewstate['value'],
-                '__EVENTVALIDATION': eventval['value'],
-                'RadioButton_Normal': 'RadioButton_Normal',
-                'txtStkNo': symbol,
-                'CaptchaControl1': captcha_text,
-                'btnOK': '查詢'
-            }
-
-            # POST 送出查詢
-            post_res = session.post("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", data=payload, timeout=10)
-
-            # 判斷結果
-            if "驗證碼錯誤" in post_res.text:
-                time.sleep(1.5)
-                continue
-            if "查無資料" in post_res.text:
-                # 代表這檔是上櫃股，或今天根本沒交易
-                return None 
-
-            # 4. 驗證碼破解成功！下載隱藏的 CSV 報表
-            csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsContent.aspx?v=t", timeout=10)
-            # 必須呼叫正確的下載點 bsCSV.aspx
-            csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsCSV.aspx", timeout=10)
-            
-            if not csv_res.text.strip():
-                time.sleep(1)
-                continue
-
-            # 5. 解析證交所雙欄位 CSV
-            # 台灣證交所 CSV 是 BIG5 編碼，必須強制轉換
-            csv_text = csv_res.content.decode('big5-hkscs', errors='ignore')
-            reader = csv.reader(io.StringIO(csv_text))
-            rows = list(reader)
-            if len(rows) < 3: 
-                return None
-            
-            trade_date = rows[0][0].replace('年', '-').replace('月', '-').replace('日', '')
-            try:
-                parts = trade_date.split('-')
-                trade_date = f"{int(parts[0])+1911}-{int(parts[1]):02d}-{int(parts[2]):02d}"
-            except: pass
-
-            branches = {}
-            for r in rows[2:]:
-                if len(r) < 11: continue
-                # 解析左半部
-                if r[1].strip():
-                    br = r[1].strip()
-                    buy = int(r[3].replace(',', '').strip() or 0)
-                    sell = int(r[4].replace(',', '').strip() or 0)
-                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
-                    branches[br]['buy'] += buy
-                    branches[br]['sell'] += sell
-                # 解析右半部
-                if len(r) > 7 and r[7].strip():
-                    br = r[7].strip()
-                    buy = int(r[9].replace(',', '').strip() or 0)
-                    sell = int(r[10].replace(',', '').strip() or 0)
-                    if br not in branches: branches[br] = {'buy': 0, 'sell': 0}
-                    branches[br]['buy'] += buy
-                    branches[br]['sell'] += sell
-
-            summary = []
-            for br, data in branches.items():
-                summary.append({'br': br, 'buy': data['buy'], 'sell': data['sell'], 'net': data['buy'] - data['sell']})
-            
-            buyers = sorted([x for x in summary if x['net'] > 0], key=lambda x: x['net'], reverse=True)[:15]
-            sellers = sorted([x for x in summary if x['net'] < 0], key=lambda x: x['net'])[:15]
-            
-            print(f"  🎯 Sniper 命中！{symbol} 分點破解成功 (嘗試 {attempt+1} 次)")
-            return {
-                "date": trade_date,
-                "tot_buy": sum(x['buy'] for x in summary),
-                "tot_sell": sum(x['sell'] for x in summary),
-                "buyers": [{'bnm': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in buyers],
-                "sellers": [{'bnm': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in sellers] # 🔴【修復】賣方淨額必須維持負數
-            }
-        except Exception as e:
-            time.sleep(1.5)
-            
-    # 如果嘗試 4 次都失敗，回傳 None 讓它跳去 FinMind 備援
-    return None
-
 
 # ── 分點籌碼（混合雙擎：TWSE Sniper + TPEX FinMind）──────────────────────
 def fetch_broker_chips():
@@ -1380,94 +1293,70 @@ def fetch_broker_chips():
                 existing_obj = {'chips': raw} if isinstance(raw, list) else raw
             except Exception: pass
 
-        # ── 混合雙擎：先用 Sniper 攻堅 TWSE，失敗再用 FinMind 備援 (TPEX) ──
+        # ── 分點籌碼：FinMind 唯一來源（移除 ddddocr OCR Sniper，加速 ~5-7 分）──
         buyers, sellers, brokers_list = [], [], []
         periods: dict = {}
         latest_chip_date = None
-        sniper_data = None
         try:
-            # 1. 嘗試 AI 狙擊手 (免費、免 Token，但只支援上市股)
-            sniper_data = _fetch_twse_bsr(sym)
-            
-            if sniper_data:
-                latest_chip_date = sniper_data['date']
-                buyers = sniper_data['buyers']
-                sellers = sniper_data['sellers']
-                
-                # 🛡️ 修復：動態聚合 1d/3d/5d/10d 供前端直接無縫渲染
-                by_date = {r['date']: r for r in existing_obj.get('chips', []) if isinstance(r, dict)}
-                by_date[latest_chip_date] = {'buyers': buyers, 'sellers': sellers}
-                
-                def _build_period(n):
-                    wdates = sorted(by_date.keys())[-n:]
-                    agg = {}
-                    for wd in wdates:
-                        for b in by_date[wd].get('buyers', []):
-                            bid = b.get('bid') or b.get('bnm') or ''
-                            if bid not in agg: agg[bid] = {'broker_id': bid, 'broker_name': b.get('bnm', bid), 'net': 0}
-                            agg[bid]['net'] += b.get('net', 0)
-                        for s in by_date[wd].get('sellers', []):
-                            bid = s.get('bid') or s.get('bnm') or ''
-                            if bid not in agg: agg[bid] = {'broker_id': bid, 'broker_name': s.get('bnm', bid), 'net': 0}
-                            agg[bid]['net'] += s.get('net', 0)
-                    
-                    vals = list(agg.values())
-                    buy_top = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
-                    sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x: x['net'])[:15]
-                    return {'buy': buy_top, 'sell': sell_top}
-                
-                periods = {f'{n}d': _build_period(n) for n in (1, 3, 5, 10)}
-                time.sleep(random.uniform(2.0, 4.0)) # 隱蔽防 Ban
-            else:
-                # 2. 狙擊失敗 (上櫃股或無交易)，啟動 FinMind 備援
-                chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
-                url_base = (f'https://api.finmindtrade.com/api/v4/data'
-                            f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
-                            f'&data_id={sym}&start_date={chip_start}')
-                j = fm_request(url_base, timeout=15)
-                if j is None: j = {}
-                if j.get('status') == 200 and j.get('data'):
-                    by_date: dict = {}
-                    for r in j['data']:
-                        d   = r.get('date') or today_str
-                        bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
-                        raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
-                        if bid in TACTICAL_TAGS: bnm = TACTICAL_TAGS[bid]
-                        elif raw_nm and not raw_nm.isdigit(): bnm = raw_nm
-                        elif bid in broker_info_map: bnm = broker_info_map[bid]
-                        else: bnm = bid
-                        buy, sel = int(r.get('buy', 0)), int(r.get('sell', 0))
-                        slot = by_date.setdefault(d, {})
-                        e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0})
-                        e['buy'] += buy; e['sel'] += sel; e['net'] += (buy - sel)
-                        if bnm and not str(bnm).isdigit(): e['broker_name'] = bnm
+            chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
+            url_base = (f'https://api.finmindtrade.com/api/v4/data'
+                        f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
+                        f'&data_id={sym}&start_date={chip_start}')
+            j = fm_request(url_base, timeout=15)
+            if j is None: j = {}
+            # 污染防呆：dataset 已 deprecate 時 FinMind 會回非分點資料，需驗證
+            status_code = j.get('status')
+            data_rows = j.get('data') or []
+            if status_code in (402, 403):
+                print(f"    💰 分點 {sym} FinMind 回 {status_code}（{j.get('msg', '需付費')}）— 跳過")
+                data_rows = []
+            elif status_code == 200 and data_rows:
+                sample = data_rows[0]
+                if not any(k in sample for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+                    print(f"    ⚠️ 分點 {sym} FinMind response 欄位不對，keys={list(sample.keys())[:10]} — 跳過避免污染")
+                    data_rows = []
+            if data_rows:
+                by_date: dict = {}
+                for r in data_rows:
+                    d   = r.get('date') or today_str
+                    bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
+                    raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
+                    if bid in TACTICAL_TAGS: bnm = TACTICAL_TAGS[bid]
+                    elif raw_nm and not raw_nm.isdigit(): bnm = raw_nm
+                    elif bid in broker_info_map: bnm = broker_info_map[bid]
+                    else: bnm = bid
+                    buy, sel = int(r.get('buy', 0)), int(r.get('sell', 0))
+                    slot = by_date.setdefault(d, {})
+                    e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0})
+                    e['buy'] += buy; e['sel'] += sel; e['net'] += (buy - sel)
+                    if bnm and not str(bnm).isdigit(): e['broker_name'] = bnm
 
-                    if by_date:
-                        for d_data in by_date.values():
-                            for bid, e in d_data.items():
-                                if bid and e['broker_name'] and not str(e['broker_name']).isdigit():
-                                    broker_name_map[bid] = e['broker_name']
+                if by_date:
+                    for d_data in by_date.values():
+                        for bid, e in d_data.items():
+                            if bid and e['broker_name'] and not str(e['broker_name']).isdigit():
+                                broker_name_map[bid] = e['broker_name']
 
-                        def _agg_period(n: int) -> dict:
-                            wdates = sorted(by_date.keys())[-n:]
-                            agg: dict = {}
-                            for wd in wdates:
-                                for b, e in by_date[wd].items():
-                                    a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0, 'buy': 0, 'sel': 0})
-                                    a['net'] += e['net']
-                                    a['buy'] += e.get('buy', 0)
-                                    a['sel'] += e.get('sel', 0)
-                                    if e['broker_name'] and not str(e['broker_name']).isdigit():
-                                        a['broker_name'] = e['broker_name']
-                            vals = list(agg.values())
-                            buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
-                            sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
-                            return {'buy': buy_top, 'sell': sell_top}
-                        periods = {f'{n}d': _agg_period(n) for n in (1, 3, 5, 10)}
-                        latest_chip_date = sorted(by_date.keys())[-1]
-                        brokers_list = [{'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']} for b, e in by_date[latest_chip_date].items()]
-                        buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
-                        sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
+                    def _agg_period(n: int) -> dict:
+                        wdates = sorted(by_date.keys())[-n:]
+                        agg: dict = {}
+                        for wd in wdates:
+                            for b, e in by_date[wd].items():
+                                a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0, 'buy': 0, 'sel': 0})
+                                a['net'] += e['net']
+                                a['buy'] += e.get('buy', 0)
+                                a['sel'] += e.get('sel', 0)
+                                if e['broker_name'] and not str(e['broker_name']).isdigit():
+                                    a['broker_name'] = e['broker_name']
+                        vals = list(agg.values())
+                        buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
+                        sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
+                        return {'buy': buy_top, 'sell': sell_top}
+                    periods = {f'{n}d': _agg_period(n) for n in (1, 3, 5, 10)}
+                    latest_chip_date = sorted(by_date.keys())[-1]
+                    brokers_list = [{'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']} for b, e in by_date[latest_chip_date].items()]
+                    buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
+                    sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
                 time.sleep(3)
         except Exception as e:
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
