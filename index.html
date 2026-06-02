@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- PWA 同步：禁止瀏覽器 HTTP cache，配合 sw.js 動態 JSON 純網路策略，確保改完立刻見效 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>首席 AI 司令部 | 戰略終端 V14.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -6679,8 +6683,20 @@ ${hasNews ? `
     async registerServiceWorker() {
         if (!('serviceWorker' in navigator)) return;
         try {
-            const reg = await navigator.serviceWorker.register('/sw.js');
+            // 加 ?v=YYYYMMDDHH 戳記繞過 HTTP cache，確保瀏覽器拿到最新 sw.js
+            // （GitHub Pages 不能設 cache-control header，sw.js 本身會被 cache 約 1 小時）
+            const swVer = new Date().toISOString().slice(0,13).replace(/[-T:]/g,'');
+            const reg = await navigator.serviceWorker.register(`/sw.js?v=${swVer}`);
             this._swReg = reg;
+            // 每小時主動詢問 SW 是否有更新，新版會自動 install + activate
+            setInterval(() => reg.update().catch(()=>{}), 3600000);
+            // 新 SW 接管控制權時自動重新整理一次，讓畫面立刻換到新版
+            let _refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (_refreshing) return;
+                _refreshing = true;
+                location.reload();
+            });
             const sub = await reg.pushManager.getSubscription();
             const btn = document.getElementById('pushSubscribeBtn');
             if (btn) btn.innerText = sub ? '✅ 推播已啟用' : '啟用推播';
@@ -6718,7 +6734,7 @@ ${hasNews ? `
             currentPrice: parseFloat(item.currentPrice) || 0,
             defPrice: parseFloat(item.cost) * 0.95
         })).filter(a => a.defPrice > 0);
-        const cache = await caches.open('stockai-v1');
+        const cache = await caches.open('stockai-v2');
         await cache.put('/sw-alert-config', new Response(JSON.stringify({ alerts, updatedAt: Date.now() }), { headers: { 'Content-Type': 'application/json' } }));
     },
 

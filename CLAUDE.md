@@ -32,6 +32,35 @@
 
 ---
 
+## 部署與同步規則（鐵律）
+
+### 觸發來源（daily_miner.yml 已配置三條）
+1. **`schedule cron`**：每週一~五 16:30 (UTC 08:30) 自動跑
+2. **`workflow_dispatch`**：Actions UI 手動 Run workflow
+3. **`push branches: [main]` + `paths: index.html / miner.py / daily_miner.yml`**：
+   推 main 上對應檔案會自動觸發完整採礦+部署，不必手動 Run（修法生效時間 30-60 分）
+
+### 「自動同步發佈」的金科玉律
+- **任何改 `index.html` / `miner.py` / `daily_miner.yml` 只 push 到 main**，gh-pages 會自動更新，**不要手動編輯 gh-pages**
+- **不要 hotfix `git push origin … gh-pages --force`** — 會被下次 workflow 自動部署覆蓋，且打亂時間軸
+- 若必須立刻見效（不能等 30-60 分採礦）：
+  - 純前端改動：用 workflow 而非 hotfix
+  - 或在 daily_miner.yml 加一個 fast-path「只部署 index.html 不採礦」的小 workflow（未實作）
+
+### deploy 階段保護
+`daily_miner.yml` deploy job 內 `if [ "$STOCKS" -lt 100 ] then exit 1`：
+- 採礦結果不足 100 檔（artifact 下載失敗、merge 跑掉）→ 拒絕 force-push
+- 看到 workflow 整體 success 但 gh-pages 沒更新時，先看 deploy job log 有沒有這條訊息
+
+### 修改後驗證流程
+1. 改 main → push
+2. 至 Actions 看 daily_miner workflow run 啟動（push 觸發或 dispatch 觸發）
+3. 等所有 batch + deploy 都綠燈
+4. 開網站硬重新整理（SW + meta cache-control 會自動拉新版）
+5. 手機 PWA：因 index.html 有 `setInterval(reg.update(), 1hr)`，最多 1 小時內自動換新版（iOS PWA 因系統限制可能需要完全關閉 app 重開）
+
+---
+
 ## 資料檔案位置
 
 ```
@@ -39,9 +68,30 @@ data/*.json          每支股票的 OHLCV + 法人籌碼（最多800筆，約3�
 data/chips/*.json    主力分點籌碼（滾動20個交易日）
 data/broker_names.json  券商代碼→名稱對照表（從 TWSE T86 累積建立）
 data/radar.json      雷達預運算結果（底部/飆股/綜合強勢）
+data/top_picks.json  AI 戰略選股（三位一體篩選前 30 名）
 futures_cache.json   外資台指期未平倉淨口數
 macro_cache.json     美股大盤日收資料（SP500/NASDAQ/VIX/TSM）
+margin_cache_stock.json  個股融資融券餘額快取
 ```
+
+### 資料流圖（K 線從採礦到渲染怎麼跑）
+
+```
+[ miner.py ] (SQLite stock_hunter.db 中介)
+     │  export JSON
+     ▼
+data/{sym}.json (OHLCV+法人)、data/chips/{sym}.json (分點)、
+broker_names.json、radar.json、top_picks.json、
+futures_cache.json、macro_cache.json、margin_cache_stock.json
+     │  daily_miner.yml force-push (orphan, 永遠 1 個 commit)
+     ▼
+[ gh-pages 分支 ]  ←→  [ data 分支 ]  (snapshot 備份)
+     │  fetch (動態 ghBase + ?t=Date.now() 破 cache)
+     ▼
+[ index.html ] → IndexedDB cache (proTerm_kline_{sym}) → 渲染
+```
+
+**前端讀資料 URL 範本**：`https://xin7355-collab.github.io/StockAI-DB/data/{sym}.json?t=<timestamp>`
 
 ---
 
