@@ -641,6 +641,7 @@
                         <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
                             <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">營收 YoY</span>
                             <span id="xrayYoy" class="font-mono font-bold text-base text-gray-600">--</span>
+                            <span id="xrayRevMom" class="text-[9px] font-mono text-gray-600"></span>
                         </div>
                         <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
                             <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide">本益比 PE</span>
@@ -666,7 +667,7 @@
                     </div>
                     <!-- 每季 EPS 趨勢 -->
                     <div class="bg-[#0d1117] rounded p-2 mb-1.5">
-                        <div class="text-gray-500 text-[10px] font-mono mb-0.5">📊 每季 EPS（最近4季）</div>
+                        <div class="text-gray-500 text-[10px] font-mono mb-0.5 flex items-center gap-1.5">📊 每季 EPS（最近4季）<span id="xrayEpsQoQ" class="text-[9px] font-mono text-gray-600"></span></div>
                         <div id="xrayEpsTrend" style="width:100%;height:110px;"></div>
                     </div>
                     <!-- 每月營收趨勢 -->
@@ -2956,7 +2957,15 @@ const marginByDate = {};
             // 取最新一天有資料的記錄
             const latest = records[records.length - 1];
             const dateLabel = `資料日期: ${objDate || latest.date}`;
-            if (dateLbl) dateLbl.textContent = dateLabel;
+            if (dateLbl) {
+                const dc = (!Array.isArray(raw) && raw.data_completeness) ? raw.data_completeness : null;
+                if (dc) {
+                    const dots = [dc.chip_inst ? '🟢法人' : '🔴法人', dc.broker_chip ? '🟢分點' : '🔴分點', dc.fundamentals ? '🟢基本面' : '🔴基本面'].join(' ');
+                    dateLbl.textContent = dateLabel + '  ' + dots;
+                } else {
+                    dateLbl.textContent = dateLabel;
+                }
+            }
 
             // ── 多週期模式（新版 JSON 有 periods）：用週期切換按鈕渲染 ──
             if (chipPeriods) {
@@ -3606,6 +3615,18 @@ ${dynamicParams}
         const dateEl = document.getElementById('xrayDataDate');
         if (dateEl) dateEl.textContent = fund.generated ? `採礦日 ${fund.generated}` : '';
 
+        // EPS QoQ（從 quarterly_eps 快取計算，供自動載入路徑使用）
+        const epsQoQEl2 = document.getElementById('xrayEpsQoQ');
+        if (epsQoQEl2 && Array.isArray(fund.quarterly_eps) && fund.quarterly_eps.length >= 2) {
+            const qArr = fund.quarterly_eps;
+            const cur2 = qArr[qArr.length-1]?.eps, prev2 = qArr[qArr.length-2]?.eps;
+            if (prev2 != null && prev2 !== 0 && cur2 != null) {
+                const qoq2 = (cur2 - prev2) / Math.abs(prev2) * 100;
+                epsQoQEl2.textContent = `QoQ ${qoq2 >= 0 ? '+' : ''}${qoq2.toFixed(1)}%`;
+                epsQoQEl2.className = `text-[9px] font-mono ${qoq2 >= 0 ? 'text-red-400' : 'text-green-400'}`;
+            }
+        }
+
         // 存真實基本面快取，供法人目標價推估使用（杜絕讀取不存在的 _stockInfo 導致 AI 幻覺）
         this._fundCache = { sym: this.currentSymbolId, pe: fund.pe ?? null, eps: fund.eps ?? null, yield_rate: fund.yield_rate ?? null, total_dividend: fund.total_dividend ?? null };
         // 基本面到位後，若策略頁的法人目標價框已顯示，補算一次（解決時序問題）
@@ -3862,6 +3883,18 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
         this._latestEpsCache = latestEps;
         const yoyPrefix = latestYoy!=null&&latestYoy>0 ? '+' : '';
         setCell('xrayYoy', latestYoy!=null?`${yoyPrefix}${latestYoy.toFixed(1)}`:null, '%', latestYoy==null?null:latestYoy>0?'text-red-400':latestYoy<0?'text-green-400':'text-yellow-400');
+        // MoM 環比（當月 vs 上月）
+        const momEl = document.getElementById('xrayRevMom');
+        if (momEl) {
+            const rv = revData.length >= 2 ? revData[revData.length-1] : null;
+            const rv1 = revData.length >= 2 ? revData[revData.length-2] : null;
+            if (rv && rv1 && rv1.revenue > 0) {
+                const mom = (rv.revenue - rv1.revenue) / rv1.revenue * 100;
+                const momSign = mom >= 0 ? '+' : '';
+                momEl.textContent = `MoM ${momSign}${mom.toFixed(1)}%`;
+                momEl.className = `text-[9px] font-mono ${mom >= 0 ? 'text-red-400' : 'text-green-400'}`;
+            } else { momEl.textContent = ''; }
+        }
         setCell('xrayPe', pe, 'x', pe==null?null:pe<15?'text-green-400':pe>40?'text-red-400':'text-yellow-400');
         setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
         
@@ -3902,12 +3935,24 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
                     grid: { left: 38, right: 6, top: 14, bottom: 22 },
                     xAxis: { type: 'category', data: epsSlice.map(r => r.date.slice(2, 7)), axisLabel: { fontSize: 9, color: '#9ca3af' }, axisLine: { lineStyle: { color: '#374151' } }, axisTick: { show: false } },
                     yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#9ca3af', formatter: v => v.toFixed(1) }, splitLine: { lineStyle: { color: '#1f2937' } } },
-                    series: [{ type: 'bar', data: epsSlice.map(r => ({ value: Number(r.value), itemStyle: { color: Number(r.value) >= 0 ? '#ef4444' : '#22c55e' } })), barMaxWidth: 28, label: { show: true, position: 'top', fontSize: 9, color: '#e5e7eb', formatter: p => p.value.toFixed(2) } }],
+                    series: [{ type: 'bar', data: epsSlice.map(r => ({ value: Number(r.value), itemStyle: { color: Number(r.value) >= 0 ? '#f97316' : '#22c55e' } })), barMaxWidth: 28, label: { show: true, position: 'top', fontSize: 9, color: '#e5e7eb', formatter: p => p.value.toFixed(2) } }],
                     tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: p => `${p[0].name}<br>EPS: ${p[0].value} 元` }
                 }, true);
             } else {
                 epsTrendEl.innerHTML = '<div class="text-gray-600 text-[10px] text-center" style="line-height:110px">無EPS資料</div>';
             }
+        }
+        // EPS QoQ delta
+        const epsQoQEl = document.getElementById('xrayEpsQoQ');
+        if (epsQoQEl) {
+            if (epsSlice.length >= 2) {
+                const cur = Number(epsSlice[epsSlice.length-1].value), prev = Number(epsSlice[epsSlice.length-2].value);
+                if (prev !== 0) {
+                    const qoq = (cur - prev) / Math.abs(prev) * 100;
+                    epsQoQEl.textContent = `QoQ ${qoq >= 0 ? '+' : ''}${qoq.toFixed(1)}%`;
+                    epsQoQEl.className = `text-[9px] font-mono ${qoq >= 0 ? 'text-red-400' : 'text-green-400'}`;
+                } else { epsQoQEl.textContent = ''; }
+            } else { epsQoQEl.textContent = ''; }
         }
 
         // 每月營收趨勢（最近12月）雙Y軸：左=營收柱、右=月底股價折線
@@ -3949,7 +3994,7 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
                         ...(hasPrice ? [{ type: 'value', axisLabel: { fontSize: 8, color: '#64748b', formatter: v => v.toFixed(0) }, splitLine: { show: false }, axisLine: { show: false } }] : [])
                     ],
                     series: [
-                        { type: 'bar', yAxisIndex: 0, data: rvSlice.map((r, i) => ({ value: r.revenue, itemStyle: { color: rvYoyArr[i] == null ? '#6b7280' : rvYoyArr[i] > 0 ? '#ef4444' : '#22c55e' } })), barMaxWidth: 16 },
+                        { type: 'bar', yAxisIndex: 0, data: rvSlice.map((r, i) => ({ value: r.revenue, itemStyle: { color: rvYoyArr[i] == null ? '#6b7280' : rvYoyArr[i] > 0 ? '#f97316' : '#22c55e' } })), barMaxWidth: 16 },
                         ...(hasPrice ? [{ type: 'line', yAxisIndex: 1, data: priceArr, symbol: 'none', lineStyle: { color: '#94a3b8', width: 1.5 }, areaStyle: { color: 'rgba(148,163,184,0.06)' } }] : [])
                     ],
                     tooltip: {
@@ -3959,8 +4004,8 @@ const prompt = `你是一位實戰派台股操盤手，說話精煉直接。
                             const idx = params[0].dataIndex;
                             const yoy = rvYoyArr[idx], mom = rvMomArr[idx], price = priceArr[idx];
                             let html = `<b>${params[0].name}</b><br>營收: ${(rvSlice[idx].revenue/1e8).toFixed(2)}億`;
-                            if (yoy != null) html += `<br>YoY: <span style="color:${yoy>0?'#ef4444':'#22c55e'}">${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
-                            if (mom != null) html += `<br>MoM: <span style="color:${mom>0?'#ef4444':'#22c55e'}">${mom>0?'+':''}${mom.toFixed(1)}%</span>`;
+                            if (yoy != null) html += `<br>YoY: <span style="color:${yoy>0?'#f97316':'#22c55e'}">${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
+                            if (mom != null) html += `<br>MoM: <span style="color:${mom>0?'#f97316':'#22c55e'}">${mom>0?'+':''}${mom.toFixed(1)}%</span>`;
                             if (price != null) html += `<br>月底股價: ${price}`;
                             return html;
                         }

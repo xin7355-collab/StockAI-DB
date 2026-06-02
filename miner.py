@@ -368,7 +368,12 @@ def fetch_market_institutional(d: date) -> dict:
             idx_f  = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f), None)
             idx_t  = next((i for i, f in enumerate(fields) if '投信買賣超' in f), None)
             idx_d  = next((i for i, f in enumerate(fields) if '自營商買賣超股數' in f and '自行' not in f and '避險' not in f), None)
-            if idx_d is None: idx_d = next((i for i, f in enumerate(fields) if '自營商買賣超' in f), None)
+            if idx_d is None:
+                # T86 欄位順序：自行買賣 → 避險 → 合計，取最後一個確保是合計欄
+                candidates_d = [i for i, f in enumerate(fields) if '自營商買賣超' in f]
+                idx_d = candidates_d[-1] if candidates_d else None
+            if idx_d is not None:
+                print(f"  [T86] dealer col idx={idx_d}: {fields[idx_d]}")
             if None in (idx_id, idx_f, idx_t, idx_d):
                 print(f"  ⚠️ 上市法人欄位找不到，headers={fields[:5]}")
                 return res
@@ -416,16 +421,19 @@ def fetch_market_margin(d: date) -> dict:
             target_table = next((t for t in j.get('tables', []) if '信用' in t.get('title', '')), None)
             if target_table:
                 fields = target_table.get('fields', [])
-                idx_id = next((i for i, f in enumerate(fields) if '股票代號' in f), -1)
-                idx_mb = next((i for i, f in enumerate(fields) if '融資' in f and '今日餘額' in f), -1)
-                idx_sb = next((i for i, f in enumerate(fields) if '融券' in f and '今日餘額' in f), -1)
-                for r in target_table.get('data', []):
-                    try:
-                        res[str(r[idx_id]).strip()] = {
-                            'margin_balance': int(str(r[idx_mb]).replace(',','')),
-                            'short_balance': int(str(r[idx_sb]).replace(',',''))
-                        }
-                    except: pass
+                idx_id = next((i for i, f in enumerate(fields) if '股票代號' in f), None)
+                idx_mb = next((i for i, f in enumerate(fields) if '融資' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
+                idx_sb = next((i for i, f in enumerate(fields) if '融券' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
+                if idx_id is None or idx_mb is None or idx_sb is None:
+                    print(f"  ⚠️ 融資券欄位找不到，fields={fields[:8]}")
+                else:
+                    for r in target_table.get('data', []):
+                        try:
+                            res[str(r[idx_id]).strip()] = {
+                                'margin_balance': int(str(r[idx_mb]).replace(',','')),
+                                'short_balance': int(str(r[idx_sb]).replace(',',''))
+                            }
+                        except: pass
     except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
@@ -490,26 +498,30 @@ def _load_broker_info_map() -> dict:
     一次取得全台 ~900 家券商代碼 → 中文名稱對照表。
     優先順序：TACTICAL_TAGS > FinMind 回傳的 raw_nm > 此對照表 > 數字代碼。
     """
-    try:
-        url = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo'
-        res = http_session.get(url, headers=_rnd_hdrs(), timeout=15)
-        body = res.text.strip()
-        if not body or body[0] == '<':
-            return {}
-        j = res.json()
-        if j.get('msg') == 'success' and j.get('data'):
-            mapping: dict = {}
-            for b in j['data']:
-                bid = str(b.get('broker_id') or b.get('securities_trader_id') or '').strip()
-                nm  = str(b.get('broker_name') or b.get('securities_trader') or '').strip()
-                if bid and nm and not nm.isdigit():
-                    mapping[bid] = nm
-            print(f"  📖 TaiwanBrokerInfo 載入：{len(mapping)} 家券商代碼→中文名")
-            return mapping
-        else:
-            print(f"  ⚠️ TaiwanBrokerInfo 回傳異常: {str(j)[:80]}")
-    except Exception as e:
-        print(f"  ⚠️ TaiwanBrokerInfo 載入失敗: {e}")
+    url = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo'
+    for attempt in range(3):
+        try:
+            res = http_session.get(url, headers=_rnd_hdrs(), timeout=15)
+            body = res.text.strip()
+            if not body or body[0] == '<':
+                raise ValueError('非 JSON 回應')
+            j = res.json()
+            if j.get('msg') == 'success' and j.get('data'):
+                mapping: dict = {}
+                for b in j['data']:
+                    bid = str(b.get('broker_id') or b.get('securities_trader_id') or '').strip()
+                    nm  = str(b.get('broker_name') or b.get('securities_trader') or '').strip()
+                    if bid and nm and not nm.isdigit():
+                        mapping[bid] = nm
+                print(f"  📖 TaiwanBrokerInfo 載入：{len(mapping)} 家券商代碼→中文名")
+                return mapping
+            else:
+                print(f"  ⚠️ TaiwanBrokerInfo 回傳異常: {str(j)[:80]}")
+                break
+        except Exception as e:
+            print(f"  ⚠️ TaiwanBrokerInfo 第{attempt+1}次失敗: {e}")
+            if attempt < 2:
+                time.sleep(5)
     return {}
 
 
@@ -1407,8 +1419,10 @@ def fetch_broker_chips():
                             agg: dict = {}
                             for wd in wdates:
                                 for b, e in by_date[wd].items():
-                                    a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0})
+                                    a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0, 'buy': 0, 'sel': 0})
                                     a['net'] += e['net']
+                                    a['buy'] += e.get('buy', 0)
+                                    a['sel'] += e.get('sel', 0)
                                     if e['broker_name'] and not str(e['broker_name']).isdigit():
                                         a['broker_name'] = e['broker_name']
                             vals = list(agg.values())
@@ -1478,11 +1492,19 @@ def fetch_broker_chips():
         
         # 本次抓取失敗（429/空）時，保留上次的 periods，避免覆蓋成空
         out_periods = periods if periods else (existing_obj.get('periods') or {})
+        # 資料完整性指標
+        data_completeness = {
+            'ohlcv':       len(records_map) > 0,
+            'chip_inst':   bool(buyers or sellers),
+            'broker_chip': bool(buyers or sellers),
+            'fundamentals': bool((fundamentals or {}).get('eps')),
+        }
         output = {
             'fundamentals': fundamentals,
             'data_date': recent_dates[-1] if recent_dates else None,  # 最新可用交易日
             'periods': out_periods,   # 多週期：{1d,3d,5d,10d}，各含 buy/sell（broker_name）
-            'chips': [records_map[d] for d in recent_dates]
+            'chips': [records_map[d] for d in recent_dates],
+            'data_completeness': data_completeness,
         }
         out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')
 
@@ -1501,14 +1523,14 @@ def fetch_broker_chips():
     # TACTICAL_TAGS 擁有最高優先權（含特殊標記說明）
     merged_bn.update(TACTICAL_TAGS)
 
-    # 清洗污染：白名單 = TaiwanBrokerInfo + TACTICAL_TAGS；不在其中的移除
-    if broker_info_map:
-        valid_bids = set(broker_info_map.keys()) | set(TACTICAL_TAGS.keys())
-        cleaned_bn = {bid: nm for bid, nm in merged_bn.items() if bid in valid_bids}
-        removed = len(merged_bn) - len(cleaned_bn)
-        if removed:
-            print(f"  🧹 清洗非券商代碼 {removed} 筆（舊污染資料已移除）")
-        merged_bn = cleaned_bn
+    # 輕量清洗：只移除「名稱為純數字」的污染條目（股票代號誤入），
+    # 不做白名單清洗，避免 TaiwanBrokerInfo 限流時把已累積的名稱全刪光
+    cleaned_bn = {bid: nm for bid, nm in merged_bn.items()
+                  if nm and not str(nm).replace(',','').strip().isdigit() and len(str(nm).strip()) >= 2}
+    removed = len(merged_bn) - len(cleaned_bn)
+    if removed:
+        print(f"  🧹 清洗純數字污染 {removed} 筆")
+    merged_bn = cleaned_bn
 
     bn_file.write_text(json.dumps(merged_bn, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print(f"  📋 券商名稱字典：{len(merged_bn)} 筆 → broker_names.json")
