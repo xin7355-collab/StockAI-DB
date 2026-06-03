@@ -9,6 +9,7 @@ import math
 import os
 import random
 import re
+import signal
 import sqlite3
 import requests
 import io
@@ -17,6 +18,37 @@ from urllib3.util.retry import Retry
 import time
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
+
+
+# ── ⏱️ SIGALRM 硬逾時護盾：包住「無 timeout 參數」的阻塞呼叫（主因 yfinance.history 會無限 hang）──
+class _HardTimeout(Exception):
+    pass
+
+
+def _alarm_handler(signum, frame):
+    raise _HardTimeout()
+
+
+def call_with_timeout(fn, secs, default, *args, **kwargs):
+    """在主執行緒用 SIGALRM 強制中斷阻塞呼叫；逾時回傳 default，永不讓單一呼叫卡死整批採礦。
+    僅在主執行緒有效（miner.py 單執行緒，OK）。非 Unix 或無 SIGALRM 時退化為直接呼叫。"""
+    if not hasattr(signal, 'SIGALRM'):
+        try:
+            return fn(*args, **kwargs)
+        except Exception:
+            return default
+    old = signal.signal(signal.SIGALRM, _alarm_handler)
+    signal.alarm(int(secs))
+    try:
+        return fn(*args, **kwargs)
+    except _HardTimeout:
+        print(f"  ⏱️ {getattr(fn, '__name__', 'call')} 逾時 {secs}s，跳過（防 hang）")
+        return default
+    except Exception:
+        return default
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
 
 # 【修復】極限防禦準則第 4 條：初始化具備自動退避重試機制的全局 Session
 http_session = requests.Session()
@@ -331,7 +363,10 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
         tickers = [f'{symbol}.TW', f'{symbol}.TWO']
     for tk in tickers:
         try:
-            hist = yf.Ticker(tk).history(period=f'{days_back}d', auto_adjust=False)
+            # 🛡️ yfinance.history 無 timeout 參數、網路卡死會無限 hang → SIGALRM 硬逾時 30s
+            hist = call_with_timeout(
+                lambda: yf.Ticker(tk).history(period=f'{days_back}d', auto_adjust=False),
+                30, None)
             if hist is None or hist.empty:
                 continue
             out = []
@@ -925,6 +960,14 @@ def run():
     seed_db_from_json(watchlist)
     full_watchlist = list(watchlist)   # 保留完整清單供 artifact 修剪（resume 會裁切 watchlist）
 
+    # 🧹 立刻寫 manifest（在採礦迴圈之前）：供 workflow 在「採礦 step 之後、即使 timeout」修剪 artifact。
+    # 不能等 __main__ 末尾才修剪——timeout 殺進程就跑不到，會上傳未修剪的 29974 檔污染合併。
+    try:
+        Path('mined_manifest.txt').write_text('\n'.join(full_watchlist), encoding='utf-8')
+        print(f"  📝 已寫 mined_manifest.txt（{len(full_watchlist)} 檔，供 timeout-safe 修剪）")
+    except Exception as e:
+        print(f"  ⚠️ 寫 manifest 失敗：{e}")
+
     PROGRESS_FILE = f'miner_progress_{BATCH_INDEX}.txt'
 
     # ── 斷點續傳：偵測上次中斷位置 ──────────────────────────────────────────────
@@ -1294,8 +1337,9 @@ def fetch_us_macro_cache():
     result = {}
     for key, ticker in symbols.items():
         try:
-            hist = yf.Ticker(ticker).history(period='5d')
-            if hist.empty:
+            # 🛡️ SIGALRM 硬逾時，防 yfinance 無限 hang
+            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period='5d'), 30, None)
+            if hist is None or hist.empty:
                 continue
             prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
             last = hist.iloc[-1]
@@ -1789,5 +1833,5 @@ if __name__ == '__main__':
     else:
         print("⚡ SKIP_GLOBAL=1：略過籌碼/期貨/美股/雷達（純 OHLCV 批次）")
 
-    # 🧹 最後一步：修剪 artifact（全域資料已產出，可安全刪除非本批殘留）
-    prune_artifact(watchlist)
+    # 🧹 artifact 修剪改由 daily_miner.yml 的「if: always()」step 依 mined_manifest.txt 執行，
+    # 確保即使本批 timeout 被砍，上傳前仍會修剪（不再污染合併）。prune_artifact 保留供本地手動使用。

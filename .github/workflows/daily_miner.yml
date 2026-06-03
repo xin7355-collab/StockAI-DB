@@ -70,6 +70,36 @@ jobs:
           fi
           python miner.py
 
+      - name: 🧹 修剪 artifact（依 manifest 只留本批股票；timeout 也會跑）
+        if: always()   # 關鍵：即使採礦 step 被 90 分 timeout 砍，這步仍執行，確保上傳前已修剪
+        run: |
+          if [ "${{ matrix.batch }}" != "0" ]; then export SKIP_GLOBAL=1; else export SKIP_GLOBAL=0; fi
+          python3 - <<'PY'
+          import os, glob, shutil
+          from pathlib import Path
+          skip_global = os.environ.get('SKIP_GLOBAL') == '1'
+          mani = Path('mined_manifest.txt')
+          keep = set(mani.read_text(encoding='utf-8').split()) if mani.exists() else None
+          def valid(s): return (s.isdigit() and len(s) == 4) or s.startswith('00')
+          if keep is None:
+              print('⚠️ 無 manifest（採礦極早期就中斷），保守不修剪')
+          else:
+              removed = 0
+              for f in glob.glob('data/*.json'):
+                  sym = Path(f).stem
+                  if valid(sym) and sym not in keep:
+                      try: os.remove(f); removed += 1
+                      except OSError: pass
+              print(f'🧹 修剪：保留 {len(keep)} 檔、移除 {removed} 檔非本批殘留')
+              if skip_global:
+                  shutil.rmtree('data/chips', ignore_errors=True)
+                  for g in ('radar.json','top_picks.json','global_news.json','radar_news.json'):
+                      Path('data', g).unlink(missing_ok=True)
+                  for c in ('futures_cache.json','macro_cache.json','margin_cache_stock.json','inst_cache_stock.json'):
+                      Path(c).unlink(missing_ok=True)
+                  print('🧹 SKIP_GLOBAL：已移除 chips / 全域快取（僅 batch 0 提供）')
+          PY
+
       - name: 📤 上傳該節點的採礦結果到暫存區
         if: always()   # 即使該 batch 超時或失敗，已採完的部分資料仍上傳，避免下次重跑歸零
         uses: actions/upload-artifact@v4
@@ -90,9 +120,10 @@ jobs:
   deploy:
     name: 🚀 合併與部署總機
     needs: mine
-    # always() && !cancelled()：部分 batch 失敗（timeout/error）仍合併已上傳的 partial artifact 部署
-    # deploy 內已有 STOCKS < 100 保護擋空部署，雙保險
-    if: ${{ always() && !cancelled() }}
+    # always()（不加 !cancelled）：即使某 batch 跑滿 90 分被 timeout 砍（→ run 變 cancelled），
+    # deploy 仍要執行——否則一個 straggler 就讓整批白做、gh-pages 永遠不更新（曾導致無限卡死）。
+    # 各 batch 已 timeout-safe 修剪（manifest）+ origin/data 底層 + STOCKS<100 守門，三重保險擋空/髒部署。
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
