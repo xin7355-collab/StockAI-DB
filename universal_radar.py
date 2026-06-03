@@ -145,12 +145,40 @@ def fetch_feed(source_name: str, url: str) -> list:
 
 GLOBAL_NEWS_SOURCES = {
     # Reuters/MarketWatch/CNBC block datacenter IPs (403)
-    # Using datacenter-accessible alternatives:
-    "BBC Business":  "https://feeds.bbci.co.uk/news/business/rss.xml",
+    # Using datacenter-accessible alternatives + Google News 多 query 補科技巨頭
+    "BBC Business":   "https://feeds.bbci.co.uk/news/business/rss.xml",
     "Google Finance": "https://news.google.com/rss/search?q=stock+market+economy+finance&hl=en&gl=US&ceid=US:en",
-    "Nasdaq News":   "https://www.nasdaq.com/feed/nasdaq-originals/rss.xml",
+    "Nasdaq News":    "https://www.nasdaq.com/feed/nasdaq-originals/rss.xml",
+    # 科技巨頭與政治影響（川普 / 馬斯克 / 黃仁勳 / 庫克 / Lisa Su / 貝佐斯）
+    "Trump Market":   "https://news.google.com/rss/search?q=%22Donald+Trump%22+stock+market+tariff&hl=en&gl=US&ceid=US:en",
+    "Musk Tesla":     "https://news.google.com/rss/search?q=%22Elon+Musk%22+Tesla+OR+SpaceX&hl=en&gl=US&ceid=US:en",
+    "Huang Nvidia":   "https://news.google.com/rss/search?q=%22Jensen+Huang%22+OR+Nvidia+AI+chip&hl=en&gl=US&ceid=US:en",
+    "TSMC Apple":     "https://news.google.com/rss/search?q=TSMC+OR+%22Tim+Cook%22+Apple+iPhone&hl=en&gl=US&ceid=US:en",
+    "AMD Amazon":     "https://news.google.com/rss/search?q=AMD+OR+%22Jeff+Bezos%22+Amazon&hl=en&gl=US&ceid=US:en",
 }
 GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
+
+# 對台股有關的 keyword filter：標題或 URL 含至少一個才保留
+# 涵蓋科技巨頭 / 公司 / 台股供應鏈相關產業詞 / 宏觀經濟詞
+TW_RELATED_KEYWORDS = [
+    # 科技巨頭與政治人物
+    'trump', 'musk', 'tesla', 'spacex', 'nvidia', 'jensen', 'huang',
+    'tsmc', 'taiwan semi', 'apple', 'tim cook', 'iphone', 'ipad',
+    'amd', 'lisa su', 'amazon', 'bezos', 'meta', 'zuckerberg',
+    'microsoft', 'satya', 'google', 'alphabet', 'sundar', 'openai', 'altman',
+    # 台股相關產業
+    'semiconductor', 'chip', 'hbm', 'foundry', 'euv', 'gpu', 'cpu',
+    'taiwan', 'export', 'supply chain', 'ai',
+    # 宏觀（影響台股大盤）
+    'tariff', 'tariffs', 'fed', 'interest rate', 'inflation', 'cpi', 'gdp',
+    'recession', 'rate cut', 'rate hike',
+]
+
+
+def _is_tw_relevant(title: str, url: str = '') -> bool:
+    """判斷新聞是否與台股相關（科技巨頭/供應鏈/宏觀）。任一 keyword 命中即保留"""
+    combined = (title + ' ' + url).lower()
+    return any(kw in combined for kw in TW_RELATED_KEYWORDS)
 
 
 def fetch_global_news():
@@ -161,29 +189,35 @@ def fetch_global_news():
     cutoff = now_utc - timedelta(hours=48)
 
     items = []
+    skipped_irrelevant = 0
     for source, url in GLOBAL_NEWS_SOURCES.items():
         try:
             feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
             count = 0
-            for entry in feed.entries[:10]:
+            for entry in feed.entries[:15]:  # 從 10 提高到 15，給 filter 更多挑選空間
                 title = (entry.get("title", "") or "").strip()
                 link  = entry.get("link", "") or ""
                 pub   = entry.get("published", "") or entry.get("updated", "") or ""
                 if not title:
                     continue
+                # 對台股有關 filter：純美股本地、體育、政治八卦不抓
+                if not _is_tw_relevant(title, link):
+                    skipped_irrelevant += 1
+                    continue
                 items.append({"source": source, "title": title, "url": link, "published": pub})
                 count += 1
-                if count >= 5:
+                if count >= 6:  # 每源最多 6 則（5 源 = 上限 30 則）
                     break
             print(f"  {source}: {count} 篇")
         except Exception as e:
             print(f"  ⚠️ {source} 失敗: {e}")
 
+    print(f"  🔍 對台股無關過濾掉 {skipped_irrelevant} 則")
     if not items:
         print("  ⚠️ 無法取得全球新聞")
         return
 
-    # 批次呼叫 Groq 分析每則新聞對台股的影響
+    # 批次呼叫 Groq 分析每則新聞對台股的影響（控 token 只翻前 15 則）
     analyzed = []
     for i, item in enumerate(items[:15]):
         impact, level, title_zh = "暫無分析", "neutral", ""

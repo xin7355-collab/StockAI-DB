@@ -24,7 +24,7 @@ jobs:
   mine:
     name: ⛏️ 採礦節點 ${{ matrix.batch }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # 每台只負責 20%，絕對不會超過 1 小時
+    timeout-minutes: 90  # 90 分緩衝；搭配下方 if:always() 上傳，超時也保留已採部分
     strategy:
       fail-fast: false   # 一台當機不要連累其他台
       matrix:
@@ -70,6 +70,7 @@ jobs:
           python miner.py
 
       - name: 📤 上傳該節點的採礦結果到暫存區
+        if: always()   # 即使該 batch 超時或失敗，已採完的部分資料仍上傳，避免下次重跑歸零
         uses: actions/upload-artifact@v4
         with:
           name: mine-data-${{ matrix.batch }}
@@ -79,13 +80,17 @@ jobs:
             macro_cache.json
             margin_cache_stock.json
           retention-days: 1
+          if-no-files-found: warn
 
   # ══════════════════════════════════════════════════════════════════════════
   # 🧬 階段二：等 5 台機器全數完工後，合併資料並統一發布
   # ══════════════════════════════════════════════════════════════════════════
   deploy:
     name: 🚀 合併與部署總機
-    needs: mine   # 必須等待上面 5 個 mine 節點全部完成才能啟動
+    needs: mine
+    # always() && !cancelled()：部分 batch 失敗（timeout/error）仍合併已上傳的 partial artifact 部署
+    # deploy 內已有 STOCKS < 100 保護擋空部署，雙保險
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

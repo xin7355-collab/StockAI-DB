@@ -243,6 +243,16 @@
                     </div>
                     <div class="flex items-center justify-between pt-2">
                         <div>
+                            <label class="text-xs font-bold text-green-400">⚡ 盤中即時警報</label>
+                            <p class="text-[10px] text-gray-500">自選股突破5MA/跌破月線/創新高低，盤中推播提醒</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="set_watchlistAlert" onchange="app.toggleWatchlistAlert(this.checked);" class="sr-only peer">
+                            <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between pt-2">
+                        <div>
                             <label class="text-xs font-bold text-purple-400">🔔 手機推播告警 (iOS 26+)</label>
                             <p class="text-[10px] text-gray-500">關螢幕 / Apple Watch 同步震動</p>
                         </div>
@@ -819,12 +829,11 @@
 
             </div>
 
-            <!-- 📡 全球即時情報 -->
+            <!-- 📡 全球即時情報（fetchGlobalNews 拉完自動 AI 翻譯，不再有手動按鈕） -->
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
-                <div class="flex items-center justify-between mb-2 gap-2">
-                    <div class="text-[10px] font-black text-blue-300 flex-shrink-0">📡 全球即時情報</div>
-                    <button onclick="app.analyzeGlobalNewsAI(); app.vibrate(30);" id="globalNewsAIBtn" class="text-[9px] font-bold text-purple-300 bg-purple-900/40 border border-purple-700 rounded px-2 py-0.5 hover:bg-purple-900/60 transition-colors">🤖 AI 中文判讀</button>
-                    <div id="globalNewsTs" class="text-[9px] text-gray-600 flex-shrink-0">--</div>
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[10px] font-black text-blue-300">📡 全球即時情報</div>
+                    <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
                 </div>
                 <div id="globalNewsList" class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-3">載入中...</div>
@@ -1163,7 +1172,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, localApiUrl: '', fontSize: 'medium' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium' },
     MAX_FAV_PER_GROUP: 50,
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
@@ -1359,7 +1368,7 @@ const app = {
         if (this.autoRefreshTimer) clearInterval(this.autoRefreshTimer);
         this.autoRefreshTimer = setInterval(() => {
             const hasOpenModal = Array.from(document.querySelectorAll('.modal-base')).some(m => !m.classList.contains('hidden') || m.style.display === 'flex');
-            if (hasOpenModal) return; 
+            if (hasOpenModal) return;
 
             if (this.isMarketOpen() && this.currentSymbolId && this.navStack[this.navStack.length - 1] === 'diag') {
                 this.analyze(this.currentSymbolId, true, true, true);
@@ -1368,6 +1377,116 @@ const app = {
                 this.refreshUSMarketBar();
             }
         }, 10000);
+
+        // 盤中自選股全套監控：每 60 秒掃描一輪（round-robin 5 檔/輪避免 Fugle 429）
+        if (this.watchlistInterval) clearInterval(this.watchlistInterval);
+        this.watchlistInterval = setInterval(() => this._watchlistPulse(), 60000);
+    },
+
+    // 盤中自選股監控：突破 5MA / 跌破 20MA / 創 20 日新高新低 → PWA 推播
+    async _watchlistPulse() {
+        if (!this.isMarketOpen()) return;
+        if (!this.settings.watchlistAlert) return;
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const group = this.favGroups?.[this.activeGroupName];
+        if (!group || !group.length) return;
+
+        // 5 檔/輪 round-robin；輪流掃完整組
+        this._wlCursor = (this._wlCursor || 0) % group.length;
+        const slice = [];
+        for (let i = 0; i < 5 && slice.length < 5; i++) {
+            slice.push(group[(this._wlCursor + i) % group.length]);
+        }
+        this._wlCursor = (this._wlCursor + 5) % group.length;
+
+        for (const item of slice) {
+            const sym = typeof item === 'string' ? item : item.symbol;
+            if (!sym) continue;
+            try {
+                const cached = await this.idb.get(`proTerm_kline_${sym}`);
+                const kdata = cached?.data;
+                if (!kdata || kdata.length < 21) continue;
+
+                // 最後 K 棒收盤、近 5 日 MA、近 20 日 MA、近 20 日高低
+                const last20 = kdata.slice(-20);
+                const last5closes  = kdata.slice(-5).map(r => r.close);
+                const last20closes = last20.map(r => r.close);
+                const ma5  = last5closes.reduce((s,v) => s+v, 0) / 5;
+                const ma20 = last20closes.reduce((s,v) => s+v, 0) / 20;
+                const hi20 = Math.max(...last20.map(r => r.high));
+                const lo20 = Math.min(...last20.map(r => r.low));
+                const prevClose = kdata[kdata.length - 1].close;
+
+                // 拿即時價（fetchFugleData 內含 token 輪動 + 429 防護）
+                const fugle = await this.fetchFugleData(sym).catch(() => null);
+                const nowPrice = fugle?.price;
+                if (!nowPrice || nowPrice <= 0) continue;
+
+                const name = this.getStockName(sym) || sym;
+                // 訊號判定（cooldown 30 分鐘同股同訊號只發一次）
+                const trigger = (signal, title, body) => {
+                    const key = `${sym}_${signal}`;
+                    if (!this._alertCache) this._alertCache = {};
+                    const last = this._alertCache[key] || 0;
+                    if (Date.now() - last < 30 * 60 * 1000) return;
+                    this._alertCache[key] = Date.now();
+                    this._fireAlert(title, `${name}(${sym}) ${body}`, sym);
+                };
+
+                if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🟢 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}（停利訊號）`);
+                if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🔴 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}（停損警告）`);
+                if (nowPrice > hi20)                      trigger('hi20',   '🚀 創 20 日新高', `現價 ${nowPrice.toFixed(2)} 突破 ${hi20.toFixed(2)}`);
+                if (nowPrice < lo20)                      trigger('lo20',   '⚠️ 創 20 日新低', `現價 ${nowPrice.toFixed(2)} 跌破 ${lo20.toFixed(2)}`);
+
+                await new Promise(r => setTimeout(r, 1500)); // 每股間隔 1.5s 避免 Fugle 429
+            } catch (e) {
+                console.warn(`[watchlist] ${sym} 失敗`, e);
+            }
+        }
+    },
+
+    // 盤中即時警報開關：開啟時先要求通知授權，沒授權則回退關閉
+    async toggleWatchlistAlert(checked) {
+        if (checked) {
+            if (typeof Notification === 'undefined') {
+                this.showToast('此瀏覽器不支援通知');
+                document.getElementById('set_watchlistAlert').checked = false;
+                return;
+            }
+            let perm = Notification.permission;
+            if (perm === 'default') perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+                this.showToast('需允許通知權限才能盤中推播');
+                document.getElementById('set_watchlistAlert').checked = false;
+                this.settings.watchlistAlert = false;
+                this.saveSettings();
+                return;
+            }
+            this.settings.watchlistAlert = true;
+            this.showToast('⚡ 盤中即時警報已開啟', 'info');
+            // 立即跑一輪（盤中時）讓使用者馬上有反饋
+            if (this.isMarketOpen()) this._watchlistPulse();
+        } else {
+            this.settings.watchlistAlert = false;
+        }
+        this.saveSettings();
+    },
+
+    // 通用警報通知（與 _fireHuntNotification 並存，盤中監控專用單一入口）
+    _fireAlert(title, body, sym) {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        try {
+            const n = new Notification(title, { body, tag: `alert_${sym}_${title}`, requireInteraction: false });
+            n.onclick = () => {
+                window.focus();
+                if (sym) {
+                    document.getElementById('symbolInput').value = sym;
+                    this.analyze(sym);
+                }
+                n.close();
+            };
+            this.vibrate(50);
+        } catch (e) {}
     },
 
     async refreshUSMarketBar() {
@@ -1475,19 +1594,44 @@ const app = {
             });
             list.innerHTML = rows.length ? rows.join('') : '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>';
             if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+
+            // 自動觸發 AI 中文翻譯（背景跑，不阻塞 UI）；有 Groq Key + 標題還是英文時才跑
+            const needTranslate = data.items.some(it => !it.title_zh && /[a-zA-Z]{3,}/.test(it.title || ''));
+            if (needTranslate && (this.settings.groqKey || this._apiBase)) {
+                this.analyzeGlobalNewsAI({ silent: true });
+            }
         } catch(e) {
             list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">情報暫無法取得</div>';
         }
     },
 
     // 🤖 全球新聞 AI 中文判讀（瀏覽器直連 Groq，繞過 Actions GROQ_API_KEY secret）
-    async analyzeGlobalNewsAI() {
+    // 自動觸發版：fetchGlobalNews 拉完後自動呼叫，silent=true 時不彈 alert、不改按鈕
+    async analyzeGlobalNewsAI(opts) {
         const items = this._globalNewsItems || [];
-        const btn = document.getElementById('globalNewsAIBtn');
-        if (!items.length) { alert('沒有可判讀的新聞，請等情報載入'); return; }
+        const silent = !!(opts && opts.silent);
+        if (!items.length) { if (!silent) alert('沒有可判讀的新聞，請等情報載入'); return; }
         const apiKey = (this.settings.groqKey || '').trim();
-        if (!apiKey) { alert('請先至 ⚙️ 設定填寫 Groq API Key'); return; }
-        if (btn) { btn.disabled = true; btn.textContent = '🤖 判讀中…'; }
+        if (!apiKey) { if (!silent) alert('請先至 ⚙️ 設定填寫 Groq API Key'); return; }
+
+        // sessionStorage 快取：同一批新聞（key = 第一則 url + items 長度）只翻一次
+        const cacheKey = `gnewsAi_${(items[0].url || items[0].title).slice(0, 80)}_${items.length}`;
+        try {
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+                const parsedCache = JSON.parse(cached);
+                parsedCache.forEach((a, idx) => {
+                    if (items[idx]) {
+                        items[idx].title_zh    = a.title_zh    || items[idx].title_zh    || '';
+                        items[idx].impact      = a.impact      || items[idx].impact      || '';
+                        items[idx].impact_level = a.level      || items[idx].impact_level || 'neutral';
+                    }
+                });
+                this._renderGlobalNewsList(items);
+                return;
+            }
+        } catch(_) {}
+
         try {
             // 批次一次丟最多 15 則
             const slice = items.slice(0, 15);
@@ -1515,37 +1659,39 @@ const app = {
                     slice[idx].impact_level = a.level      || slice[idx].impact_level || 'neutral';
                 }
             });
-            // 重新觸發渲染（呼叫 fetchGlobalNews 會重抓 JSON，這裡直接 in-place 改後重畫）
+            // 寫入 sessionStorage 快取（用 arr 而非整 items，省空間）
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(arr)); } catch(_) {}
+
+            // in-place 改後重畫（呼叫共用渲染函式）
             this._globalNewsItems = items;
-            // 用既有渲染：重 build rows
-            const list2 = document.getElementById('globalNewsList');
-            if (list2) {
-                const srcColor = { Reuters: 'bg-orange-900/60 text-orange-300', MarketWatch: 'bg-blue-900/60 text-blue-300', CNBC: 'bg-red-900/60 text-red-300' };
-                const impColor = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-gray-500' };
-                list2.innerHTML = items.filter(it => it.title_zh || it.title).map(item => {
-                    const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
-                    const ic = impColor[item.impact_level] || 'text-gray-500';
-                    const t  = (item.title_zh || item.title || '').slice(0, 50) + ((item.title_zh || item.title || '').length > 50 ? '…' : '');
-                    const im = (item.impact && item.impact !== '暫無分析') ? item.impact.slice(0, 30) : '—';
-                    const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
-                    return `<a href="${safeUrl}" target="_blank" rel="noopener" class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors no-underline">
-                        <span class="text-[8px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-[10px] text-gray-300 leading-tight">${t}</div>
-                            <div class="text-[9px] ${ic} mt-0.5">${im}</div>
-                        </div>
-                        <div class="text-[8px] text-gray-600 flex-shrink-0 mt-0.5">${(item.published || '').slice(5, 11)}</div>
-                    </a>`;
-                }).join('');
-            }
-            if (btn) btn.textContent = '✅ 已判讀';
+            this._renderGlobalNewsList(items);
         } catch(e) {
             console.error('[analyzeGlobalNewsAI]', e);
-            alert(`AI 判讀失敗：${e.message}（Groq 不支援瀏覽器 CORS？檢查 Key 或網路）`);
-            if (btn) btn.textContent = '🤖 AI 中文判讀';
-        } finally {
-            if (btn) btn.disabled = false;
+            if (!silent) alert(`AI 判讀失敗：${e.message}（Groq 不支援瀏覽器 CORS？檢查 Key 或網路）`);
         }
+    },
+
+    // 共用的全球新聞列表渲染（fetchGlobalNews 與 analyzeGlobalNewsAI 都呼叫）
+    _renderGlobalNewsList(items) {
+        const list2 = document.getElementById('globalNewsList');
+        if (!list2) return;
+        const srcColor = { Reuters: 'bg-orange-900/60 text-orange-300', MarketWatch: 'bg-blue-900/60 text-blue-300', CNBC: 'bg-red-900/60 text-red-300' };
+        const impColor = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-gray-500' };
+        list2.innerHTML = items.filter(it => it.title_zh || it.title).map(item => {
+            const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
+            const ic = impColor[item.impact_level] || 'text-gray-500';
+            const t  = (item.title_zh || item.title || '').slice(0, 50) + ((item.title_zh || item.title || '').length > 50 ? '…' : '');
+            const im = (item.impact && item.impact !== '暫無分析') ? item.impact.slice(0, 30) : '—';
+            const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
+            return `<a href="${safeUrl}" target="_blank" rel="noopener" class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors no-underline">
+                <span class="text-[8px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[10px] text-gray-300 leading-tight">${t}</div>
+                    <div class="text-[9px] ${ic} mt-0.5">${im}</div>
+                </div>
+                <div class="text-[8px] text-gray-600 flex-shrink-0 mt-0.5">${(item.published || '').slice(5, 11)}</div>
+            </a>`;
+        }).join('');
     },
 
     _checkMarketAlerts() {
@@ -1705,6 +1851,8 @@ const app = {
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
+        const wlEl = document.getElementById('set_watchlistAlert');
+        if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
         this._applyFontSizeUI(this.settings.fontSize || 'medium');
         document.getElementById('exportAreaContainer').classList.add('hidden');
         const modal = document.getElementById('settingsModal');
@@ -2516,6 +2664,45 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         } // end for attempt
         // 所有 Key 均被 429 封鎖，才鎖定 5 分鐘
         this.triggerApiLock();
+        return null;
+    },
+
+    // Yahoo Finance 即時報價備援：Fugle 5 token 全 429 時用 Yahoo chart API（經 CORS proxy）
+    // 回傳格式與 fetchFugleData 一致；失敗回 null
+    async _fetchYahooQuote(symbol) {
+        const proxyFetch = async (url) => {
+            for (const proxy of [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?${encodeURIComponent(url)}`
+            ]) {
+                try {
+                    const r = await fetch(proxy, { signal: AbortSignal.timeout(6000) });
+                    if (r.ok) return await r.json();
+                } catch(e) {}
+            }
+            return null;
+        };
+        // 上市 .TW 優先，失敗再試上櫃 .TWO
+        for (const suffix of ['.TW', '.TWO']) {
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}${suffix}?interval=1d&range=1d`;
+            const j = await proxyFetch(url);
+            const meta = j?.chart?.result?.[0]?.meta;
+            const price = meta?.regularMarketPrice;
+            if (price && price > 0) {
+                const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? null;
+                return {
+                    price,
+                    open: meta.regularMarketOpen ?? price,
+                    high: meta.regularMarketDayHigh ?? price,
+                    low:  meta.regularMarketDayLow ?? price,
+                    volume: meta.regularMarketVolume ?? 0,
+                    prevClose,
+                    changePrice: prevClose != null ? price - prevClose : null,
+                    isHistorical: false,
+                    _src: 'yahoo',
+                };
+            }
+        }
         return null;
     },
 
@@ -4186,19 +4373,36 @@ ${lightExplain[queryType]}
             const yieldStr = yieldRate   != null ? `${yieldRate.toFixed(2)}%`   : '無資料';
             const paStr    = payoutRatio != null ? `${payoutRatio.toFixed(1)}%` : '無資料';
             const divStr   = totalDiv    != null ? `${totalDiv.toFixed(2)} 元`  : '無資料';
+            // 從首頁戰情室 DOM 拿全球宏觀（無資料時用「--」，不額外發 fetch）
+            const _g = id => document.getElementById(id + '_main')?.innerText?.trim() || document.getElementById(id)?.innerText?.trim() || '--';
+            const _fi = this.fiShortQty;
+            const _fiLabel = _fi != null ? `${_fi >= 0 ? '+' : ''}${_fi.toLocaleString()} 口` : '--';
+            const _sox = _g('usBar_sox'), _soxChg = _g('usBar_sox_chg');
+            const _nvda = _g('usBar_nvda'), _nvdaChg = _g('usBar_nvda_chg');
+            const _tsm = _g('usBar_tsm'),  _tsmChg  = _g('usBar_tsm_chg');
+            const _vix = _g('usBar_vix'),  _dxy     = _g('usBar_dxy');
+            const _hasGlobal = [_sox, _nvda, _tsm].some(v => v && v !== '--');
+            const globalContext = _hasGlobal ? `
+
+【全球宏觀脈絡】（用於評估個股的全球資金共鳴）
+- 費半SOX: ${_sox}（${_soxChg}） / 輝達NVDA: ${_nvda}（${_nvdaChg}） / 台積電ADR: ${_tsm}（${_tsmChg}）
+- VIX 恐慌: ${_vix} / 美元指數DXY: ${_dxy}
+- 外資台指期未平倉: ${_fiLabel}` : '';
+
 const fullPrompt = `你是台股身經百戰的操盤總裁，講話犀利直接，擅長戳破財報粉飾。
-請根據 ${sym} 的 6 大基本面數據，輸出 100~150 字的白話實戰解析：
+請根據 ${sym} 的 6 大基本面數據，輸出 130~180 字的白話實戰解析：
 - EPS（最新季）：${epsStr}
 - 營收 YoY：${yoyStr}
 - 本益比 PE：${peStr}
 - 殖利率：${yieldStr}
 - 毛利率趨勢：${gmTrendStr || '無資料'}
 - 股利發配率：${paStr}
-- 最新每股股利：${divStr}
+- 最新每股股利：${divStr}${globalContext}
 
 格式要求：
 1. 第一行先給出精準判定（請從以下四選一：🔥成長火箭 / ⚠️空氣泡泡 / 🚨價值陷阱 / ⚖️中性觀察）。
-2. 第二行開始，用大白話解讀其企業體質，並給出具體的波段操作建議。`;
+2. 第二行開始，用大白話解讀其企業體質，並給出具體的波段操作建議。${_hasGlobal ? `
+3. 最後一段「🌐 全球資金共鳴」一句話：結合上方全球宏觀脈絡，這檔在當前環境下是順風還是逆風？` : ''}`;
             let aiText = null;
             try {
                 aiText = await this._callAI({prompt: fullPrompt, max_tokens: 350, temperature: 0.5});
@@ -4490,12 +4694,25 @@ recent.forEach(d => {
                 ? "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
                 : "w-1.5 h-1.5 rounded-full bg-blue-400";
         } else {
-            this._hasLivePrice = false;
-            fugleData = this._getHistoricalLatestAsPrice();
-            if (!this.apiRateLimited) {
-                document.getElementById('dataSourceText').innerText = "連線異常(歷史收盤)";
-                document.getElementById('dataSourceText').className = "font-bold text-yellow-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
+            // Fugle 全 429 → 改用 Yahoo Finance 即時報價備援（不再直接退回歷史收盤）
+            const yq = await this._fetchYahooQuote(targetSym).catch(() => null);
+            if (yq) {
+                fugleData = yq;
+                this._hasLivePrice = !yq.isHistorical;
+                const marketOpen = this.isMarketOpen();
+                document.getElementById('dataSourceText').innerText = marketOpen ? "即時報價(Yahoo)" : "最新報價(Yahoo)";
+                document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
+                document.getElementById('dataSourceDot').className = marketOpen
+                    ? "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
+                    : "w-1.5 h-1.5 rounded-full bg-green-400";
+            } else {
+                this._hasLivePrice = false;
+                fugleData = this._getHistoricalLatestAsPrice();
+                if (!this.apiRateLimited) {
+                    document.getElementById('dataSourceText').innerText = "連線異常(歷史收盤)";
+                    document.getElementById('dataSourceText').className = "font-bold text-yellow-400 text-[10px] font-mono tracking-wide";
+                    document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
+                }
             }
         }
 
@@ -4712,7 +4929,8 @@ recent.forEach(d => {
         let isPriceDropping = pC < ma5;
         let isHighRisk = (ma20 !== null && pC < ma20) || ctx.isIslandReversal || ctx.isBigBlackK;
 
-        let ledClass = "bg-gray-500", confMsg = "震盪觀望";
+        // 預設灰燈 + 拉鋸觀望（取代原白燈，視覺低調、文字合併進來）
+        let ledClass = "bg-gray-500", confMsg = "⚪ 拉鋸觀望，嚴守均線紀律";
 
         if (isYoYGood && isChipGood && isPriceDropping && !isHighRisk) {
             ledClass = "bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)] animate-pulse";
@@ -4723,10 +4941,8 @@ recent.forEach(d => {
         } else if (ctx.season === '夏') {
             ledClass = "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]";
             confMsg = "綠燈：趨勢狂飆中，不破 5MA 不賣。";
-        } else {
-            ledClass = "bg-white shadow-[0_0_10px_rgba(255,255,255,0.4)]";
-            confMsg = "白燈：多空拉鋸，請嚴守均線紀律。";
         }
+        // 不再有白燈 fallback，落回預設灰燈 + 拉鋸觀望文字
 
         document.getElementById('confLed').className = `w-3 h-3 rounded-full ${ledClass}`;
         document.getElementById('confText').innerText = confMsg;
@@ -5368,16 +5584,35 @@ recent.forEach(d => {
         this.renderFavTabs();
     },
 
+    // 只切按鈕 active class，不重畫整列（避免 mobile touchend 派發到重畫後別位置的按鈕）
+    selectFavGroup(group) {
+        if (this.isFavEditMode) return;
+        if (this.activeGroupName === group) return;
+        this.activeGroupName = group;
+        document.querySelectorAll('[data-fav-group-wrap]').forEach(el => {
+            const active = el.dataset.favGroupWrap === group;
+            el.classList.toggle('text-blue-400', active);
+            el.classList.toggle('border-b-2', active);
+            el.classList.toggle('border-blue-400', active);
+            el.classList.toggle('bg-blue-900/20', active);
+            el.classList.toggle('text-gray-500', !active);
+            el.classList.toggle('hover:text-gray-300', !active);
+        });
+        this.renderFavList();
+    },
+
     renderFavTabs() {
         const container = document.getElementById('favGroupTabs'); if(!container) return;
         let html = '<div class="flex items-center w-full px-1">';
         for(let group in this.favGroups) {
             const active = group === this.activeGroupName ? 'text-blue-400 border-b-2 border-blue-400 bg-blue-900/20' : 'text-gray-500 hover:text-gray-300';
-            html += `<div class="flex items-center ${active} flex-shrink-0 rounded-t-lg transition-colors px-1">`;
+            // data-fav-group-wrap 讓 selectFavGroup 只切 class 不重畫；style touch-action 防 mobile double-tap
+            html += `<div data-fav-group-wrap="${group}" class="flex items-center ${active} flex-shrink-0 rounded-t-lg transition-colors px-1" style="touch-action: manipulation">`;
             if (this.isFavEditMode) {
                 html += `<button class="px-2 py-1.5 text-red-400 font-black hover:text-red-300" onclick="app.deleteFavGroup('${group}')">✕</button>`;
             }
-            html += `<button class="px-3 py-2 text-sm font-bold" onclick="if(!app.isFavEditMode){app.activeGroupName='${group}'; app.renderFavTabs();}">${group}</button>`;
+            // 改呼叫 selectFavGroup，不再 inline 改 state + 整列重畫
+            html += `<button class="px-3 py-2 text-sm font-bold" onclick="app.selectFavGroup('${group}')">${group}</button>`;
             if (this.isFavEditMode) {
                 html += `<button class="px-2 py-1.5 text-gray-400 font-bold hover:text-white" onclick="app.renameFavGroup('${group}')">✏️</button>`;
             }
@@ -6374,24 +6609,13 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
             return lines.join('\n');
         })();
 
-        // 整合當前查看個股的資料
-        let currentStockSection = '';
-        if (this.currentSymbolId && this.activeData && this.activeData.length >= 2) {
-            const d = this.activeData;
-            const last = d[d.length - 1];
-            const prev5 = d[Math.max(0, d.length - 6)];
-            const chg5 = prev5.close > 0 ? ((last.close / prev5.close - 1) * 100).toFixed(1) : '0.0';
-            const instSum = d.slice(-5).reduce((a, r) => a + (r.foreign_net || 0), 0);
-            const instStr = instSum > 0 ? `+${instSum.toLocaleString()}` : instSum.toLocaleString();
-            const stockName = this.getStockName(this.currentSymbolId);
-            currentStockSection = `\n【目前查看個股】${this.currentSymbolId} ${stockName}，現價 ${last.close}，近5日 ${chg5 > 0 ? '+' : ''}${chg5}%，外資近5日淨 ${instStr} 張`;
-        }
+        // 個股共鳴段已搬到個股 X 光 AI 解析（fetchFundamentalAnalysis），這裡不再注入
 
         showProgress(5, 5, 'AI 生成報告中...');
         if (btn) btn.innerHTML = '⏳ AI 分析中...';
 
         const hasNews = newsSection.trim().length > 0;
-        const totalSections = 6 + (hasNews ? 1 : 0) + (currentStockSection ? 1 : 0);
+        const totalSections = 6 + (hasNews ? 1 : 0);
         const s = (n) => hasNews ? n : n - 1; // section number offset when no news
 
         const prompt = `你是台股首席策略師，用白話文、權證小哥風格，根據以下昨晚全球數據，告訴我明日台股開盤情況與操作策略：
@@ -6403,7 +6627,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 【關鍵巨頭ADR】台積電 ${tsm}（${tsmChg}）/ 輝達NVDA ${nvda}（${nvdaChg}）/ 蘋果 ${aapl} / 微軟 ${msft}
 【宏觀三角】美債2Y ${us02y}%（${us02yChg}）/ 布蘭特原油 ${ukoil}桶 / 美元指數DXY ${dxy}（${dxyChg}）${newsSection}
 【雷達選股（自動掃描）】
-${radarSection}${currentStockSection}
+${radarSection}
 
 請依序輸出以下${totalSections}段，每段用「▌標題」開頭，2-3句，**粗體**標關鍵數字：
 
@@ -6425,10 +6649,7 @@ ${hasNews ? `
 根據上述所有訊號，明日台股最可能：高開/平開/低開（給出大約點數方向或漲跌幅估計），說明最關鍵的支撐與壓力位
 
 ▌${s(7)}. 🎯 雷達個股共鳴評估
-針對上方三類雷達選股，在當前全球環境下，哪類型訊號最強？前幾檔個股的底部/飆股訊號是否依然有效？操作上要注意什麼風險或加乘效果？${currentStockSection ? `
-
-▌${s(8)}. 📌 ${this.currentSymbolId} ${this.getStockName(this.currentSymbolId)} 個股共鳴
-結合以上全球環境，這檔個股明天的走勢預期是什麼？外資籌碼與全球資金流向對它是加分還是扣分？給出具體操作建議（持有/減碼/觀望）。` : ''}`;
+針對上方三類雷達選股，在當前全球環境下，哪類型訊號最強？前幾檔個股的底部/飆股訊號是否依然有效？操作上要注意什麼風險或加乘效果？`;
 
         try {
             const text = await this._callAI({ prompt, max_tokens: 1000, temperature: 0.4 });

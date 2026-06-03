@@ -911,15 +911,15 @@ def run():
             recent_10 = {d.strftime('%Y/%m/%d') for d in trading_days[-10:]}
             has_gap = any(d not in existing_map for d in recent_10)
 
-            # 資料稀疏偵測：若現有記錄不足 60 筆（約 3 個月交易日），延長回溯至 6 個月補齊歷史
-            if len(existing_map) < 60:
+            # 資料稀疏偵測：門檻從 60 降至 20（約 1 個月交易日），減少 6 倍回溯觸發
+            # — 多數新股 20 筆已夠 bootstrap，避免 batch 卡在大量新股而 timeout
+            if len(existing_map) < 20:
                 fetch_months = []
                 _tmp = today.replace(day=1)
                 for _ in range(6):
                     fetch_months.append(_tmp.strftime('%Y%m'))
                     _tmp = (_tmp - timedelta(days=1)).replace(day=1)
-                if len(existing_map) < 60:
-                    print(f"  📉 資料稀疏（現有 {len(existing_map)} 筆），延長至 6 個月回溯")
+                print(f"  📉 資料稀疏（現有 {len(existing_map)} 筆 < 20），延長至 6 個月回溯")
             else:
                 fetch_months = months
 
