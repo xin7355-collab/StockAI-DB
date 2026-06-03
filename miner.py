@@ -458,31 +458,46 @@ def fetch_market_margin(d: date) -> dict:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
-            # 改用 fields 篩選：只挑「含『股票代號』欄位」的 table（不再靠 title 含「信用」）
             tables = j.get('tables', []) or []
-            target_table = next(
-                (t for t in tables
-                 if any(('股票代號' in (f or '')) or ('證券代號' in (f or '')) for f in (t.get('fields') or []))),
-                None
-            )
-            if target_table is None:
-                titles = [t.get('title','') for t in tables]
-                print(f"  ⚠️ 上市融資券找不到含『股票代號』的 table；現有 tables 標題={titles}")
-            if target_table:
+            # 🛡️【關鍵修復】MI_MARGN 回傳多個 table，舊版誤抓「市場總計表」(僅 3-7 列、
+            # key 變成 8,873,952 之類的總計數字)。改為：在每個含「股票代號」欄位的 table 中，
+            # 挑「id 欄含最多合法股號」的那張個股表（~1500 列），徹底避開總計表。
+            best = None  # (valid_count, table, idx_id)
+            for t in tables:
+                fields = t.get('fields', []) or []
+                idx_id = next((i for i, f in enumerate(fields)
+                               if '股票代號' in (f or '') or '證券代號' in (f or '')), None)
+                if idx_id is None:
+                    continue
+                data = t.get('data', []) or []
+                valid = sum(1 for r in data
+                            if len(r) > idx_id and _valid_stock(str(r[idx_id]).strip()))
+                if valid > 50 and (best is None or valid > best[0]):
+                    best = (valid, t, idx_id)
+
+            if best is None:
+                titles = [t.get('title', '') for t in tables]
+                print(f"  ⚠️ 上市融資券找不到個股表（無 table id 欄含 >50 股號）；tables 標題={titles}")
+            else:
+                _, target_table, idx_id = best
                 fields = target_table.get('fields', [])
-                idx_id = next((i for i, f in enumerate(fields) if '股票代號' in f or '證券代號' in f), None)
                 idx_mb = next((i for i, f in enumerate(fields) if '融資' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
                 idx_sb = next((i for i, f in enumerate(fields) if '融券' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
-                if idx_id is None or idx_mb is None or idx_sb is None:
-                    print(f"  ⚠️ 融資券欄位找不到，fields={fields[:8]}")
+                print(f"  [MI_MARGN] 選中個股表：{best[0]} 檔 | 融資欄 idx={idx_mb} 融券欄 idx={idx_sb} | fields={fields[:6]}")
+                if idx_mb is None or idx_sb is None:
+                    print(f"  ⚠️ 融資/融券餘額欄位找不到，fields={fields}")
                 else:
                     for r in target_table.get('data', []):
+                        sid = str(r[idx_id]).strip()
+                        if not _valid_stock(sid):   # 跳過總計列 / 非個股列
+                            continue
                         try:
-                            res[str(r[idx_id]).strip()] = {
-                                'margin_balance': int(str(r[idx_mb]).replace(',','')),
-                                'short_balance': int(str(r[idx_sb]).replace(',',''))
+                            res[sid] = {
+                                'margin_balance': int(str(r[idx_mb]).replace(',', '')),
+                                'short_balance':  int(str(r[idx_sb]).replace(',', '')),
                             }
-                        except: pass
+                        except Exception:
+                            pass
     except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
@@ -491,8 +506,11 @@ def fetch_market_margin(d: date) -> dict:
         url_otc = f'https://www.tpex.org.tw/web/stock/margin_trading/margin_balance/margin_bal_result.php?l=zh-tw&o=json&d={d_tpex}'
         j = http_session.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
         for r in (j.get('aaData') or []):
+            sid = str(r[0]).strip()
+            if not _valid_stock(sid):   # 跳過總計列 / 非個股列
+                continue
             try:
-                res[str(r[0]).strip()] = {
+                res[sid] = {
                     'margin_balance': int(str(r[6]).replace(',','')), # 融資現在餘額
                     'short_balance': int(str(r[13]).replace(',',''))  # 融券現在餘額
                 }
@@ -753,39 +771,46 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
 
 
 # ── 動態監控清單（全市場批次版）────────────────────────────────────────────
+def _valid_stock(s) -> bool:
+    """一般股票（4碼純數字）或 ETF（00 開頭，支援 00981A 等），排除權證"""
+    s = str(s)
+    return (s.isdigit() and len(s) == 4) or s.startswith('00')
+
+
 def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> list:
-    """從法人批次資料衍生全市場清單，再依批次分割。
-    inst_cache 的 keys 即為當日所有活躍股票代號（~1800 檔）。
-    非交易日 fallback 到舊 DB / JSON 資料。
+    """依批次分割全市場清單。
+
+    ⚡【關鍵】所有 batch 都用「相同的宇宙」(data/ glob ∪ CHIP_WATCHLIST) 做分割，
+    確保 20 個批次的切片完全對齊、彼此不重疊 → 每檔股票只會被 1 個 batch 採礦，
+    從根本消除 artifact 合併時的同名檔衝突（K線凍結主因之一）。
+    inst_cache 僅用於：batch 0 額外補進「今日活躍但尚無 JSON」的新上市股。
     """
-    all_syms: set = set()
-    for day_data in inst_cache.values():
-        all_syms.update(day_data.keys())
+    skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names',
+            'top_picks', 'global_news', 'radar_news'}
+    universe: set = set(CHIP_WATCHLIST)
+    universe |= {f.stem for f in Path(DATA_DIR).glob('*.json') if f.stem not in skip}
+    universe = {s for s in universe if _valid_stock(s)}
+    sorted_syms = sorted(universe)
 
-    # 🛡️【核心修復】：只保留一般股票（4碼純數字）或 ETF（00 開頭，不限字母以支援 00981A / 00679B 等），嚴格排除權證
-    all_syms = {s for s in all_syms if (str(s).isdigit() and len(str(s)) == 4) or str(s).startswith('00')}
-
-    if not all_syms:
-        # 非交易日或法人 API 失敗 → fallback 舊有資料
-        all_syms = set(CHIP_WATCHLIST)
-        skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names'}
-        if Path(DB_PATH).exists():
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                for row in conn.execute("SELECT DISTINCT symbol FROM stock_history"):
-                    all_syms.add(row[0])
-                conn.close()
-            except Exception:
-                pass
-        all_syms |= {f.stem for f in Path(DATA_DIR).glob('*.json') if f.stem not in skip}
-
-    sorted_syms = sorted(all_syms)
     if total <= 1:
-        return sorted_syms
-    size  = math.ceil(len(sorted_syms) / total)
-    start = batch_idx * size
-    end   = min(start + size, len(sorted_syms))
-    return sorted_syms[start:end]
+        base = list(sorted_syms)
+    else:
+        size  = math.ceil(len(sorted_syms) / total)
+        start = batch_idx * size
+        end   = min(start + size, len(sorted_syms))
+        base  = sorted_syms[start:end]
+
+    # batch 0 額外納入「今日活躍但尚無 JSON」的新上市股（只在 batch 0，避免重疊）
+    if batch_idx == 0 and inst_cache:
+        actives: set = set()
+        for day_data in inst_cache.values():
+            actives.update(day_data.keys())
+        new_listings = sorted({s for s in actives if _valid_stock(s)} - universe)
+        if new_listings:
+            base = list(base) + new_listings
+            print(f"  🆕 batch 0 額外納入 {len(new_listings)} 檔新上市股")
+
+    return list(base)
 
 
 def get_trading_days(n=30):
@@ -796,6 +821,47 @@ def get_trading_days(n=30):
             days.append(d)
         d -= timedelta(days=1)
     return sorted(days)
+
+
+def seed_db_from_json(watchlist: list) -> None:
+    """🌱 把 checkout 下來的 data/<sym>.json 種回 SQLite，保留完整歷史。
+
+    GitHub Actions 每次 run 都是全新空白 SQLite（.db 被 gitignore），
+    若不種回，existing_map 會是空的 → 採礦只抓最近 3 個月 → export 把歷史覆寫掉。
+    此函式讓 existing_map 取得完整歷史，採礦只「補新天」，且缺口偵測能正確補回。
+    """
+    seeded = rows_total = 0
+    conn = get_db_conn()
+    cur  = conn.cursor()
+    for sym in watchlist:
+        p = Path(DATA_DIR) / f'{sym}.json'
+        if not p.exists():
+            continue
+        try:
+            rows = json.loads(p.read_text(encoding='utf-8'))
+            if not isinstance(rows, list) or not rows:
+                continue
+            batch = [
+                (sym,
+                 str(r['date']).replace('/', '-'),
+                 r.get('open'), r.get('high'), r.get('low'),
+                 r.get('close'), r.get('volume'),
+                 r.get('foreign_net', 0),    r.get('trust_net', 0),
+                 r.get('dealer_net', 0),
+                 r.get('margin_balance', 0), r.get('short_balance', 0))
+                for r in rows if r.get('date')
+            ]
+            cur.executemany(
+                "INSERT OR REPLACE INTO stock_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                batch)
+            seeded += 1
+            rows_total += len(batch)
+        except Exception as e:
+            # 單檔壞掉不影響其他檔
+            print(f"  ⚠️ 種子回填 {sym} 失敗：{e}")
+    conn.commit()
+    conn.close()
+    print(f"🌱 種子回填完成：{seeded} 檔歷史載入 SQLite（共 {rows_total} 筆），採礦將只補新天")
 
 
 # ── 主採礦：TWSE 完全免費版 ──────────────────────────────────────────────────
@@ -813,6 +879,7 @@ def run():
     inst_cache:   dict = {}
     margin_cache: dict = {}
     MARGIN_CACHE_FILE = Path('margin_cache_stock.json')
+    INST_CACHE_FILE   = Path('inst_cache_stock.json')
     if not SKIP_GLOBAL:
         print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日）...")
         for d in trading_days:
@@ -827,23 +894,36 @@ def run():
                 margin_cache[dd] = marg
                 print(f"  融券 {dd}: {len(marg)} 筆")
             time.sleep(0.8)
-        # 儲存供批次 1-4 使用（下次執行時從 gh-pages 載入）
+        # 儲存供批次 1-19 使用（同次 run 透過 artifact、或下次從 gh-pages 載入）
         if margin_cache:
             MARGIN_CACHE_FILE.write_text(json.dumps(margin_cache, ensure_ascii=False), encoding='utf-8')
             print(f"  💾 融資券快取已儲存 → {MARGIN_CACHE_FILE}（{len(margin_cache)} 天）")
+        if inst_cache:
+            INST_CACHE_FILE.write_text(json.dumps(inst_cache, ensure_ascii=False), encoding='utf-8')
+            print(f"  💾 三大法人快取已儲存 → {INST_CACHE_FILE}（{len(inst_cache)} 天）")
     else:
         print(f"\n⚡ SKIP_GLOBAL=1：跳過法人/融資券抓取（OHLCV 模式）")
-        # 載入昨天批次 0 儲存的融資券快取（來自 gh-pages checkout）
+        # 載入批次 0 儲存的法人 + 融資券快取（來自 gh-pages checkout），讓全市場個股都有籌碼
         if MARGIN_CACHE_FILE.exists():
             try:
                 margin_cache = json.loads(MARGIN_CACHE_FILE.read_text(encoding='utf-8'))
-                print(f"  📥 載入昨日融資券快取：{len(margin_cache)} 天，{sum(len(v) for v in margin_cache.values())} 筆")
+                print(f"  📥 載入融資券快取：{len(margin_cache)} 天，{sum(len(v) for v in margin_cache.values())} 筆")
             except Exception as e:
                 print(f"  ⚠️ 融資券快取載入失敗：{e}")
+        if INST_CACHE_FILE.exists():
+            try:
+                inst_cache = json.loads(INST_CACHE_FILE.read_text(encoding='utf-8'))
+                print(f"  📥 載入三大法人快取：{len(inst_cache)} 天，{sum(len(v) for v in inst_cache.values())} 筆")
+            except Exception as e:
+                print(f"  ⚠️ 三大法人快取載入失敗：{e}")
 
-    # 從法人資料衍生全市場清單，依批次分割
+    # 全市場清單依批次對齊分割（所有 batch 用相同宇宙，彼此不重疊）
     watchlist = get_batch_symbols(inst_cache, BATCH_INDEX, TOTAL_BATCHES)
     print(f"\n🎯 批次 {BATCH_INDEX}/{TOTAL_BATCHES}：{len(watchlist)} 檔個股 | 月份: {months}")
+
+    # 🌱 種子回填：把 checkout 的舊 JSON 歷史載回 SQLite（保留完整歷史，採礦只補新天）
+    seed_db_from_json(watchlist)
+    full_watchlist = list(watchlist)   # 保留完整清單供 artifact 修剪（resume 會裁切 watchlist）
 
     PROGRESS_FILE = f'miner_progress_{BATCH_INDEX}.txt'
 
@@ -1095,7 +1175,7 @@ def run():
         os.remove(PROGRESS_FILE)
         print(f"🗑️  進度檔 {PROGRESS_FILE} 已清除")
     print(f"\n🎉 採礦完畢：更新 {updated_total}/{len(watchlist)} 檔。")
-    return inst_cache, margin_cache
+    return inst_cache, margin_cache, full_watchlist
 
 
 # ── 外資期貨（改用 FinMind API 防 Ban 版）────────────────────────────────────
@@ -1655,19 +1735,50 @@ def generate_top_picks():
 
 
 # ── 主程式 ────────────────────────────────────────────────────────────────────
+def prune_artifact(watchlist: list) -> None:
+    """🧹 修剪 artifact：每個 batch 只保留自己採的股票，徹底消除合併同名衝突。
+
+    checkout origin/data 會把全部 ~2556 檔鋪到 data/，但本 batch 只採其中一小段。
+    若把全部上傳，20 個 artifact 同名檔在 merge 時會互相覆蓋（K線凍結主因）。
+    故上傳前刪掉非本批的個股 JSON；deploy 端會以 origin/data 為底層，再疊上各 batch 的新鮮資料。
+    全域檔（chips / radar / 三大快取）只由 batch 0 提供，batches 1-19 一律刪除避免衝突。
+    """
+    keep = set(watchlist)
+    removed = 0
+    for f in Path(DATA_DIR).glob('*.json'):
+        sym = f.stem
+        if _valid_stock(sym) and sym not in keep:
+            try:
+                f.unlink(); removed += 1
+            except Exception:
+                pass
+    print(f"🧹 artifact 修剪：保留本批 {len(keep)} 檔、移除 {removed} 檔非本批殘留")
+
+    if SKIP_GLOBAL:
+        # batches 1-19 不負責全域資料，刪掉 checkout 殘留避免與 batch 0 衝突
+        import shutil
+        shutil.rmtree(Path(DATA_DIR) / 'chips', ignore_errors=True)
+        for g in ('radar.json', 'top_picks.json', 'global_news.json', 'radar_news.json'):
+            (Path(DATA_DIR) / g).unlink(missing_ok=True)
+        for c in ('futures_cache.json', 'macro_cache.json',
+                  'margin_cache_stock.json', 'inst_cache_stock.json'):
+            Path(c).unlink(missing_ok=True)
+        print("🧹 SKIP_GLOBAL：已移除全域檔（chips / radar / 快取），僅由 batch 0 提供")
+
+
 if __name__ == '__main__':
     init_db()
     print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
-    inst_cache, margin_cache = run()                        # 採礦：OHLCV + 法人 → SQLite
+    inst_cache, margin_cache, watchlist = run()             # 採礦：OHLCV + 法人 → SQLite
     export_json(inst_cache, margin_cache)                   # 匯出 JSON：疊上最新法人快取
-    
+
     if not SKIP_GLOBAL:
         fetch_futures_cache()   # 外資期貨 → futures_cache.json
         fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
         fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
         build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
         generate_top_picks()    # 三位一體選股 → data/top_picks.json
-        
+
         # ── 🧹 【資料庫自動瘦身術】 ──
         print("\n🧹 執行資料庫碎片重組與瘦身 (VACUUM)...")
         vac_conn = sqlite3.connect(DB_PATH, timeout=30.0)
@@ -1677,3 +1788,6 @@ if __name__ == '__main__':
         # ──────────────────────────────
     else:
         print("⚡ SKIP_GLOBAL=1：略過籌碼/期貨/美股/雷達（純 OHLCV 批次）")
+
+    # 🧹 最後一步：修剪 artifact（全域資料已產出，可安全刪除非本批殘留）
+    prune_artifact(watchlist)

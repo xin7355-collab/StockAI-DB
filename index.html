@@ -269,7 +269,7 @@
 
     <!-- 🗡️ 獵殺監控抽屜（向右滑動顯示，從左側滑入，4秒後自動收起） -->
     <div id="huntSlidePanel"
-         style="position:fixed; top:85px; left:-130px; z-index:150; transition:left 0.3s ease;"
+         style="position:fixed; top:calc(env(safe-area-inset-top, 0px) + 120px); left:-130px; z-index:150; transition:left 0.3s ease;"
          onclick="event.stopPropagation()">
         <div class="bg-[#1c2128] border border-gray-600 border-l-0 rounded-r-xl p-3 shadow-2xl flex flex-col items-center gap-1.5">
             <span id="monitorHuntIcon"
@@ -651,16 +651,16 @@
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                     <div class="flex gap-2 items-center">
                         <div id="chipGlobalPeriodBtns" class="flex gap-1 flex-1">
-                            <button data-period="1d"  onclick="app.renderChipGlobal('1d')"  class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">1日</button>
-                            <button data-period="3d"  onclick="app.renderChipGlobal('3d')"  class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
-                            <button data-period="5d"  onclick="app.renderChipGlobal('5d')"  class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
-                            <button data-period="10d" onclick="app.renderChipGlobal('10d')" class="chip-g-btn flex-1 py-1.5 rounded text-[11px] font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
+                            <button data-period="1d"  onclick="app.renderChipGlobal('1d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">1日</button>
+                            <button data-period="3d"  onclick="app.renderChipGlobal('3d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
+                            <button data-period="5d"  onclick="app.renderChipGlobal('5d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
+                            <button data-period="10d" onclick="app.renderChipGlobal('10d')" class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
                         </div>
                         <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
-                            class="py-1.5 px-3 rounded-lg text-[11px] font-bold tracking-widest text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(79,70,229,0.4)] transition-all flex-shrink-0"
+                            class="py-2 px-3 rounded-lg text-sm font-bold tracking-widest text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(79,70,229,0.4)] transition-all flex-shrink-0"
                             style="background:linear-gradient(90deg,rgba(30,27,75,0.8),rgba(127,29,29,0.8))">🤖 AI 解析</button>
                     </div>
-                    <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-[13px] text-gray-300 leading-relaxed shadow-inner"></div>
+                    <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-sm text-gray-300 leading-relaxed shadow-inner"></div>
                 </div>
 
                 <!-- 【宏觀籌碼】三大法人 + 融資券（並排）-->
@@ -668,21 +668,21 @@
                     <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 relative overflow-hidden hover:border-orange-900/50 transition-colors">
                         <div class="absolute top-0 left-0 w-1 h-full bg-orange-600/70 rounded-l-lg"></div>
                         <div class="flex items-center gap-2 mb-2 pl-2">
-                            <span class="text-[11px] text-orange-300 font-bold">📈 三大法人動態</span>
-                            <span id="instHeaderTitle" class="text-white bg-orange-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-orange-700/50">近3日</span>
+                            <span class="text-sm text-orange-300 font-bold">📈 三大法人動態</span>
+                            <span id="instHeaderTitle" class="text-white bg-orange-900/60 px-1.5 py-0.5 rounded text-[10px] font-mono border border-orange-700/50">近3日</span>
                         </div>
                         <div id="chipInstVisualBars" class="pl-2 space-y-1.5" style="min-height:90px">
-                            <div class="text-center text-gray-700 text-[10px] pt-4">載入中...</div>
+                            <div class="text-center text-gray-700 text-xs pt-4">載入中...</div>
                         </div>
                     </div>
                     <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 relative overflow-hidden hover:border-blue-900/50 transition-colors">
                         <div class="absolute top-0 left-0 w-1 h-full bg-blue-600/70 rounded-l-lg"></div>
                         <div class="flex items-center gap-2 mb-2 pl-2">
-                            <span class="text-[11px] text-blue-300 font-bold">⚖️ 融資券變化</span>
-                            <span id="marginHeaderTitle" class="text-white bg-blue-900/60 px-1.5 py-0.5 rounded text-[9px] font-mono border border-blue-700/50">近3日</span>
+                            <span class="text-sm text-blue-300 font-bold">⚖️ 融資券變化</span>
+                            <span id="marginHeaderTitle" class="text-white bg-blue-900/60 px-1.5 py-0.5 rounded text-[10px] font-mono border border-blue-700/50">近3日</span>
                         </div>
                         <div id="chipMarginVisualBars" class="pl-2 space-y-1.5" style="min-height:90px">
-                            <div class="text-center text-gray-700 text-[10px] pt-4">載入中...</div>
+                            <div class="text-center text-gray-700 text-xs pt-4">載入中...</div>
                         </div>
                     </div>
                 </div>
@@ -691,12 +691,12 @@
                 <div class="bg-[#161b22] border border-amber-900/40 rounded-lg p-3 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-gray-700 to-green-600 opacity-70"></div>
                     <div class="flex items-center justify-between mb-2 mt-1">
-                        <div class="text-[12px] text-red-300 font-bold flex items-center gap-2">
-                            🕵️ 主力分點追蹤 <span id="brokerChipDate" class="text-[9px] text-gray-500 font-normal"></span>
+                        <div class="text-sm text-red-300 font-bold flex items-center gap-2">
+                            🕵️ 主力分點追蹤 <span id="brokerChipDate" class="text-[10px] text-gray-500 font-normal"></span>
                         </div>
-                        <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-[10px] text-gray-500 hover:text-white transition-colors">🔄</button>
+                        <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-xs text-gray-500 hover:text-white transition-colors">🔄</button>
                     </div>
-                    <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-200/70 leading-relaxed mb-2">
+                    <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-xs text-amber-200/70 leading-relaxed mb-2">
                         💡 <b class="text-amber-300">主力分點</b>是每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
                     </div>
                     <div id="brokerChipContent" class="w-full mt-2">
@@ -1154,7 +1154,7 @@ const AI_PROMPT_TEMPLATES = {
 【📊 技術位階學】
 明確點出現價與各均線（5/10/20MA）的相對位置，判斷趨勢屬於春夏秋冬哪一季及其含義。指出今日量能變化，並直接給出波峰壓力或波谷支撐的具體數字。若遇島型反轉或大黑K，務必強烈警告風險。
 
-【💹 籌碼照妖鏡】
+【💹 籌碼透視鏡】
 精準解讀外資、投信、自營近 5 日的買賣超方向（一路買/倒貨）。說明融資與融券變化帶來的風險。若有主力分點資料，點出前三名券商的意圖（吃貨或出貨）。若無明確資料，請根據季節與產業推估可能動向。
 
 【🌏 全球獵場觀】
@@ -3214,7 +3214,7 @@ const marginByDate = {};
             return;
         }
 
-        const labelStyle = { color: '#9ca3af', fontSize: 9 };
+        const labelStyle = { color: '#9ca3af', fontSize: 11 };
         const gridCfg = { top: 8, bottom: 22, left: 40, right: 8 };
 
         // ── 三大法人每日淨買賣超 bar chart ──────────────────────────
@@ -3229,7 +3229,7 @@ const marginByDate = {};
                     return params.map(p => `${p.marker}${p.seriesName} ${p.value > 0 ? '+' : ''}${p.value}K`).join('<br>');
                 }
             },
-            legend: { data: ['外資','投信','自營'], top: 2, right: 4, textStyle: { color: '#9ca3af', fontSize: 9 }, itemWidth: 10, itemHeight: 8 },
+            legend: { data: ['外資','投信','自營'], top: 2, right: 4, textStyle: { color: '#9ca3af', fontSize: 11 }, itemWidth: 10, itemHeight: 8 },
             grid: { top: 20, bottom: 22, left: 40, right: 8 },
             xAxis: { type: 'category', data: instData.map(d => d.date.slice(5)), axisLabel: { ...labelStyle, rotate: 0 }, axisLine: { lineStyle: { color: '#374151' } } },
             yAxis: { type: 'value', axisLabel: { ...labelStyle, formatter: v => v + 'K' }, splitLine: { lineStyle: { color: '#1f2937' } } },
@@ -3245,7 +3245,7 @@ const marginByDate = {};
         marginChart.setOption({
             backgroundColor: 'transparent',
             tooltip: { trigger: 'axis', textStyle: { fontSize: 10 }, formatter: params => params.map(p => `${p.marker}${p.seriesName} ${p.value}K`).join('<br>') },
-            legend: { data: ['融資','融券'], top: 2, right: 4, textStyle: { color: '#9ca3af', fontSize: 9 }, itemWidth: 10, itemHeight: 8 },
+            legend: { data: ['融資','融券'], top: 2, right: 4, textStyle: { color: '#9ca3af', fontSize: 11 }, itemWidth: 10, itemHeight: 8 },
             grid: gridCfg,
             xAxis: { type: 'category', data: marginData.map(d => d.date.slice(5)), axisLabel: { ...labelStyle }, axisLine: { lineStyle: { color: '#374151' } } },
             yAxis: { type: 'value', axisLabel: { ...labelStyle, formatter: v => v + 'K' }, splitLine: { lineStyle: { color: '#1f2937' } } },
@@ -3470,11 +3470,11 @@ const marginByDate = {};
                 const tcol = isBuy ? 'text-red-300' : 'text-green-300';
                 const valK = val >= 1000 ? (val/1000).toFixed(0)+'K' : val.toString();
                 return `<div class="flex items-center gap-1.5 py-0.5">
-                    <span class="text-[10px] text-gray-300 w-14 truncate flex-shrink-0 font-medium">${label}</span>
-                    <div class="flex-1 bg-gray-800 rounded-sm h-2 overflow-hidden">
+                    <span class="text-xs text-gray-300 w-16 truncate flex-shrink-0 font-medium">${label}</span>
+                    <div class="flex-1 bg-gray-800 rounded-sm h-2.5 overflow-hidden">
                         <div class="${col} h-full rounded-sm" style="width:${pct}%"></div>
                     </div>
-                    <span class="text-[10px] font-mono ${tcol} w-10 text-right flex-shrink-0">${valK}</span>
+                    <span class="text-xs font-mono ${tcol} w-12 text-right flex-shrink-0">${valK}</span>
                 </div>`;
             };
 
@@ -3483,21 +3483,21 @@ const marginByDate = {};
 
             const html = `
             <div class="flex items-center justify-between mb-2">
-                <div class="text-[9px] text-gray-500">近 ${days} 日累積主力動向（股）</div>
-                <div class="px-2 py-0.5 rounded-full text-[10px] font-bold ${verdictBg} ${verdictText}">${verdict}</div>
+                <div class="text-[10px] text-gray-500">近 ${days} 日累積主力動向（股）</div>
+                <div class="px-2 py-0.5 rounded-full text-xs font-bold ${verdictBg} ${verdictText}">${verdict}</div>
             </div>
-            <div class="flex gap-2 text-[9px] text-gray-500 mb-2">
+            <div class="flex gap-2 text-[10px] text-gray-500 mb-2">
                 <span class="text-red-400">買入合計：${totalBuyK}</span>
                 <span class="text-gray-600">|</span>
                 <span class="text-green-400">賣出合計：${totalSelK}</span>
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <div>
-                    <div class="text-[10px] text-red-400 font-bold mb-1">▲ 積極買進</div>
+                    <div class="text-xs text-red-400 font-bold mb-1">▲ 積極買進</div>
                     ${topBuyers.map(([,[v]],i) => rowFn(buyLabels[i], v, maxBuy, true)).join('')}
                 </div>
                 <div>
-                    <div class="text-[10px] text-green-400 font-bold mb-1">▼ 積極賣出</div>
+                    <div class="text-xs text-green-400 font-bold mb-1">▼ 積極賣出</div>
                     ${topSellers.map(([,[v]],i) => rowFn(selLabels[i], v, maxSel, false)).join('')}
                 </div>
             </div>`;
@@ -3688,7 +3688,7 @@ const marginByDate = {};
         if (!el) return;
         const s = this._chipPeriodSums(this.rawDailyData || [], n);
         if (!s.hasInst) {
-            el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-600 text-[10px] text-center">籌碼資料尚未採礦<br>每日16:30自動更新</div>';
+            el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-600 text-xs text-center">籌碼資料尚未採礦<br>每日16:30自動更新</div>';
             return;
         }
         const maxVal = Math.max(Math.abs(s.foreign), Math.abs(s.trust), Math.abs(s.dealer), 1);
@@ -3697,10 +3697,10 @@ const marginByDate = {};
             const pos = val >= 0;
             const sign = val > 0 ? '+' : '';
             return `<div class="flex items-center gap-2">
-                <span class="text-[10px] text-gray-400 w-8 shrink-0 text-right">${lbl}</span>
-                <div class="flex-1 bg-gray-900/50 rounded h-5 relative overflow-hidden">
+                <span class="text-xs text-gray-400 w-9 shrink-0 text-right">${lbl}</span>
+                <div class="flex-1 bg-gray-900/50 rounded h-6 relative overflow-hidden">
                     <div class="h-full rounded ${pos ? posClr : 'bg-green-700/60'}" style="width:${pct}%"></div>
-                    <span class="absolute inset-0 flex items-center px-1.5 text-[10px] font-bold ${pos ? 'text-red-300' : 'text-green-300'}">${sign}${val}K</span>
+                    <span class="absolute inset-0 flex items-center px-1.5 text-xs font-bold ${pos ? 'text-red-300' : 'text-green-300'}">${sign}${val}K</span>
                 </div></div>`;
         };
         el.innerHTML = row('外資', s.foreign, 'bg-orange-600/70')
@@ -3713,7 +3713,7 @@ const marginByDate = {};
         if (!el) return;
         const s = this._chipPeriodSums(this.rawDailyData || [], n);
         if (!s.hasMargin) {
-            el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-600 text-[10px] text-center">融資券資料尚未採礦<br>每日16:30自動更新</div>';
+            el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-600 text-xs text-center">融資券資料尚未採礦<br>每日16:30自動更新</div>';
             return;
         }
         const maxVal = Math.max(Math.abs(s.marginDelta), Math.abs(s.shortDelta), 1);
@@ -3722,10 +3722,10 @@ const marginByDate = {};
             const pos = val >= 0;
             const sign = val > 0 ? '+' : '';
             return `<div class="flex items-center gap-2">
-                <span class="text-[10px] text-gray-400 w-8 shrink-0 text-right">${lbl}</span>
-                <div class="flex-1 bg-gray-900/50 rounded h-5 relative overflow-hidden">
+                <span class="text-xs text-gray-400 w-9 shrink-0 text-right">${lbl}</span>
+                <div class="flex-1 bg-gray-900/50 rounded h-6 relative overflow-hidden">
                     <div class="h-full rounded ${pos ? posClr : negClr}" style="width:${pct}%"></div>
-                    <span class="absolute inset-0 flex items-center px-1.5 text-[10px] font-bold ${pos ? 'text-blue-300' : 'text-red-300'}">${sign}${val}K</span>
+                    <span class="absolute inset-0 flex items-center px-1.5 text-xs font-bold ${pos ? 'text-blue-300' : 'text-red-300'}">${sign}${val}K</span>
                 </div></div>`;
         };
         el.innerHTML = row('融資', s.marginDelta, 'bg-blue-600/60',  'bg-red-700/60')
@@ -7269,10 +7269,15 @@ ${hasNews ? `
             const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
             const newsLine = this.latestNewsCache ? `近期情報：${this.latestNewsCache.substring(0, 300)}` : '近期無重大情報';
 
-            // 組裝全新 5 維 Prompt
-            const prompt = `你是華爾街首席量化操盤手，講話風格犀利直接，像權證小哥。
-請根據以下【系統已精確計算】的數據，進行五維全盤分析。
-嚴禁自己算數學、嚴禁捏造營收數字！
+            // 🧠 靈魂編輯器連動：以使用者選定的 AI 指令（預設首席 / 小哥雙刀流 / 自訂）作為人設與風格
+            const soul = (this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default).trim();
+
+            // 組裝全新 5 維 Prompt（soul 主導風格，下方格式固定以利前端渲染）
+            const prompt = `${soul}
+
+━━━━━━━━━━━━━━━━━━━━
+⚡ 以上是你的「角色人設與分析風格」。請完全用這個口吻，針對下方【系統已精算的真實數據】做五維全盤分析。
+🛑 嚴禁自己算數學、嚴禁捏造營收數字！所有數值只能引用下方給定的。
 
 【戰情資料】
 - 股票代號：${symName} (${sym})
@@ -7286,12 +7291,12 @@ ${hasNews ? `
 - 總經外資期貨：${fiLabel}
 - ${newsLine}
 
-請嚴格依照以下五段格式輸出（加上適當 emoji，口吻犀利）：
+請務必用上面的角色口吻，並「嚴格」依照以下五段標題格式輸出（標題符號務必一字不差，內容加適當 emoji）：
 
 【📈 K 線與技術面】
 結合 ${klineStatus} 與現價、均線的關係，點出具體的支撐與壓力價位（請直接講數字）。
 
-【💰 籌碼與基本面照妖鏡】
+【💰 籌碼與主力動向】
 根據 YoY 與 EPS，判斷基本面是否支撐股價？還是主力在偷拉出貨？
 
 【🌏 總體位階與大局觀】
@@ -7312,7 +7317,7 @@ ${hasNews ? `
 
             const sections = {
                 '【📈 K 線與技術面】': { border: 'border-blue-500', title: 'text-blue-400', bg: 'bg-blue-950/20' },
-                '【💰 籌碼與基本面照妖鏡】': { border: 'border-red-500', title: 'text-red-400', bg: 'bg-red-950/20' },
+                '【💰 籌碼與主力動向】': { border: 'border-red-500', title: 'text-red-400', bg: 'bg-red-950/20' },
                 '【🌏 總體位階與大局觀】': { border: 'border-cyan-500', title: 'text-cyan-400', bg: 'bg-cyan-950/20' },
                 '【⚔️ 總監專屬戰術室】':{ border: 'border-purple-500', title: 'text-purple-400', bg: 'bg-purple-950/20' },
                 '【💡 大師白話總結】': { border: 'border-yellow-500', title: 'text-yellow-300', bg: 'bg-yellow-950/20' },

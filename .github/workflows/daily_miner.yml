@@ -55,6 +55,7 @@ jobs:
           git checkout origin/gh-pages -- futures_cache.json      2>/dev/null || true
           git checkout origin/gh-pages -- macro_cache.json        2>/dev/null || true
           git checkout origin/gh-pages -- margin_cache_stock.json 2>/dev/null || true
+          git checkout origin/gh-pages -- inst_cache_stock.json   2>/dev/null || true
 
       - name: ⛏️ 執行採礦 (專屬節點 ${{ matrix.batch }})
         env:
@@ -79,6 +80,7 @@ jobs:
             futures_cache.json
             macro_cache.json
             margin_cache_stock.json
+            inst_cache_stock.json
           retention-days: 1
           if-no-files-found: warn
 
@@ -108,11 +110,23 @@ jobs:
       - name: 📦 安裝相依套件
         run: pip install requests duckduckgo-search feedparser
 
-      - name: 📥 下載並自動合併 5 個平行宇宙的資料
+      - name: 🗄️ 鋪設底層資料 (origin/data 全市場舊資料當基準)
+        run: |
+          # 各 batch 已修剪成「只含自己採的股票」，這裡先鋪全部舊資料當底層，
+          # 下一步 download-artifact 再把各 batch 的新鮮完整資料疊上去。
+          # 用 git archive | tar 解到工作區（untracked，不動 git index），
+          # 與後續 orphan 分支流程相容；沒被任何 batch 採到的股票仍保留舊資料不消失。
+          git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
+          if git rev-parse --verify -q origin/data >/dev/null; then
+            git archive origin/data | tar -x -C . 2>/dev/null || echo "⚠️ 底層展開失敗，改由 artifact 提供"
+          fi
+          echo "底層舊資料：$(ls data/*.json 2>/dev/null | wc -l) 檔"
+
+      - name: 📥 下載並自動合併 20 個平行宇宙的資料 (疊在底層之上)
         uses: actions/download-artifact@v4
         with:
           pattern: mine-data-*
-          merge-multiple: true   # 最關鍵指令：將 5 包檔案完美合併為一個完整的 data/ 資料夾
+          merge-multiple: true   # 各 batch 已無同名衝突，直接疊上底層覆蓋成最新
 
       - name: 📡 通用情報雷達（RSS + Groq AI 情緒判讀）
         env:
@@ -137,6 +151,7 @@ jobs:
           cp futures_cache.json    /tmp/mine/               2>/dev/null || true
           cp macro_cache.json      /tmp/mine/               2>/dev/null || true
           cp margin_cache_stock.json /tmp/mine/             2>/dev/null || true
+          cp inst_cache_stock.json /tmp/mine/               2>/dev/null || true
           cp broker_names.json     /tmp/mine/               2>/dev/null || true
           cp index.html            /tmp/mine/               2>/dev/null || true
 
@@ -154,6 +169,7 @@ jobs:
           cp /tmp/mine/index.html           .               2>/dev/null || true
           cp /tmp/mine/broker_names.json    .               2>/dev/null || true
           cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
+          cp /tmp/mine/inst_cache_stock.json   . 2>/dev/null || true
 
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
@@ -169,6 +185,7 @@ jobs:
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true
           [ -f margin_cache_stock.json ] && git add -f margin_cache_stock.json || true
+          [ -f inst_cache_stock.json ]   && git add -f inst_cache_stock.json   || true
           git commit -m "📡 網站更新 ${DATE}（平行宇宙合併 | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           git push origin HEAD:gh-pages --force
           echo "✅ gh-pages 已更新：共 ${STOCKS} 檔"
