@@ -120,6 +120,11 @@ jobs:
         run: |
           python universal_radar.py || echo "⚠️ universal_radar.py 失敗，繼續部署"
 
+      - name: 🌐 總經風險採礦（美債10Y/外資期現複合）
+        run: |
+          pip install yfinance --quiet
+          python macro_miner.py || echo "⚠️ macro_miner.py 失敗，繼續部署"
+
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |
           git config user.name  "github-actions[bot]"
