@@ -412,6 +412,105 @@
         </div>
     </div>
 
+    <!-- 🚨 首席 AI 全局戰略指揮部（頂部總覽 · 收合式 · 高於所有分頁） -->
+    <div id="strategyCommandCenter" class="max-w-7xl mx-auto w-full px-2 pt-2">
+        <div class="bg-gradient-to-br from-[#0d1117] via-[#0b1f2a] to-[#0d1117] border border-cyan-900/50 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] overflow-hidden">
+            <!-- 收合摘要列（永遠可見） -->
+            <button onclick="app.toggleCommandCenter()" id="sccToggleBtn" class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-cyan-950/20 transition-colors">
+                <span class="text-sm flex-shrink-0">🚨</span>
+                <span class="text-[11px] font-black text-cyan-300 tracking-wide whitespace-nowrap flex-shrink-0">首席AI全局戰略指揮部</span>
+                <div class="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto scrollbar-hide text-[10px] font-mono">
+                    <span id="sccMiniRisk" class="flex items-center gap-1 flex-shrink-0"><span class="w-2 h-2 rounded-full bg-gray-500"></span><span class="text-gray-400">風險 --</span></span>
+                    <span class="text-gray-700 flex-shrink-0">·</span>
+                    <span id="sccMiniFG" class="text-gray-400 flex-shrink-0 whitespace-nowrap">🧭 --</span>
+                    <span class="text-gray-700 flex-shrink-0">·</span>
+                    <span id="sccMiniTwd" class="text-gray-400 flex-shrink-0 whitespace-nowrap">💵 --</span>
+                    <span class="text-gray-700 flex-shrink-0">·</span>
+                    <span id="sccMiniBack" class="text-gray-400 flex-shrink-0 whitespace-nowrap">📉 --</span>
+                </div>
+                <span id="sccChevron" class="text-cyan-400 text-xs flex-shrink-0 transition-transform">▼</span>
+            </button>
+
+            <!-- 展開區（預設收合） -->
+            <div id="sccBody" class="hidden border-t border-cyan-900/40 p-3 flex flex-col gap-3">
+                <div class="grid md:grid-cols-2 gap-3">
+                    <!-- 左翼：全球宏觀風險觀測台 -->
+                    <div class="bg-[#010409] rounded-lg border border-[#30363d] p-2.5">
+                        <div class="flex items-center gap-1.5 mb-2"><span class="text-xs">🌐</span><span class="text-[11px] font-black text-cyan-300 tracking-wide">全球宏觀風險觀測台</span></div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div class="bg-[#0d1117] rounded p-1.5 text-center border border-[#30363d]"><div class="text-[8px] text-gray-500 leading-tight">🇺🇸 美債10Y</div><div id="sccUs10y" class="text-[13px] font-black font-mono text-yellow-300">4.41%</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 text-center border border-[#30363d]"><div class="text-[8px] text-gray-500 leading-tight">🏦 美債2Y</div><div id="sccUs2y" class="text-[13px] font-black font-mono text-gray-400">--</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 text-center border border-[#30363d]"><div class="text-[8px] text-gray-500 leading-tight">🧭 恐懼貪婪</div><div id="sccFg" class="text-[13px] font-black font-mono text-orange-400">76</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 text-center border border-[#30363d]"><div class="text-[8px] text-gray-500 leading-tight">👥 散戶多空比</div><div id="sccRetail" class="text-[13px] font-black font-mono text-green-400">-20.5%</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 text-center border border-[#30363d]"><div class="text-[8px] text-gray-500 leading-tight">💵 台幣匯率</div><div id="sccTwd" class="text-[13px] font-black font-mono text-gray-300">32.45</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 text-center border border-[#30363d]"><div class="text-[8px] text-gray-500 leading-tight">📉 台指逆價差</div><div id="sccBack" class="text-[13px] font-black font-mono text-gray-300">-120</div></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                            <!-- 流動性熱度 -->
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]">
+                                <div class="flex items-center justify-between mb-1"><span class="text-[8px] text-gray-500">🌊 流動性熱度</span><span id="sccLiq" class="text-[9px] font-bold font-mono text-green-400">42%</span></div>
+                                <div class="w-full bg-gray-800 rounded-full h-1 overflow-hidden"><div id="sccLiqBar" class="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all" style="width:42%"></div></div>
+                            </div>
+                            <!-- 外資期現複合 -->
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]">
+                                <div class="flex items-center justify-around text-[8px] mb-0.5">
+                                    <div class="text-center"><div id="sccFutDot" class="w-2 h-2 rounded-full bg-gray-500 mx-auto mb-0.5"></div><span class="text-gray-500">期</span></div>
+                                    <div class="text-center"><div id="sccSpotDot" class="w-2 h-2 rounded-full bg-gray-500 mx-auto mb-0.5"></div><span class="text-gray-500">現</span></div>
+                                    <span id="sccFiLabel" class="text-[8px] text-blue-300 font-bold leading-tight text-center self-center">外資期現</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右翼：9 大資金板塊輪動矩陣 -->
+                    <div class="bg-[#010409] rounded-lg border border-[#30363d] p-2.5">
+                        <div class="flex items-center gap-1.5 mb-2"><span class="text-xs">🧭</span><span class="text-[11px] font-black text-purple-300 tracking-wide">9 大資金板塊輪動矩陣</span></div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="us"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🇺🇸 美股</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">NVDA·SOX·SPX</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="server"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🖥️ 伺服器代工</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">廣達·緯穎·緯創</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="power"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">⚡ 重電基建</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">華城·士電·中興電</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="packaging"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">📦 先進封裝</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">台積電·日月光·富喬</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="cpo"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🔗 高速傳輸CPO</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">聯亞·光聖·波若威</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="cooling"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">❄️ 散熱零組件</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">奇鋐·雙鴻·建準</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="robot"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🤖 實體機器人</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">上銀·所羅門·廣明</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="finance"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🏦 金融避風港</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">富邦金·國泰金·兆豐金</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="leo"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🛰️ 低軌衛星</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">昇達科·華通·啟碁</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 全寬：統一戰術燈號 + 首席腳本 + 氣象 + 五維 -->
+                <div class="bg-[#010409] rounded-lg border border-[#30363d] p-2.5 flex flex-col gap-2.5">
+                    <!-- 三維一體統一燈號 -->
+                    <div class="flex items-center gap-2">
+                        <div id="sccLed" class="w-3.5 h-3.5 rounded-full flex-shrink-0 bg-gray-500"></div>
+                        <span id="sccLedText" class="text-[12px] font-bold text-gray-300 leading-snug">等待量化引擎完成五維掃描…</span>
+                    </div>
+                    <!-- 首席戰術腳本 -->
+                    <div class="bg-blue-950/20 border-l-2 border-blue-500 px-2.5 py-1.5 text-[11px] text-gray-300 leading-relaxed">
+                        <span class="text-blue-400 font-bold">🧠 首席戰術腳本：</span><span id="sccChiefScript" class="text-gray-400">五維引擎啟動中，將綜合量價、籌碼、總經、技術、情緒五大面向，提供精準操作步驟…</span>
+                    </div>
+                    <!-- 五維迷你指標 -->
+                    <div class="grid grid-cols-5 gap-1">
+                        <div class="text-center bg-[#0d1117] rounded p-1 border border-[#30363d]"><div class="text-[8px] text-gray-500">量價</div><div id="dim_pv" class="text-[11px] font-bold font-mono text-gray-400">--</div></div>
+                        <div class="text-center bg-[#0d1117] rounded p-1 border border-[#30363d]"><div class="text-[8px] text-gray-500">籌碼</div><div id="dim_chip" class="text-[11px] font-bold font-mono text-gray-400">--</div></div>
+                        <div class="text-center bg-[#0d1117] rounded p-1 border border-[#30363d]"><div class="text-[8px] text-gray-500">總經</div><div id="dim_macro" class="text-[11px] font-bold font-mono text-gray-400">--</div></div>
+                        <div class="text-center bg-[#0d1117] rounded p-1 border border-[#30363d]"><div class="text-[8px] text-gray-500">技術</div><div id="dim_tech" class="text-[11px] font-bold font-mono text-gray-400">--</div></div>
+                        <div class="text-center bg-[#0d1117] rounded p-1 border border-[#30363d]"><div class="text-[8px] text-gray-500">情緒</div><div id="dim_senti" class="text-[11px] font-bold font-mono text-gray-400">--</div></div>
+                    </div>
+                    <!-- 市場氣象與心理變頻儀 -->
+                    <div class="grid grid-cols-3 gap-2 pt-1 border-t border-[#21262d]">
+                        <div class="bg-[#0d1117] rounded p-2 text-center border border-[#30363d]"><div class="text-[9px] text-gray-500 mb-1">📅 市場季節</div><div id="weatherSeasonIcon" class="text-2xl mb-0.5">🍂</div><div id="weatherSeasonLabel" class="text-[10px] font-bold text-orange-300">秋收</div><div id="weatherSeasonSub" class="text-[8px] text-gray-600 leading-tight mt-0.5">高檔震盪、分批停利</div></div>
+                        <div class="bg-[#0d1117] rounded p-2 text-center border border-[#30363d]"><div class="text-[9px] text-gray-500 mb-1">🌀 交投熱度</div><div id="weatherFanIcon" class="text-2xl mb-0.5 inline-block">🪭</div><div id="weatherFanLabel" class="text-[10px] font-bold text-blue-300">低頻慢速</div><div id="weatherFanSub" class="text-[8px] text-gray-600 leading-tight mt-0.5">量縮盤整節能模式</div></div>
+                        <div class="bg-[#0d1117] rounded p-2 text-center border border-[#30363d]"><div class="text-[9px] text-gray-500 mb-1">❤️ 心理健康度</div><div id="weatherHealthPct" class="text-xl font-black font-mono text-yellow-300 mb-0.5">65%</div><div class="w-full bg-gray-800 rounded-full h-1 overflow-hidden"><div id="weatherHealthBar" class="bg-gradient-to-r from-red-500 via-yellow-400 to-green-400 h-full transition-all" style="width:65%"></div></div><div id="weatherHealthSub" class="text-[8px] text-gray-600 leading-tight mt-0.5">多頭動能收斂</div></div>
+                    </div>
+                    <div id="weatherSummary" class="text-[10px] text-gray-400 bg-purple-950/20 border-l-2 border-purple-500 pl-2 py-1 leading-snug"><span class="text-purple-300 font-bold">節氣總評：</span>等待量化引擎完成市場氣象掃描…</div>
+                    <span id="riskGridStatus" class="hidden"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
@@ -482,57 +581,15 @@
                     </div>
                     
                     <div id="directActionBox" class="w-full p-4 md:p-5 flex flex-col items-center justify-center transition-all duration-300">
-                        <!-- 🚥 Task 1.2 三維一體戰術訊號燈號面板（合併紅黃白燈 + 文字提示 + 戰術階段） -->
+                        <!-- 🚥 戰術訊號燈（精簡版：LED + 一句階段描述） -->
                         <div id="tacticalSignalPanel" class="w-full mb-3 bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-[#30363d] rounded-xl p-3 shadow-lg">
-                            <div class="flex items-center justify-between gap-2 mb-2">
-                                <div class="flex items-center gap-2">
-                                    <div id="confLed" class="w-3.5 h-3.5 rounded-full bg-gray-500"></div>
-                                    <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
-                                </div>
-                                <span id="tacticalStageBadge" class="text-[9px] font-bold px-2 py-0.5 rounded-full border border-gray-700 text-gray-500 bg-gray-900/40">戰術階段：待命</span>
-                            </div>
-                            <div id="tacticalInstruction" class="text-[11px] text-gray-400 bg-[#010409] border border-[#30363d] rounded-md px-2.5 py-1.5 leading-snug">
-                                <span class="text-gray-600">系統提示：</span>等待量化引擎完成五維掃描…
+                            <div class="flex items-center gap-2">
+                                <div id="confLed" class="w-3.5 h-3.5 rounded-full bg-gray-500"></div>
+                                <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
                             </div>
                         </div>
 
-                        <!-- 🧠 Task 1.1 首席 AI 五維全盤分析儀（戰略總司令綜合敘述） -->
-                        <div id="chiefAIBoard" class="w-full mb-3 bg-[#0d1117] border border-blue-900/40 rounded-xl p-3 shadow-lg">
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-xs">🧠</span>
-                                    <span class="text-[11px] font-black text-blue-300 tracking-wide">首席 AI 五維全盤分析儀</span>
-                                </div>
-                                <span id="chiefBoardStatus" class="text-[8px] text-gray-600">量價 / 籌碼 / 總經 / 技術 / 情緒</span>
-                            </div>
-                            <!-- 五維迷你指標 grid -->
-                            <div class="grid grid-cols-5 gap-1 mb-2">
-                                <div class="text-center bg-[#010409] rounded p-1 border border-[#30363d]">
-                                    <div class="text-[8px] text-gray-500">量價</div>
-                                    <div id="dim_pv" class="text-[11px] font-bold font-mono text-gray-400">--</div>
-                                </div>
-                                <div class="text-center bg-[#010409] rounded p-1 border border-[#30363d]">
-                                    <div class="text-[8px] text-gray-500">籌碼</div>
-                                    <div id="dim_chip" class="text-[11px] font-bold font-mono text-gray-400">--</div>
-                                </div>
-                                <div class="text-center bg-[#010409] rounded p-1 border border-[#30363d]">
-                                    <div class="text-[8px] text-gray-500">總經</div>
-                                    <div id="dim_macro" class="text-[11px] font-bold font-mono text-gray-400">--</div>
-                                </div>
-                                <div class="text-center bg-[#010409] rounded p-1 border border-[#30363d]">
-                                    <div class="text-[8px] text-gray-500">技術</div>
-                                    <div id="dim_tech" class="text-[11px] font-bold font-mono text-gray-400">--</div>
-                                </div>
-                                <div class="text-center bg-[#010409] rounded p-1 border border-[#30363d]">
-                                    <div class="text-[8px] text-gray-500">情緒</div>
-                                    <div id="dim_senti" class="text-[11px] font-bold font-mono text-gray-400">--</div>
-                                </div>
-                            </div>
-                            <!-- 總司令敘述：詳細操作步驟 -->
-                            <div id="chiefNarrative" class="bg-blue-950/20 border-l-2 border-blue-500 px-2.5 py-1.5 text-[11px] text-gray-300 leading-relaxed">
-                                <span class="text-blue-400 font-bold">戰略總司令：</span><span id="chiefNarrativeText" class="text-gray-400">五維引擎啟動中，將綜合量價、籌碼、總經、技術、情緒五大面向，提供精準操作指令…</span>
-                            </div>
-                        </div>
+                        <!-- 五維儀/氣象/風險已上移至頂部「首席 AI 全局戰略指揮部」 -->
 
                         <span id="actionMainText" class="text-2xl md:text-3xl font-black tracking-widest text-center text-gray-400 w-full leading-tight">運算中...</span>
                         <div id="actionSubText" class="w-full mt-2 text-sm font-bold tracking-wide text-gray-300 text-center flex flex-col gap-1 leading-relaxed">等待系統計算...</div>
@@ -554,88 +611,6 @@
                         </div>
                     </div>
                     
-                    <!-- 🌀 Task 1.3 市場氣象與心理變頻儀（季節 + 電扇 + 健康度三合一） -->
-                    <div id="marketWeatherCard" class="w-full mx-auto mt-2 mb-2 bg-[#0d1117] border border-purple-900/40 rounded-xl p-3 shadow-lg">
-                        <div class="flex items-center gap-1.5 mb-2">
-                            <span class="text-xs">🌀</span>
-                            <span class="text-[11px] font-black text-purple-300 tracking-wide">市場氣象與心理變頻儀</span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <!-- 四季循環 -->
-                            <div class="bg-[#010409] rounded p-2 text-center border border-[#30363d]">
-                                <div class="text-[9px] text-gray-500 mb-1">📅 市場季節</div>
-                                <div id="weatherSeasonIcon" class="text-2xl mb-0.5">🍂</div>
-                                <div id="weatherSeasonLabel" class="text-[10px] font-bold text-orange-300">秋收</div>
-                                <div id="weatherSeasonSub" class="text-[8px] text-gray-600 leading-tight mt-0.5">高檔震盪、分批停利</div>
-                            </div>
-                            <!-- 變頻電扇 -->
-                            <div class="bg-[#010409] rounded p-2 text-center border border-[#30363d]">
-                                <div class="text-[9px] text-gray-500 mb-1">🌀 交投熱度</div>
-                                <div id="weatherFanIcon" class="text-2xl mb-0.5 inline-block">🪭</div>
-                                <div id="weatherFanLabel" class="text-[10px] font-bold text-blue-300">低頻慢速</div>
-                                <div id="weatherFanSub" class="text-[8px] text-gray-600 leading-tight mt-0.5">量縮盤整節能模式</div>
-                            </div>
-                            <!-- 心理健康度 -->
-                            <div class="bg-[#010409] rounded p-2 text-center border border-[#30363d]">
-                                <div class="text-[9px] text-gray-500 mb-1">❤️ 心理健康度</div>
-                                <div id="weatherHealthPct" class="text-xl font-black font-mono text-yellow-300 mb-0.5">65%</div>
-                                <div class="w-full bg-gray-800 rounded-full h-1 overflow-hidden">
-                                    <div id="weatherHealthBar" class="bg-gradient-to-r from-red-500 via-yellow-400 to-green-400 h-full transition-all" style="width:65%"></div>
-                                </div>
-                                <div id="weatherHealthSub" class="text-[8px] text-gray-600 leading-tight mt-0.5">多頭動能收斂</div>
-                            </div>
-                        </div>
-                        <div id="weatherSummary" class="mt-2 text-[10px] text-gray-400 bg-purple-950/20 border-l-2 border-purple-500 pl-2 py-1 leading-snug">
-                            <span class="text-purple-300 font-bold">節氣總評：</span>等待量化引擎完成市場氣象掃描…
-                        </div>
-                    </div>
-
-                    <!-- 🚨 Task 1.4 全局市場風險指數（多維度風險網格） -->
-                    <div id="globalRiskGrid" class="w-full mx-auto mb-2 bg-[#0d1117] border border-red-900/40 rounded-xl p-3 shadow-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center gap-1.5">
-                                <span class="text-xs">🚨</span>
-                                <span class="text-[11px] font-black text-red-300 tracking-wide">全局市場風險指數</span>
-                            </div>
-                            <span id="riskGridStatus" class="text-[8px] text-gray-600">資料整編中…</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <!-- 面板 A: 總經資金水位 -->
-                            <div class="bg-[#010409] rounded p-2 border border-[#30363d]">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-[9px] text-gray-500">🌊 流動性熱度</span>
-                                    <span id="riskAPct" class="text-[10px] font-bold font-mono text-green-400">42%</span>
-                                </div>
-                                <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                                    <div id="riskABar" class="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all" style="width:42%"></div>
-                                </div>
-                                <div id="riskALabel" class="text-[8px] text-gray-500 mt-1 leading-tight">當前熱度 42% (安全)</div>
-                            </div>
-                            <!-- 面板 B: 美債 10Y -->
-                            <div class="bg-[#010409] rounded p-2 border border-[#30363d]">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-[9px] text-gray-500">🌍 美債 10Y</span>
-                                    <span id="riskBYield" class="text-[10px] font-bold font-mono text-yellow-300">4.30%</span>
-                                </div>
-                                <div class="flex items-center gap-1.5 mt-1">
-                                    <div id="riskBDot" class="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
-                                    <span id="riskBLabel" class="text-[8px] text-gray-500 leading-tight">資金動能穩定</span>
-                                </div>
-                            </div>
-                            <!-- 面板 C: 外資期現複合 -->
-                            <div class="bg-[#010409] rounded p-2 border border-[#30363d]">
-                                <div class="text-[9px] text-gray-500 mb-1">🦅 外資期現複合</div>
-                                <div class="flex items-center justify-around mb-1 text-[9px]">
-                                    <div class="text-center"><div id="riskCFut" class="w-2 h-2 rounded-full bg-red-500 mx-auto mb-0.5"></div><span class="text-gray-500">期貨</span></div>
-                                    <div class="text-center"><div id="riskCSpot" class="w-2 h-2 rounded-full bg-green-500 mx-auto mb-0.5"></div><span class="text-gray-500">現貨</span></div>
-                                    <div class="text-center"><div id="riskCSpread" class="w-2 h-2 rounded-full bg-blue-400 mx-auto mb-0.5"></div><span class="text-gray-500">價差</span></div>
-                                </div>
-                                <div id="riskCLabel" class="text-[8px] text-blue-300 leading-tight text-center font-bold">套利避險狀態</div>
-                                <div id="riskCSub"   class="text-[8px] text-gray-600 leading-tight text-center mt-0.5">非真實看空</div>
-                            </div>
-                        </div>
-                    </div>
-
                     <div id="aiTranslatorCard" class="w-full bg-[#161b22] border-t border-b border-[#30363d] shadow-sm flex-shrink-0 transition-all duration-300">
                         <div class="p-3 text-center text-gray-500 text-sm">🤖 AI 盤勢白話文翻譯載入中...</div>
                     </div>
@@ -870,6 +845,8 @@
                 🌐 AI 全球市場解析
                 <span class="text-indigo-400 text-[11px] font-bold">→ 一鍵解析全球市場對台股影響</span>
             </button>
+
+            <!-- 市場氣象儀／全局風險網格已上移至頂部「首席 AI 全局戰略指揮部」 -->
 
             <!-- 🎯 全球市場戰情室 -->
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm">
@@ -1440,8 +1417,21 @@ const app = {
         this.initSwipeToDelete();
         // swipe navigation removed per user request
         this.refreshUSMarketBar();
+        this.initCommandCenter();
         this.registerServiceWorker();
         setTimeout(() => this.scanAllMonitored(), 8000);
+    },
+
+    // 頂部指揮部：還原上次展開/收合狀態 + 首次填充宏觀觀測台（analyze 已填過一輪，這裡保險再跑一次）
+    initCommandCenter() {
+        try {
+            if (localStorage.getItem('sccOpen') === '1') {
+                document.getElementById('sccBody')?.classList.remove('hidden');
+                const chev = document.getElementById('sccChevron');
+                if (chev) chev.style.transform = 'rotate(180deg)';
+            }
+        } catch(e) {}
+        try { this.updateGlobalRiskGrid(); } catch(e) {}
     },
 
 
@@ -1887,7 +1877,12 @@ const app = {
         });
 
         if (tabId === 'diag' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
-        if (tabId === 'market') { this._syncMarketTab(); this.fetchGlobalNews(); }
+        if (tabId === 'market') {
+            this._syncMarketTab();
+            this.fetchGlobalNews();
+            try { this.updateMarketWeather({ ctx: this.currentStrategyContext || {} }); } catch(_) {}
+            try { this.updateGlobalRiskGrid(); } catch(_) {}
+        }
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
         if (tabId === 'radar') this._filterAndRenderRadar();
@@ -2622,17 +2617,22 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     async fetchHistoricalData(symbol, forceRefresh = false) {
         const today    = this.getTodayStr().replace(/\//g, '-');
         const cacheKey = `proTerm_kline_${symbol}`;
+        // 30 分鐘 TTL。早期版本將純陣列存進 IDB → 沒 ts/latestDate，這裡視為過期一定 refetch。
+        const CACHE_TTL_MS = 30 * 60 * 1000;
 
-        // ── 讀取 IndexedDB 快取（取代 localStorage，避免 QuotaExceededError）──
         if (!forceRefresh) {
             const cached = await this.idb.get(cacheKey);
-            if (cached) {
-                this.apiDataCache[cacheKey] = cached;
-                return cached;
+            if (cached && cached.data && cached.ts && (Date.now() - cached.ts < CACHE_TTL_MS)) {
+                this.apiDataCache[cacheKey] = cached.data;
+                return cached.data;
             }
         }
+        const wrap = (data) => ({
+            data,
+            ts: Date.now(),
+            latestDate: (Array.isArray(data) && data.length) ? data[data.length - 1].date : null,
+        });
 
-        // ── 後端 API（window.API_BASE_URL 或 localApiUrl，SQLite 全量資料）──
         const apiBase = this._apiBase;
         if (apiBase) {
             try {
@@ -2641,7 +2641,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     const data = await res.json();
                     if (data && data.length > 0) {
                         this.apiDataCache[cacheKey] = data;
-                        this.idb.put(cacheKey, data).catch(() => {});
+                        this.idb.put(cacheKey, wrap(data)).catch(() => {});
                         return data;
                     }
                 }
@@ -2650,12 +2650,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             }
         }
 
-// ── gh-pages 靜態 JSON（雲端模式主要來源）──
         try {
             const ghBase  = window.location.href.split('?')[0].split('#')[0];
             const fileUrl = window.location.protocol === 'file:'
                 ? `./data/${symbol}.json?t=${Date.now()}`
-                // 【終極修復】強制破壞快取，改用 Date.now() 讓手機永遠抓到最新資料
                 : new URL(`data/${symbol}.json?v=${Date.now()}`, ghBase).href;
 
             const localRes = await fetch(fileUrl);
@@ -2666,7 +2664,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             if (localRes.ok) {
                 const data = await localRes.json();
                 this.apiDataCache[cacheKey] = data;
-                this.idb.put(cacheKey, data).catch(() => {});
+                this.idb.put(cacheKey, wrap(data)).catch(() => {});
                 return data;
             }
             throw new Error(`HTTP ${localRes.status}`);
@@ -4341,7 +4339,9 @@ ${lightExplain[queryType]}
         const payoutRatio = (totalDiv != null && annualEps && annualEps > 0) ? (totalDiv / annualEps * 100) : null;
 
         // 存真實基本面快取（完整版：含年化 EPS），供法人目標價推估使用
-        this._fundCache = { sym, pe, annualEps, yieldRate, total_dividend: totalDiv, eps: latestEps };
+        // FinMind 失敗時 annualEps 會是 null；目標價函式會用本地 TWSE PE 反推 fallback
+        const fundError = (epsRows.length === 0 && (!fsRes.data || fsRes.data.length === 0)) ? 'FinMind 暫無季報資料' : null;
+        this._fundCache = { sym, pe, annualEps, yieldRate, total_dividend: totalDiv, eps: latestEps, error: fundError };
 
         // Populate grid
         this._latestEpsCache = latestEps;
@@ -5052,55 +5052,62 @@ recent.forEach(d => {
         document.getElementById('aiTranslatorCard').innerHTML = statusHtml + bodyHtml;
     },
 
+    // 🎯 統一訊號：策略頁 LED / 頂部指揮部 LED / AI prompt 全部從這裡取，根除矛盾
+    // 優先級鏈：高風險 → 大戶洗盤 → 夏季趨勢 → 春季築底 → 拉鋸
+    computeUnifiedSignal({ yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx }) {
+        const isYoYGood       = !isNaN(yoyNum) && yoyNum > 15;
+        const isChipGood      = hasChipCost && pC > (chipCostVal * 0.95);
+        const isPriceDropping = pC < ma5;
+        const isHighRisk      = (ma20 !== null && pC < ma20) || ctx?.isIslandReversal || ctx?.isBigBlackK;
+        const season          = ctx?.season || '';
+        const base            = { isYoYGood, isChipGood, isPriceDropping, isHighRisk, season };
+
+        if (isHighRisk) return { ...base, level: '🔴', tag: '紅燈', label: '戰術撤退',
+            action: '主力棄守或型態破壞，請準備撤退！',
+            ledClass: 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-pulse-fast' };
+        if (isYoYGood && isChipGood && isPriceDropping) return { ...base, level: '🔵', tag: '藍燈', label: '大戶洗盤',
+            action: '基本面籌碼雙支撐，高機率大戶洗盤，請抱緊！',
+            ledClass: 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)] animate-pulse' };
+        if (season === '夏') return { ...base, level: '🟢', tag: '綠燈', label: '趨勢確認',
+            action: '趨勢狂飆中，不破 5MA 不賣。',
+            ledClass: 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]' };
+        if (season === '春') return { ...base, level: '🟡', tag: '黃燈', label: '築底等待',
+            action: '底部成型，守穩月線可低接試單。',
+            ledClass: 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]' };
+        return { ...base, level: '⚪', tag: '灰燈', label: '拉鋸觀望',
+            action: '多空拉鋸，嚴守均線紀律。', ledClass: 'bg-gray-500' };
+    },
+
     updateConfidenceLed(yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx) {
-        let isYoYGood = !isNaN(yoyNum) && yoyNum > 15;
-        let isChipGood = hasChipCost && pC > (chipCostVal * 0.95);
-        let isPriceDropping = pC < ma5;
-        let isHighRisk = (ma20 !== null && pC < ma20) || ctx.isIslandReversal || ctx.isBigBlackK;
+        const signal = this.computeUnifiedSignal({ yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx });
+        this.unifiedSignal = signal;   // 供 AI prompt / 頂部指揮部 共用
 
-        // 預設灰燈 + 拉鋸觀望（取代原白燈，視覺低調、文字合併進來）
-        let ledClass = "bg-gray-500", confMsg = "⚪ 拉鋸觀望，嚴守均線紀律";
-
-        if (isYoYGood && isChipGood && isPriceDropping && !isHighRisk) {
-            ledClass = "bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)] animate-pulse";
-            confMsg = "藍燈：基本面籌碼雙支撐，高機率大戶洗盤，請抱緊！";
-        } else if (isHighRisk) {
-            ledClass = "bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-pulse-fast";
-            confMsg = "紅燈：主力棄守或型態破壞，請準備撤退！";
-        } else if (ctx.season === '夏') {
-            ledClass = "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]";
-            confMsg = "綠燈：趨勢狂飆中，不破 5MA 不賣。";
-        }
-        // 不再有白燈 fallback，落回預設灰燈 + 拉鋸觀望文字
-
-        document.getElementById('confLed').className = `w-3.5 h-3.5 rounded-full ${ledClass}`;
-        document.getElementById('confText').innerText = confMsg;
+        const confMsg = `${signal.tag}：${signal.action}`;
+        // (a) 策略頁 LED
+        const led = document.getElementById('confLed');
+        const txt = document.getElementById('confText');
+        if (led) led.className = `w-3.5 h-3.5 rounded-full ${signal.ledClass}`;
+        if (txt) txt.innerText = confMsg;
         this.confidenceMsgCache = confMsg;
-
-        // Task 1.2 三維一體：戰術階段 + 操作指令聯動
-        let stage = '🟡 觀察待命', stageStyle = 'border-gray-700 text-gray-500 bg-gray-900/40', tactInstr = '等待量化引擎完成五維掃描…';
-        if (isYoYGood && isChipGood && isPriceDropping && !isHighRisk) {
-            stage = '🟦 大戶洗盤'; stageStyle = 'border-blue-500 text-blue-300 bg-blue-900/40';
-            tactInstr = '系統提示：底部結構形成，步兵分批建倉準備（每跌 1.5% 加 1/3 倉，破 20MA 全撤）。';
-        } else if (isHighRisk) {
-            stage = '🟥 戰術撤退'; stageStyle = 'border-red-500 text-red-300 bg-red-900/40';
-            tactInstr = '系統提示：型態破壞、主力棄守，按紀律全數出場保本。嚴禁攤平！';
-        } else if (ctx.season === '夏') {
-            stage = '🟩 主升噴發'; stageStyle = 'border-green-500 text-green-300 bg-green-900/40';
-            tactInstr = '系統提示：趨勢狂飆中，沿 5MA 抱牢；只在跌破 5MA 時減 1/2 倉。';
-        } else {
-            stage = '⚪ 拉鋸觀望'; stageStyle = 'border-gray-600 text-gray-400 bg-gray-900/40';
-            tactInstr = '系統提示：多空拉鋸時不主動進場，靜待方向確認；持倉嚴守均線紀律。';
+        // (b) 頂部指揮部 LED（同一訊號物件，根除矛盾）
+        const sccLed  = document.getElementById('sccLed');
+        const sccTxt  = document.getElementById('sccLedText');
+        if (sccLed) sccLed.className = `w-3.5 h-3.5 rounded-full flex-shrink-0 ${signal.ledClass}`;
+        if (sccTxt) sccTxt.innerHTML = `<b class="text-white">${signal.label}</b>　${signal.action}`;
+        // 收合摘要列的風險燈
+        const sccMini = document.getElementById('sccMiniRisk');
+        if (sccMini) {
+            const dotBg = signal.level === '🔴' ? 'bg-red-500' : signal.level === '🔵' ? 'bg-blue-500'
+                        : signal.level === '🟢' ? 'bg-green-500' : signal.level === '🟡' ? 'bg-yellow-400' : 'bg-gray-500';
+            sccMini.innerHTML = `<span class="w-2 h-2 rounded-full ${dotBg}"></span><span class="text-gray-300">${signal.label}</span>`;
         }
-        const stageBadge = document.getElementById('tacticalStageBadge');
-        if (stageBadge) { stageBadge.textContent = `戰術階段：${stage}`; stageBadge.className = `text-[9px] font-bold px-2 py-0.5 rounded-full border ${stageStyle}`; }
-        const tactEl = document.getElementById('tacticalInstruction');
-        if (tactEl) tactEl.innerHTML = `<span class="text-gray-600">系統提示：</span>${tactInstr.replace(/^系統提示：/, '')}`;
 
-        // 觸發 Task 1.1 五維板 + Task 1.3 氣象 + Task 1.4 風險網格
+        // 觸發 五維板 + 氣象 + 風險網格（全在頂部指揮部）
         try {
-            this.updateChiefAIBoard({ yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx, isYoYGood, isChipGood, isPriceDropping, isHighRisk });
-            this.updateMarketWeather({ ctx, isHighRisk });
+            this.updateChiefAIBoard({ yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx,
+                isYoYGood: signal.isYoYGood, isChipGood: signal.isChipGood,
+                isPriceDropping: signal.isPriceDropping, isHighRisk: signal.isHighRisk });
+            this.updateMarketWeather({ ctx, isHighRisk: signal.isHighRisk });
             this.updateGlobalRiskGrid();
         } catch (e) { console.warn('[chief boards] partial fail:', e); }
     },
@@ -5150,8 +5157,9 @@ recent.forEach(d => {
             if (d.ctx?.season === '秋') return '高檔盤頭、爆量不漲。已有獲利者啟動分批停利（每反彈 3% 賣 1/3），跌破月線無條件出場結算。';
             return '當前訊號未達標準操作門檻，建議空手觀望或縮減持倉至 1/3 以下；待量價籌碼至少三項翻多再進場，避免拉鋸期亂買被洗。';
         })();
-        const nText = document.getElementById('chiefNarrativeText');
-        if (nText) nText.textContent = narrate;
+        // 寫到頂部指揮部首席腳本
+        const scc = document.getElementById('sccChiefScript');
+        if (scc) scc.textContent = narrate;
     },
 
     // 🌀 Task 1.3 市場氣象變頻儀 — 季節/電扇/健康度
@@ -5214,84 +5222,88 @@ recent.forEach(d => {
     },
 
     // 🚨 Task 1.4 全局市場風險網格 — 三個子面板
+    // 🌐 全球宏觀風險觀測台（頂部指揮部左翼）— 讀 macro_risk.json 填六大指標 + 外資期現 + 流動性 + 摘要列
+    // 全程 null 防呆：fetch 失敗 → 保留 HTML 預設值；單一欄位 null → 顯示「整編」
     async updateGlobalRiskGrid() {
         const $ = id => document.getElementById(id);
-        const status = $('riskGridStatus');
+        const setTxt = (id, val, color) => { const el = $(id); if (!el) return; el.textContent = val; if (color) el.className = el.className.replace(/text-(?:gray|green|yellow|orange|red|cyan)-\d{3}(?:\s+animate-pulse)?/g, color); };
 
-        // 面板 A：流動性熱度 — 用 _calcRiskScore 推
-        let liquidity = 42; // 預設
-        try {
-            const rs = this._calcRiskScore?.();
-            if (rs != null) liquidity = Math.max(5, Math.min(95, rs));
-        } catch(e) {}
-        const aColor = liquidity < 50 ? 'text-green-400' : liquidity < 75 ? 'text-yellow-300' : 'text-red-400';
-        const aTag   = liquidity < 50 ? '安全'         : liquidity < 75 ? '過熱警戒'   : '極度過熱';
-        if ($('riskAPct'))   { $('riskAPct').textContent = `${liquidity}%`; $('riskAPct').className = `text-[10px] font-bold font-mono ${aColor}`; }
-        if ($('riskABar'))   $('riskABar').style.width = `${liquidity}%`;
-        if ($('riskALabel')) $('riskALabel').textContent = `當前熱度 ${liquidity}% (${aTag})`;
-
-        // 面板 B：美債 10Y — 從 data/macro_risk.json 拉，失敗用既有 us02y_main 或預設 4.30
-        let yield10 = null;
+        let j = null;
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const url = new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`;
             const r = await fetch(url, { signal: AbortSignal.timeout(4000) });
-            if (r.ok) {
-                const j = await r.json();
-                if (j.us10y_yield != null) yield10 = parseFloat(j.us10y_yield);
-            }
+            if (r.ok) j = await r.json();
         } catch(e) {}
-        if (yield10 == null) {
-            const us02y = $('usBar_us02y_main')?.innerText?.trim() || $('usBar_us02y')?.innerText?.trim() || '';
-            const m = us02y.match(/[\d.]+/);
-            if (m) yield10 = parseFloat(m[0]);
-        }
-        const yl = (yield10 != null && !isNaN(yield10)) ? yield10.toFixed(2) : '--';
-        const yColor = yield10 == null ? 'text-gray-500'
-                     : yield10 >= 5.0 ? 'text-red-400 animate-pulse'
-                     : yield10 >= 4.5 ? 'text-orange-300'
-                     : yield10 >= 4.0 ? 'text-yellow-300'
-                     :                  'text-green-400';
-        const yDotColor = yield10 == null ? 'bg-gray-500'
-                        : yield10 >= 5.0 ? 'bg-red-500 animate-pulse'
-                        : yield10 >= 4.5 ? 'bg-orange-400'
-                        : yield10 >= 4.0 ? 'bg-yellow-500'
-                        :                  'bg-green-500';
-        const yMsg  = yield10 == null ? '資料整編中…'
-                    : yield10 >= 5.0 ? '殖利率飆高，資金外逃壓力'
-                    : yield10 >= 4.5 ? '高位震盪，估值承壓'
-                    : yield10 >= 4.0 ? '資金動能穩定'
-                    :                  '殖利率回落，資金回流風險資產';
-        if ($('riskBYield')) { $('riskBYield').textContent = yl === '--' ? '整編' : `${yl}%`; $('riskBYield').className = `text-[10px] font-bold font-mono ${yColor}`; }
-        if ($('riskBDot'))   $('riskBDot').className = `w-1.5 h-1.5 rounded-full ${yDotColor}`;
-        if ($('riskBLabel')) $('riskBLabel').textContent = yMsg;
+        // fetch 整個失敗 → 不覆蓋預設值，靜默保留（情報整編中 / 緩存）
+        if (!j) { this._renderSectorHeat?.(); return; }
 
-        // 面板 C：外資期現複合 — 從 fiShortQty + macro_risk.json 結論
-        let conclusion = '套利避險狀態', conColor = 'text-blue-300', subText = '非真實看空', fi = this.fiShortQty;
-        try {
-            const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const url = new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`;
-            const r = await fetch(url, { signal: AbortSignal.timeout(4000) });
-            if (r.ok) {
-                const j = await r.json();
-                if (j.fi_complex_conclusion) {
-                    conclusion = j.fi_complex_conclusion;
-                    if (conclusion.includes('真實偏空')) { conColor = 'text-red-400 animate-pulse'; subText = '同步倒貨需嚴防'; }
-                    else if (conclusion.includes('套利')) { conColor = 'text-blue-300'; subText = '非真實看空'; }
-                    else { conColor = 'text-gray-300'; subText = '動向中性'; }
-                }
-            }
-        } catch(e) {}
-        if (fi != null) {
-            // 設燈號
-            const futDot = $('riskCFut');
-            const spotDot = $('riskCSpot');
-            if (futDot)  futDot.className  = `w-2 h-2 rounded-full mx-auto mb-0.5 ${fi <= -30000 ? 'bg-red-500 animate-pulse' : fi <= -10000 ? 'bg-orange-400' : 'bg-green-500'}`;
-            if (spotDot) spotDot.className = `w-2 h-2 rounded-full mx-auto mb-0.5 bg-gray-500`; // 現貨買賣超後端再補
-        }
-        if ($('riskCLabel')) { $('riskCLabel').textContent = conclusion; $('riskCLabel').className = `text-[8px] leading-tight text-center font-bold ${conColor}`; }
-        if ($('riskCSub'))   $('riskCSub').textContent = subText;
-        if (status) status.textContent = '已同步';
+        const num = v => (v == null || isNaN(parseFloat(v))) ? null : parseFloat(v);
+
+        // 美債 10Y
+        const y10 = num(j.us10y_yield);
+        if ($('sccUs10y')) setTxt('sccUs10y', y10 == null ? '整編' : `${y10.toFixed(2)}%`,
+            y10 == null ? 'text-gray-500' : y10 >= 4.8 ? 'text-red-400' : y10 >= 4.3 ? 'text-orange-400' : y10 >= 3.8 ? 'text-yellow-300' : 'text-green-400');
+        // 美債 2Y
+        const y2 = num(j.us2y_yield);
+        if ($('sccUs2y')) setTxt('sccUs2y', y2 == null ? '整編' : `${y2.toFixed(2)}%`,
+            y2 == null ? 'text-gray-500' : 'text-gray-300');
+        // 恐懼貪婪
+        const fg = num(j.fear_greed);
+        const fgLabel = j.fear_greed_label || (fg == null ? '' : fg >= 75 ? '極度貪婪' : fg >= 55 ? '貪婪' : fg >= 45 ? '中性' : fg >= 25 ? '恐懼' : '極度恐懼');
+        if ($('sccFg')) setTxt('sccFg', fg == null ? '整編' : `${Math.round(fg)}`,
+            fg == null ? 'text-gray-500' : fg >= 75 ? 'text-red-400' : fg >= 55 ? 'text-orange-400' : fg >= 45 ? 'text-yellow-300' : 'text-green-400');
+        // 散戶多空比（負值＝散戶偏多，逆向偏空）
+        const rl = num(j.retail_ls_pct);
+        if ($('sccRetail')) setTxt('sccRetail', rl == null ? '整編' : `${rl > 0 ? '+' : ''}${rl.toFixed(1)}%`,
+            rl == null ? 'text-gray-500' : rl <= -25 ? 'text-red-400' : rl <= 0 ? 'text-orange-400' : 'text-green-400');
+        // 台幣匯率
+        const twd = num(j.usdtwd);
+        if ($('sccTwd')) setTxt('sccTwd', twd == null ? '整編' : twd.toFixed(2),
+            twd == null ? 'text-gray-500' : twd <= 31 ? 'text-green-400' : twd >= 33 ? 'text-red-400' : 'text-gray-300');
+        // 台指逆價差
+        const back = num(j.taifex_backwardation);
+        if ($('sccBack')) setTxt('sccBack', back == null ? '整編' : `${back > 0 ? '+' : ''}${Math.round(back)}`,
+            back == null ? 'text-gray-500' : back <= -100 ? 'text-green-400' : back >= 50 ? 'text-red-400' : 'text-gray-300');
+
+        // 流動性熱度（_calcRiskScore 推；無則用 m1b_pct）
+        let liquidity = num(j.m1b_pct) ?? 42;
+        try { const rs = this._calcRiskScore?.(); if (rs != null) liquidity = Math.max(5, Math.min(95, rs)); } catch(e) {}
+        if ($('sccLiq')) setTxt('sccLiq', `${Math.round(liquidity)}%`,
+            liquidity < 50 ? 'text-green-400' : liquidity < 75 ? 'text-yellow-300' : 'text-red-400');
+        if ($('sccLiqBar')) $('sccLiqBar').style.width = `${Math.round(liquidity)}%`;
+
+        // 外資期現複合
+        const fi = this.fiShortQty, fiSpotNet = num(j.fi_spot_net);
+        let conclusion = j.fi_complex_conclusion || '外資期現';
+        let conColor = 'text-blue-300';
+        if (conclusion.includes('真實偏空')) conColor = 'text-red-400';
+        else if (conclusion.includes('套利')) conColor = 'text-blue-300';
+        else if (conclusion.includes('中性')) conColor = 'text-gray-300';
+        else if (conclusion.includes('整編')) conColor = 'text-gray-500';
+        if ($('sccFutDot')) $('sccFutDot').className = `w-2 h-2 rounded-full mx-auto mb-0.5 ${
+            fi == null ? 'bg-gray-500' : fi <= -30000 ? 'bg-red-500 animate-pulse' : fi <= -10000 ? 'bg-orange-400' : 'bg-green-500'}`;
+        if ($('sccSpotDot')) $('sccSpotDot').className = `w-2 h-2 rounded-full mx-auto mb-0.5 ${
+            fiSpotNet == null ? 'bg-gray-500' : fiSpotNet > 50 ? 'bg-red-500' : fiSpotNet > 0 ? 'bg-orange-400' : fiSpotNet > -50 ? 'bg-green-400' : 'bg-green-600'}`;
+        if ($('sccFiLabel')) { $('sccFiLabel').textContent = conclusion.length > 8 ? conclusion.slice(0, 8) : conclusion; $('sccFiLabel').className = `text-[8px] font-bold leading-tight text-center self-center ${conColor}`; }
+
+        // 摘要列（收合時可見）
+        if ($('sccMiniFG'))   $('sccMiniFG').textContent   = `🧭 ${fg == null ? '--' : Math.round(fg) + ' ' + fgLabel}`;
+        if ($('sccMiniTwd'))  $('sccMiniTwd').textContent  = `💵 ${twd == null ? '--' : twd.toFixed(2)}`;
+        if ($('sccMiniBack')) $('sccMiniBack').textContent = `📉 ${back == null ? '--' : (back > 0 ? '+' : '') + Math.round(back)}`;
+
+        this._renderSectorHeat?.();
+    },
+
+    // 收合/展開頂部指揮部（狀態記憶於 localStorage）
+    toggleCommandCenter() {
+        const body = document.getElementById('sccBody');
+        const chev = document.getElementById('sccChevron');
+        if (!body) return;
+        const willOpen = body.classList.contains('hidden');
+        body.classList.toggle('hidden', !willOpen);
+        if (chev) chev.style.transform = willOpen ? 'rotate(180deg)' : '';
+        try { localStorage.setItem('sccOpen', willOpen ? '1' : '0'); } catch(e) {}
     },
 
     _updateCostLabel() {
@@ -5537,22 +5549,21 @@ recent.forEach(d => {
             try { this.fetchFundamentalAnalysis(sym); } catch(_) {}
             return;
         }
-        if (fc.error) {
-            showHint(`❌ 法人目標價：FinMind 連線失敗（${fc.error}），請稍後再試`);
-            return;
-        }
         const pe = fc.pe != null ? Number(fc.pe) : null;
-        // 年化 EPS：優先用快取值，否則用權威 PE 反推（annualEps = 現價 / PE）
+        // 年化 EPS：① FinMind annualEps → ② 本地 TWSE PE 反推 → ③ 放棄。FinMind error 不直接放棄。
         let annualEps = (fc.annualEps != null && Number(fc.annualEps) > 0) ? Number(fc.annualEps) : (pe && pe > 0 && pC ? pC / pe : null);
         const dividend = fc.total_dividend != null ? Number(fc.total_dividend) : null;
         const yieldNow = (dividend && dividend > 0 && pC) ? ((dividend / pC) * 100).toFixed(2) : null;
         if (!annualEps || annualEps <= 0) {
             const reason = (fc.eps != null && Number(fc.eps) < 0)
                 ? '虧損股，TWSE 不提供本益比，故無法用 EPS 法推估目標價'
-                : 'FinMind 季報資料尚未到位（可能該股無季報，或 FinMind 配額用完）';
+                : fc.error
+                    ? 'FinMind 配額耗盡且本地 TWSE 也無本益比，請稍後再試'
+                    : 'FinMind 季報資料尚未到位（可能該股無季報，或 FinMind 配額用完）';
             showHint(`⚠️ 法人目標價：${reason}`);
             return;
         }
+        const fallbackNote = (fc.annualEps == null && pe) ? '（FinMind 配額耗盡，已用本地 TWSE 本益比反推）' : '';
         const apiKey = (this.settings.groqKey || '').trim();
         if (!apiKey) {
             showHint('🔑 法人目標價：請至「⚙️ 設定」填寫 Groq API Key 才能計算', 'text-yellow-300');
@@ -5578,7 +5589,7 @@ recent.forEach(d => {
             // 量級防呆：AI 給的目標價與現價量級差太多（>3倍或<1/3）視為幻覺，棄用
             if (highN > pC * 3 || lowN < pC / 3) { box.textContent = '💡 法人目標價：AI 推估量級異常，已略過'; return; }
             if (lowN > highN) { const t = lowN; lowN = highN; highN = t; }
-            box.innerHTML = `💡 法人共識目標價 <span class="text-gray-400 font-semibold">${lowN}～${highN}</span>（${stock_type}・${method}）<br><span class="text-gray-600">${reason}</span>`;
+            box.innerHTML = `💡 法人共識目標價 <span class="text-gray-400 font-semibold">${lowN}～${highN}</span>（${stock_type}・${method}）<br><span class="text-gray-600">${reason}${fallbackNote ? '<br>' + fallbackNote : ''}</span>`;
         } catch(e) {
             box.textContent = '💡 法人目標價推估失敗';
         }
@@ -7272,6 +7283,17 @@ ${hasNews ? `
             // 🧠 靈魂編輯器連動：以使用者選定的 AI 指令（預設首席 / 小哥雙刀流 / 自訂）作為人設與風格
             const soul = (this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default).trim();
 
+            // 🎯 注入統一量化燈號，強制 AI 最終判定不得與系統 LED 唱反調
+            const sig = this.unifiedSignal || null;
+            const sigLine = sig
+                ? `${sig.level} ${sig.tag}（${sig.label}）— ${sig.action}`
+                : '計算中';
+            const sigVerdictHint = sig
+                ? (sig.isHighRisk ? '🔴強制撤退'
+                  : (sig.level === '🔵' || sig.level === '🟢') ? '🟢強力買進'
+                  : '🟡觀望或減碼')
+                : '';
+
             // 組裝全新 5 維 Prompt（soul 主導風格，下方格式固定以利前端渲染）
             const prompt = `${soul}
 
@@ -7289,6 +7311,7 @@ ${hasNews ? `
 - 最新 EPS：${epsInfo}
 - 庫存狀態：${invLine}
 - 總經外資期貨：${fiLabel}
+- 🎯 系統量化燈號（最終判定必須與此一致）：${sigLine}
 - ${newsLine}
 
 請務必用上面的角色口吻，並「嚴格」依照以下五段標題格式輸出（標題符號務必一字不差，內容加適當 emoji）：
@@ -7310,7 +7333,7 @@ ${hasNews ? `
 【💡 大師白話總結】
 用一句最直白的話，總結這檔股票現在該怎麼做。
 
-最後獨立一行輸出最終判定：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。`;
+最後獨立一行輸出最終判定，務必與上方「系統量化燈號」方向一致${sigVerdictHint ? `（系統建議：${sigVerdictHint}）` : ''}：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。`;
 
             let text = await this._callAI({ prompt, max_tokens: 1000, temperature: 0.3 });
             if (!text) throw new Error('未設定 Groq Key');

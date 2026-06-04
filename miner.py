@@ -417,9 +417,10 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
 
 # ── TWSE 三大法人（每日全市場批次）──────────────────────────────────────────
 def fetch_market_institutional(d: date) -> dict:
-    """整合 TWSE (上市) 與 TPEX (上櫃) 的三大法人買賣超"""
+    """整合 TWSE (上市) 與 TPEX (上櫃) 的三大法人買賣超；缺漏時用 FinMind 補齊"""
     res = {}
     d8 = d.strftime('%Y%m%d')
+    d_iso = d.strftime('%Y-%m-%d')
     roc_y = d.year - 1911
     d_tpex = f"{roc_y}/{d.strftime('%m/%d')}"
 
@@ -478,13 +479,47 @@ def fetch_market_institutional(d: date) -> dict:
     except Exception as e: print(f"  ⚠️ 上櫃法人失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
+    # 3. FinMind 備援：TPEX 新版 API 可能變動，缺漏的上櫃股（如 8299/4904）用 FinMind 補齊
+    if not _FINMIND_BLOCKED:
+        try:
+            url_fm = (
+                f'https://api.finmindtrade.com/api/v4/data'
+                f'?dataset=TaiwanStockInstitutionalInvestorsBuySell'
+                f'&start_date={d_iso}&end_date={d_iso}'
+            )
+            j_fm = fm_request(url_fm, timeout=20)
+            cnt_new = 0
+            # FinMind 一檔股票會回多列（每個 institution 一列），需要依 stock_id 聚合
+            agg = {}
+            for row in ((j_fm or {}).get('data') or []):
+                sid = str(row.get('stock_id') or '').strip()
+                if not _valid_stock(sid):
+                    continue
+                a = agg.setdefault(sid, {'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0})
+                inst = (row.get('name') or '').strip()
+                net  = (row.get('buy') or 0) - (row.get('sell') or 0)
+                if '外資' in inst:
+                    a['foreign_net'] += int(net)
+                elif '投信' in inst:
+                    a['trust_net'] += int(net)
+                elif '自營' in inst:
+                    a['dealer_net'] += int(net)
+            for sid, v in agg.items():
+                if sid not in res:
+                    res[sid] = v
+                    cnt_new += 1
+            print(f"  [FinMind 法人] 補齊 {cnt_new} 檔（多半為上櫃股 / TPEX 失敗的票）")
+        except Exception as e:
+            print(f"  ⚠️ [FinMind 法人] 備援失敗：{e}")
+
     return res
 
 
 def fetch_market_margin(d: date) -> dict:
-    """整合 TWSE (上市) 與 TPEX (上櫃) 的融資融券餘額"""
+    """整合 TWSE (上市) 與 TPEX (上櫃) 的融資融券餘額；TWSE 失敗時用 FinMind fallback"""
     res = {}
     d8 = d.strftime('%Y%m%d')
+    d_iso = d.strftime('%Y-%m-%d')
     roc_y = d.year - 1911
     d_tpex = f"{roc_y}/{d.strftime('%m/%d')}"
 
@@ -492,6 +527,7 @@ def fetch_market_margin(d: date) -> dict:
     try:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
+        print(f"  [MI_MARGN] stat={j.get('stat')} tables={len(j.get('tables', []) or [])}")
         if j.get('stat') == 'OK':
             tables = j.get('tables', []) or []
             # 🛡️【關鍵修復】MI_MARGN 回傳多個 table，舊版誤抓「市場總計表」(僅 3-7 列、
@@ -552,6 +588,33 @@ def fetch_market_margin(d: date) -> dict:
             except: pass
     except Exception as e: print(f"  ⚠️ 上櫃融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
+
+    # 3. FinMind 備援：TWSE/TPEX 兩條都失敗時，至少給整批一份資料避免前端 100% 全 0
+    if not res and not _FINMIND_BLOCKED:
+        print(f"  ⚠️ [融資券] TWSE+TPEX 兩條都失敗，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…")
+        try:
+            url_fm = (
+                f'https://api.finmindtrade.com/api/v4/data'
+                f'?dataset=TaiwanStockMarginPurchaseShortSale'
+                f'&start_date={d_iso}&end_date={d_iso}'
+            )
+            j_fm = fm_request(url_fm, timeout=20)
+            cnt = 0
+            for row in ((j_fm or {}).get('data') or []):
+                sid = str(row.get('stock_id') or '').strip()
+                if not _valid_stock(sid):
+                    continue
+                try:
+                    res[sid] = {
+                        'margin_balance': int(row.get('MarginPurchaseTodayBalance') or 0),
+                        'short_balance':  int(row.get('ShortSaleTodayBalance')      or 0),
+                    }
+                    cnt += 1
+                except Exception:
+                    pass
+            print(f"  [FinMind 融資券] 命中 {cnt} 檔")
+        except Exception as e:
+            print(f"  ⚠️ [FinMind 融資券] 備援失敗：{e}")
 
     return res
 
