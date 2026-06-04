@@ -497,8 +497,8 @@
                                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                                 <span class="text-[8px] text-red-400 font-bold">🏦 證券狂熱度</span>
                             </div>
-                            <div id="bubbleBrokerHeat" class="text-[12px] font-black font-mono text-red-300 leading-tight">+4.2%</div>
-                            <div class="text-[8px] text-red-500/80 mt-0.5">異常狂熱・擦鞋童</div>
+                            <div id="bubbleBrokerHeat" class="text-[12px] font-black font-mono text-gray-400 leading-tight">--</div>
+                            <div id="bubbleBrokerHeatSub" class="text-[8px] text-red-500/80 mt-0.5">資料整編中</div>
                         </div>
                         <!-- 2. 融資槓桿失控（進度條） -->
                         <div class="bg-[#0d1117] border border-orange-800/50 rounded p-1.5">
@@ -507,9 +507,9 @@
                                 <span class="text-[8px] text-orange-400 font-bold">⚖️ 融資槓桿</span>
                             </div>
                             <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden mt-1">
-                                <div id="bubbleMarginBar" class="bg-gradient-to-r from-orange-500 to-red-500 h-full transition-all" style="width:85%"></div>
+                                <div id="bubbleMarginBar" class="bg-gradient-to-r from-orange-500 to-red-500 h-full transition-all" style="width:0%"></div>
                             </div>
-                            <div class="text-[8px] text-orange-400 mt-1 font-mono">85%・隨時多殺多</div>
+                            <div id="bubbleMarginSub" class="text-[8px] text-orange-400 mt-1 font-mono">資料整編中</div>
                         </div>
                         <!-- 3. 群魔亂舞指數 -->
                         <div class="bg-[#0d1117] border border-yellow-800/50 rounded p-1.5">
@@ -517,8 +517,8 @@
                                 <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
                                 <span class="text-[8px] text-yellow-400 font-bold">🧟‍♂️ 群魔亂舞</span>
                             </div>
-                            <div id="bubbleJunkCount" class="text-[12px] font-black font-mono text-red-300 leading-tight">32 家漲停</div>
-                            <div class="text-[8px] text-yellow-500/80 mt-0.5">投機熱錢末路</div>
+                            <div id="bubbleJunkCount" class="text-[12px] font-black font-mono text-gray-400 leading-tight">--</div>
+                            <div id="bubbleJunkSub" class="text-[8px] text-yellow-500/80 mt-0.5">資料整編中</div>
                         </div>
                         <!-- 4. 高檔出貨 K 線判定 -->
                         <div class="bg-[#0d1117] border border-red-800/50 rounded p-1.5">
@@ -526,8 +526,8 @@
                                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                                 <span class="text-[8px] text-red-400 font-bold">📉 出貨 K 線</span>
                             </div>
-                            <div id="bubbleKlineStatus" class="text-[11px] font-black font-mono text-red-300 leading-tight">⚠️ 爆量長上影</div>
-                            <div class="text-[8px] text-red-500/80 mt-0.5">主力高檔派發</div>
+                            <div id="bubbleKlineStatus" class="text-[11px] font-black font-mono text-gray-400 leading-tight">--</div>
+                            <div id="bubbleKlineSub" class="text-[8px] text-red-500/80 mt-0.5">資料整編中</div>
                         </div>
                     </div>
                 </div>
@@ -1986,6 +1986,7 @@ const app = {
             this.fetchGlobalNews();
             try { this.updateMarketWeather({ ctx: this.currentStrategyContext || {} }); } catch(_) {}
             try { this.updateGlobalRiskGrid(); } catch(_) {}
+            try { this.loadBubbleWarning(); } catch(_) {}
         }
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
@@ -6787,6 +6788,47 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
             </li>`;
         });
         container.innerHTML = html;
+    },
+
+    // 💥 牛市泡沫破裂預警：讀 data/bubble_warning.json 填四維度真實數值
+    async loadBubbleWarning() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/bubble_warning.json', ghBase).href + `?t=${Date.now()}`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+            if (!res.ok) return;
+            const d = await res.json();
+            const LEVEL_COLOR = {
+                red:    'text-red-300',
+                orange: 'text-orange-300',
+                yellow: 'text-yellow-300',
+                gray:   'text-gray-300',
+            };
+            const COLOR_CLASSES = Object.values(LEVEL_COLOR).concat(['text-gray-400']);
+            const apply = (mainId, subId, blob) => {
+                if (!blob) return;
+                const main = document.getElementById(mainId);
+                if (main) {
+                    main.textContent = blob.label;
+                    COLOR_CLASSES.forEach(c => main.classList.remove(c));
+                    main.classList.add(LEVEL_COLOR[blob.level] || 'text-gray-300');
+                }
+                const sub = document.getElementById(subId);
+                if (sub && blob.desc) sub.textContent = blob.desc;
+            };
+            apply('bubbleBrokerHeat',  'bubbleBrokerHeatSub', d.broker_heat);
+            apply('bubbleJunkCount',   'bubbleJunkSub',       d.junk_count);
+            apply('bubbleKlineStatus', 'bubbleKlineSub',      d.kline_status);
+            // 融資槓桿：進度條寬度 + 副標題（label 自帶水位百分比與分類）
+            if (d.margin_leverage) {
+                const bar = document.getElementById('bubbleMarginBar');
+                if (bar) bar.style.width = `${Math.max(0, Math.min(100, d.margin_leverage.value || 0))}%`;
+                const sub = document.getElementById('bubbleMarginSub');
+                if (sub) sub.textContent = d.margin_leverage.label;
+            }
+        } catch (e) {
+            console.warn('[bubble] load fail:', e);
+        }
     },
 
     // 📡 雷達操作小幫手：依當前策略切換 在觀察什麼/怎麼看結果/怎麼做/風險 四欄

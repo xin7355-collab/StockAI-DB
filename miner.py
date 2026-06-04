@@ -1422,14 +1422,15 @@ def fetch_us_macro_cache():
                'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT',
                'us02y': '^IRX',     # 13W T-Bill 短債利率（Fed 政策風向）
                'ukoil': 'BZ=F',     # 布蘭特原油期貨
-               'dxy':   'DX-Y.NYB'  # 美元指數
+               'dxy':   'DX-Y.NYB', # 美元指數
+               'twii':  '^TWII',    # 台股加權指數（供泡沫預警 K 線型態判讀）
                }
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
     result = {}
     for key, ticker in symbols.items():
         try:
             # 🛡️ SIGALRM 硬逾時，防 yfinance 無限 hang
-            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period='5d'), 30, None)
+            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period='10d'), 30, None)
             if hist is None or hist.empty:
                 continue
             prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
@@ -1441,6 +1442,17 @@ def fetch_us_macro_cache():
                 'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
                                   float(prev['Close']) * 100, 2),
             }
+            # 🎯 ^TWII 額外存 OHLCV 10 日序列，供 build_bubble_warning K 線型態判讀
+            if key == 'twii':
+                result['twii_history'] = [
+                    {'date':   str(idx.date()),
+                     'open':   round(float(row['Open']), 2),
+                     'high':   round(float(row['High']), 2),
+                     'low':    round(float(row['Low']), 2),
+                     'close':  round(float(row['Close']), 2),
+                     'volume': (int(row['Volume']) if (row['Volume'] == row['Volume']) else 0)}
+                    for idx, row in hist.tail(10).iterrows()
+                ]
             print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
         except Exception as e:
             print(f"  ⚠️  {ticker}: {e}")
@@ -1790,6 +1802,152 @@ def build_radar_cache():
           f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} / 妖股 {len(results['monster'])}")
 
 
+# ── 💥 牛市泡沫破裂預警系統 ─────────────────────────────────────────────────
+# 證券狂熱度（擦鞋童指標）/ 融資槓桿水位 / 漲停家數 / 大盤 K 線型態
+BROKER_LIST = ['2855', '6005', '9105', '6021', '6020', '6024']  # 統一證/群益證/泰金寶/元大期/元富/元大期
+
+def build_bubble_warning():
+    out = {'updated': date.today().isoformat()}
+
+    # ── 1. 🏦 證券板塊狂熱度（擦鞋童指標）───────────────────────────────
+    chgs = []
+    for sym in BROKER_LIST:
+        f = Path(DATA_DIR) / f'{sym}.json'
+        if not f.exists():
+            continue
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(raw, list) or len(raw) < 2:
+                continue
+            c, pc = float(raw[-1]['close']), float(raw[-2]['close'])
+            if pc > 0:
+                chgs.append((c - pc) / pc * 100)
+        except Exception:
+            continue
+    avg_chg = (sum(chgs) / len(chgs)) if chgs else 0
+    out['broker_heat'] = {
+        'value':   round(avg_chg, 2),
+        'label':   f'{"+" if avg_chg >= 0 else ""}{avg_chg:.1f}%',
+        'level':   ('red' if avg_chg >= 3 else 'orange' if avg_chg >= 1.5 else 'gray'),
+        'desc':    ('異常狂熱・擦鞋童' if avg_chg >= 3
+                    else '偏多溫熱' if avg_chg >= 1.5
+                    else '正常溫度'),
+        'samples': len(chgs),
+    }
+
+    # ── 2. ⚖️ 融資槓桿水位（全市場 60 日彙總相對水位）─────────────────
+    level_pct = None
+    try:
+        margin_file = Path('margin_cache_stock.json')
+        if margin_file.exists():
+            m = json.loads(margin_file.read_text(encoding='utf-8'))
+            if isinstance(m, dict) and m:
+                dates = sorted(m.keys())
+                series = []
+                for d in dates[-60:]:
+                    bucket = m.get(d) or {}
+                    if isinstance(bucket, dict):
+                        total = sum(int((stock or {}).get('margin_balance', 0) or 0)
+                                    for stock in bucket.values())
+                        if total > 0:
+                            series.append(total)
+                if len(series) >= 5:
+                    latest, peak, low = series[-1], max(series), min(series)
+                    if peak > low:
+                        level_pct = int(round((latest - low) / (peak - low) * 100))
+                    else:
+                        level_pct = 50
+    except Exception as e:
+        print(f"  ⚠️ 融資槓桿水位計算失敗: {e}")
+    if level_pct is None:
+        out['margin_leverage'] = {'value': 0, 'label': '資料整編中',
+                                  'level': 'gray', 'desc': '待 60 日融資累積'}
+    else:
+        out['margin_leverage'] = {
+            'value': level_pct,
+            'label': f'{level_pct}%・' + ('高危險區' if level_pct >= 80
+                                            else '警戒區' if level_pct >= 60
+                                            else '正常區' if level_pct >= 30
+                                            else '低水位'),
+            'level': ('red' if level_pct >= 80
+                      else 'orange' if level_pct >= 60
+                      else 'gray'),
+            'desc':  ('隨時多殺多' if level_pct >= 80
+                      else '槓桿偏高' if level_pct >= 60
+                      else '健康'),
+        }
+
+    # ── 3. 🧟‍♂️ 群魔亂舞指數（全市場漲停家數）───────────────────────────
+    limit_up = 0
+    for f in Path(DATA_DIR).glob('*.json'):
+        sym = f.stem
+        if not (len(sym) == 4 and sym.isdigit()):
+            continue
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(raw, list) or len(raw) < 2:
+                continue
+            c, pc = float(raw[-1]['close']), float(raw[-2]['close'])
+            if pc > 0 and (c - pc) / pc * 100 >= 9.0:
+                limit_up += 1
+        except Exception:
+            continue
+    out['junk_count'] = {
+        'value': limit_up,
+        'label': f'{limit_up} 家漲停',
+        'level': ('red' if limit_up >= 30
+                  else 'orange' if limit_up >= 15
+                  else 'gray'),
+        'desc':  ('投機熱錢末路' if limit_up >= 30
+                  else '投機氣氛偏熱' if limit_up >= 15
+                  else '正常'),
+    }
+
+    # ── 4. 📉 大盤 K 線型態（讀 macro_cache.json twii_history）────────
+    try:
+        mc = json.loads(Path('macro_cache.json').read_text(encoding='utf-8'))
+        twii_hist = mc.get('twii_history') or []
+        if twii_hist:
+            last = twii_hist[-1]
+            o, h, l, c = float(last['open']), float(last['high']), float(last['low']), float(last['close'])
+            v = float(last.get('volume', 0))
+            total_range = h - l
+            upper_shadow = h - max(o, c) if total_range > 0 else 0
+            shadow_ratio = (upper_shadow / total_range) if total_range > 0 else 0
+            past5 = twii_hist[-6:-1] if len(twii_hist) >= 6 else twii_hist[:-1]
+            avg_v = (sum(float(t.get('volume', 0) or 0) for t in past5) / len(past5)) if past5 else v
+            vol_ratio = (v / avg_v) if avg_v > 0 else 1.0
+
+            if shadow_ratio >= 0.4 and vol_ratio >= 1.3:
+                lbl, lvl, dsc = '⚠️ 爆量長上影', 'red', '主力高檔派發'
+            elif shadow_ratio >= 0.3 or vol_ratio >= 1.5:
+                lbl, lvl, dsc = '⚠️ 上影警示', 'orange', '上檔有壓力'
+            elif c >= o and shadow_ratio < 0.2:
+                lbl, lvl, dsc = '✅ 健康收紅', 'gray', '量價穩健'
+            else:
+                lbl, lvl, dsc = '🟢 多頭整理', 'gray', '盤面平穩'
+            out['kline_status'] = {
+                'label': lbl, 'level': lvl, 'desc': dsc,
+                'shadow_ratio': round(shadow_ratio, 2),
+                'vol_ratio':    round(vol_ratio, 2),
+            }
+        else:
+            out['kline_status'] = {'label': '資料整編中', 'level': 'gray', 'desc': '待 ^TWII 抓取'}
+    except Exception as e:
+        out['kline_status'] = {'label': '資料整編中', 'level': 'gray', 'desc': f'讀取失敗 {str(e)[:30]}'}
+
+    # ── 輸出 ────────────────────────────────────────────────────────
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    Path(DATA_DIR).joinpath('bubble_warning.json').write_text(
+        json.dumps(out, ensure_ascii=False, separators=(',', ':')),
+        encoding='utf-8'
+    )
+    print(f"  ✅ 泡沫預警：證券 {out['broker_heat']['label']} ({out['broker_heat']['samples']}檔)"
+          f" / 漲停 {out['junk_count']['value']}"
+          f" / 融資 {out['margin_leverage']['label']}"
+          f" / K線 {out['kline_status']['label']}")
+
+
 # ── 三位一體選股 ─────────────────────────────────────────────────────────────
 def generate_top_picks():
     """三位一體篩選：基本面(YoY>0) + 法人5日淨流入>0 + 分點集中度
@@ -1963,6 +2121,7 @@ if __name__ == '__main__':
         fetch_futures_cache()   # 外資期貨 → futures_cache.json （TAIFEX，不吃 FinMind 額度）
         fetch_us_macro_cache()  # 美股大盤 → macro_cache.json （yfinance）
         build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
+        build_bubble_warning()  # 💥 牛市泡沫預警 → data/bubble_warning.json （讀現成 artifacts）
         generate_top_picks()    # 三位一體選股 → data/top_picks.json （需 chips 已就緒）
 
         # ── 🧹 【資料庫自動瘦身術】 ──
