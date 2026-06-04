@@ -1774,17 +1774,17 @@ def build_radar_cache():
             if bias_20 > 0.15:
                 continue
 
-            # 🟢 底部起漲波段股：均線黃金交叉 + 法人近五日「淨買超」
-            if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc and inst_net_5d > 0:
+            # 🟢 底部起漲波段股：均線黃金交叉 + 法人不大舉流出（放寬：原 >0 改 >= -5000）
+            if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc and inst_net_5d >= -5000:
                 results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
 
-            # 🔥 飆股動能突破股：貼著布林上軌，今日爆量 1.3 倍 + 法人強力介入
-            if c >= upper_bb * 0.97 and (rv[-1] > vma5 * 1.3 if rv and vma5 > 0 else False) and inst_net_5d > 0:
+            # 🔥 飆股動能突破股：貼著布林上軌，量增 20%（原 1.3 改 1.2）+ 法人不大流出
+            if c >= upper_bb * 0.97 and (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False) and inst_net_5d >= -5000:
                 results['surge'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
 
-            # ⚡ 綜合多頭強勢股：均線完美多頭排列，且今日爆量 (1.2倍) + 法人資金灌注
-            if (c > ma20 and ma5 > ma10 and ma10 > ma20) and c > pc and \
-               (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False) and inst_net_5d > 0:
+            # ⚡ 綜合多頭強勢股：放寬為「站上月線 + 5MA > 20MA」+ 量增 10%（原完美四線多排太嚴）
+            if (c > ma20 and ma5 > ma20) and c > pc and \
+               (rv[-1] > vma5 * 1.1 if rv and vma5 > 0 else False) and inst_net_5d >= -5000:
                 results['score'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
         except Exception:
             continue
