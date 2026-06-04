@@ -2569,17 +2569,18 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 const res = await fetch(fetchUrl, { ...options, signal: ctrl.signal });
                 clearTimeout(timerId);
 
-                if (res.status === 429) {
+                // FinMind 配額耗盡會回 402（Payment Required），其他限流回 429。兩種都要輪動。
+                if (res.status === 429 || (isFinMind && res.status === 402)) {
                     if (attempt >= maxRetries) {
-                        console.warn(`[safeFetch] 429 超過最大重試（${maxRetries}）：${url}`);
+                        console.warn(`[safeFetch] ${res.status} 超過最大重試（${maxRetries}）：${url}`);
                         this.showToast(isFinMind
                             ? '🔴 FinMind 4 把金鑰池已全數耗盡，請稍後再試'
                             : '🔴 網路請求被限流 (429)，請稍後再試');
                         return res;
                     }
                     if (isFinMind) {
-                        // ⚡ 核心修復：FinMind 429 強制切換下一把鑰匙，500ms 後重試
-                        console.warn(`[safeFetch] FinMind 429，自動切換下一組 Token`);
+                        // FinMind 402/429 強制切換下一把鑰匙，500ms 後重試
+                        console.warn(`[safeFetch] FinMind ${res.status}（配額/限流），自動切換下一組 Token`);
                         this._advanceFinmindToken();
                         await new Promise(r => setTimeout(r, 500));
                     } else {
@@ -5292,7 +5293,83 @@ recent.forEach(d => {
         if ($('sccMiniTwd'))  $('sccMiniTwd').textContent  = `💵 ${twd == null ? '--' : twd.toFixed(2)}`;
         if ($('sccMiniBack')) $('sccMiniBack').textContent = `📉 ${back == null ? '--' : (back > 0 ? '+' : '') + Math.round(back)}`;
 
-        this._renderSectorHeat?.();
+        this._renderSectorHeat();
+    },
+
+    // 🌈 9 板塊熱力燈號：用每個板塊 3 檔代表股的最末日漲跌平均染色
+    // 結果存 localStorage 15 分鐘快取避免重複 fetch；台股紅漲
+    async _renderSectorHeat() {
+        // 板塊 → 代表股代號（與 HTML 顯示文字一致）
+        const SECTORS = {
+            us:        ['NVDA', 'SOX', 'SPX'],   // 美股用 macro_cache 算
+            server:    ['2382', '6669', '3231'], // 廣達、緯穎、緯創
+            power:     ['1519', '1503', '1513'], // 華城、士電、中興電
+            packaging: ['2330', '3711', '3105'], // 台積電、矽品、PMC
+            cpo:       ['3450', '3380', '6491'], // 聯亞光電、明泰、晶碩
+            cooling:   ['3017', '3324', '3653'], // 奇鋐、雙鴻、健策
+            robot:     ['2049', '4551', '2206'], // 上銀、智伸科、三陽
+            finance:   ['2881', '2882', '2891'], // 富邦金、國泰金、中信金
+            leo:       ['3491', '2313', '6285'], // 昇達科、華通、啟碁
+        };
+        const CACHE_KEY = 'sccSectorHeatCache_v1';
+        const CACHE_TTL = 15 * 60 * 1000;
+        // 讀快取
+        let cache = {};
+        try {
+            const raw = localStorage.getItem(CACHE_KEY);
+            if (raw) {
+                const obj = JSON.parse(raw);
+                if (obj && obj.ts && Date.now() - obj.ts < CACHE_TTL) cache = obj.data || {};
+            }
+        } catch(e) {}
+
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+        const paint = (key, avgPct) => {
+            const dot = document.querySelector(`[data-sector="${key}"] .sector-heat`);
+            if (!dot) return;
+            const cls = avgPct == null ? 'bg-gray-600'
+                      : avgPct > 1   ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.7)]'    // 大漲
+                      : avgPct > 0.2 ? 'bg-red-400'                                          // 小漲
+                      : avgPct > -0.2 ? 'bg-gray-500'                                        // 持平
+                      : avgPct > -1   ? 'bg-green-400'                                       // 小跌
+                      :                 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.7)]'; // 大跌
+            dot.className = `w-1.5 h-1.5 rounded-full sector-heat ${cls}`;
+        };
+
+        const fetchPct = async (sym) => {
+            if (cache[sym] !== undefined) return cache[sym];
+            try {
+                const url = new URL(`data/${sym}.json`, ghBase).href + `?t=${Date.now()}`;
+                const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+                if (!r.ok) return null;
+                const arr = await r.json();
+                if (!Array.isArray(arr) || arr.length < 2) return null;
+                const today = arr[arr.length - 1].close, yest = arr[arr.length - 2].close;
+                if (!today || !yest) return null;
+                return ((today - yest) / yest) * 100;
+            } catch(e) { return null; }
+        };
+
+        const next = {};
+        for (const [key, syms] of Object.entries(SECTORS)) {
+            // 美股用前端 mktHeatmap 已有的 macro 資料；台股 fetch JSON
+            if (key === 'us') {
+                const txt = document.getElementById('usBar_spx_chg_main')?.innerText
+                         || document.getElementById('usBar_spx_chg')?.innerText || '';
+                const m = txt.match(/-?\d+\.?\d*/);
+                paint(key, m ? parseFloat(m[0]) : null);
+                continue;
+            }
+            const pcts = [];
+            for (const s of syms) {
+                const p = await fetchPct(s);
+                if (p != null) pcts.push(p);
+                next[s] = p;
+            }
+            const avg = pcts.length ? pcts.reduce((a,b)=>a+b,0) / pcts.length : null;
+            paint(key, avg);
+        }
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: next })); } catch(e) {}
     },
 
     // 收合/展開頂部指揮部（狀態記憶於 localStorage）
@@ -6440,6 +6517,8 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
                         ...r
                     }));
                 this._radarUpdatedAt = radarJson.updated || '';
+                // 順便存綜合強勢清單，供 _filterAndRenderRadar 在某類別 < 5 筆時補位
+                this._radarScoreList = (radarJson.data?.score || []).map(r => ({ sym: r.sym || r.symbol, ...r }));
             }
 
             // 進度條飛到底（秒讀 API 無中間進度，直接 100%）
@@ -6518,6 +6597,19 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
             if (filtered.length === 0 && rawList.length > 0 && (poolType === 'hot_otc' || poolType === 'etf_heavy') && type !== 'score') {
                 this.loadRadar('score');
                 return;
+            }
+            // 結果 < 5 時補入「綜合強勢」前 5（從 SQLite radar.score 取，不重複）
+            if (filtered.length < 5 && this._radarScoreList && Array.isArray(this._radarScoreList)) {
+                const existing = new Set(filtered.map(r => r.sym));
+                const supplement = this._radarScoreList
+                    .filter(r => !existing.has(r.sym))
+                    .slice(0, 5 - filtered.length);
+                if (supplement.length > 0) {
+                    filtered = filtered.concat(supplement);
+                    this._radarLowSignalNotice = `⚠️ 本日該類訊號偏少（原 ${filtered.length - supplement.length} 檔），已自動補入綜合強勢前 ${supplement.length} 名`;
+                }
+            } else {
+                this._radarLowSignalNotice = '';
             }
         }
 
@@ -6604,7 +6696,10 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
             : '';
 
         header.classList.remove('hidden');
-        header.innerHTML = `⚡ ${TYPE_LABELS[type] || type} · ${POOL_LABELS[poolType] || poolType} · 共 <b class="text-white">${items.length}</b> 檔${updated}`;
+        const notice = this._radarLowSignalNotice
+            ? `<div class="text-orange-300 text-[10px] mt-1 font-normal">${this._radarLowSignalNotice}</div>`
+            : '';
+        header.innerHTML = `⚡ ${TYPE_LABELS[type] || type} · ${POOL_LABELS[poolType] || poolType} · 共 <b class="text-white">${items.length}</b> 檔${updated}${notice}`;
 
         let html = '';
         const isTopPicks = (type === 'top_picks');

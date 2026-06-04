@@ -197,11 +197,15 @@ def _fetch_taifex_html_fallback():
 
 
 def fetch_us2y_yield():
-    """美債 2Y 殖利率 — FRED 公開 CSV（DGS2，無需 API key）"""
+    """美債 2Y 殖利率 — FRED 公開 CSV（DGS2，無需 API key）；FRED 對無 UA 偶爾 503，務必帶 UA"""
     try:
         url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2"
-        r = http.get(url, headers=HEADERS, timeout=10)
+        ua = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+              "Accept": "text/csv,text/plain,*/*"}
+        r = http.get(url, headers=ua, timeout=10)
         if r.status_code != 200:
+            print(f"  [FRED DGS2] HTTP {r.status_code} body 前 200 字：{r.text[:200]}")
             return None, f"HTTP {r.status_code}"
         import csv
         import io
@@ -213,6 +217,7 @@ def fetch_us2y_yield():
                     return round(float(row[1]), 3), None
                 except ValueError:
                     continue
+        print(f"  [FRED DGS2] 全部列無有效值，body 前 200 字：{r.text[:200]}")
         return None, "FRED DGS2 無有效值"
     except Exception as e:
         print(f"  ⚠️ US2Y 抓取失敗: {e}")
@@ -288,10 +293,15 @@ def fetch_retail_long_short():
         inst_net = 0
         total_oi = 0
         matched = 0
+        # 診斷用：收集所有不重複的「商品名稱」欄，幫助找出真實 commodity 字串
+        product_names = set()
         for row in rows[1:]:
             if len(row) < 8:
                 continue
             joined = "".join(row[:4])
+            # 收集所有非空商品名（前 4 欄拼起來）方便比對
+            if joined.strip():
+                product_names.add(joined[:30])
             if "小型臺指" not in joined and "MTX" not in joined.upper():
                 continue
             ints = []
@@ -309,6 +319,8 @@ def fetch_retail_long_short():
             total_oi = max(total_oi, long_oi + short_oi)  # 任一法人 long+short 近似全市場上限，取最大較穩
             matched += 1
         if matched == 0 or total_oi <= 0:
+            # 印出實際 TAIFEX CSV 看到的商品名稱，方便下次 grep 出真實字串
+            print(f"  [散戶多空比] 全部不重複商品名（前 30 個）: {sorted(product_names)[:30]}")
             return None, "MTX 三大法人列未匹配或總 OI 為 0"
         # 全市場 MTX 未平倉量：三大法人 long 合計 + 散戶；此處用三大法人 long+short 總和近似分母
         retail_pct = round(-(inst_net) / total_oi * 100, 1)
@@ -320,10 +332,11 @@ def fetch_retail_long_short():
 
 
 def fetch_taifex_backwardation():
-    """台指逆價差 = 臺股期貨(TX)近月收盤 − 加權指數(^TWII)現貨收盤（負值＝逆價差）"""
+    """台指逆價差 = 臺股期貨(TX)近月收盤 − 加權指數(^TWII)現貨收盤（負值＝逆價差）
+
+    ① 優先用 yfinance ^TXF=F（穩定）；失敗才退到 TAIFEX HTML regex（脆弱）
+    """
     try:
-        import csv
-        import io
         import re
         # 1) ^TWII 現貨收盤
         spot = None
@@ -336,20 +349,29 @@ def fetch_taifex_backwardation():
             return None, f"^TWII 取得失敗：{str(e)[:60]}"
         if spot is None:
             return None, "^TWII 無現貨收盤"
-        # 2) TAIFEX 每日行情 TX 近月收盤
-        url = "https://www.taifex.com.tw/cht/3/futDailyMarketReport"
-        payload = {"queryType": "2", "marketCode": "0", "commodity_id": "TX",
-                   "queryDate": datetime.now().strftime("%Y/%m/%d"), "MarketCode": "0",
-                   "commodity_idt": "TX"}
-        r = http.post(url, data=payload, headers=HEADERS, timeout=10)
-        if r.status_code != 200:
-            return None, f"TAIFEX HTTP {r.status_code}"
-        html = r.text
-        # 近月 TX 收盤：找第一個 TX 列的收盤價（容錯抓 4 位數指數）
-        m = re.search(r"TX[^0-9]{0,40}?([1-2]\d{4})", html)
-        if not m:
-            return None, "TX 近月收盤未匹配"
-        fut_close = float(m.group(1))
+        # 2) 期貨收盤：先試 yfinance（^TXF=F），失敗才走 TAIFEX HTML
+        fut_close = None
+        try:
+            import yfinance as yf
+            fut_hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
+            if fut_hist is not None and not fut_hist.empty:
+                fut_close = float(fut_hist["Close"].iloc[-1])
+                print(f"  [台指逆價差] yfinance ^TXF=F 期貨收盤 = {fut_close}")
+        except Exception as e:
+            print(f"  [台指逆價差] yfinance 期貨失敗，退到 TAIFEX HTML：{str(e)[:60]}")
+        if fut_close is None:
+            url = "https://www.taifex.com.tw/cht/3/futDailyMarketReport"
+            payload = {"queryType": "2", "marketCode": "0", "commodity_id": "TX",
+                       "queryDate": datetime.now().strftime("%Y/%m/%d"), "MarketCode": "0",
+                       "commodity_idt": "TX"}
+            r = http.post(url, data=payload, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                return None, f"TAIFEX HTTP {r.status_code}"
+            html = r.text
+            m = re.search(r"TX[^0-9]{0,40}?([1-2]\d{4})", html)
+            if not m:
+                return None, "TX 近月收盤未匹配（yfinance + TAIFEX 雙失敗）"
+            fut_close = float(m.group(1))
         back = round(fut_close - spot, 0)
         print(f"  [台指逆價差] 期貨{fut_close} − 現貨{spot:.0f} = {back:+.0f} 點")
         return back, None
@@ -447,6 +469,24 @@ def main():
 
     out["fi_complex_conclusion"] = judge_fi_complex(fut, spot)
     print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
+
+    # 🛡️ 斷崖防護：對每個 None 欄位，用昨天 macro_risk.json 的值補上，
+    # 並標記 _from_cache_yesterday=True；避免單日 API 抽風就讓使用者看到大片「整編」
+    try:
+        if OUTPUT_FILE.exists():
+            prev = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+            patched = []
+            for key in ("us10y_yield", "us2y_yield", "fi_spot_net", "fi_futures_net",
+                        "usdtwd", "fear_greed", "fear_greed_label",
+                        "retail_ls_pct", "taifex_backwardation"):
+                if out.get(key) is None and prev.get(key) is not None:
+                    out[key] = prev[key]
+                    patched.append(key)
+            if patched:
+                out["_from_cache_yesterday"] = patched
+                print(f"  🛡️ 斷崖防護：{len(patched)} 個欄位用昨天 cache 補值 → {patched}")
+    except Exception as e:
+        print(f"  ⚠️ 斷崖防護讀舊檔失敗：{e}（不影響本次寫檔）")
 
     # 寫檔（最輕量）— 任何 IO 錯誤不能讓整個 daily_miner 崩潰
     try:

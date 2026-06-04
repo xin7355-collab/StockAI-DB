@@ -146,14 +146,29 @@ TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
 SKIP_GLOBAL    = bool(int(os.getenv('SKIP_GLOBAL', '0')))  # 批次 1-4 略過全市場抓取
 
 # ── 監控清單 ──────────────────────────────────────────────────────────────────
+# 涵蓋前端 _RADAR_POOLS（上市熱門/上櫃中小型/高股息ETF）+ 9 大資金板塊指標股，
+# 確保前端雷達分頁的每一類都能 filter 到資料。
 CHIP_WATCHLIST = sorted(set([
+    # 上市熱門大將（前端 hot_twse 40 檔）
     '2330','2317','2454','2382','3231','2303','2881','2886','2002','2603',
     '2308','3711','1301','1303','2801','2884','2885','2892','6505','1216',
     '2207','2301','2327','6415','2357','2395','3034','2379','2376','4938',
     '3105','3529','8069','5347','8299','3293','6142','6274',
+    # 上櫃活潑中小型（前端 hot_otc 24 檔）
     '6488','6515','6770','3037','8046','4977','6278','6191',
+    # 高股息與權值 ETF（前端 etf_heavy 10 檔）
     '0050','0056','00878','00929','00919',
-    '00981A','00988A', # 🛡️ 將新的主動型 ETF 加入重點籌碼監控名單
+    '00713','00692','006208','00900','00939',   # ← 新增 5 檔（之前缺失導致該類別半壞）
+    '00981A','00988A',
+    # 9 大資金板塊指標股（與頂部指揮部 sector matrix 對齊）
+    '2382','6669',                              # 伺服器代工：廣達、緯穎（緯創 3231 已在）
+    '1519','1503','1513',                       # 重電基建：華城、士電、中興電
+    '2330','3711','3105',                       # 先進封裝：台積電(在)、矽品(在)、PMC
+    '3450','3380','6491',                       # 高速傳輸 CPO：聯亞光電、明泰、晶碩
+    '3017','3324','3653',                       # 散熱：奇鋐、雙鴻、健策
+    '2049','4551','2206',                       # 實體機器人：上銀、智伸科、三陽
+    '2881','2882','2891',                       # 金融避風港：富邦金、國泰金、中信金
+    '3491','2313','6285',                       # 低軌衛星：昇達科、華通、啟碁
 ]))
 HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調整）
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
@@ -982,23 +997,36 @@ def run():
         print(f"\n📊 批次抓取三大法人 + 融資融券（最近 {len(trading_days)} 個交易日）...")
         for d in trading_days:
             dd = d.strftime('%Y-%m-%d')
-            inst = fetch_market_institutional(d)
-            if inst:
-                inst_cache[dd] = inst
-                print(f"  法人 {dd}: {len(inst)} 筆")
+            try:
+                inst = fetch_market_institutional(d)
+                if inst:
+                    inst_cache[dd] = inst
+                    print(f"  法人 {dd}: {len(inst)} 筆")
+            except Exception as e:
+                print(f"  ⚠️ fetch_market_institutional({dd}) 例外，跳過：{e}")
             time.sleep(0.8)
-            marg = fetch_market_margin(d)
-            if marg:
-                margin_cache[dd] = marg
-                print(f"  融券 {dd}: {len(marg)} 筆")
+            try:
+                marg = fetch_market_margin(d)
+                if marg:
+                    margin_cache[dd] = marg
+                    print(f"  融券 {dd}: {len(marg)} 筆")
+            except Exception as e:
+                print(f"  ⚠️ fetch_market_margin({dd}) 例外，跳過：{e}")
             time.sleep(0.8)
-        # 儲存供批次 1-19 使用（同次 run 透過 artifact、或下次從 gh-pages 載入）
-        if margin_cache:
-            MARGIN_CACHE_FILE.write_text(json.dumps(margin_cache, ensure_ascii=False), encoding='utf-8')
-            print(f"  💾 融資券快取已儲存 → {MARGIN_CACHE_FILE}（{len(margin_cache)} 天）")
-        if inst_cache:
-            INST_CACHE_FILE.write_text(json.dumps(inst_cache, ensure_ascii=False), encoding='utf-8')
-            print(f"  💾 三大法人快取已儲存 → {INST_CACHE_FILE}（{len(inst_cache)} 天）")
+        # 防呆：無論成功失敗都寫檔，避免 batch 1-19 找不到 cache 直接全市場無融資券
+        # 失敗時寫 {} 但保留 _last_attempt 時間戳，方便偵錯
+        try:
+            payload_margin = margin_cache if margin_cache else {'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind 皆失敗'}
+            MARGIN_CACHE_FILE.write_text(json.dumps(payload_margin, ensure_ascii=False), encoding='utf-8')
+            print(f"  💾 融資券快取已儲存 → {MARGIN_CACHE_FILE}（{len(margin_cache)} 天{'，內容為空' if not margin_cache else ''}）")
+        except Exception as e:
+            print(f"  ⚠️ 融資券快取寫檔失敗：{e}")
+        try:
+            payload_inst = inst_cache if inst_cache else {'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+TPEX+FinMind 皆失敗'}
+            INST_CACHE_FILE.write_text(json.dumps(payload_inst, ensure_ascii=False), encoding='utf-8')
+            print(f"  💾 三大法人快取已儲存 → {INST_CACHE_FILE}（{len(inst_cache)} 天{'，內容為空' if not inst_cache else ''}）")
+        except Exception as e:
+            print(f"  ⚠️ 法人快取寫檔失敗：{e}")
     else:
         print(f"\n⚡ SKIP_GLOBAL=1：跳過法人/融資券抓取（OHLCV 模式）")
         # 載入批次 0 儲存的法人 + 融資券快取（來自 gh-pages checkout），讓全市場個股都有籌碼
@@ -1699,10 +1727,11 @@ def build_radar_cache():
             pma5, pma10, pma20      = ind['pma5'], ind['pma10'], ind['pma20']
             vma5, upper_bb, rv      = ind['vma5'], ind['upper_bb'], ind['recent_vols']
 
-            # 【獲利引擎 1】流動性防護網：5 日均量 < 500 張 (50萬股) 直接淘汰殭屍股
-            if vma5 < 500_000:
+            # 【獲利引擎 1】流動性防護網：5 日均量 < 200 張 (20萬股) 直接淘汰殭屍股
+            # （原 500K 太嚴，ETF 跟中型股被誤砍。200K 仍能擋掉真正的殭屍）
+            if vma5 < 200_000:
                 continue
-                
+
             # 【獲利引擎 3】乖離率防守：過濾掉偏離月線大於 15% 的股票，拒絕追高
             bias_20 = (c - ma20) / ma20 if ma20 > 0 else 0
             if bias_20 > 0.15:
@@ -1711,11 +1740,12 @@ def build_radar_cache():
             # 🟢 底部起漲波段股：均線黃金交叉 + 法人近五日「淨買超」
             if ((c > ma20 and pc <= pma20) or (ma5 > ma10 and pma5 <= pma10)) and c > pc and inst_net_5d > 0:
                 results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
-                
-            # 🔥 飆股動能突破股：貼著布林上軌，量能爆發 + 法人強力介入
-            if c >= upper_bb * 0.97 and (all(v > vma5 for v in rv) if rv and vma5 > 0 else False) and inst_net_5d > 0:
+
+            # 🔥 飆股動能突破股：貼著布林上軌，今日爆量 1.3 倍 + 法人強力介入
+            # （原 all 3 天爆量太嚴，單日爆量就足以反映動能介入）
+            if c >= upper_bb * 0.97 and (rv[-1] > vma5 * 1.3 if rv and vma5 > 0 else False) and inst_net_5d > 0:
                 results['surge'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
-                
+
             # ⚡ 綜合多頭強勢股：均線完美多頭排列，且今日爆量 (1.2倍) + 法人資金灌注
             if (c > ma20 and ma5 > ma10 and ma10 > ma20) and c > pc and \
                (rv[-1] > vma5 * 1.2 if rv and vma5 > 0 else False) and inst_net_5d > 0:
@@ -1735,23 +1765,43 @@ def build_radar_cache():
 
 # ── 三位一體選股 ─────────────────────────────────────────────────────────────
 def generate_top_picks():
-    """三位一體篩選：基本面(YoY>0) + 法人5日淨流入>0 + 分點集中度"""
+    """三位一體篩選：基本面(YoY>0) + 法人5日淨流入>0 + 分點集中度
+    降級模式：chips 目錄不存在或某檔沒有 chip 資料時，自動用 2 維（YoY+法人）繼續算"""
     results = []
     chips_path = Path(DATA_DIR) / 'chips'
+    degraded = not chips_path.exists()
+    if degraded:
+        print("  ⚠️ chips 目錄不存在，啟動 2 維降級模式（YoY + 法人）")
+    else:
+        print("🚀 啟動三位一體選股 (從 JSON 快取合併)...")
 
-    if not chips_path.exists():
-        print("  ⚠️ chips 目錄不存在，跳過 generate_top_picks")
-        return
+    # 來源檔案：有 chips 走 chips 目錄；無 chips 走 data/*.json + chips 缺值用 0
+    source_files = (sorted(chips_path.glob('*.json')) if not degraded
+                    else sorted(Path(DATA_DIR).glob('*.json')))
 
-    print("🚀 啟動三位一體選股 (從 JSON 快取合併)...")
-    for f in sorted(chips_path.glob('*.json')):
+    for f in source_files:
         sym = f.stem
+        # 降級模式下排除非個股 JSON（macro/futures/radar/top_picks/broker_names）
+        if degraded and not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
+            continue
+
         try:
-            raw = json.loads(f.read_text(encoding='utf-8'))
-            if isinstance(raw, list):
-                continue
-            fund      = raw.get('fundamentals') or {}
-            chips_list = raw.get('chips') or []
+            fund: dict = {}
+            chips_list: list = []
+            if not degraded:
+                raw = json.loads(f.read_text(encoding='utf-8'))
+                if isinstance(raw, list):
+                    continue
+                fund       = raw.get('fundamentals') or {}
+                chips_list = raw.get('chips') or []
+            else:
+                # 降級：嘗試從 data/chips/{sym}.json 撈基本面（即使 chips 目錄缺，個別檔可能存在）
+                chip_file = Path(DATA_DIR) / 'chips' / f'{sym}.json'
+                if chip_file.exists():
+                    raw = json.loads(chip_file.read_text(encoding='utf-8'))
+                    if isinstance(raw, dict):
+                        fund       = raw.get('fundamentals') or {}
+                        chips_list = raw.get('chips') or []
 
             # ① 基本面：revenue_yoy > 0
             try:
@@ -1765,9 +1815,9 @@ def generate_top_picks():
             kline_file = Path(DATA_DIR) / f'{sym}.json'
             if not kline_file.exists():
                 continue
-            
+
             kline_data = json.loads(kline_file.read_text(encoding='utf-8'))
-            if len(kline_data) < 5:
+            if not isinstance(kline_data, list) or len(kline_data) < 5:
                 continue
 
             # ② 法人5日淨流向 > 0
@@ -1779,35 +1829,36 @@ def generate_top_picks():
             if five_day_net <= 0:
                 continue
 
-            # ③ 分點集中度（近3日Top3買超 / 總買超）
-            recent_chips = chips_list[-3:]
-            total_buy = sum(c.get('tot_buy', 0) for c in recent_chips)
-            top3_buy  = sum(
-                sum(b.get('buy', 0) for b in
-                    sorted(c.get('buyers', []), key=lambda x: -x.get('net', 0))[:3])
-                for c in recent_chips
-            )
-            concentration = round(top3_buy / total_buy * 100, 1) if total_buy > 0 else 0.0
+            # ③ 分點集中度（近3日Top3買超 / 總買超）— chips 缺值時為 0
+            concentration = 0.0
+            if chips_list:
+                recent_chips = chips_list[-3:]
+                total_buy = sum(c.get('tot_buy', 0) for c in recent_chips)
+                top3_buy  = sum(
+                    sum(b.get('buy', 0) for b in
+                        sorted(c.get('buyers', []), key=lambda x: -x.get('net', 0))[:3])
+                    for c in recent_chips
+                )
+                concentration = round(top3_buy / total_buy * 100, 1) if total_buy > 0 else 0.0
 
-            # 最新收盤價與日期
             pr_close = kline_data[-1].get('close', 0)
             pr_date  = kline_data[-1].get('date', '')
 
-            # 入選理由 badge
             reasons = []
             reasons.append('🔥 營收高速增長' if yoy_f >= 20 else '📈 營收成長')
-            
-            # 判斷近三日外資是否連買
+
             consec_fi = sum(1 for r in kline_data[-3:] if r.get('foreign_net', 0) > 0)
             if consec_fi >= 3:
                 reasons.append('💰 外資連買3日')
             elif five_day_net > 0:
                 reasons.append('💰 法人淨流入')
-                
+
             if concentration >= 40:
                 reasons.append('🎯 主力強力建倉')
             elif concentration >= 20:
                 reasons.append('🎯 分點籌碼集中')
+            elif not chips_list:
+                reasons.append('（已用 2 維簡化）')
 
             results.append({
                 'sym':          sym,
@@ -1880,11 +1931,12 @@ if __name__ == '__main__':
     export_json(inst_cache, margin_cache)                   # 匯出 JSON：疊上最新法人快取
 
     if not SKIP_GLOBAL:
-        fetch_futures_cache()   # 外資期貨 → futures_cache.json
-        fetch_us_macro_cache()  # 美股大盤 → macro_cache.json
-        fetch_broker_chips()    # 分點籌碼 → data/chips/*.json
+        # 🥇 把吃 FinMind 額度最重的工作放最前面：分點分布要逐檔打 API，token 池滿格時搶先消化
+        fetch_broker_chips()    # 分點籌碼 → data/chips/*.json （FinMind 重度依賴）
+        fetch_futures_cache()   # 外資期貨 → futures_cache.json （TAIFEX，不吃 FinMind 額度）
+        fetch_us_macro_cache()  # 美股大盤 → macro_cache.json （yfinance）
         build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
-        generate_top_picks()    # 三位一體選股 → data/top_picks.json
+        generate_top_picks()    # 三位一體選股 → data/top_picks.json （需 chips 已就緒）
 
         # ── 🧹 【資料庫自動瘦身術】 ──
         print("\n🧹 執行資料庫碎片重組與瘦身 (VACUUM)...")

@@ -100,6 +100,7 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
             parsed  = json.loads(content)
             sentiment = parsed.get("sentiment", "中立")
             if sentiment not in ("利多", "利空", "中立"):
+                print(f"  ⚠️ Groq 回傳異常 sentiment={sentiment!r}，已退回中立。原始 content={content[:120]}")
                 sentiment = "中立"
             reason = str(parsed.get("reason", "")).strip()[:30] or "AI 未提供說明"
             return (sentiment, reason)
