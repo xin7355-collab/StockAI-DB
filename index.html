@@ -479,6 +479,59 @@
                     </div>
                 </div>
 
+                <!-- 💥 牛市泡沫破裂預警系統（全寬 · 緊湊 4 卡 · 與宏觀觀測台對稱） -->
+                <div class="relative bg-gradient-to-br from-red-950/40 via-[#0a0606] to-orange-950/30 border border-red-700/60 rounded-lg p-2.5 overflow-hidden shadow-[0_0_15px_rgba(220,38,38,0.15)]">
+                    <!-- 頂部脈衝呼吸光條（emergency strip） -->
+                    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
+                    <!-- 標題列 -->
+                    <div class="flex items-center gap-1.5 mb-2">
+                        <span class="text-xs animate-pulse">💥</span>
+                        <span class="text-[11px] font-black text-red-300 tracking-wider">牛市泡沫破裂預警系統</span>
+                        <span class="ml-auto text-[8px] text-red-500/60 font-mono">Bubble Burst Sniffer</span>
+                    </div>
+                    <!-- 4 維度雷達卡 -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                        <!-- 1. 證券板塊狂熱度 -->
+                        <div class="bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                <span class="text-[8px] text-red-400 font-bold">🏦 證券狂熱度</span>
+                            </div>
+                            <div id="bubbleBrokerHeat" class="text-[12px] font-black font-mono text-red-300 leading-tight">+4.2%</div>
+                            <div class="text-[8px] text-red-500/80 mt-0.5">異常狂熱・擦鞋童</div>
+                        </div>
+                        <!-- 2. 融資槓桿失控（進度條） -->
+                        <div class="bg-[#0d1117] border border-orange-800/50 rounded p-1.5">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                                <span class="text-[8px] text-orange-400 font-bold">⚖️ 融資槓桿</span>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden mt-1">
+                                <div id="bubbleMarginBar" class="bg-gradient-to-r from-orange-500 to-red-500 h-full transition-all" style="width:85%"></div>
+                            </div>
+                            <div class="text-[8px] text-orange-400 mt-1 font-mono">85%・隨時多殺多</div>
+                        </div>
+                        <!-- 3. 群魔亂舞指數 -->
+                        <div class="bg-[#0d1117] border border-yellow-800/50 rounded p-1.5">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                                <span class="text-[8px] text-yellow-400 font-bold">🧟‍♂️ 群魔亂舞</span>
+                            </div>
+                            <div id="bubbleJunkCount" class="text-[12px] font-black font-mono text-red-300 leading-tight">32 家漲停</div>
+                            <div class="text-[8px] text-yellow-500/80 mt-0.5">投機熱錢末路</div>
+                        </div>
+                        <!-- 4. 高檔出貨 K 線判定 -->
+                        <div class="bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                                <span class="text-[8px] text-red-400 font-bold">📉 出貨 K 線</span>
+                            </div>
+                            <div id="bubbleKlineStatus" class="text-[11px] font-black font-mono text-red-300 leading-tight">⚠️ 爆量長上影</div>
+                            <div class="text-[8px] text-red-500/80 mt-0.5">主力高檔派發</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 全寬：統一戰術燈號 + 首席腳本 + 氣象 + 五維 -->
                 <div class="bg-[#010409] rounded-lg border border-[#30363d] p-2.5 flex flex-col gap-2.5">
                     <!-- 三維一體統一燈號 -->
