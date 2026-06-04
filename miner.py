@@ -1694,14 +1694,14 @@ def _quick_ind(data):
 
 
 def build_radar_cache():
-    results   = {'bottom': [], 'surge': [], 'score': []}
+    results   = {'bottom': [], 'surge': [], 'score': [], 'monster': []}
     processed = 0
-    
-    print("\n🚀 啟動全局雷達掃描 (植入高勝率量化三引擎)...")
+
+    print("\n🚀 啟動全局雷達掃描 (植入高勝率量化三引擎 + 妖股雷達)...")
     for f in Path(DATA_DIR).glob('*.json'):
         if f.name in ('radar.json', 'top_picks.json', 'macro_cache.json', 'futures_cache.json', 'broker_names.json', 'radar_news.json'):
             continue
-        
+
         sym = f.stem
         if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
             continue
@@ -1710,7 +1710,7 @@ def build_radar_cache():
             raw = json.loads(f.read_text(encoding='utf-8'))
             if not isinstance(raw, list) or len(raw) < 22:
                 continue
-                
+
             # 擷取最後 25 筆 K 線供技術指標計算
             data = [{'close': r['close'], 'volume': r['volume']} for r in raw[-25:]]
             ind  = _quick_ind(data)
@@ -1728,9 +1728,34 @@ def build_radar_cache():
             vma5, upper_bb, rv      = ind['vma5'], ind['upper_bb'], ind['recent_vols']
 
             # 【獲利引擎 1】流動性防護網：5 日均量 < 200 張 (20萬股) 直接淘汰殭屍股
-            # （原 500K 太嚴，ETF 跟中型股被誤砍。200K 仍能擋掉真正的殭屍）
             if vma5 < 200_000:
                 continue
+
+            # 🐲 妖股雷達（早於乖離率防守判斷，妖股本身就是「乖離爆大」）
+            # 判定：5 日漲幅 ≥ 20% 或 10 日漲幅 ≥ 30%；近 3 日中至少 2 日量比 > 3 倍均量；
+            #       最新收盤 ≥ (最新 high + low) / 2（強勢吸籌、收高不收低）；
+            #       流動性 vma5 ≥ 500K（妖股要追得進去）
+            try:
+                last_raw = raw[-1]
+                last_h = last_raw.get('high', c) or c
+                last_l = last_raw.get('low',  c) or c
+                gain5d = (c - raw[-6]['close']) / raw[-6]['close'] * 100 if len(raw) >= 6 and raw[-6]['close'] > 0 else 0
+                gain10d = (c - raw[-11]['close']) / raw[-11]['close'] * 100 if len(raw) >= 11 and raw[-11]['close'] > 0 else 0
+                vol_burst = sum(1 for v in (rv[-3:] if rv else []) if vma5 > 0 and v > vma5 * 3)
+                recent_strong = c >= (last_h + last_l) / 2
+                day_chg = (c - pc) / pc * 100 if pc > 0 else 0
+                near_limit_up = day_chg >= 9.0   # 台股 ±10%，> 9% 視為近漲停
+                vol_ratio_last = (rv[-1] / vma5) if (rv and vma5 > 0) else 0
+                if (gain5d >= 20 or gain10d >= 30) and vol_burst >= 2 and recent_strong and vma5 >= 500_000:
+                    results['monster'].append({
+                        'sym': sym, 'close': round(c, 2),
+                        'ma20': round(ma20, 2), 'ma5': round(ma5, 2),
+                        'gain5d': round(gain5d, 1), 'gain10d': round(gain10d, 1),
+                        'vol_ratio': round(vol_ratio_last, 1),
+                        'near_limit_up': near_limit_up,
+                    })
+            except Exception:
+                pass
 
             # 【獲利引擎 3】乖離率防守：過濾掉偏離月線大於 15% 的股票，拒絕追高
             bias_20 = (c - ma20) / ma20 if ma20 > 0 else 0
@@ -1742,7 +1767,6 @@ def build_radar_cache():
                 results['bottom'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
 
             # 🔥 飆股動能突破股：貼著布林上軌，今日爆量 1.3 倍 + 法人強力介入
-            # （原 all 3 天爆量太嚴，單日爆量就足以反映動能介入）
             if c >= upper_bb * 0.97 and (rv[-1] > vma5 * 1.3 if rv and vma5 > 0 else False) and inst_net_5d > 0:
                 results['surge'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
 
@@ -1752,15 +1776,18 @@ def build_radar_cache():
                 results['score'].append({'sym': sym, 'close': round(c, 2), 'ma20': round(ma20, 2), 'bb_upper': round(upper_bb, 2), 'ma5': round(ma5, 2)})
         except Exception:
             continue
-            
+
+    # 妖股依 5 日漲幅排序，最妖在前
+    results['monster'].sort(key=lambda x: x.get('gain5d', 0), reverse=True)
+
     Path(DATA_DIR).mkdir(exist_ok=True)
     Path(DATA_DIR).joinpath('radar.json').write_text(
         json.dumps({'updated': date.today().isoformat(), 'data': results},
                    ensure_ascii=False, separators=(',', ':')),
         encoding='utf-8')
-        
+
     print(f"  ✅ 雷達：掃描 {processed} 檔，"
-          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])}") 
+          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} / 妖股 {len(results['monster'])}")
 
 
 # ── 三位一體選股 ─────────────────────────────────────────────────────────────

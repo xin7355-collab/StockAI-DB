@@ -382,10 +382,11 @@ def fetch_taifex_backwardation():
 
 def judge_fi_complex(net_futures, net_spot):
     """
-    複合邏輯判定：
-    - 期貨空單 > 30000 且現貨買超 > 0 億    → 套利避險
-    - 期貨空單 > 30000 且現貨賣超 > 100 億 → 真實偏空
-    - 其他                                  → 中性
+    複合邏輯判定（補完死區後）：
+    - 期貨空單 > 30000 且現貨買超 > 0 億          → 套利避險
+    - 期貨空單 > 30000 且現貨賣超 > 100 億        → 真實偏空警戒
+    - 期貨空單 > 30000 且現貨 -100~0 億（接近持平）→ 暗流湧動，持續觀察
+    - 其他                                         → 中性
     """
     if net_futures is None or net_spot is None:
         return "資料整編中（待對接）"
@@ -394,6 +395,8 @@ def judge_fi_complex(net_futures, net_spot):
         return "外資期現不同調：套利避險狀態"
     if fut_short > 30000 and net_spot < -100:
         return "外資期現同步倒貨：真實偏空警戒"
+    if fut_short > 30000 and -100 <= net_spot <= 0:
+        return "外資期貨大量布空、現貨持平：暗流湧動觀察"
     return "外資動向中性"
 
 
