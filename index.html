@@ -595,7 +595,9 @@
                         <div id="chipBrokerTable"></div>
                     </div>
                     
-                    <div id="directActionBox" class="w-full p-4 md:p-5 flex flex-col items-center justify-center transition-all duration-300">
+                    <div id="directActionBox" class="w-full p-4 md:p-5 transition-all duration-300 lg:grid lg:grid-cols-12 lg:gap-5 flex flex-col items-center justify-center">
+                        <!-- 👈 左戰區 (lg:col-span-7)：戰術訊號 / 大字訊息 / 籌碼驗證 -->
+                        <div class="w-full lg:col-span-7 flex flex-col items-center justify-center">
                         <!-- 🚥 戰術訊號燈（精簡版：LED + 一句階段描述） -->
                         <div id="tacticalSignalPanel" class="w-full mb-3 bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-[#30363d] rounded-xl p-3 shadow-lg">
                             <div class="flex items-center gap-2">
@@ -606,22 +608,28 @@
 
                         <!-- 五維儀/氣象/風險已上移至頂部「首席 AI 全局戰略指揮部」 -->
 
-                        <span id="actionMainText" class="text-2xl md:text-3xl font-black tracking-widest text-center text-gray-400 w-full leading-tight">運算中...</span>
+                        <span id="actionMainText" class="text-2xl md:text-3xl lg:text-4xl font-black tracking-widest text-center text-gray-400 w-full leading-tight">運算中...</span>
                         <div id="actionSubText" class="w-full mt-2 text-sm font-bold tracking-wide text-gray-300 text-center flex flex-col gap-1 leading-relaxed">等待系統計算...</div>
-                        
-                        <div id="precisionPricesBox" class="w-full mt-4 bg-[#010409] border border-[#30363d] rounded p-3 grid grid-cols-3 gap-1 text-center shadow-inner relative">
+                        <!-- 🛡️ 籌碼雙重驗證狀態列（近 3 日法人合計皆賣超 → 紅色警報；否則綠色安定） -->
+                        <div id="chipVerifyBar" class="hidden w-full mt-2 px-3 py-2 rounded-lg text-xs font-bold leading-relaxed border"></div>
+                        </div>
+
+                        <!-- 👉 右戰區 (lg:col-span-5)：動態停利停損 / 法人共識 / 永豐智慧單 -->
+                        <div class="w-full lg:col-span-5 flex flex-col gap-3 mt-4 lg:mt-0">
+                        <div id="precisionPricesBox" class="w-full mt-4 lg:mt-0 bg-[#010409] border border-[#30363d] rounded p-3 grid grid-cols-3 gap-1 text-center shadow-inner relative">
                             <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1c2128] px-3 py-0.5 text-xs text-blue-400 font-bold tracking-widest border border-[#30363d] rounded-full whitespace-nowrap">動態停利停損線</div>
-                            <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt1Label">🎯 第一目標</span><span class="text-[#f87171] font-mono font-black text-lg" id="tgt1Price">--</span></div>
-                            <div class="flex flex-col justify-center pt-1 border-l border-r border-[#30363d]"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt2Label">🚀 第二目標</span><span class="text-[#f87171] font-mono font-black text-lg" id="tgt2Price">--</span></div>
-                            <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg" id="defPrice">--</span></div>
+                            <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt1Label">🎯 第一目標</span><span class="text-[#f87171] font-mono font-black text-lg lg:text-xl" id="tgt1Price">--</span></div>
+                            <div class="flex flex-col justify-center pt-1 border-l border-r border-[#30363d]"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt2Label">🚀 第二目標</span><span class="text-[#f87171] font-mono font-black text-lg lg:text-xl" id="tgt2Price">--</span></div>
+                            <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg lg:text-xl" id="defPrice">--</span></div>
                         </div>
                         <div id="institutionTargetBox" class="w-full mt-2 text-center text-xs leading-relaxed px-1"><span class="text-gray-400">💡 法人共識目標價 <span class="text-gray-300 font-semibold">2200～2600</span> (PEG估值)</span></div>
 
                         <!-- 已刪除：tomorrowScriptText（雲端演算已完成部署廢話）+ smartOrderInstruction（🤖建議重複資訊） -->
-                        <div id="sinopacOrderCard" class="hidden w-full mt-3 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300 leading-relaxed">
-                            <div class="text-yellow-400 font-bold mb-2 text-sm">⚔️ 永豐智慧單快速設定指引</div>
+                        <div id="sinopacOrderCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 lg:p-4 text-xs lg:text-sm text-gray-300 leading-relaxed">
+                            <div class="text-yellow-400 font-bold mb-2 text-sm lg:text-base">⚔️ 永豐智慧單快速設定指引</div>
                             <div id="sinopacOrderContent"></div>
                             <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
+                        </div>
                         </div>
                     </div>
                     
@@ -5692,7 +5700,22 @@ recent.forEach(d => {
 
         const actionBox = document.getElementById('directActionBox');
         let actionText = "", actionSubText = "", boxStyle = "";
-        let t1_val = recentPeak || upperBB, t2_val = upperBB, def_val = ma5, defLabel = "🛡️ 防守底線(5MA)";
+
+        // 🚀 5 日速度因子：> 10% 視為極速飆股，必須用 5MA 貼身防守
+        const _closes = (this.rawDailyData || []).slice(-6).map(r => r.close);
+        const chg5pct = _closes.length === 6 && _closes[0] > 0
+                      ? ((_closes[5] - _closes[0]) / _closes[0]) * 100 : 0;
+        const isSpeedSurge = chg5pct > 10;
+
+        // 🛡️ 法人籌碼弱檢：近 3 日三大法人合計每日皆賣超 → is_chips_weak
+        const _recent3 = (this.rawDailyData || []).slice(-3);
+        const _instSum = r => (r.foreign_net ?? r.foreign_inv ?? 0)
+                           + (r.trust_net   ?? r.invest_trust ?? 0)
+                           + (r.dealer_net  ?? r.dealer_inv   ?? 0);
+        const is_chips_weak = _recent3.length === 3 && _recent3.every(r => _instSum(r) < 0);
+
+        // 預設防守：波段月線（季節 switch 內若速度因子打開會 override 回 5MA）
+        let t1_val = recentPeak || upperBB, t2_val = upperBB, def_val = ma20, defLabel = "🛡️ 波段防守(20MA)";
 
         if (recentPeak && recentTrough && pC > recentTrough) {
             let depth = recentPeak - recentTrough;
@@ -5725,8 +5748,15 @@ recent.forEach(d => {
         }
         else if (season === '夏') {
             boxStyle = "border-red-500 bg-red-900/20 text-red-400 shadow-[0_0_20px_rgba(248,113,113,0.3)]";
-            def_val = ma5; defLabel = "🛡️ 防守底線(5MA)";
-            actionText = `🟢 若未跌破 [${ma5.toFixed(2)}] 則死命抱著！`; actionSubText = `☀️ 夏季狂飆期：四線多排，股價黏著布林上軌往上噴。不破 5MA 絕對不賣！`;
+            if (isSpeedSurge) {
+                def_val = ma5; defLabel = "🛡️ 貼身防守(5MA)";
+                actionText = `🔴 5 日急漲 ${chg5pct.toFixed(1)}%，乖離過大，改以 5MA 貼身防守！未跌破 [${ma5.toFixed(2)}] 續抱`;
+                actionSubText = `☀️ 夏季狂飆期 + 極速飆股：股價黏布林上軌噴出，務必跟著 5MA 拉高停利。乖離縮回月線前嚴禁追高加碼。`;
+            } else {
+                def_val = ma20; defLabel = "🛡️ 波段防守(20MA)";
+                actionText = `🟢 趨勢波段中，防守線設為月線 (20MA)。未跌破 [${ma20.toFixed(2)}] 死命抱著！`;
+                actionSubText = `☀️ 夏季狂飆期：四線多排但尚未急噴，先以月線防守，給足整理空間，等帶量續攻。`;
+            }
         }
         else if (season === '秋') {
             boxStyle = "border-orange-500 bg-orange-900/20 text-orange-400 animate-pulse";
@@ -5770,6 +5800,21 @@ recent.forEach(d => {
 
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC); document.getElementById('tgt2Price').innerHTML = this.getPriceHTML(t2_val, pC);
         document.getElementById('defPrice').innerHTML = this.getPriceHTML(def_val, pC); document.getElementById('defLabel').innerText = defLabel;
+
+        // 🛡️ 籌碼雙重驗證狀態列
+        const _chipBar = document.getElementById('chipVerifyBar');
+        if (_chipBar) {
+            _chipBar.classList.remove('hidden');
+            const _defNum = parseFloat(def_val);
+            const _defStr = isNaN(_defNum) ? '--' : _defNum.toFixed(2);
+            if (is_chips_weak) {
+                _chipBar.innerHTML = `⚠️ <b>籌碼鬆動警報：</b>外資/投信已連續 3 日賣超，一旦跌破防守價 [<b class="text-red-200">${_defStr}</b>] 請無情撤退！`;
+                _chipBar.className = 'w-full mt-2 px-3 py-2 rounded-lg text-xs font-bold leading-relaxed border bg-red-900/30 border-red-500/60 text-red-300 animate-pulse';
+            } else {
+                _chipBar.innerHTML = `🛡️ <b>籌碼安定：</b>法人/大戶未見明顯出貨，可依防守價 [<b class="text-green-200">${_defStr}</b>] 安心抱單。`;
+                _chipBar.className = 'w-full mt-2 px-3 py-2 rounded-lg text-xs font-bold leading-relaxed border bg-green-900/20 border-green-500/40 text-green-300';
+            }
+        }
 
         // Voice alert when price breaks defense line
         const defValNum = parseFloat(def_val);
@@ -5838,7 +5883,7 @@ recent.forEach(d => {
             ['🛡️ 停損觸發', `跌破 <b class="text-red-400">${def.toFixed(2)}</b> → 市價賣出`],
             ['🎯 第一停利', `漲至 <b class="text-green-400">${t1.toFixed(2)}</b> → 賣出 50%`],
             t2 ? ['🚀 第二停利', `漲至 <b class="text-green-300">${t2.toFixed(2)}</b> → 賣出餘部位`] : null,
-            ['📊 條件單型態', season === 'summer' ? '追高買（漲停板掛進）' : '回測買（拉回不破5MA）'],
+            ['📊 條件單型態', season === '夏' ? '追高買（漲停板掛進）' : '回測買（拉回不破防守線）'],
             ['💡 智慧下單建議', def > 0 ? `買進時同步掛 ${def.toFixed(2)} 停損保護` : '—'],
         ].filter(Boolean);
         content.innerHTML = rows.map(([k, v]) =>
