@@ -170,6 +170,9 @@ jobs:
           pip install yfinance --quiet
           python macro_miner.py || echo "⚠️ macro_miner.py 失敗，繼續部署"
 
+      - name: 🎯 戰略雷達矩陣採礦（三大戰區掃描 → radar_matrix.json）
+        run: python radar_miner.py || echo "⚠️ radar_miner.py 失敗，繼續部署"
+
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |
           git config user.name  "github-actions[bot]"
