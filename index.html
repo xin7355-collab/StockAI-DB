@@ -412,33 +412,45 @@
         </div>
     </div>
 
-    <!-- ℹ️ 四大選股策略說明（毛玻璃彈窗） -->
-    <div id="radarStrategyModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
-        <div class="modal-content max-w-xl max-h-[85vh] overflow-y-auto bg-[#0d1117]/80 backdrop-blur-lg border border-blue-700/40" onclick="event.stopPropagation()">
+    <!-- ℹ️ 雷達實戰說明書（毛玻璃彈窗） -->
+    <div id="radarManualModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
+        <div class="modal-content max-w-xl max-h-[85vh] overflow-y-auto bg-[#0d1117]/80 backdrop-blur-lg border border-cyan-700/40" onclick="event.stopPropagation()">
             <div class="flex items-center justify-between mb-3 pb-2 border-b border-[#30363d]">
-                <h3 class="text-blue-300 font-black text-lg">📡 雷達兵法 — 四大選股策略</h3>
-                <button onclick="document.getElementById('radarStrategyModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
+                <h3 class="text-cyan-300 font-black text-lg">🎯 首席雷達矩陣操作指南</h3>
+                <button onclick="document.getElementById('radarManualModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
             </div>
             <div class="space-y-3 text-sm leading-relaxed">
-                <div class="bg-pink-900/15 border-l-4 border-pink-500 pl-3 pr-2 py-2 rounded-r">
-                    <div class="font-black text-pink-300 mb-0.5">🎯 底部起漲</div>
-                    <div class="text-gray-300 text-[13px]">剛從低檔站回月線、5MA 黃金交叉。大盤震盪時的相對安全買點，適合分批波段建倉、停損設 5MA。</div>
-                </div>
+                <p class="text-gray-300 text-[13px]">這套雷達已經幫你過濾掉沒人要的死魚股，請依照你的個性選擇戰場：</p>
+
                 <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2 rounded-r">
-                    <div class="font-black text-red-300 mb-0.5">🚀 飆股動能</div>
-                    <div class="text-gray-300 text-[13px]">多頭排列、貼著布林上軌噴出、量能放大。大漲行情賺快錢，破 5MA 立即停利，不戀棧。</div>
+                    <div class="font-black text-red-300 mb-1">1. 🏎️ 渣男賽車 (極速動能)</div>
+                    <ul class="text-gray-300 text-[13px] space-y-0.5 list-none pl-0">
+                        <li><b class="text-gray-100">適合：</b>喜歡賺快錢、敢追強、手腳快的短線客。</li>
+                        <li><b class="text-gray-100">邏輯：</b>專挑成交 > 5億 且近期噴發 7% 以上的強勢股。</li>
+                        <li><b class="text-gray-100">鐵律：</b>順勢抱單，跌破 5 日線無情停利。</li>
+                    </ul>
                 </div>
-                <div class="bg-yellow-900/15 border-l-4 border-yellow-500 pl-3 pr-2 py-2 rounded-r">
-                    <div class="font-black text-yellow-300 mb-0.5">⭐ 綜合強勢</div>
-                    <div class="text-gray-300 text-[13px]">站上月線＋均線多頭＋量增＋法人不流出，Alpha 技術評分達標。品質最高、機會較少，可重倉抱波段。</div>
+
+                <div class="bg-green-900/15 border-l-4 border-green-500 pl-3 pr-2 py-2 rounded-r">
+                    <div class="font-black text-green-300 mb-1">2. 🐢 烏龜過河 (波段起漲)</div>
+                    <ul class="text-gray-300 text-[13px] space-y-0.5 list-none pl-0">
+                        <li><b class="text-gray-100">適合：</b>不想追高、喜歡買在相對低點的穩健投資人。</li>
+                        <li><b class="text-gray-100">邏輯：</b>尋找底部剛成型、剛站上月線且法人連買的標的。</li>
+                        <li><b class="text-gray-100">鐵律：</b>適合朱家泓老師戰法，沿月線操作，不破不出場。</li>
+                    </ul>
                 </div>
+
                 <div class="bg-purple-900/15 border-l-4 border-purple-500 pl-3 pr-2 py-2 rounded-r">
-                    <div class="font-black text-purple-300 mb-0.5">🐲 妖股雷達</div>
-                    <div class="text-gray-300 text-[13px]">5 日漲幅 ≥ 20%、連續瘋狗量、強勢吸籌的投機妖股。<b class="text-red-300">高風險</b>：單檔 ≤ 5% 倉、5% 停損、不留隔夜。</div>
+                    <div class="font-black text-purple-300 mb-1">3. 🎯 狙擊手 (籌碼集中)</div>
+                    <ul class="text-gray-300 text-[13px] space-y-0.5 list-none pl-0">
+                        <li><b class="text-gray-100">適合：</b>喜歡看大戶、跟著主力偷偷上車的散戶。</li>
+                        <li><b class="text-gray-100">邏輯：</b>股價還沒大漲，但分點大戶或投信正在集中買超。</li>
+                        <li><b class="text-gray-100">鐵律：</b>主力買我們就抱，主力開始連賣我們就跑。</li>
+                    </ul>
                 </div>
             </div>
             <div class="text-center mt-4 pt-3 border-t border-[#30363d]">
-                <button onclick="document.getElementById('radarStrategyModal').classList.add('hidden')" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded text-sm font-bold transition-colors">了解了</button>
+                <button onclick="document.getElementById('radarManualModal').classList.add('hidden')" class="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-2 rounded text-sm font-bold transition-colors">了解了，開戰！</button>
             </div>
         </div>
     </div>
@@ -1180,47 +1192,44 @@
         <div id="tabContentRadar" class="hidden flex-col p-2 relative pb-28">
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative">
                 <div class="sticky top-0 z-50 bg-[#0d1117] border-b border-[#30363d] p-3 shadow-md flex flex-col gap-3 rounded-t-[8px]">
-                    <div class="flex justify-between items-center gap-2">
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                            <h2 class="text-base font-bold text-red-500 flex items-center gap-1">🔥 資金動能雷達</h2>
-                            <button onclick="document.getElementById('radarStrategyModal').classList.remove('hidden'); app.vibrate(20);" class="text-[10px] text-blue-300 border border-blue-700/60 rounded px-1.5 py-0.5 hover:bg-blue-900/30 transition-colors whitespace-nowrap" title="四大選股策略說明">ℹ️ 策略說明</button>
-                            <button onclick="document.getElementById('newsModal').classList.remove('hidden'); app.loadNewsHeadlines(); app.vibrate(20);" class="text-[10px] text-amber-300 border border-amber-700/60 rounded px-1.5 py-0.5 hover:bg-amber-900/30 transition-colors whitespace-nowrap" title="即時情報與新聞解析">📰 即時情報</button>
+                    <!-- 標題列：大標 + 雷達實戰說明書 + 即時情報 -->
+                    <div class="flex justify-between items-center gap-2 flex-wrap">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h2 class="text-base font-bold text-cyan-400 flex items-center gap-1">🎯 首席戰略雷達矩陣</h2>
+                            <button onclick="document.getElementById('radarManualModal').classList.remove('hidden'); app.vibrate(20);" class="text-[10px] text-cyan-200 bg-cyan-900/30 border border-cyan-600/60 rounded px-2 py-0.5 hover:bg-cyan-800/40 transition-colors whitespace-nowrap font-bold" title="雷達實戰說明書">ℹ️ 雷達實戰說明書</button>
                         </div>
-                        <select id="radarPoolSelect" onchange="app._filterAndRenderRadar()" class="bg-[#1c2128] text-blue-400 font-bold border border-[#30363d] rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500 w-full max-w-[150px]">
-                            <option value="hot_twse">🔥 上市熱門大將 (40檔)</option>
-                            <option value="hot_otc">🚀 上櫃活潑中小型 (24檔)</option>
-                            <option value="etf_heavy">💰 高股息與權值 (10檔)</option>
-                            <option value="fav">⭐ 當前自選清單</option>
-                            <option value="inv">💼 我的庫存部位</option>
-                        </select>
+                        <button onclick="document.getElementById('newsModal').classList.remove('hidden'); app.loadNewsHeadlines(); app.vibrate(20);" class="text-[10px] text-amber-300 border border-amber-700/60 rounded px-1.5 py-0.5 hover:bg-amber-900/30 transition-colors whitespace-nowrap" title="即時情報與新聞解析">📰 即時情報</button>
                     </div>
 
-                    <!-- 4 大選股策略按鈕（核心操作 · 常駐可見；說明改 ℹ️ 彈窗） -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="app.loadRadar('bottom')" id="btnRadarBottom" class="bg-pink-900 hover:bg-pink-800 text-white py-2.5 rounded text-xs font-bold transition-colors border border-pink-700 disabled:opacity-50">🎯 底部起漲</button>
-                        <button onclick="app.loadRadar('surge')" id="btnRadarSurge" class="bg-red-900 hover:bg-red-800 text-white py-2.5 rounded text-xs font-bold transition-colors border border-red-700 disabled:opacity-50">🚀 飆股動能</button>
-                        <button onclick="app.loadRadar('score')" id="btnRadarScore" class="bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded text-xs font-bold transition-colors border border-gray-600 disabled:opacity-50">⭐ 綜合強勢</button>
-                        <button onclick="app.loadRadar('monster')" id="btnRadarMonster" class="bg-purple-900 hover:bg-purple-800 text-white py-2.5 rounded text-xs font-bold transition-colors border border-purple-700 disabled:opacity-50">🐲 妖股雷達</button>
+                    <!-- 🎛️ 策略切換列 (Tabs) · 橫向可滑 -->
+                    <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
+                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70">(動能)</span></button>
+                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
+                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
                     </div>
 
-                    <!-- 📡 雷達操作小幫手：依當前選擇的策略動態切換內容（散戶無腦化引導） -->
-                    <div id="radarOperationGuide" class="hidden bg-[#0d1117] border border-blue-700/50 rounded-lg p-3 text-xs leading-relaxed">
-                        <!-- 由 _renderRadarGuide(type) 注入 -->
-                    </div>
-                    
-                    <div id="radarLoading" class="hidden mt-1.5 flex-col items-center justify-center gap-1.5 w-full">
-                        <div class="w-full flex justify-between text-[10px] text-gray-400 mb-0.5">
-                            <span class="font-bold tracking-widest text-blue-400 animate-pulse" id="radarStatusText">防封鎖佇列歷史掃描中...</span>
-                            <span id="radarProgressText" class="font-mono text-white">0%</span>
-                        </div>
-                        <div class="w-full bg-[#1c2128] rounded-full h-1.5 border border-[#30363d] overflow-hidden"><div id="radarProgressBar" class="bg-blue-600 h-full rounded-full w-0 transition-all duration-300"></div></div>
-                    </div>
+                    <!-- 當前策略一句話說明條 -->
+                    <div id="radarMatrixHint" class="text-[11px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 leading-relaxed"></div>
                 </div>
-                
-                <div class="flex-grow overflow-visible">
-                    <div id="radarResultHeader" class="text-sm font-bold text-gray-400 p-3 pb-0 hidden border-b border-[#21262d] mb-1">上次掃描結果快取：</div>
-                    <ul id="radarListMain" class="pb-8"><li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">請選擇上方彈藥庫並點擊掃描</li></ul>
+
+                <!-- 📊 動態數據表格（手機可橫向滑動） -->
+                <div class="flex-grow overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[440px]">
+                        <thead>
+                            <tr class="border-b border-[#30363d] text-gray-400 text-[11px] tracking-wider bg-[#0d1117]">
+                                <th class="py-2 px-3 font-bold">股號/股名</th>
+                                <th class="py-2 px-2 font-bold text-right">收盤價</th>
+                                <th class="py-2 px-2 font-bold text-right">成交額(億)</th>
+                                <th class="py-2 px-3 font-bold text-right">狀態/漲幅</th>
+                            </tr>
+                        </thead>
+                        <tbody id="radarMatrixBody" class="text-sm">
+                            <tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">雷達待命中…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
+
+                <div id="radarMatrixUpdated" class="text-[10px] text-gray-600 text-center py-2 border-t border-[#21262d]"></div>
             </div>
         </div>
 
@@ -1605,7 +1614,7 @@ const app = {
         await this.analyze('2330', true);
         this.refreshInventoryPrices();
         this.renderFavTabs();
-        this._filterAndRenderRadar();
+        this.loadRadarMatrix();
 
         this.setupAutoRefresh();
         this.initSwipeToDelete();
@@ -2077,7 +2086,7 @@ const app = {
         }
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
-        if (tabId === 'radar') this._filterAndRenderRadar();
+        if (tabId === 'radar') this.loadRadarMatrix();
         if (tabId === 'hunt') this.renderHuntTab();
     },
 
@@ -6668,289 +6677,133 @@ recent.forEach(d => {
                  close, open: data[last].open || close, prevClose, recentVols };
     },
 
-    // ═══════════════════════════════════════════════════════════════════
-    // 【雷達彈藥庫定義】靜態白名單，前端過濾用
-    // 採礦機會對全市場所有股票執行指標運算並寫入 SQLite / radar.json
-    // 前端只需用這些 Set 在本地端秒切換彈藥庫，不用重打 API
-    // ═══════════════════════════════════════════════════════════════════
-    _RADAR_POOLS: {
-        hot_twse: new Set([
-            '2330','2317','2454','2382','3231','2303','2881','2886','2002','2603',
-            '2308','3711','1301','1303','2801','2884','2885','2892','6505','1216',
-            '2207','2301','2327','6415','2357','2395','3034','2379','2376','4938',
-            '3008','2912','1402','2105','2615','5880','2823','2408','3045','5438'
-        ]),
-        hot_otc: new Set([
-            '3105','3529','8069','5347','8299','3293','6142','6274',
-            '6488','6515','6770','3037','8046','4977','6278','6191',
-            '6669','3443','5264','6679','4763','6582','6803','8942'
-        ]),
-        etf_heavy: new Set([
-            '0050','0056','00878','00929','00919','00713','00692','006208','00900','00939'
-        ]),
+    // ===== 🎯 首席戰略雷達矩陣（三大戰區：動能 / 波段 / 籌碼）=====
+    radarStrategy: 'momentum',
+    radarMatrix: null,
+    _radarIsDemo: false,
+
+    _RADAR_TAB_BASE: 'radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all ',
+    _RADAR_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
+    _RADAR_TABS: {
+        momentum: { id: 'radarTabMomentum', active: 'bg-red-600/20 text-red-300 border-red-500' },
+        swing:    { id: 'radarTabSwing',    active: 'bg-green-600/20 text-green-300 border-green-500' },
+        sniper:   { id: 'radarTabSniper',   active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
+    },
+    _RADAR_HINT: {
+        momentum: '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。',
+        swing:    '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
+        sniper:   '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
+    },
+    // radar_matrix.json 尚未採礦時的示範資料（接線採礦後自動換成真資料）
+    _RADAR_FAKE: {
+        momentum: [
+            { sym: '2330', close: 1085,  turnover_e: 320.5, gain: 3.2, status: '最高動能 8.5%' },
+            { sym: '2454', close: 1420,  turnover_e: 95.3,  gain: 5.1, status: '最高動能 9.2%' },
+            { sym: '3231', close: 118.5, turnover_e: 78.6,  gain: 6.8, status: '最高動能 9.9%' },
+            { sym: '2382', close: 312,   turnover_e: 65.2,  gain: 4.3, status: '最高動能 7.5%' },
+            { sym: '3661', close: 4250,  turnover_e: 52.1,  gain: 3.9, status: '最高動能 7.1%' },
+        ],
+        swing: [
+            { sym: '2603', close: 215,  turnover_e: 48.3, gain: 2.1, status: '剛站上月線+法人連買' },
+            { sym: '2609', close: 78.5, turnover_e: 32.7, gain: 1.8, status: '剛站上月線+法人連買' },
+            { sym: '2376', close: 285,  turnover_e: 21.4, gain: 2.6, status: '剛站上月線+法人連買' },
+            { sym: '1519', close: 525,  turnover_e: 18.9, gain: 3.0, status: '剛站上月線+法人連買' },
+        ],
+        sniper: [
+            { sym: '2317', close: 205, turnover_e: 88.5, gain: 0.5,  status: '主力高度集中 42.3%' },
+            { sym: '2308', close: 415, turnover_e: 35.2, gain: -0.3, status: '主力高度集中 38.7%' },
+            { sym: '2412', close: 128, turnover_e: 12.6, gain: 0.8,  status: '主力高度集中 35.1%' },
+        ],
     },
 
-    async loadRadar(type) {
-        if (this.isRadarScanning) { alert('⚠️ 掃描進行中，請稍候'); return; }
-        this.isRadarScanning = true;
-        this.lastRadarType   = type;
-        this._renderRadarGuide(type);
-
-        const loadingEl   = document.getElementById('radarLoading');
-        const statusText  = document.getElementById('radarStatusText');
-        const progressBar = document.getElementById('radarProgressBar');
-        const container   = document.getElementById('radarListMain');
-        const header      = document.getElementById('radarResultHeader');
-
-        // ── 顯示 Loading，清空舊結果 ────────────────────────────────
-        header.classList.add('hidden');
-        container.innerHTML = '';
-        progressBar.style.width = '0%';
-        loadingEl.classList.remove('hidden');
-        loadingEl.classList.add('flex');
-
-        // ── news_radar：讀 data/radar_news.json，渲染新聞卡片 ─────────────────
-        if (type === 'news_radar') {
-            const loadingEl3 = document.getElementById('radarLoading');
-            const header3    = document.getElementById('radarResultHeader');
-            const container3 = document.getElementById('radarListMain');
-            loadingEl3.classList.remove('hidden'); loadingEl3.classList.add('flex');
-            header3.classList.add('hidden'); container3.innerHTML = '';
+    async loadRadarMatrix() {
+        const body = document.getElementById('radarMatrixBody');
+        if (body && !this.radarMatrix) {
+            body.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm animate-pulse">雷達掃描中…</td></tr>`;
+        }
+        // 已有真資料就不重抓；尚未載入或目前是示範資料時，嘗試抓真檔
+        if (!this.radarMatrix || this._radarIsDemo) {
             try {
                 const ghBase = window.location.href.split('?')[0].split('#')[0];
-                const nrRes  = await this.safeFetch(new URL('data/radar_news.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 });
-                if (nrRes.status === 404) throw new Error('NOT_FOUND');
-                if (!nrRes.ok) throw new Error(`HTTP ${nrRes.status}`);
-                const nrJson = await nrRes.json();
-                this._radarUpdatedAt = nrJson.updated || '';
-                this.currentRadarResults = { type: 'news_radar', rawList: nrJson.data || [] };
-                this._renderNewsRadar(nrJson.data || []);
-            } catch(e) {
-                const msg = e.message === 'NOT_FOUND'
-                    ? '⏳ 情報雷達尚未產出，請於每日 16:30 盤後資料更新後再查看。'
-                    : `❌ radar_news.json 讀取失敗：${e.message}`;
-                container3.innerHTML = `<li class="m-3 p-6 text-center text-sm text-gray-400 border border-dashed border-[#30363d] rounded-lg font-bold">${msg}</li>`;
-            } finally {
-                loadingEl3.classList.add('hidden'); loadingEl3.classList.remove('flex');
-                this.isRadarScanning = false;
-            }
-            return;
-        }
-
-        // ── top_picks：直接讀 data/top_picks.json，不走 radar API ───────────────
-        if (type === 'top_picks') {
-            const loadingEl2 = document.getElementById('radarLoading');
-            const header2    = document.getElementById('radarResultHeader');
-            const container2 = document.getElementById('radarListMain');
-            loadingEl2.classList.remove('hidden'); loadingEl2.classList.add('flex');
-            header2.classList.add('hidden'); container2.innerHTML = '';
-            try {
-const ghBase = window.location.href.split('?')[0].split('#')[0];
-                // 【終極修復】加上 ?t=${Date.now()}
-                const tpRes = await this.safeFetch(new URL('data/top_picks.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 });
-                if (!tpRes.ok) throw new Error(`HTTP ${tpRes.status}`);
-                const tpJson = await tpRes.json();
-                this._radarUpdatedAt = tpJson.updated || '';
-                this.currentRadarResults = { type: 'top_picks', rawList: tpJson.data || [] };
-                this._filterAndRenderRadar();
-            } catch(e) {
-                const msg = e.message === 'NOT_FOUND'
-                    ? '⏳ 今日 AI 戰略選股清單尚未產出，請於每日 16:30 盤後資料更新後再查看。'
-                    : `❌ top_picks.json 讀取失敗：${e.message}`;
-                container2.innerHTML = `<li class="m-3 p-6 text-center text-sm text-gray-400 border border-dashed border-[#30363d] rounded-lg font-bold">${msg}</li>`;
-            } finally {
-                loadingEl2.classList.add('hidden'); loadingEl2.classList.remove('flex');
-                this.isRadarScanning = false;
-            }
-            return;
-        }
-
-        try {
-            const apiBase = this._apiBase;
-            let rawList = [];
-
-            if (apiBase) {
-                // ── 模式 A：後端秒讀（SQLite 預運算，含全市場）─────────────
-                // Path Parameter：/api/radar/{type}（非 query string）
-                statusText.innerText = '⚡ 首席資料庫秒讀中...';
                 const res = await this.safeFetch(
-                    `${apiBase}/api/radar/${type}`,
+                    new URL('data/radar_matrix.json', ghBase).href + `?t=${Date.now()}`,
                     {},
-                    { timeout: 6000, maxRetries: 1 }
+                    { timeout: 8000, maxRetries: 1 }
                 );
-                if (!res.ok) throw new Error(`後端回傳 HTTP ${res.status}`);
-                // 後端格式：[{ symbol, close, signal_date }]
-                    const rows = await res.json();
-                    // 【修復】保留所有獲利關鍵指標 (ma20, bb_upper, ma5) 不被刪除
-                    rawList = rows.map(r => ({ sym: r.symbol, ...r }));
-
-            } else {
-                // ── 模式 B：gh-pages 靜態 radar.json（GitHub Actions 每日更新）
-                // 全市場一次拉回，前端 Set.has() 秒切彈藥庫，零 API 呼叫
-                statusText.innerText = '☁️ 讀取雲端雷達快取...';
-                const ghBase = window.location.href.split('?')[0].split('#')[0];
-                // 【終極修復】加上 ?t=${Date.now()}
-                const radarRes = await this.safeFetch(
-                    new URL('data/radar.json', ghBase).href + `?t=${Date.now()}`, {}, { timeout: 8000, maxRetries: 1 }
-                );
-                if (!radarRes.ok) throw new Error('雲端 radar.json 讀取失敗，請先執行採礦');
-                    const radarJson = await radarRes.json();
-                    // 【修復】完整保留布林通道與均線等獲利指標
-                    rawList = (radarJson.data?.[type] || []).map(r => ({
-                        sym: r.sym || r.symbol,
-                        ...r
-                    }));
-                this._radarUpdatedAt = radarJson.updated || '';
-                // 順便存綜合強勢清單，供 _filterAndRenderRadar 在某類別 < 5 筆時補位
-                this._radarScoreList = (radarJson.data?.score || []).map(r => ({ sym: r.sym || r.symbol, ...r }));
-            }
-
-            // 進度條飛到底（秒讀 API 無中間進度，直接 100%）
-            progressBar.style.width = '100%';
-
-            // 全市場結果暫存：切換彈藥庫時直接從這裡 filter，不重打 API
-            this.currentRadarResults = { type, rawList };
-
-        } catch (e) {
-            console.warn('[loadRadar]', e);
-            this.currentRadarResults = null;
-            // 顯示紅色錯誤卡片，提供重試按鈕
-            header.classList.add('hidden');
-            container.innerHTML = `
-                <li class="m-3 p-5 bg-red-900/30 border border-red-700 rounded-lg text-center list-none">
-                    <div class="text-red-400 font-bold text-sm mb-1">❌ 雷達資料讀取失敗</div>
-                    <div class="text-red-300 text-xs">${e.message}</div>
-                    <button onclick="app.loadRadar('${type}'); app.vibrate(30);"
-                            class="mt-3 px-4 py-1.5 bg-gray-800 text-xs text-gray-300 rounded-full border border-gray-600 hover:text-white transition-colors">
-                        🔄 重試
-                    </button>
-                </li>`;
-            return;   // 提前返回，跳過 finally 後的渲染
-        } finally {
-            // 無論成功或失敗都關閉 Loading
-            loadingEl.classList.add('hidden');
-            loadingEl.classList.remove('flex');
-            this.isRadarScanning = false;
-        }
-
-        // 成功：執行彈藥庫過濾 + 渲染（不打 API，純前端 Set.has()）
-        this._filterAndRenderRadar();
-    },
-
-    // ── 彈藥庫過濾器：從全市場快取裁切出當前 pool，秒切換 ─────────────────────
-    _filterAndRenderRadar() {
-        const container = document.getElementById('radarListMain');
-        const header    = document.getElementById('radarResultHeader');
-
-        // 尚未掃描，顯示引導提示
-        if (!this.currentRadarResults) {
-            header.classList.add('hidden');
-            container.innerHTML = '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">請選擇上方彈藥庫並點擊掃描按鈕啟動雷達</li>';
-            return;
-        }
-
-        const { type, rawList } = this.currentRadarResults;
-        const poolType = document.getElementById('radarPoolSelect').value;
-
-        // top_picks 由 loadRadar 直接設好，此處直接渲染
-        if (poolType === 'top_picks' || type === 'top_picks') {
-            this.renderRadarResults(rawList, 'top_picks', 'top_picks');
-            return;
-        }
-        // news_radar：同樣由 loadRadar 直接設好，呼叫專用 render
-        if (poolType === 'news_radar' || type === 'news_radar') {
-            this._renderNewsRadar(rawList);
-            return;
-        }
-
-        // 根據彈藥庫類型決定過濾邏輯
-        let filtered;
-        if (poolType === 'fav') {
-            // 自選清單：動態讀取當前群組
-            const favSet = new Set(this.favGroups[this.activeGroupName] || []);
-            filtered = rawList.filter(r => favSet.has(r.sym));
-        } else if (poolType === 'inv') {
-            // 庫存部位：動態讀取庫存
-            const invSet = new Set(this.inventory.map(i => i.symbol));
-            filtered = rawList.filter(r => invSet.has(r.sym));
-        } else {
-            // 靜態彈藥庫：用預設 Set 做 O(1) 查找
-            const symSet = this._RADAR_POOLS[poolType];
-            filtered = symSet ? rawList.filter(r => symSet.has(r.sym)) : rawList;
-            // 若上櫃/ETF 池別過濾後無結果且上次掃描非 score，自動補跑 score 掃描
-            if (filtered.length === 0 && rawList.length > 0 && (poolType === 'hot_otc' || poolType === 'etf_heavy') && type !== 'score') {
-                this.loadRadar('score');
-                return;
-            }
-            // 結果 < 5 時補入「綜合強勢」前 5（從 SQLite radar.score 取，不重複）
-            if (filtered.length < 5 && this._radarScoreList && Array.isArray(this._radarScoreList)) {
-                const existing = new Set(filtered.map(r => r.sym));
-                const supplement = this._radarScoreList
-                    .filter(r => !existing.has(r.sym))
-                    .slice(0, 5 - filtered.length);
-                if (supplement.length > 0) {
-                    filtered = filtered.concat(supplement);
-                    this._radarLowSignalNotice = `⚠️ 本日該類訊號偏少（原 ${filtered.length - supplement.length} 檔），已自動補入綜合強勢前 ${supplement.length} 名`;
+                if (!res || !res.ok) throw new Error('radar_matrix 尚未生成');
+                const json = await res.json();
+                if (!json || !json.data) throw new Error('radar_matrix 內容為空');
+                this.radarMatrix = json;
+                this._radarIsDemo = false;
+            } catch (e) {
+                console.warn('[loadRadarMatrix] 改用示範資料：', e.message || e);
+                if (!this.radarMatrix) {
+                    this.radarMatrix = { updated: '示範資料（尚未採礦）', scanned_count: 0, data: this._RADAR_FAKE };
+                    this._radarIsDemo = true;
                 }
-            } else {
-                this._radarLowSignalNotice = '';
             }
         }
-
-        this.renderRadarResults(filtered, type, poolType);
+        this.switchRadarStrategy(this.radarStrategy || 'momentum');
     },
 
-    // ── 雷達結果渲染器：接收過濾後陣列，生成 HTML ────────────────────────────
-    _renderNewsRadar(items) {
-        const container = document.getElementById('radarListMain');
-        const header    = document.getElementById('radarResultHeader');
+    switchRadarStrategy(key) {
+        if (!this._RADAR_TABS[key]) key = 'momentum';
+        this.radarStrategy = key;
+        Object.entries(this._RADAR_TABS).forEach(([k, cfg]) => {
+            const btn = document.getElementById(cfg.id);
+            if (btn) btn.className = this._RADAR_TAB_BASE + (k === key ? cfg.active : this._RADAR_TAB_INACTIVE);
+        });
+        const hint = document.getElementById('radarMatrixHint');
+        if (hint) hint.textContent = this._RADAR_HINT[key] || '';
+        this.renderRadarMatrix(key);
+        this.vibrate(15);
+    },
 
-        if (!items || items.length === 0) {
-            header.classList.add('hidden');
-            container.innerHTML = `<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">📭 目前無命中關鍵字的情報，請待下批採礦更新。</li>`;
+    renderRadarMatrix(key) {
+        const body = document.getElementById('radarMatrixBody');
+        const updatedEl = document.getElementById('radarMatrixUpdated');
+        if (!body) return;
+        const matrix = this.radarMatrix || { data: this._RADAR_FAKE };
+        const list = (matrix.data && matrix.data[key]) || [];
+
+        if (updatedEl) {
+            const cnt = matrix.scanned_count ? `　全市場掃描 ${matrix.scanned_count} 檔` : '';
+            updatedEl.textContent = `更新：${matrix.updated || '—'}${cnt}`;
+        }
+
+        if (!list.length) {
+            body.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">此戰區今日無符合標的，換個策略看看 👀</td></tr>`;
             return;
         }
 
-        header.classList.remove('hidden');
-        const updated = this._radarUpdatedAt ? `<span class="text-gray-600 text-[10px] font-normal ml-1">更新：${this._radarUpdatedAt}</span>` : '';
-        header.innerHTML = `📡 即時情報雷達 · AI 判讀 · 共 <b class="text-white">${items.length}</b> 篇${updated}`;
-
-        const SENTI_CFG = {
-            '利多': { badge: '📈 利多', badgeCls: 'bg-red-900/60 text-red-300 border-red-700', borderCls: 'border-red-700/60' },
-            '利空': { badge: '📉 利空', badgeCls: 'bg-green-900/60 text-green-300 border-green-700', borderCls: 'border-green-700/60' },
-            '中立': { badge: '⚪ 中立', badgeCls: 'bg-gray-800 text-gray-300 border-gray-600',     borderCls: 'border-gray-700' },
-        };
-
-        let html = '';
-        items.forEach(it => {
-            const cfg = SENTI_CFG[it.ai_sentiment] || SENTI_CFG['中立'];
-            const safeTitle  = (it.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const safeReason = (it.ai_reason || '系統尚未提供分析').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const link = it.link || '#';
-            const tags = (it.matched_keywords || [])
-                .map(k => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-900/40 text-yellow-300 border border-yellow-700/60 mr-1 mb-0.5">🔥 ${k}</span>`)
-                .join('');
-
-            html += `
-            <li class="m-2 p-3 bg-[#1c2128] border-l-4 ${cfg.borderCls} border border-[#30363d] rounded-lg hover:bg-gray-800/60 transition-colors shadow-sm">
-                <div class="flex justify-between items-start gap-2 mb-1.5">
-                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#0d1117] text-blue-300 border border-blue-800/60">🌐 ${it.source_name || '情報源'}</span>
-                    <span class="text-[10px] text-gray-500 font-mono flex-shrink-0">${it.published_time || '近期'}</span>
-                </div>
-                <a href="${link}" target="_blank" rel="noopener noreferrer" class="block text-white text-sm font-bold leading-snug hover:text-blue-300 mb-2">
-                    ${safeTitle}
-                </a>
-                <div class="mb-2">
-                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${cfg.badgeCls}">AI 判讀: ${cfg.badge}</span>
-                </div>
-                <p class="text-[11px] text-gray-400 mb-2 leading-relaxed">🤖 ${safeReason}</p>
-                <div class="flex flex-wrap">${tags}</div>
-            </li>`;
-        });
-        container.innerHTML = html;
+        body.innerHTML = list.map((m, i) => {
+            const name = this.getStockName(m.sym);
+            const g = (typeof m.gain === 'number') ? m.gain : null;
+            const gainCls = g === null ? 'text-gray-400' : (g > 0 ? 'text-red-400' : (g < 0 ? 'text-green-400' : 'text-gray-400'));
+            const gainStr = g === null ? '' : `<span class="${gainCls} font-mono font-bold">${g > 0 ? '+' : ''}${g}%</span>`;
+            const turn = (typeof m.turnover_e === 'number') ? m.turnover_e.toFixed(2) : (m.turnover_e || '—');
+            return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
+                <td class="py-2.5 px-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-600 text-[10px] font-mono w-4 text-right flex-shrink-0">${i + 1}</span>
+                        <div class="flex flex-col leading-tight">
+                            <span class="font-bold text-gray-100">${name}</span>
+                            <span class="text-[10px] text-gray-500 font-mono">${m.sym}</span>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-2.5 px-2 text-right font-mono font-bold text-gray-100 whitespace-nowrap">${m.close}</td>
+                <td class="py-2.5 px-2 text-right font-mono text-cyan-300 whitespace-nowrap">${turn}</td>
+                <td class="py-2.5 px-3 text-right">
+                    <div class="flex flex-col items-end gap-0.5">
+                        <span class="text-[11px] text-amber-300 font-bold whitespace-nowrap">${m.status || ''}</span>
+                        ${gainStr}
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
     },
 
-    // 💥 牛市泡沫破裂預警：讀 data/bubble_warning.json 填四維度真實數值
     // 📰 即時情報新聞：優先讀採礦機產出的 data/radar_news.json，失敗則 fallback 範例頭條
     // TODO: 未來可換接「籌碼K線」等專業新聞 API（保持同一渲染介面即可）
     async loadNewsHeadlines() {
@@ -7033,232 +6886,6 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
         } catch (e) {
             console.warn('[bubble] load fail:', e);
         }
-    },
-
-    // 📡 雷達操作小幫手：依當前策略切換 在觀察什麼/怎麼看結果/怎麼做/風險 四欄
-    _renderRadarGuide(type) {
-        const box = document.getElementById('radarOperationGuide');
-        if (!box) return;
-        const GUIDES = {
-            bottom: {
-                color: 'border-pink-700/70 bg-pink-900/15',
-                title: '🎯 底部起漲｜怎麼用',
-                obs:   '剛從低檔站回月線、5MA 黃金交叉。',
-                read:  '看「偏離月線%」這欄，越接近 0% 越甜（< 3% 是最佳入場區）。乖離 > 8% 就追高了。',
-                act:   '分 2~3 批進場、停損設 5MA 跌破。底部股要耐心，第一週可能還在洗。',
-                risk:  '可能假突破再跌回去；若跌破 5MA + 月線雙線，立刻停損不戀棧。'
-            },
-            surge: {
-                color: 'border-red-700/70 bg-red-900/15',
-                title: '🚀 飆股動能｜怎麼用',
-                obs:   '貼著布林上軌、連 3 日爆量、強勢沿軌而上。',
-                read:  '看「布林上軌偏離%」，貼著（±1%）是黃金抱緊區；偏離 > 5% 是過熱，等回測 5MA。',
-                act:   '強勢股不抱不賺。每漲 5% 就把停利點往上挪，破 5MA 立刻停利。',
-                risk:  '高檔急殺一根可以回吐 3 天漲幅；不要凹單、不要攤平、寧可少賺。'
-            },
-            score: {
-                color: 'border-yellow-700/70 bg-yellow-900/15',
-                title: '⭐ 綜合強勢｜怎麼用',
-                obs:   '均線完美多頭排列＋量能持續＋法人加碼，品質最高的篩選。',
-                read:  '結果通常很少（門檻嚴）。每檔都是潛在波段標的。',
-                act:   '可較重倉、抱波段（2~4 週起跳），停損設月線。',
-                risk:  '拉回時心慌容易賣在腳底；先設定停損價並嚴守紀律。'
-            },
-            top_picks: {
-                color: 'border-emerald-700/70 bg-emerald-900/15',
-                title: '🎯 AI 三位一體｜怎麼用',
-                obs:   '營收 YoY ＋ 法人連續方向 ＋ 主力分點建倉 三合一篩選前 30 名。',
-                read:  '看 badge 數量，越多越強。優先看 ✅ 法人連買 + ✅ 主力吸籌雙打勾的。',
-                act:   '適合月線級操作，不適合當沖。可分 3 批建倉、抱 1 個月以上。',
-                risk:  '基本面題材若崩塌（如營收驟降），須快速停損；每月 10 號公布月營收前要警覺。'
-            },
-            monster: {
-                color: 'border-purple-600/70 bg-purple-900/20',
-                title: '🐲 妖股雷達｜怎麼用（高風險）',
-                obs:   '5 日漲幅 ≥ 20% 或 10 日漲幅 ≥ 30%，配合連續瘋狗量（量比 > 3 倍）+ 強勢吸籌。',
-                read:  '看 badge「📈 5日 +X%」「🔥 量比 Xx」「⚡ 近漲停」，分數越高越妖。',
-                act:   '⚠️ 妖股玩法：單檔倉位 ≤ 5%、5% 停損、不留隔夜（除非已賺 10%+）、嚴禁加碼凹單。',
-                risk:  '妖股翻臉只要一天。所有妖股都會死，問題只是哪一天。看到爆量黑K立刻全出，不要猶豫。'
-            },
-            news_radar: {
-                color: 'border-blue-700/70 bg-blue-900/15',
-                title: '📰 情報雷達｜怎麼用',
-                obs:   'AI 判讀 4 大新聞源（鉅亨/科技新報/工商/聯合）的個股題材方向。',
-                read:  '🟥 利多 / 🟩 利空 / ⚪ 中立。同一檔多家報導且方向一致最有意義。',
-                act:   '新聞只是輔助。看到利多後仍要回 K 線確認量價有沒有跟上，再決定進場。',
-                risk:  '消息面常常已被法人提前布局，新聞見報時往往是出貨點。'
-            }
-        };
-        const g = GUIDES[type];
-        if (!g) { box.classList.add('hidden'); return; }
-        box.classList.remove('hidden');
-        box.className = `bg-[#0d1117] border rounded-lg p-3 text-xs leading-relaxed ${g.color}`;
-        box.innerHTML = `
-            <div class="font-black text-gray-100 mb-2 text-[13px]">${g.title}</div>
-            <div class="grid grid-cols-1 gap-1.5 text-gray-300">
-                <div><span class="text-blue-300 font-bold">📍 在觀察什麼：</span>${g.obs}</div>
-                <div><span class="text-green-300 font-bold">👀 怎麼看結果：</span>${g.read}</div>
-                <div><span class="text-yellow-300 font-bold">🎯 怎麼做：</span>${g.act}</div>
-                <div><span class="text-red-300 font-bold">⚠️ 風險：</span>${g.risk}</div>
-            </div>`;
-    },
-
-    // 個股級操作提示：依該 row 的月線乖離%動態生成（接近 0% = 甜蜜入場、> 8% = 已乖離過大）
-    _rowActionHint(m, type) {
-        if (type === 'monster') {
-            const g5 = Number(m.gain5d || 0);
-            if (g5 >= 30) return '🔥 已狂飆，追高極度危險，建議等 5MA 回測再評估';
-            if (g5 >= 20) return '⚡ 妖性已現，小資金可試單、停損 5%、不留隔夜';
-            return '🐲 動能初現，可關注';
-        }
-        if (!m.ma20 || !m.close) return '';
-        const dist = (m.close - m.ma20) / m.ma20 * 100;
-        if (type === 'bottom') {
-            if (dist < 1)  return '✅ 接近月線，最甜入場區（分批進場）';
-            if (dist < 3)  return '🟢 仍在低乖離區，可建立第 1 批';
-            if (dist < 8)  return '🟡 已小幅乖離，建議等回測 5MA';
-            return '🔴 乖離過大，等回測月線再進';
-        }
-        if (type === 'surge') {
-            if (!m.bb_upper) return '';
-            const bbDist = (m.close - m.bb_upper) / m.bb_upper * 100;
-            if (Math.abs(bbDist) < 1) return '🔥 貼軌噴發，抱緊（破 5MA 停利）';
-            if (bbDist < 0 && bbDist > -3) return '🟢 接近上軌，可追';
-            if (bbDist > 5) return '⚠️ 已過熱，等回測 5MA';
-            return '🟡 觀察是否再貼上軌';
-        }
-        if (type === 'score') {
-            if (dist < 3) return '✅ 多頭格局＋低乖離，可重倉';
-            if (dist < 8) return '🟢 多頭中段，可分批';
-            return '🟡 已乖離，等拉回';
-        }
-        return '';
-    },
-
-    renderRadarResults(items, type, poolType) {
-        const container = document.getElementById('radarListMain');
-        const header    = document.getElementById('radarResultHeader');
-
-        const FILTER_LABELS = {
-            bottom:    { badge: '🌸底部起漲', color: 'text-pink-400 border-pink-700 bg-pink-900/50',     desc: '剛站上月線 / 5MA 黃金交叉' },
-            surge:     { badge: '🚀飆股動能', color: 'text-red-400 border-red-700 bg-red-900/50',       desc: '貼近布林上軌 + 連3日爆量'  },
-            score:     { badge: '⭐綜合強勢', color: 'text-yellow-400 border-yellow-700 bg-yellow-900/50', desc: 'Alpha 技術評分達標'   },
-            top_picks: { badge: '🎯 AI 三位一體', color: 'text-emerald-400 border-emerald-700 bg-emerald-900/50', desc: '基本面＋法人流向＋主力建倉' },
-            monster:   { badge: '🐲妖股飆漲', color: 'text-purple-300 border-purple-600 bg-purple-900/50', desc: '5日漲幅爆衝 + 連續瘋狗量' },
-        };
-        const TYPE_LABELS = { bottom: '底部起漲', surge: '飆股動能', score: '綜合強勢', top_picks: 'AI三位一體選股', monster: '妖股雷達' };
-        const POOL_LABELS = { hot_twse: '上市熱門', hot_otc: '上櫃中小型', etf_heavy: '高股息權值', fav: '自選清單', inv: '庫存部位', top_picks: 'AI選股' };
-
-        // 空結果：給出對應引導
-        if (!items || items.length === 0) {
-            header.classList.add('hidden');
-            const isPersonal = (poolType === 'fav' || poolType === 'inv');
-            container.innerHTML = `<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">
-                ${isPersonal ? '您的' + POOL_LABELS[poolType] + '中目前無達標標的' : '此彈藥庫無達標標的'}，
-                可切換策略或彈藥庫重試。
-            </li>`;
-            return;
-        }
-
-        const lbl     = FILTER_LABELS[type] || FILTER_LABELS.score;
-        const updated = this._radarUpdatedAt
-            ? `<span class="text-gray-600 text-[10px] font-normal ml-1">更新：${this._radarUpdatedAt}</span>`
-            : '';
-
-        header.classList.remove('hidden');
-        const notice = this._radarLowSignalNotice
-            ? `<div class="text-orange-300 text-[10px] mt-1 font-normal">${this._radarLowSignalNotice}</div>`
-            : '';
-        header.innerHTML = `⚡ ${TYPE_LABELS[type] || type} · ${POOL_LABELS[poolType] || poolType} · 共 <b class="text-white">${items.length}</b> 檔${updated}${notice}`;
-
-        let html = '';
-        const isTopPicks = (type === 'top_picks');
-            items.forEach(m => {
-                let badgesHtml;
-                if (isTopPicks && Array.isArray(m.reasons) && m.reasons.length) {
-                    badgesHtml = m.reasons.filter(Boolean).map(r => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${lbl.color} mr-1 mb-0.5">${r}</span>`).join('');
-                } else {
-                    badgesHtml = `<span class="px-2 py-1 rounded text-[11px] font-bold border ${lbl.color} shadow-sm">${lbl.badge}</span>`;
-                }
-
-                const meta = [];
-                if (isTopPicks) {
-                    if (m.revenue_yoy != null) meta.push(`營收 YoY <span class="${m.revenue_yoy > 0 ? 'text-red-400' : 'text-green-400'} font-bold">${m.revenue_yoy > 0 ? '+' : ''}${m.revenue_yoy}%</span>`);
-                    if (m.concentration) meta.push(`分點集中 <span class="text-yellow-400 font-bold">${m.concentration}%</span>`);
-                    if (m.five_day_net) meta.push(`法人流向 <span class="${m.five_day_net > 0 ? 'text-red-400' : 'text-green-400'} font-bold">${m.five_day_net > 0 ? '+' : ''}${Math.round(m.five_day_net/1000)}K</span>`);
-                } else {
-                    // 【全新實戰指標注入】計算與均線的乖離率，讓小白一眼看出版面風險與空間
-                    if (m.ma20) {
-                        const dist = m.close ? ((m.close - m.ma20)/m.ma20*100).toFixed(1) : 0;
-                        meta.push(`月線: <span class="text-gray-300 font-mono">${m.ma20}</span> <span class="${dist>0?'text-red-400':'text-green-400'} font-mono text-[10px]">(${dist > 0 ? '+' : ''}${dist}%)</span>`);
-                    }
-                    if (m.bb_upper) {
-                        const dist = m.close ? ((m.close - m.bb_upper)/m.bb_upper*100).toFixed(1) : 0;
-                        meta.push(`布林上軌: <span class="text-gray-300 font-mono">${m.bb_upper}</span> <span class="${dist>0?'text-red-400':'text-green-400'} font-mono text-[10px]">(${dist > 0 ? '+' : ''}${dist}%)</span>`);
-                    }
-                    if (m.ma5) {
-                        const dist = m.close ? ((m.close - m.ma5)/m.ma5*100).toFixed(1) : 0;
-                        meta.push(`週線: <span class="text-gray-300 font-mono">${m.ma5}</span> <span class="${dist>0?'text-red-400':'text-green-400'} font-mono text-[10px]">(${dist > 0 ? '+' : ''}${dist}%)</span>`);
-                    }
-                }
-
-                // 將數值資訊變成精美的科技感標籤
-                const metaStr = meta.length ? `<div class="text-[11px] text-gray-500 mt-2 flex flex-wrap gap-2">${meta.map(x => `<div class="bg-[#0d1117] px-2 py-1 rounded border border-[#30363d]">${x}</div>`).join('')}</div>` : '';
-                const priceStr = m.close ? `<div class="text-xl text-white font-black font-mono leading-none">${m.close.toFixed(2)}</div>` : '';
-
-                // 妖股專屬 badge：5/10日漲幅、量比、近漲停
-                let monsterBadges = '';
-                if (type === 'monster') {
-                    const parts = [];
-                    if (m.gain5d != null)  parts.push(`<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-purple-600 bg-purple-900/40 text-purple-200">📈 5日 +${Number(m.gain5d).toFixed(1)}%</span>`);
-                    if (m.gain10d != null) parts.push(`<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-purple-600 bg-purple-900/40 text-purple-200">📈 10日 +${Number(m.gain10d).toFixed(1)}%</span>`);
-                    if (m.vol_ratio != null) parts.push(`<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-orange-600 bg-orange-900/40 text-orange-200">🔥 量比 ${Number(m.vol_ratio).toFixed(1)}x</span>`);
-                    if (m.near_limit_up) parts.push(`<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border border-red-600 bg-red-900/50 text-red-200 animate-pulse">⚡ 近漲停</span>`);
-                    if (parts.length) monsterBadges = `<div class="flex flex-wrap gap-1 mt-1.5">${parts.join('')}</div>`;
-                }
-
-                // 個股操作提示（依乖離率/量比動態生成）
-                const hintText = this._rowActionHint(m, type);
-                const hintStr  = hintText ? `<div class="mt-2 text-[11px] text-blue-200/90 bg-blue-900/15 border border-blue-700/40 rounded px-2 py-1 font-bold">💡 ${hintText}</div>` : '';
-
-                html += `
-                <li class="p-3.5 m-3 bg-gradient-to-br from-[#1c2128] to-[#161b22] border border-[#30363d] rounded-xl hover:border-blue-500/80 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all cursor-pointer flex justify-between items-center group relative overflow-hidden" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
-                    <div class="absolute left-0 top-0 w-1.5 h-full ${lbl.color.split(' ')[2]} opacity-80"></div>
-                    <div class="flex flex-col pl-3 w-full">
-                        <div class="flex justify-between items-start w-full">
-                            <div class="flex items-center gap-2.5">
-                                <span class="font-black text-gray-100 text-lg tracking-wide group-hover:text-blue-400 transition-colors">${app.getStockName(m.sym)}</span>
-                                <span class="text-xs text-gray-400 font-mono font-bold bg-[#0d1117] px-1.5 py-0.5 rounded border border-[#30363d] shadow-inner">${m.sym}</span>
-                            </div>
-                            <div class="flex flex-col items-end gap-1.5">
-                                ${priceStr}
-                                ${badgesHtml}
-                            </div>
-                        </div>
-                        ${metaStr}
-                        ${monsterBadges}
-                        ${hintStr}
-                    </div>
-                </li>`;
-        });
-        html += `
-        <div class="text-center mt-4 mb-2">
-            <button onclick="app.loadRadar('${type}'); app.vibrate(30);"
-                    class="text-xs text-gray-400 bg-gray-800 px-4 py-2 rounded-full border border-gray-600 hover:text-white transition-colors">
-                🔄 重新掃描
-            </button>
-        </div>`;
-        container.innerHTML = html;
-    },
-
-    // 主動清除全市場快取（測試用 / 版本更新後強制重抓）
-    resetRadarResults() {
-        this.currentRadarResults = null;
-        this.lastRadarType       = null;
-        this._radarUpdatedAt     = '';
-        document.getElementById('radarResultHeader').classList.add('hidden');
-        document.getElementById('radarListMain').innerHTML =
-            '<li class="p-8 text-center text-sm text-gray-500 border border-dashed border-[#30363d] rounded-lg m-3 font-bold">彈藥庫已切換，請點擊上方掃描按鈕重新啟動。</li>';
     },
 
     typeWriterEffect(element, htmlText, speed = 10) {
