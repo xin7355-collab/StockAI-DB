@@ -1948,6 +1948,92 @@ def build_bubble_warning():
           f" / K線 {out['kline_status']['label']}")
 
 
+# ── 🌡️ 4 戰區 + 9 細分板塊熱度（取代前端逐檔 fetch，治本板塊燈號全灰）─────────
+WARZONES = {
+    'us':       {'icon': '🇺🇸', 'name': '美股大氣候',  'syms': ['2330', '3711']},
+    'ai_core':  {'icon': '🖥️', 'name': 'AI 核心硬體', 'syms': ['2382', '6669', '3017', '3324', '3653', '3450', '3380', '2330', '3711']},
+    'power':    {'icon': '⚡', 'name': '重電與基建',  'syms': ['1519', '1503', '1513']},
+    'finance':  {'icon': '🛡️', 'name': '金融與避風港','syms': ['2881', '2882', '2891', '2886']},
+}
+SUB_SECTORS = {
+    'us':        ['2330', '3711'],
+    'server':    ['2382', '6669', '3231'],
+    'power':     ['1519', '1503', '1513'],
+    'packaging': ['2330', '3711', '3105'],
+    'cpo':       ['3450', '3380', '6491'],
+    'cooling':   ['3017', '3324', '3653'],
+    'robot':     ['2049', '4551', '2206'],
+    'finance':   ['2881', '2882', '2891'],
+    'leo':       ['3491', '2313', '6285'],
+}
+
+def _avg_chg_pct(syms):
+    pcts = []
+    for s in syms:
+        f = Path(DATA_DIR) / f'{s}.json'
+        if not f.exists():
+            continue
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(raw, list) or len(raw) < 2:
+                continue
+            c, pc = float(raw[-1]['close']), float(raw[-2]['close'])
+            if pc > 0:
+                pcts.append((c - pc) / pc * 100)
+        except Exception:
+            continue
+    return (sum(pcts) / len(pcts)) if pcts else None
+
+def _warzone_label(avg):
+    if avg is None:
+        return 'neutral', '➖ 整編中', '待資料就緒'
+    if avg >= 2.0:
+        return 'hot',     '🔥 狂熱',       '短線追高警戒'
+    if avg >= 0.5:
+        return 'surge',   '🌊 資金湧入',   '順勢偏多操作'
+    if avg > -0.5:
+        return 'neutral', '➖ 整理',       '觀望待方向'
+    if avg > -2.0:
+        return 'cool',    '❄️ 量縮防守',   '逢回測月線建倉'
+    return 'dump', '💤 資金流出', '暫不介入'
+
+def _sector_color(avg):
+    if avg is None:
+        return 'gray'
+    if avg > 1:    return 'red_strong'
+    if avg > 0.2:  return 'red'
+    if avg > -0.2: return 'gray'
+    if avg > -1:   return 'green'
+    return 'green_strong'
+
+def build_sector_heat():
+    out = {'updated': date.today().isoformat(), 'warzones': {}, 'sectors': {}}
+    for key, meta in WARZONES.items():
+        avg = _avg_chg_pct(meta['syms'])
+        level, label, advice = _warzone_label(avg)
+        out['warzones'][key] = {
+            'icon':   meta['icon'],
+            'name':   meta['name'],
+            'chg':    None if avg is None else round(avg, 2),
+            'level':  level,
+            'label':  label,
+            'advice': advice,
+        }
+    for key, syms in SUB_SECTORS.items():
+        avg = _avg_chg_pct(syms)
+        out['sectors'][key] = {
+            'chg':   None if avg is None else round(avg, 2),
+            'color': _sector_color(avg),
+        }
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    Path(DATA_DIR).joinpath('sector_heat.json').write_text(
+        json.dumps(out, ensure_ascii=False, separators=(',', ':')),
+        encoding='utf-8'
+    )
+    wz = ' / '.join(f"{v['name']}{v['label']}" for v in out['warzones'].values())
+    print(f"  ✅ 板塊熱度：{wz}")
+
+
 # ── 三位一體選股 ─────────────────────────────────────────────────────────────
 def generate_top_picks():
     """三位一體篩選：基本面(YoY>0) + 法人5日淨流入>0 + 分點集中度
@@ -2122,6 +2208,7 @@ if __name__ == '__main__':
         fetch_us_macro_cache()  # 美股大盤 → macro_cache.json （yfinance）
         build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
         build_bubble_warning()  # 💥 牛市泡沫預警 → data/bubble_warning.json （讀現成 artifacts）
+        build_sector_heat()     # 🌡️ 4 戰區+9 細分板塊熱度 → data/sector_heat.json （治本前端燈號全灰）
         generate_top_picks()    # 三位一體選股 → data/top_picks.json （需 chips 已就緒）
 
         # ── 🧹 【資料庫自動瘦身術】 ──
