@@ -2211,6 +2211,8 @@ if __name__ == '__main__':
         build_sector_heat()     # 🌡️ 4 戰區+9 細分板塊熱度 → data/sector_heat.json （治本前端燈號全灰）
         generate_top_picks()    # 三位一體選股 → data/top_picks.json （需 chips 已就緒）
 
+        print("🌍 啟動全局宏觀風險採礦 (macro_miner)...")
+        os.system("python3 macro_miner.py")
         # ── 🧹 【資料庫自動瘦身術】 ──
         print("\n🧹 執行資料庫碎片重組與瘦身 (VACUUM)...")
         vac_conn = sqlite3.connect(DB_PATH, timeout=30.0)
