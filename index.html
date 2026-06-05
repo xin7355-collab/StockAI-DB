@@ -5578,7 +5578,19 @@ recent.forEach(d => {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const url = new URL('data/sector_heat.json', ghBase).href + `?t=${Date.now()}`;
             const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
-            if (r.ok) j = await r.json();
+            if (r.ok) {
+                const txt = await r.text();
+                try { j = JSON.parse(txt); }
+                catch (_) {
+                    // sector_heat.json 尾部 garbage 防呆：用括號深度找首個完整 JSON 物件
+                    let depth = 0, end = -1;
+                    for (let i = 0; i < txt.length; i++) {
+                        if (txt[i] === '{') depth++;
+                        else if (txt[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+                    }
+                    if (end > 0) { try { j = JSON.parse(txt.slice(0, end + 1)); } catch (__) {} }
+                }
+            }
         } catch(e) {}
 
         const srcEl = document.getElementById('warzoneSource');

@@ -1938,10 +1938,10 @@ def build_bubble_warning():
 
     # ── 輸出 ────────────────────────────────────────────────────────
     Path(DATA_DIR).mkdir(exist_ok=True)
-    Path(DATA_DIR).joinpath('bubble_warning.json').write_text(
-        json.dumps(out, ensure_ascii=False, separators=(',', ':')),
-        encoding='utf-8'
-    )
+    _btarget = Path(DATA_DIR).joinpath('bubble_warning.json')
+    _btmp = _btarget.with_suffix('.json.tmp')
+    _btmp.write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(_btmp), str(_btarget))
     print(f"  ✅ 泡沫預警：證券 {out['broker_heat']['label']} ({out['broker_heat']['samples']}檔)"
           f" / 漲停 {out['junk_count']['value']}"
           f" / 融資 {out['margin_leverage']['label']}"
@@ -2026,10 +2026,11 @@ def build_sector_heat():
             'color': _sector_color(avg),
         }
     Path(DATA_DIR).mkdir(exist_ok=True)
-    Path(DATA_DIR).joinpath('sector_heat.json').write_text(
-        json.dumps(out, ensure_ascii=False, separators=(',', ':')),
-        encoding='utf-8'
-    )
+    # 原子寫入：tempfile + os.replace 避免任何併發/重複呼叫導致尾部 garbage 殘留
+    _target = Path(DATA_DIR).joinpath('sector_heat.json')
+    _tmp = _target.with_suffix('.json.tmp')
+    _tmp.write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(_tmp), str(_target))
     wz = ' / '.join(f"{v['name']}{v['label']}" for v in out['warzones'].values())
     print(f"  ✅ 板塊熱度：{wz}")
 
