@@ -885,6 +885,13 @@
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-28">
 
+            <!-- 🌐 AI 全球市場解析（全球頁最頂頭號入口，1 鍵綜合所有指標）-->
+            <button onclick="app.openGlobalAIModal(); app.vibrate(50);" id="btnGlobalAIHeader"
+                    class="w-full bg-gradient-to-r from-indigo-700/60 via-purple-700/60 to-indigo-700/60 hover:from-indigo-600/70 hover:via-purple-600/70 hover:to-indigo-600/70 border border-indigo-400/60 rounded-xl py-4 px-4 flex flex-col items-center justify-center gap-1 transition-all font-black text-base text-indigo-100 shadow-[0_0_20px_rgba(99,102,241,0.35)]">
+                <div class="flex items-center gap-2"><span class="text-xl">🌐</span><span class="tracking-wide">AI 全球市場解析</span></div>
+                <span class="text-indigo-300 text-[11px] font-bold">一鍵綜合宏觀／4戰區／泡沫／風險指數 → 給操作劇本</span>
+            </button>
+
             <!-- ════════ 🌟 黃金動線：全球宏觀風險 ➔ 4 戰區 ➔ 戰略指揮部 ➔ 泡沫預警 ════════ -->
             <div class="bg-[#010409] rounded-xl border border-cyan-900/50 p-3">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🌐</span><span class="text-sm font-black text-cyan-300 tracking-wide">全球宏觀風險觀測台</span><span id="macroRiskSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span></div>
@@ -951,16 +958,17 @@
                 <!-- 📦 9 大細分板塊（摺疊區，預設關閉）-->
                 <details id="subSectorsBox" class="mt-2 group">
                     <summary class="text-[11px] text-gray-400 font-bold cursor-pointer py-1 px-2 bg-[#0d1117] border border-[#30363d] rounded hover:bg-[#161b22]">📦 9 大細分板塊（點擊展開：CoWoS、機器人、低軌衛星…）</summary>
-                    <div class="grid grid-cols-3 gap-1.5 mt-2">
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="us"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🇺🇸 美股</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">NVDA·SOX·SPX</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="server"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🖥️ 伺服器代工</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">廣達·緯穎·緯創</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="power"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">⚡ 重電基建</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">華城·士電·中興電</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="packaging"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">📦 先進封裝</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">台積電·矽品·PMC</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="cpo"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🔗 高速傳輸CPO</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">聯亞光電·明泰·晶碩</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="cooling"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">❄️ 散熱零組件</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">奇鋐·雙鴻·健策</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="robot"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🤖 實體機器人</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">上銀·智伸科·三陽</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="finance"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🏦 金融避風港</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">富邦金·國泰金·中信金</div></div>
-                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="leo"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🛰️ 低軌衛星</span><span class="w-1.5 h-1.5 rounded-full bg-gray-600 sector-heat"></span></div><div class="text-[8px] text-gray-500 leading-tight">昇達科·華通·啟碁</div></div>
+                    <div class="text-[9px] text-gray-600 mt-1.5 mb-1 px-1">📖 燈號：<span class="text-red-400 font-bold">🔺 紅 = 上漲</span> / <span class="text-green-400 font-bold">🔻 綠 = 下跌</span>（台股慣例：紅漲綠跌）</div>
+                    <div class="grid grid-cols-3 gap-1.5 mt-1">
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="us"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🇺🇸 美股</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">NVDA·SOX·SPX</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="server"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🖥️ 伺服器代工</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">廣達·緯穎·緯創</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="power"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">⚡ 重電基建</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">華城·士電·中興電</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="packaging"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">📦 先進封裝</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">台積電·矽品·PMC</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="cpo"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🔗 高速傳輸CPO</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">聯亞光電·明泰·晶碩</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="cooling"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">❄️ 散熱零組件</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">奇鋐·雙鴻·健策</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="robot"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🤖 實體機器人</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">上銀·智伸科·三陽</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="finance"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🏦 金融避風港</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">富邦金·國泰金·中信金</div></div>
+                            <div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]" data-sector="leo"><div class="flex items-center justify-between mb-0.5"><span class="text-[9px] font-bold text-gray-200">🛰️ 低軌衛星</span><span class="text-[9px] font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[8px] text-gray-500 leading-tight">昇達科·華通·啟碁</div></div>
                     </div>
                 </details>
             </div>
@@ -1046,13 +1054,6 @@
                 </div>
             <!-- ════════ 黃金動線結束 ════════ -->
 
-            <!-- 🌐 AI 全球市場解析按鈕 -->
-            <button onclick="app.openGlobalAIModal(); app.vibrate(50);" id="btnGlobalAIHeader"
-                    class="w-full bg-gradient-to-r from-indigo-900/60 to-purple-900/60 hover:from-indigo-800/70 hover:to-purple-800/70 border border-indigo-700/50 rounded-lg py-3 px-4 flex items-center justify-center gap-2 transition-all font-black text-sm text-indigo-200 shadow-lg">
-                🌐 AI 全球市場解析
-                <span class="text-indigo-400 text-[11px] font-bold">→ 一鍵解析全球市場對台股影響</span>
-            </button>
-
             <!-- 市場氣象儀／全局風險網格已上移至頂部「首席 AI 全局戰略指揮部」 -->
 
             <!-- 🎯 全球市場戰情室 -->
@@ -1081,19 +1082,7 @@
                     </div>
                 </div>
 
-                <!-- 💡 首席操盤手 AI 戰略解析（數字模板用上方現值動態填，未來可接 LLM API） -->
-                <div id="aiStrategyCard" class="bg-gradient-to-br from-indigo-900/30 via-[#0d1117] to-purple-900/30 backdrop-blur-sm border border-indigo-500/50 rounded-xl p-3 shadow-[0_0_15px_rgba(99,102,241,0.2)] mb-3">
-                    <div class="flex items-center gap-1.5 mb-2">
-                        <span class="text-amber-300">💡</span>
-                        <span class="text-[12px] font-black text-indigo-200 tracking-wide">首席操盤手 AI 戰略解析</span>
-                        <span id="aiStrategySource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例·待 LLM 接入)</span>
-                    </div>
-                    <div id="aiStrategyAnalysis" class="text-[12px] text-gray-300 leading-relaxed mb-2">--</div>
-                    <div class="border-t border-indigo-500/20 pt-2 mt-2">
-                        <div class="text-[10px] font-bold text-amber-300 mb-1">🎯 實戰操作建議</div>
-                        <div id="aiStrategyAction" class="text-[12px] text-gray-300 leading-relaxed">--</div>
-                    </div>
-                </div>
+                <!-- 已刪除：💡 首席操盤手 AI 戰略解析卡（內容併入頂部「🌐 AI 全球市場解析」一鍵 modal） -->
 
                 <!-- 台股指數（合併進來） -->
                 <div class="grid grid-cols-2 gap-1.5 mb-3">
@@ -5359,7 +5348,7 @@ recent.forEach(d => {
         if (d.yoyNum != null && !isNaN(d.yoyNum)) {
             setDim('dim_pv', d.yoyNum >= 15 ? '強' : d.yoyNum >= 0 ? '中' : '弱',
                    d.yoyNum >= 15 ? 'text-green-400' : d.yoyNum >= 0 ? 'text-yellow-300' : 'text-red-400');
-        } else setDim('dim_pv', '整編', 'text-gray-500');
+        } else setDim('dim_pv', '待採', 'text-gray-500');
         // 籌碼
         setDim('dim_chip', d.isChipGood ? '吸籌' : (d.hasChipCost ? '失守' : '中性'),
                d.isChipGood ? 'text-green-400' : (d.hasChipCost ? 'text-red-400' : 'text-gray-400'));
@@ -5368,7 +5357,7 @@ recent.forEach(d => {
         if (macroScore != null) {
             setDim('dim_macro', macroScore >= 60 ? '逆風' : macroScore >= 35 ? '中性' : '順風',
                    macroScore >= 60 ? 'text-red-400' : macroScore >= 35 ? 'text-yellow-300' : 'text-green-400');
-        } else setDim('dim_macro', '整編', 'text-gray-500');
+        } else setDim('dim_macro', '待採', 'text-gray-500');
         // 技術（季節 + 高風險）
         const season = d.ctx?.season || '--';
         const techLabel = d.isHighRisk ? '破壞' : (season === '夏' ? '多頭' : season === '冬' ? '空頭' : season === '春' ? '築底' : season === '秋' ? '盤頭' : '整理');
@@ -5381,7 +5370,7 @@ recent.forEach(d => {
             else if (fi <= -25000) { sentiLabel = '偏空'; sentiColor = 'text-orange-300'; }
             else if (fi <= -10000) { sentiLabel = '中性'; sentiColor = 'text-yellow-300'; }
             else                   { sentiLabel = '偏多'; sentiColor = 'text-green-400'; }
-        } else sentiLabel = '整編';
+        } else sentiLabel = '待採';
         setDim('dim_senti', sentiLabel, sentiColor);
 
         // 戰略總司令敘述：依五維結果組合精準指令
@@ -5471,13 +5460,21 @@ recent.forEach(d => {
             const r = await fetch(url, { signal: AbortSignal.timeout(4000) });
             if (r.ok) j = await r.json();
         } catch(e) {}
-        // fetch 整個失敗 → 不覆蓋預設值，但仍呼叫 AI 解析卡（會用假資料 fallback）
+        // fetch 整個失敗 → 不覆蓋預設值
+        this._macroRiskCache = j || null;
         const isFake = !j;
         const srcEl = document.getElementById('macroRiskSource');
-        if (srcEl) { srcEl.textContent = isFake ? '(範例)' : ''; srcEl.classList.toggle('opacity-60', isFake); }
+        if (srcEl) {
+            if (isFake) { srcEl.textContent = '(範例)'; srcEl.classList.add('opacity-60'); }
+            else {
+                const keys = ['us10y_yield','us2y_yield','fear_greed','retail_ls_pct','usdtwd','taifex_backwardation'];
+                const nullCnt = keys.filter(k => j[k] == null).length;
+                srcEl.textContent = nullCnt === 0 ? '(實時)' : `(實時·${nullCnt}欄待採)`;
+                srcEl.classList.toggle('opacity-60', nullCnt > 0);
+            }
+        }
         if (!j) {
             this.loadSectorHeat?.();
-            this.updateAiStrategyCard?.(null);
             return;
         }
 
@@ -5554,40 +5551,12 @@ recent.forEach(d => {
         if ($('sccMiniBack')) $('sccMiniBack').textContent = `📉 ${back == null ? '--' : (back > 0 ? '+' : '') + Math.round(back)}`;
 
         this.loadSectorHeat();
-        this.updateAiStrategyCard(j);
-    },
-
-    // 💡 首席操盤手 AI 戰略解析卡：從 macro_risk 現值套入模板（未來可接 LLM API）
-    // 模板的數字 100% 跟上方指標卡同源，不會打架。
-    // TODO: 把 tplAnalysis / tplAction 改為呼叫 Groq/Claude API 取代靜態模板。
-    updateAiStrategyCard(j) {
-        const isFake = !j;
-        const us10y = isFake ? 4.41 : (parseFloat(j.us10y_yield) || 4.41);
-        const fg    = isFake ? 72   : (parseFloat(j.fear_greed)   || 72);
-        const fiQty = this.fiShortQty == null ? -67000 : this.fiShortQty;
-        const fi    = Math.round(Math.abs(fiQty) / 10000 * 10) / 10;
-        const fgWord = fg >= 75 ? '極度貪婪' : fg >= 55 ? '貪婪偏多' : fg >= 45 ? '中性' : fg >= 25 ? '恐懼' : '極度恐懼';
-        const tplAnalysis =
-            `當前美債 10Y 殖利率 <b class="text-yellow-300">${us10y.toFixed(2)}%</b>，` +
-            `散戶恐懼貪婪指數 <b class="text-orange-300">${Math.round(fg)} (${fgWord})</b>，` +
-            `外資期貨空單 <b class="text-red-300">${fi} 萬口</b>。` +
-            (us10y >= 4.3 ? '殖利率壓制成長股估值，' : '殖利率回落、成長股估值喘息，') +
-            (fi >= 5 ? '法人布空訊號明確，' : '法人空單溫和，') +
-            '大盤具備短線回檔壓力。';
-        const tplAction =
-            `不宜重倉追高 AI 伺服器族群（已偏高）。建議資金輪動至「<b class="text-amber-300">⚡ 重電基建</b>」防禦型題材` +
-            `或「<b class="text-amber-300">❄️ 低基期 CPO 散熱</b>」分批月線防守建倉。` +
-            `資金水位嚴控在 <b class="text-amber-300">5 成</b>，破 5 日線無情停利。`;
-        const aEl = document.getElementById('aiStrategyAnalysis');
-        const acEl = document.getElementById('aiStrategyAction');
-        const sEl = document.getElementById('aiStrategySource');
-        if (aEl) aEl.innerHTML = tplAnalysis;
-        if (acEl) acEl.innerHTML = tplAction;
-        if (sEl) { sEl.textContent = isFake ? '(範例·待 LLM 接入)' : '(模板自動推導·待 LLM 接入)'; sEl.classList.toggle('opacity-60', isFake); }
+        // updateAiStrategyCard 已移除，模板邏輯併入 runGlobalMarketAI prompt 組裝
     },
 
     // 🌡️ 載入 4 戰區 + 9 細分板塊熱度（後端 build_sector_heat 預先運算）
     // 失敗 fallback：4 戰區用長官指定假資料、9 細分維持灰。
+    // 結果存 this._sectorHeatCache 供 runGlobalMarketAI 取用。
     async loadSectorHeat() {
         const WZ_COLOR = {
             hot:     'text-red-400',
@@ -5596,12 +5565,13 @@ recent.forEach(d => {
             cool:    'text-blue-300',
             dump:    'text-green-400',
         };
-        const SECTOR_DOT = {
-            red_strong:   'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.7)]',
-            red:          'bg-red-400',
-            gray:         'bg-gray-500',
-            green:        'bg-green-400',
-            green_strong: 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.7)]',
+        // 漲幅 → 箭頭文字 + 顏色（紅漲綠跌）
+        const fmtChg = (chg) => {
+            if (chg == null || isNaN(chg)) return { txt: '--', cls: 'text-gray-500' };
+            const sign = chg > 0 ? '+' : '';
+            const arrow = chg > 0.5 ? '🔺' : chg < -0.5 ? '🔻' : '→';
+            const color = chg > 0.2 ? 'text-red-400' : chg < -0.2 ? 'text-green-400' : 'text-gray-400';
+            return { txt: `${arrow}${sign}${chg.toFixed(2)}%`, cls: color };
         };
         let j = null;
         try {
@@ -5613,7 +5583,8 @@ recent.forEach(d => {
 
         const srcEl = document.getElementById('warzoneSource');
         const isFake = !j || !j.warzones;
-        if (srcEl) { srcEl.textContent = isFake ? '(範例)' : ''; srcEl.classList.toggle('opacity-60', isFake); }
+        if (srcEl) { srcEl.textContent = isFake ? '(範例)' : '(實時)'; srcEl.classList.toggle('opacity-60', isFake); }
+        this._sectorHeatCache = j || null;
         if (isFake) return;
 
         // 4 戰區大卡
@@ -5625,14 +5596,16 @@ recent.forEach(d => {
             const chgEl = card.querySelector('[data-warzone-chg]');
             if (lblEl) { lblEl.textContent = wz.label; lblEl.className = `text-lg font-black tracking-wide ${WZ_COLOR[wz.level] || 'text-gray-300'}`; }
             if (advEl) advEl.textContent = wz.advice;
-            if (chgEl && wz.chg != null) { chgEl.textContent = `${wz.chg > 0 ? '+' : ''}${wz.chg.toFixed(2)}%`; chgEl.className = `text-[9px] font-mono ${wz.chg > 0 ? 'text-red-300' : wz.chg < 0 ? 'text-green-300' : 'text-gray-500'}`; }
+            if (chgEl) { const f = fmtChg(wz.chg); chgEl.textContent = f.txt; chgEl.className = `text-[10px] font-mono font-bold ${f.cls}`; }
         }
-        // 9 細分小燈
+        // 9 細分箭頭 + 漲幅%（取代純圓點）
         if (j.sectors) {
             for (const [key, s] of Object.entries(j.sectors)) {
-                const dot = document.querySelector(`[data-sector="${key}"] .sector-heat`);
-                if (!dot) continue;
-                dot.className = `w-1.5 h-1.5 rounded-full sector-heat ${SECTOR_DOT[s.color] || 'bg-gray-600'}`;
+                const el = document.querySelector(`[data-sector="${key}"] .sector-heat`);
+                if (!el) continue;
+                const f = fmtChg(s.chg);
+                el.textContent = f.txt;
+                el.className = `text-[9px] font-mono font-bold sector-heat ${f.cls}`;
             }
         }
     },
@@ -7174,50 +7147,96 @@ recent.forEach(d => {
             return lines.join('\n');
         })();
 
-        // 個股共鳴段已搬到個股 X 光 AI 解析（fetchFundamentalAnalysis），這裡不再注入
+        // ── 整合戰情指揮部 5 維度 + 風險指數 + 流動性熱度（從 DOM 抓即時值）─
+        const gTxt = id => document.getElementById(id)?.innerText?.trim() || '--';
+        const dim_pv    = gTxt('dim_pv');
+        const dim_chip  = gTxt('dim_chip');
+        const dim_macro = gTxt('dim_macro');
+        const dim_tech  = gTxt('dim_tech');
+        const dim_senti = gTxt('dim_senti');
+        const riskScore = this._calcRiskScore?.() ?? null;
+        const riskLabel = gTxt('warRiskLabel');
+        const liqText   = gTxt('sccLiq');
+
+        // ── 整合 macro_risk.json 全欄位（含 null 狀態說明）──
+        const mr = this._macroRiskCache || {};
+        const fmtMr = (v, suffix='') => v == null ? '待採' : `${v}${suffix}`;
+        const us10yStr  = fmtMr(mr.us10y_yield,            '%');
+        const us2yStr   = fmtMr(mr.us2y_yield,             '%');
+        const fgStr     = fmtMr(mr.fear_greed);
+        const retailStr = fmtMr(mr.retail_ls_pct,          '%');
+        const twdStr    = fmtMr(mr.usdtwd);
+        const backStr   = fmtMr(mr.taifex_backwardation);
+        const fiSpotStr = mr.fi_spot_net == null ? '待採' : `${mr.fi_spot_net > 0 ? '+' : ''}${mr.fi_spot_net} 億`;
+
+        // ── 4 戰區 + 9 細分（從快取）──
+        const sh = this._sectorHeatCache || {};
+        const wzLines = sh.warzones ? Object.entries(sh.warzones).map(([k, w]) =>
+            `${w.icon} ${w.name}：${w.chg == null ? '待採' : (w.chg > 0 ? '+' : '') + w.chg.toFixed(2) + '%'} ${w.label}（${w.advice}）`
+        ).join('\n') : '（戰區資料待採）';
+        const subLines = sh.sectors ? Object.entries(sh.sectors).map(([k, s]) =>
+            `${k}: ${s.chg == null ? '待採' : (s.chg > 0 ? '+' : '') + s.chg.toFixed(2) + '%'}`
+        ).join(' / ') : '（細分待採）';
+
+        // ── 牛市泡沫 4 維度 ──
+        let bubbleLines = '（資料待採）';
+        try {
+            const bRes = await fetch(new URL('data/bubble_warning.json', window.location.href.split('?')[0]).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(4000) });
+            if (bRes.ok) {
+                const b = await bRes.json();
+                bubbleLines = [
+                    `🏦 證券狂熱度：${b.broker_heat?.label || '--'}（${b.broker_heat?.desc || ''}）`,
+                    `⚖️ 融資槓桿：${b.margin_leverage?.label || '--'}`,
+                    `🧟 群魔亂舞：${b.junk_count?.label || '--'}（${b.junk_count?.desc || ''}）`,
+                    `📉 大盤 K 線：${b.kline_status?.label || '--'}（${b.kline_status?.desc || ''}）`,
+                ].join('\n');
+            }
+        } catch(e) {}
 
         showProgress(5, 5, 'AI 生成報告中...');
         if (btn) btn.innerHTML = '⏳ AI 分析中...';
 
         const hasNews = newsSection.trim().length > 0;
-        const totalSections = 6 + (hasNews ? 1 : 0);
-        const s = (n) => hasNews ? n : n - 1; // section number offset when no news
 
-        const prompt = `你是台股首席策略師，用白話文、權證小哥風格，根據以下昨晚全球數據，告訴我明日台股開盤情況與操作策略：
+        const prompt = `你是台股首席策略師，用白話文、權證小哥風格，依據以下「全頁綜合情報」給操作劇本：
 
-【外資籌碼】外資台指期未平倉：${fiLabel}
+【宏觀大氣候】美債10Y ${us10yStr} / 美債2Y ${us2yStr} / 恐懼貪婪 ${fgStr} / 散戶多空 ${retailStr} / 台幣 ${twdStr} / 台指逆價差 ${backStr} / 外資現貨 ${fiSpotStr} / 外資台指期 ${fiLabel}
+【戰情指揮部 5 維度】量價=${dim_pv} / 籌碼=${dim_chip} / 總經=${dim_macro} / 技術=${dim_tech} / 情緒=${dim_senti}
+【市場風險指數】${riskScore == null ? '計算中' : riskScore + ' (' + riskLabel + ')'}｜流動性熱度 ${liqText}
+【4 大資金輪動戰區】
+${wzLines}
+【9 細分板塊漲跌】${subLines}
+【牛市泡沫 4 維雷達】
+${bubbleLines}
 【台股指數】加權 ${twii} / 上櫃 ${twoii}
-【美股四大指數】S&P500 ${spx}（${spxChg}）/ 道瓊 ${dji} / 那斯達克 ${ndx}（${ndxChg}）/ 費半SOX ${sox}（${soxChg}）⚡
-【VIX 恐慌指數】${vix}
-【關鍵巨頭ADR】台積電 ${tsm}（${tsmChg}）/ 輝達NVDA ${nvda}（${nvdaChg}）/ 蘋果 ${aapl} / 微軟 ${msft}
-【宏觀三角】美債2Y ${us02y}%（${us02yChg}）/ 布蘭特原油 ${ukoil}桶 / 美元指數DXY ${dxy}（${dxyChg}）${newsSection}
-【雷達選股（自動掃描）】
+【美股四大】S&P500 ${spx}(${spxChg}) / 道瓊 ${dji} / 那斯達克 ${ndx}(${ndxChg}) / 費半 ${sox}(${soxChg})
+【VIX 恐慌】${vix}｜【台積電ADR】${tsm}(${tsmChg})｜【NVDA】${nvda}(${nvdaChg})
+【美元/油價】DXY ${dxy}(${dxyChg}) / 布蘭特 ${ukoil}${newsSection}
+【雷達自動掃描】
 ${radarSection}
 
-請依序輸出以下${totalSections}段，每段用「▌標題」開頭，2-3句，**粗體**標關鍵數字：
+請輸出 6 段，每段「▌標題」開頭，2-3 句白話，**粗體**標關鍵數字：
 
-▌1. 市場氛圍總結
-一句話：今晚美股氣氛偏多/偏空/中性，最關鍵的訊號是什麼
+▌1. 全球風向總結
+綜合宏觀+戰情指揮部+4戰區，一句話定多空方向，指出最關鍵的訊號
 
-▌2. 半導體與AI資金流向
-費半SOX + NVDA 的動向，直接預告明日台積電與電子板塊的開盤方向
+▌2. 台股泡沫指數解讀
+根據 4 維度泡沫雷達綜合判斷，台股目前位於「孕育期/泡沫期/末升段/破裂中」哪個位置，操作風險水位是多少
 
-▌3. 台積電ADR與外資籌碼
-TSM ADR + 外資期貨合力說明了什麼，外資明天可能怎麼動
+▌3. 市場風險指數 ${riskScore == null ? 'X' : riskScore} 與 流動性熱度 ${liqText} 解讀
+用白話講解這兩個數字現在的「天氣」是什麼意思，給散戶具體可以做什麼
 
-▌4. 宏觀三角壓力診斷
-美債利率升降 × 美元強弱 × 油價，這三個因子今天對台股是加分還是扣分
-${hasNews ? `
-▌5. 📰 消息面衝擊
-根據【全球即時情報】，點出最關鍵的1-2條新聞，說明對台灣哪個板塊（半導體/AI/傳產/金融/能源）衝擊最大？對台積電股價是加分還是扣分？` : ''}
-▌${s(6)}. 🔮 台股開盤展望
-根據上述所有訊號，明日台股最可能：高開/平開/低開（給出大約點數方向或漲跌幅估計），說明最關鍵的支撐與壓力位
+▌4. 資金板塊輪動方向
+從 4 戰區漲跌找出誰熱誰冷，明天資金最可能往哪流動，避開哪些區塊
 
-▌${s(7)}. 🎯 雷達個股共鳴評估
-針對上方三類雷達選股，在當前全球環境下，哪類型訊號最強？前幾檔個股的底部/飆股訊號是否依然有效？操作上要注意什麼風險或加乘效果？`;
+▌5. 🔮 明日台股開盤展望
+高開/平開/低開估計（給點數方向或漲跌幅），最關鍵的支撐與壓力位${hasNews ? '，並結合即時情報判斷' : ''}
+
+▌6. 🎯 實戰操作劇本
+資金水位建議幾成，5 大族群操作優先順序，防守線在哪，破線停損紀律是什麼`;
 
         try {
-            const text = await this._callAI({ prompt, max_tokens: 1000, temperature: 0.4 });
+            const text = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.4 });
             const html = text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/▌(\d+\.\s*.+)/g, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">▌$1</div>')

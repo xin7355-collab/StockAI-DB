@@ -41,6 +41,7 @@ def create_robust_session():
 http_session = create_robust_session()
 # ───────────────────────────────
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from threading import Lock
 from typing import Any, Generator, Optional
 
@@ -402,35 +403,31 @@ def get_stock_data(
             (current_time.hour > 9 and current_time.hour < 14 and not (current_time.hour == 13 and current_time.minute > 30))
         )
 
-# 【效能修復】在同步函式內若要發起網路請求，務必捕捉所有例外，且 timeout 設短一點
-            if last_db_date != today_str and is_market_open:
-                try:
-                    url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
-                    # 將 timeout 縮短至 2 秒，避免證交所 API 緩慢時卡死背景執行緒
-                    res = requests.get(url, timeout=2.0, headers={'User-Agent': 'Mozilla/5.0'})
-                    res.raise_for_status()
-                    res_json = res.json()
-                    if res_json.get('msgArray'):
-                        msg = res_json['msgArray'][0]
-                        z = msg.get('z', '-')
-                        live_price = float(z) if z != '-' else float(msg.get('y', 0))
-                        if live_price > 0:
-                            rows.append((today_str, live_price, int(msg.get('v', 0))))
-                except Exception as e:
-                    print(f"⚠️ [Agent盤中校準錯誤] {symbol}: {e}")
-                z = msg.get('z', '-')
-                live_price = float(z) if z != '-' else float(msg.get('y', 0))
-                if live_price > 0:
-                    data.append({
-                        'date': today_str.replace('/', '-'),
-                        'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
-                        'high': float(msg.get('h', live_price) if msg.get('h', '-') != '-' else live_price),
-                        'low': float(msg.get('l', live_price) if msg.get('l', '-') != '-' else live_price),
-                        'close': live_price,
-                        'volume': int(msg.get('v', 0)),
-                        'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0,
-                        'margin_balance': 0, 'short_balance': 0
-                    })
+        # 【效能修復】在同步函式內若要發起網路請求，務必捕捉所有例外，且 timeout 設短一點
+        if last_db_date != today_str and is_market_open:
+            try:
+                url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
+                # 將 timeout 縮短至 2 秒，避免證交所 API 緩慢時卡死背景執行緒
+                res = requests.get(url, timeout=2.0, headers={'User-Agent': 'Mozilla/5.0'})
+                res.raise_for_status()
+                res_json = res.json()
+                if res_json.get('msgArray'):
+                    msg = res_json['msgArray'][0]
+                    z = msg.get('z', '-')
+                    live_price = float(z) if z != '-' else float(msg.get('y', 0))
+                    if live_price > 0:
+                        data.append({
+                            'date': today_str.replace('/', '-'),
+                            'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
+                            'high': float(msg.get('h', live_price) if msg.get('h', '-') != '-' else live_price),
+                            'low': float(msg.get('l', live_price) if msg.get('l', '-') != '-' else live_price),
+                            'close': live_price,
+                            'volume': int(msg.get('v', 0)),
+                            'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0,
+                            'margin_balance': 0, 'short_balance': 0
+                        })
+            except Exception as e:
+                print(f"⚠️ [Agent盤中校準錯誤] {symbol}: {e}")
     except Exception as e:
         print(f"⚠️ [盤中校準錯誤] {symbol}: {e}")
     # ────────────────────────────────
@@ -834,7 +831,7 @@ def get_radar_list() -> str:
 
 def query_stock_data(symbol: str) -> str:
     """
-    從 SQLite 的 stock_history 表查詢指定股票最近 5 天的收盤價、MA5、MA20 與成交量。
+    從 SQLite 的 stock_history 表查詢指定股票最近 5 天的 OHLCV + 三大法人 + 融資融券。
     需取最近 25 筆資料才能計算 MA20；回傳最後 5 筆的格式化結果。
     若查無資料，回傳「查無 {symbol} 的歷史資料」。
     """
@@ -844,8 +841,10 @@ def query_stock_data(symbol: str) -> str:
         conn.execute("PRAGMA synchronous=NORMAL;")
         cur = conn.cursor()
         cur.execute(
-            "SELECT trade_date, close, volume FROM stock_history "
-            "WHERE symbol = ? ORDER BY trade_date DESC LIMIT 25",
+            "SELECT trade_date, close, volume, "
+            "       foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal "
+            "FROM stock_history WHERE symbol = ? "
+            "ORDER BY trade_date DESC LIMIT 25",
             (symbol,)
         )
         rows = cur.fetchall()
@@ -874,7 +873,8 @@ def query_stock_data(symbol: str) -> str:
                     z = msg.get('z', '-')
                     live_price = float(z) if z != '-' else float(msg.get('y', 0))
                     if live_price > 0:
-                        rows.append((today_str, live_price, int(msg.get('v', 0))))
+                        # 盤中快照無法人資料，補 None
+                        rows.append((today_str, live_price, int(msg.get('v', 0)), None, None, None, None, None))
         except Exception:
             pass # 備援接口失敗則靜默降級，維持原歷史陣列計算
         # ────────────────────────────────────────
@@ -883,13 +883,83 @@ def query_stock_data(symbol: str) -> str:
         ma5  = round(sum(closes[-5:]) / min(5, len(closes)), 2) if len(closes) >= 1 else None
         ma20 = round(sum(closes[-20:]) / min(20, len(closes)), 2) if len(closes) >= 1 else None
         recent5 = rows[-5:]
-        lines = [f"股票代號：{symbol}（最近 {len(recent5)} 天數據）"]
+        lines = [f"股票代號：{symbol}（最近 {len(recent5)} 天 OHLCV + 法人+融資）"]
         lines.append(f"MA5={ma5}  MA20={ma20}")
-        for date_val, close_val, vol in recent5:
-            lines.append(f"  {date_val}  收盤={close_val}  成交量={vol:,}")
+        for row in recent5:
+            date_val, close_val, vol = row[0], row[1], row[2]
+            fi  = row[3] if len(row) > 3 else None
+            it  = row[4] if len(row) > 4 else None
+            de  = row[5] if len(row) > 5 else None
+            mb  = row[6] if len(row) > 6 else None
+            sb  = row[7] if len(row) > 7 else None
+            fmt = lambda v, sign=True: ('待採' if v is None else (f"{'+' if sign and v > 0 else ''}{v:,}"))
+            lines.append(
+                f"  {date_val}  收盤={close_val}  量={vol:,}  "
+                f"外資={fmt(fi)}  投信={fmt(it)}  自營={fmt(de)}  "
+                f"融資={fmt(mb, sign=False)}  融券={fmt(sb, sign=False)}"
+            )
         return "\n".join(lines)
     except Exception as e:
         return f"查詢 {symbol} 股價失敗：{e}"
+
+
+def query_broker_chips(symbol: str) -> str:
+    """
+    查指定股票最近 5 個交易日主力分點：聚合各券商淨買賣後排序，
+    回傳 Top10 買超 + Top10 賣超（含中文券商名稱）。
+    """
+    try:
+        # 載入券商代碼→名稱對照表（採礦時已寫入 data/broker_names.json）
+        names = {}
+        bn_path = Path(__file__).resolve().parent / 'data' / 'broker_names.json'
+        if bn_path.exists():
+            try:
+                names = json.loads(bn_path.read_text(encoding='utf-8'))
+            except Exception:
+                names = {}
+        conn = sqlite3.connect(DB_PATH, timeout=15.0)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT date, broker_id, broker_name, buy_vol, sell_vol, net_vol "
+            "FROM broker_chips WHERE symbol = ? "
+            "ORDER BY date DESC, ABS(net_vol) DESC LIMIT 500",
+            (symbol,)
+        ).fetchall()
+        conn.close()
+        if not rows:
+            return f"查無 {symbol} 主力分點資料（採礦機尚未抓到）"
+        # 取最近 5 個交易日
+        recent_dates = sorted({r['date'] for r in rows}, reverse=True)[:5]
+        agg: dict = {}
+        for r in rows:
+            if r['date'] not in recent_dates:
+                continue
+            bid = r['broker_id']
+            display = r['broker_name'] or names.get(bid, bid)
+            agg.setdefault(bid, {'name': display, 'net': 0, 'buy': 0, 'sell': 0})
+            agg[bid]['net']  += int(r['net_vol']  or 0)
+            agg[bid]['buy']  += int(r['buy_vol']  or 0)
+            agg[bid]['sell'] += int(r['sell_vol'] or 0)
+        items = sorted(agg.values(), key=lambda x: x['net'], reverse=True)
+        tops = items[:10]
+        bots = [x for x in items if x['net'] < 0][-10:]
+        date_range = f"{recent_dates[-1]} ~ {recent_dates[0]}" if recent_dates else ""
+        lines = [f"股票代號：{symbol}  分點期間：{date_range}（近 5 個交易日聚合）"]
+        lines.append("■ 買超分點 Top10：")
+        if not tops:
+            lines.append("  （無明顯買超分點）")
+        else:
+            for x in tops:
+                lines.append(f"  {x['name']}  淨買 +{x['net']:,} 張  (買 {x['buy']:,} / 賣 {x['sell']:,})")
+        lines.append("■ 賣超分點 Top10：")
+        if not bots:
+            lines.append("  （無明顯賣超分點）")
+        else:
+            for x in reversed(bots):
+                lines.append(f"  {x['name']}  淨賣 {x['net']:,} 張  (買 {x['buy']:,} / 賣 {x['sell']:,})")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"查詢 {symbol} 分點失敗：{e}"
 
 
 def search_latest_news(symbol: str) -> str:
@@ -928,7 +998,21 @@ CHAT_TOOLS = [
         "type": "function",
         "function": {
             "name": "query_stock_data",
-            "description": "查詢指定股票最近5天的收盤價、MA5、MA20與成交量",
+            "description": "查詢個股最近 5 日 OHLCV + 三大法人買賣超（外資/投信/自營）+ 融資融券餘額",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "台股股票代號，如 '2330'"}
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_broker_chips",
+            "description": "查詢個股最近 5 日主力分點 Top10 買超 + Top10 賣超分點（含中文券商名稱）",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -955,15 +1039,22 @@ CHAT_TOOLS = [
 ]
 
 _CHAT_SKILL_DISPATCH = {
-    "get_radar_list":    get_radar_list,
-    "query_stock_data":  query_stock_data,
-    "search_latest_news": search_latest_news,
+    "get_radar_list":      get_radar_list,
+    "query_stock_data":    query_stock_data,
+    "query_broker_chips":  query_broker_chips,
+    "search_latest_news":  search_latest_news,
 }
 
 _CHAT_SYSTEM_PROMPT = (
-    "你是台股首席 AI 總裁，精通朱家泓技術分析。"
-    "你可以使用工具查資料，請根據工具回傳的真實數據，"
-    "給出犀利、有紀律的決策，絕不瞎掰數據。"
+    "你是台股首席 AI 總裁，精通朱家泓技術分析與郭榮哲折數心法。\n"
+    "你可呼叫以下工具取得真實資料，禁止瞎掰數字：\n"
+    "  1. get_radar_list       — 今日雷達強勢股清單（底部/飆股/綜合）\n"
+    "  2. query_stock_data     — 個股 OHLCV + 法人三大行（外資/投信/自營）+ 融資/融券\n"
+    "  3. query_broker_chips   — 個股主力分點 Top10 買 / Top10 賣（含中文券商名）\n"
+    "  4. search_latest_news   — 個股最新 3 則新聞\n"
+    "個股分析時建議的工具呼叫順序：query_stock_data → query_broker_chips → search_latest_news。\n"
+    "回答用權證小哥白話文，附具體數字與點位，標出🟢/🟡/🔴 操作燈號。\n"
+    "禁止『根據資料』『以下為您分析』等罐頭廢話，要像戰場參謀直接下令。"
 )
 
 

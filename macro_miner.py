@@ -197,31 +197,39 @@ def _fetch_taifex_html_fallback():
 
 
 def fetch_us2y_yield():
-    """美債 2Y 殖利率 — FRED 公開 CSV（DGS2，無需 API key）；FRED 對無 UA 偶爾 503，務必帶 UA"""
-    try:
-        url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2"
-        ua = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-              "Accept": "text/csv,text/plain,*/*"}
-        r = http.get(url, headers=ua, timeout=10)
-        if r.status_code != 200:
-            print(f"  [FRED DGS2] HTTP {r.status_code} body 前 200 字：{r.text[:200]}")
-            return None, f"HTTP {r.status_code}"
-        import csv
-        import io
-        rows = list(csv.reader(io.StringIO(r.text)))
-        # 由尾端往前找最後一個有效數值（FRED 缺值用 "."）
-        for row in reversed(rows[1:]):
-            if len(row) >= 2 and row[1] not in (".", "", None):
-                try:
-                    return round(float(row[1]), 3), None
-                except ValueError:
+    """美債 2Y — FRED DGS2 CSV；HTTPS 偶爾逾時，3 次 exponential backoff + 鏡像 endpoint 重試"""
+    import csv as _csv
+    import io as _io
+    import time as _t
+    urls = [
+        "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2",
+        "https://fred.stlouisfed.org/data/DGS2.csv",  # 鏡像 endpoint（fallback）
+    ]
+    ua = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+          "Accept": "text/csv,text/plain,*/*"}
+    last_err = "FRED DGS2 全失敗"
+    for attempt in range(3):
+        for url in urls:
+            try:
+                r = http.get(url, headers=ua, timeout=20)  # 從 10s 拉到 20s
+                if r.status_code != 200:
+                    last_err = f"HTTP {r.status_code} @ {url[:60]}"
                     continue
-        print(f"  [FRED DGS2] 全部列無有效值，body 前 200 字：{r.text[:200]}")
-        return None, "FRED DGS2 無有效值"
-    except Exception as e:
-        print(f"  ⚠️ US2Y 抓取失敗: {e}")
-        return None, str(e)[:100]
+                rows = list(_csv.reader(_io.StringIO(r.text)))
+                for row in reversed(rows[1:]):
+                    if len(row) >= 2 and row[1] not in (".", "", None):
+                        try:
+                            return round(float(row[1]), 3), None
+                        except ValueError:
+                            continue
+                last_err = "FRED DGS2 無有效值"
+            except Exception as e:
+                last_err = str(e)[:100]
+        if attempt < 2:
+            _t.sleep(2 ** attempt)  # 1s → 2s 之間 backoff
+    print(f"  ⚠️ US2Y 三次嘗試皆失敗: {last_err}")
+    return None, last_err
 
 
 def fetch_usdtwd():
@@ -284,6 +292,9 @@ def _taifex_oi_rows(commodity_id: str):
 def fetch_retail_long_short():
     """散戶多空比 — 用小型臺指期(MTX) 三大法人淨未平倉推算
     散戶多空比 ≈ -(三大法人 MTX 淨未平倉口數) / 全市場 MTX 未平倉量 ×100%（負值＝散戶偏多）
+
+    TODO(下輪): TAIFEX「小型臺指期」CSV 欄位 2026/02 後變動，目前匹配規則失效回 null。
+    需重新爬 TAIFEX OptionsAndFutureDailyMarketReport API 取代 historical CSV。
     """
     try:
         import re
@@ -335,6 +346,9 @@ def fetch_taifex_backwardation():
     """台指逆價差 = 臺股期貨(TX)近月收盤 − 加權指數(^TWII)現貨收盤（負值＝逆價差）
 
     ① 優先用 yfinance ^TXF=F（穩定）；失敗才退到 TAIFEX HTML regex（脆弱）
+
+    TODO(下輪): yfinance ^TXF=F 2026 起無回應 + TAIFEX HTML regex 失效，需改抓官方
+    DailyMarketReport CSV（與 retail_long_short 同源），下輪一起修。
     """
     try:
         import re
