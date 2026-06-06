@@ -7866,59 +7866,85 @@ ${radarSection}
             const { summary, detail_action } = this._parseAIJson(raw);
             this.renderSummaryCard(summary);
 
-            let text = detail_action || '';
-            const sections = {
-                '【🌏 總體位階與大局觀】': { border: 'border-cyan-500', title: 'text-cyan-400', bg: 'bg-cyan-950/20' },
-                '【⚔️ 總監專屬戰術室】':  { border: 'border-purple-500', title: 'text-purple-400', bg: 'bg-purple-950/20' },
-                '【🔥 首席操盤手終極喊話】':{ border: 'border-orange-500', title: 'text-orange-400', bg: 'bg-orange-950/20' },
+            let html = (detail_action || '').trim();
+            const sectionColors = {
+                '【🌏 總體位階與大局觀】':  'text-cyan-400 border-cyan-500',
+                '【⚔️ 總監專屬戰術室】':   'text-purple-400 border-purple-500',
+                '【🔥 首席操盤手終極喊話】': 'text-orange-400 border-orange-500',
             };
 
-            for (const [marker, c] of Object.entries(sections)) {
+            // 三大板塊：marker → 醒目標題 <h3> + 段落 <p>，杜絕糊成一坨純文字
+            for (const [marker, cls] of Object.entries(sectionColors)) {
                 const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                text = text.replace(new RegExp(esc, 'g'), `\n<div class="mt-3 ${c.border} border-l-2 pl-2 ${c.bg} rounded-r py-1"><span class="${c.title} font-bold text-xs">${marker}</span></div>`);
+                html = html.replace(new RegExp(esc, 'g'),
+                    `</p><h3 class="${cls} font-black text-sm mt-4 mb-1 pl-2 border-l-4">${marker}</h3><p class="text-gray-300 leading-relaxed text-sm">`);
             }
+            html = '<p class="text-gray-300 leading-relaxed text-sm">' + html + '</p>';
 
-            text = text
+            html = html
+                .replace(/^<p[^>]*>\s*<\/p>/, '')   // 去掉開頭多餘空段
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
-                .replace(/\n/g, '<br>')
                 .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
                 .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-sm">🔴強制撤退</span>')
-                .replace(/🟡觀望或減碼/g,'<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望或減碼</span>');
+                .replace(/🟡觀望或減碼/g,'<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望或減碼</span>')
+                .replace(/\n/g, '<br>');
 
-            this.typeWriterEffect(box, `<div class="text-indigo-100 typewriter-text font-mono leading-loose" style="font-size:0.9rem">${text}</div>`);
+            this.typeWriterEffect(box, `<div class="typewriter-text">${html}</div>`);
 
         } catch(e) {
             box.innerHTML = `<div class="text-red-400 font-bold bg-red-900/30 p-3 rounded border border-red-800">❌ AI 分析失敗：<br><span class="text-xs text-red-300">${e.message}</span></div>`;
         }
     },
 
-    // 健壯解析 AI 回傳的 JSON（容錯：直接 parse → 抓 {..} 子串 → 降級全文當 detail_action，永不白屏）
+    // 健壯解析 AI 回傳的 JSON（暴力提取：去 fence → 挖 {..} → JSON.parse → 欄位正則 → 才降級，永不白屏）
     _parseAIJson(text) {
         if (!text) return { summary: '', detail_action: '' };
-        const tryParse = s => { try { return JSON.parse(s); } catch(_) { return null; } };
-        let obj = tryParse(text.trim());
-        if (!obj) {
-            const a = text.indexOf('{'), b = text.lastIndexOf('}');
-            if (a !== -1 && b > a) obj = tryParse(text.slice(a, b + 1));
-        }
-        if (obj && (obj.summary != null || obj.detail_action != null)) {
-            return { summary: obj.summary || '', detail_action: obj.detail_action || '' };
-        }
-        return { summary: '', detail_action: text };   // 降級：解析失敗也把全文當詳細評析顯示
+        // 1) 去除 markdown code fence ```json ... ```
+        let s = String(text).trim()
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```$/, '')
+            .trim();
+        // 2) 暴力挖出第一個 { 到最後一個 } 的子字串
+        const m = s.match(/\{[\s\S]*\}/);
+        const candidate = m ? m[0] : s;
+        // 3) 先試正規 JSON.parse（正常跳脫的回應走這條最乾淨）
+        try {
+            const o = JSON.parse(candidate);
+            if (o && typeof o === 'object') {
+                return {
+                    summary: (o.summary || '').toString().trim(),
+                    detail_action: (o.detail_action || '').toString().trim(),
+                };
+            }
+        } catch (_) {}
+        // 4) JSON.parse 失敗（常因字串值內含未跳脫換行）→ 改用正則直接挖兩個欄位值
+        const grab = key => {
+            const r = new RegExp('"' + key + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"');
+            const mm = candidate.match(r);
+            if (!mm) return '';
+            return mm[1]
+                .replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+                .replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+                .trim();
+        };
+        const summary = grab('summary');
+        const detail_action = grab('detail_action');
+        if (summary || detail_action) return { summary, detail_action };
+        // 5) JSON.parse 與欄位正則都失敗 → 才降級把全文當詳細評析（不白屏）
+        return { summary: '', detail_action: s };
     },
 
-    // 將 AI 30 字短評渲染進首頁卡片 aiTranslatorCard（取代季節模板）
+    // 將 AI 30 字短評渲染進首頁卡片 aiTranslatorCard（黃色強視覺；空 summary 也填 fallback，永不卡住）
     renderSummaryCard(summary) {
         const card = document.getElementById('aiTranslatorCard');
         if (!card) return;
-        const safe = (summary || '').trim();
-        if (!safe) return;   // 無 summary 時保留季節預設卡，不覆蓋
+        const safe = ((summary || '').trim()) || '🤨 AI 已輸出詳細評析，請看下方戰術室解析';
         const esc = safe.replace(/</g, '&lt;').replace(/>/g, '&gt;');
         card.classList.remove('hidden');
         card.innerHTML = `
-            <div class="bg-gradient-to-r from-indigo-950/40 via-[#161b22] to-purple-950/30 border-l-4 border-indigo-500 px-3 py-2.5">
-                <div class="flex items-center gap-1.5 mb-1"><span class="text-[10px] font-bold text-indigo-300">🧠 AI 首席總評</span></div>
-                <div class="text-gray-100 font-black text-base leading-snug tracking-wide">${esc}</div>
+            <div class="bg-gradient-to-r from-yellow-950/40 via-[#161b22] to-amber-950/30 border-l-4 border-yellow-500 px-3 py-3">
+                <div class="flex items-center gap-1.5 mb-1.5"><span class="text-[10px] font-bold text-yellow-300/90 tracking-wider">🧠 AI 首席總評</span></div>
+                <div class="text-yellow-400 font-bold text-lg leading-relaxed tracking-wide">${esc}</div>
             </div>`;
     },
 
