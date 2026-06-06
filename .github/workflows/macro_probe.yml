@@ -2,8 +2,14 @@ name: 🔬 總經採礦驗證探針 (macro probe)
 
 # 純驗證用：只跑 macro_miner.py，把 data/macro_risk.json 印到 log + 上傳 artifact。
 # 不碰 gh-pages / data 分支，零部署風險。供快速確認每一欄是否真的抓到值（~2 分鐘）。
+# push macro_miner.py / 本檔即自動跑（免 dispatch 權限），方便快速迭代收斂 TAIFEX schema。
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "macro_miner.py"
+      - ".github/workflows/macro_probe.yml"
 
 permissions:
   contents: read
