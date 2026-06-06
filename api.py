@@ -65,6 +65,28 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL   = "llama-3.3-70b-versatile"   # 免費層支援的最強模型
 
+# ── 中央統合避險基金經理人 System Prompt（取代舊 trend/pullback/breakout/defense 四件套）──
+# 強制 JSON 雙層輸出：summary（首頁 30 字短評）+ detail_action（三大硬核板塊）
+HEDGE_FUND_SYSTEM_PROMPT = (
+    "你是頂級避險基金的台股操盤總監，說話像權證小哥一樣犀利、大白話、國中生也聽得懂。"
+    "根據使用者提供的【系統已精算真實數據】，直接告訴散戶該建倉、分批賣還是全面撤退，"
+    "並做硬派的信心喊話或斬倉警告。\n"
+    "🛑 嚴禁自己算數學、嚴禁捏造數字，只能引用使用者給定的數值。\n"
+    "⚠️ 只准輸出純 JSON，禁止 ```json 標籤、禁止 JSON 前後出現任何說明文字，格式如下：\n"
+    "{\n"
+    '  "summary": "首頁短評，30字以內。先用強烈痛點 emoji 開頭（如 出貨🤑 / 低接試單🤔 / '
+    "抱緊處理🔥 / 快逃🚨），把技術、籌碼、防守價無縫融合成『唯一一句、前後不矛盾』的核心總評，"
+    '帶具體點位，不准廢話。",\n'
+    '  "detail_action": "三大板塊，段落間用換行符分隔，每塊以指定【emoji 標題】一字不差開頭：\\n'
+    "【🌏 總體位階與大局觀】結合外資期貨淨口數與市場系統性風險，直白點出大環境的下行壓力或多方天花板在哪。\\n"
+    "【⚔️ 總監專屬戰術室】依庫存情境做 If-Else：若空手→給明確的進場價位、停損點、短線目標價；"
+    "若有持股→精算防守底線與停利目標的具體數字，下達『分批出貨🤑鎖利』或『跌破 XX 元紀律清倉』的軍令狀。\\n"
+    "【🔥 首席操盤手終極喊話】籌碼技術俱佳→堅定信心喊話『別被主力洗盤甩轎，抱緊處理』；"
+    "主力倒貨或大盤崩壞→無情點醒『別抱著空氣泡泡做夢，立刻撤退』。"
+    '最後獨立一行輸出最終判定：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。"\n'
+    "}"
+)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 【核心防禦元件 1】令牌桶節流閥 (Token Bucket Rate Limiter)
@@ -1078,8 +1100,8 @@ class FundamentalsRequest(BaseModel):
 
 class TechAIRequest(BaseModel):
     symbol:     str
-    query_type: str                              # trend / pullback / breakout / defense
-    max_tokens: int = Field(default=200, ge=80, le=400)
+    query_type: Optional[str] = None             # 已棄用：保留欄位避免破壞既有呼叫者
+    max_tokens: int = Field(default=1000, ge=80, le=1200)
 
 
 @app.post("/api/tech_ai")
@@ -1087,22 +1109,32 @@ async def tech_ai_diagnose(req: TechAIRequest):
     # 【終極修復】query_stock_data 內含同步的 requests.get 網路請求。
     # 必須用 to_thread 丟到背景執行緒，否則每次點擊都會讓 FastAPI 全站卡死 5 秒！
     stock_info = await asyncio.to_thread(query_stock_data, req.symbol)
-    _prompts = {
-        "trend":    "你是台股技術大師。請判斷目前是否為「頭頭高、底底高」的多頭排列？請用大白話給出具體的進場條件與防守價位。",
-        # 【體驗優化】將深奧的折數與 0.382 轉化為小白聽得懂的「大拍賣打幾折」
-        "pullback": "你是台股技術大師，精通郭榮哲的折數過濾。請用大白話解釋目前股價從高點跌下來「打了幾折」？現在買算不算撿便宜？並給出停損點。",
-        "breakout": "你是台股技術大師。請判斷目前的突破是否為「主力真金白銀換手」？還是假突破？請給出明確的追價條件與停損守則。",
-        "defense":  "你是台股風險控管大師。請無情且犀利地點出目前的破線危機，並給出絕對不能跌破的逃命價位，絕不留戀。",
-    }
-    sys_prompt = _prompts.get(req.query_type, "你是台股實戰大師，給出簡短技術面評估。")
-    user_msg = f"{stock_info}\n\n請用 100 字以內，犀利、專業的台股老手語氣給出大白話結論。"
-    content = await call_groq_api(
+    user_msg = f"{stock_info}\n\n請依規格輸出純 JSON（summary + detail_action 三大板塊）。"
+    raw = await call_groq_api(
         user_msg,
-        system_prompt=sys_prompt,
+        system_prompt=HEDGE_FUND_SYSTEM_PROMPT,
         max_tokens=req.max_tokens,
-        temperature=0.3,
+        temperature=0.4,
+        json_mode=True,
     )
-    return {"status": "success", "reply": content}
+    # 健壯解析（仿 /api/ai/investigate）：直接 parse → 抓 {..} 子串 → 降級全文當 detail_action
+    result: dict = {}
+    try:
+        result = json.loads(raw)
+    except Exception:
+        try:
+            s, e = raw.find("{"), raw.rfind("}") + 1
+            if s != -1 and e > s:
+                result = json.loads(raw[s:e])
+        except Exception:
+            result = {}
+    if not isinstance(result, dict):
+        result = {}
+    summary = result.get("summary", "")
+    detail  = result.get("detail_action", "")
+    if not summary and not detail:
+        detail = raw   # 降級：解析全失敗也回原文，前端不白屏
+    return {"status": "success", "summary": summary, "detail_action": detail}
 
 
 @app.post("/api/analyze_fundamentals")
