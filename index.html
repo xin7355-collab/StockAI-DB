@@ -598,7 +598,7 @@
                     <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
                         <div class="flex-1 flex flex-col gap-0.5">
                             <span id="costInputLabel" class="text-[9px] text-gray-500 font-bold text-right pr-1 leading-none">空手</span>
-                            <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 px-2 py-1.5 rounded w-full text-right font-mono text-sm font-bold border border-gray-700 outline-none focus:border-yellow-500 transition-colors" placeholder="成本價" oninput="this.dataset.fromInventory='false'; app.refreshStrategy(); app._updateCostLabel();">
+                            <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 px-2 py-1.5 rounded w-full text-right font-mono text-sm font-bold border border-gray-700 outline-none focus:border-yellow-500 transition-colors" placeholder="成本價" oninput="this.dataset.fromInventory='false'; app.refreshStrategy(); app._updateCostLabel(); app._scheduleAIRecalc('cost');" onblur="app._triggerAIRecalcIfDirty('cost');" onkeydown="if(event.key==='Enter'){event.target.blur();}">
                         </div>
                     </div>
                     <input type="hidden" id="chipCostInput" oninput="app.refreshStrategy()">
@@ -620,10 +620,11 @@
 
                         <!-- 五維儀/氣象/風險已上移至頂部「首席 AI 全局戰略指揮部」 -->
 
-                        <span id="actionMainText" class="text-2xl md:text-3xl lg:text-4xl font-black tracking-widest text-center text-gray-400 w-full leading-tight">運算中...</span>
-                        <div id="actionSubText" class="w-full mt-2 text-sm font-bold tracking-wide text-gray-300 text-center flex flex-col gap-1 leading-relaxed">等待系統計算...</div>
-                        <!-- 🛡️ 籌碼雙重驗證狀態列（近 3 日法人合計皆賣超 → 紅色警報；否則綠色安定） -->
-                        <div id="chipVerifyBar" class="hidden w-full mt-2 px-3 py-2 rounded-lg text-xs font-bold leading-relaxed border"></div>
+                        <!-- 季節大字卡已停用：改由首席 AI 黃卡 + 詳細評析全面接手 -->
+                        <span id="actionMainText" class="hidden"></span>
+                        <div id="actionSubText" class="hidden"></div>
+                        <!-- 💰 持倉損益 + 🕵️ 智慧庫存查核 -->
+                        <div id="costPnlBar" class="hidden w-full mt-2 space-y-1.5"></div>
                         </div>
 
                         <!-- 👉 右戰區 (lg:col-span-5)：動態停利停損 / 法人共識 / 永豐智慧單 -->
@@ -1578,6 +1579,7 @@ const app = {
     navStack: ['diag'], currentSymbolId: '2330', currentTF: 'D', currentSubChart: 'VOL',
     chartInstance: null, edgeSwipeStartX: 999,
     currentUSMarket: 'neutral', currentStrategyContext: {},
+    _aiRecalcTimer: null, _lastAITrigger: null,   // 自動 AI 分析：debounce 計時器 + 5 分鐘 cache key
     peaks: [], troughs: [], twiiState: 'neutral', fiShortQty: null, currentMarkPoints: [],
     sortableFav: null, sortableInv: null, apiRateLimited: false, emergencyMode: false, isRadarScanning: false,
     currentRadarResults: null, lastRadarType: null, _radarUpdatedAt: '',
@@ -5380,47 +5382,11 @@ recent.forEach(d => {
         return `${val.toFixed(2)} <div class="text-xs md:text-sm ${color} mt-0.5 leading-none">(${sign}${pct.toFixed(1)}%)</div>`;
     },
 
-    updateAITranslator(pC, pO, pH, pL, pV, pC1, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB) {
-        let title = "", statusHtml = "", desc = "", actionStock = "", actionEmpty = "", alertHtml = "";
-        let sObj = this.getSeasonObj(pC, pO, pH, pL, pV, pC1, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB);
-
-        let isShootingStar = (pH - Math.max(pC, pO)) > Math.abs(pC - pO) * 2;
-        let isHighVol = pV > pV1 * 2 && pV > this.indicators.vma5[this.activeData.length - 1] * 1.5;
-        let isRedBlack = this.activeData.length >= 2 && pC < pO && pC1 > this.activeData[this.activeData.length - 2].open && pC1 > ma5; 
-
-        if (ma60 !== null && pC > ma60 && isRedBlack && isHighVol) alertHtml += `<div class="bg-red-900/40 border border-red-700 text-red-400 p-2 rounded text-sm mb-2">🚨 <b>首席警告：</b>出現 [爆量] [長黑K]，主力正在倒貨，準備停利！</div>`;
-        if (ma60 !== null && pC > ma60 && isShootingStar) alertHtml += `<div class="bg-yellow-900/40 border border-yellow-700 text-yellow-400 p-2 rounded text-sm mb-2">⚠️ <b>首席警告：</b>高檔出現長 [上影線]，上面有壓力，主力推不動了！</div>`;
-
-        if (sObj.name === '夏') {
-            title = "🚀 狂飆噴出中 (點擊看大師白話文)";
-            statusHtml = `<div class="bg-red-900/30 text-red-400 px-3 py-2 text-sm font-bold border-b border-red-800/50 flex justify-between items-center cursor-pointer hover:bg-red-900/40 transition-colors" onclick="document.getElementById('aiTransBody').classList.toggle('hidden')"><span>${title}</span><span>▼</span></div>`;
-            desc = "股票進入利潤最肥的 [主升段]，沿著天花板一直往上衝，力道極強，呈現 [多頭排列]！"; actionStock = `只要收盤沒跌破「5日線」(${ma5.toFixed(2)})，就死命抱著賺波段。`; actionEmpty = `絕對不准追高！等它稍微跌下來靠近 5日線 再考慮。`;
-        } else if (sObj.name === '冬') {
-            title = "📉 溜滑梯向下 (點擊看大師白話文)";
-            statusHtml = `<div class="bg-green-900/30 text-green-400 px-3 py-2 text-sm font-bold border-b border-green-800/50 flex justify-between items-center cursor-pointer hover:bg-green-900/40 transition-colors" onclick="document.getElementById('aiTransBody').classList.toggle('hidden')"><span>${title}</span><span>▼</span></div>`;
-            desc = "趨勢轉為空頭，均線 [扣抵] 高值，像下山一樣越走越低。"; actionStock = "逢反彈趕快跑！認賠殺出，保住現金最重要。這叫做 [逃命波]。"; actionEmpty = "嚴禁接刀！絕對禁止 [攤平]，等到站回月線再說。";
-        } else if (sObj.name === '秋') {
-            title = "🍁 高檔盤頭中 (點擊看大師白話文)";
-            statusHtml = `<div class="bg-orange-900/30 text-orange-400 px-3 py-2 text-sm font-bold border-b border-orange-800/50 flex justify-between items-center cursor-pointer hover:bg-orange-900/40 transition-colors" onclick="document.getElementById('aiTransBody').classList.toggle('hidden')"><span>${title}</span><span>▼</span></div>`;
-            desc = "動能開始衰退，出現長上影線或爆量不漲。"; actionStock = "準備分批收割。防守底線設在「月線」，跌破全結帳。"; actionEmpty = "高檔盈虧比極差，空手觀望，不要幫人洗碗。";
-        } else if (sObj.name === '春') {
-            title = "📈 穩穩爬樓梯 (點擊看大師白話文)";
-            statusHtml = `<div class="bg-pink-900/30 text-pink-400 px-3 py-2 text-sm font-bold border-b border-pink-800/50 flex justify-between items-center cursor-pointer hover:bg-pink-900/40 transition-colors" onclick="document.getElementById('aiTransBody').classList.toggle('hidden')"><span>${title}</span><span>▼</span></div>`;
-            desc = "大趨勢是往上走的，目前正在穩穩爬樓梯。"; actionStock = `把防守底線設在「月線」(${ma20 !== null ? ma20.toFixed(2) : '--'})，沒破就安心抱著。`; actionEmpty = `最好的買點是等它稍微下跌靠近月線附近慢慢買。`;
-        } else {
-            title = "🔄 上下洗盤中 (點擊看大師白話文)";
-            statusHtml = `<div class="bg-gray-800 text-gray-400 px-3 py-2 text-sm font-bold border-b border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition-colors" onclick="document.getElementById('aiTransBody').classList.toggle('hidden')"><span>${title}</span><span>▼</span></div>`;
-            desc = "股票正在 [洗盤] 休息，沒有明確方向。且出現均線糾結。"; actionStock = "防守底線設在「前低」。沒破就放著，破了趕快跑。"; actionEmpty = "有耐心再買。出現量縮是正常的，耐心等待 [帶量突破]。";
-        }
-
-        let bodyHtml = `
-            <div id="aiTransBody" class="hidden p-3 bg-[#0d1117] flex flex-col gap-3 text-sm leading-relaxed text-left">
-                ${alertHtml}
-                <div class="flex flex-col gap-1"><span class="text-gray-500 font-bold">🔍 盤勢白話文</span><span class="text-gray-300">${this.wrapJargon(desc)}</span></div>
-                <div class="flex flex-col gap-1 border-t border-[#30363d] pt-2"><span class="text-orange-400 font-bold">💼 手上有股票的人</span><span class="text-gray-300">${this.wrapJargon(actionStock)}</span></div>
-                <div class="flex flex-col gap-1 border-t border-[#30363d] pt-2"><span class="text-blue-400 font-bold">🫱 目前空手的人</span><span class="text-gray-300">${this.wrapJargon(actionEmpty)}</span></div>
-            </div>`;
-        document.getElementById('aiTranslatorCard').innerHTML = statusHtml + bodyHtml;
+    updateAITranslator(_pC, _pO, _pH, _pL, _pV, _pC1, _pV1, _ma5, _ma10, _ma20, _ma60, _ma20_prev, _upperBB) {
+        // ⚠️ 季節 collapsible 字卡已棄用，全面由首席 AI 黃卡 + 三大板塊詳細評析接手；
+        //     保留函式簽章避免 ReferenceError（refreshStrategy 仍會呼叫此 method）。
+        const card = document.getElementById('aiTranslatorCard');
+        if (card) card.innerHTML = '';
     },
 
     // 🎯 統一訊號：策略頁 LED / 頂部指揮部 LED / AI prompt 全部從這裡取，根除矛盾
@@ -5902,6 +5868,25 @@ recent.forEach(d => {
         }
     },
 
+    // 🤖 AI 自動觸發鏈：debounce + 5 分鐘 cache，避免 keystroke 風暴與 API 浪費
+    _scheduleAIRecalc(source) {
+        clearTimeout(this._aiRecalcTimer);
+        this._aiRecalcTimer = setTimeout(() => this._triggerAIRecalcIfDirty(source), 1500);
+    },
+    _triggerAIRecalcIfDirty(source) {
+        if (!this.currentSymbolId || !this.activeData || !this.activeData.length) return;
+        const hasBackend = !!this._apiBase;
+        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        if (!hasBackend && !hasGroqKey) return;  // 沒設 Key 安靜略過，不彈視窗打擾
+        const costKey = (document.getElementById('costInput')?.value || '').trim();
+        const cacheKey = `${this.currentSymbolId}|${costKey}`;
+        const now = Date.now();
+        const last = this._lastAITrigger;
+        if (last && last.key === cacheKey && (now - last.ts) < 5 * 60 * 1000) return;  // 5 分鐘內同 key 不重跑
+        this._lastAITrigger = { key: cacheKey, ts: now, source };
+        this.runUnifiedGroqAnalysis({ silent: true });
+    },
+
     refreshStrategy() {
         if (!this.activeData || !this.activeData.length || !this.indicators.ma20) return;
         this.findPeaksAndTroughs();
@@ -5945,17 +5930,13 @@ recent.forEach(d => {
         if (this.latestNewsCache.includes('處置') || this.latestNewsCache.includes('注意')) {
             tagsHtml += `<span class="bg-yellow-900/80 text-yellow-200 border border-yellow-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 animate-pulse">🔒禁閉室</span>`;
         }
-        if (isIslandReversal) tagsHtml += `<span class="bg-purple-900/80 text-purple-200 border border-purple-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 animate-pulse">💀島型反轉</span>`;
-        
+        // 💀島型反轉徽章已移除：硬傷訊號改由首席 AI 黃卡 + 量化燈號統一呈現
         document.getElementById('stockTags').innerHTML = tagsHtml;
         
         const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
         const costVal = parseFloat(document.getElementById('costInput').value.trim()), hasCost = !isNaN(costVal) && costVal > 0;
         const invBadge = document.getElementById('invBadge');
         if(inInv || hasCost) invBadge.classList.remove('hidden'); else invBadge.classList.add('hidden');
-
-        const actionBox = document.getElementById('directActionBox');
-        let actionText = "", actionSubText = "", boxStyle = "";
 
         // 🚀 5 日速度因子：> 10% 視為極速飆股，必須用 5MA 貼身防守
         const _closes = (this.rawDailyData || []).slice(-6).map(r => r.close);
@@ -5969,13 +5950,14 @@ recent.forEach(d => {
                            + (r.trust_net   ?? r.invest_trust ?? 0)
                            + (r.dealer_net  ?? r.dealer_inv   ?? 0);
         const is_chips_weak = _recent3.length === 3 && _recent3.every(r => _instSum(r) < 0);
+        const instSum3 = _recent3.reduce((acc, r) => acc + _instSum(r), 0);
 
         // 預設防守：波段月線（季節 switch 內若速度因子打開會 override 回 5MA）
         let t1_val = recentPeak || upperBB, t2_val = upperBB, def_val = ma20, defLabel = "🛡️ 波段防守(20MA)";
 
         if (recentPeak && recentTrough && pC > recentTrough) {
             let depth = recentPeak - recentTrough;
-            if (pC >= recentPeak * 0.95) { 
+            if (pC >= recentPeak * 0.95) {
                 t1_val = recentPeak + depth; t2_val = recentPeak + (depth * 2);
                 document.getElementById('tgt1Label').innerText = "🎯 等距一倍"; document.getElementById('tgt2Label').innerText = "🚀 等距二倍";
             } else {
@@ -5987,52 +5969,23 @@ recent.forEach(d => {
 
         if (t1_val && t2_val && typeof t1_val === 'number' && typeof t2_val === 'number' && t1_val > t2_val) { let temp = t1_val; t1_val = t2_val; t2_val = temp; }
 
+        // 季節大字卡 actionText/Subtext/boxStyle 邏輯已全面棄用 → 改由首席 AI 黃卡與三大板塊接手。
+        // 但 def_val / defLabel / t1_val / t2_val 仍需依季節與硬傷訊號決定，以驅動「動態停利停損線」。
         if (isIslandReversal) {
-            boxStyle = "border-purple-600 bg-purple-900/40 text-purple-200 animate-pulse shadow-[0_0_20px_rgba(168,85,247,0.6)]";
             def_val = pC; defLabel = "🛑 逃命價"; t1_val = "避險退場"; t2_val = "避險退場";
-            actionText = `🚨 島型反轉成型！絕對禁買！`; actionSubText = `高檔出現「左缺右口」的凶險型態，請不計代價立刻退場！`;
-        }
-        else if (isBigBlackK && pC < ma20) {
-            boxStyle = "border-purple-500 bg-purple-900/20 text-purple-400 animate-pulse";
+        } else if (isBigBlackK && pC < ma20) {
             def_val = pC; defLabel = "🛑 大黑K底線"; t1_val = "等待止跌"; t2_val = "等待止跌";
-            actionText = `🚨 警報：收盤大黑K，空方摜壓！`; actionSubText = `大黑K跌破防線！隔日若開低嚴禁接刀。`;
-        }
-        else if (season === '冬') {
-            boxStyle = "border-green-500 bg-green-900/20 text-green-400";
+        } else if (season === '冬') {
             def_val = recentTrough ? recentTrough : pC; defLabel = "🛑 絕對停損(前低)"; t1_val = "下修逃命"; t2_val = "下修逃命";
-            actionText = `🫱 趨勢破壞，空手觀望`; actionSubText = `❄️ 冬季冷酷期：趨勢破壞。滿門抄斬，嚴禁凹單與接刀摸底！`;
-        }
-        else if (season === '夏') {
-            boxStyle = "border-red-500 bg-red-900/20 text-red-400 shadow-[0_0_20px_rgba(248,113,113,0.3)]";
-            if (isSpeedSurge) {
-                def_val = ma5; defLabel = "🛡️ 貼身防守(5MA)";
-                actionText = `🔴 5 日急漲 ${chg5pct.toFixed(1)}%，乖離過大，改以 5MA 貼身防守！未跌破 [${ma5.toFixed(2)}] 續抱`;
-                actionSubText = `☀️ 夏季狂飆期 + 極速飆股：股價黏布林上軌噴出，務必跟著 5MA 拉高停利。乖離縮回月線前嚴禁追高加碼。`;
-            } else {
-                def_val = ma20; defLabel = "🛡️ 波段防守(20MA)";
-                actionText = `🟢 趨勢波段中，防守線設為月線 (20MA)。未跌破 [${ma20.toFixed(2)}] 死命抱著！`;
-                actionSubText = `☀️ 夏季狂飆期：四線多排但尚未急噴，先以月線防守，給足整理空間，等帶量續攻。`;
-            }
-        }
-        else if (season === '秋') {
-            boxStyle = "border-orange-500 bg-orange-900/20 text-orange-400 animate-pulse";
+        } else if (season === '夏') {
+            if (isSpeedSurge) { def_val = ma5; defLabel = "🛡️ 貼身防守(5MA)"; }
+            else              { def_val = ma20; defLabel = "🛡️ 波段防守(20MA)"; }
+        } else if (season === '秋') {
             t1_val = pC; t2_val = null; def_val = ma20; defLabel = "🛡️ 波段防守(月線)";
-            actionText = `⚠️ 準備結帳，分批停利`; actionSubText = `🍁 秋季盤頭期：股價進入末升段高檔，動能衰退或爆量。請嚴格執行分批停利，準備收割。`;
-        }
-        else if (season === '春') {
-            boxStyle = "border-pink-500 bg-pink-900/10 text-pink-400";
+        } else if (season === '春') {
             def_val = ma20; defLabel = "🛡️ 波段防守(月線)";
-            actionText = `🟢 底部成型，準備建倉`; actionSubText = `🌸 春季打底期：股價站上月線，多頭起漲初期，請耐心等待發動。`;
         } else {
-            boxStyle = "border-gray-500 bg-gray-900/20 text-gray-400"; def_val = ma20; defLabel = "🛡️ 震盪防守(月線)";
-            actionText = `🟡 震盪盤整，請等帶量突破再買`; actionSubText = `方向不明確，適合少量試單或空手觀望。`;
-        }
-
-        let numDef = parseFloat(def_val);
-        if (hasCost && !isNaN(numDef) && pC < numDef && !isIslandReversal) {
-            boxStyle = "border-red-600 bg-red-900/40 text-white shadow-[0_0_20px_rgba(248,113,113,0.6)] animate-pulse";
-            actionText = `🚨 跌破防守價 [${numDef.toFixed(2)}]！強制停損！`;
-            actionSubText = `🛑 您已經違反交易紀律！本金正在流失，請立刻切換至券商 App 將部位停損市價賣出！留得青山在，不怕沒柴燒。`;
+            def_val = ma20; defLabel = "🛡️ 震盪防守(月線)";
         }
 
         const chipCostVal = parseFloat(document.getElementById('chipCostInput').value), hasChipCost = !isNaN(chipCostVal) && chipCostVal > 0;
@@ -6057,18 +6010,16 @@ recent.forEach(d => {
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC); document.getElementById('tgt2Price').innerHTML = this.getPriceHTML(t2_val, pC);
         document.getElementById('defPrice').innerHTML = this.getPriceHTML(def_val, pC); document.getElementById('defLabel').innerText = defLabel;
 
-        // 🛡️ 籌碼雙重驗證狀態列
-        const _chipBar = document.getElementById('chipVerifyBar');
-        if (_chipBar) {
-            _chipBar.classList.remove('hidden');
-            const _defNum = parseFloat(def_val);
-            const _defStr = isNaN(_defNum) ? '--' : _defNum.toFixed(2);
-            if (is_chips_weak) {
-                _chipBar.innerHTML = `⚠️ <b>籌碼鬆動警報：</b>外資/投信已連續 3 日賣超，一旦跌破防守價 [<b class="text-red-200">${_defStr}</b>] 請無情撤退！`;
-                _chipBar.className = 'w-full mt-2 px-3 py-2 rounded-lg text-xs font-bold leading-relaxed border bg-red-900/30 border-red-500/60 text-red-300 animate-pulse';
+        // 💰 持倉損益 + 🕵️ 智慧庫存查核（從 actionSubText 抽出，獨立小條呈現）
+        const _costPnlBar = document.getElementById('costPnlBar');
+        if (_costPnlBar) {
+            const _combined = (costPnlText + safetyMarginText).trim();
+            if (_combined) {
+                _costPnlBar.innerHTML = _combined;
+                _costPnlBar.classList.remove('hidden');
             } else {
-                _chipBar.innerHTML = `🛡️ <b>籌碼安定：</b>法人/大戶未見明顯出貨，可依防守價 [<b class="text-green-200">${_defStr}</b>] 安心抱單。`;
-                _chipBar.className = 'w-full mt-2 px-3 py-2 rounded-lg text-xs font-bold leading-relaxed border bg-green-900/20 border-green-500/40 text-green-300';
+                _costPnlBar.innerHTML = '';
+                _costPnlBar.classList.add('hidden');
             }
         }
 
@@ -6080,17 +6031,17 @@ recent.forEach(d => {
             this.speakAlert(`注意！${stockName} 收盤價 ${pC.toFixed(1)}，已跌破防守底線 ${defValNum.toFixed(1)}，請立刻執行停損！`);
         }
 
-        this.currentStrategyContext = { season, def_val, t1_val, isIslandReversal, isBigBlackK, brokenPrevLow };
+        this.currentStrategyContext = {
+            season, def_val, t1_val, isIslandReversal, isBigBlackK, brokenPrevLow,
+            chipSafety: { is_chips_weak, instSum3 }   // 供 AI prompt 直讀，免重算
+        };
 
         if (defValNum > 0) this._updateSWAlertConfig();
 
         let yoyNum = parseFloat(this.latestYoyCache.replace(/[^0-9.-]/g, ''));
         this.updateConfidenceLed(yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, this.currentStrategyContext);
 
-        actionBox.className = `w-full p-3 md:p-4 flex flex-col items-center justify-center transition-all duration-300 border-b border-[#30363d] ${boxStyle}`;
-        document.getElementById('actionMainText').innerHTML = actionText; document.getElementById('actionMainText').className = `text-xl md:text-2xl font-black tracking-widest text-center w-full leading-tight ${boxStyle.split(' ')[2]}`;
-        document.getElementById('actionSubText').innerHTML = actionSubText + costPnlText + safetyMarginText;
-        // 已刪除 smartOrderInstruction + tomorrowScriptText 渲染（廢話清理）
+        // 季節大字卡 (actionMainText/SubText) 與 chipVerifyBar 已下台，渲染全交給首席 AI 黃卡 + 詳細評析。
 
         const alpha = this.getAlphaScoreData(data, ind, last, this.twiiState);
         let totalScore = alpha.totalScore, sHtml = [];
@@ -6463,6 +6414,9 @@ recent.forEach(d => {
         this.refreshStrategy();
         this.renderChart();
         this.updatePredictionUI(trades, patternStats);
+
+        // 🤖 全自動 AI 分析：股票載入完成後即觸發（同股 5 分鐘 cache，避免燒 API）
+        this._triggerAIRecalcIfDirty('autoload');
 
         document.getElementById('loadingOverlay').style.display = 'none';
     },
@@ -7745,16 +7699,18 @@ ${radarSection}
         if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
     },
 
-    async runUnifiedGroqAnalysis() {
+    async runUnifiedGroqAnalysis(opts = {}) {
+        const silent = !!opts.silent;   // 自動觸發 (silent=true) 時不彈 alert、不開設定中心
         const box = document.getElementById('geminiResultBox');
         if (!this.activeData || this.activeData.length === 0) {
-            alert("⚠️ 請先確認股票資料已完整載入！");
+            if (!silent) alert("⚠️ 請先確認股票資料已完整載入！");
             return;
         }
 
         const hasBackend = !!this._apiBase;
         const hasGroqKey = !!(this.settings.groqKey || '').trim();
         if (!hasBackend && !hasGroqKey) {
+            if (silent) return;  // 自動模式：沒 Key 安靜略過
             box.classList.remove('hidden');
             box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 戰情設定中心」填入 <b>Groq API Key</b>（純手機模式）。<br>免費申請：console.groq.com</div>';
             this.openSettings();
@@ -7818,6 +7774,12 @@ ${radarSection}
             const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
             const newsLine = this.latestNewsCache ? `近期情報：${this.latestNewsCache.substring(0, 300)}` : '近期無重大情報';
 
+            // 5.5 個股三大法人籌碼安定度（近 3 日合計）→ 由 refreshStrategy 預先算好，AI 直讀避免幻覺
+            const _chip = (this.currentStrategyContext && this.currentStrategyContext.chipSafety) || null;
+            const chipSafetyLine = _chip
+                ? `近 3 日三大法人合計 ${_chip.instSum3 >= 0 ? '+' : ''}${_chip.instSum3.toLocaleString()} 張（${_chip.is_chips_weak ? '🚨 連續 3 日全面賣超，籌碼鬆動' : '🛡️ 未連續全面賣超，籌碼相對安定'}）`
+                : '個股籌碼資料計算中';
+
             // 🧠 靈魂編輯器連動：以使用者選定的 AI 指令（預設首席 / 小哥雙刀流 / 自訂）作為人設與風格
             const soul = (this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default).trim();
 
@@ -7850,13 +7812,19 @@ ${radarSection}
 - 最新 EPS：${epsInfo}
 - 庫存狀態：${invLine}
 - 總經外資期貨：${fiLabel}
+- 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
 - 🎯 系統量化燈號（最終判定必須與此一致）：${sigLine}
 - ${newsLine}
+
+🎨 重點高亮鐵律（散戶要一眼抓到重點）：
+- 所有【關鍵數字】（停損價、目標價、防守價、進場價、獲利%、虧損%、漲跌幅、營收YoY）一律用 **xxx** 包起。
+- 所有【強烈動詞】（清倉、出貨、抱緊、試單、撤退、建倉、加碼、減碼、停利、停損、紀律砍倉）一律用 **xxx** 包起。
+- 範例：跌破 **60.5 元** 請立刻 **清倉**；站穩 **65 元** 可 **加碼** 至 **70 元** 停利。
 
 ⚠️ 只准輸出以下「純 JSON」，禁止 \`\`\`json 標籤、禁止 JSON 前後出現任何說明文字：
 {
   "summary": "首頁短評，30字以內。先用強烈痛點 emoji 開頭（範例：出貨🤑 / 低接試單🤔 / 抱緊處理🔥 / 快逃🚨 / 觀望🤨），把技術、籌碼、防守價無縫融合成『唯一一句、前後不矛盾』的核心總評，必須帶具體點位，不准任何廢話。",
-  "detail_action": "三大板塊完整評析，段落之間用換行符分隔，每塊務必以指定的【emoji 標題】一字不差開頭：\\n【🌏 總體位階與大局觀】結合外資期貨 ${fiLabel} 與市場系統性風險，直白告訴散戶目前大環境的下行壓力或多方天花板在哪裡。\\n【⚔️ 總監專屬戰術室】這段最重要，必須針對庫存狀態（${invLine}）量身做 If-Else 實戰決策：若空手→以獵人視角給出明確的『進場價位、停損點、短線目標價』；若有持股→精確點出防守底線與停利目標的『具體數字』，並下達『分批出貨🤑鎖住利潤』或『跌破 XX 元紀律清倉』的明確軍令狀。\\n【🔥 首席操盤手終極喊話】最直白的實戰點評：若籌碼與技術完美→給散戶堅定的信心喊話『不要被主力洗盤甩轎，抱緊處理』；若主力倒貨或大盤崩壞→無情點醒『不要抱著空氣泡泡做夢，立刻撤退』。最後獨立一行輸出最終判定${sigVerdictHint ? `（系統量化建議：${sigVerdictHint}，務必一致）` : ''}：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。"
+  "detail_action": "三大板塊完整評析，段落之間用換行符分隔，每塊務必以指定的【emoji 標題】一字不差開頭：\\n【🌏 總體位階與大局觀】結合外資期貨 ${fiLabel} 與市場系統性風險，並務必引用『${chipSafetyLine}』評斷三大法人對個股的態度，直白告訴散戶目前大環境的下行壓力或多方天花板在哪裡。\\n【⚔️ 總監專屬戰術室】這段最重要，必須針對庫存狀態（${invLine}）量身做 If-Else 實戰決策：若空手→以獵人視角給出明確的『進場價位、停損點、短線目標價』；若有持股→精確點出防守底線與停利目標的『具體數字』，並下達『分批出貨🤑鎖住利潤』或『跌破 XX 元紀律清倉』的明確軍令狀。\\n【🔥 首席操盤手終極喊話】最直白的實戰點評：若籌碼與技術完美→給散戶堅定的信心喊話『不要被主力洗盤甩轎，抱緊處理』；若主力倒貨或大盤崩壞→無情點醒『不要抱著空氣泡泡做夢，立刻撤退』。最後獨立一行輸出最終判定${sigVerdictHint ? `（系統量化建議：${sigVerdictHint}，務必一致）` : ''}：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。"
 }`;
 
             let raw = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.35 });
@@ -7883,7 +7851,7 @@ ${radarSection}
 
             html = html
                 .replace(/^<p[^>]*>\s*<\/p>/, '')   // 去掉開頭多餘空段
-                .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
+                .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-200 font-black bg-yellow-900/40 px-1 rounded">$1</b>')
                 .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
                 .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-sm">🔴強制撤退</span>')
                 .replace(/🟡觀望或減碼/g,'<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望或減碼</span>')
