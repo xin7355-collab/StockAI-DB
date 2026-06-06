@@ -114,6 +114,13 @@ _TAIFEX_OPENAPI_UA = {
                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
     "Accept": "application/json",
 }
+# 三大法人-區分各期貨契約 OpenAPI 端點候選（probe swagger 探得正確名後固定）
+_TAIFEX_INST_ENDPOINTS = [
+    "MarketDataOfMajorInstitutionalTradersDetailsOfAllContractsByDate",
+    "MarketDataOfMajorInstitutionalTradersDetailsofAllContractsByDate",
+    "MarketDataOfMajorInstitutionalTradersDetailsOfAllContracts",
+    "MarketDataOfMajorInstitutionalTraders",
+]
 
 
 def _taifex_openapi(paths):
@@ -199,9 +206,7 @@ def fetch_foreign_futures_net():
     ① 優先官方 OpenAPI JSON（schema 穩定）② 失敗退 CSV 端點 ③ 再退 HTML regex
     """
     # ── ① 官方 OpenAPI JSON ──
-    data, err = _taifex_openapi([
-        "MarketDataOfMajorInstitutionalTradersDetailsOfAllContractsByDate",
-    ])
+    data, err = _taifex_openapi(_TAIFEX_INST_ENDPOINTS)
     if data:
         net, _ls, matched, seen = _taifex_sum_net_oi(
             data, lambda p: "臺股期貨" in p, want_identity="外資")
@@ -453,9 +458,7 @@ def fetch_retail_long_short():
     ① 優先官方 OpenAPI JSON（schema 穩定）② 失敗退原 CSV 解析
     """
     # ── ① 官方 OpenAPI JSON ──
-    data, err = _taifex_openapi([
-        "MarketDataOfMajorInstitutionalTradersDetailsOfAllContractsByDate",
-    ])
+    data, err = _taifex_openapi(_TAIFEX_INST_ENDPOINTS)
     if data:
         # MTX 商品名為「小型臺指期貨」；加總三大法人淨未平倉
         net, ls_max, matched, seen = _taifex_sum_net_oi(
@@ -527,24 +530,26 @@ def _taifex_openapi_tx_fut_close():
     for row in data:
         if not isinstance(row, dict):
             continue
-        _, contract = _find_key(row, ['契約', 'Contract', '商品', 'Commodity'])
+        # 契約欄：實測 OpenAPI key 為英文 'Contract'（值如 TX/MTX/TE…）
+        _, contract = _find_key(row, ['Contract', '契約', '商品', 'Commodity'])
         cstr = str(contract).strip() if contract is not None else ""
         if cstr:
             seen.add(cstr[:12])
-        # TX 精確比對（避免誤抓 MTX / 電子 / 金融）：契約碼 == TX 或商品名 == 臺股期貨
-        if cstr not in ("TX", "臺股期貨"):
+        # TX 精確比對（避免誤抓 MTX / 電子 / 金融）
+        if cstr not in ("TX", "TXF", "臺股期貨"):
             continue
-        _, exp = _find_key(row, ['到期', '契約月', '月份', 'ContractMonth', 'Settlement', 'Delivery'])
+        # 到期月份欄：實測英文 'ContractMonth(Week)'，週契約含 'W'
+        _, exp = _find_key(row, ['ContractMonth', '到期', '契約月', '月份', 'Delivery'])
         if exp is not None and ("週" in str(exp) or "W" in str(exp).upper()):
             continue  # 排除週期貨
-        close = _row_pick(row, '收盤')
-        if close is None:
-            close = _row_pick(row, '結算')
-        if close is None:
-            close = _row_pick(row, '最後成交')
+        # 收盤：實測英文 'Last'(最後成交) / 'SettlementPrice'(結算)；'-' 會被 _row_pick 視為 None
+        close = (_row_pick(row, 'Last') or _row_pick(row, '收盤')
+                 or _row_pick(row, 'SettlementPrice') or _row_pick(row, '結算')
+                 or _row_pick(row, '最後成交'))
         if close is None or close <= 0:
             continue
-        oi = _row_pick(row, '未沖銷') or _row_pick(row, '未平倉') or 0
+        oi = (_row_pick(row, 'OpenInterest') or _row_pick(row, '未沖銷')
+              or _row_pick(row, '未平倉') or 0)
         if oi >= best_oi:
             best_oi, best_close = oi, close
     if best_close is None:

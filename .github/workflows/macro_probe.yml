@@ -33,7 +33,61 @@ jobs:
       - name: 🌐 執行總經採礦
         run: python macro_miner.py || echo "⚠️ macro_miner.py 非零退出（仍印出結果）"
 
+      - name: 🔭 TAIFEX OpenAPI 探索（找三大法人端點 + 真實欄位名）
+        if: always()
+        run: |
+          python - <<'PY'
+          import requests, json
+          H = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept": "application/json"}
+          sw = None
+          for u in ["https://openapi.taifex.com.tw/swagger/v1/swagger.json",
+                    "https://openapi.taifex.com.tw/swagger/docs/v1",
+                    "https://openapi.taifex.com.tw/v1/swagger.json",
+                    "https://openapi.taifex.com.tw/swagger.json"]:
+              try:
+                  r = requests.get(u, timeout=25, headers=H)
+                  print("SWAGGER", u, r.status_code, len(r.text))
+                  if r.status_code == 200 and r.text.lstrip().startswith("{"):
+                      sw = r.json(); print("USING", u); break
+              except Exception as e:
+                  print("SWAGGER ERR", u, str(e)[:80])
+          cands = []
+          if sw:
+              paths = list((sw.get("paths") or {}).keys())
+              print("TOTAL PATHS", len(paths))
+              for p in paths:
+                  pl = p.lower()
+                  if any(k in pl for k in ["institutional", "trader", "major", "contract"]):
+                      print("PATH", p)
+                      cands.append(p.strip("/").split("/")[-1])
+          else:
+              print("NO SWAGGER → 用硬猜候選")
+              cands = ["MarketDataOfMajorInstitutionalTradersDetailsOfAllContractsByDate",
+                       "MarketDataOfMajorInstitutionalTradersDetailsofAllContractsByDate",
+                       "MarketDataOfMajorInstitutionalTradersDetailsOfAllContracts"]
+          seen = set()
+          for c in cands:
+              if c in seen:
+                  continue
+              seen.add(c)
+              try:
+                  r = requests.get("https://openapi.taifex.com.tw/v1/" + c, timeout=25, headers=H)
+                  ok = r.status_code == 200 and r.text.lstrip().startswith("[")
+                  print("EP", c, r.status_code, "json-list" if ok else r.text[:50])
+                  if ok:
+                      d = r.json()
+                      if d:
+                          print("  KEYS", list(d[0].keys()))
+                          for row in d[:400]:
+                              s = str(row)
+                              if ("外資" in s) or ("臺股期貨" in s) or ("小型臺指" in s):
+                                  print("  SAMPLE", json.dumps(row, ensure_ascii=False)[:500]); break
+              except Exception as e:
+                  print("EP ERR", c, str(e)[:80])
+          PY
+
       - name: 🔎 印出 macro_risk.json（驗證每一欄）
+        if: always()
         run: |
           echo "================ data/macro_risk.json ================"
           cat data/macro_risk.json || echo "❌ 檔案不存在"
