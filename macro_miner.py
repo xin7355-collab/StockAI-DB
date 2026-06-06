@@ -197,7 +197,9 @@ def _fetch_taifex_html_fallback():
 
 
 def fetch_us2y_yield():
-    """美債 2Y — FRED DGS2 CSV；HTTPS 偶爾逾時，3 次 exponential backoff + 鏡像 endpoint 重試"""
+    """美債 2Y — FRED DGS2 CSV；HTTPS 偶爾逾時，3 次 exponential backoff + 鏡像 endpoint 重試
+    雙層 fallback：FRED 全敗時退到 yfinance ^IRX(13W) 與 ^FVX(5Y) 內插近似 2Y
+    """
     import csv as _csv
     import io as _io
     import time as _t
@@ -228,8 +230,49 @@ def fetch_us2y_yield():
                 last_err = str(e)[:100]
         if attempt < 2:
             _t.sleep(2 ** attempt)  # 1s → 2s 之間 backoff
+    # Fallback：yfinance ^IRX(13W) + ^FVX(5Y) 內插近似 2Y（FRED IP 被 GH Actions 阻斷時的救命管道）
+    try:
+        import yfinance as yf
+        irx = yf.Ticker("^IRX").history(period="5d", auto_adjust=False)
+        fvx = yf.Ticker("^FVX").history(period="5d", auto_adjust=False)
+        if irx is not None and not irx.empty and fvx is not None and not fvx.empty:
+            irx_v = float(irx["Close"].iloc[-1])
+            fvx_v = float(fvx["Close"].iloc[-1])
+            # ^IRX 13週、^FVX 5Y — 2Y 介於其中，用簡單時間距離權重
+            # 13週=0.25Y、2Y=2Y、5Y=5Y → 線性內插：w_irx = (5-2)/(5-0.25) = 3/4.75
+            approx_2y = round(irx_v * (3 / 4.75) + fvx_v * (1 - 3 / 4.75), 3)
+            print(f"  [US2Y fallback] ^IRX={irx_v} ^FVX={fvx_v} → 近似 2Y={approx_2y}")
+            return approx_2y, f"FRED 失敗，yfinance 內插（IRX+FVX）"
+    except Exception as e:
+        last_err = f"FRED+yfinance 全敗：{str(e)[:80]}"
     print(f"  ⚠️ US2Y 三次嘗試皆失敗: {last_err}")
     return None, last_err
+
+
+# ════════ 🌍 全球巨頭脈動採集（8 大國際資金真實流向）════════
+def _fetch_yf_close(ticker, name):
+    """通用 yfinance 收盤 + 日漲幅%（取 5 日內最新 close vs 前一日 close）"""
+    try:
+        import yfinance as yf
+        hist = yf.Ticker(ticker).history(period="5d", auto_adjust=False)
+        if hist is None or hist.empty or len(hist) < 2:
+            return None, None, f"{name} yfinance 回空或 <2 日"
+        last = float(hist["Close"].iloc[-1])
+        prev = float(hist["Close"].iloc[-2])
+        chg_pct = round((last - prev) / prev * 100, 2) if prev > 0 else 0
+        return round(last, 2), chg_pct, None
+    except Exception as e:
+        return None, None, str(e)[:100]
+
+
+def fetch_gold():     return _fetch_yf_close("GC=F",     "黃金")        # 期貨 close usd/oz
+def fetch_wti_oil():  return _fetch_yf_close("CL=F",     "WTI 原油")    # usd/barrel
+def fetch_dxy():      return _fetch_yf_close("DX-Y.NYB", "美元指數")    # 美元指數
+def fetch_btc():      return _fetch_yf_close("BTC-USD",  "比特幣")      # usd
+def fetch_vix():      return _fetch_yf_close("^VIX",     "VIX 恐慌指數")
+def fetch_nikkei():   return _fetch_yf_close("^N225",    "日經 225")
+def fetch_hsi():      return _fetch_yf_close("^HSI",     "恆生指數")
+def fetch_kospi():    return _fetch_yf_close("^KS11",    "韓股 KOSPI")
 
 
 def fetch_usdtwd():
@@ -441,6 +484,15 @@ def main():
         "m1b_pct":     42,                                    # TODO: 待對接央行 API
         "m1b_label":   "當前熱度 42% (安全)",
         "m1b_note":    "TODO: 待對接央行 M1B API（目前用安全預設）",
+        # ── 🌍 全球巨頭脈動（8 大國際指標，yfinance）──
+        "gold_usd":       None, "gold_chg_pct":   None, "gold_error":   None,
+        "wti_oil":        None, "wti_chg_pct":    None, "wti_error":    None,
+        "dxy":            None, "dxy_chg_pct":    None, "dxy_error":    None,
+        "btc_usd":        None, "btc_chg_pct":    None, "btc_error":    None,
+        "vix":            None, "vix_chg_pct":    None, "vix_error":    None,
+        "nikkei":         None, "nikkei_chg_pct": None, "nikkei_error": None,
+        "hsi":            None, "hsi_chg_pct":    None, "hsi_error":    None,
+        "kospi":          None, "kospi_chg_pct":  None, "kospi_error":  None,
     }
 
     print("─" * 50)
@@ -479,10 +531,38 @@ def main():
     out["retail_ls_pct"], out["retail_ls_error"] = rls, rlserr
     print(f"     → {rls}%（err={rlserr}）")
 
-    print("[8/8] 抓取台指逆價差 (TX − ^TWII)…")
+    print("[8/16] 抓取台指逆價差 (TX − ^TWII)…")
     back, backerr = fetch_taifex_backwardation()
     out["taifex_backwardation"], out["taifex_backwardation_error"] = back, backerr
     print(f"     → {back} 點（err={backerr}）")
+
+    # ── 🌍 全球巨頭脈動（8 大國際指標）──
+    print("─" * 50)
+    print("🌍 採集全球巨頭脈動（黃金 / 原油 / 美元 / BTC / VIX / 日經 / 恆指 / 韓股）")
+    big_player_fns = [
+        ("黃金",         "gold",   fetch_gold),
+        ("WTI原油",       "wti",    fetch_wti_oil),
+        ("美元指數DXY",    "dxy",    fetch_dxy),
+        ("比特幣BTC",     "btc",    fetch_btc),
+        ("VIX恐慌",       "vix",    fetch_vix),
+        ("日經225",       "nikkei", fetch_nikkei),
+        ("恆生指數",       "hsi",    fetch_hsi),
+        ("韓股KOSPI",     "kospi",  fetch_kospi),
+    ]
+    key_alias = {"gold": "gold_usd", "wti": "wti_oil", "dxy": "dxy",
+                 "btc": "btc_usd", "vix": "vix", "nikkei": "nikkei",
+                 "hsi": "hsi", "kospi": "kospi"}
+    for i, (name, key, fn) in enumerate(big_player_fns, 9):
+        print(f"[{i}/16] {name}…")
+        val, chg, err = fn()
+        out[key_alias[key]]      = val
+        out[f"{key}_chg_pct"]    = chg
+        out[f"{key}_error"]      = err
+        if val is not None:
+            sign = "+" if (chg or 0) > 0 else ""
+            print(f"     → {val} ({sign}{chg}%)")
+        else:
+            print(f"     → 失敗：{err}")
 
     out["fi_complex_conclusion"] = judge_fi_complex(fut, spot)
     print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
@@ -495,7 +575,12 @@ def main():
             patched = []
             for key in ("us10y_yield", "us2y_yield", "fi_spot_net", "fi_futures_net",
                         "usdtwd", "fear_greed", "fear_greed_label",
-                        "retail_ls_pct", "taifex_backwardation"):
+                        "retail_ls_pct", "taifex_backwardation",
+                        # 🌍 全球巨頭脈動 8 指標斷崖防護
+                        "gold_usd", "gold_chg_pct", "wti_oil", "wti_chg_pct",
+                        "dxy", "dxy_chg_pct", "btc_usd", "btc_chg_pct",
+                        "vix", "vix_chg_pct", "nikkei", "nikkei_chg_pct",
+                        "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct"):
                 if out.get(key) is None and prev.get(key) is not None:
                     out[key] = prev[key]
                     patched.append(key)
