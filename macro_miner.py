@@ -105,12 +105,119 @@ def fetch_foreign_spot_net():
         return None, None, str(e)[:100]
 
 
-def fetch_foreign_futures_net():
-    """TAIFEX 外資臺指期 OI 淨口數（多單 - 空單）
+# ════════ TAIFEX 官方 OpenAPI JSON（schema 具名、穩定，取代易碎的 CSV/HTML 爬蟲）════════
+# 本機沙箱無法直連 taifex（Host not in allowlist），只有 GitHub Actions 可達；
+# 故採「多候選端點 + 中/英 key 模糊比對 + 失敗 dump 全部 key」設計，讓 CI log 必能揭露真實 schema。
+TAIFEX_OPENAPI_BASE = "https://openapi.taifex.com.tw/v1/"
+_TAIFEX_OPENAPI_UA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept": "application/json",
+}
 
-    改用 CSV 端點（/cht/3/futContractsDateDown），徹底繞開 HTML 表格結構變動。
-    CSV 欄位：日期/契約/身份別/多OI口/多OI金額/空OI口/空OI金額/淨OI口/淨OI金額…
+
+def _taifex_openapi(paths):
+    """依序試候選 OpenAPI 端點，回傳 (list_of_dicts, None)；全失敗回 (None, 診斷字串)。
+    任一端點 200 且 body 為非空 list 即採用，並印出第一列 keys 供 schema 確認。"""
+    diag = []
+    for p in paths:
+        url = TAIFEX_OPENAPI_BASE + p
+        try:
+            r = http.get(url, headers=_TAIFEX_OPENAPI_UA, timeout=20)
+            if r.status_code != 200:
+                diag.append(f"{p}:HTTP{r.status_code}")
+                continue
+            data = r.json()
+            if isinstance(data, list) and data and isinstance(data[0], dict):
+                print(f"  [TAIFEX OpenAPI] ✅ {p} 回 {len(data)} 列；keys={list(data[0].keys())}")
+                return data, None
+            diag.append(f"{p}:非list/空({type(data).__name__})")
+        except Exception as e:
+            diag.append(f"{p}:{str(e)[:40]}")
+    return None, "OpenAPI 全失敗 → " + " | ".join(diag)
+
+
+def _find_key(row, candidates):
+    """回 row 中第一個『key 含任一 candidate 子字串』的 (key, value)；找不到回 (None, None)。"""
+    for k in row.keys():
+        kk = str(k)
+        for c in candidates:
+            if c in kk:
+                return k, row[k]
+    return None, None
+
+
+def _row_pick(row, *substrs):
+    """在 dict row 的 key 裡找『同時包含全部 substrs』的第一個鍵，回值轉 float（去逗號）；否則 None。"""
+    for k, v in row.items():
+        kk = str(k)
+        if all(s in kk for s in substrs):
+            try:
+                return float(str(v).replace(",", "").strip())
+            except (ValueError, AttributeError, TypeError):
+                return None
+    return None
+
+
+_PROD_KEYS = ['商品名稱', '商品', '契約', 'ContractName', 'Contract', 'CommodityName', 'Commodity']
+_IDENT_KEYS = ['身份別', '身分別', 'Identity', 'InstitutionalInvestor', 'Investors', '法人']
+
+
+def _taifex_sum_net_oi(rows, product_match, want_identity=None):
+    """三大法人 OpenAPI rows → 加總『多空淨額未平倉口數』。
+    product_match(prod_str)->bool 決定該列商品是否納入；want_identity=None 表加總全部身份別。
+    回 (net_total, long_short_max, 命中列數, 全部商品名集合)。"""
+    net_total = 0
+    ls_max = 0
+    matched = 0
+    seen_products = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        _, prod = _find_key(row, _PROD_KEYS)
+        if prod is not None and str(prod).strip():
+            seen_products.add(str(prod).strip()[:24])
+        if prod is None or not product_match(str(prod)):
+            continue
+        if want_identity is not None:
+            _, ident = _find_key(row, _IDENT_KEYS)
+            if ident is None or want_identity not in str(ident):
+                continue
+        net = _row_pick(row, '多空淨額', '未平倉', '口數')
+        if net is None:
+            continue
+        net_total += net
+        long_oi = _row_pick(row, '多方', '未平倉', '口數') or 0
+        short_oi = _row_pick(row, '空方', '未平倉', '口數') or 0
+        ls_max = max(ls_max, long_oi + short_oi)
+        matched += 1
+    return net_total, ls_max, matched, seen_products
+
+
+def fetch_foreign_futures_net():
+    """TAIFEX 外資臺指期 OI 淨口數（多空淨額未平倉口數）
+    ① 優先官方 OpenAPI JSON（schema 穩定）② 失敗退 CSV 端點 ③ 再退 HTML regex
     """
+    # ── ① 官方 OpenAPI JSON ──
+    data, err = _taifex_openapi([
+        "MarketDataOfMajorInstitutionalTradersDetailsOfAllContractsByDate",
+    ])
+    if data:
+        net, _ls, matched, seen = _taifex_sum_net_oi(
+            data, lambda p: "臺股期貨" in p, want_identity="外資")
+        if matched > 0:
+            print(f"  [TAIFEX OpenAPI] 外資臺指期 淨未平倉={int(net)} 口")
+            return int(net), None
+        print(f"  [TAIFEX OpenAPI] 外資臺指期未匹配；keys={list(data[0].keys())}；商品名={sorted(seen)[:20]}")
+    else:
+        print(f"  [TAIFEX OpenAPI] 外資期貨端點失敗：{err}")
+
+    # ── ② 原 CSV 端點（保留為 fallback）──
+    return _fetch_foreign_futures_net_csv()
+
+
+def _fetch_foreign_futures_net_csv():
+    """原本的 CSV 端點解析（/cht/3/futContractsDateDown）→ 保留為 OpenAPI 失敗時 fallback。"""
     try:
         import csv
         import io
@@ -251,18 +358,26 @@ def fetch_us2y_yield():
 
 # ════════ 🌍 全球巨頭脈動採集（8 大國際資金真實流向）════════
 def _fetch_yf_close(ticker, name):
-    """通用 yfinance 收盤 + 日漲幅%（取 5 日內最新 close vs 前一日 close）"""
-    try:
-        import yfinance as yf
-        hist = yf.Ticker(ticker).history(period="5d", auto_adjust=False)
-        if hist is None or hist.empty or len(hist) < 2:
-            return None, None, f"{name} yfinance 回空或 <2 日"
-        last = float(hist["Close"].iloc[-1])
-        prev = float(hist["Close"].iloc[-2])
-        chg_pct = round((last - prev) / prev * 100, 2) if prev > 0 else 0
-        return round(last, 2), chg_pct, None
-    except Exception as e:
-        return None, None, str(e)[:100]
+    """通用 yfinance 收盤 + 日漲幅%（取 5 日內最新 close vs 前一日 close）
+    含防 429 限流：本輪 yfinance 連續呼叫達 ~14 次，呼叫前小睡 0.4s，回空再重試 1 次（睡 1s）。"""
+    import time
+    last_err = f"{name} 重試後仍失敗"
+    for attempt in range(2):
+        try:
+            time.sleep(0.4 if attempt == 0 else 1.0)
+            import yfinance as yf
+            hist = yf.Ticker(ticker).history(period="5d", auto_adjust=False)
+            if hist is None or hist.empty or len(hist) < 2:
+                last_err = f"{name} yfinance 回空或 <2 日"
+                continue
+            last = float(hist["Close"].iloc[-1])
+            prev = float(hist["Close"].iloc[-2])
+            chg_pct = round((last - prev) / prev * 100, 2) if prev > 0 else 0
+            return round(last, 2), chg_pct, None
+        except Exception as e:
+            last_err = str(e)[:100]
+            continue
+    return None, None, last_err
 
 
 def fetch_gold():     return _fetch_yf_close("GC=F",     "黃金")        # 期貨 close usd/oz
@@ -335,10 +450,25 @@ def _taifex_oi_rows(commodity_id: str):
 def fetch_retail_long_short():
     """散戶多空比 — 用小型臺指期(MTX) 三大法人淨未平倉推算
     散戶多空比 ≈ -(三大法人 MTX 淨未平倉口數) / 全市場 MTX 未平倉量 ×100%（負值＝散戶偏多）
-
-    TODO(下輪): TAIFEX「小型臺指期」CSV 欄位 2026/02 後變動，目前匹配規則失效回 null。
-    需重新爬 TAIFEX OptionsAndFutureDailyMarketReport API 取代 historical CSV。
+    ① 優先官方 OpenAPI JSON（schema 穩定）② 失敗退原 CSV 解析
     """
+    # ── ① 官方 OpenAPI JSON ──
+    data, err = _taifex_openapi([
+        "MarketDataOfMajorInstitutionalTradersDetailsOfAllContractsByDate",
+    ])
+    if data:
+        # MTX 商品名為「小型臺指期貨」；加總三大法人淨未平倉
+        net, ls_max, matched, seen = _taifex_sum_net_oi(
+            data, lambda p: ("小型臺指" in p) or ("小型台指" in p), want_identity=None)
+        if matched > 0 and ls_max > 0:
+            retail_pct = round(-(net) / ls_max * 100, 1)
+            print(f"  [散戶多空比 OpenAPI] inst_net={int(net)} 近似總OI={int(ls_max)} → {retail_pct}%")
+            return retail_pct, None
+        print(f"  [散戶多空比 OpenAPI] 未匹配；keys={list(data[0].keys())}；商品名={sorted(seen)[:20]}")
+    else:
+        print(f"  [散戶多空比 OpenAPI] 端點失敗：{err}")
+
+    # ── ② 原 CSV 解析（保留為 fallback）──
     try:
         import re
         rows, err = _taifex_oi_rows("MTX")
@@ -385,13 +515,46 @@ def fetch_retail_long_short():
         return None, str(e)[:100]
 
 
+def _taifex_openapi_tx_fut_close():
+    """官方 OpenAPI『期貨每日交易行情』→ 取 TX 近月收盤（排除週契約；以未沖銷量最大者當近月）。
+    回 float 收盤價；失敗回 None。"""
+    data, err = _taifex_openapi(["DailyMarketReportFut", "DailyMarketReportFutures"])
+    if not data:
+        print(f"  [台指逆價差 OpenAPI] 期貨行情端點失敗：{err}")
+        return None
+    best_close, best_oi = None, -1.0
+    seen = set()
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        _, contract = _find_key(row, ['契約', 'Contract', '商品', 'Commodity'])
+        cstr = str(contract).strip() if contract is not None else ""
+        if cstr:
+            seen.add(cstr[:12])
+        # TX 精確比對（避免誤抓 MTX / 電子 / 金融）：契約碼 == TX 或商品名 == 臺股期貨
+        if cstr not in ("TX", "臺股期貨"):
+            continue
+        _, exp = _find_key(row, ['到期', '契約月', '月份', 'ContractMonth', 'Settlement', 'Delivery'])
+        if exp is not None and ("週" in str(exp) or "W" in str(exp).upper()):
+            continue  # 排除週期貨
+        close = _row_pick(row, '收盤')
+        if close is None:
+            close = _row_pick(row, '結算')
+        if close is None:
+            close = _row_pick(row, '最後成交')
+        if close is None or close <= 0:
+            continue
+        oi = _row_pick(row, '未沖銷') or _row_pick(row, '未平倉') or 0
+        if oi >= best_oi:
+            best_oi, best_close = oi, close
+    if best_close is None:
+        print(f"  [台指逆價差 OpenAPI] 未匹配 TX 列；keys={list(data[0].keys())}；契約={sorted(seen)[:20]}")
+    return best_close
+
+
 def fetch_taifex_backwardation():
     """台指逆價差 = 臺股期貨(TX)近月收盤 − 加權指數(^TWII)現貨收盤（負值＝逆價差）
-
-    ① 優先用 yfinance ^TXF=F（穩定）；失敗才退到 TAIFEX HTML regex（脆弱）
-
-    TODO(下輪): yfinance ^TXF=F 2026 起無回應 + TAIFEX HTML regex 失效，需改抓官方
-    DailyMarketReport CSV（與 retail_long_short 同源），下輪一起修。
+    期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML regex
     """
     try:
         import re
@@ -406,16 +569,19 @@ def fetch_taifex_backwardation():
             return None, f"^TWII 取得失敗：{str(e)[:60]}"
         if spot is None:
             return None, "^TWII 無現貨收盤"
-        # 2) 期貨收盤：先試 yfinance（^TXF=F），失敗才走 TAIFEX HTML
-        fut_close = None
-        try:
-            import yfinance as yf
-            fut_hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
-            if fut_hist is not None and not fut_hist.empty:
-                fut_close = float(fut_hist["Close"].iloc[-1])
-                print(f"  [台指逆價差] yfinance ^TXF=F 期貨收盤 = {fut_close}")
-        except Exception as e:
-            print(f"  [台指逆價差] yfinance 期貨失敗，退到 TAIFEX HTML：{str(e)[:60]}")
+        # 2) 期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML
+        fut_close = _taifex_openapi_tx_fut_close()
+        if fut_close is not None:
+            print(f"  [台指逆價差] OpenAPI TX 近月收盤 = {fut_close}")
+        if fut_close is None:
+            try:
+                import yfinance as yf
+                fut_hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
+                if fut_hist is not None and not fut_hist.empty:
+                    fut_close = float(fut_hist["Close"].iloc[-1])
+                    print(f"  [台指逆價差] yfinance ^TXF=F 期貨收盤 = {fut_close}")
+            except Exception as e:
+                print(f"  [台指逆價差] yfinance 期貨失敗，退到 TAIFEX HTML：{str(e)[:60]}")
         if fut_close is None:
             url = "https://www.taifex.com.tw/cht/3/futDailyMarketReport"
             payload = {"queryType": "2", "marketCode": "0", "commodity_id": "TX",

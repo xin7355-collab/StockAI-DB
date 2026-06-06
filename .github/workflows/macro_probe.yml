@@ -1,0 +1,42 @@
+name: 🔬 總經採礦驗證探針 (macro probe)
+
+# 純驗證用：只跑 macro_miner.py，把 data/macro_risk.json 印到 log + 上傳 artifact。
+# 不碰 gh-pages / data 分支，零部署風險。供快速確認每一欄是否真的抓到值（~2 分鐘）。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 🔬 macro 探針
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依套件
+        run: pip install requests yfinance --quiet
+
+      - name: 🌐 執行總經採礦
+        run: python macro_miner.py || echo "⚠️ macro_miner.py 非零退出（仍印出結果）"
+
+      - name: 🔎 印出 macro_risk.json（驗證每一欄）
+        run: |
+          echo "================ data/macro_risk.json ================"
+          cat data/macro_risk.json || echo "❌ 檔案不存在"
+          echo "======================================================"
+
+      - name: 📤 上傳 macro_risk.json artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macro-risk-probe
+          path: data/macro_risk.json
+          if-no-files-found: warn
