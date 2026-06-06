@@ -114,12 +114,10 @@ _TAIFEX_OPENAPI_UA = {
                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
     "Accept": "application/json",
 }
-# 三大法人-區分各期貨契約 OpenAPI 端點候選（probe swagger 探得正確名後固定）
+# 三大法人-區分各期貨契約-依日期 OpenAPI 端點（probe swagger 已確認正確名）
+# 實測 keys: Date / ContractCode(商品中文名) / Item(身份別) / OpenInterest(Net|Long|Short) …
 _TAIFEX_INST_ENDPOINTS = [
-    "MarketDataOfMajorInstitutionalTradersDetailsOfAllContractsByDate",
-    "MarketDataOfMajorInstitutionalTradersDetailsofAllContractsByDate",
-    "MarketDataOfMajorInstitutionalTradersDetailsOfAllContracts",
-    "MarketDataOfMajorInstitutionalTraders",
+    "MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate",
 ]
 
 
@@ -166,16 +164,18 @@ def _row_pick(row, *substrs):
     return None
 
 
-_PROD_KEYS = ['商品名稱', '商品', '契約', 'ContractName', 'Contract', 'CommodityName', 'Commodity']
-_IDENT_KEYS = ['身份別', '身分別', 'Identity', 'InstitutionalInvestor', 'Investors', '法人']
+# 實測 OpenAPI 欄位（英文）：商品=ContractCode、身份=Item、淨/多/空未平倉口數=OpenInterest(Net|Long|Short)
+_PROD_KEYS = ['ContractCode', '商品名稱', '商品', '契約', 'ContractName', 'Commodity']
+_IDENT_KEYS = ['Item', '身份別', '身分別', 'Identity', 'InstitutionalInvestor', 'Investors', '法人']
 
 
 def _taifex_sum_net_oi(rows, product_match, want_identity=None):
-    """三大法人 OpenAPI rows → 加總『多空淨額未平倉口數』。
-    product_match(prod_str)->bool 決定該列商品是否納入；want_identity=None 表加總全部身份別。
-    回 (net_total, long_short_max, 命中列數, 全部商品名集合)。"""
-    net_total = 0
-    ls_max = 0
+    """三大法人 OpenAPI rows → 加總『多空淨額未平倉口數』OpenInterest(Net)。
+    product_match(prod_str)->bool 決定該列商品是否納入；want_identity=None 表加總全部身份別
+    （外資身份實際字串為「外資及陸資」，故用子字串 '外資' 比對即可命中）。
+    回 (net_total, long_short_sum, 命中列數, 全部商品名集合)。"""
+    net_total = 0.0
+    ls_sum = 0.0
     matched = 0
     seen_products = set()
     for row in rows:
@@ -190,15 +190,18 @@ def _taifex_sum_net_oi(rows, product_match, want_identity=None):
             _, ident = _find_key(row, _IDENT_KEYS)
             if ident is None or want_identity not in str(ident):
                 continue
-        net = _row_pick(row, '多空淨額', '未平倉', '口數')
+        # 淨未平倉口數：實測英文 'OpenInterest(Net)'（dict 順序在 ContractValueof… 之前，子字串首匹配即正確）
+        net = _row_pick(row, 'OpenInterest(Net)')
+        if net is None:
+            net = _row_pick(row, '多空淨額', '未平倉', '口數')  # 中文 fallback
         if net is None:
             continue
         net_total += net
-        long_oi = _row_pick(row, '多方', '未平倉', '口數') or 0
-        short_oi = _row_pick(row, '空方', '未平倉', '口數') or 0
-        ls_max = max(ls_max, long_oi + short_oi)
+        long_oi = _row_pick(row, 'OpenInterest(Long)') or _row_pick(row, '多方', '未平倉', '口數') or 0
+        short_oi = _row_pick(row, 'OpenInterest(Short)') or _row_pick(row, '空方', '未平倉', '口數') or 0
+        ls_sum += (long_oi + short_oi)
         matched += 1
-    return net_total, ls_max, matched, seen_products
+    return net_total, ls_sum, matched, seen_products
 
 
 def fetch_foreign_futures_net():
@@ -314,7 +317,7 @@ def fetch_us2y_yield():
     """
     import csv as _csv
     import io as _io
-    import time as _t
+    import requests as _rq
     urls = [
         "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2",
         "https://fred.stlouisfed.org/data/DGS2.csv",  # 鏡像 endpoint（fallback）
@@ -323,25 +326,24 @@ def fetch_us2y_yield():
                         "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
           "Accept": "text/csv,text/plain,*/*"}
     last_err = "FRED DGS2 全失敗"
-    for attempt in range(3):
-        for url in urls:
-            try:
-                r = http.get(url, headers=ua, timeout=20)  # 從 10s 拉到 20s
-                if r.status_code != 200:
-                    last_err = f"HTTP {r.status_code} @ {url[:60]}"
-                    continue
-                rows = list(_csv.reader(_io.StringIO(r.text)))
-                for row in reversed(rows[1:]):
-                    if len(row) >= 2 and row[1] not in (".", "", None):
-                        try:
-                            return round(float(row[1]), 3), None
-                        except ValueError:
-                            continue
-                last_err = "FRED DGS2 無有效值"
-            except Exception as e:
-                last_err = str(e)[:100]
-        if attempt < 2:
-            _t.sleep(2 ** attempt)  # 1s → 2s 之間 backoff
+    # 單發 GET（不走帶 urllib3 Retry 的 http session）→ FRED 在 GH Actions IP 常被封，
+    # 用裸 requests + 8s timeout 快速放棄（省下原本最多 ~120s 的重試空轉），直接走 yfinance fallback。
+    for url in urls:
+        try:
+            r = _rq.get(url, headers=ua, timeout=8)
+            if r.status_code != 200:
+                last_err = f"HTTP {r.status_code} @ {url[:60]}"
+                continue
+            rows = list(_csv.reader(_io.StringIO(r.text)))
+            for row in reversed(rows[1:]):
+                if len(row) >= 2 and row[1] not in (".", "", None):
+                    try:
+                        return round(float(row[1]), 3), None
+                    except ValueError:
+                        continue
+            last_err = "FRED DGS2 無有效值"
+        except Exception as e:
+            last_err = str(e)[:100]
     # Fallback：yfinance ^IRX(13W) + ^FVX(5Y) 內插近似 2Y（FRED IP 被 GH Actions 阻斷時的救命管道）
     try:
         import yfinance as yf
