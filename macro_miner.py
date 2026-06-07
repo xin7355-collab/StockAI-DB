@@ -14,15 +14,15 @@ import os
 import json
 import sys
 import traceback
-import subprocess
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import yfinance
+import ta
 
-# ⚔️ 首席專屬：雲端自動補給防線 (終極重啟版)
-try:
-    import requests
-    from requests.adapters import HTTPAdapter
-    from urllib3.util.retry import Retry
-    import yfinance
-    import ta
+DATA_DIR = Path("data")
 except ImportError:
     print("⚠️ 偵測到雲端缺少套件，啟動緊急自動安裝程序...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "yfinance", "ta"])
