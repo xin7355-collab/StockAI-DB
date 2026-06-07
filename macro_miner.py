@@ -23,17 +23,6 @@ import yfinance
 import ta
 
 DATA_DIR = Path("data")
-except ImportError:
-    print("⚠️ 偵測到雲端缺少套件，啟動緊急自動安裝程序...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "yfinance", "ta"])
-    print("🔄 裝備補給完畢！強制重新啟動系統以讀取新裝備...")
-    # 殺手鐧：安裝完後，徹底重新啟動這個 Python 檔案！
-    os.execv(sys.executable, [sys.executable] + sys.argv)
-
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
-
-DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 OUTPUT_FILE = DATA_DIR / "macro_risk.json"
 
