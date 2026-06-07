@@ -172,7 +172,7 @@ jobs:
 
       - name: 🌐 總經風險採礦（美債10Y/外資期現複合）
         run: |
-          pip install yfinance ta pandas numpy --quiet
+          python -m pip install requests yfinance ta pandas numpy --quiet
           python macro_miner.py || echo "⚠️ macro_miner.py 失敗，繼續部署"
 
       - name: 🎯 戰略雷達矩陣採礦（三大戰區掃描 → radar_matrix.json）
