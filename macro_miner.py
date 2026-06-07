@@ -774,11 +774,54 @@ def main():
         sys.exit(0)   # 強制 exit 0 避免污染 workflow
 
 
+def generate_bubble_warning():
+    """抓取台灣證交所「全市場融資餘額」，生成泡沫預警 JSON"""
+    try:
+        print("\n" + "─" * 50)
+        print("📊 開始抓取大盤融資餘額 (TWSE MI_MARGN)...")
+        url = "https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&selectType=MS"
+        # 使用系統內建帶有重試機制的 http session
+        res = http.get(url, headers=HEADERS, timeout=10).json()
+
+        # 擷取全市場融資餘額 (單位: 仟元)
+        margin_str = res['tables'][0]['data'][2][5]
+        margin_value_k = int(margin_str.replace(',', ''))
+        margin_value_100m = margin_value_k / 100000  # 轉換為億元
+
+        status = "🟢 健康 (散戶槓桿安定)"
+        if margin_value_100m > 3200:
+            status = "🔴 極度危險 (融資餘額破3200億，散戶槓桿過熱，提防多殺多斷頭潮)"
+        elif margin_value_100m > 2800:
+            status = "🟡 警戒 (融資水位偏高，盤勢易震盪)"
+
+        bubble_data = {
+            "大盤融資餘額_億元": round(margin_value_100m, 2),
+            "融資槓桿水位狀態": status,
+            "警報說明": "融資餘額代表散戶借錢炒股的金額。水位過高代表市場泡沫化，下跌時容易引發斷頭賣壓。"
+        }
+
+        # 確保檔案存放在 data 資料夾，這樣才能被 GitHub 同步到網頁端！
+        bubble_path = DATA_DIR / "bubble_warning.json"
+        with open(bubble_path, 'w', encoding='utf-8') as f:
+            json.dump(bubble_data, f, ensure_ascii=False, indent=4)
+
+        print(f"✅ 成功生成 {bubble_path}: 目前融資餘額 {margin_value_100m:.2f} 億元")
+
+    except Exception as e:
+        print(f"❌ 抓取大盤融資餘額失敗: {e}")
+
+# ==========================================
+# 🚀 程式執行起點 (雙引擎同時發動)
+# ==========================================
 if __name__ == "__main__":
     try:
+        # 第一引擎：抓取總經三大指標
         main()
+        
+        # 第二引擎：抓取大盤融資槓桿 (就在這裡被呼叫！)
+        generate_bubble_warning()
+        
     except Exception as e:
-        # 終極防線：絕不讓 macro_miner 崩潰污染 daily_miner workflow
         print(f"💥 macro_miner 頂層異常：{e}")
         traceback.print_exc()
         sys.exit(0)
