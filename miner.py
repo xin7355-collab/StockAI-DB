@@ -1806,6 +1806,90 @@ def build_radar_cache():
 # 證券狂熱度（擦鞋童指標）/ 融資槓桿水位 / 漲停家數 / 大盤 K 線型態
 BROKER_LIST = ['2855', '6005', '9105', '6021', '6020', '6024']  # 統一證/群益證/泰金寶/元大期/元富/元大期
 
+# ── 🆕 全市場融資餘額總額抓取(selectType=MS 彙總表,結構穩定不易被反爬擋)─────
+# 採用使用者建議的方向,並補強 7 點:fields 動態定位 / _rnd_hdrs / 退日 fallback /
+# 重試 / 防呆 / 不擦舊資料 / 雙判定。回傳 億元 (float) 或 None。
+def _fetch_market_margin_total_ms(d: date, max_fallback_days: int = 5):
+    """抓 TWSE MI_MARGN selectType=MS 彙總表的『全市場融資今日餘額』(轉億元)。
+
+    為何用 MS 而非 ALL:MS 是 TWSE 預先彙總好的市場總額表(僅 3-7 列),
+    結構穩定、被反爬擋率低;ALL 是 1500+ 個股表,易撞「市場總計表 vs 個股表」陷阱。
+    退日 fallback:當日尚未交易(如假日/早盤)會自動退到前一個交易日。
+    """
+    for offset in range(max_fallback_days):
+        try_d = d - timedelta(days=offset)
+        d8 = try_d.strftime('%Y%m%d')
+        url = f'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&date={d8}&selectType=MS'
+        try:
+            j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
+        except Exception as e:
+            print(f"  ⚠️ [融資MS] {d8} 請求例外:{e}")
+            continue
+        if j.get('stat') != 'OK':
+            # 假日/未開市常見:stat='很抱歉,沒有符合條件的資料!'
+            continue
+        tables = j.get('tables', []) or []
+        if not tables:
+            continue
+        # 兩種 schema 都見過:tables[0] 直接是 MS 表;有時 tables 多張要找含「融資」+「今日餘額」的
+        target_table = None
+        for t in tables:
+            fields = t.get('fields', []) or []
+            if any('融資' in (f or '') and '今日餘額' in (f or '') for f in fields):
+                target_table = t
+                break
+        if target_table is None:
+            target_table = tables[0]   # 退一步:就用第一張(MS 常規)
+        fields = target_table.get('fields', []) or []
+        data_rows = target_table.get('data', []) or []
+        if not data_rows:
+            continue
+        # 解析兩種可能的 schema(防 TWSE 隨時改版):
+        # Schema A — MS 二維表:row[0] 含「融資金額」標籤、col 含「今日餘額」(常見)
+        # Schema B — ALL flat:單一 col 名稱即「融資今日餘額」(總計列在最末)
+        max_val_k = 0
+
+        # Schema A 嘗試
+        idx_today_simple = next((i for i, f in enumerate(fields)
+                                 if ('今日餘額' in (f or '')) or ('現在餘額' in (f or ''))), None)
+        if idx_today_simple is not None:
+            for r in data_rows:
+                if not r or len(r) <= idx_today_simple: continue
+                row_label = str(r[0] or '')
+                if '融資' in row_label and '融券' not in row_label and '券' not in row_label:
+                    try:
+                        v = int(str(r[idx_today_simple]).replace(',', '').replace(' ', '') or 0)
+                        if v > max_val_k: max_val_k = v
+                    except Exception: continue
+
+        # Schema B 嘗試(若 A 沒命中)
+        if max_val_k <= 0:
+            idx_today_combined = next((i for i, f in enumerate(fields)
+                                       if '融資' in (f or '') and ('今日餘額' in (f or '') or '現在餘額' in (f or ''))), None)
+            if idx_today_combined is not None:
+                for r in data_rows:
+                    if not r or len(r) <= idx_today_combined: continue
+                    try:
+                        v = int(str(r[idx_today_combined]).replace(',', '').replace(' ', '') or 0)
+                        if v > max_val_k: max_val_k = v
+                    except Exception: continue
+
+        if max_val_k <= 0:
+            print(f"  ⚠️ [融資MS] {d8} 解析失敗 fields={fields[:6]} sample_row={data_rows[0][:4] if data_rows else '無'}")
+            continue
+        # 仟元 → 億元 (÷ 100,000)
+        total_100m = max_val_k / 100000.0
+        # 合理性檢查:全市場融資餘額正常在 1500~4000 億區間,小於 500 或大於 8000 視為解析錯誤
+        if total_100m < 500 or total_100m > 8000:
+            print(f"  ⚠️ [融資MS] {d8} 解析數字 {total_100m:.0f} 億超出合理區間,可能抓錯欄位")
+            continue
+        if offset > 0:
+            print(f"  ℹ️ [融資MS] 採用 {try_d.isoformat()} 資料(回退 {offset} 日)")
+        return total_100m
+    print(f"  ⚠️ [融資MS] 連 {max_fallback_days} 日皆無有效資料")
+    return None
+
+
 def build_bubble_warning():
     out = {'updated': date.today().isoformat()}
 
@@ -1835,14 +1919,18 @@ def build_bubble_warning():
         'samples': len(chgs),
     }
 
-    # ── 2. ⚖️ 融資槓桿水位（全市場 60 日彙總相對水位）─────────────────
+    # ── 2. ⚖️ 融資槓桿水位（雙判定:絕對值 億元 主、60 日相對水位 % 輔）──
+    # 主來源:TWSE MI_MARGN selectType=MS 彙總表(穩定、不被反爬擋)→ 絕對值總額
+    # 輔來源:現有 margin_cache_stock.json 60 日累積 → 相對水位 %
+    # 失敗 fallback:讀上次 bubble_warning.json 的 margin_leverage,寧可舊資料也不要白屏
+    total_100m = _fetch_market_margin_total_ms(date.today())   # 億元,可能 None
     level_pct = None
     try:
         margin_file = Path('margin_cache_stock.json')
         if margin_file.exists():
             m = json.loads(margin_file.read_text(encoding='utf-8'))
             if isinstance(m, dict) and m:
-                dates = sorted(m.keys())
+                dates = sorted(k for k in m.keys() if not k.startswith('_'))   # 跳過 _last_attempt 等 metadata
                 series = []
                 for d in dates[-60:]:
                     bucket = m.get(d) or {}
@@ -1859,10 +1947,36 @@ def build_bubble_warning():
                         level_pct = 50
     except Exception as e:
         print(f"  ⚠️ 融資槓桿水位計算失敗: {e}")
-    if level_pct is None:
-        out['margin_leverage'] = {'value': 0, 'label': '資料整編中',
-                                  'level': 'gray', 'desc': '待 60 日融資累積'}
-    else:
+
+    if total_100m is not None:
+        # 主來源成功:用絕對值 + (有的話) 相對水位 雙判定取較嚴格訊號
+        # 絕對值門檻參考使用者建議:>3200 億極度危險、>2800 億警戒
+        abs_status = '🔴 極度危險' if total_100m > 3200 else '🟡 警戒' if total_100m > 2800 else '🟢 健康'
+        abs_level  = 'red'         if total_100m > 3200 else 'orange'  if total_100m > 2800 else 'gray'
+        if level_pct is not None:
+            rel_level = 'red' if level_pct >= 80 else 'orange' if level_pct >= 60 else 'gray'
+            # 取較嚴格:red > orange > gray
+            sev_rank = {'red': 2, 'orange': 1, 'gray': 0}
+            final_level = abs_level if sev_rank[abs_level] >= sev_rank[rel_level] else rel_level
+            label = f'{total_100m:.0f} 億・{abs_status}・60日水位{level_pct}%'
+            desc = ('散戶槓桿過熱・提防斷頭潮' if final_level == 'red'
+                    else '融資水位偏高・盤勢易震盪' if final_level == 'orange'
+                    else '槓桿安定・健康水位')
+        else:
+            final_level = abs_level
+            label = f'{total_100m:.0f} 億・{abs_status}'
+            desc = ('散戶槓桿過熱・提防斷頭潮' if final_level == 'red'
+                    else '融資水位偏高・盤勢易震盪' if final_level == 'orange'
+                    else '槓桿安定・健康水位')
+        out['margin_leverage'] = {
+            'value':       level_pct if level_pct is not None else 0,   # 前端 progress bar 仍用 0-100%
+            'label':       label,
+            'level':       final_level,
+            'desc':        desc,
+            'total_100m':  round(total_100m, 1),   # 新增欄位:絕對值 (億),AI prompt 可用
+        }
+    elif level_pct is not None:
+        # 主來源掛、輔來源 OK:沿用舊 60 日相對水位邏輯
         out['margin_leverage'] = {
             'value': level_pct,
             'label': f'{level_pct}%・' + ('高危險區' if level_pct >= 80
@@ -1876,6 +1990,22 @@ def build_bubble_warning():
                       else '槓桿偏高' if level_pct >= 60
                       else '健康'),
         }
+    else:
+        # 主+輔都掛:讀上次 bubble_warning.json 的 margin_leverage,加 stale 標記;再不行才顯示「資料整編中」
+        prev = None
+        try:
+            prev_bw = json.loads(Path(DATA_DIR).joinpath('bubble_warning.json').read_text(encoding='utf-8'))
+            prev_ml = prev_bw.get('margin_leverage') or {}
+            if prev_ml.get('label') and '整編中' not in prev_ml.get('label', ''):
+                prev = dict(prev_ml)
+                prev['desc'] = f"⚠️ 上游今日無回應,沿用上次({prev_bw.get('updated', '?')}){prev.get('desc', '')}"
+        except Exception:
+            pass
+        if prev:
+            out['margin_leverage'] = prev
+        else:
+            out['margin_leverage'] = {'value': 0, 'label': '資料整編中',
+                                      'level': 'gray', 'desc': '待 TWSE MS 或 60 日融資累積'}
 
     # ── 3. 🧟‍♂️ 群魔亂舞指數（全市場漲停家數）───────────────────────────
     limit_up = 0

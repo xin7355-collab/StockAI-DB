@@ -1317,15 +1317,15 @@
                     <div id="radarMatrixHint" class="text-[11px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 leading-relaxed"></div>
                 </div>
 
-                <!-- 📊 動態數據表格（手機可橫向滑動） -->
-                <div class="flex-grow overflow-x-auto">
-                    <table class="w-full text-left border-collapse min-w-[440px]">
+                <!-- 📊 動態數據表格（兩列堆疊,自適應寬度） -->
+                <div class="flex-grow">
+                    <table class="w-full text-left border-collapse" style="table-layout: fixed;">
                         <thead>
                             <tr class="border-b border-[#30363d] text-gray-400 text-[11px] tracking-wider bg-[#0d1117]">
-                                <th class="py-2 px-3 font-bold">股號/股名</th>
-                                <th class="py-2 px-2 font-bold text-right">收盤價</th>
-                                <th class="py-2 px-2 font-bold text-right">成交額(億)</th>
-                                <th class="py-2 px-3 font-bold text-right">狀態/漲幅</th>
+                                <th class="py-2 px-2 font-bold" style="width: 38%;">股票</th>
+                                <th class="py-2 px-1 font-bold text-right" style="width: 18%;">收盤</th>
+                                <th class="py-2 px-1 font-bold text-right" style="width: 18%;">成交額</th>
+                                <th class="py-2 px-2 font-bold text-right" style="width: 26%;">狀態/漲幅</th>
                             </tr>
                         </thead>
                         <tbody id="radarMatrixBody" class="text-sm">
@@ -2656,6 +2656,9 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     const mj = await macroRes.json();
                     this.usMacroCache = mj;
                     this._renderUSBar(mj);
+                    // 🔧 Q4 修補:macro_cache 通常在首頁載入 1-3 秒後才到,首次 updateChiefAIBoard
+                    // 跑時 twii_history 還空,「📊 量價」會卡「待採」。這裡用最新 d 二次渲染補上。
+                    if (this.lastChiefAIData) this.updateChiefAIBoard(this.lastChiefAIData);
                 }
             } catch(e) {}
 
@@ -5511,6 +5514,7 @@ recent.forEach(d => {
 
     // 🧠 Task 1.1 五維全盤分析儀 — 量價/籌碼/總經/技術/情緒，依資料優雅降級
     updateChiefAIBoard(d) {
+        this.lastChiefAIData = d;   // 保留最新 d,讓 fetchMacroData 完成後可以二次 re-render「📊 量價」
         const setDim = (id, label, color) => {
             const el = document.getElementById(id); if (!el) return;
             el.textContent = label || '--';
@@ -6478,6 +6482,7 @@ recent.forEach(d => {
         if (!document.getElementById('toggleMA20').checked) option.series[3].data = [];
         
         if (this.currentSubChart === 'VOL') {
+            option.yAxis[1].min = null; option.yAxis[1].max = null;   // 解除 KD 殘留的 0~100 範圍,讓 ECharts 重算 auto-scale
             const vols = data.map(d => ({ value: d.volume, itemStyle: { color: d.close >= d.open ? '#f87171' : '#4ade80' } }));
             option.series.push({ name: '成交量', type: 'bar', data: vols, xAxisIndex: 1, yAxisIndex: 1 });
         } else if (this.currentSubChart === 'KD') {
@@ -6485,6 +6490,7 @@ recent.forEach(d => {
             option.series.push({ name: 'K(9)', type: 'line', data: ind.k, smooth: true, showSymbol: false, lineStyle: { color: '#facc15', width: 1.5 }, xAxisIndex: 1, yAxisIndex: 1 });
             option.series.push({ name: 'D(9)', type: 'line', data: ind.d, smooth: true, showSymbol: false, lineStyle: { color: '#3b82f6', width: 1.5 }, xAxisIndex: 1, yAxisIndex: 1 });
         } else if (this.currentSubChart === 'MACD') {
+            option.yAxis[1].min = null; option.yAxis[1].max = null;   // OSC 含負值,必須解除 KD 的 0~100 上下限污染
             option.series.push({ name: 'DIF', type: 'line', data: ind.dif, smooth: true, showSymbol: false, lineStyle: { color: '#facc15', width: 1.5 }, xAxisIndex: 1, yAxisIndex: 1 });
             option.series.push({ name: 'MACD', type: 'line', data: ind.macd, smooth: true, showSymbol: false, lineStyle: { color: '#3b82f6', width: 1.5 }, xAxisIndex: 1, yAxisIndex: 1 });
             option.series.push({ name: 'OSC', type: 'bar', data: ind.osc.map(v => ({ value: v, itemStyle: { color: v >= 0 ? '#f87171' : '#4ade80' } })), xAxisIndex: 1, yAxisIndex: 1 });
@@ -7233,23 +7239,23 @@ recent.forEach(d => {
             const name = this.getStockName(m.sym);
             const g = (typeof m.gain === 'number') ? m.gain : null;
             const gainCls = g === null ? 'text-gray-400' : (g > 0 ? 'text-red-400' : (g < 0 ? 'text-green-400' : 'text-gray-400'));
-            const gainStr = g === null ? '' : `<span class="${gainCls} font-mono font-bold">${g > 0 ? '+' : ''}${g}%</span>`;
-            const turn = (typeof m.turnover_e === 'number') ? m.turnover_e.toFixed(2) : (m.turnover_e || '—');
+            const gainStr = g === null ? '' : `<span class="${gainCls} font-mono font-bold text-[11px]">${g > 0 ? '+' : ''}${g}%</span>`;
+            const turn = (typeof m.turnover_e === 'number') ? m.turnover_e.toFixed(1) : (m.turnover_e || '—');
             return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
-                <td class="py-2.5 px-3">
-                    <div class="flex items-center gap-2">
-                        <span class="text-gray-600 text-[10px] font-mono w-4 text-right flex-shrink-0">${i + 1}</span>
-                        <div class="flex flex-col leading-tight">
-                            <span class="font-bold text-gray-100">${name}</span>
+                <td class="py-2.5 px-2 align-top">
+                    <div class="flex items-start gap-1.5">
+                        <span class="text-gray-600 text-[10px] font-mono w-3 text-right flex-shrink-0 mt-0.5">${i + 1}</span>
+                        <div class="flex flex-col leading-tight min-w-0 flex-1">
                             <span class="text-[10px] text-gray-500 font-mono">${m.sym}</span>
+                            <span class="font-bold text-gray-100 text-[13px] truncate" title="${name}">${name}</span>
                         </div>
                     </div>
                 </td>
-                <td class="py-2.5 px-2 text-right font-mono font-bold text-gray-100 whitespace-nowrap">${m.close}</td>
-                <td class="py-2.5 px-2 text-right font-mono text-cyan-300 whitespace-nowrap">${turn}</td>
-                <td class="py-2.5 px-3 text-right">
+                <td class="py-2.5 px-1 text-right font-mono font-bold text-gray-100 text-[13px] align-middle">${m.close}</td>
+                <td class="py-2.5 px-1 text-right font-mono text-cyan-300 text-[12px] align-middle">${turn}</td>
+                <td class="py-2.5 px-2 text-right align-middle">
                     <div class="flex flex-col items-end gap-0.5">
-                        <span class="text-[11px] text-amber-300 font-bold whitespace-nowrap">${m.status || ''}</span>
+                        <span class="text-[10px] text-amber-300 font-bold leading-tight">${m.status || ''}</span>
                         ${gainStr}
                     </div>
                 </td>
