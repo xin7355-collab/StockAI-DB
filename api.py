@@ -61,7 +61,15 @@ app.add_middleware(
 )
 
 DB_PATH      = "stock_hunter.db"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# ── [Key 輪動] 多把 Groq API key 池 ─────────────────────────────────────────────
+# 優先讀 GROQ_API_KEYS（逗號分隔），fallback 到單把 GROQ_API_KEY（向下相容舊部署）
+# 範例：export GROQ_API_KEYS="key_a,key_b,key_c"
+_groq_env = os.getenv("GROQ_API_KEYS") or os.getenv("GROQ_API_KEY", "")
+GROQ_API_KEYS: list[str] = [t.strip() for t in _groq_env.split(",") if t.strip()]
+GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else ""   # 向下相容（保留變數）
+print(f"🔑 [Groq 輪動] 載入 {len(GROQ_API_KEYS)} 把 API key（>1 把時 429 會自動切換）")
+
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL   = "llama-3.3-70b-versatile"   # 免費層支援的最強模型
 
@@ -157,7 +165,58 @@ class _GroqRateLimiter:
 
 
 # 全域節流閥實例（整個 FastAPI 程序共用一個，即跨請求共用）
-_groq_limiter = _GroqRateLimiter(rpm=15)
+# [Key 輪動] 每把 key 各有 15 RPM 免費額度，總 RPM 隨 key 數線性放大
+_GROQ_RPM_PER_KEY = 15
+_groq_limiter = _GroqRateLimiter(
+    rpm=max(_GROQ_RPM_PER_KEY * len(GROQ_API_KEYS), _GROQ_RPM_PER_KEY)
+)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 【核心防禦元件 1.5】Groq Key 輪動狀態
+#   - per-key 冷卻時間（unix_ts）；時間到自動復活，不用永久斷路器
+#   - 429 觸發：把當前 key 標冷卻 → 推進 idx → 立刻用新 key 重試
+#   - 全部冷卻：回 503 並帶 unblock_in_seconds，讓前端顯示「約 XX 分後恢復」
+# ══════════════════════════════════════════════════════════════════════════════
+_groq_key_idx: int = 0
+_groq_key_cooldown: dict[int, float] = {}      # idx → 解除冷卻的 unix_ts
+_groq_key_lock = asyncio.Lock()
+
+
+def _groq_active_idx(now: float) -> Optional[int]:
+    """從目前 idx 起順時針找第一把未冷卻的 key；全冷卻回 None。"""
+    if not GROQ_API_KEYS:
+        return None
+    n = len(GROQ_API_KEYS)
+    for off in range(n):
+        i = (_groq_key_idx + off) % n
+        if _groq_key_cooldown.get(i, 0) <= now:
+            return i
+    return None
+
+
+def _groq_earliest_resume_sec(now: float) -> int:
+    """全冷卻時：最快多少秒後有 key 可用（給 503 detail 顯示）。"""
+    if not GROQ_API_KEYS:
+        return 0
+    times = [_groq_key_cooldown.get(i, 0) for i in range(len(GROQ_API_KEYS))]
+    return max(0, int(min(times) - now))
+
+
+async def _groq_mark_blocked(idx: int, retry_after_sec: int):
+    """把第 idx 把 key 標冷卻：header 有給就用之，沒給用 3600s（TPD 用罄保守值）。"""
+    cd = max(retry_after_sec or 3600, 60)   # 至少 60s 避免反覆撞同一把
+    async with _groq_key_lock:
+        _groq_key_cooldown[idx] = time.time() + cd
+        print(f"  ⏳ [Groq 輪動] Key #{idx + 1}/{len(GROQ_API_KEYS)} 進入冷卻 {cd}s")
+
+
+async def _groq_advance_idx():
+    """順時針推進指標，下次優先試下一把 key。"""
+    global _groq_key_idx
+    async with _groq_key_lock:
+        if GROQ_API_KEYS:
+            _groq_key_idx = (_groq_key_idx + 1) % len(GROQ_API_KEYS)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -172,9 +231,10 @@ async def call_groq_api(
     system_prompt: str   = "",
 ) -> str:
     """
-    非同步呼叫 Groq Chat Completion，內建雙重防禦：
+    非同步呼叫 Groq Chat Completion，內建三重防禦：
       ① 節流閥（令牌桶）：超速時排隊等待，不直接拒絕
-      ② 指數退避重試：429/逾時最多重試 3 次（2→4→8 秒）
+      ② [Key 輪動] 多把 key 池：429 立刻換下一把冰 key 重試（不睡）
+      ③ 指數退避：網路錯誤/5xx 時最多重試 3 次（2→4→8 秒）
 
     參數：
       json_mode  若 True，傳入 response_format={"type":"json_object"}，
@@ -184,23 +244,19 @@ async def call_groq_api(
       AI 回覆的純文字（或 JSON 字串），已從 choices[0].message.content 取出。
 
     例外：
-      HTTPException(503) — API 金鑰未設定 或 重試耗盡仍 429
+      HTTPException(503) — 未設 key 或全部 key 達當日上限（detail 帶「約 XX 秒後恢復」）
       HTTPException(502) — 網路錯誤或 Groq 5xx
     """
-    if not GROQ_API_KEY:
+    if not GROQ_API_KEYS:
         raise HTTPException(
             status_code=503,
-            detail="伺服器未設定 GROQ_API_KEY 環境變數，請聯絡系統管理員。"
+            detail="伺服器未設定 GROQ_API_KEY 或 GROQ_API_KEYS 環境變數，請聯絡系統管理員。"
         )
 
     # ── ① 先通過節流閥（超速時在此排隊，不拋錯）──────────────────────────
     await _groq_limiter.acquire()
 
-    # ── 準備請求 Payload ──────────────────────────────────────────────────
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type":  "application/json",
-    }
+    # ── 準備請求 Payload（與 key 解耦）─────────────────────────────────────
     _msgs: list[dict] = []
     if system_prompt:
         _msgs.append({"role": "system", "content": system_prompt})
@@ -215,29 +271,47 @@ async def call_groq_api(
         # Groq 支援 OpenAI 相容的 JSON mode，強制輸出可解析的 JSON
         payload["response_format"] = {"type": "json_object"}
 
-    # ── ② 指數退避重試（最多 3 次：等待 2→4→8 秒）───────────────────────
-    # RETRY_DELAYS 的長度即最大重試次數；最後一輪 delay=None 代表已無退路
-    RETRY_DELAYS = [2, 4, 8]
+    # ── 重試策略 ───────────────────────────────────────────────────────────
+    #   429 = [Key 輪動] 標冷卻 → 換下一把 key 立刻重打（冰的不用睡）
+    #   5xx / 網路錯誤 = 指數退避 2 → 4 → 8 秒，最多 3 次
+    # ──────────────────────────────────────────────────────────────────────
+    BACKOFF_DELAYS = [2, 4, 8]
+    backoff_used = 0
+    rate_limit_hits = 0
+    max_429_attempts = len(GROQ_API_KEYS) + 1   # 每把都試一遍 + 1 次保險
     last_err: Exception = RuntimeError("未知錯誤")
 
-    # httpx.AsyncClient 使用 async with，確保連線池在請求結束後釋放
     async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
-        for attempt, delay in enumerate(RETRY_DELAYS + [None]):
+        while True:
+            now = time.time()
+            idx = _groq_active_idx(now)
+            if idx is None:
+                wait_sec = _groq_earliest_resume_sec(now)
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"全部 {len(GROQ_API_KEYS)} 把 Groq Key 均已達當日上限，約 {wait_sec} 秒後恢復。"
+                )
+
+            headers = {
+                "Authorization": f"Bearer {GROQ_API_KEYS[idx]}",
+                "Content-Type":  "application/json",
+            }
             try:
                 resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
 
-                # ── 429 Too Many Requests（Groq 速率限制）───────────────
+                # ── 429 Too Many Requests（個別 key 達上限）──────────────
                 if resp.status_code == 429:
-                    if delay is None:   # 已重試 3 次，放棄
+                    rate_limit_hits += 1
+                    retry_after = int(resp.headers.get("Retry-After", 0))
+                    await _groq_mark_blocked(idx, retry_after)
+                    await _groq_advance_idx()
+                    if rate_limit_hits >= max_429_attempts:
+                        wait_sec = _groq_earliest_resume_sec(time.time())
                         raise HTTPException(
                             status_code=503,
-                            detail=f"Groq API 速率限制，已重試 {len(RETRY_DELAYS)} 次仍失敗，請稍後再試。"
+                            detail=f"全部 {len(GROQ_API_KEYS)} 把 Groq Key 均已達當日上限，約 {wait_sec} 秒後恢復。"
                         )
-                    # Groq 有時在標頭提供 Retry-After；取其最大值以防萬一
-                    retry_after = int(resp.headers.get("Retry-After", 0))
-                    wait = max(delay, retry_after)
-                    await asyncio.sleep(wait)
-                    continue
+                    continue   # 立刻換下一把 key 重打
 
                 resp.raise_for_status()     # 其他 4xx/5xx → 拋出 HTTPStatusError
                 data = resp.json()
@@ -248,19 +322,21 @@ async def call_groq_api(
 
             except (httpx.TimeoutException, httpx.NetworkError) as e:
                 last_err = e
-                if delay is None:
+                if backoff_used >= len(BACKOFF_DELAYS):
                     break
-                await asyncio.sleep(delay)
+                await asyncio.sleep(BACKOFF_DELAYS[backoff_used])
+                backoff_used += 1
 
             except httpx.HTTPStatusError as e:
                 last_err = e
-                if delay is None:
+                if backoff_used >= len(BACKOFF_DELAYS):
                     break
-                await asyncio.sleep(delay)
+                await asyncio.sleep(BACKOFF_DELAYS[backoff_used])
+                backoff_used += 1
 
     raise HTTPException(
         status_code=502,
-        detail=f"Groq API 連線失敗（已重試 {len(RETRY_DELAYS)} 次）：{str(last_err)[:200]}"
+        detail=f"Groq API 連線失敗（已重試 {len(BACKOFF_DELAYS)} 次）：{str(last_err)[:200]}"
     )
 
 
