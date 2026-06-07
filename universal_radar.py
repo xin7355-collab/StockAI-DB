@@ -5,8 +5,9 @@
 - Groq AI 利多/利空/中立 情緒判讀
 - 輸出 data/radar_news.json 供前端 UI 渲染
 
-環境變數：
-- GROQ_API_KEY: Groq AI 金鑰（必填，缺則全部標記為中立）
+環境變數（任一即可，新舊相容）：
+- GROQ_API_KEYS: 多把 key 逗號分隔（推薦，撞 429 自動切下一把冰 key）
+- GROQ_API_KEY:  單把 key（向下相容；缺則全部標記為中立）
 """
 import os
 import json
@@ -18,7 +19,10 @@ import feedparser
 from pathlib import Path
 from datetime import datetime
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+# ── [Key 輪動] 多把 Groq API key 池（鏡像 api.py 同款邏輯，per-key 冷卻自動復活）──
+_groq_env = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY", "")
+GROQ_API_KEYS = [t.strip() for t in _groq_env.split(",") if t.strip()]
+GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else ""   # 向下相容（保留變數）
 GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL   = "llama-3.1-8b-instant"
 
@@ -30,6 +34,72 @@ retry_strategy = Retry(
     status_forcelist=[500, 502, 503, 504]
 )
 http_session.mount("https://", HTTPAdapter(max_retries=retry_strategy))
+
+# ── [Key 輪動] per-key 冷卻狀態（Actions VM 是一次性容器，run 結束自動回收，不需持久化）──
+_groq_key_idx = 0
+_groq_key_cooldown = {}   # idx → 解除冷卻 unix_ts
+
+
+def _groq_active_idx(now: float):
+    """從目前 idx 起順時針找第一把未冷卻的 key；全冷卻回 None。"""
+    if not GROQ_API_KEYS:
+        return None
+    n = len(GROQ_API_KEYS)
+    for off in range(n):
+        i = (_groq_key_idx + off) % n
+        if _groq_key_cooldown.get(i, 0) <= now:
+            return i
+    return None
+
+
+def _groq_mark_blocked(idx: int, retry_after_sec: int):
+    """把第 idx 把 key 標冷卻（header 沒給就用 3600s 保守值，TPD 用罄一小時恢復）。"""
+    cd = max(retry_after_sec or 3600, 60)
+    _groq_key_cooldown[idx] = time.time() + cd
+    print(f"  ⏳ [Groq 輪動] Key #{idx + 1}/{len(GROQ_API_KEYS)} 進入冷卻 {cd}s")
+
+
+def _groq_advance():
+    """順時針推進指標,下次優先試下一把 key。"""
+    global _groq_key_idx
+    if GROQ_API_KEYS:
+        _groq_key_idx = (_groq_key_idx + 1) % len(GROQ_API_KEYS)
+
+
+def _call_groq_with_rotation(payload: dict, label: str = ""):
+    """
+    [Key 輪動] Groq 共用呼叫：429 立刻換下一把冰 key 重試（不睡），全冷卻回 None。
+    回傳 res 物件（HTTP 200 或非 429 錯誤）或 None（全部 key 撞限額/網路全失敗）。
+    """
+    if not GROQ_API_KEYS:
+        return None
+    max_attempts = len(GROQ_API_KEYS) + 1
+    for _ in range(max_attempts):
+        idx = _groq_active_idx(time.time())
+        if idx is None:
+            print(f"  🚫 [Groq 輪動] {label or 'call'}：全 {len(GROQ_API_KEYS)} 把 key 均冷卻中，回 None")
+            return None
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEYS[idx]}",
+            "Content-Type":  "application/json",
+        }
+        try:
+            res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
+            if res.status_code == 429:
+                try:
+                    retry_after = int(res.headers.get("Retry-After", 0))
+                except Exception:
+                    retry_after = 0
+                _groq_mark_blocked(idx, retry_after)
+                _groq_advance()
+                continue
+            if res.status_code != 200:
+                print(f"  ⚠️ Groq HTTP {res.status_code} (key #{idx + 1}): {res.text[:120]}")
+            return res
+        except Exception as e:
+            print(f"  ⚠️ Groq 例外 (key #{idx + 1}): {e}")
+            time.sleep(1)
+    return None
 
 RSS_SOURCES = {
     "科技新報":         "https://technews.tw/feed/",
@@ -56,8 +126,8 @@ SUMMARY_MAXLEN = 300
 
 def analyze_sentiment(title: str, summary: str) -> tuple:
     """呼叫 Groq AI 進行利多/利空判讀，回傳 (sentiment, reason)。
-    遇 429 自動退避重試，最終失敗 fallback 為「中立」。"""
-    if not GROQ_API_KEY:
+    [Key 輪動] 多把 key 自動切換,全部撞限額才 fallback 為「中立」。"""
+    if not GROQ_API_KEYS:
         return ("中立", "未設定 GROQ_API_KEY")
 
     user_prompt = (
@@ -68,7 +138,6 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
         f"1. 必須輸出純 JSON 格式，絕對不要包含 Markdown backticks (如 ```json)。\n"
         f"2. 格式範例：{{\"sentiment\": \"利多\", \"reason\": \"此處填寫20字內具體原因\"}}"
     )
-    
     payload = {
         "model":           GROQ_MODEL,
         "messages":        [{"role": "user", "content": user_prompt}],
@@ -76,41 +145,25 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
         "temperature":     0.3,
         "response_format": {"type": "json_object"},
     }
-    
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type":  "application/json",
-    }
 
-    for attempt in range(3):
-        try:
-            # 【修復】改用 http_session 享有底層連線池，減少 SSL 握手開銷
-            res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
-            if res.status_code == 429:
-                # 【修復】Groq 限流恢復較慢，將重試秒數大幅拉長至 5s, 10s, 15s
-                wait = 5 * (attempt + 1)
-                print(f"  ⚠️ Groq 429 限流（第 {attempt+1} 次），{wait}s 後重試")
-                time.sleep(wait)
-                continue
-            if res.status_code != 200:
-                print(f"  ⚠️ Groq HTTP {res.status_code}: {res.text[:120]}")
-                return ("中立", f"API 錯誤 {res.status_code}")
-                
-            content = res.json()["choices"][0]["message"]["content"].strip()
-            parsed  = json.loads(content)
-            sentiment = parsed.get("sentiment", "中立")
-            if sentiment not in ("利多", "利空", "中立"):
-                print(f"  ⚠️ Groq 回傳異常 sentiment={sentiment!r}，已退回中立。原始 content={content[:120]}")
-                sentiment = "中立"
-            reason = str(parsed.get("reason", "")).strip()[:30] or "AI 未提供說明"
-            return (sentiment, reason)
-            
-        except Exception as e:
-            print(f"  ⚠️ Groq 第 {attempt+1} 次例外：{e}")
-            if attempt < 2:
-                time.sleep(1)
+    res = _call_groq_with_rotation(payload, label="analyze_sentiment")
+    if res is None:
+        return ("中立", "AI 暫時無法分析")
+    if res.status_code != 200:
+        return ("中立", f"API 錯誤 {res.status_code}")
 
-    return ("中立", "AI 暫時無法分析")
+    try:
+        content = res.json()["choices"][0]["message"]["content"].strip()
+        parsed  = json.loads(content)
+        sentiment = parsed.get("sentiment", "中立")
+        if sentiment not in ("利多", "利空", "中立"):
+            print(f"  ⚠️ Groq 回傳異常 sentiment={sentiment!r}，已退回中立。原始 content={content[:120]}")
+            sentiment = "中立"
+        reason = str(parsed.get("reason", "")).strip()[:30] or "AI 未提供說明"
+        return (sentiment, reason)
+    except Exception as e:
+        print(f"  ⚠️ analyze_sentiment 解析例外：{e}")
+        return ("中立", "AI 暫時無法分析")
 
 
 def fetch_feed(source_name: str, url: str) -> list:
@@ -219,10 +272,11 @@ def fetch_global_news():
         return
 
     # 批次呼叫 Groq 分析每則新聞對台股的影響（控 token 只翻前 15 則）
+    # [Key 輪動] 走 _call_groq_with_rotation,撞 429 自動換下一把冰 key
     analyzed = []
     for i, item in enumerate(items[:15]):
         impact, level, title_zh = "暫無分析", "neutral", ""
-        if GROQ_API_KEY:
+        if GROQ_API_KEYS:
             prompt = (
                 f"請將以下新聞標題翻譯成繁體中文（20字以內），並用一句話說明對台股的影響，判斷bullish/bearish/neutral。\n"
                 f"標題：{item['title']}\n"
@@ -235,26 +289,16 @@ def fetch_global_news():
                 "temperature": 0.3,
                 "response_format": {"type": "json_object"},
             }
-            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-            for attempt in range(3):
+            res = _call_groq_with_rotation(payload, label="fetch_global_news")
+            if res is not None and res.status_code == 200:
                 try:
-                    res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
-                    if res.status_code == 429:
-                        wait = 5 * (attempt + 1)
-                        print(f"  ⚠️ Groq 429，{wait}s 後重試")
-                        time.sleep(wait)
-                        continue
-                    if res.status_code == 200:
-                        parsed = json.loads(res.json()["choices"][0]["message"]["content"])
-                        impact = str(parsed.get("impact", "暫無分析"))[:30]
-                        lvl = parsed.get("impact_level", "neutral")
-                        level = lvl if lvl in ("bullish", "bearish", "neutral") else "neutral"
-                        title_zh = str(parsed.get("title_zh", ""))[:40]
-                    break
+                    parsed = json.loads(res.json()["choices"][0]["message"]["content"])
+                    impact = str(parsed.get("impact", "暫無分析"))[:30]
+                    lvl = parsed.get("impact_level", "neutral")
+                    level = lvl if lvl in ("bullish", "bearish", "neutral") else "neutral"
+                    title_zh = str(parsed.get("title_zh", ""))[:40]
                 except Exception as e:
-                    print(f"  ⚠️ Groq 例外: {e}")
-                    if attempt < 2:
-                        time.sleep(1)
+                    print(f"  ⚠️ fetch_global_news 解析例外: {e}")
             time.sleep(2.5)
 
         analyzed.append({**item, "title_zh": title_zh, "impact": impact, "impact_level": level})
@@ -273,7 +317,10 @@ def main():
     print("📡 通用型情報監聽雷達啟動")
     print(f"  關鍵字（{len(KEYWORDS)}）：{', '.join(KEYWORDS)}")
     print(f"  情報源（{len(RSS_SOURCES)}）：{', '.join(RSS_SOURCES.keys())}")
-    print(f"  Groq Token：{'已設定' if GROQ_API_KEY else '⚠️ 未設定 — 全部將標記為中立'}")
+    if GROQ_API_KEYS:
+        print(f"  🔑 [Groq 輪動] 載入 {len(GROQ_API_KEYS)} 把 API key（>1 把時 429 自動切換冰 key）")
+    else:
+        print("  ⚠️ 未設定 GROQ_API_KEY / GROQ_API_KEYS — 全部將標記為中立")
 
     all_matched = []
     for name, url in RSS_SOURCES.items():

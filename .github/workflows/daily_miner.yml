@@ -162,7 +162,8 @@ jobs:
 
       - name: 📡 通用情報雷達（RSS + Groq AI 情緒判讀）
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
         run: |
           python universal_radar.py || echo "⚠️ universal_radar.py 失敗，繼續部署"
 
