@@ -7874,6 +7874,20 @@ ${radarSection}
             if (_ctx.chipSafety?.is_chips_weak) _alerts.push(`[籌碼] 近3日法人連賣（合計${_ctx.chipSafety.instSum3}張）`);
             const patternAlertsText = _alerts.length ? _alerts.join('、') : '無重大型態破壞';
 
+            // 5.8 極端行情心理學專用變數：60 日累計漲幅（判斷漲多拉回 vs 真實泡沫）+ 季線 / 半年線（恐慌底部低接判定）
+            const _close60 = data.slice(-61);   // 取 61 根算 60 日漲幅（首尾兩端）
+            const chg60pct = (_close60.length >= 2 && _close60[0].close > 0)
+                ? (((data[lastIdx].close - _close60[0].close) / _close60[0].close) * 100).toFixed(2)
+                : '--';
+            const _ma60Raw = ind.ma60?.[lastIdx];
+            const ma60Str = (typeof _ma60Raw === 'number') ? _ma60Raw.toFixed(2) : '--';
+            let ma120Str = '--';
+            if (data.length >= 120) {
+                const _last120 = data.slice(-120);
+                const _sum = _last120.reduce((a, r) => a + (r?.close || 0), 0);
+                ma120Str = (_sum / _last120.length).toFixed(2);
+            }
+
             // 🧠 靈魂編輯器連動：以使用者選定的 AI 指令（預設首席 / 小哥雙刀流 / 自訂）作為人設與風格
             const soul = (this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default).trim();
 
@@ -7896,11 +7910,20 @@ ${radarSection}
 ⚡ 以上是你的「角色人設與分析風格」。現在請化身【頂級避險基金台股操盤總監】，根據下方【系統已精算的真實數據】，用無情犀利的大白話，直接告訴散戶該建倉、分批賣還是全面撤退。
 🛑 嚴禁自己算數學、嚴禁捏造營收數字！所有數值只能引用下方給定的。
 
+🛑 極端行情心理學鐵律（黑色星期一等級跳空大跌專用）：
+- 區分「漲多後正常拉回」與「真實泡沫」：若個股 60 日累計漲幅（${chg60pct}%）已達 +50%~+100% 後出現急跌，請定調為『**漲多後正常技術性拉回**』，禁過度渲染崩盤恐慌。
+- 區分「個股利空」與「產業鏈衰退」：個別公司財報差、同業競爭加劇 → 屬個股事件；若整體 AI / 高階晶片產業鏈長線趨勢未變 → 視為中長線佈局良機，分辨清楚再下軍令。
+- 恐慌底部逆勢貪婪：若大盤呈現恐慌性跳空大跌（如千點崩盤）、且個股觸及『季線 ${ma60Str}』或『半年線 ${ma120Str}』長線支撐 → 給出『**老天掉下來的禮物，極佳買點**』判定。
+- 絕對防線（任何低接 / 摸底建議都必須加上）：『⚠️ 極端行情下，絕對禁止使用 **融資**！必須以 **閒錢（現股）** 分批 **逢低佈局**，並耐心等待右下角 **K 線止跌訊號** 出現！』
+
 【戰情資料】
 - 股票代號：${symName} (${sym})
 - 最新收盤價：${currentPrice}
 - 系統精算 5MA：${ma5}
 - 系統精算 20MA(月線)：${ma20}
+- 系統精算 60MA(季線)：${ma60Str}
+- 系統精算 120MA(半年線)：${ma120Str}
+- 60 日累計漲幅：${chg60pct}%（用來判斷漲多拉回 vs 真實泡沫）
 - K線現狀判定：${klineStatus}
 - 最新營收 YoY：${trueYoy}
 - 最新 EPS：${epsInfo}
@@ -7917,31 +7940,43 @@ ${radarSection}
 - ${newsLine}
 
 🎨 重點高亮鐵律（散戶要一眼抓到重點）：
-- 所有【關鍵數字】（移動停利價、5MA、停損價、目標價、防守價、進場價、獲利%、虧損%、漲跌幅、營收YoY）一律用 **xxx** 包起。
-- 所有【核心操盤動作】（出貨🤑、抱緊🔥、低接試單🤔、強制撤退🚨、清倉、建倉、加碼、減碼、停利、停損、紀律砍倉）一律用 **xxx** 包起。
-- 範例：跌破 **60.5 元** 請立刻 **清倉🚨**；站穩 **65 元** 可 **加碼** 至 **70 元** 停利。
+- 所有【關鍵數字】（移動停利價、5MA、20MA、季線、半年線、停損價、目標價、防守價、進場價、獲利%、虧損%、漲跌幅、營收YoY、60日累計漲幅）一律用 **xxx** 包起。
+- 所有【核心操盤動作】（出貨🤑、抱緊🔥、低接試單🤔、強制撤退🚨、清倉、建倉、加碼、減碼、停利、停損、紀律砍倉、現股、閒錢、融資、逢低佈局、K線止跌訊號、極佳買點）一律用 **xxx** 包起。
+- 範例：跌破 **60.5 元** 請立刻 **清倉🚨**；站穩 **65 元** 可 **加碼** 至 **70 元** 停利；極端大跌時以 **閒錢** 分批 **逢低佈局**，禁 **融資**。
 
-⚠️ 只准輸出以下「純 JSON」，禁止 \`\`\`json 標籤、禁止 JSON 前後出現任何說明文字：
+⚠️ 只准輸出以下「純 JSON」，**必須有且只有這 4 個 key**，禁止 \`\`\`json 標籤、禁止 JSON 前後出現任何說明文字：
 {
-  "summary": "首頁短評，30字以內。先用強烈痛點 emoji 開頭（範例：出貨🤑 / 低接試單🤔 / 抱緊處理🔥 / 快逃🚨 / 觀望🤨），把技術、籌碼、防守價無縫融合成『唯一一句、前後不矛盾』的核心總評，必須帶具體點位，不准任何廢話。",
-  "detail_action": "三大板塊完整評析，段落之間用換行符分隔，每塊務必以指定的【emoji 標題】一字不差開頭：\\n【🌏 總體位階與大局觀】結合外資期貨 ${fiLabel} 與市場系統性風險，並務必引用『${chipSafetyLine}』評斷三大法人對個股的態度，直白告訴散戶目前大環境的下行壓力或多方天花板在哪裡。\\n【⚔️ 總監專屬戰術室】這段最重要，必須針對庫存狀態（${invLine}）量身做 If-Else 實戰決策：若空手→以獵人視角給出明確的『進場價位、停損點、短線目標價』；若有持股→精確點出防守底線與停利目標的『具體數字』，並嚴格執行機構級移動停利：獲利 **+15%~+30%** 時下令防守點由月線『分批上移至上揚的5日線(${ma5})』，不破5MA死抱；獲利逾 **+50%** 時直接下令『分批 **出貨🤑** 落袋為安』鎖死巨利；虧損時下達『跌破 ${ma5} 或 ${ma20} 紀律 **清倉**』的明確軍令狀。\\n【🔥 首席操盤手終極喊話】最直白的實戰點評：若籌碼與技術完美→給散戶堅定的信心喊話『不要被主力洗盤甩轎，抱緊處理』；若主力倒貨或大盤崩壞→無情點醒『不要抱著空氣泡泡做夢，立刻撤退』。最後獨立一行輸出最終判定${sigVerdictHint ? `（系統量化建議：${sigVerdictHint}，務必一致）` : ''}：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。"
+  "traffic_light": "三選一字串（保留 emoji + 文字，最終判定必須與系統量化建議${sigVerdictHint ? ` ${sigVerdictHint}` : ''} 一致）：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。",
+  "summary": "首頁短評，30 字以內。先用強烈痛點 emoji 開頭（出貨🤑 / 低接試單🤔 / 抱緊處理🔥 / 快逃🚨 / 觀望🤨），把技術、籌碼、防守價無縫融合成『唯一一句、前後不矛盾』的核心總評，必須帶具體點位。",
+  "bottom_bar": "一句話操盤指令條，35 字以內。固定格式：『防守 **xx 元** ／ 目標 **xx 元** ／ 動作 **動詞emoji**』。**數字** 與 **動作** 都必須用 ** 包起來。範例：『防守 **65.2 元** ／ 目標 **78 元** ／ 動作 **分批出貨🤑**』。",
+  "detail_action": "三大板塊完整評析，段落間用換行符分隔，每塊務必以指定的【emoji 標題】一字不差開頭。【⚠️ traffic_light 已負責最終 verdict，本欄結尾請勿再寫 🟢強力買進 / 🟡觀望或減碼 / 🔴強制撤退 那一行】：\\n【🌏 總體位階與大局觀】結合外資期貨 ${fiLabel}、外資期現複合判定 ${fiComplex}、60 日累計漲幅 ${chg60pct}%、大盤板塊輪動 ${sectorRotationLine}，務必引用『${chipSafetyLine}』評斷三大法人對個股的態度，並明確分辨『漲多後正常技術性拉回』 vs 『真實泡沫』、『個股利空』 vs 『整體產業鏈衰退』。\\n【⚔️ 總監專屬戰術室】這段最重要，必須針對庫存狀態（${invLine}）量身做 If-Else 實戰決策：若空手→獵人視角給『進場價、停損點、短線目標價』；若有持股→精確點出防守底線與停利目標『具體數字』，嚴格執行機構級移動停利：獲利 **+15%~+30%** 時令防守點由月線『分批上移至上揚的 5MA(${ma5})』，不破 5MA 死抱；獲利逾 **+50%** 時直接『分批 **出貨🤑** 落袋為安』鎖死巨利；虧損則『跌破 ${ma5} 或 ${ma20} 紀律 **清倉**』。【極端行情分支】若大盤恐慌性跳空大跌、個股觸及季線 ${ma60Str} 或半年線 ${ma120Str} 長線支撐 → 下令『**老天掉下來的禮物**，**現股** 分批 **逢低佈局**、禁 **融資**、等右下角 **K 線止跌訊號** 出現再加碼』。\\n【🔥 首席操盤手終極喊話】最直白的實戰喊話：若籌碼與技術完美→堅定『不要被主力洗盤甩轎，抱緊處理』；若主力倒貨或大盤崩壞→無情點醒『不要抱著空氣泡泡做夢，立刻撤退』；若極端恐慌底部→『現在最痛苦的時刻就是黃金時刻，閒錢分批勇敢承接』。"
 }`;
 
             let raw = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.35 });
             if (!raw) throw new Error('未設定 Groq Key');
 
-            // 健壯解析 → summary（首頁卡片）、detail_action（三大板塊）
-            const { summary, detail_action } = this._parseAIJson(raw);
+            // 健壯解析 → traffic_light（頂部 verdict）+ summary（首頁黃卡）+ bottom_bar（底部 sticky）+ detail_action（三大板塊）
+            const { traffic_light, summary, bottom_bar, detail_action } = this._parseAIJson(raw);
             this.renderSummaryCard(summary);
 
+            // 🚦 頂部 verdict 條：根據首字 emoji 配色，🔴 帶 animate-pulse；sticky 黏在 geminiResultBox 頂端
+            const tl = (traffic_light || '').trim();
+            const tlEsc = tl.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const tlSty = tl.startsWith('🔴') ? { cls: 'bg-red-900/50 border-red-500 text-red-100 shadow-[0_0_14px_rgba(248,113,113,0.6)]', pulse: 'animate-pulse' }
+                          : tl.startsWith('🟢') ? { cls: 'bg-green-900/45 border-green-500 text-green-100 shadow-[0_0_12px_rgba(74,222,128,0.4)]', pulse: '' }
+                          : tl.startsWith('🟡') ? { cls: 'bg-yellow-900/45 border-yellow-500 text-yellow-100', pulse: '' }
+                          : { cls: 'bg-gray-800 border-gray-600 text-gray-200', pulse: '' };
+            const trafficHtml = tl
+                ? `<div class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 px-4 py-2 border-b-2 ${tlSty.cls} ${tlSty.pulse} font-black text-base tracking-wide text-center">${tlEsc}</div>`
+                : '';
+
+            // 三大板塊：marker → 醒目標題 <h3> + 段落 <p>，杜絕糊成一坨純文字
             let html = (detail_action || '').trim();
             const sectionColors = {
                 '【🌏 總體位階與大局觀】':  'text-cyan-400 border-cyan-500',
                 '【⚔️ 總監專屬戰術室】':   'text-purple-400 border-purple-500',
                 '【🔥 首席操盤手終極喊話】': 'text-orange-400 border-orange-500',
             };
-
-            // 三大板塊：marker → 醒目標題 <h3> + 段落 <p>，杜絕糊成一坨純文字
             for (const [marker, cls] of Object.entries(sectionColors)) {
                 const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 // esc + [\s:：]* 吞掉 AI 偶發的「標題後殘留半形/全形冒號與空白」
@@ -7950,15 +7985,22 @@ ${radarSection}
             }
             html = '<p class="text-gray-300 leading-relaxed text-sm">' + html + '</p>';
 
+            // 三 capsule 規則保留作 fallback（若 AI 仍把 verdict 寫在 detail_action 結尾，視覺上仍正確）
             html = html
-                .replace(/^<p[^>]*>\s*<\/p>/, '')   // 去掉開頭多餘空段
+                .replace(/^<p[^>]*>\s*<\/p>/, '')
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-200 font-black bg-yellow-900/40 px-1 rounded">$1</b>')
                 .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
                 .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-sm">🔴強制撤退</span>')
                 .replace(/🟡觀望或減碼/g,'<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望或減碼</span>')
                 .replace(/\n/g, '<br>');
 
-            this.typeWriterEffect(box, `<div class="typewriter-text">${html}</div>`);
+            // 🎯 底部 sticky 操盤指令條：永遠黏在 geminiResultBox 底部，** 包起的數字/動詞自動高亮黃字
+            const bb = (bottom_bar || '').trim();
+            const bbHtml = bb
+                ? `<div class="sticky bottom-0 z-10 -mx-4 -mb-4 mt-4 px-4 py-2.5 border-t-2 border-yellow-500 bg-[#0d1117]/95 backdrop-blur text-yellow-200 font-black text-sm leading-snug text-center">${bb.replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-100 bg-yellow-900/60 px-1 rounded">$1</b>')}</div>`
+                : '';
+
+            this.typeWriterEffect(box, `<div class="typewriter-text">${trafficHtml}${html}${bbHtml}</div>`);
 
         } catch(e) {
             box.innerHTML = `<div class="text-red-400 font-bold bg-red-900/30 p-3 rounded border border-red-800">❌ AI 分析失敗：<br><span class="text-xs text-red-300">${e.message}</span></div>`;
@@ -7967,7 +8009,8 @@ ${radarSection}
 
     // 健壯解析 AI 回傳的 JSON（暴力提取：去 fence → 挖 {..} → JSON.parse → 欄位正則 → 才降級，永不白屏）
     _parseAIJson(text) {
-        if (!text) return { summary: '', detail_action: '' };
+        const EMPTY = { traffic_light: '', summary: '', bottom_bar: '', detail_action: '' };
+        if (!text) return EMPTY;
         // 1) 去除 markdown code fence ```json ... ```
         let s = String(text).trim()
             .replace(/^```(?:json)?\s*/i, '')
@@ -7981,12 +8024,14 @@ ${radarSection}
             const o = JSON.parse(candidate);
             if (o && typeof o === 'object') {
                 return {
+                    traffic_light: (o.traffic_light || '').toString().trim(),
                     summary: (o.summary || '').toString().trim(),
+                    bottom_bar: (o.bottom_bar || '').toString().trim(),
                     detail_action: (o.detail_action || '').toString().trim(),
                 };
             }
         } catch (_) {}
-        // 4) JSON.parse 失敗（常因字串值內含未跳脫換行）→ 改用正則直接挖兩個欄位值
+        // 4) JSON.parse 失敗（常因字串值內含未跳脫換行）→ 改用正則直接挖四個欄位值
         const grab = key => {
             const r = new RegExp('"' + key + '"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"');
             const mm = candidate.match(r);
@@ -7996,11 +8041,13 @@ ${radarSection}
                 .replace(/\\"/g, '"').replace(/\\\\/g, '\\')
                 .trim();
         };
+        const traffic_light = grab('traffic_light');
         const summary = grab('summary');
+        const bottom_bar = grab('bottom_bar');
         const detail_action = grab('detail_action');
-        if (summary || detail_action) return { summary, detail_action };
+        if (traffic_light || summary || bottom_bar || detail_action) return { traffic_light, summary, bottom_bar, detail_action };
         // 5) JSON.parse 與欄位正則都失敗 → 才降級把全文當詳細評析（不白屏）
-        return { summary: '', detail_action: s };
+        return { ...EMPTY, detail_action: s };
     },
 
     // 將 AI 30 字短評渲染進首頁卡片 aiTranslatorCard（黃色強視覺；空 summary 也填 fallback，永不卡住）
