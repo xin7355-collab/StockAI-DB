@@ -5873,11 +5873,11 @@ recent.forEach(d => {
     },
 
     // 📦 首席 AI 當日快取（localStorage，每股每成本每日獨立一份）
-    // key 形如 aiCache_v1|2330|125.5|2026-06-07；隔日 cache miss 觸發重算
+    // key 形如 aiCache_v2|2330|125.5|2026-06-07；隔日 cache miss 觸發重算
     _aiCacheKey(sym, costKey) {
         const d = new Date();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return `aiCache_v1|${sym}|${(costKey || 'empty')}|${dateStr}`;
+        return `aiCache_v2|${sym}|${(costKey || 'empty')}|${dateStr}`;
     },
     _getCachedAI(sym, costKey) {
         try {
@@ -5895,7 +5895,7 @@ recent.forEach(d => {
     _getLastAnyDateCache(sym) {
         try {
             let best = null;
-            const prefix = `aiCache_v1|${sym}|`;
+            const prefix = `aiCache_v2|${sym}|`;
             for (let i = 0; i < localStorage.length; i++) {
                 const k = localStorage.key(i);
                 if (!k || !k.startsWith(prefix)) continue;
@@ -5912,7 +5912,7 @@ recent.forEach(d => {
             const toDel = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const k = localStorage.key(i);
-                if (!k || !k.startsWith('aiCache_v1|')) continue;
+                if (!k || !k.startsWith('aiCache_v2|')) continue;
                 try {
                     const v = JSON.parse(localStorage.getItem(k));
                     if (v && v._ts && (now - v._ts) > keep) toDel.push(k);
@@ -8150,7 +8150,7 @@ ${radarSection}
 - 庫存狀態：${invLine}
 - 🌏 總經外資期貨：${usMask(fiLabel)}
 - 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
-- 📐 技術位階（系統精算，禁重算）：趨勢 ${chu.trendJudge}｜均線 ${chu.maArrangement}｜折數 ${chu.foldPct}折 ${chu.foldZone}
+- 📐 技術位階（系統精算，禁重算）：趨勢 ${chu?.trendJudge || '中性'}｜均線 ${chu?.maArrangement || '糾結'}｜折數 ${chu?.foldPct ?? '—'}折 ${chu?.foldZone || ''}
 - 🚨 型態警報：${patternAlertsText}
 - 🌏 外資期現複合判定：${usMask(fiComplex)}
 - ⚖️ 融資槓桿水位：${marginLevLine}
@@ -8165,14 +8165,21 @@ ${radarSection}
   "traffic_light": "格式『<emoji+三選一動詞> — <25 字內現價與均線即時肉搏描述>』。三選一必須是 🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退（與系統量化建議${sigVerdictHint ? ` ${sigVerdictHint}` : ''} 一致）。範例：'🟢強力買進 — 趨勢狂飆，不破 **${ma5} 元** 不賣' / '🟡觀望或減碼 — 月線拉鋸，等突破再追' / '🔴強制撤退 — 跌破季線，主力倒貨無情'。ETF 標的可改寫如 '🟢強力買進 — 跌價殖利率升，**金字塔低接**' 但仍保留三選一動詞。",
   "summary": "30 字內首頁黃卡，強烈動詞 emoji 開頭（出貨🤑/低接試單🤔/抱緊🔥/快逃🚨/觀望🤨），融合屬性 + 數據 + 風險為一句話，必須帶具體點位，絕對不能與 traffic_light 矛盾。",
   "bottom_bar": "15~20 字內置底浮動條，依【天條 3】庫存與屬性動態組合，所有數字與動詞用 **xxx** 包起。範例（空手空頭）：『空頭成型，**空手觀望等待**』；（有持股獲利 +30%）：『防守 **${ma5} 元** 鎖巨利🔥』；（ETF 跌均線）：『殖利率攀升，**金字塔低接🤔**』；（強勢突破）：『站穩 **${ma20} 元** **加碼🔥**』。",
-  "detail_action": "三大板塊完整評析，段落間用 \\n 分隔，標題一字不差：\\n【🌏 總體位階與大局觀】結合 ${usMask(fiLabel)}、${usMask(fiComplex)}、60 日漲幅 ${chg60pct}%、板塊 ${usMask(sectorRotationLine)}，引用『${chipSafetyLine}』評斷法人對個股的態度，並依【天條 4】分辨『漲多後正常拉回 vs 真實泡沫』、『個股利空 vs 整體產業鏈衰退』。若標的是「美股標的」，台指期與台股板塊一律 N/A，改聚焦美股大盤、VIX、產業趨勢。\\n【⚔️ 總監專屬戰術室】依【天條 3】If-Else 量身決策：空手禁出「撤退/清倉/停利停損」，改喊『**等待突破建倉**』或『**手綁好觀望等待**』或『**閒錢 低接試單🤔**』；有持股精算移動停利或反彈逃命具體數字（直接引用上方均線位階標籤，已跌破者改稱『反彈壓力天花板』）。ETF 標的禁喊撤退，改用『高檔分批 **調節**』或『低檔 **金字塔低接**』。【極端行情分支】只在大盤恐慌跳空 + 個股觸季線/半年線時觸發，下令『**老天掉下來的禮物**，**現股** 分批 **逢低佈局**、禁 **融資**、等 **K 線止跌訊號** 再加碼』。\\n【🔥 首席操盤手終極喊話】最直白的實戰喊話，依屬性與籌碼：權值股技術籌碼俱佳→『別被主力洗盤甩轎，**抱緊🔥**』；主力倒貨或大盤崩壞→『別抱空氣泡泡做夢，立刻 **撤退🚨**』；中小型股跌破 5MA→『**紀律砍倉** 不凹單』；ETF 高檔→『**逢高調節**，留現金等回檔』；恐慌底部→『最痛苦時刻就是黃金時刻，**閒錢** 分批勇敢承接』。"
+  "detail_action": "三段體完整評析,標題一字不差,段間用 \\n,每段 80~140 字。\\n【🌏 總體位階與大局觀】融合上方戰情(三大法人/板塊/期貨/60日漲幅/籌碼安定度),對本檔【${classification.name}】當前位階做具體判讀,點名最關鍵 2~3 個利多/利空,不堆砌數字、不複述規則。\\n【⚔️ 總監專屬戰術室】依本檔當前【庫存狀態:${invLine}】與【屬性邏輯包】,從上方規則中挑定一條,給出今天的明確指令(進場價/防守點/目標價/移動停利數字,擇要列出),禁列舉所有可能。已跌破的均線禁稱「防守」,改稱「反彈壓力天花板」。\\n【🔥 首席操盤手終極喊話】依本檔屬性挑一句口語化喊話(20~40 字),強烈動詞 emoji 開頭(抱緊🔥/撤退🚨/砍倉/調節/承接 擇一),帶具體點位。\\n⚠️ 禁複述上方 prompt 的 if-then 規則文字、禁列舉『A 或 B 或 C』『X→Y;Z→W』形式、禁出現『依【天條』『禁列舉』等 meta 字眼,違反視為無效輸出。\\n✅ GOOD 範例(空手+大盤多頭):『空手碰上 +27% 急漲後緊縮,先 **手綁好觀望等待**,等回測 **${ma20} 元** 月線不破再 **閒錢 低接試單🤔**,跌破 **${ma60} 元** 取消計畫』\\n❌ BAD 範例(複述 prompt):『空手禁出「撤退/清倉/停利停損」,改喊『等待突破建倉』或『手綁好觀望』或『閒錢 低接』』"
 }`;
 
-            let raw = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.35 });
+            let raw = await this._callAI({ prompt, max_tokens: 1800, temperature: 0.35 });
             if (!raw) throw new Error('未設定 Groq Key');
 
             // 健壯解析 → traffic_light + summary + bottom_bar + detail_action
             const parsed = this._parseAIJson(raw);
+            // 🛡️ dev-only 偵測:detail_action 內若含 prompt 殘留特徵字串,console.warn 提示開發者
+            //     (AI 把 prompt 規則複述當答案是常見 bug,留訊號便於日後維護 prompt 時快速察覺)
+            const echoSignals = ['依【天條', '空手禁出', '禁列舉', '✅ GOOD', '❌ BAD', 'switch-list', '禁複述'];
+            if (parsed.detail_action && echoSignals.some(s => parsed.detail_action.includes(s))) {
+                console.warn('[AI 警示] detail_action 疑似複述 prompt 規則文字,prompt 需強化:',
+                             parsed.detail_action.slice(0, 200) + '…');
+            }
             // 📦 寫入當日快取（同股 + 同成本 + 同日）；隔日 cache miss 觸發重算
             this._setCachedAI(_cacheSym, _cacheCostKey, parsed);
             this._renderUnifiedAIResult(parsed);
