@@ -14,9 +14,18 @@ import os
 import json
 import sys
 import traceback
+import subprocess
+
+# ⚔️ 首席專屬：雲端自動補給防線 (強制在所有動作前先檢查並安裝裝備)
+try:
+    import requests
+except ImportError:
+    print("⚠️ 偵測到雲端缺少 requests 套件，啟動緊急自動安裝程序...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "yfinance", "ta"])
+    import requests
+
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
-import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
