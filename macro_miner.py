@@ -16,18 +16,22 @@ import sys
 import traceback
 import subprocess
 
-# ⚔️ 首席專屬：雲端自動補給防線 (強制在所有動作前先檢查並安裝裝備)
+# ⚔️ 首席專屬：雲端自動補給防線 (終極重啟版)
 try:
     import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    import yfinance
+    import ta
 except ImportError:
-    print("⚠️ 偵測到雲端缺少 requests 套件，啟動緊急自動安裝程序...")
+    print("⚠️ 偵測到雲端缺少套件，啟動緊急自動安裝程序...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "yfinance", "ta"])
-    import requests
+    print("🔄 裝備補給完畢！強制重新啟動系統以讀取新裝備...")
+    # 殺手鐧：安裝完後，徹底重新啟動這個 Python 檔案！
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
