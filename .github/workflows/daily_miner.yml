@@ -46,7 +46,8 @@ jobs:
 
       - name: 📦 安裝相依套件
         run: |
-          pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser
+          python -m pip install --upgrade pip
+          pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser ta pandas numpy
 
       - name: 📂 還原昨天的快取 (取得基準資料)
         run: |
@@ -140,7 +141,9 @@ jobs:
           cache-dependency-path: '.github/pip-packages.txt'
 
       - name: 📦 安裝相依套件
-        run: pip install requests duckduckgo-search feedparser
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests duckduckgo-search feedparser yfinance ta pandas numpy
 
       - name: 🗄️ 鋪設底層資料 (origin/data 全市場舊資料當基準)
         run: |
@@ -169,7 +172,7 @@ jobs:
 
       - name: 🌐 總經風險採礦（美債10Y/外資期現複合）
         run: |
-          pip install yfinance --quiet
+          pip install yfinance ta pandas numpy --quiet
           python macro_miner.py || echo "⚠️ macro_miner.py 失敗，繼續部署"
 
       - name: 🎯 戰略雷達矩陣採礦（三大戰區掃描 → radar_matrix.json）
