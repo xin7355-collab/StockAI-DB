@@ -5887,6 +5887,76 @@ recent.forEach(d => {
         this.runUnifiedGroqAnalysis({ silent: true });
     },
 
+    // 📐 朱家泓技術位階 + 郭榮哲折數共用精算（runKlineAudit / refreshStrategy / 首席AI 三處同源，杜絕分歧）
+    // 只依賴傳入的 data（K線陣列）與 ind（指標），不碰 DOM；data 與 ind 必須來自同一資料源以對齊索引。
+    _computeChuTechProfile(data, ind) {
+        const out = {
+            ma5: null, ma10: null, ma20: null, ma60: null,
+            isFourBull: false, isFourBear: false, maArrangement: '⚪ 均線糾結或多空混合',
+            trendJudge: '⚪ 盤整（120日內未找到足夠波峰波谷）', peakUp: null, troughUp: null,
+            foldPct: '--', foldZone: '⚪ 折數待計算', sigCount: 0,
+            sigLabel: '❌ 發動條件未達標，耐心等待球棒出棒',
+        };
+        if (!data || data.length < 5 || !ind) return out;
+        const n = data.length, last = n - 1, prev = n - 2;
+        const pC = data[last].close, pO = data[last].open;
+        const pH1 = data[prev]?.high ?? data[last].high;
+        const pC1 = data[prev]?.close ?? pC, pV = data[last].volume, pV1 = data[prev]?.volume ?? pV;
+        const ma5 = ind.ma5?.[last], ma10 = ind.ma10?.[last], ma20 = ind.ma20?.[last], ma60 = ind.ma60?.[last];
+        const ma20p5 = ind.ma20?.[last - 5] || ma20, ma60p5 = ind.ma60?.[last - 5] || ma60;
+        out.ma5 = ma5; out.ma10 = ma10; out.ma20 = ma20; out.ma60 = ma60;
+
+        // ── 均線排列 ──
+        out.isFourBull = !!(ma5 && ma10 && ma20 && ma60 && ma5 > ma10 && ma10 > ma20 && ma20 > ma60 && ma20 > ma20p5 && ma60 > ma60p5);
+        out.isFourBear = !!(ma5 && ma10 && ma20 && ma60 && ma5 < ma10 && ma10 < ma20 && ma20 < ma60);
+        out.maArrangement = out.isFourBull ? '✅ 四線多排（MA5>10>20>60，月線季線同步上揚）'
+                          : out.isFourBear ? '❌ 空頭排列（MA5<10<20<60）'
+                          : '⚪ 均線糾結或多空混合';
+
+        // ── 朱家泓波峰波谷趨勢（±10日收盤，掃近120日）──
+        const SWING_N = 10, scanFrom = Math.max(0, n - 120);
+        const swingPeaks = [], swingTroughs = [];
+        for (let i = scanFrom + SWING_N; i <= last - SWING_N; i++) {
+            const window = data.slice(i - SWING_N, i + SWING_N + 1);
+            const maxC = Math.max(...window.map(d => d.close));
+            const minC = Math.min(...window.map(d => d.close));
+            if (data[i].close === maxC) swingPeaks.push({ idx: i, val: data[i].close, date: data[i].date });
+            if (data[i].close === minC) swingTroughs.push({ idx: i, val: data[i].close, date: data[i].date });
+        }
+        if (swingPeaks.length >= 2) {
+            const p1 = swingPeaks[swingPeaks.length - 2], p2 = swingPeaks[swingPeaks.length - 1];
+            out.peakUp = p2.val > p1.val;
+            if (swingTroughs.length >= 2) {
+                const t1 = swingTroughs[swingTroughs.length - 2], t2 = swingTroughs[swingTroughs.length - 1];
+                out.troughUp = t2.val > t1.val;
+                if (out.peakUp && out.troughUp)        out.trendJudge = '✅ 多頭趨勢確認（頭頭高 + 底底高）';
+                else if (!out.peakUp && !out.troughUp) out.trendJudge = '❌ 空頭趨勢確認（頭頭低 + 底底低）';
+                else                                   out.trendJudge = '⚠️ 趨勢轉折警戒（六字口訣出現破口，嚴禁做多）';
+            }
+        }
+
+        // ── 郭榮哲折數（近60日波段最高）──
+        const high60 = Math.max(...data.slice(-60).map(d => d.high));
+        const foldRatio = high60 > 0 ? (pC / high60) : 0;
+        out.foldPct = (foldRatio * 10).toFixed(2);
+        out.foldZone = foldRatio >= 0.95 ? '🔴 高檔過熱區（近頂，嚴防追高）'
+                     : foldRatio >= 0.85 ? '🟡 85折強勢區（飆股黃金回檔觀察帶）'
+                     : foldRatio >= 0.75 ? '🟢 75折深水支撐區（一般股月線支撐帶）'
+                     : '⛔ 跌深轉空區（跌深非買點，等確認訊號）';
+
+        // ── 三盞明燈發動信號 ──
+        const chgPct = pC1 > 0 ? ((pC - pC1) / pC1 * 100) : 0;
+        const sig1 = (pC > pO) && chgPct >= 5;
+        const volChg = pV1 > 0 ? ((pV - pV1) / pV1 * 100) : 0;
+        const sig2 = volChg >= 20;
+        const sig3 = ma5 ? (pC > ma5 && pC > pH1) : false;
+        out.sigCount = [sig1, sig2, sig3].filter(Boolean).length;
+        out.sigLabel = out.sigCount === 3 ? '🚀 三燈全亮！高勝率發動點'
+                     : out.sigCount === 2 ? '⚠️ 兩燈亮，尚缺一項條件確認'
+                     : '❌ 發動條件未達標，耐心等待球棒出棒';
+        return out;
+    },
+
     refreshStrategy() {
         if (!this.activeData || !this.activeData.length || !this.indicators.ma20) return;
         this.findPeaksAndTroughs();
@@ -5930,11 +6000,12 @@ recent.forEach(d => {
         if (this.latestNewsCache.includes('處置') || this.latestNewsCache.includes('注意')) {
             tagsHtml += `<span class="bg-yellow-900/80 text-yellow-200 border border-yellow-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 animate-pulse">🔒禁閉室</span>`;
         }
-        // 💀島型反轉徽章已移除：硬傷訊號改由首席 AI 黃卡 + 量化燈號統一呈現
-        document.getElementById('stockTags').innerHTML = tagsHtml;
-        
+        // 💀島型反轉徽章已移除：硬傷訊號改由「型態特徵 chip」+ 首席 AI 黃卡 + 量化燈號統一呈現
+        // （stockTags 延後到 is_chips_weak / 趨勢算完後，於下方一次渲染 featTags chip）
+
         const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
         const costVal = parseFloat(document.getElementById('costInput').value.trim()), hasCost = !isNaN(costVal) && costVal > 0;
+        const profitPct = (hasCost && pC > 0) ? ((pC - costVal) / costVal) * 100 : null;   // 提前算：移動停利 + 損益卡共用
         const invBadge = document.getElementById('invBadge');
         if(inInv || hasCost) invBadge.classList.remove('hidden'); else invBadge.classList.add('hidden');
 
@@ -5951,6 +6022,23 @@ recent.forEach(d => {
                            + (r.dealer_net  ?? r.dealer_inv   ?? 0);
         const is_chips_weak = _recent3.length === 3 && _recent3.every(r => _instSum(r) < 0);
         const instSum3 = _recent3.reduce((acc, r) => acc + _instSum(r), 0);
+
+        // 🏷️ 型態特徵標籤：舊字卡的數學邏輯 → 純文字標籤（灌 AI 大腦 + UI chip 雙軌）
+        const _chu = this._computeChuTechProfile(this.activeData, this.indicators);
+        const featTags = [];
+        if (this.currentTF === 'D') {
+            if (_chu.trendJudge.startsWith('✅'))      featTags.push({ kind: '趨勢狀態', text: '多頭排列(頭頭高底底高)', tone: 'good' });
+            else if (_chu.trendJudge.startsWith('❌')) featTags.push({ kind: '趨勢狀態', text: '空頭排列(頭頭低底底低)', tone: 'danger' });
+            else if (_chu.trendJudge.startsWith('⚠️')) featTags.push({ kind: '趨勢狀態', text: '趨勢轉折警戒', tone: 'warn' });
+        }
+        if (isIslandReversal) featTags.push({ kind: '型態警報', text: '島狀反轉', tone: 'island' });
+        if (isBigBlackK)      featTags.push({ kind: '型態警報', text: '大黑K摜壓', tone: 'danger' });
+        if (brokenPrevLow)    featTags.push({ kind: '破線', text: '跌破前20日低', tone: 'danger' });
+        if (is_chips_weak)    featTags.push({ kind: '籌碼', text: `連3日法人賣超${Math.round(instSum3)}張`, tone: 'warn' });
+        const _toneCls = { good: 'bg-green-900/60 text-green-200 border-green-600', warn: 'bg-yellow-900/70 text-yellow-200 border-yellow-500', danger: 'bg-red-900/70 text-red-200 border-red-500', island: 'bg-purple-900/70 text-purple-200 border-purple-500', info: 'bg-gray-800 text-gray-300 border-gray-600' };
+        const _toneIcon = { good: '📈', warn: '⚠️', danger: '🚨', island: '💀', info: 'ℹ️' };
+        for (const t of featTags) tagsHtml += `<span class="${_toneCls[t.tone] || _toneCls.info} border text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">${_toneIcon[t.tone] || ''}${t.text}</span>`;
+        document.getElementById('stockTags').innerHTML = tagsHtml;
 
         // 預設防守：波段月線（季節 switch 內若速度因子打開會 override 回 5MA）
         let t1_val = recentPeak || upperBB, t2_val = upperBB, def_val = ma20, defLabel = "🛡️ 波段防守(20MA)";
@@ -5988,6 +6076,15 @@ recent.forEach(d => {
             def_val = ma20; defLabel = "🛡️ 震盪防守(月線)";
         }
 
+        // 💰 機構級移動停利：持股且獲利達標、5MA 上揚、且非硬傷/非冬空 → 防守線「只上移」到 5MA（不下修）
+        const _ma5Rising = (ma5 != null) && (ma5 > (this.indicators.ma5?.[last - 1] ?? ma5));
+        if (hasCost && profitPct != null && profitPct >= 15 && _ma5Rising
+            && !isIslandReversal && !(isBigBlackK && pC < ma20) && season !== '冬'
+            && typeof def_val === 'number' && ma5 > def_val) {
+            def_val = ma5;
+            defLabel = profitPct >= 50 ? "💰 巨利分批出貨(沿5MA)" : "🛡️ 移動停利(5MA鎖倉)";
+        }
+
         const chipCostVal = parseFloat(document.getElementById('chipCostInput').value), hasChipCost = !isNaN(chipCostVal) && chipCostVal > 0;
         let safetyMarginText = "";
         if (hasChipCost) {
@@ -5996,8 +6093,7 @@ recent.forEach(d => {
         }
 
         let costPnlText = "";
-        if (hasCost && !isNaN(pC) && pC > 0) {
-            const profitPct = ((pC - costVal) / costVal) * 100;
+        if (hasCost && profitPct != null) {
             const profitSign = profitPct >= 0 ? '+' : '';
             const profitColor = profitPct >= 0 ? 'text-green-400' : 'text-red-400';
             const profitBg = profitPct >= 0 ? 'bg-green-900/20 border-green-800/50' : 'bg-red-900/20 border-red-800/50';
@@ -6033,7 +6129,8 @@ recent.forEach(d => {
 
         this.currentStrategyContext = {
             season, def_val, t1_val, isIslandReversal, isBigBlackK, brokenPrevLow,
-            chipSafety: { is_chips_weak, instSum3 }   // 供 AI prompt 直讀，免重算
+            chipSafety: { is_chips_weak, instSum3 },   // 供 AI prompt 直讀，免重算
+            featTags                                    // 型態特徵標籤（UI chip + 可供 prompt 取用）
         };
 
         if (defValNum > 0) this._updateSWAlertConfig();
@@ -7130,76 +7227,10 @@ recent.forEach(d => {
         const pH  = data[last].high,  pL = data[last].low, pV = data[last].volume;
         const pC1 = data[prev].close, pH1 = data[prev].high, pV1 = data[prev].volume;
 
-        const ma5  = ind.ma5?.[last],  ma10 = ind.ma10?.[last];
-        const ma20 = ind.ma20?.[last], ma60 = ind.ma60?.[last];
-        const ma5p5  = ind.ma5?.[last-5]  || ma5;
-        const ma20p5 = ind.ma20?.[last-5] || ma20;
-        const ma60p5 = ind.ma60?.[last-5] || ma60;
-
-        // ── 均線排列判斷 ───────────────────────────────────────────
-        const isFourBull = ma5 && ma10 && ma20 && ma60 &&
-                           ma5 > ma10 && ma10 > ma20 && ma20 > ma60 &&
-                           ma20 > ma20p5 && ma60 > ma60p5;
-        const isFourBear = ma5 && ma10 && ma20 && ma60 &&
-                           ma5 < ma10 && ma10 < ma20 && ma20 < ma60;
-        const ma20Dir = ma20 && ma20p5 ? (ma20 > ma20p5 ? '↑上揚' : '↓下彎') : '不明';
-        const ma60Dir = ma60 && ma60p5 ? (ma60 > ma60p5 ? '↑上揚' : '↓下彎') : '不明';
-        const maArrangement = isFourBull ? '✅ 四線多排（MA5>10>20>60，月線季線同步上揚）'
-                            : isFourBear ? '❌ 空頭排列（MA5<10<20<60）'
-                            : '⚪ 均線糾結或多空混合';
-
-        // ── 趨勢：±N日最高/最低收盤識別波峰波谷（朱家泓目視對應法）──
-        // N=10：前後各10根K線，即前後各2週，符合朱老師波段視覺判斷習慣
-        // 只掃近120日資料，聚焦近期波動結構
-        const SWING_N  = 10;
-        const scanFrom = Math.max(0, n - 120);
-        const swingPeaks = [], swingTroughs = [];
-        for (let i = scanFrom + SWING_N; i <= last - SWING_N; i++) {
-            const window = data.slice(i - SWING_N, i + SWING_N + 1);
-            const maxC   = Math.max(...window.map(d => d.close));
-            const minC   = Math.min(...window.map(d => d.close));
-            if (data[i].close === maxC) swingPeaks.push({ idx: i, val: data[i].close, date: data[i].date });
-            if (data[i].close === minC) swingTroughs.push({ idx: i, val: data[i].close, date: data[i].date });
-        }
-        // 最近2波峰 / 2波谷
-        let trendJudge  = '⚪ 盤整（120日內未找到足夠波峰波谷）';
-        let peaksDesc   = `無法在近120日識別≥2個波峰（視窗 ±${SWING_N}日）`;
-        let troughsDesc = `無法在近120日識別≥2個波谷（視窗 ±${SWING_N}日）`;
-        if (swingPeaks.length >= 2) {
-            const p1 = swingPeaks[swingPeaks.length-2], p2 = swingPeaks[swingPeaks.length-1];
-            const peakUp = p2.val > p1.val;
-            peaksDesc = `近2波峰收盤：${p1.val.toFixed(1)}（${p1.date}）→ ${p2.val.toFixed(1)}（${p2.date}）  ${peakUp ? '✅頭頭高' : '❌頭頭低'}`;
-            if (swingTroughs.length >= 2) {
-                const t1 = swingTroughs[swingTroughs.length-2], t2 = swingTroughs[swingTroughs.length-1];
-                const troughUp = t2.val > t1.val;
-                troughsDesc = `近2波谷收盤：${t1.val.toFixed(1)}（${t1.date}）→ ${t2.val.toFixed(1)}（${t2.date}）  ${troughUp ? '✅底底高' : '❌底底低'}`;
-                if (peakUp && troughUp)        trendJudge = '✅ 多頭趨勢確認（頭頭高 + 底底高）';
-                else if (!peakUp && !troughUp) trendJudge = '❌ 空頭趨勢確認（頭頭低 + 底底低）';
-                else                           trendJudge = '⚠️ 趨勢轉折警戒（六字口訣出現破口，嚴禁做多）';
-            }
-        }
-
-        // ── 高檔拉回折數（近60日波段最高點）──────────────────────
-        const high60  = Math.max(...data.slice(-60).map(d => d.high));
-        const foldRatio = (pC / high60);
-        const foldPct  = (foldRatio * 10).toFixed(2);
-        let foldZone;
-        if (foldRatio >= 0.95)       foldZone = '🔴 高檔過熱區（近頂，嚴防追高）';
-        else if (foldRatio >= 0.85)  foldZone = '🟡 85折強勢區（飆股黃金回檔觀察帶）';
-        else if (foldRatio >= 0.75)  foldZone = '🟢 75折深水支撐區（一般股月線支撐帶）';
-        else                          foldZone = '⛔ 跌深轉空區（跌深非買點，等確認訊號）';
-
-        // ── 三盞明燈發動信號 ───────────────────────────────────────
-        const chgPct   = pC1 > 0 ? ((pC - pC1) / pC1 * 100) : 0;
-        const isRedK   = pC > pO;
-        const sig1     = isRedK && chgPct >= 5;
-        const volChg   = pV1 > 0 ? ((pV - pV1) / pV1 * 100) : 0;
-        const sig2     = volChg >= 20;
-        const sig3     = ma5 ? (pC > ma5 && pC > pH1) : false;
-        const sigCount = [sig1, sig2, sig3].filter(Boolean).length;
-        const sigLabel = sigCount === 3 ? '🚀 三燈全亮！高勝率發動點'
-                       : sigCount === 2 ? '⚠️ 兩燈亮，尚缺一項條件確認'
-                       : '❌ 發動條件未達標，耐心等待球棒出棒';
+        // 📐 朱家泓技術位階 + 郭榮哲折數（抽共用 helper，與 refreshStrategy / 首席AI 同源，杜絕分歧）
+        const _prof = this._computeChuTechProfile(data, ind);
+        const { ma5, ma10, ma20, ma60, isFourBull, isFourBear,
+                trendJudge, foldPct, foldZone, sigCount, sigLabel } = _prof;
 
         // ══════════════════════════════════════════════════════════════
         // 二、組合 prompt（所有數字已預計算，AI 只做解讀和策略建議）
@@ -7699,6 +7730,34 @@ ${radarSection}
         if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
     },
 
+    // 🌐 確保三大全域戰略情報快取就緒（macro_risk / sector_heat / bubble_warning）；
+    // 只在快取為空時輕量補抓，不觸發任何 UI 重渲染；缺檔→快取維持 null（prompt 顯示「待採」）。
+    async _ensureGlobalIntel() {
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+        const grab = async (file) => {
+            try {
+                const r = await fetch(new URL(file, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(4000) });
+                if (!r.ok) return null;
+                const txt = await r.text();
+                try { return JSON.parse(txt); }
+                catch (_) {   // 尾部 garbage 防呆：括號深度切出首個完整 JSON 物件
+                    let depth = 0, end = -1;
+                    for (let i = 0; i < txt.length; i++) {
+                        if (txt[i] === '{') depth++;
+                        else if (txt[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+                    }
+                    if (end > 0) { try { return JSON.parse(txt.slice(0, end + 1)); } catch (__) {} }
+                    return null;
+                }
+            } catch (e) { return null; }
+        };
+        const jobs = [];
+        if (!this._macroRiskCache)  jobs.push(grab('data/macro_risk.json').then(j => { if (j) this._macroRiskCache = j; }));
+        if (!this._sectorHeatCache) jobs.push(grab('data/sector_heat.json').then(j => { if (j) this._sectorHeatCache = j; }));
+        if (!this._bubbleCache)     jobs.push(grab('data/bubble_warning.json').then(j => { if (j) this._bubbleCache = j; }));
+        if (jobs.length) await Promise.allSettled(jobs);
+    },
+
     async runUnifiedGroqAnalysis(opts = {}) {
         const silent = !!opts.silent;   // 自動觸發 (silent=true) 時不彈 alert、不開設定中心
         const box = document.getElementById('geminiResultBox');
@@ -7725,6 +7784,7 @@ ${radarSection}
         await Promise.allSettled([
             this.fetchMacroData().catch(() => {}),
             this._autoLoadFundamentals(sym).catch(() => {}),
+            this._ensureGlobalIntel().catch(() => {}),
         ]);
 
         try {
@@ -7753,16 +7813,23 @@ ${radarSection}
             if (xrayYoyEl && xrayYoyEl.innerText !== '--') trueYoy = xrayYoyEl.innerText;
             if (this._latestEpsCache != null) epsInfo = `${this._latestEpsCache} 元`;
 
-            // 4. 庫存戰術整合
+            // 4. 庫存戰術整合（修正：手動輸入成本一律優先於庫存成本，不論高於/低於現價都算持股）
             const inInv = this.inventory.find(i => i.symbol === sym);
-            const costVal = document.getElementById('costInput')?.value?.trim();
+            const costStr = document.getElementById('costInput')?.value?.trim();
+            const typedCost = (costStr && !isNaN(parseFloat(costStr))) ? parseFloat(costStr) : null;
+            let has_stock = false, cost = null;
+            if (typedCost && typedCost > 0)   { has_stock = true; cost = typedCost; }      // 手動輸入優先
+            else if (inInv && inInv.cost > 0) { has_stock = true; cost = inInv.cost; }      // 退回庫存成本
             let invLine = '目前空手（請提供進場點與停損點）';
-            if (inInv || (costVal && !isNaN(parseFloat(costVal)))) {
-                const cost = inInv ? inInv.cost : parseFloat(costVal);
-                const pnlNum = parseFloat(((currentPrice - cost) / cost * 100).toFixed(2));
+            let profitPct = null;
+            if (has_stock) {
+                profitPct = (currentPrice - cost) / cost * 100;
+                const pnlNum = parseFloat(profitPct.toFixed(2));
                 const pnlStr = (pnlNum >= 0 ? '+' : '') + pnlNum + '%';
                 let posState = '';
-                if (pnlNum > 5) posState = '獲利中＋5%以上，考慮停利或追蹤停損';
+                if (pnlNum > 50) posState = '巨幅獲利＋50%以上，分批出貨落袋為安';
+                else if (pnlNum >= 15) posState = '獲利＋15%以上，防守點上移至上揚5MA鎖倉';
+                else if (pnlNum > 5) posState = '獲利中＋5%以上，考慮停利或追蹤停損';
                 else if (pnlNum > 0) posState = '小幅獲利，防守優先';
                 else if (pnlNum > -5) posState = '小幅虧損，給予關鍵支撐點';
                 else posState = '深度套牢，評估停損或反彈逃命點';
@@ -7779,6 +7846,33 @@ ${radarSection}
             const chipSafetyLine = _chip
                 ? `近 3 日三大法人合計 ${_chip.instSum3 >= 0 ? '+' : ''}${_chip.instSum3.toLocaleString()} 張（${_chip.is_chips_weak ? '🚨 連續 3 日全面賣超，籌碼鬆動' : '🛡️ 未連續全面賣超，籌碼相對安定'}）`
                 : '個股籌碼資料計算中';
+
+            // 5.6 全盤綜合戰略情報：外資期現複合判定 / 泡沫預警 / 板塊輪動（缺檔→待採，不報錯）
+            const mr = this._macroRiskCache || {};
+            const fiComplex = mr.fi_complex_conclusion || '待採';
+            const bubble = this._bubbleCache || {};
+            const marginLevLine = bubble.margin_leverage?.label ? `${bubble.margin_leverage.label}（${bubble.margin_leverage.desc || ''}）` : '待採';
+            const junkLine = bubble.junk_count?.label ? `${bubble.junk_count.label}（${bubble.junk_count.desc || ''}）` : '待採';
+            const sh = this._sectorHeatCache || {};
+            let sectorRotationLine = '板塊資料待採';
+            if (sh.warzones) {
+                const wz = Object.values(sh.warzones).filter(w => typeof w.chg === 'number');
+                if (wz.length) {
+                    const hot = wz.reduce((a, b) => b.chg > a.chg ? b : a);
+                    const cold = wz.reduce((a, b) => b.chg < a.chg ? b : a);
+                    sectorRotationLine = `資金最熱：${hot.name} ${hot.chg > 0 ? '+' : ''}${hot.chg.toFixed(2)}% ${hot.label}；最冷：${cold.name} ${cold.chg > 0 ? '+' : ''}${cold.chg.toFixed(2)}% ${cold.label}`;
+                }
+            }
+
+            // 5.7 朱家泓技術位階 + 型態特徵標籤（與策略頁同源 helper，禁止 AI 重算）
+            const chu = this._computeChuTechProfile(data, ind);
+            const _ctx = this.currentStrategyContext || {};
+            const _alerts = [];
+            if (_ctx.isIslandReversal) _alerts.push('[型態警報] 島狀反轉（高檔左缺右口，凶險）');
+            if (_ctx.isBigBlackK)      _alerts.push('[型態警報] 收盤大黑K摜壓');
+            if (_ctx.brokenPrevLow)    _alerts.push('[破線] 跌破前20日最低');
+            if (_ctx.chipSafety?.is_chips_weak) _alerts.push(`[籌碼] 近3日法人連賣（合計${_ctx.chipSafety.instSum3}張）`);
+            const patternAlertsText = _alerts.length ? _alerts.join('、') : '無重大型態破壞';
 
             // 🧠 靈魂編輯器連動：以使用者選定的 AI 指令（預設首席 / 小哥雙刀流 / 自訂）作為人設與風格
             const soul = (this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default).trim();
@@ -7813,18 +7907,24 @@ ${radarSection}
 - 庫存狀態：${invLine}
 - 總經外資期貨：${fiLabel}
 - 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
+- 📐 技術位階（系統精算，禁止重算）：趨勢 ${chu.trendJudge}｜均線 ${chu.maArrangement}｜折數 ${chu.foldPct}折 ${chu.foldZone}
+- 🚨 型態特徵標籤：${patternAlertsText}
+- 🌏 外資期現複合判定（不可只看口數）：${fiComplex}
+- ⚖️ 融資槓桿水位：${marginLevLine}
+- 🧟 群魔亂舞漲停家數：${junkLine}
+- 🔥 大盤板塊輪動：${sectorRotationLine}
 - 🎯 系統量化燈號（最終判定必須與此一致）：${sigLine}
 - ${newsLine}
 
 🎨 重點高亮鐵律（散戶要一眼抓到重點）：
-- 所有【關鍵數字】（停損價、目標價、防守價、進場價、獲利%、虧損%、漲跌幅、營收YoY）一律用 **xxx** 包起。
-- 所有【強烈動詞】（清倉、出貨、抱緊、試單、撤退、建倉、加碼、減碼、停利、停損、紀律砍倉）一律用 **xxx** 包起。
-- 範例：跌破 **60.5 元** 請立刻 **清倉**；站穩 **65 元** 可 **加碼** 至 **70 元** 停利。
+- 所有【關鍵數字】（移動停利價、5MA、停損價、目標價、防守價、進場價、獲利%、虧損%、漲跌幅、營收YoY）一律用 **xxx** 包起。
+- 所有【核心操盤動作】（出貨🤑、抱緊🔥、低接試單🤔、強制撤退🚨、清倉、建倉、加碼、減碼、停利、停損、紀律砍倉）一律用 **xxx** 包起。
+- 範例：跌破 **60.5 元** 請立刻 **清倉🚨**；站穩 **65 元** 可 **加碼** 至 **70 元** 停利。
 
 ⚠️ 只准輸出以下「純 JSON」，禁止 \`\`\`json 標籤、禁止 JSON 前後出現任何說明文字：
 {
   "summary": "首頁短評，30字以內。先用強烈痛點 emoji 開頭（範例：出貨🤑 / 低接試單🤔 / 抱緊處理🔥 / 快逃🚨 / 觀望🤨），把技術、籌碼、防守價無縫融合成『唯一一句、前後不矛盾』的核心總評，必須帶具體點位，不准任何廢話。",
-  "detail_action": "三大板塊完整評析，段落之間用換行符分隔，每塊務必以指定的【emoji 標題】一字不差開頭：\\n【🌏 總體位階與大局觀】結合外資期貨 ${fiLabel} 與市場系統性風險，並務必引用『${chipSafetyLine}』評斷三大法人對個股的態度，直白告訴散戶目前大環境的下行壓力或多方天花板在哪裡。\\n【⚔️ 總監專屬戰術室】這段最重要，必須針對庫存狀態（${invLine}）量身做 If-Else 實戰決策：若空手→以獵人視角給出明確的『進場價位、停損點、短線目標價』；若有持股→精確點出防守底線與停利目標的『具體數字』，並下達『分批出貨🤑鎖住利潤』或『跌破 XX 元紀律清倉』的明確軍令狀。\\n【🔥 首席操盤手終極喊話】最直白的實戰點評：若籌碼與技術完美→給散戶堅定的信心喊話『不要被主力洗盤甩轎，抱緊處理』；若主力倒貨或大盤崩壞→無情點醒『不要抱著空氣泡泡做夢，立刻撤退』。最後獨立一行輸出最終判定${sigVerdictHint ? `（系統量化建議：${sigVerdictHint}，務必一致）` : ''}：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。"
+  "detail_action": "三大板塊完整評析，段落之間用換行符分隔，每塊務必以指定的【emoji 標題】一字不差開頭：\\n【🌏 總體位階與大局觀】結合外資期貨 ${fiLabel} 與市場系統性風險，並務必引用『${chipSafetyLine}』評斷三大法人對個股的態度，直白告訴散戶目前大環境的下行壓力或多方天花板在哪裡。\\n【⚔️ 總監專屬戰術室】這段最重要，必須針對庫存狀態（${invLine}）量身做 If-Else 實戰決策：若空手→以獵人視角給出明確的『進場價位、停損點、短線目標價』；若有持股→精確點出防守底線與停利目標的『具體數字』，並嚴格執行機構級移動停利：獲利 **+15%~+30%** 時下令防守點由月線『分批上移至上揚的5日線(${ma5})』，不破5MA死抱；獲利逾 **+50%** 時直接下令『分批 **出貨🤑** 落袋為安』鎖死巨利；虧損時下達『跌破 ${ma5} 或 ${ma20} 紀律 **清倉**』的明確軍令狀。\\n【🔥 首席操盤手終極喊話】最直白的實戰點評：若籌碼與技術完美→給散戶堅定的信心喊話『不要被主力洗盤甩轎，抱緊處理』；若主力倒貨或大盤崩壞→無情點醒『不要抱著空氣泡泡做夢，立刻撤退』。最後獨立一行輸出最終判定${sigVerdictHint ? `（系統量化建議：${sigVerdictHint}，務必一致）` : ''}：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。"
 }`;
 
             let raw = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.35 });
@@ -7844,7 +7944,8 @@ ${radarSection}
             // 三大板塊：marker → 醒目標題 <h3> + 段落 <p>，杜絕糊成一坨純文字
             for (const [marker, cls] of Object.entries(sectionColors)) {
                 const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                html = html.replace(new RegExp(esc, 'g'),
+                // esc + [\s:：]* 吞掉 AI 偶發的「標題後殘留半形/全形冒號與空白」
+                html = html.replace(new RegExp(esc + '[\\s:：]*', 'g'),
                     `</p><h3 class="${cls} font-black text-sm mt-4 mb-1 pl-2 border-l-4">${marker}</h3><p class="text-gray-300 leading-relaxed text-sm">`);
             }
             html = '<p class="text-gray-300 leading-relaxed text-sm">' + html + '</p>';
