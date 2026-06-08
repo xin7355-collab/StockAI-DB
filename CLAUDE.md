@@ -24,33 +24,39 @@
 ---
 
 ## GitHub Actions Workflow
-檔案：`.github/workflows/daily_miner.yml`
-- **執行策略**：採用 **5 個批次同步併發 (Matrix Parallel)** 技術，打破時間限制，大幅縮短全市場採礦時間。
-- **無損合併**：每個子任務 (batch 0~4) 獨立抓取負責的股票後，會觸發 `merge` 任務將 JSON 完美合併。
-- 可手動觸發：Actions → 每日籌碼採礦機 → Run workflow → 選 **`main`**。
-- 執行順序：5 併發獨立採礦(miner.py) → 下載 Artifacts 合併 → 部署 gh-pages 與 data 分支。
+
+### 兩支 workflow 分工（重要）
+| Workflow | 觸發 | 用途 | 生效時間 |
+|----------|------|------|----------|
+| `daily_miner.yml` | cron / 手動 / push `miner.py`·`macro_miner.py`·`radar_miner.py`·`chief_ai_batch.py`·`daily_miner.yml` | 完整採礦 + 部署 gh-pages/data | 30-60 分 |
+| `deploy_frontend.yml` | push `index.html` 到 main / 手動 | **只部署 index.html 到 gh-pages,不採礦** | **~1 分鐘** |
+
+- **`daily_miner.yml` 執行策略**：採 **20 批次同步併發 (Matrix Parallel)**，打破時間限制，大幅縮短全市場採礦時間。
+- **無損合併**：每個子任務獨立抓取負責的股票後，`merge` 任務將 JSON 完美合併。
+- **`deploy_frontend.yml` 原理**：切到 gh-pages 取出既有 `data/` → 只換 `index.html` → orphan 單 commit force-push。有 `STOCKS<100` 斷崖防護(避免把網站洗成空殼)。
+- ⚠️ **`index.html` 已從 `daily_miner.yml` 的 push paths 移除** → 純前端改動只會觸發秒級的 `deploy_frontend.yml`，不再浪費 30-60 分跑採礦。
+- 可手動觸發：Actions → 對應 workflow → Run workflow → 選 **`main`**。
 
 ---
 
 ## 部署與同步規則（鐵律）
 
-### 觸發來源（daily_miner.yml 已配置三條）
-1. **`schedule cron`**：每週一~五 16:30 (UTC 08:30) 自動跑
-2. **`workflow_dispatch`**：Actions UI 手動 Run workflow
-3. **`push branches: [main]` + `paths: index.html / miner.py / daily_miner.yml`**：
-   推 main 上對應檔案會自動觸發完整採礦+部署，不必手動 Run（修法生效時間 30-60 分）
+### 觸發來源
+1. **`schedule cron`**（daily_miner）：每週一~五 16:30 (UTC 08:30) 自動完整採礦
+2. **`workflow_dispatch`**：兩支 workflow 皆可 Actions UI 手動 Run
+3. **`push branches: [main]`**：
+   - 改 `index.html` → **`deploy_frontend.yml` 秒級部署**（~1 分鐘）
+   - 改 `miner.py` / `macro_miner.py` / `radar_miner.py` / `chief_ai_batch.py` / `daily_miner.yml` → `daily_miner.yml` 完整採礦+部署（30-60 分）
 
 ### 「自動同步發佈」的金科玉律
-- **任何改 `index.html` / `miner.py` / `daily_miner.yml` 只 push 到 main**，gh-pages 會自動更新，**不要手動編輯 gh-pages**
+- **純前端改 `index.html` 只 push 到 main** → `deploy_frontend.yml` 自動秒級部署，**不要手動編輯 gh-pages**
+- **採礦相關 `*.py` 改動 push 到 main** → `daily_miner.yml` 完整採礦+部署
 - **不要 hotfix `git push origin … gh-pages --force`** — 會被下次 workflow 自動部署覆蓋，且打亂時間軸
-- 若必須立刻見效（不能等 30-60 分採礦）：
-  - 純前端改動：用 workflow 而非 hotfix
-  - 或在 daily_miner.yml 加一個 fast-path「只部署 index.html 不採礦」的小 workflow（未實作）
 
-### Claude 的部署工作流（自動化）
-- **Claude 修改後直接 push 到 `main`，不開 PR**（除非是重大架構性變動或拿不準）
-- 每次 push 前必跑 `node --check` (index.html inline JS) + `python3 -m py_compile miner.py` 雙驗證
-- push 後 `daily_miner.yml` 的 `push: [main]` 自動觸發採礦 + 部署，使用者不需要做任何事
+### Claude 的部署工作流（自動化）⭐ 使用者要求:每次介面做好就自動發佈到前端
+- **Claude 修改 `index.html` 後直接 push 到 `main`，不開 PR** → `deploy_frontend.yml` ~1 分鐘部署，使用者硬重新整理即可看到
+- **若在 feature branch 開發,完成後必須 merge 回 main 並 push main**，否則 gh-pages 永遠看不到（push trigger 只認 main）
+- 每次 push 前必跑三驗證：`node --check`（index.html inline JS）+ `python3 -m py_compile *.py` + `python3 scripts/check_prompt_vars.py`
 - 出錯時使用者可以 `git revert HEAD` 回退，或叫 Claude 修
 
 ### deploy 階段保護
@@ -59,9 +65,9 @@
 - 看到 workflow 整體 success 但 gh-pages 沒更新時，先看 deploy job log 有沒有這條訊息
 
 ### 修改後驗證流程
-1. 改 main → push
-2. 至 Actions 看 daily_miner workflow run 啟動（push 觸發或 dispatch 觸發）
-3. 等所有 batch + deploy 都綠燈
+1. 改 main → push（純前端 index.html 走 `deploy_frontend.yml`；採礦 py 走 `daily_miner.yml`）
+2. 至 Actions 看對應 workflow run 啟動
+3. 純前端等 deploy_frontend 綠燈（~1 分鐘）；採礦等所有 batch + deploy 綠燈（30-60 分）
 4. 開網站硬重新整理（SW + meta cache-control 會自動拉新版）
 5. 手機 PWA：因 index.html 有 `setInterval(reg.update(), 1hr)`，最多 1 小時內自動換新版（iOS PWA 因系統限制可能需要完全關閉 app 重開）
 

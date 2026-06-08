@@ -1,0 +1,63 @@
+name: ⚡ 前端快速部署 (只更新 index.html,不採礦)
+
+# 用途:純前端改動(index.html)時,~1 分鐘內把網頁部署到 gh-pages,不必等 30-60 分完整採礦。
+# 既有 data/ 全部保留(從 gh-pages 取出再 orphan 重建),只換 index.html。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 與完整採礦的部署共用同一個 gh-pages,避免同時 force-push 打架
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  fast-deploy:
+    name: ⚡ 秒級部署前端到 gh-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取出 main (含完整歷史以便切 gh-pages)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: ⚡ 只換 index.html,保留 gh-pages 既有資料,orphan 單 commit force-push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 1. 暫存 main 上最新的 index.html
+          cp index.html /tmp/index_new.html
+
+          # 2. 切到 gh-pages(取得既有 data/ 等全部檔案)
+          git fetch origin gh-pages
+          git checkout -B gh-pages origin/gh-pages
+
+          # 3. 斷崖防護:gh-pages 上 K 線檔不足 100 → 還沒完整採礦過,放棄(避免把網站洗成空殼)
+          STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
+          if [ "$STOCKS" -lt 100 ]; then
+            echo "⚠️ gh-pages data 僅 $STOCKS 檔 (<100),放棄快速部署,等完整採礦補齊"
+            exit 0
+          fi
+
+          # 4. 換上新 index.html;與線上版相同就跳過
+          cp /tmp/index_new.html index.html
+          if git diff --quiet -- index.html; then
+            echo "index.html 與線上版相同,無需部署"
+            exit 0
+          fi
+
+          # 5. orphan 重建,維持 gh-pages 永遠單 commit(與完整採礦部署同規則,不累積歷史)
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+          git checkout --orphan _fast_deploy
+          git add -A
+          git commit -m "⚡ 前端快速部署 index.html (${DATE} | 保留 ${STOCKS} 檔資料)"
+          git push origin _fast_deploy:gh-pages --force
+          echo "✅ 已快速部署 index.html,保留 ${STOCKS} 檔資料,約 1 分鐘內生效"

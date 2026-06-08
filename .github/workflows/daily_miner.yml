@@ -10,9 +10,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'index.html'
+      # 註:index.html 純前端改動改由 deploy_frontend.yml 秒級部署,不再觸發完整採礦
       - 'miner.py'
       - 'macro_miner.py'
+      - 'radar_miner.py'
       - 'chief_ai_batch.py'
       - '.github/workflows/daily_miner.yml'
 

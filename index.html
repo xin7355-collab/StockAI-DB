@@ -628,6 +628,17 @@
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-3 rounded-lg text-base font-black shadow-lg flex justify-center items-center gap-2 transition-all">
                             🧠 首席 AI 全盤分析
                         </button>
+                        <!-- 🚥 戰術訊號燈（從首頁移入；JS 即時運算,不需 AI,額度耗盡也照常顯示）-->
+                        <div id="tacticalSignalPanel" class="w-full bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-[#30363d] rounded-xl p-3 shadow-lg">
+                            <div class="flex items-center gap-2">
+                                <div id="confLed" class="w-3.5 h-3.5 rounded-full bg-gray-500"></div>
+                                <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
+                            </div>
+                        </div>
+                        <!-- 🧠 AI 首席總評（從首頁移入；AI 成功時填 30 字黃卡總評）-->
+                        <div id="aiTranslatorCard" class="w-full bg-[#161b22] border border-[#30363d] rounded-xl shadow-sm overflow-hidden transition-all duration-300">
+                            <div class="p-3 text-center text-gray-500 text-sm">🤖 點上方按鈕產生 AI 首席總評</div>
+                        </div>
                         <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner overflow-y-auto max-h-[35rem]"></div>
                     </div>
                     <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
@@ -643,15 +654,8 @@
                     </div>
                     
                     <div id="directActionBox" class="w-full p-4 md:p-5 transition-all duration-300 lg:grid lg:grid-cols-12 lg:gap-5 flex flex-col items-center justify-center">
-                        <!-- 👈 左戰區 (lg:col-span-7)：戰術訊號 / 大字訊息 / 籌碼驗證 -->
+                        <!-- 👈 左戰區 (lg:col-span-7)：大字訊息 / 籌碼驗證（戰術訊號燈已上移至「🧠 首席 AI 全盤分析」區塊）-->
                         <div class="w-full lg:col-span-7 flex flex-col items-center justify-center">
-                        <!-- 🚥 戰術訊號燈（精簡版：LED + 一句階段描述） -->
-                        <div id="tacticalSignalPanel" class="w-full mb-3 bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-[#30363d] rounded-xl p-3 shadow-lg">
-                            <div class="flex items-center gap-2">
-                                <div id="confLed" class="w-3.5 h-3.5 rounded-full bg-gray-500"></div>
-                                <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
-                            </div>
-                        </div>
 
                         <!-- 五維儀/氣象/風險已上移至頂部「首席 AI 全局戰略指揮部」 -->
 
@@ -681,10 +685,6 @@
                         </div>
                     </div>
                     
-                    <div id="aiTranslatorCard" class="w-full bg-[#161b22] border-t border-b border-[#30363d] shadow-sm flex-shrink-0 transition-all duration-300">
-                        <div class="p-3 text-center text-gray-500 text-sm">🤖 AI 盤勢白話文翻譯載入中...</div>
-                    </div>
-
                 </div>
                 
             </div>
@@ -6132,14 +6132,12 @@ recent.forEach(d => {
         const staleBar = opts.staleBannerMsg
             ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-2 bg-yellow-900/40 border-b-2 border-yellow-600 text-yellow-200 text-xs font-bold leading-relaxed">⚠️ ${opts.staleBannerMsg}<br><span class="text-yellow-300/70 font-normal">↓ 以下顯示上次分析結果 ↓</span></div>`
             : '';
-        // 當日快取小提示（淺色，置頂；與 staleBar 互斥）
-        const cacheBar = (opts.fromCache && !opts.staleBannerMsg)
-            ? (opts.batchSimplified
-                ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-1.5 bg-indigo-950/40 border-b border-indigo-700/50 text-indigo-300/80 text-[10px] font-mono text-center">🌙 夜間批次簡版（省你即時 token，點上方「🧠 首席 AI」可重算詳細版）</div>`
-                : `<div class="-mx-4 -mt-4 mb-3 px-4 py-1.5 bg-indigo-950/40 border-b border-indigo-700/50 text-indigo-300/80 text-[10px] font-mono text-center">📦 當日已分析過，顯示快取結果（節省 API 額度，明日自動重算）</div>`)
+        // ⚡ 純數據模式橫幅（AI 額度耗盡時改用系統量化引擎,清楚告知非 AI 生成）
+        const dataModeBar = opts.dataMode
+            ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-2 bg-cyan-900/40 border-b-2 border-cyan-600 text-cyan-200 text-xs font-bold leading-relaxed">⚡ 純數據模式${opts.dataModeMsg ? `（${opts.dataModeMsg}）` : '（AI 額度暫歇）'}<br><span class="text-cyan-300/80 font-normal">以下為系統量化引擎分析,非 AI 生成 — 燈號與點位照常精準</span></div>`
             : '';
 
-        this.typeWriterEffect(box, `<div class="typewriter-text">${staleBar}${cacheBar}${trafficHtml}${html}${bbHtml}</div>`);
+        this.typeWriterEffect(box, `<div class="typewriter-text">${staleBar}${dataModeBar}${trafficHtml}${html}${bbHtml}</div>`);
     },
 
     // 🤖 AI 自動觸發鏈：debounce + 5 分鐘 cache，避免 keystroke 風暴與 API 浪費
@@ -8137,6 +8135,102 @@ ${radarSection}
         if (jobs.length) await Promise.allSettled(jobs);
     },
 
+    // ⚡ 純數據分析引擎:AI 額度耗盡時,用 refreshStrategy 已算好的 unifiedSignal + 指標即時組裝
+    // 一份結構化分析。回傳格式與 AI 輸出一致 {traffic_light, summary, bottom_bar, detail_action},
+    // 可直接餵 _renderUnifiedAIResult,完全不打 API。
+    _buildDataDrivenAnalysis() {
+        const data = this.activeData, ind = this.indicators;
+        if (!data || !data.length || !ind) return null;
+        const sym = this.currentSymbolId;
+        const lastIdx = data.length - 1;
+        const cp = data[lastIdx].close;
+        const fmt = v => (typeof v === 'number' && isFinite(v)) ? v.toFixed(2) : '--';
+
+        const sig = this.unifiedSignal;                       // computeUnifiedSignal 已算好的紅黃綠燈
+        const cls = this._classifyStock(sym);                 // 標的屬性
+        const chu = this._computeChuTechProfile(data, ind);   // 趨勢 / 均線排列 / 折數
+        const ma5 = ind.ma5?.[lastIdx], ma20 = ind.ma20?.[lastIdx], ma60 = ind.ma60?.[lastIdx];
+        const ma20Stance = this._maStanceLabel(cp, ma20, '20MA(月線)');
+
+        // 60 日累計漲幅
+        const c60 = data.slice(-61);
+        const chg60 = (c60.length >= 2 && c60[0].close > 0)
+            ? (((cp - c60[0].close) / c60[0].close) * 100).toFixed(1) : '--';
+
+        // 🚨 處置神器
+        const attLine = this._attentionLine || '✅ 正常交易,無風控訊號';
+        const isAttRisk = attLine.startsWith('🚨') || attLine.startsWith('⚠️');
+
+        // 籌碼安定度
+        const _chip = this.currentStrategyContext?.chipSafety;
+        const chipLine = _chip
+            ? `近 3 日法人合計 ${_chip.instSum3 >= 0 ? '+' : ''}${_chip.instSum3.toLocaleString()} 張(${_chip.is_chips_weak ? '🚨 籌碼鬆動' : '🛡️ 相對安定'})`
+            : '籌碼計算中';
+
+        // 外資台指期(美股標的屏蔽)
+        const fi = this.fiShortQty;
+        const fiLine = (fi !== null && cls.category !== 'us_stock')
+            ? `;外資台指期 ${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口(${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'})`
+            : '';
+
+        // 庫存(手動成本優先,退回庫存成本)
+        const costStr = document.getElementById('costInput')?.value?.trim();
+        const typedCost = (costStr && !isNaN(parseFloat(costStr))) ? parseFloat(costStr) : null;
+        const inInv = this.inventory.find(i => i.symbol === sym);
+        let cost = null;
+        if (typedCost && typedCost > 0) cost = typedCost;
+        else if (inInv && inInv.cost > 0) cost = inInv.cost;
+        const hasStock = cost !== null;
+        const pnlPct = hasStock ? ((cp - cost) / cost * 100) : null;
+
+        // 燈號 → traffic_light 三選一動詞(與 computeUnifiedSignal 一致,處置股強制降級)
+        let verdict = '🟡觀望或減碼';
+        if (sig) {
+            if (sig.isHighRisk) verdict = '🔴強制撤退';
+            else if (sig.isModerateRisk) verdict = '🟡觀望或減碼';
+            else if (sig.level === '🟢' || sig.level === '🔵') verdict = '🟢強力買進';
+        }
+        if (isAttRisk && verdict === '🟢強力買進') verdict = '🟡觀望或減碼';
+        const sigAction = sig ? sig.action : '多空拉鋸,嚴守均線紀律';
+        const sigLabel = sig ? sig.label : '拉鋸觀望';
+
+        const traffic_light = `${verdict} — ${sigLabel}:現價 **${fmt(cp)}**,${ma20Stance}`;
+        const sumEmoji = verdict.startsWith('🔴') ? '🚨' : verdict.startsWith('🟢') ? '🔥' : '🤨';
+        const summary = `${sumEmoji} ${sigLabel}:${sigAction}`;
+
+        // bottom_bar
+        let bottom_bar;
+        if (isAttRisk)                    bottom_bar = hasStock ? '處置列管,**嚴格停利拒被關**🚨' : '處置列管,**嚴禁新建倉**🚨';
+        else if (verdict.startsWith('🔴')) bottom_bar = `跌破防線,**${hasStock ? '減碼撤退' : '空手觀望'}**🚨`;
+        else if (verdict.startsWith('🟢')) bottom_bar = `趨勢確認,**守 ${fmt(ma5)} 元抱緊**🔥`;
+        else                              bottom_bar = `月線拉鋸,**等突破 ${fmt(ma20)} 元再追**🤔`;
+
+        // detail_action 三段體(標題一字不差,_renderUnifiedAIResult 會自動上色)
+        const seg1 = `【🌏 總體位階與大局觀】本檔 ${cls.name},趨勢 **${chu?.trendJudge || '中性'}**、均線 **${chu?.maArrangement || '糾結'}**,60 日漲幅 **${chg60}%**。${chipLine}${fiLine}。整體位階偏 ${verdict.startsWith('🟢') ? '多方,可順勢操作' : verdict.startsWith('🔴') ? '空方,保守防禦為上' : '中性,區間來回應對'}。`;
+
+        let seg2;
+        if (isAttRisk) {
+            seg2 = hasStock
+                ? `【⚔️ 總監專屬戰術室】🚨 本檔已被 TWSE 列管(${attLine})!持股者請 **提防主力尾盤突襲**,嚴格執行 **無情停利**,絕不賭「越關越大尾」。`
+                : `【⚔️ 總監專屬戰術室】🚨 本檔已被 TWSE 列管(${attLine})!**嚴禁新建倉,空手觀望**,等出獄且量縮止穩再評估,切勿追高接刀。`;
+        } else if (hasStock) {
+            const pnlStr = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%';
+            seg2 = `【⚔️ 總監專屬戰術室】持有成本 **${fmt(cost)} 元**,帳面 **${pnlStr}**。`
+                 + (verdict.startsWith('🔴') ? `已破關鍵均線,建議 **減碼撤退** 保留現金,反彈不過月線不接。`
+                  : verdict.startsWith('🟢') ? `趨勢健康,**守穩 ${fmt(ma5)} 元 5MA 抱緊**,跌破再調節。`
+                  : `月線附近拉鋸,**守 ${fmt(ma20)} 元**,跌破減碼、站回再加。`);
+        } else {
+            seg2 = `【⚔️ 總監專屬戰術室】目前空手。`
+                 + (verdict.startsWith('🟢') ? `趨勢偏多,可等回測 **${fmt(ma5)} 元** 不破再 **閒錢低接試單**。`
+                  : verdict.startsWith('🔴') ? `空方格局,**手綁好觀望等待**,勿伸手接刀。`
+                  : `等站穩 **${fmt(ma20)} 元** 月線突破再 **建倉**,跌破續觀望。`);
+        }
+
+        const seg3 = `【🔥 首席操盤手終極喊話】${sigAction}`;
+
+        return { traffic_light, summary, bottom_bar, detail_action: [seg1, seg2, seg3].join('\n') };
+    },
+
     async runUnifiedGroqAnalysis(opts = {}) {
         const silent = !!opts.silent;   // 自動觸發 (silent=true) 時不彈 alert、不開設定中心
         const box = document.getElementById('geminiResultBox');
@@ -8443,12 +8537,20 @@ ${radarSection}
                 const m = msg.match(/(\d+)\s*秒/);
                 const sec = m ? parseInt(m[1], 10) : null;
                 const min = sec ? Math.ceil(sec / 60) : null;
-                const friendlyMsg = `今日 AI 額度已用罄${min ? `，約 ${min} 分後恢復` : '，請稍後再試'}；股票數據與圖表不受影響`;
-                const fallback = this._getLastAnyDateCache(_cacheSym);
-                if (fallback) {
-                    this._renderUnifiedAIResult(fallback, { staleBannerMsg: friendlyMsg });
+                const friendlyMsg = `今日 AI 額度已用罄${min ? `，約 ${min} 分後恢復` : '，請稍後再試'}`;
+                // ⚡ 主降級:用純數據引擎即時組一份新鮮分析(優於拿昨天的舊 AI 文字)
+                const dataDriven = this._buildDataDrivenAnalysis();
+                if (dataDriven) {
+                    this._renderUnifiedAIResult(dataDriven, { dataMode: true, dataModeMsg: friendlyMsg });
+                    // 註:純數據分析不寫當日快取,明日 AI 恢復後仍會嘗試真 AI
                 } else {
-                    box.innerHTML = `<div class="text-yellow-300 font-bold bg-yellow-900/30 border border-yellow-600 p-3 rounded leading-relaxed">⚠️ ${friendlyMsg}<br><span class="text-xs text-yellow-200/70">小提醒：可至「⚙️ 戰情設定中心」連接後端 API（後端支援多把 key 輪動），或明日恢復後再回來看分析。</span></div>`;
+                    // 連 activeData 都沒有(極罕見)→ 退回找任何歷史 AI 快取
+                    const fallback = this._getLastAnyDateCache(_cacheSym);
+                    if (fallback) {
+                        this._renderUnifiedAIResult(fallback, { staleBannerMsg: `${friendlyMsg}；股票數據與圖表不受影響` });
+                    } else {
+                        box.innerHTML = `<div class="text-yellow-300 font-bold bg-yellow-900/30 border border-yellow-600 p-3 rounded leading-relaxed">⚠️ ${friendlyMsg}<br><span class="text-xs text-yellow-200/70">小提醒：可至「⚙️ 戰情設定中心」填入第二把 Groq Key 或連接後端 API（多把 key 輪動），或稍後再回來看分析。</span></div>`;
+                    }
                 }
             } else {
                 box.innerHTML = `<div class="text-red-400 font-bold bg-red-900/30 p-3 rounded border border-red-800">❌ AI 分析失敗：<br><span class="text-xs text-red-300">${msg}</span></div>`;
