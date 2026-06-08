@@ -138,11 +138,15 @@
                 <div class="space-y-4 border-b border-[#30363d] pb-4">
                     <div class="flex flex-col gap-1">
                         <label class="text-xs font-bold text-purple-400">🧠 Groq API Key（AI 大腦，純手機必填）</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">免費申請：<span class="text-purple-400">console.groq.com</span> → API Keys → Create。填入後 AI 分析功能直接在手機上執行。</p>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">免費申請：<span class="text-purple-400">console.groq.com</span> → API Keys → Create。填入後 AI 分析功能直接在手機上執行。<b class="text-purple-300">填兩把可自動輪動，撞 429 自動換把,額度 × 2。</b></p>
                         <div class="flex gap-2 items-center">
-                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
+                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="第一把 gsk_...">
                             <button onclick="app.verifyAPI('groq')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
                             <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq"></div>
+                        </div>
+                        <div class="flex gap-2 items-center mt-1.5">
+                            <input type="password" id="set_groqKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400/70 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="第二把 (選填,撞 429 自動換)...">
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq2"></div>
                         </div>
                     </div>
 
@@ -1579,7 +1583,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', groqKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium' },
     MAX_FAV_PER_GROUP: 50,
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
@@ -2071,7 +2075,7 @@ const app = {
 
             // 自動觸發 AI 中文翻譯（背景跑，不阻塞 UI）；有 Groq Key + 標題還是英文時才跑
             const needTranslate = data.items.some(it => !it.title_zh && /[a-zA-Z]{3,}/.test(it.title || ''));
-            if (needTranslate && (this.settings.groqKey || this._apiBase)) {
+            if (needTranslate && (this._getGroqKeys().length > 0 || this._apiBase)) {
                 this.analyzeGlobalNewsAI({ silent: true });
             }
         } catch(e) {
@@ -2085,7 +2089,7 @@ const app = {
         const items = this._globalNewsItems || [];
         const silent = !!(opts && opts.silent);
         if (!items.length) { if (!silent) alert('沒有可判讀的新聞，請等情報載入'); return; }
-        const apiKey = (this.settings.groqKey || '').trim();
+        const apiKey = this._getGroqKeys()[0] || '';
         if (!apiKey) { if (!silent) alert('請先至 ⚙️ 設定填寫 Groq API Key'); return; }
 
         // sessionStorage 快取：同一批新聞（key = 第一則 url + items 長度）只翻一次
@@ -2320,6 +2324,7 @@ const app = {
     openSettings() {
         document.getElementById('set_aiPrompt').value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
         document.getElementById('set_groqKey').value = this.settings.groqKey || '';
+        document.getElementById('set_groqKey2').value = this.settings.groqKey2 || '';
         document.getElementById('set_fugleToken1').value = this.settings.fugleToken1 || '';
         document.getElementById('set_fugleToken2').value = this.settings.fugleToken2 || '';
         document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
@@ -2357,6 +2362,7 @@ const app = {
     saveSettings() {
         this.settings.aiPrompt = document.getElementById('set_aiPrompt').value.trim();
         this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
+        this.settings.groqKey2 = document.getElementById('set_groqKey2').value.trim();
         this.settings.fugleToken1 = document.getElementById('set_fugleToken1').value.trim();
         this.settings.fugleToken2 = document.getElementById('set_fugleToken2').value.trim();
         this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
@@ -2370,6 +2376,12 @@ const app = {
         this.settings.massiveKey = document.getElementById('set_massiveKey').value.trim();
         localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
+    },
+
+    // [Groq 雙 Key 輪動] 收集已填寫的 Groq Key，撞 429/401 由 _callAI 自動換把
+    _getGroqKeys() {
+        return [this.settings.groqKey, this.settings.groqKey2]
+            .map(k => (k || '').trim()).filter(Boolean);
     },
 
     _getFinmindToken() {
@@ -2424,9 +2436,33 @@ const app = {
         if (led) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
         try {
             if (type === 'groq') {
-                if (!this.settings.groqKey) throw new Error('未填寫');
-                const res = await this.safeFetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${this.settings.groqKey}` } }, { timeout: 8000, maxRetries: 1 });
-                if (res.status === 200) { const j = await res.json(); if (j?.data?.length > 0) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error(); } else throw new Error(`HTTP ${res.status}`);
+                // 雙 key 逐一驗:第一把 → led_groq、第二把 → led_groq2
+                const groqEntries = [
+                    { key: this.settings.groqKey,  ledId: 'led_groq'  },
+                    { key: this.settings.groqKey2, ledId: 'led_groq2' },
+                ];
+                const filled = groqEntries.filter(e => e.key);
+                if (!filled.length) throw new Error('未填寫');
+                let anyOk = false;
+                for (const entry of groqEntries) {
+                    const ledEl = document.getElementById(entry.ledId);
+                    if (!ledEl) continue;
+                    if (!entry.key) { ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 bg-gray-600'; continue; }
+                    ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse bg-yellow-400';
+                    try {
+                        const r = await this.safeFetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${entry.key}` } }, { timeout: 8000, maxRetries: 1 });
+                        const j = await r.json().catch(() => ({}));
+                        if (r.status === 200 && j?.data?.length > 0) {
+                            ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
+                            anyOk = true;
+                        } else {
+                            ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500';
+                        }
+                    } catch { ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500'; }
+                    await new Promise(r => setTimeout(r, 300));
+                }
+                if (!anyOk) throw new Error('所有 Groq Key 驗證失敗');
+                return;  // 已直接控制 led_groq / led_groq2,跳過下方主 LED 邏輯
             } else if (type === 'finmind') {
                 // [Token 輪動] 逐一驗證 4 組 Token，分別更新各自 LED
                 const finmindEntries = [
@@ -3074,16 +3110,16 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // 模式 B：無後端但有 groqKey → 前端直打 Groq（純手機模式）
     // 兩者皆無 → 回傳 null，呼叫方顯示引導訊息
     // ═══════════════════════════════════════════════════════════════════
-    async _callAI({ prompt, max_tokens = 900, temperature = 0.3 }) {
+    async _callAI({ prompt, max_tokens = 900, temperature = 0.3, model = 'llama-3.1-8b-instant' }) {
         const apiBase  = this._apiBase;
-        const groqKey  = this.settings.groqKey || '';
+        const groqKeys = this._getGroqKeys();
 
-        // 模式 A：後端代理
+        // 模式 A：後端代理（後端自有 GROQ_API_KEYS 池,前端不必輪 key）
         if (apiBase) {
             const res = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, max_tokens, temperature })
+                body: JSON.stringify({ prompt, max_tokens, temperature, model })
             }, { timeout: 60000, maxRetries: 1 });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -3093,19 +3129,32 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             return data.content;
         }
 
-        // 模式 B：前端直打 Groq（純手機）
-        if (groqKey) {
-            const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens, temperature })
-            }, { timeout: 60000, maxRetries: 2 });
-            if (!res.ok) {
+        // 模式 B：前端直打 Groq（純手機）— 雙 key 自動輪動,429/401 換把
+        if (groqKeys.length) {
+            const body = JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens, temperature });
+            let lastErr = null;
+            for (let i = 0; i < groqKeys.length; i++) {
+                const key = groqKeys[i];
+                let res;
+                try {
+                    res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                        body
+                    }, { timeout: 60000, maxRetries: i === 0 ? 1 : 2 });
+                } catch (e) { lastErr = e; continue; }
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.choices[0].message.content;
+                }
+                if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
+                    console.warn(`[Groq 輪動] Key #${i + 1} 收到 ${res.status},切第 ${i + 2} 把...`);
+                    continue;
+                }
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error?.message || `Groq 錯誤 HTTP ${res.status}`);
             }
-            const data = await res.json();
-            return data.choices[0].message.content;
+            throw lastErr || new Error('Groq 所有 key 皆呼叫失敗');
         }
 
         // 兩者都沒設定
@@ -4124,7 +4173,7 @@ const marginByDate = {};
         btn.disabled = true;
         result.classList.remove('hidden');
         const hasBackend = !!this._apiBase;
-        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        const hasGroqKey = this._getGroqKeys().length > 0;
         if (!hasBackend && !hasGroqKey) {
             result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key（免費：console.groq.com），即可在手機直接使用 AI 分析。</span>';
             btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
@@ -4235,7 +4284,7 @@ ${chipsTxt}
         result.classList.remove('hidden');
 
         const hasBackend = !!this._apiBase;
-        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        const hasGroqKey = this._getGroqKeys().length > 0;
         if (!hasBackend && !hasGroqKey) {
             result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key（免費：console.groq.com）。</span>';
             btn.innerHTML = '🧠 AI基本面白話解讀';
@@ -4499,7 +4548,7 @@ async triggerTechAI(queryType) {
 
         // 確認是否具備 AI 連線能力
         const hasBackend = !!this._apiBase;
-        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        const hasGroqKey = this._getGroqKeys().length > 0;
         if (!hasBackend && !hasGroqKey) {
             document.getElementById('techAIModalBody').innerHTML =
                 '<span class="text-yellow-400 font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key，即可直接用手機呼叫 AI 分析。</span>';
@@ -4927,7 +4976,7 @@ const fullPrompt = `你是台股身經百戰的操盤總裁，講話犀利直接
             }
             if (aiText) {
                 xrayAIResult.innerHTML = aiText.replace(/\n/g, '<br>');
-            } else if (!this._apiBase && !this.settings.groqKey) {
+            } else if (!this._apiBase && this._getGroqKeys().length === 0) {
                 xrayAIResult.innerHTML = '<span class="text-yellow-400 text-xs">⚠️ 請至 ⚙️設定 填入 Groq API Key（免費申請：console.groq.com）</span>';
             } else {
                 xrayAIResult.innerHTML = '<span class="text-red-400 text-xs">❌ AI 呼叫失敗（可能配額不足或網路異常）</span>';
@@ -5992,20 +6041,54 @@ recent.forEach(d => {
     // 🤖 AI 自動觸發鏈：debounce + 5 分鐘 cache，避免 keystroke 風暴與 API 浪費
     _scheduleAIRecalc(source) {
         clearTimeout(this._aiRecalcTimer);
-        this._aiRecalcTimer = setTimeout(() => this._triggerAIRecalcIfDirty(source), 1500);
+        this._aiRecalcTimer = setTimeout(() => {
+            this._triggerAIRecalcIfDirty(source).catch(e => console.warn('[AI autoload]', e));
+        }, 1500);
     },
-    _triggerAIRecalcIfDirty(source) {
+    async _triggerAIRecalcIfDirty(source) {
         if (!this.currentSymbolId || !this.activeData || !this.activeData.length) return;
         const hasBackend = !!this._apiBase;
-        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        const hasGroqKey = this._getGroqKeys().length > 0;
         if (!hasBackend && !hasGroqKey) return;  // 沒設 Key 安靜略過，不彈視窗打擾
         const costKey = (document.getElementById('costInput')?.value || '').trim();
         const cacheKey = `${this.currentSymbolId}|${costKey}`;
         const now = Date.now();
         const last = this._lastAITrigger;
         if (last && last.key === cacheKey && (now - last.ts) < 5 * 60 * 1000) return;  // 5 分鐘內同 key 不重跑
-        // 註：trigger cache 設定挪到 runUnifiedGroqAnalysis 成功路徑，避免失敗的 429 佔住 5 分鐘槽位
+
+        // 🛡️ 自動觸發節流:autoload 來源(切股票/初始化)只在有快取時才渲染,
+        //     沒快取絕不偷打 API,等使用者按「🧠 首席 AI」按鈕。手動觸發(如改成本)不受此限。
+        if (source === 'autoload') {
+            const localHit = this._getCachedAI(this.currentSymbolId, costKey);
+            if (!(localHit && localHit.detail_action)) {
+                // 個人快取沒命中 → 試查夜間批次快取(免費,只是一個 gh-pages JSON fetch)
+                if (!this._chiefBatchCache) {
+                    try {
+                        const ghBase = window.location.href.split('?')[0].split('#')[0];
+                        const r = await fetch(new URL('data/chief_ai_cache.json', ghBase).href + `?t=${Date.now()}`,
+                                              { signal: AbortSignal.timeout(4000) });
+                        this._chiefBatchCache = r.ok ? await r.json() : { stocks: {} };
+                    } catch (_) { this._chiefBatchCache = { stocks: {} }; }
+                }
+                const batchHit = this._chiefBatchCache?.stocks?.[this.currentSymbolId];
+                const batchFresh = batchHit && batchHit.detail_action
+                    && this._chiefBatchCache?.updated?.startsWith(new Date().toISOString().slice(0, 10));
+                if (!batchFresh) {
+                    this._showAIIdleHint();
+                    return;
+                }
+            }
+        }
+        // 註:trigger cache 設定挪到 runUnifiedGroqAnalysis 成功路徑,避免失敗的 429 佔住 5 分鐘槽位
         this.runUnifiedGroqAnalysis({ silent: true, _autoTriggerKey: cacheKey });
+    },
+
+    // 💡 自動觸發 miss 時的省 token 提示(不打 API,只顯示一行字)
+    _showAIIdleHint() {
+        const box = document.getElementById('geminiResultBox');
+        if (!box) return;
+        box.classList.remove('hidden');
+        box.innerHTML = '<div class="text-indigo-300/80 text-xs font-mono text-center py-3 bg-indigo-950/30 border border-indigo-800/40 rounded leading-relaxed">💡 點上方 <b class="text-indigo-200">🧠 首席 AI</b> 開始分析<br><span class="text-[10px] text-gray-500">(自動模式已關閉以節省 Groq 額度,當日分析過會自動顯示快取)</span></div>';
     },
 
     // 🎯 標的屬性分類器（Category Router 前置）—— JS 預判，AI 不猜，杜絕 3034 聯詠被誤當權值股
@@ -6400,9 +6483,9 @@ recent.forEach(d => {
         // 🛡️ fallbackNote 完全移除：FinMind 配額耗盡用 TWSE PE 反推時，不再顯示警告文字，保持畫面乾淨
         const fallbackNote = '';
         console.log('[fundamentals]', sym, 'annualEps from:', fc.annualEps != null ? 'FinMind 季報加總' : (pe ? 'TWSE PE 反推' : '無資料'), '| pe=', pe, '| annualEps=', annualEps);
-        const apiKey = (this.settings.groqKey || '').trim();
+        const apiKey = this._getGroqKeys()[0] || '';
         if (!apiKey) {
-            showHint('🔑 法人目標價：請至「⚙️ 設定」填寫 Groq API Key 才能計算', 'text-yellow-300');
+            showHint('🔑 法人目標價:請至「⚙️ 設定」填寫 Groq API Key 才能計算', 'text-yellow-300');
             return;
         }
         showHint('💡 法人目標價推估中…', 'text-indigo-300');
@@ -6686,8 +6769,8 @@ recent.forEach(d => {
         this.renderChart();
         this.updatePredictionUI(trades, patternStats);
 
-        // 🤖 全自動 AI 分析：股票載入完成後即觸發（同股 5 分鐘 cache，避免燒 API）
-        this._triggerAIRecalcIfDirty('autoload');
+        // 🤖 全自動 AI 分析：股票載入完成後即觸發(同股 5 分鐘 cache,且僅在有快取時自動)
+        this._triggerAIRecalcIfDirty('autoload').catch(e => console.warn('[AI autoload]', e));
 
         document.getElementById('loadingOverlay').style.display = 'none';
     },
@@ -7378,7 +7461,7 @@ recent.forEach(d => {
             return;
         }
         const hasBackend = !!this._apiBase;
-        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        const hasGroqKey = this._getGroqKeys().length > 0;
         if (!hasBackend && !hasGroqKey) {
             box.classList.remove('hidden');
             box.innerHTML = '<span class="text-yellow-400 text-sm font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key 或後端 URL。</span>';
@@ -7690,7 +7773,8 @@ ${radarSection}
 - 🛡️ 停損線設在哪（例：「加權跌破 24000 → 全部清空」）`;
 
         try {
-            const text = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.4 });
+            // 🚀 全球司令部 = 旗艦級分析,保留 70B 提升判讀深度(每次約 4k tokens,使用者手動觸發)
+            const text = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.4, model: 'llama-3.3-70b-versatile' });
             const html = text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/▌(\d+\.\s*.+)/g, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">▌$1</div>')
@@ -7941,7 +8025,7 @@ ${radarSection}
         }
 
         const hasBackend = !!this._apiBase;
-        const hasGroqKey = !!(this.settings.groqKey || '').trim();
+        const hasGroqKey = this._getGroqKeys().length > 0;
         if (!hasBackend && !hasGroqKey) {
             if (silent) return;  // 自動模式：沒 Key 安靜略過
             box.classList.remove('hidden');
@@ -8199,7 +8283,8 @@ ${radarSection}
   "detail_action": "三段體完整評析,標題一字不差,段間用 \\n,每段 80~140 字。\\n【🌏 總體位階與大局觀】融合上方戰情(三大法人/板塊/期貨/60日漲幅/籌碼安定度),對本檔【${classification.name}】當前位階做具體判讀,點名最關鍵 2~3 個利多/利空,不堆砌數字、不複述規則。\\n【⚔️ 總監專屬戰術室】依本檔當前【庫存狀態:${invLine}】與【屬性邏輯包】,從上方規則中挑定一條,給出今天的明確指令(進場價/防守點/目標價/移動停利數字,擇要列出),禁列舉所有可能。已跌破的均線禁稱「防守」,改稱「反彈壓力天花板」。\\n【🔥 首席操盤手終極喊話】依本檔屬性挑一句口語化喊話(20~40 字),強烈動詞 emoji 開頭(抱緊🔥/撤退🚨/砍倉/調節/承接 擇一),帶具體點位。\\n⚠️ 禁複述上方 prompt 的 if-then 規則文字、禁列舉『A 或 B 或 C』『X→Y;Z→W』形式、禁出現『依【天條』『禁列舉』等 meta 字眼,違反視為無效輸出。\\n✅ GOOD 範例(空手+大盤多頭):『空手碰上 +27% 急漲後緊縮,先 **手綁好觀望等待**,等回測 **${ma20} 元** 月線不破再 **閒錢 低接試單🤔**,跌破 **${ma60Str} 元** 取消計畫』\\n❌ BAD 範例(複述 prompt):『空手禁出「撤退/清倉/停利停損」,改喊『等待突破建倉』或『手綁好觀望』或『閒錢 低接』』"
 }`;
 
-            let raw = await this._callAI({ prompt, max_tokens: 1800, temperature: 0.35 });
+            // 🚀 首席五維 = 旗艦級分析,保留 70B(每次約 8k tokens,使用者手動或快取命中)
+            let raw = await this._callAI({ prompt, max_tokens: 1800, temperature: 0.35, model: 'llama-3.3-70b-versatile' });
             if (!raw) throw new Error('未設定 Groq Key');
 
             // 健壯解析 → traffic_light + summary + bottom_bar + detail_action
