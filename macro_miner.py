@@ -26,6 +26,103 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 OUTPUT_FILE = DATA_DIR / "macro_risk.json"
 
+# ══════════════════════════════════════════════════════════════════
+# 📅 全球重大財經事件日曆(純演算法,零外部依賴,絕不崩潰)
+# ── 跨年提醒:FOMC/BOJ 排程硬編碼 2026 場次,2026 年底前需手動補 2027 排程 ──
+# ══════════════════════════════════════════════════════════════════
+FOMC_SCHEDULE = [
+    # 2026 FOMC 排程(federalreserve.gov 公開),需於 2026/Q4 更新 2027 排程
+    "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
+    "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-16",
+]
+BOJ_SCHEDULE = [
+    # 2026 BOJ 排程(boj.or.jp 公開),需於 2026/Q4 更新 2027 排程
+    "2026-01-22", "2026-03-19", "2026-04-30", "2026-06-17",
+    "2026-07-31", "2026-09-18", "2026-10-30", "2026-12-18",
+]
+
+
+def _compute_upcoming_macro_events(today, window_days=7):
+    """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。"""
+    from datetime import date, timedelta
+    if not isinstance(today, date):
+        today = date.today()
+    end = today + timedelta(days=window_days)
+    events = []
+
+    # ── 月度規律事件:第三個週三(台指結算)、第三個週五(四巫日,只 3/6/9/12)、
+    #    每月 10-14 日首個工作日(CPI)、CPI+1 工作日(PPI)──
+    for m_offset in (0, 1):
+        year = today.year
+        month = today.month + m_offset
+        if month > 12:
+            year += 1
+            month -= 12
+        first = date(year, month, 1)
+
+        # 第三個週三 = 該月首個週三 + 14 天 (weekday: Mon=0..Sun=6, Wed=2)
+        third_wed = first + timedelta(days=((2 - first.weekday()) % 7) + 14)
+        if today < third_wed <= end:
+            events.append({"date": third_wed.isoformat(),
+                           "event": "🇹🇼 台指期貨大結算 (提防外資結算洗盤)"})
+
+        # 第三個週五,僅 3/6/9/12 月 → 四巫日 (weekday: Fri=4)
+        if month in (3, 6, 9, 12):
+            third_fri = first + timedelta(days=((4 - first.weekday()) % 7) + 14)
+            if today < third_fri <= end:
+                events.append({"date": third_fri.isoformat(),
+                               "event": "🇺🇸 美股四巫日 (選擇權結算,波動激增)"})
+
+        # CPI:每月 10-14 日首個工作日(週一~週五);PPI = CPI + 1 工作日
+        cpi_d = None
+        for day in range(10, 15):
+            try:
+                cand = date(year, month, day)
+            except ValueError:
+                continue
+            if cand.weekday() < 5:
+                cpi_d = cand
+                break
+        if cpi_d is not None:
+            if today < cpi_d <= end:
+                events.append({"date": cpi_d.isoformat(),
+                               "event": "🇺🇸 美國 CPI 通膨數據公布 (Fed 政策風向球)"})
+            ppi_d = cpi_d + timedelta(days=1)
+            while ppi_d.weekday() >= 5:
+                ppi_d += timedelta(days=1)
+            if today < ppi_d <= end:
+                events.append({"date": ppi_d.isoformat(),
+                               "event": "🇺🇸 美國 PPI 生產者物價指數"})
+
+    # ── 預編排事件:FOMC、BOJ 利率決議 ──
+    for d_str in FOMC_SCHEDULE:
+        try:
+            dd = date.fromisoformat(d_str)
+        except ValueError:
+            continue
+        if today < dd <= end:
+            events.append({"date": d_str,
+                           "event": "🇺🇸 FOMC 聯準會利率決議 (終極利空/利多)"})
+    for d_str in BOJ_SCHEDULE:
+        try:
+            dd = date.fromisoformat(d_str)
+        except ValueError:
+            continue
+        if today < dd <= end:
+            events.append({"date": d_str,
+                           "event": "🇯🇵 日銀 BOJ 利率決議 (套息交易風向球)"})
+
+    # 去重 + 依日期升冪排序
+    seen = set()
+    uniq = []
+    for e in sorted(events, key=lambda x: (x["date"], x["event"])):
+        sig = (e["date"], e["event"])
+        if sig in seen:
+            continue
+        seen.add(sig)
+        uniq.append(e)
+    return uniq
+
 # Retry-equipped session（任何 5xx / 連線錯誤自動重試 3 次）
 http = requests.Session()
 http.mount("https://", HTTPAdapter(max_retries=Retry(
@@ -668,6 +765,8 @@ def main():
         "nikkei":         None, "nikkei_chg_pct": None, "nikkei_error": None,
         "hsi":            None, "hsi_chg_pct":    None, "hsi_error":    None,
         "kospi":          None, "kospi_chg_pct":  None, "kospi_error":  None,
+        # ── 📅 未來 7 日核彈事件(純演算法,主流程結尾計算填入)──
+        "upcoming_macro_events": [],
     }
 
     print("─" * 50)
@@ -764,6 +863,17 @@ def main():
                 print(f"  🛡️ 斷崖防護：{len(patched)} 個欄位用昨天 cache 補值 → {patched}")
     except Exception as e:
         print(f"  ⚠️ 斷崖防護讀舊檔失敗：{e}（不影響本次寫檔）")
+
+    # ── 📅 全球重大財經事件日曆(純演算法,絕不拋例外)──
+    try:
+        from datetime import date as _date
+        out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today())
+        print(f"📅 未來 7 日核彈事件:{len(out['upcoming_macro_events'])} 場")
+        for ev in out["upcoming_macro_events"]:
+            print(f"     · {ev['date']}  {ev['event']}")
+    except Exception as e:
+        print(f"  ⚠️ 事件日曆演算法失敗(不影響主流程):{e}")
+        out["upcoming_macro_events"] = []
 
     # 寫檔（最輕量）— 任何 IO 錯誤不能讓整個 daily_miner 崩潰
     try:

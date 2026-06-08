@@ -10,12 +10,14 @@ radar_miner.py — 首席 AI 司令部：三大戰略雷達矩陣引擎
 """
 import os
 import json
+import requests
 from pathlib import Path
-from datetime import date
+from datetime import date, datetime
 
 DATA_DIR = Path("data")
 CHIPS_DIR = DATA_DIR / "chips"
 OUTPUT_FILE = DATA_DIR / "radar_matrix.json"
+ATTENTION_FILE = DATA_DIR / "attention_status.json"
 
 # 1 億 = 10^8（成交額顯示單位）
 YI = 100_000_000
@@ -26,6 +28,74 @@ def calculate_ma(data, period):
     if len(data) < period:
         return 0
     return sum(d['close'] for d in data[-period:]) / period
+
+
+def fetch_attention_disposal_status():
+    """🚨 處置神器爬蟲:抓 TWSE 注意股 + 處置股名單,寫 data/attention_status.json。
+
+    斷崖防護:若兩個端點都失敗且舊檔存在,沿用昨日資料,絕不覆蓋成空檔。
+    """
+    print("\n🚨 啟動【處置神器】爬蟲偵蒐部隊...")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept-Language": "zh-TW,zh;q=0.9",
+        "Referer": "https://www.twse.com.tw/",
+    }
+    result = {}
+
+    # ── 注意股(TWT54U)──
+    try:
+        r = requests.get(
+            "https://www.twse.com.tw/exchangeReport/TWT54U?response=json",
+            headers=headers, timeout=10,
+        )
+        j = r.json()
+        if j.get('stat') == 'OK':
+            for row in j.get('data', []):
+                if len(row) < 2:
+                    continue
+                sym = str(row[1]).strip()
+                if sym and sym.isdigit():
+                    result[sym] = {"status": "⚠️ 注意股", "threshold": "注意條款觸發"}
+            print(f"   · 注意股:{sum(1 for v in result.values() if v['status'].startswith('⚠️'))} 檔")
+    except Exception as e:
+        print(f"   ⚠️ TWSE 注意股 API 失敗:{e}")
+
+    # ── 處置股(TWT55U,覆蓋注意股 = 更嚴重)──
+    try:
+        r = requests.get(
+            "https://www.twse.com.tw/exchangeReport/TWT55U?response=json",
+            headers=headers, timeout=10,
+        )
+        j = r.json()
+        if j.get('stat') == 'OK':
+            for row in j.get('data', []):
+                if len(row) < 2:
+                    continue
+                sym = str(row[1]).strip()
+                if sym and sym.isdigit():
+                    result[sym] = {"status": "🚨 處置中", "threshold": "已關禁閉"}
+            print(f"   · 處置股:{sum(1 for v in result.values() if v['status'].startswith('🚨'))} 檔")
+    except Exception as e:
+        print(f"   ⚠️ TWSE 處置股 API 失敗:{e}")
+
+    # 斷崖防護:全失敗時沿用昨日 cache
+    if not result and ATTENTION_FILE.exists():
+        print("🛡️  全部 API 失敗,沿用昨日 attention_status.json,不覆蓋")
+        return
+
+    payload = {
+        "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "stocks": result,
+    }
+    try:
+        ATTENTION_FILE.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding='utf-8',
+        )
+        print(f"✅ 處置神器:寫入 {len(result)} 檔注意/處置股 → {ATTENTION_FILE}")
+    except Exception as e:
+        print(f"❌ attention_status.json 寫檔失敗(不影響其他流程):{e}")
 
 
 def main():
@@ -184,3 +254,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # 🚨 雷達矩陣完成後,順手抓注意/處置股名單(獨立 try,失敗不影響雷達)
+    try:
+        fetch_attention_disposal_status()
+    except Exception as e:
+        print(f"💥 處置神器頂層異常(不影響雷達矩陣):{e}")

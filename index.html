@@ -420,6 +420,24 @@
                         <li>重大持倉者：夜盤可考慮買入賣權避險（保險概念,不必全倉,5~10% 部位即可）</li>
                     </ul>
                 </div>
+
+                <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2 rounded-r">
+                    <div class="font-black text-red-300 mb-1">🚨 妖股處置神器(關禁閉風控雷達)</div>
+                    <div class="text-gray-300 mb-1">專治「🏎️ 渣男賽車」!提早看穿飆股生死線,拒絕喪失流動性。</div>
+                    <ul class="list-disc list-inside text-[12px] text-gray-400 space-y-0.5 pl-2">
+                        <li><b class="text-amber-300">處置四大天條</b>:連 3 條款、連 5 條款、短期太頻繁(10 中 6)、長期常態犯(30 中 12)</li>
+                        <li><b class="text-amber-300">盯盤秘訣</b>:留意「價格門檻」與「量價門檻」,若盤中觸發實質達標(量價雙破),明日必關!</li>
+                        <li><b class="text-red-300">聽牌狀態解碼</b>:若顯示為「必關股」或「聽牌中」,短線操作者應趁拉高時無情停利,嚴禁新建倉!</li>
+                    </ul>
+                </div>
+
+                <div class="bg-purple-900/15 border-l-4 border-purple-500 pl-3 pr-2 py-2 rounded-r">
+                    <div class="font-black text-purple-300 mb-1">⚔️ 首席雙刀戰法(處置股進階收割術)</div>
+                    <ul class="list-disc list-inside text-[12px] text-gray-400 space-y-0.5 pl-2">
+                        <li><b class="text-amber-300">🗡️ 進攻刀(關前末日狂歡)</b>:當股票最快再 1 天被關,主力常作最後拉抬。若資金狂熱,可極短線當沖或隔日沖。<b class="text-red-300">紀律天條:收盤前 13:25 無論盈虧必須手起刀落全數清倉,絕不留單過夜!</b></li>
+                        <li><b class="text-amber-300">🛡️ 狙擊刀(獄中量縮撿屍)</b>:當股票已 🚨 處置中,若跌至黃金支撐(如月線)且主力籌碼集中度仍 &gt; 30%,此為經典「關廁所洗盤」,應冷血分批低接,等待出獄噴發。</li>
+                    </ul>
+                </div>
             </div>
             <div class="text-center mt-4 pt-3 border-t border-[#30363d]">
                 <button onclick="document.getElementById('operationManualModal').classList.add('hidden')" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded text-sm font-bold transition-colors">收到！開始作戰</button>
@@ -569,6 +587,8 @@
                         <div class="flex items-center gap-1 mt-1 flex-wrap">
                             <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
                             <span id="invBadge" class="hidden bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
+                            <!-- 🚨 處置神器 badge:由 refreshStrategy() 依 attentionStatus 動態填字 + show/hide -->
+                            <span id="attentionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle"></span>
                         </div>
                     </div>
                     <!-- 右側：✏️ + 價格 + 漲跌 + 來源 + 更新 -->
@@ -1080,6 +1100,17 @@
                 </div>
             </div>
 
+            <!-- 📅 即將引爆(未來 7 日核彈事件,演算法計算自 macro_risk.json.upcoming_macro_events)-->
+            <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5 mb-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[10px] font-black text-amber-300">📅 即將引爆 (未來 7 日核彈)</div>
+                    <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
+                </div>
+                <div id="macroEventsList" class="space-y-1 max-h-32 overflow-y-auto scrollbar-hide">
+                    <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
+                </div>
+            </div>
+
             <!-- 📡 全球即時情報（fetchGlobalNews 拉完自動 AI 翻譯，不再有手動按鈕）-->
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5">
                 <div class="flex items-center justify-between mb-2">
@@ -1585,6 +1616,8 @@ const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode],
 const app = {
     settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', groqKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium' },
     MAX_FAV_PER_GROUP: 50,
+    // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
+    attentionStatus: {},
     favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
     monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
@@ -1757,6 +1790,7 @@ const app = {
         });
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
         this._loadBrokerNames();
+        this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
         document.querySelector('.scrollable-main').addEventListener('scroll', () => {
@@ -2593,7 +2627,7 @@ const app = {
         if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
         const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 8);
         if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
+            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
             dropdown.classList.remove('hidden');
         } else dropdown.classList.add('hidden');
     },
@@ -2604,7 +2638,7 @@ const app = {
         if (!val || this.allStockList.length === 0) { dd.classList.add('hidden'); return; }
         const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 8);
         if (matches.length > 0) {
-            dd.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="app._addToGroup('${m.stock_id}', app.activeGroupName); document.getElementById('favDirectInput').value=''; document.getElementById('favSearchDropdown').classList.add('hidden');"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span><span class="ml-1 font-bold text-sm">${m.stock_name}</span></li>`).join('');
+            dd.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="app._addToGroup('${m.stock_id}', app.activeGroupName); document.getElementById('favDirectInput').value=''; document.getElementById('favSearchDropdown').classList.add('hidden');"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span><span class="ml-1 font-bold text-sm">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
             dd.classList.remove('hidden');
         } else dd.classList.add('hidden');
     },
@@ -2614,7 +2648,7 @@ const app = {
         if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
         const matches = this.allStockList.filter(s => s.stock_id.includes(val) || (s.stock_name && s.stock_name.toLowerCase().includes(val))).slice(0, 5);
         if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(m => `<li class="px-3 py-2 border-b border-[#30363d] text-white cursor-pointer hover:bg-orange-600 text-sm flex items-center transition-colors" onclick="document.getElementById('invModalInput').value='${m.stock_id}'; document.getElementById('invSearchDropdown').classList.add('hidden');"><span class="font-bold text-orange-200 w-16">${m.stock_id}</span> <span class="ml-1">${m.stock_name}</span></li>`).join('');
+            dropdown.innerHTML = matches.map(m => `<li class="px-3 py-2 border-b border-[#30363d] text-white cursor-pointer hover:bg-orange-600 text-sm flex items-center transition-colors" onclick="document.getElementById('invModalInput').value='${m.stock_id}'; document.getElementById('invSearchDropdown').classList.add('hidden');"><span class="font-bold text-orange-200 w-16">${m.stock_id}</span> <span class="ml-1">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
             dropdown.classList.remove('hidden');
         } else dropdown.classList.add('hidden');
     },
@@ -3688,6 +3722,39 @@ const marginByDate = {};
                 { name: '融券', type: 'line', data: marginData.map(d => d.short_balance ?? d.short_bal ?? d.short ?? 0),  smooth: true, symbol: 'circle', symbolSize: 4, lineStyle: { color: '#60a5fa', width: 1.5 }, itemStyle: { color: '#60a5fa' } }
             ]
         });
+    },
+
+    // 🚨 處置神器:啟動時拉一次 attention_status.json,渲染 badge 用
+    async _loadAttentionStatus() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/attention_status.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j?.stocks && typeof j.stocks === 'object') {
+                this.attentionStatus = j.stocks;
+                console.log(`[處置神器] 已載入 ${Object.keys(j.stocks).length} 檔注意/處置股`);
+                // 若已渲染過雷達或自選股,觸發重畫讓 badge 補上
+                if (this.radarMatrix) this.renderRadarMatrix?.(this.radarStrategy || 'momentum');
+                this.renderFavTabs?.();
+            }
+        } catch (e) {
+            console.warn('[處置神器] attention_status.json 載入失敗(不影響其他功能):', e?.message || e);
+        }
+    },
+
+    // 🚨 處置神器 badge HTML 產生器(沒命中回空字串,渲染處可直接 ${} 接 append)
+    _renderAttentionBadge(sym) {
+        const info = this.attentionStatus?.[String(sym).trim()];
+        if (!info) return '';
+        const isDisp = (info.status || '').startsWith('🚨');
+        const cls = isDisp
+            ? 'bg-red-900/70 text-red-200 border border-red-600 animate-pulse'
+            : 'bg-orange-900/60 text-orange-200 border border-orange-600';
+        const label = (info.status || '').replace(/</g, '&lt;');
+        const tip = (info.threshold || '').replace(/"/g, '&quot;');
+        return `<span class="inline-flex items-center ${cls} text-[9px] px-1.5 py-0.5 rounded font-bold ml-1 align-middle" title="${tip}">${label}</span>`;
     },
 
     async _loadBrokerNames() {
@@ -5187,6 +5254,11 @@ recent.forEach(d => {
 
         const isNewStock = (this.currentSymbolId !== targetSym);
         this.currentSymbolId = targetSym;
+        // 🚨 處置神器:把目前個股的注意/處置狀態算成一行字,給 runUnifiedGroqAnalysis 注入 prompt
+        const _attInfo = this.attentionStatus?.[targetSym];
+        this._attentionLine = _attInfo
+            ? `${_attInfo.status}|${_attInfo.threshold}`
+            : '✅ 正常交易,無風控訊號';
         // Clear stale per-stock caches when switching to a different stock
         this.latestNewsCache = '';
         this.latestYoyCache = '';
@@ -5725,6 +5797,7 @@ recent.forEach(d => {
             }
         }
         if (!j) {
+            this._renderUpcomingMacroEvents([]);  // 📅 fetch 失敗時顯示「無重大事件」而非卡在載入中
             this.loadSectorHeat?.();
             return;
         }
@@ -5804,8 +5877,39 @@ recent.forEach(d => {
         // 🌍 全球巨頭脈動（8 卡：黃金/原油/美元/BTC/VIX/日經/恆指/韓股）
         this.updateBigPlayers(j);
 
+        // 📅 未來 7 日核彈事件(純演算法,出自 macro_miner.py)
+        this._renderUpcomingMacroEvents(j.upcoming_macro_events);
+
         this.loadSectorHeat();
         // updateAiStrategyCard 已移除，模板邏輯併入 runGlobalMarketAI prompt 組裝
+    },
+
+    // 📅 全球重大財經事件日曆渲染(資料來源:macro_risk.json.upcoming_macro_events)
+    _renderUpcomingMacroEvents(events) {
+        const list = document.getElementById('macroEventsList');
+        const ts = document.getElementById('macroEventsTs');
+        if (!list) return;
+        if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        if (!Array.isArray(events) || events.length === 0) {
+            list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 7 日無重大事件</div>';
+            return;
+        }
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const rows = events.map(ev => {
+            const d = new Date(ev.date + 'T00:00:00');
+            if (isNaN(d.getTime())) return '';
+            const diffDays = Math.round((d - today) / 86400000);
+            const dStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+            const dLabel = diffDays <= 1 ? 'D-1' : `D-${diffDays}`;
+            const dColor = diffDays <= 1 ? 'text-red-400' : diffDays <= 3 ? 'text-orange-400' : 'text-amber-500';
+            const evText = String(ev.event || '').replace(/</g, '&lt;');
+            return `<div class="flex items-center gap-2 py-1 px-1 border-b border-gray-800/40 last:border-b-0">
+                <span class="text-[10px] font-mono text-amber-400 flex-shrink-0 w-10">${dStr}</span>
+                <span class="text-[10px] text-gray-300 flex-1 truncate">${evText}</span>
+                <span class="text-[9px] ${dColor} font-bold flex-shrink-0">${dLabel}</span>
+            </div>`;
+        }).join('');
+        list.innerHTML = rows || '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 7 日無重大事件</div>';
     },
 
     // 🌍 全球巨頭脈動渲染（8 卡）— 黃金/BTC 漲為避險升溫=紅、VIX 漲特例紅警示、跌綠
@@ -6263,6 +6367,22 @@ recent.forEach(d => {
         const profitPct = (hasCost && pC > 0) ? ((pC - costVal) / costVal) * 100 : null;   // 提前算：移動停利 + 損益卡共用
         const invBadge = document.getElementById('invBadge');
         if(inInv || hasCost) invBadge.classList.remove('hidden'); else invBadge.classList.add('hidden');
+        // 🚨 處置神器:依 attentionStatus 切換 badge 顏色 + 文字
+        const attBadge = document.getElementById('attentionBadge');
+        if (attBadge) {
+            const attInfo = this.attentionStatus?.[String(this.currentSymbolId).trim()];
+            if (attInfo) {
+                const isDisp = (attInfo.status || '').startsWith('🚨');
+                attBadge.textContent = attInfo.status || '';
+                attBadge.title = attInfo.threshold || '';
+                attBadge.className = isDisp
+                    ? 'text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle bg-red-900/70 text-red-200 border-red-600 animate-pulse'
+                    : 'text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle bg-orange-900/60 text-orange-200 border-orange-600';
+            } else {
+                attBadge.classList.add('hidden');
+                attBadge.textContent = '';
+            }
+        }
 
         // 🚀 5 日速度因子：> 10% 視為極速飆股，必須用 5MA 貼身防守
         const _closes = (this.rawDailyData || []).slice(-6).map(r => r.close);
@@ -7008,6 +7128,7 @@ recent.forEach(d => {
                         <div class="flex items-center gap-2">
                             <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
                             ${seasonTag ? `<span class="flex-shrink-0">${seasonTag}</span>` : ''}
+                            ${this._renderAttentionBadge(sym)}
                         </div>
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span class="text-sm font-bold font-mono ${priceColor}">${priceText}</span>
@@ -7143,7 +7264,7 @@ recent.forEach(d => {
                 <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
                     <div class="cursor-pointer flex-grow ml-2" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
-                        <div class="font-bold text-white text-base">${this.getFullStockName(item.symbol)}</div>
+                        <div class="font-bold text-white text-base">${this.getFullStockName(item.symbol)}${this._renderAttentionBadge(item.symbol)}</div>
                         <div class="text-xs text-gray-500 mt-1">成本: ${cost} | ${(shares*1000).toLocaleString()}股 | ${item.buyDate || '--'}</div>
                     </div>
                     <div class="text-right flex items-center gap-3">
@@ -7342,7 +7463,7 @@ recent.forEach(d => {
                     <div class="flex items-start gap-1.5">
                         <span class="text-gray-600 text-[10px] font-mono w-3 text-right flex-shrink-0 mt-0.5">${i + 1}</span>
                         <div class="flex flex-col leading-tight min-w-0 flex-1">
-                            <span class="text-[10px] text-gray-500 font-mono">${m.sym}</span>
+                            <span class="text-[10px] text-gray-500 font-mono">${m.sym}${this._renderAttentionBadge(m.sym)}</span>
                             <span class="font-bold text-gray-100 text-[13px] truncate" title="${name}">${name}</span>
                         </div>
                     </div>
@@ -8123,6 +8244,10 @@ ${radarSection}
                 invLine = `持有成本 ${cost} 元，帳面損益 ${pnlStr} (${posState})`;
             }
 
+            // 🚨 處置神器訊號(已由 analyze() 預算好,沒命中為「✅ 正常交易,無風控訊號」)
+            const attentionLine = this._attentionLine || '✅ 正常交易,無風控訊號';
+            const isAttentionRisk = attentionLine.startsWith('🚨') || attentionLine.startsWith('⚠️');
+
             // 5. 籌碼與總經情報
             const fi = this.fiShortQty;
             const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
@@ -8231,6 +8356,12 @@ ${radarSection}
      若【空手】→ 絕對禁止輸出「撤退/清倉/出貨/停利停損」字眼；
                  空頭時喊「**手綁好觀望等待**」，多頭時喊「**等待突破建倉**」，恐慌底部喊「**閒錢 低接試單🤔**」。
      若【有持股】→ 依損益區間執行機構級移動停利或反彈逃命指令（具體點位引用下方均線數字）。
+   • 🚨 處置神器訊號:${attentionLine}
+     ${isAttentionRisk ? `⚠️ 絕對避險指令(本檔已被 TWSE 列管):
+        · 空手者 → 必須輸出「**嚴禁新建倉,空手觀望**」,不得喊任何進場語言。
+        · 持股者 → 必須輸出「**提防主力尾盤突襲,嚴格無情停利,拒絕被關禁閉**」。
+        · 嚴禁建議『越關越大尾』『加碼攤平』『賭出獄噴發』等賭徒式語言。
+        · traffic_light 必須降級至 🟡觀望或減碼 或 🔴強制撤退,**禁止 🟢強力買進**。` : '✅ 風控訊號正常,依上方規則正常判讀即可,無須額外避險。'}
    • 均線稱呼依現價位置自動切換（系統已標，照抄不准誤稱）：
      · ${ma5Stance}
      · ${ma20Stance}
@@ -8263,6 +8394,7 @@ ${radarSection}
 - K線現狀：${klineStatus}
 - 營收 YoY：${trueYoy}｜最新 EPS：${epsInfo}
 - 庫存狀態：${invLine}
+- 🚨 處置神器訊號：${attentionLine}
 - 🌏 總經外資期貨：${usMask(fiLabel)}
 - 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
 - 📐 技術位階（系統精算，禁重算）：趨勢 ${chu?.trendJudge || '中性'}｜均線 ${chu?.maArrangement || '糾結'}｜折數 ${chu?.foldPct ?? '—'}折 ${chu?.foldZone || ''}
