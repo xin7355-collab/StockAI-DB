@@ -5981,7 +5981,9 @@ recent.forEach(d => {
             : '';
         // 當日快取小提示（淺色，置頂；與 staleBar 互斥）
         const cacheBar = (opts.fromCache && !opts.staleBannerMsg)
-            ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-1.5 bg-indigo-950/40 border-b border-indigo-700/50 text-indigo-300/80 text-[10px] font-mono text-center">📦 當日已分析過，顯示快取結果（節省 API 額度，明日自動重算）</div>`
+            ? (opts.batchSimplified
+                ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-1.5 bg-indigo-950/40 border-b border-indigo-700/50 text-indigo-300/80 text-[10px] font-mono text-center">🌙 夜間批次簡版（省你即時 token，點上方「🧠 首席 AI」可重算詳細版）</div>`
+                : `<div class="-mx-4 -mt-4 mb-3 px-4 py-1.5 bg-indigo-950/40 border-b border-indigo-700/50 text-indigo-300/80 text-[10px] font-mono text-center">📦 當日已分析過，顯示快取結果（節省 API 額度，明日自動重算）</div>`)
             : '';
 
         this.typeWriterEffect(box, `<div class="typewriter-text">${staleBar}${cacheBar}${trafficHtml}${html}${bbHtml}</div>`);
@@ -7969,6 +7971,24 @@ ${radarSection}
             this._autoLoadFundamentals(sym).catch(() => {}),
             this._ensureGlobalIntel().catch(() => {}),
         ]);
+
+        // 🌙 夜間批次快取優先（命中即用,省即時 token；清單外標的自動 fallback 走自填 key）
+        if (!this._chiefBatchCache) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/chief_ai_cache.json', ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(4000) });
+                this._chiefBatchCache = r.ok ? await r.json() : { stocks: {} };
+            } catch (_) { this._chiefBatchCache = { stocks: {} }; }
+        }
+        const _today = new Date().toISOString().slice(0, 10);
+        const _hit = this._chiefBatchCache?.stocks?.[sym];
+        if (_hit && _hit.detail_action && this._chiefBatchCache?.updated?.startsWith(_today)) {
+            this._renderUnifiedAIResult(_hit, { fromCache: true, batchSimplified: !!this._chiefBatchCache._simplified });
+            this._setCachedAI(_cacheSym, _cacheCostKey, _hit);
+            if (opts._autoTriggerKey) this._lastAITrigger = { key: opts._autoTriggerKey, ts: Date.now(), source: 'batch' };
+            return;
+        }
 
         try {
             const data = this.activeData;
