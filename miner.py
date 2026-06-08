@@ -1013,18 +1013,37 @@ def run():
             except Exception as e:
                 print(f"  ⚠️ fetch_market_margin({dd}) 例外，跳過：{e}")
             time.sleep(0.8)
-        # 防呆：無論成功失敗都寫檔，避免 batch 1-19 找不到 cache 直接全市場無融資券
-        # 失敗時寫 {} 但保留 _last_attempt 時間戳，方便偵錯
+        # 防呆：抓成功才覆寫,失敗時保留 last-good 不覆寫(避免一天的網路異常洗掉前端歷史資料)
+        # 若既無新資料也無既有檔,才寫失敗標記給下游 batch 知道狀態
+        def _has_real_payload(path):
+            if not path.exists():
+                return False
+            try:
+                obj = json.loads(path.read_text(encoding='utf-8'))
+                return any(not str(k).startswith('_') for k in obj.keys())
+            except Exception:
+                return False
+
         try:
-            payload_margin = margin_cache if margin_cache else {'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind 皆失敗'}
-            MARGIN_CACHE_FILE.write_text(json.dumps(payload_margin, ensure_ascii=False), encoding='utf-8')
-            print(f"  💾 融資券快取已儲存 → {MARGIN_CACHE_FILE}（{len(margin_cache)} 天{'，內容為空' if not margin_cache else ''}）")
+            if margin_cache:
+                MARGIN_CACHE_FILE.write_text(json.dumps(margin_cache, ensure_ascii=False), encoding='utf-8')
+                print(f"  💾 融資券快取已更新 → {MARGIN_CACHE_FILE}（{len(margin_cache)} 天）")
+            elif _has_real_payload(MARGIN_CACHE_FILE):
+                print(f"  ⏭️ 融資券抓取失敗,保留既有 last-good 不覆寫 → {MARGIN_CACHE_FILE}")
+            else:
+                MARGIN_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind 皆失敗'}, ensure_ascii=False), encoding='utf-8')
+                print(f"  💾 融資券快取首次失敗,寫入 _status 標記 → {MARGIN_CACHE_FILE}")
         except Exception as e:
             print(f"  ⚠️ 融資券快取寫檔失敗：{e}")
         try:
-            payload_inst = inst_cache if inst_cache else {'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+TPEX+FinMind 皆失敗'}
-            INST_CACHE_FILE.write_text(json.dumps(payload_inst, ensure_ascii=False), encoding='utf-8')
-            print(f"  💾 三大法人快取已儲存 → {INST_CACHE_FILE}（{len(inst_cache)} 天{'，內容為空' if not inst_cache else ''}）")
+            if inst_cache:
+                INST_CACHE_FILE.write_text(json.dumps(inst_cache, ensure_ascii=False), encoding='utf-8')
+                print(f"  💾 三大法人快取已更新 → {INST_CACHE_FILE}（{len(inst_cache)} 天）")
+            elif _has_real_payload(INST_CACHE_FILE):
+                print(f"  ⏭️ 法人抓取失敗,保留既有 last-good 不覆寫 → {INST_CACHE_FILE}")
+            else:
+                INST_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+TPEX+FinMind 皆失敗'}, ensure_ascii=False), encoding='utf-8')
+                print(f"  💾 法人快取首次失敗,寫入 _status 標記 → {INST_CACHE_FILE}")
         except Exception as e:
             print(f"  ⚠️ 法人快取寫檔失敗：{e}")
     else:
@@ -1442,7 +1461,7 @@ def fetch_us_macro_cache():
                 'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
                                   float(prev['Close']) * 100, 2),
             }
-            # 🎯 ^TWII 額外存 OHLCV 10 日序列，供 build_bubble_warning K 線型態判讀
+            # 🎯 ^TWII 額外存 OHLCV 120 日序列(支援 build_bubble_warning K 線型態 + 隔日上漲機率 Worker 大盤環境同向過濾)
             if key == 'twii':
                 result['twii_history'] = [
                     {'date':   str(idx.date()),
@@ -1451,7 +1470,7 @@ def fetch_us_macro_cache():
                      'low':    round(float(row['Low']), 2),
                      'close':  round(float(row['Close']), 2),
                      'volume': (int(row['Volume']) if (row['Volume'] == row['Volume']) else 0)}
-                    for idx, row in hist.tail(10).iterrows()
+                    for idx, row in hist.tail(120).iterrows()
                 ]
             print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
         except Exception as e:
