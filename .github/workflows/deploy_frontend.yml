@@ -37,8 +37,10 @@ jobs:
           cp index.html /tmp/index_new.html
 
           # 2. 切到 gh-pages(取得既有 data/ 等全部檔案)
+          #    用 FETCH_HEAD:`git fetch origin gh-pages` 只保證寫入 FETCH_HEAD,
+          #    不一定建立 refs/remotes/origin/gh-pages,故不可直接 checkout origin/gh-pages
           git fetch origin gh-pages
-          git checkout -B gh-pages origin/gh-pages
+          git checkout -B gh-pages FETCH_HEAD
 
           # 3. 斷崖防護:gh-pages 上 K 線檔不足 100 → 還沒完整採礦過,放棄(避免把網站洗成空殼)
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
