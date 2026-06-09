@@ -916,7 +916,7 @@ def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> l
     inst_cache 僅用於：batch 0 額外補進「今日活躍但尚無 JSON」的新上市股。
     """
     skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names',
-            'top_picks', 'global_news', 'radar_news'}
+            'top_picks', 'global_news', 'radar_news', 'tech_giants_news'}
     universe: set = set(CHIP_WATCHLIST)
     universe |= {f.stem for f in Path(DATA_DIR).glob('*.json') if f.stem not in skip}
     universe = {s for s in universe if _valid_stock(s)}
@@ -2477,7 +2477,7 @@ def prune_artifact(watchlist: list) -> None:
         # batches 1-19 不負責全域資料，刪掉 checkout 殘留避免與 batch 0 衝突
         import shutil
         shutil.rmtree(Path(DATA_DIR) / 'chips', ignore_errors=True)
-        for g in ('radar.json', 'top_picks.json', 'global_news.json', 'radar_news.json'):
+        for g in ('radar.json', 'top_picks.json', 'global_news.json', 'radar_news.json', 'tech_giants_news.json'):
             (Path(DATA_DIR) / g).unlink(missing_ok=True)
         for c in ('futures_cache.json', 'macro_cache.json',
                   'margin_cache_stock.json', 'inst_cache_stock.json'):

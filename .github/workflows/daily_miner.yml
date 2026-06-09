@@ -102,7 +102,7 @@ jobs:
               print(f'🧹 修剪：保留 {len(keep)} 檔、移除 {removed} 檔非本批殘留')
               if skip_global:
                   shutil.rmtree('data/chips', ignore_errors=True)
-                  for g in ('radar.json','top_picks.json','global_news.json','radar_news.json'):
+                  for g in ('radar.json','top_picks.json','global_news.json','radar_news.json','tech_giants_news.json'):
                       Path('data', g).unlink(missing_ok=True)
                   for c in ('futures_cache.json','macro_cache.json','margin_cache_stock.json','inst_cache_stock.json'):
                       Path(c).unlink(missing_ok=True)

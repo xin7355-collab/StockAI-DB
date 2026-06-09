@@ -323,15 +323,15 @@
          onclick="if(event.target===this){app.closeGlobalAIModal();}">
         <div class="modal-content max-w-lg mx-4 overflow-y-auto max-h-[85vh]" onclick="event.stopPropagation()">
             <div class="flex items-center justify-between mb-3 border-b border-gray-700 pb-2">
-                <span class="text-indigo-300 font-black text-sm">🌐 AI 全球市場解析</span>
+                <span class="text-indigo-300 font-black text-sm">🚀 盤前戰情官報</span>
                 <button onclick="app.closeGlobalAIModal()" class="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
             </div>
             <div id="globalAIModalBody" class="bg-[#010409] rounded-lg p-3 text-gray-200 text-sm leading-relaxed min-h-[80px]">
-                <span class="text-gray-600 text-xs">按「解析」取得 AI 全球市場分析...</span>
+                <span class="text-gray-600 text-xs">按下方按鈕生成今日盤前戰情官報(LINE 轉發格式)...</span>
             </div>
             <button onclick="app.runGlobalMarketAI(); app.vibrate(50);" id="btnGlobalAIModal"
                     class="mt-3 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
-                🔄 重新解析
+                🔄 重新生成盤前報告
             </button>
         </div>
     </div>
@@ -956,7 +956,11 @@
                         <div id="corpDateInfo" class="hidden flex-col gap-1 text-xs border-b border-[#30363d] pb-2"></div>
                         <div id="yoyInfo" class="hidden"></div>
                         <div id="newsInfo" class="flex flex-col gap-1 pt-1">
-                            <div class="text-gray-400 font-bold text-sm">📰 焦點動態快訊：</div>
+                            <div class="flex items-center justify-between flex-wrap gap-1">
+                                <div class="text-gray-400 font-bold text-sm">📰 焦點動態快訊：</div>
+                                <div id="newsListMeta" class="text-[9px] text-gray-500 font-mono"></div>
+                            </div>
+                            <div id="newsStaleBanner" class="hidden text-[10px] text-orange-300 bg-orange-900/20 border border-orange-700/40 rounded px-2 py-1 leading-snug"></div>
                             <div id="newsList" class="text-gray-300 text-sm space-y-2 leading-relaxed max-h-96 overflow-y-auto pr-1 scrollbar-hide">
                                 <span class="animate-pulse text-gray-500">讀取中...</span>
                             </div>
@@ -1029,11 +1033,11 @@
                 <span id="warRiskDim" class="hidden"></span>
             </div>
 
-            <!-- ════════ 【區 2】🤖 AI 全球市場綜合解析（一鍵總結 + 操作指令）════════ -->
+            <!-- ════════ 【區 2】🚀 盤前戰情官報(原 AI 全球綜合解析,改造為盤前作戰報告)════════ -->
             <button onclick="app.openGlobalAIModal(); app.vibrate(50);" id="btnGlobalAIHeader"
                     class="w-full bg-gradient-to-r from-indigo-700/60 via-purple-700/60 to-indigo-700/60 hover:from-indigo-600/70 hover:via-purple-600/70 hover:to-indigo-600/70 border border-indigo-400/60 rounded-xl py-3.5 px-4 flex flex-col items-center justify-center gap-1 transition-all font-black text-base text-indigo-100 shadow-[0_0_20px_rgba(99,102,241,0.35)]">
-                <div class="flex items-center gap-2"><span class="text-xl">🤖</span><span class="tracking-wide">AI 全球市場綜合解析</span></div>
-                <span class="text-indigo-300 text-[11px] font-bold">一鍵：宏觀／4戰區／泡沫／風險指數 → 注意事項 + 操作指令</span>
+                <div class="flex items-center gap-2"><span class="text-xl">🚀</span><span class="tracking-wide">盤前戰情官報</span></div>
+                <span class="text-indigo-300 text-[11px] font-bold">隔夜美股+ADR+拉積盤+川普/黃仁勳 → 三劇本實戰指令</span>
             </button>
 
             <!-- ════════ 【區 3】分頁切替：🌍 全球大環境 / 🇹🇼 台股實戰 ════════ -->
@@ -1164,6 +1168,19 @@
                 </div>
                 <div id="macroEventsList" class="space-y-1 max-h-32 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
+                </div>
+            </div>
+
+            <!-- 📊 今日全球彙整(AI 把 15 則新聞摘成「全球市場動態 + 美股焦點」結構化重點)-->
+            <div class="bg-gradient-to-br from-blue-950/30 to-[#0d1117] border border-blue-700/40 rounded-lg p-3 mb-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-xs font-black text-blue-300 flex items-center gap-1.5">📊 今日全球彙整 <span class="text-[9px] text-gray-500 font-normal">(AI 摘要)</span></div>
+                    <button onclick="app.analyzeGlobalNewsSummary({force:true}); app.vibrate(30);"
+                            id="globalNewsSummaryBtn"
+                            class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-700/50 rounded px-1.5 py-0.5">🔄 重新彙整</button>
+                </div>
+                <div id="globalNewsSummary" class="text-[12px] text-gray-300 leading-relaxed">
+                    <div class="text-[10px] text-gray-600 text-center py-3">等情報抓完自動彙整...</div>
                 </div>
             </div>
 
@@ -2293,6 +2310,9 @@ const app = {
             const needTranslate = data.items.some(it => !it.title_zh && /[a-zA-Z]{3,}/.test(it.title || ''));
             if (needTranslate && (this._getGroqKeys().length > 0 || this._apiBase)) {
                 this.analyzeGlobalNewsAI({ silent: true });
+            } else {
+                // 不需翻譯時也要觸發彙整(已是中文標題或無 Groq key 時的 fallback)
+                this.analyzeGlobalNewsSummary({ silent: true });
             }
         } catch(e) {
             list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">情報暫無法取得</div>';
@@ -2359,9 +2379,95 @@ const app = {
             // in-place 改後重畫（呼叫共用渲染函式）
             this._globalNewsItems = items;
             this._renderGlobalNewsList(items);
+            // 翻譯完成後接力觸發「今日全球彙整」(silent,有中文標題後品質更高)
+            this.analyzeGlobalNewsSummary({ silent: true });
         } catch(e) {
             console.error('[analyzeGlobalNewsAI]', e);
             if (!silent) alert(`AI 判讀失敗：${e.message}（Groq 不支援瀏覽器 CORS？檢查 Key 或網路）`);
+        }
+    },
+
+    // 📊 全球新聞 AI 彙整:把 15 則新聞摘成「全球市場動態 + 美股焦點」兩段(類似 LINE 轉發格式)
+    //    fetchGlobalNews + analyzeGlobalNewsAI 拉完後自動 silent 觸發;sessionStorage 一日一次
+    async analyzeGlobalNewsSummary(opts) {
+        const items = this._globalNewsItems || [];
+        const force = !!(opts && opts.force);
+        const silent = !!(opts && opts.silent);
+        const box = document.getElementById('globalNewsSummary');
+        if (!box) return;
+        if (!items.length) {
+            box.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">無新聞可彙整</div>';
+            return;
+        }
+        const apiKey = this._getGroqKeys()[0] || '';
+        if (!apiKey) {
+            box.innerHTML = '<div class="text-[10px] text-yellow-400/80 text-center py-2">⚠️ 請至「⚙️ 設定」填 Groq API Key 才能 AI 彙整</div>';
+            return;
+        }
+        // 快取:同批新聞 (key=第一則 url + 條數) 一日只彙整一次,force 時強制重打
+        const cacheKey = `gnewsSummary_${(items[0].url || items[0].title || '').slice(0, 80)}_${items.length}`;
+        if (!force) {
+            try {
+                const raw = sessionStorage.getItem(cacheKey);
+                if (raw) {
+                    const c = JSON.parse(raw);
+                    if (Date.now() - c.at < 8 * 3600e3) { box.innerHTML = c.html; return; }
+                }
+            } catch(_) {}
+        }
+        box.innerHTML = '<div class="text-[10px] text-blue-400/70 text-center py-2 animate-pulse">🤖 AI 彙整中...</div>';
+
+        try {
+            const slice = items.slice(0, 15);
+            const list = slice.map((it, i) =>
+                `${i+1}. ${(it.title_zh || it.title || '').slice(0, 200)}${it.source ? ` [${it.source}]` : ''}`
+            ).join('\n');
+            const prompt = `你是台股研究員,請從以下過去 24H 全球財經新聞中,彙整出兩組「LINE 轉發格式」重點。
+
+${list}
+
+要求:
+- 用繁體中文白話,權證小哥風格,國中生也看得懂
+- 每點 2-3 句,點出「事件 + 對台股的影響」
+- 嚴禁編造新聞中沒提到的事
+- 嚴格輸出純 JSON,禁 \`\`\`json 標籤、禁前後文字:
+{
+  "market_dynamics": ["第 1 條:全球市場動態(2-3 句)", "第 2 條", "第 3 條"],
+  "us_focus": ["第 1 條:美股焦點(個股/科技/政策)2-3 句", "第 2 條", "第 3 條"]
+}`;
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: 'user', content: prompt }],
+                    max_tokens: 1400, temperature: 0.3,
+                    response_format: { type: 'json_object' },
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const parsed = JSON.parse(data.choices[0].message.content);
+            const md = (parsed.market_dynamics || []).slice(0, 5);
+            const uf = (parsed.us_focus || []).slice(0, 5);
+            const listHtml = (arr) => arr.map((s, i) =>
+                `<li class="leading-relaxed py-0.5"><span class="text-blue-400 font-bold mr-1">${i+1}.</span>${String(s || '').replace(/</g,'&lt;')}</li>`
+            ).join('');
+            const html = `
+                <div class="mb-2">
+                    <div class="text-[11px] font-bold text-amber-300 mb-1">🌐 全球市場動態</div>
+                    <ul class="text-[12px] text-gray-300 pl-1">${listHtml(md)}</ul>
+                </div>
+                <div>
+                    <div class="text-[11px] font-bold text-amber-300 mb-1">🇺🇸 美股焦點</div>
+                    <ul class="text-[12px] text-gray-300 pl-1">${listHtml(uf)}</ul>
+                </div>`;
+            box.innerHTML = html;
+            try { sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch(_) {}
+        } catch(e) {
+            console.warn('[analyzeGlobalNewsSummary]', e);
+            box.innerHTML = `<div class="text-[10px] text-red-400/80 text-center py-2">AI 彙整失敗:${e.message}</div>`;
+            if (!silent) alert(`AI 彙整失敗:${e.message}`);
         }
     },
 
@@ -5326,7 +5432,8 @@ ${_newsLine}${globalContext}
             if (data && data.data && data.data.length > 0) {
                 const recent = data.data.slice(-15).reverse();
                 let confDate = '';
-recent.forEach(d => {
+                let latestNewsTs = 0;
+                recent.forEach(d => {
                             // 【修復 1】防呆：確保 title 存在且為字串，避免 .includes 崩潰
                             const rawTitle = d.title || '';
                             if(rawTitle && !seenTitles.has(rawTitle)) {
@@ -5340,9 +5447,10 @@ recent.forEach(d => {
                                     let dObj = new Date(d.date);
                                     if (!isNaN(dObj.getTime())) {
                                         formattedDate = `${String(dObj.getMonth() + 1).padStart(2, '0')}/${String(dObj.getDate()).padStart(2, '0')} ${String(dObj.getHours()).padStart(2, '0')}:${String(dObj.getMinutes()).padStart(2, '0')}`;
+                                        if (dObj.getTime() > latestNewsTs) latestNewsTs = dObj.getTime();
                                     }
                                 }
-                                
+
                                 const url = (d && (d.link || d.url)) ? String(d.link || d.url).trim() : '';
                                 const safeTitle = rawTitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                                 const titleHtml = url
@@ -5356,6 +5464,25 @@ recent.forEach(d => {
                             }
                         });
                         this.latestNewsCache = fullNewsText;
+
+                        // 🕐 新鮮度標籤 + 過舊警告(FinMind TaiwanStockNews 免費版常延遲 1-3 天,使用者誤以為壞掉)
+                        const metaEl = document.getElementById('newsListMeta');
+                        const banner = document.getElementById('newsStaleBanner');
+                        if (latestNewsTs > 0) {
+                            const ageHrs = Math.round((Date.now() - latestNewsTs) / 3600000);
+                            const ageStr = ageHrs < 24 ? `${ageHrs} 小時前` : `${Math.round(ageHrs / 24)} 天前`;
+                            if (metaEl) metaEl.textContent = `最新一則: ${ageStr}・來源 FinMind`;
+                            if (banner) {
+                                if (ageHrs >= 48) {
+                                    banner.classList.remove('hidden');
+                                    banner.innerHTML = `⚠️ 個股新聞延遲(最新一則 ${ageStr}),這是 FinMind 免費版常態 — 即時消息請至「🌐 市場總覽」頁籤看 Reuters/CNBC 全球情報。`;
+                                } else {
+                                    banner.classList.add('hidden');
+                                }
+                            }
+                        } else if (metaEl) {
+                            metaEl.textContent = '來源 FinMind';
+                        }
             } else if (!data) { nHtml = `<div class="text-gray-500 text-xs">新聞服務暫時無法連線，請稍後再試。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></div>`; this.latestNewsCache = ""; }
             else { nHtml = `<div class="text-gray-500 text-xs">近期無重大訊息公告。</div>`; this.latestNewsCache = ""; }
             newsBox.innerHTML = nHtml;
@@ -8498,81 +8625,196 @@ recent.forEach(d => {
             }
         } catch(e) {}
 
-        showProgress(5, 5, 'AI 生成報告中...');
-        if (btn) btn.innerHTML = '⏳ AI 分析中...';
+        showProgress(5, 5, 'AI 生成盤前報告中...');
+        if (btn) btn.innerHTML = '⏳ 盤前彙整中...';
 
-        const hasNews = newsSection.trim().length > 0;
-
-        // 🛡️ 資料缺失防呆:統計關鍵總經欄位有幾個是「待採」(null),避免 AI 對缺資料的指標瞎掰趨勢
+        // 🛡️ 資料缺失防呆:統計關鍵欄位「待採」數量,避免 AI 對缺資料硬掰
         const _macroChecks = [us10yStr, us2yStr, fgStr, retailStr, twdStr, backStr, fiSpotStr,
                               spx, ndx, sox, vix, tsm, nvda, dxy];
         const _naCount = _macroChecks.filter(v => v == null || /待採|--|計算中/.test(String(v))).length;
         const _dataWarning = _naCount > _macroChecks.length * 0.5
-            ? `\n⚠️ 今日總經採集嚴重不全(${_naCount}/${_macroChecks.length} 欄待採),輸出第一行必須先聲明「⚠️ 今日數據不全,以下僅供參考」,且嚴禁對缺失指標硬掰方向。`
+            ? `\n⚠️ 今日總經採集嚴重不全(${_naCount}/${_macroChecks.length} 欄待採),報告第一行先聲明「⚠️ 今日數據不全,以下僅供參考」,嚴禁對缺失指標硬掰方向。`
             : '';
 
-        const prompt = `你是台股首席策略師，用白話文、權證小哥風格（國中生也能懂），依據以下「全頁綜合情報」給操作劇本：
-🛑 凡數值顯示「待採」「--」「計算中」的指標,一律當作「今日未更新」,直接略過或明說該指標暫無資料,**嚴禁編造數值、漲跌方向或趨勢**。${_dataWarning}
+        // 🧮 拉積盤推算(JS 精算,禁 AI 算數):TSM ADR 漲跌 → 推估台積電對台股大盤點數貢獻
+        //    粗估係數 80:台積電權重 ~35%、現價 ~3000 元、1 元 ≈ 8 點 → 1% ADR ≈ 80 點(配合除權息微調)
+        const _parsePct = (s) => { const m = String(s || '').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; };
+        const _tsmChgNum = _parsePct(tsmChg);
+        let _tsmEstPts = null, _tsmLine = `TSM ADR ${tsm}${tsmChg && tsmChg !== '--' ? ' (' + tsmChg + ')' : ''}`;
+        if (_tsmChgNum != null && isFinite(_tsmChgNum)) {
+            _tsmEstPts = Math.round(_tsmChgNum * 80);
+            _tsmLine += ` → 系統預估貢獻台股 ${_tsmEstPts >= 0 ? '+' : ''}${_tsmEstPts} 點`;
+        }
+        const _pullChipAlert = (_tsmEstPts != null && Math.abs(_tsmEstPts) >= 60)
+            ? `⚠️ 拉積盤預警:台積電預估貢獻 **${_tsmEstPts}** 點(絕對值 ≥60);若 OTC 未同步轉強,慎防中小型股「賺指數賠價差」黑洞`
+            : '';
 
-【宏觀大氣候】美債10Y ${us10yStr} / 美債2Y ${us2yStr} / 恐懼貪婪 ${fgStr} / 散戶多空 ${retailStr} / 台幣 ${twdStr} / 台指逆價差 ${backStr} / 外資現貨 ${fiSpotStr} / 外資台指期 ${fiLabel}
-【🌍 全球 8 巨頭脈動】${bigPlayerLines}
-【戰情指揮部 5 維度】量價=${dim_pv} / 籌碼=${dim_chip} / 總經=${dim_macro} / 技術=${dim_tech} / 情緒=${dim_senti}
-【市場風險指數】${riskScore == null ? '計算中' : riskScore + ' (' + riskLabel + ')'}｜流動性熱度 ${liqText}
-【4 大資金輪動戰區】
+        // 🛰️ 科技巨頭專屬新聞:優先讀 data/tech_giants_news.json(universal_radar 採),缺則 fallback _globalNewsItems 篩關鍵字
+        let _trumpRaw = '今日無重大更新', _huangRaw = '今日無重大更新', _spacexRaw = '今日無重大更新', _kuiperRaw = '今日無重大更新';
+        try {
+            const tgUrl = new URL('data/tech_giants_news.json', window.location.href.split('?')[0]).href + `?t=${Date.now()}`;
+            const tgRes = await fetch(tgUrl, { signal: AbortSignal.timeout(4000) });
+            if (tgRes.ok) {
+                const tg = await tgRes.json();
+                const join = arr => (arr && arr.length) ? arr.slice(0, 3).map(x => x.title_zh || x.title).join(' | ') : '今日無重大更新';
+                _trumpRaw = join(tg.trump); _huangRaw = join(tg.huang);
+                _spacexRaw = join(tg.spacex); _kuiperRaw = join(tg.kuiper);
+            }
+        } catch(_) {}
+        const _itemsRaw = this._globalNewsItems || [];
+        const _hitKW = (kw) => _itemsRaw.filter(it => kw.test(it.title_zh || it.title || ''))
+                                        .slice(0, 3).map(it => it.title_zh || it.title).join(' | ');
+        if (_trumpRaw === '今日無重大更新')  { const h = _hitKW(/Trump|川普/i); if (h) _trumpRaw = h; }
+        if (_huangRaw === '今日無重大更新')  { const h = _hitKW(/Huang|Jensen|黃仁勳|NVIDIA|NVDA/i); if (h) _huangRaw = h; }
+        if (_spacexRaw === '今日無重大更新') { const h = _hitKW(/SpaceX|Musk|馬斯克|Starship|Falcon|Starlink/i); if (h) _spacexRaw = h; }
+        if (_kuiperRaw === '今日無重大更新') { const h = _hitKW(/Kuiper|Amazon|衛星/i); if (h) _kuiperRaw = h; }
+
+        const _today = new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
+
+        const prompt = `你是精通「全球總體經濟」與「科技產業鏈」的頂尖控盤官,具備台積電(2330)與低軌衛星供應鏈洞察力,擅長分析「拉積盤」資金黑洞效應,並解析川普政治經濟學與黃仁勳 AI 宏圖。
+任務:依下方系統已整合的真實數據與情報,產出「LINE 轉發格式」盤前戰情官報。
+
+🛑 鐵則:
+- 嚴禁 Markdown 表格,改用條列式,用 --- 作分隔線
+- 嚴禁編造數據;凡顯示「待採」「--」「今日無重大更新」一律照實寫,不可瞎掰
+- 嚴禁混淆「空手者(找低位低基期)」與「空仇者(找破線放空)」邏輯
+- 關鍵數字與代號用 **粗體** 標示
+- 嚴禁使用「根據資料」「以下為您分析」等廢話${_dataWarning}
+
+━━━━━━━━━━━━━━━━━━━━
+【系統已精算數據(禁重算)】
+- ${_tsmLine}
+- 費半 SOX: ${sox} ${soxChg}
+- S&P500: ${spx} ${spxChg} / 那斯達克: ${ndx} ${ndxChg} / 道瓊: ${dji}
+- VIX 恐慌: ${vix} ${fmtChg(mr.vix_chg_pct)}
+- NVDA: ${nvda} ${nvdaChg}
+- 美元指數 DXY: ${dxy} ${dxyChg}
+- 日經 225: ${fmtMr(mr.nikkei)} ${fmtChg(mr.nikkei_chg_pct)} / KOSPI: ${fmtMr(mr.kospi)} ${fmtChg(mr.kospi_chg_pct)} / 恆生: ${fmtMr(mr.hsi)} ${fmtChg(mr.hsi_chg_pct)}
+- 加權: ${twii} / 上櫃: ${twoii}
+- 外資台指期: ${fiLabel} / 外資現貨: ${fiSpotStr}
+- 戰情指揮部 5 維: 量價=${dim_pv} / 籌碼=${dim_chip} / 總經=${dim_macro} / 技術=${dim_tech} / 情緒=${dim_senti}
+- 市場風險指數: ${riskScore == null ? '計算中' : riskScore + ' (' + riskLabel + ')'}
+- 美債 10Y: ${us10yStr} / 美債 2Y: ${us2yStr} / 恐懼貪婪: ${fgStr} / 散戶多空: ${retailStr} / 台幣: ${twdStr}
+${_pullChipAlert ? '- ' + _pullChipAlert : ''}
+
+【科技巨頭過去 24H 動態(系統已篩選)】
+- 川普: ${_trumpRaw}
+- 黃仁勳/NVIDIA: ${_huangRaw}
+- SpaceX/馬斯克: ${_spacexRaw}
+- Project Kuiper/亞馬遜: ${_kuiperRaw}
+
+【4 大戰區】
 ${wzLines}
-【9 細分板塊漲跌】${subLines}
-【牛市泡沫 4 維雷達】
+
+【牛市泡沫 4 維】
 ${bubbleLines}
-【台股指數】加權 ${twii} / 上櫃 ${twoii}
-【美股四大】S&P500 ${spx}(${spxChg}) / 道瓊 ${dji} / 那斯達克 ${ndx}(${ndxChg}) / 費半 ${sox}(${soxChg})
-【VIX 恐慌】${vix}｜【台積電ADR】${tsm}(${tsmChg})｜【NVDA】${nvda}(${nvdaChg})
-【美元/油價】DXY ${dxy}(${dxyChg}) / 布蘭特 ${ukoil}${newsSection}
+
 【雷達自動掃描】
 ${radarSection}
+${newsSection}
+━━━━━━━━━━━━━━━━━━━━
 
-請輸出 7 段，每段「▌標題」開頭，2-3 句白話，**粗體**標關鍵數字。
-嚴禁使用「根據資料」「以下為您分析」等廢話，直接講重點：
+嚴格依下列格式輸出(emoji 與 --- 分隔線必須保留,每段標題後空一行再寫內容):
 
-▌1. 全球風向總結
-綜合宏觀+8 巨頭脈動+戰情指揮部，一句話定多空方向，指出最關鍵的訊號（例如 VIX 飆 / 黃金噴 / 日經跌）
+🚀 ${_today} 盤前戰情官報 (LINE 複製專用)
 
-▌2. 台股泡沫指數解讀
-根據 4 維度泡沫雷達綜合判斷，台股目前位於「孕育期/泡沫期/末升段/破裂中」哪個位置，操作風險水位是多少
+🟢 全球隔夜觀測
 
-▌3. 市場風險指數 ${riskScore == null ? 'X' : riskScore} 解讀
-用白話講解這數字現在的「天氣」是什麼意思，搭配流動性熱度 ${liqText} 給散戶具體該做什麼
+[以 2 句話總結美股與 ADR 表現,點名最關鍵的隔夜訊號,結合上方真實數據]
 
-▌4. 資金板塊輪動方向
-從 4 戰區漲跌找出誰熱誰冷，明天資金最可能往哪流動，避開哪些區塊
+⚠️ 拉積盤預警: ${_tsmEstPts != null ? `經系統計算,今日台積電 ADR 變動 ${tsmChg} → 預估貢獻指數約 **${_tsmEstPts}** 點。若開盤 OTC 指數未能同步轉強,慎防中小型股「賺指數賠價差」黑洞效應。` : '台積電 ADR 資料不足,拉積盤推估暫缺,以即時 TSM 走勢觀察。'}
 
-▌5. 🔮 明日台股開盤展望
-高開/平開/低開估計（給點數方向或漲跌幅），最關鍵的支撐與壓力位${hasNews ? '，並結合即時情報判斷' : ''}
+---
 
-▌6. ⚠️ 今日必看注意事項
-列出 3 條最關鍵警訊（用 🚨 開頭），每條 1 句白話，例如「🚨 VIX 飆升 39%，全球避險升溫，台股容易跟跌」或「🚨 外資台指期空單破 4 萬，主力擺明要殺盤」
+📊 盤前數據掃描
 
-▌7. 🎯 散戶實戰操作指令
-給 4 條明確指令，每條 1 行白話、國中生也看得懂：
-- 💰 現金水位幾成（例：「現金抱 5 成，股票留 5 成」）
-- 🎯 該抱什麼族群（例：「台積電 + 重電 + 金融，這 3 個族群最穩」）
-- ⛔ 該避開什麼（例：「群魔亂舞的低價股別碰，會被當韭菜割」）
-- 🛡️ 停損線設在哪（例：「加權跌破 24000 → 全部清空」）`;
+🔹 TSM (ADR): **${tsm}** (${tsmChg})
+👉 影響: [一句話評對台積電開盤預估]
+
+🔹 費半 (SOX): **${sox}** (${soxChg})
+👉 影響: [半導體設備族群連動評估]
+
+🔹 美元指數: **${dxy}** (${dxyChg})
+👉 影響: [當日匯率壓力與外資資金流向評估]
+
+🔹 亞股連動: 日經 ${fmtMr(mr.nikkei)} / KOSPI ${fmtMr(mr.kospi)} [簡評]
+
+---
+
+🦅 川普動態與股市博弈報告 (獨立觀測)
+
+🔹 最新言論/事件: ${_trumpRaw}
+🔹 動機與股市連動: [若上方有事件,分析時機與美股走勢關聯;若顯示「今日無重大更新」,寫「無事件可分析,維持先前政策框架」]
+🔹 未來意圖推演: [預測對台/美股潛在衝擊,若無事件則寫「靜待後續發言」]
+
+---
+
+🖥️ 黃仁勳 AI 軍備動態 (獨立觀測)
+
+🔹 最新言論/行程: ${_huangRaw}
+🔹 供應鏈訊號: [若上方有動態,分析其對先進封裝/HBM/散熱的牽動,點名相關台股代號;若無寫「靜待 GTC 或法說催化」]
+🔹 資金效應推演: [預測對 AI 伺服器/機器人/自駕族群資金流向影響]
+
+---
+
+🛰️ 科技巨頭動態 (SpaceX / Kuiper)
+
+🛰️ SpaceX (馬斯克): ${_spacexRaw}
+👉 影響標的: [動態帶出台股代碼與名稱,如低軌衛星概念股;若無填「無」]
+
+🛰️ Project Kuiper (亞馬遜): ${_kuiperRaw}
+👉 影響標的: [動態帶出台股代碼與名稱;若無填「無」]
+
+---
+
+🔍 籌碼雷達與實戰策略
+
+📍 關鍵位階: 壓力位 [數值] / 支撐位 [數值] (結合外資台指期 ${fiLabel} 判讀)
+📍 法人集結: [族群名稱] (依雷達掃描 + 4 戰區判斷:還有肉 vs 已過熱)
+
+💰 空手者關注 (低基期/題材保護):
+👉 [從雷達結果挑代碼](理由: 打底完成 / 剛站上月線 等)
+
+⚔️ 空仇者觀察 (破線/法人棄養):
+👉 [從雷達結果挑代碼](理由: 高檔爆量 / 投信連賣 等)
+
+---
+
+🎭 今日操盤三劇本 (盤中應對)
+
+🟢 劇本 A (利多/全面噴出) [機率 XX%]
+條件: ADR 強勢且 OTC 指數開高走高
+操作: [具體進場建議]
+
+🟡 劇本 B (盤整/拉積盤) [機率 XX%]
+條件: 大盤大漲但 OTC 指數開高走低或翻黑
+操作: 資金排擠浮現!切忌追高權值股,留意假開高走低。
+
+🔴 劇本 C (利空/開高走低) [機率 XX%]
+條件: 匯率重貶或川普突發惡意政策
+操作: [減碼或防禦建議]
+
+---
+
+⚠️ 免責聲明: 以上資訊經多方財經機構與系統數據核對,內容僅供參考,投資人應自負盈虧。`;
 
         try {
-            // 🚀 全球司令部 = 旗艦級分析,保留 70B 提升判讀深度(每次約 4k tokens,使用者手動觸發)
-            const text = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.4, model: 'llama-3.3-70b-versatile' });
+            // 🚀 盤前報告 = 旗艦級分析,用 70B 提升判讀深度(每次約 4-5k tokens)
+            const text = await this._callAI({ prompt, max_tokens: 1800, temperature: 0.4, model: 'llama-3.3-70b-versatile' });
             const html = text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
-                .replace(/▌(\d+\.\s*.+)/g, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">▌$1</div>')
+                .replace(/^---$/gm, '<hr class="my-2 border-gray-700"/>')
+                .replace(/^(🚀[^\n]+)$/gm, '<div class="mt-3 mb-2 text-purple-300 font-black text-base">$1</div>')
+                .replace(/^(🟢|🟡|🔴|📊|🦅|🖥️|🛰️|🔍|🎭|⚠️ 免責)([^\n]+)$/gm, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">$1$2</div>')
+                .replace(/^(🔹|👉|📍|💰|⚔️)([^\n]+)$/gm, '<div class="ml-2 text-gray-300 mt-0.5">$1$2</div>')
                 .replace(/\n/g, '<br>');
             if (result) result.innerHTML = html;
-            // Also update legacy inline result if it exists and differs
             const legacyResult = document.getElementById('globalAIResult');
             if (legacyResult && legacyResult !== result) legacyResult.innerHTML = html;
         } catch(e) {
-            if (result) result.innerHTML = `<span class="text-red-400 text-sm">分析失敗：${e.message}</span>`;
+            if (result) result.innerHTML = `<span class="text-red-400 text-sm">盤前報告生成失敗:${e.message}</span>`;
         }
-        if (btn) { btn.innerHTML = '🔄 重新解析'; btn.disabled = false; }
+        if (btn) { btn.innerHTML = '🔄 重新生成盤前報告'; btn.disabled = false; }
     },
 
     _calcRiskScore() {

@@ -212,6 +212,16 @@ GLOBAL_NEWS_SOURCES = {
 }
 GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
 
+# 🛰️ 科技巨頭專屬 RSS(餵盤前戰情官報的「川普/黃仁勳/SpaceX/Kuiper」獨立觀測段落)
+#    用 Google News RSS:彙整全網即時,GHA IP 可達,無付費限制
+TECH_GIANTS_SOURCES = {
+    "trump":  "https://news.google.com/rss/search?q=%22Donald+Trump%22+(stocks+OR+tariff+OR+economy)&hl=en&gl=US&ceid=US:en",
+    "huang":  "https://news.google.com/rss/search?q=%22Jensen+Huang%22+OR+(NVIDIA+AI+chip)&hl=en&gl=US&ceid=US:en",
+    "spacex": "https://news.google.com/rss/search?q=SpaceX+(Starlink+OR+Starship+OR+launch)&hl=en&gl=US&ceid=US:en",
+    "kuiper": "https://news.google.com/rss/search?q=Amazon+(%22Project+Kuiper%22+OR+satellite)&hl=en&gl=US&ceid=US:en",
+}
+TECH_GIANTS_FILE = DATA_DIR / "tech_giants_news.json"
+
 # 對台股有關的 keyword filter：標題或 URL 含至少一個才保留
 # 涵蓋科技巨頭 / 公司 / 台股供應鏈相關產業詞 / 宏觀經濟詞
 TW_RELATED_KEYWORDS = [
@@ -313,6 +323,56 @@ def fetch_global_news():
     print(f"✅ 全球新聞已輸出 {len(analyzed)} 篇 → {GLOBAL_NEWS_FILE}")
 
 
+def fetch_tech_giants_news():
+    """🛰️ 科技巨頭專屬 RSS 採集(餵盤前戰情官報「川普/黃仁勳/SpaceX/Kuiper」獨立觀測段)。
+    每桶最多 3 則,共 12 則 Groq 翻譯,輸出 data/tech_giants_news.json 給前端 runGlobalMarketAI 讀。
+    任一桶失敗不影響其他;Groq 翻譯失敗時 fallback 保留英文標題(前端仍可顯示)。
+    """
+    print("\n🛰️ 科技巨頭專屬情報採集中...")
+    bucket = {"trump": [], "huang": [], "spacex": [], "kuiper": []}
+    for key, url in TECH_GIANTS_SOURCES.items():
+        try:
+            feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
+            for entry in feed.entries[:5]:
+                title = (entry.get("title", "") or "").strip()
+                link  = entry.get("link", "") or ""
+                pub   = entry.get("published", "") or entry.get("updated", "") or ""
+                if title:
+                    bucket[key].append({"title": title, "url": link, "published": pub})
+            print(f"  {key}: {len(bucket[key])} 篇")
+        except Exception as e:
+            print(f"  ⚠️ {key} 失敗: {e}")
+
+    # Groq 翻譯每桶前 3 則(共最多 12 則,搭配 sleep 2.5s 不撞 30 RPM)
+    if GROQ_API_KEYS:
+        for key, arr in bucket.items():
+            for it in arr[:3]:
+                try:
+                    payload = {
+                        "model": GROQ_MODEL,
+                        "messages": [{"role": "user", "content":
+                            f"請把以下英文新聞標題翻譯成繁體中文(25 字以內),只輸出 JSON。\n標題:{it['title']}\n格式:{{\"title_zh\":\"...\"}}"}],
+                        "max_tokens": 80,
+                        "temperature": 0.2,
+                        "response_format": {"type": "json_object"},
+                    }
+                    res = _call_groq_with_rotation(payload, label=f"tech_giants_{key}")
+                    if res is not None and res.status_code == 200:
+                        parsed = json.loads(res.json()["choices"][0]["message"]["content"])
+                        it["title_zh"] = str(parsed.get("title_zh", ""))[:50]
+                except Exception as e:
+                    print(f"  ⚠️ {key} 翻譯例外: {e}")
+                time.sleep(2.5)
+
+    output = {
+        "updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        **bucket,
+    }
+    TECH_GIANTS_FILE.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
+    total = sum(len(v) for v in bucket.values())
+    print(f"✅ 科技巨頭情報已輸出 {total} 篇 → {TECH_GIANTS_FILE}")
+
+
 def main():
     print("📡 通用型情報監聽雷達啟動")
     print(f"  關鍵字（{len(KEYWORDS)}）：{', '.join(KEYWORDS)}")
@@ -357,6 +417,7 @@ def main():
     print(f"\n✅ 已輸出 {len(results)} 篇 → {OUTPUT_FILE}")
 
     fetch_global_news()
+    fetch_tech_giants_news()
 
 
 if __name__ == "__main__":
