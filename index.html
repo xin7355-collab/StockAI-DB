@@ -1262,24 +1262,14 @@
                     <div id="bubbleCrashSectorList" class="text-[11px] text-gray-100 leading-relaxed">--</div>
                 </div>
             </div>
-            <!-- ⭐ 今日送分題(從 chief_ai_cache 過濾🟢標的)-->
-            <div class="bg-[#010409] rounded-xl border-2 border-yellow-700/70 p-3 shadow-lg shadow-yellow-900/20">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-base">⭐</span>
-                    <span class="text-base font-black text-yellow-300 tracking-wide">今日送分題</span>
-                    <span id="sendScoreCount" class="ml-auto text-[10px] font-mono text-gray-500">--</span>
-                </div>
-                <div class="text-[10px] text-gray-500 mb-2">AI 夜跑掃描 → 燈號🟢的高勝率股(點擊跳診斷頁)</div>
-                <div id="sendScoreList" class="space-y-1.5">
-                    <div class="text-[11px] text-gray-600 text-center py-2">⏳ 等今晚 AI 批次掃描完成</div>
-                </div>
-                <!-- 📊 系統準度(回測歷史勝率)-->
-                <div id="signalAccuracyBox" class="hidden mt-2.5 pt-2 border-t border-yellow-800/30">
-                    <div class="text-[10px] text-gray-400 font-bold mb-1">📊 送分題歷史準度(回測,非保證未來)</div>
-                    <div id="signalAccuracyBody" class="grid grid-cols-2 gap-1.5 text-[10px]"></div>
-                </div>
-            </div>
-            <div class="bg-[#010409] rounded-lg border border-[#30363d] p-3 flex flex-col gap-2.5">
+            <!-- 📊 風險指標展開區(統一收摺,避免與上方台股風險指數重複佔版) -->
+            <details class="bg-[#010409] rounded-lg border border-[#30363d]">
+                <summary class="cursor-pointer px-3 py-2.5 text-[12px] text-gray-300 font-bold flex items-center gap-2 hover:bg-[#0d1117]">
+                    <span class="text-sm">📊</span>
+                    <span class="text-cyan-300">作戰指揮部 + 牛市泡沫詳細指標</span>
+                    <span class="ml-auto text-[10px] text-gray-500">點擊展開 ▼</span>
+                </summary>
+                <div class="px-3 pt-1 pb-3 flex flex-col gap-2.5">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🎯</span><span class="text-sm font-black text-cyan-300 tracking-wide">台股作戰指揮部</span></div>
                     <!-- 三維一體統一燈號 -->
                     <div class="flex items-center gap-2">
@@ -1363,6 +1353,8 @@
                         </div>
                     </div>
                 </div>
+                </div>
+            </details>
             <!-- ════════ 黃金動線結束 ════════ -->
 
             </div><!-- ════ 台股實戰 tab 結束 ════ -->
@@ -1445,6 +1437,7 @@
 
                     <!-- 🎛️ 策略切換列 (Tabs) · 橫向可滑 -->
                     <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
+                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題 <span class="opacity-70">(高勝率)</span></button>
                         <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70">(動能)</span></button>
                         <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
                         <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
@@ -1454,8 +1447,23 @@
                     <div id="radarMatrixHint" class="text-[11px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 leading-relaxed"></div>
                 </div>
 
-                <!-- 📊 動態數據表格（兩列堆疊,自適應寬度） -->
-                <div class="flex-grow">
+                <!-- ⭐ 送分題 view(layup tab 專用,預設隱藏) -->
+                <div id="radarLayupView" class="hidden flex-grow">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-[11px] text-gray-400 font-bold">當前 🟢 高勝率標的</span>
+                        <span id="sendScoreCount" class="ml-auto text-[10px] font-mono text-gray-500">--</span>
+                    </div>
+                    <div id="sendScoreList" class="space-y-1.5">
+                        <div class="text-[11px] text-gray-600 text-center py-2">⏳ 載入中...</div>
+                    </div>
+                    <div id="signalAccuracyBox" class="hidden mt-3 pt-2 border-t border-yellow-800/30">
+                        <div class="text-[10px] text-gray-400 font-bold mb-1">📊 送分題歷史準度(回測,非保證未來)</div>
+                        <div id="signalAccuracyBody" class="grid grid-cols-2 gap-1.5 text-[10px]"></div>
+                    </div>
+                </div>
+
+                <!-- 📊 動態數據表格(momentum/swing/sniper 用) -->
+                <div id="radarTableWrap" class="flex-grow">
                     <table class="w-full text-left border-collapse" style="table-layout: fixed;">
                         <thead>
                             <tr class="border-b border-[#30363d] text-gray-400 text-[11px] tracking-wider bg-[#0d1117]">
@@ -3864,7 +3872,7 @@ const marginByDate = {};
                 this.attentionStatus = j.stocks;
                 console.log(`[處置神器] 已載入 ${Object.keys(j.stocks).length} 檔注意/處置股`);
                 // 若已渲染過雷達或自選股,觸發重畫讓 badge 補上
-                if (this.radarMatrix) this.renderRadarMatrix?.(this.radarStrategy || 'momentum');
+                if (this.radarMatrix) this.renderRadarMatrix?.(this.radarStrategy || 'layup');
                 this.renderFavTabs?.();
             }
         } catch (e) {
@@ -6203,10 +6211,8 @@ recent.forEach(d => {
                 el.className = `text-[9px] font-mono font-bold sector-heat ${f.cls}`;
             }
         }
-        // 順手更新三張新卡:大跌泡沫判讀 + 今日送分題 + 系統準度
+        // 順手更新:大跌泡沫判讀(送分題/系統準度已遷至雷達頁 layup tab)
         this._updateBubbleCrashCard();
-        this._loadChiefCacheForSendScore();
-        this._loadSignalAccuracy();
     },
 
     // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
@@ -7724,11 +7730,13 @@ recent.forEach(d => {
     _RADAR_TAB_BASE: 'radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all ',
     _RADAR_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
     _RADAR_TABS: {
+        layup:    { id: 'radarTabLayup',    active: 'bg-yellow-600/30 text-yellow-200 border-yellow-500' },
         momentum: { id: 'radarTabMomentum', active: 'bg-red-600/20 text-red-300 border-red-500' },
         swing:    { id: 'radarTabSwing',    active: 'bg-green-600/20 text-green-300 border-green-500' },
         sniper:   { id: 'radarTabSniper',   active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
     },
     _RADAR_HINT: {
+        layup:    '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
         momentum: '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。',
         swing:    '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
         sniper:   '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
@@ -7782,11 +7790,11 @@ recent.forEach(d => {
                 }
             }
         }
-        this.switchRadarStrategy(this.radarStrategy || 'momentum');
+        this.switchRadarStrategy(this.radarStrategy || 'layup');
     },
 
     switchRadarStrategy(key) {
-        if (!this._RADAR_TABS[key]) key = 'momentum';
+        if (!this._RADAR_TABS[key]) key = 'layup';
         this.radarStrategy = key;
         Object.entries(this._RADAR_TABS).forEach(([k, cfg]) => {
             const btn = document.getElementById(cfg.id);
@@ -7794,7 +7802,19 @@ recent.forEach(d => {
         });
         const hint = document.getElementById('radarMatrixHint');
         if (hint) hint.textContent = this._RADAR_HINT[key] || '';
-        this.renderRadarMatrix(key);
+        // 切換 layup view vs 一般表格
+        const layupView = document.getElementById('radarLayupView');
+        const tableWrap = document.getElementById('radarTableWrap');
+        if (key === 'layup') {
+            if (layupView) layupView.classList.remove('hidden');
+            if (tableWrap) tableWrap.classList.add('hidden');
+            this._loadChiefCacheForSendScore();
+            this._loadSignalAccuracy();
+        } else {
+            if (layupView) layupView.classList.add('hidden');
+            if (tableWrap) tableWrap.classList.remove('hidden');
+            this.renderRadarMatrix(key);
+        }
         this.vibrate(15);
     },
 
