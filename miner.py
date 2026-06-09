@@ -1694,8 +1694,15 @@ def fetch_broker_chips():
                 by_date: dict = {}
                 for r in data_rows:
                     d   = r.get('date') or today_str
-                    bid = r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or ''
+                    bid = str(r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or '').strip()
+                    # 🛡️ 污染防呆:broker_id 必須是 1-5 位純數字(無逗號/千分位)
+                    # 否則代表 FinMind 把金額欄誤映射成 id(歷史曾有 "18,232,856" 這種垃圾)
+                    if not bid or ',' in bid or not bid.replace('A','').replace('a','').isdigit() or len(bid) > 5:
+                        continue
                     raw_nm = (r.get('secBrokerName') or r.get('securities_trader') or r.get('broker_name') or '').strip()
+                    # broker_name 也防呆:純數字 + 逗號 = 金額誤映射
+                    if ',' in raw_nm or (raw_nm and raw_nm.replace(',', '').isdigit() and len(raw_nm) > 5):
+                        raw_nm = ''
                     if bid in TACTICAL_TAGS: bnm = TACTICAL_TAGS[bid]
                     elif raw_nm and not raw_nm.isdigit(): bnm = raw_nm
                     elif bid in broker_info_map: bnm = broker_info_map[bid]

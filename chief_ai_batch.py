@@ -178,7 +178,18 @@ def _build_intel(sym: str) -> dict | None:
         print(f"  ⚠️ {sym}.json 讀取失敗: {e}")
         return None
 
-    rows = raw.get("data") or raw.get("ohlcv") or []
+    # 🔴 真因修復:data/{sym}.json 是 list of dict(不是 dict),原本 raw.get() 立刻 throw
+    # 同時相容舊 dict 格式(若未來改回包 wrapper)
+    if isinstance(raw, list):
+        rows = raw
+        name = sym
+    elif isinstance(raw, dict):
+        rows = raw.get("data") or raw.get("ohlcv") or []
+        name = raw.get("name") or raw.get("stock_name") or sym
+    else:
+        print(f"  ⚠️ {sym}.json 格式異常 type={type(raw).__name__}")
+        return None
+
     if not rows or len(rows) < 30:
         return None
 
@@ -202,8 +213,7 @@ def _build_intel(sym: str) -> dict | None:
         fi_5d += (r.get("foreign_net") or 0)
     fi_5d_kw = round(fi_5d / 1000, 1)   # 張 → 千張
 
-    name = raw.get("name") or raw.get("stock_name") or sym
-
+    # name 已在上方 isinstance 分支設定(list 格式用 sym,dict 格式用 raw.get)
     return {
         "sym": sym,
         "name": name,
@@ -294,10 +304,13 @@ def main():
 
     out_stocks: dict = {}
     success = 0
+    err_types: dict = {}   # 錯誤型別計數(避免再被 try/except 吞掉看不出根因)
+    skipped = 0
     for n, sym in enumerate(syms, 1):
         try:
             intel = _build_intel(sym)
             if not intel:
+                skipped += 1
                 print(f"  [{n}/{len(syms)}] {sym}:資料不足,跳過")
                 continue
 
@@ -311,11 +324,18 @@ def main():
             else:
                 print(f"  [{n}/{len(syms)}] {sym} ❌ Groq 無回應")
         except Exception as _e:
-            # 單檔失敗不可拖垮整批(這正是過去 0 byte 的元兇之一)
-            print(f"  [{n}/{len(syms)}] {sym} 💥 例外跳過: {str(_e)[:80]}")
+            # 單檔失敗不可拖垮整批,但要清楚記錄錯誤型別
+            etype = type(_e).__name__
+            err_types[etype] = err_types.get(etype, 0) + 1
+            print(f"  [{n}/{len(syms)}] {sym} 💥 {etype}: {str(_e)[:100]}")
 
         _advance()   # 每檔強制換 key,均勻消耗額度
         time.sleep(SLEEP_BETWEEN_CALLS)
+
+    # 錯誤型別摘要(讓下次 log 一眼看出根因)
+    if err_types:
+        print(f"\n📊 錯誤型別統計: {dict(err_types)}")
+    print(f"📊 總計:✅ {success} / ⏭️ {skipped} / 💥 {sum(err_types.values())} / 全部 {len(syms)} 檔")
 
     output = {
         "updated": date.today().isoformat(),
