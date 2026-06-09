@@ -786,7 +786,9 @@
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-gray-700 to-green-600 opacity-70"></div>
                     <div class="flex items-center justify-between mb-2 mt-1">
                         <div class="text-sm text-red-300 font-bold flex items-center gap-2">
-                            🕵️ 主力分點追蹤 <span id="brokerChipDate" class="text-[10px] text-gray-500 font-normal"></span>
+                            🕵️ 主力分點追蹤
+                            <button onclick="app.showJargon('分點限制'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button>
+                            <span id="brokerChipDate" class="text-[10px] text-gray-500 font-normal"></span>
                         </div>
                         <button onclick="app.loadBrokerChips(app.currentSymbolId,true)" class="text-xs text-gray-500 hover:text-white transition-colors">🔄</button>
                     </div>
@@ -1858,7 +1860,8 @@ const app = {
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
-        '盤中主力估算': '⚠️ 重要:台灣證交所「券商分點進出」只在收盤後(約 15:30)才公布,盤中根本沒有真實分點資料。這裡的「盤中主力動向」是用 Fugle 即時「內外盤掛單 + 漲跌量價」估算的方向參考,不是官方分點,可能與收盤後真實分點有出入。盤中當參考、收盤後看下方真實分點才準。'
+        '盤中主力估算': '⚠️ 重要:台灣證交所「券商分點進出」只在收盤後(約 15:30)才公布,盤中根本沒有真實分點資料。這裡的「盤中主力動向」是用 Fugle 即時「內外盤掛單 + 漲跌量價」估算的方向參考,不是官方分點,可能與收盤後真實分點有出入。盤中當參考、收盤後看下方真實分點才準。',
+        '分點限制': '⚠️ 為什麼看不到真實券商分點?TWSE 官方 BSR 系統(bsr.twse.com.tw)對雲端機房 IP(GitHub Actions / Google Cloud / AWS / Azure)全面封鎖,本站採礦機跑在 GitHub Actions 上,連 BSR 都連不到,所以拿不到每日真實分點資料。免費替代方案:(1) 上方「盤中主力動向」用 Fugle 內外盤估算盤中即時方向、(2) 三大法人買賣超 T+1 可看、(3) 融資融券走勢 T+1 可看。需要 TWSE 官方分點請至 bsr.twse.com.tw 手動查詢(一次只能查一檔,且須過驗證碼)。'
     },
 
     // 統一 API base URL 解析：window.API_BASE_URL（雲端部署注入）優先，
@@ -4189,7 +4192,24 @@ const marginByDate = {};
                        <div class="text-gray-400 text-[10px] leading-relaxed">系統每日 16:30 後對熱門 50 檔 (含台積電 / 鴻海 / 0050 等) 採礦分點資料。<br>
                        一般股仍可看「三大法人」與「融資融券」籌碼,只是無「前三大主力券商」明細。</div>
                    </div>`
-                : `<div class="text-center py-3 text-gray-600 text-xs">暫無分點資料</div>`;
+                : `<div class="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3">
+                       <div class="text-blue-300 text-xs font-bold mb-2 flex items-center gap-1">
+                           ⚠️ 真實分點資料暫不可用
+                           <button onclick="app.showJargon('分點限制'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button>
+                       </div>
+                       <div class="text-gray-400 text-[10px] leading-relaxed mb-2">
+                           TWSE 官方 BSR 系統封鎖雲端機房 IP,本網站採礦機(GitHub Actions)無法取得即時分點。
+                       </div>
+                       <div class="text-amber-300 text-[10px] font-bold mb-1">✅ 替代方案(免費可用):</div>
+                       <div class="text-[10px] leading-relaxed space-y-0.5 ml-1">
+                           <div class="text-red-300">• 上方「🔴 盤中主力動向」(Fugle 內外盤)— 盤中即時</div>
+                           <div class="text-green-300">• 三大法人買賣超 — T+1 收盤後可看</div>
+                           <div class="text-purple-300">• 融資融券走勢 — T+1 收盤後可看</div>
+                       </div>
+                       <div class="text-gray-500 text-[9px] mt-2 pt-2 border-t border-gray-700/40">
+                           如需官方分點,請至 <a href="https://bsr.twse.com.tw/bshtm/bsMain.aspx" target="_blank" rel="noopener" class="text-blue-400 hover:underline">bsr.twse.com.tw</a> 手動查詢(一次一檔且須過驗證碼)
+                       </div>
+                   </div>`;
             box.innerHTML = msg;
         }
     },
@@ -4486,7 +4506,7 @@ const marginByDate = {};
         }
 
         // 3. 主力分點摘要
-        let brokerText = '主力分點資料尚未載入（請先切到籌碼分頁等待載入）';
+        let brokerText = '主力分點:TWSE 封鎖雲端 IP,本站無法取得真實分點 — 請僅憑三大法人 + 融資券判斷,嚴禁編造券商名稱或進出張數';
         const bd = this._brokerChipSummary;
         if (bd && bd.sym === sym) {
             if (bd.periods) {
@@ -4519,7 +4539,7 @@ ${brokerText}
 1️⃣ 外資動向：外資目前是在倒貨還是囤貨？力道強弱？
 2️⃣ 內資大哥（投信與自營）：內資有沒有偷偷進場護盤的跡象？
 3️⃣ 散戶指標（融資券）：現在車上是不是太擠了？散戶正在被割韭菜嗎？
-4️⃣ 主力分點建倉：大戶的成本大約落在哪裡？有沒有券商在偷偷吃貨？
+4️⃣ 主力動向綜合判斷：若上方分點顯示「無法取得」,跳過券商分析,改用三大法人連續方向 + 融資券變化推估主力意圖,嚴禁編造券商名稱或張數。
 5️⃣ 實戰戰略結論：綜合上述籌碼面，現在該上車、觀望，還是快逃？
 
 最後獨立一行輸出：⚠️ 投資有風險，以上僅供參考，請自行判斷。`;
@@ -5073,8 +5093,8 @@ ${lightExplain[queryType]}
                 if (_ps5.hasInst) _instLine = `外資 ${_sgn(_ps5.foreign)} / 投信 ${_sgn(_ps5.trust)} / 自營 ${_sgn(_ps5.dealer)} 張`;
                 if (_ps5.hasMargin) _marginLine = `融資增減 ${_sgn(_ps5.marginDelta)} / 融券增減 ${_sgn(_ps5.shortDelta)} 張`;
             }
-            // 分點:_brokerChipSummary 來自籌碼頁,可能未載入
-            let _brokerLine = '尚未載入或不在監控 50 檔';
+            // 分點:_brokerChipSummary 來自籌碼頁,雲端 IP 被 TWSE 擋,本站通常無真實分點
+            let _brokerLine = '雲端 IP 被 TWSE 擋,本站無真實分點 — 請僅憑三大法人 + 融資券判斷,勿編造券商';
             const _bd = this._brokerChipSummary;
             if (_bd && _bd.sym === sym && _bd.periods) {
                 const _top = (arr) => (arr || []).slice(0, 3)
@@ -5112,7 +5132,7 @@ ${_newsLine}${globalContext}
 
 2️⃣ **體質拆解**(80-120 字):用大白話戳破財報粉飾,點出 EPS/營收/毛利/PE 哪個最關鍵
 
-3️⃣ **籌碼解讀**(60-100 字):三大法人在進場還是出貨?融資爆量還是退潮?分點主力是吃貨還是倒貨?
+3️⃣ **籌碼解讀**(60-100 字):三大法人在進場還是出貨?融資爆量還是退潮?(若分點欄顯示「無法取得」,跳過分點分析,不要編造券商名稱)
 
 4️⃣ **📰 新聞真偽判讀**(每則新聞一行,用標籤標示):
    - 🟢實質利好:確實會推升業績/股價的真利多(例:大客戶下單、產能擴張、合約簽訂)
