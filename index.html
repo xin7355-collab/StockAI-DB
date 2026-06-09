@@ -412,6 +412,16 @@
                         <li>前期飆股遇連續跌停 → <b class="text-red-300">絕對禁止於月線接刀!</b>必須耐心等待 <b class="text-amber-300">季線 (60MA)</b> 方可重新建倉</li>
                     </ul>
                 </div>
+                <div class="bg-cyan-900/15 border-l-4 border-cyan-500 pl-3 pr-2 py-2 rounded-r mt-2">
+                    <div class="font-black text-cyan-300 mb-1">💰 資金配置守則 ｜ 活著比賺錢重要</div>
+                    <div class="text-gray-300 mb-1.5 text-[12px]">散戶畢業最大主因是「重押單一檔 + 滿融資」。守住這三條,大跌也不會畢業。</div>
+                    <ul class="list-disc list-inside text-[12px] text-gray-400 space-y-1 pl-2">
+                        <li><b class="text-cyan-300">單檔上限 ≤ 10% 本金</b>:再看好也不重押,一檔黑天鵝最多傷 10%</li>
+                        <li><b class="text-cyan-300">總槓桿 ≤ 150%</b>(現股+融資):嚴禁全額融資,留現金才有底牌加碼</li>
+                        <li><b class="text-red-300">黑天鵝警報亮起 → 總持股自動降至 50% 以下</b>,寧可少賺不要重傷</li>
+                        <li>分批進場:同一檔分 <b class="text-cyan-300">3 批</b>進場,跌破防守線只認賠該批,不攤平凹單</li>
+                    </ul>
+                </div>
                 <div class="bg-green-900/15 border-l-4 border-green-500 pl-3 pr-2 py-2 rounded-r">
                     <div class="font-black text-green-300 mb-1">🎯 尾盤 13:20 ~ 13:30</div>
                     <div class="text-gray-300 mb-1">日 K 朱家泓 SOP — 收盤定生死。</div>
@@ -1031,6 +1041,7 @@
             <div class="bg-[#010409] rounded-xl border border-cyan-900/50 p-3">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🌐</span><span class="text-sm font-black text-cyan-300 tracking-wide">全球宏觀風險觀測台</span><span id="macroRiskSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span></div>
                 <div class="text-[10px] text-gray-500 mb-2 mt-0.5">📊 掌握全球大氣候與外資籌碼動向，定多空生死。</div>
+                <div id="macroExtraLine" class="hidden text-[10px] mb-2 -mt-1 px-1 leading-relaxed"></div>
                 <div class="grid grid-cols-2 gap-2">
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('美債10Y殖利率'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
@@ -1256,7 +1267,7 @@
                 </div>
             </div>
             <!-- ⭐ 今日送分題(從 chief_ai_cache 過濾🟢標的)-->
-            <div class="bg-[#010409] rounded-xl border border-yellow-700/60 p-3">
+            <div class="bg-[#010409] rounded-xl border-2 border-yellow-700/70 p-3 shadow-lg shadow-yellow-900/20">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="text-base">⭐</span>
                     <span class="text-base font-black text-yellow-300 tracking-wide">今日送分題</span>
@@ -5945,7 +5956,7 @@ recent.forEach(d => {
         } else {
             try {
                 const cached = JSON.parse(sessionStorage.getItem('_macroRiskLastGood') || 'null');
-                if (cached && cached.data && (Date.now() - cached.at) < 6 * 3600e3) {  // 6 小時內視為可用
+                if (cached && cached.data && (Date.now() - cached.at) < 2 * 3600e3) {  // 2 小時內視為可用(縮短避免盤中看舊資料)
                     j = cached.data; fromCache = true;
                     console.info('[updateGlobalRiskGrid] 沿用 sessionStorage 上次成功資料');
                 }
@@ -6036,6 +6047,27 @@ recent.forEach(d => {
         if ($('sccSpotDot')) $('sccSpotDot').className = `w-1.5 h-1.5 rounded-full ${
             fiSpotNet == null ? 'bg-gray-500' : fiSpotNet > 50 ? 'bg-red-500' : fiSpotNet > 0 ? 'bg-orange-400' : fiSpotNet > -50 ? 'bg-green-400' : 'bg-green-600'}`;
         if ($('sccFiSource')) { const fake = (fi == null && fiSpotNet == null); $('sccFiSource').textContent = fake ? '(範例)' : ''; $('sccFiSource').classList.toggle('opacity-60', fake); }
+
+        // 🏦 戰區一新欄位渲染:期現比警示(可靠,從現有 fi 算)+ M1B 熱錢(FRED,可能 None)
+        const _extraEl = $('macroExtraLine');
+        if (_extraEl) {
+            const parts = [];
+            if (j.fi_ratio_alert) {
+                const c = j.fi_ratio_alert.startsWith('⚠️') ? 'text-red-300'
+                        : j.fi_ratio_alert.startsWith('🟡') ? 'text-yellow-300' : 'text-green-300';
+                parts.push(`<span class="${c} font-bold">${j.fi_ratio_alert}</span>`);
+            }
+            if (j.m1b_yoy != null) {
+                const hot = j.m1b_yoy > 5;
+                parts.push(`<span class="${hot ? 'text-red-300' : 'text-gray-400'}">🏦 M1B年增 ${j.m1b_yoy}%${hot ? ' 熱錢氾濫⚠️' : ''}</span>`);
+            }
+            if (j.fed_assets_chg_pct != null) {
+                const qe = j.fed_assets_chg_pct > 0;
+                parts.push(`<span class="text-gray-400">💵 Fed資產13週 ${j.fed_assets_chg_pct > 0 ? '+' : ''}${j.fed_assets_chg_pct}%(${qe ? 'QE放水' : 'QT縮表'})</span>`);
+            }
+            if (parts.length) { _extraEl.innerHTML = parts.join(' · '); _extraEl.classList.remove('hidden'); }
+            else _extraEl.classList.add('hidden');
+        }
 
         // 摘要列（收合時可見）
         if ($('sccMiniFG'))   $('sccMiniFG').textContent   = `🧭 ${fg == null ? '--' : Math.round(fg) + ' ' + fgLabel}`;
@@ -6836,7 +6868,15 @@ recent.forEach(d => {
             let profitHint = '';
             if (profitPct > 15) profitHint = '獲利超過 15%，建議分批上移停利點';
             else if (profitPct < -10) profitHint = '虧損超過 10%，評估是否執行停損';
-            costPnlText = `<div class="mt-2 ${profitBg} border rounded p-2 text-xs font-bold leading-relaxed">💰 <b>持倉損益：</b> 成本 ${costVal} → 現價 ${pC.toFixed(2)} <span class="${profitColor} font-black ml-1">${profitSign}${profitPct.toFixed(1)}%</span>${profitHint ? `<br>💡 ${profitHint}` : ''}</div>`;
+            // 🛡️ 硬停損墊:成本 -8% 與前20日低取較高者(防散戶凹單;漲多後改由移動停利接手)
+            const hardStop = (prevLow20 !== null && profitPct < 15)
+                ? Math.max(costVal * 0.92, Math.min(prevLow20, costVal * 0.98))
+                : costVal * 0.92;
+            const hitHard = pC <= hardStop;
+            const hardLine = (profitPct < 15)
+                ? `<br>🛡️ <b>硬停損墊:</b> <span class="${hitHard ? 'text-red-400 animate-pulse' : 'text-orange-300'} font-black">${hardStop.toFixed(2)}</span>${hitHard ? ' ⚠️ 已觸及,嚴禁凹單!' : '(跌破即停損,守紀律)'}`
+                : '';
+            costPnlText = `<div class="mt-2 ${profitBg} border rounded p-2 text-xs font-bold leading-relaxed">💰 <b>持倉損益：</b> 成本 ${costVal} → 現價 ${pC.toFixed(2)} <span class="${profitColor} font-black ml-1">${profitSign}${profitPct.toFixed(1)}%</span>${profitHint ? `<br>💡 ${profitHint}` : ''}${hardLine}</div>`;
         }
 
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC); document.getElementById('tgt2Price').innerHTML = this.getPriceHTML(t2_val, pC);

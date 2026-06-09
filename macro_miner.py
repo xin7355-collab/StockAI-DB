@@ -819,9 +819,10 @@ def fi_ratio_alert_level(fi_spot, fi_futures):
         return None
     spot_equiv = abs(fi_spot * 1e8 / 50000)  # 億 → 約等量期貨口數
     ratio = abs(fi_futures) / max(spot_equiv, 1)
-    if ratio > 3 and fi_futures < -20000:
-        return f"⚠️ 期現比 {ratio:.1f}(警戒) — 期貨先空,現貨將跟跌"
-    elif ratio > 2:
+    # 改 OR:期現大幅背離(ratio>2.5) 或 期貨超級空(< -30000) 任一觸發即警戒,避免漏報
+    if (ratio > 2.5 and fi_futures < 0) or fi_futures < -30000:
+        return f"⚠️ 期現比 {ratio:.1f}(警戒) — 期貨先空,現貨恐跟跌"
+    elif ratio > 1.8 and fi_futures < 0:
         return f"🟡 期現比 {ratio:.1f}(留意) — 期貨稍超前現貨"
     return f"✅ 期現比 {ratio:.1f}(健康) — 期現同步"
 
