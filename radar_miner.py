@@ -258,6 +258,118 @@ def main():
     print(f"💾 已匯出至 {OUTPUT_FILE}")
 
 
+# ────────────────────────────────────────────────────────────
+# 🚨 戰區二升級:處置門檻價預估算式(純運算,不打 API)
+# ────────────────────────────────────────────────────────────
+def estimate_attention_threshold(ohlcv_data):
+    """近 10 日 OHLCV 分析,模擬下一日達 TWSE 注意/處置條款機率。
+    回傳 dict:{score: 0-100, status: '🚨/⚠️/✅', reasons: [...]}
+
+    參考 TWSE 三大主要條款:
+    1. 連 3 日累計漲跌 18% → 預警
+    2. 近 6 日累計漲跌 25% → 預警
+    3. 近 10 中 6 個營業日 |日漲跌| > 5% → 預警
+    """
+    if not isinstance(ohlcv_data, list) or len(ohlcv_data) < 6:
+        return None
+    last_10 = ohlcv_data[-10:]
+    if len(last_10) < 3:
+        return None
+
+    score = 0
+    reasons = []
+
+    # 條款 1:連 3 日累計漲跌
+    try:
+        if len(last_10) >= 4:
+            chg_3day = (last_10[-1]['close'] - last_10[-4]['close']) / last_10[-4]['close'] * 100
+            if abs(chg_3day) > 15:
+                score += 35
+                reasons.append(f"連 3 日累 {chg_3day:+.1f}%(近 18% 門檻)")
+            elif abs(chg_3day) > 10:
+                score += 15
+                reasons.append(f"連 3 日累 {chg_3day:+.1f}%")
+    except (KeyError, ZeroDivisionError, TypeError):
+        pass
+
+    # 條款 2:近 6 日累計漲跌
+    try:
+        if len(last_10) >= 7:
+            chg_6day = (last_10[-1]['close'] - last_10[-7]['close']) / last_10[-7]['close'] * 100
+            if abs(chg_6day) > 22:
+                score += 35
+                reasons.append(f"6 日累 {chg_6day:+.1f}%(近 25% 門檻)")
+            elif abs(chg_6day) > 15:
+                score += 15
+                reasons.append(f"6 日累 {chg_6day:+.1f}%")
+    except (KeyError, ZeroDivisionError, TypeError):
+        pass
+
+    # 條款 3:近 10 日大波動天數
+    try:
+        big_move = 0
+        for i in range(1, len(last_10)):
+            prev_close = last_10[i-1].get('close', 0)
+            if prev_close > 0:
+                daily_chg = (last_10[i]['close'] - prev_close) / prev_close * 100
+                if abs(daily_chg) > 5:
+                    big_move += 1
+        if big_move >= 5:
+            score += 30
+            reasons.append(f"10 日 {big_move}/10 大波動(近 6 次門檻)")
+        elif big_move >= 4:
+            score += 15
+            reasons.append(f"10 日 {big_move}/10 大波動")
+    except (KeyError, TypeError):
+        pass
+
+    if score >= 70:
+        status = '🚨 明日恐達處置門檻'
+    elif score >= 40:
+        status = '⚠️ 接近警戒區'
+    else:
+        return None  # score < 40 不存,只記錄高風險的
+
+    return {
+        'score': min(score, 100),
+        'status': status,
+        'reasons': reasons[:3],
+        'latest_close': last_10[-1].get('close'),
+    }
+
+
+def build_attention_forecast():
+    """掃全市場 data/*.json,對近期波動大的股票算處置門檻達標機率,
+    寫 data/attention_forecast.json 供前端【🚨 妖股處置神器】顯示。
+    """
+    print("\n🚨 啟動【處置門檻價預估】算式(戰區二)...")
+    forecast = {}
+    for f in DATA_DIR.glob("*.json"):
+        sym = f.stem
+        if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
+            continue
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(raw, list):
+                continue
+            est = estimate_attention_threshold(raw)
+            if est:
+                forecast[sym] = est
+        except Exception:
+            continue
+    out_file = DATA_DIR / "attention_forecast.json"
+    payload = {
+        "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "total": len(forecast),
+        "stocks": forecast,
+    }
+    try:
+        out_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+        print(f"   ✅ 處置門檻預估:{len(forecast)} 檔達警戒區 → {out_file}")
+    except Exception as e:
+        print(f"   ❌ attention_forecast.json 寫檔失敗:{e}")
+
+
 if __name__ == '__main__':
     main()
     # 🚨 雷達矩陣完成後,順手抓注意/處置股名單(獨立 try,失敗不影響雷達)
@@ -265,3 +377,8 @@ if __name__ == '__main__':
         fetch_attention_disposal_status()
     except Exception as e:
         print(f"💥 處置神器頂層異常(不影響雷達矩陣):{e}")
+    # 🚨 戰區二:處置門檻價預估(純算式,失敗也不影響上面兩個)
+    try:
+        build_attention_forecast()
+    except Exception as e:
+        print(f"💥 處置門檻預估頂層異常(不影響其他):{e}")

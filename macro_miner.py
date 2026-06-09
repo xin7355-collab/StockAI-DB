@@ -501,6 +501,72 @@ def _fetch_yf_close(ticker, name):
     return None, None, last_err
 
 
+# ────────────────────────────────────────────────────────────
+# 🏦 戰區一升級:FRED 央行貨幣供給(M1B / Fed 資產負債表)
+# ────────────────────────────────────────────────────────────
+def fetch_fred_series(series_id, days_back=400):
+    """通用 FRED CSV fetcher,免費無 key。回傳 list of (date_str, value)。
+    GH Actions IP 偶被 FRED 封,失敗即回空 list,不拋例外。
+    """
+    try:
+        end = datetime.now(timezone.utc).date()
+        start = end - timedelta(days=days_back)
+        url = (f"https://fred.stlouisfed.org/graph/fredgraph.csv"
+               f"?id={series_id}&cosd={start.isoformat()}&coed={end.isoformat()}")
+        r = requests.get(url, timeout=15,
+                         headers={"User-Agent": "Mozilla/5.0 (compatible; macro_miner)"})
+        if r.status_code != 200:
+            print(f"   ⚠️ FRED {series_id} HTTP {r.status_code}")
+            return []
+        lines = r.text.strip().split('\n')[1:]
+        out = []
+        for ln in lines:
+            parts = ln.split(',')
+            if len(parts) < 2:
+                continue
+            try:
+                v = float(parts[1])
+                out.append((parts[0], v))
+            except ValueError:
+                continue
+        return out
+    except Exception as e:
+        print(f"   ⚠️ FRED {series_id} 失敗:{e}")
+        return []
+
+
+def fetch_m1b_and_fed_assets():
+    """M1SL (M1 貨幣供給,月頻) YoY + WALCL (Fed 資產負債表,週頻) 13 週變化。
+    M1B YoY 正常 1-3%;>5% 代表熱錢氾濫,易催生資產泡沫。
+    Fed 資產 13 週變化:正=QE 放水(風險偏好升);負=QT 縮表(風險偏好降)。
+    """
+    out = {"m1b_yoy": None, "fed_assets_chg_pct": None}
+    m1 = fetch_fred_series("M1SL", days_back=420)
+    if len(m1) >= 13:
+        try:
+            latest_val = m1[-1][1]
+            target_date = (datetime.fromisoformat(m1[-1][0]).date()
+                           - timedelta(days=365))
+            prior = min(m1, key=lambda x: abs(
+                (datetime.fromisoformat(x[0]).date() - target_date).days))
+            if prior[1] > 0:
+                out["m1b_yoy"] = round((latest_val - prior[1]) / prior[1] * 100, 2)
+                print(f"   · M1B YoY: {out['m1b_yoy']}%")
+        except Exception as e:
+            print(f"   ⚠️ M1B YoY 計算失敗: {e}")
+    fed = fetch_fred_series("WALCL", days_back=120)
+    if len(fed) >= 13:
+        try:
+            latest_val = fed[-1][1]
+            prior = fed[-13][1]
+            if prior > 0:
+                out["fed_assets_chg_pct"] = round((latest_val - prior) / prior * 100, 2)
+                print(f"   · Fed 資產 13 週變化: {out['fed_assets_chg_pct']}%")
+        except Exception as e:
+            print(f"   ⚠️ Fed 資產計算失敗: {e}")
+    return out
+
+
 def fetch_gold():     return _fetch_yf_close("GC=F",     "黃金")        # 期貨 close usd/oz
 def fetch_wti_oil():  return _fetch_yf_close("CL=F",     "WTI 原油")    # usd/barrel
 def fetch_dxy():      return _fetch_yf_close("DX-Y.NYB", "美元指數")    # 美元指數
@@ -744,6 +810,22 @@ def judge_fi_complex(net_futures, net_spot):
     return "外資動向中性"
 
 
+def fi_ratio_alert_level(fi_spot, fi_futures):
+    """⚠️ 期現比警示:外資期貨絕對淨額 / 現貨絕對淨額。
+    fi_spot:外資現貨淨額(億)、fi_futures:外資台指期淨口數
+    比值 > 3 且期貨大空 → 主力先用期貨佈空,現貨將跟跌(警戒)
+    """
+    if fi_spot is None or fi_futures is None or fi_spot == 0:
+        return None
+    spot_equiv = abs(fi_spot * 1e8 / 50000)  # 億 → 約等量期貨口數
+    ratio = abs(fi_futures) / max(spot_equiv, 1)
+    if ratio > 3 and fi_futures < -20000:
+        return f"⚠️ 期現比 {ratio:.1f}(警戒) — 期貨先空,現貨將跟跌"
+    elif ratio > 2:
+        return f"🟡 期現比 {ratio:.1f}(留意) — 期貨稍超前現貨"
+    return f"✅ 期現比 {ratio:.1f}(健康) — 期現同步"
+
+
 def main():
     print("📡 macro_miner 啟動 — 抓取總經三維風險指標")
     out = {
@@ -869,7 +951,9 @@ def main():
                         "gold_usd", "gold_chg_pct", "wti_oil", "wti_chg_pct",
                         "dxy", "dxy_chg_pct", "btc_usd", "btc_chg_pct",
                         "vix", "vix_chg_pct", "nikkei", "nikkei_chg_pct",
-                        "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct"):
+                        "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct",
+                        # 🏦 戰區一新增(FRED 偶失敗時沿用昨日)
+                        "m1b_yoy", "fed_assets_chg_pct", "fi_ratio_alert"):
                 if out.get(key) is None and prev.get(key) is not None:
                     out[key] = prev[key]
                     patched.append(key)
@@ -878,6 +962,24 @@ def main():
                 print(f"  🛡️ 斷崖防護：{len(patched)} 個欄位用昨天 cache 補值 → {patched}")
     except Exception as e:
         print(f"  ⚠️ 斷崖防護讀舊檔失敗：{e}（不影響本次寫檔）")
+
+    # ── 🏦 戰區一升級:FRED 央行貨幣供給 + 期現比強化 ──
+    try:
+        fred_extra = fetch_m1b_and_fed_assets()
+        out["m1b_yoy"] = fred_extra.get("m1b_yoy")
+        out["fed_assets_chg_pct"] = fred_extra.get("fed_assets_chg_pct")
+    except Exception as e:
+        print(f"  ⚠️ FRED 央行資料失敗(不影響主流程):{e}")
+        out["m1b_yoy"] = None
+        out["fed_assets_chg_pct"] = None
+    try:
+        out["fi_ratio_alert"] = fi_ratio_alert_level(
+            out.get("fi_spot_net"), out.get("fi_futures_net"))
+        if out["fi_ratio_alert"]:
+            print(f"  📊 {out['fi_ratio_alert']}")
+    except Exception as e:
+        print(f"  ⚠️ fi_ratio 計算失敗:{e}")
+        out["fi_ratio_alert"] = None
 
     # ── 📅 全球重大財經事件日曆(純演算法,絕不拋例外)──
     try:

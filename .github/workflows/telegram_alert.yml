@@ -1,0 +1,58 @@
+name: 📲 Telegram 警報系統
+
+# 戰區三:讀 origin/data 分支上的最新採礦 JSON,推 Telegram
+# - 盤前 08:30 (UTC 00:30) + 盤後 14:00 (UTC 06:00) 發摘要
+# - 盤中每 30 分檢查重大事件(融資爆量 / VIX>30 / 期現異常)
+#
+# 必要 secrets:
+#   TELEGRAM_BOT_TOKEN  - @BotFather 建 bot 拿 token
+#   TELEGRAM_CHAT_ID    - @userinfobot 找到您的 chat ID
+
+on:
+  schedule:
+    # 摘要:台北 08:30 盤前 + 台北 14:00 盤後 (UTC -8h)
+    - cron: '30 0 * * 1-5'   # 08:30 盤前
+    - cron: '0 6 * * 1-5'    # 14:00 盤後
+    # 盤中監聽:09:00-13:30 每 30 分
+    - cron: '*/30 1-5 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '模式(summary=摘要 / watch=監聽)'
+        required: false
+        default: 'summary'
+        type: choice
+        options:
+          - summary
+          - watch
+
+permissions:
+  contents: read
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 📥 拉 data 分支最新 JSON snapshot
+        run: |
+          git fetch origin data --depth=1 2>&1 || echo "⚠️ data 分支拉取失敗"
+          git checkout FETCH_HEAD -- data/ 2>&1 || echo "⚠️ data/ 取出失敗"
+          ls -la data/*.json 2>&1 | head -5 || echo "(無 JSON 檔)"
+
+      - name: 🐍 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🚨 跑警報腳本
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # 判斷模式:手動 dispatch 用 input;cron 用時間判斷
+          ALERT_MODE: ${{ github.event.inputs.mode || (github.event.schedule == '30 0 * * 1-5' && 'summary' || (github.event.schedule == '0 6 * * 1-5' && 'summary' || 'watch')) }}
+        run: python alert_system.py
