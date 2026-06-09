@@ -1277,6 +1277,11 @@
                 <div id="sendScoreList" class="space-y-1.5">
                     <div class="text-[11px] text-gray-600 text-center py-2">⏳ 等今晚 AI 批次掃描完成</div>
                 </div>
+                <!-- 📊 系統準度(回測歷史勝率)-->
+                <div id="signalAccuracyBox" class="hidden mt-2.5 pt-2 border-t border-yellow-800/30">
+                    <div class="text-[10px] text-gray-400 font-bold mb-1">📊 送分題歷史準度(回測,非保證未來)</div>
+                    <div id="signalAccuracyBody" class="grid grid-cols-2 gap-1.5 text-[10px]"></div>
+                </div>
             </div>
             <div class="bg-[#010409] rounded-lg border border-[#30363d] p-3 flex flex-col gap-2.5">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🎯</span><span class="text-sm font-black text-cyan-300 tracking-wide">台股作戰指揮部</span></div>
@@ -6283,9 +6288,10 @@ recent.forEach(d => {
                 el.className = `text-[9px] font-mono font-bold sector-heat ${f.cls}`;
             }
         }
-        // 順手更新兩張新卡:大跌泡沫判讀 + 今日送分題
+        // 順手更新三張新卡:大跌泡沫判讀 + 今日送分題 + 系統準度
         this._updateBubbleCrashCard();
         this._loadChiefCacheForSendScore();
+        this._loadSignalAccuracy();
     },
 
     // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
@@ -6402,6 +6408,38 @@ recent.forEach(d => {
             <span class="text-[10px] text-gray-200 flex-1 truncate">${desc}</span>
             <span class="text-[10px] text-yellow-400">→</span>
         </div>`;
+    },
+
+    // 📊 系統準度:讀 signal_history.json 顯示送分題歷史勝率(讓使用者敢信任訊號)
+    async _loadSignalAccuracy() {
+        const box = document.getElementById('signalAccuracyBox');
+        const body = document.getElementById('signalAccuracyBody');
+        if (!box || !body) return;
+        if (!this._signalHistCache) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/signal_history.json', ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(6000) });
+                this._signalHistCache = r.ok ? await r.json() : null;
+            } catch (_) { this._signalHistCache = null; }
+        }
+        const bySig = this._signalHistCache?.by_signal;
+        if (!bySig || Object.keys(bySig).length === 0) { box.classList.add('hidden'); return; }
+        const order = ['🟢送分題', '🟢趨勢', '🟡偏多'];
+        const keys = Object.keys(bySig).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        body.innerHTML = keys.map(sig => {
+            const s = bySig[sig];
+            const wr = s.win_rate_10d;
+            const ar = s.avg_return_10d;
+            const wrColor = wr == null ? 'text-gray-500' : wr >= 60 ? 'text-green-300' : wr >= 50 ? 'text-yellow-300' : 'text-red-300';
+            const arColor = ar == null ? 'text-gray-500' : ar > 0 ? 'text-red-300' : 'text-green-300';
+            return `<div class="bg-[#0d1117] rounded p-1.5 border border-[#30363d]">
+                <div class="font-bold text-gray-300">${sig}</div>
+                <div class="text-gray-500">10日勝率 <span class="${wrColor} font-black">${wr == null ? '--' : wr + '%'}</span></div>
+                <div class="text-gray-500">平均 <span class="${arColor} font-bold">${ar == null ? '--' : (ar > 0 ? '+' : '') + ar + '%'}</span> · ${s.samples}樣本</div>
+            </div>`;
+        }).join('');
+        box.classList.remove('hidden');
     },
 
     _updateCostLabel() {

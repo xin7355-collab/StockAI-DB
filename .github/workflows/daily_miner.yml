@@ -15,6 +15,7 @@ on:
       - 'macro_miner.py'
       - 'radar_miner.py'
       - 'chief_ai_batch.py'
+      - 'backtest.py'
       - '.github/workflows/daily_miner.yml'
 
 permissions:
@@ -179,6 +180,9 @@ jobs:
 
       - name: 🎯 戰略雷達矩陣採礦（三大戰區掃描 → radar_matrix.json）
         run: python radar_miner.py || echo "⚠️ radar_miner.py 失敗，繼續部署"
+
+      - name: 📊 訊號勝率回測（回放歷史 → data/signal_history.json）
+        run: python backtest.py || echo "⚠️ backtest.py 失敗，繼續部署"
 
       - name: 🌙 首席 AI 夜間批次分析（熱門清單預算式 → data/chief_ai_cache.json）
         env:
