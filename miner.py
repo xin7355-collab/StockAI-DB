@@ -19,6 +19,23 @@ import time
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 
+# ── 🎯 分點 Sniper 選用相依(雲端 batch 0 才裝;裝不到就靜默退回 FinMind)──
+# Pillow 10+ 移除 ANTIALIAS 會讓 ddddocr 啟動崩潰,先補相容墊片
+try:
+    from PIL import Image as _PILImage
+    if not hasattr(_PILImage, 'ANTIALIAS'):
+        _PILImage.ANTIALIAS = _PILImage.LANCZOS
+except Exception:
+    pass
+try:
+    import ddddocr as _ddddocr
+except Exception:
+    _ddddocr = None
+try:
+    from bs4 import BeautifulSoup as _BeautifulSoup
+except Exception:
+    _BeautifulSoup = None
+
 
 # ── ⏱️ SIGALRM 硬逾時護盾：包住「無 timeout 參數」的阻塞呼叫（主因 yfinance.history 會無限 hang）──
 class _HardTimeout(Exception):
@@ -1484,6 +1501,103 @@ def fetch_us_macro_cache():
 
 
 
+# ── 🎯 分點 Sniper:TWSE BSR 驗證碼 OCR 破解(免費抓真實當日分點)──────────
+def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
+    """用 ddddocr 破解證交所 BSR 驗證碼,免費抓當日券商分點主力。
+    雲端裝不到 ddddocr/bs4 時回 None,靜默退回 FinMind。
+    回傳 {date, tot_buy, tot_sell, buyers[], sellers[]} 或 None。
+    """
+    if _ddddocr is None or _BeautifulSoup is None:
+        return None
+    try:
+        ocr = _ddddocr.DdddOcr(beta=True, show_ad=False)
+    except Exception as e:
+        print(f"  ⚠️ OCR 初始化失敗: {e}")
+        return None
+
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': random.choice(_UA_LIST),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.7',
+        'Connection': 'keep-alive',
+        'Origin': 'https://bsr.twse.com.tw',
+        'Referer': 'https://bsr.twse.com.tw/bshtm/bsMenu.aspx',
+    })
+
+    for attempt in range(max_retries):
+        try:
+            res = session.get("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", timeout=10)
+            soup = _BeautifulSoup(res.text, 'html.parser')
+            viewstate = soup.find('input', {'name': '__VIEWSTATE'})
+            eventval = soup.find('input', {'name': '__EVENTVALIDATION'})
+            if not viewstate or not eventval:
+                time.sleep(1); continue
+
+            img_res = session.get("https://bsr.twse.com.tw/bshtm/CaptchaImage.aspx", timeout=10)
+            captcha_text = ocr.classification(img_res.content)
+            if not captcha_text or len(captcha_text) != 5:
+                time.sleep(1); continue
+
+            payload = {
+                '__EVENTTARGET': '', '__EVENTARGUMENT': '', '__LASTFOCUS': '',
+                '__VIEWSTATE': viewstate['value'], '__EVENTVALIDATION': eventval['value'],
+                'RadioButton_Normal': 'RadioButton_Normal',
+                'txtStkNo': symbol, 'CaptchaControl1': captcha_text, 'btnOK': '查詢',
+            }
+            post_res = session.post("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", data=payload, timeout=10)
+            if "驗證碼錯誤" in post_res.text:
+                time.sleep(1.5); continue
+            if "查無資料" in post_res.text:
+                return None  # 上櫃股或今日無交易
+
+            session.get("https://bsr.twse.com.tw/bshtm/bsContent.aspx?v=t", timeout=10)
+            csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsCSV.aspx", timeout=10)
+            if not csv_res.text.strip():
+                time.sleep(1); continue
+
+            csv_text = csv_res.content.decode('big5-hkscs', errors='ignore')
+            rows = list(csv.reader(io.StringIO(csv_text)))
+            if len(rows) < 3:
+                return None
+            trade_date = rows[0][0].replace('年', '-').replace('月', '-').replace('日', '')
+            try:
+                p = trade_date.split('-')
+                trade_date = f"{int(p[0])+1911}-{int(p[1]):02d}-{int(p[2]):02d}"
+            except Exception:
+                trade_date = date.today().strftime('%Y-%m-%d')
+
+            branches = {}
+            for r in rows[2:]:
+                if len(r) < 11:
+                    continue
+                if r[1].strip():
+                    br = r[1].strip()
+                    b = int(r[3].replace(',', '').strip() or 0); s = int(r[4].replace(',', '').strip() or 0)
+                    e = branches.setdefault(br, {'buy': 0, 'sell': 0}); e['buy'] += b; e['sell'] += s
+                if len(r) > 10 and r[7].strip():
+                    br = r[7].strip()
+                    b = int(r[9].replace(',', '').strip() or 0); s = int(r[10].replace(',', '').strip() or 0)
+                    e = branches.setdefault(br, {'buy': 0, 'sell': 0}); e['buy'] += b; e['sell'] += s
+
+            summary = [{'br': br, 'buy': d['buy'], 'sell': d['sell'], 'net': d['buy'] - d['sell']}
+                       for br, d in branches.items()]
+            buyers = sorted([x for x in summary if x['net'] > 0], key=lambda x: x['net'], reverse=True)[:15]
+            sellers = sorted([x for x in summary if x['net'] < 0], key=lambda x: x['net'])[:15]
+            print(f"  🎯 Sniper 命中！{symbol} 分點破解成功 (嘗試 {attempt+1} 次)")
+            return {
+                "date": trade_date,
+                "tot_buy": sum(x['buy'] for x in summary),
+                "tot_sell": sum(x['sell'] for x in summary),
+                "buyers":  [{'broker_id': x['br'], 'broker_name': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in buyers],
+                "sellers": [{'broker_id': x['br'], 'broker_name': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in sellers],
+            }
+        except Exception:
+            time.sleep(1.5)
+            continue
+    return None
+
+
 # ── 分點籌碼（混合雙擎：TWSE Sniper + TPEX FinMind）──────────────────────
 def fetch_broker_chips():
     """
@@ -1539,10 +1653,25 @@ def fetch_broker_chips():
                 existing_obj = {'chips': raw} if isinstance(raw, list) else raw
             except Exception: pass
 
-        # ── 分點籌碼：FinMind 唯一來源（移除 ddddocr OCR Sniper，加速 ~5-7 分）──
+        # ── 分點籌碼：混合雙擎(Sniper 攻 TWSE 真分點 → FinMind 補多週期/上櫃)──
         buyers, sellers, brokers_list = [], [], []
         periods: dict = {}
         latest_chip_date = None
+        # 🎯 Sniper 優先(只在 batch 0 且裝了 ddddocr 時有效):免費抓今日真實分點
+        sniper_data = None
+        try:
+            sniper_data = _fetch_twse_bsr(sym)
+            if sniper_data:
+                latest_chip_date = sniper_data['date']
+                buyers = sniper_data['buyers']
+                sellers = sniper_data['sellers']
+                # 今日真分點存進對照表(broker_name = 分點名,非數字代號)
+                for x in buyers + sellers:
+                    bn = x.get('broker_name', '')
+                    if bn and not str(bn).isdigit():
+                        broker_name_map[x.get('broker_id', bn)] = bn
+        except Exception as _e:
+            sniper_data = None
         try:
             chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
             url_base = (f'https://api.finmindtrade.com/api/v4/data'
@@ -1599,10 +1728,13 @@ def fetch_broker_chips():
                         sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
                         return {'buy': buy_top, 'sell': sell_top}
                     periods = {f'{n}d': _agg_period(n) for n in (1, 3, 5, 10)}
-                    latest_chip_date = sorted(by_date.keys())[-1]
-                    brokers_list = [{'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']} for b, e in by_date[latest_chip_date].items()]
-                    buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
-                    sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
+                    # Sniper 已拿到今日真分點時不被 FinMind 覆蓋(Sniper=官方 TWSE 較準);
+                    # 否則用 FinMind 當日資料
+                    if not sniper_data:
+                        latest_chip_date = sorted(by_date.keys())[-1]
+                        brokers_list = [{'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']} for b, e in by_date[latest_chip_date].items()]
+                        buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
+                        sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
                 time.sleep(3)
         except Exception as e:
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")

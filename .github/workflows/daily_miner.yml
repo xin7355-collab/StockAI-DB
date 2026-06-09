@@ -51,6 +51,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser ta pandas numpy
+          # 🎯 分點 Sniper(TWSE BSR 驗證碼 OCR)只在節點 0 跑,故只在節點 0 裝重套件 ddddocr/bs4
+          if [ "${{ matrix.batch }}" == "0" ]; then
+            pip install ddddocr beautifulsoup4 || echo "⚠️ ddddocr/bs4 安裝失敗,Sniper 自動停用退回 FinMind"
+          fi
 
       - name: 📂 還原昨天的快取 (取得基準資料)
         run: |
