@@ -5648,23 +5648,43 @@ recent.forEach(d => {
         const isHighRisk      = breakMa20 && hardDamage;        // 雙重才升 🔴
         const isModerateRisk  = breakMa20 && !hardDamage;       // 單純跌破月線 → 🟠
         const season          = ctx?.season || '';
-        const base            = { isYoYGood, isChipGood, isPriceDropping, isHighRisk, isModerateRisk, season };
+        // 🟢 Tier1 正向因子(全市場皆可判,不再只靠 50 檔 chip cost)
+        const maBullish       = !!ctx?.maBullish;          // 多頭排列 ma5>ma20(>ma60)
+        const instStreak      = ctx?.instBuyStreak || 0;   // 法人連買天數
+        const instDays        = ctx?.instBuyDays || 0;     // 近10日法人買超天數
+        const aboveMa20       = (ma20 !== null && pC >= ma20);
+        const instSupport     = instStreak >= 3 || instDays >= 6;   // 法人明顯挺
+        const isLayup         = aboveMa20 && maBullish && instSupport;   // ⭐ 送分題
+        const greenLabel      = `bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]`;
+        const yellowLabel     = `bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]`;
+        const base            = { isYoYGood, isChipGood, isPriceDropping, isHighRisk, isModerateRisk,
+                                  season, maBullish, instStreak, instDays, isLayup };
 
+        // ── 風控優先(跌破月線一律先降級,紀律不變)──
         if (isHighRisk) return { ...base, level: '🔴', tag: '紅燈', label: '戰術撤退',
             action: '月線跌破 + 型態破壞（島狀反轉/大黑K/跌破前低）。請分批撤退、保留現金等下一波。',
             ledClass: 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-pulse-fast' };
         if (isModerateRisk) return { ...base, level: '🟠', tag: '橘燈', label: '減碼觀望',
             action: '剛跌破月線、但無進一步破壞訊號。建議減碼至 1/3 倉、以 5MA 設停損、暫不加碼，等月線重新站回再評估。',
             ledClass: 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]' };
+        // ── 正向側(此處已確定站在月線上,給明確進場/續抱訊號,終結「每隻都觀望」)──
+        // ⭐ 送分題:站月線 + 多頭排列 + 法人連買(全市場可判,免 chip cost)
+        if (isLayup) return { ...base, level: '🟢', tag: '綠燈', label: '⭐送分題',
+            action: `站穩月線 + 多頭排列 + 法人連買 ${Math.max(instStreak, 0)}天/近10日買${instDays}天。順勢做多,不破 **5MA** 不賣。`,
+            ledClass: greenLabel };
+        if (season === '夏') return { ...base, level: '🟢', tag: '綠燈', label: '趨勢確認',
+            action: '趨勢狂飆中，不破 5MA 不賣。', ledClass: greenLabel };
         if (isYoYGood && isChipGood && isPriceDropping) return { ...base, level: '🔵', tag: '藍燈', label: '大戶洗盤',
             action: '基本面籌碼雙支撐，高機率大戶洗盤，請抱緊！',
             ledClass: 'bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.9)] animate-pulse' };
-        if (season === '夏') return { ...base, level: '🟢', tag: '綠燈', label: '趨勢確認',
-            action: '趨勢狂飆中，不破 5MA 不賣。',
-            ledClass: 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.7)]' };
+        // 站月線 + 多頭排列(法人未明顯挺)→ 偏多續抱,不該叫「觀望」
+        if (aboveMa20 && maBullish) return { ...base, level: '🟡', tag: '黃燈', label: '偏多續抱',
+            action: '站穩月線、均線偏多。續抱觀察，回測 5MA/月線不破可分批進場。', ledClass: yellowLabel };
         if (season === '春') return { ...base, level: '🟡', tag: '黃燈', label: '築底等待',
-            action: '底部成型，守穩月線可低接試單。',
-            ledClass: 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]' };
+            action: '底部成型，守穩月線可低接試單。', ledClass: yellowLabel };
+        // 站月線但均線糾結 / 高檔盤頭未破線 → 黃燈留意,而非灰燈放生
+        if (aboveMa20) return { ...base, level: '🟡', tag: '黃燈', label: '高檔留意',
+            action: '仍站月線之上但動能轉弱。續抱者分批調節、跌破月線出場;空手者等突破再追。', ledClass: yellowLabel };
         return { ...base, level: '⚪', tag: '灰燈', label: '拉鋸觀望',
             action: '多空拉鋸，嚴守均線紀律。', ledClass: 'bg-gray-500' };
     },
@@ -6284,38 +6304,72 @@ recent.forEach(d => {
         }
     },
 
-    // ⭐ 今日送分題:從 chief_ai_cache 過濾🟢標的
+    // ⭐ 今日送分題:優先用 chief_ai_cache🟢標,空了就 fallback radar_matrix(雙保險,不再卡 0 byte)
     async _loadChiefCacheForSendScore() {
+        const listEl = document.getElementById('sendScoreList');
+        const cntEl = document.getElementById('sendScoreCount');
+        if (!listEl) return;
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+
+        // 來源 1:chief_ai_cache 夜跑🟢標的(有就優先)
         if (!this._chiefBatchCache) {
             try {
-                const ghBase = window.location.href.split('?')[0].split('#')[0];
                 const r = await fetch(new URL('data/chief_ai_cache.json', ghBase).href + `?t=${Date.now()}`,
                                       { signal: AbortSignal.timeout(6000) });
                 this._chiefBatchCache = r.ok ? await r.json() : null;
             } catch (_) { this._chiefBatchCache = null; }
         }
-        const listEl = document.getElementById('sendScoreList');
-        const cntEl = document.getElementById('sendScoreCount');
-        if (!listEl) return;
         const stocks = this._chiefBatchCache?.stocks || {};
-        const greens = Object.entries(stocks).filter(([, v]) =>
-            (v?.traffic_light || '').includes('🟢'));
-        if (cntEl) cntEl.textContent = `${greens.length} 檔 · ${this._chiefBatchCache?.updated || '夜跑'}`;
-        if (greens.length === 0) {
-            listEl.innerHTML = '<div class="text-[11px] text-gray-600 text-center py-2">⏳ 今晚 AI 批次掃描中(無🟢標)</div>';
+        const greens = Object.entries(stocks).filter(([, v]) => (v?.traffic_light || '').includes('🟢'));
+        if (greens.length > 0) {
+            if (cntEl) cntEl.textContent = `🤖AI ${greens.length} 檔 · ${this._chiefBatchCache?.updated || '夜跑'}`;
+            listEl.innerHTML = greens.slice(0, 10).map(([sym, v]) => {
+                const summary = String(v.summary || '').replace(/</g, '&lt;').slice(0, 30);
+                const name = this.getStockName(sym).replace(/</g, '&lt;');
+                return this._sendScoreRow(sym, name, summary);
+            }).join('');
             return;
         }
-        listEl.innerHTML = greens.slice(0, 10).map(([sym, v]) => {
-            const summary = String(v.summary || '').replace(/</g, '&lt;').slice(0, 30);
-            const name = this.getStockName(sym).replace(/</g, '&lt;');
-            return `<div class="flex items-center gap-2 py-1.5 px-2 rounded bg-yellow-900/20 hover:bg-yellow-900/30 cursor-pointer border border-yellow-800/40"
-                onclick="app.analyze('${sym}'); app.switchAppTab('diag'); app.vibrate(20);">
-                <span class="text-xs font-mono font-bold text-yellow-300 flex-shrink-0">${sym}</span>
-                <span class="text-[10px] text-gray-400 flex-shrink-0">${name}</span>
-                <span class="text-[10px] text-gray-200 flex-1 truncate">${summary}</span>
-                <span class="text-[10px] text-yellow-400">→</span>
-            </div>`;
+
+        // 來源 2:fallback radar_matrix(swing=剛站月線+法人連買=送分題;momentum=強動能)
+        if (!this._radarMatrixCache) {
+            try {
+                const r = await fetch(new URL('data/radar_matrix.json', ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(6000) });
+                this._radarMatrixCache = r.ok ? await r.json() : null;
+            } catch (_) { this._radarMatrixCache = null; }
+        }
+        const rm = this._radarMatrixCache?.data || {};
+        // swing 優先(波段起漲最像送分題),再補 momentum,去重
+        const picks = [];
+        const seen = new Set();
+        for (const item of [...(rm.swing || []), ...(rm.momentum || [])]) {
+            if (!item?.sym || seen.has(item.sym)) continue;
+            seen.add(item.sym); picks.push(item);
+            if (picks.length >= 8) break;
+        }
+        if (picks.length === 0) {
+            if (cntEl) cntEl.textContent = '尚無';
+            listEl.innerHTML = '<div class="text-[11px] text-gray-600 text-center py-2">⏳ 今日尚無強勢標的(等採礦更新)</div>';
+            return;
+        }
+        if (cntEl) cntEl.textContent = `🔥雷達 ${picks.length} 檔 · ${this._radarMatrixCache?.updated || ''}`;
+        listEl.innerHTML = picks.map(item => {
+            const name = this.getStockName(item.sym).replace(/</g, '&lt;');
+            const gain = typeof item.gain === 'number' ? `${item.gain > 0 ? '+' : ''}${item.gain}%` : '';
+            const status = String(item.status || '').replace(/</g, '&lt;').slice(0, 18);
+            return this._sendScoreRow(item.sym, name, `${status} ${gain}`);
         }).join('');
+    },
+
+    _sendScoreRow(sym, name, desc) {
+        return `<div class="flex items-center gap-2 py-1.5 px-2 rounded bg-yellow-900/20 hover:bg-yellow-900/30 cursor-pointer border border-yellow-800/40"
+            onclick="app.analyze('${sym}'); app.switchAppTab('diag'); app.vibrate(20);">
+            <span class="text-xs font-mono font-bold text-yellow-300 flex-shrink-0">${sym}</span>
+            <span class="text-[10px] text-gray-400 flex-shrink-0">${name}</span>
+            <span class="text-[10px] text-gray-200 flex-1 truncate">${desc}</span>
+            <span class="text-[10px] text-yellow-400">→</span>
+        </div>`;
     },
 
     _updateCostLabel() {
@@ -6696,6 +6750,15 @@ recent.forEach(d => {
         const is_chips_weak = _recent3.length === 3 && _recent3.every(r => _instSum(r) < 0);
         const instSum3 = _recent3.reduce((acc, r) => acc + _instSum(r), 0);
 
+        // 🟢 Tier1 賺錢引擎:善用既有但被埋沒的法人資料(全市場皆有,不限 watchlist)
+        const _recent10 = (this.rawDailyData || []).slice(-10);
+        let instBuyStreak = 0;                          // 法人連買天數(從最新往回數)
+        for (let i = _recent10.length - 1; i >= 0; i--) {
+            if (_instSum(_recent10[i]) > 0) instBuyStreak++; else break;
+        }
+        const instBuyDays = _recent10.filter(r => _instSum(r) > 0).length;   // 近10日法人買超天數
+        const maBullish = (ma5 > ma20) && (ma60 == null || isNaN(ma60) || ma20 > ma60);  // 多頭排列(季線缺值放寬)
+
         // 🏷️ 型態特徵標籤：舊字卡的數學邏輯 → 純文字標籤（灌 AI 大腦 + UI chip 雙軌）
         const _chu = this._computeChuTechProfile(this.activeData, this.indicators);
         const featTags = [];
@@ -6803,7 +6866,8 @@ recent.forEach(d => {
         this.currentStrategyContext = {
             season, def_val, t1_val, isIslandReversal, isBigBlackK, brokenPrevLow,
             chipSafety: { is_chips_weak, instSum3 },   // 供 AI prompt 直讀，免重算
-            featTags                                    // 型態特徵標籤（UI chip + 可供 prompt 取用）
+            featTags,                                   // 型態特徵標籤（UI chip + 可供 prompt 取用）
+            instBuyStreak, instBuyDays, maBullish       // 🟢 Tier1 正向因子(餵燈號 + prompt)
         };
 
         if (defValNum > 0) this._updateSWAlertConfig();
@@ -8743,6 +8807,10 @@ ${radarSection}
                   : (sig.level === '🔵' || sig.level === '🟢') ? '🟢強力買進'
                   : '🟡觀望或減碼')
                 : '';
+            // 📈 法人買盤動能(Tier1 餵 AI:連買天數是「送分題」的核心依據)
+            const _instStreakLine = sig
+                ? `法人連買 ${sig.instStreak || 0} 天、近10日買超 ${sig.instDays || 0}/10 天${sig.isLayup ? '(⭐已達送分題條件)' : ''}`
+                : '計算中';
 
             // 組裝避險基金總監 Prompt（soul 主導風格 + Category Router + 五大最高制約天條 + 強制 JSON 4 欄位）
             const prompt = `${soul}
@@ -8831,6 +8899,7 @@ ${radarSection}
 - 🧟 群魔亂舞漲停家數：${junkLine}
 - 🔥 大盤板塊輪動：${usMask(sectorRotationLine)}
 - 🎯 系統量化燈號（traffic_light 必須與此一致）：${sigLine}
+- 📈 法人買盤動能：${_instStreakLine}
 - 💎 本益比 PE：${_peLabel}${_isLowPE ? '（低 PE 區,符合保護傘條件）' : ''}
 - 📉 大盤危機判讀：${_bubbleSignalLine}
 - ${newsLine}

@@ -193,8 +193,9 @@ def main():
             # 條件：乖離率極低(股價貼著月線)，但特定大戶籌碼高度集中
             # ⚠️ 僅 CHIP_WATCHLIST(~50檔) 有分點資料，故此區候選天然受限
             bias_20 = (c - ma20) / ma20 * 100
+            sniper_added = False
             if -2 <= bias_20 <= 3:  # 股價在月線附近盤整
-                # 試圖讀取 chips 資料夾中的分點資料
+                # 主路徑:分點籌碼集中(僅 CHIP_WATCHLIST ~50 檔有資料)
                 chip_file = CHIPS_DIR / f"{sym}.json"
                 if chip_file.exists():
                     chip_data = json.loads(chip_file.read_text(encoding='utf-8'))
@@ -203,7 +204,6 @@ def main():
                         latest_chip = chips_list[-1]
                         tot_buy = latest_chip.get('tot_buy', 0)
                         if tot_buy > 0:
-                            # 計算前三大買超券商佔比
                             top3_buy = sum(
                                 b.get('buy', 0)
                                 for b in sorted(
@@ -212,16 +212,28 @@ def main():
                                 )[:3]
                             )
                             concentration = top3_buy / tot_buy * 100
-
-                            # 如果前三大主力吃掉 30% 以上的買盤，且股價還沒漲
                             if concentration >= 30:
                                 matrix['sniper'].append({
-                                    'sym': sym,
-                                    'close': round(c, 2),
-                                    'turnover_e': turnover_e,
-                                    'gain': day_gain,
+                                    'sym': sym, 'close': round(c, 2),
+                                    'turnover_e': turnover_e, 'gain': day_gain,
                                     'status': f"主力高度集中 {round(concentration, 1)}%"
                                 })
+                                sniper_added = True
+
+                # 🎯 替代路徑(全市場可判,不需分點):法人連買 + 貼月線 + 量增
+                # 解決原本 sniper 常 0 檔(分點只覆蓋 50 檔)→ 讓 1900+ 檔也有機會入選
+                if not sniper_added and turnover >= 100_000_000:
+                    inst_buy_5d = sum(
+                        1 for r in data[-5:]
+                        if (r.get('foreign_net', 0) + r.get('trust_net', 0)) > 0
+                    )
+                    v_avg_5s = sum(d.get('volume', 0) for d in data[-5:]) / 5
+                    if inst_buy_5d >= 4 and v > v_avg_5s:  # 近5日法人買≥4天 + 量增
+                        matrix['sniper'].append({
+                            'sym': sym, 'close': round(c, 2),
+                            'turnover_e': turnover_e, 'gain': day_gain,
+                            'status': f"法人連買{inst_buy_5d}/5天+貼月線"
+                        })
 
             processed_count += 1
 
