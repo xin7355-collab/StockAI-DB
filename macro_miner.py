@@ -851,9 +851,9 @@ def main():
         "retail_ls_error": None,
         "taifex_backwardation":       None,   # 台指逆價差（點，負值＝逆價差）
         "taifex_backwardation_error": None,
-        "m1b_pct":     42,                                    # TODO: 待對接央行 API
-        "m1b_label":   "當前熱度 42% (安全)",
-        "m1b_note":    "TODO: 待對接央行 M1B API（目前用安全預設）",
+        "m1b_pct":     None,                                 # 由 m1b_yoy 換算(FRED M1SL),null=待採
+        "m1b_label":   "待採",
+        "m1b_note":    "由 FRED M1SL 年增率換算流動性熱度;FRED 失敗時為 null",
         # ── 🌍 全球巨頭脈動（8 大國際指標，yfinance）──
         "gold_usd":       None, "gold_chg_pct":   None, "gold_error":   None,
         "wti_oil":        None, "wti_chg_pct":    None, "wti_error":    None,
@@ -969,6 +969,13 @@ def main():
         fred_extra = fetch_m1b_and_fed_assets()
         out["m1b_yoy"] = fred_extra.get("m1b_yoy")
         out["fed_assets_chg_pct"] = fred_extra.get("fed_assets_chg_pct")
+        # 流動性熱度:M1B 年增率換算 0-100(YoY 0%→30 偏冷、3%→55 中性、6%+→85 過熱)
+        _yoy = out["m1b_yoy"]
+        if _yoy is not None:
+            pct = max(0, min(100, round(30 + _yoy * 9, 0)))
+            out["m1b_pct"] = pct
+            zone = "過熱⚠️" if pct >= 75 else "中性" if pct >= 45 else "偏冷"
+            out["m1b_label"] = f"M1B年增 {_yoy}% · 熱度 {int(pct)}% ({zone})"
     except Exception as e:
         print(f"  ⚠️ FRED 央行資料失敗(不影響主流程):{e}")
         out["m1b_yoy"] = None

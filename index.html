@@ -961,10 +961,13 @@
             <!-- ════════ 【區 1】🇹🇼 台股風險指數 Hero（紅黑漸層大儀表）════════ -->
             <div class="bg-gradient-to-br from-red-950/40 via-[#0a0606] to-orange-950/30 border border-red-700/40 rounded-xl p-3 shadow-[0_0_25px_rgba(220,38,38,0.15)]">
                 <div class="flex items-center justify-between mb-1.5">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-base">🇹🇼</span>
-                        <span class="text-sm font-black text-red-300 tracking-wide">台股風險指數</span>
-                        <button onclick="app.showJargon('市場風險指數')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-base">🇹🇼</span>
+                            <span class="text-sm font-black text-red-300 tracking-wide">台股風險指數</span>
+                            <button onclick="app.showJargon('市場風險指數')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+                        </div>
+                        <span class="text-[9px] text-gray-500 ml-5">大盤環境總分 · 投機熱度/個股訊號見下方展開</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span id="warRiskDate" class="text-[9px] text-gray-600 font-mono"></span>
@@ -1269,6 +1272,7 @@
                     <span class="text-cyan-300">作戰指揮部 + 牛市泡沫詳細指標</span>
                     <span class="ml-auto text-[10px] text-gray-500">點擊展開 ▼</span>
                 </summary>
+                <div class="px-3 pt-2 -mb-1 text-[9px] text-gray-500 leading-relaxed">💡 環境風險 ≠ 投機熱度 ≠ 個股訊號,三層分開看更準(刻意不混成一個數字以免失真)</div>
                 <div class="px-3 pt-1 pb-3 flex flex-col gap-2.5">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🎯</span><span class="text-sm font-black text-cyan-300 tracking-wide">台股作戰指揮部</span></div>
                     <!-- 三維一體統一燈號 -->
@@ -5942,12 +5946,15 @@ recent.forEach(d => {
         const backColor = back == null ? 'text-gray-500' : back <= -100 ? 'text-green-400' : back >= 50 ? 'text-red-400' : 'text-gray-300';
         if ($('sccBack')) setTxt('sccBack', backText, backColor);
 
-        // 流動性熱度（_calcRiskScore 推；無則用 m1b_pct）
-        let liquidity = num(j.m1b_pct) ?? 42;
+        // 流動性熱度（_calcRiskScore 推；無則用真實 m1b_pct；都無顯「待採」不假裝數字）
+        let liquidity = num(j.m1b_pct);
         try { const rs = this._calcRiskScore?.(); if (rs != null) liquidity = Math.max(5, Math.min(95, rs)); } catch(e) {}
-        if ($('sccLiq')) setTxt('sccLiq', `${Math.round(liquidity)}%`,
-            liquidity < 50 ? 'text-green-400' : liquidity < 75 ? 'text-yellow-300' : 'text-red-400');
-        if ($('sccLiqBar')) $('sccLiqBar').style.width = `${Math.round(liquidity)}%`;
+        if ($('sccLiq')) {
+            if (liquidity == null) setTxt('sccLiq', '待採', 'text-gray-500');
+            else setTxt('sccLiq', `${Math.round(liquidity)}%`,
+                liquidity < 50 ? 'text-green-400' : liquidity < 75 ? 'text-yellow-300' : 'text-red-400');
+        }
+        if ($('sccLiqBar')) $('sccLiqBar').style.width = `${liquidity == null ? 0 : Math.round(liquidity)}%`;
 
         // 外資期現複合（文字版）
         const fi = this.fiShortQty, fiSpotNet = num(j.fi_spot_net);
@@ -6341,12 +6348,15 @@ recent.forEach(d => {
     },
 
     _sendScoreRow(sym, name, desc) {
-        return `<div class="flex items-center gap-2 py-1.5 px-2 rounded bg-yellow-900/20 hover:bg-yellow-900/30 cursor-pointer border border-yellow-800/40"
+        // 版面:股名(最左大字) → (代號)灰字 → 敘述換行在下方
+        return `<div class="py-2 px-2.5 rounded-lg bg-yellow-900/20 hover:bg-yellow-900/30 cursor-pointer border border-yellow-800/40"
             onclick="app.analyze('${sym}'); app.switchAppTab('diag'); app.vibrate(20);">
-            <span class="text-xs font-mono font-bold text-yellow-300 flex-shrink-0">${sym}</span>
-            <span class="text-[10px] text-gray-400 flex-shrink-0">${name}</span>
-            <span class="text-[10px] text-gray-200 flex-1 truncate">${desc}</span>
-            <span class="text-[10px] text-yellow-400">→</span>
+            <div class="flex items-center gap-2">
+                <span class="text-base font-black text-yellow-200">${name || sym}</span>
+                <span class="text-[11px] font-mono text-gray-400">(${sym})</span>
+                <span class="ml-auto text-sm text-yellow-400">→</span>
+            </div>
+            <div class="text-[11px] text-gray-300 mt-0.5 leading-snug">${desc}</div>
         </div>`;
     },
 
