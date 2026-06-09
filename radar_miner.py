@@ -44,14 +44,15 @@ def fetch_attention_disposal_status():
 
     def _fetch_openapi(url, status_label, threshold_label):
         """TWSE OpenAPI v1 解析(RESTful JSON list)。
-        嚴格 sym 驗證:必為 4 位純數字(上市/上櫃)或 00 開頭 5 位數(ETF),
-        避免抓到公告流水號污染(實測 Code 欄位曾回傳 6 位流水號)。
+        嚴格 sym 驗證:必為 4 位純數字(上市/上櫃)或 00 開頭 5 位數(ETF)。
+        回傳 (fetch_ok, out_dict):fetch_ok=False 表示網路/parse 失敗,True 表示
+        端點正常回應(out 即使是空 dict 也代表「今日無事」非錯誤)。
         """
         try:
             r = requests.get(url, headers=headers, timeout=10)
             rows = r.json()
             if not isinstance(rows, list):
-                return {}
+                return (False, {})
             # 偵錯:印第一筆 row 完整 schema,讓 workflow log 揭露 OpenAPI 真實欄位名
             if rows and isinstance(rows[0], dict):
                 print(f"   [debug] {url.rsplit('/',1)[-1]} 首筆 keys: {list(rows[0].keys())[:10]}")
@@ -60,37 +61,33 @@ def fetch_attention_disposal_status():
             for row in rows:
                 if not isinstance(row, dict):
                     continue
-                # 多候選欄位 fallback(不同端點欄位名略異)
                 sym = str(row.get('Code') or row.get('CompanyCode')
                           or row.get('Symbol') or row.get('StockNo')
                           or row.get('證券代號') or '').strip()
-                # 台股代號嚴格格式:4 位純數字 或 00 開頭 ETF (5 位)
                 if sym and ((sym.isdigit() and len(sym) == 4) or
                             (sym.startswith('00') and len(sym) == 5 and sym.isdigit())):
                     out[sym] = {"status": status_label, "threshold": threshold_label}
-            return out
+            return (True, out)
         except Exception as e:
             print(f"   ⚠️ {status_label} OpenAPI 失敗:{e}")
-            return {}
+            return (False, {})
 
-    # ── 注意股(TWSE OpenAPI v1)──
-    attention = _fetch_openapi(
+    notice_ok, attention = _fetch_openapi(
         "https://openapi.twse.com.tw/v1/announcement/notice",
         "⚠️ 注意股", "注意條款觸發")
-    print(f"   · 注意股:{len(attention)} 檔")
+    print(f"   · 注意股:{len(attention)} 檔 (fetch_ok={notice_ok})")
 
-    # ── 處置股(TWSE OpenAPI v1,後面合併會覆蓋注意股以呈現更嚴重狀態)──
-    disposal = _fetch_openapi(
+    punish_ok, disposal = _fetch_openapi(
         "https://openapi.twse.com.tw/v1/announcement/punish",
         "🚨 處置中", "已關禁閉")
-    print(f"   · 處置股:{len(disposal)} 檔")
+    print(f"   · 處置股:{len(disposal)} 檔 (fetch_ok={punish_ok})")
 
-    # 合併:處置覆蓋注意
     result = {**attention, **disposal}
 
-    # 斷崖防護:全失敗時沿用昨日 cache,絕不寫空檔
-    if not result and ATTENTION_FILE.exists():
-        print("🛡️  全部 API 失敗,沿用昨日 attention_status.json,不覆蓋")
+    # 斷崖防護:只在「兩個端點都 fetch 失敗(網路/parse 全爆)」時沿用昨日 cache。
+    # 若 fetch 成功但 result 是空 dict,代表今日全市場無事,合法寫入空檔覆蓋掉昨日。
+    if not (notice_ok or punish_ok) and ATTENTION_FILE.exists():
+        print("🛡️  兩個 OpenAPI 端點都失敗,沿用昨日 attention_status.json,不覆蓋")
         return
 
     payload = {
