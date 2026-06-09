@@ -171,22 +171,34 @@ def main():
                 })
 
             # --- 🐢 戰區二：烏龜過河 (波段起漲) ---
-            # 條件：法人(外資+投信)連買3天、剛站上月線 (昨天在月線下，今天在月線上)、成交量放大
-            inst_buy_3d = all(
-                (r.get('foreign_net', 0) + r.get('trust_net', 0)) > 0
-                for r in data[-3:]
+            # 放寬條件:法人「近5日內 ≥3 天買超」+「近3日內首次站月線」+ 量增
+            # 原 AND 三嚴條件導致候選極稀(常 0 檔),改為彈性 AND 仍嚴格但有實用性
+            inst_buy_days_5 = sum(
+                1 for r in data[-5:]
+                if (r.get('foreign_net', 0) + r.get('trust_net', 0)) > 0
             )
-            cross_20ma = (pc <= p_ma20 and c > ma20)
+            inst_support = inst_buy_days_5 >= 3
+            # 近 3 日內任一日從月線下穿月線上(首次站月線)
+            cross_20ma_recent = False
+            for k in range(-3, 0):
+                if k - 1 < -len(data):
+                    continue
+                kc = data[k].get('close', 0)
+                kpc = data[k - 1].get('close', 0) if abs(k - 1) <= len(data) else 0
+                # 用該天的 ma20 近似(資料只到 last,近3日內用 ma20 近似可接受)
+                if kpc > 0 and kpc <= ma20 and kc > ma20:
+                    cross_20ma_recent = True
+                    break
             v_avg_5 = sum(d.get('volume', 0) for d in data[-5:]) / 5
             vol_expanding = v > v_avg_5
 
-            if inst_buy_3d and cross_20ma and vol_expanding:
+            if inst_support and cross_20ma_recent and vol_expanding:
                 matrix['swing'].append({
                     'sym': sym,
                     'close': round(c, 2),
                     'turnover_e': turnover_e,
                     'gain': day_gain,
-                    'status': "剛站上月線+法人連買"
+                    'status': f"近3日站月線+法人買{inst_buy_days_5}/5天"
                 })
 
             # --- 🎯 戰區三：狙擊手 (籌碼集中) ---

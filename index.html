@@ -80,7 +80,9 @@
         .modal-base { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(2px); z-index: 300; display: flex; position: fixed; inset: 0; align-items: center; justify-content: center; padding: 1rem; }
         .modal-base.hidden { display: none !important; }
         .modal-content { background-color: #1c2128; border: 1px solid #30363d; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; padding: 1.25rem; }
-        .zoomable-zone { transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center; will-change: transform; }
+        .zoomable-zone { transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center; will-change: transform; overscroll-behavior: contain; touch-action: pan-y; }
+        .scrollable-main { overscroll-behavior: contain; }
+        #mainChartWrap, #mainChart { overscroll-behavior: contain; touch-action: pan-y; }
         
         .sparkline-canvas { width: 100%; height: 30px; }
     </style>
@@ -4140,7 +4142,11 @@ const marginByDate = {};
 
         } catch(e) {
             const msg = e.message === 'no_data'
-                ? `<div class="text-center py-3 text-gray-600 text-xs">此標的不在監控清單或資料尚未採礦<br><span class="text-[9px]">（監控清單：${this.CHIP_WATCHLIST?.length || 0} 檔，每日16:30後更新）</span></div>`
+                ? `<div class="bg-yellow-900/20 border border-yellow-700/60 rounded-lg p-3 text-center">
+                       <div class="text-yellow-300 text-xs font-bold mb-1">📌 此股不在主力分點監控清單</div>
+                       <div class="text-gray-400 text-[10px] leading-relaxed">系統每日 16:30 後對熱門 50 檔 (含台積電 / 鴻海 / 0050 等) 採礦分點資料。<br>
+                       一般股仍可看「三大法人」與「融資融券」籌碼,只是無「前三大主力券商」明細。</div>
+                   </div>`
                 : `<div class="text-center py-3 text-gray-600 text-xs">暫無分點資料</div>`;
             box.innerHTML = msg;
         }
@@ -4345,7 +4351,14 @@ const marginByDate = {};
         if (!el) return;
         const s = this._chipPeriodSums(this.rawDailyData || [], n);
         if (!s.hasMargin) {
-            el.innerHTML = '<div class="flex items-center justify-center py-6 text-red-400 text-xs text-center font-bold">⚠️ 融資券抓取資料失敗<br><span class="text-gray-500 text-[10px] font-normal">TWSE/FinMind 來源皆無回應,等下次採礦重試</span></div>';
+            // 區分「真抓不到」vs「沒人玩」:OHLCV 正常但融資券全 0,代表此股冷清非抓取失敗
+            const arr = this.rawDailyData || [];
+            const hasOhlcv = arr.length > 0 && arr.slice(-5).some(r => (r.close || 0) > 0);
+            if (hasOhlcv) {
+                el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-400 text-xs text-center font-bold">💤 此股融資券極少交易<br><span class="text-gray-500 text-[10px] font-normal">大型權值股 / ETF 多為現股投資人,參考價值低</span></div>';
+            } else {
+                el.innerHTML = '<div class="flex items-center justify-center py-6 text-red-400 text-xs text-center font-bold">⚠️ 融資券抓取資料失敗<br><span class="text-gray-500 text-[10px] font-normal">TWSE/FinMind 來源皆無回應,等下次採礦重試</span></div>';
+            }
             return;
         }
         const maxVal = Math.max(Math.abs(s.marginDelta), Math.abs(s.shortDelta), 1);
@@ -4452,8 +4465,14 @@ const marginByDate = {};
 
 const prompt = `你是華爾街頂級避險基金的首席籌碼分析師。請用「國中生都能秒懂」的生活化口吻與比喻，為初學者解析以下籌碼資料，並給出具備機構視野的明確建議。
 【股票代號：${sym}】
-【1/3/5/10 日多週期籌碼動態（張）】
-${chipsTxt}
+【三大法人 1/3/5/10 日動態（張）】
+${instText}
+
+【融資融券 1/3/5/10 日變化（張）】
+${marginText}
+
+【主力分點 多週期 Top3 進出】
+${brokerText}
 請依照下列 5 個重點依序輸出（請加上表情符號，語氣活潑，避免艱澀專有名詞）：
 1️⃣ 外資動向：外資目前是在倒貨還是囤貨？力道強弱？
 2️⃣ 內資大哥（投信與自營）：內資有沒有偷偷進場護盤的跡象？
