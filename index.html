@@ -793,6 +793,17 @@
                     <div class="bg-amber-950/30 border border-amber-900/30 rounded-lg px-2.5 py-1.5 text-xs text-amber-200/70 leading-relaxed mb-2">
                         💡 <b class="text-amber-300">主力分點</b>是每家券商每天買賣的紀錄。主力持續買進通常是好信號；主力大量賣出要小心。
                     </div>
+                    <!-- 🔴 盤中主力動向估算(Fugle 即時內外盤,非官方分點)-->
+                    <div class="bg-[#0d1117] border border-red-900/40 rounded-lg p-2.5 mb-2">
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <span class="text-xs font-bold text-red-300">🔴 盤中主力動向(即時估算)</span>
+                            <button onclick="app.showJargon('盤中主力估算'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button>
+                        </div>
+                        <div class="text-[9px] text-gray-500 mb-1.5">⚠️ 盤中估算(內外盤+量價),非官方分點;真實分點收盤後下方顯示</div>
+                        <button id="intradayFlowBtn" onclick="app.estimateIntradayFlow(app.currentSymbolId)" class="w-full text-[11px] font-bold text-red-200 bg-red-900/30 border border-red-700/50 rounded py-1.5 hover:bg-red-900/50 transition-colors">🔄 盤中即時更新(Fugle)</button>
+                        <div id="intradayFlowBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mt-1.5 overflow-hidden"><div id="intradayFlowBarFill" class="bg-gradient-to-r from-red-500 to-orange-500 h-full transition-all" style="width:0%"></div></div>
+                        <div id="intradayFlowResult" class="hidden mt-2 text-[11px] leading-relaxed"></div>
+                    </div>
                     <div id="brokerChipContent" class="w-full mt-2">
                         <div class="text-center py-6 text-gray-600 text-xs animate-pulse">📡 正在攔截分點情報...</div>
                     </div>
@@ -1845,7 +1856,8 @@ const app = {
         '量縮窒息': '成交量萎縮到 5 日均量的 6 成以下 = 買賣雙方都觀望。盤整末端的量縮常是變盤前兆,要等放量表態才知道方向。',
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
-        '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。'
+        '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
+        '盤中主力估算': '⚠️ 重要:台灣證交所「券商分點進出」只在收盤後(約 15:30)才公布,盤中根本沒有真實分點資料。這裡的「盤中主力動向」是用 Fugle 即時「內外盤掛單 + 漲跌量價」估算的方向參考,不是官方分點,可能與收盤後真實分點有出入。盤中當參考、收盤後看下方真實分點才準。'
     },
 
     // 統一 API base URL 解析：window.API_BASE_URL（雲端部署注入）優先，
@@ -3398,6 +3410,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const changePrice = q.changePrice ?? q.priceChange ?? null;
             let prevClose = q.referencePrice ?? q.previousClose ?? null;
             if (prevClose == null && changePrice != null) prevClose = price - changePrice;
+            // 內外盤(委買/委賣 5 檔總量)— 供盤中主力動向估算
+            const _sumQty = (arr) => Array.isArray(arr) ? arr.reduce((s, o) => s + (o.size ?? o.volume ?? o.quantity ?? 0), 0) : 0;
+            const bidVol = _sumQty(q.bids ?? q.bid ?? q.bidOrders);
+            const askVol = _sumQty(q.asks ?? q.ask ?? q.askOrders);
             const result = {
                 price,
                 open:      q.openPrice  ?? q.priceOpen?.price  ?? price,
@@ -3406,6 +3422,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 volume:    q.total?.tradeVolume ?? q.total?.tradeShares ?? 0,
                 prevClose,
                 changePrice,
+                bidVol, askVol,
                 isHistorical: false,
             };
             this._fugleCache[symbol] = { data: result, ts: Date.now() };
@@ -6177,6 +6194,53 @@ recent.forEach(d => {
             srcEl.textContent = allNull ? '(範例)' : (nullCnt === 0 ? '(實時)' : `(實時·${nullCnt}欄待採)`);
             srcEl.classList.toggle('opacity-60', nullCnt > 0);
         }
+    },
+
+    // 🔴 盤中主力動向估算(Fugle 即時內外盤 + 量價,誠實標示為估算非分點)
+    async estimateIntradayFlow(sym) {
+        sym = sym || this.currentSymbolId;
+        const btn = document.getElementById('intradayFlowBtn');
+        const bar = document.getElementById('intradayFlowBar');
+        const fill = document.getElementById('intradayFlowBarFill');
+        const out = document.getElementById('intradayFlowResult');
+        if (!out) return;
+        const keys = [this.settings.fugleToken1, this.settings.fugleToken2, this.settings.fugleToken3,
+                      this.settings.fugleToken4, this.settings.fugleToken5].filter(k => k && k.trim());
+        if (!keys.length) { this.showToast('請先到 ⚙️ 設定填 Fugle token 才能盤中即時估算'); return; }
+        const tpe = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+        const hm = tpe.getHours() * 60 + tpe.getMinutes();
+        const inSession = (tpe.getDay() >= 1 && tpe.getDay() <= 5) && hm >= 540 && hm <= 810;
+
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 即時抓取中...'; }
+        if (bar) { bar.classList.remove('hidden'); if (fill) fill.style.width = '40%'; }
+        let q = null;
+        try { q = await this.fetchFugleData(sym); } catch (_) {}
+        if (fill) fill.style.width = '100%';
+
+        if (!q || !q.price) {
+            out.classList.remove('hidden');
+            out.innerHTML = '<div class="text-gray-500">⚠️ Fugle 無回應或額度用盡,稍後再試</div>';
+        } else {
+            const chgPct = (q.prevClose > 0) ? (q.price - q.prevClose) / q.prevClose * 100 : 0;
+            const bid = q.bidVol || 0, ask = q.askVol || 0, tot = bid + ask;
+            const buyPressure = tot > 0 ? bid / tot * 100 : null;
+            let verdict, vColor;
+            if (chgPct > 1 && (buyPressure == null || buyPressure >= 50)) { verdict = '🔺 主力偏多承接'; vColor = 'text-red-300'; }
+            else if (chgPct < -1 && (buyPressure == null || buyPressure < 50)) { verdict = '🔻 主力偏空調節'; vColor = 'text-green-300'; }
+            else { verdict = '➖ 多空拉鋸觀望'; vColor = 'text-gray-300'; }
+            const pressLine = buyPressure != null
+                ? `委買 ${buyPressure.toFixed(0)}% vs 委賣 ${(100-buyPressure).toFixed(0)}%`
+                : '內外盤資料不足';
+            out.classList.remove('hidden');
+            out.innerHTML = `
+                <div class="font-black ${vColor} text-sm mb-1">${verdict}</div>
+                <div class="text-gray-300">即時 <b class="${chgPct>=0?'text-red-300':'text-green-300'}">${q.price}(${chgPct>=0?'+':''}${chgPct.toFixed(2)}%)</b></div>
+                <div class="text-gray-400">五檔掛單:${pressLine}</div>
+                <div class="text-[9px] text-gray-500 mt-1">${inSession ? `盤中 ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')} 即時估算` : '⚠️ 非盤中,為最近成交快照'} · 僅供參考,以收盤後真實分點為準</div>`;
+        }
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 盤中即時更新(Fugle)'; }
+        if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
+        this.vibrate(15);
     },
 
     // 🌡️ 載入 4 戰區 + 9 細分板塊熱度（後端 build_sector_heat 預先運算）
