@@ -186,6 +186,7 @@ CHIP_WATCHLIST = sorted(set([
     '2049','4551','2206',                       # 實體機器人：上銀、智伸科、三陽
     '2881','2882','2891',                       # 金融避風港：富邦金、國泰金、中信金
     '3491','2313','6285',                       # 低軌衛星：昇達科、華通、啟碁
+    '2408','2344','8299',                       # 記憶體 DRAM：南亞科、華邦電、群聯（8299 已在,補 2408/2344 確保板塊每輪必採）
 ]))
 HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調整）
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
@@ -560,6 +561,9 @@ def fetch_market_margin(d: date) -> dict:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         print(f"  [MI_MARGN] stat={j.get('stat')} tables={len(j.get('tables', []) or [])}")
+        if j.get('stat') != 'OK':
+            # 🔍 診斷強化:stat 非 OK 時印 raw 前 300 字,GHA log 一眼看出是限流/無資料/格式變更
+            print(f"  ⚠️ [MI_MARGN] stat != OK,raw={str(j)[:300]}")
         if j.get('stat') == 'OK':
             tables = j.get('tables', []) or []
             # 🛡️【關鍵修復】MI_MARGN 回傳多個 table，舊版誤抓「市場總計表」(僅 3-7 列、
@@ -584,23 +588,43 @@ def fetch_market_margin(d: date) -> dict:
             else:
                 _, target_table, idx_id = best
                 fields = target_table.get('fields', [])
-                idx_mb = next((i for i, f in enumerate(fields) if '融資' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
-                idx_sb = next((i for i, f in enumerate(fields) if '融券' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
-                print(f"  [MI_MARGN] 選中個股表：{best[0]} 檔 | 融資欄 idx={idx_mb} 融券欄 idx={idx_sb} | fields={fields[:6]}")
+                # 🔍 欄位定位多級 fallback:先精確(融資+今日/現在餘額)→ 再寬鬆(含「資/券」+「餘」排除買賣進出)
+                def _find_col(fields, key1):
+                    # key1 = '融資' or '融券';先精確後寬鬆,涵蓋 TWSE 各種 schema 變體
+                    exact = next((i for i, f in enumerate(fields) if key1 in (f or '') and ('今日餘額' in f or '現在餘額' in f)), None)
+                    if exact is not None:
+                        return exact
+                    loose = next((i for i, f in enumerate(fields) if key1 in (f or '') and '餘額' in f and '買進' not in f and '賣出' not in f and '償還' not in f), None)
+                    if loose is not None:
+                        return loose
+                    # 最寬鬆:單字「資/券」+「餘」(對付欄名被簡寫)
+                    short_key = key1[-1]   # '資' or '券'
+                    return next((i for i, f in enumerate(fields) if short_key in (f or '') and '餘' in (f or '') and '買' not in (f or '') and '賣' not in (f or '')), None)
+                idx_mb = _find_col(fields, '融資')
+                idx_sb = _find_col(fields, '融券')
+                print(f"  [MI_MARGN] 選中個股表：{best[0]} 檔 | 融資欄 idx={idx_mb} 融券欄 idx={idx_sb} | fields={fields}")
                 if idx_mb is None or idx_sb is None:
-                    print(f"  ⚠️ 融資/融券餘額欄位找不到，fields={fields}")
+                    # 🔍 找不到欄位印完整 fields(已在上行),GHA log 比對真實欄名後可再放寬條件
+                    print(f"  ⚠️ 融資/融券餘額欄位找不到(idx_mb={idx_mb} idx_sb={idx_sb})，完整 fields={fields}")
                 else:
+                    short_zero = 0
                     for r in target_table.get('data', []):
                         sid = str(r[idx_id]).strip()
                         if not _valid_stock(sid):   # 跳過總計列 / 非個股列
                             continue
                         try:
+                            sb = int(str(r[idx_sb]).replace(',', ''))
                             res[sid] = {
                                 'margin_balance': int(str(r[idx_mb]).replace(',', '')),
-                                'short_balance':  int(str(r[idx_sb]).replace(',', '')),
+                                'short_balance':  sb,
                             }
+                            if sb == 0:
+                                short_zero += 1
                         except Exception:
                             pass
+                    # 🔍 若融券「全部」為 0(實務不可能,2330/2603 一定有券)= 欄位抓錯,印警告供診斷
+                    if res and short_zero == len(res):
+                        print(f"  ⚠️ [MI_MARGN] 融券餘額全 0({len(res)} 檔),疑欄位 idx_sb={idx_sb} 抓錯,fields={fields}")
     except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
@@ -621,9 +645,12 @@ def fetch_market_margin(d: date) -> dict:
     except Exception as e: print(f"  ⚠️ 上櫃融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
-    # 3. FinMind 備援：TWSE/TPEX 兩條都失敗時，至少給整批一份資料避免前端 100% 全 0
-    if not res and not _FINMIND_BLOCKED:
-        print(f"  ⚠️ [融資券] TWSE+TPEX 兩條都失敗，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…")
+    # 3. FinMind 備援：兩種情況啟動 —(a) TWSE/TPEX 整批失敗;(b) 有資料但融券全 0(TWSE 欄位抓錯)
+    #    後者是融券長期全 0 的根因:TWSE 給了融資卻漏融券,改由 FinMind 整批覆蓋補回融券
+    _short_all_zero = bool(res) and all((v.get('short_balance', 0) == 0) for v in res.values())
+    if (not res or _short_all_zero) and not _FINMIND_BLOCKED:
+        reason = "TWSE+TPEX 兩條都失敗" if not res else f"融券全 0({len(res)} 檔,疑 TWSE 欄位抓錯)"
+        print(f"  ⚠️ [融資券] {reason}，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…")
         try:
             url_fm = (
                 f'https://api.finmindtrade.com/api/v4/data'

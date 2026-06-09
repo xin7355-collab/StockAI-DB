@@ -479,24 +479,31 @@ def fetch_us2y_yield():
 
 # ════════ 🌍 全球巨頭脈動採集（8 大國際資金真實流向）════════
 def _fetch_yf_close(ticker, name):
-    """通用 yfinance 收盤 + 日漲幅%（取 5 日內最新 close vs 前一日 close）
-    含防 429 限流：本輪 yfinance 連續呼叫達 ~14 次，呼叫前小睡 0.4s，回空再重試 1 次（睡 1s）。"""
+    """通用 yfinance 收盤 + 日漲幅%。
+    🛡️ 根治日經/恆生「休市回 NaN → 一直 null」:用 dropna() 取「最後兩筆有效收盤」,
+    而非固定 iloc[-1]/[-2](日股港股假日多,最後一格常是 NaN)。
+    退階重試:5d 取不到 → 拉長 1mo 再試,涵蓋連假。含防 429:呼叫前小睡。"""
     import time
     last_err = f"{name} 重試後仍失敗"
-    for attempt in range(2):
+    periods = ["5d", "1mo"]   # 退階:5 日不夠就拉 1 個月,確保連假後仍有 2 個有效交易日
+    for attempt, period in enumerate(periods):
         try:
             time.sleep(0.4 if attempt == 0 else 1.0)
             import yfinance as yf
-            hist = yf.Ticker(ticker).history(period="5d", auto_adjust=False)
-            if hist is None or hist.empty or len(hist) < 2:
-                last_err = f"{name} yfinance 回空或 <2 日"
+            hist = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+            if hist is None or hist.empty:
+                last_err = f"{name} yfinance 回空(period={period})"
                 continue
-            last = float(hist["Close"].iloc[-1])
-            prev = float(hist["Close"].iloc[-2])
-            # 🛡️ NaN 防線:pandas 缺值 float() 不會炸,但寫進 JSON 變字面 NaN(非法 JSON)
-            # → 瀏覽器 JSON.parse 直接 throw,整頁 macro_risk 變(範例)。NaN != NaN 自比即可偵測。
+            # dropna 去掉休市/缺值列,取最後兩筆「真實有效」收盤
+            closes = hist["Close"].dropna()
+            if len(closes) < 2:
+                last_err = f"{name} 有效收盤 <2 筆(period={period},疑長假/新上市)"
+                continue
+            last = float(closes.iloc[-1])
+            prev = float(closes.iloc[-2])
+            # 雙保險:dropna 後仍自比 NaN(極端髒資料),避免寫進 JSON 變字面 NaN
             if last != last or prev != prev:
-                last_err = f"{name} Close 含 NaN(休市/資料髒)"
+                last_err = f"{name} Close 仍含 NaN(資料髒,period={period})"
                 continue
             chg_pct = round((last - prev) / prev * 100, 2) if prev > 0 else 0
             return round(last, 2), chg_pct, None
@@ -750,17 +757,21 @@ def fetch_taifex_backwardation():
     """
     try:
         import re
-        # 1) ^TWII 現貨收盤
+        # 1) ^TWII 現貨收盤(用 dropna 取最後有效值,避免休市 NaN 害整個逆價差變 null)
         spot = None
         try:
             import yfinance as yf
             hist = yf.Ticker("^TWII").history(period="5d", auto_adjust=False)
             if hist is not None and not hist.empty:
-                spot = float(hist["Close"].iloc[-1])
+                closes = hist["Close"].dropna()
+                if len(closes) >= 1:
+                    v = float(closes.iloc[-1])
+                    if v == v:   # 非 NaN
+                        spot = v
         except Exception as e:
             return None, f"^TWII 取得失敗：{str(e)[:60]}"
         if spot is None:
-            return None, "^TWII 無現貨收盤"
+            return None, "^TWII 無有效現貨收盤(休市/NaN)"
         # 2) 期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML
         fut_close = _taifex_openapi_tx_fut_close()
         if fut_close is not None:

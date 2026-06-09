@@ -106,6 +106,10 @@ RSS_SOURCES = {
     "鉅亨網台股":       "https://www.cnyes.com/rss/cat/tw_stock",
     "MoneyDJ 即時新聞": "https://www.moneydj.com/RSS/RSSNews.aspx",
     "Reddit r/stocks":  "https://www.reddit.com/r/stocks/.rss",
+    # ➕ 使用者指定來源(有公開 RSS 才可程式化抓):自由財經 / 聯合新聞網 / 中央社財經
+    "自由財經":         "https://news.ltn.com.tw/rss/business.xml",
+    "聯合新聞網財經":   "https://udn.com/rssfeed/news/2/6644?ch=news",
+    "中央社財經":       "https://feeds.feedburner.com/rsscna/finance",
     # PTT RSSHub 預留（自架 rsshub instance 後解開）
     # "PTT Stock":      "https://rsshub.app/ptt/stock",
 }
@@ -209,6 +213,9 @@ GLOBAL_NEWS_SOURCES = {
     "Huang Nvidia":   "https://news.google.com/rss/search?q=%22Jensen+Huang%22+OR+Nvidia+AI+chip&hl=en&gl=US&ceid=US:en",
     "TSMC Apple":     "https://news.google.com/rss/search?q=TSMC+OR+%22Tim+Cook%22+Apple+iPhone&hl=en&gl=US&ceid=US:en",
     "AMD Amazon":     "https://news.google.com/rss/search?q=AMD+OR+%22Jeff+Bezos%22+Amazon&hl=en&gl=US&ceid=US:en",
+    # ➕ 使用者指定來源:中央社國際財經(繁中、datacenter 可達)+ NASA 發射公告(衛星題材)
+    "中央社國際":     "https://feeds.feedburner.com/rsscna/intworld",
+    "NASA 發射":      "https://www.nasa.gov/feed/",
 }
 GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
 
@@ -283,8 +290,9 @@ def fetch_global_news():
 
     # 批次呼叫 Groq 分析每則新聞對台股的影響（控 token 只翻前 15 則）
     # [Key 輪動] 走 _call_groq_with_rotation,撞 429 自動換下一把冰 key
+    # 翻譯上限 15→20(新聞源從 8 擴到 10 個,給更多翻譯名額;每則 sleep 2.5s 仍在 30 RPM 內)
     analyzed = []
-    for i, item in enumerate(items[:15]):
+    for i, item in enumerate(items[:20]):
         impact, level, title_zh = "暫無分析", "neutral", ""
         if GROQ_API_KEYS:
             prompt = (
@@ -313,7 +321,7 @@ def fetch_global_news():
 
         analyzed.append({**item, "title_zh": title_zh, "impact": impact, "impact_level": level})
         if (i + 1) % 5 == 0:
-            print(f"  進度: {i+1}/{min(len(items), 15)}")
+            print(f"  進度: {i+1}/{min(len(items), 20)}")
 
     output = {
         "updated": now_utc.strftime("%Y-%m-%d %H:%M UTC"),
