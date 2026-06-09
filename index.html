@@ -1193,7 +1193,9 @@
                     <span class="text-base font-black text-purple-300 tracking-wide">資金板塊輪動</span>
                     <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
                 </div>
-                <div class="text-[11px] text-gray-400 mb-2.5 mt-1">熱錢流向哪個產業一目了然 — <span class="text-red-400 font-bold">🔺 紅=漲</span> / <span class="text-green-400 font-bold">🔻 綠=跌</span>(台股慣例)</div>
+                <div class="text-[11px] text-gray-400 mb-1.5 mt-1">熱錢流向哪個產業一目了然 — <span class="text-red-400 font-bold">🔺 紅=漲</span> / <span class="text-green-400 font-bold">🔻 綠=跌</span>(台股慣例)</div>
+                <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="w-full mb-2 text-[11px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1.5">🔄 盤中即時更新(Fugle)</button>
+                <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all" style="width:0%"></div></div>
                 <div class="grid grid-cols-2 gap-2.5">
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="us">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🇺🇸 美股</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
@@ -1235,10 +1237,15 @@
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">高股息防禦盤</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">富邦金·國泰金·中信金</div>
                         </div>
-                        <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d] col-span-2" data-sector="leo">
+                        <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="leo">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🛰️ 低軌衛星</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">星鏈供應鏈受惠股</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">昇達科·華通·啟碁</div>
+                        </div>
+                        <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="dram">
+                            <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">💾 記憶體 DRAM</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
+                            <div class="text-[11px] text-gray-300 leading-tight font-bold">記憶體報價回升受惠</div>
+                            <div class="text-[10px] text-gray-500 leading-tight mt-0.5">南亞科·華邦電·群聯</div>
                         </div>
                 </div>
             </div>
@@ -6250,6 +6257,64 @@ recent.forEach(d => {
         }
         // 順手更新:大跌泡沫判讀(送分題/系統準度已遷至雷達頁 layup tab)
         this._updateBubbleCrashCard();
+    },
+
+    // 🔄 盤中即時更新資金板塊(手動觸發 + 讀取條,防 ban:純手動 + Fugle 既有 1.1s 間隔/token 輪動/60s 快取)
+    async refreshSectorIntraday() {
+        const btn = document.getElementById('sectorIntradayBtn');
+        const bar = document.getElementById('sectorIntradayBar');
+        const fill = document.getElementById('sectorIntradayBarFill');
+        // 盤中時段提醒(台北 09:00-13:30),非盤中仍可按但提示
+        const now = new Date();
+        const tpe = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+        const hm = tpe.getHours() * 60 + tpe.getMinutes();
+        const inSession = (tpe.getDay() >= 1 && tpe.getDay() <= 5) && hm >= 540 && hm <= 810;
+        if (!inSession) this.showToast('非盤中時段,顯示的是最近成交價', 'info');
+        // 各板塊領頭股(美股板塊 Fugle 抓不到,跳過;其餘 9 個台股板塊)
+        const leads = { server:'2382', power:'1519', packaging:'2330', cpo:'3450',
+                        cooling:'3017', robot:'2049', finance:'2881', leo:'3491', dram:'2408' };
+        const keys = [this.settings.fugleToken1, this.settings.fugleToken2, this.settings.fugleToken3,
+                      this.settings.fugleToken4, this.settings.fugleToken5].filter(k => k && k.trim());
+        if (!keys.length) { this.showToast('請先到 ⚙️ 設定填 Fugle token 才能盤中即時更新'); return; }
+
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 即時抓取中...'; }
+        if (bar) bar.classList.remove('hidden');
+        const entries = Object.entries(leads);
+        let done = 0;
+        const liveChg = {};
+        for (const [sector, sym] of entries) {
+            try {
+                const q = await this.fetchFugleData(sym);
+                if (q && q.price && q.prevClose) {
+                    liveChg[sector] = (q.price - q.prevClose) / q.prevClose * 100;
+                }
+            } catch (_) {}
+            done++;
+            if (fill) fill.style.width = `${Math.round(done / entries.length * 100)}%`;
+        }
+        // 更新板塊 chip(紅漲綠跌)
+        const fmt = (chg) => {
+            if (chg == null || isNaN(chg)) return { txt: '--', cls: 'text-gray-500' };
+            const arrow = chg > 0.3 ? '🔺' : chg < -0.3 ? '🔻' : '→';
+            const cls = chg > 0.3 ? 'text-red-400' : chg < -0.3 ? 'text-green-400' : 'text-gray-400';
+            return { txt: `${arrow}${chg > 0 ? '+' : ''}${chg.toFixed(2)}%`, cls };
+        };
+        for (const [sector, chg] of Object.entries(liveChg)) {
+            const el = document.querySelector(`[data-sector="${sector}"] .sector-heat`);
+            if (!el) continue;
+            const f = fmt(chg);
+            el.textContent = f.txt;
+            el.className = `text-sm font-mono font-black sector-heat ${f.cls}`;
+        }
+        // 記憶體:盤中即時結果存 localStorage(沿用上批機制 key)
+        try { localStorage.setItem('sectorIntradayLastGood', JSON.stringify({ at: Date.now(), chg: liveChg })); } catch(_){}
+        const srcEl = document.getElementById('sectorSource');
+        if (srcEl) { srcEl.textContent = `(盤中 ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')})`; srcEl.classList.remove('opacity-60'); }
+
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 盤中即時更新(Fugle)'; }
+        if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
+        const got = Object.keys(liveChg).length;
+        this.showToast(got ? `✅ 已更新 ${got} 個板塊即時漲跌` : '⚠️ Fugle 額度用盡或 token 失效,稍後再試', got ? 'info' : 'error');
     },
 
     // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
