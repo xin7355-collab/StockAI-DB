@@ -246,6 +246,13 @@ def main():
     print(f"   GROQ_API_KEYS_BATCH: 載入 {len(GROQ_KEYS)} 把 key")
     if not GROQ_KEYS:
         print("❌ 未設定 GROQ_API_KEYS_BATCH,跳過(workflow 會繼續部署)")
+        # 防呆:殘留 0 byte 空檔會讓前端 fetch parse failed,跳過時順手清掉
+        try:
+            if OUTPUT_FILE.exists() and OUTPUT_FILE.stat().st_size == 0:
+                OUTPUT_FILE.unlink()
+                print(f"   🧹 已刪除 0 byte 殘檔 {OUTPUT_FILE}")
+        except Exception as _e:
+            pass
         sys.exit(0)
 
     syms = collect_hotlist()

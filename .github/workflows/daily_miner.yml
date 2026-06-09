@@ -182,7 +182,9 @@ jobs:
 
       - name: 🌙 首席 AI 夜間批次分析（熱門清單預算式 → data/chief_ai_cache.json）
         env:
-          GROQ_API_KEYS_BATCH: ${{ secrets.GROQ_API_KEYS_BATCH }}
+          # Fallback 鏈:優先 BATCH 專用池 → 退回白天 KEYS 池 → 退回單把 KEY,
+          # 使用者不必再開第三個 secret,白天 key 池可共用給夜間批次
+          GROQ_API_KEYS_BATCH: ${{ secrets.GROQ_API_KEYS_BATCH || secrets.GROQ_API_KEYS || secrets.GROQ_API_KEY }}
         run: python chief_ai_batch.py || echo "⚠️ chief_ai_batch.py 失敗，繼續部署（白天 fallback 走自填 key）"
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)

@@ -1163,52 +1163,25 @@
                 </div>
             </div>
 
-            <!-- 🎯 4 大資金輪動核心戰區（後端 build_sector_heat 預先運算燈號）-->
+            <!-- 📦 9 大細分板塊(獨立成卡;原「4 大資金輪動核心戰區」已移除,直接看細分更不重複)-->
             <div class="bg-[#010409] rounded-xl border border-purple-900/50 p-3">
-                <div class="flex items-center gap-1.5"><span class="text-sm">🧭</span><span class="text-sm font-black text-purple-300 tracking-wide">4 大資金輪動核心戰區</span><span id="warzoneSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span></div>
-                <div class="text-[10px] text-gray-500 mb-2 mt-0.5">🔥 一眼看穿熱錢主力流向：上面 4 戰區點開可展開 9 大細分板塊。</div>
-                <div class="grid grid-cols-2 gap-2" id="warzoneGrid">
-                    <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] cursor-pointer hover:border-purple-500/60 transition-colors" data-warzone="us" onclick="document.getElementById('subSectorsBox').open=true; app.vibrate(20);">
-                        <div class="flex items-center justify-between mb-1"><span class="text-base font-black text-gray-200">🇺🇸 美股大氣候</span><span class="text-[9px] font-mono text-gray-500" data-warzone-chg>--</span></div>
-                        <div class="text-lg font-black tracking-wide" data-warzone-label>🌊 資金湧入</div>
-                        <div class="text-[10px] text-gray-500 mt-0.5" data-warzone-advice>順勢偏多操作</div>
-                        <div class="text-[8px] text-gray-600 mt-1 leading-tight">代表股：NVDA·TSM·SPX</div>
-                    </div>
-                    <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] cursor-pointer hover:border-purple-500/60 transition-colors" data-warzone="ai_core" onclick="document.getElementById('subSectorsBox').open=true; app.vibrate(20);">
-                        <div class="flex items-center justify-between mb-1"><span class="text-base font-black text-gray-200">🖥️ AI 核心硬體</span><span class="text-[9px] font-mono text-gray-500" data-warzone-chg>--</span></div>
-                        <div class="text-lg font-black tracking-wide" data-warzone-label>❄️ 量縮防守</div>
-                        <div class="text-[10px] text-gray-500 mt-0.5" data-warzone-advice>逢回測月線建倉</div>
-                        <div class="text-[8px] text-gray-600 mt-1 leading-tight">代表股：廣達·緯穎·奇鋐</div>
-                    </div>
-                    <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] cursor-pointer hover:border-purple-500/60 transition-colors" data-warzone="power" onclick="document.getElementById('subSectorsBox').open=true; app.vibrate(20);">
-                        <div class="flex items-center justify-between mb-1"><span class="text-base font-black text-gray-200">⚡ 重電與基建</span><span class="text-[9px] font-mono text-gray-500" data-warzone-chg>--</span></div>
-                        <div class="text-lg font-black tracking-wide" data-warzone-label>🔥 狂熱</div>
-                        <div class="text-[10px] text-gray-500 mt-0.5" data-warzone-advice>短線追高警戒</div>
-                        <div class="text-[8px] text-gray-600 mt-1 leading-tight">代表股：華城·士電·中興電</div>
-                    </div>
-                    <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] cursor-pointer hover:border-purple-500/60 transition-colors" data-warzone="finance" onclick="document.getElementById('subSectorsBox').open=true; app.vibrate(20);">
-                        <div class="flex items-center justify-between mb-1"><span class="text-base font-black text-gray-200">🛡️ 金融避風港</span><span class="text-[9px] font-mono text-gray-500" data-warzone-chg>--</span></div>
-                        <div class="text-lg font-black tracking-wide" data-warzone-label>💤 資金流出</div>
-                        <div class="text-[10px] text-gray-500 mt-0.5" data-warzone-advice>暫不介入</div>
-                        <div class="text-[8px] text-gray-600 mt-1 leading-tight">代表股：富邦金·兆豐金·國泰金</div>
-                    </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-sm">📦</span>
+                    <span class="text-sm font-black text-purple-300 tracking-wide">9 大細分板塊</span>
+                    <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
                 </div>
-                <!-- 📦 9 大細分板塊（常時展開）-->
-                <details id="subSectorsBox" class="mt-2 group" open>
-                    <summary class="text-[11px] text-gray-400 font-bold cursor-pointer py-1 px-2 bg-[#0d1117] border border-[#30363d] rounded hover:bg-[#161b22]">📦 9 大細分板塊（CoWoS、機器人、低軌衛星…）</summary>
-                    <div class="text-[9px] text-gray-600 mt-1.5 mb-1 px-1">📖 燈號：<span class="text-red-400 font-bold">🔺 紅 = 上漲</span> / <span class="text-green-400 font-bold">🔻 綠 = 下跌</span>（台股慣例：紅漲綠跌）</div>
-                    <div class="grid grid-cols-2 gap-2 mt-1">
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="us"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🇺🇸 美股</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">NVDA·SOX·SPX</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="server"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🖥️ 伺服器代工</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">廣達·緯穎·緯創</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="power"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">⚡ 重電基建</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">華城·士電·中興電</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="packaging"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">📦 先進封裝</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">台積電·矽品·PMC</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="cpo"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🔗 高速傳輸CPO</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">聯亞光電·明泰·晶碩</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="cooling"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">❄️ 散熱零組件</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">奇鋐·雙鴻·健策</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="robot"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🤖 實體機器人</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">上銀·智伸科·三陽</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="finance"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🏦 金融避風港</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">富邦金·國泰金·中信金</div></div>
-                            <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d] col-span-2" data-sector="leo"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🛰️ 低軌衛星</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">昇達科·華通·啟碁</div></div>
-                    </div>
-                </details>
+                <div class="text-[10px] text-gray-500 mb-2 mt-0.5">CoWoS、機器人、低軌衛星…一眼看穿熱錢流向。<span class="text-red-400 font-bold">🔺 紅=漲</span> / <span class="text-green-400 font-bold">🔻 綠=跌</span>(台股慣例)</div>
+                <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="us"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🇺🇸 美股</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">NVDA·SOX·SPX</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="server"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🖥️ 伺服器代工</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">廣達·緯穎·緯創</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="power"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">⚡ 重電基建</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">華城·士電·中興電</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="packaging"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">📦 先進封裝</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">台積電·矽品·PMC</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="cpo"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🔗 高速傳輸CPO</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">聯亞光電·明泰·晶碩</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="cooling"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">❄️ 散熱零組件</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">奇鋐·雙鴻·健策</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="robot"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🤖 實體機器人</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">上銀·智伸科·三陽</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d]" data-sector="finance"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🏦 金融避風港</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">富邦金·國泰金·中信金</div></div>
+                        <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d] col-span-2" data-sector="leo"><div class="flex items-center justify-between mb-0.5"><span class="text-xs font-bold text-gray-200">🛰️ 低軌衛星</span><span class="text-xs font-mono font-bold text-gray-500 sector-heat">--</span></div><div class="text-[10px] text-gray-500 leading-tight">昇達科·華通·啟碁</div></div>
+                </div>
             </div>
             <div class="bg-[#010409] rounded-lg border border-[#30363d] p-3 flex flex-col gap-2.5">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🎯</span><span class="text-sm font-black text-cyan-300 tracking-wide">台股作戰指揮部</span></div>
@@ -1251,7 +1224,8 @@
                     <!-- 4 維度雷達卡 -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
                         <!-- 1. 證券板塊狂熱度 -->
-                        <div class="bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                        <div class="relative bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                            <button onclick="app.showJargon('證券狂熱度'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
                             <div class="flex items-center gap-1 mb-1">
                                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                                 <span class="text-[8px] text-red-400 font-bold">🏦 證券狂熱度</span>
@@ -1260,7 +1234,8 @@
                             <div id="bubbleBrokerHeatSub" class="text-[8px] text-red-500/80 mt-0.5">偏多溫熱</div>
                         </div>
                         <!-- 2. 融資槓桿失控（進度條） -->
-                        <div class="bg-[#0d1117] border border-orange-800/50 rounded p-1.5">
+                        <div class="relative bg-[#0d1117] border border-orange-800/50 rounded p-1.5">
+                            <button onclick="app.showJargon('融資槓桿'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
                             <div class="flex items-center gap-1 mb-1">
                                 <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
                                 <span class="text-[8px] text-orange-400 font-bold">⚖️ 融資槓桿</span>
@@ -1271,7 +1246,8 @@
                             <div id="bubbleMarginSub" class="text-[8px] text-orange-400 mt-1 font-mono">82%・高危險區</div>
                         </div>
                         <!-- 3. 群魔亂舞指數 -->
-                        <div class="bg-[#0d1117] border border-yellow-800/50 rounded p-1.5">
+                        <div class="relative bg-[#0d1117] border border-yellow-800/50 rounded p-1.5">
+                            <button onclick="app.showJargon('群魔亂舞'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
                             <div class="flex items-center gap-1 mb-1">
                                 <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
                                 <span class="text-[8px] text-yellow-400 font-bold">🧟‍♂️ 群魔亂舞</span>
@@ -1280,7 +1256,8 @@
                             <div id="bubbleJunkSub" class="text-[8px] text-yellow-500/80 mt-0.5">投機氣氛偏熱</div>
                         </div>
                         <!-- 4. 高檔出貨 K 線判定 -->
-                        <div class="bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                        <div class="relative bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                            <button onclick="app.showJargon('出貨K線'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
                             <div class="flex items-center gap-1 mb-1">
                                 <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                                 <span class="text-[8px] text-red-400 font-bold">📉 出貨 K 線</span>
@@ -1741,6 +1718,7 @@ const app = {
         '證券狂熱度': '券商股漲幅。當券商股漲 >3%，代表很多人在開戶（散戶大量湧入）= 末升段警訊。擦鞋童連券商都漲了，行情通常快結束。',
         '融資槓桿': '全市場融資餘額相對水位。> 80% 代表槓桿過高，隨時可能多殺多（融資斷頭引發雪崩）。歷史頂部前融資都會先衝高。',
         '群魔亂舞': '當日漲停家數。≥ 30 家漲停=「雞犬升天」末升段警訊；20-30 家=狂熱階段、<10 家=理性主升段、=0 家=空頭恐慌。',
+        '出貨K線': '高檔長上影線、跳空缺口未補、爆量大黑K是主力倒貨的經典訊號。連續出現 2~3 根→短線轉空,即使月線未跌破也要先減碼。常與融資爆量同時出現,是末升段最後的鈴聲。',
         '擦鞋童指標': '當連最不關心股市的人（擦鞋童/計程車司機/Uber 司機）都在報明牌時，行情通常已經到頂部最後一段。1929 美股崩盤前的經典訊號。'
     },
 
@@ -5842,13 +5820,19 @@ recent.forEach(d => {
         const $ = id => document.getElementById(id);
         const setTxt = (id, val, color) => { const el = $(id); if (!el) return; el.textContent = val; if (color) el.className = el.className.replace(/text-(?:gray|green|yellow|orange|red|cyan)-\d{3}(?:\s+animate-pulse)?/g, color); };
 
+        // fetch 韌性:timeout 8 秒 + 失敗時等 1.5 秒重試一次(網路差時不會白白吞掉)
         let j = null;
-        try {
-            const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const url = new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`;
-            const r = await fetch(url, { signal: AbortSignal.timeout(4000) });
-            if (r.ok) j = await r.json();
-        } catch(e) {}
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+        const macroUrl = new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`;
+        for (let attempt = 0; attempt < 2 && !j; attempt++) {
+            try {
+                const r = await fetch(macroUrl, { signal: AbortSignal.timeout(8000) });
+                if (r.ok) j = await r.json();
+            } catch(e) {
+                if (attempt === 1) console.warn('[updateGlobalRiskGrid] macro_risk fetch 兩次都失敗:', e?.message || e);
+            }
+            if (!j && attempt === 0) await new Promise(res => setTimeout(res, 1500));
+        }
         // fetch 整個失敗 → 不覆蓋預設值
         this._macroRiskCache = j || null;
         const isFake = !j;
@@ -6055,23 +6039,14 @@ recent.forEach(d => {
             }
         } catch(e) {}
 
-        const srcEl = document.getElementById('warzoneSource');
+        const srcEl = document.getElementById('sectorSource');
         const isFake = !j || !j.warzones;
         if (srcEl) { srcEl.textContent = isFake ? '(範例)' : '(實時)'; srcEl.classList.toggle('opacity-60', isFake); }
         this._sectorHeatCache = j || null;
         if (isFake) return;
 
-        // 4 戰區大卡
-        for (const [key, wz] of Object.entries(j.warzones)) {
-            const card = document.querySelector(`[data-warzone="${key}"]`);
-            if (!card) continue;
-            const lblEl = card.querySelector('[data-warzone-label]');
-            const advEl = card.querySelector('[data-warzone-advice]');
-            const chgEl = card.querySelector('[data-warzone-chg]');
-            if (lblEl) { lblEl.textContent = wz.label; lblEl.className = `text-lg font-black tracking-wide ${WZ_COLOR[wz.level] || 'text-gray-300'}`; }
-            if (advEl) advEl.textContent = wz.advice;
-            if (chgEl) { const f = fmtChg(wz.chg); chgEl.textContent = f.txt; chgEl.className = `text-[10px] font-mono font-bold ${f.cls}`; }
-        }
+        // 註:「4 大資金輪動核心戰區」已於 UI 移除(與 9 細分功能重疊),
+        //     j.warzones 仍保留供 runGlobalMarketAI 透過 _sectorHeatCache 引用作 AI prompt 輸入。
         // 9 細分箭頭 + 漲幅%（取代純圓點）
         if (j.sectors) {
             for (const [key, s] of Object.entries(j.sectors)) {

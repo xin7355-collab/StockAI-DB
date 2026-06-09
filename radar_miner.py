@@ -41,45 +41,44 @@ def fetch_attention_disposal_status():
         "Accept-Language": "zh-TW,zh;q=0.9",
         "Referer": "https://www.twse.com.tw/",
     }
-    result = {}
 
-    # ── 注意股(TWT54U)──
-    try:
-        r = requests.get(
-            "https://www.twse.com.tw/exchangeReport/TWT54U?response=json",
-            headers=headers, timeout=10,
-        )
-        j = r.json()
-        if j.get('stat') == 'OK':
-            for row in j.get('data', []):
-                if len(row) < 2:
+    def _fetch_openapi(url, status_label, threshold_label):
+        """TWSE OpenAPI v1 解析(RESTful JSON list,row 含 Code / CompanyCode 等鍵)。"""
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            rows = r.json()
+            if not isinstance(rows, list):
+                return {}
+            out = {}
+            for row in rows:
+                if not isinstance(row, dict):
                     continue
-                sym = str(row[1]).strip()
+                # TWSE OpenAPI 不同端點欄位名略異(Code / CompanyCode / 證券代號 皆有可能)
+                sym = str(row.get('Code') or row.get('CompanyCode')
+                          or row.get('證券代號') or '').strip()
                 if sym and sym.isdigit():
-                    result[sym] = {"status": "⚠️ 注意股", "threshold": "注意條款觸發"}
-            print(f"   · 注意股:{sum(1 for v in result.values() if v['status'].startswith('⚠️'))} 檔")
-    except Exception as e:
-        print(f"   ⚠️ TWSE 注意股 API 失敗:{e}")
+                    out[sym] = {"status": status_label, "threshold": threshold_label}
+            return out
+        except Exception as e:
+            print(f"   ⚠️ {status_label} OpenAPI 失敗:{e}")
+            return {}
 
-    # ── 處置股(TWT55U,覆蓋注意股 = 更嚴重)──
-    try:
-        r = requests.get(
-            "https://www.twse.com.tw/exchangeReport/TWT55U?response=json",
-            headers=headers, timeout=10,
-        )
-        j = r.json()
-        if j.get('stat') == 'OK':
-            for row in j.get('data', []):
-                if len(row) < 2:
-                    continue
-                sym = str(row[1]).strip()
-                if sym and sym.isdigit():
-                    result[sym] = {"status": "🚨 處置中", "threshold": "已關禁閉"}
-            print(f"   · 處置股:{sum(1 for v in result.values() if v['status'].startswith('🚨'))} 檔")
-    except Exception as e:
-        print(f"   ⚠️ TWSE 處置股 API 失敗:{e}")
+    # ── 注意股(TWSE OpenAPI v1)──
+    attention = _fetch_openapi(
+        "https://openapi.twse.com.tw/v1/announcement/notice",
+        "⚠️ 注意股", "注意條款觸發")
+    print(f"   · 注意股:{len(attention)} 檔")
 
-    # 斷崖防護:全失敗時沿用昨日 cache
+    # ── 處置股(TWSE OpenAPI v1,後面合併會覆蓋注意股以呈現更嚴重狀態)──
+    disposal = _fetch_openapi(
+        "https://openapi.twse.com.tw/v1/announcement/punish",
+        "🚨 處置中", "已關禁閉")
+    print(f"   · 處置股:{len(disposal)} 檔")
+
+    # 合併:處置覆蓋注意
+    result = {**attention, **disposal}
+
+    # 斷崖防護:全失敗時沿用昨日 cache,絕不寫空檔
     if not result and ATTENTION_FILE.exists():
         print("🛡️  全部 API 失敗,沿用昨日 attention_status.json,不覆蓋")
         return
