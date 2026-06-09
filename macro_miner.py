@@ -493,6 +493,11 @@ def _fetch_yf_close(ticker, name):
                 continue
             last = float(hist["Close"].iloc[-1])
             prev = float(hist["Close"].iloc[-2])
+            # 🛡️ NaN 防線:pandas 缺值 float() 不會炸,但寫進 JSON 變字面 NaN(非法 JSON)
+            # → 瀏覽器 JSON.parse 直接 throw,整頁 macro_risk 變(範例)。NaN != NaN 自比即可偵測。
+            if last != last or prev != prev:
+                last_err = f"{name} Close 含 NaN(休市/資料髒)"
+                continue
             chg_pct = round((last - prev) / prev * 100, 2) if prev > 0 else 0
             return round(last, 2), chg_pct, None
         except Exception as e:
@@ -1001,8 +1006,20 @@ def main():
         out["upcoming_macro_events"] = []
 
     # 寫檔（最輕量）— 任何 IO 錯誤不能讓整個 daily_miner 崩潰
+    # 🛡️ NaN 最後防線:json.dumps 預設 allow_nan=True 會輸出字面 NaN(非法 JSON),
+    # 瀏覽器 JSON.parse 直接 throw → 前端整頁(範例)。寫檔前遞迴掃成 None,再用 allow_nan=False 鎖死。
+    def _sanitize_nan(v):
+        if isinstance(v, float) and (v != v or v in (float('inf'), float('-inf'))):
+            return None
+        if isinstance(v, dict):
+            return {k: _sanitize_nan(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [_sanitize_nan(x) for x in v]
+        return v
     try:
-        OUTPUT_FILE.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        OUTPUT_FILE.write_text(
+            json.dumps(_sanitize_nan(out), ensure_ascii=False, indent=2, allow_nan=False),
+            encoding="utf-8")
         print(f"✅ 已輸出 → {OUTPUT_FILE}")
     except Exception as e:
         print(f"⚠️ macro_risk.json 寫檔失敗（不影響其他流程）：{e}")

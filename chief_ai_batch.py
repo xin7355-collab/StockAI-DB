@@ -207,11 +207,11 @@ def _build_intel(sym: str) -> dict | None:
     if len(closes) >= 61 and closes[-61] > 0:
         chg60 = round((last - closes[-61]) / closes[-61] * 100, 2)
 
-    # 近 5 日法人淨買(萬張)
+    # 近 5 日外資淨買賣(張):foreign_net 單位是「股」,÷1000 = 張(1 張 = 1000 股)
     fi_5d = 0
     for r in rows[-5:]:
         fi_5d += (r.get("foreign_net") or 0)
-    fi_5d_kw = round(fi_5d / 1000, 1)   # 張 → 千張
+    fi_5d_lots = round(fi_5d / 1000, 1)   # 股 → 張
 
     # name 已在上方 isinstance 分支設定(list 格式用 sym,dict 格式用 raw.get)
     return {
@@ -220,7 +220,7 @@ def _build_intel(sym: str) -> dict | None:
         "close": last,
         "ma5": ma5, "ma20": ma20, "ma60": ma60, "ma120": ma120,
         "chg60pct": chg60,
-        "foreign_5d_kw": fi_5d_kw,
+        "foreign_5d_lots": fi_5d_lots,
     }
 
 
@@ -251,7 +251,7 @@ def build_prompt(intel: dict) -> str:
 - {_stance(s['close'], s['ma60'], '60MA(季線)')}
 - {_stance(s['close'], s['ma120'], '120MA(半年線)')}
 - 60 日累計漲幅:{s['chg60pct']}%
-- 近 5 日外資累計淨買:{s['foreign_5d_kw']} 千張({'買超' if s['foreign_5d_kw'] > 0 else '賣超' if s['foreign_5d_kw'] < 0 else '持平'})
+- 近 5 日外資累計淨買:{s['foreign_5d_lots']} 張({'買超' if s['foreign_5d_lots'] > 0 else '賣超' if s['foreign_5d_lots'] < 0 else '持平'})
 - 庫存狀態:空手(假設,使用者可在 App 自行覆寫成本)
 
 ⚠️ 只准輸出純 JSON,**必須有且只有這 4 個 key**,禁 ```json 標籤、禁前後說明:
