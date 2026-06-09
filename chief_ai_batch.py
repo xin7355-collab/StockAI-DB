@@ -45,7 +45,22 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 SLEEP_BETWEEN_CALLS = 2.5   # 同 universal_radar.py:346 防 429
 
 # ── [Key 輪動] 鏡像 universal_radar 同款邏輯 ────────────────────────────────
-_groq_env = os.environ.get("GROQ_API_KEYS_BATCH", "")
+# Multi-name secret fallback:使用者 secret 命名常見多種拼法,優先順序取第一個有值,
+# 避免「設了 secret 但名字稍微差一字」導致整批跑空。順序:BATCH 專用 → KEYS 池 → 單把 KEY
+_GROQ_ENV_NAMES = [
+    "GROQ_API_KEYS_BATCH",   # 標準 (BATCH 池)
+    "GROQ_API_KEY_BATCH",    # 常見拼法漏 S
+    "GROQ_BATCH_API_KEYS",   # 常見拼法字序錯
+    "GROQ_API_KEYS",         # 白天池(fallback)
+    "GROQ_API_KEY",          # 單把(fallback)
+]
+_groq_env = ""
+_groq_src = None
+for _name in _GROQ_ENV_NAMES:
+    _v = os.environ.get(_name, "").strip()
+    if _v:
+        _groq_env, _groq_src = _v, _name
+        break
 GROQ_KEYS = [t.strip() for t in _groq_env.split(",") if t.strip()]
 _idx = 0
 _cooldown = {}   # idx -> unix_ts 解凍時間
@@ -243,16 +258,25 @@ def collect_hotlist() -> list[str]:
 
 def main():
     print(f"🌙 首席 AI 夜間批次分析 — {date.today().isoformat()}")
-    print(f"   GROQ_API_KEYS_BATCH: 載入 {len(GROQ_KEYS)} 把 key")
+    if GROQ_KEYS:
+        print(f"   ✅ 載入 {len(GROQ_KEYS)} 把 key (src: {_groq_src})")
+    else:
+        print(f"   ❌ 五個 env 變體 ({', '.join(_GROQ_ENV_NAMES)}) 全空")
     if not GROQ_KEYS:
-        print("❌ 未設定 GROQ_API_KEYS_BATCH,跳過(workflow 會繼續部署)")
-        # 防呆:殘留 0 byte 空檔會讓前端 fetch parse failed,跳過時順手清掉
+        # 主動覆蓋:寫一份合法 placeholder JSON,確保前端永遠 fetch 得到可 parse 的內容
+        # (取代原本「unlink 0 byte 殘檔」做法 — unlink 在 deploy 時序上會被底層鋪設覆寫)
         try:
-            if OUTPUT_FILE.exists() and OUTPUT_FILE.stat().st_size == 0:
-                OUTPUT_FILE.unlink()
-                print(f"   🧹 已刪除 0 byte 殘檔 {OUTPUT_FILE}")
+            OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "updated": date.today().isoformat(),
+                    "_skipped": True,
+                    "_reason": "no_groq_key",
+                    "stocks": {}
+                }, f, ensure_ascii=False)
+            print(f"   📝 已寫入 placeholder {OUTPUT_FILE}(workflow 繼續部署)")
         except Exception as _e:
-            pass
+            print(f"   ⚠️ placeholder 寫入失敗: {_e}")
         sys.exit(0)
 
     syms = collect_hotlist()

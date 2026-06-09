@@ -43,20 +43,30 @@ def fetch_attention_disposal_status():
     }
 
     def _fetch_openapi(url, status_label, threshold_label):
-        """TWSE OpenAPI v1 解析(RESTful JSON list,row 含 Code / CompanyCode 等鍵)。"""
+        """TWSE OpenAPI v1 解析(RESTful JSON list)。
+        嚴格 sym 驗證:必為 4 位純數字(上市/上櫃)或 00 開頭 5 位數(ETF),
+        避免抓到公告流水號污染(實測 Code 欄位曾回傳 6 位流水號)。
+        """
         try:
             r = requests.get(url, headers=headers, timeout=10)
             rows = r.json()
             if not isinstance(rows, list):
                 return {}
+            # 偵錯:印第一筆 row 完整 schema,讓 workflow log 揭露 OpenAPI 真實欄位名
+            if rows and isinstance(rows[0], dict):
+                print(f"   [debug] {url.rsplit('/',1)[-1]} 首筆 keys: {list(rows[0].keys())[:10]}")
+                print(f"   [debug] 首筆 sample: {str(rows[0])[:220]}")
             out = {}
             for row in rows:
                 if not isinstance(row, dict):
                     continue
-                # TWSE OpenAPI 不同端點欄位名略異(Code / CompanyCode / 證券代號 皆有可能)
+                # 多候選欄位 fallback(不同端點欄位名略異)
                 sym = str(row.get('Code') or row.get('CompanyCode')
+                          or row.get('Symbol') or row.get('StockNo')
                           or row.get('證券代號') or '').strip()
-                if sym and sym.isdigit():
+                # 台股代號嚴格格式:4 位純數字 或 00 開頭 ETF (5 位)
+                if sym and ((sym.isdigit() and len(sym) == 4) or
+                            (sym.startswith('00') and len(sym) == 5 and sym.isdigit())):
                     out[sym] = {"status": status_label, "threshold": threshold_label}
             return out
         except Exception as e:
