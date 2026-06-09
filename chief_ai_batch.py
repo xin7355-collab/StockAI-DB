@@ -35,6 +35,24 @@ DATA_DIR = Path("data")
 RADAR_FILE = DATA_DIR / "radar_matrix.json"
 OUTPUT_FILE = DATA_DIR / "chief_ai_cache.json"
 
+
+def _write_placeholder(reason, stocks=None):
+    """寫一份合法 placeholder JSON,確保前端永遠 fetch 得到可 parse 的內容。
+    在 main() 開頭先呼叫一次 → 即使後續 crash,deploy 也不會推 0 byte 殘檔。
+    (根治:原本只有「無 key」才寫 placeholder,擋不住「有 key 但中途 crash」。)
+    """
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        OUTPUT_FILE.write_text(json.dumps({
+            "updated": date.today().isoformat(),
+            "_placeholder": True,
+            "_reason": reason,
+            "stocks": stocks or {},
+        }, ensure_ascii=False), encoding="utf-8")
+        print(f"   📝 placeholder 已落地({reason}) → {OUTPUT_FILE}")
+    except Exception as _e:
+        print(f"   ⚠️ placeholder 寫入失敗: {_e}")
+
 # 固定大盤/熱門 ETF 清單(無論 radar 結果如何永遠算這些)
 FIXED_HOTLIST = ["2330", "^TWII", "0050", "0056", "00878", "00929"]
 MAX_PICKS_PER_REGION = 10   # radar 每區取前 N 檔(共 3 區)
@@ -258,25 +276,17 @@ def collect_hotlist() -> list[str]:
 
 def main():
     print(f"🌙 首席 AI 夜間批次分析 — {date.today().isoformat()}")
+    # 🛡️ 根治 0 byte:開頭就先寫一份合法 placeholder。
+    #    即使下方任何一步 crash(且被 workflow 的 || echo 吞掉),
+    #    deploy 也只會推這份合法 JSON,絕不會是 0 byte 殘檔。
+    _write_placeholder("startup_guard")
+
     if GROQ_KEYS:
         print(f"   ✅ 載入 {len(GROQ_KEYS)} 把 key (src: {_groq_src})")
     else:
         print(f"   ❌ 五個 env 變體 ({', '.join(_GROQ_ENV_NAMES)}) 全空")
     if not GROQ_KEYS:
-        # 主動覆蓋:寫一份合法 placeholder JSON,確保前端永遠 fetch 得到可 parse 的內容
-        # (取代原本「unlink 0 byte 殘檔」做法 — unlink 在 deploy 時序上會被底層鋪設覆寫)
-        try:
-            OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-                json.dump({
-                    "updated": date.today().isoformat(),
-                    "_skipped": True,
-                    "_reason": "no_groq_key",
-                    "stocks": {}
-                }, f, ensure_ascii=False)
-            print(f"   📝 已寫入 placeholder {OUTPUT_FILE}(workflow 繼續部署)")
-        except Exception as _e:
-            print(f"   ⚠️ placeholder 寫入失敗: {_e}")
+        _write_placeholder("no_groq_key")
         sys.exit(0)
 
     syms = collect_hotlist()
@@ -285,20 +295,24 @@ def main():
     out_stocks: dict = {}
     success = 0
     for n, sym in enumerate(syms, 1):
-        intel = _build_intel(sym)
-        if not intel:
-            print(f"  [{n}/{len(syms)}] {sym}:資料不足,跳過")
-            continue
+        try:
+            intel = _build_intel(sym)
+            if not intel:
+                print(f"  [{n}/{len(syms)}] {sym}:資料不足,跳過")
+                continue
 
-        prompt = build_prompt(intel)
-        result = call_groq(prompt, label=f"{sym}")
-        if result and result.get("detail_action"):
-            result["_ts"] = int(time.time())
-            out_stocks[sym] = result
-            success += 1
-            print(f"  [{n}/{len(syms)}] {sym} ✅")
-        else:
-            print(f"  [{n}/{len(syms)}] {sym} ❌ Groq 無回應")
+            prompt = build_prompt(intel)
+            result = call_groq(prompt, label=f"{sym}")
+            if result and result.get("detail_action"):
+                result["_ts"] = int(time.time())
+                out_stocks[sym] = result
+                success += 1
+                print(f"  [{n}/{len(syms)}] {sym} ✅")
+            else:
+                print(f"  [{n}/{len(syms)}] {sym} ❌ Groq 無回應")
+        except Exception as _e:
+            # 單檔失敗不可拖垮整批(這正是過去 0 byte 的元兇之一)
+            print(f"  [{n}/{len(syms)}] {sym} 💥 例外跳過: {str(_e)[:80]}")
 
         _advance()   # 每檔強制換 key,均勻消耗額度
         time.sleep(SLEEP_BETWEEN_CALLS)
@@ -314,4 +328,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:
+        # 頂層保險:main 任何未捕捉例外 → 確保 OUTPUT_FILE 仍是合法 JSON
+        print(f"💥 chief_ai_batch 頂層例外: {e}")
+        if not (OUTPUT_FILE.exists() and OUTPUT_FILE.stat().st_size > 2):
+            _write_placeholder("top_level_crash")
+        sys.exit(0)

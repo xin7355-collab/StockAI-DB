@@ -6307,9 +6307,9 @@ recent.forEach(d => {
         }
         listEl.innerHTML = greens.slice(0, 10).map(([sym, v]) => {
             const summary = String(v.summary || '').replace(/</g, '&lt;').slice(0, 30);
-            const name = (this._symNameMap?.[sym] || '');
+            const name = this.getStockName(sym).replace(/</g, '&lt;');
             return `<div class="flex items-center gap-2 py-1.5 px-2 rounded bg-yellow-900/20 hover:bg-yellow-900/30 cursor-pointer border border-yellow-800/40"
-                onclick="app.setSym('${sym}'); app.switchTab('diag'); app.vibrate(20);">
+                onclick="app.analyze('${sym}'); app.switchAppTab('diag'); app.vibrate(20);">
                 <span class="text-xs font-mono font-bold text-yellow-300 flex-shrink-0">${sym}</span>
                 <span class="text-[10px] text-gray-400 flex-shrink-0">${name}</span>
                 <span class="text-[10px] text-gray-200 flex-1 truncate">${summary}</span>
