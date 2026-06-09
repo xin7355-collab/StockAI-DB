@@ -398,7 +398,18 @@
                             <div class="font-black text-purple-300">🎯 狙擊手（籌碼集中）</div>
                             <div class="pl-3"><span class="text-gray-500">演算法：</span>股價貼著 <b class="text-amber-300">月線</b> 盤整、前三大主力買盤集中度 &gt;= <b class="text-amber-300">30%</b></div>
                             <div class="pl-3"><span class="text-gray-500">紀律：</span>月線盤整期精準現股狙擊試單。<b class="text-red-300">天條:主力一連賣我們就跑！</b></div>
+                            <div class="pl-3 mt-1.5 border-l-2 border-amber-700/50 pl-2"><span class="text-gray-400 font-bold">🥣 碗型底頸線回測:</span>底部突破後回測 <b class="text-amber-300">頸線</b>,若遇「大盤回檔但量能極度萎縮」且頸線有守 → <b class="text-amber-300">絕佳買點</b>(冠軍操盤手實戰常用)</div>
+                            <div class="pl-3 mt-1 border-l-2 border-amber-700/50 pl-2"><span class="text-gray-400 font-bold">📈 上升軌道下緣:</span>業績成長股沿 <b class="text-amber-300">上升軌道</b> 走揚,回測 <b class="text-amber-300">軌道下緣</b> 收長下影線時 → 精準狙擊</div>
                         </li>
+                    </ul>
+                </div>
+                <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2 rounded-r mt-2">
+                    <div class="font-black text-red-300 mb-1">🔪 崩盤接刀與高乖離防呆 ｜ 風控天條</div>
+                    <div class="text-gray-300 mb-1.5 text-[12px]">大跌時的鐵律,違反即賠光半年波段成果。</div>
+                    <ul class="list-disc list-inside text-[12px] text-gray-400 space-y-1 pl-2">
+                        <li>大跌時嚴禁介入 <b class="text-amber-300">創高且乖離過大</b> 的標的,極易開盤跌停被關</li>
+                        <li>高檔若出現 <b class="text-amber-300">放量大黑K</b> → <b class="text-red-300">必須無情停利</b>,當天賣不到明天跳空缺口認賠</li>
+                        <li>前期飆股遇連續跌停 → <b class="text-red-300">絕對禁止於月線接刀!</b>必須耐心等待 <b class="text-amber-300">季線 (60MA)</b> 方可重新建倉</li>
                     </ul>
                 </div>
                 <div class="bg-green-900/15 border-l-4 border-green-500 pl-3 pr-2 py-2 rounded-r">
@@ -430,12 +441,14 @@
                     </ul>
                 </div>
                 <div class="bg-indigo-900/15 border-l-4 border-indigo-500 pl-3 pr-2 py-2 rounded-r">
-                    <div class="font-black text-indigo-300 mb-1">🦅 夜盤 15:00 ~ 次日 05:00</div>
+                    <div class="font-black text-indigo-300 mb-1">🦅 夜盤 15:00 ~ 次日 05:00 ｜ 台指期貨夜盤避險</div>
                     <div class="text-gray-300 mb-1">夜盤期貨避險,守住隔日開盤跳空風險。</div>
                     <ul class="list-disc list-inside text-[12px] text-gray-400 space-y-0.5 pl-2">
                         <li><b class="text-amber-300">台指期夜盤</b>：15:00 開盤,反映美股盤前與歐股,可作為當沖隔日的多空風向球</li>
                         <li><b class="text-red-300">VIX 期貨</b>：恐慌指數飆升 → 隔日台股大概率跳空低開,庫存先設止損</li>
                         <li>重大持倉者：夜盤可考慮買入賣權避險（保險概念,不必全倉,5~10% 部位即可）</li>
+                        <li><b class="text-amber-300">📉 選擇權 Put (買進賣權)</b>:利用高槓桿做資金保護傘,大跌時報酬倍數放大,小額即可保大部位</li>
+                        <li class="text-amber-200 font-bold">🏆 冠軍心法:避險單若遇大跌趨勢確立,<b class="text-red-300">切勿因微小獲利太早平倉</b>,以免錯失倍數級保護效果!</li>
                     </ul>
                 </div>
 
@@ -1217,6 +1230,41 @@
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">星鏈供應鏈受惠股</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">昇達科·華通·啟碁</div>
                         </div>
+                </div>
+            </div>
+            <!-- 📉 真泡沫 vs 假泡沫(大盤跌幅 > 2% 或 VIX > 30 時自動展開,純算式不用 Groq)-->
+            <div id="bubbleCrashCard" class="hidden bg-[#010409] rounded-xl border-2 border-red-700 p-3 shadow-lg shadow-red-900/30">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg animate-pulse">📉</span>
+                    <span class="text-base font-black text-red-300 tracking-wide">真泡沫 vs 假泡沫判讀</span>
+                    <span id="bubbleCrashType" class="ml-auto text-xs font-mono font-black px-2 py-0.5 rounded">分析中</span>
+                </div>
+                <div id="bubbleCrashReason" class="text-[11px] text-gray-300 mb-2.5 leading-relaxed">系統正在綜合 VIX/外資期現/融資水位判讀...</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-[#0d1117] border-l-4 border-orange-500 p-2.5 rounded-r">
+                        <div class="text-orange-300 font-bold text-xs mb-1">💼 持有者對策</div>
+                        <div id="bubbleCrashHoldAction" class="text-[11px] text-gray-200 leading-relaxed">--</div>
+                    </div>
+                    <div class="bg-[#0d1117] border-l-4 border-cyan-500 p-2.5 rounded-r">
+                        <div class="text-cyan-300 font-bold text-xs mb-1">🆓 空手對策</div>
+                        <div id="bubbleCrashEmptyAction" class="text-[11px] text-gray-200 leading-relaxed">--</div>
+                    </div>
+                </div>
+                <div id="bubbleCrashSectors" class="hidden mt-2.5 bg-green-900/20 border-l-4 border-green-500 p-2.5 rounded-r">
+                    <div class="text-green-300 font-bold text-xs mb-1">🎯 假泡沫送分題族群</div>
+                    <div id="bubbleCrashSectorList" class="text-[11px] text-gray-100 leading-relaxed">--</div>
+                </div>
+            </div>
+            <!-- ⭐ 今日送分題(從 chief_ai_cache 過濾🟢標的)-->
+            <div class="bg-[#010409] rounded-xl border border-yellow-700/60 p-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-base">⭐</span>
+                    <span class="text-base font-black text-yellow-300 tracking-wide">今日送分題</span>
+                    <span id="sendScoreCount" class="ml-auto text-[10px] font-mono text-gray-500">--</span>
+                </div>
+                <div class="text-[10px] text-gray-500 mb-2">AI 夜跑掃描 → 燈號🟢的高勝率股(點擊跳診斷頁)</div>
+                <div id="sendScoreList" class="space-y-1.5">
+                    <div class="text-[11px] text-gray-600 text-center py-2">⏳ 等今晚 AI 批次掃描完成</div>
                 </div>
             </div>
             <div class="bg-[#010409] rounded-lg border border-[#30363d] p-3 flex flex-col gap-2.5">
@@ -6003,13 +6051,89 @@ recent.forEach(d => {
             const dLabel = diffDays <= 1 ? 'D-1' : `D-${diffDays}`;
             const dColor = diffDays <= 1 ? 'text-red-400' : diffDays <= 3 ? 'text-orange-400' : 'text-amber-500';
             const evText = String(ev.event || '').replace(/</g, '&lt;');
+            const evEscaped = (ev.event || '').replace(/'/g, "\\'");
             return `<div class="flex items-center gap-2 py-1 px-1 border-b border-gray-800/40 last:border-b-0">
                 <span class="text-[10px] font-mono text-amber-400 flex-shrink-0 w-10">${dStr}</span>
                 <span class="text-[10px] text-gray-300 flex-1 truncate">${evText}</span>
+                <button onclick="app.showMacroEventPlaybook('${evEscaped}'); event.stopPropagation();" class="text-[11px] text-blue-400 hover:text-blue-300 flex-shrink-0 px-1" title="事前/事後操作教學">📚</button>
                 <span class="text-[9px] ${dColor} font-bold flex-shrink-0">${dLabel}</span>
             </div>`;
         }).join('');
         list.innerHTML = rows || '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 7 日無重大事件</div>';
+    },
+
+    // 📚 重大事件操作手冊:每個事件的「事前要做 / 事後要做」白話教學
+    _MACRO_EVENT_PLAYBOOK: {
+        'CPI': {
+            title: '🇺🇸 美國 CPI 通膨數據',
+            before: '事前 1-2 天:減碼短線部位、現金比例拉到 30%。VIX 偏低 (<18) 可少量買 VIX Call 避險。預估高於市場共識 → 股市易跌。',
+            after: '若 CPI 高於預期 → 股市跳空低開,持有者守 5MA;若低於預期 → 跳空高開買進,但避免追高(可等回測 5MA 介入)。'
+        },
+        'PPI': {
+            title: '🇺🇸 美國 PPI 生產者物價',
+            before: '事前 1 天:留意 CPI 結果做參考(同方向走勢機率高)。中小型股若已連漲 3 天,先賣 1/3 鎖利。',
+            after: 'PPI 通常影響不如 CPI 強;若兩數據同步高於預期,Fed 鷹派風險升高 → 持有者全面減碼、設停損。'
+        },
+        'FOMC': {
+            title: '🏛️ FOMC 聯準會利率決議',
+            before: '事前 2-3 天:嚴禁追高,空手者按兵不動。重大持倉者可買台指期 Put 避險(5-10% 部位)。重點看「點陣圖」與「鮑爾發言」。',
+            after: '降息且鷹派淡化 → 強力買進主流股;升息或鷹派加碼 → 持有者守 20MA,跌破立刻減碼。會後 1 週為「鴿派/鷹派發酵期」,趨勢確認後再加碼。'
+        },
+        '日銀|BOJ': {
+            title: '🇯🇵 日銀 BOJ 利率決議',
+            before: '事前 1 天:留意日圓走勢。若升息預期升溫 → 套息交易平倉 → 全球風險資產同步下殺(歷史多次發生)。',
+            after: '升息 → 日圓走強 + 全球股市易跌,持有者守均線停損;維持寬鬆 → 風險偏好回升,可順勢做多 AI/科技股。'
+        },
+        '台指結算': {
+            title: '📅 台指期結算日(月第三週三)',
+            before: '事前 2-3 天:結算前主力常作價拉抬權值股(尤其台積電 / 鴻海 / 聯發科),可短線跟價但「結算日當天禁追高」。',
+            after: '結算日下午後,「結算行情」結束,易出現獲利了結賣壓;短線者可考慮結算日尾盤鎖利,等 2-3 天後再評估。'
+        },
+        '四巫|巫': {
+            title: '🔮 美股四巫日(季末選擇權結算)',
+            before: '事前 1 週:減碼追逐性的小型股(波動會放大 2-3 倍)。VIX 易飆 → 可預先做 VIX Call 避險。',
+            after: '當週週五波動極大,可能出現假突破/假跌破。空手者等下週一確認趨勢再進場;持有者守 20MA 不破不出場。'
+        },
+        'SPACEX|IPO': {
+            title: '🚀 SpaceX / 重大 IPO 上市',
+            before: '事前 1 週:相關概念股(低軌衛星/火箭題材)會率先炒作,空手者可選最強勢龍頭少量試單;持有者鎖利出脫過熱標的。',
+            after: 'IPO 當天往往「利多出盡」,概念股易出現大幅獲利了結;追高風險極大,等回測 10-20MA 再考慮承接,設嚴格停損 -8%。'
+        }
+    },
+
+    showMacroEventPlaybook(eventStr) {
+        const ev = String(eventStr || '');
+        let matched = null;
+        for (const [kw, pb] of Object.entries(this._MACRO_EVENT_PLAYBOOK)) {
+            if (kw.split('|').some(k => ev.includes(k))) { matched = pb; break; }
+        }
+        if (!matched) {
+            this.showToast('此事件暫無詳細操作教學', 'info');
+            return;
+        }
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        modal.innerHTML = `
+            <div class="bg-[#0d1117] border-2 border-blue-700 rounded-xl max-w-md w-full p-4 shadow-2xl">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-blue-300 font-black text-base">📚 ${matched.title}</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-xl leading-none px-2">×</button>
+                </div>
+                <div class="space-y-3">
+                    <div class="bg-amber-900/20 border-l-4 border-amber-500 p-2.5 rounded-r">
+                        <div class="text-amber-300 font-bold text-xs mb-1">🛡️ 事前要做</div>
+                        <div class="text-gray-300 text-[11px] leading-relaxed">${matched.before}</div>
+                    </div>
+                    <div class="bg-cyan-900/20 border-l-4 border-cyan-500 p-2.5 rounded-r">
+                        <div class="text-cyan-300 font-bold text-xs mb-1">⚔️ 事後要做</div>
+                        <div class="text-gray-300 text-[11px] leading-relaxed">${matched.after}</div>
+                    </div>
+                </div>
+                <div class="text-[9px] text-gray-600 text-center mt-3">點空白處關閉</div>
+            </div>`;
+        document.body.appendChild(modal);
+        this.vibrate(15);
     },
 
     // 🌍 全球巨頭脈動渲染（8 卡）— 黃金/BTC 漲為避險升溫=紅、VIX 漲特例紅警示、跌綠
@@ -6107,6 +6231,91 @@ recent.forEach(d => {
                 el.className = `text-[9px] font-mono font-bold sector-heat ${f.cls}`;
             }
         }
+        // 順手更新兩張新卡:大跌泡沫判讀 + 今日送分題
+        this._updateBubbleCrashCard();
+        this._loadChiefCacheForSendScore();
+    },
+
+    // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
+    _updateBubbleCrashCard() {
+        const card = document.getElementById('bubbleCrashCard');
+        if (!card) return;
+        const mr = this._macroRiskCache;
+        const sh = this._sectorHeatCache;
+        const vix = mr?.vix ?? null;
+        const usChg = sh?.sectors?.us?.chg ?? null;
+        const fiSpot = mr?.fi_spot_net ?? null;  // 外資現貨淨買賣(億)
+        // 觸發條件:vix>30 或 美股 < -2%
+        const crash = (vix != null && vix > 30) || (usChg != null && usChg < -2);
+        if (!crash) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        // 真/假泡沫判讀:vix 高 + 外資狂砍 = 真泡沫;vix 中 + 外資仍買 = 假泡沫
+        const fiSelling = fiSpot != null && fiSpot < -300;
+        const isReal = vix > 30 && fiSelling;
+        const isFake = (vix != null && vix <= 30) && !fiSelling;
+        const typeEl = document.getElementById('bubbleCrashType');
+        const reasonEl = document.getElementById('bubbleCrashReason');
+        const holdEl = document.getElementById('bubbleCrashHoldAction');
+        const emptyEl = document.getElementById('bubbleCrashEmptyAction');
+        const sectorsEl = document.getElementById('bubbleCrashSectors');
+        const sectorListEl = document.getElementById('bubbleCrashSectorList');
+        if (isReal) {
+            typeEl.textContent = '🔴 真泡沫';
+            typeEl.className = 'ml-auto text-xs font-mono font-black px-2 py-0.5 rounded bg-red-700 text-white';
+            reasonEl.innerHTML = `VIX <b class="text-red-300">${vix?.toFixed(1)}</b>(恐慌)+ 外資現貨砍 <b class="text-red-300">${fiSpot?.toFixed(0)}</b> 億 + 美股跌 <b class="text-red-300">${usChg?.toFixed(2)}%</b> → 結構性下殺,不是技術回檔`;
+            holdEl.innerHTML = `<b class="text-red-300">減碼至 3 成以下</b>,跌破 60MA 全出清,鎖利為主`;
+            emptyEl.innerHTML = `<b class="text-cyan-300">空手站邊</b>,等 VIX 回 25 以下 + K 線止跌訊號再進場`;
+            sectorsEl.classList.add('hidden');
+        } else if (isFake) {
+            typeEl.textContent = '🟢 假泡沫(送分題)';
+            typeEl.className = 'ml-auto text-xs font-mono font-black px-2 py-0.5 rounded bg-green-700 text-white';
+            reasonEl.innerHTML = `VIX <b class="text-amber-300">${vix?.toFixed(1)}</b>(未恐慌)+ 外資 <b class="text-green-300">${fiSpot?.toFixed(0)}</b> 億(未狂砍)+ 美股跌 <b class="text-amber-300">${usChg?.toFixed(2)}%</b> → 技術性回檔,可逢低布局`;
+            holdEl.innerHTML = `<b class="text-green-300">抗跌續抱</b>,守 20MA;有閒錢可金字塔加碼`;
+            emptyEl.innerHTML = `<b class="text-green-300">分批承接送分題族群</b>↓`;
+            sectorsEl.classList.remove('hidden');
+            sectorListEl.innerHTML = `🏦 <b class="text-yellow-300">高股息 ETF</b>(0056/00878)・🛡️ <b class="text-yellow-300">大型金融</b>(富邦金/兆豐金)・💎 <b class="text-yellow-300">低 PE 龍頭</b>(台積電 PE<20 為佳)`;
+        } else {
+            typeEl.textContent = '🟡 模糊區';
+            typeEl.className = 'ml-auto text-xs font-mono font-black px-2 py-0.5 rounded bg-yellow-700 text-white';
+            reasonEl.innerHTML = `VIX <b class="text-amber-300">${vix?.toFixed(1) ?? '?'}</b> + 外資 <b class="text-amber-300">${fiSpot?.toFixed(0) ?? '?'}</b> 億 + 美股 <b class="text-amber-300">${usChg?.toFixed(2) ?? '?'}%</b> → 真/假泡沫尚未確認`;
+            holdEl.innerHTML = `<b class="text-amber-300">先減碼 1/3</b>,守 20MA 看後續發展`;
+            emptyEl.innerHTML = `<b class="text-amber-300">等 K 線收腳訊號</b>(連 2 紅或長下影)再評估`;
+            sectorsEl.classList.add('hidden');
+        }
+    },
+
+    // ⭐ 今日送分題:從 chief_ai_cache 過濾🟢標的
+    async _loadChiefCacheForSendScore() {
+        if (!this._chiefBatchCache) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/chief_ai_cache.json', ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(6000) });
+                this._chiefBatchCache = r.ok ? await r.json() : null;
+            } catch (_) { this._chiefBatchCache = null; }
+        }
+        const listEl = document.getElementById('sendScoreList');
+        const cntEl = document.getElementById('sendScoreCount');
+        if (!listEl) return;
+        const stocks = this._chiefBatchCache?.stocks || {};
+        const greens = Object.entries(stocks).filter(([, v]) =>
+            (v?.traffic_light || '').includes('🟢'));
+        if (cntEl) cntEl.textContent = `${greens.length} 檔 · ${this._chiefBatchCache?.updated || '夜跑'}`;
+        if (greens.length === 0) {
+            listEl.innerHTML = '<div class="text-[11px] text-gray-600 text-center py-2">⏳ 今晚 AI 批次掃描中(無🟢標)</div>';
+            return;
+        }
+        listEl.innerHTML = greens.slice(0, 10).map(([sym, v]) => {
+            const summary = String(v.summary || '').replace(/</g, '&lt;').slice(0, 30);
+            const name = (this._symNameMap?.[sym] || '');
+            return `<div class="flex items-center gap-2 py-1.5 px-2 rounded bg-yellow-900/20 hover:bg-yellow-900/30 cursor-pointer border border-yellow-800/40"
+                onclick="app.setSym('${sym}'); app.switchTab('diag'); app.vibrate(20);">
+                <span class="text-xs font-mono font-bold text-yellow-300 flex-shrink-0">${sym}</span>
+                <span class="text-[10px] text-gray-400 flex-shrink-0">${name}</span>
+                <span class="text-[10px] text-gray-200 flex-1 truncate">${summary}</span>
+                <span class="text-[10px] text-yellow-400">→</span>
+            </div>`;
+        }).join('');
     },
 
     _updateCostLabel() {
@@ -8508,6 +8717,21 @@ ${radarSection}
             // 🧠 靈魂編輯器連動：以使用者選定的 AI 指令（預設首席 / 小哥雙刀流 / 自訂）作為人設與風格
             const soul = (this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default).trim();
 
+            // 💎 本益比保護傘 + 大跌泡沫判讀:從既有 _fundCache + _macroRiskCache 算,不打 API
+            const _fc = this._fundCache;
+            const _peVal = (_fc && _fc.sym === sym && _fc.pe != null) ? +_fc.pe : null;
+            const _isLowPE = _peVal != null && _peVal > 0 && _peVal < 15;
+            const _peLabel = _peVal != null ? `${_peVal.toFixed(1)}x` : '無資料';
+            const _mr = this._macroRiskCache;
+            const _vix = _mr?.vix ?? null;
+            const _fiSpot = _mr?.fi_spot_net ?? null;
+            // 大盤跌幅:用 sector_heat us 板塊漲跌或自選 1605/2330 等代表股當量化的代理(若 macro_risk 沒 taiex_chg)
+            const _shUs = this._sectorHeatCache?.sectors?.us?.chg ?? null;
+            const _bubbleCrash = (_vix != null && _vix > 30) || (_shUs != null && _shUs < -2);
+            const _bubbleSignalLine = _bubbleCrash
+                ? `🔴 大跌危機觸發(VIX=${_vix ?? '?'} / 美股=${_shUs?.toFixed(2) ?? '?'}%) — 啟動真/假泡沫判讀`
+                : '✅ 大盤正常,無泡沫危機訊號';
+
             // 🎯 注入統一量化燈號，強制 AI 最終判定不得與系統 LED 唱反調
             const sig = this.unifiedSignal || null;
             const sigLine = sig
@@ -8539,10 +8763,11 @@ ${radarSection}
    • 中小型股 5MA 即神聖防線，跌破立刻退場，禁凹單攤平。
    • 美股屏蔽台指期與台股板塊輪動，改看美股大盤+VIX。
 
-2️⃣【禁止文字套版】
+2️⃣【禁止文字套版 + 💎 低本益比保護傘】
    ❌ 除非 sym 是 NVDA 或 AVGO，禁提及「博通、聯發科、輝達」等公司名。
    ❌ 除非數據明確顯示極端暴跌（60 日漲幅 < -15% 同日大盤崩跌），禁主動使用「黑色星期一、大跌 1500 點、崩盤」歷史套詞。
    ❌ 必須 100% 根據下方真實數據動態造句，禁套既有歷史事件版型。
+   💎 低本益比保護傘:當 PE=${_peLabel} ${_isLowPE ? '(< 15 倍,屬於低 PE 區)' : ''} 且為主流題材(AI/重電/CoWoS/散熱/低軌衛星)且大盤回檔中(${_bubbleCrash ? '✅ 是,已觸發' : '❌ 否,平日'}) → **必須在 detail_action 給予正面評價,標示「低本益比避風港 PE=${_peLabel},反彈動能可期」**,不得只喊觀望。
 
 3️⃣【情境動態 If-Else】
    • 庫存狀態：${invLine}
@@ -8561,12 +8786,21 @@ ${radarSection}
      · ${ma60Stance}
      · ${ma120Stance}
      ⚠️ 已跌破的均線禁稱「防守 XX 元」（你已經在下面了），必須改稱「反彈壓力天花板 XX 元」。
+   ⭐ 送分題強制鐵則:若上方系統燈號為 ${sigVerdictHint || '計算中'} 且同時滿足 ≥3 項:
+     (a) 站穩 20MA(月線) (b) 系統燈號為🟢或🔵 (c) 60日漲幅在 -10%~+20% 區間(沒過熱) (d) 籌碼安定度高 (e) 屬於主流題材
+     → **必須給綠燈🟢「送分題」**,detail_action 用「敢喊敢按」語氣,禁用「觀望/等等看」帶過。
+     使用者多次抱怨「每隻都叫觀望」,寧可給綠燈再加風控停損點,也不要保守過度。
 
 4️⃣【極端行情心理學補充】（只在數據真有極端時才啟用，平日禁套）
    • 60 日漲幅（${chg60pct}%）達 +50% 後出現急跌 → 定調「**漲多後正常技術性拉回**」，禁渲染崩盤恐慌。
    • 區分「個股利空」 vs 「整體產業鏈衰退」—— 個股事件不可推論成產業崩盤。
    • 大盤恐慌跳空 + 個股觸季線 ${ma60Str} 或半年線 ${ma120Str} → 「**老天掉下來的禮物，極佳買點**」。
    • 任何摸底建議必加：「⚠️ 禁 **融資**，以 **閒錢（現股）** 分批 **逢低佈局**，等 **K 線止跌訊號** 出現再加碼」。
+   📉 大跌真/假泡沫判讀(${_bubbleSignalLine}):
+     若已觸發大跌危機,detail_action 必須明確判讀「真泡沫」或「假泡沫」:
+     · 真泡沫指標: VIX > 30 + 外資期貨狂砍(fi_spot_net < -800 億) + 融資爆量未消化 → 持有者輸出「**真泡沫,減碼或停損**」,空手輸出「**真泡沫,空手站邊等反彈訊號**」。
+     · 假泡沫指標: VIX 25~30 + 外資仍買超 + 融資未爆 → 持有者「**假泡沫,抗跌續抱**」,空手「**假泡沫=送分題,點名 ETF/金融/低 PE 龍頭分批承接**」。
+     · 模糊區: 明確說「等待 K 線收腳訊號再判定」,不要含糊帶過。
 
 5️⃣【黃字高亮剛性約束】
    所有【關鍵數字】（現價、5MA、20MA、60MA、120MA、停損價、目標價、進場價、獲利%、虧損%、漲跌幅、營收YoY、60日漲幅）
@@ -8597,6 +8831,8 @@ ${radarSection}
 - 🧟 群魔亂舞漲停家數：${junkLine}
 - 🔥 大盤板塊輪動：${usMask(sectorRotationLine)}
 - 🎯 系統量化燈號（traffic_light 必須與此一致）：${sigLine}
+- 💎 本益比 PE：${_peLabel}${_isLowPE ? '（低 PE 區,符合保護傘條件）' : ''}
+- 📉 大盤危機判讀：${_bubbleSignalLine}
 - ${newsLine}
 
 ━━━━━━━━━━━━━━━━━━━━

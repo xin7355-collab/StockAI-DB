@@ -112,6 +112,21 @@ def _compute_upcoming_macro_events(today, window_days=7):
             events.append({"date": d_str,
                            "event": "🇯🇵 日銀 BOJ 利率決議 (套息交易風向球)"})
 
+    # ── 一次性事件:讀 data/manual_events.json(Claude 代為更新)──
+    try:
+        manual_file = Path(__file__).parent / 'data' / 'manual_events.json'
+        if manual_file.exists():
+            manual_data = json.loads(manual_file.read_text(encoding='utf-8'))
+            for e in manual_data.get('events', []):
+                try:
+                    ev_date = date.fromisoformat(e['date'])
+                except (ValueError, KeyError):
+                    continue
+                if today < ev_date <= end:
+                    events.append({"date": e['date'], "event": e['event']})
+    except Exception as _e:
+        print(f"   ⚠️ manual_events.json 讀取失敗(不影響其他):{_e}")
+
     # 去重 + 依日期升冪排序
     seen = set()
     uniq = []
