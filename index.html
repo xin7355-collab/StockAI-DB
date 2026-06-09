@@ -1827,7 +1827,18 @@ const app = {
         '融資槓桿': '全市場融資餘額相對水位。> 80% 代表槓桿過高，隨時可能多殺多（融資斷頭引發雪崩）。歷史頂部前融資都會先衝高。',
         '群魔亂舞': '當日漲停家數。≥ 30 家漲停=「雞犬升天」末升段警訊；20-30 家=狂熱階段、<10 家=理性主升段、=0 家=空頭恐慌。',
         '出貨K線': '高檔長上影線、跳空缺口未補、爆量大黑K是主力倒貨的經典訊號。連續出現 2~3 根→短線轉空,即使月線未跌破也要先減碼。常與融資爆量同時出現,是末升段最後的鈴聲。',
-        '擦鞋童指標': '當連最不關心股市的人（擦鞋童/計程車司機/Uber 司機）都在報明牌時，行情通常已經到頂部最後一段。1929 美股崩盤前的經典訊號。'
+        '擦鞋童指標': '當連最不關心股市的人（擦鞋童/計程車司機/Uber 司機）都在報明牌時，行情通常已經到頂部最後一段。1929 美股崩盤前的經典訊號。',
+        // === 📊 個股技術指標 chip 說明 ===
+        'KD黃金交叉': 'K 線(快)由下往上穿過 D 線(慢)、且都在 50 以下 = 短線多方剛啟動的買訊,像賽跑反超。但若在 80 以上高檔交叉,代表已過熱,參考價值低。',
+        'KD死亡交叉': 'K 線由上往下跌破 D 線、且在 80 以上高檔 = 短線轉弱賣訊,獲利該跑了。低檔(20以下)死叉殺傷力小,可能只是洗盤。',
+        '爆量長紅': '當天成交量是 5 日均量的 1.5 倍以上 + 收紅 K 站上月線 = 有大資金進場拉抬,通常是波段起漲訊號。但要連續幾天有量才算數,一日爆量隔日縮回是假突破。',
+        '乖離過大': '股價偏離月線太遠(>12%),像橡皮筋拉太開遲早彈回(回測月線)。這時追高最容易住套房,寧可等拉回月線附近再進場。',
+        '跌破季線': '收盤跌破 60 日均線(季線)= 中期趨勢轉空的分水嶺。季線是法人的成本防線,跌破代表三個月內買的人都套牢,反彈會有層層賣壓。',
+        '創新高': '收盤創近 60 日新高 = 上方無套牢賣壓(everyone is happy),最強勢的多頭訊號。但要配合量增才健康,無量創高小心假突破。',
+        '量縮窒息': '成交量萎縮到 5 日均量的 6 成以下 = 買賣雙方都觀望。盤整末端的量縮常是變盤前兆,要等放量表態才知道方向。',
+        '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
+        '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
+        '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。'
     },
 
     // 統一 API base URL 解析：window.API_BASE_URL（雲端部署注入）優先，
@@ -6789,11 +6800,47 @@ recent.forEach(d => {
         }
         if (isIslandReversal) featTags.push({ kind: '型態警報', text: '島狀反轉', tone: 'island' });
         if (isBigBlackK)      featTags.push({ kind: '型態警報', text: '大黑K摜壓', tone: 'danger' });
-        if (brokenPrevLow)    featTags.push({ kind: '破線', text: '跌破前20日低', tone: 'danger' });
-        if (is_chips_weak)    featTags.push({ kind: '籌碼', text: `連3日法人賣超${Math.round(instSum3)}張`, tone: 'warn' });
-        const _toneCls = { good: 'bg-green-900/60 text-green-200 border-green-600', warn: 'bg-yellow-900/70 text-yellow-200 border-yellow-500', danger: 'bg-red-900/70 text-red-200 border-red-500', island: 'bg-purple-900/70 text-purple-200 border-purple-500', info: 'bg-gray-800 text-gray-300 border-gray-600' };
-        const _toneIcon = { good: '📈', warn: '⚠️', danger: '🚨', island: '💀', info: 'ℹ️' };
-        for (const t of featTags) tagsHtml += `<span class="${_toneCls[t.tone] || _toneCls.info} border text-[10px] px-1.5 py-0.5 rounded font-bold ml-1">${_toneIcon[t.tone] || ''}${t.text}</span>`;
+        if (brokenPrevLow)    featTags.push({ kind: '破線', text: '跌破前20日低', tone: 'danger', jargon: '跌破前低' });
+        if (is_chips_weak)    featTags.push({ kind: '籌碼', text: `連3日法人賣超${Math.round(instSum3)}張`, tone: 'warn', jargon: '法人連賣' });
+
+        // 🟢 多個有用指標 chip(複用 this.indicators,台股紅漲綠跌語意,點擊彈窗說明)
+        if (this.currentTF === 'D') {
+            const ind2 = this.indicators || {};
+            const kArr = ind2.k, dArr = ind2.d;
+            const li = last;  // last index in activeData ~ indicators 對齊
+            const volRatio = (vma5 > 0) ? pV / vma5 : 1;
+            // KD 交叉
+            if (Array.isArray(kArr) && Array.isArray(dArr) && kArr.length > li && li > 0) {
+                const k0 = kArr[li-1], d0 = dArr[li-1], k1 = kArr[li], d1 = dArr[li];
+                if (k0 != null && d0 != null && k1 != null && d1 != null) {
+                    if (k0 < d0 && k1 > d1 && k1 < 55) featTags.push({ kind: 'KD', text: 'KD黃金交叉', tone: 'bullish', jargon: 'KD黃金交叉' });
+                    else if (k0 > d0 && k1 < d1 && k1 > 75) featTags.push({ kind: 'KD', text: 'KD死亡交叉', tone: 'bearish', jargon: 'KD死亡交叉' });
+                }
+            }
+            // 爆量長紅
+            if (volRatio >= 1.5 && pC > pO && pC > ma20) featTags.push({ kind: '量價', text: `爆量長紅(量${volRatio.toFixed(1)}倍)`, tone: 'bullish', jargon: '爆量長紅' });
+            // 乖離過大(追高風險)
+            const bias20 = ma20 > 0 ? (pC - ma20) / ma20 * 100 : 0;
+            if (bias20 > 12) featTags.push({ kind: '乖離', text: `乖離過大+${bias20.toFixed(0)}%`, tone: 'warn', jargon: '乖離過大' });
+            // 跌破季線
+            if (ma60 != null && !isNaN(ma60) && pC < ma60) featTags.push({ kind: '均線', text: '跌破季線(60MA)', tone: 'bearish', jargon: '跌破季線' });
+            // 創 60 日新高
+            const _slice60 = (this.activeData || []).slice(-61, -1);
+            const high60 = _slice60.length ? Math.max(..._slice60.map(r => r.high || 0)) : 0;
+            if (high60 > 0 && pC >= high60) featTags.push({ kind: '突破', text: '創60日新高', tone: 'bullish', jargon: '創新高' });
+            // 量縮窒息
+            if (volRatio < 0.6) featTags.push({ kind: '量價', text: '量縮窒息', tone: 'info', jargon: '量縮窒息' });
+            // 量價背離(#6)
+            if (pC > pC1 && pV < vma5 * 0.8) featTags.push({ kind: '量價背離', text: '價漲量縮背離', tone: 'warn', jargon: '量價背離' });
+            else if (pC < pC1 && pV < vma5 * 0.7) featTags.push({ kind: '量價背離', text: '價跌量縮(賣壓衰竭)', tone: 'info', jargon: '量價背離' });
+        }
+
+        const _toneCls = { good: 'bg-green-900/60 text-green-200 border-green-600', warn: 'bg-yellow-900/70 text-yellow-200 border-yellow-500', danger: 'bg-red-900/70 text-red-200 border-red-500', island: 'bg-purple-900/70 text-purple-200 border-purple-500', info: 'bg-gray-800 text-gray-300 border-gray-600', bullish: 'bg-red-900/60 text-red-200 border-red-600', bearish: 'bg-green-900/60 text-green-200 border-green-600' };
+        const _toneIcon = { good: '📈', warn: '⚠️', danger: '🚨', island: '💀', info: 'ℹ️', bullish: '🔺', bearish: '🔻' };
+        for (const t of featTags) {
+            const clickable = t.jargon ? ` onclick="app.showJargon('${t.jargon}')" style="cursor:pointer"` : '';
+            tagsHtml += `<span${clickable} class="${_toneCls[t.tone] || _toneCls.info} border text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 inline-block mt-1">${_toneIcon[t.tone] || ''}${t.text}${t.jargon ? ' ⓘ' : ''}</span>`;
+        }
         document.getElementById('stockTags').innerHTML = tagsHtml;
 
         // 預設防守：波段月線（季節 switch 內若速度因子打開會 override 回 5MA）
