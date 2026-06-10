@@ -42,38 +42,54 @@ BOJ_SCHEDULE = [
 ]
 
 
-def _compute_upcoming_macro_events(today, window_days=7):
-    """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。"""
+def _compute_upcoming_macro_events(today, window_days=14):
+    """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。
+    14 天視窗(2026/06 起,從 7 → 14 涵蓋更多籌備期事件)。
+    涵蓋類別:
+      ✅ 全球結算:台指期大結算、美股四巫日
+      ✅ 美國總經:CPI、PPI、NFP 非農、ISM PMI、FOMC、BOJ
+      ✅ 台股財報:月營收旺季、季報法定截止、Q 季法說旺季廣域提醒
+      ✅ 台股股權:股東會旺季+法定截止、除權息旺季月度提醒
+      ✅ 台股政策:央行理監事會
+      ✅ 被動資金:MSCI 季度權重調整
+      ✅ 連假效應:西曆固定連假(春節/端午/中秋因農曆寫進 manual_events.json)
+      ✅ 一次性:manual_events.json"""
     from datetime import date, timedelta
     if not isinstance(today, date):
         today = date.today()
     end = today + timedelta(days=window_days)
     events = []
 
-    # ── 月度規律事件:第三個週三(台指結算)、第三個週五(四巫日,只 3/6/9/12)、
-    #    每月 10-14 日首個工作日(CPI)、CPI+1 工作日(PPI)──
-    for m_offset in (0, 1):
-        year = today.year
-        month = today.month + m_offset
-        if month > 12:
-            year += 1
-            month -= 12
+    def _add(d, evt):
+        """單筆加事件 helper(只加 window 內事件,避免重複包 if/append)。"""
+        if today < d <= end:
+            events.append({"date": d.isoformat(), "event": evt})
+
+    # 預先算下 3 個月(避免月底逼近時漏算下個月初的事件;_add 會擋掉 window 外)
+    months_to_check = []
+    cur_y, cur_m = today.year, today.month
+    for off in range(3):
+        ny, nm = cur_y, cur_m + off
+        while nm > 12:
+            ny += 1
+            nm -= 12
+        months_to_check.append((ny, nm))
+
+    for year, month in months_to_check:
         first = date(year, month, 1)
+        if month < 12:
+            last_day = date(year, month + 1, 1) - timedelta(days=1)
+        else:
+            last_day = date(year + 1, 1, 1) - timedelta(days=1)
 
-        # 第三個週三 = 該月首個週三 + 14 天 (weekday: Mon=0..Sun=6, Wed=2)
+        # ── 既有:結算/四巫日/CPI/PPI ────────────────────────────────────
         third_wed = first + timedelta(days=((2 - first.weekday()) % 7) + 14)
-        if today < third_wed <= end:
-            events.append({"date": third_wed.isoformat(),
-                           "event": "🇹🇼 台指期貨大結算 (提防外資結算洗盤)"})
+        _add(third_wed, "🇹🇼 台指期貨大結算 (提防外資結算洗盤)")
 
-        # 第三個週五,僅 3/6/9/12 月 → 四巫日 (weekday: Fri=4)
         if month in (3, 6, 9, 12):
             third_fri = first + timedelta(days=((4 - first.weekday()) % 7) + 14)
-            if today < third_fri <= end:
-                events.append({"date": third_fri.isoformat(),
-                               "event": "🇺🇸 美股四巫日 (選擇權結算,波動激增)"})
+            _add(third_fri, "🇺🇸 美股四巫日 (選擇權結算,波動激增)")
 
-        # CPI:每月 10-14 日首個工作日(週一~週五);PPI = CPI + 1 工作日
         cpi_d = None
         for day in range(10, 15):
             try:
@@ -84,15 +100,86 @@ def _compute_upcoming_macro_events(today, window_days=7):
                 cpi_d = cand
                 break
         if cpi_d is not None:
-            if today < cpi_d <= end:
-                events.append({"date": cpi_d.isoformat(),
-                               "event": "🇺🇸 美國 CPI 通膨數據公布 (Fed 政策風向球)"})
+            _add(cpi_d, "🇺🇸 美國 CPI 通膨數據公布 (Fed 政策風向球)")
             ppi_d = cpi_d + timedelta(days=1)
             while ppi_d.weekday() >= 5:
                 ppi_d += timedelta(days=1)
-            if today < ppi_d <= end:
-                events.append({"date": ppi_d.isoformat(),
-                               "event": "🇺🇸 美國 PPI 生產者物價指數"})
+            _add(ppi_d, "🇺🇸 美國 PPI 生產者物價指數")
+
+        # ── 🆕 新增 9 類台股關鍵事件 ───────────────────────────────────
+
+        # 1️⃣ 月營收公布旺季:每月 5 日(法定 10 日截止前密集)
+        try:
+            _add(date(year, month, 5), f"📊 {month}月份 月營收公布旺季 (5-10 日全市場陸續公布)")
+        except ValueError:
+            pass
+
+        # 2️⃣ 非農就業 NFP:每月第一個週五
+        first_fri = first + timedelta(days=(4 - first.weekday()) % 7)
+        _add(first_fri, "🇺🇸 美國非農就業 NFP (失業率/時薪同步公布,Fed 政策參考)")
+
+        # 3️⃣ ISM 製造業 PMI:每月第一個工作日
+        first_workday = first
+        while first_workday.weekday() >= 5:
+            first_workday += timedelta(days=1)
+        _add(first_workday, "🇺🇸 美國 ISM 製造業 PMI (景氣領先指標)")
+
+        # 4️⃣ 季報法定截止:5/15 (Q1)、8/14 (Q2)、11/14 (Q3)、3/31 (Q4+年報)
+        season_deadlines = {3: (31, "Q4+年報"), 5: (15, "Q1"),
+                            8: (14, "Q2"), 11: (14, "Q3")}
+        if month in season_deadlines:
+            day_n, q_label = season_deadlines[month]
+            try:
+                _add(date(year, month, day_n), f"📈 {q_label} 季報法定截止日 (未繳交=注意股風險)")
+            except ValueError:
+                pass
+
+        # 5️⃣ Q 季法說旺季廣域提醒:1/4/7/10 月 15 日
+        qs_map = {1: "Q4", 4: "Q1", 7: "Q2", 10: "Q3"}
+        if month in qs_map:
+            try:
+                _add(date(year, month, 15), f"📞 {qs_map[month]} 法說旺季 (大型權值股密集召開,留意異動)")
+            except ValueError:
+                pass
+
+        # 6️⃣ 股東會旺季 + 法定截止
+        if month == 5:
+            try:
+                _add(date(year, 5, 30), "🏛️ 股東會旺季開跑 (6/30 法定截止前密集召開)")
+            except ValueError:
+                pass
+        if month == 6:
+            _add(date(year, 6, 30), "🏛️ 股東會法定截止日 (錯過視同違規)")
+
+        # 7️⃣ 除權息旺季(7-9 月):月度提醒
+        if month == 7:
+            _add(date(year, 7, 1), "💰 除權息旺季開跑 (7-9 月密集,大型權值股蒸發指數點)")
+        if month == 8:
+            _add(date(year, 8, 15), "💰 除權息高峰期 (填息/貼息評估動能)")
+        if month == 9:
+            _add(date(year, 9, 30), "💰 除權息旺季收尾")
+
+        # 8️⃣ 央行(中央銀行)理監事會:3/6/9/12 月最後一個週四
+        if month in (3, 6, 9, 12):
+            cb_d = last_day
+            while cb_d.weekday() != 3:   # Thu=3
+                cb_d -= timedelta(days=1)
+            _add(cb_d, "🇹🇼 央行理監事會 (利率/外匯政策決議)")
+
+        # 9️⃣ MSCI 季度權重調整:2/5/8/11 月第三個週四(收盤生效)
+        if month in (2, 5, 8, 11):
+            third_thu = first + timedelta(days=((3 - first.weekday()) % 7) + 14)
+            _add(third_thu, "📊 MSCI 季度權重調整 (被動資金流向,大型股波動激增)")
+
+        # 🔟 西曆固定連假(春節/端午/中秋因農曆建議寫進 manual_events.json)
+        holidays = [(1, 1, "🎊 元旦"), (4, 4, "🌸 清明節"),
+                    (10, 10, "🇹🇼 雙十國慶"), (12, 31, "🎆 跨年")]
+        for hm, hd, name in holidays:
+            if hm == month:
+                try:
+                    _add(date(year, hm, hd), f"{name} (台股休市,連假前後流動性低)")
+                except ValueError:
+                    pass
 
     # ── 預編排事件:FOMC、BOJ 利率決議 ──
     for d_str in FOMC_SCHEDULE:
@@ -100,17 +187,13 @@ def _compute_upcoming_macro_events(today, window_days=7):
             dd = date.fromisoformat(d_str)
         except ValueError:
             continue
-        if today < dd <= end:
-            events.append({"date": d_str,
-                           "event": "🇺🇸 FOMC 聯準會利率決議 (終極利空/利多)"})
+        _add(dd, "🇺🇸 FOMC 聯準會利率決議 (終極利空/利多)")
     for d_str in BOJ_SCHEDULE:
         try:
             dd = date.fromisoformat(d_str)
         except ValueError:
             continue
-        if today < dd <= end:
-            events.append({"date": d_str,
-                           "event": "🇯🇵 日銀 BOJ 利率決議 (套息交易風向球)"})
+        _add(dd, "🇯🇵 日銀 BOJ 利率決議 (套息交易風向球)")
 
     # ── 一次性事件:讀 data/manual_events.json(Claude 代為更新)──
     try:
@@ -122,8 +205,7 @@ def _compute_upcoming_macro_events(today, window_days=7):
                     ev_date = date.fromisoformat(e['date'])
                 except (ValueError, KeyError):
                     continue
-                if today < ev_date <= end:
-                    events.append({"date": e['date'], "event": e['event']})
+                _add(ev_date, e['event'])
     except Exception as _e:
         print(f"   ⚠️ manual_events.json 讀取失敗(不影響其他):{_e}")
 
@@ -936,7 +1018,7 @@ def main():
         "nikkei":         None, "nikkei_chg_pct": None, "nikkei_error": None,
         "hsi":            None, "hsi_chg_pct":    None, "hsi_error":    None,
         "kospi":          None, "kospi_chg_pct":  None, "kospi_error":  None,
-        # ── 📅 未來 7 日核彈事件(純演算法,主流程結尾計算填入)──
+        # ── 📅 未來 14 日核彈事件(純演算法,主流程結尾計算填入)──
         "upcoming_macro_events": [],
     }
 
@@ -1098,8 +1180,8 @@ def main():
     # ── 📅 全球重大財經事件日曆(純演算法,絕不拋例外)──
     try:
         from datetime import date as _date
-        out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today())
-        print(f"📅 未來 7 日核彈事件:{len(out['upcoming_macro_events'])} 場")
+        out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14)
+        print(f"📅 未來 14 日核彈事件:{len(out['upcoming_macro_events'])} 場")
         for ev in out["upcoming_macro_events"]:
             print(f"     · {ev['date']}  {ev['event']}")
     except Exception as e:
