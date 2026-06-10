@@ -675,6 +675,37 @@ def fetch_market_margin(d: date) -> dict:
         except Exception as e:
             print(f"  ⚠️ [FinMind 融資券] 備援失敗：{e}")
 
+    # 4. 🦅 yfinance 第三條源(僅 CHIP_WATCHLIST ~50 檔,因 yf.info 慢 + 不一定每檔有)
+    #    TWSE+FinMind 都失敗時觸發,info 含 sharesShort/shortRatio 可近似填補融券
+    #    注意:yfinance shares 單位是「股」,÷1000 = 張(對齊 short_balance 慣例);抓不到就不寫
+    _all_short_zero = bool(res) and all((v.get('short_balance', 0) == 0) for v in res.values())
+    if (not res or _all_short_zero):
+        print(f"  🦅 [yfinance 融券] TWSE+FinMind 後仍空,啟動 yfinance 第三條源(僅 CHIP_WATCHLIST {len(CHIP_WATCHLIST)} 檔)…")
+        try:
+            import yfinance as yf
+            hit = 0
+            for sid in CHIP_WATCHLIST:
+                if not _valid_stock(sid):
+                    continue
+                try:
+                    info = yf.Ticker(f"{sid}.TW").info  # {sym}.TW = TWSE/TPEX 通用
+                    ss = info.get('sharesShort')
+                    if ss is not None and ss > 0:
+                        # 已有 margin_balance 則合併(yfinance 沒提供融資);無則 0 佔位
+                        prev = res.get(sid, {})
+                        res[sid] = {
+                            'margin_balance': prev.get('margin_balance', 0),
+                            'short_balance':  int(ss) // 1000,   # 股 → 張
+                        }
+                        hit += 1
+                except Exception:
+                    continue
+            print(f"  [yfinance 融券] CHIP_WATCHLIST 命中 {hit} 檔")
+        except ImportError:
+            print(f"  ⚠️ [yfinance 融券] yfinance 未安裝,跳過")
+        except Exception as e:
+            print(f"  ⚠️ [yfinance 融券] 備援失敗:{e}")
+
     return res
 
 
@@ -1075,7 +1106,7 @@ def run():
             elif _has_real_payload(MARGIN_CACHE_FILE):
                 print(f"  ⏭️ 融資券抓取失敗,保留既有 last-good 不覆寫 → {MARGIN_CACHE_FILE}")
             else:
-                MARGIN_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind 皆失敗'}, ensure_ascii=False), encoding='utf-8')
+                MARGIN_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind+yfinance 三源皆失敗'}, ensure_ascii=False), encoding='utf-8')
                 print(f"  💾 融資券快取首次失敗,寫入 _status 標記 → {MARGIN_CACHE_FILE}")
         except Exception as e:
             print(f"  ⚠️ 融資券快取寫檔失敗：{e}")
