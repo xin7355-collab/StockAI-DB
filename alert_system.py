@@ -121,10 +121,10 @@ def build_summary():
             lines.append(f"  · `{sym}` 分數 `{info['score']}` — {info.get('reasons', ['—'])[0]}")
         lines.append("")
 
-    # 📅 未來重大事件
-    events = (macro.get('upcoming_macro_events') or [])[:4]
+    # 📅 未來重大事件(14 日視窗,顯示前 6 場)
+    events = (macro.get('upcoming_macro_events') or [])[:6]
     if events:
-        lines.append("📅 *未來 7 日核彈事件*")
+        lines.append("📅 *未來 14 日核彈事件*")
         for ev in events:
             lines.append(f"  · `{ev['date']}` {ev['event']}")
         lines.append("")

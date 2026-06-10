@@ -1193,13 +1193,13 @@
                 </div>
             </div>
 
-            <!-- 📅 即將引爆(未來 7 日核彈事件,演算法計算自 macro_risk.json.upcoming_macro_events)-->
+            <!-- 📅 即將引爆(未來 14 日核彈事件,演算法計算自 macro_risk.json.upcoming_macro_events)-->
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5 mb-2">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-[10px] font-black text-amber-300">📅 即將引爆 (未來 7 日核彈)</div>
+                    <div class="text-[10px] font-black text-amber-300">📅 即將引爆 (未來 14 日核彈)</div>
                     <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
                 </div>
-                <div id="macroEventsList" class="space-y-1 max-h-32 overflow-y-auto scrollbar-hide">
+                <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
                 </div>
             </div>
@@ -6678,7 +6678,7 @@ ${_newsLine}${globalContext}
         // 🌍 全球巨頭脈動（8 卡：黃金/原油/美元/BTC/VIX/日經/恆指/韓股）
         this.updateBigPlayers(j);
 
-        // 📅 未來 7 日核彈事件(純演算法,出自 macro_miner.py)
+        // 📅 未來 14 日核彈事件(純演算法,出自 macro_miner.py)
         this._renderUpcomingMacroEvents(j.upcoming_macro_events);
 
         this.loadSectorHeat();
@@ -6686,17 +6686,18 @@ ${_newsLine}${globalContext}
     },
 
     // 📅 全球重大財經事件日曆渲染(資料來源:macro_risk.json.upcoming_macro_events)
+    //    每筆事件兩個按鈕:📚 操作教學(寫死劇本) + 🔍 影響族群(AI 點擊才呼叫,省配額)
     _renderUpcomingMacroEvents(events) {
         const list = document.getElementById('macroEventsList');
         const ts = document.getElementById('macroEventsTs');
         if (!list) return;
         if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
         if (!Array.isArray(events) || events.length === 0) {
-            list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 7 日無重大事件</div>';
+            list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 14 日無重大事件</div>';
             return;
         }
         const today = new Date(); today.setHours(0, 0, 0, 0);
-        const rows = events.map(ev => {
+        const rows = events.map((ev, idx) => {
             const d = new Date(ev.date + 'T00:00:00');
             if (isNaN(d.getTime())) return '';
             const diffDays = Math.round((d - today) / 86400000);
@@ -6705,14 +6706,56 @@ ${_newsLine}${globalContext}
             const dColor = diffDays <= 1 ? 'text-red-400' : diffDays <= 3 ? 'text-orange-400' : 'text-amber-500';
             const evText = String(ev.event || '').replace(/</g, '&lt;');
             const evEscaped = (ev.event || '').replace(/'/g, "\\'");
-            return `<div class="flex items-center gap-2 py-1 px-1 border-b border-gray-800/40 last:border-b-0">
-                <span class="text-[10px] font-mono text-amber-400 flex-shrink-0 w-10">${dStr}</span>
-                <span class="text-[10px] text-gray-300 flex-1 truncate">${evText}</span>
-                <button onclick="app.showMacroEventPlaybook('${evEscaped}'); event.stopPropagation();" class="text-[11px] text-blue-400 hover:text-blue-300 flex-shrink-0 px-1" title="事前/事後操作教學">📚</button>
-                <span class="text-[9px] ${dColor} font-bold flex-shrink-0">${dLabel}</span>
-            </div>`;
+            return '<div class="border-b border-gray-800/40 last:border-b-0">'
+                + '<div class="flex items-center gap-1.5 py-1 px-1">'
+                +   '<span class="text-[10px] font-mono text-amber-400 flex-shrink-0 w-10">' + dStr + '</span>'
+                +   '<span class="text-[10px] text-gray-300 flex-1 truncate">' + evText + '</span>'
+                +   '<button onclick="app.showMacroEventPlaybook(\'' + evEscaped + '\'); event.stopPropagation();" class="text-[11px] text-blue-400 hover:text-blue-300 flex-shrink-0 px-1" title="事前/事後操作教學">📚</button>'
+                +   '<button onclick="app.askEventImpactAI(\'' + evEscaped + '\', ' + idx + '); event.stopPropagation();" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex-shrink-0 px-1" title="AI 推測影響族群">🔍</button>'
+                +   '<span class="text-[9px] ' + dColor + ' font-bold flex-shrink-0">' + dLabel + '</span>'
+                + '</div>'
+                + '<div id="evImpact_' + idx + '" class="hidden px-1 pb-1.5"></div>'
+                + '</div>';
         }).join('');
-        list.innerHTML = rows || '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 7 日無重大事件</div>';
+        list.innerHTML = rows || '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 14 日無重大事件</div>';
+    },
+
+    // 🔍 AI 推測事件影響族群與代表股(點擊才呼叫,localStorage 24hr 快取,省配額)
+    async askEventImpactAI(eventName, idx) {
+        const box = document.getElementById('evImpact_' + idx);
+        if (!box) return;
+        if (!box.classList.contains('hidden') && box.innerHTML) {
+            box.classList.add('hidden');
+            return;
+        }
+        box.classList.remove('hidden');
+        const cacheKey = 'evImpact_' + eventName;
+        try {
+            const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+            if (c && c.html && (Date.now() - c.ts) < 24 * 3600e3) {
+                box.innerHTML = '<div class="text-[10px] text-cyan-200/90 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-1.5 leading-relaxed">' + c.html + '<span class="text-[9px] text-gray-500"> · 快取</span></div>';
+                return;
+            }
+        } catch (_) {}
+        box.innerHTML = '<div class="text-[10px] text-cyan-400 px-2 py-1.5 animate-pulse">🤖 推測影響族群中...</div>';
+        try {
+            const fullPrompt = '事件:「' + eventName + '」\n\n請以台股研究員口吻,3 句話內回答:\n1. 這事件對台股最直接影響哪 1-2 個族群?\n2. 該族群代表股 2-3 檔(代號+名稱)?\n3. 多空方向(利多/利空/震盪)?\n規則:禁編造數字、禁長篇大論、用 → 串接、總字數 ≤ 60 字。';
+            const simplePrompt = '事件「' + eventName + '」→ 影響的台股族群?代表股 2-3 檔?利多利空?用 50 字內 1 段話回答。';
+            const text = await this._callDeepAI({
+                prompts: { full: fullPrompt, simple: simplePrompt },
+                max_tokens: 200, temperature: 0.3
+            });
+            const html = String(text || '').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+            if (!html) {
+                box.innerHTML = '<div class="text-[10px] text-red-400 px-2 py-1.5">⚠️ AI 推測失敗(可能 OpenRouter 額度用完)</div>';
+                return;
+            }
+            box.innerHTML = '<div class="text-[10px] text-cyan-200/90 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-1.5 leading-relaxed">' + html + '</div>';
+            try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html: html })); } catch (_) {}
+        } catch (e) {
+            const msg = (e && e.message) ? e.message : String(e);
+            box.innerHTML = '<div class="text-[10px] text-red-400 px-2 py-1.5">⚠️ AI 例外:' + msg + '</div>';
+        }
     },
 
     // 📚 重大事件操作手冊:每個事件的「事前要做 / 事後要做」白話教學
