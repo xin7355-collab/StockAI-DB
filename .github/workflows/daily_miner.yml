@@ -102,7 +102,7 @@ jobs:
               print(f'🧹 修剪：保留 {len(keep)} 檔、移除 {removed} 檔非本批殘留')
               if skip_global:
                   shutil.rmtree('data/chips', ignore_errors=True)
-                  for g in ('radar.json','top_picks.json','global_news.json','radar_news.json'):
+                  for g in ('radar.json','top_picks.json','global_news.json','radar_news.json','tech_giants_news.json'):
                       Path('data', g).unlink(missing_ok=True)
                   for c in ('futures_cache.json','macro_cache.json','margin_cache_stock.json','inst_cache_stock.json'):
                       Path(c).unlink(missing_ok=True)
@@ -188,12 +188,9 @@ jobs:
       - name: 📊 訊號勝率回測（回放歷史 → data/signal_history.json）
         run: python backtest.py || echo "⚠️ backtest.py 失敗，繼續部署"
 
-      - name: 🌙 首席 AI 夜間批次分析（熱門清單預算式 → data/chief_ai_cache.json）
-        env:
-          # Fallback 鏈:優先 BATCH 專用池 → 退回白天 KEYS 池 → 退回單把 KEY,
-          # 使用者不必再開第三個 secret,白天 key 池可共用給夜間批次
-          GROQ_API_KEYS_BATCH: ${{ secrets.GROQ_API_KEYS_BATCH || secrets.GROQ_API_KEYS || secrets.GROQ_API_KEY }}
-        run: python chief_ai_batch.py || echo "⚠️ chief_ai_batch.py 失敗，繼續部署（白天 fallback 走自填 key）"
+      # 🛑 chief_ai_batch.py 已退役(2026-06):自動跑全市場 AI 太耗 OpenRouter/Groq 配額,
+      # 改為使用者在前端打開個股時即時呼叫 1 次 + localStorage 3 天快取。
+      # 此 step 保留註解供日後 manual workflow 參考,不再執行。
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |

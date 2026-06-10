@@ -186,6 +186,7 @@ CHIP_WATCHLIST = sorted(set([
     '2049','4551','2206',                       # 實體機器人：上銀、智伸科、三陽
     '2881','2882','2891',                       # 金融避風港：富邦金、國泰金、中信金
     '3491','2313','6285',                       # 低軌衛星：昇達科、華通、啟碁
+    '2408','2344','8299',                       # 記憶體 DRAM：南亞科、華邦電、群聯（8299 已在,補 2408/2344 確保板塊每輪必採）
 ]))
 HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調整）
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
@@ -560,6 +561,9 @@ def fetch_market_margin(d: date) -> dict:
         url = f'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         print(f"  [MI_MARGN] stat={j.get('stat')} tables={len(j.get('tables', []) or [])}")
+        if j.get('stat') != 'OK':
+            # 🔍 診斷強化:stat 非 OK 時印 raw 前 300 字,GHA log 一眼看出是限流/無資料/格式變更
+            print(f"  ⚠️ [MI_MARGN] stat != OK,raw={str(j)[:300]}")
         if j.get('stat') == 'OK':
             tables = j.get('tables', []) or []
             # 🛡️【關鍵修復】MI_MARGN 回傳多個 table，舊版誤抓「市場總計表」(僅 3-7 列、
@@ -584,23 +588,43 @@ def fetch_market_margin(d: date) -> dict:
             else:
                 _, target_table, idx_id = best
                 fields = target_table.get('fields', [])
-                idx_mb = next((i for i, f in enumerate(fields) if '融資' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
-                idx_sb = next((i for i, f in enumerate(fields) if '融券' in f and ('今日餘額' in f or '現在餘額' in f or ('餘額' in f and '買進' not in f and '賣出' not in f))), None)
-                print(f"  [MI_MARGN] 選中個股表：{best[0]} 檔 | 融資欄 idx={idx_mb} 融券欄 idx={idx_sb} | fields={fields[:6]}")
+                # 🔍 欄位定位多級 fallback:先精確(融資+今日/現在餘額)→ 再寬鬆(含「資/券」+「餘」排除買賣進出)
+                def _find_col(fields, key1):
+                    # key1 = '融資' or '融券';先精確後寬鬆,涵蓋 TWSE 各種 schema 變體
+                    exact = next((i for i, f in enumerate(fields) if key1 in (f or '') and ('今日餘額' in f or '現在餘額' in f)), None)
+                    if exact is not None:
+                        return exact
+                    loose = next((i for i, f in enumerate(fields) if key1 in (f or '') and '餘額' in f and '買進' not in f and '賣出' not in f and '償還' not in f), None)
+                    if loose is not None:
+                        return loose
+                    # 最寬鬆:單字「資/券」+「餘」(對付欄名被簡寫)
+                    short_key = key1[-1]   # '資' or '券'
+                    return next((i for i, f in enumerate(fields) if short_key in (f or '') and '餘' in (f or '') and '買' not in (f or '') and '賣' not in (f or '')), None)
+                idx_mb = _find_col(fields, '融資')
+                idx_sb = _find_col(fields, '融券')
+                print(f"  [MI_MARGN] 選中個股表：{best[0]} 檔 | 融資欄 idx={idx_mb} 融券欄 idx={idx_sb} | fields={fields}")
                 if idx_mb is None or idx_sb is None:
-                    print(f"  ⚠️ 融資/融券餘額欄位找不到，fields={fields}")
+                    # 🔍 找不到欄位印完整 fields(已在上行),GHA log 比對真實欄名後可再放寬條件
+                    print(f"  ⚠️ 融資/融券餘額欄位找不到(idx_mb={idx_mb} idx_sb={idx_sb})，完整 fields={fields}")
                 else:
+                    short_zero = 0
                     for r in target_table.get('data', []):
                         sid = str(r[idx_id]).strip()
                         if not _valid_stock(sid):   # 跳過總計列 / 非個股列
                             continue
                         try:
+                            sb = int(str(r[idx_sb]).replace(',', ''))
                             res[sid] = {
                                 'margin_balance': int(str(r[idx_mb]).replace(',', '')),
-                                'short_balance':  int(str(r[idx_sb]).replace(',', '')),
+                                'short_balance':  sb,
                             }
+                            if sb == 0:
+                                short_zero += 1
                         except Exception:
                             pass
+                    # 🔍 若融券「全部」為 0(實務不可能,2330/2603 一定有券)= 欄位抓錯,印警告供診斷
+                    if res and short_zero == len(res):
+                        print(f"  ⚠️ [MI_MARGN] 融券餘額全 0({len(res)} 檔),疑欄位 idx_sb={idx_sb} 抓錯,fields={fields}")
     except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
@@ -621,9 +645,12 @@ def fetch_market_margin(d: date) -> dict:
     except Exception as e: print(f"  ⚠️ 上櫃融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
-    # 3. FinMind 備援：TWSE/TPEX 兩條都失敗時，至少給整批一份資料避免前端 100% 全 0
-    if not res and not _FINMIND_BLOCKED:
-        print(f"  ⚠️ [融資券] TWSE+TPEX 兩條都失敗，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…")
+    # 3. FinMind 備援：兩種情況啟動 —(a) TWSE/TPEX 整批失敗;(b) 有資料但融券全 0(TWSE 欄位抓錯)
+    #    後者是融券長期全 0 的根因:TWSE 給了融資卻漏融券,改由 FinMind 整批覆蓋補回融券
+    _short_all_zero = bool(res) and all((v.get('short_balance', 0) == 0) for v in res.values())
+    if (not res or _short_all_zero) and not _FINMIND_BLOCKED:
+        reason = "TWSE+TPEX 兩條都失敗" if not res else f"融券全 0({len(res)} 檔,疑 TWSE 欄位抓錯)"
+        print(f"  ⚠️ [融資券] {reason}，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…")
         try:
             url_fm = (
                 f'https://api.finmindtrade.com/api/v4/data'
@@ -647,6 +674,37 @@ def fetch_market_margin(d: date) -> dict:
             print(f"  [FinMind 融資券] 命中 {cnt} 檔")
         except Exception as e:
             print(f"  ⚠️ [FinMind 融資券] 備援失敗：{e}")
+
+    # 4. 🦅 yfinance 第三條源(僅 CHIP_WATCHLIST ~50 檔,因 yf.info 慢 + 不一定每檔有)
+    #    TWSE+FinMind 都失敗時觸發,info 含 sharesShort/shortRatio 可近似填補融券
+    #    注意:yfinance shares 單位是「股」,÷1000 = 張(對齊 short_balance 慣例);抓不到就不寫
+    _all_short_zero = bool(res) and all((v.get('short_balance', 0) == 0) for v in res.values())
+    if (not res or _all_short_zero):
+        print(f"  🦅 [yfinance 融券] TWSE+FinMind 後仍空,啟動 yfinance 第三條源(僅 CHIP_WATCHLIST {len(CHIP_WATCHLIST)} 檔)…")
+        try:
+            import yfinance as yf
+            hit = 0
+            for sid in CHIP_WATCHLIST:
+                if not _valid_stock(sid):
+                    continue
+                try:
+                    info = yf.Ticker(f"{sid}.TW").info  # {sym}.TW = TWSE/TPEX 通用
+                    ss = info.get('sharesShort')
+                    if ss is not None and ss > 0:
+                        # 已有 margin_balance 則合併(yfinance 沒提供融資);無則 0 佔位
+                        prev = res.get(sid, {})
+                        res[sid] = {
+                            'margin_balance': prev.get('margin_balance', 0),
+                            'short_balance':  int(ss) // 1000,   # 股 → 張
+                        }
+                        hit += 1
+                except Exception:
+                    continue
+            print(f"  [yfinance 融券] CHIP_WATCHLIST 命中 {hit} 檔")
+        except ImportError:
+            print(f"  ⚠️ [yfinance 融券] yfinance 未安裝,跳過")
+        except Exception as e:
+            print(f"  ⚠️ [yfinance 融券] 備援失敗:{e}")
 
     return res
 
@@ -916,7 +974,7 @@ def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> l
     inst_cache 僅用於：batch 0 額外補進「今日活躍但尚無 JSON」的新上市股。
     """
     skip = {'radar', 'futures_cache', 'macro_cache', 'broker_names',
-            'top_picks', 'global_news', 'radar_news'}
+            'top_picks', 'global_news', 'radar_news', 'tech_giants_news'}
     universe: set = set(CHIP_WATCHLIST)
     universe |= {f.stem for f in Path(DATA_DIR).glob('*.json') if f.stem not in skip}
     universe = {s for s in universe if _valid_stock(s)}
@@ -1048,7 +1106,7 @@ def run():
             elif _has_real_payload(MARGIN_CACHE_FILE):
                 print(f"  ⏭️ 融資券抓取失敗,保留既有 last-good 不覆寫 → {MARGIN_CACHE_FILE}")
             else:
-                MARGIN_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind 皆失敗'}, ensure_ascii=False), encoding='utf-8')
+                MARGIN_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind+yfinance 三源皆失敗'}, ensure_ascii=False), encoding='utf-8')
                 print(f"  💾 融資券快取首次失敗,寫入 _status 標記 → {MARGIN_CACHE_FILE}")
         except Exception as e:
             print(f"  ⚠️ 融資券快取寫檔失敗：{e}")
@@ -1445,6 +1503,126 @@ def fetch_futures_cache():
         print(f"  ⚠️ FinMind 外資期貨連線失敗: {e}")
 
 
+# ── 🏛️ TWSE/TPEX 官方台股指數(主要來源,優先於 yfinance)──────────────────
+def _fetch_twii_history_official(months_back=2):
+    """TWSE 加權指數 OHLC 官方歷史 — MI_5MINS_HIST 月份檔。
+    回傳 list of OHLC dict(date='YYYY/MM/DD');網路失敗/空白回 None,讓 yfinance fallback。
+    端點對 GHA runner(美國 IP)穩定,連不上時靜默退回。"""
+    import re as _re
+    rows_out = []
+    today = date.today()
+    months_to_fetch = []
+    cur_y, cur_m = today.year, today.month
+    for _ in range(months_back + 1):
+        months_to_fetch.append((cur_y, cur_m))
+        cur_m -= 1
+        if cur_m == 0:
+            cur_m = 12
+            cur_y -= 1
+    months_to_fetch.reverse()
+    for y, m in months_to_fetch:
+        url = f"https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?response=json&date={y:04d}{m:02d}01"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                print(f"  [TWSE TAIEX] {y}/{m:02d} HTTP {r.status_code}")
+                continue
+            j = r.json()
+            if j.get('stat') and j.get('stat') != 'OK':
+                continue
+            data = j.get('data') or []
+            for row in data:
+                try:
+                    mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
+                    if not mtch:
+                        continue
+                    iso = f"{int(mtch.group(1))+1911:04d}/{int(mtch.group(2)):02d}/{int(mtch.group(3)):02d}"
+                    def _flt(s):
+                        return float(str(s).replace(',', ''))
+                    o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
+                    rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
+                                     'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"  [TWSE TAIEX] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
+            continue
+    # 去重(月份重疊)+ 排序
+    seen, uniq = set(), []
+    for r in rows_out:
+        if r['date'] not in seen:
+            seen.add(r['date'])
+            uniq.append(r)
+    uniq.sort(key=lambda x: x['date'])
+    return uniq if uniq else None
+
+
+def _fetch_otc_history_official(months_back=2):
+    """TPEX 上櫃指數 OHLC 官方歷史 — st41 月份檔。
+    端點:https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php
+    民國年格式(d=114/06);TPEX 對美國 IP 偶爾擋,失敗回 None 讓 yfinance fallback。"""
+    import re as _re
+    rows_out = []
+    today = date.today()
+    months_to_fetch = []
+    cur_y, cur_m = today.year, today.month
+    for _ in range(months_back + 1):
+        months_to_fetch.append((cur_y, cur_m))
+        cur_m -= 1
+        if cur_m == 0:
+            cur_m = 12
+            cur_y -= 1
+    months_to_fetch.reverse()
+    for y, m in months_to_fetch:
+        roc = f"{y - 1911}/{m:02d}"
+        url = f"https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php?l=zh-tw&d={roc}"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                print(f"  [TPEX OTC] {y}/{m:02d} HTTP {r.status_code}")
+                continue
+            j = r.json()
+            if not j.get('aaData'):
+                continue
+            for row in j['aaData']:
+                try:
+                    mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
+                    if not mtch:
+                        continue
+                    iso = f"{int(mtch.group(1))+1911:04d}/{int(mtch.group(2)):02d}/{int(mtch.group(3)):02d}"
+                    def _flt(s):
+                        return float(str(s).replace(',', ''))
+                    o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
+                    rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
+                                     'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"  [TPEX OTC] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
+            continue
+    seen, uniq = set(), []
+    for r in rows_out:
+        if r['date'] not in seen:
+            seen.add(r['date'])
+            uniq.append(r)
+    uniq.sort(key=lambda x: x['date'])
+    return uniq if uniq else None
+
+
+def _merge_official_over_yf(yf_rows, official_rows):
+    """官方近期資料優先覆蓋 yfinance 長歷史的重疊日期,長歷史部分維持 yfinance 補足 240MA。
+    yf_rows: list[dict] (date='YYYY/MM/DD');official_rows 同格式。
+    回傳合併後 sorted list。"""
+    if not official_rows:
+        return yf_rows
+    if not yf_rows:
+        return official_rows
+    by_date = {r['date']: r for r in yf_rows}
+    for r in official_rows:
+        by_date[r['date']] = r   # 官方覆蓋 yfinance
+    return sorted(by_date.values(), key=lambda x: x['date'])
+
+
 # ── 美股大盤快取 ──────────────────────────────────────────────────────────────
 def fetch_us_macro_cache():
     try:
@@ -1459,14 +1637,19 @@ def fetch_us_macro_cache():
                'us02y': '^IRX',     # 13W T-Bill 短債利率（Fed 政策風向）
                'ukoil': 'BZ=F',     # 布蘭特原油期貨
                'dxy':   'DX-Y.NYB', # 美元指數
-               'twii':  '^TWII',    # 台股加權指數（供泡沫預警 K 線型態判讀）
+               'twii':  '^TWII',    # 台股加權指數（供泡沫預警 K 線型態判讀 + 個股查詢頁）
+               'twoii': '^TWO',     # 台股上櫃指數（OTC,供個股查詢頁查上櫃整體走勢)
                }
+    # 🎯 台股指數特例:這些 ticker 抓 period=2y 充足歷史(支援前端 240MA/季線等技術指標)
+    LONG_HIST_KEYS = {'twii', 'twoii'}
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
     result = {}
     for key, ticker in symbols.items():
         try:
             # 🛡️ SIGALRM 硬逾時，防 yfinance 無限 hang
-            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period='10d'), 30, None)
+            #    台股指數抓 2y(供前端個股頁完整功能)、其他維持 10d(省 API 額度)
+            _period = '2y' if key in LONG_HIST_KEYS else '10d'
+            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period=_period), 30, None)
             if hist is None or hist.empty:
                 continue
             prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
@@ -1478,17 +1661,60 @@ def fetch_us_macro_cache():
                 'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
                                   float(prev['Close']) * 100, 2),
             }
-            # 🎯 ^TWII 額外存 OHLCV 120 日序列(支援 build_bubble_warning K 線型態 + 隔日上漲機率 Worker 大盤環境同向過濾)
-            if key == 'twii':
-                result['twii_history'] = [
-                    {'date':   str(idx.date()),
+            # 🎯 ^TWII / ^TWO 寫成 data/^TWII.json / data/^TWO.json 個股格式(對齊 list of OHLCV),
+            #    讓前端 analyze('^TWII') / analyze('^TWO') 可查到加權/上櫃指數完整 K 線。
+            #    同時保留舊 macro_cache 的 twii_history(120 日)向下相容 build_bubble_warning。
+            if key in LONG_HIST_KEYS:
+                yf_rows = [
+                    {'date':   str(idx.date()).replace('-', '/'),
                      'open':   round(float(row['Open']), 2),
                      'high':   round(float(row['High']), 2),
                      'low':    round(float(row['Low']), 2),
                      'close':  round(float(row['Close']), 2),
                      'volume': (int(row['Volume']) if (row['Volume'] == row['Volume']) else 0)}
-                    for idx, row in hist.tail(120).iterrows()
+                    for idx, row in hist.iterrows()
+                    if (row['Close'] == row['Close'])   # dropna
                 ]
+                # 🏛️ 官方來源覆蓋(主要):TWSE TAIEX(twii)/ TPEX OTC(twoii)抓最近 2 個月權威 OHLC,
+                #    yfinance 仍保留長歷史供 240MA 計算;官方失敗則純用 yfinance(現行 fallback)
+                official_rows = None
+                try:
+                    if key == 'twii':
+                        official_rows = _fetch_twii_history_official(months_back=2)
+                    elif key == 'twoii':
+                        official_rows = _fetch_otc_history_official(months_back=2)
+                except Exception as _e:
+                    print(f"  ⚠️ 官方來源 {key} 抓取例外: {str(_e)[:80]}")
+                if official_rows:
+                    print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆覆蓋最近 yfinance(權威值優先)")
+                long_rows = _merge_official_over_yf(yf_rows, official_rows)
+                # 個股格式檔
+                if long_rows:
+                    fname = f"^{key.upper()}.json"   # ^TWII.json / ^TWOII.json
+                    # ^TWO 的 ticker 我們寫成 ^TWOII.json 對齊前端 analyze('^TWOII') 呼叫
+                    if key == 'twoii':
+                        fname = '^TWOII.json'
+                    try:
+                        Path(DATA_DIR, fname).write_text(
+                            json.dumps(long_rows, ensure_ascii=False, separators=(',', ':')),
+                            encoding='utf-8')
+                        print(f"  💾 {fname}: {len(long_rows)} 筆 OHLCV(供前端個股查詢頁)")
+                    except Exception as _e:
+                        print(f"  ⚠️ 寫 {fname} 失敗:{_e}")
+                # macro_cache 內保留 twii_history(120 日,給泡沫預警用,避免改其他下游)
+                if key == 'twii':
+                    result['twii_history'] = long_rows[-120:] if long_rows else []
+                    # 若官方覆蓋過,最新一筆 close/prev/chg_pct 也用官方值校正(更準)
+                    if official_rows and len(official_rows) >= 2:
+                        last_o = official_rows[-1]
+                        prev_o = official_rows[-2]
+                        if prev_o['close'] > 0:
+                            result[key] = {
+                                'date': last_o['date'].replace('/', '-'),
+                                'close': last_o['close'],
+                                'prev': prev_o['close'],
+                                'chg_pct': round((last_o['close'] - prev_o['close']) / prev_o['close'] * 100, 2),
+                            }
             print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
         except Exception as e:
             print(f"  ⚠️  {ticker}: {e}")
@@ -1634,6 +1860,20 @@ def fetch_broker_chips():
     print("\n📊 抓取 TWSE 全市場本益比 / 殖利率快取...")
     # 【極限防禦】加上 or {}，確保即使 API 崩潰回傳 None，也絕對不會引發 'NoneType' 錯誤
     twse_fund = fetch_twse_fundamentals(date.today()) or {}
+
+    # 🦅 獵鷹建倉分:把全市場 PE/殖利率 dump 成 cache,供 radar_miner 算「低本益比」因子(全市場覆蓋)
+    #    抓成功才覆寫,失敗(空 dict)時保留昨日 last-good,避免洗掉。
+    try:
+        if twse_fund:
+            fund_cache = {s: {'pe': v.get('pe'), 'yield_rate': v.get('yield_rate')}
+                          for s, v in twse_fund.items() if isinstance(v, dict)}
+            Path('data', 'fundamentals_cache.json').write_text(
+                json.dumps(fund_cache, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+            print(f"  💾 全市場基本面快取 → data/fundamentals_cache.json（{len(fund_cache)} 檔）")
+        else:
+            print("  ⏭️ TWSE 基本面回空,保留既有 fundamentals_cache.json 不覆寫")
+    except Exception as e:
+        print(f"  ⚠️ fundamentals_cache 寫檔失敗(不影響主流程):{e}")
 
     # 新增：一次查全台券商代碼→中文名對照（FinMind TaiwanBrokerInfo 免費）
     print("\n📖 載入券商對照表（TaiwanBrokerInfo）...")
@@ -2477,7 +2717,7 @@ def prune_artifact(watchlist: list) -> None:
         # batches 1-19 不負責全域資料，刪掉 checkout 殘留避免與 batch 0 衝突
         import shutil
         shutil.rmtree(Path(DATA_DIR) / 'chips', ignore_errors=True)
-        for g in ('radar.json', 'top_picks.json', 'global_news.json', 'radar_news.json'):
+        for g in ('radar.json', 'top_picks.json', 'global_news.json', 'radar_news.json', 'tech_giants_news.json'):
             (Path(DATA_DIR) / g).unlink(missing_ok=True)
         for c in ('futures_cache.json', 'macro_cache.json',
                   'margin_cache_stock.json', 'inst_cache_stock.json'):

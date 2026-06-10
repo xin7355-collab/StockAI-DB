@@ -94,10 +94,68 @@ def backtest_one(rows):
     return out
 
 
+def _falcon_score_simplified(rows, idx):
+    """🦅 簡化版獵鷹建倉分(回測用,只算微觀因子,不含全球宏觀煞車):
+    技術面 ±25(站月線/多頭排列/乖離健康)+ 流動性 ±(殭屍 -30 / 大量 +5)。
+    回傳 0-100;資料不足回 None。"""
+    if idx < 22:
+        return None
+    closes = [r.get('close') for r in rows[:idx + 1] if r.get('close')]
+    if len(closes) < 22:
+        return None
+    c = closes[-1]
+    def ma(n):
+        return sum(closes[-n:]) / n if len(closes) >= n else None
+    ma5, ma20, ma60 = ma(5), ma(20), ma(60)
+    base = 50
+    if ma20:
+        if c > ma20: base += 10
+        else: base -= 15
+        bias20 = (c - ma20) / ma20 * 100
+        if 0 <= bias20 <= 8: base += 5
+        elif bias20 > 15: base -= 10
+    if ma5 and ma20 and ma60 and ma5 > ma20 > ma60:
+        base += 10
+    if ma60 and c > ma60:
+        base += 5
+    # 流動性(近 5 日均量,股 ÷1000 = 張)
+    vols = [r.get('volume', 0) or 0 for r in rows[max(0, idx - 4):idx + 1]]
+    if vols:
+        avg_lots = sum(vols) / len(vols) / 1000
+        if avg_lots < 200: base -= 30
+        elif avg_lots < 500: base -= 10
+        elif avg_lots > 50000: base += 5
+    return max(0, min(100, round(base)))
+
+
+def backtest_falcon(rows):
+    """🦅 獵鷹回測:對每天歷史 bar 算簡化獵鷹分,記錄「≥75 進場、隔日報酬」。
+    回傳 list of (score_bucket, next_day_ret%);bucket: 'falcon75' / 'falcon60' / 'falcon45'。
+    """
+    results = []
+    n = len(rows)
+    for i in range(22, n - 1):
+        score = _falcon_score_simplified(rows, i)
+        if score is None:
+            continue
+        c_today = rows[i].get('close')
+        c_next = rows[i + 1].get('close')
+        if not (c_today and c_next and c_today > 0):
+            continue
+        ret = (c_next - c_today) / c_today * 100
+        if score >= 75: bucket = 'falcon75'
+        elif score >= 60: bucket = 'falcon60'
+        elif score >= 45: bucket = 'falcon45'
+        else: continue   # <45 不統計
+        results.append((bucket, ret))
+    return results
+
+
 def main():
     print("📊 訊號勝率回測啟動...")
     DATA_DIR.mkdir(exist_ok=True)
     agg = {}  # signal -> {'n':, 'win5':, 'win10':, 'sum5':, 'sum10':, 'c5':, 'c10':}
+    falcon_agg = {}   # 🦅 獵鷹回測:bucket -> {'n', 'wins', 'sum_ret'}
 
     def _slot(sig):
         return agg.setdefault(sig, {'n': 0, 'win5': 0, 'win10': 0,
@@ -121,6 +179,12 @@ def main():
                 if r10 is not None:
                     s['c10'] += 1; s['sum10'] += r10
                     if r10 > 0: s['win10'] += 1
+            # 🦅 獵鷹回測:統計 ≥75/≥60/≥45 三檔的隔日勝率
+            for bucket, ret in backtest_falcon(rows):
+                fs = falcon_agg.setdefault(bucket, {'n': 0, 'wins': 0, 'sum_ret': 0.0})
+                fs['n'] += 1
+                fs['sum_ret'] += ret
+                if ret > 0: fs['wins'] += 1
             scanned += 1
         except Exception:
             continue
@@ -137,13 +201,28 @@ def main():
             'avg_return_10d': round(s['sum10'] / s['c10'], 2) if s['c10'] else None,
         }
 
+    # 🦅 獵鷹策略回測結果
+    falcon_strategy = {}
+    for bucket, fs in falcon_agg.items():
+        if fs['n'] == 0:
+            continue
+        falcon_strategy[bucket] = {
+            'samples': fs['n'],
+            'win_rate': round(fs['wins'] / fs['n'] * 100, 1),
+            'avg_return': round(fs['sum_ret'] / fs['n'], 2),
+        }
+
     payload = {
         'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
         'replay_days': REPLAY_DAYS,
         'scanned_stocks': scanned,
         'by_signal': by_signal,
-        '_note': '回測歷史訊號的往後 5/10 日勝率;過去績效不代表未來,僅供參考紀律。',
+        'falcon_strategy': falcon_strategy,
+        '_note': '回測歷史訊號的往後 5/10 日勝率;獵鷹策略統計「分≥75/60/45 隔日報酬」;過去績效不代表未來。',
     }
+    print(f"\n🦅 獵鷹回測結果:")
+    for bucket, st in falcon_strategy.items():
+        print(f"   {bucket}: {st['samples']} 樣本, 隔日勝率 {st['win_rate']}%, 平均 {st['avg_return']}%")
     OUTPUT_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f"✅ 回測完成 — 掃 {scanned} 檔 → {OUTPUT_FILE}")
     for sig, st in by_signal.items():
