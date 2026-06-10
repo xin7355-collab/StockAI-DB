@@ -431,6 +431,183 @@ def build_attention_forecast():
         print(f"   ❌ attention_forecast.json 寫檔失敗:{e}")
 
 
+# ── 🦅 獵鷹建倉分:全市場每股 0-100 空手建倉評分(融合個股微觀 + 全球宏觀煞車)──
+# 個股→族群反查(對齊 miner.py SUB_SECTORS / 前端 _industrySectors)
+_FALCON_SECTORS = {
+    'us': ['2330', '3711'], 'server': ['2382', '6669', '3231'],
+    'power': ['1519', '1503', '1513'], 'packaging': ['2330', '3711', '3105'],
+    'cpo': ['3450', '3380', '6491'], 'cooling': ['3017', '3324', '3653'],
+    'robot': ['2049', '4551', '2206'], 'finance': ['2881', '2882', '2891'],
+    'leo': ['3491', '2313', '6285'], 'dram': ['2408', '2344', '8299'],
+}
+_SYM2SECTOR = {s: k for k, syms in _FALCON_SECTORS.items() for s in syms}
+
+
+def _falcon_ma(closes, n):
+    return sum(closes[-n:]) / n if len(closes) >= n else None
+
+
+def build_falcon_scores():
+    """🦅 全市場每股算「獵鷹建倉分」(0-100,空手建倉吸引力),寫 data/falcon_scores.json。
+    微觀(技術/低PE/流動性/族群/分點)在個股算,宏觀黑天鵝(讀 macro_risk.json)全市場同步套用。
+    全程 try/except 包覆,任何來源缺失皆 graceful 退回中性,絕不崩潰。
+    """
+    print("\n🦅 啟動【獵鷹建倉分】全市場評分引擎...")
+    # 1) 讀全球宏觀黑天鵝旗標(macro_miner 已在前一步產出)
+    blackswan, macro_lines = {}, []
+    try:
+        mr = json.loads((DATA_DIR / "macro_risk.json").read_text(encoding='utf-8'))
+        blackswan = mr.get("blackswan") or {}
+    except Exception as e:
+        print(f"   ⚠️ 讀 macro_risk.json 失敗,宏觀煞車本輪略過:{e}")
+    if blackswan.get("market_bias_high"): macro_lines.append("大盤懼高×0.7")
+    if blackswan.get("jpy_surge"):        macro_lines.append("日圓套利平倉-20")
+    if blackswan.get("metal_oil_spike"):  macro_lines.append("金油暴漲避險-20")
+    if blackswan.get("kospi_dump"):       macro_lines.append("亞股提款-10")
+
+    # 2) 全市場 PE 快取(miner.py 產)+ 族群熱度(sector_heat.json,缺則略)
+    fund_cache, sector_chg = {}, {}
+    try:
+        fund_cache = json.loads((DATA_DIR / "fundamentals_cache.json").read_text(encoding='utf-8'))
+    except Exception:
+        pass
+    try:
+        sh = json.loads((DATA_DIR / "sector_heat.json").read_text(encoding='utf-8'))
+        for k, v in (sh.get("sectors") or {}).items():
+            if isinstance(v, dict) and isinstance(v.get("chg"), (int, float)):
+                sector_chg[k] = v["chg"]
+    except Exception:
+        pass
+
+    from datetime import date as _date
+    today = _date.today()
+    scores = {}
+    for f in DATA_DIR.glob("*.json"):
+        sym = f.stem
+        if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
+            continue
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            rows = raw if isinstance(raw, list) else (raw.get('data') or raw.get('ohlcv') or [])
+            if not isinstance(rows, list) or len(rows) < 22:
+                continue
+            closes = [r.get('close') for r in rows if r.get('close')]
+            if len(closes) < 22:
+                continue
+            c = closes[-1]
+            ma5, ma20, ma60 = _falcon_ma(closes, 5), _falcon_ma(closes, 20), _falcon_ma(closes, 60)
+            base, factors = 50, []
+
+            # ── 技術面 (±25) ──
+            if ma20:
+                if c > ma20:
+                    base += 10; factors.append("站上月線+10")
+                else:
+                    base -= 15; factors.append("跌破月線-15")
+                bias20 = (c - ma20) / ma20 * 100
+                if 0 <= bias20 <= 8:
+                    base += 5; factors.append("乖離健康+5")
+                elif bias20 > 15:
+                    base -= 10; factors.append("乖離過熱-10")
+            if ma5 and ma20 and ma60 and ma5 > ma20 > ma60:
+                base += 10; factors.append("多頭排列+10")
+            if ma60 and c > ma60:
+                base += 5; factors.append("站季線+5")
+
+            # ── 低本益比 (±10) ──
+            pe = (fund_cache.get(sym) or {}).get('pe')
+            if isinstance(pe, (int, float)):
+                if pe <= 0:
+                    base -= 10; factors.append("虧損-10")
+                elif pe < 15:
+                    base += 10; factors.append(f"低PE{pe:.0f}+10")
+                elif pe <= 25:
+                    base += 3
+                elif pe > 40:
+                    base -= 5; factors.append(f"高PE{pe:.0f}-5")
+
+            # ── 小型股流動性陷阱 (±, volume 股數 ÷1000 = 張) ──
+            vols = [r.get('volume', 0) or 0 for r in rows[-5:]]
+            avg_lots = (sum(vols) / len(vols) / 1000) if vols else 0
+            if avg_lots < 200:
+                base -= 30; factors.append("殭屍量-30")
+            elif avg_lots < 500:
+                base -= 10; factors.append("量稀-10")
+            elif avg_lots > 50000:
+                base += 5; factors.append("大量+5")
+
+            # ── 同族群龍頭連動 (±5,僅 ~30 檔有族群) ──
+            sec = _SYM2SECTOR.get(sym)
+            if sec and sec in sector_chg:
+                if sector_chg[sec] > 1:
+                    base += 5; factors.append("族群強+5")
+                elif sector_chg[sec] < -1:
+                    base -= 5; factors.append("族群弱-5")
+
+            # ── 主力分點連續性 (±8,僅 ~50 檔有 chips) ──
+            try:
+                cf = CHIPS_DIR / f"{sym}.json"
+                if cf.exists():
+                    cj = json.loads(cf.read_text(encoding='utf-8'))
+                    days = cj if isinstance(cj, list) else (cj.get('chips') or [])
+                    if days:
+                        last = days[-1]
+                        bnet = sum(b.get('net', 0) for b in (last.get('buyers') or []))
+                        snet = sum(abs(s.get('net', 0)) for s in (last.get('sellers') or []))
+                        if bnet > snet * 1.2:
+                            base += 8; factors.append("主力買超+8")
+                        elif snet > bnet * 1.2:
+                            base -= 8; factors.append("主力賣超-8")
+            except Exception:
+                pass
+
+            # ── 看盤時間軸信任度(資料新鮮度)──
+            stale = False
+            try:
+                ld = str(rows[-1].get('date', '')).replace('/', '-')
+                last_dt = _date.fromisoformat(ld)
+                if (today - last_dt).days > 4:   # >4 日曆日(約 >2 交易日)視為舊
+                    base -= 5; stale = True; factors.append("資料偏舊-5")
+            except Exception:
+                pass
+
+            base = max(0, min(100, round(base)))
+
+            # ── 🌍 全球宏觀黑天鵝煞車(全市場同步)──
+            score = base
+            if blackswan.get("market_bias_high"):
+                score = round(score * 0.7)
+            if blackswan.get("jpy_surge") or blackswan.get("metal_oil_spike"):
+                score -= 20
+            if blackswan.get("kospi_dump"):
+                score -= 10
+            score = max(0, min(100, score))
+
+            if score >= 75:   label = "🦅 強力建倉"
+            elif score >= 60: label = "✅ 可建倉"
+            elif score >= 45: label = "🟡 觀望"
+            else:             label = "🔴 避開"
+
+            scores[sym] = {"score": score, "base": base, "label": label,
+                           "factors": factors[:6], "stale": stale}
+        except Exception:
+            continue
+
+    payload = {
+        "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "macro_flags": blackswan,
+        "macro_lines": macro_lines,
+        "total": len(scores),
+        "stocks": scores,
+    }
+    try:
+        (DATA_DIR / "falcon_scores.json").write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print(f"   ✅ 獵鷹建倉分:{len(scores)} 檔評分完成,宏觀煞車={macro_lines or '無'} → falcon_scores.json")
+    except Exception as e:
+        print(f"   ❌ falcon_scores.json 寫檔失敗:{e}")
+
+
 if __name__ == '__main__':
     main()
     # 🚨 雷達矩陣完成後,順手抓注意/處置股名單(獨立 try,失敗不影響雷達)
@@ -443,3 +620,8 @@ if __name__ == '__main__':
         build_attention_forecast()
     except Exception as e:
         print(f"💥 處置門檻預估頂層異常(不影響其他):{e}")
+    # 🦅 獵鷹建倉分:全市場空手建倉評分(獨立 try,需 macro_risk.json 已產出)
+    try:
+        build_falcon_scores()
+    except Exception as e:
+        print(f"💥 獵鷹建倉分頂層異常(不影響其他):{e}")

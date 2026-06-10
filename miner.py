@@ -1662,6 +1662,20 @@ def fetch_broker_chips():
     # 【極限防禦】加上 or {}，確保即使 API 崩潰回傳 None，也絕對不會引發 'NoneType' 錯誤
     twse_fund = fetch_twse_fundamentals(date.today()) or {}
 
+    # 🦅 獵鷹建倉分:把全市場 PE/殖利率 dump 成 cache,供 radar_miner 算「低本益比」因子(全市場覆蓋)
+    #    抓成功才覆寫,失敗(空 dict)時保留昨日 last-good,避免洗掉。
+    try:
+        if twse_fund:
+            fund_cache = {s: {'pe': v.get('pe'), 'yield_rate': v.get('yield_rate')}
+                          for s, v in twse_fund.items() if isinstance(v, dict)}
+            Path('data', 'fundamentals_cache.json').write_text(
+                json.dumps(fund_cache, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+            print(f"  💾 全市場基本面快取 → data/fundamentals_cache.json（{len(fund_cache)} 檔）")
+        else:
+            print("  ⏭️ TWSE 基本面回空,保留既有 fundamentals_cache.json 不覆寫")
+    except Exception as e:
+        print(f"  ⚠️ fundamentals_cache 寫檔失敗(不影響主流程):{e}")
+
     # 新增：一次查全台券商代碼→中文名對照（FinMind TaiwanBrokerInfo 免費）
     print("\n📖 載入券商對照表（TaiwanBrokerInfo）...")
     broker_info_map = _load_broker_info_map()
