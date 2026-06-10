@@ -1503,6 +1503,126 @@ def fetch_futures_cache():
         print(f"  ⚠️ FinMind 外資期貨連線失敗: {e}")
 
 
+# ── 🏛️ TWSE/TPEX 官方台股指數(主要來源,優先於 yfinance)──────────────────
+def _fetch_twii_history_official(months_back=2):
+    """TWSE 加權指數 OHLC 官方歷史 — MI_5MINS_HIST 月份檔。
+    回傳 list of OHLC dict(date='YYYY/MM/DD');網路失敗/空白回 None,讓 yfinance fallback。
+    端點對 GHA runner(美國 IP)穩定,連不上時靜默退回。"""
+    import re as _re
+    rows_out = []
+    today = date.today()
+    months_to_fetch = []
+    cur_y, cur_m = today.year, today.month
+    for _ in range(months_back + 1):
+        months_to_fetch.append((cur_y, cur_m))
+        cur_m -= 1
+        if cur_m == 0:
+            cur_m = 12
+            cur_y -= 1
+    months_to_fetch.reverse()
+    for y, m in months_to_fetch:
+        url = f"https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?response=json&date={y:04d}{m:02d}01"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                print(f"  [TWSE TAIEX] {y}/{m:02d} HTTP {r.status_code}")
+                continue
+            j = r.json()
+            if j.get('stat') and j.get('stat') != 'OK':
+                continue
+            data = j.get('data') or []
+            for row in data:
+                try:
+                    mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
+                    if not mtch:
+                        continue
+                    iso = f"{int(mtch.group(1))+1911:04d}/{int(mtch.group(2)):02d}/{int(mtch.group(3)):02d}"
+                    def _flt(s):
+                        return float(str(s).replace(',', ''))
+                    o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
+                    rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
+                                     'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"  [TWSE TAIEX] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
+            continue
+    # 去重(月份重疊)+ 排序
+    seen, uniq = set(), []
+    for r in rows_out:
+        if r['date'] not in seen:
+            seen.add(r['date'])
+            uniq.append(r)
+    uniq.sort(key=lambda x: x['date'])
+    return uniq if uniq else None
+
+
+def _fetch_otc_history_official(months_back=2):
+    """TPEX 上櫃指數 OHLC 官方歷史 — st41 月份檔。
+    端點:https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php
+    民國年格式(d=114/06);TPEX 對美國 IP 偶爾擋,失敗回 None 讓 yfinance fallback。"""
+    import re as _re
+    rows_out = []
+    today = date.today()
+    months_to_fetch = []
+    cur_y, cur_m = today.year, today.month
+    for _ in range(months_back + 1):
+        months_to_fetch.append((cur_y, cur_m))
+        cur_m -= 1
+        if cur_m == 0:
+            cur_m = 12
+            cur_y -= 1
+    months_to_fetch.reverse()
+    for y, m in months_to_fetch:
+        roc = f"{y - 1911}/{m:02d}"
+        url = f"https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php?l=zh-tw&d={roc}"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                print(f"  [TPEX OTC] {y}/{m:02d} HTTP {r.status_code}")
+                continue
+            j = r.json()
+            if not j.get('aaData'):
+                continue
+            for row in j['aaData']:
+                try:
+                    mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
+                    if not mtch:
+                        continue
+                    iso = f"{int(mtch.group(1))+1911:04d}/{int(mtch.group(2)):02d}/{int(mtch.group(3)):02d}"
+                    def _flt(s):
+                        return float(str(s).replace(',', ''))
+                    o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
+                    rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
+                                     'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"  [TPEX OTC] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
+            continue
+    seen, uniq = set(), []
+    for r in rows_out:
+        if r['date'] not in seen:
+            seen.add(r['date'])
+            uniq.append(r)
+    uniq.sort(key=lambda x: x['date'])
+    return uniq if uniq else None
+
+
+def _merge_official_over_yf(yf_rows, official_rows):
+    """官方近期資料優先覆蓋 yfinance 長歷史的重疊日期,長歷史部分維持 yfinance 補足 240MA。
+    yf_rows: list[dict] (date='YYYY/MM/DD');official_rows 同格式。
+    回傳合併後 sorted list。"""
+    if not official_rows:
+        return yf_rows
+    if not yf_rows:
+        return official_rows
+    by_date = {r['date']: r for r in yf_rows}
+    for r in official_rows:
+        by_date[r['date']] = r   # 官方覆蓋 yfinance
+    return sorted(by_date.values(), key=lambda x: x['date'])
+
+
 # ── 美股大盤快取 ──────────────────────────────────────────────────────────────
 def fetch_us_macro_cache():
     try:
@@ -1545,7 +1665,7 @@ def fetch_us_macro_cache():
             #    讓前端 analyze('^TWII') / analyze('^TWO') 可查到加權/上櫃指數完整 K 線。
             #    同時保留舊 macro_cache 的 twii_history(120 日)向下相容 build_bubble_warning。
             if key in LONG_HIST_KEYS:
-                long_rows = [
+                yf_rows = [
                     {'date':   str(idx.date()).replace('-', '/'),
                      'open':   round(float(row['Open']), 2),
                      'high':   round(float(row['High']), 2),
@@ -1555,6 +1675,19 @@ def fetch_us_macro_cache():
                     for idx, row in hist.iterrows()
                     if (row['Close'] == row['Close'])   # dropna
                 ]
+                # 🏛️ 官方來源覆蓋(主要):TWSE TAIEX(twii)/ TPEX OTC(twoii)抓最近 2 個月權威 OHLC,
+                #    yfinance 仍保留長歷史供 240MA 計算;官方失敗則純用 yfinance(現行 fallback)
+                official_rows = None
+                try:
+                    if key == 'twii':
+                        official_rows = _fetch_twii_history_official(months_back=2)
+                    elif key == 'twoii':
+                        official_rows = _fetch_otc_history_official(months_back=2)
+                except Exception as _e:
+                    print(f"  ⚠️ 官方來源 {key} 抓取例外: {str(_e)[:80]}")
+                if official_rows:
+                    print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆覆蓋最近 yfinance(權威值優先)")
+                long_rows = _merge_official_over_yf(yf_rows, official_rows)
                 # 個股格式檔
                 if long_rows:
                     fname = f"^{key.upper()}.json"   # ^TWII.json / ^TWOII.json
@@ -1571,6 +1704,17 @@ def fetch_us_macro_cache():
                 # macro_cache 內保留 twii_history(120 日,給泡沫預警用,避免改其他下游)
                 if key == 'twii':
                     result['twii_history'] = long_rows[-120:] if long_rows else []
+                    # 若官方覆蓋過,最新一筆 close/prev/chg_pct 也用官方值校正(更準)
+                    if official_rows and len(official_rows) >= 2:
+                        last_o = official_rows[-1]
+                        prev_o = official_rows[-2]
+                        if prev_o['close'] > 0:
+                            result[key] = {
+                                'date': last_o['date'].replace('/', '-'),
+                                'close': last_o['close'],
+                                'prev': prev_o['close'],
+                                'chg_pct': round((last_o['close'] - prev_o['close']) / prev_o['close'] * 100, 2),
+                            }
             print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
         except Exception as e:
             print(f"  ⚠️  {ticker}: {e}")

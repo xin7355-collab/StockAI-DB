@@ -879,9 +879,17 @@ def fi_ratio_alert_level(fi_spot, fi_futures):
     """⚠️ 期現比警示:外資期貨絕對淨額 / 現貨絕對淨額。
     fi_spot:外資現貨淨額(億)、fi_futures:外資台指期淨口數
     比值 > 3 且期貨大空 → 主力先用期貨佈空,現貨將跟跌(警戒)
+    任一資料源缺值時回字串「⏳ 期現比待採」(而非 None),讓前端顯示提示而非空白。
     """
-    if fi_spot is None or fi_futures is None or fi_spot == 0:
-        return None
+    # 任一缺值 → 不返回 None,改成提示字串(避免前端 fi_ratio_alert 顯示空白)
+    if fi_spot is None and fi_futures is None:
+        return "⏳ 期現比待採(現貨/期貨皆無資料)"
+    if fi_spot is None:
+        return "⏳ 期現比待採(外資現貨買賣超尚無資料)"
+    if fi_futures is None:
+        return "⏳ 期現比待採(外資台指期未平倉尚無資料)"
+    if fi_spot == 0:
+        return "✅ 期現比 — 外資現貨持平(無顯著買賣超)"
     spot_equiv = abs(fi_spot * 1e8 / 50000)  # 億 → 約等量期貨口數
     ratio = abs(fi_futures) / max(spot_equiv, 1)
     # 改 OR:期現大幅背離(ratio>2.5) 或 期貨超級空(< -30000) 任一觸發即警戒,避免漏報
