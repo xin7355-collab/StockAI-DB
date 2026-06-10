@@ -42,12 +42,29 @@ def fetch_attention_disposal_status():
         "Referer": "https://www.twse.com.tw/",
     }
 
-    def _fetch_openapi(url, status_label, threshold_label):
+    def _roc_to_iso(s):
+        """民國日期字串轉 ISO:'1150610' / '115/06/10' → '2026-06-10';失敗回 None"""
+        import re as _re
+        m = _re.search(r'(\d{2,3})[/\-.]?(\d{2})[/\-.]?(\d{2})', str(s or ''))
+        if not m:
+            return None
+        try:
+            y = int(m.group(1))
+            y = y + 1911 if y < 1911 else y   # 民國→西元;若已是西元 4 位則 regex 抓 3 位會錯,故再防呆
+            if y < 2000:
+                return None
+            return f"{y:04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+        except Exception:
+            return None
+
+    def _fetch_openapi(url, status_label, threshold_label, parse_punish=False):
         """TWSE OpenAPI v1 解析(RESTful JSON list)。
         嚴格 sym 驗證:必為 4 位純數字(上市/上櫃)或 00 開頭 5 位數(ETF)。
-        回傳 (fetch_ok, out_dict):fetch_ok=False 表示網路/parse 失敗,True 表示
-        端點正常回應(out 即使是空 dict 也代表「今日無事」非錯誤)。
+        parse_punish=True 時額外解析:分盤間隔(每N分鐘)、處置迄日(出關日)。
+        欄位名多候選 + 全防呆:解析失敗自動退回基本 status/threshold,絕不炸。
+        回傳 (fetch_ok, out_dict)。
         """
+        import re as _re
         try:
             r = requests.get(url, headers=headers, timeout=10)
             rows = r.json()
@@ -55,8 +72,8 @@ def fetch_attention_disposal_status():
                 return (False, {})
             # 偵錯:印第一筆 row 完整 schema,讓 workflow log 揭露 OpenAPI 真實欄位名
             if rows and isinstance(rows[0], dict):
-                print(f"   [debug] {url.rsplit('/',1)[-1]} 首筆 keys: {list(rows[0].keys())[:10]}")
-                print(f"   [debug] 首筆 sample: {str(rows[0])[:220]}")
+                print(f"   [debug] {url.rsplit('/',1)[-1]} 首筆 keys: {list(rows[0].keys())[:12]}")
+                print(f"   [debug] 首筆 sample: {str(rows[0])[:300]}")
             out = {}
             for row in rows:
                 if not isinstance(row, dict):
@@ -64,9 +81,27 @@ def fetch_attention_disposal_status():
                 sym = str(row.get('Code') or row.get('CompanyCode')
                           or row.get('Symbol') or row.get('StockNo')
                           or row.get('證券代號') or '').strip()
-                if sym and ((sym.isdigit() and len(sym) == 4) or
-                            (sym.startswith('00') and len(sym) == 5 and sym.isdigit())):
-                    out[sym] = {"status": status_label, "threshold": threshold_label}
+                if not (sym and ((sym.isdigit() and len(sym) == 4) or
+                                 (sym.startswith('00') and len(sym) == 5 and sym.isdigit()))):
+                    continue
+                rec = {"status": status_label, "threshold": threshold_label}
+                if parse_punish:
+                    try:
+                        # 把整列值串起來掃(欄名各版本不同:DispositionMeasures/處置內容/Remark…)
+                        blob = ' '.join(str(v) for v in row.values() if v)
+                        # 分盤間隔:「每5分鐘」「每20分鐘」「約每 5 分鐘」
+                        m_int = _re.search(r'每\s*(\d+)\s*分鐘', blob)
+                        if m_int:
+                            rec['interval'] = int(m_int.group(1))
+                        # 處置期間迄日 = 出關日:期間格式常見「115/06/05～115/06/18」或「1150605-1150618」
+                        #   抓 blob 中所有民國日期,取「最大」那個當迄日(起日必小於迄日)
+                        dates = [_roc_to_iso(x) for x in _re.findall(r'\d{2,3}[/\-.]\d{2}[/\-.]\d{2}|\d{7}', blob)]
+                        dates = sorted(d for d in dates if d)
+                        if dates:
+                            rec['end_date'] = dates[-1]
+                    except Exception:
+                        pass   # 任何解析失敗退回基本欄位
+                out[sym] = rec
             return (True, out)
         except Exception as e:
             print(f"   ⚠️ {status_label} OpenAPI 失敗:{e}")
@@ -79,8 +114,10 @@ def fetch_attention_disposal_status():
 
     punish_ok, disposal = _fetch_openapi(
         "https://openapi.twse.com.tw/v1/announcement/punish",
-        "🚨 處置中", "已關禁閉")
-    print(f"   · 處置股:{len(disposal)} 檔 (fetch_ok={punish_ok})")
+        "🚨 處置中", "已關禁閉", parse_punish=True)
+    _with_end = sum(1 for v in disposal.values() if v.get('end_date'))
+    _with_int = sum(1 for v in disposal.values() if v.get('interval'))
+    print(f"   · 處置股:{len(disposal)} 檔 (fetch_ok={punish_ok},含出關日 {_with_end} 檔,含分盤間隔 {_with_int} 檔)")
 
     result = {**attention, **disposal}
 
