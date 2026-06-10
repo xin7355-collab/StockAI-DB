@@ -1500,12 +1500,13 @@
                         <button onclick="const m=document.getElementById('newsModal'); m.classList.remove('hidden'); m.style.display='flex'; app.loadNewsHeadlines(); app.vibrate(20);" class="text-[10px] text-amber-300 border border-amber-700/60 rounded px-1.5 py-0.5 hover:bg-amber-900/30 transition-colors whitespace-nowrap" title="即時情報與新聞解析">📰 即時情報</button>
                     </div>
 
-                    <!-- 🎛️ 策略切換列 (Tabs) · 橫向可滑 -->
-                    <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
-                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題 <span class="opacity-70">(高勝率)</span></button>
-                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70">(動能)</span></button>
-                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
-                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
+                    <!-- 🎛️ 策略切換卡 (Tabs) · 2 欄 grid 一眼全覽 -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題 <span class="opacity-70">(高勝率)</span></button>
+                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70">(動能)</span></button>
+                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
+                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
+                        <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70">(風控)</span></button>
                     </div>
 
                     <!-- 當前策略一句話說明條 -->
@@ -1542,6 +1543,16 @@
                             <tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">雷達待命中…</td></tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- 🚨 處置股 view(attention tab 專用,預設隱藏):注意/處置(幾分盤)/即將出關 -->
+                <div id="radarAttentionView" class="hidden flex-grow p-2">
+                    <div class="bg-red-950/20 border border-red-900/30 rounded-lg px-2.5 py-1.5 text-[10px] text-red-200/70 leading-relaxed mb-2">
+                        💡 <b class="text-red-300">處置股</b>=被 TWSE 關禁閉(分盤撮合,流動性差);<b class="text-yellow-300">注意股</b>=漲跌太兇被警告;<b class="text-green-300">即將出關</b>=處置快到期,常有資金提前卡位(高風險高波動)。
+                    </div>
+                    <div id="attentionViewBody" class="space-y-3">
+                        <div class="text-[11px] text-gray-600 text-center py-4">⏳ 載入中...</div>
+                    </div>
                 </div>
 
                 <div id="radarMatrixUpdated" class="text-[10px] text-gray-600 text-center py-2 border-t border-[#21262d]"></div>
@@ -2614,6 +2625,8 @@ ${list}
                 this._autoFetchedCorpSyms.add(this.currentSymbolId);
                 this.fetchFundamentalAnalysis(this.currentSymbolId);
             }
+            // 🏭 產業報告:有快取直接顯示(標日期),沒有則顯示空白等使用者點生成
+            this.showIndustryReportCache(this.currentSymbolId);
             // EPS / 月營收 ECharts 在情報 tab 隱藏時 init → 容器寬度 0 → 柱子擠左
             // 切到情報 tab 時 resize 一次，讓圖表恢復滿版分布
             setTimeout(() => {
@@ -5005,13 +5018,68 @@ ${lightExplain[queryType]}
     },
 
     _resolveSector(sym) {
+        // 1) 9 大核心板塊(有 curated 同業清單,報告最精準)
         for (const [name, info] of Object.entries(this._industrySectors)) {
             if (info.syms.includes(sym)) return { name, ...info };
+        }
+        // 2) ETF / 指數:產業報告不適用
+        if (sym.startsWith('00') || sym.startsWith('^')) return null;
+        // 3) 全市場 fallback:用 FinMind TaiwanStockInfo 的 industry_category(allStockList 已存完整物件)
+        const stockInfo = (this.allStockList || []).find(s => s.stock_id === sym);
+        const industry = stockInfo?.industry_category;
+        if (industry && industry !== 'Index' && !/ETF|大盤|指數/.test(industry)) {
+            return { name: industry, names: '', generic: true };
         }
         return null;
     },
 
     // 🏭 產業趨勢報告:用 DeepSeek 深度推理(_callDeepAI),分析該股所屬板塊趨勢/上下游/競爭/受惠受害
+    //    全部股票皆可生成;結果存 localStorage(標日期),重新點擊「重新生成」才覆蓋
+    _industryCacheKey(sym) { return `industryReport_${sym}`; },
+
+    _evictIndustryCache() {
+        // localStorage 防爆:報告快取 >100 檔刪最舊
+        try {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('industryReport_')) {
+                    const v = JSON.parse(localStorage.getItem(k) || '{}');
+                    keys.push({ k, ts: v.ts || 0 });
+                }
+            }
+            if (keys.length > 100) {
+                keys.sort((a, b) => a.ts - b.ts);
+                keys.slice(0, keys.length - 100).forEach(x => localStorage.removeItem(x.k));
+            }
+        } catch(_) {}
+    },
+
+    // 開卡時呼叫:有快取就直接顯示(標日期),沒有則顯示提示等使用者點生成
+    showIndustryReportCache(sym) {
+        const box = document.getElementById('industryReportResult');
+        const tag = document.getElementById('industryTag');
+        const btn = document.getElementById('industryReportBtn');
+        if (!box) return;
+        try {
+            const raw = localStorage.getItem(this._industryCacheKey(sym));
+            if (raw) {
+                const c = JSON.parse(raw);
+                if (c.html) {
+                    box.classList.remove('hidden');
+                    box.innerHTML = c.html;
+                    if (tag) tag.textContent = `報告日期:${c.date || '?'}`;
+                    if (btn) btn.textContent = '重新生成(覆蓋)';
+                    return;
+                }
+            }
+        } catch(_) {}
+        box.classList.add('hidden');
+        box.innerHTML = '';
+        if (tag) tag.textContent = '';
+        if (btn) btn.textContent = '生成報告';
+    },
+
     async runIndustryReport(sym) {
         if (!sym) return;
         const btn = document.getElementById('industryReportBtn');
@@ -5022,7 +5090,7 @@ ${lightExplain[queryType]}
         box.classList.remove('hidden');
         if (!sector) {
             if (tag) tag.textContent = '';
-            box.innerHTML = '<div class="text-yellow-400/80 text-xs">⚠️ 產業報告目前僅支援主流板塊成分股（AI 伺服器/重電/先進封裝/CPO/散熱/機器人/金融/低軌衛星/DRAM）。此股不在清單內。</div>';
+            box.innerHTML = '<div class="text-yellow-400/80 text-xs">⚠️ ETF / 指數不適用產業報告;個股若顯示此訊息代表 FinMind 股票清單尚未載入,請稍後再試。</div>';
             return;
         }
         if (tag) tag.textContent = `所屬:${sector.name}`;
@@ -5039,16 +5107,24 @@ ${lightExplain[queryType]}
         let newsCtx = '';
         try {
             const items = this._globalNewsItems || [];
-            const kw = new RegExp(sector.name.replace(/\s/g, '') + '|' + sector.names.split('/').join('|') + '|半導體|AI|晶片', 'i');
+            const kwParts = [sector.name.replace(/\s/g, '')];
+            if (sector.names) kwParts.push(...sector.names.split('/'));
+            kwParts.push('半導體', 'AI', '晶片');
+            const kw = new RegExp(kwParts.filter(Boolean).join('|'), 'i');
             const hits = items.filter(it => kw.test(it.title_zh || it.title || '')).slice(0, 5);
             if (hits.length) newsCtx = '\n【近期相關新聞】\n' + hits.map(it => '- ' + (it.title_zh || it.title)).join('\n');
         } catch(_) {}
+
+        // generic(全市場 fallback)無 curated 同業 → 讓 AI 自行點名同業(產業常識)
+        const peerLine = sector.names
+            ? `【板塊代表股】${sector.names}`
+            : `【同業】請依產業常識自行點名 2-3 檔台股同業(含代號)`;
 
         const prompt = `你是台股產業分析師,用白話文、權證小哥風格(國中生也能懂),分析下方產業板塊。
 
 【標的】${stockName}(${sym})
 【所屬板塊】${sector.name}
-【板塊代表股】${sector.names}${newsCtx}
+${peerLine}${newsCtx}
 
 請輸出 5 段,每段「▌標題」開頭,2-3 句白話,**粗體**標關鍵字。嚴禁「根據資料」等廢話:
 
@@ -5077,10 +5153,19 @@ ${lightExplain[queryType]}
                 .replace(/▌(\d+\.\s*.+)/g, '<div class="mt-2 mb-1 text-cyan-300 font-black text-xs border-l-2 border-cyan-400 pl-2">▌$1</div>')
                 .replace(/\n/g, '<br>');
             box.innerHTML = html;
+            // 💾 成功才覆蓋快取(標日期),下次開卡直接顯示
+            try {
+                const today = new Date();
+                const dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+                localStorage.setItem(this._industryCacheKey(sym),
+                    JSON.stringify({ date: dateStr, ts: Date.now(), html }));
+                this._evictIndustryCache();
+                if (tag) tag.textContent = `所屬:${sector.name}・報告日期:${dateStr}`;
+            } catch(_) {}
         } catch(e) {
             box.innerHTML = `<span class="text-red-400 text-xs">產業報告生成失敗:${e.message}</span>`;
         }
-        btn.textContent = '重新生成';
+        btn.textContent = '重新生成(覆蓋)';
         btn.disabled = false;
     },
 
@@ -6888,11 +6973,11 @@ ${_newsLine}${globalContext}
     },
 
     // 📦 首席 AI 當日快取（localStorage，每股每成本每日獨立一份）
-    // key 形如 aiCache_v2|2330|125.5|2026-06-07；隔日 cache miss 觸發重算
+    // key 形如 aiCache_v3|2330|125.5|2026-06-07；隔日 cache miss 觸發重算
     _aiCacheKey(sym, costKey) {
         const d = new Date();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return `aiCache_v2|${sym}|${(costKey || 'empty')}|${dateStr}`;
+        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}`;
     },
     _getCachedAI(sym, costKey) {
         try {
@@ -6910,7 +6995,7 @@ ${_newsLine}${globalContext}
     _getLastAnyDateCache(sym) {
         try {
             let best = null;
-            const prefix = `aiCache_v2|${sym}|`;
+            const prefix = `aiCache_v3|${sym}|`;
             for (let i = 0; i < localStorage.length; i++) {
                 const k = localStorage.key(i);
                 if (!k || !k.startsWith(prefix)) continue;
@@ -6927,7 +7012,7 @@ ${_newsLine}${globalContext}
             const toDel = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const k = localStorage.key(i);
-                if (!k || !k.startsWith('aiCache_v2|')) continue;
+                if (!k || !k.startsWith('aiCache_v3|')) continue;
                 try {
                     const v = JSON.parse(localStorage.getItem(k));
                     if (v && v._ts && (now - v._ts) > keep) toDel.push(k);
@@ -6946,8 +7031,9 @@ ${_newsLine}${globalContext}
 
         const tl = (traffic_light || '').trim();
         const tlEsc = tl.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const tlSty = tl.startsWith('🔴') ? { cls: 'bg-red-900/50 border-red-500 text-red-100 shadow-[0_0_14px_rgba(248,113,113,0.6)]', pulse: 'animate-pulse' }
-                      : tl.startsWith('🟢') ? { cls: 'bg-green-900/45 border-green-500 text-green-100 shadow-[0_0_12px_rgba(74,222,128,0.4)]', pulse: '' }
+        // 🚦 燈號紅漲綠跌(台股慣例):🔴=可以買(多方,紅底發光)、🟢=不能買(空方警示,綠底 pulse)、🟡=觀望
+        const tlSty = tl.startsWith('🔴') ? { cls: 'bg-red-900/50 border-red-500 text-red-100 shadow-[0_0_14px_rgba(248,113,113,0.6)]', pulse: '' }
+                      : tl.startsWith('🟢') ? { cls: 'bg-green-900/45 border-green-500 text-green-100 shadow-[0_0_12px_rgba(74,222,128,0.5)]', pulse: 'animate-pulse' }
                       : tl.startsWith('🟡') ? { cls: 'bg-yellow-900/45 border-yellow-500 text-yellow-100', pulse: '' }
                       : { cls: 'bg-gray-800 border-gray-600 text-gray-200', pulse: '' };
             const trafficHtml = tl
@@ -6955,7 +7041,12 @@ ${_newsLine}${globalContext}
                 : '';
 
         let html = (detail_action || '').trim();
+        // 新四段體(哲哲版);舊三段體標題保留映射,兼容夜間批次/快取裡的舊格式
         const sectionColors = {
+            '【📊 大盤與籌碼全景】':   'text-cyan-400 border-cyan-500',
+            '【🟥 空手者策略】':       'text-red-400 border-red-500',
+            '【🟦 持有者策略】':       'text-blue-400 border-blue-500',
+            '【🛡️ 風控紅線】':         'text-orange-400 border-orange-500',
             '【🌏 總體位階與大局觀】':  'text-cyan-400 border-cyan-500',
             '【⚔️ 總監專屬戰術室】':   'text-purple-400 border-purple-500',
             '【🔥 首席操盤手終極喊話】': 'text-orange-400 border-orange-500',
@@ -6969,9 +7060,11 @@ ${_newsLine}${globalContext}
         html = html
             .replace(/^<p[^>]*>\s*<\/p>/, '')
             .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-200 font-black bg-yellow-900/40 px-1 rounded">$1</b>')
-            .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(74,222,128,0.3)]">🟢強力買進</span>')
-            .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(248,113,113,0.5)] text-sm">🔴強制撤退</span>')
-            .replace(/🟡觀望或減碼/g,'<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望或減碼</span>')
+            .replace(/🔴可以買/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(248,113,113,0.4)]">🔴可以買</span>')
+            .replace(/🟢不能買/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.4)] text-sm">🟢不能買</span>')
+            .replace(/🟡觀望/g,   '<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望</span>')
+            .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm">🟢強力買進</span>')
+            .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded text-sm">🔴強制撤退</span>')
             .replace(/\n/g, '<br>');
 
         const bb = (bottom_bar || '').trim();
@@ -8275,16 +8368,18 @@ ${_newsLine}${globalContext}
     _RADAR_TAB_BASE: 'radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all ',
     _RADAR_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
     _RADAR_TABS: {
-        layup:    { id: 'radarTabLayup',    active: 'bg-yellow-600/30 text-yellow-200 border-yellow-500' },
-        momentum: { id: 'radarTabMomentum', active: 'bg-red-600/20 text-red-300 border-red-500' },
-        swing:    { id: 'radarTabSwing',    active: 'bg-green-600/20 text-green-300 border-green-500' },
-        sniper:   { id: 'radarTabSniper',   active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
+        layup:     { id: 'radarTabLayup',     active: 'bg-yellow-600/30 text-yellow-200 border-yellow-500' },
+        momentum:  { id: 'radarTabMomentum',  active: 'bg-red-600/20 text-red-300 border-red-500' },
+        swing:     { id: 'radarTabSwing',     active: 'bg-green-600/20 text-green-300 border-green-500' },
+        sniper:    { id: 'radarTabSniper',    active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
+        attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
     },
     _RADAR_HINT: {
-        layup:    '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
-        momentum: '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。',
-        swing:    '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
-        sniper:   '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
+        layup:     '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
+        momentum:  '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。',
+        swing:     '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
+        sniper:    '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
+        attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
     },
     // radar_matrix.json 尚未採礦時的示範資料（接線採礦後自動換成真資料）
     _RADAR_FAKE: {
@@ -8347,20 +8442,112 @@ ${_newsLine}${globalContext}
         });
         const hint = document.getElementById('radarMatrixHint');
         if (hint) hint.textContent = this._RADAR_HINT[key] || '';
-        // 切換 layup view vs 一般表格
+        // 切換 layup view vs 處置股 view vs 一般表格
         const layupView = document.getElementById('radarLayupView');
         const tableWrap = document.getElementById('radarTableWrap');
+        const attView   = document.getElementById('radarAttentionView');
+        if (attView) attView.classList.add('hidden');
         if (key === 'layup') {
             if (layupView) layupView.classList.remove('hidden');
             if (tableWrap) tableWrap.classList.add('hidden');
             this._loadChiefCacheForSendScore();
             this._loadSignalAccuracy();
+        } else if (key === 'attention') {
+            if (layupView) layupView.classList.add('hidden');
+            if (tableWrap) tableWrap.classList.add('hidden');
+            if (attView) attView.classList.remove('hidden');
+            this.renderAttentionView();
         } else {
             if (layupView) layupView.classList.add('hidden');
             if (tableWrap) tableWrap.classList.remove('hidden');
             this.renderRadarMatrix(key);
         }
         this.vibrate(15);
+    },
+
+    // 🚨 處置股 view:注意/處置(幾分盤+出關日)/即將出關 + 明日恐達門檻預警
+    async renderAttentionView() {
+        const body = document.getElementById('attentionViewBody');
+        if (!body) return;
+        const st = this.attentionStatus || {};
+        const entries = Object.entries(st);
+
+        // 分三桶:處置中 / 即將出關(end_date 距今 ≤3 天) / 注意股
+        const _daysTo = (d8) => {
+            // end_date 格式 'YYYY-MM-DD' 或缺
+            if (!d8) return null;
+            const t = new Date(d8 + 'T00:00:00');
+            if (isNaN(t.getTime())) return null;
+            return Math.ceil((t.getTime() - Date.now()) / 86400000);
+        };
+        const punished = [], exiting = [], noticed = [];
+        for (const [sym, info] of entries) {
+            const isPunish = (info.status || '').includes('處置');
+            if (isPunish) {
+                const dleft = _daysTo(info.end_date);
+                if (dleft !== null && dleft <= 3 && dleft >= 0) exiting.push({ sym, ...info, dleft });
+                else punished.push({ sym, ...info, dleft });
+            } else {
+                noticed.push({ sym, ...info });
+            }
+        }
+
+        const row = (s, extraHtml, borderCls) => {
+            const name = this.getStockName(s.sym) || s.sym;
+            return `<div class="flex items-center gap-2 py-1.5 px-2.5 rounded-lg bg-[#161b22] hover:bg-[#1c2128] cursor-pointer border ${borderCls}"
+                onclick="app.analyze('${s.sym}'); app.switchAppTab('diag'); app.vibrate(20);">
+                <div class="flex flex-col leading-tight min-w-0 flex-1">
+                    <span class="font-bold text-gray-100 text-[13px] truncate">${name} <span class="text-[10px] text-gray-500 font-mono">(${s.sym})</span></span>
+                    <span class="text-[10px] text-gray-400">${extraHtml}</span>
+                </div>
+                <span class="text-sm text-gray-500">→</span>
+            </div>`;
+        };
+
+        let html = '';
+        // 🔓 即將出關(高關注:出關前後常爆量)
+        if (exiting.length) {
+            html += `<div><div class="text-[11px] font-bold text-green-300 mb-1.5">🔓 即將出關(≤3 天)・${exiting.length} 檔</div><div class="space-y-1.5">`
+                + exiting.map(s => row(s,
+                    `${s.interval ? `每 ${s.interval} 分鐘分盤・` : ''}出關日 ${s.end_date || '?'}(${s.dleft === 0 ? '今天' : `剩 ${s.dleft} 天`})`,
+                    'border-green-800/50')).join('')
+                + '</div></div>';
+        }
+        // 🚨 處置中
+        if (punished.length) {
+            html += `<div><div class="text-[11px] font-bold text-red-300 mb-1.5">🚨 處置中(關禁閉)・${punished.length} 檔</div><div class="space-y-1.5">`
+                + punished.map(s => row(s,
+                    `${s.interval ? `每 ${s.interval} 分鐘分盤撮合` : (s.threshold || '分盤撮合')}${s.end_date ? `・出關日 ${s.end_date}` : ''}`,
+                    'border-red-900/50')).join('')
+                + '</div></div>';
+        }
+        // ⚠️ 注意股
+        if (noticed.length) {
+            html += `<div><div class="text-[11px] font-bold text-yellow-300 mb-1.5">⚠️ 注意股(警告中)・${noticed.length} 檔</div><div class="space-y-1.5">`
+                + noticed.map(s => row(s, s.threshold || '注意條款觸發', 'border-yellow-900/50')).join('')
+                + '</div></div>';
+        }
+        if (!html) html = '<div class="text-[11px] text-gray-600 text-center py-4">✅ 今日無注意/處置股(或資料待採礦更新)</div>';
+
+        // 📡 明日恐達門檻預警(attention_forecast.json,score ≥ 70 前 10)
+        try {
+            if (!this._attForecastCache) {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/attention_forecast.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(5000) });
+                this._attForecastCache = r.ok ? await r.json() : { stocks: {} };
+            }
+            const fc = Object.entries(this._attForecastCache?.stocks || {})
+                .filter(([, v]) => (v.score || 0) >= 70)
+                .sort((a, b) => (b[1].score || 0) - (a[1].score || 0))
+                .slice(0, 10);
+            if (fc.length) {
+                html += `<div><div class="text-[11px] font-bold text-orange-300 mb-1.5 mt-1">📡 明日恐達處置門檻(系統預估)・前 ${fc.length} 檔</div><div class="space-y-1.5">`
+                    + fc.map(([sym, v]) => row({ sym }, `風險分 ${v.score}・${(v.reasons || [])[0] || ''}`, 'border-orange-900/50')).join('')
+                    + '</div></div>';
+            }
+        } catch(_) {}
+
+        body.innerHTML = html;
     },
 
     renderRadarMatrix(key) {
@@ -8684,17 +8871,37 @@ ${_newsLine}${globalContext}
         const tsmChg = g('usBar_tsm_chg'), nvdaChg = g('usBar_nvda_chg');
         const us02yChg = g('usBar_us02y_chg'), dxyChg = g('usBar_dxy_chg');
 
-        // 全球即時新聞摘要
+        // 全球即時新聞摘要(餵前 12 則完整標題+影響判讀,給 AI 充足素材)
         const newsSection = (() => {
             const items = this._globalNewsItems;
             if (!items || !items.length) return '';
-            const bearish = items.filter(n => n.impact_level === 'bearish').slice(0, 3);
-            const bullish = items.filter(n => n.impact_level === 'bullish').slice(0, 3);
-            const lines = [];
-            if (bearish.length) lines.push('利空：' + bearish.map(n => (n.title_zh || n.title || '').slice(0, 30)).join('；'));
-            if (bullish.length) lines.push('利多：' + bullish.map(n => (n.title_zh || n.title || '').slice(0, 30)).join('；'));
-            return lines.length ? '\n【全球即時情報】\n' + lines.join('\n') : '';
+            const tagMap = { bullish: '🟢利多', bearish: '🔴利空', neutral: '⚪中性' };
+            const lines = items.slice(0, 12).map((n, i) => {
+                const t = (n.title_zh || n.title || '').slice(0, 60);
+                const tag = tagMap[n.impact_level] || '⚪';
+                const imp = (n.impact && n.impact !== '暫無分析') ? `→${n.impact.slice(0, 20)}` : '';
+                return `${i + 1}. [${tag}] ${t} ${imp}`;
+            });
+            return lines.length ? '\n【全球即時情報(過去 24H,系統已判讀多空)】\n' + lines.join('\n') : '';
         })();
+
+        // 🎯 AI 戰略選股 top_picks 前 5(三位一體篩選,容錯)
+        let topPicksLine = '';
+        try {
+            if (!this._topPicksCache) {
+                const ghBase2 = window.location.href.split('?')[0].split('#')[0];
+                const tpRes = await fetch(new URL('data/top_picks.json', ghBase2).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(4000) });
+                this._topPicksCache = tpRes.ok ? await tpRes.json() : null;
+            }
+            const picks = (this._topPicksCache?.picks || this._topPicksCache?.data || []).slice(0, 5);
+            if (picks.length) {
+                topPicksLine = picks.map(p => {
+                    const psym = p.sym || p.symbol || '';
+                    const pname = this.getStockName(psym) || psym;
+                    return `${pname}(${psym})`;
+                }).join('、');
+            }
+        } catch(_) {}
 
         // 三種雷達摘要
         const radarSection = (() => {
@@ -8816,15 +9023,19 @@ ${_newsLine}${globalContext}
 
         const _today = new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
 
-        const prompt = `你是精通「全球總體經濟」與「科技產業鏈」的頂尖控盤官,具備台積電(2330)與低軌衛星供應鏈洞察力,擅長分析「拉積盤」資金黑洞效應,並解析川普政治經濟學與黃仁勳 AI 宏圖。
-任務:依下方系統已整合的真實數據與情報,產出「LINE 轉發格式」盤前戰情官報。
+        const prompt = `你是雙重身分的盤前報告撰寫人:
+① 資深「產業分析師」:講供應鏈、景氣循環、產能與訂單的語言,負責產業/科技巨頭段落
+② 資深「股票策略分析師」:講點位、籌碼、風報比、部位配置的語言,負責數據掃描與實戰策略段落
+你具備台積電(2330)與低軌衛星供應鏈洞察力,擅長分析「拉積盤」資金黑洞效應,並解析川普政治經濟學與黃仁勳 AI 宏圖。
+任務:依下方系統已整合的真實數據與情報,產出今日盤前戰情官報。
 
 🛑 鐵則:
 - 嚴禁 Markdown 表格,改用條列式,用 --- 作分隔線
 - 嚴禁編造數據;凡顯示「待採」「--」「今日無重大更新」一律照實寫,不可瞎掰
 - 嚴禁混淆「空手者(找低位低基期)」與「空仇者(找破線放空)」邏輯
 - 關鍵數字與代號用 **粗體** 標示
-- 嚴禁使用「根據資料」「以下為您分析」等廢話${_dataWarning}
+- 嚴禁使用「根據資料」「以下為您分析」等廢話
+- 每段內容要「吃透」上方對應數據再下筆,禁止只複述數字不給觀點${_dataWarning}
 
 ━━━━━━━━━━━━━━━━━━━━
 【系統已精算數據(禁重算)】
@@ -8834,12 +9045,13 @@ ${_newsLine}${globalContext}
 - VIX 恐慌: ${vix} ${fmtChg(mr.vix_chg_pct)}
 - NVDA: ${nvda} ${nvdaChg}
 - 美元指數 DXY: ${dxy} ${dxyChg}
+- 黃金: ${fmtMr(mr.gold)} ${fmtChg(mr.gold_chg_pct)} / WTI 原油: ${fmtMr(mr.wti)} ${fmtChg(mr.wti_chg_pct)} / 比特幣: ${fmtMr(mr.btc)} ${fmtChg(mr.btc_chg_pct)}
 - 日經 225: ${fmtMr(mr.nikkei)} ${fmtChg(mr.nikkei_chg_pct)} / KOSPI: ${fmtMr(mr.kospi)} ${fmtChg(mr.kospi_chg_pct)} / 恆生: ${fmtMr(mr.hsi)} ${fmtChg(mr.hsi_chg_pct)}
 - 加權: ${twii} / 上櫃: ${twoii}
 - 外資台指期: ${fiLabel} / 外資現貨: ${fiSpotStr}
 - 戰情指揮部 5 維: 量價=${dim_pv} / 籌碼=${dim_chip} / 總經=${dim_macro} / 技術=${dim_tech} / 情緒=${dim_senti}
-- 市場風險指數: ${riskScore == null ? '計算中' : riskScore + ' (' + riskLabel + ')'}
-- 美債 10Y: ${us10yStr} / 美債 2Y: ${us2yStr} / 恐懼貪婪: ${fgStr} / 散戶多空: ${retailStr} / 台幣: ${twdStr}
+- 市場風險指數: ${riskScore == null ? '計算中' : riskScore + ' (' + riskLabel + ')'} / 流動性熱度: ${liqText}
+- 美債 10Y: ${us10yStr} / 美債 2Y: ${us2yStr} / 恐懼貪婪: ${fgStr} / 散戶多空: ${retailStr} / 台幣: ${twdStr} / 台指逆價差: ${backStr}
 ${_pullChipAlert ? '- ' + _pullChipAlert : ''}
 
 【科技巨頭過去 24H 動態(系統已篩選)】
@@ -8851,17 +9063,20 @@ ${_pullChipAlert ? '- ' + _pullChipAlert : ''}
 【4 大戰區】
 ${wzLines}
 
+【9 細分板塊漲跌】
+${subLines}
+
 【牛市泡沫 4 維】
 ${bubbleLines}
 
 【雷達自動掃描】
 ${radarSection}
-${newsSection}
+${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLine}` : ''}${newsSection}
 ━━━━━━━━━━━━━━━━━━━━
 
 嚴格依下列格式輸出(emoji 與 --- 分隔線必須保留,每段標題後空一行再寫內容):
 
-🚀 ${_today} 盤前戰情官報 (LINE 複製專用)
+🚀 ${_today} 盤前戰情官報
 
 🟢 全球隔夜觀測
 
@@ -9471,6 +9686,20 @@ ${newsSection}
             const _mr = this._macroRiskCache;
             const _vix = _mr?.vix ?? null;
             const _fiSpot = _mr?.fi_spot_net ?? null;
+            // 🌏 全盤評估補餵:恐懼貪婪/散戶多空/美債10Y/加權指數(全 JS 取好,禁 AI 算數)
+            const _fearGreed = _mr?.fear_greed ?? null;
+            const _retailLs  = _mr?.retail_ls_pct ?? null;
+            const _us10y     = _mr?.us10y_yield ?? null;
+            const _twiiNow   = document.getElementById('mktTWII_main')?.innerText?.trim()
+                            || document.getElementById('mktTWII')?.innerText?.trim() || '--';
+            const _marketPanorama = [
+                `加權指數 ${_twiiNow}`,
+                `VIX ${_vix ?? '待採'}`,
+                `恐懼貪婪 ${_fearGreed ?? '待採'}${_fearGreed != null ? (_fearGreed >= 55 ? '(貪婪)' : _fearGreed <= 45 ? '(恐懼)' : '(中性)') : ''}`,
+                `散戶多空比 ${_retailLs != null ? _retailLs + '%' : '待採'}`,
+                `外資現貨 ${_fiSpot != null ? (_fiSpot > 0 ? '+' : '') + _fiSpot + ' 億' : '待採'}`,
+                `美債10Y ${_us10y != null ? _us10y + '%' : '待採'}`,
+            ].join(' / ');
             // 大盤跌幅:用 sector_heat us 板塊漲跌或自選 1605/2330 等代表股當量化的代理(若 macro_risk 沒 taiex_chg)
             const _shUs = this._sectorHeatCache?.sectors?.us?.chg ?? null;
             const _bubbleCrash = (_vix != null && _vix > 30) || (_shUs != null && _shUs < -2);
@@ -9483,11 +9712,12 @@ ${newsSection}
             const sigLine = sig
                 ? `${sig.level} ${sig.tag}（${sig.label}）— ${sig.action}`
                 : '計算中';
+            // 🚦 紅漲綠跌(台股慣例):🔴=可以買、🟡=觀望、🟢=不能買
             const sigVerdictHint = sig
-                ? (sig.isHighRisk ? '🔴強制撤退'
-                  : sig.isModerateRisk ? '🟠減碼觀望（跌破月線但無進一步破壞）'
-                  : (sig.level === '🔵' || sig.level === '🟢') ? '🟢強力買進'
-                  : '🟡觀望或減碼')
+                ? (sig.isHighRisk ? '🟢不能買'
+                  : sig.isModerateRisk ? '🟡觀望（跌破月線但無進一步破壞,偏空）'
+                  : (sig.level === '🔵' || sig.level === '🟢') ? '🔴可以買'
+                  : '🟡觀望')
                 : '';
             // 📈 法人買盤動能(Tier1 餵 AI:連買天數是「送分題」的核心依據)
             const _instStreakLine = sig
@@ -9498,8 +9728,11 @@ ${newsSection}
             const prompt = `${soul}
 
 ━━━━━━━━━━━━━━━━━━━━
-⚡ 你是【頂級避險基金台股操盤總監】，依下方【系統已精算數據】下達操盤指令。
+⚡ 你是人稱「哲哲」的台股知名分析師:口語直白、敢給明確結論、像直播喊盤跟「各位投資朋友」對話,
+   口頭禪風格「抱緊處理」「該出手就出手」。你最討厭模稜兩可 — 能買就說能買,不能買就說不能買。
+   但你的每個結論都必須嚴格依下方【系統已精算數據】,不靠感覺。
 🛑 嚴禁自己算數學、嚴禁捏造營收/EPS/均線數字，所有數值只能引用下方給定的。
+🚦 燈號鐵律(台股慣例紅漲綠跌):🔴 = 可以買(做多) / 🟡 = 觀望 / 🟢 = 不能買(避開或撤退)。整篇輸出嚴格遵守此色彩語義。
 
 🎯 標的屬性（系統已分類，禁重判）：${classification.emoji} ${classification.name}
    邏輯包：${classification.logicPack}
@@ -9529,17 +9762,17 @@ ${newsSection}
         · 空手者 → 必須輸出「**嚴禁新建倉,空手觀望**」,不得喊任何進場語言。
         · 持股者 → 必須輸出「**提防主力尾盤突襲,嚴格無情停利,拒絕被關禁閉**」。
         · 嚴禁建議『越關越大尾』『加碼攤平』『賭出獄噴發』等賭徒式語言。
-        · traffic_light 必須降級至 🟡觀望或減碼 或 🔴強制撤退,**禁止 🟢強力買進**。` : '✅ 風控訊號正常,依上方規則正常判讀即可,無須額外避險。'}
+        · traffic_light 必須降級至 🟡觀望 或 🟢不能買,**禁止 🔴可以買**。` : '✅ 風控訊號正常,依上方規則正常判讀即可,無須額外避險。'}
    • 均線稱呼依現價位置自動切換（系統已標，照抄不准誤稱）：
      · ${ma5Stance}
      · ${ma20Stance}
      · ${ma60Stance}
      · ${ma120Stance}
      ⚠️ 已跌破的均線禁稱「防守 XX 元」（你已經在下面了），必須改稱「反彈壓力天花板 XX 元」。
-   ⭐ 送分題強制鐵則:若上方系統燈號為 ${sigVerdictHint || '計算中'} 且同時滿足 ≥3 項:
-     (a) 站穩 20MA(月線) (b) 系統燈號為🟢或🔵 (c) 60日漲幅在 -10%~+20% 區間(沒過熱) (d) 籌碼安定度高 (e) 屬於主流題材
-     → **必須給綠燈🟢「送分題」**,detail_action 用「敢喊敢按」語氣,禁用「觀望/等等看」帶過。
-     使用者多次抱怨「每隻都叫觀望」,寧可給綠燈再加風控停損點,也不要保守過度。
+   ⭐ 送分題強制鐵則:若上方系統量化建議為 ${sigVerdictHint || '計算中'} 且同時滿足 ≥3 項:
+     (a) 站穩 20MA(月線) (b) 系統內部燈號為🟢或🔵(送分題/大戶洗盤) (c) 60日漲幅在 -10%~+20% 區間(沒過熱) (d) 籌碼安定度高 (e) 屬於主流題材
+     → **必須給 🔴可以買「送分題」**,detail_action 用「敢喊敢按」語氣,禁用「觀望/等等看」帶過。
+     使用者多次抱怨「每隻都叫觀望」,寧可給 🔴可以買再加風控停損點,也不要保守過度。
 
 4️⃣【極端行情心理學補充】（只在數據真有極端時才啟用，平日禁套）
    • 60 日漲幅（${chg60pct}%）達 +50% 後出現急跌 → 定調「**漲多後正常技術性拉回**」，禁渲染崩盤恐慌。
@@ -9573,6 +9806,7 @@ ${newsSection}
 - 庫存狀態：${invLine}
 - 🚨 處置神器訊號：${attentionLine}
 - 🌏 總經外資期貨：${usMask(fiLabel)}
+- 🌐 大盤全景(JS 已精算)：${usMask(_marketPanorama)}
 - 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
 - 📐 技術位階（系統精算，禁重算）：趨勢 ${chu?.trendJudge || '中性'}｜均線 ${chu?.maArrangement || '糾結'}｜折數 ${chu?.foldPct ?? '—'}折 ${chu?.foldZone || ''}
 - 🚨 型態警報：${patternAlertsText}
@@ -9589,10 +9823,10 @@ ${newsSection}
 ━━━━━━━━━━━━━━━━━━━━
 ⚠️ 只准輸出純 JSON，**必須有且只有這 4 個 key**，禁 \`\`\`json 標籤、禁前後說明文字：
 {
-  "traffic_light": "格式『<emoji+三選一動詞> — <25 字內現價與均線即時肉搏描述>』。三選一必須是 🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退（與系統量化建議${sigVerdictHint ? ` ${sigVerdictHint}` : ''} 一致）。範例：'🟢強力買進 — 趨勢狂飆，不破 **${ma5} 元** 不賣' / '🟡觀望或減碼 — 月線拉鋸，等突破再追' / '🔴強制撤退 — 跌破季線，主力倒貨無情'。ETF 標的可改寫如 '🟢強力買進 — 跌價殖利率升，**金字塔低接**' 但仍保留三選一動詞。",
-  "summary": "30 字內首頁黃卡，強烈動詞 emoji 開頭，融合屬性 + 數據 + 風險為一句話，必須帶具體點位。🛑 兩條鐵則：(1) 開頭動詞必須與 traffic_light 同向 — 🟢→抱緊🔥/低接試單🤔、🟡→觀望🤨、🔴→快逃🚨/出貨🤑，嚴禁燈號🟡🟢卻喊快逃。(2) 句中價位只能寫真實價格數字（現價 ${currentPrice}、均線 ${ma5}/${ma20} 等），**嚴禁把股票代號 ${sym} 當成價格寫進句子**（錯誤示範：『${sym} 低於 ${ma20} 元』←代號不是價格；正確：『現價 ${currentPrice} 低於月線 ${ma20} 元』）。",
-  "bottom_bar": "15~20 字內置底浮動條，依【天條 3】庫存與屬性動態組合，所有數字與動詞用 **xxx** 包起。範例（空手空頭）：『空頭成型，**空手觀望等待**』；（有持股獲利 +30%）：『防守 **${ma5} 元** 鎖巨利🔥』；（ETF 跌均線）：『殖利率攀升，**金字塔低接🤔**』；（強勢突破）：『站穩 **${ma20} 元** **加碼🔥**』。",
-  "detail_action": "三段體完整評析,標題一字不差,段間用 \\n,每段 80~140 字。\\n【🌏 總體位階與大局觀】融合上方戰情(三大法人/板塊/期貨/60日漲幅/籌碼安定度),對本檔【${classification.name}】當前位階做具體判讀,點名最關鍵 2~3 個利多/利空,不堆砌數字、不複述規則。\\n【⚔️ 總監專屬戰術室】依本檔當前【庫存狀態:${invLine}】與【屬性邏輯包】,從上方規則中挑定一條,給出今天的明確指令(進場價/防守點/目標價/移動停利數字,擇要列出),禁列舉所有可能。已跌破的均線禁稱「防守」,改稱「反彈壓力天花板」。\\n【🔥 首席操盤手終極喊話】依本檔屬性挑一句口語化喊話(20~40 字),強烈動詞 emoji 開頭(抱緊🔥/撤退🚨/砍倉/調節/承接 擇一),帶具體點位。\\n⚠️ 禁複述上方 prompt 的 if-then 規則文字、禁列舉『A 或 B 或 C』『X→Y;Z→W』形式、禁出現『依【天條』『禁列舉』等 meta 字眼,違反視為無效輸出。\\n✅ GOOD 範例(空手+大盤多頭):『空手碰上 +27% 急漲後緊縮,先 **手綁好觀望等待**,等回測 **${ma20} 元** 月線不破再 **閒錢 低接試單🤔**,跌破 **${ma60Str} 元** 取消計畫』\\n❌ BAD 範例(複述 prompt):『空手禁出「撤退/清倉/停利停損」,改喊『等待突破建倉』或『手綁好觀望』或『閒錢 低接』』"
+  "traffic_light": "格式『<emoji+三選一> — <25 字內現價與均線即時肉搏描述>』。三選一必須是 🔴可以買 或 🟡觀望 或 🟢不能買（紅漲綠跌!與系統量化建議${sigVerdictHint ? ` ${sigVerdictHint}` : ''} 一致）。範例：'🔴可以買 — 趨勢狂飆，不破 **${ma5} 元** 抱緊處理' / '🟡觀望 — 月線拉鋸，等突破再出手' / '🟢不能買 — 跌破季線，主力倒貨先閃'。ETF 標的可改寫如 '🔴可以買 — 跌價殖利率升，**金字塔低接**' 但仍保留三選一。",
+  "summary": "30 字內首頁黃卡，哲哲口吻強烈動詞 emoji 開頭，融合屬性 + 數據 + 風險為一句話，必須帶具體點位。🛑 兩條鐵則：(1) 開頭動詞必須與 traffic_light 同向 — 🔴可以買→抱緊🔥/低接試單🤔/建倉、🟡觀望→觀望🤨、🟢不能買→快逃🚨/出貨🤑/避開，嚴禁燈號🔴🟡卻喊快逃。(2) 句中價位只能寫真實價格數字（現價 ${currentPrice}、均線 ${ma5}/${ma20} 等），**嚴禁把股票代號 ${sym} 當成價格寫進句子**（錯誤示範：『${sym} 低於 ${ma20} 元』←代號不是價格；正確：『現價 ${currentPrice} 低於月線 ${ma20} 元』）。",
+  "bottom_bar": "15~20 字內置底浮動條，依庫存狀態動態組合，所有數字與動詞用 **xxx** 包起。範例（空手空頭）：『空頭成型，**空手觀望等待**』；（有持股獲利 +30%）：『防守 **${ma5} 元** 鎖巨利🔥』；（ETF 跌均線）：『殖利率攀升，**金字塔低接🤔**』；（強勢突破）：『站穩 **${ma20} 元** **加碼🔥**』。",
+  "detail_action": "四段體完整評析,標題一字不差,段間用 \\n,每段 70~130 字,全程哲哲口吻(直白、敢說、跟投資朋友對話)。\\n【📊 大盤與籌碼全景】用上方大盤全景(加權/VIX/恐懼貪婪/散戶多空/外資期現/融資槓桿/板塊輪動)判讀大環境順風還是逆風,再接到本檔籌碼安定度與法人動能,一氣呵成說「現在的環境適不適合碰這檔」。\\n【🟥 空手者策略】直球回答:能不能進?能進的話**何時建倉**(現在就進 vs 等回測哪條均線)、具體進場價、分幾批、什麼情況取消計畫(跌破哪裡)。不能進就說為什麼+什麼條件出現才能進。\\n【🟦 持有者策略】依【庫存狀態:${invLine}】量身對答:該加碼/續抱/減碼/停損?具體價位與動作,獲利者談移動停利,套牢者談反彈逃命或設停損,禁含糊。\\n【🛡️ 風控紅線】明確給:停損價(跌破哪裡無條件出場)、部位上限建議(幾成資金)、本檔當前最大的一個風險點是什麼。\\n⚠️ 鐵律:四段標題一字不差;空手者段落禁談停利停損(沒部位談什麼停利),持有者段落才談;禁複述本 prompt 規則文字、禁出現『天條』『庫存狀態:』『禁列舉』等 meta 字眼,違反視為無效輸出。"
 }`;
 
             // 🚀 首席五維 = 旗艦級分析,保留 70B(每次約 8k tokens,使用者手動或快取命中)
@@ -9608,16 +9842,18 @@ ${newsSection}
                 console.warn('[AI 警示] detail_action 疑似複述 prompt 規則文字,prompt 需強化:',
                              parsed.detail_action.slice(0, 200) + '…');
             }
-            // 🛡️ 燈號↔總評同向防呆(截圖實證:系統黃燈但 summary 開頭「🚨快逃」自相矛盾嚇壞使用者)
+            // 🛡️ 燈號↔總評同向防呆(紅漲綠跌新語義:🔴=可以買、🟢=不能買)
             //     prompt 已有同向鐵則,這裡是 AI 違規時的最後攔截:強制把矛盾動詞改寫成燈號對應動詞
+            //     · 🔴可以買 卻喊「快逃/出貨」= 矛盾 → 改「抱緊🔥」
+            //     · 🟢不能買 卻喊「抱緊/加碼」= 矛盾 → 改「快逃🚨」
             if (parsed.summary && parsed.traffic_light) {
                 const _tl = parsed.traffic_light;
-                if (!_tl.includes('🔴') && /快逃|出貨/.test(parsed.summary)) {
-                    console.warn('[AI 防呆] summary 含空頭動詞但燈號非🔴,已改寫:', parsed.summary);
-                    parsed.summary = parsed.summary.replace(/快逃🚨?|出貨🤑?/g, '觀望🤨');
-                } else if (_tl.includes('🔴') && /抱緊|加碼/.test(parsed.summary)) {
-                    console.warn('[AI 防呆] summary 含多頭動詞但燈號🔴,已改寫:', parsed.summary);
-                    parsed.summary = parsed.summary.replace(/抱緊🔥?|加碼🔥?/g, '減碼');
+                if (_tl.includes('🔴') && /快逃|出貨/.test(parsed.summary)) {
+                    console.warn('[AI 防呆] 燈號🔴可以買卻喊空頭動詞,已改寫:', parsed.summary);
+                    parsed.summary = parsed.summary.replace(/快逃🚨?|出貨🤑?/g, '抱緊🔥');
+                } else if (_tl.includes('🟢') && /抱緊|加碼/.test(parsed.summary)) {
+                    console.warn('[AI 防呆] 燈號🟢不能買卻喊多頭動詞,已改寫:', parsed.summary);
+                    parsed.summary = parsed.summary.replace(/抱緊🔥?|加碼🔥?/g, '快逃🚨');
                 }
             }
             // 📦 寫入當日快取（同股 + 同成本 + 同日）；隔日 cache miss 觸發重算
