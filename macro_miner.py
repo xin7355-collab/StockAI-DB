@@ -587,6 +587,55 @@ def fetch_vix():      return _fetch_yf_close("^VIX",     "VIX 恐慌指數")
 def fetch_nikkei():   return _fetch_yf_close("^N225",    "日經 225")
 def fetch_hsi():      return _fetch_yf_close("^HSI",     "恆生指數")
 def fetch_kospi():    return _fetch_yf_close("^KS11",    "韓股 KOSPI")
+def fetch_jpy():      return _fetch_yf_close("JPY=X",    "日圓匯率")     # ⚠️ JPY=X = USD/JPY(每美元兌幾日圓);日圓升值=此值下跌
+
+
+def _yf_chg_3d(ticker, name):
+    """🦅 獵鷹建倉分用:取 ticker 近 3 個交易日累積變動率%(避險煞車判斷)。
+    回傳 float 或 None。dropna 取最後一筆 vs 倒數第 4 筆(=3 個交易日前)。"""
+    import time
+    for attempt in range(2):
+        try:
+            time.sleep(0.4 if attempt == 0 else 1.0)
+            import yfinance as yf
+            hist = yf.Ticker(ticker).history(period="1mo", auto_adjust=False)
+            if hist is None or hist.empty:
+                continue
+            closes = hist["Close"].dropna()
+            if len(closes) < 4:
+                continue
+            last, base = float(closes.iloc[-1]), float(closes.iloc[-4])
+            if last != last or base != base or base <= 0:
+                continue
+            return round((last - base) / base * 100, 2)
+        except Exception:
+            continue
+    return None
+
+
+def fetch_twii_240ma_bias():
+    """🦅 大盤懼高症濾網:加權指數(^TWII)距 240MA(年線)乖離率%。
+    需 240 個交易日,故抓 2 年;dropna 防休市 NaN。回傳 (bias_pct, ma240, err)。"""
+    import time
+    for attempt in range(2):
+        try:
+            time.sleep(0.4 if attempt == 0 else 1.0)
+            import yfinance as yf
+            hist = yf.Ticker("^TWII").history(period="2y", auto_adjust=False)
+            if hist is None or hist.empty:
+                return None, None, "^TWII 2y 回空"
+            closes = hist["Close"].dropna()
+            if len(closes) < 240:
+                return None, None, f"^TWII 有效收盤 {len(closes)}<240(不足年線)"
+            last = float(closes.iloc[-1])
+            ma240 = float(closes.tail(240).mean())
+            if last != last or ma240 != ma240 or ma240 <= 0:
+                return None, None, "^TWII 240MA 含 NaN"
+            return round((last - ma240) / ma240 * 100, 2), round(ma240, 0), None
+        except Exception as e:
+            if attempt == 1:
+                return None, None, str(e)[:80]
+    return None, None, "重試後仍失敗"
 
 
 def fetch_usdtwd():
@@ -952,6 +1001,36 @@ def main():
         else:
             print(f"     → 失敗：{err}")
 
+    # ── 🦅 獵鷹建倉分:全球宏觀避險因子(日圓 / 3日變動 / 大盤年線乖離 / 黑天鵝旗標)──
+    print("─" * 50)
+    print("🦅 採集獵鷹建倉宏觀因子(日圓套利 / 3日變動 / 大盤懼高症)")
+    # 日圓(JPY=X = USD/JPY,日圓升值=此值下跌)
+    jpy_val, jpy_chg, jpy_err = fetch_jpy()
+    out["jpy"], out["jpy_chg_pct"], out["jpy_error"] = jpy_val, jpy_chg, jpy_err
+    # 3 日變動率(避險煞車:日圓急升=USDJPY 3日跌、金/油 3日暴漲)
+    out["jpy_chg_3d"]  = _yf_chg_3d("JPY=X",  "日圓")
+    out["gold_chg_3d"] = _yf_chg_3d("GC=F",   "黃金")
+    out["wti_chg_3d"]  = _yf_chg_3d("CL=F",   "WTI原油")
+    print(f"   · 日圓 {jpy_val}({jpy_chg}% 日/{out['jpy_chg_3d']}% 3日) 金3日 {out['gold_chg_3d']}% 油3日 {out['wti_chg_3d']}%")
+    # 大盤 240MA 年線乖離率
+    bias, ma240, bias_err = fetch_twii_240ma_bias()
+    out["taiex_ma240_bias"], out["taiex_ma240"], out["taiex_ma240_error"] = bias, ma240, bias_err
+    print(f"   · 大盤年線乖離 {bias}%(240MA={ma240}, err={bias_err})")
+
+    # 🦅 黑天鵝防禦旗標(全市場同步,供 radar_miner 算建倉分 + 前端防禦矩陣顯示)
+    #    日圓急升:USDJPY 3日 < -1.5%(利差交易平倉);金/油單日 > 3%(通膨地緣恐慌);KOSPI 早盤 < -1.5%
+    _jpy3 = out.get("jpy_chg_3d")
+    _gold1 = out.get("gold_chg_pct")
+    _wti1 = out.get("wti_chg_pct")
+    _kospi1 = out.get("kospi_chg_pct")
+    out["blackswan"] = {
+        "market_bias_high": (bias is not None and bias > 20),       # 大盤懼高 → 總分 ×0.7
+        "jpy_surge":        (_jpy3 is not None and _jpy3 < -1.5),    # 日圓急升(USDJPY 跌)→ -20
+        "metal_oil_spike":  ((_gold1 is not None and _gold1 > 3) or (_wti1 is not None and _wti1 > 3)),  # 金/油暴漲 → -20
+        "kospi_dump":       (_kospi1 is not None and _kospi1 < -1.5),  # 亞股提款 → -10
+    }
+    print(f"   🦅 黑天鵝旗標:{out['blackswan']}")
+
     out["fi_complex_conclusion"] = judge_fi_complex(fut, spot)
     print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
 
@@ -969,6 +1048,9 @@ def main():
                         "dxy", "dxy_chg_pct", "btc_usd", "btc_chg_pct",
                         "vix", "vix_chg_pct", "nikkei", "nikkei_chg_pct",
                         "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct",
+                        # 🦅 獵鷹建倉宏觀因子(API 偶失敗時沿用昨日,避免顯示待採)
+                        "jpy", "jpy_chg_pct", "jpy_chg_3d", "gold_chg_3d", "wti_chg_3d",
+                        "taiex_ma240_bias", "taiex_ma240",
                         # 🏦 戰區一新增(FRED 偶失敗時沿用昨日)
                         "m1b_yoy", "fed_assets_chg_pct", "fi_ratio_alert"):
                 if out.get(key) is None and prev.get(key) is not None:
