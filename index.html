@@ -3427,9 +3427,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
 
         try {
             const ghBase  = window.location.href.split('?')[0].split('#')[0];
+            // 🎯 ^TWII / ^TWOII 等指數 ticker 含 caret:GitHub Pages 通常支援原樣,但保險 encode
+            const _symPath = encodeURIComponent(symbol).replace(/%5E/g, '%5E');
             const fileUrl = window.location.protocol === 'file:'
-                ? `./data/${symbol}.json?t=${Date.now()}`
-                : new URL(`data/${symbol}.json?v=${Date.now()}`, ghBase).href;
+                ? `./data/${_symPath}.json?t=${Date.now()}`
+                : new URL(`data/${_symPath}.json?v=${Date.now()}`, ghBase).href;
 
             const localRes = await fetch(fileUrl);
             if (localRes.status === 404) {

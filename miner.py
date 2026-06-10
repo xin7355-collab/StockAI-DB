@@ -1517,14 +1517,19 @@ def fetch_us_macro_cache():
                'us02y': '^IRX',     # 13W T-Bill 短債利率（Fed 政策風向）
                'ukoil': 'BZ=F',     # 布蘭特原油期貨
                'dxy':   'DX-Y.NYB', # 美元指數
-               'twii':  '^TWII',    # 台股加權指數（供泡沫預警 K 線型態判讀）
+               'twii':  '^TWII',    # 台股加權指數（供泡沫預警 K 線型態判讀 + 個股查詢頁）
+               'twoii': '^TWO',     # 台股上櫃指數（OTC,供個股查詢頁查上櫃整體走勢)
                }
+    # 🎯 台股指數特例:這些 ticker 抓 period=2y 充足歷史(支援前端 240MA/季線等技術指標)
+    LONG_HIST_KEYS = {'twii', 'twoii'}
     print(f"\n🌐 抓取美股昨收資料（{today}）...")
     result = {}
     for key, ticker in symbols.items():
         try:
             # 🛡️ SIGALRM 硬逾時，防 yfinance 無限 hang
-            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period='10d'), 30, None)
+            #    台股指數抓 2y(供前端個股頁完整功能)、其他維持 10d(省 API 額度)
+            _period = '2y' if key in LONG_HIST_KEYS else '10d'
+            hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period=_period), 30, None)
             if hist is None or hist.empty:
                 continue
             prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
@@ -1536,17 +1541,36 @@ def fetch_us_macro_cache():
                 'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
                                   float(prev['Close']) * 100, 2),
             }
-            # 🎯 ^TWII 額外存 OHLCV 120 日序列(支援 build_bubble_warning K 線型態 + 隔日上漲機率 Worker 大盤環境同向過濾)
-            if key == 'twii':
-                result['twii_history'] = [
-                    {'date':   str(idx.date()),
+            # 🎯 ^TWII / ^TWO 寫成 data/^TWII.json / data/^TWO.json 個股格式(對齊 list of OHLCV),
+            #    讓前端 analyze('^TWII') / analyze('^TWO') 可查到加權/上櫃指數完整 K 線。
+            #    同時保留舊 macro_cache 的 twii_history(120 日)向下相容 build_bubble_warning。
+            if key in LONG_HIST_KEYS:
+                long_rows = [
+                    {'date':   str(idx.date()).replace('-', '/'),
                      'open':   round(float(row['Open']), 2),
                      'high':   round(float(row['High']), 2),
                      'low':    round(float(row['Low']), 2),
                      'close':  round(float(row['Close']), 2),
                      'volume': (int(row['Volume']) if (row['Volume'] == row['Volume']) else 0)}
-                    for idx, row in hist.tail(120).iterrows()
+                    for idx, row in hist.iterrows()
+                    if (row['Close'] == row['Close'])   # dropna
                 ]
+                # 個股格式檔
+                if long_rows:
+                    fname = f"^{key.upper()}.json"   # ^TWII.json / ^TWOII.json
+                    # ^TWO 的 ticker 我們寫成 ^TWOII.json 對齊前端 analyze('^TWOII') 呼叫
+                    if key == 'twoii':
+                        fname = '^TWOII.json'
+                    try:
+                        Path(DATA_DIR, fname).write_text(
+                            json.dumps(long_rows, ensure_ascii=False, separators=(',', ':')),
+                            encoding='utf-8')
+                        print(f"  💾 {fname}: {len(long_rows)} 筆 OHLCV(供前端個股查詢頁)")
+                    except Exception as _e:
+                        print(f"  ⚠️ 寫 {fname} 失敗:{_e}")
+                # macro_cache 內保留 twii_history(120 日,給泡沫預警用,避免改其他下游)
+                if key == 'twii':
+                    result['twii_history'] = long_rows[-120:] if long_rows else []
             print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
         except Exception as e:
             print(f"  ⚠️  {ticker}: {e}")

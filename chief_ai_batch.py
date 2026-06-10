@@ -54,7 +54,7 @@ def _write_placeholder(reason, stocks=None):
         print(f"   ⚠️ placeholder 寫入失敗: {_e}")
 
 # 固定大盤/熱門 ETF 清單(無論 radar 結果如何永遠算這些)
-FIXED_HOTLIST = ["2330", "^TWII", "0050", "0056", "00878", "00929"]
+FIXED_HOTLIST = ["2330", "^TWII", "^TWOII", "0050", "0056", "00878", "00929"]
 MAX_PICKS_PER_REGION = 10   # radar 每區取前 N 檔(共 3 區)
 MAX_TOTAL = 30              # 整體上限,防 token 失控
 
