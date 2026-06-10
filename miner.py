@@ -628,6 +628,43 @@ def fetch_market_margin(d: date) -> dict:
     except Exception as e: print(f"  ⚠️ 上市融資券失敗: {e}")
     time.sleep(random.uniform(3.0, 5.0))
 
+    # 🏛️ 1.5. TWSE OpenAPI v1 第二條源:rwd 端點 2026/06 起改回彙總表後,改試官方 OpenAPI
+    #    端點:https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN(RESTful list[dict])
+    #    僅在 step 1 沒拿到任何個股(res 空)時試,避免徒耗 API。OpenAPI 成功則直接補上市段
+    if not res:
+        try:
+            url_oapi = 'https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN'
+            r_oapi = http_session.get(url_oapi, headers=_rnd_hdrs(), timeout=15)
+            if r_oapi.status_code == 200:
+                rows_oapi = r_oapi.json()
+                if isinstance(rows_oapi, list) and rows_oapi:
+                    print(f"  [TWSE OpenAPI] 首筆 keys: {list(rows_oapi[0].keys())[:8]}")
+                    cnt_oapi = 0
+                    for row in rows_oapi:
+                        if not isinstance(row, dict):
+                            continue
+                        sid = str(row.get('Code') or row.get('股票代號') or row.get('證券代號') or '').strip()
+                        if not _valid_stock(sid):
+                            continue
+                        try:
+                            mb_raw = row.get('MarginPurchaseTodayBalance') or row.get('融資今日餘額') or row.get('融資現在餘額') or 0
+                            sb_raw = row.get('ShortSaleTodayBalance')      or row.get('融券今日餘額') or row.get('融券現在餘額') or 0
+                            res[sid] = {
+                                'margin_balance': int(str(mb_raw).replace(',', '') or 0),
+                                'short_balance':  int(str(sb_raw).replace(',', '') or 0),
+                            }
+                            cnt_oapi += 1
+                        except Exception:
+                            continue
+                    print(f"  [TWSE OpenAPI 融資券] 命中 {cnt_oapi} 檔")
+                else:
+                    print(f"  ⚠️ [TWSE OpenAPI] 回應非 list 或為空:{type(rows_oapi).__name__}")
+            else:
+                print(f"  ⚠️ [TWSE OpenAPI] HTTP {r_oapi.status_code}")
+        except Exception as e:
+            print(f"  ⚠️ [TWSE OpenAPI] 失敗(不影響 TPEX/FinMind/yfinance fallback):{str(e)[:80]}")
+        time.sleep(random.uniform(2.0, 4.0))
+
     # 2. 抓取上櫃 (TPEX)
     try:
         url_otc = f'https://www.tpex.org.tw/web/stock/margin_trading/margin_balance/margin_bal_result.php?l=zh-tw&o=json&d={d_tpex}'
@@ -1101,12 +1138,28 @@ def run():
 
         try:
             if margin_cache:
+                # 🚨 偵測「全 free 源失效」:所有日期、所有 sid 的 short_balance 都是 0 → 寫 metadata 旗標
+                #    用底線開頭 key 供前端跳過,不污染既有 dict[date_str → {sid → data}] 迭代
+                _all_short_zero = True
+                for dd_data in margin_cache.values():
+                    if not isinstance(dd_data, dict):
+                        continue
+                    for sid_data in dd_data.values():
+                        if isinstance(sid_data, dict) and sid_data.get('short_balance', 0) > 0:
+                            _all_short_zero = False
+                            break
+                    if not _all_short_zero:
+                        break
+                if _all_short_zero:
+                    margin_cache['_status'] = 'free-sources-exhausted'
+                    margin_cache['_reason'] = 'TWSE rwd/OpenAPI、TPEX、FinMind、yfinance 4 條 free 源皆無個股融券明細(2026/06 起 TWSE 改回彙總表),需付費 API'
+                    print(f"  🚨 全部日期融券皆 0:寫入 _status='free-sources-exhausted' 旗標供前端顯示『需付費解鎖』")
                 MARGIN_CACHE_FILE.write_text(json.dumps(margin_cache, ensure_ascii=False), encoding='utf-8')
-                print(f"  💾 融資券快取已更新 → {MARGIN_CACHE_FILE}（{len(margin_cache)} 天）")
+                print(f"  💾 融資券快取已更新 → {MARGIN_CACHE_FILE}({len(margin_cache)} 天)")
             elif _has_real_payload(MARGIN_CACHE_FILE):
                 print(f"  ⏭️ 融資券抓取失敗,保留既有 last-good 不覆寫 → {MARGIN_CACHE_FILE}")
             else:
-                MARGIN_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'TWSE+FinMind+yfinance 三源皆失敗'}, ensure_ascii=False), encoding='utf-8')
+                MARGIN_CACHE_FILE.write_text(json.dumps({'_last_attempt': datetime.now().strftime('%Y-%m-%d %H:%M'), '_status': 'free-sources-exhausted', '_reason': 'TWSE/TPEX/FinMind/yfinance 四源皆失敗,需付費 API'}, ensure_ascii=False), encoding='utf-8')
                 print(f"  💾 融資券快取首次失敗,寫入 _status 標記 → {MARGIN_CACHE_FILE}")
         except Exception as e:
             print(f"  ⚠️ 融資券快取寫檔失敗：{e}")
