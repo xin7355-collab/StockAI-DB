@@ -479,20 +479,32 @@ def fetch_us2y_yield():
 
 # ════════ 🌍 全球巨頭脈動採集（8 大國際資金真實流向）════════
 def _fetch_yf_close(ticker, name):
-    """通用 yfinance 收盤 + 日漲幅%（取 5 日內最新 close vs 前一日 close）
-    含防 429 限流：本輪 yfinance 連續呼叫達 ~14 次，呼叫前小睡 0.4s，回空再重試 1 次（睡 1s）。"""
+    """通用 yfinance 收盤 + 日漲幅%。
+    🛡️ 根治日經/恆生「休市回 NaN → 一直 null」:用 dropna() 取「最後兩筆有效收盤」,
+    而非固定 iloc[-1]/[-2](日股港股假日多,最後一格常是 NaN)。
+    退階重試:5d 取不到 → 拉長 1mo 再試,涵蓋連假。含防 429:呼叫前小睡。"""
     import time
     last_err = f"{name} 重試後仍失敗"
-    for attempt in range(2):
+    periods = ["5d", "1mo"]   # 退階:5 日不夠就拉 1 個月,確保連假後仍有 2 個有效交易日
+    for attempt, period in enumerate(periods):
         try:
             time.sleep(0.4 if attempt == 0 else 1.0)
             import yfinance as yf
-            hist = yf.Ticker(ticker).history(period="5d", auto_adjust=False)
-            if hist is None or hist.empty or len(hist) < 2:
-                last_err = f"{name} yfinance 回空或 <2 日"
+            hist = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+            if hist is None or hist.empty:
+                last_err = f"{name} yfinance 回空(period={period})"
                 continue
-            last = float(hist["Close"].iloc[-1])
-            prev = float(hist["Close"].iloc[-2])
+            # dropna 去掉休市/缺值列,取最後兩筆「真實有效」收盤
+            closes = hist["Close"].dropna()
+            if len(closes) < 2:
+                last_err = f"{name} 有效收盤 <2 筆(period={period},疑長假/新上市)"
+                continue
+            last = float(closes.iloc[-1])
+            prev = float(closes.iloc[-2])
+            # 雙保險:dropna 後仍自比 NaN(極端髒資料),避免寫進 JSON 變字面 NaN
+            if last != last or prev != prev:
+                last_err = f"{name} Close 仍含 NaN(資料髒,period={period})"
+                continue
             chg_pct = round((last - prev) / prev * 100, 2) if prev > 0 else 0
             return round(last, 2), chg_pct, None
         except Exception as e:
@@ -575,6 +587,55 @@ def fetch_vix():      return _fetch_yf_close("^VIX",     "VIX 恐慌指數")
 def fetch_nikkei():   return _fetch_yf_close("^N225",    "日經 225")
 def fetch_hsi():      return _fetch_yf_close("^HSI",     "恆生指數")
 def fetch_kospi():    return _fetch_yf_close("^KS11",    "韓股 KOSPI")
+def fetch_jpy():      return _fetch_yf_close("JPY=X",    "日圓匯率")     # ⚠️ JPY=X = USD/JPY(每美元兌幾日圓);日圓升值=此值下跌
+
+
+def _yf_chg_3d(ticker, name):
+    """🦅 獵鷹建倉分用:取 ticker 近 3 個交易日累積變動率%(避險煞車判斷)。
+    回傳 float 或 None。dropna 取最後一筆 vs 倒數第 4 筆(=3 個交易日前)。"""
+    import time
+    for attempt in range(2):
+        try:
+            time.sleep(0.4 if attempt == 0 else 1.0)
+            import yfinance as yf
+            hist = yf.Ticker(ticker).history(period="1mo", auto_adjust=False)
+            if hist is None or hist.empty:
+                continue
+            closes = hist["Close"].dropna()
+            if len(closes) < 4:
+                continue
+            last, base = float(closes.iloc[-1]), float(closes.iloc[-4])
+            if last != last or base != base or base <= 0:
+                continue
+            return round((last - base) / base * 100, 2)
+        except Exception:
+            continue
+    return None
+
+
+def fetch_twii_240ma_bias():
+    """🦅 大盤懼高症濾網:加權指數(^TWII)距 240MA(年線)乖離率%。
+    需 240 個交易日,故抓 2 年;dropna 防休市 NaN。回傳 (bias_pct, ma240, err)。"""
+    import time
+    for attempt in range(2):
+        try:
+            time.sleep(0.4 if attempt == 0 else 1.0)
+            import yfinance as yf
+            hist = yf.Ticker("^TWII").history(period="2y", auto_adjust=False)
+            if hist is None or hist.empty:
+                return None, None, "^TWII 2y 回空"
+            closes = hist["Close"].dropna()
+            if len(closes) < 240:
+                return None, None, f"^TWII 有效收盤 {len(closes)}<240(不足年線)"
+            last = float(closes.iloc[-1])
+            ma240 = float(closes.tail(240).mean())
+            if last != last or ma240 != ma240 or ma240 <= 0:
+                return None, None, "^TWII 240MA 含 NaN"
+            return round((last - ma240) / ma240 * 100, 2), round(ma240, 0), None
+        except Exception as e:
+            if attempt == 1:
+                return None, None, str(e)[:80]
+    return None, None, "重試後仍失敗"
 
 
 def fetch_usdtwd():
@@ -745,17 +806,21 @@ def fetch_taifex_backwardation():
     """
     try:
         import re
-        # 1) ^TWII 現貨收盤
+        # 1) ^TWII 現貨收盤(用 dropna 取最後有效值,避免休市 NaN 害整個逆價差變 null)
         spot = None
         try:
             import yfinance as yf
             hist = yf.Ticker("^TWII").history(period="5d", auto_adjust=False)
             if hist is not None and not hist.empty:
-                spot = float(hist["Close"].iloc[-1])
+                closes = hist["Close"].dropna()
+                if len(closes) >= 1:
+                    v = float(closes.iloc[-1])
+                    if v == v:   # 非 NaN
+                        spot = v
         except Exception as e:
             return None, f"^TWII 取得失敗：{str(e)[:60]}"
         if spot is None:
-            return None, "^TWII 無現貨收盤"
+            return None, "^TWII 無有效現貨收盤(休市/NaN)"
         # 2) 期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML
         fut_close = _taifex_openapi_tx_fut_close()
         if fut_close is not None:
@@ -814,9 +879,17 @@ def fi_ratio_alert_level(fi_spot, fi_futures):
     """⚠️ 期現比警示:外資期貨絕對淨額 / 現貨絕對淨額。
     fi_spot:外資現貨淨額(億)、fi_futures:外資台指期淨口數
     比值 > 3 且期貨大空 → 主力先用期貨佈空,現貨將跟跌(警戒)
+    任一資料源缺值時回字串「⏳ 期現比待採」(而非 None),讓前端顯示提示而非空白。
     """
-    if fi_spot is None or fi_futures is None or fi_spot == 0:
-        return None
+    # 任一缺值 → 不返回 None,改成提示字串(避免前端 fi_ratio_alert 顯示空白)
+    if fi_spot is None and fi_futures is None:
+        return "⏳ 期現比待採(現貨/期貨皆無資料)"
+    if fi_spot is None:
+        return "⏳ 期現比待採(外資現貨買賣超尚無資料)"
+    if fi_futures is None:
+        return "⏳ 期現比待採(外資台指期未平倉尚無資料)"
+    if fi_spot == 0:
+        return "✅ 期現比 — 外資現貨持平(無顯著買賣超)"
     spot_equiv = abs(fi_spot * 1e8 / 50000)  # 億 → 約等量期貨口數
     ratio = abs(fi_futures) / max(spot_equiv, 1)
     # 改 OR:期現大幅背離(ratio>2.5) 或 期貨超級空(< -30000) 任一觸發即警戒,避免漏報
@@ -936,6 +1009,36 @@ def main():
         else:
             print(f"     → 失敗：{err}")
 
+    # ── 🦅 獵鷹建倉分:全球宏觀避險因子(日圓 / 3日變動 / 大盤年線乖離 / 黑天鵝旗標)──
+    print("─" * 50)
+    print("🦅 採集獵鷹建倉宏觀因子(日圓套利 / 3日變動 / 大盤懼高症)")
+    # 日圓(JPY=X = USD/JPY,日圓升值=此值下跌)
+    jpy_val, jpy_chg, jpy_err = fetch_jpy()
+    out["jpy"], out["jpy_chg_pct"], out["jpy_error"] = jpy_val, jpy_chg, jpy_err
+    # 3 日變動率(避險煞車:日圓急升=USDJPY 3日跌、金/油 3日暴漲)
+    out["jpy_chg_3d"]  = _yf_chg_3d("JPY=X",  "日圓")
+    out["gold_chg_3d"] = _yf_chg_3d("GC=F",   "黃金")
+    out["wti_chg_3d"]  = _yf_chg_3d("CL=F",   "WTI原油")
+    print(f"   · 日圓 {jpy_val}({jpy_chg}% 日/{out['jpy_chg_3d']}% 3日) 金3日 {out['gold_chg_3d']}% 油3日 {out['wti_chg_3d']}%")
+    # 大盤 240MA 年線乖離率
+    bias, ma240, bias_err = fetch_twii_240ma_bias()
+    out["taiex_ma240_bias"], out["taiex_ma240"], out["taiex_ma240_error"] = bias, ma240, bias_err
+    print(f"   · 大盤年線乖離 {bias}%(240MA={ma240}, err={bias_err})")
+
+    # 🦅 黑天鵝防禦旗標(全市場同步,供 radar_miner 算建倉分 + 前端防禦矩陣顯示)
+    #    日圓急升:USDJPY 3日 < -1.5%(利差交易平倉);金/油單日 > 3%(通膨地緣恐慌);KOSPI 早盤 < -1.5%
+    _jpy3 = out.get("jpy_chg_3d")
+    _gold1 = out.get("gold_chg_pct")
+    _wti1 = out.get("wti_chg_pct")
+    _kospi1 = out.get("kospi_chg_pct")
+    out["blackswan"] = {
+        "market_bias_high": (bias is not None and bias > 20),       # 大盤懼高 → 總分 ×0.7
+        "jpy_surge":        (_jpy3 is not None and _jpy3 < -1.5),    # 日圓急升(USDJPY 跌)→ -20
+        "metal_oil_spike":  ((_gold1 is not None and _gold1 > 3) or (_wti1 is not None and _wti1 > 3)),  # 金/油暴漲 → -20
+        "kospi_dump":       (_kospi1 is not None and _kospi1 < -1.5),  # 亞股提款 → -10
+    }
+    print(f"   🦅 黑天鵝旗標:{out['blackswan']}")
+
     out["fi_complex_conclusion"] = judge_fi_complex(fut, spot)
     print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
 
@@ -953,6 +1056,9 @@ def main():
                         "dxy", "dxy_chg_pct", "btc_usd", "btc_chg_pct",
                         "vix", "vix_chg_pct", "nikkei", "nikkei_chg_pct",
                         "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct",
+                        # 🦅 獵鷹建倉宏觀因子(API 偶失敗時沿用昨日,避免顯示待採)
+                        "jpy", "jpy_chg_pct", "jpy_chg_3d", "gold_chg_3d", "wti_chg_3d",
+                        "taiex_ma240_bias", "taiex_ma240",
                         # 🏦 戰區一新增(FRED 偶失敗時沿用昨日)
                         "m1b_yoy", "fed_assets_chg_pct", "fi_ratio_alert"):
                 if out.get(key) is None and prev.get(key) is not None:
@@ -1001,8 +1107,20 @@ def main():
         out["upcoming_macro_events"] = []
 
     # 寫檔（最輕量）— 任何 IO 錯誤不能讓整個 daily_miner 崩潰
+    # 🛡️ NaN 最後防線:json.dumps 預設 allow_nan=True 會輸出字面 NaN(非法 JSON),
+    # 瀏覽器 JSON.parse 直接 throw → 前端整頁(範例)。寫檔前遞迴掃成 None,再用 allow_nan=False 鎖死。
+    def _sanitize_nan(v):
+        if isinstance(v, float) and (v != v or v in (float('inf'), float('-inf'))):
+            return None
+        if isinstance(v, dict):
+            return {k: _sanitize_nan(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [_sanitize_nan(x) for x in v]
+        return v
     try:
-        OUTPUT_FILE.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        OUTPUT_FILE.write_text(
+            json.dumps(_sanitize_nan(out), ensure_ascii=False, indent=2, allow_nan=False),
+            encoding="utf-8")
         print(f"✅ 已輸出 → {OUTPUT_FILE}")
     except Exception as e:
         print(f"⚠️ macro_risk.json 寫檔失敗（不影響其他流程）：{e}")
