@@ -623,6 +623,11 @@
     <main class="scrollable-main max-w-7xl mx-auto w-full relative" id="appMainArea">
         <div id="tabContentDiag" class="flex flex-col relative">
             <div class="sticky-sub flex flex-col z-40 shadow-sm border-b border-[#30363d]">
+                <!-- 🚨 Fugle Token 未設定提示(分析時無 token → 顯示醒目橫條)-->
+                <div id="fugleNoTokenBanner" class="hidden cursor-pointer bg-red-900/40 border-b-2 border-red-600 text-red-200 text-xs font-bold leading-snug px-3 py-2 hover:bg-red-900/60 transition-colors"
+                     onclick="const m=document.getElementById('settingsModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);">
+                    ⚠️ <span class="text-red-100">Fugle 即時報價 Token 未設定</span> → 點此到「⚙️ 戰情設定中心」填入(免費申請:<span class="underline">fugle.tw</span>)
+                </div>
                 <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2"
                      ontouchstart="app._huntSwipeX=event.touches[0].clientX"
                      ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
@@ -666,7 +671,7 @@
                     <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">⚡ 首席</button>
                     <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">📈 K線</button>
                     <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">🔬 籌碼</button>
-                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">🏢 情報</button>
+                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">📊 基本</button>
                     <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">📅 回測</button>
                 </div>
             </div>
@@ -3556,7 +3561,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const keys = [this.settings.fugleToken1, this.settings.fugleToken2,
                       this.settings.fugleToken3, this.settings.fugleToken4,
                       this.settings.fugleToken5].filter(k => k && k.trim());
-        if (!keys.length) return null;
+        if (!keys.length) {
+            // 🚨 Fugle Token 未設定旗標(渲染處看到 _fugleNoToken=true 顯示醒目提示)
+            this._fugleNoToken = true;
+            return null;
+        }
+        this._fugleNoToken = false;
         const maxTries = keys.length;
 
         for (let attempt = 0; attempt < maxTries; attempt++) {
@@ -4035,7 +4045,7 @@ const marginByDate = {};
             const allMarginZero = !marginData || marginData.length === 0 ||
                 marginData.every(d => marginVal(d) === 0 && shortVal(d) === 0);
             marginEl.innerHTML = allMarginZero
-                ? '<div class="flex items-center justify-center h-full text-red-400 text-xs p-2 text-center font-bold">⚠️ 融資券抓取資料失敗<br><span class="text-gray-500 text-[10px] font-normal">TWSE/FinMind 來源皆無回應,等下次採礦重試</span></div>'
+                ? '<div class="flex items-center justify-center h-full text-red-400 text-xs p-2 text-center font-bold">⚠️ 融資券抓取資料失敗<br><span class="text-gray-500 text-[10px] font-normal">TWSE/FinMind/yfinance 三源皆無回應,明日採礦自動重試</span></div>'
                 : '';
             return;
         }
@@ -4674,7 +4684,7 @@ const marginByDate = {};
             if (hasOhlcv) {
                 el.innerHTML = '<div class="flex items-center justify-center py-6 text-gray-400 text-xs text-center font-bold">💤 此股融資券極少交易<br><span class="text-gray-500 text-[10px] font-normal">大型權值股 / ETF 多為現股投資人,參考價值低</span></div>';
             } else {
-                el.innerHTML = '<div class="flex items-center justify-center py-6 text-red-400 text-xs text-center font-bold">⚠️ 融資券抓取資料失敗<br><span class="text-gray-500 text-[10px] font-normal">TWSE/FinMind 來源皆無回應,等下次採礦重試</span></div>';
+                el.innerHTML = '<div class="flex items-center justify-center py-6 text-red-400 text-xs text-center font-bold">⚠️ 融資券抓取資料失敗<br><span class="text-gray-500 text-[10px] font-normal">TWSE/FinMind/yfinance 三源皆無回應,明日採礦自動重試</span></div>';
             }
             return;
         }
@@ -5577,7 +5587,8 @@ ${peerLine}${newsCtx}
                 ? _newsRaw.split('\n').filter(l => l.trim()).slice(0, 8).map((l, i) => `${i+1}. ${l}`).join('\n')
                 : '近期無重大新聞';
 
-const fullPrompt = `你是台股身經百戰的操盤總裁,講話犀利直接,擅長戳破財報粉飾與假新聞炒作。
+const fullPrompt = `你是人稱「哲哲」的台股知名分析師,口語直白、像直播跟「各位投資朋友」喊盤,口頭禪「抱緊處理」。
+語氣:白話文、國中生看得懂、多用比喻(把財報術語翻譯成生活例子,例如「毛利率」=「賣 100 元真的賺幾元」),禁止艱澀術語。
 請對 ${sym} 做「全面性深度解讀」,結合技術 + 籌碼 + 消息 + 全球,讓散戶秒懂該怎麼操作。
 
 【財報六大面向】
@@ -5618,10 +5629,11 @@ ${_newsLine}${globalContext}
 🛑 嚴格遵守:
 - 新聞真偽判讀**必須逐則標示**,不可整批含糊帶過
 - 操作指令必須含「明確動作」+「具體位置或天數」,禁止只說「觀察」「再看看」
-- 講話像權證小哥,白話犀利,禁艱澀術語`;
+- 講話像哲哲,白話如直播,多用比喻,禁艱澀術語(EPS/PEG 等先解釋再用)`;
             let aiText = null;
             try {
-                aiText = await this._callAI({prompt: fullPrompt, max_tokens: 350, temperature: 0.5});
+                // 🚀 財報深度解讀走 _callDeepAI(DeepSeek R1,深度推理),429 自動 fallback Groq 70b
+                aiText = await this._callDeepAI({prompt: fullPrompt, max_tokens: 600, temperature: 0.55});
             } catch(e2) {
                 console.error('[fundamentals AI]', e2);
             }
@@ -5807,7 +5819,11 @@ ${_newsLine}${globalContext}
                             metaEl.textContent = '來源 FinMind';
                         }
             } else if (!data) { nHtml = `<div class="text-gray-500 text-xs">新聞服務暫時無法連線，請稍後再試。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></div>`; this.latestNewsCache = ""; }
-            else { nHtml = `<div class="text-gray-500 text-xs">近期無重大訊息公告。</div>`; this.latestNewsCache = ""; }
+            else { nHtml = `<div class="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3 text-xs leading-relaxed">
+                <div class="text-blue-300 font-bold mb-1">📰 此股近期 FinMind 無新聞</div>
+                <div class="text-gray-400 text-[11px] mb-2">FinMind 個股新聞延遲 1-3 天為常態,熱門全市場即時情報可至「🌐 市場總覽」看 Reuters/CNBC RSS。</div>
+                <button onclick="app.switchAppTab('market'); app.vibrate(20);" class="text-[11px] bg-blue-800/40 hover:bg-blue-700/50 text-blue-200 border border-blue-600/50 rounded px-2 py-1 font-bold transition-colors">▸ 看全球即時情報</button>
+            </div>`; this.latestNewsCache = ""; }
             newsBox.innerHTML = nHtml;
 
             const badge = document.getElementById('corpEventBadge');
@@ -5953,6 +5969,9 @@ ${_newsLine}${globalContext}
         }
 
         this.applyLatestPrice(fugleData, null);
+        // 🚨 Fugle Token 未填提示(fetchFugleData 看到 keys.length===0 會設 _fugleNoToken=true)
+        const _bnr = document.getElementById('fugleNoTokenBanner');
+        if (_bnr) _bnr.classList.toggle('hidden', !this._fugleNoToken);
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
 
         if(!silent) {
@@ -7037,7 +7056,7 @@ ${_newsLine}${globalContext}
         if (!bySig || Object.keys(bySig).length === 0) { box.classList.add('hidden'); return; }
         const order = ['🟢送分題', '🟢趨勢', '🟡偏多'];
         const keys = Object.keys(bySig).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-        body.innerHTML = keys.map(sig => {
+        let html = keys.map(sig => {
             const s = bySig[sig];
             const wr = s.win_rate_10d;
             const ar = s.avg_return_10d;
@@ -7049,6 +7068,23 @@ ${_newsLine}${globalContext}
                 <div class="text-gray-500">平均 <span class="${arColor} font-bold">${ar == null ? '--' : (ar > 0 ? '+' : '') + ar + '%'}</span> · ${s.samples}樣本</div>
             </div>`;
         }).join('');
+        // 🦅 獵鷹建倉分回測(分≥75/60/45 隔日勝率)
+        const fs = this._signalHistCache?.falcon_strategy;
+        if (fs && Object.keys(fs).length) {
+            const labelMap = { falcon75: '🦅 ≥75 強力建倉', falcon60: '✅ ≥60 可建倉', falcon45: '🟡 ≥45 觀望' };
+            const ord = ['falcon75', 'falcon60', 'falcon45'];
+            html += ord.filter(k => fs[k]).map(k => {
+                const s = fs[k];
+                const wrColor = s.win_rate >= 60 ? 'text-green-300' : s.win_rate >= 50 ? 'text-yellow-300' : 'text-red-300';
+                const arColor = s.avg_return > 0 ? 'text-red-300' : 'text-green-300';
+                return `<div class="bg-cyan-950/20 rounded p-1.5 border border-cyan-900/40">
+                    <div class="font-bold text-cyan-300">${labelMap[k]}</div>
+                    <div class="text-gray-500">隔日勝率 <span class="${wrColor} font-black">${s.win_rate}%</span></div>
+                    <div class="text-gray-500">平均 <span class="${arColor} font-bold">${s.avg_return > 0 ? '+' : ''}${s.avg_return}%</span> · ${s.samples}樣本</div>
+                </div>`;
+            }).join('');
+        }
+        body.innerHTML = html;
         box.classList.remove('hidden');
     },
 
@@ -8897,6 +8933,50 @@ ${_newsLine}${globalContext}
         else if (pC > (this.indicators.upperBB?.[this.activeData.length - 1] || pC)) klineStatus = '🔥 爆量突破';
         else if (pC < ma20) klineStatus = '🚨 破線防守';
 
+        // 🅆 W 底/雙底偵測(近 60 日內找「兩個相近低點 + 中間反彈」型態,標示第二隻腳)
+        //    演算法:近 60 日所有 swing low(5 日視窗 argmin)→ 取最近 2 個 → 價差<5%、間隔>10日、中間反彈≥10% → W 底成立
+        let wBottom = { detected: false, leg1Date: '', leg2Date: '', neckline: null, secondLegBuying: false, message: '近 60 日內未形成 W 底型態' };
+        try {
+            const lookback = Math.min(60, n);
+            const lows = [];
+            for (let i = Math.max(0, n - lookback); i < n; i++) lows.push({ idx: i, low: data[i].low, close: data[i].close, date: data[i].date });
+            // 5 日視窗找 swing low(該點 low 為前後 5 日最低)
+            const swingLows = [];
+            for (let k = 5; k < lows.length - 5; k++) {
+                let isMin = true;
+                for (let j = k - 5; j <= k + 5; j++) if (j !== k && lows[j].low < lows[k].low) { isMin = false; break; }
+                if (isMin) swingLows.push(lows[k]);
+            }
+            if (swingLows.length >= 2) {
+                const l2 = swingLows[swingLows.length - 1], l1 = swingLows[swingLows.length - 2];
+                const gap = l2.idx - l1.idx;   // 兩底間隔(交易日)
+                const priceDiff = Math.abs(l2.low - l1.low) / l1.low * 100;
+                // 中間反彈高度:l1 與 l2 之間的最高 high
+                let midHigh = 0;
+                for (let j = l1.idx; j <= l2.idx; j++) midHigh = Math.max(midHigh, data[j].high);
+                const reboundPct = (midHigh - Math.min(l1.low, l2.low)) / Math.min(l1.low, l2.low) * 100;
+                if (priceDiff < 5 && gap > 10 && reboundPct >= 10) {
+                    wBottom.detected = true;
+                    wBottom.leg1Date = l1.date;
+                    wBottom.leg2Date = l2.date;
+                    wBottom.neckline = +midHigh.toFixed(2);   // 頸線 = 中間反彈高點(突破後 W 底確立)
+                    // 第二隻腳止跌訊號:現價在 l2.low ±3% + 近 3 日有止跌 K(收紅 或 帶下影線)
+                    const nearLeg2 = Math.abs(pC - l2.low) / l2.low * 100 < 3;
+                    let recentStopFall = false;
+                    for (let k = Math.max(0, n - 3); k < n; k++) {
+                        const dd = data[k];
+                        const isRed = dd.close > dd.open;
+                        const lowerShadow = (Math.min(dd.open, dd.close) - dd.low) / Math.max(dd.high - dd.low, 0.01);
+                        if (isRed || lowerShadow > 0.5) { recentStopFall = true; break; }
+                    }
+                    wBottom.secondLegBuying = nearLeg2 && recentStopFall;
+                    wBottom.message = wBottom.secondLegBuying
+                        ? `🅆 W 底成形+第二隻腳止跌訊號!首底 ${l1.date} ${l1.low} / 二底 ${l2.date} ${l2.low} / 頸線 ${wBottom.neckline} → 突破頸線 W 底確立,現在貼近二底正適合分批建倉`
+                        : `🅆 W 底型態成形,首底 ${l1.date} ${l1.low} / 二底 ${l2.date} ${l2.low} / 頸線 ${wBottom.neckline} 元 → 突破頸線視為 W 底確立後再進場較穩`;
+                }
+            }
+        } catch(_) {}
+
         const prompt = `你是「台股技術流宗師」，精通朱家泓的【技術位階】與郭榮哲的【折數過濾】。
 請對下方已算好的技術數據進行審計與戰術指引。
 
@@ -8910,14 +8990,20 @@ ${_newsLine}${globalContext}
 - 趨勢結論：${trendJudge}
 - 當前折數：${foldPct}
 - 綜合判定：${sigLabel}
+- 🅆 W 底偵測：${wBottom.message}${wBottom.detected ? `（首底 ${wBottom.leg1Date}、二底 ${wBottom.leg2Date}、頸線 ${wBottom.neckline} 元${wBottom.secondLegBuying ? '、現價已貼近二底+止跌訊號' : ''}）` : ''}
 
-請嚴格按照以下三個段落輸出，每段開頭保留【】標題，語氣犀利接地氣：
+請嚴格按照以下四個段落輸出，每段開頭保留【】標題，語氣犀利接地氣：
 
 【🔍 朱家泓技術審計 × ${klineStatus}】
 用白話文解釋目前的型態（${klineStatus}）與趨勢（${trendJudge}）代表什麼意思？現在均線是支撐還是壓力？請直接告訴小白現在買安不安全。
 
 【📐 郭榮哲折數過濾 (白話大拍賣解析)】
 絕對不要講深奧術語！請直接告訴小白：「這檔股票從高點跌下來，等於打了 ${foldPct}。現在這個價位算不算大拍賣撿便宜？還是依然在半山腰接刀？」請明確評估這折數安不安全。
+
+【🅆 W 底攻略 / 第二隻腳偵測】
+${wBottom.detected
+  ? `系統已偵測到 W 底型態:首底 ${wBottom.leg1Date} 低點 ${data[data.findIndex(d => d.date === wBottom.leg1Date)]?.low || '?'} / 二底 ${wBottom.leg2Date} 低點 ${data[data.findIndex(d => d.date === wBottom.leg2Date)]?.low || '?'} / 頸線 ${wBottom.neckline} 元${wBottom.secondLegBuying ? '。現價已貼近二底,且過去 3 日有止跌訊號(收紅/下影線)→ 第二隻腳浮現,可分批承接' : ''}。請白話解釋:(1) W 底是什麼(用購物車比喻)(2) 現在處於 W 哪段?(雙底打底完成 / 反彈中 / 攻頸線中)(3) 何時破頸線 ${wBottom.neckline} 元 W 底正式確立?該怎麼買?(4) 失敗訊號:跌破二底 + N 元無條件出場。`
+  : `系統判定近 60 日內無 W 底型態。請白話告訴小白:「目前看不到雙底打底訊號,要嘛還在下跌沒見底,要嘛已經反彈中。」搭配上方折數(${foldPct})說明:現在不是 W 底進場時機,該等什麼條件出現再進?`}
 
 【⚔️ 總監專屬戰術室】
 給出具體的操作紀律指引：當前是否適合進場？短線防守點（5MA = ${ma5}）、波段防守點（月線 = ${ma20}），若持有應設在哪裡？若空手，說明等待什麼條件。
@@ -8932,6 +9018,11 @@ ${_newsLine}${globalContext}
                 '【📊 技術指標全面審計】': { border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
                 '【🎯 發動訊號檢核結論】': { border:'border-amber-500',  title:'text-amber-400',  bg:'bg-amber-950/20'  },
                 '【⚔️ 戰術總裁決策指示】': { border:'border-red-500',    title:'text-red-400',    bg:'bg-red-950/20'    },
+                // 新版四段體(2026-06)
+                '【🔍 朱家泓技術審計': { border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
+                '【📐 郭榮哲折數過濾 (白話大拍賣解析)】': { border:'border-amber-500',  title:'text-amber-400',  bg:'bg-amber-950/20'  },
+                '【🅆 W 底攻略 / 第二隻腳偵測】': { border:'border-cyan-500', title:'text-cyan-400', bg:'bg-cyan-950/20' },
+                '【⚔️ 總監專屬戰術室】': { border:'border-red-500',    title:'text-red-400',    bg:'bg-red-950/20'    },
             };
             for (const [marker, c] of Object.entries(secMap)) {
                 const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

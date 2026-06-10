@@ -589,7 +589,7 @@ def build_falcon_scores():
             else:             label = "🔴 避開"
 
             scores[sym] = {"score": score, "base": base, "label": label,
-                           "factors": factors[:6], "stale": stale}
+                           "factors": factors[:6], "stale": stale, "close": round(c, 2)}
         except Exception:
             continue
 
