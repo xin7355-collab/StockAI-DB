@@ -1213,7 +1213,7 @@
                             class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-700/50 rounded px-1.5 py-0.5">🔄 重新彙整</button>
                 </div>
                 <div id="globalNewsSummary" class="text-[12px] text-gray-300 leading-relaxed">
-                    <div class="text-[10px] text-gray-600 text-center py-3">等情報抓完自動彙整...</div>
+                    <div class="text-[10px] text-blue-200/70 text-center py-3">💡 點右上「🔄 重新彙整」生成今日新聞 AI 摘要(省 Groq 配額,改為手動觸發)</div>
                 </div>
             </div>
 
@@ -2352,13 +2352,11 @@ const app = {
             list.innerHTML = rows.length ? rows.join('') : '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>';
             if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
 
-            // 自動觸發 AI 中文翻譯（背景跑，不阻塞 UI）；有 Groq Key + 標題還是英文時才跑
+            // 🚀 自動觸發 AI 中文翻譯(_callAI 已改 OpenRouter 主路徑,Groq TPD 不再被吃)
+            //    新聞「彙整」改為使用者點「🔄 重新彙整」才跑(原本一打開全球頁就自動跑 1400 tokens 太耗 Groq 70b 配額)
             const needTranslate = data.items.some(it => !it.title_zh && /[a-zA-Z]{3,}/.test(it.title || ''));
-            if (needTranslate && (this._getGroqKeys().length > 0 || this._apiBase)) {
+            if (needTranslate && (this._getOpenRouterKey() || this._getGroqKeys().length > 0 || this._apiBase)) {
                 this.analyzeGlobalNewsAI({ silent: true });
-            } else {
-                // 不需翻譯時也要觸發彙整(已是中文標題或無 Groq key 時的 fallback)
-                this.analyzeGlobalNewsSummary({ silent: true });
             }
         } catch(e) {
             list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">情報暫無法取得</div>';
@@ -2425,11 +2423,10 @@ const app = {
             // in-place 改後重畫（呼叫共用渲染函式）
             this._globalNewsItems = items;
             this._renderGlobalNewsList(items);
-            // 翻譯完成後接力觸發「今日全球彙整」(silent,有中文標題後品質更高)
-            this.analyzeGlobalNewsSummary({ silent: true });
+            // 🚀 翻譯完成後不再自動彙整(改為使用者點「🔄 重新彙整」才跑,省 Groq 70b TPD)
         } catch(e) {
             console.error('[analyzeGlobalNewsAI]', e);
-            if (!silent) alert(`AI 判讀失敗：${e.message}（Groq 不支援瀏覽器 CORS？檢查 Key 或網路）`);
+            if (!silent) alert(`AI 判讀失敗:${e.message}(Groq 不支援瀏覽器 CORS?檢查 Key 或網路)`);
         }
     },
 
@@ -3474,11 +3471,46 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // 模式 B：無後端但有 groqKey → 前端直打 Groq（純手機模式）
     // 兩者皆無 → 回傳 null，呼叫方顯示引導訊息
     // ═══════════════════════════════════════════════════════════════════
-    async _callAI({ prompt, max_tokens = 900, temperature = 0.3, model = 'llama-3.1-8b-instant' }) {
+    async _callAI({ prompt, max_tokens = 900, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
         const apiBase  = this._apiBase;
+        const orKey    = this._getOpenRouterKey();
         const groqKeys = this._getGroqKeys();
 
-        // 模式 A：後端代理（後端自有 GROQ_API_KEYS 池,前端不必輪 key）
+        // 🚀 模式 A:OpenRouter free 8b 主路徑(2026/06 起把輕量 AI 從 Groq TPD 桶分散出來)
+        //    避免每天 _callAI × N 把 100k Groq TPD 吃光 → 改先打 OpenRouter free 8b
+        if (orKey) {
+            try {
+                const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${orKey}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/',
+                        'X-Title': 'StockAI-DB',
+                    },
+                    body: JSON.stringify({
+                        model: openrouter_model,
+                        messages: [{ role: 'user', content: prompt }],
+                        max_tokens, temperature,
+                    })
+                }, { timeout: 60000, maxRetries: 1 });
+                if (res.ok) {
+                    const data = await res.json();
+                    const content = data?.choices?.[0]?.message?.content;
+                    if (content) {
+                        console.info('[_callAI] OpenRouter free 8b OK');
+                        return content;
+                    }
+                    console.warn('[_callAI] OpenRouter 回應無 content,fallback 後端/Groq');
+                } else {
+                    console.warn(`[_callAI] OpenRouter HTTP ${res.status}(可能 429/額度),fallback 後端/Groq`);
+                }
+            } catch (e) {
+                console.warn('[_callAI] OpenRouter 例外,fallback 後端/Groq:', e?.message || e);
+            }
+        }
+
+        // 模式 B:後端代理(後端自有 GROQ_API_KEYS 池,前端不必輪 key)
         if (apiBase) {
             const res = await this.safeFetch(`${apiBase}/api/ai/analyze`, {
                 method: 'POST',
@@ -3490,10 +3522,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 throw new Error(err.detail || `後端錯誤 HTTP ${res.status}`);
             }
             const data = await res.json();
+            console.info('[_callAI] 後端 proxy OK');
             return data.content;
         }
 
-        // 模式 B：前端直打 Groq（純手機）— 雙 key 自動輪動,429/401 換把
+        // 模式 C:Groq 直連備援(雙 key 輪動,429/401 換把)
         if (groqKeys.length) {
             const body = JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens, temperature });
             let lastErr = null;
@@ -3509,6 +3542,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 } catch (e) { lastErr = e; continue; }
                 if (res.ok) {
                     const data = await res.json();
+                    console.info(`[_callAI] Groq Key #${i + 1} OK`);
                     return data.choices[0].message.content;
                 }
                 if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
@@ -3521,7 +3555,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             throw lastErr || new Error('Groq 所有 key 皆呼叫失敗');
         }
 
-        // 兩者都沒設定
+        // 三條鏈都沒設定
         return null;
     },
 
