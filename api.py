@@ -182,6 +182,47 @@ _groq_key_idx: int = 0
 _groq_key_cooldown: dict[int, float] = {}      # idx → 解除冷卻的 unix_ts
 _groq_key_lock = asyncio.Lock()
 
+# ── [TPD 預警] 每把 key 當日 token 累計（防止硬撞 100000 上限才反應）─────────────
+import re as _re
+_groq_tpd_used: dict[int, int] = {}      # idx → 今日已用 token
+_groq_tpd_day:  str = ""                 # 當前統計日期（台北時區 YYYYMMDD）
+_GROQ_TPD_LIMIT = 100000                 # 免費層每日 token 上限
+_GROQ_TPD_GUARD = 97000                  # 逼近此值 → 該 key 主動冷卻至明日，不硬撞 429
+
+
+def _tpd_today() -> str:
+    """台北時區的今日字串，用於每日 0 點重置 token 計數。"""
+    return datetime.now(timezone(timedelta(hours=8))).strftime("%Y%m%d")
+
+
+def _parse_retry_seconds(body_text: str, header_val: str) -> int:
+    """
+    解析「還要等幾秒」：
+      1. 優先讀 Retry-After header（RPM 限流通常放這裡）
+      2. header 沒有 → 從 body 'try again in 3m34.272s' 解析（TPD 用罄放這裡）
+      3. 都沒有 → 回 0（呼叫端會 fallback 用保守冷卻值）
+    """
+    if header_val:
+        try:
+            return int(float(header_val))
+        except (ValueError, TypeError):
+            pass
+    m = _re.search(r"try again in\s*(?:(\d+)m)?([\d.]+)s", body_text or "")
+    if m:
+        mins = int(m.group(1)) if m.group(1) else 0
+        secs = float(m.group(2))
+        return int(mins * 60 + secs) + 1   # +1 秒安全緩衝
+    return 0
+
+
+def _secs_until_taipei_midnight() -> int:
+    """距台北明日 0 點還有幾秒（TPD 用罄時冷卻到隔天才重置）。"""
+    now_tpe = datetime.now(timezone(timedelta(hours=8)))
+    midnight = (now_tpe + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    return int(midnight.timestamp() - now_tpe.timestamp())
+
 
 def _groq_active_idx(now: float) -> Optional[int]:
     """從目前 idx 起順時針找第一把未冷卻的 key；全冷卻回 None。"""
@@ -300,9 +341,17 @@ async def call_groq_api(
                 resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
 
                 # ── 429 Too Many Requests（個別 key 達上限）──────────────
+                #   關鍵修正：TPD 用罄的等待秒數放在 body（'try again in 3m34s'），
+                #   不在 Retry-After header。舊版讀不到 → 只冷卻 60s → 反覆撞牆。
                 if resp.status_code == 429:
                     rate_limit_hits += 1
-                    retry_after = int(resp.headers.get("Retry-After", 0))
+                    retry_after = _parse_retry_seconds(
+                        resp.text, resp.headers.get("Retry-After", "")
+                    )
+                    # body 明示 'per day' / TPD → 直接冷卻到台北隔日 0 點，杜絕反覆撞
+                    body_low = (resp.text or "").lower()
+                    if ("per day" in body_low or "tpd" in body_low) and retry_after < 300:
+                        retry_after = max(retry_after, _secs_until_taipei_midnight())
                     await _groq_mark_blocked(idx, retry_after)
                     await _groq_advance_idx()
                     if rate_limit_hits >= max_429_attempts:
@@ -315,6 +364,21 @@ async def call_groq_api(
 
                 resp.raise_for_status()     # 其他 4xx/5xx → 拋出 HTTPStatusError
                 data = resp.json()
+
+                # ── [TPD 預警] 累計 token，逼近上限主動冷卻該 key（不等撞 429）──
+                global _groq_tpd_day
+                today = _tpd_today()
+                if today != _groq_tpd_day:        # 跨日 → 歸零所有 key 計數
+                    _groq_tpd_day = today
+                    _groq_tpd_used.clear()
+                used = data.get("usage", {}).get("total_tokens", 0)
+                _groq_tpd_used[idx] = _groq_tpd_used.get(idx, 0) + used
+                if _groq_tpd_used[idx] >= _GROQ_TPD_GUARD:
+                    print(f"  🛑 [TPD] Key #{idx + 1}/{len(GROQ_API_KEYS)} "
+                          f"已用 {_groq_tpd_used[idx]} tokens（≥{_GROQ_TPD_GUARD}），主動冷卻至明日")
+                    await _groq_mark_blocked(idx, _secs_until_taipei_midnight())
+                    await _groq_advance_idx()
+
                 return data["choices"][0]["message"]["content"]
 
             except HTTPException:
@@ -1325,9 +1389,17 @@ async def agent_chat(req: ChatRequest):
             try:
                 resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
                 if resp.status_code == 429:
-                    retry_after = int(resp.headers.get("Retry-After", 4))
-                    await asyncio.sleep(retry_after)
-                    continue
+                    # 與 call_groq_api 一致：從 body 解析真實等待秒數，TPD 用罄直接回 503
+                    retry_after = _parse_retry_seconds(
+                        resp.text, resp.headers.get("Retry-After", "")
+                    )
+                    body_low = (resp.text or "").lower()
+                    if "per day" in body_low or "tpd" in body_low:
+                        retry_after = max(retry_after, _secs_until_taipei_midnight())
+                    raise HTTPException(
+                        status_code=503,
+                        detail=f"AI 額度已達上限，約 {retry_after or 60} 秒後恢復。"
+                    )
                 resp.raise_for_status()
             except httpx.HTTPStatusError as e:
                 raise HTTPException(status_code=502, detail=f"Groq API 錯誤：{e}")
