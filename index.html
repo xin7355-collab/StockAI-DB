@@ -150,11 +150,28 @@
 
                     <div class="flex flex-col gap-1">
                         <label class="text-xs font-bold text-cyan-400">🚀 OpenRouter API Key（深度推理大腦，選填）</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">免費申請：<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前戰情、首席五維、籌碼/技術深度分析</b>（DeepSeek R1）。<b class="text-cyan-300">未填或撞 429 自動 fallback 回 Groq。</b></p>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">免費申請：<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前戰情、首席五維、籌碼/技術深度分析</b>（DeepSeek R1）。<b class="text-cyan-300">未填或撞 429 自動 fallback 回 Gemini / Groq。</b></p>
                         <div class="flex gap-2 items-center">
                             <input type="password" id="set_openrouterKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-cyan-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="sk-or-v1-...">
                             <button onclick="app.verifyAPI('openrouter')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
                             <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_openrouter"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                        <label class="text-xs font-bold text-amber-400 mb-1">🤖 Google Gemini API Key 池（第三條輪動鏈，雙 key 共 500 req/day）</label>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請：<span class="text-amber-400">aistudio.google.com</span> → Get API key。<b class="text-amber-300">OpenRouter 撞 429 時自動接手</b>(Gemini 2.5 Flash),雙 key 內部輪動,降低 Groq 限流壓力。</p>
+                        <div class="flex gap-2 items-center mb-1.5">
+                            <span class="text-[10px] font-mono text-amber-600 w-12 flex-shrink-0">Key 1</span>
+                            <input type="password" id="set_geminiKey1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-amber-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="AIzaSy...">
+                            <button onclick="app.verifyAPI('gemini1')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_gemini1"></div>
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-[10px] font-mono text-amber-700 w-12 flex-shrink-0">Key 2</span>
+                            <input type="password" id="set_geminiKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-amber-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="備援 Key 2...">
+                            <button onclick="app.verifyAPI('gemini2')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_gemini2"></div>
                         </div>
                     </div>
 
@@ -1832,7 +1849,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium' },
     MAX_FAV_PER_GROUP: 50,
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
@@ -2689,6 +2706,8 @@ ${list}
         document.getElementById('set_aiPrompt').value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
         document.getElementById('set_groqKey').value = this.settings.groqKey || '';
         document.getElementById('set_openrouterKey').value = this.settings.openrouterKey || '';
+        document.getElementById('set_geminiKey1').value = this.settings.geminiKey1 || '';
+        document.getElementById('set_geminiKey2').value = this.settings.geminiKey2 || '';
         document.getElementById('set_fugleToken1').value = this.settings.fugleToken1 || '';
         document.getElementById('set_fugleToken2').value = this.settings.fugleToken2 || '';
         document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
@@ -2727,6 +2746,8 @@ ${list}
         this.settings.aiPrompt = document.getElementById('set_aiPrompt').value.trim();
         this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
         this.settings.openrouterKey = document.getElementById('set_openrouterKey').value.trim();
+        this.settings.geminiKey1 = document.getElementById('set_geminiKey1').value.trim();
+        this.settings.geminiKey2 = document.getElementById('set_geminiKey2').value.trim();
         this.settings.fugleToken1 = document.getElementById('set_fugleToken1').value.trim();
         this.settings.fugleToken2 = document.getElementById('set_fugleToken2').value.trim();
         this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
@@ -2750,6 +2771,58 @@ ${list}
     // [OpenRouter] 取深度推理 key（單把）
     _getOpenRouterKey() {
         return (this.settings.openrouterKey || '').trim();
+    },
+
+    // [Gemini] 取雙 key 陣列(過濾空字串),供 _callGemini 內部輪動
+    _getGeminiKeys() {
+        return [this.settings.geminiKey1, this.settings.geminiKey2]
+            .map(k => (k || '').trim())
+            .filter(Boolean);
+    },
+
+    // [Gemini] 呼叫 Google AI Studio 免費 API(2.5 Flash:每 key 250 req/day,雙 key 500 req/day)
+    // - Gemini API 格式跟 OpenAI 不同:request body 用 contents/parts,response 從 candidates 取
+    // - 內部 round-robin:429/403/5xx 自動切下一把;全失敗 throw 讓上層 _callAI/_callDeepAI fallback
+    async _callGemini({ prompt, max_tokens = 900, temperature = 0.3, model = 'gemini-2.5-flash' }) {
+        const keys = this._getGeminiKeys();
+        if (!keys.length) throw new Error('Gemini key 未設定');
+        if (this._geminiKeyIdx == null) this._geminiKeyIdx = 0;
+        let lastErr = null;
+        for (let attempt = 0; attempt < keys.length; attempt++) {
+            const idx = (this._geminiKeyIdx + attempt) % keys.length;
+            const key = keys[idx];
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            let res;
+            try {
+                res = await this.safeFetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature, maxOutputTokens: max_tokens },
+                    })
+                }, { timeout: 60000, maxRetries: 1 });
+            } catch (e) { lastErr = e; continue; }
+            if (res.ok) {
+                const data = await res.json().catch(() => ({}));
+                const text = data?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join('') || '';
+                if (text) {
+                    this._geminiKeyIdx = idx;  // 成功後固定在這把,下次優先用
+                    console.info(`[_callGemini] Gemini Key #${idx + 1} OK`);
+                    return text;
+                }
+                lastErr = new Error('Gemini 回應無內容');
+                continue;
+            }
+            if (res.status === 429 || res.status === 403 || res.status >= 500) {
+                console.warn(`[Gemini 輪動] Key #${idx + 1} 收到 ${res.status},切下一把...`);
+                lastErr = new Error(`Gemini HTTP ${res.status}`);
+                continue;
+            }
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err?.error?.message || `Gemini 錯誤 HTTP ${res.status}`);
+        }
+        throw lastErr || new Error('Gemini 所有 key 皆呼叫失敗');
     },
 
     _getFinmindToken() {
@@ -2819,6 +2892,15 @@ ${list}
                 const r = await this.safeFetch('https://openrouter.ai/api/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 8000, maxRetries: 1 });
                 const j = await r.json().catch(() => ({}));
                 if (!(r.status === 200 && (j?.data?.length > 0 || Array.isArray(j?.data)))) throw new Error('OpenRouter Key 無效');
+                if (led) led.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
+                return;
+            } else if (type === 'gemini1' || type === 'gemini2') {
+                // Gemini 驗證:打 /models endpoint(用 ?key= 傳 key),200 = 綠燈
+                const key = type === 'gemini1' ? this.settings.geminiKey1 : this.settings.geminiKey2;
+                if (!key) throw new Error('未填寫');
+                const r = await this.safeFetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`, {}, { timeout: 8000, maxRetries: 1 });
+                const j = await r.json().catch(() => ({}));
+                if (!(r.status === 200 && Array.isArray(j?.models) && j.models.length > 0)) throw new Error('Gemini Key 無效');
                 if (led) led.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
                 return;
             } else if (type === 'finmind') {
@@ -3515,7 +3597,21 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     console.warn(`[_callAI] OpenRouter HTTP ${res.status}(可能 429/額度),fallback 後端/Groq`);
                 }
             } catch (e) {
-                console.warn('[_callAI] OpenRouter 例外,fallback 後端/Groq:', e?.message || e);
+                console.warn('[_callAI] OpenRouter 例外,fallback Gemini/後端/Groq:', e?.message || e);
+            }
+        }
+
+        // 🌟 模式 A2:Gemini 2.5 Flash(第二條輪動鏈,雙 key 500 req/day)
+        //    OpenRouter 撞 429 / 無 key 時 Gemini 接手,避免直接打到 Groq TPD
+        if (this._getGeminiKeys().length) {
+            try {
+                const content = await this._callGemini({ prompt, max_tokens, temperature, model: 'gemini-2.5-flash' });
+                if (content) {
+                    console.info('[_callAI] Gemini 2.5 Flash OK');
+                    return content;
+                }
+            } catch (e) {
+                console.warn('[_callAI] Gemini 失敗,fallback 後端/Groq:', e?.message || e);
             }
         }
 
@@ -3605,7 +3701,20 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     console.warn(`[OpenRouter] HTTP ${res.status}(可能 429/額度),fallback Groq(改用 simple prompt)`);
                 }
             } catch (e) {
-                console.warn('[OpenRouter] 例外,fallback Groq(改用 simple prompt):', e?.message || e);
+                console.warn('[OpenRouter] 例外,fallback Gemini/Groq(改用 simple prompt):', e?.message || e);
+            }
+        }
+        // 🌟 第二條鏈:Gemini 2.5 Flash(用 simple prompt,因 Flash 推理深度不如 R1)
+        //    OpenRouter R1 撞 429 後改打 Gemini,維持中量推理品質,再不行才退到 Groq 70b
+        if (this._getGeminiKeys().length) {
+            try {
+                const content = await this._callGemini({ prompt: promptSimple, max_tokens, temperature, model: 'gemini-2.5-flash' });
+                if (content) {
+                    console.info('[_callDeepAI] Gemini 2.5 Flash OK(simple prompt)');
+                    return content;
+                }
+            } catch (e) {
+                console.warn('[_callDeepAI] Gemini 失敗,fallback Groq 70b:', e?.message || e);
             }
         }
         // fallback:Groq 70b 用 simple 版本(prompt 精簡、降推理負擔,提升輸出穩定性)
