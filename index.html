@@ -19,6 +19,20 @@
         html[data-font="medium"] { font-size: 106%; }
         html[data-font="large"]  { font-size: 118%; }
         html[data-font="small"]  { font-size: 93%; }
+        /* 「大」字體強制覆蓋寫死小字(text-[8/9/10]px 都被 root font-size 跳過,要手動加碼) */
+        html[data-font="large"] .text-\[8px\]  { font-size: 11px !important; }
+        html[data-font="large"] .text-\[9px\]  { font-size: 12px !important; }
+        html[data-font="large"] .text-\[10px\] { font-size: 13px !important; }
+        html[data-font="large"] .text-xs       { font-size: 14px !important; }
+        html[data-font="large"] .text-sm       { font-size: 16px !important; }
+        /* 「特大」字體(老花眼/小螢幕讀字模式) */
+        html[data-font="xl"] { font-size: 122%; }
+        html[data-font="xl"] .text-\[8px\]  { font-size: 12px !important; }
+        html[data-font="xl"] .text-\[9px\]  { font-size: 13px !important; }
+        html[data-font="xl"] .text-\[10px\] { font-size: 14px !important; }
+        html[data-font="xl"] .text-xs       { font-size: 15px !important; }
+        html[data-font="xl"] .text-sm       { font-size: 17px !important; }
+        html[data-font="xl"] .text-base     { font-size: 18px !important; }
         /* 3 欄等寬區段（停利停損 / 預測卡片）放寬最小寬度，避免字體放大後欄內數字撐爆 */
         #precisionPricesBox > div { min-width: 0; }
         #precisionPricesBox .text-lg { font-size: 1rem; }  /* 鎖回 16px，防止 text-lg 18px × 1.06 = 19.08 擠破 3 欄 */
@@ -138,47 +152,61 @@
                 </div>
 
                 <div class="space-y-4 border-b border-[#30363d] pb-4">
+                    <p class="text-[10px] text-gray-500 leading-tight -mt-1">每組 key 旁有 <span class="text-purple-300">☑</span> 啟動開關;取消打勾即<b class="text-amber-300">暫時停用該 key</b>(輪動會跳過,設定保留)。</p>
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-purple-400 mb-1">🧠 Groq API Key 池(雙 key 輪動,降低 TPD 限流壓力)</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-purple-400">console.groq.com</span> → API Keys → Create。負責<b class="text-purple-300">新聞翻譯、彙整等輕量分析</b>,也是深度推理撞 429 時的備援。<b class="text-purple-300">第一把撞 429/401 自動切第二把,前端輪動完全透明。</b></p>
-                        <div class="flex gap-2 items-center mb-1.5">
-                            <span class="text-[10px] font-mono text-purple-600 w-12 flex-shrink-0">Key 1</span>
-                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
-                            <button onclick="app.verifyAPI('groq')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_groq"></div>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-purple-400">console.groq.com</span> → API Keys → Create。負責<b class="text-purple-300">新聞翻譯、彙整等輕量分析</b>,也是深度推理撞 429 時的備援。</p>
+                        <div class="flex gap-1.5 items-center mb-1.5">
+                            <input type="checkbox" id="enable_groqKey" onchange="app.saveSettings()" class="w-4 h-4 accent-purple-500 flex-shrink-0" title="啟動/停用此 key" checked>
+                            <span class="text-[10px] font-mono text-purple-600 w-10 flex-shrink-0">Key 1</span>
+                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-purple-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
+                            <button onclick="app.verifyAPI('groq')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_groq"></div>
                         </div>
-                        <div class="flex gap-2 items-center">
-                            <span class="text-[10px] font-mono text-purple-700 w-12 flex-shrink-0">Key 2</span>
-                            <input type="password" id="set_groqKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="備援 Key 2...">
-                            <button onclick="app.verifyAPI('groq2')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_groq2"></div>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-cyan-400">🚀 OpenRouter API Key（深度推理大腦，選填）</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">免費申請：<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前戰情、首席五維、籌碼/技術深度分析</b>（DeepSeek R1）。<b class="text-cyan-300">未填或撞 429 自動 fallback 回 Gemini / Groq。</b></p>
-                        <div class="flex gap-2 items-center">
-                            <input type="password" id="set_openrouterKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-cyan-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="sk-or-v1-...">
-                            <button onclick="app.verifyAPI('openrouter')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_openrouter"></div>
+                        <div class="flex gap-1.5 items-center">
+                            <input type="checkbox" id="enable_groqKey2" onchange="app.saveSettings()" class="w-4 h-4 accent-purple-500 flex-shrink-0" title="啟動/停用此 key" checked>
+                            <span class="text-[10px] font-mono text-purple-700 w-10 flex-shrink-0">Key 2</span>
+                            <input type="password" id="set_groqKey2" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-purple-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="備援 Key 2...">
+                            <button onclick="app.verifyAPI('groq2')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_groq2"></div>
                         </div>
                     </div>
 
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
-                        <label class="text-xs font-bold text-amber-400 mb-1">🤖 Google Gemini API Key 池（第三條輪動鏈，雙 key 共 500 req/day）</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請：<span class="text-amber-400">aistudio.google.com</span> → Get API key。<b class="text-amber-300">OpenRouter 撞 429 時自動接手</b>(Gemini 2.5 Flash),雙 key 內部輪動,降低 Groq 限流壓力。</p>
-                        <div class="flex gap-2 items-center mb-1.5">
-                            <span class="text-[10px] font-mono text-amber-600 w-12 flex-shrink-0">Key 1</span>
-                            <input type="password" id="set_geminiKey1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-amber-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="AIzaSy...">
-                            <button onclick="app.verifyAPI('gemini1')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_gemini1"></div>
+                        <label class="text-xs font-bold text-cyan-400 mb-1">🚀 OpenRouter API Key 池(雙 key 輪動,DeepSeek R1 深度推理)</label>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前戰情、首席五維、籌碼/技術深度分析</b>。第一把撞 429 自動切第二把 + jitter,全失敗 fallback Gemini / Groq。</p>
+                        <div class="flex gap-1.5 items-center mb-1.5">
+                            <input type="checkbox" id="enable_openrouterKey" onchange="app.saveSettings()" class="w-4 h-4 accent-cyan-500 flex-shrink-0" title="啟動/停用此 key" checked>
+                            <span class="text-[10px] font-mono text-cyan-600 w-10 flex-shrink-0">Key 1</span>
+                            <input type="password" id="set_openrouterKey" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-cyan-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="sk-or-v1-...">
+                            <button onclick="app.verifyAPI('openrouter')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_openrouter"></div>
                         </div>
-                        <div class="flex gap-2 items-center">
-                            <span class="text-[10px] font-mono text-amber-700 w-12 flex-shrink-0">Key 2</span>
-                            <input type="password" id="set_geminiKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-amber-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="備援 Key 2...">
-                            <button onclick="app.verifyAPI('gemini2')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_gemini2"></div>
+                        <div class="flex gap-1.5 items-center">
+                            <input type="checkbox" id="enable_openrouterKey2" onchange="app.saveSettings()" class="w-4 h-4 accent-cyan-500 flex-shrink-0" title="啟動/停用此 key" checked>
+                            <span class="text-[10px] font-mono text-cyan-700 w-10 flex-shrink-0">Key 2</span>
+                            <input type="password" id="set_openrouterKey2" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-cyan-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="備援 Key 2...">
+                            <button onclick="app.verifyAPI('openrouter2')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_openrouter2"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                        <label class="text-xs font-bold text-amber-400 mb-1">🤖 Google Gemini API Key 池(第三條輪動鏈,雙 key 共 500 req/day)</label>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-amber-400">aistudio.google.com</span> → Get API key。OpenRouter 撞 429 時自動接手(Gemini 2.5 Flash),雙 key 內部輪動,降低 Groq 限流壓力。</p>
+                        <div class="flex gap-1.5 items-center mb-1.5">
+                            <input type="checkbox" id="enable_geminiKey1" onchange="app.saveSettings()" class="w-4 h-4 accent-amber-500 flex-shrink-0" title="啟動/停用此 key" checked>
+                            <span class="text-[10px] font-mono text-amber-600 w-10 flex-shrink-0">Key 1</span>
+                            <input type="password" id="set_geminiKey1" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-amber-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="AIzaSy...">
+                            <button onclick="app.verifyAPI('gemini1')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_gemini1"></div>
+                        </div>
+                        <div class="flex gap-1.5 items-center">
+                            <input type="checkbox" id="enable_geminiKey2" onchange="app.saveSettings()" class="w-4 h-4 accent-amber-500 flex-shrink-0" title="啟動/停用此 key" checked>
+                            <span class="text-[10px] font-mono text-amber-700 w-10 flex-shrink-0">Key 2</span>
+                            <input type="password" id="set_geminiKey2" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-amber-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="備援 Key 2...">
+                            <button onclick="app.verifyAPI('gemini2')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_gemini2"></div>
                         </div>
                     </div>
 
@@ -186,23 +214,23 @@
                         <label class="text-xs font-bold text-green-400 mb-1">🔑 Fugle 輪動金鑰池 (台股即時)</label>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 1...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle1"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_fugle1"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 2 (選填)...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle2"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_fugle2"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken3" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 3 (選填)...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle3"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_fugle3"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken4" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 4 (選填)...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle4"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_fugle4"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken5" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 5 (選填)...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle5"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_fugle5"></div>
                         </div>
                         <button onclick="app.verifyFugleKeys()" class="w-full px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition text-gray-300">驗證金鑰群</button>
                     </div>
@@ -213,22 +241,22 @@
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-600 w-12 flex-shrink-0">Token 1</span>
                             <input type="password" id="set_finmindKey1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="主力 Token...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind1"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_finmind1"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 2</span>
                             <input type="password" id="set_finmindKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 2...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind2"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_finmind2"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 3</span>
                             <input type="password" id="set_finmindKey3" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 3...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind3"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_finmind3"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 4</span>
                             <input type="password" id="set_finmindKey4" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 4...">
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind4"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_finmind4"></div>
                         </div>
                         <button onclick="app.verifyAPI('finmind')" class="self-start mt-0.5 px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition text-yellow-400">驗證全部 Token</button>
                     </div>
@@ -239,7 +267,7 @@
                         <div class="flex gap-2 items-center">
                             <input type="password" id="set_massiveKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-blue-300 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-blue-400 transition-colors" placeholder="輸入 Massive API Key...">
                             <button onclick="app.verifyAPI('massive')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_massive"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ml-auto ring-1 ring-inset ring-gray-400" id="led_massive"></div>
                         </div>
                     </div>
                 </div>
@@ -265,9 +293,10 @@
                     <div class="flex items-center justify-between pt-2">
                         <label class="text-xs font-bold text-cyan-400">🔤 介面字體大小</label>
                         <div class="flex gap-1" id="fontSizeBtns">
-                            <button onclick="app.setFontSize('small')" id="btn_font_small" class="px-3 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">小</button>
-                            <button onclick="app.setFontSize('medium')" id="btn_font_medium" class="px-3 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors">中</button>
-                            <button onclick="app.setFontSize('large')" id="btn_font_large" class="px-3 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">大</button>
+                            <button onclick="app.setFontSize('small')" id="btn_font_small" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">小</button>
+                            <button onclick="app.setFontSize('medium')" id="btn_font_medium" class="px-2.5 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors">中</button>
+                            <button onclick="app.setFontSize('large')" id="btn_font_large" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">大</button>
+                            <button onclick="app.setFontSize('xl')" id="btn_font_xl" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">特大</button>
                         </div>
                     </div>
                     <div class="flex items-center justify-between pt-2">
@@ -1661,6 +1690,10 @@
 
     </main>
 
+    <!-- ⚡ AI 狀態 chip:浮動 navbar 上方,即時顯示「現在用哪條 AI 鏈 + 第幾把 key」 -->
+    <div id="aiStatusChip" class="hidden fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm border-gray-600 bg-gray-900/95 text-gray-200" onclick="app.openSettings()" style="cursor:pointer" title="點擊開設定頁">
+        <span id="aiStatusChipText">⚡ AI 待命</span>
+    </div>
     <div class="nav-fixed w-full">
         <nav class="flex justify-around items-center text-gray-500 w-full max-w-7xl mx-auto h-[55px]">
             <button onclick="app.switchAppTab('diag'); app.vibrate(30);" id="navBtnDiag" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-2xl drop-shadow">🎯</span><span class="text-[10px] mt-0.5 font-bold">診斷</span></button>
@@ -2729,8 +2762,14 @@ ${list}
         document.getElementById('set_groqKey').value = this.settings.groqKey || '';
         document.getElementById('set_groqKey2').value = this.settings.groqKey2 || '';
         document.getElementById('set_openrouterKey').value = this.settings.openrouterKey || '';
+        document.getElementById('set_openrouterKey2').value = this.settings.openrouterKey2 || '';
         document.getElementById('set_geminiKey1').value = this.settings.geminiKey1 || '';
         document.getElementById('set_geminiKey2').value = this.settings.geminiKey2 || '';
+        // 啟動/關閉 checkbox(預設打勾 true);若 settings 內為 false 就取消
+        ['groqKey','groqKey2','openrouterKey','openrouterKey2','geminiKey1','geminiKey2'].forEach(k => {
+            const cb = document.getElementById(`enable_${k}`);
+            if (cb) cb.checked = this.settings[`enable_${k}`] !== false;
+        });
         document.getElementById('set_fugleToken1').value = this.settings.fugleToken1 || '';
         document.getElementById('set_fugleToken2').value = this.settings.fugleToken2 || '';
         document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
@@ -2770,8 +2809,15 @@ ${list}
         this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
         this.settings.groqKey2 = document.getElementById('set_groqKey2').value.trim();
         this.settings.openrouterKey = document.getElementById('set_openrouterKey').value.trim();
+        const orK2El = document.getElementById('set_openrouterKey2');
+        if (orK2El) this.settings.openrouterKey2 = orK2El.value.trim();
         this.settings.geminiKey1 = document.getElementById('set_geminiKey1').value.trim();
         this.settings.geminiKey2 = document.getElementById('set_geminiKey2').value.trim();
+        // 啟動/關閉 checkbox 狀態存進 settings(預設為 true)
+        ['groqKey','groqKey2','openrouterKey','openrouterKey2','geminiKey1','geminiKey2'].forEach(k => {
+            const cb = document.getElementById(`enable_${k}`);
+            if (cb) this.settings[`enable_${k}`] = !!cb.checked;
+        });
         this.settings.fugleToken1 = document.getElementById('set_fugleToken1').value.trim();
         this.settings.fugleToken2 = document.getElementById('set_fugleToken2').value.trim();
         this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
@@ -2787,23 +2833,62 @@ ${list}
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
 
-    // [Groq] 收集已填寫的 Groq Key(雙 key 池,429/401 自動切下一把,降低 TPD 限流壓力)
+    // [Groq] 收集已填寫且「啟動」的 Groq Key(雙 key 池,429/401 自動切下一把)
+    // 設定頁 ☑ checkbox 取消打勾 → enable_groqKey/2 = false → 此 key 暫時不參與輪動
     _getGroqKeys() {
-        return [this.settings.groqKey, this.settings.groqKey2]
-            .map(k => (k || '').trim())
-            .filter(Boolean);
+        return [
+            { k: this.settings.groqKey,  on: this.settings.enable_groqKey  !== false },
+            { k: this.settings.groqKey2, on: this.settings.enable_groqKey2 !== false },
+        ].filter(x => x.on && (x.k || '').trim()).map(x => x.k.trim());
     },
 
-    // [OpenRouter] 取深度推理 key（單把）
+    // [OpenRouter] 取雙 key 陣列(過濾空字串 + 啟動狀態),供 _callAI / _callDeepAI 輪動
+    _getOpenRouterKeys() {
+        return [
+            { k: this.settings.openrouterKey,  on: this.settings.enable_openrouterKey  !== false },
+            { k: this.settings.openrouterKey2, on: this.settings.enable_openrouterKey2 !== false },
+        ].filter(x => x.on && (x.k || '').trim()).map(x => x.k.trim());
+    },
+
+    // 向下相容:舊呼叫 _getOpenRouterKey() 改回第一把啟動中的
     _getOpenRouterKey() {
-        return (this.settings.openrouterKey || '').trim();
+        return this._getOpenRouterKeys()[0] || '';
     },
 
-    // [Gemini] 取雙 key 陣列(過濾空字串),供 _callGemini 內部輪動
+    // [Gemini] 取雙 key 陣列(過濾空字串 + 啟動狀態),供 _callGemini 內部輪動
     _getGeminiKeys() {
-        return [this.settings.geminiKey1, this.settings.geminiKey2]
-            .map(k => (k || '').trim())
-            .filter(Boolean);
+        return [
+            { k: this.settings.geminiKey1, on: this.settings.enable_geminiKey1 !== false },
+            { k: this.settings.geminiKey2, on: this.settings.enable_geminiKey2 !== false },
+        ].filter(x => x.on && (x.k || '').trim()).map(x => x.k.trim());
+    },
+
+    // [AI 狀態追蹤] 每次 _callAI / _callDeepAI 成功時呼叫,即時更新右下角浮動 chip
+    // provider:'openrouter' | 'gemini' | 'groq';keyIdx:1 或 2;失敗時 provider=null 顯示「三鏈全忙」
+    _setAIStatus(provider, keyIdx) {
+        this._currentAIProvider = provider;
+        this._currentAIKeyIdx = keyIdx;
+        const chip = document.getElementById('aiStatusChip');
+        const txt = document.getElementById('aiStatusChipText');
+        if (!chip || !txt) return;
+        chip.classList.remove('hidden');
+        if (!provider) {
+            txt.textContent = '🔴 三鏈全忙(429)';
+            chip.className = 'fixed bottom-20 right-2 z-50 bg-red-900/95 border border-red-600 rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm text-red-200 cursor-pointer';
+            return;
+        }
+        const map = {
+            openrouter: { emoji: '🚀', name: 'OpenRouter R1', cls: 'border-cyan-600 bg-cyan-950/95 text-cyan-200' },
+            gemini:     { emoji: '🤖', name: 'Gemini 2.5',    cls: 'border-amber-600 bg-amber-950/95 text-amber-200' },
+            groq:       { emoji: '💜', name: 'Groq llama',    cls: 'border-purple-600 bg-purple-950/95 text-purple-200' },
+        };
+        const m = map[provider] || { emoji: '⚡', name: provider, cls: 'border-gray-600 bg-gray-900/95 text-gray-200' };
+        txt.textContent = `${m.emoji} ${m.name} #${keyIdx}`;
+        chip.className = `fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm ${m.cls}`;
+        // 8 秒後自動 dim(讓使用者知道是最近狀態,不要永遠亮)
+        clearTimeout(this._aiStatusDimTimer);
+        this._aiStatusDimTimer = setTimeout(() => { chip.style.opacity = '0.4'; }, 8000);
+        chip.style.opacity = '1';
     },
 
     // [AI 友善錯誤] 偵測 429 / Groq / Gemini / OpenRouter 字樣,轉成白話降級訊息
@@ -2917,12 +3002,12 @@ ${list}
     },
 
     _applyFontSizeUI(size) {
-        ['small', 'medium', 'large'].forEach(s => {
+        ['small', 'medium', 'large', 'xl'].forEach(s => {
             const btn = document.getElementById(`btn_font_${s}`);
             if (!btn) return;
             btn.className = s === size
-                ? 'px-3 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors'
-                : 'px-3 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300';
+                ? 'px-2.5 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors'
+                : 'px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300';
         });
     },
 
@@ -2946,9 +3031,9 @@ ${list}
                 if (!(r.status === 200 && j?.data?.length > 0)) throw new Error('Groq Key 無效');
                 if (led) led.className = 'w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
                 return;
-            } else if (type === 'openrouter') {
-                // OpenRouter 驗證:打 /models(無需 body),200 + data 非空 = 綠燈
-                const key = this.settings.openrouterKey;
+            } else if (type === 'openrouter' || type === 'openrouter2') {
+                // OpenRouter 雙 key 池單把驗證:打 /models,200 + data 非空 = 綠燈
+                const key = type === 'openrouter2' ? this.settings.openrouterKey2 : this.settings.openrouterKey;
                 if (!key) throw new Error('未填寫');
                 const r = await this.safeFetch('https://openrouter.ai/api/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 8000, maxRetries: 1 });
                 const j = await r.json().catch(() => ({}));
@@ -3627,15 +3712,17 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // ═══════════════════════════════════════════════════════════════════
     async _callAI({ prompt, max_tokens = 900, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
         const apiBase  = this._apiBase;
-        const orKey    = this._getOpenRouterKey();
+        const orKeys   = this._getOpenRouterKeys();
         const groqKeys = this._getGroqKeys();
         // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
         prompt = this._injectDisciplineClause(prompt);
 
-        // 🚀 模式 A:OpenRouter free 8b 主路徑(2026/06 起把輕量 AI 從 Groq TPD 桶分散出來)
-        //    避免每天 _callAI × N 把 100k Groq TPD 吃光 → 改先打 OpenRouter free 8b
-        if (orKey) {
+        // 🚀 模式 A:OpenRouter free 8b 雙 key 池輪動主路徑
+        //    雙 key 池:第一把撞 429 隨機延遲後切第二把(模糊機器人連 retry 特徵)
+        for (let i = 0; i < orKeys.length; i++) {
+            const orKey = orKeys[i];
             try {
+                this._setAIStatus('openrouter', i + 1);
                 const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -3654,15 +3741,20 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     const data = await res.json();
                     const content = data?.choices?.[0]?.message?.content;
                     if (content) {
-                        console.info('[_callAI] OpenRouter free 8b OK');
+                        console.info(`[_callAI] OpenRouter Key #${i + 1} OK`);
                         return content;
                     }
-                    console.warn('[_callAI] OpenRouter 回應無 content,fallback 後端/Groq');
+                    console.warn(`[_callAI] OpenRouter Key #${i + 1} 回應無 content,試下一把/fallback`);
                 } else {
-                    console.warn(`[_callAI] OpenRouter HTTP ${res.status}(可能 429/額度),fallback 後端/Groq`);
+                    console.warn(`[_callAI] OpenRouter Key #${i + 1} HTTP ${res.status}(可能 429/額度)`);
+                    if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
+                        const _jitter = Math.round(2000 + Math.random() * 3000);
+                        console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
+                        await new Promise(r => setTimeout(r, _jitter));
+                    }
                 }
             } catch (e) {
-                console.warn('[_callAI] OpenRouter 例外,fallback Gemini/後端/Groq:', e?.message || e);
+                console.warn(`[_callAI] OpenRouter Key #${i + 1} 例外:`, e?.message || e);
             }
         }
 
@@ -3673,6 +3765,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 const content = await this._callGemini({ prompt, max_tokens, temperature, model: 'gemini-2.5-flash' });
                 if (content) {
                     console.info('[_callAI] Gemini 2.5 Flash OK');
+                    this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
                     return content;
                 }
             } catch (e) {
@@ -3713,6 +3806,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 if (res.ok) {
                     const data = await res.json();
                     console.info(`[_callAI] Groq Key #${i + 1} OK`);
+                    this._setAIStatus('groq', i + 1);
                     return data.choices[0].message.content;
                 }
                 if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
@@ -3744,9 +3838,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (!promptFull && !promptSimple) {
             throw new Error('_callDeepAI 需提供 prompt 或 prompts.{full,simple}');
         }
-        const orKey = this._getOpenRouterKey();
-        if (orKey) {
+        // 🚀 OpenRouter DeepSeek R1 雙 key 池輪動
+        const orKeys = this._getOpenRouterKeys();
+        for (let i = 0; i < orKeys.length; i++) {
+            const orKey = orKeys[i];
             try {
+                this._setAIStatus('openrouter', i + 1);
                 const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -3764,22 +3861,27 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 if (res.ok) {
                     const data = await res.json();
                     const content = data?.choices?.[0]?.message?.content;
-                    if (content) return content;
-                    console.warn('[OpenRouter] 回應無 content,fallback Groq(改用 simple prompt)');
+                    if (content) { console.info(`[_callDeepAI] OpenRouter R1 Key #${i + 1} OK`); return content; }
+                    console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} 回應無 content`);
                 } else {
-                    console.warn(`[OpenRouter] HTTP ${res.status}(可能 429/額度),fallback Groq(改用 simple prompt)`);
+                    console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} HTTP ${res.status}`);
+                    if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
+                        const _jitter = Math.round(2000 + Math.random() * 3000);
+                        console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
+                        await new Promise(r => setTimeout(r, _jitter));
+                    }
                 }
             } catch (e) {
-                console.warn('[OpenRouter] 例外,fallback Gemini/Groq(改用 simple prompt):', e?.message || e);
+                console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} 例外:`, e?.message || e);
             }
         }
         // 🌟 第二條鏈:Gemini 2.5 Flash(用 simple prompt,因 Flash 推理深度不如 R1)
-        //    OpenRouter R1 撞 429 後改打 Gemini,維持中量推理品質,再不行才退到 Groq 70b
         if (this._getGeminiKeys().length) {
             try {
                 const content = await this._callGemini({ prompt: promptSimple, max_tokens, temperature, model: 'gemini-2.5-flash' });
                 if (content) {
                     console.info('[_callDeepAI] Gemini 2.5 Flash OK(simple prompt)');
+                    this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
                     return content;
                 }
             } catch (e) {
@@ -4954,26 +5056,18 @@ const marginByDate = {};
                     <span class="absolute inset-0 flex items-center px-1.5 text-xs font-bold ${pos ? 'text-blue-300' : 'text-red-300'}">${sign}${val}K</span>
                 </div></div>`;
         };
-        // 三態融券:有資料(渲染圖) / 全 null(資料源失效→需付費) / 真的全 0(無人放空)
+        // 二態融券:有真實數值(渲染圖) / 全 null 或全 0(2026/06 起 TWSE 不再免費發布融券資料,皆視為需付費解鎖)
         const arrN = (this.rawDailyData || []).slice(-n);
         const _shortRaw = arrN.map(r => r.short_balance ?? r.short_bal ?? r.short);
         const shortHasBalance = _shortRaw.some(v => v != null && v > 0);
-        const shortAllNull = _shortRaw.length === 0 || _shortRaw.every(v => v == null);
         const shortRow = shortHasBalance
             ? row('融券', s.shortDelta, 'bg-cyan-600/60', 'bg-orange-700/60')
-            : shortAllNull
-                ? `<div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-400 w-9 shrink-0 text-right">融券</span>
-                    <div class="flex-1 flex items-center gap-1 text-[10px] text-amber-300 py-1.5">
-                        💎 需付費解鎖
-                        <button onclick="app.showJargon('融券需付費'); event.stopPropagation();" class="text-amber-400/70 hover:text-amber-300">ⓘ</button>
-                    </div></div>`
-                : `<div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-400 w-9 shrink-0 text-right">融券</span>
-                    <div class="flex-1 flex items-center gap-1 text-[10px] text-gray-500 py-1.5">
-                        融券 0 張 — 此股無人放空(正常現象)
-                        <button onclick="app.showJargon('融券為0'); event.stopPropagation();" class="text-gray-600 hover:text-blue-300">ⓘ</button>
-                    </div></div>`;
+            : `<div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400 w-9 shrink-0 text-right">融券</span>
+                <div class="flex-1 flex items-center gap-1 text-[10px] text-amber-300 py-1.5">
+                    💎 融券資料需 FinMind 付費方案解鎖
+                    <button onclick="app.showJargon('融券需付費'); event.stopPropagation();" class="text-amber-400/70 hover:text-amber-300">ⓘ</button>
+                </div></div>`;
         el.innerHTML = row('融資', s.marginDelta, 'bg-blue-600/60', 'bg-red-700/60') + shortRow;
     },
 
@@ -8892,7 +8986,7 @@ ${_newsLine}${globalContext}
             const pnlNTD = totalValItemNTD - totalCostItemNTD;
             const pnl = cost > 0 && price > 0 ? ((price - cost) / cost) * 100 : 0;
             const color = pnl > 0 ? 'text-[#f87171]' : (pnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            const bgClass = pnl <= -5 ? 'bg-red-950/20' : 'bg-[#1c2128]';
+            const bgClass = pnl <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]';
 
             totalCostNTD += totalCostItemNTD; totalValNTD += totalValItemNTD;
 
