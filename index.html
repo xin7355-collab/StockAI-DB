@@ -1053,9 +1053,8 @@
                         <div id="mktTWII_main" class="text-base font-black font-mono text-gray-300">--</div>
                         <div id="mktTWII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
                     </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2 cursor-pointer hover:border-cyan-700/60 transition-colors"
-                         onclick="app.analyze('^TWOII'); app.switchAppTab('diag'); app.vibrate(30);">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 上櫃指數 TWOII <span class="text-cyan-400">▸ 查詢</span></div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 上櫃指數 TWOII</div>
                         <div id="mktTWOII_main" class="text-base font-black font-mono text-gray-300">--</div>
                         <div id="mktTWOII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
                     </div>
@@ -1933,7 +1932,7 @@ const app = {
         '股利發配率': '發配率 = 配出去的股利 ÷ 賺到的盈餘,代表「賺 100 元拿幾元出來分給股東」。顏色是「健康度」:綠=<70%(留錢繼續成長,穩健)、黃=70-100%(配很大方)、紅=>100%(賺的不夠還硬配,吃老本要警覺),不是漲跌色。',
         '每股股利': '每股股利 = 每持有 1 股,公司今年配給你多少錢(現金+股票)。例如配 4 元,你有 1 張(1000 股)就領 4000 元。配越多對存股族越好,但要搭配「發配率」看是否健康(別吃老本硬配)。',
         '每季EPS': 'EPS = 每股盈餘 = 公司幫每 1 股賺了多少錢,是獲利能力的核心指標。長條圖一季比一季高(QoQ 正)=獲利動能往上,台股慣例紅=成長(好)、綠=衰退(壞)。連續幾季成長的公司,股價通常比較有撐。',
-        '獵鷹建倉分': '🦅 給「空手想進場」的人的 0-100 綜合評分,分數越高=現在越適合建倉。融合:① 個股技術面(站不站月線/多頭排列/乖離) ② 低本益比 ③ 流動性(殭屍股重罰) ④ 同族群龍頭強弱 ⑤ 主力分點連續性,再乘上【全球宏觀黑天鵝煞車】:大盤年線乖離 >20%(懼高)整體打 7 折、日圓急升或金油暴漲(避險)扣 20、韓股早盤重挫(亞股提款)扣 10。台股慣例紅=高分可買、綠/灰=低分避開。⚠️ 已持股者(填了成本)會看到 🎯 依你損益位移後的分數:獲利+強勢→加碼分拉高、套牢→分數下殺提醒停損。僅供參考,非投資建議。'
+        '獵鷹建倉分': '🦅 給「空手想進場」的人的 0-100 綜合評分,分數越高=現在越適合建倉。融合:① 個股技術面(站不站月線/多頭排列/乖離) ② 低本益比 ③ 流動性(殭屍股重罰) ④ 同族群龍頭強弱 ⑤ 主力分點連續性,再乘上【全球宏觀黑天鵝煞車】:日圓急升或金油暴漲(避險)扣 20、韓股早盤重挫(亞股提款)扣 10。台股慣例紅=高分可買、綠/灰=低分避開。⚠️ 已持股者(填了成本)會看到 🎯 依你損益位移後的分數:獲利+強勢→加碼分拉高、套牢→分數下殺提醒停損。僅供參考,非投資建議。'
     },
 
     // 統一 API base URL 解析：window.API_BASE_URL（雲端部署注入）優先，
@@ -3438,8 +3437,14 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 : new URL(`data/${_symPath}.json?v=${Date.now()}`, ghBase).href;
 
             const localRes = await fetch(fileUrl);
+            const _isIndex = symbol.startsWith('^');
             if (localRes.status === 404) {
-                if (!apiBase) this.showToast(`⚠️ ${symbol} 尚無採礦資料，請點 🔄 或等待每日 16:30 自動更新`);
+                if (!apiBase) {
+                    const msg = _isIndex
+                        ? `⚠️ ${symbol} 指數 K 線採礦中(yfinance 需 2 年 ^TWII 歷史,偶遇美國假日/限流可能空白);請等下次採礦或 30 分後重試`
+                        : `⚠️ ${symbol} 尚無採礦資料,請點 🔄 或等待每日 16:30 自動更新`;
+                    this.showToast(msg);
+                }
                 return null;
             }
             if (localRes.ok) {
@@ -3451,7 +3456,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             throw new Error(`HTTP ${localRes.status}`);
         } catch(e) {
             if (!apiBase) {
-                this.showToast(`⚠️ 無法載入 ${symbol} 資料，請確認網路連線`);
+                const _isIndex = symbol.startsWith('^');
+                const msg = _isIndex
+                    ? `⚠️ 載入 ${symbol} 指數 K 線失敗 — 採礦資料可能未產出或網路不通`
+                    : `⚠️ 無法載入 ${symbol} 資料,請確認網路連線`;
+                this.showToast(msg);
             }
             return null;
         }
@@ -7594,7 +7603,6 @@ ${_newsLine}${globalContext}
         const warns = [];
         if (mf.jpy_surge) warns.push(['💴', '日圓套利交易急迫平倉,外資正在無差別拋售權值股!', 'bg-red-900/40 border-red-600 text-red-200']);
         if (mf.metal_oil_spike) warns.push(['🛢️', '黃金原油異常暴漲,地緣政治與通膨巨獸甦醒,避開高位科技股!', 'bg-orange-900/40 border-orange-600 text-orange-200']);
-        if (mf.market_bias_high) warns.push(['📈', '大盤年線乖離率過高,市場處於極端貪婪泡沫區,空手買入請極度極度克制!', 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
         if (mf.kospi_dump) warns.push(['🇰🇷', '韓股早盤重挫,亞股遭外資集體提款,台股留意跟跌!', 'bg-orange-900/40 border-orange-600 text-orange-200']);
         const factorChips = (f.factors || []).map(x => `<span class="text-[9px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">${x}</span>`).join('');
         const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div>` : '';
@@ -9458,12 +9466,8 @@ ${wBottom.detected
         let _pNeutral = 100 - _pBear - _pBull;
         if (_pNeutral < 10) { _pNeutral = 10; const _excess = (_pBear + _pBull + _pNeutral - 100); _pBear -= Math.ceil(_excess/2); _pBull -= Math.floor(_excess/2); }
 
-        // 🦅 年線乖離率(macro_risk.json 已算好,禁讓 AI 自行算 MA250)
-        const _ma240Bias = mr.taiex_ma240_bias;
-        const _ma240    = mr.taiex_ma240;
-        const _ma240Line = (_ma240Bias != null && _ma240 != null)
-            ? `年線(240MA)= ${_ma240},距加權現價乖離 ${_ma240Bias >= 0 ? '+' : ''}${_ma240Bias}% (${_ma240Bias > 20 ? '🔴 極端泡沫' : _ma240Bias > 10 ? '🟠 偏高' : _ma240Bias > 0 ? '🟢 健康偏多' : '🟡 跌破年線'})`
-            : '年線乖離率: 待採(不可推測)';
+        // 🦅 年線乖離率(^TWII 240MA)已停用:yfinance 對 GHA runner 持續抓不到 240 日 ^TWII 歷史,
+        //    改由「外資期/VIX/恐慌貪婪/融資餘額/期現比」綜合判讀大盤位階(_marketPanorama 已涵蓋)
 
         const prompt = `你是雙重身分的盤前報告撰寫人:
 ① 資深「產業分析師」:講供應鏈、景氣循環、產能與訂單的語言,負責產業/科技巨頭段落
@@ -9480,8 +9484,8 @@ ${wBottom.detected
 - 每段內容要「吃透」上方對應數據再下筆,禁止只複述數字不給觀點${_dataWarning}
 
 ⛔ 防幻覺鐵律(違反即無效輸出):
-1. 禁止使用上方「系統已精算數據」以外的任何指標名稱(例如:不准提「年線乖離率」「MACD 黃金交叉」等,除非上方欄位明確給出該值)
-2. 任何百分比/口數/點位/價位必須引用上方原值;**禁止編造「大盤年線乖離率過高」「散戶極度貪婪」這類沒附數字的形容詞**
+1. 禁止使用上方「系統已精算數據」以外的任何指標名稱(例如:不准提「MACD 黃金交叉」「KD 死亡交叉」等,除非上方欄位明確給出該值)
+2. 任何百分比/口數/點位/價位必須引用上方原值;**禁止編造「散戶極度貪婪」「主力倒貨」這類沒附數字的形容詞**
 3. 引用變數時必附原值(例:「外資期 -6.1 萬口空・🔴」),不准只寫定性詞
 4. 「現在台北時間: ${_nowTpe}」— 報告開頭以此時刻為準,禁止用昨天/上週數據假裝是今天
 
@@ -9496,7 +9500,6 @@ ${wBottom.detected
 - 黃金: ${fmtMr(mr.gold)} ${fmtChg(mr.gold_chg_pct)} / WTI 原油: ${fmtMr(mr.wti)} ${fmtChg(mr.wti_chg_pct)} / 比特幣: ${fmtMr(mr.btc)} ${fmtChg(mr.btc_chg_pct)}
 - 日經 225: ${fmtMr(mr.nikkei)} ${fmtChg(mr.nikkei_chg_pct)} / KOSPI: ${fmtMr(mr.kospi)} ${fmtChg(mr.kospi_chg_pct)} / 恆生: ${fmtMr(mr.hsi)} ${fmtChg(mr.hsi_chg_pct)}
 - 加權: ${twii} / 上櫃: ${twoii}
-- ${_ma240Line}
 - 外資台指期: ${fiLabel} / 外資現貨: ${fiSpotStr}
 - 戰情指揮部 5 維: 量價=${dim_pv} / 籌碼=${dim_chip} / 總經=${dim_macro} / 技術=${dim_tech} / 情緒=${dim_senti}
 - 市場風險指數: ${riskScore == null ? '計算中' : riskScore + ' (' + riskLabel + ')'} / 流動性熱度: ${liqText}

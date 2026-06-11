@@ -696,7 +696,10 @@ def _yf_chg_3d(ticker, name):
 
 
 def fetch_twii_240ma_bias():
-    """🦅 大盤懼高症濾網:加權指數(^TWII)距 240MA(年線)乖離率%。
+    """🛑 DEPRECATED (2026/06):本函式已從 main 流程移除呼叫,因 yfinance 對 GHA runner 美國 IP
+       持續抓不到 ^TWII 2 年歷史(< 240 日無法算 240MA)。保留供未來改用 TWSE 官方 API 復用。
+
+    🦅 大盤懼高症濾網:加權指數(^TWII)距 240MA(年線)乖離率%。
     需 240 個交易日,故抓 2 年;dropna 防休市 NaN。回傳 (bias_pct, ma240, err)。"""
     import time
     for attempt in range(2):
@@ -1091,7 +1094,7 @@ def main():
         else:
             print(f"     → 失敗：{err}")
 
-    # ── 🦅 獵鷹建倉分:全球宏觀避險因子(日圓 / 3日變動 / 大盤年線乖離 / 黑天鵝旗標)──
+    # ── 🦅 獵鷹建倉分:全球宏觀避險因子(日圓 / 3日變動 / 黑天鵝旗標;年線乖離已停用)──
     print("─" * 50)
     print("🦅 採集獵鷹建倉宏觀因子(日圓套利 / 3日變動 / 大盤懼高症)")
     # 日圓(JPY=X = USD/JPY,日圓升值=此值下跌)
@@ -1102,10 +1105,8 @@ def main():
     out["gold_chg_3d"] = _yf_chg_3d("GC=F",   "黃金")
     out["wti_chg_3d"]  = _yf_chg_3d("CL=F",   "WTI原油")
     print(f"   · 日圓 {jpy_val}({jpy_chg}% 日/{out['jpy_chg_3d']}% 3日) 金3日 {out['gold_chg_3d']}% 油3日 {out['wti_chg_3d']}%")
-    # 大盤 240MA 年線乖離率
-    bias, ma240, bias_err = fetch_twii_240ma_bias()
-    out["taiex_ma240_bias"], out["taiex_ma240"], out["taiex_ma240_error"] = bias, ma240, bias_err
-    print(f"   · 大盤年線乖離 {bias}%(240MA={ma240}, err={bias_err})")
+    # 🛑 大盤 240MA 年線乖離率已停用(2026/06):yfinance 對 GHA runner 持續抓不到 240 日 ^TWII 歷史,
+    #    前端改由「外資期/VIX/恐慌貪婪/融資餘額/期現比」綜合判讀大盤位階,不再寫 taiex_ma240_* 欄位
 
     # 🦅 黑天鵝防禦旗標(全市場同步,供 radar_miner 算建倉分 + 前端防禦矩陣顯示)
     #    日圓急升:USDJPY 3日 < -1.5%(利差交易平倉);金/油單日 > 3%(通膨地緣恐慌);KOSPI 早盤 < -1.5%
@@ -1114,7 +1115,7 @@ def main():
     _wti1 = out.get("wti_chg_pct")
     _kospi1 = out.get("kospi_chg_pct")
     out["blackswan"] = {
-        "market_bias_high": (bias is not None and bias > 20),       # 大盤懼高 → 總分 ×0.7
+        "market_bias_high": False,   # 🛑 大盤懼高(年線乖離 >20%)已停用:yfinance 抓不到 ^TWII 240 日歷史
         "jpy_surge":        (_jpy3 is not None and _jpy3 < -1.5),    # 日圓急升(USDJPY 跌)→ -20
         "metal_oil_spike":  ((_gold1 is not None and _gold1 > 3) or (_wti1 is not None and _wti1 > 3)),  # 金/油暴漲 → -20
         "kospi_dump":       (_kospi1 is not None and _kospi1 < -1.5),  # 亞股提款 → -10
@@ -1140,7 +1141,6 @@ def main():
                         "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct",
                         # 🦅 獵鷹建倉宏觀因子(API 偶失敗時沿用昨日,避免顯示待採)
                         "jpy", "jpy_chg_pct", "jpy_chg_3d", "gold_chg_3d", "wti_chg_3d",
-                        "taiex_ma240_bias", "taiex_ma240",
                         # 🏦 戰區一新增(FRED 偶失敗時沿用昨日)
                         "m1b_yoy", "fed_assets_chg_pct", "fi_ratio_alert"):
                 if out.get(key) is None and prev.get(key) is not None:
