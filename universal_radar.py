@@ -288,11 +288,11 @@ def fetch_global_news():
         print("  ⚠️ 無法取得全球新聞")
         return
 
-    # 批次呼叫 Groq 分析每則新聞對台股的影響（控 token 只翻前 15 則）
+    # 批次呼叫 Groq 分析每則新聞對台股的影響(控 token)
     # [Key 輪動] 走 _call_groq_with_rotation,撞 429 自動換下一把冰 key
-    # 翻譯上限 15→20(新聞源從 8 擴到 10 個,給更多翻譯名額;每則 sleep 2.5s 仍在 30 RPM 內)
+    # 翻譯上限:20→10(2026/06 起,為省 Groq TPD,每則 sleep 2.5s 仍在 30 RPM 內)
     analyzed = []
-    for i, item in enumerate(items[:20]):
+    for i, item in enumerate(items[:10]):
         impact, level, title_zh = "暫無分析", "neutral", ""
         if GROQ_API_KEYS:
             prompt = (
