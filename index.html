@@ -145,13 +145,13 @@
                             <span class="text-[10px] font-mono text-purple-600 w-12 flex-shrink-0">Key 1</span>
                             <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
                             <button onclick="app.verifyAPI('groq')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_groq"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-purple-700 w-12 flex-shrink-0">Key 2</span>
                             <input type="password" id="set_groqKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="備援 Key 2...">
                             <button onclick="app.verifyAPI('groq2')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq2"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_groq2"></div>
                         </div>
                     </div>
 
@@ -161,7 +161,7 @@
                         <div class="flex gap-2 items-center">
                             <input type="password" id="set_openrouterKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-cyan-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="sk-or-v1-...">
                             <button onclick="app.verifyAPI('openrouter')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_openrouter"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_openrouter"></div>
                         </div>
                     </div>
 
@@ -172,13 +172,13 @@
                             <span class="text-[10px] font-mono text-amber-600 w-12 flex-shrink-0">Key 1</span>
                             <input type="password" id="set_geminiKey1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-amber-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="AIzaSy...">
                             <button onclick="app.verifyAPI('gemini1')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_gemini1"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_gemini1"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-amber-700 w-12 flex-shrink-0">Key 2</span>
                             <input type="password" id="set_geminiKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-amber-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="備援 Key 2...">
                             <button onclick="app.verifyAPI('gemini2')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_gemini2"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_gemini2"></div>
                         </div>
                     </div>
 
@@ -186,23 +186,23 @@
                         <label class="text-xs font-bold text-green-400 mb-1">🔑 Fugle 輪動金鑰池 (台股即時)</label>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 1...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle1"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle1"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 2 (選填)...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle2"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle2"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken3" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 3 (選填)...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle3"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle3"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken4" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 4 (選填)...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle4"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle4"></div>
                         </div>
                         <div class="flex gap-2 items-center mb-1.5">
                             <input type="password" id="set_fugleToken5" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-green-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-green-500 transition-colors" placeholder="Token 5 (選填)...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_fugle5"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_fugle5"></div>
                         </div>
                         <button onclick="app.verifyFugleKeys()" class="w-full px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition text-gray-300">驗證金鑰群</button>
                     </div>
@@ -213,22 +213,22 @@
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-600 w-12 flex-shrink-0">Token 1</span>
                             <input type="password" id="set_finmindKey1" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="主力 Token...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind1"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind1"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 2</span>
                             <input type="password" id="set_finmindKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 2...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind2"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind2"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 3</span>
                             <input type="password" id="set_finmindKey3" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 3...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind3"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind3"></div>
                         </div>
                         <div class="flex gap-2 items-center">
                             <span class="text-[10px] font-mono text-yellow-700 w-12 flex-shrink-0">Token 4</span>
                             <input type="password" id="set_finmindKey4" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-yellow-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-yellow-500 transition-colors" placeholder="備援 Token 4...">
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_finmind4"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_finmind4"></div>
                         </div>
                         <button onclick="app.verifyAPI('finmind')" class="self-start mt-0.5 px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition text-yellow-400">驗證全部 Token</button>
                     </div>
@@ -239,7 +239,7 @@
                         <div class="flex gap-2 items-center">
                             <input type="password" id="set_massiveKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-blue-300 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-blue-400 transition-colors" placeholder="輸入 Massive API Key...">
                             <button onclick="app.verifyAPI('massive')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
-                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_massive"></div>
+                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-2 ring-gray-500/60" id="led_massive"></div>
                         </div>
                     </div>
                 </div>
@@ -789,7 +789,7 @@
                             <button data-period="10d" onclick="app.renderChipGlobal('10d')" class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
                         </div>
                         <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
-                            class="py-2 px-3 rounded-lg text-sm font-bold tracking-widest text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(79,70,229,0.4)] transition-all flex-shrink-0"
+                            class="py-2 px-3 rounded-lg text-sm font-bold text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(79,70,229,0.4)] transition-all flex-shrink-0 whitespace-nowrap"
                             style="background:linear-gradient(90deg,rgba(30,27,75,0.8),rgba(127,29,29,0.8))">🤖 AI 解析</button>
                     </div>
                     <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-sm text-gray-300 leading-relaxed shadow-inner"></div>
@@ -939,33 +939,40 @@
                             🔄 重新掃描
                         </button>
                     </h4>
+                    <!-- 💰 盈利力(營收成長 + 毛利率趨勢) -->
+                    <div class="text-emerald-300 text-[10px] font-black mt-1 mb-1 border-l-[3px] border-emerald-500 pl-2 tracking-wider">💰 盈利力</div>
                     <div class="grid grid-cols-2 gap-1.5 mb-2">
-                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/30 rounded p-2 flex flex-col gap-0.5 border border-emerald-900/30">
                             <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">營收 YoY <button onclick="app.showJargon('營收YoY'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayYoy" class="font-mono font-bold text-base text-gray-600">--</span>
                             <span id="xrayRevMom" class="text-[9px] font-mono text-gray-600"></span>
                         </div>
-                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">本益比 PE <button onclick="app.showJargon('本益比PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                            <span id="xrayPe" class="font-mono font-bold text-base text-gray-600">--</span>
-                        </div>
-                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
-                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">殖利率 <button onclick="app.showJargon('殖利率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                            <span id="xrayYield" class="font-mono font-bold text-base text-gray-600">--</span>
-                        </div>
-                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/30 rounded p-2 flex flex-col gap-0.5 border border-emerald-900/30">
                             <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">毛利率趨勢 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayGrossMargin" class="font-mono font-bold text-sm leading-tight text-gray-600">--</span>
                             <span id="xrayGmCompare" class="text-[9px] font-mono text-gray-600"></span>
                         </div>
-                        <div class="bg-[#0d1117] rounded p-2 flex flex-col gap-0.5">
+                    </div>
+                    <!-- 📊 估值(本益比 PE,獨立寬版) -->
+                    <div class="text-blue-300 text-[10px] font-black mt-1 mb-1 border-l-[3px] border-blue-500 pl-2 tracking-wider">📊 估值</div>
+                    <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/30 rounded p-2 flex justify-between items-center mb-2 border border-blue-900/30">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">本益比 PE <button onclick="app.showJargon('本益比PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPeTag" class="text-[9px] font-mono"></span></span>
+                        <span id="xrayPe" class="font-mono font-bold text-lg text-gray-600">--</span>
+                    </div>
+                    <!-- 🎁 配息力(殖利率 + 股利發配率 + 最新每股股利) -->
+                    <div class="text-amber-300 text-[10px] font-black mt-1 mb-1 border-l-[3px] border-amber-500 pl-2 tracking-wider">🎁 配息力</div>
+                    <div class="grid grid-cols-2 gap-1.5 mb-1.5">
+                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/30 rounded p-2 flex flex-col gap-0.5 border border-amber-900/30">
+                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">殖利率 <button onclick="app.showJargon('殖利率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayYield" class="font-mono font-bold text-base text-gray-600">--</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/30 rounded p-2 flex flex-col gap-0.5 border border-amber-900/30">
                             <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">股利發配率 <button onclick="app.showJargon('股利發配率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayPayout" class="font-mono font-bold text-base text-gray-600">--</span>
                         </div>
                     </div>
-                    <!-- 最新每股股利（整合自情報頁） -->
-                    <div class="bg-[#0d1117] rounded p-2 flex justify-between items-center mb-2">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">💰 最新每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                    <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/30 rounded p-2 flex justify-between items-center mb-2 border border-amber-900/30">
+                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">💵 最新每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                         <span id="xrayDividend" class="font-mono font-bold text-base text-gray-600">--</span>
                     </div>
                     <!-- 每季 EPS 趨勢(QoQ + YoY 雙比較,顯示好壞箭頭)-->
@@ -2634,6 +2641,8 @@ ${list}
             try { this.updateMarketWeather({ ctx: this.currentStrategyContext || {} }); } catch(_) {}
             try { this.updateGlobalRiskGrid(); } catch(_) {}
             try { this.loadBubbleWarning(); } catch(_) {}
+            // 🔄 還原「盤中即時更新」記憶(切 tab 回來不應跳回「實時/範例」)
+            setTimeout(() => { try { this._restoreSectorIntradayMemory(); } catch(_) {} }, 1500);
         }
         if (tabId === 'fav') this.renderFavTabs();
         if (tabId === 'inv') { this.renderInventory(); }
@@ -2793,6 +2802,23 @@ ${list}
             .filter(Boolean);
     },
 
+    // [AI 友善錯誤] 偵測 429 / Groq / Gemini / OpenRouter 字樣,轉成白話降級訊息
+    // 避免「Groq 所有 key 皆呼叫失敗」這種技術細節直接秀給使用者
+    _aiFriendlyError(rawMsg) {
+        const m = (rawMsg || '').toString();
+        if (!m) return '請稍後再試,或至 ⚙️ 設定補充更多 AI key';
+        if (/429|quota|rate.?limit|tpd|rpm/i.test(m) || /所有 key|皆呼叫失敗|三鏈|全忙/.test(m)) {
+            return '⚠️ AI 三鏈(OpenRouter + Gemini + Groq)全部撞限流,請稍後 1-2 分鐘再試;或至 ⚙️ 設定補一把新 key(任一條鏈即可)';
+        }
+        if (/key.*未設定|未填|invalid.?key|401/i.test(m)) {
+            return '⚠️ 尚未設定任何 AI key,請至 ⚙️ 設定 → 填入 OpenRouter / Gemini / Groq 任一條鏈';
+        }
+        if (/timeout|超時|abort/i.test(m)) {
+            return '⚠️ AI 回應超時(網路或上游忙碌),請稍後再試';
+        }
+        return `⚠️ AI 暫時無法回應:${m.slice(0, 80)}`;
+    },
+
     // [AI 自律條款] 在 prompt 前綴注入禁令清單,讓 AI 給篤定指令而非模糊回應
     //   - 禁詞:可能 / 或許 / 建議謹慎 / 看情況 / 一方面...另一方面 / 投資人應自行評估
     //   - 並要求用 🟢/🟡/🔴 + 具體點位,跟 CLAUDE.md「白話文具體指令」鐵律一致
@@ -2853,7 +2879,7 @@ ${list}
             const err = await res.json().catch(() => ({}));
             throw new Error(err?.error?.message || `Gemini 錯誤 HTTP ${res.status}`);
         }
-        throw lastErr || new Error('Gemini 所有 key 皆呼叫失敗');
+        throw lastErr || new Error('Gemini 雙 key 皆撞 429/額度耗盡(三鏈會自動 fallback 到 Groq)');
     },
 
     _getFinmindToken() {
@@ -2905,7 +2931,7 @@ ${list}
     async verifyAPI(type) {
         this.saveSettings();
         const led = document.getElementById(`led_${type}`);
-        if (led) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
+        if (led) led.className = "w-3 h-3 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
         try {
             if (type === 'groq' || type === 'groq2') {
                 // 雙 key 池單把驗證(對應第幾把):打 /models,200 + data 非空 = 綠燈
@@ -2914,7 +2940,7 @@ ${list}
                 const r = await this.safeFetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 8000, maxRetries: 1 });
                 const j = await r.json().catch(() => ({}));
                 if (!(r.status === 200 && j?.data?.length > 0)) throw new Error('Groq Key 無效');
-                if (led) led.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
+                if (led) led.className = 'w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
                 return;
             } else if (type === 'openrouter') {
                 // OpenRouter 驗證:打 /models(無需 body),200 + data 非空 = 綠燈
@@ -2923,7 +2949,7 @@ ${list}
                 const r = await this.safeFetch('https://openrouter.ai/api/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 8000, maxRetries: 1 });
                 const j = await r.json().catch(() => ({}));
                 if (!(r.status === 200 && (j?.data?.length > 0 || Array.isArray(j?.data)))) throw new Error('OpenRouter Key 無效');
-                if (led) led.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
+                if (led) led.className = 'w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
                 return;
             } else if (type === 'gemini1' || type === 'gemini2') {
                 // Gemini 驗證:打 /models endpoint(用 ?key= 傳 key),200 = 綠燈
@@ -2932,7 +2958,7 @@ ${list}
                 const r = await this.safeFetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`, {}, { timeout: 8000, maxRetries: 1 });
                 const j = await r.json().catch(() => ({}));
                 if (!(r.status === 200 && Array.isArray(j?.models) && j.models.length > 0)) throw new Error('Gemini Key 無效');
-                if (led) led.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
+                if (led) led.className = 'w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500';
                 return;
             } else if (type === 'finmind') {
                 // [Token 輪動] 逐一驗證 4 組 Token，分別更新各自 LED
@@ -2947,14 +2973,14 @@ ${list}
                 for (const entry of finmindEntries) {
                     const ledEl = document.getElementById(entry.ledId);
                     if (!ledEl) continue;
-                    if (!entry.key) { ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 bg-gray-600'; continue; }
+                    if (!entry.key) { ledEl.className = 'w-3 h-3 rounded-full flex-shrink-0 bg-gray-600 ring-2 ring-gray-500/60'; continue; }
                     try {
                         const r = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token=${entry.key}`, {}, { timeout: 8000, maxRetries: 1 });
                         const j2 = await r.json();
                         ledEl.className = (r.ok && j2.status === 200)
-                            ? 'w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500'
-                            : 'w-2.5 h-2.5 rounded-full flex-shrink-0 bg-red-500';
-                    } catch { ledEl.className = 'w-2.5 h-2.5 rounded-full flex-shrink-0 bg-red-500'; }
+                            ? 'w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500'
+                            : 'w-3 h-3 rounded-full flex-shrink-0 bg-red-500';
+                    } catch { ledEl.className = 'w-3 h-3 rounded-full flex-shrink-0 bg-red-500'; }
                     await new Promise(r => setTimeout(r, 500));
                 }
                 // 驗證結束後給用戶明確回饋（此分支直接跳過主 LED 邏輯）
@@ -2967,10 +2993,10 @@ ${list}
             } else if (type === 'massive') {
                 if(!this.settings.massiveKey) throw new Error();
                 const res = await fetch(`https://api.massive.com/v1/marketstatus/now`, { headers: { 'Authorization': `Bearer ${this.settings.massiveKey}` } });
-                if(res.status === 200) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error(`HTTP ${res.status}`);
+                if(res.status === 200) led.className = "w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500"; else throw new Error(`HTTP ${res.status}`);
             }
         } catch(e) {
-            if (led) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
+            if (led) led.className = "w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
         }
     },
 
@@ -2987,19 +3013,19 @@ ${list}
         for (let k of keys) {
             const led = document.getElementById(`led_${k.id}`);
             if(!k.token) {
-                led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 bg-gray-600";
+                led.className = "w-3 h-3 rounded-full flex-shrink-0 bg-gray-600 ring-2 ring-gray-500/60";
                 continue;
             }
-            led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
+            led.className = "w-3 h-3 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
             try {
                 const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/2330`, { headers: { 'X-API-KEY': k.token } });
                 if(res.status === 200) {
                     const json = await res.json();
-                    if (json && (json.symbolId || json.data || json.type)) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500";
+                    if (json && (json.symbolId || json.data || json.type)) led.className = "w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500";
                     else throw new Error('invalid response');
                 } else throw new Error(`HTTP ${res.status}`);
             } catch(e) {
-                led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
+                led.className = "w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
             }
         }
     },
@@ -3055,7 +3081,9 @@ ${list}
     },
 
     getStockName(sym) {
-        const f = this.allStockList.find(s => s.stock_id === sym); return f ? f.stock_name : '未知';
+        // 找不到對照(新股、特殊代號)→ 回傳代號本身,而非「未知」
+        const f = this.allStockList.find(s => s.stock_id === sym);
+        return f ? f.stock_name : (sym || '未知');
     },
     getFullStockName(sym) { return `${this.getStockName(sym)} (${sym})`; },
 
@@ -3693,7 +3721,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error?.message || `Groq 錯誤 HTTP ${res.status}`);
             }
-            throw lastErr || new Error('Groq 所有 key 皆呼叫失敗');
+            throw lastErr || new Error('三鏈 AI 全忙(OpenRouter + Gemini + Groq 均已撞 429 或無 key)');
         }
 
         // 三條鏈都沒設定
@@ -5045,7 +5073,7 @@ ${brokerText}
             const escaped = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
             result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-sm">${escaped}</div>`;
         } catch(e) {
-            result.innerHTML = `<span class="text-red-400 text-xs">分析失敗：${e.message}</span>`;
+            result.innerHTML = `<span class="text-amber-300 text-xs">${this._aiFriendlyError(e.message)}</span>`;
         }
         btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
         btn.disabled = false;
@@ -5242,7 +5270,7 @@ ${lightExplain[queryType]}
             document.getElementById('techAIModalBody').innerHTML = `<div class="text-[10px] text-gray-500 mb-1.5">${lightExplain[queryType].replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="mt-1 text-gray-200 leading-relaxed text-sm border-t border-gray-700 pt-2">${safeText}</div>`;
         } catch (e) {
             document.getElementById('techAIModalBody').innerHTML =
-                `<span class="text-red-400">分析失敗：${e.message}</span>`;
+                `<span class="text-amber-300">${this._aiFriendlyError(e.message)}</span>`;
         }
     },
 
@@ -5451,7 +5479,7 @@ ${peerLine}${newsCtx}
                 if (tag) tag.textContent = `所屬:${sector.name}・報告日期:${dateStr}`;
             } catch(_) {}
         } catch(e) {
-            box.innerHTML = `<span class="text-red-400 text-xs">產業報告生成失敗:${e.message}</span>`;
+            box.innerHTML = `<span class="text-amber-300 text-xs">${this._aiFriendlyError(e.message)}</span>`;
         }
         btn.textContent = '重新生成(覆蓋)';
         btn.disabled = false;
@@ -7247,6 +7275,38 @@ ${_newsLine}${globalContext}
         this.showToast(got ? `✅ 已更新 ${got} 個板塊即時漲跌` : '⚠️ Fugle 額度用盡或 token 失效,稍後再試', got ? 'info' : 'error');
     },
 
+    // 🔄 還原上次「盤中即時更新」記憶,切 tab 回來時不會被 sectorHeat 蓋成「(實時)/(範例)」
+    // 6 小時內視為新鮮(隔日盤資料失效就不還原)
+    _restoreSectorIntradayMemory() {
+        let cached = null;
+        try { cached = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null'); } catch (_) { return; }
+        if (!cached || !cached.chg || !cached.at) return;
+        const ageMin = (Date.now() - cached.at) / 60000;
+        if (ageMin > 360) return;
+        const fmt = (chg) => {
+            if (chg == null || isNaN(chg)) return null;
+            const arrow = chg > 0.3 ? '🔺' : chg < -0.3 ? '🔻' : '→';
+            const cls = chg > 0.3 ? 'text-red-400' : chg < -0.3 ? 'text-green-400' : 'text-gray-400';
+            return { txt: `${arrow}${chg > 0 ? '+' : ''}${chg.toFixed(2)}%`, cls };
+        };
+        for (const [sector, chg] of Object.entries(cached.chg)) {
+            const el = document.querySelector(`[data-sector="${sector}"] .sector-heat`);
+            if (!el) continue;
+            const f = fmt(chg);
+            if (!f) continue;
+            el.textContent = f.txt;
+            el.className = `text-sm font-mono font-black sector-heat ${f.cls}`;
+        }
+        const srcEl = document.getElementById('sectorSource');
+        if (srcEl) {
+            const d = new Date(cached.at);
+            const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+            srcEl.textContent = `(盤中記憶 ${hm})`;
+            srcEl.className = srcEl.className.replace(/text-(?:gray|green|yellow|red)-\d{3}/g, '') + ' text-purple-300';
+            srcEl.classList.remove('opacity-60');
+        }
+    },
+
     // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
     _updateBubbleCrashCard() {
         const card = document.getElementById('bubbleCrashCard');
@@ -8816,7 +8876,7 @@ ${_newsLine}${globalContext}
                     <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.openInvEditModal(${idx})">✏️<br>修改</div>
                     <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
                 </div>
-                <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full" style="transform: translateX(0px);">
+                <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full overflow-hidden" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
                     <div class="cursor-pointer flex-grow ml-2" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                         <div class="font-bold text-white text-base">${this.getFullStockName(item.symbol)}${this._renderFalconBadge(item.symbol, { profitPct: (cost > 0 && price > 0) ? pnl : null })}${this._renderAttentionBadge(item.symbol)}</div>
@@ -9799,7 +9859,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const legacyResult = document.getElementById('globalAIResult');
             if (legacyResult && legacyResult !== result) legacyResult.innerHTML = html;
         } catch(e) {
-            if (result) result.innerHTML = `<span class="text-red-400 text-sm">盤前報告生成失敗:${e.message}</span>`;
+            if (result) result.innerHTML = `<span class="text-amber-300 text-sm">${this._aiFriendlyError(e.message)}</span>`;
         }
         if (btn) { btn.innerHTML = '🔄 重新生成盤前報告'; btn.disabled = false; }
     },
