@@ -138,13 +138,20 @@
                 </div>
 
                 <div class="space-y-4 border-b border-[#30363d] pb-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-bold text-purple-400">🧠 Groq API Key（輕量新聞判讀，純手機必填）</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5">免費申請：<span class="text-purple-400">console.groq.com</span> → API Keys → Create。負責<b class="text-purple-300">新聞翻譯、彙整等輕量分析</b>，也是深度推理撞 429 時的備援。</p>
-                        <div class="flex gap-2 items-center">
-                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-2 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
+                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                        <label class="text-xs font-bold text-purple-400 mb-1">🧠 Groq API Key 池(雙 key 輪動,降低 TPD 限流壓力)</label>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-purple-400">console.groq.com</span> → API Keys → Create。負責<b class="text-purple-300">新聞翻譯、彙整等輕量分析</b>,也是深度推理撞 429 時的備援。<b class="text-purple-300">第一把撞 429/401 自動切第二把,前端輪動完全透明。</b></p>
+                        <div class="flex gap-2 items-center mb-1.5">
+                            <span class="text-[10px] font-mono text-purple-600 w-12 flex-shrink-0">Key 1</span>
+                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
                             <button onclick="app.verifyAPI('groq')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
                             <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq"></div>
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-[10px] font-mono text-purple-700 w-12 flex-shrink-0">Key 2</span>
+                            <input type="password" id="set_groqKey2" oninput="app.saveSettings()" class="flex-1 bg-[#010409] text-purple-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="備援 Key 2...">
+                            <button onclick="app.verifyAPI('groq2')" class="px-3 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition">驗證</button>
+                            <div class="w-2.5 h-2.5 rounded-full bg-gray-600 flex-shrink-0" id="led_groq2"></div>
                         </div>
                     </div>
 
@@ -746,6 +753,7 @@
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt1Label">🎯 第一目標</span><span class="text-[#f87171] font-mono font-black text-lg lg:text-xl" id="tgt1Price">--</span></div>
                             <div class="flex flex-col justify-center pt-1 border-l border-r border-[#30363d]"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt2Label">🚀 第二目標</span><span class="text-[#f87171] font-mono font-black text-lg lg:text-xl" id="tgt2Price">--</span></div>
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg lg:text-xl" id="defPrice">--</span></div>
+                            <div id="tpSlReason" class="col-span-3 hidden text-[10px] text-amber-400/90 mt-1.5 leading-snug px-1 text-left"></div>
                         </div>
                         <div id="institutionTargetBox" class="w-full mt-2 text-center text-xs leading-relaxed px-1"><span class="text-gray-400">💡 法人共識目標價 <span class="text-gray-300 font-semibold">2200～2600</span> (PEG估值)</span></div>
 
@@ -1041,7 +1049,8 @@
                         <span id="warRiskLabel" class="text-[10px] font-black px-2 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">計算中...</span>
                     </div>
                 </div>
-                <div class="text-[10px] text-gray-500 mb-1">⚡ 綜合 VIX／SPX／DXY／外資台指期／新聞語意 → 即時量化 0-100</div>
+                <div class="text-[10px] text-gray-500 mb-1">⚡ 綜合 VIX／SPX／DXY／外資台指期／新聞語意／<span class="text-amber-400/80">黑天鵝旗標</span> → 即時量化 0-100</div>
+                <div class="text-[9px] text-gray-600 mb-1 leading-snug">📌 全球宏觀採每日盤後採礦(每日更新一次)+ 台股即時數據(每 5 分鐘),兩者短暫不一致為時間差,非系統故障</div>
                 <!-- 半円儀表 + 巨大數字 -->
                 <div class="relative w-full flex justify-center">
                     <svg viewBox="0 0 220 130" class="w-56 h-32 max-w-full">
@@ -2705,6 +2714,7 @@ ${list}
     openSettings() {
         document.getElementById('set_aiPrompt').value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
         document.getElementById('set_groqKey').value = this.settings.groqKey || '';
+        document.getElementById('set_groqKey2').value = this.settings.groqKey2 || '';
         document.getElementById('set_openrouterKey').value = this.settings.openrouterKey || '';
         document.getElementById('set_geminiKey1').value = this.settings.geminiKey1 || '';
         document.getElementById('set_geminiKey2').value = this.settings.geminiKey2 || '';
@@ -2745,6 +2755,7 @@ ${list}
     saveSettings() {
         this.settings.aiPrompt = document.getElementById('set_aiPrompt').value.trim();
         this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
+        this.settings.groqKey2 = document.getElementById('set_groqKey2').value.trim();
         this.settings.openrouterKey = document.getElementById('set_openrouterKey').value.trim();
         this.settings.geminiKey1 = document.getElementById('set_geminiKey1').value.trim();
         this.settings.geminiKey2 = document.getElementById('set_geminiKey2').value.trim();
@@ -2763,9 +2774,11 @@ ${list}
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
 
-    // [Groq] 收集已填寫的 Groq Key（單把，輕量新聞判讀 + 深度推理 fallback）
+    // [Groq] 收集已填寫的 Groq Key(雙 key 池,429/401 自動切下一把,降低 TPD 限流壓力)
     _getGroqKeys() {
-        return [this.settings.groqKey].map(k => (k || '').trim()).filter(Boolean);
+        return [this.settings.groqKey, this.settings.groqKey2]
+            .map(k => (k || '').trim())
+            .filter(Boolean);
     },
 
     // [OpenRouter] 取深度推理 key（單把）
@@ -2876,9 +2889,9 @@ ${list}
         const led = document.getElementById(`led_${type}`);
         if (led) led.className = "w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
         try {
-            if (type === 'groq') {
-                // 單把驗證:打 /models,200 + data 非空 = 綠燈
-                const key = this.settings.groqKey;
+            if (type === 'groq' || type === 'groq2') {
+                // 雙 key 池單把驗證(對應第幾把):打 /models,200 + data 非空 = 綠燈
+                const key = type === 'groq2' ? this.settings.groqKey2 : this.settings.groqKey;
                 if (!key) throw new Error('未填寫');
                 const r = await this.safeFetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 8000, maxRetries: 1 });
                 const j = await r.json().catch(() => ({}));
@@ -7730,9 +7743,13 @@ ${_newsLine}${globalContext}
                 </div>
             </div>
             ${warns.length ? `<div class="mt-2 pt-2 border-t border-gray-700/50">
-                <div class="text-[10px] font-black text-red-300 mb-1">🌍 全球宏觀黑天鵝防禦矩陣</div>
+                <div class="flex items-center justify-between mb-1">
+                    <div class="text-[10px] font-black text-red-300">🌍 全球宏觀黑天鵝防禦矩陣</div>
+                    ${this._falconScores?.updated ? `<div class="text-[9px] text-gray-500 font-mono">📅 ${this._falconScores.updated}</div>` : ''}
+                </div>
                 ${warns.map(([ic, msg, cls]) => `<div class="${cls} border rounded px-2 py-1 text-[10px] font-bold leading-snug mb-1 animate-pulse">${ic} 警報:${msg}</div>`).join('')}
-            </div>` : `<div class="mt-2 pt-2 border-t border-gray-700/50 text-[10px] text-green-300/70">🌍 全球宏觀:無黑天鵝警報,環境正常 ✅</div>`}`;
+                <div class="text-[9px] text-gray-500/80 mt-1 leading-snug">📌 黑天鵝旗標為盤後採礦判定(macro_risk.json),已併入「台股風險指數」加成計算(每觸發 1 個 +5 分,上限 +20)</div>
+            </div>` : `<div class="mt-2 pt-2 border-t border-gray-700/50 text-[10px] text-green-300/70">🌍 全球宏觀:無黑天鵝警報,環境正常 ✅${this._falconScores?.updated ? `<span class="text-gray-600 ml-2">(📅 ${this._falconScores.updated})</span>` : ''}</div>`}`;
     },
 
     refreshStrategy() {
@@ -7899,12 +7916,17 @@ ${_newsLine}${globalContext}
 
         // 季節大字卡 actionText/Subtext/boxStyle 邏輯已全面棄用 → 改由首席 AI 黃卡與三大板塊接手。
         // 但 def_val / defLabel / t1_val / t2_val 仍需依季節與硬傷訊號決定，以驅動「動態停利停損線」。
+        // 📌 觸發避險/止跌/逃命三格時，同步記下原因，下方 #tpSlReason 顯示，讓使用者一眼看懂為什麼雙目標被停用
+        let tpSlReason = null;
         if (isIslandReversal) {
-            def_val = pC; defLabel = "🛑 逃命價"; t1_val = "避險退場"; t2_val = "避險退場";
+            def_val = pC; defLabel = "🛑 逃命價(島狀反轉)"; t1_val = "避險退場"; t2_val = "避險退場";
+            tpSlReason = "⚠️ 觸發「島狀反轉」：近 10 日內出現兩個跳空缺口(高位被孤立)，頭部訊號 → 雙目標停用、逃命價設為當日收盤";
         } else if (isBigBlackK && pC < ma20) {
-            def_val = pC; defLabel = "🛑 大黑K底線"; t1_val = "等待止跌"; t2_val = "等待止跌";
+            def_val = pC; defLabel = "🛑 大黑K底線(摜破月線)"; t1_val = "等待止跌"; t2_val = "等待止跌";
+            tpSlReason = "⚠️ 觸發「大黑K摜破月線」：實體跌幅 > 3.5% 且收破 MA20 → 雙目標停用，先等止跌訊號再評估";
         } else if (season === '冬') {
             def_val = recentTrough ? recentTrough : pC; defLabel = "🛑 絕對停損(前低)"; t1_val = "下修逃命"; t2_val = "下修逃命";
+            tpSlReason = "⚠️ 季節判定為「冬」(空頭環境)：雙目標停用、防守設於前低，原則上下修逃命";
         } else if (season === '夏') {
             if (isSpeedSurge) { def_val = ma5; defLabel = "🛡️ 貼身防守(5MA)"; }
             else              { def_val = ma20; defLabel = "🛡️ 波段防守(20MA)"; }
@@ -7953,6 +7975,12 @@ ${_newsLine}${globalContext}
 
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC); document.getElementById('tgt2Price').innerHTML = this.getPriceHTML(t2_val, pC);
         document.getElementById('defPrice').innerHTML = this.getPriceHTML(def_val, pC); document.getElementById('defLabel').innerText = defLabel;
+        // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
+        const _tpSlReasonEl = document.getElementById('tpSlReason');
+        if (_tpSlReasonEl) {
+            if (tpSlReason) { _tpSlReasonEl.textContent = tpSlReason; _tpSlReasonEl.classList.remove('hidden'); }
+            else { _tpSlReasonEl.textContent = ''; _tpSlReasonEl.classList.add('hidden'); }
+        }
 
         // 💰 持倉損益 + 🕵️ 智慧庫存查核（從 actionSubText 抽出，獨立小條呈現）
         const _costPnlBar = document.getElementById('costPnlBar');
@@ -9806,6 +9834,12 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const bearish = newsItems.filter(n => n.impact_level === 'bearish').length;
             score += Math.round((bearish / newsItems.length) * 10);
         }
+
+        // 🦅 黑天鵝旗標加成:每觸發 1 個 macro_flag +5 分(上限 +20),讓「全球宏觀黑天鵝防禦矩陣」與風險指數連動
+        // 避免使用者看到矩陣亮燈但風險指數仍顯示「中性」的視覺矛盾
+        const mf = this._falconScores?.macro_flags || {};
+        const flagCount = ['jpy_surge', 'metal_oil_spike', 'market_bias_high', 'kospi_dump'].filter(k => mf[k]).length;
+        if (flagCount > 0) score += Math.min(flagCount * 5, 20);
 
         return Math.min(100, Math.max(0, Math.round(score)));
     },
