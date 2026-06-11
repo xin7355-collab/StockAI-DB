@@ -940,40 +940,40 @@
                         </button>
                     </h4>
                     <!-- 💰 盈利力(營收成長 + 毛利率趨勢) -->
-                    <div class="text-emerald-300 text-[10px] font-black mt-1 mb-1 border-l-[3px] border-emerald-500 pl-2 tracking-wider">💰 盈利力</div>
+                    <div class="inline-flex items-center text-emerald-300 text-xs font-black mt-2 mb-1.5 bg-emerald-900/40 border-l-[3px] border-emerald-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">💰 盈利力</div>
                     <div class="grid grid-cols-2 gap-1.5 mb-2">
-                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/30 rounded p-2 flex flex-col gap-0.5 border border-emerald-900/30">
-                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">營收 YoY <button onclick="app.showJargon('營收YoY'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                            <span id="xrayYoy" class="font-mono font-bold text-base text-gray-600">--</span>
-                            <span id="xrayRevMom" class="text-[9px] font-mono text-gray-600"></span>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-emerald-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">營收 YoY <button onclick="app.showJargon('營收YoY'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayYoy" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
+                            <span id="xrayRevMom" class="text-[10px] font-mono text-gray-500"></span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/30 rounded p-2 flex flex-col gap-0.5 border border-emerald-900/30">
-                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">毛利率趨勢 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                            <span id="xrayGrossMargin" class="font-mono font-bold text-sm leading-tight text-gray-600">--</span>
-                            <span id="xrayGmCompare" class="text-[9px] font-mono text-gray-600"></span>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-emerald-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">毛利率趨勢 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayGrossMargin" class="font-mono font-black text-sm leading-tight text-gray-600">--</span>
+                            <span id="xrayGmCompare" class="text-[10px] font-mono text-gray-500"></span>
                         </div>
                     </div>
                     <!-- 📊 估值(本益比 PE,獨立寬版) -->
-                    <div class="text-blue-300 text-[10px] font-black mt-1 mb-1 border-l-[3px] border-blue-500 pl-2 tracking-wider">📊 估值</div>
-                    <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/30 rounded p-2 flex justify-between items-center mb-2 border border-blue-900/30">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">本益比 PE <button onclick="app.showJargon('本益比PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPeTag" class="text-[9px] font-mono"></span></span>
-                        <span id="xrayPe" class="font-mono font-bold text-lg text-gray-600">--</span>
+                    <div class="inline-flex items-center text-blue-300 text-xs font-black mt-2 mb-1.5 bg-blue-900/40 border-l-[3px] border-blue-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📊 估值</div>
+                    <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex justify-between items-center mb-2 border border-blue-900/40">
+                        <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1.5">本益比 PE <button onclick="app.showJargon('本益比PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPeTag" class="text-[10px] font-mono px-1.5 py-0.5 rounded"></span></span>
+                        <span id="xrayPe" class="font-mono font-black text-2xl text-gray-600 leading-none">--</span>
                     </div>
                     <!-- 🎁 配息力(殖利率 + 股利發配率 + 最新每股股利) -->
-                    <div class="text-amber-300 text-[10px] font-black mt-1 mb-1 border-l-[3px] border-amber-500 pl-2 tracking-wider">🎁 配息力</div>
+                    <div class="inline-flex items-center text-amber-300 text-xs font-black mt-2 mb-1.5 bg-amber-900/40 border-l-[3px] border-amber-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">🎁 配息力</div>
                     <div class="grid grid-cols-2 gap-1.5 mb-1.5">
-                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/30 rounded p-2 flex flex-col gap-0.5 border border-amber-900/30">
-                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">殖利率 <button onclick="app.showJargon('殖利率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                            <span id="xrayYield" class="font-mono font-bold text-base text-gray-600">--</span>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">殖利率 <button onclick="app.showJargon('殖利率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayYield" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/30 rounded p-2 flex flex-col gap-0.5 border border-amber-900/30">
-                            <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">股利發配率 <button onclick="app.showJargon('股利發配率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                            <span id="xrayPayout" class="font-mono font-bold text-base text-gray-600">--</span>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">股利發配率 <button onclick="app.showJargon('股利發配率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayPayout" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
-                    <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/30 rounded p-2 flex justify-between items-center mb-2 border border-amber-900/30">
-                        <span class="text-gray-500 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">💵 最新每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                        <span id="xrayDividend" class="font-mono font-bold text-base text-gray-600">--</span>
+                    <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex justify-between items-center mb-2 border border-amber-900/40">
+                        <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">💵 最新每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                        <span id="xrayDividend" class="font-mono font-black text-xl text-gray-600 leading-none">--</span>
                     </div>
                     <!-- 每季 EPS 趨勢(QoQ + YoY 雙比較,顯示好壞箭頭)-->
                     <div class="bg-[#0d1117] rounded p-2 mb-1.5">
@@ -2142,14 +2142,18 @@ const app = {
             if (!activeSwipeEl) return;
             activeSwipeEl.style.transition = 'transform 0.2s ease-out';
             const diff = e.changedTouches[0].clientX - swipeStartX;
-            if (swipeDir === 'left' && diff < -30) {
+            // 嚴格邊界判定:必須 swipe 超過 REVEAL/2(36px)才展開,否則一律 reset 為 0
+            // 防止「部分展開卡在中間」造成兩邊按鈕同時露出的視覺 bug
+            if (swipeDir === 'left' && diff <= -REVEAL / 2) {
                 activeSwipeEl.style.transform = `translateX(-${REVEAL}px)`;
-            } else if (swipeDir === 'right' && diff > 30) {
+            } else if (swipeDir === 'right' && diff >= REVEAL / 2) {
                 activeSwipeEl.style.transform = `translateX(${REVEAL}px)`;
             } else {
                 activeSwipeEl.style.transform = 'translateX(0px)';
-                activeSwipeEl = null; swipeDir = null;
             }
+            // 不論展開或 reset,touchend 後一律清掉 active 引用,避免狀態殘留到下一次 touchstart
+            activeSwipeEl = null;
+            swipeDir = null;
         });
     },
 
@@ -5132,8 +5136,8 @@ ${brokerText}
                 tdEl.innerText = `${Number(td).toFixed(2)} 元`;
                 tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-yellow-400';
             } else if (td === 0) {
-                tdEl.innerText = '未發放';
-                tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-gray-400';
+                tdEl.innerText = '⚠️ 未發放';
+                tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-amber-400';
             } else {
                 tdEl.innerText = '--';
                 tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-gray-600';
@@ -5541,7 +5545,11 @@ ${peerLine}${newsCtx}
             if (!el) return;
             if (val == null) { el.innerHTML = '<span class="text-gray-600 text-xs">無資料</span>'; return; }
             const fmt = typeof val === 'number' ? (Math.abs(val) >= 100 ? Math.round(val) : parseFloat(val.toFixed(2))) : val;
-            el.className = `font-mono font-bold ${id === 'xrayGrossMargin' ? 'text-sm leading-tight' : 'text-base'} ${colorClass || 'text-white'}`;
+            // 字大小:毛利率 text-sm(3 段太長)、PE text-2xl(估值區獨立寬版突出)、其他 text-xl(營收/殖利率/發配率統一)
+            const sizeClass = id === 'xrayGrossMargin' ? 'text-sm leading-tight'
+                : id === 'xrayPe' ? 'text-2xl leading-none'
+                : 'text-xl leading-tight';
+            el.className = `font-mono font-black ${sizeClass} ${colorClass || 'text-white'}`;
             el.textContent = `${fmt}${unit || ''}`;
         };
 
@@ -5689,14 +5697,18 @@ ${peerLine}${newsCtx}
             // totalDiv == 0 但 EPS 為空 → FinMind 季報沒抓到,實際不一定真未發放,顯示「資料整編中」
             const payoutEl = document.getElementById('xrayPayout');
             if (epsRows.length === 0) {
-                payoutEl.textContent = '資料整編中';
-                payoutEl.className = 'font-mono font-bold text-base text-gray-500';
+                payoutEl.textContent = '⏳ 整編中';
+                payoutEl.className = 'font-mono font-black text-base text-gray-400 leading-tight';
             } else {
-                payoutEl.textContent = '未發放';
-                payoutEl.className = 'font-mono font-bold text-base text-gray-500';
+                payoutEl.textContent = '⚠️ 未發放';
+                payoutEl.className = 'font-mono font-black text-base text-amber-400 leading-tight';
             }
         } else {
-            setCell('xrayPayout', payoutRatio, '%', payoutRatio==null?null:payoutRatio>100?'text-red-400':payoutRatio>70?'text-yellow-400':'text-green-400');
+            // 0% 也算警示(完全不分紅);1-30% 偏低;30-70% 健康;70-100% 偏高;>100% 超發(借錢分紅警示)
+            setCell('xrayPayout', payoutRatio, '%',
+                payoutRatio==null?null:
+                (payoutRatio===0||payoutRatio>100)?'text-red-400':
+                (payoutRatio<30||payoutRatio>70)?'text-yellow-300':'text-green-400');
         }
 
         // 三態股利顯示
@@ -5706,8 +5718,8 @@ ${peerLine}${newsCtx}
                 tdEl2.innerText = `${totalDiv.toFixed(2)} 元`;
                 tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-yellow-400';
             } else if (totalDiv === 0) {
-                tdEl2.innerText = '未發放';
-                tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-gray-500';
+                tdEl2.innerText = '⚠️ 未發放';
+                tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-amber-400';
             } else {
                 tdEl2.innerText = '--';
                 tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
@@ -6008,15 +6020,15 @@ ${_newsLine}${globalContext}
                             xrayDiv.innerText = `${totalDiv.toFixed(2)} 元`;
                             xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-yellow-400';
                         } else {
-                            xrayDiv.innerText = '未發放';
-                            xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-gray-400';
+                            xrayDiv.innerText = '⚠️ 未發放';
+                            xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-amber-400';
                         }
                     }
                 } else {
                     // API 成功但無股利紀錄 → 公司未發放股利
                     if (xrayDiv) {
-                        xrayDiv.innerText = '未發放';
-                        xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-gray-400';
+                        xrayDiv.innerText = '⚠️ 未發放';
+                        xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-amber-400';
                     }
                 }
             }
@@ -8858,6 +8870,11 @@ ${_newsLine}${globalContext}
     },
 
     renderInventory() {
+        // 🛡️ 重新渲染前強制重置所有殘留 swipe state,防止特定一列「自動展開兩邊按鈕」的視覺 bug
+        document.querySelectorAll('#inventoryCardContainer .swipe-content').forEach(el => {
+            el.style.transition = 'none';
+            el.style.transform = 'translateX(0px)';
+        });
         const container = document.getElementById('inventoryCardContainer');
         if(this.inventory.length === 0) { container.innerHTML = '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg m-3 py-8 text-sm">目前無庫存部位</p>';
             document.getElementById('invTotalPnL').innerText = '--'; document.getElementById('invTotalPnLPct').innerText = '--';
@@ -10646,17 +10663,23 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         return { ...EMPTY, detail_action: s };
     },
 
-    // 將 AI 30 字短評渲染進首頁卡片 aiTranslatorCard（黃色強視覺；空 summary 也填 fallback，永不卡住）
+    // 將 AI 30 字短評渲染進首頁卡片 aiTranslatorCard
+    // 空 summary 直接 hidden 整張卡(不再顯示「請看下方戰術室解析」廢話 placeholder 浪費螢幕)
+    // 配色從黃色強迫改為左側細條 + 暗背景,跟下方 traffic_light 綠燈卡片視覺一致
     renderSummaryCard(summary) {
         const card = document.getElementById('aiTranslatorCard');
         if (!card) return;
-        const safe = ((summary || '').trim()) || '🤨 AI 已輸出詳細評析，請看下方戰術室解析';
+        const safe = (summary || '').trim();
+        if (!safe) { card.classList.add('hidden'); card.innerHTML = ''; return; }
         const esc = safe.replace(/</g, '&lt;').replace(/>/g, '&gt;');
         card.classList.remove('hidden');
         card.innerHTML = `
-            <div class="bg-gradient-to-r from-yellow-950/40 via-[#161b22] to-amber-950/30 border-l-4 border-yellow-500 px-3 py-3">
-                <div class="flex items-center gap-1.5 mb-1.5"><span class="text-[10px] font-bold text-yellow-300/90 tracking-wider">🧠 AI 首席總評</span></div>
-                <div class="text-yellow-400 font-bold text-lg leading-relaxed tracking-wide">${esc}</div>
+            <div class="bg-[#0d1117] border-l-[3px] border-purple-500 px-3 py-2.5 flex items-start gap-2.5">
+                <span class="text-base leading-none mt-0.5">🧠</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[10px] font-bold text-purple-300/80 tracking-wider mb-0.5">AI 首席摘要</div>
+                    <div class="text-gray-100 font-bold text-sm leading-relaxed">${esc}</div>
+                </div>
             </div>`;
     },
 
