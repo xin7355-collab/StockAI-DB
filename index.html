@@ -2101,6 +2101,7 @@ const app = {
         this._loadBrokerNames();
         this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
+        this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
         document.querySelector('.scrollable-main').addEventListener('scroll', () => {
@@ -4484,6 +4485,26 @@ const marginByDate = {};
 
     // 🦅 獵鷹建倉分:啟動時拉一次 falcon_scores.json(radar_miner 全市場評分結果)
     _falconScores: null,
+    // 🌍 啟動時先載 macro_risk.json,讓 renderFalconDashboard 內的黑天鵝警報能即時顯示
+    // 黃金 +X% / 原油 +X% / KOSPI -X% 等具體數值;原本是 lazy 載入時機晚,造成顯示「?」
+    async _loadMacroRiskCache() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j && typeof j === 'object') {
+                this._macroRiskCache = j;
+                console.log(`[macro_risk] 已載入 (gold ${j.gold_chg_pct}% / wti ${j.wti_chg_pct}% / kospi ${j.kospi_chg_pct}% / jpy3d ${j.jpy_chg_3d}%)`);
+                // 已渲染過的獵鷹儀表板補畫一次,讓警報文案立刻顯示真實數值
+                if (this.currentSymbolId) this.renderFalconDashboard?.();
+            }
+        } catch (e) {
+            console.warn('[macro_risk] 載入失敗(警報文案會 fallback 「黃金 ?」):', e?.message || e);
+        }
+    },
+
     async _loadFalconScores() {
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
@@ -7985,7 +8006,7 @@ ${_newsLine}${globalContext}
             ${warns.length ? `<div class="mt-2 pt-2 border-t border-gray-700/50">
                 <div class="flex items-center justify-between mb-1">
                     <div class="text-[10px] font-black text-red-300">🌍 全球宏觀黑天鵝防禦矩陣</div>
-                    ${this._falconScores?.updated ? `<div class="text-[9px] text-gray-500 font-mono">📅 ${this._falconScores.updated}</div>` : ''}
+                    ${this._falconScores?.updated ? `<div class="text-[9px] text-gray-500 font-mono" title="盤後採礦判定時間,每日 16:30 自動更新一次(黃金/原油/KOSPI 等日線數據要等收盤才有完整漲跌)">⏱️ ${this._falconScores.updated} 盤後</div>` : ''}
                 </div>
                 ${warns.map(([ic, msg, cls]) => `<div class="${cls} border rounded px-2 py-1 text-[10px] font-bold leading-snug mb-1 animate-pulse">${ic} 警報:${msg}</div>`).join('')}
                 <div class="text-[9px] text-gray-500/80 mt-1 leading-snug">📌 黑天鵝旗標為盤後採礦判定(macro_risk.json),已併入「台股風險指數」加成計算(每觸發 1 個 +5 分,上限 +20)</div>
