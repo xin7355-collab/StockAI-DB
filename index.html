@@ -33,6 +33,17 @@
         html[data-font="xl"] .text-xs       { font-size: 15px !important; }
         html[data-font="xl"] .text-sm       { font-size: 17px !important; }
         html[data-font="xl"] .text-base     { font-size: 18px !important; }
+        /* 大/特大字體下,#stockTags 徽章 + #invBadge + #attentionBadge 自動縮 padding,
+           避免擠破標籤列(L688 左半部 flex-1 寬度有限,大字易讓徽章一行只放一個) */
+        html[data-font="large"] #stockTags > span,
+        html[data-font="large"] #invBadge,
+        html[data-font="large"] #attentionBadge,
+        html[data-font="xl"]    #stockTags > span,
+        html[data-font="xl"]    #invBadge,
+        html[data-font="xl"]    #attentionBadge {
+            padding: 1px 5px !important;
+            font-size: 11px !important;
+        }
         /* 3 欄等寬區段（停利停損 / 預測卡片）放寬最小寬度，避免字體放大後欄內數字撐爆 */
         #precisionPricesBox > div { min-width: 0; }
         #precisionPricesBox .text-lg { font-size: 1rem; }  /* 鎖回 16px，防止 text-lg 18px × 1.06 = 19.08 擠破 3 欄 */
@@ -688,12 +699,12 @@
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-baseline gap-1.5 min-w-0 overflow-hidden flex-wrap">
                             <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
-                            <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0" style="font-size: clamp(1.5rem, 6.5vw, 2.4rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">載入中...</span>
+                            <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0 break-words" style="font-size: clamp(1.3rem, 5.5vw, 2.1rem); word-break: break-word;">載入中...</span>
                             <span id="quoteCode" class="text-[11px] text-gray-400 font-mono font-bold leading-none flex-shrink-0"></span>
                         </div>
-                        <div class="flex items-center gap-1 mt-1 flex-wrap">
-                            <span id="stockTags" class="flex items-center gap-1 flex-wrap"><span class="bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold">讀取中...</span></span>
-                            <span id="invBadge" class="hidden bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500">💼持股中</span>
+                        <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-1 mt-1">
+                            <span id="stockTags" class="inline-flex flex-wrap gap-x-1 gap-y-1 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">讀取中...</span></span>
+                            <span id="invBadge" class="hidden inline-block bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500 whitespace-nowrap">💼持股中</span>
                             <!-- 🚨 處置神器 badge:由 refreshStrategy() 依 attentionStatus 動態填字 + show/hide -->
                             <span id="attentionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle"></span>
                         </div>
@@ -2886,9 +2897,9 @@ ${list}
         const m = map[provider] || { emoji: '⚡', name: provider, cls: 'border-gray-600 bg-gray-900/95 text-gray-200' };
         txt.textContent = `${m.emoji} ${m.name} #${keyIdx}`;
         chip.className = `fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm ${m.cls}`;
-        // 8 秒後自動 dim(讓使用者知道是最近狀態,不要永遠亮)
+        // 1 秒後 chip 完全消失(原本 2 秒 dim,改成短暫提示更不擾人)
         clearTimeout(this._aiStatusDimTimer);
-        this._aiStatusDimTimer = setTimeout(() => { chip.style.opacity = '0.4'; }, 2000);
+        this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, 1000);
         chip.style.opacity = '1';
     },
 
@@ -3718,49 +3729,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
         prompt = this._injectDisciplineClause(prompt);
 
-        // 🚀 模式 A:OpenRouter free 8b 雙 key 池輪動主路徑
-        //    雙 key 池:第一把撞 429 隨機延遲後切第二把(模糊機器人連 retry 特徵)
-        for (let i = 0; i < orKeys.length; i++) {
-            const orKey = orKeys[i];
-            try {
-                this._setAIStatus('openrouter', i + 1);
-                const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${orKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/',
-                        'X-Title': 'StockAI-DB',
-                    },
-                    body: JSON.stringify({
-                        model: openrouter_model,
-                        messages: [{ role: 'user', content: prompt }],
-                        max_tokens, temperature,
-                    })
-                }, { timeout: 60000, maxRetries: 1 });
-                if (res.ok) {
-                    const data = await res.json();
-                    const content = data?.choices?.[0]?.message?.content;
-                    if (content) {
-                        console.info(`[_callAI] OpenRouter Key #${i + 1} OK`);
-                        return content;
-                    }
-                    console.warn(`[_callAI] OpenRouter Key #${i + 1} 回應無 content,試下一把/fallback`);
-                } else {
-                    console.warn(`[_callAI] OpenRouter Key #${i + 1} HTTP ${res.status}(可能 429/額度)`);
-                    if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
-                        const _jitter = Math.round(2000 + Math.random() * 3000);
-                        console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
-                        await new Promise(r => setTimeout(r, _jitter));
-                    }
-                }
-            } catch (e) {
-                console.warn(`[_callAI] OpenRouter Key #${i + 1} 例外:`, e?.message || e);
-            }
-        }
-
-        // 🌟 模式 A2:Gemini 2.5 Flash(第二條輪動鏈,雙 key 500 req/day)
-        //    OpenRouter 撞 429 / 無 key 時 Gemini 接手,避免直接打到 Groq TPD
+        // 🌟 第一鏈:Gemini 2.5 Flash(雙 key 500 req/day,使用者偏好優先用 Gemini)
+        //    使用者要求把 OpenRouter 改放最後鏈(額度小容易 429)
         if (this._getGeminiKeys().length) {
             try {
                 const content = await this._callGemini({ prompt, max_tokens, temperature, model: 'gemini-2.5-flash' });
@@ -3790,10 +3760,9 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             return data.content;
         }
 
-        // 模式 C:Groq 直連備援(雙 key 輪動,429/401 換把)
+        // 第二鏈:Groq 直連(雙 key 輪動,429/401 切下一把)
         if (groqKeys.length) {
             const body = JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens, temperature });
-            let lastErr = null;
             for (let i = 0; i < groqKeys.length; i++) {
                 const key = groqKeys[i];
                 let res;
@@ -3803,7 +3772,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                         headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
                         body
                     }, { timeout: 60000, maxRetries: i === 0 ? 1 : 2 });
-                } catch (e) { lastErr = e; continue; }
+                } catch (e) { console.warn(`[_callAI] Groq Key #${i + 1} 例外:`, e?.message || e); continue; }
                 if (res.ok) {
                     const data = await res.json();
                     console.info(`[_callAI] Groq Key #${i + 1} OK`);
@@ -3817,13 +3786,56 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     await new Promise(r => setTimeout(r, _jitter));
                     continue;
                 }
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error?.message || `Groq 錯誤 HTTP ${res.status}`);
+                console.warn(`[_callAI] Groq Key #${i + 1} HTTP ${res.status}(可能 429/額度),fallback OpenRouter`);
             }
-            throw lastErr || new Error('三鏈 AI 全忙(OpenRouter + Gemini + Groq 均已撞 429 或無 key)');
+            console.warn('[_callAI] Groq 全把都失敗,fallback OpenRouter');
         }
 
-        // 三條鏈都沒設定
+        // 🚀 第三鏈(最後 fallback):OpenRouter free 8b 雙 key 池輪動
+        //    使用者要求 OpenRouter 放最後(額度小容易 429,讓穩定的 Gemini/Groq 先用)
+        for (let i = 0; i < orKeys.length; i++) {
+            const orKey = orKeys[i];
+            try {
+                this._setAIStatus('openrouter', i + 1);
+                const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${orKey}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/',
+                        'X-Title': 'StockAI-DB',
+                    },
+                    body: JSON.stringify({
+                        model: openrouter_model,
+                        messages: [{ role: 'user', content: prompt }],
+                        max_tokens, temperature,
+                    })
+                }, { timeout: 60000, maxRetries: 1 });
+                if (res.ok) {
+                    const data = await res.json();
+                    const content = data?.choices?.[0]?.message?.content;
+                    if (content) {
+                        console.info(`[_callAI] OpenRouter Key #${i + 1} OK`);
+                        return content;
+                    }
+                    console.warn(`[_callAI] OpenRouter Key #${i + 1} 回應無 content`);
+                } else {
+                    console.warn(`[_callAI] OpenRouter Key #${i + 1} HTTP ${res.status}(可能 429/額度)`);
+                    if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
+                        const _jitter = Math.round(2000 + Math.random() * 3000);
+                        console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
+                        await new Promise(r => setTimeout(r, _jitter));
+                    }
+                }
+            } catch (e) {
+                console.warn(`[_callAI] OpenRouter Key #${i + 1} 例外:`, e?.message || e);
+            }
+        }
+
+        // 三鏈全失敗(或全沒設定 key)
+        if (orKeys.length || groqKeys.length || this._getGeminiKeys().length) {
+            throw new Error('三鏈 AI 全忙(Gemini + Groq + OpenRouter 均已撞 429 或無 key)');
+        }
         return null;
     },
 
@@ -3839,7 +3851,28 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (!promptFull && !promptSimple) {
             throw new Error('_callDeepAI 需提供 prompt 或 prompts.{full,simple}');
         }
-        // 🚀 OpenRouter DeepSeek R1 雙 key 池輪動
+        // 🌟 第一鏈:Gemini 2.5 Flash(使用者偏好優先用 Gemini,推理深度雖不如 R1 但配額穩定)
+        if (this._getGeminiKeys().length) {
+            try {
+                const content = await this._callGemini({ prompt: promptSimple, max_tokens, temperature, model: 'gemini-2.5-flash' });
+                if (content) {
+                    console.info('[_callDeepAI] Gemini 2.5 Flash OK(simple prompt)');
+                    this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
+                    return content;
+                }
+            } catch (e) {
+                console.warn('[_callDeepAI] Gemini 失敗,fallback Groq 70b:', e?.message || e);
+            }
+        }
+        // 第二鏈:Groq 70b 用 simple 版本(prompt 精簡、降推理負擔,提升輸出穩定性)
+        try {
+            const content = await this._callAI({ prompt: promptSimple, max_tokens, temperature, model: 'llama-3.3-70b-versatile' });
+            if (content) return content;
+        } catch (e) {
+            console.warn('[_callDeepAI] _callAI(Groq 70b)失敗,fallback OpenRouter R1:', e?.message || e);
+        }
+        // 🚀 第三鏈(最後 fallback):OpenRouter DeepSeek R1 雙 key 池輪動
+        //    使用者要求 OpenRouter 放最後(額度小容易 429,讓穩定的 Gemini/Groq 先用)
         const orKeys = this._getOpenRouterKeys();
         for (let i = 0; i < orKeys.length; i++) {
             const orKey = orKeys[i];
@@ -3876,20 +3909,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} 例外:`, e?.message || e);
             }
         }
-        // 🌟 第二條鏈:Gemini 2.5 Flash(用 simple prompt,因 Flash 推理深度不如 R1)
-        if (this._getGeminiKeys().length) {
-            try {
-                const content = await this._callGemini({ prompt: promptSimple, max_tokens, temperature, model: 'gemini-2.5-flash' });
-                if (content) {
-                    console.info('[_callDeepAI] Gemini 2.5 Flash OK(simple prompt)');
-                    this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
-                    return content;
-                }
-            } catch (e) {
-                console.warn('[_callDeepAI] Gemini 失敗,fallback Groq 70b:', e?.message || e);
-            }
-        }
-        // fallback:Groq 70b 用 simple 版本(prompt 精簡、降推理負擔,提升輸出穩定性)
+        // 全鏈失敗 → 最後兜底回 _callAI 用 simple prompt(它會再走一次三鏈)
         return this._callAI({ prompt: promptSimple, max_tokens, temperature, model: 'llama-3.3-70b-versatile' });
     },
 
@@ -8052,7 +8072,7 @@ ${_newsLine}${globalContext}
 
         let sObj = this.getSeasonObj(pC, pO, pH, pL, pV, pC1, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB), season = sObj.name;
         
-        let tagsHtml = `<span onclick="document.getElementById('seasonModal').classList.remove('hidden'); document.getElementById('seasonModal').style.display='flex';" class="px-2 py-0.5 rounded border text-xs font-bold flex items-center gap-1 ${sObj.style}"><span>${sObj.icon}</span>${sObj.name} <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span></span>`;
+        let tagsHtml = `<span onclick="document.getElementById('seasonModal').classList.remove('hidden'); document.getElementById('seasonModal').style.display='flex';" class="px-2 py-0.5 rounded border text-xs font-bold inline-flex items-center gap-1 whitespace-nowrap ${sObj.style}"><span>${sObj.icon}</span>${sObj.name} <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span></span>`;
         
         if (this.latestNewsCache.includes('處置') || this.latestNewsCache.includes('注意')) {
             tagsHtml += `<span class="bg-yellow-900/80 text-yellow-200 border border-yellow-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 animate-pulse">🔒禁閉室</span>`;
