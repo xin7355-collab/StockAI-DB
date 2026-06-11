@@ -748,7 +748,7 @@
                         <div id="aiTranslatorCard" class="w-full bg-[#161b22] border border-[#30363d] rounded-xl shadow-sm overflow-hidden transition-all duration-300">
                             <div class="p-3 text-center text-gray-500 text-sm">🤖 點上方按鈕產生 AI 首席總評</div>
                         </div>
-                        <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner overflow-y-auto max-h-[35rem]"></div>
+                        <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner"></div>
                     </div>
                     <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
                         <div class="flex-1 flex flex-col gap-0.5">
@@ -2887,7 +2887,7 @@ ${list}
         chip.className = `fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm ${m.cls}`;
         // 8 秒後自動 dim(讓使用者知道是最近狀態,不要永遠亮)
         clearTimeout(this._aiStatusDimTimer);
-        this._aiStatusDimTimer = setTimeout(() => { chip.style.opacity = '0.4'; }, 8000);
+        this._aiStatusDimTimer = setTimeout(() => { chip.style.opacity = '0.4'; }, 2000);
         chip.style.opacity = '1';
     },
 
@@ -7936,11 +7936,36 @@ ${_newsLine}${globalContext}
         const col = shown >= 75 ? 'text-red-400' : shown >= 60 ? 'text-orange-400' : shown >= 45 ? 'text-yellow-400' : 'text-gray-400';
         const ring = shown >= 75 ? 'border-red-500' : shown >= 60 ? 'border-orange-500' : shown >= 45 ? 'border-yellow-600' : 'border-gray-600';
         const mf = this._falconScores?.macro_flags || {};
+        // 📊 警報文案動態化:讀 macro_risk.json 真實數值(_macroRiskCache)組裝具體 % 數字,
+        // 讓使用者一眼看到「為什麼觸發」的真實證據,不用懷疑警報真假
+        const mr = this._macroRiskCache || {};
+        const _fmtSigned = v => (v == null || isNaN(v)) ? '?' : (v >= 0 ? `+${v.toFixed(1)}%` : `${v.toFixed(1)}%`);
         const warns = [];
         if (isOpenChaos) warns.push(['⏱️', `09:00-09:30 開盤激戰期,獵鷹建倉分自動打 8 折(${openChaosDelta}),建議等 11:00 量價穩定後再決策。`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
-        if (mf.jpy_surge) warns.push(['💴', '日圓套利交易急迫平倉,外資正在無差別拋售權值股!', 'bg-red-900/40 border-red-600 text-red-200']);
-        if (mf.metal_oil_spike) warns.push(['🛢️', '黃金原油異常暴漲,地緣政治與通膨巨獸甦醒,避開高位科技股!', 'bg-orange-900/40 border-orange-600 text-orange-200']);
-        if (mf.kospi_dump) warns.push(['🇰🇷', '韓股早盤重挫,亞股遭外資集體提款,台股留意跟跌!', 'bg-orange-900/40 border-orange-600 text-orange-200']);
+        if (mf.jpy_surge) {
+            const jpy3 = mr.jpy_chg_3d;
+            warns.push(['💴', `日圓 3 日急升 USDJPY ${_fmtSigned(jpy3)}(代表日圓走強),套息交易急迫平倉,外資恐拋售權值股!`, 'bg-red-900/40 border-red-600 text-red-200']);
+        }
+        if (mf.metal_oil_spike) {
+            const gold = mr.gold_chg_pct;
+            const wti  = mr.wti_chg_pct;
+            const goldSurge = typeof gold === 'number' && gold > 3;
+            const wtiSurge  = typeof wti  === 'number' && wti  > 3;
+            let msg;
+            if (goldSurge && wtiSurge) msg = `黃金 ${_fmtSigned(gold)} / 原油 ${_fmtSigned(wti)} 雙雙單日異常暴漲,地緣政治+通膨同步升溫,避開高位科技股!`;
+            else if (goldSurge)        msg = `黃金單日異常暴漲 ${_fmtSigned(gold)}(避險資金湧入),地緣政治風險升高,避開高位科技股!`;
+            else if (wtiSurge)         msg = `原油單日異常暴漲 ${_fmtSigned(wti)}(通膨/地緣風險),避開高位科技股!`;
+            else                       msg = `金屬/能源異常波動(黃金 ${_fmtSigned(gold)} / 原油 ${_fmtSigned(wti)}),通膨巨獸甦醒,避開高位科技股!`;
+            warns.push(['🛢️', msg, 'bg-orange-900/40 border-orange-600 text-orange-200']);
+        }
+        if (mf.kospi_dump) {
+            const kospi = mr.kospi_chg_pct;
+            warns.push(['🇰🇷', `韓股 KOSPI 單日重挫 ${_fmtSigned(kospi)},亞股遭外資集體提款,台股留意跟跌!`, 'bg-orange-900/40 border-orange-600 text-orange-200']);
+        }
+        if (mf.market_bias_high) {
+            const bias = mr.taiex_ma240_bias;
+            warns.push(['📈', `台股年線乖離率 ${_fmtSigned(bias)},市場處於極端貪婪泡沫區,空手買入請極度克制!`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
+        }
         const factorChips = (f.factors || []).map(x => `<span class="text-[9px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">${x}</span>`).join('');
         const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div>` : '';
         box.innerHTML = `
