@@ -2793,6 +2793,21 @@ ${list}
             .filter(Boolean);
     },
 
+    // [AI 自律條款] 在 prompt 前綴注入禁令清單,讓 AI 給篤定指令而非模糊回應
+    //   - 禁詞:可能 / 或許 / 建議謹慎 / 看情況 / 一方面...另一方面 / 投資人應自行評估
+    //   - 並要求用 🟢/🟡/🔴 + 具體點位,跟 CLAUDE.md「白話文具體指令」鐵律一致
+    _injectDisciplineClause(p) {
+        if (!p || typeof p !== 'string') return p;
+        const clause = `【AI 自律條款 — 鐵血決策版】
+- 嚴禁使用模糊詞彙:「可能」「或許」「建議謹慎」「看情況」「一方面...另一方面」「投資人應自行評估」「視情況而定」
+- 必須直接下達操作指令,搭配 🟢(可以買/續抱) / 🟡(觀望/減碼) / 🔴(賣出/避開)
+- 必須給出具體點位:停利、停損、加碼、突破、跌破 — 數字直接寫,不准用「附近」「左右」「上下」
+- 不准廢話開場:「根據資料」「以下為您分析」「綜合來看」一律刪除,直接進入結論
+
+`;
+        return clause + p;
+    },
+
     // [Gemini] 呼叫 Google AI Studio 免費 API(2.5 Flash:每 key 250 req/day,雙 key 500 req/day)
     // - Gemini API 格式跟 OpenAI 不同:request body 用 contents/parts,response 從 candidates 取
     // - 內部 round-robin:429/403/5xx 自動切下一把;全失敗 throw 讓上層 _callAI/_callDeepAI fallback
@@ -2828,7 +2843,10 @@ ${list}
                 continue;
             }
             if (res.status === 429 || res.status === 403 || res.status >= 500) {
-                console.warn(`[Gemini 輪動] Key #${idx + 1} 收到 ${res.status},切下一把...`);
+                // 🎲 jitter 2~5 秒隨機延遲再切下一把,模糊機器人連 retry 特徵,降低臨時 ban 風險
+                const _jitter = Math.round(2000 + Math.random() * 3000);
+                console.warn(`[Gemini 輪動] Key #${idx + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切下一把...`);
+                await new Promise(r => setTimeout(r, _jitter));
                 lastErr = new Error(`Gemini HTTP ${res.status}`);
                 continue;
             }
@@ -3579,6 +3597,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const apiBase  = this._apiBase;
         const orKey    = this._getOpenRouterKey();
         const groqKeys = this._getGroqKeys();
+        // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
+        prompt = this._injectDisciplineClause(prompt);
 
         // 🚀 模式 A:OpenRouter free 8b 主路徑(2026/06 起把輕量 AI 從 Groq TPD 桶分散出來)
         //    避免每天 _callAI × N 把 100k Groq TPD 吃光 → 改先打 OpenRouter free 8b
@@ -3664,7 +3684,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     return data.choices[0].message.content;
                 }
                 if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
-                    console.warn(`[Groq 輪動] Key #${i + 1} 收到 ${res.status},切第 ${i + 2} 把...`);
+                    // 🎲 jitter 2~5 秒隨機延遲再切下一把,模糊機器人連 retry 特徵
+                    const _jitter = Math.round(2000 + Math.random() * 3000);
+                    console.warn(`[Groq 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
+                    await new Promise(r => setTimeout(r, _jitter));
                     continue;
                 }
                 const err = await res.json().catch(() => ({}));
@@ -3683,8 +3706,9 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     //    舊呼叫只傳 prompt 仍向下相容(full=simple=prompt)
     async _callDeepAI({ prompt, prompts, max_tokens = 1800, temperature = 0.4 }) {
         // 解析雙 prompt:優先取 prompts.full / prompts.simple,沒給則退回單一 prompt
-        const promptFull = prompts?.full ?? prompt;
-        const promptSimple = prompts?.simple ?? prompt;
+        // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
+        const promptFull = this._injectDisciplineClause(prompts?.full ?? prompt);
+        const promptSimple = this._injectDisciplineClause(prompts?.simple ?? prompt);
         if (!promptFull && !promptSimple) {
             throw new Error('_callDeepAI 需提供 prompt 或 prompts.{full,simple}');
         }
@@ -7719,10 +7743,24 @@ ${_newsLine}${globalContext}
             shown = this._heldAdjustFalcon(f.score, profitPct);
             held = true;
         }
+        // ⏱️ 盤初激戰時段(台北 09:00-09:30):分數自動打 8 折 + 警告,防使用者用早盤雜訊建倉
+        let isOpenChaos = false, openChaosDelta = 0;
+        try {
+            const _parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+            const _th = parseInt(_parts.find(p => p.type === 'hour').value, 10);
+            const _tm = parseInt(_parts.find(p => p.type === 'minute').value, 10);
+            isOpenChaos = (_th === 9 && _tm < 30);
+        } catch (_) {}
+        if (isOpenChaos) {
+            const adj = Math.round(shown * 0.8);
+            openChaosDelta = adj - shown;
+            shown = adj;
+        }
         const col = shown >= 75 ? 'text-red-400' : shown >= 60 ? 'text-orange-400' : shown >= 45 ? 'text-yellow-400' : 'text-gray-400';
         const ring = shown >= 75 ? 'border-red-500' : shown >= 60 ? 'border-orange-500' : shown >= 45 ? 'border-yellow-600' : 'border-gray-600';
         const mf = this._falconScores?.macro_flags || {};
         const warns = [];
+        if (isOpenChaos) warns.push(['⏱️', `09:00-09:30 開盤激戰期,獵鷹建倉分自動打 8 折(${openChaosDelta}),建議等 11:00 量價穩定後再決策。`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
         if (mf.jpy_surge) warns.push(['💴', '日圓套利交易急迫平倉,外資正在無差別拋售權值股!', 'bg-red-900/40 border-red-600 text-red-200']);
         if (mf.metal_oil_spike) warns.push(['🛢️', '黃金原油異常暴漲,地緣政治與通膨巨獸甦醒,避開高位科技股!', 'bg-orange-900/40 border-orange-600 text-orange-200']);
         if (mf.kospi_dump) warns.push(['🇰🇷', '韓股早盤重挫,亞股遭外資集體提款,台股留意跟跌!', 'bg-orange-900/40 border-orange-600 text-orange-200']);
