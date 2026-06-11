@@ -3972,8 +3972,13 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         return await this.fetchMassiveUSMarket();
     },
 
-    async fetchStockList() { 
-        if (localStorage.getItem('proTerm_stockList')) { this.allStockList = JSON.parse(localStorage.getItem('proTerm_stockList')); return; }
+    async fetchStockList() {
+        // 24 小時 cache 過期,讓新上市股票(如 00402A)有機會被加進對照表
+        // 過去 cache 永久存活 → 新股一直顯示「未知」
+        const cached = localStorage.getItem('proTerm_stockList');
+        const cachedAt = parseInt(localStorage.getItem('proTerm_stockList_at') || '0', 10);
+        const fresh = cached && cachedAt && (Date.now() - cachedAt) < 86400000;  // 24 hr
+        if (fresh) { this.allStockList = JSON.parse(cached); return; }
         try {
             const res = await this.safeFetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo', {}, { timeout: 10000, maxRetries: 2 });
             const json = await res.json();
@@ -3982,8 +3987,14 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 json.data.forEach(s => { if (s.stock_id.length >= 4 && !map.has(s.stock_id)) map.set(s.stock_id, s); });
                 this.allStockList = Array.from(map.values());
                 localStorage.setItem('proTerm_stockList', JSON.stringify(this.allStockList));
+                localStorage.setItem('proTerm_stockList_at', String(Date.now()));
+            } else if (cached) {
+                // FinMind 回應異常 → 退回舊 cache,不要把對照表洗掉
+                this.allStockList = JSON.parse(cached);
             }
-        } catch(e) {}
+        } catch(e) {
+            if (cached) this.allStockList = JSON.parse(cached);   // 網路失敗也退回舊 cache
+        }
     },
 
     async fetchChipCost(sym) {
@@ -5726,7 +5737,7 @@ ${peerLine}${newsCtx}
                 requestAnimationFrame(() => { try { epsChart.resize(); } catch(_){} });
                 setTimeout(() => { try { epsChart.resize(); } catch(_){} }, 200);
             } else {
-                epsTrendEl.innerHTML = '<div class="text-gray-600 text-[10px] text-center" style="line-height:110px">無EPS資料</div>';
+                epsTrendEl.innerHTML = '<div class="text-amber-300/70 text-[10px] text-center px-2" style="line-height:1.4;padding-top:35px">📅 暫無歷史 EPS<br><span class="text-gray-600">新股 / 上游 API 暫無回應,請點 🔄 重新掃描</span></div>';
             }
         }
         // EPS QoQ + YoY delta(雙比較 + 好壞箭頭)
@@ -5819,7 +5830,7 @@ ${peerLine}${newsCtx}
                 requestAnimationFrame(() => { try { revChart.resize(); } catch(_){} });
                 setTimeout(() => { try { revChart.resize(); } catch(_){} }, 200);
             } else {
-                rvTrendEl.innerHTML = '<div class="text-gray-600 text-[10px] text-center" style="line-height:200px">無營收資料</div>';
+                rvTrendEl.innerHTML = '<div class="text-amber-300/70 text-[10px] text-center px-2" style="line-height:1.4;padding-top:80px">📅 暫無月營收資料<br><span class="text-gray-600">新股 / 上游 API 暫無回應,請點 🔄 重新掃描</span></div>';
             }
         }
 
