@@ -453,6 +453,8 @@ def build_falcon_scores():
     全程 try/except 包覆,任何來源缺失皆 graceful 退回中性,絕不崩潰。
     """
     print("\n🦅 啟動【獵鷹建倉分】全市場評分引擎...")
+    from datetime import date as _date  # 哲哲抗跌 + 資料新鮮度共用
+    today = _date.today()
     # 1) 讀全球宏觀黑天鵝旗標(macro_miner 已在前一步產出)
     blackswan, macro_lines = {}, []
     try:
@@ -464,6 +466,52 @@ def build_falcon_scores():
     if blackswan.get("jpy_surge"):        macro_lines.append("日圓套利平倉-20")
     if blackswan.get("metal_oil_spike"):  macro_lines.append("金油暴漲避險-20")
     if blackswan.get("kospi_dump"):       macro_lines.append("亞股提款-10")
+
+    # 1.5) 🎯 哲哲抗跌狙擊:預先算大盤本週一最低 vs 今日最低,個股迴圈內套用
+    def _find_monday_low(_rows):
+        """從 rows 倒數最近 7 筆找 weekday==0 (Monday) 的 low;放假時挑本週第一個交易日"""
+        if not isinstance(_rows, list):
+            return None
+        for r in reversed(_rows[-7:]):
+            try:
+                d = _date.fromisoformat(str(r.get('date', '')).replace('/', '-'))
+                if d.weekday() == 0:
+                    lo = r.get('low')
+                    if isinstance(lo, (int, float)):
+                        return lo
+            except Exception:
+                continue
+        # 找不到週一(連續假期)→ 退回本週第一筆有效 low
+        for r in _rows[-5:]:
+            try:
+                d = _date.fromisoformat(str(r.get('date', '')).replace('/', '-'))
+                if d >= today - timedelta(days=today.weekday()):
+                    lo = r.get('low')
+                    if isinstance(lo, (int, float)):
+                        return lo
+            except Exception:
+                continue
+        return None
+    from datetime import timedelta
+    twii_break_mon = False
+    try:
+        twii_path = DATA_DIR / "^TWII.json"
+        if twii_path.exists():
+            twii_raw = json.loads(twii_path.read_text(encoding='utf-8'))
+            twii_rows = twii_raw if isinstance(twii_raw, list) else (twii_raw.get('data') or twii_raw.get('ohlcv') or [])
+            twii_mon_low = _find_monday_low(twii_rows)
+            twii_today_low = twii_rows[-1].get('low') if twii_rows else None
+            if isinstance(twii_mon_low, (int, float)) and isinstance(twii_today_low, (int, float)):
+                twii_break_mon = twii_today_low < twii_mon_low
+                print(f"   🎯 大盤本週一低 {twii_mon_low} vs 今日低 {twii_today_low} → 跌破週一? {twii_break_mon}")
+            else:
+                print(f"   ℹ️ 大盤週一低/今日低資料不足,哲哲抗跌本輪略過(mon={twii_mon_low}, today={twii_today_low})")
+        else:
+            print("   ℹ️ ^TWII.json 不存在,哲哲抗跌本輪略過")
+    except Exception as e:
+        print(f"   ⚠️ 哲哲抗跌讀 ^TWII 失敗(不影響其他):{e}")
+    if twii_break_mon:
+        macro_lines.append("大盤破週一低·哲哲抗跌啟動")
 
     # 2) 全市場 PE 快取(miner.py 產)+ 族群熱度(sector_heat.json,缺則略)
     fund_cache, sector_chg = {}, {}
@@ -479,9 +527,7 @@ def build_falcon_scores():
     except Exception:
         pass
 
-    from datetime import date as _date
-    today = _date.today()
-    scores = {}
+    scores = {}  # _date / today / _find_monday_low / twii_break_mon 已在開頭定義
     for f in DATA_DIR.glob("*.json"):
         sym = f.stem
         if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
@@ -544,20 +590,32 @@ def build_falcon_scores():
                 elif sector_chg[sec] < -1:
                     base -= 5; factors.append("族群弱-5")
 
-            # ── 主力分點連續性 (±8,僅 ~50 檔有 chips) ──
+            # ── 主力分點 3 日連續性 (±8 或 ±3,僅 ~50 檔有 chips) ──
+            # 改為「最近 3 日 majority」防隔日沖騙線:單日暴增不再 +8,只給 +3
             try:
                 cf = CHIPS_DIR / f"{sym}.json"
                 if cf.exists():
                     cj = json.loads(cf.read_text(encoding='utf-8'))
                     days = cj if isinstance(cj, list) else (cj.get('chips') or [])
-                    if days:
-                        last = days[-1]
-                        bnet = sum(b.get('net', 0) for b in (last.get('buyers') or []))
-                        snet = sum(abs(s.get('net', 0)) for s in (last.get('sellers') or []))
-                        if bnet > snet * 1.2:
-                            base += 8; factors.append("主力買超+8")
-                        elif snet > bnet * 1.2:
-                            base -= 8; factors.append("主力賣超-8")
+                    recent3 = days[-3:] if days else []
+                    sigs = []
+                    for d in recent3:
+                        bnet = sum(b.get('net', 0) for b in (d.get('buyers') or []))
+                        snet = sum(abs(s.get('net', 0)) for s in (d.get('sellers') or []))
+                        if bnet > snet * 1.2:   sigs.append('buy')
+                        elif snet > bnet * 1.2: sigs.append('sell')
+                        else:                   sigs.append('flat')
+                    buy_days = sigs.count('buy')
+                    sell_days = sigs.count('sell')
+                    if buy_days >= 2:
+                        base += 8; factors.append(f"主力連{buy_days}日買超+8")
+                    elif sell_days >= 2:
+                        base -= 8; factors.append(f"主力連{sell_days}日賣超-8")
+                    elif sigs and sigs[-1] == 'buy':
+                        # 只當日暴增、前 2 日反向/平淡 → 半信半疑(防隔日沖)
+                        base += 3; factors.append("主力單日暴增+3")
+                    elif sigs and sigs[-1] == 'sell':
+                        base -= 3; factors.append("主力單日大賣-3")
             except Exception:
                 pass
 
@@ -570,6 +628,18 @@ def build_falcon_scores():
                     base -= 5; stale = True; factors.append("資料偏舊-5")
             except Exception:
                 pass
+
+            # 🎯 哲哲抗跌狙擊:大盤跌破本週一低 + 個股不破本週一低 → +20(強勢主力鎖碼鐵證)
+            if twii_break_mon:
+                try:
+                    s_mon_low = _find_monday_low(rows)
+                    s_today_low = rows[-1].get('low')
+                    if (isinstance(s_mon_low, (int, float))
+                            and isinstance(s_today_low, (int, float))
+                            and s_today_low > s_mon_low):
+                        base += 20; factors.append("哲哲抗跌+20")
+                except Exception:
+                    pass
 
             base = max(0, min(100, round(base)))
 
