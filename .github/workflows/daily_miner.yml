@@ -16,6 +16,7 @@ on:
       - 'radar_miner.py'
       - 'chief_ai_batch.py'
       - 'backtest.py'
+      - 'paper_trade.py'
       - '.github/workflows/daily_miner.yml'
 
 permissions:
@@ -185,8 +186,11 @@ jobs:
       - name: 🎯 戰略雷達矩陣採礦（三大戰區掃描 → radar_matrix.json）
         run: python radar_miner.py || echo "⚠️ radar_miner.py 失敗，繼續部署"
 
-      - name: 📊 訊號勝率回測（回放歷史 → data/signal_history.json）
+      - name: 📊 訊號勝率回測（回放歷史 → data/signal_history.json + strategy_backtest.json）
         run: python backtest.py || echo "⚠️ backtest.py 失敗，繼續部署"
+
+      - name: 📝 Paper Trade 紙上跟單(每日記錄今日訊號 → data/paper_trades.json)
+        run: python paper_trade.py || echo "⚠️ paper_trade.py 失敗，繼續部署"
 
       # 🛑 chief_ai_batch.py 已退役(2026-06):自動跑全市場 AI 太耗 OpenRouter/Groq 配額,
       # 改為使用者在前端打開個股時即時呼叫 1 次 + localStorage 3 天快取。

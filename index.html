@@ -7665,6 +7665,68 @@ ${_newsLine}${globalContext}
 
         // 🏆 Day 2 路徑 B:整套系統策略組合回測 vs 0050(雙線圖 + 摘要)
         this._loadStrategyBacktest();
+        // 📝 Day 3 路徑 D:Paper Trade 紙上跟單實戰績效
+        this._loadPaperTrade();
+    },
+
+    // 📝 Paper Trade 實戰績效:讀 data/paper_trades.json 顯示累計勝率(實戰 vs 歷史對比)
+    async _loadPaperTrade() {
+        const box = document.getElementById('signalAccuracyBox');
+        if (!box) return;
+        if (!this._paperTradeCache) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/paper_trades.json', ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(6000) });
+                this._paperTradeCache = r.ok ? await r.json() : null;
+            } catch (_) { this._paperTradeCache = null; }
+        }
+        const pt = this._paperTradeCache;
+        if (!pt || !pt.summary || Object.keys(pt.summary).length === 0) return;
+
+        const existed = document.getElementById('paperTradeSection');
+        if (existed) existed.remove();
+
+        // 歷史回測對照(用於 reality gap)
+        const histExt = this._signalHistCache?.by_signal_extended || {};
+        const getHistWinRate = (sig) => histExt[sig]?.['10d']?.net?.win_rate ?? null;
+
+        // 以 10 日實戰勝率排序,只列樣本 >= 5 的訊號
+        const rankable = Object.entries(pt.summary)
+            .map(([name, byW]) => ({ name, ...byW['10d'] }))
+            .filter(x => x && x.samples && x.samples >= 5)
+            .sort((a, b) => (b.win_rate || 0) - (a.win_rate || 0));
+
+        const rowsHtml = rankable.map(r => {
+            const hist = getHistWinRate(r.name);
+            const gap = (hist != null) ? (r.win_rate - hist) : null;
+            const gapColor = gap == null ? 'text-gray-500' : gap >= 0 ? 'text-green-300' : 'text-red-300';
+            const gapStr = gap == null ? '(無歷史對比)' : `${gap >= 0 ? '+' : ''}${gap.toFixed(1)}pp vs 歷史`;
+            const wrColor = r.win_rate >= 60 ? 'text-green-300' : r.win_rate >= 50 ? 'text-yellow-300' : 'text-red-300';
+            return `<div class="bg-emerald-950/20 rounded p-1.5 border border-emerald-900/40">
+                <div class="font-bold text-emerald-200 text-[11px] truncate">${r.name}</div>
+                <div class="text-gray-500 text-[10px]">10日實戰勝率 <span class="${wrColor} font-black">${r.win_rate}%</span></div>
+                <div class="text-gray-500 text-[10px]">平均 <span class="${r.avg_return > 0 ? 'text-red-300' : 'text-green-300'} font-bold">${r.avg_return > 0 ? '+' : ''}${r.avg_return}%</span> · ${r.samples} 樣本</div>
+                <div class="text-[9px] ${gapColor} font-mono">${gapStr}</div>
+            </div>`;
+        }).join('');
+
+        const sectionHtml = `
+        <div id="paperTradeSection" class="col-span-full mt-3 pt-2 border-t-2 border-emerald-700/60">
+            <div class="text-xs text-emerald-300 font-black mb-1.5 flex items-center gap-1">
+                📝 Paper Trade 實戰績效 <span class="text-gray-500 font-normal text-[10px]">(每日 cron 自動記錄,扣 ${pt.cost_pct}% 真實成本)</span>
+            </div>
+            <div class="text-[10px] text-gray-500 mb-1.5">
+                累計 <span class="text-white font-bold">${pt.total_trades}</span> 筆 ·
+                進行中 <span class="text-yellow-300 font-bold">${pt.open}</span> 筆 ·
+                已平倉 <span class="text-green-300 font-bold">${pt.closed}</span> 筆 ·
+                追蹤期 ${(pt.tracking_windows || []).join('/')} 日 ·
+                更新 ${pt.updated}
+            </div>
+            <div class="text-[9px] text-amber-300/80 mb-1.5 italic">⚠️ 樣本 < 30 統計意義有限,建議累積 1-3 個月後再參考。<b>實戰 - 歷史</b> 差距(reality gap)反映滑價/漲跌停/處置等真實影響。</div>
+            ${rankable.length ? rowsHtml : '<div class="text-[10px] text-gray-500 text-center py-2">尚無 ≥ 5 樣本的訊號(等累積中)</div>'}
+        </div>`;
+        box.querySelector('#signalAccuracyBody').insertAdjacentHTML('beforeend', sectionHtml);
     },
 
     // 🏆 整套系統策略組合回測:獵鷹≥75 進場 + 4 種出場 vs 0050 buy-and-hold
