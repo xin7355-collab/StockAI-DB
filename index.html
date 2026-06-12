@@ -7662,6 +7662,98 @@ ${_newsLine}${globalContext}
         }
         body.innerHTML = html;
         box.classList.remove('hidden');
+
+        // 🏆 Day 2 路徑 B:整套系統策略組合回測 vs 0050(雙線圖 + 摘要)
+        this._loadStrategyBacktest();
+    },
+
+    // 🏆 整套系統策略組合回測:獵鷹≥75 進場 + 4 種出場 vs 0050 buy-and-hold
+    async _loadStrategyBacktest() {
+        const box = document.getElementById('signalAccuracyBox');
+        if (!box) return;
+        if (!this._strategyBtCache) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/strategy_backtest.json', ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(6000) });
+                this._strategyBtCache = r.ok ? await r.json() : null;
+            } catch (_) { this._strategyBtCache = null; }
+        }
+        const data = this._strategyBtCache;
+        if (!data || !data.strategy) return;
+        const s = data.strategy;
+        const b = data.benchmark || {};
+        const alpha = data.alpha;
+
+        // 避免重複插入(每次 _loadSignalAccuracy 都會呼叫)
+        const existed = document.getElementById('strategyBacktestSection');
+        if (existed) existed.remove();
+
+        const wrColor = s.win_rate >= 55 ? 'text-green-300' : s.win_rate >= 45 ? 'text-yellow-300' : 'text-red-300';
+        const arColor = s.cumulative_return > 0 ? 'text-red-300' : 'text-green-300';
+        const alphaColor = alpha == null ? 'text-gray-400' : alpha > 0 ? 'text-red-300' : 'text-green-300';
+        const annColor = s.annualized_return == null ? 'text-gray-400' : s.annualized_return > 0 ? 'text-red-300' : 'text-green-300';
+
+        const exitReasons = data.exit_reasons || {};
+        const exitLabels = { stop_loss_ma20: '🛑 跌破20MA', take_profit_20pct: '🎯 +20%停利', hard_stop_8pct: '⛔ -8%硬停損', time_stop_30d: '⏱️ 30日時間止損', period_end: '🏁 期間結束' };
+        const totalExit = Object.values(exitReasons).reduce((a, b) => a + b, 0) || 1;
+        const exitHtml = Object.entries(exitReasons).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+            `<span class="inline-block bg-[#0d1117] border border-gray-700 rounded px-1.5 py-0.5 text-[9px] text-gray-300 mr-1 mb-0.5">${exitLabels[k] || k} ${v}(${Math.round(v / totalExit * 100)}%)</span>`
+        ).join('');
+
+        const sectionHtml = `
+        <div id="strategyBacktestSection" class="col-span-full mt-3 pt-2 border-t-2 border-amber-700/60">
+            <div class="text-xs text-amber-300 font-black mb-2 flex items-center gap-1">
+                🏆 整套系統 vs ${b.benchmark || '0050'} <span class="text-gray-500 font-normal text-[10px]">(獵鷹≥75 進場 / 跌破20MA·+20%·-8%·30日 出場 / 扣手續費 ${data.cost_pct}%)</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-2">
+                <div class="bg-amber-950/30 rounded p-1.5 border border-amber-900/40">
+                    <div class="text-[9px] text-gray-500">策略累計報酬</div>
+                    <div class="font-mono font-black text-base ${arColor}">${s.cumulative_return > 0 ? '+' : ''}${s.cumulative_return}%</div>
+                    <div class="text-[9px] text-gray-500">${s.total_trades} 筆 · 平均持有 ${s.avg_holding_days}日</div>
+                </div>
+                <div class="bg-amber-950/30 rounded p-1.5 border border-amber-900/40">
+                    <div class="text-[9px] text-gray-500">策略年化</div>
+                    <div class="font-mono font-black text-base ${annColor}">${s.annualized_return == null ? '--' : (s.annualized_return > 0 ? '+' : '') + s.annualized_return + '%'}</div>
+                    <div class="text-[9px] text-gray-500">勝率 <span class="${wrColor} font-bold">${s.win_rate}%</span> / Sharpe ${s.sharpe}</div>
+                </div>
+                <div class="bg-cyan-950/30 rounded p-1.5 border border-cyan-900/40">
+                    <div class="text-[9px] text-gray-500">${b.benchmark || '0050'} 年化</div>
+                    <div class="font-mono font-black text-base ${b.annualized_return > 0 ? 'text-red-300' : 'text-green-300'}">${b.annualized_return == null ? '--' : (b.annualized_return > 0 ? '+' : '') + b.annualized_return + '%'}</div>
+                    <div class="text-[9px] text-gray-500">累計 ${b.cumulative_return}% / MDD ${b.mdd}%</div>
+                </div>
+                <div class="bg-purple-950/30 rounded p-1.5 border border-purple-900/40">
+                    <div class="text-[9px] text-gray-500">🎯 Alpha(打敗大盤)</div>
+                    <div class="font-mono font-black text-base ${alphaColor}">${alpha == null ? '--' : (alpha > 0 ? '+' : '') + alpha + '%'}</div>
+                    <div class="text-[9px] text-gray-500">策略 MDD ${s.mdd_pct}%</div>
+                </div>
+            </div>
+            <div class="text-[10px] text-gray-500 mb-1">出場原因分佈:${exitHtml || '<span class="text-gray-600">無資料</span>'}</div>
+            <div id="strategyEquityChart" style="width:100%;height:180px;"></div>
+        </div>`;
+        box.querySelector('#signalAccuracyBody').insertAdjacentHTML('beforeend', sectionHtml);
+
+        // 雙線圖:策略 vs 0050 累計報酬曲線
+        setTimeout(() => {
+            const el = document.getElementById('strategyEquityChart');
+            if (!el || typeof echarts === 'undefined') return;
+            const stratCurve = (s.equity_curve || []).map(p => [p.date, p.equity]);
+            const benchCurve = (b.equity_curve || []).map(p => [p.date, p.equity]);
+            if (!stratCurve.length && !benchCurve.length) return;
+            const chart = echarts.init(el, 'dark', { renderer: 'svg' });
+            chart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
+                legend: { data: ['整套系統', b.benchmark || '0050'], textStyle: { color: '#d1d5db', fontSize: 10 }, top: 0 },
+                grid: { left: 38, right: 12, top: 22, bottom: 22 },
+                xAxis: { type: 'category', axisLabel: { color: '#9ca3af', fontSize: 9 } },
+                yAxis: { type: 'value', axisLabel: { color: '#9ca3af', fontSize: 9, formatter: '{value}%' }, splitLine: { lineStyle: { color: '#1f2937' } } },
+                series: [
+                    { name: '整套系統', type: 'line', data: stratCurve, smooth: true, lineStyle: { color: '#f59e0b', width: 2 }, itemStyle: { color: '#f59e0b' }, areaStyle: { color: 'rgba(245,158,11,0.15)' } },
+                    { name: b.benchmark || '0050', type: 'line', data: benchCurve, smooth: true, lineStyle: { color: '#06b6d4', width: 2 }, itemStyle: { color: '#06b6d4' } },
+                ]
+            });
+        }, 100);
     },
 
     _updateCostLabel() {

@@ -461,6 +461,244 @@ def backtest_falcon(rows):
 
 
 # ═══════════════════════════════════════════════════════════════════
+# 🏆 Day 2 路徑 B:整套系統策略組合回測 — 模擬「跟著系統交易」vs 0050
+# ═══════════════════════════════════════════════════════════════════
+
+STRATEGY_TAKE_PROFIT_PCT = 20.0   # 漲幅 20% 停利
+STRATEGY_HARD_STOP_PCT   = -8.0   # 跌幅 -8% 硬停損
+STRATEGY_MAX_HOLD_DAYS   = 30     # 持有 30 個交易日時間止損
+
+
+def simulate_strategy(rows, sym, attention_set):
+    """模擬「跟著系統訊號交易」單檔策略回測。
+    進場條件:獵鷹分 ≥75 + 多頭排列(MA5>MA20>MA60)
+    出場條件(任一):
+      1. 收盤 < 20MA(防守線跌破)
+      2. 漲幅 ≥ +20%(停利)
+      3. 跌幅 ≤ -8%(硬停損)
+      4. 持有 30 個交易日(時間止損)
+    回傳 list of dict: {entry_date, exit_date, entry_price, exit_price, net_return, exit_reason, holding_days}
+    """
+    trades = []
+    n = len(rows)
+    if n < MIN_HISTORY: return trades
+    avg60_lots = _avg_volume_lots(rows, n - 1, period=60)
+    if avg60_lots is not None and avg60_lots < 200: return trades
+    if sym in attention_set: return trades
+
+    closes = [r.get('close', 0) for r in rows]
+    in_position = False
+    entry_idx = None
+    entry_price = None
+
+    for idx in range(MIN_HISTORY, n - 1):
+        c = closes[idx]
+        if c <= 0: continue
+        if not in_position:
+            # 檢查進場條件:獵鷹 ≥75 + 多頭排列
+            try:
+                score = _falcon_score_simplified(rows, idx)
+                if score is None or score < 75: continue
+                if not sig_ma_bullish_alignment(rows, idx): continue
+            except Exception:
+                continue
+            # 進場:用隔日收盤近似隔日開盤(簡化)
+            if idx + 1 >= n: continue
+            entry_price = closes[idx + 1]
+            if entry_price <= 0: continue
+            entry_idx = idx + 1
+            in_position = True
+        else:
+            # 持倉中:檢查出場條件
+            hold_days = idx - entry_idx
+            ret_pct = (c - entry_price) / entry_price * 100
+            ma20 = _ma(closes, idx, 20)
+            exit_reason = None
+            if ma20 is not None and c < ma20:
+                exit_reason = 'stop_loss_ma20'
+            elif ret_pct >= STRATEGY_TAKE_PROFIT_PCT:
+                exit_reason = 'take_profit_20pct'
+            elif ret_pct <= STRATEGY_HARD_STOP_PCT:
+                exit_reason = 'hard_stop_8pct'
+            elif hold_days >= STRATEGY_MAX_HOLD_DAYS:
+                exit_reason = 'time_stop_30d'
+            if exit_reason:
+                # 平倉:扣真實成本
+                gross = ret_pct
+                net = apply_real_cost(gross)
+                trades.append({
+                    'symbol': sym,
+                    'entry_date': rows[entry_idx].get('date', ''),
+                    'exit_date': rows[idx].get('date', ''),
+                    'entry_price': round(entry_price, 2),
+                    'exit_price': round(c, 2),
+                    'gross_return': round(gross, 2),
+                    'net_return': round(net, 2),
+                    'exit_reason': exit_reason,
+                    'holding_days': hold_days,
+                })
+                in_position = False
+                entry_idx = None
+                entry_price = None
+
+    # 結束未平倉的單也補一筆(簡化:強制最後一天收盤平倉)
+    if in_position and entry_idx is not None and entry_idx < n:
+        c = closes[n - 1]
+        if c > 0 and entry_price > 0:
+            gross = (c - entry_price) / entry_price * 100
+            net = apply_real_cost(gross)
+            trades.append({
+                'symbol': sym,
+                'entry_date': rows[entry_idx].get('date', ''),
+                'exit_date': rows[n - 1].get('date', ''),
+                'entry_price': round(entry_price, 2),
+                'exit_price': round(c, 2),
+                'gross_return': round(gross, 2),
+                'net_return': round(net, 2),
+                'exit_reason': 'period_end',
+                'holding_days': n - 1 - entry_idx,
+            })
+    return trades
+
+
+def benchmark_0050():
+    """讀 data/0050.json 算 buy-and-hold 累計報酬,作為策略 vs 大盤的對標。
+    若無 0050 則 fallback 用 ^TWII.json(加權指數)。
+    回傳 dict {first_date, last_date, total_days, cumulative_return, annualized_return, mdd, equity_curve}
+    """
+    for fname in ('0050.json', '^TWII.json'):
+        f = DATA_DIR / fname
+        if not f.exists(): continue
+        try:
+            rows = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(rows, list) or len(rows) < 30: continue
+            closes = [(r.get('date', ''), r.get('close', 0)) for r in rows if r.get('close', 0) > 0]
+            if len(closes) < 30: continue
+            first_date, first_close = closes[0]
+            last_date, last_close = closes[-1]
+            cum_ret = (last_close - first_close) / first_close * 100
+            total_days = len(closes)
+            # 年化(252 交易日 = 1 年)
+            ann_ret = ((last_close / first_close) ** (252 / total_days) - 1) * 100
+            # MDD
+            peak = closes[0][1]
+            mdd = 0
+            for _, c in closes:
+                if c > peak: peak = c
+                dd = (peak - c) / peak * 100
+                if dd > mdd: mdd = dd
+            # equity curve(每 5 個交易日採 1 點省空間)
+            equity = []
+            for i in range(0, len(closes), max(1, len(closes) // 100)):
+                d, c = closes[i]
+                equity.append({'date': d, 'equity': round((c / first_close - 1) * 100, 2)})
+            if closes[-1] not in [(e['date'], None) for e in equity]:
+                equity.append({'date': last_date, 'equity': round(cum_ret, 2)})
+            return {
+                'benchmark': fname.replace('.json', ''),
+                'first_date': first_date,
+                'last_date': last_date,
+                'total_days': total_days,
+                'cumulative_return': round(cum_ret, 2),
+                'annualized_return': round(ann_ret, 2),
+                'mdd': round(mdd, 2),
+                'equity_curve': equity,
+            }
+        except Exception:
+            continue
+    return None
+
+
+def backtest_full_strategy():
+    """跑全市場「整套系統策略」回測,聚合所有 trade,算策略指標 + equity curve。
+    回傳 dict 含 strategy / benchmark / alpha / exit_reasons / sample_trades(前 20 筆)。
+    """
+    attention_set = _load_attention_set()
+    all_trades = []
+    for f in DATA_DIR.glob("*.json"):
+        sym = f.stem
+        if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
+            continue
+        try:
+            rows = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(rows, list): continue
+            trades = simulate_strategy(rows, sym, attention_set)
+            all_trades.extend(trades)
+        except Exception:
+            continue
+
+    if not all_trades:
+        return {'strategy': None, 'benchmark': None, 'alpha': None, 'note': '無交易訊號觸發,可能歷史不足或全市場無 ≥75 獵鷹分'}
+
+    # 出場原因統計
+    exit_reasons = {}
+    for t in all_trades:
+        exit_reasons[t['exit_reason']] = exit_reasons.get(t['exit_reason'], 0) + 1
+
+    # 策略指標(用淨報酬)
+    net_returns = [t['net_return'] for t in all_trades]
+    metrics = calc_advanced_metrics(net_returns)
+    # 平均持有期
+    avg_hold = sum(t['holding_days'] for t in all_trades) / len(all_trades)
+
+    # 累計權益曲線:按平倉日聚合,簡化為「按交易序列累計」
+    # 假設每筆等權重投入 → 累計權益 = (1 + r1/100) × (1 + r2/100) × ... - 1
+    sorted_trades = sorted(all_trades, key=lambda x: x['exit_date'])
+    cum = 1.0
+    equity_curve = []
+    for i, t in enumerate(sorted_trades):
+        cum *= (1 + t['net_return'] / 100)
+        # 每 20 筆採 1 點省空間,最後一筆必加
+        if i % max(1, len(sorted_trades) // 100) == 0 or i == len(sorted_trades) - 1:
+            equity_curve.append({'date': t['exit_date'], 'equity': round((cum - 1) * 100, 2)})
+
+    cumulative_return = round((cum - 1) * 100, 2)
+    # 年化:用第一筆 entry 到最後一筆 exit 的天數估
+    try:
+        from datetime import datetime as _dt
+        first_entry = min(t['entry_date'] for t in all_trades).replace('/', '-')
+        last_exit = max(t['exit_date'] for t in all_trades).replace('/', '-')
+        d0 = _dt.strptime(first_entry, '%Y-%m-%d')
+        d1 = _dt.strptime(last_exit, '%Y-%m-%d')
+        calendar_days = max(1, (d1 - d0).days)
+        years = calendar_days / 365.25
+        annualized_return = ((cum) ** (1 / max(years, 0.1)) - 1) * 100 if cum > 0 else -100
+    except Exception:
+        annualized_return = None
+
+    bench = benchmark_0050()
+    alpha = None
+    if bench and annualized_return is not None and bench.get('annualized_return') is not None:
+        alpha = round(annualized_return - bench['annualized_return'], 2)
+
+    return {
+        'strategy': {
+            'total_trades': len(all_trades),
+            'win_rate': metrics['win_rate'],
+            'avg_return': metrics['avg_return'],
+            'median_return': metrics['median_return'],
+            'sharpe': metrics['sharpe'],
+            'sortino': metrics['sortino'],
+            'profit_factor': metrics['profit_factor'],
+            'mdd_pct': metrics['mdd_pct'],
+            'best': metrics['best'],
+            'worst': metrics['worst'],
+            'avg_holding_days': round(avg_hold, 1),
+            'cumulative_return': cumulative_return,
+            'annualized_return': round(annualized_return, 2) if annualized_return is not None else None,
+            'equity_curve': equity_curve,
+        },
+        'benchmark': bench,
+        'alpha': alpha,
+        'exit_reasons': exit_reasons,
+        'sample_trades': sorted_trades[:20],   # 前 20 筆樣本
+        'entry_rule': '獵鷹分≥75 + 多頭排列(MA5>MA20>MA60)',
+        'exit_rules': f'跌破20MA / +{STRATEGY_TAKE_PROFIT_PCT}% 停利 / {STRATEGY_HARD_STOP_PCT}% 硬停損 / {STRATEGY_MAX_HOLD_DAYS}日時間止損',
+        'cost_pct': round(ROUND_TRIP_COST_PCT, 3),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════
 # 🚀 main():聚合 + 輸出
 # ═══════════════════════════════════════════════════════════════════
 
@@ -595,6 +833,25 @@ def main():
 
     OUTPUT_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f"\n✅ 回測完成 — 掃 {scanned} 檔(排除殭屍量 {skipped_zombie} / 處置股 {skipped_attention}) → {OUTPUT_FILE}")
+
+    # 🏆 Day 2 路徑 B:整套系統策略組合回測(獵鷹 ≥75 進場 + 4 種出場 vs 0050)
+    print("\n🏆 開始 Day 2 B 整套策略回測...")
+    try:
+        strategy_result = backtest_full_strategy()
+        STRATEGY_FILE = DATA_DIR / "strategy_backtest.json"
+        strategy_payload = {
+            'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
+            **strategy_result,
+        }
+        STRATEGY_FILE.write_text(json.dumps(strategy_payload, ensure_ascii=False, indent=2), encoding='utf-8')
+        s = strategy_result.get('strategy') or {}
+        b = strategy_result.get('benchmark') or {}
+        print(f"   策略:{s.get('total_trades', 0)} 筆 / 勝率 {s.get('win_rate', '?')}% / 累計 {s.get('cumulative_return', '?')}% / 年化 {s.get('annualized_return', '?')}% / MDD {s.get('mdd_pct', '?')}%")
+        print(f"   {b.get('benchmark', '?')} buy-and-hold:累計 {b.get('cumulative_return', '?')}% / 年化 {b.get('annualized_return', '?')}% / MDD {b.get('mdd', '?')}%")
+        print(f"   🎯 Alpha(策略年化 - {b.get('benchmark', '?')} 年化):{strategy_result.get('alpha', '?')}%")
+        print(f"   ✅ 寫入 → {STRATEGY_FILE}")
+    except Exception as e:
+        print(f"   ⚠️ 策略回測失敗(不影響其他):{e}")
 
 
 if __name__ == '__main__':
