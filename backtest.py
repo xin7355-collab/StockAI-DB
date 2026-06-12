@@ -208,11 +208,20 @@ def sig_big_black_k(rows, idx):
 
 
 def sig_island_reversal(rows, idx):
-    """島狀反轉:近 10 日內出現兩個跳空缺口(高位被孤立)"""
+    """島狀反轉:近 10 日內出現兩個跳空缺口(高位被孤立)。
+    新鮮度守門(對齊前端 index.html):最新一根強漲 ≥5% 或已收復下跳空缺口 → 型態失效,不觸發。"""
     if idx < 10: return False
+    # 最新一根相對前一根強漲(漲停/大漲 ≥5%)→ 明顯反彈,島狀頭部失效,不再算逃命訊號
+    prev_c = rows[idx - 1].get('close', 0)
+    if prev_c > 0 and (rows[idx].get('close', 0) - prev_c) / prev_c >= 0.05:
+        return False
+    cur_c = rows[idx].get('close', 0)
     # 簡化:近 10 日內找 (j) 跳空向下 + 之前更早 (k) 跳空向上 + j-k 之間是高位區
     for j in range(idx, max(idx - 10, 1), -1):
         if rows[j].get('high', 0) < rows[j - 1].get('low', 0):
+            gap_top = rows[j - 1].get('low', 0)  # 下跳空缺口上緣:收復此價=缺口被填、型態失效
+            if cur_c > gap_top:                  # 已收復缺口 → 略過此 j,不算島狀
+                continue
             for k in range(j - 1, max(j - 10, 0), -1):
                 if rows[k].get('low', 0) > rows[k - 1].get('high', 0) and rows[j].get('high', 0) < rows[k].get('low', 0):
                     return True
