@@ -422,10 +422,11 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
         tickers = [f'{symbol}.TW', f'{symbol}.TWO']
     for tk in tickers:
         try:
-            # 🛡️ yfinance.history 無 timeout 參數、網路卡死會無限 hang → SIGALRM 硬逾時 30s
+            # 🛡️ yfinance.history 無 timeout 參數、網路卡死會無限 hang → SIGALRM 硬逾時 60s
+            # (從 30s 改 60s 因 days_back=730 抓 2 年資料量大,30s 可能不夠)
             hist = call_with_timeout(
                 lambda: yf.Ticker(tk).history(period=f'{days_back}d', auto_adjust=False),
-                30, None)
+                60, None)
             if hist is None or hist.empty:
                 continue
             out = []
@@ -1345,25 +1346,47 @@ def run():
                     new_rows.extend(rows)
                     time.sleep(0.15)
                     
-                # ── 🛡️ yfinance OHLCV 補洞：TWSE/TPEX 對 2330 等股回應不全時，自動拿 yfinance 填 ──
-                # 偵測缺漏：對照最近 10 個交易日，看有哪些不在 new_rows
+                # ── 🛡️ yfinance OHLCV 補洞:TWSE/TPEX 失敗時用 Yahoo Finance 補檔 ──
                 got_dates = {r['date'] for r in new_rows} | set(existing_map.keys())
-                missing_recent = [d for d in trading_days[-10:] if d.strftime('%Y/%m/%d') not in got_dates]
-                if missing_recent:
-                    yf_rows = yfinance_ohlcv_fallback(sym, market_type, days_back=30)
+
+                # 🎯 兩段式補洞策略:
+                # (a) 歷史不足 2 年(< 480 筆)→ yfinance 抓 730 天 + 全範圍補洞
+                # (b) 歷史已足夠 → yfinance 只看最近 10 天補當日資料
+                is_history_short = len(existing_map) < 480
+
+                if is_history_short:
+                    # 模式 A:歷史不足 → 用 yfinance 抓 2 年,全部沒有的日期都補
+                    yf_rows = yfinance_ohlcv_fallback(sym, market_type, days_back=730)
                     if yf_rows:
                         before_len = len(new_rows)
-                        # 只補在 missing_recent 範圍內、且 new_rows 還沒有的日期
-                        missing_set = {d.strftime('%Y/%m/%d') for d in missing_recent}
                         existing_dates = {r['date'] for r in new_rows}
                         for r in yf_rows:
-                            if r['date'] in missing_set and r['date'] not in existing_dates:
-                                new_rows.append(r)
-                                existing_dates.add(r['date'])
+                            if r['date'] in got_dates: continue
+                            if r['date'] in existing_dates: continue
+                            new_rows.append(r)
+                            existing_dates.add(r['date'])
+                            got_dates.add(r['date'])
                         added = len(new_rows) - before_len
                         if added > 0:
                             new_rows.sort(key=lambda x: x['date'])
-                            print(f"  📈 {sym} yfinance 補洞 {added} 筆 (TWSE/TPEX 缺 {len(missing_recent)} 天)")
+                            print(f"  📈 {sym} yfinance 強化補洞 {added} 筆(歷史不足 2 年,抓 730 天範圍 / 共 {len(yf_rows)} 天可用)")
+                else:
+                    # 模式 B:歷史已足 → 只補最近 10 天的當日資料
+                    missing_recent = [d for d in trading_days[-10:] if d.strftime('%Y/%m/%d') not in got_dates]
+                    if missing_recent:
+                        yf_rows = yfinance_ohlcv_fallback(sym, market_type, days_back=30)
+                        if yf_rows:
+                            before_len = len(new_rows)
+                            missing_set = {d.strftime('%Y/%m/%d') for d in missing_recent}
+                            existing_dates = {r['date'] for r in new_rows}
+                            for r in yf_rows:
+                                if r['date'] in missing_set and r['date'] not in existing_dates:
+                                    new_rows.append(r)
+                                    existing_dates.add(r['date'])
+                            added = len(new_rows) - before_len
+                            if added > 0:
+                                new_rows.sort(key=lambda x: x['date'])
+                                print(f"  📈 {sym} yfinance 補洞 {added} 筆 (TWSE/TPEX 缺 {len(missing_recent)} 天)")
 
                 # ── 🛡️ 【時間護盾與 MIS 即時快照補丁】 ──
                 tw_now = datetime.now(timezone(timedelta(hours=8)))
