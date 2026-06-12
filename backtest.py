@@ -467,17 +467,22 @@ def backtest_falcon(rows):
 STRATEGY_TAKE_PROFIT_PCT = 20.0   # 漲幅 20% 停利
 STRATEGY_HARD_STOP_PCT   = -8.0   # 跌幅 -8% 硬停損
 STRATEGY_MAX_HOLD_DAYS   = 30     # 持有 30 個交易日時間止損
+STRATEGY_MIN_FALCON      = 85     # 🔧 進場獵鷹分門檻(原 75,調 85 過濾雜訊)
 
 
 def simulate_strategy(rows, sym, attention_set):
     """模擬「跟著系統訊號交易」單檔策略回測。
-    進場條件:獵鷹分 ≥75 + 多頭排列(MA5>MA20>MA60)
+    🔧 第二代規則(收緊進場 + 拉緊防守線):
+    進場條件(全部 AND):
+      1. 獵鷹分 ≥ 85(原 75)
+      2. 多頭排列(MA5 > MA20 > MA60)
+      3. 站上 5MA(c > MA5)— 新增
+      4. 5MA 上揚(MA5 > MA5_prev)— 新增
     出場條件(任一):
-      1. 收盤 < 20MA(防守線跌破)
+      1. 收盤跌破 5MA(原 20MA,拉緊防守)
       2. 漲幅 ≥ +20%(停利)
       3. 跌幅 ≤ -8%(硬停損)
       4. 持有 30 個交易日(時間止損)
-    回傳 list of dict: {entry_date, exit_date, entry_price, exit_price, net_return, exit_reason, holding_days}
     """
     trades = []
     n = len(rows)
@@ -495,11 +500,16 @@ def simulate_strategy(rows, sym, attention_set):
         c = closes[idx]
         if c <= 0: continue
         if not in_position:
-            # 檢查進場條件:獵鷹 ≥75 + 多頭排列
+            # 🔧 進場條件(收緊):獵鷹 ≥85 + 多頭排列 + 站上 5MA + 5MA 上揚
             try:
                 score = _falcon_score_simplified(rows, idx)
-                if score is None or score < 75: continue
+                if score is None or score < STRATEGY_MIN_FALCON: continue
                 if not sig_ma_bullish_alignment(rows, idx): continue
+                ma5 = _ma(closes, idx, 5)
+                ma5_prev = _ma(closes, idx - 1, 5)
+                if not (ma5 and ma5_prev): continue
+                if c <= ma5: continue          # 必須收盤站上 5MA
+                if ma5 <= ma5_prev: continue   # 5MA 必須上揚
             except Exception:
                 continue
             # 進場:用隔日收盤近似隔日開盤(簡化)
@@ -509,13 +519,13 @@ def simulate_strategy(rows, sym, attention_set):
             entry_idx = idx + 1
             in_position = True
         else:
-            # 持倉中:檢查出場條件
+            # 持倉中:檢查出場條件(🔧 防守線從 20MA → 5MA,拉緊)
             hold_days = idx - entry_idx
             ret_pct = (c - entry_price) / entry_price * 100
-            ma20 = _ma(closes, idx, 20)
+            ma5 = _ma(closes, idx, 5)
             exit_reason = None
-            if ma20 is not None and c < ma20:
-                exit_reason = 'stop_loss_ma20'
+            if ma5 is not None and c < ma5:
+                exit_reason = 'stop_loss_ma5'
             elif ret_pct >= STRATEGY_TAKE_PROFIT_PCT:
                 exit_reason = 'take_profit_20pct'
             elif ret_pct <= STRATEGY_HARD_STOP_PCT:
@@ -628,7 +638,7 @@ def backtest_full_strategy():
             continue
 
     if not all_trades:
-        return {'strategy': None, 'benchmark': None, 'alpha': None, 'note': '無交易訊號觸發,可能歷史不足或全市場無 ≥75 獵鷹分'}
+        return {'strategy': None, 'benchmark': None, 'alpha': None, 'note': '無交易訊號觸發,可能歷史不足或全市場無 ≥85 獵鷹分'}
 
     # 出場原因統計
     exit_reasons = {}
@@ -641,16 +651,25 @@ def backtest_full_strategy():
     # 平均持有期
     avg_hold = sum(t['holding_days'] for t in all_trades) / len(all_trades)
 
-    # 累計權益曲線:按平倉日聚合,簡化為「按交易序列累計」
-    # 假設每筆等權重投入 → 累計權益 = (1 + r1/100) × (1 + r2/100) × ... - 1
-    sorted_trades = sorted(all_trades, key=lambda x: x['exit_date'])
+    # 🔧 第二代累計權益曲線:「按交易日聚合」(模擬真實組合 — 同日所有平倉的 trade 取平均淨報酬,日度連乘)
+    # 原版用「全部 trade 連續連乘」造成 12000 筆中只要一筆 -90% 就歸零的問題
+    # 新版:同一天平倉的 N 筆 trade → 該日報酬 = mean(N 筆) → 日度連乘 → 模擬「等權重 N 個位置同時持有」
+    trades_by_exit_date = {}
+    for t in all_trades:
+        d = t['exit_date']
+        trades_by_exit_date.setdefault(d, []).append(t['net_return'])
+    sorted_exit_dates = sorted(trades_by_exit_date.keys())
     cum = 1.0
     equity_curve = []
-    for i, t in enumerate(sorted_trades):
-        cum *= (1 + t['net_return'] / 100)
-        # 每 20 筆採 1 點省空間,最後一筆必加
-        if i % max(1, len(sorted_trades) // 100) == 0 or i == len(sorted_trades) - 1:
-            equity_curve.append({'date': t['exit_date'], 'equity': round((cum - 1) * 100, 2)})
+    sample_step = max(1, len(sorted_exit_dates) // 100)
+    for i, d in enumerate(sorted_exit_dates):
+        daily_returns = trades_by_exit_date[d]
+        daily_avg = sum(daily_returns) / len(daily_returns)
+        cum *= (1 + daily_avg / 100)
+        if cum < 0.01:   # 避免歸零(現實中組合不會被某 1 天打趴)
+            cum = 0.01
+        if i % sample_step == 0 or i == len(sorted_exit_dates) - 1:
+            equity_curve.append({'date': d, 'equity': round((cum - 1) * 100, 2)})
 
     cumulative_return = round((cum - 1) * 100, 2)
     # 年化:用第一筆 entry 到最後一筆 exit 的天數估
@@ -662,7 +681,7 @@ def backtest_full_strategy():
         d1 = _dt.strptime(last_exit, '%Y-%m-%d')
         calendar_days = max(1, (d1 - d0).days)
         years = calendar_days / 365.25
-        annualized_return = ((cum) ** (1 / max(years, 0.1)) - 1) * 100 if cum > 0 else -100
+        annualized_return = ((cum) ** (1 / max(years, 0.1)) - 1) * 100 if cum > 0 else -99
     except Exception:
         annualized_return = None
 
@@ -671,6 +690,7 @@ def backtest_full_strategy():
     if bench and annualized_return is not None and bench.get('annualized_return') is not None:
         alpha = round(annualized_return - bench['annualized_return'], 2)
 
+    sorted_trades = sorted(all_trades, key=lambda x: x['exit_date'])
     return {
         'strategy': {
             'total_trades': len(all_trades),
@@ -691,9 +711,9 @@ def backtest_full_strategy():
         'benchmark': bench,
         'alpha': alpha,
         'exit_reasons': exit_reasons,
-        'sample_trades': sorted_trades[:20],   # 前 20 筆樣本
-        'entry_rule': '獵鷹分≥75 + 多頭排列(MA5>MA20>MA60)',
-        'exit_rules': f'跌破20MA / +{STRATEGY_TAKE_PROFIT_PCT}% 停利 / {STRATEGY_HARD_STOP_PCT}% 硬停損 / {STRATEGY_MAX_HOLD_DAYS}日時間止損',
+        'sample_trades': sorted_trades[:20],
+        'entry_rule': f'獵鷹分≥{STRATEGY_MIN_FALCON} + 多頭排列 + 站上5MA + 5MA上揚',
+        'exit_rules': f'跌破5MA / +{STRATEGY_TAKE_PROFIT_PCT}% 停利 / {STRATEGY_HARD_STOP_PCT}% 硬停損 / {STRATEGY_MAX_HOLD_DAYS}日時間止損',
         'cost_pct': round(ROUND_TRIP_COST_PCT, 3),
     }
 

@@ -170,11 +170,32 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
         return ("中立", "AI 暫時無法分析")
 
 
+def _fetch_rss_with_encoding_fallback(url: str):
+    """抓 RSS feed,若 feedparser 直連 parse 失敗(常見:鉅亨網/MoneyDJ 因
+    XML 宣告 us-ascii 但實際是 utf-8/windows-1252 → bozo 但 entries 空),
+    fallback 用 requests 強制以 utf-8 重新 decode 後再丟給 feedparser。
+    """
+    feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
+    if feed.entries:
+        return feed
+    # 🔧 fallback:requests 預拿 bytes,強制 utf-8 decode,再丟回 feedparser
+    try:
+        import requests as _rq
+        resp = _rq.get(url, headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'}, timeout=10)
+        resp.encoding = 'utf-8'
+        feed2 = feedparser.parse(resp.text)
+        if feed2.entries:
+            return feed2
+    except Exception:
+        pass
+    return feed
+
+
 def fetch_feed(source_name: str, url: str) -> list:
     """抓取單一 RSS Feed，回傳命中關鍵字的文章列表"""
     matched = []
     try:
-        feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
+        feed = _fetch_rss_with_encoding_fallback(url)
         if not feed.entries:
             if feed.bozo:
                 print(f"  ⚠️ {source_name} parse 失敗：{feed.bozo_exception}")
