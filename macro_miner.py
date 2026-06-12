@@ -218,6 +218,47 @@ def _compute_upcoming_macro_events(today, window_days=14):
             continue
         seen.add(sig)
         uniq.append(e)
+
+    # 🚨 事件分級:依關鍵字標 severity(高/中/低)+ direction(利多/利空/震盪)
+    #    高 = D-1/D-0 必須跳紅色 banner + 連動黑天鵝矩陣 +5 風險分
+    #    中 = 預先提醒,降低新單部位
+    #    低 = 一般行事曆,無需特別動作
+    HIGH_KW   = ['FOMC', '聯準會', 'BOJ', '日銀', 'CPI', '通膨', 'NFP', '非農', '台指期貨大結算',
+                 '四巫', '央行理監事', 'MSCI', '股東會法定截止', '美股四巫']
+    MID_KW    = ['PPI', '生產者物價', 'ISM', '製造業 PMI', '季報法定截止', '法說旺季',
+                 '股東會旺季', '除權息高峰']
+    # 利空關鍵字(同樣寬鬆比對)→ 預設利空,沒命中再看利多
+    BEARISH_KW = ['CPI', '通膨', 'FOMC', '聯準會', '日銀', 'BOJ', 'NFP', '非農', '四巫', '結算',
+                  '法定截止', '休市', '連假']
+    BULLISH_KW = ['法說旺季', '月營收公布旺季', '除權息旺季開跑', '股東會旺季開跑', 'MSCI']
+
+    def _classify(ev_text):
+        t = ev_text or ''
+        sev = 'low'
+        for kw in HIGH_KW:
+            if kw in t:
+                sev = 'high'; break
+        if sev == 'low':
+            for kw in MID_KW:
+                if kw in t:
+                    sev = 'mid'; break
+        # 方向:雙鍵字命中走「震盪」(因爆炸性事件結果不確定)
+        is_bear = any(kw in t for kw in BEARISH_KW)
+        is_bull = any(kw in t for kw in BULLISH_KW)
+        if is_bear and is_bull:
+            direction = 'volatile'
+        elif is_bear:
+            direction = 'bearish'
+        elif is_bull:
+            direction = 'bullish'
+        else:
+            direction = 'neutral'
+        return sev, direction
+
+    for e in uniq:
+        sev, direction = _classify(e['event'])
+        e['severity'] = sev
+        e['direction'] = direction
     return uniq
 
 # Retry-equipped session（任何 5xx / 連線錯誤自動重試 3 次）
