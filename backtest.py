@@ -382,6 +382,22 @@ def _falcon_score_simplified(rows, idx):
 # 🔬 回測單檔
 # ═══════════════════════════════════════════════════════════════════
 
+def _classify_tier(rows):
+    """🏷️ F 路徑:依近 60 日平均成交張數分類股票池(代理市值,不需另外抓基本資料)
+    - large(大型股):日均量 ≥ 50000 張(權值股 / 中型龍頭)
+    - mid(中型股):10000-50000 張
+    - small(小型股):200-10000 張
+    - zombie:< 200 張(已在主流程 skip)
+    """
+    n = len(rows)
+    if n < 60: return 'small'
+    avg60_lots = _avg_volume_lots(rows, n - 1, period=60)
+    if avg60_lots is None: return 'small'
+    if avg60_lots >= 50000: return 'large'
+    if avg60_lots >= 10000: return 'mid'
+    return 'small'
+
+
 def backtest_one_extended(rows, sym, attention_set):
     """對單檔做擴充回測,跑所有 SIGNALS + 多時間段 + 真實成本。
     回傳 dict: signal_name -> list of {'window': N, 'gross': ret%, 'net': ret%}
@@ -731,6 +747,11 @@ def main():
     # 擴充版聚合:signal_name -> window -> {'gross_list':, 'net_list':}
     extended_agg = {name: {w: {'gross': [], 'net': []} for w in FWD_WINDOWS}
                     for name in SIGNALS}
+    # 🏷️ F 路徑:額外按股池分群(large/mid/small)聚合,看哪個池子有 edge
+    tier_agg = {tier: {name: {w: {'gross': [], 'net': []} for w in FWD_WINDOWS}
+                       for name in SIGNALS}
+                for tier in ('large', 'mid', 'small')}
+    tier_stocks = {'large': 0, 'mid': 0, 'small': 0}
     # 原版(送分題/偏多)
     legacy_agg = {}
     def _legacy_slot(sig):
@@ -751,6 +772,10 @@ def main():
             rows = json.loads(f.read_text(encoding='utf-8'))
             if not isinstance(rows, list): continue
 
+            # 🏷️ 分群(F):依平均量分入 large/mid/small,後面聚合一份
+            tier = _classify_tier(rows)
+            tier_stocks[tier] = tier_stocks.get(tier, 0) + 1
+
             # 擴充版回測(15 訊號 × 4 時間段)
             ext = backtest_one_extended(rows, sym, attention_set)
             # 若全部 signal 都空 + 至少有 80 天資料 → 大概率是被殭屍量/處置股 skip
@@ -765,6 +790,9 @@ def main():
                 for s in samples:
                     extended_agg[name][s['window']]['gross'].append(s['gross'])
                     extended_agg[name][s['window']]['net'].append(s['net'])
+                    # 🏷️ 同步丟進 tier_agg
+                    tier_agg[tier][name][s['window']]['gross'].append(s['gross'])
+                    tier_agg[tier][name][s['window']]['net'].append(s['net'])
 
             # 原版(送分題/偏多)— 保留向下相容
             for sig, r5, r10 in backtest_legacy(rows):
@@ -822,6 +850,22 @@ def main():
             'avg_return': round(fs['sum_ret'] / fs['n'], 2),
         }
 
+    # 🏷️ F 路徑:股池分群輸出(large/mid/small)— 看哪個池子在哪個訊號上有 edge
+    #    例:某訊號在小型股勝率 65% 但大型股只有 48% → 證據顯示應該專用在小型股
+    by_signal_by_tier = {}
+    for tier, by_name in tier_agg.items():
+        tier_out = {}
+        for name, by_w in by_name.items():
+            per_window = {}
+            for w, lists in by_w.items():
+                if not lists['net']: continue
+                per_window[f'{w}d'] = {
+                    'net': calc_advanced_metrics(lists['net']),
+                }
+            if per_window:
+                tier_out[name] = per_window
+        by_signal_by_tier[tier] = tier_out
+
     payload = {
         'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
         'replay_days': REPLAY_DAYS,
@@ -832,8 +876,10 @@ def main():
         'round_trip_cost_pct': round(ROUND_TRIP_COST_PCT, 3),
         'by_signal': by_signal_legacy,   # 向下相容
         'by_signal_extended': by_signal_extended,   # 🎯 新版:15 訊號 × 4 期間 × 機構級指標
+        'by_signal_by_tier': by_signal_by_tier,   # 🏷️ F:股池分群(大/中/小)各訊號勝率
+        'tier_stocks': tier_stocks,   # 各 tier 掃到幾檔
         'falcon_strategy': falcon_strategy,
-        '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
+        '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
     }
 
     # 🖨️ 列印 Top 5 訊號(以 10 日淨報酬勝率排序)
@@ -850,6 +896,22 @@ def main():
     print(f"\n🦅 獵鷹回測結果:")
     for bucket, st in falcon_strategy.items():
         print(f"   {bucket}: {st['samples']} 樣本, 隔日勝率 {st['win_rate']}%, 平均 {st['avg_return']}%")
+
+    # 🏷️ F:股池分群 10 日淨勝率 Top 3 訊號(每池)
+    print(f"\n🏷️ 股池分群結果(大 {tier_stocks['large']} / 中 {tier_stocks['mid']} / 小 {tier_stocks['small']}):")
+    for tier in ('large', 'mid', 'small'):
+        tier_rank = []
+        for name, by_w in by_signal_by_tier.get(tier, {}).items():
+            if '10d' in by_w and by_w['10d'].get('net'):
+                n10 = by_w['10d']['net']
+                tier_rank.append((name, n10['win_rate'], n10['avg_return'], n10['samples']))
+        tier_rank.sort(key=lambda x: x[1], reverse=True)
+        top3 = tier_rank[:3]
+        if top3:
+            label = {'large': '大型股', 'mid': '中型股', 'small': '小型股'}[tier]
+            print(f"   {label} Top3:")
+            for name, wr, avg, n in top3:
+                print(f"     {name:18s} 10日勝率 {wr:5.1f}% / 平均 {avg:+.2f}% / 樣本 {n}")
 
     OUTPUT_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f"\n✅ 回測完成 — 掃 {scanned} 檔(排除殭屍量 {skipped_zombie} / 處置股 {skipped_attention}) → {OUTPUT_FILE}")

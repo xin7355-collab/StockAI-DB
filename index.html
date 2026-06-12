@@ -7267,6 +7267,38 @@ ${_newsLine}${globalContext}
         });
     },
 
+    // 📊 路徑 D:市場狀態切換器 — 偵測「多頭/空頭/盤整」
+    //    來源:_macroRiskCache.taiex_ma240_bias(年線乖離率)
+    //    > +5% = 多頭(bull) / -5%~+5% = 盤整(range) / < -5% = 空頭(bear)
+    //    回傳 { regime, label, advice, color, bias }
+    _detectMarketRegime() {
+        const mr = this._macroRiskCache || {};
+        const bias = mr.taiex_ma240_bias;
+        // 若無年線乖離資料,fallback 用 taiex_chg_pct 短期判斷
+        let regime, label, advice, color;
+        if (typeof bias === 'number') {
+            if (bias > 5) {
+                regime = 'bull'; label = '🐂 多頭';
+                advice = '可順勢做多、進場條件可放寬';
+                color = 'text-red-300 bg-red-900/40 border-red-700';
+            } else if (bias < -5) {
+                regime = 'bear'; label = '🐻 空頭';
+                advice = '空手觀望、進場大幅收緊';
+                color = 'text-green-300 bg-green-900/40 border-green-700';
+            } else {
+                regime = 'range'; label = '🦀 盤整';
+                advice = '高賣低買、避免追高殺低';
+                color = 'text-yellow-300 bg-yellow-900/40 border-yellow-700';
+            }
+        } else {
+            // 無資料 → 視為盤整(保守)
+            regime = 'range'; label = '🦀 待測';
+            advice = '採礦中,先觀望';
+            color = 'text-gray-400 bg-gray-800/60 border-gray-600';
+        }
+        return { regime, label, advice, color, bias };
+    },
+
     // 🔍 AI 推測事件影響族群與代表股(點擊才呼叫,localStorage 24hr 快取,省配額)
     async askEventImpactAI(eventName, idx) {
         const box = document.getElementById('evImpact_' + idx);
@@ -7881,6 +7913,35 @@ ${_newsLine}${globalContext}
                 </div>`;
             }).join('');
         }
+        // 🏷️ F 路徑:股池分群(大型/中型/小型)10 日淨勝率 Top 3 各池
+        const byTier = this._signalHistCache?.by_signal_by_tier;
+        const tierStocks = this._signalHistCache?.tier_stocks || {};
+        if (byTier && Object.keys(byTier).length) {
+            html += `<div class="col-span-full mt-2 pt-2 border-t border-gray-700/60">
+                <div class="text-[10px] text-amber-300 font-black mb-1.5 flex items-center gap-1">
+                    🏷️ 股池分群勝率<span class="text-gray-500 font-normal">(看訊號適合哪個池子,大型 ${tierStocks.large||0} / 中型 ${tierStocks.mid||0} / 小型 ${tierStocks.small||0})</span>
+                </div>
+            </div>`;
+            const tierLabels = { large: '🐘 大型股(日均 ≥5 萬張)', mid: '🐎 中型股(1-5 萬張)', small: '🐇 小型股(<1 萬張)' };
+            for (const tier of ['large', 'mid', 'small']) {
+                const tierData = byTier[tier] || {};
+                const tierRank = Object.entries(tierData)
+                    .map(([name, byW]) => ({ name, net: byW['10d']?.net }))
+                    .filter(x => x.net && x.net.samples >= 20)
+                    .sort((a, b) => (b.net.win_rate || 0) - (a.net.win_rate || 0))
+                    .slice(0, 3);
+                if (!tierRank.length) continue;
+                html += `<div class="col-span-full mt-1 mb-0.5"><div class="text-[10px] text-amber-200/80 font-bold">${tierLabels[tier]}</div></div>`;
+                html += tierRank.map(({ name, net }) => {
+                    const wrColor = net.win_rate >= 60 ? 'text-green-300' : net.win_rate >= 50 ? 'text-yellow-300' : 'text-red-300';
+                    return `<div class="bg-amber-950/20 rounded p-1.5 border border-amber-900/40">
+                        <div class="font-bold text-amber-200 text-[11px] truncate">${name}</div>
+                        <div class="text-gray-500 text-[10px]">勝率 <span class="${wrColor} font-black">${net.win_rate}%</span> · 平均 ${net.avg_return > 0 ? '+' : ''}${net.avg_return}%</div>
+                        <div class="text-gray-600 text-[9px]">${net.samples} 樣本</div>
+                    </div>`;
+                }).join('');
+            }
+        }
         body.innerHTML = html;
         box.classList.remove('hidden');
 
@@ -8410,6 +8471,13 @@ ${_newsLine}${globalContext}
         }
         const factorChips = (f.factors || []).map(x => `<span class="text-[9px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">${x}</span>`).join('');
         const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div>` : '';
+        // 📊 D 路徑:市場狀態 chip(多頭/空頭/盤整)— 讓使用者一眼判斷現在能不能進攻
+        const regime = this._detectMarketRegime();
+        const regimeChip = `<div class="flex items-center gap-1.5 mt-1.5 text-[10px]">
+            <span class="font-bold ${regime.color} px-1.5 py-0.5 rounded border">${regime.label}</span>
+            <span class="text-gray-400">${regime.advice}</span>
+            ${typeof regime.bias === 'number' ? `<span class="text-[9px] text-gray-600 font-mono">(年線乖離 ${regime.bias >= 0 ? '+' : ''}${regime.bias.toFixed(1)}%)</span>` : ''}
+        </div>`;
         box.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="flex flex-col items-center justify-center w-16 h-16 rounded-full border-4 ${ring} flex-shrink-0">
@@ -8422,6 +8490,7 @@ ${_newsLine}${globalContext}
                     <div class="text-base font-black ${col}">${f.label}</div>
                     <div class="flex flex-wrap gap-1 mt-1">${factorChips}</div>
                     ${heldNote}
+                    ${regimeChip}
                 </div>
             </div>
             ${warns.length ? `<div class="mt-2 pt-2 border-t border-gray-700/50">
