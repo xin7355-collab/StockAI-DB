@@ -905,7 +905,7 @@
                     <button onclick="app.runKlineAudit(app.currentSymbolId); app.vibrate(30);" id="klineAuditBtn" class="w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
                         📐 K線分析報告
                     </button>
-                    <div id="klineAuditResult" class="hidden w-full bg-[#010409] border border-amber-500/40 rounded-lg p-4 text-sm text-gray-200 leading-loose overflow-y-auto max-h-[40rem]"></div>
+                    <div id="klineAuditResult" class="hidden w-full bg-[#010409] border border-amber-500/40 rounded-lg p-4 text-sm text-gray-200 leading-loose min-h-[20rem]"></div>
                 </div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
                     <div class="flex justify-between items-center px-1 py-1 border-b border-[#30363d] flex-wrap gap-1">
@@ -1219,48 +1219,56 @@
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🪙 黃金 USD/oz</div>
                         <div id="bpGold" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
                         <div id="bpGoldChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpGoldMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('WTI原油'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🛢️ WTI 原油</div>
                         <div id="bpWti" class="text-lg md:text-xl font-black font-mono text-orange-300">--</div>
                         <div id="bpWtiChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpWtiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('美元指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">💵 美元指數 DXY</div>
                         <div id="bpDxy" class="text-lg md:text-xl font-black font-mono text-green-300">--</div>
                         <div id="bpDxyChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpDxyMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('比特幣'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">₿ 比特幣 BTC</div>
                         <div id="bpBtc" class="text-lg md:text-xl font-black font-mono text-yellow-200">--</div>
                         <div id="bpBtcChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpBtcMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('VIX恐慌指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">😱 VIX 恐慌指數</div>
                         <div id="bpVix" class="text-lg md:text-xl font-black font-mono text-red-300">--</div>
                         <div id="bpVixChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpVixMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('日經指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🇯🇵 日經 225</div>
                         <div id="bpNikkei" class="text-lg md:text-xl font-black font-mono text-gray-200">--</div>
                         <div id="bpNikkeiChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpNikkeiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('恆生指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🇭🇰 恆生指數</div>
                         <div id="bpHsi" class="text-lg md:text-xl font-black font-mono text-gray-200">--</div>
                         <div id="bpHsiChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpHsiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('韓股KOSPI'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🇰🇷 韓股 KOSPI</div>
                         <div id="bpKospi" class="text-lg md:text-xl font-black font-mono text-gray-200">--</div>
                         <div id="bpKospiChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
+                        <div id="bpKospiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
                 </div>
             </div>
@@ -1658,6 +1666,17 @@
             <div id="huntScanStatus" class="hidden text-xs text-gray-500 px-1 pb-1 flex items-center gap-1.5">
                 <span class="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                 <span id="huntScanStatusText">掃描中...</span>
+            </div>
+
+            <!-- 🗡️ 獵殺清單說明 banner（觸發 ≠ 立刻買進,只是強烈關注）-->
+            <div class="bg-gradient-to-br from-purple-950/40 to-[#0d1117] border border-purple-700/40 rounded-lg p-3 text-xs leading-relaxed">
+                <div class="font-black text-purple-300 mb-1.5 text-sm">🗡️ 獵殺清單怎麼用?</div>
+                <div class="text-gray-300 space-y-1">
+                    <div>✅ <b class="text-green-300">觸發訊號 = 「強烈關注」</b>,<b class="text-yellow-300">不等於立刻買進</b>。</div>
+                    <div>📋 <b class="text-blue-300">用法</b>:看到觸發 → 點開個股看詳細(獵鷹分 / AI / 籌碼)→ 確認再進場。</div>
+                    <div>⏰ <b class="text-amber-300">時效</b>:<b>盤後採礦</b>(每日 16:30 後)→ <b>隔日盤中</b>參考進場。</div>
+                    <div>🚨 <b class="text-red-300">盤中即時</b>:需手動點「盤中即時更新」按鈕(避免高頻撞限流)。</div>
+                </div>
             </div>
 
             <!-- Strategy Guide -->
@@ -7214,20 +7233,64 @@ ${_newsLine}${globalContext}
         const fmtChg = c => c == null ? '--' : `${c > 0 ? '+' : ''}${c.toFixed(2)}%`;
         // chg 顏色：標準漲跌 — 紅漲綠跌
         const chgColor = c => c == null ? 'text-gray-500' : c > 0.1 ? 'text-red-400' : c < -0.1 ? 'text-green-400' : 'text-gray-400';
+        // 📊 動態含義推導：依漲跌幅推測對台股影響，僅在訊號明確時提醒，避免空話
+        const meaningOf = (type, c, v) => {
+            if (c == null && v == null) return { txt: '--', cls: 'bg-gray-800/50 text-gray-500' };
+            switch (type) {
+                case 'gold':
+                    if (c > 2) return { txt: '🔥 避險湧入·戰爭通膨警訊', cls: 'bg-amber-900/40 text-amber-200' };
+                    if (c > 0.8) return { txt: '🟡 避險偏多·留意通膨', cls: 'bg-amber-900/30 text-amber-300' };
+                    if (c < -1.5) return { txt: '💪 美元強·避險退潮', cls: 'bg-green-900/30 text-green-300' };
+                    return { txt: '✅ 平穩', cls: 'bg-gray-800/40 text-gray-400' };
+                case 'wti':
+                    if (c > 3) return { txt: '⚠️ 通膨壓力·科技股小心', cls: 'bg-orange-900/40 text-orange-200' };
+                    if (c > 1.5) return { txt: '🛢️ 油價走高·能源股利多', cls: 'bg-orange-900/30 text-orange-300' };
+                    if (c < -3) return { txt: '📉 需求疲軟·經濟警訊', cls: 'bg-red-900/30 text-red-300' };
+                    return { txt: '✅ 油價平穩', cls: 'bg-gray-800/40 text-gray-400' };
+                case 'dxy':
+                    if (c > 1) return { txt: '💵 強勢美元·新興市場提款', cls: 'bg-red-900/30 text-red-300' };
+                    if (c > 0.4) return { txt: '🟡 美元偏強·台股逆風', cls: 'bg-yellow-900/30 text-yellow-300' };
+                    if (c < -0.6) return { txt: '🟢 美元走弱·新興市場利多', cls: 'bg-green-900/30 text-green-300' };
+                    return { txt: '✅ 美元平穩', cls: 'bg-gray-800/40 text-gray-400' };
+                case 'btc':
+                    if (c > 5) return { txt: '🚀 風險亢奮·同步利多科技股', cls: 'bg-green-900/40 text-green-300' };
+                    if (c > 2) return { txt: '🟢 風險偏好回升', cls: 'bg-green-900/30 text-green-300' };
+                    if (c < -5) return { txt: '😱 風險暴跌·科技股小心', cls: 'bg-red-900/40 text-red-200' };
+                    if (c < -2) return { txt: '🔻 風險情緒轉弱', cls: 'bg-red-900/30 text-red-300' };
+                    return { txt: '✅ 情緒平穩', cls: 'bg-gray-800/40 text-gray-400' };
+                case 'vix':
+                    if (v != null && v > 30) return { txt: '🚨 極端恐慌·全面避險', cls: 'bg-red-900/50 text-red-200' };
+                    if (v != null && v > 25) return { txt: '😱 恐慌升溫·減碼避險', cls: 'bg-red-900/40 text-red-300' };
+                    if (v != null && v > 20) return { txt: '⚠️ 波動加劇·留意風險', cls: 'bg-yellow-900/30 text-yellow-300' };
+                    if (v != null && v < 14) return { txt: '😌 平靜偏多·風險偏好', cls: 'bg-green-900/30 text-green-300' };
+                    return { txt: '✅ 情緒正常', cls: 'bg-gray-800/40 text-gray-400' };
+                case 'nikkei':
+                case 'hsi':
+                case 'kospi': {
+                    const label = type === 'nikkei' ? '日股' : type === 'hsi' ? '港股' : '韓股';
+                    if (c < -2) return { txt: `🌏 ${label}重挫·台股留意跟跌`, cls: 'bg-red-900/40 text-red-300' };
+                    if (c < -1) return { txt: `🔻 ${label}下殺·亞股提款警訊`, cls: 'bg-red-900/30 text-red-300' };
+                    if (c > 2) return { txt: `🔥 ${label}噴出·亞股共振利多`, cls: 'bg-green-900/40 text-green-300' };
+                    if (c > 1) return { txt: `🟢 ${label}走強·台股助攻`, cls: 'bg-green-900/30 text-green-300' };
+                    return { txt: '✅ 亞股平穩', cls: 'bg-gray-800/40 text-gray-400' };
+                }
+                default: return { txt: '--', cls: 'bg-gray-800/50 text-gray-500' };
+            }
+        };
         const ITEMS = [
-            { id: 'bpGold',   val: j.gold_usd,  chg: j.gold_chg_pct,   decim: 1 },
-            { id: 'bpWti',    val: j.wti_oil,   chg: j.wti_chg_pct,    decim: 2 },
-            { id: 'bpDxy',    val: j.dxy,       chg: j.dxy_chg_pct,    decim: 2 },
-            { id: 'bpBtc',    val: j.btc_usd,   chg: j.btc_chg_pct,    decim: 0 },
-            { id: 'bpVix',    val: j.vix,       chg: j.vix_chg_pct,    decim: 2 },
-            { id: 'bpNikkei', val: j.nikkei,    chg: j.nikkei_chg_pct, decim: 0 },
-            { id: 'bpHsi',    val: j.hsi,       chg: j.hsi_chg_pct,    decim: 0 },
-            { id: 'bpKospi',  val: j.kospi,     chg: j.kospi_chg_pct,  decim: 0 },
+            { id: 'bpGold',   type: 'gold',   val: j.gold_usd,  chg: j.gold_chg_pct,   decim: 1 },
+            { id: 'bpWti',    type: 'wti',    val: j.wti_oil,   chg: j.wti_chg_pct,    decim: 2 },
+            { id: 'bpDxy',    type: 'dxy',    val: j.dxy,       chg: j.dxy_chg_pct,    decim: 2 },
+            { id: 'bpBtc',    type: 'btc',    val: j.btc_usd,   chg: j.btc_chg_pct,    decim: 0 },
+            { id: 'bpVix',    type: 'vix',    val: j.vix,       chg: j.vix_chg_pct,    decim: 2 },
+            { id: 'bpNikkei', type: 'nikkei', val: j.nikkei,    chg: j.nikkei_chg_pct, decim: 0 },
+            { id: 'bpHsi',    type: 'hsi',    val: j.hsi,       chg: j.hsi_chg_pct,    decim: 0 },
+            { id: 'bpKospi',  type: 'kospi',  val: j.kospi,     chg: j.kospi_chg_pct,  decim: 0 },
         ];
         let nullCnt = 0;
         ITEMS.forEach(it => {
             const v = num(it.val), c = num(it.chg);
-            const valEl = $(it.id), chgEl = $(it.id + 'Chg');
+            const valEl = $(it.id), chgEl = $(it.id + 'Chg'), meanEl = $(it.id + 'Meaning');
             if (valEl) {
                 valEl.textContent = v == null ? '--' : v.toLocaleString('en-US', { minimumFractionDigits: it.decim, maximumFractionDigits: it.decim });
                 if (v == null) nullCnt++;
@@ -7235,6 +7298,11 @@ ${_newsLine}${globalContext}
             if (chgEl) {
                 chgEl.textContent = fmtChg(c);
                 chgEl.className = `text-[10px] font-mono mt-0.5 ${chgColor(c)}`;
+            }
+            if (meanEl) {
+                const m = meaningOf(it.type, c, v);
+                meanEl.textContent = m.txt;
+                meanEl.className = `text-[9px] mt-1 px-1.5 py-0.5 rounded leading-snug ${m.cls}`;
             }
         });
         const srcEl = $('bigPlayerSource');
