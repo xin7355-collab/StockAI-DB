@@ -16,6 +16,7 @@ import io
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import time
+import random
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 
@@ -299,81 +300,106 @@ def _roc_to_gregorian(roc_date: str) -> str:
     return f'{int(parts[0]) + 1911}/{parts[1]}/{parts[2]}'
 
 
-def twse_ohlcv(symbol: str, year_month: str) -> list:
-    """TWSE 上市股月 OHLCV。year_month='YYYYMM'。將超時降為10秒防卡死"""
+def twse_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
+    """TWSE 上市股月 OHLCV。year_month='YYYYMM'。
+    🛡️ 反防火牆強化(2026-06-12 Gemini 建議的免費招式):
+    - timeout 10 → 20 秒(TWSE 自家 server 確實慢,常 10 秒 connect 不上)
+    - 每股每月之間 random.uniform(0.8, 2.0) 秒模擬人類看盤速度
+    - timeout/ConnectionError 用 exponential backoff(2/4/8 秒)重試 3 次
+    """
     url = (f'https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY'
            f'?response=json&date={year_month}01&stockNo={symbol}')
-    try:
-        j = http_session.get(url, headers=_HDRS, timeout=10).json()
-        if j.get('stat') != 'OK':
-            return []
-        fields = j.get('fields', [])
-        fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), None)
-        i_dt = fi('日期'); i_op = fi('開盤'); i_hi = fi('最高')
-        i_lo = fi('最低'); i_cl = fi('收盤'); i_vo = fi('成交股數')
-        if i_dt is None:
-            print(f"  ⚠️ TWSE OHLCV '日期' 欄位找不到，headers={fields[:5]}"); return []
-        out = []
-        for row in (j.get('data') or []):
-            try:
-                fmt_date = _roc_to_gregorian(str(row[i_dt]))
-                def num(i, t=float):
-                    v = str(row[i]).replace(',', '').strip() if i >= 0 else ''
-                    try: return t(v) if v not in ('--', '') else 0
-                    except: return 0
-                c = num(i_cl)
-                if c == 0:
+    # 🎲 隨機遲緩:模糊機器人連點特徵(必做,即使第一次成功)
+    time.sleep(random.uniform(0.8, 2.0))
+    for attempt in range(_max_retries):
+        try:
+            j = http_session.get(url, headers=_HDRS, timeout=20).json()
+            if j.get('stat') != 'OK':
+                return []
+            fields = j.get('fields', [])
+            fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), None)
+            i_dt = fi('日期'); i_op = fi('開盤'); i_hi = fi('最高')
+            i_lo = fi('最低'); i_cl = fi('收盤'); i_vo = fi('成交股數')
+            if i_dt is None:
+                print(f"  ⚠️ TWSE OHLCV '日期' 欄位找不到，headers={fields[:5]}"); return []
+            out = []
+            for row in (j.get('data') or []):
+                try:
+                    fmt_date = _roc_to_gregorian(str(row[i_dt]))
+                    def num(i, t=float):
+                        v = str(row[i]).replace(',', '').strip() if i >= 0 else ''
+                        try: return t(v) if v not in ('--', '') else 0
+                        except: return 0
+                    c = num(i_cl)
+                    if c == 0:
+                        continue
+                    out.append({'date': fmt_date,
+                                'open': num(i_op) or c, 'high': num(i_hi) or c,
+                                'low':  num(i_lo) or c, 'close': c,
+                                'volume': num(i_vo, int)})
+                except Exception:
                     continue
-                out.append({'date': fmt_date,
-                            'open': num(i_op) or c, 'high': num(i_hi) or c,
-                            'low':  num(i_lo) or c, 'close': c,
-                            'volume': num(i_vo, int)})
-            except Exception:
+            return out
+        except (json.JSONDecodeError, ValueError):
+            # 興櫃 006xxx 等 TWSE 無資料的股票會回空字串，靜默略過避免 log 淹沒
+            return []
+        except Exception as e:
+            # 🛡️ Timeout / Connection error → exponential backoff 重試
+            if attempt < _max_retries - 1:
+                wait = 2 ** (attempt + 1)  # 2 / 4 / 8 秒
+                print(f"  ⏳ TWSE {symbol} {year_month} {type(e).__name__},{wait}s 後重試({attempt + 1}/{_max_retries})")
+                time.sleep(wait)
                 continue
-        return out
-    except (json.JSONDecodeError, ValueError):
-        # 興櫃 006xxx 等 TWSE 無資料的股票會回空字串，靜默略過避免 log 淹沒
-        return []
-    except Exception as e:
-        print(f"  ⚠️  TWSE STOCK_DAY {symbol} {year_month}: {e}")
-        return []
+            print(f"  ⚠️  TWSE STOCK_DAY {symbol} {year_month}({_max_retries}次重試後仍失敗):{e}")
+            return []
+    return []
 
 
-def tpex_ohlcv(symbol: str, year_month: str) -> list:
-    """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。將超時降為10秒防卡死"""
+def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
+    """TPEX 上櫃股月 OHLCV。year_month='YYYYMM'。
+    🛡️ 反防火牆強化:timeout 10 → 20 秒,random delay 0.8-2s,exponential backoff 3 次
+    """
     y, m = int(year_month[:4]), year_month[4:]
     roc_year = y - 1911
     url = (f'https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/'
            f'st43_result.php?l=zh-tw&d={roc_year}/{m}&stkno={symbol}&o=json')
-    try:
-        res = http_session.get(url, headers=_HDRS, timeout=10)
-        body = res.text.strip()
-        if not body or body[0] == '<':  # 空白或 HTML = 當月尚未公布，靜默略過
-            return []
-        j = res.json()
-        aa = j.get('aaData') or []
-        # row: [日期, 成交股數, 成交金額, 開盤, 最高, 最低, 收盤, 漲跌, 筆數]
-        out = []
-        for row in aa:
-            try:
-                fmt_date = _roc_to_gregorian(str(row[0]))
-                def num(i, t=float):
-                    v = str(row[i]).replace(',', '').strip()
-                    try: return t(v) if v not in ('--', '') else 0
-                    except: return 0
-                c = num(6)
-                if c == 0:
+    time.sleep(random.uniform(0.8, 2.0))
+    for attempt in range(_max_retries):
+        try:
+            res = http_session.get(url, headers=_HDRS, timeout=20)
+            body = res.text.strip()
+            if not body or body[0] == '<':  # 空白或 HTML = 當月尚未公布，靜默略過
+                return []
+            j = res.json()
+            aa = j.get('aaData') or []
+            # row: [日期, 成交股數, 成交金額, 開盤, 最高, 最低, 收盤, 漲跌, 筆數]
+            out = []
+            for row in aa:
+                try:
+                    fmt_date = _roc_to_gregorian(str(row[0]))
+                    def num(i, t=float):
+                        v = str(row[i]).replace(',', '').strip()
+                        try: return t(v) if v not in ('--', '') else 0
+                        except: return 0
+                    c = num(6)
+                    if c == 0:
+                        continue
+                    out.append({'date': fmt_date,
+                                'open': num(3) or c, 'high': num(4) or c,
+                                'low':  num(5) or c, 'close': c,
+                                'volume': num(1, int)})
+                except Exception:
                     continue
-                out.append({'date': fmt_date,
-                            'open': num(3) or c, 'high': num(4) or c,
-                            'low':  num(5) or c, 'close': c,
-                            'volume': num(1, int)})
-            except Exception:
+            return out
+        except Exception as e:
+            if attempt < _max_retries - 1:
+                wait = 2 ** (attempt + 1)
+                print(f"  ⏳ TPEX {symbol} {year_month} {type(e).__name__},{wait}s 後重試({attempt + 1}/{_max_retries})")
+                time.sleep(wait)
                 continue
-        return out
-    except Exception as e:
-        print(f"  ⚠️  TPEX {symbol} {year_month}: {e}")
-        return []
+            print(f"  ⚠️  TPEX {symbol} {year_month}({_max_retries}次重試後仍失敗):{e}")
+            return []
+    return []
 
 
 # ── yfinance OHLCV 補洞（TWSE/TPEX 回應不全時用 Yahoo Finance 補檔）─────────
@@ -1272,15 +1298,15 @@ def run():
             recent_10 = {d.strftime('%Y/%m/%d') for d in trading_days[-10:]}
             has_gap = any(d not in existing_map for d in recent_10)
 
-            # 資料稀疏偵測：門檻從 60 降至 20（約 1 個月交易日），減少 6 倍回溯觸發
-            # — 多數新股 20 筆已夠 bootstrap，避免 batch 卡在大量新股而 timeout
-            if len(existing_map) < 20:
+            # 資料稀疏偵測:現有 < 480 筆(約 2 年交易日)→ 補抓 24 個月,讓回測有完整 2 年歷史
+            # 已有 ≥ 480 筆的股票走「最近 3 個月增量」(預設 months),避免每次採礦都從零開始
+            if len(existing_map) < 480:
                 fetch_months = []
                 _tmp = today.replace(day=1)
-                for _ in range(6):
+                for _ in range(24):
                     fetch_months.append(_tmp.strftime('%Y%m'))
                     _tmp = (_tmp - timedelta(days=1)).replace(day=1)
-                print(f"  📉 資料稀疏（現有 {len(existing_map)} 筆 < 20），延長至 6 個月回溯")
+                print(f"  📉 歷史不足 2 年(現有 {len(existing_map)} 筆 < 480),延長至 24 個月回溯")
             else:
                 fetch_months = months
 
