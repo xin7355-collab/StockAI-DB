@@ -7634,6 +7634,32 @@ ${_newsLine}${globalContext}
                 </div>`;
             }).join('');
         }
+        // 🎯 擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor(扣手續費後淨報酬)
+        const ext = this._signalHistCache?.by_signal_extended;
+        const cost = this._signalHistCache?.round_trip_cost_pct;
+        if (ext && Object.keys(ext).length) {
+            html += `<div class="col-span-full mt-2 pt-2 border-t border-gray-700/60">
+                <div class="text-[10px] text-purple-300 font-black mb-1.5 flex items-center gap-1">
+                    🎯 15 訊號擴充回測<span class="text-gray-500 font-normal">(以 10 日淨報酬勝率排序 / 已扣手續費+證交稅+滑價 ${cost}%)</span>
+                </div>
+            </div>`;
+            const rankable = Object.entries(ext)
+                .map(([name, byW]) => ({ name, net: byW['10d']?.net }))
+                .filter(x => x.net && x.net.samples >= 30)
+                .sort((a, b) => (b.net.win_rate || 0) - (a.net.win_rate || 0));
+            html += rankable.map(({ name, net }) => {
+                const wrColor = net.win_rate >= 60 ? 'text-green-300' : net.win_rate >= 50 ? 'text-yellow-300' : 'text-red-300';
+                const arColor = net.avg_return > 0 ? 'text-red-300' : 'text-green-300';
+                const shColor = net.sharpe >= 0.3 ? 'text-green-300' : net.sharpe >= 0 ? 'text-yellow-300' : 'text-red-300';
+                return `<div class="bg-purple-950/20 rounded p-1.5 border border-purple-900/40">
+                    <div class="font-bold text-purple-200 text-[11px] truncate">${name}</div>
+                    <div class="text-gray-500 text-[10px]">10日淨勝率 <span class="${wrColor} font-black">${net.win_rate}%</span></div>
+                    <div class="text-gray-500 text-[10px]">平均 <span class="${arColor} font-bold">${net.avg_return > 0 ? '+' : ''}${net.avg_return}%</span></div>
+                    <div class="text-gray-500 text-[10px]">Sharpe <span class="${shColor} font-bold">${net.sharpe?.toFixed(2)}</span> · MDD ${net.mdd_pct}%</div>
+                    <div class="text-gray-600 text-[9px]">${net.samples} 樣本 · PF ${net.profit_factor ?? '∞'}</div>
+                </div>`;
+            }).join('');
+        }
         body.innerHTML = html;
         box.classList.remove('hidden');
     },
