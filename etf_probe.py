@@ -1,9 +1,11 @@
 """
-ETF 持股來源探針 — 在 GitHub Actions(有外網)跑，dump 各候選端點的真實回應，
-供開發者寫對解析器。純診斷：不部署、不寫檔、不碰 gh-pages/data。
-本機開發沙箱無外網 → 必須靠這支在雲端看真實 HTTP 回應(狀態/content-type/前段內容)。
+ETF 持股來源探針 ROUND 2 — 直攻 etfinfo.tw(Nuxt SSR)。
+Round1 發現:TWSE封IP、FinMind無免費ETF持股、投信官網是JS殼;etfinfo /etf/{sym} 是含資料的 SSR HTML。
+本輪:① 試 Nuxt _payload.json(最乾淨) ② 解析 /etf/{sym} HTML 找持股(__NUXT_DATA__ / 表格 / 代號權重)
+③ 確認 FinMind TaiwanStockInfo 可批量取名稱。
 """
 import os
+import re
 import requests
 
 session = requests.Session()
@@ -11,68 +13,67 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 FM = (os.getenv("FINMIND_TOKENS") or os.getenv("FINMIND_TOKEN") or "").split(",")[0].strip()
 
-SAMPLES = ["00981A", "00982A", "00988A", "00992A", "0050"]
 
-
-def dump(label, url, method="GET", limit=1500, **kw):
-    print(f"\n{'=' * 74}\n[{label}] {method} {url}")
+def get(label, url, **kw):
+    print(f"\n{'=' * 74}\n[{label}] GET {url}")
     try:
-        r = session.request(method, url, headers={"User-Agent": UA}, timeout=20, **kw)
-        ct = r.headers.get("content-type", "")
-        print(f"  → status={r.status_code}  content-type={ct}  len={len(r.text)}")
-        print((r.text or "").strip()[:limit])
+        r = session.get(url, headers={"User-Agent": UA}, timeout=20, **kw)
+        print(f"  → status={r.status_code} ct={r.headers.get('content-type','')} len={len(r.text)}")
+        return r
     except Exception as e:
         print(f"  ✗ ERR {type(e).__name__}: {e}")
+        return None
 
 
 def main():
-    print(f"FinMind token present: {bool(FM)}")
+    SYM = "00981A"
 
-    # ── ① 探索:列出可用的 dataset / endpoint(最高資訊量) ──
-    dump("TWSE-OpenAPI-index", "https://openapi.twse.com.tw/v1/", limit=2500)
-    dump("FinMind-datalist", f"https://api.finmindtrade.com/api/v4/datalist?token={FM}", limit=2500)
-
-    # ── ② TWSE OpenAPI 候選 ETF/持股端點(依命名猜測,看哪個回 200+JSON) ──
-    for ep in [
-        "exchangeReport/TWT44U",   # 投信買賣超彙總?
-        "exchangeReport/TWT54U",
-        "fund/T86",
-        "ETFReport/ETFRank",
-    ]:
-        dump(f"TWSE-OpenAPI-{ep}", f"https://openapi.twse.com.tw/v1/{ep}", limit=600)
-
-    # ── ③ FinMind:該檔 ETF 基本資訊 + 嘗試持股類 dataset ──
-    dump("FinMind-TaiwanStockInfo-00981A",
-         f"https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&data_id=00981A&token={FM}",
-         limit=800)
-    for ds in ["TaiwanStockHoldingSharesPer", "TaiwanStockMarketValue", "ETFHolding", "TaiwanETFHolding"]:
-        dump(f"FinMind-{ds}-00981A",
-             f"https://api.finmindtrade.com/api/v4/data?dataset={ds}&data_id=00981A"
-             f"&start_date=2026-05-01&token={FM}", limit=500)
-
-    # ── ④ 投信官網 PCF(從 web search 取得的真實頁面,看是 HTML 還是有 XHR/JSON) ──
-    dump("capital-00992A-portfolio", "https://www.capitalfund.com.tw/etf/product/detail/500/portfolio")
-    dump("fubon-pcf", "https://websys.fsit.com.tw/FubonETF/Trade/Pcf.aspx")
-    dump("ftft-pcf", "https://www.ftft.com.tw/etf/Transaction/PCF")
-    dump("megafunds-pcf", "https://www.megafunds.com.tw/MEGA/etf/trade_pcf.aspx")
-
-    # ── ⑤ TPEX 主動式 ETF 清單頁 ──
-    dump("tpex-active-etf", "https://www.tpex.org.tw/web/etf/serial_active_etf.php?l=zh-tw", limit=800)
-
-    # ── ⑥ 第三方彙整 etfinfo.tw(「主動式ETF 清單與持股異動」最有希望的單一來源) ──
-    dump("etfinfo-active-page", "https://www.etfinfo.tw/active", limit=1500)
+    # ① Nuxt 3 payload(各種可能路徑)
     for u in [
-        "https://www.etfinfo.tw/api/active",
-        "https://www.etfinfo.tw/api/etf/active",
-        "https://www.etfinfo.tw/Data/active.json",
-        "https://api.etfinfo.tw/v1/active",
-        "https://www.etfinfo.tw/api/holding/00981A",
-        "https://www.etfinfo.tw/api/etf/00981A/holding",
+        f"https://www.etfinfo.tw/etf/{SYM}/_payload.json",
+        f"https://www.etfinfo.tw/_payload.json?path=/etf/{SYM}",
+        f"https://www.etfinfo.tw/etf/{SYM}.json",
+        f"https://www.etfinfo.tw/api/etf/{SYM}",
     ]:
-        dump("etfinfo-api-guess", u, limit=500)
-    dump("etfinfo-etf-00981A", "https://www.etfinfo.tw/etf/00981A", limit=1000)
+        r = get("nuxt-payload", u)
+        if r is not None and r.status_code == 200:
+            print(r.text[:2000])
 
-    print("\n✅ probe done")
+    # ② /etf/{sym} HTML：定位持股資料所在
+    r = get("etfinfo-html", f"https://www.etfinfo.tw/etf/{SYM}")
+    if r is not None and r.status_code == 200:
+        html = r.text
+        # __NUXT_DATA__ (Nuxt3 SSR 扁平序列化)
+        m = re.search(r'id="__NUXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
+        if m:
+            blob = m.group(1)
+            print(f"\n-- __NUXT_DATA__ 長度 {len(blob)} --")
+            # 找含台股代號的片段
+            for code in ("2330", "2454", "2317"):
+                i = blob.find(code)
+                if i > 0:
+                    print(f"  __NUXT_DATA__ 含 {code} @ {i}: ...{blob[max(0,i-120):i+200]}...")
+                    break
+            else:
+                print("  __NUXT_DATA__ 前 1500:", blob[:1500])
+        else:
+            print("  (無 __NUXT_DATA__)")
+        # 直接在整頁找持股關鍵字與代號上下文
+        for kw in ("持股", "權重", "成分", "個股", "weight", "holdings"):
+            i = html.find(kw)
+            if i > 0:
+                print(f"\n-- 頁面含「{kw}」@ {i}: ...{html[max(0,i-150):i+350]}...")
+        i = html.find("2330")
+        if i > 0:
+            print(f"\n-- 頁面含 2330 @ {i}: ...{html[max(0,i-200):i+400]}...")
+
+    # ③ FinMind TaiwanStockInfo:能否一次列出所有(批量取名稱)
+    r = get("finmind-info-all", f"https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo&token={FM}")
+    if r is not None and r.status_code == 200:
+        txt = r.text
+        print("  len", len(txt), "| 含00981A:", "00981A" in txt, "| 前200:", txt[:200])
+
+    print("\n✅ probe round2 done")
 
 
 if __name__ == "__main__":
