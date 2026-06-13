@@ -282,6 +282,20 @@
                     </div>
                 </div>
 
+                <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4 bg-cyan-900/10 -mx-1 px-2 rounded">
+                    <label class="text-sm font-bold text-cyan-300">📨 Telegram 雲端推送(鎖屏背景提醒)</label>
+                    <p class="text-[10px] text-gray-500 leading-tight">自選 / 庫存 / 監控股命中訊號時自動推到你的 Telegram,**關手機 / 鎖屏一樣收得到**。需先部署 Cloudflare Worker(<a href="https://github.com/xin7355-collab/StockAI-DB/blob/main/cloud-worker/README.md" target="_blank" class="text-cyan-400 underline">教學</a>)。</p>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-cyan-400/80">Worker 網址</label>
+                        <input type="url" id="set_workerUrl" oninput="app.settings.workerUrl=this.value.trim(); app.saveSettings();" placeholder="https://stockai-alerts.your-name.workers.dev" class="w-full bg-[#010409] text-cyan-300 p-1.5 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-cyan-500 transition-colors">
+                        <label class="text-[10px] font-bold text-cyan-400/80 mt-1">Bot username(不含 @)</label>
+                        <input type="text" id="set_botUsername" oninput="app.settings.botUsername=this.value.trim().replace(/^@/, ''); app.saveSettings();" placeholder="stockai_xin_bot" class="w-full bg-[#010409] text-cyan-300 p-1.5 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-cyan-500 transition-colors">
+                    </div>
+                    <div id="tgCloudStatus" class="text-[11px] text-gray-500 leading-snug py-1">尚未綁定</div>
+                    <button id="tgCloudBindBtn" onclick="app.telegramCloud.startBind()" class="w-full px-3 py-2 bg-cyan-900/40 text-xs font-bold rounded border border-cyan-700/50 hover:bg-cyan-800/50 transition text-cyan-300">📨 啟用 / 取得綁定碼</button>
+                    <button id="tgCloudUnbindBtn" onclick="app.telegramCloud.unbind()" class="hidden w-full px-3 py-2 bg-red-900/30 text-xs font-bold rounded border border-red-700/40 hover:bg-red-800/40 transition text-red-300">🔌 解除綁定</button>
+                </div>
+
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
                     <label class="text-sm font-bold text-green-400">🖥️ 本地 API 伺服器 (可選)</label>
                     <p class="text-[10px] text-gray-500 leading-tight">若在同一 WiFi 且電腦有啟動 api.py，填入電腦 IP 可啟用極速本地模式。空白時自動使用雲端模式。</p>
@@ -1967,7 +1981,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
     MAX_FAV_PER_GROUP: 50,
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
@@ -2133,6 +2147,185 @@ const app = {
         try { localStorage.setItem(`onboard_${key}_dismissed`, '1'); } catch(_) {}
     },
 
+    // 📨 Telegram 雲端推送(Cloudflare Worker + 個人 chat_id 綁定)
+    //    架構詳見 cloud-worker/README.md。前端職責:組綁定碼、發 /pending、開 Telegram、polling /check、變更自動 /sync。
+    telegramCloud: {
+        _syncTimer: null,
+        _pollAbort: null,
+
+        _workerUrl() {
+            const u = (app.settings?.workerUrl || '').trim().replace(/\/+$/, '');
+            return u || null;
+        },
+
+        async startBind() {
+            const url = this._workerUrl();
+            if (!url) {
+                alert('請先在「Worker 網址」欄填入你的 Cloudflare Worker URL\n(部署教學見 cloud-worker/README.md)');
+                document.getElementById('set_workerUrl')?.focus();
+                return;
+            }
+            if (!/^https:\/\//i.test(url)) {
+                alert('Worker 網址必須 https:// 開頭');
+                return;
+            }
+            const code = this._genCode();
+            const payload = this._buildPayload();
+            try {
+                const r = await fetch(`${url}/pending`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, payload }),
+                });
+                if (!r.ok) {
+                    const t = await r.text().catch(() => '');
+                    throw new Error(`HTTP ${r.status} ${t.slice(0, 80)}`);
+                }
+            } catch (e) {
+                alert('連線 Worker 失敗:' + (e?.message || e) + '\n\n確認:\n1. Worker 網址正確\n2. Worker 已部署(wrangler deploy)\n3. CORS 允許');
+                return;
+            }
+            this._showBindDialog(code);
+            this._pollUntilBound(code);
+        },
+
+        _showBindDialog(code) {
+            const botU = (app.settings?.botUsername || '').replace(/^@/, '').trim();
+            const link = botU ? `https://t.me/${botU}` : '';
+            const html = `📨 *綁定碼*\n\n        ${code}\n\n步驟:\n1. ${link ? `開 ${link}(已自動複製連結)` : '開你設定的 Telegram bot'}\n2. 按 Start 進入聊天室\n3. 傳「/bind ${code}」給 bot\n4. 等 bot 回「✅ 綁定成功」\n\n綁定碼 10 分鐘內有效,網頁會自動偵測完成`;
+            alert(html);
+            try { navigator.clipboard?.writeText(code); } catch (_) {}
+            if (link) {
+                setTimeout(() => window.open(link, '_blank'), 200);
+            }
+        },
+
+        async _pollUntilBound(code) {
+            const url = this._workerUrl();
+            if (!url) return;
+            const statusEl = document.getElementById('tgCloudStatus');
+            if (statusEl) {
+                statusEl.textContent = `⏳ 等待你在 Telegram 傳 /bind ${code}(10 分鐘內有效)`;
+                statusEl.className = 'text-[11px] text-cyan-300 font-bold leading-snug py-1 animate-pulse';
+            }
+            this._pollAbort = false;
+            for (let i = 0; i < 120 && !this._pollAbort; i++) {
+                await new Promise(r => setTimeout(r, 5000));
+                try {
+                    const r = await fetch(`${url}/check?code=${encodeURIComponent(code)}`);
+                    if (!r.ok) continue;
+                    const j = await r.json();
+                    if (j.bound) {
+                        app.settings.cloudCode = code;
+                        try { localStorage.setItem('proTerminalSettings', JSON.stringify(app.settings)); } catch (_) {}
+                        this._updateUI();
+                        alert('✅ 綁定完成!\n\n以後你關手機 / 鎖屏一樣會收到個股推播。\n試試在 Telegram 傳 /list 確認雲端清單。');
+                        await this.sync(true);
+                        return;
+                    }
+                } catch (e) { /* keep trying */ }
+            }
+            if (!this._pollAbort) {
+                if (statusEl) {
+                    statusEl.textContent = '⏰ 等候超時(10 分鐘),請重點「啟用」拿新碼';
+                    statusEl.className = 'text-[11px] text-amber-400 leading-snug py-1';
+                }
+            }
+        },
+
+        async unbind() {
+            if (!confirm('解除綁定?\n\n- Telegram 將不再收到推播\n- 雲端清單會被刪除\n- 重綁需重點「啟用」拿新綁定碼')) return;
+            this._pollAbort = true;
+            const url = this._workerUrl();
+            const code = app.settings.cloudCode;
+            if (url && code) {
+                try {
+                    await fetch(`${url}/unbind`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code }),
+                    });
+                } catch (_) { /* ignore */ }
+            }
+            app.settings.cloudCode = '';
+            try { localStorage.setItem('proTerminalSettings', JSON.stringify(app.settings)); } catch (_) {}
+            this._updateUI();
+        },
+
+        // 推自選 / 庫存 / 監控股 / 閾值設定到 Worker(debounce 1 秒,避免狂發)
+        async sync(force = false) {
+            const url = this._workerUrl();
+            const code = app.settings?.cloudCode;
+            if (!url || !code) return;
+            clearTimeout(this._syncTimer);
+            const doSync = async () => {
+                try {
+                    await fetch(`${url}/sync`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code, payload: this._buildPayload() }),
+                    });
+                } catch (_) { /* silent */ }
+            };
+            if (force) return doSync();
+            this._syncTimer = setTimeout(doSync, 1000);
+        },
+
+        _buildPayload() {
+            const watchSet = new Set();
+            Object.values(app.favGroups || {}).forEach(arr => {
+                (arr || []).forEach(s => watchSet.add(String(s).trim().toUpperCase()));
+            });
+            const watchlist = [...watchSet].filter(s => /^[0-9A-Z]{4,8}$/.test(s));
+            const inventory = (app.inventory || []).map(i => ({
+                sym: String(i.id || i.sym || i.symbol || '').trim().toUpperCase(),
+                cost: Number(i.cost) || 0,
+                qty: Number(i.qty) || 0,
+            })).filter(i => /^[0-9A-Z]{4,8}$/.test(i.sym));
+            const monitorList = (app.monitorList || []).map(m =>
+                String(typeof m === 'string' ? m : (m.id || m.sym || '')).trim().toUpperCase()
+            ).filter(s => /^[0-9A-Z]{4,8}$/.test(s));
+            return { watchlist, inventory, monitorList };
+        },
+
+        _genCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+            return code;
+        },
+
+        _updateUI() {
+            const bound = !!app.settings?.cloudCode;
+            const status = document.getElementById('tgCloudStatus');
+            const bindBtn = document.getElementById('tgCloudBindBtn');
+            const unbindBtn = document.getElementById('tgCloudUnbindBtn');
+            if (status) {
+                status.textContent = bound
+                    ? `✅ 已綁定(綁定碼:${app.settings.cloudCode})— 自選/庫存更動會自動同步`
+                    : '尚未綁定 — 啟用後自選股/庫存命中訊號會推到 Telegram';
+                status.className = bound
+                    ? 'text-[11px] text-green-400 font-bold leading-snug py-1'
+                    : 'text-[11px] text-gray-500 leading-snug py-1';
+            }
+            if (bindBtn) bindBtn.classList.toggle('hidden', bound);
+            if (unbindBtn) unbindBtn.classList.toggle('hidden', !bound);
+        },
+
+        // 監聽自選/庫存/監控的 localStorage 變更,自動觸發雲端同步(不必修改 50+ 個 setItem call site)
+        _hookAutoSync() {
+            const watched = new Set(['proTerminalFavGroups', 'proTerminalHunt', 'proTerminalInv']);
+            const orig = localStorage.setItem.bind(localStorage);
+            const self = this;
+            localStorage.setItem = function (key, value) {
+                orig(key, value);
+                if (watched.has(key)) {
+                    try { self.sync(); } catch (_) { /* silent */ }
+                }
+            };
+        },
+    },
+
     async init() {
         // 動態設定真實視窗高度（解決 iOS Safari URL bar 顯示/隱藏時版面跳動）
         const setRealVh = () => document.documentElement.style.setProperty('--real-vh', `${window.innerHeight * 0.01}px`);
@@ -2157,6 +2350,9 @@ const app = {
             this.settings.aiPrompt = AI_PROMPT_TEMPLATES.default;
         }
         document.documentElement.setAttribute('data-font', this.settings.fontSize || 'medium');
+
+        // 📨 Telegram 雲端推送:啟動就攔截 localStorage 變更,自選/庫存/監控改動自動 /sync
+        this.telegramCloud._hookAutoSync();
 
         this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
         // 點選 K 棒 → 顯示該日資料（非僅顯示最新）
@@ -2973,6 +3169,11 @@ ${list}
         document.getElementById('set_finmindKey4').value = this.settings.finmindKey4 || '';
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
+        const wuEl = document.getElementById('set_workerUrl');
+        if (wuEl) wuEl.value = this.settings.workerUrl || '';
+        const buEl = document.getElementById('set_botUsername');
+        if (buEl) buEl.value = this.settings.botUsername || '';
+        this.telegramCloud?._updateUI();
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         const wlEl = document.getElementById('set_watchlistAlert');
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;

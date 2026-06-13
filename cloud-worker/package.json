@@ -1,0 +1,14 @@
+{
+    "name": "stockai-alerts",
+    "version": "1.0.0",
+    "description": "StockAI Telegram cloud alerts — Cloudflare Worker",
+    "main": "worker.js",
+    "scripts": {
+        "deploy": "wrangler deploy",
+        "tail": "wrangler tail",
+        "dev": "wrangler dev"
+    },
+    "devDependencies": {
+        "wrangler": "^3.0.0"
+    }
+}
