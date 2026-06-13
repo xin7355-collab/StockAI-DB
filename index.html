@@ -9045,11 +9045,30 @@ ${_newsLine}${globalContext}
             else if (pC < pC1 && pV < vma5 * 0.7) featTags.push({ kind: '量價背離', text: '價跌量縮(賣壓衰竭)', tone: 'info', jargon: '量價背離' });
         }
 
-        const _toneCls = { good: 'bg-green-900/60 text-green-200 border-green-600', warn: 'bg-yellow-900/70 text-yellow-200 border-yellow-500', danger: 'bg-red-900/70 text-red-200 border-red-500', island: 'bg-purple-900/70 text-purple-200 border-purple-500', info: 'bg-gray-800 text-gray-300 border-gray-600', bullish: 'bg-red-900/60 text-red-200 border-red-600', bearish: 'bg-green-900/60 text-green-200 border-green-600' };
-        const _toneIcon = { good: '📈', warn: '⚠️', danger: '🚨', island: '💀', info: 'ℹ️', bullish: '🔺', bearish: '🔻' };
+        // 🎯 5 級提醒制度(統一動作標籤,初學者一眼看懂該不該做)
+        // 舊 tone(bullish/bearish/danger/...)透過 _toneToAction 自動映射;新代碼可直接傳 action 欄位
+        const _toneToAction = {
+            good:    'buy',     // 多頭排列 → 趨勢健康可布局
+            bullish: 'buy',     // KD金叉 / 爆量 / 創新高 / 漲停鎖死 → 進場訊號
+            info:    'watch',   // 量縮 / 量價背離 → 中性等確認
+            warn:    'warn',    // 乖離過大 / 法人賣超 / 價漲量縮 → 警戒
+            bearish: 'reduce',  // KD死叉 / 跌破季線 → 走弱減碼
+            danger:  'avoid',   // 空頭排列 / 大黑K / 跌破前低 → 空手別碰
+            island:  'avoid',   // 島狀反轉 → 頭部訊號
+        };
+        const _actionCfg = {
+            buy:    { emoji: '🟢', label: '布局', cls: 'bg-green-900/40 text-green-200 border-green-600',   tip: '進場訊號,可分批建倉(配合風控)' },
+            watch:  { emoji: '🔵', label: '觀察', cls: 'bg-blue-900/40 text-blue-200 border-blue-600',      tip: '中性訊號,等多重確認(別單訊號進場)' },
+            warn:   { emoji: '🟡', label: '警戒', cls: 'bg-yellow-900/40 text-yellow-200 border-yellow-500',tip: '略有風險,持有者收緊停利,空手繼續觀察' },
+            reduce: { emoji: '🟠', label: '減碼', cls: 'bg-orange-900/40 text-orange-200 border-orange-500',tip: '走弱明顯,持有者降低部位(賣 1/3 ~ 1/2)' },
+            avoid:  { emoji: '🔴', label: '避開', cls: 'bg-red-900/40 text-red-200 border-red-600',         tip: '空手別碰,持有者考慮減碼或出場' },
+        };
         for (const t of featTags) {
+            const action = t.action || _toneToAction[t.tone] || 'watch';
+            const cfg = _actionCfg[action] || _actionCfg.watch;
             const clickable = t.jargon ? ` onclick="app.showJargon('${t.jargon}')" style="cursor:pointer"` : '';
-            tagsHtml += `<span${clickable} class="${_toneCls[t.tone] || _toneCls.info} border text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 inline-block mt-1">${_toneIcon[t.tone] || ''}${t.text}${t.jargon ? ' ⓘ' : ''}</span>`;
+            const titleAttr = ` title="${cfg.label}:${cfg.tip}"`;
+            tagsHtml += `<span${clickable}${titleAttr} class="${cfg.cls} border text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 inline-block mt-1">${cfg.emoji} ${t.text}${t.jargon ? ' ⓘ' : ''}</span>`;
         }
         document.getElementById('stockTags').innerHTML = tagsHtml;
 
