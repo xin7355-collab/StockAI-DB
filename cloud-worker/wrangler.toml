@@ -7,10 +7,13 @@ compatibility_date = "2026-06-01"
 binding = "KV"
 id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
 
-# 🕐 排程:台北 09:00-13:30 每 30 分(UTC 01:00-05:30,Mon-Fri)
+# 🕐 排程:
+#   "*/30 1-5 * * 1-5" — 台北 09:00-13:30 每 30 分(盤中即時掃描)
+#   "0 9 * * 1-5"      — 台北 17:00(盤後每日總結 + AI 短評)
 [triggers]
-crons = ["*/30 1-5 * * 1-5"]
+crons = ["*/30 1-5 * * 1-5", "0 9 * * 1-5"]
 
 # 🛡️ Secrets(用 `wrangler secret put XXX` 設定,不要寫在這個檔)
 #   TELEGRAM_BOT_TOKEN   ← BotFather 給的 token,必填
 #   WEBHOOK_SECRET       ← 自訂亂數,選填,防偽造 webhook
+#   GEMINI_API_KEY       ← Gemini API key,選填(沒設則每日總結不附 AI 短評)

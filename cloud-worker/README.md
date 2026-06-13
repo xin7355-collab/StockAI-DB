@@ -59,6 +59,11 @@ wrangler secret put TELEGRAM_BOT_TOKEN
 # (選填)防 webhook 被偽造
 wrangler secret put WEBHOOK_SECRET
 # 隨便打一串 32 字以上的亂數,例如:abc123XYZ$%^def456...
+
+# (選填)Gemini AI 短評(F4),沒設則盤後總結不附 AI 短評,功能仍正常
+# 申請:https://aistudio.google.com/app/apikey(免費 1500 req/day)
+wrangler secret put GEMINI_API_KEY
+# 貼上 Gemini API key
 ```
 
 ---
@@ -125,6 +130,8 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 
 ## 📋 推送觸發條件
 
+### 盤中即時推送(台北 09:00-13:30 每 30 分一次)
+
 | 訊號 | 預設閾值 | 可調 | 防重複 |
 |------|--------|------|--------|
 | 獵鷹建倉分突破 | ≥ 85 | 60-95 | 6h/檔 |
@@ -133,6 +140,30 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 | 庫存浮盈停利 | ≥ +20% | 固定 | 6h/檔 |
 | 庫存浮虧停損 | ≤ -8% | 固定 | 6h/檔 |
 | 黑天鵝事件 | 嚴重度=高 + 1 日內 | 固定 | 1 次/天 |
+
+### 盤後每日總結(台北 17:00,F3)
+- 自選股當日漲跌 Top 3
+- 庫存今日對成本盈虧 + 部位加權報酬率
+- 獵鷹分 ≥ 設定閾值的命中名單
+- 全市場戰略選股(top_picks.json)
+- 設了 `GEMINI_API_KEY` → 附「💬 AI 短評」(權證小哥風格)
+
+---
+
+## 🎮 Telegram 指令(F1+F2)
+
+用戶綁定後可直接在聊天室調整設定,不用回網頁:
+
+| 指令 | 用途 | 範例 |
+|------|------|------|
+| `/set falcon 80` | 調獵鷹分閾值(60-95) | 推 falcon ≥80 的股 |
+| `/set surge 7` | 調大漲閾值(2-10) | 漲 ≥7% 才推 |
+| `/set drop 4` | 調大跌閾值(2-10) | 跌 ≤-4% 才推 |
+| `/set` | 不帶 args | 顯示目前所有閾值 |
+| `/cost 2330 1100` | 設庫存成本 | 2330 成本 1100 |
+| `/cost 2330 1100 5` | 成本 + 張數 | 1100 / 5 張 |
+| `/cost 2330` | 查目前成本 | — |
+| `/cost` | 不帶 args | 顯示全部庫存 |
 
 ---
 

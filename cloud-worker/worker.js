@@ -71,7 +71,12 @@ export default {
     },
 
     async scheduled(event, env, ctx) {
-        ctx.waitUntil(runScan(env));
+        // 兩個 cron 排程分流:17:00 台北每日總結 / 其餘 30 分掃描
+        if (event.cron === '0 9 * * 1-5') {
+            ctx.waitUntil(runDailySummary(env));
+        } else {
+            ctx.waitUntil(runScan(env));
+        }
     },
 };
 
@@ -137,6 +142,8 @@ async function handleBot(request, env) {
             '然後傳 `/bind 你的綁定碼` 給我即可完成。\n\n' +
             '*指令清單*\n' +
             '`/list` - 看雲端清單\n' +
+            '`/set 閾值 數值` - 調獵鷹/漲跌警戒\n' +
+            '`/cost 代號 成本` - 設庫存成本\n' +
             '`/mute` - 暫停 24 小時\n' +
             '`/unmute` - 恢復推送\n' +
             '`/unbind` - 解除綁定\n' +
@@ -211,11 +218,17 @@ async function handleBot(request, env) {
         if (userData.code) await env.KV.delete(`code:${userData.code}`);
         await env.KV.delete(`user:${chatId}`);
         await tg(env, chatId, '👋 已解除綁定,清單已刪除。要重綁請回網頁點「啟用」。');
+    } else if (text === '/set' || text.startsWith('/set ')) {
+        await handleSet(env, chatId, text);
+    } else if (text === '/cost' || text.startsWith('/cost ')) {
+        await handleCost(env, chatId, text);
     } else if (text === '/help' || text === '/?') {
         await tg(env, chatId,
             '*指令清單*\n\n' +
             '`/bind 綁定碼` - 用網頁拿到的綁定碼綁定\n' +
             '`/list` - 看你的雲端清單\n' +
+            '`/set 閾值 數值` - 調閾值(`falcon 80` / `surge 7` / `drop 4`)\n' +
+            '`/cost 代號 成本 [張數]` - 設庫存成本(例 `/cost 2330 1000`)\n' +
             '`/mute` - 暫停推送 24 小時\n' +
             '`/unmute` - 恢復推送\n' +
             '`/unbind` - 解除綁定(清空清單)'
@@ -420,4 +433,252 @@ async function wasPushed(env, chatId, sym, type) {
 
 async function markPushed(env, chatId, sym, type, ttl = PUSH_DEDUP_TTL) {
     await env.KV.put(`pushed:${chatId}:${sym}:${type}`, '1', { expirationTtl: ttl });
+}
+
+// ── F1: /set <key> <value> — 用戶調閾值 ───────────────────────────────
+
+const SET_KEY_RANGES = {
+    falcon: { min: 60, max: 95, field: 'falcon_threshold', label: '🦅 獵鷹建倉分' },
+    surge:  { min: 2,  max: 10, field: 'surge_threshold',  label: '🚀 大漲警戒(%)' },
+    drop:   { min: 2,  max: 10, field: 'drop_threshold',   label: '📉 大跌警戒(%)' },
+};
+
+async function handleSet(env, chatId, text) {
+    const userData = JSON.parse((await env.KV.get(`user:${chatId}`)) || '{}');
+    if (!userData.chat_id) {
+        await tg(env, chatId, '❌ 尚未綁定。請回網頁點「啟用」拿綁定碼。');
+        return;
+    }
+    const settings = userData.settings || {};
+    const parts = text.split(/\s+/).slice(1);
+    if (parts.length === 0) {
+        const lines = Object.entries(SET_KEY_RANGES).map(([k, cfg]) => {
+            const cur = settings[cfg.field] ?? '預設';
+            return `\`${k}\` ${cfg.label} — 目前: *${cur}* (範圍 ${cfg.min}-${cfg.max})`;
+        });
+        await tg(env, chatId,
+            '*目前閾值設定*\n\n' + lines.join('\n') + '\n\n' +
+            '*用法*\n`/set falcon 80` — 獵鷹分 ≥80 才推\n`/set surge 7` — 漲幅 ≥7% 才推\n`/set drop 4` — 跌幅 ≤-4% 才推'
+        );
+        return;
+    }
+    const [key, valStr] = parts;
+    const cfg = SET_KEY_RANGES[key];
+    if (!cfg) {
+        await tg(env, chatId, `❌ 未知閾值 \`${key}\`,可用:\`falcon\` / \`surge\` / \`drop\``);
+        return;
+    }
+    const val = Number(valStr);
+    if (!Number.isFinite(val) || val < cfg.min || val > cfg.max) {
+        await tg(env, chatId, `❌ 數值需在 ${cfg.min}-${cfg.max} 之間(收到「${valStr}」)`);
+        return;
+    }
+    settings[cfg.field] = val;
+    userData.settings = settings;
+    await env.KV.put(`user:${chatId}`, JSON.stringify(userData));
+    await tg(env, chatId, `✅ ${cfg.label} → *${val}*\n\n下一輪 cron 開始生效。`);
+}
+
+// ── F2: /cost <sym> <price> [qty] — 用戶設庫存成本 ──────────────────
+
+async function handleCost(env, chatId, text) {
+    const userData = JSON.parse((await env.KV.get(`user:${chatId}`)) || '{}');
+    if (!userData.chat_id) {
+        await tg(env, chatId, '❌ 尚未綁定。請回網頁點「啟用」拿綁定碼。');
+        return;
+    }
+    const parts = text.split(/\s+/).slice(1);
+    if (parts.length === 0) {
+        const inv = userData.inventory || [];
+        const lines = inv.length
+            ? inv.map(i => `*${i.sym}* — 成本 ${i.cost}${i.qty ? ` × ${i.qty} 張` : ''}`).join('\n')
+            : '(空)';
+        await tg(env, chatId,
+            '*目前庫存*\n\n' + lines + '\n\n' +
+            '*用法*\n`/cost 2330 1100` — 設成本 1100\n`/cost 2330 1100 5` — 成本 1100 / 5 張\n`/cost 2330` — 只查目前成本'
+        );
+        return;
+    }
+    const sym = String(parts[0] || '').trim().toUpperCase();
+    if (!isValidSym(sym)) {
+        await tg(env, chatId, `❌ 股票代號格式不對:\`${parts[0]}\``);
+        return;
+    }
+    const inv = userData.inventory || [];
+    if (parts.length === 1) {
+        const found = inv.find(i => i.sym === sym);
+        await tg(env, chatId, found
+            ? `*${sym}* 目前成本 *${found.cost}*${found.qty ? ` / ${found.qty} 張` : ''}`
+            : `*${sym}* 不在庫存中,傳 \`/cost ${sym} 成本\` 新增`);
+        return;
+    }
+    const cost = Number(parts[1]);
+    if (!Number.isFinite(cost) || cost <= 0) {
+        await tg(env, chatId, `❌ 成本需為大於 0 的數字(收到「${parts[1]}」)`);
+        return;
+    }
+    let qty = parts[2] != null ? Number(parts[2]) : undefined;
+    if (parts[2] != null && (!Number.isFinite(qty) || qty < 0)) {
+        await tg(env, chatId, `❌ 張數需為 ≥ 0 的數字(收到「${parts[2]}」)`);
+        return;
+    }
+    const idx = inv.findIndex(i => i.sym === sym);
+    if (idx >= 0) {
+        inv[idx].cost = cost;
+        if (qty != null) inv[idx].qty = qty;
+    } else {
+        inv.push({ sym, cost, qty: qty || 0 });
+    }
+    userData.inventory = inv;
+    await env.KV.put(`user:${chatId}`, JSON.stringify(userData));
+    await tg(env, chatId, `✅ *${sym}* 成本記為 *${cost}*${qty != null ? ` / ${qty} 張` : ''}\n\n達 +20% 自動推停利、-8% 推停損。`);
+}
+
+// ── F4: Gemini AI 短評(只在每日總結用)────────────────────────────────
+
+async function gemini(env, prompt) {
+    if (!env.GEMINI_API_KEY) return null;
+    try {
+        const r = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { maxOutputTokens: 300, temperature: 0.5 },
+                }),
+                signal: AbortSignal.timeout(8000),
+            }
+        );
+        if (!r.ok) return null;
+        const j = await r.json();
+        return (j.candidates?.[0]?.content?.parts?.[0]?.text || '').trim() || null;
+    } catch (_) {
+        return null;
+    }
+}
+
+// ── F3: 每日 17:00 台北 盤後總結(cron '0 9 * * 1-5')─────────────────
+
+async function runDailySummary(env) {
+    const t = Date.now();
+    const [radarRes, topRes] = await Promise.all([
+        fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/top_picks.json?t=${t}`).catch(() => null),
+    ]);
+    const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
+    const topPicks = topRes?.ok ? await topRes.json().catch(() => null) : null;
+
+    const falconMap = buildFalconMap(radar);
+    if (!falconMap.size) return;
+
+    let cursor = undefined;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!userData.chat_id) continue;
+                if (userData.muted_until && userData.muted_until > Date.now()) continue;
+                await sendDailySummary(env, userData, falconMap, topPicks);
+            } catch (_) { /* continue */ }
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+}
+
+async function sendDailySummary(env, user, falconMap, topPicks) {
+    const symbols = new Set();
+    (user.watchlist || []).forEach(s => symbols.add(s));
+    (user.inventory || []).forEach(i => { if (i?.sym) symbols.add(i.sym); });
+
+    // 收集每檔的當日漲跌、獵鷹分、命中策略
+    const rows = [];
+    for (const sym of symbols) {
+        const s = falconMap.get(sym);
+        if (!s) continue;
+        const pct = Number(s.change_pct ?? s.chg_pct);
+        rows.push({
+            sym,
+            close: Number(s.close) || 0,
+            pct: Number.isFinite(pct) ? pct : null,
+            falcon: Number(s.falcon_score ?? s.score) || 0,
+            tags: Array.isArray(s.tags) ? s.tags.slice(0, 2) : [],
+        });
+    }
+
+    const withPct = rows.filter(r => r.pct !== null);
+    if (!withPct.length && !(user.inventory || []).length) {
+        // 完全沒資料就跳過(避免推空訊息)
+        return;
+    }
+
+    // 漲幅 / 跌幅 top 3
+    const upTop = [...withPct].sort((a, b) => b.pct - a.pct).slice(0, 3).filter(r => r.pct > 0);
+    const dnTop = [...withPct].sort((a, b) => a.pct - b.pct).slice(0, 3).filter(r => r.pct < 0);
+
+    // 庫存當日盈虧 + 對成本
+    const invLines = [];
+    let invSumWeighted = 0, invSumQty = 0;
+    for (const inv of (user.inventory || [])) {
+        const row = rows.find(r => r.sym === inv.sym);
+        if (!row || !inv.cost) continue;
+        const dayPct = row.pct;
+        const costRet = ((row.close - inv.cost) / inv.cost) * 100;
+        invLines.push(`${inv.sym} 收 ${row.close} (${formatPct(dayPct)} 今日 / ${formatPct(costRet)} 對成本)`);
+        if (inv.qty > 0) {
+            invSumWeighted += costRet * inv.qty;
+            invSumQty += inv.qty;
+        }
+    }
+    const portReturn = invSumQty > 0 ? invSumWeighted / invSumQty : null;
+
+    // 命中高分股(獵鷹 ≥ 設定閾值)
+    const settings = user.settings || {};
+    const falconTh = settings.falcon_threshold || 85;
+    const hot = rows.filter(r => r.falcon >= falconTh).slice(0, 5);
+
+    // top_picks.json 全市場戰略選股(最多 3 檔)
+    const topGlobal = (topPicks?.picks || topPicks?.list || []).slice(0, 3)
+        .map(p => `${p.sym || p.symbol} (${p.strategy || p.reason || ''})`).filter(s => s.length > 4);
+
+    // 組原始彙整
+    const parts = [];
+    parts.push(`📊 *${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 盤後總結*`);
+    if (upTop.length) parts.push(`*🚀 自選漲幅 Top*\n${upTop.map(r => `${r.sym} ${formatPct(r.pct)}`).join(' / ')}`);
+    if (dnTop.length) parts.push(`*📉 自選跌幅 Top*\n${dnTop.map(r => `${r.sym} ${formatPct(r.pct)}`).join(' / ')}`);
+    if (invLines.length) parts.push(`*💼 庫存今日*\n${invLines.join('\n')}` + (portReturn !== null ? `\n\n總部位對成本: *${formatPct(portReturn)}*` : ''));
+    if (hot.length) parts.push(`*🦅 獵鷹 ≥${falconTh}*\n${hot.map(r => `${r.sym} 分${r.falcon}${r.tags.length ? ` (${r.tags.join('/')})` : ''}`).join('\n')}`);
+    if (topGlobal.length) parts.push(`*🎯 全市場戰略選股*\n${topGlobal.join('\n')}`);
+
+    const rawSummary = parts.join('\n\n');
+
+    // F4: 送 Gemini 拿白話短評
+    const aiText = await gemini(env, buildDailyPrompt(rawSummary, user));
+    const finalText = aiText
+        ? `${rawSummary}\n\n💬 *AI 短評(權證小哥風)*\n${aiText}`
+        : rawSummary;
+
+    await tg(env, user.chat_id, finalText);
+}
+
+function formatPct(n) {
+    if (!Number.isFinite(n)) return '--';
+    return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+}
+
+function buildDailyPrompt(rawSummary, user) {
+    const symbolCount = (user.watchlist?.length || 0) + (user.inventory?.length || 0);
+    return [
+        '你是台股「權證小哥」風格的分析師。針對以下使用者的今日持股動態,給 2-3 句白話短評。',
+        '禁止算數學(所有數字已備好);禁止套話如「以下為您分析」。',
+        '重點: ① 今天最該注意什麼  ② 明日操作節奏建議(進場/抱牢/減碼/觀望)。',
+        `使用者目前共追蹤 ${symbolCount} 檔。`,
+        '',
+        rawSummary,
+        '',
+        '請用台股口語,2-3 句,直接給操作建議:',
+    ].join('\n');
 }
