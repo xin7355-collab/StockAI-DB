@@ -110,6 +110,11 @@ RSS_SOURCES = {
     "自由財經":         "https://news.ltn.com.tw/rss/business.xml",
     "聯合新聞網財經":   "https://udn.com/rssfeed/news/2/6644?ch=news",
     "中央社財經":       "https://feeds.feedburner.com/rsscna/finance",
+    # ➕ 即時新聞源(2026-06-13 加入,延遲 15-30 分鐘,比上面慢 1-3 小時的源快很多)
+    "Yahoo 即時財經":   "https://tw.news.yahoo.com/rss/finance",
+    "ETtoday 財經":     "https://feeds.feedburner.com/ettoday/finance",
+    "工商時報即時":     "https://ctee.com.tw/feed",
+    "Anue 即時頭條":    "https://www.cnyes.com/rss/news/realtimenews",  # 鉅亨「即時」版,比上面綜合版快
     # PTT RSSHub 預留（自架 rsshub instance 後解開）
     # "PTT Stock":      "https://rsshub.app/ptt/stock",
 }

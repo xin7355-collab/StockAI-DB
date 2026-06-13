@@ -1,0 +1,80 @@
+name: 📰 即時新聞快訊 (news express)
+
+# 🎯 目的:解決使用者問題「焦點動態快訊太久了」— 每 4 小時跑一次 universal_radar.py,
+# 只更新 data/radar_news.json + global_news.json + tech_giants_news.json,不採礦 OHLCV
+# (約 5-15 分鐘),保留 gh-pages 其他資料完整不動。
+#
+# 排程:UTC 1:00 / 5:00 / 9:00 / 13:00(對應台北 9:00 / 13:00 / 17:00 / 21:00)
+# 用量:15 分/次 × 4 次/天 × 22 工作日 = 1320 分/月,在 GitHub Actions 2000 分免費額度內。
+on:
+  schedule:
+    - cron: "0 1,5,9,13 * * 1-5"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "universal_radar.py"
+      - ".github/workflows/news_express.yml"
+
+permissions:
+  contents: write
+
+# 🔒 避免跟 daily_miner.yml 同時 force-push gh-pages 互相打架
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  news_express:
+    name: 📰 抓即時新聞 + 更新 gh-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依套件
+        run: pip install requests feedparser --quiet
+
+      - name: 📰 執行 universal_radar.py 抓 RSS + AI 翻譯
+        env:
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
+        run: python universal_radar.py || echo "⚠️ universal_radar.py 非零退出,仍繼續部署已產出的部分"
+
+      - name: 💾 暫存產出的新聞 JSON
+        run: |
+          mkdir -p /tmp/news
+          cp data/radar_news.json       /tmp/news/ 2>/dev/null || echo "⚠️ radar_news.json 未產出"
+          cp data/global_news.json      /tmp/news/ 2>/dev/null || true
+          cp data/tech_giants_news.json /tmp/news/ 2>/dev/null || true
+
+      - name: 🌐 更新 gh-pages(只覆蓋 3 個新聞 JSON,保留股票資料)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 切到現有 gh-pages(非 orphan,保留所有股票資料)
+          git fetch origin gh-pages 2>/dev/null || true
+          git checkout gh-pages 2>/dev/null || {
+            echo "❌ gh-pages 不存在,跳過部署(等 daily_miner 先建立)"
+            exit 0
+          }
+
+          mkdir -p data
+          cp /tmp/news/radar_news.json       data/ 2>/dev/null || true
+          cp /tmp/news/global_news.json      data/ 2>/dev/null || true
+          cp /tmp/news/tech_giants_news.json data/ 2>/dev/null || true
+
+          git add data/radar_news.json data/global_news.json data/tech_giants_news.json 2>/dev/null || true
+          git diff --cached --quiet && echo "📭 新聞無變化,跳過 commit" || {
+            git commit -m "📰 即時新聞更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push origin gh-pages
+            echo "✅ gh-pages 新聞 JSON 已更新"
+          }

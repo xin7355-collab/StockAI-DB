@@ -612,9 +612,13 @@
     <!-- 📰 即時情報與新聞解析（毛玻璃彈窗） -->
     <div id="newsModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
         <div class="modal-content max-w-xl max-h-[85vh] overflow-y-auto bg-[#0d1117]/80 backdrop-blur-lg border border-amber-700/40" onclick="event.stopPropagation()">
-            <div class="flex items-center justify-between mb-3 pb-2 border-b border-[#30363d]">
+            <div class="flex items-center justify-between mb-2 pb-2 border-b border-[#30363d]">
                 <h3 class="text-amber-300 font-black text-lg">📰 即時情報與新聞解析</h3>
                 <button onclick="document.getElementById('newsModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div class="flex items-center justify-between mb-3 text-[10px]">
+                <span id="newsLastUpdated" class="text-gray-500">--</span>
+                <button onclick="app.loadNewsHeadlines(true); app.vibrate(30);" class="text-amber-300 bg-amber-900/30 border border-amber-700/60 hover:bg-amber-800/40 rounded px-2 py-0.5 font-bold transition-colors">🔄 立即重抓</button>
             </div>
             <div id="newsModalBody" class="space-y-2 text-sm leading-relaxed">
                 <div class="text-center text-gray-500 py-6 text-xs animate-pulse">情報載入中…</div>
@@ -4096,7 +4100,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     //    用於盤前戰情、首席五維、籌碼/技術深度分析等重型 prompt
     //    雙 prompt 支援:R1 推理強用 full;Gemini/Groq 用 simple(較短、減 AI 思考負擔)
     //    舊呼叫只傳 prompt 仍向下相容(full=simple=prompt)
-    async _callDeepAI({ prompt, prompts, max_tokens = 1800, temperature = 0.4 }) {
+    async _callDeepAI({ prompt, prompts, max_tokens = 1800, temperature = 0.4, chain = 'auto' }) {
         // 解析雙 prompt:優先取 prompts.full / prompts.simple,沒給則退回單一 prompt
         // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
         const promptFull = this._injectDisciplineClause(prompts?.full ?? prompt);
@@ -4104,59 +4108,120 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (!promptFull && !promptSimple) {
             throw new Error('_callDeepAI 需提供 prompt 或 prompts.{full,simple}');
         }
-        // 🌟 第一鏈:Gemini 2.5 Flash(配額穩定、速度快,先頂第一棒;真正深度推理交給第二鏈 R1)
-        if (this._getGeminiKeys().length) {
-            try {
-                const content = await this._callGemini({ prompt: promptSimple, max_tokens, temperature, model: 'gemini-2.5-flash' });
-                if (content) {
-                    console.info('[_callDeepAI] Gemini 2.5 Flash OK(simple prompt)');
-                    this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
-                    return content;
-                }
-            } catch (e) {
-                console.warn('[_callDeepAI] Gemini 失敗,fallback OpenRouter R1:', e?.message || e);
+
+        // 🧠 三條鏈的獨立 try 函式(便於 chain 參數任意組合)
+        const tryGemini = async () => {
+            if (!this._getGeminiKeys().length) throw new Error('Gemini 雙 key 未設定');
+            const content = await this._callGemini({ prompt: promptSimple, max_tokens, temperature, model: 'gemini-2.5-flash' });
+            if (content) {
+                console.info('[_callDeepAI] Gemini 2.5 Flash OK');
+                this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
+                return content;
             }
-        }
-        // 🚀 第二鏈(能力優先):OpenRouter DeepSeek R1 雙 key 池輪動(o1 級推理最強,真正接重型分析)
-        //    用 full prompt 發揮 R1 推理深度;Gemini 忙/失敗時由 R1 接手,Groq 70b 退為最後快速兜底
-        const orKeys = this._getOpenRouterKeys();
-        for (let i = 0; i < orKeys.length; i++) {
-            const orKey = orKeys[i];
-            try {
-                this._setAIStatus('openrouter', i + 1);
-                const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${orKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/',
-                        'X-Title': 'StockAI-DB',
-                    },
-                    body: JSON.stringify({
-                        model: 'deepseek/deepseek-r1:free',
-                        messages: [{ role: 'user', content: promptFull }],
-                        max_tokens, temperature,
-                    })
-                }, { timeout: 90000, maxRetries: 1 });
-                if (res.ok) {
-                    const data = await res.json();
-                    const content = data?.choices?.[0]?.message?.content;
-                    if (content) { console.info(`[_callDeepAI] OpenRouter R1 Key #${i + 1} OK`); return content; }
-                    console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} 回應無 content`);
-                } else {
-                    this._recordAIFail('openrouter', i + 1, res.status);
-                    console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} HTTP ${res.status}`);
-                    if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
-                        const _jitter = Math.round(2000 + Math.random() * 3000);
-                        console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
-                        await new Promise(r => setTimeout(r, _jitter));
+            throw new Error('Gemini 回應為空');
+        };
+        const tryGroq = async () => {
+            // _callAI 內含 Gemini → Groq → OpenRouter 三鏈,但 'groq-only' 要繞過 _callAI,直接打 Groq
+            const groqKeys = this._getGroqKeys();
+            if (!groqKeys.length) throw new Error('Groq 雙 key 未設定');
+            const body = JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [{ role: 'user', content: promptSimple }],
+                max_tokens, temperature
+            });
+            let lastErr;
+            for (let i = 0; i < groqKeys.length; i++) {
+                try {
+                    const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${groqKeys[i]}`, 'Content-Type': 'application/json' },
+                        body
+                    }, { timeout: 60000, maxRetries: 1 });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const content = data?.choices?.[0]?.message?.content;
+                        if (content) {
+                            console.info(`[_callDeepAI] Groq Key #${i + 1} OK(groq-only chain)`);
+                            this._setAIStatus('groq', i + 1);
+                            return content;
+                        }
+                        lastErr = new Error('Groq 回應為空');
+                    } else {
+                        this._recordAIFail('groq', i + 1, res.status);
+                        lastErr = new Error(`Groq HTTP ${res.status}`);
+                        if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
+                            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+                            continue;
+                        }
                     }
-                }
-            } catch (e) {
-                console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} 例外:`, e?.message || e);
+                } catch (e) { lastErr = e; }
             }
+            throw lastErr || new Error('Groq 雙 key 全失敗');
+        };
+        const tryOpenRouter = async () => {
+            const orKeys = this._getOpenRouterKeys();
+            if (!orKeys.length) throw new Error('OpenRouter 雙 key 未設定');
+            let lastErr;
+            for (let i = 0; i < orKeys.length; i++) {
+                const orKey = orKeys[i];
+                try {
+                    this._setAIStatus('openrouter', i + 1);
+                    const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${orKey}`,
+                            'Content-Type': 'application/json',
+                            'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/',
+                            'X-Title': 'StockAI-DB',
+                        },
+                        body: JSON.stringify({
+                            model: 'deepseek/deepseek-r1:free',
+                            messages: [{ role: 'user', content: promptFull }],
+                            max_tokens, temperature,
+                        })
+                    }, { timeout: 90000, maxRetries: 1 });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const content = data?.choices?.[0]?.message?.content;
+                        if (content) { console.info(`[_callDeepAI] OpenRouter R1 Key #${i + 1} OK`); return content; }
+                        console.warn(`[_callDeepAI] OpenRouter R1 Key #${i + 1} 回應無 content`);
+                        lastErr = new Error('OpenRouter 回應為空');
+                    } else {
+                        this._recordAIFail('openrouter', i + 1, res.status);
+                        lastErr = new Error(`OpenRouter HTTP ${res.status}`);
+                        if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
+                            const _jitter = Math.round(2000 + Math.random() * 3000);
+                            console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms 切第 ${i + 2} 把...`);
+                            await new Promise(r => setTimeout(r, _jitter));
+                        }
+                    }
+                } catch (e) { lastErr = e; }
+            }
+            throw lastErr || new Error('OpenRouter 雙 key 全失敗');
+        };
+
+        // 🎯 依 chain 參數路由(使用者要求各功能用不同鏈,避免 Groq 撞 429 影響重要分析)
+        if (chain === 'gemini-only') {
+            // 純 Gemini:撞 429 直接 throw(不偷偷 fallback,使用者明確要求)
+            return await tryGemini();
         }
-        // 第三鏈(最後快速兜底):Groq 70b 用 simple prompt(經 _callAI,速度快、推理深度次於 R1)
+        if (chain === 'groq-only') {
+            return await tryGroq();
+        }
+        if (chain === 'openrouter-gemini') {
+            // OpenRouter 優先,撞 429 fallback Gemini(跳過 Groq)
+            try { return await tryOpenRouter(); }
+            catch (e) { console.warn('[_callDeepAI openrouter-gemini] OpenRouter 失敗,fallback Gemini:', e?.message || e); }
+            return await tryGemini();
+        }
+
+        // chain === 'auto'(預設):整合 main 新邏輯 + chain 路由
+        //   第一鏈 Gemini(配額穩定先頂)→ 第二鏈 OpenRouter R1(能力優先,深度推理)→ 第三鏈 Groq 70b 兜底
+        try { return await tryGemini(); } catch (e) {
+            console.warn('[_callDeepAI auto] Gemini 失敗,fallback OpenRouter R1:', e?.message || e);
+        }
+        try { return await tryOpenRouter(); }
+        catch (e) { console.warn('[_callDeepAI auto] OpenRouter 失敗,最後兜底 Groq 70b:', e?.message || e); }
         return this._callAI({ prompt: promptSimple, max_tokens, temperature, model: 'llama-3.3-70b-versatile' });
     },
 
@@ -5465,8 +5530,9 @@ ${brokerText}
 最後獨立一行輸出：⚠️ 投資有風險，以上僅供參考，請自行判斷。`;
 
         try {
-            const text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.7 });
-            if (!text) throw new Error('未設定 AI Key，請至設定填入 Groq 或 OpenRouter');
+            // 🎯 籌碼 AI 解析:使用者要求純 Gemini 雙 key 輪動,撞 429 直接顯示警示不偷偷 fallback
+            const text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.7, chain: 'gemini-only' });
+            if (!text) throw new Error('未設定 AI Key,請至設定填入 Gemini API Key');
             const escaped = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
             result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-sm">${escaped}</div>`;
         } catch(e) {
@@ -5859,8 +5925,9 @@ ${peerLine}${newsCtx}
 🛑 嚴禁編造具體財報數字(營收/EPS),只談產業趨勢與邏輯。`;
 
         try {
-            const text = await this._callDeepAI({ prompt, max_tokens: 1200, temperature: 0.5 });
-            if (!text) throw new Error('未設定 AI Key');
+            // 🎯 產業趨勢報告:OpenRouter R1 深度推理優先,撞 429 fallback Gemini(跳過 Groq)
+            const text = await this._callDeepAI({ prompt, max_tokens: 1200, temperature: 0.5, chain: 'openrouter-gemini' });
+            if (!text) throw new Error('未設定 AI Key(需 OpenRouter 或 Gemini)');
             const html = text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-cyan-300 font-bold">$1</b>')
                 .replace(/▌(\d+\.\s*.+)/g, '<div class="mt-2 mb-1 text-cyan-300 font-black text-xs border-l-2 border-cyan-400 pl-2">▌$1</div>')
@@ -6351,8 +6418,8 @@ ${_newsLine}${globalContext}
 - 講話像哲哲,白話如直播,多用比喻,禁艱澀術語(EPS/PEG 等先解釋再用)`;
             let aiText = null;
             try {
-                // 🚀 財報深度解讀走 _callDeepAI(DeepSeek R1,深度推理),429 自動 fallback Groq 70b
-                aiText = await this._callDeepAI({prompt: fullPrompt, max_tokens: 600, temperature: 0.55});
+                // 🎯 X 光掃描:使用者要求純 Groq 雙 key 輪動(財報數據適合 Groq 70b 結構化輸出),撞 429 直接 throw 不偷偷 fallback
+                aiText = await this._callDeepAI({prompt: fullPrompt, max_tokens: 600, temperature: 0.55, chain: 'groq-only'});
             } catch(e2) {
                 console.error('[fundamentals AI]', e2);
             }
@@ -10113,8 +10180,9 @@ ${_newsLine}${globalContext}
 
     // 📰 即時情報新聞：優先讀採礦機產出的 data/radar_news.json，失敗則 fallback 範例頭條
     // TODO: 未來可換接「籌碼K線」等專業新聞 API（保持同一渲染介面即可）
-    async loadNewsHeadlines() {
+    async loadNewsHeadlines(force = false) {
         const body = document.getElementById('newsModalBody');
+        const tsEl = document.getElementById('newsLastUpdated');
         if (!body) return;
         const renderItems = (items) => {
             body.innerHTML = items.map(n => {
@@ -10135,6 +10203,13 @@ ${_newsLine}${globalContext}
             { tone: '利多', title: 'NVDA 新一代 GPU 拉貨動能強，伺服器代工訂單能見度看到明年', note: '廣達/緯穎/鴻海受惠', source: '範例頭條' },
             { tone: '中立', title: '台股量能觀望，等待美國 CPI 數據與 Fed 利率決策', note: '盤面震盪，控制部位、嚴守均線', source: '範例頭條' },
         ];
+        // 🕒 1 分鐘 client cache,避免狂按「立即重抓」每次都打 gh-pages
+        if (!force && this._newsCache && (Date.now() - this._newsCache.ts) < 60e3) {
+            renderItems(this._newsCache.items);
+            if (tsEl) tsEl.textContent = `${Math.round((Date.now() - this._newsCache.fetchedAt) / 1000)} 秒前載入·快取`;
+            return;
+        }
+        if (force && tsEl) tsEl.textContent = '🔄 重抓中...';
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const url = new URL('data/radar_news.json', ghBase).href + `?t=${Date.now()}`;
@@ -10143,13 +10218,31 @@ ${_newsLine}${globalContext}
             const j = await res.json();
             const list = Array.isArray(j) ? j : (j.data || j.news || []);
             if (Array.isArray(list) && list.length) {
-                renderItems(list.slice(0, 12));
+                const items = list.slice(0, 12);
+                renderItems(items);
+                this._newsCache = { ts: Date.now(), fetchedAt: Date.now(), items };
+                if (tsEl) {
+                    // 顯示資料新鮮度(從 JSON 自帶 updated 欄位讀;若無則用「剛剛載入」)
+                    const updated = j.updated || j.timestamp;
+                    if (updated) {
+                        const updTime = new Date(updated).getTime();
+                        if (!isNaN(updTime)) {
+                            const mins = Math.round((Date.now() - updTime) / 60000);
+                            tsEl.textContent = mins < 1 ? '剛剛採礦' : mins < 60 ? `${mins} 分鐘前採礦` : `${Math.round(mins/60)} 小時前採礦`;
+                        } else {
+                            tsEl.textContent = `採礦時間 ${updated}`;
+                        }
+                    } else {
+                        tsEl.textContent = '剛剛載入';
+                    }
+                }
                 return;
             }
             throw new Error('empty news');
         } catch (e) {
             // fallback：採礦機新聞尚未產出時，顯示範例頭條（不破功能）
             renderItems(SAMPLES);
+            if (tsEl) tsEl.textContent = '⚠️ 載入失敗,顯示範例';
         }
     },
 
@@ -10332,8 +10425,9 @@ ${wBottom.detected
 最後獨立一行輸出最終判定：🟢適合建倉 或 🟡觀望等待 或 🔴危險迴避。`;
 
         try {
-            let text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.2 });
-            if (!text) throw new Error('未設定 AI Key，請至設定填入 Groq 或 OpenRouter');
+            // 🎯 K 線分析報告:使用者要求純 Gemini 雙 key 輪動,撞 429 直接顯示警示不偷偷 fallback
+            let text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.2, chain: 'gemini-only' });
+            if (!text) throw new Error('未設定 AI Key,請至設定填入 Gemini API Key');
 
             const secMap = {
                 '【📊 技術指標全面審計】': { border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
@@ -11452,9 +11546,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
   "detail_action": "三段體,標題一字不差,段間用 \\n,每段 70~130 字,全程哲哲口吻(直白、敢說、跟投資朋友對話)。\\n【📊 大盤與籌碼全景】用上方大盤全景(加權/VIX/恐懼貪婪/散戶多空/外資期現/融資槓桿/板塊輪動)判讀大環境順風還是逆風,再接到本檔籌碼安定度與法人動能,一氣呵成說「現在的環境適不適合碰這檔」。\\n★中段「身分段」依【庫存狀態:${invLine}】**只准輸出一段、且只寫使用者真實身分**(空手就別寫持有、有持股就別寫空手):\\n · 若空手→標題用【🟥 空手者策略】:能不能進?能進的話**何時建倉**(現在就進 vs 等回測哪條均線)、具體進場價、分幾批、什麼情況取消(跌破哪裡)。不能進就說為什麼+什麼條件才能進。禁談停利停損(沒部位)。\\n · 若有持股→標題用【🟦 持有者策略】:依**實際損益**給**一種**指令(獲利→移動停利/續抱具體價位;虧損→停損或反彈逃命),**正獲利時嚴禁出現「套牢/反彈逃命」字**,禁同時列舉獲利者/套牢者兩種。\\n【🛡️ 風控紅線】明確給:停損價(跌破哪裡無條件出場)、部位上限建議(幾成資金)、本檔當前最大的一個風險點是什麼。\\n⚠️ 鐵律:身分段二選一(只寫使用者真實身分那段);三段標題一字不差;禁複述本 prompt 規則文字、禁出現『天條』『庫存狀態:』『禁列舉』等 meta 字眼,違反視為無效輸出。"
 }`;
 
-            // 🚀 首席五維 = 旗艦級分析,保留 70B(每次約 8k tokens,使用者手動或快取命中)
-            let raw = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.35 });
-            if (!raw) throw new Error('未設定 Groq Key');
+            // 🎯 首席 AI 全盤分析:使用者要求純 Gemini 雙 key 輪動(深度推理保留 Gemini 2.5),撞 429 直接 throw 不偷偷 fallback
+            let raw = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.35, chain: 'gemini-only' });
+            if (!raw) throw new Error('未設定 Gemini API Key,請至 ⚙️ 設定填入');
 
             // 健壯解析 → traffic_light + summary + bottom_bar + detail_action
             const parsed = this._parseAIJson(raw);
