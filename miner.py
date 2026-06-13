@@ -773,6 +773,70 @@ def fetch_market_margin(d: date) -> dict:
     return res
 
 
+# ── 產業類別 → 個股 映射(供 industry_pe.json 算「產業相對 PE」)────────────
+# 景氣循環產業:PE 低反而是高點(航運/塑化/鋼鐵等),前端會顯示警語
+CYCLICAL_INDUSTRIES = {
+    '航運業', '塑膠工業', '橡膠工業', '鋼鐵工業', '水泥工業',
+    '造紙工業', '化學工業', '化學生技醫療', '油電燃氣業',
+}
+
+
+def fetch_industry_map() -> dict:
+    """從 TWSE openapi 抓上市公司「產業別」對照表,輸出 {sym: industry_name}。
+    上市 t187ap03_L + 上櫃 t187ap03_O 兩個資料集,免費無 token。"""
+    industry_map = {}
+    for url, label in [
+        ('https://openapi.twse.com.tw/v1/opendata/t187ap03_L', 'TWSE 上市'),
+        ('https://openapi.twse.com.tw/v1/opendata/t187ap03_O', 'TPEX 上櫃'),
+    ]:
+        try:
+            r = http_session.get(url, headers=_rnd_hdrs(), timeout=15)
+            if r.status_code != 200:
+                print(f"  ⚠️ {label} 產業別 HTTP {r.status_code}")
+                continue
+            data = r.json()
+            if not isinstance(data, list):
+                continue
+            for row in data:
+                sym = str(row.get('公司代號') or row.get('SecuritiesCompanyCode') or '').strip()
+                ind = str(row.get('產業別') or row.get('IndustryCategory') or '').strip()
+                if sym and ind and sym.isdigit() and 4 <= len(sym) <= 6:
+                    industry_map[sym] = ind
+            print(f"  ✅ {label} 產業別:{len(industry_map)} 累計")
+        except Exception as e:
+            print(f"  ⚠️ {label} 產業別抓取失敗:{e}")
+        time.sleep(random.uniform(1.0, 2.0))
+    return industry_map
+
+
+def aggregate_industry_pe(fund_cache: dict, industry_map: dict) -> dict:
+    """把全市場 PE 按產業分組,算每組中位數 + 標記景氣循環產業。
+    輸出 dict 供寫進 data/industry_pe.json。"""
+    if not fund_cache or not industry_map:
+        return {}
+    by_industry = {}
+    for sym, fund in fund_cache.items():
+        ind = industry_map.get(sym)
+        pe = (fund or {}).get('pe')
+        # 過濾無效 PE(虧損 / 異常高)
+        if not ind or pe is None or pe <= 0 or pe > 200:
+            continue
+        by_industry.setdefault(ind, []).append(pe)
+
+    industries = {}
+    for ind, pes in by_industry.items():
+        if len(pes) < 3:   # 至少 3 檔才算中位數,避免單一個股 distortion
+            continue
+        sorted_pes = sorted(pes)
+        median_pe = sorted_pes[len(sorted_pes) // 2]
+        industries[ind] = {
+            'median_pe': round(median_pe, 2),
+            'stocks': len(pes),
+            'is_cyclical': ind in CYCLICAL_INDUSTRIES,
+        }
+    return industries
+
+
 # ── TWSE 全市場基本面（本益比 / 殖利率 / 股價淨值比）────────────────────────
 def fetch_twse_fundamentals(d: date) -> dict:
     """一次查全上市股票的 PE / 殖利率 / PBR（TWSE BWIBBU_d）"""
@@ -1972,6 +2036,29 @@ def fetch_broker_chips():
             Path('data', 'fundamentals_cache.json').write_text(
                 json.dumps(fund_cache, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
             print(f"  💾 全市場基本面快取 → data/fundamentals_cache.json（{len(fund_cache)} 檔）")
+
+            # 🏷️ 產業相對 PE 聚合(供前端 X 光機算「比同業便宜?」)
+            print("  🏭 抓產業類別 + 算每產業中位數 PE...")
+            try:
+                industry_map = fetch_industry_map()
+                industries = aggregate_industry_pe(fund_cache, industry_map)
+                if industries:
+                    industry_payload = {
+                        'updated': date.today().strftime('%Y-%m-%d'),
+                        'industries': industries,
+                        '_note': '中位數 PE(避免極端值偏誤);is_cyclical=true 為景氣循環產業,PE 低不等於便宜',
+                    }
+                    Path('data', 'industry_pe.json').write_text(
+                        json.dumps(industry_payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                    # 同時寫個股 → 產業 mapping(前端 client cache,X 光機查 sym 屬於哪個產業)
+                    Path('data', 'industry_map.json').write_text(
+                        json.dumps(industry_map, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                    print(f"  💾 產業相對 PE → data/industry_pe.json（{len(industries)} 個產業）")
+                    print(f"  💾 個股→產業對照 → data/industry_map.json（{len(industry_map)} 檔）")
+                else:
+                    print("  ⏭️ 產業 PE 聚合無資料,保留既有 industry_pe.json")
+            except Exception as e:
+                print(f"  ⚠️ 產業 PE 聚合失敗(不影響主流程):{e}")
         else:
             print("  ⏭️ TWSE 基本面回空,保留既有 fundamentals_cache.json 不覆寫")
     except Exception as e:

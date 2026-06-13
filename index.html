@@ -1018,10 +1018,23 @@
                     </div>
                     <!-- 📊 估值(本益比 PE,獨立寬版) -->
                     <div class="inline-flex items-center text-blue-300 text-xs font-black mt-2 mb-1.5 bg-blue-900/40 border-l-[3px] border-blue-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📊 估值</div>
-                    <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex justify-between items-center mb-2 border border-blue-900/40">
+                    <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex justify-between items-center mb-1.5 border border-blue-900/40">
                         <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1.5">本益比 PE <button onclick="app.showJargon('本益比PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPeTag" class="text-[10px] font-mono px-1.5 py-0.5 rounded"></span></span>
                         <span id="xrayPe" class="font-mono font-black text-2xl text-gray-600 leading-none">--</span>
                     </div>
+                    <!-- 🎯 PEG(成長型估值,< 1 = 便宜)+ 🏷️ 產業相對 PE(vs 同業中位數)-->
+                    <div class="grid grid-cols-2 gap-1.5 mb-1.5">
+                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-blue-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">PEG <button onclick="app.showJargon('PEG'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPegTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
+                            <span id="xrayPeg" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-blue-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">vs 同業 <button onclick="app.showJargon('產業相對PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayIndustryPeTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
+                            <span id="xrayIndustryPe" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
+                        </div>
+                    </div>
+                    <!-- ⚠️ 景氣循環股警語(航運/塑化/鋼鐵 等 — PE 低反而是景氣高點)-->
+                    <div id="xrayCyclicalWarn" class="hidden mb-2 p-1.5 rounded bg-amber-900/30 border border-amber-700/50 text-[10px] text-amber-200 leading-snug"></div>
                     <!-- 🎁 配息力(殖利率 + 股利發配率 + 最新每股股利) -->
                     <div class="inline-flex items-center text-amber-300 text-xs font-black mt-2 mb-1.5 bg-amber-900/40 border-l-[3px] border-amber-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">🎁 配息力</div>
                     <div class="grid grid-cols-2 gap-1.5 mb-1.5">
@@ -2050,6 +2063,8 @@ const app = {
         '法人成本估算': '這是用「區間內法人買超那幾天的收盤價,依買超張數加權平均」算出來的「估算建倉成本」,讓你看大戶大概在哪個價位進貨。⚠️ 只是粗估(法人實際成交價我們拿不到),且只統計買超日;若法人是賣超,改顯示「出脫均價」。當參考用,別當精準成本。',
         '營收YoY': '營收年增率 = 今年這個月營收 vs 去年同月,成長幾 %。台股慣例紅=成長(好)、綠=衰退(壞)。+20% 以上算強勁成長;轉負(綠字)代表生意變差要警覺。看「年增」是為了避開淡旺季干擾(例如過年月)。',
         '本益比PE': '本益比 = 股價 ÷ 每股盈餘(EPS),白話就是「幾年回本」。15 倍 = 公司賺的錢不變的話,要 15 年才把買股票的錢賺回來。越低越便宜,但太低也可能是市場不看好。顏色是「健康度」:綠=便宜(<15)、黃=合理、紅=偏貴(>40),不是漲跌色。',
+        'PEG': 'PEG = 本益比 ÷ EPS 年成長率(%)。彼得林區法則,用來避免「成長股 PE 看起來很貴但其實便宜」的陷阱。例:PE 40 嚇人,但 EPS 年成長 50% → PEG = 0.8 反而便宜!綠=便宜(<1)、黃=合理(1-2)、紅=昂貴(>2)、橘=衰退(成長率負,不適用)。⚠️ 高速成長股(>50%)PEG 可能誤判低估,要看成長持續性。',
+        '產業相對PE': '產業相對 PE = 個股 PE ÷ 該產業中位數 PE。看「跟同業比是便宜還是貴」。例:航運平均 PE 7,長榮 PE 5 → 相對 0.71(同業便宜);半導體平均 PE 22,台積電 PE 28 → 相對 1.27(同業偏貴)。綠 <0.8 比同業便宜 / 黃 0.8-1.2 中性 / 紅 >1.2 比同業貴。⚠️ 航運/塑化/鋼鐵等景氣循環股,PE 低反而是景氣高點,別誤判。',
         '殖利率': '殖利率 = 每年配的現金股利 ÷ 股價,白話就是「把錢放這檔股票,一年領幾 % 利息」。5% 以上算高息(定存才 1-2%),適合存股族。顏色是「健康度」:綠=高息(>5%)、黃=普通、灰=低息(<2%),不是漲跌色。注意高殖利率也可能是股價大跌造成的假象。',
         '毛利率趨勢': '毛利率 = (營收−成本) ÷ 營收,代表「每賣 100 元賺幾元的真本事」。趨勢上升(↑)=產品變值錢 / 成本控制好,是好事;下降(↓)=殺價競爭或成本漲,要小心。台股慣例:上升紅(好)、下降綠(壞)。',
         '股利發配率': '發配率 = 配出去的股利 ÷ 賺到的盈餘,代表「賺 100 元拿幾元出來分給股東」。顏色是「健康度」:綠=<70%(留錢繼續成長,穩健)、黃=70-100%(配很大方)、紅=>100%(賺的不夠還硬配,吃老本要警覺),不是漲跌色。',
@@ -3883,6 +3898,30 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const raw  = await res.json();
             return Array.isArray(raw) ? null : (raw.fundamentals || null);
         } catch(e) { return null; }
+    },
+
+    // 🏷️ 產業相對 PE 資料(產業中位數 PE + 個股→產業對照),24 hr client cache
+    async _loadIndustryPeData() {
+        if (this._industryPeCache && (Date.now() - this._industryPeCache.ts) < 24*3600e3) {
+            return this._industryPeCache.data;
+        }
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const t = Date.now();
+            const [peRes, mapRes] = await Promise.all([
+                fetch(new URL('data/industry_pe.json', base).href + `?t=${t}`, { signal: AbortSignal.timeout(6000) }),
+                fetch(new URL('data/industry_map.json', base).href + `?t=${t}`, { signal: AbortSignal.timeout(6000) }),
+            ]);
+            if (!peRes.ok || !mapRes.ok) return null;
+            const peJ = await peRes.json();
+            const mapJ = await mapRes.json();
+            const data = { industries: peJ.industries || {}, map: mapJ || {} };
+            this._industryPeCache = { ts: Date.now(), data };
+            return data;
+        } catch (e) {
+            console.warn('[industry PE] load fail:', e);
+            return null;
+        }
     },
 
     async fetchHistoricalData(symbol, forceRefresh = false) {
@@ -6107,6 +6146,74 @@ ${peerLine}${newsCtx}
         }
         setCell('xrayPe', pe, 'x', pe==null?null:pe<15?'text-green-400':pe>40?'text-red-400':'text-yellow-400');
         setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
+
+        // 🎯 PEG = PE / EPS 年成長率(%)。Peter Lynch 法則:< 1 便宜 / 1-2 合理 / > 2 昂貴
+        //    取近 4 季 EPS 加總(TTM)vs 前 4 季 EPS 加總(去年同期),算 YoY 成長率
+        try {
+            const pegEl = document.getElementById('xrayPeg');
+            const pegTag = document.getElementById('xrayPegTag');
+            let peg = null, pegLabel = '', pegColor = 'text-gray-600';
+            if (epsRows.length >= 8) {
+                const last4 = epsRows.slice(-4).reduce((s, r) => s + (r.value || 0), 0);
+                const prev4 = epsRows.slice(-8, -4).reduce((s, r) => s + (r.value || 0), 0);
+                if (prev4 > 0) {
+                    const epsGrowth = (last4 - prev4) / Math.abs(prev4) * 100;
+                    if (pe != null && pe > 0 && epsGrowth > 0) {
+                        peg = pe / epsGrowth;
+                        if (peg < 1) { pegLabel = '🟢 便宜'; pegColor = 'text-green-400'; }
+                        else if (peg < 2) { pegLabel = '🟡 合理'; pegColor = 'text-yellow-400'; }
+                        else { pegLabel = '🔴 昂貴'; pegColor = 'text-red-400'; }
+                    } else if (epsGrowth <= 0) {
+                        pegLabel = '⚠️ 衰退'; pegColor = 'text-amber-400';
+                    }
+                }
+            }
+            if (pegEl) {
+                pegEl.textContent = peg != null ? peg.toFixed(2) : '--';
+                pegEl.className = `font-mono font-black text-xl leading-tight ${pegColor}`;
+            }
+            if (pegTag) {
+                pegTag.textContent = pegLabel;
+                pegTag.className = `text-[9px] font-mono px-1.5 py-0.5 rounded ${pegColor}`;
+            }
+        } catch (e) { console.warn('[PEG calc]', e); }
+
+        // 🏷️ 產業相對 PE = 個股 PE / 該產業中位數 PE。< 0.8 比同業便宜 / 0.8-1.2 中性 / > 1.2 比同業貴
+        try {
+            const ipEl = document.getElementById('xrayIndustryPe');
+            const ipTag = document.getElementById('xrayIndustryPeTag');
+            const warnEl = document.getElementById('xrayCyclicalWarn');
+            const indData = await this._loadIndustryPeData();
+            let relRatio = null, relLabel = '', relColor = 'text-gray-600';
+            const industryName = indData?.map?.[sym];
+            const industryInfo = industryName ? indData?.industries?.[industryName] : null;
+            if (pe != null && pe > 0 && industryInfo?.median_pe > 0) {
+                relRatio = pe / industryInfo.median_pe;
+                if (relRatio < 0.8) { relLabel = '🟢 同業便宜'; relColor = 'text-green-400'; }
+                else if (relRatio <= 1.2) { relLabel = '🟡 中性'; relColor = 'text-yellow-400'; }
+                else { relLabel = '🔴 同業偏貴'; relColor = 'text-red-400'; }
+            }
+            if (ipEl) {
+                ipEl.textContent = relRatio != null ? relRatio.toFixed(2) + 'x' : '--';
+                ipEl.className = `font-mono font-black text-xl leading-tight ${relColor}`;
+            }
+            if (ipTag) {
+                ipTag.textContent = relLabel;
+                ipTag.className = `text-[9px] font-mono px-1.5 py-0.5 rounded ${relColor}`;
+            }
+            // ⚠️ 景氣循環股警語(航運/塑化/鋼鐵 等 — PE 低反而是景氣高點)
+            if (warnEl) {
+                if (industryInfo?.is_cyclical && pe != null && pe < 10) {
+                    warnEl.innerHTML = `⚠️ 「${industryName}」屬景氣循環股,PE 低反而可能是景氣高點(獲利見頂後 PE 會反彈)。買進前先確認產業景氣位階。`;
+                    warnEl.classList.remove('hidden');
+                } else if (industryInfo?.is_cyclical) {
+                    warnEl.innerHTML = `ℹ️ 「${industryName}」屬景氣循環產業,估值要看景氣位階,別只看 PE。`;
+                    warnEl.classList.remove('hidden');
+                } else {
+                    warnEl.classList.add('hidden');
+                }
+            }
+        } catch (e) { console.warn('[Industry PE]', e); }
         
         // 毛利率趨勢:台股慣例上升=好=紅、下降=壞=綠(先前紅綠顛倒,已修正)
         document.getElementById('xrayGrossMargin').className = `font-mono font-bold text-sm leading-tight ${gmTrend==null?'text-gray-600':gmTrend>0?'text-red-400':gmTrend<0?'text-green-400':'text-gray-400'}`;
