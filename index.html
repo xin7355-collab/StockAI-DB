@@ -56,8 +56,8 @@
             transition: background-color 0.5s ease;
         }
         .scrollable-main {
-            flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: none; 
-            padding-bottom: max(7rem, calc(5rem + env(safe-area-inset-bottom))); 
+            flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: none;
+            padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
             touch-action: pan-y pinch-zoom; position: relative;
         }
         .panel { background-color: #161b22; border: 1px solid #30363d; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
@@ -81,11 +81,10 @@
         @media (display-mode: standalone) {
             .header-fixed { padding-top: env(safe-area-inset-top, 44px); }
             .nav-fixed { padding-bottom: max(env(safe-area-inset-bottom, 20px), 20px); }
-            .scrollable-main { padding-bottom: max(8rem, calc(6rem + env(safe-area-inset-bottom, 20px))); }
+            /* 不再額外疊加 scrollable-main padding,避免和 .nav-fixed safe-area 雙層空白 */
         }
         html.ios-standalone .header-fixed { padding-top: env(safe-area-inset-top, 44px); }
         html.ios-standalone .nav-fixed { padding-bottom: max(env(safe-area-inset-bottom, 20px), 20px); }
-        html.ios-standalone .scrollable-main { padding-bottom: max(8rem, calc(6rem + env(safe-area-inset-bottom, 20px))); }
         .nav-fixed { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background-color: #0d1117; border-top: 1px solid #30363d; box-shadow: 0 -2px 10px rgba(0,0,0,0.8); padding-bottom: env(safe-area-inset-bottom); }
         .sticky-sub { position: sticky; top: 0; z-index: 40; background-color: #0d1117; }
         .sub-tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; color: #8b949e; }
@@ -1114,7 +1113,7 @@
         </div>
 
         <!-- 🌐 市場總覽 (top-level tab) -->
-        <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-28">
+        <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-4">
 
             <!-- ════════ 【區 1】🇹🇼 台股風險指數 Hero（紅黑漸層大儀表）════════ -->
             <div class="bg-gradient-to-br from-red-950/40 via-[#0a0606] to-orange-950/30 border border-red-700/40 rounded-xl p-3 shadow-[0_0_25px_rgba(220,38,38,0.15)]">
@@ -1556,7 +1555,7 @@
             <!-- 🔄 重新整理按鈕已遷至「全球宏觀風險觀測台」標題列右側 icon(避免底部塞無關按鈕) -->
         </div>
 
-        <div id="tabContentFav" class="hidden flex-col pb-28">
+        <div id="tabContentFav" class="hidden flex-col pb-4">
             <div class="sticky top-0 z-40 bg-[#0d1117] border-b border-[#30363d] shadow-sm flex items-center w-full pr-1 pt-1 pb-1">
                 <div id="favGroupTabs" class="flex items-center flex-grow overflow-x-auto scrollbar-hide py-0.5"></div>
                 <button onclick="app.toggleFavEditMode(); app.vibrate(30);" id="btnFavEdit" class="ml-1 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-xl font-bold bg-[#161b22] px-2 py-1 rounded border border-[#30363d]">✏️</button>
@@ -1587,7 +1586,7 @@
             </div>
         </div>
 
-        <div id="tabContentInv" class="hidden flex-col gap-3 p-2 pb-28">
+        <div id="tabContentInv" class="hidden flex-col gap-3 p-2 pb-4">
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm">
                     <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">K</span> 雲端庫存風控</h2>
@@ -1616,7 +1615,7 @@
             </div>
         </div>
 
-        <div id="tabContentRadar" class="hidden flex-col p-2 relative pb-28">
+        <div id="tabContentRadar" class="hidden flex-col p-2 relative pb-4">
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative">
                 <div class="sticky top-0 z-50 bg-[#0d1117] border-b border-[#30363d] p-3 shadow-md flex flex-col gap-3 rounded-t-[8px]">
                     <!-- 標題列：大標 + 雷達實戰說明書 + 即時情報 -->
@@ -1687,8 +1686,8 @@
             </div>
         </div>
 
-        <div id="tabContentEtf" class="hidden flex-col p-2 pb-28"></div>
-        <div id="tabContentHunt" class="hidden flex-col p-2 gap-3 pb-28">
+        <div id="tabContentEtf" class="hidden flex-col p-2 pb-4"></div>
+        <div id="tabContentHunt" class="hidden flex-col p-2 gap-3 pb-4">
             <!-- Active Alerts Banner -->
             <div id="huntAlertBox" class="hidden flex-col gap-2"></div>
 
@@ -5211,30 +5210,32 @@ const marginByDate = {};
 
     // 從每日陣列取近 n 日，算法人累計（張）+ 融資券餘額差值（張）。供切換器標籤與 AI 餵料共用
     _chipPeriodSums(dailyArr, n) {
+        // 🛡️ 防呆:強制轉成有限數字,避免採礦端塞字串(例如 TWSE API 失敗的「OK」狀態)直接顯示
+        const num = v => (Number.isFinite(+v) ? +v : 0);
         const arr = Array.isArray(dailyArr) ? dailyArr : [];
         const len = arr.length;
         const out = { foreign: 0, trust: 0, dealer: 0, marginDelta: 0, shortDelta: 0, hasInst: false, hasMargin: false };
         if (!len) return out;
         const slice = arr.slice(-n);
         for (const r of slice) {
-            const f = r.foreign_net ?? r.foreign_inv ?? 0;
-            const t = r.trust_net   ?? r.invest_trust ?? 0;
-            const d = r.dealer_net  ?? r.dealer_inv   ?? 0;
+            const f = num(r.foreign_net ?? r.foreign_inv);
+            const t = num(r.trust_net   ?? r.invest_trust);
+            const d = num(r.dealer_net  ?? r.dealer_inv);
             out.foreign += f; out.trust += t; out.dealer += d;
             if (Math.abs(f) > 0 || Math.abs(t) > 0 || Math.abs(d) > 0) out.hasInst = true;
         }
         // 融資券「餘額差值」：掃描找最後一筆有效餘額（跳過盤中今日 bar 的 0 值）
         let lastMarginIdx = -1;
         for (let i = len - 1; i >= 0; i--) {
-            if ((arr[i].margin_balance || 0) > 0 || (arr[i].short_balance || 0) > 0) {
+            if (num(arr[i].margin_balance) > 0 || num(arr[i].short_balance) > 0) {
                 lastMarginIdx = i; break;
             }
         }
         if (lastMarginIdx >= 0) {
             const mLast = arr[lastMarginIdx];
             const mPast = arr[Math.max(0, lastMarginIdx - n)];
-            out.marginDelta = (mLast.margin_balance || 0) - (mPast.margin_balance || 0);
-            out.shortDelta  = (mLast.short_balance  || 0) - (mPast.short_balance  || 0);
+            out.marginDelta = num(mLast.margin_balance) - num(mPast.margin_balance);
+            out.shortDelta  = num(mLast.short_balance)  - num(mPast.short_balance);
             out.hasMargin = true;
         } else if (this._chipMarginFromFinmind?.length) {
             // FinMind fallback（本地無餘額資料時使用）
@@ -5449,9 +5450,10 @@ const marginByDate = {};
                 </div></div>`;
         };
         // 二態融券:有真實數值(渲染圖) / 全 null 或全 0(2026/06 起 TWSE 不再免費發布融券資料,皆視為需付費解鎖)
+        // 🛡️ 任何非數字(例如採礦失敗留下的字串「OK」)一律視為無資料,絕不直接渲染
         const arrN = (this.rawDailyData || []).slice(-n);
         const _shortRaw = arrN.map(r => r.short_balance ?? r.short_bal ?? r.short);
-        const shortHasBalance = _shortRaw.some(v => v != null && v > 0);
+        const shortHasBalance = _shortRaw.some(v => Number.isFinite(+v) && +v > 0);
         const shortRow = shortHasBalance
             ? row('融券', s.shortDelta, 'bg-cyan-600/60', 'bg-orange-700/60')
             : `<div class="flex items-center gap-2">
@@ -9541,10 +9543,13 @@ ${_newsLine}${globalContext}
             scoreWinMap[bucket].total++;
             if (nextUp) scoreWinMap[bucket].wins++;
         }
+        // 樣本 < 5 不出百分比(小樣本噪音大,1/2=50%、2/3=67% 都是隨機,顯示出來會誤導使用者)
+        const MIN_SAMPLE = 5;
         const getWinPct = (bucket) => {
             const b = scoreWinMap[bucket];
-            return b.total > 0 ? Math.round(b.wins / b.total * 100) : null;
+            return b.total >= MIN_SAMPLE ? Math.round(b.wins / b.total * 100) : null;
         };
+        const getSampleCount = (bucket) => scoreWinMap[bucket]?.total || 0;
 
         let html = '';
         for (let i = last; i >= Math.max(0, last - 4); i--) {
@@ -9553,8 +9558,9 @@ ${_newsLine}${globalContext}
             const alpha = this.getAlphaScoreData(data, this.indicators, i, this.twiiState);
             const bucket = alpha.totalScore >= 75 ? 'high' : alpha.totalScore >= 45 ? 'mid' : 'low';
             const wp = getWinPct(bucket);
+            const sampleN = getSampleCount(bucket);
             const wpColor = wp !== null ? (wp >= 65 ? 'text-red-400' : wp >= 45 ? 'text-yellow-400' : 'text-green-400') : 'text-gray-500';
-            const wpText = wp !== null ? `${wp}%` : '--';
+            const wpText = wp !== null ? `${wp}%` : (sampleN > 0 ? `樣本少 (${sampleN})` : '無樣本');
             html += `<tr class="border-b border-[#21262d] hover:bg-[#1c2128]">
                 <td class="py-2 px-1 text-gray-300 text-xs">${data[i].date}</td>
                 <td class="py-2 px-1 text-right"><span class="font-bold text-white text-sm">${pC.toFixed(2)}</span><div class="text-[10px] mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>

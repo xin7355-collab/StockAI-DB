@@ -453,6 +453,10 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
 # ── TWSE MIS 快照補丁 (盤中防退回昨日) ──────────────────────────────────────
 def fetch_mis_closing_snapshot(sym: str) -> dict:
     """證交所 MIS 盤中/盤後快照補丁，填補歷史 API 尚未更新的真空期"""
+    tw_now = datetime.now(timezone(timedelta(hours=8)))
+    # 週末不抓 MIS 快照（台股不開盤,date 會被誤標為週六/週日,污染前端 K 線）
+    if tw_now.weekday() >= 5:
+        return {}
     url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{sym}.tw|otc_{sym}.tw"
     try:
         res = http_session.get(url, timeout=5, headers={'User-Agent': random.choice(_UA_LIST)}).json()
@@ -461,7 +465,6 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
             z = msg.get('z', '-')
             live_price = float(z) if z != '-' else float(msg.get('y', 0))
             if live_price > 0:
-                tw_now = datetime.now(timezone(timedelta(hours=8)))
                 return {
                     'date': tw_now.strftime('%Y/%m/%d'),
                     'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
@@ -789,22 +792,34 @@ def fetch_industry_map() -> dict:
         ('https://openapi.twse.com.tw/v1/opendata/t187ap03_L', 'TWSE 上市'),
         ('https://openapi.twse.com.tw/v1/opendata/t187ap03_O', 'TPEX 上櫃'),
     ]:
-        try:
-            r = http_session.get(url, headers=_rnd_hdrs(), timeout=15)
-            if r.status_code != 200:
-                print(f"  ⚠️ {label} 產業別 HTTP {r.status_code}")
-                continue
-            data = r.json()
-            if not isinstance(data, list):
-                continue
-            for row in data:
-                sym = str(row.get('公司代號') or row.get('SecuritiesCompanyCode') or '').strip()
-                ind = str(row.get('產業別') or row.get('IndustryCategory') or '').strip()
-                if sym and ind and sym.isdigit() and 4 <= len(sym) <= 6:
-                    industry_map[sym] = ind
-            print(f"  ✅ {label} 產業別:{len(industry_map)} 累計")
-        except Exception as e:
-            print(f"  ⚠️ {label} 產業別抓取失敗:{e}")
+        ok = False
+        for attempt in range(3):
+            try:
+                r = http_session.get(url, headers=_rnd_hdrs(), timeout=20)
+                if r.status_code != 200:
+                    print(f"  ⚠️ {label} 產業別 HTTP {r.status_code} (attempt {attempt+1}/3)")
+                    time.sleep(2 ** attempt)
+                    continue
+                data = r.json()
+                if not isinstance(data, list) or not data:
+                    print(f"  ⚠️ {label} 產業別回應非預期 list 或空 (type={type(data).__name__}, sample={str(data)[:120]})")
+                    time.sleep(2 ** attempt)
+                    continue
+                added = 0
+                for row in data:
+                    sym = str(row.get('公司代號') or row.get('SecuritiesCompanyCode') or '').strip()
+                    ind = str(row.get('產業別') or row.get('IndustryCategory') or '').strip()
+                    if sym and ind and sym.isdigit() and 4 <= len(sym) <= 6:
+                        industry_map[sym] = ind
+                        added += 1
+                print(f"  ✅ {label} 產業別:本次 +{added} / 累計 {len(industry_map)} (回應 {len(data)} 列,前 3:{[r.get('公司代號') or r.get('SecuritiesCompanyCode') for r in data[:3]]})")
+                ok = True
+                break
+            except Exception as e:
+                print(f"  ⚠️ {label} 產業別抓取失敗 (attempt {attempt+1}/3):{e}")
+                time.sleep(2 ** attempt)
+        if not ok:
+            print(f"  ❌ {label} 產業別 3 次重試皆失敗,跳過此源")
         time.sleep(random.uniform(1.0, 2.0))
     return industry_map
 
@@ -1456,8 +1471,9 @@ def run():
                 tw_now = datetime.now(timezone(timedelta(hours=8)))
                 current_time = tw_now.time()
                 is_pre_market = (current_time.hour == 8) or (current_time.hour == 9 and current_time.minute == 0)
+                is_weekend = tw_now.weekday() >= 5  # 5=六,6=日 — 台股不開盤,跨午夜跑時別把日期寫成週日
 
-                if not is_pre_market:
+                if not is_pre_market and not is_weekend:
                     today_slashed = tw_now.strftime('%Y/%m/%d')
                     if not new_rows or new_rows[-1]['date'] != today_slashed:
                         snap = fetch_mis_closing_snapshot(sym)
@@ -2039,22 +2055,35 @@ def fetch_broker_chips():
 
             # 🏷️ 產業相對 PE 聚合(供前端 X 光機算「比同業便宜?」)
             print("  🏭 抓產業類別 + 算每產業中位數 PE...")
+            ipe_path = Path('data', 'industry_pe.json')
+            imap_path = Path('data', 'industry_map.json')
             try:
                 industry_map = fetch_industry_map()
+                # industry_map 非空 → 永遠寫(分組 PE 失敗也保留對照表,前端可獨立用)
+                if industry_map:
+                    imap_path.write_text(
+                        json.dumps(industry_map, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                    print(f"  💾 個股→產業對照 → data/industry_map.json({len(industry_map)} 檔)")
+                else:
+                    print("  ⏭️ 產業對照表為空,保留既有 industry_map.json(若有)")
+
                 industries = aggregate_industry_pe(fund_cache, industry_map)
                 if industries:
-                    industry_payload = {
+                    ipe_path.write_text(json.dumps({
                         'updated': date.today().strftime('%Y-%m-%d'),
                         'industries': industries,
                         '_note': '中位數 PE(避免極端值偏誤);is_cyclical=true 為景氣循環產業,PE 低不等於便宜',
-                    }
-                    Path('data', 'industry_pe.json').write_text(
-                        json.dumps(industry_payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-                    # 同時寫個股 → 產業 mapping(前端 client cache,X 光機查 sym 屬於哪個產業)
-                    Path('data', 'industry_map.json').write_text(
-                        json.dumps(industry_map, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-                    print(f"  💾 產業相對 PE → data/industry_pe.json（{len(industries)} 個產業）")
-                    print(f"  💾 個股→產業對照 → data/industry_map.json（{len(industry_map)} 檔）")
+                    }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                    print(f"  💾 產業相對 PE → data/industry_pe.json({len(industries)} 個產業)")
+                elif not ipe_path.exists():
+                    # 首次失敗(檔案還不存在)→ 寫一個有 _status 的最小 JSON,讓前端能判斷顯示「採集失敗」
+                    ipe_path.write_text(json.dumps({
+                        'updated': date.today().strftime('%Y-%m-%d'),
+                        'industries': {},
+                        '_status': 'failed',
+                        '_reason': f'industry_map 空({len(industry_map)} 檔) 或 fund_cache 無 PE 對應',
+                    }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                    print(f"  ⚠️ 產業 PE 聚合無資料且首次跑,寫入 _status=failed 旗標 → data/industry_pe.json")
                 else:
                     print("  ⏭️ 產業 PE 聚合無資料,保留既有 industry_pe.json")
             except Exception as e:
@@ -2914,8 +2943,54 @@ def prune_artifact(watchlist: list) -> None:
         print("🧹 SKIP_GLOBAL：已移除全域檔（chips / radar / 快取），僅由 batch 0 提供")
 
 
+def cleanup_weekend_rows():
+    """一次性掃 data/*.json,移除 date 為週六/週日的紀錄(MIS 快照跨午夜跑時被誤標的污染)。
+    Idempotent — 每次跑都安全,沒污染時就不動。"""
+    data_dir = Path(DATA_DIR)
+    if not data_dir.exists():
+        return
+    cleaned_files = 0
+    cleaned_rows = 0
+    for f in data_dir.glob('*.json'):
+        if f.name in ('radar.json', 'top_picks.json', 'broker_names.json',
+                      'industry_pe.json', 'industry_map.json', 'fundamentals_cache.json',
+                      'attention_status.json', 'sector_heat.json', 'bubble_warning.json',
+                      'signal_history.json', 'strategy_backtest.json', 'paper_trades.json',
+                      'combo_backtest.json', 'walk_forward.json', 'radar_news.json',
+                      'macro_risk.json'):
+            continue
+        try:
+            arr = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(arr, list):
+                continue
+            kept = []
+            removed = 0
+            for r in arr:
+                d_str = r.get('date', '') if isinstance(r, dict) else ''
+                if not d_str:
+                    kept.append(r)
+                    continue
+                try:
+                    dt = datetime.strptime(d_str.replace('-', '/'), '%Y/%m/%d').date()
+                    if dt.weekday() >= 5:
+                        removed += 1
+                        continue
+                except Exception:
+                    pass
+                kept.append(r)
+            if removed > 0:
+                f.write_text(json.dumps(kept, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                cleaned_files += 1
+                cleaned_rows += removed
+        except Exception:
+            pass
+    if cleaned_rows > 0:
+        print(f"  🧹 清掉週末污染紀錄:{cleaned_rows} 筆橫跨 {cleaned_files} 個股檔")
+
+
 if __name__ == '__main__':
     init_db()
+    cleanup_weekend_rows()   # 🛡️ 進場先掃週末污染(MIS 快照跨午夜誤標)
     print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
     inst_cache, margin_cache, watchlist = run()             # 採礦：OHLCV + 法人 → SQLite
     export_json(inst_cache, margin_cache)                   # 匯出 JSON：疊上最新法人快取
