@@ -7822,14 +7822,14 @@ ${_newsLine}${globalContext}
         }
     },
 
-    // ⭐ 今日送分題:優先用 chief_ai_cache🟢標,空了就 fallback radar_matrix(雙保險,不再卡 0 byte)
+    // ⭐ 今日送分題:優先用 chief_ai_cache🔴可以買標的,空了就 fallback radar_matrix(雙保險,不再卡 0 byte)
     async _loadChiefCacheForSendScore() {
         const listEl = document.getElementById('sendScoreList');
         const cntEl = document.getElementById('sendScoreCount');
         if (!listEl) return;
         const ghBase = window.location.href.split('?')[0].split('#')[0];
 
-        // 來源 1:chief_ai_cache 夜跑🟢標的(有就優先)
+        // 來源 1:chief_ai_cache 夜跑🔴可以買標的(有就優先)
         if (!this._chiefBatchCache) {
             try {
                 const r = await fetch(new URL('data/chief_ai_cache.json', ghBase).href + `?t=${Date.now()}`,
@@ -7838,10 +7838,11 @@ ${_newsLine}${globalContext}
             } catch (_) { this._chiefBatchCache = null; }
         }
         const stocks = this._chiefBatchCache?.stocks || {};
-        const greens = Object.entries(stocks).filter(([, v]) => (v?.traffic_light || '').includes('🟢'));
-        if (greens.length > 0) {
-            if (cntEl) cntEl.textContent = `🤖AI ${greens.length} 檔 · ${this._chiefBatchCache?.updated || '夜跑'}`;
-            listEl.innerHTML = greens.slice(0, 10).map(([sym, v]) => {
+        // 🔴=可以買(本專案反向紅綠燈:紅漲綠跌)→ 送分題要撈🔴,不是🟢(🟢=不能買/快逃)
+        const reds = Object.entries(stocks).filter(([, v]) => (v?.traffic_light || '').includes('🔴'));
+        if (reds.length > 0) {
+            if (cntEl) cntEl.textContent = `🤖AI ${reds.length} 檔可買 · 夜跑 ${this._chiefBatchCache?.updated || ''}`;
+            listEl.innerHTML = reds.slice(0, 10).map(([sym, v]) => {
                 const summary = String(v.summary || '').replace(/</g, '&lt;').slice(0, 30);
                 const name = this.getStockName(sym).replace(/</g, '&lt;');
                 return this._sendScoreRow(sym, name, summary);
@@ -7898,6 +7899,12 @@ ${_newsLine}${globalContext}
         </div>`;
     },
 
+    // MDD 顯示:單一訊號回測常出現 100%(屬計算上限 artifact,不可靠)→ 顯示「—」不嚇人
+    _fmtMdd(v) {
+        if (v == null || isNaN(v)) return '—';
+        return v >= 99.9 ? '—' : `${v}%`;
+    },
+
     // 📊 系統準度:讀 signal_history.json 顯示送分題歷史勝率(讓使用者敢信任訊號)
     async _loadSignalAccuracy() {
         const box = document.getElementById('signalAccuracyBox');
@@ -7943,11 +7950,13 @@ ${_newsLine}${globalContext}
                 </div>`;
             }).join('');
         }
+        // 🎯 擴充版回測 + 股池分群:資訊量大,改塞進可收合的「進階回測明細」(初學者預設收合,不被一堆數字淹沒)
+        let advHtml = '';
         // 🎯 擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor(扣手續費後淨報酬)
         const ext = this._signalHistCache?.by_signal_extended;
         const cost = this._signalHistCache?.round_trip_cost_pct;
         if (ext && Object.keys(ext).length) {
-            html += `<div class="col-span-full mt-2 pt-2 border-t border-gray-700/60">
+            advHtml += `<div class="col-span-full">
                 <div class="text-[10px] text-purple-300 font-black mb-1.5 flex items-center gap-1">
                     🎯 15 訊號擴充回測<span class="text-gray-500 font-normal">(以 10 日淨報酬勝率排序 / 已扣手續費+證交稅+滑價 ${cost}%)</span>
                 </div>
@@ -7956,7 +7965,7 @@ ${_newsLine}${globalContext}
                 .map(([name, byW]) => ({ name, net: byW['10d']?.net }))
                 .filter(x => x.net && x.net.samples >= 30)
                 .sort((a, b) => (b.net.win_rate || 0) - (a.net.win_rate || 0));
-            html += rankable.map(({ name, net }) => {
+            advHtml += rankable.map(({ name, net }) => {
                 const wrColor = net.win_rate >= 60 ? 'text-green-300' : net.win_rate >= 50 ? 'text-yellow-300' : 'text-red-300';
                 const arColor = net.avg_return > 0 ? 'text-red-300' : 'text-green-300';
                 const shColor = net.sharpe >= 0.3 ? 'text-green-300' : net.sharpe >= 0 ? 'text-yellow-300' : 'text-red-300';
@@ -7964,7 +7973,7 @@ ${_newsLine}${globalContext}
                     <div class="font-bold text-purple-200 text-[11px] truncate">${name}</div>
                     <div class="text-gray-500 text-[10px]">10日淨勝率 <span class="${wrColor} font-black">${net.win_rate}%</span></div>
                     <div class="text-gray-500 text-[10px]">平均 <span class="${arColor} font-bold">${net.avg_return > 0 ? '+' : ''}${net.avg_return}%</span></div>
-                    <div class="text-gray-500 text-[10px]">Sharpe <span class="${shColor} font-bold">${net.sharpe?.toFixed(2)}</span> · MDD ${net.mdd_pct}%</div>
+                    <div class="text-gray-500 text-[10px]">Sharpe <span class="${shColor} font-bold">${net.sharpe?.toFixed(2)}</span> · MDD ${this._fmtMdd(net.mdd_pct)}</div>
                     <div class="text-gray-600 text-[9px]">${net.samples} 樣本 · PF ${net.profit_factor ?? '∞'}</div>
                 </div>`;
             }).join('');
@@ -7973,7 +7982,7 @@ ${_newsLine}${globalContext}
         const byTier = this._signalHistCache?.by_signal_by_tier;
         const tierStocks = this._signalHistCache?.tier_stocks || {};
         if (byTier && Object.keys(byTier).length) {
-            html += `<div class="col-span-full mt-2 pt-2 border-t border-gray-700/60">
+            advHtml += `<div class="col-span-full mt-2 pt-2 border-t border-gray-700/60">
                 <div class="text-[10px] text-amber-300 font-black mb-1.5 flex items-center gap-1">
                     🏷️ 股池分群勝率<span class="text-gray-500 font-normal">(看訊號適合哪個池子,大型 ${tierStocks.large||0} / 中型 ${tierStocks.mid||0} / 小型 ${tierStocks.small||0})</span>
                 </div>
@@ -7987,8 +7996,8 @@ ${_newsLine}${globalContext}
                     .sort((a, b) => (b.net.win_rate || 0) - (a.net.win_rate || 0))
                     .slice(0, 3);
                 if (!tierRank.length) continue;
-                html += `<div class="col-span-full mt-1 mb-0.5"><div class="text-[10px] text-amber-200/80 font-bold">${tierLabels[tier]}</div></div>`;
-                html += tierRank.map(({ name, net }) => {
+                advHtml += `<div class="col-span-full mt-1 mb-0.5"><div class="text-[10px] text-amber-200/80 font-bold">${tierLabels[tier]}</div></div>`;
+                advHtml += tierRank.map(({ name, net }) => {
                     const wrColor = net.win_rate >= 60 ? 'text-green-300' : net.win_rate >= 50 ? 'text-yellow-300' : 'text-red-300';
                     return `<div class="bg-amber-950/20 rounded p-1.5 border border-amber-900/40">
                         <div class="font-bold text-amber-200 text-[11px] truncate">${name}</div>
@@ -7997,6 +8006,13 @@ ${_newsLine}${globalContext}
                     </div>`;
                 }).join('');
             }
+        }
+        // 📊 把上面兩大段(15 訊號 + 股池分群)塞進可收合 <details>,預設收合 → 版面清爽,想深究再點開
+        if (advHtml) {
+            html += `<details class="col-span-full mt-2 pt-2 border-t border-gray-700/60">
+                <summary class="cursor-pointer list-none text-[11px] text-gray-300 font-bold py-1 flex items-center gap-1">▸ 📊 進階回測明細<span class="text-gray-500 font-normal">(15 訊號 + 股池分群,點開看)</span></summary>
+                <div class="grid grid-cols-2 gap-1.5 mt-1.5">${advHtml}</div>
+            </details>`;
         }
         body.innerHTML = html;
         box.classList.remove('hidden');
@@ -8106,6 +8122,16 @@ ${_newsLine}${globalContext}
             <div class="text-xs text-amber-300 font-black mb-2 flex items-center gap-1">
                 🏆 整套系統 vs ${b.benchmark || '0050'} <span class="text-gray-500 font-normal text-[10px]">(獵鷹≥75 進場 / 跌破20MA·+20%·-8%·30日 出場 / 扣手續費 ${data.cost_pct}%)</span>
             </div>
+            ${(() => {
+                const bench = b.benchmark || '0050';
+                const beat = (alpha != null && alpha > 0);
+                const cls = beat ? 'bg-red-900/30 border-red-700/50 text-red-100' : 'bg-green-900/30 border-green-700/50 text-green-100';
+                const benchCum = `${b.cumulative_return >= 0 ? '+' : ''}${b.cumulative_return}%`;
+                const verdict = beat
+                    ? `✅ 這套訊號目前「贏過」${bench}:Alpha +${alpha}%(策略累計 ${s.cumulative_return}% vs ${bench} ${benchCum})。`
+                    : `⚠️ 這套訊號目前「跑輸」${bench}:Alpha ${alpha}%(策略累計 ${s.cumulative_return}% vs ${bench} ${benchCum})。當「參考雷達」就好,別照單全收當買賣訊號 —— 這段期間不如單純定期定額買 ${bench}。`;
+                return `<div class="${cls} border rounded-lg px-2.5 py-2 mb-2 text-[11px] font-bold leading-snug">${verdict}</div>`;
+            })()}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-2">
                 <div class="bg-amber-950/30 rounded p-1.5 border border-amber-900/40">
                     <div class="text-[9px] text-gray-500">策略累計報酬</div>
