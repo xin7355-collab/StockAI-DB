@@ -14,6 +14,7 @@ ETF 順風車採礦機 — 自動追蹤「績效前段班」主動式 ETF + 每�
 import json
 import re
 import random
+import time
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -242,6 +243,7 @@ ETFINFO_API = "https://www.etfinfo.tw/api/etf/{s}"
 def fetch_etf_detail(sym):
     """回傳 (name, holdings[{sym,name,weight}])。用 etfinfo /api/etf/{code};失敗回 (None, [])。"""
     try:
+        time.sleep(0.4)  # 對 etfinfo 禮貌節流(10+ 檔序列抓取,避免被限流)
         r = session.get(ETFINFO_API.format(s=sym), headers=_hdrs(), timeout=15)
         if r.status_code != 200 or not r.text:
             print(f"  · etfinfo {sym} status={r.status_code}")
