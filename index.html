@@ -8106,9 +8106,41 @@ ${_newsLine}${globalContext}
         }
         const bySig = this._signalHistCache?.by_signal;
         if (!bySig || Object.keys(bySig).length === 0) { box.classList.add('hidden'); return; }
+
+        // 🏆 賺錢冠軍:符合「① 10日淨勝率 ≥ 60%  ② 平均報酬 ≥ +1%  ③ Sharpe ≥ 0.3  ④ 樣本 ≥ 30」的訊號
+        // 排序 win_rate × avg_return(期望值代理),最強的列最上方,讓使用者一眼看到「真的會賺」的
+        let html = '';
+        const extForChamps = this._signalHistCache?.by_signal_extended || {};
+        const champions = Object.entries(extForChamps)
+            .map(([name, byW]) => ({ name, net: byW['10d']?.net }))
+            .filter(x => x.net && x.net.win_rate >= 60 && x.net.avg_return >= 1
+                         && x.net.sharpe >= 0.3 && x.net.samples >= 30)
+            .sort((a, b) => (b.net.win_rate * b.net.avg_return) - (a.net.win_rate * a.net.avg_return));
+        if (champions.length > 0) {
+            html += `<div class="col-span-full mb-2 p-2 rounded-lg bg-gradient-to-br from-amber-900/30 via-yellow-900/20 to-amber-950/30 border border-amber-600/50">
+                <div class="text-[11px] text-amber-300 font-black mb-1.5 flex items-center gap-1">
+                    🏆 賺錢冠軍 <span class="text-gray-400 font-normal text-[9px]">(過去 2 年實證:勝率 ≥60% · 平均 ≥+1% · Sharpe ≥0.3 · 樣本 ≥30)</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                    ${champions.slice(0, 6).map(({ name, net }) => `
+                        <div class="bg-amber-950/40 rounded p-1.5 border border-amber-700/50">
+                            <div class="font-black text-amber-200 text-[12px] truncate">${name}</div>
+                            <div class="text-[10px] text-gray-400">勝率 <span class="text-green-300 font-black">${net.win_rate}%</span> · 平均 <span class="text-red-300 font-bold">+${net.avg_return}%</span></div>
+                            <div class="text-[9px] text-gray-500">Sharpe ${net.sharpe?.toFixed(2)} · ${net.samples} 樣本</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        } else if (extForChamps && Object.keys(extForChamps).length) {
+            html += `<div class="col-span-full mb-2 p-2 rounded-lg bg-gray-900/40 border border-gray-700/60">
+                <div class="text-[10px] text-amber-200/80">⚠️ 過去 2 年無訊號達 4 項標準(勝率 ≥60% / 平均 ≥+1% / Sharpe ≥0.3 / 樣本 ≥30)</div>
+                <div class="text-[9px] text-gray-500 mt-0.5">先看下方各訊號詳情調整策略,別過度自信。</div>
+            </div>`;
+        }
+
         const order = ['🟢送分題', '🟢趨勢', '🟡偏多'];
         const keys = Object.keys(bySig).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-        let html = keys.map(sig => {
+        html += keys.map(sig => {
             const s = bySig[sig];
             const wr = s.win_rate_10d;
             const ar = s.avg_return_10d;
@@ -8205,8 +8237,81 @@ ${_newsLine}${globalContext}
 
         // 🏆 Day 2 路徑 B:整套系統策略組合回測 vs 0050(雙線圖 + 摘要)
         this._loadStrategyBacktest();
+        // 🎯 Day 4 戰術組合策略(從 signal_history.json 的 combos 欄位讀)
+        this._loadComboBacktest();
+        // 🔬 Walk-forward 樣本外驗證(讀 data/walk_forward.json)
+        this._loadWalkForward();
         // 📝 Day 3 路徑 D:Paper Trade 紙上跟單實戰績效
         this._loadPaperTrade();
+    },
+
+    // 🎯 戰術組合策略 Top 10:讀 signal_history.json 內的 combos 欄位(同檔,不必另開 fetch)
+    _loadComboBacktest() {
+        const box = document.getElementById('signalAccuracyBox');
+        if (!box) return;
+        const combos = this._signalHistCache?.combos;
+        if (!Array.isArray(combos) || combos.length === 0) return;
+        const existed = document.getElementById('comboBacktestSection');
+        if (existed) existed.remove();
+        const top10 = combos.slice(0, 10);
+        const rowsHtml = top10.map(c => {
+            const sigs = (c.signals || []).join(' + ');
+            const wrColor = c.win_rate_10d >= 65 ? 'text-green-300' : c.win_rate_10d >= 55 ? 'text-yellow-300' : 'text-red-300';
+            return `<div class="bg-fuchsia-950/20 rounded p-1.5 border border-fuchsia-900/40">
+                <div class="font-bold text-fuchsia-200 text-[11px]">${sigs}</div>
+                <div class="text-[10px] text-gray-400">勝率 <span class="${wrColor} font-black">${c.win_rate_10d}%</span> · 平均 <span class="${c.avg_return > 0 ? 'text-red-300' : 'text-green-300'} font-bold">${c.avg_return > 0 ? '+' : ''}${c.avg_return}%</span></div>
+                <div class="text-[9px] text-gray-500">Sharpe ${c.sharpe?.toFixed?.(2) ?? c.sharpe} · ${c.samples} 樣本</div>
+            </div>`;
+        }).join('');
+        const sectionHtml = `
+        <div id="comboBacktestSection" class="col-span-full mt-3 pt-2 border-t-2 border-fuchsia-700/60">
+            <div class="text-xs text-fuchsia-300 font-black mb-1.5 flex items-center gap-1">
+                🎯 戰術組合策略 Top 10 <span class="text-gray-500 font-normal text-[10px]">(同日 ≥ 2 訊號觸發,樣本 ≥ 15)</span>
+            </div>
+            <div class="text-[9px] text-gray-500 mb-1.5">兩個訊號同日觸發 → 信號更強,勝率通常高於單訊號。</div>
+            <div class="grid grid-cols-2 gap-1.5">${rowsHtml}</div>
+        </div>`;
+        box.querySelector('#signalAccuracyBody').insertAdjacentHTML('beforeend', sectionHtml);
+    },
+
+    // 🔬 Walk-forward 樣本外驗證:讀 data/walk_forward.json,顯示每訊號訓練 vs 驗證勝率對比
+    async _loadWalkForward() {
+        const box = document.getElementById('signalAccuracyBox');
+        if (!box) return;
+        if (!this._walkForwardCache) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/walk_forward.json', ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(6000) });
+                this._walkForwardCache = r.ok ? await r.json() : null;
+            } catch (_) { this._walkForwardCache = null; }
+        }
+        const wf = this._walkForwardCache;
+        if (!wf || !wf.signals) return;
+        const existed = document.getElementById('walkForwardSection');
+        if (existed) existed.remove();
+        const rows = Object.entries(wf.signals)
+            .filter(([, r]) => r.train_wr != null && r.test_wr != null)
+            .sort((a, b) => (b[1].train_samples || 0) - (a[1].train_samples || 0));
+        if (!rows.length) return;
+        const rowsHtml = rows.map(([name, r]) => {
+            const gapColor = r.color || '#a3a3a3';
+            const lowConf = r.low_confidence ? '<span class="text-[8px] text-amber-400 ml-1">⚠️ 樣本少</span>' : '';
+            return `<div class="bg-teal-950/20 rounded p-1.5 border border-teal-900/40">
+                <div class="font-bold text-teal-200 text-[11px] truncate">${name}${lowConf}</div>
+                <div class="text-[10px] text-gray-400">訓 <span class="text-blue-300 font-bold">${r.train_wr}%</span> / 測 <span class="text-cyan-300 font-bold">${r.test_wr}%</span> / gap <span style="color:${gapColor}" class="font-bold">${r.gap > 0 ? '+' : ''}${r.gap}pp</span></div>
+                <div class="text-[9px]" style="color:${gapColor}">${r.verdict || ''}</div>
+            </div>`;
+        }).join('');
+        const sectionHtml = `
+        <div id="walkForwardSection" class="col-span-full mt-3 pt-2 border-t-2 border-teal-700/60">
+            <div class="text-xs text-teal-300 font-black mb-1.5 flex items-center gap-1">
+                🔬 樣本外驗證(防 overfit) <span class="text-gray-500 font-normal text-[10px]">(訓練 ${Math.round(wf.train_ratio*100)}% / 驗證 ${Math.round(wf.test_ratio*100)}%)</span>
+            </div>
+            <div class="text-[9px] text-gray-500 mb-1.5">|gap| ≤ 5pp 🟢 穩健 / 5-10pp 🟡 中性 / &gt; 10pp 🔴 疑似 overfit(別信)。樣本 &lt; 30 統計顯著性低。</div>
+            <div class="grid grid-cols-2 gap-1.5">${rowsHtml}</div>
+        </div>`;
+        box.querySelector('#signalAccuracyBody').insertAdjacentHTML('beforeend', sectionHtml);
     },
 
     // 📝 Paper Trade 實戰績效:讀 data/paper_trades.json 顯示累計勝率(實戰 vs 歷史對比)

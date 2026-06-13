@@ -16,6 +16,7 @@ on:
       - 'radar_miner.py'
       - 'chief_ai_batch.py'
       - 'backtest.py'
+      - 'walk_forward.py'
       - 'paper_trade.py'
       - 'etf_miner.py'
       - '.github/workflows/daily_miner.yml'
@@ -189,6 +190,9 @@ jobs:
 
       - name: 📊 訊號勝率回測（回放歷史 → data/signal_history.json + strategy_backtest.json）
         run: python backtest.py || echo "⚠️ backtest.py 失敗，繼續部署"
+
+      - name: 🔬 Walk-forward 樣本外驗證(防 overfit → data/walk_forward.json)
+        run: python walk_forward.py || echo "⚠️ walk_forward.py 失敗，繼續部署"
 
       - name: 📝 Paper Trade 紙上跟單(每日記錄今日訊號 → data/paper_trades.json)
         run: python paper_trade.py || echo "⚠️ paper_trade.py 失敗，繼續部署"

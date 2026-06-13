@@ -432,6 +432,47 @@ def backtest_one_extended(rows, sym, attention_set):
     return out
 
 
+def backtest_one_combinations(rows, sym, attention_set):
+    """🎯 Day 4 戰術組合策略:當日 ≥ 2 個訊號同時觸發時的勝率
+    回傳 list[(combo_tuple, list[{'window','gross','net'}])]
+    """
+    out = []
+    n = len(rows)
+    if n < MIN_HISTORY: return out
+    avg60_lots = _avg_volume_lots(rows, n - 1, period=60)
+    if avg60_lots is not None and avg60_lots < 200: return out
+    if sym in attention_set: return out
+
+    max_fwd = max(FWD_WINDOWS)
+    end = n - 1 - max_fwd
+    start = max(MIN_HISTORY - 1, end - REPLAY_DAYS)
+    closes = [r.get('close', 0) for r in rows]
+    signal_names = list(SIGNALS.keys())
+
+    for idx in range(start, end + 1):
+        base = closes[idx]
+        if base <= 0: continue
+        # 掃當日所有訊號,記下哪些有觸發
+        fired = []
+        for name in signal_names:
+            try:
+                if SIGNALS[name](rows, idx): fired.append(name)
+            except Exception:
+                continue
+        if len(fired) < 2: continue
+        # 對「兩兩組合」記樣本(避免過度切片,N=2 已足夠)
+        for i in range(len(fired)):
+            for j in range(i + 1, len(fired)):
+                combo = tuple(sorted([fired[i], fired[j]]))
+                for w in FWD_WINDOWS:
+                    fc = closes[idx + w]
+                    if fc <= 0: continue
+                    gross = (fc - base) / base * 100
+                    net = apply_real_cost(gross)
+                    out.append((combo, {'window': w, 'gross': gross, 'net': net}))
+    return out
+
+
 def backtest_legacy(rows):
     """原版 backtest_one(送分題/偏多)— 保留向下相容"""
     out = []
@@ -803,6 +844,8 @@ def main():
                        for name in SIGNALS}
                 for tier in ('large', 'mid', 'small')}
     tier_stocks = {'large': 0, 'mid': 0, 'small': 0}
+    # 🎯 Day 4 戰術組合策略:combo_tuple -> window -> {'gross':[], 'net':[]}
+    combo_agg = {}
     # 原版(送分題/偏多)
     legacy_agg = {}
     def _legacy_slot(sig):
@@ -844,6 +887,12 @@ def main():
                     # 🏷️ 同步丟進 tier_agg
                     tier_agg[tier][name][s['window']]['gross'].append(s['gross'])
                     tier_agg[tier][name][s['window']]['net'].append(s['net'])
+
+            # 🎯 Day 4 戰術組合:同日 ≥ 2 訊號觸發
+            for combo, sample in backtest_one_combinations(rows, sym, attention_set):
+                slot = combo_agg.setdefault(combo, {w: {'gross': [], 'net': []} for w in FWD_WINDOWS})
+                slot[sample['window']]['gross'].append(sample['gross'])
+                slot[sample['window']]['net'].append(sample['net'])
 
             # 原版(送分題/偏多)— 保留向下相容
             for sig, r5, r10 in backtest_legacy(rows):
@@ -917,6 +966,25 @@ def main():
                 tier_out[name] = per_window
         by_signal_by_tier[tier] = tier_out
 
+    # 🎯 Day 4 戰術組合輸出(只保留 10 日樣本 ≥ 15 的組合,避免切片過細的雜訊)
+    combo_results = []
+    for combo, by_w in combo_agg.items():
+        net10 = by_w.get(10, {}).get('net', [])
+        if len(net10) < 15: continue
+        m = calc_advanced_metrics(net10)
+        if not m: continue
+        combo_results.append({
+            'signals': list(combo),
+            'samples': m['samples'],
+            'win_rate_10d': m['win_rate'],
+            'avg_return': m['avg_return'],
+            'sharpe': m['sharpe'],
+            'mdd_pct': m['mdd_pct'],
+        })
+    # 用「勝率 × 平均報酬」(期望值代理)排序,取前 30 名
+    combo_results.sort(key=lambda x: x['win_rate_10d'] * x['avg_return'], reverse=True)
+    combo_top = combo_results[:30]
+
     payload = {
         'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
         'replay_days': REPLAY_DAYS,
@@ -930,7 +998,8 @@ def main():
         'by_signal_by_tier': by_signal_by_tier,   # 🏷️ F:股池分群(大/中/小)各訊號勝率
         'tier_stocks': tier_stocks,   # 各 tier 掃到幾檔
         'falcon_strategy': falcon_strategy,
-        '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
+        'combos': combo_top,   # 🎯 Day 4:戰術組合策略 Top 30(樣本 ≥ 15 才列入)
+        '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群 + 戰術組合。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
     }
 
     # 🖨️ 列印 Top 5 訊號(以 10 日淨報酬勝率排序)
@@ -963,6 +1032,12 @@ def main():
             print(f"   {label} Top3:")
             for name, wr, avg, n in top3:
                 print(f"     {name:18s} 10日勝率 {wr:5.1f}% / 平均 {avg:+.2f}% / 樣本 {n}")
+
+    # 🎯 Day 4 戰術組合 Top 5
+    print(f"\n🎯 戰術組合策略(同日 ≥ 2 訊號觸發,樣本 ≥ 15):共 {len(combo_results)} 組")
+    for c in combo_top[:5]:
+        sigs = ' + '.join(c['signals'])
+        print(f"   {sigs}: 10日勝率 {c['win_rate_10d']}% / 平均 {c['avg_return']:+.2f}% / 樣本 {c['samples']}")
 
     OUTPUT_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f"\n✅ 回測完成 — 掃 {scanned} 檔(排除殭屍量 {skipped_zombie} / 處置股 {skipped_attention}) → {OUTPUT_FILE}")
