@@ -8083,7 +8083,7 @@ ${_newsLine}${globalContext}
         box.querySelector('#signalAccuracyBody').insertAdjacentHTML('beforeend', sectionHtml);
     },
 
-    // 🏆 整套系統策略組合回測:獵鷹≥75 進場 + 4 種出場 vs 0050 buy-and-hold
+    // 🏆 整套系統策略組合回測:獵鷹≥85 進場 + 4 種出場 vs 大盤(加權指數)buy-and-hold
     async _loadStrategyBacktest() {
         const box = document.getElementById('signalAccuracyBox');
         if (!box) return;
@@ -8120,16 +8120,27 @@ ${_newsLine}${globalContext}
         const sectionHtml = `
         <div id="strategyBacktestSection" class="col-span-full mt-3 pt-2 border-t-2 border-amber-700/60">
             <div class="text-xs text-amber-300 font-black mb-2 flex items-center gap-1">
-                🏆 整套系統 vs ${b.benchmark || '0050'} <span class="text-gray-500 font-normal text-[10px]">(獵鷹≥75 進場 / 跌破20MA·+20%·-8%·30日 出場 / 扣手續費 ${data.cost_pct}%)</span>
+                🏆 整套系統 vs ${b.benchmark || '大盤'} <span class="text-gray-500 font-normal text-[10px]">(${data.entry_rule || '獵鷹進場'} / ${data.exit_rules || ''} / 扣手續費 ${data.cost_pct}%)</span>
             </div>
             ${(() => {
-                const bench = b.benchmark || '0050';
-                const beat = (alpha != null && alpha > 0);
-                const cls = beat ? 'bg-red-900/30 border-red-700/50 text-red-100' : 'bg-green-900/30 border-green-700/50 text-green-100';
+                const bench = b.benchmark || '大盤';
+                const tm = data.trade_matched;
                 const benchCum = `${b.cumulative_return >= 0 ? '+' : ''}${b.cumulative_return}%`;
-                const verdict = beat
-                    ? `✅ 這套訊號目前「贏過」${bench}:Alpha +${alpha}%(策略累計 ${s.cumulative_return}% vs ${bench} ${benchCum})。`
-                    : `⚠️ 這套訊號目前「跑輸」${bench}:Alpha ${alpha}%(策略累計 ${s.cumulative_return}% vs ${bench} ${benchCum})。當「參考雷達」就好,別照單全收當買賣訊號 —— 這段期間不如單純定期定額買 ${bench}。`;
+                const sCum = `${s.cumulative_return >= 0 ? '+' : ''}${s.cumulative_return}%`;
+                const beat = (alpha != null && alpha > 0);
+                // 逐筆對標:多數交易有沒有真的贏大盤(誠實關鍵,避免「靠少數大贏家」假象)
+                const consistent = tm && tm.beat_rate != null && tm.beat_rate >= 50;
+                let cls, verdict;
+                if (beat && consistent) {
+                    cls = 'bg-red-900/30 border-red-700/50 text-red-100';
+                    verdict = `✅ 這套訊號「贏過」${bench}:Alpha +${alpha}%(策略 ${sCum} vs ${bench} ${benchCum}),且逐筆對標有 ${tm.beat_rate}% 的交易真的贏大盤。`;
+                } else if (beat) {
+                    cls = 'bg-yellow-900/30 border-yellow-700/50 text-yellow-100';
+                    verdict = `🟡 年化「略勝」${bench}(Alpha +${alpha}%、策略 ${sCum} vs ${bench} ${benchCum}),但靠少數大贏家撐 —— 逐筆對標只有 ${tm ? tm.beat_rate + '%' : '不到一半'} 的交易真的贏大盤,其餘跑輸。邊際很薄,別當穩贏。`;
+                } else {
+                    cls = 'bg-green-900/30 border-green-700/50 text-green-100';
+                    verdict = `⚠️ 這套訊號目前「跑輸」${bench}:Alpha ${alpha == null ? '--' : alpha + '%'}(策略 ${sCum} vs ${bench} ${benchCum})。當「參考雷達」就好,別照單全收 —— 這段期間不如單純定期定額買大盤(0050)。`;
+                }
                 return `<div class="${cls} border rounded-lg px-2.5 py-2 mb-2 text-[11px] font-bold leading-snug">${verdict}</div>`;
             })()}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-2">

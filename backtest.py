@@ -304,20 +304,8 @@ def calc_advanced_metrics(returns):
     total_win = sum(wins)
     total_loss = abs(sum(losses))
     pf = (total_win / total_loss) if total_loss > 0 else float('inf')
-    # 最大回撤 MDD(把報酬序列當資金曲線)
-    cumulative = []
-    cum = 1.0
-    for r in returns:
-        cum *= (1 + r / 100)
-        cumulative.append(cum)
-    peak = cumulative[0]
-    mdd = 0
-    for v in cumulative:
-        if v > peak:
-            peak = v
-        dd = (peak - v) / peak * 100
-        if dd > mdd:
-            mdd = dd
+    # ⚠️ 不在此算 MDD:returns 是「跨股票跨日期的獨立樣本」,連乘成單一資金曲線無意義
+    #    (樣本一多必趨近 0 → 假性 100% MDD)。真實 MDD 只在有時間序資金曲線處(策略)用 _series_mdd 算。
     return {
         'samples': n,
         'win_rate': round(len(wins) / n * 100, 1),
@@ -327,7 +315,7 @@ def calc_advanced_metrics(returns):
         'sharpe': round(sharpe, 2),
         'sortino': round(sortino, 2),
         'profit_factor': round(pf, 2) if pf != float('inf') else None,
-        'mdd_pct': round(mdd, 2),
+        'mdd_pct': None,   # 獨立樣本無有效 MDD(見上);前端 _fmtMdd(null)→「—」
         'best': round(max(returns), 2),
         'worst': round(min(returns), 2),
     }
@@ -497,14 +485,14 @@ STRATEGY_MIN_FALCON      = 85     # 🔧 進場獵鷹分門檻(原 75,調 85 過
 
 def simulate_strategy(rows, sym, attention_set):
     """模擬「跟著系統訊號交易」單檔策略回測。
-    🔧 第二代規則(收緊進場 + 拉緊防守線):
+    🔧 規則(收緊進場 + 20MA 防守線):
     進場條件(全部 AND):
       1. 獵鷹分 ≥ 85(原 75)
       2. 多頭排列(MA5 > MA20 > MA60)
       3. 站上 5MA(c > MA5)— 新增
       4. 5MA 上揚(MA5 > MA5_prev)— 新增
     出場條件(任一):
-      1. 收盤跌破 5MA(原 20MA,拉緊防守)
+      1. 收盤跌破 20MA(防守線 — 實證 5MA 太緊易被洗刷,放寬回 20MA)
       2. 漲幅 ≥ +20%(停利)
       3. 跌幅 ≤ -8%(硬停損)
       4. 持有 30 個交易日(時間止損)
@@ -544,13 +532,13 @@ def simulate_strategy(rows, sym, attention_set):
             entry_idx = idx + 1
             in_position = True
         else:
-            # 持倉中:檢查出場條件(🔧 防守線從 20MA → 5MA,拉緊)
+            # 持倉中:檢查出場條件(🔧 防守線改回 20MA — 實證 5MA 太緊會被洗刷,放寬大幅改善)
             hold_days = idx - entry_idx
             ret_pct = (c - entry_price) / entry_price * 100
-            ma5 = _ma(closes, idx, 5)
+            ma20 = _ma(closes, idx, 20)
             exit_reason = None
-            if ma5 is not None and c < ma5:
-                exit_reason = 'stop_loss_ma5'
+            if ma20 is not None and c < ma20:
+                exit_reason = 'stop_loss_ma20'
             elif ret_pct >= STRATEGY_TAKE_PROFIT_PCT:
                 exit_reason = 'take_profit_20pct'
             elif ret_pct <= STRATEGY_HARD_STOP_PCT:
@@ -596,52 +584,44 @@ def simulate_strategy(rows, sym, attention_set):
     return trades
 
 
-def benchmark_0050():
-    """讀 data/0050.json 算 buy-and-hold 累計報酬,作為策略 vs 大盤的對標。
-    若無 0050 則 fallback 用 ^TWII.json(加權指數)。
-    回傳 dict {first_date, last_date, total_days, cumulative_return, annualized_return, mdd, equity_curve}
+def _load_bench_series():
+    """載入大盤基準價格序列。優先 ^TWII(加權指數,~2 年最長),fallback 0050。
+    回 (label, ser[(date,close)] 依日期升冪, ) 或 None。
+    ⚠️ 用 ^TWII 因 0050.json 只有 ~5 個月,期間遠短於策略 → 比較會錯配。
     """
-    for fname in ('0050.json', '^TWII.json'):
+    for fname, label in (('^TWII.json', '加權指數'), ('0050.json', '0050')):
         f = DATA_DIR / fname
-        if not f.exists(): continue
+        if not f.exists():
+            continue
         try:
             rows = json.loads(f.read_text(encoding='utf-8'))
-            if not isinstance(rows, list) or len(rows) < 30: continue
-            closes = [(r.get('date', ''), r.get('close', 0)) for r in rows if r.get('close', 0) > 0]
-            if len(closes) < 30: continue
-            first_date, first_close = closes[0]
-            last_date, last_close = closes[-1]
-            cum_ret = (last_close - first_close) / first_close * 100
-            total_days = len(closes)
-            # 年化(252 交易日 = 1 年)
-            ann_ret = ((last_close / first_close) ** (252 / total_days) - 1) * 100
-            # MDD
-            peak = closes[0][1]
-            mdd = 0
-            for _, c in closes:
-                if c > peak: peak = c
-                dd = (peak - c) / peak * 100
-                if dd > mdd: mdd = dd
-            # equity curve(每 5 個交易日採 1 點省空間)
-            equity = []
-            for i in range(0, len(closes), max(1, len(closes) // 100)):
-                d, c = closes[i]
-                equity.append({'date': d, 'equity': round((c / first_close - 1) * 100, 2)})
-            if closes[-1] not in [(e['date'], None) for e in equity]:
-                equity.append({'date': last_date, 'equity': round(cum_ret, 2)})
-            return {
-                'benchmark': fname.replace('.json', ''),
-                'first_date': first_date,
-                'last_date': last_date,
-                'total_days': total_days,
-                'cumulative_return': round(cum_ret, 2),
-                'annualized_return': round(ann_ret, 2),
-                'mdd': round(mdd, 2),
-                'equity_curve': equity,
-            }
+            if not isinstance(rows, list):
+                continue
+            ser = [(r.get('date', ''), r.get('close', 0)) for r in rows
+                   if r.get('close', 0) > 0 and r.get('date')]
+            ser.sort(key=lambda x: x[0].replace('/', '-'))
+            if len(ser) < 30:
+                continue
+            return label, ser
         except Exception:
             continue
     return None
+
+
+def _series_mdd(values):
+    """時間序資金/價格曲線的最大回撤 %(peak 從序列首值起算)。"""
+    if not values:
+        return 0.0
+    peak = values[0]
+    mdd = 0.0
+    for v in values:
+        if v > peak:
+            peak = v
+        if peak > 0:
+            dd = (peak - v) / peak * 100
+            if dd > mdd:
+                mdd = dd
+    return round(mdd, 2)
 
 
 def backtest_full_strategy():
@@ -665,80 +645,142 @@ def backtest_full_strategy():
     if not all_trades:
         return {'strategy': None, 'benchmark': None, 'alpha': None, 'note': '無交易訊號觸發,可能歷史不足或全市場無 ≥85 獵鷹分'}
 
-    # 出場原因統計
+    import bisect
+    from datetime import datetime as _dt
+
+    # ── 對齊比較區間:策略交易期 ∩ 基準涵蓋期 → 公平比較(免期間錯配) ──
+    bench = _load_bench_series()           # (label, ser[(date,close)] 升冪) 或 None
+    strat_first = min(t['entry_date'] for t in all_trades).replace('/', '-')
+    strat_last  = max(t['exit_date']  for t in all_trades).replace('/', '-')
+    if bench:
+        bench_label, ser = bench
+        ser_dates  = [d.replace('/', '-') for d, _ in ser]
+        ser_closes = [c for _, c in ser]
+        w0 = max(strat_first, ser_dates[0])
+        w1 = min(strat_last,  ser_dates[-1])
+    else:
+        bench_label, ser_dates, ser_closes = None, [], []
+        w0, w1 = strat_first, strat_last
+
+    # 只保留落在對齊區間內的交易(entry/exit 都在窗內)— 策略指標也用同窗,才能跟基準對齊
+    if bench:
+        trades = [t for t in all_trades
+                  if t['entry_date'].replace('/', '-') >= w0 and t['exit_date'].replace('/', '-') <= w1]
+        if not trades:
+            trades = list(all_trades)      # 退化保護
+    else:
+        trades = list(all_trades)
+
+    def _annualize(cum_mult, d0n, d1n):
+        """日曆天數年化(與基準一致)。<0.5 年不年化(避免短窗外插出 +163% 這種假數字)。"""
+        try:
+            days = max(1, (_dt.strptime(d1n, '%Y-%m-%d') - _dt.strptime(d0n, '%Y-%m-%d')).days)
+            if days < 182:
+                return None
+            return round((cum_mult ** (365.25 / days) - 1) * 100, 2) if cum_mult > 0 else -99.0
+        except Exception:
+            return None
+
+    def _bench_close_on(date_norm):
+        if not ser_dates:
+            return None
+        i = bisect.bisect_right(ser_dates, date_norm) - 1   # 該日或最近的前一個交易日
+        return ser_closes[i] if i >= 0 else None
+
+    # 出場原因(窗內)
     exit_reasons = {}
-    for t in all_trades:
+    for t in trades:
         exit_reasons[t['exit_reason']] = exit_reasons.get(t['exit_reason'], 0) + 1
 
-    # 策略指標(用淨報酬)
-    net_returns = [t['net_return'] for t in all_trades]
+    net_returns = [t['net_return'] for t in trades]
     metrics = calc_advanced_metrics(net_returns)
-    # 平均持有期
-    avg_hold = sum(t['holding_days'] for t in all_trades) / len(all_trades)
+    avg_hold = sum(t['holding_days'] for t in trades) / len(trades)
 
-    # 🔧 第二代累計權益曲線:「按交易日聚合」(模擬真實組合 — 同日所有平倉的 trade 取平均淨報酬,日度連乘)
-    # 原版用「全部 trade 連續連乘」造成 12000 筆中只要一筆 -90% 就歸零的問題
-    # 新版:同一天平倉的 N 筆 trade → 該日報酬 = mean(N 筆) → 日度連乘 → 模擬「等權重 N 個位置同時持有」
+    # 策略資金曲線:按出場日聚合(等權重 N 個同時持有),日度連乘 + 真實 MDD(時間序)
     trades_by_exit_date = {}
-    for t in all_trades:
-        d = t['exit_date']
-        trades_by_exit_date.setdefault(d, []).append(t['net_return'])
-    sorted_exit_dates = sorted(trades_by_exit_date.keys())
-    cum = 1.0
+    for t in trades:
+        trades_by_exit_date.setdefault(t['exit_date'], []).append(t['net_return'])
+    sorted_exit_dates = sorted(trades_by_exit_date.keys(), key=lambda d: d.replace('/', '-'))
+    cum = 1.0; peak = 1.0; mdd = 0.0
     equity_curve = []
     sample_step = max(1, len(sorted_exit_dates) // 100)
     for i, d in enumerate(sorted_exit_dates):
-        daily_returns = trades_by_exit_date[d]
-        daily_avg = sum(daily_returns) / len(daily_returns)
-        cum *= (1 + daily_avg / 100)
-        if cum < 0.01:   # 避免歸零(現實中組合不會被某 1 天打趴)
+        dr = trades_by_exit_date[d]
+        cum *= (1 + (sum(dr) / len(dr)) / 100)
+        if cum < 0.01:
             cum = 0.01
+        if cum > peak: peak = cum
+        dd = (peak - cum) / peak * 100
+        if dd > mdd: mdd = dd
         if i % sample_step == 0 or i == len(sorted_exit_dates) - 1:
             equity_curve.append({'date': d, 'equity': round((cum - 1) * 100, 2)})
-
     cumulative_return = round((cum - 1) * 100, 2)
-    # 年化:用第一筆 entry 到最後一筆 exit 的天數估
-    try:
-        from datetime import datetime as _dt
-        first_entry = min(t['entry_date'] for t in all_trades).replace('/', '-')
-        last_exit = max(t['exit_date'] for t in all_trades).replace('/', '-')
-        d0 = _dt.strptime(first_entry, '%Y-%m-%d')
-        d1 = _dt.strptime(last_exit, '%Y-%m-%d')
-        calendar_days = max(1, (d1 - d0).days)
-        years = calendar_days / 365.25
-        annualized_return = ((cum) ** (1 / max(years, 0.1)) - 1) * 100 if cum > 0 else -99
-    except Exception:
-        annualized_return = None
+    strat_mdd = round(mdd, 2)
+    annualized_return = _annualize(cum, w0, w1)
 
-    bench = benchmark_0050()
-    alpha = None
-    if bench and annualized_return is not None and bench.get('annualized_return') is not None:
-        alpha = round(annualized_return - bench['annualized_return'], 2)
+    # ── 基準:同窗 buy & hold + 逐筆對標(誠實核心) ──
+    benchmark = None; alpha = None; trade_matched = None
+    if ser_dates:
+        lo = bisect.bisect_left(ser_dates, w0)
+        hi = bisect.bisect_right(ser_dates, w1) - 1
+        if 0 <= lo <= hi < len(ser_closes):
+            b_first, b_last = ser_closes[lo], ser_closes[hi]
+            b_cum = round((b_last / b_first - 1) * 100, 2)
+            b_ann = _annualize(b_last / b_first, w0, w1)
+            b_mdd = _series_mdd(ser_closes[lo:hi + 1])
+            seg = list(zip(ser_dates[lo:hi + 1], ser_closes[lo:hi + 1]))
+            bstep = max(1, len(seg) // 100)
+            bench_equity = [{'date': seg[j][0].replace('-', '/'),
+                             'equity': round((seg[j][1] / b_first - 1) * 100, 2)}
+                            for j in range(0, len(seg), bstep)]
+            benchmark = {'benchmark': bench_label,
+                         'first_date': w0.replace('-', '/'), 'last_date': w1.replace('-', '/'),
+                         'cumulative_return': b_cum, 'annualized_return': b_ann,
+                         'mdd': b_mdd, 'equity_curve': bench_equity}
+            if annualized_return is not None and b_ann is not None:
+                alpha = round(annualized_return - b_ann, 2)
+        # 逐筆對標:每筆交易報酬 vs 大盤「同 entry→exit 期間」報酬 → 隔離「大多頭裡空手」的偏誤,純看選股+擇時
+        exc = []; beat = 0
+        for t in trades:
+            be = _bench_close_on(t['entry_date'].replace('/', '-'))
+            bx = _bench_close_on(t['exit_date'].replace('/', '-'))
+            if be and bx and be > 0:
+                e = t['net_return'] - (bx / be - 1) * 100
+                exc.append(e)
+                if e > 0: beat += 1
+        if exc:
+            exc.sort()
+            trade_matched = {'samples': len(exc),
+                             'avg_excess': round(sum(exc) / len(exc), 2),
+                             'median_excess': round(exc[len(exc) // 2], 2),
+                             'beat_rate': round(beat / len(exc) * 100, 1)}
 
-    sorted_trades = sorted(all_trades, key=lambda x: x['exit_date'])
+    sorted_trades = sorted(trades, key=lambda x: x['exit_date'].replace('/', '-'))
     return {
         'strategy': {
-            'total_trades': len(all_trades),
+            'total_trades': len(trades),
             'win_rate': metrics['win_rate'],
             'avg_return': metrics['avg_return'],
             'median_return': metrics['median_return'],
             'sharpe': metrics['sharpe'],
             'sortino': metrics['sortino'],
             'profit_factor': metrics['profit_factor'],
-            'mdd_pct': metrics['mdd_pct'],
+            'mdd_pct': strat_mdd,
             'best': metrics['best'],
             'worst': metrics['worst'],
             'avg_holding_days': round(avg_hold, 1),
             'cumulative_return': cumulative_return,
-            'annualized_return': round(annualized_return, 2) if annualized_return is not None else None,
+            'annualized_return': annualized_return,
             'equity_curve': equity_curve,
         },
-        'benchmark': bench,
+        'benchmark': benchmark,
         'alpha': alpha,
+        'trade_matched': trade_matched,
+        'window': {'start': w0.replace('-', '/'), 'end': w1.replace('-', '/')},
         'exit_reasons': exit_reasons,
         'sample_trades': sorted_trades[:20],
         'entry_rule': f'獵鷹分≥{STRATEGY_MIN_FALCON} + 多頭排列 + 站上5MA + 5MA上揚',
-        'exit_rules': f'跌破5MA / +{STRATEGY_TAKE_PROFIT_PCT}% 停利 / {STRATEGY_HARD_STOP_PCT}% 硬停損 / {STRATEGY_MAX_HOLD_DAYS}日時間止損',
+        'exit_rules': f'跌破20MA / +{STRATEGY_TAKE_PROFIT_PCT}% 停利 / {STRATEGY_HARD_STOP_PCT}% 硬停損 / {STRATEGY_MAX_HOLD_DAYS}日時間止損',
         'cost_pct': round(ROUND_TRIP_COST_PCT, 3),
     }
 
@@ -940,6 +982,11 @@ def main():
         print(f"   策略:{s.get('total_trades', 0)} 筆 / 勝率 {s.get('win_rate', '?')}% / 累計 {s.get('cumulative_return', '?')}% / 年化 {s.get('annualized_return', '?')}% / MDD {s.get('mdd_pct', '?')}%")
         print(f"   {b.get('benchmark', '?')} buy-and-hold:累計 {b.get('cumulative_return', '?')}% / 年化 {b.get('annualized_return', '?')}% / MDD {b.get('mdd', '?')}%")
         print(f"   🎯 Alpha(策略年化 - {b.get('benchmark', '?')} 年化):{strategy_result.get('alpha', '?')}%")
+        w = strategy_result.get('window') or {}
+        tm = strategy_result.get('trade_matched') or {}
+        print(f"   📅 對齊區間:{w.get('start','?')} → {w.get('end','?')}")
+        if tm:
+            print(f"   🎯 逐筆對標大盤(同持有期):平均超額 {tm.get('avg_excess')}% / 中位 {tm.get('median_excess')}% / 勝過大盤 {tm.get('beat_rate')}% ({tm.get('samples')} 筆)")
         print(f"   ✅ 寫入 → {STRATEGY_FILE}")
     except Exception as e:
         print(f"   ⚠️ 策略回測失敗(不影響其他):{e}")
