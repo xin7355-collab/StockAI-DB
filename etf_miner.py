@@ -135,33 +135,127 @@ def _rank_value(m):
     return v if v is not None else (m.get("ret_incep") if m.get("ret_incep") is not None else -9999)
 
 
-# ── 持股抓取(Tier 2，best-effort、容錯；上雲後依 log 迭代解析器) ──────────────
+# ── 持股抓取(Tier 2)：泛用解析器(JSON / HTML 表格皆可) + 多來源容錯 ──────────
+# 設計成「格式無關」：不論 etfinfo / 投信 JSON / HTML 表格，皆能抽出 {sym,name,weight}。
+# 確切端點上雲探針確認後填入 HOLDINGS_SOURCES，解析器本身已本機單元測試。
+_CODE_KEYS = ("code", "stockcode", "stock_id", "stockno", "stockId", "symbol",
+              "證券代號", "股票代號", "代號", "成分股代號", "個股代號")
+_NAME_KEYS = ("name", "stockname", "stock_name", "stockName", "證券名稱",
+              "股票名稱", "名稱", "成分股名稱", "個股名稱")
+_WEIGHT_KEYS = ("weight", "weights", "ratio", "percent", "percentage", "pct",
+                "權重", "比例", "投資比例", "持股權重", "比重", "佔淨值比例")
+
+
+def _to_float(v):
+    try:
+        return float(str(v).replace("%", "").replace(",", "").strip())
+    except Exception:
+        return None
+
+
+def _pick(d, keys):
+    low = {str(k).lower(): k for k in d.keys()}
+    for k in keys:
+        if k in d:
+            return d[k]
+        if k.lower() in low:
+            return d[low[k.lower()]]
+    return None
+
+
+def _normalize_holdings(items):
+    """list[dict] → [{sym,name,weight}]，抽代號/名稱/權重，去重(同代號留權重大者)。"""
+    out = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        code = _pick(it, _CODE_KEYS)
+        if code is None:
+            continue
+        m = re.search(r"\d{4,6}[A-Z]?", str(code))
+        if not m:
+            continue
+        out.append({"sym": m.group(0),
+                    "name": (str(_pick(it, _NAME_KEYS)).strip() if _pick(it, _NAME_KEYS) else ""),
+                    "weight": _to_float(_pick(it, _WEIGHT_KEYS))})
+    best = {}
+    for h in out:
+        if h["sym"] not in best or (h["weight"] or 0) > (best[h["sym"]]["weight"] or 0):
+            best[h["sym"]] = h
+    return list(best.values())
+
+
+def _looks_like_holdings(lst):
+    return (isinstance(lst, list) and len(lst) >= 3 and isinstance(lst[0], dict)
+            and _pick(lst[0], _CODE_KEYS) is not None and _pick(lst[0], _WEIGHT_KEYS) is not None)
+
+
+def _deep_find_holdings(obj, depth=0):
+    """遞迴在任意 JSON 中找出「看起來像持股清單」的 list。"""
+    if depth > 6:
+        return None
+    if isinstance(obj, list):
+        if _looks_like_holdings(obj):
+            return obj
+        for x in obj:
+            r = _deep_find_holdings(x, depth + 1)
+            if r:
+                return r
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            r = _deep_find_holdings(v, depth + 1)
+            if r:
+                return r
+    return None
+
+
+def _holdings_from_json(text):
+    lst = _deep_find_holdings(json.loads(text))
+    return _normalize_holdings(lst) if lst else []
+
+
+_ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
+_CELL_RE = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _holdings_from_html(html):
+    """從 HTML 表格列抽出 持股(代號 + 中文名 + 含% 的權重)。無 bs4 依賴。"""
+    rows = []
+    for rm in _ROW_RE.findall(html):
+        cells = [_TAG_RE.sub("", c).strip() for c in _CELL_RE.findall(rm)]
+        if len(cells) < 2:
+            continue
+        code = next((c for c in cells if re.fullmatch(r"\d{4,6}[A-Z]?", c)), None)
+        if not code:
+            continue
+        weight = next((_to_float(c) for c in cells if "%" in c and re.search(r"\d", c)), None)
+        chin = [c for c in cells if re.search(r"[一-鿿]", c)]
+        rows.append({"code": code, "name": (max(chin, key=len) if chin else ""), "weight": weight})
+    return _normalize_holdings(rows)
+
+
+# 持股來源(label, url_template{s}, kind)。url 上雲探針確認後填入；目前為候選。
+HOLDINGS_SOURCES = [
+    # ("etfinfo-json", "https://www.etfinfo.tw/api/etf/{s}/holding", "json"),
+]
+
+
 def fetch_holdings(sym):
-    """回傳 [{'sym','name','weight'}...]，依市值/權重排序；任何失敗回 []。"""
-    for src in (_holdings_twse, _holdings_issuer):
+    """回傳 [{'sym','name','weight'}...]，依權重排序；任何失敗回 []（不中斷整批）。"""
+    for label, tmpl, kind in HOLDINGS_SOURCES:
         try:
-            h = src(sym)
+            r = session.get(tmpl.format(s=sym), headers=_hdrs(), timeout=15)
+            if r.status_code != 200 or not r.text:
+                print(f"  · holdings {sym} [{label}] status={r.status_code}")
+                continue
+            h = _holdings_from_json(r.text) if kind == "json" else _holdings_from_html(r.text)
             if h:
                 h.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
+                print(f"  ✓ holdings {sym} [{label}] {len(h)} 檔")
                 return h
         except Exception as e:
-            print(f"  ⚠️ holdings {sym} via {src.__name__}: {e}")
-    return []
-
-
-def _holdings_twse(sym):
-    """best-effort TWSE/集保 每日 PCF。佔位實作，上雲後用真實回應修正欄位對應。"""
-    return []
-
-
-# 投信代碼前綴 → PCF 來源(上雲後逐家補正)
-_ISSUER_PCF = {
-    # 'capitalfund': 'https://www.capitalfund.com.tw/.../portfolio?fund=...',
-}
-
-
-def _holdings_issuer(sym):
-    """best-effort 逐家投信 PCF。佔位實作，上雲後依各家真實 JSON/HTML 補解析。"""
+            print(f"  ⚠️ holdings {sym} [{label}]: {type(e).__name__}: {e}")
     return []
 
 
