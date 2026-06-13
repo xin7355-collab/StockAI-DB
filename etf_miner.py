@@ -235,28 +235,28 @@ def _holdings_from_html(html):
     return _normalize_holdings(rows)
 
 
-# 持股來源(label, url_template{s}, kind)。url 上雲探針確認後填入；目前為候選。
-HOLDINGS_SOURCES = [
-    # ("etfinfo-json", "https://www.etfinfo.tw/api/etf/{s}/holding", "json"),
-]
+# 持股+名稱來源:etfinfo.tw 官方 API(每日同步,回 info.name 與成分股 code/name/weight)
+ETFINFO_API = "https://www.etfinfo.tw/api/etf/{s}"
 
 
-def fetch_holdings(sym):
-    """回傳 [{'sym','name','weight'}...]，依權重排序；任何失敗回 []（不中斷整批）。"""
-    for label, tmpl, kind in HOLDINGS_SOURCES:
-        try:
-            r = session.get(tmpl.format(s=sym), headers=_hdrs(), timeout=15)
-            if r.status_code != 200 or not r.text:
-                print(f"  · holdings {sym} [{label}] status={r.status_code}")
-                continue
-            h = _holdings_from_json(r.text) if kind == "json" else _holdings_from_html(r.text)
-            if h:
-                h.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
-                print(f"  ✓ holdings {sym} [{label}] {len(h)} 檔")
-                return h
-        except Exception as e:
-            print(f"  ⚠️ holdings {sym} [{label}]: {type(e).__name__}: {e}")
-    return []
+def fetch_etf_detail(sym):
+    """回傳 (name, holdings[{sym,name,weight}])。用 etfinfo /api/etf/{code};失敗回 (None, [])。"""
+    try:
+        r = session.get(ETFINFO_API.format(s=sym), headers=_hdrs(), timeout=15)
+        if r.status_code != 200 or not r.text:
+            print(f"  · etfinfo {sym} status={r.status_code}")
+            return None, []
+        d = r.json()
+        name = ((d.get("info") or {}).get("name")) if isinstance(d, dict) else None
+        lst = _deep_find_holdings(d)
+        holds = _normalize_holdings(lst) if lst else []
+        holds.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
+        if holds:
+            print(f"  ✓ etfinfo {sym}: name={name} holdings={len(holds)}")
+        return name, holds
+    except Exception as e:
+        print(f"  ⚠️ etfinfo {sym}: {type(e).__name__}: {e}")
+        return None, []
 
 
 # ── 換股 diff ──────────────────────────────────────────────────────────────
@@ -309,7 +309,7 @@ def main():
     etfs, by_stock, hot = [], {}, {}
     got_holdings = 0
     for s, m in top:
-        curr_h = fetch_holdings(s)
+        api_name, curr_h = fetch_etf_detail(s)
         prev_h = prev_hold.get(s, [])
         if not curr_h:
             # 抓不到 → 沿用上一版持股，不誤判換股
@@ -325,7 +325,7 @@ def main():
 
         etfs.append({
             "symbol": s,
-            "name": etf_name(s),
+            "name": api_name or etf_name(s),
             "perf": m,
             "holdings": curr_h[:HOLD_TOP],
             "holdings_count": len(curr_h),
