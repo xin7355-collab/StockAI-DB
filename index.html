@@ -1670,6 +1670,7 @@
             </div>
         </div>
 
+        <div id="tabContentEtf" class="hidden flex-col p-2 pb-28"></div>
         <div id="tabContentHunt" class="hidden flex-col p-2 gap-3 pb-28">
             <!-- Active Alerts Banner -->
             <div id="huntAlertBox" class="hidden flex-col gap-2"></div>
@@ -1753,6 +1754,7 @@
             <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">💼</span><span class="text-[10px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-2xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[10px] mt-0.5 font-bold">雷達</span></button>
             <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-2xl drop-shadow grayscale-[80%]">⚔️</span><span class="text-[10px] mt-0.5 font-bold">獵殺</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
+            <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-2xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[10px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
         </nav>
     </div>
 
@@ -2153,6 +2155,7 @@ const app = {
         this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
         this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
+        this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
         document.querySelector('.scrollable-main').addEventListener('scroll', () => {
@@ -2706,13 +2709,128 @@ ${list}
 
     forceStopLoading() { document.getElementById('loadingOverlay').style.display = 'none'; },
 
+    // ══ 🏦 ETF 順風車:績效前段班主動ETF + 每日換股偵測 + 跟單標記 ══
+    _etfCache: null,
+    async _loadEtfTracking(force = false) {
+        if (this._etfCache && !force) return this._etfCache;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/etf_tracking.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+            this._etfCache = r.ok ? await r.json() : null;
+        } catch (_) { this._etfCache = null; }
+        return this._etfCache;
+    },
+    async _initEtfAlert() {
+        // 開 App 背景拉一次,今日有 ETF 換股 → nav 紅點提醒(失敗不阻塞)
+        try {
+            const d = await this._loadEtfTracking();
+            const changed = d && Array.isArray(d.etfs) && d.etfs.some(e => e.changed_today);
+            document.getElementById('navBtnEtfDot')?.classList.toggle('hidden', !changed);
+        } catch (_) {}
+    },
+    _userHoldSet() {
+        // 使用者自選 + 庫存代碼集合(供跟單標記)
+        const s = new Set();
+        try { Object.values(this.favGroups || {}).forEach(arr => (arr || []).forEach(x => s.add(String(x)))); } catch (_) {}
+        try { (this.inventory || []).forEach(it => s.add(String(it.symbol))); } catch (_) {}
+        return s;
+    },
+    async renderEtfTab() {
+        const box = document.getElementById('tabContentEtf');
+        if (!box) return;
+        const d = await this._loadEtfTracking(true);
+        document.getElementById('navBtnEtfDot')?.classList.add('hidden'); // 看過清紅點
+        if (!d || !Array.isArray(d.etfs) || !d.etfs.length) {
+            box.innerHTML = `<div class="p-6 text-center text-gray-500 text-sm">🏦 ETF 順風車資料準備中<br><span class="text-xs">首次雲端採礦後自動啟用(每日盤後更新)</span></div>`;
+            return;
+        }
+        const pct = v => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v}%`);
+        const pcls = v => (v == null ? 'text-gray-500' : v >= 0 ? 'text-red-400' : 'text-green-400');
+        const userSet = this._userHoldSet();
+        const mark = sym => userSet.has(String(sym)) ? `<span class="text-amber-400 text-[9px] font-bold ml-0.5">⭐持有</span>` : '';
+
+        const rotated = d.etfs.filter(e => e.changed_today);
+        const bannerHtml = rotated.length ? `
+            <div class="bg-amber-900/30 border border-amber-600/50 rounded-lg px-3 py-2 text-[12px] text-amber-100 font-bold leading-snug">
+                🔔 今日偵測到 ${rotated.length} 檔 ETF 換股:${rotated.map(e => e.name || e.symbol).join('、')}
+            </div>` : '';
+
+        const hot = (d.cross_ref && d.cross_ref.hot_adds) || [];
+        const hotHtml = hot.length ? `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2">
+                <div class="text-[11px] text-cyan-400 font-bold mb-1">🔥 今日多檔ETF同買(人氣股)</div>
+                <div class="flex flex-wrap gap-1.5">
+                    ${hot.map(h => `<span class="text-[11px] bg-cyan-900/30 border border-cyan-700/40 rounded px-2 py-0.5 cursor-pointer" onclick="app.analyze('${h.sym}'); app.switchAppTab('diag');">${h.sym}${mark(h.sym)} <span class="text-cyan-300 font-bold">${h.count}檔</span></span>`).join('')}
+                </div>
+            </div>` : '';
+
+        const benchHtml = (d.benchmarks || []).filter(b => b.perf).map(b =>
+            `<div class="flex-1 bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center">
+                <div class="text-[10px] text-gray-400 truncate">${b.name}</div>
+                <div class="font-mono font-bold text-sm ${pcls(b.perf.ret_incep)}">${pct(b.perf.ret_incep)}</div>
+            </div>`).join('');
+
+        const cardHtml = d.etfs.map((e, i) => {
+            const m = e.perf || {};
+            const shortHist = (m.bars || 0) < 120;
+            const headRet = m.ret_incep;
+            const holds = e.holdings || [];
+            const ch = e.changes || {};
+            const holdHtml = holds.length ? `
+                <div class="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                    ${holds.slice(0, 10).map((h, j) => `<div class="flex justify-between text-[10px]"><span class="text-gray-300 truncate cursor-pointer" onclick="app.analyze('${h.sym}'); app.switchAppTab('diag');">${j + 1}. ${h.sym} ${(h.name || '').slice(0, 4)}${mark(h.sym)}</span><span class="text-yellow-300 font-mono ml-1">${h.weight != null ? h.weight + '%' : ''}</span></div>`).join('')}
+                </div>` : `<div class="mt-1 text-[10px] text-gray-600">持股明細抓取調校中(每日PCF)…</div>`;
+            const changeHtml = e.changed_today ? `
+                <div class="mt-1.5 border-t border-[#30363d] pt-1 text-[10px] space-y-0.5">
+                    ${ch.added && ch.added.length ? `<div class="text-red-400">🆕 新買進:${ch.added.map(x => x.sym + mark(x.sym)).join('、')}</div>` : ''}
+                    ${ch.removed && ch.removed.length ? `<div class="text-green-400">🗑️ 賣出清空:${ch.removed.map(x => x.sym).join('、')}</div>` : ''}
+                    ${ch.weight_up && ch.weight_up.length ? `<div class="text-red-300/80">⬆️ 加碼:${ch.weight_up.map(x => x.sym + '(+' + x.dw + ')').join('、')}</div>` : ''}
+                    ${ch.weight_down && ch.weight_down.length ? `<div class="text-green-300/80">⬇️ 減碼:${ch.weight_down.map(x => x.sym + '(' + x.dw + ')').join('、')}</div>` : ''}
+                </div>` : '';
+            return `
+                <div class="bg-[#161b22] border ${e.changed_today ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg p-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-gray-500 font-mono text-xs w-4 flex-shrink-0">${i + 1}</span>
+                            <div class="min-w-0">
+                                <div class="font-bold text-gray-100 text-sm truncate">${e.name || e.symbol}${e.changed_today ? ' <span class="text-[9px] text-amber-400">●換股</span>' : ''}</div>
+                                <div class="text-[10px] text-gray-500">${e.symbol} · ${shortHist ? '上市以來' : '近120日'}</div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <div class="font-mono font-black text-base ${pcls(headRet)}">${pct(headRet)}</div>
+                            <div class="text-[9px] text-gray-500">近20日 <span class="${pcls(m.ret_20d)}">${pct(m.ret_20d)}</span></div>
+                        </div>
+                    </div>
+                    ${holdHtml}
+                    ${changeHtml}
+                </div>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div class="flex flex-col gap-2.5">
+                <div class="px-1">
+                    <h3 class="text-base font-black text-amber-300">🏦 ETF 順風車</h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">自動追蹤<b class="text-gray-300">績效前段班主動式ETF</b>,搭專業經理人順風車;偵測每日換股、標記你持有的股票。</p>
+                </div>
+                ${bannerHtml}
+                ${hotHtml}
+                ${benchHtml ? `<div class="flex gap-1.5 items-center"><div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>${benchHtml}</div>` : ''}
+                <div class="flex flex-col gap-2">${cardHtml}</div>
+                <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
+                    更新:${d.updated || '—'}。${d.note || ''}<br>
+                    ⚠️ 主動ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
+                </div>
+            </div>`;
+    },
+
     switchAppTab(tabId, isGoBack = false) {
         if(tabId !== 'diag' && !document.getElementById('settingsModal').classList.contains('hidden')) {
             this.saveSettings(); document.getElementById('settingsModal').classList.add('hidden');
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         
-        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt'].forEach(tab => {
+        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             document.getElementById(`tabContent${tab}`).style.display = isMatch ? 'flex' : 'none';
             document.getElementById(`navBtn${tab}`).classList.toggle('active', isMatch);
@@ -2739,6 +2857,7 @@ ${list}
         if (tabId === 'inv') { this.renderInventory(); }
         if (tabId === 'radar') this.loadRadarMatrix();
         if (tabId === 'hunt') this.renderHuntTab();
+        if (tabId === 'etf') this.renderEtfTab();
     },
 
     switchSubTab(tab) {
