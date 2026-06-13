@@ -6695,6 +6695,7 @@ ${_newsLine}${globalContext}
         if (ma20 !== null && ma20_prev !== null && pC < ma20 && ma20 < ma20_prev) return { icon: '❄️', name: '冬', style: 'text-blue-300 bg-blue-900/30 border-blue-800 cursor-pointer' };
         else if ((isShootingStar || isHighVolDump) && ma20 !== null && pC > ma20 * 1.1) return { icon: '🍁', name: '秋', style: 'text-orange-400 bg-orange-900/30 border-orange-800 cursor-pointer' };
         else if (ma5 !== null && ma10 !== null && ma20 !== null && ma5 > ma10 && ma10 > ma20 && upperBB !== null && pC >= upperBB * 0.95) return { icon: '☀️', name: '夏', style: 'text-red-400 bg-red-900/30 border-red-800 shadow-[0_0_8px_rgba(248,113,113,0.5)] cursor-pointer' };
+        else if (pC1 && ma20 !== null && pC >= ma20 && (pC - pC1) / pC1 >= 0.05) return { icon: '☀️', name: '夏', style: 'text-red-400 bg-red-900/30 border-red-800 shadow-[0_0_8px_rgba(248,113,113,0.5)] cursor-pointer' };  // 🆕 當日強漲/漲停且站月線 → 噴發(夏),不歸築底(春)
         else if (ma20 !== null && pC >= ma20) return { icon: '🌸', name: '春', style: 'text-pink-400 bg-pink-900/30 border-pink-800 cursor-pointer' };
         return { icon: '🔄', name: '整', style: 'text-gray-400 bg-gray-800 border-gray-600 cursor-pointer' };
     },
@@ -6763,6 +6764,21 @@ ${_newsLine}${globalContext}
         if (isModerateRisk) return { ...base, level: '🟠', tag: '橘燈', label: '減碼觀望',
             action: '剛跌破月線、但無進一步破壞訊號。建議減碼至 1/3 倉、以 5MA 設停損、暫不加碼，等月線重新站回再評估。',
             ledClass: 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]' };
+        // 🆕 漲停/強漲當日:突破「今天已發生」,別再喊「回測再進」。依身分給單一白話結論(也直接餵頂部指揮部那行字)
+        const todayChg = ctx?.todayChg || 0;
+        const held = !!ctx?.held;
+        if (todayChg >= 0.095 && aboveMa20) {   // 漲停鎖死
+            if (held) return { ...base, level: '🟢', tag: '綠燈', label: '漲停鎖利',
+                action: '今天攻上漲停、突破已發生，續抱續強；隔日開高爆量留意過熱，跌破 **5MA** 再走。', ledClass: greenLabel };
+            return { ...base, level: '🟡', tag: '黃燈', label: '別追漲停板',
+                action: '突破已發生但追高風險高，別買在漲停板；等隔日不破 **5MA** 或回測量縮再評估進場。', ledClass: yellowLabel };
+        }
+        if (todayChg >= 0.05 && aboveMa20 && !isPriceDropping) {   // 強漲噴發
+            if (held) return { ...base, level: '🟢', tag: '綠燈', label: '強漲續抱',
+                action: '當日強漲、站穩均線之上，趨勢偏多續抱；不破 **5MA** 不賣，留意爆量過熱。', ledClass: greenLabel };
+            return { ...base, level: '🟡', tag: '黃燈', label: '強漲別追高',
+                action: '當日強漲、突破中，但別追高；等回測 **5MA** 不破再分批進場。', ledClass: yellowLabel };
+        }
         // ── 正向側(此處已確定站在月線上,給明確進場/續抱訊號,終結「每隻都觀望」)──
         // ⭐ 送分題:站月線 + 多頭排列 + 法人連買(全市場可判,免 chip cost)
         if (isLayup) return { ...base, level: '🟢', tag: '綠燈', label: '⭐送分題',
@@ -6785,11 +6801,24 @@ ${_newsLine}${globalContext}
             action: '多空拉鋸，嚴守均線紀律。', ledClass: 'bg-gray-500' };
     },
 
+    // 🆕 依使用者實際持倉/損益,產生一致的「身分尾巴」(附在燈號結論後,讓每個燈號分支口吻一致、化解三結論打架)
+    _personaTail(ctx) {
+        if (!ctx) return '';
+        const pnl = (typeof ctx.profitPct === 'number') ? ctx.profitPct : null;
+        if (ctx.held && pnl != null) {
+            return pnl >= 0
+                ? `（你持有 +${pnl.toFixed(1)}%：移動停利、跌破防守再走）`
+                : `（你持有 ${pnl.toFixed(1)}%：嚴設停損、別凹單攤平）`;
+        }
+        return '（空手：別追高，回測不破再進）';
+    },
+
     updateConfidenceLed(yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx) {
         const signal = this.computeUnifiedSignal({ yoyNum, pC, ma5, ma20, hasChipCost, chipCostVal, ctx });
         this.unifiedSignal = signal;   // 供 AI prompt / 頂部指揮部 共用
 
-        const confMsg = `${signal.tag}：${signal.action}`;
+        const _tail = this._personaTail(ctx);   // 🆕 一致身分尾巴(帶實際損益)
+        const confMsg = `${signal.tag}：${signal.action}${_tail}`;
         // (a) 策略頁 LED
         const led = document.getElementById('confLed');
         const txt = document.getElementById('confText');
@@ -6800,7 +6829,7 @@ ${_newsLine}${globalContext}
         const sccLed  = document.getElementById('sccLed');
         const sccTxt  = document.getElementById('sccLedText');
         if (sccLed) sccLed.className = `w-3.5 h-3.5 rounded-full flex-shrink-0 ${signal.ledClass}`;
-        if (sccTxt) sccTxt.innerHTML = `<b class="text-white">${signal.label}</b>　${signal.action}`;
+        if (sccTxt) sccTxt.innerHTML = `<b class="text-white">${signal.label}</b>　${signal.action}${_tail}`;
         // 收合摘要列的風險燈
         const sccMini = document.getElementById('sccMiniRisk');
         if (sccMini) {
@@ -8486,7 +8515,7 @@ ${_newsLine}${globalContext}
             warns.push(['📈', `台股年線乖離率 ${_fmtSigned(bias)},市場處於極端貪婪泡沫區,空手買入請極度克制!`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
         }
         const factorChips = (f.factors || []).map(x => `<span class="text-[9px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">${x}</span>`).join('');
-        const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div>` : '';
+        const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div><div class="text-[9px] text-gray-500 mt-0.5">ℹ️ 此為「新進場時機」評分;你已持有,操作以上方燈號結論為準(避開=不宜新買,非叫你賣)</div>` : '';
         // 📊 D 路徑:市場狀態 chip(多頭/空頭/盤整)— 讓使用者一眼判斷現在能不能進攻
         const regime = this._detectMarketRegime();
         const regimeChip = `<div class="flex items-center gap-1.5 mt-1.5 text-[10px]">
@@ -8659,10 +8688,13 @@ ${_newsLine}${globalContext}
             const _slice60 = (this.activeData || []).slice(-61, -1);
             const high60 = _slice60.length ? Math.max(..._slice60.map(r => r.high || 0)) : 0;
             if (high60 > 0 && pC >= high60) featTags.push({ kind: '突破', text: '創60日新高', tone: 'bullish', jargon: '創新高' });
+            // 🆕 漲停鎖死豁免:接近漲停(>=9%)時買賣鎖死、成交量本來就縮,以下量縮警示屬正常,不誤報
+            const _isNearLimitUp = !!pC1 && (pC - pC1) / pC1 >= 0.09;
+            if (_isNearLimitUp) featTags.push({ kind: '量價', text: '漲停鎖死(量縮正常)', tone: 'bullish' });
             // 量縮窒息
-            if (volRatio < 0.6) featTags.push({ kind: '量價', text: '量縮窒息', tone: 'info', jargon: '量縮窒息' });
+            if (!_isNearLimitUp && volRatio < 0.6) featTags.push({ kind: '量價', text: '量縮窒息', tone: 'info', jargon: '量縮窒息' });
             // 量價背離(#6)
-            if (pC > pC1 && pV < vma5 * 0.8) featTags.push({ kind: '量價背離', text: '價漲量縮背離', tone: 'warn', jargon: '量價背離' });
+            if (!_isNearLimitUp && pC > pC1 && pV < vma5 * 0.8) featTags.push({ kind: '量價背離', text: '價漲量縮背離', tone: 'warn', jargon: '量價背離' });
             else if (pC < pC1 && pV < vma5 * 0.7) featTags.push({ kind: '量價背離', text: '價跌量縮(賣壓衰竭)', tone: 'info', jargon: '量價背離' });
         }
 
@@ -8781,11 +8813,13 @@ ${_newsLine}${globalContext}
             this.speakAlert(`注意！${stockName} 收盤價 ${pC.toFixed(1)}，已跌破防守底線 ${defValNum.toFixed(1)}，請立刻執行停損！`);
         }
 
+        const _todayChg = pC1 ? (pC - pC1) / pC1 : 0;   // 當日漲跌幅(供燈號/結論判漲停)
         this.currentStrategyContext = {
             season, def_val, t1_val, isIslandReversal, isBigBlackK, brokenPrevLow,
             chipSafety: { is_chips_weak, instSum3 },   // 供 AI prompt 直讀，免重算
             featTags,                                   // 型態特徵標籤（UI chip + 可供 prompt 取用）
-            instBuyStreak, instBuyDays, maBullish       // 🟢 Tier1 正向因子(餵燈號 + prompt)
+            instBuyStreak, instBuyDays, maBullish,      // 🟢 Tier1 正向因子(餵燈號 + prompt)
+            todayChg: _todayChg, held: hasCost, profitPct   // 🆕 當日漲幅 + 持倉身分(餵漲停一致性 + persona 結論)
         };
 
         if (defValNum > 0) this._updateSWAlertConfig();
@@ -11004,6 +11038,13 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const fiLabel = fi !== null ? `${fi >= 0 ? '+' : ''}${fi.toLocaleString()} 口（${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}）` : '無資料';
             const newsLine = this.latestNewsCache ? `近期情報：${this.latestNewsCache.substring(0, 300)}` : '近期無重大情報';
 
+            // 🆕 當日漲跌幅事實(餵 AI:漲停/強漲日「突破今天已發生」,別再喊等突破)
+            const _todayChgV = (this.currentStrategyContext && typeof this.currentStrategyContext.todayChg === 'number') ? this.currentStrategyContext.todayChg : null;
+            const _todayChgLine = _todayChgV == null ? '今日漲跌幅 無資料'
+                : `今日漲跌幅 ${_todayChgV >= 0 ? '+' : ''}${(_todayChgV * 100).toFixed(1)}%`
+                  + (_todayChgV >= 0.095 ? '（漲停鎖死，今日突破已發生，禁喊「等突破再進」）'
+                     : _todayChgV >= 0.05 ? '（當日強漲、突破中，禁喊「等突破再進」；可談回測不破再上車）' : '');
+
             // 5.5 個股三大法人籌碼安定度（近 3 日合計）→ 由 refreshStrategy 預先算好，AI 直讀避免幻覺
             const _chip = (this.currentStrategyContext && this.currentStrategyContext.chipSafety) || null;
             const chipSafetyLine = _chip
@@ -11150,7 +11191,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
    • 庫存狀態：${invLine}
      若【空手】→ 絕對禁止輸出「撤退/清倉/出貨/停利停損」字眼；
                  空頭時喊「**手綁好觀望等待**」，多頭時喊「**等待突破建倉**」，恐慌底部喊「**閒錢 低接試單🤔**」。
-     若【有持股】→ 依損益區間執行機構級移動停利或反彈逃命指令（具體點位引用下方均線數字）。
+     若【有持股】→ 依**實際損益區間**(見庫存狀態)給對應指令:獲利→機構級移動停利/續抱、虧損→停損或反彈逃命(具體點位引用下方均線數字)。**禁張冠李戴**:正獲利時嚴禁出現「套牢/反彈逃命」字。
+     🆕 若【今日漲停或強漲】(見上方「本檔當日漲跌」)→ 突破今天已發生,**全段禁喊「等突破再出手/再進」**;空手改喊「別追漲停板,等隔日不破 5MA 或回測量縮再評估」,持有喊「鎖利續抱,跌破 5MA 再走」。
    • 🚨 處置神器訊號:${attentionLine}
      ${isAttentionRisk ? `⚠️ 絕對避險指令(本檔已被 TWSE 列管):
         · 空手者 → 必須輸出「**嚴禁新建倉,空手觀望**」,不得喊任何進場語言。
@@ -11195,6 +11237,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
   · ${ma60Stance}
   · ${ma120Stance}
 - 60 日累計漲幅：${chg60pct}%
+- 📊 本檔當日漲跌：${_todayChgLine}
 - K線現狀：${klineStatus}
 - 營收 YoY：${trueYoy}｜最新 EPS：${epsInfo}
 - 庫存狀態：${invLine}
@@ -11221,7 +11264,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
   "traffic_light": "格式『<emoji+三選一> — <25 字內現價與均線即時肉搏描述>』。三選一必須是 🔴可以買 或 🟡觀望 或 🟢不能買（紅漲綠跌!與系統量化建議${sigVerdictHint ? ` ${sigVerdictHint}` : ''} 一致）。範例：'🔴可以買 — 趨勢狂飆，不破 **${ma5} 元** 抱緊處理' / '🟡觀望 — 月線拉鋸，等突破再出手' / '🟢不能買 — 跌破季線，主力倒貨先閃'。ETF 標的可改寫如 '🔴可以買 — 跌價殖利率升，**金字塔低接**' 但仍保留三選一。",
   "summary": "30 字內首頁黃卡，哲哲口吻強烈動詞 emoji 開頭，融合屬性 + 數據 + 風險為一句話，必須帶具體點位。🛑 兩條鐵則：(1) 開頭動詞必須與 traffic_light 同向 — 🔴可以買→抱緊🔥/低接試單🤔/建倉、🟡觀望→觀望🤨、🟢不能買→快逃🚨/出貨🤑/避開，嚴禁燈號🔴🟡卻喊快逃。(2) 句中價位只能寫真實價格數字（現價 ${currentPrice}、均線 ${ma5}/${ma20} 等），**嚴禁把股票代號 ${sym} 當成價格寫進句子**（錯誤示範：『${sym} 低於 ${ma20} 元』←代號不是價格；正確：『現價 ${currentPrice} 低於月線 ${ma20} 元』）。",
   "bottom_bar": "15~20 字內置底浮動條，依庫存狀態動態組合，所有數字與動詞用 **xxx** 包起。範例（空手空頭）：『空頭成型，**空手觀望等待**』；（有持股獲利 +30%）：『防守 **${ma5} 元** 鎖巨利🔥』；（ETF 跌均線）：『殖利率攀升，**金字塔低接🤔**』；（強勢突破）：『站穩 **${ma20} 元** **加碼🔥**』。",
-  "detail_action": "四段體完整評析,標題一字不差,段間用 \\n,每段 70~130 字,全程哲哲口吻(直白、敢說、跟投資朋友對話)。\\n【📊 大盤與籌碼全景】用上方大盤全景(加權/VIX/恐懼貪婪/散戶多空/外資期現/融資槓桿/板塊輪動)判讀大環境順風還是逆風,再接到本檔籌碼安定度與法人動能,一氣呵成說「現在的環境適不適合碰這檔」。\\n【🟥 空手者策略】直球回答:能不能進?能進的話**何時建倉**(現在就進 vs 等回測哪條均線)、具體進場價、分幾批、什麼情況取消計畫(跌破哪裡)。不能進就說為什麼+什麼條件出現才能進。\\n【🟦 持有者策略】依【庫存狀態:${invLine}】量身對答:該加碼/續抱/減碼/停損?具體價位與動作,獲利者談移動停利,套牢者談反彈逃命或設停損,禁含糊。\\n【🛡️ 風控紅線】明確給:停損價(跌破哪裡無條件出場)、部位上限建議(幾成資金)、本檔當前最大的一個風險點是什麼。\\n⚠️ 鐵律:四段標題一字不差;空手者段落禁談停利停損(沒部位談什麼停利),持有者段落才談;禁複述本 prompt 規則文字、禁出現『天條』『庫存狀態:』『禁列舉』等 meta 字眼,違反視為無效輸出。"
+  "detail_action": "三段體,標題一字不差,段間用 \\n,每段 70~130 字,全程哲哲口吻(直白、敢說、跟投資朋友對話)。\\n【📊 大盤與籌碼全景】用上方大盤全景(加權/VIX/恐懼貪婪/散戶多空/外資期現/融資槓桿/板塊輪動)判讀大環境順風還是逆風,再接到本檔籌碼安定度與法人動能,一氣呵成說「現在的環境適不適合碰這檔」。\\n★中段「身分段」依【庫存狀態:${invLine}】**只准輸出一段、且只寫使用者真實身分**(空手就別寫持有、有持股就別寫空手):\\n · 若空手→標題用【🟥 空手者策略】:能不能進?能進的話**何時建倉**(現在就進 vs 等回測哪條均線)、具體進場價、分幾批、什麼情況取消(跌破哪裡)。不能進就說為什麼+什麼條件才能進。禁談停利停損(沒部位)。\\n · 若有持股→標題用【🟦 持有者策略】:依**實際損益**給**一種**指令(獲利→移動停利/續抱具體價位;虧損→停損或反彈逃命),**正獲利時嚴禁出現「套牢/反彈逃命」字**,禁同時列舉獲利者/套牢者兩種。\\n【🛡️ 風控紅線】明確給:停損價(跌破哪裡無條件出場)、部位上限建議(幾成資金)、本檔當前最大的一個風險點是什麼。\\n⚠️ 鐵律:身分段二選一(只寫使用者真實身分那段);三段標題一字不差;禁複述本 prompt 規則文字、禁出現『天條』『庫存狀態:』『禁列舉』等 meta 字眼,違反視為無效輸出。"
 }`;
 
             // 🚀 首席五維 = 旗艦級分析,保留 70B(每次約 8k tokens,使用者手動或快取命中)
