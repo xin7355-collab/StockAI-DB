@@ -59,6 +59,19 @@ def main():
     # ── ⑤ TPEX 主動式 ETF 清單頁 ──
     dump("tpex-active-etf", "https://www.tpex.org.tw/web/etf/serial_active_etf.php?l=zh-tw", limit=800)
 
+    # ── ⑥ 第三方彙整 etfinfo.tw(「主動式ETF 清單與持股異動」最有希望的單一來源) ──
+    dump("etfinfo-active-page", "https://www.etfinfo.tw/active", limit=1500)
+    for u in [
+        "https://www.etfinfo.tw/api/active",
+        "https://www.etfinfo.tw/api/etf/active",
+        "https://www.etfinfo.tw/Data/active.json",
+        "https://api.etfinfo.tw/v1/active",
+        "https://www.etfinfo.tw/api/holding/00981A",
+        "https://www.etfinfo.tw/api/etf/00981A/holding",
+    ]:
+        dump("etfinfo-api-guess", u, limit=500)
+    dump("etfinfo-etf-00981A", "https://www.etfinfo.tw/etf/00981A", limit=1000)
+
     print("\n✅ probe done")
 
 
