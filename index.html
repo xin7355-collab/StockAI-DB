@@ -803,13 +803,23 @@
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg lg:text-xl" id="defPrice">--</span></div>
                             <div id="tpSlReason" class="col-span-3 hidden text-[10px] text-amber-400/90 mt-1.5 leading-snug px-1 text-left"></div>
                         </div>
-                        <div id="institutionTargetBox" class="w-full mt-2 text-center text-xs leading-relaxed px-1"><span class="text-gray-400">💡 法人共識目標價 <span class="text-gray-300 font-semibold">2200～2600</span> (PEG估值)</span></div>
+                        <div class="w-full mt-2">
+                            <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('institutionTargetBody', this); app.vibrate(30);">💡 法人共識目標價 <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
+                            <div id="institutionTargetBody" class="hidden mt-1">
+                                <div id="institutionTargetBox" class="w-full text-center text-xs leading-relaxed px-1"><span class="text-gray-400"><span class="text-gray-300 font-semibold">2200～2600</span> (PEG估值)</span></div>
+                            </div>
+                        </div>
 
                         <!-- 已刪除：tomorrowScriptText（雲端演算已完成部署廢話）+ smartOrderInstruction（🤖建議重複資訊） -->
                         <div id="sinopacOrderCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 lg:p-4 text-xs lg:text-sm text-gray-300 leading-relaxed">
-                            <div class="text-yellow-400 font-bold mb-2 text-sm lg:text-base">⚔️ 永豐智慧單快速設定指引</div>
-                            <div id="sinopacOrderContent"></div>
-                            <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
+                            <div class="text-yellow-400 font-bold text-sm lg:text-base flex items-center justify-between cursor-pointer select-none" onclick="app.toggleCollapse('sinopacOrderBody', this); app.vibrate(30);">
+                                <span>⚔️ 永豐智慧單快速設定指引</span>
+                                <span class="text-gray-500 text-xs font-normal" data-chevron>▾</span>
+                            </div>
+                            <div id="sinopacOrderBody" class="hidden mt-2">
+                                <div id="sinopacOrderContent"></div>
+                                <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
+                            </div>
                         </div>
                         </div>
                     </div>
@@ -8867,6 +8877,15 @@ ${_newsLine}${globalContext}
         this.renderBacktest();
     },
 
+    // 🆕 卡片收合瘦身:切換 body 的 hidden + 旋轉 ▾ 箭頭(預設收合,點標題展開)
+    toggleCollapse(bodyId, headerEl) {
+        const body = document.getElementById(bodyId);
+        if (!body) return;
+        const nowHidden = body.classList.toggle('hidden');
+        const chev = headerEl && headerEl.querySelector('[data-chevron]');
+        if (chev) chev.textContent = nowHidden ? '▾' : '▴';
+    },
+
     _renderSinopacCard(pC, defVal, t1Val, t2Val, season) {
         const card = document.getElementById('sinopacOrderCard');
         const content = document.getElementById('sinopacOrderContent');
@@ -8945,7 +8964,7 @@ ${_newsLine}${globalContext}
             // 量級防呆：AI 給的目標價與現價量級差太多（>3倍或<1/3）視為幻覺，棄用
             if (highN > pC * 3 || lowN < pC / 3) { box.textContent = '💡 法人目標價：AI 推估量級異常，已略過'; return; }
             if (lowN > highN) { const t = lowN; lowN = highN; highN = t; }
-            box.innerHTML = `💡 法人共識目標價 <span class="text-gray-400 font-semibold">${lowN}～${highN}</span>（${stock_type}・${method}）<br><span class="text-gray-600">${reason}${fallbackNote ? '<br>' + fallbackNote : ''}</span>`;
+            box.innerHTML = `<span class="text-gray-300 font-semibold">${lowN}～${highN}</span>（${stock_type}・${method}）<br><span class="text-gray-600">${reason}${fallbackNote ? '<br>' + fallbackNote : ''}</span>`;
         } catch(e) {
             box.textContent = '💡 法人目標價推估失敗';
         }
