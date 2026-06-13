@@ -45,6 +45,11 @@ jobs:
           cp /tmp/deploy/index.html .
           cp /tmp/deploy/sw.js      .
 
+          # 🆕 每次部署把 Service Worker 的 CACHE_NAME 注入 commit SHA，
+          #     讓 sw.js 內容隨每次部署改變 → 瀏覽器認得新 SW → 自動接管+reload，杜絕使用者卡舊版
+          sed -i "s/const CACHE_NAME = '[^']*'/const CACHE_NAME = 'stockai-${GITHUB_SHA::8}'/" sw.js
+          echo "SW CACHE_NAME → stockai-${GITHUB_SHA::8}"
+
           git add index.html sw.js
           git diff --cached --quiet && echo "無變更，跳過" || {
             git commit -m "🚀 前端更新 $(date -u '+%Y-%m-%d %H:%M UTC')"

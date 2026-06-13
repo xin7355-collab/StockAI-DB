@@ -751,9 +751,10 @@
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <div class="p-3 bg-[#0d1117] flex flex-col gap-3 relative border-b border-[#30363d]">
-                        <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-3 rounded-lg text-base font-black shadow-lg flex justify-center items-center gap-2 transition-all">
+                        <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" ondblclick="app.runUnifiedGroqAnalysis({force:true}); app.vibrate([30,30,30]);" title="點一下分析；連點兩下強制重抽（會耗 1 次 API 額度）" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-3 rounded-lg text-base font-black shadow-lg flex justify-center items-center gap-2 transition-all">
                             🧠 首席 AI 全盤分析
                         </button>
+                        <div class="text-center text-[9px] text-gray-500 -mt-1.5">點一下分析 · 連點兩下強制重抽（耗 1 次額度）</div>
                         <!-- 🚥 戰術訊號燈（從首頁移入；JS 即時運算,不需 AI,額度耗盡也照常顯示）-->
                         <div id="tacticalSignalPanel" class="w-full bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-[#30363d] rounded-xl p-3 shadow-lg">
                             <div class="flex items-center gap-2">
@@ -8173,12 +8174,20 @@ ${_newsLine}${globalContext}
         }
     },
 
+    // 🔢 簡易字串雜湊(djb2),供快取 key 帶入提示詞版本用(改提示詞→雜湊變→自動 cache miss 重算)
+    _hashStr(s) {
+        let h = 5381;
+        const str = String(s || '');
+        for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+        return (h >>> 0).toString(36);
+    },
+
     // 📦 首席 AI 當日快取（localStorage，每股每成本每日獨立一份）
-    // key 形如 aiCache_v3|2330|125.5|2026-06-07；隔日 cache miss 觸發重算
+    // key 形如 aiCache_v3|2330|125.5|2026-06-07|<提示詞雜湊>；改提示詞或隔日 → cache miss 觸發重算
     _aiCacheKey(sym, costKey) {
         const d = new Date();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}`;
+        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this._hashStr(this.settings.aiPrompt || '')}`;
     },
     _getCachedAI(sym, costKey) {
         try {
@@ -10943,6 +10952,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
     async runUnifiedGroqAnalysis(opts = {}) {
         const silent = !!opts.silent;   // 自動觸發 (silent=true) 時不彈 alert、不開設定中心
+        const force = !!opts.force;     // 🆕 雙擊強制重抽:略過兩層快取直打 AI(改提示詞/想重抽時用)
         const box = document.getElementById('geminiResultBox');
         if (!this.activeData || this.activeData.length === 0) {
             if (!silent) alert("⚠️ 請先確認股票資料已完整載入！");
@@ -10963,7 +10973,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const _cacheSym = this.currentSymbolId;
         const _cacheCostKey = (document.getElementById('costInput')?.value || '').trim();
         const _cached = this._getCachedAI(_cacheSym, _cacheCostKey);
-        if (_cached && _cached.detail_action) {
+        if (!force && _cached && _cached.detail_action) {
             box.classList.remove('hidden');
             this._renderUnifiedAIResult(_cached, { fromCache: true });
             if (opts._autoTriggerKey) this._lastAITrigger = { key: opts._autoTriggerKey, ts: Date.now(), source: 'cache' };
@@ -10992,7 +11002,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         }
         const _today = new Date().toISOString().slice(0, 10);
         const _hit = this._chiefBatchCache?.stocks?.[sym];
-        if (_hit && _hit.detail_action && this._chiefBatchCache?.updated?.startsWith(_today)) {
+        if (!force && _hit && _hit.detail_action && this._chiefBatchCache?.updated?.startsWith(_today)) {
             this._renderUnifiedAIResult(_hit, { fromCache: true, batchSimplified: !!this._chiefBatchCache._simplified });
             this._setCachedAI(_cacheSym, _cacheCostKey, _hit);
             if (opts._autoTriggerKey) this._lastAITrigger = { key: opts._autoTriggerKey, ts: Date.now(), source: 'batch' };
@@ -11449,8 +11459,10 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const swVer = new Date().toISOString().slice(0,13).replace(/[-T:]/g,'');
             const reg = await navigator.serviceWorker.register(`/sw.js?v=${swVer}`);
             this._swReg = reg;
-            // 每小時主動詢問 SW 是否有更新，新版會自動 install + activate
-            setInterval(() => reg.update().catch(()=>{}), 3600000);
+            // 每 10 分鐘主動詢問 SW 是否有更新，新版會自動 install + activate
+            setInterval(() => reg.update().catch(()=>{}), 600000);
+            // 🆕 切回前景/PWA 重開時立刻檢查新版(部署後最快換新,不必等 10 分鐘)
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(()=>{}); });
             // 新 SW 接管控制權時自動重新整理一次，讓畫面立刻換到新版
             let _refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {

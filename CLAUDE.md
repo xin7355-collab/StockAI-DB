@@ -61,6 +61,16 @@
 - 每次 push 前必跑三驗證：`node --check`（index.html inline JS）+ `python3 -m py_compile *.py` + `python3 scripts/check_prompt_vars.py`
 - 出錯時使用者可以 `git revert HEAD` 回退，或叫 Claude 修
 
+### 部署後「看到舊版」處理（Service Worker 快取，已根治）⭐ 使用者常反映
+- **「還是舊版」≠「沒合併」**：先確認部署本身有沒有成功，不要急著重推。指令：
+  `diff <(git show origin/gh-pages:index.html | md5sum) <(git show origin/main:index.html | md5sum)` →
+  **md5 相同＝已上線**，看到舊版只是用戶端 SW 快取 / GitHub Pages CDN 傳播延遲。
+- **根因（勿回退）**：舊版 `sw.js` 的 `CACHE_NAME='stockai-v2'` 是固定字串，每次部署內容不變 → 瀏覽器不認得新 SW → 既有的 `controllerchange` 自動 reload 不觸發。
+- **已根治機制**：`deploy_pages.yml` 部署時用 `sed` 把 `CACHE_NAME` 注入 commit SHA（`stockai-<sha8>`）→ 每次部署 sw.js 內容必變 → 新 SW 自動 install→skipWaiting→activate→clients.claim→controllerchange→自動 reload。`index.html` 的 `registerServiceWorker` 每 10 分鐘 + 切回前景即 `reg.update()`。
+  - ⚠️ **不要把 `sw.js` 的 `CACHE_NAME` 改回固定字串**；main 模板留 `stockai-v2` 即可，注入只發生在 gh-pages 部署產物。
+- **Claude 每次前端部署後必做**：① 用上面 md5 指令確認 gh-pages == main；② 明確回報使用者「已部署，開著的分頁最久約 10 分鐘自動換新版、切回前景更快，硬重整可立即見效（iOS PWA 可能需完全關閉 App 重開）」。
+- **AI 結果快取**：`_aiCacheKey` 已含「提示詞雜湊」→ 改 `set_aiPrompt` 自動重算；**雙擊 🧠 首席 AI 全盤分析鈕**＝強制重抽（`runUnifiedGroqAnalysis({force:true})`，耗 1 次額度）。
+
 ### deploy 階段保護
 `daily_miner.yml` deploy job 內 `if [ "$STOCKS" -lt 100 ] then exit 1`：
 - 採礦結果不足 100 檔（artifact 下載失敗、merge 跑掉）→ 拒絕 force-push
