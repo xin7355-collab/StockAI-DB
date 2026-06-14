@@ -209,6 +209,11 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # 🛡️ 防 race：強制把 index.html / sw.js 換成 main 最新版
+          #    避免採礦 30-60 分跑完後，用啟動瞬間的舊快照覆蓋 deploy_pages.yml 已部署的新版前端
+          git fetch origin main --depth=1
+          git checkout origin/main -- index.html sw.js 2>/dev/null || true
+
           # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips
           cp data/*.json           /tmp/mine/data/          2>/dev/null || true
@@ -219,6 +224,7 @@ jobs:
           cp inst_cache_stock.json /tmp/mine/               2>/dev/null || true
           cp broker_names.json     /tmp/mine/               2>/dev/null || true
           cp index.html            /tmp/mine/               2>/dev/null || true
+          cp sw.js                 /tmp/mine/               2>/dev/null || true
 
           # 切換到發布分支
           git checkout main 2>/dev/null || true
@@ -232,9 +238,17 @@ jobs:
           cp /tmp/mine/futures_cache.json   .               2>/dev/null || true
           cp /tmp/mine/macro_cache.json     .               2>/dev/null || true
           cp /tmp/mine/index.html           .               2>/dev/null || true
+          cp /tmp/mine/sw.js                .               2>/dev/null || true
           cp /tmp/mine/broker_names.json    .               2>/dev/null || true
           cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
           cp /tmp/mine/inst_cache_stock.json   . 2>/dev/null || true
+
+          # 🆕 注入 CACHE_NAME（與 deploy_pages.yml 同邏輯）→ 每次部署 sw.js 內容必變
+          #    瀏覽器/PWA 自動接管新 SW + reload，杜絕卡舊版
+          if [ -f sw.js ]; then
+            sed -i "s/const CACHE_NAME = '[^']*'/const CACHE_NAME = 'stockai-${GITHUB_SHA::8}'/" sw.js
+            echo "SW CACHE_NAME → stockai-${GITHUB_SHA::8}"
+          fi
 
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
@@ -246,6 +260,7 @@ jobs:
           fi
 
           git add -f index.html data/
+          [ -f sw.js ]                   && git add -f sw.js                   || true
           [ -f broker_names.json ]       && git add -f broker_names.json       || true
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true
