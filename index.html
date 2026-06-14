@@ -10219,6 +10219,7 @@ ${_newsLine}${globalContext}
         if (this.isFavEditMode) return;
         if (this.activeGroupName === group) return;
         this.activeGroupName = group;
+        localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
         document.querySelectorAll('[data-fav-group-wrap]').forEach(el => {
             const active = el.dataset.favGroupWrap === group;
             el.classList.toggle('text-blue-400', active);
@@ -10333,8 +10334,9 @@ ${_newsLine}${globalContext}
         for (let sym of list) {
             let priceText = "--", diffText = "", priceColor = "text-gray-400";
             let seasonTag = '';
+            let data = null;
             try {
-                const data = await this.fetchHistoricalData(sym, false);
+                data = await this.fetchHistoricalData(sym, false);
                 if (data && data.length > 0) { priceText = data[data.length-1].close.toFixed(2); }
                 seasonTag = this._getQuickSeasonTag(data);
                 const fugle = await this.fetchFugleData(sym);
