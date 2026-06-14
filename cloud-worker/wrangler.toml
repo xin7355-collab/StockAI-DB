@@ -5,7 +5,7 @@ compatibility_date = "2026-06-01"
 # 💾 KV namespace 綁定(部署前先跑 `wrangler kv:namespace create "KV"` 然後把 id 貼進來)
 [[kv_namespaces]]
 binding = "KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "9d4249726b324b38892a69b9992cdb4d"
 
 # 🕐 排程:
 #   "*/30 1-5 * * 1-5" — 台北 09:00-13:30 每 30 分(盤中即時掃描)
