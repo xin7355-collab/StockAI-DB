@@ -641,6 +641,10 @@
             <!-- 篩選結果列表 -->
             <div id="chuTabBody" class="space-y-1.5"></div>
             <div id="chuTabUpdated" class="text-[10px] text-gray-600 text-center pt-3 mt-3 border-t border-[#21262d]"></div>
+            <!-- 📥 一鍵全加當前 tab 入獵殺 -->
+            <button onclick="app.addAllChuTabToMonitor(); app.vibrate(40);" class="w-full mt-3 bg-purple-700 hover:bg-purple-600 text-white py-2 rounded-lg text-[12px] font-black shadow-lg flex justify-center items-center gap-1.5 transition-all">
+                📥 一鍵全加當前 tab 進獵殺名單
+            </button>
             <!-- 模組 C 淘汰選股法說明(底部固定區) -->
             <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2 rounded-r mt-3 text-[11px] leading-relaxed text-gray-300">
                 <div class="font-black text-red-300 mb-1">🗑️ 模組 C 淘汰選股法(已內建)</div>
@@ -10578,6 +10582,10 @@ ${_newsLine}${globalContext}
         body.innerHTML = picks.map(p => {
             const gainColor = (p.gain || 0) > 0 ? 'text-red-400' : ((p.gain || 0) < 0 ? 'text-green-400' : 'text-gray-400');
             const gainStr = ((p.gain || 0) > 0 ? '+' : '') + (p.gain || 0).toFixed(2) + '%';
+            const isHunted = this.monitorList.some(m => m.sym === p.sym);
+            const huntBtn = isHunted
+                ? `<span class="text-green-400 text-[10px] font-bold whitespace-nowrap" title="已在獵殺名單中">⚔️ 已監控</span>`
+                : `<button onclick="event.stopPropagation(); app.addChuPickToMonitor('${p.sym}','${key}');" class="text-purple-200 bg-purple-900/40 border border-purple-600/60 rounded px-1.5 py-0.5 text-[10px] font-bold hover:bg-purple-800/40 whitespace-nowrap" title="加入獵殺,可進場時跳通知">🎯 加入</button>`;
             return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.openStockDetail('${p.sym}');" class="bg-[#161b22] border border-[#30363d] rounded-lg p-2 hover:border-purple-500 cursor-pointer transition-colors">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 min-w-0">
@@ -10588,10 +10596,53 @@ ${_newsLine}${globalContext}
                         <span class="text-gray-300 font-mono">${(p.close || 0).toFixed(2)}</span>
                         <span class="${gainColor} font-mono font-bold">${gainStr}</span>
                         <span class="text-gray-500 font-mono">${(p.turnover_e || 0).toFixed(1)}億</span>
+                        ${huntBtn}
                     </div>
                 </div>
             </div>`;
         }).join('');
+    },
+
+    // 從五大選股法 modal 加入單檔到獵殺（帶 strategySource 對應觸發）
+    async addChuPickToMonitor(sym, strategySource) {
+        if (this.monitorList.some(m => m.sym === sym)) return;
+        const data = await this.fetchHistoricalData(sym, false);
+        if (!data || data.length < 20) {
+            alert(`⚠️ ${sym} K 線資料不足（< 20 筆），無法加入`);
+            return;
+        }
+        const ok = this._addToMonitor(sym, data, strategySource);
+        if (ok) {
+            this.vibrate([30, 30]);
+            this._renderChuPickList(this._chuCurrentTab);
+        }
+    },
+
+    // 把當前 tab 全部 picks 一鍵加入獵殺
+    async addAllChuTabToMonitor() {
+        const key = this._chuCurrentTab;
+        const picks = (this.radarMatrix?.data || {})[key] || [];
+        if (!picks.length) {
+            alert('當前 tab 沒有可加入的標的');
+            return;
+        }
+        let added = 0, skipped = 0, failed = 0;
+        for (const p of picks) {
+            if (this.monitorList.some(m => m.sym === p.sym)) { skipped++; continue; }
+            try {
+                const data = await this.fetchHistoricalData(p.sym, false);
+                if (data && data.length >= 20 && this._addToMonitor(p.sym, data, key, { silent: true })) {
+                    added++;
+                } else {
+                    failed++;
+                }
+            } catch (e) {
+                failed++;
+            }
+        }
+        this._renderChuPickList(key);
+        this.renderHuntTab();
+        alert(`✅ 一鍵全加完成\n\n  • 新加入：${added} 檔\n  • 已存在（跳過）：${skipped} 檔\n  • 資料不足（失敗）：${failed} 檔\n\n獵殺掃描時會根據選股法套用專屬進場觸發。`);
     },
 
     // ===== 🗑️ 模組 C 淘汰選股法(前端 — 套用自選股 / 庫存頁) =====
@@ -12356,9 +12407,20 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         }
         const data = this.rawDailyData;
         if (!data || data.length < 20) { alert('資料不足，至少需要20天資料'); return; }
+        if (this._addToMonitor(sym, data, null)) {
+            this.updateMonitorIcon();
+            this.vibrate([50, 50, 50]);
+        }
+    },
+
+    // 共用：把個股加入獵殺名單
+    // strategySource: 'chu_perfect6' | 'chu_top_gainer' | 'chu_bottom' | 'chu_riding5ma' | null（一般獵殺）
+    // opts.silent: true 時不跳 alert（給「一鍵全加」批次用）
+    _addToMonitor(sym, data, strategySource, opts = {}) {
+        if (this.monitorList.some(m => m.sym === sym)) return false;
         const tech = this._calcTechFromData(data);
-        if (!tech) return;
-        const { closes, n, ma5arr, ma10arr, ma20arr, ma60arr, vma5arr } = tech;
+        if (!tech) return false;
+        const { closes, n, ma5arr, ma10arr, ma20arr, ma60arr } = tech;
         const pC = closes[n-1];
         const ma5  = ma5arr[n-1], ma10 = ma10arr[n-1], ma20 = ma20arr[n-1], ma60 = ma60arr[n-1];
         const chipCost = this._getChipCost10d(data);
@@ -12370,25 +12432,42 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             chipCostAtAdd: chipCost, recentLow,
             currentPrice: pC, currentMA5: ma5, currentMA20: ma20,
             firedAlerts: [],
+            strategySource: strategySource || null,
         };
         this.monitorList.push(entry);
         this.saveMonitorList();
-        this.updateMonitorIcon();
-        this.vibrate([50, 50, 50]);
-        const lines = [
-            `✅ 已加入獵殺監控！`,
-            ``,
-            `📊 加入時技術位階快照：`,
-            `• 現價：${pC.toFixed(2)}`,
-            `• 5日線(MA5)：${ma5 ? ma5.toFixed(2) : '--'}`,
-            `• 月線(MA20)：${ma20 ? ma20.toFixed(2) : '--'}`,
-            `• 季線(MA60)：${ma60 ? ma60.toFixed(2) : '--'}`,
-            `• 主力10日加權成本：${chipCost ? chipCost.toFixed(2) : '--'}`,
-            ``,
-            `系統將自動偵測4種獵殺訊號並提醒你！`,
-        ];
-        alert(lines.join('\n'));
-        this.renderHuntTab();
+        if (!opts.silent) {
+            const srcLabel = {
+                chu_perfect6:   '🍀 六六大順',
+                chu_top_gainer: '🔥 特別報價',
+                chu_bottom:     '🥣 底部轉折',
+                chu_riding5ma:  '🚀 5MA飆股',
+            }[strategySource] || '一般獵殺';
+            const trigLabel = {
+                chu_perfect6:   '🎯 站穩 5MA 進場（紅K + 沒跌破 5MA）',
+                chu_top_gainer: '🔥 隔日強勢開高 > 1%',
+                chu_bottom:     '🚀 連 2 日爆量續攻',
+                chu_riding5ma:  '🎯 站穩 5MA 進場（紅K + 沒跌破 5MA）',
+            }[strategySource] || '4 種通用獵殺訊號';
+            const lines = [
+                `✅ 已加入獵殺監控！`,
+                ``,
+                `📋 來源：${srcLabel}`,
+                `🎯 進場觸發：${trigLabel}`,
+                ``,
+                `📊 加入時技術位階快照：`,
+                `• 現價：${pC.toFixed(2)}`,
+                `• 5日線(MA5)：${ma5 ? ma5.toFixed(2) : '--'}`,
+                `• 月線(MA20)：${ma20 ? ma20.toFixed(2) : '--'}`,
+                `• 季線(MA60)：${ma60 ? ma60.toFixed(2) : '--'}`,
+                `• 主力10日加權成本：${chipCost ? chipCost.toFixed(2) : '--'}`,
+                ``,
+                `掃描時，系統會在條件成立的當下推播提醒！`,
+            ];
+            alert(lines.join('\n'));
+            this.renderHuntTab();
+        }
+        return true;
     },
 
     updateMonitorIcon() {
@@ -12553,6 +12632,80 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         return null;
     },
 
+    // ── 朱家泓五大選股法專屬觸發（按 entry.strategySource 選用）─────────
+    // 🍀 六六大順 / 🚀 5MA飆股：今日盤中沒跌破 5MA + 紅K → 「隔日站穩 5MA 進」訊號
+    _checkChu5MAEntry(tech, entry) {
+        const { closes, opens, lows, n, ma5arr } = tech;
+        if (n < 5) return null;
+        const i = n - 1;
+        const c = closes[i], o = opens[i], l = lows[i], ma5 = ma5arr[i];
+        if (!ma5) return null;
+        const heldAboveMA5 = l >= ma5 * 0.99;   // 整日沒跌破 5MA（容忍 1% 誤差）
+        const isRedK       = c > o;
+        if (heldAboveMA5 && isRedK) {
+            return {
+                strategy: 'chu5ma',
+                label: '🎯 站穩5MA進場',
+                title: '【站穩 5MA + 紅K】可進場',
+                msg: `今日 low ${l.toFixed(2)} ≥ 5MA(${ma5.toFixed(2)}) + 紅K 收 ${c.toFixed(2)}。`,
+                fullMsg: `🎯 朱家泓「隔日站穩 5MA 進」訊號成立：今日盤中沒跌破 5MA(${ma5.toFixed(2)}) 且收紅K(${c.toFixed(2)} > ${o.toFixed(2)})。可分批進場，跌破 5MA 立停。`,
+            };
+        }
+        return null;
+    },
+
+    // 🥣 底部轉折：連續 2 日量 > 5 日均量 1.5 倍 + 今日收高 → 「續攻」確認
+    _checkChuBottomFollow(tech, entry) {
+        const { closes, vols, n, vma5arr } = tech;
+        if (n < 2) return null;
+        const i = n - 1;
+        const v0 = vols[i], v1 = vols[i-1], v5 = vma5arr[i];
+        if (!v5 || v5 <= 0) return null;
+        const consecutiveBoom = v0 > v5 * 1.5 && v1 > v5 * 1.5;
+        const followThrough   = closes[i] > closes[i-1];
+        if (consecutiveBoom && followThrough) {
+            return {
+                strategy: 'chu_bottom_follow',
+                label: '🚀 連2日爆量續攻',
+                title: '【底部轉折確認】',
+                msg: `連 2 日量能爆 1.5 倍 + 今日續攻 ${closes[i].toFixed(2)}（昨收 ${closes[i-1].toFixed(2)}）。`,
+                fullMsg: `🚀 朱家泓「底部轉折續攻」訊號成立：連續 2 日量能 > 5 日均量 1.5 倍，今日收盤續攻昨收。主力進貨確認，可進場。`,
+            };
+        }
+        return null;
+    },
+
+    // 🔥 特別報價：今日開盤 > 昨收 × 1.01（強勢開高 > 1%）→ 跟進訊號
+    _checkChuTopGainerOpen(tech, entry) {
+        const { closes, opens, n } = tech;
+        if (n < 2) return null;
+        const i = n - 1;
+        const o = opens[i], cPrev = closes[i-1];
+        if (!cPrev || cPrev <= 0) return null;
+        if (o > cPrev * 1.01) {
+            const gapPct = ((o - cPrev) / cPrev * 100).toFixed(2);
+            return {
+                strategy: 'chu_top_open',
+                label: '🔥 強勢開高跟進',
+                title: '【特別報價隔日強開】',
+                msg: `今日開 ${o.toFixed(2)}（昨收 ${cPrev.toFixed(2)}，+${gapPct}%）。`,
+                fullMsg: `🔥 朱家泓「特別報價隔日強勢開高」訊號成立：今日跳空開高 +${gapPct}%。強勢續攻可跟進，弱開不追。`,
+            };
+        }
+        return null;
+    },
+
+    // 對應 strategySource → 對應 chu_* 觸發函式
+    _chuTriggerFor(strategySource, tech, entry) {
+        const map = {
+            chu_perfect6:   () => this._checkChu5MAEntry(tech, entry),
+            chu_riding5ma:  () => this._checkChu5MAEntry(tech, entry),
+            chu_bottom:     () => this._checkChuBottomFollow(tech, entry),
+            chu_top_gainer: () => this._checkChuTopGainerOpen(tech, entry),
+        };
+        return map[strategySource] ? map[strategySource]() : null;
+    },
+
     async scanAllMonitored() {
         const scanBtn = document.getElementById('huntScanBtn');
         const statusDiv = document.getElementById('huntScanStatus');
@@ -12582,6 +12735,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                     this._checkFalseBreakdown(tech, entry),
                     this._checkForeignBuy3d(tech, entry),
                     this._checkVolumeBreakout(tech, entry),
+                    this._chuTriggerFor(entry.strategySource, tech, entry),
                 ].filter(Boolean);
                 if (!entry.firedAlerts) entry.firedAlerts = [];
                 for (const alert of checks) {
@@ -12626,7 +12780,15 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     },
 
     _strategyLabel(s) {
-        return { pullback: '📈 月線起漲', breakdown: '🔄 破底翻', foreign_buy: '🐂 外資連買3日', volume_breakout: '💥 爆量突破' }[s] || s;
+        return {
+            pullback:          '📈 月線起漲',
+            breakdown:         '🔄 破底翻',
+            foreign_buy:       '🐂 外資連買3日',
+            volume_breakout:   '💥 爆量突破',
+            chu5ma:            '🎯 站穩5MA進場',
+            chu_bottom_follow: '🚀 連2日爆量續攻',
+            chu_top_open:      '🔥 強勢開高跟進',
+        }[s] || s;
     },
 
     removeFromMonitor(sym) {
