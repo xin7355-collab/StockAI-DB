@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -691,7 +691,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -10327,18 +10327,44 @@ ${_newsLine}${globalContext}
         const list = this.favGroups[this.activeGroupName] || [];
         const container = document.getElementById('favListContainer');
         const emptyState = document.getElementById('favEmptyState');
-        if(list.length === 0) { container.innerHTML = ''; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); return; }
-        emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
-        
+        if (!container) return;
+        if(list.length === 0) { container.innerHTML = ''; emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
+        emptyState?.classList.add('hidden'); emptyState?.classList.remove('flex');
+
+        // Pass 1：同步畫出所有列（名稱+badge+佔位價），清單「立刻」出現，不被網路卡住
         let html = '';
         for (let sym of list) {
-            let priceText = "--", diffText = "", priceColor = "text-gray-400";
-            let seasonTag = '';
-            let data = null;
+            html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]" data-fav-row="${sym}">
+                <div class="absolute inset-y-0 right-0 w-[80px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer delete-btn swipe-action-btn text-sm" onclick="event.stopPropagation(); app.removeFromFav('${sym}')">刪除</div>
+                <div class="swipe-content relative bg-gradient-to-r from-[#1c2128] to-[#161b22] px-3 py-2.5 flex items-center gap-2 w-full" style="transform: translateX(0px);">
+                    <div class="drag-handle text-gray-600 hover:text-white text-lg flex-shrink-0">☰</div>
+                    <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
+                            <span data-fav-season class="flex-shrink-0"></span>
+                            ${this._renderFalconBadge(sym)}
+                            ${this._renderAttentionBadge(sym)}
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span data-fav-price class="text-sm font-bold font-mono text-gray-400">--</span>
+                            <span data-fav-diff class="text-[10px] font-mono"></span>
+                        </div>
+                        <div data-fav-elim class="mt-1 flex flex-wrap gap-1"></div>
+                    </div>
+                    ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
+                </div>
+            </div>`;
+        }
+        container.innerHTML = html;
+        if (this.sortableFav) this.sortableFav.destroy();
+        this.sortableFav = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
+
+        // Pass 2：並行抓價格,回來 patch 對應列（單檔失敗只影響該列,不再整張空白）
+        list.forEach(async (sym) => {
+            let data = null, priceText = "--", diffText = "", priceColor = "text-gray-400";
             try {
                 data = await this.fetchHistoricalData(sym, false);
-                if (data && data.length > 0) { priceText = data[data.length-1].close.toFixed(2); }
-                seasonTag = this._getQuickSeasonTag(data);
+                if (data && data.length > 0) priceText = data[data.length-1].close.toFixed(2);
                 const fugle = await this.fetchFugleData(sym);
                 if (fugle) {
                     priceText = fugle.price.toFixed(2);
@@ -10351,31 +10377,17 @@ ${_newsLine}${globalContext}
                     }
                 }
             } catch(e) {}
-
-            html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
-                <div class="absolute inset-y-0 right-0 w-[80px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer delete-btn swipe-action-btn text-sm" onclick="event.stopPropagation(); app.removeFromFav('${sym}')">刪除</div>
-                <div class="swipe-content relative bg-gradient-to-r from-[#1c2128] to-[#161b22] px-3 py-2.5 flex items-center gap-2 w-full" style="transform: translateX(0px);">
-                    <div class="drag-handle text-gray-600 hover:text-white text-lg flex-shrink-0">☰</div>
-                    <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
-                            ${seasonTag ? `<span class="flex-shrink-0">${seasonTag}</span>` : ''}
-                            ${this._renderFalconBadge(sym)}
-                            ${this._renderAttentionBadge(sym)}
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-0.5">
-                            <span class="text-sm font-bold font-mono ${priceColor}">${priceText}</span>
-                            ${diffText ? `<span class="text-[10px] font-mono ${priceColor}">${diffText}</span>` : ''}
-                        </div>
-                        <div class="mt-1 flex flex-wrap gap-1">${this._renderEliminationBadge(data)}</div>
-                    </div>
-                    ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
-                </div>
-            </div>`;
-        }
-        container.innerHTML = html;
-        if (this.sortableFav) this.sortableFav.destroy();
-        this.sortableFav = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
+            const row = container.querySelector(`[data-fav-row="${CSS.escape(String(sym))}"]`);
+            if (!row) return;
+            const pEl = row.querySelector('[data-fav-price]');
+            if (pEl) { pEl.textContent = priceText; pEl.className = `text-sm font-bold font-mono ${priceColor}`; }
+            const dEl = row.querySelector('[data-fav-diff]');
+            if (dEl) { dEl.textContent = diffText; dEl.className = `text-[10px] font-mono ${priceColor}`; }
+            const sEl = row.querySelector('[data-fav-season]');
+            if (sEl) sEl.innerHTML = this._getQuickSeasonTag(data) || '';
+            const eEl = row.querySelector('[data-fav-elim]');
+            if (eEl) eEl.innerHTML = this._renderEliminationBadge(data) || '';
+        });
     },
 
     removeFromFav(sym) {
