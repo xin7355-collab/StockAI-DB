@@ -6,111 +6,93 @@
 
 ---
 
-## ⚙️ 一次性部署步驟
+## ⚙️ 一次性部署步驟(GitHub Actions 版,不需裝 wrangler)
 
-### 1️⃣ 申請 / 安裝工具
-
-| 項目 | 連結 |
-|------|------|
-| Cloudflare 帳號 | https://dash.cloudflare.com/sign-up |
-| Node.js 18+ | https://nodejs.org/ |
-| Telegram(申請 bot) | 手機已有就好 |
-
-```bash
-npm install -g wrangler
-wrangler login   # 開瀏覽器授權 Cloudflare
-```
-
----
-
-### 2️⃣ 建 Telegram bot
+### 1️⃣ 建 Telegram bot
 
 1. 開 Telegram,搜尋 `@BotFather`,傳 `/newbot`
-2. 命名:`StockAI 個股提醒` (顯示名)
+2. 命名:`StockAI 個股提醒`(顯示名)
 3. username:例如 `stockai_xin_bot`(全球唯一,要 `_bot` 結尾)
-4. BotFather 會回一串 token,長這樣:`1234567890:ABCDEFghijklmn-OpqRstUvwxyz`
-5. **存好這個 token,稍後要設成 secret**
+4. BotFather 回傳一串 token:`1234567890:ABCDEFghijklmn-OpqRstUvwxyz`
+5. **存好這個 token**
 
 ---
 
-### 3️⃣ 建 KV namespace + 設 secrets
+### 2️⃣ 建 Cloudflare 帳號 + KV namespace
 
-```bash
-cd cloud-worker
-
-# 建 KV namespace
-wrangler kv:namespace create "KV"
-# 回傳長這樣:
-# 🌀 Creating namespace with title "stockai-alerts-KV"
-# ✨ Success! Add the following to your wrangler.toml:
-# [[kv_namespaces]]
-# binding = "KV"
-# id = "abcd1234..."
-
-# 把 id 貼到 wrangler.toml 的 kv_namespaces[0].id
-```
-
-接著設 secret:
-
-```bash
-wrangler secret put TELEGRAM_BOT_TOKEN
-# 貼上步驟 2 拿到的 token,Enter
-
-# (選填)防 webhook 被偽造
-wrangler secret put WEBHOOK_SECRET
-# 隨便打一串 32 字以上的亂數,例如:abc123XYZ$%^def456...
-
-# (選填)Gemini AI 短評(F4),沒設則盤後總結不附 AI 短評,功能仍正常
-# 申請:https://aistudio.google.com/app/apikey(免費 1500 req/day)
-wrangler secret put GEMINI_API_KEY
-# 貼上 Gemini API key
-```
+1. 前往 https://dash.cloudflare.com/sign-up 建帳號(免費)
+2. 登入後,左側選「**Workers & Pages**」→「**KV**」
+3. 點「**Create a namespace**」,名稱填 `stockai-alerts-KV`,按「Add」
+4. 建好後看到 KV 清單,**複製那個 namespace 的 ID**(看起來像 `abcd1234efgh5678...`)
 
 ---
 
-### 4️⃣ 部署 Worker
+### 3️⃣ 更新 wrangler.toml
 
-```bash
-wrangler deploy
+把 `cloud-worker/wrangler.toml` 裡的 `REPLACE_WITH_YOUR_KV_NAMESPACE_ID` 換成步驟 2 的 ID:
+
+```toml
+[[kv_namespaces]]
+binding = "KV"
+id = "abcd1234efgh5678..."   # ← 改這裡
 ```
 
-成功會看到:
-
-```
-✨ Built successfully...
-🌍 Uploaded stockai-alerts (3.45 sec)
-🌎 Published stockai-alerts (1.23 sec)
-   https://stockai-alerts.YOUR-NAME.workers.dev
-```
-
-**把這個網址記下來**(等下要填到網頁設定)。
+commit + push 到 main。
 
 ---
 
-### 5️⃣ 把 Telegram webhook 綁到 Worker
+### 4️⃣ 拿 Cloudflare API Token + 設 GitHub Secrets
 
-把 `<TOKEN>` 換成步驟 2 的 token,`<WORKER_URL>` 換成步驟 4 的網址,`<WEBHOOK_SECRET>` 換成你在步驟 3 設的(沒設 secret 就拿掉那段):
+**拿 Cloudflare API Token**:
+1. Cloudflare 右上角頭像 → 「My Profile」
+2. 左側「**API Tokens**」→「**Create Token**」
+3. 選範本「**Edit Cloudflare Workers**」→「Use template」
+4. 不用改設定,直接「**Create Token**」
+5. **複製 token(只顯示一次!)**
 
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=<WORKER_URL>/bot&secret_token=<WEBHOOK_SECRET>"
-```
+**加到 GitHub Secrets**:
+1. 開 `https://github.com/xin7355-collab/StockAI-DB/settings/secrets/actions`
+2. 點「**New repository secret**」
 
-回傳 `{"ok":true,"result":true,"description":"Webhook was set"}` 就成功。
-
-驗證:
-
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
-# 看 "url" 欄是不是你的 Worker 網址
-```
+| Secret 名稱 | 值 |
+|------------|-----|
+| `CLOUDFLARE_API_TOKEN` | 步驟 4 的 Cloudflare API token |
+| `TELEGRAM_BOT_TOKEN` | 步驟 1 的 bot token(已設過可跳過) |
+| `GEMINI_API_KEY` | (選填)Gemini API key,設了才有 AI 短評 |
 
 ---
 
-### 6️⃣ 把 Worker 網址告訴網頁
+### 5️⃣ 觸發部署 Worker
+
+1. 前往 `https://github.com/xin7355-collab/StockAI-DB/actions/workflows/deploy_worker.yml`
+2. 點右側「**Run workflow**」→「Run workflow」
+3. 等 1-2 分鐘跑完
+4. 成功後到 Cloudflare Workers 首頁可看到 `stockai-alerts`,URL 長這樣:
+   `https://stockai-alerts.YOUR-NAME.workers.dev`
+
+**把這個網址記下來**。
+
+---
+
+### 6️⃣ 把 Telegram webhook 綁到 Worker
+
+把 `<TOKEN>` 換成步驟 1 的 bot token,`<WORKER_URL>` 換成步驟 5 的網址:
+
+```bash
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=<WORKER_URL>/bot"
+```
+
+回傳 `{"ok":true,...}` 就成功。
+
+> 沒有電腦?可用手機的 Termux app 跑這行 curl,或找個線上 curl 工具。
+
+---
+
+### 7️⃣ 把 Worker 網址填到網頁
 
 1. 開網頁 → 戰情設定 → 「📨 Telegram 雲端推送」
-2. 「Worker 網址」貼上步驟 4 的 URL(例如 `https://stockai-alerts.your-name.workers.dev`)
-3. 「Bot username」貼步驟 2 的 username(例如 `stockai_xin_bot`)
+2. 「Worker 網址」貼步驟 5 的 URL(例如 `https://stockai-alerts.your-name.workers.dev`)
+3. 「Bot username」貼步驟 1 的 username(例如 `stockai_xin_bot`)
 4. 按「📨 啟用」即會生成綁定碼 + 跳到 Telegram
 
 **部署完成!**
@@ -141,7 +123,7 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 | 庫存浮虧停損 | ≤ -8% | 固定 | 6h/檔 |
 | 黑天鵝事件 | 嚴重度=高 + 1 日內 | 固定 | 1 次/天 |
 
-### 盤後每日總結(台北 17:00,F3)
+### 盤後每日總結(台北 17:00)
 - 自選股當日漲跌 Top 3
 - 庫存今日對成本盈虧 + 部位加權報酬率
 - 獵鷹分 ≥ 設定閾值的命中名單
@@ -150,7 +132,7 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 
 ---
 
-## 🎮 Telegram 指令(F1+F2)
+## 🎮 Telegram 指令
 
 用戶綁定後可直接在聊天室調整設定,不用回網頁:
 
@@ -167,23 +149,21 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 
 ---
 
-## 🔍 維運
+## 🔧 日後維護
 
+### 更新 Worker(改了 worker.js 後)
+改完 push 到 main → `deploy_worker.yml` 自動重新部署(約 1 分鐘)
+
+### 看 Worker 即時 log
+需要安裝 wrangler:
 ```bash
-# 看 Worker 即時 log
-wrangler tail
+npm install -g wrangler && wrangler login
+cd cloud-worker && wrangler tail
+```
 
-# 列出所有用戶
+### 查用戶清單(需 wrangler)
+```bash
 wrangler kv:key list --binding=KV --prefix=user: --remote
-
-# 看某用戶資料
-wrangler kv:key get "user:<chat_id>" --binding=KV --remote
-
-# 刪某用戶
-wrangler kv:key delete "user:<chat_id>" --binding=KV --remote
-
-# 升級 Worker(改完 worker.js 後)
-wrangler deploy
 ```
 
 ---
@@ -204,20 +184,25 @@ wrangler deploy
 
 ## 🐛 Troubleshooting
 
-### Worker 部署後綁定一直失敗
-- `wrangler tail` 看 Worker log,看 `/bot` 請求有沒有進來
-- 沒進來 → webhook 沒設好,重跑步驟 5
-- 進來但 403 → WEBHOOK_SECRET 沒一致,重設
+### Worker 沒有回應 /set /bind 指令
+- ✅ 確認 deploy_worker.yml 已成功跑完(GitHub Actions 綠燈)
+- ✅ 確認 webhook 已設定(步驟 6)
+- ✅ 確認 wrangler.toml 裡的 KV namespace id 已填入(不是 `REPLACE_WITH_YOUR...`)
+
+### 驗證 webhook 是否設定成功
+```bash
+curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+# 看 "url" 欄是不是你的 Worker 網址
+```
 
 ### 收不到推送
-- Telegram 傳 `/list` 看雲端清單對不對
-- `wrangler tail` 看 cron 有沒有跑(每 30 分跑一次,Mon-Fri 09:00-13:30 台北)
-- 看 `radar.json` 在 gh-pages 上面有沒有資料(daily_miner 跑完才有)
+- 確認已完成「用戶綁定流程」(傳 `/bind 綁定碼`)
+- 傳 `/list` 到 bot 看雲端清單是否正確
+- 盤中推送只有台北 Mon-Fri 09:00-13:30 才觸發
 
 ### 多個 cron 沒觸發
-- Cloudflare 免費版 cron 只能 5 個,worker.js 目前 1 個
-- 不夠用再升 Workers Paid($5/月 unlimited cron)
+- Cloudflare 免費版 cron 只能 5 個,目前用 2 個
 
-### 想自訂推送內容 / 加新訊號
-- 改 `worker.js` 的 `scanUser` 函式
-- 跑 `wrangler deploy` 即生效
+### deploy_worker.yml 失敗
+- 確認 `CLOUDFLARE_API_TOKEN` 已加到 GitHub Secrets
+- 確認 wrangler.toml 的 KV namespace id 已替換
