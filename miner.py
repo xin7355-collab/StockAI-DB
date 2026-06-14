@@ -1419,9 +1419,10 @@ def run():
                         
                     if i == 0 and not rows:
                         first_ym_empty = True
+                        print(f"  ⚠️ {sym} {ym}：TWSE/TPEX 雙源無資料，將靠後段 yfinance 補洞（若 Yahoo 也缺，當日 K 線將漏記）")
                     if i == 1 and first_ym_empty and rows:
                         print(f"  📅 {sym} {fetch_months[0]} 無資料，改用 {fetch_months[1]}（{len(rows)} 筆）")
-                        
+
                     new_rows.extend(rows)
                     time.sleep(0.15)
                     

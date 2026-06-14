@@ -314,6 +314,14 @@
                         <textarea id="exportArea" class="flex-1 h-20 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="請將代碼貼於此處..."></textarea>
                         <button onclick="app.copyExportData()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 rounded text-xs font-bold border border-gray-600 transition-colors break-words w-[4rem]">複製<br>代碼</button>
                     </div>
+                    <div class="border-t border-gray-700/50 pt-3 mt-1">
+                        <label class="text-xs font-bold text-purple-400">📊 預測歷史快照（patWinRate 隔日驗證）</label>
+                        <div id="predHistSummary" class="text-[10px] text-gray-500 mt-1 mb-2 leading-tight">尚未累積</div>
+                        <div class="flex gap-2">
+                            <button onclick="app.exportPredHist(); app.vibrate(50);" class="flex-1 bg-purple-800/60 hover:bg-purple-700 text-white text-xs py-1.5 rounded font-bold border border-purple-700 transition">📤 匯出 JSON</button>
+                            <button onclick="app.clearPredHist(); app.vibrate(50);" class="flex-1 bg-red-900/60 hover:bg-red-800 text-white text-xs py-1.5 rounded font-bold border border-red-800 transition">🗑️ 清除歷史</button>
+                        </div>
+                    </div>
                     <div class="flex items-center justify-between pt-2">
                         <label class="text-xs font-bold text-cyan-400">🔤 介面字體大小</label>
                         <div class="flex gap-1" id="fontSizeBtns">
@@ -3237,8 +3245,58 @@ ${list}
         document.getElementById('exportAreaContainer').classList.add('hidden');
         // 📊 渲染今日 AI key 使用統計(Q4:回答「哪把 key 撞 429」)
         this._renderAIKeyStats();
+        this._renderPredHistSummary();
         const modal = document.getElementById('settingsModal');
         modal.classList.remove('hidden'); modal.style.display = 'flex';
+    },
+
+    // 📊 設定面板：顯示「跨股累計準度」概要
+    _renderPredHistSummary() {
+        const el = document.getElementById('predHistSummary');
+        if (!el) return;
+        const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
+        const syms = Object.keys(all);
+        if (syms.length === 0) { el.innerHTML = '尚未累積任何快照（每次跑 K 線分析會自動記錄）'; return; }
+        let total = 0, verified = 0, hits = 0, high = 0, highHits = 0;
+        for (const sym of syms) {
+            for (const r of all[sym]) {
+                total++;
+                if (r.verified) {
+                    verified++;
+                    if (r.hit) hits++;
+                    if (r.patWinRate >= 65) { high++; if (r.hit) highHits++; }
+                }
+            }
+        }
+        const acc = verified ? (hits / verified * 100).toFixed(1) : '—';
+        const highAcc = high ? (highHits / high * 100).toFixed(1) : '—';
+        el.innerHTML = `已追蹤 <b class="text-white">${syms.length}</b> 檔 / 共 <b class="text-white">${total}</b> 筆快照 / 已驗證 <b class="text-white">${verified}</b> 筆<br>跨股總準度：<b class="text-yellow-300">${acc}%</b>（${hits}/${verified}）｜patWinRate ≥ 65% 時：<b class="text-red-300">${highAcc}%</b>（${highHits}/${high}）`;
+    },
+
+    // 📤 匯出預測歷史 JSON（複製到剪貼簿 + 下載檔案）
+    exportPredHist() {
+        const data = localStorage.getItem('proTerminalPredHist') || '{}';
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `stockai_predhist_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        if (navigator.clipboard) navigator.clipboard.writeText(data).catch(()=>{});
+        alert('✅ 已下載 JSON 並複製到剪貼簿');
+    },
+
+    // 🗑️ 清除預測歷史（雙確認）
+    clearPredHist() {
+        const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
+        const cnt = Object.values(all).reduce((s, arr) => s + arr.length, 0);
+        if (cnt === 0) { alert('目前沒有任何歷史快照'); return; }
+        if (!confirm(`確定清除 ${cnt} 筆歷史快照？此操作無法復原（建議先匯出備份）`)) return;
+        localStorage.removeItem('proTerminalPredHist');
+        this._renderPredHistSummary();
+        this._renderPredictionAccuracy(this.currentSymbolId);
+        alert('✅ 已清除');
     },
 
     resetPrompt(type) {
