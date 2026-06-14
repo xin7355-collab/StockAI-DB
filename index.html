@@ -641,6 +641,7 @@
             <!-- 篩選結果列表 -->
             <div id="chuTabBody" class="space-y-1.5"></div>
             <div id="chuTabUpdated" class="text-[10px] text-gray-600 text-center pt-3 mt-3 border-t border-[#21262d]"></div>
+            <div class="text-[10px] text-amber-300/80 text-center pt-1 leading-relaxed">⚠️ 表內股價為盤後採礦「當日收盤」，今日盤中即時價請點卡片進入個股頁查看</div>
             <!-- 📥 一鍵全加當前 tab 入獵殺 -->
             <button onclick="app.addAllChuTabToMonitor(); app.vibrate(40);" class="w-full mt-3 bg-purple-700 hover:bg-purple-600 text-white py-2 rounded-lg text-[12px] font-black shadow-lg flex justify-center items-center gap-1.5 transition-all">
                 📥 一鍵全加當前 tab 進獵殺名單
@@ -1251,6 +1252,30 @@
             <!-- ════════ 【區 3-A】🌍 全球大環境 ════════ -->
             <div id="subContent_global" class="flex flex-col gap-3">
 
+            <!-- 📅 即將引爆(未來 14 日核彈事件,演算法計算自 macro_risk.json.upcoming_macro_events)-->
+            <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5 mb-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[10px] font-black text-amber-300">📅 即將引爆 (未來 14 日核彈)</div>
+                    <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
+                </div>
+                <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
+                    <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
+                </div>
+            </div>
+
+            <!-- 📊 今日全球彙整(AI 把 15 則新聞摘成「全球市場動態 + 美股焦點」結構化重點)-->
+            <div class="bg-gradient-to-br from-blue-950/30 to-[#0d1117] border border-blue-700/40 rounded-xl p-3 mb-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-xs font-black text-blue-300 flex items-center gap-1.5">📊 今日全球彙整 <span class="text-[9px] text-gray-500 font-normal">(AI 摘要)</span></div>
+                    <button onclick="app.analyzeGlobalNewsSummary({force:true}); app.vibrate(30);"
+                            id="globalNewsSummaryBtn"
+                            class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-700/50 rounded px-1.5 py-0.5">🔄 重新彙整</button>
+                </div>
+                <div id="globalNewsSummary" class="text-[12px] text-gray-300 leading-relaxed">
+                    <div class="text-[10px] text-blue-200/70 text-center py-3">💡 點右上「🔄 重新彙整」生成今日新聞 AI 摘要(省 Groq 配額,改為手動觸發)</div>
+                </div>
+            </div>
+
             <!-- ════════ 🌟 黃金動線：全球宏觀風險 ➔ 4 戰區 ➔ 戰略指揮部 ➔ 泡沫預警 ════════ -->
             <div class="bg-[#010409] rounded-xl border border-cyan-900/50 p-3">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🌐</span><span class="text-sm font-black text-cyan-300 tracking-wide">全球宏觀風險觀測台</span><span id="macroRiskSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span><button onclick="app.refreshAllMarketData(); app.vibrate(30);" class="text-gray-500 hover:text-cyan-300 text-xs leading-none px-1 transition-colors" title="重新整理市場數據(宏觀/美股/全球新聞)">🔄</button></div>
@@ -1361,30 +1386,6 @@
                         <div id="bpKospiChg" class="text-[10px] font-mono text-gray-500 mt-0.5">--</div>
                         <div id="bpKospiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">--</div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 📅 即將引爆(未來 14 日核彈事件,演算法計算自 macro_risk.json.upcoming_macro_events)-->
-            <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5 mb-2">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-[10px] font-black text-amber-300">📅 即將引爆 (未來 14 日核彈)</div>
-                    <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
-                </div>
-                <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
-                    <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
-                </div>
-            </div>
-
-            <!-- 📊 今日全球彙整(AI 把 15 則新聞摘成「全球市場動態 + 美股焦點」結構化重點)-->
-            <div class="bg-gradient-to-br from-blue-950/30 to-[#0d1117] border border-blue-700/40 rounded-xl p-3 mb-2">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-xs font-black text-blue-300 flex items-center gap-1.5">📊 今日全球彙整 <span class="text-[9px] text-gray-500 font-normal">(AI 摘要)</span></div>
-                    <button onclick="app.analyzeGlobalNewsSummary({force:true}); app.vibrate(30);"
-                            id="globalNewsSummaryBtn"
-                            class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-700/50 rounded px-1.5 py-0.5">🔄 重新彙整</button>
-                </div>
-                <div id="globalNewsSummary" class="text-[12px] text-gray-300 leading-relaxed">
-                    <div class="text-[10px] text-blue-200/70 text-center py-3">💡 點右上「🔄 重新彙整」生成今日新聞 AI 摘要(省 Groq 配額,改為手動觸發)</div>
                 </div>
             </div>
 
@@ -1693,6 +1694,7 @@
                         <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
                         <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
                         <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70">(風控)</span></button>
+                        <button onclick="app.switchRadarStrategy('falcon')" id="radarTabFalcon" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🦅 獵鷹建倉 <span class="opacity-70">(AI分≥60)</span></button>
                         <button onclick="app.openChuMasterModal(); app.vibrate(20);" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓選股</button>
                     </div>
 
@@ -10461,6 +10463,7 @@ ${_newsLine}${globalContext}
         swing:     { id: 'radarTabSwing',     active: 'bg-green-600/20 text-green-300 border-green-500' },
         sniper:    { id: 'radarTabSniper',    active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
+        falcon:    { id: 'radarTabFalcon',    active: 'bg-red-700/30 text-red-200 border-red-500' },
     },
     _RADAR_HINT: {
         layup:     '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
@@ -10468,6 +10471,7 @@ ${_newsLine}${globalContext}
         swing:     '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
         sniper:    '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
         attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
+        falcon:    '🦅 獵鷹建倉｜全市場 AI 評分 ≥ 60 的標的(紅榜 ≥75 / 橙榜 60-74),分數越高越優先,綜合動能·籌碼·技術·風險。',
     },
     // radar_matrix.json 尚未採礦時的示範資料（接線採礦後自動換成真資料）
     _RADAR_FAKE: {
@@ -10545,12 +10549,39 @@ ${_newsLine}${globalContext}
             if (tableWrap) tableWrap.classList.add('hidden');
             if (attView) attView.classList.remove('hidden');
             this.renderAttentionView();
+        } else if (key === 'falcon') {
+            if (layupView) layupView.classList.add('hidden');
+            if (tableWrap) tableWrap.classList.remove('hidden');
+            this._injectFalconRadarData();
+            this.renderRadarMatrix('falcon');
         } else {
             if (layupView) layupView.classList.add('hidden');
             if (tableWrap) tableWrap.classList.remove('hidden');
             this.renderRadarMatrix(key);
         }
         this.vibrate(15);
+    },
+
+    // 🦅 把 _falconScores.stocks 動態合成成 radarMatrix.data.falcon
+    // 篩 score >= 60，sort 降冪，取前 30，由 renderRadarMatrix 渲染
+    _injectFalconRadarData() {
+        const stocks = this._falconScores?.stocks || {};
+        const picks = Object.entries(stocks)
+            .filter(([_, f]) => Number.isFinite(f?.score) && f.score >= 60)
+            .sort((a, b) => (b[1].score || 0) - (a[1].score || 0))
+            .slice(0, 30)
+            .map(([sym, f]) => ({
+                sym,
+                close:      Number.isFinite(f.close) ? f.close : 0,
+                gain:       Number.isFinite(f.gain)  ? f.gain  : null,
+                turnover_e: Number.isFinite(f.turnover_e) ? f.turnover_e : 0,
+                status:     `分數 ${f.score}` + (Array.isArray(f.factors) && f.factors.length
+                                                ? ' · ' + f.factors.slice(0, 2).join(' ')
+                                                : ''),
+            }));
+        if (!this.radarMatrix) this.radarMatrix = { updated: this._falconScores?.updated || '', data: {} };
+        if (!this.radarMatrix.data) this.radarMatrix.data = {};
+        this.radarMatrix.data.falcon = picks;
     },
 
     // ===== 📚 朱家泓五大選股法 modal =====
@@ -10628,7 +10659,7 @@ ${_newsLine}${globalContext}
                     ${huntBtn}
                 </div>
                 <div class="flex items-center justify-between text-[12px] font-mono pl-0.5">
-                    <span class="text-gray-200">${(p.close || 0).toFixed(2)}</span>
+                    <span class="text-gray-200">${(p.close || 0).toFixed(2)}<span class="text-[9px] text-gray-500 ml-1">📅 盤收</span></span>
                     <span class="${gainColor} font-bold">${gainStr}</span>
                     <span class="text-gray-500">${(p.turnover_e || 0).toFixed(1)}億</span>
                 </div>
@@ -10854,19 +10885,23 @@ ${_newsLine}${globalContext}
                           : tone.includes('利空') || tone === 'bear' ? '🟩' : '⚪';
                 const src = n.source ? `<span class="text-gray-600">${n.source}</span>` : '';
                 const t = n.title || n.headline || n.summary || '';
-                return `<div class="bg-[#0d1117]/70 border border-[#30363d] rounded p-2.5">
+                const safeUrl = (n.url || n.link || '').replace(/"/g, '&quot;');
+                const card = `<div class="bg-[#0d1117]/70 border border-[#30363d] rounded p-2.5 transition-colors ${safeUrl ? 'hover:border-amber-700/60 cursor-pointer' : ''}">
                     <div class="flex items-start gap-1.5"><span class="flex-shrink-0">${dot}</span>
                     <div class="flex-1 min-w-0"><div class="text-gray-200 text-[13px] font-bold leading-snug">${t}</div>
                     ${n.note ? `<div class="text-gray-400 text-[11px] mt-0.5">${n.note}</div>` : ''}
-                    <div class="text-[10px] mt-1">${src}</div></div></div></div>`;
+                    <div class="text-[10px] mt-1 flex items-center gap-1.5">${src}${safeUrl ? '<span class="text-blue-400/70 ml-auto">🔗 看原文</span>' : ''}</div></div></div></div>`;
+                return safeUrl
+                    ? `<a href="${safeUrl}" target="_blank" rel="noopener" class="block no-underline">${card}</a>`
+                    : card;
             }).join('');
             if (body)  body.innerHTML  = html;
             if (embed) embed.innerHTML = html;
         };
         const SAMPLES = [
-            { tone: '利多', title: '外資連三日大舉匯入，台積電擴充 CoWoS 先進封裝產能', note: 'AI 供應鏈題材延燒，留意封裝/載板族群', source: '範例頭條' },
-            { tone: '利多', title: 'NVDA 新一代 GPU 拉貨動能強，伺服器代工訂單能見度看到明年', note: '廣達/緯穎/鴻海受惠', source: '範例頭條' },
-            { tone: '中立', title: '台股量能觀望，等待美國 CPI 數據與 Fed 利率決策', note: '盤面震盪，控制部位、嚴守均線', source: '範例頭條' },
+            { tone: '利多', title: '外資連三日大舉匯入，台積電擴充 CoWoS 先進封裝產能', note: 'AI 供應鏈題材延燒，留意封裝/載板族群', source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
+            { tone: '利多', title: 'NVDA 新一代 GPU 拉貨動能強，伺服器代工訂單能見度看到明年',       note: '廣達/緯穎/鴻海受惠',                source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
+            { tone: '中立', title: '台股量能觀望，等待美國 CPI 數據與 Fed 利率決策',                note: '盤面震盪，控制部位、嚴守均線',     source: '範例頭條', url: 'https://tw.stock.yahoo.com/' },
         ];
         // 🕒 1 分鐘 client cache,避免狂按「立即重抓」每次都打 gh-pages
         if (!force && this._newsCache && (Date.now() - this._newsCache.ts) < 60e3) {
