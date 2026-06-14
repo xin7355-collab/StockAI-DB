@@ -1013,6 +1013,7 @@
                         </div>
                         <div class="col-span-3 text-[9px] text-gray-500 text-center mt-1.5 leading-relaxed">🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 &lt;50% 偏低（台股：紅=漲=好）</div>
                         <div id="patHighAlert" class="hidden text-xs font-bold text-center text-[#f87171] bg-red-950/40 border border-red-800/50 rounded px-2 py-1.5 mt-1.5 animate-pulse"></div>
+                        <div id="myPredHistBox" class="bg-gray-800 rounded p-2 border border-gray-600 mt-2 text-[11px]"><div class="text-[10px] text-gray-500">尚未累積任何已驗證快照</div></div>
                     </div>
                     <div class="mb-3">
                         <div class="text-xs text-gray-500 mb-1.5">【長線波段回測】(依據 5MA/20MA 進出場)</div>
@@ -9896,6 +9897,94 @@ ${_newsLine}${globalContext}
             advice = `❄️ 歷史勝率僅 ${winRateNum}%，<b class="text-green-400">偏低</b>，目前趨勢不利，建議觀望或縮小部位。`;
         }
         document.getElementById('predictionConclusion').innerHTML = `<div class="text-xs text-gray-500 mb-1">${btNote}</div><div class="text-sm leading-relaxed">${advice}</div>`;
+
+        // 📊 預測歷史記錄：每次跑完自動快照當下 patWinRate，隔日 K 線資料到位後驗證
+        if (patternStats && patternStats.count >= 3) {
+            const sym = this.currentSymbolId;
+            const close = this.rawDailyData?.length ? this.rawDailyData[this.rawDailyData.length-1].close : null;
+            this._snapshotPrediction(sym, patternStats.winRate, patternStats.count, close);
+        }
+        this._verifyPredictions(this.currentSymbolId);
+    },
+
+    // 📸 把當下的 patWinRate 寫入 localStorage（同日同股只記第一次）
+    _snapshotPrediction(sym, patWinRate, patCount, close) {
+        if (!sym || patWinRate == null || patCount < 3 || !Number.isFinite(+close)) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
+        if (!all[sym]) all[sym] = [];
+        if (all[sym].some(r => r.date === today)) return;
+        all[sym].push({
+            date: today,
+            patWinRate: Number(patWinRate),
+            patCount: Number(patCount),
+            closeAtSnap: Number(close),
+            verified: false,
+            hit: null,
+            nextClose: null,
+        });
+        if (all[sym].length > 60) all[sym] = all[sym].slice(-60);
+        localStorage.setItem('proTerminalPredHist', JSON.stringify(all));
+    },
+
+    // 🔍 用 rawDailyData 對未驗證快照做隔日比對：next_close > closeAtSnap → hit
+    async _verifyPredictions(sym) {
+        if (!sym) { this._renderPredictionAccuracy(sym); return; }
+        const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
+        const hist = all[sym] || [];
+        if (!hist.length) { this._renderPredictionAccuracy(sym); return; }
+        if (!hist.some(r => !r.verified)) { this._renderPredictionAccuracy(sym); return; }
+
+        let data = this.rawDailyData?.length ? this.rawDailyData : null;
+        if (!data) {
+            try { data = await this.fetchHistoricalData(sym, false); } catch(_) { data = null; }
+        }
+        if (!data || data.length < 2) { this._renderPredictionAccuracy(sym); return; }
+
+        let changed = false;
+        for (const rec of hist) {
+            if (rec.verified) continue;
+            const recYmd = rec.date.replace(/-/g, '/');
+            const nextRow = data.find(d => d.date > recYmd);
+            if (!nextRow) continue;
+            rec.nextClose = nextRow.close;
+            rec.hit = nextRow.close > rec.closeAtSnap;
+            rec.verified = true;
+            changed = true;
+        }
+        if (changed) {
+            all[sym] = hist;
+            localStorage.setItem('proTerminalPredHist', JSON.stringify(all));
+        }
+        this._renderPredictionAccuracy(sym);
+    },
+
+    // 📊 在 #myPredHistBox 渲染累計準度
+    _renderPredictionAccuracy(sym) {
+        const box = document.getElementById('myPredHistBox');
+        if (!box) return;
+        if (!sym) { box.innerHTML = `<div class="text-[10px] text-gray-500">請先搜尋個股</div>`; return; }
+        const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
+        const hist = (all[sym] || []).filter(r => r.verified);
+        const total = hist.length;
+        if (total === 0) {
+            box.innerHTML = `<div class="text-[10px] text-gray-500">📊 ${sym} 尚未累積已驗證快照（每次跑 K 線會自動記今日 patWinRate，隔日回來自動對驗證）</div>`;
+            return;
+        }
+        const hits = hist.filter(r => r.hit).length;
+        const acc = (hits / total * 100).toFixed(1);
+        const high = hist.filter(r => r.patWinRate >= 65);
+        const highHits = high.filter(r => r.hit).length;
+        const highAcc = high.length ? (highHits / high.length * 100).toFixed(1) : '—';
+        const accCol = +acc >= 65 ? 'text-red-400' : (+acc >= 50 ? 'text-yellow-300' : 'text-green-400');
+        box.innerHTML = `
+            <div class="text-[10px] text-gray-400 font-bold mb-1">📊 我的預測歷史準度（${sym}）</div>
+            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                <div>累計已驗證：<span class="font-mono text-white">${total} 筆</span></div>
+                <div>命中：<span class="font-mono ${accCol} font-bold">${hits} / ${total}（${acc}%）</span></div>
+                ${high.length ? `<div class="col-span-2 text-[10px] text-gray-500">patWinRate ≥ 65% 時：<span class="font-mono ${+highAcc >= 65 ? 'text-red-300' : 'text-gray-300'}">${highHits}/${high.length}（${highAcc}%）</span></div>` : ''}
+            </div>
+        `;
     },
 
     onWorkerMessage(data) {
