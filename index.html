@@ -6445,15 +6445,20 @@ ${peerLine}${newsCtx}
         const divData = (divRes.data||[]).sort((a,b)=>a.date>b.date?1:-1);
         const latestDiv = divData.length ? divData[divData.length-1] : null;
         
-        // totalDiv: 0 = 有拿到但未發放; null = 未拿到資料
+        // totalDiv: 0 = API 真的回應「未發放」; null = API 沒拿到 / catch fallback
+        // 🛡️ 嚴格判定:catch fallback 給 {data:[]} 沒 msg, 不能誤判為「真資料」(避免限流時顯示「未發放」假警報)
         let totalDiv = null;
-        if (divRes.msg === 'success' || (Array.isArray(divRes.data))) {
-            // API responded successfully (even if empty data)
+        const divApiOK = (divRes.msg === 'success') || (Array.isArray(divRes.data) && divRes.data.length > 0);
+        if (divApiOK) {
             if (latestDiv) {
                 totalDiv = (latestDiv.CashEarningsDistribution||0) + (latestDiv.StockEarningsDistribution||0) + (latestDiv.CashStatutorySurplus||0) + (latestDiv.StockStatutorySurplus||0);
             } else {
-                totalDiv = 0; // successfully fetched but no records = never distributed
+                totalDiv = 0; // API 明確回應空 = 真未發放
             }
+        }
+        // 採礦 fallback:miner.py 採過的話 total_dividend 已寫在 chips JSON
+        if (totalDiv == null && localFund.total_dividend != null && Number(localFund.total_dividend) >= 0) {
+            totalDiv = Number(localFund.total_dividend);
         }
 
         const currentClose = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : null;
@@ -6696,7 +6701,16 @@ ${peerLine}${newsCtx}
         }
 
         // 每月營收趨勢（最近12月）雙Y軸：左=營收柱、右=月底股價折線
-        const rvSlice = revData.slice(-12);
+        // FinMind 拉不到時用採礦 monthly_revenue_history 補（schema 對齊：rev/ym → revenue/revenue_year/revenue_month）
+        let rvSlice = revData.slice(-12);
+        if (rvSlice.length === 0 && Array.isArray(localFund.monthly_revenue_history) && localFund.monthly_revenue_history.length > 0) {
+            rvSlice = localFund.monthly_revenue_history
+                .filter(h => h && typeof h.ym === 'string' && h.ym.includes('-') && Number(h.rev) > 0)
+                .map(h => {
+                    const [y, m] = h.ym.split('-');
+                    return { revenue_year: parseInt(y, 10), revenue_month: parseInt(m, 10), revenue: Number(h.rev) };
+                });
+        }
         const rvTrendEl = document.getElementById('xrayRevTrend');
         if (rvTrendEl) {
             if (rvSlice.length > 0) {

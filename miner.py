@@ -997,8 +997,30 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
         if rows:
             latest = rows[-1]
             yoy = latest.get('revenue_year_growth') or latest.get('RevenueYear')
+            # 🛡️ FinMind 沒給 yoy 欄位時自己回推（找去年同月營收對比）
+            if yoy is None:
+                try:
+                    lm = int(latest.get('revenue_month') or 0)
+                    ly = int(latest.get('revenue_year') or 0)
+                    cur_rev = float(latest.get('revenue', 0) or 0)
+                    if lm and ly and cur_rev > 0:
+                        for r in rows[:-1]:
+                            if int(r.get('revenue_month') or 0) == lm and int(r.get('revenue_year') or 0) == ly - 1:
+                                prev_rev = float(r.get('revenue', 0) or 0)
+                                if prev_rev > 0:
+                                    yoy = (cur_rev - prev_rev) / prev_rev * 100
+                                break
+                except Exception: pass
             if yoy is not None:
                 result['revenue_yoy'] = round(float(yoy), 1)
+            # 順手存 12 月歷史 → 前端可畫完整 12 月圖（取代「最新月摘要」救援）
+            try:
+                hist = [{'ym': f"{int(r.get('revenue_year') or 0):04d}-{int(r.get('revenue_month') or 0):02d}",
+                         'rev': float(r.get('revenue', 0) or 0)}
+                        for r in rows[-12:] if r.get('revenue_year') and r.get('revenue_month')]
+                if hist:
+                    result['monthly_revenue_history'] = hist
+            except Exception: pass
             # 歷史新高判定：當月營收 vs 前 23 個月最大值
             latest_rev = float(latest.get('revenue', 0) or 0)
             result['latest_revenue'] = latest_rev
