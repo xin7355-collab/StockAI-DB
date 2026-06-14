@@ -1034,10 +1034,11 @@
                     <div class="text-base bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-3 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【推薦隔日上漲機率說明】\n\n結合前日主力分點集中度、三大法人近3日籌碼動態，並交叉比對 KD、RSI 等技術面指標，由系統推估出的短線極短線勝率。\n\n如何解讀表格：\n• 日期：歷史交易日\n• 收盤：該日收盤價\n• 隔日漲機率：類似型態下的隔日上漲統計機率\n\n🔴高機率日（≥65%）代表歷史上這種型態隔日收高的可能性高，大於 60% 代表隔日早盤具備強烈動能。')">📅 推薦隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
+                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【我的 patWinRate 歷史 vs 隔日實際】\n\n機率欄與上方「AI 雲端大數據波段回測預判」完全同源 — 都是 patWinRate（近5日K線+量能+KD/MACD+籌碼+大盤環境的歷史型態相似度匹配）。\n\n• 今日該行 = 上方顯示的機率，絕對一致\n• 歷史日如果之前沒跑過 K 線分析，顯示「📝 未記錄」（從今日起會自動累積）\n• 隔日實際漲跌：從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄：預測機率 ≥ 50% 且實際漲 = ✅，反之 ❌\n\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">📅 我的 patWinRate 歷史 vs 隔日實際 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
+                    <div class="text-[10px] text-gray-500 mb-2 leading-tight">機率為當日 patWinRate 即時計算 + 自動每日快照。今日該行 = 上方數字同源。歷史日若沒跑過 K 線分析會顯示「📝 未記錄」，從今日起累積。</div>
                     <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">隔日漲機率</th></tr></thead>
-                        <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="3" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
+                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">我的機率</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
+                        <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="4" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -9910,40 +9911,63 @@ ${_newsLine}${globalContext}
     renderBacktest() {
         const tbody = document.getElementById('backtestTableBody');
         const data = this.activeData, last = data.length - 1;
-        if (last < 5) { tbody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
+        if (last < 5) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
 
-        // Calculate historical next-day win rate by score range using all available data
-        const scoreWinMap = { high: { wins: 0, total: 0 }, mid: { wins: 0, total: 0 }, low: { wins: 0, total: 0 } };
-        for (let i = Math.max(0, last - 200); i < last; i++) {
-            const alpha = this.getAlphaScoreData(data, this.indicators, i, this.twiiState);
-            const s = alpha.totalScore;
-            const nextUp = data[i + 1].close > data[i].close;
-            const bucket = s >= 75 ? 'high' : s >= 45 ? 'mid' : 'low';
-            scoreWinMap[bucket].total++;
-            if (nextUp) scoreWinMap[bucket].wins++;
-        }
-        // 樣本 < 5 不出百分比(小樣本噪音大,1/2=50%、2/3=67% 都是隨機,顯示出來會誤導使用者)
-        const MIN_SAMPLE = 5;
-        const getWinPct = (bucket) => {
-            const b = scoreWinMap[bucket];
-            return b.total >= MIN_SAMPLE ? Math.round(b.wins / b.total * 100) : null;
-        };
-        const getSampleCount = (bucket) => scoreWinMap[bucket]?.total || 0;
+        // 改用 localStorage 中該股的 patWinRate 歷史快照（與上方「AI 雲端大數據波段回測預判」同源）
+        const sym = this.currentSymbolId;
+        const hist = (JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}'))[sym] || [];
+        const byDate = {};
+        // K 線 data[i].date 格式 'YYYY/MM/DD',snapshot.date 'YYYY-MM-DD' → 轉成同樣 key
+        for (const r of hist) byDate[String(r.date || '').replace(/-/g, '/')] = r;
 
         let html = '';
         for (let i = last; i >= Math.max(0, last - 4); i--) {
-            const pC = data[i].close, prevC = i > 0 ? data[i-1].close : pC, diff = pC - prevC, pct = prevC > 0 ? (diff / prevC) * 100 : 0;
-            const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500'), sign = diff > 0 ? '+' : '';
-            const alpha = this.getAlphaScoreData(data, this.indicators, i, this.twiiState);
-            const bucket = alpha.totalScore >= 75 ? 'high' : alpha.totalScore >= 45 ? 'mid' : 'low';
-            const wp = getWinPct(bucket);
-            const sampleN = getSampleCount(bucket);
-            const wpColor = wp !== null ? (wp >= 65 ? 'text-red-400' : wp >= 45 ? 'text-yellow-400' : 'text-green-400') : 'text-gray-500';
-            const wpText = wp !== null ? `${wp}%` : (sampleN > 0 ? `樣本少 (${sampleN})` : '無樣本');
+            const pC = data[i].close;
+            const prevC = i > 0 ? data[i-1].close : pC;
+            const diff = pC - prevC;
+            const pct = prevC > 0 ? (diff / prevC) * 100 : 0;
+            const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500');
+            const sign = diff > 0 ? '+' : '';
+
+            // 我的 patWinRate(從 localStorage 取該日快照)
+            const snap = byDate[data[i].date];
+            let wrHtml;
+            if (snap && Number.isFinite(snap.patWinRate)) {
+                const wr = Number(snap.patWinRate);
+                const wrCol = wr >= 65 ? 'text-red-400' : wr >= 50 ? 'text-yellow-400' : 'text-green-400';
+                wrHtml = `<span class="${wrCol} text-base font-black">${wr.toFixed(1)}%</span>`;
+                if (snap.patCount) wrHtml += `<div class="text-[9px] text-gray-500">${snap.patCount} 樣本</div>`;
+            } else {
+                wrHtml = '<span class="text-gray-600 text-[10px]">📝 未記錄</span>';
+            }
+
+            // 隔日實際漲跌(已過了的歷史日才能算,今日該行尚未發生 → '明日待定')
+            let nextHtml, hitHtml;
+            if (i < last && data[i+1]) {
+                const nC = data[i+1].close;
+                const nDiff = nC - pC;
+                const nPct = pC > 0 ? (nDiff / pC) * 100 : 0;
+                const nColor = nDiff > 0 ? 'text-[#f87171]' : nDiff < 0 ? 'text-[#4ade80]' : 'text-gray-500';
+                const nSign = nDiff > 0 ? '+' : '';
+                nextHtml = `<span class="${nColor} text-xs font-mono font-bold">${nSign}${nPct.toFixed(2)}%</span>`;
+                if (snap && Number.isFinite(snap.patWinRate)) {
+                    const predUp = snap.patWinRate >= 50;
+                    const actualUp = nDiff > 0;
+                    const hit = predUp === actualUp;
+                    hitHtml = hit ? '<span class="text-red-400 font-bold">✅</span>' : '<span class="text-green-400 font-bold">❌</span>';
+                } else {
+                    hitHtml = '<span class="text-gray-600">—</span>';
+                }
+            } else {
+                nextHtml = '<span class="text-gray-500 text-[10px]">明日待定</span>';
+                hitHtml = '<span class="text-gray-600">—</span>';
+            }
+
             html += `<tr class="border-b border-[#21262d] hover:bg-[#1c2128]">
                 <td class="py-2 px-1 text-gray-300 text-xs">${data[i].date}</td>
                 <td class="py-2 px-1 text-right"><span class="font-bold text-white text-sm">${pC.toFixed(2)}</span><div class="text-[10px] mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>
-                <td class="py-2 px-1 text-center"><span class="text-base font-black ${wpColor}">${wpText}</span></td>
+                <td class="py-2 px-1 text-center">${wrHtml}</td>
+                <td class="py-2 px-1 text-center">${nextHtml}<div class="text-[9px] mt-0.5">${hitHtml}</div></td>
             </tr>`;
         }
         tbody.innerHTML = html;
