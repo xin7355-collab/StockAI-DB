@@ -30,6 +30,294 @@ def calculate_ma(data, period):
     return sum(d['close'] for d in data[-period:]) / period
 
 
+# ────────────────────────────────────────────────────────────
+# 📚 朱家泓五大選股法 — 共用工具函式
+# ────────────────────────────────────────────────────────────
+def _chu_load_attention_set():
+    """讀 data/attention_status.json,回傳 {sym} set(處置/注意/全額交割)"""
+    try:
+        if ATTENTION_FILE.exists():
+            blob = json.loads(ATTENTION_FILE.read_text(encoding='utf-8'))
+            return set((blob.get('stocks') or {}).keys())
+    except Exception:
+        pass
+    return set()
+
+
+def _chu_skip(sym, rows, attention_set, min_rows=22):
+    """共用排除:處置 / ETF / 殭屍量 / 資料筆數不足。回 True = 跳過。"""
+    if sym in attention_set:
+        return True
+    if sym.startswith('00'):  # ETF 排除
+        return True
+    if not isinstance(rows, list) or len(rows) < min_rows:
+        return True
+    # 殭屍量:最近 5 日平均成交量 < 200 張(200 × 1000 股)
+    vols = [(r.get('volume', 0) or 0) for r in rows[-5:]]
+    if vols and (sum(vols) / len(vols) / 1000) < 200:
+        return True
+    return False
+
+
+def _chu_macd_hist(closes, fast=12, slow=26, sig=9):
+    """算今日 MACD 柱(DIF - DEA)。資料 < slow+sig 回 None。
+    EMA 標準公式:EMA_t = α·close + (1-α)·EMA_{t-1},α=2/(N+1)。"""
+    if len(closes) < slow + sig:
+        return None
+    def _ema(values, n):
+        k = 2 / (n + 1)
+        e = sum(values[:n]) / n  # 用首 N 筆 SMA 當 seed
+        for v in values[n:]:
+            e = v * k + e * (1 - k)
+        return e
+    # 為了得到「今日 DEA」,需要連續 N 天的 DIF 序列
+    # 簡化:用迭代法一次算到底,輸出每日 DIF + 末 sig 天 EMA
+    k_fast, k_slow, k_sig = 2 / (fast + 1), 2 / (slow + 1), 2 / (sig + 1)
+    e_fast = sum(closes[:fast]) / fast
+    e_slow = sum(closes[:slow]) / slow
+    difs = []
+    for i, v in enumerate(closes):
+        if i >= fast:
+            e_fast = v * k_fast + e_fast * (1 - k_fast)
+        if i >= slow:
+            e_slow = v * k_slow + e_slow * (1 - k_slow)
+        if i >= slow - 1:
+            difs.append(e_fast - e_slow)
+    if len(difs) < sig:
+        return None
+    dea = sum(difs[:sig]) / sig
+    for d in difs[sig:]:
+        dea = d * k_sig + dea * (1 - k_sig)
+    return difs[-1] - dea  # 今日 MACD 柱
+
+
+def _chu_kd(rows, n=9):
+    """算今日 (K, D, K_prev, D_prev)。資料 < n+1 回 None。
+    台股慣用「Stochastic Slow」:RSV → K = 2/3·K_prev + 1/3·RSV,D 同理。"""
+    if len(rows) < n + 1:
+        return None
+    K, D = 50.0, 50.0
+    K_prev, D_prev = K, D
+    for i in range(n - 1, len(rows)):
+        window = rows[i - n + 1: i + 1]
+        highs = [r.get('high', r.get('close', 0)) or 0 for r in window]
+        lows = [r.get('low', r.get('close', 0)) or 0 for r in window]
+        c = rows[i].get('close', 0) or 0
+        hi, lo = max(highs), min(lows)
+        rsv = (c - lo) / (hi - lo) * 100 if hi > lo else 50.0
+        K_new = (2 / 3) * K + (1 / 3) * rsv
+        D_new = (2 / 3) * D + (1 / 3) * K_new
+        K_prev, D_prev = K, D
+        K, D = K_new, D_new
+    return (K, D, K_prev, D_prev)
+
+
+def _chu_stdev_ratio(closes):
+    """近 20 日標準差 / 均價(波動率)。資料 < 20 回 None。"""
+    if len(closes) < 20:
+        return None
+    w = closes[-20:]
+    avg = sum(w) / 20
+    if avg <= 0:
+        return None
+    var = sum((c - avg) ** 2 for c in w) / 20
+    return (var ** 0.5) / avg
+
+
+def _chu_perfect6(sym, rows):
+    """🍀 模組 A:六六大順。核心 4 必中 + 加分項 0-25。回 record dict 或 None。"""
+    if len(rows) < 60:
+        return None
+    closes = [r.get('close', 0) or 0 for r in rows]
+    opens = [r.get('open', 0) or 0 for r in rows]
+    vols = [r.get('volume', 0) or 0 for r in rows]
+    c, o, v = closes[-1], opens[-1], vols[-1]
+    pc = closes[-2]
+    if c <= 0 or o <= 0 or pc <= 0 or v <= 0:
+        return None
+
+    # 核心 4 必中
+    ma5 = sum(closes[-5:]) / 5
+    ma10 = sum(closes[-10:]) / 10
+    ma20 = sum(closes[-20:]) / 20
+    ma60 = sum(closes[-60:]) / 60
+    if not (ma5 > ma10 > ma20 > ma60):  # 多頭排列
+        return None
+    day_gain = (c - pc) / pc * 100
+    if not (c > o and day_gain > 0.5):  # 紅 K + 漲幅 > 0.5%
+        return None
+    v_avg_5 = sum(vols[-5:]) / 5
+    if not (v_avg_5 > 0 and v > v_avg_5 * 1.2):  # 爆量
+        return None
+    # 創 20 日新高(不含今日)
+    if not (c > max(closes[-21:-1])):
+        return None
+
+    # 加分項 0-25
+    quality = 0
+    badges = []
+    macd_h = _chu_macd_hist(closes)
+    if macd_h is not None and macd_h > 0:
+        quality += 10
+        badges.append("MACD多")
+    kd = _chu_kd(rows)
+    if kd:
+        K, D, Kp, Dp = kd
+        if K > D and Kp <= Dp:
+            quality += 10
+            badges.append("KD金叉")
+    ma20_5ago = sum(closes[-25:-5]) / 20 if len(closes) >= 25 else None
+    if ma20_5ago and ma20 > ma20_5ago:
+        quality += 5
+        badges.append("月線上揚")
+
+    turnover = c * v
+    return {
+        'sym': sym, 'close': round(c, 2),
+        'turnover_e': round(turnover / YI, 2),
+        'gain': round(day_gain, 2),
+        'quality': quality,
+        'status': f"品質{quality}/25" + (" · " + "·".join(badges) if badges else ""),
+    }
+
+
+def _chu_top_gainer(sym, rows):
+    """🔥 模組 B:特別報價。紅 K + 漲幅 ≥ 3% + 成交額 ≥ 5000 萬 + 成交量 ≥ 2000 張。"""
+    closes = [r.get('close', 0) or 0 for r in rows]
+    opens = [r.get('open', 0) or 0 for r in rows]
+    c, o, v = closes[-1], opens[-1], rows[-1].get('volume', 0) or 0
+    pc = closes[-2] if len(closes) >= 2 else 0
+    if c <= 0 or o <= 0 or pc <= 0 or v <= 0:
+        return None
+    day_gain = (c - pc) / pc * 100
+    turnover = c * v
+    lots = v / 1000  # 張數
+
+    # 過濾:漲幅 < 3%、非紅 K、成交額 < 5000 萬、量 < 2000 張
+    if day_gain < 3.0:
+        return None
+    if c <= o:
+        return None
+    if turnover < 50_000_000:
+        return None
+    if lots < 2000:
+        return None
+
+    return {
+        'sym': sym, 'close': round(c, 2),
+        'turnover_e': round(turnover / YI, 2),
+        'gain': round(day_gain, 2),
+        'status': f"漲{day_gain:.1f}% · 量{int(lots)}張",
+    }
+
+
+def _chu_bottom(sym, rows):
+    """🥣 模組 D:底部轉折。需資料 ≥ 120 筆。"""
+    if len(rows) < 120:
+        return None
+    closes = [r.get('close', 0) or 0 for r in rows]
+    opens = [r.get('open', 0) or 0 for r in rows]
+    vols = [r.get('volume', 0) or 0 for r in rows]
+    c, o, v = closes[-1], opens[-1], vols[-1]
+    pc = closes[-2]
+    if c <= 0 or o <= 0 or pc <= 0 or v <= 0:
+        return None
+
+    # 距 120MA 乖離 -5% ~ +5%
+    ma120 = sum(closes[-120:]) / 120
+    if ma120 <= 0:
+        return None
+    bias120 = (c - ma120) / ma120 * 100
+    if not (-5 <= bias120 <= 5):
+        return None
+
+    # 波動率極低:近 20 日標準差/均價 < 3%
+    sr = _chu_stdev_ratio(closes)
+    if sr is None or sr >= 0.03:
+        return None
+
+    # 長期下跌:距近 120 日(半年)高點下跌 ≥ 20%
+    high_120 = max(closes[-120:])
+    if high_120 <= 0:
+        return None
+    drop_from_high = (high_120 - c) / high_120 * 100
+    if drop_from_high < 20:
+        return None
+
+    # 啟動紅 K:量 > 20MA量 × 2,且 收 > 開、漲幅 > 0.5%
+    day_gain = (c - pc) / pc * 100
+    if not (c > o and day_gain > 0.5):
+        return None
+    v_avg_20 = sum(vols[-20:]) / 20
+    if not (v_avg_20 > 0 and v > v_avg_20 * 2):
+        return None
+
+    turnover = c * v
+    return {
+        'sym': sym, 'close': round(c, 2),
+        'turnover_e': round(turnover / YI, 2),
+        'gain': round(day_gain, 2),
+        'status': f"底部 · 距高{drop_from_high:.0f}% · 爆量{v/v_avg_20:.1f}x",
+    }
+
+
+def _chu_riding5ma(sym, rows):
+    """🚀 模組 E:5MA 飆股主升段。"""
+    if len(rows) < 11:
+        return None
+    closes = [r.get('close', 0) or 0 for r in rows]
+    highs = [r.get('high', closes[i]) or 0 for i, r in enumerate(rows)]
+    lows = [r.get('low', closes[i]) or 0 for i, r in enumerate(rows)]
+    c = closes[-1]
+    pc = closes[-2]
+    if c <= 0 or pc <= 0:
+        return None
+
+    # MA5
+    ma5_today = sum(closes[-5:]) / 5
+    ma5_5ago = sum(closes[-10:-5]) / 5
+    if ma5_5ago <= 0:
+        return None
+    if c <= ma5_today:  # 收盤要站上 MA5
+        return None
+    # MA5 5 日斜率 > 5%(陡峭)
+    slope_5 = (ma5_today - ma5_5ago) / ma5_5ago * 100
+    if slope_5 <= 5:
+        return None
+    # 近 5 日 ≥ 2 根漲幅 > 5%
+    big_days = 0
+    for i in range(-5, 0):
+        if closes[i - 1] > 0:
+            g = (closes[i] - closes[i - 1]) / closes[i - 1] * 100
+            if g > 5:
+                big_days += 1
+    if big_days < 2:
+        return None
+    # 今日最高 > 昨日最高
+    if highs[-1] <= highs[-2]:
+        return None
+    # 今日最低 ≥ MA5(沒跌破)
+    if lows[-1] < ma5_today:
+        return None
+    # 乖離 MA5 < +15%(防接刀)
+    bias5 = (c - ma5_today) / ma5_today * 100
+    if bias5 >= 15:
+        return None
+
+    # 5 日累計漲幅(排序用)
+    cum_5d = (c - closes[-6]) / closes[-6] * 100 if len(closes) >= 6 and closes[-6] > 0 else 0
+    day_gain = (c - pc) / pc * 100
+    v = rows[-1].get('volume', 0) or 0
+    turnover = c * v
+    return {
+        'sym': sym, 'close': round(c, 2),
+        'turnover_e': round(turnover / YI, 2),
+        'gain': round(day_gain, 2),
+        'cum_5d': round(cum_5d, 2),
+        'status': f"5日累漲{cum_5d:.0f}% · 斜率{slope_5:.0f}%",
+    }
+
+
 def fetch_attention_disposal_status():
     """🚨 處置神器爬蟲:抓 TWSE 注意股 + 處置股名單,寫 data/attention_status.json。
 
@@ -148,8 +436,17 @@ def main():
     matrix = {
         'momentum': [],  # 🏎️ 渣男賽車
         'swing': [],     # 🐢 烏龜過河
-        'sniper': []     # 🎯 狙擊手
+        'sniper': [],    # 🎯 狙擊手
+        # 📚 朱家泓五大選股法(雷達只跑 A/B/D/E;C 淘汰在前端跑)
+        'chu_perfect6': [],     # 🍀 六六大順(模組 A)
+        'chu_top_gainer': [],   # 🔥 特別報價(模組 B)
+        'chu_bottom': [],       # 🥣 底部轉折(模組 D)
+        'chu_riding5ma': [],    # 🚀 5MA 飆股主升段(模組 E)
     }
+
+    # 朱家泓選股法共用排除名單(處置/注意/全額交割)
+    chu_attention_set = _chu_load_attention_set()
+    print(f"   📚 朱家泓選股排除名單載入:{len(chu_attention_set)} 檔(處置/注意股)")
 
     processed_count = 0
 
@@ -284,6 +581,28 @@ def main():
                             'status': f"法人連買{inst_buy_5d}/5天+貼月線"
                         })
 
+            # ─────────────────────────────────────────────────
+            # 📚 朱家泓五大選股法(A/B/D/E,C 淘汰在前端跑)
+            # 共用排除:處置/注意股、ETF、殭屍量、資料筆數不足
+            # ─────────────────────────────────────────────────
+            if not _chu_skip(sym, raw_data, chu_attention_set, min_rows=22):
+                # 🍀 模組 A 六六大順(需 60 筆)
+                rec_a = _chu_perfect6(sym, raw_data)
+                if rec_a:
+                    matrix['chu_perfect6'].append(rec_a)
+                # 🔥 模組 B 特別報價
+                rec_b = _chu_top_gainer(sym, raw_data)
+                if rec_b:
+                    matrix['chu_top_gainer'].append(rec_b)
+                # 🥣 模組 D 底部轉折(需 120 筆)
+                rec_d = _chu_bottom(sym, raw_data)
+                if rec_d:
+                    matrix['chu_bottom'].append(rec_d)
+                # 🚀 模組 E 5MA 飆股
+                rec_e = _chu_riding5ma(sym, raw_data)
+                if rec_e:
+                    matrix['chu_riding5ma'].append(rec_e)
+
             processed_count += 1
 
         except Exception:
@@ -295,6 +614,12 @@ def main():
     matrix['swing'].sort(key=lambda x: x['turnover_e'], reverse=True)
     matrix['sniper'].sort(key=lambda x: x['turnover_e'], reverse=True)
 
+    # 📚 朱家泓四模組排序(各自最適合的排序鍵)
+    matrix['chu_perfect6'].sort(key=lambda x: (x.get('quality', 0), x['turnover_e']), reverse=True)
+    matrix['chu_top_gainer'].sort(key=lambda x: (x['gain'], x['turnover_e']), reverse=True)
+    matrix['chu_bottom'].sort(key=lambda x: x['gain'], reverse=True)
+    matrix['chu_riding5ma'].sort(key=lambda x: x.get('cum_5d', 0), reverse=True)
+
     # 輸出最終雷達矩陣
     output = {
         'updated': date.today().isoformat(),
@@ -302,7 +627,12 @@ def main():
         'data': {
             'momentum': matrix['momentum'][:20],  # 各取最強的前 20 檔
             'swing': matrix['swing'][:20],
-            'sniper': matrix['sniper'][:20]
+            'sniper': matrix['sniper'][:20],
+            # 📚 朱家泓五大選股法
+            'chu_perfect6': matrix['chu_perfect6'][:20],
+            'chu_top_gainer': matrix['chu_top_gainer'][:30],
+            'chu_bottom': matrix['chu_bottom'][:20],
+            'chu_riding5ma': matrix['chu_riding5ma'][:20],
         }
     }
 
@@ -316,6 +646,11 @@ def main():
     print(f"   🏎️ 渣男賽車: {len(output['data']['momentum'])} 檔")
     print(f"   🐢 烏龜過河: {len(output['data']['swing'])} 檔")
     print(f"   🎯 狙擊手: {len(output['data']['sniper'])} 檔")
+    print(f"   📚 朱家泓五大選股法:")
+    print(f"      🍀 六六大順: {len(output['data']['chu_perfect6'])} 檔")
+    print(f"      🔥 特別報價: {len(output['data']['chu_top_gainer'])} 檔")
+    print(f"      🥣 底部轉折: {len(output['data']['chu_bottom'])} 檔")
+    print(f"      🚀 5MA飆股: {len(output['data']['chu_riding5ma'])} 檔")
     print(f"💾 已匯出至 {OUTPUT_FILE}")
 
 

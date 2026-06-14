@@ -622,7 +622,34 @@
         </div>
     </div>
 
-    <!-- 📰 即時情報與新聞解析（毛玻璃彈窗） -->
+    <!-- 📚 朱家泓五大選股法（毛玻璃彈窗,內含 4 個子 tab) -->
+    <div id="chuMasterModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
+        <div class="modal-content max-w-2xl max-h-[90vh] overflow-y-auto bg-[#0d1117]/85 backdrop-blur-lg border border-purple-700/40" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-[#30363d]">
+                <h3 class="text-purple-300 font-black text-lg">📚 朱家泓五大選股法</h3>
+                <button onclick="document.getElementById('chuMasterModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <!-- 4 個子 tab 切換 -->
+            <div class="grid grid-cols-4 gap-1.5 mb-3">
+                <button onclick="app.switchChuTab('chu_perfect6')" id="chuTab_perfect6" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🍀 六六大順</button>
+                <button onclick="app.switchChuTab('chu_top_gainer')" id="chuTab_top_gainer" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🔥 特別報價</button>
+                <button onclick="app.switchChuTab('chu_bottom')" id="chuTab_bottom" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🥣 底部轉折</button>
+                <button onclick="app.switchChuTab('chu_riding5ma')" id="chuTab_riding5ma" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚀 5MA飆股</button>
+            </div>
+            <!-- 白話說明卡(每 tab 切換時更新) -->
+            <div id="chuTabDesc" class="bg-purple-900/15 border-l-4 border-purple-500 pl-3 pr-2 py-2 rounded-r mb-3 text-[12px] leading-relaxed text-gray-200"></div>
+            <!-- 篩選結果列表 -->
+            <div id="chuTabBody" class="space-y-1.5"></div>
+            <div id="chuTabUpdated" class="text-[10px] text-gray-600 text-center pt-3 mt-3 border-t border-[#21262d]"></div>
+            <!-- 模組 C 淘汰選股法說明(底部固定區) -->
+            <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2 rounded-r mt-3 text-[11px] leading-relaxed text-gray-300">
+                <div class="font-black text-red-300 mb-1">🗑️ 模組 C 淘汰選股法(已內建)</div>
+                自選股 / 庫存頁的股票若做出 3 種破綻(<b class="text-orange-300">跌破月線</b> / <b class="text-yellow-300">月線下彎</b> / <b class="text-red-300">跌破前低</b>)會自動標紅警示。**警報響不等於必賣**,而是告訴你該注意了。
+            </div>
+        </div>
+    </div>
+
+    <!-- 📰 即時情報與新聞解析(毛玻璃彈窗) -->
     <div id="newsModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
         <div class="modal-content max-w-xl max-h-[85vh] overflow-y-auto bg-[#0d1117]/80 backdrop-blur-lg border border-amber-700/40" onclick="event.stopPropagation()">
             <div class="flex items-center justify-between mb-2 pb-2 border-b border-[#30363d]">
@@ -1637,6 +1664,7 @@
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <h2 class="text-base font-bold text-cyan-400 flex items-center gap-1">🎯 首席戰略雷達矩陣</h2>
                             <button onclick="const m=document.getElementById('radarManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(20);" class="text-[10px] text-cyan-200 bg-cyan-900/30 border border-cyan-600/60 rounded px-2 py-0.5 hover:bg-cyan-800/40 transition-colors whitespace-nowrap font-bold" title="雷達實戰說明書">ℹ️ 雷達實戰說明書</button>
+                            <button onclick="app.openChuMasterModal(); app.vibrate(20);" class="text-[10px] text-purple-200 bg-purple-900/30 border border-purple-600/60 rounded px-2 py-0.5 hover:bg-purple-800/40 transition-colors whitespace-nowrap font-bold" title="朱家泓五大選股法">📚 朱家泓選股</button>
                         </div>
                         <button onclick="const m=document.getElementById('newsModal'); m.classList.remove('hidden'); m.style.display='flex'; app.loadNewsHeadlines(); app.vibrate(20);" class="text-[10px] text-amber-300 border border-amber-700/60 rounded px-1.5 py-0.5 hover:bg-amber-900/30 transition-colors whitespace-nowrap" title="即時情報與新聞解析">📰 即時情報</button>
                     </div>
@@ -10142,7 +10170,7 @@ ${_newsLine}${globalContext}
                 <div class="swipe-content relative bg-gradient-to-r from-[#1c2128] to-[#161b22] px-3 py-2.5 flex items-center gap-2 w-full" style="transform: translateX(0px);">
                     <div class="drag-handle text-gray-600 hover:text-white text-lg flex-shrink-0">☰</div>
                     <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
                             ${seasonTag ? `<span class="flex-shrink-0">${seasonTag}</span>` : ''}
                             ${this._renderFalconBadge(sym)}
@@ -10152,6 +10180,7 @@ ${_newsLine}${globalContext}
                             <span class="text-sm font-bold font-mono ${priceColor}">${priceText}</span>
                             ${diffText ? `<span class="text-[10px] font-mono ${priceColor}">${diffText}</span>` : ''}
                         </div>
+                        <div class="mt-1 flex flex-wrap gap-1">${this._renderEliminationBadge(data)}</div>
                     </div>
                     ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
                 </div>
@@ -10239,10 +10268,16 @@ ${_newsLine}${globalContext}
         this.refreshInventoryPrices();
     },
 
+    _invKlineCache: {},
+
     async refreshInventoryPrices() {
         for(let item of this.inventory) {
             const data = await this.fetchHistoricalData(item.symbol, false);
             item.currentPrice = data && data.length > 0 ? data[data.length-1].close : item.cost;
+            // 朱家泓淘汰選股法需要 25 筆 K 線,存獨立 cache(避免污染 localStorage)
+            if (Array.isArray(data) && data.length >= 25) {
+                this._invKlineCache[item.symbol] = data.slice(-30);
+            }
             const fugle = await this.fetchFugleData(item.symbol);
             if(fugle) item.currentPrice = fugle.price;
         }
@@ -10288,6 +10323,7 @@ ${_newsLine}${globalContext}
                     <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
                     <div class="cursor-pointer flex-grow ml-2" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                         <div class="font-bold text-white text-base">${this.getFullStockName(item.symbol)}${this._renderFalconBadge(item.symbol, { profitPct: (cost > 0 && price > 0) ? pnl : null })}${this._renderAttentionBadge(item.symbol)}</div>
+                        ${(() => { const b = this._renderEliminationBadge(this._invKlineCache[item.symbol]); return b ? `<div class="mt-1 flex flex-wrap gap-1">${b}</div>` : ''; })()}
                         <div class="text-xs text-gray-500 mt-1">成本: ${cost} | ${(shares*1000).toLocaleString()}股 | ${item.buyDate || '--'}</div>
                     </div>
                     <div class="text-right flex items-center gap-3">
@@ -10479,6 +10515,110 @@ ${_newsLine}${globalContext}
             this.renderRadarMatrix(key);
         }
         this.vibrate(15);
+    },
+
+    // ===== 📚 朱家泓五大選股法 modal =====
+    _CHU_TABS: {
+        chu_perfect6:   { id: 'chuTab_perfect6',   active: 'bg-green-600/30 text-green-200 border-green-500',  name: '🍀 六六大順' },
+        chu_top_gainer: { id: 'chuTab_top_gainer', active: 'bg-red-600/30 text-red-200 border-red-500',        name: '🔥 特別報價' },
+        chu_bottom:     { id: 'chuTab_bottom',     active: 'bg-amber-600/30 text-amber-200 border-amber-500',  name: '🥣 底部轉折' },
+        chu_riding5ma:  { id: 'chuTab_riding5ma',  active: 'bg-pink-600/30 text-pink-200 border-pink-500',     name: '🚀 5MA飆股' },
+    },
+    _CHU_TAB_BASE: 'chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all ',
+    _CHU_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
+    _CHU_DESC: {
+        chu_perfect6: `<b class="text-green-300">🍀 六六大順</b>(完美股):像體操滿分,股價同時做出 <b>4 個核心動作</b> — 均線排隊(多頭)、紅 K、爆量、創 20 日新高,再加 MACD/KD/月線上揚的<b class="text-yellow-300">品質分(0-25)</b>。<br><br>📋 <b>操作:</b>盤後看到 → <b class="text-cyan-300">隔日開盤站穩 5MA 進</b>,跌破 5MA 立停。<br>⚠️ 這種股很少出現,有 1-3 檔就偷笑。0 檔代表市場沒完美股,別硬找。`,
+        chu_top_gainer: `<b class="text-red-300">🔥 特別報價</b>(漲幅榜):**今天漲幅前 30 名扣掉冷門股**(成交額 < 5000 萬、< 2000 張、ETF、處置股一律排除),留下有量、主力真表態的強股。<br><br>📋 <b>操作:</b>隔日強勢開高跟進,弱開不追。<br>⚠️ <b class="text-yellow-300">漲停股跳空缺口可能就是高點</b>,要看當天量。`,
+        chu_bottom: `<b class="text-amber-300">🥣 底部轉折</b>(起飛股):像鍋底冒泡的湯,長期跌完(<b>距高點 ≥ 20%</b>)、近 20 日波動率極低(<3%)、貼著半年線,**某天突然爆 2 倍量噴紅 K** — 主力大戶在進貨。<br><br>📋 <b>操作:</b>看<b class="text-cyan-300">隔日是否續攻</b>,連 2 天爆量才是真,只爆 1 天可能假突破。<br>⚠️ 抓底神器,但常騙人。`,
+        chu_riding5ma: `<b class="text-pink-300">🚀 5MA 飆股主升段</b>(妖股):沿著 5MA 噴的妖股,**MA5 5 日斜率 > 5%、近 5 日 ≥ 2 根漲 5%、今日最低沒跌破 5MA、乖離 < +15%**。連續紅 K 不回頭。<br><br>📋 <b>操作:</b>跌破 5MA 立刻出(不是 20MA),<b class="text-yellow-300">部位要小</b>。<br>⚠️ 最爽也最危險 — 沒抓到時間點就是接最後一棒。`,
+    },
+    _chuCurrentTab: 'chu_perfect6',
+
+    async openChuMasterModal() {
+        const m = document.getElementById('chuMasterModal');
+        if (!m) return;
+        m.classList.remove('hidden');
+        m.style.display = 'flex';
+        // 確保 radarMatrix 已載入(reuse 既有 loadRadarMatrix)
+        if (!this.radarMatrix || this._radarIsDemo) {
+            await this.loadRadarMatrix();
+        }
+        this.switchChuTab(this._chuCurrentTab || 'chu_perfect6');
+    },
+
+    switchChuTab(key) {
+        if (!this._CHU_TABS[key]) key = 'chu_perfect6';
+        this._chuCurrentTab = key;
+        // 切換 tab 樣式
+        Object.entries(this._CHU_TABS).forEach(([k, cfg]) => {
+            const btn = document.getElementById(cfg.id);
+            if (btn) btn.className = this._CHU_TAB_BASE + (k === key ? cfg.active : this._CHU_TAB_INACTIVE);
+        });
+        // 切換說明文字
+        const desc = document.getElementById('chuTabDesc');
+        if (desc) desc.innerHTML = this._CHU_DESC[key] || '';
+        // 渲染篩選結果
+        this._renderChuPickList(key);
+        this.vibrate(10);
+    },
+
+    _renderChuPickList(key) {
+        const body = document.getElementById('chuTabBody');
+        const updated = document.getElementById('chuTabUpdated');
+        if (!body) return;
+        const picks = (this.radarMatrix?.data || {})[key] || [];
+        if (updated) {
+            const d = this.radarMatrix?.updated || '';
+            updated.textContent = `更新時間:${d} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考進場`;
+        }
+        if (!picks.length) {
+            body.innerHTML = `<div class="text-center py-8 text-gray-500 text-[12px]">⚠️ 今日無股票符合此選股法條件<br><span class="text-gray-600 text-[10px]">(條件嚴格,0 檔代表市場沒有符合的標的,別硬找)</span></div>`;
+            return;
+        }
+        body.innerHTML = picks.map(p => {
+            const gainColor = (p.gain || 0) > 0 ? 'text-red-400' : ((p.gain || 0) < 0 ? 'text-green-400' : 'text-gray-400');
+            const gainStr = ((p.gain || 0) > 0 ? '+' : '') + (p.gain || 0).toFixed(2) + '%';
+            return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.openStockDetail('${p.sym}');" class="bg-[#161b22] border border-[#30363d] rounded-lg p-2 hover:border-purple-500 cursor-pointer transition-colors">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="font-bold text-cyan-300 text-[13px] flex-shrink-0">${p.sym}</span>
+                        <span class="text-gray-400 text-[10px] truncate">${p.status || ''}</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0 text-[11px]">
+                        <span class="text-gray-300 font-mono">${(p.close || 0).toFixed(2)}</span>
+                        <span class="${gainColor} font-mono font-bold">${gainStr}</span>
+                        <span class="text-gray-500 font-mono">${(p.turnover_e || 0).toFixed(1)}億</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    // ===== 🗑️ 模組 C 淘汰選股法(前端 — 套用自選股 / 庫存頁) =====
+    // 從 K 線資料判定 3 個淘汰訊號,回傳 HTML chip 串或 ''
+    _renderEliminationBadge(klineData) {
+        if (!Array.isArray(klineData) || klineData.length < 25) return '';
+        try {
+            const closes = klineData.map(r => +r.close || 0).filter(v => v > 0);
+            if (closes.length < 25) return '';
+            const c = closes[closes.length - 1];
+            const ma20 = closes.slice(-20).reduce((a, v) => a + v, 0) / 20;
+            const ma20_5ago = closes.slice(-25, -5).reduce((a, v) => a + v, 0) / 20;
+            const low5_excl_today = Math.min(...closes.slice(-6, -1));  // 過去 5 日(不含今日)最低
+            const badges = [];
+            // 跌破月線
+            if (c < ma20) badges.push({ cls: 'bg-orange-900/40 text-orange-300 border-orange-700/60', text: '⚠️ 跌破月線' });
+            // 月線下彎
+            if (ma20 < ma20_5ago) badges.push({ cls: 'bg-yellow-900/40 text-yellow-300 border-yellow-700/60', text: '📉 月線下彎' });
+            // 跌破前低
+            if (c < low5_excl_today) badges.push({ cls: 'bg-red-900/40 text-red-300 border-red-700/60', text: '🗑️ 跌破前低' });
+            if (badges.length === 0) return '';
+            // 多重警報(>= 2)時加閃爍紅色 header
+            const header = badges.length >= 2
+                ? `<span class="inline-block px-1.5 py-0.5 rounded text-[9px] bg-red-700/60 text-white border border-red-400 font-bold animate-pulse mr-1">🚨 多重警報</span>`
+                : '';
+            return header + badges.map(b => `<span class="inline-block px-1.5 py-0.5 rounded text-[9px] border ${b.cls} font-bold mr-1">${b.text}</span>`).join('');
+        } catch (_) { return ''; }
     },
 
     // 🚨 處置股 view:注意/處置(幾分盤+出關日)/即將出關 + 明日恐達門檻預警
