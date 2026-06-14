@@ -6369,15 +6369,35 @@ ${peerLine}${newsCtx}
         };
 
         try {
-            // 🛡️ 改用 _finmindFetch 排隊（每請求間隔 300ms），防 Promise.all 瞬間併發觸發 FinMind rate limit
-            const [fsRes, revRes, divRes] = await Promise.all([
-                this._finmindFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]})),
-                this._finmindFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revStart}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]})),
-                this._finmindFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${new Date().getFullYear()-4}-01-01${tokenStr}`, {}, {timeout:8000, maxRetries:1}).then(r=>r.json()).catch(()=>({data:[]})),
-            ]);
+            // 🎯 優先讀本地採礦的 fundamentals（miner.py 對 CHIP_WATCHLIST 已採好，7 天 TTL）
+            //    四欄已有就 skip 對應 FinMind 即時呼叫，避免使用者被 token 限流卡住
+            const localFund = (await this._loadLocalFundamentals(sym)) || {};
+            const haveMineEPS       = Array.isArray(localFund.quarterly_eps) && localFund.quarterly_eps.length > 0;
+            const haveMineYoY       = localFund.revenue_yoy != null;
+            const haveMineGM        = typeof localFund.gross_margin_trend === 'string' && localFund.gross_margin_trend.length > 0;
+            const haveMinePayout    = localFund.payout_ratio != null;
+            const haveMineLatestRev = localFund.latest_revenue != null && Number(localFund.latest_revenue) > 0;
 
-            // EPS
-            const epsRows = (fsRes.data||[]).filter(r=>r.type==='EPS').sort((a,b)=>a.date>b.date?1:-1);
+            // 🛡️ 改用 _finmindFetch 排隊（每請求間隔 300ms），防 Promise.all 瞬間併發觸發 FinMind rate limit
+            //    有採礦結果就 skip 對應 FinMind 呼叫
+            const fsP  = (haveMineEPS && haveMineGM)
+                ? Promise.resolve({data:[]})
+                : this._finmindFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockFinancialStatements&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]}));
+            const revP = this._finmindFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${revStart}${tokenStr}`, {}, {timeout:10000, maxRetries:2}).then(r=>r.json()).catch(()=>({data:[]}));   // 月營收 12 月圖仍需,本次不 skip
+            const divP = haveMinePayout
+                ? Promise.resolve({data:[]})
+                : this._finmindFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${new Date().getFullYear()-4}-01-01${tokenStr}`, {}, {timeout:8000, maxRetries:1}).then(r=>r.json()).catch(()=>({data:[]}));
+            const [fsRes, revRes, divRes] = await Promise.all([fsP, revP, divP]);
+
+            // EPS — FinMind 有就用,沒有 fallback 採礦的 quarterly_eps
+            let epsRows = (fsRes.data||[]).filter(r=>r.type==='EPS').sort((a,b)=>a.date>b.date?1:-1);
+            if (epsRows.length === 0 && haveMineEPS) {
+                // 採礦 schema: [{period:'YYYY-MM-DD', eps, revenue}] → 對齊前端期望 [{date, value}]
+                epsRows = localFund.quarterly_eps
+                    .map(q => ({ date: String(q.period||''), value: Number(q.eps) }))
+                    .filter(r => r.date && Number.isFinite(r.value))
+                    .sort((a,b)=>a.date>b.date?1:-1);
+            }
             const latestEps = epsRows.length ? epsRows[epsRows.length-1].value : null;
 
             // Gross Margin Trend (最近3季)
@@ -6398,6 +6418,14 @@ ${peerLine}${newsCtx}
             } else if (gmArr.length===1) {
                 gmTrendStr = `${gmArr[0].toFixed(1)}%`;
             }
+            // 毛利率 — FinMind 沒有就用採礦預生成字串（含箭頭與 pp 差）
+            if (!gmTrendStr && haveMineGM) {
+                gmTrendStr = localFund.gross_margin_trend;
+                // 從預生成字串嘗試解 pp 差判方向：「45.2%→47.8%（↑2.6pp）」
+                const m = gmTrendStr.match(/([↑↓])(\d+(?:\.\d+)?)/);
+                if (m) gmTrend = (m[1] === '↑' ? 1 : -1) * parseFloat(m[2]);
+                else gmTrend = 0;
+            }
 
 // Revenue YoY
         const revData = (revRes.data||[]).sort((a,b)=> (`${a.revenue_year}${String(a.revenue_month).padStart(2,'0')}`> `${b.revenue_year}${String(b.revenue_month).padStart(2,'0')}`) ? 1:-1);
@@ -6410,6 +6438,8 @@ ${peerLine}${newsCtx}
                 latestYoy = ((latestRev.revenue - lastYearRev.revenue) / lastYearRev.revenue) * 100;
             }
         }
+        // YoY — FinMind 仍空就用採礦值（採礦端已用 4 token 輪動,可靠性高得多）
+        if (latestYoy == null && haveMineYoY) latestYoy = Number(localFund.revenue_yoy);
 
         // Dividend: Yield & Payout (FinMind uses PascalCase field names)
         const divData = (divRes.data||[]).sort((a,b)=>a.date>b.date?1:-1);
@@ -6427,9 +6457,7 @@ ${peerLine}${newsCtx}
         }
 
         const currentClose = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : null;
-        
-        // 優先讀本地 TWSE BWIBBU_d 採礦結果（PE / 殖利率），權威值優先於現價自算
-        const localFund = (await this._loadLocalFundamentals(sym)) || {};
+        // localFund 已在 try 開頭從 _loadLocalFundamentals 載入,此處沿用作 PE / 殖利率 fallback
 
         // TTM EPS：取近 4 季加總（避免單季×4 失真於景氣循環股／營建股）
         let annualEps = null;
@@ -6448,7 +6476,9 @@ ${peerLine}${newsCtx}
         if (yieldRate == null && totalDiv && currentClose && currentClose > 0) yieldRate = totalDiv / currentClose * 100;
         
         // 【修復 2】確保 totalDiv = 0 (未發放) 時，不會因為判定 falsy 而變回 null
-        const payoutRatio = (totalDiv != null && annualEps && annualEps > 0) ? (totalDiv / annualEps * 100) : null;
+        let payoutRatio = (totalDiv != null && annualEps && annualEps > 0) ? (totalDiv / annualEps * 100) : null;
+        // 發配率 — FinMind 算不出就用採礦預算值
+        if (payoutRatio == null && haveMinePayout) payoutRatio = Number(localFund.payout_ratio);
 
         // 存真實基本面快取（完整版：含年化 EPS），供法人目標價推估使用
         // FinMind 失敗時 annualEps 會是 null；目標價函式會用本地 TWSE PE 反推 fallback
@@ -6724,6 +6754,15 @@ ${peerLine}${newsCtx}
                 // 🛠️ tab 切換時容器寬度 0 → init 後柱子擠左,延遲 resize 確保滿版
                 requestAnimationFrame(() => { try { revChart.resize(); } catch(_){} });
                 setTimeout(() => { try { revChart.resize(); } catch(_){} }, 200);
+            } else if (haveMineLatestRev) {
+                // 12 月歷史拉不到,但採礦有「最新月」→ 顯示一行摘要,避免整片空白
+                const rev = Number(localFund.latest_revenue);
+                const revStr = rev >= 1e8 ? `${(rev/1e8).toFixed(1)} 億`
+                             : rev >= 1e4 ? `${(rev/1e4).toFixed(0)} 萬`
+                             : `${rev.toFixed(0)}`;
+                const yoy = haveMineYoY ? Number(localFund.revenue_yoy) : null;
+                const yoyStr = yoy == null ? '' : ` <span class="${yoy>0?'text-red-400':yoy<0?'text-green-400':'text-yellow-300'}">YoY ${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
+                rvTrendEl.innerHTML = `<div class="text-blue-300/90 text-xs text-center px-3" style="line-height:1.6;padding-top:70px">📊 最新月營收 <b class="text-white">${revStr}</b>${yoyStr}<br><span class="text-[10px] text-gray-500">(採礦快取 · 12 月圖待 FinMind 即時資料回應)</span></div>`;
             } else {
                 rvTrendEl.innerHTML = '<div class="text-amber-300/70 text-[10px] text-center px-2" style="line-height:1.4;padding-top:80px">📅 暫無月營收資料<br><span class="text-gray-600">新股 / 上游 API 暫無回應,請點 🔄 重新掃描</span></div>';
             }
