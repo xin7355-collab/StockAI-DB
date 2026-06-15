@@ -61,6 +61,13 @@
 - 每次 push 前必跑三驗證：`node --check`（index.html inline JS）+ `python3 -m py_compile *.py` + `python3 scripts/check_prompt_vars.py`
 - 出錯時使用者可以 `git revert HEAD` 回退，或叫 Claude 修
 
+### ⭐ Claude 永久授權（使用者明示:看不懂程式碼,壞了再修就好）
+- **純前端 / 小邏輯改動完成、三驗證通過後**：**不需問使用者**,直接 `git checkout main && git merge <feature-branch> --ff-only && git push origin main`,讓 `deploy_pages.yml` 自動上線
+- **採礦 `*.py` 改動**:同上,直接 merge main + push,由 `daily_miner.yml` 接手
+- **無需先開 PR**;若 web session 開在 feature branch,完成就 fast-forward 合併回 main
+- ⛔ **仍須先問使用者**的例外:① 大規模重構/架構大改 ② 刪檔/刪資料 ③ 改 GitHub Actions workflow 邏輯 ④ 動 `data/` 內快取 ⑤ 不確定是否會壞時
+- 壞了 → 使用者說「壞了」→ Claude 直接修;或 `git revert HEAD` 回退
+
 ### 版本號規則(STRATEGY TERMINAL Vx.y)⭐ 使用者要求:每次更新版本號要一直往上加
 - **小數位 +0.1**:每次 Claude push 純前端/小邏輯改動(UI 調整、bug fix、小功能補強) → V14.2 → V14.3 → V14.4 ...
 - **主版本 +1**:大事件改版(架構大改、採礦機重做、新增整個 tab、AI 模型升級、整批功能重做) → V14.x → V15.0
