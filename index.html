@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -888,6 +888,8 @@
                                 <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
                             </div>
                         </div>
+                        <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;預估量 + 位階 + 完美買點 + 高檔回吐)-->
+                        <div id="chuIntradayCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
                         <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
                         <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
                         <!-- 📌 朱老師離場 SOP(停損 A/B + 停利短/中長)-->
@@ -7263,6 +7265,9 @@ ${_newsLine}${globalContext}
         }
 
         this.applyLatestPrice(fugleData, null);
+        // ⚡ V14.8:保存最新 Fugle 報價,供 _renderChuIntradayCard 取用算盤中即時雷達
+        if (!this._lastFugleData) this._lastFugleData = {};
+        if (fugleData && !fugleData.isHistorical) this._lastFugleData[targetSym] = fugleData;
         // 🚨 Fugle Token 未填提示(fetchFugleData 看到 keys.length===0 會設 _fugleNoToken=true)
         const _bnr = document.getElementById('fugleNoTokenBanner');
         if (_bnr) _bnr.classList.toggle('hidden', !this._fugleNoToken);
@@ -8323,12 +8328,179 @@ ${_newsLine}${globalContext}
         alert(`📌 朱老師心法 — 第 ${idx + 1} 關:${g.name}\n\n${g.edu}\n\n────────────────\n目前判定:${g.icon} ${g.text}`);
     },
 
+    // ── V14.8 盤中即時雷達 ──────────────────────────────────────────────────
+    // 朱老師盤中心法配套:預估量達標 + 即時位階燈 + 完美買點 + 高檔回吐警告
+    // 全部用 Fugle quote + 本地昨日 K 推算,不接 5/15 分 K(留 Phase B)
+
+    // 盤中已過交易分鐘(09:00-13:30 - 午休 11:30-13:00,共 270 分鐘)
+    _chuElapsedMinutes() {
+        const now = new Date();
+        const day = now.getDay();
+        if (day === 0 || day === 6) return null;
+        const h = now.getHours(), m = now.getMinutes();
+        const t = h * 60 + m;
+        const open = 9 * 60, lunchStart = 11 * 60 + 30, lunchEnd = 13 * 60, close = 13 * 60 + 30;
+        if (t < open || t > close) return null;
+        if (t <= lunchStart) return t - open;                          // 早盤
+        if (t <= lunchEnd)   return lunchStart - open;                  // 午休(凍結 150 分)
+        return (lunchStart - open) + (t - lunchEnd);                    // 午盤
+    },
+
+    // B1. 預估量達標度 — 線性外推:預估總量 = 累計量 × 270 / 已過分鐘
+    _chuVolumeProgress(fugleData, baseRawData) {
+        if (!fugleData || !baseRawData || !baseRawData.length) return null;
+        const cur = Number(fugleData.volume) || 0;
+        const elapsed = this._chuElapsedMinutes();
+        // 昨日總量:baseRawData 最後一筆若為今日(無 fugle 即時 → 是歷史)用倒數第二筆;否則用最後一筆
+        const lastBar = baseRawData[baseRawData.length - 1];
+        const prevBar = baseRawData.length >= 2 ? baseRawData[baseRawData.length - 2] : null;
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+        const lastIsToday = lastBar && String(lastBar.date || '').replace(/-/g, '/') === todayStr;
+        const prevVol = Number((lastIsToday && prevBar ? prevBar : lastBar).volume) || 0;
+        if (!elapsed || elapsed < 5 || !prevVol || !cur) return { cur, prevVol, estimated: null, pct: null, lamp: 'gray' };
+        const estimated = Math.round(cur * 270 / elapsed);
+        const pct = prevVol > 0 ? (estimated / prevVol * 100) : 0;
+        const lamp = pct >= 80 ? 'green' : pct >= 50 ? 'yellow' : 'red';
+        return { cur, prevVol, estimated, pct, lamp, elapsed };
+    },
+
+    // B2. 即時位階燈 — 依 chgPct 分檔
+    _chuIntradayPositionLamp(chgPct) {
+        if (chgPct == null || !Number.isFinite(chgPct)) return { lamp: 'gray', text: '無報價', desc: '' };
+        if (chgPct >= 9.5) return { lamp: 'gray',   text: '漲停鎖住',     desc: '別追,放鎖股等回檔'   };
+        if (chgPct >= 7)   return { lamp: 'red',    text: '🛑 位階過高',  desc: '別追(朱老師原話)' };
+        if (chgPct >= 4)   return { lamp: 'yellow', text: '🟡 偏高',      desc: '等回測再評估'     };
+        if (chgPct >= 2)   return { lamp: 'green',  text: '✅ 完美買點區', desc: '配合量達標即進場' };
+        if (chgPct >= 0)   return { lamp: 'gray',   text: '平淡',         desc: '等突破訊號'        };
+        return { lamp: 'gray', text: '未發動', desc: '今日尚未拉抬'    };
+    },
+
+    // B3. 完美買點 / 警告綜合判 — chgPct + 量達標度 兩維合判
+    _chuPerfectEntryJudge(chgPct, volPct) {
+        if (chgPct == null || volPct == null) return null;
+        if (chgPct > 7)                       return { level: 'danger', text: '🛑 位階太高,別追,放鎖股等回檔',          color: 'text-red-200 bg-red-900/40 border-red-600' };
+        if (chgPct >= 5 && volPct < 50)       return { level: 'danger', text: '❌ 量價背離 — 主力誘多,別接刀',           color: 'text-red-200 bg-red-900/40 border-red-600' };
+        if (chgPct >= 2 && chgPct <= 4 && volPct >= 80) return { level: 'perfect', text: '🎯 朱老師完美買點 — 帶量突破壓力', color: 'text-green-100 bg-green-900/50 border-green-500' };
+        if (chgPct >= 2 && chgPct <= 7 && volPct >= 50) return { level: 'ok',      text: '🟡 動能 OK 但量未爆,守 5MA 防偷襲',  color: 'text-yellow-200 bg-yellow-900/40 border-yellow-600' };
+        return null;
+    },
+
+    // B4. 即時跌幅 — 從當日 high 回檔幅度,給「衝高拉回」警告用
+    _chuIntradayExitDelta(fugleData) {
+        if (!fugleData) return null;
+        const hi = Number(fugleData.high) || 0, px = Number(fugleData.price) || 0, prev = Number(fugleData.prevClose) || 0;
+        if (!hi || !px || !prev) return null;
+        const chgPct = (px - prev) / prev * 100;
+        const pullbackPct = (hi - px) / hi * 100;  // 從 high 回檔幾 %
+        let level = 'neutral', text = '';
+        if (pullbackPct > 5 && chgPct > -2) {
+            level = 'danger'; text = `🛑 從 high ${hi.toFixed(2)} 已回檔 ${pullbackPct.toFixed(1)}% — 衝高拉回,結構轉弱`;
+        } else if (pullbackPct > 3 && chgPct > 0) {
+            level = 'warn'; text = `⚠️ 從 high ${hi.toFixed(2)} 回檔 ${pullbackPct.toFixed(1)}% — 賺的吐掉,考慮獲利落袋`;
+        }
+        return { level, text, hi, pullbackPct };
+    },
+
+    _renderChuIntradayCard(fugleData) {
+        const box = document.getElementById('chuIntradayCard');
+        if (!box) return;
+        if (!this.isMarketOpen() || !fugleData) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+
+        const baseRaw = this.baseRawData || [];
+        const vp = this._chuVolumeProgress(fugleData, baseRaw);
+        const chgPct = (fugleData.price && fugleData.prevClose)
+            ? (fugleData.price - fugleData.prevClose) / fugleData.prevClose * 100 : null;
+        const posLamp = this._chuIntradayPositionLamp(chgPct);
+        const perfect = this._chuPerfectEntryJudge(chgPct, vp ? vp.pct : null);
+        const exitDelta = this._chuIntradayExitDelta(fugleData);
+
+        // 量達標度燈塊
+        const lampColor = (l) => l === 'green'  ? 'text-green-300 bg-green-900/40 border-green-700'
+                              : l === 'yellow' ? 'text-yellow-300 bg-yellow-900/40 border-yellow-700'
+                              : l === 'red'    ? 'text-red-300 bg-red-900/40 border-red-700'
+                              : 'text-gray-400 bg-gray-800/60 border-gray-600';
+        const fmtVol = v => v == null ? '—' : (v >= 100000 ? `${(v/10000).toFixed(1)}萬` : v.toLocaleString());
+        const volBlock = vp && vp.pct != null
+            ? `<div class="flex-1 min-w-0 border rounded p-2 ${lampColor(vp.lamp)}">
+                <div class="text-[10px] font-bold mb-0.5">B1. ⚡ 預估量達標度</div>
+                <div class="text-lg font-black font-mono">${vp.pct.toFixed(0)}<span class="text-xs">%</span></div>
+                <div class="text-[9px] opacity-80 mt-0.5 leading-tight">預估 ${fmtVol(vp.estimated)} / 昨 ${fmtVol(vp.prevVol)}<br>累計 ${fmtVol(vp.cur)} · ${vp.elapsed} 分鐘</div>
+                ${vp.lamp === 'red' ? '<div class="text-[10px] mt-0.5 font-bold">⚠️ 量縮 → 高機率誘多</div>' : ''}
+            </div>`
+            : `<div class="flex-1 min-w-0 border rounded p-2 ${lampColor('gray')}">
+                <div class="text-[10px] font-bold mb-0.5">B1. ⚡ 預估量</div>
+                <div class="text-xs opacity-70">${this._chuElapsedMinutes() == null ? '非盤中' : '採樣不足(<5 分)'}</div>
+            </div>`;
+
+        const posBlock = `<div class="flex-1 min-w-0 border rounded p-2 ${lampColor(posLamp.lamp)}">
+            <div class="text-[10px] font-bold mb-0.5">B2. ⚡ 即時位階</div>
+            <div class="text-lg font-black font-mono">${chgPct != null ? `${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}<span class="text-xs">%</span>` : '—'}</div>
+            <div class="text-[10px] mt-0.5 font-bold">${posLamp.text}</div>
+            <div class="text-[9px] opacity-80 leading-tight">${posLamp.desc}</div>
+        </div>`;
+
+        const perfectBlock = perfect
+            ? `<div class="border-2 rounded p-2 ${perfect.color} text-center"><div class="text-sm font-black">${perfect.text}</div></div>`
+            : `<div class="border border-[#30363d] rounded p-1.5 text-center text-[10px] text-gray-500">B3. 完美買點 — 等候 ${chgPct != null ? chgPct.toFixed(1) + '%' : '—'} + 量條件成形</div>`;
+
+        const exitDeltaBlock = (exitDelta && exitDelta.level !== 'neutral')
+            ? `<div class="border rounded p-1.5 text-center text-[11px] font-bold ${exitDelta.level === 'danger' ? 'text-red-200 bg-red-900/40 border-red-600' : 'text-yellow-200 bg-yellow-900/40 border-yellow-600'}">B4. ${exitDelta.text}</div>`
+            : '';
+
+        box.classList.remove('hidden');
+        box.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-bold text-cyan-300">⚡ 朱老師盤中即時雷達</span>
+                <span class="text-[9px] text-gray-500 font-mono">${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} · 線性外推</span>
+            </div>
+            <div class="flex gap-1.5 mb-1.5">${volBlock}${posBlock}</div>
+            ${perfectBlock}
+            ${exitDeltaBlock ? '<div class="mt-1.5">' + exitDeltaBlock + '</div>' : ''}
+            <div class="mt-1.5 text-[9px] text-gray-600 leading-tight">💡 預估量為線性外推估算(10:30 後最準);朱老師盤中心法重點是<b>「量達標 + 位階 +2-3%」</b>同時成立才進場,缺一不可。</div>
+        `;
+    },
+
     // 主入口:refreshStrategy 結尾呼叫一次,把上面 4 個朱老師 UI 一起刷
+    // V14.8 擴充:盤中時把盤後四關卡的 body 自動折起(只露 header + chevron),
+    //             並渲染盤中即時雷達卡;盤後反之。
     _chuRenderAll(data, ind, last) {
         this._renderChuFourGates(data, ind, last);
         this._renderChuExitSop(data, ind, last);
         this._renderChuTrendAlert(ind);
         this._updateChuLockIcon();
+
+        // V14.8:盤中渲染即時雷達卡(用 _lastFugleData[sym] cache 的最新報價)
+        const fugleData = this._lastFugleData && this._lastFugleData[this.currentSymbolId];
+        this._renderChuIntradayCard(fugleData);
+
+        // 盤中時自動把「盤後四關卡」改成可摺起的 collapsible(預設折起,點 ▾ 展開)
+        // 盤後則確保完全展開
+        this._chuApplyPostMarketCollapse();
+    },
+
+    // 盤中時把 chuFourGatesCard 改成「collapsible」摺起版,避免盤中卡 + 盤後卡都展開太擠
+    _chuApplyPostMarketCollapse() {
+        const card = document.getElementById('chuFourGatesCard');
+        if (!card || card.classList.contains('hidden')) return;
+        const inMarket = this.isMarketOpen();
+        const existing = card.querySelector('[data-chu-collapse-header]');
+        if (inMarket) {
+            // 盤中:首次進入時把卡內容包成「點 header 展開」
+            if (!existing) {
+                const inner = card.innerHTML;
+                card.innerHTML = `
+                    <div data-chu-collapse-header class="flex items-center justify-between cursor-pointer select-none" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('[data-chevron]').textContent = this.nextElementSibling.classList.contains('hidden') ? '▾' : '▴';">
+                        <span class="text-[11px] font-bold text-amber-300">📌 朱老師盤後四關卡 <span class="text-[10px] text-gray-500 font-normal">(盤後 SOP — 點開檢視)</span></span>
+                        <span class="text-gray-500 text-xs" data-chevron>▾</span>
+                    </div>
+                    <div class="hidden mt-2">${inner}</div>`;
+            }
+        } else if (existing) {
+            // 盤後:把摺起包裝拆掉,還原完整展開
+            const body = existing.nextElementSibling;
+            if (body) card.innerHTML = body.innerHTML;
+        }
     },
 
     // 🔍 AI 推測事件影響族群與代表股(點擊才呼叫,localStorage 24hr 快取,省配額)
