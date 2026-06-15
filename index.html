@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -717,6 +717,10 @@
         </header>
 
         <div id="marketAlertBanner" class="hidden w-full max-w-7xl mx-auto px-3 py-1 text-[10px] font-bold text-center border-b border-red-800"></div>
+        <!-- 📌 朱老師建議部位 chip(讀 _detectMarketRegime 換算 8/5/3 成,點開看心法第一關)-->
+        <div id="chuPositionChip" class="hidden"></div>
+        <!-- 📌 朱老師警報橫條(頭頭低/底底低/轉折警戒 → 醒目紅條)-->
+        <div id="chuTrendAlertBanner" class="hidden"></div>
         <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
         <div style="display:none" aria-hidden="true">
             <span id="mktFI"></span>
@@ -768,6 +772,7 @@
                     <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
                         <div class="flex items-baseline gap-1.5 min-w-0 overflow-hidden flex-wrap">
                             <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
+                            <span id="chuLockIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="加入朱老師鎖股名冊(待回檔/訊號)" onclick="app.toggleChuLockStock();">📍</span>
                             <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0 break-words" style="font-size: clamp(1.3rem, 5.5vw, 2.1rem); word-break: break-word;">載入中...</span>
                             <span id="quoteCode" class="text-[11px] text-gray-400 font-mono font-bold leading-none flex-shrink-0"></span>
                         </div>
@@ -883,6 +888,10 @@
                                 <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
                             </div>
                         </div>
+                        <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
+                        <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
+                        <!-- 📌 朱老師離場 SOP(停損 A/B + 停利短/中長)-->
+                        <div id="chuExitSopCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300"></div>
                         </div>
                     </div>
                     
@@ -2410,6 +2419,7 @@ const app = {
         this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
         this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
+        this._ensureChuLockGroup();    // 📌 朱老師鎖股 favGroup 預設建立(空清單,等使用者鎖)
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
@@ -5259,6 +5269,8 @@ const marginByDate = {};
                 console.log(`[macro_risk] 已載入 (gold ${j.gold_chg_pct}% / wti ${j.wti_chg_pct}% / kospi ${j.kospi_chg_pct}% / jpy3d ${j.jpy_chg_3d}%)`);
                 // 已渲染過的獵鷹儀表板補畫一次,讓警報文案立刻顯示真實數值
                 if (this.currentSymbolId) this.renderFalconDashboard?.();
+                // 📌 朱老師建議部位 chip 依 taiex_ma240_bias 立刻更新
+                this._renderChuPositionChip?.();
             }
         } catch (e) {
             console.warn('[macro_risk] 載入失敗(警報文案會 fallback 「黃金 ?」):', e?.message || e);
@@ -8038,6 +8050,287 @@ ${_newsLine}${globalContext}
         return { regime, label, advice, color, bias };
     },
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📌 朱老師盤後心法 — 四關通關 + 部位建議 + 離場 SOP + 鎖股名冊 + 結構警報
+    //    完整 SOP 文字綱要請見 _chuOriginalText[].內;UI 上每關都可點開看朱老師原文。
+    //    心法核心:盤後做功課鎖股 → 隔日開盤照紀律執行,擺脫盤中誘多誘空騙線。
+    // ═══════════════════════════════════════════════════════════════════════
+    _chuLockGroupName: '📌 朱老師鎖股',
+
+    _chuOriginalText: {
+        gate1: '【第一關 大盤環境】收盤後第一件事:看大盤指數。多頭→明日資金可放 8 成;盤整→縮 5 成以下;空頭/破底→3 成以下或空手,個股再漂亮都不要重壓。',
+        gate2: '【第二關 日週對照】把個股切到週 K。週線必須「頭頭高、底底高」+ 穩穩站週 20MA + 週 20MA 上揚。週線在 20MA 以下或下彎,日線再漂亮也只是短線反彈,直接淘汰。',
+        gate3: '【第三關 位階檢查】看 K 線與月線(20MA)距離。連續大漲 5-6 天嚴重偏離月線 → 風險遠大於利潤,絕不追高,放鎖股名冊等回檔。',
+        gate4: '【第四關 進場訊號】二選一:(A)「回後買上漲」— 日線回檔後低點不破前低 + 今日 +5% 紅 K + 量增 20% + 突破前日高且站 5MA。(B)「盤整突破」— 底部橫盤後 + 大量長紅 + 強勢突破上頸線。',
+        exit: '【離場機制】停損:A. 發動長紅 K 最低點守住 / B. 跌 5% 硬停損。停利:短線跌破 5MA 隔日賣;中長線跌破 20MA 結束;出現「頭頭低」或「底底低」一律離場,不管均線多漂亮。',
+        whole: '心法:盤後鎖股 → 明日開盤依紀律執行,徹底擺脫盤中主力誘多/誘空騙線陷阱。',
+    },
+
+    // ── A1. 資金部位建議 ────────────────────────────────────────────────────
+    _chuPositionAdvice() {
+        const r = this._detectMarketRegime();
+        let pct, color, advice;
+        if (r.regime === 'bull') {
+            pct = '8 成'; advice = '可順勢做多,擇優股建倉';
+            color = 'text-red-200 bg-red-900/40 border-red-700';
+        } else if (r.regime === 'bear') {
+            pct = '3 成以下 或 空手'; advice = '空手觀望最安全,別硬接刀';
+            color = 'text-green-200 bg-green-900/40 border-green-700';
+        } else {
+            pct = '5 成以下'; advice = '短線高賣低買,避免追高殺低';
+            color = 'text-yellow-200 bg-yellow-900/40 border-yellow-700';
+        }
+        return { regime: r.regime, regimeLabel: r.label, bias: r.bias, pct, advice, color };
+    },
+
+    _renderChuPositionChip() {
+        const el = document.getElementById('chuPositionChip');
+        if (!el) return;
+        const a = this._chuPositionAdvice();
+        const biasTxt = (typeof a.bias === 'number') ? `年線乖離 ${a.bias.toFixed(1)}%` : '採礦中';
+        el.className = `w-full max-w-7xl mx-auto px-3 py-1 text-[11px] font-bold border-b cursor-pointer ${a.color}`;
+        el.innerHTML = `📊 朱老師建議部位:<b class="text-base mx-0.5">${a.pct}</b> · <span class="font-normal opacity-90">${a.regimeLabel}・${biasTxt}・${a.advice}</span>`;
+        el.onclick = () => alert('📌 朱老師心法 — 第一關:大盤環境\n\n' + this._chuOriginalText.gate1 + '\n\n目前判定:\n大盤:' + a.regimeLabel + '(' + biasTxt + ')\n建議部位:' + a.pct + '\n操作策略:' + a.advice);
+    },
+
+    // ── A2. 四關通關卡 ──────────────────────────────────────────────────────
+    _chuFourGates(data, ind, last) {
+        if (!data || !ind || last == null || last < 0) return null;
+        const pC = data[last].close;
+        const ma20 = ind.ma20 ? ind.ma20[last] : null;
+        const ma200 = ind.ma200 ? ind.ma200[last] : (ind.ma60 ? ind.ma60[last] : null);  // 沒 200MA fallback 60MA
+        // 1️⃣ 大盤
+        const m = this._chuPositionAdvice();
+        const g1 = { name: '大盤', icon: m.regime === 'bull' ? '✅' : (m.regime === 'bear' ? '❌' : '🟡'),
+                     text: `${m.regimeLabel} · 建議 ${m.pct}`, color: m.regime === 'bull' ? 'text-red-300' : (m.regime === 'bear' ? 'text-green-300' : 'text-yellow-300'),
+                     edu: this._chuOriginalText.gate1 };
+        // 2️⃣ 週 K 代理(用 200MA + 結構)
+        const trend = (ind && ind._trendJudge) || '';
+        let g2icon, g2text, g2color;
+        if (ma200 && pC > ma200 && trend.includes('多頭')) { g2icon = '✅'; g2text = '站長均線 + 多頭結構'; g2color = 'text-red-300'; }
+        else if (ma200 && pC < ma200) { g2icon = '❌'; g2text = '長均線下方 — 淘汰,別做長'; g2color = 'text-green-300'; }
+        else { g2icon = '🟡'; g2text = '結構轉折 — 建議手動切週 K 確認'; g2color = 'text-yellow-300'; }
+        const g2 = { name: '週 K 結構', icon: g2icon, text: g2text, color: g2color, edu: this._chuOriginalText.gate2 + '\n\n⚠️ 程式目前用「日 200MA + 結構」代理週 K 判定,建議手動點上方週期切換器看 W(週)確認。' };
+        // 3️⃣ 位階(bias20)
+        const bias20 = (ma20 && ma20 > 0) ? ((pC - ma20) / ma20 * 100) : null;
+        let g3icon, g3text, g3color;
+        if (bias20 == null) { g3icon = '🟡'; g3text = '無均線資料'; g3color = 'text-gray-400'; }
+        else if (bias20 > 12) { g3icon = '❌'; g3text = `偏離月線 +${bias20.toFixed(1)}% — 過熱別追,放鎖股待回檔`; g3color = 'text-green-300'; }
+        else if (bias20 > 5)  { g3icon = '🟡'; g3text = `偏離月線 +${bias20.toFixed(1)}% — 略高,小心`; g3color = 'text-yellow-300'; }
+        else                  { g3icon = '✅'; g3text = `偏離月線 ${bias20 >= 0 ? '+' : ''}${bias20.toFixed(1)}% — 位階健康`; g3color = 'text-red-300'; }
+        const g3 = { name: '位階', icon: g3icon, text: g3text, color: g3color, edu: this._chuOriginalText.gate3 };
+        // 4️⃣ 進場訊號(用 sig1/2/3 計數 + 粗判類型)
+        const sigCount = (ind._sigCount != null) ? ind._sigCount : null;
+        const sigType = this._chuClassifyEntrySignal(data, ind, last);  // 回後買 / 盤整突破 / 無
+        let g4icon, g4text, g4color;
+        if (sigCount == null) { g4icon = '🟡'; g4text = '訊號運算中'; g4color = 'text-gray-400'; }
+        else if (sigCount >= 3) { g4icon = '✅'; g4text = `三燈全亮 — ${sigType}`; g4color = 'text-red-300'; }
+        else if (sigCount >= 2) { g4icon = '🟡'; g4text = `${sigCount}/3 燈亮 — ${sigType}`; g4color = 'text-yellow-300'; }
+        else                    { g4icon = '❌'; g4text = '訊號不足,別硬進'; g4color = 'text-green-300'; }
+        const g4 = { name: '進場訊號', icon: g4icon, text: g4text + (sigType !== '無明確訊號' ? ' (粗判)' : ''), color: g4color, edu: this._chuOriginalText.gate4 };
+
+        return [g1, g2, g3, g4];
+    },
+
+    // 4️⃣ 粗判訊號類型 — 回後買 / 盤整突破 / 無
+    _chuClassifyEntrySignal(data, ind, last) {
+        if (!data || last < 20) return '無明確訊號';
+        const pC = data[last].close;
+        const pC1 = data[last-1].close;
+        const ma5 = ind.ma5 ? ind.ma5[last] : null;
+        const ma20 = ind.ma20 ? ind.ma20[last] : null;
+        const chgPct = pC1 > 0 ? ((pC - pC1) / pC1 * 100) : 0;
+        const bias20 = (ma20 && ma20 > 0) ? ((pC - ma20) / ma20 * 100) : 0;
+        // 大紅 K + 站 5MA = 必要條件
+        const isRedK = chgPct >= 5 && ma5 && pC >= ma5;
+        if (!isRedK) return '無明確訊號';
+        // 回後買:bias20 偏低(<3%)= 剛從回檔反彈
+        if (bias20 < 3) return '回後買上漲';
+        // 盤整突破:近 30 日範圍 <8%
+        const recent30 = data.slice(Math.max(0, last - 29), last + 1);
+        const hi = Math.max(...recent30.map(d => d.high));
+        const lo = Math.min(...recent30.map(d => d.low));
+        if (hi > 0 && (hi - lo) / lo * 100 < 8) return '盤整突破';
+        return '無明確訊號';
+    },
+
+    _renderChuFourGates(data, ind, last) {
+        const box = document.getElementById('chuFourGatesCard');
+        if (!box) return;
+        const gates = this._chuFourGates(data, ind, last);
+        if (!gates) { box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+        const passCount = gates.filter(g => g.icon === '✅').length;
+        const summary = passCount === 4 ? '🏆 四關全過 — 朱老師眼裡的鎖股級訊號' :
+                        passCount === 3 ? '👍 三關過 — 可進「鎖股名冊」觀察' :
+                        passCount >= 1  ? `⚠️ 過 ${passCount} 關 — 等更多條件確認` :
+                                          '🛑 全關卡未過 — 別硬進';
+        // 暫存當前四關判定給 _chuShowGateModal 取用(避免 onclick 字串逃逸地獄)
+        this._chuCurrentGates = gates;
+        const gatesHtml = gates.map((g, i) => `
+            <div class="flex-1 min-w-0 bg-[#0d1117] border border-[#30363d] rounded p-1.5 cursor-pointer hover:border-amber-700/60" onclick="app._chuShowGateModal(${i})">
+                <div class="flex items-center gap-1">
+                    <span class="text-base flex-shrink-0">${g.icon}</span>
+                    <span class="text-[10px] text-gray-400 font-bold">${i+1}.${g.name}</span>
+                </div>
+                <div class="text-[10px] ${g.color} font-mono leading-tight mt-0.5 break-words">${g.text}</div>
+            </div>`).join('');
+        box.innerHTML = `
+            <div class="text-[11px] font-bold mb-1.5 flex items-center justify-between">
+                <span class="text-amber-300">📌 朱老師四關通關卡</span>
+                <span class="text-[10px] text-gray-400 font-normal">${summary}</span>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-1.5">${gatesHtml}</div>`;
+    },
+
+    // ── A3. 離場 SOP ────────────────────────────────────────────────────────
+    _chuFindTriggerBarLow(data, last) {
+        // 近 10 日最大紅 K(漲 ≥ 3% 且量為近 5 日均量 1.2 倍):取其 low 當「發動 K 最低點」
+        if (!data || last < 10) return null;
+        let best = null;
+        for (let i = Math.max(1, last - 9); i <= last; i++) {
+            const prev = data[i-1].close;
+            const chg = prev > 0 ? (data[i].close - prev) / prev * 100 : 0;
+            if (chg < 3) continue;
+            const vBase = data.slice(Math.max(0, i - 5), i).reduce((s, d) => s + d.volume, 0) / 5;
+            if (vBase <= 0 || data[i].volume < vBase * 1.2) continue;
+            if (!best || chg > best.chg) best = { idx: i, low: data[i].low, date: data[i].date, chg };
+        }
+        return best;
+    },
+
+    _chuExitRules(data, ind, last, costPrice) {
+        if (!data || !ind || last == null || last < 1) return null;
+        const pC = data[last].close;
+        const ma5 = ind.ma5 ? ind.ma5[last] : null;
+        const ma20 = ind.ma20 ? ind.ma20[last] : null;
+        const trigger = this._chuFindTriggerBarLow(data, last);
+        const stopB = (costPrice && costPrice > 0) ? Number((costPrice * 0.95).toFixed(2)) : null;
+        return {
+            stopA: trigger,                                  // {idx, low, date, chg} 或 null
+            stopB,                                            // 進場價 × 0.95 或 null
+            takeShort: ma5 ? Number(ma5.toFixed(2)) : null,    // 跌破 5MA
+            takeLong:  ma20 ? Number(ma20.toFixed(2)) : null,  // 跌破 20MA
+            pC, costPrice: costPrice || null,
+        };
+    },
+
+    _renderChuExitSop(data, ind, last) {
+        const box = document.getElementById('chuExitSopCard');
+        if (!box) return;
+        // 進場價優先抓庫存 cost,沒有就抓 costInput,再沒有就 null
+        const invEntry = (this.inventory || []).find(i => i.symbol === this.currentSymbolId);
+        const cost = (invEntry && invEntry.cost > 0) ? invEntry.cost
+                   : Number((document.getElementById('costInput')?.value || '').trim()) || null;
+        const x = this._chuExitRules(data, ind, last, cost);
+        if (!x) { box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+
+        const noCost = !x.costPrice;
+        const stopAHtml = x.stopA
+            ? `<div class="flex justify-between items-center py-1 text-[12px]"><span class="text-gray-400">🛡️ <b>停損 A</b> 發動 K 最低點 <span class="text-[10px] text-gray-600">(${x.stopA.date} +${x.stopA.chg.toFixed(1)}%)</span></span><span class="text-red-400 font-mono font-bold">${x.stopA.low.toFixed(2)}</span></div>`
+            : `<div class="flex justify-between items-center py-1 text-[12px]"><span class="text-gray-400">🛡️ 停損 A 發動 K 最低點</span><span class="text-gray-600">近 10 日無大紅 K</span></div>`;
+        const stopBHtml = x.stopB
+            ? `<div class="flex justify-between items-center py-1 text-[12px]"><span class="text-gray-400">🛡️ <b>停損 B</b> 進場 ×95% <span class="text-[10px] text-gray-600">(成本 ${x.costPrice})</span></span><span class="text-red-400 font-mono font-bold">${x.stopB.toFixed(2)}</span></div>`
+            : `<div class="flex justify-between items-center py-1 text-[12px]"><span class="text-gray-400">🛡️ 停損 B 進場 ×95%</span><span class="text-gray-600">請先填成本價</span></div>`;
+        const takeShortHtml = x.takeShort
+            ? `<div class="flex justify-between items-center py-1 text-[12px]"><span class="text-gray-400">🎯 <b>停利(短)</b> 跌破 5MA 隔日賣</span><span class="text-green-400 font-mono font-bold">${x.takeShort.toFixed(2)}</span></div>` : '';
+        const takeLongHtml = x.takeLong
+            ? `<div class="flex justify-between items-center py-1 text-[12px]"><span class="text-gray-400">🎯 <b>停利(中長)</b> 跌破 20MA 結束波段</span><span class="text-green-400 font-mono font-bold">${x.takeLong.toFixed(2)}</span></div>` : '';
+
+        box.innerHTML = `
+            <div class="text-yellow-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="alert('📌 朱老師心法 — 離場機制\\n\\n' + app._chuOriginalText.exit)">
+                <span>📌 朱老師離場 SOP <span class="text-[10px] text-gray-500 font-normal">(點看心法)</span></span>
+                <span class="text-[10px] text-gray-500 font-normal">現價 ${x.pC.toFixed(2)}</span>
+            </div>
+            <div class="mt-1.5 divide-y divide-[#21262d]">
+                ${stopAHtml}${stopBHtml}${takeShortHtml}${takeLongHtml}
+            </div>
+            <div class="mt-1.5 text-[10px] text-gray-600 leading-snug">
+                💡 停損二選一(嚴格的取較高那一條);停利視操作週期擇一。${noCost ? '<br>⚠️ 未設成本 → 停損 B 暫不啟用;建議至庫存填入成本價。' : ''}
+            </div>`;
+    },
+
+    // ── A5. 頭頭低/底底低警報橫條 ──────────────────────────────────────────
+    _chuTrendBreakAlert(ind) {
+        // 取自 getAlphaScoreData 結尾掛在 ind._trendJudge 的字串
+        const t = (ind && ind._trendJudge) || '';
+        if (t.includes('頭頭低') || t.includes('底底低') || t.includes('轉折警戒') || t.includes('六字')) {
+            return { alert: true, text: t };
+        }
+        return { alert: false, text: '' };
+    },
+
+    _renderChuTrendAlert(ind) {
+        const banner = document.getElementById('chuTrendAlertBanner');
+        const sopCard = document.getElementById('chuExitSopCard');
+        if (!banner) return;
+        const a = this._chuTrendBreakAlert(ind);
+        if (!a.alert) {
+            banner.classList.add('hidden'); banner.innerHTML = '';
+            if (sopCard) sopCard.classList.remove('border-red-600');
+            return;
+        }
+        banner.classList.remove('hidden');
+        banner.innerHTML = `<div class="bg-red-900/50 border-y-2 border-red-600 text-red-100 text-[12px] font-bold leading-snug px-3 py-1.5 cursor-pointer" onclick="alert('📌 朱老師心法 — 結構轉折\\n\\n' + app._chuOriginalText.gate4 + '\\n\\n' + app._chuOriginalText.exit)">⚠️ <b>朱老師警告:</b>${a.text.replace(/[✅⚠️❌]/g, '')} — 隔日開盤立刻離場,不留戀</div>`;
+        if (sopCard) sopCard.classList.add('border-red-600');
+    },
+
+    // ── A4. 鎖股名冊 ────────────────────────────────────────────────────────
+    _ensureChuLockGroup() {
+        if (!this.favGroups[this._chuLockGroupName]) {
+            this.favGroups[this._chuLockGroupName] = [];
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+        }
+    },
+
+    _isInChuLock(sym) {
+        return (this.favGroups[this._chuLockGroupName] || []).includes(String(sym));
+    },
+
+    toggleChuLockStock() {
+        const sym = this.currentSymbolId;
+        if (!sym) return;
+        this._ensureChuLockGroup();
+        const list = this.favGroups[this._chuLockGroupName];
+        const idx = list.indexOf(sym);
+        if (idx >= 0) {
+            list.splice(idx, 1);
+            this.showToast(`📌 已從朱老師鎖股移除 ${sym}`);
+        } else {
+            list.push(sym);
+            this.showToast(`📌 已加入朱老師鎖股名冊:${sym}(待回檔/訊號到位)`);
+        }
+        localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+        this._updateChuLockIcon();
+        try { this.renderFavTabs(); } catch(_) {}
+        this.vibrate(30);
+    },
+
+    _updateChuLockIcon() {
+        const ic = document.getElementById('chuLockIcon');
+        if (!ic) return;
+        const inLock = this._isInChuLock(this.currentSymbolId);
+        ic.textContent = inLock ? '📌' : '📍';
+        ic.title = inLock ? '已在朱老師鎖股名冊(點擊移除)' : '加入朱老師鎖股名冊(待回檔/訊號)';
+        ic.classList.toggle('opacity-40', !inLock);
+    },
+
+    // 點四關卡其中一格 → 彈 modal 顯示朱老師原文 + 目前判定(避免 inline onclick 字串逃逸地獄)
+    _chuShowGateModal(idx) {
+        const g = (this._chuCurrentGates || [])[idx];
+        if (!g) return;
+        alert(`📌 朱老師心法 — 第 ${idx + 1} 關:${g.name}\n\n${g.edu}\n\n────────────────\n目前判定:${g.icon} ${g.text}`);
+    },
+
+    // 主入口:refreshStrategy 結尾呼叫一次,把上面 4 個朱老師 UI 一起刷
+    _chuRenderAll(data, ind, last) {
+        this._renderChuFourGates(data, ind, last);
+        this._renderChuExitSop(data, ind, last);
+        this._renderChuTrendAlert(ind);
+        this._updateChuLockIcon();
+    },
+
     // 🔍 AI 推測事件影響族群與代表股(點擊才呼叫,localStorage 24hr 快取,省配額)
     async askEventImpactAI(eventName, idx) {
         const box = document.getElementById('evImpact_' + idx);
@@ -9742,6 +10035,12 @@ ${_newsLine}${globalContext}
             ? this.rawDailyData[this.rawDailyData.length - 2].close : pC;
         this.fetchInstitutionTarget(this.currentSymbolId, _prevClose);
         this.renderBacktest();
+        // 📌 朱老師心法刷新:把 alpha 算出來的 trendJudge / sigCount 掛上 ind,然後一次刷四個朱老師 UI
+        try {
+            ind._trendJudge = alpha.trendJudge || '';
+            ind._sigCount = alpha.sigCount != null ? alpha.sigCount : null;
+            this._chuRenderAll(data, ind, last);
+        } catch(e) { console.warn('[chu] render fail:', e); }
     },
 
     // 🆕 卡片收合瘦身:切換 body 的 hidden + 旋轉 ▾ 箭頭(預設收合,點標題展開)
