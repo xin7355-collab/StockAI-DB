@@ -422,11 +422,13 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
         tickers = [f'{symbol}.TW', f'{symbol}.TWO']
     for tk in tickers:
         try:
-            # 🛡️ yfinance.history 無 timeout 參數、網路卡死會無限 hang → SIGALRM 硬逾時 60s
-            # (從 30s 改 60s 因 days_back=730 抓 2 年資料量大,30s 可能不夠)
+            # 🛡️ yfinance.history 無 timeout 參數、網路卡死會無限 hang → SIGALRM 硬逾時
+            # V14.9 採礦加速:60s → 15s。yfinance hang 通常代表那 ticker 拿不到資料,
+            #   等久也不會變;15 秒夠正常股拿 730 天 K 線,新股/復牌股直接放棄改隔天重採。
+            #   實測 ~10-20% 觸發 timeout 的股每股省 45 秒,全市場估省 3-5 分。
             hist = call_with_timeout(
                 lambda: yf.Ticker(tk).history(period=f'{days_back}d', auto_adjust=False),
-                60, None)
+                15, None)
             if hist is None or hist.empty:
                 continue
             out = []
@@ -925,19 +927,55 @@ def _load_broker_info_map() -> dict:
 
 # ── FinMind 個股基本面（含 Q1~Q4 履歷、次季預估、創新高雷達）────────────────
 def fetch_finmind_fundamentals(sym: str) -> dict:
+    """V14.9 採礦加速 — 斧三:把 3 個獨立 FinMind 端點(財報/月營收/股利)
+    從序列改 ThreadPoolExecutor 並行,單股省 6-13 秒。
+    並行 fetch raw rows 後,後處理仍按原順序(payout_ratio 依賴 eps)。
+    sleep 從「3 段各 2-3.5 秒 = 8-10 秒」變「並行區後一次 random 2.5 秒」。
+    """
+    from concurrent.futures import ThreadPoolExecutor
     today_str = date.today().strftime('%Y-%m-%d')
     start_fs  = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d') # 近2年財報
     start_rev = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d') # 近2年營收
     start_div = (date.today() - timedelta(days=1095)).strftime('%Y-%m-%d')
     result: dict = {}
 
-    # 1. 財務報表 (Q1~Q4 EPS 歷史與毛利) ──────────────────────────────
-    try:
+    # 並行打 3 個 FinMind API(同股共用 token 池,RPS 限額不會因此惡化 — 跨 batch 才是瓶頸)
+    def _fetch_fs():
         url = (f'https://api.finmindtrade.com/api/v4/data'
                f'?dataset=TaiwanStockFinancialStatements&data_id={sym}'
                f'&start_date={start_fs}&end_date={today_str}')
-        j = fm_request(url, timeout=20)
-        if j is None: j = {}
+        return fm_request(url, timeout=20) or {}
+
+    def _fetch_rev():
+        url = (f'https://api.finmindtrade.com/api/v4/data'
+               f'?dataset=TaiwanStockMonthRevenue&data_id={sym}'
+               f'&start_date={start_rev}&end_date={today_str}')
+        return fm_request(url, timeout=20) or {}
+
+    def _fetch_div():
+        url = (f'https://api.finmindtrade.com/api/v4/data'
+               f'?dataset=TaiwanStockDividend&data_id={sym}'
+               f'&start_date={start_div}&end_date={today_str}')
+        return fm_request(url, timeout=20) or {}
+
+    fs_json, rev_json, div_json = {}, {}, {}
+    try:
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            fut_fs  = ex.submit(_fetch_fs)
+            fut_rev = ex.submit(_fetch_rev)
+            fut_div = ex.submit(_fetch_div)
+            try: fs_json  = fut_fs.result(timeout=25)
+            except Exception as e: print(f"    ⚠️ FinMind FS {sym} 並行 fetch: {e}")
+            try: rev_json = fut_rev.result(timeout=25)
+            except Exception as e: print(f"    ⚠️ FinMind Revenue {sym} 並行 fetch: {e}")
+            try: div_json = fut_div.result(timeout=25)
+            except Exception as e: print(f"    ⚠️ FinMind Dividend {sym} 並行 fetch: {e}")
+    except Exception as e:
+        print(f"    ⚠️ FinMind ThreadPool {sym}: {e}")
+
+    # 1. 財務報表 (Q1~Q4 EPS 歷史與毛利) ──────────────────────────────
+    try:
+        j = fs_json
         rows = j.get('data') or []
         
         # 處理 EPS 與 Q1~Q4 歷史標籤
@@ -984,15 +1022,10 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             result['quarterly_eps'] = quarterly
     except Exception as e:
         print(f"    ⚠️ FinMind FS {sym}: {e}")
-    time.sleep(random.uniform(2.0, 3.5))
 
-    # 2. 月營收 YoY + 歷史新高判定 ────────────────────────────────────────────
+    # 2. 月營收 YoY + 歷史新高判定(已由並行 fetch 取得 rev_json)──────────────
     try:
-        url = (f'https://api.finmindtrade.com/api/v4/data'
-               f'?dataset=TaiwanStockMonthRevenue&data_id={sym}'
-               f'&start_date={start_rev}&end_date={today_str}')
-        j = fm_request(url, timeout=20)
-        if j is None: j = {}
+        j = rev_json
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
         if rows:
             latest = rows[-1]
@@ -1031,15 +1064,10 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
                 result['is_record_high'] = False
     except Exception as e:
         print(f"    ⚠️ FinMind Revenue {sym}: {e}")
-    time.sleep(random.uniform(2.0, 3.5))
 
-    # 3. 股利與發配率 ──────────────────────────────
+    # 3. 股利與發配率(已由並行 fetch 取得 div_json)──────────────
     try:
-        url = (f'https://api.finmindtrade.com/api/v4/data'
-               f'?dataset=TaiwanStockDividend&data_id={sym}'
-               f'&start_date={start_div}&end_date={today_str}')
-        j = fm_request(url, timeout=20)
-        if j is None: j = {}
+        j = div_json
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
         if rows:
             latest   = rows[-1]
@@ -1052,7 +1080,8 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
                 result['payout_ratio'] = round(total_div / (abs(eps) * 4) * 100, 1)
     except Exception as e:
         print(f"    ⚠️ FinMind Dividend {sym}: {e}")
-    time.sleep(random.uniform(2.0, 3.5))
+    # V14.9:原本 3 段各 2-3.5 秒 sleep 改為單一 2 秒節流,單股省 4-8 秒
+    time.sleep(random.uniform(1.5, 2.5))
 
     return result
 

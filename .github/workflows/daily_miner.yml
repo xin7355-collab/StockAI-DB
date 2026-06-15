@@ -173,32 +173,55 @@ jobs:
           pattern: mine-data-*
           merge-multiple: true   # 各 batch 已無同名衝突，直接疊上底層覆蓋成最新
 
-      - name: 📡 通用情報雷達（RSS + Groq AI 情緒判讀）
+      # V14.9 採礦加速 — 斧二:7 個獨立 deploy 階段腳本改 bash `&` 後台並行 + `wait`
+      # 串行 ~2.75 分 (universal_radar 30s + macro 15s + radar_miner 30s + backtest 30s
+      #              + walk_forward 20s + paper_trade 10s + etf_miner 30s)
+      # 並行 ~30-45 秒(瓶頸是最慢那支)。每支腳本寫不同 JSON 無 race;
+      # walk_forward.py 是 `from backtest import` 純 module 級 import,不讀 backtest 產出檔。
+      - name: ⚡ 並行跑 7 個 deploy 階段腳本(平行宇宙第二層)
         env:
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
           GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
         run: |
-          python universal_radar.py || echo "⚠️ universal_radar.py 失敗，繼續部署"
-
-      - name: 🌐 總經風險採礦（美債10Y/外資期現複合）
-        run: |
-          python -m pip install requests yfinance ta pandas numpy --quiet
-          python macro_miner.py || echo "⚠️ macro_miner.py 失敗，繼續部署"
-
-      - name: 🎯 戰略雷達矩陣採礦（三大戰區掃描 → radar_matrix.json）
-        run: python radar_miner.py || echo "⚠️ radar_miner.py 失敗，繼續部署"
-
-      - name: 📊 訊號勝率回測（回放歷史 → data/signal_history.json + strategy_backtest.json）
-        run: python backtest.py || echo "⚠️ backtest.py 失敗，繼續部署"
-
-      - name: 🔬 Walk-forward 樣本外驗證(防 overfit → data/walk_forward.json)
-        run: python walk_forward.py || echo "⚠️ walk_forward.py 失敗，繼續部署"
-
-      - name: 📝 Paper Trade 紙上跟單(每日記錄今日訊號 → data/paper_trades.json)
-        run: python paper_trade.py || echo "⚠️ paper_trade.py 失敗，繼續部署"
-
-      - name: 🏦 ETF 順風車(績效前段班主動ETF + 每日換股偵測 → data/etf_tracking.json)
-        run: python etf_miner.py || echo "⚠️ etf_miner.py 失敗，繼續部署"
+          python -m pip install requests yfinance ta pandas numpy feedparser --quiet
+          mkdir -p /tmp/parallel
+          python universal_radar.py > /tmp/parallel/r1.log 2>&1 &
+          PID1=$!
+          python macro_miner.py     > /tmp/parallel/r2.log 2>&1 &
+          PID2=$!
+          python radar_miner.py     > /tmp/parallel/r3.log 2>&1 &
+          PID3=$!
+          python backtest.py        > /tmp/parallel/r4.log 2>&1 &
+          PID4=$!
+          python walk_forward.py    > /tmp/parallel/r5.log 2>&1 &
+          PID5=$!
+          python paper_trade.py     > /tmp/parallel/r6.log 2>&1 &
+          PID6=$!
+          python etf_miner.py       > /tmp/parallel/r7.log 2>&1 &
+          PID7=$!
+          echo "⏳ 等待 7 個並行任務完成…"
+          set +e   # 任一失敗不要中斷整體部署
+          wait $PID1; RC1=$?
+          wait $PID2; RC2=$?
+          wait $PID3; RC3=$?
+          wait $PID4; RC4=$?
+          wait $PID5; RC5=$?
+          wait $PID6; RC6=$?
+          wait $PID7; RC7=$?
+          set -e
+          echo ""
+          echo "═════ 並行 7 腳本完成 ═════"
+          names=(universal_radar.py macro_miner.py radar_miner.py backtest.py walk_forward.py paper_trade.py etf_miner.py)
+          rcs=($RC1 $RC2 $RC3 $RC4 $RC5 $RC6 $RC7)
+          for i in 0 1 2 3 4 5 6; do
+            n="${names[$i]}"
+            rc="${rcs[$i]}"
+            idx=$((i + 1))
+            if [ "$rc" = "0" ]; then echo "✅ $n"; else echo "⚠️ $n 失敗 rc=$rc (繼續部署)"; fi
+            echo "── $n log ──"
+            tail -40 /tmp/parallel/r${idx}.log || true
+            echo ""
+          done
 
       # 🛑 chief_ai_batch.py 已退役(2026-06):自動跑全市場 AI 太耗 OpenRouter/Groq 配額,
       # 改為使用者在前端打開個股時即時呼叫 1 次 + localStorage 3 天快取。
