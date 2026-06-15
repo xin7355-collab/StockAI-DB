@@ -9,6 +9,12 @@ on:
       - 'sw.js'
   workflow_dispatch:
 
+# V14.12 — 與 daily_miner.yml deploy job 共用 'gh-pages-push' group,
+# 避免兩支 workflow 同時 push gh-pages 觸發 "cannot lock ref" race
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -53,7 +59,21 @@ jobs:
           git add index.html sw.js
           git diff --cached --quiet && echo "無變更，跳過" || {
             git commit -m "🚀 前端更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
-            git push origin gh-pages
+            # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
+            for i in 1 2 3 4 5; do
+              if git push origin gh-pages; then
+                echo "✅ Push 成功 (attempt $i)"
+                break
+              fi
+              if [ "$i" -eq 5 ]; then
+                echo "❌ Push 連 5 次失敗,放棄"
+                exit 1
+              fi
+              echo "⚠️ Push attempt $i 失敗,sleep $((i*5))s 重試..."
+              sleep $((i*5))
+              git fetch origin gh-pages 2>/dev/null || true
+              git pull --rebase origin gh-pages 2>/dev/null || true
+            done
           }
 
           echo "✅ gh-pages index.html 已更新（股票資料完整保留）"

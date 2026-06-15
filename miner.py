@@ -163,6 +163,21 @@ BATCH_INDEX    = int(os.getenv('BATCH_INDEX', '0'))
 TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
 SKIP_GLOBAL    = bool(int(os.getenv('SKIP_GLOBAL', '0')))  # 批次 1-4 略過全市場抓取
 
+# V14.12 — per-stock per-step timing log,給下一輪找瓶頸用
+_TIMING_CSV = f"/tmp/miner_timing_{BATCH_INDEX}.csv"
+try:
+    with open(_TIMING_CSV, 'w', encoding='utf-8') as _tf:
+        _tf.write("sym,step,sec\n")
+except Exception:
+    pass
+
+def _log_t(sym: str, step: str, t0: float):
+    try:
+        with open(_TIMING_CSV, 'a', encoding='utf-8') as _tf:
+            _tf.write(f"{sym},{step},{round(time.time() - t0, 2)}\n")
+    except Exception:
+        pass
+
 # ── 監控清單 ──────────────────────────────────────────────────────────────────
 # 涵蓋前端 _RADAR_POOLS（上市熱門/上櫃中小型/高股息ETF）+ 9 大資金板塊指標股，
 # 確保前端雷達分頁的每一類都能 filter 到資料。
@@ -1398,6 +1413,7 @@ def run():
 
     try:
         for idx, sym in enumerate(watchlist):
+            _t_stock = time.time()  # V14.12 timing
             print(f"  🛰️  [{idx+1}/{len(watchlist)}] {sym} ...", end=' ', flush=True)
 
             db_cur.execute("""
@@ -1541,6 +1557,8 @@ def run():
                             new_rows.append(snap)
                 # ────────────────────────────────────
 
+            _log_t(sym, 'fetch', _t_stock)  # V14.12 — TWSE/TPEX/yfinance/snapshot 全段
+            _t_db = time.time()
             changed = False
             for r in new_rows:
                 fmt_date  = r['date']
@@ -1625,6 +1643,8 @@ def run():
                     print(f"⚠️ SQLite {sym}: {e}")
             else:
                 print("skip")
+            _log_t(sym, 'db', _t_db)         # V14.12 — DB write + chips merge
+            _log_t(sym, 'total', _t_stock)   # V14.12 — 整檔 OHLCV 處理總耗時
 
     except Exception as e:
         # 當 GitHub Actions 超時被砍斷時，印出最後的斷點，讓您一目了然

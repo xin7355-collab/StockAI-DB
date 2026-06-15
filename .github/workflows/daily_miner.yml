@@ -126,6 +126,16 @@ jobs:
           retention-days: 1
           if-no-files-found: warn
 
+      # V14.12 — 上傳 per-stock per-step timing CSV,給下一輪找瓶頸用
+      - name: ⏱️ 上傳採礦 timing log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: timing-batch-${{ matrix.batch }}
+          path: /tmp/miner_timing_*.csv
+          retention-days: 7
+          if-no-files-found: ignore
+
   # ══════════════════════════════════════════════════════════════════════════
   # 🧬 階段二：等 5 台機器全數完工後，合併資料並統一發布
   # ══════════════════════════════════════════════════════════════════════════
@@ -138,6 +148,11 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # V14.12 — 與 deploy_pages.yml 共用 group,序列化 gh-pages push 避免 race
+    #         只 deploy job 加 group(不加在整 workflow),確保 mine 90 分不會擋 deploy_pages
+    concurrency:
+      group: gh-pages-push
+      cancel-in-progress: false
 
     steps:
       - name: 📥 下載程式碼
@@ -290,7 +305,20 @@ jobs:
           [ -f margin_cache_stock.json ] && git add -f margin_cache_stock.json || true
           [ -f inst_cache_stock.json ]   && git add -f inst_cache_stock.json   || true
           git commit -m "📡 網站更新 ${DATE}（平行宇宙合併 | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
-          git push origin HEAD:gh-pages --force
+          # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock(雙保險,搭配 concurrency group)
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:gh-pages --force; then
+              echo "✅ gh-pages push 成功 (attempt $i)"
+              break
+            fi
+            if [ "$i" -eq 5 ]; then
+              echo "❌ gh-pages push 連 5 次失敗,放棄"
+              exit 1
+            fi
+            echo "⚠️ gh-pages push attempt $i 失敗,sleep $((i*5))s 重試..."
+            sleep $((i*5))
+            git fetch origin gh-pages 2>/dev/null || true
+          done
           echo "✅ gh-pages 已更新：共 ${STOCKS} 檔"
 
       - name: 📤 推送到獨立 data 分支 (資料備份庫)
@@ -316,5 +344,18 @@ jobs:
 
           git add -f data/
           git commit -m "🤖 籌碼快照 ${DATE}（平行宇宙合併，共 ${STOCKS} 檔）"
-          git push origin HEAD:data --force
+          # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:data --force; then
+              echo "✅ data push 成功 (attempt $i)"
+              break
+            fi
+            if [ "$i" -eq 5 ]; then
+              echo "❌ data push 連 5 次失敗,放棄"
+              exit 1
+            fi
+            echo "⚠️ data push attempt $i 失敗,sleep $((i*5))s 重試..."
+            sleep $((i*5))
+            git fetch origin data 2>/dev/null || true
+          done
           echo "✅ data 分支已更新"
