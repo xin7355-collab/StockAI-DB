@@ -770,9 +770,9 @@ def build_attention_forecast():
 # 個股→族群反查(對齊 miner.py SUB_SECTORS / 前端 _industrySectors)
 _FALCON_SECTORS = {
     'us': ['2330', '3711'], 'server': ['2382', '6669', '3231'],
-    'power': ['1519', '1503', '1513'], 'packaging': ['2330', '3711', '3105'],
-    'cpo': ['3450', '3380', '6491'], 'cooling': ['3017', '3324', '3653'],
-    'robot': ['2049', '4551', '2206'], 'finance': ['2881', '2882', '2891'],
+    'power': ['1519', '1503', '1513'], 'packaging': ['2330', '3711', '3131'],
+    'cpo': ['3081', '3450', '3363'], 'cooling': ['3017', '3324', '3653'],
+    'robot': ['2359', '6188', '1568'], 'finance': ['2881', '2882', '2891'],
     'leo': ['3491', '2313', '6285'], 'dram': ['2408', '2344', '8299'],
 }
 _SYM2SECTOR = {s: k for k, syms in _FALCON_SECTORS.items() for s in syms}

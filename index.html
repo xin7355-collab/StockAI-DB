@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.12</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.12</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.13</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1289,21 +1289,25 @@
                         <button onclick="app.showJargon('美債10Y殖利率'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🇺🇸 美債10Y</div>
                         <div id="sccUs10y" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">資金無風險水溫,&gt;4.5% 躲債券、&lt;3.5% 回股市</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('美債2Y殖利率'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🏦 美債2Y</div>
                         <div id="sccUs2y" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">短期升降息預期,2Y&gt;10Y 倒掛=衰退警報</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('恐懼與貪婪指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🧭 恐懼貪婪</div>
                         <div id="sccFg" class="text-lg md:text-xl font-black font-mono text-orange-400">--</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">情緒 0-100,&lt;25 極恐(底)、&gt;75 極貪(頂)</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台幣匯率'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">💵 台幣匯率</div>
                         <div id="sccTwd" class="text-lg md:text-xl font-black font-mono text-gray-300">--</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">外資溫度,&lt;31 熱錢進、&gt;33 撤離</div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2 mt-2">
@@ -1311,6 +1315,7 @@
                         <button onclick="app.showJargon('流動性熱度'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="flex items-center justify-between mb-1"><span class="text-[10px] text-gray-500 font-bold">🌊 流動性熱度</span><span id="sccLiq" class="text-xs font-bold font-mono text-green-400">--</span></div>
                         <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden"><div id="sccLiqBar" class="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all" style="width:0%"></div></div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">資金水溫,&lt;30% 緊縮、&gt;75% 過熱反轉</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative">
                         <button onclick="app.showJargon('外資期現複合'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300">ℹ️</button>
@@ -1324,6 +1329,7 @@
                             <span id="sccSpotDot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
                         </div>
                         <span id="sccFiLabel" class="hidden"></span>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">同向=真趨勢、背離=暗流警戒</div>
                     </div>
                 </div>
             </div>
@@ -1432,11 +1438,13 @@
                         <button onclick="app.showJargon('散戶多空比'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">👥 散戶多空比</div>
                         <div id="sccRetail" class="text-base md:text-lg font-black font-mono text-green-400">--</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">散戶情緒,負值=散戶偏多(逆向偏空)</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台指逆價差'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">📉 台指逆價差</div>
                         <div id="sccBack" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">期減現,負 &gt;100 點 = 現貨快反彈</div>
                     </div>
                 </div>
             </div>
@@ -1470,12 +1478,12 @@
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="packaging">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">📦 先進封裝</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">CoWoS 護國神山</div>
-                            <div class="text-[10px] text-gray-500 leading-tight mt-0.5">台積電·矽品·PMC</div>
+                            <div class="text-[10px] text-gray-500 leading-tight mt-0.5">台積電·日月光投控·弘塑</div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="cpo">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🔗 高速傳輸CPO</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">光通訊新題材</div>
-                            <div class="text-[10px] text-gray-500 leading-tight mt-0.5">聯亞光電·明泰·晶碩</div>
+                            <div class="text-[10px] text-gray-500 leading-tight mt-0.5">聯亞·聯鈞·上詮</div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="cooling">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">❄️ 散熱零組件</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
@@ -1485,7 +1493,7 @@
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="robot">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🤖 實體機器人</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">未來十年新題材</div>
-                            <div class="text-[10px] text-gray-500 leading-tight mt-0.5">上銀·智伸科·三陽</div>
+                            <div class="text-[10px] text-gray-500 leading-tight mt-0.5">所羅門·廣明·盟立</div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="finance">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🏦 金融避風港</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
@@ -1539,11 +1547,11 @@
                 <div class="flex items-center gap-1.5"><span class="text-sm">🎯</span><span class="text-sm font-black text-cyan-300 tracking-wide">台股作戰指揮部</span><span class="ml-auto text-[8px] text-gray-600">燈號／戰術腳本已移至頁首</span></div>
                     <!-- 五維迷你指標 (2 欄大字 + ℹ️ tooltip) -->
                     <div class="grid grid-cols-2 gap-1.5">
-                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度量價')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">📊 量價</div><div id="dim_pv" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div></div>
-                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度籌碼')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">🎯 籌碼</div><div id="dim_chip" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div></div>
-                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度總經')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">🌐 總經</div><div id="dim_macro" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div></div>
-                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度技術')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">📈 技術</div><div id="dim_tech" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div></div>
-                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50 col-span-2" onclick="app.showJargon('5維度情緒')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">💭 情緒</div><div id="dim_senti" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div></div>
+                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度量價')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">📊 量價</div><div id="dim_pv" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div><div class="text-[9px] mt-1 px-1 text-gray-500 leading-snug">月營收+量+K線。強=爆量噴、弱=量縮</div></div>
+                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度籌碼')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">🎯 籌碼</div><div id="dim_chip" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div><div class="text-[9px] mt-1 px-1 text-gray-500 leading-snug">法人+分點+融資。吸籌/失守/中性</div></div>
+                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度總經')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">🌐 總經</div><div id="dim_macro" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div><div class="text-[9px] mt-1 px-1 text-gray-500 leading-snug">6 大全球指標綜合。順風/逆風</div></div>
+                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50" onclick="app.showJargon('5維度技術')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">📈 技術</div><div id="dim_tech" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div><div class="text-[9px] mt-1 px-1 text-gray-500 leading-snug">均線+季節。春夏秋冬 4 段</div></div>
+                        <div class="text-center bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative cursor-pointer hover:border-blue-500/50 col-span-2" onclick="app.showJargon('5維度情緒')"><span class="absolute top-0.5 right-1 text-[9px] text-gray-600">ℹ️</span><div class="text-[10px] text-gray-500 font-bold">💭 情緒</div><div id="dim_senti" class="text-base font-bold font-mono text-gray-400 mt-0.5">--</div><div class="text-[9px] mt-1 px-1 text-gray-500 leading-snug">恐貪+多空+漲停。極多/偏多/中性/極空</div></div>
                     </div>
                     <!-- 市場氣象與心理變頻儀 -->
                     <div class="grid grid-cols-3 gap-2 pt-1 border-t border-[#21262d]">
@@ -6248,10 +6256,10 @@ ${lightExplain[queryType]}
     _industrySectors: {
         'AI 伺服器代工':   { syms: ['2382','6669','3231'], names: '廣達/緯穎/緯創' },
         '重電基建':        { syms: ['1519','1503','1513'], names: '華城/士電/中興電' },
-        '先進封裝':        { syms: ['2330','3711','3105'], names: '台積電/日月光投控/PMC' },
-        '高速傳輸 CPO':    { syms: ['3450','3380','6491'], names: '聯亞光電/明泰/晶碩' },
+        '先進封裝':        { syms: ['2330','3711','3131'], names: '台積電/日月光投控/弘塑' },
+        '高速傳輸 CPO':    { syms: ['3081','3450','3363'], names: '聯亞/聯鈞/上詮' },
         '散熱模組':        { syms: ['3017','3324','3653'], names: '奇鋐/雙鴻/健策' },
-        '實體機器人':      { syms: ['2049','4551','2206'], names: '上銀/智伸科/三陽' },
+        '實體機器人':      { syms: ['2359','6188','1568'], names: '所羅門/廣明/盟立' },
         '金融控股':        { syms: ['2881','2882','2891'], names: '富邦金/國泰金/中信金' },
         '低軌衛星':        { syms: ['3491','2313','6285'], names: '昇達科/華通/啟碁' },
         '記憶體 DRAM':     { syms: ['2408','2344','8299'], names: '南亞科/華邦電/群聯' },
@@ -8991,8 +8999,8 @@ ${_newsLine}${globalContext}
         const inSession = (tpe.getDay() >= 1 && tpe.getDay() <= 5) && hm >= 540 && hm <= 810;
         if (!inSession) this.showToast('非盤中時段,顯示的是最近成交價', 'info');
         // 各板塊領頭股(美股板塊 Fugle 抓不到,跳過;其餘 9 個台股板塊)
-        const leads = { server:'2382', power:'1519', packaging:'2330', cpo:'3450',
-                        cooling:'3017', robot:'2049', finance:'2881', leo:'3491', dram:'2408' };
+        const leads = { server:'2382', power:'1519', packaging:'2330', cpo:'3081',
+                        cooling:'3017', robot:'2359', finance:'2881', leo:'3491', dram:'2408' };
         const keys = [this.settings.fugleToken1, this.settings.fugleToken2, this.settings.fugleToken3,
                       this.settings.fugleToken4, this.settings.fugleToken5].filter(k => k && k.trim());
         if (!keys.length) { this.showToast('請先到 ⚙️ 設定填 Fugle token 才能盤中即時更新'); return; }
