@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.16</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.17</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.16</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.17</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8299,6 +8299,61 @@ ${_newsLine}${globalContext}
         el.onclick = () => alert('📌 朱老師心法 — 第一關:大盤環境\n\n' + this._chuOriginalText.gate1 + '\n\n目前判定:\n大盤:' + a.regimeLabel + '(' + biasTxt + ')\n建議部位:' + a.pct + '\n操作策略:' + a.advice);
     },
 
+    // V14.17 — 從近 200 日推算最近 N 週的 close/high/low(每週取最後一個交易日)
+    _chuWeeklyCloses(data, weeks = 21) {
+        if (!data || data.length < 60) return [];
+        const closes = [];
+        let curWkKey = null;
+        for (let i = data.length - 1; i >= 0 && closes.length < weeks; i--) {
+            const parts = String(data[i].date || '').split('/');
+            if (parts.length !== 3) continue;
+            const d = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+            const monday = new Date(d);
+            const day = d.getDay();           // 0=日,1=一,...,6=六
+            const diff = (day === 0 ? -6 : 1 - day);
+            monday.setDate(d.getDate() + diff);
+            const wkKey = monday.toISOString().slice(0, 10);
+            if (wkKey !== curWkKey) {
+                closes.unshift({ close: data[i].close, high: data[i].high, low: data[i].low, wkKey });
+                curWkKey = wkKey;
+            }
+        }
+        return closes;
+    },
+
+    // V14.17 — 週 20MA
+    _chuWeeklyMA20(data) {
+        const wk = this._chuWeeklyCloses(data, 21);
+        if (wk.length < 20) return null;
+        const last20 = wk.slice(-20);
+        return last20.reduce((s, w) => s + w.close, 0) / 20;
+    },
+
+    // V14.17 — 週 20MA 上揚?(近 20 週均 > 前 20 週均 = 整體均線斜率向上)
+    _chuWeeklyMA20Rising(data) {
+        const wk = this._chuWeeklyCloses(data, 30);
+        if (wk.length < 25) return null;
+        const recent = wk.slice(-20).reduce((s, w) => s + w.close, 0) / 20;
+        const earlier = wk.slice(-25, -5).reduce((s, w) => s + w.close, 0) / 20;
+        return recent > earlier;
+    },
+
+    // V14.17 — 週 K 結構:近 12 週 fractal pivot(±2)取頭頭高/底底高
+    _chuWeeklyTrend(data) {
+        const wk = this._chuWeeklyCloses(data, 12);
+        if (wk.length < 8) return 'unknown';
+        const peaks = [], troughs = [];
+        for (let i = 2; i < wk.length - 2; i++) {
+            if (wk[i].high > wk[i-1].high && wk[i].high > wk[i-2].high && wk[i].high > wk[i+1].high && wk[i].high > wk[i+2].high) peaks.push(wk[i].high);
+            if (wk[i].low  < wk[i-1].low  && wk[i].low  < wk[i-2].low  && wk[i].low  < wk[i+1].low  && wk[i].low  < wk[i+2].low ) troughs.push(wk[i].low);
+        }
+        const peaksUp   = peaks.length >= 2 && peaks[peaks.length - 1] > peaks[peaks.length - 2];
+        const troughsUp = troughs.length >= 2 && troughs[troughs.length - 1] > troughs[troughs.length - 2];
+        if (peaksUp && troughsUp) return 'bullish';
+        if (!peaksUp && !troughsUp && peaks.length >= 2 && troughs.length >= 2) return 'bearish';
+        return 'neutral';
+    },
+
     // ── A2. 四關通關卡 ──────────────────────────────────────────────────────
     _chuFourGates(data, ind, last) {
         if (!data || !ind || last == null || last < 0) return null;
@@ -8310,13 +8365,22 @@ ${_newsLine}${globalContext}
         const g1 = { name: '大盤', icon: m.regime === 'bull' ? '✅' : (m.regime === 'bear' ? '❌' : '🟡'),
                      text: `${m.regimeLabel} · 建議 ${m.pct}`, color: m.regime === 'bull' ? 'text-red-300' : (m.regime === 'bear' ? 'text-green-300' : 'text-yellow-300'),
                      edu: this._chuOriginalText.gate1 };
-        // 2️⃣ 週 K 代理(用 200MA + 結構)
-        const trend = (ind && ind._trendJudge) || '';
+        // 2️⃣ V14.17 — 真實週 K 判定(原日 200MA 代理已退役)
+        const wkMa20 = this._chuWeeklyMA20(data);
+        const wkMa20Rising = this._chuWeeklyMA20Rising(data);
+        const wkTrend = this._chuWeeklyTrend(data);
         let g2icon, g2text, g2color;
-        if (ma200 && pC > ma200 && trend.includes('多頭')) { g2icon = '✅'; g2text = '站長均線 + 多頭結構'; g2color = 'text-red-300'; }
-        else if (ma200 && pC < ma200) { g2icon = '❌'; g2text = '長均線下方 — 淘汰,別做長'; g2color = 'text-green-300'; }
-        else { g2icon = '🟡'; g2text = '結構轉折 — 建議手動切週 K 確認'; g2color = 'text-yellow-300'; }
-        const g2 = { name: '週 K 結構', icon: g2icon, text: g2text, color: g2color, edu: this._chuOriginalText.gate2 + '\n\n⚠️ 程式目前用「日 200MA + 結構」代理週 K 判定,建議手動點上方週期切換器看 W(週)確認。' };
+        if (wkMa20 == null) {
+            g2icon = '🟡'; g2text = '週 K 資料不足(< 20 週)'; g2color = 'text-gray-400';
+        } else if (pC > wkMa20 && wkMa20Rising && wkTrend === 'bullish') {
+            g2icon = '✅'; g2text = `站週 20MA(${wkMa20.toFixed(1)})· 上揚 · 頭頭高底底高`; g2color = 'text-red-300';
+        } else if (pC < wkMa20 || wkMa20Rising === false) {
+            g2icon = '❌'; g2text = `週 20MA(${wkMa20.toFixed(1)})${pC < wkMa20 ? ' 下方' : ' 下彎'} — 淘汰`; g2color = 'text-green-300';
+        } else {
+            g2icon = '🟡'; g2text = `週結構轉折(站週 20MA 但${wkTrend === 'bearish' ? '底底低' : '結構不明'})`; g2color = 'text-yellow-300';
+        }
+        const g2 = { name: '週 K 結構', icon: g2icon, text: g2text, color: g2color,
+                     edu: this._chuOriginalText.gate2 + '\n\n✅ V14.17 已改用真實週 K 判定(週 20MA + 週結構),無須手動切換週期。' };
         // 3️⃣ 位階(bias20)
         const bias20 = (ma20 && ma20 > 0) ? ((pC - ma20) / ma20 * 100) : null;
         let g3icon, g3text, g3color;
