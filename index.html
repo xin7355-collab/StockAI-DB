@@ -1034,11 +1034,11 @@
                     <div class="text-base bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【我的 patWinRate 歷史 vs 隔日實際】\n\n機率欄與上方「AI 雲端大數據波段回測預判」完全同源 — 都是 patWinRate（近5日K線+量能+KD/MACD+籌碼+大盤環境的歷史型態相似度匹配）。\n\n• 今日該行 = 上方顯示的機率，絕對一致\n• 歷史日如果之前沒跑過 K 線分析，顯示「📝 未記錄」（從今日起會自動累積）\n• 隔日實際漲跌：從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄：預測機率 ≥ 50% 且實際漲 = ✅，反之 ❌\n\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">📅 我的 patWinRate 歷史 vs 隔日實際 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
-                    <div class="text-[10px] text-gray-500 mb-2 leading-tight">機率為當日 patWinRate 即時計算 + 自動每日快照。今日該行 = 上方數字同源。歷史日若沒跑過 K 線分析會顯示「📝 未記錄」，從今日起累積。</div>
+                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【歷史隔日上漲機率】\n\n機率欄與上方「AI 雲端大數據波段回測預判」完全同源 — 都是 patWinRate（近5日K線+量能+KD/MACD+籌碼+大盤環境的歷史型態相似度匹配）。\n\n• 今日該行 = 上方顯示的機率，絕對一致\n• 歷史日如果之前沒跑過 K 線分析，顯示「📝 未記錄」（從今日起會自動累積）\n• Alpha 分：當日綜合戰力分（技術面+籌碼面+大盤環境，逐日重算）— 觀察「分數高時是否隔日真的漲」可比較哪種分數區段勝率較高\n• 隔日實際漲跌：從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄：預測機率 ≥ 50% 且實際漲 = ✅，反之 ❌\n\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">📅 歷史隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
+                    <div class="text-[10px] text-gray-500 mb-2 leading-tight">機率為當日 patWinRate 即時計算 + 自動每日快照。今日該行 = 上方數字同源。Alpha 分為當日綜合戰力（逐日重算）。歷史日若沒跑過 K 線分析機率會顯示「📝 未記錄」，從今日起累積。</div>
                     <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">我的機率</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
-                        <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="4" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
+                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">我的機率</th><th class="py-1.5 px-1 font-bold text-center">Alpha 分</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
+                        <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="5" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -9911,7 +9911,7 @@ ${_newsLine}${globalContext}
     renderBacktest() {
         const tbody = document.getElementById('backtestTableBody');
         const data = this.activeData, last = data.length - 1;
-        if (last < 5) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
+        if (last < 5) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
 
         // 改用 localStorage 中該股的 patWinRate 歷史快照（與上方「AI 雲端大數據波段回測預判」同源）
         const sym = this.currentSymbolId;
@@ -9928,6 +9928,8 @@ ${_newsLine}${globalContext}
             const pct = prevC > 0 ? (diff / prevC) * 100 : 0;
             const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500');
             const sign = diff > 0 ? '+' : '';
+            // 日期 'YYYY/MM/DD' → 'MM/DD'
+            const dShort = String(data[i].date || '').replace(/^\d{4}\//, '');
 
             // 我的 patWinRate(從 localStorage 取該日快照)
             const snap = byDate[data[i].date];
@@ -9939,6 +9941,21 @@ ${_newsLine}${globalContext}
                 if (snap.patCount) wrHtml += `<div class="text-[9px] text-gray-500">${snap.patCount} 樣本</div>`;
             } else {
                 wrHtml = '<span class="text-gray-600 text-[10px]">📝 未記錄</span>';
+            }
+
+            // Alpha 分 — 當日綜合戰力分(逐日重算,讓使用者能對照「分數高時是否真的漲」)
+            let alphaHtml;
+            try {
+                const alpha = this.getAlphaScoreData(data, this.indicators, i, this.twiiState);
+                const s = Math.round(Number(alpha.totalScore));
+                if (Number.isFinite(s)) {
+                    const aCol = s >= 75 ? 'text-red-400' : s >= 45 ? 'text-yellow-400' : 'text-green-400';
+                    alphaHtml = `<span class="${aCol} text-base font-black">${s}</span>`;
+                } else {
+                    alphaHtml = '<span class="text-gray-600 text-[10px]">—</span>';
+                }
+            } catch (_) {
+                alphaHtml = '<span class="text-gray-600 text-[10px]">—</span>';
             }
 
             // 隔日實際漲跌(已過了的歷史日才能算,今日該行尚未發生 → '明日待定')
@@ -9964,9 +9981,10 @@ ${_newsLine}${globalContext}
             }
 
             html += `<tr class="border-b border-[#21262d] hover:bg-[#1c2128]">
-                <td class="py-2 px-1 text-gray-300 text-xs">${data[i].date}</td>
+                <td class="py-2 px-1 text-gray-300 text-xs">${dShort}</td>
                 <td class="py-2 px-1 text-right"><span class="font-bold text-white text-sm">${pC.toFixed(2)}</span><div class="text-[10px] mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>
                 <td class="py-2 px-1 text-center">${wrHtml}</td>
+                <td class="py-2 px-1 text-center">${alphaHtml}</td>
                 <td class="py-2 px-1 text-center">${nextHtml}<div class="text-[9px] mt-0.5">${hitHtml}</div></td>
             </tr>`;
         }
