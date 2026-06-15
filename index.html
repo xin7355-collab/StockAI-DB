@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.14</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.14</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.15</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1076,6 +1076,23 @@
                             🔄 重新掃描
                         </button>
                     </h4>
+                    <!-- V14.15:📊 投資屬性 3 軸雷達(波段價值/長期存股/短線價差,對標籌碼K線) -->
+                    <div class="inline-flex items-center text-purple-300 text-xs font-black mt-2 mb-1.5 bg-purple-900/40 border-l-[3px] border-purple-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📊 投資屬性</div>
+                    <div class="bg-gradient-to-br from-[#0d1117] to-purple-950/30 rounded-lg p-2 mb-2 border border-purple-900/40">
+                        <div class="flex items-stretch gap-2">
+                            <div id="xrayInvRadar" class="flex-shrink-0" style="width:140px;height:140px;"></div>
+                            <div class="flex-1 flex flex-col justify-center gap-1.5 text-[11px]">
+                                <div class="flex items-center justify-between"><span class="text-amber-300 font-bold">🥇 波段價值</span><span id="xrayInvSwing" class="font-mono font-black text-amber-300">--</span></div>
+                                <div class="flex items-center justify-between"><span class="text-blue-300 font-bold">🏦 長期存股</span><span id="xrayInvHold" class="font-mono font-black text-blue-300">--</span></div>
+                                <div class="flex items-center justify-between"><span class="text-pink-300 font-bold">⚡ 短線價差</span><span id="xrayInvShort" class="font-mono font-black text-pink-300">--</span></div>
+                                <div id="xrayInvBest" class="text-[10px] text-gray-400 mt-0.5 leading-snug">--</div>
+                            </div>
+                        </div>
+                        <details class="mt-1.5">
+                            <summary class="cursor-pointer text-[10px] text-gray-500 hover:text-purple-300">💡 評分構成因子(點開)</summary>
+                            <div id="xrayInvFactors" class="text-[9px] text-gray-500 mt-1 leading-relaxed pl-1"></div>
+                        </details>
+                    </div>
                     <!-- 💰 盈利力(營收成長 + 毛利率趨勢) -->
                     <div class="inline-flex items-center text-emerald-300 text-xs font-black mt-2 mb-1.5 bg-emerald-900/40 border-l-[3px] border-emerald-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">💰 盈利力</div>
                     <div class="grid grid-cols-2 gap-1.5 mb-2">
@@ -1094,17 +1111,24 @@
                     <div class="inline-flex items-center text-blue-300 text-xs font-black mt-2 mb-1.5 bg-blue-900/40 border-l-[3px] border-blue-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📊 估值</div>
                     <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex justify-between items-center mb-1.5 border border-blue-900/40">
                         <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1.5">本益比 PE <button onclick="app.showJargon('本益比PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPeTag" class="text-[10px] font-mono px-1.5 py-0.5 rounded"></span></span>
-                        <span id="xrayPe" class="font-mono font-black text-2xl text-gray-600 leading-none">--</span>
+                        <span class="flex items-baseline gap-1.5">
+                            <span id="xrayPe" class="font-mono font-black text-2xl text-gray-600 leading-none">--</span>
+                            <span id="xrayPeSrc" class="text-[8px] text-gray-500 font-mono"></span>
+                        </span>
                     </div>
-                    <!-- 🎯 PEG(成長型估值,< 1 = 便宜)+ 🏷️ 產業相對 PE(vs 同業中位數)-->
-                    <div class="grid grid-cols-2 gap-1.5 mb-1.5">
-                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-blue-900/40">
+                    <!-- 🎯 PEG + 🏷️ 產業相對 PE + 📐 股價淨值比 P/B (V14.15 新增 P/B,景氣循環 + 資產股估值關鍵) -->
+                    <div class="grid grid-cols-3 gap-1.5 mb-1.5">
+                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">PEG <button onclick="app.showJargon('PEG'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPegTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayPeg" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-blue-900/40">
+                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">vs 同業 <button onclick="app.showJargon('產業相對PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayIndustryPeTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayIndustryPe" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">P/B <button onclick="app.showJargon('股價淨值比PB'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayPb" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
                     <!-- ⚠️ 景氣循環股警語(航運/塑化/鋼鐵 等 — PE 低反而是景氣高點)-->
@@ -1125,6 +1149,21 @@
                         <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">💵 最新每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                         <span id="xrayDividend" class="font-mono font-black text-xl text-gray-600 leading-none">--</span>
                     </div>
+                    <!-- V14.15:填息機率 + 平均填息天數(對標籌碼K線) -->
+                    <div class="grid grid-cols-2 gap-1.5 mb-1.5">
+                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">📊 填息機率<span class="text-[8px] text-gray-500">(近 5 年)</span> <button onclick="app.showJargon('填息機率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayFillProb" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
+                        </div>
+                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">⏱️ 平均填息天數 <button onclick="app.showJargon('平均填息天數'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayFillDays" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
+                        </div>
+                    </div>
+                    <details id="xrayFillHistDetails" class="bg-[#0d1117] rounded mb-1.5 hidden">
+                        <summary class="cursor-pointer px-2 py-1.5 text-[10px] text-amber-300 font-bold">📜 近 5 次除息紀錄（點開）</summary>
+                        <div id="xrayFillHistTable" class="px-2 pb-2 text-[10px]"></div>
+                    </details>
                     <!-- 每季 EPS 趨勢(QoQ + YoY 雙比較,顯示好壞箭頭)-->
                     <div class="bg-[#0d1117] rounded p-2 mb-1.5">
                         <div class="text-gray-500 text-[10px] font-mono mb-0.5 flex items-center gap-1.5 flex-wrap">📊 每季 EPS（最近4季）<button onclick="app.showJargon('每季EPS'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button><span id="xrayEpsQoQ" class="text-[9px] font-mono text-gray-600"></span><span id="xrayEpsYoY" class="text-[9px] font-mono text-gray-600"></span></div>
@@ -2138,7 +2177,10 @@ const app = {
         '融券需付費': '台灣證交所(TWSE)從 2026/06 起,將 MI_MARGN 端點改回市場彙總表,**不再免費提供個股級融資融券明細**;FinMind 免費額度也未涵蓋融券,yfinance 對台股也僅少量個股可查。若要查個股融券明細,需付費資料源(FinMind 付費版、CMoney、TEJ 等)。系統會持續嘗試多條備援,有資料時自動顯示。',
         '法人成本估算': '這是用「區間內法人買超那幾天的收盤價,依買超張數加權平均」算出來的「估算建倉成本」,讓你看大戶大概在哪個價位進貨。⚠️ 只是粗估(法人實際成交價我們拿不到),且只統計買超日;若法人是賣超,改顯示「出脫均價」。當參考用,別當精準成本。',
         '營收YoY': '營收年增率 = 今年這個月營收 vs 去年同月,成長幾 %。台股慣例紅=成長(好)、綠=衰退(壞)。+20% 以上算強勁成長;轉負(綠字)代表生意變差要警覺。看「年增」是為了避開淡旺季干擾(例如過年月)。',
-        '本益比PE': '本益比 = 股價 ÷ 每股盈餘(EPS),白話就是「幾年回本」。15 倍 = 公司賺的錢不變的話,要 15 年才把買股票的錢賺回來。越低越便宜,但太低也可能是市場不看好。顏色是「健康度」:綠=便宜(<15)、黃=合理、紅=偏貴(>40),不是漲跌色。',
+        '本益比PE': '本益比 = 股價 ÷ 每股盈餘(EPS),白話就是「幾年回本」。15 倍 = 公司賺的錢不變的話,要 15 年才把買股票的錢賺回來。越低越便宜,但太低也可能是市場不看好。顏色是「健康度」:綠=便宜(<15)、黃=合理、紅=偏貴(>40),不是漲跌色。⚠️ **PE 有兩種算法**:① **TTM(過去 12 月)** — 我們用 TWSE 官方數字,保守實在;② **Forward(未來 12 月估)** — 用分析師預估,成長股看起來會便宜很多(因 EPS 預估較高)。若你看其他平台的 PE 比較低,可能是用 forward。',
+        '股價淨值比PB': '股價淨值比 = 股價 ÷ 每股淨值,白話就是「市場願意出幾倍的帳面價值買這家公司」。1.5 倍 = 公司帳上每股淨值 100 元,市場願意出 150 元。傳產 / 金融 / 資產股看 P/B 比 PE 重要(因獲利波動大)。健康度:綠 <2 便宜、黃 2-5 合理、紅 >5 偏貴。⚠️ 科技股 / 護國神山 P/B 通常很高(無形資產多),不能單看這個數字,要搭 PE 看。',
+        '填息機率': '填息 = 除息日後股價回到除息前的水準。填息機率 = 近 5 年配息中成功填息次數 ÷ 總配息次數。100% = 每次配息都填回去(像 TSMC 這種成長股)、70-90% 算優、<50% 代表配息只是「左手換右手」,股價長期難回。算法:取除息日前一天 close,看之後幾個交易日 close 能 ≥ 那個值即算填息;6 個月內未填則記不填。',
+        '平均填息天數': '從除息日到股價填回除息前 close 的平均交易日數。1-3 天 = 強勢股(市場搶填息);1-2 週 = 健康;> 1 個月 = 配息不夠吸引力或本身弱勢。⚠️ 跟「填息機率」一起看,機率高 + 天數短 = 真存股標的;機率高但要等 60+ 天填回 = 配息綁住資金影響操作。',
         'PEG': 'PEG = 本益比 ÷ EPS 年成長率(%)。彼得林區法則,用來避免「成長股 PE 看起來很貴但其實便宜」的陷阱。例:PE 40 嚇人,但 EPS 年成長 50% → PEG = 0.8 反而便宜!綠=便宜(<1)、黃=合理(1-2)、紅=昂貴(>2)、橘=衰退(成長率負,不適用)。⚠️ 高速成長股(>50%)PEG 可能誤判低估,要看成長持續性。',
         '產業相對PE': '產業相對 PE = 個股 PE ÷ 該產業中位數 PE。看「跟同業比是便宜還是貴」。例:航運平均 PE 7,長榮 PE 5 → 相對 0.71(同業便宜);半導體平均 PE 22,台積電 PE 28 → 相對 1.27(同業偏貴)。綠 <0.8 比同業便宜 / 黃 0.8-1.2 中性 / 紅 >1.2 比同業貴。⚠️ 航運/塑化/鋼鐵等景氣循環股,PE 低反而是景氣高點,別誤判。',
         '殖利率': '殖利率 = 每年配的現金股利 ÷ 股價,白話就是「把錢放這檔股票,一年領幾 % 利息」。5% 以上算高息(定存才 1-2%),適合存股族。顏色是「健康度」:綠=高息(>5%)、黃=普通、灰=低息(<2%),不是漲跌色。注意高殖利率也可能是股價大跌造成的假象。',
@@ -6593,8 +6635,16 @@ ${peerLine}${newsCtx}
             }
         }
         // 採礦 fallback:miner.py 採過的話 total_dividend 已寫在 chips JSON
+        // V14.15:優先 total_dividend_4q(近 4 季加總,含已宣告未發放),其次 total_dividend(單筆)
+        if (totalDiv == null && localFund.total_dividend_4q != null && Number(localFund.total_dividend_4q) > 0) {
+            totalDiv = Number(localFund.total_dividend_4q);
+        }
         if (totalDiv == null && localFund.total_dividend != null && Number(localFund.total_dividend) >= 0) {
             totalDiv = Number(localFund.total_dividend);
+        }
+        // V14.15:若 FinMind 即時抓到單筆且採礦 4q 加總比單筆大(代表年配)→ 改用 4q
+        if (totalDiv != null && localFund.total_dividend_4q != null && Number(localFund.total_dividend_4q) > totalDiv) {
+            totalDiv = Number(localFund.total_dividend_4q);
         }
 
         const currentClose = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : null;
@@ -6643,6 +6693,17 @@ ${peerLine}${newsCtx}
             } else { momEl.textContent = ''; }
         }
         setCell('xrayPe', pe, 'x', pe==null?null:pe<15?'text-green-400':pe>40?'text-red-400':'text-yellow-400');
+        // V14.15:PE 標來源(TWSE 用 TTM,跟競品 forward 算法不同,避免使用者誤會)
+        const peSrcEl = document.getElementById('xrayPeSrc');
+        if (peSrcEl) {
+            const src = localFund.pe_source || (localFund.pe != null ? 'TWSE_TTM' : null);
+            peSrcEl.textContent = pe != null
+                ? (src === 'TWSE_TTM' ? '(TWSE TTM)' : src === 'FinMind' ? '(FinMind 估算)' : '(現價/年化 EPS)')
+                : '';
+        }
+        // V14.15:股價淨值比 P/B(miner.py 從 BWIBBU_d 抓 pbr)
+        const pb = (localFund.pb != null) ? Number(localFund.pb) : null;
+        setCell('xrayPb', pb, 'x', pb==null?null:pb<2?'text-green-400':pb>5?'text-red-400':'text-yellow-400');
         setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
 
         // 🎯 PEG = PE / EPS 年成長率(%)。Peter Lynch 法則:< 1 便宜 / 1-2 合理 / > 2 昂貴
@@ -6797,6 +6858,66 @@ ${peerLine}${newsCtx}
                 tdEl2.className = tdEl2.className.replace(/text-\w+-\d+/g,'') + ' text-gray-600';
             }
         }
+
+        // V14.15:投資屬性 3 軸雷達(波段價值/長期存股/短線價差)
+        try {
+            this._renderInvestmentRadar({
+                pe: pe, pb: (localFund.pb != null) ? Number(localFund.pb) : null,
+                yieldRate: yieldRate,
+                revenueYoy: latestYoy,
+                fillProb: (localFund.dividend_fill_prob != null) ? Number(localFund.dividend_fill_prob) : null,
+                data: this.rawDailyData || [],
+                ind: this.indicators || {},
+            });
+        } catch(e) { console.warn('[InvRadar]', e); }
+
+        // V14.15:填息機率 + 平均填息天數 + 近 5 次明細
+        try {
+            const fillProb = (localFund.dividend_fill_prob != null) ? Number(localFund.dividend_fill_prob) : null;
+            const fillDays = (localFund.dividend_avg_fill_days != null) ? Number(localFund.dividend_avg_fill_days) : null;
+            const fillHist = Array.isArray(localFund.dividend_fill_history) ? localFund.dividend_fill_history : [];
+            const fpEl = document.getElementById('xrayFillProb');
+            const fdEl = document.getElementById('xrayFillDays');
+            const fhDet = document.getElementById('xrayFillHistDetails');
+            const fhTbl = document.getElementById('xrayFillHistTable');
+            if (fpEl) {
+                if (fillProb != null) {
+                    fpEl.innerText = `${fillProb.toFixed(0)}%`;
+                    fpEl.className = `font-mono font-black text-xl leading-tight ${fillProb>=90?'text-red-400':fillProb>=70?'text-yellow-400':fillProb>=50?'text-amber-400':'text-green-400'}`;
+                } else {
+                    fpEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="需採礦完成的除息歷史 — 週一~五 16:30 自動補">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補</div>';
+                }
+            }
+            if (fdEl) {
+                if (fillDays != null) {
+                    fdEl.innerText = `${Math.round(fillDays)} 天`;
+                    fdEl.className = `font-mono font-black text-xl leading-tight ${fillDays<=5?'text-red-400':fillDays<=20?'text-yellow-400':'text-amber-400'}`;
+                } else {
+                    fdEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="需採礦完成的除息歷史 — 週一~五 16:30 自動補">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補</div>';
+                }
+            }
+            if (fhDet && fhTbl) {
+                if (fillHist.length > 0) {
+                    fhDet.classList.remove('hidden');
+                    const rows = fillHist.slice(-5).reverse().map(r => {
+                        const stColor = r.status === 'filled' ? 'text-red-400' : 'text-green-400';
+                        const stIcon = r.status === 'filled' ? '✅' : '⏳';
+                        const daysTxt = r.fill_days != null ? `${r.fill_days} 天` : '未填(>180 天)';
+                        return `<div class="grid grid-cols-4 gap-1 py-0.5 border-b border-gray-800">
+                            <span class="text-gray-400">${r.ex_date || '--'}</span>
+                            <span class="font-mono text-amber-300">${(Number(r.cash)||0).toFixed(2)} 元</span>
+                            <span class="font-mono text-gray-500">${(Number(r.ex_price)||0).toFixed(1)}</span>
+                            <span class="${stColor}">${stIcon} ${daysTxt}</span>
+                        </div>`;
+                    }).join('');
+                    fhTbl.innerHTML = `<div class="grid grid-cols-4 gap-1 text-[9px] text-gray-500 font-bold border-b border-gray-700 mb-1 pb-0.5">
+                        <span>除息日</span><span>現金股利</span><span>除息參考</span><span>填息天數</span>
+                    </div>${rows}`;
+                } else {
+                    fhDet.classList.add('hidden');
+                }
+            }
+        } catch(_) {}
 
         // 每季 EPS 趨勢（最近4季）ECharts 柱狀圖
         const epsSlice = epsRows.slice(-4);
@@ -8293,6 +8414,93 @@ ${_newsLine}${globalContext}
             hasBudget: !!(budget && budget > 0),
             minBudget,
         };
+    },
+
+    // V14.15 — 投資屬性 3 軸雷達(波段價值 / 長期存股 / 短線價差)— 全 JS 算
+    _renderInvestmentRadar({ pe, pb, yieldRate, revenueYoy, fillProb, data, ind }) {
+        const radarEl = document.getElementById('xrayInvRadar');
+        if (!radarEl) return;
+        const clamp = (x, lo=0, hi=100) => Math.max(lo, Math.min(hi, x));
+        const last = (data && data.length) ? data.length - 1 : -1;
+        const close = last >= 0 ? data[last].close : null;
+        const ma5  = ind?.ma5?.[last]  ?? null;
+        const ma20 = ind?.ma20?.[last] ?? null;
+        const ma60 = ind?.ma60?.[last] ?? null;
+
+        // ── 波段價值 ── PE 分 + 營收成長分 + 均線排列分
+        const peScore = pe == null ? 50 : pe < 15 ? 95 : pe < 25 ? 75 : pe < 40 ? 50 : 20;
+        const yoyScore = revenueYoy == null ? 50 : revenueYoy > 30 ? 95 : revenueYoy > 15 ? 75 : revenueYoy > 0 ? 50 : 15;
+        const maTrend = (ma5 && ma20 && ma60 && ma5 > ma20 && ma20 > ma60) ? 90
+                      : (ma5 && ma20 && ma5 > ma20) ? 70
+                      : (ma20 && close && close > ma20) ? 55
+                      : 30;
+        const swingValue = clamp(Math.round((peScore + yoyScore + maTrend) / 3));
+
+        // ── 長期存股 ── 殖利率分 + 填息機率分 + 護城河分(P/B 合理 + 長均向上)
+        const ydScore = yieldRate == null ? 30 : yieldRate > 5 ? 95 : yieldRate > 3 ? 75 : yieldRate > 1 ? 50 : 25;
+        const fpScore = fillProb == null ? 50 : fillProb >= 90 ? 95 : fillProb >= 70 ? 75 : fillProb >= 50 ? 50 : 25;
+        const moatScore = (pb != null && pb < 5 && ma60 && close && close > ma60) ? 85
+                        : (pb != null && pb < 8) ? 65
+                        : (ma60 && close && close > ma60) ? 60 : 40;
+        const longHold = clamp(Math.round((ydScore + fpScore + moatScore) / 3));
+
+        // ── 短線價差 ── 動能 + 量能 + 均線粘合度
+        const pC1 = last > 0 ? data[last-1].close : close;
+        const chgPct = (close && pC1) ? ((close - pC1) / pC1 * 100) : 0;
+        const pV = last >= 0 ? data[last].volume : 0;
+        const v20 = last >= 19 ? (data.slice(-20).reduce((s,d) => s + (d.volume||0), 0) / 20) : pV;
+        const volRatio = v20 > 0 ? pV / v20 : 1;
+        const momentumScore = chgPct > 3 ? 90 : chgPct > 1 ? 70 : chgPct > -1 ? 50 : chgPct > -3 ? 30 : 15;
+        const volumeScore   = volRatio > 1.5 ? 90 : volRatio > 1 ? 70 : volRatio > 0.7 ? 50 : 30;
+        const spreadScore   = (ma5 && ma20) ? clamp(50 + Math.abs((ma5 - ma20) / ma20 * 100) * 5) : 50;
+        const shortTrade = clamp(Math.round((momentumScore + volumeScore + spreadScore) / 3));
+
+        // ── 雷達圖 ──
+        const chart = echarts.getInstanceByDom(radarEl) || echarts.init(radarEl);
+        chart.setOption({
+            radar: {
+                indicator: [
+                    { name: '波段', max: 100 },
+                    { name: '存股', max: 100 },
+                    { name: '短線', max: 100 },
+                ],
+                center: ['50%', '52%'], radius: '62%',
+                axisName: { color: '#9ca3af', fontSize: 9 },
+                splitArea: { areaStyle: { color: ['rgba(168,85,247,0.04)', 'rgba(168,85,247,0.08)'] } },
+                splitLine: { lineStyle: { color: 'rgba(107,114,128,0.3)' } },
+                axisLine:  { lineStyle: { color: 'rgba(107,114,128,0.3)' } },
+            },
+            series: [{
+                type: 'radar', symbol: 'circle', symbolSize: 4,
+                lineStyle: { color: '#fbbf24', width: 1.5 },
+                areaStyle: { color: 'rgba(251,191,36,0.35)' },
+                itemStyle: { color: '#fbbf24' },
+                data: [{ value: [swingValue, longHold, shortTrade] }],
+            }],
+            grid: { left: 0, right: 0, top: 0, bottom: 0 },
+        });
+
+        // ── 顯示分數 + 最佳屬性 ──
+        document.getElementById('xrayInvSwing').innerText = `${swingValue}`;
+        document.getElementById('xrayInvHold').innerText  = `${longHold}`;
+        document.getElementById('xrayInvShort').innerText = `${shortTrade}`;
+        const scores = [['波段價值', swingValue, '🥇'], ['長期存股', longHold, '🏦'], ['短線價差', shortTrade, '⚡']];
+        scores.sort((a, b) => b[1] - a[1]);
+        const top = scores.filter(s => s[1] >= 60);
+        const bestEl = document.getElementById('xrayInvBest');
+        if (bestEl) {
+            if (top.length === 0) bestEl.innerText = '⚪ 目前各屬性都不突出,觀望為宜';
+            else if (top.length === 1) bestEl.innerText = `${top[0][2]} 適合「${top[0][0]}」(${top[0][1]}分)`;
+            else bestEl.innerText = `${top[0][2]} 主屬性「${top[0][0]}」${top[0][1]}分 · ${top[1][2]} 次屬性「${top[1][0]}」${top[1][1]}分`;
+        }
+        const factorsEl = document.getElementById('xrayInvFactors');
+        if (factorsEl) {
+            factorsEl.innerHTML = `
+                <div class="mb-1"><b class="text-amber-300">波段價值 ${swingValue}</b> = (PE ${peScore} + 營收成長 ${yoyScore} + 均線排列 ${maTrend}) ÷ 3</div>
+                <div class="mb-1"><b class="text-blue-300">長期存股 ${longHold}</b> = (殖利率 ${ydScore} + 填息機率 ${fpScore} + 護城河 ${moatScore}) ÷ 3</div>
+                <div><b class="text-pink-300">短線價差 ${shortTrade}</b> = (動能 ${momentumScore} + 量能 ${volumeScore} + 均線粘合 ${Math.round(spreadScore)}) ÷ 3</div>
+            `;
+        }
     },
 
     _renderChuPositionPlan(data, ind, last) {

@@ -1081,24 +1081,109 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
         print(f"    ⚠️ FinMind Revenue {sym}: {e}")
 
     # 3. 股利與發配率(已由並行 fetch 取得 div_json)──────────────
+    # V14.15:原本只取最新單筆 → 改近 4 季加總 + 近 8 季明細(含已宣告未發放)
     try:
         j = div_json
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
         if rows:
-            latest   = rows[-1]
+            # 近 8 季明細(供前端細表顯示)
+            qdivs = []
+            for r in rows[-8:]:
+                c = float(r.get('CashDividend',  0) or 0)
+                s = float(r.get('StockDividend', 0) or 0)
+                qdivs.append({
+                    'date': r.get('date', ''),
+                    'ex_date': r.get('CashExDividendTradingDate') or r.get('CashEarningsDistribution') or '',
+                    'cash':  c,
+                    'stock': s,
+                })
+            result['quarterly_dividends'] = qdivs
+
+            # 最新單筆(向下相容)
+            latest = rows[-1]
             cash_div = float(latest.get('CashDividend',  0) or 0)
             stk_div  = float(latest.get('StockDividend', 0) or 0)
-            total_div = cash_div + stk_div
-            result['total_dividend'] = total_div
-            eps = result.get('eps')
-            if eps and abs(eps) > 0:
-                result['payout_ratio'] = round(total_div / (abs(eps) * 4) * 100, 1)
+            result['total_dividend'] = cash_div + stk_div
+
+            # 近 4 季加總 = 年化股利(對齊使用者預期)
+            total_4q = sum(q['cash'] + q['stock'] for q in qdivs[-4:])
+            result['total_dividend_4q'] = round(total_4q, 2)
+
+            # 發配率改用近 4 季加總,搭配近 4 季 EPS
+            eps_hist = result.get('quarterly_eps', [])
+            if eps_hist and len(eps_hist) >= 4:
+                eps_4q = sum(float(q.get('eps', 0) or 0) for q in eps_hist[-4:])
+                if eps_4q > 0:
+                    result['payout_ratio'] = round(total_4q / eps_4q * 100, 1)
+            else:
+                eps = result.get('eps')
+                if eps and abs(eps) > 0:
+                    result['payout_ratio'] = round(total_4q / (abs(eps) * 4) * 100, 1)
     except Exception as e:
         print(f"    ⚠️ FinMind Dividend {sym}: {e}")
     # V14.9:原本 3 段各 2-3.5 秒 sleep 改為單一 2 秒節流,單股省 4-8 秒
     time.sleep(random.uniform(1.5, 2.5))
 
     return result
+
+
+# V14.15 — 填息歷史計算(在 export_json 階段呼叫,需 OHLCV 對齊除息日)
+def compute_dividend_fill_history(quarterly_dividends, ohlcv_rows):
+    """
+    quarterly_dividends: [{date, ex_date, cash, stock}, ...] 近 8 季
+    ohlcv_rows: [{date: 'YYYY/MM/DD', close: float, ...}, ...] 近 5 年
+    Returns:
+      fill_history: [{ex_date, cash, ex_price, fill_date, fill_days, status}, ...]
+      fill_prob:    填息機率 % (filled/total*100)
+      avg_fill_days: 平均填息天數
+    """
+    if not quarterly_dividends or not ohlcv_rows: return [], None, None
+    by_date = {r.get('date', '').replace('-', '/'): r for r in ohlcv_rows if r.get('date')}
+    dates_sorted = sorted(by_date.keys())
+    fill_history = []
+    for q in quarterly_dividends:
+        cash = float(q.get('cash', 0) or 0)
+        if cash <= 0: continue  # 跳過股票股利、純股票無除息
+        ex_raw = q.get('ex_date') or ''
+        if not ex_raw: continue
+        ex_date = ex_raw.replace('-', '/')
+        if ex_date not in by_date:
+            # 找 ex_date 後第一個交易日
+            ex_idx = None
+            for i, d in enumerate(dates_sorted):
+                if d >= ex_date:
+                    ex_idx = i
+                    ex_date = d
+                    break
+            if ex_idx is None: continue
+        else:
+            ex_idx = dates_sorted.index(ex_date)
+        if ex_idx == 0: continue
+        prev_close = float(by_date[dates_sorted[ex_idx - 1]].get('close', 0) or 0)
+        if prev_close <= 0: continue
+        ex_price = round(prev_close - cash, 2)  # 理論除息參考價
+        # 找之後第一天 close >= prev_close → 填息
+        fill_date = None
+        fill_days = None
+        for j in range(ex_idx, len(dates_sorted)):
+            if (dates_sorted[j] != ex_date) and (float(by_date[dates_sorted[j]].get('close', 0) or 0) >= prev_close):
+                fill_date = dates_sorted[j]
+                fill_days = j - ex_idx
+                break
+            if j - ex_idx > 180: break  # 6 個月內未填息視為未填
+        fill_history.append({
+            'ex_date':   ex_date,
+            'cash':      cash,
+            'ex_price':  ex_price,
+            'fill_date': fill_date,
+            'fill_days': fill_days,
+            'status':    'filled' if fill_date else 'unfilled',
+        })
+    if not fill_history: return [], None, None
+    filled = [r for r in fill_history if r['status'] == 'filled']
+    fill_prob = round(len(filled) / len(fill_history) * 100, 1)
+    avg_days  = round(sum(r['fill_days'] for r in filled) / len(filled), 1) if filled else None
+    return fill_history, fill_prob, avg_days
 
 
 # ── SQLite ↔ JSON 橋接（gh-pages 靜態部署用）────────────────────────────────
@@ -2302,10 +2387,23 @@ def fetch_broker_chips():
             print(f"  ⚡ 基本面快取有效（{generated_str}），跳過 FinMind")
             fundamentals = {**cached_fund,
                             'pe':         tw_fund.get('pe') or cached_fund.get('pe'),
+                            'pb':         tw_fund.get('pbr') or cached_fund.get('pb'),
                             'yield_rate': tw_fund.get('yield_rate') or cached_fund.get('yield_rate')}
         else:
             print(f"  📈 基本面採礦 {sym}...", end=' ', flush=True)
             fm_fund = fetch_finmind_fundamentals(sym) or {}  # 加上 or {} 終極防爆
+            # V14.15:讀 data/{sym}.json 的 OHLCV 算填息歷史
+            fill_hist, fill_prob, avg_days = [], None, None
+            try:
+                ohlcv_path = Path(DATA_DIR) / f'{sym}.json'
+                if ohlcv_path.exists():
+                    ohlcv_rows = json.loads(ohlcv_path.read_text(encoding='utf-8'))
+                    if isinstance(ohlcv_rows, list) and ohlcv_rows:
+                        fill_hist, fill_prob, avg_days = compute_dividend_fill_history(
+                            fm_fund.get('quarterly_dividends', []), ohlcv_rows)
+            except Exception as _e:
+                print(f"    ⚠️ 填息歷史 {sym}: {_e}")
+
             fundamentals = {
                 'eps':                fm_fund.get('eps'),
                 'eps_history':        fm_fund.get('eps_history'),
@@ -2313,12 +2411,20 @@ def fetch_broker_chips():
                 'is_revenue_high':    fm_fund.get('is_revenue_high'),
                 'revenue_est_next_q': fm_fund.get('revenue_est_next_q'),
                 'pe':                 tw_fund.get('pe') or fm_fund.get('pe'),
+                'pe_source':          'TWSE_TTM' if tw_fund.get('pe') else 'FinMind',  # V14.15 來源標示
+                'pb':                 tw_fund.get('pbr') or fm_fund.get('pb'),   # V14.15 P/B 股價淨值比
                 'yield_rate':         tw_fund.get('yield_rate'),
                 'gross_margin_trend': fm_fund.get('gross_margin_trend'),
                 'payout_ratio':       fm_fund.get('payout_ratio'),
                 'total_dividend':     fm_fund.get('total_dividend'),
+                'total_dividend_4q':  fm_fund.get('total_dividend_4q'),         # V14.15 近 4 季合計
+                'quarterly_dividends': fm_fund.get('quarterly_dividends', []),  # V14.15 8 季明細
+                'dividend_fill_history': fill_hist,                             # V14.15 填息歷史
+                'dividend_fill_prob':    fill_prob,                             # V14.15 填息機率
+                'dividend_avg_fill_days':avg_days,                              # V14.15 平均填息天數
                 'is_record_high':     fm_fund.get('is_record_high', False),
                 'latest_revenue':     fm_fund.get('latest_revenue'),
+                'monthly_revenue_history': fm_fund.get('monthly_revenue_history', []),  # V14.15 月營收歷史(已有)
                 'quarterly_eps':      fm_fund.get('quarterly_eps', []),
                 'generated':          today_str,
             }
