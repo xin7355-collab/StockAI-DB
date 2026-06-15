@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.13</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.13</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.14</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4083,6 +4083,32 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             document.getElementById('mktTWOII_chg').innerHTML = `<span class="${color2}">${diff2 > 0 ? '+' : ''}${pct2.toFixed(2)}%</span>`;
         }
 
+        // V14.14 — TWOII fallback:FinMind TPEx 抓不到時,從 miner.py 寫的 data/^TWOII.json 補
+        //         fire-and-forget(processMacroData 保同步,UI 慢一兩拍但保不空)
+        if (!macro.tpex || macro.tpex.length === 0) {
+            (async () => {
+                try {
+                    const ghBase = window.location.href.split('?')[0].split('#')[0];
+                    const url = new URL('data/^TWOII.json', ghBase).href + `?t=${Date.now()}`;
+                    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+                    if (!res.ok) return;
+                    const rows = await res.json();
+                    if (!Array.isArray(rows) || rows.length < 2) return;
+                    const last = rows[rows.length-1], prev = rows[rows.length-2];
+                    const price = last.close, diff = price - prev.close;
+                    const pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+                    const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+                    const tw = document.getElementById('mktTWOII');
+                    const twc = document.getElementById('mktTWOII_chg');
+                    if (tw)  tw.innerHTML  = `<span class="${color}">${price.toFixed(2)}</span>`;
+                    if (twc) twc.innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
+                    const oM = document.getElementById('mktTWOII_main'), ocM = document.getElementById('mktTWOII_chg_main');
+                    if (oM)  { oM.innerText  = price.toFixed(2); oM.className  = `text-xl font-black font-mono ${color}`; }
+                    if (ocM) { ocM.innerText = `${diff > 0 ? '+' : ''}${pct.toFixed(2)}%`; ocM.className = `text-xs font-bold mt-0.5 ${color}`; }
+                } catch(_) {}
+            })();
+        }
+
         const fiNet = this.fiShortQty;
         let fiLabel = '', fiColor = 'text-gray-400', fiDisplay = '--';
         if (fiNet !== null && fiNet !== undefined) {
@@ -6467,8 +6493,8 @@ ${peerLine}${newsCtx}
         const setCell = (id, val, unit, colorClass) => {
             const el = document.getElementById(id);
             if (!el) return;
-            // V14.4:資料缺失改顯示「🔄 採礦更新中」+ hover tip,提示週一 cron 或手動觸發
-            if (val == null) { el.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="採礦尚未產出此欄位 — 週一 16:30 cron 自動補,或至 GitHub Actions 手動 Run daily_miner.yml">🔄 採礦更新中</span>'; return; }
+            // V14.4 / V14.14:資料缺失顯示「🔄 採礦更新中」+ 可見副標 + hover tip(手機沒 hover 也能看到)
+            if (val == null) { el.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="採礦尚未產出此欄位 — 週一~五 16:30 cron 自動補,或至 GitHub Actions 手動 Run daily_miner.yml">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補</div>'; return; }
             const fmt = typeof val === 'number' ? (Math.abs(val) >= 100 ? Math.round(val) : parseFloat(val.toFixed(2))) : val;
             // 字大小:毛利率 text-sm(3 段太長)、PE text-2xl(估值區獨立寬版突出)、其他 text-xl(營收/殖利率/發配率統一)
             const sizeClass = id === 'xrayGrossMargin' ? 'text-sm leading-tight'
@@ -6649,7 +6675,7 @@ ${peerLine}${newsCtx}
                     pegEl.textContent = '--';
                     pegEl.className = `font-mono font-black text-xl leading-tight ${pegColor}`;
                 } else {
-                    pegEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="PEG = PE ÷ EPS 年成長率,需 8 季 EPS 才能算。採礦更新中 — 週一 16:30 cron 自動補">🔄 採礦更新中</span>';
+                    pegEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="PEG = PE ÷ EPS 年成長率,需 8 季 EPS 才能算。採礦更新中 — 週一~五 16:30 cron 自動補">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 需 8 季 EPS · 週一~五 16:30 自動補</div>';
                     pegEl.className = '';
                 }
             }
@@ -6683,7 +6709,7 @@ ${peerLine}${newsCtx}
                     ipEl.innerHTML = '<span class="text-gray-400 text-xs cursor-help" title="此股票不在產業分類表中(可能是 ETF/特殊類股),無法做同業比較">📝 不適用</span>';
                     ipEl.className = '';
                 } else {
-                    ipEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="同業 PE 資料採礦中 — 週一 16:30 cron 自動補,或手動觸發 daily_miner.yml">🔄 採礦更新中</span>';
+                    ipEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="同業 PE 資料採礦中 — 週一~五 16:30 cron 自動補,或手動觸發 daily_miner.yml">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補</div>';
                     ipEl.className = '';
                 }
             }
@@ -10355,10 +10381,12 @@ ${_newsLine}${globalContext}
             ? this.rawDailyData[this.rawDailyData.length - 2].close : pC;
         this.fetchInstitutionTarget(this.currentSymbolId, _prevClose);
         this.renderBacktest();
-        // 📌 朱老師心法刷新:把 alpha 算出來的 trendJudge / sigCount 掛上 ind,然後一次刷四個朱老師 UI
+        // 📌 朱老師心法刷新:用 _computeChuTechProfile 取真 sigCount/trendJudge
+        //     (alpha 不含這兩欄,V14.13 之前永遠卡黃「訊號運算中」)
         try {
-            ind._trendJudge = alpha.trendJudge || '';
-            ind._sigCount = alpha.sigCount != null ? alpha.sigCount : null;
+            const _chu = this._computeChuTechProfile(data, ind);
+            ind._trendJudge = _chu.trendJudge || '';
+            ind._sigCount   = _chu.sigCount;   // 0-3,從不 null
             this._chuRenderAll(data, ind, last);
         } catch(e) { console.warn('[chu] render fail:', e); }
     },
