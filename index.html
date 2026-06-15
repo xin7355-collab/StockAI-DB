@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2997,6 +2997,40 @@ ${list}
         try { (this.inventory || []).forEach(it => s.add(String(it.symbol))); } catch (_) {}
         return s;
     },
+    // 🏦 ETF 共識買賣超聚合:把所有主動 ETF 對個股的權重變動加總,得「整體經理人共識」
+    //    優先用採礦端 est_shares(若 fund_size 已採)→「估算張數」;否則 fallback「+權重 %」
+    _aggregateEtfConsensus(etfs) {
+        const adds = new Map();    // sym → { name, etfs:[], totalDw, totalShares, hasShares }
+        const removes = new Map();
+        const bump = (map, sym, name, etfSym, dw, shares) => {
+            const cur = map.get(sym) || { name: name || '', etfs: [], totalDw: 0, totalShares: 0, hasShares: false };
+            if (!cur.etfs.includes(etfSym)) cur.etfs.push(etfSym);
+            cur.totalDw += Number(dw) || 0;
+            if (shares != null && Number.isFinite(Number(shares))) {
+                cur.totalShares += Number(shares);
+                cur.hasShares = true;
+            }
+            if (!cur.name && name) cur.name = name;
+            map.set(sym, cur);
+        };
+        for (const e of (etfs || [])) {
+            const c = e.changes || {};
+            // ＋方向:weight_up 加碼、added 新買進(權重視同 +full weight)
+            for (const x of (c.weight_up || [])) bump(adds, x.sym, x.name, e.symbol, x.dw, x.est_shares_delta);
+            for (const x of (c.added    || [])) bump(adds, x.sym, x.name, e.symbol, x.weight, x.est_shares);
+            // －方向:weight_down 減碼、removed 賣出清空(權重視同 -full weight)
+            for (const x of (c.weight_down || [])) bump(removes, x.sym, x.name, e.symbol, x.dw, x.est_shares_delta);
+            for (const x of (c.removed     || [])) bump(removes, x.sym, x.name, e.symbol, -(x.weight || 0), x.est_shares != null ? -x.est_shares : null);
+        }
+        const toList = m => [...m.entries()].map(([sym, v]) => ({ sym, ...v }));
+        // 排序:有 est_shares 優先按張數絕對值;否則按權重絕對值
+        const sortKey = x => x.hasShares ? Math.abs(x.totalShares) : Math.abs(x.totalDw);
+        return {
+            adds:    toList(adds).sort((a, b) => sortKey(b) - sortKey(a)).slice(0, 8),
+            removes: toList(removes).sort((a, b) => sortKey(b) - sortKey(a)).slice(0, 8),
+        };
+    },
+
     async renderEtfTab() {
         const box = document.getElementById('tabContentEtf');
         if (!box) return;
@@ -3010,52 +3044,82 @@ ${list}
         const pcls = v => (v == null ? 'text-gray-500' : v >= 0 ? 'text-red-400' : 'text-green-400');
         const userSet = this._userHoldSet();
         const mark = sym => userSet.has(String(sym)) ? `<span class="text-amber-400 text-[9px] font-bold ml-0.5">⭐持有</span>` : '';
+        const fmtShares = n => {
+            const a = Math.abs(n);
+            return a >= 10000 ? `${(n / 10000).toFixed(1)} 萬張` : `${Math.round(n)} 張`;
+        };
 
+        // ── 段 1:今日總覽 ─────────────────────────────────────────────────
         const rotated = d.etfs.filter(e => e.changed_today);
-        const bannerHtml = rotated.length ? `
-            <div class="bg-amber-900/30 border border-amber-600/50 rounded-lg px-3 py-2 text-[12px] text-amber-100 font-bold leading-snug">
-                🔔 今日偵測到 ${rotated.length} 檔 ETF 換股:${rotated.map(e => e.name || e.symbol).join('、')}
-            </div>` : '';
+        const totalAddsCount = rotated.reduce((s, e) => s + ((e.changes?.added?.length || 0) + (e.changes?.weight_up?.length || 0)), 0);
+        const totalRemovesCount = rotated.reduce((s, e) => s + ((e.changes?.removed?.length || 0) + (e.changes?.weight_down?.length || 0)), 0);
+        const summaryHtml = rotated.length ? `
+            <div class="bg-[#161b22] border border-amber-600/50 rounded-lg px-3 py-2 text-[12px] leading-snug">
+                <div class="text-amber-200 font-bold mb-0.5">📊 今日主動 ETF 換股總覽</div>
+                <div class="text-gray-300">
+                    <span class="text-amber-300 font-bold">${rotated.length}/${d.etfs.length}</span> 檔有調整 ・
+                    共識<span class="text-red-400 font-bold">加碼 ${totalAddsCount}</span> ・
+                    共識<span class="text-green-400 font-bold">減碼 ${totalRemovesCount}</span>
+                </div>
+            </div>` : `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 text-[12px] text-gray-500">
+                📊 今日主動 ETF 無換股動作(${d.etfs.length} 檔監控中)
+            </div>`;
 
-        const hot = (d.cross_ref && d.cross_ref.hot_adds) || [];
-        const hotHtml = hot.length ? `
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2">
-                <div class="text-[11px] text-cyan-400 font-bold mb-1">🔥 今日多檔ETF同買(人氣股)</div>
-                <div class="flex flex-wrap gap-1.5">
-                    ${hot.map(h => `<span class="text-[11px] bg-cyan-900/30 border border-cyan-700/40 rounded px-2 py-0.5 cursor-pointer" onclick="app.analyze('${h.sym}'); app.switchAppTab('diag');">${h.sym}${mark(h.sym)} <span class="text-cyan-300 font-bold">${h.count}檔</span></span>`).join('')}
+        // ── 段 2:共識買賣超 Top(取代逐 ETF 換股流水)─────────────────────
+        const consensus = this._aggregateEtfConsensus(d.etfs);
+        const renderConsensusItem = (it, dir) => {
+            const dwSign = it.totalDw >= 0 ? '+' : '';
+            const dwTxt = `${dwSign}${it.totalDw.toFixed(2)}%`;
+            const sharesTxt = it.hasShares ? fmtShares(it.totalShares) : '';
+            const colorCls = dir === 'add' ? 'text-red-300' : 'text-green-300';
+            return `<div class="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 cursor-pointer hover:border-amber-700/60" onclick="app.analyze('${it.sym}'); app.switchAppTab('diag');">
+                <div class="min-w-0 flex-1">
+                    <div class="text-[12px] font-bold text-gray-100 truncate">${it.sym} ${(it.name || '').slice(0, 5)}${mark(it.sym)}</div>
+                    <div class="text-[9px] text-gray-500">${it.etfs.length} 檔 ETF</div>
+                </div>
+                <div class="text-right ml-2 flex-shrink-0">
+                    ${sharesTxt ? `<div class="text-[11px] font-mono font-bold ${colorCls}">${dwSign}${sharesTxt}</div><div class="text-[9px] text-gray-500">${dwTxt} 權重</div>` : `<div class="text-[12px] font-mono font-bold ${colorCls}">${dwTxt}</div>`}
+                </div>
+            </div>`;
+        };
+        const consensusHasData = consensus.adds.length || consensus.removes.length;
+        const consensusHtml = consensusHasData ? `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2">
+                <div class="text-[11px] font-bold mb-1.5 flex items-center justify-between">
+                    <span class="text-amber-300">🔥 主動 ETF 共識買賣超</span>
+                    <span class="text-[9px] text-gray-500 font-normal">${consensus.adds.some(x => x.hasShares) || consensus.removes.some(x => x.hasShares) ? '估算張數' : '權重 %'}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <div>
+                        <div class="text-[10px] text-red-400 font-bold mb-1 text-center">共識加碼 Top</div>
+                        <div class="flex flex-col gap-1">${consensus.adds.length ? consensus.adds.map(x => renderConsensusItem(x, 'add')).join('') : '<div class="text-[10px] text-gray-600 text-center py-2">—</div>'}</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-green-400 font-bold mb-1 text-center">共識減碼 Top</div>
+                        <div class="flex flex-col gap-1">${consensus.removes.length ? consensus.removes.map(x => renderConsensusItem(x, 'remove')).join('') : '<div class="text-[10px] text-gray-600 text-center py-2">—</div>'}</div>
+                    </div>
                 </div>
             </div>` : '';
 
+        // ── 段 3:被動基準 + 主動 ETF 績效卡(極簡)─────────────────────────
         const benchHtml = (d.benchmarks || []).filter(b => b.perf).map(b =>
             `<div class="flex-1 bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center">
                 <div class="text-[10px] text-gray-400 truncate">${b.name}</div>
                 <div class="font-mono font-bold text-sm ${pcls(b.perf.ret_incep)}">${pct(b.perf.ret_incep)}</div>
             </div>`).join('');
 
-        const cardHtml = d.etfs.map((e, i) => {
+        const perfCardHtml = d.etfs.map((e, i) => {
             const m = e.perf || {};
             const shortHist = (m.bars || 0) < 120;
             const headRet = m.ret_incep;
-            const holds = e.holdings || [];
-            const ch = e.changes || {};
-            const holdHtml = holds.length ? `
-                <div class="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
-                    ${holds.slice(0, 10).map((h, j) => `<div class="flex justify-between text-[10px]"><span class="text-gray-300 truncate cursor-pointer" onclick="app.analyze('${h.sym}'); app.switchAppTab('diag');">${j + 1}. ${h.sym} ${(h.name || '').slice(0, 4)}${mark(h.sym)}</span><span class="text-yellow-300 font-mono ml-1">${h.weight != null ? h.weight + '%' : ''}</span></div>`).join('')}
-                </div>` : `<div class="mt-1 text-[10px] text-gray-600">持股明細抓取調校中(每日PCF)…</div>`;
-            const changeHtml = e.changed_today ? `
-                <div class="mt-1.5 border-t border-[#30363d] pt-1 text-[10px] space-y-0.5">
-                    ${ch.added && ch.added.length ? `<div class="text-red-400">🆕 新買進:${ch.added.map(x => x.sym + mark(x.sym)).join('、')}</div>` : ''}
-                    ${ch.removed && ch.removed.length ? `<div class="text-green-400">🗑️ 賣出清空:${ch.removed.map(x => x.sym).join('、')}</div>` : ''}
-                    ${ch.weight_up && ch.weight_up.length ? `<div class="text-red-300/80">⬆️ 加碼:${ch.weight_up.map(x => x.sym + '(+' + x.dw + ')').join('、')}</div>` : ''}
-                    ${ch.weight_down && ch.weight_down.length ? `<div class="text-green-300/80">⬇️ 減碼:${ch.weight_down.map(x => x.sym + '(' + x.dw + ')').join('、')}</div>` : ''}
-                </div>` : '';
             return `
-                <div class="bg-[#161b22] border ${e.changed_today ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg p-2.5">
+                <div class="bg-[#161b22] border ${e.changed_today ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg px-2.5 py-1.5">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2 min-w-0">
                             <span class="text-gray-500 font-mono text-xs w-4 flex-shrink-0">${i + 1}</span>
                             <div class="min-w-0">
-                                <div class="font-bold text-gray-100 text-sm truncate">${e.name || e.symbol}${e.changed_today ? ' <span class="text-[9px] text-amber-400">●換股</span>' : ''}</div>
+                                <div class="font-bold text-gray-100 text-sm truncate">${e.name || e.symbol}${e.changed_today ? ' <span class="text-[9px] text-amber-400">●今日換股</span>' : ''}</div>
                                 <div class="text-[10px] text-gray-500">${e.symbol} · ${shortHist ? '上市以來' : '近120日'}</div>
                             </div>
                         </div>
@@ -3064,8 +3128,6 @@ ${list}
                             <div class="text-[9px] text-gray-500">近20日 <span class="${pcls(m.ret_20d)}">${pct(m.ret_20d)}</span></div>
                         </div>
                     </div>
-                    ${holdHtml}
-                    ${changeHtml}
                 </div>`;
         }).join('');
 
@@ -3073,15 +3135,19 @@ ${list}
             <div class="flex flex-col gap-2.5">
                 <div class="px-1">
                     <h3 class="text-base font-black text-amber-300">🏦 ETF 順風車</h3>
-                    <p class="text-[11px] text-gray-500 mt-0.5">自動追蹤<b class="text-gray-300">績效前段班主動式ETF</b>,搭專業經理人順風車;偵測每日換股、標記你持有的股票。</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5">追蹤<b class="text-gray-300">績效前段班主動式 ETF</b>,聚合所有經理人的<b class="text-gray-300">買賣超共識</b>(總和取代逐 ETF 換股明細)。</p>
                 </div>
-                ${bannerHtml}
-                ${hotHtml}
+                ${summaryHtml}
+                ${consensusHtml}
                 ${benchHtml ? `<div class="flex gap-1.5 items-center"><div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>${benchHtml}</div>` : ''}
-                <div class="flex flex-col gap-2">${cardHtml}</div>
+                <div class="px-1 mt-1">
+                    <div class="text-[11px] text-gray-400 font-bold mb-1">🏆 主動 ETF 績效榜(可點看持股的話?後續迭代)</div>
+                    <div class="flex flex-col gap-1.5">${perfCardHtml}</div>
+                </div>
                 <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
                     更新:${d.updated || '—'}。${d.note || ''}<br>
-                    ⚠️ 主動ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
+                    💡 共識買賣超 = 所有主動 ETF 對該股權重變動加總(加碼+新買進 vs 減碼+賣出)。<br>
+                    ⚠️ 主動 ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
                 </div>
             </div>`;
     },

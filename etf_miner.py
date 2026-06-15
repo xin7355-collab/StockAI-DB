@@ -239,26 +239,101 @@ def _holdings_from_html(html):
 # 持股+名稱來源:etfinfo.tw 官方 API(每日同步,回 info.name 與成分股 code/name/weight)
 ETFINFO_API = "https://www.etfinfo.tw/api/etf/{s}"
 
+# 基金規模(NAV/AUM)候選 key — 用於「估算共識買賣超張數」
+_FUND_SIZE_KEYS = ("fund_size", "fundSize", "total_nav", "totalNav", "nav_total",
+                   "totalAsset", "total_asset", "aum", "scale", "fundScale",
+                   "資產規模", "基金規模", "淨資產", "總資產", "受益權單位淨資產")
+
+
+def _deep_find_scalar(obj, keys, depth=0):
+    """遞迴在 JSON 中找含 keys 之一的純量(數字字串),回傳 float 或 None"""
+    if depth > 6 or obj is None:
+        return None
+    if isinstance(obj, dict):
+        # 直接命中
+        for k in keys:
+            if k in obj:
+                v = _to_float(obj[k])
+                if v and v > 0:
+                    return v
+            # 大小寫不敏感比對
+            for ok in obj.keys():
+                if str(ok).lower() == str(k).lower():
+                    v = _to_float(obj[ok])
+                    if v and v > 0:
+                        return v
+        for v in obj.values():
+            r = _deep_find_scalar(v, keys, depth + 1)
+            if r:
+                return r
+    elif isinstance(obj, list):
+        for x in obj:
+            r = _deep_find_scalar(x, keys, depth + 1)
+            if r:
+                return r
+    return None
+
 
 def fetch_etf_detail(sym):
-    """回傳 (name, holdings[{sym,name,weight}])。用 etfinfo /api/etf/{code};失敗回 (None, [])。"""
+    """回傳 (name, holdings[{sym,name,weight}], fund_size_or_None)。
+    用 etfinfo /api/etf/{code};失敗回 (None, [], None)。
+    fund_size 是新增欄位:基金規模(單位通常為元),用於估算「整體 ETF 共識買賣超張數」。"""
     try:
         time.sleep(0.4)  # 對 etfinfo 禮貌節流(10+ 檔序列抓取,避免被限流)
         r = session.get(ETFINFO_API.format(s=sym), headers=_hdrs(), timeout=15)
         if r.status_code != 200 or not r.text:
             print(f"  · etfinfo {sym} status={r.status_code}")
-            return None, []
+            return None, [], None
         d = r.json()
         name = ((d.get("info") or {}).get("name")) if isinstance(d, dict) else None
         lst = _deep_find_holdings(d)
         holds = _normalize_holdings(lst) if lst else []
         holds.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
+        fund_size = _deep_find_scalar(d, _FUND_SIZE_KEYS)
         if holds:
-            print(f"  ✓ etfinfo {sym}: name={name} holdings={len(holds)}")
-        return name, holds
+            print(f"  ✓ etfinfo {sym}: name={name} holdings={len(holds)} fund_size={fund_size}")
+        return name, holds, fund_size
     except Exception as e:
         print(f"  ⚠️ etfinfo {sym}: {type(e).__name__}: {e}")
-        return None, []
+        return None, [], None
+
+
+def _latest_close(stock_sym):
+    """讀 data/{sym}.json 最後一筆 close,沒檔案回 None"""
+    p = Path(DATA_DIR) / f"{stock_sym}.json"
+    if not p.exists():
+        return None
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        if isinstance(d, list) and d:
+            last = d[-1] if isinstance(d[-1], dict) else None
+            return _to_float(last.get("close")) if last else None
+    except Exception:
+        pass
+    return None
+
+
+def _attach_est_shares(holdings, fund_size, price_cache):
+    """為每檔持股加 est_shares = (weight%/100 × fund_size) ÷ 股價。
+    無 fund_size 或無股價就跳過(保持 None)。價格走 price_cache 共用 — 同一支股票
+    在多檔 ETF 內共用 close,避免重讀 JSON。
+    """
+    if not fund_size or fund_size <= 0:
+        return
+    for h in holdings:
+        w = h.get("weight")
+        if not w or w <= 0:
+            continue
+        s = h.get("sym")
+        if not s:
+            continue
+        if s not in price_cache:
+            price_cache[s] = _latest_close(s)
+        px = price_cache[s]
+        if px and px > 0:
+            # est_shares 單位「張」(1 張 = 1000 股)
+            est = (w / 100.0) * fund_size / px / 1000.0
+            h["est_shares"] = round(est, 1)
 
 
 # ── 換股 diff ──────────────────────────────────────────────────────────────
@@ -275,9 +350,18 @@ def diff_holdings(prev, curr):
         if s in pm:
             dw = round((cm[s].get("weight") or 0) - (pm[s].get("weight") or 0), 2)
             if dw >= WEIGHT_DELTA:
-                up.append({**cm[s], "dw": dw})
+                # est_shares_delta = 新 est_shares - 舊 est_shares(同 ETF 規模下)
+                eds = None
+                ec = cm[s].get("est_shares"); ep = pm[s].get("est_shares")
+                if ec is not None and ep is not None:
+                    eds = round(ec - ep, 1)
+                up.append({**cm[s], "dw": dw, **({"est_shares_delta": eds} if eds is not None else {})})
             elif dw <= -WEIGHT_DELTA:
-                down.append({**cm[s], "dw": dw})
+                eds = None
+                ec = cm[s].get("est_shares"); ep = pm[s].get("est_shares")
+                if ec is not None and ep is not None:
+                    eds = round(ec - ep, 1)
+                down.append({**cm[s], "dw": dw, **({"est_shares_delta": eds} if eds is not None else {})})
     return {"added": added, "removed": removed, "weight_up": up, "weight_down": down}
 
 
@@ -310,8 +394,12 @@ def main():
 
     etfs, by_stock, hot = [], {}, {}
     got_holdings = 0
+    price_cache = {}  # 個股最新 close 共用 cache(估算張數時避免重讀 JSON)
     for s, m in top:
-        api_name, curr_h = fetch_etf_detail(s)
+        api_name, curr_h, fund_size = fetch_etf_detail(s)
+        # 估算每檔持股張數(必須在 diff 之前算,讓 diff 拿得到 est_shares 算 delta)
+        if curr_h and fund_size:
+            _attach_est_shares(curr_h, fund_size, price_cache)
         prev_h = prev_hold.get(s, [])
         if not curr_h:
             # 抓不到 → 沿用上一版持股，不誤判換股
@@ -329,6 +417,7 @@ def main():
             "symbol": s,
             "name": api_name or etf_name(s),
             "perf": m,
+            "fund_size": fund_size,
             "holdings": curr_h[:HOLD_TOP],
             "holdings_count": len(curr_h),
             "changes": changes,
