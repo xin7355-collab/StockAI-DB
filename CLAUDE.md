@@ -141,6 +141,7 @@ futures_cache.json、macro_cache.json、margin_cache_stock.json
 - `fm_get()` 任何非200回應都會 fallback 到匿名請求
 - 分點籌碼「已是最新跳過」時，仍呼叫 `_refresh_broker_names()` 更新對照表
 - OHLCV 補丁邏輯：若舊記錄缺少 `foreign_net` 欄位，下次採礦時自動補上
+- **採礦補挖機制**:每次 daily_miner 跑都全市場重抓,沒有「N 次後永久放棄」黑名單。某支股票連續 10 天 FinMind 拉失敗,下次跑還是會試。週末無 cron(只跑週一~五 16:30),所以週六/日資料缺只能等週一或手動觸發 Actions UI 重跑
 
 ### 監控清單
 `CHIP_WATCHLIST` = 約50檔上市上櫃熱門股 + ETF，分點籌碼只追蹤這些。

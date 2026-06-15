@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -691,7 +691,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -995,6 +995,7 @@
                             <label class="ma-toggle-lbl text-[#ffffff] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA5" checked onchange="app.renderChart()" class="hidden"><span>5</span></label>
                             <label class="ma-toggle-lbl text-[#facc15] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA10" checked onchange="app.renderChart()" class="hidden"><span>10</span></label>
                             <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA20" checked onchange="app.renderChart()" class="hidden"><span>20</span></label>
+                            <label class="ma-toggle-lbl text-[#4ade80] cursor-pointer flex items-center" title="頭高 / 底高 5-bar fractal 標示(週/月 K 也適用)"><input type="checkbox" id="togglePeaks" checked onchange="app.togglePeaksHandler(this.checked)" class="hidden"><span>底高</span></label>
                         </div>
                     </div>
                     <div id="chartHud" class="px-2 py-1.5 bg-[#21262d] border-b border-[#30363d] min-h-[3rem] text-[13px] font-mono leading-relaxed flex flex-col gap-0.5 text-gray-100">點擊 K 棒顯示詳細數據...</div>
@@ -2364,6 +2365,9 @@ const app = {
         setRealVh();
         window.addEventListener('resize', setRealVh);
         this._initOnboard();
+        // V14.4:K 線「底高」開關 — 從 localStorage 復原 + 同步 checkbox 視覺狀態
+        this.showPeaks = localStorage.getItem('showPeaks') !== '0';
+        queueMicrotask(() => { const cb = document.getElementById('togglePeaks'); if (cb) cb.checked = this.showPeaks; });
         // Detect iOS PWA standalone mode (navigator.standalone is more reliable than CSS media query on some iOS versions)
         if (window.navigator.standalone === true) document.documentElement.classList.add('ios-standalone');
 
@@ -6333,7 +6337,8 @@ ${peerLine}${newsCtx}
         const setCell = (id, val, unit, colorClass) => {
             const el = document.getElementById(id);
             if (!el) return;
-            if (val == null) { el.innerHTML = '<span class="text-gray-600 text-xs">無資料</span>'; return; }
+            // V14.4:資料缺失改顯示「🔄 採礦更新中」+ hover tip,提示週一 cron 或手動觸發
+            if (val == null) { el.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="採礦尚未產出此欄位 — 週一 16:30 cron 自動補,或至 GitHub Actions 手動 Run daily_miner.yml">🔄 採礦更新中</span>'; return; }
             const fmt = typeof val === 'number' ? (Math.abs(val) >= 100 ? Math.round(val) : parseFloat(val.toFixed(2))) : val;
             // 字大小:毛利率 text-sm(3 段太長)、PE text-2xl(估值區獨立寬版突出)、其他 text-xl(營收/殖利率/發配率統一)
             const sizeClass = id === 'xrayGrossMargin' ? 'text-sm leading-tight'
@@ -6506,8 +6511,17 @@ ${peerLine}${newsCtx}
                 }
             }
             if (pegEl) {
-                pegEl.textContent = peg != null ? peg.toFixed(2) : '--';
-                pegEl.className = `font-mono font-black text-xl leading-tight ${pegColor}`;
+                // V14.4:peg 算不出來且非「衰退」狀態 → 顯示「採礦更新中」明示原因
+                if (peg != null) {
+                    pegEl.textContent = peg.toFixed(2);
+                    pegEl.className = `font-mono font-black text-xl leading-tight ${pegColor}`;
+                } else if (pegLabel) {
+                    pegEl.textContent = '--';
+                    pegEl.className = `font-mono font-black text-xl leading-tight ${pegColor}`;
+                } else {
+                    pegEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="PEG = PE ÷ EPS 年成長率,需 8 季 EPS 才能算。採礦更新中 — 週一 16:30 cron 自動補">🔄 採礦更新中</span>';
+                    pegEl.className = '';
+                }
             }
             if (pegTag) {
                 pegTag.textContent = pegLabel;
@@ -6531,8 +6545,17 @@ ${peerLine}${newsCtx}
                 else { relLabel = '🔴 同業偏貴'; relColor = 'text-red-400'; }
             }
             if (ipEl) {
-                ipEl.textContent = relRatio != null ? relRatio.toFixed(2) + 'x' : '--';
-                ipEl.className = `font-mono font-black text-xl leading-tight ${relColor}`;
+                // V14.4:relRatio 算不出來區分「真不適用(未在產業表)」vs「採礦更新中」
+                if (relRatio != null) {
+                    ipEl.textContent = relRatio.toFixed(2) + 'x';
+                    ipEl.className = `font-mono font-black text-xl leading-tight ${relColor}`;
+                } else if (indData && !industryName) {
+                    ipEl.innerHTML = '<span class="text-gray-400 text-xs cursor-help" title="此股票不在產業分類表中(可能是 ETF/特殊類股),無法做同業比較">📝 不適用</span>';
+                    ipEl.className = '';
+                } else {
+                    ipEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="同業 PE 資料採礦中 — 週一 16:30 cron 自動補,或手動觸發 daily_miner.yml">🔄 採礦更新中</span>';
+                    ipEl.className = '';
+                }
             }
             if (ipTag) {
                 ipTag.textContent = relLabel;
@@ -6751,7 +6774,7 @@ ${peerLine}${newsCtx}
                              : `${rev.toFixed(0)}`;
                 const yoy = haveMineYoY ? Number(localFund.revenue_yoy) : null;
                 const yoyStr = yoy == null ? '' : ` <span class="${yoy>0?'text-red-400':yoy<0?'text-green-400':'text-yellow-300'}">YoY ${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
-                rvTrendEl.innerHTML = `<div class="text-blue-300/90 text-xs text-center px-3" style="line-height:1.6;padding-top:70px">📊 最新月營收 <b class="text-white">${revStr}</b>${yoyStr}<br><span class="text-[10px] text-gray-500">(採礦快取 · 12 月圖待 FinMind 即時資料回應)</span></div>`;
+                rvTrendEl.innerHTML = `<div class="text-blue-300/90 text-xs text-center px-3" style="line-height:1.6;padding-top:60px">📊 最新月營收 <b class="text-white">${revStr}</b>${yoyStr}<br><span class="text-[10px] text-amber-300/80">🔄 12 個月柱狀圖待採礦更新</span><br><span class="text-[10px] text-gray-500">週一 16:30 cron 自動補,或 GitHub Actions 手動觸發 daily_miner.yml</span></div>`;
             } else {
                 rvTrendEl.innerHTML = '<div class="text-amber-300/70 text-[10px] text-center px-2" style="line-height:1.4;padding-top:80px">📅 暫無月營收資料<br><span class="text-gray-600">新股 / 上游 API 暫無回應,請點 🔄 重新掃描</span></div>';
             }
@@ -6905,7 +6928,7 @@ ${_newsLine}${globalContext}
     },
 
     async fetchCorpEvents(sym) {
-        // 情報網卡片已從 UI 移除(V14.3),此函式仍保留是因為:
+        // 情報網卡片已從 UI 移除(V14.4),此函式仍保留是因為:
         // ① 更新 X 光機殖利率欄(#xrayDividend)
         // ② 餵 latestYoyCache / latestNewsCache 給首席 AI prompt + 處置/注意股偵測
         const tokenStr = this._getFinmindToken() ? `&token=${this._getFinmindToken()}` : '';
@@ -7191,6 +7214,12 @@ ${_newsLine}${globalContext}
         return aggregated;
     },
 
+    togglePeaksHandler(checked) {
+        this.showPeaks = !!checked;
+        localStorage.setItem('showPeaks', checked ? '1' : '0');
+        this.renderChart();
+    },
+
     async changeTimeframe(tf) {
         this.currentTF = tf;
         ['D', 'W', 'M'].forEach(t => { document.getElementById(`btnTF_${t}`).className = t === tf ? "px-3 py-1.5 text-sm font-bold bg-blue-600 text-white transition-colors" : "px-3 py-1.5 text-sm font-bold text-gray-400 bg-transparent hover:text-white transition-colors"; });
@@ -7201,8 +7230,8 @@ ${_newsLine}${globalContext}
 
     findPeaksAndTroughs() {
         this.peaks = []; this.troughs = []; const data = this.activeData;
-        if (this.currentTF !== 'D') return; 
-        let threshold = 0.02; 
+        // V14.4:週/月 K 也算 fractal pivot,threshold 隨 TF 放大(週波幅 ≈ 2.5×日,月 ≈ 5×日)
+        let threshold = this.currentTF === 'D' ? 0.02 : this.currentTF === 'W' ? 0.05 : 0.10;
         for (let i = 2; i < data.length - 2; i++) {
             let isPeak = data[i].high > data[i-1].high && data[i].high > data[i-2].high && data[i].high > data[i+1].high && data[i].high > data[i+2].high;
             let isTrough = data[i].low < data[i-1].low && data[i].low < data[i-2].low && data[i].low < data[i+1].low && data[i].low < data[i+2].low;
@@ -9308,8 +9337,9 @@ ${_newsLine}${globalContext}
         this.updateAITranslator(pC, pO, pH, pL, pV, pC1, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB);
 
         let sObj = this.getSeasonObj(pC, pO, pH, pL, pV, pC1, pV1, ma5, ma10, ma20, ma60, ma20_prev, upperBB), season = sObj.name;
-        
-        let tagsHtml = `<span onclick="document.getElementById('seasonModal').classList.remove('hidden'); document.getElementById('seasonModal').style.display='flex';" class="px-2 py-0.5 rounded border text-xs font-bold inline-flex items-center gap-1 whitespace-nowrap ${sObj.style}"><span>${sObj.icon}</span>${sObj.name} <span class="text-[8px] opacity-50 ml-0.5">ℹ️</span></span>`;
+
+        // 🚫 V14.4:四季 chip 渲染移除(使用者反饋資訊過載);sObj/season 仍保留供 AI prompt + 五維面板用
+        let tagsHtml = '';
         
         if (this.latestNewsCache.includes('處置') || this.latestNewsCache.includes('注意')) {
             tagsHtml += `<span class="bg-yellow-900/80 text-yellow-200 border border-yellow-500 text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 animate-pulse">🔒禁閉室</span>`;
@@ -9420,12 +9450,13 @@ ${_newsLine}${globalContext}
             danger:  'avoid',   // 空頭排列 / 大黑K / 跌破前低 → 空手別碰
             island:  'avoid',   // 島狀反轉 → 頭部訊號
         };
+        // V14.4:emoji 改用語意強的圖示(✅👀⚠️📉❌),背景統一深灰,不靠顏色辨識(防混亂 + 色盲友善)
         const _actionCfg = {
-            buy:    { emoji: '🟢', label: '布局', cls: 'bg-green-900/40 text-green-200 border-green-600',   tip: '進場訊號,可分批建倉(配合風控)' },
-            watch:  { emoji: '🔵', label: '觀察', cls: 'bg-blue-900/40 text-blue-200 border-blue-600',      tip: '中性訊號,等多重確認(別單訊號進場)' },
-            warn:   { emoji: '🟡', label: '警戒', cls: 'bg-yellow-900/40 text-yellow-200 border-yellow-500',tip: '略有風險,持有者收緊停利,空手繼續觀察' },
-            reduce: { emoji: '🟠', label: '減碼', cls: 'bg-orange-900/40 text-orange-200 border-orange-500',tip: '走弱明顯,持有者降低部位(賣 1/3 ~ 1/2)' },
-            avoid:  { emoji: '🔴', label: '避開', cls: 'bg-red-900/40 text-red-200 border-red-600',         tip: '空手別碰,持有者考慮減碼或出場' },
+            buy:    { emoji: '✅', label: '布局', cls: 'bg-gray-800/60 text-green-200  border-gray-700', tip: '進場訊號,可分批建倉(配合風控)' },
+            watch:  { emoji: '👀', label: '觀察', cls: 'bg-gray-800/60 text-blue-200   border-gray-700', tip: '中性訊號,等多重確認(別單訊號進場)' },
+            warn:   { emoji: '⚠️', label: '警戒', cls: 'bg-gray-800/60 text-yellow-200 border-gray-700', tip: '略有風險,持有者收緊停利,空手繼續觀察' },
+            reduce: { emoji: '📉', label: '減碼', cls: 'bg-gray-800/60 text-orange-200 border-gray-700', tip: '走弱明顯,持有者降低部位(賣 1/3 ~ 1/2)' },
+            avoid:  { emoji: '❌', label: '避開', cls: 'bg-gray-800/60 text-red-200    border-gray-700', tip: '空手別碰,持有者考慮減碼或出場' },
         };
         for (const t of featTags) {
             const action = t.action || _toneToAction[t.tone] || 'watch';
@@ -9714,10 +9745,11 @@ ${_newsLine}${globalContext}
         this.renderChartHud(data.length - 1); 
 
         let markPointData = [...(this.currentMarkPoints || [])], markLineData = [];
-        if (this.currentTF === 'D') {
+        // V14.4:頭高/底高開關(預設開),不再限定日 K — 週/月 K 也顯示
+        if (this.showPeaks !== false) {
             this.peaks.forEach(p => { markPointData.push({ name: '頭高', xAxis: p.idx, yAxis: p.val, value: '頭高', symbol: 'arrow', symbolRotate: 180, symbolSize: 10, itemStyle: { color: '#f87171' }, label: { show: true, formatter: '頭高', position: 'top', color: '#f87171', fontSize: 10, fontWeight: 'bold' } }); });
             this.troughs.forEach(t => { markPointData.push({ name: '底高', xAxis: t.idx, yAxis: t.val, value: '底高', symbol: 'arrow', symbolRotate: 0, symbolSize: 10, itemStyle: { color: '#4ade80' }, label: { show: true, formatter: '底高', position: 'bottom', color: '#4ade80', fontSize: 10, fontWeight: 'bold' } }); });
-        
+
             if (this.peaks.length > 0) {
                 const lastPeak = this.peaks[this.peaks.length - 1];
                 markLineData.push({ name: '前高壓力', yAxis: lastPeak.val, lineStyle: { type: 'dashed', color: '#f87171', width: 1.5, opacity: 0.8 }, label: { show: true, position: 'insideStartTop', formatter: '前高 {c}', color: '#f87171', fontSize: 10, fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.7)', padding: [2, 4], borderRadius: 2 } });
@@ -9785,6 +9817,7 @@ ${_newsLine}${globalContext}
 
     // 🔁 與 worker 內 patternStats 同算法的 main-thread 版,接受任意 targetIdx 對歷史日重算
     //     ⚠️ 改 worker patternStats 時這個函式必須同步改,否則上方 60% 跟下方歷史會對不起來
+    // V14.4:加 4 層降級補算 — full → 去法人 → 去大盤 → 寬 sim;LOOKBACK 240 → 800
     _computePatWinRateAt(data, ind, targetIdx, marketCtx) {
         if (!data || !ind || !ind.ma20 || targetIdx < 30 || targetIdx >= data.length) return null;
         const closes = data.map(d => d.close), vols = data.map(d => d.volume);
@@ -9810,32 +9843,38 @@ ${_newsLine}${globalContext}
         const fiToday = (data[lastIdx].foreign_net ?? data[lastIdx].foreign_inv ?? 0)
                       + (data[lastIdx].trust_net   ?? data[lastIdx].invest_trust ?? 0);
         const fiSideToday = fiToday > 0 ? 1 : (fiToday < 0 ? -1 : 0);
-        const useFiFilter = fiSideToday !== 0;
+        const hasFi = fiSideToday !== 0;
 
-        const LOOKBACK = 240;
+        const LOOKBACK = 800;
         const scanStart = Math.max(20, lastIdx + 1 - LOOKBACK);
         const recentVolSorted = vols.slice(scanStart, lastIdx + 1).filter(v => v > 0).sort((a, b) => a - b);
         const volMedian = recentVolSorted.length ? recentVolSorted[Math.floor(recentVolSorted.length / 2)] : 0;
         const volFloor = volMedian * 0.3;
 
         const ctxToday = marketCtx?.dateMap?.[data[lastIdx].date] ?? null;
-        const useMktFilter = marketCtx && ctxToday !== null;
+        const hasMkt = marketCtx && ctxToday !== null;
 
+        // ① 一次掃描:把所有候選樣本算 dist + 記下「fiPass / mktPass」狀態,後續再分層篩
         const matches = [];
-        // 🚫 不偷看未來:樣本 i+5 必須 < targetIdx
         for (let i = scanStart; i < targetIdx - 5; i++) {
             if (ma20[i + 4] == null) continue;
             if (currentIsAboveMA20 !== (closes[i + 4] > ma20[i + 4])) continue;
+            // 量能 sanity 仍硬性 — 0 量噪點對相似度比對無意義
             if (vols[i + 4] <= 0 || vols[i + 4] < volFloor) continue;
-            if (useFiFilter) {
+
+            // 法人同向 — 記下不過濾,後面分層篩
+            let fiPass = true;
+            if (hasFi) {
                 const hf = (data[i + 4].foreign_net ?? data[i + 4].foreign_inv ?? 0)
                          + (data[i + 4].trust_net   ?? data[i + 4].invest_trust ?? 0);
                 const hfSide = hf > 0 ? 1 : (hf < 0 ? -1 : 0);
-                if (hfSide !== 0 && hfSide !== fiSideToday) continue;
+                if (hfSide !== 0 && hfSide !== fiSideToday) fiPass = false;
             }
-            if (useMktFilter) {
+            // 大盤同向 — 記下
+            let mktPass = true;
+            if (hasMkt) {
                 const hctx = marketCtx.dateMap[data[i + 4].date];
-                if (hctx !== undefined && hctx !== null && hctx !== ctxToday) continue;
+                if (hctx !== undefined && hctx !== null && hctx !== ctxToday) mktPass = false;
             }
 
             let dist = 0, vDist = 0;
@@ -9855,15 +9894,25 @@ ${_newsLine}${globalContext}
             const bbContrib = Math.pow(curBBB - histBBB, 2) * 0.02;
             const macdContrib = curOscPos !== histOscPos ? 0.0002 : 0;
             dist = dist + (vDist * 0.3) + kdContrib + bbContrib + macdContrib;
-            matches.push({ dist, nextRet: ((data[i + 5].close - data[i + 4].close) / data[i + 4].close) * 100 });
+            matches.push({ dist, nextRet: ((data[i + 5].close - data[i + 4].close) / data[i + 4].close) * 100, fiPass, mktPass });
         }
         if (!matches.length) return null;
         matches.sort((a, b) => a.dist - b.dist);
-        const simThreshold = Math.max(matches[0].dist * 2.5, 0.00015);
-        const top = matches.filter(m => m.dist <= simThreshold).slice(0, 25);
-        if (top.length < 3) return null;
-        const wins = top.filter(m => m.nextRet > 0).length;
-        return { count: top.length, winRate: ((wins / top.length) * 100).toFixed(1) };
+
+        // ② 4 層降級篩選 — 任一層拿到 ≥3 樣本就回傳
+        const tryFilter = (predicate, simMult, source) => {
+            const candidates = matches.filter(predicate);
+            if (!candidates.length) return null;
+            const simThreshold = Math.max(candidates[0].dist * simMult, 0.00015);
+            const top = candidates.filter(m => m.dist <= simThreshold).slice(0, 25);
+            if (top.length < 3) return null;
+            const wins = top.filter(m => m.nextRet > 0).length;
+            return { count: top.length, winRate: ((wins / top.length) * 100).toFixed(1), source };
+        };
+        return tryFilter(m => m.fiPass && m.mktPass, 2.5, 'full')
+            || tryFilter(m => m.mktPass,              2.5, 'no_fi')
+            || tryFilter(() => true,                  2.5, 'no_fi_mkt')
+            || tryFilter(() => true,                  5.0, 'loose_sim');
     },
 
     renderBacktest() {
@@ -9889,19 +9938,27 @@ ${_newsLine}${globalContext}
             const sign = diff > 0 ? '+' : '';
             const dShort = String(data[i].date || '').replace(/^\d{4}\//, '');
 
-            // 我的 patWinRate:快照優先,沒快照即時補算
+            // 我的 patWinRate:快照優先,沒快照即時補算(可能走降級)
             const snap = byDate[data[i].date];
-            let wr = null, wc = null;
+            let wr = null, wc = null, src = null;
             if (snap && Number.isFinite(snap.patWinRate)) {
-                wr = Number(snap.patWinRate); wc = snap.patCount;
+                wr = Number(snap.patWinRate); wc = snap.patCount; src = 'snap';
             } else {
                 const live = this._computePatWinRateAt(data, this.indicators, i, marketCtx);
-                if (live) { wr = Number(live.winRate); wc = live.count; }
+                if (live) { wr = Number(live.winRate); wc = live.count; src = live.source; }
             }
+            // V14.4:※ 標示降級層級,讓使用者知道補算可信度
+            const srcMark = {
+                snap:       { mark: '', tip: '當日完整過濾 + 自動快照' },
+                full:       { mark: '', tip: '完整過濾(法人+大盤+量能)' },
+                no_fi:      { mark: ' <span class="text-gray-500 text-[10px] cursor-help" title="樣本不足,已放寬法人同向過濾(可信度尚可)">※</span>', tip: '' },
+                no_fi_mkt:  { mark: ' <span class="text-gray-500 text-[10px] cursor-help" title="樣本不足,已放寬法人+大盤同向過濾(可信度中等)">※※</span>', tip: '' },
+                loose_sim:  { mark: ' <span class="text-orange-400 text-[10px] cursor-help" title="樣本嚴重不足,已放寬相似度門檻 2 倍(低信賴度,僅供參考)">※※※</span>', tip: '' },
+            }[src] || { mark: '', tip: '' };
             let wrHtml;
             if (wr != null && Number.isFinite(wr)) {
                 const wrCol = wr >= 65 ? 'text-red-400' : wr >= 50 ? 'text-yellow-400' : 'text-green-400';
-                wrHtml = `<span class="${wrCol} text-base font-black">${wr.toFixed(1)}%</span>`;
+                wrHtml = `<span class="${wrCol} text-base font-black"${srcMark.tip ? ` title="${srcMark.tip}"` : ''}>${wr.toFixed(1)}%</span>${srcMark.mark}`;
                 if (wc) wrHtml += `<div class="text-[9px] text-gray-500">${wc} 樣本</div>`;
             } else {
                 wrHtml = '<span class="text-gray-600 text-[10px]">📝 樣本不足</span>';
