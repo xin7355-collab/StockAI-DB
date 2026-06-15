@@ -61,6 +61,15 @@
 - 每次 push 前必跑三驗證：`node --check`（index.html inline JS）+ `python3 -m py_compile *.py` + `python3 scripts/check_prompt_vars.py`
 - 出錯時使用者可以 `git revert HEAD` 回退，或叫 Claude 修
 
+### 版本號規則(STRATEGY TERMINAL Vx.y)⭐ 使用者要求:每次更新版本號要一直往上加
+- **小數位 +0.1**:每次 Claude push 純前端/小邏輯改動(UI 調整、bug fix、小功能補強) → V14.2 → V14.3 → V14.4 ...
+- **主版本 +1**:大事件改版(架構大改、採礦機重做、新增整個 tab、AI 模型升級、整批功能重做) → V14.x → V15.0
+- **位置**:`index.html` 兩處必須**同步**改:
+  - `<title>首席 AI 司令部 | 戰略終端 V14.x</title>` (~line 12)
+  - `<span ...>STRATEGY TERMINAL V14.x</span>` (~line 694)
+- **時機**:每次 push main 前 bump 一次,commit message 寫「Vx.y → Vx.z」
+- **判斷小 vs 大**:Claude 自行判斷,有疑問問使用者
+
 ### 部署後「看到舊版」處理（Service Worker 快取，已根治）⭐ 使用者常反映
 - **「還是舊版」≠「沒合併」**：先確認部署本身有沒有成功，不要急著重推。指令：
   `diff <(git show origin/gh-pages:index.html | md5sum) <(git show origin/main:index.html | md5sum)` →

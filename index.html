@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -691,7 +691,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1034,8 +1034,8 @@
                     <div class="text-base bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【歷史隔日上漲機率】\n\n機率欄與上方「AI 雲端大數據波段回測預判」完全同源 — 都是 patWinRate（近5日K線+量能+KD/MACD+籌碼+大盤環境的歷史型態相似度匹配）。\n\n• 今日該行 = 上方顯示的機率，絕對一致\n• 歷史日如果之前沒跑過 K 線分析，顯示「📝 未記錄」（從今日起會自動累積）\n• Alpha 分：當日綜合戰力分（技術面+籌碼面+大盤環境，逐日重算）— 觀察「分數高時是否隔日真的漲」可比較哪種分數區段勝率較高\n• 隔日實際漲跌：從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄：預測機率 ≥ 50% 且實際漲 = ✅，反之 ❌\n\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">📅 歷史隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
-                    <div class="text-[10px] text-gray-500 mb-2 leading-tight">機率為當日 patWinRate 即時計算 + 自動每日快照。今日該行 = 上方數字同源。Alpha 分為當日綜合戰力（逐日重算）。歷史日若沒跑過 K 線分析機率會顯示「📝 未記錄」，從今日起累積。</div>
+                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【歷史隔日上漲機率】\n\n機率欄與上方「AI 雲端大數據波段回測預判」完全同源 — 都是 patWinRate（近5日K線+量能+KD/MACD+籌碼+大盤環境的歷史型態相似度匹配，純歷史數學運算，不是 AI 幻想）。\n\n• 今日該行 = 上方顯示的機率，絕對一致\n• 歷史日（最近 10 個交易日）：有過去快照優先用快照，沒有就用同一算法現場補算（純歷史 K 線比對，0 AI 介入）\n• Alpha 分：當日綜合戰力分（技術面+籌碼面+大盤環境，逐日重算）— 觀察「分數高時是否隔日真的漲」可比較哪種分數區段勝率較高\n• 隔日實際漲跌：從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄：預測機率 ≥ 50% 且實際漲 = ✅，反之 ❌\n\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">📅 歷史隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
+                    <div class="text-[10px] text-gray-500 mb-2 leading-tight">機率欄 = patWinRate（同上方）。最近 10 個交易日有快照用快照，沒有就現場補算（純歷史 K 線數學運算，0 AI 幻想）。Alpha 分為當日綜合戰力（逐日重算）。</div>
                     <table class="w-full text-left border-collapse">
                         <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">我的機率</th><th class="py-1.5 px-1 font-bold text-center">Alpha 分</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
                         <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="5" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
@@ -1137,32 +1137,6 @@
                     </div>
                     <div id="industryReportResult" class="hidden bg-[#0d1117] rounded p-2.5 border border-cyan-900/40 text-gray-200 text-sm leading-relaxed"></div>
                 </div>
-
-                <!-- 🏢 企業情報與消息體檢 -->
-                <div class="bg-[#1c2128] border border-[#30363d] rounded-lg p-3 shadow-sm relative overflow-hidden">
-                    <div class="absolute right-0 top-0 w-20 h-20 bg-blue-500/10 blur-2xl rounded-full pointer-events-none"></div>
-                    <h4 class="text-blue-400 font-bold text-base mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
-                        <div class="flex items-center gap-1.5"><span class="text-lg">🏢</span> 企業情報網與消息體檢</div>
-                        <span id="corpEventBadge" class="hidden text-xs bg-yellow-900/80 text-yellow-300 px-1.5 py-0.5 rounded border border-yellow-700 animate-pulse">即將法說</span>
-                    </h4>
-                    <div class="text-sm text-gray-200 flex flex-col gap-2">
-                        <div id="dividendInfo" class="flex flex-col gap-0.5"></div>
-                        <div id="corpDateInfo" class="hidden flex-col gap-1 text-xs border-b border-[#30363d] pb-2"></div>
-                        <div id="yoyInfo" class="hidden"></div>
-                        <div id="newsInfo" class="flex flex-col gap-1 pt-1">
-                            <div class="flex items-center justify-between flex-wrap gap-1">
-                                <div class="text-gray-400 font-bold text-sm">📰 焦點動態快訊：</div>
-                                <div id="newsListMeta" class="text-[9px] text-gray-500 font-mono"></div>
-                            </div>
-                            <div id="newsStaleBanner" class="hidden text-[10px] text-orange-300 bg-orange-900/20 border border-orange-700/40 rounded px-2 py-1 leading-snug"></div>
-                            <div id="newsList" class="text-gray-300 text-sm space-y-2 leading-relaxed max-h-96 overflow-y-auto pr-1 scrollbar-hide">
-                                <span class="animate-pulse text-gray-500">讀取中...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
 
             </div>
 
@@ -6931,100 +6905,56 @@ ${_newsLine}${globalContext}
     },
 
     async fetchCorpEvents(sym) {
-        const divBox = document.getElementById('dividendInfo');
-        const yoyBox = document.getElementById('yoyInfo');
-        const newsBox = document.getElementById('newsList');
+        // 情報網卡片已從 UI 移除(V14.3),此函式仍保留是因為:
+        // ① 更新 X 光機殖利率欄(#xrayDividend)
+        // ② 餵 latestYoyCache / latestNewsCache 給首席 AI prompt + 處置/注意股偵測
+        const tokenStr = this._getFinmindToken() ? `&token=${this._getFinmindToken()}` : '';
 
-        divBox.innerHTML = '<span class="text-gray-500 animate-pulse text-xs">連線獲取最新股利...</span>';
-        yoyBox.innerHTML = '<span class="text-gray-500 animate-pulse text-xs">連線獲取營收 YoY...</span>';
-        newsBox.innerHTML = '<span class="animate-pulse text-xs text-gray-500">調閱重大訊息檔案庫...</span>';
-
-        const tokenStr = this._getFinmindToken() ? `&token=${this._getFinmindToken()}` : ''; // [Token 輪動]
-
+        // ① 股利 → X 光機殖利率欄
         try {
-            let year = new Date().getFullYear();
+            const year = new Date().getFullYear();
             const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${year-3}-01-01${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
             const data = await res.json();
-            let html = "";
             const xrayDiv = document.getElementById('xrayDividend');
-            if (data && (data.msg === 'success' || Array.isArray(data.data))) {
+            if (xrayDiv && data && (data.msg === 'success' || Array.isArray(data.data))) {
                 if (data.data && data.data.length > 0) {
                     const sorted = data.data.sort((a,b) => new Date(b.date) - new Date(a.date));
                     const latest = sorted[0];
                     const totalDiv = (latest.StockEarningsDistribution || 0) + (latest.StockStatutorySurplus || 0) + (latest.CashEarningsDistribution || 0) + (latest.CashStatutorySurplus || 0);
-                    if (xrayDiv) {
-                        if (totalDiv > 0) {
-                            xrayDiv.innerText = `${totalDiv.toFixed(2)} 元`;
-                            xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-yellow-400';
-                        } else {
-                            xrayDiv.innerText = '⚠️ 未發放';
-                            xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-amber-400';
-                        }
-                    }
-                } else {
-                    // API 成功但無股利紀錄 → 公司未發放股利
-                    if (xrayDiv) {
+                    if (totalDiv > 0) {
+                        xrayDiv.innerText = `${totalDiv.toFixed(2)} 元`;
+                        xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-yellow-400';
+                    } else {
                         xrayDiv.innerText = '⚠️ 未發放';
                         xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-amber-400';
                     }
+                } else {
+                    xrayDiv.innerText = '⚠️ 未發放';
+                    xrayDiv.className = xrayDiv.className.replace(/text-\w+-\d+/g, '') + ' text-amber-400';
                 }
             }
-            // catch 不覆蓋 xrayDividend（保留現有值）
-            divBox.innerHTML = '';
+        } catch(_) {}
 
-            // 企業重要日期：除息日 + 重大訊息連結
-            const corpDateBox = document.getElementById('corpDateInfo');
-            if (corpDateBox) {
-                let dateLines = [];
-                // 從 TaiwanStockDividendResult 抓除息日
-                try {
-                    const dr = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividendResult&data_id=${sym}&start_date=${new Date().getFullYear()-1}-01-01${tokenStr}`, {}, { timeout: 6000, maxRetries: 1 });
-                    const dd = await dr.json();
-                    if (dd.data && dd.data.length > 0) {
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const upcoming = dd.data.filter(r => r.CashDividendDate && r.CashDividendDate > todayStr).sort((a,b) => a.CashDividendDate > b.CashDividendDate ? 1 : -1);
-                        const future = upcoming[0] || dd.data.sort((a,b) => a.date > b.date ? -1 : 1)[0];
-                        if (future) {
-                            const exDate = future.CashDividendDate || future.date;
-                            const today = new Date(); const ex = new Date(exDate);
-                            const daysLeft = Math.ceil((ex - today) / 86400000);
-                            const daysStr = daysLeft > 0 ? `（${daysLeft}天後）` : daysLeft === 0 ? '（今天！）' : `（${-daysLeft}天前）`;
-                            dateLines.push(`<div class="flex items-center gap-1 text-yellow-300"><span>💰 除息日</span><span class="font-mono font-bold">${exDate}</span><span class="text-gray-500">${daysStr}</span></div>`);
-                        }
-                    }
-                } catch(e) {}
-                if (dateLines.length) {
-                    corpDateBox.innerHTML = dateLines.join('');
-                    corpDateBox.classList.remove('hidden');
-                    corpDateBox.classList.add('flex');
-                }
-            }
-        } catch(e) { divBox.innerHTML = `<span class="text-gray-500 text-xs">股利連線失敗</span>`; }
-
+        // ② 月營收 YoY → latestYoyCache(餵 AI、信心燈號)
         try {
-            let d = new Date(); d.setMonth(d.getMonth() - 15);
-            let startDate = d.toISOString().split('T')[0];
+            const d = new Date(); d.setMonth(d.getMonth() - 15);
+            const startDate = d.toISOString().split('T')[0];
             const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMonthRevenue&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 });
             const data = await res.json();
-            if(data.data && data.data.length > 0) {
-                let latest = data.data[data.data.length - 1];
+            if (data.data && data.data.length > 0) {
+                const latest = data.data[data.data.length - 1];
                 let yoy = latest.revenue_year_growth ?? latest.revenue_YearExchangeRate ?? latest.revenue_month_growth;
-                
-                if (yoy === null || yoy === undefined || yoy === "N/A" || yoy === "") {
-                    const lastYearRecord = data.data.find(x => x.revenue_month === latest.revenue_month && x.revenue_year === (latest.revenue_year - 1));
-                    if (lastYearRecord && lastYearRecord.revenue > 0) {
-                        yoy = (((latest.revenue - lastYearRecord.revenue) / lastYearRecord.revenue) * 100).toFixed(2);
-                    } else {
-                        yoy = "N/A";
-                    }
+                if (yoy == null || yoy === "N/A" || yoy === "") {
+                    const ly = data.data.find(x => x.revenue_month === latest.revenue_month && x.revenue_year === (latest.revenue_year - 1));
+                    yoy = (ly && ly.revenue > 0)
+                        ? (((latest.revenue - ly.revenue) / ly.revenue) * 100).toFixed(2)
+                        : "N/A";
                 }
-
-                let yoyColor = yoy > 0 ? 'text-red-400' : (yoy === "N/A" ? 'text-gray-400' : 'text-green-400');
-                yoyBox.innerHTML = `📊 最新營收 YoY: <span class="font-bold font-mono ${yoyColor}">${yoy !== "N/A" ? yoy + '%' : yoy}</span> <span class="text-gray-500 text-[10px]">(${latest.revenue_month}月)</span>`;
                 this.latestYoyCache = `${latest.revenue_month}月 YoY: ${yoy}%`;
-            } else { yoyBox.innerHTML = `<span class="text-gray-500 text-xs">暫無營收 YoY 資料</span>`; this.latestYoyCache = ""; }
-        } catch(e) { yoyBox.innerHTML = `<span class="text-gray-500 text-xs">營收連線失敗</span>`; this.latestYoyCache = ""; }
+            } else { this.latestYoyCache = ""; }
+        } catch(_) { this.latestYoyCache = ""; }
 
+        // ③ 新聞 → latestNewsCache(餵 AI、處置/注意股徽章)
         try {
             const pastDate = new Date(); pastDate.setDate(pastDate.getDate() - 30);
             const newsUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockNews&data_id=${sym}&start_date=${pastDate.toISOString().split('T')[0]}${tokenStr}`;
@@ -7035,81 +6965,26 @@ ${_newsLine}${globalContext}
                     const j = await r.json();
                     if (j.msg === 'success' || j.status === 200 || (j.data && Array.isArray(j.data))) data = j;
                 }
-            } catch(e1) {}
-            let nHtml = "", fullNewsText = "", seenTitles = new Set(), hasConf = false;
-
+            } catch(_) {}
+            let fullNewsText = "", seenTitles = new Set();
             if (data && data.data && data.data.length > 0) {
-                const recent = data.data.slice(-15).reverse();
-                let confDate = '';
-                let latestNewsTs = 0;
-                recent.forEach(d => {
-                            // 【修復 1】防呆：確保 title 存在且為字串，避免 .includes 崩潰
-                            const rawTitle = d.title || '';
-                            if(rawTitle && !seenTitles.has(rawTitle)) {
-                                seenTitles.add(rawTitle);
-                                let isImportant = rawTitle.includes('營收') || rawTitle.includes('處置') || rawTitle.includes('注意') || rawTitle.includes('法說');
-                                if(rawTitle.includes('法說') && !hasConf) { hasConf = true; confDate = d.date; }
-
-                                // 【修復 2】日期防呆：遇到空值或無法解析的日期，降級顯示「近期」
-                                let formattedDate = "近期";
-                                if (d.date) {
-                                    let dObj = new Date(d.date);
-                                    if (!isNaN(dObj.getTime())) {
-                                        formattedDate = `${String(dObj.getMonth() + 1).padStart(2, '0')}/${String(dObj.getDate()).padStart(2, '0')} ${String(dObj.getHours()).padStart(2, '0')}:${String(dObj.getMinutes()).padStart(2, '0')}`;
-                                        if (dObj.getTime() > latestNewsTs) latestNewsTs = dObj.getTime();
-                                    }
-                                }
-
-                                const url = (d && (d.link || d.url)) ? String(d.link || d.url).trim() : '';
-                                const safeTitle = rawTitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                const titleHtml = url
-                                    ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="leading-snug hover:text-blue-300 underline decoration-gray-600 transition-colors">${safeTitle}</a>`
-                                    : `<span class="leading-snug">${safeTitle}</span>`;
-
-                                nHtml += `<div class="${isImportant?'text-blue-300 font-bold':'text-gray-400'} border-b border-gray-800 pb-1.5">
-                                    <span class="text-[10px] text-gray-500 mr-1">[${formattedDate}]</span>${titleHtml}
-                                </div>`;
-                                fullNewsText += `[${formattedDate}] ${rawTitle}\n`;
+                data.data.slice(-15).reverse().forEach(d => {
+                    const rawTitle = d.title || '';
+                    if (rawTitle && !seenTitles.has(rawTitle)) {
+                        seenTitles.add(rawTitle);
+                        let formattedDate = "近期";
+                        if (d.date) {
+                            const dObj = new Date(d.date);
+                            if (!isNaN(dObj.getTime())) {
+                                formattedDate = `${String(dObj.getMonth() + 1).padStart(2, '0')}/${String(dObj.getDate()).padStart(2, '0')} ${String(dObj.getHours()).padStart(2, '0')}:${String(dObj.getMinutes()).padStart(2, '0')}`;
                             }
-                        });
-                        this.latestNewsCache = fullNewsText;
-
-                        // 🕐 新鮮度標籤 + 過舊警告(FinMind TaiwanStockNews 免費版常延遲 1-3 天,使用者誤以為壞掉)
-                        const metaEl = document.getElementById('newsListMeta');
-                        const banner = document.getElementById('newsStaleBanner');
-                        if (latestNewsTs > 0) {
-                            const ageHrs = Math.round((Date.now() - latestNewsTs) / 3600000);
-                            const ageStr = ageHrs < 24 ? `${ageHrs} 小時前` : `${Math.round(ageHrs / 24)} 天前`;
-                            if (metaEl) metaEl.textContent = `最新一則: ${ageStr}・來源 FinMind`;
-                            if (banner) {
-                                if (ageHrs >= 48) {
-                                    banner.classList.remove('hidden');
-                                    banner.innerHTML = `⚠️ 個股新聞延遲(最新一則 ${ageStr}),這是 FinMind 免費版常態 — 即時消息請至「🌐 市場總覽」頁籤看 Reuters/CNBC 全球情報。`;
-                                } else {
-                                    banner.classList.add('hidden');
-                                }
-                            }
-                        } else if (metaEl) {
-                            metaEl.textContent = '來源 FinMind';
                         }
-            } else if (!data) { nHtml = `<div class="text-gray-500 text-xs">新聞服務暫時無法連線，請稍後再試。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></div>`; this.latestNewsCache = ""; }
-            else { nHtml = `<div class="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3 text-xs leading-relaxed">
-                <div class="text-blue-300 font-bold mb-1">📰 此股近期 FinMind 無新聞</div>
-                <div class="text-gray-400 text-[11px] mb-2">FinMind 個股新聞延遲 1-3 天為常態,熱門全市場即時情報可至「🌐 市場總覽」看 Reuters/CNBC RSS。</div>
-                <button onclick="app.switchAppTab('market'); app.vibrate(20);" class="text-[11px] bg-blue-800/40 hover:bg-blue-700/50 text-blue-200 border border-blue-600/50 rounded px-2 py-1 font-bold transition-colors">▸ 看全球即時情報</button>
-            </div>`; this.latestNewsCache = ""; }
-            newsBox.innerHTML = nHtml;
-
-            const badge = document.getElementById('corpEventBadge');
-            if (hasConf) {
-                const cd = new Date(confDate);
-                const dateStr = confDate ? ` ${cd.getMonth()+1}/${cd.getDate()}` : '';
-                badge.textContent = `即將法說${dateStr}`;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-        } catch(e) { newsBox.innerHTML = `<span class="text-gray-500 text-xs">新聞服務暫時異常，請切換其他頁籤後再試。<button onclick="app.fetchCorpEvents(app.currentSymbolId)" class="ml-2 text-blue-400 underline hover:text-blue-300">重試</button></span>`; this.latestNewsCache = "";}
+                        fullNewsText += `[${formattedDate}] ${rawTitle}\n`;
+                    }
+                });
+                this.latestNewsCache = fullNewsText;
+            } else { this.latestNewsCache = ""; }
+        } catch(_) { this.latestNewsCache = ""; }
     },
 
     async manualDataRefresh() {
@@ -9908,39 +9783,128 @@ ${_newsLine}${globalContext}
         this.renderChart();
     },
 
+    // 🔁 與 worker 內 patternStats 同算法的 main-thread 版,接受任意 targetIdx 對歷史日重算
+    //     ⚠️ 改 worker patternStats 時這個函式必須同步改,否則上方 60% 跟下方歷史會對不起來
+    _computePatWinRateAt(data, ind, targetIdx, marketCtx) {
+        if (!data || !ind || !ind.ma20 || targetIdx < 30 || targetIdx >= data.length) return null;
+        const closes = data.map(d => d.close), vols = data.map(d => d.volume);
+        const { ma20, k, upperBB, lowerBB, osc } = ind;
+        if (!ma20 || !k || !upperBB || !lowerBB || !osc) return null;
+
+        const lastIdx = targetIdx;
+        const last5 = data.slice(targetIdx - 4, targetIdx + 1);
+        const last5Vol = vols.slice(targetIdx - 4, targetIdx + 1);
+        const avgV = last5Vol.reduce((a, b) => a + b, 0) / 5;
+        const last5VPct = last5Vol.map(v => avgV > 0 ? v / avgV : 1);
+        const last5Pct = [];
+        for (let j = 1; j < 5; j++) last5Pct.push((last5[j].close - last5[j - 1].close) / last5[j - 1].close);
+
+        if (ma20[lastIdx] == null) return null;
+        const currentIsAboveMA20 = closes[lastIdx] > ma20[lastIdx];
+        const curK = k[lastIdx] != null ? k[lastIdx] : 50;
+        const curBBu = upperBB[lastIdx], curBBl = lowerBB[lastIdx];
+        const curBBB = (curBBu != null && curBBl != null && curBBu > curBBl)
+            ? (closes[lastIdx] - curBBl) / (curBBu - curBBl) : 0.5;
+        const curOscPos = osc[lastIdx] != null ? (osc[lastIdx] > 0 ? 1 : 0) : 0.5;
+
+        const fiToday = (data[lastIdx].foreign_net ?? data[lastIdx].foreign_inv ?? 0)
+                      + (data[lastIdx].trust_net   ?? data[lastIdx].invest_trust ?? 0);
+        const fiSideToday = fiToday > 0 ? 1 : (fiToday < 0 ? -1 : 0);
+        const useFiFilter = fiSideToday !== 0;
+
+        const LOOKBACK = 240;
+        const scanStart = Math.max(20, lastIdx + 1 - LOOKBACK);
+        const recentVolSorted = vols.slice(scanStart, lastIdx + 1).filter(v => v > 0).sort((a, b) => a - b);
+        const volMedian = recentVolSorted.length ? recentVolSorted[Math.floor(recentVolSorted.length / 2)] : 0;
+        const volFloor = volMedian * 0.3;
+
+        const ctxToday = marketCtx?.dateMap?.[data[lastIdx].date] ?? null;
+        const useMktFilter = marketCtx && ctxToday !== null;
+
+        const matches = [];
+        // 🚫 不偷看未來:樣本 i+5 必須 < targetIdx
+        for (let i = scanStart; i < targetIdx - 5; i++) {
+            if (ma20[i + 4] == null) continue;
+            if (currentIsAboveMA20 !== (closes[i + 4] > ma20[i + 4])) continue;
+            if (vols[i + 4] <= 0 || vols[i + 4] < volFloor) continue;
+            if (useFiFilter) {
+                const hf = (data[i + 4].foreign_net ?? data[i + 4].foreign_inv ?? 0)
+                         + (data[i + 4].trust_net   ?? data[i + 4].invest_trust ?? 0);
+                const hfSide = hf > 0 ? 1 : (hf < 0 ? -1 : 0);
+                if (hfSide !== 0 && hfSide !== fiSideToday) continue;
+            }
+            if (useMktFilter) {
+                const hctx = marketCtx.dateMap[data[i + 4].date];
+                if (hctx !== undefined && hctx !== null && hctx !== ctxToday) continue;
+            }
+
+            let dist = 0, vDist = 0;
+            const histAvgV = data.slice(i, i + 5).reduce((a, b) => a + b.volume, 0) / 5;
+            for (let j = 1; j < 5; j++) {
+                const pct = (data[i + j].close - data[i + j - 1].close) / data[i + j - 1].close;
+                dist += Math.pow(pct - last5Pct[j - 1], 2);
+                const vPct = histAvgV > 0 ? data[i + j].volume / histAvgV : 1;
+                vDist += Math.pow(vPct - last5VPct[j - 1], 2);
+            }
+            const histK = k[i + 4] != null ? k[i + 4] : 50;
+            const histBBu = upperBB[i + 4], histBBl = lowerBB[i + 4];
+            const histBBB = (histBBu != null && histBBl != null && histBBu > histBBl)
+                ? (closes[i + 4] - histBBl) / (histBBu - histBBl) : 0.5;
+            const histOscPos = osc[i + 4] != null ? (osc[i + 4] > 0 ? 1 : 0) : 0.5;
+            const kdContrib = Math.pow((curK - histK) / 100, 2) * 0.02;
+            const bbContrib = Math.pow(curBBB - histBBB, 2) * 0.02;
+            const macdContrib = curOscPos !== histOscPos ? 0.0002 : 0;
+            dist = dist + (vDist * 0.3) + kdContrib + bbContrib + macdContrib;
+            matches.push({ dist, nextRet: ((data[i + 5].close - data[i + 4].close) / data[i + 4].close) * 100 });
+        }
+        if (!matches.length) return null;
+        matches.sort((a, b) => a.dist - b.dist);
+        const simThreshold = Math.max(matches[0].dist * 2.5, 0.00015);
+        const top = matches.filter(m => m.dist <= simThreshold).slice(0, 25);
+        if (top.length < 3) return null;
+        const wins = top.filter(m => m.nextRet > 0).length;
+        return { count: top.length, winRate: ((wins / top.length) * 100).toFixed(1) };
+    },
+
     renderBacktest() {
         const tbody = document.getElementById('backtestTableBody');
         const data = this.activeData, last = data.length - 1;
-        if (last < 5) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
+        if (last < 10) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
 
-        // 改用 localStorage 中該股的 patWinRate 歷史快照（與上方「AI 雲端大數據波段回測預判」同源）
+        // 機率來源:① localStorage 快照(每日 K 線分析自動寫入)優先
+        //          ② 沒快照就用 _computePatWinRateAt 即時補算(與 worker 同算法)
         const sym = this.currentSymbolId;
-        const hist = (JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}'))[sym] || [];
+        const histSnap = (JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}'))[sym] || [];
         const byDate = {};
-        // K 線 data[i].date 格式 'YYYY/MM/DD',snapshot.date 'YYYY-MM-DD' → 轉成同樣 key
-        for (const r of hist) byDate[String(r.date || '').replace(/-/g, '/')] = r;
+        for (const r of histSnap) byDate[String(r.date || '').replace(/-/g, '/')] = r;
+        const marketCtx = this._buildMarketCtx ? this._buildMarketCtx() : null;
 
         let html = '';
-        for (let i = last; i >= Math.max(0, last - 4); i--) {
+        for (let i = last; i >= Math.max(0, last - 9); i--) {
             const pC = data[i].close;
             const prevC = i > 0 ? data[i-1].close : pC;
             const diff = pC - prevC;
             const pct = prevC > 0 ? (diff / prevC) * 100 : 0;
             const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500');
             const sign = diff > 0 ? '+' : '';
-            // 日期 'YYYY/MM/DD' → 'MM/DD'
             const dShort = String(data[i].date || '').replace(/^\d{4}\//, '');
 
-            // 我的 patWinRate(從 localStorage 取該日快照)
+            // 我的 patWinRate:快照優先,沒快照即時補算
             const snap = byDate[data[i].date];
-            let wrHtml;
+            let wr = null, wc = null;
             if (snap && Number.isFinite(snap.patWinRate)) {
-                const wr = Number(snap.patWinRate);
+                wr = Number(snap.patWinRate); wc = snap.patCount;
+            } else {
+                const live = this._computePatWinRateAt(data, this.indicators, i, marketCtx);
+                if (live) { wr = Number(live.winRate); wc = live.count; }
+            }
+            let wrHtml;
+            if (wr != null && Number.isFinite(wr)) {
                 const wrCol = wr >= 65 ? 'text-red-400' : wr >= 50 ? 'text-yellow-400' : 'text-green-400';
                 wrHtml = `<span class="${wrCol} text-base font-black">${wr.toFixed(1)}%</span>`;
-                if (snap.patCount) wrHtml += `<div class="text-[9px] text-gray-500">${snap.patCount} 樣本</div>`;
+                if (wc) wrHtml += `<div class="text-[9px] text-gray-500">${wc} 樣本</div>`;
             } else {
-                wrHtml = '<span class="text-gray-600 text-[10px]">📝 未記錄</span>';
+                wrHtml = '<span class="text-gray-600 text-[10px]">📝 樣本不足</span>';
             }
 
             // Alpha 分 — 當日綜合戰力分(逐日重算,讓使用者能對照「分數高時是否真的漲」)
@@ -9967,8 +9931,8 @@ ${_newsLine}${globalContext}
                 const nColor = nDiff > 0 ? 'text-[#f87171]' : nDiff < 0 ? 'text-[#4ade80]' : 'text-gray-500';
                 const nSign = nDiff > 0 ? '+' : '';
                 nextHtml = `<span class="${nColor} text-xs font-mono font-bold">${nSign}${nPct.toFixed(2)}%</span>`;
-                if (snap && Number.isFinite(snap.patWinRate)) {
-                    const predUp = snap.patWinRate >= 50;
+                if (wr != null && Number.isFinite(wr)) {
+                    const predUp = wr >= 50;
                     const actualUp = nDiff > 0;
                     const hit = predUp === actualUp;
                     hitHtml = hit ? '<span class="text-red-400 font-bold">✅</span>' : '<span class="text-green-400 font-bold">❌</span>';
