@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.10</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.10</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.11</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -892,6 +892,8 @@
                         <div id="chuIntradayCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
                         <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
                         <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
+                        <!-- 📐 V14.11 朱老師分批進場計畫器(3-3-4 三批:試單/5MA加碼/回後買上漲)-->
+                        <div id="chuPositionPlanCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
                         <!-- 📌 朱老師離場 SOP(停損 A/B + 停利短/中長)-->
                         <div id="chuExitSopCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300"></div>
                         </div>
@@ -1864,6 +1866,8 @@ const AI_PROMPT_TEMPLATES = {
 - 獲利中：給出具體減碼/停利點位 (T1)。
 - 虧損中：給出防守底線（如：「守住 XX 不停損」）。
 - 深度套牢：依技術面決定停損或等待，絕對不建議無腦攤平。
+- 📐 若提供「朱老師分批進場計畫」(三批 3-3-4 比例) → 必須直接引用上方系統精算的價格、張數，禁自算；空手 → 引用「試單」價；已執行試單 → 看現價是否在「加碼 1」觸發區（連 2-3 日收 5MA 上）。
+- 🚫 任何狀況禁建議「下跌攤平」或「倒金字塔」(底部 1 張、噴上去才一口氣大量追)，違反視為無效輸出。
 
 最後獨立一行，僅輸出以下其中一種燈號（不加其他文字）：
 🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退`,
@@ -2039,6 +2043,8 @@ const app = {
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
     inventory: JSON.parse(localStorage.getItem('proTerminalInv')) || [],
+    // V14.11 朱老師分批進場計畫器:單檔總資金預算(全域共用,localStorage 記住)
+    budgetPerStock: Number(localStorage.getItem('proTerminalBudgetPerStock')) || null,
     apiDataCache: {}, allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {},
     navStack: ['diag'], currentSymbolId: '2330', currentTF: 'D', currentSubChart: 'VOL',
     chartInstance: null, edgeSwipeStartX: 999,
@@ -8220,6 +8226,139 @@ ${_newsLine}${globalContext}
         };
     },
 
+    // ── A3.5 V14.11 朱老師分批進場計畫器(3-3-4 三批,JS 精算,禁 AI 自算)──────
+    // 心法:試單30% (量增突破5MA紅K隔日進) → 5MA順勢加碼30% (連2-3日收5MA上) →
+    //        回後買上漲40% (回檔3-5天不破前低,二波量增突破5MA再補滿)
+    _chuPositionPlan(data, ind, last, budget) {
+        if (!data || !ind || last == null || last < 1) return null;
+        const trigger = this._chuFindTriggerBarLow(data, last);
+        const ma5  = ind.ma5  ? ind.ma5[last]  : null;
+        const ma20 = ind.ma20 ? ind.ma20[last] : null;
+        const pC = data[last].close;
+        // 進場價:試單 = 發動 K 隔日模擬小跳空(close×1.005);加碼1 = 現價(需先連 3 日收 5MA 上才執行);加碼2 = 不算具體價
+        const price1 = trigger ? Number((data[trigger.idx].close * 1.005).toFixed(2)) : null;
+        const price2 = Number(pC.toFixed(2));
+        const calcQty = (price, ratio) => {
+            if (!budget || budget <= 0 || !price || price <= 0) return null;
+            return Math.floor(budget * ratio / (price * 1000));
+        };
+        const calcAmount = (price, qty) => (price && qty) ? Math.round(price * qty * 1000) : null;
+        const qty1 = calcQty(price1, 0.3);
+        const qty2 = calcQty(price2, 0.3);
+        const qty3 = calcQty(price2, 0.4);
+        // 最低建議預算:讓試單能買到至少 1 張(試單 30% / 1 張 1000 股 → 預算 ≥ price1 × 3334)
+        const minBudget = price1 ? Math.ceil(price1 * 3334 / 1000) * 1000 : null;
+        return {
+            trigger,
+            ma5:  ma5  ? Number(ma5.toFixed(2))  : null,
+            ma20: ma20 ? Number(ma20.toFixed(2)) : null,
+            pC,
+            batch1: { ratio: 0.3, price: price1, qty: qty1, amount: calcAmount(price1, qty1), stopLow: trigger ? trigger.low : null },
+            batch2: { ratio: 0.3, price: price2, qty: qty2, amount: calcAmount(price2, qty2), stopLow: ma5 ? Number(ma5.toFixed(2)) : null },
+            batch3: { ratio: 0.4, condition: '回檔 3-5 天不破前低 + 量增紅 K 突破 5MA', ma20Hint: ma20 ? Number(ma20.toFixed(2)) : null, qty: qty3, amount: calcAmount(price2, qty3) },
+            hasBudget: !!(budget && budget > 0),
+            minBudget,
+        };
+    },
+
+    _renderChuPositionPlan(data, ind, last) {
+        const box = document.getElementById('chuPositionPlanCard');
+        if (!box) return;
+        const plan = this._chuPositionPlan(data, ind, last, this.budgetPerStock);
+        if (!plan) { box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+
+        const fmtPrice = v => v == null ? '—' : v.toFixed(2);
+        const fmtAmt = v => v == null ? '—' : v.toLocaleString();
+        const fmtQty = (b) => {
+            if (!plan.hasBudget) return `<span class="text-gray-500">${(b.ratio * 100).toFixed(0)}% 比例</span>`;
+            if (b.qty == null) return `<span class="text-gray-500">${(b.ratio * 100).toFixed(0)}% 比例</span>`;
+            if (b.qty < 1) return `<span class="text-amber-400 text-[10px]">資金不足 → 建議 ≥ ${plan.minBudget ? plan.minBudget.toLocaleString() : '—'} 元</span>`;
+            return `<span class="text-white font-bold">${b.qty} 張</span> <span class="text-[10px] text-gray-500">(約 ${fmtAmt(b.amount)} 元)</span>`;
+        };
+        const triggerInfo = plan.trigger
+            ? `<span class="text-[10px] text-gray-500">發動 K: ${plan.trigger.date} +${plan.trigger.chg.toFixed(1)}%</span>`
+            : `<span class="text-[10px] text-amber-400">⚠️ 近 10 日無發動 K</span>`;
+
+        const batch1Html = `
+            <div class="py-1.5">
+                <div class="flex justify-between items-baseline mb-0.5">
+                    <span class="text-yellow-400 font-bold text-[12px]">🥇 試單 30%</span>
+                    ${fmtQty(plan.batch1)}
+                </div>
+                <div class="text-[10px] text-gray-400">進場 <span class="text-white font-mono">${fmtPrice(plan.batch1.price)}</span> · 🛡️ 守 <span class="text-red-400 font-mono">${fmtPrice(plan.batch1.stopLow)}</span> (發動 K 低)</div>
+            </div>`;
+        const batch2Html = `
+            <div class="py-1.5">
+                <div class="flex justify-between items-baseline mb-0.5">
+                    <span class="text-blue-400 font-bold text-[12px]">🥈 5MA 順勢加碼 30%</span>
+                    ${fmtQty(plan.batch2)}
+                </div>
+                <div class="text-[10px] text-gray-400">需連 2-3 日收 5MA 上 · 進場參考 <span class="text-white font-mono">${fmtPrice(plan.batch2.price)}</span> · 🛡️ 守上移至 <span class="text-red-400 font-mono">${fmtPrice(plan.batch2.stopLow)}</span> (5MA)</div>
+            </div>`;
+        const batch3Html = `
+            <div class="py-1.5">
+                <div class="flex justify-between items-baseline mb-0.5">
+                    <span class="text-purple-400 font-bold text-[12px]">🥉 回後買上漲 40%</span>
+                    ${fmtQty(plan.batch3)}
+                </div>
+                <div class="text-[10px] text-gray-400">${plan.batch3.condition} · 20MA 觀察區 <span class="text-cyan-300 font-mono">${fmtPrice(plan.batch3.ma20Hint)}</span> · 🛡️ 守二波紅 K 低 或 20MA</div>
+            </div>`;
+
+        const budgetVal = this.budgetPerStock || '';
+        const budgetInputHtml = `
+            <div class="mt-1.5 mb-1 flex items-center gap-2">
+                <span class="text-[11px] text-gray-400 whitespace-nowrap">💰 單檔總資金:</span>
+                <input type="number" id="chuBudgetInput" value="${budgetVal}" placeholder="例:200000" min="0" step="10000" inputmode="numeric"
+                    class="flex-1 min-w-0 bg-[#0d1117] text-white text-right p-1 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-[12px]"
+                    oninput="app._chuOnBudgetInput(this.value)">
+                <span class="text-[10px] text-gray-500">元</span>
+            </div>
+            <div class="text-[10px] text-gray-600 leading-tight mb-1.5">${plan.hasBudget ? '✅ 已設,localStorage 自動記住' : '💡 空白只顯比例,填入後算具體張數'}</div>`;
+
+        box.innerHTML = `
+            <div class="text-orange-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="alert('📐 朱老師分批進場心法\\n\\n批次一(30%) 試單:量增突破 5MA 第一根紅 K → 隔日開盤進。守發動 K 最低。\\n\\n批次二(30%) 5MA 順勢加碼:連 2-3 日黏 5MA 之上 → 加碼。停損上移到 5MA。\\n\\n批次三(40%) 回後買上漲:回檔 3-5 天不破前低 → 二波量增突破 5MA → 補滿最後 4 成。停損改二波紅 K 低 或 20MA。\\n\\n🚫 鐵律:絕對不准下跌攤平、不准倒金字塔(3-3-4 不能變成 1-1-10)。')">
+                <span>📐 朱老師分批進場計畫 <span class="text-[10px] text-gray-500 font-normal">(點看心法)</span></span>
+                ${triggerInfo}
+            </div>
+            ${budgetInputHtml}
+            <div class="divide-y divide-[#21262d] border-t border-[#21262d]">
+                ${batch1Html}${batch2Html}${batch3Html}
+            </div>
+            <div class="mt-2 bg-red-900/40 border-l-2 border-red-500 text-red-300 text-[10px] leading-snug px-2 py-1.5 rounded-r">
+                🚫 鐵律:1. 下跌不准攤平(攤平 = 慢性自殺)<br>
+                &emsp;&emsp;&emsp;2. 不准倒金字塔(3-3-4 不能變 1-1-10,主力倒貨變大賠)
+            </div>`;
+    },
+
+    _chuOnBudgetInput(val) {
+        const n = Number(val);
+        this.budgetPerStock = (n > 0) ? n : null;
+        if (this.budgetPerStock) localStorage.setItem('proTerminalBudgetPerStock', String(this.budgetPerStock));
+        else                     localStorage.removeItem('proTerminalBudgetPerStock');
+        if (!this.baseRawData || !this.baseRawData.length) return;
+        this._renderChuPositionPlan(this.baseRawData, this.indicators, this.baseRawData.length - 1);
+        const inp = document.getElementById('chuBudgetInput');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    },
+
+    _chuPositionPlanForAI(data, ind, last, budget) {
+        const plan = this._chuPositionPlan(data, ind, last, budget);
+        if (!plan) return '計畫器無資料';
+        if (!plan.trigger) return '近 10 日無發動 K → 等量增突破 5MA 第一根紅 K 才動,禁先建倉';
+        const fmt = (b, label, stop) => {
+            if (!plan.hasBudget || b.qty == null) return `${label}(${(b.ratio*100).toFixed(0)}%)進場 ${b.price ?? '待二波K'} 守 ${stop}`;
+            if (b.qty < 1) return `${label}(${(b.ratio*100).toFixed(0)}%)資金不足(建議≥${plan.minBudget?.toLocaleString()}元)守 ${stop}`;
+            return `${label} ${b.price ?? '待二波K'}×${b.qty}張(${b.amount?.toLocaleString()}元)守 ${stop}`;
+        };
+        return [
+            `試單30% → ${fmt(plan.batch1, '試單', `${plan.batch1.stopLow}(發動K低)`)}`,
+            `加碼1 30% → ${fmt(plan.batch2, '5MA順勢', `${plan.batch2.stopLow}(5MA)`)},需連2-3日收5MA上才執行`,
+            `加碼2 40% → ${fmt({ ...plan.batch3, price: null }, '回後買上漲', `二波紅K低或${plan.batch3.ma20Hint}(20MA)`)},待回檔3-5天不破前低+量增突破5MA才執行`,
+            `🚫 下跌禁攤平、禁倒金字塔`
+        ].join('\n');
+    },
+
     _renderChuExitSop(data, ind, last) {
         const box = document.getElementById('chuExitSopCard');
         if (!box) return;
@@ -8466,6 +8605,7 @@ ${_newsLine}${globalContext}
     //             並渲染盤中即時雷達卡;盤後反之。
     _chuRenderAll(data, ind, last) {
         this._renderChuFourGates(data, ind, last);
+        this._renderChuPositionPlan(data, ind, last);   // V14.11 分批進場計畫器
         this._renderChuExitSop(data, ind, last);
         this._renderChuTrendAlert(ind);
         this._updateChuLockIcon();
@@ -12927,6 +13067,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 invLine = `持有成本 ${cost} 元，帳面損益 ${pnlStr} (${posState})`;
             }
 
+            // V14.11 朱老師分批進場計畫(JS 精算,禁 AI 自算;空手引用試單價、有持股引用對應加碼價)
+            const _chuPosPlan = this._chuPositionPlanForAI(this.baseRawData, this.indicators, this.baseRawData.length - 1, this.budgetPerStock);
+
             // 🚨 處置神器訊號(已由 analyze() 預算好,沒命中為「✅ 正常交易,無風控訊號」)
             const attentionLine = this._attentionLine || '✅ 正常交易,無風控訊號';
             const isAttentionRisk = attentionLine.startsWith('🚨') || attentionLine.startsWith('⚠️');
@@ -13144,6 +13287,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 - 🌐 大盤全景(JS 已精算)：${usMask(_marketPanorama)}
 - 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
 - 📐 技術位階（系統精算，禁重算）：趨勢 ${chu?.trendJudge || '中性'}｜均線 ${chu?.maArrangement || '糾結'}｜折數 ${chu?.foldPct ?? '—'}折 ${chu?.foldZone || ''}
+- 📐 朱老師分批進場計畫（JS 精算，禁自算，依【庫存狀態】引用對應批次）：
+${_chuPosPlan}
 - 🚨 型態警報：${patternAlertsText}
 - 🌏 外資期現複合判定：${usMask(fiComplex)}
 - ⚖️ 融資槓桿水位：${marginLevLine}
