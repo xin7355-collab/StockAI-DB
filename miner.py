@@ -1177,10 +1177,18 @@ def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> l
     if total <= 1:
         base = list(sorted_syms)
     else:
-        size  = math.ceil(len(sorted_syms) / total)
-        start = batch_idx * size
-        end   = min(start + size, len(sorted_syms))
-        base  = sorted_syms[start:end]
+        # V14.9 斧四:從「連續切片」改「round-robin 交錯分配」,讓 20 batch 負載均勻
+        # 連續切片問題:
+        #   batch 0:0050, 0051, ... 早期 ETF/老股(歷史長、量大、API 多 → 慢)
+        #   batch 19:9xxx 系列(新上市股、邊緣股,有的快有的慢)
+        #   → 觀察 V14.8 run:同 run 內 batch 跑 25-73 分,差 2.9 倍,整體被最慢的拖垮
+        # Round-robin 分配:
+        #   batch 0:sorted_syms[0], sorted_syms[20], sorted_syms[40], ...
+        #   batch 1:sorted_syms[1], sorted_syms[21], sorted_syms[41], ...
+        #   每個 batch 都拿到「字典序均勻分散」的股票 → ETF/中型/大型/小型混合
+        #   → 各 batch 採礦時間趨近,整體被最慢拖垮的程度大幅降低
+        # 行為不變:union = 全市場(無重疊、無遺漏);batch 0 仍是 sorted_syms[0]
+        base = [sorted_syms[i] for i in range(batch_idx, len(sorted_syms), total)]
 
     # batch 0 額外納入「今日活躍但尚無 JSON」的新上市股（只在 batch 0，避免重疊）
     if batch_idx == 0 and inst_cache:
