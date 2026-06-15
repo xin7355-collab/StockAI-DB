@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V14.15</title>
+    <title>首席 AI 司令部 | 戰略終端 V14.16</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.15</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V14.16</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3502,36 +3502,59 @@ ${list}
             || this._getOpenRouterKeys().length > 0;
     },
 
-    // [AI 狀態追蹤] 每次 _callAI / _callDeepAI 成功時呼叫,即時更新右下角浮動 chip
-    // provider:'openrouter' | 'gemini' | 'groq';keyIdx:1 或 2;失敗時 provider=null 顯示「三鏈全忙」
-    _setAIStatus(provider, keyIdx) {
-        this._currentAIProvider = provider;
-        this._currentAIKeyIdx = keyIdx;
-        if (provider && keyIdx) this._recordAIKeyStat(provider, keyIdx, true);
+    // [AI 狀態追蹤] V14.16 — 擴充為「每次 attempt / 429 / switch / success / failed」5 狀態都更新
+    // provider:'openrouter' | 'gemini' | 'groq';keyIdx:1 或 2
+    // state:'trying' | 'rate-limited' | 'switching' | 'success' | 'failed' (預設 'success' 兼容舊呼叫)
+    _setAIStatus(provider, keyIdx, state = 'success') {
+        if (state === 'success') {
+            this._currentAIProvider = provider;
+            this._currentAIKeyIdx = keyIdx;
+            if (provider && keyIdx) this._recordAIKeyStat(provider, keyIdx, true);
+        }
         const chip = document.getElementById('aiStatusChip');
         const txt = document.getElementById('aiStatusChipText');
         if (!chip || !txt) return;
         chip.classList.remove('hidden');
-        if (!provider) {
-            // 🔴 三鏈全忙時,顯示最近 60 秒內撞到的 key 列表(回答使用者「哪把 key 出問題」)
+        clearTimeout(this._aiStatusDimTimer);
+
+        if (state === 'failed' || !provider) {
             const fails = this._getRecentAIFailures(60);
             const failTxt = fails.length ? fails.map(f => `${f.provider}#${f.keyIdx}`).join('·') : '';
             txt.textContent = failTxt ? `🔴 ${failTxt} 撞 429` : '🔴 三鏈全忙(429)';
             chip.className = 'fixed bottom-20 right-2 z-50 bg-red-900/95 border border-red-600 rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm text-red-200 cursor-pointer';
+            this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, 5000);  // 失敗 5 秒可見
+            chip.style.opacity = '1';
             return;
         }
         const map = {
-            openrouter: { emoji: '🚀', name: 'OpenRouter R1', cls: 'border-cyan-600 bg-cyan-950/95 text-cyan-200' },
-            gemini:     { emoji: '🤖', name: 'Gemini 2.5',    cls: 'border-amber-600 bg-amber-950/95 text-amber-200' },
-            groq:       { emoji: '💜', name: 'Groq llama',    cls: 'border-purple-600 bg-purple-950/95 text-purple-200' },
+            openrouter: { emoji: '🚀', name: 'OpenRouter', cls_success: 'border-cyan-600 bg-cyan-950/95 text-cyan-200', cls_trying: 'border-cyan-700 bg-cyan-950/80 text-cyan-300 animate-pulse' },
+            gemini:     { emoji: '🤖', name: 'Gemini',    cls_success: 'border-amber-600 bg-amber-950/95 text-amber-200', cls_trying: 'border-amber-700 bg-amber-950/80 text-amber-300 animate-pulse' },
+            groq:       { emoji: '💜', name: 'Groq',      cls_success: 'border-purple-600 bg-purple-950/95 text-purple-200', cls_trying: 'border-purple-700 bg-purple-950/80 text-purple-300 animate-pulse' },
         };
-        const m = map[provider] || { emoji: '⚡', name: provider, cls: 'border-gray-600 bg-gray-900/95 text-gray-200' };
-        txt.textContent = `${m.emoji} ${m.name} #${keyIdx}`;
-        chip.className = `fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm ${m.cls}`;
-        // 1 秒後 chip 完全消失(原本 2 秒 dim,改成短暫提示更不擾人)
-        clearTimeout(this._aiStatusDimTimer);
-        this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, 1000);
+        const m = map[provider] || { emoji: '⚡', name: provider, cls_success: 'border-gray-600 bg-gray-900/95 text-gray-200', cls_trying: 'border-gray-700 bg-gray-950/80 text-gray-400 animate-pulse' };
+
+        let label, cls, hideMs;
+        if (state === 'trying')           { label = `⏳ ${m.emoji} ${m.name} #${keyIdx} 嘗試中...`;        cls = m.cls_trying;  hideMs = 0; }
+        else if (state === 'rate-limited'){ label = `⚠️ ${m.emoji} ${m.name} #${keyIdx} 撞 429`;            cls = 'border-orange-600 bg-orange-950/95 text-orange-200'; hideMs = 3000; }
+        else if (state === 'switching')   { label = `🔄 切換至 ${m.emoji} ${m.name} #${keyIdx}`;           cls = 'border-blue-600 bg-blue-950/95 text-blue-200 animate-pulse'; hideMs = 0; }
+        else                              { label = `✅ ${m.emoji} ${m.name} #${keyIdx}`;                 cls = m.cls_success; hideMs = 1500; }
+        txt.textContent = label;
+        chip.className = `fixed bottom-20 right-2 z-50 border rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm ${cls}`;
         chip.style.opacity = '1';
+        if (hideMs > 0) this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, hideMs);
+    },
+
+    // V14.16 — provider 級 429 cooldown(避免剛撞 429 又馬上試同一 provider)
+    _isProviderCoolingDown(provider) {
+        try {
+            const until = parseInt(localStorage.getItem(`aiCooldown_${provider}`) || '0');
+            return until > Date.now();
+        } catch(_) { return false; }
+    },
+    _markProviderCoolingDown(provider, seconds = 30) {
+        try {
+            localStorage.setItem(`aiCooldown_${provider}`, String(Date.now() + seconds * 1000));
+        } catch(_) {}
     },
 
     // 📊 AI key 使用統計:localStorage 紀錄每日每 key 成功/失敗次數,僅保留今天 + 昨天
@@ -4495,7 +4518,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // 模式 B：無後端但有 groqKey → 前端直打 Groq（純手機模式）
     // 兩者皆無 → 回傳 null，呼叫方顯示引導訊息
     // ═══════════════════════════════════════════════════════════════════
-    async _callAI({ prompt, max_tokens = 900, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
+    // V14.16:max_tokens 預設 900 → 1800(防 fallback chain 截斷;與 _callDeepAI 對齊)
+    async _callAI({ prompt, max_tokens = 1800, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
         const apiBase  = this._apiBase;
         const orKeys   = this._getOpenRouterKeys();
         const groqKeys = this._getGroqKeys();
@@ -4521,11 +4545,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             return data.content;
         }
 
-        // 🌟 第一鏈:Groq 直連(輕任務最快,雙 key 輪動,429/401 切下一把)
-        if (groqKeys.length) {
+        // 🌟 第一鏈:Groq 直連(V14.16:30s 冷卻後才試,加 trying/429 chip 即時更新)
+        if (groqKeys.length && !this._isProviderCoolingDown('groq')) {
             const body = JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens, temperature });
             for (let i = 0; i < groqKeys.length; i++) {
                 const key = groqKeys[i];
+                this._setAIStatus('groq', i + 1, 'trying');   // V14.16:嘗試前即時顯示
                 let res;
                 try {
                     res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -4537,43 +4562,55 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 if (res.ok) {
                     const data = await res.json();
                     console.info(`[_callAI] Groq Key #${i + 1} OK`);
-                    this._setAIStatus('groq', i + 1);
+                    this._setAIStatus('groq', i + 1, 'success');
                     return data.choices[0].message.content;
                 }
-                if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
+                if ((res.status === 429 || res.status === 401)) {
                     this._recordAIFail('groq', i + 1, res.status);
-                    // 🎲 jitter 2~5 秒隨機延遲再切下一把,模糊機器人連 retry 特徵
-                    const _jitter = Math.round(2000 + Math.random() * 3000);
-                    console.warn(`[Groq 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
-                    await new Promise(r => setTimeout(r, _jitter));
-                    continue;
+                    this._setAIStatus('groq', i + 1, 'rate-limited');
+                    if (i < groqKeys.length - 1) {
+                        const _jitter = Math.round(2000 + Math.random() * 3000);
+                        console.warn(`[Groq 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切第 ${i + 2} 把...`);
+                        await new Promise(r => setTimeout(r, _jitter));
+                        continue;
+                    }
                 }
                 this._recordAIFail('groq', i + 1, res.status);
                 console.warn(`[_callAI] Groq Key #${i + 1} HTTP ${res.status}(可能 429/額度),fallback Gemini/OpenRouter`);
             }
+            this._markProviderCoolingDown('groq', 30);   // V14.16:Groq 全 key 燒完冷卻 30s
             console.warn('[_callAI] Groq 全把都失敗,fallback Gemini/OpenRouter');
+        } else if (groqKeys.length) {
+            console.info('[_callAI] Groq 30s 冷卻中,直接跳到 Gemini');
         }
 
-        // 第二鏈:Gemini 2.5 Flash(雙 key 500 req/day,配額穩定,Groq 忙時兜底)
-        if (this._getGeminiKeys().length) {
+        // 第二鏈:Gemini 2.5 Flash(V14.16:加 switching/trying/success chip + 30s cooldown)
+        if (this._getGeminiKeys().length && !this._isProviderCoolingDown('gemini')) {
+            this._setAIStatus('gemini', 1, 'switching');
             try {
                 const content = await this._callGemini({ prompt, max_tokens, temperature, model: 'gemini-2.5-flash' });
                 if (content) {
                     console.info('[_callAI] Gemini 2.5 Flash OK');
-                    this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
+                    this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1, 'success');
                     return content;
                 }
             } catch (e) {
                 console.warn('[_callAI] Gemini 失敗,fallback OpenRouter:', e?.message || e);
+                this._markProviderCoolingDown('gemini', 30);
             }
+        } else if (this._getGeminiKeys().length) {
+            console.info('[_callAI] Gemini 30s 冷卻中,直接跳到 OpenRouter');
         }
 
         // 🚀 第三鏈(最後 fallback):OpenRouter free 8b 雙 key 池輪動
-        //    使用者要求 OpenRouter 放最後(額度小容易 429,讓穩定的 Gemini/Groq 先用)
+        //    V14.16:加 trying chip + 30s cooldown
+        if (orKeys.length && this._isProviderCoolingDown('openrouter')) {
+            console.info('[_callAI] OpenRouter 30s 冷卻中,跳過');
+        } else
         for (let i = 0; i < orKeys.length; i++) {
             const orKey = orKeys[i];
             try {
-                this._setAIStatus('openrouter', i + 1);
+                this._setAIStatus('openrouter', i + 1, 'trying');
                 const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -4593,11 +4630,13 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     const content = data?.choices?.[0]?.message?.content;
                     if (content) {
                         console.info(`[_callAI] OpenRouter Key #${i + 1} OK`);
+                        this._setAIStatus('openrouter', i + 1, 'success');
                         return content;
                     }
                     console.warn(`[_callAI] OpenRouter Key #${i + 1} 回應無 content`);
                 } else {
                     this._recordAIFail('openrouter', i + 1, res.status);
+                    this._setAIStatus('openrouter', i + 1, 'rate-limited');
                     console.warn(`[_callAI] OpenRouter Key #${i + 1} HTTP ${res.status}(可能 429/額度)`);
                     if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
                         const _jitter = Math.round(2000 + Math.random() * 3000);
@@ -4609,10 +4648,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 console.warn(`[_callAI] OpenRouter Key #${i + 1} 例外:`, e?.message || e);
             }
         }
+        if (orKeys.length) this._markProviderCoolingDown('openrouter', 30);  // V14.16
 
         // 三鏈全失敗(或全沒設定 key)
         if (orKeys.length || groqKeys.length || this._getGeminiKeys().length) {
-            this._setAIStatus(null);  // 顯示「🔴 N 把撞 429」chip
+            this._setAIStatus(null, null, 'failed');  // 顯示「🔴 N 把撞 429」chip
             throw new Error('三鏈 AI 全忙(Gemini + Groq + OpenRouter 均已撞 429 或無 key)');
         }
         return null;

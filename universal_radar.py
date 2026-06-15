@@ -19,6 +19,10 @@ import feedparser
 from pathlib import Path
 from datetime import datetime
 
+# V14.16 — 採礦時不再跑 Groq AI(改前端打開時即時跑,節省 TPD 配額讓使用者手動分析少撞 429)
+#         要恢復:env SKIP_AI=0 或刪此環境變數
+SKIP_AI = os.environ.get("SKIP_AI", "1") == "1"
+
 # ── [Key 輪動] 多把 Groq API key 池（鏡像 api.py 同款邏輯，per-key 冷卻自動復活）──
 _groq_env = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY", "")
 GROQ_API_KEYS = [t.strip() for t in _groq_env.split(",") if t.strip()]
@@ -67,6 +71,9 @@ def _groq_advance():
 
 
 def _call_groq_with_rotation(payload: dict, label: str = ""):
+    # V14.16:採礦端不跑 AI(節省 TPD 配額)
+    if SKIP_AI:
+        return None
     """
     [Key 輪動] Groq 共用呼叫：429 立刻換下一把冰 key 重試（不睡），全冷卻回 None。
     回傳 res 物件（HTTP 200 或非 429 錯誤）或 None（全部 key 撞限額/網路全失敗）。
@@ -136,6 +143,9 @@ SUMMARY_MAXLEN = 300
 def analyze_sentiment(title: str, summary: str) -> tuple:
     """呼叫 Groq AI 進行利多/利空判讀，回傳 (sentiment, reason)。
     [Key 輪動] 多把 key 自動切換,全部撞限額才 fallback 為「中立」。"""
+    # V14.16:採礦端不跑 AI,前端打開時即時分析(節省 TPD 配額讓使用者手動分析少撞 429)
+    if SKIP_AI:
+        return ("待分析", "")
     if not GROQ_API_KEYS:
         return ("中立", "未設定 GROQ_API_KEY")
 
