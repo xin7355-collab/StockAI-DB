@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V15.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V15.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8882,7 +8882,10 @@ ${_newsLine}${globalContext}
         const today = new Date();
         const todayStr = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
         const lastIsToday = lastBar && String(lastBar.date || '').replace(/-/g, '/') === todayStr;
-        const prevVol = Number((lastIsToday && prevBar ? prevBar : lastBar).volume) || 0;
+        // 🛠️ V15.2 — TWSE OHLCV volume 單位是「股」(成交股數),Fugle 即時量單位是「張」(× 1000)
+        //         _chuVolumeProgress 統一用「張」對齊 cur/estimated,避免昨日量大 1000 倍把達標度算成 0%
+        const prevVolRaw = Number((lastIsToday && prevBar ? prevBar : lastBar).volume) || 0;
+        const prevVol = Math.round(prevVolRaw / 1000);   // 股 → 張
         if (!elapsed || elapsed < 5 || !prevVol || !cur) return { cur, prevVol, estimated: null, pct: null, lamp: 'gray' };
         const estimated = Math.round(cur * 270 / elapsed);
         const pct = prevVol > 0 ? (estimated / prevVol * 100) : 0;
