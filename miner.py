@@ -178,6 +178,29 @@ def _log_t(sym: str, step: str, t0: float):
     except Exception:
         pass
 
+# V16.4 — 採礦狀態檔:前端 poll data/miner_status.json 即可知「採礦中 / ready」+ 階段
+#         寫入位置:① mine batch 開頭 ② chips_miner 開頭 ③ deploy 結尾(workflow 寫)
+#         失敗不擾,主流程繼續(前端拿不到等同 ready,fallback 既有行為)
+def write_miner_status(stage: str, status: str = 'mining', extra: dict | None = None):
+    try:
+        from datetime import datetime, timezone
+        payload = {
+            'status':     status,                                              # 'mining' / 'ready'
+            'stage':      stage,                                               # 'ohlcv_batch' / 'chips_fundamentals' / 'deploy_done'
+            'batch_idx':  BATCH_INDEX,
+            'total_batches': TOTAL_BATCHES,
+            'updated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        }
+        if extra:
+            payload.update(extra)
+        Path('data').mkdir(parents=True, exist_ok=True)
+        Path('data', 'miner_status.json').write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(',', ':')),
+            encoding='utf-8'
+        )
+    except Exception as _e:
+        print(f"  ⚠️ miner_status 寫入失敗(不影響採礦): {_e}")
+
 # ── 監控清單 ──────────────────────────────────────────────────────────────────
 # 涵蓋前端 _RADAR_POOLS（上市熱門/上櫃中小型/高股息ETF）+ 9 大資金板塊指標股，
 # 確保前端雷達分頁的每一類都能 filter 到資料。
@@ -1573,6 +1596,12 @@ def run():
     watchlist = get_batch_symbols(inst_cache, BATCH_INDEX, TOTAL_BATCHES)
     print(f"\n🎯 批次 {BATCH_INDEX}/{TOTAL_BATCHES}：{len(watchlist)} 檔個股 | 月份: {months}")
 
+    # V16.4 — 寫採礦狀態(只 batch 0 寫,避免 20 個批次並行覆蓋)
+    #         前端 poll 此檔 + GitHub Actions API 雙保險知道採礦中
+    if BATCH_INDEX == 0:
+        write_miner_status('ohlcv_batch', 'mining',
+                           {'note': f'OHLCV + 法人 / 融券 批次採礦中 ({TOTAL_BATCHES} 平行宇宙)'})
+
     # 🌱 種子回填：把 checkout 的舊 JSON 歷史載回 SQLite（保留完整歷史，採礦只補新天）
     seed_db_from_json(watchlist)
     full_watchlist = list(watchlist)   # 保留完整清單供 artifact 修剪（resume 會裁切 watchlist）
@@ -2295,6 +2324,9 @@ def fetch_broker_chips():
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
     today_str = date.today().strftime('%Y-%m-%d')
+    # V16.4 — chips_miner 平行 job 開頭寫狀態(會疊在 ohlcv_batch 之上)
+    write_miner_status('chips_fundamentals', 'mining',
+                       {'note': '分點籌碼 + 基本面 + 雷達 + 全球新聞 採礦中'})
     # ── 動態熱門股清單：CHIP_WATCHLIST（必選）∪ SQLite 近 14 天高量股 ──────────
     priority_set = set(CHIP_WATCHLIST)   # 用戶精選股永遠優先
     if Path(DB_PATH).exists():

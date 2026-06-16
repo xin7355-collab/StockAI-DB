@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -721,6 +721,13 @@
         <div id="chuPositionChip" class="hidden"></div>
         <!-- 📌 朱老師警報橫條(頭頭低/底底低/轉折警戒 → 醒目紅條)-->
         <div id="chuTrendAlertBanner" class="hidden"></div>
+        <!-- ⛏️ V16.4 採礦中 banner(讀 data/miner_status.json + GitHub Actions API 雙保險,30 秒 poll)-->
+        <div id="minerStatusBanner" class="hidden bg-amber-900/40 border border-amber-600/60 rounded-md px-3 py-1 text-[11px] text-amber-200 mt-1 mx-auto max-w-7xl flex items-center justify-between gap-2">
+            <span class="flex-1 min-w-0">
+                ⛏️ <b>採礦進行中</b>(<span id="msStage" class="text-amber-300">階段</span>) — 目前顯示 <span id="msLastUpdated" class="text-gray-300">--</span> 資料快照,完成後會自動提示。
+            </span>
+            <button onclick="app._loadMinerStatus(true)" class="text-blue-300 underline hover:text-blue-200 text-[10px] flex-shrink-0 whitespace-nowrap">🔄 檢查</button>
+        </div>
         <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
         <div style="display:none" aria-hidden="true">
             <span id="mktFI"></span>
@@ -2491,6 +2498,7 @@ const app = {
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
         this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
         this._loadMarketStats();       // 📊 V16.2 全市場 P/B 分位數(供動態 P/B 判斷,取代固定 <2/>5 門檻)
+        this._startMinerStatusPolling();   // ⛏️ V16.4 採礦中 banner:GitHub API + miner_status.json 雙保險 poll
         this._ensureChuLockGroup();    // 📌 朱老師鎖股 favGroup 預設建立(空清單,等使用者鎖)
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
@@ -4358,9 +4366,14 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         this._finmindQueue.running = false;
     },
 
-    async safeFetch(url, options = {}, { timeout = 8000, maxRetries = 3 } = {}) {
+    async safeFetch(url, options = {}, { timeout = 8000, maxRetries = 3, retry404 = null } = {}) {
         let attempt = 0;
         const isFinMind = typeof url === 'string' && url.includes('api.finmindtrade.com');
+        // V16.4 — 採礦中對 data/*.json 404 智慧重試(抓 force-push 30-60 秒 transient 404)
+        //         retry404 顯式 true/false 優先;null 走自動判斷:採礦中 + data/ URL → retry
+        const isDataUrl = typeof url === 'string' && url.includes('/data/');
+        const isMining  = this._minerStatus?.status === 'mining';
+        const shouldRetry404 = (retry404 === true) || (retry404 == null && isMining && isDataUrl);
         while (true) {
             const ctrl    = new AbortController();
             const timerId = setTimeout(() => ctrl.abort(), timeout);
@@ -4373,6 +4386,15 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 }
                 const res = await fetch(fetchUrl, { ...options, signal: ctrl.signal });
                 clearTimeout(timerId);
+
+                // V16.4 — 採礦中 force-push transient 404:0.5/1.5/3s backoff retry,平常 404 直接返回不變慢
+                if (res.status === 404 && shouldRetry404 && attempt < maxRetries) {
+                    const wait404 = [500, 1500, 3000][attempt] || 3000;
+                    console.warn(`[safeFetch] 採礦中 404 第 ${attempt + 1} 次重試(${wait404}ms):${url}`);
+                    await new Promise(r => setTimeout(r, wait404));
+                    attempt++;
+                    continue;
+                }
 
                 // FinMind 配額耗盡會回 402（Payment Required），其他限流回 429。兩種都要輪動。
                 if (res.status === 429 || (isFinMind && res.status === 402)) {
@@ -5407,6 +5429,123 @@ const marginByDate = {};
                 if (j.pb) console.log(`[market_stats] P/B P25/P50/P75/P90 = ${j.pb.p25}/${j.pb.p50}/${j.pb.p75}/${j.pb.p90}(${j.pb.count} 檔)`);
             }
         } catch (_) { /* silent — fallback 既有固定門檻 */ }
+    },
+
+    // V16.4 — 採礦狀態檢查:雙保險(GitHub Actions API 即時 + data/miner_status.json fallback)
+    //   - API 偵測 daily_miner.yml 是否有 in_progress / queued run → 真即時狀態
+    //   - 檔案 fallback 給 API 限流 / 離線時使用
+    //   - 偵測 mining → ready 切換時顯示 toast 提示載入最新
+    //   - poll 頻率:採礦中 30 秒;ready 暫停 poll(只 init 一次 + 切回前景時檢查)
+    async _loadMinerStatus(userTriggered = false) {
+        try {
+            const prevStatus = this._minerStatus?.status;
+            let newStatus = null;
+
+            // 主要:GitHub Actions API(unauthenticated 60 req/hr per IP,30 秒 poll 配額充足)
+            try {
+                const apiUrl = 'https://api.github.com/repos/xin7355-collab/StockAI-DB/actions/workflows/daily_miner.yml/runs?per_page=3';
+                const r = await fetch(apiUrl, { signal: AbortSignal.timeout(5000) });
+                if (r.ok) {
+                    const j = await r.json();
+                    const runs = j.workflow_runs || [];
+                    const active = runs.find(x => x.status === 'in_progress' || x.status === 'queued');
+                    if (active) {
+                        newStatus = {
+                            status: 'mining',
+                            stage: active.status === 'queued' ? '排隊中' : '採礦中',
+                            started_at: active.created_at,
+                            run_url: active.html_url,
+                            source: 'api',
+                        };
+                    } else {
+                        const lastSuccess = runs.find(x => x.conclusion === 'success');
+                        newStatus = {
+                            status: 'ready',
+                            last_updated: lastSuccess?.updated_at || null,
+                            source: 'api',
+                        };
+                    }
+                }
+            } catch (_) { /* API 失敗就 fallback 到檔案 */ }
+
+            // Fallback:讀 gh-pages 上的 miner_status.json
+            if (!newStatus) {
+                try {
+                    const ghBase = window.location.href.split('?')[0].split('#')[0];
+                    const fileUrl = new URL('data/miner_status.json', ghBase).href + `?t=${Date.now()}`;
+                    const r2 = await fetch(fileUrl, { signal: AbortSignal.timeout(4000) });
+                    if (r2.ok) {
+                        const j2 = await r2.json();
+                        if (j2 && typeof j2 === 'object') newStatus = { ...j2, source: 'file' };
+                    }
+                } catch (_) {}
+            }
+
+            if (!newStatus) return;
+            this._minerStatus = newStatus;
+            this._updateMinerBanner();
+
+            // 偵測 mining → ready 切換:顯示一次性 toast 提示載入最新
+            if (prevStatus === 'mining' && newStatus.status === 'ready') {
+                this.showToast?.('✨ 採礦完成 — 點此載入最新資料', 8000);
+                // 可選:自動重抓當前股票
+                if (this.currentSymbolId) {
+                    setTimeout(() => this.analyze(this.currentSymbolId, true), 1200);
+                }
+            }
+            if (userTriggered) {
+                this.showToast?.(newStatus.status === 'mining'
+                    ? `⛏️ 採礦進行中(${newStatus.stage || '處理中'})`
+                    : '✅ 採礦已完成,資料為最新');
+            }
+        } catch (_) { /* silent — 不擾正常使用 */ }
+    },
+
+    _updateMinerBanner() {
+        const banner = document.getElementById('minerStatusBanner');
+        if (!banner) return;
+        const ms = this._minerStatus;
+        if (!ms || ms.status !== 'mining') {
+            banner.classList.add('hidden');
+            return;
+        }
+        banner.classList.remove('hidden');
+        const stageEl = document.getElementById('msStage');
+        const updEl   = document.getElementById('msLastUpdated');
+        if (stageEl) {
+            const stageZh = {
+                'ohlcv_batch':        'K線+法人批次',
+                'chips_fundamentals': '籌碼+基本面',
+                'start':              '啟動中',
+                '排隊中':              '排隊中',
+                '採礦中':              '採礦中',
+            }[ms.stage] || (ms.stage || '處理中');
+            stageEl.textContent = stageZh;
+        }
+        if (updEl) {
+            // 顯示「目前快照日期」— 用上次 ready 時間,或今早 08:30(UTC) 推算
+            const last = ms.last_updated || ms.started_at || '';
+            updEl.textContent = last ? last.slice(0, 10) : '前一日';
+        }
+    },
+
+    _startMinerStatusPolling() {
+        if (this._minerStatusTimer) clearInterval(this._minerStatusTimer);
+        this._loadMinerStatus();
+        this._minerStatusTimer = setInterval(() => {
+            // ready 狀態時降頻(每 5 分鐘 poll 一次,避開 GitHub API 60/hr 限流)
+            if (this._minerStatus?.status === 'ready') {
+                if (!this._minerStatusReadyCounter) this._minerStatusReadyCounter = 0;
+                this._minerStatusReadyCounter++;
+                if (this._minerStatusReadyCounter < 10) return;   // 30s × 10 = 5 分
+                this._minerStatusReadyCounter = 0;
+            }
+            this._loadMinerStatus();
+        }, 30000);
+        // 切回前景時立即檢查一次(常見場景:用戶關 tab 開回來)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) this._loadMinerStatus();
+        });
     },
 
     // 黃金 +X% / 原油 +X% / KOSPI -X% 等具體數值;原本是 lazy 載入時機晚,造成顯示「?」

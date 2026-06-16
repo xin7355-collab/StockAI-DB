@@ -132,6 +132,7 @@ jobs:
             inst_cache_stock.json
           retention-days: 1
           if-no-files-found: warn
+          # 註:data/miner_status.json 由 miner.py 在 batch 0 寫入 → 自動隨 data/ 上傳(V16.4)
 
       # V14.12 — 上傳 per-stock per-step timing CSV,給下一輪找瓶頸用
       - name: ⏱️ 上傳採礦 timing log
@@ -204,6 +205,7 @@ jobs:
             data/industry_pe.json
             data/industry_map.json
             data/market_stats.json
+            data/miner_status.json
             broker_names.json
             futures_cache.json
             macro_cache.json
@@ -378,6 +380,14 @@ jobs:
             echo "❌ ABORT: 僅 $STOCKS 檔，拒絕強制覆寫 gh-pages 以保護現有資料"
             exit 1
           fi
+
+          # V16.4 — 部署結尾覆寫 miner_status.json = "ready",讓前端 banner 自動消失並提示「採礦完成」
+          mkdir -p data
+          NOW_ISO=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          printf '{"status":"ready","stage":"deploy_done","last_updated":"%s","stocks":%s,"chips":%s,"run_url":"https://github.com/%s/actions/runs/%s"}\n' \
+            "${NOW_ISO}" "${STOCKS}" "${CHIPS}" "${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}" \
+            > data/miner_status.json
+          echo "📡 miner_status.json → ready (${NOW_ISO})"
 
           git add -f index.html data/
           [ -f sw.js ]                   && git add -f sw.js                   || true
