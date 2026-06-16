@@ -1123,7 +1123,12 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
         print(f"    ⚠️ FinMind Revenue {sym}: {e}")
 
     # 3. 股利與發配率(已由並行 fetch 取得 div_json)──────────────
-    # V14.15:原本只取最新單筆 → 改近 4 季加總 + 近 8 季明細(含已宣告未發放)
+    # V15.7 治本修:原本用 'CashDividend'/'StockDividend' 永遠抓 0(FinMind 實際欄位不同),
+    #    對齊前端 index.html:6590 解析:Cash/StockEarningsDistribution + Cash/StockStatutorySurplus
+    def _div_cash(r):
+        return float(r.get('CashEarningsDistribution', 0) or 0) + float(r.get('CashStatutorySurplus', 0) or 0)
+    def _div_stock(r):
+        return float(r.get('StockEarningsDistribution', 0) or 0) + float(r.get('StockStatutorySurplus', 0) or 0)
     try:
         j = div_json
         rows = sorted(j.get('data') or [], key=lambda x: x.get('date', ''))
@@ -1131,11 +1136,11 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             # 近 8 季明細(供前端細表顯示)
             qdivs = []
             for r in rows[-8:]:
-                c = float(r.get('CashDividend',  0) or 0)
-                s = float(r.get('StockDividend', 0) or 0)
+                c = _div_cash(r)
+                s = _div_stock(r)
                 qdivs.append({
                     'date': r.get('date', ''),
-                    'ex_date': r.get('CashExDividendTradingDate') or r.get('CashEarningsDistribution') or '',
+                    'ex_date': r.get('CashExDividendTradingDate') or r.get('CashDividendPaymentDate') or '',
                     'cash':  c,
                     'stock': s,
                 })
@@ -1143,8 +1148,8 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
 
             # 最新單筆(向下相容)
             latest = rows[-1]
-            cash_div = float(latest.get('CashDividend',  0) or 0)
-            stk_div  = float(latest.get('StockDividend', 0) or 0)
+            cash_div = _div_cash(latest)
+            stk_div  = _div_stock(latest)
             result['total_dividend'] = cash_div + stk_div
 
             # 近 4 季加總 = 年化股利(對齊使用者預期)
@@ -2454,23 +2459,46 @@ def fetch_broker_chips():
                 'is_revenue_high':    fm_fund.get('is_revenue_high'),
                 'revenue_est_next_q': fm_fund.get('revenue_est_next_q'),
                 'pe':                 tw_fund.get('pe') or fm_fund.get('pe'),
-                'pe_source':          'TWSE_TTM' if tw_fund.get('pe') else 'FinMind',  # V14.15 來源標示
-                'pb':                 tw_fund.get('pbr') or fm_fund.get('pb'),   # V14.15 P/B 股價淨值比
+                'pe_source':          'TWSE_TTM' if tw_fund.get('pe') else 'FinMind',
+                'pb':                 tw_fund.get('pbr') or fm_fund.get('pb'),
+                'pb_unavailable':     (tw_fund.get('pbr') is None and fm_fund.get('pb') is None),  # V15.7 P/B 無資料源 flag
                 'yield_rate':         tw_fund.get('yield_rate'),
                 'gross_margin_trend': fm_fund.get('gross_margin_trend'),
                 'payout_ratio':       fm_fund.get('payout_ratio'),
                 'total_dividend':     fm_fund.get('total_dividend'),
-                'total_dividend_4q':  fm_fund.get('total_dividend_4q'),         # V14.15 近 4 季合計
-                'quarterly_dividends': fm_fund.get('quarterly_dividends', []),  # V14.15 8 季明細
-                'dividend_fill_history': fill_hist,                             # V14.15 填息歷史
-                'dividend_fill_prob':    fill_prob,                             # V14.15 填息機率
-                'dividend_avg_fill_days':avg_days,                              # V14.15 平均填息天數
+                'total_dividend_4q':  fm_fund.get('total_dividend_4q'),
+                'quarterly_dividends': fm_fund.get('quarterly_dividends', []),
+                'dividend_fill_history': fill_hist,
+                'dividend_fill_prob':    fill_prob,
+                'dividend_avg_fill_days':avg_days,
                 'is_record_high':     fm_fund.get('is_record_high', False),
                 'latest_revenue':     fm_fund.get('latest_revenue'),
-                'monthly_revenue_history': fm_fund.get('monthly_revenue_history', []),  # V14.15 月營收歷史(已有)
+                'monthly_revenue_history': fm_fund.get('monthly_revenue_history', []),
                 'quarterly_eps':      fm_fund.get('quarterly_eps', []),
                 'generated':          today_str,
             }
+            # V15.7 — 後端 fallback:TWSE BWIBBU_d 對某些股拿不到 PE/yield(GitHub Actions IP 可能被封),
+            #         用 FinMind 4 季 EPS 加總 + SQLite 最新 close 算 PE 寫進 chips JSON
+            if fundamentals.get('pe') is None:
+                try:
+                    qeps = fundamentals.get('quarterly_eps', [])
+                    if len(qeps) >= 4:
+                        eps_4q = sum(float(q.get('eps', 0) or 0) for q in qeps[-4:])
+                        if eps_4q > 0:
+                            _cur = get_db_conn()
+                            _cur.row_factory = sqlite3.Row
+                            _row = _cur.execute(
+                                "SELECT close FROM stock_history WHERE symbol=? AND volume > 0 "
+                                "ORDER BY trade_date DESC LIMIT 1", (sym,)).fetchone()
+                            _cur.close()
+                            if _row and _row[0] > 0:
+                                latest_close = float(_row[0])
+                                fundamentals['pe'] = round(latest_close / eps_4q, 2)
+                                fundamentals['pe_source'] = 'FinMind_calc'
+                                if fundamentals.get('total_dividend_4q', 0) and fundamentals['total_dividend_4q'] > 0:
+                                    fundamentals['yield_rate'] = round(fundamentals['total_dividend_4q'] / latest_close * 100, 2)
+                except Exception as _e:
+                    print(f"    ⚠️ V15.7 PE/yield fallback {sym}: {_e}")
             print("✅")
 
         # ③ 寫入新格式 JSON（existing_obj 已在迴圈頂部讀取，不重複讀檔）

@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V15.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V15.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -6760,7 +6760,13 @@ ${peerLine}${newsCtx}
         }
         // V14.15:股價淨值比 P/B(miner.py 從 BWIBBU_d 抓 pbr)
         const pb = (localFund.pb != null) ? Number(localFund.pb) : null;
-        setCell('xrayPb', pb, 'x', pb==null?null:pb<2?'text-green-400':pb>5?'text-red-400':'text-yellow-400');
+        // V15.7 — P/B 無資料源(BWIBBU_d 對某些股拿不到)時,顯具體提示而非含糊「採礦更新中」
+        if (pb == null && localFund.pb_unavailable) {
+            const pbEl = document.getElementById('xrayPb');
+            if (pbEl) pbEl.innerHTML = '<span class="text-gray-500 text-xs" title="TWSE BWIBBU_d 端點對部分股票無回應,免費資料源無此股 P/B。可至 Yahoo 股市查」">💎 無免費資料源</span>';
+        } else {
+            setCell('xrayPb', pb, 'x', pb==null?null:pb<2?'text-green-400':pb>5?'text-red-400':'text-yellow-400');
+        }
         setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
 
         // 🎯 PEG = PE / EPS 年成長率(%)。Peter Lynch 法則:< 1 便宜 / 1-2 合理 / > 2 昂貴
