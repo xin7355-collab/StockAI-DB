@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -5553,6 +5553,17 @@ const marginByDate = {};
         });
     },
 
+    // V16.7 — chief_ai_cache.json 新鮮度判定:chief_ai_batch.py 已退役(daily_miner.yml:325)
+    //         updated 距今 > 2 天視為 stale,fallback radar_matrix(每日更新)
+    _isChiefCacheStale(upd) {
+        if (!upd) return true;
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            const diff = (new Date(today).getTime() - new Date(upd).getTime()) / 86400000;
+            return diff > 2;
+        } catch (_) { return true; }
+    },
+
     // V16.5 — 大盤年線乖離率前端直算(不依賴 macro_miner.py 那條已知失敗路徑)
     //   來源:data/^TWII.json(miner.py mine batch 0 yfinance period='2y' + TWSE 官方 2 個月覆蓋)
     //   gh-pages 確認有 ~500 筆 OHLCV(2024/06 起),MA240 計算充裕
@@ -9845,6 +9856,8 @@ ${_newsLine}${globalContext}
         const ghBase = window.location.href.split('?')[0].split('#')[0];
 
         // 來源 1:chief_ai_cache 夜跑🔴可以買標的(有就優先)
+        // V16.7 — 加 staleness check:chief_ai_batch.py 已退役(daily_miner.yml:325),
+        //          快取 updated 距今 > 2 天視為過時,直接 fallback radar_matrix(每日更新)
         if (!this._chiefBatchCache) {
             try {
                 const r = await fetch(new URL('data/chief_ai_cache.json', ghBase).href + `?t=${Date.now()}`,
@@ -9852,7 +9865,9 @@ ${_newsLine}${globalContext}
                 this._chiefBatchCache = r.ok ? await r.json() : null;
             } catch (_) { this._chiefBatchCache = null; }
         }
-        const stocks = this._chiefBatchCache?.stocks || {};
+        // V16.7 — stale 視同無 cache → 跳過 chief_ai_cache,自動 fallback radar_matrix
+        const _chiefStale = this._isChiefCacheStale(this._chiefBatchCache?.updated);
+        const stocks = _chiefStale ? {} : (this._chiefBatchCache?.stocks || {});
         // 🔴=可以買(本專案反向紅綠燈:紅漲綠跌)→ 送分題要撈🔴,不是🟢(🟢=不能買/快逃)
         const reds = Object.entries(stocks).filter(([, v]) => (v?.traffic_light || '').includes('🔴'));
         if (reds.length > 0) {
@@ -10458,12 +10473,16 @@ ${_newsLine}${globalContext}
         const staleBar = opts.staleBannerMsg
             ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-2 bg-yellow-900/40 border-b-2 border-yellow-600 text-yellow-200 text-xs font-bold leading-relaxed">⚠️ ${opts.staleBannerMsg}<br><span class="text-yellow-300/70 font-normal">↓ 以下顯示上次分析結果 ↓</span></div>`
             : '';
+        // V16.7 — 夜間批次快取命中時顯日期 + 重抽提示,讓使用者一眼看穿是「上次採礦那天的版本」
+        const cachedBar = opts.fromCache && opts.cacheDate
+            ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-2 bg-purple-900/40 border-b-2 border-purple-600 text-purple-200 text-xs font-bold leading-relaxed">📅 夜間批次快取 ${opts.cacheDate} · <span class="text-purple-300/80 font-normal">想要即時最新版?雙擊下方 🧠 首席 AI 鈕強制重抽</span></div>`
+            : '';
         // ⚡ 純數據模式橫幅（AI 額度耗盡時改用系統量化引擎,清楚告知非 AI 生成）
         const dataModeBar = opts.dataMode
             ? `<div class="-mx-4 -mt-4 mb-3 px-4 py-2 bg-cyan-900/40 border-b-2 border-cyan-600 text-cyan-200 text-xs font-bold leading-relaxed">⚡ 純數據模式${opts.dataModeMsg ? `（${opts.dataModeMsg}）` : '（AI 額度暫歇）'}<br><span class="text-cyan-300/80 font-normal">以下為系統量化引擎分析,非 AI 生成 — 燈號與點位照常精準</span></div>`
             : '';
 
-        this.typeWriterEffect(box, `<div class="typewriter-text">${staleBar}${dataModeBar}${trafficHtml}${html}${bbHtml}</div>`);
+        this.typeWriterEffect(box, `<div class="typewriter-text">${staleBar}${dataModeBar}${cachedBar}${trafficHtml}${html}${bbHtml}</div>`);
     },
 
     // 🤖 AI 自動觸發鏈：debounce + 5 分鐘 cache，避免 keystroke 風暴與 API 浪費
@@ -10504,7 +10523,9 @@ ${_newsLine}${globalContext}
                         this._chiefBatchCache = r.ok ? await r.json() : { stocks: {} };
                     } catch (_) { this._chiefBatchCache = { stocks: {} }; }
                 }
-                const batchHit = this._chiefBatchCache?.stocks?.[this.currentSymbolId];
+                // V16.7 — 加 _isChiefCacheStale gate,startsWith(today) 不夠保險(對 retired 6 天前 cache 漏接)
+                const _chiefStale = this._isChiefCacheStale(this._chiefBatchCache?.updated);
+                const batchHit = (!_chiefStale) && this._chiefBatchCache?.stocks?.[this.currentSymbolId];
                 const batchFresh = batchHit && batchHit.detail_action
                     && this._chiefBatchCache?.updated?.startsWith(new Date().toISOString().slice(0, 10));
                 if (!batchFresh) {
@@ -13777,10 +13798,12 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 this._chiefBatchCache = r.ok ? await r.json() : { stocks: {} };
             } catch (_) { this._chiefBatchCache = { stocks: {} }; }
         }
+        // V16.7 — stale chief_ai_cache(chief_ai_batch.py 已退役)視同無 cache,逼前端走即時 Groq 路徑
+        const _chiefStale2 = this._isChiefCacheStale(this._chiefBatchCache?.updated);
         const _today = new Date().toISOString().slice(0, 10);
-        const _hit = this._chiefBatchCache?.stocks?.[sym];
+        const _hit = (!_chiefStale2) && this._chiefBatchCache?.stocks?.[sym];
         if (!force && _hit && _hit.detail_action && this._chiefBatchCache?.updated?.startsWith(_today)) {
-            this._renderUnifiedAIResult(_hit, { fromCache: true, batchSimplified: !!this._chiefBatchCache._simplified });
+            this._renderUnifiedAIResult(_hit, { fromCache: true, batchSimplified: !!this._chiefBatchCache._simplified, cacheDate: this._chiefBatchCache.updated });
             this._setCachedAI(_cacheSym, _cacheCostKey, _hit);
             if (opts._autoTriggerKey) this._lastAITrigger = { key: opts._autoTriggerKey, ts: Date.now(), source: 'batch' };
             return;
