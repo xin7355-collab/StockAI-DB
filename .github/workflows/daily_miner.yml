@@ -374,6 +374,13 @@ jobs:
             echo "SW CACHE_NAME → stockai-${GITHUB_SHA::8}"
           fi
 
+          # V17.1 — 清退役檔案(chief_ai_batch.py 2026-06 退役,chief_ai_cache.json 不再產出)
+          #         前端 V16.7 已有 staleness gate fallback,刪檔讓 fetch 直接 404 → fallback radar_matrix
+          if [ -f data/chief_ai_cache.json ]; then
+            rm -f data/chief_ai_cache.json
+            echo "🧹 已清退役檔 data/chief_ai_cache.json(chief_ai_batch.py 退役)"
+          fi
+
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')

@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -708,7 +708,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -7004,6 +7004,21 @@ ${peerLine}${newsCtx}
                     .map(q => ({ date: String(q.period||''), value: Number(q.eps) }))
                     .filter(r => r.date && Number.isFinite(r.value))
                     .sort((a,b)=>a.date>b.date?1:-1);
+            }
+            // V17.1 — 若 epsRows < 8 + eps_history 有更多季數 → 解析 "2024 Q4 EPS: 14.45" 字串補齊
+            //          (V16.5 採礦改 8 季 quarterly_eps 要等下次 daily_miner 才生效,過渡期用此 fallback)
+            if (epsRows.length < 8 && Array.isArray(localFund.eps_history) && localFund.eps_history.length > epsRows.length) {
+                const parsed = localFund.eps_history.map(s => {
+                    const m = String(s).match(/(\d{4})\s+Q([1-4])\s+EPS:\s*(-?\d+(?:\.\d+)?)/);
+                    if (!m) return null;
+                    const [, y, q, v] = m;
+                    const md = { '1':'-03-31', '2':'-06-30', '3':'-09-30', '4':'-12-31' }[q] || '-12-31';
+                    return { date: y + md, value: Number(v) };
+                }).filter(r => r && Number.isFinite(r.value));
+                if (parsed.length > epsRows.length) {
+                    epsRows = parsed.sort((a, b) => a.date > b.date ? 1 : -1);
+                    console.log(`[PEG] 用 eps_history 字串 fallback 補到 ${epsRows.length} 季`);
+                }
             }
             const latestEps = epsRows.length ? epsRows[epsRows.length-1].value : null;
 
