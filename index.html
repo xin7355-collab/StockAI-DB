@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2498,6 +2498,7 @@ const app = {
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
         this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
         this._loadMarketStats();       // 📊 V16.2 全市場 P/B 分位數(供動態 P/B 判斷,取代固定 <2/>5 門檻)
+        this._loadTaiexMA240Bias();    // 🐂 V16.5 大盤位階(讀 data/^TWII.json 算 240MA,治本)
         this._startMinerStatusPolling();   // ⛏️ V16.4 採礦中 banner:GitHub API + miner_status.json 雙保險 poll
         this._ensureChuLockGroup();    // 📌 朱老師鎖股 favGroup 預設建立(空清單,等使用者鎖)
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
@@ -5548,6 +5549,39 @@ const marginByDate = {};
         });
     },
 
+    // V16.5 — 大盤年線乖離率前端直算(不依賴 macro_miner.py 那條已知失敗路徑)
+    //   來源:data/^TWII.json(miner.py mine batch 0 yfinance period='2y' + TWSE 官方 2 個月覆蓋)
+    //   gh-pages 確認有 ~500 筆 OHLCV(2024/06 起),MA240 計算充裕
+    //   寫進 _macroRiskCache.taiex_ma240_bias,_detectMarketRegime() 完全不必改邏輯
+    async _loadTaiexMA240Bias() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (!r.ok) return;
+            const rows = await r.json();
+            if (!Array.isArray(rows) || rows.length < 240) {
+                console.log(`[TAIEX MA240] 資料 ${rows?.length || 0} 筆 < 240,等下次採礦補滿`);
+                return;
+            }
+            const closes = rows
+                .map(r => +r.close)
+                .filter(v => Number.isFinite(v) && v > 0);
+            if (closes.length < 240) return;
+            const last   = closes[closes.length - 1];
+            const ma240  = closes.slice(-240).reduce((a, b) => a + b, 0) / 240;
+            const bias   = +((last - ma240) / ma240 * 100).toFixed(2);
+            this._macroRiskCache = this._macroRiskCache || {};
+            this._macroRiskCache.taiex_ma240_bias = bias;
+            this._macroRiskCache.taiex_ma240      = +ma240.toFixed(0);
+            this._macroRiskCache.taiex_last_close = last;
+            console.log(`[TAIEX MA240] last=${last} ma240=${ma240.toFixed(0)} bias=${bias}%`);
+            // 已渲染處立刻補畫
+            this._renderChuPositionChip?.();
+            if (this.currentSymbolId) this.renderFalconDashboard?.();
+        } catch (e) { console.warn('[TAIEX MA240] 計算失敗', e); }
+    },
+
     // 黃金 +X% / 原油 +X% / KOSPI -X% 等具體數值;原本是 lazy 載入時機晚,造成顯示「?」
     async _loadMacroRiskCache() {
         try {
@@ -6952,16 +6986,18 @@ ${peerLine}${newsCtx}
         setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
 
         // 🎯 PEG = PE / EPS 年成長率(%)。Peter Lynch 法則:< 1 便宜 / 1-2 合理 / > 2 昂貴
-        //    取近 4 季 EPS 加總(TTM)vs 前 4 季 EPS 加總(去年同期),算 YoY 成長率
+        //    V16.5 — 改 ≥6 季 fallback(原 ≥8 季):採礦端 V16.5 才會補滿 8 季,過渡期用 last3 vs prev3 算
+        //    8 季:last4 vs prev4(標準 YoY) / 7 季:last3 vs prev3 / 6 季:last3 vs prev3
         try {
             const pegEl = document.getElementById('xrayPeg');
             const pegTag = document.getElementById('xrayPegTag');
             let peg = null, pegLabel = '', pegColor = 'text-gray-600';
-            if (epsRows.length >= 8) {
-                const last4 = epsRows.slice(-4).reduce((s, r) => s + (r.value || 0), 0);
-                const prev4 = epsRows.slice(-8, -4).reduce((s, r) => s + (r.value || 0), 0);
-                if (prev4 > 0) {
-                    const epsGrowth = (last4 - prev4) / Math.abs(prev4) * 100;
+            if (epsRows.length >= 6) {
+                const half  = Math.floor(epsRows.length / 2);   // 8→4 / 7→3 / 6→3
+                const lastN = epsRows.slice(-half).reduce((s, r) => s + (r.value || 0), 0);
+                const prevN = epsRows.slice(-half * 2, -half).reduce((s, r) => s + (r.value || 0), 0);
+                if (prevN > 0) {
+                    const epsGrowth = (lastN - prevN) / Math.abs(prevN) * 100;
                     if (pe != null && pe > 0 && epsGrowth > 0) {
                         peg = pe / epsGrowth;
                         if (peg < 1) { pegLabel = '🟢 便宜'; pegColor = 'text-green-400'; }
@@ -6973,7 +7009,7 @@ ${peerLine}${newsCtx}
                 }
             }
             if (pegEl) {
-                // V14.4:peg 算不出來且非「衰退」狀態 → 顯示「採礦更新中」明示原因
+                // V16.5 — 改寫文案:「季數累積中」非「採礦更新中」(後者跨日就過期、誤導使用者以為當下在採礦)
                 if (peg != null) {
                     pegEl.textContent = peg.toFixed(2);
                     pegEl.className = `font-mono font-black text-xl leading-tight ${pegColor}`;
@@ -6981,7 +7017,7 @@ ${peerLine}${newsCtx}
                     pegEl.textContent = '--';
                     pegEl.className = `font-mono font-black text-xl leading-tight ${pegColor}`;
                 } else {
-                    pegEl.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="PEG = PE ÷ EPS 年成長率,需 8 季 EPS 才能算。採礦更新中 — 週一~五 16:30 cron 自動補">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 需 8 季 EPS · 週一~五 16:30 自動補</div>';
+                    pegEl.innerHTML = `<span class="text-amber-300/80 text-xs cursor-help" title="PEG = PE ÷ EPS 年成長率,需至少 6 季 EPS。本檔目前 ${epsRows.length} 季,V16.5 採礦會補到 8 季(新股本身就不夠 6 季則本檔不適用 PEG)">🔄 季數累積中(${epsRows.length}/6)</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 至少 6 季財報才能算 YoY</div>`;
                     pegEl.className = '';
                 }
             }
@@ -8490,9 +8526,9 @@ ${_newsLine}${globalContext}
                 color = 'text-yellow-300 bg-yellow-900/40 border-yellow-700';
             }
         } else {
-            // 無資料 → 視為盤整(保守)
-            regime = 'range'; label = '🦀 待測';
-            advice = '採礦中,先觀望';
+            // V16.5 — 無年線資料(^TWII.json 不足 240 日)→ 顯「整備中」,不再誤導使用者以為「採礦中」
+            regime = 'range'; label = '🦀 整備中';
+            advice = '大盤年線資料整備中,先看個股訊號';
             color = 'text-gray-400 bg-gray-800/60 border-gray-600';
         }
         return { regime, label, advice, color, bias };

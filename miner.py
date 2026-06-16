@@ -231,7 +231,7 @@ HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
 # V15.8 — fundamentals schema 版本標記:每次 miner.py 改動 fundamentals 結構就 bump,
 #         自動 invalidate 全市場 cache(避免 V15.7 修了欄位但 cache 7 天內擋住新邏輯)
-MINER_VERSION = 'V16.2'
+MINER_VERSION = 'V16.5'
 
 # ── 券商戰術標籤庫 ────────────────────────────────────────────────────────────
 TACTICAL_TAGS = {
@@ -1081,7 +1081,7 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
     """
     from concurrent.futures import ThreadPoolExecutor
     today_str = date.today().strftime('%Y-%m-%d')
-    start_fs  = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d') # 近2年財報
+    start_fs  = (date.today() - timedelta(days=1095)).strftime('%Y-%m-%d') # V16.5 近3年財報(原 730→1095 保證 8 季 PEG YoY)
     start_rev = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d') # 近2年營收
     start_div = (date.today() - timedelta(days=1095)).strftime('%Y-%m-%d')
     result: dict = {}
@@ -1130,7 +1130,7 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
         if eps_rows:
             result['eps'] = float(eps_rows[-1].get('value', 0) or 0)
             eps_history = []
-            for r in eps_rows[-6:]:  # 抓取最近 6 季
+            for r in eps_rows[-8:]:  # V16.5 改 8 季(對齊 quarterly_eps,給前端 PEG ≥8 季 YoY 用)
                 d_str = r.get('date', '')
                 val = r.get('value', 0)
                 if '-03-' in d_str: q = 'Q1'
@@ -1158,7 +1158,7 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
                             key=lambda x: x.get('date', ''))
         rev_by_date = {r['date']: float(r.get('value', 0) or 0) for r in rev_sorted}
         quarterly = []
-        for er in eps_rows[-4:]:
+        for er in eps_rows[-8:]:   # V16.5 改 8 季(原 -4:)— 前端 PEG 要 last4 vs prev4 YoY,4 季不夠
             qdate = er.get('date', '')
             quarterly.append({
                 'period':  qdate,
