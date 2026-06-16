@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V15.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.9</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2395,7 +2395,15 @@ const app = {
             const monitorList = (app.monitorList || []).map(m =>
                 String(typeof m === 'string' ? m : (m.id || m.sym || '')).trim().toUpperCase()
             ).filter(s => /^[0-9A-Z]{4,8}$/.test(s));
-            return { watchlist, inventory, monitorList };
+            // V16.0 — 把 Fugle token 1 + 既有閾值帶上雲端(Worker 跑 Fugle 內外盤規則用)
+            //         token 存在 Cloudflare KV 中(內部加密、不公開),只有 Worker 自身能讀
+            const settings = {
+                fugleToken1: app.settings?.fugleToken1 || '',
+                falcon_threshold: Number(app.settings?.falconAlertTh) || 85,
+                surge_threshold:  Number(app.settings?.surgeAlertTh)  || 5,
+                drop_threshold:   Number(app.settings?.dropAlertTh)   || 5,
+            };
+            return { watchlist, inventory, monitorList, settings };
         },
 
         _genCode() {

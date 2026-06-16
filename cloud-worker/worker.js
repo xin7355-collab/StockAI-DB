@@ -279,6 +279,9 @@ function sanitizePayload(payload) {
             surge_threshold: clamp(payload.settings.surge_threshold, 2, 10, 5),
             drop_threshold: clamp(payload.settings.drop_threshold, 2, 10, 5),
         };
+        // V16.0 — Fugle token 帶上雲,供 Worker 跑內外盤分析(只 trim 不加密,KV 內部已加密儲存)
+        const ft = String(payload.settings.fugleToken1 || '').trim();
+        if (ft && ft.length >= 8 && ft.length <= 100) out.settings.fugleToken1 = ft;
     }
     return out;
 }
@@ -290,6 +293,47 @@ function clamp(v, min, max, dflt) {
 }
 
 // ── Scheduled scan & push ───────────────────────────────────────────
+
+// V16.0 — 拿單檔股票歷史 OHLCV 算 5MA 價 + 5 日均量(供盤中量爆 / 突破 5MA 規則)
+async function fetchVolumeBaseline(sym, cache) {
+    if (cache.has(sym)) return cache.get(sym);
+    let baseline = null;
+    try {
+        const url = `${GH_PAGES_BASE}/data/${encodeURIComponent(sym)}.json?t=${Date.now()}`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const rows = await res.json().catch(() => null);
+            if (Array.isArray(rows) && rows.length >= 5) {
+                const last5 = rows.slice(-5);
+                const closes = last5.map(r => Number(r.close)).filter(Number.isFinite);
+                const vols = last5.map(r => Number(r.volume)).filter(Number.isFinite);
+                if (closes.length === 5 && vols.length === 5) {
+                    baseline = {
+                        ma5: closes.reduce((s, v) => s + v, 0) / 5,
+                        vma5: vols.reduce((s, v) => s + v, 0) / 5,   // 5 日均量(股,× 1000 才是張)
+                    };
+                }
+            }
+        }
+    } catch (_) { /* silent */ }
+    cache.set(sym, baseline);
+    return baseline;
+}
+
+// V16.0 — Fugle 即時報價(含內外盤 bidVol/askVol),需 user 自己的 fugleToken
+async function fetchFugleQuote(sym, token) {
+    if (!token) return null;
+    try {
+        const url = `https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${encodeURIComponent(sym)}?apiKey=${encodeURIComponent(token)}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) return null;
+        const j = await res.json().catch(() => null);
+        if (!j) return null;
+        const bid = Number(j.bidVolume ?? j.bidVol ?? j.bestBidVolume ?? 0);
+        const ask = Number(j.askVolume ?? j.askVol ?? j.bestAskVolume ?? 0);
+        return { bid, ask };
+    } catch (_) { return null; }
+}
 
 // V15.9 — 直連 TWSE MIS 拿盤中即時報價(免費、免 token、無 rate limit,推薦 polling ≥ 5 秒)
 //         一批最多 50 檔(以 '|' 串接),回 JSON.msgArray 含 z(成交價)、y(昨收)、v(累計量)、tv(當筆量)
@@ -363,8 +407,24 @@ async function runScan(env) {
     const liveQuotes = await fetchTwseMisQuote([...allSymbols]);
     if (!falconMap.size && !macroAlert && !liveQuotes.size) return;
 
+    // V16.0 — vma5/ma5 baseline 跨用戶共用 cache(同股不重複 fetch data/{sym}.json)
+    const volBaseCache = new Map();
+    // 計算「盤中已過分鐘」(09:00-13:30 台北,跳午休 11:30-13:00,共 270 分)
+    const tpe = new Date(Date.now() + 8 * 3600e3);   // UTC+8
+    const utcH = tpe.getUTCHours(), utcM = tpe.getUTCMinutes();
+    let elapsed = 0;
+    if (utcH >= 9 && (utcH < 13 || (utcH === 13 && utcM <= 30))) {
+        if (utcH < 11 || (utcH === 11 && utcM < 30)) {
+            elapsed = (utcH - 9) * 60 + utcM;
+        } else if (utcH < 13) {
+            elapsed = 150;   // 午休:09:00-11:30 = 150 分
+        } else {
+            elapsed = 150 + (utcM);   // 下午:09:00-11:30 + 13:00-13:30
+        }
+    }
+
     for (const userData of users) {
-        try { await scanUser(env, userData, falconMap, macroAlert, liveQuotes); }
+        try { await scanUser(env, userData, falconMap, macroAlert, liveQuotes, volBaseCache, elapsed); }
         catch (e) { /* continue */ }
     }
 }
@@ -410,7 +470,7 @@ function buildMacroAlert(macro) {
     return hot.map(e => `⚠️ ${e.date || '今日'} ${e.event || e.name || ''}`).join('\n');
 }
 
-async function scanUser(env, user, falconMap, macroAlert, liveQuotes) {
+async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCache, elapsed) {
     const symbols = new Set();
     (user.watchlist || []).forEach(s => symbols.add(s));
     (user.monitorList || []).forEach(s => symbols.add(s));
@@ -468,6 +528,36 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes) {
             } else if (ret <= -8 && !(await wasPushed(env, user.chat_id, sym, 'sl8'))) {
                 alerts.push(`🛑 *${sym}* 庫存浮虧 *${ret.toFixed(1)}%*(${inv.cost}→${close})達 -8% 停損線`);
                 await markPushed(env, user.chat_id, sym, 'sl8');
+            }
+        }
+
+        // V16.0 — 量爆 + 突破 5MA(只在盤中時段 elapsed >= 30 分後判,避開開盤 noise)
+        if (live && volBaseCache && elapsed >= 30) {
+            const base = await fetchVolumeBaseline(sym, volBaseCache);
+            if (base && base.ma5 > 0 && base.vma5 > 0) {
+                const vTodayLots = (live.v || 0);   // MIS v 在 TWSE MIS 是「累計成交股數」?實測對齊「張」單位較常見
+                const vRatio = vTodayLots / (base.vma5 * (elapsed / 270));
+                const breakMa5 = live.z > base.ma5;
+                if (vRatio > 1.5 && breakMa5 && !(await wasPushed(env, user.chat_id, sym, 'volBreak5ma'))) {
+                    alerts.push(`🚀 *${sym}* 量爆突破 5MA *${live.z.toFixed(2)}*(>${base.ma5.toFixed(2)})\n預估量 ${vRatio.toFixed(1)}× 5日均 — 朱老師「量增突破」進場訊號`);
+                    await markPushed(env, user.chat_id, sym, 'volBreak5ma');
+                }
+            }
+        }
+
+        // V16.0 — Fugle 內外盤強買賣(需 user.settings.fugleToken1,沒設則跳過)
+        const fugleToken = settings.fugleToken1 || '';
+        if (fugleToken && live) {
+            const fq = await fetchFugleQuote(sym, fugleToken);
+            if (fq && fq.bid > 0 && fq.ask > 0) {
+                const askBidRatio = fq.ask / fq.bid;
+                if (askBidRatio > 2 && !(await wasPushed(env, user.chat_id, sym, 'fugleStrongBuy'))) {
+                    alerts.push(`💪 *${sym}* 主力強勢買盤(外盤 ${fq.ask} / 內盤 ${fq.bid} = ${askBidRatio.toFixed(1)}×)\n當前價 ${live.z.toFixed(2)}`);
+                    await markPushed(env, user.chat_id, sym, 'fugleStrongBuy');
+                } else if (askBidRatio < 0.5 && !(await wasPushed(env, user.chat_id, sym, 'fugleStrongSell'))) {
+                    alerts.push(`🩸 *${sym}* 主力強勢殺盤(內盤 ${fq.bid} / 外盤 ${fq.ask} = ${(1/askBidRatio).toFixed(1)}×)\n當前價 ${live.z.toFixed(2)}`);
+                    await markPushed(env, user.chat_id, sym, 'fugleStrongSell');
+                }
             }
         }
     }
