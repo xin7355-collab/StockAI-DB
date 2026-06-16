@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -708,7 +708,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -12627,16 +12627,47 @@ ${_newsLine}${globalContext}
         const body = document.getElementById('chuTabBody');
         const updated = document.getElementById('chuTabUpdated');
         if (!body) return;
-        const picks = (this.radarMatrix?.data || {})[key] || [];
+        let picks = (this.radarMatrix?.data || {})[key] || [];
+        // V17.3 — 整合朱老師四關通關卡狀態:採礦端已寫 warning 欄位(位階過高/高檔出貨),
+        //         前端漏顯導致選股清單跟四關通關卡看起來矛盾(其實兩個都對,只是這份清單沒標)。
+        //         三件事:① 顯 warning chip ② 排序預設「無警示者優先」③ 頂部加總結
+        const advice = this._chuPositionAdvice?.() || { regime: 'range', regimeLabel: '🦀 整備中' };
+        const globalRegimeOk = advice.regime === 'bull';
+
+        picks = picks.map(p => {
+            const lvl = p.warning?.level === 'red' ? 2 : p.warning?.level === 'yellow' ? 1 : 0;
+            // 簡化四關判定:
+            //   ✅ 大盤關: 多頭=過 / 否則未過
+            //   ✅ 進場訊號關: 命中本清單本身就是訊號 = 過
+            //   ❌ 位階關: warning.level red/yellow → 未過
+            //   ⚪ 週K結構關: 需 60+ 日資料,本清單未算,標「待點進去看」
+            const gatePass = (globalRegimeOk ? 1 : 0) + 1 + (lvl === 0 ? 1 : 0);
+            return { ...p, _warnLevel: lvl, _gatePass: gatePass };
+        });
+        // 排序:四關通過數降序 → 警示等級升序 → gain 降序
+        picks.sort((a, b) => b._gatePass - a._gatePass || a._warnLevel - b._warnLevel || (b.gain || 0) - (a.gain || 0));
+        const perfectCount = picks.filter(p => p._gatePass === 3).length;
+        const yellowCount = picks.filter(p => p._warnLevel === 1).length;
+        const redCount = picks.filter(p => p._warnLevel === 2).length;
+
         if (updated) {
             const d = this.radarMatrix?.updated || '';
-            updated.textContent = `更新時間:${d} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考進場`;
+            updated.innerHTML = `更新時間:${d} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考進場` +
+                (picks.length ? `<br><span class="text-[10px]">🟢 無警示 ${perfectCount} 檔 · 🟡 位階過高 ${yellowCount} 檔 · 🔴 高檔出貨 ${redCount} 檔</span>` : '');
         }
         if (!picks.length) {
             body.innerHTML = `<div class="text-center py-8 text-gray-500 text-[12px]">⚠️ 今日無股票符合此選股法條件<br><span class="text-gray-600 text-[10px]">(條件嚴格,0 檔代表市場沒有符合的標的,別硬找)</span></div>`;
             return;
         }
-        body.innerHTML = picks.map(p => {
+
+        // V17.3 — 頂部 banner 解釋「為何有警示」+ 大盤關卡狀態,消除「選股 vs 四關」矛盾感
+        const banner = `<div class="mb-2 px-2.5 py-2 rounded-lg bg-blue-950/40 border border-blue-800/60 text-[11px] leading-snug">
+            💡 <b class="text-blue-300">朱老師四關通關卡同步檢查</b>:此清單命中「動能訊號」,但個股還要過大盤/位階/週K才能放心進。
+            <br>📊 大盤關卡:${globalRegimeOk ? '✅ 多頭 — 可順勢進攻' : `⚠️ ${advice.regimeLabel} — 退守 ${advice.pct || '5 成以下'}`}
+            <br>🎯 排序:🟢無警示 → 🟡位階過高 → 🔴高檔出貨,優先看上面的綠燈股(等同四關通關卡會全綠)。
+        </div>`;
+
+        body.innerHTML = banner + picks.map(p => {
             const gainColor = (p.gain || 0) > 0 ? 'text-red-400' : ((p.gain || 0) < 0 ? 'text-green-400' : 'text-gray-400');
             const gainStr = ((p.gain || 0) > 0 ? '+' : '') + (p.gain || 0).toFixed(2) + '%';
             const isHunted = this.monitorList.some(m => m.sym === p.sym);
@@ -12644,7 +12675,20 @@ ${_newsLine}${globalContext}
                 ? `<span class="text-green-400 text-[10px] font-bold whitespace-nowrap" title="已在獵殺名單中">⚔️ 已監控</span>`
                 : `<button onclick="event.stopPropagation(); app.addChuPickToMonitor('${p.sym}','${key}');" class="text-purple-200 bg-purple-900/40 border border-purple-600/60 rounded px-1.5 py-0.5 text-[10px] font-bold hover:bg-purple-800/40 whitespace-nowrap" title="加入獵殺,可進場時跳通知">🎯 加入</button>`;
             const cname = p.name || this.getStockName(p.sym) || '';
-            return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.analyze('${p.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 hover:border-purple-500 cursor-pointer transition-colors">
+            // V17.3 — 邊框依警示等級換色,一眼看出可不可以進
+            const borderCls = p._warnLevel === 2 ? 'border-red-700/70 hover:border-red-500'
+                            : p._warnLevel === 1 ? 'border-amber-700/60 hover:border-amber-500'
+                            : 'border-green-800/60 hover:border-green-500';
+            // V17.3 — warning chip 顯採礦端寫的位階/出貨警示
+            const warnChip = p.warning
+                ? `<div class="mt-1.5 px-2 py-1 rounded text-[11px] font-bold ${p.warning.level === 'red' ? 'bg-red-900/40 border border-red-600 text-red-200' : 'bg-amber-900/40 border border-amber-600 text-amber-200'}">
+                       ${p.warning.level === 'red' ? '🚨' : '⚠️'} ${p.warning.warning}${p.warning.detail ? ` <span class="font-normal opacity-90">(${p.warning.detail})</span>` : ''}
+                       <div class="text-[10px] font-normal mt-0.5 opacity-90">${p.warning.level === 'red' ? '🛑 別追,放鎖股名冊等回檔再觀察' : '🟡 放鎖股名冊,等回檔到月線附近再進'}</div>
+                   </div>`
+                : `<div class="mt-1.5 px-2 py-1 rounded text-[11px] font-bold bg-green-900/30 border border-green-700/60 text-green-300">
+                       ✅ 位階關卡通過 — 可隔日站穩 5MA 進場
+                   </div>`;
+            return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.analyze('${p.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border ${borderCls} rounded-lg p-2.5 cursor-pointer transition-colors mb-2">
                 <div class="flex items-center justify-between gap-2 mb-1">
                     <div class="flex items-baseline gap-2 min-w-0">
                         <span class="font-bold text-cyan-300 text-[15px] flex-shrink-0 font-mono">${p.sym}</span>
@@ -12657,6 +12701,7 @@ ${_newsLine}${globalContext}
                     <span class="${gainColor} font-bold">${gainStr}</span>
                     <span class="text-gray-500">${(p.turnover_e || 0).toFixed(1)}億</span>
                 </div>
+                ${warnChip}
             </div>`;
         }).join('');
     },
