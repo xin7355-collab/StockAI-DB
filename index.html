@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -309,14 +309,22 @@
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
                     <label class="text-sm font-bold text-blue-400">📦 資料保險箱 (備份還原)</label>
-                    <p class="text-[10px] text-gray-500 leading-tight">可產生含金鑰或純策略之代碼，換機還原專用。</p>
-                    <div class="flex gap-2 mb-1">
-                        <button onclick="app.exportData(); app.vibrate(50);" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 rounded font-bold transition">📤 產生備份</button>
-                        <button onclick="app.importData(); app.vibrate(50);" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-sm py-2 rounded font-bold transition">📥 貼上還原</button>
+                    <p class="text-[10px] text-gray-500 leading-tight">V16.8 改一鍵流:備份自動複製+下載檔案;還原顯預覽再確認;刪除 2 段防呆。</p>
+                    <!-- V16.8 — 3 鈕並排:備份 / 還原 / 刪除(取代舊版「產生備份」textarea 兩段式)-->
+                    <div class="grid grid-cols-3 gap-2 mb-1">
+                        <button onclick="app.exportData(); app.vibrate(50);" class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📤<br>一鍵備份</button>
+                        <button onclick="app.openImportPanel(); app.vibrate(50);" class="bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📥<br>還原備份</button>
+                        <button onclick="app.clearAllLocalData(); app.vibrate(80);" class="bg-red-900/70 hover:bg-red-800 text-white text-xs py-2 rounded font-bold transition leading-tight border border-red-700">🗑️<br>一鍵刪除</button>
                     </div>
-                    <div id="exportAreaContainer" class="hidden flex gap-1">
-                        <textarea id="exportArea" class="flex-1 h-20 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="請將代碼貼於此處..."></textarea>
-                        <button onclick="app.copyExportData()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 rounded text-xs font-bold border border-gray-600 transition-colors break-words w-[4rem]">複製<br>代碼</button>
+                    <!-- 還原備份面板(預設隱藏,點「還原備份」才展開)-->
+                    <div id="exportAreaContainer" class="hidden flex flex-col gap-1.5 mt-1 bg-blue-950/30 border border-blue-800/50 rounded p-2">
+                        <p class="text-[10px] text-blue-300 leading-tight">📋 把備份代碼貼進下面,按「✅ 確認還原」</p>
+                        <textarea id="exportArea" class="w-full h-24 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="請將備份代碼貼於此處..."></textarea>
+                        <div class="flex gap-1.5">
+                            <button onclick="app.confirmImportData(); app.vibrate(50);" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-xs py-1.5 rounded font-bold transition">✅ 確認還原</button>
+                            <button onclick="app.copyExportData(); app.vibrate(30);" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1.5 rounded font-bold transition">📋 複製</button>
+                            <button onclick="document.getElementById('exportAreaContainer').classList.add('hidden'); app.vibrate(30);" class="bg-gray-800 hover:bg-gray-700 text-white text-xs px-2 py-1.5 rounded font-bold transition border border-gray-600">取消</button>
+                        </div>
                     </div>
                     <div class="border-t border-gray-700/50 pt-3 mt-1">
                         <label class="text-xs font-bold text-purple-400">📊 預測歷史快照（patWinRate 隔日驗證）</label>
@@ -695,7 +703,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3879,54 +3887,157 @@ ${list}
         }
     },
 
+    // V16.8 — 一鍵備份:直接複製剪貼簿 + 自動下載 .txt 檔(不再先展 textarea 兩段式)
     exportData() {
         this.saveSettings();
-        const data = { inv: this.inventory, favGroups: this.favGroups, set: this.settings };
+        const data = {
+            inv: this.inventory,
+            favGroups: this.favGroups,
+            set: this.settings,
+            _meta: {
+                exported_at: new Date().toISOString(),
+                version: 'V16.8',
+                inv_count: Object.keys(this.inventory || {}).length,
+                fav_groups_count: Object.keys(this.favGroups || {}).length,
+            }
+        };
         const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-        document.getElementById('exportAreaContainer').classList.remove('hidden'); 
-        document.getElementById('exportArea').value = encoded;
+
+        // 同時做 3 件事:① 複製剪貼簿 ② 下載 .txt ③ 顯 toast
+        const _copyPromise = (navigator.clipboard && navigator.clipboard.writeText)
+            ? navigator.clipboard.writeText(encoded).then(() => true).catch(() => false)
+            : Promise.resolve(false);
+
+        // 下載 .txt 檔(免剪貼簿備份,跨手機/雲端硬碟皆可)
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            const blob = new Blob([encoded], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `stockai_backup_${today}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+        } catch (e) { console.warn('[backup] 下載失敗', e); }
+
+        _copyPromise.then(copied => {
+            const invN = data._meta.inv_count, favN = data._meta.fav_groups_count;
+            this.showToast(
+                copied
+                    ? `✅ 已複製剪貼簿 + 下載備份檔(${invN} 檔持股 / ${favN} 自選群組)`
+                    : `✅ 已下載備份檔 stockai_backup_${new Date().toISOString().slice(0,10)}.txt(${invN} 檔持股 / ${favN} 自選群組)`,
+                'info'
+            );
+        });
+    },
+
+    // V16.8 — 開啟還原面板:顯示 textarea,等使用者貼+按確認(不再「按鈕同時觸發空文字錯誤」)
+    openImportPanel() {
+        const container = document.getElementById('exportAreaContainer');
+        const area = document.getElementById('exportArea');
+        container.classList.remove('hidden');
+        area.value = '';   // 清掉舊內容,避免誤用上次備份
+        setTimeout(() => area.focus(), 100);
     },
 
     copyExportData() {
         const area = document.getElementById('exportArea');
-        if(!area.value) return;
+        if (!area.value) return;
         const txt = area.value;
+        const done = () => this.showToast('✅ 備份代碼已複製!可貼到備忘錄/雲端硬碟保管', 'info');
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(txt).then(() => alert('✅ 備份代碼已複製！貼到新手機的「貼上還原」即可。')).catch(() => {
-                area.select(); document.execCommand('copy');
-                alert('✅ 備份代碼已複製！');
-            });
+            navigator.clipboard.writeText(txt).then(done).catch(() => { area.select(); document.execCommand('copy'); done(); });
         } else {
-            area.select(); document.execCommand('copy');
-            alert('✅ 備份代碼已複製！');
+            area.select(); document.execCommand('copy'); done();
         }
     },
 
-    importData() {
+    // V16.8 — 還原:預覽要還原什麼 → 二段 confirm → 不關閉 settings modal(避免「跳掉」)
+    confirmImportData() {
         const area = document.getElementById('exportArea');
-        const str = area.value.trim();
-        if(!str) { document.getElementById('exportAreaContainer').classList.remove('hidden'); alert("📥 請將備份代碼貼入！"); return; }
+        const str = (area?.value || '').trim();
+        if (!str) { this.showToast('📥 請將備份代碼貼入文字框內'); return; }
+        let data;
         try {
-            const data = JSON.parse(decodeURIComponent(escape(atob(str))));
-            if(data.inv) this.inventory = data.inv;
-            if(data.favGroups) this.favGroups = data.favGroups;
-            if(data.set) {
-                if(data.set.fugleToken && !data.set.fugleToken1) data.set.fugleToken1 = data.set.fugleToken;
-                this.settings = { ...this.settings, ...data.set };
-            }
-            
-            localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
-            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
-            localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
-            this.activeGroupName = Object.keys(this.favGroups)[0] || "首席自選清單";
-            localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
+            data = JSON.parse(decodeURIComponent(escape(atob(str))));
+        } catch (e) { this.showToast('❌ 代碼解析失敗 — 請確認貼上完整的備份代碼'); return; }
 
-            alert('✅ 資料與金鑰已完美還原！');
-            document.getElementById('settingsModal').classList.add('hidden');
-            document.getElementById('settingsModal').style.display = 'none';
-            this.refreshInventoryPrices(); this.renderFavTabs();
-            if(this.currentSymbolId) this.analyze(this.currentSymbolId, true);
-        } catch(e) { alert('❌ 代碼解析錯誤！'); }
+        // 預覽要還原什麼,給使用者最後確認機會
+        const invN  = Object.keys(data?.inv || {}).length;
+        const favN  = Object.keys(data?.favGroups || {}).length;
+        const exportedAt = data?._meta?.exported_at ? data._meta.exported_at.slice(0, 10) : '未知日期';
+        const previewMsg = `即將還原 ${exportedAt} 的備份:\n\n• ${invN} 檔持股\n• ${favN} 個自選群組\n• 設定 / API Keys\n\n會覆蓋目前資料,確定還原嗎?`;
+
+        this.showConfirm(previewMsg, () => {
+            try {
+                if (data.inv) this.inventory = data.inv;
+                if (data.favGroups) this.favGroups = data.favGroups;
+                if (data.set) {
+                    if (data.set.fugleToken && !data.set.fugleToken1) data.set.fugleToken1 = data.set.fugleToken;
+                    this.settings = { ...this.settings, ...data.set };
+                }
+                localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
+                localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+                localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
+                this.activeGroupName = Object.keys(this.favGroups)[0] || "首席自選清單";
+                localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
+
+                // V16.8 — 不關閉 settings modal(避免「跳掉」),只收起還原面板 + toast 確認
+                document.getElementById('exportAreaContainer').classList.add('hidden');
+                area.value = '';
+                this.showToast(`✅ 還原完成!${invN} 檔持股 / ${favN} 自選 / 設定全部復原`, 'info');
+                this.refreshInventoryPrices();
+                this.renderFavTabs();
+                if (this.currentSymbolId) this.analyze(this.currentSymbolId, true);
+            } catch (e) {
+                console.error('[restore] 寫入失敗', e);
+                this.showToast('❌ 寫入失敗 — 請重試或截圖回報');
+            }
+        });
+    },
+
+    // V16.8 — 一鍵刪除:2 段 confirm 防呆,清空所有本地資料(持股 / 自選 / 設定 / 快取),保留 onboarding 記憶
+    clearAllLocalData() {
+        this.showConfirm(
+            '⚠️ 真的要刪除所有本地資料嗎?\n\n會清空:\n• 持股 / 自選 / 設定 / API Keys\n• 本地 K 線快取 / AI 分析快取\n\n沒備份的話請先點「📤 一鍵備份」!',
+            () => {
+                this.showConfirm(
+                    '🔥 最後確認:刪除後無法復原(除非你有備份)。確定?',
+                    () => {
+                        try {
+                            // 清掉所有 proTerminal* / proTerm_* / newsAICache_* / aiCooldown_* / xrayCache_* 等本地資料
+                            const allKeys = Object.keys(localStorage);
+                            const PROTECTED = new Set(['_onboard']);  // 預留:未來想保留 onboarding 記憶
+                            let removed = 0;
+                            allKeys.forEach(k => {
+                                if (PROTECTED.has(k)) return;
+                                if (k.startsWith('onboard_')) return;   // 保留:不要每次都跳新手引導
+                                if (k.startsWith('proTerminal') || k.startsWith('proTerm_') ||
+                                    k.startsWith('newsAICache_') || k.startsWith('aiCooldown_') ||
+                                    k.startsWith('xrayCache_') || k.startsWith('chuLock_') ||
+                                    k.startsWith('chu_') || k === 'showPeaks') {
+                                    localStorage.removeItem(k); removed++;
+                                }
+                            });
+
+                            // IndexedDB(proTerminalDB)也清,避免 K 線舊資料殘留
+                            try {
+                                if (window.indexedDB) {
+                                    indexedDB.deleteDatabase('proTerminalDB');
+                                }
+                            } catch (_) {}
+
+                            this.showToast(`✅ 已刪除 ${removed} 項本地資料,3 秒後重新載入...`, 'info');
+                            setTimeout(() => location.reload(), 3000);
+                        } catch (e) {
+                            console.error('[clear] 刪除失敗', e);
+                            this.showToast('❌ 刪除失敗 — 請手動清瀏覽器資料');
+                        }
+                    }
+                );
+            }
+        );
     },
 
     getStockName(sym) {
