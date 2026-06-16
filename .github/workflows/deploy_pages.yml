@@ -7,6 +7,7 @@ on:
     paths:
       - 'index.html'
       - 'sw.js'
+      - 'manifest.json'   # V17.0 — PWA installable manifest
   workflow_dispatch:
 
 # V14.12 — 與 daily_miner.yml deploy job 共用 'gh-pages-push' group,
@@ -37,6 +38,8 @@ jobs:
           mkdir -p /tmp/deploy
           cp index.html /tmp/deploy/
           cp sw.js      /tmp/deploy/
+          # V17.0 — PWA manifest 一併部署(若不存在則跳過,不阻塞舊版部署)
+          [ -f manifest.json ] && cp manifest.json /tmp/deploy/ || true
 
           # 切到現有的 gh-pages（保留所有資料，不用 --orphan）
           git fetch origin gh-pages 2>/dev/null || true
@@ -50,6 +53,7 @@ jobs:
           # 只更新前端檔案，資料目錄 data/ 保持不動
           cp /tmp/deploy/index.html .
           cp /tmp/deploy/sw.js      .
+          [ -f /tmp/deploy/manifest.json ] && cp /tmp/deploy/manifest.json . || true
 
           # 🆕 每次部署把 Service Worker 的 CACHE_NAME 注入 commit SHA，
           #     讓 sw.js 內容隨每次部署改變 → 瀏覽器認得新 SW → 自動接管+reload，杜絕使用者卡舊版
@@ -57,6 +61,7 @@ jobs:
           echo "SW CACHE_NAME → stockai-${GITHUB_SHA::8}"
 
           git add index.html sw.js
+          [ -f manifest.json ] && git add manifest.json || true
           git diff --cached --quiet && echo "無變更，跳過" || {
             git commit -m "🚀 前端更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
             # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
