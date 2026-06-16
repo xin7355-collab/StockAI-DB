@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V15.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V15.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8491,7 +8491,53 @@ ${_newsLine}${globalContext}
                 <span class="text-amber-300">📌 朱老師四關通關卡</span>
                 <span class="text-[10px] text-gray-400 font-normal">${summary}</span>
             </div>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-1.5">${gatesHtml}</div>`;
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-1.5">${gatesHtml}</div>
+            ${this._renderChuResistanceZonesHtml(data, last)}`;
+    },
+
+    // V15.4 朱老師心法盲點補:近 120 日 swing peaks 聚類找上方 ±2% 壓力區,
+    //       使用者一眼看上方有沒有「2 月前 M 頭」蓋著(原本只能肉眼切週 K 看)
+    _chuResistanceZones(data, last) {
+        if (!data || last == null || last < 60) return [];
+        const pC = data[last].close;
+        const peaks = [];
+        const start = Math.max(0, last - 120);
+        for (let i = start + 3; i < last - 3; i++) {
+            const h = data[i].high;
+            if (h > data[i-1].high && h > data[i-2].high && h > data[i-3].high
+             && h > data[i+1].high && h > data[i+2].high && h > data[i+3].high
+             && h > pC) {
+                peaks.push({ price: h, daysAgo: last - i });
+            }
+        }
+        peaks.sort((a, b) => a.price - b.price);
+        const zones = [];
+        for (const p of peaks) {
+            const exist = zones.find(z => Math.abs(z.price - p.price) / z.price < 0.02);
+            if (exist) {
+                exist.count++;
+                if (p.daysAgo > exist.daysAgo) exist.daysAgo = p.daysAgo;
+            } else {
+                zones.push({ price: p.price, daysAgo: p.daysAgo, count: 1 });
+            }
+        }
+        return zones.filter(z => (z.price - pC) / pC < 0.15)
+                    .map(z => ({ ...z, distancePct: ((z.price - pC) / pC * 100) }))
+                    .slice(0, 3);
+    },
+
+    _renderChuResistanceZonesHtml(data, last) {
+        const zones = this._chuResistanceZones(data, last);
+        if (!zones.length) return '';
+        const list = zones.map(z => {
+            const dual = z.count >= 2 ? ' · <span class="text-amber-300">雙重壓力</span>' : '';
+            return `<div class="text-[10px] text-gray-300 leading-tight">⬆️ <span class="font-mono text-orange-300">${z.price.toFixed(2)}</span> <span class="text-gray-500">(+${z.distancePct.toFixed(1)}%)</span>${dual} · ${z.daysAgo} 日前</div>`;
+        }).join('');
+        return `<div class="mt-2 pt-2 border-t border-amber-800/40">
+            <div class="text-[10px] font-bold text-amber-300 mb-1">⚠️ 上方壓力區(近 120 日 M 頭)</div>
+            ${list}
+            <div class="text-[9px] text-gray-500 mt-1 leading-snug">💡 突破後第一波若撞上這些價位,容易遇套牢賣壓,先設停利。</div>
+        </div>`;
     },
 
     // ── A3. 離場 SOP ────────────────────────────────────────────────────────
@@ -9573,7 +9619,16 @@ ${_newsLine}${globalContext}
             const name = this.getStockName(item.sym).replace(/</g, '&lt;');
             const gain = typeof item.gain === 'number' ? `${item.gain > 0 ? '+' : ''}${item.gain}%` : '';
             const status = String(item.status || '').replace(/</g, '&lt;').slice(0, 18);
-            return this._sendScoreRow(item.sym, name, `${status} ${gain}`, item.close);
+            // V15.4 朱老師高檔出貨警示(radar_miner.py _chu_top_distribution_warning 寫入)
+            let warnHtml = '';
+            if (item.warning) {
+                const w = item.warning;
+                const cls = w.level === 'red'
+                    ? 'bg-red-900/50 border-red-500 text-red-200'
+                    : 'bg-amber-900/50 border-amber-500 text-amber-200';
+                warnHtml = ` <span class="${cls} border text-[9px] px-1.5 py-0.5 rounded font-bold" title="${w.detail || ''}">⚠️ ${w.warning}</span>`;
+            }
+            return this._sendScoreRow(item.sym, name, `${status} ${gain}${warnHtml}`, item.close);
         }).join('');
     },
 
@@ -10305,7 +10360,7 @@ ${_newsLine}${globalContext}
         const chgPct = pC1 > 0 ? ((pC - pC1) / pC1 * 100) : 0;
         const sig1 = (pC > pO) && chgPct >= 5;
         const volChg = pV1 > 0 ? ((pV - pV1) / pV1 * 100) : 0;
-        const sig2 = volChg >= 20;
+        const sig2 = volChg >= 20;   // V15.4 朱老師心法:今日量 ≥ 昨日量 × 1.2(昨量為最近籌碼抵抗位,主力表態最實質)
         const sig3 = ma5 ? (pC > ma5 && pC > pH1) : false;
         out.sigCount = [sig1, sig2, sig3].filter(Boolean).length;
         out.sigLabel = out.sigCount === 3 ? '🚀 三燈全亮！高勝率發動點'

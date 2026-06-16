@@ -172,13 +172,17 @@ def _chu_perfect6(sym, rows):
         badges.append("月線上揚")
 
     turnover = c * v
-    return {
+    result = {
         'sym': sym, 'close': round(c, 2),
         'turnover_e': round(turnover / YI, 2),
         'gain': round(day_gain, 2),
         'quality': quality,
         'status': f"品質{quality}/25" + (" · " + "·".join(badges) if badges else ""),
     }
+    warn = _chu_top_distribution_warning(rows)
+    if warn:
+        result['warning'] = warn   # V15.4 朱老師高檔出貨警示(不淘汰,只標警讓使用者決定)
+    return result
 
 
 def _chu_top_gainer(sym, rows):
@@ -203,12 +207,16 @@ def _chu_top_gainer(sym, rows):
     if lots < 2000:
         return None
 
-    return {
+    result = {
         'sym': sym, 'close': round(c, 2),
         'turnover_e': round(turnover / YI, 2),
         'gain': round(day_gain, 2),
         'status': f"漲{day_gain:.1f}% · 量{int(lots)}張",
     }
+    warn = _chu_top_distribution_warning(rows)
+    if warn:
+        result['warning'] = warn   # V15.4 朱老師高檔出貨警示
+    return result
 
 
 def _chu_bottom(sym, rows):
@@ -248,9 +256,11 @@ def _chu_bottom(sym, rows):
     day_gain = (c - pc) / pc * 100
     if not (c > o and day_gain > 0.5):
         return None
-    v_avg_20 = sum(vols[-20:]) / 20
-    if not (v_avg_20 > 0 and v > v_avg_20 * 2):
+    # V15.4 朱老師心法:量增最精準訊號是「今日量 ≥ 昨日量 × 1.2」(昨量是離今天最近的籌碼抵抗位,主力表態最實質)
+    v_yesterday = vols[-2] if len(vols) >= 2 else 0
+    if not (v_yesterday > 0 and v >= v_yesterday * 1.2):
         return None
+    v_avg_20 = sum(vols[-20:]) / 20
 
     turnover = c * v
     return {
@@ -280,9 +290,11 @@ def _chu_riding5ma(sym, rows):
         return None
     if c <= ma5_today:  # 收盤要站上 MA5
         return None
-    # MA5 5 日斜率 > 5%(陡峭)
+    # V15.4 朱老師心法:回後買允許 MA5 短期下彎(回檔 3 天 5MA 可能短負),
+    # 但今日收必須強勢突破 5MA 壓力(close > ma5 + close > 昨收 = 突破前日壓力)
+    # 從「slope > 5%」改為「slope > -2%(允許下彎)+ 收 > 5MA + 收 > 昨收」
     slope_5 = (ma5_today - ma5_5ago) / ma5_5ago * 100
-    if slope_5 <= 5:
+    if slope_5 <= -2 or c <= pc:
         return None
     # 近 5 日 ≥ 2 根漲幅 > 5%
     big_days = 0
@@ -309,13 +321,65 @@ def _chu_riding5ma(sym, rows):
     day_gain = (c - pc) / pc * 100
     v = rows[-1].get('volume', 0) or 0
     turnover = c * v
-    return {
+    result = {
         'sym': sym, 'close': round(c, 2),
         'turnover_e': round(turnover / YI, 2),
         'gain': round(day_gain, 2),
         'cum_5d': round(cum_5d, 2),
         'status': f"5日累漲{cum_5d:.0f}% · 斜率{slope_5:.0f}%",
     }
+    warn = _chu_top_distribution_warning(rows)
+    if warn:
+        result['warning'] = warn   # V15.4 朱老師高檔出貨警示
+    return result
+
+
+# V15.4 朱老師心法:高檔異量過濾(連漲 5+ 日 + 60 日天量 + 長上影 + 乖離 > 15% = 多頭高檔出貨)
+def _chu_top_distribution_warning(rows):
+    """朱老師高檔出貨警告 — 4 條全中紅、僅乖離過熱黃,讓使用者一眼識破追高陷阱。"""
+    if len(rows) < 60:
+        return None
+    last = rows[-1]
+    o = last.get('open', 0) or 0
+    h = last.get('high', 0) or 0
+    c = last.get('close', 0) or 0
+    v = last.get('volume', 0) or 0
+    if c <= 0:
+        return None
+    closes = [r.get('close', 0) or 0 for r in rows]
+    vols = [r.get('volume', 0) or 0 for r in rows]
+    # 1. 連漲 N 日(close > open 連續)
+    consecutive_up = 0
+    for r in reversed(rows[-7:]):
+        if (r.get('close', 0) or 0) > (r.get('open', 0) or 0):
+            consecutive_up += 1
+        else:
+            break
+    # 2. 爆 60 日天量
+    max_vol_60 = max(vols[-60:]) if vols[-60:] else 0
+    is_peak_vol = max_vol_60 > 0 and v >= max_vol_60
+    # 3. 長上影線(上影 / 實體 > 1 或上影 > 2.5%)
+    body = abs(c - o) or 0.01
+    upper_shadow = max(0.0, h - max(o, c))
+    long_upper = (upper_shadow / body > 1) or (upper_shadow / c > 0.025)
+    # 4. bias20 > 15%
+    if len(closes) >= 20:
+        ma20 = sum(closes[-20:]) / 20
+        bias20 = (c - ma20) / ma20 * 100 if ma20 > 0 else 0
+    else:
+        bias20 = 0
+    over_extended = bias20 > 15
+    # 4 條全中 → 高檔出貨紅燈
+    if consecutive_up >= 5 and is_peak_vol and long_upper and over_extended:
+        return {'warning': '高檔爆量出貨',
+                'detail': f'連漲 {consecutive_up} 日 + 60 日天量 + 長上影 + 乖離 {bias20:.1f}%',
+                'level': 'red'}
+    # 部分中(只乖離過熱)→ 黃燈
+    if over_extended:
+        return {'warning': '位階過高,別追',
+                'detail': f'乖離月線 +{bias20:.1f}%',
+                'level': 'yellow'}
+    return None
 
 
 def fetch_attention_disposal_status():
