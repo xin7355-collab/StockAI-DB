@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V15.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V15.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1054,7 +1054,7 @@
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
                     <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【歷史隔日上漲機率】\n\n機率欄與上方「AI 雲端大數據波段回測預判」完全同源 — 都是 patWinRate（近5日K線+量能+KD/MACD+籌碼+大盤環境的歷史型態相似度匹配，純歷史數學運算，不是 AI 幻想）。\n\n• 今日該行 = 上方顯示的機率，絕對一致\n• 歷史日（最近 10 個交易日）：有過去快照優先用快照，沒有就用同一算法現場補算（純歷史 K 線比對，0 AI 介入）\n• Alpha 分：當日綜合戰力分（技術面+籌碼面+大盤環境，逐日重算）— 觀察「分數高時是否隔日真的漲」可比較哪種分數區段勝率較高\n• 隔日實際漲跌：從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄：預測機率 ≥ 50% 且實際漲 = ✅，反之 ❌\n\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">📅 歷史隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">（點擊看說明）</span></h2>
                     <div class="text-[10px] text-gray-500 mb-2 leading-tight">機率欄 = patWinRate（同上方）。最近 10 個交易日有快照用快照，沒有就現場補算（純歷史 K 線數學運算，0 AI 幻想）。Alpha 分為當日綜合戰力（逐日重算）。</div>
-                    <div class="text-[10px] text-gray-500 mb-1.5 leading-snug">📖 <span class="text-green-400 font-bold">✅</span> = 預測對(機率方向與隔日實際漲跌一致) ・ <span class="text-red-400 font-bold">❌</span> = 方向反了</div>
+                    <div class="text-[10px] text-gray-500 mb-1.5 leading-snug">📖 <span class="text-green-400 font-bold">✅ 對</span> = 預測方向命中 ・ <span class="text-red-400 font-bold">❌ 反</span> = 方向反了</div>
                     <table class="w-full text-left border-collapse">
                         <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">我的機率</th><th class="py-1.5 px-1 font-bold text-center">Alpha 分</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
                         <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="5" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
@@ -1171,7 +1171,10 @@
                     </div>
                     <!-- 每月營收趨勢 -->
                     <div class="bg-[#0d1117] rounded p-2 mb-1.5">
-                        <div class="text-gray-500 text-[10px] font-mono mb-0.5">📅 月營收（最近12月）</div>
+                        <div class="flex items-center justify-between mb-0.5">
+                            <div class="text-gray-500 text-[10px] font-mono">📅 月營收（最近12月）</div>
+                            <div id="xrayRevRecordBadge" class="hidden inline-block px-1.5 py-0.5 rounded bg-amber-900/40 border border-amber-500 text-amber-300 text-[9px] font-bold">🏆 創 12 月新高</div>
+                        </div>
                         <div id="xrayRevTrend" style="width:100%;height:200px;"></div>
                     </div>
                     <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
@@ -7063,7 +7066,27 @@ ${peerLine}${newsCtx}
                         ...(hasPrice ? [{ type: 'value', axisLabel: { fontSize: 8, color: '#64748b', formatter: v => v.toFixed(0) }, splitLine: { show: false }, axisLine: { show: false } }] : [])
                     ],
                     series: [
-                        { type: 'bar', yAxisIndex: 0, data: rvSlice.map((r, i) => ({ value: r.revenue, itemStyle: { color: rvYoyArr[i] == null ? '#6b7280' : rvYoyArr[i] > 0 ? '#f97316' : '#22c55e' } })), barMaxWidth: 16 },
+                        { type: 'bar', yAxisIndex: 0, data: rvSlice.map((r, i) => {
+                            // V15.1 — 每根柱獨立配色:MoM > 0 紅(漲)、< 0 綠(跌)、無資料/持平灰
+                            //         本月若創 12 月新高加金框 + glow
+                            const mom = rvMomArr[i];
+                            const maxRev = Math.max(...rvSlice.map(x => x.revenue || 0));
+                            const isHigh = r.revenue >= maxRev && r.revenue > 0;
+                            const fillColor = mom == null ? '#6b7280'
+                                           : mom > 0 ? '#f87171'   // 台股慣例 MoM 漲 = 紅
+                                           : mom < 0 ? '#4ade80'   // MoM 跌 = 綠
+                                           : '#9ca3af';
+                            return {
+                                value: r.revenue,
+                                itemStyle: {
+                                    color: fillColor,
+                                    borderColor: isHigh ? '#fbbf24' : 'transparent',
+                                    borderWidth: isHigh ? 2 : 0,
+                                    shadowColor: isHigh ? 'rgba(251,191,36,0.6)' : 'transparent',
+                                    shadowBlur:  isHigh ? 6 : 0,
+                                },
+                            };
+                        }), barMaxWidth: 16 },
                         ...(hasPrice ? [{ type: 'line', yAxisIndex: 1, data: priceArr, symbol: 'none', lineStyle: { color: '#94a3b8', width: 1.5 }, areaStyle: { color: 'rgba(148,163,184,0.06)' } }] : [])
                     ],
                     tooltip: {
@@ -7072,14 +7095,31 @@ ${peerLine}${newsCtx}
                         formatter: params => {
                             const idx = params[0].dataIndex;
                             const yoy = rvYoyArr[idx], mom = rvMomArr[idx], price = priceArr[idx];
-                            let html = `<b>${params[0].name}</b><br>營收: ${(rvSlice[idx].revenue/1e8).toFixed(2)}億`;
-                            if (yoy != null) html += `<br>YoY: <span style="color:${yoy>0?'#f97316':'#22c55e'}">${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
-                            if (mom != null) html += `<br>MoM: <span style="color:${mom>0?'#f97316':'#22c55e'}">${mom>0?'+':''}${mom.toFixed(1)}%</span>`;
+                            // V15.1 — tooltip 加創新高標記
+                            const maxRev = Math.max(...rvSlice.map(x => x.revenue || 0));
+                            const isHigh = rvSlice[idx].revenue >= maxRev && rvSlice[idx].revenue > 0;
+                            let html = `<b>${params[0].name}</b>`;
+                            if (isHigh) html += ` <span style="color:#fbbf24">🏆 創 12 月新高</span>`;
+                            html += `<br>營收: ${(rvSlice[idx].revenue/1e8).toFixed(2)}億`;
+                            // 台股慣例:MoM/YoY 漲色紅、跌色綠
+                            if (mom != null) html += `<br>MoM: <span style="color:${mom>0?'#f87171':mom<0?'#4ade80':'#9ca3af'}">${mom>0?'+':''}${mom.toFixed(1)}%</span>`;
+                            if (yoy != null) html += `<br>YoY: <span style="color:${yoy>0?'#f87171':yoy<0?'#4ade80':'#9ca3af'}">${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
                             if (price != null) html += `<br>月底股價: ${price}`;
                             return html;
                         }
                     }
                 }, true);
+                // V15.1 — 創新高 badge:若最新筆營收 = 12 月最大值且 > 0,顯示頂部紅標
+                const recordBadge = document.getElementById('xrayRevRecordBadge');
+                if (recordBadge) {
+                    const maxRev = Math.max(...rvSlice.map(x => x.revenue || 0));
+                    const lastRev = rvSlice[rvSlice.length - 1]?.revenue || 0;
+                    if (lastRev >= maxRev && lastRev > 0) {
+                        recordBadge.classList.remove('hidden');
+                    } else {
+                        recordBadge.classList.add('hidden');
+                    }
+                }
                 // 🛠️ tab 切換時容器寬度 0 → init 後柱子擠左,延遲 resize 確保滿版
                 requestAnimationFrame(() => { try { revChart.resize(); } catch(_){} });
                 setTimeout(() => { try { revChart.resize(); } catch(_){} }, 200);
@@ -11116,9 +11156,10 @@ ${_newsLine}${globalContext}
                     const predUp = wr >= 50;
                     const actualUp = nDiff > 0;
                     const hit = predUp === actualUp;
+                    // V15.1 — 加 2 字中文短描述,使用者不必回頭看符號定義
                     hitHtml = hit
-                        ? '<span class="text-green-400 font-bold" title="預測對:漲跌方向命中">✅</span>'
-                        : '<span class="text-red-400 font-bold" title="預測錯:方向反了">❌</span>';
+                        ? '<span class="text-green-400 font-bold whitespace-nowrap" title="預測對:漲跌方向命中">✅ 對</span>'
+                        : '<span class="text-red-400 font-bold whitespace-nowrap" title="預測錯:方向反了">❌ 反</span>';
                 } else {
                     hitHtml = '<span class="text-gray-600">—</span>';
                 }
