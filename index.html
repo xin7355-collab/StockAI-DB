@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2181,7 +2181,7 @@ const app = {
         '法人成本估算': '這是用「區間內法人買超那幾天的收盤價,依買超張數加權平均」算出來的「估算建倉成本」,讓你看大戶大概在哪個價位進貨。⚠️ 只是粗估(法人實際成交價我們拿不到),且只統計買超日;若法人是賣超,改顯示「出脫均價」。當參考用,別當精準成本。',
         '營收YoY': '營收年增率 = 今年這個月營收 vs 去年同月,成長幾 %。台股慣例紅=成長(好)、綠=衰退(壞)。+20% 以上算強勁成長;轉負(綠字)代表生意變差要警覺。看「年增」是為了避開淡旺季干擾(例如過年月)。',
         '本益比PE': '本益比 = 股價 ÷ 每股盈餘(EPS),白話就是「幾年回本」。15 倍 = 公司賺的錢不變的話,要 15 年才把買股票的錢賺回來。越低越便宜,但太低也可能是市場不看好。顏色是「健康度」:綠=便宜(<15)、黃=合理、紅=偏貴(>40),不是漲跌色。⚠️ **PE 有兩種算法**:① **TTM(過去 12 月)** — 我們用 TWSE 官方數字,保守實在;② **Forward(未來 12 月估)** — 用分析師預估,成長股看起來會便宜很多(因 EPS 預估較高)。若你看其他平台的 PE 比較低,可能是用 forward。',
-        '股價淨值比PB': '股價淨值比 = 股價 ÷ 每股淨值,白話就是「市場願意出幾倍的帳面價值買這家公司」。1.5 倍 = 公司帳上每股淨值 100 元,市場願意出 150 元。傳產 / 金融 / 資產股看 P/B 比 PE 重要(因獲利波動大)。健康度:綠 <2 便宜、黃 2-5 合理、紅 >5 偏貴。⚠️ 科技股 / 護國神山 P/B 通常很高(無形資產多),不能單看這個數字,要搭 PE 看。',
+        '股價淨值比PB': '股價淨值比 = 股價 ÷ 每股淨值,白話就是「市場願意出幾倍的帳面價值買這家公司」。1.5 倍 = 公司帳上每股淨值 100 元,市場願意出 150 元。傳產 / 金融 / 資產股看 P/B 比 PE 重要(因獲利波動大)。⚠️ V16.2 改用「全市場 P/B 分位數」動態判定(不再寫死 <2 便宜 / >5 偏貴)— 因台股大盤 P/B 在 AI 行情下逐年上升,固定門檻誤判越來越多。現在顯示:綠=低於市場 P25(真便宜)、黃=P25-P75 中間、橙=P75-P90 偏高、紅=超過 P90(全市場前 10% 高估)。AI 龍頭不再永遠紅燈。',
         '填息機率': '填息 = 除息日後股價回到除息前的水準。填息機率 = 近 5 年配息中成功填息次數 ÷ 總配息次數。100% = 每次配息都填回去(像 TSMC 這種成長股)、70-90% 算優、<50% 代表配息只是「左手換右手」,股價長期難回。算法:取除息日前一天 close,看之後幾個交易日 close 能 ≥ 那個值即算填息;6 個月內未填則記不填。',
         '平均填息天數': '從除息日到股價填回除息前 close 的平均交易日數。1-3 天 = 強勢股(市場搶填息);1-2 週 = 健康;> 1 個月 = 配息不夠吸引力或本身弱勢。⚠️ 跟「填息機率」一起看,機率高 + 天數短 = 真存股標的;機率高但要等 60+ 天填回 = 配息綁住資金影響操作。',
         '分批資金不足': '極罕見狀態:你的單檔總資金太少,連 1 股都買不起(預算 < 股價)。✅ 解決方案:① 把單檔總資金提高到至少 1 股的價格 ② 換股價較低的標的 ③ 不操作這檔(朱老師心法:預算不夠就別硬上,不准重壓)。⚠️ 朱老師原則上教整張紀律(交易成本低),但現代零股已合法且廣泛,小資族(5-50 萬)用零股跟著心法分批,概念完全一樣 — 比例 3-3-4、停損紀律、不准攤平、不准倒金字塔,跟整張一樣有效。詳見「零股操作」說明手續費實務。',
@@ -2490,6 +2490,7 @@ const app = {
         this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
         this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
+        this._loadMarketStats();       // 📊 V16.2 全市場 P/B 分位數(供動態 P/B 判斷,取代固定 <2/>5 門檻)
         this._ensureChuLockGroup();    // 📌 朱老師鎖股 favGroup 預設建立(空清單,等使用者鎖)
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
@@ -5393,6 +5394,21 @@ const marginByDate = {};
     // 🦅 獵鷹建倉分:啟動時拉一次 falcon_scores.json(radar_miner 全市場評分結果)
     _falconScores: null,
     // 🌍 啟動時先載 macro_risk.json,讓 renderFalconDashboard 內的黑天鵝警報能即時顯示
+    // V16.2 — 全市場 P/B 分位數(取代固定 <2/>5 門檻,自動隨大盤調整)
+    async _loadMarketStats() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/market_stats.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j && typeof j === 'object') {
+                this._marketStats = j;
+                if (j.pb) console.log(`[market_stats] P/B P25/P50/P75/P90 = ${j.pb.p25}/${j.pb.p50}/${j.pb.p75}/${j.pb.p90}(${j.pb.count} 檔)`);
+            }
+        } catch (_) { /* silent — fallback 既有固定門檻 */ }
+    },
+
     // 黃金 +X% / 原油 +X% / KOSPI -X% 等具體數值;原本是 lazy 載入時機晚,造成顯示「?」
     async _loadMacroRiskCache() {
         try {
@@ -6766,14 +6782,33 @@ ${peerLine}${newsCtx}
                 ? (src === 'TWSE_TTM' ? '(TWSE TTM)' : src === 'FinMind' ? '(FinMind 估算)' : '(現價/年化 EPS)')
                 : '';
         }
-        // V14.15:股價淨值比 P/B(miner.py 從 BWIBBU_d 抓 pbr)
+        // V14.15:股價淨值比 P/B(miner.py 從 BWIBBU_d 抓 pbr,V15.9 FinMind PER 補)
         const pb = (localFund.pb != null) ? Number(localFund.pb) : null;
         // V15.7 — P/B 無資料源(BWIBBU_d 對某些股拿不到)時,顯具體提示而非含糊「採礦更新中」
         if (pb == null && localFund.pb_unavailable) {
             const pbEl = document.getElementById('xrayPb');
             if (pbEl) pbEl.innerHTML = '<span class="text-gray-500 text-xs" title="TWSE BWIBBU_d 端點對部分股票無回應,免費資料源無此股 P/B。可至 Yahoo 股市查」">💎 無免費資料源</span>';
         } else {
-            setCell('xrayPb', pb, 'x', pb==null?null:pb<2?'text-green-400':pb>5?'text-red-400':'text-yellow-400');
+            // V16.2 — P/B 用全市場分位數動態判,取代固定 <2/>5(AI 行情下台股 P/B 全紅誤判)
+            const pbStats = this._marketStats?.pb;
+            const pbColor = pb == null ? null
+                          : pbStats ? (pb < pbStats.p25 ? 'text-green-400'        // 全市場 P25 以下 = 真便宜
+                                    :  pb < pbStats.p75 ? 'text-yellow-400'       // P25-P75 = 中間
+                                    :  pb < pbStats.p90 ? 'text-orange-400'       // P75-P90 = 偏高
+                                    :                     'text-red-400')         // > P90 = 全市場前 10% 高估
+                          : (pb < 2 ? 'text-green-400' : pb > 5 ? 'text-red-400' : 'text-yellow-400');  // fallback
+            setCell('xrayPb', pb, 'x', pbColor);
+            // 加 tooltip 顯目前分位資訊
+            if (pbStats && pb != null) {
+                const pbEl = document.getElementById('xrayPb');
+                if (pbEl) {
+                    const tier = pb < pbStats.p25 ? `市場 P25 以下(便宜)`
+                              :  pb < pbStats.p75 ? `市場 P25-P75 中間`
+                              :  pb < pbStats.p90 ? `市場 P75-P90 偏高`
+                              :                     `市場 P90 以上(高估)`;
+                    pbEl.title = `V16.2 動態判:${tier}(全市場 P/B P25/P50/P75/P90 = ${pbStats.p25}/${pbStats.p50}/${pbStats.p75}/${pbStats.p90},${pbStats.count} 檔)`;
+                }
+            }
         }
         setCell('xrayYield', yieldRate, '%', yieldRate==null?null:yieldRate>5?'text-green-400':yieldRate<2?'text-gray-400':'text-yellow-400');
 
@@ -8672,12 +8707,16 @@ ${_newsLine}${globalContext}
                       : fillProb >= 90 ? 95
                       : fillProb >= 70 ? 75
                       : fillProb >= 50 ? 50 : 25;
-        // V15.6 — 護城河 + 穩定成長加分(營收 YoY > 10% + ma60 之上 = 護城河 + 趨勢)
+        // V15.6 / V16.2 — 護城河 + 穩定成長加分
+        //         V16.2 P/B 改用全市場 P75 動態判(取代固定 <5,AI 行情下 P/B 全紅誤判)
+        const pbStats2 = this._marketStats?.pb;
         let moatScore;
-        if (pb != null && pb < 5 && ma60 && close && close > ma60) moatScore = 85;
-        else if (pb != null && pb < 8)                              moatScore = 70;
-        else if (ma60 && close && close > ma60)                     moatScore = 65;
-        else                                                         moatScore = 45;
+        const pbHealthy = pb != null && (pbStats2 ? pb < pbStats2.p75 : pb < 5);
+        const pbVeryHealthy = pb != null && (pbStats2 ? pb < pbStats2.p50 : pb < 3);
+        if (pbHealthy && ma60 && close && close > ma60) moatScore = pbVeryHealthy ? 85 : 80;
+        else if (pbHealthy)                              moatScore = 70;
+        else if (ma60 && close && close > ma60)          moatScore = 65;
+        else                                              moatScore = 45;
         if (revenueYoy != null && revenueYoy > 10 && ma60 && close && close > ma60) {
             moatScore = Math.min(100, moatScore + 10);   // 穩定成長股加分
         }

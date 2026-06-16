@@ -208,7 +208,7 @@ HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
 # V15.8 — fundamentals schema 版本標記:每次 miner.py 改動 fundamentals 結構就 bump,
 #         自動 invalidate 全市場 cache(避免 V15.7 修了欄位但 cache 7 天內擋住新邏輯)
-MINER_VERSION = 'V15.9'
+MINER_VERSION = 'V16.2'
 
 # ── 券商戰術標籤庫 ────────────────────────────────────────────────────────────
 TACTICAL_TAGS = {
@@ -887,31 +887,66 @@ def fetch_industry_map() -> dict:
 
 
 def aggregate_industry_pe(fund_cache: dict, industry_map: dict) -> dict:
-    """把全市場 PE 按產業分組,算每組中位數 + 標記景氣循環產業。
+    """把全市場 PE/PB 按產業分組,算每組中位數 + P25/P75/P90 + 標記景氣循環產業。
+    V16.2:加 PB 分位數(median/p25/p75/p90),供前端動態 P/B 判斷取代固定門檻。
     輸出 dict 供寫進 data/industry_pe.json。"""
     if not fund_cache or not industry_map:
         return {}
     by_industry = {}
     for sym, fund in fund_cache.items():
         ind = industry_map.get(sym)
+        if not ind: continue
         pe = (fund or {}).get('pe')
-        # 過濾無效 PE(虧損 / 異常高)
-        if not ind or pe is None or pe <= 0 or pe > 200:
-            continue
-        by_industry.setdefault(ind, []).append(pe)
+        pb = (fund or {}).get('pb') or (fund or {}).get('pbr')
+        slot = by_industry.setdefault(ind, {'pes': [], 'pbs': []})
+        if pe is not None and 0 < pe < 200:
+            slot['pes'].append(pe)
+        if pb is not None and 0 < pb < 50:
+            slot['pbs'].append(pb)
 
     industries = {}
-    for ind, pes in by_industry.items():
-        if len(pes) < 3:   # 至少 3 檔才算中位數,避免單一個股 distortion
+    for ind, d in by_industry.items():
+        if len(d['pes']) < 3:   # 至少 3 檔才算中位數,避免單一個股 distortion
             continue
-        sorted_pes = sorted(pes)
+        sorted_pes = sorted(d['pes'])
         median_pe = sorted_pes[len(sorted_pes) // 2]
-        industries[ind] = {
+        out = {
             'median_pe': round(median_pe, 2),
-            'stocks': len(pes),
+            'stocks': len(d['pes']),
             'is_cyclical': ind in CYCLICAL_INDUSTRIES,
         }
+        if len(d['pbs']) >= 3:
+            sorted_pbs = sorted(d['pbs'])
+            n = len(sorted_pbs)
+            out.update({
+                'median_pb': round(sorted_pbs[n // 2], 2),
+                'pb_p25':    round(sorted_pbs[max(0, int(n * 0.25) - 1)], 2),
+                'pb_p75':    round(sorted_pbs[min(n - 1, int(n * 0.75))], 2),
+                'pb_p90':    round(sorted_pbs[min(n - 1, int(n * 0.90))], 2),
+            })
+        industries[ind] = out
     return industries
+
+
+# V16.2 — 全市場 P/B 分位數(供前端動態判斷取代固定 <2/>5 門檻)
+def compute_market_pb_percentiles(fund_cache: dict) -> dict:
+    pbs = []
+    for fund in (fund_cache or {}).values():
+        pb = (fund or {}).get('pb') or (fund or {}).get('pbr')
+        if pb is not None and 0 < pb < 50:
+            pbs.append(pb)
+    if len(pbs) < 50:
+        return {}
+    sorted_pbs = sorted(pbs)
+    n = len(sorted_pbs)
+    return {
+        'updated': date.today().isoformat(),
+        'count': n,
+        'p25': round(sorted_pbs[max(0, int(n * 0.25) - 1)], 2),
+        'p50': round(sorted_pbs[n // 2], 2),
+        'p75': round(sorted_pbs[min(n - 1, int(n * 0.75))], 2),
+        'p90': round(sorted_pbs[min(n - 1, int(n * 0.90))], 2),
+    }
 
 
 # ── TWSE 全市場基本面（本益比 / 殖利率 / 股價淨值比）────────────────────────
@@ -2331,6 +2366,23 @@ def fetch_broker_chips():
                     print(f"  ⚠️ 產業 PE 聚合無資料且首次跑,寫入 _status=failed 旗標 → data/industry_pe.json")
                 else:
                     print("  ⏭️ 產業 PE 聚合無資料,保留既有 industry_pe.json")
+
+                # V16.2 — 全市場 P/B 分位數寫 data/market_stats.json(供前端動態判斷取代固定 <2/>5)
+                try:
+                    pb_pct = compute_market_pb_percentiles(fund_cache)
+                    if pb_pct:
+                        ms_path = Path('data', 'market_stats.json')
+                        existing_ms = {}
+                        if ms_path.exists():
+                            try: existing_ms = json.loads(ms_path.read_text(encoding='utf-8'))
+                            except Exception: pass
+                        existing_ms['pb'] = pb_pct
+                        ms_path.write_text(json.dumps(existing_ms, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                        print(f"  💾 全市場 P/B 分位 → data/market_stats.json(P25/P50/P75/P90 = {pb_pct['p25']}/{pb_pct['p50']}/{pb_pct['p75']}/{pb_pct['p90']},{pb_pct['count']} 檔)")
+                    else:
+                        print("  ⏭️ 全市場 P/B 樣本不足(< 50),不寫 market_stats.json")
+                except Exception as e:
+                    print(f"  ⚠️ 全市場 P/B 分位失敗(不影響主流程):{e}")
             except Exception as e:
                 print(f"  ⚠️ 產業 PE 聚合失敗(不影響主流程):{e}")
         else:
