@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V15.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V15.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2184,7 +2184,8 @@ const app = {
         '股價淨值比PB': '股價淨值比 = 股價 ÷ 每股淨值,白話就是「市場願意出幾倍的帳面價值買這家公司」。1.5 倍 = 公司帳上每股淨值 100 元,市場願意出 150 元。傳產 / 金融 / 資產股看 P/B 比 PE 重要(因獲利波動大)。健康度:綠 <2 便宜、黃 2-5 合理、紅 >5 偏貴。⚠️ 科技股 / 護國神山 P/B 通常很高(無形資產多),不能單看這個數字,要搭 PE 看。',
         '填息機率': '填息 = 除息日後股價回到除息前的水準。填息機率 = 近 5 年配息中成功填息次數 ÷ 總配息次數。100% = 每次配息都填回去(像 TSMC 這種成長股)、70-90% 算優、<50% 代表配息只是「左手換右手」,股價長期難回。算法:取除息日前一天 close,看之後幾個交易日 close 能 ≥ 那個值即算填息;6 個月內未填則記不填。',
         '平均填息天數': '從除息日到股價填回除息前 close 的平均交易日數。1-3 天 = 強勢股(市場搶填息);1-2 週 = 健康;> 1 個月 = 配息不夠吸引力或本身弱勢。⚠️ 跟「填息機率」一起看,機率高 + 天數短 = 真存股標的;機率高但要等 60+ 天填回 = 配息綁住資金影響操作。',
-        '分批資金不足': '朱老師「3-3-4 三批進場」要求每批至少買 1 整張(1000 股)。目前你的單檔預算太小,3 成試單算下來不夠買 1 整張。✅ 解決方案:① 把單檔總資金提高到「建議數字」以上(每批就能買 1 整張以上)② 換股價較低的標的(到「最高股價」以下,以目前預算 3 成試單就能買 1 整張)③ 不操作這檔(預算不夠就別硬上,朱老師心法第一條:不准重壓)。⚠️ 朱老師心法本來就是「整張紀律」,不建議零股分批,因交易成本高、流動性差、停損價計算容易卡住,違背紀律。',
+        '分批資金不足': '極罕見狀態:你的單檔總資金太少,連 1 股都買不起(預算 < 股價)。✅ 解決方案:① 把單檔總資金提高到至少 1 股的價格 ② 換股價較低的標的 ③ 不操作這檔(朱老師心法:預算不夠就別硬上,不准重壓)。⚠️ 朱老師原則上教整張紀律(交易成本低),但現代零股已合法且廣泛,小資族(5-50 萬)用零股跟著心法分批,概念完全一樣 — 比例 3-3-4、停損紀律、不准攤平、不准倒金字塔,跟整張一樣有效。詳見「零股操作」說明手續費實務。',
+        '零股操作': '零股 = 不是整張(1 張 = 1000 股),可以買 1-999 股或任何零數。台股自 2020/10 後盤中零股交易跟整張一樣方便,09:00-13:30 競價成交。⚠️ 成本提醒:券商手續費率 0.1425%,單筆最低約 20 元 — 如果你只買 100 股 50 元股 = 5,000 元,手續費 20 元佔 0.4%,比正常 0.1425% 高近 3 倍。建議:① 單筆金額 ≥ 14,000 元手續費比例才正常(20 / 0.1425% ≈ 14,000)② 高股價權值股(>200 元如 2330、台塑、富邦金)零股操作 ROI 高 ③ 低價股(<50 元)寧可存夠買 1 整張再進,別零股 ④ 不少券商推「定期定額」/「零股優惠」,手續費低消可降到 1 元,可查自家券商。朱老師原則上教整張,但程式為了讓小資族也能跟,預設零股精算 — 比例 3-3-4、停損紀律一樣套用。',
         'PEG': 'PEG = 本益比 ÷ EPS 年成長率(%)。彼得林區法則,用來避免「成長股 PE 看起來很貴但其實便宜」的陷阱。例:PE 40 嚇人,但 EPS 年成長 50% → PEG = 0.8 反而便宜!綠=便宜(<1)、黃=合理(1-2)、紅=昂貴(>2)、橘=衰退(成長率負,不適用)。⚠️ 高速成長股(>50%)PEG 可能誤判低估,要看成長持續性。',
         '產業相對PE': '產業相對 PE = 個股 PE ÷ 該產業中位數 PE。看「跟同業比是便宜還是貴」。例:航運平均 PE 7,長榮 PE 5 → 相對 0.71(同業便宜);半導體平均 PE 22,台積電 PE 28 → 相對 1.27(同業偏貴)。綠 <0.8 比同業便宜 / 黃 0.8-1.2 中性 / 紅 >1.2 比同業貴。⚠️ 航運/塑化/鋼鐵等景氣循環股,PE 低反而是景氣高點,別誤判。',
         '殖利率': '殖利率 = 每年配的現金股利 ÷ 股價,白話就是「把錢放這檔股票,一年領幾 % 利息」。5% 以上算高息(定存才 1-2%),適合存股族。顏色是「健康度」:綠=高息(>5%)、黃=普通、灰=低息(<2%),不是漲跌色。注意高殖利率也可能是股價大跌造成的假象。',
@@ -8584,18 +8585,19 @@ ${_newsLine}${globalContext}
         // 進場價:試單 = 發動 K 隔日模擬小跳空(close×1.005);加碼1 = 現價(需先連 3 日收 5MA 上才執行);加碼2 = 不算具體價
         const price1 = trigger ? Number((data[trigger.idx].close * 1.005).toFixed(2)) : null;
         const price2 = Number(pC.toFixed(2));
+        // V15.5:改零股計算(原 × 1000 整張 → 直接以股為單位,讓小資族也能算到實際買股數)
         const calcQty = (price, ratio) => {
             if (!budget || budget <= 0 || !price || price <= 0) return null;
-            return Math.floor(budget * ratio / (price * 1000));
+            return Math.floor(budget * ratio / price);   // 整股(1 股最小單位)
         };
-        const calcAmount = (price, qty) => (price && qty) ? Math.round(price * qty * 1000) : null;
+        const calcAmount = (price, qty) => (price && qty) ? Math.round(price * qty) : null;
         const qty1 = calcQty(price1, 0.3);
         const qty2 = calcQty(price2, 0.3);
         const qty3 = calcQty(price2, 0.4);
-        // 最低建議預算:讓試單能買到至少 1 張(試單 30% / 1 張 1000 股 → 預算 ≥ price1 × 3334)
-        const minBudget = price1 ? Math.ceil(price1 * 3334 / 1000) * 1000 : null;
-        // V15.3 — 以目前預算 30% 試單能買 1 整張的最高股價(讓使用者知道「換哪種股能買」)
-        const cheapPrice = budget ? Math.floor(budget * 0.3 / 1000) : null;
+        // V15.5:minBudget = 連 1 股都買不起的下界(預算 < 股價時才資金不足)
+        const minBudget = price1 ? Math.ceil(price1) : null;
+        // V15.5:cheapPrice = 以目前預算 30% 至少能買 100 股的最高股價(零股實務便利)
+        const cheapPrice = budget ? Math.floor(budget * 0.3 / 100) : null;
         return {
             trigger,
             ma5:  ma5  ? Number(ma5.toFixed(2))  : null,
@@ -8709,16 +8711,23 @@ ${_newsLine}${globalContext}
         const fmtQty = (b) => {
             if (!plan.hasBudget) return `<span class="text-gray-500">${(b.ratio * 100).toFixed(0)}% 比例</span>`;
             if (b.qty == null) return `<span class="text-gray-500">${(b.ratio * 100).toFixed(0)}% 比例</span>`;
-            // V15.3 — 「資金不足」改 2 行白話文 + ⓘ tooltip,使用者一看就知怎麼辦
+            // V15.5 — 改零股後「< 1 股」極罕見(預算 < 股價才觸發)
             if (b.qty < 1) {
                 const minStr   = plan.minBudget   ? plan.minBudget.toLocaleString()   : '—';
-                const cheapStr = plan.cheapPrice  ? plan.cheapPrice.toLocaleString()  : '—';
+                const priceStr = plan.batch1?.price ? plan.batch1.price.toFixed(2) : '—';
                 return `<div class="text-amber-400 text-[10px] leading-tight">
-                    ⚠️ 預算不足買 1 整張 <button onclick="app.showJargon('分批資金不足'); event.stopPropagation();" class="text-blue-300 hover:text-blue-100">ⓘ</button>
-                    <div class="text-[9px] text-gray-400 mt-0.5">💡 提高到 ≥ ${minStr} 元 或換 ≤ ${cheapStr} 元的股</div>
+                    ⚠️ 預算太小,連 1 股都買不起 <button onclick="app.showJargon('分批資金不足'); event.stopPropagation();" class="text-blue-300 hover:text-blue-100">ⓘ</button>
+                    <div class="text-[9px] text-gray-400 mt-0.5">💡 至少需 ≥ ${minStr} 元(目前股價 ${priceStr})</div>
                 </div>`;
             }
-            return `<span class="text-white font-bold">${b.qty} 張</span> <span class="text-[10px] text-gray-500">(約 ${fmtAmt(b.amount)} 元)</span>`;
+            // V15.5 — 零股顯示:< 1000 股顯純股、≥ 1000 顯張+股(兼容兩種習慣)
+            const lots = Math.floor(b.qty / 1000);
+            const odd  = b.qty % 1000;
+            let sharesTxt;
+            if (lots === 0)     sharesTxt = `${b.qty.toLocaleString()} 股`;
+            else if (odd === 0) sharesTxt = `${lots} 張(${(lots*1000).toLocaleString()} 股)`;
+            else                sharesTxt = `${lots} 張 ${odd} 股(共 ${b.qty.toLocaleString()} 股)`;
+            return `<span class="text-white font-bold">${sharesTxt}</span> <span class="text-[10px] text-gray-500">(約 ${fmtAmt(b.amount)} 元)</span>`;
         };
         const triggerInfo = plan.trigger
             ? `<span class="text-[10px] text-gray-500">發動 K: ${plan.trigger.date} +${plan.trigger.chg.toFixed(1)}%</span>`
@@ -8758,13 +8767,14 @@ ${_newsLine}${globalContext}
                     oninput="app._chuOnBudgetInput(this.value)">
                 <span class="text-[10px] text-gray-500">元</span>
             </div>
-            <div class="text-[10px] text-gray-600 leading-tight mb-1.5">${plan.hasBudget ? '✅ 已設,localStorage 自動記住' : '💡 空白只顯比例,填入後算具體張數'}</div>`;
+            <div class="text-[10px] text-gray-600 leading-tight mb-1.5">${plan.hasBudget ? '✅ 已設,localStorage 自動記住' : '💡 空白只顯比例,填入後算具體股數(零股)'}</div>`;
 
         box.innerHTML = `
             <div class="text-orange-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="alert('📐 朱老師分批進場心法\\n\\n批次一(30%) 試單:量增突破 5MA 第一根紅 K → 隔日開盤進。守發動 K 最低。\\n\\n批次二(30%) 5MA 順勢加碼:連 2-3 日黏 5MA 之上 → 加碼。停損上移到 5MA。\\n\\n批次三(40%) 回後買上漲:回檔 3-5 天不破前低 → 二波量增突破 5MA → 補滿最後 4 成。停損改二波紅 K 低 或 20MA。\\n\\n🚫 鐵律:絕對不准下跌攤平、不准倒金字塔(3-3-4 不能變成 1-1-10)。')">
                 <span>📐 朱老師分批進場計畫 <span class="text-[10px] text-gray-500 font-normal">(點看心法)</span></span>
                 ${triggerInfo}
             </div>
+            <div class="text-[9px] text-gray-500 mt-0.5 leading-snug">💡 V15.5 改零股計算 — 算「實際能買幾股」(1 股起跳)。朱老師原意是整張紀律,程式為了讓小資族也能跟,改零股精算。<button onclick="app.showJargon('零股操作'); event.stopPropagation();" class="text-blue-300">手續費說明 ⓘ</button></div>
             ${budgetInputHtml}
             <div class="divide-y divide-[#21262d] border-t border-[#21262d]">
                 ${batch1Html}${batch2Html}${batch3Html}
@@ -8792,8 +8802,9 @@ ${_newsLine}${globalContext}
         if (!plan.trigger) return '近 10 日無發動 K → 等量增突破 5MA 第一根紅 K 才動,禁先建倉';
         const fmt = (b, label, stop) => {
             if (!plan.hasBudget || b.qty == null) return `${label}(${(b.ratio*100).toFixed(0)}%)進場 ${b.price ?? '待二波K'} 守 ${stop}`;
-            if (b.qty < 1) return `${label}(${(b.ratio*100).toFixed(0)}%)資金不足(建議≥${plan.minBudget?.toLocaleString()}元)守 ${stop}`;
-            return `${label} ${b.price ?? '待二波K'}×${b.qty}張(${b.amount?.toLocaleString()}元)守 ${stop}`;
+            if (b.qty < 1) return `${label}(${(b.ratio*100).toFixed(0)}%)預算太小連1股都買不起(建議≥${plan.minBudget?.toLocaleString()}元)守 ${stop}`;
+            // V15.5 — 零股單位「股」(原「張」改),AI prompt 同步對齊 fmtQty 顯示
+            return `${label} ${b.price ?? '待二波K'}×${b.qty}股(${b.amount?.toLocaleString()}元)守 ${stop}`;
         };
         return [
             `試單30% → ${fmt(plan.batch1, '試單', `${plan.batch1.stopLow}(發動K低)`)}`,
