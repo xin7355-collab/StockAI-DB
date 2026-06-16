@@ -6,7 +6,7 @@
 import csv
 import json
 import math
-import os
+import os, sys
 import random
 import re
 import signal
@@ -417,6 +417,40 @@ def tpex_ohlcv(symbol: str, year_month: str, _max_retries: int = 3) -> list:
     return []
 
 
+# V15.0 — 已下市股黑名單(yfinance possibly delisted 偵測後寫入,下次直接跳過)
+#         每月 1 號自動 reset(避免永久誤殺剛恢復的股)
+_DELISTED_FILE = Path(DATA_DIR) / 'delisted_stocks.json'
+_DELISTED_CACHE = None
+def _load_delisted_blacklist() -> dict:
+    global _DELISTED_CACHE
+    if _DELISTED_CACHE is not None:
+        return _DELISTED_CACHE
+    try:
+        if _DELISTED_FILE.exists():
+            data = json.loads(_DELISTED_FILE.read_text(encoding='utf-8'))
+            # 每月 1 號 reset(根據今天日期判斷)
+            if date.today().day == 1:
+                print(f"  🔄 每月 1 號 reset delisted blacklist({len(data)} 筆)")
+                _DELISTED_CACHE = {}
+                return _DELISTED_CACHE
+            _DELISTED_CACHE = data
+        else:
+            _DELISTED_CACHE = {}
+    except Exception:
+        _DELISTED_CACHE = {}
+    return _DELISTED_CACHE
+
+def _mark_delisted(symbol: str, reason: str = ''):
+    bl = _load_delisted_blacklist()
+    if symbol in bl: return
+    bl[symbol] = {'first_detected': date.today().isoformat(), 'reason': reason[:80]}
+    try:
+        Path(DATA_DIR).mkdir(exist_ok=True)
+        _DELISTED_FILE.write_text(json.dumps(bl, ensure_ascii=False, indent=2), encoding='utf-8')
+    except Exception as e:
+        print(f"  ⚠️ 寫 delisted blacklist 失敗:{e}")
+
+
 # ── yfinance OHLCV 補洞（TWSE/TPEX 回應不全時用 Yahoo Finance 補檔）─────────
 def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) -> list:
     """
@@ -424,6 +458,9 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
     market_type='twse' → {symbol}.TW，'tpex' → {symbol}.TWO，None 兩個都試。
     失敗或無資料回 [] 不 raise。
     """
+    # V15.0:已下市股直接跳過,省 yfinance 15s timeout × N 股 + log noise
+    if symbol in _load_delisted_blacklist():
+        return []
     try:
         import yfinance as yf
     except ImportError:
@@ -462,7 +499,12 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
                 })
             return out
         except Exception as e:
-            print(f"  ⚠️ yfinance {tk}: {e}")
+            err = str(e)
+            print(f"  ⚠️ yfinance {tk}: {err[:120]}")
+            # V15.0:偵測「possibly delisted / No data found」字樣 → 加進黑名單下次跳過
+            if any(kw in err.lower() for kw in ('possibly delisted', 'no data found', 'no price data')):
+                _mark_delisted(symbol, f"yfinance: {err[:60]}")
+                print(f"  ⛔ 標記 {symbol} 為已下市(下次跳過,每月 1 號自動 reset)")
             continue
     return []
 
@@ -1539,8 +1581,9 @@ def run():
             has_gap = any(d not in existing_map for d in recent_10)
 
             # 資料稀疏偵測:現有 < 480 筆(約 2 年交易日)→ 補抓 24 個月,讓回測有完整 2 年歷史
-            # 已有 ≥ 480 筆的股票走「最近 3 個月增量」(預設 months),避免每次採礦都從零開始
-            if len(existing_map) < 480:
+            # V15.0:歷史補洞門檻 480 → 240(2 年 → 1 年),減少 yfinance 730 天強化補洞觸發率
+            #        歷史 1-2 年的股票不再過度補洞,240MA 由前端 V14.17 週 K 邏輯取代不依賴
+            if len(existing_map) < 240:
                 fetch_months = []
                 _tmp = today.replace(day=1)
                 for _ in range(24):
@@ -1592,7 +1635,7 @@ def run():
                 # 🎯 兩段式補洞策略:
                 # (a) 歷史不足 2 年(< 480 筆)→ yfinance 抓 730 天 + 全範圍補洞
                 # (b) 歷史已足夠 → yfinance 只看最近 10 天補當日資料
-                is_history_short = len(existing_map) < 480
+                is_history_short = len(existing_map) < 240   # V15.0 同步調整
 
                 if is_history_short:
                     # 模式 A:歷史不足 → 用 yfinance 抓 2 年,全部沒有的日期都補
@@ -3175,13 +3218,36 @@ def cleanup_weekend_rows():
 
 
 if __name__ == '__main__':
+    # V15.0:ONLY_CHIPS=1 → 跳過 OHLCV 採礦,直接跑全市場 fundamentals + chips + futures + macro
+    #        (對應 daily_miner.yml 新增的 chips_miner 平行 job)
+    ONLY_CHIPS = bool(int(os.getenv('ONLY_CHIPS', '0')))
+    if ONLY_CHIPS:
+        print("🎯 V15.0 ONLY_CHIPS=1:跳過 OHLCV,直接跑全市場 chips + fundamentals + futures + macro")
+        init_db()
+        # 不跑 cleanup_weekend_rows / run / export_json(OHLCV 由 mine matrix 跑)
+        fetch_broker_chips()
+        fetch_futures_cache()
+        fetch_us_macro_cache()
+        build_radar_cache()      # 讀 SQLite 既有 OHLCV(從 origin/data restore)
+        build_bubble_warning()
+        build_sector_heat()
+        generate_top_picks()
+        print("🌍 啟動全局宏觀風險採礦 (macro_miner)...")
+        os.system("python3 macro_miner.py")
+        print("✅ ONLY_CHIPS 完成")
+        sys.exit(0)
+
     init_db()
     cleanup_weekend_rows()   # 🛡️ 進場先掃週末污染(MIS 快照跨午夜誤標)
     print("🚀 首席 AI 司令部 — 完全免費採礦機（TWSE/TAIFEX/yfinance）")
     inst_cache, margin_cache, watchlist = run()             # 採礦：OHLCV + 法人 → SQLite
     export_json(inst_cache, margin_cache)                   # 匯出 JSON：疊上最新法人快取
 
-    if not SKIP_GLOBAL:
+    # V15.0:chips_miner job 接手全市場 fundamentals 跟 chips,batch 0 不再扛
+    #        若你仍想在 batch 0 跑(本地測試),維持 SKIP_GLOBAL=0 即可走原流程
+    if not SKIP_GLOBAL and os.getenv('SKIP_CHIPS_IN_BATCH0', '1') == '1':
+        print("⚡ V15.0:全市場 chips/fundamentals 已交給 chips_miner job 跑,batch 0 略過")
+    elif not SKIP_GLOBAL:
         # 🥇 把吃 FinMind 額度最重的工作放最前面：分點分布要逐檔打 API，token 池滿格時搶先消化
         fetch_broker_chips()    # 分點籌碼 → data/chips/*.json （FinMind 重度依賴）
         fetch_futures_cache()   # 外資期貨 → futures_cache.json （TAIFEX，不吃 FinMind 額度）
