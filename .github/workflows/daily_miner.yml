@@ -14,7 +14,7 @@ on:
       - 'miner.py'
       - 'macro_miner.py'
       - 'radar_miner.py'
-      - 'chief_ai_batch.py'
+      # V17.0 — chief_ai_batch.py 已 2026-06 退役且檔案不存在,移除觸發避免白費配額
       - 'backtest.py'
       - 'walk_forward.py'
       - 'paper_trade.py'
@@ -322,9 +322,8 @@ jobs:
             echo ""
           done
 
-      # 🛑 chief_ai_batch.py 已退役(2026-06):自動跑全市場 AI 太耗 OpenRouter/Groq 配額,
-      # 改為使用者在前端打開個股時即時呼叫 1 次 + localStorage 3 天快取。
-      # 此 step 保留註解供日後 manual workflow 參考,不再執行。
+      # V17.0 — 移除 chief_ai_batch.py 已退役註解區塊(歷史包袱清掉);
+      #         AI 全盤分析改前端打開個股時即時呼叫,V16.7 staleness gate 已對 stale cache 透明 fallback
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |

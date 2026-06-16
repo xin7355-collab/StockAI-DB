@@ -27,17 +27,23 @@ OUTPUT_FILE = DATA_DIR / "macro_risk.json"
 
 # ══════════════════════════════════════════════════════════════════
 # 📅 全球重大財經事件日曆(純演算法,零外部依賴,絕不崩潰)
-# ── 跨年提醒:FOMC/BOJ 排程硬編碼 2026 場次,2026 年底前需手動補 2027 排程 ──
+# ── 跨年提醒:FOMC/BOJ 排程硬編碼 2026-2027 場次,2027/Q4 需手動補 2028 排程 ──
 # ══════════════════════════════════════════════════════════════════
 FOMC_SCHEDULE = [
-    # 2026 FOMC 排程(federalreserve.gov 公開),需於 2026/Q4 更新 2027 排程
+    # 2026 FOMC 排程(federalreserve.gov 公開)
     "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
     "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-16",
+    # V17.0 — 2027 FOMC 排程預填(federalreserve.gov 公開,2027/Q4 需更新 2028 排程)
+    "2027-01-27", "2027-03-17", "2027-04-28", "2027-06-16",
+    "2027-07-28", "2027-09-22", "2027-11-03", "2027-12-15",
 ]
 BOJ_SCHEDULE = [
-    # 2026 BOJ 排程(boj.or.jp 公開),需於 2026/Q4 更新 2027 排程
+    # 2026 BOJ 排程(boj.or.jp 公開)
     "2026-01-22", "2026-03-19", "2026-04-30", "2026-06-17",
     "2026-07-31", "2026-09-18", "2026-10-30", "2026-12-18",
+    # V17.0 — 2027 BOJ 排程預填(boj.or.jp 公開,2027/Q4 需更新 2028 排程)
+    "2027-01-22", "2027-03-19", "2027-04-30", "2027-06-17",
+    "2027-07-30", "2027-09-22", "2027-10-29", "2027-12-17",
 ]
 
 
@@ -1145,8 +1151,8 @@ def main():
     out["gold_chg_3d"] = _yf_chg_3d("GC=F",   "黃金")
     out["wti_chg_3d"]  = _yf_chg_3d("CL=F",   "WTI原油")
     print(f"   · 日圓 {jpy_val}({jpy_chg}% 日/{out['jpy_chg_3d']}% 3日) 金3日 {out['gold_chg_3d']}% 油3日 {out['wti_chg_3d']}%")
-    # 🛑 大盤 240MA 年線乖離率已停用(2026/06):yfinance 對 GHA runner 持續抓不到 240 日 ^TWII 歷史,
-    #    前端改由「外資期/VIX/恐慌貪婪/融資餘額/期現比」綜合判讀大盤位階,不再寫 taiex_ma240_* 欄位
+    # V17.0 — 大盤 240MA 年線乖離率前端 V16.5 _loadTaiexMA240Bias 直接從 data/^TWII.json 算,
+    #         macro_miner 不再嘗試寫此欄位(yfinance ^TWII 2y 在 GHA runner 不穩,改由 miner.py mine batch 0 抓)
 
     # 🦅 黑天鵝防禦旗標(全市場同步,供 radar_miner 算建倉分 + 前端防禦矩陣顯示)
     #    日圓急升:USDJPY 3日 < -1.5%(利差交易平倉);金/油單日 > 3%(通膨地緣恐慌);KOSPI 早盤 < -1.5%
@@ -1155,7 +1161,7 @@ def main():
     _wti1 = out.get("wti_chg_pct")
     _kospi1 = out.get("kospi_chg_pct")
     out["blackswan"] = {
-        "market_bias_high": False,   # 🛑 大盤懼高(年線乖離 >20%)已停用:yfinance 抓不到 ^TWII 240 日歷史
+        # V17.0 — 移除 dead market_bias_high(永遠 False);大盤懼高判定改前端用 ^TWII 240MA 即時算
         "jpy_surge":        (_jpy3 is not None and _jpy3 < -1.5),    # 日圓急升(USDJPY 跌)→ -20
         "metal_oil_spike":  ((_gold1 is not None and _gold1 > 3) or (_wti1 is not None and _wti1 > 3)),  # 金/油暴漲 → -20
         "kospi_dump":       (_kospi1 is not None and _kospi1 < -1.5),  # 亞股提款 → -10

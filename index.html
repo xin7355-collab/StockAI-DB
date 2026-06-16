@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="首席 AI">
+    <!-- V17.0 — PWA installable(Android Chrome 桌面安裝;iOS 已有 apple-mobile-web-app-capable)-->
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%230d1117'/%3E%3Ctext x='90' y='125' font-size='130' text-anchor='middle' font-family='Arial'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E">
     <!-- PWA 同步：禁止瀏覽器 HTTP cache，配合 sw.js 動態 JSON 純網路策略，確保改完立刻見效 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -703,7 +708,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.9</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2450,8 +2455,32 @@ const app = {
             const watched = new Set(['proTerminalFavGroups', 'proTerminalHunt', 'proTerminalInv']);
             const orig = localStorage.setItem.bind(localStorage);
             const self = this;
+            // V17.0 — 配額防爆:手機 Safari QuotaExceededError 時自動清「可重新計算」的 cache key 重試,
+            //         救持股/設定不被靜默丟失。覆蓋所有 setItem call site,不必逐個改。
+            const STALE_KEY_PREFIXES = ['newsAICache_', 'aiCooldown_', 'xrayCache_', 'proTerm_kline_', 'proTerm_chips_'];
             localStorage.setItem = function (key, value) {
-                orig(key, value);
+                try {
+                    orig(key, value);
+                } catch (e) {
+                    const isQuota = e?.name === 'QuotaExceededError' || /quota/i.test(String(e?.message || ''));
+                    if (isQuota) {
+                        let freed = 0;
+                        Object.keys(localStorage).forEach(k => {
+                            if (STALE_KEY_PREFIXES.some(p => k.startsWith(p))) {
+                                try { localStorage.removeItem(k); freed++; } catch (_) {}
+                            }
+                        });
+                        try {
+                            orig(key, value);
+                            app.showToast?.(`⚠️ 已自動清 ${freed} 個過期快取,釋出空間存新資料`, 'info');
+                        } catch (e2) {
+                            console.warn('[localStorage] quota still exhausted after cleanup', e2);
+                            app.showToast?.('🔴 手機儲存空間不足,請至 ⚙️ 設定 → 一鍵刪除清空');
+                        }
+                    } else {
+                        console.warn('[localStorage] setItem failed', e);
+                    }
+                }
                 if (watched.has(key)) {
                     try { self.sync(); } catch (_) { /* silent */ }
                 }
@@ -10854,9 +10883,11 @@ ${_newsLine}${globalContext}
             const kospi = mr.kospi_chg_pct;
             warns.push(['🇰🇷', `韓股 KOSPI 單日重挫 ${_fmtSigned(kospi)},亞股遭外資集體提款,台股留意跟跌!`, 'bg-orange-900/40 border-orange-600 text-orange-200']);
         }
-        if (mf.market_bias_high) {
-            const bias = mr.taiex_ma240_bias;
-            warns.push(['📈', `台股年線乖離率 ${_fmtSigned(bias)},市場處於極端貪婪泡沫區,空手買入請極度克制!`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
+        // V17.0 — 改用 V16.5 _loadTaiexMA240Bias 即時算的 taiex_ma240_bias(取代已退役 macro_miner.blackswan.market_bias_high)
+        //         > +20% 視為「極端貪婪泡沫區」,觸發警示文案
+        const _liveBias = mr.taiex_ma240_bias;
+        if (typeof _liveBias === 'number' && _liveBias > 20) {
+            warns.push(['📈', `台股年線乖離率 ${_fmtSigned(_liveBias)},市場處於極端貪婪泡沫區,空手買入請極度克制!`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
         }
         const factorChips = (f.factors || []).map(x => `<span class="text-[9px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">${x}</span>`).join('');
         const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div><div class="text-[9px] text-gray-500 mt-0.5">ℹ️ 此為「新進場時機」評分;你已持有,操作以上方燈號結論為準(避開=不宜新買,非叫你賣)</div>` : '';
@@ -13618,7 +13649,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         // 🦅 黑天鵝旗標加成:每觸發 1 個 macro_flag +5 分(上限 +20),讓「全球宏觀黑天鵝防禦矩陣」與風險指數連動
         // 避免使用者看到矩陣亮燈但風險指數仍顯示「中性」的視覺矛盾
         const mf = this._falconScores?.macro_flags || {};
-        const flagCount = ['jpy_surge', 'metal_oil_spike', 'market_bias_high', 'kospi_dump'].filter(k => mf[k]).length;
+        // V17.0 — 移除 market_bias_high(macro_miner 已停止寫,前端 taiex_ma240_bias 直算取代,警示文案在 line 10886)
+        const flagCount = ['jpy_surge', 'metal_oil_spike', 'kospi_dump'].filter(k => mf[k]).length;
         if (flagCount > 0) score += Math.min(flagCount * 5, 20);
 
         // 🚨 D-1/D-0 重大事件連動:FOMC/CPI/結算/NFP 等高 severity 事件迫近 → +10 分

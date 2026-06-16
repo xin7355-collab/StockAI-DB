@@ -1,0 +1,40 @@
+{
+  "name": "首席 AI 司令部",
+  "short_name": "首席 AI",
+  "description": "台股 AI 終端機 - 朱老師心法 / 獵鷹建倉分 / 即時雷達 / 全球巨頭脈動",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d1117",
+  "theme_color": "#3b82f6",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%230d1117'/%3E%3Ctext x='96' y='130' font-size='130' text-anchor='middle' font-family='Arial'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%230d1117'/%3E%3Ctext x='256' y='360' font-size='350' text-anchor='middle' font-family='Arial'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "雷達矩陣",
+      "short_name": "雷達",
+      "description": "今日 4 大策略雷達 + 送分題",
+      "url": "./?tab=radar&source=pwa"
+    },
+    {
+      "name": "庫存追蹤",
+      "short_name": "庫存",
+      "description": "持股獵鷹分 + 朱老師建議",
+      "url": "./?tab=inv&source=pwa"
+    }
+  ]
+}
