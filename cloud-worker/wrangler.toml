@@ -8,10 +8,12 @@ binding = "KV"
 id = "9d4249726b324b38892a69b9992cdb4d"
 
 # 🕐 排程:
-#   "*/30 1-5 * * 1-5" — 台北 09:00-13:30 每 30 分(盤中即時掃描)
+#   V15.9 改 5 分間隔 — 盤中真即時掃描 TWSE MIS 即時報價(免費,直接打 mis.twse.com.tw)
+#   "*/5 1-5 * * 1-5"  — 台北 09:00-13:30 每 5 分(盤中即時掃描)
+#                        Cloudflare Free 月 ~6,600 req < 100k 額度,6.6% 餘裕
 #   "0 9 * * 1-5"      — 台北 17:00(盤後每日總結 + AI 短評)
 [triggers]
-crons = ["*/30 1-5 * * 1-5", "0 9 * * 1-5"]
+crons = ["*/5 1-5 * * 1-5", "0 9 * * 1-5"]
 
 # 🛡️ Secrets(用 `wrangler secret put XXX` 設定,不要寫在這個檔)
 #   TELEGRAM_BOT_TOKEN   ← BotFather 給的 token,必填

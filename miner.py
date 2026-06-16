@@ -208,7 +208,7 @@ HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
 # V15.8 — fundamentals schema 版本標記:每次 miner.py 改動 fundamentals 結構就 bump,
 #         自動 invalidate 全市場 cache(避免 V15.7 修了欄位但 cache 7 天內擋住新邏輯)
-MINER_VERSION = 'V15.8'
+MINER_VERSION = 'V15.9'
 
 # ── 券商戰術標籤庫 ────────────────────────────────────────────────────────────
 TACTICAL_TAGS = {
@@ -986,6 +986,35 @@ def _load_broker_info_map() -> dict:
 
 
 # ── FinMind 個股基本面（含 Q1~Q4 履歷、次季預估、創新高雷達）────────────────
+# V15.9 — FinMind TaiwanStockPER 免費 dataset:當 TWSE BWIBBU_d 拿不到時補 PE/PBR/yield
+#         填滿 V15.7 P/B 缺口 + V15.7 yield_rate 缺口 + 對齊 TWSE IP 被擋問題
+def _fetch_finmind_per(sym: str) -> dict:
+    """FinMind TaiwanStockPER 拿 PE/PBR/yield(取代 BWIBBU_d 當被擋時的官方等價值)"""
+    today_str = date.today().strftime('%Y-%m-%d')
+    start_d = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
+    url = (f'https://api.finmindtrade.com/api/v4/data'
+           f'?dataset=TaiwanStockPER&data_id={sym}'
+           f'&start_date={start_d}&end_date={today_str}')
+    try:
+        j = fm_request(url, timeout=15) or {}
+        rows = j.get('data') or []
+        if not rows:
+            return {}
+        last = sorted(rows, key=lambda x: x.get('date', ''))[-1]
+        def _flt(k):
+            v = last.get(k)
+            try: return float(v) if v not in (None, '', '-') else None
+            except Exception: return None
+        return {
+            'pe':    _flt('PER'),
+            'pb':    _flt('PBR'),
+            'yield_rate': _flt('dividend_yield'),
+        }
+    except Exception as _e:
+        print(f"    ⚠️ FinMind PER {sym}: {_e}")
+        return {}
+
+
 def fetch_finmind_fundamentals(sym: str) -> dict:
     """V14.9 採礦加速 — 斧三:把 3 個獨立 FinMind 端點(財報/月營收/股利)
     從序列改 ThreadPoolExecutor 並行,單股省 6-13 秒。
@@ -2423,11 +2452,12 @@ def fetch_broker_chips():
 
         # ② 基本面 TTL 快取：若距上次查詢未逾 FUND_CACHE_DAYS 天，跳過 FinMind
         # V15.8 — 加版本檢查:cached_ver != MINER_VERSION 強制重抓(治本:schema 改動自動失效)
+        # V15.9 — FORCE_FUND_REFRESH=1 env 一次性繞過 cache(不必 bump version 也能強制重抓)
         cached_fund = existing_obj.get('fundamentals') or {}
         generated_str = cached_fund.get('generated', '')
         cached_ver = cached_fund.get('miner_version', '')
         skip_finmind = False
-        if generated_str:
+        if generated_str and os.environ.get('FORCE_FUND_REFRESH') != '1':
             try:
                 age_days = (date.today() - date.fromisoformat(generated_str)).days
                 skip_finmind = (age_days < FUND_CACHE_DAYS) and (cached_ver == MINER_VERSION)
@@ -2458,17 +2488,26 @@ def fetch_broker_chips():
             except Exception as _e:
                 print(f"    ⚠️ 填息歷史 {sym}: {_e}")
 
+            # V15.9 — 當 TWSE BWIBBU_d 拿不到 PE/PBR/yield 時,先打 FinMind TaiwanStockPER
+            #         (官方等價,免費 dataset,治本 TWSE IP 被擋 + 補 V15.7 P/B 缺口)
+            fm_per = {}
+            if tw_fund.get('pe') is None or tw_fund.get('pbr') is None or tw_fund.get('yield_rate') is None:
+                fm_per = _fetch_finmind_per(sym) or {}
+            _pe  = tw_fund.get('pe')  or fm_per.get('pe')  or fm_fund.get('pe')
+            _pbr = tw_fund.get('pbr') or fm_per.get('pb')  or fm_fund.get('pb')
+            _yld = tw_fund.get('yield_rate') or fm_per.get('yield_rate')
             fundamentals = {
                 'eps':                fm_fund.get('eps'),
                 'eps_history':        fm_fund.get('eps_history'),
                 'revenue_yoy':        fm_fund.get('revenue_yoy'),
                 'is_revenue_high':    fm_fund.get('is_revenue_high'),
                 'revenue_est_next_q': fm_fund.get('revenue_est_next_q'),
-                'pe':                 tw_fund.get('pe') or fm_fund.get('pe'),
-                'pe_source':          'TWSE_TTM' if tw_fund.get('pe') else 'FinMind',
-                'pb':                 tw_fund.get('pbr') or fm_fund.get('pb'),
-                'pb_unavailable':     (tw_fund.get('pbr') is None and fm_fund.get('pb') is None),  # V15.7 P/B 無資料源 flag
-                'yield_rate':         tw_fund.get('yield_rate'),
+                'pe':                 _pe,
+                'pe_source':          ('TWSE_TTM' if tw_fund.get('pe') else
+                                       'FinMind_PER' if fm_per.get('pe') else 'FinMind'),
+                'pb':                 _pbr,
+                'pb_unavailable':     (_pbr is None),   # V15.7 P/B 無資料源 flag(V15.9 多了 FinMind PER source 後 false rate 大降)
+                'yield_rate':         _yld,
                 'gross_margin_trend': fm_fund.get('gross_margin_trend'),
                 'payout_ratio':       fm_fund.get('payout_ratio'),
                 'total_dividend':     fm_fund.get('total_dividend'),

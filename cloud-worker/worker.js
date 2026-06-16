@@ -291,6 +291,41 @@ function clamp(v, min, max, dflt) {
 
 // ── Scheduled scan & push ───────────────────────────────────────────
 
+// V15.9 — 直連 TWSE MIS 拿盤中即時報價(免費、免 token、無 rate limit,推薦 polling ≥ 5 秒)
+//         一批最多 50 檔(以 '|' 串接),回 JSON.msgArray 含 z(成交價)、y(昨收)、v(累計量)、tv(當筆量)
+async function fetchTwseMisQuote(symbols) {
+    const map = new Map();
+    if (!symbols.length) return map;
+    // 一次最多 50 檔批量(超過分批)
+    const batches = [];
+    for (let i = 0; i < symbols.length; i += 50) batches.push(symbols.slice(i, i + 50));
+    for (const batch of batches) {
+        const exch = batch.map(s => `tse_${s}.tw`).join('|');
+        const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exch}&json=1&delay=0`;
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 StockAI-Worker' } });
+            if (!res.ok) continue;
+            const j = await res.json().catch(() => null);
+            for (const m of (j?.msgArray || [])) {
+                const sym = String(m.c || '').trim();
+                if (!sym) continue;
+                const z = parseFloat(m.z);    // 最後成交價
+                const y = parseFloat(m.y);    // 昨收
+                if (!Number.isFinite(z) || !Number.isFinite(y) || y <= 0) continue;
+                const pct = (z - y) / y * 100;
+                map.set(sym, {
+                    z, y, pct,
+                    v: parseFloat(m.v || '0'),    // 累計成交量(張)
+                    o: parseFloat(m.o || '0'),    // 開盤
+                    h: parseFloat(m.h || '0'),    // 最高
+                    l: parseFloat(m.l || '0'),    // 最低
+                });
+            }
+        } catch (_) { /* batch failed, skip */ }
+    }
+    return map;
+}
+
 async function runScan(env) {
     const t = Date.now();
     const [radarRes, macroRes] = await Promise.all([
@@ -304,9 +339,10 @@ async function runScan(env) {
     const falconMap = buildFalconMap(radar);
     const macroAlert = buildMacroAlert(macro);
 
-    if (!falconMap.size && !macroAlert) return;
-
+    // V15.9 — 收集所有 user 的監看股 + 庫存,一批打 TWSE MIS 拿即時報價
+    const allSymbols = new Set();
     let cursor = undefined;
+    const users = [];
     while (true) {
         const list = await env.KV.list({ prefix: 'user:', cursor });
         for (const key of list.keys) {
@@ -314,11 +350,22 @@ async function runScan(env) {
                 const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
                 if (!userData.chat_id) continue;
                 if (userData.muted_until && userData.muted_until > Date.now()) continue;
-                await scanUser(env, userData, falconMap, macroAlert);
+                users.push(userData);
+                (userData.watchlist || []).forEach(s => allSymbols.add(s));
+                (userData.monitorList || []).forEach(s => allSymbols.add(s));
+                (userData.inventory || []).forEach(i => { if (i?.sym) allSymbols.add(i.sym); });
             } catch (e) { /* continue */ }
         }
         if (list.list_complete) break;
         cursor = list.cursor;
+    }
+
+    const liveQuotes = await fetchTwseMisQuote([...allSymbols]);
+    if (!falconMap.size && !macroAlert && !liveQuotes.size) return;
+
+    for (const userData of users) {
+        try { await scanUser(env, userData, falconMap, macroAlert, liveQuotes); }
+        catch (e) { /* continue */ }
     }
 }
 
@@ -363,7 +410,7 @@ function buildMacroAlert(macro) {
     return hot.map(e => `⚠️ ${e.date || '今日'} ${e.event || e.name || ''}`).join('\n');
 }
 
-async function scanUser(env, user, falconMap, macroAlert) {
+async function scanUser(env, user, falconMap, macroAlert, liveQuotes) {
     const symbols = new Set();
     (user.watchlist || []).forEach(s => symbols.add(s));
     (user.monitorList || []).forEach(s => symbols.add(s));
@@ -382,8 +429,11 @@ async function scanUser(env, user, falconMap, macroAlert) {
     }
 
     for (const sym of symbols) {
-        const stock = falconMap.get(sym);
-        if (!stock) continue;
+        const stock = falconMap.get(sym) || { sym };
+        // V15.9 — 即時報價優先(MIS z = 最後成交價,pct = 即時漲跌幅),fallback radar.json 盤後值
+        const live = liveQuotes ? liveQuotes.get(sym) : null;
+        const close = live ? live.z : Number(stock.close);
+        const pct   = live ? live.pct : Number(stock.change_pct ?? stock.chg_pct);
 
         const fs = Number(stock.falcon_score ?? stock.score);
         if (Number.isFinite(fs) && fs >= falconTh) {
@@ -395,14 +445,16 @@ async function scanUser(env, user, falconMap, macroAlert) {
             }
         }
 
-        const pct = Number(stock.change_pct ?? stock.chg_pct);
-        const close = Number(stock.close);
         if (Number.isFinite(pct)) {
-            if (pct >= surgeTh && !(await wasPushed(env, user.chat_id, sym, 'surge'))) {
-                alerts.push(`🚀 *${sym}* 大漲 *+${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — 收 ${close}` : ''}`);
+            // V15.9 — 朱老師「位階過高」即時規則(漲幅 > 7% → 別追)
+            if (pct > 7 && !(await wasPushed(env, user.chat_id, sym, 'overheat7'))) {
+                alerts.push(`⚠️ *${sym}* 位階過高 *+${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — ${close}` : ''}\n朱老師心法:漲幅 >7% 別追,放鎖股等回檔`);
+                await markPushed(env, user.chat_id, sym, 'overheat7');
+            } else if (pct >= surgeTh && !(await wasPushed(env, user.chat_id, sym, 'surge'))) {
+                alerts.push(`🚀 *${sym}* 大漲 *+${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — ${close}` : ''}`);
                 await markPushed(env, user.chat_id, sym, 'surge');
             } else if (pct <= -dropTh && !(await wasPushed(env, user.chat_id, sym, 'drop'))) {
-                alerts.push(`📉 *${sym}* 大跌 *${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — 收 ${close}` : ''}`);
+                alerts.push(`📉 *${sym}* 大跌 *${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — ${close}` : ''}`);
                 await markPushed(env, user.chat_id, sym, 'drop');
             }
         }
