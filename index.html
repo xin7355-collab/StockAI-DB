@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V15.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V15.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V15.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1331,25 +1331,25 @@
                         <button onclick="app.showJargon('美債10Y殖利率'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🇺🇸 美債10Y</div>
                         <div id="sccUs10y" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">資金無風險水溫,&gt;4.5% 躲債券、&lt;3.5% 回股市</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">資金無風險水溫,<span class="text-red-300 font-bold">&gt;4.5% 躲債券</span>、<span class="text-green-300 font-bold">&lt;3.5% 回股市</span></div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('美債2Y殖利率'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🏦 美債2Y</div>
                         <div id="sccUs2y" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">短期升降息預期,2Y&gt;10Y 倒掛=衰退警報</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">短期升降息預期,<span class="text-red-300 font-bold">2Y&gt;10Y 倒掛=衰退警報</span></div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('恐懼與貪婪指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🧭 恐懼貪婪</div>
                         <div id="sccFg" class="text-lg md:text-xl font-black font-mono text-orange-400">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">情緒 0-100,&lt;25 極恐(底)、&gt;75 極貪(頂)</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">情緒 0-100,<span class="text-green-300 font-bold">&lt;25 極恐(底)</span>、<span class="text-red-300 font-bold">&gt;75 極貪(頂)</span></div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台幣匯率'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">💵 台幣匯率</div>
                         <div id="sccTwd" class="text-lg md:text-xl font-black font-mono text-gray-300">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">外資溫度,&lt;31 熱錢進、&gt;33 撤離</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">外資溫度,<span class="text-green-300 font-bold">&lt;31 熱錢進</span>、<span class="text-red-300 font-bold">&gt;33 撤離</span></div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2 mt-2">
@@ -1357,7 +1357,7 @@
                         <button onclick="app.showJargon('流動性熱度'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="flex items-center justify-between mb-1"><span class="text-[10px] text-gray-500 font-bold">🌊 流動性熱度</span><span id="sccLiq" class="text-xs font-bold font-mono text-green-400">--</span></div>
                         <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden"><div id="sccLiqBar" class="bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 h-full transition-all" style="width:0%"></div></div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">資金水溫,&lt;30% 緊縮、&gt;75% 過熱反轉</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">資金水溫,<span class="text-amber-300 font-bold">&lt;30% 緊縮</span>、<span class="text-red-300 font-bold">&gt;75% 過熱反轉</span></div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2 border border-[#30363d] relative">
                         <button onclick="app.showJargon('外資期現複合'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300">ℹ️</button>
@@ -1371,7 +1371,7 @@
                             <span id="sccSpotDot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
                         </div>
                         <span id="sccFiLabel" class="hidden"></span>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">同向=真趨勢、背離=暗流警戒</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug"><span class="text-green-300 font-bold">同向=真趨勢</span>、<span class="text-amber-300 font-bold">背離=暗流警戒</span></div>
                     </div>
                 </div>
             </div>
@@ -1480,13 +1480,13 @@
                         <button onclick="app.showJargon('散戶多空比'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">👥 散戶多空比</div>
                         <div id="sccRetail" class="text-base md:text-lg font-black font-mono text-green-400">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">散戶情緒,負值=散戶偏多(逆向偏空)</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">散戶情緒,<span class="text-red-300 font-bold">負值=散戶偏多(逆向偏空)</span></div>
                     </div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台指逆價差'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">📉 台指逆價差</div>
                         <div id="sccBack" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug">期減現,負 &gt;100 點 = 現貨快反彈</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">期減現,<span class="text-green-300 font-bold">負 &gt;100 點 = 現貨快反彈</span></div>
                     </div>
                 </div>
             </div>
@@ -6580,8 +6580,20 @@ ${peerLine}${newsCtx}
         const setCell = (id, val, unit, colorClass) => {
             const el = document.getElementById(id);
             if (!el) return;
-            // V14.4 / V14.14:資料缺失顯示「🔄 採礦更新中」+ 可見副標 + hover tip(手機沒 hover 也能看到)
-            if (val == null) { el.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="採礦尚未產出此欄位 — 週一~五 16:30 cron 自動補,或至 GitHub Actions 手動 Run daily_miner.yml">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補</div>'; return; }
+            // V14.4 / V14.14 / V15.6:資料缺失顯示「🔄 採礦更新中」+ 可見副標 + 上次採礦時間提示
+            if (val == null) {
+                // V15.6 — 從 localFund.generated 算上次採礦時間,讓使用者知道是否已採過(只是這欄位 chips_miner 還沒寫)
+                let agoHint = '';
+                try {
+                    const gen = localFund && localFund.generated;
+                    if (gen) {
+                        const days = Math.floor((Date.now() - new Date(gen).getTime()) / 86400000);
+                        if (days >= 0 && days < 7) agoHint = ` · 上次採礦 ${days === 0 ? '今天' : days + ' 天前'}`;
+                    }
+                } catch(_) {}
+                el.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="採礦尚未產出此欄位 — 週一~五 16:30 cron 自動補,或至 GitHub Actions 手動 Run daily_miner.yml">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補' + agoHint + '</div>';
+                return;
+            }
             const fmt = typeof val === 'number' ? (Math.abs(val) >= 100 ? Math.round(val) : parseFloat(val.toFixed(2))) : val;
             // 字大小:毛利率 text-sm(3 段太長)、PE text-2xl(估值區獨立寬版突出)、其他 text-xl(營收/殖利率/發配率統一)
             const sizeClass = id === 'xrayGrossMargin' ? 'text-sm leading-tight'
@@ -8633,11 +8645,28 @@ ${_newsLine}${globalContext}
         const swingValue = clamp(Math.round((peScore + yoyScore + maTrend) / 3));
 
         // ── 長期存股 ── 殖利率分 + 填息機率分 + 護城河分(P/B 合理 + 長均向上)
-        const ydScore = yieldRate == null ? 30 : yieldRate > 5 ? 95 : yieldRate > 3 ? 75 : yieldRate > 1 ? 50 : 25;
-        const fpScore = fillProb == null ? 50 : fillProb >= 90 ? 95 : fillProb >= 70 ? 75 : fillProb >= 50 ? 50 : 25;
-        const moatScore = (pb != null && pb < 5 && ma60 && close && close > ma60) ? 85
-                        : (pb != null && pb < 8) ? 65
-                        : (ma60 && close && close > ma60) ? 60 : 40;
+        // V15.6 — 殖利率 curve 對齊台股權值股實況(月配股 0.5-1.5% 也屬高品質長期股)
+        const ydScore = yieldRate == null ? 50
+                      : yieldRate > 5   ? 95
+                      : yieldRate > 3   ? 80
+                      : yieldRate > 1.5 ? 65
+                      : yieldRate > 0.5 ? 55   // 月配權值股(TSMC 0.93% 屬此區)
+                      :                   30;
+        // V15.6 — fillProb null 智慧預設:若 yield > 0.5% 表示有發,大概率穩定填息給 70
+        const fpScore = fillProb == null
+                      ? (yieldRate != null && yieldRate > 0.5 ? 70 : 50)
+                      : fillProb >= 90 ? 95
+                      : fillProb >= 70 ? 75
+                      : fillProb >= 50 ? 50 : 25;
+        // V15.6 — 護城河 + 穩定成長加分(營收 YoY > 10% + ma60 之上 = 護城河 + 趨勢)
+        let moatScore;
+        if (pb != null && pb < 5 && ma60 && close && close > ma60) moatScore = 85;
+        else if (pb != null && pb < 8)                              moatScore = 70;
+        else if (ma60 && close && close > ma60)                     moatScore = 65;
+        else                                                         moatScore = 45;
+        if (revenueYoy != null && revenueYoy > 10 && ma60 && close && close > ma60) {
+            moatScore = Math.min(100, moatScore + 10);   // 穩定成長股加分
+        }
         const longHold = clamp(Math.round((ydScore + fpScore + moatScore) / 3));
 
         // ── 短線價差 ── 動能 + 量能 + 均線粘合度
@@ -10142,6 +10171,8 @@ ${_newsLine}${globalContext}
         if (!box || !parsed) return;
         const { traffic_light, summary, bottom_bar, detail_action } = parsed;
         this.renderSummaryCard(summary);
+        // V15.6 — 結果渲染後自動 scroll 到 box 頂端,避免使用者滾離視野找不到分析
+        try { setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150); } catch(_) {}
 
         const tl = (traffic_light || '').trim();
         const tlEsc = tl.replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -11281,7 +11312,9 @@ ${_newsLine}${globalContext}
             const wrCol = wr >= 65 ? 'text-[#f87171]' : (wr >= 50 ? 'text-yellow-300' : 'text-[#4ade80]');
             const wrCard = document.getElementById('patWinRateCard');
             if (wrCard) wrCard.className = `bg-gray-800 rounded p-2 border ${wr >= 65 ? 'border-red-600/70' : wr >= 50 ? 'border-yellow-600/50' : 'border-gray-600'}`;
-            document.getElementById('patWinRate').innerHTML = `<span class="${wrCol}">${patternStats.winRate}%</span>`;
+            // V15.6 — 樣本 < 5 時加紅字警告(避免使用者被 100%/2 樣本誤導)
+            const lowSampleWarn = (cnt < 5) ? `<div class="text-[9px] text-red-400 font-bold mt-0.5">⚠️ 樣本太少 (${cnt}/5),僅供參考</div>` : '';
+            document.getElementById('patWinRate').innerHTML = `<span class="${wrCol}">${patternStats.winRate}%</span>${lowSampleWarn}`;
             document.getElementById('patAvgRet').innerHTML = patternStats.avgRet > 0 ? `<span class="text-red-400">+${patternStats.avgRet}%</span>` : `<span class="text-green-400">${patternStats.avgRet}%</span>`;
             // 🆕 顯示啟用的過濾維度標籤(讓使用者看到目前機率是基於哪些條件算的)
             const tagsEl = document.getElementById('patFilterTags');
@@ -11331,7 +11364,8 @@ ${_newsLine}${globalContext}
 
     // 📸 把當下的 patWinRate 寫入 localStorage（同日同股只記第一次）
     _snapshotPrediction(sym, patWinRate, patCount, close) {
-        if (!sym || patWinRate == null || patCount < 3 || !Number.isFinite(+close)) return;
+        // V15.6 — 放寬 patCount >= 3 → >= 1,加 lowSample flag 讓低樣本日也能驗證
+        if (!sym || patWinRate == null || patCount < 1 || !Number.isFinite(+close)) return;
         const today = new Date().toISOString().slice(0, 10);
         const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
         if (!all[sym]) all[sym] = [];
@@ -11344,6 +11378,7 @@ ${_newsLine}${globalContext}
             verified: false,
             hit: null,
             nextClose: null,
+            lowSample: patCount < 5,   // V15.6 — 標記低樣本日,供 verify/render 階段警示
         });
         if (all[sym].length > 60) all[sym] = all[sym].slice(-60);
         localStorage.setItem('proTerminalPredHist', JSON.stringify(all));
@@ -12396,6 +12431,34 @@ ${_newsLine}${globalContext}
         }).join('');
     },
 
+    // V15.6 — 新聞 AI 前端 on-demand fallback(V14.16 SKIP_AI=1 後採礦端不寫 ai_reason)
+    async _ensureNewsAI(items) {
+        if (!Array.isArray(items) || !items.length) return items;
+        const cacheKey = 'newsAICache_v1';
+        let cache = {};
+        try { cache = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch(_){}
+        // 快取命中先補上
+        items.forEach(n => {
+            if (!n.ai_reason && n.title && cache[n.title]) n.ai_reason = cache[n.title];
+        });
+        const needs = items.filter(n => !n.ai_reason && n.title && !cache[n.title]);
+        if (!needs.length) return items;
+        // 一次只跑前 5 則(省 Groq 配額),失敗不擾流程
+        for (const n of needs.slice(0, 5)) {
+            try {
+                const prompt = `用 30 字以下短文,解讀以下新聞對台股影響,輸出純文字無前綴:\n${n.title}\n${(n.summary||'').slice(0,200)}`;
+                const txt = await this._callAI({ prompt, max_tokens: 100 });
+                if (txt) {
+                    const trimmed = txt.trim().replace(/^[「『"]/, '').replace(/[」』"]$/, '').slice(0, 50);
+                    cache[n.title] = trimmed;
+                    n.ai_reason = trimmed;
+                }
+            } catch(_){}
+        }
+        try { localStorage.setItem(cacheKey, JSON.stringify(cache)); } catch(_){}
+        return items;
+    },
+
     // 📰 即時情報新聞：優先讀採礦機產出的 data/radar_news.json，失敗則 fallback 範例頭條
     // TODO: 未來可換接「籌碼K線」等專業新聞 API（保持同一渲染介面即可）
     async loadNewsHeadlines(force = false) {
@@ -12403,7 +12466,9 @@ ${_newsLine}${globalContext}
         const embed = document.getElementById('twNewsListEmbed');
         const tsEl  = document.getElementById('newsLastUpdated');
         if (!body && !embed) return;
-        const renderItems = (items) => {
+        const renderItems = async (items) => {
+            // V15.6 — V14.16 SKIP_AI=1 後採礦端不寫 ai_reason,改前端即時跑(localStorage 快取避免重打)
+            try { items = await this._ensureNewsAI(items); } catch(_){}
             const html = items.map(n => {
                 // tone 支援採礦端的 ai_sentiment + 舊欄位 + 範例頭條的 tone
                 const tone = n.tone || n.sentiment || n.ai_sentiment || '';
@@ -12412,7 +12477,7 @@ ${_newsLine}${globalContext}
                 const src = (n.source || n.source_name) ? `<span class="text-gray-600">${n.source || n.source_name}</span>` : '';
                 const t = n.title || n.headline || n.summary || '';
                 const safeUrl = (n.url || n.link || '').replace(/"/g, '&quot;');
-                // 🧠 AI 簡介:採礦端 _call_groq_with_rotation 已寫進 ai_reason(20字內),取代過去只顯示「📰 標題」
+                // 🧠 AI 簡介:V15.6 改前端 on-demand 即時跑(原採礦端 V14.16 起 SKIP_AI)
                 const aiImpact = n.ai_reason || n.ai_impact || '';
                 const card = `<div class="bg-[#0d1117]/70 border border-[#30363d] rounded p-2.5 transition-colors ${safeUrl ? 'hover:border-amber-700/60 cursor-pointer' : ''}">
                     <div class="flex items-start gap-1.5"><span class="flex-shrink-0">${dot}</span>
