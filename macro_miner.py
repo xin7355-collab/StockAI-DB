@@ -20,7 +20,6 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import yfinance
-import ta
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)

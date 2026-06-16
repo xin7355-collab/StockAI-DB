@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -695,7 +695,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3930,6 +3930,10 @@ ${list}
     },
 
     getStockName(sym) {
+        // V16.6 — 指數 ticker special-case(allStockList 不收錄,fallback 會顯英文代號)
+        if (sym === '^TWII')  return '加權指數';
+        if (sym === '^TWO')   return '上櫃指數';
+        if (sym === '^TWOII') return '上櫃指數';
         // 找不到對照(新股、特殊代號)→ 回傳代號本身,而非「未知」
         const f = this.allStockList.find(s => s.stock_id === sym);
         return f ? f.stock_name : (sym || '未知');
@@ -5591,7 +5595,8 @@ const marginByDate = {};
             if (!r.ok) return;
             const j = await r.json();
             if (j && typeof j === 'object') {
-                this._macroRiskCache = j;
+                // V16.6 — merge 不 replace,避免洗掉 V16.5 _loadTaiexMA240Bias 已寫進去的 taiex_ma240_bias
+                this._macroRiskCache = { ...(this._macroRiskCache || {}), ...j };
                 console.log(`[macro_risk] 已載入 (gold ${j.gold_chg_pct}% / wti ${j.wti_chg_pct}% / kospi ${j.kospi_chg_pct}% / jpy3d ${j.jpy_chg_3d}%)`);
                 // 已渲染過的獵鷹儀表板補畫一次,讓警報文案立刻顯示真實數值
                 if (this.currentSymbolId) this.renderFalconDashboard?.();
@@ -8571,7 +8576,7 @@ ${_newsLine}${globalContext}
         const el = document.getElementById('chuPositionChip');
         if (!el) return;
         const a = this._chuPositionAdvice();
-        const biasTxt = (typeof a.bias === 'number') ? `年線乖離 ${a.bias.toFixed(1)}%` : '採礦中';
+        const biasTxt = (typeof a.bias === 'number') ? `年線乖離 ${a.bias.toFixed(1)}%` : '整備中';   // V16.6 文案對齊 _detectMarketRegime fallback
         el.className = `w-full max-w-7xl mx-auto px-3 py-1 text-[11px] font-bold border-b cursor-pointer ${a.color}`;
         el.innerHTML = `📊 朱老師建議部位:<b class="text-base mx-0.5">${a.pct}</b> · <span class="font-normal opacity-90">${a.regimeLabel}・${biasTxt}・${a.advice}</span>`;
         el.onclick = () => alert('📌 朱老師心法 — 第一關:大盤環境\n\n' + this._chuOriginalText.gate1 + '\n\n目前判定:\n大盤:' + a.regimeLabel + '(' + biasTxt + ')\n建議部位:' + a.pct + '\n操作策略:' + a.advice);
