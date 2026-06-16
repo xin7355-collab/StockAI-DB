@@ -9,7 +9,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V16.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V16.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -703,7 +703,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.8</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V16.9</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3971,6 +3971,11 @@ ${list}
 
         this.showConfirm(previewMsg, () => {
             try {
+                // V16.9 — 還原前清掉 in-memory 衍生快取,避免「持股新但獵鷹分/macroRisk 是舊計算」
+                this._macroRiskCache = null;
+                this._marketStats    = null;
+                this._falconScores   = null;
+                this._chiefBatchCache = null;
                 if (data.inv) this.inventory = data.inv;
                 if (data.favGroups) this.favGroups = data.favGroups;
                 if (data.set) {
@@ -3987,6 +3992,11 @@ ${list}
                 document.getElementById('exportAreaContainer').classList.add('hidden');
                 area.value = '';
                 this.showToast(`✅ 還原完成!${invN} 檔持股 / ${favN} 自選 / 設定全部復原`, 'info');
+                // V16.9 — 重抓 in-memory 衍生資料(剛剛清空),確保獵鷹分/年線乖離/市場 stats 即時新算
+                this._loadMacroRiskCache?.();
+                this._loadMarketStats?.();
+                this._loadFalconScores?.();
+                this._loadTaiexMA240Bias?.();
                 this.refreshInventoryPrices();
                 this.renderFavTabs();
                 if (this.currentSymbolId) this.analyze(this.currentSymbolId, true);
@@ -5705,6 +5715,15 @@ const marginByDate = {};
             // 已渲染處立刻補畫
             this._renderChuPositionChip?.();
             if (this.currentSymbolId) this.renderFalconDashboard?.();
+            // V16.9 — 朱老師四關卡 Gate 1 + 趨勢警報橫條也跟著重畫(同源 regime,
+            //         否則頂部 chip 顯多頭、Gate 1 卡 fallback「整備中」→ 使用者看到矛盾)
+            if (this.currentSymbolId && Array.isArray(this.activeData) && this.activeData.length && this.indicators) {
+                try {
+                    const _last = this.activeData.length - 1;
+                    this._renderChuFourGates?.(this.activeData, this.indicators, _last);
+                    this._renderChuTrendAlert?.(this.indicators);
+                } catch (e) { console.warn('[V16.9 chu re-render]', e); }
+            }
         } catch (e) { console.warn('[TAIEX MA240] 計算失敗', e); }
     },
 
@@ -13000,7 +13019,8 @@ ${_newsLine}${globalContext}
         const ctx  = this.currentStrategyContext || {};
 
 // 【新增：自動判定型態，加入小白理解】
-        let klineStatus = '盤整中';
+        // V16.9 — MA5/10/20 任一 null(採礦未產出指標)時顯「⏳ 整備中」,不寫死「盤整中」誤導
+        let klineStatus = (ma5 != null && ma10 != null && ma20 != null) ? '盤整中' : '⏳ 整備中';
         if (pC > ma20 && ma5 > ma10) klineStatus = '📈 多頭起漲';
         else if (pC > ma60 && pC < ma20) klineStatus = '📉 跌深回測';
         else if (pC > (this.indicators.upperBB?.[this.activeData.length - 1] || pC)) klineStatus = '🔥 爆量突破';
@@ -13932,7 +13952,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const ma20 = ind.ma20[lastIdx] ? ind.ma20[lastIdx].toFixed(2) : '--';
 
             // 2. 自動判別 K 線狀態 (取代舊版 4 顆按鈕)
-            let klineStatus = '盤整中';
+            // V16.9 — MA 任一 null(指標未算好)時顯「⏳ 整備中」,不寫死「盤整中」誤導
+            let klineStatus = (ind.ma5?.[lastIdx] != null && ind.ma10?.[lastIdx] != null && ind.ma20?.[lastIdx] != null) ? '盤整中' : '⏳ 整備中';
             if (currentPrice > ind.ma20[lastIdx] && ind.ma5[lastIdx] > ind.ma10[lastIdx]) klineStatus = '📈 多頭起漲';
             else if (currentPrice > ind.ma60[lastIdx] && currentPrice < ind.ma20[lastIdx]) klineStatus = '📉 跌深回測';
             else if (currentPrice > ind.upperBB[lastIdx]) klineStatus = '🔥 爆量突破';
