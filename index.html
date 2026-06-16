@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -708,7 +708,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -730,8 +730,8 @@
         </header>
 
         <div id="marketAlertBanner" class="hidden w-full max-w-7xl mx-auto px-3 py-1 text-[10px] font-bold text-center border-b border-red-800"></div>
-        <!-- 📌 朱老師建議部位 chip(讀 _detectMarketRegime 換算 8/5/3 成,點開看心法第一關)-->
-        <div id="chuPositionChip" class="hidden"></div>
+        <!-- V17.2 — 朱老師建議部位 chip 砍掉(資訊已整合進獵鷹卡 regime chip 省空間);
+                     _renderChuPositionChip 函式保留 stub(early return)防 V16.9/V17.0 ?.() 呼叫炸 -->
         <!-- 📌 朱老師警報橫條(頭頭低/底底低/轉折警戒 → 醒目紅條)-->
         <div id="chuTrendAlertBanner" class="hidden"></div>
         <!-- ⛏️ V16.4 採礦中 banner(讀 data/miner_status.json + GitHub Actions API 雙保險,30 秒 poll)-->
@@ -3037,16 +3037,17 @@ ${list}
         list2.innerHTML = items.filter(it => it.title_zh || it.title).map(item => {
             const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
             const ic = impColor[item.impact_level] || 'text-gray-500';
-            const t  = (item.title_zh || item.title || '').slice(0, 50) + ((item.title_zh || item.title || '').length > 50 ? '…' : '');
-            const im = (item.impact && item.impact !== '暫無分析') ? item.impact.slice(0, 30) : '—';
+            // V17.2 — 字體放大配對台股新聞(text-[13px]),title slice 50→80 給更大字體應對更長標題
+            const t  = (item.title_zh || item.title || '').slice(0, 80) + ((item.title_zh || item.title || '').length > 80 ? '…' : '');
+            const im = (item.impact && item.impact !== '暫無分析') ? item.impact.slice(0, 50) : '—';
             const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
-            return `<a href="${safeUrl}" target="_blank" rel="noopener" class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors no-underline">
-                <span class="text-[8px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
+            return `<a href="${safeUrl}" target="_blank" rel="noopener" class="flex items-start gap-1.5 py-1.5 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors no-underline">
+                <span class="text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
                 <div class="flex-1 min-w-0">
-                    <div class="text-[10px] text-gray-300 leading-tight">${t}</div>
-                    <div class="text-[9px] ${ic} mt-0.5">${im}</div>
+                    <div class="text-[13px] text-gray-200 font-bold leading-snug">${t}</div>
+                    <div class="text-[11px] ${ic} mt-0.5">${im}</div>
                 </div>
-                <div class="text-[8px] text-gray-600 flex-shrink-0 mt-0.5">${(item.published || '').slice(5, 11)}</div>
+                <div class="text-[10px] text-gray-600 flex-shrink-0 mt-0.5">${(item.published || '').slice(5, 11)}</div>
             </a>`;
         }).join('');
     },
@@ -8469,7 +8470,9 @@ ${_newsLine}${globalContext}
                 }
             } catch (_e) {}
         }
-        this._macroRiskCache = j || null;
+        // V17.2 — 同 V16.6 line 5769:merge 不 replace,保留 V16.5 _loadTaiexMA240Bias 寫的 taiex_ma240_bias
+        //         updateGlobalRiskGrid 切股時跑,原 replace 把 bias 洗掉 → 獵鷹 regime chip 整備中 race
+        this._macroRiskCache = j ? { ...(this._macroRiskCache || {}), ...j } : (this._macroRiskCache || null);
         const isFake = !j;
         const srcEl = document.getElementById('macroRiskSource');
         if (srcEl) {
@@ -10906,12 +10909,13 @@ ${_newsLine}${globalContext}
         }
         const factorChips = (f.factors || []).map(x => `<span class="text-[9px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">${x}</span>`).join('');
         const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div><div class="text-[9px] text-gray-500 mt-0.5">ℹ️ 此為「新進場時機」評分;你已持有,操作以上方燈號結論為準(避開=不宜新買,非叫你賣)</div>` : '';
-        // 📊 D 路徑:市場狀態 chip(多頭/空頭/盤整)— 讓使用者一眼判斷現在能不能進攻
-        const regime = this._detectMarketRegime();
-        const regimeChip = `<div class="flex items-center gap-1.5 mt-1.5 text-[10px]">
-            <span class="font-bold ${regime.color} px-1.5 py-0.5 rounded border">${regime.label}</span>
-            <span class="text-gray-400">${regime.advice}</span>
-            ${typeof regime.bias === 'number' ? `<span class="text-[9px] text-gray-600 font-mono">(年線乖離 ${regime.bias >= 0 ? '+' : ''}${regime.bias.toFixed(1)}%)</span>` : ''}
+        // 📊 D 路徑:市場狀態 chip — V17.2 整合朱老師建議部位 % 進來,讓頂部 chuPositionChip 可砍掉
+        const advice = this._chuPositionAdvice();
+        const regimeChip = `<div class="flex items-center gap-1.5 mt-1.5 text-[11px] flex-wrap">
+            <span class="font-bold ${advice.color} px-2 py-0.5 rounded border">${advice.regimeLabel}</span>
+            <span class="font-bold text-blue-300">建議 ${advice.pct}</span>
+            <span class="text-gray-400">${advice.advice}</span>
+            ${typeof advice.bias === 'number' ? `<span class="text-[9px] text-gray-600 font-mono">(年線乖離 ${advice.bias >= 0 ? '+' : ''}${advice.bias.toFixed(1)}%)</span>` : ''}
         </div>`;
         box.innerHTML = `
             <div class="flex items-center gap-3">
@@ -12914,7 +12918,7 @@ ${_newsLine}${globalContext}
                     <div class="flex-1 min-w-0"><div class="text-gray-200 text-[13px] font-bold leading-snug">${t}</div>
                     ${aiImpact ? `<div class="text-amber-300 text-[11px] mt-0.5 leading-snug">💡 ${aiImpact}</div>` : ''}
                     ${n.note ? `<div class="text-gray-400 text-[11px] mt-0.5">${n.note}</div>` : ''}
-                    <div class="text-[10px] mt-1 flex items-center gap-1.5">${src}${safeUrl ? '<span class="text-blue-400/70 ml-auto">🔗 看原文</span>' : ''}</div></div></div></div>`;
+                    <div class="text-[10px] mt-1 flex items-center gap-1.5 flex-wrap">${src}${(n.published || n.date || n.pubDate) ? `<span class="text-gray-500">📅 ${String(n.published || n.date || n.pubDate).slice(0, 16).replace('T', ' ')}</span>` : ''}${safeUrl ? '<span class="text-blue-400/70 ml-auto">🔗 看原文</span>' : ''}</div></div></div></div>`;
                 return safeUrl
                     ? `<a href="${safeUrl}" target="_blank" rel="noopener" class="block no-underline">${card}</a>`
                     : card;
@@ -13824,7 +13828,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             } catch (e) { return null; }
         };
         const jobs = [];
-        if (!this._macroRiskCache)  jobs.push(grab('data/macro_risk.json').then(j => { if (j) this._macroRiskCache = j; }));
+        // V17.2 — pre-fetch 也用 merge,加 !gold_chg_pct guard:有 macro 真值就不重抓,沒則 merge 不洗 bias
+        if (!this._macroRiskCache?.gold_chg_pct) jobs.push(grab('data/macro_risk.json').then(j => { if (j) this._macroRiskCache = { ...(this._macroRiskCache || {}), ...j }; }));
         if (!this._sectorHeatCache) jobs.push(grab('data/sector_heat.json').then(j => { if (j) this._sectorHeatCache = j; }));
         if (!this._bubbleCache)     jobs.push(grab('data/bubble_warning.json').then(j => { if (j) this._bubbleCache = j; }));
         if (jobs.length) await Promise.allSettled(jobs);
