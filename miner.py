@@ -206,6 +206,9 @@ CHIP_WATCHLIST = sorted(set([
 ]))
 HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調整）
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
+# V15.8 — fundamentals schema 版本標記:每次 miner.py 改動 fundamentals 結構就 bump,
+#         自動 invalidate 全市場 cache(避免 V15.7 修了欄位但 cache 7 天內擋住新邏輯)
+MINER_VERSION = 'V15.8'
 
 # ── 券商戰術標籤庫 ────────────────────────────────────────────────────────────
 TACTICAL_TAGS = {
@@ -2419,24 +2422,27 @@ def fetch_broker_chips():
             time.sleep(5)
 
         # ② 基本面 TTL 快取：若距上次查詢未逾 FUND_CACHE_DAYS 天，跳過 FinMind
+        # V15.8 — 加版本檢查:cached_ver != MINER_VERSION 強制重抓(治本:schema 改動自動失效)
         cached_fund = existing_obj.get('fundamentals') or {}
         generated_str = cached_fund.get('generated', '')
+        cached_ver = cached_fund.get('miner_version', '')
         skip_finmind = False
         if generated_str:
             try:
                 age_days = (date.today() - date.fromisoformat(generated_str)).days
-                skip_finmind = age_days < FUND_CACHE_DAYS
+                skip_finmind = (age_days < FUND_CACHE_DAYS) and (cached_ver == MINER_VERSION)
             except Exception: pass
 
         # 【極限防爆】提前提取並確保字典絕對不會是 None
         tw_fund = twse_fund.get(sym, {}) or {}
 
         if skip_finmind:
-            print(f"  ⚡ 基本面快取有效（{generated_str}），跳過 FinMind")
+            print(f"  ⚡ 基本面快取有效（{generated_str} / {cached_ver}），跳過 FinMind")
             fundamentals = {**cached_fund,
                             'pe':         tw_fund.get('pe') or cached_fund.get('pe'),
                             'pb':         tw_fund.get('pbr') or cached_fund.get('pb'),
-                            'yield_rate': tw_fund.get('yield_rate') or cached_fund.get('yield_rate')}
+                            'yield_rate': tw_fund.get('yield_rate') or cached_fund.get('yield_rate'),
+                            'miner_version': MINER_VERSION}   # V15.8
         else:
             print(f"  📈 基本面採礦 {sym}...", end=' ', flush=True)
             fm_fund = fetch_finmind_fundamentals(sym) or {}  # 加上 or {} 終極防爆
@@ -2476,6 +2482,7 @@ def fetch_broker_chips():
                 'monthly_revenue_history': fm_fund.get('monthly_revenue_history', []),
                 'quarterly_eps':      fm_fund.get('quarterly_eps', []),
                 'generated':          today_str,
+                'miner_version':      MINER_VERSION,   # V15.8 cache 版本標記
             }
             # V15.7 — 後端 fallback:TWSE BWIBBU_d 對某些股拿不到 PE/yield(GitHub Actions IP 可能被封),
             #         用 FinMind 4 季 EPS 加總 + SQLite 最新 close 算 PE 寫進 chips JSON
