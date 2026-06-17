@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.12</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -617,6 +617,27 @@
                     </ul>
                 </div>
             </div>
+            <!-- V17.13 — 反指標女神追蹤器外部連結卡(社群實驗,純參考)-->
+            <div class="mt-4 p-3 rounded-lg border border-purple-700/50 bg-purple-950/30">
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <span class="text-purple-300 text-lg">🎯</span>
+                    <h4 class="text-purple-200 font-bold text-sm">反指標女神追蹤(社群實驗專案)</h4>
+                    <span class="text-[9px] bg-purple-700/50 text-purple-100 px-1.5 py-0.5 rounded font-bold">外部</span>
+                </div>
+                <p class="text-[11px] text-gray-300 leading-relaxed mb-2">
+                    第三方專案追蹤「股海冥燈 <b class="text-purple-300">巴逆逆 (8zz)</b>」FB 貼文,
+                    透過 AI <b>反向解讀</b>她的投資觀點作為交易訊號(她看多 → 反指標看空,
+                    她停損 → 反指標看買進機會),並追蹤後續 <b>5 個交易日</b>驗證準確率。
+                </p>
+                <p class="text-[10px] text-amber-300/80 leading-snug mb-2">
+                    ⚠️ 純社群實驗,跟技術面/籌碼面無關,僅供娛樂參考。<b>絕不要當主訊號押重倉。</b>
+                    需要自行 Zeabur 一鍵部署(或 Docker / npx)才能使用。
+                </p>
+                <a href="https://github.com/cablate/banini-tracker" target="_blank" rel="noopener"
+                   class="inline-block bg-purple-700/60 hover:bg-purple-600 text-white text-[11px] font-bold px-3 py-1.5 rounded transition-colors no-underline">
+                   🔗 GitHub:cablate/banini-tracker
+                </a>
+            </div>
             <div class="text-center mt-4 pt-3 border-t border-[#30363d]">
                 <button onclick="document.getElementById('operationManualModal').classList.add('hidden')" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded text-sm font-bold transition-colors">收到！開始作戰</button>
             </div>
@@ -727,7 +748,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.12</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.13</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
