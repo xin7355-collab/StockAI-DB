@@ -12413,7 +12413,9 @@ ${_newsLine}${globalContext}
                         ${(() => { const b = this._renderEliminationBadge(this._invKlineCache[item.symbol]); return b ? `<div class="mt-1 flex flex-wrap gap-1">${b}</div>` : ''; })()}
                         <div class="text-xs text-gray-500 mt-1">成本: ${cost} | ${(shares*1000).toLocaleString()}股 | ${item.buyDate || '--'}</div>
                     </div>
-                    <div class="text-right flex items-center gap-3">
+                    <div class="text-right flex items-center gap-2">
+                        <!-- V17.7 — 庫存頁 inline 🚨 限價告警 icon(已設限價亮起) -->
+                        <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-lg ${this.priceAlerts?.some(a => a.sym === item.symbol) ? '' : 'opacity-30'} hover:opacity-100 transition-opacity" title="設定上下限價,觸發推 Telegram">🚨</span>
                         <div>
                             <div class="font-mono font-black text-lg ${color}">${price.toFixed(2)}</div>
                             <div class="text-[10px] font-bold ${color}">${pnl>0?'+':''}${pnl.toFixed(2)}%</div>
