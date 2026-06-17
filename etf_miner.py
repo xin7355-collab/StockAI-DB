@@ -449,25 +449,34 @@ def main():
                     total_shares += int(h.get("est_shares", 0) or 0)
                     if not stock_name:
                         stock_name = h.get("name") or ""
-        # 持股變化合計(從各 ETF changes 聚合):added / weight_up 加正,weight_down / removed 加負
+        # 持股變化合計(從各 ETF changes 聚合)
+        # V17.17 修 bug:added/removed 元素只有 est_shares 沒 est_shares_delta(那欄只在
+        # diff_holdings 的 weight_up/down 才掛),原版 added/removed 永遠貢獻 0 → 改用 est_shares
         shares_delta = 0
         for e in etfs_holding:
             ch = e.get("changes", {}) or {}
             for ad in (ch.get("added") or []):
                 if ad.get("sym") == sym:
-                    shares_delta += int(ad.get("est_shares_delta", 0) or 0)
+                    shares_delta += int(ad.get("est_shares", 0) or 0)        # 新買進整批 +
             for wu in (ch.get("weight_up") or []):
                 if wu.get("sym") == sym:
-                    shares_delta += int(wu.get("est_shares_delta", 0) or 0)
+                    shares_delta += int(wu.get("est_shares_delta", 0) or 0)  # 加倉 delta
             for wd in (ch.get("weight_down") or []):
                 if wd.get("sym") == sym:
-                    shares_delta += int(wd.get("est_shares_delta", 0) or 0)
+                    shares_delta += int(wd.get("est_shares_delta", 0) or 0)  # 減倉 delta(負)
             for rm in (ch.get("removed") or []):
                 if rm.get("sym") == sym:
-                    shares_delta += int(rm.get("est_shares_delta", 0) or 0)
+                    shares_delta -= int(rm.get("est_shares", 0) or 0)        # 全清整批 -
         # 市值變化(億):shares_delta × 最新 close × 1000(張→股) / 1e8
+        # V17.17 修 bug:load_prices 回傳 list[dict],原版 float(prices[-1]) 對 dict 會丟 TypeError
         prices = load_prices(sym)
-        latest_close = float(prices[-1]) if prices else 0
+        latest_close = 0
+        if prices:
+            last = prices[-1] if isinstance(prices[-1], dict) else None
+            try:
+                latest_close = float(last.get("close")) if last else 0
+            except (TypeError, ValueError):
+                latest_close = 0
         market_val_delta_e = round(shares_delta * latest_close * 1000 / 1e8, 2) if latest_close else 0
         consensus_stocks.append({
             "sym": sym,

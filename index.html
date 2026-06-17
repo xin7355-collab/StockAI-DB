@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.16</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.17</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -732,7 +732,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.16</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.17</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3186,6 +3186,30 @@ ${list}
         try { (this.inventory || []).forEach(it => s.add(String(it.symbol))); } catch (_) {}
         return s;
     },
+    // V17.17 — 後端 consensus_stocks 沒料時的兜底:從 etfs[].changes 即時聚合
+    //   schema 對齊後端:{sym, name, etf_count, shares_delta, market_val_delta_e, total_shares}
+    //   total_shares / market_val_delta_e 算不出來填 0(只有後端 etf_miner 有 fund_size + close 能算)
+    _buildConsensusFromEtfs(etfs) {
+        const map = new Map();
+        const bump = (etfSym, sym, name, delta) => {
+            if (!sym) return;
+            const cur = map.get(sym) || { sym, name: name || '', etf_count: 0, shares_delta: 0,
+                                          market_val_delta_e: 0, total_shares: 0, _etfs: new Set() };
+            if (!cur._etfs.has(etfSym)) { cur._etfs.add(etfSym); cur.etf_count = cur._etfs.size; }
+            cur.shares_delta += (Number(delta) || 0);
+            if (!cur.name && name) cur.name = name;
+            map.set(sym, cur);
+        };
+        for (const e of (etfs || [])) {
+            const c = e.changes || {};
+            for (const x of (c.added       || [])) bump(e.symbol, x.sym, x.name,  Number(x.est_shares) || 0);
+            for (const x of (c.weight_up   || [])) bump(e.symbol, x.sym, x.name,  Number(x.est_shares_delta) || 0);
+            for (const x of (c.weight_down || [])) bump(e.symbol, x.sym, x.name,  Number(x.est_shares_delta) || 0);
+            for (const x of (c.removed     || [])) bump(e.symbol, x.sym, x.name, -(Number(x.est_shares) || 0));
+        }
+        return [...map.values()].map(o => { delete o._etfs; return o; });
+    },
+
     async renderEtfTab() {
         const box = document.getElementById('tabContentEtf');
         if (!box) return;
@@ -3220,7 +3244,13 @@ ${list}
         // ── 段 2:個股加減碼整合表(V17.16 取代雙 tab,單一視圖)──────────────
         //   3 鈕排序:🔴 加碼 Top / 🟢 減碼 Top / ⭐ ETF 檔數 Top(預設加碼)
         //   預判訊號:N ≥ 5 同向 → 共識看多/看空
-        const stocks = (d.consensus_stocks || []).filter(s => s.etf_count > 0);
+        //   V17.17 — 若後端 consensus_stocks 沒料,前端從 changes 兜底聚合
+        let stocks = (d.consensus_stocks || []).filter(s => s.etf_count > 0);
+        let fallbackUsed = false;
+        if (!stocks.length) {
+            stocks = this._buildConsensusFromEtfs(d.etfs).filter(s => s.etf_count > 0);
+            fallbackUsed = true;
+        }
         const sortMode = this._etfSort || 'add';
         const sortedStocks = [...stocks].sort((a, b) => {
             if (sortMode === 'cut')   return a.shares_delta - b.shares_delta;
@@ -3263,10 +3293,11 @@ ${list}
                         </div>
                         <div class="text-right text-[12px] font-mono font-bold text-white">${s.etf_count}</div>
                         <div class="text-right text-[12px] font-mono font-bold ${dirCol}">${s.shares_delta > 0 ? '+' : ''}${s.shares_delta.toLocaleString()}</div>
-                        <div class="text-right text-[12px] font-mono font-bold ${mvCol}">${s.market_val_delta_e > 0 ? '+' : ''}${s.market_val_delta_e.toFixed(2)}</div>
-                        <div class="text-right text-[12px] font-mono font-bold text-gray-200">${s.total_shares.toLocaleString()}</div>
+                        <div class="text-right text-[12px] font-mono font-bold ${mvCol}">${s.market_val_delta_e === 0 ? '<span class="text-gray-600">—</span>' : (s.market_val_delta_e > 0 ? '+' : '') + s.market_val_delta_e.toFixed(2)}</div>
+                        <div class="text-right text-[12px] font-mono font-bold text-gray-200">${s.total_shares === 0 ? '<span class="text-gray-600">—</span>' : s.total_shares.toLocaleString()}</div>
                     </div>`;
                 }).join('')}</div>
+                ${fallbackUsed ? `<div class="text-[9px] text-amber-400 px-2 pt-2">⚠️ 近似估算 — 持股合計 / 市值變化欄需待下次盤後採礦完整資料</div>` : ''}
                 <div class="text-[9px] text-gray-500 px-2 py-2">💡 ETF ≥ 5 檔同步加碼/減碼 → 主流共識訊號(僅供參考,非投資建議)</div>
             </div>` : '';
 
