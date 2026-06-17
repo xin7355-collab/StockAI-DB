@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -727,7 +727,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -818,31 +818,22 @@
                             <span id="quoteCode" class="text-[11px] text-gray-400 font-mono font-bold leading-none flex-shrink-0"></span>
                         </div>
                         <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-1 mt-1">
-                            <span id="stockTags" class="inline-flex flex-wrap gap-x-1 gap-y-1 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap">讀取中...</span></span>
+                            <span id="stockTags" class="inline-flex flex-wrap gap-x-1 gap-y-0.5 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap">讀取中...</span></span>
                             <span id="invBadge" class="hidden inline-block bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500 whitespace-nowrap">💼持股中</span>
                             <!-- 🚨 處置神器 badge:由 refreshStrategy() 依 attentionStatus 動態填字 + show/hide -->
                             <span id="attentionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle"></span>
                         </div>
                     </div>
-                    <!-- 右側：✏️ + 價格 + 漲跌 + 來源 + 更新 -->
+                    <!-- 右側:價格 + 漲跌(V17.8 — 移除 ✏️ 筆 + 🔄 更新,限價 chip 內嵌漲跌左側)-->
                     <div class="text-right flex flex-col items-end flex-shrink-0">
-                        <div class="flex items-center gap-1 justify-end">
-                            <button onclick="app.toggleManualPriceInput()" title="手動輸入現價" class="text-gray-600 hover:text-gray-400 text-sm transition-colors flex-shrink-0">✏️</button>
-                            <span id="livePriceText" class="text-4xl md:text-5xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
-                        </div>
-                        <div id="manualPriceInputWrap" class="hidden flex items-center gap-1 mt-1">
-                            <input type="number" inputmode="decimal" id="manualPriceInput" class="bg-[#010409] text-white px-2 py-1 rounded border border-gray-600 outline-none font-mono text-sm w-24 text-right focus:border-blue-500 transition-colors" placeholder="手動現價" oninput="app.onManualPriceInput()">
-                            <button onclick="app.clearManualPrice()" class="text-gray-500 hover:text-red-400 text-xs transition-colors">✕</button>
-                        </div>
-                        <div id="liveDiffWrapper" class="flex items-center gap-1 text-gray-400 mt-0.5">
-                            <span id="liveDiffAmount" class="text-sm font-black font-mono">--</span><span id="liveDiffPct" class="text-xs font-bold font-mono">(--%)</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 mt-1">
-                            <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d]">
+                        <span id="livePriceText" class="text-4xl md:text-5xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
+                        <div id="liveDiffWrapper" class="flex items-center gap-1.5 text-gray-400 mt-1 justify-end">
+                            <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1 py-0 rounded border border-[#30363d]">
                                 <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
                                 <span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時</span>
                             </div>
-                            <button onclick="app.manualDataRefresh(); app.vibrate(50);" title="強制重新載入股票資料" class="text-[9px] text-blue-400 hover:text-white transition-colors bg-blue-900/40 hover:bg-blue-800/60 px-2 py-0.5 rounded border border-blue-700/50 font-bold">🔄 更新</button>
+                            <span id="liveDiffAmount" class="text-sm font-black font-mono">--</span>
+                            <span id="liveDiffPct" class="text-xs font-bold font-mono">(--%)</span>
                         </div>
                     </div>
                 </div>
@@ -11104,13 +11095,14 @@ ${_newsLine}${globalContext}
         // 趨勢判定（頭頭高底底高）對日/週/月 K 都套用 — activeData 已經被 aggregateData 聚合過
         const _chu = this._computeChuTechProfile(this.activeData, this.indicators);
         const featTags = [];
-        if (_chu.trendJudge.startsWith('✅'))      featTags.push({ kind: '趨勢狀態', text: '多頭排列(頭頭高底底高)', tone: 'good' });
-        else if (_chu.trendJudge.startsWith('❌')) featTags.push({ kind: '趨勢狀態', text: '空頭排列(頭頭低底底低)', tone: 'danger' });
-        else if (_chu.trendJudge.startsWith('⚠️')) featTags.push({ kind: '趨勢狀態', text: '趨勢轉折警戒', tone: 'warn' });
-        if (isIslandReversal) featTags.push({ kind: '型態警報', text: '島狀反轉', tone: 'island' });
-        if (isBigBlackK)      featTags.push({ kind: '型態警報', text: '大黑K摜壓', tone: 'danger' });
-        if (brokenPrevLow)    featTags.push({ kind: '破線', text: '跌破前20日低', tone: 'danger', jargon: '跌破前低' });
-        if (is_chips_weak)    featTags.push({ kind: '籌碼', text: `連3日法人賣超${Math.round(instSum3)}張`, tone: 'warn', jargon: '法人連賣' });
+        // V17.8 — 文案壓縮,讓 stockTags inline-wrap 排得更密
+        if (_chu.trendJudge.startsWith('✅'))      featTags.push({ kind: '趨勢', text: '多頭排列', tone: 'good', jargon: '多頭排列' });
+        else if (_chu.trendJudge.startsWith('❌')) featTags.push({ kind: '趨勢', text: '空頭排列', tone: 'danger' });
+        else if (_chu.trendJudge.startsWith('⚠️')) featTags.push({ kind: '趨勢', text: '轉折警戒', tone: 'warn' });
+        if (isIslandReversal) featTags.push({ kind: '型態', text: '島狀反轉', tone: 'island' });
+        if (isBigBlackK)      featTags.push({ kind: '型態', text: '大黑K', tone: 'danger' });
+        if (brokenPrevLow)    featTags.push({ kind: '破線', text: '跌破前低', tone: 'danger', jargon: '跌破前低' });
+        if (is_chips_weak)    featTags.push({ kind: '籌碼', text: `法人連3賣${Math.round(instSum3)}張`, tone: 'warn', jargon: '法人連賣' });
 
         // 🟢 多個有用指標 chip(複用 this.indicators,台股紅漲綠跌語意,點擊彈窗說明)
         if (this.currentTF === 'D') {
@@ -11122,29 +11114,29 @@ ${_newsLine}${globalContext}
             if (Array.isArray(kArr) && Array.isArray(dArr) && kArr.length > li && li > 0) {
                 const k0 = kArr[li-1], d0 = dArr[li-1], k1 = kArr[li], d1 = dArr[li];
                 if (k0 != null && d0 != null && k1 != null && d1 != null) {
-                    if (k0 < d0 && k1 > d1 && k1 < 55) featTags.push({ kind: 'KD', text: 'KD黃金交叉', tone: 'bullish', jargon: 'KD黃金交叉' });
-                    else if (k0 > d0 && k1 < d1 && k1 > 75) featTags.push({ kind: 'KD', text: 'KD死亡交叉', tone: 'bearish', jargon: 'KD死亡交叉' });
+                    if (k0 < d0 && k1 > d1 && k1 < 55) featTags.push({ kind: 'KD', text: 'KD金叉', tone: 'bullish', jargon: 'KD黃金交叉' });
+                    else if (k0 > d0 && k1 < d1 && k1 > 75) featTags.push({ kind: 'KD', text: 'KD死叉', tone: 'bearish', jargon: 'KD死亡交叉' });
                 }
             }
             // 爆量長紅
-            if (volRatio >= 1.5 && pC > pO && pC > ma20) featTags.push({ kind: '量價', text: `爆量長紅(量${volRatio.toFixed(1)}倍)`, tone: 'bullish', jargon: '爆量長紅' });
+            if (volRatio >= 1.5 && pC > pO && pC > ma20) featTags.push({ kind: '量價', text: `爆量${volRatio.toFixed(1)}x`, tone: 'bullish', jargon: '爆量長紅' });
             // 乖離過大(追高風險)
             const bias20 = ma20 > 0 ? (pC - ma20) / ma20 * 100 : 0;
-            if (bias20 > 12) featTags.push({ kind: '乖離', text: `乖離過大+${bias20.toFixed(0)}%`, tone: 'warn', jargon: '乖離過大' });
+            if (bias20 > 12) featTags.push({ kind: '乖離', text: `乖離+${bias20.toFixed(0)}%`, tone: 'warn', jargon: '乖離過大' });
             // 跌破季線
-            if (ma60 != null && !isNaN(ma60) && pC < ma60) featTags.push({ kind: '均線', text: '跌破季線(60MA)', tone: 'bearish', jargon: '跌破季線' });
+            if (ma60 != null && !isNaN(ma60) && pC < ma60) featTags.push({ kind: '均線', text: '破季線', tone: 'bearish', jargon: '跌破季線' });
             // 創 60 日新高
             const _slice60 = (this.activeData || []).slice(-61, -1);
             const high60 = _slice60.length ? Math.max(..._slice60.map(r => r.high || 0)) : 0;
-            if (high60 > 0 && pC >= high60) featTags.push({ kind: '突破', text: '創60日新高', tone: 'bullish', jargon: '創新高' });
+            if (high60 > 0 && pC >= high60) featTags.push({ kind: '突破', text: '創60新高', tone: 'bullish', jargon: '創新高' });
             // 🆕 漲停鎖死豁免:接近漲停(>=9%)時買賣鎖死、成交量本來就縮,以下量縮警示屬正常,不誤報
             const _isNearLimitUp = !!pC1 && (pC - pC1) / pC1 >= 0.09;
-            if (_isNearLimitUp) featTags.push({ kind: '量價', text: '漲停鎖死(量縮正常)', tone: 'bullish' });
+            if (_isNearLimitUp) featTags.push({ kind: '量價', text: '漲停鎖死', tone: 'bullish' });
             // 量縮窒息
-            if (!_isNearLimitUp && volRatio < 0.6) featTags.push({ kind: '量價', text: '量縮窒息', tone: 'info', jargon: '量縮窒息' });
+            if (!_isNearLimitUp && volRatio < 0.6) featTags.push({ kind: '量價', text: '量縮', tone: 'info', jargon: '量縮窒息' });
             // 量價背離(#6)
-            if (!_isNearLimitUp && pC > pC1 && pV < vma5 * 0.8) featTags.push({ kind: '量價背離', text: '價漲量縮背離', tone: 'warn', jargon: '量價背離' });
-            else if (pC < pC1 && pV < vma5 * 0.7) featTags.push({ kind: '量價背離', text: '價跌量縮(賣壓衰竭)', tone: 'info', jargon: '量價背離' });
+            if (!_isNearLimitUp && pC > pC1 && pV < vma5 * 0.8) featTags.push({ kind: '量價背離', text: '價漲量縮', tone: 'warn', jargon: '量價背離' });
+            else if (pC < pC1 && pV < vma5 * 0.7) featTags.push({ kind: '量價背離', text: '價跌量縮', tone: 'info', jargon: '量價背離' });
         }
 
         // 🎯 5 級提醒制度(統一動作標籤,初學者一眼看懂該不該做)
@@ -11171,7 +11163,8 @@ ${_newsLine}${globalContext}
             const cfg = _actionCfg[action] || _actionCfg.watch;
             const clickable = t.jargon ? ` onclick="app.showJargon('${t.jargon}')" style="cursor:pointer"` : '';
             const titleAttr = ` title="${cfg.label}:${cfg.tip}"`;
-            tagsHtml += `<span${clickable}${titleAttr} class="${cfg.cls} border text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 inline-block mt-1">${cfg.emoji} ${t.text}${t.jargon ? ' ⓘ' : ''}</span>`;
+            // V17.8 — text-[10px]→[9px] / px-1.5 py-0.5→px-1 py-0,ml-1 mt-1 改靠 parent gap,inline 排更密
+            tagsHtml += `<span${clickable}${titleAttr} class="${cfg.cls} border text-[9px] px-1 py-0 rounded font-bold inline-block">${cfg.emoji} ${t.text}${t.jargon ? ' ⓘ' : ''}</span>`;
         }
         document.getElementById('stockTags').innerHTML = tagsHtml;
 
