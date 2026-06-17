@@ -71,9 +71,14 @@ export default {
     },
 
     async scheduled(event, env, ctx) {
-        // 兩個 cron 排程分流:17:00 台北每日總結 / 其餘 30 分掃描
+        // V17.5 — 三 cron 排程分流:
+        //   "0 9"    → 17:00 台北 盤後總結 + AI 短評
+        //   "0 1"    → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發
+        //   "*/5 ..." → 09:00-13:30 台北 盤中即時掃描
         if (event.cron === '0 9 * * 1-5') {
             ctx.waitUntil(runDailySummary(env));
+        } else if (event.cron === '0 1 * * 1-5') {
+            ctx.waitUntil(runMonitorChuMorningScan(env));
         } else {
             ctx.waitUntil(runScan(env));
         }
@@ -278,6 +283,8 @@ function sanitizePayload(payload) {
             falcon_threshold: clamp(payload.settings.falcon_threshold, 60, 95, 85),
             surge_threshold: clamp(payload.settings.surge_threshold, 2, 10, 5),
             drop_threshold: clamp(payload.settings.drop_threshold, 2, 10, 5),
+            // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設 true,顯式 false 才關)
+            chuMorningPush: payload.settings.chuMorningPush !== false,
         };
         // V16.0 — Fugle token 帶上雲,供 Worker 跑內外盤分析(只 trim 不加密,KV 內部已加密儲存)
         const ft = String(payload.settings.fugleToken1 || '').trim();
@@ -823,4 +830,117 @@ function buildDailyPrompt(rawSummary, user) {
         '',
         '請用台股口語,2-3 句,直接給操作建議:',
     ].join('\n');
+}
+
+// ── V17.5: 隔日 09:00 開盤 — 掃 monitorList 推朱家泓 5MA 進場觸發 ────────────
+//
+// 機制:前端 V17.4 已加「全綠燈一鍵加入監控」,使用者加完關 App 即可。
+//       本 cron 隔日 09:00 台北跑,對每 user 的 monitorList 逐檔判:
+//         整日 low ≥ ma5*0.99(整日沒跌破 5MA)+ 紅 K(close > open)+ 量 ≥ vma5*0.8
+//       觸發推 Telegram「🎯 朱老師六六大順 進場訊號觸發」+ 24h throttle 不重推
+//
+// 等同前端 _checkChu5MAEntry (index.html line 14833),確保 worker 跟前端一致判定。
+
+async function runMonitorChuMorningScan(env) {
+    let cursor = undefined;
+    let scanned = 0, sent = 0;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!userData.chat_id) continue;
+                if (userData.muted_until && userData.muted_until > Date.now()) continue;
+                // 使用者可關此功能(預設開)
+                if (userData.settings?.chuMorningPush === false) continue;
+                if (!Array.isArray(userData.monitorList) || userData.monitorList.length === 0) continue;
+                scanned++;
+                const did = await scanMonitorChuTriggers(env, userData);
+                if (did) sent++;
+            } catch (e) {
+                console.warn('[chu morning scan] user error', e?.message);
+            }
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+    console.log(`[chu morning scan] scanned ${scanned} users · sent ${sent} pushes`);
+}
+
+async function scanMonitorChuTriggers(env, user) {
+    const triggered = [];
+    for (const item of user.monitorList) {
+        const sym = typeof item === 'string' ? item : item?.sym;
+        if (!sym) continue;
+        try {
+            const yClose = await fetchYesterdayKLineForChu(sym);
+            if (!yClose) continue;
+            const hit = evalChu5MAEntry(yClose);
+            if (!hit) continue;
+            // throttle:同股 / chu5ma type / 24h 只推 1 次
+            if (await wasPushed(env, user.chat_id, sym, 'chu5ma')) continue;
+            triggered.push({ sym, ...hit });
+            await markPushed(env, user.chat_id, sym, 'chu5ma', 86400);
+        } catch (e) {
+            console.warn(`[chu scan] ${sym}`, e?.message);
+        }
+    }
+    if (!triggered.length) return false;
+    // 組推送(最多 5 檔,避免訊息過長)
+    const lines = triggered.slice(0, 5).map(t =>
+        `• <b>${t.sym}</b>(收 ${t.lastClose})— 站 5MA <b>${t.ma5}</b> + 紅 K + 量${t.volRatio >= 1 ? '增' : '縮'} <b>${t.volRatio.toFixed(1)}x</b>`
+    );
+    const more = triggered.length > 5 ? `\n…還有 ${triggered.length - 5} 檔(打開 App 看完整)` : '';
+    const msg =
+        `🎯 <b>朱老師六六大順 進場訊號觸發</b>\n` +
+        `(你監控的股票今早符合站穩 5MA + 紅 K + 量增條件)\n\n` +
+        `${lines.join('\n')}${more}\n\n` +
+        `📋 操作:開盤後 5-10 分等量穩,守 5MA 進(跌破 5MA 立停)`;
+    await tg(env, user.chat_id, msg);
+    return true;
+}
+
+// V17.5 — 抓 gh-pages data/{sym}.json 拿昨日 OHLCV + 算 ma5/vma5
+//          (worker.js 既有 fetchVolumeBaseline 只回 ma5/vma5,本函式同時要昨日 row)
+async function fetchYesterdayKLineForChu(sym) {
+    try {
+        const url = `${GH_PAGES_BASE}/data/${encodeURIComponent(sym)}.json?t=${Date.now()}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const rows = await res.json().catch(() => null);
+        if (!Array.isArray(rows) || rows.length < 5) return null;
+        const last5 = rows.slice(-5);
+        const closes = last5.map(r => Number(r.close)).filter(Number.isFinite);
+        const vols = last5.map(r => Number(r.volume)).filter(Number.isFinite);
+        if (closes.length !== 5 || vols.length !== 5) return null;
+        const yesterday = last5[4];   // 最後一根 = 昨日(剛採完的 K 線)
+        return {
+            ma5: closes.reduce((s, v) => s + v, 0) / 5,
+            vma5: vols.reduce((s, v) => s + v, 0) / 5,
+            yLow: Number(yesterday.low),
+            yClose: Number(yesterday.close),
+            yOpen: Number(yesterday.open),
+            yVol: Number(yesterday.volume),
+        };
+    } catch (_) { return null; }
+}
+
+// V17.5 — 等同 index.html line 14833 _checkChu5MAEntry,worker 版
+//          朱家泓心法:整日沒跌破 5MA(low ≥ ma5*0.99)+ 紅 K(close > open)
+//          加量增 ≥ vma5*0.8 過濾「假紅 K」(無量上漲容易回測)
+function evalChu5MAEntry(base) {
+    const { ma5, vma5, yLow, yClose, yOpen, yVol } = base;
+    if (!Number.isFinite(ma5) || ma5 <= 0) return null;
+    if (!Number.isFinite(yLow) || !Number.isFinite(yClose) || !Number.isFinite(yOpen)) return null;
+    const heldAboveMA5 = yLow >= ma5 * 0.99;
+    const isRedK = yClose > yOpen;
+    const volOk = vma5 > 0 ? (yVol >= vma5 * 0.8) : true;
+    if (heldAboveMA5 && isRedK && volOk) {
+        return {
+            ma5: ma5.toFixed(2),
+            lastClose: yClose.toFixed(2),
+            volRatio: vma5 > 0 ? yVol / vma5 : 0,
+        };
+    }
+    return null;
 }

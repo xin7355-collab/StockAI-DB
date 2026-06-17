@@ -12,8 +12,9 @@ id = "9d4249726b324b38892a69b9992cdb4d"
 #   "*/5 1-5 * * 1-5"  — 台北 09:00-13:30 每 5 分(盤中即時掃描)
 #                        Cloudflare Free 月 ~6,600 req < 100k 額度,6.6% 餘裕
 #   "0 9 * * 1-5"      — 台北 17:00(盤後每日總結 + AI 短評)
+#   "0 1 * * 1-5"      — V17.5 台北 09:00 開盤(掃 monitorList 推朱家泓 5MA 進場觸發)
 [triggers]
-crons = ["*/5 1-5 * * 1-5", "0 9 * * 1-5"]
+crons = ["*/5 1-5 * * 1-5", "0 9 * * 1-5", "0 1 * * 1-5"]
 
 # 🛡️ Secrets(用 `wrangler secret put XXX` 設定,不要寫在這個檔)
 #   TELEGRAM_BOT_TOKEN   ← BotFather 給的 token,必填

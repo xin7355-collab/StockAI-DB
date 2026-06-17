@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -303,6 +303,17 @@
                     <div id="tgCloudStatus" class="text-[11px] text-gray-500 leading-snug py-1">尚未綁定</div>
                     <button id="tgCloudBindBtn" onclick="app.telegramCloud.startBind()" class="w-full px-3 py-2 bg-cyan-900/40 text-xs font-bold rounded border border-cyan-700/50 hover:bg-cyan-800/50 transition text-cyan-300">📨 啟用 / 取得綁定碼</button>
                     <button id="tgCloudUnbindBtn" onclick="app.telegramCloud.unbind()" class="hidden w-full px-3 py-2 bg-red-900/30 text-xs font-bold rounded border border-red-700/40 hover:bg-red-800/40 transition text-red-300">🔌 解除綁定</button>
+                    <!-- V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設開,worker 每天 09:00 台北跑) -->
+                    <div class="flex items-start justify-between gap-2 pt-2 mt-1 border-t border-cyan-900/30">
+                        <div class="flex-1 min-w-0">
+                            <label class="text-[11px] font-bold text-emerald-300">🎯 朱家泓 5MA 觸發自動推</label>
+                            <p class="text-[10px] text-gray-500 leading-tight">監控股早上 09:00 台北 worker 自動掃,符合「站 5MA + 紅 K + 量增」推手機 Telegram(連 App 都不必開)</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-0.5">
+                            <input type="checkbox" id="set_chuMorningPush" onchange="app.settings.chuMorningPush=this.checked; app.saveSettings(); app.telegramCloud?.sync?.();" class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
@@ -708,7 +719,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2422,6 +2433,8 @@ const app = {
                 falcon_threshold: Number(app.settings?.falconAlertTh) || 85,
                 surge_threshold:  Number(app.settings?.surgeAlertTh)  || 5,
                 drop_threshold:   Number(app.settings?.dropAlertTh)   || 5,
+                // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設 true,可關掉)
+                chuMorningPush:   app.settings?.chuMorningPush !== false,
             };
             return { watchlist, inventory, monitorList, settings };
         },
@@ -3421,6 +3434,9 @@ ${list}
         const buEl = document.getElementById('set_botUsername');
         if (buEl) buEl.value = this.settings.botUsername || '';
         this.telegramCloud?._updateUI();
+        // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設開,首次 init 時為 undefined → true)
+        const cmEl = document.getElementById('set_chuMorningPush');
+        if (cmEl) cmEl.checked = this.settings.chuMorningPush !== false;
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         const wlEl = document.getElementById('set_watchlistAlert');
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
