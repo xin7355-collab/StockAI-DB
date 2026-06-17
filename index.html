@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -314,6 +314,14 @@
                             <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                     </div>
+                </div>
+
+                <!-- V17.7 — 限價告警清單管理(集中管理已設限價,可編輯/清空) -->
+                <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
+                    <label class="text-sm font-bold text-red-300">🚨 個股限價告警清單</label>
+                    <p class="text-[10px] text-gray-500 leading-tight">在個股頁點 🚨 設限價;此處集中管理。觸及上下限即推 Telegram + 通知(24h throttle 防重)。</p>
+                    <div id="priceAlertList" class="flex flex-col gap-1.5 max-h-60 overflow-y-auto"></div>
+                    <button onclick="app.clearAllPriceAlerts()" class="w-full px-3 py-1.5 bg-red-900/30 text-xs font-bold rounded border border-red-700/40 hover:bg-red-800/40 transition text-red-300">🗑️ 一鍵清空所有限價</button>
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
@@ -719,7 +727,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3448,6 +3456,8 @@ ${list}
         // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設開,首次 init 時為 undefined → true)
         const cmEl = document.getElementById('set_chuMorningPush');
         if (cmEl) cmEl.checked = this.settings.chuMorningPush !== false;
+        // V17.7 — 限價告警清單渲染
+        this.renderPriceAlertList?.();
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         const wlEl = document.getElementById('set_watchlistAlert');
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
@@ -14704,7 +14714,52 @@ ${_chuPosPlan}
         try {
             localStorage.setItem('proTerminalPriceAlerts', JSON.stringify(this.priceAlerts));
             this.telegramCloud?.sync?.();   // 即時 sync 上 KV 給 worker 用
+            this.renderPriceAlertList?.();  // 同步刷新設定頁清單
+            this._updateChuLockIcon?.();    // 同步刷新個股頁 🚨 icon
         } catch (e) { console.warn('[savePriceAlerts]', e); }
+    },
+
+    // V17.7 — 設定頁集中清單管理
+    renderPriceAlertList() {
+        const el = document.getElementById('priceAlertList');
+        if (!el) return;
+        if (!this.priceAlerts || this.priceAlerts.length === 0) {
+            el.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-2">尚未設任何限價(到個股頁點 🚨 icon 設定)</div>';
+            return;
+        }
+        el.innerHTML = this.priceAlerts.map(a => {
+            const cname = this.getStockName(a.sym) || a.sym;
+            const parts = [];
+            if (a.upper != null) parts.push(`上 <b class="text-red-300">${a.upper}</b>`);
+            if (a.lower != null) parts.push(`下 <b class="text-green-300">${a.lower}</b>`);
+            return `<div class="flex items-center justify-between gap-2 px-2 py-1.5 bg-gray-900/50 border border-gray-700/40 rounded text-[11px]">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <span class="font-bold text-cyan-300 font-mono">${a.sym}</span>
+                    <span class="text-gray-300 truncate">${cname}</span>
+                </div>
+                <div class="text-gray-300 flex-shrink-0">${parts.join(' · ')}</div>
+                <button onclick="app.openPriceAlertModal('${a.sym}')" class="text-blue-300 hover:text-blue-200 text-[10px] px-1.5 py-0.5 border border-blue-700/40 rounded flex-shrink-0">編輯</button>
+                <button onclick="app.removePriceAlert('${a.sym}')" class="text-red-300 hover:text-red-200 text-[10px] px-1.5 py-0.5 border border-red-700/40 rounded flex-shrink-0">刪</button>
+            </div>`;
+        }).join('');
+    },
+
+    removePriceAlert(sym) {
+        this.priceAlerts = this.priceAlerts.filter(a => a.sym !== sym);
+        this._savePriceAlerts();
+        this.showToast?.(`🗑️ 已清除 ${sym} 限價告警`, 'info');
+    },
+
+    clearAllPriceAlerts() {
+        if (!this.priceAlerts || this.priceAlerts.length === 0) {
+            this.showToast?.('清單已是空的');
+            return;
+        }
+        this.showConfirm(`確定清空全部 ${this.priceAlerts.length} 檔限價告警?`, () => {
+            this.priceAlerts = [];
+            this._savePriceAlerts();
+            this.showToast?.('🗑️ 已清空所有限價告警', 'info');
+        });
     },
 
     _addToMonitor(sym, data, strategySource, opts = {}) {
