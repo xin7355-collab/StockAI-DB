@@ -430,6 +430,57 @@ def main():
             if h.get("sym"):
                 hot[h["sym"]] = hot.get(h["sym"], 0) + 1
 
+    # V17.15 — per-stock 聚合:被多少檔 ETF 持有 + 持股變化合計 + 市值變化
+    #         前端「個股加減碼」表格用,讓使用者一眼看出「N 檔同步加減碼」共識訊號
+    consensus_stocks = []
+    all_syms = set()
+    for e in etfs:
+        for h in (e.get("holdings") or []):
+            if h.get("sym"):
+                all_syms.add(h["sym"])
+
+    for sym in all_syms:
+        etfs_holding = [e for e in etfs if any(h.get("sym") == sym for h in (e.get("holdings") or []))]
+        total_shares = 0
+        stock_name = ""
+        for e in etfs_holding:
+            for h in (e.get("holdings") or []):
+                if h.get("sym") == sym:
+                    total_shares += int(h.get("est_shares", 0) or 0)
+                    if not stock_name:
+                        stock_name = h.get("name") or ""
+        # 持股變化合計(從各 ETF changes 聚合):added / weight_up 加正,weight_down / removed 加負
+        shares_delta = 0
+        for e in etfs_holding:
+            ch = e.get("changes", {}) or {}
+            for ad in (ch.get("added") or []):
+                if ad.get("sym") == sym:
+                    shares_delta += int(ad.get("est_shares_delta", 0) or 0)
+            for wu in (ch.get("weight_up") or []):
+                if wu.get("sym") == sym:
+                    shares_delta += int(wu.get("est_shares_delta", 0) or 0)
+            for wd in (ch.get("weight_down") or []):
+                if wd.get("sym") == sym:
+                    shares_delta += int(wd.get("est_shares_delta", 0) or 0)
+            for rm in (ch.get("removed") or []):
+                if rm.get("sym") == sym:
+                    shares_delta += int(rm.get("est_shares_delta", 0) or 0)
+        # 市值變化(億):shares_delta × 最新 close × 1000(張→股) / 1e8
+        prices = load_prices(sym)
+        latest_close = float(prices[-1]) if prices else 0
+        market_val_delta_e = round(shares_delta * latest_close * 1000 / 1e8, 2) if latest_close else 0
+        consensus_stocks.append({
+            "sym": sym,
+            "name": stock_name,
+            "etf_count": len(etfs_holding),
+            "shares_delta": shares_delta,
+            "market_val_delta_e": market_val_delta_e,
+            "total_shares": total_shares,
+        })
+
+    # 預設按持股變化排序(降序),前端可二次排
+    consensus_stocks.sort(key=lambda x: x["shares_delta"], reverse=True)
+
     out = {
         "updated": today,
         "top_n": TOP_N,
@@ -442,6 +493,7 @@ def main():
                 [{"sym": k, "count": v} for k, v in hot.items() if v >= 2],
                 key=lambda x: -x["count"]),
         },
+        "consensus_stocks": consensus_stocks[:200],   # V17.15 — 前 200 檔給前端
         "benchmarks": [
             {"symbol": b, "name": etf_name(b), "perf": perf_metrics(load_prices(b))}
             for b in BENCHMARKS

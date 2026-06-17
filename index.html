@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.14</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -314,6 +314,11 @@
                             <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                     </div>
+                    <!-- V17.15 — Telegram 沒收到推送自助診斷(點開即跑) -->
+                    <details class="mt-2 p-2 bg-cyan-950/30 border border-cyan-800/40 rounded text-[11px]" ontoggle="if(this.open)app._runTelegramDiagnosis?.();">
+                        <summary class="text-cyan-300 font-bold cursor-pointer">🔍 沒收到推送?點此自助診斷</summary>
+                        <div id="tgDiagnosisBody" class="mt-2 text-gray-300 leading-relaxed">正在分析中...</div>
+                    </details>
                 </div>
 
                 <!-- V17.7 — 限價告警清單管理(集中管理已設限價,可編輯/清空) -->
@@ -727,7 +732,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.14</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.15</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3267,6 +3272,48 @@ ${list}
                 </div>
             </div>`;
         };
+        // V17.15 — 新增「📊 個股加減碼」表(預設顯,參考使用者截圖)
+        //          列每檔股 + ETF 持有檔數 + 持股變化 + 市值變化 + 持股合計
+        //          預判訊號:N 檔同步加碼 = 共識看多;N 檔同步減碼 = 共識看空
+        const stocks = (d.consensus_stocks || []).filter(s => s.etf_count > 0);
+        const _subview = this._etfSubview || 'stocks';
+        const stocksHtml = stocks.length ? `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2">
+                <div class="grid grid-cols-[1.3fr_50px_70px_70px_80px] gap-1 px-1 py-1.5 border-b border-[#30363d] text-[10px] text-gray-400 font-bold">
+                    <span>股票</span>
+                    <span class="text-right">ETF<br>持有檔數</span>
+                    <span class="text-right">持股變化<br>(張)</span>
+                    <span class="text-right">市值變化<br>(億)</span>
+                    <span class="text-right">持股合計<br>(張)</span>
+                </div>
+                <div class="flex flex-col">${stocks.slice(0, 50).map(s => {
+                    const dirCol = s.shares_delta > 0 ? 'text-red-300' : s.shares_delta < 0 ? 'text-green-300' : 'text-gray-300';
+                    const mvCol  = s.market_val_delta_e > 0 ? 'text-red-300' : s.market_val_delta_e < 0 ? 'text-green-300' : 'text-gray-300';
+                    const signal = s.etf_count >= 5 && s.shares_delta > 0 ? '<span class="text-red-300 text-[9px] font-bold ml-1">🔴 共識看多</span>'
+                                 : s.etf_count >= 5 && s.shares_delta < 0 ? '<span class="text-green-300 text-[9px] font-bold ml-1">🟢 共識看空</span>'
+                                 : '';
+                    const cname = s.name || this.getStockName(s.sym) || s.sym;
+                    return `<div onclick="app.analyze('${s.sym}'); app.switchAppTab('diag');" class="grid grid-cols-[1.3fr_50px_70px_70px_80px] gap-1 items-center px-1 py-1.5 border-b border-[#21262d] hover:bg-[#21262d] cursor-pointer">
+                        <div class="min-w-0">
+                            <div class="text-white font-bold text-[12px] truncate">${cname}</div>
+                            <div class="text-[10px] text-gray-500 font-mono">${s.sym}${signal}</div>
+                        </div>
+                        <div class="text-right text-[12px] font-mono font-bold text-white">${s.etf_count}</div>
+                        <div class="text-right text-[12px] font-mono font-bold ${dirCol}">${s.shares_delta > 0 ? '+' : ''}${s.shares_delta.toLocaleString()}</div>
+                        <div class="text-right text-[12px] font-mono font-bold ${mvCol}">${s.market_val_delta_e > 0 ? '+' : ''}${s.market_val_delta_e.toFixed(2)}</div>
+                        <div class="text-right text-[12px] font-mono font-bold text-gray-200">${s.total_shares.toLocaleString()}</div>
+                    </div>`;
+                }).join('')}</div>
+                <div class="text-[9px] text-gray-500 px-1 pt-2">💡 ETF ≥ 5 檔同步加碼/減碼 → 主流共識訊號(僅供參考,非投資建議)</div>
+            </div>` : '';
+
+        // V17.15 — 子 tab 切換(個股加減碼 / 共識 Top)
+        const subTabHtml = `
+            <div class="flex gap-1 mb-2 border-b border-[#30363d]">
+                <button onclick="app._etfSubview='stocks'; app.renderEtfTab();" class="px-3 py-1.5 text-[11px] font-bold rounded-t ${_subview === 'stocks' ? 'bg-orange-700/40 text-orange-200 border-t border-l border-r border-orange-700' : 'text-gray-400 hover:text-white'}">📊 個股加減碼</button>
+                <button onclick="app._etfSubview='consensus'; app.renderEtfTab();" class="px-3 py-1.5 text-[11px] font-bold rounded-t ${_subview === 'consensus' ? 'bg-orange-700/40 text-orange-200 border-t border-l border-r border-orange-700' : 'text-gray-400 hover:text-white'}">🔥 ETF 共識 Top</button>
+            </div>`;
+
         const consensusHasData = consensus.adds.length || consensus.removes.length;
         const consensusHtml = consensusHasData ? `
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2">
@@ -3322,7 +3369,8 @@ ${list}
                     <p class="text-[11px] text-gray-500 mt-0.5">追蹤<b class="text-gray-300">績效前段班主動式 ETF</b>,聚合所有經理人的<b class="text-gray-300">買賣超共識</b>(總和取代逐 ETF 換股明細)。</p>
                 </div>
                 ${summaryHtml}
-                ${consensusHtml}
+                ${subTabHtml}
+                ${_subview === 'stocks' ? stocksHtml : consensusHtml}
                 ${benchHtml ? `<div class="flex gap-1.5 items-center"><div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>${benchHtml}</div>` : ''}
                 <div class="px-1 mt-1">
                     <div class="text-[11px] text-gray-400 font-bold mb-1">🏆 主動 ETF 績效榜(可點看持股的話?後續迭代)</div>
@@ -5783,7 +5831,7 @@ const marginByDate = {};
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const url = new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`;
-            const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            const r = await fetch(url, { signal: AbortSignal.timeout(12000) });   // V17.15 — 8s→12s,CDN 抖動容錯
             if (!r.ok) return;
             const rows = await r.json();
             if (!Array.isArray(rows) || rows.length < 240) {
@@ -5822,7 +5870,7 @@ const marginByDate = {};
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const url = new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`;
-            const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+            const r = await fetch(url, { signal: AbortSignal.timeout(10000) });   // V17.15 — 6s→10s,CDN 抖動容錯
             if (!r.ok) return;
             const j = await r.json();
             if (j && typeof j === 'object') {
@@ -12613,16 +12661,20 @@ ${_newsLine}${globalContext}
     _invKlineCache: {},
 
     async refreshInventoryPrices() {
-        for(let item of this.inventory) {
-            const data = await this.fetchHistoricalData(item.symbol, false);
-            item.currentPrice = data && data.length > 0 ? data[data.length-1].close : item.cost;
-            // 朱家泓淘汰選股法需要 25 筆 K 線,存獨立 cache(避免污染 localStorage)
-            if (Array.isArray(data) && data.length >= 25) {
-                this._invKlineCache[item.symbol] = data.slice(-30);
-            }
-            const fugle = await this.fetchFugleData(item.symbol);
-            if(fugle) item.currentPrice = fugle.price;
-        }
+        // V17.15 — serial for await → Promise.all 並行,5 庫存從 ~10s 降到 ~2s
+        //          單檔 fetch 失敗用 catch 不阻塞其他檔(showOK=false 各自獨立)
+        await Promise.all((this.inventory || []).map(async (item) => {
+            try {
+                const data = await this.fetchHistoricalData(item.symbol, false);
+                item.currentPrice = data && data.length > 0 ? data[data.length-1].close : item.cost;
+                // 朱家泓淘汰選股法需要 25 筆 K 線,存獨立 cache(避免污染 localStorage)
+                if (Array.isArray(data) && data.length >= 25) {
+                    this._invKlineCache[item.symbol] = data.slice(-30);
+                }
+                const fugle = await this.fetchFugleData(item.symbol);
+                if (fugle) item.currentPrice = fugle.price;
+            } catch (e) { console.warn(`[refreshInv] ${item.symbol}`, e?.message); }
+        }));
         this.renderInventory();
     },
 
@@ -15071,6 +15123,58 @@ ${_chuPosPlan}
     },
 
     // V17.7 — 設定頁集中清單管理
+    // V17.15 — Telegram 沒收到推送自助診斷
+    //          分析使用者清單 + 條件,給具體原因 + 自助驗證方法
+    _runTelegramDiagnosis() {
+        const wl = Object.values(this.favGroups || {}).flat().length;
+        const inv = this.inventory?.length || 0;
+        const monitor = this.monitorList?.length || 0;
+        const priceAlerts = this.priceAlerts?.length || 0;
+        const invWithCost = (this.inventory || []).filter(i => +i.cost > 0).length;
+        const falconScoresMap = this._falconScores?.stocks || this._falconScores || {};
+        const falconHigh = Object.values(falconScoresMap).filter(f => (f?.score || 0) >= 80).length;
+        const tgBound = !!this.settings?.cloudCode;
+
+        const lines = [];
+        if (!tgBound) {
+            lines.push('🚨 <b class="text-red-300">Telegram 未綁定</b> → 任何推送都收不到。請先點上方「📨 啟用 / 取得綁定碼」綁定 Bot');
+        } else {
+            lines.push(`✅ Telegram 已綁定(綁定碼:${this.settings.cloudCode})`);
+        }
+        lines.push('');
+        lines.push(`📋 你的清單:自選 <b>${wl}</b> 檔 / 庫存 <b>${inv}</b> 檔(<b>${invWithCost}</b> 檔有填成本)/ 監控 <b>${monitor}</b> 檔 / 限價 <b>${priceAlerts}</b> 檔`);
+        lines.push(`🦅 全市場獵鷹分 ≥ 80:<b>${falconHigh}</b> 檔`);
+        lines.push('');
+        const issues = [];
+        if (wl + inv + monitor + priceAlerts === 0) {
+            issues.push('⚠️ <b class="text-amber-300">清單全空</b> → worker 沒東西可掃,自然沒推送。請加幾檔自選/庫存/監控');
+        }
+        if (inv > 0 && invWithCost === 0) {
+            issues.push('⚠️ <b class="text-amber-300">庫存沒填成本</b> → 停利停損規則 skip(規則:庫存 +20% 停利 / -8% 停損,須 cost > 0)');
+        }
+        if (monitor === 0) {
+            issues.push('💡 <b class="text-blue-300">監控空</b> → 「量爆突破 5MA」+「朱家泓 5MA 朝掃」這兩個推送都 skip。到朱家泓五大選股法 → 一鍵加入監控');
+        }
+        if (priceAlerts === 0) {
+            issues.push('💡 <b class="text-blue-300">無限價</b> → 想要「現價 ≥ X 元推送」?到任一個股頁點 🚨 設限價(上下限任一即可)');
+        }
+        if (falconHigh < 5 && wl + inv + monitor > 0) {
+            issues.push('💡 <b class="text-blue-300">全市場高分股少</b>(可能盤勢淡或大盤回檔),自然訊號就少');
+        }
+        if (issues.length === 0 && tgBound && (wl + inv + monitor + priceAlerts) > 0) {
+            issues.push('✅ <b class="text-green-300">配置看起來正常</b> — 可能昨天市場剛好沒觸發任何規則,或 throttle(同股 6h 防重)生效');
+        }
+        lines.push(...issues);
+        lines.push('');
+        lines.push('🧪 <b class="text-cyan-300">快速驗證</b>:');
+        lines.push('① 開任一持股的個股頁 → 點 🚨 → 設「上限 = 現價 - 1 元」(立刻會超過 → 5 分內應推「觸及上限」)');
+        lines.push('② 或:庫存任一檔,改成本到「現價 × 0.83」(觸發 +20% 停利)');
+        lines.push('③ 5-10 分內若仍沒推 → 看 GitHub Actions deploy_worker.yml 有無紅 ✗');
+
+        const el = document.getElementById('tgDiagnosisBody');
+        if (el) el.innerHTML = lines.join('<br>');
+    },
+
     renderPriceAlertList() {
         const el = document.getElementById('priceAlertList');
         if (!el) return;
