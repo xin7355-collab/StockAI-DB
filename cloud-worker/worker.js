@@ -278,6 +278,19 @@ function sanitizePayload(payload) {
             .filter(i => isValidSym(i.sym))
             .slice(0, 100);
     }
+    // V17.6 — 個股限價單告警:[{sym, upper, lower}],觸及推 Telegram + 通知
+    if (Array.isArray(payload.priceAlerts)) {
+        out.priceAlerts = payload.priceAlerts
+            .filter(a => a && typeof a === 'object')
+            .map(a => {
+                const sym = String(a.sym || '').trim().toUpperCase();
+                const upper = Number.isFinite(+a.upper) && +a.upper > 0 ? +a.upper : null;
+                const lower = Number.isFinite(+a.lower) && +a.lower > 0 ? +a.lower : null;
+                return { sym, upper, lower };
+            })
+            .filter(a => isValidSym(a.sym) && (a.upper != null || a.lower != null))
+            .slice(0, 100);
+    }
     if (payload.settings && typeof payload.settings === 'object') {
         out.settings = {
             falcon_threshold: clamp(payload.settings.falcon_threshold, 60, 95, 85),
@@ -482,6 +495,8 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     (user.watchlist || []).forEach(s => symbols.add(s));
     (user.monitorList || []).forEach(s => symbols.add(s));
     (user.inventory || []).forEach(i => { if (i?.sym) symbols.add(i.sym); });
+    // V17.6 — 限價告警的 sym 也納入掃描,即使不在自選/監控/庫存
+    (user.priceAlerts || []).forEach(a => { if (a?.sym) symbols.add(a.sym); });
 
     const settings = user.settings || {};
     const falconTh = settings.falcon_threshold || 85;
@@ -539,15 +554,35 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
         }
 
         // V16.0 — 量爆 + 突破 5MA(只在盤中時段 elapsed >= 30 分後判,避開開盤 noise)
+        // V17.6 — 在 monitorList 內者,文案標「🎯 監控觸發」,讓使用者一眼知道是加入過監控的
         if (live && volBaseCache && elapsed >= 30) {
             const base = await fetchVolumeBaseline(sym, volBaseCache);
             if (base && base.ma5 > 0 && base.vma5 > 0) {
-                const vTodayLots = (live.v || 0);   // MIS v 在 TWSE MIS 是「累計成交股數」?實測對齊「張」單位較常見
+                const vTodayLots = (live.v || 0);
                 const vRatio = vTodayLots / (base.vma5 * (elapsed / 270));
                 const breakMa5 = live.z > base.ma5;
                 if (vRatio > 1.5 && breakMa5 && !(await wasPushed(env, user.chat_id, sym, 'volBreak5ma'))) {
-                    alerts.push(`🚀 *${sym}* 量爆突破 5MA *${live.z.toFixed(2)}*(>${base.ma5.toFixed(2)})\n預估量 ${vRatio.toFixed(1)}× 5日均 — 朱老師「量增突破」進場訊號`);
+                    const isMonitored = (user.monitorList || []).includes(sym);
+                    const prefix = isMonitored ? `🎯 *${sym}* 監控觸發 — 量爆突破 5MA` : `🚀 *${sym}* 量爆突破 5MA`;
+                    alerts.push(`${prefix} *${live.z.toFixed(2)}*(>${base.ma5.toFixed(2)})\n預估量 ${vRatio.toFixed(1)}× 5日均 — 朱老師「量增突破」進場訊號${isMonitored ? '\n📋 你昨日加入監控,今天觸發了' : ''}`);
                     await markPushed(env, user.chat_id, sym, 'volBreak5ma');
+                }
+            }
+        }
+
+        // V17.6 — 個股限價單告警(觸及上下限即推,24h throttle 防重)
+        if (live && Number.isFinite(live.z)) {
+            const alert = (user.priceAlerts || []).find(a => a.sym === sym);
+            if (alert) {
+                if (alert.upper != null && live.z >= alert.upper &&
+                    !(await wasPushed(env, user.chat_id, sym, 'priceUpper'))) {
+                    alerts.push(`🚨 *${sym}* 觸及上限 *${alert.upper}*(現價 ${live.z.toFixed(2)})\n你預設的限價告警觸發`);
+                    await markPushed(env, user.chat_id, sym, 'priceUpper');
+                }
+                if (alert.lower != null && live.z <= alert.lower &&
+                    !(await wasPushed(env, user.chat_id, sym, 'priceLower'))) {
+                    alerts.push(`🛑 *${sym}* 觸及下限 *${alert.lower}*(現價 ${live.z.toFixed(2)})\n你預設的限價告警觸發`);
+                    await markPushed(env, user.chat_id, sym, 'priceLower');
                 }
             }
         }

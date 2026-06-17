@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -719,7 +719,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -804,6 +804,8 @@
                         <div class="flex items-baseline gap-1.5 min-w-0 overflow-hidden flex-wrap">
                             <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
                             <span id="chuLockIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="加入朱老師鎖股名冊(待回檔/訊號)" onclick="app.toggleChuLockStock();">📍</span>
+                            <!-- V17.6 — 個股限價單告警(V15.9 留下,本輪做) -->
+                            <span id="priceAlertIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="設定上下限價,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">🚨</span>
                             <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0 break-words" style="font-size: clamp(1.3rem, 5.5vw, 2.1rem); word-break: break-word;">載入中...</span>
                             <span id="quoteCode" class="text-[11px] text-gray-400 font-mono font-bold leading-none flex-shrink-0"></span>
                         </div>
@@ -2124,6 +2126,9 @@ const app = {
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
     inventory: JSON.parse(localStorage.getItem('proTerminalInv')) || [],
+    // V17.6 — 個股限價單告警(V15.9 留下,本輪做):[{sym, upper, lower, addedAt}]
+    //          上下限觸及即推 Telegram + 瀏覽器通知,24h throttle 防重推
+    priceAlerts: JSON.parse(localStorage.getItem('proTerminalPriceAlerts') || '[]'),
     // V14.11 朱老師分批進場計畫器:單檔總資金預算(全域共用,localStorage 記住)
     budgetPerStock: Number(localStorage.getItem('proTerminalBudgetPerStock')) || null,
     apiDataCache: {}, allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {},
@@ -2426,6 +2431,12 @@ const app = {
             const monitorList = (app.monitorList || []).map(m =>
                 String(typeof m === 'string' ? m : (m.id || m.sym || '')).trim().toUpperCase()
             ).filter(s => /^[0-9A-Z]{4,8}$/.test(s));
+            // V17.6 — 個股限價單告警:[{sym, upper, lower}] sync 上 KV 給 worker 用
+            const priceAlerts = (app.priceAlerts || []).map(a => ({
+                sym: String(a.sym || '').trim().toUpperCase(),
+                upper: Number.isFinite(+a.upper) && +a.upper > 0 ? +a.upper : null,
+                lower: Number.isFinite(+a.lower) && +a.lower > 0 ? +a.lower : null,
+            })).filter(a => /^[0-9A-Z]{4,8}$/.test(a.sym) && (a.upper != null || a.lower != null));
             // V16.0 — 把 Fugle token 1 + 既有閾值帶上雲端(Worker 跑 Fugle 內外盤規則用)
             //         token 存在 Cloudflare KV 中(內部加密、不公開),只有 Worker 自身能讀
             const settings = {
@@ -2436,7 +2447,7 @@ const app = {
                 // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設 true,可關掉)
                 chuMorningPush:   app.settings?.chuMorningPush !== false,
             };
-            return { watchlist, inventory, monitorList, settings };
+            return { watchlist, inventory, monitorList, priceAlerts, settings };
         },
 
         _genCode() {
@@ -9383,6 +9394,20 @@ ${_newsLine}${globalContext}
         ic.textContent = inLock ? '📌' : '📍';
         ic.title = inLock ? '已在朱老師鎖股名冊(點擊移除)' : '加入朱老師鎖股名冊(待回檔/訊號)';
         ic.classList.toggle('opacity-40', !inLock);
+        // V17.6 — 同步更新限價告警 icon(已設限價亮起,未設半透明)
+        const pa = document.getElementById('priceAlertIcon');
+        if (pa) {
+            const alert = (this.priceAlerts || []).find(a => a.sym === this.currentSymbolId);
+            pa.classList.toggle('opacity-40', !alert);
+            if (alert) {
+                const parts = [];
+                if (alert.upper != null) parts.push(`上 ${alert.upper}`);
+                if (alert.lower != null) parts.push(`下 ${alert.lower}`);
+                pa.title = `🚨 已設限價 ${parts.join(' · ')} · 點擊修改/取消`;
+            } else {
+                pa.title = '設定上下限價,觸發推 Telegram + 通知';
+            }
+        }
     },
 
     // 點四關卡其中一格 → 彈 modal 顯示朱老師原文 + 目前判定(避免 inline onclick 字串逃逸地獄)
@@ -14628,6 +14653,60 @@ ${_chuPosPlan}
     // 共用：把個股加入獵殺名單
     // strategySource: 'chu_perfect6' | 'chu_top_gainer' | 'chu_bottom' | 'chu_riding5ma' | null（一般獵殺）
     // opts.silent: true 時不跳 alert（給「一鍵全加」批次用）
+    // V17.6 — 個股限價單告警(V15.9 留下,本輪做)
+    //   priceAlerts: [{sym, upper, lower, addedAt}]
+    //   觸發即 Worker 推 Telegram + sw.js 推瀏覽器通知
+    //   24h throttle 防重複(同股同方向 24 小時只推 1 次)
+    openPriceAlertModal(sym) {
+        if (!sym) { this.showToast('沒有股票代號'); return; }
+        const existing = this.priceAlerts.find(a => a.sym === sym) || {};
+        const cname = this.getStockName(sym) || sym;
+        const cur = this.activeData?.length ? this.activeData[this.activeData.length - 1].close : '';
+        const upperStr = prompt(
+            `🚨 ${cname} (${sym}) 限價告警\n\n` +
+            `目前價:${cur || '--'}\n\n` +
+            `① 上限觸發價(現價超過此 → 推通知)\n空白=取消上限`,
+            existing.upper != null ? String(existing.upper) : ''
+        );
+        if (upperStr === null) return;   // user cancelled
+        const lowerStr = prompt(
+            `🚨 ${cname} (${sym}) 限價告警\n\n` +
+            `② 下限觸發價(現價跌破此 → 推通知)\n空白=取消下限`,
+            existing.lower != null ? String(existing.lower) : ''
+        );
+        if (lowerStr === null) return;
+        const upper = parseFloat(upperStr);
+        const lower = parseFloat(lowerStr);
+        const hasUpper = Number.isFinite(upper) && upper > 0;
+        const hasLower = Number.isFinite(lower) && lower > 0;
+        if (!hasUpper && !hasLower) {
+            // 兩個都空 → 刪除這檔限價(若有)
+            this.priceAlerts = this.priceAlerts.filter(a => a.sym !== sym);
+            this._savePriceAlerts();
+            this.showToast(`🗑️ 已清除 ${sym} 限價告警`, 'info');
+            return;
+        }
+        this.priceAlerts = this.priceAlerts.filter(a => a.sym !== sym);
+        this.priceAlerts.push({
+            sym, upper: hasUpper ? upper : null, lower: hasLower ? lower : null,
+            addedAt: Date.now(),
+        });
+        this._savePriceAlerts();
+        const msg = `🚨 已設 ${cname} 限價:` +
+                    (hasUpper ? `上 ${upper}` : '') +
+                    (hasUpper && hasLower ? ' · ' : '') +
+                    (hasLower ? `下 ${lower}` : '');
+        this.showToast(msg + ' · 觸發即推 Telegram + 通知', 'info');
+        this.vibrate([30, 30]);
+    },
+
+    _savePriceAlerts() {
+        try {
+            localStorage.setItem('proTerminalPriceAlerts', JSON.stringify(this.priceAlerts));
+            this.telegramCloud?.sync?.();   // 即時 sync 上 KV 給 worker 用
+        } catch (e) { console.warn('[savePriceAlerts]', e); }
+    },
+
     _addToMonitor(sym, data, strategySource, opts = {}) {
         if (this.monitorList.some(m => m.sym === sym)) return false;
         const tech = this._calcTechFromData(data);
