@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -708,7 +708,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2558,6 +2558,10 @@ const app = {
         this.refreshInventoryPrices();
         this.renderFavTabs();
         this.loadRadarMatrix();
+
+        // V17.4 — 早上 9-14 點開 App,若 monitorList 不空就自動掃一輪 5MA 觸發
+        //         解決使用者「等隔日 5MA 我都忘了」痛點 — 一打開 App 自動跑,免手動點立即掃描
+        this._autoScanMonitorIfTrading();
 
         this.setupAutoRefresh();
         this.initSwipeToDelete();
@@ -12661,10 +12665,17 @@ ${_newsLine}${globalContext}
         }
 
         // V17.3 — 頂部 banner 解釋「為何有警示」+ 大盤關卡狀態,消除「選股 vs 四關」矛盾感
+        // V17.4 — 加「全綠燈一鍵加入監控」批次按鈕,解決使用者「等隔日 5MA 會忘記」痛點
+        const batchAddBtn = perfectCount > 0 ? `
+            <button onclick="event.stopPropagation(); app.addAllGreenLightToMonitor('${key}');"
+                    class="mt-2 w-full bg-emerald-600/50 hover:bg-emerald-600/70 active:bg-emerald-700 border border-emerald-400 rounded-lg py-2 text-[12px] font-bold text-emerald-100 transition-colors shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                🎯 全部 ${perfectCount} 檔「立即可進」一鍵加入監控(隔日 9:00+ 自動掃 5MA 跳通知)
+            </button>` : '';
         const banner = `<div class="mb-2 px-2.5 py-2 rounded-lg bg-blue-950/40 border border-blue-800/60 text-[11px] leading-snug">
             💡 <b class="text-blue-300">朱老師四關通關卡同步檢查</b>:此清單命中「動能訊號」,但個股還要過大盤/位階/週K才能放心進。
             <br>📊 大盤關卡:${globalRegimeOk ? '✅ 多頭 — 可順勢進攻' : `⚠️ ${advice.regimeLabel} — 退守 ${advice.pct || '5 成以下'}`}
             <br>🎯 排序:🟢無警示 → 🟡位階過高 → 🔴高檔出貨,優先看上面的綠燈股(等同四關通關卡會全綠)。
+            ${batchAddBtn}
         </div>`;
 
         body.innerHTML = banner + picks.map(p => {
@@ -12673,7 +12684,7 @@ ${_newsLine}${globalContext}
             const isHunted = this.monitorList.some(m => m.sym === p.sym);
             const huntBtn = isHunted
                 ? `<span class="text-green-400 text-[10px] font-bold whitespace-nowrap" title="已在獵殺名單中">⚔️ 已監控</span>`
-                : `<button onclick="event.stopPropagation(); app.addChuPickToMonitor('${p.sym}','${key}');" class="text-purple-200 bg-purple-900/40 border border-purple-600/60 rounded px-1.5 py-0.5 text-[10px] font-bold hover:bg-purple-800/40 whitespace-nowrap" title="加入獵殺,可進場時跳通知">🎯 加入</button>`;
+                : `<button onclick="event.stopPropagation(); app.addChuPickToMonitor('${p.sym}','${key}');" class="text-purple-200 bg-purple-900/40 border border-purple-600/60 rounded px-1.5 py-0.5 text-[10px] font-bold hover:bg-purple-800/40 whitespace-nowrap" title="加入監控 → 隔日 09:00+ 開 App 自動掃 5MA + 紅 K + 量增,觸發跳通知(免再記)">🎯 加入</button>`;
             const cname = p.name || this.getStockName(p.sym) || '';
             // V17.3 — 邊框依警示等級換色,一眼看出可不可以進
             const borderCls = p._warnLevel === 2 ? 'border-red-700/70 hover:border-red-500'
@@ -12685,8 +12696,9 @@ ${_newsLine}${globalContext}
                        ${p.warning.level === 'red' ? '🚨' : '⚠️'} ${p.warning.warning}${p.warning.detail ? ` <span class="font-normal opacity-90">(${p.warning.detail})</span>` : ''}
                        <div class="text-[10px] font-normal mt-0.5 opacity-90">${p.warning.level === 'red' ? '🛑 別追,放鎖股名冊等回檔再觀察' : '🟡 放鎖股名冊,等回檔到月線附近再進'}</div>
                    </div>`
-                : `<div class="mt-1.5 px-2 py-1 rounded text-[11px] font-bold bg-green-900/30 border border-green-700/60 text-green-300">
-                       ✅ 位階關卡通過 — 可隔日站穩 5MA 進場
+                : `<div class="mt-1.5 px-2 py-1 rounded text-[12px] font-bold bg-emerald-900/50 border border-emerald-500 text-emerald-100 shadow-[0_0_8px_rgba(16,185,129,0.35)]">
+                       🎯 <b>立即可進</b> — 隔日 09:00+ 守住 <b>5MA</b> 即可進場(跌破立停)
+                       <div class="text-[10px] font-normal mt-0.5 opacity-90">✅ 位階關卡通過 · 大盤環境配合 · 加入監控明早會自動掃</div>
                    </div>`;
             return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.analyze('${p.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border ${borderCls} rounded-lg p-2.5 cursor-pointer transition-colors mb-2">
                 <div class="flex items-center justify-between gap-2 mb-1">
@@ -12746,6 +12758,35 @@ ${_newsLine}${globalContext}
         this._renderChuPickList(key);
         this.renderHuntTab();
         alert(`✅ 一鍵全加完成\n\n  • 新加入：${added} 檔\n  • 已存在（跳過）：${skipped} 檔\n  • 資料不足（失敗）：${failed} 檔\n\n獵殺掃描時會根據選股法套用專屬進場觸發。`);
+    },
+
+    // V17.4 — 只加綠燈股(無 warning)到監控,跳過已過熱/出貨警示
+    //         解決使用者「等隔日 5MA 會忘記」痛點:綠燈股 = 立即可進候選,
+    //         加入後明早 9:00+ 開 App 會被 _autoScanMonitorIfTrading 自動掃。
+    async addAllGreenLightToMonitor(key) {
+        const picks = (this.radarMatrix?.data || {})[key] || [];
+        const green = picks.filter(p => !p.warning);
+        if (!green.length) { this.showToast('今日沒有「立即可進」綠燈股(全有位階/出貨警示)'); return; }
+        let added = 0, skipped = 0, failed = 0;
+        for (const p of green) {
+            if (this.monitorList.some(m => m.sym === p.sym)) { skipped++; continue; }
+            try {
+                const data = await this.fetchHistoricalData(p.sym, false);
+                if (data && data.length >= 20 && this._addToMonitor(p.sym, data, key, { silent: true })) {
+                    added++;
+                } else {
+                    failed++;
+                }
+            } catch (e) {
+                failed++;
+            }
+        }
+        this._renderChuPickList(key);
+        this.renderHuntTab();
+        this.vibrate([30, 30, 30]);
+        const skippedMsg = skipped > 0 ? `,${skipped} 檔已在監控` : '';
+        const failedMsg  = failed > 0  ? `,${failed} 檔資料不足` : '';
+        this.showToast(`🎯 已加入 ${added} 檔監控${skippedMsg}${failedMsg} · 明早 9:00 開 App 會自動掃 5MA + 紅 K + 量增,觸發跳通知`, 'info');
     },
 
     // ===== 🗑️ 模組 C 淘汰選股法(前端 — 套用自選股 / 庫存頁) =====
@@ -14859,6 +14900,29 @@ ${_chuPosPlan}
             chu_top_gainer: () => this._checkChuTopGainerOpen(tech, entry),
         };
         return map[strategySource] ? map[strategySource]() : null;
+    },
+
+    // V17.4 — 開 App 自動掃 monitorList:09:00-14:00 台北 + 週一~五 + 今天還沒跑過
+    //         解決「等隔日 5MA 我都忘了」痛點 — 一打開 App 自動跑,免手動點立即掃描
+    _autoScanMonitorIfTrading() {
+        try {
+            const now = new Date();
+            const taipeiHour = (now.getUTCHours() + 8) % 24;
+            const dow = now.getUTCDay();   // 0=日 1=一 ... 6=六
+            const isWeekday = dow >= 1 && dow <= 5;
+            const inTradingWindow = taipeiHour >= 9 && taipeiHour < 14;
+            if (!isWeekday || !inTradingWindow) return;
+            if (!Array.isArray(this.monitorList) || this.monitorList.length === 0) return;
+            // localStorage 標記今天已跑(避免重整重複跑)
+            const today = new Date().toISOString().slice(0, 10);
+            const lastAuto = localStorage.getItem('lastAutoScanDate');
+            if (lastAuto === today) return;
+            localStorage.setItem('lastAutoScanDate', today);
+            setTimeout(() => {
+                this.showToast?.(`🔔 自動掃 ${this.monitorList.length} 檔監控股 · 5MA + 紅 K + 量增觸發會跳通知`, 'info');
+                this.scanAllMonitored?.();
+            }, 3500);
+        } catch (e) { console.warn('[autoScan]', e); }
     },
 
     async scanAllMonitored() {
