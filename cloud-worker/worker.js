@@ -921,13 +921,14 @@ async function scanMonitorChuTriggers(env, user) {
         }
     }
     if (!triggered.length) return false;
+    // V17.7.1 bugfix — tg() 用 parse_mode='Markdown',不能用 HTML <b>。改 *...* markdown 粗體
     // 組推送(最多 5 檔,避免訊息過長)
     const lines = triggered.slice(0, 5).map(t =>
-        `• <b>${t.sym}</b>(收 ${t.lastClose})— 站 5MA <b>${t.ma5}</b> + 紅 K + 量${t.volRatio >= 1 ? '增' : '縮'} <b>${t.volRatio.toFixed(1)}x</b>`
+        `• *${t.sym}*(收 ${t.lastClose})— 站 5MA *${t.ma5}* + 紅 K + 量${t.volRatio >= 1 ? '增' : '縮'} *${t.volRatio.toFixed(1)}x*`
     );
     const more = triggered.length > 5 ? `\n…還有 ${triggered.length - 5} 檔(打開 App 看完整)` : '';
     const msg =
-        `🎯 <b>朱老師六六大順 進場訊號觸發</b>\n` +
+        `🎯 *朱老師六六大順 進場訊號觸發*\n` +
         `(你監控的股票今早符合站穩 5MA + 紅 K + 量增條件)\n\n` +
         `${lines.join('\n')}${more}\n\n` +
         `📋 操作:開盤後 5-10 分等量穩,守 5MA 進(跌破 5MA 立停)`;
