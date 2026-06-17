@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.10</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -727,7 +727,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.9</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.10</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1748,14 +1748,35 @@
                     <div>這是你「<b class="text-white">實際持有</b>」的股票。輸入買入價後每天自動計算盈虧；獲利 > 15% 會建議上移停利、虧損 > 10% 會提醒評估停損。右滑可結算（賣出後記錄到回測）。</div>
                 </div>
 
-                <div class="bg-[#161b22] px-4 py-4 border-b border-[#30363d]">
-                    <div class="grid grid-cols-2 gap-2 text-center">
-                        <div class="flex flex-col border-r border-[#30363d]"><span class="text-xs text-gray-400 mb-1 font-bold">累積損益</span><span id="invTotalPnL" class="text-xl md:text-2xl font-black font-mono">--</span></div>
-                        <div class="flex flex-col"><span class="text-xs text-gray-400 mb-1 font-bold">總報酬率</span><span id="invTotalPnLPct" class="text-xl md:text-2xl font-black font-mono text-white">--</span></div>
+                <div class="bg-[#161b22] px-3 py-3 border-b border-[#30363d]">
+                    <!-- V17.10 — 參考籌碼K線 App 設計:3 欄統計卡(今日損益 / 累積損益 / 股票市值) -->
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="flex flex-col gap-0.5 border-r border-[#30363d] pr-1">
+                            <span class="text-[10px] text-gray-400 font-bold">今日損益</span>
+                            <span id="invTodayPnL" class="text-base md:text-lg font-black font-mono">--</span>
+                            <span id="invTodayPnLPct" class="text-[10px] font-bold font-mono text-gray-400">--</span>
+                        </div>
+                        <div class="flex flex-col gap-0.5 border-r border-[#30363d] pr-1">
+                            <span class="text-[10px] text-gray-400 font-bold">累積損益</span>
+                            <span id="invTotalPnL" class="text-base md:text-lg font-black font-mono">--</span>
+                            <span id="invTotalPnLPct" class="text-[10px] font-bold font-mono text-gray-400">--</span>
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-[10px] text-gray-400 font-bold">股票市值</span>
+                            <span id="invMarketVal" class="text-base md:text-lg font-black font-mono text-white">--</span>
+                            <span id="invCostBasis" class="text-[10px] font-bold font-mono text-gray-500">成本 --</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex-grow bg-[#0d1117] p-1.5 overflow-hidden">
-                    <div class="text-xs text-gray-500 text-center py-2 border-b border-[#21262d] mb-1 font-bold">💡 點擊診斷 | 左滑：🗑️刪除 / 右滑：✏️修改+🎯結算</div>
+                <!-- V17.10 — 排序 header(籌碼K線 App 樣式) -->
+                <div class="bg-[#0d1117] px-3 py-2 border-b border-[#30363d] grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-1 text-[10px] text-gray-400 font-bold">
+                    <span class="cursor-pointer hover:text-white" onclick="app.sortInventory('name')">庫存股<span id="invSortIcon_name" class="ml-0.5">⇅</span></span>
+                    <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('today')">今日損益<span id="invSortIcon_today" class="ml-0.5">⇅</span></span>
+                    <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('price')">股價<br><span class="text-[9px] opacity-80">漲跌幅</span><span id="invSortIcon_price" class="ml-0.5">⇅</span></span>
+                    <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('total')">總損益<span id="invSortIcon_total" class="ml-0.5">⇅</span></span>
+                </div>
+                <div class="flex-grow bg-[#0d1117] overflow-hidden">
+                    <div class="text-[10px] text-gray-500 text-center py-1 border-b border-[#21262d] font-bold">💡 點擊診斷 | 左滑刪除 / 右滑修改+結算</div>
                     <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                 </div>
             </div>
@@ -12367,6 +12388,21 @@ ${_newsLine}${globalContext}
         this.renderInventory();
     },
 
+    // V17.10 — 排序狀態(name / today / price / total),localStorage 記住
+    _invSort: JSON.parse(localStorage.getItem('proTerminalInvSort') || '{"col":null,"dir":"desc"}'),
+
+    sortInventory(col) {
+        if (this._invSort.col === col) {
+            this._invSort.dir = this._invSort.dir === 'desc' ? 'asc' : 'desc';
+        } else {
+            this._invSort.col = col;
+            this._invSort.dir = 'desc';
+        }
+        try { localStorage.setItem('proTerminalInvSort', JSON.stringify(this._invSort)); } catch (_) {}
+        this.vibrate(15);
+        this.renderInventory();
+    },
+
     renderInventory() {
         // 🛡️ 重新渲染前強制重置所有殘留 swipe state,防止特定一列「自動展開兩邊按鈕」的視覺 bug
         document.querySelectorAll('#inventoryCardContainer .swipe-content').forEach(el => {
@@ -12374,63 +12410,132 @@ ${_newsLine}${globalContext}
             el.style.transform = 'translateX(0px)';
         });
         const container = document.getElementById('inventoryCardContainer');
-        if(this.inventory.length === 0) { container.innerHTML = '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg m-3 py-8 text-sm">目前無庫存部位</p>';
-            document.getElementById('invTotalPnL').innerText = '--'; document.getElementById('invTotalPnLPct').innerText = '--';
+        if(this.inventory.length === 0) {
+            container.innerHTML = '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg m-3 py-8 text-sm">目前無庫存部位</p>';
+            ['invTodayPnL','invTodayPnLPct','invTotalPnL','invTotalPnLPct','invMarketVal','invCostBasis'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = '--';
+            });
             return;
         }
-        let html = '', totalCostNTD = 0, totalValNTD = 0;
 
-        this.inventory.forEach((item, idx) => {
-            if (!item || !item.symbol) return;
+        // V17.10 — 預先算每檔損益(供排序 + 渲染用)
+        const rows = this.inventory.map((item, idx) => {
+            if (!item || !item.symbol) return null;
             const price = isFinite(parseFloat(item.currentPrice)) ? parseFloat(item.currentPrice) : 0;
             const cost = isFinite(parseFloat(item.cost)) ? parseFloat(item.cost) : 0;
             const shares = isFinite(parseFloat(item.shares)) && parseFloat(item.shares) > 0 ? parseFloat(item.shares) : 1;
-            const totalCostItemNTD = cost * shares * 1000;
-            const totalValItemNTD = price * shares * 1000;
-            const pnlNTD = totalValItemNTD - totalCostItemNTD;
-            const pnl = cost > 0 && price > 0 ? ((price - cost) / cost) * 100 : 0;
-            const color = pnl > 0 ? 'text-[#f87171]' : (pnl < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            const bgClass = pnl <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]';
+            const totalCost = cost * shares * 1000;
+            const totalVal = price * shares * 1000;
+            const totalPnL = totalVal - totalCost;
+            const totalPct = cost > 0 && price > 0 ? ((price - cost) / cost) * 100 : 0;
+            // 今日損益:用 _invKlineCache 取昨收推算 — 倒數第二筆 close 是昨收(最後一筆 = 今天 close)
+            const klineArr = this._invKlineCache?.[item.symbol] || [];
+            let prevClose = price, todayChgPct = 0, todayPnL = 0;
+            if (klineArr.length >= 2) {
+                prevClose = +klineArr[klineArr.length - 2].close || price;
+                if (prevClose > 0) {
+                    todayChgPct = (price - prevClose) / prevClose * 100;
+                    todayPnL = (price - prevClose) * shares * 1000;
+                }
+            }
+            return { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL };
+        }).filter(r => r);
 
-            totalCostNTD += totalCostItemNTD; totalValNTD += totalValItemNTD;
+        // V17.10 — 排序
+        const sortCfg = this._invSort || { col: null, dir: 'desc' };
+        if (sortCfg.col) {
+            const dir = sortCfg.dir === 'asc' ? 1 : -1;
+            rows.sort((a, b) => {
+                let av, bv;
+                switch (sortCfg.col) {
+                    case 'name':  av = a.item.symbol; bv = b.item.symbol; return av.localeCompare(bv) * dir;
+                    case 'today': av = a.todayPnL; bv = b.todayPnL; break;
+                    case 'price': av = a.todayChgPct; bv = b.todayChgPct; break;
+                    case 'total': av = a.totalPnL; bv = b.totalPnL; break;
+                    default: return 0;
+                }
+                return (av - bv) * dir;
+            });
+        }
 
-            html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]">
+        // 排序 icon 顯示
+        ['name', 'today', 'price', 'total'].forEach(c => {
+            const el = document.getElementById('invSortIcon_' + c);
+            if (el) el.textContent = sortCfg.col === c ? (sortCfg.dir === 'desc' ? '▼' : '▲') : '⇅';
+        });
+
+        let html = '', totalCostNTD = 0, totalValNTD = 0, totalTodayPnL = 0, totalPrevValNTD = 0;
+        for (const r of rows) {
+            const { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL } = r;
+            totalCostNTD += totalCost;
+            totalValNTD += totalVal;
+            totalTodayPnL += todayPnL;
+            totalPrevValNTD += prevClose * shares * 1000;
+
+            const totalColor = totalPnL > 0 ? 'text-[#f87171]' : (totalPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const todayColor = todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const bgClass = totalPct <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]';
+            const cname = this.getStockName(item.symbol) || item.symbol;
+            const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol);
+
+            html += `<div class="relative border-b border-[#21262d] overflow-hidden bg-[#1c2128]">
                 <div class="absolute inset-y-0 right-0 flex">
-                    <div class="swipe-action-btn delete-btn w-[72px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
+                    <div class="swipe-action-btn delete-btn w-[64px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-[10px] text-center px-1" onclick="event.stopPropagation(); app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
                 </div>
                 <div class="absolute inset-y-0 left-0 flex flex-col" id="invEditReveal_${idx}">
-                    <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.openInvEditModal(${idx})">✏️<br>修改</div>
-                    <div class="swipe-action-btn delete-btn w-[72px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-xs text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
+                    <div class="swipe-action-btn delete-btn w-[64px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-[10px] text-center px-1" onclick="event.stopPropagation(); app.openInvEditModal(${idx})">✏️<br>修改</div>
+                    <div class="swipe-action-btn delete-btn w-[64px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-[10px] text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
                 </div>
-                <div class="swipe-content relative ${bgClass} p-3 flex justify-between items-center group w-full overflow-hidden" style="transform: translateX(0px);">
-                    <div class="drag-handle text-gray-500 hover:text-white px-1.5 text-lg">☰</div>
-                    <div class="cursor-pointer flex-grow ml-2" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
-                        <div class="font-bold text-white text-base">${this.getFullStockName(item.symbol)}${this._renderFalconBadge(item.symbol, { profitPct: (cost > 0 && price > 0) ? pnl : null })}${this._renderAttentionBadge(item.symbol)}</div>
-                        ${(() => { const b = this._renderEliminationBadge(this._invKlineCache[item.symbol]); return b ? `<div class="mt-1 flex flex-wrap gap-1">${b}</div>` : ''; })()}
-                        <div class="text-xs text-gray-500 mt-1">成本: ${cost} | ${(shares*1000).toLocaleString()}股 | ${item.buyDate || '--'}</div>
-                    </div>
-                    <div class="text-right flex items-center gap-2">
-                        <!-- V17.7 — 庫存頁 inline 🚨 限價告警 icon(已設限價亮起) -->
-                        <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-lg ${this.priceAlerts?.some(a => a.sym === item.symbol) ? '' : 'opacity-30'} hover:opacity-100 transition-opacity" title="設定上下限價,觸發推 Telegram">🚨</span>
-                        <div>
-                            <div class="font-mono font-black text-lg ${color}">${price.toFixed(2)}</div>
-                            <div class="text-[10px] font-bold ${color}">${pnl>0?'+':''}${pnl.toFixed(2)}%</div>
-                            <div class="text-[10px] font-mono ${color}">${pnlNTD>0?'+':''}${pnlNTD.toFixed(0)}元</div>
+                <div class="swipe-content relative ${bgClass} px-2 py-2 grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-1 items-center w-full overflow-hidden" style="transform: translateX(0px);" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+                    <!-- 左欄:現股 tag + 股名 + 代號 + 🚨 -->
+                    <div class="flex flex-col gap-0.5 min-w-0">
+                        <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
+                        <span class="text-white font-black text-[14px] truncate leading-tight">${cname}</span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
+                            <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[12px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設限價,點此修改' : '設限價'}">🚨</span>
                         </div>
+                    </div>
+                    <!-- 今日損益 -->
+                    <div class="text-right">
+                        <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${todayPnL>0?'+':''}${Math.round(todayPnL).toLocaleString()}</div>
+                    </div>
+                    <!-- 股價 + 漲跌幅 -->
+                    <div class="text-right">
+                        <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${price.toFixed(2)}</div>
+                        <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${todayChgPct>0?'+':''}${todayChgPct.toFixed(2)}%</div>
+                    </div>
+                    <!-- 總損益 -->
+                    <div class="text-right">
+                        <div class="font-mono font-black text-[13px] ${totalColor} leading-tight">${totalPnL>0?'+':''}${Math.round(totalPnL).toLocaleString()}</div>
+                        <div class="text-[10px] font-bold ${totalColor} font-mono leading-tight">${totalPct>0?'+':''}${totalPct.toFixed(2)}%</div>
                     </div>
                 </div>
             </div>`;
-        });
+        }
         container.innerHTML = html;
-        if (this.sortableInv) this.sortableInv.destroy();
-        this.sortableInv = window.Sortable ? Sortable.create(container, { handle: '.drag-handle', animation: 150 }) : null;
+        if (this.sortableInv) this.sortableInv.destroy();   // V17.10 — drag handle 拿掉,改用 header 排序
 
-        const tPnlNTD = totalValNTD - totalCostNTD, tPct = totalCostNTD > 0 ? (tPnlNTD/totalCostNTD)*100 : 0;
+        // 統計卡
+        const tPnlNTD = totalValNTD - totalCostNTD;
+        const tPct = totalCostNTD > 0 ? (tPnlNTD/totalCostNTD)*100 : 0;
         const tCol = tPnlNTD > 0 ? 'text-[#f87171]' : (tPnlNTD < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-        document.getElementById('invTotalPnL').innerText = (tPnlNTD>0?'+':'') + tPnlNTD.toFixed(0) + '元';
-        document.getElementById('invTotalPnL').className = `text-xl md:text-2xl font-black font-mono ${tCol}`;
-        document.getElementById('invTotalPnLPct').innerText = (tPct>0?'+':'') + tPct.toFixed(2) + '%';
-        document.getElementById('invTotalPnLPct').className = `text-xl md:text-2xl font-black font-mono ${tCol}`;
+        const todayCol = totalTodayPnL > 0 ? 'text-[#f87171]' : (totalTodayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+        const todayPct = totalPrevValNTD > 0 ? (totalTodayPnL / totalPrevValNTD * 100) : 0;
+
+        const setEl = (id, txt, cls) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerText = txt;
+            if (cls) el.className = cls;
+        };
+        setEl('invTodayPnL', (totalTodayPnL>0?'+':'') + Math.round(totalTodayPnL).toLocaleString(), `text-base md:text-lg font-black font-mono ${todayCol}`);
+        setEl('invTodayPnLPct', (todayPct>0?'+':'') + todayPct.toFixed(2) + '%', `text-[10px] font-bold font-mono ${todayCol}`);
+        setEl('invTotalPnL', (tPnlNTD>0?'+':'') + Math.round(tPnlNTD).toLocaleString(), `text-base md:text-lg font-black font-mono ${tCol}`);
+        setEl('invTotalPnLPct', (tPct>0?'+':'') + tPct.toFixed(2) + '%', `text-[10px] font-bold font-mono ${tCol}`);
+        setEl('invMarketVal', Math.round(totalValNTD).toLocaleString(), 'text-base md:text-lg font-black font-mono text-white');
+        setEl('invCostBasis', '成本 ' + Math.round(totalCostNTD).toLocaleString(), 'text-[10px] font-bold font-mono text-gray-500');
     },
 
     removeInventoryEntry(idx) {
