@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.10</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -727,7 +727,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.10</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.11</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1738,6 +1738,8 @@
                     <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">K</span> 雲端庫存風控</h2>
                     <div class="flex gap-1.5">
                         <button onclick="app.openInvModal(); app.vibrate(30);" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-colors">➕ 建倉</button>
+                        <!-- V17.11 — 編輯按鈕(取代左/右滑刪除/修改),點開全頁編輯庫存表 -->
+                        <button onclick="app.openInventoryEditPage(); app.vibrate(30);" class="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-colors">✏️ 編輯</button>
                         <button id="btnRefreshInv" onclick="app.refreshInventoryPrices(); app.vibrate(30);" class="bg-[#21262d] hover:bg-gray-700 text-white px-3 py-1.5 rounded border border-[#30363d] text-xs font-bold shadow-sm transition-colors">🔄 刷新</button>
                     </div>
                 </div>
@@ -1768,16 +1770,23 @@
                         </div>
                     </div>
                 </div>
-                <!-- V17.10 — 排序 header(籌碼K線 App 樣式) -->
-                <div class="bg-[#0d1117] px-3 py-2 border-b border-[#30363d] grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-1 text-[10px] text-gray-400 font-bold">
-                    <span class="cursor-pointer hover:text-white" onclick="app.sortInventory('name')">庫存股<span id="invSortIcon_name" class="ml-0.5">⇅</span></span>
-                    <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('today')">今日損益<span id="invSortIcon_today" class="ml-0.5">⇅</span></span>
-                    <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('price')">股價<br><span class="text-[9px] opacity-80">漲跌幅</span><span id="invSortIcon_price" class="ml-0.5">⇅</span></span>
-                    <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('total')">總損益<span id="invSortIcon_total" class="ml-0.5">⇅</span></span>
-                </div>
+                <!-- V17.11 — 表頭 + 內容區包在同一個 horizontal scroll container,讓所有 column 寬度對齊 -->
                 <div class="flex-grow bg-[#0d1117] overflow-hidden">
-                    <div class="text-[10px] text-gray-500 text-center py-1 border-b border-[#21262d] font-bold">💡 點擊診斷 | 左滑刪除 / 右滑修改+結算</div>
-                    <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
+                    <div class="text-[10px] text-gray-500 text-center py-1 border-b border-[#21262d] font-bold">💡 點擊診斷 ・ 上方「✏️ 編輯」改成本/股數/刪除 ・ ←→ 滑動看更多欄位</div>
+                    <div class="overflow-x-auto">
+                        <div class="min-w-[680px]">
+                            <!-- V17.11 — 排序 header(寬版,多欄水平 scroll)-->
+                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[140px_70px_90px_95px_95px_95px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
+                                <span class="cursor-pointer hover:text-white" onclick="app.sortInventory('name')">庫存股<span id="invSortIcon_name" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('shares')">股數<span id="invSortIcon_shares" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('cost')">均價<br><span class="text-[9px] opacity-80">總成本</span><span id="invSortIcon_cost" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('marketval')">市值<br><span class="text-[9px] opacity-80">佔比</span><span id="invSortIcon_marketval" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('today')">今日損益<br><span class="text-[9px] opacity-80">漲跌幅</span><span id="invSortIcon_today" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('total')">總損益<br><span class="text-[9px] opacity-80">報酬率</span><span id="invSortIcon_total" class="ml-0.5">⇅</span></span>
+                            </div>
+                            <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -12319,6 +12328,134 @@ ${_newsLine}${globalContext}
         modal.classList.remove('hidden'); modal.style.display='flex';
     },
 
+    // V17.11 — 全頁編輯庫存(取代左右滑刪除/修改),參考籌碼K線 App 的編輯庫存股頁
+    openInventoryEditPage() {
+        let modal = document.getElementById('inventoryEditPageModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'inventoryEditPageModal';
+            modal.className = 'fixed inset-0 z-[9999] bg-[#0d1117] overflow-y-auto hidden';
+            modal.style.display = 'none';
+            document.body.appendChild(modal);
+        }
+        // 用本地暫存陣列(離開不存,按儲存才寫回 inventory)
+        this._invEditDraft = JSON.parse(JSON.stringify(this.inventory));
+        this._renderInventoryEditPage(modal);
+        modal.classList.remove('hidden');
+        modal.style.display = 'block';
+    },
+
+    _renderInventoryEditPage(modal) {
+        const draft = this._invEditDraft || [];
+        const rowsHtml = draft.map((item, idx) => {
+            const cname = this.getStockName(item.symbol) || item.symbol;
+            const cost = item.cost || 0;
+            const shares = item.shares || 0;
+            const totalCost = Math.round(cost * shares * 1000);
+            return `<div class="grid grid-cols-[1.2fr_85px_85px_95px_28px] gap-1 items-center px-2 py-2 border-b border-[#21262d]">
+                <!-- 持有股票 -->
+                <div class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
+                    <span class="text-white font-bold text-[13px] truncate leading-tight">${cname}</span>
+                    <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
+                </div>
+                <input type="number" step="0.01" min="0" value="${cost}" oninput="app._updateInvEditDraft(${idx}, 'cost', this.value)" class="bg-[#21262d] text-white text-[13px] font-mono px-1.5 py-1 rounded border border-[#30363d] outline-none focus:border-blue-500 text-right w-full" placeholder="均價">
+                <input type="number" step="1000" min="0" value="${shares * 1000}" oninput="app._updateInvEditDraft(${idx}, 'sharesAbsolute', this.value)" class="bg-[#21262d] text-white text-[13px] font-mono px-1.5 py-1 rounded border border-[#30363d] outline-none focus:border-blue-500 text-right w-full" placeholder="股數">
+                <div class="text-[13px] font-mono font-black text-gray-300 text-right" data-totalcost="${idx}">${totalCost.toLocaleString()}</div>
+                <button onclick="app._deleteInvEditDraft(${idx})" class="text-red-400 hover:text-red-300 text-[18px] leading-none">🗑️</button>
+            </div>`;
+        }).join('');
+
+        modal.innerHTML = `
+            <div class="sticky top-0 bg-[#0d1117] border-b border-[#30363d] px-3 py-3 flex items-center justify-between z-50">
+                <button onclick="app.closeInventoryEditPage()" class="text-white text-xl font-bold px-2 py-1">‹</button>
+                <h3 class="text-white text-base font-bold">編輯庫存股</h3>
+                <span class="w-8"></span>
+            </div>
+            <div class="bg-[#161b22] border-b border-[#30363d] grid grid-cols-[1.2fr_85px_85px_95px_28px] gap-1 px-2 py-2 text-[10px] text-gray-400 font-bold">
+                <span>持有股票</span>
+                <span class="text-right">成本均價</span>
+                <span class="text-right">持有股數</span>
+                <span class="text-right">總成本(元)</span>
+                <span></span>
+            </div>
+            <div id="invEditPageList">
+                ${rowsHtml || '<div class="text-center text-gray-500 py-8 text-sm">尚無庫存,點下方「手動新增」</div>'}
+            </div>
+            <div class="sticky bottom-0 bg-[#0d1117] border-t border-[#30363d] p-3 flex flex-col gap-2">
+                <button onclick="app.saveInventoryEditPage()" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-lg text-base font-black transition-colors">💾 儲存</button>
+                <div class="flex gap-2">
+                    <button onclick="app._addEmptyInvEditDraft()" class="flex-1 bg-transparent border-2 border-orange-600 text-orange-300 py-2 rounded-lg text-sm font-bold transition-colors hover:bg-orange-900/30">➕ 手動新增</button>
+                    <button onclick="app.closeInventoryEditPage()" class="flex-1 bg-transparent border-2 border-gray-600 text-gray-300 py-2 rounded-lg text-sm font-bold transition-colors hover:bg-gray-800">取消</button>
+                </div>
+            </div>
+        `;
+    },
+
+    _updateInvEditDraft(idx, field, value) {
+        if (!this._invEditDraft || !this._invEditDraft[idx]) return;
+        if (field === 'cost') {
+            this._invEditDraft[idx].cost = +value || 0;
+        } else if (field === 'sharesAbsolute') {
+            // 用 整股 → 張 (÷ 1000)
+            this._invEditDraft[idx].shares = (+value || 0) / 1000;
+        } else if (field === 'symbol') {
+            this._invEditDraft[idx].symbol = String(value || '').trim().toUpperCase();
+        }
+        // 即時更新總成本顯示
+        const item = this._invEditDraft[idx];
+        const totalCostEl = document.querySelector(`[data-totalcost="${idx}"]`);
+        if (totalCostEl) totalCostEl.textContent = Math.round((item.cost || 0) * (item.shares || 0) * 1000).toLocaleString();
+    },
+
+    _deleteInvEditDraft(idx) {
+        if (!this._invEditDraft) return;
+        this.showConfirm(`刪除「${this.getStockName(this._invEditDraft[idx]?.symbol) || this._invEditDraft[idx]?.symbol}」?(按儲存才生效)`, () => {
+            this._invEditDraft.splice(idx, 1);
+            const modal = document.getElementById('inventoryEditPageModal');
+            if (modal) this._renderInventoryEditPage(modal);
+        });
+    },
+
+    _addEmptyInvEditDraft() {
+        if (!this._invEditDraft) this._invEditDraft = [];
+        const sym = prompt('輸入股票代號(4 位數,如 2330):');
+        if (!sym) return;
+        const cleanSym = String(sym).trim().toUpperCase();
+        if (!/^[0-9A-Z]{4,8}$/.test(cleanSym)) { this.showToast('代號格式錯誤'); return; }
+        if (this._invEditDraft.some(i => i.symbol === cleanSym)) { this.showToast(`${cleanSym} 已在清單中`); return; }
+        this._invEditDraft.push({
+            symbol: cleanSym,
+            cost: 0,
+            shares: 0,
+            buyDate: this.getTodayStr().replace(/\//g, '-'),
+            currentPrice: 0,
+        });
+        const modal = document.getElementById('inventoryEditPageModal');
+        if (modal) this._renderInventoryEditPage(modal);
+    },
+
+    saveInventoryEditPage() {
+        if (!this._invEditDraft) { this.closeInventoryEditPage(); return; }
+        // 過濾無效(無 symbol 或 shares <= 0)
+        const valid = this._invEditDraft.filter(i => i.symbol && +i.shares > 0 && +i.cost > 0);
+        const dropped = this._invEditDraft.length - valid.length;
+        this.inventory = valid;
+        try { localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory)); } catch (_) {}
+        this.refreshInventoryPrices();
+        this.renderInventory();
+        this.refreshStrategy?.();
+        this.closeInventoryEditPage();
+        this.showToast(`💾 已儲存 ${valid.length} 檔` + (dropped > 0 ? `(${dropped} 檔資料不全已跳過)` : ''), 'info');
+        this.vibrate([30, 30]);
+    },
+
+    closeInventoryEditPage() {
+        const modal = document.getElementById('inventoryEditPageModal');
+        if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+        this._invEditDraft = null;
+    },
+
     openInvEditModal(idx) {
         const item = this.inventory[idx];
         if (!item) return;
@@ -12442,25 +12579,27 @@ ${_newsLine}${globalContext}
             return { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL };
         }).filter(r => r);
 
-        // V17.10 — 排序
+        // V17.10/V17.11 — 排序(支援 name/shares/cost/marketval/today/total)
         const sortCfg = this._invSort || { col: null, dir: 'desc' };
         if (sortCfg.col) {
             const dir = sortCfg.dir === 'asc' ? 1 : -1;
             rows.sort((a, b) => {
                 let av, bv;
                 switch (sortCfg.col) {
-                    case 'name':  av = a.item.symbol; bv = b.item.symbol; return av.localeCompare(bv) * dir;
-                    case 'today': av = a.todayPnL; bv = b.todayPnL; break;
-                    case 'price': av = a.todayChgPct; bv = b.todayChgPct; break;
-                    case 'total': av = a.totalPnL; bv = b.totalPnL; break;
+                    case 'name':      av = a.item.symbol; bv = b.item.symbol; return av.localeCompare(bv) * dir;
+                    case 'shares':    av = a.shares; bv = b.shares; break;
+                    case 'cost':      av = a.cost; bv = b.cost; break;
+                    case 'marketval': av = a.totalVal; bv = b.totalVal; break;
+                    case 'today':     av = a.todayPnL; bv = b.todayPnL; break;
+                    case 'total':     av = a.totalPnL; bv = b.totalPnL; break;
                     default: return 0;
                 }
                 return (av - bv) * dir;
             });
         }
 
-        // 排序 icon 顯示
-        ['name', 'today', 'price', 'total'].forEach(c => {
+        // 排序 icon 顯示(V17.11 — 6 個欄)
+        ['name', 'shares', 'cost', 'marketval', 'today', 'total'].forEach(c => {
             const el = document.getElementById('invSortIcon_' + c);
             if (el) el.textContent = sortCfg.col === c ? (sortCfg.dir === 'desc' ? '▼' : '▲') : '⇅';
         });
@@ -12479,43 +12618,51 @@ ${_newsLine}${globalContext}
             const cname = this.getStockName(item.symbol) || item.symbol;
             const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol);
 
-            html += `<div class="relative border-b border-[#21262d] overflow-hidden bg-[#1c2128]">
-                <div class="absolute inset-y-0 right-0 flex">
-                    <div class="swipe-action-btn delete-btn w-[64px] bg-red-800 flex items-center justify-center text-white font-bold cursor-pointer text-[10px] text-center px-1" onclick="event.stopPropagation(); app.removeInventoryEntry(${idx})">🗑️<br>刪除</div>
+            // V17.11 — 移除 swipe 手勢,改用上方「✏️ 編輯」按鈕統一處理。一行 6 欄水平 scroll 對齊 header
+            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[140px_70px_90px_95px_95px_95px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+                <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
+                <div class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
+                    <span class="text-white font-black text-[14px] truncate leading-tight">${cname}</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
+                        <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[12px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設限價,點此修改' : '設限價'}">🚨</span>
+                    </div>
                 </div>
-                <div class="absolute inset-y-0 left-0 flex flex-col" id="invEditReveal_${idx}">
-                    <div class="swipe-action-btn delete-btn w-[64px] flex-1 bg-blue-700 flex items-center justify-center text-white font-bold cursor-pointer text-[10px] text-center px-1" onclick="event.stopPropagation(); app.openInvEditModal(${idx})">✏️<br>修改</div>
-                    <div class="swipe-action-btn delete-btn w-[64px] flex-1 bg-purple-700 flex items-center justify-center text-white font-bold cursor-pointer text-[10px] text-center px-1" onclick="event.stopPropagation(); app.settleInventory(${idx})">🎯<br>結算</div>
+                <!-- 股數 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-gray-200 leading-tight">${(shares*1000).toLocaleString()}</div>
                 </div>
-                <div class="swipe-content relative ${bgClass} px-2 py-2 grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-1 items-center w-full overflow-hidden" style="transform: translateX(0px);" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
-                    <!-- 左欄:現股 tag + 股名 + 代號 + 🚨 -->
-                    <div class="flex flex-col gap-0.5 min-w-0">
-                        <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
-                        <span class="text-white font-black text-[14px] truncate leading-tight">${cname}</span>
-                        <div class="flex items-center gap-1">
-                            <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
-                            <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[12px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設限價,點此修改' : '設限價'}">🚨</span>
-                        </div>
-                    </div>
-                    <!-- 今日損益 -->
-                    <div class="text-right">
-                        <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${todayPnL>0?'+':''}${Math.round(todayPnL).toLocaleString()}</div>
-                    </div>
-                    <!-- 股價 + 漲跌幅 -->
-                    <div class="text-right">
-                        <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${price.toFixed(2)}</div>
-                        <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${todayChgPct>0?'+':''}${todayChgPct.toFixed(2)}%</div>
-                    </div>
-                    <!-- 總損益 -->
-                    <div class="text-right">
-                        <div class="font-mono font-black text-[13px] ${totalColor} leading-tight">${totalPnL>0?'+':''}${Math.round(totalPnL).toLocaleString()}</div>
-                        <div class="text-[10px] font-bold ${totalColor} font-mono leading-tight">${totalPct>0?'+':''}${totalPct.toFixed(2)}%</div>
-                    </div>
+                <!-- 均價 / 總成本 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-gray-200 leading-tight">${cost.toFixed(2)}</div>
+                    <div class="text-[10px] font-mono text-gray-500 leading-tight">${Math.round(totalCost).toLocaleString()}元</div>
+                </div>
+                <!-- 市值 / 佔比(待 render 完整輪後算)-->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-white leading-tight">${Math.round(totalVal).toLocaleString()}</div>
+                    <div class="text-[10px] font-mono text-gray-500 leading-tight invMarketPct" data-val="${totalVal}">--</div>
+                </div>
+                <!-- 今日損益 + 漲跌幅 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${todayPnL>0?'+':''}${Math.round(todayPnL).toLocaleString()}</div>
+                    <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${todayChgPct>0?'+':''}${todayChgPct.toFixed(2)}%</div>
+                </div>
+                <!-- 總損益 + 報酬率 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] ${totalColor} leading-tight">${totalPnL>0?'+':''}${Math.round(totalPnL).toLocaleString()}</div>
+                    <div class="text-[10px] font-bold ${totalColor} font-mono leading-tight">${totalPct>0?'+':''}${totalPct.toFixed(2)}%</div>
                 </div>
             </div>`;
         }
         container.innerHTML = html;
-        if (this.sortableInv) this.sortableInv.destroy();   // V17.10 — drag handle 拿掉,改用 header 排序
+        // V17.11 — 市值佔比後補:render 完後計算每檔市值佔比,更新對應 div
+        const allRows = container.querySelectorAll('.invMarketPct');
+        allRows.forEach(el => {
+            const v = +el.dataset.val || 0;
+            const pct = totalValNTD > 0 ? (v / totalValNTD * 100) : 0;
+            el.textContent = pct.toFixed(1) + '%';
+        });
 
         // 統計卡
         const tPnlNTD = totalValNTD - totalCostNTD;
