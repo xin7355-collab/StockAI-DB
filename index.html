@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.20</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.21</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -126,6 +126,22 @@
                 <button onclick="document.getElementById('confirmModal').classList.add('hidden'); document.getElementById('confirmModal').style.display='none';" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">放棄</button>
                 <button id="confirmBtn" class="w-1/2 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg">確認執行</button>
             </div>
+        </div>
+    </div>
+
+    <!-- V17.21 — 到價監控 modal(籌碼 App 風格,2 sub-tab) -->
+    <div id="priceAlertModal" class="hidden fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-[#161b22] w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-amber-700/40 shadow-2xl flex flex-col max-h-[92vh]" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d]">
+                <button onclick="app.closePriceAlertModal()" class="text-gray-400 hover:text-white text-xl w-8 text-left">‹</button>
+                <span class="text-base font-bold text-amber-200">🚨 到價監控</span>
+                <button onclick="app.closePriceAlertModal()" class="text-gray-400 hover:text-white text-xl w-8 text-right">✕</button>
+            </div>
+            <div class="flex border-b border-[#30363d]">
+                <button onclick="app._switchPriceAlertTab('set')" id="paTab_set" class="flex-1 py-2.5 text-sm font-bold transition">到價設定</button>
+                <button onclick="app._switchPriceAlertTab('all')" id="paTab_all" class="flex-1 py-2.5 text-sm font-bold transition">全部監控</button>
+            </div>
+            <div id="priceAlertBody" class="flex-1 overflow-y-auto p-4"></div>
         </div>
     </div>
 
@@ -321,12 +337,11 @@
                     </details>
                 </div>
 
-                <!-- V17.7 — 限價告警清單管理(集中管理已設限價,可編輯/清空) -->
+                <!-- V17.21 — 到價監控集中入口(改用 2 sub-tab modal) -->
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
-                    <label class="text-sm font-bold text-red-300">🚨 個股限價告警清單</label>
-                    <p class="text-[10px] text-gray-500 leading-tight">在個股頁點 🚨 設限價;此處集中管理。觸及上下限即推 Telegram + 通知(24h throttle 防重)。</p>
-                    <div id="priceAlertList" class="flex flex-col gap-1.5 max-h-60 overflow-y-auto"></div>
-                    <button onclick="app.clearAllPriceAlerts()" class="w-full px-3 py-1.5 bg-red-900/30 text-xs font-bold rounded border border-red-700/40 hover:bg-red-800/40 transition text-red-300">🗑️ 一鍵清空所有限價</button>
+                    <label class="text-sm font-bold text-red-300">🚨 個股到價監控</label>
+                    <p class="text-[10px] text-gray-500 leading-tight">同檔股可設多個條件(≥ 上限 / ≤ 下限),觸發即推 Telegram + 通知(6h 防重)。</p>
+                    <button onclick="app.openPriceAlertModal(''); app.vibrate(30);" class="w-full px-3 py-2 bg-amber-900/30 text-xs font-bold rounded border border-amber-700/40 hover:bg-amber-800/40 transition text-amber-200">🚨 打開到價監控管理</button>
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
@@ -732,7 +747,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.20</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.21</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -818,7 +833,7 @@
                             <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
                             <span id="chuLockIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="加入朱老師鎖股名冊(待回檔/訊號)" onclick="app.toggleChuLockStock();">📍</span>
                             <!-- V17.6 — 個股限價單告警(V15.9 留下,本輪做) -->
-                            <span id="priceAlertIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="設定上下限價,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">🚨</span>
+                            <span id="priceAlertIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="設定到價監控,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">🚨</span>
                             <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0 break-words" style="font-size: clamp(1.3rem, 5.5vw, 2.1rem); word-break: break-word;">載入中...</span>
                             <span id="quoteCode" class="text-[11px] text-gray-400 font-mono font-bold leading-none flex-shrink-0"></span>
                         </div>
@@ -2158,9 +2173,25 @@ const app = {
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
     inventory: JSON.parse(localStorage.getItem('proTerminalInv')) || [],
-    // V17.6 — 個股限價單告警(V15.9 留下,本輪做):[{sym, upper, lower, addedAt}]
-    //          上下限觸及即推 Telegram + 瀏覽器通知,24h throttle 防重推
-    priceAlerts: JSON.parse(localStorage.getItem('proTerminalPriceAlerts') || '[]'),
+    // V17.6 / V17.21 — 個股限價單告警 [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}]
+    //          一條件一筆(同股可多筆),觸及即 Worker 推 Telegram + sw.js 推瀏覽器通知,6h throttle 防重
+    //          V17.21 自動把舊 {sym, upper, lower} 拆成新格式
+    priceAlerts: (() => {
+        try {
+            const raw = JSON.parse(localStorage.getItem('proTerminalPriceAlerts') || '[]');
+            const mig = []; let needSave = false;
+            raw.forEach((a, idx) => {
+                if (!a || !a.sym) return;
+                if (a.cond) { mig.push(a); return; }     // 新格式直接收
+                needSave = true;                          // 舊格式拆分
+                const baseTs = a.addedAt || Date.now();
+                if (a.upper != null) mig.push({ id: `${a.sym}_gte_${a.upper}_${baseTs}_${idx}a`, sym: a.sym, cond: 'gte', price: +a.upper, enabled: true, addedAt: baseTs });
+                if (a.lower != null) mig.push({ id: `${a.sym}_lte_${a.lower}_${baseTs}_${idx}b`, sym: a.sym, cond: 'lte', price: +a.lower, enabled: true, addedAt: baseTs });
+            });
+            if (needSave) localStorage.setItem('proTerminalPriceAlerts', JSON.stringify(mig));
+            return mig;
+        } catch (e) { console.warn('[priceAlerts migrate fail]', e); return []; }
+    })(),
     // V14.11 朱老師分批進場計畫器:單檔總資金預算(全域共用,localStorage 記住)
     budgetPerStock: Number(localStorage.getItem('proTerminalBudgetPerStock')) || null,
     apiDataCache: {}, allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {},
@@ -3539,8 +3570,6 @@ ${list}
         // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設開,首次 init 時為 undefined → true)
         const cmEl = document.getElementById('set_chuMorningPush');
         if (cmEl) cmEl.checked = this.settings.chuMorningPush !== false;
-        // V17.7 — 限價告警清單渲染
-        this.renderPriceAlertList?.();
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         const wlEl = document.getElementById('set_watchlistAlert');
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
@@ -9600,18 +9629,16 @@ ${_newsLine}${globalContext}
         ic.textContent = inLock ? '📌' : '📍';
         ic.title = inLock ? '已在朱老師鎖股名冊(點擊移除)' : '加入朱老師鎖股名冊(待回檔/訊號)';
         ic.classList.toggle('opacity-40', !inLock);
-        // V17.6 — 同步更新限價告警 icon(已設限價亮起,未設半透明)
+        // V17.21 — 同步更新到價監控 icon(已設條件 → 亮起 + 標題顯所有條件)
         const pa = document.getElementById('priceAlertIcon');
         if (pa) {
-            const alert = (this.priceAlerts || []).find(a => a.sym === this.currentSymbolId);
-            pa.classList.toggle('opacity-40', !alert);
-            if (alert) {
-                const parts = [];
-                if (alert.upper != null) parts.push(`上 ${alert.upper}`);
-                if (alert.lower != null) parts.push(`下 ${alert.lower}`);
-                pa.title = `🚨 已設限價 ${parts.join(' · ')} · 點擊修改/取消`;
+            const conds = (this.priceAlerts || []).filter(a => a.sym === this.currentSymbolId && a.enabled !== false);
+            pa.classList.toggle('opacity-40', conds.length === 0);
+            if (conds.length > 0) {
+                const parts = conds.map(c => `${c.cond === 'gte' ? '≥' : '≤'} ${c.price}`);
+                pa.title = `🚨 已設 ${conds.length} 筆監控:${parts.join(' · ')} · 點擊管理`;
             } else {
-                pa.title = '設定上下限價,觸發推 Telegram + 通知';
+                pa.title = '設定到價監控,觸發推 Telegram + 通知';
             }
         }
     },
@@ -12901,7 +12928,7 @@ ${_newsLine}${globalContext}
             const todayColor = todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             const bgClass = totalPct <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]';
             const cname = this.getStockName(item.symbol) || item.symbol;
-            const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol);
+            const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol && a.enabled !== false);
 
             // V17.11 — 移除 swipe 手勢,改用上方「✏️ 編輯」按鈕統一處理。一行 6 欄水平 scroll 對齊 header
             html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[140px_70px_90px_95px_95px_95px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
@@ -12911,7 +12938,7 @@ ${_newsLine}${globalContext}
                     <span class="text-white font-black text-[14px] truncate leading-tight">${cname}</span>
                     <div class="flex items-center gap-1">
                         <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
-                        <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[12px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設限價,點此修改' : '設限價'}">🚨</span>
+                        <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[12px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設到價監控,點此管理' : '設到價監控'}">🚨</span>
                     </div>
                 </div>
                 <!-- 股數 -->
@@ -15209,58 +15236,215 @@ ${_chuPosPlan}
     // 共用：把個股加入獵殺名單
     // strategySource: 'chu_perfect6' | 'chu_top_gainer' | 'chu_bottom' | 'chu_riding5ma' | null（一般獵殺）
     // opts.silent: true 時不跳 alert（給「一鍵全加」批次用）
-    // V17.6 — 個股限價單告警(V15.9 留下,本輪做)
-    //   priceAlerts: [{sym, upper, lower, addedAt}]
-    //   觸發即 Worker 推 Telegram + sw.js 推瀏覽器通知
-    //   24h throttle 防重複(同股同方向 24 小時只推 1 次)
+    // V17.21 — 個股到價告警 modal(2 sub-tab:到價設定 / 全部監控)
+    //   schema: [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}],一筆 = 一個條件,同股可多筆
+    //   觸發即 Worker 推 Telegram + sw.js 推瀏覽器通知,6h throttle 防重
     openPriceAlertModal(sym) {
-        if (!sym) { this.showToast('沒有股票代號'); return; }
-        const existing = this.priceAlerts.find(a => a.sym === sym) || {};
-        const cname = this.getStockName(sym) || sym;
-        const cur = this.activeData?.length ? this.activeData[this.activeData.length - 1].close : '';
-        const upperStr = prompt(
-            `🚨 ${cname} (${sym}) 限價告警\n\n` +
-            `目前價:${cur || '--'}\n\n` +
-            `① 上限觸發價(現價超過此 → 推通知)\n空白=取消上限`,
-            existing.upper != null ? String(existing.upper) : ''
-        );
-        if (upperStr === null) return;   // user cancelled
-        const lowerStr = prompt(
-            `🚨 ${cname} (${sym}) 限價告警\n\n` +
-            `② 下限觸發價(現價跌破此 → 推通知)\n空白=取消下限`,
-            existing.lower != null ? String(existing.lower) : ''
-        );
-        if (lowerStr === null) return;
-        const upper = parseFloat(upperStr);
-        const lower = parseFloat(lowerStr);
-        const hasUpper = Number.isFinite(upper) && upper > 0;
-        const hasLower = Number.isFinite(lower) && lower > 0;
-        if (!hasUpper && !hasLower) {
-            // 兩個都空 → 刪除這檔限價(若有)
-            this.priceAlerts = this.priceAlerts.filter(a => a.sym !== sym);
-            this._savePriceAlerts();
-            this.showToast(`🗑️ 已清除 ${sym} 限價告警`, 'info');
+        sym = sym ? String(sym).trim().toUpperCase() : '';
+        this._paCurrentSym = sym;
+        this._paEditingId = null;
+        this._paCond = 'gte';
+        const cur = (sym && this.currentSymbolId === sym && this.activeData?.length)
+                    ? +this.activeData[this.activeData.length - 1].close : 0;
+        this._paPrice = cur > 0 ? cur : 0;
+        // 沒選股 → 直接開「全部監控」分頁
+        this._paTab = sym ? 'set' : 'all';
+        const m = document.getElementById('priceAlertModal');
+        if (m) { m.classList.remove('hidden'); m.style.display = 'flex'; }
+        this._renderPriceAlertModal();
+    },
+    closePriceAlertModal() {
+        const m = document.getElementById('priceAlertModal');
+        if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+        this._paCurrentSym = null;
+        this._paEditingId = null;
+    },
+    _switchPriceAlertTab(tab) {
+        this._paTab = tab;
+        if (tab === 'set' && !this._paCurrentSym) {
+            this.showToast?.('請先選一檔股票');
             return;
         }
-        this.priceAlerts = this.priceAlerts.filter(a => a.sym !== sym);
-        this.priceAlerts.push({
-            sym, upper: hasUpper ? upper : null, lower: hasLower ? lower : null,
-            addedAt: Date.now(),
+        this._renderPriceAlertModal();
+    },
+    _renderPriceAlertModal() {
+        const tab = this._paTab || 'set';
+        ['set', 'all'].forEach(t => {
+            const btn = document.getElementById(`paTab_${t}`);
+            if (!btn) return;
+            btn.className = `flex-1 py-2.5 text-sm font-bold transition ${tab === t ? 'bg-amber-900/40 text-amber-200 border-b-2 border-amber-500' : 'text-gray-500 hover:text-gray-300'}`;
         });
+        const body = document.getElementById('priceAlertBody');
+        if (!body) return;
+        body.innerHTML = tab === 'set' ? this._renderPaSetTab() : this._renderPaAllTab();
+    },
+    // 動態 step:股價越大,step 越大,避免按 100 下才到位
+    _paPriceStep(p) {
+        p = Math.abs(+p) || 0;
+        if (p < 10) return 0.01;
+        if (p < 50) return 0.05;
+        if (p < 500) return 0.5;
+        return 1;
+    },
+    _paAdjust(delta) {
+        const step = this._paPriceStep(this._paPrice);
+        let next = +(((+this._paPrice || 0) + delta * step).toFixed(2));
+        if (next < 0) next = 0;
+        this._paPrice = next;
+        const inp = document.getElementById('paPriceInput');
+        if (inp) inp.value = next;
+    },
+    _paSetCond(c) {
+        this._paCond = c;
+        this._renderPriceAlertModal();
+    },
+    _renderPaSetTab() {
+        const sym = this._paCurrentSym;
+        const cname = sym ? (this.getStockName?.(sym) || sym) : '';
+        const editing = !!this._paEditingId;
+        const cond = this._paCond || 'gte';
+        const price = +this._paPrice || 0;
+        const cur = (sym && this.currentSymbolId === sym && this.activeData?.length)
+                    ? +this.activeData[this.activeData.length - 1].close : null;
+        const condBtn = (val, label) => `<button onclick="app._paSetCond('${val}')" class="flex-1 py-2 rounded text-sm font-bold transition ${cond===val?'bg-amber-700/60 text-white border border-amber-500':'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700'}">${label}</button>`;
+        return `
+            <div class="flex flex-col gap-3">
+                <div class="bg-[#0d1117] border border-amber-900/40 rounded-lg p-3">
+                    <div class="text-[10px] text-gray-500 mb-0.5">股票</div>
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-lg font-black text-amber-200">${cname}</div>
+                        <div class="text-xs text-gray-500 font-mono">${sym}</div>
+                    </div>
+                    ${cur != null ? `<div class="text-[11px] text-gray-400 mt-1">目前價 <span class="text-cyan-300 font-bold">${cur.toFixed(2)}</span></div>` : ''}
+                </div>
+                <div>
+                    <div class="text-[11px] text-gray-400 mb-1.5 font-bold">觸發條件</div>
+                    <div class="flex gap-2">
+                        ${condBtn('gte', '股價 ≥ 觸發價')}
+                        ${condBtn('lte', '股價 ≤ 觸發價')}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[11px] text-gray-400 mb-1.5 font-bold">觸發價</div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="app._paAdjust(-1)" class="w-12 h-12 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-2xl text-white font-bold flex items-center justify-center transition">−</button>
+                        <input id="paPriceInput" type="number" inputmode="decimal" step="0.01" value="${price}" oninput="app._paPrice=+this.value" class="flex-1 bg-[#0d1117] border border-amber-700/60 rounded-lg px-3 py-3 text-center text-2xl font-black text-amber-200 outline-none focus:border-amber-400">
+                        <button onclick="app._paAdjust(1)" class="w-12 h-12 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-2xl text-white font-bold flex items-center justify-center transition">+</button>
+                    </div>
+                    <div class="text-[10px] text-gray-500 mt-1 text-center">每按一下 ±${this._paPriceStep(price)} 元</div>
+                </div>
+                <button onclick="app._savePaCondition()" class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-black rounded-lg shadow-lg transition">${editing ? '💾 更新此條件' : '💾 儲存到價監控'}</button>
+                ${editing ? `<button onclick="app._deletePaCondition(app._paEditingId)" class="w-full py-2 bg-red-900/40 hover:bg-red-800/50 text-red-300 text-sm font-bold rounded-lg border border-red-700/50 transition">🗑️ 刪除這筆條件</button>` : ''}
+                <div class="text-[10px] text-gray-500 leading-relaxed pt-1">
+                    觸發後立刻推 Telegram + 瀏覽器通知,同條件 6h 內不重推(防騷擾)。<br>
+                    同檔可設多個條件,例如同時設「≥ 上限」跟「≤ 下限」。
+                </div>
+            </div>`;
+    },
+    _renderPaAllTab() {
+        const list = Array.isArray(this.priceAlerts) ? this.priceAlerts : [];
+        if (list.length === 0) {
+            return `
+                <div class="text-center py-10">
+                    <div class="text-4xl mb-3 opacity-50">🚨</div>
+                    <div class="text-sm text-gray-400 font-bold mb-1">尚無任何到價監控</div>
+                    <div class="text-[11px] text-gray-600 mb-5">到個股頁點 🚨,或新增監控</div>
+                    ${this._paCurrentSym ? `<button onclick="app._switchPriceAlertTab('set')" class="px-4 py-2 bg-amber-700/60 hover:bg-amber-600 text-white text-sm font-bold rounded-lg border border-amber-500 transition">＋ 為 ${this._paCurrentSym} 新增監控</button>` : ''}
+                </div>`;
+        }
+        const sorted = [...list].sort((a, b) => (a.sym || '').localeCompare(b.sym || '') || (a.cond || '').localeCompare(b.cond || ''));
+        const rows = sorted.map(a => {
+            const cname = this.getStockName?.(a.sym) || a.sym;
+            const enabled = a.enabled !== false;
+            const condTxt = a.cond === 'gte' ? '≥' : '≤';
+            const condColor = a.cond === 'gte' ? 'text-red-300' : 'text-green-300';
+            const safeId = (a.id || '').replace(/'/g, '');
+            return `
+                <div class="flex items-center gap-2 px-3 py-2.5 bg-[#0d1117] border border-gray-800 rounded-lg ${enabled ? '' : 'opacity-50'}">
+                    <button onclick="app._togglePaCondition('${safeId}')" class="flex-shrink-0 w-10 h-6 rounded-full transition relative ${enabled ? 'bg-amber-500' : 'bg-gray-600'}" title="${enabled ? '已啟用,點此暫停' : '已暫停,點此啟用'}">
+                        <span class="absolute top-0.5 ${enabled ? 'right-0.5' : 'left-0.5'} w-5 h-5 bg-white rounded-full shadow transition-all"></span>
+                    </button>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-baseline gap-1.5">
+                            <span class="font-bold text-cyan-300 font-mono text-sm">${a.sym}</span>
+                            <span class="text-gray-300 text-xs truncate">${cname}</span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-0.5">股價 <span class="${condColor} font-bold">${condTxt} ${a.price}</span></div>
+                    </div>
+                    <button onclick="app._editPaCondition('${safeId}')" class="text-blue-300 hover:text-blue-200 text-[11px] px-2 py-1 border border-blue-700/40 rounded flex-shrink-0">✏️ 編輯</button>
+                    <button onclick="app._deletePaCondition('${safeId}')" class="text-red-300 hover:text-red-200 text-[11px] px-2 py-1 border border-red-700/40 rounded flex-shrink-0">🗑️</button>
+                </div>`;
+        }).join('');
+        return `
+            <div class="flex flex-col gap-2">
+                ${rows}
+                ${this._paCurrentSym ? `<button onclick="app._switchPriceAlertTab('set')" class="mt-2 w-full py-2.5 bg-amber-900/40 hover:bg-amber-800/50 text-amber-200 text-sm font-bold rounded-lg border border-amber-700/50 transition">＋ 為 ${this._paCurrentSym} 新增條件</button>` : ''}
+                <button onclick="app.clearAllPriceAlerts()" class="mt-1 w-full py-2 bg-red-900/30 hover:bg-red-800/40 text-red-300 text-xs font-bold rounded-lg border border-red-700/40 transition">🗑️ 全部清空</button>
+            </div>`;
+    },
+    _savePaCondition() {
+        const sym = this._paCurrentSym;
+        const cond = this._paCond || 'gte';
+        const price = +this._paPrice;
+        if (!sym) { this.showToast?.('沒有選股票'); return; }
+        if (!Number.isFinite(price) || price <= 0) { this.showToast?.('觸發價無效'); return; }
+        const list = Array.isArray(this.priceAlerts) ? this.priceAlerts.slice() : [];
+        const editId = this._paEditingId;
+        if (editId) {
+            const idx = list.findIndex(a => a.id === editId);
+            if (idx >= 0) { list[idx] = { ...list[idx], cond, price, addedAt: Date.now() }; }
+        } else {
+            // 同 sym+cond+price 已存在 → 視為更新而不是新增
+            const dup = list.find(a => a.sym === sym && a.cond === cond && +a.price === price);
+            if (dup) {
+                dup.enabled = true; dup.addedAt = Date.now();
+            } else {
+                list.push({
+                    id: `${sym}_${cond}_${price}_${Date.now()}`,
+                    sym, cond, price, enabled: true, addedAt: Date.now(),
+                });
+            }
+        }
+        this.priceAlerts = list;
         this._savePriceAlerts();
-        const msg = `🚨 已設 ${cname} 限價:` +
-                    (hasUpper ? `上 ${upper}` : '') +
-                    (hasUpper && hasLower ? ' · ' : '') +
-                    (hasLower ? `下 ${lower}` : '');
-        this.showToast(msg + ' · 觸發即推 Telegram + 通知', 'info');
-        this.vibrate([30, 30]);
+        const cname = this.getStockName?.(sym) || sym;
+        this.showToast?.(`🚨 已${editId ? '更新' : '設定'}:${cname} ${cond === 'gte' ? '≥' : '≤'} ${price}`, 'info');
+        this.vibrate?.([30, 30]);
+        this._paEditingId = null;
+        this._paTab = 'all';
+        this._renderPriceAlertModal();
+    },
+    _editPaCondition(id) {
+        const a = (this.priceAlerts || []).find(x => x.id === id);
+        if (!a) return;
+        this._paCurrentSym = a.sym;
+        this._paEditingId = a.id;
+        this._paCond = a.cond;
+        this._paPrice = +a.price;
+        this._paTab = 'set';
+        this._renderPriceAlertModal();
+    },
+    _togglePaCondition(id) {
+        const list = Array.isArray(this.priceAlerts) ? this.priceAlerts : [];
+        const a = list.find(x => x.id === id);
+        if (!a) return;
+        a.enabled = a.enabled === false ? true : false;
+        this._savePriceAlerts();
+        this._renderPriceAlertModal();
+    },
+    _deletePaCondition(id) {
+        this.priceAlerts = (this.priceAlerts || []).filter(a => a.id !== id);
+        this._savePriceAlerts();
+        this.showToast?.('🗑️ 已刪除此監控條件', 'info');
+        if (this._paEditingId === id) { this._paEditingId = null; }
+        this._paTab = 'all';
+        this._renderPriceAlertModal();
     },
 
     _savePriceAlerts() {
         try {
             localStorage.setItem('proTerminalPriceAlerts', JSON.stringify(this.priceAlerts));
             this.telegramCloud?.sync?.();   // 即時 sync 上 KV 給 worker 用
-            this.renderPriceAlertList?.();  // 同步刷新設定頁清單
             this._updateChuLockIcon?.();    // 同步刷新個股頁 🚨 icon
         } catch (e) { console.warn('[savePriceAlerts]', e); }
     },
@@ -15318,45 +15502,16 @@ ${_chuPosPlan}
         if (el) el.innerHTML = lines.join('<br>');
     },
 
-    renderPriceAlertList() {
-        const el = document.getElementById('priceAlertList');
-        if (!el) return;
-        if (!this.priceAlerts || this.priceAlerts.length === 0) {
-            el.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-2">尚未設任何限價(到個股頁點 🚨 icon 設定)</div>';
-            return;
-        }
-        el.innerHTML = this.priceAlerts.map(a => {
-            const cname = this.getStockName(a.sym) || a.sym;
-            const parts = [];
-            if (a.upper != null) parts.push(`上 <b class="text-red-300">${a.upper}</b>`);
-            if (a.lower != null) parts.push(`下 <b class="text-green-300">${a.lower}</b>`);
-            return `<div class="flex items-center justify-between gap-2 px-2 py-1.5 bg-gray-900/50 border border-gray-700/40 rounded text-[11px]">
-                <div class="flex items-center gap-2 min-w-0 flex-1">
-                    <span class="font-bold text-cyan-300 font-mono">${a.sym}</span>
-                    <span class="text-gray-300 truncate">${cname}</span>
-                </div>
-                <div class="text-gray-300 flex-shrink-0">${parts.join(' · ')}</div>
-                <button onclick="app.openPriceAlertModal('${a.sym}')" class="text-blue-300 hover:text-blue-200 text-[10px] px-1.5 py-0.5 border border-blue-700/40 rounded flex-shrink-0">編輯</button>
-                <button onclick="app.removePriceAlert('${a.sym}')" class="text-red-300 hover:text-red-200 text-[10px] px-1.5 py-0.5 border border-red-700/40 rounded flex-shrink-0">刪</button>
-            </div>`;
-        }).join('');
-    },
-
-    removePriceAlert(sym) {
-        this.priceAlerts = this.priceAlerts.filter(a => a.sym !== sym);
-        this._savePriceAlerts();
-        this.showToast?.(`🗑️ 已清除 ${sym} 限價告警`, 'info');
-    },
-
     clearAllPriceAlerts() {
         if (!this.priceAlerts || this.priceAlerts.length === 0) {
             this.showToast?.('清單已是空的');
             return;
         }
-        this.showConfirm(`確定清空全部 ${this.priceAlerts.length} 檔限價告警?`, () => {
+        this.showConfirm(`確定清空全部 ${this.priceAlerts.length} 筆到價監控?`, () => {
             this.priceAlerts = [];
             this._savePriceAlerts();
-            this.showToast?.('🗑️ 已清空所有限價告警', 'info');
+            this.showToast?.('🗑️ 已清空所有到價監控', 'info');
+            this._renderPriceAlertModal?.();
         });
     },
 
