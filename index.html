@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.19</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.20</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -732,7 +732,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.19</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.20</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -6612,8 +6612,8 @@ ${brokerText}
             // 🎯 籌碼 AI 解析:使用者要求純 Gemini 雙 key 輪動,撞 429 直接顯示警示不偷偷 fallback
             const text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.7, chain: 'gemini-only' });
             if (!text) throw new Error('未設定 AI Key,請至設定填入 Gemini API Key');
-            const escaped = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed whitespace-pre-wrap text-sm">${escaped}</div>`;
+            // V17.20 — 用 _renderMdText 統一處理 markdown(原版只 escape <> 沒轉 **粗體**)
+            result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed text-sm">${this._renderMdText(text)}</div>`;
         } catch(e) {
             result.innerHTML = `<span class="text-amber-300 text-xs">${this._aiFriendlyError(e.message)}</span>`;
         }
@@ -6808,8 +6808,8 @@ ${lightExplain[queryType]}
         try {
             const text = await this._callAI({ prompt, max_tokens: 400, temperature: 0.55 });
             if (!text) throw new Error('未設定 Groq Key 或配額耗盡');
-            const safeText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-            document.getElementById('techAIModalBody').innerHTML = `<div class="text-[10px] text-gray-500 mb-1.5">${lightExplain[queryType].replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="mt-1 text-gray-200 leading-relaxed text-sm border-t border-gray-700 pt-2">${safeText}</div>`;
+            // V17.20 — _renderMdText 統一處理 markdown(原版只 escape + \n → <br>,沒 **粗體**)
+            document.getElementById('techAIModalBody').innerHTML = `<div class="text-[10px] text-gray-500 mb-1.5">${lightExplain[queryType].replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div class="mt-1 text-gray-200 leading-relaxed text-sm border-t border-gray-700 pt-2">${this._renderMdText(text)}</div>`;
         } catch (e) {
             document.getElementById('techAIModalBody').innerHTML =
                 `<span class="text-amber-300">${this._aiFriendlyError(e.message)}</span>`;
@@ -7819,7 +7819,7 @@ ${_newsLine}${globalContext}
                 console.error('[fundamentals AI]', e2);
             }
             if (aiText) {
-                xrayAIResult.innerHTML = aiText.replace(/\n/g, '<br>');
+                xrayAIResult.innerHTML = this._renderMdText(aiText);   // V17.20 — 加 **粗體** 渲染
             } else if (!this._apiBase && this._getGroqKeys().length === 0) {
                 xrayAIResult.innerHTML = '<span class="text-yellow-400 text-xs">⚠️ 請至 ⚙️設定 填入 Groq API Key（免費申請：console.groq.com）</span>';
             } else {
@@ -10861,9 +10861,12 @@ ${_newsLine}${globalContext}
                       : tl.startsWith('🟡') ? { cls: 'bg-yellow-900/45 border-yellow-500 text-yellow-100', pulse: '' }
                       : { cls: 'bg-gray-800 border-gray-600 text-gray-200', pulse: '' };
         // 把 AI 輸出的「🔴可以買」原 emoji 改成 🔥(火焰更貼合「可以買」的進場感)
-        const tlEsc2 = tlEsc.replace(/^🔴/, '🔥');
+        // V17.20 修:① 加 **markdown** 渲染(舊版只有 emoji 替換,raw 星號顯示)
+        //            ② -mx-4 → -mx-3 / text-base → text-sm / +leading-snug +break-words
+        //               避免小手機被父容器邊緣切 + 大字加 tracking-wide 擠到看不清
+        const tlEsc2 = this._renderMdText(tl.replace(/^🔴/, '🔥'));
             const trafficHtml = tl
-                ? `<div class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 px-4 py-2 border-b-2 ${tlSty.cls} ${tlSty.pulse} font-black text-base tracking-wide text-center">${tlEsc2}</div>`
+                ? `<div class="sticky top-0 z-10 -mx-3 -mt-3 mb-3 px-3 py-2 border-b-2 ${tlSty.cls} ${tlSty.pulse} font-black text-sm leading-snug text-center break-words">${tlEsc2}</div>`
                 : '';
 
         let html = (detail_action || '').trim();
@@ -15058,6 +15061,16 @@ ${_chuPosPlan}
         if (traffic_light || summary || bottom_bar || detail_action) return { traffic_light, summary, bottom_bar, detail_action };
         // 5) JSON.parse 與欄位正則都失敗 → 才降級把全文當詳細評析（不白屏）
         return { ...EMPTY, detail_action: s };
+    },
+
+    // V17.20 — AI 文字統一 markdown 渲染 helper
+    //   ① escape <> ② **粗體** → 黃底加粗 <b> ③ \n → <br>
+    //   傳 raw text(未 escape),helper 統一處理;避免雙重 escape
+    _renderMdText(text) {
+        return String(text || '')
+            .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-200 font-black bg-yellow-900/40 px-1 rounded">$1</b>')
+            .replace(/\n/g, '<br>');
     },
 
     // 將 AI 30 字短評渲染進首頁卡片 aiTranslatorCard
