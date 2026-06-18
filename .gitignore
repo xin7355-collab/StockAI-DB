@@ -27,3 +27,9 @@ Thumbs.db
 # 新聞快取（由後端動態生成）
 news_cache.json
 .claude/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
