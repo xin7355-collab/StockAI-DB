@@ -279,18 +279,31 @@ function sanitizePayload(payload) {
             .filter(i => isValidSym(i.sym))
             .slice(0, 100);
     }
-    // V17.6 — 個股限價單告警:[{sym, upper, lower}],觸及推 Telegram + 通知
+    // V17.6 / V17.21 — 個股到價監控
+    // 新格式 [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}](一條件一筆,同股可多筆)
+    // 舊格式 [{sym, upper, lower}] 向後相容(過渡期 KV 內可能還有舊資料)
     if (Array.isArray(payload.priceAlerts)) {
         out.priceAlerts = payload.priceAlerts
             .filter(a => a && typeof a === 'object')
             .map(a => {
                 const sym = String(a.sym || '').trim().toUpperCase();
+                if (a.cond === 'gte' || a.cond === 'lte') {
+                    const price = Number.isFinite(+a.price) && +a.price > 0 ? +a.price : null;
+                    if (price == null) return null;
+                    return {
+                        id: String(a.id || `${sym}_${a.cond}_${price}`).slice(0, 80),
+                        sym, cond: a.cond, price,
+                        enabled: a.enabled !== false,
+                    };
+                }
+                // 舊格式 fallback
                 const upper = Number.isFinite(+a.upper) && +a.upper > 0 ? +a.upper : null;
                 const lower = Number.isFinite(+a.lower) && +a.lower > 0 ? +a.lower : null;
+                if (upper == null && lower == null) return null;
                 return { sym, upper, lower };
             })
-            .filter(a => isValidSym(a.sym) && (a.upper != null || a.lower != null))
-            .slice(0, 100);
+            .filter(a => a && isValidSym(a.sym))
+            .slice(0, 200);
     }
     if (payload.settings && typeof payload.settings === 'object') {
         out.settings = {
@@ -571,20 +584,30 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
             }
         }
 
-        // V17.6 — 個股限價單告警(觸及上下限即推,24h throttle 防重)
+        // V17.6 / V17.21 — 個股到價監控(多筆條件迭代,6h throttle 防重)
         if (live && Number.isFinite(live.z)) {
-            const alert = (user.priceAlerts || []).find(a => a.sym === sym);
-            if (alert) {
-                if (alert.upper != null && live.z >= alert.upper &&
-                    !(await wasPushed(env, user.chat_id, sym, 'priceUpper'))) {
-                    alerts.push(`🚨 *${sym}* 觸及上限 *${alert.upper}*(現價 ${live.z.toFixed(2)})\n你預設的限價告警觸發`);
-                    await markPushed(env, user.chat_id, sym, 'priceUpper');
+            for (const a of (user.priceAlerts || []).filter(x => x.sym === sym && x.enabled !== false)) {
+                let hit = false, condTxt = '', emoji = '', hitPrice = null, dedupKey = '';
+                // 新格式 {cond, price}
+                if (a.cond === 'gte' && Number.isFinite(+a.price) && live.z >= +a.price) {
+                    hit = true; condTxt = '上限'; emoji = '🚨'; hitPrice = +a.price;
+                    dedupKey = a.id ? `pa_${String(a.id).slice(0, 40)}` : `pa_gte_${hitPrice}`;
+                } else if (a.cond === 'lte' && Number.isFinite(+a.price) && live.z <= +a.price) {
+                    hit = true; condTxt = '下限'; emoji = '🛑'; hitPrice = +a.price;
+                    dedupKey = a.id ? `pa_${String(a.id).slice(0, 40)}` : `pa_lte_${hitPrice}`;
                 }
-                if (alert.lower != null && live.z <= alert.lower &&
-                    !(await wasPushed(env, user.chat_id, sym, 'priceLower'))) {
-                    alerts.push(`🛑 *${sym}* 觸及下限 *${alert.lower}*(現價 ${live.z.toFixed(2)})\n你預設的限價告警觸發`);
-                    await markPushed(env, user.chat_id, sym, 'priceLower');
+                // 舊格式 {upper, lower} fallback
+                else if (a.upper != null && live.z >= +a.upper) {
+                    hit = true; condTxt = '上限'; emoji = '🚨'; hitPrice = +a.upper;
+                    dedupKey = 'priceUpper';
+                } else if (a.lower != null && live.z <= +a.lower) {
+                    hit = true; condTxt = '下限'; emoji = '🛑'; hitPrice = +a.lower;
+                    dedupKey = 'priceLower';
                 }
+                if (!hit) continue;
+                if (await wasPushed(env, user.chat_id, sym, dedupKey)) continue;
+                alerts.push(`${emoji} *${sym}* 觸及${condTxt} *${hitPrice}*(現價 ${live.z.toFixed(2)})\n你預設的到價監控觸發`);
+                await markPushed(env, user.chat_id, sym, dedupKey);
             }
         }
 
