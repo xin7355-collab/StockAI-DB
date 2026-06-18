@@ -73,12 +73,13 @@ export default {
     async scheduled(event, env, ctx) {
         // V17.5 — 三 cron 排程分流:
         //   "0 9"    → 17:00 台北 盤後總結 + AI 短評
-        //   "0 1"    → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發
+        //   "0 1"    → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發 + V17.18 ETF 跟單 Top 5
         //   "*/5 ..." → 09:00-13:30 台北 盤中即時掃描
         if (event.cron === '0 9 * * 1-5') {
             ctx.waitUntil(runDailySummary(env));
         } else if (event.cron === '0 1 * * 1-5') {
             ctx.waitUntil(runMonitorChuMorningScan(env));
+            ctx.waitUntil(runEtfFollowMorningPush(env));  // V17.18
         } else {
             ctx.waitUntil(runScan(env));
         }
@@ -934,6 +935,107 @@ async function scanMonitorChuTriggers(env, user) {
         `📋 操作:開盤後 5-10 分等量穩,守 5MA 進(跌破 5MA 立停)`;
     await tg(env, user.chat_id, msg);
     return true;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// V17.18 — ETF 跟單訊號 09:00 開盤前推送
+//   3-gate 勝率篩選:① ETF 共識看多 ② Falcon ≥ 70 ③ 主力連 N 日買超
+//   Top 5(score ≥ 2)推給所有開啟 etfFollowPush 的使用者
+// ════════════════════════════════════════════════════════════════════════════
+async function runEtfFollowMorningPush(env) {
+    // 1. fetch etf_tracking + falcon_scores 一次,所有使用者共用
+    let etf, falconMap;
+    try {
+        const [etfR, falconR] = await Promise.all([
+            fetch(`${GH_PAGES_BASE}/data/etf_tracking.json?t=${Date.now()}`),
+            fetch(`${GH_PAGES_BASE}/data/falcon_scores.json?t=${Date.now()}`),
+        ]);
+        if (!etfR.ok) return console.warn('[etf follow push] etf_tracking 404');
+        etf = await etfR.json();
+        const falcon = falconR.ok ? await falconR.json() : { stocks: {} };
+        falconMap = falcon.stocks || {};
+    } catch (e) {
+        return console.warn('[etf follow push] fetch error', e?.message);
+    }
+
+    // 2. 算 consensus_stocks(後端沒料就 fallback)
+    let stocks = (etf.consensus_stocks || []).filter(s => s.etf_count > 0);
+    if (!stocks.length) stocks = buildConsensusFromEtfsForWorker(etf.etfs || []);
+    if (!stocks.length) return console.log('[etf follow push] no stocks');
+
+    // 3. 算 follow score + 排序 + 取 Top 5(score ≥ 2)
+    const scored = stocks.map(s => {
+        const f = falconMap[s.sym] || {};
+        const gEtf    = s.etf_count >= 5 && s.shares_delta > 0;
+        const gFalcon = (f.score || 0) >= 70;
+        const gChip   = (f.factors || []).some(x => /主力連\d日買超/.test(x));
+        const score = (gEtf ? 1 : 0) + (gFalcon ? 1 : 0) + (gChip ? 1 : 0);
+        return { ...s, _score: score, _falcon: f.score || 0, _close: f.close, _chip: gChip };
+    }).filter(s => s._score >= 2)
+       .sort((a, b) => b._score - a._score || b.shares_delta - a.shares_delta)
+       .slice(0, 5);
+
+    if (!scored.length) return console.log('[etf follow push] no candidates ≥ 2');
+
+    // 4. 組訊息(Markdown)
+    const date = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    let msg = `🌟 *ETF 跟單訊號 Top ${scored.length}* (${date} 09:00 開盤前)\n\n`;
+    scored.forEach((s, i) => {
+        const stars = s._score === 3 ? '✅✅✅' : '✅✅';
+        const label = s._score === 3 ? '高勝率' : '中勝率';
+        const idxEmoji = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'][i] || `${i+1}.`;
+        msg += `${idxEmoji} *${s.sym} ${s.name || ''}* ${stars} (${s._score}/3 ${label})\n`;
+        msg += `   ETF×${s.etf_count} 加碼 \`${(s.shares_delta / 1000).toFixed(1)}\` 千張 · Falcon \`${s._falcon}\``;
+        if (s._chip) msg += ` · 主力連買`;
+        msg += `\n   昨收 \`$${s._close != null ? s._close : '—'}\`\n\n`;
+    });
+    msg += `💡 跟單訊號 = ETF 共識 ∩ Falcon ≥ 70 ∩ 主力連買\n`;
+    msg += `⚠️ 僅供參考,非投資建議。實戰請看技術面 + 個股新聞`;
+
+    // 5. 推給所有訂閱使用者(用 dedup 24h)
+    let cursor, sent = 0;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!userData.chat_id) continue;
+                if (userData.muted_until && userData.muted_until > Date.now()) continue;
+                if (userData.settings?.etfFollowPush === false) continue;  // 預設開,可關
+                if (await wasPushed(env, userData.chat_id, '__etf_follow__', `day_${date}`)) continue;
+                await tg(env, userData.chat_id, msg);
+                await markPushed(env, userData.chat_id, '__etf_follow__', `day_${date}`, 86400);
+                sent++;
+            } catch (e) {
+                console.warn('[etf follow push] user error', e?.message);
+            }
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+    console.log(`[etf follow push] ${scored.length} stocks · sent ${sent} users`);
+}
+
+// V17.18 — 對齊前端 _buildConsensusFromEtfs:後端 consensus_stocks 沒料時兜底
+function buildConsensusFromEtfsForWorker(etfs) {
+    const map = new Map();
+    const bump = (etfSym, sym, name, delta) => {
+        if (!sym) return;
+        const cur = map.get(sym) || { sym, name: name || '', etf_count: 0, shares_delta: 0,
+                                      market_val_delta_e: 0, total_shares: 0, _etfs: new Set() };
+        if (!cur._etfs.has(etfSym)) { cur._etfs.add(etfSym); cur.etf_count = cur._etfs.size; }
+        cur.shares_delta += (Number(delta) || 0);
+        if (!cur.name && name) cur.name = name;
+        map.set(sym, cur);
+    };
+    for (const e of (etfs || [])) {
+        const c = e.changes || {};
+        for (const x of (c.added       || [])) bump(e.symbol, x.sym, x.name,  Number(x.est_shares) || 0);
+        for (const x of (c.weight_up   || [])) bump(e.symbol, x.sym, x.name,  Number(x.est_shares_delta) || 0);
+        for (const x of (c.weight_down || [])) bump(e.symbol, x.sym, x.name,  Number(x.est_shares_delta) || 0);
+        for (const x of (c.removed     || [])) bump(e.symbol, x.sym, x.name, -(Number(x.est_shares) || 0));
+    }
+    return [...map.values()].filter(v => v.etf_count > 0).map(o => { delete o._etfs; return o; });
 }
 
 // V17.5 — 抓 gh-pages data/{sym}.json 拿昨日 OHLCV + 算 ma5/vma5

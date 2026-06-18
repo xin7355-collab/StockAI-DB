@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.17</title>
+    <title>首席 AI 司令部 | 戰略終端 V17.18</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -732,7 +732,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.17</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.18</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3171,6 +3171,47 @@ ${list}
         } catch (_) { this._etfCache = null; }
         return this._etfCache;
     },
+    // V17.18 — Falcon 建倉分(0-100,含技術+籌碼+板塊+大盤)+ factors 內已 bake 主力連N日買超
+    _falconScoresCache: null,
+    async _loadFalconScores() {
+        if (this._falconScoresCache) return this._falconScoresCache;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/falcon_scores.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+            const d = r.ok ? await r.json() : null;
+            this._falconScoresCache = (d && d.stocks) || {};
+        } catch (_) {
+            this._falconScoresCache = {};
+        }
+        return this._falconScoresCache;
+    },
+    // V17.18 — 跟單訊號 3-gate 評分:ETF 共識 + Falcon ≥ 70 + 主力連 N 日買超
+    _calcEtfFollowSignal(stock, falconMap) {
+        const gates = {
+            etf:    stock.etf_count >= 5 && stock.shares_delta > 0,
+            falcon: false,
+            chip:   false,
+        };
+        const f = falconMap[stock.sym];
+        if (f) {
+            gates.falcon = (f.score || 0) >= 70;
+            gates.chip   = (f.factors || []).some(x => /主力連\d日買超/.test(x));
+        }
+        const score = (gates.etf ? 1 : 0) + (gates.falcon ? 1 : 0) + (gates.chip ? 1 : 0);
+        let tag = '';
+        if (score === 3)      tag = '<span class="text-red-300 text-[10px] font-bold ml-1">🌟 跟單級</span>';
+        else if (score === 2) tag = '<span class="text-orange-300 text-[10px] font-bold ml-1">✅ 可考慮</span>';
+        else if (score === 1) tag = '<span class="text-yellow-300 text-[10px] font-bold ml-1">🟡 訊號弱</span>';
+        return { score, gates, tag, falconScore: f ? (f.score || 0) : 0 };
+    },
+    // V17.18 — 從 ETF tab row 直接跑 AI 全盤分析(跳診斷頁後自動觸發)
+    async _etfRowAiAnalyze(sym) {
+        try {
+            await this.analyze(sym);
+            this.switchAppTab('diag');
+            setTimeout(() => { try { this.runUnifiedGroqAnalysis(); } catch(_) {} }, 800);
+        } catch (_) {}
+    },
     async _initEtfAlert() {
         // 開 App 背景拉一次,今日有 ETF 換股 → nav 紅點提醒(失敗不阻塞)
         try {
@@ -3219,6 +3260,7 @@ ${list}
             box.innerHTML = `<div class="p-6 text-center text-gray-500 text-sm">🏦 ETF 順風車資料準備中<br><span class="text-xs">首次雲端採礦後自動啟用(每日盤後更新)</span></div>`;
             return;
         }
+        const falconMap = await this._loadFalconScores();  // V17.18 跟單訊號 Gate 2+3 用
         const pct = v => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v}%`);
         const pcls = v => (v == null ? 'text-gray-500' : v >= 0 ? 'text-red-400' : 'text-green-400');
         const userSet = this._userHoldSet();
@@ -3241,20 +3283,23 @@ ${list}
                 📊 今日主動 ETF 無換股動作(${d.etfs.length} 檔監控中)
             </div>`;
 
-        // ── 段 2:個股加減碼整合表(V17.16 取代雙 tab,單一視圖)──────────────
-        //   3 鈕排序:🔴 加碼 Top / 🟢 減碼 Top / ⭐ ETF 檔數 Top(預設加碼)
-        //   預判訊號:N ≥ 5 同向 → 共識看多/看空
-        //   V17.17 — 若後端 consensus_stocks 沒料,前端從 changes 兜底聚合
+        // ── 段 2:個股加減碼整合表 + 跟單訊號(V17.18 加 3-gate 勝率篩選)─────
+        //   4 鈕排序:🌟 跟單級(預設)/ 🔴 加碼 / 🟢 減碼 / ⭐ ETF 檔數
+        //   跟單訊號 = ETF 共識看多 ∩ Falcon ≥ 70 ∩ 主力連 N 日買超
+        //   V17.17 — 後端 consensus_stocks 沒料時前端從 changes 兜底
         let stocks = (d.consensus_stocks || []).filter(s => s.etf_count > 0);
         let fallbackUsed = false;
         if (!stocks.length) {
             stocks = this._buildConsensusFromEtfs(d.etfs).filter(s => s.etf_count > 0);
             fallbackUsed = true;
         }
-        const sortMode = this._etfSort || 'add';
+        // 每檔算跟單訊號(0-3 分)+ 掛 _follow 屬性供排序
+        stocks.forEach(s => { s._follow = this._calcEtfFollowSignal(s, falconMap); });
+        const sortMode = this._etfSort || 'follow';  // V17.18 預設跟單級
         const sortedStocks = [...stocks].sort((a, b) => {
-            if (sortMode === 'cut')   return a.shares_delta - b.shares_delta;
-            if (sortMode === 'count') return b.etf_count - a.etf_count;
+            if (sortMode === 'follow') return b._follow.score - a._follow.score || b.shares_delta - a.shares_delta;
+            if (sortMode === 'cut')    return a.shares_delta - b.shares_delta;
+            if (sortMode === 'count')  return b.etf_count - a.etf_count;
             return b.shares_delta - a.shares_delta;
         }).slice(0, 50);
         const btnCls = (mode, on, off) => `px-2 py-0.5 text-[10px] font-bold rounded ${sortMode === mode ? on : off}`;
@@ -3263,42 +3308,46 @@ ${list}
                 <div class="bg-[#0d1117] border-b border-amber-700/50 px-3 py-2 text-[11px] text-amber-200 font-bold text-center">
                     📅 變動日期:${d.updated || '—'}
                 </div>
-                <div class="flex gap-1 px-2 py-1.5 bg-[#161b22] border-b border-[#30363d]">
-                    <button onclick="app._etfSort='add'; app.renderEtfTab();" class="${btnCls('add', 'bg-red-900/40 text-red-300 border border-red-700', 'text-gray-500 border border-transparent')}">🔴 加碼 Top</button>
-                    <button onclick="app._etfSort='cut'; app.renderEtfTab();" class="${btnCls('cut', 'bg-green-900/40 text-green-300 border border-green-700', 'text-gray-500 border border-transparent')}">🟢 減碼 Top</button>
-                    <button onclick="app._etfSort='count'; app.renderEtfTab();" class="${btnCls('count', 'bg-amber-900/40 text-amber-300 border border-amber-700', 'text-gray-500 border border-transparent')}">⭐ ETF 檔數 Top</button>
+                <div class="flex flex-wrap gap-1 px-2 py-1.5 bg-[#161b22] border-b border-[#30363d]">
+                    <button onclick="app._etfSort='follow'; app.renderEtfTab();" class="${btnCls('follow', 'bg-red-900/40 text-red-200 border border-red-600', 'text-gray-500 border border-transparent')}">🌟 跟單級 Top</button>
+                    <button onclick="app._etfSort='add'; app.renderEtfTab();" class="${btnCls('add', 'bg-red-900/40 text-red-300 border border-red-700', 'text-gray-500 border border-transparent')}">🔴 加碼</button>
+                    <button onclick="app._etfSort='cut'; app.renderEtfTab();" class="${btnCls('cut', 'bg-green-900/40 text-green-300 border border-green-700', 'text-gray-500 border border-transparent')}">🟢 減碼</button>
+                    <button onclick="app._etfSort='count'; app.renderEtfTab();" class="${btnCls('count', 'bg-amber-900/40 text-amber-300 border border-amber-700', 'text-gray-500 border border-transparent')}">⭐ ETF 檔數</button>
                     <span class="ml-auto text-[10px] text-gray-500 self-center">${stocks.length} 檔</span>
                 </div>
-                <div class="grid grid-cols-[1.3fr_50px_70px_70px_80px] gap-1 px-2 py-1.5 border-b border-[#30363d] text-[10px] text-gray-400 font-bold">
+                <div class="grid grid-cols-[1.2fr_44px_64px_64px_72px_28px] gap-1 px-2 py-1.5 border-b border-[#30363d] text-[10px] text-gray-400 font-bold">
                     <span>股票</span>
-                    <span class="text-right">ETF<br>持有檔數</span>
+                    <span class="text-right">ETF<br>檔數</span>
                     <span class="text-right">持股變化<br>(張)</span>
                     <span class="text-right">市值變化<br>(億)</span>
                     <span class="text-right">持股合計<br>(張)</span>
+                    <span></span>
                 </div>
                 <div class="flex flex-col">${sortedStocks.map(s => {
                     const dirCol = s.shares_delta > 0 ? 'text-red-300' : s.shares_delta < 0 ? 'text-green-300' : 'text-gray-300';
                     const mvCol  = s.market_val_delta_e > 0 ? 'text-red-300' : s.market_val_delta_e < 0 ? 'text-green-300' : 'text-gray-300';
-                    let signal = '';
-                    if (s.etf_count >= 5) {
-                        if (sortMode === 'cut' && s.shares_delta < 0) signal = '<span class="text-green-300 text-[9px] font-bold ml-1">🟢 共識看空</span>';
-                        else if (sortMode !== 'cut' && s.shares_delta > 0) signal = '<span class="text-red-300 text-[9px] font-bold ml-1">🔴 共識看多</span>';
-                        else if (sortMode === 'count' && s.shares_delta < 0) signal = '<span class="text-green-300 text-[9px] font-bold ml-1">🟢 共識看空</span>';
-                    }
                     const cname = s.name || this.getStockName(s.sym) || s.sym;
-                    return `<div onclick="app.analyze('${s.sym}'); app.switchAppTab('diag');" class="grid grid-cols-[1.3fr_50px_70px_70px_80px] gap-1 items-center px-2 py-1.5 border-b border-[#21262d] hover:bg-[#21262d] cursor-pointer">
+                    const aiBtn = s._follow.score >= 2
+                        ? `<button onclick="event.stopPropagation(); app._etfRowAiAnalyze('${s.sym}');" class="text-[14px] hover:scale-110 transition" title="跑 AI 全盤分析">🧠</button>`
+                        : '';
+                    return `<div onclick="app.analyze('${s.sym}'); app.switchAppTab('diag');" class="grid grid-cols-[1.2fr_44px_64px_64px_72px_28px] gap-1 items-center px-2 py-1.5 border-b border-[#21262d] hover:bg-[#21262d] cursor-pointer">
                         <div class="min-w-0">
                             <div class="text-white font-bold text-[12px] truncate">${cname}${mark(s.sym)}</div>
-                            <div class="text-[10px] text-gray-500 font-mono">${s.sym}${signal}</div>
+                            <div class="text-[10px] text-gray-500 font-mono">${s.sym}${s._follow.tag}</div>
                         </div>
                         <div class="text-right text-[12px] font-mono font-bold text-white">${s.etf_count}</div>
                         <div class="text-right text-[12px] font-mono font-bold ${dirCol}">${s.shares_delta > 0 ? '+' : ''}${s.shares_delta.toLocaleString()}</div>
                         <div class="text-right text-[12px] font-mono font-bold ${mvCol}">${s.market_val_delta_e === 0 ? '<span class="text-gray-600">—</span>' : (s.market_val_delta_e > 0 ? '+' : '') + s.market_val_delta_e.toFixed(2)}</div>
                         <div class="text-right text-[12px] font-mono font-bold text-gray-200">${s.total_shares === 0 ? '<span class="text-gray-600">—</span>' : s.total_shares.toLocaleString()}</div>
+                        <div class="text-center">${aiBtn}</div>
                     </div>`;
                 }).join('')}</div>
                 ${fallbackUsed ? `<div class="text-[9px] text-amber-400 px-2 pt-2">⚠️ 近似估算 — 持股合計 / 市值變化欄需待下次盤後採礦完整資料</div>` : ''}
-                <div class="text-[9px] text-gray-500 px-2 py-2">💡 ETF ≥ 5 檔同步加碼/減碼 → 主流共識訊號(僅供參考,非投資建議)</div>
+                <div class="text-[9px] text-gray-500 px-2 py-2 leading-relaxed">
+                    💡 跟單訊號 = ① ETF 共識看多(≥5 檔加碼) ∩ ② Falcon ≥ 70(綜合建倉分) ∩ ③ 主力連 2-3 日買超<br>
+                    🌟 3/3 高勝率(可跟) ・ ✅ 2/3 可考慮 ・ 🟡 1/3 訊號弱 ・ (空) 0/3 別跟<br>
+                    🧠 點按鈕自動跳診斷頁 + 跑 AI 全盤分析(score ≥ 2 才顯)
+                </div>
             </div>` : '';
 
         // ── 段 3:被動基準 + 主動 ETF 績效卡(極簡)─────────────────────────
