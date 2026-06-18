@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V17.21</title>
+    <title>首席 AI 司令部 | 戰略終端 V18.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -747,7 +747,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V17.21</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1154,9 +1154,10 @@
                             <span id="xrayRevMom" class="text-[10px] font-mono text-gray-500"></span>
                         </div>
                         <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-emerald-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">毛利率趨勢 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
-                            <span id="xrayGrossMargin" class="font-mono font-black text-sm leading-tight text-gray-600">--</span>
-                            <span id="xrayGmCompare" class="text-[10px] font-mono text-gray-500"></span>
+                            <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">毛利率 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
+                            <span id="xrayGrossMargin" class="font-mono font-black text-xl leading-tight text-gray-600">--</span>
+                            <div id="xrayGmSpark" style="width:100%;height:22px;margin-top:1px;"></div>
+                            <span id="xrayGmCompare" class="text-[9px] font-mono text-gray-500 mt-0.5"></span>
                         </div>
                     </div>
                     <!-- 📊 估值(本益比 PE,獨立寬版) -->
@@ -3197,9 +3198,13 @@ ${list}
         if (this._etfCache && !force) return this._etfCache;
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const r = await fetch(new URL('data/etf_tracking.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
-            this._etfCache = r.ok ? await r.json() : null;
-        } catch (_) { this._etfCache = null; }
+            const r = await fetch(new URL('data/etf_tracking.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(15000) });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            this._etfCache = await r.json();
+        } catch (e) {
+            console.warn('[ETF] etf_tracking 載入失敗:', e?.message || e);
+            this._etfCache = null;
+        }
         return this._etfCache;
     },
     // V17.18 — Falcon 建倉分(0-100,含技術+籌碼+板塊+大盤)+ factors 內已 bake 主力連N日買超
@@ -3208,10 +3213,12 @@ ${list}
         if (this._falconScoresCache) return this._falconScoresCache;
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const r = await fetch(new URL('data/falcon_scores.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
-            const d = r.ok ? await r.json() : null;
+            const r = await fetch(new URL('data/falcon_scores.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(15000) });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const d = await r.json();
             this._falconScoresCache = (d && d.stocks) || {};
-        } catch (_) {
+        } catch (e) {
+            console.warn('[ETF] falcon_scores 載入失敗:', e?.message || e);
             this._falconScoresCache = {};
         }
         return this._falconScoresCache;
@@ -3287,7 +3294,17 @@ ${list}
         if (!box) return;
         const d = await this._loadEtfTracking(true);
         document.getElementById('navBtnEtfDot')?.classList.add('hidden'); // 看過清紅點
-        if (!d || !Array.isArray(d.etfs) || !d.etfs.length) {
+        // V17.22 — 分流「拿不到(網路/CDN)」vs「真空(尚未採礦)」,避免誤顯「準備中」
+        if (!d) {
+            box.innerHTML = `
+                <div class="p-6 text-center">
+                    <div class="text-red-300 font-bold mb-1.5">🏦 ETF 資料載入失敗</div>
+                    <div class="text-[11px] text-gray-500 mb-3">網路超時或 GitHub Pages CDN 暫時不可達<br>檢查網路後重試</div>
+                    <button onclick="app.renderEtfTab()" class="px-4 py-1.5 bg-amber-700/40 border border-amber-500 rounded text-amber-200 text-xs hover:bg-amber-600/40">🔄 重試載入</button>
+                </div>`;
+            return;
+        }
+        if (!Array.isArray(d.etfs) || !d.etfs.length) {
             box.innerHTML = `<div class="p-6 text-center text-gray-500 text-sm">🏦 ETF 順風車資料準備中<br><span class="text-xs">首次雲端採礦後自動啟用(每日盤後更新)</span></div>`;
             return;
         }
@@ -7184,7 +7201,7 @@ ${peerLine}${newsCtx}
                 if (r.type==='GrossProfit'||r.type==='gross_profit') byQ[q].gross = r.value;
                 if (r.type==='Revenue'    ||r.type==='revenue')      byQ[q].rev   = r.value;
             }
-            const validQs = Object.keys(byQ).filter(q=>byQ[q].gross!=null&&byQ[q].rev>0).sort().slice(-3);
+            const validQs = Object.keys(byQ).filter(q=>byQ[q].gross!=null&&byQ[q].rev>0).sort().slice(-8);  // V17.22:近 8 季供 sparkline
             const gmArr = validQs.map(q=>(byQ[q].gross/byQ[q].rev*100));
             let gmTrend = null, gmTrendStr = null;
             if (gmArr.length >= 2) {
@@ -7417,9 +7434,46 @@ ${peerLine}${newsCtx}
             }
         } catch (e) { console.warn('[Industry PE]', e); }
         
-        // 毛利率趨勢:台股慣例上升=好=紅、下降=壞=綠(先前紅綠顛倒,已修正)
-        document.getElementById('xrayGrossMargin').className = `font-mono font-bold text-sm leading-tight ${gmTrend==null?'text-gray-600':gmTrend>0?'text-red-400':gmTrend<0?'text-green-400':'text-gray-400'}`;
-        document.getElementById('xrayGrossMargin').textContent = gmTrendStr || '無資料';
+        // V17.22 — 毛利率:主數字 = 本季 %(text-xl),趨勢由 mini sparkline 表達
+        //   台股慣例:上升=好=紅、下降=壞=綠
+        const gmEl = document.getElementById('xrayGrossMargin');
+        const gmSparkEl = document.getElementById('xrayGmSpark');
+        if (gmArr.length) {
+            const lastGm = gmArr[gmArr.length - 1];
+            gmEl.textContent = `${lastGm.toFixed(1)}%`;
+            gmEl.className = `font-mono font-black text-xl leading-tight ${gmTrend == null ? 'text-gray-600' : gmTrend > 0 ? 'text-red-400' : gmTrend < 0 ? 'text-green-400' : 'text-gray-300'}`;
+            if (gmSparkEl && gmArr.length >= 2 && window.echarts) {
+                try {
+                    this._gmSparkChart?.dispose?.();
+                    const c = echarts.init(gmSparkEl, null, { renderer: 'svg' });
+                    const col = gmTrend >= 0 ? '#ef4444' : '#10b981';
+                    c.setOption({
+                        grid: { left: 1, right: 1, top: 2, bottom: 2 },
+                        xAxis: { type: 'category', show: false, data: gmArr.map((_, i) => i), boundaryGap: false },
+                        yAxis: { type: 'value', show: false, scale: true },
+                        tooltip: { trigger: 'axis', formatter: p => `${p[0].value.toFixed(1)}%`, backgroundColor: '#0d1117', borderColor: '#30363d', textStyle: { color: '#fff', fontSize: 10 } },
+                        series: [{
+                            type: 'line', smooth: true, symbol: 'circle', symbolSize: 3,
+                            data: gmArr.map(v => +v.toFixed(2)),
+                            lineStyle: { color: col, width: 1.5 },
+                            itemStyle: { color: col },
+                            areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: col + '55' },
+                                    { offset: 1, color: 'rgba(0,0,0,0)' }
+                                ] } }
+                        }]
+                    });
+                    this._gmSparkChart = c;
+                } catch (e) { console.warn('[GM Sparkline]', e); }
+            }
+        } else if (gmTrendStr) {
+            gmEl.textContent = gmTrendStr;
+            gmEl.className = 'font-mono font-bold text-sm leading-tight text-gray-400';
+        } else {
+            gmEl.textContent = '無資料';
+            gmEl.className = 'font-mono font-bold text-sm text-gray-600';
+        }
 
         // 毛利率 QoQ(本季 vs 上季)+ YoY(本季 vs 去年同季)— 使用者要求「跟上次比好還壞」直觀提示
         const gmCmpEl = document.getElementById('xrayGmCompare');
