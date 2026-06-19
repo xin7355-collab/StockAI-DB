@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V18.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V18.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -747,7 +747,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3209,7 +3209,10 @@ ${list}
     },
     // V17.18 — Falcon 建倉分(0-100,含技術+籌碼+板塊+大盤)+ factors 內已 bake 主力連N日買超
     _falconScoresCache: null,
-    async _loadFalconScores() {
+    // V18.3 — 改名避免被 line 5978 同名 method 覆蓋(JS object literal 後者覆蓋前者);
+    //          line 5978 那個 _loadFalconScores 有渲染 side effect 但 return undefined,
+    //          ETF tab 需要純 map → 這版專供 _calcEtfFollowSignal 用
+    async _loadFalconScoresMap() {
         if (this._falconScoresCache) return this._falconScoresCache;
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
@@ -3334,7 +3337,7 @@ ${list}
             box.innerHTML = `<div class="p-6 text-center text-gray-500 text-sm">🏦 ETF 順風車資料準備中<br><span class="text-xs">首次雲端採礦後自動啟用(每日盤後更新)</span></div>`;
             return;
         }
-        const falconMap = await this._loadFalconScores();  // V17.18 跟單訊號 Gate 2+3 用
+        const falconMap = await this._loadFalconScoresMap();  // V18.3 — 改用 Map 版,避免被 line 5978 同名 method 覆蓋成 undefined
         const pct = v => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v}%`);
         const pcls = v => (v == null ? 'text-gray-500' : v >= 0 ? 'text-red-400' : 'text-green-400');
         const userSet = this._userHoldSet();
