@@ -31,9 +31,15 @@ self.addEventListener('fetch', e => {
 
     // 【修復 K 線缺資料】動態資料（K線/籌碼/各式 cache JSON）一律走純網路，永不快取，
     // 杜絕手機 PWA 吃到舊的採礦結果。斷網時才退而求其次拿舊快取。
+    // V18.2 — fetch 加 18 秒 hard timeout(防 iOS PWA 網路堆疊偶爾 hang 不返,
+    //         頁面 AbortSignal 在 SW 範圍內救不到 → 整個 e.respondWith 卡死 → 卡 loading)
     const reqUrl = new URL(e.request.url);
     if (reqUrl.pathname.includes('/data/') || reqUrl.pathname.endsWith('.json')) {
-        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+        const fetchWithTimeout = Promise.race([
+            fetch(e.request),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('SW fetch timeout 18s')), 18000))
+        ]);
+        e.respondWith(fetchWithTimeout.catch(() => caches.match(e.request) || new Response('{}', { status: 504, headers: { 'Content-Type': 'application/json' } })));
         return;
     }
 
