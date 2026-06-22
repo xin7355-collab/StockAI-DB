@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V18.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V18.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -747,7 +747,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -963,6 +963,9 @@
                     <div class="font-black text-purple-200 mb-0.5">🔬 籌碼頁怎麼看</div>
                     <div>重點看兩件事：① <b class="text-white">法人連續方向</b>（連買連賣 > 單日漲跌幅）② <b class="text-white">主力分點集中度</b>。下方「🤖 AI 解析」會用白話文整合給你聽 — 不用自己算。</div>
                 </div>
+
+                <!-- ⚔️ 朱家泓策略狀態(V18.8 — 距離 5MA/20MA/-5% 停損各還多少 + 燈號)-->
+                <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
 
                 <!-- 🚦 ETF 跟車狀態(V18.6 — 個股被哪些 ETF 換入/加碼/換出 + 進場價 vs 今價 ±%)-->
                 <div id="etfFollowCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -2743,21 +2746,29 @@ const app = {
         this.watchlistInterval = setInterval(() => this._watchlistPulse(), 60000);
     },
 
-    // 盤中自選股監控：突破 5MA / 跌破 20MA / 創 20 日新高新低 → PWA 推播
+    // 盤中自選股監控:突破 5MA / 跌破 20MA / 創 20 日新高新低 → PWA 推播
+    // V18.8 — 加朱家泓策略:跌破 5MA 短線停利、跌破進場成本 -5% 鐵血停損(union inventory)
     async _watchlistPulse() {
         if (!this.isMarketOpen()) return;
         if (!this.settings.watchlistAlert) return;
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-        const group = this.favGroups?.[this.activeGroupName];
-        if (!group || !group.length) return;
+        // V18.8 union:自選股 + 庫存股(去重),確保庫存被監控
+        const group = this.favGroups?.[this.activeGroupName] || [];
+        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
+        const invSyms = inv.map(i => i.symbol).filter(Boolean);
+        const allSyms = [...new Set([...group, ...invSyms])];
+        if (!allSyms.length) return;
+        // 建 cost lookup(沒在 inventory 內的股 entry=null → 跳過 -5% 停損判定)
+        const costBy = {};
+        inv.forEach(i => { if (i.symbol && i.cost) costBy[i.symbol] = +i.cost; });
 
-        // 5 檔/輪 round-robin；輪流掃完整組
-        this._wlCursor = (this._wlCursor || 0) % group.length;
+        // 5 檔/輪 round-robin;輪流掃完整組
+        this._wlCursor = (this._wlCursor || 0) % allSyms.length;
         const slice = [];
         for (let i = 0; i < 5 && slice.length < 5; i++) {
-            slice.push(group[(this._wlCursor + i) % group.length]);
+            slice.push(allSyms[(this._wlCursor + i) % allSyms.length]);
         }
-        this._wlCursor = (this._wlCursor + 5) % group.length;
+        this._wlCursor = (this._wlCursor + 5) % allSyms.length;
 
         for (const item of slice) {
             const sym = typeof item === 'string' ? item : item.symbol;
@@ -2793,10 +2804,18 @@ const app = {
                     this._fireAlert(title, `${name}(${sym}) ${body}`, sym);
                 };
 
-                if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🟢 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}（停利訊號）`);
-                if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🔴 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}（停損警告）`);
+                if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🟢 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}(停利訊號)`);
+                // V18.8 — 朱家泓:跌破 5MA = 短線停利/停損(原本只監突破,缺賣訊)
+                if (prevClose >= ma5 && nowPrice < ma5)  trigger('dn5',     '🟡 跌破 5MA',   `現價 ${nowPrice.toFixed(2)} 跌破 5MA ${ma5.toFixed(2)}(朱:短線停利/停損)`);
+                if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🔴 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}(中線停損警告)`);
                 if (nowPrice > hi20)                      trigger('hi20',   '🚀 創 20 日新高', `現價 ${nowPrice.toFixed(2)} 突破 ${hi20.toFixed(2)}`);
                 if (nowPrice < lo20)                      trigger('lo20',   '⚠️ 創 20 日新低', `現價 ${nowPrice.toFixed(2)} 跌破 ${lo20.toFixed(2)}`);
+                // V18.8 — 朱家泓鐵血停損:跌破進場成本 -5%(只對庫存股,SW 已有 background 推同邏輯,此處盤中即時補)
+                const entryCost = costBy[sym];
+                if (entryCost && nowPrice < entryCost * 0.95) {
+                    const stopPx = (entryCost * 0.95).toFixed(2);
+                    trigger('stop5', '🚨 鐵血停損 -5%', `現價 ${nowPrice.toFixed(2)} 跌破成本 ${entryCost.toFixed(2)} 的停損價 ${stopPx}(朱:認賠出場)`);
+                }
 
                 await new Promise(r => setTimeout(r, 1500)); // 每股間隔 1.5s 避免 Fugle 429
             } catch (e) {
@@ -3391,6 +3410,75 @@ ${list}
         card.classList.remove('hidden');
     },
 
+    // V18.8 — 朱家泓策略狀態卡(個股頁籌碼 tab):距離 5MA/20MA/-5% 停損各還多少 + 燈號
+    //          資料源全用 activeData(零網路),無進場價時自動隱藏停損列
+    renderChuStrategyCard(sym) {
+        const card = document.getElementById('chuStrategyCard');
+        if (!card) return;
+        if (!sym || !Array.isArray(this.activeData) || this.activeData.length < 20) { card.classList.add('hidden'); return; }
+        const arr = this.activeData;
+        const last20 = arr.slice(-20);
+        const ma5  = arr.slice(-5).reduce((s, b) => s + (b.close ?? b.c ?? 0), 0) / 5;
+        const ma20 = last20.reduce((s, b) => s + (b.close ?? b.c ?? 0), 0) / 20;
+        const nowPx = arr[arr.length - 1].close ?? arr[arr.length - 1].c;
+        if (!nowPx) { card.classList.add('hidden'); return; }
+        // 從 inventory 抓進場資料(沒在庫存就提示加入)
+        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
+        const invItem = inv.find(i => i.symbol === sym);
+        const entryCost = invItem ? +invItem.cost : null;
+        const entryDate = invItem?.buyDate || '';
+        const stopPx = entryCost ? entryCost * 0.95 : null;
+        // 距離計算
+        const distMa5  = ((nowPx - ma5)  / ma5  * 100);
+        const distMa20 = ((nowPx - ma20) / ma20 * 100);
+        const distStop = stopPx ? ((nowPx - stopPx) / stopPx * 100) : null;
+        const distEntry = entryCost ? ((nowPx - entryCost) / entryCost * 100) : null;
+        // 燈號:距離為正(在上方)=安全,負=已跌破
+        const lamp = (dist, dangerThreshold = 0) => {
+            if (dist == null) return { ic: '⚪', cls: 'text-gray-500', txt: '無資料' };
+            if (dist > 3)       return { ic: '🟢', cls: 'text-green-400', txt: '安全' };
+            if (dist > dangerThreshold) return { ic: '🟡', cls: 'text-yellow-400', txt: '接近' };
+            return                 { ic: '🔴', cls: 'text-red-400', txt: '已跌破' };
+        };
+        const m5L = lamp(distMa5);
+        const m20L = lamp(distMa20);
+        const stopL = lamp(distStop);
+        const pctTxt = (v) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+        // 顯字幕
+        const entryHeader = entryCost
+            ? `<div class="text-[10px] text-pink-300/80">進場 <span class="font-mono text-white">${entryCost.toFixed(2)}</span>${entryDate ? `(${entryDate})` : ''} → 現價 <span class="font-mono text-white">${nowPx.toFixed(2)}</span> <span class="${distEntry > 0 ? 'text-red-300' : 'text-green-300'} font-bold">${pctTxt(distEntry)}</span></div>`
+            : `<div class="text-[10px] text-gray-400">尚未填寫進場價 → <span class="text-pink-300 underline cursor-pointer" onclick="app.switchAppTab('inv'); app.vibrate(20);">點此到「庫存」加入</span>,自動啟動鐵血停損 -5% 推播</div>`;
+        const stopRow = stopPx
+            ? `<div class="flex items-center justify-between py-1 border-b border-[#21262d]">
+                <span class="text-[11px]"><b class="text-pink-300">鐵血停損</b> <span class="text-[10px] text-gray-500">成本 -5%</span></span>
+                <span class="font-mono text-[11px] text-gray-300">${stopPx.toFixed(2)}</span>
+                <span class="${stopL.cls} font-mono font-bold text-[11px]" style="min-width:80px;text-align:right">${stopL.ic} ${pctTxt(distStop)} ${stopL.txt}</span>
+            </div>`
+            : '';
+        card.innerHTML = `
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-pink-700/40">
+                <h4 class="text-pink-300 font-bold text-sm">⚔️ 朱家泓策略狀態</h4>
+                <span class="text-[9px] text-gray-500">5MA停利 / 20MA停損 / 成本-5% 鐵血</span>
+            </div>
+            ${entryHeader}
+            <div class="mt-2">
+                <div class="flex items-center justify-between py-1 border-b border-[#21262d]">
+                    <span class="text-[11px]"><b class="text-green-200">5MA 短線</b> <span class="text-[10px] text-gray-500">5日均</span></span>
+                    <span class="font-mono text-[11px] text-gray-300">${ma5.toFixed(2)}</span>
+                    <span class="${m5L.cls} font-mono font-bold text-[11px]" style="min-width:80px;text-align:right">${m5L.ic} ${pctTxt(distMa5)} ${m5L.txt}</span>
+                </div>
+                <div class="flex items-center justify-between py-1 border-b border-[#21262d]">
+                    <span class="text-[11px]"><b class="text-blue-200">20MA 中線</b> <span class="text-[10px] text-gray-500">月線</span></span>
+                    <span class="font-mono text-[11px] text-gray-300">${ma20.toFixed(2)}</span>
+                    <span class="${m20L.cls} font-mono font-bold text-[11px]" style="min-width:80px;text-align:right">${m20L.ic} ${pctTxt(distMa20)} ${m20L.txt}</span>
+                </div>
+                ${stopRow}
+            </div>
+            <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">💡 跌破 5MA → 短線停利出場 ・ 跌破 20MA → 中線停損 ・ 跌破成本 -5% → 鐵血認賠<br>盤中即時監控已啟動,觸發會 PWA 推播(需先在「⚙️ 設定」開啟自選股警報 + 通知權限)</div>
+        `;
+        card.classList.remove('hidden');
+    },
+
     async renderEtfTab() {
         const box = document.getElementById('tabContentEtf');
         if (!box) return;
@@ -3627,6 +3715,8 @@ ${list}
             // renderChipGlobal 由 loadBrokerChips/fetchChipTimeline 非同步完成後呼叫，不在此同步觸發
             // V18.6 — ETF 跟車狀態卡(個股被哪些 ETF 動 + 進場價 vs 今價 ±%)
             this.renderEtfFollowCard(this.currentSymbolId);
+            // V18.8 — 朱家泓策略狀態卡(5MA/20MA/-5% 距離 + 燈號)
+            this.renderChuStrategyCard(this.currentSymbolId);
         }
         if (tab === 'corp' && this.currentSymbolId) {
             // 🔬 X 光機:localStorage 快取優先(<24hr 直接顯示),過期/缺則背景重抓覆蓋
@@ -8272,6 +8362,8 @@ ${_newsLine}${globalContext}
         this._autoLoadFundamentals(targetSym);
         // V18.6 — 切股時若使用者已在籌碼 tab,刷新「ETF 跟車狀態」卡;不在 chip tab 也安全(card 隱藏)
         try { this.renderEtfFollowCard(targetSym); } catch(_) {}
+        // V18.8 — 切股時同步刷新「朱家泓策略狀態」卡
+        try { this.renderChuStrategyCard(targetSym); } catch(_) {}
 
         if (this.baseRawData.length > 1) {
             const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
