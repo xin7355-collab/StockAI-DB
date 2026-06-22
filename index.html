@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2826,6 +2826,50 @@ const app = {
         // 盤中自選股全套監控：每 60 秒掃描一輪（round-robin 5 檔/輪避免 Fugle 429）
         if (this.watchlistInterval) clearInterval(this.watchlistInterval);
         this.watchlistInterval = setInterval(() => this._watchlistPulse(), 60000);
+        // V20.6 — 每日首次開 App:掃自選+庫存,有處置風險(注意/處置/即將出關)就推 1 則
+        //         localStorage 記日期,同一天不重複
+        setTimeout(() => this._dailyDisposedAlertSweep(), 3000);
+    },
+
+    // V20.6 — 每日開 App 掃自選/庫存,有處置風險自動推播 (1 天 1 次)
+    async _dailyDisposedAlertSweep() {
+        if (!this.settings.watchlistAlert) return;
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const today = this.getTodayStr();
+        const lastSwept = localStorage.getItem('proTerminalLastDisposedSweep') || '';
+        if (lastSwept === today) return;   // 今日已掃過
+        try { localStorage.setItem('proTerminalLastDisposedSweep', today); } catch(_) {}
+        // 等 attention_status.json 載入完(_loadAttentionStatus 啟動時拉)
+        await new Promise(r => setTimeout(r, 1500));
+        if (!this.attentionStatus) return;
+        // Union 自選 + 庫存(去重)
+        const fav = this.favGroups?.[this.activeGroupName] || [];
+        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
+        const allSyms = [...new Set([...fav, ...inv.map(i => i.symbol).filter(Boolean)])];
+        if (!allSyms.length) return;
+        const alerts = [];
+        for (const sym of allSyms) {
+            const info = this.attentionStatus[String(sym).trim()];
+            if (!info) continue;
+            const name = this.getStockName(sym) || sym;
+            const isDisp = (info.status || '').startsWith('🚨');
+            const isNotice = (info.status || '').includes('注意');
+            // 處置股:看 end_date 還剩幾天
+            if (isDisp && info.end_date) {
+                const days = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
+                if (days === 1)       alerts.push({ sym, title: '⏰ 你的股明天出關', body: `${name}(${sym}) ${info.interval || '?'}分撮今天最後一天 → 看尾盤量決定明天進出` });
+                else if (days === 0)  alerts.push({ sym, title: '🎉 你的股今天出獄!', body: `${name}(${sym}) 恢復 5 秒撮合 → 看開盤 30 分量價跟主力或別碰` });
+                else if (days <= 3 && days > 1) alerts.push({ sym, title: '🔒 你的股處置中', body: `${name}(${sym}) ${info.interval || '?'}分撮 ・ 還剩 ${days} 天出關` });
+            } else if (isNotice) {
+                alerts.push({ sym, title: '⚠️ 你的股被列注意', body: `${name}(${sym}) TWSE 注意股 ・ 再觸發可能升級處置 → 提防分批停利` });
+            }
+        }
+        if (!alerts.length) return;
+        // 限制最多推 3 則(避免轟炸)
+        alerts.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
+        if (alerts.length > 3) {
+            this._fireAlert('📊 處置股盤點摘要', `你還有 ${alerts.length - 3} 檔股有處置風險,點🔔看歷史通知`, '');
+        }
     },
 
     // 盤中自選股監控:突破 5MA / 跌破 20MA / 創 20 日新高新低 → PWA 推播
@@ -6691,14 +6735,25 @@ const marginByDate = {};
             lightAction = '量價普通,觀望即可';
         }
 
-        // ② 擒賊先擒王 — 同族群推薦(從 sector 對標表 + 該股代號猜產業)
-        //    精簡版:用 attentionStatus 內所有處置/注意股當「大哥」名單;若該股就是大哥,提示「找小弟」
-        const allAtt = Object.entries(this.attentionStatus || {})
-            .filter(([s, i]) => s !== sym && (i.status || '').match(/處置|注意/))
-            .slice(0, 5);
-        const peerLine = allAtt.length
-            ? `<div class="text-[11px] text-gray-300 leading-snug mt-1">同族群被關大哥(緊盯連動):${allAtt.map(([s, i]) => `<span class="font-mono text-amber-300">${s}</span>`).join(' ・ ')}</div>`
-            : '<div class="text-[11px] text-gray-400 mt-1">目前無其他處置/注意股可比對</div>';
+        // ② 擒賊先擒王 — 同族群推薦
+        // V20.6 — 用真實 industry_category 篩選同產業,只列「真的同族群」的處置/注意股,精準度高
+        const selfInfo = (this.allStockList || []).find(s => s.stock_id === sym);
+        const myIndustry = selfInfo?.industry_category || '';
+        const allAttRaw = Object.entries(this.attentionStatus || {})
+            .filter(([s, i]) => s !== sym && (i.status || '').match(/處置|注意/));
+        // 優先:同 industry;不夠再補其他注意/處置股
+        const samePeers = myIndustry
+            ? allAttRaw.filter(([s]) => (this.allStockList || []).find(x => x.stock_id === s)?.industry_category === myIndustry)
+            : [];
+        const otherPeers = allAttRaw.filter(([s]) => !samePeers.find(([s2]) => s2 === s));
+        const peerLine = samePeers.length
+            ? `<div class="text-[11px] text-gray-300 leading-snug mt-1">📍 <b class="text-amber-300">同 ${myIndustry} 族</b>(${samePeers.length} 檔被關):${samePeers.slice(0, 5).map(([s]) => {
+                const name = this.getStockName(s) || '';
+                return `<span class="font-mono text-amber-300 cursor-pointer hover:text-amber-200" onclick="app.analyze('${s}'); app.vibrate(20);" title="點看 ${name}">${s} ${name.slice(0, 4)}</span>`;
+            }).join(' ・ ')}</div>`
+            : (otherPeers.length
+                ? `<div class="text-[11px] text-gray-400 leading-snug mt-1">📍 同 ${myIndustry || '產業'} 暫無被關股 ・ 大盤其他被關:${otherPeers.slice(0, 3).map(([s]) => `<span class="font-mono text-gray-500">${s}</span>`).join(' ・ ')}</div>`
+                : '<div class="text-[11px] text-gray-400 mt-1">目前無其他處置/注意股可比對</div>');
 
         // ③ 買盤竭盡判斷(近 3 日是否有「漲幅 ≥7% 但未達 ±10% 漲停」)
         let exhaustHtml = '';
