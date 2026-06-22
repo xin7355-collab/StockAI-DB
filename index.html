@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V19.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -997,6 +997,9 @@
                     <div class="font-black text-purple-200 mb-0.5">🔬 籌碼頁怎麼看</div>
                     <div>重點看兩件事：① <b class="text-white">法人連續方向</b>（連買連賣 > 單日漲跌幅）② <b class="text-white">主力分點集中度</b>。下方「🤖 AI 解析」會用白話文整合給你聽 — 不用自己算。</div>
                 </div>
+
+                <!-- 🔍 V20.0 — 注意股 8 款掃描器 + 處置預測(主動偵測,所有股都顯) -->
+                <div id="attentionScanCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
 
                 <!-- 🚨 V19.4 — 處置股風控狀態(只在該股是注意/處置時顯,否則 hidden) -->
                 <div id="attentionDetailCard" class="hidden"></div>
@@ -3814,6 +3817,8 @@ ${list}
             this.renderChuStrategyCard(this.currentSymbolId);
             // V19.4 — 處置股風控卡(注意/處置/即將處置/怕關 vs 不怕關)
             this.renderAttentionDetailCard(this.currentSymbolId);
+            // V20.0 — 注意股 8 款掃描器 + 處置預測(所有股都掃)
+            this.renderAttentionScanCard(this.currentSymbolId);
         }
         if (tab === 'corp' && this.currentSymbolId) {
             // 🔬 X 光機:localStorage 快取優先(<24hr 直接顯示),過期/缺則背景重抓覆蓋
@@ -6244,6 +6249,197 @@ const marginByDate = {};
         const label = parts.join(' ・ ');
         const tip = `${info.threshold || ''}${info.end_date ? ' ・ 迄日 ' + info.end_date : ''}${info.interval ? ' ・ 分盤 ' + info.interval + ' 分鐘' : ''}`.replace(/"/g, '&quot;');
         return `<span class="inline-flex items-center ${cls} text-[9px] px-1.5 py-0.5 rounded font-bold ml-1 align-middle" title="${tip}">${label}</span>`;
+    },
+
+    // V20.0 — 注意股 8 款掃描器(MVP):前端 K 線可算的 1-4 款,其他 5-8 款待採礦補
+    //          回傳 { rules:[{idx, name, status, detail, hit}], predict:{...}, hits, summary }
+    //          TWSE 8 款規則簡化版(實際門檻官方文件:大型/中型/小型分級;這裡用實用近似閾值)
+    _calcAttentionScan(sym) {
+        if (!Array.isArray(this.activeData) || this.activeData.length < 30) return null;
+        const arr = this.activeData;
+        const n = arr.length;
+        const last = arr[n - 1];
+        const lastClose = last.close;
+        // 工具:計近 N 日累積漲跌幅(用收盤對 N 日前收盤)
+        const cumPct = (days) => {
+            if (n < days + 1) return null;
+            const past = arr[n - 1 - days].close;
+            return past > 0 ? ((lastClose - past) / past * 100) : null;
+        };
+        // 工具:近 N 日平均量
+        const avgVol = (days, offset = 0) => {
+            const s = n - 1 - offset - days + 1;
+            if (s < 0) return null;
+            const slice = arr.slice(s, s + days);
+            return slice.reduce((sum, b) => sum + (b.volume || 0), 0) / slice.length;
+        };
+
+        // ─── 第 1 款:1/5/10/20 日累積漲跌異常 ─────────────────────
+        const p5 = cumPct(5), p10 = cumPct(10), p20 = cumPct(20);
+        // 簡化閾值:5 日 ≥ ±25% / 10 日 ≥ ±30% / 20 日 ≥ ±50%
+        const r1Hits = [];
+        if (p5 != null && Math.abs(p5) >= 25)  r1Hits.push(`5 日累積 ${p5 >= 0 ? '+' : ''}${p5.toFixed(1)}%`);
+        if (p10 != null && Math.abs(p10) >= 30) r1Hits.push(`10 日累積 ${p10 >= 0 ? '+' : ''}${p10.toFixed(1)}%`);
+        if (p20 != null && Math.abs(p20) >= 50) r1Hits.push(`20 日累積 ${p20 >= 0 ? '+' : ''}${p20.toFixed(1)}%`);
+        const r1 = {
+            idx: 1, name: '漲跌幅累積過大',
+            hit: r1Hits.length > 0,
+            status: r1Hits.length ? `🟡 觸發:${r1Hits.join(' ・ ')}` : '🟢 安全',
+            detail: '近 1/5/10/20 日累積漲跌過大(閾值 25%/30%/50%)',
+        };
+
+        // ─── 第 2 款:30/60/90 日長期漲跌異常 ─────────────────────
+        const p30 = cumPct(30), p60 = cumPct(60), p90 = cumPct(90);
+        const r2Hits = [];
+        if (p30 != null && Math.abs(p30) >= 50)  r2Hits.push(`30 日 ${p30 >= 0 ? '+' : ''}${p30.toFixed(1)}%`);
+        if (p60 != null && Math.abs(p60) >= 70)  r2Hits.push(`60 日 ${p60 >= 0 ? '+' : ''}${p60.toFixed(1)}%`);
+        if (p90 != null && Math.abs(p90) >= 90)  r2Hits.push(`90 日 ${p90 >= 0 ? '+' : ''}${p90.toFixed(1)}%`);
+        const r2 = {
+            idx: 2, name: '30/60/90 日漲跌異常',
+            hit: r2Hits.length > 0,
+            status: r2Hits.length ? `🟡 觸發:${r2Hits.join(' ・ ')}` : '🟢 安全',
+            detail: '長期累積漲跌過大(閾值 50%/70%/90%)',
+        };
+
+        // ─── 第 3 款:成交量放大 ────────────────────────────────
+        const v60 = avgVol(60, 1);   // 過去 60 日均量(排除今日)
+        const v5Recent = avgVol(5);  // 近 5 日均量(含今日)
+        const lastVol = last.volume || 0;
+        const r3Hits = [];
+        if (v60 && lastVol >= v60 * 5)        r3Hits.push(`今日量 ${(lastVol / v60).toFixed(1)}× 60 日均量`);
+        if (v60 && v5Recent >= v60 * 3)        r3Hits.push(`近 5 日均量 ${(v5Recent / v60).toFixed(1)}× 60 日均量`);
+        const r3 = {
+            idx: 3, name: '成交量明顯放大',
+            hit: r3Hits.length > 0,
+            status: r3Hits.length ? `🟡 觸發:${r3Hits.join(' ・ ')}` : '🟢 安全',
+            detail: '近期量能 vs 60 日均量(閾值 5×/3×)',
+        };
+
+        // ─── 第 4 款:漲跌 + 量 綜合異常 ─────────────────────────
+        const todayChg = n >= 2 && arr[n - 2].close > 0
+            ? ((lastClose - arr[n - 2].close) / arr[n - 2].close * 100) : null;
+        const r4Hit = (todayChg != null && Math.abs(todayChg) >= 5 && v60 && lastVol >= v60 * 3);
+        const r4 = {
+            idx: 4, name: '漲跌 + 週轉率綜合異常',
+            hit: r4Hit,
+            status: r4Hit ? `🟡 觸發:今日 ${todayChg >= 0 ? '+' : ''}${todayChg.toFixed(1)}% × ${(lastVol / v60).toFixed(1)}× 量` : '🟢 安全',
+            detail: '單日漲跌 ≥ ±5% 且量能 ≥ 3× 60 日均量',
+        };
+
+        // ─── 第 5-8 款:需採礦資料 ────────────────────────────
+        const placeholder = (idx, name, detail) => ({
+            idx, name, hit: false,
+            status: '⚪ 需採礦資料(下次更新)',
+            detail,
+        });
+        const r5 = placeholder(5, '券商分點集中度', '近 5 日分點前 10 家集中度 > 90%');
+        const r6 = placeholder(6, 'PE / PB 異常', '本益比/股價淨值比異常偏高');
+        const r7 = placeholder(7, '融資融券異常', '融資餘額快速增加 / 融券異常');
+        const r8 = placeholder(8, '權證溢價率過高', '認購售權證溢價率 > 20% / 40%');
+
+        const rules = [r1, r2, r3, r4, r5, r6, r7, r8];
+        const hits = rules.filter(r => r.hit).length;
+
+        // ─── 處置預測 ──────────────────────────────────────────
+        // 算近 N 日有幾天「至少觸發 1 款 1-4 款」(用 activeData 逆推)
+        let recentHitDays3 = 0, recentHitDays5 = 0, recentHitDays10 = 0, recentHitDays30 = 0;
+        for (let i = Math.max(0, n - 30); i < n; i++) {
+            const c = arr[i].close, v = arr[i].volume || 0;
+            const prevC = i > 0 ? arr[i - 1].close : c;
+            const dayChg = prevC > 0 ? Math.abs((c - prevC) / prevC * 100) : 0;
+            // 近 5 日累積在 i 點
+            const past5 = i >= 5 ? arr[i - 5].close : null;
+            const cum5 = past5 > 0 ? Math.abs((c - past5) / past5 * 100) : 0;
+            // 該日是否觸發任一款(簡化:單日漲跌 ≥ 5% 或 5 日累積 ≥ 25% 或量 ≥ 5×60 日均量)
+            const histV60 = i >= 60 ? arr.slice(i - 60, i).reduce((s, b) => s + (b.volume || 0), 0) / 60 : null;
+            const isHit = dayChg >= 5 || cum5 >= 25 || (histV60 && v >= histV60 * 5);
+            if (isHit) {
+                const daysAgo = n - 1 - i;
+                if (daysAgo < 3)  recentHitDays3++;
+                if (daysAgo < 5)  recentHitDays5++;
+                if (daysAgo < 10) recentHitDays10++;
+                if (daysAgo < 30) recentHitDays30++;
+            }
+        }
+
+        // TWSE 注意股觸發處置條件:
+        //   ① 連 3 日觸第 1 款 → 注意 → 連 5 日 → 處置(10 分撮)
+        //   ② 10 日內 6 日觸 1~8 款 → 處置
+        //   ③ 30 日內 12 日觸 1~8 款 → 處置
+        let predictText = null, predictColor = 'border-gray-700 bg-[#0d1117] text-gray-400';
+        const willDispose3 = recentHitDays3 >= 3 ? '已達連 3 條件(注意股)' : null;
+        const daysToTrigger5 = recentHitDays5 >= 5 ? '已達連 5 條件(處置股)' : `再 ${5 - recentHitDays5} 天觸發 → 處置`;
+        const daysToTrigger10 = recentHitDays10 >= 6 ? '已達 10 中 6(處置股)' : `10 日內再 ${6 - recentHitDays10} 天觸發`;
+        const daysToTrigger30 = recentHitDays30 >= 12 ? '已達 30 中 12(處置股)' : `30 日內再 ${12 - recentHitDays30} 天觸發`;
+        if (recentHitDays5 >= 5 || recentHitDays10 >= 6 || recentHitDays30 >= 12) {
+            predictText = `🚨 已達處置門檻 — 預期明後天 TWSE 公告處置(可能 5 分盤)`;
+            predictColor = 'border-red-600 bg-red-900/40 text-red-200 animate-pulse';
+        } else if (recentHitDays3 >= 2 || recentHitDays5 >= 3) {
+            const minDays = Math.min(3 - recentHitDays3 < 0 ? 99 : 3 - recentHitDays3, 5 - recentHitDays5);
+            predictText = `⚠️ 最快再 ${Math.max(1, minDays)} 日被列注意股 / 後續處置`;
+            predictColor = 'border-amber-600 bg-amber-900/30 text-amber-200';
+        } else if (hits > 0) {
+            predictText = `💡 已觸發 ${hits} 款 — 持續觸發累積,接近注意股門檻`;
+            predictColor = 'border-yellow-700 bg-yellow-900/20 text-yellow-200';
+        } else {
+            predictText = '🟢 暫無風險';
+            predictColor = 'border-green-700 bg-green-900/20 text-green-300';
+        }
+
+        return {
+            rules, hits, predictText, predictColor,
+            recentHitDays3, recentHitDays5, recentHitDays10, recentHitDays30,
+            willDispose3, daysToTrigger5, daysToTrigger10, daysToTrigger30,
+        };
+    },
+
+    // V20.0 — render 「⚠️ 注意股 8 款掃描」卡到個股頁籌碼 tab
+    renderAttentionScanCard(sym) {
+        const card = document.getElementById('attentionScanCard');
+        if (!card) return;
+        const x = this._calcAttentionScan(sym);
+        if (!x) { card.classList.add('hidden'); return; }
+        card.classList.remove('hidden');
+        const ruleRows = x.rules.map(r => {
+            const bg = r.hit ? 'bg-yellow-900/20 border-yellow-700/50' : (r.status.startsWith('⚪') ? 'bg-[#0d1117] border-[#21262d]' : 'bg-[#0d1117] border-[#30363d]');
+            return `<div class="flex justify-between items-start gap-2 px-2.5 py-1.5 rounded border ${bg} mb-1 text-[11px]">
+                <div class="min-w-0 flex-1">
+                    <div class="font-bold text-gray-200">第 ${r.idx} 款 ・ ${r.name}</div>
+                    <div class="text-[10px] text-gray-500 leading-tight mt-0.5">${r.detail}</div>
+                </div>
+                <div class="text-right font-mono text-[10px] flex-shrink-0 max-w-[55%] leading-snug ${r.hit ? 'text-yellow-300 font-bold' : r.status.startsWith('⚪') ? 'text-gray-600' : 'text-green-400'}">${r.status}</div>
+            </div>`;
+        }).join('');
+        // 4 個 stat 卡(連 3 / 連 5 / 10 日 / 30 日)
+        const statBox = (label, value, total, hit, total2) => {
+            const danger = hit >= total;
+            const warn = hit >= Math.ceil(total * 0.6);
+            const cls = danger ? 'bg-red-900/40 border-red-600 text-red-200' : warn ? 'bg-amber-900/30 border-amber-600 text-amber-200' : 'bg-[#0d1117] border-[#30363d] text-gray-300';
+            return `<div class="text-center rounded p-1.5 border ${cls}">
+                <div class="text-base font-mono font-black leading-none">${hit}<span class="text-[10px] text-gray-500">/${total2}</span></div>
+                <div class="text-[9px] mt-0.5 leading-tight">${label}</div>
+            </div>`;
+        };
+        card.innerHTML = `
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
+                <h4 class="text-amber-300 font-bold text-sm">🔍 注意股 8 款掃描</h4>
+                <span class="text-[10px] text-gray-500">${x.hits}/4 款觸發(可算)</span>
+            </div>
+            <!-- 處置預測 banner -->
+            <div class="rounded-lg border ${x.predictColor} px-3 py-2 mb-2 text-[12px] font-bold">${x.predictText}</div>
+            <!-- 4 個累積統計 -->
+            <div class="grid grid-cols-4 gap-1.5 mb-2">
+                ${statBox('連 3 日', x.recentHitDays3, 3, x.recentHitDays3, 3)}
+                ${statBox('連 5 日', x.recentHitDays5, 5, x.recentHitDays5, 5)}
+                ${statBox('10 日內', x.recentHitDays10, 6, x.recentHitDays10, 10)}
+                ${statBox('30 日內', x.recentHitDays30, 12, x.recentHitDays30, 30)}
+            </div>
+            <!-- 8 款規則 -->
+            <div>${ruleRows}</div>
+            <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">
+                💡 TWSE 注意 → 處置門檻:① 連 3 日觸 1 款 = 注意 ・ 連 5 日 = 處置 ・ ② 10 日內 6 天 = 處置 ・ ③ 30 日內 12 天 = 處置<br>
+                ⚪ 第 5-8 款需採礦資料(分點集中度/PE/融資/權證溢價),下版補
+            </div>`;
     },
 
     // V19.4 — 個股頁渲染處置股風控卡(沒命中 hidden)
@@ -8768,6 +8964,8 @@ ${_newsLine}${globalContext}
         try { this.renderEtfFollowCard(targetSym); } catch(_) {}
         try { this.renderChuStrategyCard(targetSym); } catch(_) {}
         try { this.renderAttentionDetailCard(targetSym); } catch(_) {}
+        // V20.0 — 注意股 8 款掃描器
+        try { this.renderAttentionScanCard(targetSym); } catch(_) {}
 
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
