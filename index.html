@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V18.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V19.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -129,16 +129,16 @@
         </div>
     </div>
 
-    <!-- V18.9 — 全螢幕搜尋 modal(置頂🔍開啟,仿元大/玉山證券搜尋頁) -->
+    <!-- V19.0 — 全螢幕搜尋 modal(置頂🔍開啟,加「新增至」目的清單切換 + 「查看更多」摺疊) -->
     <div id="globalSearchModal" class="hidden fixed inset-0 z-[100] bg-[#0d1117] flex flex-col" onclick="if(event.target===this)app.closeGlobalSearchModal();">
         <div class="flex items-center justify-between px-3 py-3 border-b border-[#30363d] flex-shrink-0">
-            <button onclick="app.closeGlobalSearchModal()" class="text-gray-300 hover:text-white text-2xl w-10 text-left leading-none">‹</button>
+            <button onclick="app.closeGlobalSearchModal()" class="text-gray-300 hover:text-white text-3xl w-10 text-left leading-none font-thin">‹</button>
             <span class="text-lg font-bold text-white">搜尋</span>
             <span class="w-10"></span>
         </div>
         <div class="px-3 py-3 flex-shrink-0">
-            <div class="flex items-center bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 gap-2">
-                <span class="text-gray-500 text-lg">🔍</span>
+            <div class="flex items-center bg-[#1c2128] border border-[#30363d] rounded-xl px-3 py-3 gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500 flex-shrink-0"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="search" id="globalSearchInput" inputmode="search" enterkeyhint="search" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
                     class="bg-transparent text-white flex-1 outline-none text-base placeholder-gray-500"
                     placeholder="股票代號 / 名稱"
@@ -148,10 +148,16 @@
         </div>
         <div class="px-3 pb-2 flex items-center justify-between flex-shrink-0">
             <span class="text-[13px] font-bold text-gray-400">最近搜尋</span>
-            <button onclick="app._clearRecentSearches(); app.vibrate(20);" class="text-[12px] text-gray-500 hover:text-amber-300">清除</button>
+            <div class="flex items-center gap-3">
+                <button onclick="app._clearRecentSearches(); app.vibrate(20);" class="text-[12px] text-gray-500 hover:text-amber-300">清除</button>
+                <button onclick="app._switchAddToGroup(); app.vibrate(20);" id="globalSearchAddToBtn" class="text-[12px] text-amber-400 hover:text-amber-200">新增至</button>
+            </div>
         </div>
-        <ul id="globalSearchRecent" class="flex-1 overflow-y-auto px-1"></ul>
+        <ul id="globalSearchRecent" class="overflow-y-auto px-1"></ul>
         <ul id="globalSearchSuggest" class="hidden flex-1 overflow-y-auto px-1"></ul>
+        <div id="globalSearchMoreBtnWrap" class="hidden text-center py-3 border-t border-[#21262d] flex-shrink-0">
+            <button onclick="app._expandRecentSearches(); app.vibrate(20);" id="globalSearchMoreBtn" class="text-gray-400 hover:text-white text-[13px]">查看更多</button>
+        </div>
     </div>
 
     <!-- V17.21 — 到價監控 modal(籌碼 App 風格,2 sub-tab) -->
@@ -766,24 +772,30 @@
     <div id="invModal" class="modal-base hidden" data-edit-idx="-1" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="invModalTitle" class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：1000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button id="invModalConfirmBtn" onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <div class="header-fixed w-full flex flex-col shadow-md">
-        <!-- V18.9 — 置頂精簡:刪 logo 標題 + 副標,搜尋變放大鏡 modal,加 🔔 提醒鈕 -->
-        <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-2 gap-2 relative bg-[#0d1117]">
-            <div class="flex items-center flex-shrink-0 gap-2">
+        <!-- V19.0 — 加回 logo + 🔍 🔔 改 SVG line icon(統一證券 App 風格) -->
+        <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
+            <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
+                <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
+                    <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.0</span>
+                </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
-                <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.4rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
+                <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
                 <!-- ⚙️ 設定 -->
-                <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.4rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
+                <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.2rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-                <!-- 🔍 全螢幕搜尋(舊 input 改 modal,符合使用者熟悉的證券 App 體驗) -->
-                <button onclick="app.openGlobalSearchModal(); app.vibrate(30);" class="text-gray-300 hover:text-white text-[1.4rem] flex-shrink-0" title="搜尋股票">🔍</button>
-                <!-- 🔔 提醒(點開到價監控全部頁) -->
-                <button onclick="app.openPriceAlertModal(''); app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.4rem] flex-shrink-0 relative" title="到價監控提醒">
-                    🔔
-                    <span id="globalAlertDot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-1 ring-[#0d1117]"></span>
+                <!-- 🔍 全螢幕搜尋(SVG line icon) -->
+                <button onclick="app.openGlobalSearchModal(); app.vibrate(30);" class="text-gray-300 hover:text-white flex-shrink-0 p-1" title="搜尋股票">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
+                <!-- 🔔 提醒(SVG line icon,有紅點 badge) -->
+                <button onclick="app.openPriceAlertModal(''); app.vibrate(30);" class="text-amber-300 hover:text-amber-200 flex-shrink-0 p-1 relative" title="到價監控提醒">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span id="globalAlertDot" class="hidden absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-red-500 ring-1 ring-[#0d1117]"></span>
                 </button>
             </div>
-            <!-- V18.9 — 隱藏舊 input(暫保留 id 兼容,因 _analyze 內仍會清空它的 .value) -->
+            <!-- V18.9 — 隱藏舊 input(暫保留 id 兼容,_analyze 內仍會清空它的 .value) -->
             <input type="search" id="symbolInput" value="" class="hidden" />
             <ul id="searchDropdown" class="hidden absolute top-12 right-3 mt-1 w-[200px] bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-48 z-[300]"></ul>
         </header>
@@ -4578,21 +4590,55 @@ ${list}
         const ul = document.getElementById('globalSearchRecent');
         if (!ul) return;
         const arr = this._getRecentSearches();
+        // 更新「新增至」label 顯目前作用中清單
+        const addToBtn = document.getElementById('globalSearchAddToBtn');
+        if (addToBtn) addToBtn.textContent = `新增至 ${this.activeGroupName || ''}`;
         if (!arr.length) {
             ul.innerHTML = '<li class="text-center text-gray-600 text-sm py-8">尚無搜尋紀錄</li>';
+            document.getElementById('globalSearchMoreBtnWrap')?.classList.add('hidden');
             return;
         }
-        ul.innerHTML = arr.map(sym => {
+        // 預設顯前 5 筆,> 5 才出現「查看更多」
+        const expanded = this._recentExpanded === true;
+        const shown = expanded ? arr : arr.slice(0, 5);
+        ul.innerHTML = shown.map(sym => {
             const name = this.getStockName(sym) || '';
             return `<li class="flex items-center justify-between px-3 py-3 border-b border-[#21262d] hover:bg-[#161b22] active:bg-[#21262d] transition-colors">
-                <button onclick="app._pickGlobalSearch('${sym}')" class="flex-1 text-left flex items-center gap-2">
+                <button onclick="app._pickGlobalSearch('${sym}')" class="flex-1 text-left flex items-center gap-2 min-w-0">
                     <span class="w-5 h-5 rounded-full border border-gray-600 flex-shrink-0"></span>
                     <span class="font-mono font-black text-white text-base">${sym}</span>
-                    <span class="text-gray-300 text-base ml-1">${name}</span>
+                    <span class="text-gray-300 text-base ml-1 truncate">${name}</span>
                 </button>
-                <button onclick="event.stopPropagation(); app._addToGroup('${sym}', app.activeGroupName); app.vibrate(20);" class="text-amber-400 hover:text-amber-200 text-2xl leading-none w-9 h-9 flex items-center justify-center" title="加入自選">⊕</button>
+                <button onclick="event.stopPropagation(); app._addToGroup('${sym}', app.activeGroupName); app.vibrate(20);" class="text-amber-400 hover:text-amber-200 text-3xl leading-none w-9 h-9 flex items-center justify-center font-light" title="加入 ${this.activeGroupName || '自選'}">⊕</button>
             </li>`;
         }).join('');
+        const wrap = document.getElementById('globalSearchMoreBtnWrap');
+        const btn = document.getElementById('globalSearchMoreBtn');
+        if (wrap && btn) {
+            if (arr.length > 5) {
+                wrap.classList.remove('hidden');
+                btn.textContent = expanded ? '收起' : `查看更多 (${arr.length - 5})`;
+            } else wrap.classList.add('hidden');
+        }
+    },
+    _expandRecentSearches() {
+        this._recentExpanded = !this._recentExpanded;
+        this._renderRecentSearches();
+    },
+    // 「新增至」label 點擊 → 重用 favPickerModal 切換目的清單(再次按 ⊕ 會加進新選的清單)
+    _switchAddToGroup() {
+        const names = Object.keys(this.favGroups || {});
+        if (!names.length) { alert('尚無自選清單,請先到「自選」頁建立'); return; }
+        // 簡易 prompt 切換(避免再多一層 modal 干擾)
+        const cur = this.activeGroupName;
+        const list = names.map((n, i) => `${i + 1}. ${n}${n === cur ? ' ✓' : ''}`).join('\n');
+        const ans = prompt(`新增至哪個清單?輸入編號:\n${list}`, '1');
+        const idx = parseInt(ans, 10) - 1;
+        if (!isNaN(idx) && idx >= 0 && idx < names.length) {
+            this.activeGroupName = names[idx];
+            try { localStorage.setItem('proTerminalActiveGroup', this.activeGroupName); } catch(_) {}
+            this._renderRecentSearches();
+        }
     },
     _handleGlobalSearchInput(event) {
         const val = event.target.value.trim().toLowerCase();
