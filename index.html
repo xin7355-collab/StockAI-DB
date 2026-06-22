@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -877,6 +877,8 @@
                             <span id="priceAlertIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="設定到價監控,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">🚨</span>
                             <span id="quoteName" class="font-black leading-tight tracking-wide min-w-0 break-words" style="font-size: clamp(1.3rem, 5.5vw, 2.1rem); word-break: break-word;">載入中...</span>
                             <span id="quoteCode" class="text-[11px] text-gray-400 font-mono font-bold leading-none flex-shrink-0"></span>
+                            <!-- V20.3 — 注意股/必關股/處置股 badge(動態填,沒命中隱藏) -->
+                            <span id="quoteAttBadge" class="hidden"></span>
                         </div>
                         <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-1 mt-1">
                             <span id="stockTags" class="inline-flex flex-wrap gap-x-1 gap-y-0.5 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap">讀取中...</span></span>
@@ -6436,6 +6438,49 @@ const marginByDate = {};
         };
     },
 
+    // V20.3 — 個股頁標題列代號旁的「注意/必關/處置」badge(沒命中 hidden)
+    //         注意股 / 處置股 N 分撮:從 attention_status
+    //         必關股:從 _calcAttentionScan 預測(8 款掃描)— 即將被列入處置
+    //         處置前/中/後 提醒:依 end_date 動態給文字
+    renderQuoteAttBadge(sym) {
+        const span = document.getElementById('quoteAttBadge');
+        if (!span) return;
+        const info = this.attentionStatus?.[String(sym).trim()];
+        const scan = (Array.isArray(this.activeData) && this.activeData.length >= 30) ? this._calcAttentionScan(sym) : null;
+        // 必關股判定:scan 預測為「即將處置」(predictText 開頭是 🚨 或 ⚠️)
+        const isMustClose = scan && (scan.predictText?.startsWith('🚨') || scan.predictText?.startsWith('⚠️'));
+        if (!info && !isMustClose) {
+            span.classList.add('hidden');
+            span.innerHTML = '';
+            return;
+        }
+        const tags = [];
+        // 處置股(優先,含 N 分撮 + N 天後出關)
+        if (info && (info.status || '').startsWith('🚨')) {
+            const intStr = info.interval ? `${info.interval}分盤` : '處置中';
+            let daysStr = '';
+            if (info.end_date) {
+                const days = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
+                daysStr = days > 0 ? ` ・ ${days}天後出關` : days === 0 ? ' ・ 今出關' : ` ・ 已出獄${-days}天`;
+            }
+            tags.push(`<span class="inline-block bg-red-900/80 text-red-200 border border-red-500 rounded px-1.5 py-0.5 text-[10px] font-black ml-1 animate-pulse" title="${(info.threshold || '').replace(/"/g,'&quot;')}">🚨 處置 ${intStr}${daysStr}</span>`);
+        } else if (info && (info.status || '').includes('注意')) {
+            tags.push(`<span class="inline-block bg-orange-900/70 text-orange-200 border border-orange-500 rounded px-1.5 py-0.5 text-[10px] font-black ml-1" title="${(info.threshold || '').replace(/"/g,'&quot;')}">⚠️ 注意股</span>`);
+        }
+        // 必關股(無論注意/處置都可疊加,代表加重警示)
+        if (isMustClose) {
+            const willBeDays = scan.recentHitDays3 >= 3 ? '即將處置' : scan.recentHitDays5 >= 5 ? '今明處置' : `最快${Math.max(1, 5 - scan.recentHitDays5)}日`;
+            tags.push(`<span class="inline-block bg-purple-900/70 text-purple-200 border border-purple-500 rounded px-1.5 py-0.5 text-[10px] font-black ml-1 animate-pulse" title="${scan.predictText.replace(/"/g,'&quot;')}">💀 必關股 ${willBeDays}</span>`);
+        }
+        if (!tags.length) {
+            span.classList.add('hidden');
+            span.innerHTML = '';
+            return;
+        }
+        span.innerHTML = tags.join('');
+        span.classList.remove('hidden');
+    },
+
     // V20.0 — render 「⚠️ 注意股 8 款掃描」卡到個股頁籌碼 tab
     // V20.1 — 非同步預載 chips 集中度,算完後重畫第 5 款
     async renderAttentionScanCard(sym) {
@@ -6502,6 +6547,53 @@ const marginByDate = {};
             advice = '🟢 <b>對策</b>:技術面安全,正常技術分析操作即可';
         }
 
+        // V20.3 — 處置「前/中/後」時機告警(依當前處置狀態 + scan 預測)
+        const info = this.attentionStatus?.[sym];
+        let timingAlertHtml = '';
+        const isDisp = info && (info.status || '').startsWith('🚨');
+        const isMustClose = x.predictText.startsWith('🚨') || x.predictText.startsWith('⚠️');
+        if (isDisp && info.end_date) {
+            const days = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
+            if (days > 1) {
+                // ▶️ 處置中(中段)
+                timingAlertHtml = `<div class="rounded-lg border border-red-700 bg-red-900/30 px-3 py-2 mb-2 text-[11px] text-red-200 leading-snug">
+                    🔒 <b>處置中(分盤 ${info.interval || '?'} 分鐘)</b><br>
+                    📅 <b>還剩 ${days} 天</b> 才能正常交易<br>
+                    🛑 <b>不要砍最低</b>:分盤滑價大,等量縮止穩再判斷<br>
+                    💡 <b>進場時機</b>:出關前 1-2 天若量縮 + 站穩月線 = 抄底窗口
+                </div>`;
+            } else if (days === 1) {
+                // ⏰ 出獄前一天
+                timingAlertHtml = `<div class="rounded-lg border border-amber-600 bg-amber-900/40 px-3 py-2 mb-2 text-[11px] text-amber-200 leading-snug animate-pulse">
+                    ⏰ <b>明天出關!</b> 觀察今日尾盤量能:<br>
+                    🟢 量縮收紅 → 隔天高機率噴出,可佈局<br>
+                    🔴 量增收黑 → 主力出貨,別接刀
+                </div>`;
+            } else if (days === 0) {
+                // 🎉 出關當日
+                timingAlertHtml = `<div class="rounded-lg border border-green-600 bg-green-900/40 px-3 py-2 mb-2 text-[11px] text-green-200 leading-snug">
+                    🎉 <b>今日出獄!</b> 恢復正常 5 秒撮合<br>
+                    🚀 開盤若爆量噴出 → 跟主力 (但設好停損)<br>
+                    📉 開盤就破前低 → 主力套利,空手等回後再進
+                </div>`;
+            } else if (days > -7) {
+                // 🔓 出關後 7 天內(再買時機觀察)
+                timingAlertHtml = `<div class="rounded-lg border border-cyan-700 bg-cyan-900/30 px-3 py-2 mb-2 text-[11px] text-cyan-200 leading-snug">
+                    🔓 <b>剛出獄 ${-days} 天</b>,觀察是否回穩<br>
+                    🟢 若已站穩月線 + 量縮 → 可分批進場<br>
+                    🔴 若沒站穩或量崩 → 還是別碰
+                </div>`;
+            }
+        } else if (isMustClose && !isDisp) {
+            // 🚨 處置前(必關但還沒處置)
+            const daysToTrig = x.recentHitDays3 >= 3 ? '今明天' : `最快 ${Math.max(1, 5 - x.recentHitDays5)} 天`;
+            timingAlertHtml = `<div class="rounded-lg border border-purple-600 bg-purple-900/40 px-3 py-2 mb-2 text-[11px] text-purple-200 leading-snug animate-pulse">
+                💀 <b>處置前警告 — ${daysToTrig}可能被關</b><br>
+                🏃 <b>持股</b>:還沒套牢就跑;留下持股要套牢者準備等出獄<br>
+                ✋ <b>空手</b>:絕對不追;等被關 + 出獄後抄底
+            </div>`;
+        }
+
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
                 <h4 class="text-amber-300 font-bold text-sm">🔍 注意股 8 款掃描</h4>
@@ -6509,6 +6601,8 @@ const marginByDate = {};
             </div>
             <!-- 處置預測 banner -->
             <div class="rounded-lg border ${x.predictColor} px-3 py-2 mb-2 text-[12px] font-bold">${x.predictText}</div>
+            <!-- V20.3 — 處置前/中/後 時機告警 -->
+            ${timingAlertHtml}
             <!-- V20.2 — 對策建議 -->
             <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-1.5 mb-2 text-[11px] text-gray-300 leading-snug">${advice}</div>
             <!-- 4 個累積統計 -->
@@ -9094,6 +9188,8 @@ ${_newsLine}${globalContext}
         try { this.renderAttentionDetailCard(targetSym); } catch(_) {}
         // V20.0 — 注意股 8 款掃描器
         try { this.renderAttentionScanCard(targetSym); } catch(_) {}
+        // V20.3 — 個股頁標題列 badge(注意/必關/處置)
+        try { this.renderQuoteAttBadge(targetSym); } catch(_) {}
 
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
