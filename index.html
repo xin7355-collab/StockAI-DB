@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V19.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V19.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -129,8 +129,8 @@
         </div>
     </div>
 
-    <!-- V19.0 — 全螢幕搜尋 modal(置頂🔍開啟,加「新增至」目的清單切換 + 「查看更多」摺疊) -->
-    <div id="globalSearchModal" class="hidden fixed inset-0 z-[100] bg-[#0d1117] flex flex-col" onclick="if(event.target===this)app.closeGlobalSearchModal();">
+    <!-- V19.1 — modal z-index 999(原 100 被 header z=150 蓋住,modal header 看不到) -->
+    <div id="globalSearchModal" class="hidden fixed inset-0 z-[999] bg-[#0d1117] flex flex-col" onclick="if(event.target===this)app.closeGlobalSearchModal();">
         <div class="flex items-center justify-between px-3 py-3 border-b border-[#30363d] flex-shrink-0">
             <button onclick="app.closeGlobalSearchModal()" class="text-gray-300 hover:text-white text-3xl w-10 text-left leading-none font-thin">‹</button>
             <span class="text-lg font-bold text-white">搜尋</span>
@@ -777,7 +777,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -13048,7 +13048,7 @@ ${_newsLine}${globalContext}
                 <input type="number" step="0.01" min="0" value="${cost}" oninput="app._updateInvEditDraft(${idx}, 'cost', this.value)" class="bg-[#21262d] text-white text-[13px] font-mono px-1.5 py-1 rounded border border-[#30363d] outline-none focus:border-blue-500 text-right w-full" placeholder="均價">
                 <input type="number" step="1000" min="0" value="${shares * 1000}" oninput="app._updateInvEditDraft(${idx}, 'sharesAbsolute', this.value)" class="bg-[#21262d] text-white text-[13px] font-mono px-1.5 py-1 rounded border border-[#30363d] outline-none focus:border-blue-500 text-right w-full" placeholder="股數">
                 <div class="text-[13px] font-mono font-black text-gray-300 text-right" data-totalcost="${idx}">${totalCost.toLocaleString()}</div>
-                <button onclick="app._deleteInvEditDraft(${idx})" class="text-red-400 hover:text-red-300 text-[18px] leading-none">🗑️</button>
+                <button onclick="app._deleteInvEditDraft(${idx}, this)" class="text-red-400 hover:text-red-300 text-[18px] leading-none transition-all" data-confirming="0" title="點 1 次預備,2 秒內再點即刪">🗑️</button>
             </div>`;
         }).join('');
 
@@ -13095,13 +13095,30 @@ ${_newsLine}${globalContext}
         if (totalCostEl) totalCostEl.textContent = Math.round((item.cost || 0) * (item.shares || 0) * 1000).toLocaleString();
     },
 
-    _deleteInvEditDraft(idx) {
+    // V19.1 — 改雙擊確認:第一次點變 ✕ + 紅閃 2 秒,2 秒內再點才真刪
+    //         (原 showConfirm 在 z=300,被 editor modal z=9999 蓋住看不到 → 使用者反映「沒作動」)
+    _deleteInvEditDraft(idx, btnEl) {
         if (!this._invEditDraft) return;
-        this.showConfirm(`刪除「${this.getStockName(this._invEditDraft[idx]?.symbol) || this._invEditDraft[idx]?.symbol}」?(按儲存才生效)`, () => {
-            this._invEditDraft.splice(idx, 1);
-            const modal = document.getElementById('inventoryEditPageModal');
-            if (modal) this._renderInventoryEditPage(modal);
-        });
+        if (btnEl && btnEl.dataset.confirming !== '1') {
+            btnEl.dataset.confirming = '1';
+            btnEl.innerHTML = '✕';
+            btnEl.classList.remove('text-red-400');
+            btnEl.classList.add('text-white', 'bg-red-600', 'px-1.5', 'rounded', 'animate-pulse', 'text-[14px]');
+            btnEl.title = '再點 1 次確認刪除';
+            setTimeout(() => {
+                if (btnEl && btnEl.dataset.confirming === '1') {
+                    btnEl.dataset.confirming = '0';
+                    btnEl.innerHTML = '🗑️';
+                    btnEl.className = 'text-red-400 hover:text-red-300 text-[18px] leading-none transition-all';
+                    btnEl.title = '點 1 次預備,2 秒內再點即刪';
+                }
+            }, 2000);
+            return;
+        }
+        // 第二次點:真刪
+        this._invEditDraft.splice(idx, 1);
+        const modal = document.getElementById('inventoryEditPageModal');
+        if (modal) this._renderInventoryEditPage(modal);
     },
 
     // V17.12 — 「手動新增」改用 modal 表單(參考籌碼K線 App 設計):股票名稱搜尋 + 種類 + 總股數 + 成本均價
@@ -13407,17 +13424,29 @@ ${_newsLine}${globalContext}
             totalPrevValNTD += prevClose * shares * 1000;
 
             const totalColor = totalPnL > 0 ? 'text-[#f87171]' : (totalPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            const todayColor = todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            const bgClass = totalPct <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]';
+            // V19.1 — 漲跌停顏色判別:今日漲幅 ≥ +9.5% = 漲停亮紅閃、≤ -9.5% = 跌停亮綠閃
+            const isLimitUp   = todayChgPct >= 9.5;
+            const isLimitDown = todayChgPct <= -9.5;
+            let todayColor;
+            if (isLimitUp)        todayColor = 'text-red-300 font-black animate-pulse';
+            else if (isLimitDown) todayColor = 'text-green-300 font-black animate-pulse';
+            else todayColor = todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const bgClass = isLimitUp ? 'bg-red-900/30 ring-1 ring-red-600' :
+                            isLimitDown ? 'bg-green-900/30 ring-1 ring-green-600' :
+                            (totalPct <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]');
             const cname = this.getStockName(item.symbol) || item.symbol;
             const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol && a.enabled !== false);
 
             // V18.7 — 7 欄新順序:庫存股 / 今日損益 / 股價漲跌幅 / 總損益 / 股數 / 均價總成本 / 市值佔比
             // V18.9 — 該檔總成本直接用 row 內 totalCost(避免跟 outer let totalCostNTD 撞名 ReferenceError)
             html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[130px_75px_85px_95px_60px_95px_85px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
-                <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
+                <!-- 庫存股:現股 tag + 漲跌停 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
-                    <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
+                        ${isLimitUp ? '<span class="text-[8px] font-black bg-red-600 text-white border border-red-400 rounded px-1 py-0 animate-pulse">漲停</span>' : ''}
+                        ${isLimitDown ? '<span class="text-[8px] font-black bg-green-700 text-white border border-green-400 rounded px-1 py-0 animate-pulse">跌停</span>' : ''}
+                    </div>
                     <span class="text-white font-black text-[14px] truncate leading-tight">${cname}</span>
                     <div class="flex items-center gap-1">
                         <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
