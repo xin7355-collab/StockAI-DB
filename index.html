@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -865,7 +865,8 @@
                      onclick="const m=document.getElementById('settingsModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);">
                     ⚠️ <span class="text-red-100">Fugle 即時報價 Token 未設定</span> → 點此到「⚙️ 戰情設定中心」填入(免費申請:<span class="underline">fugle.tw</span>)
                 </div>
-                <div class="px-3 pt-2.5 pb-1.5 flex items-start gap-2"
+                <!-- V20.7 — pt 2.5→1 / pb 1.5→0.5 壓縮上方空白(原一大片空) -->
+                <div class="px-3 pt-1 pb-0.5 flex items-start gap-2"
                      ontouchstart="app._huntSwipeX=event.touches[0].clientX"
                      ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
                     <!-- 左側：☆ + 名稱 + 標籤 -->
@@ -880,7 +881,7 @@
                             <!-- V20.3 — 注意股/必關股/處置股 badge(動態填,沒命中隱藏) -->
                             <span id="quoteAttBadge" class="hidden"></span>
                         </div>
-                        <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-1 mt-1">
+                        <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-0.5 mt-0.5">
                             <span id="stockTags" class="inline-flex flex-wrap gap-x-1 gap-y-0.5 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap">讀取中...</span></span>
                             <span id="invBadge" class="hidden inline-block bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500 whitespace-nowrap">💼持股中</span>
                             <!-- 🚨 處置神器 badge:由 refreshStrategy() 依 attentionStatus 動態填字 + show/hide -->
@@ -1166,6 +1167,8 @@
                 <div id="doubleSwordCard" class="hidden bg-[#161b22] border border-purple-700/40 rounded-lg p-3 shadow-lg"></div>
                 <!-- 處置股風控狀態(已處置股顯) -->
                 <div id="attentionDetailCard" class="hidden"></div>
+                <!-- V20.7 — 越關越大尾預測卡(處置/即將處置時顯,5 因子評分) -->
+                <div id="dispBigShotCard" class="hidden bg-[#161b22] border border-yellow-700/40 rounded-lg p-3 shadow-lg"></div>
                 <!-- V20.5 — 處置股實戰操作秘訣(永遠顯,教育目的) -->
                 <div id="disposedPlaybookCard" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg"></div>
                 <!-- V20.5 — 資料來源說明卡(誠實告知哪些是估算/哪些是 TWSE 公告) -->
@@ -3885,6 +3888,7 @@ ${list}
             this.renderAttentionDetailCard(this.currentSymbolId);
             this.renderAttentionScanCard(this.currentSymbolId);
             this.renderDoubleSwordCard(this.currentSymbolId);
+            this.renderDispBigShotCard(this.currentSymbolId);   // V20.7 — 越關越大尾預測
             this.renderDisposedPlaybookCard();
         }
         if (tab === 'corp' && this.currentSymbolId) {
@@ -6796,6 +6800,108 @@ const marginByDate = {};
         card.classList.remove('hidden');
     },
 
+    // V20.7 — 越關越大尾預測卡(只在處置/即將處置時顯)
+    //   5 因子評分:量縮 + 法人未撤 + 基本面健康 + 技術面健康 + 大盤環境
+    //   總分 80+ = 高機率續強;<40 = 出獄易崩;中間參考
+    renderDispBigShotCard(sym) {
+        const card = document.getElementById('dispBigShotCard');
+        if (!card) return;
+        const info = this.attentionStatus?.[String(sym).trim()];
+        const scan = (Array.isArray(this.activeData) && this.activeData.length >= 30) ? this._calcAttentionScan(sym) : null;
+        const isDisp = info && (info.status || '').startsWith('🚨');
+        const isMustClose = scan && (scan.predictText?.startsWith('🚨') || scan.predictText?.startsWith('⚠️'));
+        if (!isDisp && !isMustClose) { card.classList.add('hidden'); return; }
+
+        const arr = this.activeData;
+        const n = arr.length;
+        const lastClose = arr[n - 1].close;
+
+        // ① 量縮(處置中或臨界):近 5 日均量 / 60 日均量;<0.5=20 分,>1=0 分
+        const v60 = n >= 60 ? arr.slice(-60).reduce((s, b) => s + (b.volume || 0), 0) / 60 : null;
+        const v5 = arr.slice(-5).reduce((s, b) => s + (b.volume || 0), 0) / 5;
+        const volRatio = (v60 && v60 > 0) ? v5 / v60 : null;
+        const volScore = volRatio == null ? 10 : Math.max(0, Math.min(20, Math.round((1 - volRatio) * 40)));
+        const volTxt = volRatio == null ? '量能無資料(估 10)' : `近 5 日量 ${(volRatio * 100).toFixed(0)}% × 60 日均量 ${volRatio < 0.5 ? '✅ 主力洗盤完' : volRatio < 0.8 ? '🟡 量縮中' : volRatio < 1.2 ? '🟡 量普通' : '🔴 量還在發散'}`;
+
+        // ② 法人未撤(近 5 日外資+投信淨買賣):買超 ≥ +500 張 = 20 分,賣超 ≤ -1000 = 0
+        const fi5 = arr.slice(-5).reduce((s, b) => s + (Number(b.foreign_net) || 0) + (Number(b.trust_net) || 0), 0) / 1000;
+        const fiScore = Math.max(0, Math.min(20, Math.round(((fi5 + 1000) / 1500) * 20)));
+        const fiTxt = `近 5 日外資+投信 ${fi5 >= 0 ? '+' : ''}${Math.round(fi5).toLocaleString()} 張 ${fi5 >= 500 ? '✅ 法人撐盤' : fi5 >= 0 ? '🟡 中性' : fi5 >= -500 ? '🟡 微賣超' : '🔴 法人撤退'}`;
+
+        // ③ 基本面健康:PE < 30 且 EPS 正 = 20 分;PE 30-50 = 10;>100 = 0
+        const fc = this._fundCache?.sym === sym ? this._fundCache : null;
+        const pe = fc?.pe;
+        const eps = fc?.eps;
+        let fundScore, fundTxt;
+        if (eps != null && eps < 0)             { fundScore = 0;  fundTxt = `EPS ${eps} 虧損 🔴 出獄續弱機率高`; }
+        else if (pe == null)                    { fundScore = 10; fundTxt = '基本面資料不足(估 10)'; }
+        else if (pe < 30)                       { fundScore = 20; fundTxt = `PE ${pe.toFixed(1)} ✅ 估值合理 + EPS 正`; }
+        else if (pe < 50)                       { fundScore = 12; fundTxt = `PE ${pe.toFixed(1)} 🟡 偏高,需確認題材`; }
+        else if (pe < 100)                      { fundScore = 5;  fundTxt = `PE ${pe.toFixed(1)} 🔴 高估值,風險大`; }
+        else                                    { fundScore = 0;  fundTxt = `PE ${pe.toFixed(1)} 🔴 嚴重高估,出獄易崩`; }
+
+        // ④ 技術面健康:站穩 20MA = 20 分;接近 20MA 上 = 10;跌破 = 0
+        const ma20 = n >= 20 ? arr.slice(-20).reduce((s, b) => s + b.close, 0) / 20 : null;
+        let techScore, techTxt;
+        if (ma20 == null)                      { techScore = 10; techTxt = '20MA 不足(估 10)'; }
+        else if (lastClose >= ma20 * 1.05)     { techScore = 20; techTxt = `現價 ${lastClose.toFixed(2)} 高於 20MA ${ma20.toFixed(2)} 5%+ ✅ 多頭強勢`; }
+        else if (lastClose >= ma20)            { techScore = 15; techTxt = `現價站穩 20MA ${ma20.toFixed(2)} 🟡 偏多`; }
+        else if (lastClose >= ma20 * 0.95)     { techScore = 5;  techTxt = `現價低於 20MA 5% 內 🔴 月線轉壓`; }
+        else                                    { techScore = 0;  techTxt = `現價低於 20MA 5%+ 🔴 已破月線`; }
+
+        // ⑤ 大盤環境(可選):用 _falconScores 內 macro_lines 判定;沒就給 10 中性
+        let envScore = 10, envTxt = '大盤資料不足(估 10)';
+        try {
+            const macroLines = this._falconScores?.macro_lines || [];
+            const negCount = macroLines.filter(l => /崩|跌|空|警/.test(l)).length;
+            if (macroLines.length) {
+                if (negCount === 0)        { envScore = 20; envTxt = '✅ 大盤無黑天鵝警示,環境支持反彈'; }
+                else if (negCount === 1)   { envScore = 12; envTxt = '🟡 大盤有 1 個警示,中性看待'; }
+                else if (negCount === 2)   { envScore = 5;  envTxt = '🔴 大盤多重警示,風險偏空'; }
+                else                       { envScore = 0;  envTxt = '🔴 大盤黑天鵝環境,出獄續弱機率高'; }
+            }
+        } catch(_) {}
+
+        const total = volScore + fiScore + fundScore + techScore + envScore;
+        let verdict, verdictCls, action;
+        if (total >= 80)        { verdict = '🟢 高機率 越關越大尾';           verdictCls = 'border-green-600 bg-green-900/40 text-green-200';   action = '出獄後續強機率高 → <b>出獄前 1-2 天量縮 + 站穩月線</b>分批進場;停損抓 5MA'; }
+        else if (total >= 60)   { verdict = '🟡 有機會 出獄反彈';              verdictCls = 'border-yellow-600 bg-yellow-900/30 text-yellow-200'; action = '有反彈機會但要嚴選時機 → 出獄首日<b>看開盤 30 分量價</b>,爆量噴跟、量縮收黑別碰'; }
+        else if (total >= 40)   { verdict = '⚪ 普通 沒明顯訊號';                verdictCls = 'border-gray-700 bg-[#0d1117] text-gray-300';        action = '中性訊號 → <b>觀望為主</b>,等出獄看當天表現再決定'; }
+        else                    { verdict = '🔴 出獄易崩 別接刀';                verdictCls = 'border-red-600 bg-red-900/40 text-red-200';         action = '弱勢處置 → <b>禁止抄底</b>,法人撤、技術破、基本面差,出獄通常補跌'; }
+
+        const factorRow = (icon, name, score, txt) => `
+            <div class="flex items-start gap-2 py-1.5 border-b border-[#21262d] text-[11px]">
+                <span class="text-base flex-shrink-0">${icon}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-gray-200">${name} <span class="font-mono text-gray-500">${score}/20</span></div>
+                    <div class="text-[10px] text-gray-400 leading-tight mt-0.5">${txt}</div>
+                </div>
+            </div>`;
+
+        card.innerHTML = `
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-yellow-700/40">
+                <h4 class="text-yellow-300 font-bold text-sm">📈 越關越大尾預測</h4>
+                <span class="text-[10px] text-gray-500">5 因子 100 分制</span>
+            </div>
+            <div class="rounded-lg border ${verdictCls} px-3 py-2 mb-2 text-center">
+                <div class="text-3xl font-black font-mono leading-none mb-1">${total}<span class="text-base text-gray-400">/100</span></div>
+                <div class="text-[12px] font-bold">${verdict}</div>
+            </div>
+            <div class="text-[11px] text-gray-300 leading-snug px-2 py-2 mb-2 rounded bg-[#0d1117] border border-[#30363d]">💡 ${action}</div>
+            <div>
+                ${factorRow('🔇', '量縮(主力洗盤完成度)', volScore, volTxt)}
+                ${factorRow('🏛️', '法人籌碼方向', fiScore, fiTxt)}
+                ${factorRow('💰', '基本面健康', fundScore, fundTxt)}
+                ${factorRow('📊', '技術面健康(20MA)', techScore, techTxt)}
+                ${factorRow('🌎', '大盤環境', envScore, envTxt)}
+            </div>
+            <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">
+                💡 <b>越關越大尾</b>:處置中量縮 → 主力洗完盤,法人續抱 + 技術未壞 → 出獄常噴出新高<br>
+                💀 <b>越關越死</b>:法人撤、技術破月線、基本面差 → 出獄補跌
+            </div>`;
+        card.classList.remove('hidden');
+    },
+
     // V20.5 — 處置股實戰操作秘訣卡(教育/策略,所有股都顯)
     //   列券商/ETF/大戶在「處置前/中/後」通常會做什麼,使用者可決定跟做或反做
     renderDisposedPlaybookCard() {
@@ -9435,6 +9541,8 @@ ${_newsLine}${globalContext}
         try { this.renderQuoteAttBadge(targetSym); } catch(_) {}
         // V20.4 — 雙刀流核心心法卡(處置/注意/必關時觸發)
         try { this.renderDoubleSwordCard(targetSym); } catch(_) {}
+        // V20.7 — 越關越大尾預測卡(處置/即將處置時觸發)
+        try { this.renderDispBigShotCard(targetSym); } catch(_) {}
 
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
