@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -6490,13 +6490,27 @@ const marginByDate = {};
                 <div class="text-[9px] mt-0.5 leading-tight">${label}</div>
             </div>`;
         };
+        // V20.2 — 觸發時「對策建議」一句話(根據 predictText 嚴重度給)
+        let advice = '';
+        if (x.predictText.startsWith('🚨')) {
+            advice = '💀 <b>對策</b>:已要被關,空手別追;持股者若還沒套牢趕緊出,套牢者就只能等出獄(分盤期間流動性差,別硬殺低)';
+        } else if (x.predictText.startsWith('⚠️')) {
+            advice = '⚠️ <b>對策</b>:離注意股很近,空手嚴禁追高,持股者開始 <b>分批停利</b>(別等被關才賣,分盤滑價慘)';
+        } else if (x.predictText.startsWith('💡')) {
+            advice = '💡 <b>對策</b>:強勢股累積中,持股可抱但 <b>嚴守 5MA 短線停利</b>;空手只跟強勢主流不接刀';
+        } else {
+            advice = '🟢 <b>對策</b>:技術面安全,正常技術分析操作即可';
+        }
+
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
                 <h4 class="text-amber-300 font-bold text-sm">🔍 注意股 8 款掃描</h4>
-                <span class="text-[10px] text-gray-500">${x.hits}/4 款觸發(可算)</span>
+                <button onclick="app._showAttentionRulesHelp()" class="text-[11px] text-cyan-300 hover:text-cyan-200 px-1.5 py-0.5 rounded border border-cyan-700/40">📖 教學</button>
             </div>
             <!-- 處置預測 banner -->
             <div class="rounded-lg border ${x.predictColor} px-3 py-2 mb-2 text-[12px] font-bold">${x.predictText}</div>
+            <!-- V20.2 — 對策建議 -->
+            <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-1.5 mb-2 text-[11px] text-gray-300 leading-snug">${advice}</div>
             <!-- 4 個累積統計 -->
             <div class="grid grid-cols-4 gap-1.5 mb-2">
                 ${statBox('連 3 日', x.recentHitDays3, 3, x.recentHitDays3, 3)}
@@ -6508,8 +6522,52 @@ const marginByDate = {};
             <div>${ruleRows}</div>
             <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">
                 💡 TWSE 注意 → 處置門檻:① 連 3 日觸 1 款 = 注意 ・ 連 5 日 = 處置 ・ ② 10 日內 6 天 = 處置 ・ ③ 30 日內 12 天 = 處置<br>
-                ⚪ 第 5-8 款需採礦資料(分點集中度/PE/融資/權證溢價),下版補
+                ⚪ 第 8 款(權證溢價)目前無資料源
             </div>`;
+    },
+
+    // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
+    _showAttentionRulesHelp() {
+        alert(
+`📖 注意股 → 處置股 機制完整說明
+
+━━━━━━━━━━━━━━━━━━━━
+【什麼是注意股?】
+TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「注意股」警告投資人。連續觸發或範圍變大會升級為「處置股」。
+
+【什麼是處置股?】
+就是被「關禁閉」,變成分盤撮合:
+• 第 1 次處置:每 5 分鐘撮合一次(原本 5 秒)
+• 第 2 次處置:每 20 分鐘撮合 + 預收 100% 款券
+• 嚴重者:全額交割 / 暫停信用交易
+
+【處置門檻(4 條任一觸發)】
+① 連續 3 日觸第 1 款(漲跌過大)→ 注意股
+② 連續 5 日觸第 1~8 款 → 處置股
+③ 10 個交易日內 6 天觸 1~8 款 → 處置
+④ 30 個交易日內 12 天觸 1~8 款 → 處置
+
+【8 款規則】
+1️⃣ 漲跌幅累積過大:1/5/10/20 日累積 ≥ 25%/30%/50%
+2️⃣ 長期漲跌異常:30/60/90 日累積 ≥ 50%/70%/90%
+3️⃣ 成交量明顯放大:近期量 ≥ 5× 60 日均量
+4️⃣ 漲跌+量綜合:單日 ±5% 且 ≥ 3× 均量
+5️⃣ 券商分點集中度:前 10 大佔總 ≥ 80%
+6️⃣ PE 本益比異常:>30 偏高 / >50 觸發 / >100 嚴重
+7️⃣ 融資餘額異常:近 5 日 ±25%
+8️⃣ 權證溢價率過高:>20%/40%(目前無資料)
+
+【為什麼要怕被關?】
+分盤撮合 = 5 分鐘才成交一次 → 流動性極差,進出滑價大,跌的時候賣不掉、漲的時候追不到。權證 / 融資戶尤其慘。
+
+【怎麼操作?】
+🟢 暫無風險:正常操作
+💡 累積中:強勢股可抱緊嚴守 5MA
+⚠️ 接近注意:分批停利別等被關
+🚨 已達門檻:空手別追,持股要套牢者只能等出獄
+
+(以上 9 款規則簡化版,實際 TWSE 條文細節更複雜,本機制僅供風控參考)`
+        );
     },
 
     // V19.4 — 個股頁渲染處置股風控卡(沒命中 hidden)
