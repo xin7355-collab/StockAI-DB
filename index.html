@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V19.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V19.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -201,8 +201,13 @@
     <div id="jargonModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="jargonTitle" class="text-blue-400 font-black text-lg mb-3 border-b border-gray-700 pb-2 flex items-center gap-2">💡 名詞解釋</h3><p id="jargonDesc" class="text-sm text-gray-300 leading-relaxed font-bold tracking-wide"></p><button onclick="document.getElementById('jargonModal').classList.add('hidden'); document.getElementById('jargonModal').style.display='none';" class="mt-5 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
 
     <div id="settingsModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';">
-        <div class="modal-content max-w-[24rem] overflow-y-auto max-h-[90vh]" onclick="event.stopPropagation()">
-            <h3 class="text-white font-black mb-4 text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-xs text-gray-500 font-normal">| 經理人風控</span></h3>
+        <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
+        <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
+            <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-xs text-gray-500 font-normal">| 經理人風控</span></h3>
+                <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
             <div class="space-y-4 mb-6">
                 
                 <div class="flex flex-col gap-1 pt-1 border-b border-gray-700 pb-4">
@@ -454,7 +459,8 @@
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end gap-2 border-t border-[#30363d] pt-3">
+            </div><!-- V19.5 — 結束 flex-1 overflow-y-auto 滾動區 -->
+            <div class="sticky bottom-0 bg-[#0d1117] flex justify-end gap-2 border-t border-[#30363d] px-4 py-3 rounded-b-lg">
                 <button onclick="app.saveAndCloseSettings()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded transition-colors w-2/3 shadow-sm">💾 儲存並關閉</button>
                 <button onclick="app.cancelSettings()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 text-sm font-bold rounded transition-colors w-1/3 shadow-sm">❌ 取消</button>
             </div>
@@ -779,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8022,8 +8028,29 @@ ${peerLine}${newsCtx}
                 } catch (e) { console.warn('[GM Sparkline]', e); }
             }
         } else if (gmTrendStr) {
-            gmEl.textContent = gmTrendStr;
-            gmEl.className = 'font-mono font-bold text-sm leading-tight text-gray-400';
+            // V19.5 — fallback 字串「59.5%→62.3%→66.2%(↑6.7pp)」改成主數字 + 對比語意,使用者反映「看不懂」
+            const pcts = [...gmTrendStr.matchAll(/([0-9.]+)\s*%/g)].map(m => parseFloat(m[1])).filter(n => !isNaN(n));
+            const arrow = gmTrendStr.includes('↑') ? '↑' : gmTrendStr.includes('↓') ? '↓' : '→';
+            const ppM = gmTrendStr.match(/[↑↓→]\s*([0-9.]+)\s*pp/);
+            const pp = ppM ? parseFloat(ppM[1]) : 0;
+            const lastGm = pcts.length ? pcts[pcts.length - 1] : null;
+            const firstGm = pcts.length >= 2 ? pcts[0] : null;
+            if (lastGm != null) {
+                // 主數字 = 最新一季 %(大紅綠灰)
+                const col = arrow === '↑' ? 'text-red-400' : arrow === '↓' ? 'text-green-400' : 'text-gray-300';
+                gmEl.textContent = `${lastGm.toFixed(1)}%`;
+                gmEl.className = `font-mono font-black text-xl leading-tight ${col}`;
+                // 下方 compare 區改顯「↑ +6.7pp(從 N 季前 59.5%)」
+                const _gmCmp = document.getElementById('xrayGmCompare');
+                if (_gmCmp) {
+                    const ppStr = pp ? `${arrow} ${arrow === '↑' ? '+' : arrow === '↓' ? '-' : ''}${pp.toFixed(1)}pp` : arrow;
+                    const fromStr = firstGm != null && pcts.length >= 2 ? ` <span class="text-gray-500">(從 ${pcts.length - 1} 季前 ${firstGm.toFixed(1)}%)</span>` : '';
+                    _gmCmp.innerHTML = `<span class="${col} font-bold">${ppStr}</span>${fromStr}`;
+                }
+            } else {
+                gmEl.textContent = gmTrendStr;
+                gmEl.className = 'font-mono font-bold text-sm leading-tight text-gray-400';
+            }
         } else {
             gmEl.textContent = '無資料';
             gmEl.className = 'font-mono font-bold text-sm text-gray-600';
@@ -14928,8 +14955,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 ⚠️ 免責聲明: 以上資訊經多方財經機構與系統數據核對,內容僅供參考,投資人應自負盈虧。`;
 
         try {
-            // 🚀 盤前報告 = 旗艦級分析,用 70B 提升判讀深度(每次約 4-5k tokens)
-            const text = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.4 });
+            // 🚀 盤前報告 = 旗艦級分析,Gemini 2.5 Flash 為主撞 429 fallback OpenRouter R1
+            // V19.5 — 使用者要求取消 Groq:chain 改 'gemini-openrouter'(原 'auto' 會兜底 Groq)
+            const text = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.4, chain: 'gemini-openrouter' });
             const html = text
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/^---$/gm, '<hr class="my-2 border-gray-700"/>')
