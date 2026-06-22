@@ -63,7 +63,7 @@ self.addEventListener('fetch', e => {
 // ─── 4. Push 通知：由伺服器主動推送觸發（WebPush 協議）─────────────────────
 self.addEventListener('push', e => {
     const data  = e.data ? e.data.json() : {};
-    const title = data.title || '首席 AI 司令部告警';
+    const title = data.title || '首席 AI';
     const body  = data.body  || '請立刻檢視您的持倉！';
     const icon  = data.icon  || '/icon-192.png';
     const tag   = data.tag   || 'stockai-alert';
@@ -158,7 +158,7 @@ async function checkPriceAlerts() {
                 const priceFmt = currentPrice.toFixed(2);
                 const defFmt   = Number(alert.defPrice).toFixed(2);
 
-                await self.registration.showNotification('🚨 首席特急令：防守底線告警', {
+                await self.registration.showNotification('🚨 首席停損', {
                     body: `${name} 現價 ${priceFmt}，已跌破防守底線 ${defFmt}！請立刻執行紀律停損！`,
                     icon:  `${ghRoot}icon-192.png`,
                     badge: `${ghRoot}icon-192.png`,
