@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V19.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V19.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1578,11 +1578,12 @@
                         <div id="sccRetail" class="text-base md:text-lg font-black font-mono text-green-400">--</div>
                         <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">散戶情緒,<span class="text-red-300 font-bold">負值=散戶偏多(逆向偏空)</span></div>
                     </div>
+                    <!-- V19.6 — 「台指逆價差」改名「期貨情緒」,加 1 行白話判讀(順/平/逆/深逆) -->
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台指逆價差'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
-                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">📉 台指逆價差</div>
+                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">🎯 期貨情緒</div>
                         <div id="sccBack" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">期減現,<span class="text-green-300 font-bold">負 &gt;100 點 = 現貨快反彈</span></div>
+                        <div id="sccBackLabel" class="text-[10px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug font-bold">期-現</div>
                     </div>
                 </div>
             </div>
@@ -1597,56 +1598,67 @@
                 <div class="text-[11px] text-gray-400 mb-1.5 mt-1">熱錢流向哪個產業一目了然 — <span class="text-red-400 font-bold">🔺 紅=漲</span> / <span class="text-green-400 font-bold">🔻 綠=跌</span>(台股慣例)</div>
                 <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="w-full mb-2 text-[11px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1.5">🔄 盤中即時更新(Fugle)</button>
                 <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all" style="width:0%"></div></div>
+                <!-- V19.6 — 每個板塊加「🌎 對標美股」(可點看 Yahoo Finance),讓使用者比對昨晚美股漲跌 → 台股今天該板塊預估反應 -->
                 <div class="grid grid-cols-2 gap-2.5">
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="us">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🇺🇸 美股</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">AI 龍頭風向球</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">NVDA·SOX·SPX</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/SOXX" target="_blank" rel="noopener" class="underline hover:text-blue-300">SOXX</a> · <a href="https://finance.yahoo.com/quote/SMH" target="_blank" rel="noopener" class="underline hover:text-blue-300">SMH</a> · <a href="https://finance.yahoo.com/quote/NVDA" target="_blank" rel="noopener" class="underline hover:text-blue-300">NVDA</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="server">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🖥️ 伺服器代工</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">AI 主機板組裝廠</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">廣達·緯穎·緯創</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/SMCI" target="_blank" rel="noopener" class="underline hover:text-blue-300">SMCI</a> · <a href="https://finance.yahoo.com/quote/DELL" target="_blank" rel="noopener" class="underline hover:text-blue-300">DELL</a> · <a href="https://finance.yahoo.com/quote/HPE" target="_blank" rel="noopener" class="underline hover:text-blue-300">HPE</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="power">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">⚡ 重電基建</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">AI 機房電力命脈</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">華城·士電·中興電</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/GEV" target="_blank" rel="noopener" class="underline hover:text-blue-300">GEV</a> · <a href="https://finance.yahoo.com/quote/POWL" target="_blank" rel="noopener" class="underline hover:text-blue-300">POWL</a> · <a href="https://finance.yahoo.com/quote/ETN" target="_blank" rel="noopener" class="underline hover:text-blue-300">ETN</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="packaging">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">📦 先進封裝</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">CoWoS 護國神山</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">台積電·日月光投控·弘塑</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/AVGO" target="_blank" rel="noopener" class="underline hover:text-blue-300">AVGO</a> · <a href="https://finance.yahoo.com/quote/AMD" target="_blank" rel="noopener" class="underline hover:text-blue-300">AMD</a> · <a href="https://finance.yahoo.com/quote/TSM" target="_blank" rel="noopener" class="underline hover:text-blue-300">TSM</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="cpo">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🔗 高速傳輸CPO</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">光通訊新題材</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">聯亞·聯鈞·上詮</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/ANET" target="_blank" rel="noopener" class="underline hover:text-blue-300">ANET</a> · <a href="https://finance.yahoo.com/quote/COHR" target="_blank" rel="noopener" class="underline hover:text-blue-300">COHR</a> · <a href="https://finance.yahoo.com/quote/LITE" target="_blank" rel="noopener" class="underline hover:text-blue-300">LITE</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="cooling">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">❄️ 散熱零組件</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">液冷大爆發</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">奇鋐·雙鴻·健策</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/VRT" target="_blank" rel="noopener" class="underline hover:text-blue-300">VRT</a> · <a href="https://finance.yahoo.com/quote/TT" target="_blank" rel="noopener" class="underline hover:text-blue-300">TT</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="robot">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🤖 實體機器人</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">未來十年新題材</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">所羅門·廣明·盟立</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/SYM" target="_blank" rel="noopener" class="underline hover:text-blue-300">SYM</a> · <a href="https://finance.yahoo.com/quote/ROK" target="_blank" rel="noopener" class="underline hover:text-blue-300">ROK</a> · <a href="https://finance.yahoo.com/quote/TSLA" target="_blank" rel="noopener" class="underline hover:text-blue-300">TSLA</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="finance">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🏦 金融避風港</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">高股息防禦盤</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">富邦金·國泰金·中信金</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/XLF" target="_blank" rel="noopener" class="underline hover:text-blue-300">XLF</a> · <a href="https://finance.yahoo.com/quote/JPM" target="_blank" rel="noopener" class="underline hover:text-blue-300">JPM</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="leo">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🛰️ 低軌衛星</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">星鏈供應鏈受惠股</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">昇達科·華通·啟碁</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/IRDM" target="_blank" rel="noopener" class="underline hover:text-blue-300">IRDM</a> · <a href="https://finance.yahoo.com/quote/SATS" target="_blank" rel="noopener" class="underline hover:text-blue-300">SATS</a> · <a href="https://finance.yahoo.com/quote/RKLB" target="_blank" rel="noopener" class="underline hover:text-blue-300">RKLB</a></div>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="dram">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">💾 記憶體 DRAM</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">記憶體報價回升受惠</div>
                             <div class="text-[10px] text-gray-500 leading-tight mt-0.5">南亞科·華邦電·群聯</div>
+                            <div class="text-[9px] text-blue-400/80 leading-tight mt-1 pt-1 border-t border-[#21262d]">🌎 對標 <a href="https://finance.yahoo.com/quote/MU" target="_blank" rel="noopener" class="underline hover:text-blue-300">MU</a> · <a href="https://finance.yahoo.com/quote/WDC" target="_blank" rel="noopener" class="underline hover:text-blue-300">WDC</a></div>
                         </div>
                 </div>
             </div>
@@ -2273,7 +2285,7 @@ const app = {
         '恐懼與貪婪指數': 'CNN 的市場情緒溫度計，0-100 分。0-25 極度恐懼（往往是底部）、75-100 極度貪婪（往往是頂部）。逆向操作的好指標。',
         '散戶多空比': '從台指期未平倉推算的散戶情緒。負值=散戶偏多（市場可能要修正，逆向偏空）、正值=散戶偏空（市場可能要漲，逆向偏多）。',
         '台幣匯率': '美元兌新台幣。31 以下=熱錢湧入（外資看好）、33 以上=熱錢撤離（外資看空）。台股漲跌跟匯率高度同步。',
-        '台指逆價差': '期貨價格 - 現貨價格。正值=順價差（市場樂觀）、負值=逆價差（市場悲觀）。逆價差超過 100 點時，現貨通常即將反彈。',
+        '台指逆價差': '期貨價格 - 現貨價格。\n\n📈 正值 = 順價差(期貨比現貨貴 → 期貨主力樂觀):\n  ・ +50 點以上 = 大順差,期貨偏多\n  ・ +10~+50 點 = 微順差,樂觀\n\n📉 負值 = 逆價差(期貨比現貨便宜 → 期貨主力悲觀):\n  ・ -10~-50 點 = 微逆差,警戒\n  ・ -50~-100 點 = 逆差,期貨偏空\n  ・ -100 點以下 = 深逆差,主力空殺過頭,現貨通常即將反彈(逆向訊號)',
         '流動性熱度': '市場資金水溫，反映成交額相對 20MA。<30% 緊縮要小心斷頭、30-60% 健康、60-75% 過熱注意、>75% 隨時反轉。',
         '外資期現複合': '外資現貨買賣 + 期貨多空。同向=真實趨勢（雙多=噴、雙空=殺）；背離=套利或暗流，要更小心判讀。',
         '市場風險指數': 'VIX 恐慌+外資期+DXY+SPX+日圓+黃金 6 指標綜合 0-100 分。0-20 避險天堂、20-40 偏多操作、40-60 中性、60-80 警戒、80+ 現金為王。',
@@ -8691,12 +8703,8 @@ ${_newsLine}${globalContext}
 
         // 新增：非同步載入基本面快取，填入情報頁 X 光機（不阻塞主流程）
         this._autoLoadFundamentals(targetSym);
-        // V18.6 — 切股時若使用者已在籌碼 tab,刷新「ETF 跟車狀態」卡;不在 chip tab 也安全(card 隱藏)
-        try { this.renderEtfFollowCard(targetSym); } catch(_) {}
-        // V18.8 — 切股時同步刷新「朱家泓策略狀態」卡
-        try { this.renderChuStrategyCard(targetSym); } catch(_) {}
-        // V19.4 — 切股時刷新「處置股風控」卡
-        try { this.renderAttentionDetailCard(targetSym); } catch(_) {}
+        // V19.6 — detail 卡 render 移到 this.activeData 賦值之後(原本放這裡,但 activeData 還是上一檔股,
+        //         導致 ETF 跟車卡顯舊股的進場價/今價,使用者反映「換股不會跟著跳」)
 
         if (this.baseRawData.length > 1) {
             const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
@@ -8746,6 +8754,10 @@ ${_newsLine}${globalContext}
         const _bnr = document.getElementById('fugleNoTokenBanner');
         if (_bnr) _bnr.classList.toggle('hidden', !this._fugleNoToken);
         this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
+        // V19.6 — 三張 detail 卡 reactive 刷新(必須在 activeData 更新「之後」,否則讀到舊股資料)
+        try { this.renderEtfFollowCard(targetSym); } catch(_) {}
+        try { this.renderChuStrategyCard(targetSym); } catch(_) {}
+        try { this.renderAttentionDetailCard(targetSym); } catch(_) {}
 
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
@@ -9322,11 +9334,19 @@ ${_newsLine}${globalContext}
         const twdText = twd == null ? '--' : twd.toFixed(2);
         const twdColor = twd == null ? 'text-gray-500' : twd <= 31 ? 'text-green-400' : twd >= 33 ? 'text-red-400' : 'text-gray-300';
         if ($('sccTwd')) setTxt('sccTwd', twdText, twdColor);
-        // 台指逆價差
+        // V19.6 — 台指期-現貨價差(順/逆),改一行白話判讀
         const back = num(j.taifex_backwardation);
-        const backText = back == null ? '--' : `${back > 0 ? '+' : ''}${Math.round(back)}`;
-        const backColor = back == null ? 'text-gray-500' : back <= -100 ? 'text-green-400' : back >= 50 ? 'text-red-400' : 'text-gray-300';
-        if ($('sccBack')) setTxt('sccBack', backText, backColor);
+        const backText = back == null ? '--' : `${back > 0 ? '+' : ''}${Math.round(back)} 點`;
+        let backColor, backLabel;
+        if (back == null)         { backColor = 'text-gray-500'; backLabel = '無資料'; }
+        else if (back >= 50)      { backColor = 'text-red-400';   backLabel = '📈 順價差大 ・ 期貨偏多'; }
+        else if (back >= 10)      { backColor = 'text-orange-300'; backLabel = '↗️ 順價差 ・ 期貨樂觀'; }
+        else if (back >= -10)     { backColor = 'text-gray-300';   backLabel = '↔️ 平水 ・ 多空拉鋸'; }
+        else if (back >= -50)     { backColor = 'text-yellow-300'; backLabel = '↘️ 微逆差 ・ 期貨警戒'; }
+        else if (back >= -100)    { backColor = 'text-orange-400'; backLabel = '📉 逆價差 ・ 期貨偏空'; }
+        else                       { backColor = 'text-green-400';  backLabel = '🔴 深逆差 ・ 主力空殺,反彈在即'; }
+        if ($('sccBack'))      setTxt('sccBack', backText, backColor);
+        if ($('sccBackLabel')) { const el = $('sccBackLabel'); el.textContent = backLabel; el.className = `text-[10px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 ${backColor} leading-snug font-bold`; }
 
         // 流動性熱度（_calcRiskScore 推；無則用真實 m1b_pct；都無顯「待採」不假裝數字）
         let liquidity = num(j.m1b_pct);
