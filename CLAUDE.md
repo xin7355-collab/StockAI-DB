@@ -198,11 +198,101 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 
 ## 使用者偏好
 
-- **語言**：繁體中文回答
-- **風格**：直接給答案，不要長篇解釋，重點條列
-- **分析口吻**：白話文，像在跟初學者解釋
-- **功能方向**：以初學者友善為主，複雜功能要有白話說明
-- **命名習慣**：不用「照妖鏡」這三個字（已從 UI 移除）
+### 溝通風格
+- **語言**:繁體中文回答(永遠不英文)
+- **風格**:**直接做別問**,不要長篇解釋,重點條列;一次回多件事用編號 + 短句
+- **問問題時機**:**只在「重大事件」才問**(架構大改、刪檔/刪資料、改 GitHub Actions、動採礦邏輯、不確定會不會壞);其他直接做。連「需要繼續嗎/部署嗎/版本要不要 bump」都不用問
+- **使用者性格**:看不懂程式碼,壞了再說;Claude 永久授權 push main 直接 deploy
+
+### 數字呈現
+- **數學不好**:任何「賣的話虧多少%」「跌幅累積」都**順便給「實際金額」**(用 cost × shares × 1000 試算),不要只給 %
+- **損益顯示**:`+1,250 元(獲利)` / `-3,500 元(虧損)`,不要只給 +1.25%
+- **數字大字突顯**:重要指標用 `text-2xl` `font-black` `font-mono`,小副字用 `text-[10px]`
+
+### UI 風格(仿券商 App)
+- **參考對標 App**:元大證券、玉山證券、籌碼 K 線(全螢幕搜尋頁、現價紅底框、處置股神器)
+- **漲跌停顯示**:在「現價數字本身」加紅底(漲停)/綠底(跌停)白字框 `bg-red-600 text-white px-1.5 rounded`,**不是**股名旁加 tag
+- **顏色慣例**(台股):紅=漲=好、綠=跌=壞(全 UI 遵守)
+- **燈號**:🟢 安全/🟡 警戒/🔴 危險/🚨 緊急(animate-pulse)/💀 必死/💡 提示
+- **Badge 規格**:可疊加,沒命中時 `hidden`(不留空)
+- **教學說明**:每個複雜卡片右上加「📖 教學」按鈕,點開 `alert()` 顯完整機制
+- **對策建議**:每個風險警報下方加「💡 對策」一句話告訴使用者該怎麼做
+- **「跟對做 / 對著做」**雙向策略:處置股、主力動向都給兩種選擇
+
+### 命名禁用
+- ⛔ **「照妖鏡」**這三個字(已從 UI 移除,不要再用)
+- ⛔ 「股市籌碼 K 線」原本叫「處置股神器」,我們可以叫「處置股風控」或「注意股掃描」
+
+### 功能方向
+- **初學者友善**:複雜功能要有白話說明 + alert 教學 + 對策建議
+- **零採礦優先**:能用前端 K 線/既有資料源算就先做,「動採礦」是最後手段
+- **AI 鏈偏好**:**Gemini 為主**(2.5 Flash + safetySettings BLOCK_NONE + thinkingBudget=0 + systemInstruction),OpenRouter 為備援,**取消 Groq**(輕量任務也是)
+- **PWA 推播**:支援 `_fireAlert` + sw.js + 鈴鐺歷史 2 天
+- **每日開 App 掃處置風險**:自動推 1 則(`_dailyDisposedAlertSweep`)
+
+### 開發流程
+- **直接 push main**:純前端改 → `deploy_pages.yml` ~1 分鐘上線
+- **改完三驗證**:`node --check`(inline JS) + `python3 -m py_compile`(py) + `scripts/check_prompt_vars.py`
+- **commit 用 HEREDOC**:多行 commit message + Co-Authored-By
+- **PR 寫測試清單**:每張 PR body 給 Test plan(使用者上線後可逐項勾)
+- **PR rebase**:撞 main conflict 時 `git rebase origin/main` + `git push --force`
+
+---
+
+## 🚨 處置股完整系統(V20.x — 大功能,獨立 sub-tab)
+
+V20.0-V20.7 全套處置股風控,個股頁最右邊「🚨 處置」tab,含 6 張卡:
+
+| # | 卡片 | 觸發條件 | 內容 |
+|---|------|---------|------|
+| 1 | 🔍 注意股 8 款掃描 | 永遠顯 | 8 款 TWSE 規則前端推估 + 4 個累積統計(連 3/連 5/10 中 N/30 中 N) |
+| 2 | 預測 banner | 永遠顯 | 🟢 安全 / 💡 累積 / ⚠️ 即將注意 / 🚨 已達處置 |
+| 3 | 💀 處置前/中/後 時機告警 | 已處置或必關 | 出獄前 1 天 / 出獄當日 / 出獄後 7 天 各自對策 |
+| 4 | ⚔️ 雙刀流核心心法 | 注意/處置/必關 | 擒賊先擒王(同 industry 被關名單)+ 信心燈號(藍/紅/黃)+ 買盤竭盡 |
+| 5 | 📈 越關越大尾預測 | 注意/處置/必關 | 5 因子評分 100 分(量縮/法人/基本面/技術/環境)→ 高機率續強 vs 出獄易崩 |
+| 6 | 📖 處置股實戰操作秘訣 | 永遠顯 | 處置前/中/後 券商/ETF/大戶會做什麼 + 跟對做/對著做 |
+
+### 8 款 TWSE 規則閾值(V20.4 嚴格版,對齊專業 App)
+| # | 規則 | 資料源 | 閾值 |
+|---|------|--------|------|
+| 1 | 漲跌幅累積過大 | K 線 | 5/10/20 日 **32%/40%/60%** |
+| 2 | 長期漲跌異常 | K 線 | 30/60/90 日 50%/70%/90% |
+| 3 | 成交量明顯放大 | K 線 | 5×/3× 60 日均量 |
+| 4 | 漲跌+量綜合 | K 線 | 單日 **±7%** 且 **5×** 量 |
+| 5 | 券商分點集中度 | `data/chips/{sym}.json` | 前 10 家佔 ≥ 80% |
+| 6 | PE 異常 | `_fundCache.pe` | >30 偏高 / >50 觸發 / >100 嚴重 |
+| 7 | 融資餘額異常 | `rawDailyData.margin_balance` | 近 5 日 ±25% |
+| 8 | 權證溢價率 | 無資料源 | 待採礦補(無公開 API) |
+
+### 個股代號 badge(V20.3,可疊加)
+- ⚠️ **注意股**(from `attention_status`)
+- 🚨 **處置 N 分盤 ・ N 天後出關**(from `attention_status.interval/end_date`)
+- 💀 **必關股**(from `_calcAttentionScan` 預測)
+
+### 處置門檻(TWSE 4 條任一觸發 → 處置)
+1. 連 3 日觸第 1 款 = 注意股 → 連 5 日 = 處置
+2. 10 日內 6 天觸 1~8 款 = 處置
+3. 30 日內 12 天觸 1~8 款 = 處置
+
+### 越關越大尾 vs 越關越死
+- ✅ 越大尾:量縮主力洗完 + 法人未撤 + 基本面健康 + 站穩 20MA + 大盤無黑
+- ❌ 越關死:法人撤 + 技術破月線 + PE 嚴重高估 + 大盤黑天鵝
+
+---
+
+## 📋 2026-06 重大功能盤點(V18.5 ~ V20.7)
+
+| 模組 | 版本 | 內容 |
+|------|------|------|
+| AI 鏈 Gemini 為主 | V18.5 / V18.7 / V19.3 | 全改 Gemini + safetySettings + thinkingBudget=0 + systemInstruction |
+| 庫存表 | V18.7 / V19.1 / V19.2 | 7 欄重排(庫存股/今損益/股價漲跌/總損益/股數/均成本/市值佔比) + 漲跌停現價底色 + 雙擊刪除 |
+| 置頂 UI | V18.9 / V19.0 / V19.1 | logo + 🔍 全螢幕搜尋 modal + 🔔 提醒鈴鐺 + SVG line icon + safe-area |
+| 鈴鐺歷史通知 | V19.4 | priceAlertModal 加第 3 tab,2 天自動清,點任一筆跳該股 |
+| 離場 SOP | V19.7 | 分區 + **每條損益試算** + 永豐 App 操作步驟濃縮 |
+| 板塊輪動對標 | V19.6 / V19.7 | 10 板塊對應美股 ETF,改可摺疊速查表(避免擠) |
+| ETF 跟車狀態 | V18.6 / V19.6 | 個股頁卡 + 修切股 reactive bug |
+| 朱家泓策略 | V18.8 | 5MA/20MA/-5% 三條件即時 PWA 推播 |
+| **🚨 處置股系統** | **V20.0-V20.7** | 上方完整 6 卡 + 每日推播 + 獨立 sub-tab |
 
 ---
 
@@ -215,6 +305,13 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 | 外資期貨/美股無資料 | URL 硬編碼小寫路徑 | 改用動態 ghBase |
 | 主力顯示 ABC 而非券商名 | 資料已最新跳過→T86未呼叫 | 跳過時仍呼叫 _refresh_broker_names |
 | broker_names.json 不存在 | T86 被雲端 sandbox 阻擋 | GitHub Actions 環境可存取 TWSE |
+| **庫存頁空白(只剩表頭)** | V18.7 row template 內 `const totalCostNTD` 跟 outer `let` 同 block 重複 → ReferenceError | 刪 inner const,用 row 內 totalCost |
+| **ETF 跟車卡顯舊股資料** | render 在 `activeData` 更新前 trigger(V19.6) | render call 移到 `this.activeData = ...` 之後 |
+| **ETF 跟車燈號全紅** | K 線日期 `2026/06/19` vs etf_tracking `2026-06-19`,字串比對 `/(47) > -(45)` 全 skip | normalize 日期(/ → -)+ max-search 不依賴 array 順序 |
+| **搜尋 modal header 看不到** | modal z=100 vs header z=150 | modal z 改 999 |
+| **庫存編輯 🗑️ 無反應** | `showConfirm` z=300 vs editor z=9999,confirm 被蓋住 | 改「雙擊確認」(2 秒紅閃)避開 z-index 衝突 |
+| **Gemini 輸出字數爆短** | safetySettings false-positive 攔截 + 2.5 Thinking 吃預算 | safetySettings 4 大類全 BLOCK_NONE + thinkingBudget=0 + systemInstruction |
+| **注意股掃描太寬鬆**(專業 App 1/5、我 3/5) | V20.0 閾值「漲停就 +1」太鬆 | V20.4 改 32% / 40% / 60%,單日門檻 7% 且須 5× 量 |
 
 ---
 
