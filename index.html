@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V19.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V19.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -777,7 +777,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4147,10 +4147,32 @@ ${list}
     // [Gemini] 呼叫 Google AI Studio 免費 API(2.5 Flash:每 key 250 req/day,雙 key 500 req/day)
     // - Gemini API 格式跟 OpenAI 不同:request body 用 contents/parts,response 從 candidates 取
     // - 內部 round-robin:429/403/5xx 自動切下一把;全失敗 throw 讓上層 _callAI/_callDeepAI fallback
-    async _callGemini({ prompt, max_tokens = 900, temperature = 0.3, model = 'gemini-2.5-flash' }) {
+    // V19.3 — 三大強化(治 Gemini「輸出字數異常變少」)
+    //   ① safetySettings 4 大類全設 BLOCK_NONE — 財經內容常被 false-positive 攔截 → 輸出爆短
+    //   ② thinkingConfig.thinkingBudget=0 — 關 Gemini 2.5 Thinking,字數預算全給輸出(原本被思考吃掉)
+    //   ③ systemInstruction 欄位(可選)— 角色/字數/格式規矩塞這裡,跟股票數據分離
+    //                                     Gemini 對 system 級 prompt 服從度遠高於混在 user 訊息內
+    async _callGemini({ prompt, systemInstruction = null, max_tokens = 900, temperature = 0.3, model = 'gemini-2.5-flash' }) {
         const keys = this._getGeminiKeys();
         if (!keys.length) throw new Error('Gemini key 未設定');
         if (this._geminiKeyIdx == null) this._geminiKeyIdx = 0;
+        const reqBody = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature,
+                maxOutputTokens: max_tokens,
+                thinkingConfig: { thinkingBudget: 0 },
+            },
+            safetySettings: [
+                { category: 'HARM_CATEGORY_HARASSMENT',         threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH',        threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',  threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT',  threshold: 'BLOCK_NONE' },
+            ],
+        };
+        if (systemInstruction) {
+            reqBody.systemInstruction = { parts: [{ text: systemInstruction }] };
+        }
         let lastErr = null;
         for (let attempt = 0; attempt < keys.length; attempt++) {
             const idx = (this._geminiKeyIdx + attempt) % keys.length;
@@ -4161,27 +4183,28 @@ ${list}
                 res = await this.safeFetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { temperature, maxOutputTokens: max_tokens },
-                    })
+                    body: JSON.stringify(reqBody)
                 }, { timeout: 60000, maxRetries: 1 });
             } catch (e) { lastErr = e; continue; }
             if (res.ok) {
                 const data = await res.json().catch(() => ({}));
                 const text = data?.candidates?.[0]?.content?.parts?.map(p => p?.text || '').join('') || '';
+                // V19.3 — 若仍被 safety 攔(理論上 BLOCK_NONE 不該再撞)記錄到 console 方便 debug
+                const finishReason = data?.candidates?.[0]?.finishReason;
+                if (!text && finishReason && finishReason !== 'STOP') {
+                    console.warn(`[_callGemini] 無內容,finishReason=${finishReason}`, data?.promptFeedback);
+                }
                 if (text) {
                     this._geminiKeyIdx = idx;  // 成功後固定在這把,下次優先用
                     this._lastGeminiKeyIndex = idx + 1;  // 給 _setAIStatus 顯示用
-                    console.info(`[_callGemini] Gemini Key #${idx + 1} OK`);
+                    console.info(`[_callGemini] Gemini Key #${idx + 1} OK (${text.length} chars, finishReason=${finishReason || 'STOP'})`);
                     return text;
                 }
-                lastErr = new Error('Gemini 回應無內容');
+                lastErr = new Error(`Gemini 回應無內容(finishReason=${finishReason || '?'})`);
                 continue;
             }
             if (res.status === 429 || res.status === 403 || res.status >= 500) {
                 this._recordAIFail('gemini', idx + 1, res.status);
-                // 🎲 jitter 2~5 秒隨機延遲再切下一把,模糊機器人連 retry 特徵,降低臨時 ban 風險
                 const _jitter = Math.round(2000 + Math.random() * 3000);
                 console.warn(`[Gemini 輪動] Key #${idx + 1} 收到 ${res.status},等 ${_jitter}ms(jitter)後切下一把...`);
                 await new Promise(r => setTimeout(r, _jitter));
@@ -5268,7 +5291,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // 兩者皆無 → 回傳 null，呼叫方顯示引導訊息
     // ═══════════════════════════════════════════════════════════════════
     // V14.16:max_tokens 預設 900 → 1800(防 fallback chain 截斷;與 _callDeepAI 對齊)
-    async _callAI({ prompt, max_tokens = 1800, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
+    async _callAI({ prompt, systemInstruction = null, max_tokens = 1800, temperature = 0.3, model = 'llama-3.1-8b-instant', openrouter_model = 'meta-llama/llama-3.1-8b-instruct:free' }) {
         const apiBase  = this._apiBase;
         const orKeys   = this._getOpenRouterKeys();
         const groqKeys = this._getGroqKeys();
@@ -5295,8 +5318,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         }
 
         // 🌟 第一鏈:Groq 直連(V14.16:30s 冷卻後才試,加 trying/429 chip 即時更新)
+        // V19.3 — Groq/OpenAI 格式 messages 加 system role(原本只塞 user role,模型對規矩服從度低)
+        const _msgs = systemInstruction
+            ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: prompt }]
+            : [{ role: 'user', content: prompt }];
         if (groqKeys.length && !this._isProviderCoolingDown('groq')) {
-            const body = JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens, temperature });
+            const body = JSON.stringify({ model, messages: _msgs, max_tokens, temperature });
             for (let i = 0; i < groqKeys.length; i++) {
                 const key = groqKeys[i];
                 this._setAIStatus('groq', i + 1, 'trying');   // V14.16:嘗試前即時顯示
@@ -5337,7 +5364,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (this._getGeminiKeys().length && !this._isProviderCoolingDown('gemini')) {
             this._setAIStatus('gemini', 1, 'switching');
             try {
-                const content = await this._callGemini({ prompt, max_tokens, temperature, model: 'gemini-2.5-flash' });
+                const content = await this._callGemini({ prompt, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash' });
                 if (content) {
                     console.info('[_callAI] Gemini 2.5 Flash OK');
                     this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1, 'success');
@@ -5370,7 +5397,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     },
                     body: JSON.stringify({
                         model: openrouter_model,
-                        messages: [{ role: 'user', content: prompt }],
+                        messages: _msgs,   // V19.3 — 共用上方 _msgs(含 systemInstruction 時自動加 system role)
                         max_tokens, temperature,
                     })
                 }, { timeout: 60000, maxRetries: 1 });
@@ -5411,7 +5438,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     //    用於盤前戰情、首席五維、籌碼/技術深度分析等重型 prompt
     //    雙 prompt 支援:R1 推理強用 full;Gemini/Groq 用 simple(較短、減 AI 思考負擔)
     //    舊呼叫只傳 prompt 仍向下相容(full=simple=prompt)
-    async _callDeepAI({ prompt, prompts, max_tokens = 1800, temperature = 0.4, chain = 'auto' }) {
+    async _callDeepAI({ prompt, prompts, systemInstruction = null, max_tokens = 1800, temperature = 0.4, chain = 'auto' }) {
         // 解析雙 prompt:優先取 prompts.full / prompts.simple,沒給則退回單一 prompt
         // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
         const promptFull = this._injectDisciplineClause(prompts?.full ?? prompt);
@@ -5419,11 +5446,18 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if (!promptFull && !promptSimple) {
             throw new Error('_callDeepAI 需提供 prompt 或 prompts.{full,simple}');
         }
+        // V19.3 — Groq/OpenRouter messages 統一,有 systemInstruction 自動塞 system role
+        const _msgsSimple = systemInstruction
+            ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: promptSimple }]
+            : [{ role: 'user', content: promptSimple }];
+        const _msgsFull = systemInstruction
+            ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: promptFull }]
+            : [{ role: 'user', content: promptFull }];
 
         // 🧠 三條鏈的獨立 try 函式(便於 chain 參數任意組合)
         const tryGemini = async () => {
             if (!this._getGeminiKeys().length) throw new Error('Gemini 雙 key 未設定');
-            const content = await this._callGemini({ prompt: promptSimple, max_tokens, temperature, model: 'gemini-2.5-flash' });
+            const content = await this._callGemini({ prompt: promptSimple, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash' });
             if (content) {
                 console.info('[_callDeepAI] Gemini 2.5 Flash OK');
                 this._setAIStatus('gemini', this._lastGeminiKeyIndex || 1);
@@ -5437,7 +5471,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             if (!groqKeys.length) throw new Error('Groq 雙 key 未設定');
             const body = JSON.stringify({
                 model: 'llama-3.3-70b-versatile',
-                messages: [{ role: 'user', content: promptSimple }],
+                messages: _msgsSimple,   // V19.3 — 含 system role
                 max_tokens, temperature
             });
             let lastErr;
@@ -5487,7 +5521,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                         },
                         body: JSON.stringify({
                             model: 'deepseek/deepseek-r1:free',
-                            messages: [{ role: 'user', content: promptFull }],
+                            messages: _msgsFull,   // V19.3 — 含 system role
                             max_tokens, temperature,
                         })
                     }, { timeout: 90000, maxRetries: 1 });
@@ -15490,7 +15524,16 @@ ${_chuPosPlan}
 }`;
 
             // 🎯 首席 AI 全盤分析:使用者要求純 Gemini 雙 key 輪動(深度推理保留 Gemini 2.5),撞 429 直接 throw 不偷偷 fallback
-            let raw = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.35, chain: 'gemini-openrouter' });
+            // V19.3 — 角色 + 鐵血規矩抽到 systemInstruction(Gemini 對 system 級 prompt 服從度遠高於塞 user prompt 開頭)
+            const chiefSystemInstruction = `你是「哲哲」 — 台股知名分析師。口語直白、像直播跟「各位投資朋友」喊盤,口頭禪「抱緊處理」「該出手就出手」。能買就說能買,不能買就說不能買,絕不模稜兩可。
+
+【鐵血規矩 — 違反視同無效】
+- 全文用繁體中文白話文輸出,字數目標 1000-1500 字,絕不偷工短於 800
+- 嚴禁自己算數學或捏造數字,所有 EPS / 均線 / 漲幅數字只引用使用者訊息中給定的
+- 燈號鐵律(台股慣例紅漲綠跌):🔴 可以買(做多)/ 🟡 觀望 / 🟢 不能買(避開或撤退)
+- 嚴禁說「以下為您分析」「根據資料」「希望對您有幫助」等廢話,直接給結論
+- 嚴禁用 \`\`\`json wrapper、嚴禁前後贅言,輸出符合使用者訊息中規定的格式`;
+            let raw = await this._callDeepAI({ prompt, systemInstruction: chiefSystemInstruction, max_tokens: 1800, temperature: 0.35, chain: 'gemini-openrouter' });
             if (!raw) throw new Error('未設定 Gemini API Key,請至 ⚙️ 設定填入');
 
             // 健壯解析 → traffic_light + summary + bottom_bar + detail_action

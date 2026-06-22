@@ -744,18 +744,32 @@ async function handleCost(env, chatId, text) {
 
 // ── F4: Gemini AI 短評(只在每日總結用)────────────────────────────────
 
-async function gemini(env, prompt) {
+async function gemini(env, prompt, systemInstruction = null) {
     if (!env.GEMINI_API_KEY) return null;
+    // V19.3 — 同步 frontend 三大強化:safetySettings BLOCK_NONE × 4 + thinkingBudget=0
+    //         + 可選 systemInstruction(角色/字數規矩塞這裡)
     try {
+        const body = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0.5,
+                maxOutputTokens: 300,
+                thinkingConfig: { thinkingBudget: 0 },
+            },
+            safetySettings: [
+                { category: 'HARM_CATEGORY_HARASSMENT',         threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH',        threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',  threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT',  threshold: 'BLOCK_NONE' },
+            ],
+        };
+        if (systemInstruction) body.systemInstruction = { parts: [{ text: systemInstruction }] };
         const r = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { maxOutputTokens: 300, temperature: 0.5 },
-                }),
+                body: JSON.stringify(body),
                 signal: AbortSignal.timeout(8000),
             }
         );
