@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -900,12 +900,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex px-2 pt-1.5 bg-[#0d1117]">
-                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">⚡ 首席</button>
-                    <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">📈 K線</button>
-                    <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">🔬 籌碼</button>
-                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">📊 基本</button>
-                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 py-2 text-xs font-bold tracking-widest rounded-t-lg">📅 回測</button>
+                <div class="flex px-2 pt-1.5 bg-[#0d1117] overflow-x-auto">
+                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">⚡ 首席</button>
+                    <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📈 K線</button>
+                    <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">🔬 籌碼</button>
+                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📊 基本</button>
+                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📅 回測</button>
+                    <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">🚨 處置</button>
                 </div>
             </div>
 
@@ -999,15 +1000,7 @@
                     <div class="font-black text-purple-200 mb-0.5">🔬 籌碼頁怎麼看</div>
                     <div>重點看兩件事：① <b class="text-white">法人連續方向</b>（連買連賣 > 單日漲跌幅）② <b class="text-white">主力分點集中度</b>。下方「🤖 AI 解析」會用白話文整合給你聽 — 不用自己算。</div>
                 </div>
-
-                <!-- 🔍 V20.0 — 注意股 8 款掃描器 + 處置預測(主動偵測,所有股都顯) -->
-                <div id="attentionScanCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
-
-                <!-- ⚔️ V20.4 — 雙刀流核心心法卡(處置/注意/必關時觸發 — 擒賊先擒王 + 信心燈號) -->
-                <div id="doubleSwordCard" class="hidden bg-[#161b22] border border-purple-700/40 rounded-lg p-3 shadow-lg"></div>
-
-                <!-- 🚨 V19.4 — 處置股風控狀態(只在該股是注意/處置時顯,否則 hidden) -->
-                <div id="attentionDetailCard" class="hidden"></div>
+                <!-- V20.5 — 處置相關 3 卡(attentionScan / doubleSword / attentionDetail)已搬到「🚨 處置」tab -->
 
                 <!-- ⚔️ 朱家泓策略狀態(V18.8 — 距離 5MA/20MA/-5% 停損各還多少 + 燈號)-->
                 <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -1162,6 +1155,28 @@
                         <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">我的機率</th><th class="py-1.5 px-1 font-bold text-center">Alpha 分</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
                         <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="5" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- 🚨 V20.5 — 處置股 tab(從籌碼 tab 搬過來 + 加實戰操作秘訣) -->
+            <div id="subContentDisposed" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
+                <!-- 注意股 8 款掃描 + 處置預測 -->
+                <div id="attentionScanCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
+                <!-- 雙刀流核心心法卡(處置/注意/必關時觸發) -->
+                <div id="doubleSwordCard" class="hidden bg-[#161b22] border border-purple-700/40 rounded-lg p-3 shadow-lg"></div>
+                <!-- 處置股風控狀態(已處置股顯) -->
+                <div id="attentionDetailCard" class="hidden"></div>
+                <!-- V20.5 — 處置股實戰操作秘訣(永遠顯,教育目的) -->
+                <div id="disposedPlaybookCard" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg"></div>
+                <!-- V20.5 — 資料來源說明卡(誠實告知哪些是估算/哪些是 TWSE 公告) -->
+                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-[10px] text-gray-400 leading-relaxed">
+                    <div class="text-cyan-300 font-bold text-[11px] mb-1.5">📊 資料來源</div>
+                    <div>• <b class="text-gray-200">注意股 / 處置股名單 / 分盤分鐘 / 出關日</b>:來自 <b class="text-blue-300">TWSE 官方 OpenAPI</b>(採礦端每日盤後抓)</div>
+                    <div>• <b class="text-gray-200">8 款規則掃描 + 4 個累積統計</b>:用 K 線前端推估,僅供參考</div>
+                    <div>• <b class="text-gray-200">第 5 款分點集中度</b>:用 data/chips/{sym}.json(FinMind 採礦)</div>
+                    <div>• <b class="text-gray-200">第 6 款 PE / 第 7 款融資</b>:用 X 光基本面 + daily margin_balance</div>
+                    <div>• <b class="text-amber-300">第 8 款權證溢價率</b>:目前無公開 API,暫無資料</div>
+                    <div class="mt-1.5 text-[9px] text-gray-500">⚠️ 實際以 TWSE 官方公告為準 ・ 投資有風險,以上僅供風控參考</div>
                 </div>
             </div>
 
@@ -3805,7 +3820,7 @@ ${list}
     },
 
     switchSubTab(tab) {
-        ['Strategy', 'Chart', 'Chip', 'Corp', 'Backtest'].forEach(t => {
+        ['Strategy', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed'].forEach(t => {
             const el = document.getElementById(`subContent${t}`);
             if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
             const btn = document.getElementById(`subTabBtn${t}`);
@@ -3820,10 +3835,13 @@ ${list}
             this.renderEtfFollowCard(this.currentSymbolId);
             // V18.8 — 朱家泓策略狀態卡(5MA/20MA/-5% 距離 + 燈號)
             this.renderChuStrategyCard(this.currentSymbolId);
-            // V19.4 — 處置股風控卡(注意/處置/即將處置/怕關 vs 不怕關)
+        }
+        // V20.5 — 處置 tab(從籌碼搬出)— 3 卡 + 實戰秘訣
+        if (tab === 'disposed' && this.currentSymbolId) {
             this.renderAttentionDetailCard(this.currentSymbolId);
-            // V20.0 — 注意股 8 款掃描器 + 處置預測(所有股都掃)
             this.renderAttentionScanCard(this.currentSymbolId);
+            this.renderDoubleSwordCard(this.currentSymbolId);
+            this.renderDisposedPlaybookCard();
         }
         if (tab === 'corp' && this.currentSymbolId) {
             // 🔬 X 光機:localStorage 快取優先(<24hr 直接顯示),過期/缺則背景重抓覆蓋
@@ -6721,6 +6739,73 @@ const marginByDate = {};
                 💡 雙刀流:① 大哥處置 → 同族群小弟接棒 ② 燈號顯示主力意圖 ③ 急拉未鎖 = 出貨警訊
             </div>`;
         card.classList.remove('hidden');
+    },
+
+    // V20.5 — 處置股實戰操作秘訣卡(教育/策略,所有股都顯)
+    //   列券商/ETF/大戶在「處置前/中/後」通常會做什麼,使用者可決定跟做或反做
+    renderDisposedPlaybookCard() {
+        const box = document.getElementById('disposedPlaybookCard');
+        if (!box) return;
+        box.innerHTML = `
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-cyan-700/40">
+                <h4 class="text-cyan-300 font-bold text-sm">📖 處置股實戰操作秘訣</h4>
+                <span class="text-[9px] text-gray-500">券商 / ETF / 大戶 內幕</span>
+            </div>
+            <div class="space-y-2 text-[11px] leading-relaxed">
+
+                <!-- 處置前 -->
+                <div class="bg-[#0d1117] border border-purple-700/40 rounded p-2.5">
+                    <div class="text-purple-300 font-bold text-[12px] mb-1">🟣 處置前(被宣告當天傍晚 ~ 隔日盤前)</div>
+                    <div class="text-gray-300 mb-1.5">
+                        🏦 <b class="text-amber-300">券商會做:</b> 通知信用戶準備補錢(維持率 ↓);取消當沖單;融資戶被砍倉<br>
+                        📊 <b class="text-amber-300">ETF 會做:</b> 若該股佔權重 &gt; 1%,可能調整成分股(下檔處置 ETF 賣超明顯)<br>
+                        💰 <b class="text-amber-300">大戶會做:</b> <span class="text-red-300 font-bold">利用最後正常交易日拉高出貨</span>(讓散戶接刀),或反手放空權證
+                    </div>
+                    <div class="bg-purple-900/30 border border-purple-700/50 rounded p-1.5 text-[10px]">
+                        💡 <b class="text-green-300">跟對做:</b> 看到要被處置 → 持股 <b>當天尾盤就出</b>,別等被關才賣(分盤滑價慘)<br>
+                        ⚠️ <b class="text-red-300">對著做(高風險):</b> 大戶尾盤拉高出貨時跟著賣空權證,但要承擔被軋的風險
+                    </div>
+                </div>
+
+                <!-- 處置中 -->
+                <div class="bg-[#0d1117] border border-red-700/40 rounded p-2.5">
+                    <div class="text-red-300 font-bold text-[12px] mb-1">🔴 處置中(5/20 分撮合期間,通常 10 個交易日)</div>
+                    <div class="text-gray-300 mb-1.5">
+                        🏦 <b class="text-amber-300">券商會做:</b> 預收 100% 款券,當沖完全禁;融資戶若維持率不足會強制砍倉<br>
+                        📊 <b class="text-amber-300">ETF 會做:</b> 流動性差,基金經理人通常 <b>不在分盤期間進出</b>,等出獄再評估<br>
+                        💰 <b class="text-amber-300">大戶會做:</b> <span class="text-blue-300 font-bold">洗盤</span> — 利用分盤的劇烈波動 + 散戶失去耐心,把浮額洗掉。常見手法:每幾分鐘大單壓盤或拉抬
+                    </div>
+                    <div class="bg-red-900/30 border border-red-700/50 rounded p-1.5 text-[10px]">
+                        💡 <b class="text-green-300">跟對做:</b> 出獄前 1-2 天 <b>量縮見底</b> 時抄底(主力把浮額清完了)<br>
+                        ⚠️ <b class="text-red-300">對著做:</b> 別在分盤期間殺最低 — 大戶就是要你恐慌賣他撿便宜
+                    </div>
+                </div>
+
+                <!-- 處置後 -->
+                <div class="bg-[#0d1117] border border-green-700/40 rounded p-2.5">
+                    <div class="text-green-300 font-bold text-[12px] mb-1">🟢 處置後(恢復 5 秒撮合首 5 天)</div>
+                    <div class="text-gray-300 mb-1.5">
+                        🏦 <b class="text-amber-300">券商會做:</b> 恢復信用 + 當沖 → 散戶資金重新湧入 → <b>融資餘額短期再爆增</b>(再處置風險高)<br>
+                        📊 <b class="text-amber-300">ETF 會做:</b> 若主動 ETF 看好,出獄首日就建倉(會看到 ETF 主動加碼名單有它)<br>
+                        💰 <b class="text-amber-300">大戶會做:</b> 出獄首日 <b>測試水溫</b> — 量價齊揚 = 主力還在準備噴出;<span class="text-red-300">量縮收黑 = 主力已跑,接刀者哭</span>
+                    </div>
+                    <div class="bg-green-900/30 border border-green-700/50 rounded p-1.5 text-[10px]">
+                        💡 <b class="text-green-300">跟對做:</b> 出獄首日 <b>看開盤前 30 分鐘量價</b>:爆量噴 → 跟單(設停損);量縮收黑 → 別碰<br>
+                        ⚠️ <b class="text-red-300">對著做:</b> 出獄首日通常有第一波蜜月,但 3-5 天後容易拉回測 5MA,可短做 T
+                    </div>
+                </div>
+
+                <!-- 黃金規則 -->
+                <div class="bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border border-yellow-700/40 rounded p-2.5">
+                    <div class="text-yellow-300 font-bold text-[12px] mb-1">🏆 黃金心法(融合 3 階段)</div>
+                    <div class="text-gray-300 text-[11px] leading-relaxed">
+                        🎯 <b>最佳買點</b>:處置「<b class="text-green-300">出獄前 1-2 天</b>」量縮 + 站穩月線(主力洗完盤準備噴)<br>
+                        🛑 <b>最差買點</b>:處置「<b class="text-red-300">當天宣告</b>」追高(接到大戶出貨的最後一棒)<br>
+                        🐍 <b>進階套利</b>:處置「<b class="text-blue-300">期間中段</b>」配對交易 — 做空被處置股(限機構)+ 做多同族群未被處置股
+                    </div>
+                </div>
+            </div>
+            <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">⚠️ 以上為市場常見操作模式整理,非投資建議,實際走勢仍以個股技術 / 籌碼為準</div>`;
     },
 
     // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
