@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -6326,16 +6326,59 @@ const marginByDate = {};
             detail: '單日漲跌 ≥ ±5% 且量能 ≥ 3× 60 日均量',
         };
 
-        // ─── 第 5-8 款:需採礦資料 ────────────────────────────
-        const placeholder = (idx, name, detail) => ({
-            idx, name, hit: false,
-            status: '⚪ 需採礦資料(下次更新)',
-            detail,
-        });
-        const r5 = placeholder(5, '券商分點集中度', '近 5 日分點前 10 家集中度 > 90%');
-        const r6 = placeholder(6, 'PE / PB 異常', '本益比/股價淨值比異常偏高');
-        const r7 = placeholder(7, '融資融券異常', '融資餘額快速增加 / 融券異常');
-        const r8 = placeholder(8, '權證溢價率過高', '認購售權證溢價率 > 20% / 40%');
+        // ─── 第 5 款:券商分點集中度(V20.1 — 用 chips cache,_attChipCache 由 renderAttentionScanCard async 預載) ─
+        let r5;
+        const chipCache = this._attChipCache?.[sym];
+        if (chipCache) {
+            // 取最新一日,算前 10 家買進淨額 / 總買進額(>90% = 主力高度集中)
+            const concRatio = chipCache.conc_pct_top10;   // 已預算 0-100
+            const r5Hit = concRatio != null && concRatio >= 80;
+            r5 = {
+                idx: 5, name: '券商分點集中度',
+                hit: r5Hit,
+                status: concRatio == null ? '⚪ 無分點資料'
+                       : r5Hit ? `🟡 觸發:Top 10 家佔 ${concRatio.toFixed(1)}%`
+                       : `🟢 安全:Top 10 家佔 ${concRatio.toFixed(1)}%`,
+                detail: '單日前 10 大分點買賣淨額集中度(閾值 80%)',
+            };
+        } else {
+            r5 = { idx: 5, name: '券商分點集中度', hit: false, status: '⚪ 載入中…', detail: '單日前 10 大分點集中度(閾值 80%)' };
+        }
+
+        // ─── 第 6 款:PE 異常(V20.1 — 用 _fundCache.pe;閾值 30/50/100) ─
+        const pe = this._fundCache?.sym === sym ? this._fundCache?.pe : null;
+        const r6Hit = pe != null && pe > 50;
+        const r6 = {
+            idx: 6, name: 'PE 本益比異常',
+            hit: r6Hit,
+            status: pe == null ? '⚪ 無基本面資料'
+                   : pe > 100 ? `🔴 嚴重偏高:PE ${pe.toFixed(1)}(>100)`
+                   : pe > 50 ? `🟡 觸發:PE ${pe.toFixed(1)}(>50 異常)`
+                   : pe > 30 ? `🟢 偏高但安全:PE ${pe.toFixed(1)}`
+                   : `🟢 合理:PE ${pe.toFixed(1)}`,
+            detail: '本益比異常(閾值 50× 為觸發點,>100 嚴重)',
+        };
+
+        // ─── 第 7 款:融資融券異常(V20.1 — rawDailyData 近 5 日 margin_balance 增幅) ─
+        const raw = this.rawDailyData || [];
+        let r7;
+        if (raw.length >= 6) {
+            const m_now = raw[raw.length - 1]?.margin_balance || 0;
+            const m_5ago = raw[raw.length - 6]?.margin_balance || 0;
+            if (m_5ago > 0) {
+                const marginPct = ((m_now - m_5ago) / m_5ago) * 100;
+                const r7Hit = Math.abs(marginPct) >= 25;
+                r7 = {
+                    idx: 7, name: '融資餘額異常',
+                    hit: r7Hit,
+                    status: r7Hit ? `🟡 觸發:近 5 日融資 ${marginPct >= 0 ? '+' : ''}${marginPct.toFixed(1)}%` : `🟢 安全:近 5 日融資 ${marginPct >= 0 ? '+' : ''}${marginPct.toFixed(1)}%`,
+                    detail: '融資餘額近 5 日變化(閾值 ±25%)',
+                };
+            } else r7 = { idx: 7, name: '融資餘額異常', hit: false, status: '⚪ 無融資資料', detail: '融資餘額近 5 日變化(閾值 ±25%)' };
+        } else r7 = { idx: 7, name: '融資餘額異常', hit: false, status: '⚪ 無融資資料', detail: '融資餘額近 5 日變化(閾值 ±25%)' };
+
+        // ─── 第 8 款:權證溢價率(無資料源,純佔位) ─
+        const r8 = { idx: 8, name: '權證溢價率過高', hit: false, status: '⚪ 無權證資料源', detail: '認購售權證溢價率 > 20%(無採礦)' };
 
         const rules = [r1, r2, r3, r4, r5, r6, r7, r8];
         const hits = rules.filter(r => r.hit).length;
@@ -6394,9 +6437,36 @@ const marginByDate = {};
     },
 
     // V20.0 — render 「⚠️ 注意股 8 款掃描」卡到個股頁籌碼 tab
-    renderAttentionScanCard(sym) {
+    // V20.1 — 非同步預載 chips 集中度,算完後重畫第 5 款
+    async renderAttentionScanCard(sym) {
         const card = document.getElementById('attentionScanCard');
         if (!card) return;
+        // 先用現有資料畫一次(第 5 款顯「載入中…」)
+        this._renderAttentionScanInner(card, sym);
+        // 背景預載 chips 集中度
+        try {
+            if (!this._attChipCache) this._attChipCache = {};
+            if (!this._attChipCache[sym]) {
+                const base = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL(`data/chips/${sym}.json`, base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(5000) });
+                if (r.ok) {
+                    const d = await r.json();
+                    const chips = (d && d.chips) || [];
+                    if (chips.length) {
+                        const latest = chips[chips.length - 1];
+                        const buyers = (latest.buyers || []).slice().sort((a, b) => Math.abs(b.net || 0) - Math.abs(a.net || 0));
+                        const top10Net = buyers.slice(0, 10).reduce((s, x) => s + Math.abs(Number(x.net) || 0), 0);
+                        const totalNet = buyers.reduce((s, x) => s + Math.abs(Number(x.net) || 0), 0);
+                        const concPct = totalNet > 0 ? (top10Net / totalNet * 100) : null;
+                        this._attChipCache[sym] = { conc_pct_top10: concPct };
+                    } else this._attChipCache[sym] = { conc_pct_top10: null };
+                } else this._attChipCache[sym] = { conc_pct_top10: null };
+                // 重畫(只在使用者還在這檔股時)
+                if (this.currentSymbolId === sym) this._renderAttentionScanInner(card, sym);
+            }
+        } catch(_) {}
+    },
+    _renderAttentionScanInner(card, sym) {
         const x = this._calcAttentionScan(sym);
         if (!x) { card.classList.add('hidden'); return; }
         card.classList.remove('hidden');
