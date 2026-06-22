@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V18.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V18.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -747,7 +747,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3765,6 +3765,14 @@ ${list}
             || this._getOpenRouterKeys().length > 0;
     },
 
+    // V18.5 — 首席 AI 全盤分析 / 朱家泓技術審計 / AI 籌碼解析 / X 光機 已改走 gemini-openrouter 鏈
+    //          (使用者要求取消 Groq);這些功能「有沒有 key 可用」只看 Gemini 或 OpenRouter,不看 Groq
+    _hasDeepAIKey() {
+        return !!this._apiBase
+            || this._getGeminiKeys().length > 0
+            || this._getOpenRouterKeys().length > 0;
+    },
+
     // [AI 狀態追蹤] V14.16 — 擴充為「每次 attempt / 429 / switch / success / failed」5 狀態都更新
     // provider:'openrouter' | 'gemini' | 'groq';keyIdx:1 或 2
     // state:'trying' | 'rate-limited' | 'switching' | 'success' | 'failed' (預設 'success' 兼容舊呼叫)
@@ -5169,6 +5177,13 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             try { return await tryOpenRouter(); }
             catch (e) { console.warn('[_callDeepAI openrouter-gemini] OpenRouter 失敗,fallback Gemini:', e?.message || e); }
             return await tryGemini();
+        }
+        if (chain === 'gemini-openrouter') {
+            // Gemini 優先(2 組 key 輪動),撞 429/空 fallback OpenRouter(完全跳過 Groq)
+            // 使用者要求:首席 AI 全盤分析 / 朱家泓技術審計 / AI 籌碼解析 / X 光機 一律走此鏈
+            try { return await tryGemini(); }
+            catch (e) { console.warn('[_callDeepAI gemini-openrouter] Gemini 失敗,fallback OpenRouter:', e?.message || e); }
+            return await tryOpenRouter();
         }
 
         // chain === 'auto'(預設):整合 main 新邏輯 + chain 路由
@@ -6590,8 +6605,8 @@ const marginByDate = {};
         result.classList.remove('hidden');
         const hasBackend = !!this._apiBase;
         const hasGroqKey = this._getGroqKeys().length > 0;
-        if (!hasBackend && !hasGroqKey) {
-            result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key（免費：console.groq.com），即可在手機直接使用 AI 分析。</span>';
+        if (!this._hasDeepAIKey()) {
+            result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Gemini 或 OpenRouter API Key,即可在手機直接使用 AI 分析。</span>';
             btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
             btn.disabled = false;
             return;
@@ -6688,7 +6703,7 @@ ${brokerText}
 
         try {
             // 🎯 籌碼 AI 解析:使用者要求純 Gemini 雙 key 輪動,撞 429 直接顯示警示不偷偷 fallback
-            const text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.7, chain: 'gemini-only' });
+            const text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.7, chain: 'gemini-openrouter' });
             if (!text) throw new Error('未設定 AI Key,請至設定填入 Gemini API Key');
             // V17.20 — 用 _renderMdText 統一處理 markdown(原版只 escape <> 沒轉 **粗體**)
             result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed text-sm">${this._renderMdText(text)}</div>`;
@@ -7112,6 +7127,7 @@ ${peerLine}${newsCtx}
         if (!sym) return;
         const dateEl = document.getElementById('xrayDataDate');
         let cacheFresh = false;
+        let aiRestored = false;   // V18.5 — 是否已從快取還原 AI 解析文字
         try {
             const raw = localStorage.getItem(`xrayCache_${sym}`);
             if (raw) {
@@ -7128,14 +7144,29 @@ ${peerLine}${newsCtx}
                     if (c.latestEps != null) this._latestEpsCache = c.latestEps;
                     // <24hr 視為新鮮,不重抓
                     cacheFresh = (Date.now() - (c.ts || 0)) < 24 * 3600 * 1000;
+                    // V18.5 — 還原快取的 AI 解析文字,進場「自動」即顯,免使用者手動點「🔄 重新掃描」
+                    if (cacheFresh && c.aiText) {
+                        const box = document.getElementById('xrayAIBox');
+                        const res = document.getElementById('xrayAIResult');
+                        if (box && res) {
+                            box.classList.remove('hidden');
+                            res.innerHTML = this._renderMdText(c.aiText);
+                            aiRestored = true;
+                        }
+                    }
                 }
             }
         } catch(_) {}
-        if (!cacheFresh) this.fetchFundamentalAnalysis(sym);
+        // V18.5 — 快取過期、或數據新鮮但「沒有 AI 文字可還原」→ 一律自動完整掃描(含 AI),
+        //          確保使用者「點進個股就自動執行 X 光」,永遠不必手動觸發
+        if (!cacheFresh || !aiRestored) this.fetchFundamentalAnalysis(sym);
     },
 
     async fetchFundamentalAnalysis(sym) {
         if (!sym) return;
+        // V18.5 — 同股掃描進行中時跳過,避免 analyze() 自動觸發 + 使用者切情報 tab 對同股雙重打 API
+        if (this._xrayInFlightSym === sym) return;
+        this._xrayInFlightSym = sym;
         // 🔬 按鈕已移除(改為自動載入),此處 btn 可能為 null,全程 graceful
         const btn = document.getElementById('fundamentalXrayBtn');
         if (btn) { btn.textContent = '掃描中...'; btn.disabled = true; }
@@ -7928,15 +7959,22 @@ ${_newsLine}${globalContext}
 - 講話像哲哲,白話如直播,多用比喻,禁艱澀術語(EPS/PEG 等先解釋再用)`;
             let aiText = null;
             try {
-                // 🎯 X 光掃描:使用者要求純 Groq 雙 key 輪動(財報數據適合 Groq 70b 結構化輸出),撞 429 直接 throw 不偷偷 fallback
-                aiText = await this._callDeepAI({prompt: fullPrompt, max_tokens: 600, temperature: 0.55, chain: 'groq-only'});
+                // 🎯 X 光掃描:使用者要求改走 Gemini 雙 key 輪動 + OpenRouter 備援(取消 Groq)
+                aiText = await this._callDeepAI({prompt: fullPrompt, max_tokens: 600, temperature: 0.55, chain: 'gemini-openrouter'});
             } catch(e2) {
                 console.error('[fundamentals AI]', e2);
             }
             if (aiText) {
                 xrayAIResult.innerHTML = this._renderMdText(aiText);   // V17.20 — 加 **粗體** 渲染
-            } else if (!this._apiBase && this._getGroqKeys().length === 0) {
-                xrayAIResult.innerHTML = '<span class="text-yellow-400 text-xs">⚠️ 請至 ⚙️設定 填入 Groq API Key（免費申請：console.groq.com）</span>';
+                // V18.5 — AI 解析存進快取,下次進場直接還原免重打 API(配合 applyXrayCache 自動顯示)
+                try {
+                    const _ck = `xrayCache_${sym}`;
+                    const _c = JSON.parse(localStorage.getItem(_ck) || '{}');
+                    _c.aiText = aiText; _c.sym = sym; if (!_c.ts) _c.ts = Date.now();
+                    localStorage.setItem(_ck, JSON.stringify(_c));
+                } catch(_) {}
+            } else if (!this._apiBase && this._getGeminiKeys().length === 0 && this._getOpenRouterKeys().length === 0) {
+                xrayAIResult.innerHTML = '<span class="text-yellow-400 text-xs">⚠️ 請至 ⚙️設定 填入 Gemini 或 OpenRouter API Key</span>';
             } else {
                 xrayAIResult.innerHTML = '<span class="text-red-400 text-xs">❌ AI 呼叫失敗（可能配額不足或網路異常）</span>';
             }
@@ -7948,6 +7986,7 @@ ${_newsLine}${globalContext}
             box?.classList.remove('hidden');
             document.getElementById('xrayAIResult').innerHTML = `<span class="text-red-400 text-xs">❌ 資料讀取失敗：${e.message}</span>`;
         } finally {
+            this._xrayInFlightSym = null;   // V18.5 — 釋放同股 in-flight 鎖
             if (btn) { btn.textContent = 'X 光掃描'; btn.disabled = false; }
         }
     },
@@ -11049,7 +11088,7 @@ ${_newsLine}${globalContext}
         }
         const hasBackend = !!this._apiBase;
         const hasGroqKey = this._getGroqKeys().length > 0;
-        if (!hasBackend && !hasGroqKey) return;  // 沒設 Key 安靜略過，不彈視窗打擾
+        if (!this._hasDeepAIKey()) return;  // 沒設 Key 安靜略過，不彈視窗打擾
         const costKey = (document.getElementById('costInput')?.value || '').trim();
         const cacheKey = `${this.currentSymbolId}|${costKey}`;
         const now = Date.now();
@@ -13820,9 +13859,9 @@ ${_newsLine}${globalContext}
         }
         const hasBackend = !!this._apiBase;
         const hasGroqKey = this._getGroqKeys().length > 0;
-        if (!hasBackend && !hasGroqKey) {
+        if (!this._hasDeepAIKey()) {
             box.classList.remove('hidden');
-            box.innerHTML = '<span class="text-yellow-400 text-sm font-bold">⚠️ 請先至「⚙️ 設定」填入 Groq API Key 或後端 URL。</span>';
+            box.innerHTML = '<span class="text-yellow-400 text-sm font-bold">⚠️ 請先至「⚙️ 設定」填入 Gemini 或 OpenRouter API Key 或後端 URL。</span>';
             return;
         }
         btn.textContent = '📐 審計中...';
@@ -13940,7 +13979,7 @@ ${wBottom.detected
 
         try {
             // 🎯 K 線分析報告:使用者要求純 Gemini 雙 key 輪動,撞 429 直接顯示警示不偷偷 fallback
-            let text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.2, chain: 'gemini-only' });
+            let text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.2, chain: 'gemini-openrouter' });
             if (!text) throw new Error('未設定 AI Key,請至設定填入 Gemini API Key');
 
             const secMap = {
@@ -14727,10 +14766,10 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
         const hasBackend = !!this._apiBase;
         const hasGroqKey = this._getGroqKeys().length > 0;
-        if (!hasBackend && !hasGroqKey) {
+        if (!this._hasDeepAIKey()) {
             if (silent) return;  // 自動模式：沒 Key 安靜略過
             box.classList.remove('hidden');
-            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 戰情設定中心」填入 <b>Groq API Key</b>（純手機模式）。<br>免費申請：console.groq.com</div>';
+            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 戰情設定中心」填入 <b>Gemini 或 OpenRouter API Key</b>。</div>';
             this.openSettings();
             return;
         }
@@ -15071,7 +15110,7 @@ ${_chuPosPlan}
 }`;
 
             // 🎯 首席 AI 全盤分析:使用者要求純 Gemini 雙 key 輪動(深度推理保留 Gemini 2.5),撞 429 直接 throw 不偷偷 fallback
-            let raw = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.35, chain: 'gemini-only' });
+            let raw = await this._callDeepAI({ prompt, max_tokens: 1800, temperature: 0.35, chain: 'gemini-openrouter' });
             if (!raw) throw new Error('未設定 Gemini API Key,請至 ⚙️ 設定填入');
 
             // 健壯解析 → traffic_light + summary + bottom_bar + detail_action
