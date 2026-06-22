@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V19.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V19.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -129,12 +129,13 @@
         </div>
     </div>
 
-    <!-- V19.1 — modal z-index 999(原 100 被 header z=150 蓋住,modal header 看不到) -->
+    <!-- V19.4 — header 加 safe-area-inset-top + ‹ 按鈕加大觸控區到 44x44pt(蘋果 HIG 最小可觸標準),
+                  原本太靠近狀態列被擋,iOS PWA 沒 status bar 偏移更慘 -->
     <div id="globalSearchModal" class="hidden fixed inset-0 z-[999] bg-[#0d1117] flex flex-col" onclick="if(event.target===this)app.closeGlobalSearchModal();">
-        <div class="flex items-center justify-between px-3 py-3 border-b border-[#30363d] flex-shrink-0">
-            <button onclick="app.closeGlobalSearchModal()" class="text-gray-300 hover:text-white text-3xl w-10 text-left leading-none font-thin">‹</button>
+        <div class="flex items-center justify-between px-2 border-b border-[#30363d] flex-shrink-0" style="padding-top: max(env(safe-area-inset-top), 12px); padding-bottom: 8px;">
+            <button onclick="app.closeGlobalSearchModal(); app.vibrate(20);" class="text-white text-3xl leading-none font-thin flex items-center justify-center" style="min-width:44px; min-height:44px;" title="返回">‹</button>
             <span class="text-lg font-bold text-white">搜尋</span>
-            <span class="w-10"></span>
+            <span style="min-width:44px"></span>
         </div>
         <div class="px-3 py-3 flex-shrink-0">
             <div class="flex items-center bg-[#1c2128] border border-[#30363d] rounded-xl px-3 py-3 gap-2">
@@ -171,6 +172,7 @@
             <div class="flex border-b border-[#30363d]">
                 <button onclick="app._switchPriceAlertTab('set')" id="paTab_set" class="flex-1 py-2.5 text-sm font-bold transition">到價設定</button>
                 <button onclick="app._switchPriceAlertTab('all')" id="paTab_all" class="flex-1 py-2.5 text-sm font-bold transition">全部監控</button>
+                <button onclick="app._switchPriceAlertTab('history')" id="paTab_history" class="flex-1 py-2.5 text-sm font-bold transition">📜 歷史通知</button>
             </div>
             <div id="priceAlertBody" class="flex-1 overflow-y-auto p-4"></div>
         </div>
@@ -777,7 +779,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -989,6 +991,9 @@
                     <div class="font-black text-purple-200 mb-0.5">🔬 籌碼頁怎麼看</div>
                     <div>重點看兩件事：① <b class="text-white">法人連續方向</b>（連買連賣 > 單日漲跌幅）② <b class="text-white">主力分點集中度</b>。下方「🤖 AI 解析」會用白話文整合給你聽 — 不用自己算。</div>
                 </div>
+
+                <!-- 🚨 V19.4 — 處置股風控狀態(只在該股是注意/處置時顯,否則 hidden) -->
+                <div id="attentionDetailCard" class="hidden"></div>
 
                 <!-- ⚔️ 朱家泓策略狀態(V18.8 — 距離 5MA/20MA/-5% 停損各還多少 + 燈號)-->
                 <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -2879,6 +2884,8 @@ const app = {
 
     // 通用警報通知（與 _fireHuntNotification 並存，盤中監控專用單一入口）
     _fireAlert(title, body, sym) {
+        // V19.4 — 記到通知歷史(2 天後自動清),即使通知權限沒開也記,讓使用者能查
+        try { this._recordNotifHistory(title, body, sym); } catch(_) {}
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
         try {
             const n = new Notification(title, { body, tag: `alert_${sym}_${title}`, requireInteraction: false });
@@ -2892,6 +2899,40 @@ const app = {
             };
             this.vibrate(50);
         } catch (e) {}
+    },
+
+    // V19.4 — 通知歷史:推播 / fireAlert 觸發時都記一筆(2 天後自動清,最多 100 筆)
+    _recordNotifHistory(title, body, sym) {
+        if (!title) return;
+        const KEY = 'proTerminalNotifHistory';
+        const TTL = 2 * 24 * 3600 * 1000;   // 2 天
+        const now = Date.now();
+        let arr;
+        try { arr = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(_) { arr = []; }
+        if (!Array.isArray(arr)) arr = [];
+        // 清過期
+        arr = arr.filter(x => x && (now - (x.at || 0)) < TTL);
+        // 加新一筆到開頭
+        arr.unshift({ at: now, title, body: body || '', sym: sym || '' });
+        // 限 100 筆
+        if (arr.length > 100) arr = arr.slice(0, 100);
+        try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch(_) {}
+        // 點亮置頂 🔔 紅點
+        const dot = document.getElementById('globalAlertDot');
+        if (dot) dot.classList.remove('hidden');
+    },
+    _getNotifHistory() {
+        try {
+            const arr = JSON.parse(localStorage.getItem('proTerminalNotifHistory') || '[]');
+            const TTL = 2 * 24 * 3600 * 1000;
+            const now = Date.now();
+            return (arr || []).filter(x => x && (now - (x.at || 0)) < TTL);
+        } catch(_) { return []; }
+    },
+    _clearNotifHistory() {
+        try { localStorage.removeItem('proTerminalNotifHistory'); } catch(_) {}
+        document.getElementById('globalAlertDot')?.classList.add('hidden');
+        this._renderPriceAlertModal?.();
     },
 
     async refreshUSMarketBar() {
@@ -3743,6 +3784,8 @@ ${list}
             this.renderEtfFollowCard(this.currentSymbolId);
             // V18.8 — 朱家泓策略狀態卡(5MA/20MA/-5% 距離 + 燈號)
             this.renderChuStrategyCard(this.currentSymbolId);
+            // V19.4 — 處置股風控卡(注意/處置/即將處置/怕關 vs 不怕關)
+            this.renderAttentionDetailCard(this.currentSymbolId);
         }
         if (tab === 'corp' && this.currentSymbolId) {
             // 🔬 X 光機:localStorage 快取優先(<24hr 直接顯示),過期/缺則背景重抓覆蓋
@@ -6155,6 +6198,7 @@ const marginByDate = {};
     },
 
     // 🚨 處置神器 badge HTML 產生器(沒命中回空字串,渲染處可直接 ${} 接 append)
+    // V19.4 — 加 interval(分盤幾分鐘)+ end_date(N 天後出關)+ 即將處置預警(注意股 + 近 5 日 ≥3 漲跌停)
     _renderAttentionBadge(sym) {
         const info = this.attentionStatus?.[String(sym).trim()];
         if (!info) return '';
@@ -6162,9 +6206,75 @@ const marginByDate = {};
         const cls = isDisp
             ? 'bg-red-900/70 text-red-200 border border-red-600 animate-pulse'
             : 'bg-orange-900/60 text-orange-200 border border-orange-600';
-        const label = (info.status || '').replace(/</g, '&lt;');
-        const tip = (info.threshold || '').replace(/"/g, '&quot;');
+        const parts = [String(info.status || '').replace(/</g, '&lt;')];
+        if (info.interval)  parts.push(`${info.interval}分撮`);
+        if (info.end_date) {
+            const days = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
+            if (days > 0) parts.push(`${days}天後出關`);
+            else if (days === 0) parts.push('今出關');
+        }
+        const label = parts.join(' ・ ');
+        const tip = `${info.threshold || ''}${info.end_date ? ' ・ 迄日 ' + info.end_date : ''}${info.interval ? ' ・ 分盤 ' + info.interval + ' 分鐘' : ''}`.replace(/"/g, '&quot;');
         return `<span class="inline-flex items-center ${cls} text-[9px] px-1.5 py-0.5 rounded font-bold ml-1 align-middle" title="${tip}">${label}</span>`;
+    },
+
+    // V19.4 — 個股頁渲染處置股風控卡(沒命中 hidden)
+    renderAttentionDetailCard(sym) {
+        const card = document.getElementById('attentionDetailCard');
+        if (!card) return;
+        if (!sym || !this.attentionStatus?.[String(sym).trim()]) {
+            card.classList.add('hidden');
+            card.innerHTML = '';
+            return;
+        }
+        card.classList.remove('hidden');
+        card.innerHTML = this._renderAttentionDetailHtml(sym);
+    },
+
+    // V19.4 — 處置股完整資訊卡(個股頁用,在 _renderAttentionBadge 之外提供完整 detail)
+    //          顯:狀態 / 分盤間隔 / 出關日 / 即將處置預警 / 怕關 vs 不怕關 通用提醒
+    _renderAttentionDetailHtml(sym) {
+        const info = this.attentionStatus?.[String(sym).trim()];
+        if (!info) return '';
+        const isDisp = (info.status || '').startsWith('🚨');
+        const isNotice = (info.status || '').includes('注意');
+        // 算近 5 日漲跌停次數(即將處置預警基礎)
+        let limitDays = 0;
+        if (Array.isArray(this.activeData) && this.activeData.length >= 6) {
+            const last5 = this.activeData.slice(-5);
+            for (let i = 0; i < last5.length; i++) {
+                const prev = i === 0 ? this.activeData[this.activeData.length - 6] : last5[i - 1];
+                if (!prev) continue;
+                const chg = ((last5[i].close - prev.close) / prev.close) * 100;
+                if (Math.abs(chg) >= 9.5) limitDays++;
+            }
+        }
+        const willEscalate = isNotice && limitDays >= 3;   // 注意股 + 近 5 日 3 次漲跌停 → 即將處置
+        let daysToEnd = null;
+        if (info.end_date) {
+            daysToEnd = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
+        }
+        // 怕關 vs 不怕關(從股本/法人持股推估,沒資料就給通用提醒)
+        const falcon = this._falconScores?.scores?.[sym];
+        const instRatio = falcon?.inst_ratio || null;   // 若 falcon 有此因子
+        let fearLine;
+        if (instRatio != null && instRatio > 30)        fearLine = `🟢 <b>不怕關</b>:法人持股 ${instRatio.toFixed(0)}%,籌碼穩,出關常噴`;
+        else if (instRatio != null && instRatio < 10)   fearLine = `🔴 <b>怕被關</b>:法人持股僅 ${instRatio.toFixed(0)}%,散戶為主,關了流動性差易崩`;
+        else                                            fearLine = `💡 <b>怕關 vs 不怕關</b>:熱門題材股(AI/重電/低軌)被關常洗盤後噴出,投機散戶股被關易崩(看籌碼集中度自行判斷)`;
+        return `<div class="mt-2 bg-[#0d1117] border ${isDisp ? 'border-red-700/60' : 'border-orange-700/60'} rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b ${isDisp ? 'border-red-700/40' : 'border-orange-700/40'}">
+                <h4 class="${isDisp ? 'text-red-300' : 'text-orange-300'} font-bold text-sm">🚨 處置股風控狀態</h4>
+                <span class="${isDisp ? 'text-red-200 bg-red-900/40' : 'text-orange-200 bg-orange-900/40'} px-2 py-0.5 rounded text-[11px] font-bold">${info.status || ''}</span>
+            </div>
+            <div class="text-[12px] space-y-1.5">
+                <div class="flex justify-between"><span class="text-gray-400">觸發條件</span><span class="text-gray-200">${info.threshold || '—'}</span></div>
+                ${info.interval ? `<div class="flex justify-between"><span class="text-gray-400">分盤撮合</span><span class="text-amber-300 font-mono font-bold">每 ${info.interval} 分鐘 1 次</span></div>` : ''}
+                ${info.end_date ? `<div class="flex justify-between"><span class="text-gray-400">出關日期</span><span class="text-gray-200 font-mono">${info.end_date}${daysToEnd != null ? ` <b class="${daysToEnd <= 1 ? 'text-green-300' : 'text-gray-300'}">(${daysToEnd <= 0 ? '今出關' : daysToEnd + ' 天後'})</b>` : ''}</span></div>` : ''}
+                ${willEscalate ? `<div class="mt-2 p-2 bg-red-900/40 border border-red-700 rounded text-red-200 text-[11px] leading-relaxed font-bold animate-pulse">⚠️ <b>即將升級處置預警</b><br>已是注意股 + 近 5 日 ${limitDays} 次漲跌停 → 觸發再處置門檻,下個交易日很可能宣告 20 分鐘分盤 + 預收款</div>` : ''}
+            </div>
+            <div class="mt-2 text-[11px] text-gray-400 leading-relaxed pt-2 border-t border-[#21262d]">${fearLine}</div>
+            <div class="mt-1 text-[9px] text-gray-600 leading-relaxed">💡 處置期間分盤撮合 → 流動性差、進出滑價大;熱門題材股出關常噴,投機散戶股關了易崩,請自行判斷</div>
+        </div>`;
     },
 
     // 🦅 獵鷹建倉分:啟動時拉一次 falcon_scores.json(radar_miner 全市場評分結果)
@@ -8558,6 +8668,8 @@ ${_newsLine}${globalContext}
         try { this.renderEtfFollowCard(targetSym); } catch(_) {}
         // V18.8 — 切股時同步刷新「朱家泓策略狀態」卡
         try { this.renderChuStrategyCard(targetSym); } catch(_) {}
+        // V19.4 — 切股時刷新「處置股風控」卡
+        try { this.renderAttentionDetailCard(targetSym); } catch(_) {}
 
         if (this.baseRawData.length > 1) {
             const prevCloseVal = this.baseRawData[this.baseRawData.length - 2].close;
@@ -15817,14 +15929,54 @@ ${_chuPosPlan}
     },
     _renderPriceAlertModal() {
         const tab = this._paTab || 'set';
-        ['set', 'all'].forEach(t => {
+        // V19.4 — 加 history tab
+        ['set', 'all', 'history'].forEach(t => {
             const btn = document.getElementById(`paTab_${t}`);
             if (!btn) return;
             btn.className = `flex-1 py-2.5 text-sm font-bold transition ${tab === t ? 'bg-amber-900/40 text-amber-200 border-b-2 border-amber-500' : 'text-gray-500 hover:text-gray-300'}`;
         });
         const body = document.getElementById('priceAlertBody');
         if (!body) return;
-        body.innerHTML = tab === 'set' ? this._renderPaSetTab() : this._renderPaAllTab();
+        if (tab === 'history') body.innerHTML = this._renderPaHistoryTab();
+        else if (tab === 'all') body.innerHTML = this._renderPaAllTab();
+        else body.innerHTML = this._renderPaSetTab();
+    },
+    // V19.4 — 歷史通知 tab(2 天內所有 fireAlert + 推播訊息)
+    _renderPaHistoryTab() {
+        const arr = this._getNotifHistory();
+        if (!arr.length) {
+            return `<div class="text-center text-gray-500 py-12">
+                <div class="text-3xl mb-2">📭</div>
+                <div class="text-sm">過去 2 天內沒有通知</div>
+                <div class="text-[10px] text-gray-600 mt-2">所有推播 / 警報觸發訊息會自動記錄在這裡(2 天後自動清除)</div>
+            </div>`;
+        }
+        const fmtTime = (ts) => {
+            const d = new Date(ts);
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const dayDiff = Math.floor((today.getTime() - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+            const hm = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            if (dayDiff === 0) return `今 ${hm}`;
+            if (dayDiff === 1) return `昨 ${hm}`;
+            return `${d.getMonth()+1}/${d.getDate()} ${hm}`;
+        };
+        const rows = arr.map(x => `
+            <div class="border-b border-[#21262d] py-2.5 px-1" ${x.sym ? `onclick="app.analyze('${x.sym}'); app.closePriceAlertModal(); app.switchAppTab('diag'); app.vibrate(30);" style="cursor:pointer"` : ''}>
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <span class="text-sm font-bold text-amber-200 flex-1 truncate">${(x.title || '').replace(/</g,'&lt;')}</span>
+                    <span class="text-[10px] text-gray-500 font-mono flex-shrink-0">${fmtTime(x.at)}</span>
+                </div>
+                <div class="text-[12px] text-gray-300 leading-snug">${(x.body || '').replace(/</g,'&lt;')}</div>
+            </div>
+        `).join('');
+        return `<div>
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-[#30363d]">
+                <span class="text-[11px] text-gray-400">共 ${arr.length} 則 ・ 點任一筆跳該股</span>
+                <button onclick="app._clearNotifHistory(); app.vibrate(30);" class="text-[11px] text-red-400 hover:text-red-300 px-2 py-1 rounded border border-red-800/60">🗑️ 全部清除</button>
+            </div>
+            ${rows}
+            <div class="text-center text-[9px] text-gray-600 mt-3 pt-2 border-t border-[#21262d]">📅 紀錄保留 2 天,過期自動清除</div>
+        </div>`;
     },
     // 動態 step:股價越大,step 越大,避免按 100 下才到位
     _paPriceStep(p) {
