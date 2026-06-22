@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V18.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V18.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -747,7 +747,7 @@
                     <div class="flex items-center gap-1">
                         <h1 class="text-[1.1rem] md:text-[1.2rem] font-black text-blue-400 tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
                     </div>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V18.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊（標題旁，stopPropagation 避免誤觸診斷切換） -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.25rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1798,13 +1798,14 @@
                     <div class="overflow-x-auto">
                         <div class="min-w-[680px]">
                             <!-- V17.11 — 排序 header(寬版,多欄水平 scroll)-->
-                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[140px_70px_90px_95px_95px_95px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
+                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[130px_75px_85px_95px_60px_95px_85px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
                                 <span class="cursor-pointer hover:text-white" onclick="app.sortInventory('name')">庫存股<span id="invSortIcon_name" class="ml-0.5">⇅</span></span>
-                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('shares')">股數<span id="invSortIcon_shares" class="ml-0.5">⇅</span></span>
-                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('price')">現價<br><span class="text-[9px] opacity-80">成本均價</span><span id="invSortIcon_price" class="ml-0.5">⇅</span></span>
-                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('marketval')">市值<br><span class="text-[9px] opacity-80">佔比</span><span id="invSortIcon_marketval" class="ml-0.5">⇅</span></span>
-                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('today')">今日損益<br><span class="text-[9px] opacity-80">漲跌幅</span><span id="invSortIcon_today" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('today')">今日損益<span id="invSortIcon_today" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('price')">股價<br><span class="text-[9px] opacity-80">漲跌幅</span><span id="invSortIcon_price" class="ml-0.5">⇅</span></span>
                                 <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('total')">總損益<br><span class="text-[9px] opacity-80">報酬率</span><span id="invSortIcon_total" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('shares')">股數<span id="invSortIcon_shares" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('cost')">均價<br><span class="text-[9px] opacity-80">總成本</span><span id="invSortIcon_cost" class="ml-0.5">⇅</span></span>
+                                <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('marketval')">市值<br><span class="text-[9px] opacity-80">佔比</span><span id="invSortIcon_marketval" class="ml-0.5">⇅</span></span>
                             </div>
                             <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                         </div>
@@ -2978,8 +2979,9 @@ const app = {
         const items = this._globalNewsItems || [];
         const silent = !!(opts && opts.silent);
         if (!items.length) { if (!silent) alert('沒有可判讀的新聞，請等情報載入'); return; }
-        const apiKey = this._getGroqKeys()[0] || '';
-        if (!apiKey) { if (!silent) alert('請先至 ⚙️ 設定填寫 Groq API Key'); return; }
+        // V18.7 — 改 Gemini(原 Groq 8b)。失敗就靜默 return,前端會留英文標題,不影響新聞本體顯示
+        const geminiKeys = this._getGeminiKeys();
+        if (!geminiKeys.length) { if (!silent) alert('請先至 ⚙️ 設定填寫 Gemini API Key(新聞翻譯)'); return; }
 
         // sessionStorage 快取：同一批新聞（key = 第一則 url + items 長度）只翻一次
         const cacheKey = `gnewsAi_${(items[0].url || items[0].title).slice(0, 80)}_${items.length}`;
@@ -3003,20 +3005,10 @@ const app = {
             // 批次一次丟最多 15 則
             const slice = items.slice(0, 15);
             const list = slice.map((it, i) => `${i+1}. ${(it.title || '').slice(0, 150)}`).join('\n');
-            const prompt = `你是台股研究員，請把以下英文國際財經新聞翻譯成繁體中文標題（每則 20 字內）、並用一句話判斷對台股的影響（10 字內）、給出 bullish / bearish / neutral 三選一標籤。\n\n${list}\n\n嚴格輸出純 JSON，格式：{"items":[{"i":1,"title_zh":"...","impact":"...","level":"bullish|bearish|neutral"},...]}。i 對應上方序號。`;
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
-                    messages: [{ role: 'user', content: prompt }],
-                    max_tokens: 1200, temperature: 0.2,
-                    response_format: { type: 'json_object' },
-                })
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const parsed = JSON.parse(data.choices[0].message.content);
+            const prompt = `你是台股研究員,請把以下英文國際財經新聞翻譯成繁體中文標題(每則 20 字內)、並用一句話判斷對台股的影響(10 字內)、給出 bullish / bearish / neutral 三選一標籤。\n\n${list}\n\n嚴格輸出純 JSON、禁\`\`\`json標籤、禁前後文字,格式:{"items":[{"i":1,"title_zh":"...","impact":"...","level":"bullish|bearish|neutral"},...]}。i 對應上方序號。`;
+            // V18.7 — 改 Gemini(輕量翻譯/影響判讀)
+            const text = await this._callGemini({ prompt, max_tokens: 1200, temperature: 0.2, model: 'gemini-2.5-flash' });
+            const parsed = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
             const arr = parsed.items || [];
             arr.forEach(a => {
                 const idx = (Number(a.i) || 0) - 1;
@@ -3051,9 +3043,10 @@ const app = {
             box.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">無新聞可彙整</div>';
             return;
         }
-        const apiKey = this._getGroqKeys()[0] || '';
-        if (!apiKey) {
-            box.innerHTML = '<div class="text-[10px] text-yellow-400/80 text-center py-2">⚠️ 請至「⚙️ 設定」填 Groq API Key 才能 AI 彙整</div>';
+        // V18.7 — 改 Gemini(原 Groq 70b)
+        const geminiKeys = this._getGeminiKeys();
+        if (!geminiKeys.length) {
+            box.innerHTML = '<div class="text-[10px] text-yellow-400/80 text-center py-2">⚠️ 請至「⚙️ 設定」填 Gemini API Key 才能 AI 彙整</div>';
             return;
         }
         // 快取:同批新聞 (key=第一則 url + 條數) 一日只彙整一次,force 時強制重打
@@ -3087,19 +3080,9 @@ ${list}
   "market_dynamics": ["第 1 條:全球市場動態(2-3 句)", "第 2 條", "第 3 條"],
   "us_focus": ["第 1 條:美股焦點(個股/科技/政策)2-3 句", "第 2 條", "第 3 條"]
 }`;
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'llama-3.3-70b-versatile',
-                    messages: [{ role: 'user', content: prompt }],
-                    max_tokens: 1400, temperature: 0.3,
-                    response_format: { type: 'json_object' },
-                })
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const parsed = JSON.parse(data.choices[0].message.content);
+            // V18.7 — 改 Gemini 2.5 Flash(原 Groq 70b)。失敗會 throw 並 catch 到下方 console.warn
+            const text = await this._callGemini({ prompt, max_tokens: 1400, temperature: 0.3, model: 'gemini-2.5-flash' });
+            const parsed = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
             const md = (parsed.market_dynamics || []).slice(0, 5);
             const uf = (parsed.us_focus || []).slice(0, 5);
             const listHtml = (arr) => arr.map((s, i) =>
@@ -3328,6 +3311,10 @@ ${list}
 
     // V18.6 — 個股頁籌碼 tab 的「ETF 跟車狀態」卡片(進場價追蹤近似版,零採礦)
     //          進場價 ≈ etf_tracking.updated 那天該股收盤;今價 = activeData 最新收盤
+    //          V18.7 — 修日期格式不一致 bug:K 線是 '2026/06/19',etf_tracking 是 '2026-06-19'
+    //                  '/' (47) > '-' (45) → 字串比對 '2026/06/19' > '2026-06-19' = true → 全部 2026 年 K 線被
+    //                  skip → entry 找到 2025 年末 → 漲幅算半年累計 → 全 +20% 顯紅(別追)
+    //                  修法:normalize 統一成 '-',且用 max-search 不依賴 array 順序
     async renderEtfFollowCard(sym) {
         const card = document.getElementById('etfFollowCard');
         if (!card) return;
@@ -3338,20 +3325,23 @@ ${list}
         }
         const actions = this._etfActionsForStock(sym);
         if (!actions.length) { card.classList.add('hidden'); return; }
-        const updated = this._etfCache?.updated || '—';
-        // 進場價:從 activeData 找 updated 那天(or 之前最近一個交易日)的 close
-        let entryPx = null;
+        const updated = String(this._etfCache?.updated || '').replace(/\//g, '-') || '—';
+        // 進場價:從 activeData 找日期 <= updated 的最後一筆(不依賴 array 順序,且 normalize 日期格式)
+        let entryPx = null, entryDate = '';
+        let todayPx = null, todayDate = '';
         if (Array.isArray(this.activeData) && this.activeData.length) {
-            // activeData 日期升序,逆掃找 <= updated 的最後一筆
-            const target = updated;
-            for (let i = this.activeData.length - 1; i >= 0; i--) {
-                const d = this.activeData[i].date || this.activeData[i].t || '';
-                if (d && String(d).slice(0, 10) <= target) { entryPx = this.activeData[i].close ?? this.activeData[i].c; break; }
+            for (const bar of this.activeData) {
+                const dRaw = String(bar.date || bar.t || '').slice(0, 10);
+                if (!dRaw) continue;
+                const d = dRaw.replace(/\//g, '-');  // '2026/06/19' → '2026-06-19'
+                const close = bar.close ?? bar.c;
+                if (close == null) continue;
+                // 找 entry:最大但 <= updated
+                if (d <= updated && d > entryDate) { entryDate = d; entryPx = close; }
+                // 找今價:最新一筆
+                if (d > todayDate) { todayDate = d; todayPx = close; }
             }
         }
-        const todayPx = (Array.isArray(this.activeData) && this.activeData.length)
-            ? (this.activeData[this.activeData.length - 1].close ?? this.activeData[this.activeData.length - 1].c)
-            : null;
         const lamp = this._etfFollowLamp(entryPx, todayPx);
         const pctStr = lamp.pct == null ? '—' : `${lamp.pct >= 0 ? '+' : ''}${lamp.pct.toFixed(1)}%`;
         // 動作分組計數
@@ -3379,7 +3369,7 @@ ${list}
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
                 <h4 class="text-amber-300 font-bold text-sm">🚦 ETF 跟車狀態</h4>
-                <span class="text-[10px] text-gray-500 font-mono">變動日 ${updated}</span>
+                <span class="text-[10px] text-gray-500 font-mono">變動日 ${updated}${entryDate && entryDate !== updated ? `(進場價取 ${entryDate} 收盤)` : ''}</span>
             </div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded p-2 mb-2">
                 <div class="flex items-center justify-between text-[12px]">
@@ -11897,9 +11887,10 @@ ${_newsLine}${globalContext}
         // 🛡️ fallbackNote 完全移除：FinMind 配額耗盡用 TWSE PE 反推時，不再顯示警告文字，保持畫面乾淨
         const fallbackNote = '';
         console.log('[fundamentals]', sym, 'annualEps from:', fc.annualEps != null ? 'FinMind 季報加總' : (pe ? 'TWSE PE 反推' : '無資料'), '| pe=', pe, '| annualEps=', annualEps);
-        const apiKey = this._getGroqKeys()[0] || '';
-        if (!apiKey) {
-            showHint('🔑 法人目標價:請至「⚙️ 設定」填寫 Groq API Key 才能計算', 'text-yellow-300');
+        // V18.7 — 改 Gemini(原 Groq 8b)
+        const geminiKeys = this._getGeminiKeys();
+        if (!geminiKeys.length) {
+            showHint('🔑 法人目標價:請至「⚙️ 設定」填寫 Gemini API Key 才能計算', 'text-yellow-300');
             return;
         }
         showHint('💡 法人目標價推估中…', 'text-indigo-300');
@@ -11909,13 +11900,9 @@ ${_newsLine}${globalContext}
             : `此股目前不配息，嚴禁用殖利率法，請改用 PE 法 / PEG / 同業比價。`;
         const prompt = `你是台股法人研究員，依下列「真實數據」推估合理目標價區間，禁止自行虛構或更改數字。\n股票：${sym}，現價：${pC}，年化EPS：${annualEps.toFixed(2)} 元，本益比PE：${pe ? pe.toFixed(1) : 'N/A'} 倍。\n${divLine}\n請先判斷股票類型（成長股/景氣循環股/成熟收益股），挑選最合適估值法，給目標價低標與高標（必須與現價量級相符，例如現價上千元的股票目標價也應在相近量級）。\n輸出純JSON：{"stock_type":"...","method":"...","low":數字,"high":數字,"reason":"20字內"}`;
         try {
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], max_tokens: 110, temperature: 0.2, response_format: { type: 'json_object' } })
-            });
-            if (!res.ok) { box.textContent = '💡 法人目標價：API 無回應'; return; }
-            const parsed = JSON.parse((await res.json()).choices[0].message.content);
+            // V18.7 — 改 Gemini(原 Groq 8b)。max_tokens 加大至 400 留餘裕,Gemini 偶會 wrap ```json 要清
+            const text = await this._callGemini({ prompt, max_tokens: 400, temperature: 0.2, model: 'gemini-2.5-flash' });
+            const parsed = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
             let { stock_type = '', method = '', low = 0, high = 0, reason = '' } = parsed;
             let lowN = parseFloat(low), highN = parseFloat(high);
             if (!lowN || !highN) { box.textContent = '💡 法人目標價：資料不足無法推估'; return; }
@@ -13140,6 +13127,7 @@ ${_newsLine}${globalContext}
                     case 'marketval': av = a.totalVal; bv = b.totalVal; break;
                     case 'today':     av = a.todayPnL; bv = b.todayPnL; break;
                     case 'total':     av = a.totalPnL; bv = b.totalPnL; break;
+                    case 'cost':      av = a.cost; bv = b.cost; break;
                     default: return 0;
                 }
                 return (av - bv) * dir;
@@ -13166,8 +13154,9 @@ ${_newsLine}${globalContext}
             const cname = this.getStockName(item.symbol) || item.symbol;
             const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol && a.enabled !== false);
 
-            // V17.11 — 移除 swipe 手勢,改用上方「✏️ 編輯」按鈕統一處理。一行 6 欄水平 scroll 對齊 header
-            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[140px_70px_90px_95px_95px_95px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+            // V18.7 — 7 欄新順序:庫存股 / 今日損益 / 股價漲跌幅 / 總損益 / 股數 / 均價總成本 / 市值佔比
+            const totalCostNTD = cost * shares * 1000;
+            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[130px_75px_85px_95px_60px_95px_85px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                 <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
@@ -13177,29 +13166,33 @@ ${_newsLine}${globalContext}
                         <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[12px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設到價監控,點此管理' : '設到價監控'}">🚨</span>
                     </div>
                 </div>
-                <!-- 股數 -->
-                <div class="text-right">
-                    <div class="font-mono font-black text-[13px] text-gray-200 leading-tight">${(shares*1000).toLocaleString()}</div>
-                </div>
-                <!-- V17.12 — 現價(即時)為主 + 成本均價為副(灰色),解使用者「這個價格不是即時的」困惑 -->
-                <div class="text-right">
-                    <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${price.toFixed(2)}</div>
-                    <div class="text-[10px] font-mono text-gray-500 leading-tight">成本 ${cost.toFixed(2)}</div>
-                </div>
-                <!-- 市值 / 佔比(待 render 完整輪後算)-->
-                <div class="text-right">
-                    <div class="font-mono font-black text-[13px] text-white leading-tight">${Math.round(totalVal).toLocaleString()}</div>
-                    <div class="text-[10px] font-mono text-gray-500 leading-tight invMarketPct" data-val="${totalVal}">--</div>
-                </div>
-                <!-- 今日損益 + 漲跌幅 -->
+                <!-- 今日損益(只顯金額;漲跌% 移到「股價漲跌幅」欄) -->
                 <div class="text-right">
                     <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${todayPnL>0?'+':''}${Math.round(todayPnL).toLocaleString()}</div>
+                </div>
+                <!-- 股價(現價) + 漲跌幅 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-white leading-tight">${price.toFixed(2)}</div>
                     <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${todayChgPct>0?'+':''}${todayChgPct.toFixed(2)}%</div>
                 </div>
                 <!-- 總損益 + 報酬率 -->
                 <div class="text-right">
                     <div class="font-mono font-black text-[13px] ${totalColor} leading-tight">${totalPnL>0?'+':''}${Math.round(totalPnL).toLocaleString()}</div>
                     <div class="text-[10px] font-bold ${totalColor} font-mono leading-tight">${totalPct>0?'+':''}${totalPct.toFixed(2)}%</div>
+                </div>
+                <!-- 股數 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-gray-200 leading-tight">${(shares*1000).toLocaleString()}</div>
+                </div>
+                <!-- 均價 + 總成本 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-white leading-tight">${cost.toFixed(2)}</div>
+                    <div class="text-[10px] font-mono text-gray-500 leading-tight">${Math.round(totalCostNTD).toLocaleString()}元</div>
+                </div>
+                <!-- 市值 / 佔比(待 render 完整輪後算)-->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-white leading-tight">${Math.round(totalVal).toLocaleString()}</div>
+                    <div class="text-[10px] font-mono text-gray-500 leading-tight invMarketPct" data-val="${totalVal}">--</div>
                 </div>
             </div>`;
         }
