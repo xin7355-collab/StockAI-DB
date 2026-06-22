@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V19.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V19.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -777,7 +777,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V19.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -806,11 +806,12 @@
         <!-- 📌 朱老師警報橫條(頭頭低/底底低/轉折警戒 → 醒目紅條)-->
         <div id="chuTrendAlertBanner" class="hidden"></div>
         <!-- ⛏️ V16.4 採礦中 banner(讀 data/miner_status.json + GitHub Actions API 雙保險,30 秒 poll)-->
-        <div id="minerStatusBanner" class="hidden bg-amber-900/40 border border-amber-600/60 rounded-md px-3 py-1 text-[11px] text-amber-200 mt-1 mx-auto max-w-7xl flex items-center justify-between gap-2">
+        <!-- V19.2 — banner 文字改正面語氣:強調資料已存在(顯目前快照日期),採礦只是「背景更新中」-->
+        <div id="minerStatusBanner" class="hidden bg-[#0d1117]/80 border border-amber-700/40 rounded-md px-3 py-1 text-[10px] text-gray-400 mt-1 mx-auto max-w-7xl flex items-center justify-between gap-2">
             <span class="flex-1 min-w-0">
-                ⛏️ <b>採礦進行中</b>(<span id="msStage" class="text-amber-300">階段</span>) — 目前顯示 <span id="msLastUpdated" class="text-gray-300">--</span> 資料快照,完成後會自動提示。
+                📊 顯示中:<span id="msLastUpdated" class="text-gray-200 font-mono">--</span> 資料 ・ ⛏️ <span id="msStage" class="text-amber-300/80">背景採礦更新中</span>(完成自動換新)
             </span>
-            <button onclick="app._loadMinerStatus(true)" class="text-blue-300 underline hover:text-blue-200 text-[10px] flex-shrink-0 whitespace-nowrap">🔄 檢查</button>
+            <button onclick="app._loadMinerStatus(true)" class="text-blue-400/70 underline hover:text-blue-200 text-[10px] flex-shrink-0 whitespace-nowrap" title="重新檢查採礦狀態">🔄</button>
         </div>
         <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
         <div style="display:none" aria-hidden="true">
@@ -961,17 +962,10 @@
                             </div>
                         </div>
 
-                        <!-- 已刪除：tomorrowScriptText（雲端演算已完成部署廢話）+ smartOrderInstruction（🤖建議重複資訊） -->
-                        <div id="sinopacOrderCard" class="w-full mt-3 lg:mt-0 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 lg:p-4 text-xs lg:text-sm text-gray-300 leading-relaxed">
-                            <div class="text-yellow-400 font-bold text-sm lg:text-base flex items-center justify-between cursor-pointer select-none" onclick="app.toggleCollapse('sinopacOrderBody', this); app.vibrate(30);">
-                                <span>⚔️ 永豐智慧單快速設定指引</span>
-                                <span class="text-gray-500 text-xs font-normal" data-chevron>▴</span>
-                            </div>
-                            <div id="sinopacOrderBody" class="mt-2">
-                                <div id="sinopacOrderContent"></div>
-                                <div class="mt-2 text-gray-600 text-[10px]">※ 純 UI 參考，需自行至永豐 App 手動輸入</div>
-                            </div>
-                        </div>
+                        <!-- V19.2 — 永豐智慧單卡已合併到「朱老師離場 SOP」(內容重複),
+                                     朱老師理論為主 + 永豐 App 操作步驟附在底下;
+                                     舊 sinopacOrderCard div 移除 -->
+                        <!-- 已刪除：tomorrowScriptText、smartOrderInstruction、sinopacOrderCard -->
                         <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;預估量 + 位階 + 完美買點 + 高檔回吐)-->
                         <div id="chuIntradayCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
                         <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
@@ -10037,9 +10031,25 @@ ${_newsLine}${globalContext}
         const takeLongHtml = x.takeLong
             ? `<div class="flex justify-between items-center py-1 text-[12px]"><span class="text-gray-400">🎯 <b>停利(中長)</b> 跌破 20MA 結束波段</span><span class="text-green-400 font-mono font-bold">${x.takeLong.toFixed(2)}</span></div>` : '';
 
+        // V19.2 — 加永豐 App 操作步驟區塊(原獨立永豐智慧單卡併入此卡,內容重複)
+        //          停損價優先用朱:stopA / stopB 較高者;停利價優先用朱:takeShort
+        const sinopacStop = Math.max(x.stopA?.low || 0, x.stopB || 0);
+        const sinopacTake = x.takeShort || x.takeLong || 0;
+        const season = this._lastSinopacCtx?.season || '';
+        const sinopacHtml = (sinopacStop > 0 && sinopacTake > 0) ? `
+            <div class="mt-3 pt-2 border-t border-dashed border-[#30363d]">
+                <div class="text-[11px] font-bold text-amber-300 mb-1">⚔️ 永豐 App 智慧單怎麼掛(對齊朱老師價位)</div>
+                <div class="text-[10px] text-gray-400 leading-relaxed">
+                    ① <b class="text-gray-200">單別</b>:ROD(當沖)/ 整股 — 開立「條件單 - 觸價單」<br>
+                    ② <b class="text-red-300">停損觸發價</b>:跌破 <span class="font-mono text-red-300">${sinopacStop.toFixed(2)}</span> → 市價賣出<br>
+                    ③ <b class="text-green-300">停利觸發價</b>:漲至 <span class="font-mono text-green-300">${sinopacTake.toFixed(2)}</span> → 賣出 50%(剩餘抱波段)<br>
+                    ④ <b class="text-gray-200">條件單型態</b>:${season === '夏' ? '追高買(漲停板掛進)' : '回測買(拉回不破停損價)'}
+                </div>
+                <div class="text-[9px] text-gray-600 mt-1">※ 純 UI 參考,需自行至永豐 App 手動輸入</div>
+            </div>` : '';
         box.innerHTML = `
             <div class="text-yellow-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="alert('📌 朱老師心法 — 離場機制\\n\\n' + app._chuOriginalText.exit)">
-                <span>📌 朱老師離場 SOP <span class="text-[10px] text-gray-500 font-normal">(點看心法)</span></span>
+                <span>⚔️ 朱老師智慧單(離場 SOP) <span class="text-[10px] text-gray-500 font-normal">(點看心法)</span></span>
                 <span class="text-[10px] text-gray-500 font-normal">現價 ${x.pC.toFixed(2)}</span>
             </div>
             <div class="mt-1.5 divide-y divide-[#21262d]">
@@ -10047,7 +10057,8 @@ ${_newsLine}${globalContext}
             </div>
             <div class="mt-1.5 text-[10px] text-gray-600 leading-snug">
                 💡 停損二選一(嚴格的取較高那一條);停利視操作週期擇一。${noCost ? '<br>⚠️ 未設成本 → 停損 B 暫不啟用;建議至庫存填入成本價。' : ''}
-            </div>`;
+            </div>
+            ${sinopacHtml}`;
     },
 
     // ── A5. 頭頭低/底底低警報橫條 ──────────────────────────────────────────
@@ -12068,27 +12079,11 @@ ${_newsLine}${globalContext}
         if (chev) chev.textContent = nowHidden ? '▾' : '▴';
     },
 
+    // V19.2 — 永豐智慧單已合併到朱老師 SOP,此 method 改為 noop 但保留簽名避免 caller 炸
+    //         停利/停損具體價位由 _renderChuExitSop 用朱老師理論計算後一次顯出
+    //         pC/defVal/t1Val/t2Val/season 仍存到 _lastSinopacCtx 供 SOP 卡末段「永豐 App 操作」用
     _renderSinopacCard(pC, defVal, t1Val, t2Val, season) {
-        const card = document.getElementById('sinopacOrderCard');
-        const content = document.getElementById('sinopacOrderContent');
-        if (!card || !content) return;
-        const def = parseFloat(defVal), t1 = parseFloat(t1Val), t2 = parseFloat(t2Val);
-        card.classList.remove('hidden');
-        if (!pC || !def || !t1) {
-            content.innerHTML = '<div class="text-gray-500 text-xs py-2">💡 請先選股,計算出防守線/停利價後會自動填入指引</div>';
-            return;
-        }
-        const rows = [
-            ['📋 單別', '當沖停損 / ROD'],
-            ['🛡️ 停損觸發', `跌破 <b class="text-red-400">${def.toFixed(2)}</b> → 市價賣出`],
-            ['🎯 第一停利', `漲至 <b class="text-green-400">${t1.toFixed(2)}</b> → 賣出 50%`],
-            t2 ? ['🚀 第二停利', `漲至 <b class="text-green-300">${t2.toFixed(2)}</b> → 賣出餘部位`] : null,
-            ['📊 條件單型態', season === '夏' ? '追高買（漲停板掛進）' : '回測買（拉回不破防守線）'],
-            ['💡 智慧下單建議', def > 0 ? `買進時同步掛 ${def.toFixed(2)} 停損保護` : '—'],
-        ].filter(Boolean);
-        content.innerHTML = rows.map(([k, v]) =>
-            `<div class="flex items-start gap-2 py-1 border-b border-[#21262d] last:border-0"><span class="text-gray-500 w-28 flex-shrink-0">${k}</span><span>${v}</span></div>`
-        ).join('');
+        this._lastSinopacCtx = { pC, def: parseFloat(defVal) || null, t1: parseFloat(t1Val) || null, t2: parseFloat(t2Val) || null, season };
     },
 
     async fetchInstitutionTarget(sym, pC, opts) {
@@ -13424,29 +13419,23 @@ ${_newsLine}${globalContext}
             totalPrevValNTD += prevClose * shares * 1000;
 
             const totalColor = totalPnL > 0 ? 'text-[#f87171]' : (totalPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            // V19.1 — 漲跌停顏色判別:今日漲幅 ≥ +9.5% = 漲停亮紅閃、≤ -9.5% = 跌停亮綠閃
+            // V19.2 — 漲跌停顯示改在「現價」數字本身加紅/綠底白字(仿券商 App 樣式)
             const isLimitUp   = todayChgPct >= 9.5;
             const isLimitDown = todayChgPct <= -9.5;
-            let todayColor;
-            if (isLimitUp)        todayColor = 'text-red-300 font-black animate-pulse';
-            else if (isLimitDown) todayColor = 'text-green-300 font-black animate-pulse';
-            else todayColor = todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
-            const bgClass = isLimitUp ? 'bg-red-900/30 ring-1 ring-red-600' :
-                            isLimitDown ? 'bg-green-900/30 ring-1 ring-green-600' :
-                            (totalPct <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]');
+            const todayColor = todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const priceCls = isLimitUp ? 'bg-red-600 text-white px-1.5 rounded inline-block'
+                            : isLimitDown ? 'bg-green-600 text-white px-1.5 rounded inline-block'
+                            : 'text-white';
+            const bgClass = totalPct <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]';
             const cname = this.getStockName(item.symbol) || item.symbol;
             const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol && a.enabled !== false);
 
             // V18.7 — 7 欄新順序:庫存股 / 今日損益 / 股價漲跌幅 / 總損益 / 股數 / 均價總成本 / 市值佔比
             // V18.9 — 該檔總成本直接用 row 內 totalCost(避免跟 outer let totalCostNTD 撞名 ReferenceError)
             html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[130px_75px_85px_95px_60px_95px_85px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
-                <!-- 庫存股:現股 tag + 漲跌停 tag + 股名 + 代號 + 🚨 -->
+                <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
-                    <div class="flex items-center gap-1">
-                        <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
-                        ${isLimitUp ? '<span class="text-[8px] font-black bg-red-600 text-white border border-red-400 rounded px-1 py-0 animate-pulse">漲停</span>' : ''}
-                        ${isLimitDown ? '<span class="text-[8px] font-black bg-green-700 text-white border border-green-400 rounded px-1 py-0 animate-pulse">跌停</span>' : ''}
-                    </div>
+                    <span class="text-[8px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
                     <span class="text-white font-black text-[14px] truncate leading-tight">${cname}</span>
                     <div class="flex items-center gap-1">
                         <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
@@ -13457,9 +13446,9 @@ ${_newsLine}${globalContext}
                 <div class="text-right">
                     <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${todayPnL>0?'+':''}${Math.round(todayPnL).toLocaleString()}</div>
                 </div>
-                <!-- 股價(現價) + 漲跌幅 -->
+                <!-- 股價(現價) + 漲跌幅(V19.2 — 漲停紅底白字 / 跌停綠底白字,仿券商 App) -->
                 <div class="text-right">
-                    <div class="font-mono font-black text-[13px] text-white leading-tight">${price.toFixed(2)}</div>
+                    <div class="font-mono font-black text-[13px] ${priceCls} leading-tight">${price.toFixed(2)}</div>
                     <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${todayChgPct>0?'+':''}${todayChgPct.toFixed(2)}%</div>
                 </div>
                 <!-- 總損益 + 報酬率 -->
