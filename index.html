@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.8</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.9</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1632,6 +1632,8 @@
                         </select>
                     </div>
                 </div>
+                <!-- V20.9 — 期貨綜合判讀(順逆價差 + 散戶 + 外資三因子,動態填入) -->
+                <div id="futuresVerdict"></div>
             </div>
 
             <!-- 💰 資金板塊輪動(原「10 大細分板塊」改名;圖卡加大 + 中文白話說明)-->
@@ -2733,6 +2735,7 @@ const app = {
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
         this._loadBrokerNames();
         this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
+        this._loadAttentionHistory();   // V20.9 — 注意/處置歷史(算近 30 天該股被列幾次)
         setTimeout(() => this.renderBsiLight(), 100);   // V20.8 — 景氣燈號從 localStorage 還原
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
         this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
@@ -6304,6 +6307,36 @@ const marginByDate = {};
     },
 
     // 🚨 處置神器:啟動時拉一次 attention_status.json,渲染 badge 用
+    // V20.9 — 載 attention_history.json(近 90 天每天 sym→注意/處置),前端算「該股被列幾次」
+    async _loadAttentionHistory() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/attention_history.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j?.history && typeof j.history === 'object') {
+                this.attentionHistory = j.history;
+                console.log(`[處置歷史] 已載入 ${Object.keys(j.history).length} 天紀錄`);
+            }
+        } catch (e) {
+            console.warn('[處置歷史] 載入失敗(尚未產出):', e?.message || e);
+        }
+    },
+    // 算該股近 N 天被列「注意/處置」幾次
+    _attentionHistoryCount(sym, days = 30) {
+        if (!this.attentionHistory) return { notice: 0, disposed: 0, total: 0 };
+        const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+        let notice = 0, disposed = 0;
+        for (const [date, dayData] of Object.entries(this.attentionHistory)) {
+            if (new Date(date) < cutoff) continue;
+            const s = dayData[String(sym).trim()];
+            if (s === '注意')      notice++;
+            else if (s === '處置')  disposed++;
+        }
+        return { notice, disposed, total: notice + disposed };
+    },
+
     async _loadAttentionStatus() {
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
@@ -7321,7 +7354,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ${willEscalate ? `<div class="mt-2 p-2 bg-red-900/40 border border-red-700 rounded text-red-200 text-[11px] leading-relaxed font-bold animate-pulse">⚠️ <b>即將升級處置預警</b><br>已是注意股 + 近 5 日 ${limitDays} 次漲跌停 → 觸發再處置門檻,下個交易日很可能宣告 20 分鐘分盤 + 預收款</div>` : ''}
             </div>
             <div class="mt-2 text-[11px] text-gray-400 leading-relaxed pt-2 border-t border-[#21262d]">${fearLine}</div>
+            ${(() => {
+                // V20.9 — 顯近 30 / 90 天該股實際被列幾次(慣犯標籤)
+                const h30 = this._attentionHistoryCount?.(sym, 30) || { notice: 0, disposed: 0 };
+                const h90 = this._attentionHistoryCount?.(sym, 90) || { notice: 0, disposed: 0 };
+                if (h90.notice + h90.disposed === 0) return '';
+                const isHabit = h90.disposed >= 3 || h90.notice >= 10;
+                const cls = isHabit ? 'bg-red-900/30 border-red-700/40 text-red-200' : 'bg-amber-900/20 border-amber-700/40 text-amber-200';
+                return `<div class="mt-2 px-2 py-1.5 rounded border ${cls} text-[10px] leading-snug">
+                    📜 <b>歷史紀錄(TWSE 實際公告)</b>:近 30 天 注意 ${h30.notice} 次 ・ 處置 ${h30.disposed} 次 ・ 近 90 天 注意 ${h90.notice} ・ 處置 ${h90.disposed}
+                    ${isHabit ? '<br>⚠️ <b>慣犯標記</b>:常被 TWSE 列管,投機性高,風險自負' : ''}
+                </div>`;
+            })()}
             <div class="mt-1 text-[9px] text-gray-600 leading-relaxed">💡 處置期間分盤撮合 → 流動性差、進出滑價大;熱門題材股出關常噴,投機散戶股關了易崩,請自行判斷</div>
+            <div class="mt-1 pt-1 border-t border-[#21262d] text-[9px] text-green-400/80 flex items-center gap-1">✅ 此區資料 100% 來自 <a href="https://openapi.twse.com.tw/" target="_blank" class="underline hover:text-green-300">TWSE 證交所官方 OpenAPI</a> ・ 每日盤後同步</div>
         </div>`;
     },
 
@@ -10388,6 +10434,33 @@ ${_newsLine}${globalContext}
         else                       { backColor = 'text-green-400';  backLabel = '🔴 深逆差 ・ 主力空殺,反彈在即'; }
         if ($('sccBack'))      setTxt('sccBack', backText, backColor);
         if ($('sccBackLabel')) { const el = $('sccBackLabel'); el.textContent = backLabel; el.className = `text-[10px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 ${backColor} leading-snug font-bold`; }
+
+        // V20.9 — 期貨綜合判讀(順逆價差 + 散戶多空 + 外資台指期空單)
+        const verdEl = document.getElementById('futuresVerdict');
+        if (verdEl) {
+            const rl = num(j.retail_ls_pct);   // 散戶多空 %(負=散戶偏多)
+            const fiShort = this._fundCache?.fi_net != null ? this._fundCache.fi_net : (this._fiNetCache ?? null);
+            // 三因子組合(由市場常識):
+            //  ① 順價差大(+50+)+ 外資大空單(-30k 以下)+ 散戶不擠多(rl ≥ -10) = 主力布局完成,偏多
+            //  ② 深逆差(-100-)+ 散戶大多(rl ≤ -20)+ 外資空單創高 = 黑天鵝
+            //  ③ 中性
+            let v;
+            if (back != null && back >= 50 && (fiShort == null || fiShort <= -20000) && (rl == null || rl >= -10)) {
+                v = { txt: '🟢🟢 主力布局完成 ・ 偏多看待', cls: 'border-red-600 bg-red-900/40 text-red-200', detail: '順價差大(期貨主力樂觀)+ 外資大空單(避險,非看空)+ 散戶未追多 = 多頭暗藏,正常拉抬機率高' };
+            } else if (back != null && back >= 10 && (rl == null || rl >= -15)) {
+                v = { txt: '🟢 多方氣氛 ・ 順勢操作', cls: 'border-red-700 bg-red-900/25 text-red-200', detail: '順價差 + 散戶中性 = 偏多但無極端訊號' };
+            } else if (back != null && back <= -100 && (rl == null || rl <= -20)) {
+                v = { txt: '🔴🔴 黑天鵝警戒 ・ 嚴守停損', cls: 'border-green-600 bg-green-900/40 text-green-300', detail: '深逆差(主力空殺)+ 散戶大多(被套高) = 風暴將臨,持股全出 / 空手別接刀' };
+            } else if (back != null && back <= -50) {
+                v = { txt: '🔴 逆價差 ・ 期貨偏空', cls: 'border-green-700 bg-green-900/25 text-green-300', detail: '逆差期貨看空 → 分批停利 / 別追多' };
+            } else {
+                v = { txt: '🟡 中性 ・ 看明日方向決定', cls: 'border-yellow-700 bg-yellow-900/20 text-yellow-300', detail: '三因子訊號分歧,沒明確方向,觀望為主' };
+            }
+            verdEl.innerHTML = `<div class="${v.cls} rounded border px-2 py-1.5 mt-2">
+                <div class="text-[12px] font-bold mb-0.5">${v.txt}</div>
+                <div class="text-[10px] text-gray-300 leading-snug">${v.detail}</div>
+            </div>`;
+        }
 
         // 流動性熱度（_calcRiskScore 推；無則用真實 m1b_pct；都無顯「待採」不假裝數字）
         let liquidity = num(j.m1b_pct);

@@ -492,6 +492,44 @@ def fetch_attention_disposal_status():
     except Exception as e:
         print(f"❌ attention_status.json 寫檔失敗(不影響其他流程):{e}")
 
+    # V20.9 — 累積 attention_history.json:每日 append 一筆(只存 sym+status),保留近 90 天
+    #         用途:前端算「該股近 30 日被列幾次」+ K 線標記觸發點
+    try:
+        HIST_FILE = DATA_DIR / "attention_history.json"
+        today_iso = datetime.now().strftime("%Y-%m-%d")
+        # 讀舊資料
+        hist = {}
+        if HIST_FILE.exists():
+            try:
+                hist = json.loads(HIST_FILE.read_text(encoding='utf-8'))
+            except Exception:
+                hist = {}
+        if not isinstance(hist, dict):
+            hist = {}
+        if "history" not in hist or not isinstance(hist["history"], dict):
+            hist["history"] = {}
+        # 今日資料(去除 threshold/interval/end_date,只留 sym → status 短字串)
+        today_data = {}
+        for sym, info in result.items():
+            status = info.get("status", "")
+            if status.startswith("🚨"):
+                today_data[sym] = "處置"
+            elif "注意" in status:
+                today_data[sym] = "注意"
+        hist["history"][today_iso] = today_data
+        # 清掉 > 90 天前的資料(保留近 90 天)
+        cutoff = datetime.now().timestamp() - 90 * 86400
+        hist["history"] = {
+            d: v for d, v in hist["history"].items()
+            if d >= datetime.fromtimestamp(cutoff).strftime("%Y-%m-%d")
+        }
+        hist["updated"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        HIST_FILE.write_text(json.dumps(hist, ensure_ascii=False, indent=2), encoding='utf-8')
+        total_days = len(hist["history"])
+        print(f"✅ attention_history.json:已累積 {total_days} 天紀錄(今日 {len(today_data)} 檔)")
+    except Exception as e:
+        print(f"⚠️ attention_history.json 累積失敗(不影響主流程):{e}")
+
 
 def main():
     print("🚀 啟動【首席雷達矩陣】全市場掃描引擎...")
