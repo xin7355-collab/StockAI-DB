@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V20.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V20.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V20.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -995,6 +995,12 @@
 
             <!-- 籌碼全面追蹤（三大法人 + 主力分點合併）-->
             <div id="subContentChip" class="hidden flex-col gap-3 mt-2 px-2 md:px-4">
+
+                <!-- 📊 V20.8 — 綜合操作評分卡(收所有訊號 → 1 個總分 + 1 句話操作建議) -->
+                <div id="masterScoreCard" class="hidden bg-[#161b22] border border-blue-700/40 rounded-lg p-3 shadow-lg"></div>
+
+                <!-- 🔄 V20.8 — 三大法人反轉訊號(賣轉買/買轉賣) + 投信做帳 -->
+                <div id="instReverseCard" class="hidden bg-[#161b22] border border-emerald-700/40 rounded-lg p-3 shadow-lg"></div>
 
                 <div id="onboard_chip" class="onboard-panel relative bg-purple-900/15 border border-purple-700/40 rounded-lg p-3 text-[11px] leading-relaxed text-gray-300">
                     <button onclick="app.dismissOnboard('chip')" class="absolute top-1 right-2 text-gray-400 hover:text-white text-base leading-none font-bold">×</button>
@@ -1593,23 +1599,37 @@
                 </div>
             </div>
 
-            <!-- 台指期實戰盤（散戶多空比 + 台指逆價差）-->
+            <!-- 台指期實戰盤(散戶多空比 + 台指逆價差 + V20.8 景氣燈號)-->
             <div class="bg-[#010409] rounded-xl border border-purple-900/50 p-3">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🎲</span><span class="text-sm font-black text-purple-300 tracking-wide">台指期實戰盤</span></div>
-                <div class="text-[10px] text-gray-500 mb-2 mt-0.5">📊 散戶情緒 + 台指期升貼水，判斷主力今天會不會殺出。</div>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="text-[10px] text-gray-500 mb-2 mt-0.5">📊 散戶情緒 + 期貨升貼水 + 景氣燈號 三合一,判斷主力今天會不會殺出。</div>
+                <div class="grid grid-cols-3 gap-2">
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('散戶多空比'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
-                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">👥 散戶多空比</div>
-                        <div id="sccRetail" class="text-base md:text-lg font-black font-mono text-green-400">--</div>
-                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">散戶情緒,<span class="text-red-300 font-bold">負值=散戶偏多(逆向偏空)</span></div>
+                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">👥 散戶多空</div>
+                        <div id="sccRetail" class="text-base font-black font-mono text-green-400">--</div>
+                        <div class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug">負=散戶偏多(逆向看空)</div>
                     </div>
                     <!-- V19.6 — 「台指逆價差」改名「期貨情緒」,加 1 行白話判讀(順/平/逆/深逆) -->
                     <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台指逆價差'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-0.5">🎯 期貨情緒</div>
-                        <div id="sccBack" class="text-lg md:text-xl font-black font-mono text-yellow-300">--</div>
+                        <div id="sccBack" class="text-base font-black font-mono text-yellow-300">--</div>
                         <div id="sccBackLabel" class="text-[10px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400 leading-snug font-bold">期-現</div>
+                    </div>
+                    <!-- V20.8 — 台灣景氣對策信號(手動下拉,localStorage 記) -->
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative">
+                        <button onclick="app.showJargon('景氣對策信號'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
+                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">🌡️ 景氣燈號</div>
+                        <div id="bsiLight" class="text-base font-black leading-tight">--</div>
+                        <select id="bsiSelect" onchange="app.setBsiLight(this.value)" class="text-[10px] mt-1 px-1 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 w-full">
+                            <option value="">點選最新…</option>
+                            <option value="blue">🔵 藍 衰退</option>
+                            <option value="yellow-blue">🔷 黃藍 趨弱</option>
+                            <option value="green">🟢 綠 穩定</option>
+                            <option value="yellow-red">🟡 黃紅 轉強</option>
+                            <option value="red">🔴 紅 過熱</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -2322,6 +2342,7 @@ const app = {
         '散戶多空比': '從台指期未平倉推算的散戶情緒。負值=散戶偏多（市場可能要修正，逆向偏空）、正值=散戶偏空（市場可能要漲，逆向偏多）。',
         '台幣匯率': '美元兌新台幣。31 以下=熱錢湧入（外資看好）、33 以上=熱錢撤離（外資看空）。台股漲跌跟匯率高度同步。',
         '台指逆價差': '期貨價格 - 現貨價格。\n\n📈 正值 = 順價差(期貨比現貨貴 → 期貨主力樂觀):\n  ・ +50 點以上 = 大順差,期貨偏多\n  ・ +10~+50 點 = 微順差,樂觀\n\n📉 負值 = 逆價差(期貨比現貨便宜 → 期貨主力悲觀):\n  ・ -10~-50 點 = 微逆差,警戒\n  ・ -50~-100 點 = 逆差,期貨偏空\n  ・ -100 點以下 = 深逆差,主力空殺過頭,現貨通常即將反彈(逆向訊號)',
+        '景氣對策信號': '國發會每月公布的景氣燈號(月底/月初公佈上月)。\n\n🔵 藍燈 (9-16 分) = 景氣衰退,股市常超跌完底反彈\n🔷 黃藍 (17-22 分) = 景氣趨弱,股市底部震盪\n🟢 綠燈 (23-31 分) = 景氣穩定,股市中性適合長抱\n🟡 黃紅 (32-37 分) = 景氣轉強,股市多頭續強\n🔴 紅燈 (38-45 分) = 景氣過熱,股市常見泡沫,注意拉回\n\n📊 投資對策:藍燈進場長抱 ・ 紅燈分批停利\n💡 來源:國發會官網每月 27 號公佈\n   https://index.ndc.gov.tw/n/zh_tw',
         '流動性熱度': '市場資金水溫，反映成交額相對 20MA。<30% 緊縮要小心斷頭、30-60% 健康、60-75% 過熱注意、>75% 隨時反轉。',
         '外資期現複合': '外資現貨買賣 + 期貨多空。同向=真實趨勢（雙多=噴、雙空=殺）；背離=套利或暗流，要更小心判讀。',
         '市場風險指數': 'VIX 恐慌+外資期+DXY+SPX+日圓+黃金 6 指標綜合 0-100 分。0-20 避險天堂、20-40 偏多操作、40-60 中性、60-80 警戒、80+ 現金為王。',
@@ -2712,6 +2733,7 @@ const app = {
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
         this._loadBrokerNames();
         this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
+        setTimeout(() => this.renderBsiLight(), 100);   // V20.8 — 景氣燈號從 localStorage 還原
         this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
         this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
         this._loadMarketStats();       // 📊 V16.2 全市場 P/B 分位數(供動態 P/B 判斷,取代固定 <2/>5 門檻)
@@ -6969,6 +6991,237 @@ const marginByDate = {};
             <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">⚠️ 以上為市場常見操作模式整理,非投資建議,實際走勢仍以個股技術 / 籌碼為準</div>`;
     },
 
+    // V20.8 — 三大法人反轉訊號 + 投信做帳行情(全用 activeData 純前端算)
+    //   反轉訊號:外資 / 投信 個別判,昨日相反方向 + 今日反向 + 變化量大
+    //   投信做帳:距季底(3/6/9/12 末) ≤ 10 天 + 投信近期買超 → 拉抬機率高
+    renderInstReverseCard(sym) {
+        const box = document.getElementById('instReverseCard');
+        if (!box) return;
+        if (!Array.isArray(this.activeData) || this.activeData.length < 10) { box.classList.add('hidden'); return; }
+        const arr = this.activeData;
+        const n = arr.length;
+        const fi = (i) => Number(arr[i]?.foreign_net || 0) / 1000;   // 張
+        const ti = (i) => Number(arr[i]?.trust_net || 0) / 1000;
+        const today_fi = fi(n - 1), today_ti = ti(n - 1);
+        const fi5 = arr.slice(-5).reduce((s, b) => s + (Number(b.foreign_net) || 0), 0) / 1000;
+        const ti5 = arr.slice(-5).reduce((s, b) => s + (Number(b.trust_net) || 0), 0) / 1000;
+        const fi5_prev = arr.slice(-10, -5).reduce((s, b) => s + (Number(b.foreign_net) || 0), 0) / 1000;
+        const ti5_prev = arr.slice(-10, -5).reduce((s, b) => s + (Number(b.trust_net) || 0), 0) / 1000;
+
+        // ── 反轉訊號(近 5 日 vs 前 5 日)─────────
+        const fiReverse = (() => {
+            if (fi5_prev < -200 && fi5 > 200) return { dir: '🟢 賣轉買', cls: 'text-red-300', desc: `外資前 5 日賣超 ${Math.round(-fi5_prev).toLocaleString()} 張 → 近 5 日轉買超 ${Math.round(fi5).toLocaleString()} 張`, action: '反轉訊號,可能起漲' };
+            if (fi5_prev > 200 && fi5 < -200) return { dir: '🔴 買轉賣', cls: 'text-green-300', desc: `外資前 5 日買超 ${Math.round(fi5_prev).toLocaleString()} 張 → 近 5 日轉賣超 ${Math.round(-fi5).toLocaleString()} 張`, action: '反轉訊號,可能拉回' };
+            return null;
+        })();
+        const tiReverse = (() => {
+            if (ti5_prev < -50 && ti5 > 50) return { dir: '🟢 投信賣轉買', cls: 'text-red-300', desc: `投信前 5 日賣 ${Math.round(-ti5_prev)} 張 → 近 5 日買 ${Math.round(ti5)} 張`, action: '投信回頭買,常見起漲訊號' };
+            if (ti5_prev > 50 && ti5 < -50) return { dir: '🔴 投信買轉賣', cls: 'text-green-300', desc: `投信前 5 日買 ${Math.round(ti5_prev)} 張 → 近 5 日賣 ${Math.round(-ti5)} 張`, action: '投信獲利了結,小心拉回' };
+            return null;
+        })();
+
+        // ── 投信做帳行情(季底/年底)──────────────
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const month = today.getMonth() + 1, day = today.getDate();
+        // 找下個季末(3/6/9/12 月底)
+        const seasonEnds = [
+            new Date(today.getFullYear(), 2, 31), new Date(today.getFullYear(), 5, 30),
+            new Date(today.getFullYear(), 8, 30), new Date(today.getFullYear(), 11, 31)
+        ];
+        const nextSeasonEnd = seasonEnds.find(d => d.getTime() >= today.getTime()) || seasonEnds[0];
+        const daysToSeason = Math.ceil((nextSeasonEnd.getTime() - today.getTime()) / 86400000);
+        const isYearEnd = nextSeasonEnd.getMonth() === 11;
+        let dressUp = null;
+        if (daysToSeason <= 10 && daysToSeason >= 0) {
+            const hasTrustPos = ti5 > 100;   // 近 5 日投信買超 > 100 張
+            if (hasTrustPos) {
+                dressUp = {
+                    cls: 'border-amber-600 bg-amber-900/30 text-amber-200',
+                    icon: '💼',
+                    title: `${isYearEnd ? '年底' : '季底'}做帳行情啟動中 ・ 還剩 ${daysToSeason} 天`,
+                    desc: `投信近 5 日買超 ${Math.round(ti5)} 張 + 距${isYearEnd ? '年' : '季'}底 ${daysToSeason} 天 → <b>拉抬機率高</b>`,
+                    action: `💡 跟對做:抱緊到月底前 2-3 天獲利了結 ・ ⚠️ 對著做:月底前若投信轉賣(<-100 張)立刻退場`,
+                };
+            } else if (ti5 < -100) {
+                dressUp = {
+                    cls: 'border-orange-600 bg-orange-900/30 text-orange-200',
+                    icon: '⚠️',
+                    title: `${isYearEnd ? '年底' : '季底'}投信已落袋 ・ 還剩 ${daysToSeason} 天`,
+                    desc: `投信近 5 日賣超 ${Math.round(-ti5)} 張 + 接近${isYearEnd ? '年' : '季'}底 → 已開始獲利了結`,
+                    action: '💡 別追高 ・ 等月底後重新建倉週期',
+                };
+            } else {
+                dressUp = {
+                    cls: 'border-gray-700 bg-[#0d1117] text-gray-300',
+                    icon: '💼',
+                    title: `${isYearEnd ? '年底' : '季底'}行情期 ・ 還剩 ${daysToSeason} 天`,
+                    desc: '投信動向中性,看後續方向決定',
+                    action: '💡 觀察明天投信動向決定跟車',
+                };
+            }
+        }
+
+        if (!fiReverse && !tiReverse && !dressUp) { box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+
+        const reverseRow = (r) => r ? `<div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-1.5">
+            <div class="flex justify-between items-baseline mb-0.5">
+                <span class="${r.cls} font-bold text-[12px]">${r.dir}</span>
+                <span class="text-[10px] text-amber-300">${r.action}</span>
+            </div>
+            <div class="text-[10px] text-gray-400 leading-snug">${r.desc}</div>
+        </div>` : '';
+
+        box.innerHTML = `
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-emerald-700/40">
+                <h4 class="text-emerald-300 font-bold text-sm">🔄 法人反轉 + 投信做帳</h4>
+                <span class="text-[10px] text-gray-500">近 5 日 vs 前 5 日</span>
+            </div>
+            ${reverseRow(fiReverse)}
+            ${reverseRow(tiReverse)}
+            ${dressUp ? `<div class="rounded-lg border ${dressUp.cls} px-3 py-2 mb-1">
+                <div class="font-bold text-[12px] mb-0.5">${dressUp.icon} ${dressUp.title}</div>
+                <div class="text-[11px] leading-snug mb-1">${dressUp.desc}</div>
+                <div class="text-[10px] leading-snug">${dressUp.action}</div>
+            </div>` : ''}
+            ${!fiReverse && !tiReverse ? '<div class="text-[10px] text-gray-500 text-center py-1">📍 法人方向暫無明顯反轉</div>' : ''}
+            <div class="text-[9px] text-gray-500 mt-1.5 leading-relaxed">💡 <b>反轉訊號</b>:法人從連賣轉連買(或反之) → 主力換手,股價方向常跟著轉</div>`;
+
+        // 把結果存到 instance 給綜合評分用
+        this._lastInstSignal = { fiReverse, tiReverse, dressUp };
+    },
+
+    // V20.8 — 綜合操作評分卡(整合所有訊號)
+    //   收 6 大訊號:Falcon / 注意股掃描 / 越關大尾 / 法人反轉 / 投信做帳 / 景氣燈號
+    //   加權算總分 0-100,給 1 行白話操作結論
+    renderMasterScoreCard(sym) {
+        const box = document.getElementById('masterScoreCard');
+        if (!box) return;
+        const factors = [];
+        let totalScore = 0, weightSum = 0;
+
+        // 1. Falcon 建倉分(權重 25)
+        const falcon = this._falconScores?.scores?.[sym];
+        if (falcon && falcon.score != null) {
+            factors.push({ icon: '🦅', name: 'Falcon 建倉', score: falcon.score, max: 100, weight: 25, txt: `${falcon.score}/100 ${falcon.label || ''}` });
+            totalScore += falcon.score * 25; weightSum += 25 * 100;
+        }
+
+        // 2. 注意股掃描(逆向加分:hit 越少越好;權重 15)
+        const scan = (Array.isArray(this.activeData) && this.activeData.length >= 30) ? this._calcAttentionScan(sym) : null;
+        if (scan) {
+            const scanScore = scan.predictText.startsWith('🚨') ? 10 : scan.predictText.startsWith('⚠️') ? 30 : scan.predictText.startsWith('💡') ? 60 : 90;
+            factors.push({ icon: '🔍', name: '注意股風險', score: scanScore, max: 100, weight: 15, txt: scan.predictText.slice(0, 16) });
+            totalScore += scanScore * 15; weightSum += 15 * 100;
+        }
+
+        // 3. 越關越大尾(只在處置時加,權重 10)
+        const info = this.attentionStatus?.[sym];
+        if (info && (info.status || '').match(/處置|注意/) && scan) {
+            // 從 dispBigShotCard 算法借過來(複製簡化)
+            const arr = this.activeData;
+            const v60 = arr.length >= 60 ? arr.slice(-60).reduce((s, b) => s + (b.volume || 0), 0) / 60 : null;
+            const v5 = arr.slice(-5).reduce((s, b) => s + (b.volume || 0), 0) / 5;
+            const volRatio = (v60 && v60 > 0) ? v5 / v60 : 1;
+            const volScore = Math.max(0, Math.min(100, Math.round((1 - volRatio) * 200)));
+            factors.push({ icon: '📈', name: '越關大尾', score: volScore, max: 100, weight: 10, txt: `量縮度 ${(volRatio * 100).toFixed(0)}%` });
+            totalScore += volScore * 10; weightSum += 10 * 100;
+        }
+
+        // 4. 法人反轉(只在有訊號時加,權重 20)
+        if (this._lastInstSignal?.fiReverse) {
+            const fiScore = this._lastInstSignal.fiReverse.dir.includes('賣轉買') ? 85 : 15;
+            factors.push({ icon: '🏛️', name: '外資反轉', score: fiScore, max: 100, weight: 20, txt: this._lastInstSignal.fiReverse.dir });
+            totalScore += fiScore * 20; weightSum += 20 * 100;
+        }
+
+        // 5. 投信做帳(權重 15)
+        if (this._lastInstSignal?.dressUp) {
+            const dupTitle = this._lastInstSignal.dressUp.title;
+            const dupScore = dupTitle.includes('落袋') ? 25 : dupTitle.includes('做帳行情啟動') ? 80 : 50;
+            factors.push({ icon: '💼', name: '投信做帳', score: dupScore, max: 100, weight: 15, txt: dupTitle.slice(0, 16) });
+            totalScore += dupScore * 15; weightSum += 15 * 100;
+        }
+
+        // 6. 景氣燈號(權重 15)
+        if (this._twBsiScore != null) {
+            // 12-41 線性映射到 0-100;藍燈底部進場好(逆向高分);紅燈過熱低分
+            // 但長線投資:綠/黃紅 = 中性高分;藍/紅 = 兩極(看情境)
+            // 簡化:藍 80(底部進場好) / 黃藍 60 / 綠 70 / 黃紅 65 / 紅 30
+            const bsiMap = { 12: 80, 19: 60, 27: 70, 34: 65, 41: 30 };
+            const bsiScore = bsiMap[this._twBsiScore] || 60;
+            const bsiLbl = this._twBsiLight === 'blue' ? '🔵 藍 底部進場' : this._twBsiLight === 'red' ? '🔴 紅 過熱' : (this._twBsiLight || '');
+            factors.push({ icon: '🌡️', name: '景氣燈號', score: bsiScore, max: 100, weight: 15, txt: bsiLbl });
+            totalScore += bsiScore * 15; weightSum += 15 * 100;
+        }
+
+        if (!factors.length) { box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+
+        const finalScore = Math.round(totalScore / weightSum * 100);
+
+        // 結論
+        let verdict, verdictCls, action;
+        if (finalScore >= 80)       { verdict = '🟢🟢 強烈買進';   verdictCls = 'border-red-600 bg-red-900/40 text-red-200 animate-pulse'; action = '多重訊號一致看多 → <b>分批進場 ・ 嚴守 5MA 停利</b>'; }
+        else if (finalScore >= 65)  { verdict = '🟢 可以買進';     verdictCls = 'border-red-700 bg-red-900/25 text-red-200';                action = '訊號偏多 → <b>逢回測月線進場 ・ 設停損</b>'; }
+        else if (finalScore >= 45)  { verdict = '🟡 觀望為主';     verdictCls = 'border-yellow-600 bg-yellow-900/30 text-yellow-200';       action = '訊號分歧 → <b>持股可抱 ・ 空手等明確訊號</b>'; }
+        else if (finalScore >= 30)  { verdict = '🔴 偏空 別碰';     verdictCls = 'border-green-700 bg-green-900/30 text-green-300';          action = '空方訊號多 → <b>持股分批停利 ・ 空手不接刀</b>'; }
+        else                        { verdict = '🔴🔴 強烈賣出';    verdictCls = 'border-green-600 bg-green-900/40 text-green-200 animate-pulse'; action = '多重訊號一致看空 → <b>持股全出 ・ 空手嚴禁進場</b>'; }
+
+        const factorRows = factors.map(f => `
+            <div class="flex items-center justify-between py-1 border-b border-[#21262d] text-[11px]">
+                <span class="flex items-center gap-1.5"><span>${f.icon}</span><b class="text-gray-200">${f.name}</b><span class="text-[9px] text-gray-500">×${f.weight}%</span></span>
+                <span class="flex items-center gap-2">
+                    <span class="text-[10px] text-gray-400">${f.txt}</span>
+                    <span class="font-mono font-bold ${f.score >= 70 ? 'text-red-300' : f.score >= 40 ? 'text-yellow-300' : 'text-green-300'}">${f.score}</span>
+                </span>
+            </div>`).join('');
+
+        box.innerHTML = `
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-blue-700/40">
+                <h4 class="text-blue-300 font-bold text-sm">📊 綜合操作評分</h4>
+                <span class="text-[10px] text-gray-500">${factors.length} 因子加權</span>
+            </div>
+            <div class="rounded-lg border ${verdictCls} px-3 py-2.5 mb-2 text-center">
+                <div class="text-4xl font-black font-mono leading-none mb-0.5">${finalScore}<span class="text-base text-gray-400">/100</span></div>
+                <div class="text-[13px] font-bold mt-1">${verdict}</div>
+            </div>
+            <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-2 text-[11px] text-gray-300 leading-snug">${action}</div>
+            <div class="text-[10px] text-gray-500 mb-1 leading-tight">📊 各因子分數明細</div>
+            <div>${factorRows}</div>
+            <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">💡 各因子權重:Falcon×25 / 外資反轉×20 / 注意股風險×15 / 投信做帳×15 / 景氣燈號×15 / 越關大尾×10</div>`;
+    },
+
+    // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
+    _showAttentionRulesHelp() {
+        if (!value) return;
+        try { localStorage.setItem('proTerminalBsiLight', value); } catch(_) {}
+        this._twBsiLight = value;
+        this.renderBsiLight();
+        this.vibrate(20);
+    },
+    renderBsiLight() {
+        const map = {
+            'blue':         { txt: '🔵 藍燈', sub: '衰退底部 進場長抱', cls: 'text-blue-300',   score: 12 },
+            'yellow-blue':  { txt: '🔷 黃藍', sub: '趨弱震盪 選股謹慎', cls: 'text-cyan-300',   score: 19 },
+            'green':        { txt: '🟢 綠燈', sub: '穩定中性 適合長抱', cls: 'text-green-300',  score: 27 },
+            'yellow-red':   { txt: '🟡 黃紅', sub: '轉強多頭 續強參與', cls: 'text-yellow-300', score: 34 },
+            'red':          { txt: '🔴 紅燈', sub: '過熱泡沫 分批停利', cls: 'text-red-300',    score: 41 },
+        };
+        const v = this._twBsiLight || localStorage.getItem('proTerminalBsiLight') || '';
+        const el = document.getElementById('bsiLight');
+        const sel = document.getElementById('bsiSelect');
+        if (!el) return;
+        if (!v || !map[v]) {
+            el.innerHTML = '<span class="text-gray-500 text-xs">未設定</span>';
+            return;
+        }
+        this._twBsiLight = v;
+        this._twBsiScore = map[v].score;   // 給綜合評分卡用
+        el.innerHTML = `<div class="${map[v].cls}">${map[v].txt}</div><div class="text-[9px] text-gray-500 leading-tight">${map[v].sub}</div>`;
+        if (sel) sel.value = v;
+    },
+
     // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
     _showAttentionRulesHelp() {
         alert(
@@ -9543,6 +9796,9 @@ ${_newsLine}${globalContext}
         try { this.renderDoubleSwordCard(targetSym); } catch(_) {}
         // V20.7 — 越關越大尾預測卡(處置/即將處置時觸發)
         try { this.renderDispBigShotCard(targetSym); } catch(_) {}
+        // V20.8 — 法人反轉 + 投信做帳 + 綜合操作評分(順序重要:先反轉算 _lastInstSignal,評分才能用)
+        try { this.renderInstReverseCard(targetSym); } catch(_) {}
+        try { this.renderMasterScoreCard(targetSym); } catch(_) {}
 
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
