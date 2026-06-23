@@ -67,6 +67,7 @@ def build_summary():
     bubble = load_json("bubble_warning.json") or {}
     attention = load_json("attention_status.json") or {}
     forecast = load_json("attention_forecast.json") or {}
+    radar_matrix = load_json("radar_matrix.json") or {}
 
     now = datetime.now()
     title = "📊 *盤前快報*" if 0 <= now.hour < 9 else "📊 *盤後總結*"
@@ -127,6 +128,26 @@ def build_summary():
         lines.append("📅 *未來 14 日核彈事件*")
         for ev in events:
             lines.append(f"  · `{ev['date']}` {ev['event']}")
+        lines.append("")
+
+    # 📚 朱家泓今日選股(4 大模組,各取前 3 檔)
+    rm_data = (radar_matrix.get('data') or {})
+    chu_blocks = [
+        ('🍀 六六大順',   'chu_perfect6'),
+        ('🔥 特別報價',   'chu_top_gainer'),
+        ('🥣 底部轉折',   'chu_bottom'),
+        ('🚀 5MA飆股',    'chu_riding5ma'),
+    ]
+    chu_lines = []
+    for label, key in chu_blocks:
+        picks = (rm_data.get(key) or [])[:3]
+        if picks:
+            syms = ' '.join(f"`{p.get('sym','')}({p.get('gain',0):+.1f}%)`" for p in picks)
+            chu_lines.append(f"  · {label}: {syms}")
+    if chu_lines:
+        lines.append("📚 *朱家泓今日選股*(各模組前 3 檔)")
+        lines.extend(chu_lines)
+        lines.append("  💡 _盤後篩選, 隔日參考進場, 跌破 5MA 立停_")
         lines.append("")
 
     lines.append("_💡 詳細分析請開 [StockAI 終端機](https://xin7355-collab.github.io/StockAI-DB/)_")

@@ -785,12 +785,14 @@ async function gemini(env, prompt, systemInstruction = null) {
 
 async function runDailySummary(env) {
     const t = Date.now();
-    const [radarRes, topRes] = await Promise.all([
+    const [radarRes, topRes, matrixRes] = await Promise.all([
         fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
         fetch(`${GH_PAGES_BASE}/data/top_picks.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/radar_matrix.json?t=${t}`).catch(() => null),
     ]);
     const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
     const topPicks = topRes?.ok ? await topRes.json().catch(() => null) : null;
+    const radarMatrix = matrixRes?.ok ? await matrixRes.json().catch(() => null) : null;
 
     const falconMap = buildFalconMap(radar);
     if (!falconMap.size) return;
@@ -803,7 +805,7 @@ async function runDailySummary(env) {
                 const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
                 if (!userData.chat_id) continue;
                 if (userData.muted_until && userData.muted_until > Date.now()) continue;
-                await sendDailySummary(env, userData, falconMap, topPicks);
+                await sendDailySummary(env, userData, falconMap, topPicks, radarMatrix);
             } catch (_) { /* continue */ }
         }
         if (list.list_complete) break;
@@ -811,7 +813,7 @@ async function runDailySummary(env) {
     }
 }
 
-async function sendDailySummary(env, user, falconMap, topPicks) {
+async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
     const symbols = new Set();
     (user.watchlist || []).forEach(s => symbols.add(s));
     (user.inventory || []).forEach(i => { if (i?.sym) symbols.add(i.sym); });
@@ -866,6 +868,27 @@ async function sendDailySummary(env, user, falconMap, topPicks) {
     const topGlobal = (topPicks?.picks || topPicks?.list || []).slice(0, 3)
         .map(p => `${p.sym || p.symbol} (${p.strategy || p.reason || ''})`).filter(s => s.length > 4);
 
+    // 📚 朱家泓今日選股(4 大模組,各取前 3 檔)
+    const chuBlocks = [
+        { label: '🍀 六六大順', key: 'chu_perfect6' },
+        { label: '🔥 特別報價', key: 'chu_top_gainer' },
+        { label: '🥣 底部轉折', key: 'chu_bottom' },
+        { label: '🚀 5MA飆股',  key: 'chu_riding5ma' },
+    ];
+    const chuMatrixData = (radarMatrix?.data) || {};
+    const chuLines = [];
+    for (const blk of chuBlocks) {
+        const picks = (chuMatrixData[blk.key] || []).slice(0, 3);
+        if (picks.length) {
+            const syms = picks.map(p => {
+                const g = Number(p.gain) || 0;
+                const sign = g > 0 ? '+' : '';
+                return `${p.sym}(${sign}${g.toFixed(1)}%)`;
+            }).join(' ');
+            chuLines.push(`${blk.label}: ${syms}`);
+        }
+    }
+
     // 組原始彙整
     const parts = [];
     parts.push(`📊 *${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 盤後總結*`);
@@ -874,6 +897,7 @@ async function sendDailySummary(env, user, falconMap, topPicks) {
     if (invLines.length) parts.push(`*💼 庫存今日*\n${invLines.join('\n')}` + (portReturn !== null ? `\n\n總部位對成本: *${formatPct(portReturn)}*` : ''));
     if (hot.length) parts.push(`*🦅 獵鷹 ≥${falconTh}*\n${hot.map(r => `${r.sym} 分${r.falcon}${r.tags.length ? ` (${r.tags.join('/')})` : ''}`).join('\n')}`);
     if (topGlobal.length) parts.push(`*🎯 全市場戰略選股*\n${topGlobal.join('\n')}`);
+    if (chuLines.length) parts.push(`*📚 朱家泓今日選股*\n${chuLines.join('\n')}\n_盤後篩選, 隔日參考進場, 跌破 5MA 立停_`);
 
     const rawSummary = parts.join('\n\n');
 

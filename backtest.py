@@ -250,6 +250,99 @@ def sig_ma_bullish_alignment(rows, idx):
     return ma5 > ma20 > ma60
 
 
+# ═══════════════════════════════════════════════════════════════════
+# 📚 朱家泓五大選股法(雷達 chu_* 對應的歷史勝率回測函式)
+#   模組 C「淘汰選股」是「持有中警示」,不是進場訊號,不納入勝率回測
+# ═══════════════════════════════════════════════════════════════════
+
+def sig_chu_perfect6(rows, idx):
+    """🍀 六六大順:多頭排列(MA5>10>20>60)+ 紅 K + 爆量 + 創 20 日新高"""
+    if idx < 60: return False
+    closes = [r.get('close', 0) for r in rows]
+    ma5 = _ma(closes, idx, 5)
+    ma10 = _ma(closes, idx, 10)
+    ma20 = _ma(closes, idx, 20)
+    ma60 = _ma(closes, idx, 60)
+    if not (ma5 and ma10 and ma20 and ma60): return False
+    if not (ma5 > ma10 > ma20 > ma60): return False
+    c, o = rows[idx].get('close', 0), rows[idx].get('open', 0)
+    pc = closes[idx - 1] if idx >= 1 else 0
+    if c <= 0 or o <= 0 or pc <= 0: return False
+    if not (c > o and (c - pc) / pc * 100 > 0.5): return False
+    avg5 = _avg_volume_lots(rows, idx)
+    v_lots = (rows[idx].get('volume', 0) or 0) / 1000
+    if not avg5 or v_lots <= avg5 * 1.2: return False
+    if idx < 20: return False
+    high_20_excl = max(closes[idx - 20: idx])  # 不含當日
+    return c > high_20_excl
+
+
+def sig_chu_top_gainer(rows, idx):
+    """🔥 特別報價:漲 ≥3% + 紅 K + 成交額 ≥5000 萬 + 量 ≥2000 張"""
+    if idx < 1: return False
+    closes = [r.get('close', 0) for r in rows]
+    c, o = rows[idx].get('close', 0), rows[idx].get('open', 0)
+    pc = closes[idx - 1]
+    v = rows[idx].get('volume', 0) or 0
+    if c <= 0 or o <= 0 or pc <= 0 or v <= 0: return False
+    if (c - pc) / pc * 100 < 3.0: return False
+    if c <= o: return False
+    if c * v < 50_000_000: return False
+    if v / 1000 < 2000: return False
+    return True
+
+
+def sig_chu_bottom(rows, idx):
+    """🥣 底部轉折:距 120MA ±5% + 近 20 日波動率 <3% + 距高點 ≥20% + 爆 2 倍量紅 K"""
+    if idx < 120: return False
+    closes = [r.get('close', 0) for r in rows]
+    c, o = rows[idx].get('close', 0), rows[idx].get('open', 0)
+    pc = closes[idx - 1] if idx >= 1 else 0
+    if c <= 0 or o <= 0 or pc <= 0: return False
+    ma120 = _ma(closes, idx, 120)
+    if not ma120: return False
+    bias120 = (c - ma120) / ma120 * 100
+    if not (-5 <= bias120 <= 5): return False
+    w20 = closes[idx - 19: idx + 1]
+    avg20 = sum(w20) / 20
+    if avg20 <= 0: return False
+    var20 = sum((x - avg20) ** 2 for x in w20) / 20
+    if (var20 ** 0.5) / avg20 >= 0.03: return False
+    high_120 = max(closes[idx - 119: idx + 1])
+    if high_120 <= 0 or (high_120 - c) / high_120 * 100 < 20: return False
+    if not (c > o and (c - pc) / pc * 100 > 0.5): return False
+    avg_v_20 = _avg_volume_lots(rows, idx, period=20)
+    v_lots = (rows[idx].get('volume', 0) or 0) / 1000
+    if not avg_v_20 or v_lots <= avg_v_20 * 2: return False
+    return True
+
+
+def sig_chu_riding5ma(rows, idx):
+    """🚀 5MA 飆股:收 > MA5 + 5 日斜率 > 5% + 近 5 日 ≥ 2 根漲 5% + 沒跌破 5MA + 乖離 < 15%"""
+    if idx < 10: return False
+    closes = [r.get('close', 0) for r in rows]
+    c = closes[idx]
+    if c <= 0: return False
+    ma5 = _ma(closes, idx, 5)
+    ma5_5ago = _ma(closes, idx - 5, 5)
+    if not ma5 or not ma5_5ago: return False
+    if c <= ma5: return False
+    if (ma5 - ma5_5ago) / ma5_5ago * 100 <= 5: return False
+    big_days = 0
+    for i in range(idx - 4, idx + 1):
+        if i >= 1 and closes[i - 1] > 0:
+            if (closes[i] - closes[i - 1]) / closes[i - 1] * 100 > 5:
+                big_days += 1
+    if big_days < 2: return False
+    h_today = rows[idx].get('high') or c
+    h_yest = rows[idx - 1].get('high') or closes[idx - 1]
+    if h_today <= h_yest: return False
+    l_today = rows[idx].get('low') or c
+    if l_today < ma5: return False
+    if (c - ma5) / ma5 * 100 >= 15: return False
+    return True
+
+
 SIGNALS = {
     '🌅 KD黃金交叉':   sig_kd_golden_cross,
     '🌇 KD死亡交叉':   sig_kd_dead_cross,
@@ -266,6 +359,11 @@ SIGNALS = {
     '🟢 法人連3日買':  sig_inst_buy_streak3,
     '🔴 法人連3日賣':  sig_inst_sell_streak3,
     '📈 多頭排列':     sig_ma_bullish_alignment,
+    # 📚 朱家泓五大選股法(模組 A/B/D/E,C 淘汰是持有警示不算進場訊號)
+    '🍀 朱家泓六六大順': sig_chu_perfect6,
+    '🔥 朱家泓特別報價': sig_chu_top_gainer,
+    '🥣 朱家泓底部轉折': sig_chu_bottom,
+    '🚀 朱家泓5MA飆股':  sig_chu_riding5ma,
 }
 
 
