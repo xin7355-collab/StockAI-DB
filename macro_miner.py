@@ -716,6 +716,129 @@ def fetch_nikkei():   return _fetch_yf_close("^N225",    "日經 225")
 def fetch_hsi():      return _fetch_yf_close("^HSI",     "恆生指數")
 def fetch_kospi():    return _fetch_yf_close("^KS11",    "韓股 KOSPI")
 def fetch_jpy():      return _fetch_yf_close("JPY=X",    "日圓匯率")     # ⚠️ JPY=X = USD/JPY(每美元兌幾日圓);日圓升值=此值下跌
+def fetch_sp500():    return _fetch_yf_close("^GSPC",    "標普 500")    # 🌎 美股大盤旗艦(台股最強連動)
+def fetch_nasdaq():   return _fetch_yf_close("^IXIC",    "那斯達克")    # 🌎 美股科技指標(台積電/半導體連動)
+
+
+# ── 🏭 美股 ETF 對應前端「資金板塊輪動」9 細分板塊(Q3)──
+# 對應規則:每板塊配 1 個最相關美股 ETF,前端漲跌即時對比同方向 vs 逆勢
+SECTOR_ETF_MAP = {
+    'server':    {'etf': 'SMH',  'name': '美半導體 SMH',   'desc': 'AI 伺服器供應鏈對標 (SMCI/DELL/HPE 母指數)'},
+    'power':     {'etf': 'GRID', 'name': '美智慧電網 GRID', 'desc': '重電基建對標 (GEV/POWL/ETN)'},
+    'packaging': {'etf': 'SOXX', 'name': '美半導體 SOXX',  'desc': '先進封裝對標 (TSM/AVGO)'},
+    'cpo':       {'etf': 'IGV',  'name': '美軟體 IGV',     'desc': 'CPO/光通訊 AI 題材對標 (ANET/COHR)'},
+    'cooling':   {'etf': 'XLI',  'name': '美工業 XLI',     'desc': '散熱液冷供應鏈對標 (VRT/TT)'},
+    'robot':     {'etf': 'BOTZ', 'name': '美機器人 BOTZ',  'desc': '實體機器人對標 (SYM/ROK/TSLA)'},
+    'finance':   {'etf': 'XLF',  'name': '美金融 XLF',     'desc': '金融避風港對標 (JPM/BAC)'},
+    'leo':       {'etf': 'ITA',  'name': '美航太 ITA',     'desc': '低軌衛星 / 航太對標 (IRDM/RKLB)'},
+    'dram':      {'etf': 'SMH',  'name': '美半導體 SMH',   'desc': 'DRAM/記憶體對標 (MU/WDC)'},
+}
+
+
+def fetch_sector_etfs():
+    """🏭 一次抓 10 個美股產業 ETF 的當日收盤 + 漲跌%(對應台股板塊)。
+    回傳 dict:{sector_key: {price, chg_pct, name, desc}}
+    失敗的 ETF 對應 None,前端 graceful 顯示「--」
+    """
+    print("🏭 採集美股產業 ETF(對應台股板塊輪動)…")
+    out = {}
+    for key, meta in SECTOR_ETF_MAP.items():
+        try:
+            price, chg = _fetch_yf_close(meta['etf'], meta['name'])
+            out[key] = {
+                'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
+                'price': price, 'chg_pct': chg,
+            }
+            print(f"   · {meta['etf']:6s} {meta['name']:15s} ${price} ({chg:+.2f}%)" if price else f"   · {meta['etf']:6s} 失敗")
+        except Exception as e:
+            out[key] = {'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
+                        'price': None, 'chg_pct': None, 'error': str(e)[:80]}
+    return out
+
+
+def fetch_business_signal():
+    """🌡️ 國發會景氣對策信號自動抓取。每月 27 號發布上個月燈號(略有延遲)。
+
+    分數區間(國發會官方規則):
+      9-16  → 🔵 藍燈(衰退)
+      17-22 → 🔷 黃藍燈(趨弱)
+      23-31 → 🟢 綠燈(穩定)
+      32-37 → 🟡 黃紅燈(轉強)
+      38-45 → 🔴 紅燈(過熱)
+
+    回傳 (light_key, score, month_str, error) 例:('green', 27, '2026-05', None)
+    失敗時 (None, None, None, '錯誤訊息') — 前端 fallback 到手動下拉。
+    """
+    import requests as _req
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Referer': 'https://index.ndc.gov.tw/',
+        'Accept': 'application/json, text/plain, */*',
+    }
+    # 國發會景氣指標查詢系統(JSON 直接抓分數時間序列)
+    candidates = [
+        'https://index.ndc.gov.tw/n/json/data/IDF06',
+        'https://index.ndc.gov.tw/api/data/IDF06',
+    ]
+    last_err = None
+    for url in candidates:
+        try:
+            r = _req.get(url, headers=headers, timeout=12)
+            if r.status_code != 200:
+                last_err = f"HTTP {r.status_code}"
+                continue
+            data = r.json()
+            # NDC 回傳格式通常是 list:[{'date':'1140531','value':'23'}, ...]
+            # 也可能是 dict 包含 series。盡量多版本兼容
+            items = data if isinstance(data, list) else (
+                data.get('data') or data.get('series') or data.get('result') or []
+            )
+            if not items:
+                last_err = "empty payload"
+                continue
+            # 取最後一筆有效 score
+            score, month = None, None
+            for item in reversed(items if isinstance(items, list) else []):
+                if not isinstance(item, dict):
+                    continue
+                v = item.get('value') or item.get('Value') or item.get('score')
+                d = item.get('date') or item.get('Date') or item.get('month')
+                if v is None or d is None:
+                    continue
+                try:
+                    s = int(float(str(v).strip()))
+                    if 5 <= s <= 50:  # 景氣燈號分數合理區間 9-45
+                        score = s
+                        # 民國日期轉西元:1140531 → 2025-05;字串長度判斷
+                        ds = str(d).strip()
+                        if len(ds) == 7 and ds.isdigit():
+                            month = f"{int(ds[:3]) + 1911}-{ds[3:5]}"
+                        elif len(ds) >= 7 and '-' in ds:
+                            month = ds[:7]
+                        else:
+                            month = ds
+                        break
+                except Exception:
+                    continue
+            if score is None:
+                last_err = "no valid score in payload"
+                continue
+            # 分數對應燈號
+            if score <= 16:
+                light = 'blue'
+            elif score <= 22:
+                light = 'yellow-blue'
+            elif score <= 31:
+                light = 'green'
+            elif score <= 37:
+                light = 'yellow-red'
+            else:
+                light = 'red'
+            return (light, score, month, None)
+        except Exception as e:
+            last_err = str(e)[:120]
+            continue
+    return (None, None, None, last_err or 'all sources failed')
 
 
 def _yf_chg_3d(ticker, name):
@@ -1058,7 +1181,7 @@ def main():
         "m1b_pct":     None,                                 # 由 m1b_yoy 換算(FRED M1SL),null=待採
         "m1b_label":   "待採",
         "m1b_note":    "由 FRED M1SL 年增率換算流動性熱度;FRED 失敗時為 null",
-        # ── 🌍 全球巨頭脈動（8 大國際指標，yfinance）──
+        # ── 🌍 全球巨頭脈動(10 大國際指標,V21 加 SP500/NASDAQ)──
         "gold_usd":       None, "gold_chg_pct":   None, "gold_error":   None,
         "wti_oil":        None, "wti_chg_pct":    None, "wti_error":    None,
         "dxy":            None, "dxy_chg_pct":    None, "dxy_error":    None,
@@ -1067,6 +1190,12 @@ def main():
         "nikkei":         None, "nikkei_chg_pct": None, "nikkei_error": None,
         "hsi":            None, "hsi_chg_pct":    None, "hsi_error":    None,
         "kospi":          None, "kospi_chg_pct":  None, "kospi_error":  None,
+        "sp500":          None, "sp500_chg_pct":  None, "sp500_error":  None,
+        "nasdaq":         None, "nasdaq_chg_pct": None, "nasdaq_error": None,
+        # ── 🌡️ 景氣對策信號(Q2 自動,前端 fallback 手動下拉)──
+        "business_signal": None,    # {light, score, month, source, error}
+        # ── 🏭 美股產業 ETF 板塊對應(Q3 板塊輪動配 ETF)──
+        "sector_etfs":     None,    # {sector_key: {etf, name, desc, price, chg_pct}}
         # ── 📅 未來 14 日核彈事件(純演算法,主流程結尾計算填入)──
         "upcoming_macro_events": [],
     }
@@ -1112,9 +1241,9 @@ def main():
     out["taifex_backwardation"], out["taifex_backwardation_error"] = back, backerr
     print(f"     → {back} 點（err={backerr}）")
 
-    # ── 🌍 全球巨頭脈動（8 大國際指標）──
+    # ── 🌍 全球巨頭脈動(10 大國際指標,V21 加 SP500 + NASDAQ)──
     print("─" * 50)
-    print("🌍 採集全球巨頭脈動（黃金 / 原油 / 美元 / BTC / VIX / 日經 / 恆指 / 韓股）")
+    print("🌍 採集全球巨頭脈動(黃金/油/美元/BTC/VIX/日經/恆指/韓股/SP500/NASDAQ)")
     big_player_fns = [
         ("黃金",         "gold",   fetch_gold),
         ("WTI原油",       "wti",    fetch_wti_oil),
@@ -1124,12 +1253,15 @@ def main():
         ("日經225",       "nikkei", fetch_nikkei),
         ("恆生指數",       "hsi",    fetch_hsi),
         ("韓股KOSPI",     "kospi",  fetch_kospi),
+        ("標普500",      "sp500",  fetch_sp500),
+        ("那斯達克",      "nasdaq", fetch_nasdaq),
     ]
     key_alias = {"gold": "gold_usd", "wti": "wti_oil", "dxy": "dxy",
                  "btc": "btc_usd", "vix": "vix", "nikkei": "nikkei",
-                 "hsi": "hsi", "kospi": "kospi"}
+                 "hsi": "hsi", "kospi": "kospi",
+                 "sp500": "sp500", "nasdaq": "nasdaq"}
     for i, (name, key, fn) in enumerate(big_player_fns, 9):
-        print(f"[{i}/16] {name}…")
+        print(f"[{i}/18] {name}…")
         val, chg, err = fn()
         out[key_alias[key]]      = val
         out[f"{key}_chg_pct"]    = chg
@@ -1138,7 +1270,27 @@ def main():
             sign = "+" if (chg or 0) > 0 else ""
             print(f"     → {val} ({sign}{chg}%)")
         else:
-            print(f"     → 失敗：{err}")
+            print(f"     → 失敗:{err}")
+
+    # ── 🌡️ 國發會景氣對策信號(Q2 自動抓取,每月 27 號發布)──
+    print("─" * 50)
+    print("🌡️ 抓取國發會景氣對策信號(每月 27 號發布上月燈號)…")
+    bsi_light, bsi_score, bsi_month, bsi_err = fetch_business_signal()
+    out["business_signal"] = {
+        "light":  bsi_light,
+        "score":  bsi_score,
+        "month":  bsi_month,
+        "source": "ndc",
+        "error":  bsi_err,
+    }
+    if bsi_light:
+        print(f"   → {bsi_month}: {bsi_light} ({bsi_score} 分)")
+    else:
+        print(f"   → 失敗(前端 fallback 手動下拉):{bsi_err}")
+
+    # ── 🏭 美股產業 ETF 板塊對應(Q3 板塊輪動配 ETF)──
+    print("─" * 50)
+    out["sector_etfs"] = fetch_sector_etfs()
 
     # ── 🦅 獵鷹建倉分:全球宏觀避險因子(日圓 / 3日變動 / 黑天鵝旗標;年線乖離已停用)──
     print("─" * 50)
@@ -1160,11 +1312,18 @@ def main():
     _gold1 = out.get("gold_chg_pct")
     _wti1 = out.get("wti_chg_pct")
     _kospi1 = out.get("kospi_chg_pct")
+    # V21 — Q5 風險指數整合:加美股大盤(昨夜 SP500/NASDAQ 跌 > 1% → 台股風險)+ 日經早盤同步
+    _sp500_1 = out.get("sp500_chg_pct")
+    _nasdaq_1 = out.get("nasdaq_chg_pct")
+    _nikkei_1 = out.get("nikkei_chg_pct")
     out["blackswan"] = {
         # V17.0 — 移除 dead market_bias_high(永遠 False);大盤懼高判定改前端用 ^TWII 240MA 即時算
         "jpy_surge":        (_jpy3 is not None and _jpy3 < -1.5),    # 日圓急升(USDJPY 跌)→ -20
         "metal_oil_spike":  ((_gold1 is not None and _gold1 > 3) or (_wti1 is not None and _wti1 > 3)),  # 金/油暴漲 → -20
         "kospi_dump":       (_kospi1 is not None and _kospi1 < -1.5),  # 亞股提款 → -10
+        # V21 新增:美股 + 日經風險(台股 80% 看美股臉色)
+        "us_market_dump":   ((_sp500_1 is not None and _sp500_1 < -1.0) or (_nasdaq_1 is not None and _nasdaq_1 < -1.5)),  # 美股昨夜大跌 → -15
+        "nikkei_dump":      (_nikkei_1 is not None and _nikkei_1 < -1.5),  # 日經早盤大跌 → -10
     }
     print(f"   🦅 黑天鵝旗標:{out['blackswan']}")
 
@@ -1180,11 +1339,14 @@ def main():
             for key in ("us10y_yield", "us2y_yield", "fi_spot_net", "fi_futures_net",
                         "usdtwd", "fear_greed", "fear_greed_label",
                         "retail_ls_pct", "taifex_backwardation",
-                        # 🌍 全球巨頭脈動 8 指標斷崖防護
+                        # 🌍 全球巨頭脈動 10 指標斷崖防護(V21 加 SP500/NASDAQ)
                         "gold_usd", "gold_chg_pct", "wti_oil", "wti_chg_pct",
                         "dxy", "dxy_chg_pct", "btc_usd", "btc_chg_pct",
                         "vix", "vix_chg_pct", "nikkei", "nikkei_chg_pct",
                         "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct",
+                        "sp500", "sp500_chg_pct", "nasdaq", "nasdaq_chg_pct",
+                        # 🌡️ 景氣燈號 + 🏭 板塊 ETF(V21 斷崖防護)
+                        "business_signal", "sector_etfs",
                         # 🦅 獵鷹建倉宏觀因子(API 偶失敗時沿用昨日,避免顯示待採)
                         "jpy", "jpy_chg_pct", "jpy_chg_3d", "gold_chg_3d", "wti_chg_3d",
                         # 🏦 戰區一新增(FRED 偶失敗時沿用昨日)
