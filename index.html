@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V21.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V21.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1647,11 +1647,9 @@
                         </select>
                     </div>
                 </div>
-                <!-- V20.9 — 期貨綜合判讀(順逆價差 + 散戶 + 外資三因子,動態填入) -->
-                <div id="futuresVerdict"></div>
-
                 <!-- V21 Q1 — 🐂 主力出貨指數五合一(散戶 + 期貨升貼水 + 景氣 + VIX + 融資)
-                              0-100 分:🟢託盤 / 🟡中性 / 🟠警戒 / 🔴主力可能殺出 + 操作建議 -->
+                              0-100 分:🟢託盤 / 🟡中性 / 🟠警戒 / 🔴主力可能殺出 + 操作建議
+                              (取代舊 V20.9 #futuresVerdict 三因子判讀,主力出貨指數涵蓋更全面)-->
                 <div id="marketMakerIndex" class="mt-2"></div>
             </div>
 
@@ -10620,32 +10618,8 @@ ${_newsLine}${globalContext}
         if ($('sccBack'))      setTxt('sccBack', backText, backColor);
         if ($('sccBackLabel')) { const el = $('sccBackLabel'); el.textContent = backLabel; el.className = `text-[10px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 ${backColor} leading-snug font-bold`; }
 
-        // V20.9 — 期貨綜合判讀(順逆價差 + 散戶多空 + 外資台指期空單)
-        const verdEl = document.getElementById('futuresVerdict');
-        if (verdEl) {
-            const rl = num(j.retail_ls_pct);   // 散戶多空 %(負=散戶偏多)
-            const fiShort = this._fundCache?.fi_net != null ? this._fundCache.fi_net : (this._fiNetCache ?? null);
-            // 三因子組合(由市場常識):
-            //  ① 順價差大(+50+)+ 外資大空單(-30k 以下)+ 散戶不擠多(rl ≥ -10) = 主力布局完成,偏多
-            //  ② 深逆差(-100-)+ 散戶大多(rl ≤ -20)+ 外資空單創高 = 黑天鵝
-            //  ③ 中性
-            let v;
-            if (back != null && back >= 50 && (fiShort == null || fiShort <= -20000) && (rl == null || rl >= -10)) {
-                v = { txt: '🟢🟢 主力布局完成 ・ 偏多看待', cls: 'border-red-600 bg-red-900/40 text-red-200', detail: '順價差大(期貨主力樂觀)+ 外資大空單(避險,非看空)+ 散戶未追多 = 多頭暗藏,正常拉抬機率高' };
-            } else if (back != null && back >= 10 && (rl == null || rl >= -15)) {
-                v = { txt: '🟢 多方氣氛 ・ 順勢操作', cls: 'border-red-700 bg-red-900/25 text-red-200', detail: '順價差 + 散戶中性 = 偏多但無極端訊號' };
-            } else if (back != null && back <= -100 && (rl == null || rl <= -20)) {
-                v = { txt: '🔴🔴 黑天鵝警戒 ・ 嚴守停損', cls: 'border-green-600 bg-green-900/40 text-green-300', detail: '深逆差(主力空殺)+ 散戶大多(被套高) = 風暴將臨,持股全出 / 空手別接刀' };
-            } else if (back != null && back <= -50) {
-                v = { txt: '🔴 逆價差 ・ 期貨偏空', cls: 'border-green-700 bg-green-900/25 text-green-300', detail: '逆差期貨看空 → 分批停利 / 別追多' };
-            } else {
-                v = { txt: '🟡 中性 ・ 看明日方向決定', cls: 'border-yellow-700 bg-yellow-900/20 text-yellow-300', detail: '三因子訊號分歧,沒明確方向,觀望為主' };
-            }
-            verdEl.innerHTML = `<div class="${v.cls} rounded border px-2 py-1.5 mt-2">
-                <div class="text-[12px] font-bold mb-0.5">${v.txt}</div>
-                <div class="text-[10px] text-gray-300 leading-snug">${v.detail}</div>
-            </div>`;
-        }
+        // V21 — 舊「期貨綜合判讀(主力布局完成 / 黑天鵝警戒)」三因子卡已移除,
+        //       由「🐂 主力出貨指數」五因子綜合卡取代(更全面、含景氣 + VIX + 融資)
 
         // 流動性熱度（_calcRiskScore 推；無則用真實 m1b_pct；都無顯「待採」不假裝數字）
         let liquidity = num(j.m1b_pct);
