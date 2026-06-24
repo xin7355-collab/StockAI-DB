@@ -24,9 +24,17 @@
 //   pushed:<chat_id>:<sym>:<type>  → 1     (TTL 6h,防重複推)
 
 const BIND_TTL = 600;
-const PUSH_DEDUP_TTL = 6 * 3600;
+const PUSH_DEDUP_TTL = 4 * 3600;   // V21.3:6h → 4h,讓重要事件 1 天可推 2 次
 const GH_PAGES_BASE = 'https://xin7355-collab.github.io/StockAI-DB';
 const MAX_TG_LEN = 3800;
+const NAMES_TTL = 30 * 24 * 3600;   // V21.3:names:map TTL 30 天
+
+// V21.3 ── 訊息優先級星數定義 ───────────────────────────────────────
+//   ★★★ (P1):黑天鵝 / 庫存停損觸發 / 漲跌停 / 融資爆表 / 處置股出獄
+//   ★★  (P2):獵鷹建倉 / 朱家泓訊號 / 主力出貨指數紅燈 / 庫存停利
+//   ★   (P3):盤後總結 / 開盤前簡報 / 午盤戰報 / 隔夜美股
+// 使用者可在前端設 tg_level: 'all' | '2plus' | '3only',Worker 發送前過濾
+const PRIORITY_MIN = { all: 1, '2plus': 2, '3only': 3 };
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -48,6 +56,179 @@ const tg = async (env, chatId, text, opts = {}) => {
         body: JSON.stringify({ chat_id: chatId, text: truncated, parse_mode: 'Markdown', disable_web_page_preview: true, ...opts }),
     });
 };
+
+// V21.3 ── 帶優先級過濾的發送包裝(stars: 1/2/3),低於使用者 tg_level 直接 skip
+const tgWithLevel = async (env, user, text, stars, opts = {}) => {
+    const userMin = PRIORITY_MIN[user?.settings?.tg_level || 'all'] || 1;
+    if (stars < userMin) return;   // 過濾:此訊息優先級不夠
+    return tg(env, user.chat_id, text, opts);
+};
+
+// V21.3 ── 股票代號 → 中文名 lookup(從 KV names:map 讀,fallback 純代號)
+async function stockLabel(env, sym) {
+    if (!sym) return '';
+    try {
+        const map = await env.KV.get('names:map', 'json');
+        const name = map?.[String(sym).toUpperCase()];
+        return name ? `${name} ${sym}` : String(sym);
+    } catch (_) {
+        return String(sym);
+    }
+}
+
+// V21.3 ── 個股深連結(Telegram 訊息底部一鍵跳該股完整分析)
+function tplDeepLink(sym) {
+    return `${GH_PAGES_BASE}/?sym=${encodeURIComponent(sym)}`;
+}
+
+// V21.3 ── 統一分隔線
+const SEP = '━━━━━━━━━━━━━━━━━━━━';
+
+// V21.3 ── 計算進場/停損/目標價(統一規則,避免每個模板自己算)
+//   進場區:現價 ± 1%(寬鬆;盤中追價或拉回都接得到)
+//   停損:現價 × 0.96(-4%)
+//   目標:現價 × 1.08(+8%)
+function calcLevels(price) {
+    const p = Number(price);
+    if (!Number.isFinite(p) || p <= 0) return null;
+    const entryLow  = (p * 0.99).toFixed(2);
+    const entryHigh = (p * 1.01).toFixed(2);
+    const stop      = (p * 0.96).toFixed(2);
+    const target    = (p * 1.08).toFixed(2);
+    return { entryLow, entryHigh, stop, target };
+}
+
+// V21.3 ── 7 個事件模板生成器(全部回傳 Markdown 字串,呼叫者用 tgWithLevel 發)
+//   每則三段式:核心數字 → 明確操作 → 為什麼觸發(3 條理由) → 深連結
+
+function tplFalcon(label, sym, score, price, reasons) {
+    const lv = calcLevels(price);
+    const lvBlock = lv
+        ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh} 區間\n  ▸ 停損:${lv.stop}(-4%)\n  ▸ 目標:${lv.target}(+8%)`
+        : `🎯 *操作建議*\n  ▸ 等明日 9:00 開盤定價`;
+    const why = (reasons && reasons.length)
+        ? `💡 *為什麼觸發?*\n${reasons.slice(0, 3).map((r, i) => `  ${['①','②','③'][i]} ${r}`).join('\n')}`
+        : `💡 系統綜合條件達標(細節看完整分析)`;
+    return [
+        `🦅 *【建倉訊號 ★★★】${label}*`,
+        SEP,
+        `📊 獵鷹分 *${score}/100* — 極高`,
+        Number.isFinite(price) ? `💰 現價 *${price}* 元` : '',
+        '',
+        lvBlock,
+        '',
+        why,
+        '',
+        `📱 [看完整分析](${tplDeepLink(sym)})`,
+    ].filter(Boolean).join('\n');
+}
+
+function tplInventoryStop(label, sym, cost, price, ret, type) {
+    const isProfit = type === 'tp';
+    const icon = isProfit ? '💰' : '🛑';
+    const title = isProfit ? '庫存停利線觸發 ★★★' : '庫存停損線觸發 ★★★';
+    const action = isProfit
+        ? `🎯 *操作建議*\n  ▸ 出 1/2 鎖利(現價賣 50%)\n  ▸ 留半碼追蹤,若跌破成本就全出\n  ▸ 不要貪心等回檔,先拿走+20%`
+        : `🎯 *操作建議*\n  ▸ *立刻全出*,不要凹單\n  ▸ 朱老師心法:-8% 是硬停損,不討價還價\n  ▸ 出場後觀察,確認止跌再考慮接`;
+    return [
+        `${icon} *【${title}】${label}*`,
+        SEP,
+        `📊 損益 *${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%*`,
+        `💰 成本 *${cost}* → 現價 *${price}*`,
+        '',
+        action,
+        '',
+        `📱 [看完整分析](${tplDeepLink(sym)})`,
+    ].join('\n');
+}
+
+function tplChu5MA(label, sym, price, ma5, volRatio) {
+    const lv = calcLevels(price);
+    return [
+        `🎯 *【朱家泓 5MA 進場訊號 ★★】${label}*`,
+        SEP,
+        `📊 收 *${price}* > 5MA *${ma5?.toFixed(2)}*`,
+        `📈 量增 *${volRatio?.toFixed(1)}×* 5日均量`,
+        '',
+        lv ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh}\n  ▸ 停損:跌破 5MA *${ma5?.toFixed(2)}* 立停\n  ▸ 目標:${lv.target}(+8%)`
+           : `🎯 進場:盤中拉回 5MA 附近(${ma5?.toFixed(2)})`,
+        '',
+        `💡 *為什麼觸發?*`,
+        `  ① 整日沒跌破 5MA(主力守得住)`,
+        `  ② 紅 K 收(買盤強於賣盤)`,
+        `  ③ 量增放大(資金進駐)`,
+        '',
+        `📱 [看完整分析](${tplDeepLink(sym)})`,
+    ].join('\n');
+}
+
+function tplBlackswan(reason, severity, vix, foreignNet) {
+    const tag = severity === 'high' ? '★★★ 緊急' : '★★ 警示';
+    const action = severity === 'high'
+        ? `🎯 *操作建議*\n  ▸ *持股減 50%*(現金為王)\n  ▸ 別接刀(等紅 K 反包再考慮)\n  ▸ 避開:航運/金融/中小型題材股\n  ▸ 防禦:電信/民生必需(中華電 / 統一 / 全家)`
+        : `🎯 *操作建議*\n  ▸ 持股減 1/3(留半碼觀察)\n  ▸ 新單暫緩 1-2 日\n  ▸ 關注 VIX 是否續升 + 美股反應`;
+    return [
+        `🚨 *【黑天鵝 ${tag}】*`,
+        SEP,
+        `⚠️ ${reason}`,
+        Number.isFinite(vix) ? `📊 VIX *${vix.toFixed(1)}* / 外資 *${foreignNet > 0 ? '+' : ''}${foreignNet} 億*` : '',
+        '',
+        action,
+        '',
+        `📱 [看完整總經分析](${GH_PAGES_BASE}/)`,
+    ].filter(Boolean).join('\n');
+}
+
+function tplAttention(label, sym, status, endDate, daysLeft) {
+    return [
+        `⚠️ *【處置股關注 ★★】${label}*`,
+        SEP,
+        `📊 ${status}`,
+        endDate ? `📅 出獄日:*${endDate}*(剩 ${daysLeft} 天)` : '',
+        '',
+        `🎯 *操作建議*(雙刀流)`,
+        `  ▸ 跟對做:出獄前 1 日低接,博反彈(高風險高報酬)`,
+        `  ▸ 對著做:出獄當日反向放空(主力出場常崩)`,
+        `  ▸ 兩者皆不做:觀望即可,別碰`,
+        '',
+        `📱 [看完整處置分析](${tplDeepLink(sym)})`,
+    ].filter(Boolean).join('\n');
+}
+
+function tplLimitUpDown(label, sym, price, pct, type) {
+    const isUp = type === 'up';
+    const icon = isUp ? '🔴' : '🟢';
+    const title = isUp ? '漲停板 ★★★' : '跌停板 ★★★';
+    const action = isUp
+        ? `🎯 *操作建議*\n  ▸ 已持有:留半碼,賣半碼鎖利\n  ▸ 空手:*不追*(漲停隔日易拉回)\n  ▸ 等回測 5MA 再考慮接`
+        : `🎯 *操作建議*\n  ▸ 已持有:盤後檢視原因,若基本面無變化可留\n  ▸ *別接刀*(連續跌停常見)\n  ▸ 觀察隔日是否有量反彈確認止跌`;
+    return [
+        `${icon} *【${title}】${label}*`,
+        SEP,
+        `💰 現價 *${price}* 元 (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`,
+        '',
+        action,
+        '',
+        `📱 [看完整分析](${tplDeepLink(sym)})`,
+    ].join('\n');
+}
+
+function tplPriceAlert(label, sym, hitPrice, livePrice, condText) {
+    const icon = condText.includes('上') ? '🚨' : '🛑';
+    return [
+        `${icon} *【到價提醒 ★★★】${label}*`,
+        SEP,
+        `📊 觸及${condText} *${hitPrice}*`,
+        `💰 現價 *${livePrice}*`,
+        '',
+        `🎯 *操作建議*`,
+        `  ▸ 立刻回顧當初設這個價的原因`,
+        `  ▸ 若是停利價 → 出 1/3 鎖利`,
+        `  ▸ 若是進場價 → 確認大盤無壓再進`,
+        '',
+        `📱 [看完整分析](${tplDeepLink(sym)})`,
+    ].join('\n');
+}
 
 export default {
     async fetch(request, env, ctx) {
@@ -71,15 +252,24 @@ export default {
     },
 
     async scheduled(event, env, ctx) {
-        // V17.5 — 三 cron 排程分流:
-        //   "0 9"    → 17:00 台北 盤後總結 + AI 短評
-        //   "0 1"    → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發 + V17.18 ETF 跟單 Top 5
-        //   "*/5 ..." → 09:00-13:30 台北 盤中即時掃描
+        // V17.5 + V21.3 — 5 cron 排程分流(UTC → 台北 +8):
+        //   "0 21 * * 0-4"  → 05:00 台北 🌃 隔夜美股戰報(V21.3 新)
+        //   "30 0 * * 1-5"  → 08:30 台北 🌅 盤前簡報(V21.3 新)
+        //   "0 1 * * 1-5"   → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發 + ETF 跟單 Top 5
+        //   "0 4 * * 1-5"   → 12:00 台北 🌞 午盤戰報(V21.3 新)
+        //   "0 9 * * 1-5"   → 17:00 台北 🌆 盤後總結(加強既有)
+        //   "*/5 1-5 ..."   → 09:00-13:55 台北 盤中即時掃描
         if (event.cron === '0 9 * * 1-5') {
             ctx.waitUntil(runDailySummary(env));
         } else if (event.cron === '0 1 * * 1-5') {
             ctx.waitUntil(runMonitorChuMorningScan(env));
             ctx.waitUntil(runEtfFollowMorningPush(env));  // V17.18
+        } else if (event.cron === '0 21 * * 0-4') {
+            ctx.waitUntil(runOvernightUS(env));    // V21.3 隔夜美股
+        } else if (event.cron === '30 0 * * 1-5') {
+            ctx.waitUntil(runPreMarket(env));      // V21.3 盤前簡報
+        } else if (event.cron === '0 4 * * 1-5') {
+            ctx.waitUntil(runMidday(env));         // V21.3 午盤戰報
         } else {
             ctx.waitUntil(runScan(env));
         }
@@ -107,9 +297,30 @@ async function handleSync(request, env) {
     const chatId = await env.KV.get(`code:${body.code}`);
     if (!chatId) return json({ error: 'not bound' }, 401);
     const existing = JSON.parse((await env.KV.get(`user:${chatId}`)) || '{}');
+    const sanitized = sanitizePayload(body.payload || {});
+    // V21.3 ── 股名對照同步:從 sanitized._stockNamesUpdate merge 進 KV names:map
+    const namesUpdate = sanitized._stockNamesUpdate;
+    delete sanitized._stockNamesUpdate;
+    if (namesUpdate) {
+        try {
+            const existingMap = (await env.KV.get('names:map', 'json')) || {};
+            let dirty = false;
+            for (const [k, v] of Object.entries(namesUpdate)) {
+                const key = String(k).toUpperCase();
+                const name = String(v || '').trim().slice(0, 30);
+                if (name && /^[一-龥A-Za-z0-9·\-+ ]+$/.test(name) && existingMap[key] !== name) {
+                    existingMap[key] = name;
+                    dirty = true;
+                }
+            }
+            if (dirty) await env.KV.put('names:map', JSON.stringify(existingMap), { expirationTtl: NAMES_TTL });
+        } catch (e) {
+            console.warn('[names:map merge]', e?.message);
+        }
+    }
     const merged = {
         ...existing,
-        ...sanitizePayload(body.payload || {}),
+        ...sanitized,
         chat_id: chatId,
         code: body.code,
         last_sync: Date.now(),
@@ -307,16 +518,24 @@ function sanitizePayload(payload) {
     }
     if (payload.settings && typeof payload.settings === 'object') {
         out.settings = {
-            falcon_threshold: clamp(payload.settings.falcon_threshold, 60, 95, 85),
-            surge_threshold: clamp(payload.settings.surge_threshold, 2, 10, 5),
-            drop_threshold: clamp(payload.settings.drop_threshold, 2, 10, 5),
-            // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設 true,顯式 false 才關)
+            // V21.3:預設閾值適度鬆綁(85→75 / 5→7 / 5→7),讓自選股動態更頻繁
+            falcon_threshold: clamp(payload.settings.falcon_threshold, 60, 95, 75),
+            surge_threshold: clamp(payload.settings.surge_threshold, 2, 10, 7),
+            drop_threshold: clamp(payload.settings.drop_threshold, 2, 10, 7),
             chuMorningPush: payload.settings.chuMorningPush !== false,
+            // V21.3:訊息優先級篩選(all / 2plus / 3only)
+            tg_level: ['all', '2plus', '3only'].includes(payload.settings.tg_level)
+                ? payload.settings.tg_level
+                : 'all',
         };
-        // V16.0 — Fugle token 帶上雲,供 Worker 跑內外盤分析(只 trim 不加密,KV 內部已加密儲存)
         const ft = String(payload.settings.fugleToken1 || '').trim();
         if (ft && ft.length >= 8 && ft.length <= 100) out.settings.fugleToken1 = ft;
     }
+    // V21.3 ── 股名對照表(前端 sync 時帶上來,Worker merge 進 KV names:map)
+    //   payload.stockNames = { "2330": "台積電", "2454": "聯發科", ... }
+    out._stockNamesUpdate = payload.stockNames && typeof payload.stockNames === 'object'
+        ? payload.stockNames
+        : null;
     return out;
 }
 
@@ -513,44 +732,52 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     (user.priceAlerts || []).forEach(a => { if (a?.sym) symbols.add(a.sym); });
 
     const settings = user.settings || {};
-    const falconTh = settings.falcon_threshold || 85;
-    const surgeTh = settings.surge_threshold || 5;
-    const dropTh = settings.drop_threshold || 5;
+    // V21.3:預設值改 75/7/7(對齊 sanitizePayload),沒設定的用戶套用新預設
+    const falconTh = settings.falcon_threshold || 75;
+    const surgeTh = settings.surge_threshold || 7;
+    const dropTh = settings.drop_threshold || 7;
 
-    const alerts = [];
+    // V21.3:訊息改用「逐則發送(帶優先級過濾)」,放棄單則合併以利精準篩選
+    // 為避免轟炸,單次 scan 一個用戶最多 6 則(超出 skip),保留最高優先
+    const queue = [];   // {stars, text} 物件陣列,結尾按 stars 排序取前 6 則
 
     if (macroAlert && !(await wasPushed(env, user.chat_id, '__macro__', 'daily'))) {
-        alerts.push(`🚨 *今日總經風險警報*\n${macroAlert}`);
+        const severity = macroAlert.includes('★★★') || macroAlert.includes('暴跌') ? 'high' : 'medium';
+        queue.push({ stars: 3, text: tplBlackswan(macroAlert, severity, null, null) });
         await markPushed(env, user.chat_id, '__macro__', 'daily', 24 * 3600);
     }
 
     for (const sym of symbols) {
         const stock = falconMap.get(sym) || { sym };
-        // V15.9 — 即時報價優先(MIS z = 最後成交價,pct = 即時漲跌幅),fallback radar.json 盤後值
         const live = liveQuotes ? liveQuotes.get(sym) : null;
         const close = live ? live.z : Number(stock.close);
         const pct   = live ? live.pct : Number(stock.change_pct ?? stock.chg_pct);
+        const label = await stockLabel(env, sym);
 
         const fs = Number(stock.falcon_score ?? stock.score);
         if (Number.isFinite(fs) && fs >= falconTh) {
             const ptype = `falcon_${falconTh}`;
             if (!(await wasPushed(env, user.chat_id, sym, ptype))) {
-                const tags = Array.isArray(stock.tags) ? stock.tags.slice(0, 3).join(' / ') : (stock.strategy || '建倉訊號');
-                alerts.push(`🦅 *${sym}* 獵鷹分 *${fs}*(≥${falconTh})— ${tags}`);
+                // 從 stock.tags 拆出「為什麼觸發」3 條
+                const reasons = Array.isArray(stock.tags) ? stock.tags.slice(0, 3) : [];
+                queue.push({ stars: 2, text: tplFalcon(label, sym, fs, close, reasons) });
                 await markPushed(env, user.chat_id, sym, ptype);
             }
         }
 
         if (Number.isFinite(pct)) {
-            // V15.9 — 朱老師「位階過高」即時規則(漲幅 > 7% → 別追)
-            if (pct > 7 && !(await wasPushed(env, user.chat_id, sym, 'overheat7'))) {
-                alerts.push(`⚠️ *${sym}* 位階過高 *+${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — ${close}` : ''}\n朱老師心法:漲幅 >7% 別追,放鎖股等回檔`);
-                await markPushed(env, user.chat_id, sym, 'overheat7');
+            // 漲跌停 (±9.5%+) → P3 star=3
+            if (pct >= 9.5 && !(await wasPushed(env, user.chat_id, sym, 'limitUp'))) {
+                queue.push({ stars: 3, text: tplLimitUpDown(label, sym, close, pct, 'up') });
+                await markPushed(env, user.chat_id, sym, 'limitUp');
+            } else if (pct <= -9.5 && !(await wasPushed(env, user.chat_id, sym, 'limitDown'))) {
+                queue.push({ stars: 3, text: tplLimitUpDown(label, sym, close, pct, 'down') });
+                await markPushed(env, user.chat_id, sym, 'limitDown');
             } else if (pct >= surgeTh && !(await wasPushed(env, user.chat_id, sym, 'surge'))) {
-                alerts.push(`🚀 *${sym}* 大漲 *+${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — ${close}` : ''}`);
+                queue.push({ stars: 2, text: tplFalcon(label, sym, Math.round(fs || 0), close, [`當日漲幅 +${pct.toFixed(2)}% (≥${surgeTh}%)`]) });
                 await markPushed(env, user.chat_id, sym, 'surge');
             } else if (pct <= -dropTh && !(await wasPushed(env, user.chat_id, sym, 'drop'))) {
-                alerts.push(`📉 *${sym}* 大跌 *${pct.toFixed(2)}%*${Number.isFinite(close) ? ` — ${close}` : ''}`);
+                queue.push({ stars: 2, text: `📉 *【大跌警示 ★★】${label}*\n${SEP}\n💰 現價 *${close}* (${pct.toFixed(2)}%)\n\n🎯 *操作建議*\n  ▸ 確認是否破月線(20MA)\n  ▸ 庫存族:已虧 5% 以上先出半碼\n  ▸ 空手:別接刀,等紅 K 反包\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
                 await markPushed(env, user.chat_id, sym, 'drop');
             }
         }
@@ -559,16 +786,15 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
         if (inv?.cost > 0 && Number.isFinite(close) && close > 0) {
             const ret = ((close - inv.cost) / inv.cost) * 100;
             if (ret >= 20 && !(await wasPushed(env, user.chat_id, sym, 'tp20'))) {
-                alerts.push(`💰 *${sym}* 庫存浮盈 *+${ret.toFixed(1)}%*(${inv.cost}→${close})達 +20% 停利線`);
+                queue.push({ stars: 2, text: tplInventoryStop(label, sym, inv.cost, close, ret, 'tp') });
                 await markPushed(env, user.chat_id, sym, 'tp20');
             } else if (ret <= -8 && !(await wasPushed(env, user.chat_id, sym, 'sl8'))) {
-                alerts.push(`🛑 *${sym}* 庫存浮虧 *${ret.toFixed(1)}%*(${inv.cost}→${close})達 -8% 停損線`);
+                queue.push({ stars: 3, text: tplInventoryStop(label, sym, inv.cost, close, ret, 'sl') });
                 await markPushed(env, user.chat_id, sym, 'sl8');
             }
         }
 
-        // V16.0 — 量爆 + 突破 5MA(只在盤中時段 elapsed >= 30 分後判,避開開盤 noise)
-        // V17.6 — 在 monitorList 內者,文案標「🎯 監控觸發」,讓使用者一眼知道是加入過監控的
+        // V16.0 — 量爆 + 突破 5MA(只在盤中 elapsed >= 30 分後判)
         if (live && volBaseCache && elapsed >= 30) {
             const base = await fetchVolumeBaseline(sym, volBaseCache);
             if (base && base.ma5 > 0 && base.vma5 > 0) {
@@ -576,63 +802,62 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
                 const vRatio = vTodayLots / (base.vma5 * (elapsed / 270));
                 const breakMa5 = live.z > base.ma5;
                 if (vRatio > 1.5 && breakMa5 && !(await wasPushed(env, user.chat_id, sym, 'volBreak5ma'))) {
-                    const isMonitored = (user.monitorList || []).includes(sym);
-                    const prefix = isMonitored ? `🎯 *${sym}* 監控觸發 — 量爆突破 5MA` : `🚀 *${sym}* 量爆突破 5MA`;
-                    alerts.push(`${prefix} *${live.z.toFixed(2)}*(>${base.ma5.toFixed(2)})\n預估量 ${vRatio.toFixed(1)}× 5日均 — 朱老師「量增突破」進場訊號${isMonitored ? '\n📋 你昨日加入監控,今天觸發了' : ''}`);
+                    queue.push({ stars: 2, text: tplChu5MA(label, sym, live.z, base.ma5, vRatio) });
                     await markPushed(env, user.chat_id, sym, 'volBreak5ma');
                 }
             }
         }
 
-        // V17.6 / V17.21 — 個股到價監控(多筆條件迭代,6h throttle 防重)
+        // V17.6 / V17.21 — 個股到價監控
         if (live && Number.isFinite(live.z)) {
             for (const a of (user.priceAlerts || []).filter(x => x.sym === sym && x.enabled !== false)) {
-                let hit = false, condTxt = '', emoji = '', hitPrice = null, dedupKey = '';
-                // 新格式 {cond, price}
+                let hit = false, condTxt = '', hitPrice = null, dedupKey = '';
                 if (a.cond === 'gte' && Number.isFinite(+a.price) && live.z >= +a.price) {
-                    hit = true; condTxt = '上限'; emoji = '🚨'; hitPrice = +a.price;
+                    hit = true; condTxt = '上限'; hitPrice = +a.price;
                     dedupKey = a.id ? `pa_${String(a.id).slice(0, 40)}` : `pa_gte_${hitPrice}`;
                 } else if (a.cond === 'lte' && Number.isFinite(+a.price) && live.z <= +a.price) {
-                    hit = true; condTxt = '下限'; emoji = '🛑'; hitPrice = +a.price;
+                    hit = true; condTxt = '下限'; hitPrice = +a.price;
                     dedupKey = a.id ? `pa_${String(a.id).slice(0, 40)}` : `pa_lte_${hitPrice}`;
-                }
-                // 舊格式 {upper, lower} fallback
-                else if (a.upper != null && live.z >= +a.upper) {
-                    hit = true; condTxt = '上限'; emoji = '🚨'; hitPrice = +a.upper;
+                } else if (a.upper != null && live.z >= +a.upper) {
+                    hit = true; condTxt = '上限'; hitPrice = +a.upper;
                     dedupKey = 'priceUpper';
                 } else if (a.lower != null && live.z <= +a.lower) {
-                    hit = true; condTxt = '下限'; emoji = '🛑'; hitPrice = +a.lower;
+                    hit = true; condTxt = '下限'; hitPrice = +a.lower;
                     dedupKey = 'priceLower';
                 }
                 if (!hit) continue;
                 if (await wasPushed(env, user.chat_id, sym, dedupKey)) continue;
-                alerts.push(`${emoji} *${sym}* 觸及${condTxt} *${hitPrice}*(現價 ${live.z.toFixed(2)})\n你預設的到價監控觸發`);
+                queue.push({ stars: 3, text: tplPriceAlert(label, sym, hitPrice, live.z.toFixed(2), condTxt) });
                 await markPushed(env, user.chat_id, sym, dedupKey);
             }
         }
 
-        // V16.0 — Fugle 內外盤強買賣(需 user.settings.fugleToken1,沒設則跳過)
+        // V16.0 — Fugle 內外盤(需 user.settings.fugleToken1,沒設則跳過)
         const fugleToken = settings.fugleToken1 || '';
         if (fugleToken && live) {
             const fq = await fetchFugleQuote(sym, fugleToken);
             if (fq && fq.bid > 0 && fq.ask > 0) {
                 const askBidRatio = fq.ask / fq.bid;
                 if (askBidRatio > 2 && !(await wasPushed(env, user.chat_id, sym, 'fugleStrongBuy'))) {
-                    alerts.push(`💪 *${sym}* 主力強勢買盤(外盤 ${fq.ask} / 內盤 ${fq.bid} = ${askBidRatio.toFixed(1)}×)\n當前價 ${live.z.toFixed(2)}`);
+                    queue.push({ stars: 2, text: `💪 *【主力強買盤 ★★】${label}*\n${SEP}\n外盤 ${fq.ask} / 內盤 ${fq.bid} = *${askBidRatio.toFixed(1)}×*\n💰 現價 ${live.z.toFixed(2)}\n\n🎯 *操作建議*\n  ▸ 已持有:留住,別輕易賣\n  ▸ 空手:可拉回低接\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
                     await markPushed(env, user.chat_id, sym, 'fugleStrongBuy');
                 } else if (askBidRatio < 0.5 && !(await wasPushed(env, user.chat_id, sym, 'fugleStrongSell'))) {
-                    alerts.push(`🩸 *${sym}* 主力強勢殺盤(內盤 ${fq.bid} / 外盤 ${fq.ask} = ${(1/askBidRatio).toFixed(1)}×)\n當前價 ${live.z.toFixed(2)}`);
+                    queue.push({ stars: 3, text: `🩸 *【主力強殺盤 ★★★】${label}*\n${SEP}\n內盤 ${fq.bid} / 外盤 ${fq.ask} = *${(1/askBidRatio).toFixed(1)}×*\n💰 現價 ${live.z.toFixed(2)}\n\n🎯 *操作建議*\n  ▸ 已持有:盤中先出半碼\n  ▸ 空手:絕對別接刀\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
                     await markPushed(env, user.chat_id, sym, 'fugleStrongSell');
                 }
             }
         }
     }
 
-    if (!alerts.length) return;
+    if (!queue.length) return;
 
-    const ts = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
-    const text = `🤖 *StockAI 個股提醒*\n\n${alerts.join('\n\n')}\n\n_${ts}_`;
-    await tg(env, user.chat_id, text);
+    // V21.3 ── 按優先級排序,單次 scan 最多送 6 則(避免轟炸)
+    queue.sort((a, b) => b.stars - a.stars);
+    const userMin = PRIORITY_MIN[settings.tg_level || 'all'] || 1;
+    const filtered = queue.filter(q => q.stars >= userMin).slice(0, 6);
+    for (const item of filtered) {
+        await tg(env, user.chat_id, item.text);
+    }
 }
 
 async function wasPushed(env, chatId, sym, type) {
@@ -818,14 +1043,16 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
     (user.watchlist || []).forEach(s => symbols.add(s));
     (user.inventory || []).forEach(i => { if (i?.sym) symbols.add(i.sym); });
 
-    // 收集每檔的當日漲跌、獵鷹分、命中策略
+    // V21.3:收集每檔當日漲跌 + 獵鷹分 + tags,並補上中文名 label
     const rows = [];
     for (const sym of symbols) {
         const s = falconMap.get(sym);
         if (!s) continue;
         const pct = Number(s.change_pct ?? s.chg_pct);
+        const label = await stockLabel(env, sym);
         rows.push({
             sym,
+            label,
             close: Number(s.close) || 0,
             pct: Number.isFinite(pct) ? pct : null,
             falcon: Number(s.falcon_score ?? s.score) || 0,
@@ -851,7 +1078,7 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
         if (!row || !inv.cost) continue;
         const dayPct = row.pct;
         const costRet = ((row.close - inv.cost) / inv.cost) * 100;
-        invLines.push(`${inv.sym} 收 ${row.close} (${formatPct(dayPct)} 今日 / ${formatPct(costRet)} 對成本)`);
+        invLines.push(`${row.label} 收 ${row.close} (${formatPct(dayPct)} 今日 / ${formatPct(costRet)} 對成本)`);
         if (inv.qty > 0) {
             invSumWeighted += costRet * inv.qty;
             invSumQty += inv.qty;
@@ -861,12 +1088,19 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
 
     // 命中高分股(獵鷹 ≥ 設定閾值)
     const settings = user.settings || {};
-    const falconTh = settings.falcon_threshold || 85;
+    const falconTh = settings.falcon_threshold || 75;   // V21.3:85 → 75
     const hot = rows.filter(r => r.falcon >= falconTh).slice(0, 5);
 
     // top_picks.json 全市場戰略選股(最多 3 檔)
-    const topGlobal = (topPicks?.picks || topPicks?.list || []).slice(0, 3)
-        .map(p => `${p.sym || p.symbol} (${p.strategy || p.reason || ''})`).filter(s => s.length > 4);
+    const topGlobalRaw = (topPicks?.picks || topPicks?.list || []).slice(0, 3);
+    const topGlobal = [];
+    for (const p of topGlobalRaw) {
+        const sym = p.sym || p.symbol;
+        if (sym) {
+            const lab = await stockLabel(env, sym);
+            topGlobal.push(`${lab} (${p.strategy || p.reason || ''})`);
+        }
+    }
 
     // 📚 朱家泓今日選股(4 大模組,各取前 3 檔)
     const chuBlocks = [
@@ -889,15 +1123,17 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
         }
     }
 
-    // 組原始彙整
+    // 組原始彙整(V21.3:用 label 含中文名)
     const parts = [];
-    parts.push(`📊 *${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 盤後總結*`);
-    if (upTop.length) parts.push(`*🚀 自選漲幅 Top*\n${upTop.map(r => `${r.sym} ${formatPct(r.pct)}`).join(' / ')}`);
-    if (dnTop.length) parts.push(`*📉 自選跌幅 Top*\n${dnTop.map(r => `${r.sym} ${formatPct(r.pct)}`).join(' / ')}`);
-    if (invLines.length) parts.push(`*💼 庫存今日*\n${invLines.join('\n')}` + (portReturn !== null ? `\n\n總部位對成本: *${formatPct(portReturn)}*` : ''));
-    if (hot.length) parts.push(`*🦅 獵鷹 ≥${falconTh}*\n${hot.map(r => `${r.sym} 分${r.falcon}${r.tags.length ? ` (${r.tags.join('/')})` : ''}`).join('\n')}`);
-    if (topGlobal.length) parts.push(`*🎯 全市場戰略選股*\n${topGlobal.join('\n')}`);
+    parts.push(`🌆 *【盤後總結 ★】${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}*`);
+    parts.push(SEP);
+    if (upTop.length) parts.push(`*🚀 自選漲幅 Top*\n${upTop.map(r => `  ▸ ${r.label} ${formatPct(r.pct)}`).join('\n')}`);
+    if (dnTop.length) parts.push(`*📉 自選跌幅 Top*\n${dnTop.map(r => `  ▸ ${r.label} ${formatPct(r.pct)}`).join('\n')}`);
+    if (invLines.length) parts.push(`*💼 庫存今日*\n${invLines.map(l => '  ▸ ' + l).join('\n')}` + (portReturn !== null ? `\n\n總部位對成本: *${formatPct(portReturn)}*` : ''));
+    if (hot.length) parts.push(`*🦅 獵鷹 ≥${falconTh}*\n${hot.map(r => `  ▸ ${r.label} 分${r.falcon}${r.tags.length ? ` (${r.tags.join('/')})` : ''}`).join('\n')}`);
+    if (topGlobal.length) parts.push(`*🎯 全市場戰略選股*\n${topGlobal.map(s => '  ▸ ' + s).join('\n')}`);
     if (chuLines.length) parts.push(`*📚 朱家泓今日選股*\n${chuLines.join('\n')}\n_盤後篩選, 隔日參考進場, 跌破 5MA 立停_`);
+    parts.push(`📱 [看完整作戰指揮部](${GH_PAGES_BASE}/)`);
 
     const rawSummary = parts.join('\n\n');
 
@@ -927,6 +1163,218 @@ function buildDailyPrompt(rawSummary, user) {
         '',
         '請用台股口語,2-3 句,直接給操作建議:',
     ].join('\n');
+}
+
+// ── V21.3: 4 段排程訊息生成 ──────────────────────────────────────────
+//   🌃 05:00 隔夜美股 / 🌅 08:30 盤前 / 🌞 12:00 午盤 / 🌆 17:00 盤後(已有)
+
+// 共用:廣播給全部用戶(過濾 muted + 按 tg_level 篩優先級)
+async function broadcastAllUsers(env, msgText, stars) {
+    let cursor = undefined;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!userData.chat_id) continue;
+                if (userData.muted_until && userData.muted_until > Date.now()) continue;
+                const userMin = PRIORITY_MIN[userData.settings?.tg_level || 'all'] || 1;
+                if (stars < userMin) continue;
+                await tg(env, userData.chat_id, msgText);
+            } catch (_) {}
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+}
+
+// 🌃 05:00 台北 — 隔夜美股戰報
+async function runOvernightUS(env) {
+    const t = Date.now();
+    let macro = null;
+    try {
+        const r = await fetch(`${GH_PAGES_BASE}/data/macro_risk.json?t=${t}`);
+        if (r.ok) macro = await r.json();
+    } catch (_) {}
+    if (!macro) return;
+
+    const sp500 = macro.sp500, sp500Pct = macro.sp500_chg_pct;
+    const nasdaq = macro.nasdaq, nasdaqPct = macro.nasdaq_chg_pct;
+    const vix = macro.vix;
+    const dxy = macro.dxy;
+    const fmt = (v, dec = 2) => v == null ? '--' : Number(v).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    const pctClr = (p) => p == null ? '' : (p > 0 ? `🔴 +${p.toFixed(2)}%` : `🟢 ${p.toFixed(2)}%`);
+
+    // 對台股預判
+    let verdict, advice;
+    const usAvg = ((sp500Pct || 0) + (nasdaqPct || 0)) / 2;
+    if (usAvg > 1.0) {
+        verdict = '🟢 美股強勢 → 台股早盤偏多';
+        advice = '今天可順勢:科技股(2330/2454/3008)+ AI 概念股(廣達/緯穎/技嘉)';
+    } else if (usAvg < -1.0) {
+        verdict = '🔴 美股重挫 → 台股早盤恐開低';
+        advice = '今天保守:減碼追蹤,別接刀,等止跌訊號';
+    } else {
+        verdict = '🟡 美股平穩 → 台股看自身籌碼';
+        advice = '今天看個股表現,大盤無方向看法人態度';
+    }
+    if (vix >= 25) advice += '\n⚠️ VIX 已過 25 → 全球避險,小心黑天鵝';
+
+    const text = [
+        `🌃 *【隔夜美股戰報 ★】 ${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}*`,
+        SEP,
+        `🇺🇸 SP500 *${fmt(sp500, 0)}* (${pctClr(sp500Pct)})`,
+        `💻 NASDAQ *${fmt(nasdaq, 0)}* (${pctClr(nasdaqPct)})`,
+        `😱 VIX *${fmt(vix)}* / 💵 DXY *${fmt(dxy)}*`,
+        '',
+        `📊 *對台股預判*`,
+        `${verdict}`,
+        '',
+        `🎯 *今日操作*`,
+        advice,
+        '',
+        `📱 [看完整總經分析](${GH_PAGES_BASE}/)`,
+    ].join('\n');
+    await broadcastAllUsers(env, text, 1);
+}
+
+// 🌅 08:30 台北 — 盤前簡報
+async function runPreMarket(env) {
+    const t = Date.now();
+    const [macroRes, radarRes, attentionRes] = await Promise.all([
+        fetch(`${GH_PAGES_BASE}/data/macro_risk.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/attention_status.json?t=${t}`).catch(() => null),
+    ]);
+    const macro = macroRes?.ok ? await macroRes.json().catch(() => null) : null;
+    const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
+    const attention = attentionRes?.ok ? await attentionRes.json().catch(() => null) : {};
+    const falconMap = buildFalconMap(radar);
+
+    // 主力出貨指數簡易計算(取 macro_risk 5 因子 → 0-100)
+    let mmIndex = 0;
+    const factors = [];
+    if (macro) {
+        const retail = macro.retail_ls_pct;
+        if (retail < -25) { mmIndex += 20; factors.push('散戶過度看多'); }
+        if (macro.taifex_backwardation < -100) { mmIndex += 25; factors.push('期貨大貼水'); }
+        if (macro.business_signal?.light === 'red') { mmIndex += 20; factors.push('景氣紅燈'); }
+        if (macro.vix >= 25) { mmIndex += 25; factors.push('VIX 恐慌'); }
+    }
+    const mmVerdict = mmIndex >= 70 ? '🔴 主力可能殺出' : mmIndex >= 40 ? '🟠 警戒' : mmIndex >= 0 ? '🟡 中性' : '🟢 託盤';
+
+    // 對每用戶推:加入個人化重點 3 檔
+    let cursor = undefined;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!userData.chat_id) continue;
+                if (userData.muted_until && userData.muted_until > Date.now()) continue;
+                const userMin = PRIORITY_MIN[userData.settings?.tg_level || 'all'] || 1;
+                if (1 < userMin) continue;   // P3 訊息,3only 用戶 skip
+
+                // 今日重點:自選股獵鷹分 ≥ falconTh 的前 3 檔
+                const falconTh = userData.settings?.falcon_threshold || 75;
+                const watchSyms = new Set([...(userData.watchlist || []), ...(userData.inventory || []).map(i => i.sym)]);
+                const focus = [];
+                for (const sym of watchSyms) {
+                    const s = falconMap.get(sym);
+                    if (s && Number(s.falcon_score ?? s.score) >= falconTh) {
+                        const label = await stockLabel(env, sym);
+                        focus.push(`${label} 獵鷹分 ${s.falcon_score ?? s.score}`);
+                        if (focus.length >= 3) break;
+                    }
+                }
+                // 處置出獄 D-1 / D-0
+                const attMap = attention || {};
+                const todayStr = new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
+                const outSoon = [];
+                for (const sym of watchSyms) {
+                    const a = attMap[sym];
+                    if (a?.end_date) {
+                        const days = Math.ceil((new Date(a.end_date) - new Date(todayStr)) / 86400000);
+                        if (days >= 0 && days <= 1) {
+                            const lab = await stockLabel(env, sym);
+                            outSoon.push(`${lab} ${days === 0 ? '今日出獄' : '明日出獄'}`);
+                        }
+                    }
+                }
+
+                const text = [
+                    `🌅 *【盤前簡報 ★】${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}*`,
+                    SEP,
+                    macro ? `🇺🇸 SP500 *${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}%* / NASDAQ *${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}%* / VIX *${macro.vix?.toFixed(1)}*` : '',
+                    '',
+                    `🐂 *主力出貨指數 ${mmIndex} 分*`,
+                    `${mmVerdict}${factors.length ? ` (${factors.slice(0, 2).join(' / ')})` : ''}`,
+                    '',
+                    focus.length ? `🎯 *今日自選股重點*\n${focus.map(f => `  ▸ ${f}`).join('\n')}` : '🟢 自選股無高分股,可看通用情報',
+                    outSoon.length ? `\n⚠️ *處置股出獄*\n${outSoon.map(s => `  ▸ ${s}`).join('\n')}` : '',
+                    '',
+                    `📱 [看完整作戰指揮部](${GH_PAGES_BASE}/)`,
+                ].filter(Boolean).join('\n');
+                await tg(env, userData.chat_id, text);
+            } catch (_) {}
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+}
+
+// 🌞 12:00 台北 — 午盤戰報
+async function runMidday(env) {
+    const t = Date.now();
+    const radarRes = await fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null);
+    const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
+    const falconMap = buildFalconMap(radar);
+
+    let cursor = undefined;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!userData.chat_id) continue;
+                if (userData.muted_until && userData.muted_until > Date.now()) continue;
+                const userMin = PRIORITY_MIN[userData.settings?.tg_level || 'all'] || 1;
+                if (1 < userMin) continue;
+
+                const watchSyms = [...(userData.watchlist || []), ...(userData.inventory || []).map(i => i.sym)];
+                const rows = [];
+                for (const sym of watchSyms) {
+                    const s = falconMap.get(sym);
+                    if (!s) continue;
+                    const pct = Number(s.change_pct ?? s.chg_pct);
+                    if (Number.isFinite(pct)) {
+                        const label = await stockLabel(env, sym);
+                        rows.push({ label, sym, pct, close: s.close });
+                    }
+                }
+                if (!rows.length) continue;
+                const upTop = [...rows].sort((a, b) => b.pct - a.pct).slice(0, 3).filter(r => r.pct > 0);
+                const dnTop = [...rows].sort((a, b) => a.pct - b.pct).slice(0, 3).filter(r => r.pct < 0);
+
+                const text = [
+                    `🌞 *【午盤戰報 ★】 ${new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' })}*`,
+                    SEP,
+                    upTop.length ? `🚀 *自選漲幅 Top*\n${upTop.map(r => `  ▸ ${r.label} +${r.pct.toFixed(2)}% (${r.close})`).join('\n')}` : '',
+                    dnTop.length ? `\n📉 *自選跌幅 Top*\n${dnTop.map(r => `  ▸ ${r.label} ${r.pct.toFixed(2)}% (${r.close})`).join('\n')}` : '',
+                    '',
+                    `🎯 *午後操作*`,
+                    `  ▸ 強勢股:量價齊揚續抱,跌破即停利`,
+                    `  ▸ 弱勢股:已虧 5% 以上出半碼`,
+                    `  ▸ 觀察 13:00-13:25 主力動向(最後 30 分常見急拉/急殺)`,
+                    '',
+                    `📱 [看自選股完整動態](${GH_PAGES_BASE}/)`,
+                ].filter(Boolean).join('\n');
+                await tg(env, userData.chat_id, text);
+            } catch (_) {}
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
 }
 
 // ── V17.5: 隔日 09:00 開盤 — 掃 monitorList 推朱家泓 5MA 進場觸發 ────────────

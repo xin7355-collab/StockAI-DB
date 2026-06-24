@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V21.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V21.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -367,6 +367,16 @@
                             <input type="checkbox" id="set_chuMorningPush" onchange="app.settings.chuMorningPush=this.checked; app.saveSettings(); app.telegramCloud?.sync?.();" class="sr-only peer">
                             <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
+                    </div>
+                    <!-- V21.3 — Telegram 訊息優先級篩選 -->
+                    <div class="pt-2 mt-1 border-t border-cyan-900/30">
+                        <label class="text-[11px] font-bold text-purple-300">⭐ 收訊密度篩選(優先級)</label>
+                        <p class="text-[10px] text-gray-500 leading-tight mb-1.5">★★★ 緊急(黑天鵝/停損/漲跌停) / ★★ 警示(獵鷹/朱家泓) / ★ 日報(盤前/午盤/盤後)</p>
+                        <select id="set_tgLevel" onchange="app.settings.tg_level=this.value; app.saveSettings(); app.telegramCloud?.sync?.(); app.showToast?.('已套用,下次同步生效');" class="w-full bg-[#010409] text-purple-300 p-1.5 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-purple-500 transition-colors">
+                            <option value="all">📨 全部訊息(預設)</option>
+                            <option value="2plus">⚠️ 只接 ★★ 以上(重要)</option>
+                            <option value="3only">🔥 只接 ★★★(緊急)</option>
+                        </select>
                     </div>
                     <!-- V17.15 — Telegram 沒收到推送自助診斷(點開即跑) -->
                     <details class="mt-2 p-2 bg-cyan-950/30 border border-cyan-800/40 rounded text-[11px]" ontoggle="if(this.open)app._runTelegramDiagnosis?.();">
@@ -785,7 +795,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2647,17 +2657,33 @@ const app = {
                 upper: Number.isFinite(+a.upper) && +a.upper > 0 ? +a.upper : null,
                 lower: Number.isFinite(+a.lower) && +a.lower > 0 ? +a.lower : null,
             })).filter(a => /^[0-9A-Z]{4,8}$/.test(a.sym) && (a.upper != null || a.lower != null));
-            // V16.0 — 把 Fugle token 1 + 既有閾值帶上雲端(Worker 跑 Fugle 內外盤規則用)
-            //         token 存在 Cloudflare KV 中(內部加密、不公開),只有 Worker 自身能讀
+            // V21.3:預設閾值改 75/7/7(對齊 Worker 新預設,讓自選動態更頻繁)
             const settings = {
                 fugleToken1: app.settings?.fugleToken1 || '',
-                falcon_threshold: Number(app.settings?.falconAlertTh) || 85,
-                surge_threshold:  Number(app.settings?.surgeAlertTh)  || 5,
-                drop_threshold:   Number(app.settings?.dropAlertTh)   || 5,
-                // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設 true,可關掉)
+                falcon_threshold: Number(app.settings?.falconAlertTh) || 75,
+                surge_threshold:  Number(app.settings?.surgeAlertTh)  || 7,
+                drop_threshold:   Number(app.settings?.dropAlertTh)   || 7,
                 chuMorningPush:   app.settings?.chuMorningPush !== false,
+                // V21.3 ── Telegram 訊息優先級篩選(all = 全部 / 2plus = ★★ 以上 / 3only = 只接 ★★★)
+                tg_level:         app.settings?.tg_level || 'all',
             };
-            return { watchlist, inventory, monitorList, priceAlerts, settings };
+
+            // V21.3 ── 股名對照表:從自選股 + 庫存 + 監控 + 限價單收集所有 sym,
+            //   逐檔從 app.stockInfoCache 或 IndexedDB 拉 name 欄位,組成 {sym: name} map 給 Worker
+            const allSyms = [...new Set([...watchlist, ...monitorList,
+                ...inventory.map(i => i.sym), ...priceAlerts.map(a => a.sym)])];
+            const stockNames = {};
+            for (const sym of allSyms) {
+                // 從多個來源嘗試取得中文名(順序:_stockNameCache → activeData.name → infoMap)
+                const name = app._stockNameCache?.[sym]
+                    || (app.currentSymbolId === sym ? app.activeData?.name : null)
+                    || app._stockInfoMap?.[sym]?.name
+                    || '';
+                if (name && typeof name === 'string' && name.trim()) {
+                    stockNames[sym] = name.trim().slice(0, 30);
+                }
+            }
+            return { watchlist, inventory, monitorList, priceAlerts, settings, stockNames };
         },
 
         _genCode() {
@@ -2728,6 +2754,13 @@ const app = {
         setRealVh();
         window.addEventListener('resize', setRealVh);
         this._initOnboard();
+        // V21.3 ── Telegram 深連結支援:?sym=2330 自動跳該股(初始 sym 在 init 流程後才 switch)
+        try {
+            const qSym = new URLSearchParams(window.location.search).get('sym');
+            if (qSym && /^[0-9A-Z]{4,8}$/.test(qSym.toUpperCase())) {
+                this._deepLinkSym = qSym.toUpperCase();
+            }
+        } catch (_) {}
         // V14.4:K 線「底高」開關 — 從 localStorage 復原 + 同步 checkbox 視覺狀態
         this.showPeaks = localStorage.getItem('showPeaks') !== '0';
         queueMicrotask(() => { const cb = document.getElementById('togglePeaks'); if (cb) cb.checked = this.showPeaks; });
@@ -2789,8 +2822,10 @@ const app = {
 
         await this.fetchStockList();
         await this.fetchMacroData();
-        
-        await this.analyze('2330', true);
+
+        // V21.3 ── Telegram 深連結:?sym=2330 優先,沒有則預設 2330
+        const initialSym = this._deepLinkSym || '2330';
+        await this.analyze(initialSym, true);
         this.refreshInventoryPrices();
         this.renderFavTabs();
         this.loadRadarMatrix();
@@ -4108,6 +4143,9 @@ ${list}
         // V17.5 — 朱家泓 5MA 觸發推 Telegram 開關(預設開,首次 init 時為 undefined → true)
         const cmEl = document.getElementById('set_chuMorningPush');
         if (cmEl) cmEl.checked = this.settings.chuMorningPush !== false;
+        // V21.3 — Telegram 訊息優先級篩選(預設 all)
+        const tlEl = document.getElementById('set_tgLevel');
+        if (tlEl) tlEl.value = this.settings.tg_level || 'all';
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         const wlEl = document.getElementById('set_watchlistAlert');
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;

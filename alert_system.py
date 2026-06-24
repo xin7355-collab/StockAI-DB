@@ -61,6 +61,38 @@ def load_json(name):
         return None
 
 
+# V21.3 ── 股票代號 → 中文名 lookup(從 data/{sym}.json 的 name 欄位)
+#   首次呼叫時掃全部 data/*.json 建表(~700 檔,< 2 秒),後續 O(1) cache
+_STOCK_NAMES_CACHE = None
+
+def stock_label(sym):
+    """2330 → '台積電 2330'(若無中文名 fallback 純代號)"""
+    global _STOCK_NAMES_CACHE
+    if _STOCK_NAMES_CACHE is None:
+        _STOCK_NAMES_CACHE = {}
+        try:
+            for f in DATA_DIR.glob('*.json'):
+                # 跳過已知非個股 json(broker_names / radar / top_picks 等)
+                if any(skip in f.stem for skip in ['broker_names', 'radar', 'top_picks',
+                                                    'macro_risk', 'bubble_warning', 'attention_',
+                                                    'futures_cache', 'margin_cache', 'signal_history',
+                                                    'strategy_backtest', 'paper_trades', 'sector_heat',
+                                                    'walk_forward', 'tier_backtest', 'etf_tracking',
+                                                    'radar_news', 'radar_matrix', 'global_news']):
+                    continue
+                try:
+                    j = json.loads(f.read_text(encoding='utf-8'))
+                    if isinstance(j, dict) and j.get('name'):
+                        _STOCK_NAMES_CACHE[f.stem.upper()] = str(j['name']).strip()[:30]
+                except Exception:
+                    continue
+            print(f"   📚 stock_label 對照表建立完成:{len(_STOCK_NAMES_CACHE)} 檔有中文名")
+        except Exception as e:
+            print(f"   ⚠️ stock_label 對照表建立失敗:{e}")
+    name = _STOCK_NAMES_CACHE.get(str(sym).upper(), '')
+    return f"{name} {sym}" if name else str(sym)
+
+
 def build_summary():
     """組「盤前/盤後 摘要」訊息(每天 2 則)。"""
     macro = load_json("macro_risk.json") or {}
@@ -162,19 +194,51 @@ def build_watch_alerts():
     macro = load_json("macro_risk.json") or {}
     bubble = load_json("bubble_warning.json") or {}
 
-    # 融資 > 3200 億
+    # V21.3 ── 統一模板格式(三段式:核心數字 / 操作建議 / 為什麼)
+    SEP = '━━━━━━━━━━━━━━━━━━━━'
+
+    # 融資 > 3200 億 ★★★
     m = bubble.get('margin_balance_billion')
     if m is not None and m >= 3200:
-        alerts.append(f"🚨 *融資爆量警報*\n融資餘額 `{m} 億` 超過 3200 億警戒線\n👉 持有者請減碼槓桿,空手者觀望")
+        alerts.append(
+            f"🚨 *【融資爆量警報 ★★★】*\n{SEP}\n"
+            f"📊 融資餘額 *{m} 億* (超過 3200 億警戒線)\n\n"
+            f"🎯 *操作建議*\n"
+            f"  ▸ 持有者:減碼槓桿(融資戶先還款)\n"
+            f"  ▸ 空手者:觀望,別追高\n"
+            f"  ▸ 注意盤中急殺風險(融資斷頭引發雪崩)\n\n"
+            f"💡 *為什麼?*\n"
+            f"  ① 散戶槓桿過高,大盤拉回易引發多殺多\n"
+            f"  ② 歷史高點前融資都先衝高(末升段警訊)\n"
+            f"  ③ 主力常在融資爆量時偷偷出貨"
+        )
 
-    # VIX > 30
+    # VIX > 30 ★★★
     vix = macro.get('vix')
     if vix is not None and vix > 30:
-        alerts.append(f"🚨 *恐慌指數爆表*\nVIX `{vix}` 突破 30 — 系統性風險升溫\n👉 啟動真泡沫對策,持有者減碼")
+        alerts.append(
+            f"🚨 *【恐慌指數爆表 ★★★】*\n{SEP}\n"
+            f"📊 VIX *{vix}* (突破 30 = 末日恐慌)\n\n"
+            f"🎯 *操作建議*\n"
+            f"  ▸ 持有減 50% → 現金為王\n"
+            f"  ▸ 避開:航運/金融/中小型題材\n"
+            f"  ▸ 防禦:電信/民生(中華電/統一)\n\n"
+            f"💡 *為什麼?*\n"
+            f"  ① VIX > 30 歷史對應股市大底前後 1-2 週\n"
+            f"  ② 全球避險,熱錢撤離新興市場\n"
+            f"  ③ 別接刀,等紅 K 反包再考慮"
+        )
 
-    # 期現比警戒
+    # 期現比警戒 ★★
     if macro.get('fi_ratio_alert', '').startswith('⚠️'):
-        alerts.append(f"⚠️ *外資期現異常*\n{macro['fi_ratio_alert']}\n👉 注意主力出貨訊號")
+        alerts.append(
+            f"⚠️ *【外資期現異常 ★★】*\n{SEP}\n"
+            f"📊 {macro['fi_ratio_alert']}\n\n"
+            f"🎯 *操作建議*\n"
+            f"  ▸ 主力出貨訊號明確,持股先減 1/3\n"
+            f"  ▸ 新單暫緩,等期現比回正常\n"
+            f"  ▸ 留意明日盤中外資是否續空"
+        )
 
     return alerts
 
