@@ -19,6 +19,7 @@ on:
       - 'walk_forward.py'
       - 'paper_trade.py'
       - 'etf_miner.py'
+      - 'extras_miner.py'   # V21.5 — 多空計分卡補三項全市場資料
       - '.github/workflows/daily_miner.yml'
 
 # V16.1 — workflow-level concurrency:新 push 觸發時自動 cancel 同 branch 進行中的舊 run
@@ -324,6 +325,13 @@ jobs:
 
       # V17.0 — 移除 chief_ai_batch.py 已退役註解區塊(歷史包袱清掉);
       #         AI 全盤分析改前端打開個股時即時呼叫,V16.7 staleness gate 已對 stale cache 透明 fallback
+
+      # V21.5 — extras_miner:全市場 5 日法人 Top 50 + TWSE 當沖比 + TDCC 千張大戶
+      #         必須在「並行 7 腳本」之後跑(此時 data/*.json 已合併全市場最新版,可算 inst_rank)
+      #         失敗不擋部署,前端規則 C2/C3/C7/C10 自動降級顯示「⚪ 待採礦補資料」
+      - name: 🎯 extras_miner:多空計分卡補三項全市場資料
+        run: |
+          python3 extras_miner.py || echo "⚠️ extras_miner 失敗(不擋部署)"
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |
