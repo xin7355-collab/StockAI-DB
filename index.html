@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V21.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V21.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -785,7 +785,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1583,12 +1583,16 @@
                 </div>
             </div>
 
-            <!-- 📡 全球即時情報（fetchGlobalNews 拉完自動 AI 翻譯，不再有手動按鈕）-->
+            <!-- 📡 全球即時情報(V21.2 改:AI 翻譯改手動按鈕 + 上滑清快取) -->
             <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-1.5">
                     <div class="text-[10px] font-black text-blue-300">📡 全球即時情報</div>
-                    <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="app.analyzeGlobalNewsAI()" id="globalNewsAiBtn" class="text-[9px] font-bold text-purple-200 bg-purple-900/40 border border-purple-700/60 hover:bg-purple-900/60 rounded px-2 py-0.5 transition-colors">🤖 AI 翻譯</button>
+                        <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
+                    </div>
                 </div>
+                <div class="text-[8px] text-gray-600 mb-1.5">💡 點「🤖 AI 翻譯」才跑;清單區域往上滑(swipe up)= 清除 AI 翻譯記錄</div>
                 <div id="globalNewsList" class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-3">載入中...</div>
                 </div>
@@ -2380,6 +2384,11 @@ const app = {
         '日經指數': '日股加權指數。日本與台灣高度同步（電子產業鏈相關）。日經跌=台股壓力大、日經漲=台股共振拉抬。',
         '恆生指數': '香港股市。中概股、中國經濟風向球。恆指反彈=中國刺激政策（對台 ETF/原物料利多）、恆指崩=中國經濟硬著陸警報。',
         '韓股KOSPI': '韓國綜合指數。三星/海力士=台積電/聯電/南亞科最直接競爭對手。KOSPI 漲=AI 半導體共振、KOSPI 跌=產業鏈寒風。',
+        '標普500': 'S&P500,美股最寬廣的大盤指數(500 家龍頭企業綜合)。\n\n📊 台股 80% 看美股臉色:\n  ・ SP500 昨夜 > +0.8% → 台股早盤通常開高\n  ・ SP500 昨夜 < -1.0% → 台股早盤恐開低殺\n  ・ SP500 連跌 3 天 → 美股趨勢轉空,台股難獨善\n\n💡 操作:美股收盤後(台灣時間早上 4 點)看走勢,9:00 開盤決策。',
+        '那斯達克': '那斯達克綜合指數,科技股大本營(蘋果/微軟/NVDA/META/特斯拉等)。\n\n📊 對台積電/聯發科/AI 股影響最大:\n  ・ 那斯達克 > +1.5% → 台股科技類股有望跳空高開\n  ・ 那斯達克 < -1.5% → 台積電/AI 股恐領跌\n  ・ NVDA 單日重挫 → 台積電/廣達/緯穎當天通常綠\n\n💡 操作:看 NDX 是看「AI 概念股是否續強」最直接的領先指標。',
+
+        // === 🐂 主力出貨指數(V21 五因子綜合卡)===
+        '主力出貨指數': '🐂 由 5 個因子綜合算 0-100 分,判斷今天主力會「拉抬」還是「殺出」。\n\n📊 5 個因子:\n  ① 散戶情緒(retail_ls_pct):散戶過度看多 → +20 分(主力反向出貨)\n  ② 期貨升貼水(taifex_backwardation):大貼水 → +25 分(法人對沖空)\n  ③ 景氣燈號(business_signal):紅燈過熱 → +20 分;藍燈底部 → -15 分(反向利多)\n  ④ VIX 恐慌(vix):>25 → +25 分(全球避險升溫)\n  ⑤ 融資水位(margin):>3200 億爆表 → +30 分(散戶槓桿過高)\n\n🎯 燈號:\n  🟢 託盤 (<0 分):可分批進場,留意低接\n  🟡 中性 (0-39 分):正常操作,看訊號進出\n  🟠 警戒 (40-69 分):不追高,觀望,嚴設停損\n  🔴 主力可能殺出 (≥70 分):減碼,不接刀,警戒拉回\n\n💡 為什麼 5 因子比單一指標準?\n  ・ 散戶看多+期貨貼水+景氣紅燈 = 三個訊號同時出現,出貨機率高\n  ・ VIX 跳升 + 融資爆表 = 系統性風險,主力先逃\n  ・ 單一指標常會誤判,5 因子綜合可過濾雜訊\n\n📌 V21 新增,取代舊「期貨綜合判讀」三因子卡。',
 
         // === 🚨 戰情指揮部 5 維度 ===
         '5維度量價': '量價維度：營收年增率 + K線型態 + 成交量。「強」=月營收 YoY > 15% 且爆量上攻、「中」=穩健向上、「弱」=量縮無力、「待採」=資料未到。',
@@ -3149,6 +3158,52 @@ const app = {
         ]);
     },
 
+    // V21.2 — 偵測 #globalNewsList 上滑手勢,清除 AI 翻譯記錄(sessionStorage)
+    //   為避免與內部 scroll 衝突,只在「列表已滾到頂端且使用者繼續往上滑 > 60px」才觸發
+    _bindGlobalNewsSwipeClear() {
+        const list = document.getElementById('globalNewsList');
+        if (!list || list.__swipeBound) return;
+        list.__swipeBound = true;
+        let startY = null, startScroll = 0;
+        list.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            startScroll = list.scrollTop;
+        }, { passive: true });
+        list.addEventListener('touchend', (e) => {
+            if (startY == null) return;
+            const endY = (e.changedTouches[0] || {}).clientY;
+            if (endY == null) return;
+            const deltaY = startY - endY;   // 正值=上滑
+            // 條件:列表本來就在頂端 + 上滑 > 60px + 不是純 scroll
+            if (startScroll <= 2 && deltaY > 60) {
+                this._clearGlobalNewsAiCache();
+            }
+            startY = null;
+        }, { passive: true });
+    },
+
+    // 清除全球新聞 AI 翻譯的 sessionStorage 快取 + 還原英文標題
+    _clearGlobalNewsAiCache() {
+        let cleared = 0;
+        try {
+            for (let i = sessionStorage.length - 1; i >= 0; i--) {
+                const k = sessionStorage.key(i);
+                if (k && k.startsWith('gnewsAi_')) { sessionStorage.removeItem(k); cleared++; }
+            }
+        } catch (_) {}
+        // 還原英文標題 + 清 impact(讓畫面恢復成「點 AI 翻譯前」的狀態)
+        if (Array.isArray(this._globalNewsItems)) {
+            this._globalNewsItems.forEach(it => {
+                it.title_zh    = '';
+                it.impact      = '';
+                it.impact_level = 'neutral';
+            });
+            this._renderGlobalNewsList?.(this._globalNewsItems);
+        }
+        this.showToast?.(`🗑️ 已清除 ${cleared} 筆 AI 翻譯記錄,點「🤖 AI 翻譯」重抽`);
+        this.vibrate?.(40);
+    },
+
     async fetchGlobalNews() {
         const list = document.getElementById('globalNewsList');
         const ts   = document.getElementById('globalNewsTs');
@@ -3193,26 +3248,47 @@ const app = {
             list.innerHTML = rows.length ? rows.join('') : '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>';
             if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
 
-            // 🚀 自動觸發 AI 中文翻譯(_callAI 已改 OpenRouter 主路徑,Groq TPD 不再被吃)
-            //    新聞「彙整」改為使用者點「🔄 重新彙整」才跑(原本一打開全球頁就自動跑 1400 tokens 太耗 Groq 70b 配額)
-            const needTranslate = data.items.some(it => !it.title_zh && /[a-zA-Z]{3,}/.test(it.title || ''));
-            if (needTranslate && (this._getOpenRouterKey() || this._getGroqKeys().length > 0 || this._apiBase)) {
-                this.analyzeGlobalNewsAI({ silent: true });
-            }
+            // V21.2:AI 翻譯改成手動才跑(原本拉新聞自動 silent 觸發已取消)
+            //   → 使用者點上方「🤖 AI 翻譯」按鈕才呼叫 analyzeGlobalNewsAI()
+            //   → 已有 sessionStorage 快取則自動套用(避免重複翻譯)
+            try {
+                const cacheKey = data.items[0] ? `gnewsAi_${(data.items[0].url || data.items[0].title).slice(0, 80)}_${data.items.length}` : '';
+                if (cacheKey && sessionStorage.getItem(cacheKey)) {
+                    const parsedCache = JSON.parse(sessionStorage.getItem(cacheKey));
+                    parsedCache.forEach((a, idx) => {
+                        if (data.items[idx]) {
+                            data.items[idx].title_zh    = a.title_zh    || data.items[idx].title_zh    || '';
+                            data.items[idx].impact      = a.impact      || data.items[idx].impact      || '';
+                            data.items[idx].impact_level = a.level      || data.items[idx].impact_level || 'neutral';
+                        }
+                    });
+                    this._renderGlobalNewsList?.(data.items);
+                }
+            } catch (_) {}
+
+            // 上滑(swipe up)清除 AI 翻譯記錄 — 只裝一次
+            this._bindGlobalNewsSwipeClear?.();
         } catch(e) {
             list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">情報暫無法取得</div>';
         }
     },
 
-    // 🤖 全球新聞 AI 中文判讀（瀏覽器直連 Groq，繞過 Actions GROQ_API_KEY secret）
-    // 自動觸發版：fetchGlobalNews 拉完後自動呼叫，silent=true 時不彈 alert、不改按鈕
+    // 🤖 全球新聞 AI 中文判讀(V21.2 改:手動按鈕觸發,移除自動 silent 觸發)
+    //   按鈕點擊→ analyzeGlobalNewsAI() 無參數,按鈕進 loading 狀態,完成顯成功 toast
     async analyzeGlobalNewsAI(opts) {
         const items = this._globalNewsItems || [];
         const silent = !!(opts && opts.silent);
-        if (!items.length) { if (!silent) alert('沒有可判讀的新聞，請等情報載入'); return; }
-        // V18.7 — 改 Gemini(原 Groq 8b)。失敗就靜默 return,前端會留英文標題,不影響新聞本體顯示
+        const btn = document.getElementById('globalNewsAiBtn');
+        if (!items.length) {
+            if (!silent) this.showToast?.('沒有可判讀的新聞,請等情報載入');
+            return;
+        }
         const geminiKeys = this._getGeminiKeys();
-        if (!geminiKeys.length) { if (!silent) alert('請先至 ⚙️ 設定填寫 Gemini API Key(新聞翻譯)'); return; }
+        if (!geminiKeys.length) {
+            if (!silent) alert('請先至 ⚙️ 設定填寫 Gemini API Key(新聞翻譯)');
+            return;
+        }
+        if (btn && !silent) { btn.disabled = true; btn.textContent = '⏳ AI 翻譯中…'; btn.classList.add('opacity-60'); }
 
         // sessionStorage 快取：同一批新聞（key = 第一則 url + items 長度）只翻一次
         const cacheKey = `gnewsAi_${(items[0].url || items[0].title).slice(0, 80)}_${items.length}`;
@@ -3228,6 +3304,8 @@ const app = {
                     }
                 });
                 this._renderGlobalNewsList(items);
+                if (btn && !silent) { btn.disabled = false; btn.textContent = '🤖 AI 翻譯'; btn.classList.remove('opacity-60'); }
+                if (!silent) this.showToast?.('✅ 已套用快取的 AI 翻譯');
                 return;
             }
         } catch(_) {}
@@ -3255,10 +3333,12 @@ const app = {
             // in-place 改後重畫（呼叫共用渲染函式）
             this._globalNewsItems = items;
             this._renderGlobalNewsList(items);
-            // 🚀 翻譯完成後不再自動彙整(改為使用者點「🔄 重新彙整」才跑,省 Groq 70b TPD)
+            if (btn && !silent) { btn.disabled = false; btn.textContent = '🤖 AI 翻譯'; btn.classList.remove('opacity-60'); }
+            if (!silent) this.showToast?.(`✅ AI 翻譯完成(${items.length} 則)`);
         } catch(e) {
             console.error('[analyzeGlobalNewsAI]', e);
-            if (!silent) alert(`AI 判讀失敗:${e.message}(Groq 不支援瀏覽器 CORS?檢查 Key 或網路)`);
+            if (btn && !silent) { btn.disabled = false; btn.textContent = '🤖 AI 翻譯(重試)'; btn.classList.remove('opacity-60'); }
+            if (!silent) this.showToast?.(`❌ AI 翻譯失敗:${e.message?.slice(0, 40) || '網路或 Key 異常'}`);
         }
     },
 
@@ -7405,19 +7485,15 @@ const marginByDate = {};
         `;
     },
 
-    // 🏭 Q3:渲染每細分板塊下方的對應美股 ETF 漲跌(對標連動性參考)
+    // 🏭 Q3:渲染每細分板塊下方的對應美股 ETF 現價 + 漲跌(對標連動性一目了然)
     _renderSectorEtfs(sectorEtfs) {
         if (!sectorEtfs || typeof sectorEtfs !== 'object') return;
-        // 對每個 data-sector-etf 容器,根據父層 data-sector 找對應 ETF 資料
         document.querySelectorAll('[data-sector-etf]').forEach(slot => {
             const parent = slot.closest('[data-sector]');
             const key = parent?.dataset?.sector;
             if (!key) return;
             const etf = sectorEtfs[key];
-            if (!etf) {
-                slot.innerHTML = '<div class="text-[8px] text-gray-600">--</div>';
-                return;
-            }
+            if (!etf) { slot.innerHTML = '<div class="text-[8px] text-gray-600">--</div>'; return; }
             const chg = etf.chg_pct;
             const price = etf.price;
             if (price == null || chg == null) {
@@ -7425,13 +7501,18 @@ const marginByDate = {};
                 return;
             }
             const chgNum = parseFloat(chg);
+            const priceNum = parseFloat(price);
             const arrow = chgNum > 0.2 ? '🔺' : chgNum < -0.2 ? '🔻' : '→';
             const sign = chgNum > 0 ? '+' : '';
             const color = chgNum > 0.2 ? 'text-red-300' : chgNum < -0.2 ? 'text-green-300' : 'text-gray-400';
+            // 一目了然:大字現價 + 同色漲跌% + 小字 ETF 代號 + 對標說明
             slot.innerHTML = `
-                <div class="flex items-center justify-between text-[9px]">
-                    <span class="text-cyan-400/80 font-bold">🇺🇸 ${etf.etf}</span>
-                    <span class="${color} font-mono font-bold">${arrow}${sign}${chgNum.toFixed(2)}%</span>
+                <div class="flex items-baseline justify-between gap-1">
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-[9px] text-cyan-400/80 font-bold">🇺🇸 ${etf.etf}</span>
+                        <span class="text-[11px] font-mono font-black ${color}">$${priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <span class="${color} text-[10px] font-mono font-bold">${arrow}${sign}${chgNum.toFixed(2)}%</span>
                 </div>
                 <div class="text-[8px] text-gray-600 mt-0.5 truncate" title="${etf.desc || ''}">${etf.desc || ''}</div>
             `;
