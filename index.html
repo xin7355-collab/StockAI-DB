@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V21.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V21.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -795,7 +795,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -918,6 +918,7 @@
                     <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📊 基本</button>
                     <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📅 回測</button>
                     <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">🚨 處置</button>
+                    <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">⚖️ 多空</button>
                 </div>
             </div>
 
@@ -1196,6 +1197,23 @@
                     <div>• <b class="text-gray-200">第 6 款 PE / 第 7 款融資</b>:用 X 光基本面 + daily margin_balance</div>
                     <div>• <b class="text-amber-300">第 8 款權證溢價率</b>:目前無公開 API,暫無資料</div>
                     <div class="mt-1.5 text-[9px] text-gray-500">⚠️ 實際以 TWSE 官方公告為準 ・ 投資有風險,以上僅供風控參考</div>
+                </div>
+            </div>
+
+            <!-- ⚖️ V21.5 — 多空優勢計分卡(對標籌碼 K 線 App「多空優勢」總覽頁)-->
+            <div id="subContentBullBear" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
+                <!-- 頂部總覽計分條 + Verdict + 白話一句結論 -->
+                <div id="bullBearScoreBar" class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg"></div>
+                <!-- 四面向摺疊區(籌碼/價量/基本/技術) -->
+                <div id="bullBearCategoryCards" class="flex flex-col gap-2"></div>
+                <!-- 資料來源說明卡 -->
+                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-[10px] text-gray-400 leading-relaxed">
+                    <div class="text-cyan-300 font-bold text-[11px] mb-1.5">📊 多空計分原理</div>
+                    <div>• <b class="text-gray-200">28 條規則</b>分四面向(籌碼 10 / 價量 8 / 基本 6 / 技術 4),每條依資料命中算多方或空方分</div>
+                    <div>• <b class="text-gray-200">加權計分</b>:三大法人/分點/突破等強訊號權重 ×3,其他 ×1 或 ×2</div>
+                    <div>• <b class="text-gray-200">Verdict</b>:多方占比 ≥ 65% = 多方優勢、≤ 35% = 空方優勢、其餘 = 均衡拉鋸</div>
+                    <div>• <b class="text-amber-300">⚪ 待採礦補資料</b>:投信/外資 5 日全市場排名、千張大戶持股、當沖比(下次 daily_miner 完成後接通)</div>
+                    <div class="mt-1.5 text-[9px] text-gray-500">⚠️ 僅供風控參考,非交易建議 ・ 規則閾值對標籌碼 K 線 App,允許 ±2 項差異</div>
                 </div>
             </div>
 
@@ -4029,7 +4047,7 @@ ${list}
     },
 
     switchSubTab(tab) {
-        ['Strategy', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed'].forEach(t => {
+        ['Strategy', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
             const el = document.getElementById(`subContent${t}`);
             if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
             const btn = document.getElementById(`subTabBtn${t}`);
@@ -4052,6 +4070,10 @@ ${list}
             this.renderDoubleSwordCard(this.currentSymbolId);
             this.renderDispBigShotCard(this.currentSymbolId);   // V20.7 — 越關越大尾預測
             this.renderDisposedPlaybookCard();
+        }
+        // V21.5 — 多空優勢計分卡(對標籌碼 K 線 App,28 條規則 + 四面向)
+        if (tab === 'bullbear' && this.currentSymbolId) {
+            this.renderBullBearCard(this.currentSymbolId);
         }
         if (tab === 'corp' && this.currentSymbolId) {
             // 🔬 X 光機:localStorage 快取優先(<24hr 直接顯示),過期/缺則背景重抓覆蓋
@@ -6704,6 +6726,368 @@ const marginByDate = {};
             recentHitDays3, recentHitDays5, recentHitDays10, recentHitDays30,
             willDispose3, daysToTrigger5, daysToTrigger10, daysToTrigger30,
         };
+    },
+
+    // ⚖️ V21.5 — 多空優勢計分卡(對標籌碼 K 線 App「多空優勢」頁)
+    //   28 條規則,分籌碼(10)/價量(8)/基本(6)/技術(4)四面向
+    //   加權計分 → bullScore vs bearScore → Verdict(多方優勢/均衡拉鋸/空方優勢)
+    //   AI 鐵律呼應:traffic_light 必須與 verdict 一致(注入 runUnifiedGroqAnalysis prompt)
+    _calcBullBearScan(sym) {
+        if (!Array.isArray(this.activeData) || this.activeData.length < 30) return null;
+        const arr = this.activeData;
+        const n = arr.length;
+        const last = arr[n - 1];
+        const pC = last.close;
+        // 工具
+        const cumPct = (days) => {
+            if (n < days + 1) return null;
+            const past = arr[n - 1 - days].close;
+            return past > 0 ? ((pC - past) / past * 100) : null;
+        };
+        const avgVol = (days, offset = 0) => {
+            const s = n - 1 - offset - days + 1;
+            if (s < 0) return null;
+            return arr.slice(s, s + days).reduce((su, b) => su + (b.volume || 0), 0) / days;
+        };
+        const ma = (days, offset = 0) => {
+            const s = n - 1 - offset - days + 1;
+            if (s < 0) return null;
+            return arr.slice(s, s + days).reduce((su, b) => su + b.close, 0) / days;
+        };
+        // KD 簡化版(9 日 RSV, K/D 都用 1/3 平滑)— 取最後兩天的 K/D 判金叉死叉
+        let K_now = 50, D_now = 50, K_prev = 50, D_prev = 50;
+        if (n >= 10) {
+            let k = 50, d = 50;
+            for (let i = 8; i < n; i++) {
+                if (i === n - 1) { K_prev = k; D_prev = d; }
+                const slice = arr.slice(i - 8, i + 1);
+                const hi = Math.max(...slice.map(b => b.high || b.close));
+                const lo = Math.min(...slice.map(b => b.low || b.close));
+                const c = arr[i].close;
+                const rsv = hi === lo ? 50 : ((c - lo) / (hi - lo)) * 100;
+                k = (2 * k + rsv) / 3;
+                d = (2 * d + k) / 3;
+            }
+            K_now = k; D_now = d;
+        }
+        // 資料源
+        const raw = this.rawDailyData || [];
+        const fund = this._fundCache?.sym === sym ? this._fundCache : null;
+        const chipC = this._attChipCache?.[sym] || null;
+        const rank = this._instRankCache || null;
+        const tdcc = this._tdccCache?.data?.[sym] || null;
+        const dt = this._dayTradeCache?.data?.[sym] || null;
+        // MA / 漲幅 / 量
+        const MA5 = ma(5), MA10 = ma(10), MA20 = ma(20), MA60 = ma(60);
+        const MA20_prev = ma(20, 1), MA5_prev = ma(5, 1), MA10_prev = ma(10, 1);
+        const p60 = cumPct(60);
+        const v60 = avgVol(60, 1), v5 = avgVol(5);
+        const lastVol = last.volume || 0;
+        const high60 = n >= 60 ? Math.max(...arr.slice(n - 60).map(b => b.high || b.close)) : null;
+        const low20 = n >= 20 ? Math.min(...arr.slice(n - 20).map(b => b.low || b.close)) : null;
+        const prevC = n >= 2 ? arr[n - 2].close : pC;
+        const todayChg = prevC > 0 ? ((pC - prevC) / prevC * 100) : 0;
+        const biasMA20 = MA20 > 0 ? ((pC - MA20) / MA20 * 100) : 0;
+        // 三大法人
+        const last3_trust = raw.slice(-3).map(r => r.trust_net || 0);
+        const last3_foreign = raw.slice(-3).map(r => r.foreign_net || 0);
+        const last5 = (k) => raw.slice(-5).reduce((s, r) => s + (r[k] || 0), 0);
+        const sum5_trust = last5('trust_net'), sum5_foreign = last5('foreign_net'), sum5_dealer = last5('dealer_net');
+        // 融資
+        let margin5Pct = null;
+        if (raw.length >= 6) {
+            const m_now = raw[raw.length - 1]?.margin_balance || 0;
+            const m_5ago = raw[raw.length - 6]?.margin_balance || 0;
+            if (m_5ago > 0) margin5Pct = ((m_now - m_5ago) / m_5ago) * 100;
+        }
+        // EPS YoY
+        let epsYoyPct = null;
+        if (fund?.quarterly_eps?.length >= 5) {
+            const eps = fund.quarterly_eps;
+            const cur = eps[eps.length - 1]?.eps;
+            const yoy = eps[eps.length - 5]?.eps;
+            if (cur != null && yoy != null && yoy !== 0) epsYoyPct = ((cur - yoy) / Math.abs(yoy)) * 100;
+        }
+        // Rank helper
+        const rankIn = (key) => {
+            if (!rank?.[key]) return null;
+            const idx = rank[key].findIndex(r => String(r.sym) === String(sym));
+            return idx >= 0 ? idx + 1 : null;
+        };
+        const trustRank = rankIn('trust_top'), foreignRank = rankIn('foreign_top');
+
+        const rules = [];
+        const naMsg = '⚪ 待採礦補資料';
+        const okBull = '🔴 多方';   // 台股紅=漲=多
+        const okBear = '🟢 空方';   // 台股綠=跌=空
+        const safe = '⚪ 中性';
+
+        // ═══ 🎯 籌碼面(10 條) ═══
+        rules.push({ id: 'C1', cat: 'chip', name: '投信連買 3 天', hint: '近 3 個交易日投信都淨買超', side: 'bull', weight: 2,
+            hit: last3_trust.length === 3 && last3_trust.every(v => v > 0),
+            msg: last3_trust.length === 3 && last3_trust.every(v => v > 0)
+                ? `${okBull}:近 3 日 +${last3_trust.reduce((a, b) => a + b, 0).toLocaleString()} 張` : safe });
+        rules.push({ id: 'C2', cat: 'chip', name: '投信 5 日買超全市場 Top 30', hint: '全市場法人 5 日累積排名', side: 'bull', weight: 2,
+            hit: trustRank != null && trustRank <= 30,
+            msg: trustRank == null ? naMsg : trustRank <= 30 ? `${okBull}:第 ${trustRank} 名` : `${safe}:第 ${trustRank} 名(>30)` });
+        rules.push({ id: 'C3', cat: 'chip', name: '外資 5 日買超全市場 Top 30', hint: '全市場外資 5 日累積排名', side: 'bull', weight: 2,
+            hit: foreignRank != null && foreignRank <= 30,
+            msg: foreignRank == null ? naMsg : foreignRank <= 30 ? `${okBull}:第 ${foreignRank} 名` : `${safe}:第 ${foreignRank} 名(>30)` });
+        rules.push({ id: 'C4', cat: 'chip', name: '三大法人 5 日同向買超', hint: '投信/外資/自營三項同步淨買超', side: 'bull', weight: 2,
+            hit: sum5_trust > 0 && sum5_foreign > 0 && sum5_dealer > 0,
+            msg: (sum5_trust > 0 && sum5_foreign > 0 && sum5_dealer > 0)
+                ? `${okBull}:投${sum5_trust.toLocaleString()}/外${sum5_foreign.toLocaleString()}/自${sum5_dealer.toLocaleString()}` : safe });
+        rules.push({ id: 'C5', cat: 'chip', name: '投信持股比 ≥ 4%(重押)', hint: '投信整體持股佔比,4%+ 屬機構重押', side: 'bull', weight: 1,
+            hit: fund?.trust_holding_pct >= 4,
+            msg: fund?.trust_holding_pct == null ? naMsg
+                : fund.trust_holding_pct >= 4 ? `${okBull}:投信持股 ${fund.trust_holding_pct.toFixed(2)}%`
+                : `${safe}:投信持股 ${fund.trust_holding_pct.toFixed(2)}%` });
+        rules.push({ id: 'C6', cat: 'chip', name: '主力分點 Top10 集中 ≥ 40%', hint: '前 10 大分點佔比集中,主力鎖籌', side: 'bull', weight: 2,
+            hit: chipC?.conc_pct_top10 >= 40,
+            msg: chipC?.conc_pct_top10 == null ? '⚪ 載入中' : chipC.conc_pct_top10 >= 40
+                ? `${okBull}:Top10 ${chipC.conc_pct_top10.toFixed(1)}%`
+                : `${safe}:Top10 ${chipC.conc_pct_top10.toFixed(1)}%` });
+        rules.push({ id: 'C7', cat: 'chip', name: '千張大戶 ≥ 40% 且週增', hint: '集保大戶持股集中且還在加碼', side: 'bull', weight: 3,
+            hit: tdcc?.top_pct >= 40 && tdcc?.top_pct_week_chg > 0,
+            msg: tdcc?.top_pct == null ? naMsg
+                : (tdcc.top_pct >= 40 && tdcc.top_pct_week_chg > 0) ? `${okBull}:大戶 ${tdcc.top_pct.toFixed(1)}%(週+${tdcc.top_pct_week_chg.toFixed(2)}%)`
+                : `${safe}:大戶 ${tdcc.top_pct.toFixed(1)}%` });
+        rules.push({ id: 'C8', cat: 'chip', name: '投信/外資連賣 3 天', hint: '法人連續 3 日淨賣超,撤退中', side: 'bear', weight: 2,
+            hit: (last3_trust.length === 3 && last3_trust.every(v => v < 0)) || (last3_foreign.length === 3 && last3_foreign.every(v => v < 0)),
+            msg: (last3_trust.length === 3 && last3_trust.every(v => v < 0)) ? `${okBear}:投信連 3 賣`
+                : (last3_foreign.length === 3 && last3_foreign.every(v => v < 0)) ? `${okBear}:外資連 3 賣`
+                : safe });
+        rules.push({ id: 'C9', cat: 'chip', name: '融資 5 日 +25%(散戶追)', hint: '融資餘額暴增,散戶情緒過熱', side: 'bear', weight: 1,
+            hit: margin5Pct != null && margin5Pct >= 25,
+            msg: margin5Pct == null ? '⚪ 無融資' : margin5Pct >= 25 ? `${okBear}:融資 +${margin5Pct.toFixed(1)}%`
+                : `${safe}:融資 ${margin5Pct >= 0 ? '+' : ''}${margin5Pct.toFixed(1)}%` });
+        rules.push({ id: 'C10', cat: 'chip', name: '當沖比 > 40%(籌碼浮動)', hint: '當沖佔比過高,籌碼不穩', side: 'bear', weight: 1,
+            hit: dt?.ratio_pct > 40,
+            msg: dt?.ratio_pct == null ? naMsg : dt.ratio_pct > 40 ? `${okBear}:當沖 ${dt.ratio_pct.toFixed(1)}%`
+                : `${safe}:當沖 ${dt.ratio_pct.toFixed(1)}%` });
+
+        // ═══ 📈 價量面(8 條) ═══
+        rules.push({ id: 'P1', cat: 'price', name: '站上月線且月線上揚', hint: '收盤 > MA20 且 MA20 上揚', side: 'bull', weight: 2,
+            hit: MA20 != null && MA20_prev != null && pC > MA20 && MA20 > MA20_prev,
+            msg: MA20 == null ? '⚪ 無 MA20' : (pC > MA20 && MA20 > MA20_prev)
+                ? `${okBull}:收 ${pC.toFixed(2)} > MA20 ${MA20.toFixed(2)} 且上揚`
+                : pC > MA20 ? `${safe}:站上但 MA20 走平/下彎` : `${okBear}:跌破月線 ${MA20.toFixed(2)}` });
+        rules.push({ id: 'P2', cat: 'price', name: '5/10/20 多頭排列', hint: '短中長期均線完美多排', side: 'bull', weight: 3,
+            hit: MA5 != null && MA10 != null && MA20 != null && pC > MA5 && MA5 > MA10 && MA10 > MA20,
+            msg: (MA5 == null || MA10 == null || MA20 == null) ? '⚪ 資料不足'
+                : (pC > MA5 && MA5 > MA10 && MA10 > MA20) ? `${okBull}:收 > 5MA > 10MA > 20MA` : safe });
+        rules.push({ id: 'P3', cat: 'price', name: '站上季線 60MA', hint: '長期多頭分水嶺', side: 'bull', weight: 2,
+            hit: MA60 != null && pC > MA60,
+            msg: MA60 == null ? '⚪ 不足 60 日' : pC > MA60 ? `${okBull}:收 ${pC.toFixed(2)} > 60MA ${MA60.toFixed(2)}` : `${okBear}:跌破季線` });
+        rules.push({ id: 'P4', cat: 'price', name: '5MA 黃金交叉 10MA', hint: '前一日 5MA<10MA,今日反超', side: 'bull', weight: 2,
+            hit: MA5 != null && MA10 != null && MA5_prev != null && MA10_prev != null && MA5_prev <= MA10_prev && MA5 > MA10,
+            msg: (MA5 == null || MA10 == null) ? '⚪ 資料不足'
+                : (MA5_prev <= MA10_prev && MA5 > MA10) ? `${okBull}:5MA 剛上穿 10MA` : safe });
+        rules.push({ id: 'P5', cat: 'price', name: '爆量突破 60 日新高', hint: '今日量 ≥ 5 日均 1.5× 且收 > 60 日高', side: 'bull', weight: 3,
+            hit: v5 != null && high60 != null && lastVol >= v5 * 1.5 && pC >= high60,
+            msg: (v5 == null || high60 == null) ? '⚪ 資料不足'
+                : (lastVol >= v5 * 1.5 && pC >= high60) ? `${okBull}:量 ${(lastVol / v5).toFixed(1)}× + 突破 ${high60.toFixed(2)}` : safe });
+        rules.push({ id: 'P6', cat: 'price', name: 'KD 黃金交叉(K < 30)', hint: '低檔金叉,短線多方啟動', side: 'bull', weight: 2,
+            hit: K_now > D_now && K_prev <= D_prev && K_now < 30,
+            msg: n < 10 ? '⚪ 不足 9 日' : (K_now > D_now && K_prev <= D_prev && K_now < 30)
+                ? `${okBull}:K(${K_now.toFixed(1)}) 上穿 D(${D_now.toFixed(1)})`
+                : `${safe}:K ${K_now.toFixed(1)} / D ${D_now.toFixed(1)}` });
+        rules.push({ id: 'P7', cat: 'price', name: '跌破前低 / 大黑 K', hint: '收盤 < 20 日低 或 單日 ≤ -5%', side: 'bear', weight: 3,
+            hit: (low20 != null && pC < low20) || todayChg <= -5,
+            msg: (low20 != null && pC < low20) ? `${okBear}:跌破 20 日低 ${low20.toFixed(2)}`
+                : todayChg <= -5 ? `${okBear}:單日 ${todayChg.toFixed(1)}%(大黑 K)` : safe });
+        rules.push({ id: 'P8', cat: 'price', name: '乖離過大 > 12%', hint: '收盤 vs MA20 距離過遠,易回測', side: 'bear', weight: 1,
+            hit: Math.abs(biasMA20) > 12,
+            msg: MA20 == null ? '⚪ 無 MA20' : Math.abs(biasMA20) > 12
+                ? `${okBear}:乖離 ${biasMA20.toFixed(1)}%` : `${safe}:乖離 ${biasMA20.toFixed(1)}%` });
+
+        // ═══ 💰 基本面(6 條) ═══
+        rules.push({ id: 'F1', cat: 'fund', name: '月營收 YoY > 20%', hint: '營收年增率,基本面動能', side: 'bull', weight: 2,
+            hit: fund?.revenue_yoy >= 20,
+            msg: fund?.revenue_yoy == null ? naMsg : fund.revenue_yoy >= 20
+                ? `${okBull}:YoY +${fund.revenue_yoy.toFixed(1)}%`
+                : `${safe}:YoY ${fund.revenue_yoy >= 0 ? '+' : ''}${fund.revenue_yoy.toFixed(1)}%` });
+        rules.push({ id: 'F2', cat: 'fund', name: '月營收創歷史新高', hint: '營收破歷史紀錄', side: 'bull', weight: 2,
+            hit: !!fund?.is_record_high,
+            msg: fund == null ? naMsg : fund.is_record_high ? `${okBull}:創歷史新高 🔥` : safe });
+        rules.push({ id: 'F3', cat: 'fund', name: '毛利率連 2 季 ↑', hint: '獲利結構改善', side: 'bull', weight: 1,
+            hit: fund?.gross_margin_trend === '↑' || fund?.gross_margin_trend === '↑↑',
+            msg: fund?.gross_margin_trend == null ? naMsg : (fund.gross_margin_trend === '↑' || fund.gross_margin_trend === '↑↑')
+                ? `${okBull}:毛利率 ${fund.gross_margin_trend}` : `${safe}:毛利率 ${fund.gross_margin_trend}` });
+        rules.push({ id: 'F4', cat: 'fund', name: 'PE < 15(低估保護傘)', hint: '本益比偏低,有估值底', side: 'bull', weight: 1,
+            hit: fund?.pe > 0 && fund.pe < 15,
+            msg: fund?.pe == null ? naMsg : fund.pe <= 0 ? '⚪ EPS 負' : fund.pe < 15
+                ? `${okBull}:PE ${fund.pe.toFixed(1)}` : `${safe}:PE ${fund.pe.toFixed(1)}` });
+        rules.push({ id: 'F5', cat: 'fund', name: 'PE > 30(高估警戒)', hint: '本益比過高,易回檔', side: 'bear', weight: 1,
+            hit: fund?.pe > 30,
+            msg: fund?.pe == null ? naMsg : fund.pe > 30 ? `${okBear}:PE ${fund.pe.toFixed(1)}` : safe });
+        rules.push({ id: 'F6', cat: 'fund', name: 'EPS YoY 轉負', hint: '單季 EPS 年減,獲利衰退', side: 'bear', weight: 2,
+            hit: epsYoyPct != null && epsYoyPct < 0,
+            msg: epsYoyPct == null ? naMsg : epsYoyPct < 0 ? `${okBear}:EPS YoY ${epsYoyPct.toFixed(1)}%`
+                : `${safe}:EPS YoY +${epsYoyPct.toFixed(1)}%` });
+
+        // ═══ 🔧 技術/型態(4 條) ═══
+        rules.push({ id: 'T1', cat: 'tech', name: '60 日漲幅健康(-10%~+20%)', hint: '中期走勢溫和,不過熱不過冷', side: 'bull', weight: 1,
+            hit: p60 != null && p60 >= -10 && p60 <= 20,
+            msg: p60 == null ? '⚪ 不足 60 日' : (p60 >= -10 && p60 <= 20)
+                ? `${okBull}:60 日 ${p60 >= 0 ? '+' : ''}${p60.toFixed(1)}%`
+                : `${safe}:60 日 ${p60 >= 0 ? '+' : ''}${p60.toFixed(1)}%` });
+        rules.push({ id: 'T2', cat: 'tech', name: '60 日漲幅 > 50%(過熱)', hint: '短期漲多,籌碼鬆動風險', side: 'bear', weight: 2,
+            hit: p60 != null && p60 > 50,
+            msg: p60 == null ? '⚪ 不足 60 日' : p60 > 50 ? `${okBear}:60 日 +${p60.toFixed(1)}%` : safe });
+        rules.push({ id: 'T3', cat: 'tech', name: 'KD 死亡交叉(K > 70)', hint: '高檔死叉,短線空方啟動', side: 'bear', weight: 3,
+            hit: K_now < D_now && K_prev >= D_prev && K_now > 70,
+            msg: n < 10 ? '⚪ 不足 9 日' : (K_now < D_now && K_prev >= D_prev && K_now > 70)
+                ? `${okBear}:K(${K_now.toFixed(1)}) 下穿 D(${D_now.toFixed(1)})` : safe });
+        rules.push({ id: 'T4', cat: 'tech', name: '騎乘 5MA(朱家泓型態)', hint: '連續 5 日收 > 5MA 且 5MA 上揚', side: 'bull', weight: 2,
+            hit: (() => {
+                if (n < 7 || MA5_prev == null) return false;
+                for (let i = n - 5; i < n; i++) {
+                    const m = arr.slice(i - 4, i + 1).reduce((s, b) => s + b.close, 0) / 5;
+                    if (arr[i].close <= m) return false;
+                }
+                return MA5 > MA5_prev;
+            })(),
+            msg: n < 7 ? '⚪ 不足 7 日' : '依連 5 日收 > 5MA 判定' });
+
+        // 加權計分
+        const cats = {
+            chip:  { bull: 0, bear: 0, rules: [] },
+            price: { bull: 0, bear: 0, rules: [] },
+            fund:  { bull: 0, bear: 0, rules: [] },
+            tech:  { bull: 0, bear: 0, rules: [] },
+        };
+        let bullScore = 0, bearScore = 0, bullCount = 0, bearCount = 0;
+        rules.forEach(r => {
+            cats[r.cat].rules.push(r);
+            if (!r.hit) return;
+            if (r.side === 'bull') { bullScore += r.weight; bullCount++; cats[r.cat].bull++; }
+            else                   { bearScore += r.weight; bearCount++; cats[r.cat].bear++; }
+        });
+        const total = bullScore + bearScore;
+        const ratio = total > 0 ? bullScore / total : 0.5;
+        let verdict, verdictTone, oneLiner;
+        if (ratio >= 0.65) {
+            verdict = '多方優勢'; verdictTone = 'bull';
+            const top = ['chip','price','fund','tech'].filter(c => cats[c].bull > cats[c].bear);
+            oneLiner = top.length >= 3 ? '四面向同步攻擊,可放心做多(留意大盤)' : '局部優勢明顯,沿月線操作不破不出';
+        } else if (ratio <= 0.35) {
+            verdict = '空方優勢'; verdictTone = 'bear';
+            const bad = ['chip','price','fund','tech'].filter(c => cats[c].bear > cats[c].bull);
+            oneLiner = bad.length >= 3 ? '多面向警訊齊發,空手觀望或反向操作' : '弱勢明顯,持股分批停利、空手不接刀';
+        } else {
+            verdict = '均衡拉鋸'; verdictTone = 'neutral';
+            oneLiner = '多空各有訊號,等突破/跌破均線再表態';
+        }
+        return { sym, rules, cats, bullScore, bearScore, bullCount, bearCount, ratio, verdict, verdictTone, oneLiner };
+    },
+
+    async _ensureBullBearCaches() {
+        if (this._bullBearCachesPromise) return this._bullBearCachesPromise;
+        this._bullBearCachesPromise = (async () => {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const t = Date.now();
+            const fetchJson = async (path) => {
+                try {
+                    const r = await fetch(new URL(path, ghBase).href + '?t=' + t, { signal: AbortSignal.timeout(8000) });
+                    if (!r.ok) return null;
+                    return await r.json();
+                } catch { return null; }
+            };
+            const [rank, tdcc, dt] = await Promise.all([
+                fetchJson('data/inst_rank.json'),
+                fetchJson('data/tdcc.json'),
+                fetchJson('data/day_trade.json'),
+            ]);
+            this._instRankCache = rank;
+            this._tdccCache = tdcc;
+            this._dayTradeCache = dt;
+        })();
+        return this._bullBearCachesPromise;
+    },
+
+    async renderBullBearCard(sym) {
+        this._renderBullBearCardSync(sym);
+        await this._ensureBullBearCaches();
+        this._renderBullBearCardSync(sym);
+    },
+
+    _renderBullBearCardSync(sym) {
+        const bar = document.getElementById('bullBearScoreBar');
+        const grid = document.getElementById('bullBearCategoryCards');
+        if (!bar || !grid) return;
+        const scan = this._calcBullBearScan(sym);
+        if (!scan) {
+            bar.innerHTML = `<div class="text-center text-gray-500 text-sm py-4">⚪ 資料不足(需 ≥ 30 個交易日)</div>`;
+            grid.innerHTML = '';
+            return;
+        }
+        const pct = Math.round(scan.ratio * 100);
+        const tone = scan.verdictTone;
+        const verdictColor = tone === 'bull' ? 'text-red-300 border-red-600 bg-red-900/40'
+            : tone === 'bear' ? 'text-green-300 border-green-600 bg-green-900/40'
+            : 'text-amber-200 border-amber-600 bg-amber-900/30';
+        bar.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-xs text-gray-400 font-bold tracking-widest">⚖️ 多空優勢</div>
+                <div class="text-[10px] text-gray-500 font-mono">28 條規則 ・ 加權計分</div>
+            </div>
+            <!-- 紅綠長條 -->
+            <div class="relative h-8 rounded-full overflow-hidden border border-[#30363d] bg-[#0d1117] mb-2">
+                <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 to-red-500" style="width:${pct}%"></div>
+                <div class="absolute inset-y-0 right-0 bg-gradient-to-l from-green-600 to-green-500" style="width:${100 - pct}%"></div>
+                <div class="absolute inset-0 flex items-center justify-between px-3 text-[11px] font-bold font-mono text-white drop-shadow">
+                    <span>🔴 多方 ${scan.bullCount} 項(${scan.bullScore} 分)</span>
+                    <span>空方 ${scan.bearCount} 項(${scan.bearScore} 分)🟢</span>
+                </div>
+            </div>
+            <!-- Verdict -->
+            <div class="rounded-lg border ${verdictColor} px-3 py-2 text-center">
+                <div class="text-base font-black tracking-wider">${scan.verdict}</div>
+                <div class="text-[11px] mt-0.5 opacity-90">${scan.oneLiner}</div>
+            </div>
+        `;
+        const catMeta = {
+            chip:  { icon: '🎯', name: '籌碼面', color: 'amber' },
+            price: { icon: '📈', name: '價量面', color: 'cyan' },
+            fund:  { icon: '💰', name: '基本面', color: 'purple' },
+            tech:  { icon: '🔧', name: '技術型態', color: 'blue' },
+        };
+        grid.innerHTML = ['chip','price','fund','tech'].map(catKey => {
+            const meta = catMeta[catKey];
+            const c = scan.cats[catKey];
+            const rowsHtml = c.rules.map(r => {
+                const sideBadge = r.side === 'bull' ? 'text-red-300 bg-red-900/30 border-red-700/50'
+                                                   : 'text-green-300 bg-green-900/30 border-green-700/50';
+                const sideLabel = r.side === 'bull' ? '多' : '空';
+                const hitCls = r.hit ? 'opacity-100' : 'opacity-50';
+                return `
+                    <div class="flex items-center justify-between gap-2 py-1.5 px-2 border-b border-[#21262d] last:border-0 ${hitCls}">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <span class="text-[9px] font-mono px-1 rounded border ${sideBadge}">${sideLabel}${r.weight > 1 ? '·×' + r.weight : ''}</span>
+                            <div class="min-w-0">
+                                <div class="text-[12px] text-gray-200 truncate">${r.name}</div>
+                                <div class="text-[9px] text-gray-500 truncate">${r.hint}</div>
+                            </div>
+                        </div>
+                        <div class="text-[10px] font-mono whitespace-nowrap flex-shrink-0">${r.msg}</div>
+                    </div>
+                `;
+            }).join('');
+            return `
+                <details class="bg-[#161b22] border border-${meta.color}-700/40 rounded-lg shadow-sm" ${c.bull + c.bear > 0 ? 'open' : ''}>
+                    <summary class="cursor-pointer px-3 py-2 flex items-center justify-between text-sm font-bold text-${meta.color}-300 hover:bg-${meta.color}-900/20 rounded-t-lg">
+                        <span>${meta.icon} ${meta.name}</span>
+                        <span class="text-[11px] font-mono">
+                            <span class="text-red-300">${c.bull} 多</span>
+                            <span class="text-gray-600 mx-1">/</span>
+                            <span class="text-green-300">${c.bear} 空</span>
+                        </span>
+                    </summary>
+                    <div class="px-1.5 pb-1.5">${rowsHtml}</div>
+                </details>
+            `;
+        }).join('');
     },
 
     // V20.3 — 個股頁標題列代號旁的「注意/必關/處置」badge(沒命中 hidden)
@@ -16919,6 +17303,12 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 ? `近 3 日三大法人合計 ${_chip.instSum3 >= 0 ? '+' : ''}${_chip.instSum3.toLocaleString()} 張（${_chip.is_chips_weak ? '🚨 連續 3 日全面賣超，籌碼鬆動' : '🛡️ 未連續全面賣超，籌碼相對安定'}）`
                 : '個股籌碼資料計算中';
 
+            // 5.5b ⚖️ V21.5 — 多空優勢計分（JS 28 條規則加權算好，AI 直讀，禁重算）
+            const _bb = this._calcBullBearScan(sym);
+            const bbLine = _bb
+                ? `${_bb.verdict}（多 ${_bb.bullCount} 項/${_bb.bullScore} 分 vs 空 ${_bb.bearCount} 項/${_bb.bearScore} 分；籌碼 ${_bb.cats.chip.bull}多/${_bb.cats.chip.bear}空・價量 ${_bb.cats.price.bull}多/${_bb.cats.price.bear}空・基本 ${_bb.cats.fund.bull}多/${_bb.cats.fund.bear}空・技術 ${_bb.cats.tech.bull}多/${_bb.cats.tech.bear}空）`
+                : '多空計分計算中（資料不足）';
+
             // 5.6 全盤綜合戰略情報：外資期現複合判定 / 泡沫預警 / 板塊輪動（缺檔→待採，不報錯）
             const mr = this._macroRiskCache || {};
             const fiComplex = mr.fi_complex_conclusion || '待採';
@@ -17095,6 +17485,12 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                        現股、閒錢、融資、逢低佈局、K線止跌訊號、極佳買點、調節、殖利率攀升、金字塔低接、手綁好觀望等待）
    一律用 **xxx** 包裹，遺漏即違規。範例：跌破 **${ma5} 元** 立刻 **清倉🚨**；站穩 **${ma20} 元** **加碼🔥** 至目標。
 
+6️⃣【多空計分呼應 — V21.5】traffic_light 必須與下方【戰情資料】「⚖️ 多空優勢計分」結論（${_bb?.verdict || '計算中'}）一致：
+   · 「多方優勢」→ traffic_light 不得為 🟢 不能買（可 🔴 可以買 或 🟡 觀望）
+   · 「空方優勢」→ traffic_light 不得為 🔴 可以買（應 🟢 不能買 或 🟡 觀望）
+   · 「均衡拉鋸」→ 三選一皆可，但 detail_action【📊 大盤與籌碼全景】段必須明點四面向計分數字（如「籌碼 X 多 Y 空、價量 Z 多 W 空」）並解釋拉鋸原因
+   ⚠️ 例外：若上方【處置神器訊號】為 🚨 處置列管，不論計分如何，traffic_light 強制 🟢 不能買
+
 ━━━━━━━━━━━━━━━━━━━━
 【戰情資料】
 - 標的：${symName} (${sym})  ← ${classification.emoji} ${classification.name}
@@ -17113,6 +17509,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 - 🌏 總經外資期貨：${usMask(fiLabel)}
 - 🌐 大盤全景(JS 已精算)：${usMask(_marketPanorama)}
 - 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
+- ⚖️ 多空優勢計分（V21.5，JS 28 規則精算，禁重算；traffic_light 必須與此呼應，見鐵律 6️⃣）：${bbLine}
 - 📐 技術位階（系統精算，禁重算）：趨勢 ${chu?.trendJudge || '中性'}｜均線 ${chu?.maArrangement || '糾結'}｜折數 ${chu?.foldPct ?? '—'}折 ${chu?.foldZone || ''}
 - 📐 朱老師分批進場計畫（JS 精算，禁自算，依【庫存狀態】引用對應批次）：
 ${_chuPosPlan}
