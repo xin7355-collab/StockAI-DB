@@ -242,7 +242,7 @@ export default {
             if (route === 'GET /check')    return await handleCheck(url, env);
             if (route === 'POST /sync')    return await handleSync(request, env);
             if (route === 'POST /unbind')  return await handleUnbind(request, env);
-            if (route === 'POST /bot')     return await handleBot(request, env);
+            if (route === 'POST /bot')     return await handleBot(request, env, ctx);
             if (route === 'GET /health')   return json({ ok: true, t: Date.now() });
         } catch (e) {
             return json({ error: 'internal', detail: String(e?.message || e) }, 500);
@@ -339,7 +339,7 @@ async function handleUnbind(request, env) {
     return json({ ok: true });
 }
 
-async function handleBot(request, env) {
+async function handleBot(request, env, ctx) {
     if (env.WEBHOOK_SECRET) {
         const got = request.headers.get('x-telegram-bot-api-secret-token');
         if (got !== env.WEBHOOK_SECRET) return new Response('forbidden', { status: 403 });
@@ -357,14 +357,12 @@ async function handleBot(request, env) {
             '👋 *StockAI 個股雲端提醒*\n\n' +
             '請回網頁的「⚙️ 戰情設定」→「📨 Telegram 雲端推送」,按「啟用」拿綁定碼,' +
             '然後傳 `/bind 你的綁定碼` 給我即可完成。\n\n' +
-            '*指令清單*\n' +
-            '`/list` - 看雲端清單\n' +
-            '`/set 閾值 數值` - 調獵鷹/漲跌警戒\n' +
-            '`/cost 代號 成本` - 設庫存成本\n' +
-            '`/mute` - 暫停 24 小時\n' +
-            '`/unmute` - 恢復推送\n' +
-            '`/unbind` - 解除綁定\n' +
-            '`/help` - 全部指令'
+            '*🚀 快速開始*\n' +
+            '`/bind 綁定碼` — 完成綁定\n' +
+            '`/q 2330` — 查單檔現況\n' +
+            '`/today` — 今日自選摘要\n' +
+            '`/test` — 測試推送通道\n\n' +
+            '傳 `/help` 看全部指令(共 17 個)'
         );
     } else if (text.startsWith('/bind ')) {
         const code = text.slice(6).trim().toUpperCase();
@@ -439,22 +437,86 @@ async function handleBot(request, env) {
         await handleSet(env, chatId, text);
     } else if (text === '/cost' || text.startsWith('/cost ')) {
         await handleCost(env, chatId, text);
-    } else if (text === '/help' || text === '/?') {
+    }
+    // ── V21.4 新增:查詢類 ────────────────────────────────────────
+    else if (text === '/q' || text.startsWith('/q ')) {
+        await handleQuery(env, chatId, text);
+    } else if (text === '/today') {
+        await handleToday(env, chatId, ctx);
+    } else if (text === '/macro') {
+        await handleMacro(env, chatId);
+    } else if (text === '/scan') {
+        await handleScan(env, chatId, ctx);
+    }
+    // ── V21.4 新增:管理類 ────────────────────────────────────────
+    else if (text === '/add' || text.startsWith('/add ')) {
+        await handleAdd(env, chatId, text);
+    } else if (text === '/del' || text.startsWith('/del ')) {
+        await handleDel(env, chatId, text);
+    } else if (text === '/level' || text.startsWith('/level ')) {
+        await handleLevel(env, chatId, text);
+    } else if (text === '/test') {
+        await handleTest(env, chatId);
+    } else if (text === '/price' || text.startsWith('/price ')) {
+        await handlePrice(env, chatId, text);
+    }
+    // ── V21.4 快捷別名 ────────────────────────────────────────
+    else if (text === '/h') {
+        await sendHelp(env, chatId);
+    } else if (text === '/l') {
+        // 觸發 /list 邏輯,重複貼程式碼避免遞迴
+        const userData = await env.KV.get(`user:${chatId}`);
+        if (!userData) { await tg(env, chatId, '❌ 尚未綁定。請回網頁點「啟用」拿綁定碼。'); return new Response('ok'); }
+        const u = JSON.parse(userData);
+        const watch = (u.watchlist || []).slice(0, 30).join(', ') || '(空)';
+        const inv = (u.inventory || []).map(i => `${i.sym}(${i.cost})`).slice(0, 20).join(', ') || '(空)';
+        const monitor = (u.monitorList || []).slice(0, 30).join(', ') || '(空)';
+        const muted = u.muted_until && u.muted_until > Date.now()
+            ? `\n\n🔕 *目前暫停中*(到 ${new Date(u.muted_until).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})` : '';
         await tg(env, chatId,
-            '*指令清單*\n\n' +
-            '`/bind 綁定碼` - 用網頁拿到的綁定碼綁定\n' +
-            '`/list` - 看你的雲端清單\n' +
-            '`/set 閾值 數值` - 調閾值(`falcon 80` / `surge 7` / `drop 4`)\n' +
-            '`/cost 代號 成本 [張數]` - 設庫存成本(例 `/cost 2330 1000`)\n' +
-            '`/mute` - 暫停推送 24 小時\n' +
-            '`/unmute` - 恢復推送\n' +
-            '`/unbind` - 解除綁定(清空清單)'
+            `📋 *雲端清單*\n\n*自選*: ${watch}\n*庫存*: ${inv}\n*監控*: ${monitor}${muted}\n\n` +
+            `_最後同步: ${new Date(u.last_sync).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}_`
         );
+    }
+    // ── /help (V21.4 重排,分 3 大類 + emoji + 範例)─────────────
+    else if (text === '/help' || text === '/?') {
+        await sendHelp(env, chatId);
     } else {
-        await tg(env, chatId, '收到!傳 `/help` 看可用指令');
+        await tg(env, chatId, '收到!傳 `/help` 看全部 17 個指令,或 `/q 2330` 直接查股票');
     }
 
     return new Response('ok');
+}
+
+// V21.4 ── 重排版 /help(/h /? 共用)
+async function sendHelp(env, chatId) {
+    await tg(env, chatId,
+        '🤖 *StockAI Bot 指令清單*\n' +
+        '━━━━━━━━━━━━━━━━━━━━\n\n' +
+        '📊 *查詢類*\n' +
+        '`/q 2330` — 查單檔現況(現價/獵鷹分/AI 燈號)\n' +
+        '`/today` — 今日自選摘要\n' +
+        '`/macro` — 總經成桌(SP500/VIX/外資)\n' +
+        '`/scan` — 立即掃描自選股\n\n' +
+        '⚙️ *管理類*\n' +
+        '`/add 2330` — 加入自選\n' +
+        '`/del 2330` — 移除自選(2 秒內再傳一次確認)\n' +
+        '`/cost 2330 1000 [張]` — 設庫存成本\n' +
+        '`/price 2330 1250` — 加到價上限(負數為下限)\n' +
+        '`/set falcon 75` — 調獵鷹(60-95)\n' +
+        '`/set surge 7` — 調大漲%(2-10)\n' +
+        '`/set drop 7` — 調大跌%(2-10)\n' +
+        '`/level 3only` — 收訊密度(all/2plus/3only)\n\n' +
+        '🔧 *維護類*\n' +
+        '`/list` — 看雲端清單\n' +
+        '`/test` — 測試推送通道\n' +
+        '`/mute` — 暫停 24 小時\n' +
+        '`/unmute` — 恢復推送\n' +
+        '`/unbind` — 解除綁定\n' +
+        '`/start` — 重看歡迎\n\n' +
+        '💡 *小技巧*\n' +
+        '`/h` = `/help` ・ `/l` = `/list` ・ `/?` = 求救'
+    );
 }
 
 // ── Validators & sanitizers ─────────────────────────────────────────
@@ -1004,6 +1066,404 @@ async function gemini(env, prompt, systemInstruction = null) {
     } catch (_) {
         return null;
     }
+}
+
+// ── V21.4: 9 個新指令 handler(查詢類 4 + 管理類 5)────────────────────
+
+// 共用:檢查綁定 + 拉 user data
+async function _requireUser(env, chatId) {
+    const u = JSON.parse((await env.KV.get(`user:${chatId}`)) || '{}');
+    if (!u.chat_id) {
+        await tg(env, chatId, '❌ 尚未綁定。請回網頁點「啟用」拿綁定碼。');
+        return null;
+    }
+    return u;
+}
+
+// 共用:相對時間 (now - ts → "5 分鐘前")
+function _relTime(ts) {
+    if (!ts) return '從未';
+    const diff = Date.now() - ts;
+    if (diff < 60000) return '剛剛';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} 分鐘前`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小時前`;
+    return `${Math.floor(diff / 86400000)} 天前`;
+}
+
+// /q <sym> — 查單檔現況
+async function handleQuery(env, chatId, text) {
+    const parts = text.split(/\s+/).slice(1);
+    if (!parts.length) {
+        await tg(env, chatId, '用法:`/q 2330`(查單檔現況)');
+        return;
+    }
+    const sym = String(parts[0]).trim().toUpperCase();
+    if (!isValidSym(sym)) {
+        await tg(env, chatId, `❌ 代號格式不對:\`${parts[0]}\`(應為 4-8 碼英數)`);
+        return;
+    }
+
+    // 拉 data/{sym}.json + radar.json 並行
+    const t = Date.now();
+    const [stockRes, radarRes] = await Promise.all([
+        fetch(`${GH_PAGES_BASE}/data/${sym}.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
+    ]);
+    if (!stockRes?.ok) {
+        await tg(env, chatId, `❌ 找不到 *${sym}* 的資料(可能未在採礦清單,或近期無交易)`);
+        return;
+    }
+    const stockJson = await stockRes.json().catch(() => null);
+    if (!stockJson) {
+        await tg(env, chatId, `❌ *${sym}* 資料 parse 失敗`);
+        return;
+    }
+    const ohlcv = Array.isArray(stockJson.ohlcv) ? stockJson.ohlcv : (Array.isArray(stockJson.data) ? stockJson.data : []);
+    if (!ohlcv.length) {
+        await tg(env, chatId, `❌ *${sym}* 無 K 線資料`);
+        return;
+    }
+    const name = stockJson.name || '';
+    const label = name ? `${name} ${sym}` : sym;
+
+    // 取最後一筆 + 算漲跌% + MA
+    const last = ohlcv[ohlcv.length - 1];
+    const prev = ohlcv.length > 1 ? ohlcv[ohlcv.length - 2] : null;
+    const close = Number(last.close ?? last.c ?? last[4]);
+    const prevClose = prev ? Number(prev.close ?? prev.c ?? prev[4]) : null;
+    const chgPct = (close && prevClose) ? ((close - prevClose) / prevClose * 100) : null;
+    const closes = ohlcv.map(r => Number(r.close ?? r.c ?? r[4])).filter(Number.isFinite);
+    const ma = (n) => {
+        if (closes.length < n) return null;
+        const slice = closes.slice(-n);
+        return slice.reduce((a, b) => a + b, 0) / n;
+    };
+    const ma5 = ma(5), ma20 = ma(20), ma60 = ma(60);
+
+    // 從 radar.json 找獵鷹分
+    let falconLine = '';
+    let tagsLine = '';
+    if (radarRes?.ok) {
+        try {
+            const radar = await radarRes.json();
+            const fmap = buildFalconMap(radar);
+            const fs = fmap.get(sym);
+            if (fs) {
+                const score = Number(fs.falcon_score ?? fs.score);
+                if (Number.isFinite(score)) falconLine = `🦅 獵鷹分 *${score}/100*`;
+                if (Array.isArray(fs.tags) && fs.tags.length) {
+                    tagsLine = `\n🔥 *為什麼觸發?*\n${fs.tags.slice(0, 3).map((t, i) => `  ${['①','②','③'][i]} ${t}`).join('\n')}`;
+                }
+            }
+        } catch (_) {}
+    }
+
+    const chgStr = chgPct == null ? '' : ` (${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%)`;
+    const chgIcon = chgPct == null ? '' : (chgPct > 0 ? '🔴' : chgPct < 0 ? '🟢' : '→');
+    await tg(env, chatId,
+        `📊 *${label}*\n${SEP}\n` +
+        `💰 收盤 *${close}* 元${chgStr} ${chgIcon}\n` +
+        (ma5 ? `📈 5MA *${ma5.toFixed(2)}* / 20MA *${ma20?.toFixed(2) || '--'}* / 60MA *${ma60?.toFixed(2) || '--'}*\n` : '') +
+        (falconLine ? `${falconLine}\n` : '') +
+        tagsLine +
+        `\n\n📱 [看完整分析](${tplDeepLink(sym)})`
+    );
+}
+
+// /today — 今日自選摘要(復用 sendDailySummary 邏輯,只回該用戶)
+async function handleToday(env, chatId, ctx) {
+    const u = await _requireUser(env, chatId);
+    if (!u) return;
+    await tg(env, chatId, '⏳ 抓取今日資料中…(3-5 秒)');
+    const exec = async () => {
+        try {
+            const t = Date.now();
+            const [radarRes, topRes, matrixRes] = await Promise.all([
+                fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
+                fetch(`${GH_PAGES_BASE}/data/top_picks.json?t=${t}`).catch(() => null),
+                fetch(`${GH_PAGES_BASE}/data/radar_matrix.json?t=${t}`).catch(() => null),
+            ]);
+            const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
+            const topPicks = topRes?.ok ? await topRes.json().catch(() => null) : null;
+            const radarMatrix = matrixRes?.ok ? await matrixRes.json().catch(() => null) : null;
+            const fmap = buildFalconMap(radar);
+            if (!fmap.size) {
+                await tg(env, chatId, '⚠️ 採礦資料未就緒,請稍後再試');
+                return;
+            }
+            await sendDailySummary(env, u, fmap, topPicks, radarMatrix);
+        } catch (e) {
+            await tg(env, chatId, `❌ 抓取失敗:${e.message?.slice(0, 60) || '未知錯誤'}`);
+        }
+    };
+    if (ctx) ctx.waitUntil(exec()); else await exec();
+}
+
+// /macro — 總經成桌
+async function handleMacro(env, chatId) {
+    const t = Date.now();
+    const r = await fetch(`${GH_PAGES_BASE}/data/macro_risk.json?t=${t}`).catch(() => null);
+    if (!r?.ok) {
+        await tg(env, chatId, '❌ macro_risk.json 抓取失敗');
+        return;
+    }
+    const m = await r.json().catch(() => null);
+    if (!m) { await tg(env, chatId, '❌ macro_risk.json parse 失敗'); return; }
+
+    const pctClr = (p) => p == null ? '--' : (p > 0 ? `🔴 +${p.toFixed(2)}%` : `🟢 ${p.toFixed(2)}%`);
+    const fmt = (v, dec = 2) => v == null ? '--' : Number(v).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+    // 主力出貨指數簡算(同 runPreMarket 邏輯)
+    let mmIndex = 0; const factors = [];
+    if (m.retail_ls_pct != null && m.retail_ls_pct < -25) { mmIndex += 20; factors.push('散戶過度看多'); }
+    if (m.taifex_backwardation != null && m.taifex_backwardation < -100) { mmIndex += 25; factors.push('期貨大貼水'); }
+    if (m.business_signal?.light === 'red') { mmIndex += 20; factors.push('景氣紅燈'); }
+    if (m.vix != null && m.vix >= 25) { mmIndex += 25; factors.push('VIX 恐慌'); }
+    const mmVerdict = mmIndex >= 70 ? '🔴 主力可能殺出' : mmIndex >= 40 ? '🟠 警戒' : mmIndex >= 0 ? '🟡 中性' : '🟢 託盤';
+
+    await tg(env, chatId,
+        `🌐 *總經成桌* ${new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' })}\n${SEP}\n` +
+        `*🇺🇸 美股*\n  SP500 *${fmt(m.sp500, 0)}* (${pctClr(m.sp500_chg_pct)})\n  NASDAQ *${fmt(m.nasdaq, 0)}* (${pctClr(m.nasdaq_chg_pct)})\n  VIX *${fmt(m.vix)}*\n\n` +
+        `*💰 外資*\n  現貨 *${m.fi_spot_net ?? '--'} 億* ・ 期貨 *${m.fi_futures_net ?? '--'} 口*\n\n` +
+        `*🐂 主力出貨指數 ${mmIndex} 分*\n  ${mmVerdict}${factors.length ? ` (${factors.slice(0, 2).join(' / ')})` : ''}\n\n` +
+        (m.business_signal?.light ? `*🌡️ 景氣燈號*\n  ${m.business_signal.light}(${m.business_signal.score} 分)\n\n` : '') +
+        `📱 [看完整總經分析](${GH_PAGES_BASE}/)`
+    );
+}
+
+// /scan — 立即跑 scanUser(該用戶單獨)
+async function handleScan(env, chatId, ctx) {
+    const u = await _requireUser(env, chatId);
+    if (!u) return;
+    await tg(env, chatId, '⏳ 開始掃描你的自選股,有觸發訊號會即時推來…');
+    const exec = async () => {
+        try {
+            const t = Date.now();
+            const [radarRes, liveQuotes] = await Promise.all([
+                fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
+                // liveQuotes 在 cron 內由 runScan 拉 MIS,單用戶 handle 就拿盤後值
+                Promise.resolve(null),
+            ]);
+            const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
+            const fmap = buildFalconMap(radar);
+            if (!fmap.size) {
+                await tg(env, chatId, '⚠️ 採礦資料未就緒,請稍後再試');
+                return;
+            }
+            const before = Date.now();
+            await scanUser(env, u, fmap, null, liveQuotes, null, 0);
+            const elapsed = Math.round((Date.now() - before) / 1000);
+            await tg(env, chatId, `✅ 掃描完成(${elapsed}s) — 若無新訊號代表所有觸發都已在 4h 防重內推過`);
+        } catch (e) {
+            await tg(env, chatId, `❌ 掃描失敗:${e.message?.slice(0, 60) || '未知'}`);
+        }
+    };
+    if (ctx) ctx.waitUntil(exec()); else await exec();
+}
+
+// /add <sym> — 加入 watchlist
+async function handleAdd(env, chatId, text) {
+    const u = await _requireUser(env, chatId);
+    if (!u) return;
+    const parts = text.split(/\s+/).slice(1);
+    if (!parts.length) {
+        await tg(env, chatId, '用法:`/add 2330`(加入自選股)');
+        return;
+    }
+    const sym = String(parts[0]).trim().toUpperCase();
+    if (!isValidSym(sym)) {
+        await tg(env, chatId, `❌ 代號格式不對:\`${parts[0]}\``);
+        return;
+    }
+    const watchlist = Array.isArray(u.watchlist) ? u.watchlist : [];
+    if (watchlist.includes(sym)) {
+        await tg(env, chatId, `ℹ️ *${sym}* 已在自選股(共 ${watchlist.length} 檔)`);
+        return;
+    }
+    if (watchlist.length >= 200) {
+        await tg(env, chatId, `❌ 自選股已滿 200 檔上限,先 \`/del XXX\` 刪幾檔再加`);
+        return;
+    }
+    watchlist.push(sym);
+    u.watchlist = watchlist;
+    u.last_sync = Date.now();
+    await env.KV.put(`user:${chatId}`, JSON.stringify(u));
+    const label = await stockLabel(env, sym);
+    await tg(env, chatId, `✅ 已加入 *${label}*(共 ${watchlist.length} 檔)\n下輪 cron 開始追蹤訊號`);
+}
+
+// /del <sym> — 從 watchlist + inventory + monitorList + priceAlerts 全清(2 段式確認)
+const _PENDING_DEL = new Map();   // chatId → {sym, ts}
+async function handleDel(env, chatId, text) {
+    const u = await _requireUser(env, chatId);
+    if (!u) return;
+    const parts = text.split(/\s+/).slice(1);
+    if (!parts.length) {
+        await tg(env, chatId, '用法:`/del 2330`(從自選+庫存+監控+到價全清)');
+        return;
+    }
+    const sym = String(parts[0]).trim().toUpperCase();
+    if (!isValidSym(sym)) {
+        await tg(env, chatId, `❌ 代號格式不對`);
+        return;
+    }
+
+    // 2 段式確認:5 秒內再傳同樣指令才執行
+    const pending = _PENDING_DEL.get(chatId);
+    const now = Date.now();
+    if (!pending || pending.sym !== sym || (now - pending.ts) > 5000) {
+        _PENDING_DEL.set(chatId, { sym, ts: now });
+        const label = await stockLabel(env, sym);
+        await tg(env, chatId,
+            `⚠️ *確認刪除 ${label}?*\n` +
+            `將從自選 + 庫存 + 監控 + 到價提醒 *全清*\n\n` +
+            `*5 秒內再傳一次 \`/del ${sym}\` 確認*,逾時自動取消。`
+        );
+        return;
+    }
+    _PENDING_DEL.delete(chatId);
+
+    const before = {
+        w: (u.watchlist || []).length,
+        i: (u.inventory || []).length,
+        m: (u.monitorList || []).length,
+        p: (u.priceAlerts || []).length,
+    };
+    u.watchlist = (u.watchlist || []).filter(s => s !== sym);
+    u.inventory = (u.inventory || []).filter(i => i.sym !== sym);
+    u.monitorList = (u.monitorList || []).filter(s => s !== sym);
+    u.priceAlerts = (u.priceAlerts || []).filter(a => a.sym !== sym);
+    u.last_sync = Date.now();
+    await env.KV.put(`user:${chatId}`, JSON.stringify(u));
+
+    const removed = [];
+    if (before.w !== u.watchlist.length) removed.push('自選');
+    if (before.i !== u.inventory.length) removed.push('庫存');
+    if (before.m !== u.monitorList.length) removed.push('監控');
+    if (before.p !== u.priceAlerts.length) removed.push('到價');
+
+    await tg(env, chatId,
+        removed.length
+            ? `✅ 已從 *${sym}* 清除:${removed.join(' / ')}`
+            : `ℹ️ *${sym}* 本來就不在任何清單`
+    );
+}
+
+// /level all|2plus|3only — 改收訊密度
+async function handleLevel(env, chatId, text) {
+    const u = await _requireUser(env, chatId);
+    if (!u) return;
+    const parts = text.split(/\s+/).slice(1);
+    if (!parts.length) {
+        const cur = u.settings?.tg_level || 'all';
+        await tg(env, chatId,
+            `*目前收訊密度*: *${cur}*\n\n` +
+            '*用法*\n' +
+            '`/level all` — 全部訊息(預設)\n' +
+            '`/level 2plus` — 只接 ★★ 以上(重要)\n' +
+            '`/level 3only` — 只接 ★★★(緊急)'
+        );
+        return;
+    }
+    const val = String(parts[0]).trim().toLowerCase();
+    if (!['all', '2plus', '3only'].includes(val)) {
+        await tg(env, chatId, `❌ 未知等級 \`${parts[0]}\`,可用:\`all\` / \`2plus\` / \`3only\``);
+        return;
+    }
+    u.settings = u.settings || {};
+    u.settings.tg_level = val;
+    u.last_sync = Date.now();
+    await env.KV.put(`user:${chatId}`, JSON.stringify(u));
+    const label = { all: '📨 全部訊息', '2plus': '⚠️ ★★ 以上', '3only': '🔥 只接 ★★★' }[val];
+    await tg(env, chatId, `✅ 收訊密度 → *${label}*\n下一輪 cron 開始生效`);
+}
+
+// /test — 發測試訊息 + 推送通道診斷
+async function handleTest(env, chatId) {
+    const u = await _requireUser(env, chatId);
+    if (!u) return;
+    const settings = u.settings || {};
+    const levelMap = { all: '📨 全部', '2plus': '⚠️ ★★+', '3only': '🔥 ★★★' };
+    const level = levelMap[settings.tg_level || 'all'];
+    const muteState = u.muted_until && u.muted_until > Date.now()
+        ? `🔕 暫停中(到 ${new Date(u.muted_until).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`
+        : '🔔 推送開啟';
+    await tg(env, chatId,
+        `✅ *推送通道測試正常*\n${SEP}\n` +
+        `👤 綁定碼:\`${u.code || '--'}\`\n` +
+        `🕐 上次同步:${_relTime(u.last_sync)}\n` +
+        `📊 自選 *${(u.watchlist || []).length}* 檔 ・ 庫存 *${(u.inventory || []).length}* 筆 ・ 到價 *${(u.priceAlerts || []).length}* 條\n` +
+        `⭐ 收訊密度:${level}\n` +
+        `🦅 獵鷹閾值:*${settings.falcon_threshold || 75}* ・ 漲跌:±*${settings.surge_threshold || 7}%*\n` +
+        `${muteState}\n\n` +
+        `💡 收到此訊息代表 Worker → Telegram 通道正常。\n` +
+        `若該推沒推,可能是觸發條件未達 / 訊息被 4h 防重過濾。\n` +
+        `傳 \`/scan\` 立即跑 1 輪掃描測觸發。`
+    );
+}
+
+// /price <sym> <price> 加上限 / <-price> 加下限 / del <sym> 清空
+async function handlePrice(env, chatId, text) {
+    const u = await _requireUser(env, chatId);
+    if (!u) return;
+    const parts = text.split(/\s+/).slice(1);
+    if (!parts.length) {
+        const alerts = (u.priceAlerts || []).filter(a => a.enabled !== false);
+        await tg(env, chatId,
+            `*目前到價條件*(共 ${alerts.length} 條)\n` +
+            (alerts.slice(0, 10).map(a => {
+                if (a.cond === 'gte' || a.upper != null) return `  ▸ ${a.sym} ≥ ${a.price || a.upper}`;
+                if (a.cond === 'lte' || a.lower != null) return `  ▸ ${a.sym} ≤ ${a.price || a.lower}`;
+                return `  ▸ ${a.sym} (?)`;
+            }).join('\n') || '  (空)') +
+            '\n\n*用法*\n' +
+            '`/price 2330 1250` — 加上限 1250(現價達此推)\n' +
+            '`/price 2330 -1100` — 加下限 1100(現價跌至此推)\n' +
+            '`/price del 2330` — 清空 2330 全部條件'
+        );
+        return;
+    }
+
+    // del <sym> 清空
+    if (parts[0].toLowerCase() === 'del') {
+        if (!parts[1]) { await tg(env, chatId, '用法:`/price del 2330`'); return; }
+        const sym = String(parts[1]).trim().toUpperCase();
+        const before = (u.priceAlerts || []).length;
+        u.priceAlerts = (u.priceAlerts || []).filter(a => a.sym !== sym);
+        u.last_sync = Date.now();
+        await env.KV.put(`user:${chatId}`, JSON.stringify(u));
+        const removed = before - u.priceAlerts.length;
+        await tg(env, chatId, removed > 0 ? `✅ 已清除 *${sym}* ${removed} 條到價條件` : `ℹ️ *${sym}* 本來就沒設到價`);
+        return;
+    }
+
+    // 新增 <sym> <price>(price 負值 = 下限)
+    if (parts.length < 2) {
+        await tg(env, chatId, '用法:`/price 2330 1250`(上限)或 `/price 2330 -1100`(下限)');
+        return;
+    }
+    const sym = String(parts[0]).trim().toUpperCase();
+    const priceRaw = Number(parts[1]);
+    if (!isValidSym(sym)) { await tg(env, chatId, `❌ 代號格式不對`); return; }
+    if (!Number.isFinite(priceRaw) || priceRaw === 0) { await tg(env, chatId, `❌ 價位格式不對:${parts[1]}`); return; }
+
+    const cond = priceRaw > 0 ? 'gte' : 'lte';
+    const price = Math.abs(priceRaw);
+    u.priceAlerts = u.priceAlerts || [];
+    if (u.priceAlerts.length >= 200) {
+        await tg(env, chatId, '❌ 到價條件已滿 200 條上限');
+        return;
+    }
+    const id = `${sym}_${cond}_${price}`;
+    if (u.priceAlerts.some(a => a.id === id)) {
+        await tg(env, chatId, `ℹ️ *${sym}* ${cond === 'gte' ? '≥' : '≤'} ${price} 已存在`);
+        return;
+    }
+    u.priceAlerts.push({ id, sym, cond, price, enabled: true });
+    u.last_sync = Date.now();
+    await env.KV.put(`user:${chatId}`, JSON.stringify(u));
+    const label = await stockLabel(env, sym);
+    await tg(env, chatId, `✅ 已設 *${label}* ${cond === 'gte' ? '上限' : '下限'} *${price}*\n下輪 cron 開始監控`);
 }
 
 // ── F3: 每日 17:00 台北 盤後總結(cron '0 9 * * 1-5')─────────────────
