@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V22.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V22.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V22.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V22.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -3483,8 +3483,8 @@ const app = {
             const slice = items.slice(0, 15);
             const list = slice.map((it, i) => `${i+1}. ${(it.title || '').slice(0, 150)}`).join('\n');
             const prompt = `你是台股研究員,請把以下英文國際財經新聞翻譯成繁體中文標題(每則 20 字內)、並用一句話判斷對台股的影響(10 字內)、給出 bullish / bearish / neutral 三選一標籤。\n\n${list}\n\n嚴格輸出純 JSON、禁\`\`\`json標籤、禁前後文字,格式:{"items":[{"i":1,"title_zh":"...","impact":"...","level":"bullish|bearish|neutral"},...]}。i 對應上方序號。`;
-            // V18.7 — 改 Gemini(輕量翻譯/影響判讀)
-            const text = await this._callGemini({ prompt, max_tokens: 1200, temperature: 0.2, model: 'gemini-2.5-flash' });
+            // V22.4 — 新聞翻譯改 Groq 為主(新分工:新聞輕量任務歸 Groq,速度成本優勢);Gemini key 失敗會自動 fallback
+            const text = await this._callAI({ prompt, max_tokens: 1200, temperature: 0.2, model: 'llama-3.1-8b-instant' });
             const parsed = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
             const arr = parsed.items || [];
             arr.forEach(a => {
@@ -6016,14 +6016,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             return await tryOpenRouter();
         }
 
-        // chain === 'auto'(預設):整合 main 新邏輯 + chain 路由
-        //   第一鏈 Gemini(配額穩定先頂)→ 第二鏈 OpenRouter R1(能力優先,深度推理)→ 第三鏈 Groq 70b 兜底
+        // chain === 'auto'(預設,V22.4 新分工):深度任務只走 Gemini → OpenRouter,不再 fallback Groq
+        //   理由:深度判讀(首席 / 籌碼 / 板塊 / 庫存 / 處置)應由能力強的模型負責,Groq 留給新聞輕量任務
         try { return await tryGemini(); } catch (e) {
             console.warn('[_callDeepAI auto] Gemini 失敗,fallback OpenRouter R1:', e?.message || e);
         }
-        try { return await tryOpenRouter(); }
-        catch (e) { console.warn('[_callDeepAI auto] OpenRouter 失敗,最後兜底 Groq 70b:', e?.message || e); }
-        return this._callAI({ prompt: promptSimple, max_tokens, temperature, model: 'llama-3.3-70b-versatile' });
+        return await tryOpenRouter();   // 失敗就 throw,呼叫端自行 catch + 顯失敗 UI
     },
 
     async fetchFugleData(symbol) {

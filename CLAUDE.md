@@ -222,7 +222,12 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 ### 功能方向
 - **初學者友善**:複雜功能要有白話說明 + alert 教學 + 對策建議
 - **零採礦優先**:能用前端 K 線/既有資料源算就先做,「動採礦」是最後手段
-- **AI 鏈偏好**:**Gemini 為主**(2.5 Flash + safetySettings BLOCK_NONE + thinkingBudget=0 + systemInstruction),OpenRouter 為備援,**取消 Groq**(輕量任務也是)
+- **AI 模型分工**(2026-06-25 V22.4 後新規):
+  - **新聞翻譯 / 簡訊 / 輕量建議判讀** → **Groq llama-3.3-70b / llama-3.1-8b**(主力,速度成本優勢)
+  - **深度判讀**(首席全盤 / 籌碼解析 / 板塊輪動 AI / 庫存風險 AI / 處置策略 AI)→ **Gemini 2.5 Flash** 為主,**OpenRouter DeepSeek R1** 備援
+  - **`_callDeepAI` 砍第三級 Groq fallback**(深度任務不該降級到 Groq 70b,失敗就 throw 讓上層處理)
+  - Gemini 規格:safetySettings 4 大類全 BLOCK_NONE + thinkingBudget=0 + systemInstruction(避免廢話 + 預算保護)
+  - 後端 `api.py` 已是 Groq(開盤戰略日報 / 新聞研判 / 預測稽核 → 維持 Groq ✓)
 - **PWA 推播**:支援 `_fireAlert` + sw.js + 鈴鐺歷史 3 天
 - **每日開 App 掃處置風險**:自動推 1 則(`_dailyDisposedAlertSweep`)
 
