@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V21.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V21.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1417,8 +1417,8 @@
                         <text x="110" y="108" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#6b7280">/ 100</text>
                     </svg>
                 </div>
-                <!-- 台股二指數 -->
-                <div class="grid grid-cols-2 gap-1.5 mt-1">
+                <!-- V21.8 — 台股三指數(加權 + 櫃買 + 台指期),原 grid-cols-2 改 3 加台指期影響時間提示 -->
+                <div class="grid grid-cols-3 gap-1.5 mt-1">
                     <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2 cursor-pointer hover:border-cyan-700/60 transition-colors"
                          onclick="app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);">
                         <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 加權指數 TWII <span class="text-cyan-400">▸ 查詢</span></div>
@@ -1426,12 +1426,24 @@
                         <div id="mktTWII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
                     </div>
                     <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 上櫃指數 TWOII</div>
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 櫃買指數 OTC</div>
                         <div id="mktTWOII_main" class="text-base font-black font-mono text-gray-300">--</div>
                         <div id="mktTWOII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
                     </div>
+                    <!-- V21.8 — 台指期(非即時,只顯結算/夜盤影響時間點)-->
+                    <div class="bg-[#0d1117] border border-amber-800/40 rounded-lg p-2 cursor-pointer hover:border-amber-600/60 transition-colors"
+                         onclick="app.showJargon('台指期結算'); event.stopPropagation();" title="點看完整說明">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">📅 台指期 <span class="text-amber-400">影響時段</span></div>
+                        <div id="taiexFuturesInfo" class="text-[13px] font-black font-mono text-amber-300 leading-tight">計算中…</div>
+                        <div id="taiexFuturesSub" class="text-[9px] font-bold text-gray-500 mt-0.5 leading-tight">--</div>
+                    </div>
                 </div>
-                <div class="flex justify-end mt-1.5"><span id="warRoomTs" class="text-[9px] text-gray-600 font-mono">--</span></div>
+                <!-- V21.8 — 三指數共用手動更新鈕 + 重點時間自動更新 1 次(9:00/13:30/17:00) -->
+                <button id="refreshIndicesBtn" onclick="app._refreshAllIndices()"
+                        class="w-full mt-1.5 text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1 hover:bg-cyan-900/50 transition-colors flex items-center justify-center gap-1.5">
+                    🔄 <span>手動更新指數</span><span id="refreshIndicesTs" class="text-[8px] text-cyan-400/70 font-normal">--</span>
+                </button>
+                <div class="flex justify-end mt-1"><span id="warRoomTs" class="text-[9px] text-gray-600 font-mono">--</span></div>
                 <!-- 互換用（JS 仍會更新但不可見） -->
                 <span id="warRiskTick" class="hidden"></span>
                 <span id="warRiskDim" class="hidden"></span>
@@ -1791,27 +1803,88 @@
                         </div>
                 </div>
             </div>
-            <!-- 📉 真泡沫 vs 假泡沫(大盤跌幅 > 2% 或 VIX > 30 時自動展開,純算式不用 Groq)-->
-            <div id="bubbleCrashCard" class="hidden bg-[#010409] rounded-xl border-2 border-red-700 p-3 shadow-lg shadow-red-900/30">
+            <!-- 🚨 V21.8 — 全球熔斷示警卡(平常 hidden;美/日/韓任一指數接近或觸發熔斷時自動顯) -->
+            <!--    台灣**沒有指數熔斷**(只有個股 ±10%),所以這卡都顯國際指數;對台股影響量化(歷史經驗值) -->
+            <div id="circuitBreakerAlert" class="hidden bg-gradient-to-br from-red-950/60 to-orange-950/40 rounded-xl border-2 border-red-600 p-3 shadow-[0_0_20px_rgba(220,38,38,0.3)]"></div>
+
+            <!-- 💥 V21.8 — 泡沫風控指揮中心(合併原「真假泡沫判讀」+「牛市泡沫破裂預警」,使用者反映兩個功能重複) -->
+            <!--    結構:上半 4 維度燈號(永顯,監測泡沫風險)+ 下半真假泡沫判讀(觸發時自動展開,給對策) -->
+            <div id="bubbleCrashCard" class="relative bg-gradient-to-br from-red-950/40 via-[#0a0606] to-orange-950/30 rounded-xl border border-red-700/60 p-3 shadow-[0_0_15px_rgba(220,38,38,0.15)] overflow-hidden">
+                <!-- 頂部脈衝呼吸光條 -->
+                <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
+                <!-- 標題 -->
                 <div class="flex items-center gap-2 mb-2">
-                    <span class="text-lg animate-pulse">📉</span>
-                    <span class="text-base font-black text-red-300 tracking-wide">真泡沫 vs 假泡沫判讀</span>
-                    <span id="bubbleCrashType" class="ml-auto text-xs font-mono font-black px-2 py-0.5 rounded">分析中</span>
+                    <span class="text-base animate-pulse">💥</span>
+                    <span class="text-sm font-black text-red-300 tracking-wider">泡沫風控指揮中心</span>
+                    <span id="bubbleSource" class="ml-auto text-[8px] text-gray-500 opacity-60">(範例)</span>
                 </div>
-                <div id="bubbleCrashReason" class="text-[11px] text-gray-300 mb-2.5 leading-relaxed">系統正在綜合 VIX/外資期現/融資水位判讀...</div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="bg-[#0d1117] border-l-4 border-orange-500 p-2.5 rounded-r">
-                        <div class="text-orange-300 font-bold text-xs mb-1">💼 持有者對策</div>
-                        <div id="bubbleCrashHoldAction" class="text-[11px] text-gray-200 leading-relaxed">--</div>
+                <!-- 上半:4 維度燈號(永顯,監測泡沫風險水溫) -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                    <!-- 1. 證券板塊狂熱度 -->
+                    <div class="relative bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                        <button onclick="app.showJargon('證券狂熱度'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
+                        <div class="flex items-center gap-1 mb-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                            <span class="text-[8px] text-red-400 font-bold">🏦 證券狂熱度</span>
+                        </div>
+                        <div id="bubbleBrokerHeat" class="text-[12px] font-black font-mono text-orange-300 leading-tight">+1.8%</div>
+                        <div id="bubbleBrokerHeatSub" class="text-[8px] text-red-500/80 mt-0.5">偏多溫熱</div>
                     </div>
-                    <div class="bg-[#0d1117] border-l-4 border-cyan-500 p-2.5 rounded-r">
-                        <div class="text-cyan-300 font-bold text-xs mb-1">🆓 空手對策</div>
-                        <div id="bubbleCrashEmptyAction" class="text-[11px] text-gray-200 leading-relaxed">--</div>
+                    <!-- 2. 融資槓桿失控(進度條) -->
+                    <div class="relative bg-[#0d1117] border border-orange-800/50 rounded p-1.5">
+                        <button onclick="app.showJargon('融資槓桿'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
+                        <div class="flex items-center gap-1 mb-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                            <span class="text-[8px] text-orange-400 font-bold">⚖️ 融資槓桿</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden mt-1">
+                            <div id="bubbleMarginBar" class="bg-gradient-to-r from-orange-500 to-red-500 h-full transition-all" style="width:82%"></div>
+                        </div>
+                        <div id="bubbleMarginSub" class="text-[8px] text-orange-400 mt-1 font-mono">82%・高危險區</div>
+                    </div>
+                    <!-- 3. 群魔亂舞指數 -->
+                    <div class="relative bg-[#0d1117] border border-yellow-800/50 rounded p-1.5">
+                        <button onclick="app.showJargon('群魔亂舞'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
+                        <div class="flex items-center gap-1 mb-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                            <span class="text-[8px] text-yellow-400 font-bold">🧟‍♂️ 群魔亂舞</span>
+                        </div>
+                        <div id="bubbleJunkCount" class="text-[12px] font-black font-mono text-yellow-300 leading-tight">18 家漲停</div>
+                        <div id="bubbleJunkSub" class="text-[8px] text-yellow-500/80 mt-0.5">投機氣氛偏熱</div>
+                    </div>
+                    <!-- 4. 高檔出貨 K 線判定 -->
+                    <div class="relative bg-[#0d1117] border border-red-800/50 rounded p-1.5">
+                        <button onclick="app.showJargon('出貨K線'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
+                        <div class="flex items-center gap-1 mb-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                            <span class="text-[8px] text-red-400 font-bold">📉 出貨 K 線</span>
+                        </div>
+                        <div id="bubbleKlineStatus" class="text-[11px] font-black font-mono text-orange-300 leading-tight">⚠️ 上影警示</div>
+                        <div id="bubbleKlineSub" class="text-[8px] text-red-500/80 mt-0.5">上檔有壓力</div>
                     </div>
                 </div>
-                <div id="bubbleCrashSectors" class="hidden mt-2.5 bg-green-900/20 border-l-4 border-green-500 p-2.5 rounded-r">
-                    <div class="text-green-300 font-bold text-xs mb-1">🎯 假泡沫送分題族群</div>
-                    <div id="bubbleCrashSectorList" class="text-[11px] text-gray-100 leading-relaxed">--</div>
+                <!-- 下半:真假泡沫判讀(VIX>30 或大盤跌 > 2% 自動展開,平時 hidden) -->
+                <div id="bubbleCrashSection" class="hidden mt-3 pt-3 border-t border-red-700/40">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-base animate-pulse">📉</span>
+                        <span class="text-xs font-bold text-red-300">真泡沫 vs 假泡沫判讀(大跌時自動觸發)</span>
+                        <span id="bubbleCrashType" class="ml-auto text-xs font-mono font-black px-2 py-0.5 rounded">分析中</span>
+                    </div>
+                    <div id="bubbleCrashReason" class="text-[11px] text-gray-300 mb-2.5 leading-relaxed">系統正在綜合 VIX/外資期現/融資水位判讀...</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-[#0d1117] border-l-4 border-orange-500 p-2.5 rounded-r">
+                            <div class="text-orange-300 font-bold text-xs mb-1">💼 持有者對策</div>
+                            <div id="bubbleCrashHoldAction" class="text-[11px] text-gray-200 leading-relaxed">--</div>
+                        </div>
+                        <div class="bg-[#0d1117] border-l-4 border-cyan-500 p-2.5 rounded-r">
+                            <div class="text-cyan-300 font-bold text-xs mb-1">🆓 空手對策</div>
+                            <div id="bubbleCrashEmptyAction" class="text-[11px] text-gray-200 leading-relaxed">--</div>
+                        </div>
+                    </div>
+                    <div id="bubbleCrashSectors" class="hidden mt-2.5 bg-green-900/20 border-l-4 border-green-500 p-2.5 rounded-r">
+                        <div class="text-green-300 font-bold text-xs mb-1">🎯 假泡沫送分題族群</div>
+                        <div id="bubbleCrashSectorList" class="text-[11px] text-gray-100 leading-relaxed">--</div>
+                    </div>
                 </div>
             </div>
             <!-- 📊 風險指標展開區(統一收摺,避免與上方台股風險指數重複佔版) -->
@@ -1841,62 +1914,7 @@
                     <div id="weatherSummary" class="text-[10px] text-gray-400 bg-purple-950/20 border-l-2 border-purple-500 pl-2 py-1 leading-snug"><span class="text-purple-300 font-bold">節氣總評：</span>等待量化引擎完成市場氣象掃描…</div>
                     <span id="riskGridStatus" class="hidden"></span>
             </div>
-                <!-- 💥 牛市泡沫破裂預警系統（全寬 · 緊湊 4 卡 · 與宏觀觀測台對稱） -->
-                <div class="relative bg-gradient-to-br from-red-950/40 via-[#0a0606] to-orange-950/30 border border-red-700/60 rounded-lg p-2.5 overflow-hidden shadow-[0_0_15px_rgba(220,38,38,0.15)]">
-                    <!-- 頂部脈衝呼吸光條（emergency strip） -->
-                    <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
-                    <!-- 標題列 -->
-                    <div class="flex items-center gap-1.5 mb-2">
-                        <span class="text-xs animate-pulse">💥</span>
-                        <span class="text-[11px] font-black text-red-300 tracking-wider">牛市泡沫破裂預警系統</span>
-                        <span id="bubbleSource" class="ml-auto text-[8px] text-gray-500 opacity-60">(範例)</span>
-                    </div>
-                    <!-- 4 維度雷達卡 -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
-                        <!-- 1. 證券板塊狂熱度 -->
-                        <div class="relative bg-[#0d1117] border border-red-800/50 rounded p-1.5">
-                            <button onclick="app.showJargon('證券狂熱度'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
-                            <div class="flex items-center gap-1 mb-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                <span class="text-[8px] text-red-400 font-bold">🏦 證券狂熱度</span>
-                            </div>
-                            <div id="bubbleBrokerHeat" class="text-[12px] font-black font-mono text-orange-300 leading-tight">+1.8%</div>
-                            <div id="bubbleBrokerHeatSub" class="text-[8px] text-red-500/80 mt-0.5">偏多溫熱</div>
-                        </div>
-                        <!-- 2. 融資槓桿失控（進度條） -->
-                        <div class="relative bg-[#0d1117] border border-orange-800/50 rounded p-1.5">
-                            <button onclick="app.showJargon('融資槓桿'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
-                            <div class="flex items-center gap-1 mb-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-                                <span class="text-[8px] text-orange-400 font-bold">⚖️ 融資槓桿</span>
-                            </div>
-                            <div class="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden mt-1">
-                                <div id="bubbleMarginBar" class="bg-gradient-to-r from-orange-500 to-red-500 h-full transition-all" style="width:82%"></div>
-                            </div>
-                            <div id="bubbleMarginSub" class="text-[8px] text-orange-400 mt-1 font-mono">82%・高危險區</div>
-                        </div>
-                        <!-- 3. 群魔亂舞指數 -->
-                        <div class="relative bg-[#0d1117] border border-yellow-800/50 rounded p-1.5">
-                            <button onclick="app.showJargon('群魔亂舞'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
-                            <div class="flex items-center gap-1 mb-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
-                                <span class="text-[8px] text-yellow-400 font-bold">🧟‍♂️ 群魔亂舞</span>
-                            </div>
-                            <div id="bubbleJunkCount" class="text-[12px] font-black font-mono text-yellow-300 leading-tight">18 家漲停</div>
-                            <div id="bubbleJunkSub" class="text-[8px] text-yellow-500/80 mt-0.5">投機氣氛偏熱</div>
-                        </div>
-                        <!-- 4. 高檔出貨 K 線判定 -->
-                        <div class="relative bg-[#0d1117] border border-red-800/50 rounded p-1.5">
-                            <button onclick="app.showJargon('出貨K線'); event.stopPropagation();" class="absolute top-0.5 right-1 text-[9px] text-gray-600 hover:text-blue-300 leading-none">ℹ️</button>
-                            <div class="flex items-center gap-1 mb-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                <span class="text-[8px] text-red-400 font-bold">📉 出貨 K 線</span>
-                            </div>
-                            <div id="bubbleKlineStatus" class="text-[11px] font-black font-mono text-orange-300 leading-tight">⚠️ 上影警示</div>
-                            <div id="bubbleKlineSub" class="text-[8px] text-red-500/80 mt-0.5">上檔有壓力</div>
-                        </div>
-                    </div>
-                </div>
+                <!-- V21.8 — 牛市泡沫 4 維度卡已搬至 #bubbleCrashCard 合併「泡沫風控指揮中心」(使用者反映兩個功能重複) -->
                 </div>
             </details>
             <!-- ════════ 黃金動線結束 ════════ -->
@@ -2432,6 +2450,9 @@ const app = {
         '標普500': 'S&P500,美股最寬廣的大盤指數(500 家龍頭企業綜合)。\n\n📊 台股 80% 看美股臉色:\n  ・ SP500 昨夜 > +0.8% → 台股早盤通常開高\n  ・ SP500 昨夜 < -1.0% → 台股早盤恐開低殺\n  ・ SP500 連跌 3 天 → 美股趨勢轉空,台股難獨善\n\n💡 操作:美股收盤後(台灣時間早上 4 點)看走勢,9:00 開盤決策。',
         '那斯達克': '那斯達克綜合指數,科技股大本營(蘋果/微軟/NVDA/META/特斯拉等)。\n\n📊 對台積電/聯發科/AI 股影響最大:\n  ・ 那斯達克 > +1.5% → 台股科技類股有望跳空高開\n  ・ 那斯達克 < -1.5% → 台積電/AI 股恐領跌\n  ・ NVDA 單日重挫 → 台積電/廣達/緯穎當天通常綠\n\n💡 操作:看 NDX 是看「AI 概念股是否續強」最直接的領先指標。',
 
+        // === 📅 台指期結算(V21.8 新增,顯影響時間點) ===
+        '台指期結算': '📅 台指期(台股加權指數期貨)— 每月第 3 週三 13:30 結算。\n\n🎯 為何重要?\n  ・ 結算前 2-3 天:主力常作價拉抬權值股(尤其台積電/鴻海/聯發科)\n  ・ 結算日當天:13:30 收盤前波動極大,禁追高\n  ・ 結算日下午:結算行情結束,易出現獲利了結賣壓\n\n🌙 夜盤時段:\n  ・ 週一~五 15:00 開盤 → 隔日 5:00 結算(週六凌晨 5:00 結束)\n  ・ 反映美股盤前與歐股走勢,當沖隔日的多空風向球\n  ・ 夜盤大跌/大漲 → 隔日台股早盤通常同向開盤\n\n📊 影響時間點:\n  ⚠️ 今日結算 — 13:30 前波動大,空手別追,持有者準備鎖利\n  📅 明日結算 — 主力作價中,留意尾盤拉抬假象\n  🌅 14:30-15:00 — 夜盤即將開盤,前 30 分常見震盪\n  🌙 夜盤進行中 — 看美股盤前期貨同步漲跌\n  📆 平常 — 顯下次結算日 + 剩 N 天\n\n💡 操作建議:結算前 2 天勿建大倉、結算日 13:25 前清當沖、結算日尾盤可逢低布局(若多頭格局)。',
+
         // === 🐂 主力出貨指數(V21 五因子綜合卡)===
         '主力出貨指數': '🐂 由 5 個因子綜合算 0-100 分,判斷今天主力會「拉抬」還是「殺出」。\n\n📊 5 個因子:\n  ① 散戶情緒(retail_ls_pct):散戶過度看多 → +20 分(主力反向出貨)\n  ② 期貨升貼水(taifex_backwardation):大貼水 → +25 分(法人對沖空)\n  ③ 景氣燈號(business_signal):紅燈過熱 → +20 分;藍燈底部 → -15 分(反向利多)\n  ④ VIX 恐慌(vix):>25 → +25 分(全球避險升溫)\n  ⑤ 融資水位(margin):>3200 億爆表 → +30 分(散戶槓桿過高)\n\n🎯 燈號:\n  🟢 低檔護盤 (<0 分):主力在低檔買進撐住股價,可分批進場\n  🟡 中性 (0-39 分):正常操作,看訊號進出\n  🟠 警戒 (40-69 分):不追高,觀望,嚴設停損\n  🔴 主力可能殺出 (≥70 分):減碼,不接刀,警戒拉回\n\n💡 為什麼 5 因子比單一指標準?\n  ・ 散戶看多+期貨貼水+景氣紅燈 = 三個訊號同時出現,出貨機率高\n  ・ VIX 跳升 + 融資爆表 = 系統性風險,主力先逃\n  ・ 單一指標常會誤判,5 因子綜合可過濾雜訊\n\n📌 V21 新增,取代舊「期貨綜合判讀」三因子卡。',
 
@@ -2841,6 +2862,10 @@ const app = {
         this._loadMarketStats();       // 📊 V16.2 全市場 P/B 分位數(供動態 P/B 判斷,取代固定 <2/>5 門檻)
         this._loadTaiexMA240Bias();    // 🐂 V16.5 大盤位階(讀 data/^TWII.json 算 240MA,治本)
         this._startMinerStatusPolling();   // ⛏️ V16.4 採礦中 banner:GitHub API + miner_status.json 雙保險 poll
+        // V21.8 — 台指期狀態:init 跑一次 + 每分鐘更新 + 每 30 秒檢查重點時間自動 refetch
+        try { this._renderTaiexFutures(); } catch(_) {}
+        setInterval(() => { try { this._renderTaiexFutures(); } catch(_) {} }, 60_000);
+        setInterval(() => { try { this._maybeAutoRefreshIndices(); } catch(_) {} }, 30_000);
         this._ensureChuLockGroup();    // 📌 朱老師鎖股 favGroup 預設建立(空清單,等使用者鎖)
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
@@ -4882,8 +4907,8 @@ ${list}
     getStockName(sym) {
         // V16.6 — 指數 ticker special-case(allStockList 不收錄,fallback 會顯英文代號)
         if (sym === '^TWII')  return '加權指數';
-        if (sym === '^TWO')   return '上櫃指數';
-        if (sym === '^TWOII') return '上櫃指數';
+        if (sym === '^TWO')   return '櫃買指數';
+        if (sym === '^TWOII') return '櫃買指數';
         // 找不到對照(新股、特殊代號)→ 回傳代號本身,而非「未知」
         const f = this.allStockList.find(s => s.stock_id === sym);
         return f ? f.stock_name : (sym || '未知');
@@ -7832,6 +7857,172 @@ const marginByDate = {};
         } else {
             // 使用者已手動覆寫 → 尊重使用者,但 chip 標示自動值供對照
             this.renderBsiLight();
+        }
+    },
+
+    // 🚨 V21.8 — 全球熔斷示警卡(平常 hidden;接近/觸發時顯紅色警報 + 對台股影響量化)
+    //   熔斷規則(2026 現行):
+    //     🇺🇸 SPX/NDX:-7% Lv1 暫停 15 分 / -13% Lv2 / -20% Lv3 提早收盤
+    //     🇯🇵 日經期貨:±8%/12%/20%(個股 ±10-20% 動態)
+    //     🇰🇷 KOSPI:±8% Lv1 暫停 20 分 / ±15% Lv2 / ±20% Lv3
+    //     🇨🇳 滬深 300:**2016 取消**,目前無熔斷
+    //     🇹🇼 加權:**無指數熔斷**(只有個股單日 ±10%)
+    //   接近警戒 = 跌幅 ≥ Lv1 - 2pp(預警);觸發 = 跌幅 ≥ Lv1
+    _renderCircuitBreakerAlert() {
+        const alert = document.getElementById('circuitBreakerAlert');
+        if (!alert) return;
+        // 從既有 DOM 元素反查當日漲跌%(由 updateBigPlayers 更新);如 element 不存在 / 空 → 跳過該指數
+        const parsePct = (id) => {
+            const el = document.getElementById(id);
+            if (!el || !el.textContent) return null;
+            const m = el.textContent.match(/-?\d+\.?\d*/);
+            return m ? parseFloat(m[0]) : null;
+        };
+        const checks = [
+            { name: '🇺🇸 S&P500',  chg: parsePct('usBar_spx_chg') ?? parsePct('bpSpxChg'),
+              lvl1: -7, impact: '台股次日開盤平均 -4 ~ -6%(歷史經驗,僅供參考)' },
+            { name: '🇺🇸 那斯達克', chg: parsePct('usBar_ndx_chg') ?? parsePct('bpNdxChg'),
+              lvl1: -7, impact: '台股科技股次日 -5 ~ -8%(台積電/AI 股首當其衝)' },
+            { name: '🇯🇵 日經',    chg: parsePct('bpNikkeiChg'),
+              lvl1: -8, impact: '台股次日 -2 ~ -4%(亞股共振)' },
+            { name: '🇰🇷 KOSPI',  chg: parsePct('bpKospiChg'),
+              lvl1: -8, impact: '台股次日 -1 ~ -3%(半導體鏈共振)' },
+        ];
+        const triggered = [], warning = [];
+        for (const c of checks) {
+            if (typeof c.chg !== 'number') continue;
+            if (c.chg <= c.lvl1)             triggered.push(c);
+            else if (c.chg <= c.lvl1 + 2)    warning.push(c);
+        }
+        if (triggered.length === 0 && warning.length === 0) {
+            alert.classList.add('hidden');
+            return;
+        }
+        alert.classList.remove('hidden');
+        let html = `
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl animate-pulse">🚨</span>
+                <span class="text-base font-black text-red-300 tracking-wide">全球熔斷警報</span>
+                <span class="ml-auto text-[9px] text-gray-500">🇹🇼 台股無指數熔斷,僅個股 ±10%</span>
+            </div>`;
+        if (triggered.length) {
+            html += `<div class="bg-red-900/50 border-l-4 border-red-500 p-2.5 rounded-r mb-2">
+                <div class="text-red-300 font-bold text-xs mb-1.5">🚨 已觸發熔斷</div>`;
+            for (const t of triggered) {
+                html += `<div class="text-[11px] text-gray-200 leading-relaxed mb-1">
+                    <b class="text-red-300">${t.name}</b> 跌 <b class="text-red-300 font-mono">${t.chg.toFixed(2)}%</b> ≤ Lv1 (<span class="font-mono">${t.lvl1}%</span>)<br>
+                    <span class="text-amber-300/90 text-[10px]">└ 對台股影響:${t.impact}</span>
+                </div>`;
+            }
+            html += '</div>';
+        }
+        if (warning.length) {
+            html += `<div class="bg-amber-900/30 border-l-4 border-amber-500 p-2.5 rounded-r">
+                <div class="text-amber-300 font-bold text-xs mb-1.5">⚠️ 接近熔斷警戒(距 Lv1 ≤ 2pp)</div>`;
+            for (const w of warning) {
+                html += `<div class="text-[11px] text-gray-200 leading-relaxed mb-1">
+                    <b class="text-amber-300">${w.name}</b> 跌 <b class="text-amber-300 font-mono">${w.chg.toFixed(2)}%</b> 距 Lv1 (<span class="font-mono">${w.lvl1}%</span>) 僅 <b class="font-mono">${(w.chg - w.lvl1).toFixed(1)}pp</b><br>
+                    <span class="text-amber-300/80 text-[10px]">└ 對台股影響:${w.impact}</span>
+                </div>`;
+            }
+            html += '</div>';
+        }
+        html += `<div class="mt-2 text-[9px] text-gray-500 leading-relaxed">💡 熔斷規則:🇺🇸 SPX/NDX ±7%/13%/20% ・ 🇯🇵 日經 ±8%/12%/20% ・ 🇰🇷 KOSPI ±8%/15%/20% ・ 🇨🇳 已取消 ・ 🇹🇼 無</div>`;
+        alert.innerHTML = html;
+    },
+
+    // 📅 V21.8 — 台指期結算狀態(非即時,只顯影響時間點 + 結算倒數)
+    //           純 JS 算每月第 3 週三 13:30 + 夜盤時段(週一~五 15:00 - 隔日 5:00)
+    _renderTaiexFutures() {
+        const info = document.getElementById('taiexFuturesInfo');
+        const sub = document.getElementById('taiexFuturesSub');
+        if (!info || !sub) return;
+        const now = new Date();
+        const today = new Date(now); today.setHours(0, 0, 0, 0);
+        const wd = now.getDay();   // 0=Sun, 1=Mon, ..., 6=Sat
+        const hm = now.getHours() + now.getMinutes() / 60;
+        // 計算 (y, m) 該月第 3 週三的 Date
+        const calcThirdWed = (y, m) => {
+            const first = new Date(y, m, 1);
+            const firstWedDate = ((3 - first.getDay() + 7) % 7) + 1;
+            return new Date(y, m, firstWedDate + 14);
+        };
+        let settle = calcThirdWed(now.getFullYear(), now.getMonth());
+        if (settle < today) settle = calcThirdWed(now.getFullYear(), now.getMonth() + 1);
+        const dayMs = 86400000;
+        const daysToSettle = Math.round((settle - today) / dayMs);
+        const isToday = daysToSettle === 0;
+        const isTomorrow = daysToSettle === 1;
+        const mm = settle.getMonth() + 1, dd = settle.getDate();
+        // 顯示優先級(由急到緩)
+        let txt, subTxt, cls = 'text-[13px] font-black font-mono leading-tight';
+        if (isToday && hm < 13.5) {
+            txt = '⚠️ 今日結算'; subTxt = '13:30 收盤前波動大';
+            cls += ' text-red-300 animate-pulse';
+        } else if (isToday && hm >= 13.5) {
+            txt = '✅ 結算完成'; subTxt = '尾盤拋壓注意';
+            cls += ' text-gray-300';
+        } else if (isTomorrow) {
+            txt = '📅 明日結算'; subTxt = '主力作價;勿追高';
+            cls += ' text-amber-300';
+        } else if (wd >= 1 && wd <= 5 && hm >= 14.5 && hm < 15) {
+            txt = '🌅 夜盤開盤前'; subTxt = '15:00 起跑';
+            cls += ' text-blue-300';
+        } else if ((wd >= 1 && wd <= 4 && hm >= 15) ||
+                   (wd === 5 && hm >= 15) ||
+                   (wd >= 2 && wd <= 5 && hm < 5) ||
+                   (wd === 6 && hm < 5)) {
+            // 週一~五 15:00 後 + 週二~六 5:00 前都是夜盤
+            txt = '🌙 夜盤進行中'; subTxt = `至 ${(wd === 5 || (wd === 6 && hm < 5)) ? '週六' : '隔日'} 5:00`;
+            cls += ' text-purple-300';
+        } else {
+            txt = `📆 ${mm}/${dd} 結算`; subTxt = `剩 ${daysToSettle} 天`;
+            cls += ' text-amber-300';
+        }
+        info.textContent = txt;
+        info.className = cls;
+        sub.textContent = subTxt;
+    },
+
+    // 🔄 V21.8 — 三指數共用手動更新鈕觸發 + 重點時間自動更新 1 次
+    async _refreshAllIndices() {
+        const btn = document.getElementById('refreshIndicesBtn');
+        const ts = document.getElementById('refreshIndicesTs');
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+        try {
+            // 清 localStorage 內 macro cache → fetchMacroData 強制重新 fetch
+            try { localStorage.removeItem('proTerminalMacroCache_v3'); } catch(_) {}
+            if (typeof this.fetchMacroData === 'function') await this.fetchMacroData();
+            this._renderTaiexFutures();
+            if (ts) ts.textContent = `(${new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})})`;
+            this.vibrate?.(20);
+        } catch (e) {
+            console.warn('[refreshIndices] 失敗:', e);
+        } finally {
+            if (btn) setTimeout(() => { btn.disabled = false; btn.style.opacity = '1'; }, 2000);
+        }
+    },
+
+    // V21.8 — 重點時間自動更新檢查(在 init setInterval 每 30 秒呼叫,符合條件才動作 + 防重複觸發)
+    _maybeAutoRefreshIndices() {
+        const now = new Date();
+        const wd = now.getDay();
+        if (wd === 0 || wd === 6) return;   // 週末跳過
+        const hr = now.getHours(), mn = now.getMinutes();
+        const triggers = [
+            { h: 9, m: 0, label: '開盤' },
+            { h: 13, m: 30, label: '收盤' },
+            { h: 17, m: 0, label: '盤後' },
+        ];
+        for (const t of triggers) {
+            if (hr === t.h && mn >= t.m && mn < t.m + 2) {
+                const key = `${now.toDateString()}_${t.h}_${t.m}`;
+                if (this._lastAutoRefresh === key) return;
+                this._lastAutoRefresh = key;
+                console.log(`[autoRefresh] 重點時間 ${t.h}:${String(t.m).padStart(2,'0')} (${t.label}) 自動更新指數`);
+                this._refreshAllIndices();
+                return;
+            }
         }
     },
 
@@ -11218,6 +11409,9 @@ ${_newsLine}${globalContext}
         // 🌍 全球巨頭脈動(10 卡:黃金/原油/美元/BTC/VIX/日經/恆指/韓股/SP500/NASDAQ)
         this.updateBigPlayers(j);
 
+        // 🚨 V21.8 — 全球熔斷示警(平常 hidden,任一指數接近/觸發熔斷才顯)
+        try { this._renderCircuitBreakerAlert(); } catch(e) { console.warn('[circuit-breaker]', e); }
+
         // 📅 未來 14 日核彈事件(純演算法,出自 macro_miner.py)
         this._renderUpcomingMacroEvents(j.upcoming_macro_events);
 
@@ -12814,8 +13008,9 @@ ${_newsLine}${globalContext}
 
     // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
     _updateBubbleCrashCard() {
-        const card = document.getElementById('bubbleCrashCard');
-        if (!card) return;
+        // V21.8 — 改操作內部子 div #bubbleCrashSection(整卡 #bubbleCrashCard 永遠 visible 顯 4 維度燈號)
+        const section = document.getElementById('bubbleCrashSection');
+        if (!section) return;
         const mr = this._macroRiskCache;
         const sh = this._sectorHeatCache;
         const vix = mr?.vix ?? null;
@@ -12823,8 +13018,8 @@ ${_newsLine}${globalContext}
         const fiSpot = mr?.fi_spot_net ?? null;  // 外資現貨淨買賣(億)
         // 觸發條件:vix>30 或 美股 < -2%
         const crash = (vix != null && vix > 30) || (usChg != null && usChg < -2);
-        if (!crash) { card.classList.add('hidden'); return; }
-        card.classList.remove('hidden');
+        if (!crash) { section.classList.add('hidden'); return; }
+        section.classList.remove('hidden');
         // 真/假泡沫判讀:vix 高 + 外資狂砍 = 真泡沫;vix 中 + 外資仍買 = 假泡沫
         const fiSelling = fiSpot != null && fiSpot < -300;
         const isReal = vix > 30 && fiSelling;
