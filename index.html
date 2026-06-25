@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V23.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V23.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8263,17 +8263,22 @@ const marginByDate = {};
             } else {
                 syncChip = `<span class="text-[8px] px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500">⏳ 等盤中</span>`;
             }
-            // 一目了然:大字現價 + 同色漲跌% + 小字 ETF 代號 + 對標說明 + 同步度 chip
+            // V23.1 — 黃金比例混合對標:hover 顯加權成分細項(主+副 ticker 各別 chg + 權重)
+            const comps = etf.components || [];
+            const compsTip = comps.length ? comps.map(c => `${c.ticker}(${Math.round(c.weight*100)}%) ${c.ok && c.chg != null ? (c.chg >= 0 ? '+' : '') + c.chg.toFixed(2) + '%' : '失敗'}`).join(' / ') : '';
+            const fullTip = (compsTip ? `[加權對標] ${compsTip}\n` : '') + (etf.desc || '');
+            const mixBadge = comps.length > 1 ? `<span class="text-[7px] text-purple-400 ml-0.5" title="${compsTip}">+${comps.length - 1}</span>` : '';
+            // 一目了然:大字現價 + 同色漲跌% + 小字 ETF 代號 + 對標說明 + 同步度 chip + V23.1 混合對標 +N badge
             slot.innerHTML = `
                 <div class="flex items-baseline justify-between gap-1">
                     <div class="flex items-baseline gap-1">
-                        <span class="text-[9px] text-cyan-400/80 font-bold">🇺🇸 ${etf.etf}</span>
+                        <span class="text-[9px] text-cyan-400/80 font-bold" title="${fullTip}">🇺🇸 ${etf.etf}${mixBadge}</span>
                         <span class="text-[11px] font-mono font-black ${color}">$${priceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
-                    <span class="${color} text-[10px] font-mono font-bold">${arrow}${sign}${chgNum.toFixed(2)}%</span>
+                    <span class="${color} text-[10px] font-mono font-bold" title="${comps.length > 1 ? '加權後漲跌(成分:' + compsTip + ')' : '單一對標漲跌'}">${arrow}${sign}${chgNum.toFixed(2)}%</span>
                 </div>
                 <div class="flex items-center justify-between gap-1 mt-0.5">
-                    <div class="text-[8px] text-gray-600 truncate" title="${etf.desc || ''}">${etf.desc || ''}</div>
+                    <div class="text-[8px] text-gray-600 truncate" title="${fullTip}">${etf.desc || ''}</div>
                     ${syncChip}
                 </div>
             `;
@@ -8318,11 +8323,15 @@ const marginByDate = {};
             const twStr = !isNaN(twChg) ? `${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
             const usColor = !isNaN(usChg) ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
             const twColor = !isNaN(twChg) ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
+            // V23.1 — 混合對標 tooltip + +N badge(hover 看主+副成分各別 chg)
+            const comps = etf?.components || [];
+            const compsTip = comps.length ? comps.map(c => `${c.ticker}(${Math.round(c.weight*100)}%) ${c.ok && c.chg != null ? (c.chg >= 0 ? '+' : '') + c.chg.toFixed(2) + '%' : '失敗'}`).join(' / ') : '';
+            const mixBadge = comps.length > 1 ? `<span class="text-[7px] text-purple-400 ml-0.5" title="${compsTip}">+${comps.length - 1}</span>` : '';
             html += `
-                <div class="flex items-center justify-between text-[11px] py-1 border-b border-[#21262d] last:border-0">
+                <div class="flex items-center justify-between text-[11px] py-1 border-b border-[#21262d] last:border-0" title="${compsTip || (etf?.desc || '')}">
                     <span class="text-gray-200 font-bold flex-shrink-0">${s.label}</span>
                     <span class="flex items-center gap-1.5 flex-wrap justify-end">
-                        <span class="text-[10px] text-blue-300/80">${etf?.etf || '--'}</span>
+                        <span class="text-[10px] text-blue-300/80">${etf?.etf || '--'}${mixBadge}</span>
                         <span class="${usColor} font-mono text-[10px] font-bold">${usStr}</span>
                         <span class="text-gray-600 text-[10px]">→</span>
                         <span class="${twColor} font-mono text-[10px] font-bold">台 ${twStr}</span>
@@ -8380,7 +8389,10 @@ const marginByDate = {};
             const isTwNeg = rawTxt.includes('-') || rawTxt.includes('🔻');
             const twChg = !isNaN(twAbs) ? (isTwNeg ? -Math.abs(twAbs) : twAbs) : null;
             const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : null;
-            syncLines.push(`${sl}: 美股 ${etf?.etf || '?'} ${usChg != null ? usChg.toFixed(2)+'%' : '--'} / 台股 ${twChg != null ? twChg.toFixed(2)+'%' : '盤中未更新'}`);
+            // V23.1 — 混合對標細項(主+副 ticker 各別 chg + 權重)餵給 AI 更精準判讀
+            const comps = etf?.components || [];
+            const compsStr = comps.length > 1 ? ' [混合:' + comps.map(c => `${c.ticker}${Math.round(c.weight*100)}% ${c.ok && c.chg != null ? (c.chg >= 0 ? '+' : '') + c.chg.toFixed(2) + '%' : '--'}`).join('/') + ']' : '';
+            syncLines.push(`${sl}: 美股 ${etf?.etf || '?'} ${usChg != null ? usChg.toFixed(2)+'%' : '--'}${compsStr} / 台股 ${twChg != null ? twChg.toFixed(2)+'%' : '盤中未更新'}`);
         }
         // 收集使用者自選股 + 對應板塊
         const favSyms = Array.from(new Set(Object.values(this.favGroups || {}).flat()));

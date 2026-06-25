@@ -720,31 +720,83 @@ def fetch_sp500():    return _fetch_yf_close("^GSPC",    "標普 500")    # 🌎
 def fetch_nasdaq():   return _fetch_yf_close("^IXIC",    "那斯達克")    # 🌎 美股科技指標(台積電/半導體連動)
 
 
-# ── 🏭 美股 ETF 對應前端「資金板塊輪動」9 細分板塊(Q3)──
-# 對應規則:每板塊配 1 個最相關美股 ETF,前端漲跌即時對比同方向 vs 逆勢
+# ── 🏭 美股對標 9 細分板塊 ──
+# V23.1 黃金比例混合對標(精進):每板塊「主對標」+「副對標(個股 1-2 檔)」加權平均
+#   理由:單一 ETF 易被權重股稀釋(SMH 被台積電/輝達拉走情緒);加個股對標更精準抓族群資金流
+#   結構:primary(權重)+ secondary[](權重),失敗 ticker 從加權池移除等比例放大
 SECTOR_ETF_MAP = {
-    'server':    {'etf': 'SMH',  'name': '美半導體 SMH',   'desc': 'AI 伺服器供應鏈對標 (SMCI/DELL/HPE 母指數)'},
-    'power':     {'etf': 'GRID', 'name': '美智慧電網 GRID', 'desc': '重電基建對標 (GEV/POWL/ETN)'},
-    'packaging': {'etf': 'SOXX', 'name': '美半導體 SOXX',  'desc': '先進封裝對標 (TSM/AVGO)'},
-    'cpo':       {'etf': 'IGV',  'name': '美軟體 IGV',     'desc': 'CPO/光通訊 AI 題材對標 (ANET/COHR)'},
-    'cooling':   {'etf': 'XLI',  'name': '美工業 XLI',     'desc': '散熱液冷供應鏈對標 (VRT/TT)'},
-    'robot':     {'etf': 'BOTZ', 'name': '美機器人 BOTZ',  'desc': '實體機器人對標 (SYM/ROK/TSLA)'},
-    'finance':   {'etf': 'XLF',  'name': '美金融 XLF',     'desc': '金融避風港對標 (JPM/BAC)'},
-    'leo':       {'etf': 'ITA',  'name': '美航太 ITA',     'desc': '低軌衛星 / 航太對標 (IRDM/RKLB)'},
-    'dram':      {'etf': 'SMH',  'name': '美半導體 SMH',   'desc': 'DRAM/記憶體對標 (MU/WDC)'},
+    'server': {
+        'primary':   {'ticker': 'SMH',  'name': '美半導體',     'weight': 0.4},
+        'secondary': [
+            {'ticker': 'NVDA', 'name': '輝達(晶片供貨體感)',   'weight': 0.4},
+            {'ticker': 'SMCI', 'name': '美超微(財報供應鏈指引)', 'weight': 0.2},
+        ],
+        'desc': 'AI 伺服器(SMH + NVDA + SMCI 黃金比例,廣達/緯創/鴻海主旋律)',
+    },
+    'power':     {
+        'primary':   {'ticker': 'GRID', 'name': '美智慧電網', 'weight': 1.0},
+        'secondary': [],
+        'desc': '重電基建對標 (GEV/POWL/ETN)',
+    },
+    'packaging': {
+        'primary':   {'ticker': 'SOXX', 'name': '半導體 SOXX',  'weight': 0.4},
+        'secondary': [
+            {'ticker': 'TSM',  'name': '台積電 ADR(資本支出)', 'weight': 0.4},
+            {'ticker': 'ASML', 'name': '艾司摩爾(設備拉貨)',   'weight': 0.2},
+        ],
+        'desc': '先進封裝(SOXX + TSM + ASML 黃金比例,CoWoS 弘塑/辛耘/萬潤)',
+    },
+    'cpo': {
+        # 🚨 V23.1 糾錯:原 IGV(科技軟體 ETF,微軟/Adobe)方向錯 → 換 MRVL + AVGO(硬體巨頭)
+        'primary':   {'ticker': 'MRVL', 'name': '邁威爾(光通訊主導)', 'weight': 0.5},
+        'secondary': [
+            {'ticker': 'AVGO', 'name': '博通(光通訊主導)', 'weight': 0.5},
+        ],
+        'desc': 'CPO 光通訊(MRVL + AVGO,V23.1 糾正:原 IGV 軟體 ETF 對錯方向)',
+    },
+    'cooling':   {
+        'primary':   {'ticker': 'XLI', 'name': '美工業', 'weight': 1.0},
+        'secondary': [],
+        'desc': '散熱液冷供應鏈對標 (VRT/TT)',
+    },
+    'robot': {
+        'primary':   {'ticker': 'BOTZ', 'name': '美機器人 BOTZ', 'weight': 0.5},
+        'secondary': [
+            {'ticker': 'TSLA', 'name': '特斯拉(Optimus 人形機器人題材)', 'weight': 0.5},
+        ],
+        'desc': '機器人(BOTZ + TSLA Optimus 題材外溢,所羅門/台灣精銳)',
+    },
+    'finance':   {
+        'primary':   {'ticker': 'XLF', 'name': '美金融', 'weight': 1.0},
+        'secondary': [],
+        'desc': '金融避風港對標 (JPM/BAC)',
+    },
+    'leo':       {
+        'primary':   {'ticker': 'ITA', 'name': '美航太', 'weight': 1.0},
+        'secondary': [],
+        'desc': '低軌衛星 / 航太對標 (IRDM/RKLB)',
+    },
+    'dram': {
+        'primary':   {'ticker': 'MU',  'name': '美光', 'weight': 0.4},
+        'secondary': [
+            {'ticker': '005930.KS', 'name': '三星(HBM 霸主之一)',   'weight': 0.3},
+            {'ticker': '000660.KS', 'name': 'SK海力士(HBM 龍頭)', 'weight': 0.3},
+        ],
+        'desc': 'DRAM 記憶體(MU + 三星 + SK海力士;HBM 現貨報價待付費源)',
+    },
 }
 
 
 def fetch_sector_etfs():
-    """🏭 一次抓 10 個美股產業 ETF 的當日收盤 + 漲跌%(對應台股板塊)。
-    回傳 dict:{sector_key: {price, chg_pct, name, desc}}
-    V21.7 — 修兩個 BUG:
-      ① `_fetch_yf_close` 回 3-tuple (price, chg, err) 但原本只 unpack 2 個 → 永遠 ValueError
-         → 每個 ETF 都被 except 接住 → 全部「採集中」(這是使用者反映的根因)
-      ② 失敗時讀上次 macro_cache.json 保留舊值 + stale 標記,避免長時間沒資料
+    """🏭 V23.1 黃金比例混合對標:每板塊主對標(ETF)+ 副對標(個股)加權平均。
+    回傳 dict: {sector_key: {etf, name, desc, price, chg_pct, components, primary_only_chg}}
+    - `etf/price` 維持向下相容(主對標 ticker / 主對標 price)
+    - `chg_pct` 改為加權平均(成功抓到的 weight 等比例放大重分配)
+    - `components[]` 列每個 ticker 的 price/chg/weight/ok/err 細項(前端 tooltip / AI prompt 用)
+    - `primary_only_chg` 純主對標 chg(對比/debug 用)
+    V21.7 原 fallback 機制保留:全部 ticker 都失敗才走 stale prev_cache
     """
-    print("🏭 採集美股產業 ETF(對應台股板塊輪動)…")
-    # V21.7 — 讀上次 macro_cache 的 sector_etfs,失敗時保留
+    print("🏭 採集美股對標 9 細分板塊(V23.1 黃金比例混合對標,主+副個股加權)…")
     prev_cache = {}
     try:
         cache_path = Path('macro_cache.json')
@@ -753,34 +805,62 @@ def fetch_sector_etfs():
             prev_cache = prev.get('sector_etfs') or {}
     except Exception:
         pass
+
     out = {}
     for key, meta in SECTOR_ETF_MAP.items():
-        try:
-            price, chg, err = _fetch_yf_close(meta['etf'], meta['name'])
-            if price is None:
-                # 抓失敗 → 用上次成功值(若有)
-                prev_etf = prev_cache.get(key) or {}
-                if prev_etf.get('price') is not None:
-                    out[key] = {**prev_etf, 'stale': True, 'last_error': (err or '')[:60]}
-                    print(f"   · {meta['etf']:6s} ⚠️ 失敗 ({err or '?'}),保留上次 ${prev_etf['price']}")
-                    continue
-                out[key] = {'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
-                            'price': None, 'chg_pct': None, 'error': (err or 'unknown')[:80]}
-                print(f"   · {meta['etf']:6s} {meta['name']:15s} 失敗 ({err or '?'})")
-                continue
+        primary = meta['primary']
+        secondary = meta.get('secondary') or []
+        all_targets = [primary] + secondary
+        components = []
+        for t in all_targets:
+            try:
+                price, chg, err = _fetch_yf_close(t['ticker'], t['name'])
+                ok = (price is not None) and (chg is not None)
+                components.append({
+                    'ticker': t['ticker'], 'name': t['name'],
+                    'price': price, 'chg': chg,
+                    'weight': t['weight'], 'ok': ok,
+                    'err': (err or '')[:60] if not ok else None,
+                })
+                if ok:
+                    print(f"   · [{key:9s}] {t['ticker']:10s} {t['name']:20s} ${price} ({chg:+.2f}%) w={t['weight']}")
+                else:
+                    print(f"   · [{key:9s}] {t['ticker']:10s} 失敗 ({err or '?'}) w={t['weight']}")
+            except Exception as e:
+                components.append({
+                    'ticker': t['ticker'], 'name': t['name'], 'price': None, 'chg': None,
+                    'weight': t['weight'], 'ok': False, 'err': str(e)[:60],
+                })
+                print(f"   · [{key:9s}] {t['ticker']:10s} 例外 ({str(e)[:40]})")
+
+        ok_comps = [c for c in components if c['ok']]
+        if ok_comps:
+            total_w = sum(c['weight'] for c in ok_comps)
+            weighted_chg = sum(c['chg'] * c['weight'] for c in ok_comps) / total_w if total_w > 0 else None
+            primary_price = components[0]['price']
+            primary_only_chg = components[0]['chg']
             out[key] = {
-                'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
-                'price': price, 'chg_pct': chg,
+                'etf': primary['ticker'],
+                'name': primary['name'],
+                'desc': meta['desc'],
+                'price': primary_price,
+                'chg_pct': round(weighted_chg, 2) if weighted_chg is not None else None,
+                'components': components,
+                'primary_only_chg': round(primary_only_chg, 2) if primary_only_chg is not None else None,
             }
-            print(f"   · {meta['etf']:6s} {meta['name']:15s} ${price} ({chg:+.2f}%)")
-        except Exception as e:
-            # 例外時也試讀上次值
+            if len(ok_comps) < len(components):
+                out[key]['partial'] = True
+        else:
+            # 全部 ticker 失敗 → fallback stale prev_cache,或 error
             prev_etf = prev_cache.get(key) or {}
             if prev_etf.get('price') is not None:
-                out[key] = {**prev_etf, 'stale': True, 'last_error': str(e)[:60]}
+                out[key] = {**prev_etf, 'stale': True, 'last_error': '全部 ticker 抓取失敗'}
             else:
-                out[key] = {'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
-                            'price': None, 'chg_pct': None, 'error': str(e)[:80]}
+                out[key] = {
+                    'etf': primary['ticker'], 'name': primary['name'], 'desc': meta['desc'],
+                    'price': None, 'chg_pct': None, 'components': components,
+                    'error': '全部 ticker 抓取失敗',
+                }
     return out
 
 
