@@ -738,21 +738,49 @@ SECTOR_ETF_MAP = {
 def fetch_sector_etfs():
     """🏭 一次抓 10 個美股產業 ETF 的當日收盤 + 漲跌%(對應台股板塊)。
     回傳 dict:{sector_key: {price, chg_pct, name, desc}}
-    失敗的 ETF 對應 None,前端 graceful 顯示「--」
+    V21.7 — 修兩個 BUG:
+      ① `_fetch_yf_close` 回 3-tuple (price, chg, err) 但原本只 unpack 2 個 → 永遠 ValueError
+         → 每個 ETF 都被 except 接住 → 全部「採集中」(這是使用者反映的根因)
+      ② 失敗時讀上次 macro_cache.json 保留舊值 + stale 標記,避免長時間沒資料
     """
     print("🏭 採集美股產業 ETF(對應台股板塊輪動)…")
+    # V21.7 — 讀上次 macro_cache 的 sector_etfs,失敗時保留
+    prev_cache = {}
+    try:
+        cache_path = Path('macro_cache.json')
+        if cache_path.exists():
+            prev = json.loads(cache_path.read_text(encoding='utf-8'))
+            prev_cache = prev.get('sector_etfs') or {}
+    except Exception:
+        pass
     out = {}
     for key, meta in SECTOR_ETF_MAP.items():
         try:
-            price, chg = _fetch_yf_close(meta['etf'], meta['name'])
+            price, chg, err = _fetch_yf_close(meta['etf'], meta['name'])
+            if price is None:
+                # 抓失敗 → 用上次成功值(若有)
+                prev_etf = prev_cache.get(key) or {}
+                if prev_etf.get('price') is not None:
+                    out[key] = {**prev_etf, 'stale': True, 'last_error': (err or '')[:60]}
+                    print(f"   · {meta['etf']:6s} ⚠️ 失敗 ({err or '?'}),保留上次 ${prev_etf['price']}")
+                    continue
+                out[key] = {'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
+                            'price': None, 'chg_pct': None, 'error': (err or 'unknown')[:80]}
+                print(f"   · {meta['etf']:6s} {meta['name']:15s} 失敗 ({err or '?'})")
+                continue
             out[key] = {
                 'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
                 'price': price, 'chg_pct': chg,
             }
-            print(f"   · {meta['etf']:6s} {meta['name']:15s} ${price} ({chg:+.2f}%)" if price else f"   · {meta['etf']:6s} 失敗")
+            print(f"   · {meta['etf']:6s} {meta['name']:15s} ${price} ({chg:+.2f}%)")
         except Exception as e:
-            out[key] = {'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
-                        'price': None, 'chg_pct': None, 'error': str(e)[:80]}
+            # 例外時也試讀上次值
+            prev_etf = prev_cache.get(key) or {}
+            if prev_etf.get('price') is not None:
+                out[key] = {**prev_etf, 'stale': True, 'last_error': str(e)[:60]}
+            else:
+                out[key] = {'etf': meta['etf'], 'name': meta['name'], 'desc': meta['desc'],
+                            'price': None, 'chg_pct': None, 'error': str(e)[:80]}
     return out
 
 

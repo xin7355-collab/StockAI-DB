@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V21.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V21.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -198,7 +198,24 @@
         </div>
     </div>
     <div id="scoreDetailModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[24rem]" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-3"><h3 class="text-white font-black text-lg">📊 Alpha 動能評分報告</h3><button onclick="document.getElementById('scoreDetailModal').classList.add('hidden'); document.getElementById('scoreDetailModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button></div><div class="text-xs text-gray-500 mb-3 leading-relaxed">融合大師型態學，加入紅黑棒係數與島型反轉偵測機制。</div><div id="scoreDetailContent" class="flex flex-col gap-2 text-sm font-mono text-gray-300 bg-[#0d1117] p-3 rounded-lg border border-[#30363d]"></div></div></div>
-    <div id="jargonModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="jargonTitle" class="text-blue-400 font-black text-lg mb-3 border-b border-gray-700 pb-2 flex items-center gap-2">💡 名詞解釋</h3><p id="jargonDesc" class="text-sm text-gray-300 leading-relaxed font-bold tracking-wide"></p><button onclick="document.getElementById('jargonModal').classList.add('hidden'); document.getElementById('jargonModal').style.display='none';" class="mt-5 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
+    <!-- V21.7 — Q1.1 jargon modal 修破圖:加 max-h + flex + scroll 區 + 頂部 ✕ 鈕(原本內容多會超出畫面且無關閉鍵)-->
+    <div id="jargonModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';">
+        <div class="modal-content max-w-[22rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()">
+            <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-gray-700 rounded-t-lg">
+                <h3 id="jargonTitle" class="text-blue-400 font-black text-base flex items-center gap-2">💡 名詞解釋</h3>
+                <button onclick="document.getElementById('jargonModal').classList.add('hidden'); document.getElementById('jargonModal').style.display='none';"
+                        class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center"
+                        style="min-width:40px; min-height:40px;" title="關閉">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-4 py-3">
+                <p id="jargonDesc" class="text-sm text-gray-300 leading-relaxed font-bold tracking-wide whitespace-pre-wrap"></p>
+            </div>
+            <div class="sticky bottom-0 bg-[#0d1117] px-4 py-3 border-t border-gray-700 rounded-b-lg">
+                <button onclick="document.getElementById('jargonModal').classList.add('hidden'); document.getElementById('jargonModal').style.display='none';"
+                        class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button>
+            </div>
+        </div>
+    </div>
 
     <div id="settingsModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';">
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
@@ -795,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V21.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2416,7 +2433,7 @@ const app = {
         '那斯達克': '那斯達克綜合指數,科技股大本營(蘋果/微軟/NVDA/META/特斯拉等)。\n\n📊 對台積電/聯發科/AI 股影響最大:\n  ・ 那斯達克 > +1.5% → 台股科技類股有望跳空高開\n  ・ 那斯達克 < -1.5% → 台積電/AI 股恐領跌\n  ・ NVDA 單日重挫 → 台積電/廣達/緯穎當天通常綠\n\n💡 操作:看 NDX 是看「AI 概念股是否續強」最直接的領先指標。',
 
         // === 🐂 主力出貨指數(V21 五因子綜合卡)===
-        '主力出貨指數': '🐂 由 5 個因子綜合算 0-100 分,判斷今天主力會「拉抬」還是「殺出」。\n\n📊 5 個因子:\n  ① 散戶情緒(retail_ls_pct):散戶過度看多 → +20 分(主力反向出貨)\n  ② 期貨升貼水(taifex_backwardation):大貼水 → +25 分(法人對沖空)\n  ③ 景氣燈號(business_signal):紅燈過熱 → +20 分;藍燈底部 → -15 分(反向利多)\n  ④ VIX 恐慌(vix):>25 → +25 分(全球避險升溫)\n  ⑤ 融資水位(margin):>3200 億爆表 → +30 分(散戶槓桿過高)\n\n🎯 燈號:\n  🟢 託盤 (<0 分):可分批進場,留意低接\n  🟡 中性 (0-39 分):正常操作,看訊號進出\n  🟠 警戒 (40-69 分):不追高,觀望,嚴設停損\n  🔴 主力可能殺出 (≥70 分):減碼,不接刀,警戒拉回\n\n💡 為什麼 5 因子比單一指標準?\n  ・ 散戶看多+期貨貼水+景氣紅燈 = 三個訊號同時出現,出貨機率高\n  ・ VIX 跳升 + 融資爆表 = 系統性風險,主力先逃\n  ・ 單一指標常會誤判,5 因子綜合可過濾雜訊\n\n📌 V21 新增,取代舊「期貨綜合判讀」三因子卡。',
+        '主力出貨指數': '🐂 由 5 個因子綜合算 0-100 分,判斷今天主力會「拉抬」還是「殺出」。\n\n📊 5 個因子:\n  ① 散戶情緒(retail_ls_pct):散戶過度看多 → +20 分(主力反向出貨)\n  ② 期貨升貼水(taifex_backwardation):大貼水 → +25 分(法人對沖空)\n  ③ 景氣燈號(business_signal):紅燈過熱 → +20 分;藍燈底部 → -15 分(反向利多)\n  ④ VIX 恐慌(vix):>25 → +25 分(全球避險升溫)\n  ⑤ 融資水位(margin):>3200 億爆表 → +30 分(散戶槓桿過高)\n\n🎯 燈號:\n  🟢 低檔護盤 (<0 分):主力在低檔買進撐住股價,可分批進場\n  🟡 中性 (0-39 分):正常操作,看訊號進出\n  🟠 警戒 (40-69 分):不追高,觀望,嚴設停損\n  🔴 主力可能殺出 (≥70 分):減碼,不接刀,警戒拉回\n\n💡 為什麼 5 因子比單一指標準?\n  ・ 散戶看多+期貨貼水+景氣紅燈 = 三個訊號同時出現,出貨機率高\n  ・ VIX 跳升 + 融資爆表 = 系統性風險,主力先逃\n  ・ 單一指標常會誤判,5 因子綜合可過濾雜訊\n\n📌 V21 新增,取代舊「期貨綜合判讀」三因子卡。',
 
         // === 🚨 戰情指揮部 5 維度 ===
         '5維度量價': '量價維度：營收年增率 + K線型態 + 成交量。「強」=月營收 YoY > 15% 且爆量上攻、「中」=穩健向上、「弱」=量縮無力、「待採」=資料未到。',
@@ -7749,9 +7766,18 @@ const marginByDate = {};
             <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">💡 各因子權重:Falcon×25 / 外資反轉×20 / 注意股風險×15 / 投信做帳×15 / 景氣燈號×15 / 越關大尾×10</div>`;
     },
 
-    // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
-    _showAttentionRulesHelp() {
-        if (!value) return;
+    // V21.7 — Q2 修嚴重 BUG:此函式原誤寫為 `_showAttentionRulesHelp`(跟 L7964 真正的注意股教學同名,JS 後定義覆寫前定義),
+    //         導致使用者點景氣燈號 dropdown 時 `app.setBsiLight is not a function`,自動/手動皆失效。
+    //         同時加「value 空時清 localStorage + 回到 _bsiAuto.light」讓使用者能切回自動模式。
+    setBsiLight(value) {
+        if (!value) {
+            // 選「📡 自動(NDC)」option → 清手動覆寫,回到自動值
+            try { localStorage.removeItem('proTerminalBsiLight'); } catch(_) {}
+            this._twBsiLight = this._bsiAuto?.light || '';
+            this.renderBsiLight();
+            this.vibrate(20);
+            return;
+        }
         try { localStorage.setItem('proTerminalBsiLight', value); } catch(_) {}
         this._twBsiLight = value;
         this.renderBsiLight();
@@ -7874,8 +7900,9 @@ const marginByDate = {};
             cardCls = 'bg-gradient-to-br from-yellow-950/40 to-yellow-900/20 border-yellow-700/40';
             scoreCls = 'text-yellow-300';
         } else {
-            verdict = '🟢 主力託盤';
-            advice = '可分批進場 / 留意低接機會';
+            // V21.7 — 「主力託盤」→「主力低檔護盤」(使用者反饋「託盤」太專業)
+            verdict = '🟢 主力低檔護盤';
+            advice = '主力在低檔買進撐住股價 → 可分批跟進';
             cardCls = 'bg-gradient-to-br from-green-950/50 to-green-900/20 border-green-700/50';
             scoreCls = 'text-green-300';
         }
@@ -7919,7 +7946,8 @@ const marginByDate = {};
             const chg = etf.chg_pct;
             const price = etf.price;
             if (price == null || chg == null) {
-                slot.innerHTML = `<div class="text-[8px] text-gray-600">🇺🇸 ${etf.etf}: 採集中</div>`;
+                // V21.7 — Q3 修文案:從「採集中」改成更明確的「⚠️ 抓取失敗」,讓使用者知道是 yfinance 限流不是採礦未跑
+                slot.innerHTML = `<div class="text-[8px] text-amber-400/70">🇺🇸 ${etf.etf}:⚠️ yfinance 抓取失敗,下次採礦補</div>`;
                 return;
             }
             const chgNum = parseFloat(chg);
