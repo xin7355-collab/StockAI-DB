@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V22.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V22.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V22.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V22.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1739,6 +1739,23 @@
                 <div class="text-[11px] text-gray-400 mb-1.5 mt-1">熱錢流向哪個產業一目了然 — <span class="text-red-400 font-bold">🔺 紅=漲</span> / <span class="text-green-400 font-bold">🔻 綠=跌</span>(台股慣例)</div>
                 <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="w-full mb-2 text-[11px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1.5">🔄 盤中即時更新(Fugle)</button>
                 <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-gradient-to-r from-purple-500 to-pink-500 h-full transition-all" style="width:0%"></div></div>
+                <!-- V22.2 — 🇺🇸 美股先行 → 🇹🇼 台股 9 族群同步度摘要(由 _renderSectorSyncSummary 動態渲染) -->
+                <div class="mb-2 bg-gradient-to-r from-blue-950/40 via-[#010409] to-red-950/40 rounded-xl border border-blue-700/40 p-3">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-sm">🇺🇸</span>
+                            <span class="text-[12px] font-black text-blue-300">昨夜美股先行</span>
+                            <span class="text-gray-500 text-sm">→</span>
+                            <span class="text-sm">🇹🇼</span>
+                            <span class="text-[12px] font-black text-red-300">今日台股</span>
+                        </div>
+                        <span class="text-[9px] text-gray-500">9 族群同步度</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 mb-2 leading-relaxed">💡 <b class="text-blue-200">美股漲台股跟漲</b>=主力有接(安全);<b class="text-yellow-200">逆勢</b>=主力可能在出貨/吸籌(留意);<b>⏳ 等盤中</b>=請按上方「即時更新」鈕</div>
+                    <div id="sectorSyncList" class="space-y-0">
+                        <div class="text-center text-gray-500 py-2 text-[10px]">載入中...</div>
+                    </div>
+                </div>
                 <!-- V19.7 — 每張卡底部「🌎 對標 XXX」連結移除(使用者反映太麻煩看不懂),
                             改成卡片頂部一個可摺疊「📖 美股對標速查表」(平常摺起,看不懂時點開) -->
                 <div class="mb-2 border border-[#30363d] rounded">
@@ -8226,7 +8243,26 @@ const marginByDate = {};
             const arrow = chgNum > 0.2 ? '🔺' : chgNum < -0.2 ? '🔻' : '→';
             const sign = chgNum > 0 ? '+' : '';
             const color = chgNum > 0.2 ? 'text-red-300' : chgNum < -0.2 ? 'text-green-300' : 'text-gray-400';
-            // 一目了然:大字現價 + 同色漲跌% + 小字 ETF 代號 + 對標說明
+            // V22.2 — 台美同步度 chip(從 parent .sector-heat 讀台股盤中漲跌)
+            const heatEl = parent.querySelector('.sector-heat');
+            const twChg = parseFloat((heatEl?.textContent || '').replace(/[^\d.\-]/g, ''));
+            const heatHasSign = heatEl?.textContent?.includes('-') || heatEl?.textContent?.includes('🔻');
+            const twChgSigned = !isNaN(twChg) ? (heatHasSign ? -Math.abs(twChg) : twChg) : NaN;
+            let syncChip = '';
+            if (!isNaN(twChgSigned) && Math.abs(twChgSigned) > 0.1) {
+                if (chgNum > 0.3 && twChgSigned > 0.3) {
+                    syncChip = `<span class="text-[8px] px-1.5 py-0.5 rounded bg-red-900/40 text-red-300 font-bold">✅ 同步偏多</span>`;
+                } else if (chgNum < -0.3 && twChgSigned < -0.3) {
+                    syncChip = `<span class="text-[8px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-300 font-bold">✅ 同步偏空</span>`;
+                } else if ((chgNum > 0.3 && twChgSigned < -0.3) || (chgNum < -0.3 && twChgSigned > 0.3)) {
+                    syncChip = `<span class="text-[8px] px-1.5 py-0.5 rounded bg-yellow-900/40 text-yellow-300 font-bold animate-pulse">⚠️ 逆勢</span>`;
+                } else {
+                    syncChip = `<span class="text-[8px] px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-400">🟡 持平</span>`;
+                }
+            } else {
+                syncChip = `<span class="text-[8px] px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500">⏳ 等盤中</span>`;
+            }
+            // 一目了然:大字現價 + 同色漲跌% + 小字 ETF 代號 + 對標說明 + 同步度 chip
             slot.innerHTML = `
                 <div class="flex items-baseline justify-between gap-1">
                     <div class="flex items-baseline gap-1">
@@ -8235,9 +8271,65 @@ const marginByDate = {};
                     </div>
                     <span class="${color} text-[10px] font-mono font-bold">${arrow}${sign}${chgNum.toFixed(2)}%</span>
                 </div>
-                <div class="text-[8px] text-gray-600 mt-0.5 truncate" title="${etf.desc || ''}">${etf.desc || ''}</div>
+                <div class="flex items-center justify-between gap-1 mt-0.5">
+                    <div class="text-[8px] text-gray-600 truncate" title="${etf.desc || ''}">${etf.desc || ''}</div>
+                    ${syncChip}
+                </div>
             `;
         });
+        // V22.2 — 同步刷新頂部「美股先行 → 台股」摘要卡
+        this._renderSectorSyncSummary(sectorEtfs);
+    },
+
+    // V22.2 — 渲染頂部「🇺🇸 美股先行 → 🇹🇼 台股」9 族群同步度摘要
+    _renderSectorSyncSummary(sectorEtfs) {
+        const listEl = document.getElementById('sectorSyncList');
+        if (!listEl) return;
+        const etfMap = sectorEtfs || this._macroRiskCache?.sector_etfs || {};
+        const sectors = [
+            { key:'server',    label:'🖥️ 伺服器代工' },
+            { key:'power',     label:'⚡ 重電基建' },
+            { key:'packaging', label:'📦 先進封裝' },
+            { key:'cpo',       label:'🔗 CPO 光通訊' },
+            { key:'cooling',   label:'❄️ 散熱' },
+            { key:'robot',     label:'🤖 機器人' },
+            { key:'finance',   label:'🏦 金融' },
+            { key:'leo',       label:'🛰️ 低軌衛星' },
+            { key:'dram',      label:'💾 DRAM' },
+        ];
+        let html = '';
+        for (const s of sectors) {
+            const etf = etfMap[s.key];
+            const heatEl = document.querySelector(`[data-sector="${s.key}"] .sector-heat`);
+            const rawTxt = heatEl?.textContent || '';
+            const twAbs = parseFloat(rawTxt.replace(/[^\d.\-]/g, ''));
+            const isTwNeg = rawTxt.includes('-') || rawTxt.includes('🔻');
+            const twChg = !isNaN(twAbs) ? (isTwNeg ? -Math.abs(twAbs) : twAbs) : NaN;
+            const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : NaN;
+            let badge = '⏳ 等盤中', cls = 'text-gray-500';
+            if (!isNaN(usChg) && !isNaN(twChg) && Math.abs(twChg) > 0.1) {
+                if (usChg > 0.3 && twChg > 0.3) { badge = '✅ 同步偏多'; cls = 'text-red-300'; }
+                else if (usChg < -0.3 && twChg < -0.3) { badge = '✅ 同步偏空'; cls = 'text-green-300'; }
+                else if ((usChg > 0.3 && twChg < -0.3) || (usChg < -0.3 && twChg > 0.3)) { badge = '⚠️ 逆勢'; cls = 'text-yellow-300 animate-pulse'; }
+                else { badge = '🟡 持平'; cls = 'text-gray-400'; }
+            }
+            const usStr = !isNaN(usChg) ? `${usChg >= 0 ? '+' : ''}${usChg.toFixed(1)}%` : '--';
+            const twStr = !isNaN(twChg) ? `${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
+            const usColor = !isNaN(usChg) ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
+            const twColor = !isNaN(twChg) ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
+            html += `
+                <div class="flex items-center justify-between text-[11px] py-1 border-b border-[#21262d] last:border-0">
+                    <span class="text-gray-200 font-bold flex-shrink-0">${s.label}</span>
+                    <span class="flex items-center gap-1.5 flex-wrap justify-end">
+                        <span class="text-[10px] text-blue-300/80">${etf?.etf || '--'}</span>
+                        <span class="${usColor} font-mono text-[10px] font-bold">${usStr}</span>
+                        <span class="text-gray-600 text-[10px]">→</span>
+                        <span class="${twColor} font-mono text-[10px] font-bold">台 ${twStr}</span>
+                        <span class="${cls} font-bold text-[10px]">${badge}</span>
+                    </span>
+                </div>`;
+        }
+        listEl.innerHTML = html;
     },
 
     // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
@@ -13045,6 +13137,8 @@ ${_newsLine}${globalContext}
         }
         // 記憶體:盤中即時結果存 localStorage(沿用上批機制 key)
         try { localStorage.setItem('sectorIntradayLastGood', JSON.stringify({ at: Date.now(), chg: liveChg })); } catch(_){}
+        // V22.2 — 台股 .sector-heat 已更新,重算每張卡的同步 chip + 頂部摘要卡
+        if (this._macroRiskCache?.sector_etfs) this._renderSectorEtfs(this._macroRiskCache.sector_etfs);
         const srcEl = document.getElementById('sectorSource');
         if (srcEl) { srcEl.textContent = `(盤中 ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')})`; srcEl.classList.remove('opacity-60'); }
 
@@ -16900,6 +16994,27 @@ ${wBottom.detected
             `${k}: ${s.chg == null ? '待採' : (s.chg > 0 ? '+' : '') + s.chg.toFixed(2) + '%'}`
         ).join(' / ') : '（細分待採）';
 
+        // V22.2 — 台美族群同步檢驗(美股 ETF chg vs 台股盤中 .sector-heat,9 族群)
+        const _syncEtfs = this._macroRiskCache?.sector_etfs || {};
+        const _syncSectors = ['server','power','packaging','cpo','cooling','robot','finance','leo','dram'];
+        const _syncLines = [];
+        for (const _sk of _syncSectors) {
+            const _etf = _syncEtfs[_sk];
+            const _heatEl = document.querySelector(`[data-sector="${_sk}"] .sector-heat`);
+            const _rawTxt = _heatEl?.textContent || '';
+            const _twAbs = parseFloat(_rawTxt.replace(/[^\d.\-]/g, ''));
+            const _isTwNeg = _rawTxt.includes('-') || _rawTxt.includes('🔻');
+            const _twChg = !isNaN(_twAbs) ? (_isTwNeg ? -Math.abs(_twAbs) : _twAbs) : NaN;
+            const _usChg = _etf?.chg_pct != null ? parseFloat(_etf.chg_pct) : NaN;
+            if (isNaN(_usChg) || isNaN(_twChg)) continue;
+            let _sync = '持平';
+            if (_usChg > 0.3 && _twChg > 0.3) _sync = '同步偏多';
+            else if (_usChg < -0.3 && _twChg < -0.3) _sync = '同步偏空';
+            else if ((_usChg > 0.3 && _twChg < -0.3) || (_usChg < -0.3 && _twChg > 0.3)) _sync = '逆勢⚠️';
+            _syncLines.push(`${_sk}: 美 ${_etf.etf} ${_usChg.toFixed(1)}% vs 台 ${_twChg.toFixed(1)}% (${_sync})`);
+        }
+        const sectorSyncStr = _syncLines.length ? _syncLines.join('; ') : '盤中即時資料未更新(使用者尚未按「盤中即時更新」鈕)';
+
         // ── 牛市泡沫 4 維度 ──
         let bubbleLines = '（資料待採）';
         try {
@@ -17022,6 +17137,10 @@ ${wzLines}
 
 【10 細分板塊漲跌】
 ${subLines}
+
+【台美族群同步檢驗(美股先行 vs 台股當日)】
+${sectorSyncStr}
+判讀:同步偏多=熱錢從美傳到台(可加碼)/同步偏空=系統性風險(避險)/逆勢⚠️=主力可能在出貨或吸籌(留意)
 
 【牛市泡沫 4 維】
 ${bubbleLines}
