@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V23.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V23.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4169,11 +4169,62 @@ ${list}
             // 🔄 還原「盤中即時更新」記憶(切 tab 回來不應跳回「實時/範例」)
             setTimeout(() => { try { this._restoreSectorIntradayMemory(); } catch(_) {} }, 1500);
         }
-        if (tabId === 'fav') this.renderFavTabs();
-        if (tabId === 'inv') { this.renderInventory(); }
-        if (tabId === 'radar') this.loadRadarMatrix();
-        if (tabId === 'hunt') this.renderHuntTab();
-        if (tabId === 'etf') this.renderEtfTab();
+        if (tabId === 'fav') { try { this.renderFavTabs(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }
+        if (tabId === 'inv') { try { this.renderInventory(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
+        if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
+        if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
+        if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
+    },
+
+    // V23.4 — 🆘 tab 渲染失敗救援紅卡(顯具體錯誤 + 強制清 SW 鈕 + 截圖回報引導)
+    _handleTabRenderError(tabId, label, err) {
+        console.error(`[tab-render-error] ${tabId}`, err);
+        const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
+        const container = document.getElementById(`tabContent${tabKey}`);
+        if (!container) return;
+        const msg = (err?.message || err || '未知錯誤').toString().slice(0, 300);
+        const stack = (err?.stack || '').toString().slice(0, 500);
+        container.innerHTML = `
+            <div class="m-4 p-4 bg-red-900/40 border-2 border-red-600 rounded-lg text-red-100 shadow-2xl">
+                <div class="text-center mb-3">
+                    <div class="text-3xl mb-1">⚠️</div>
+                    <div class="text-base font-black">${label} 分頁渲染失敗</div>
+                    <div class="text-[10px] text-red-200 mt-0.5">V23.4 救援卡 ・ 兩個救援動作如下</div>
+                </div>
+                <div class="bg-[#0d1117] rounded p-2 mb-3 text-[10px] font-mono text-red-200 break-all leading-relaxed">
+                    <div class="text-yellow-300 font-bold mb-1">錯誤訊息:</div>
+                    <div>${msg.replace(/</g,'&lt;')}</div>
+                    ${stack ? `<div class="text-gray-500 text-[9px] mt-2 line-clamp-3">${stack.replace(/</g,'&lt;')}</div>` : ''}
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button onclick="app.forcePwaReload()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-black rounded text-sm transition-colors">🆘 強制清 SW + 重整(救 iOS PWA)</button>
+                    <button onclick="alert('1. 截圖此整張紅卡\\n2. 拷貝錯誤訊息\\n3. 回報給 Claude\\n\\nClaude 看到具體錯誤就能對症修')" class="w-full py-2 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded text-xs transition-colors">📸 截圖回報給 Claude</button>
+                </div>
+                <div class="text-[9px] text-gray-400 text-center mt-2 leading-relaxed">
+                    💡 iOS PWA 救命招:雙擊 Home 完全關 App → iPhone 設定 → Safari → 清歷史 → 重開 App
+                </div>
+            </div>`;
+    },
+
+    // V23.4 — 🆘 強制清 SW + caches + reload(救 iOS PWA 頑固快取)
+    async forcePwaReload() {
+        if (!confirm('確定要強制清除 PWA 快取 + 重整?\n\n會清掉:\n• 所有 Service Worker\n• 所有快取(離線資料)\n• 重整後第一次載入會慢一點\n\n你的設定/自選股/庫存「不會」消失(那些存在 localStorage)。')) return;
+        try {
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const r of regs) { try { await r.unregister(); } catch(_){} }
+            }
+            if ('caches' in window) {
+                const names = await caches.keys();
+                for (const n of names) { try { await caches.delete(n); } catch(_){} }
+            }
+            alert('✅ 清除完成,即將重整...');
+            setTimeout(() => location.reload(), 500);
+        } catch(e) {
+            console.error('[forcePwaReload]', e);
+            alert('清除過程出錯,直接重整一次:\n' + (e?.message || e));
+            location.reload();
+        }
     },
 
     switchSubTab(tab) {
