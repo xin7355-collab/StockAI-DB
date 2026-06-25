@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V23.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V23.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1445,7 +1445,7 @@
                     <!-- V21.8 — 台指期(非即時,只顯結算/夜盤影響時間點)-->
                     <div class="bg-[#0d1117] border border-amber-800/40 rounded-lg p-2 cursor-pointer hover:border-amber-600/60 transition-colors"
                          onclick="app.showJargon('台指期結算'); event.stopPropagation();" title="點看完整說明">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">📅 台指期 <span class="text-amber-400">影響時段</span></div>
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">📈 台指期 <span class="text-amber-400">實時點</span></div>
                         <div id="taiexFuturesInfo" class="text-[13px] font-black font-mono text-amber-300 leading-tight">計算中…</div>
                         <div id="taiexFuturesSub" class="text-[9px] font-bold text-gray-500 mt-0.5 leading-tight">--</div>
                     </div>
@@ -8022,6 +8022,37 @@ const marginByDate = {};
         const info = document.getElementById('taiexFuturesInfo');
         const sub = document.getElementById('taiexFuturesSub');
         if (!info || !sub) return;
+        try {
+        // V23.3 — 優先顯實時點(後端 yfinance ^TXF=F 抓夜盤);無資料才 fallback 結算時間點
+        const tx = this._macroRiskCache?.taifex_tx_now;
+        if (tx && tx.price != null && tx.chg != null) {
+            const chg = parseFloat(tx.chg);
+            const price = parseFloat(tx.price);
+            const sign = chg >= 0 ? '+' : '';
+            const cls = chg > 0.2 ? 'text-red-300' : chg < -0.2 ? 'text-green-300' : 'text-gray-300';
+            const arrow = chg > 0.2 ? '🔺' : chg < -0.2 ? '🔻' : '→';
+            info.textContent = `${arrow} ${price.toLocaleString('en-US', {minimumFractionDigits: 0})}`;
+            info.className = `text-[13px] font-black font-mono leading-tight ${cls}`;
+            // 副字:漲跌% + 簡短結算時間
+            const settleCalc = (() => {
+                const nowD = new Date();
+                const todayD = new Date(nowD); todayD.setHours(0, 0, 0, 0);
+                const calcThirdWed = (y, m) => {
+                    const first = new Date(y, m, 1);
+                    const firstWedDate = ((3 - first.getDay() + 7) % 7) + 1;
+                    return new Date(y, m, firstWedDate + 14);
+                };
+                let settle = calcThirdWed(nowD.getFullYear(), nowD.getMonth());
+                if (settle < todayD) settle = calcThirdWed(nowD.getFullYear(), nowD.getMonth() + 1);
+                const daysTo = Math.round((settle - todayD) / 86400000);
+                if (daysTo === 0) return '⚠️ 今結算';
+                if (daysTo === 1) return '📅 明結算';
+                return `📆 結算剩 ${daysTo} 天`;
+            })();
+            sub.innerHTML = `<span class="${cls} font-bold">${sign}${chg.toFixed(2)}%</span> ・ <span class="text-gray-500">${settleCalc}</span>`;
+            return;
+        }
+        // V21.8 — fallback:無實時點時顯結算時間點(原邏輯)
         const now = new Date();
         const today = new Date(now); today.setHours(0, 0, 0, 0);
         const wd = now.getDay();   // 0=Sun, 1=Mon, ..., 6=Sat
@@ -8067,6 +8098,7 @@ const marginByDate = {};
         info.textContent = txt;
         info.className = cls;
         sub.textContent = subTxt;
+        } catch (e) { console.error('[_renderTaiexFutures]', e); }
     },
 
     // 🔄 V21.8 — 三指數共用手動更新鈕觸發 + 重點時間自動更新 1 次

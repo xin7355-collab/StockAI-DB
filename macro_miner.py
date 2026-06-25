@@ -1136,6 +1136,29 @@ def fetch_retail_long_short():
         return None, str(e)[:100]
 
 
+def fetch_taifex_tx_now():
+    """🌃 V23.3 — 台指期 TX 近月實時點 + 日漲跌% — 給前端頂部 3 指數區顯示
+    來源:yfinance ^TXF=F(夜盤含實時報價,日盤休市時為前一日收盤)
+    回傳:{price, chg, error}
+    """
+    try:
+        import yfinance as yf
+        hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
+        if hist is None or hist.empty:
+            return {"price": None, "chg": None, "error": "yfinance empty"}
+        closes = hist["Close"].dropna()
+        if len(closes) < 2:
+            return {"price": None, "chg": None, "error": "not enough data"}
+        last = float(closes.iloc[-1])
+        prev = float(closes.iloc[-2])
+        if last != last or prev != prev or prev == 0:
+            return {"price": None, "chg": None, "error": "NaN or zero prev"}
+        chg = round((last - prev) / prev * 100, 2)
+        return {"price": round(last, 2), "chg": chg, "error": None}
+    except Exception as e:
+        return {"price": None, "chg": None, "error": str(e)[:80]}
+
+
 def _taifex_openapi_tx_fut_close():
     """官方 OpenAPI『期貨每日交易行情』→ 取 TX 近月收盤（排除週契約；以未沖銷量最大者當近月）。
     回 float 收盤價；失敗回 None。"""
@@ -1435,6 +1458,16 @@ def main():
     # ── 🏭 美股產業 ETF 板塊對應(Q3 板塊輪動配 ETF)──
     print("─" * 50)
     out["sector_etfs"] = fetch_sector_etfs()
+
+    # ── 🌃 V23.3 — 台指期實時點(給前端頂部 3 指數區顯示) ──
+    print("─" * 50)
+    print("🌃 抓取台指期 TX 近月實時點(yfinance ^TXF=F)…")
+    tx_now = fetch_taifex_tx_now()
+    out["taifex_tx_now"] = tx_now
+    if tx_now.get("price") is not None:
+        print(f"   → {tx_now['price']} ({tx_now['chg']:+.2f}%)")
+    else:
+        print(f"   → 失敗:{tx_now.get('error')}")
 
     # ── 🦅 獵鷹建倉分:全球宏觀避險因子(日圓 / 3日變動 / 黑天鵝旗標;年線乖離已停用)──
     print("─" * 50)
