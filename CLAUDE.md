@@ -219,15 +219,11 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 - **對策建議**:每個風險警報下方加「💡 對策」一句話告訴使用者該怎麼做
 - **「跟對做 / 對著做」**雙向策略:處置股、主力動向都給兩種選擇
 
-### 命名禁用
-- ⛔ **「照妖鏡」**這三個字(已從 UI 移除,不要再用)
-- ⛔ 「股市籌碼 K 線」原本叫「處置股神器」,我們可以叫「處置股風控」或「注意股掃描」
-
 ### 功能方向
 - **初學者友善**:複雜功能要有白話說明 + alert 教學 + 對策建議
 - **零採礦優先**:能用前端 K 線/既有資料源算就先做,「動採礦」是最後手段
 - **AI 鏈偏好**:**Gemini 為主**(2.5 Flash + safetySettings BLOCK_NONE + thinkingBudget=0 + systemInstruction),OpenRouter 為備援,**取消 Groq**(輕量任務也是)
-- **PWA 推播**:支援 `_fireAlert` + sw.js + 鈴鐺歷史 2 天
+- **PWA 推播**:支援 `_fireAlert` + sw.js + 鈴鐺歷史 3 天
 - **每日開 App 掃處置風險**:自動推 1 則(`_dailyDisposedAlertSweep`)
 
 ### 開發流程
