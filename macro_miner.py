@@ -876,77 +876,90 @@ def fetch_business_signal():
 
     回傳 (light_key, score, month_str, error) 例:('green', 27, '2026-05', None)
     失敗時 (None, None, None, '錯誤訊息') — 前端 fallback 到手動下拉。
+    V23.2 — 3 次 retry 指數退避(1s/2s/4s)+ UA 加強(完整瀏覽器標頭) +
+            外層 stale fallback 機制移到 main() 處理(讀上次 macro_risk.json)
     """
     import requests as _req
+    import time as _time
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Referer': 'https://index.ndc.gov.tw/',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://index.ndc.gov.tw/n/zh_tw',
         'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
     }
     # 國發會景氣指標查詢系統(JSON 直接抓分數時間序列)
     candidates = [
         'https://index.ndc.gov.tw/n/json/data/IDF06',
         'https://index.ndc.gov.tw/api/data/IDF06',
     ]
-    last_err = None
-    for url in candidates:
-        try:
-            r = _req.get(url, headers=headers, timeout=12)
-            if r.status_code != 200:
-                last_err = f"HTTP {r.status_code}"
-                continue
-            data = r.json()
-            # NDC 回傳格式通常是 list:[{'date':'1140531','value':'23'}, ...]
-            # 也可能是 dict 包含 series。盡量多版本兼容
-            items = data if isinstance(data, list) else (
-                data.get('data') or data.get('series') or data.get('result') or []
-            )
-            if not items:
-                last_err = "empty payload"
-                continue
-            # 取最後一筆有效 score
-            score, month = None, None
-            for item in reversed(items if isinstance(items, list) else []):
-                if not isinstance(item, dict):
+    last_err_box = {'val': None}
+
+    def _one_attempt():
+        """單次嘗試:走 2 個 URL,成功 return (light, score, month, None),失敗 return None"""
+        for url in candidates:
+            try:
+                r = _req.get(url, headers=headers, timeout=15)
+                if r.status_code != 200:
+                    last_err_box['val'] = f"HTTP {r.status_code} ({url.split('/')[-1]})"
                     continue
-                v = item.get('value') or item.get('Value') or item.get('score')
-                d = item.get('date') or item.get('Date') or item.get('month')
-                if v is None or d is None:
+                data = r.json()
+                # NDC 回傳格式通常是 list:[{'date':'1140531','value':'23'}, ...] 也可能是 dict 包含 series
+                items = data if isinstance(data, list) else (
+                    data.get('data') or data.get('series') or data.get('result') or []
+                )
+                if not items:
+                    last_err_box['val'] = "empty payload"
                     continue
-                try:
-                    s = int(float(str(v).strip()))
-                    if 5 <= s <= 50:  # 景氣燈號分數合理區間 9-45
-                        score = s
-                        # 民國日期轉西元:1140531 → 2025-05;字串長度判斷
-                        ds = str(d).strip()
-                        if len(ds) == 7 and ds.isdigit():
-                            month = f"{int(ds[:3]) + 1911}-{ds[3:5]}"
-                        elif len(ds) >= 7 and '-' in ds:
-                            month = ds[:7]
-                        else:
-                            month = ds
-                        break
-                except Exception:
+                score, month = None, None
+                for item in reversed(items if isinstance(items, list) else []):
+                    if not isinstance(item, dict):
+                        continue
+                    v = item.get('value') or item.get('Value') or item.get('score')
+                    d = item.get('date') or item.get('Date') or item.get('month')
+                    if v is None or d is None:
+                        continue
+                    try:
+                        s = int(float(str(v).strip()))
+                        if 5 <= s <= 50:
+                            score = s
+                            ds = str(d).strip()
+                            if len(ds) == 7 and ds.isdigit():
+                                month = f"{int(ds[:3]) + 1911}-{ds[3:5]}"
+                            elif len(ds) >= 7 and '-' in ds:
+                                month = ds[:7]
+                            else:
+                                month = ds
+                            break
+                    except Exception:
+                        continue
+                if score is None:
+                    last_err_box['val'] = "no valid score in payload"
                     continue
-            if score is None:
-                last_err = "no valid score in payload"
+                if score <= 16:    light = 'blue'
+                elif score <= 22:  light = 'yellow-blue'
+                elif score <= 31:  light = 'green'
+                elif score <= 37:  light = 'yellow-red'
+                else:              light = 'red'
+                return (light, score, month, None)
+            except Exception as e:
+                last_err_box['val'] = str(e)[:120]
                 continue
-            # 分數對應燈號
-            if score <= 16:
-                light = 'blue'
-            elif score <= 22:
-                light = 'yellow-blue'
-            elif score <= 31:
-                light = 'green'
-            elif score <= 37:
-                light = 'yellow-red'
-            else:
-                light = 'red'
-            return (light, score, month, None)
-        except Exception as e:
-            last_err = str(e)[:120]
-            continue
-    return (None, None, None, last_err or 'all sources failed')
+        return None
+
+    # V23.2 — 3 次 retry 指數退避(1s / 2s / 4s)
+    for attempt in range(3):
+        if attempt > 0:
+            backoff = 2 ** (attempt - 1)
+            print(f"   ⏳ 景氣燈號 retry #{attempt} 等 {backoff}s ...")
+            _time.sleep(backoff)
+        result = _one_attempt()
+        if result is not None:
+            return result
+    return (None, None, None, last_err_box['val'] or 'all retries failed')
 
 
 def _yf_chg_3d(ticker, name):
@@ -1384,16 +1397,39 @@ def main():
     print("─" * 50)
     print("🌡️ 抓取國發會景氣對策信號(每月 27 號發布上月燈號)…")
     bsi_light, bsi_score, bsi_month, bsi_err = fetch_business_signal()
-    out["business_signal"] = {
-        "light":  bsi_light,
-        "score":  bsi_score,
-        "month":  bsi_month,
-        "source": "ndc",
-        "error":  bsi_err,
-    }
-    if bsi_light:
+    # V23.2 — 失敗時 stale fallback:讀上次 macro_risk.json 保留 light,加 stale=True 標示
+    if not bsi_light:
+        try:
+            prev_path = Path('data/macro_risk.json')
+            if prev_path.exists():
+                prev = json.loads(prev_path.read_text(encoding='utf-8'))
+                prev_bsi = (prev.get('business_signal') or {})
+                if prev_bsi.get('light'):
+                    bsi_light  = prev_bsi['light']
+                    bsi_score  = prev_bsi.get('score')
+                    bsi_month  = prev_bsi.get('month')
+                    out["business_signal"] = {
+                        "light":  bsi_light,
+                        "score":  bsi_score,
+                        "month":  bsi_month,
+                        "source": "ndc-stale",
+                        "stale":  True,
+                        "last_error": bsi_err,
+                    }
+                    print(f"   ⚠️ NDC 抓取失敗({bsi_err}),保留上次 {bsi_month}: {bsi_light} ({bsi_score} 分)")
+        except Exception as e:
+            print(f"   ⚠️ stale fallback 讀檔失敗:{e}")
+    if "business_signal" not in out:
+        out["business_signal"] = {
+            "light":  bsi_light,
+            "score":  bsi_score,
+            "month":  bsi_month,
+            "source": "ndc",
+            "error":  bsi_err,
+        }
+    if bsi_light and not out["business_signal"].get("stale"):
         print(f"   → {bsi_month}: {bsi_light} ({bsi_score} 分)")
-    else:
+    elif not bsi_light:
         print(f"   → 失敗(前端 fallback 手動下拉):{bsi_err}")
 
     # ── 🏭 美股產業 ETF 板塊對應(Q3 板塊輪動配 ETF)──

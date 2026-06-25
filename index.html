@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V23.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V23.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -7922,10 +7922,12 @@ const marginByDate = {};
         this._twBsiScore = map[v].score;   // 給綜合評分卡用
         el.innerHTML = `<div class="${map[v].cls}">${map[v].txt}</div><div class="text-[9px] text-gray-500 leading-tight">${map[v].sub}</div>`;
         // V22.3 — bsiSource 純顯 NDC 自動資料來源(無手動模式)
+        // V23.2 — stale fallback 加「💡 歷史值」chip 標示(NDC 暫時抓不到時保留上次)
         if (srcEl) {
             const auto = this._bsiAuto;
             if (auto && auto.light) {
-                srcEl.innerHTML = `<span class="text-cyan-500/80">📡 NDC ${auto.month||''} ${auto.score||''}分</span>`;
+                const staleBadge = auto.stale ? `<span class="ml-1 text-[9px] px-1 rounded bg-yellow-900/40 text-yellow-300" title="NDC API 暫時抓不到,保留上次 ${auto.month} 燈號(每月 27 號發布,可能還沒更新)">💡 歷史</span>` : '';
+                srcEl.innerHTML = `<span class="text-cyan-500/80">📡 NDC ${auto.month||''} ${auto.score||''}分</span>${staleBadge}`;
             } else {
                 srcEl.innerHTML = '<span class="text-gray-600">📡 NDC</span>';
             }
@@ -8224,9 +8226,12 @@ const marginByDate = {};
     },
 
     // 🏭 Q3:渲染每細分板塊下方的對應美股 ETF 現價 + 漲跌(對標連動性一目了然)
+    // V23.2 — 整函式包 try/catch,單一 slot 渲染失敗不阻斷其他(防 P0 tab 消失)
     _renderSectorEtfs(sectorEtfs) {
         if (!sectorEtfs || typeof sectorEtfs !== 'object') return;
+        try {
         document.querySelectorAll('[data-sector-etf]').forEach(slot => {
+            try {
             const parent = slot.closest('[data-sector]');
             const key = parent?.dataset?.sector;
             if (!key) return;
@@ -8282,13 +8287,17 @@ const marginByDate = {};
                     ${syncChip}
                 </div>
             `;
+            } catch (e) { console.error('[_renderSectorEtfs slot]', key || '?', e); }
         });
+        } catch (e) { console.error('[_renderSectorEtfs]', e); }
         // V22.2 — 同步刷新頂部「美股先行 → 台股」摘要卡
-        this._renderSectorSyncSummary(sectorEtfs);
+        try { this._renderSectorSyncSummary(sectorEtfs); } catch (e) { console.error('[_renderSectorSyncSummary call]', e); }
     },
 
     // V22.2 — 渲染頂部「🇺🇸 美股先行 → 🇹🇼 台股」9 族群同步度摘要
+    // V23.2 — 整函式包 try/catch,失敗不阻斷外層 tab 渲染
     _renderSectorSyncSummary(sectorEtfs) {
+        try {
         const listEl = document.getElementById('sectorSyncList');
         if (!listEl) return;
         const etfMap = sectorEtfs || this._macroRiskCache?.sector_etfs || {};
@@ -8340,6 +8349,7 @@ const marginByDate = {};
                 </div>`;
         }
         listEl.innerHTML = html;
+        } catch (e) { console.error('[_renderSectorSyncSummary]', e); }
     },
 
     // V22.5 — 🤖 板塊輪動 AI 白話判讀 + 自選股對應建議(Gemini 深度,24h 快取,雙擊強制重抽)
@@ -19256,6 +19266,24 @@ ${_chuPosPlan}
         }).join('');
     },
 };
+
+// V23.2 — 🆘 全域 JS 錯誤捕獲 toast(讓使用者能截圖回報具體錯誤)
+window.addEventListener('error', e => {
+    console.error('[全域錯誤]', e.message, (e.filename || '?') + ':' + e.lineno);
+    try {
+        const existed = document.getElementById('_globalErrToast');
+        if (existed) return;   // 同錯誤 30 秒內只顯一次,避免狂彈
+        const t = document.createElement('div');
+        t.id = '_globalErrToast';
+        t.className = 'fixed top-14 left-2 right-2 bg-red-900/95 text-red-100 text-[10px] p-2 rounded z-[10000] font-mono shadow-2xl border border-red-600';
+        t.innerHTML = `⚠️ <b>JS 錯誤(請截圖回報給 Claude)</b><br>${e.message}<br><span class="text-[9px] text-red-300">位置:${(e.filename || '?').split('/').pop()}:${e.lineno}</span><br><button onclick="this.parentNode.remove()" class="text-red-200 underline text-[9px] mt-1">關閉</button>`;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 30000);
+    } catch(_){}
+});
+window.addEventListener('unhandledrejection', e => {
+    console.error('[Promise 未處理拒絕]', e.reason);
+});
 
 window.onload = () => app.init();
 </script>
