@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V25.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V25.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4218,10 +4218,11 @@ ${list}
             // 🧠 還原上次選的子分頁(全球/台股實戰),首次預設台股實戰(本地 App)
             try { this.switchMarketSubTab(localStorage.getItem('mktSubTab') || 'tw'); } catch(_) {}
             this._syncMarketTab();
-            this.fetchGlobalNews();
             try { this.updateMarketWeather({ ctx: this.currentStrategyContext || {} }); } catch(_) {}
-            try { this.updateGlobalRiskGrid(); } catch(_) {}
-            try { this.loadBubbleWarning(); } catch(_) {}
+            // V25.5 — 切 tab 快取:避免每次切過去都 refetch(news 30 分 / macro 24h)
+            if (this._shouldFetch('news'))         { this.fetchGlobalNews(); this._markFetched('news'); }
+            if (this._shouldFetch('market_macro')) { try { this.updateGlobalRiskGrid(); } catch(_) {} this._markFetched('market_macro'); }
+            if (this._shouldFetch('bubble'))       { try { this.loadBubbleWarning(); } catch(_) {} this._markFetched('bubble'); }
             // 🔄 還原「盤中即時更新」記憶(切 tab 回來不應跳回「實時/範例」)
             setTimeout(() => { try { this._restoreSectorIntradayMemory(); } catch(_) {} }, 1500);
         }
@@ -4243,6 +4244,32 @@ ${list}
     },
 
     // V25.2 — _checkTabHasContent / _showTabEmptyRescue 已砍除(V25.0 修真因後不再需要救援卡)
+
+    // V25.5 — 切 tab fetch 快取機制(避免每次切過去都 refetch → 429 限流)
+    _tabFetchTs: {},
+    _shouldFetch(key) {
+        const TTL = {
+            market_macro: 24 * 3600e3,   // macro_risk / 大盤 24h
+            bubble:       24 * 3600e3,   // 泡沫警示 24h
+            news:         30 * 60e3,     // 全球新聞 30 分
+            macro_intra:  15 * 60e3,     // 盤中即時 15 分
+        };
+        const ts = this._tabFetchTs[key] || 0;
+        const ttl = TTL[key] || 5 * 60e3;
+        return (Date.now() - ts) > ttl;
+    },
+    _markFetched(key) { this._tabFetchTs[key] = Date.now(); },
+
+    // V25.5 — 錯誤訊息人性化:技術 error → 白話文(429/404/500/網路/auth)
+    _humanizeError(err, ctx = '') {
+        const msg = (err?.message || err || '').toString();
+        if (/429|rate.?limit|too.?many/i.test(msg))      return `⚡ 數據更新頻繁,為您載入歷史快取資料 ${ctx ? '('+ctx+')' : ''}`;
+        if (/404|not.?found/i.test(msg))                 return `🛠️ AI 伺服器維護中,請稍後再試 ${ctx ? '('+ctx+')' : ''}`;
+        if (/500|503|502|server.?error/i.test(msg))      return `⚠️ 伺服器忙線中,稍後重試 ${ctx ? '('+ctx+')' : ''}`;
+        if (/network|fetch|timeout|abort|cors/i.test(msg)) return `🌐 網路不通,請檢查連線 ${ctx ? '('+ctx+')' : ''}`;
+        if (/401|403|unauth|invalid.?key/i.test(msg))    return `🔑 API key 失效,請到 ⚙️ 設定檢查 ${ctx ? '('+ctx+')' : ''}`;
+        return `⚠️ ${ctx || '操作失敗'}:${msg.slice(0, 80)}`;
+    },
 
     // V23.4 — 🆘 tab 渲染失敗救援紅卡(顯具體錯誤 + 強制清 SW 鈕 + 截圖回報引導)
     _handleTabRenderError(tabId, label, err) {
@@ -8736,7 +8763,7 @@ ${bigShotText}
             result.innerHTML = html;
             try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch(_){}
         } catch (e) {
-            result.innerHTML = `<div class="text-red-300 text-[11px]">⚠️ AI 失敗:${e?.message || e}<br><span class="text-gray-500 text-[10px]">請至 ⚙️ 設定確認 Gemini / OpenRouter key</span></div>`;
+            result.innerHTML = `<div class="text-amber-300 text-[11px]">${this._humanizeError(e, 'AI 分析')}<br><span class="text-gray-500 text-[10px]">若持續失敗,請至 ⚙️ 設定確認 Gemini / OpenRouter key</span></div>`;
         } finally {
             btn.disabled = false;
             btn.textContent = '🎯 分析出獄前/中/後策略(雙擊強制重抽)';
@@ -8872,7 +8899,7 @@ high_chance_stocks 只列 ≤3 檔機率 ≥60% 的自選股,prob 寫整數機�
             // V24.1 — 取消自動推播(使用者要求全手動);_firePredictAlert 保留但不主動呼叫
             //   若要推給自己,可用 PWA 鈴鐺歷史(右上 🔔)看,或截圖 share 給朋友
         } catch(e) {
-            result.innerHTML = `<div class="text-red-300 text-[11px]">⚠️ AI 失敗:${e?.message || e}<br><span class="text-gray-500 text-[10px]">請至 ⚙️ 設定確認 Gemini / OpenRouter key</span></div>`;
+            result.innerHTML = `<div class="text-amber-300 text-[11px]">${this._humanizeError(e, 'AI 分析')}<br><span class="text-gray-500 text-[10px]">若持續失敗,請至 ⚙️ 設定確認 Gemini / OpenRouter key</span></div>`;
         } finally {
             btn.disabled = false;
             btn.textContent = '🔮 AI 4 段預判判讀(雙擊強制重抽)';
@@ -8981,7 +9008,7 @@ SP500: ${sp != null ? parseFloat(sp).toFixed(2) + '%' : '--'} / NASDAQ: ${nq != 
             result.innerHTML = html;
             try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch(_){}
         } catch(e) {
-            result.innerHTML = `<div class="mt-2 p-2 bg-red-900/40 rounded text-red-300 text-[11px]">⚠️ AI 失敗:${e?.message || e}</div>`;
+            result.innerHTML = `<div class="mt-2 p-2 bg-amber-900/30 rounded text-amber-300 text-[11px]">${this._humanizeError(e, 'AI 分析')}</div>`;
         } finally {
             btn.disabled = false;
             btn.innerHTML = '⚡ 大跌/大漲剖析<br><span class="text-[8px] font-normal opacity-80">(為什麼今天)</span>';
@@ -9092,7 +9119,7 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
             result.innerHTML = html;
             try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch(_){}
         } catch(e) {
-            result.innerHTML = `<div class="mt-2 p-2 bg-red-900/40 rounded text-red-300 text-[11px]">⚠️ AI 失敗:${e?.message || e}</div>`;
+            result.innerHTML = `<div class="mt-2 p-2 bg-amber-900/30 rounded text-amber-300 text-[11px]">${this._humanizeError(e, 'AI 分析')}</div>`;
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -13160,20 +13187,62 @@ ${_newsLine}${globalContext}
             </div>
             <div class="text-[10px] text-gray-600 leading-tight mb-1.5">${plan.hasBudget ? '✅ 已設,localStorage 自動記住' : '💡 空白只顯比例,填入後算具體股數(零股)'}</div>`;
 
+        // V25.5 — 首頁精簡(60 行 → 24 行)只顯 3 批進場價概要 + 「查看完整策略」按鈕
+        // 完整詳細(預算試算 + 停損點 + 鐵律 + 心法)收進 alert modal
+        this._chuPlanCache = plan;   // 暫存供 _showChuPlanFull 用
         box.innerHTML = `
-            <div class="text-orange-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="alert('📐 朱老師分批進場心法\\n\\n批次一(30%) 試單:量增突破 5MA 第一根紅 K → 隔日開盤進。守發動 K 最低。\\n\\n批次二(30%) 5MA 順勢加碼:連 2-3 日黏 5MA 之上 → 加碼。停損上移到 5MA。\\n\\n批次三(40%) 回後買上漲:回檔 3-5 天不破前低 → 二波量增突破 5MA → 補滿最後 4 成。停損改二波紅 K 低 或 20MA。\\n\\n🚫 鐵律:絕對不准下跌攤平、不准倒金字塔(3-3-4 不能變成 1-1-10)。')">
-                <span>📐 朱老師分批進場計畫 <span class="text-[10px] text-gray-500 font-normal">(點看心法)</span></span>
+            <div class="text-orange-400 font-bold text-sm flex items-center justify-between mb-2">
+                <span>📐 朱老師分批進場計畫</span>
                 ${triggerInfo}
             </div>
-            <div class="text-[9px] text-gray-500 mt-0.5 leading-snug">💡 V15.5 改零股計算 — 算「實際能買幾股」(1 股起跳)。朱老師原意是整張紀律,程式為了讓小資族也能跟,改零股精算。<button onclick="app.showJargon('零股操作'); event.stopPropagation();" class="text-blue-300">手續費說明 ⓘ</button></div>
-            ${budgetInputHtml}
-            <div class="divide-y divide-[#21262d] border-t border-[#21262d]">
-                ${batch1Html}${batch2Html}${batch3Html}
+            <div class="grid grid-cols-3 gap-2 text-center mb-2">
+                <div class="bg-yellow-900/20 border border-yellow-700/40 rounded px-1 py-1.5">
+                    <div class="text-[9px] text-yellow-300 font-bold">🥇 試單 30%</div>
+                    <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch1?.price)}</div>
+                </div>
+                <div class="bg-blue-900/20 border border-blue-700/40 rounded px-1 py-1.5">
+                    <div class="text-[9px] text-blue-300 font-bold">🥈 加碼 30%</div>
+                    <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch2?.price)}</div>
+                </div>
+                <div class="bg-purple-900/20 border border-purple-700/40 rounded px-1 py-1.5">
+                    <div class="text-[9px] text-purple-300 font-bold">🥉 回後 40%</div>
+                    <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch3?.price)}</div>
+                </div>
             </div>
-            <div class="mt-2 bg-red-900/40 border-l-2 border-red-500 text-red-300 text-[10px] leading-snug px-2 py-1.5 rounded-r">
-                🚫 鐵律:1. 下跌不准攤平(攤平 = 慢性自殺)<br>
-                &emsp;&emsp;&emsp;2. 不准倒金字塔(3-3-4 不能變 1-1-10,主力倒貨變大賠)
-            </div>`;
+            <button onclick="app._showChuPlanFull()" class="w-full py-2 bg-orange-900/30 hover:bg-orange-900/50 border border-orange-700/50 text-orange-200 text-[11px] font-bold rounded transition-colors">📖 查看完整策略(預算試算 + 停損點 + 鐵律) →</button>`;
+    },
+
+    // V25.5 — 朱老師分批進場「完整策略」alert(從首頁簡版按鈕觸發)
+    _showChuPlanFull() {
+        const plan = this._chuPlanCache;
+        if (!plan) { alert('⚠️ 請先在個股頁選一檔股票'); return; }
+        const fp = v => v == null ? '—' : v.toFixed(2);
+        const lines = [
+            '📐 朱老師分批進場完整策略',
+            '',
+            '🥇 批次一 試單 30%',
+            `  進場價: ${fp(plan.batch1?.price)} 元`,
+            `  停損守: ${fp(plan.batch1?.stopLow)} 元(發動 K 最低)`,
+            `  條件: 量增突破 5MA 第一根紅 K → 隔日開盤進`,
+            '',
+            '🥈 批次二 5MA 順勢加碼 30%',
+            `  進場價: ${fp(plan.batch2?.price)} 元`,
+            `  停損上移: ${fp(plan.batch2?.stopLow)} 元(5MA)`,
+            `  條件: 連 2-3 日黏 5MA 之上 → 加碼`,
+            '',
+            '🥉 批次三 回後買上漲 40%',
+            `  進場價: ${fp(plan.batch3?.price)} 元`,
+            `  停損: 二波紅 K 低 或 20MA(${fp(plan.batch3?.ma20Hint)})`,
+            `  條件: 回檔 3-5 天不破前低 → 二波量增突破 5MA`,
+            '',
+            '🚫 鐵律:',
+            '  1. 下跌不准攤平(攤平 = 慢性自殺)',
+            '  2. 不准倒金字塔(3-3-4 不能變 1-1-10,主力倒貨變大賠)',
+            '',
+            `💰 單檔總資金: ${this.budgetPerStock ? this.budgetPerStock.toLocaleString() + ' 元' : '尚未設(去⚙️設定填)'}`,
+            '💡 V15.5 改零股計算 — 算「實際能買幾股」(1 股起跳)',
+        ];
+        alert(lines.join('\n'));
     },
 
     _chuOnBudgetInput(val) {
