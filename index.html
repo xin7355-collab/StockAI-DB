@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V24.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V24.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2042,9 +2042,9 @@
             <!-- 🔄 重新整理按鈕已遷至「全球宏觀風險觀測台」標題列右側 icon(避免底部塞無關按鈕) -->
         </div>
 
-        <div id="tabContentFav" class="hidden flex-col pb-4">
-            <!-- V24.6 — HTML 寫死救援頭(0% JS 依賴,沒 init 也照顯) -->
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:sticky;top:0;z-index:9999;">
+        <div id="tabContentFav" class="hidden flex-col pb-4" style="min-height:80vh;">
+            <!-- V24.7 — HTML 寫死救援頭(改 relative,不靠 sticky;父容器 min-h:80vh 強制撐) -->
+            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">⭐ 自選股 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
                 <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
@@ -2081,8 +2081,8 @@
             </div>
         </div>
 
-        <div id="tabContentInv" class="hidden flex-col gap-3 p-2 pb-4">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:sticky;top:0;z-index:9999;">
+        <div id="tabContentInv" class="hidden flex-col gap-3 p-2 pb-4" style="min-height:80vh;">
+            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">💼 庫存 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
                 <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
@@ -2145,8 +2145,8 @@
             </div>
         </div>
 
-        <div id="tabContentRadar" class="hidden flex-col p-2 relative pb-4">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:sticky;top:0;z-index:9999;">
+        <div id="tabContentRadar" class="hidden flex-col p-2 relative pb-4" style="min-height:80vh;">
+            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">🔥 雷達 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
                 <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
@@ -2223,16 +2223,16 @@
             </div>
         </div>
 
-        <div id="tabContentEtf" class="hidden flex-col p-2 pb-4">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:sticky;top:0;z-index:9999;">
+        <div id="tabContentEtf" class="hidden flex-col p-2 pb-4" style="min-height:80vh;">
+            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">🏦 ETF 跟車 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">ETF tab 本來就是空 div,須等 renderEtfTab 填內容</div>
                 <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
                 <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉此卡</button>
             </div>
         </div>
-        <div id="tabContentHunt" class="hidden flex-col p-2 gap-3 pb-4">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:sticky;top:0;z-index:9999;">
+        <div id="tabContentHunt" class="hidden flex-col p-2 gap-3 pb-4" style="min-height:80vh;">
+            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">⚔️ 獵殺 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
                 <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
