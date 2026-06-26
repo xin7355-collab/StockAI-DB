@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.15</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.16</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.15</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.16</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -7825,32 +7825,34 @@ const marginByDate = {};
         const nextSeasonEnd = seasonEnds.find(d => d.getTime() >= today.getTime()) || seasonEnds[0];
         const daysToSeason = Math.ceil((nextSeasonEnd.getTime() - today.getTime()) / 86400000);
         const isYearEnd = nextSeasonEnd.getMonth() === 11;
+        // V26.16 — Card Streamlining:口語化驚嘆 → 金融術語,⚠️/❌ 收 Alert Box,只留動作結論
         let dressUp = null;
         if (daysToSeason <= 10 && daysToSeason >= 0) {
-            const hasTrustPos = ti5 > 100;   // 近 5 日投信買超 > 100 張
+            const hasTrustPos = ti5 > 100;
+            const seasonLbl = isYearEnd ? '年底' : '季底';
             if (hasTrustPos) {
                 dressUp = {
-                    cls: 'border-amber-600 bg-amber-900/30 text-amber-200',
-                    icon: '💼',
-                    title: `${isYearEnd ? '年底' : '季底'}做帳行情啟動中 ・ 還剩 ${daysToSeason} 天`,
-                    desc: `投信近 5 日買超 ${Math.round(ti5)} 張 + 距${isYearEnd ? '年' : '季'}底 ${daysToSeason} 天 → <b>拉抬機率高</b>`,
-                    action: `💡 跟對做:抱緊到月底前 2-3 天獲利了結 ・ ⚠️ 對著做:月底前若投信轉賣(<-100 張)立刻退場`,
+                    borderCls: 'border-amber-500',
+                    textCls: 'text-amber-300',
+                    title: `${seasonLbl}做帳行情(剩 ${daysToSeason} 日)`,
+                    action: '🟢 多方策略:持股續抱至月底前 2-3 日內出場',
+                    detail: `投信近 5 日買超 ${Math.round(ti5)} 張,距${seasonLbl} ${daysToSeason} 日,拉抬機率高。退場條件:投信轉賣 &lt; -100 張立即停利。`,
                 };
             } else if (ti5 < -100) {
                 dressUp = {
-                    cls: 'border-orange-600 bg-orange-900/30 text-orange-200',
-                    icon: '⚠️',
-                    title: `${isYearEnd ? '年底' : '季底'}投信已落袋 ・ 還剩 ${daysToSeason} 天`,
-                    desc: `投信近 5 日賣超 ${Math.round(-ti5)} 張 + 接近${isYearEnd ? '年' : '季'}底 → 已開始獲利了結`,
-                    action: '💡 別追高 ・ 等月底後重新建倉週期',
+                    borderCls: 'border-orange-500',
+                    textCls: 'text-orange-300',
+                    title: `${seasonLbl}投信獲利了結(剩 ${daysToSeason} 日)`,
+                    action: '🔴 空方策略:勿追高,等下季度重新建倉週期',
+                    detail: `投信近 5 日賣超 ${Math.round(-ti5)} 張,接近${seasonLbl}已開始獲利了結。`,
                 };
             } else {
                 dressUp = {
-                    cls: 'border-gray-700 bg-[#0d1117] text-gray-300',
-                    icon: '💼',
-                    title: `${isYearEnd ? '年底' : '季底'}行情期 ・ 還剩 ${daysToSeason} 天`,
-                    desc: '投信動向中性,看後續方向決定',
-                    action: '💡 觀察明天投信動向決定跟車',
+                    borderCls: 'border-gray-600',
+                    textCls: 'text-gray-300',
+                    title: `${seasonLbl}行情中性期(剩 ${daysToSeason} 日)`,
+                    action: '⚪ 觀察策略:等明日投信動向確認方向',
+                    detail: `投信近 5 日淨額 ${Math.round(ti5)} 張(中性區),需後續方向訊號。`,
                 };
             }
         }
@@ -7858,12 +7860,12 @@ const marginByDate = {};
         if (!fiReverse && !tiReverse && !dressUp) { box.classList.add('hidden'); return; }
         box.classList.remove('hidden');
 
-        const reverseRow = (r) => r ? `<div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-1.5">
+        const reverseRow = (r) => r ? `<div class="bg-[#161b22] border-l-4 ${r.cls.includes('red') ? 'border-red-500' : 'border-green-500'} border-y border-r border-[#30363d] rounded-r px-2.5 py-1.5 mb-1.5">
             <div class="flex justify-between items-baseline mb-0.5">
                 <span class="${r.cls} font-bold text-[12px]">${r.dir}</span>
-                <span class="text-[10px] text-amber-300">${r.action}</span>
+                <span class="text-[10px] text-gray-400 font-bold">${r.action}</span>
             </div>
-            <div class="text-[10px] text-gray-400 leading-snug">${r.desc}</div>
+            <div class="text-[10px] text-gray-500 leading-snug">${r.desc}</div>
         </div>` : '';
 
         box.innerHTML = `
@@ -7873,13 +7875,13 @@ const marginByDate = {};
             </div>
             ${reverseRow(fiReverse)}
             ${reverseRow(tiReverse)}
-            ${dressUp ? `<div class="rounded-lg border ${dressUp.cls} px-3 py-2 mb-1">
-                <div class="font-bold text-[12px] mb-0.5">${dressUp.icon} ${dressUp.title}</div>
-                <div class="text-[11px] leading-snug mb-1">${dressUp.desc}</div>
-                <div class="text-[10px] leading-snug">${dressUp.action}</div>
+            ${dressUp ? `<div class="bg-[#161b22] border-l-4 ${dressUp.borderCls} border-y border-r border-[#30363d] rounded-r px-2.5 py-2 mb-1.5">
+                <div class="${dressUp.textCls} font-bold text-[12px] mb-1">💼 ${dressUp.title}</div>
+                <div class="text-[11px] text-gray-200 font-bold mb-1">${dressUp.action}</div>
+                <div class="text-[9px] text-gray-500 leading-snug">ⓘ ${dressUp.detail}</div>
             </div>` : ''}
             ${!fiReverse && !tiReverse ? '<div class="text-[10px] text-gray-500 text-center py-1">📍 法人方向暫無明顯反轉</div>' : ''}
-            <div class="text-[9px] text-gray-500 mt-1.5 leading-relaxed">💡 <b>反轉訊號</b>:法人從連賣轉連買(或反之) → 主力換手,股價方向常跟著轉</div>`;
+            <div class="text-[9px] text-gray-500 mt-1.5 leading-relaxed">ⓘ <b>反轉訊號</b>:法人連賣轉連買(或反之) → 主力換手,股價方向常跟著轉</div>`;
 
         // 把結果存到 instance 給綜合評分用
         this._lastInstSignal = { fiReverse, tiReverse, dressUp };
