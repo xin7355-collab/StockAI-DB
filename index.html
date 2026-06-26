@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V24.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V24.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4212,34 +4212,45 @@ ${list}
         }
     },
 
-    // V24.3 — 檢查 tab 渲染後是否有實質內容,若空白 prepend 救援卡(根因:render 函式 silent return 沒填 HTML)
+    // V24.4 — 檢查 tab 渲染後是否有實質內容(改用 visible height,不依賴 textContent;
+    //   根因:tabContent 內既有 placeholder 文字讓 textContent > 30 但畫面 visible height 是 0)
     _checkTabHasContent(tabId) {
         const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
         const container = document.getElementById(`tabContent${tabKey}`);
         if (!container) return;
-        // 排除既有救援卡的字數,避免無限觸發
         if (container.querySelector('[data-rescue-card="1"]')) return;
+        // V24.4 — 三維度判斷:visible height(主) + textContent(輔) + children count(輔)
+        const rect = container.getBoundingClientRect();
+        const visibleHeight = Math.round(rect.height);
         const txt = (container.textContent || '').replace(/\s+/g, '').trim();
-        // 內容少於 30 字(空白頁) → prepend 救援卡
-        if (txt.length < 30) {
+        const childCount = container.children.length;
+        // 視為空白:visible height < 200px (內容撐不出來,navbar 自身 55px,合理卡片 > 200)
+        // 或 textContent < 20 字 + 容器 < 300px
+        const isEmpty = visibleHeight < 200 || (visibleHeight < 300 && txt.length < 20);
+        console.log(`[V24.4 tab-check] ${tabId} h=${visibleHeight}px txt=${txt.length}字 children=${childCount} empty=${isEmpty}`);
+        if (isEmpty) {
             const labels = { fav: '⭐ 自選股', inv: '💼 庫存', radar: '🔥 雷達', hunt: '⚔️ 獵殺', etf: '🏦 ETF 跟車' };
-            console.warn(`[空白檢查] ${tabId} 分頁內容僅 ${txt.length} 字,觸發救援卡`);
-            this._showTabEmptyRescue(tabId, labels[tabId] || tabId, txt.length);
+            this._showTabEmptyRescue(tabId, labels[tabId] || tabId, txt.length, visibleHeight, childCount);
         }
     },
 
-    // V24.3 — 空白分頁救援卡(prepend 到容器頂,不覆蓋既有渲染結果)
-    _showTabEmptyRescue(tabId, label, txtLen) {
+    // V24.4 — 空白分頁救援卡(prepend 到容器頂,不覆蓋既有渲染結果;加診斷資訊讓使用者截圖好回報)
+    _showTabEmptyRescue(tabId, label, txtLen, visibleHeight, childCount) {
         const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
         const container = document.getElementById(`tabContent${tabKey}`);
         if (!container) return;
         const hints = {
-            fav: '可能原因:\n• 你還沒加任何自選股(去診斷頁,輸入代號 → 點 ⭐ 收藏)\n• favGroups localStorage 損壞\n• renderFavTabs 函式內 silent return',
+            fav: '可能原因:\n• 你還沒加任何自選股(去診斷頁,輸入代號 → 點 ⭐ 收藏)\n• favGroups localStorage 損壞\n• renderFavTabs 函式內 silent return\n• 父層 CSS 高度被擠掉',
             inv: '可能原因:\n• 你還沒加任何庫存股(去診斷頁,輸入代號 → 點 💼 加入庫存)\n• inventoryList localStorage 損壞\n• renderInventory 函式內 silent return',
-            radar: '可能原因:\n• radar.json 尚未生成(daily_miner 還沒跑完)\n• 後端 fetch 失敗\n• loadRadarMatrix 函式內 silent return\n• 網路不通',
+            radar: '可能原因:\n• radar.json 尚未生成(daily_miner 還沒跑完)\n• 後端 fetch 失敗(網路不通)\n• loadRadarMatrix 函式內 silent return',
             hunt: '可能原因:\n• 沒有命中「獵鷹」高分訊號股(雷達分數 ≥ 75)\n• top_picks.json 尚未生成\n• 今日全市場無強訊號',
             etf: '可能原因:\n• 沒任何 ETF 在自選/庫存內(去診斷頁加 0050/0056 等)\n• etf_tracking 資料未載入',
         };
+        // V24.4 — 診斷資訊(讓使用者截圖回報能精準修)
+        const diag = `visible-h: ${visibleHeight}px / text: ${txtLen}字 / children: ${childCount}`;
+        const navOK = !!document.getElementById(`navBtn${tabKey}`);
+        const containerVisible = container.style.display !== 'none';
+        const parentVisible = container.parentElement?.offsetHeight || 0;
         const card = document.createElement('div');
         card.setAttribute('data-rescue-card', '1');
         card.className = 'm-3 p-4 bg-amber-900/30 border-2 border-amber-600 rounded-lg text-amber-100 shadow-xl';
@@ -4247,13 +4258,22 @@ ${list}
             <div class="text-center mb-3">
                 <div class="text-3xl mb-1">⚠️</div>
                 <div class="text-base font-black">${label} 分頁是空的</div>
-                <div class="text-[10px] text-amber-200 mt-0.5">V24.3 救援卡 ・ render 完成但內容空白(${txtLen} 字)</div>
+                <div class="text-[10px] text-amber-200 mt-0.5">V24.4 救援卡</div>
+            </div>
+            <div class="bg-[#0d1117] rounded p-2 mb-3 text-[10px] font-mono text-yellow-300 leading-relaxed">
+                <div class="text-yellow-400 font-bold mb-1">🔬 診斷資訊(請截圖):</div>
+                <div>容器高度: ${visibleHeight}px (應 > 200)</div>
+                <div>內容文字: ${txtLen} 字</div>
+                <div>子元素數: ${childCount}</div>
+                <div>display: ${containerVisible ? 'flex ✅' : 'none ❌'}</div>
+                <div>父層高度: ${parentVisible}px</div>
+                <div>navBtn 存在: ${navOK ? '✅' : '❌'}</div>
             </div>
             <div class="bg-[#0d1117] rounded p-2 mb-3 text-[11px] text-amber-200 whitespace-pre-line leading-relaxed">
                 ${hints[tabId] || '不明原因'}
             </div>
             <div class="flex flex-col gap-2">
-                <button onclick="app.forcePwaReload()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-black rounded text-sm transition-colors">🆘 強制清 SW + 重整(救 iOS PWA 舊版)</button>
+                <button onclick="app.forcePwaReload()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-black rounded text-sm transition-colors">🆘 強制清 SW + 重整(救 iOS PWA)</button>
                 <button onclick="app.switchAppTab('diag')" class="w-full py-2 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded text-xs transition-colors">🎯 去診斷頁加股票</button>
                 <button onclick="this.closest('[data-rescue-card]').remove()" class="w-full py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs transition-colors">關閉此卡</button>
             </div>
