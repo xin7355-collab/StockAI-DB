@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8104,20 +8104,31 @@ const marginByDate = {};
         const srcEl = document.getElementById('bsiSource');
         if (!el) return;
         if (!v || !map[v]) {
-            // V25.4 — 友善訊息:NDC 每月 27 號發上月燈號,若還沒到/沒抓到顯具體原因
+            // V27.3 — 永遠優先顯「上次燈號」(localStorage),避免顯「抓不到」故障感(景氣燈號月更,上次值仍有參考價值)
+            let lastGood = null;
+            try { lastGood = JSON.parse(localStorage.getItem('bsiLastGood') || 'null'); } catch (_) {}
+            if (lastGood && lastGood.light && map[lastGood.light]) {
+                const lg = map[lastGood.light];
+                el.innerHTML = `<div class="${lg.cls}">${lg.txt}</div><div class="text-[9px] text-gray-500 leading-tight">${lg.sub}</div>`;
+                if (srcEl) srcEl.innerHTML = `<span class="text-cyan-500/80">📡 NDC ${lastGood.month || ''}</span><span class="ml-1 text-[9px] text-gray-500">💡 上次值・更新中</span>`;
+                return;
+            }
+            // 從未抓到過 → 友善訊息(NDC 每月 27 號發上月燈號)
             const today = new Date();
             const d = today.getDate();
             const m = today.getMonth() + 1;
             const lastMonth = m === 1 ? 12 : m - 1;
             const hint = d < 27
                 ? `<span class="text-gray-500 text-xs">⏳ ${lastMonth} 月燈號 27 號發</span>`
-                : `<span class="text-yellow-500 text-xs">⚠️ NDC 暫時抓不到</span>`;
+                : `<span class="text-gray-400 text-xs">📅 景氣燈號更新中</span>`;
             el.innerHTML = hint;
             if (srcEl) srcEl.innerHTML = `<span class="text-gray-600 text-[9px]">下次採礦補(每週一~五 16:30)</span>`;
             return;
         }
         this._twBsiLight = v;
         this._twBsiScore = map[v].score;   // 給綜合評分卡用
+        // V27.3 — 持久化最後一次好的燈號,供下次 NDC 抓不到時當「上次值」顯示
+        try { localStorage.setItem('bsiLastGood', JSON.stringify({ light: v, month: this._bsiAuto?.month || '', at: Date.now() })); } catch (_) {}
         el.innerHTML = `<div class="${map[v].cls}">${map[v].txt}</div><div class="text-[9px] text-gray-500 leading-tight">${map[v].sub}</div>`;
         // V22.3 — bsiSource 純顯 NDC 自動資料來源(無手動模式)
         // V23.2 — stale fallback 加「💡 歷史值」chip 標示(NDC 暫時抓不到時保留上次)
@@ -8234,6 +8245,14 @@ const marginByDate = {};
         try {
         // V23.3 — 優先顯實時點(後端 yfinance ^TXF=F 抓夜盤);無資料才 fallback 結算時間點
         const tx = this._macroRiskCache?.taifex_tx_now;
+        // V27.3 — 估算分支:加權+升貼水(或官方 OpenAPI 收盤)無可靠漲跌方向(夜盤與現貨會背離),只顯純價 + 「估」標記,不上紅綠誤導
+        if (tx && tx.est && tx.price != null) {
+            const price = parseFloat(tx.price);
+            info.textContent = `≈ ${price.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
+            info.className = 'text-[13px] font-black font-mono leading-tight text-amber-300';
+            sub.innerHTML = `<span class="text-gray-500">估·加權+升貼水 ・ 收盤參考</span>`;
+            return;
+        }
         if (tx && tx.price != null && tx.chg != null) {
             const chg = parseFloat(tx.chg);
             const price = parseFloat(tx.price);
@@ -8380,15 +8399,22 @@ const marginByDate = {};
         let got = 0;
         // 加權:Yahoo 即時(正確);櫃買不碰,保留 FinMind 日值
         if (apply('mktTWII_main', 'mktTWII_chg_main', twii, `即時 ${t}`)) got++;
-        // 台指電子盤:Yahoo ^TXF=F → 餵進 macro cache,走 _renderTaiexFutures 既有「實時點」分支顯數值;失敗則維持結算倒數
-        if (txf && txf.price > 0) {
-            try {
-                this._macroRiskCache = this._macroRiskCache || {};
-                this._macroRiskCache.taifex_tx_now = { price: txf.price, chg: txf.chgPct };
+        // 台指電子盤三層 fallback(保證有數字):① Yahoo ^TXF=F 實價 → ② 加權即時 + 升貼水(back)估算 → ③ 維持結算倒數
+        try {
+            this._macroRiskCache = this._macroRiskCache || {};
+            if (txf && txf.price > 0) {
+                this._macroRiskCache.taifex_tx_now = { price: txf.price, chg: txf.chgPct, est: false };
                 this._renderTaiexFutures();
                 got++;
-            } catch (_) {}
-        }
+            } else if (twii && twii.price > 0) {   // ^TXF=F 抓不到 → 加權即時 + 升貼水估算(夜盤僅供參考,標「估」)
+                const back = parseFloat(this._macroRiskCache.taifex_backwardation);
+                if (!isNaN(back)) {
+                    this._macroRiskCache.taifex_tx_now = { price: twii.price + back, chg: null, est: true };
+                    this._renderTaiexFutures();
+                    got++;
+                }
+            }
+        } catch (_) {}
         return got;
     },
 
