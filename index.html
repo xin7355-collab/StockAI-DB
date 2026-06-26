@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V24.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V24.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2927,6 +2927,33 @@ const app = {
         const setRealVh = () => document.documentElement.style.setProperty('--real-vh', `${window.innerHeight * 0.01}px`);
         setRealVh();
         window.addEventListener('resize', setRealVh);
+        // V24.5 — 🆘 5 個 tab 強塞「always-visible 救援頭」(寫進 DOM 不靠 JS 觸發,switchAppTab 壞也照顯)
+        try {
+            const RESCUE_TABS = [
+                { id: 'tabContentFav',   label: '⭐ 自選股' },
+                { id: 'tabContentInv',   label: '💼 庫存' },
+                { id: 'tabContentRadar', label: '🔥 雷達' },
+                { id: 'tabContentHunt',  label: '⚔️ 獵殺' },
+                { id: 'tabContentEtf',   label: '🏦 ETF 跟車' },
+            ];
+            RESCUE_TABS.forEach(({ id, label }) => {
+                const container = document.getElementById(id);
+                if (!container || container.querySelector('[data-rescue-header="1"]')) return;
+                const h = document.createElement('div');
+                h.setAttribute('data-rescue-header', '1');
+                h.className = 'bg-amber-900/40 border-b-2 border-amber-600 p-3 text-amber-100 text-center sticky top-0 z-50';
+                h.style.cssText = 'position:sticky;top:0;z-index:9999;';
+                h.innerHTML = `
+                    <div class="text-xs font-bold mb-2">${label} ・ V24.5 救援頭</div>
+                    <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取</div>
+                    <button onclick="(window.app && app.forcePwaReload) ? app.forcePwaReload() : location.reload();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
+                    <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉</button>
+                    <div class="text-[9px] mt-2 text-amber-300/80">若按鈕也沒反應 → 設定 → Safari → 清歷史 → 重開</div>
+                `;
+                container.insertBefore(h, container.firstChild);
+            });
+            console.log('[V24.5] 5 個 tab 救援頭已強塞');
+        } catch(e) { console.error('[V24.5 rescue-header init]', e); }
         this._initOnboard();
         // V21.3 ── Telegram 深連結支援:?sym=2330 自動跳該股(初始 sym 在 init 流程後才 switch)
         try {
@@ -4173,8 +4200,12 @@ ${list}
     },
 
     switchAppTab(tabId, isGoBack = false) {
-        if(tabId !== 'diag' && !document.getElementById('settingsModal').classList.contains('hidden')) {
-            this.saveSettings(); document.getElementById('settingsModal').classList.add('hidden');
+        try {   // V24.5 — 整段包 try/catch 防中斷(原本某行拋錯就無法切換)
+        if(tabId !== 'diag') {
+            const _settingsModal = document.getElementById('settingsModal');
+            if (_settingsModal && !_settingsModal.classList.contains('hidden')) {
+                this.saveSettings(); _settingsModal.classList.add('hidden');
+            }
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         
@@ -4208,7 +4239,16 @@ ${list}
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
         // V24.3 — 🚨 post-render 空白檢查(render 沒拋錯但內容空白也要顯救援卡)
         if (['fav','inv','radar','hunt','etf'].includes(tabId)) {
-            setTimeout(() => this._checkTabHasContent(tabId), 600);
+            setTimeout(() => { try { this._checkTabHasContent(tabId); } catch(e) { console.error('[checkTab]', e); } }, 600);
+        }
+        } catch (e) {   // V24.5 — switchAppTab 整段 try/catch 結尾
+            console.error('[switchAppTab]', tabId, e);
+            // 強制顯示對應 tab(即使 forEach 跑壞)
+            try {
+                const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
+                const t = document.getElementById(`tabContent${tabKey}`);
+                if (t) t.style.display = 'flex';
+            } catch(_){}
         }
     },
 
