@@ -720,6 +720,37 @@ def fetch_sp500():    return _fetch_yf_close("^GSPC",    "標普 500")    # 🌎
 def fetch_nasdaq():   return _fetch_yf_close("^IXIC",    "那斯達克")    # 🌎 美股科技指標(台積電/半導體連動)
 
 
+def fetch_twii_position():
+    """V25.4 — 算 ^TWII 在過去 60 日的位置百分位(0=最低,100=最高)
+    給 marketMakerIndex 判讀「真低檔護盤」vs「高檔買超警訊」用。
+    返回 {price, pos_60d, hi_60d, lo_60d}, 失敗回 {}
+    """
+    try:
+        import yfinance as yf
+        import time as _t
+        _t.sleep(0.4)
+        hist = yf.Ticker("^TWII").history(period='3mo')
+        if hist.empty: return {}
+        closes = hist['Close'].dropna()
+        if len(closes) < 30: return {}
+        # 取最近 60 個交易日(若不足 60,用所有可用的)
+        recent = closes.iloc[-60:]
+        current = float(recent.iloc[-1])
+        hi = float(recent.max())
+        lo = float(recent.min())
+        # 百分位 = 現價在 [lo, hi] 區間的位置(0-100)
+        pos = round((current - lo) / (hi - lo) * 100, 1) if hi > lo else 50.0
+        return {
+            'price':  round(current, 2),
+            'pos_60d': pos,
+            'hi_60d':  round(hi, 2),
+            'lo_60d':  round(lo, 2),
+        }
+    except Exception as e:
+        print(f"   ⚠️ fetch_twii_position 失敗:{e}")
+        return {}
+
+
 # ── 🏭 美股對標 9 細分板塊 ──
 # V23.1 黃金比例混合對標(精進):每板塊「主對標」+「副對標(個股 1-2 檔)」加權平均
 #   理由:單一 ETF 易被權重股稀釋(SMH 被台積電/輝達拉走情緒);加個股對標更精準抓族群資金流
@@ -1454,6 +1485,16 @@ def main():
         print(f"   → {bsi_month}: {bsi_light} ({bsi_score} 分)")
     elif not bsi_light:
         print(f"   → 失敗(前端 fallback 手動下拉):{bsi_err}")
+
+    # V25.4 — ^TWII 60 日百分位(給主力護盤判讀真低/高檔用)
+    print("📊 採集 ^TWII 60 日位置百分位…")
+    twii_pos_data = fetch_twii_position()
+    if twii_pos_data:
+        out['twii_pos'] = twii_pos_data['pos_60d']
+        out['twii_pos_detail'] = twii_pos_data
+        print(f"   → ^TWII ${twii_pos_data['price']} = 過去 60 日 {twii_pos_data['pos_60d']}% 分位 (lo:{twii_pos_data['lo_60d']} / hi:{twii_pos_data['hi_60d']})")
+    else:
+        print("   → ^TWII 百分位抓取失敗")
 
     # ── 🏭 美股產業 ETF 板塊對應(Q3 板塊輪動配 ETF)──
     print("─" * 50)

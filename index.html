@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V25.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V25.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8032,9 +8032,16 @@ const marginByDate = {};
         const srcEl = document.getElementById('bsiSource');
         if (!el) return;
         if (!v || !map[v]) {
-            // 後端 NDC 尚未抓到 → 顯抓取中提示(取代「未設定」誤導文字)
-            el.innerHTML = '<span class="text-gray-500 text-xs">⏳ NDC 抓取中</span>';
-            if (srcEl) srcEl.innerHTML = '<span class="text-gray-600 text-[9px]">下次採礦補</span>';
+            // V25.4 — 友善訊息:NDC 每月 27 號發上月燈號,若還沒到/沒抓到顯具體原因
+            const today = new Date();
+            const d = today.getDate();
+            const m = today.getMonth() + 1;
+            const lastMonth = m === 1 ? 12 : m - 1;
+            const hint = d < 27
+                ? `<span class="text-gray-500 text-xs">⏳ ${lastMonth} 月燈號 27 號發</span>`
+                : `<span class="text-yellow-500 text-xs">⚠️ NDC 暫時抓不到</span>`;
+            el.innerHTML = hint;
+            if (srcEl) srcEl.innerHTML = `<span class="text-gray-600 text-[9px]">下次採礦補(每週一~五 16:30)</span>`;
             return;
         }
         this._twBsiLight = v;
@@ -8327,13 +8334,32 @@ const marginByDate = {};
             cardCls = 'bg-gradient-to-br from-yellow-950/40 to-yellow-900/20 border-yellow-700/40';
             scoreCls = 'text-yellow-300';
         } else {
-            // V25.3 — 「主力低檔護盤」改名「主力買超偏多」
-            //   原文案誤導:沒判斷大盤是否真在低檔,只看 5 因子分 < 0 就叫「低檔護盤」
-            //   若大盤實際在高檔,主力買超反而可能是「出貨前蓄勢」,叫「低檔護盤」會讓使用者誤判
-            verdict = '🟢 主力買超偏多';
-            advice = '5 因子綜合多方 → 主力買超 / 散戶逆向 / 期貨升水(請自行檢查 K 線是否真在低檔)';
-            cardCls = 'bg-gradient-to-br from-green-950/50 to-green-900/20 border-green-700/50';
-            scoreCls = 'text-green-300';
+            // V25.3 — 「主力低檔護盤」改名「主力買超偏多」(沒判斷大盤位置就不叫低檔)
+            // V25.4 — 朱老師警告 banner 顯示時加紅警示 + ^TWII 60 日百分位判斷真低/中/高檔
+            const chuActive = !document.getElementById('chuMasterBanner')?.classList.contains('hidden')
+                              && (document.getElementById('chuMasterBanner')?.innerHTML?.includes('朱老師警告'));
+            const twiiPos = this._macroRiskCache?.twii_pos ?? null;   // 0-100,0=最低 100=最高
+            if (chuActive) {
+                verdict = '⚠️ 主力買超 但朱老師警告';
+                advice = '5 因子多方 + 朱老師結構警告 → 邏輯衝突 → 觀望(避免跟單)';
+                cardCls = 'bg-gradient-to-br from-yellow-950/50 to-red-950/30 border-2 border-red-600/60 animate-pulse';
+                scoreCls = 'text-yellow-300';
+            } else if (twiiPos != null && twiiPos < 30) {
+                verdict = '🟢 主力真低檔護盤';
+                advice = `大盤在過去 60 日 ${Math.round(twiiPos)}% 分位(實低檔) + 主力買超 → 可分批跟進`;
+                cardCls = 'bg-gradient-to-br from-green-950/50 to-green-900/20 border-green-700/50';
+                scoreCls = 'text-green-300';
+            } else if (twiiPos != null && twiiPos > 70) {
+                verdict = '⚠️ 主力高檔買超(警訊)';
+                advice = `大盤在過去 60 日 ${Math.round(twiiPos)}% 分位(高檔) + 主力買超 → 可能出貨蓄勢,謹慎`;
+                cardCls = 'bg-gradient-to-br from-yellow-950/50 to-orange-900/20 border-yellow-600/50';
+                scoreCls = 'text-yellow-300';
+            } else {
+                verdict = '🟢 主力買超偏多';
+                advice = '5 因子綜合多方 → 主力買超 / 散戶逆向 / 期貨升水(請自行確認 K 線位置)';
+                cardCls = 'bg-gradient-to-br from-green-950/50 to-green-900/20 border-green-700/50';
+                scoreCls = 'text-green-300';
+            }
         }
 
         const allFactors = reasons.concat(counters);
@@ -12272,8 +12298,15 @@ ${_newsLine}${globalContext}
         if ($('sccFg')) setTxt('sccFg', fgText, fgColor);
         // 散戶多空比（負值＝散戶偏多，逆向偏空）
         const rl = num(j.retail_ls_pct);
-        const rlText = rl == null ? '--' : `${rl > 0 ? '+' : ''}${rl.toFixed(1)}%`;
-        const rlColor = rl == null ? 'text-gray-500' : rl <= -25 ? 'text-red-400' : rl <= 0 ? 'text-orange-400' : 'text-green-400';
+        // V25.4 — 散戶情緒「逆向警示」(散戶看多 >+30% = 過熱警告 / <-25% = 恐慌機會)
+        //   原邏輯顏色寫反:散戶看多顯綠 → 使用者誤以為「該跟」,實際逆向指標該空
+        const rlIcon = rl == null ? '' : (rl >= 30 ? ' 🚨' : rl >= 15 ? ' ⚠️' : rl <= -25 ? ' 💡' : '');
+        const rlText = rl == null ? '--' : `${rl > 0 ? '+' : ''}${rl.toFixed(1)}%${rlIcon}`;
+        const rlColor = rl == null ? 'text-gray-500'
+            : rl >= 30  ? 'text-red-400 animate-pulse'      // 散戶過熱(該逆向看空)
+            : rl >= 15  ? 'text-orange-400'                  // 散戶偏多
+            : rl <= -25 ? 'text-green-300 font-bold'         // 散戶恐慌(該逆向看多)
+            : 'text-gray-400';                                // 中性
         if ($('sccRetail')) setTxt('sccRetail', rlText, rlColor);
         // 台幣匯率
         const twd = num(j.usdtwd);
