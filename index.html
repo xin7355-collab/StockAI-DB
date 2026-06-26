@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1809,23 +1809,7 @@
                 <!-- V22.5 — 🤖 板塊輪動 AI 白話判讀 + 個股對應建議(整合 1 鈕,Gemini 深度判讀,24h 快取,雙擊強制重抽) -->
                 <button id="sectorAiBtn" onclick="app.analyzeSectorRotationAI()" ondblclick="app.analyzeSectorRotationAI({force:true})" class="w-full mb-2 text-[11px] font-bold text-purple-300 bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 rounded-lg py-2 transition-colors flex items-center justify-center gap-1.5">🤖 AI 白話判讀 + 你的自選股對應(雙擊強制重抽)</button>
                 <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-xl border border-purple-700/40 p-3"></div>
-                <!-- V22.2 — 🇺🇸 美股先行 → 🇹🇼 台股 9 族群同步度摘要(由 _renderSectorSyncSummary 動態渲染) -->
-                <div class="mb-2 bg-gradient-to-r from-blue-950/40 via-[#010409] to-red-950/40 rounded-xl border border-blue-700/40 p-3">
-                    <div class="flex items-center justify-between mb-1.5">
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-sm">🇺🇸</span>
-                            <span class="text-[12px] font-black text-blue-300">昨夜美股先行</span>
-                            <span class="text-gray-500 text-sm">→</span>
-                            <span class="text-sm">🇹🇼</span>
-                            <span class="text-[12px] font-black text-red-300">今日台股</span>
-                        </div>
-                        <span class="text-[9px] text-gray-500">9 族群同步度</span>
-                    </div>
-                    <div class="text-[10px] text-gray-400 mb-2 leading-relaxed">💡 <b class="text-blue-200">美股漲台股跟漲</b>=主力有接(安全);<b class="text-yellow-200">逆勢</b>=主力可能在出貨/吸籌(留意);<b>⏳ 等盤中</b>=請按上方「即時更新」鈕</div>
-                    <div id="sectorSyncList" class="space-y-0">
-                        <div class="text-center text-gray-500 py-2 text-[10px]">載入中...</div>
-                    </div>
-                </div>
+                <!-- V26.5 — 砍 9 族群同步度摘要(與「預判中心」#predictGapTableResult 重複,後者含 lead-lag % + 警報 badge 更完整) -->
                 <!-- V19.7 — 每張卡底部「🌎 對標 XXX」連結移除(使用者反映太麻煩看不懂),
                             改成卡片頂部一個可摺疊「📖 美股對標速查表」(平常摺起,看不懂時點開) -->
                 <div class="mb-2 border border-[#30363d] rounded">
@@ -8492,66 +8476,7 @@ const marginByDate = {};
             } catch (e) { console.error('[_renderSectorEtfs slot]', key || '?', e); }
         });
         } catch (e) { console.error('[_renderSectorEtfs]', e); }
-        // V22.2 — 同步刷新頂部「美股先行 → 台股」摘要卡
-        try { this._renderSectorSyncSummary(sectorEtfs); } catch (e) { console.error('[_renderSectorSyncSummary call]', e); }
-    },
-
-    // V22.2 — 渲染頂部「🇺🇸 美股先行 → 🇹🇼 台股」9 族群同步度摘要
-    // V23.2 — 整函式包 try/catch,失敗不阻斷外層 tab 渲染
-    _renderSectorSyncSummary(sectorEtfs) {
-        try {
-        const listEl = document.getElementById('sectorSyncList');
-        if (!listEl) return;
-        const etfMap = sectorEtfs || this._macroRiskCache?.sector_etfs || {};
-        const sectors = [
-            { key:'server',    label:'🖥️ 伺服器代工' },
-            { key:'power',     label:'⚡ 重電基建' },
-            { key:'packaging', label:'📦 先進封裝' },
-            { key:'cpo',       label:'🔗 CPO 光通訊' },
-            { key:'cooling',   label:'❄️ 散熱' },
-            { key:'robot',     label:'🤖 機器人' },
-            { key:'finance',   label:'🏦 金融' },
-            { key:'leo',       label:'🛰️ 低軌衛星' },
-            { key:'dram',      label:'💾 DRAM' },
-        ];
-        let html = '';
-        for (const s of sectors) {
-            const etf = etfMap[s.key];
-            const heatEl = document.querySelector(`[data-sector="${s.key}"] .sector-heat`);
-            const rawTxt = heatEl?.textContent || '';
-            const twAbs = parseFloat(rawTxt.replace(/[^\d.\-]/g, ''));
-            const isTwNeg = rawTxt.includes('-') || rawTxt.includes('🔻');
-            const twChg = !isNaN(twAbs) ? (isTwNeg ? -Math.abs(twAbs) : twAbs) : NaN;
-            const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : NaN;
-            let badge = '⏳ 等盤中', cls = 'text-gray-500';
-            if (!isNaN(usChg) && !isNaN(twChg) && Math.abs(twChg) > 0.1) {
-                if (usChg > 0.3 && twChg > 0.3) { badge = '✅ 同步偏多'; cls = 'text-red-300'; }
-                else if (usChg < -0.3 && twChg < -0.3) { badge = '✅ 同步偏空'; cls = 'text-green-300'; }
-                else if ((usChg > 0.3 && twChg < -0.3) || (usChg < -0.3 && twChg > 0.3)) { badge = '⚠️ 逆勢'; cls = 'text-yellow-300 animate-pulse'; }
-                else { badge = '🟡 持平'; cls = 'text-gray-400'; }
-            }
-            const usStr = !isNaN(usChg) ? `${usChg >= 0 ? '+' : ''}${usChg.toFixed(1)}%` : '--';
-            const twStr = !isNaN(twChg) ? `${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
-            const usColor = !isNaN(usChg) ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
-            const twColor = !isNaN(twChg) ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
-            // V23.1 — 混合對標 tooltip + +N badge(hover 看主+副成分各別 chg)
-            const comps = etf?.components || [];
-            const compsTip = comps.length ? comps.map(c => `${c.ticker}(${Math.round(c.weight*100)}%) ${c.ok && c.chg != null ? (c.chg >= 0 ? '+' : '') + c.chg.toFixed(2) + '%' : '失敗'}`).join(' / ') : '';
-            const mixBadge = comps.length > 1 ? `<span class="text-[7px] text-purple-400 ml-0.5" title="${compsTip}">+${comps.length - 1}</span>` : '';
-            html += `
-                <div class="flex items-center justify-between text-[11px] py-1 border-b border-[#21262d] last:border-0" title="${compsTip || (etf?.desc || '')}">
-                    <span class="text-gray-200 font-bold flex-shrink-0">${s.label}</span>
-                    <span class="flex items-center gap-1.5 flex-wrap justify-end">
-                        <span class="text-[10px] text-blue-300/80">${etf?.etf || '--'}${mixBadge}</span>
-                        <span class="${usColor} font-mono text-[10px] font-bold">${usStr}</span>
-                        <span class="text-gray-600 text-[10px]">→</span>
-                        <span class="${twColor} font-mono text-[10px] font-bold">台 ${twStr}</span>
-                        <span class="${cls} font-bold text-[10px]">${badge}</span>
-                    </span>
-                </div>`;
-        }
-        listEl.innerHTML = html;
-        } catch (e) { console.error('[_renderSectorSyncSummary]', e); }
+        // V26.5 — sectorSyncList 摘要已砍(與預判中心 renderSectorGapTable 重複),不再呼叫 _renderSectorSyncSummary
     },
 
     // V22.5 — 🤖 板塊輪動 AI 白話判讀 + 自選股對應建議(Gemini 深度,24h 快取,雙擊強制重抽)
