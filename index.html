@@ -445,7 +445,7 @@
                         </div>
                     </div>
                     <div class="border-t border-gray-700/50 pt-3 mt-1">
-                        <label class="text-xs font-bold text-purple-400">📊 預測歷史快照（patWinRate 隔日驗證）</label>
+                        <label class="text-xs font-bold text-purple-400">📊 預測歷史快照(隔日驗證)</label>
                         <div id="predHistSummary" class="text-[10px] text-gray-500 mt-1 mb-2 leading-tight">尚未累積</div>
                         <div class="flex gap-2">
                             <button onclick="app.exportPredHist(); app.vibrate(50);" class="flex-1 bg-purple-800/60 hover:bg-purple-700 text-white text-xs py-1.5 rounded font-bold border border-purple-700 transition">📤 匯出 JSON</button>
@@ -16066,7 +16066,7 @@ ${_newsLine}${globalContext}
         const hist = (all[sym] || []).filter(r => r.verified);
         const total = hist.length;
         if (total === 0) {
-            box.innerHTML = `<div class="text-[10px] text-gray-500">📊 ${sym} 尚未累積已驗證快照（每次跑 K 線會自動記今日 patWinRate，隔日回來自動對驗證）</div>`;
+            box.innerHTML = `<div class="text-[10px] text-gray-500">📊 ${sym} 尚未累積已驗證快照(每次跑 K 線會自動記今日勝率,隔日回來自動驗證)</div>`;
             return;
         }
         const hits = hist.filter(r => r.hit).length;
@@ -16080,7 +16080,7 @@ ${_newsLine}${globalContext}
             <div class="grid grid-cols-2 gap-2 text-[11px]">
                 <div>累計已驗證：<span class="font-mono text-white">${total} 筆</span></div>
                 <div>命中：<span class="font-mono ${accCol} font-bold">${hits} / ${total}（${acc}%）</span></div>
-                ${high.length ? `<div class="col-span-2 text-[10px] text-gray-500">patWinRate ≥ 65% 時：<span class="font-mono ${+highAcc >= 65 ? 'text-red-300' : 'text-gray-300'}">${highHits}/${high.length}（${highAcc}%）</span></div>` : ''}
+                ${high.length ? `<div class="col-span-2 text-[10px] text-gray-500">高勝率 (≥65%) 時:<span class="font-mono ${+highAcc >= 65 ? 'text-red-300' : 'text-gray-300'}">${highHits}/${high.length}(${highAcc}%)</span></div>` : ''}
             </div>
         `;
     },
