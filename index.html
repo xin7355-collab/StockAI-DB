@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1832,7 +1832,8 @@
             <!-- V25.8 — 9 族群詳細整段已砍(L1832-1879 殘留 8 個 sector + 重複熔斷註解)-->
             <!-- 🚨 V21.8 — 全球熔斷示警卡(平常 hidden;美/日/韓任一指數接近或觸發熔斷時自動顯) -->
             <!--    台灣**沒有指數熔斷**(只有個股 ±10%),所以這卡都顯國際指數;對台股影響量化(歷史經驗值) -->
-            <div id="circuitBreakerAlert" class="hidden bg-gradient-to-br from-red-950/60 to-orange-950/40 rounded-xl border-2 border-red-600 p-3 shadow-[0_0_20px_rgba(220,38,38,0.3)]"></div>
+            <!-- V26.1 — 熔斷示警 Alert Box 化(極度危險保留亮橘 + pulse 動畫,符合 design tokens 鐵則) -->
+            <div id="circuitBreakerAlert" class="hidden bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-orange-700/40 rounded-lg p-3 shadow-md animate-pulse"></div>
 
             <!-- 💥 V22.0 — 泡沫風控指揮中心(風格 D 白話親民:4 維度白話改名 + hero 提示句 + 圓角大) -->
             <!--    結構:標題 + hero 提示 + 上半 4 維度燈號(永顯)+ 下半真假泡沫判讀(觸發時自動展開) -->
@@ -13364,7 +13365,8 @@ ${_newsLine}${globalContext}
             return;
         }
         banner.classList.remove('hidden');
-        banner.innerHTML = `<div class="bg-red-900/50 border-y-2 border-red-600 text-red-100 text-[12px] font-bold leading-snug px-3 py-1.5 cursor-pointer" onclick="alert('📌 朱老師心法 — 結構轉折\\n\\n' + app._chuOriginalText.gate4 + '\\n\\n' + app._chuOriginalText.exit)">⚠️ <b>朱老師警告:</b>${a.text.replace(/[✅⚠️❌]/g, '')} — 隔日開盤立刻離場,不留戀</div>`;
+        // V26.1 — Alert Box 樣板:深底 + 左紅邊框 + leading-relaxed(不再整句紅,只 emoji + 標籤紅)
+        banner.innerHTML = `<div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r px-3 py-2 cursor-pointer" onclick="alert('📌 朱老師心法 — 結構轉折\\n\\n' + app._chuOriginalText.gate4 + '\\n\\n' + app._chuOriginalText.exit)"><div class="text-[10px] text-red-400 font-bold mb-1">⚠️ 朱老師警告</div><div class="text-[12px] text-gray-200 leading-relaxed">${a.text.replace(/[✅⚠️❌]/g, '')} — 隔日開盤立刻離場,不留戀</div></div>`;
         if (sopCard) sopCard.classList.add('border-red-600');
     },
 
