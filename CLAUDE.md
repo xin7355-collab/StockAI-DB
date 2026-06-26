@@ -425,8 +425,146 @@ V20.0-V20.7 全套處置股風控,個股頁最右邊「🚨 處置」tab,含 6 �
 
 ---
 
+## 🎯 V26.x 階段學到的新規(2026-06-26 連推 V26.1~V26.19)
+
+### 個股頁 5 卡架構(每張卡 onclick / ID 一旦動就會壞)
+| 卡片 ID | 渲染函式 | 行號 | 角色 |
+|---------|---------|------|------|
+| `#costPnlBar` | (在 refreshStrategy 內) | L15206 | 倉位狀態小卡 4 格 grid + 大字現價(V26.6) |
+| `#masterScoreCard` | `renderMasterScoreCard` | L7891 | 綜合操作評分 Progress Row Grid(V26.15) |
+| `#instReverseCard` | `renderInstReverseCard` | L7791 | 法人反轉 + 投信做帳 Alert Box(V26.16) |
+| `#chuStrategyCard` | `renderChuStrategyCard` | L3892 | 朱老師策略 Empty State + CTA(V26.17) |
+| `#chipBrokerTable` | `dispBrokerTable` fallback | L9784 | 分點明細 + 維護中 Alert Box(V26.18) |
+
+### UI 樣板鐵則(必引用,別重新設計)
+
+**1. Equal Height Card 三段式**(V25.8)— 全球巨頭 10 卡
+
+**2. Alert Box 樣板**(V26.1+)— 警告 / 維護中 / 失敗訊息:
+```html
+<div class="bg-[#161b22] border-l-4 border-{color}-500 border-y border-r border-[#30363d] rounded-r p-3">
+  <div class="text-[11px] font-bold text-{color}-300 mb-1">⚠️ 標題</div>
+  <div class="text-[10px] text-gray-300 leading-relaxed">純文字段落不再彩色化</div>
+</div>
+```
+
+**3. 倉位狀態 4 格 grid**(V26.6)— `#costPnlBar`:
+header 大字現價 + 2x2 grid(成本/帳損%/5MA/損益元),硬停損 Alert Box 條件顯示
+
+**4. Vertical Stepper**(V26.9)— SOP 步驟條(永豐 App 下單 / 設定教學):
+```html
+<div class="flex gap-2.5">
+  <div class="flex flex-col items-center flex-shrink-0">
+    <div class="w-5 h-5 rounded-full bg-{color}-600 text-white text-[10px] font-black flex items-center justify-center">${n}</div>
+    <div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>   <!-- 最後一步省略 -->
+  </div>
+  <div class="flex-1 pb-2.5">
+    <div class="text-[11px] font-bold text-{color}-300">${title}</div>
+    <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${detail}</div>
+  </div>
+</div>
+```
+
+**5. Progress Row Grid**(V26.15)— 因子明細 / 評分列表:
+```html
+<div class="grid grid-cols-[1fr_auto_44px] gap-2 items-center py-1.5 border-b border-[#21262d]">
+  <div>
+    <div class="text-[11px] text-gray-200 font-bold flex items-center gap-1"><span>${icon}</span>${name}</div>
+    <div class="text-[9px] text-gray-500 font-mono">權重 ${weight}%</div>
+  </div>
+  <div class="flex flex-col items-end gap-0.5">
+    <span class="text-[9px] text-gray-400 truncate max-w-[120px]">${evalTxt}</span>
+    <div class="w-[100px] h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${barColor}" style="width:${score}%"></div></div>
+  </div>
+  <div class="font-mono font-black text-right text-base ${scoreColor}">${score}</div>
+</div>
+```
+
+**6. Empty State + CTA**(V26.17)— 未填資料的卡片(別顯紅警誤導):
+```html
+<div class="flex flex-col items-center justify-center py-6 px-3">
+  <div class="text-5xl text-gray-700 mb-2">📦</div>
+  <div class="text-sm text-gray-300 font-bold mb-1">尚未建立此 ${entity}</div>
+  <div class="text-[10px] text-gray-500 mb-4 text-center leading-relaxed">${guideText}</div>
+  <button onclick="${action}" class="px-5 py-2.5 bg-{color}-600 hover:bg-{color}-500 text-white text-xs font-black rounded-lg shadow-md">＋ ${ctaText}</button>
+</div>
+```
+
+### 錯誤訊息白話化鐵則(V26.18 後)
+
+⛔ **禁在 UI 文案暴露技術術語**(showJargon / title tooltip / fallback HTML 都算 UI):
+- `GitHub Actions` / `Google Cloud` / `AWS` / `Azure` / `IP 封鎖` / `sandbox` / `runner` / `cron syntax` / `TWSE BSR 系統封鎖`
+- 後端 API 名稱:`FinMind` / `Fugle` / `yfinance` 等實作細節
+- 內部變數 / 函式名:`activeData` / `_macroRiskCache` / `_falconScores` 等
+
+✅ **改用白話**:
+- 「⚠️ XXX 維護中,已自動切換至 T+1 備份備援」
+- 「✅ 已自動切換到替代方案」
+- 「請至 [合理連結] 手動查」
+- 「資料抓取中,稍後再點」
+
+🟢 **例外**:使用者主動點「故障排查」「Telegram 推播診斷」等 power user 工具,可保留技術細節(他真要 debug 才看)
+
+### AI 資料就緒檢查模式(V26.12/V26.13)
+
+**鐵則**:禁 AI 在資料不全時硬判讀,避免 AI 看 null 給「健康」錯誤結論。
+
+**工具函式**(L8480 附近):
+```js
+_checkMacroReady() {
+    const macro = this._macroRiskCache || {};
+    const hasSectors = !!(macro.sector_etfs && Object.keys(macro.sector_etfs).length >= 5);
+    const missing = [];
+    if (!hasSectors) missing.push('9 板塊 ETF 對標資料');
+    return { ready: missing.length === 0, missing };
+},
+_dataNotReadyHtml(missing) { /* Alert Box 樣板,黃色警示 */ }
+```
+
+**4 個函式 entry 必加 ready check**:
+- `analyzePredictCenter`(預判中心 4 段 AI)
+- `analyzeMarketAnomaly`(大跌剖析)
+- `analyzeSectorRotationAI`(板塊輪動 AI)
+- `renderSectorGapTable`(9 板塊缺口表)
+
+**個股 AI 不需 check**(進入個股頁就 fetch 個股資料):
+- `runUnifiedGroqAnalysis` / `runKlineAudit` / `analyzeChipUnified` / `fetchFundamentalAnalysis`
+
+**過嚴會錯殺**:V26.12 把 `us_macro.sp500/vix` 設 required 太嚴,V26.13 改成只看 `sector_etfs`(因為核心資料齊就能跑)。
+
+### 整合卡規則(V26.14)
+
+**重複功能必合併到一張整合卡**(避免兩個功能在不同卡分散)— V26.14「資金板塊輪動」+「9 板塊缺口表」合併示範。
+
+**搬卡操作必驗 ID 唯一性**:
+```bash
+for id in sectorSource sectorIntradayBtn sectorAiBtn ...; do
+  count=$(grep -c "id=\"$id\"" index.html)
+  [ "$count" -ne 1 ] && echo "❌ $id 重複 $count 次"
+done
+```
+
+**JS 函式不需改**:DOM ID 保留 + onclick handler 保留 → 渲染邏輯零改動
+
+### 視覺降噪鐵則(V26.1 ~ V26.18 整套)
+
+| 禁 | 改 | 範例 |
+|----|-----|------|
+| 霓虹漸層 `bg-gradient from-purple-*` | 純色 `bg-[#161b22]` + accent border | V26.2-V26.4 |
+| 口語化驚嘆「!!」「啊」「對著做」 | 金融術語 + Alert Box | V26.16 |
+| 長文字段落彩色化 | 純灰文字 leading-relaxed + emoji 開頭 | 全段 |
+| 未填資料顯紅警誤導 | Empty State + CTA 引導行動 | V26.17 |
+| 黃底 chip `bg-yellow-900/40 px-1 rounded` | 純淡黃文字 `text-yellow-300 font-bold` | V26.8 |
+| 整段技術術語錯誤訊息 | 「⚠️ XXX 維護中,已切備援」 | V26.18 |
+
+### 連推時 ID 重複防呆(V26.10/V26.11/V26.14 教訓)
+
+搬卡 / 整合卡 / 複製貼上 HTML 後**必跑 ID 唯一性檢查**,否則 `document.getElementById` 只抓第 1 個,新位置 DOM 操作會壞。
+
+---
+
 ## GitHub 帳號
-- 帳號：`xin7355-collab`
-- 主要 repo：`StockAI-DB`（此專案）
-- 其他：`gdp-dashboard`（保留）、`pro-terminal-v4`（已刪除）
-- GitHub Pages 1GB 限制：目前使用約 100MB，無虞
+- 帳號:`xin7355-collab`
+- 主要 repo:`StockAI-DB`(此專案)
+- 其他:`gdp-dashboard`(保留)、`pro-terminal-v4`(已刪除)
+- GitHub Pages 1GB 限制:目前使用約 100MB,無虞
