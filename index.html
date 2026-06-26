@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.20</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.21</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.20</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.21</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1189,12 +1189,27 @@
                             <span class="bg-white/5 text-gray-500 text-[9px] px-2 py-0.5 rounded">· 限近 1 年樣本</span>
                         </div>
                         <div id="patFilterTags" class="text-[10px] text-cyan-300/70 mb-1.5"></div>
-                        <div class="grid grid-cols-3 gap-1.5 text-center mt-1.5">
-                            <div class="bg-gray-800 rounded p-2 border border-gray-600"><div class="text-xs text-gray-400">高度相似樣本</div><div class="font-bold text-white text-lg mt-0.5" id="patCount">--次</div></div>
-                            <div class="bg-gray-800 rounded p-2 border border-gray-600" id="patWinRateCard"><div class="text-xs text-gray-400">隔日上漲機率</div><div class="font-bold text-gray-300 text-lg mt-0.5" id="patWinRate">--%</div></div>
-                            <div class="bg-gray-800 rounded p-2 border border-green-900/50"><div class="text-xs text-green-400">隔日平均漲幅</div><div class="font-bold text-white text-base mt-0.5" id="patAvgRet">--</div></div>
+                        <!-- V26.21 — 三大核心指標卡:動態邊框 + 動態數值色 + text-2xl 大字 -->
+                        <div class="grid grid-cols-3 gap-2 text-center mt-1.5">
+                            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5" id="patCountCard">
+                                <div class="text-[9px] text-gray-500 mb-1">高度相似樣本</div>
+                                <div class="text-2xl font-black font-mono text-gray-100" id="patCount">--</div>
+                            </div>
+                            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5" id="patWinRateCard">
+                                <div class="text-[9px] text-gray-500 mb-1">隔日上漲機率</div>
+                                <div class="text-2xl font-black font-mono text-gray-300" id="patWinRate">--%</div>
+                            </div>
+                            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5" id="patAvgRetCard">
+                                <div class="text-[9px] text-gray-500 mb-1">隔日平均漲幅</div>
+                                <div class="text-2xl font-black font-mono text-gray-300" id="patAvgRet">--</div>
+                            </div>
                         </div>
-                        <div class="col-span-3 text-[9px] text-gray-500 text-center mt-1.5 leading-relaxed">🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 &lt;50% 偏低（台股：紅=漲=好）</div>
+                        <!-- V26.21 — 圖例改圓點型動態 legend(取代彩色字串) -->
+                        <div class="flex items-center justify-center gap-3 mt-2 text-[9px] text-gray-500">
+                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>≥65% 高勝率</span>
+                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>50-64% 中等</span>
+                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>&lt;50% 偏低</span>
+                        </div>
                         <div id="patHighAlert" class="hidden text-xs font-bold text-center text-[#f87171] bg-red-950/40 border border-red-800/50 rounded px-2 py-1.5 mt-1.5 animate-pulse"></div>
                         <div id="myPredHistBox" class="bg-gray-800 rounded p-2 border border-gray-600 mt-2 text-[11px]"><div class="text-[10px] text-gray-500">尚未累積任何已驗證快照</div></div>
                     </div>
@@ -15914,18 +15929,29 @@ ${_newsLine}${globalContext}
         }
 
         if (patternStats) {
+            // V26.21 — 三卡動態色聯動:邊框 + 數值色都依數據級距變色
             const cnt = patternStats.count;
-            const confidence = cnt >= 10 ? '✅ 高信心' : cnt >= 8 ? '⚡ 中信心' : cnt >= 3 ? '⚠️ 樣本偏少,參考性有限' : '🚫 樣本不足';
+            const confidence = cnt >= 10 ? '✅ 高信心' : cnt >= 8 ? '⚡ 中信心' : cnt >= 3 ? '⚠️ 樣本偏少' : '🚫 樣本不足';
             const confColor = cnt >= 10 ? 'text-green-400' : cnt >= 8 ? 'text-yellow-400' : 'text-orange-400';
-            document.getElementById('patCount').innerHTML = `${cnt} 次<br><span class="text-[9px] ${confColor}">${confidence}</span>`;
+            const cntBorder = cnt >= 10 ? 'border-green-500/40' : cnt >= 8 ? 'border-yellow-500/40' : 'border-orange-500/40';
+            const cntCard = document.getElementById('patCountCard');
+            if (cntCard) cntCard.className = `bg-[#161b22] border ${cntBorder} rounded-lg p-2.5`;
+            document.getElementById('patCount').innerHTML = `${cnt}<div class="text-[9px] ${confColor} mt-0.5 font-normal">${confidence}</div>`;
+
             const wr = parseFloat(patternStats.winRate) || 0;
-            const wrCol = wr >= 65 ? 'text-[#f87171]' : (wr >= 50 ? 'text-yellow-300' : 'text-[#4ade80]');
+            const wrCol = wr >= 65 ? 'text-red-400' : (wr >= 50 ? 'text-yellow-400' : 'text-green-400');
+            const wrBorder = wr >= 65 ? 'border-red-500/40' : wr >= 50 ? 'border-yellow-500/40' : 'border-green-500/40';
             const wrCard = document.getElementById('patWinRateCard');
-            if (wrCard) wrCard.className = `bg-gray-800 rounded p-2 border ${wr >= 65 ? 'border-red-600/70' : wr >= 50 ? 'border-yellow-600/50' : 'border-gray-600'}`;
-            // V15.6 — 樣本 < 5 時加紅字警告(避免使用者被 100%/2 樣本誤導)
-            const lowSampleWarn = (cnt < 5) ? `<div class="text-[9px] text-red-400 font-bold mt-0.5">⚠️ 樣本太少 (${cnt}/5),僅供參考</div>` : '';
+            if (wrCard) wrCard.className = `bg-[#161b22] border ${wrBorder} rounded-lg p-2.5`;
+            const lowSampleWarn = (cnt < 5) ? `<div class="text-[9px] text-red-400 font-bold mt-0.5">⚠️ 樣本太少 (${cnt}/5)</div>` : '';
             document.getElementById('patWinRate').innerHTML = `<span class="${wrCol}">${patternStats.winRate}%</span>${lowSampleWarn}`;
-            document.getElementById('patAvgRet').innerHTML = patternStats.avgRet > 0 ? `<span class="text-red-400">+${patternStats.avgRet}%</span>` : `<span class="text-green-400">${patternStats.avgRet}%</span>`;
+
+            const avgRetNum = parseFloat(patternStats.avgRet) || 0;
+            const avgCol = avgRetNum > 0 ? 'text-red-400' : avgRetNum < 0 ? 'text-green-400' : 'text-gray-300';
+            const avgBorder = avgRetNum > 0 ? 'border-red-500/40' : avgRetNum < 0 ? 'border-green-500/40' : 'border-[#30363d]';
+            const avgCard = document.getElementById('patAvgRetCard');
+            if (avgCard) avgCard.className = `bg-[#161b22] border ${avgBorder} rounded-lg p-2.5`;
+            document.getElementById('patAvgRet').innerHTML = `<span class="${avgCol}">${avgRetNum > 0 ? '+' : ''}${patternStats.avgRet}%</span>`;
             // 🆕 顯示啟用的過濾維度標籤(讓使用者看到目前機率是基於哪些條件算的)
             // V26.20 — patFilterTags 改 Micro Tag 風格(去掉「已套用過濾條件」贅字)
             const tagsEl = document.getElementById('patFilterTags');
