@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V25.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V25.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2053,14 +2053,6 @@
         </div><!-- V25.0 真根因 — 補閉合 tabContentMarket(原本少 1 個 </div>,5 個 tab 被巢狀其中導致空白!) -->
 
         <div id="tabContentFav" class="flex-col pb-4" style="display:none;min-height:80vh;">
-            <!-- V24.7 — HTML 寫死救援頭(改 relative,不靠 sticky;父容器 min-h:80vh 強制撐) -->
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
-                <div class="text-xs font-bold text-amber-100 mb-1">⭐ 自選股 ・ V24.6 救援頭</div>
-                <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
-                <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
-                <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉此卡</button>
-                <div class="text-[9px] mt-2 text-amber-300/80">JS 失敗也照顯 ・ iOS Safari 設定→清歷史→重開</div>
-            </div>
             <div class="sticky top-0 z-40 bg-[#0d1117] border-b border-[#30363d] shadow-sm flex items-center w-full pr-1 pt-1 pb-1">
                 <div id="favGroupTabs" class="flex items-center flex-grow overflow-x-auto scrollbar-hide py-0.5"></div>
                 <button onclick="app.toggleFavEditMode(); app.vibrate(30);" id="btnFavEdit" class="ml-1 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-xl font-bold bg-[#161b22] px-2 py-1 rounded border border-[#30363d]">✏️</button>
@@ -2092,12 +2084,6 @@
         </div>
 
         <div id="tabContentInv" class="flex-col gap-3 p-2 pb-4" style="display:none;min-height:80vh;">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
-                <div class="text-xs font-bold text-amber-100 mb-1">💼 庫存 ・ V24.6 救援頭</div>
-                <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
-                <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
-                <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉此卡</button>
-            </div>
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm">
                     <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">K</span> 雲端庫存風控</h2>
@@ -2156,12 +2142,6 @@
         </div>
 
         <div id="tabContentRadar" class="flex-col p-2 relative pb-4" style="display:none;min-height:80vh;">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
-                <div class="text-xs font-bold text-amber-100 mb-1">🔥 雷達 ・ V24.6 救援頭</div>
-                <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
-                <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
-                <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉此卡</button>
-            </div>
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative">
                 <div class="sticky top-0 z-50 bg-[#0d1117] border-b border-[#30363d] p-3 shadow-md flex flex-col gap-3 rounded-t-[8px]">
                     <!-- 標題列：大標 + 雷達實戰說明書 -->
@@ -2234,20 +2214,8 @@
         </div>
 
         <div id="tabContentEtf" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
-                <div class="text-xs font-bold text-amber-100 mb-1">🏦 ETF 跟車 ・ V24.6 救援頭</div>
-                <div class="text-[10px] text-amber-200 mb-2">ETF tab 本來就是空 div,須等 renderEtfTab 填內容</div>
-                <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
-                <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉此卡</button>
-            </div>
         </div>
         <div id="tabContentHunt" class="flex-col p-2 gap-3 pb-4" style="display:none;min-height:80vh;">
-            <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
-                <div class="text-xs font-bold text-amber-100 mb-1">⚔️ 獵殺 ・ V24.6 救援頭</div>
-                <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
-                <button onclick="(window.app&&app.forcePwaReload)?app.forcePwaReload():(function(){if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()))} if('caches' in window){caches.keys().then(ns=>ns.forEach(n=>caches.delete(n)))} setTimeout(()=>location.reload(),500);})();" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-black text-xs shadow-lg">🆘 強制清 SW + 重整</button>
-                <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉此卡</button>
-            </div>
             <!-- Active Alerts Banner -->
             <div id="huntAlertBox" class="hidden flex-col gap-2"></div>
 
@@ -8359,9 +8327,11 @@ const marginByDate = {};
             cardCls = 'bg-gradient-to-br from-yellow-950/40 to-yellow-900/20 border-yellow-700/40';
             scoreCls = 'text-yellow-300';
         } else {
-            // V21.7 — 「主力託盤」→「主力低檔護盤」(使用者反饋「託盤」太專業)
-            verdict = '🟢 主力低檔護盤';
-            advice = '主力在低檔買進撐住股價 → 可分批跟進';
+            // V25.3 — 「主力低檔護盤」改名「主力買超偏多」
+            //   原文案誤導:沒判斷大盤是否真在低檔,只看 5 因子分 < 0 就叫「低檔護盤」
+            //   若大盤實際在高檔,主力買超反而可能是「出貨前蓄勢」,叫「低檔護盤」會讓使用者誤判
+            verdict = '🟢 主力買超偏多';
+            advice = '5 因子綜合多方 → 主力買超 / 散戶逆向 / 期貨升水(請自行檢查 K 線是否真在低檔)';
             cardCls = 'bg-gradient-to-br from-green-950/50 to-green-900/20 border-green-700/50';
             scoreCls = 'text-green-300';
         }
