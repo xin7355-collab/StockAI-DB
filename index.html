@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.17</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.18</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.17</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.18</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -9811,22 +9811,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                        <div class="text-gray-400 text-[10px] leading-relaxed">系統每日 16:30 後對熱門 50 檔 (含台積電 / 鴻海 / 0050 等) 採礦分點資料。<br>
                        一般股仍可看「三大法人」與「融資融券」籌碼,只是無「前三大主力券商」明細。</div>
                    </div>`
-                : `<div class="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3">
-                       <div class="text-blue-300 text-xs font-bold mb-2 flex items-center gap-1">
-                           ⚠️ 真實分點資料暫不可用
+                : `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-3">
+                       <div class="text-yellow-300 text-[11px] font-bold mb-1.5 flex items-center gap-1">
+                           ⚠️ 部分即時數據維護中
                            <button onclick="app.showJargon('分點限制'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button>
                        </div>
-                       <div class="text-gray-400 text-[10px] leading-relaxed mb-2">
-                           TWSE 官方 BSR 系統封鎖雲端機房 IP,本網站採礦機(GitHub Actions)無法取得即時分點。
+                       <div class="text-gray-300 text-[10px] leading-relaxed mb-2">
+                           已自動切換至 T+1 備份備援資料庫。即時主力分點明細暫不可用,請改用下列替代方案:
                        </div>
-                       <div class="text-amber-300 text-[10px] font-bold mb-1">✅ 替代方案(免費可用):</div>
-                       <div class="text-[10px] leading-relaxed space-y-0.5 ml-1">
-                           <div class="text-red-300">• 上方「🔴 盤中主力動向」(Fugle 內外盤)— 盤中即時</div>
-                           <div class="text-green-300">• 三大法人買賣超 — T+1 收盤後可看</div>
-                           <div class="text-purple-300">• 融資餘額走勢 — T+1 收盤後可看</div>
+                       <div class="text-[10px] leading-relaxed space-y-1 ml-1 mb-2">
+                           <div class="text-red-300">• 上方「🔴 盤中主力動向」(Fugle 內外盤)— <span class="text-gray-400">盤中即時</span></div>
+                           <div class="text-green-300">• 三大法人買賣超 — <span class="text-gray-400">T+1 收盤後</span></div>
+                           <div class="text-purple-300">• 融資餘額走勢 — <span class="text-gray-400">T+1 收盤後</span></div>
                        </div>
                        <div class="text-gray-500 text-[9px] mt-2 pt-2 border-t border-gray-700/40">
-                           如需官方分點,請至 <a href="https://bsr.twse.com.tw/bshtm/bsMain.aspx" target="_blank" rel="noopener" class="text-blue-400 hover:underline">bsr.twse.com.tw</a> 手動查詢(一次一檔且須過驗證碼)
+                           如需官方分點即時查詢:<a href="https://bsr.twse.com.tw/bshtm/bsMain.aspx" target="_blank" rel="noopener" class="text-blue-300 hover:text-blue-100 underline">bsr.twse.com.tw</a>(一次一檔,須過驗證碼)
                        </div>
                    </div>`;
             box.innerHTML = msg;
