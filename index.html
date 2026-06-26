@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.25</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.26</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.25</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.26</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1262,16 +1262,8 @@
                 </div>
                 <!-- V20.5 — 處置股實戰操作秘訣(永遠顯,教育目的) -->
                 <div id="disposedPlaybookCard" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg"></div>
-                <!-- V20.5 — 資料來源說明卡(誠實告知哪些是估算/哪些是 TWSE 公告) -->
-                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-[10px] text-gray-400 leading-relaxed">
-                    <div class="text-cyan-300 font-bold text-[11px] mb-1.5">📊 資料來源</div>
-                    <div>• <b class="text-gray-200">注意股 / 處置股名單 / 分盤分鐘 / 出關日</b>:來自 <b class="text-blue-300">TWSE 官方 OpenAPI</b>(採礦端每日盤後抓)</div>
-                    <div>• <b class="text-gray-200">8 款規則掃描 + 4 個累積統計</b>:用 K 線前端推估,僅供參考</div>
-                    <div>• <b class="text-gray-200">第 5 款分點集中度</b>:用 data/chips/{sym}.json(FinMind 採礦)</div>
-                    <div>• <b class="text-gray-200">第 6 款 PE / 第 7 款融資</b>:用 X 光基本面 + daily margin_balance</div>
-                    <div>• <b class="text-amber-300">第 8 款權證溢價率</b>:目前無公開 API,暫無資料</div>
-                    <div class="mt-1.5 text-[9px] text-gray-500">⚠️ 實際以 TWSE 官方公告為準 ・ 投資有風險,以上僅供風控參考</div>
-                </div>
+                <!-- V26.26 — 資料來源頁尾簡化:砍 data/chips/jsym / margin_balance / FinMind / Python 原始碼 / daily_miner 等技術術語 -->
+                <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 數據來源:台灣證券交易所(TWSE)官方 OpenAPI 盤後自動同步 · 實際以 TWSE 公告為準 · 投資有風險,僅供風控參考</div>
             </div>
 
             <!-- ⚖️ V21.5 — 多空優勢計分卡(對標籌碼 K 線 App「多空優勢」總覽頁)-->
