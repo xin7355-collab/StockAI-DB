@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.23</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.24</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.23</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.24</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -7447,14 +7447,31 @@ const marginByDate = {};
         const x = this._calcAttentionScan(sym);
         if (!x) { card.classList.add('hidden'); return; }
         card.classList.remove('hidden');
+        // V26.24 — Status Rows 統一 Pill Badges:卡片高度一致,右側 Pill 區分狀態(安全/觸發/無資料)
         const ruleRows = x.rules.map(r => {
-            const bg = r.hit ? 'bg-yellow-900/20 border-yellow-700/50' : (r.status.startsWith('⚪') ? 'bg-[#0d1117] border-[#21262d]' : 'bg-[#0d1117] border-[#30363d]');
-            return `<div class="flex justify-between items-start gap-2 px-2.5 py-1.5 rounded border ${bg} mb-1 text-[11px]">
-                <div class="min-w-0 flex-1">
+            const isHit = r.hit;
+            const isNoData = r.status.startsWith('⚪');
+            let pillCls, pillTxt, hitDetail = '';
+            if (isHit) {
+                pillCls = 'bg-orange-500/10 text-orange-400 border border-orange-500/40 animate-pulse';
+                pillTxt = '⚠ 觸發';
+                hitDetail = `<span class="text-[9px] text-orange-300/90 max-w-[150px] text-right leading-tight mt-0.5 inline-block">${r.status.replace(/^🟡\s*觸發[:\s]*/, '').trim()}</span>`;
+            } else if (isNoData) {
+                pillCls = 'bg-gray-500/10 text-gray-400 border border-gray-500/30';
+                pillTxt = '○ 無資料';
+            } else {
+                pillCls = 'bg-green-500/10 text-green-400 border border-green-500/30';
+                pillTxt = '● 安全';
+            }
+            return `<div class="grid grid-cols-[1fr_auto] gap-2 items-start px-2.5 py-1.5 rounded border border-[#21262d] bg-[#0d1117] mb-1 text-[11px]">
+                <div class="min-w-0">
                     <div class="font-bold text-gray-200">第 ${r.idx} 款 ・ ${r.name}</div>
                     <div class="text-[10px] text-gray-500 leading-tight mt-0.5">${r.detail}</div>
                 </div>
-                <div class="text-right font-mono text-[10px] flex-shrink-0 max-w-[55%] leading-snug ${r.hit ? 'text-yellow-300 font-bold' : r.status.startsWith('⚪') ? 'text-gray-600' : 'text-green-400'}">${r.status}</div>
+                <div class="flex-shrink-0 flex flex-col items-end gap-0.5">
+                    <span class="inline-block ${pillCls} text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">${pillTxt}</span>
+                    ${hitDetail}
+                </div>
             </div>`;
         }).join('');
         // 4 個 stat 卡(連 3 / 連 5 / 10 日 / 30 日)
