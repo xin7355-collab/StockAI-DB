@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V25.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V25.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.8</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.9</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1406,8 +1406,8 @@
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-4">
 
-            <!-- ════════ 🔮 V24.0 預判中心(全球 tab 第一張) — 跨市場 + 大跌剖析 + 自選股機會 + 異動白話 ════════ -->
-            <div class="bg-gradient-to-br from-purple-950/50 via-indigo-950/40 to-cyan-950/30 border-2 border-purple-600/60 rounded-xl p-3 shadow-[0_0_30px_rgba(139,92,246,0.25)]">
+            <!-- ════════ 🔮 預判中心(全球 tab 第一張) — V25.9 限色降噪:紫粉霓虹 → 暗灰 + 橘 accent ════════ -->
+            <div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-lg p-3 shadow-md">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">🔮</span>
@@ -1520,8 +1520,8 @@
                 <span class="text-indigo-300 text-[11px] font-bold">隔夜美股+ADR+拉積盤+川普/黃仁勳 → 三劇本實戰指令</span>
             </button>
 
-            <!-- ════════ 【區 3】分頁切替：🌍 全球大環境 / 🇹🇼 台股實戰 ════════ -->
-            <div class="flex gap-1 bg-[#010409] rounded-lg p-1 border border-[#30363d]">
+            <!-- ════════ 【區 3】分頁切替:🌍 全球大環境 / 🇹🇼 台股實戰(V25.9 sticky 化:固定頂部不再 layout shift)════════ -->
+            <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md">
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global"
                         class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors bg-cyan-700/40 text-cyan-200 border border-cyan-500/50">
                     🌍 全球大環境
