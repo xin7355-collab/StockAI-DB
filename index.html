@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -14646,10 +14646,15 @@ ${_newsLine}${globalContext}
             '【⚔️ 總監專屬戰術室】':   'text-purple-400 border-purple-500',
             '【🔥 首席操盤手終極喊話】': 'text-orange-400 border-orange-500',
         };
+        // V26.7 — 「【📊 大盤與籌碼全景】」section 後段 <p> 卡片化(視覺看板感強化,看不下去長文字)
+        const _macroMarker = '【📊 大盤與籌碼全景】';
         for (const [marker, cls] of Object.entries(sectionColors)) {
             const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const _pCls = (marker === _macroMarker)
+                ? 'text-sm text-gray-300 leading-relaxed bg-[#0d1117] border border-cyan-700/40 rounded-md p-3 mt-1 block'
+                : 'text-gray-300 leading-relaxed text-sm';
             html = html.replace(new RegExp(esc + '[\\s:：]*', 'g'),
-                `</p><h3 class="${cls} font-black text-sm mt-4 mb-1 pl-2 border-l-4">${marker}</h3><p class="text-gray-300 leading-relaxed text-sm">`);
+                `</p><h3 class="${cls} font-black text-sm mt-4 mb-1 pl-2 border-l-4">${marker}</h3><p class="${_pCls}">`);
         }
         html = '<p class="text-gray-300 leading-relaxed text-sm">' + html + '</p>';
         html = html
