@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V25.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V25.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1412,7 +1412,7 @@
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">🔮</span>
                         <div>
-                            <div class="text-base font-black text-purple-200">預判中心 V24.0</div>
+                            <div class="text-base font-black text-purple-200">🔮 預判中心</div>
                             <div class="text-[9px] text-purple-400">跨市場 lead-lag · 今日異動 · 自選股機會 · 高勝率推播</div>
                         </div>
                     </div>
@@ -1828,7 +1828,12 @@
                     </div>
                 </div>
                 <!-- V21 Q3:刪除「🇺🇸 美股」戰區(舊「AI 龍頭風向球」卡)→ 改為每個細分板塊下方配對應美股 ETF -->
-                <div class="grid grid-cols-2 gap-2.5">
+                <!-- V25.6 — 9 族群詳細卡改摺疊(預設摺起,跟上方摘要卡重疊;點開看詳細台股族群報酬) -->
+                <button onclick="document.getElementById('sectorDetailGrid').classList.toggle('hidden'); this.querySelector('[data-chev]').textContent = document.getElementById('sectorDetailGrid').classList.contains('hidden') ? '▾' : '▴';" class="w-full text-[11px] font-bold text-purple-200 bg-purple-900/20 border border-purple-700/40 hover:bg-purple-900/40 rounded py-2 transition-colors flex items-center justify-center gap-2">
+                    <span>📊 看 9 族群詳細(台股族群報酬大字 + ETF 對標)</span>
+                    <span data-chev class="text-gray-500">▾</span>
+                </button>
+                <div id="sectorDetailGrid" class="hidden grid grid-cols-2 gap-2.5 mt-2">
                         <div class="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]" data-sector="server">
                             <div class="flex items-center justify-between mb-1"><span class="text-sm font-bold text-gray-100">🖥️ 伺服器代工</span><span class="text-sm font-mono font-black text-gray-400 sector-heat">--</span></div>
                             <div class="text-[11px] text-gray-300 leading-tight font-bold">AI 主機板組裝廠</div>
@@ -8137,6 +8142,17 @@ const marginByDate = {};
             return;
         }
         alert.classList.remove('hidden');
+        // V25.6 — 熔斷觸發/警戒時自動推 PWA 通知(24h 去重,避免狂彈)
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            const sigKey = `crashAlertSent_${today}_${triggered.length}_${warning.length}`;
+            if (!localStorage.getItem(sigKey) && this._fireAlert) {
+                const title = triggered.length ? `🚨 全球熔斷警報!${triggered.length} 個指數觸發` : `⚠️ 全球熔斷警戒:${warning.length} 個指數接近`;
+                const body = (triggered[0]?.label || warning[0]?.label || '') + ' ' + (triggered[0]?.chg || warning[0]?.chg || '') + '% — 對台股恐有衝擊';
+                this._fireAlert(title, body, '');
+                localStorage.setItem(sigKey, '1');
+            }
+        } catch(_){}
         let html = `
             <div class="flex items-center gap-2 mb-2">
                 <span class="text-xl animate-pulse">🚨</span>
