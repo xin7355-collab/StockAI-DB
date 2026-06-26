@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V23.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V24.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V23.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1390,6 +1390,25 @@
 
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-4">
+
+            <!-- ════════ 🔮 V24.0 預判中心(全球 tab 第一張) — 跨市場 + 大跌剖析 + 自選股機會 + 異動白話 ════════ -->
+            <div class="bg-gradient-to-br from-purple-950/50 via-indigo-950/40 to-cyan-950/30 border-2 border-purple-600/60 rounded-xl p-3 shadow-[0_0_30px_rgba(139,92,246,0.25)]">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🔮</span>
+                        <div>
+                            <div class="text-base font-black text-purple-200">預判中心 V24.0</div>
+                            <div class="text-[9px] text-purple-400">跨市場 lead-lag · 今日異動 · 自選股機會 · 高勝率推播</div>
+                        </div>
+                    </div>
+                    <span class="text-[8px] text-gray-500" id="predictAiTime">--</span>
+                </div>
+                <button id="predictAiBtn" onclick="app.analyzePredictCenter()" ondblclick="app.analyzePredictCenter({force:true})" class="w-full mb-2 text-[12px] font-black text-purple-100 bg-gradient-to-r from-purple-900/70 to-cyan-900/70 border border-purple-500/60 hover:from-purple-800/80 hover:to-cyan-800/80 rounded-lg py-2.5 transition-colors">🔮 AI 4 段預判判讀(雙擊強制重抽)</button>
+                <div id="predictAiResult" class="text-[11px] text-gray-200 leading-relaxed">
+                    <div class="text-center text-gray-500 py-3 text-[10px]">點上方按鈕開始預判 ・ 15 分鐘內快取 ・ 高勝率自動推播(1 日 1 次去重)</div>
+                </div>
+                <div class="text-[8px] text-gray-500 mt-2 text-center leading-relaxed">💡 推播強度「中」 ・ 1 日最多 5-8 次 ・ 強烈建議級才推</div>
+            </div>
 
             <!-- ════════ 【區 1】🇹🇼 台股風險指數 Hero（紅黑漸層大儀表）════════ -->
             <div class="bg-gradient-to-br from-red-950/40 via-[#0a0606] to-orange-950/30 border border-red-700/40 rounded-xl p-3 shadow-[0_0_25px_rgba(220,38,38,0.15)]">
@@ -8645,6 +8664,152 @@ ${bigShotText}
             btn.disabled = false;
             btn.textContent = '🎯 分析出獄前/中/後策略(雙擊強制重抽)';
         }
+    },
+
+    // V24.0 — 🔮 預判中心 AI(整合 4 段:跨市場 lead-lag + 明日策略 + 今日異動 + 自選股機會)
+    async analyzePredictCenter(opts = {}) {
+        const btn = document.getElementById('predictAiBtn');
+        const result = document.getElementById('predictAiResult');
+        const timeEl = document.getElementById('predictAiTime');
+        if (!btn || !result) return;
+        const cacheKey = 'aiCache_predictCenter_v1';
+        if (!opts.force) {
+            try {
+                const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+                if (c && (Date.now() - c.at) < 15 * 60 * 1000) {
+                    result.innerHTML = c.html;
+                    if (timeEl) timeEl.textContent = '⚡ 快取 ' + new Date(c.at).toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
+                    this.showToast('💾 15 分鐘內快取(雙擊強制重抽)', 'info');
+                    return;
+                }
+            } catch(_){}
+        }
+        // 收集大盤現況
+        const macro = this._macroRiskCache || {};
+        const etfMap = macro.sector_etfs || {};
+        const usMacro = macro.us_macro || {};
+        const sp = usMacro.sp500?.chg_pct ?? null;
+        const nq = usMacro.nasdaq?.chg_pct ?? null;
+        const vix = usMacro.vix?.price ?? null;
+        const twiiNow = this._twiiNowChg ?? null;
+        // 9 板塊缺口
+        const sectorLabels = { server:'伺服器代工', power:'重電基建', packaging:'先進封裝', cpo:'CPO光通訊', cooling:'散熱', robot:'機器人', finance:'金融', leo:'低軌衛星', dram:'DRAM' };
+        const gapLines = [];
+        for (const [sk, sl] of Object.entries(sectorLabels)) {
+            const etf = etfMap[sk];
+            const heatEl = document.querySelector(`[data-sector="${sk}"] .sector-heat`);
+            const rawTxt = heatEl?.textContent || '';
+            const twAbs = parseFloat(rawTxt.replace(/[^\d.\-]/g, ''));
+            const isTwNeg = rawTxt.includes('-') || rawTxt.includes('🔻');
+            const twChg = !isNaN(twAbs) ? (isTwNeg ? -Math.abs(twAbs) : twAbs) : null;
+            const usChg = etf?.chg_pct;
+            if (usChg != null && twChg != null) {
+                const gap = parseFloat(usChg) - twChg;
+                if (Math.abs(gap) > 0.6) {
+                    gapLines.push(`${sl}: 美 ${parseFloat(usChg).toFixed(1)}% vs 台 ${twChg.toFixed(1)}% (缺口 ${gap >= 0 ? '+' : ''}${gap.toFixed(1)}%)`);
+                }
+            }
+        }
+        // 自選股 + 對應板塊
+        const stockToSector = {
+            '2382':'server','2330':'packaging','3034':'cpo','1519':'power','3017':'cooling',
+            '2359':'robot','2881':'finance','3491':'leo','2408':'dram','2357':'server',
+            '2454':'packaging','3661':'server','6669':'server','3035':'cpo','1503':'power',
+            '2308':'power','5388':'cpo','3023':'cooling','2474':'cooling','3653':'cooling',
+            '3037':'server','4938':'server','3231':'server','2376':'server','2353':'server',
+            '2317':'server','2303':'dram','3711':'packaging','5269':'cpo','3443':'server',
+            '2891':'finance','2882':'finance','2884':'finance','2885':'finance','2890':'finance',
+        };
+        const favSyms = Array.from(new Set(Object.values(this.favGroups || {}).flat())).slice(0, 20);
+        const favLines = favSyms.map(sym => {
+            const sec = stockToSector[sym];
+            return sec ? `${sym}(${sectorLabels[sec]})` : `${sym}(其他)`;
+        }).join(', ');
+        // 外資台指期 + 大盤異動參考
+        const fiFut = this._futuresCache?.fi_net ?? null;
+        const prompt = `你是台股研究員「哲哲」,白話親民,國中生看得懂,禁廢話「根據資料」「以下為您分析」。
+
+【今日大盤現況】
+台股加權: ${twiiNow != null ? twiiNow.toFixed(2) + '%' : '盤中未更新'}
+美股 SP500: ${sp != null ? parseFloat(sp).toFixed(2) + '%' : '--'} / NASDAQ: ${nq != null ? parseFloat(nq).toFixed(2) + '%' : '--'} / VIX: ${vix ?? '--'}
+外資台指期未平倉: ${fiFut != null ? fiFut.toLocaleString() + ' 口' : '--'}
+
+【跨市場缺口 (>0.6%, 美 vs 台)】
+${gapLines.join('\n') || '(各板塊同步,無明顯缺口)'}
+
+【使用者自選股(含對應板塊)】
+${favLines || '(尚無自選股)'}
+
+請嚴格輸出純 JSON,禁 \`\`\`json 標籤,格式:
+{
+  "lead_lag_verdict": "🟢 高勝率跟漲機率 XX% / 🟡 不確定須觀望 / 🔴 補跌風險 XX%",
+  "lead_lag_reason": "(40字內)跨市場缺口主因 + 預判邏輯",
+  "tomorrow_strategy": "(50字內)明日台股操作建議,具體族群 + 進場時機",
+  "anomaly_today": "(50字內)今日異動白話化,例「美股漲台股早盤弱,動能不足建議謹慎」",
+  "high_chance_stocks": [{"sym":"2330","reason":"(20字內理由)","prob":75}],
+  "alert_level": "🟢 高勝率(>70%) / 🟡 普通(50-70%) / 🔴 警示(<50% 或補跌)"
+}
+high_chance_stocks 只列 ≤3 檔機率 ≥60% 的自選股,prob 寫整數機率%。`;
+        btn.disabled = true;
+        btn.textContent = '⏳ AI 4 段預判中…(Gemini)';
+        try {
+            const text = await this._callDeepAI({ prompt, max_tokens: 1000, temperature: 0.4, chain: 'gemini-openrouter' });
+            const p = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
+            const stocksHtml = (p.high_chance_stocks || []).map(s => `
+                <div class="flex items-center justify-between gap-2 py-1.5 px-2 bg-[#0d1117] rounded border-l-4 ${s.prob >= 70 ? 'border-red-500' : s.prob >= 60 ? 'border-yellow-500' : 'border-gray-500'}">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <span class="font-mono font-black text-cyan-300 flex-shrink-0">${s.sym}</span>
+                        <span class="text-[10px] text-gray-300 truncate">${s.reason || ''}</span>
+                    </div>
+                    <span class="text-[12px] font-black flex-shrink-0 ${s.prob >= 70 ? 'text-red-300' : s.prob >= 60 ? 'text-yellow-300' : 'text-gray-300'}">${s.prob}%</span>
+                </div>`).join('');
+            const verdictCls = p.alert_level?.startsWith('🟢') ? 'text-green-300' : p.alert_level?.startsWith('🔴') ? 'text-red-300' : 'text-yellow-300';
+            const html = `
+                <div class="mb-3 pb-2 border-b border-purple-700/40 text-center">
+                    <div class="text-base font-black ${verdictCls}">${p.lead_lag_verdict || '--'}</div>
+                    <div class="text-[10px] text-gray-400 mt-1 leading-relaxed">${p.lead_lag_reason || ''}</div>
+                </div>
+                <div class="mb-3 pb-2 border-b border-purple-700/40">
+                    <div class="text-[10px] text-purple-300 font-bold mb-0.5">🔮 明日台股操作建議</div>
+                    <div class="text-[12px] text-cyan-200 leading-relaxed">${p.tomorrow_strategy || '--'}</div>
+                </div>
+                <div class="mb-3 pb-2 border-b border-purple-700/40">
+                    <div class="text-[10px] text-purple-300 font-bold mb-0.5">📊 今日異動白話化</div>
+                    <div class="text-[12px] text-gray-200 leading-relaxed">${p.anomaly_today || '--'}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-purple-300 font-bold mb-1.5">🎯 自選股高勝率機會(≥60%)</div>
+                    <div class="flex flex-col gap-1.5">
+                        ${stocksHtml || '<div class="text-[10px] text-gray-500 py-1">本輪無自選股達高勝率門檻</div>'}
+                    </div>
+                </div>
+            `;
+            result.innerHTML = html;
+            if (timeEl) timeEl.textContent = '🤖 ' + new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
+            try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html, alert_level: p.alert_level })); } catch(_){}
+            // V24.0 — 高勝率時觸發推播(每日去重,1 日 1 次)
+            if (p.alert_level?.startsWith('🟢') && /高勝率|機率\s*[789]\d/.test(p.lead_lag_verdict || '')) {
+                this._firePredictAlert(p);
+            }
+        } catch(e) {
+            result.innerHTML = `<div class="text-red-300 text-[11px]">⚠️ AI 失敗:${e?.message || e}<br><span class="text-gray-500 text-[10px]">請至 ⚙️ 設定確認 Gemini / OpenRouter key</span></div>`;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔮 AI 4 段預判判讀(雙擊強制重抽)';
+        }
+    },
+
+    // V24.0 — 推播預判結果(每日去重,避免同日狂彈)
+    _firePredictAlert(p) {
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            const lastKey = 'predict_alert_last_' + today;
+            if (localStorage.getItem(lastKey)) return;
+            const title = '🔮 預判中心:' + (p.lead_lag_verdict || '高勝率機會').slice(0, 30);
+            const body = (p.tomorrow_strategy || '').slice(0, 80);
+            if (this._fireAlert) this._fireAlert(title, body, '');
+            localStorage.setItem(lastKey, '1');
+        } catch(_){}
     },
 
     // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
