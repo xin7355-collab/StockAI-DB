@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V25.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V25.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.6</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.7</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8357,6 +8357,25 @@ const marginByDate = {};
             if (margin >= 3200)      { score += 30; reasons.push(`融資爆表 ${margin} 億`); }
             else if (margin >= 2800) { score += 15; reasons.push(`融資偏高 ${margin} 億`); }
             else if (margin <= 1500) { score -= 10; counters.push(`融資低水位 ${margin} 億 (反向利多)`); }
+        }
+
+        // V25.7 — 6️⃣ TWII 60 日百分位(V25.4 採:>70 高檔風險 / <30 低檔機會)
+        const twiiPos = j.twii_pos;
+        if (typeof twiiPos === 'number') {
+            if (twiiPos >= 85)       { score += 25; reasons.push(`大盤極高檔(${Math.round(twiiPos)}% 分位)→ 修正風險高`); }
+            else if (twiiPos >= 75)  { score += 15; reasons.push(`大盤高檔(${Math.round(twiiPos)}% 分位)`); }
+            else if (twiiPos <= 15)  { score -= 20; counters.push(`大盤極低檔(${Math.round(twiiPos)}% 分位 反向利多)`); }
+            else if (twiiPos <= 25)  { score -= 10; counters.push(`大盤偏低(${Math.round(twiiPos)}% 分位)`); }
+        }
+
+        // V25.7 — 7️⃣ 外資期貨未平倉淨口(<-25000 = 黑天鵝警報 / >+10000 = 法人看多 counters)
+        const fiFut = this._futuresCache?.fi_net;
+        if (typeof fiFut === 'number') {
+            if (fiFut <= -40000)     { score += 30; reasons.push(`🚨 外資期貨深度看空 ${fiFut.toLocaleString()} 口`); }
+            else if (fiFut <= -25000){ score += 20; reasons.push(`外資期貨大空單 ${fiFut.toLocaleString()} 口`); }
+            else if (fiFut <= -10000){ score += 10; reasons.push(`外資期貨偏空 ${fiFut.toLocaleString()} 口`); }
+            else if (fiFut >= 15000) { score -= 12; counters.push(`外資期貨大多 +${fiFut.toLocaleString()} 口 (法人看多)`); }
+            else if (fiFut >= 5000)  { score -= 6;  counters.push(`外資期貨偏多 +${fiFut.toLocaleString()} 口`); }
         }
 
         // 結論燈號 + 操作建議
