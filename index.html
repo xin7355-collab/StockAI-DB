@@ -2574,7 +2574,7 @@ const app = {
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
         '盤中主力估算': '⚠️ 重要:台灣證交所「券商分點進出」只在收盤後(約 15:30)才公布,盤中根本沒有真實分點資料。這裡的「盤中主力動向」是用 Fugle 即時「內外盤掛單 + 漲跌量價」估算的方向參考,不是官方分點,可能與收盤後真實分點有出入。盤中當參考、收盤後看下方真實分點才準。',
-        '分點限制': '⚠️ 為什麼看不到真實券商分點?TWSE 官方 BSR 系統(bsr.twse.com.tw)對雲端機房 IP(GitHub Actions / Google Cloud / AWS / Azure)全面封鎖,本站採礦機跑在 GitHub Actions 上,連 BSR 都連不到,所以拿不到每日真實分點資料。免費替代方案:(1) 上方「盤中主力動向」用 Fugle 內外盤估算盤中即時方向、(2) 三大法人買賣超 T+1 可看、(3) 融資融券走勢 T+1 可看。需要 TWSE 官方分點請至 bsr.twse.com.tw 手動查詢(一次只能查一檔,且須過驗證碼)。',
+        '分點限制': '⚠️ 為什麼看不到真實券商分點?TWSE 官方 BSR 系統對雲端 IP 全面封鎖,本站採礦伺服器無法即時取得每日真實分點資料,已自動切換至 T+1 備份備援。免費替代方案:(1) 上方「盤中主力動向」用 Fugle 內外盤估算盤中即時方向、(2) 三大法人買賣超 T+1 可看、(3) 融資融券走勢 T+1 可看。需要 TWSE 官方分點請至 bsr.twse.com.tw 手動查詢(一次一檔,須過驗證碼)。',
         '融券為0': '融券 = 跟券商「借股票來賣」(看空、賭它跌)。很多股票融券是 0,代表「沒人放空」,這是常態不是壞掉 —— 大型權值股 / ETF 多是長線投資人,小型冷門股則是借不到券。融券突然爆增才要小心(空方大舉進場),融券是 0 就單純代表大家沒在賭它跌。',
         '融券需付費': '台灣證交所(TWSE)從 2026/06 起,將 MI_MARGN 端點改回市場彙總表,**不再免費提供個股級融資融券明細**;FinMind 免費額度也未涵蓋融券,yfinance 對台股也僅少量個股可查。若要查個股融券明細,需付費資料源(FinMind 付費版、CMoney、TEJ 等)。系統會持續嘗試多條備援,有資料時自動顯示。',
         '法人成本估算': '這是用「區間內法人買超那幾天的收盤價,依買超張數加權平均」算出來的「估算建倉成本」,讓你看大戶大概在哪個價位進貨。⚠️ 只是粗估(法人實際成交價我們拿不到),且只統計買超日;若法人是賣超,改顯示「出脫均價」。當參考用,別當精準成本。',
@@ -10700,7 +10700,7 @@ ${peerLine}${newsCtx}
                         if (days >= 0 && days < 7) agoHint = ` · 上次採礦 ${days === 0 ? '今天' : days + ' 天前'}`;
                     }
                 } catch(_) {}
-                el.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="採礦尚未產出此欄位 — 週一~五 16:30 cron 自動補,或至 GitHub Actions 手動 Run daily_miner.yml">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補' + agoHint + '</div>';
+                el.innerHTML = '<span class="text-amber-300/80 text-xs cursor-help" title="採礦尚未產出此欄位 — 週一~五 16:30 自動補資料">🔄 採礦更新中</span><div class="text-[9px] text-gray-600 mt-0.5">⏳ 週一~五 16:30 自動補' + agoHint + '</div>';
                 return;
             }
             const fmt = typeof val === 'number' ? (Math.abs(val) >= 100 ? Math.round(val) : parseFloat(val.toFixed(2))) : val;
@@ -11354,7 +11354,7 @@ ${peerLine}${newsCtx}
                              : `${rev.toFixed(0)}`;
                 const yoy = haveMineYoY ? Number(localFund.revenue_yoy) : null;
                 const yoyStr = yoy == null ? '' : ` <span class="${yoy>0?'text-red-400':yoy<0?'text-green-400':'text-yellow-300'}">YoY ${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
-                rvTrendEl.innerHTML = `<div class="text-blue-300/90 text-xs text-center px-3" style="line-height:1.6;padding-top:60px">📊 最新月營收 <b class="text-white">${revStr}</b>${yoyStr}<br><span class="text-[10px] text-amber-300/80">🔄 12 個月柱狀圖待採礦更新</span><br><span class="text-[10px] text-gray-500">週一 16:30 cron 自動補,或 GitHub Actions 手動觸發 daily_miner.yml</span></div>`;
+                rvTrendEl.innerHTML = `<div class="text-blue-300/90 text-xs text-center px-3" style="line-height:1.6;padding-top:60px">📊 最新月營收 <b class="text-white">${revStr}</b>${yoyStr}<br><span class="text-[10px] text-amber-300/80">🔄 12 個月柱狀圖待採礦更新</span><br><span class="text-[10px] text-gray-500">週一 16:30 自動補資料</span></div>`;
             } else {
                 rvTrendEl.innerHTML = '<div class="text-amber-300/70 text-[10px] text-center px-2" style="line-height:1.4;padding-top:80px">📅 暫無月營收資料<br><span class="text-gray-600">新股 / 上游 API 暫無回應,請點 🔄 重新掃描</span></div>';
             }
