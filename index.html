@@ -14659,7 +14659,7 @@ ${_newsLine}${globalContext}
         html = '<p class="text-gray-300 leading-relaxed text-sm">' + html + '</p>';
         html = html
             .replace(/^<p[^>]*>\s*<\/p>/, '')
-            .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-200 font-black bg-yellow-900/40 px-1 rounded">$1</b>')
+            .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')   // V26.8.1 色彩解毒:黃底 chip 降至純色文字
             // 🔥 紅燈火焰化:「可以買」改成 🔥(燃燒進場感),紅底發光更醒目
             .replace(/🔴可以買/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(248,113,113,0.4)]">🔥可以買</span>')
             .replace(/🔥可以買/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(248,113,113,0.4)]">🔥可以買</span>')
@@ -18931,7 +18931,7 @@ ${_chuPosPlan}
     _renderMdText(text) {
         return String(text || '')
             .replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-200 font-black bg-yellow-900/40 px-1 rounded">$1</b>')
+            .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')   // V26.8.1 色彩解毒:黃底 chip 降至純色文字
             .replace(/\n/g, '<br>');
     },
 
@@ -18944,7 +18944,7 @@ ${_chuPosPlan}
         const safe = (summary || '').trim();
         if (!safe) { card.classList.add('hidden'); card.innerHTML = ''; return; }
         const esc = safe.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                        .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-200 font-black bg-yellow-900/40 px-1 rounded">$1</b>');  // V17.19 修 Markdown 沒渲染
+                        .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')   // V26.8.1 色彩解毒:黃底 chip 降至純色文字;  // V17.19 修 Markdown 沒渲染
         card.classList.remove('hidden');
         card.innerHTML = `
             <div class="bg-[#0d1117] border-l-[3px] border-purple-500 px-3 py-2.5 flex items-start gap-2.5">
