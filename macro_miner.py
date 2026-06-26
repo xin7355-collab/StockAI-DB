@@ -1169,25 +1169,32 @@ def fetch_retail_long_short():
 
 def fetch_taifex_tx_now():
     """🌃 V23.3 — 台指期 TX 近月實時點 + 日漲跌% — 給前端頂部 3 指數區顯示
-    來源:yfinance ^TXF=F(夜盤含實時報價,日盤休市時為前一日收盤)
-    回傳:{price, chg, error}
+    來源:① yfinance ^TXF=F(夜盤含實時報價)→ ② V27.3 TAIFEX 官方 OpenAPI 近月收盤(可靠 fallback)
+    回傳:{price, chg, est, error}(est=True 代表只有收盤價、無可靠漲跌方向 → 前端顯「估」)
     """
+    # ① yfinance ^TXF=F(實時 + 含漲跌%)
     try:
         import yfinance as yf
         hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
-        if hist is None or hist.empty:
-            return {"price": None, "chg": None, "error": "yfinance empty"}
-        closes = hist["Close"].dropna()
-        if len(closes) < 2:
-            return {"price": None, "chg": None, "error": "not enough data"}
-        last = float(closes.iloc[-1])
-        prev = float(closes.iloc[-2])
-        if last != last or prev != prev or prev == 0:
-            return {"price": None, "chg": None, "error": "NaN or zero prev"}
-        chg = round((last - prev) / prev * 100, 2)
-        return {"price": round(last, 2), "chg": chg, "error": None}
+        if hist is not None and not hist.empty:
+            closes = hist["Close"].dropna()
+            if len(closes) >= 2:
+                last = float(closes.iloc[-1])
+                prev = float(closes.iloc[-2])
+                if last == last and prev == prev and prev != 0:
+                    chg = round((last - prev) / prev * 100, 2)
+                    return {"price": round(last, 2), "chg": chg, "est": False, "error": None}
     except Exception as e:
-        return {"price": None, "chg": None, "error": str(e)[:80]}
+        print(f"   ⚠️ 台指期 yfinance 失敗:{str(e)[:80]} → 改用 TAIFEX 官方 OpenAPI")
+    # ② V27.3 — yfinance 失敗 → TAIFEX 官方 OpenAPI 近月收盤(reliable;無前日比較 chg=None,前端 est 分支顯純價)
+    try:
+        off = _taifex_openapi_tx_fut_close()
+        if off and off > 0:
+            print(f"   ✅ 台指期改用 TAIFEX 官方 OpenAPI 收盤:{off}")
+            return {"price": round(float(off), 2), "chg": None, "est": True, "error": None}
+    except Exception as e:
+        return {"price": None, "chg": None, "est": False, "error": f"both failed: {str(e)[:60]}"}
+    return {"price": None, "chg": None, "est": False, "error": "yfinance+openapi both empty"}
 
 
 def _taifex_openapi_tx_fut_close():
