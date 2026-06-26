@@ -282,6 +282,73 @@ END { if (bal>0) print "❌ tabContentMarket 少 "bal" 個 </div>!" }' index.htm
 
 ---
 
+## 🎨 UI/UX 設計規範(V25.8 後新增,Senior UI/UX 規範)
+
+### Design Tokens(嚴格限色)
+| 用途 | Tailwind class |
+|------|---------------|
+| 漲 / 警示 | `text-red-400` `text-red-300` |
+| 跌 / 健康 | `text-green-400` `text-green-300` |
+| 極度危險 | `text-orange-400` (+ animate-pulse) |
+| 警戒 | `text-yellow-400` |
+| 主文字 | `text-gray-100` |
+| 次要 | `text-gray-400` |
+| 備註 | `text-gray-600` |
+
+**背景**:
+| 用途 | class |
+|------|-------|
+| 主背景 | `bg-[#0d1117]` |
+| 卡片 | `bg-[#161b22]` |
+| 次要 chip | `bg-white/5` 或 `bg-[#21262d]` |
+| 預設邊框 | `border-[#30363d]` |
+| 漲(警示)背景 | `bg-red-900/30` |
+| 跌(健康)背景 | `bg-green-900/30` |
+| 極危背景 | `bg-orange-900/30` |
+
+⛔ **禁用霓虹漸層** — `bg-purple-*/40` / `bg-cyan-*/40` / `bg-pink-*/40` 等高飽和漸層(只在 verdict 大字 hero 用,不在普通卡)
+
+### Emoji 規則(V25.8 使用者明示:保留)
+- ✅ **保留所有 emoji**(使用者明確要求:無 emoji 不知怎麼操作)
+- 漲跌幅旁的 🔺🔻 / verdict 開頭的 🟢🟡🔴 / 警報的 🚨 / 標題的 📊📐💰🚀⚠️📌🧩🎯💡 全保留
+- 不必改 Lucide / SVG icon(那是過度設計)
+
+### 卡片三段式樣板(Equal Height)
+```html
+<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex flex-col h-32">
+  <!-- 頂:指標名 + emoji icon -->
+  <div class="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+    <span>📊 VIX 恐慌</span>
+    <span class="text-gray-600 text-[9px]">⏱️ 14:32</span>
+  </div>
+  <!-- 中:大數值(用 flex-1 + items-end 推到底) -->
+  <div class="text-2xl font-black font-mono text-gray-100 flex-1 flex items-end">15.3</div>
+  <!-- 底:短評(truncate 避免溢出) -->
+  <div class="text-[10px] text-gray-600 truncate">市場平穩 多頭健康</div>
+</div>
+```
+
+### Alert Box 樣板(取代「整句彩色化長文」)
+```html
+<div class="bg-[#161b22] border-l-4 border-red-500 pl-3 py-2 rounded-r">
+  <div class="text-[10px] text-red-400 font-bold mb-1">⚠️ 戰術遵照</div>
+  <div class="text-[11px] text-gray-200 leading-relaxed">純文字段落 行高 1.6 不再整句紅綠黃</div>
+</div>
+```
+
+### 排版層級鐵則
+- 長文字段落:`leading-relaxed` (line-height 1.625) 或 `leading-loose` (1.75)
+- 短卡內容:`leading-tight` (1.25) — 例如卡片 title/sub
+- **絕不**對整句段落上色,只用 emoji 開頭 + 標籤 chip + Alert Box border-left 標示
+- 對齊:卡片內標題列 `flex items-center justify-between`,數值列 `font-mono` 等寬
+
+### sub-tab Sticky 規則(V25.9+ 推進)
+- 全球大環境 / 台股實戰 sub-tab 需 `sticky top-0 z-30` 固定頂部
+- 切換不再 layout shift
+- background 配 `bg-[#0d1117]/95 backdrop-blur` 維持半透
+
+---
+
 ## 🚨 處置股完整系統(V20.x — 大功能,獨立 sub-tab)
 
 V20.0-V20.7 全套處置股風控,個股頁最右邊「🚨 處置」tab,含 6 張卡:
