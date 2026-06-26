@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1518,7 +1518,7 @@
                     <!-- V21.8 — 台指期(非即時,只顯結算/夜盤影響時間點)-->
                     <div class="bg-[#0d1117] border border-amber-800/40 rounded-lg p-2 cursor-pointer hover:border-amber-600/60 transition-colors"
                          onclick="app.showJargon('台指期結算'); event.stopPropagation();" title="點看完整說明">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">📈 台指期指數</div>
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">📈 台指電子盤</div>
                         <div id="taiexFuturesInfo" class="text-[13px] font-black font-mono text-amber-300 leading-tight">計算中…</div>
                         <div id="taiexFuturesSub" class="text-[9px] font-bold text-gray-500 mt-0.5 leading-tight">--</div>
                     </div>
@@ -1526,7 +1526,7 @@
                 <!-- V21.8 — 三指數共用手動更新鈕 + 重點時間自動更新 1 次(9:00/13:30/17:00) -->
                 <button id="refreshIndicesBtn" onclick="app._refreshAllIndices()"
                         class="w-full mt-1.5 text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1 hover:bg-cyan-900/50 transition-colors flex items-center justify-center gap-1.5">
-                    🔄 <span>更新指數(加權/櫃買盤中即時)</span><span id="refreshIndicesTs" class="text-[8px] text-cyan-400/70 font-normal">--</span>
+                    🔄 <span>更新指數(加權盤中即時)</span><span id="refreshIndicesTs" class="text-[8px] text-cyan-400/70 font-normal">--</span>
                 </button>
                 <div class="flex justify-end mt-1"><span id="warRoomTs" class="text-[9px] text-gray-600 font-mono">--</span></div>
                 <!-- 互換用（JS 仍會更新但不可見） -->
@@ -8358,7 +8358,8 @@ const marginByDate = {};
         return null;
     },
 
-    // V27.1 — 盤中即時刷新 加權(^TWII)/ 櫃買(^TWOII)兩張指數卡;成功標「即時」,失敗保留原值
+    // V27.2 — 盤中即時:加權(Yahoo ^TWII,正確 ✓)+ 台指電子盤(Yahoo ^TXF=F)
+    //   櫃買移除:V27.1 用 ^TWOII 回錯值(269 vs 正確 415)→ 改保留 processMacroData 的 FinMind 正確日值
     async _refreshLiveTwIndices() {
         const apply = (mainId, chgId, q, label) => {
             const m = document.getElementById(mainId);
@@ -8371,14 +8372,23 @@ const marginByDate = {};
             if (c) c.innerHTML = `<span class="${color}">${q.chgPct > 0 ? '+' : ''}${q.chgPct.toFixed(2)}%</span> <span class="text-cyan-400/70 text-[8px]">${label}</span>`;
             return true;
         };
-        const [twii, twoii] = await Promise.all([
+        const [twii, txf] = await Promise.all([
             this._fetchLiveIndexYahoo('^TWII').catch(() => null),
-            this._fetchLiveIndexYahoo('^TWOII').catch(() => null),
+            this._fetchLiveIndexYahoo('^TXF=F').catch(() => null),
         ]);
         const t = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
         let got = 0;
+        // 加權:Yahoo 即時(正確);櫃買不碰,保留 FinMind 日值
         if (apply('mktTWII_main', 'mktTWII_chg_main', twii, `即時 ${t}`)) got++;
-        if (apply('mktTWOII_main', 'mktTWOII_chg_main', twoii, `即時 ${t}`)) got++;
+        // 台指電子盤:Yahoo ^TXF=F → 餵進 macro cache,走 _renderTaiexFutures 既有「實時點」分支顯數值;失敗則維持結算倒數
+        if (txf && txf.price > 0) {
+            try {
+                this._macroRiskCache = this._macroRiskCache || {};
+                this._macroRiskCache.taifex_tx_now = { price: txf.price, chg: txf.chgPct };
+                this._renderTaiexFutures();
+                got++;
+            } catch (_) {}
+        }
         return got;
     },
 
@@ -9251,14 +9261,18 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
         const macro = this._macroRiskCache || {};
         const etfMap = macro.sector_etfs || {};
         const sectorLabels = { server:'🖥️ 伺服器代工', power:'⚡ 重電基建', packaging:'📦 先進封裝', cpo:'🔗 CPO 光通訊', cooling:'❄️ 散熱', robot:'🤖 機器人', finance:'🏦 金融', leo:'🛰️ 低軌衛星', dram:'💾 DRAM' };
+        // V27.2 — 台股 sector 漲跌改讀「盤中即時 liveChg(localStorage,6h 內)→ 挖礦 sector_heat」,
+        //         不再讀不存在的 [data-sector].sector-heat DOM(那是台欄全 -- 的根因)
+        let _intraTw = null;
+        try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
+              if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
+        const _shTw = this._sectorHeatCache?.sectors || {};
         let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2"><div class="text-[10px] text-purple-300 font-bold mb-1.5">📊 9 板塊跨市場缺口明細(美 vs 台,正值=台落後 lead-lag 機會)</div>';
         for (const [sk, sl] of Object.entries(sectorLabels)) {
             const etf = etfMap[sk];
-            const heatEl = document.querySelector(`[data-sector="${sk}"] .sector-heat`);
-            const rawTxt = heatEl?.textContent || '';
-            const twAbs = parseFloat(rawTxt.replace(/[^\d.\-]/g, ''));
-            const isTwNeg = rawTxt.includes('-') || rawTxt.includes('🔻');
-            const twChg = !isNaN(twAbs) ? (isTwNeg ? -Math.abs(twAbs) : twAbs) : null;
+            // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
+            const twChg = (_intraTw && _intraTw[sk] != null) ? _intraTw[sk]
+                        : (_shTw[sk] && _shTw[sk].chg != null ? _shTw[sk].chg : null);
             const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : null;
             const gap = (usChg != null && twChg != null) ? (usChg - twChg) : null;
             const gapStr = gap != null ? (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%' : '--';
