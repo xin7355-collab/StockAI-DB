@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.26</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.27</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.26</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.27</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -7299,24 +7299,35 @@ const marginByDate = {};
         const verdictColor = tone === 'bull' ? 'text-red-300 border-red-600 bg-red-900/40'
             : tone === 'bear' ? 'text-green-300 border-green-600 bg-green-900/40'
             : 'text-amber-200 border-amber-600 bg-amber-900/30';
+        // V26.27 — Verdict 卡依多空 tone 加微幅發光暈,強化視覺張力(不刺眼)
+        const glowCls = tone === 'bull' ? 'shadow-[0_0_16px_rgba(239,68,68,0.18)]'
+            : tone === 'bear' ? 'shadow-[0_0_16px_rgba(34,197,94,0.18)]'
+            : 'shadow-[0_0_16px_rgba(245,158,11,0.12)]';
         bar.innerHTML = `
             <div class="flex items-center justify-between mb-2">
                 <div class="text-xs text-gray-400 font-bold tracking-widest">⚖️ 多空優勢</div>
                 <div class="text-[10px] text-gray-500 font-mono">28 條規則 ・ 加權計分</div>
             </div>
-            <!-- 紅綠長條 -->
-            <div class="relative h-8 rounded-full overflow-hidden border border-[#30363d] bg-[#0d1117] mb-2">
-                <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 to-red-500" style="width:${pct}%"></div>
-                <div class="absolute inset-y-0 right-0 bg-gradient-to-l from-green-600 to-green-500" style="width:${100 - pct}%"></div>
+            <!-- V26.27 VS 對決條(加高 h-10 + 中央戰線分界 + 兩端戰力)-->
+            <div class="relative h-10 rounded-full overflow-hidden border border-[#30363d] bg-[#0d1117] mb-1.5">
+                <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 to-red-500/85" style="width:${pct}%"></div>
+                <div class="absolute inset-y-0 right-0 bg-gradient-to-l from-green-600 to-green-500/85" style="width:${100 - pct}%"></div>
+                <!-- 戰線分界(多空交鋒處,隨占比移動)-->
+                <div class="absolute inset-y-0 w-0.5 bg-white/70 shadow-[0_0_6px_rgba(255,255,255,0.6)]" style="left:${pct}%"></div>
                 <div class="absolute inset-0 flex items-center justify-between px-3 text-[11px] font-bold font-mono text-white drop-shadow">
-                    <span>🔴 多方 ${scan.bullCount} 項(${scan.bullScore} 分)</span>
-                    <span>空方 ${scan.bearCount} 項(${scan.bearScore} 分)🟢</span>
+                    <span>🔴 多方 ${scan.bullCount} 項・${scan.bullScore} 分</span>
+                    <span>${scan.bearScore} 分・${scan.bearCount} 項 空方 🟢</span>
                 </div>
             </div>
-            <!-- Verdict -->
-            <div class="rounded-lg border ${verdictColor} px-3 py-2 text-center">
-                <div class="text-base font-black tracking-wider">${scan.verdict}</div>
-                <div class="text-[11px] mt-0.5 opacity-90">${scan.oneLiner}</div>
+            <!-- 占比百分比帶 -->
+            <div class="flex items-center justify-between text-[10px] font-mono mb-2 px-1">
+                <span class="text-red-400 font-bold">▶ 多方 ${pct}%</span>
+                <span class="text-green-400 font-bold">${100 - pct}% 空方 ◀</span>
+            </div>
+            <!-- Verdict(動態發光)-->
+            <div class="rounded-lg border ${verdictColor} ${glowCls} px-3 py-2.5 text-center transition-shadow">
+                <div class="text-lg font-black tracking-wider">${scan.verdict}<span class="text-sm font-mono opacity-80 ml-2">多方 ${pct}%</span></div>
+                <div class="text-[11px] mt-1 opacity-90 leading-relaxed">${scan.oneLiner}</div>
             </div>
         `;
         const catMeta = {
