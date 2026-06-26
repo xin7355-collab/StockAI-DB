@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.8</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.9</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -13258,16 +13258,52 @@ ${_newsLine}${globalContext}
         const sinopacStop = Math.max(x.stopA?.low || 0, x.stopB || 0);
         const sinopacTake = x.takeShort || x.takeLong || 0;
         const season = this._lastSinopacCtx?.season || '';
+        // V26.9 — 永豐 App SOP 改 Vertical Stepper(取代原純文字 ❶❷❸,使用者面臨虧損焦慮時更易讀)
         const sinopacHtml = (sinopacStop > 0 && sinopacTake > 0) ? `
             <div class="mt-3 pt-2 border-t border-dashed border-[#30363d]">
-                <div class="text-[11px] font-bold text-amber-300 mb-1">⚔️ 永豐 App 怎麼掛智慧單</div>
-                <div class="text-[10px] text-gray-300 leading-relaxed bg-[#0d1117] rounded p-2 border border-[#30363d]">
-                    開「條件單 - 觸價單」<br>
-                    ❶ <b class="text-red-300">停損</b>:跌破 <span class="font-mono text-red-300">${sinopacStop.toFixed(2)}</span> → 市價賣<br>
-                    ❷ <b class="text-green-300">停利</b>:漲至 <span class="font-mono text-green-300">${sinopacTake.toFixed(2)}</span> → 賣 50%(剩餘抱波段)<br>
-                    ❸ <b class="text-gray-200">型態</b>:${season === '夏' ? '追高買(漲停板掛進)' : '回測買(拉回不破停損價)'}
+                <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1">⚔️ 永豐 App 智慧單 SOP</div>
+                <div class="pl-1">
+                    <div class="flex gap-2.5">
+                        <div class="flex flex-col items-center flex-shrink-0">
+                            <div class="w-5 h-5 rounded-full bg-amber-600 text-white text-[10px] font-black flex items-center justify-center">1</div>
+                            <div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>
+                        </div>
+                        <div class="flex-1 pb-2.5">
+                            <div class="text-[11px] font-bold text-gray-100">開啟智慧單</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">下單功能 → 條件單 → 觸價單</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2.5">
+                        <div class="flex flex-col items-center flex-shrink-0">
+                            <div class="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">2</div>
+                            <div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>
+                        </div>
+                        <div class="flex-1 pb-2.5">
+                            <div class="text-[11px] font-bold text-red-300">設定停損</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">觸發價 ≤ <span class="font-mono text-red-300 font-bold">${sinopacStop.toFixed(2)}</span> → 市價賣出</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2.5">
+                        <div class="flex flex-col items-center flex-shrink-0">
+                            <div class="w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-black flex items-center justify-center">3</div>
+                            <div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>
+                        </div>
+                        <div class="flex-1 pb-2.5">
+                            <div class="text-[11px] font-bold text-green-300">設定停利</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">觸發價 ≥ <span class="font-mono text-green-300 font-bold">${sinopacTake.toFixed(2)}</span> → 賣 50%,剩餘抱波段</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2.5">
+                        <div class="flex flex-col items-center flex-shrink-0">
+                            <div class="w-5 h-5 rounded-full bg-cyan-600 text-white text-[10px] font-black flex items-center justify-center">4</div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-[11px] font-bold text-gray-100">選下單型態</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${season === '夏' ? '追高買(漲停板掛進)' : '回測買(拉回不破停損價)'}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="text-[9px] text-gray-600 mt-1">※ 需自行至永豐 App 手動輸入</div>
+                <div class="text-[9px] text-gray-600 mt-2 text-right">※ 需自行至永豐 App 手動輸入</div>
             </div>` : '';
 
         const sharesNote = cost
