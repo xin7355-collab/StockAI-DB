@@ -990,8 +990,10 @@ def build_falcon_scores():
                 bias20 = (c - ma20) / ma20 * 100
                 if 0 <= bias20 <= 8:
                     base += 5; factors.append("乖離健康+5")
+                elif bias20 > 20:
+                    base -= 20; factors.append(f"乖離過大{bias20:.0f}%-20")   # V27.4 追高重災區,加重防套牢
                 elif bias20 > 15:
-                    base -= 10; factors.append("乖離過熱-10")
+                    base -= 12; factors.append(f"乖離過熱{bias20:.0f}%-12")   # V27.4 原 -10 加重
             if ma5 and ma20 and ma60 and ma5 > ma20 > ma60:
                 base += 10; factors.append("多頭排列+10")
             if ma60 and c > ma60:
@@ -1053,6 +1055,35 @@ def build_falcon_scores():
                         base += 3; factors.append("主力單日暴增+3")
                     elif sigs and sigs[-1] == 'sell':
                         base -= 3; factors.append("主力單日大賣-3")
+            except Exception:
+                pass
+
+            # ── 🚨 V27.4 出貨/追高風險扣分(降低套牢率;資料皆在 rows,缺值 graceful 跳過)──
+            try:
+                # 融資爆增(散戶追高陷阱):近 5 日融資餘額暴衝
+                mb = [r.get('margin_balance') for r in rows[-6:] if isinstance(r.get('margin_balance'), (int, float))]
+                if len(mb) >= 2 and mb[0] > 0:
+                    mb_chg = (mb[-1] - mb[0]) / mb[0] * 100
+                    if mb_chg > 25:
+                        base -= 8; factors.append(f"融資爆增{mb_chg:.0f}%-8")
+                    elif mb_chg > 15:
+                        base -= 4; factors.append(f"融資增{mb_chg:.0f}%-4")
+            except Exception:
+                pass
+            try:
+                # 融券爆增(空方壓力上升,偏風險)
+                sb = [r.get('short_balance') for r in rows[-6:] if isinstance(r.get('short_balance'), (int, float))]
+                if len(sb) >= 2 and sb[0] > 0:
+                    sb_chg = (sb[-1] - sb[0]) / sb[0] * 100
+                    if sb_chg > 50:
+                        base -= 5; factors.append(f"融券爆增{sb_chg:.0f}%-5")
+            except Exception:
+                pass
+            try:
+                # 外資連 3 日賣超(真出貨,非單日調節):近 3 日每日皆 ≤0 且累計 <0
+                f3 = [r.get('foreign_net') for r in rows[-3:] if isinstance(r.get('foreign_net'), (int, float))]
+                if len(f3) == 3 and sum(f3) < 0 and all(x <= 0 for x in f3):
+                    base -= 8; factors.append("外資連3日賣超-8")
             except Exception:
                 pass
 
