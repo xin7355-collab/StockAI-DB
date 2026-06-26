@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V24.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V24.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4206,6 +4206,59 @@ ${list}
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
+        // V24.3 — 🚨 post-render 空白檢查(render 沒拋錯但內容空白也要顯救援卡)
+        if (['fav','inv','radar','hunt','etf'].includes(tabId)) {
+            setTimeout(() => this._checkTabHasContent(tabId), 600);
+        }
+    },
+
+    // V24.3 — 檢查 tab 渲染後是否有實質內容,若空白 prepend 救援卡(根因:render 函式 silent return 沒填 HTML)
+    _checkTabHasContent(tabId) {
+        const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
+        const container = document.getElementById(`tabContent${tabKey}`);
+        if (!container) return;
+        // 排除既有救援卡的字數,避免無限觸發
+        if (container.querySelector('[data-rescue-card="1"]')) return;
+        const txt = (container.textContent || '').replace(/\s+/g, '').trim();
+        // 內容少於 30 字(空白頁) → prepend 救援卡
+        if (txt.length < 30) {
+            const labels = { fav: '⭐ 自選股', inv: '💼 庫存', radar: '🔥 雷達', hunt: '⚔️ 獵殺', etf: '🏦 ETF 跟車' };
+            console.warn(`[空白檢查] ${tabId} 分頁內容僅 ${txt.length} 字,觸發救援卡`);
+            this._showTabEmptyRescue(tabId, labels[tabId] || tabId, txt.length);
+        }
+    },
+
+    // V24.3 — 空白分頁救援卡(prepend 到容器頂,不覆蓋既有渲染結果)
+    _showTabEmptyRescue(tabId, label, txtLen) {
+        const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
+        const container = document.getElementById(`tabContent${tabKey}`);
+        if (!container) return;
+        const hints = {
+            fav: '可能原因:\n• 你還沒加任何自選股(去診斷頁,輸入代號 → 點 ⭐ 收藏)\n• favGroups localStorage 損壞\n• renderFavTabs 函式內 silent return',
+            inv: '可能原因:\n• 你還沒加任何庫存股(去診斷頁,輸入代號 → 點 💼 加入庫存)\n• inventoryList localStorage 損壞\n• renderInventory 函式內 silent return',
+            radar: '可能原因:\n• radar.json 尚未生成(daily_miner 還沒跑完)\n• 後端 fetch 失敗\n• loadRadarMatrix 函式內 silent return\n• 網路不通',
+            hunt: '可能原因:\n• 沒有命中「獵鷹」高分訊號股(雷達分數 ≥ 75)\n• top_picks.json 尚未生成\n• 今日全市場無強訊號',
+            etf: '可能原因:\n• 沒任何 ETF 在自選/庫存內(去診斷頁加 0050/0056 等)\n• etf_tracking 資料未載入',
+        };
+        const card = document.createElement('div');
+        card.setAttribute('data-rescue-card', '1');
+        card.className = 'm-3 p-4 bg-amber-900/30 border-2 border-amber-600 rounded-lg text-amber-100 shadow-xl';
+        card.innerHTML = `
+            <div class="text-center mb-3">
+                <div class="text-3xl mb-1">⚠️</div>
+                <div class="text-base font-black">${label} 分頁是空的</div>
+                <div class="text-[10px] text-amber-200 mt-0.5">V24.3 救援卡 ・ render 完成但內容空白(${txtLen} 字)</div>
+            </div>
+            <div class="bg-[#0d1117] rounded p-2 mb-3 text-[11px] text-amber-200 whitespace-pre-line leading-relaxed">
+                ${hints[tabId] || '不明原因'}
+            </div>
+            <div class="flex flex-col gap-2">
+                <button onclick="app.forcePwaReload()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-black rounded text-sm transition-colors">🆘 強制清 SW + 重整(救 iOS PWA 舊版)</button>
+                <button onclick="app.switchAppTab('diag')" class="w-full py-2 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded text-xs transition-colors">🎯 去診斷頁加股票</button>
+                <button onclick="this.closest('[data-rescue-card]').remove()" class="w-full py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs transition-colors">關閉此卡</button>
+            </div>
+            <div class="text-[9px] text-amber-300/80 text-center mt-2 leading-relaxed">💡 iOS PWA 救命招:雙擊 Home 完全關 App → 設定 → Safari → 清歷史 → 重開</div>`;
+        container.insertBefore(card, container.firstChild);
     },
 
     // V23.4 — 🆘 tab 渲染失敗救援紅卡(顯具體錯誤 + 強制清 SW 鈕 + 截圖回報引導)
