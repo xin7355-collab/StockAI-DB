@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V24.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V24.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -812,7 +812,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -2042,7 +2042,7 @@
             <!-- 🔄 重新整理按鈕已遷至「全球宏觀風險觀測台」標題列右側 icon(避免底部塞無關按鈕) -->
         </div>
 
-        <div id="tabContentFav" class="hidden flex-col pb-4" style="min-height:80vh;">
+        <div id="tabContentFav" class="flex-col pb-4" style="display:none;min-height:80vh;">
             <!-- V24.7 — HTML 寫死救援頭(改 relative,不靠 sticky;父容器 min-h:80vh 強制撐) -->
             <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">⭐ 自選股 ・ V24.6 救援頭</div>
@@ -2081,7 +2081,7 @@
             </div>
         </div>
 
-        <div id="tabContentInv" class="hidden flex-col gap-3 p-2 pb-4" style="min-height:80vh;">
+        <div id="tabContentInv" class="flex-col gap-3 p-2 pb-4" style="display:none;min-height:80vh;">
             <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">💼 庫存 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
@@ -2145,7 +2145,7 @@
             </div>
         </div>
 
-        <div id="tabContentRadar" class="hidden flex-col p-2 relative pb-4" style="min-height:80vh;">
+        <div id="tabContentRadar" class="flex-col p-2 relative pb-4" style="display:none;min-height:80vh;">
             <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">🔥 雷達 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
@@ -2223,7 +2223,7 @@
             </div>
         </div>
 
-        <div id="tabContentEtf" class="hidden flex-col p-2 pb-4" style="min-height:80vh;">
+        <div id="tabContentEtf" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
             <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">🏦 ETF 跟車 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">ETF tab 本來就是空 div,須等 renderEtfTab 填內容</div>
@@ -2231,7 +2231,7 @@
                 <button onclick="this.parentNode.style.display='none';" class="ml-2 px-3 py-2 bg-gray-700 text-white rounded text-xs">✕ 關閉此卡</button>
             </div>
         </div>
-        <div id="tabContentHunt" class="hidden flex-col p-2 gap-3 pb-4" style="min-height:80vh;">
+        <div id="tabContentHunt" class="flex-col p-2 gap-3 pb-4" style="display:none;min-height:80vh;">
             <div class="bg-amber-900/40 border-y-2 border-amber-600 p-3 text-center" style="position:relative;z-index:9999;">
                 <div class="text-xs font-bold text-amber-100 mb-1">⚔️ 獵殺 ・ V24.6 救援頭</div>
                 <div class="text-[10px] text-amber-200 mb-2">看不到下方內容?點按鈕清快取重整</div>
@@ -4218,11 +4218,19 @@ ${list}
         
         ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
-            document.getElementById(`tabContent${tab}`).style.display = isMatch ? 'flex' : 'none';
-            document.getElementById(`navBtn${tab}`).classList.toggle('active', isMatch);
-            document.getElementById(`navBtn${tab}`).classList.toggle('text-blue-400', isMatch);
-            document.getElementById(`navBtn${tab}`).classList.toggle('text-gray-500', !isMatch);
-            document.getElementById(`navBtn${tab}`).querySelector('span').classList.toggle('grayscale-[80%]', !isMatch);
+            const _el = document.getElementById(`tabContent${tab}`);
+            if (_el) {
+                // V24.8 — setProperty important 雙保險,徹底贏過任何 Tailwind utility class
+                _el.style.setProperty('display', isMatch ? 'flex' : 'none', 'important');
+            }
+            const _nav = document.getElementById(`navBtn${tab}`);
+            if (_nav) {
+                _nav.classList.toggle('active', isMatch);
+                _nav.classList.toggle('text-blue-400', isMatch);
+                _nav.classList.toggle('text-gray-500', !isMatch);
+                const _span = _nav.querySelector('span');
+                if (_span) _span.classList.toggle('grayscale-[80%]', !isMatch);
+            }
         });
 
         // 🚨 戰略區塊（黃金動線）已內嵌於「全球」分頁頂部，隨分頁顯示，無需額外切換
