@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.11</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.12</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.11</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.12</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -8480,6 +8480,25 @@ const marginByDate = {};
     },
 
     // V22.5 — 🤖 板塊輪動 AI 白話判讀 + 自選股對應建議(Gemini 深度,24h 快取,雙擊強制重抽)
+    // V26.12 — 資料就緒檢查工具(macro cache 缺核心數據時拒 AI 判讀,避免 AI 看 null 全 null 還給「健康」結論)
+    _checkMacroReady() {
+        const macro = this._macroRiskCache || {};
+        const hasUsMacro = !!(macro.us_macro?.sp500 || macro.us_macro?.vix);
+        const hasSectors = !!(macro.sector_etfs && Object.keys(macro.sector_etfs).length >= 5);
+        const missing = [];
+        if (!hasUsMacro) missing.push('美股大盤');
+        if (!hasSectors) missing.push('9 板塊 ETF');
+        return { ready: missing.length === 0, missing };
+    },
+
+    _dataNotReadyHtml(missing) {
+        return `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="text-[11px] font-bold text-yellow-300 mb-1">⏳ 資料抓取中,暫不判讀</div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">大盤資料(美股 / VIX / 9 板塊 ETF)還沒抓到,AI 在資料不全時硬判讀會給錯誤結論。請稍候 1-2 分鐘或下拉強制重整頁面後再點。</div>
+            <div class="text-[9px] text-gray-500 mt-2">缺:${missing.join(' / ')}</div>
+        </div>`;
+    },
+
     async analyzeSectorRotationAI(opts = {}) {
         const btn = document.getElementById('sectorAiBtn');
         const result = document.getElementById('sectorAiResult');
@@ -8496,6 +8515,14 @@ const marginByDate = {};
                     return;
                 }
             } catch(_){}
+        }
+        // V26.12 — 資料就緒檢查(若 macro cache 缺,拒判讀避免 AI 看 null 給錯結論)
+        const _dr = this._checkMacroReady();
+        if (!_dr.ready) {
+            result.classList.remove('hidden');
+            result.innerHTML = this._dataNotReadyHtml(_dr.missing);
+            this.showToast('⏳ 資料未齊,稍候再點 AI 判讀', 'warning');
+            return;
         }
         // 收集 9 族群同步度
         const etfMap = this._macroRiskCache?.sector_etfs || {};
@@ -8709,6 +8736,13 @@ ${bigShotText}
                 }
             } catch(_){}
         }
+        // V26.12 — 資料就緒檢查
+        const _dr = this._checkMacroReady();
+        if (!_dr.ready) {
+            result.innerHTML = this._dataNotReadyHtml(_dr.missing);
+            this.showToast('⏳ 資料未齊,稍候再點 AI 4 段預判', 'warning');
+            return;
+        }
         // 收集大盤現況
         const macro = this._macroRiskCache || {};
         const etfMap = macro.sector_etfs || {};
@@ -8856,6 +8890,13 @@ high_chance_stocks 只列 ≤3 檔機率 ≥60% 的自選股,prob 寫整數機�
                     return;
                 }
             } catch(_){}
+        }
+        // V26.12 — 資料就緒檢查
+        const _dr = this._checkMacroReady();
+        if (!_dr.ready) {
+            result.innerHTML = this._dataNotReadyHtml(_dr.missing);
+            this.showToast('⏳ 資料未齊,稍候再點大跌剖析', 'warning');
+            return;
         }
         // 收集現況(reuse 既有快取)
         const macro = this._macroRiskCache || {};
@@ -9050,6 +9091,12 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
     renderSectorGapTable() {
         const result = document.getElementById('predictGapTableResult');
         if (!result) return;
+        // V26.12 — 資料就緒檢查(原邏輯沙漏全表也照渲染,使用者反映「全沙漏」沒意義)
+        const _dr = this._checkMacroReady();
+        if (!_dr.ready) {
+            result.innerHTML = this._dataNotReadyHtml(_dr.missing);
+            return;
+        }
         const macro = this._macroRiskCache || {};
         const etfMap = macro.sector_etfs || {};
         const sectorLabels = { server:'🖥️ 伺服器代工', power:'⚡ 重電基建', packaging:'📦 先進封裝', cpo:'🔗 CPO 光通訊', cooling:'❄️ 散熱', robot:'🤖 機器人', finance:'🏦 金融', leo:'🛰️ 低軌衛星', dram:'💾 DRAM' };
