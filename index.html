@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.19</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.20</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.19</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.20</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1177,7 +1177,18 @@
                 <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-blue-500">
                     <h3 class="text-gray-400 text-xs font-bold tracking-widest mb-3 flex items-center border-b border-gray-700 pb-2 cursor-pointer" onclick="alert('【AI 雲端大數據波段回測】\n\n本功能基於台股歷史大數據模型，比對該股目前 K 線型態，模擬過去 20 年在相似型態下的波段勝率與預期獲利空間，作為您抱單信心的參考。\n\n🔴 ≥65% 高勝率：歷史上這種型態隔日漲機率高，可積極關注\n🟡 50-64% 中等：勝率普通，需搭配其他指標佐證\n🟢 <50% 偏低：歷史上這種型態隔日漲機率偏低，宜謹慎\n\n⚠️ 注意：本功能為統計回測，非預測。過去績效不代表未來結果，請務必做好風控。')"><span class="text-blue-400 mr-1.5">🔮</span> AI 雲端大數據波段回測預判 <span class="text-[10px] text-gray-600 ml-1 font-normal">（點擊看說明）</span></h3>
                     <div class="mb-3">
-                        <div class="text-xs text-gray-500 mb-1.5 leading-relaxed">【系統已結合近5日K線特徵、<span class="text-yellow-400">成交量能配合度</span>、KD/MACD/布林帶、<span class="text-cyan-400">法人籌碼方向</span>、<span class="text-purple-400">大盤環境</span>進行掃描比對(限近1年樣本)】<span id="patFilterTags" class="block mt-1 text-[10px] text-cyan-300/70"></span></div>
+                        <!-- V26.20 — Micro Tags 降噪:原整段彩色文字 → 一句白話 + Micro Tags 列 -->
+                        <div class="text-[11px] text-gray-400 mb-1.5">AI 雲端波段模型已完成多維度特徵掃描比對</div>
+                        <div class="flex flex-wrap gap-1 mb-1.5">
+                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">近5日K線</span>
+                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">成交量能</span>
+                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">KD/MACD</span>
+                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">布林帶</span>
+                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">法人籌碼</span>
+                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">大盤環境</span>
+                            <span class="bg-white/5 text-gray-500 text-[9px] px-2 py-0.5 rounded">· 限近 1 年樣本</span>
+                        </div>
+                        <div id="patFilterTags" class="text-[10px] text-cyan-300/70 mb-1.5"></div>
                         <div class="grid grid-cols-3 gap-1.5 text-center mt-1.5">
                             <div class="bg-gray-800 rounded p-2 border border-gray-600"><div class="text-xs text-gray-400">高度相似樣本</div><div class="font-bold text-white text-lg mt-0.5" id="patCount">--次</div></div>
                             <div class="bg-gray-800 rounded p-2 border border-gray-600" id="patWinRateCard"><div class="text-xs text-gray-400">隔日上漲機率</div><div class="font-bold text-gray-300 text-lg mt-0.5" id="patWinRate">--%</div></div>
@@ -15916,10 +15927,11 @@ ${_newsLine}${globalContext}
             document.getElementById('patWinRate').innerHTML = `<span class="${wrCol}">${patternStats.winRate}%</span>${lowSampleWarn}`;
             document.getElementById('patAvgRet').innerHTML = patternStats.avgRet > 0 ? `<span class="text-red-400">+${patternStats.avgRet}%</span>` : `<span class="text-green-400">${patternStats.avgRet}%</span>`;
             // 🆕 顯示啟用的過濾維度標籤(讓使用者看到目前機率是基於哪些條件算的)
+            // V26.20 — patFilterTags 改 Micro Tag 風格(去掉「已套用過濾條件」贅字)
             const tagsEl = document.getElementById('patFilterTags');
             if (tagsEl && Array.isArray(patternStats.filters)) {
                 tagsEl.innerHTML = patternStats.filters.length
-                    ? `已套用過濾條件: ${patternStats.filters.map(f => `<span class="px-1 mx-0.5 bg-cyan-900/40 rounded">${f}</span>`).join('')}`
+                    ? `<span class="text-[9px] text-gray-500 mr-1">✓ 已套用:</span>${patternStats.filters.map(f => `<span class="bg-cyan-900/30 text-cyan-300/80 text-[9px] px-1.5 py-0.5 rounded mr-1">${f}</span>`).join('')}`
                     : '';
             }
             const alertEl = document.getElementById('patHighAlert');
