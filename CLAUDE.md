@@ -238,6 +238,48 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 - **PR 寫測試清單**:每張 PR body 給 Test plan(使用者上線後可逐項勾)
 - **PR rebase**:撞 main conflict 時 `git rebase origin/main` + `git push --force`
 
+### 🐛 定期修 bug(V25.2 後新增,使用者要求)
+**每次 push main 前必跑的「四驗證」**(原三驗證 + 新增第 4 個):
+1. `node --check`(抽 inline JS 語法)
+2. `python3 -m py_compile *.py`(後端語法)
+3. `python3 scripts/check_prompt_vars.py`(prompt 變數齊全)
+4. **`awk '...' index.html`** 確認 7 個 `tabContent*` 容器 div 開合平衡(防 V25.0 那種 HTML 巢狀 bug 重演 — `tabContentMarket` 少 1 個 `</div>` 導致 5 tab 被巢狀其中,8 次嘗試才修到)
+
+**驗證 HTML div 平衡腳本**(每次改 main HTML 結構必跑):
+```bash
+awk '/id="tabContentMarket"/{start=NR; bal=0}
+start && NR>=start {
+    o=gsub(/<div/, "<div");
+    c=gsub(/<\/div>/, "</div>");
+    bal += o - c;
+    if (bal==0) { print "tabContentMarket 閉合於 L"NR; exit }
+}
+END { if (bal>0) print "❌ tabContentMarket 少 "bal" 個 </div>!" }' index.html
+```
+正確結果應顯「tabContentMarket 閉合於 L20XX」(且 L20XX < tabContentFav 開頭行號)。
+
+**已知陷阱清單(寫進來避免重蹈覆轍)**:
+| # | 陷阱 | 症狀 | 修法 |
+|---|------|------|------|
+| 1 | HTML div 不平衡 | 5 tab 被巢狀 → display:none 連鎖 | awk 驗證 + 補閉合 |
+| 2 | Tailwind `hidden` class | 與 inline display 衝突 | 改用 setProperty('display',x,'important') |
+| 3 | iOS Safari/PWA SW 快取頑強 | 改動上線但使用者看舊版 | `sw.js` CACHE_NAME 注入 commit SHA(deploy_pages.yml 已做)|
+| 4 | render 函式 silent return | tab 空白但無錯誤 | 函式內加 placeholder,不要默默 return |
+| 5 | `const app = {}` 不掛 window | `window.app === undefined`(但 onclick `app.x` 仍 work) | 別用 `typeof window.app` 判斷 app 是否 init |
+| 6 | yfinance 個股 ticker 大小寫 | NVDA 大寫 / .KS .TW 後綴 | 嚴格按官方 ticker |
+| 7 | FinMind 429 限流 | 分點籌碼抓不到 | Token 輪動 + 匿名 fallback |
+
+**修 bug 4 步驟流程**:
+1. **重現**:使用者截圖 / console log / 確切操作步驟
+2. **診斷**:加 console.log / 黃色 fixed toast / 強制 print 真實狀態(如 V24.9 救命)
+3. **對症**:看診斷結果決定改 HTML / CSS / JS / 後端 — 不靠猜
+4. **驗證**:四驗證 + 使用者實測一次
+
+**Claude 主動巡邏**:每 5-10 次 push 後 Claude 自己跑一次:
+- awk div 平衡(避免新加 HTML 又巢狀)
+- grep `silent return` / `return;\s*}\s*$` 找潛在空白 bug
+- grep `display:\s*none` 看是否新加 hidden 元素未對應 show 邏輯
+
 ---
 
 ## 🚨 處置股完整系統(V20.x — 大功能,獨立 sub-tab)

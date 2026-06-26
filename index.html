@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V25.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V25.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V25.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4262,10 +4262,7 @@ ${list}
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
-        // V24.3 — 🚨 post-render 空白檢查(render 沒拋錯但內容空白也要顯救援卡)
-        if (['fav','inv','radar','hunt','etf'].includes(tabId)) {
-            setTimeout(() => { try { this._checkTabHasContent(tabId); } catch(e) { console.error('[checkTab]', e); } }, 600);
-        }
+        // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
         } catch (e) {   // V24.5 — switchAppTab 整段 try/catch 結尾
             console.error('[switchAppTab]', tabId, e);
             // 強制顯示對應 tab(即使 forEach 跑壞)
@@ -4277,52 +4274,7 @@ ${list}
         }
     },
 
-    // V24.4 — 檢查 tab 渲染後是否有實質內容(改用 visible height,不依賴 textContent;
-    //   根因:tabContent 內既有 placeholder 文字讓 textContent > 30 但畫面 visible height 是 0)
-    _checkTabHasContent(tabId) {
-        const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
-        const container = document.getElementById(`tabContent${tabKey}`);
-        if (!container) return;
-        if (container.querySelector('[data-rescue-card="1"]')) return;
-        // V24.4 — 三維度判斷:visible height(主) + textContent(輔) + children count(輔)
-        const rect = container.getBoundingClientRect();
-        const visibleHeight = Math.round(rect.height);
-        const txt = (container.textContent || '').replace(/\s+/g, '').trim();
-        const childCount = container.children.length;
-        // 視為空白:visible height < 200px (內容撐不出來,navbar 自身 55px,合理卡片 > 200)
-        // 或 textContent < 20 字 + 容器 < 300px
-        const isEmpty = visibleHeight < 200 || (visibleHeight < 300 && txt.length < 20);
-        console.log(`[V24.4 tab-check] ${tabId} h=${visibleHeight}px txt=${txt.length}字 children=${childCount} empty=${isEmpty}`);
-        if (isEmpty) {
-            const labels = { fav: '⭐ 自選股', inv: '💼 庫存', radar: '🔥 雷達', hunt: '⚔️ 獵殺', etf: '🏦 ETF 跟車' };
-            this._showTabEmptyRescue(tabId, labels[tabId] || tabId, txt.length, visibleHeight, childCount);
-        }
-    },
-
-    // V25.1 — 空白分頁救援卡(白話 UX,無技術細節);資料來時 render 函式自動覆蓋
-    _showTabEmptyRescue(tabId, label, txtLen, visibleHeight, childCount) {
-        const tabKey = tabId.charAt(0).toUpperCase() + tabId.slice(1);
-        const container = document.getElementById(`tabContent${tabKey}`);
-        if (!container) return;
-        const msgs = {
-            fav: { icon: '⭐', title: '你還沒加任何自選股', body: '去診斷頁輸入股票代號(如 2330)\n查完後點 ⭐ 收藏,就會出現在這裡', cta: '🎯 去診斷頁加股票', goto: 'diag' },
-            inv: { icon: '💼', title: '你還沒加任何庫存', body: '去診斷頁輸入股票代號\n點 💼 加入庫存後填進場價,自動算損益', cta: '🎯 去診斷頁加庫存', goto: 'diag' },
-            radar: { icon: '🔥', title: '雷達資料還沒到', body: '雷達 (渣男賽車 / 烏龜過河 / 狙擊手) 每週一~五 16:30 自動更新\n通常 30-60 分鐘跑完', cta: '🔄 重新整理試試', goto: null, reload: true },
-            hunt: { icon: '⚔️', title: '今日無「獵殺」訊號', body: '獵鷹 ≥75 分高勝率訊號 (5MA/法人/突破)\n今日全市場無命中,通常週中比較多', cta: '🎯 去診斷頁看個股', goto: 'diag' },
-            etf: { icon: '🏦', title: '自選/庫存還沒任何 ETF', body: '推薦先加 0050 (台灣 50) / 0056 (高股息)\n去診斷頁輸入代號後 ⭐ 或 💼 加入', cta: '🎯 去診斷頁加 ETF', goto: 'diag' },
-        };
-        const m = msgs[tabId] || { icon: '📭', title: label + ' 還沒資料', body: '稍後再看', cta: '🔄 重新整理', reload: true };
-        const card = document.createElement('div');
-        card.setAttribute('data-rescue-card', '1');
-        card.className = 'm-4 p-6 bg-gradient-to-br from-[#161b22] to-[#0d1117] border border-[#30363d] rounded-xl text-center shadow-xl';
-        card.innerHTML = `
-            <div class="text-5xl mb-3">${m.icon}</div>
-            <div class="text-base font-black text-gray-100 mb-2">${m.title}</div>
-            <div class="text-[11px] text-gray-400 mb-5 leading-relaxed whitespace-pre-line">${m.body}</div>
-            <button onclick="${m.reload ? 'location.reload();' : `app.switchAppTab('${m.goto}'); app.vibrate(30);`}" class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-sm font-black shadow-md transition-all">${m.cta}</button>
-            <div class="text-[9px] text-gray-600 mt-3 leading-relaxed">資料來時這張卡會自動消失</div>`;
-        container.insertBefore(card, container.firstChild);
-    },
+    // V25.2 — _checkTabHasContent / _showTabEmptyRescue 已砍除(V25.0 修真因後不再需要救援卡)
 
     // V23.4 — 🆘 tab 渲染失敗救援紅卡(顯具體錯誤 + 強制清 SW 鈕 + 截圖回報引導)
     _handleTabRenderError(tabId, label, err) {
@@ -19915,23 +19867,7 @@ window.addEventListener('unhandledrejection', e => {
 
 window.onload = () => app.init();
 
-// V25.1 — 診斷 console only(V24.9 黃 toast 已收 — V25.0 真根因已修;F12 console 仍能看)
-(function(){
-    setTimeout(function(){
-        try {
-            var report = ['[V25.1 診斷]'];
-            report.push('app type: ' + typeof window.app + ' (const 不掛 window 為正常)');
-            ['Fav','Inv','Radar','Hunt','Etf'].forEach(function(t){
-                var el = document.getElementById('tabContent' + t);
-                if (!el) { report.push(t + ': element 不存在!'); return; }
-                var parent = el.parentElement;
-                var cs = getComputedStyle(el);
-                report.push(t + ': parent=' + (parent ? (parent.id || parent.tagName) : 'null') + ' h=' + el.offsetHeight + 'px display=' + cs.display);
-            });
-            console.log(report.join('\n'));
-        } catch(e) { console.error('[V25.1 diag]', e); }
-    }, 2000);
-})();
+// V25.2 — 診斷 IIFE 已砍(V25.0 修真因後不再需要)
 </script>
 <script>
 // === 兩指放大後自動彈回原比例 (Snap-back Zoom) ===
