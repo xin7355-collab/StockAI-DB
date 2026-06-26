@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V24.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V24.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -101,6 +101,15 @@
         .drag-handle { touch-action: none; cursor: grab; padding: 0 10px; color: #8b949e; display: flex; align-items: center; justify-content: center;}
         .drag-handle:active { cursor: grabbing; color: #fff; }
         .typewriter-text { overflow: hidden; white-space: pre-wrap; margin: 0 auto; letter-spacing: 0.05em; }
+        /* V24.9 — 5 tab 強制顯示 .tab-active(用 !important + classList toggle 雙保險) */
+        #tabContentFav.tab-active, #tabContentInv.tab-active, #tabContentRadar.tab-active,
+        #tabContentHunt.tab-active, #tabContentEtf.tab-active {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 80vh !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
         
         .swipe-container { position: relative; overflow: hidden; background: #dc2626; border-radius: 0.5rem; }
         .swipe-content { position: relative; z-index: 10; width: 100%; transition: transform 0.2s ease-out; }
@@ -812,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.8</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V24.9</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4220,8 +4229,8 @@ ${list}
             const isMatch = (tab.toLowerCase() === tabId);
             const _el = document.getElementById(`tabContent${tab}`);
             if (_el) {
-                // V24.8 — setProperty important 雙保險,徹底贏過任何 Tailwind utility class
-                _el.style.setProperty('display', isMatch ? 'flex' : 'none', 'important');
+                _el.classList.toggle('tab-active', isMatch);   // V24.9 主(CSS !important 強制)
+                _el.style.setProperty('display', isMatch ? 'flex' : 'none', 'important');   // V24.8 輔
             }
             const _nav = document.getElementById(`navBtn${tab}`);
             if (_nav) {
@@ -19926,6 +19935,38 @@ window.addEventListener('unhandledrejection', e => {
 });
 
 window.onload = () => app.init();
+
+// V24.9 — 🔬 強制診斷 toast(IIFE,純 vanilla JS 不靠 app 物件,2 秒後一定彈)
+(function(){
+    setTimeout(function(){
+        try {
+            var report = ['[V24.9 診斷]'];
+            report.push('app type: ' + typeof window.app);
+            report.push('app.switchAppTab: ' + (window.app && typeof window.app.switchAppTab));
+            report.push('app.init: ' + (window.app && typeof window.app.init));
+            report.push('app._initRan: ' + (window.app && window.app._initRan));
+            ['Fav','Inv','Radar','Hunt','Etf'].forEach(function(t){
+                var el = document.getElementById('tabContent' + t);
+                if (!el) { report.push(t + ': element 不存在!'); return; }
+                var parent = el.parentElement;
+                var cs = getComputedStyle(el);
+                report.push(t + ': parent=' + (parent ? (parent.id || parent.tagName) : 'null') + ' h=' + el.offsetHeight + 'px display=' + cs.display + ' visibility=' + cs.visibility);
+            });
+            console.log(report.join('\n'));
+            var t = document.createElement('div');
+            t.id = '_v249diag';
+            t.style.cssText = 'position:fixed;top:50px;left:5px;right:5px;background:#fde047;color:#000;padding:8px;font-size:9px;z-index:99999;font-family:monospace;white-space:pre-wrap;border:2px solid red;line-height:1.3;max-height:50vh;overflow:auto;';
+            t.textContent = report.join('\n') + '\n\n👆 截圖給 Claude → 立刻對症修。點此關閉';
+            t.onclick = function(){ this.remove(); };
+            document.body.appendChild(t);
+        } catch(e) {
+            var t = document.createElement('div');
+            t.style.cssText = 'position:fixed;top:50px;left:5px;right:5px;background:red;color:#fff;padding:8px;font-size:11px;z-index:99999;';
+            t.textContent = 'V24.9 diag script 拋錯: ' + (e.message || e);
+            document.body.appendChild(t);
+        }
+    }, 2000);
+})();
 </script>
 <script>
 // === 兩指放大後自動彈回原比例 (Snap-back Zoom) ===
