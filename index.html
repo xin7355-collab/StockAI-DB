@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -15206,20 +15206,53 @@ ${_newsLine}${globalContext}
         let costPnlText = "";
         if (hasCost && profitPct != null) {
             const profitSign = profitPct >= 0 ? '+' : '';
-            const profitColor = profitPct >= 0 ? 'text-green-400' : 'text-red-400';
-            const profitBg = profitPct >= 0 ? 'bg-green-900/20 border-green-800/50' : 'bg-red-900/20 border-red-800/50';
+            const profitColor = profitPct >= 0 ? 'text-red-400' : 'text-green-400';   // V26.6 台股慣例:獲利紅虧損綠
             let profitHint = '';
-            if (profitPct > 15) profitHint = '獲利超過 15%，建議分批上移停利點';
-            else if (profitPct < -10) profitHint = '虧損超過 10%，評估是否執行停損';
+            if (profitPct > 15) profitHint = '獲利超過 15%,建議分批上移停利點';
+            else if (profitPct < -10) profitHint = '虧損超過 10%,評估是否執行停損';
             // 🛡️ 硬停損墊:成本 -8% 與前20日低取較高者(防散戶凹單;漲多後改由移動停利接手)
             const hardStop = (prevLow20 !== null && profitPct < 15)
                 ? Math.max(costVal * 0.92, Math.min(prevLow20, costVal * 0.98))
                 : costVal * 0.92;
             const hitHard = pC <= hardStop;
-            const hardLine = (profitPct < 15)
-                ? `<br>🛡️ <b>硬停損墊:</b> <span class="${hitHard ? 'text-red-400 animate-pulse' : 'text-orange-300'} font-black">${hardStop.toFixed(2)}</span>${hitHard ? ' ⚠️ 已觸及,嚴禁凹單!' : '(跌破即停損,守紀律)'}`
-                : '';
-            costPnlText = `<div class="mt-2 ${profitBg} border rounded p-2 text-xs font-bold leading-relaxed">💰 <b>持倉損益：</b> 成本 ${costVal} → 現價 ${pC.toFixed(2)} <span class="${profitColor} font-black ml-1">${profitSign}${profitPct.toFixed(1)}%</span>${profitHint ? `<br>💡 ${profitHint}` : ''}${hardLine}</div>`;
+            // V26.6 — 倉位狀態 Bloomberg 風 4 格 grid + 大字現價(取代原一行文字)
+            const _invEntry = (this.inventory || []).find(i => i.symbol === this.currentSymbolId);
+            const _sharesUnit = (_invEntry && _invEntry.shares > 0) ? _invEntry.shares : 1;
+            const _pnlAmt = (pC - costVal) * _sharesUnit * 1000;
+            const _pnlSign = _pnlAmt >= 0 ? '+' : '-';
+            const _pnlAmtStr = `${_pnlSign}${Math.abs(Math.round(_pnlAmt)).toLocaleString()}`;
+            const _pC1 = data[last - 1]?.close;
+            const _todayChgRaw = (_pC1 && _pC1 > 0) ? ((pC - _pC1) / _pC1) * 100 : null;
+            const _todayChgColor = _todayChgRaw == null ? 'text-gray-300' : (_todayChgRaw >= 0 ? 'text-red-400' : 'text-green-400');
+            const _todayChgArrow = _todayChgRaw == null ? '' : (_todayChgRaw >= 0 ? '▲' : '▼');
+            const _todayChgStr = _todayChgRaw == null ? '—' : `${_todayChgArrow} ${_todayChgRaw >= 0 ? '+' : ''}${_todayChgRaw.toFixed(2)}%`;
+            const _stockName = (typeof this.getStockName === 'function' ? this.getStockName(this.currentSymbolId) : null) || this.currentSymbolId || '';
+            const _sharesLabel = (_invEntry && _invEntry.shares > 0) ? `${_invEntry.shares} 張` : '1 張(預估)';
+            const _ma5Val = (ma5 != null) ? ma5.toFixed(2) : '—';
+            costPnlText = `<div class="mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-md">
+                <div class="flex items-baseline justify-between mb-2 pb-2 border-b border-[#30363d]">
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-[11px] text-gray-300 font-black">💰 ${_stockName}</span>
+                        <span class="text-[9px] text-gray-600 font-mono">${this.currentSymbolId || ''}</span>
+                        <span class="text-[9px] text-gray-600">· ${_sharesLabel}</span>
+                    </div>
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-xl font-black font-mono ${_todayChgColor}">${pC.toFixed(2)}</span>
+                        <span class="text-[10px] font-mono ${_todayChgColor}">${_todayChgStr}</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono">
+                    <div class="flex justify-between"><span class="text-gray-500">成本</span><span class="text-gray-200">${costVal}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">帳損</span><span class="${profitColor} font-bold">${profitSign}${profitPct.toFixed(1)}%</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">5MA</span><span class="text-gray-200">${_ma5Val}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">損益</span><span class="${profitColor} font-bold">${_pnlAmtStr} 元</span></div>
+                </div>
+                ${profitHint ? `<div class="mt-2 text-[10px] text-gray-400 border-l-2 border-gray-700 pl-2 leading-relaxed">💡 ${profitHint}</div>` : ''}
+                ${(profitPct < 15) ? `<div class="mt-2 flex items-center justify-between text-[10px] ${hitHard ? 'bg-red-900/30 border-l-4 border-red-500 pl-2 pr-2 py-1 rounded-r' : 'bg-[#0d1117] border-l-2 border-orange-700/50 pl-2 pr-2 py-1 rounded-r'}">
+                    <span class="${hitHard ? 'text-red-300 font-bold' : 'text-gray-400'}">🛡️ 硬停損墊</span>
+                    <span class="font-mono font-black ${hitHard ? 'text-red-400 animate-pulse' : 'text-orange-300'}">${hardStop.toFixed(2)}${hitHard ? ' ⚠️ 已觸,禁凹單' : ''}</span>
+                </div>` : ''}
+            </div>`;
         }
 
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC); document.getElementById('tgt2Price').innerHTML = this.getPriceHTML(t2_val, pC);
