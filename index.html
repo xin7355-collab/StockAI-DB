@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.13</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.13</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.14</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1426,29 +1426,37 @@
                     <div class="text-center text-gray-500 py-3 text-[10px]">點上方按鈕開始 ・ 全手動觸發 ・ 15 分鐘內快取</div>
                 </div>
                 <div id="anomalyAiResult" class="text-[11px] text-gray-200 leading-relaxed mt-2"></div>
-                <!-- V24.2 — 📊 9 板塊跨市場缺口明細表(免 AI,純前端即時計算) -->
-                <button onclick="app.renderSectorGapTable()" class="w-full mt-2 text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/40 hover:bg-purple-900/50 rounded py-1.5 transition-colors">📊 9 板塊跨市場缺口明細(免 AI · 即時看)</button>
-                <div id="predictGapTableResult" class="text-[11px] text-gray-200"></div>
-                <div class="text-[8px] text-gray-500 mt-2 text-center leading-relaxed">💡 V24.2 全手動 ・ 不主動推播 ・ 缺口表 + 預判 + 大跌剖析 + 個股級在診斷頁</div>
+                <!-- V26.14 — 9 板塊缺口表 + 資金板塊輪動 已整合到下方獨立卡 -->
+                <div class="text-[8px] text-gray-500 mt-2 text-center leading-relaxed">💡 V26.14 全手動 ・ 不主動推播 ・ 板塊輪動 + 缺口表合併到下方獨立整合卡</div>
             </div>
 
-            <!-- 💰 V26.11 — 資金板塊輪動(從全球大環境末端搬到預判中心後,使用者反映「找不到更新按鈕」) -->
-            <div class="bg-[#161b22] rounded-lg border border-[#30363d] p-3">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-base">💰</span>
-                    <span class="text-base font-black text-gray-100 tracking-wide">資金板塊輪動</span>
+            <!-- 📊 V26.14 — 9 板塊跨市場板塊輪動整合卡(取代原「資金板塊輪動」整卡 + 預判中心內的 9 板塊缺口按鈕,
+                          使用者要求:「上方資金輪的東西移到 9 板塊跨市場缺口明細,重新做一個整合」) -->
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="text-base">📊</span>
+                    <span class="text-[12px] font-black text-purple-300 tracking-wide">9 板塊跨市場板塊輪動</span>
                     <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
                 </div>
-                <div class="text-[11px] text-gray-400 mb-1.5 mt-1">熱錢流向哪個產業一目了然 — <span class="text-red-400 font-bold">🔺 紅=漲</span> / <span class="text-green-400 font-bold">🔻 綠=跌</span>(台股慣例)</div>
-                <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="w-full mb-2 text-[11px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-1.5">🔄 盤中即時更新(Fugle)</button>
+                <div class="text-[10px] text-gray-400 mb-2">熱錢流向哪個產業一目了然 · <span class="text-red-400">🔺 紅=漲</span> / <span class="text-green-400">🔻 綠=跌</span>(台股慣例)</div>
+
+                <!-- 2 按鈕並列:🔄 即時更新 + 🤖 AI 白話判讀 -->
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors">🔄 盤中即時更新</button>
+                    <button id="sectorAiBtn" onclick="app.analyzeSectorRotationAI()" ondblclick="app.analyzeSectorRotationAI({force:true})" class="text-[10px] font-bold text-purple-300 bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 rounded transition-colors">🤖 AI 白話判讀</button>
+                </div>
+
+                <!-- 進度條 + AI 結果 -->
                 <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
-                <!-- V22.5 — 🤖 板塊輪動 AI 白話判讀 + 個股對應建議(整合 1 鈕,Gemini 深度判讀,24h 快取,雙擊強制重抽) -->
-                <button id="sectorAiBtn" onclick="app.analyzeSectorRotationAI()" ondblclick="app.analyzeSectorRotationAI({force:true})" class="w-full mb-2 text-[11px] font-bold text-purple-300 bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 rounded-lg py-2 transition-colors flex items-center justify-center gap-1.5">🤖 AI 白話判讀 + 你的自選股對應(雙擊強制重抽)</button>
-                <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-xl border border-purple-700/40 p-3"></div>
-                <!-- V26.5 — 砍 9 族群同步度摘要(與「預判中心」#predictGapTableResult 重複) -->
-                <!-- V19.7 — 美股對標速查表(平常摺起) -->
-                <div class="mb-2 border border-[#30363d] rounded">
-                    <button onclick="document.getElementById('sectorBenchTable').classList.toggle('hidden'); this.querySelector('[data-chevron]').textContent = document.getElementById('sectorBenchTable').classList.contains('hidden') ? '▾' : '▴';" class="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold text-cyan-300 hover:bg-[#161b22] transition-colors">
+                <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
+
+                <!-- 9 板塊缺口明細(點按鈕後動態渲染) -->
+                <button onclick="app.renderSectorGapTable()" class="w-full mb-2 text-[10px] font-bold text-cyan-200 bg-cyan-900/20 border border-cyan-700/40 hover:bg-cyan-900/40 rounded py-1.5 transition-colors">📊 9 板塊缺口明細(免 AI · 即時看)</button>
+                <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
+
+                <!-- 美股對標速查表(摺疊) -->
+                <div class="border border-[#30363d] rounded">
+                    <button onclick="document.getElementById('sectorBenchTable').classList.toggle('hidden'); this.querySelector('[data-chevron]').textContent = document.getElementById('sectorBenchTable').classList.contains('hidden') ? '▾' : '▴';" class="w-full flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-cyan-300 hover:bg-[#161b22] transition-colors">
                         <span>📖 看不懂?點此查美股對標 ETF 速查表</span>
                         <span data-chevron class="text-gray-500">▾</span>
                     </button>
