@@ -4484,7 +4484,7 @@ ${list}
         }
         const acc = verified ? (hits / verified * 100).toFixed(1) : '—';
         const highAcc = high ? (highHits / high * 100).toFixed(1) : '—';
-        el.innerHTML = `已追蹤 <b class="text-white">${syms.length}</b> 檔 / 共 <b class="text-white">${total}</b> 筆快照 / 已驗證 <b class="text-white">${verified}</b> 筆<br>跨股總準度：<b class="text-yellow-300">${acc}%</b>（${hits}/${verified}）｜patWinRate ≥ 65% 時：<b class="text-red-300">${highAcc}%</b>（${highHits}/${high}）`;
+        el.innerHTML = `已追蹤 <b class="text-white">${syms.length}</b> 檔 / 共 <b class="text-white">${total}</b> 筆快照 / 已驗證 <b class="text-white">${verified}</b> 筆<br>跨股總準度：<b class="text-yellow-300">${acc}%</b>（${hits}/${verified}）｜高勝率 (≥65%) 時:<b class="text-red-300">${highAcc}%</b>（${highHits}/${high}）`;
     },
 
     // 📤 匯出預測歷史 JSON（複製到剪貼簿 + 下載檔案）
