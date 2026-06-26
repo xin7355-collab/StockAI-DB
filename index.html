@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V26.14</title>
+    <title>首席 AI 司令部 | 戰略終端 V26.15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -821,7 +821,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.14</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V26.15</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -7962,19 +7962,30 @@ const marginByDate = {};
         else if (finalScore >= 30)  { verdict = '🔴 偏空 別碰';     verdictCls = 'border-green-700 bg-green-900/30 text-green-300';          action = '空方訊號多 → <b>持股分批停利 ・ 空手不接刀</b>'; }
         else                        { verdict = '🔴🔴 強烈賣出';    verdictCls = 'border-green-600 bg-green-900/40 text-green-200 animate-pulse'; action = '多重訊號一致看空 → <b>持股全出 ・ 空手嚴禁進場</b>'; }
 
-        const factorRows = factors.map(f => `
-            <div class="flex items-center justify-between py-1 border-b border-[#21262d] text-[11px]">
-                <span class="flex items-center gap-1.5"><span>${f.icon}</span><b class="text-gray-200">${f.name}</b><span class="text-[9px] text-gray-500">×${f.weight}%</span></span>
-                <span class="flex items-center gap-2">
-                    <span class="text-[10px] text-gray-400">${f.txt}</span>
-                    <span class="font-mono font-bold ${f.score >= 70 ? 'text-red-300' : f.score >= 40 ? 'text-yellow-300' : 'text-green-300'}">${f.score}</span>
-                </span>
-            </div>`).join('');
+        // V26.15 — Progress Row Grid:3 欄(因子名+權重 / 進度條+評語 / 大字分數)取代原 flex 易錯位排版
+        const factorRows = factors.map(f => {
+            const scoreColor = f.score >= 70 ? 'text-red-300' : f.score >= 40 ? 'text-yellow-300' : 'text-green-300';
+            const barColor   = f.score >= 70 ? 'bg-red-400'    : f.score >= 40 ? 'bg-yellow-400'   : 'bg-green-400';
+            return `
+            <div class="grid grid-cols-[1fr_auto_44px] gap-2 items-center py-1.5 border-b border-[#21262d]">
+                <div>
+                    <div class="text-[11px] text-gray-200 font-bold flex items-center gap-1"><span>${f.icon}</span>${f.name}</div>
+                    <div class="text-[9px] text-gray-500 font-mono">權重 ${f.weight}%</div>
+                </div>
+                <div class="flex flex-col items-end gap-0.5">
+                    <span class="text-[9px] text-gray-400 truncate max-w-[120px] text-right" title="${f.txt}">${f.txt}</span>
+                    <div class="w-[100px] h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${barColor} transition-all" style="width:${Math.min(f.score, 100)}%"></div></div>
+                </div>
+                <div class="font-mono font-black text-right text-base ${scoreColor}">${f.score}</div>
+            </div>`;
+        }).join('');
+
+        const formulaTxt = '各因子權重\\n• Falcon 建倉  ×25%\\n• 外資反轉      ×20%\\n• 投信做帳      ×15%\\n• 注意股風險  ×15%\\n• 景氣燈號      ×15%\\n• 越關大尾      ×10%\\n\\n總分 = Σ(各因子分數 × 權重) / 100';
 
         box.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-blue-700/40">
                 <h4 class="text-blue-300 font-bold text-sm">📊 綜合操作評分</h4>
-                <span class="text-[10px] text-gray-500">${factors.length} 因子加權</span>
+                <button onclick="alert('${formulaTxt}')" class="text-[9px] text-gray-500 hover:text-blue-300 flex items-center gap-1">${factors.length} 因子加權 ⓘ</button>
             </div>
             <div class="rounded-lg border ${verdictCls} px-3 py-2.5 mb-2 text-center">
                 <div class="text-4xl font-black font-mono leading-none mb-0.5">${finalScore}<span class="text-base text-gray-400">/100</span></div>
@@ -7982,8 +7993,7 @@ const marginByDate = {};
             </div>
             <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-2 text-[11px] text-gray-300 leading-snug">${action}</div>
             <div class="text-[10px] text-gray-500 mb-1 leading-tight">📊 各因子分數明細</div>
-            <div>${factorRows}</div>
-            <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">💡 各因子權重:Falcon×25 / 外資反轉×20 / 注意股風險×15 / 投信做帳×15 / 景氣燈號×15 / 越關大尾×10</div>`;
+            <div>${factorRows}</div>`;
     },
 
     // V21.7 — Q2 修嚴重 BUG:此函式原誤寫為 `_showAttentionRulesHelp`(跟 L7964 真正的注意股教學同名,JS 後定義覆寫前定義),
