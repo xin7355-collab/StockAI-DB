@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1526,7 +1526,7 @@
                 <!-- V21.8 — 三指數共用手動更新鈕 + 重點時間自動更新 1 次(9:00/13:30/17:00) -->
                 <button id="refreshIndicesBtn" onclick="app._refreshAllIndices()"
                         class="w-full mt-1.5 text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1 hover:bg-cyan-900/50 transition-colors flex items-center justify-center gap-1.5">
-                    🔄 <span>手動更新指數</span><span id="refreshIndicesTs" class="text-[8px] text-cyan-400/70 font-normal">--</span>
+                    🔄 <span>更新指數(加權/櫃買盤中即時)</span><span id="refreshIndicesTs" class="text-[8px] text-cyan-400/70 font-normal">--</span>
                 </button>
                 <div class="flex justify-end mt-1"><span id="warRoomTs" class="text-[9px] text-gray-600 font-mono">--</span></div>
                 <!-- 互換用（JS 仍會更新但不可見） -->
@@ -8320,13 +8320,66 @@ const marginByDate = {};
             try { localStorage.removeItem('proTerminalMacroCache_v3'); } catch(_) {}
             if (typeof this.fetchMacroData === 'function') await this.fetchMacroData();
             this._renderTaiexFutures();
-            if (ts) ts.textContent = `(${new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})})`;
+            // V27.1 — 盤中即時加權/櫃買(Yahoo 公開指數 ~15 分延遲;失敗自動保留上面挖礦/FinMind 值,絕不顯亂碼)
+            const _live = await this._refreshLiveTwIndices().catch(() => 0);
+            const _ftime = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
+            if (ts) ts.textContent = _live ? `(即時 ${_ftime})` : `(${_ftime})`;
             this.vibrate?.(20);
         } catch (e) {
             console.warn('[refreshIndices] 失敗:', e);
         } finally {
             if (btn) setTimeout(() => { btn.disabled = false; btn.style.opacity = '1'; }, 2000);
         }
+    },
+
+    // V27.1 — 盤中即時指數(Yahoo Finance chart API,公開免 token,經既有 CORS proxy;~15 分延遲)
+    //          回傳 {price, prev, chgPct} 或 null(失敗讓上層保留挖礦/FinMind 值)
+    async _fetchLiveIndexYahoo(yahooSym) {
+        const proxyFetch = async (url) => {
+            for (const proxy of [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?${encodeURIComponent(url)}`
+            ]) {
+                try {
+                    const r = await fetch(proxy, { signal: AbortSignal.timeout(6000) });
+                    if (r.ok) return await r.json();
+                } catch (_) {}
+            }
+            return null;
+        };
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym)}?interval=5m&range=1d`;
+        const j = await proxyFetch(url);
+        const meta = j?.chart?.result?.[0]?.meta;
+        const price = meta?.regularMarketPrice;
+        const prev = meta?.chartPreviousClose ?? meta?.previousClose ?? null;
+        if (price && price > 0 && prev && prev > 0) {
+            return { price, prev, chgPct: (price - prev) / prev * 100 };
+        }
+        return null;
+    },
+
+    // V27.1 — 盤中即時刷新 加權(^TWII)/ 櫃買(^TWOII)兩張指數卡;成功標「即時」,失敗保留原值
+    async _refreshLiveTwIndices() {
+        const apply = (mainId, chgId, q, label) => {
+            const m = document.getElementById(mainId);
+            if (!m || !q) return false;
+            const color = q.chgPct > 0 ? 'text-[#f87171]' : q.chgPct < 0 ? 'text-[#4ade80]' : 'text-gray-400';
+            const dp = mainId.includes('TWOII') ? 2 : 0;
+            m.innerText = q.price.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+            m.className = `text-base font-black font-mono ${color}`;
+            const c = document.getElementById(chgId);
+            if (c) c.innerHTML = `<span class="${color}">${q.chgPct > 0 ? '+' : ''}${q.chgPct.toFixed(2)}%</span> <span class="text-cyan-400/70 text-[8px]">${label}</span>`;
+            return true;
+        };
+        const [twii, twoii] = await Promise.all([
+            this._fetchLiveIndexYahoo('^TWII').catch(() => null),
+            this._fetchLiveIndexYahoo('^TWOII').catch(() => null),
+        ]);
+        const t = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        let got = 0;
+        if (apply('mktTWII_main', 'mktTWII_chg_main', twii, `即時 ${t}`)) got++;
+        if (apply('mktTWOII_main', 'mktTWOII_chg_main', twoii, `即時 ${t}`)) got++;
+        return got;
     },
 
     // V21.8 — 重點時間自動更新檢查(在 init setInterval 每 30 秒呼叫,符合條件才動作 + 防重複觸發)
