@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1439,7 +1439,7 @@
                 <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
 
                 <!-- V27.0 — 9 板塊缺口明細「常顯」(原需點按鈕,改自動渲染;盤中即時更新後自動刷新) -->
-                <div class="text-[10px] font-bold text-cyan-300 mb-1 mt-1">📊 9 板塊缺口明細<span class="text-gray-500 font-normal">(免 AI · 即時看)</span></div>
+                <div class="text-[10px] font-bold text-cyan-300 mb-1 mt-1">📊 9 板塊缺口明細</div>
                 <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
 
                 <!-- 美股對標速查表(摺疊) -->
@@ -8933,12 +8933,12 @@ ${bigShotText}
         // 收集大盤現況
         const macro = this._macroRiskCache || {};
         const etfMap = macro.sector_etfs || {};
-        const usMacro = macro.us_macro || {};
-        const sp = usMacro.sp500?.chg_pct ?? null;
-        const nq = usMacro.nasdaq?.chg_pct ?? null;
-        const vix = usMacro.vix?.price ?? null;
-        // V24.1 — 日經對標(亞洲市場 lead-lag)
-        const jp = macro.nikkei?.chg_pct ?? usMacro.nikkei?.chg_pct ?? macro.global_big_players?.nikkei?.chg_pct ?? null;
+        // V27.4 — 修對接 bug:macro_risk.json 是平層欄位(無 us_macro 物件),美股改讀平層 *_chg_pct(否則 AI 永遠看到「--」)
+        const sp = macro.sp500_chg_pct ?? null;
+        const nq = macro.nasdaq_chg_pct ?? null;
+        const vix = macro.vix ?? null;
+        // V24.1 — 日經對標(亞洲市場 lead-lag);V27.4 — nikkei 是平層數值,漲跌用 nikkei_chg_pct
+        const jp = macro.nikkei_chg_pct ?? null;
         const twiiNow = this._twiiNowChg ?? null;
         // 9 板塊缺口
         const sectorLabels = { server:'伺服器代工', power:'重電基建', packaging:'先進封裝', cpo:'CPO光通訊', cooling:'散熱', robot:'機器人', finance:'金融', leo:'低軌衛星', dram:'DRAM' };
@@ -9088,23 +9088,25 @@ high_chance_stocks 只列 ≤3 檔機率 ≥60% 的自選股,prob 寫整數機�
         // 收集現況(reuse 既有快取)
         const macro = this._macroRiskCache || {};
         const etfMap = macro.sector_etfs || {};
-        const usMacro = macro.us_macro || {};
-        const sp = usMacro.sp500?.chg_pct ?? null;
-        const nq = usMacro.nasdaq?.chg_pct ?? null;
-        const vix = usMacro.vix?.price ?? null;
-        // V24.1 — 日經 N225(後端已抓,key='nikkei',routes 全域巨頭脈動)
-        const jp = macro.nikkei?.chg_pct ?? usMacro.nikkei?.chg_pct ?? macro.global_big_players?.nikkei?.chg_pct ?? null;
+        // V27.4 — 修對接 bug:macro_risk.json 平層欄位(無 us_macro),美股改讀平層 *_chg_pct
+        const sp = macro.sp500_chg_pct ?? null;
+        const nq = macro.nasdaq_chg_pct ?? null;
+        const vix = macro.vix ?? null;
+        // V24.1 — 日經 N225(後端已抓,key='nikkei');V27.4 — 改讀平層 nikkei_chg_pct
+        const jp = macro.nikkei_chg_pct ?? null;
         const twiiNow = this._twiiNowChg ?? null;
         const fiFut = this._futuresCache?.fi_net ?? null;
         // 9 板塊台股盤中現況
         const sectorLabels = { server:'伺服器代工', power:'重電基建', packaging:'先進封裝', cpo:'CPO光通訊', cooling:'散熱', robot:'機器人', finance:'金融', leo:'低軌衛星', dram:'DRAM' };
+        // V27.4 — 台股板塊漲跌改讀快取(盤中即時 liveChg 6h 內 → 挖礦 sector_heat 日值),不再讀不存在的 [data-sector] DOM
+        let _intraTw = null;
+        try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
+              if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
+        const _shTw = this._sectorHeatCache?.sectors || {};
         const twSectors = [];
         for (const [sk, sl] of Object.entries(sectorLabels)) {
-            const heatEl = document.querySelector(`[data-sector="${sk}"] .sector-heat`);
-            const rawTxt = heatEl?.textContent || '';
-            const twAbs = parseFloat(rawTxt.replace(/[^\d.\-]/g, ''));
-            const isTwNeg = rawTxt.includes('-') || rawTxt.includes('🔻');
-            const twChg = !isNaN(twAbs) ? (isTwNeg ? -Math.abs(twAbs) : twAbs) : null;
+            const twChg = (_intraTw && _intraTw[sk] != null) ? _intraTw[sk]
+                        : (_shTw[sk] && _shTw[sk].chg != null ? _shTw[sk].chg : null);
             if (twChg != null) twSectors.push(`${sl} ${twChg.toFixed(1)}%`);
         }
         const prompt = `你是台股研究員「哲哲」,白話親民,國中生看得懂,禁廢話。
@@ -9209,9 +9211,9 @@ SP500: ${sp != null ? parseFloat(sp).toFixed(2) + '%' : '--'} / NASDAQ: ${nq != 
         const sectorKey = Object.keys({server:'伺服器代工',power:'重電基建',packaging:'先進封裝',cpo:'CPO光通訊',cooling:'散熱',robot:'機器人',finance:'金融',leo:'低軌衛星',dram:'DRAM'}).find(k => ({server:'伺服器代工',power:'重電基建',packaging:'先進封裝',cpo:'CPO光通訊',cooling:'散熱',robot:'機器人',finance:'金融',leo:'低軌衛星',dram:'DRAM'})[k] === sector);
         const macro = this._macroRiskCache || {};
         const sectorEtf = sectorKey ? macro.sector_etfs?.[sectorKey] : null;
-        const sp = macro.us_macro?.sp500?.chg_pct ?? null;
-        const nq = macro.us_macro?.nasdaq?.chg_pct ?? null;
-        const jp = macro.nikkei?.chg_pct ?? null;
+        const sp = macro.sp500_chg_pct ?? null;   // V27.4 — 平層欄位修對接(原 us_macro 物件不存在)
+        const nq = macro.nasdaq_chg_pct ?? null;
+        const jp = macro.nikkei_chg_pct ?? null;
         const stockName = this.metaCache?.[sym]?.name || sym;
         const prompt = `你是台股研究員「哲哲」,白話親民,國中生看得懂,禁廢話。
 
@@ -9293,7 +9295,7 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
         try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
               if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
         const _shTw = this._sectorHeatCache?.sectors || {};
-        let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2"><div class="text-[10px] text-purple-300 font-bold mb-1.5">📊 9 板塊跨市場缺口明細(美 vs 台,正值=台落後 lead-lag 機會)</div>';
+        let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2"><div class="text-[10px] text-purple-300 font-bold mb-1.5">📊 9 板塊跨市場缺口明細(美=昨夜收盤 vs 台=今日,正值=台落後 lead-lag 補漲機會)</div>';
         for (const [sk, sl] of Object.entries(sectorLabels)) {
             const etf = etfMap[sk];
             // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
@@ -9322,7 +9324,7 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
                     <span class="text-right">${gapBadge}</span>
                 </div>`;
         }
-        html += '<div class="text-[8px] text-gray-500 mt-1.5 leading-relaxed">💡 缺口 >1.5%:強烈跟漲機會 ・ <-1.5%:補跌風險 ・ ±0.8% 內:同步</div></div>';
+        html += '<div class="text-[8px] text-gray-500 mt-1.5 leading-relaxed">💡 缺口 = 美股昨夜 − 台股今日。>1.5%:強烈跟漲機會 ・ <-1.5%:補跌風險 ・ ±0.8% 內:同步</div></div>';
         result.innerHTML = html;
     },
 
