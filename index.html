@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.8</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.9</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -7017,7 +7017,9 @@ const marginByDate = {};
         }
         // 資料源
         const raw = this.rawDailyData || [];
-        const fund = this._fundCache?.sym === sym ? this._fundCache : null;
+        // V27.9 — 多空頁基本面資料源:X 光已載用 _fundCache;否則用 _bbFundCache(renderBullBearCard 自載 chips fundamentals)
+        const fund = (this._fundCache?.sym === sym ? this._fundCache : null)
+                  || (this._bbFundCache?.sym === sym ? this._bbFundCache : null);
         const chipC = this._attChipCache?.[sym] || null;
         const rank = this._instRankCache || null;
         const tdcc = this._tdccCache?.data?.[sym] || null;
@@ -7038,12 +7040,15 @@ const marginByDate = {};
         const last3_foreign = raw.slice(-3).map(r => r.foreign_net || 0);
         const last5 = (k) => raw.slice(-5).reduce((s, r) => s + (r[k] || 0), 0);
         const sum5_trust = last5('trust_net'), sum5_foreign = last5('foreign_net'), sum5_dealer = last5('dealer_net');
-        // 融資
-        let margin5Pct = null;
+        // 融資(TWSE 2026/06 起改付費,常缺資料 → m_now/m_5ago 為 0 時不算 -100% 誤導)
+        let margin5Pct = null, marginMissing = false;
         if (raw.length >= 6) {
             const m_now = raw[raw.length - 1]?.margin_balance || 0;
             const m_5ago = raw[raw.length - 6]?.margin_balance || 0;
-            if (m_5ago > 0) margin5Pct = ((m_now - m_5ago) / m_5ago) * 100;
+            if (m_now > 0 && m_5ago > 0) margin5Pct = ((m_now - m_5ago) / m_5ago) * 100;
+            else marginMissing = true;   // V27.9 缺資料 → 標記維護中,不顯 -100%
+        } else {
+            marginMissing = true;
         }
         // EPS YoY
         let epsYoyPct = null;
@@ -7074,17 +7079,24 @@ const marginByDate = {};
                 ? `${okBull}:近 3 日 +${last3_trust.reduce((a, b) => a + b, 0).toLocaleString()} 張` : safe });
         rules.push({ id: 'C2', cat: 'chip', name: '投信 5 日買超全市場 Top 30', hint: '全市場法人 5 日累積排名', side: 'bull', weight: 2,
             hit: trustRank != null && trustRank <= 30,
-            msg: trustRank == null ? naMsg : trustRank <= 30 ? `${okBull}:第 ${trustRank} 名` : `${safe}:第 ${trustRank} 名(>30)` });
+            // V27.9 — rank 已載但不在榜=中性「不在Top30」;只有整份 inst_rank 沒載到才顯「待採礦」
+            msg: rank == null ? naMsg
+                : trustRank == null ? `${safe}:不在投信買超 Top30`
+                : trustRank <= 30 ? `${okBull}:第 ${trustRank} 名` : `${safe}:第 ${trustRank} 名(>30)` });
         rules.push({ id: 'C3', cat: 'chip', name: '外資 5 日買超全市場 Top 30', hint: '全市場外資 5 日累積排名', side: 'bull', weight: 2,
             hit: foreignRank != null && foreignRank <= 30,
-            msg: foreignRank == null ? naMsg : foreignRank <= 30 ? `${okBull}:第 ${foreignRank} 名` : `${safe}:第 ${foreignRank} 名(>30)` });
+            // V27.9 — 同 C2:已載但不在榜=中性,只有整份沒載才「待採礦」
+            msg: rank == null ? naMsg
+                : foreignRank == null ? `${safe}:不在外資買超 Top30`
+                : foreignRank <= 30 ? `${okBull}:第 ${foreignRank} 名` : `${safe}:第 ${foreignRank} 名(>30)` });
         rules.push({ id: 'C4', cat: 'chip', name: '三大法人 5 日同向買超', hint: '投信/外資/自營三項同步淨買超', side: 'bull', weight: 2,
             hit: sum5_trust > 0 && sum5_foreign > 0 && sum5_dealer > 0,
             msg: (sum5_trust > 0 && sum5_foreign > 0 && sum5_dealer > 0)
                 ? `${okBull}:投${sum5_trust.toLocaleString()}/外${sum5_foreign.toLocaleString()}/自${sum5_dealer.toLocaleString()}` : safe });
         rules.push({ id: 'C5', cat: 'chip', name: '投信持股比 ≥ 4%(重押)', hint: '投信整體持股佔比,4%+ 屬機構重押', side: 'bull', weight: 1,
             hit: fund?.trust_holding_pct >= 4,
-            msg: fund?.trust_holding_pct == null ? naMsg
+            // V27.9 — 後端 fundamentals 無 trust_holding_pct 欄位(無資料源)→ 誠實標示,不顯「待採礦」誤導
+            msg: fund?.trust_holding_pct == null ? '— · 無投信持股比資料源'
                 : fund.trust_holding_pct >= 4 ? `${okBull}:投信持股 ${fund.trust_holding_pct.toFixed(2)}%`
                 : `${safe}:投信持股 ${fund.trust_holding_pct.toFixed(2)}%` });
         rules.push({ id: 'C6', cat: 'chip', name: '主力分點 Top10 集中 ≥ 40%', hint: '前 10 大分點佔比集中,主力鎖籌', side: 'bull', weight: 2,
@@ -7104,7 +7116,8 @@ const marginByDate = {};
                 : safe });
         rules.push({ id: 'C9', cat: 'chip', name: '融資 5 日 +25%(散戶追)', hint: '融資餘額暴增,散戶情緒過熱', side: 'bear', weight: 1,
             hit: margin5Pct != null && margin5Pct >= 25,
-            msg: margin5Pct == null ? '⚪ 無融資' : margin5Pct >= 25 ? `${okBear}:融資 +${margin5Pct.toFixed(1)}%`
+            msg: marginMissing ? '— · 融資餘額維護中(TWSE 改付費)'
+                : margin5Pct >= 25 ? `${okBear}:融資 +${margin5Pct.toFixed(1)}%`
                 : `${safe}:融資 ${margin5Pct >= 0 ? '+' : ''}${margin5Pct.toFixed(1)}%` });
         rules.push({ id: 'C10', cat: 'chip', name: '當沖比 > 40%(籌碼浮動)', hint: '當沖佔比過高,籌碼不穩', side: 'bear', weight: 1,
             hit: dt?.ratio_pct > 40,
@@ -7114,9 +7127,10 @@ const marginByDate = {};
         // ═══ 📈 價量面(8 條) ═══
         rules.push({ id: 'P1', cat: 'price', name: '站上月線且月線上揚', hint: '收盤 > MA20 且 MA20 上揚', side: 'bull', weight: 2,
             hit: MA20 != null && MA20_prev != null && pC > MA20 && MA20 > MA20_prev,
+            // V27.9 — P1 是「多方」規則,未滿足只是「不加多方分」=中性,不該標🟢空方(該規則不計空方分,顯空方會誤導)
             msg: MA20 == null ? '⚪ 無 MA20' : (pC > MA20 && MA20 > MA20_prev)
                 ? `${okBull}:收 ${pC.toFixed(2)} > MA20 ${MA20.toFixed(2)} 且上揚`
-                : pC > MA20 ? `${safe}:站上但 MA20 走平/下彎` : `${okBear}:跌破月線 ${MA20.toFixed(2)}` });
+                : pC > MA20 ? `${safe}:站上但 MA20 走平/下彎` : `${safe}:未站上月線 ${MA20.toFixed(2)}` });
         rules.push({ id: 'P2', cat: 'price', name: '5/10/20 多頭排列', hint: '短中長期均線完美多排', side: 'bull', weight: 3,
             hit: MA5 != null && MA10 != null && MA20 != null && pC > MA5 && MA5 > MA10 && MA10 > MA20,
             msg: (MA5 == null || MA10 == null || MA20 == null) ? '⚪ 資料不足'
@@ -7253,8 +7267,22 @@ const marginByDate = {};
 
     async renderBullBearCard(sym) {
         this._renderBullBearCardSync(sym);
-        await this._ensureBullBearCaches();
+        await Promise.all([ this._ensureBullBearCaches(), this._ensureBbFund(sym) ]);
         this._renderBullBearCardSync(sym);
+    },
+
+    // V27.9 — 多空頁基本面快取:X 光沒開時也能讓 F1/F2/F3/F6 有資料(直接讀 chips/{sym}.json fundamentals)
+    async _ensureBbFund(sym) {
+        if (this._fundCache?.sym === sym) return;       // X 光已載完整版,優先用
+        if (this._bbFundCache?.sym === sym) return;     // 本股已載過
+        try {
+            const f = await this._loadLocalFundamentals(sym);
+            if (f) this._bbFundCache = {
+                sym, revenue_yoy: f.revenue_yoy, is_record_high: f.is_record_high,
+                gross_margin_trend: f.gross_margin_trend, quarterly_eps: f.quarterly_eps,
+                pe: f.pe, eps: f.eps,
+            };
+        } catch (_) {}
     },
 
     _renderBullBearCardSync(sym) {
@@ -11074,7 +11102,10 @@ ${peerLine}${newsCtx}
         // 存真實基本面快取（完整版：含年化 EPS），供法人目標價推估使用
         // FinMind 失敗時 annualEps 會是 null；目標價函式會用本地 TWSE PE 反推 fallback
         const fundError = (epsRows.length === 0 && (!fsRes.data || fsRes.data.length === 0)) ? 'FinMind 暫無季報資料' : null;
-        this._fundCache = { sym, pe, annualEps, yieldRate, total_dividend: totalDiv, eps: latestEps, error: fundError };
+        this._fundCache = { sym, pe, annualEps, yieldRate, total_dividend: totalDiv, eps: latestEps, error: fundError,
+            // V27.9 — 多空頁基本面 4 條(F1/F2/F3/F6)需要這些欄位,從 localFund(chips fundamentals)補進
+            revenue_yoy: localFund.revenue_yoy, is_record_high: localFund.is_record_high,
+            gross_margin_trend: localFund.gross_margin_trend, quarterly_eps: localFund.quarterly_eps };
 
         // Populate grid
         this._latestEpsCache = latestEps;
