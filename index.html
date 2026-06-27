@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V28.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V28.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -17449,14 +17449,15 @@ ${_newsLine}${globalContext}
         });
         // 排序:四關通過數降序 → 警示等級升序 → gain 降序
         picks.sort((a, b) => b._gatePass - a._gatePass || a._warnLevel - b._warnLevel || (b.gain || 0) - (a.gain || 0));
-        const perfectCount = picks.filter(p => p._gatePass === 3).length;
+        const noWarnCount = picks.filter(p => !p.warning).length;       // V28.1 位階通過(無警示)— 純看 warning,不綁大盤
+        const greenGoCount = globalRegimeOk ? noWarnCount : 0;          // V28.1 立即可進=位階+大盤都過
         const yellowCount = picks.filter(p => p._warnLevel === 1).length;
         const redCount = picks.filter(p => p._warnLevel === 2).length;
 
         if (updated) {
             const d = this.radarMatrix?.updated || '';
             updated.innerHTML = `更新時間:${d} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考進場` +
-                (picks.length ? `<br><span class="text-[10px]">🟢 無警示 ${perfectCount} 檔 · 🟡 位階過高 ${yellowCount} 檔 · 🔴 高檔出貨 ${redCount} 檔</span>` : '');
+                (picks.length ? `<br><span class="text-[10px]">🟢 無警示 ${noWarnCount} 檔 · 🟡 位階過高 ${yellowCount} 檔 · 🔴 高檔出貨 ${redCount} 檔</span>` : '');
         }
         if (!picks.length) {
             body.innerHTML = `<div class="text-center py-8 text-gray-500 text-[12px]">⚠️ 今日無股票符合此選股法條件<br><span class="text-gray-600 text-[10px]">(條件嚴格,0 檔代表市場沒有符合的標的,別硬找)</span></div>`;
@@ -17465,10 +17466,10 @@ ${_newsLine}${globalContext}
 
         // V17.3 — 頂部 banner 解釋「為何有警示」+ 大盤關卡狀態,消除「選股 vs 四關」矛盾感
         // V17.4 — 加「全綠燈一鍵加入監控」批次按鈕,解決使用者「等隔日 5MA 會忘記」痛點
-        const batchAddBtn = perfectCount > 0 ? `
+        const batchAddBtn = greenGoCount > 0 ? `
             <button onclick="event.stopPropagation(); app.addAllGreenLightToMonitor('${key}');"
                     class="mt-2 w-full bg-emerald-600/50 hover:bg-emerald-600/70 active:bg-emerald-700 border border-emerald-400 rounded-lg py-2 text-[12px] font-bold text-emerald-100 transition-colors shadow-[0_0_10px_rgba(16,185,129,0.25)]">
-                🎯 全部 ${perfectCount} 檔「立即可進」一鍵加入監控(隔日 9:00+ 自動掃 5MA 跳通知)
+                🎯 全部 ${greenGoCount} 檔「立即可進」一鍵加入監控(隔日 9:00+ 自動掃 5MA 跳通知)
             </button>` : '';
         const banner = `<div class="mb-2 px-2.5 py-2 rounded-lg bg-blue-950/40 border border-blue-800/60 text-[11px] leading-snug">
             💡 <b class="text-blue-300">朱老師四關通關卡同步檢查</b>:此清單命中「動能訊號」,但個股還要過大盤/位階/週K才能放心進。
@@ -17495,10 +17496,15 @@ ${_newsLine}${globalContext}
                        ${p.warning.level === 'red' ? '🚨' : '⚠️'} ${p.warning.warning}${p.warning.detail ? ` <span class="font-normal opacity-90">(${p.warning.detail})</span>` : ''}
                        <div class="text-[10px] font-normal mt-0.5 opacity-90">${p.warning.level === 'red' ? '🛑 別追,放鎖股名冊等回檔再觀察' : '🟡 放鎖股名冊,等回檔到月線附近再進'}</div>
                    </div>`
-                : `<div class="mt-1.5 px-2 py-1 rounded text-[12px] font-bold bg-emerald-900/50 border border-emerald-500 text-emerald-100 shadow-[0_0_8px_rgba(16,185,129,0.35)]">
+                : (globalRegimeOk
+                    ? `<div class="mt-1.5 px-2 py-1 rounded text-[12px] font-bold bg-emerald-900/50 border border-emerald-500 text-emerald-100 shadow-[0_0_8px_rgba(16,185,129,0.35)]">
                        🎯 <b>立即可進</b> — 隔日 09:00+ 守住 <b>5MA</b> 即可進場(跌破立停)
                        <div class="text-[10px] font-normal mt-0.5 opacity-90">✅ 位階關卡通過 · 大盤環境配合 · 加入監控明早會自動掃</div>
-                   </div>`;
+                   </div>`
+                    : `<div class="mt-1.5 px-2 py-1 rounded text-[12px] font-bold bg-slate-800/60 border border-slate-500 text-slate-100">
+                       🟢 <b>位階關卡通過</b>,但大盤 ${advice.regimeLabel} → 建議降額 / 等大盤翻多再積極
+                       <div class="text-[10px] font-normal mt-0.5 opacity-90">可先加監控,等隔日 5MA + 大盤轉強再進</div>
+                   </div>`);
             return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.analyze('${p.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border ${borderCls} rounded-lg p-2.5 cursor-pointer transition-colors mb-2">
                 <div class="flex items-center justify-between gap-2 mb-1">
                     <div class="flex items-baseline gap-2 min-w-0">
