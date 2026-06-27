@@ -152,34 +152,37 @@ def fetch_tdcc_holdings():
             return None
         col_sym, col_grade = _col('證券代號', '代號'), _col('持股分級', '分級')
         col_pct, col_date  = _col('比例'), _col('資料日期', '日期')
+        # V27.6 — 修 V27.5 過度加總(全 >100%):① 兩段式先找最新一期 ② 只取第 15 級「1,000,001 股以上」
+        #          (=千張+)單一級,不加總(避開跨多週 + 合計列重複)③ 只收 0<pct≤100 合理值
+        rows_all = list(reader)
         latest_date = None
+        for row in rows_all:
+            d = (row.get(col_date) or '').strip() if col_date else ''
+            if d and (not latest_date or d > latest_date):
+                latest_date = d
         data_by_sym = {}
-        for row in reader:
+        for row in rows_all:
+            if col_date and latest_date and (row.get(col_date) or '').strip() != latest_date:
+                continue   # 只算最新一期
             sym = (row.get(col_sym) or '').strip() if col_sym else ''
             grade = (row.get(col_grade) or '').strip() if col_grade else ''
-            if not _valid_sym(sym):
-                continue
-            # 千張大戶 = 第 15 級以上(15=1000-5000、16=5000-10000、17=10000+)合計
-            if not grade or not grade[0].isdigit():
+            if not _valid_sym(sym) or not grade or not grade[0].isdigit():
                 continue
             try:
                 grade_num = int(grade.split('.')[0].split('-')[0].strip())
                 pct = float((row.get(col_pct) or '0').strip()) if col_pct else 0.0
             except (ValueError, TypeError):
                 continue
-            date_str = (row.get(col_date) or '').strip() if col_date else ''
-            if grade_num >= 15:
-                slot = data_by_sym.setdefault(sym, {'top_pct': 0.0})
-                slot['top_pct'] = round(slot['top_pct'] + pct, 3)
-                if date_str and (not latest_date or date_str > latest_date):
-                    latest_date = date_str
+            # 千張大戶 = 第 15 級「1,000,001 股以上」(1 張=1000 股 → 千張+);TDCC 1-5 此級為最大持股級
+            if grade_num == 15 and 0 < pct <= 100:
+                data_by_sym[sym] = {'top_pct': round(pct, 3)}
 
         if not data_by_sym:
-            print('⚠️ tdcc: CSV 解析後 0 檔,跳過(保留上次)')
+            print('⚠️ tdcc: CSV 解析後 0 檔(疑無第 15 級或欄名變),跳過保留上次')
             return
-        # V27.5 防呆:top_pct 全 0 = 欄位對應失敗,印欄名供除錯,保留上次不覆蓋成假 0
-        if all(v.get('top_pct', 0) == 0 for v in data_by_sym.values()):
-            print(f'⚠️ tdcc: 解析後 top_pct 全 0,疑欄名變動。CSV 欄={fieldnames};保留上次不覆蓋')
+        # V27.6 防呆:千張大戶正常 0-100%;若收不到足量合理值 = 解析錯 → 不覆蓋成誤導值(保留上次/待採礦)
+        if len(data_by_sym) < 100:
+            print(f'⚠️ tdcc: 僅 {len(data_by_sym)} 檔合理值,疑級距/欄名變動。CSV 欄={fieldnames};保留上次不覆蓋')
             return
 
         for sym, info in data_by_sym.items():
