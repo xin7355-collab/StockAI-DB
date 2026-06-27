@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V28.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V28.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.4</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -4023,8 +4023,8 @@ ${list}
                 <div class="text-amber-200 font-bold mb-0.5">📊 今日主動 ETF 換股總覽</div>
                 <div class="text-gray-300">
                     <span class="text-amber-300 font-bold">${rotated.length}/${d.etfs.length}</span> 檔有調整 ・
-                    共識<span class="text-red-400 font-bold">加碼 ${totalAddsCount}</span> ・
-                    共識<span class="text-green-400 font-bold">減碼 ${totalRemovesCount}</span>
+                    共識<span class="text-red-400 font-bold">加碼 ${totalAddsCount} 筆</span> ・
+                    共識<span class="text-green-400 font-bold">減碼 ${totalRemovesCount} 筆</span>
                 </div>
             </div>` : `
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 text-[12px] text-gray-500">
@@ -4086,7 +4086,7 @@ ${list}
                             ${s._follow.tag ? `<div>${followTag}</div>` : ''}
                         </div>
                         <div class="text-right text-[13px] font-mono font-bold text-white">${s.etf_count}</div>
-                        <div class="text-right text-[13px] font-mono font-bold ${dirCol}">${s.shares_delta > 0 ? '+' : ''}${s.shares_delta.toLocaleString()}</div>
+                        <div class="text-right text-[13px] font-mono font-bold ${dirCol}">${s.shares_delta === 0 ? '<span class="text-gray-600">—</span>' : (s.shares_delta > 0 ? '+' : '') + s.shares_delta.toLocaleString()}</div>
                         <div class="text-right text-[13px] font-mono font-bold ${mvCol}">${s.market_val_delta_e === 0 ? '<span class="text-gray-600">—</span>' : (s.market_val_delta_e > 0 ? '+' : '') + s.market_val_delta_e.toFixed(2)}</div>
                         <div class="text-right text-[13px] font-mono font-bold text-gray-200">${s.total_shares === 0 ? '<span class="text-gray-600">—</span>' : s.total_shares.toLocaleString()}</div>
                     </div>`;
@@ -4109,7 +4109,8 @@ ${list}
         const perfCardHtml = d.etfs.map((e, i) => {
             const m = e.perf || {};
             const shortHist = (m.bars || 0) < 120;
-            const headRet = m.ret_incep;
+            // V28.4 — 大數字對齊「標籤 + 後端排序(_rank_value 用 ret_120d)」:≥120 bars 顯近120日,<120 顯上市以來
+            const headRet = shortHist ? m.ret_incep : (m.ret_120d != null ? m.ret_120d : m.ret_incep);
             return `
                 <div class="bg-[#161b22] border ${e.changed_today ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg px-2.5 py-1.5">
                     <div class="flex items-center justify-between gap-2">
