@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V28.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.9</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -14723,12 +14723,19 @@ ${_newsLine}${globalContext}
             .sort((a, b) => (b[1].train_samples || 0) - (a[1].train_samples || 0));
         if (!rows.length) return;
         const rowsHtml = rows.map(([name, r]) => {
-            const gapColor = r.color || '#a3a3a3';
-            const lowConf = r.low_confidence ? '<span class="text-[8px] text-amber-400 ml-1">⚠️ 樣本少</span>' : '';
+            // V28.0 — 樣本不足(訓練或驗證 < 30)→ gap/verdict 是雜訊不可信
+            //   (如 法人連3日買 train_samples=1 → 訓100% 純噪音;低位資料法人欄位只涵蓋近期,舊訓練窗樣本極少)
+            const tSamp = r.train_samples ?? 0, vSamp = r.test_samples ?? 0;
+            const lowSamp = tSamp < 30 || vSamp < 30 || r.low_confidence;
+            const gapColor = lowSamp ? '#a3a3a3' : (r.color || '#a3a3a3');
+            const sampWarn = lowSamp ? `<span class="text-[8px] text-amber-400 ml-1">⚠️ 樣本少(訓${tSamp}/測${vSamp})</span>` : '';
+            const gapHtml = lowSamp ? '<span class="text-gray-500">樣本不足</span>'
+                : `gap <span style="color:${gapColor}" class="font-bold">${r.gap > 0 ? '+' : ''}${r.gap}pp</span>`;
+            const verdictHtml = lowSamp ? '⚠️ 樣本不足,無法驗證 overfit' : (r.verdict || '');
             return `<div class="bg-teal-950/20 rounded p-1.5 border border-teal-900/40">
-                <div class="font-bold text-teal-200 text-[11px] truncate">${name}${lowConf}</div>
-                <div class="text-[10px] text-gray-400">訓 <span class="text-blue-300 font-bold">${r.train_wr}%</span> / 測 <span class="text-cyan-300 font-bold">${r.test_wr}%</span> / gap <span style="color:${gapColor}" class="font-bold">${r.gap > 0 ? '+' : ''}${r.gap}pp</span></div>
-                <div class="text-[9px]" style="color:${gapColor}">${r.verdict || ''}</div>
+                <div class="font-bold text-teal-200 text-[11px] truncate">${name}${sampWarn}</div>
+                <div class="text-[10px] text-gray-400">訓 <span class="text-blue-300 font-bold">${r.train_wr}%</span> / 測 <span class="text-cyan-300 font-bold">${r.test_wr}%</span> / ${gapHtml}</div>
+                <div class="text-[9px]" style="color:${gapColor}">${verdictHtml}</div>
             </div>`;
         }).join('');
         const sectionHtml = `
