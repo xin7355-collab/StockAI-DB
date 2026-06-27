@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.6</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1438,8 +1438,7 @@
                 <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
                 <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
 
-                <!-- V27.0 — 9 板塊缺口明細「常顯」(原需點按鈕,改自動渲染;盤中即時更新後自動刷新) -->
-                <div class="text-[10px] font-bold text-cyan-300 mb-1 mt-1">📊 9 板塊缺口明細</div>
+                <!-- V27.6 — 標題已在 renderSectorGapTable 卡片內,此處不再重複(刪冗餘小標題) -->
                 <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
 
                 <!-- 美股對標速查表(摺疊) -->
@@ -1523,6 +1522,8 @@
                         <div id="taiexFuturesSub" class="text-[9px] font-bold text-gray-500 mt-0.5 leading-tight">--</div>
                     </div>
                 </div>
+                <!-- V27.6 — item 3:風險快照歷史(後端每日 append risk_history.json,保留不清除)-->
+                <div id="riskHistoryBox"></div>
                 <!-- V21.8 — 三指數共用手動更新鈕 + 重點時間自動更新 1 次(9:00/13:30/17:00) -->
                 <button id="refreshIndicesBtn" onclick="app._refreshAllIndices()"
                         class="w-full mt-1.5 text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1 hover:bg-cyan-900/50 transition-colors flex items-center justify-center gap-1.5">
@@ -1801,13 +1802,13 @@
                         <button onclick="app.showJargon('散戶多空比'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-1">👥 散戶情緒</div>
                         <div id="sccRetail" class="text-base font-black font-mono text-green-400 leading-tight">--</div>
-                        <div class="text-[9px] mt-1 text-gray-500 leading-snug">負=偏多(逆向看空)</div>
+                        <div class="text-[9px] mt-1 text-gray-500 leading-snug">散戶越看多越易反轉跌↓<br>負值=散戶偏多→逆向偏空</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台指逆價差'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-1">🎯 期貨升貼水</div>
                         <div id="sccBack" class="text-base font-black font-mono text-yellow-300 leading-tight">--</div>
-                        <div id="sccBackLabel" class="text-[9px] mt-1 text-gray-500 leading-snug">期-現</div>
+                        <div id="sccBackLabel" class="text-[9px] mt-1 text-gray-500 leading-snug">期貨−現貨價差</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('景氣對策信號'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
@@ -8443,6 +8444,37 @@ const marginByDate = {};
         }
     },
 
+    // V27.6 — item 3:讀 data/risk_history.json(後端每日 append 的風險快照)顯近 N 日紀錄(保留不清除)
+    async _renderRiskHistory() {
+        const box = document.getElementById('riskHistoryBox');
+        if (!box) return;
+        try {
+            if (!this._riskHistCache) {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const url = new URL('data/risk_history.json', ghBase).href + `?t=${Date.now()}`;
+                const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                const j = await res.json();
+                this._riskHistCache = Array.isArray(j) ? j : (j.data || []);
+            }
+            const hist = this._riskHistCache;
+            if (!Array.isArray(hist) || hist.length < 2) {
+                box.innerHTML = `<div class="text-[9px] text-gray-600 mt-1">📜 風險紀錄累積中(每日盤後存一筆,不清除)</div>`;
+                return;
+            }
+            const recent = hist.slice(-7);
+            const rows = recent.map(h => {
+                const vix = h.vix != null ? Math.round(h.vix) : '--';
+                const fis = h.fi_spot_net != null ? `${h.fi_spot_net > 0 ? '+' : ''}${Math.round(h.fi_spot_net)}` : '--';
+                const vixCls = h.vix >= 25 ? 'text-red-300' : h.vix >= 20 ? 'text-yellow-300' : 'text-gray-400';
+                const fisCls = (h.fi_spot_net || 0) < -50 ? 'text-red-300' : (h.fi_spot_net || 0) > 50 ? 'text-green-300' : 'text-gray-400';
+                return `<div class="flex items-center justify-between text-[9px] py-0.5 border-b border-[#21262d] last:border-0"><span class="text-gray-500 font-mono">${(h.date || '').slice(5)}</span><span class="${vixCls} font-mono">VIX ${vix}</span><span class="${fisCls} font-mono">外資現 ${fis} 億</span></div>`;
+            }).join('');
+            box.innerHTML = `<details class="mt-1.5"><summary class="text-[9px] text-cyan-400/80 cursor-pointer">📜 近 ${recent.length} 日風險紀錄(保留不清除)</summary><div class="mt-1 bg-[#0d1117] rounded p-1.5">${rows}</div></details>`;
+        } catch (_) {
+            box.innerHTML = '';   // 無檔(尚未採礦)→ 靜默
+        }
+    },
+
     // 🐂 Q1:主力出貨指數五合一(0-100,越高越像主力倒貨)
     //   1 散戶過度看多 / 2 期貨大幅貼水 / 3 景氣燈號過熱 / 4 VIX 跳升 / 5 融資水位過高
     _renderMarketMakerIndex(j) {
@@ -8509,6 +8541,17 @@ const marginByDate = {};
             else if (fiFut >= 5000)  { score -= 6;  counters.push(`外資期貨偏多 +${fiFut.toLocaleString()} 口`); }
         }
 
+        // V27.6 — 8️⃣ 外資現貨買賣超(三大法人現貨方向,fi_spot_net 單位:億元):賣超=出貨壓力、買超=法人挺
+        const fiSpot = this._macroRiskCache?.fi_spot_net;
+        const fiSpotSell = (typeof fiSpot === 'number' && fiSpot <= -50);
+        const fiSpotBuy  = (typeof fiSpot === 'number' && fiSpot >= 50);
+        if (typeof fiSpot === 'number') {
+            if (fiSpot <= -300)      { score += 12; reasons.push(`外資現貨大賣超 ${Math.round(fiSpot)} 億`); }
+            else if (fiSpot <= -100) { score += 7;  reasons.push(`外資現貨賣超 ${Math.round(fiSpot)} 億`); }
+            else if (fiSpot >= 300)  { score -= 12; counters.push(`外資現貨大買超 +${Math.round(fiSpot)} 億 (法人挺)`); }
+            else if (fiSpot >= 100)  { score -= 7;  counters.push(`外資現貨買超 +${Math.round(fiSpot)} 億`); }
+        }
+
         // 結論燈號 + 操作建議
         let verdict, advice, cardCls, scoreCls;
         if (score >= 70) {
@@ -8543,10 +8586,20 @@ const marginByDate = {};
                 cardCls = 'bg-gradient-to-br from-green-950/50 to-green-900/20 border-green-700/50';
                 scoreCls = 'text-green-300';
             } else if (twiiPos != null && twiiPos > 70) {
-                verdict = '⚠️ 主力高檔買超(警訊)';
-                advice = `大盤在過去 60 日 ${Math.round(twiiPos)}% 分位(高檔) + 主力買超 → 可能出貨蓄勢,謹慎`;
-                cardCls = 'bg-gradient-to-br from-yellow-950/50 to-orange-900/20 border-yellow-600/50';
-                scoreCls = 'text-yellow-300';
+                // V27.6 — 高檔買超再看外資現貨:同步賣超=真出貨(升級紅警);現貨買超=法人挺(降級)
+                if (fiSpotSell) {
+                    verdict = '🔴 高檔主力買超 + 外資現貨賣超(真出貨)';
+                    advice = `大盤高檔(60日 ${Math.round(twiiPos)}% 分位) + 主力買超 但外資現貨賣超 ${Math.round(fiSpot)} 億 → 主力誘多、外資倒貨,高度警戒別追`;
+                    cardCls = 'bg-gradient-to-br from-red-950/55 to-orange-900/30 border-2 border-red-600/60 animate-pulse';
+                    scoreCls = 'text-red-300';
+                } else {
+                    verdict = fiSpotBuy ? '🟡 主力高檔買超(外資現貨同買)' : '⚠️ 主力高檔買超(警訊)';
+                    advice = fiSpotBuy
+                        ? `大盤高檔(60日 ${Math.round(twiiPos)}% 分位) + 主力與外資現貨同步買超 +${Math.round(fiSpot)} 億(法人挺,但高檔仍留意過熱)`
+                        : `大盤在過去 60 日 ${Math.round(twiiPos)}% 分位(高檔) + 主力買超 → 可能出貨蓄勢,謹慎`;
+                    cardCls = 'bg-gradient-to-br from-yellow-950/50 to-orange-900/20 border-yellow-600/50';
+                    scoreCls = 'text-yellow-300';
+                }
             } else {
                 verdict = '🟢 主力買超偏多';
                 advice = '5 因子綜合多方 → 主力買超 / 散戶逆向 / 期貨升水(請自行確認 K 線位置)';
@@ -8574,9 +8627,10 @@ const marginByDate = {};
                     <span class="text-[10px] font-mono ${scoreCls}">${dispScore} 分</span>
                 </div>
                 <div class="flex flex-wrap leading-tight">${factorChips}</div>
-                <div class="text-[8px] text-gray-600 mt-1.5 leading-tight">5 因子來源:散戶情緒(retail_ls_pct) + 期貨升貼水(taifex_back) + 景氣燈號(business_signal) + VIX 恐慌 + 融資餘額</div>
+                <div class="text-[8px] text-gray-600 mt-1.5 leading-tight">因子來源:散戶情緒 + 期貨升貼水 + 景氣燈號 + VIX + 融資 + 外資期/現貨(三大法人)</div>
             </div>
         `;
+        this._renderRiskHistory?.();   // V27.6 — item 3 順帶刷新風險紀錄歷史
         // V21.9 — 同步寫 hero 結論到 #marketMakerHero(風格 D 白話親民:大字 verdict + 分數圓圈)
         const heroEl = document.getElementById('marketMakerHero');
         if (heroEl) {
@@ -9307,8 +9361,11 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
             const gap = (usChg != null && twChg != null) ? (usChg - twChg) : null;
             const gapStr = gap != null ? (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%' : '--';
             let gapBadge = '<span class="text-gray-500 text-[9px]">⏳</span>';
+            // V27.6 — 台股自身明顯下殺(<-3%)時,缺口再大也不是跟漲,而是台股獨有利空 → 不給多方暗示
+            const twWeak = (twChg != null && twChg < -3 && gap != null && gap > 0);
             if (gap != null) {
-                if (gap > 1.5)        gapBadge = '<span class="text-red-300 font-black text-[10px]">🟢 強烈跟漲</span>';
+                if (twWeak)           gapBadge = '<span class="text-orange-300 font-bold text-[10px]">⚠️ 台股獨弱</span>';
+                else if (gap > 1.5)   gapBadge = '<span class="text-red-300 font-black text-[10px]">🟢 強烈跟漲</span>';
                 else if (gap > 0.8)   gapBadge = '<span class="text-yellow-300 font-bold text-[10px]">🟡 跟漲機會</span>';
                 else if (gap < -1.5)  gapBadge = '<span class="text-green-300 font-black text-[10px]">🔴 補跌風險</span>';
                 else if (gap < -0.8)  gapBadge = '<span class="text-orange-300 font-bold text-[10px]">🟠 偏弱</span>';
@@ -9316,7 +9373,7 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
             }
             const usCls = usChg != null ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
             const twCls = twChg != null ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
-            const gapCls = gap != null ? (Math.abs(gap) > 0.8 ? (gap > 0 ? 'text-red-300 font-bold' : 'text-green-300 font-bold') : 'text-gray-400') : 'text-gray-500';
+            const gapCls = gap == null ? 'text-gray-500' : twWeak ? 'text-orange-300 font-bold' : (Math.abs(gap) > 0.8 ? (gap > 0 ? 'text-red-300 font-bold' : 'text-green-300 font-bold') : 'text-gray-400');
             html += `
                 <div class="grid grid-cols-[1.4fr_56px_56px_56px_72px] gap-1 items-center text-[10px] py-1 border-b border-[#21262d] last:border-0">
                     <span class="text-gray-200 font-bold truncate">${sl}</span>
@@ -17657,10 +17714,11 @@ ${_newsLine}${globalContext}
         // 一次只跑前 5 則(省 Groq 配額),失敗不擾流程
         for (const n of needs.slice(0, 5)) {
             try {
-                const prompt = `用 30 字以下短文,解讀以下新聞對台股影響,輸出純文字無前綴:\n${n.title}\n${(n.summary||'').slice(0,200)}`;
-                const txt = await this._callAI({ prompt, max_tokens: 100 });
+                // V27.6 — 升級為「邏輯判讀」:不只看標題情緒,要看背後(誰得利/帶風向/該信幾分)
+                const prompt = `你是資深台股研究員。下面新聞用白話 60 字內做「邏輯判讀」(不只標題情緒):①利多/利空/中性 ②誰得利或受害(點名族群/供應鏈)③是否在帶風向(來源動機、誘多誘空)④該信幾分。純文字無前綴:\n${n.title}\n${(n.summary||'').slice(0,220)}`;
+                const txt = await this._callAI({ prompt, max_tokens: 160 });
                 if (txt) {
-                    const trimmed = txt.trim().replace(/^[「『"]/, '').replace(/[」』"]$/, '').slice(0, 50);
+                    const trimmed = txt.trim().replace(/^[「『"]/, '').replace(/[」』"]$/, '').slice(0, 90);
                     cache[n.title] = trimmed;
                     n.ai_reason = trimmed;
                 }
@@ -17690,12 +17748,19 @@ ${_newsLine}${globalContext}
                 const safeUrl = (n.url || n.link || '').replace(/"/g, '&quot;');
                 // 🧠 AI 簡介:V15.6 改前端 on-demand 即時跑(原採礦端 V14.16 起 SKIP_AI)
                 const aiImpact = n.ai_reason || n.ai_impact || '';
+                // V27.6 — 新聞日期:後端欄位是 published_time(RFC822),前端原只讀 published/date → 顯不出。補 published_time + 瀏覽器解析成 YYYY-MM-DD HH:mm
+                const _newsDate = (() => {
+                    const raw = n.published_time || n.published || n.date || n.pubDate;
+                    if (!raw) return '';
+                    try { const d = new Date(raw); if (!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch(_){}
+                    return String(raw).slice(0, 16).replace('T', ' ');
+                })();
                 const card = `<div class="bg-[#0d1117]/70 border border-[#30363d] rounded p-2.5 transition-colors ${safeUrl ? 'hover:border-amber-700/60 cursor-pointer' : ''}">
                     <div class="flex items-start gap-1.5"><span class="flex-shrink-0">${dot}</span>
                     <div class="flex-1 min-w-0"><div class="text-gray-200 text-[13px] font-bold leading-snug">${t}</div>
                     ${aiImpact ? `<div class="text-amber-300 text-[11px] mt-0.5 leading-snug">💡 ${aiImpact}</div>` : ''}
                     ${n.note ? `<div class="text-gray-400 text-[11px] mt-0.5">${n.note}</div>` : ''}
-                    <div class="text-[10px] mt-1 flex items-center gap-1.5 flex-wrap">${src}${(n.published || n.date || n.pubDate) ? `<span class="text-gray-500">📅 ${String(n.published || n.date || n.pubDate).slice(0, 16).replace('T', ' ')}</span>` : ''}${safeUrl ? '<span class="text-blue-400/70 ml-auto">🔗 看原文</span>' : ''}</div></div></div></div>`;
+                    <div class="text-[10px] mt-1 flex items-center gap-1.5 flex-wrap">${src}${_newsDate ? `<span class="text-gray-500">📅 ${_newsDate}</span>` : ''}${safeUrl ? '<span class="text-blue-400/70 ml-auto">🔗 看原文</span>' : ''}</div></div></div></div>`;
                 return safeUrl
                     ? `<a href="${safeUrl}" target="_blank" rel="noopener" class="block no-underline">${card}</a>`
                     : card;
