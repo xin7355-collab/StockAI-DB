@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V28.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V28.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -20213,7 +20213,7 @@ ${_chuPosPlan}
     },
 
     _strategyLabel(s) {
-        return {
+        const map = {
             pullback:          '📈 月線起漲',
             breakdown:         '🔄 破底翻',
             foreign_buy:       '🐂 外資連買3日',
@@ -20221,7 +20221,9 @@ ${_chuPosPlan}
             chu5ma:            '🎯 站穩5MA進場',
             chu_bottom_follow: '🚀 連2日爆量續攻',
             chu_top_open:      '🔥 強勢開高跟進',
-        }[s] || s;
+        };
+        if (s && !map[s]) console.warn('[獵殺] 未知 strategy key,未翻譯:', s);   // V28.3 防呆:日後漏譯即時發現
+        return map[s] || s;
     },
 
     removeFromMonitor(sym) {
@@ -20241,7 +20243,8 @@ ${_chuPosPlan}
             for (const k of (entry.firedAlerts || [])) {
                 if (k.includes(`_${today}`)) {
                     const parts = k.split('_');
-                    allAlerts.push({ sym: entry.sym, name: entry.name, strategy: parts[1] });
+                    // V28.3 — key=sym_strategy_date;strategy 可能含底線(foreign_buy/volume_breakout 等)→ 取中段(去頭 sym、去尾 date)
+                    allAlerts.push({ sym: entry.sym, name: entry.name, strategy: parts.slice(1, -1).join('_') });
                 }
             }
         }
@@ -20291,6 +20294,9 @@ ${_chuPosPlan}
             const todayFired = (entry.firedAlerts || []).filter(k => k.includes(`_${today}`));
             const alertBadge = todayFired.length > 0 ? `<span class="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">${todayFired.length} 告警</span>` : '';
             const hasBorder = todayFired.length > 0;
+            // V28.3 — 顯「為何在監控」策略來源(entry.strategySource 已存,卡上原本沒顯)
+            const srcLabel = { chu_perfect6: '🍀 六六大順', chu_top_gainer: '🔥 特別報價', chu_bottom: '🥣 底部轉折', chu_riding5ma: '🚀 5MA飆股' }[entry.strategySource] || '🗡️ 一般獵殺';
+            const srcBadge = `<span class="text-[9px] bg-[#21262d] text-gray-400 px-1 rounded border border-[#30363d]">${srcLabel}</span>`;
             return `<div class="bg-[#1c2128] border ${hasBorder ? 'border-red-500' : 'border-[#30363d]'} rounded-lg p-3 flex items-center gap-3">
                 <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${entry.sym}'); app.switchAppTab('diag');">
                     <div class="flex items-center gap-1.5 flex-wrap">
@@ -20298,6 +20304,7 @@ ${_chuPosPlan}
                         <span class="text-gray-500 text-xs">${entry.sym}</span>
                         ${seasonBadge}
                         ${alertBadge}
+                        ${srcBadge}
                     </div>
                     <div class="flex flex-wrap gap-2 mt-1.5 text-[10px] font-mono">
                         <span class="text-gray-400">現價 <span class="text-white font-bold">${pC ? pC.toFixed(2) : '--'}</span></span>
