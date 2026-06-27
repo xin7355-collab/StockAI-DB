@@ -1641,6 +1641,39 @@ def main():
         print(f"⚠️ macro_risk.json 寫檔失敗（不影響其他流程）：{e}")
         sys.exit(0)   # 強制 exit 0 避免污染 workflow
 
+    # V27.6 — item 3:每日風險快照 append 到 data/risk_history.json(不覆蓋,保留歷史趨勢)
+    #          讀既有(deploy 底層 git archive origin/data 會保留)→ 同日去重 → 留最近 90 筆 → 寫回
+    try:
+        rh_file = DATA_DIR / 'risk_history.json'
+        hist = []
+        if rh_file.exists():
+            try:
+                _prev = json.loads(rh_file.read_text(encoding='utf-8'))
+                hist = _prev if isinstance(_prev, list) else (_prev.get('data') or [])
+            except Exception:
+                hist = []
+        today_str = (out.get('updated') or '')[:10] or datetime.now().strftime('%Y-%m-%d')
+        snap = {
+            'date': today_str,
+            'vix': out.get('vix'),
+            'sp500_chg_pct': out.get('sp500_chg_pct'),
+            'fi_spot_net': out.get('fi_spot_net'),
+            'fi_futures_net': out.get('fi_futures_net'),
+            'retail_ls_pct': out.get('retail_ls_pct'),
+            'taifex_backwardation': out.get('taifex_backwardation'),
+            'jpy_chg_pct': out.get('jpy_chg_pct'),
+            'fear_greed': out.get('fear_greed'),
+            'business_signal': (out.get('business_signal') or {}).get('light'),
+            'blackswan_flags': sum(1 for v in (out.get('blackswan') or {}).values() if v),
+        }
+        hist = [h for h in hist if isinstance(h, dict) and h.get('date') != today_str]  # 同日去重
+        hist.append(snap)
+        hist = hist[-90:]   # 留最近 90 筆(約一季)
+        rh_file.write_text(json.dumps(hist, ensure_ascii=False), encoding='utf-8')
+        print(f"✅ risk_history.json 已 append 今日風險快照(共 {len(hist)} 筆歷史)")
+    except Exception as e:
+        print(f"⚠️ risk_history append 失敗(不影響其他):{e}")
+
 
 def generate_bubble_warning():
     """抓取台灣證交所「全市場融資餘額」，生成泡沫預警 JSON"""
