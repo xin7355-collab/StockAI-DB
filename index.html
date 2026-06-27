@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -918,6 +918,11 @@
                             🧠 首席 AI 全盤分析
                         </button>
                         <div class="text-center text-[9px] text-gray-500 -mt-1.5">點一下分析 · 連點兩下強制重抽（耗 1 次額度）</div>
+                        <!-- 🧠 AI 首席總評 + 詳評（V27.5 — 移到首席按鈕正下方,結果緊接按鈕,不再被其他卡推到下面）-->
+                        <div id="aiTranslatorCard" class="w-full bg-[#161b22] border border-[#30363d] rounded-xl shadow-sm transition-all duration-300">
+                            <div class="p-3 text-center text-gray-500 text-sm">🤖 點上方按鈕產生 AI 首席總評</div>
+                        </div>
+                        <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner"></div>
                         <!-- V24.2 — 🔮 此股預判 AI(focus 單股,隔日漲跌機率 + 進場時機) -->
                         <button onclick="app.analyzeStockPredict(); app.vibrate(40);" ondblclick="app.analyzeStockPredict({force:true});" class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-cyan-600/40 hover:border-cyan-500/60 text-cyan-300 py-2.5 rounded-lg text-sm font-bold shadow-md flex justify-center items-center gap-2 transition-all">
                             🔮 此股預判 AI(隔日漲跌機率)
@@ -933,11 +938,6 @@
                         </div>
                         <!-- 🦅 獵鷹建倉儀表板(JS 即時,讀 falcon_scores.json,不需 AI)-->
                         <div id="falconDashboard" class="hidden w-full bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-cyan-800/40 rounded-xl p-3 shadow-lg"></div>
-                        <!-- 🧠 AI 首席總評（從首頁移入；AI 成功時填 30 字黃卡總評）-->
-                        <div id="aiTranslatorCard" class="w-full bg-[#161b22] border border-[#30363d] rounded-xl shadow-sm transition-all duration-300">
-                            <div class="p-3 text-center text-gray-500 text-sm">🤖 點上方按鈕產生 AI 首席總評</div>
-                        </div>
-                        <div id="geminiResultBox" class="zoomable-zone hidden w-full bg-[#010409] border border-indigo-500/50 rounded-lg p-4 text-base text-gray-200 leading-relaxed shadow-inner"></div>
                     </div>
                     <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
                         <div class="flex-1 flex flex-col gap-0.5">
@@ -8031,13 +8031,14 @@ const marginByDate = {};
 
         const finalScore = Math.round(totalScore / weightSum * 100);
 
-        // 結論
+        // 結論(V27.5 — 不靠紅綠燈,改方向箭頭 ⬆→⬇ + 大字動作詞,避免與首席 emoji 互相打架)
         let verdict, verdictCls, action;
-        if (finalScore >= 80)       { verdict = '🟢🟢 強烈買進';   verdictCls = 'border-red-600 bg-red-900/40 text-red-200 animate-pulse'; action = '多重訊號一致看多 → <b>分批進場 ・ 嚴守 5MA 停利</b>'; }
-        else if (finalScore >= 65)  { verdict = '🟢 可以買進';     verdictCls = 'border-red-700 bg-red-900/25 text-red-200';                action = '訊號偏多 → <b>逢回測月線進場 ・ 設停損</b>'; }
-        else if (finalScore >= 45)  { verdict = '🟡 觀望為主';     verdictCls = 'border-yellow-600 bg-yellow-900/30 text-yellow-200';       action = '訊號分歧 → <b>持股可抱 ・ 空手等明確訊號</b>'; }
-        else if (finalScore >= 30)  { verdict = '🔴 偏空 別碰';     verdictCls = 'border-green-700 bg-green-900/30 text-green-300';          action = '空方訊號多 → <b>持股分批停利 ・ 空手不接刀</b>'; }
-        else                        { verdict = '🔴🔴 強烈賣出';    verdictCls = 'border-green-600 bg-green-900/40 text-green-200 animate-pulse'; action = '多重訊號一致看空 → <b>持股全出 ・ 空手嚴禁進場</b>'; }
+        if (finalScore >= 80)       { verdict = '⬆⬆ 強烈買進';   verdictCls = 'border-red-600 bg-red-900/40 text-red-200 animate-pulse'; action = '多重訊號一致看多 → <b>分批進場 ・ 嚴守 5MA 停利</b>'; }
+        else if (finalScore >= 65)  { verdict = '⬆ 可以買進';     verdictCls = 'border-red-700 bg-red-900/25 text-red-200';                action = '訊號偏多 → <b>逢回測月線進場 ・ 設停損</b>'; }
+        else if (finalScore >= 45)  { verdict = '→ 觀望為主';     verdictCls = 'border-yellow-600 bg-yellow-900/30 text-yellow-200';       action = '訊號分歧 → <b>持股可抱 ・ 空手等明確訊號</b>'; }
+        else if (finalScore >= 30)  { verdict = '⬇ 偏空 別碰';     verdictCls = 'border-green-700 bg-green-900/30 text-green-300';          action = '空方訊號多 → <b>持股分批停利 ・ 空手不接刀</b>'; }
+        else                        { verdict = '⬇⬇ 強烈賣出';    verdictCls = 'border-green-600 bg-green-900/40 text-green-200 animate-pulse'; action = '多重訊號一致看空 → <b>持股全出 ・ 空手嚴禁進場</b>'; }
+        this._lastMasterScore = { score: finalScore, verdict };   // V27.5 — 供首席 AI 總指揮注入,結論一致化
 
         // V26.15 — Progress Row Grid:3 欄(因子名+權重 / 進度條+評語 / 大字分數)取代原 flex 易錯位排版
         const factorRows = factors.map(f => {
@@ -8060,10 +8061,11 @@ const marginByDate = {};
         const formulaTxt = '各因子權重\\n• Falcon 建倉  ×25%\\n• 外資反轉      ×20%\\n• 投信做帳      ×15%\\n• 注意股風險  ×15%\\n• 景氣燈號      ×15%\\n• 越關大尾      ×10%\\n\\n總分 = Σ(各因子分數 × 權重) / 100';
 
         box.innerHTML = `
-            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-blue-700/40">
+            <div class="flex items-center justify-between mb-1 pb-1.5 border-b border-blue-700/40">
                 <h4 class="text-blue-300 font-bold text-sm">📊 綜合操作評分</h4>
                 <button onclick="alert('${formulaTxt}')" class="text-[9px] text-gray-500 hover:text-blue-300 flex items-center gap-1">${factors.length} 因子加權 ⓘ</button>
             </div>
+            <div class="text-[9px] text-gray-500 mb-2">👇 參考訊號 ・ 最終以上方 🧠 首席 AI 為準</div>
             <div class="rounded-lg border ${verdictCls} px-3 py-2.5 mb-2 text-center">
                 <div class="text-4xl font-black font-mono leading-none mb-0.5">${finalScore}<span class="text-base text-gray-400">/100</span></div>
                 <div class="text-[13px] font-bold mt-1">${verdict}</div>
@@ -14840,7 +14842,9 @@ ${_newsLine}${globalContext}
     _aiCacheKey(sym, costKey) {
         const d = new Date();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this._hashStr(this.settings.aiPrompt || '')}`;
+        // V27.5 — 快取鍵加入「綜合評分 + 系統燈號」狀態:輸入訊號變動即自動失效重抽,避免首席顯舊結論 vs 各卡即時不同步
+        const sigState = `${this._lastMasterScore?.score ?? ''}|${this.unifiedSignal?.level ?? ''}`;
+        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this._hashStr((this.settings.aiPrompt || '') + sigState)}`;
     },
     _getCachedAI(sym, costKey) {
         try {
@@ -18979,6 +18983,15 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const _falconLine = _falcon
                 ? `${_falcon.score}/100 ${_falcon.label}${_falcon.factors?.length ? ` · 因子:${_falcon.factors.slice(0, 4).join('/')}` : ''}${(this._falconScores?.macro_lines || []).length ? ` · 全球煞車:${this._falconScores.macro_lines.join('/')}` : ''}`
                 : '無資料(此股不在獵鷹評分範圍)';
+            // V27.5 — 首席當總指揮:再餵「綜合操作評分卡結論」+「法人反轉/投信做帳卡」(原本沒餵 → 各卡矛盾根源)
+            const _ms = this._lastMasterScore;
+            const _masterLine = (_ms && _ms.score != null)
+                ? `${_ms.score}/100 ${_ms.verdict}(6 因子加權:獵鷹/法人反轉/投信做帳/注意股/景氣/越關大尾)`
+                : '計算中(此股因子不足)';
+            const _ir = this._lastInstSignal;
+            const _instRevLine = (_ir && (_ir.fiReverse || _ir.dressUp))
+                ? `外資 ${_ir.fiReverse?.dir || '無反轉'}${_ir.dressUp ? ` · 投信 ${_ir.dressUp.title}` : ''}`
+                : '無明確反轉/做帳訊號';
 
             // 組裝避險基金總監 Prompt（soul 主導風格 + Category Router + 五大最高制約天條 + 強制 JSON 4 欄位）
             const prompt = `${soul}
@@ -19083,10 +19096,18 @@ ${_chuPosPlan}
 - 🔥 大盤板塊輪動：${usMask(sectorRotationLine)}
 - 🎯 系統量化燈號（traffic_light 必須與此一致）：${sigLine}
 - 🦅 獵鷹建倉分（全球宏觀融合空手建倉吸引力,0-100,作為 traffic_light 參考之一）：${_falconLine}
+- 📊 綜合操作評分卡結論（6 因子加權,你是總指揮,traffic_light 須與此同向；不同必說明為何）：${_masterLine}
+- 🏛️ 法人反轉/投信做帳卡：${_instRevLine}
 - 📈 法人買盤動能：${_instStreakLine}
 - 💎 本益比 PE：${_peLabel}${_isLowPE ? '（低 PE 區,符合保護傘條件）' : ''}
 - 📉 大盤危機判讀：${_bubbleSignalLine}
 - ${newsLine}
+
+━━━━━━━━━━━━━━━━━━━━
+🎖️ 你是「總指揮」— 上方的系統量化燈號 / 綜合操作評分 / 獵鷹分 / 多空計分 / 法人反轉 都是你的幕僚情報,你要整合成「單一一致」的最終結論(使用者只看你這一份,不該再去比對各卡)：
+1. traffic_light **必須與「系統量化燈號」+「綜合操作評分」同方向**(都偏多→🔴可以買;都偏空→🟢不能買;明顯分歧才→🟡觀望)。
+2. 幕僚彼此衝突時,裁決優先序:**系統量化燈號 > 綜合操作評分 > 獵鷹分 > 籌碼/法人**;你做最終拍板,不要含糊。
+3. detail_action 的【📊 大盤與籌碼全景】**第一句必須先給整合結論**,格式範例:「綜合系統燈號🔴、評分 78、獵鷹 82 → 我的結論是【可以買】,因為三大訊號一致偏多」;若有分歧也要說「我以系統燈號為準,所以…」。讓使用者一眼知道聽你的、不再迷惘。
 
 ━━━━━━━━━━━━━━━━━━━━
 ⚠️ 只准輸出純 JSON，**必須有且只有這 4 個 key**，禁 \`\`\`json 標籤、禁前後說明文字：
