@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V29.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V29.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -12300,21 +12300,35 @@ ${_newsLine}${globalContext}
     },
 
     findPeaksAndTroughs() {
-        this.peaks = []; this.troughs = []; const data = this.activeData;
-        // V14.4:週/月 K 也算 fractal pivot,threshold 隨 TF 放大(週波幅 ≈ 2.5×日,月 ≈ 5×日)
-        let threshold = this.currentTF === 'D' ? 0.02 : this.currentTF === 'W' ? 0.05 : 0.10;
+        this.peaks = []; this.troughs = []; this.zigzag = [];
+        const data = this.activeData;
+        if (!data || data.length < 6) return;
+        // V29.2 ZigZag:5-bar fractal 候選 → 強制「頭→底→頭→底」交替 + 最小波動% 過濾(對齊專業 App 籌碼K線,不再滿圖散落底高)
+        // threshold 隨 TF 放大(日從舊 2% 調到 3.5% → 少而精);太少可調小,集中此常數易調
+        const thr = this.currentTF === 'D' ? 0.035 : this.currentTF === 'W' ? 0.06 : 0.10;
+        // 1) 收集 5-bar fractal 峰/谷候選,依時間排成一條陣列(帶 type)
+        const cand = [];
         for (let i = 2; i < data.length - 2; i++) {
-            let isPeak = data[i].high > data[i-1].high && data[i].high > data[i-2].high && data[i].high > data[i+1].high && data[i].high > data[i+2].high;
-            let isTrough = data[i].low < data[i-1].low && data[i].low < data[i-2].low && data[i].low < data[i+1].low && data[i].low < data[i+2].low;
-            if (isPeak) {
-                if (this.peaks.length === 0) this.peaks.push({idx: i, val: data[i].high});
-                else { let prev = this.peaks[this.peaks.length - 1]; if (Math.abs(data[i].high - prev.val) / prev.val > threshold) this.peaks.push({idx: i, val: data[i].high}); }
-            }
-            if (isTrough) {
-                if (this.troughs.length === 0) this.troughs.push({idx: i, val: data[i].low});
-                else { let prev = this.troughs[this.troughs.length - 1]; if (Math.abs(data[i].low - prev.val) / prev.val > threshold) this.troughs.push({idx: i, val: data[i].low}); }
+            const isPeak = data[i].high > data[i-1].high && data[i].high > data[i-2].high && data[i].high > data[i+1].high && data[i].high > data[i+2].high;
+            const isTrough = data[i].low < data[i-1].low && data[i].low < data[i-2].low && data[i].low < data[i+1].low && data[i].low < data[i+2].low;
+            if (isPeak) cand.push({ idx: i, val: data[i].high, type: 'peak' });
+            else if (isTrough) cand.push({ idx: i, val: data[i].low, type: 'trough' });
+        }
+        // 2) 交替 + 最小波動 → ZigZag:同型留更極端者(峰取高/谷取低);異型需波動 ≥ thr 才接受(過濾雜訊小擺動)
+        const zz = [];
+        for (const c of cand) {
+            if (!zz.length) { zz.push(c); continue; }
+            const last = zz[zz.length - 1];
+            if (c.type === last.type) {
+                if ((c.type === 'peak' && c.val > last.val) || (c.type === 'trough' && c.val < last.val)) zz[zz.length - 1] = c;
+            } else if (last.val > 0 && Math.abs(c.val - last.val) / last.val >= thr) {
+                zz.push(c);
             }
         }
+        // 維持 {idx,val} 格式 → 向下相容型態偵測(_scanPricePatterns)與既有渲染;新 this.zigzag 供連接線
+        this.zigzag = zz;
+        this.peaks = zz.filter(z => z.type === 'peak').map(z => ({ idx: z.idx, val: z.val }));
+        this.troughs = zz.filter(z => z.type === 'trough').map(z => ({ idx: z.idx, val: z.val }));
     },
 
     getAlphaScoreData(data, ind, idx, twiiState) {
@@ -16091,8 +16105,9 @@ ${_newsLine}${globalContext}
         let markPointData = [...(this.currentMarkPoints || [])], markLineData = [];
         // V14.4:頭高/底高開關(預設開),不再限定日 K — 週/月 K 也顯示
         if (this.showPeaks !== false) {
-            this.peaks.forEach(p => { markPointData.push({ name: '頭高', xAxis: p.idx, yAxis: p.val, value: '頭高', symbol: 'arrow', symbolRotate: 180, symbolSize: 10, itemStyle: { color: '#f87171' }, label: { show: true, formatter: '頭高', position: 'top', color: '#f87171', fontSize: 10, fontWeight: 'bold' } }); });
-            this.troughs.forEach(t => { markPointData.push({ name: '底高', xAxis: t.idx, yAxis: t.val, value: '底高', symbol: 'arrow', symbolRotate: 0, symbolSize: 10, itemStyle: { color: '#4ade80' }, label: { show: true, formatter: '底高', position: 'bottom', color: '#4ade80', fontSize: 10, fontWeight: 'bold' } }); });
+            // V29.2:頭/底改色塊標籤(取代散落三角),頭紅底白字標 K 棒上、底綠深字標 K 棒下(台股紅綠慣例)
+            this.peaks.forEach(p => { markPointData.push({ name: '頭', xAxis: p.idx, yAxis: p.val, value: '頭', symbol: 'rect', symbolSize: 1, itemStyle: { color: '#f87171' }, label: { show: true, formatter: '頭', position: 'top', distance: 4, color: '#fff', fontSize: 9, fontWeight: 'bold', backgroundColor: '#f87171', padding: [2, 4], borderRadius: 3 } }); });
+            this.troughs.forEach(t => { markPointData.push({ name: '底', xAxis: t.idx, yAxis: t.val, value: '底', symbol: 'rect', symbolSize: 1, itemStyle: { color: '#4ade80' }, label: { show: true, formatter: '底', position: 'bottom', distance: 4, color: '#0d1117', fontSize: 9, fontWeight: 'bold', backgroundColor: '#4ade80', padding: [2, 4], borderRadius: 3 } }); });
 
             if (this.peaks.length > 0) {
                 const lastPeak = this.peaks[this.peaks.length - 1];
@@ -16127,6 +16142,13 @@ ${_newsLine}${globalContext}
                 { name: 'MA60', type: 'line', data: ind.ma60, smooth: false, showSymbol: false, lineStyle: { width: 2, color: '#3b82f6' }, xAxisIndex: 0, yAxisIndex: 0 }
             ]
         };
+
+        // V29.2 ZigZag 連接線:把頭/底轉折點連成折線(專業 App 籌碼K線最明顯的差異),壓在 K 棒下層
+        if (this.showPeaks !== false && this.zigzag && this.zigzag.length >= 2) {
+            const zzData = new Array(data.length).fill('-');
+            this.zigzag.forEach(z => { if (z.idx >= 0 && z.idx < data.length) zzData[z.idx] = z.val; });
+            option.series.push({ name: 'ZigZag', type: 'line', data: zzData, connectNulls: true, showSymbol: false, lineStyle: { color: '#9ca3af', width: 1, opacity: 0.55 }, xAxisIndex: 0, yAxisIndex: 0, z: 1, silent: true, tooltip: { show: false } });
+        }
 
         if (document.getElementById('toggleBB').checked) {
             option.series.push({ name: 'UpperBB', type: 'line', data: ind.upperBB, smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#c084fc', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0 });
