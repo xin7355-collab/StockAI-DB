@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V28.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V28.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.1</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -17264,7 +17264,7 @@ ${_newsLine}${globalContext}
     },
     _RADAR_HINT: {
         layup:     '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
-        momentum:  '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。',
+        momentum:  '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。今日小回不破 5 日線仍算動能，別看到今日小跌就嚇跑。',
         swing:     '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
         sniper:    '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
         attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
@@ -17728,11 +17728,15 @@ ${_newsLine}${globalContext}
             return;
         }
 
-        body.innerHTML = list.map((m, i) => {
+        // V28.2 — 採礦失敗 fallback 到示範資料時,表格頂插明顯警告列(避免把範例股當真)
+        const demoWarn = this._radarIsDemo
+            ? `<tr><td colspan="4" class="bg-amber-900/30 border border-amber-600 text-amber-200 text-center py-2 text-[11px] font-bold">⚠️ 以下為示範資料(採礦尚未完成),非真實選股 — 請稍後重新整理</td></tr>`
+            : '';
+        body.innerHTML = demoWarn + list.map((m, i) => {
             const name = this.getStockName(m.sym);
             const g = (typeof m.gain === 'number') ? m.gain : null;
             const gainCls = g === null ? 'text-gray-400' : (g > 0 ? 'text-red-400' : (g < 0 ? 'text-green-400' : 'text-gray-400'));
-            const gainStr = g === null ? '' : `<span class="${gainCls} font-mono font-bold text-[11px]">${g > 0 ? '+' : ''}${g}%</span>`;
+            const gainStr = g === null ? '' : `<span class="${gainCls} font-mono font-bold text-[11px]">今 ${g > 0 ? '+' : ''}${g}%</span>`;
             const turn = (typeof m.turnover_e === 'number') ? m.turnover_e.toFixed(1) : (m.turnover_e || '—');
             return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
                 <td class="py-2.5 px-2 align-top">
@@ -17748,7 +17752,7 @@ ${_newsLine}${globalContext}
                 <td class="py-2.5 px-1 text-right font-mono text-cyan-300 text-[12px] align-middle">${turn}</td>
                 <td class="py-2.5 px-2 text-right align-middle">
                     <div class="flex flex-col items-end gap-0.5">
-                        <span class="text-[10px] text-amber-300 font-bold leading-tight">${m.status || ''}</span>
+                        <span class="text-[10px] text-amber-300 font-bold leading-tight">${(m.status || '').replace('最高動能', '近5日最噴')}</span>
                         ${gainStr}
                     </div>
                 </td>
