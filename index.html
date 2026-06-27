@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V29.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V29.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -12101,21 +12101,26 @@ ${_newsLine}${globalContext}
 
     // ═══ V29.0 技術型態 / 形態學引擎(純 JS 偵測,不靠 AI;標註在 K 線圖 markPoint)═══
     PATTERN_DEFS: {
-        // K 棒型態(side: bull=偏多紅 / bear=偏空綠 / neutral=中性灰)
-        bigBlackHigh: { label: '高檔長黑', side: 'bear', explain: '高檔出現長黑K(大跌、幾乎無下影),通常是主力在高點倒貨 → 偏空,有持股留意停利、空手別追高。' },
-        blackThree:   { label: '黑三兵',   side: 'bear', explain: '連三根黑K且越收越低(三烏鴉),空方連續進攻 → 偏空,別接刀,等止跌再看。' },
-        redThree:     { label: '紅三兵',   side: 'bull', explain: '連三根紅K且越收越高,多方連續進攻、趨勢轉強 → 偏多,但漲多注意追高風險。' },
-        hammer:       { label: '槌子線',   side: 'bull', explain: '低檔長下影、小實體(止跌訊號),買盤在低點承接 → 偏多反轉,需隔日紅K確認才算數。' },
-        hangingMan:   { label: '吊人線',   side: 'bear', explain: '高檔長下影、小實體,漲多後出現賣壓 → 偏空警訊,需隔日黑K確認。' },
-        bullEngulf:   { label: '多頭吞噬', side: 'bull', explain: '今天大紅K完全吃掉昨天黑K,多方強勢反攻 → 偏多反轉訊號。' },
-        bearEngulf:   { label: '空頭吞噬', side: 'bear', explain: '今天大黑K完全吃掉昨天紅K,空方強勢反撲 → 偏空反轉訊號。' },
-        doji:         { label: '十字星',   side: 'neutral', explain: '開盤≈收盤(十字),多空僵持不決 → 變盤前兆,看隔日往哪邊走再決定。' },
-        // 價格型態(形態學)
-        doubleBottom: { label: 'W底',     side: 'bull', explain: '兩次測底沒破(W形),且突破中間頸線 → 底部成立、波段起漲訊號,偏多。' },
-        doubleTop:    { label: 'M頭',     side: 'bear', explain: '兩次攻頂沒過(M形),且跌破中間頸線 → 頭部成立、波段轉跌訊號,偏空。' },
-        hsBottom:     { label: '頭肩底',   side: 'bull', explain: '左肩-頭-右肩三次探底(頭最低),突破頸線 → 大型底部反轉,偏多。' },
-        hsTop:        { label: '頭肩頂',   side: 'bear', explain: '左肩-頭-右肩三次攻頂(頭最高),跌破頸線 → 大型頭部反轉,偏空。' },
-        triangle:     { label: '三角收斂', side: 'neutral', explain: '高點一直降、低點一直升(收斂),能量在壓縮 → 等突破方向出來再進場,別猜。' },
+        // 🔴 多方型態(看漲 / 築底,台股紅)
+        redThree:     { label: '紅三兵',   side: 'bull', feature: '下跌或盤整時,連續三根收盤價漸高的紅K。', conclusion: '多方極強,後續續漲機會高,可尋找時機進場。' },
+        redStarTwo:   { label: '一星二陽', side: 'bull', feature: '上漲途中,兩根長紅K中間夾著一根十字線。', conclusion: '上漲中繼訊號,後續再度突破高價的機率很高。' },
+        morningStar:  { label: '孤島晨星', side: 'bull', feature: '低檔出現十字線,隔日配合爆量走出長紅K。', conclusion: '主力築底完成,趨勢強烈轉多,適合準備進場。' },
+        bullEngulf:   { label: '長紅吞噬', side: 'bull', feature: '跌勢中,出現一根長紅K,實體完全蓋過前一天的黑K。', conclusion: '多方強力反轉訊號,若連續兩天爆量則多頭更強。' },
+        hammer:       { label: '低檔槌子', side: 'bull', feature: '股價低檔時出現長下影線、小實體。', conclusion: '主力築底訊號,若隔日爆量且出長紅K,確認趨勢轉多。' },
+        lowLongRed:   { label: '低檔長紅', side: 'bull', feature: '股價低檔時直接拉出一根長紅K。', conclusion: '明確的築底與買進訊號,若配合爆量,轉多機率極高。' },
+        // 🟢 空方型態(看跌 / 出貨,台股綠)
+        blackThree:   { label: '黑三兵',   side: 'bear', feature: '上漲或盤整時,連續三根收盤價漸低的黑K。', conclusion: '空方極強,後續下殺機會高,應立即停損或反手放空。' },
+        blackStarTwo: { label: '一星二陰', side: 'bear', feature: '下跌途中,兩根長黑K中間夾著一根十字線。', conclusion: '下跌中繼訊號,暗示後續將再度跌破低點下殺。' },
+        eveningStar:  { label: '孤島夜星', side: 'bear', feature: '高檔出現十字線,隔日配合爆量走出長黑K。', conclusion: '主力出貨完畢,趨勢確立轉空,應注意停損或反手放空。' },
+        bearEngulf:   { label: '長黑吞噬', side: 'bear', feature: '漲勢中,出現一根長黑K,實體完全蓋過前一天的紅K。', conclusion: '空方強力反轉訊號,若連續兩天爆量,空方會更加強勢。' },
+        bigBlackHigh: { label: '高檔長黑', side: 'bear', feature: '高檔出現長黑K,大跌且幾乎無下影。', conclusion: '主力高檔倒貨,偏空;有持股留意停利、空手別追高。' },
+        hangingMan:   { label: '吊人線',   side: 'bear', feature: '高檔出現長下影、小實體。', conclusion: '漲多後出現賣壓,偏空警訊,需隔日黑K確認。' },
+        // 📐 價格型態(形態學)
+        doubleBottom: { label: 'W底',     side: 'bull', feature: '兩次測底沒破(W形),且突破中間頸線。', conclusion: '底部成立、波段起漲訊號,偏多。' },
+        doubleTop:    { label: 'M頭',     side: 'bear', feature: '兩次攻頂沒過(M形),且跌破中間頸線。', conclusion: '頭部成立、波段轉跌訊號,偏空。' },
+        hsBottom:     { label: '頭肩底',   side: 'bull', feature: '左肩-頭-右肩三次探底(頭最低),突破頸線。', conclusion: '大型底部反轉,偏多。' },
+        hsTop:        { label: '頭肩頂',   side: 'bear', feature: '左肩-頭-右肩三次攻頂(頭最高),跌破頸線。', conclusion: '大型頭部反轉,偏空。' },
+        triangle:     { label: '三角收斂', side: 'neutral', feature: '高點一直降、低點一直升(收斂)。', conclusion: '能量壓縮,等突破方向出來再進場,別猜。' },
     },
 
     togglePatternsHandler(checked) {
@@ -12124,12 +12129,15 @@ ${_newsLine}${globalContext}
         this.renderChart();
     },
 
-    // 掃描整段 K 棒,回傳每根偵測到的型態(可多個)
+    // 掃描整段 K 棒,回傳每根偵測到的型態(可多個)V29.1:對齊使用者 10 型態
     _scanKbarPatterns(data) {
         const out = [];
         const n = data.length;
         if (n < 3) return out;
         const ma20arr = this.indicators?.ma20 || [];
+        const _doji = (x) => { const r = (x.high - x.low) || 1; return Math.abs(x.close - x.open) / r < 0.15; };
+        const _bodyR = (x) => { const r = (x.high - x.low) || 1; return Math.abs(x.close - x.open) / r; };
+        const _volAvg5 = (i) => { if (i < 5) return 0; let s = 0; for (let j = i - 5; j < i; j++) s += (data[j].volume || 0); return s / 5; };
         for (let i = 0; i < n; i++) {
             const b = data[i];
             const o = b.open, c = b.close, h = b.high, l = b.low;
@@ -12143,16 +12151,16 @@ ${_newsLine}${globalContext}
             const m20 = (typeof ma20arr[i] === 'number') ? ma20arr[i] : null;
             const high = m20 != null && c > m20 * 1.03;
             const low  = m20 != null && c < m20 * 0.97;
-            // 高檔長黑
-            if (isBlack && bodyPct > 0.035 && dnSh / range < 0.25 && high) {
+            // ── 單根型態(互斥)──
+            if (isBlack && bodyPct > 0.035 && dnSh / range < 0.25 && high) {            // 高檔長黑
                 out.push({ idx: i, type: 'bigBlackHigh', side: 'bear', anchor: 'high' });
-            } else if (body / range < 0.1) {            // 十字星
-                out.push({ idx: i, type: 'doji', side: 'neutral', anchor: 'high' });
-            } else if (dnSh > body * 2 && upSh < body && body / range < 0.4) {  // 槌子/吊人
+            } else if (isRed && bodyPct > 0.04 && body / range > 0.7 && low) {           // 低檔長紅
+                out.push({ idx: i, type: 'lowLongRed', side: 'bull', anchor: 'low' });
+            } else if (dnSh > body * 2 && upSh < body && body / range < 0.4) {           // 低檔槌子 / 高檔吊人
                 if (low)       out.push({ idx: i, type: 'hammer', side: 'bull', anchor: 'low' });
                 else if (high) out.push({ idx: i, type: 'hangingMan', side: 'bear', anchor: 'high' });
             }
-            // 吞噬(需前一根)
+            // ── 吞噬(長紅/長黑 完全蓋過前一根)──
             if (i >= 1) {
                 const p = data[i - 1], pBody = Math.abs(p.close - p.open);
                 if (isRed && p.close < p.open && c >= p.open && o <= p.close && body > pBody) {
@@ -12161,13 +12169,31 @@ ${_newsLine}${globalContext}
                     out.push({ idx: i, type: 'bearEngulf', side: 'bear', anchor: 'high' });
                 }
             }
-            // 三兵(需前兩根)
+            // ── 三兵 + 一星二陽/二陰(需前兩根)──
             if (i >= 2) {
                 const a = data[i - 2], m = data[i - 1];
                 if (isRed && m.close > m.open && a.close > a.open && c > m.close && m.close > a.close) {
                     out.push({ idx: i, type: 'redThree', side: 'bull', anchor: 'low' });
                 } else if (isBlack && m.close < m.open && a.close < a.open && c < m.close && m.close < a.close) {
                     out.push({ idx: i, type: 'blackThree', side: 'bear', anchor: 'high' });
+                }
+                const aLongRed = a.close > a.open && _bodyR(a) > 0.6, aLongBlack = a.close < a.open && _bodyR(a) > 0.6;
+                if (aLongRed && _doji(m) && isRed && body / range > 0.6) {
+                    out.push({ idx: i, type: 'redStarTwo', side: 'bull', anchor: 'low' });
+                } else if (aLongBlack && _doji(m) && isBlack && body / range > 0.6) {
+                    out.push({ idx: i, type: 'blackStarTwo', side: 'bear', anchor: 'high' });
+                }
+            }
+            // ── 孤島晨星 / 夜星(前一根十字 + 本根爆量長K,十字在低/高檔)──
+            if (i >= 6) {
+                const m = data[i - 1];
+                const m20m = (typeof ma20arr[i - 1] === 'number') ? ma20arr[i - 1] : m20;
+                const mLow = m20m != null && m.close < m20m * 0.98, mHigh = m20m != null && m.close > m20m * 1.02;
+                const va = _volAvg5(i), volSurge = va > 0 && (b.volume || 0) > va * 1.5;
+                if (_doji(m) && volSurge && isRed && body / range > 0.6 && bodyPct > 0.03 && (mLow || low)) {
+                    out.push({ idx: i, type: 'morningStar', side: 'bull', anchor: 'low' });
+                } else if (_doji(m) && volSurge && isBlack && body / range > 0.6 && bodyPct > 0.03 && (mHigh || high)) {
+                    out.push({ idx: i, type: 'eveningStar', side: 'bear', anchor: 'high' });
                 }
             }
         }
@@ -12219,7 +12245,7 @@ ${_newsLine}${globalContext}
         let marks = [];
         try { marks = marks.concat(this._scanKbarPatterns(data) || []); } catch (_) {}
         try { marks = marks.concat(this._scanPricePatterns(data) || []); } catch (_) {}
-        const prio = { doubleBottom: 9, doubleTop: 9, hsBottom: 9, hsTop: 9, triangle: 7, bigBlackHigh: 6, bullEngulf: 6, bearEngulf: 6, hammer: 5, hangingMan: 5, blackThree: 4, redThree: 4, doji: 2 };
+        const prio = { doubleBottom: 9, doubleTop: 9, hsBottom: 9, hsTop: 9, morningStar: 8, eveningStar: 8, triangle: 7, bigBlackHigh: 6, bullEngulf: 6, bearEngulf: 6, redStarTwo: 6, blackStarTwo: 6, hammer: 5, hangingMan: 5, lowLongRed: 5, blackThree: 4, redThree: 4 };
         const byIdx = {};
         marks.forEach(m => { const ex = byIdx[m.idx]; if (!ex || (prio[m.type] || 0) > (prio[ex.type] || 0)) byIdx[m.idx] = m; });
         let uniq = Object.values(byIdx).sort((a, b) => a.idx - b.idx);
@@ -12259,10 +12285,10 @@ ${_newsLine}${globalContext}
 
     _explainPattern(type) {
         const defs = this.PATTERN_DEFS;
-        if (type === '__all') { alert('📐 技術型態教學(純 JS 偵測,僅供參考非買賣建議)\n\n' + Object.values(defs).map(d => `${d.label}:${d.explain}`).join('\n\n')); return; }
+        if (type === '__all') { alert('📐 技術型態教學(純 JS 偵測,僅供參考非買賣建議)\n\n' + Object.values(defs).map(d => `【${d.label}】\n特徵:${d.feature}\n結論:${d.conclusion}`).join('\n\n')); return; }
         const d = defs[type]; if (!d) return;
-        const sideTxt = d.side === 'bull' ? '🔴 偏多' : d.side === 'bear' ? '🟢 偏空' : '⚪ 中性/變盤';
-        alert(`${d.label}(${sideTxt})\n\n${d.explain}\n\n⚠️ 純技術型態僅供參考,非買賣建議。`);
+        const sideTxt = d.side === 'bull' ? '🔴 偏多(看漲/築底)' : d.side === 'bear' ? '🟢 偏空(看跌/出貨)' : '⚪ 中性/變盤';
+        alert(`${d.label} ${sideTxt}\n\n📌 特徵:${d.feature}\n\n🎯 結論:${d.conclusion}\n\n⚠️ 純技術型態僅供參考,非買賣建議。`);
     },
 
     async changeTimeframe(tf) {
