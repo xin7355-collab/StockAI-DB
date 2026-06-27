@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V29.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V30.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.3</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V30.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1504,50 +1504,14 @@
                         <text x="110" y="108" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#6b7280">/ 100</text>
                     </svg>
                 </div>
-                <!-- V21.8 — 台股三指數(加權 + 櫃買 + 台指期),原 grid-cols-2 改 3 加台指期影響時間提示 -->
-                <div class="grid grid-cols-3 gap-1.5 mt-1">
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2 cursor-pointer hover:border-cyan-700/60 transition-colors"
-                         onclick="app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 加權指數 TWII <span class="text-cyan-400">▸ 查詢</span></div>
-                        <div id="mktTWII_main" class="text-base font-black font-mono text-gray-300">--</div>
-                        <div id="mktTWII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 櫃買指數 OTC</div>
-                        <div id="mktTWOII_main" class="text-base font-black font-mono text-gray-300">--</div>
-                        <div id="mktTWOII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
-                    </div>
-                    <!-- V21.8 — 台指期(非即時,只顯結算/夜盤影響時間點)-->
-                    <div class="bg-[#0d1117] border border-amber-800/40 rounded-lg p-2 cursor-pointer hover:border-amber-600/60 transition-colors"
-                         onclick="app.showJargon('台指期結算'); event.stopPropagation();" title="點看完整說明">
-                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">📈 台指電子盤</div>
-                        <div id="taiexFuturesInfo" class="text-[13px] font-black font-mono text-amber-300 leading-tight">計算中…</div>
-                        <div id="taiexFuturesSub" class="text-[9px] font-bold text-gray-500 mt-0.5 leading-tight">--</div>
-                    </div>
-                </div>
-                <!-- V27.6 — item 3:風險快照歷史(後端每日 append risk_history.json,保留不清除)-->
-                <div id="riskHistoryBox"></div>
-                <!-- V21.8 — 三指數共用手動更新鈕 + 重點時間自動更新 1 次(9:00/13:30/17:00) -->
-                <button id="refreshIndicesBtn" onclick="app._refreshAllIndices()"
-                        class="w-full mt-1.5 text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1 hover:bg-cyan-900/50 transition-colors flex items-center justify-center gap-1.5">
-                    🔄 <span>更新指數(加權盤中即時)</span><span id="refreshIndicesTs" class="text-[8px] text-cyan-400/70 font-normal">--</span>
-                </button>
+                <!-- V30.0 — 台股三大指數 + 更新鈕 + 風險紀錄歷史(riskHistoryBox)已移至「台股實戰」綜合指揮中心(去重合併,半圓留此常駐) -->
                 <div class="flex justify-end mt-1"><span id="warRoomTs" class="text-[9px] text-gray-600 font-mono">--</span></div>
                 <!-- 互換用（JS 仍會更新但不可見） -->
                 <span id="warRiskTick" class="hidden"></span>
                 <span id="warRiskDim" class="hidden"></span>
             </div>
 
-            <!-- ════════ 🧠 AI 一句話結論(統一燈號＋首席戰術腳本,自收摺區上移,一進市場頁即見)════════ -->
-            <div class="bg-[#010409] rounded-xl border border-blue-900/50 p-2.5 flex flex-col gap-1.5">
-                <div class="flex items-center gap-2">
-                    <div id="sccLed" class="w-3.5 h-3.5 rounded-full flex-shrink-0 bg-gray-500"></div>
-                    <span id="sccLedText" class="text-[12px] font-bold text-gray-300 leading-snug">--</span>
-                </div>
-                <div class="bg-blue-950/20 border-l-2 border-blue-500 px-2.5 py-1.5 text-[11px] text-gray-300 leading-relaxed rounded-r">
-                    <span class="text-blue-400 font-bold">🧠 首席戰術腳本：</span><span id="sccChiefScript" class="text-gray-400">--</span>
-                </div>
-            </div>
+            <!-- 🧠 一句話結論 + 首席戰術腳本已移至「台股實戰」綜合指揮中心底部風控層(V30.0,在泡沫風控之後) -->
 
             <!-- ════════ 【區 2】🚀 盤前戰情(原 AI 全球綜合解析,改造為盤前作戰報告)════════ -->
             <button onclick="app.openGlobalAIModal(); app.vibrate(50);" id="btnGlobalAIHeader"
@@ -1785,52 +1749,54 @@
                 </div>
             </div>
 
-            <!-- 🎲 V21.9 — 台指期實戰盤(風格 D 白話親民:大字 emoji + hero 結論 + 摺疊細節)
-                          整合原獨立「主力出貨指數」卡:結論大字置頂,3 子因子 chip + 5 因子詳細摺疊 -->
-            <div class="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
-                <div class="flex items-center justify-between mb-3">
+            <!-- 🎯 V30.0 — 台股大盤綜合指揮中心(三層金字塔:① 結論 ② 因子 ③ 風控)
+                          去重合併原「台指期實戰盤 3 chips」+「5 因子打分明細」→ 散戶情緒/期貨升貼水只留一份(在下方 Data Grid) -->
+            <div class="bg-[#161b22] rounded-lg border border-[#30363d] p-4 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <span class="text-base">🎲</span>
-                        <span class="text-base font-black text-gray-100 tracking-wide">台指期實戰盤</span>
+                        <span class="text-base">🎯</span>
+                        <span class="text-base font-black text-gray-100 tracking-wide">台股大盤綜合指揮中心</span>
                     </div>
                     <button onclick="app.showJargon('主力出貨指數'); event.stopPropagation();" class="text-[10px] text-gray-400 hover:text-blue-300 bg-purple-900/30 hover:bg-purple-800/40 px-2.5 py-1 rounded-lg border border-purple-700/50 font-bold">📖 教學</button>
                 </div>
-                <div class="text-[11px] text-gray-400 mb-3 leading-relaxed">💡 <b class="text-purple-300">今天主力會不會殺?</b>5 因子綜合判讀(散戶情緒 / 期貨升貼水 / 景氣燈號 / VIX 恐慌 / 融資水位)</div>
 
-                <!-- HERO 結論卡(_renderMarketMakerIndex 寫入大字 verdict + advice + 分數) -->
-                <div id="marketMakerHero" class="mb-3"></div>
+                <!-- ① 頂部結論層:出貨指數 verdict 大字(風險指數半圓在最上方常駐) -->
+                <div id="marketMakerHero"></div>
 
-                <!-- 3 個輕量因子 chip(散戶 / 期貨 / 景氣)— 對應到頂部 hero 的細節 -->
-                <div class="grid grid-cols-3 gap-2 mb-3">
-                    <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] relative">
-                        <button onclick="app.showJargon('散戶多空比'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">👥 散戶情緒</div>
-                        <div id="sccRetail" class="text-base font-black font-mono text-green-400 leading-tight">--</div>
-                        <div class="text-[9px] mt-1 text-gray-500 leading-snug">散戶越看多越易反轉跌↓<br>正值=散戶偏多→逆向偏空</div>
+                <!-- 台股三大指數(加權 / 櫃買 / 台指電子盤)+ 更新鈕(V30.0 從頂部移入) -->
+                <div class="grid grid-cols-3 gap-1.5">
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2 cursor-pointer hover:border-cyan-700/60 transition-colors"
+                         onclick="app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 加權指數 TWII <span class="text-cyan-400">▸ 查詢</span></div>
+                        <div id="mktTWII_main" class="text-base font-black font-mono text-gray-300">--</div>
+                        <div id="mktTWII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] relative">
-                        <button onclick="app.showJargon('台指逆價差'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">🎯 期貨升貼水</div>
-                        <div id="sccBack" class="text-base font-black font-mono text-yellow-300 leading-tight">--</div>
-                        <div id="sccBackLabel" class="text-[9px] mt-1 text-gray-500 leading-snug">期貨−現貨價差</div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">🏯 櫃買指數 OTC</div>
+                        <div id="mktTWOII_main" class="text-base font-black font-mono text-gray-300">--</div>
+                        <div id="mktTWOII_chg_main" class="text-[10px] font-bold text-gray-500 mt-0.5">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] relative">
-                        <button onclick="app.showJargon('景氣對策信號'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
-                        <div class="text-[10px] text-gray-500 font-bold mb-1">🌡️ 景氣燈號 <span id="bsiSource" class="text-[8px] text-gray-600 font-normal ml-1"></span></div>
-                        <div id="bsiLight" class="text-base font-black leading-tight">--</div>
-                        <!-- V22.3 — 砍手動下拉,純自動(舊版下拉造成 localStorage 卡住,後端 NDC 抓到也吃不到) -->
-                        <div class="text-[9px] mt-1 text-gray-600 leading-tight">每月 27 號國發會更新</div>
+                    <div class="bg-[#0d1117] border border-amber-800/40 rounded-lg p-2 cursor-pointer hover:border-amber-600/60 transition-colors"
+                         onclick="app.showJargon('台指期結算'); event.stopPropagation();" title="點看完整說明">
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">📈 台指電子盤</div>
+                        <div id="taiexFuturesInfo" class="text-[13px] font-black font-mono text-amber-300 leading-tight">計算中…</div>
+                        <div id="taiexFuturesSub" class="text-[9px] font-bold text-gray-500 mt-0.5 leading-tight">--</div>
                     </div>
                 </div>
+                <button id="refreshIndicesBtn" onclick="app._refreshAllIndices()"
+                        class="w-full text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1 hover:bg-cyan-900/50 transition-colors flex items-center justify-center gap-1.5">
+                    🔄 <span>更新指數(加權盤中即時)</span><span id="refreshIndicesTs" class="text-[8px] text-cyan-400/70 font-normal">--</span>
+                </button>
+                <div id="riskHistoryBox"></div>
 
-                <!-- 完整 5 因子詳細摺疊(平常摺起,進階使用者點開看每因子打幾分 + 對策) -->
-                <details class="bg-[#0d1117] rounded-xl border border-[#30363d]">
-                    <summary class="cursor-pointer px-3 py-2.5 text-[11px] text-gray-400 font-bold hover:bg-[#161b22] rounded-t-xl flex items-center justify-between">
-                        <span>📊 完整 5 因子打分明細</span>
-                        <span class="text-gray-500">▾</span>
-                    </summary>
-                    <div id="marketMakerIndex" class="p-2"></div>
-                </details>
+                <!-- ② 中間因子層:6 卡 Data Grid(取代褐色 5 因子明細 + 台指期 3 chips;散戶情緒/升貼水去重只留一份)-->
+                <div>
+                    <div class="text-[10px] text-gray-400 font-bold mb-1.5 flex items-center gap-1">📊 五大核心因子<span class="text-[8px] text-gray-600 font-normal ml-0.5">· 多空判定</span></div>
+                    <div id="macroFactorGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div class="col-span-full text-center text-gray-600 text-[10px] py-3">因子載入中…(等 macro_miner)</div>
+                    </div>
+                    <div class="text-[8px] text-gray-600 mt-1.5 leading-tight">因子源:散戶情緒 + 期貨升貼水 + 大盤分位 + 外資現貨 + VIX + 景氣燈號 → 綜合算出上方出貨指數</div>
+                </div>
             </div>
 
             <!-- V26.10 — 「💰 資金板塊輪動」整卡已搬至「全球大環境」 sub-tab(跨市場視角與預判中心並列;原占位 L1799-1835,搬至 L1731 之前) -->
@@ -1926,6 +1892,18 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 🧠 V30.0 底部風控層:AI 一句話結論 + 首席戰術腳本(從頂部移入,接在泡沫風控之後) -->
+            <div class="bg-[#010409] rounded-xl border border-blue-900/50 p-2.5 flex flex-col gap-1.5">
+                <div class="flex items-center gap-2">
+                    <div id="sccLed" class="w-3.5 h-3.5 rounded-full flex-shrink-0 bg-gray-500"></div>
+                    <span id="sccLedText" class="text-[12px] font-bold text-gray-300 leading-snug">--</span>
+                </div>
+                <div class="bg-blue-950/20 border-l-2 border-blue-500 px-2.5 py-1.5 text-[11px] text-gray-300 leading-relaxed rounded-r">
+                    <span class="text-blue-400 font-bold">🧠 首席戰術腳本：</span><span id="sccChiefScript" class="text-gray-400">--</span>
+                </div>
+            </div>
+
             <!-- 📊 V22.3 — 進階指標(5 件事 + 市場氣象)UI 隱藏,JS 寫入邏輯保留(首席 AI prompt L17124 需讀 dim_*)
                           使用者反映此區與其他卡重複(dim_macro=風險指數 / weatherHealthPct=100-風險指數 / dim_senti=散戶多空),
                           整塊砍會破 AI;改 details → hidden div,DOM 留著供 prompt 讀,使用者看不到 -->
@@ -8157,8 +8135,8 @@ const marginByDate = {};
         const v = this._twBsiLight || this._bsiAuto?.light || '';
         const el = document.getElementById('bsiLight');
         const srcEl = document.getElementById('bsiSource');
-        if (!el) return;
         if (!v || !map[v]) {
+            if (!el) return;   // V30.0:景氣 chip 已併入因子網格;無 DOM 又無有效燈號 → 收工
             // V27.3 — 永遠優先顯「上次燈號」(localStorage),避免顯「抓不到」故障感(景氣燈號月更,上次值仍有參考價值)
             let lastGood = null;
             try { lastGood = JSON.parse(localStorage.getItem('bsiLastGood') || 'null'); } catch (_) {}
@@ -8184,6 +8162,7 @@ const marginByDate = {};
         this._twBsiScore = map[v].score;   // 給綜合評分卡用
         // V27.3 — 持久化最後一次好的燈號,供下次 NDC 抓不到時當「上次值」顯示
         try { localStorage.setItem('bsiLastGood', JSON.stringify({ light: v, month: this._bsiAuto?.month || '', at: Date.now() })); } catch (_) {}
+        if (!el) return;   // V30.0:state(_twBsiLight/_twBsiScore)已設,無景氣 chip DOM 即收工(已併入因子網格)
         el.innerHTML = `<div class="${map[v].cls}">${map[v].txt}</div><div class="text-[9px] text-gray-500 leading-tight">${map[v].sub}</div>`;
         // V22.3 — bsiSource 純顯 NDC 自動資料來源(無手動模式)
         // V23.2 — stale fallback 加「💡 歷史值」chip 標示(NDC 暫時抓不到時保留上次)
@@ -8530,8 +8509,8 @@ const marginByDate = {};
     // 🐂 Q1:主力出貨指數五合一(0-100,越高越像主力倒貨)
     //   1 散戶過度看多 / 2 期貨大幅貼水 / 3 景氣燈號過熱 / 4 VIX 跳升 / 5 融資水位過高
     _renderMarketMakerIndex(j) {
-        const el = document.getElementById('marketMakerIndex');
-        if (!el) return;
+        // V30.0 — 渲染目標改為 #macroFactorGrid(因子網格)+ #marketMakerHero(結論大字);舊褐色 #marketMakerIndex 明細已移除
+        if (!document.getElementById('macroFactorGrid') && !document.getElementById('marketMakerHero')) return;
         let score = 0;
         const reasons = [];   // 出貨壓力 +
         const counters = []; // 託盤 / 反向利多 -
@@ -8660,28 +8639,49 @@ const marginByDate = {};
             }
         }
 
-        const allFactors = reasons.concat(counters);
-        const factorChips = allFactors.length
-            ? allFactors.slice(0, 5).map(r => {
-                const isCounter = counters.includes(r);
-                return `<span class="inline-block text-[9px] px-1.5 py-0.5 rounded mr-1 mb-0.5 ${isCounter ? 'bg-green-900/40 text-green-300 border border-green-700/50' : 'bg-red-900/40 text-red-300 border border-red-700/50'}">${r}</span>`;
-            }).join('')
-            : '<span class="text-[9px] text-gray-500">📊 資料採集中(等 macro_miner 跑完)</span>';
-
         const dispScore = Math.max(-30, Math.min(100, score));
-        el.innerHTML = `
-            <div class="rounded-lg border ${cardCls} p-2.5">
-                <div class="flex items-center justify-between mb-1.5">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-base">🐂</span>
-                        <span class="text-[12px] font-black text-gray-200">5 因子打分</span>
+
+        // V30.0 — 中間因子層:6 卡 Data Grid(取代褐色 5 因子明細)。多空 pill 用台股慣例:偏多紅 / 偏空綠 / 中性灰;值缺顯 --
+        const grid = document.getElementById('macroFactorGrid');
+        if (grid) {
+            const pillCls = d => d === '偏多' ? 'text-red-300 bg-red-900/30 border border-red-800/50'
+                              : d === '偏空' ? 'text-green-300 bg-green-900/30 border border-green-800/50'
+                              : 'text-gray-400 bg-white/5 border border-[#30363d]';
+            const valCls = d => d === '偏多' ? 'text-red-300' : d === '偏空' ? 'text-green-300' : 'text-gray-200';
+            const card = (icon, name, val, dir, hint, jargon) => `
+                <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5 flex flex-col relative">
+                    ${jargon ? `<button onclick="app.showJargon('${jargon}'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>` : ''}
+                    <div class="text-[10px] text-gray-400 font-bold mb-1 pr-4">${icon} ${name}</div>
+                    <div class="text-lg font-black font-mono ${valCls(dir)} leading-tight">${val}</div>
+                    <div class="mt-1 flex items-center gap-1 flex-wrap">
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${pillCls(dir)}">${dir}</span>
+                        <span class="text-[8px] text-gray-600 leading-tight">${hint}</span>
                     </div>
-                    <span class="text-[10px] font-mono ${scoreCls}">${dispScore} 分</span>
-                </div>
-                <div class="flex flex-wrap leading-tight">${factorChips}</div>
-                <div class="text-[8px] text-gray-600 mt-1.5 leading-tight">因子來源:散戶情緒 + 期貨升貼水 + 景氣燈號 + VIX + 融資 + 外資期/現貨(三大法人)</div>
-            </div>
-        `;
+                </div>`;
+            const na = '<span class="text-gray-600">--</span>';
+            // 各因子值 + 多空(沿用上方打分門檻;偏空=利於下跌、偏多=利於上漲)
+            let rVal = na, rDir = '中性';
+            if (typeof retail === 'number') { rVal = `${retail > 0 ? '+' : ''}${retail.toFixed(1)}%`; rDir = retail <= -15 ? '偏空' : retail >= 25 ? '偏多' : '中性'; }
+            let bVal = na, bDir = '中性';
+            if (typeof back === 'number') { bVal = `${back > 0 ? '+' : ''}${back.toFixed(0)}`; bDir = back <= -50 ? '偏空' : back >= 50 ? '偏多' : '中性'; }
+            let pVal = na, pDir = '中性';
+            if (typeof twiiPos === 'number') { pVal = `${Math.round(twiiPos)}%`; pDir = twiiPos >= 75 ? '偏空' : twiiPos <= 25 ? '偏多' : '中性'; }
+            let sVal = na, sDir = '中性';
+            if (typeof fiSpot === 'number') { sVal = `${fiSpot > 0 ? '+' : ''}${Math.round(fiSpot)}億`; sDir = fiSpot <= -100 ? '偏空' : fiSpot >= 100 ? '偏多' : '中性'; }
+            let vVal = na, vDir = '中性';
+            if (typeof vix === 'number') { vVal = vix.toFixed(1); vDir = vix >= 20 ? '偏空' : '中性'; }
+            let lVal = na, lDir = '中性';
+            const lmap = { 'red': ['🔴 紅燈', '偏空'], 'yellow-red': ['🟠 黃紅', '偏空'], 'green': ['🟢 綠燈', '中性'], 'yellow-blue': ['🔵 黃藍', '偏多'], 'blue': ['🔵 藍燈', '偏多'] };
+            if (bsiLight && lmap[bsiLight]) { lVal = lmap[bsiLight][0]; lDir = lmap[bsiLight][1]; }
+            grid.innerHTML = [
+                card('👥', '散戶情緒', rVal, rDir, '散戶反向指標', '散戶多空比'),
+                card('🎯', '期貨升貼水', bVal, bDir, '貼水偏空·升水偏多', '台指逆價差'),
+                card('📊', '大盤分位', pVal, pDir, '60日高低位', '市場風險指數'),
+                card('💰', '外資現貨', sVal, sDir, '買超偏多·賣超偏空', ''),
+                card('😱', 'VIX 恐慌', vVal, vDir, '>20 偏空', ''),
+                card('🌡️', '景氣燈號', lVal, lDir, '過熱偏空·底部偏多', '景氣對策信號'),
+            ].join('');
+        }
         this._renderRiskHistory?.();   // V27.6 — item 3 順帶刷新風險紀錄歷史
         // V21.9 — 同步寫 hero 結論到 #marketMakerHero(風格 D 白話親民:大字 verdict + 分數圓圈)
         const heroEl = document.getElementById('marketMakerHero');
