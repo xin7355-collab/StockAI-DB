@@ -36,7 +36,9 @@ def generate_inst_rank():
             continue
         try:
             data = json.loads(f.read_text(encoding='utf-8'))
-            daily = (data.get('daily') or [])[-5:]
+            # V27.5 修:data/{sym}.json 是「list of 日記錄」(miner.py 直接 dump records),非 {daily:[]} dict
+            #          原 data.get('daily') 對 list 會丟 AttributeError → 整支被 except 吞掉 → 排行長期空
+            daily = (data if isinstance(data, list) else (data.get('daily') or []))[-5:]
             if len(daily) < 3:
                 continue
             rows.append({
@@ -64,43 +66,57 @@ def generate_inst_rank():
 
 
 def fetch_day_trade():
-    """TWSE TWTB4U 全市場當沖比 — 一次拉完。"""
+    """TWSE TWTB4U 全市場當沖比 — 一次拉完。
+    V27.5:① 新版 /rwd/zh/afterTrading/ 端點優先(舊 /exchangeReport/ 常回空)
+           ② 解析 0 檔時保留上次,不覆蓋成空(避免前端顯假象)+ 印首列供除錯。"""
     for back in range(6):
         d = date.today() - timedelta(days=back)
         if d.weekday() < 5:
             break
     date_str = d.strftime('%Y%m%d')
-    url = f'https://www.twse.com.tw/exchangeReport/TWTB4U?date={date_str}&response=json'
-    try:
-        r = requests.get(url, timeout=20, headers=UA)
-        if r.status_code != 200:
-            print(f'⚠️ day_trade: TWSE HTTP {r.status_code}')
-            return
-        j = r.json()
-        data = {}
-        for row in j.get('data', []) or []:
-            if not row or len(row) < 6:
-                continue
-            sym = str(row[0]).strip()
-            if not _valid_sym(sym):
-                continue
-            try:
-                vol = int(str(row[3]).replace(',', '') or '0')
-                day_vol = int(str(row[4]).replace(',', '') or '0')
-                ratio = float(str(row[5]).replace(',', '').replace('%', '') or '0')
-            except (ValueError, TypeError):
-                continue
-            if vol > 0:
-                data[sym] = {'ratio_pct': ratio, 'vol': vol, 'day_vol': day_vol}
-        out = {
-            'updated': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'date': date_str,
-            'data': data,
-        }
-        (DATA_DIR / 'day_trade.json').write_text(json.dumps(out, ensure_ascii=False), encoding='utf-8')
-        print(f'✅ day_trade.json 已寫({len(data)} 檔當沖比, date={date_str})')
-    except Exception as e:
-        print(f'⚠️ day_trade: {e}')
+    urls = [
+        f'https://www.twse.com.tw/rwd/zh/afterTrading/TWTB4U?date={date_str}&response=json',
+        f'https://www.twse.com.tw/exchangeReport/TWTB4U?date={date_str}&response=json',
+    ]
+    j = None
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=20, headers=UA)
+            if r.status_code == 200 and (r.json().get('data') or []):
+                j = r.json()
+                break
+            print(f'⚠️ day_trade HTTP {r.status_code} / 空 @ {url[:55]}')
+        except Exception as e:
+            print(f'⚠️ day_trade try error: {str(e)[:60]}')
+    if not j:
+        print('⚠️ day_trade: 兩端點皆空,保留上次 day_trade.json 不覆蓋')
+        return
+    data = {}
+    rows = j.get('data', []) or []
+    for row in rows:
+        if not row or len(row) < 6:
+            continue
+        sym = str(row[0]).strip()
+        if not _valid_sym(sym):
+            continue
+        try:
+            vol = int(str(row[3]).replace(',', '') or '0')
+            day_vol = int(str(row[4]).replace(',', '') or '0')
+            ratio = float(str(row[5]).replace(',', '').replace('%', '') or '0')
+        except (ValueError, TypeError):
+            continue
+        if vol > 0:
+            data[sym] = {'ratio_pct': ratio, 'vol': vol, 'day_vol': day_vol}
+    if not data:
+        print(f'⚠️ day_trade: 解析 0 檔(欄位可能變動),首列={rows[0] if rows else "無"};保留上次不覆蓋')
+        return
+    out = {
+        'updated': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'date': date_str,
+        'data': data,
+    }
+    (DATA_DIR / 'day_trade.json').write_text(json.dumps(out, ensure_ascii=False), encoding='utf-8')
+    print(f'✅ day_trade.json 已寫({len(data)} 檔當沖比, date={date_str})')
 
 
 def fetch_tdcc_holdings():
@@ -126,24 +142,32 @@ def fetch_tdcc_holdings():
                 pass
 
         reader = csv.DictReader(io.StringIO(r.text))
+        # V27.5 — TDCC CSV 欄名會變(占集保庫存比例% ↔ 占集保庫存數比例%)→ 原寫死欄名抓不到 → 全 0.0
+        #          改「模糊比對」抓欄位,容忍欄名增刪「數」字等變動
+        fieldnames = reader.fieldnames or []
+        def _col(*keys):
+            for fn in fieldnames:
+                if any(k in (fn or '') for k in keys):
+                    return fn
+            return None
+        col_sym, col_grade = _col('證券代號', '代號'), _col('持股分級', '分級')
+        col_pct, col_date  = _col('比例'), _col('資料日期', '日期')
         latest_date = None
         data_by_sym = {}
         for row in reader:
-            sym = (row.get('證券代號') or '').strip()
-            grade = (row.get('持股分級') or '').strip()
+            sym = (row.get(col_sym) or '').strip() if col_sym else ''
+            grade = (row.get(col_grade) or '').strip() if col_grade else ''
             if not _valid_sym(sym):
                 continue
-            # 千張大戶 = 第 15 級「1,000,001-5,000,000」或「5,000,001 以上」級距合計
-            # TDCC 分級:1=1-999、...、15=1000-5000、16=5000-10000、17=10000+
-            # 對「1000 張以上」我們取 15 + 16 + 17 合計
+            # 千張大戶 = 第 15 級以上(15=1000-5000、16=5000-10000、17=10000+)合計
             if not grade or not grade[0].isdigit():
                 continue
             try:
                 grade_num = int(grade.split('.')[0].split('-')[0].strip())
-                pct = float((row.get('占集保庫存比例%') or '0').strip())
+                pct = float((row.get(col_pct) or '0').strip()) if col_pct else 0.0
             except (ValueError, TypeError):
                 continue
-            date_str = (row.get('資料日期') or '').strip()
+            date_str = (row.get(col_date) or '').strip() if col_date else ''
             if grade_num >= 15:
                 slot = data_by_sym.setdefault(sym, {'top_pct': 0.0})
                 slot['top_pct'] = round(slot['top_pct'] + pct, 3)
@@ -152,6 +176,10 @@ def fetch_tdcc_holdings():
 
         if not data_by_sym:
             print('⚠️ tdcc: CSV 解析後 0 檔,跳過(保留上次)')
+            return
+        # V27.5 防呆:top_pct 全 0 = 欄位對應失敗,印欄名供除錯,保留上次不覆蓋成假 0
+        if all(v.get('top_pct', 0) == 0 for v in data_by_sym.values()):
+            print(f'⚠️ tdcc: 解析後 top_pct 全 0,疑欄名變動。CSV 欄={fieldnames};保留上次不覆蓋')
             return
 
         for sym, info in data_by_sym.items():
