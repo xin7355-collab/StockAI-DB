@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V27.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V27.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.7</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V27.8</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1802,7 +1802,7 @@
                         <button onclick="app.showJargon('散戶多空比'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
                         <div class="text-[10px] text-gray-500 font-bold mb-1">👥 散戶情緒</div>
                         <div id="sccRetail" class="text-base font-black font-mono text-green-400 leading-tight">--</div>
-                        <div class="text-[9px] mt-1 text-gray-500 leading-snug">散戶越看多越易反轉跌↓<br>負值=散戶偏多→逆向偏空</div>
+                        <div class="text-[9px] mt-1 text-gray-500 leading-snug">散戶越看多越易反轉跌↓<br>正值=散戶偏多→逆向偏空</div>
                     </div>
                     <div class="bg-[#0d1117] rounded-xl p-2.5 border border-[#30363d] relative">
                         <button onclick="app.showJargon('台指逆價差'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300">ℹ️</button>
@@ -2506,7 +2506,7 @@ const app = {
         '美債10Y殖利率': '美國 10 年期公債利率。資金的「無風險水溫」：超過 4.5% 代表錢躲回債券，股市難漲；低於 3.5% 代表錢出來找股票，台股容易噴。',
         '美債2Y殖利率': '美國 2 年期公債利率，反映短期升降息預期。若 2Y > 10Y（殖利率倒掛）= 經濟衰退警報，歷史準確率超高。',
         '恐懼與貪婪指數': 'CNN 的市場情緒溫度計，0-100 分。0-25 極度恐懼（往往是底部）、75-100 極度貪婪（往往是頂部）。逆向操作的好指標。',
-        '散戶多空比': '從台指期未平倉推算的散戶情緒。負值=散戶偏多（市場可能要修正，逆向偏空）、正值=散戶偏空（市場可能要漲，逆向偏多）。',
+        '散戶多空比': '從台指期未平倉推算的散戶情緒。正值=散戶偏多（散戶過熱,市場可能要修正,逆向看空）、負值=散戶偏空（散戶恐慌,市場可能要漲,逆向看多）。',
         '台幣匯率': '美元兌新台幣。31 以下=熱錢湧入（外資看好）、33 以上=熱錢撤離（外資看空）。台股漲跌跟匯率高度同步。',
         '台指逆價差': '期貨價格 - 現貨價格。\n\n📈 正值 = 順價差(期貨比現貨貴 → 期貨主力樂觀):\n  ・ +50 點以上 = 大順差,期貨偏多\n  ・ +10~+50 點 = 微順差,樂觀\n\n📉 負值 = 逆價差(期貨比現貨便宜 → 期貨主力悲觀):\n  ・ -10~-50 點 = 微逆差,警戒\n  ・ -50~-100 點 = 逆差,期貨偏空\n  ・ -100 點以下 = 深逆差,主力空殺過頭,現貨通常即將反彈(逆向訊號)',
         '景氣對策信號': '國發會每月公布的景氣燈號(月底/月初公佈上月)。\n\n🔵 藍燈 (9-16 分) = 景氣衰退,股市常超跌完底反彈\n🔷 黃藍 (17-22 分) = 景氣趨弱,股市底部震盪\n🟢 綠燈 (23-31 分) = 景氣穩定,股市中性適合長抱\n🟡 黃紅 (32-37 分) = 景氣轉強,股市多頭續強\n🔴 紅燈 (38-45 分) = 景氣過熱,股市常見泡沫,注意拉回\n\n📊 投資對策:藍燈進場長抱 ・ 紅燈分批停利\n💡 來源:國發會官網每月 27 號公佈\n   https://index.ndc.gov.tw/n/zh_tw',
@@ -14088,12 +14088,19 @@ ${_newsLine}${globalContext}
             { id: 'bpSp500',  type: 'sp500',  val: j.sp500,     chg: j.sp500_chg_pct,  decim: 0 },
             { id: 'bpNasdaq', type: 'nasdaq', val: j.nasdaq,    chg: j.nasdaq_chg_pct, decim: 0 },
         ];
+        // V27.8 — 前端防呆:離譜指數值(後端萬一漏接守門)顯 ⚠️ 提示,不直接誤導當真
+        const _FE_SANITY = { nikkei:[15000,65000], kospi:[1000,6000], hsi:[8000,40000], sp500:[2000,13000], nasdaq:[6000,40000] };
         let nullCnt = 0;
         ITEMS.forEach(it => {
             const v = num(it.val), c = num(it.chg);
             const valEl = $(it.id), chgEl = $(it.id + 'Chg'), meanEl = $(it.id + 'Meaning');
+            const _sr = _FE_SANITY[it.type];
+            const _bad = (v != null && _sr && (v < _sr[0] || v > _sr[1]));
             if (valEl) {
-                valEl.textContent = v == null ? '--' : v.toLocaleString('en-US', { minimumFractionDigits: it.decim, maximumFractionDigits: it.decim });
+                valEl.textContent = v == null ? '--'
+                    : _bad ? `${v.toLocaleString('en-US', { maximumFractionDigits: 0 })} ⚠️`
+                    : v.toLocaleString('en-US', { minimumFractionDigits: it.decim, maximumFractionDigits: it.decim });
+                if (_bad) valEl.title = '數值疑來源異常,請以官方為準';
                 if (v == null) nullCnt++;
             }
             if (chgEl) {
