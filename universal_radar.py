@@ -12,6 +12,7 @@
 import os
 import json
 import time
+import re
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -278,14 +279,25 @@ TW_RELATED_KEYWORDS = [
     'taiwan', 'export', 'supply chain', 'ai',
     # 宏觀（影響台股大盤）
     'tariff', 'tariffs', 'fed', 'interest rate', 'inflation', 'cpi', 'gdp',
-    'recession', 'rate cut', 'rate hike',
+    'recession', 'rate cut', 'rate hike', 'stock market', 'stocks', 'shares',
+    'markets', 'tech', 'equities', 'wall street', 'nasdaq', 'dow jones',
 ]
+
+# V27.8 — 生活/娛樂雜訊黑名單:即使誤含關鍵字也直接排除(BBC Business RSS 夾帶 King's tax bill / power banks / after uni 等生活新聞)
+TW_NEWS_BLACKLIST = ['royal', "king's", 'queen', 'prince', 'recipe', 'football', 'rugby',
+                     'celebrity', 'vape', 'lifestyle', 'after uni', 'wedding', 'weather', 'power bank']
+
+# V27.8 — 關鍵字改「整詞」比對(\b 邊界):修 'ai' 短字當「子字串」誤命中 ag(ai)n / ret(ai)l / cont(ai)n,
+#         導致生活新聞(如「back home after uni ... again」)漏進財經情報的 bug。
+_TW_KW_RE = re.compile(r'\b(' + '|'.join(re.escape(k) for k in TW_RELATED_KEYWORDS) + r')\b', re.IGNORECASE)
 
 
 def _is_tw_relevant(title: str, url: str = '') -> bool:
-    """判斷新聞是否與台股相關（科技巨頭/供應鏈/宏觀）。任一 keyword 命中即保留"""
-    combined = (title + ' ' + url).lower()
-    return any(kw in combined for kw in TW_RELATED_KEYWORDS)
+    """判斷新聞是否與台股相關(科技巨頭/供應鏈/宏觀)。先過生活雜訊黑名單,再要求「整詞」命中至少一個關鍵字。"""
+    combined = (title + ' ' + url)
+    if any(bad in combined.lower() for bad in TW_NEWS_BLACKLIST):
+        return False
+    return bool(_TW_KW_RE.search(combined))
 
 
 def fetch_global_news():
