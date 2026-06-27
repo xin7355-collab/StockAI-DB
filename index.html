@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V28.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V28.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.4</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.5</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1752,10 +1752,11 @@
                     <div class="text-[10px] font-black text-blue-300">📡 全球即時情報</div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="app.analyzeGlobalNewsAI()" id="globalNewsAiBtn" class="text-[9px] font-bold text-purple-200 bg-purple-900/40 border border-purple-700/60 hover:bg-purple-900/60 rounded px-2 py-0.5 transition-colors">🤖 AI 翻譯</button>
+                        <button onclick="app._clearGlobalNewsAiCache()" class="text-[9px] font-bold text-gray-300 bg-[#21262d] border border-[#30363d] hover:bg-[#30363d] rounded px-2 py-0.5 transition-colors">🗑️ 清除翻譯</button>
                         <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
                     </div>
                 </div>
-                <div class="text-[8px] text-gray-600 mb-1.5">💡 點「🤖 AI 翻譯」才跑;清單區域往上滑(swipe up)= 清除 AI 翻譯記錄</div>
+                <div class="text-[8px] text-gray-600 mb-1.5">💡 點「🤖 AI 翻譯」翻成中文;點「🗑️ 清除翻譯」還原英文</div>
                 <div id="globalNewsList" class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-3">載入中...</div>
                 </div>
@@ -3335,6 +3336,7 @@ const app = {
     // V21.2 — 偵測 #globalNewsList 上滑手勢,清除 AI 翻譯記錄(sessionStorage)
     //   為避免與內部 scroll 衝突,只在「列表已滾到頂端且使用者繼續往上滑 > 60px」才觸發
     _bindGlobalNewsSwipeClear() {
+        return;   // V28.5 — 停用上滑清除手勢(與正常捲動衝突,捲到頂端再滑就誤觸「已清除 0 筆」);改用「🗑️ 清除翻譯」按鈕
         const list = document.getElementById('globalNewsList');
         if (!list || list.__swipeBound) return;
         list.__swipeBound = true;
@@ -3374,7 +3376,7 @@ const app = {
             });
             this._renderGlobalNewsList?.(this._globalNewsItems);
         }
-        this.showToast?.(`🗑️ 已清除 ${cleared} 筆 AI 翻譯記錄,點「🤖 AI 翻譯」重抽`);
+        this.showToast?.(cleared > 0 ? `🗑️ 已清除 ${cleared} 筆 AI 翻譯記錄,點「🤖 AI 翻譯」重抽` : '目前沒有 AI 翻譯記錄可清');
         this.vibrate?.(40);
     },
 
@@ -4176,6 +4178,10 @@ ${list}
                 if (_span) _span.classList.toggle('grayscale-[80%]', !isMatch);
             }
         });
+
+        // V28.5 — ⚠️ 朱老師警告是個股級,只在診斷頁顯示;切到其他 tab 強制隱藏(避免全球/雷達等頁殘留個股警告)
+        const _chuB = document.getElementById('chuTrendAlertBanner');
+        if (_chuB) _chuB.style.display = (tabId === 'diag') ? '' : 'none';
 
         // 🚨 戰略區塊（黃金動線）已內嵌於「全球」分頁頂部，隨分頁顯示，無需額外切換
 
@@ -9386,7 +9392,7 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
         try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
               if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
         const _shTw = this._sectorHeatCache?.sectors || {};
-        let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2"><div class="text-[10px] text-purple-300 font-bold mb-1.5">📊 9 板塊跨市場缺口明細(美=昨夜收盤 vs 台=今日,正值=台落後 lead-lag 補漲機會)</div>';
+        let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2"><div class="text-[10px] text-purple-300 font-bold mb-1.5">📊 9 板塊跨市場對照(美=昨夜收盤 vs 台=今日,符號=台股補漲/補跌方向)</div>';
         for (const [sk, sl] of Object.entries(sectorLabels)) {
             const etf = etfMap[sk];
             // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
@@ -9399,26 +9405,26 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
             // V27.6 — 台股自身明顯下殺(<-3%)時,缺口再大也不是跟漲,而是台股獨有利空 → 不給多方暗示
             const twWeak = (twChg != null && twChg < -3 && gap != null && gap > 0);
             if (gap != null) {
+                // V28.5 — 改方向符號(箭頭方向與紅綠字一致,取代「點色與字色相反」的圓點)
                 if (twWeak)           gapBadge = '<span class="text-orange-300 font-bold text-[10px]">⚠️ 台股獨弱</span>';
-                else if (gap > 1.5)   gapBadge = '<span class="text-red-300 font-black text-[10px]">🟢 強烈跟漲</span>';
-                else if (gap > 0.8)   gapBadge = '<span class="text-yellow-300 font-bold text-[10px]">🟡 跟漲機會</span>';
-                else if (gap < -1.5)  gapBadge = '<span class="text-green-300 font-black text-[10px]">🔴 補跌風險</span>';
-                else if (gap < -0.8)  gapBadge = '<span class="text-orange-300 font-bold text-[10px]">🟠 偏弱</span>';
-                else                  gapBadge = '<span class="text-gray-400 text-[10px]">⚪ 同步</span>';
+                else if (gap > 1.5)   gapBadge = '<span class="text-red-300 font-black text-[10px]">⏫ 強烈跟漲</span>';
+                else if (gap > 0.8)   gapBadge = '<span class="text-red-300 font-bold text-[10px]">🔼 跟漲機會</span>';
+                else if (gap < -1.5)  gapBadge = '<span class="text-green-300 font-black text-[10px]">⏬ 補跌風險</span>';
+                else if (gap < -0.8)  gapBadge = '<span class="text-green-300 font-bold text-[10px]">🔽 偏弱</span>';
+                else                  gapBadge = '<span class="text-gray-400 text-[10px]">➡️ 同步</span>';
             }
             const usCls = usChg != null ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
             const twCls = twChg != null ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
             const gapCls = gap == null ? 'text-gray-500' : twWeak ? 'text-orange-300 font-bold' : (Math.abs(gap) > 0.8 ? (gap > 0 ? 'text-red-300 font-bold' : 'text-green-300 font-bold') : 'text-gray-400');
             html += `
-                <div class="grid grid-cols-[1.4fr_56px_56px_56px_72px] gap-1 items-center text-[10px] py-1 border-b border-[#21262d] last:border-0">
+                <div class="grid grid-cols-[1.4fr_60px_60px_92px] gap-1 items-center text-[10px] py-1 border-b border-[#21262d] last:border-0">
                     <span class="text-gray-200 font-bold truncate">${sl}</span>
                     <span class="${usCls} font-mono text-right">美 ${usChg != null ? (usChg >= 0 ? '+' : '') + usChg.toFixed(1) : '--'}</span>
                     <span class="${twCls} font-mono text-right">台 ${twChg != null ? (twChg >= 0 ? '+' : '') + twChg.toFixed(1) : '--'}</span>
-                    <span class="${gapCls} font-mono text-right">${gapStr}</span>
                     <span class="text-right">${gapBadge}</span>
                 </div>`;
         }
-        html += '<div class="text-[8px] text-gray-500 mt-1.5 leading-relaxed">💡 缺口 = 美股昨夜 − 台股今日。>1.5%:強烈跟漲機會 ・ <-1.5%:補跌風險 ・ ±0.8% 內:同步</div></div>';
+        html += '<div class="text-[8px] text-gray-500 mt-1.5 leading-relaxed">💡 美股昨夜領先、台股今日反應:⏫ 台股落後多=補漲機會 ・ ⏬ 補跌風險 ・ ➡️ 同步 ・ ⚠️ 台股獨弱(台股自身大跌,別跟)</div></div>';
         result.innerHTML = html;
     },
 
