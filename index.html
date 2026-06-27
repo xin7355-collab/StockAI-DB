@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V29.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V29.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.2</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.3</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1110,24 +1110,25 @@
                     <div id="klineAuditResult" class="hidden w-full bg-[#010409] border border-amber-500/40 rounded-lg p-4 text-sm text-gray-200 leading-loose min-h-[20rem]"></div>
                 </div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
-                    <div class="flex justify-between items-center px-1 py-1 border-b border-[#30363d] flex-wrap gap-1">
-                        <div class="flex bg-[#161b22] rounded border border-[#30363d] overflow-hidden" id="tfBtnGroup">
+                    <div class="flex items-center gap-2 px-1 py-1 border-b border-[#30363d] flex-nowrap overflow-x-auto scrollbar-hide">
+                        <div class="flex bg-[#161b22] rounded border border-[#30363d] overflow-hidden flex-shrink-0" id="tfBtnGroup">
                             <button onclick="app.changeTimeframe('D')" id="btnTF_D" class="px-3 py-1.5 text-sm font-bold bg-blue-600 text-white transition-colors">日</button>
                             <button onclick="app.changeTimeframe('W')" id="btnTF_W" class="px-3 py-1.5 text-sm font-bold text-gray-400 bg-transparent hover:text-white transition-colors">週</button>
                             <button onclick="app.changeTimeframe('M')" id="btnTF_M" class="px-3 py-1.5 text-sm font-bold text-gray-400 bg-transparent hover:text-white transition-colors">月</button>
                         </div>
-                        <div class="flex gap-2 text-sm font-bold font-mono items-center">
-                            <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="hidden"><span>布林</span></label>
+                        <div class="flex gap-2 text-sm font-bold font-mono items-center flex-shrink-0">
                             <label class="ma-toggle-lbl text-[#ffffff] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA5" checked onchange="app.renderChart()" class="hidden"><span>5</span></label>
                             <label class="ma-toggle-lbl text-[#facc15] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA10" checked onchange="app.renderChart()" class="hidden"><span>10</span></label>
                             <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA20" checked onchange="app.renderChart()" class="hidden"><span>20</span></label>
                             <label class="ma-toggle-lbl text-[#4ade80] cursor-pointer flex items-center" title="頭高 / 底高 5-bar fractal 標示(週/月 K 也適用)"><input type="checkbox" id="togglePeaks" checked onchange="app.togglePeaksHandler(this.checked)" class="hidden"><span>底高</span></label>
-                            <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="技術型態/形態學:在 K 線上標註 黑三兵/槌子/吞噬/M頭W底/頭肩 等(純 JS 偵測,點下方 chip 看白話)"><input type="checkbox" id="togglePatterns" checked onchange="app.togglePatternsHandler(this.checked)" class="hidden"><span>📐 型態</span></label>
+                            <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="技術型態/形態學:在 K 線上標註 黑三兵/槌子/吞噬/M頭W底/頭肩 等(純 JS 偵測,點標籤或下方 chip 看白話)"><input type="checkbox" id="togglePatterns" checked onchange="app.togglePatternsHandler(this.checked)" class="hidden"><span>型態</span></label>
+                            <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="hidden"><span>布林</span></label>
                         </div>
                     </div>
                     <div id="chartHud" class="px-2 py-1.5 bg-[#21262d] border-b border-[#30363d] min-h-[3rem] text-[13px] font-mono leading-relaxed flex flex-col gap-0.5 text-gray-100">點擊 K 棒顯示詳細數據...</div>
                     <div id="mainChartWrap" class="zoomable-zone w-full flex-grow relative bg-[#000000]">
                         <div id="mainChart" class="w-full h-full min-h-[350px]"></div>
+                        <button id="chartInspectExit" onclick="app._exitChartInspect()" class="hidden absolute top-1 right-1 z-20 w-7 h-7 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-black shadow-lg flex items-center justify-center" title="離開十字檢視,回到平移模式">✕</button>
                     </div>
                     <div id="patternList" class="flex items-center gap-1 px-1 py-1 overflow-x-auto scrollbar-hide border-t border-[#30363d]" style="display:none"></div>
                     <div class="flex justify-between items-center bg-[#161b22] border-t border-[#30363d] p-1 text-xs font-bold mt-auto">
@@ -2925,15 +2926,21 @@ const app = {
         this.telegramCloud._hookAutoSync();
 
         this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
-        // 點選 K 棒 → 顯示該日資料（非僅顯示最新）
+        // 點選 K 棒 → 顯示該日資料;點型態標籤 → 彈解說窗(V29.3)。包 try/catch 避免 throw 進 echarts 跨域堆疊被遮成「Script error.」
         this.chartInstance.on('click', params => {
-            if (params && typeof params.dataIndex === 'number') this.renderChartHud(params.dataIndex);
+            try {
+                if (params && params.componentType === 'markPoint' && params.data && params.data.patternType) { this._explainPattern(params.data.patternType); return; }
+                if (params && typeof params.dataIndex === 'number') this.renderChartHud(params.dataIndex);
+            } catch (_) {}
         });
         // 十字準星移動（軸觸發）→ 同步顯示該日
         this.chartInstance.on('updateAxisPointer', e => {
-            const xInfo = e?.axesInfo?.[0];
-            if (xInfo && typeof xInfo.value === 'number') this.renderChartHud(xInfo.value);
+            try {
+                const xInfo = e?.axesInfo?.[0];
+                if (xInfo && typeof xInfo.value === 'number') this.renderChartHud(xInfo.value);
+            } catch (_) {}
         });
+        this._wireChartLongPress();   // V29.3:長按 K 棒 → 十字檢視模式
         window.addEventListener('resize', () => this.chartInstance && this.chartInstance.resize());
         this._loadBrokerNames();
         this._loadAttentionStatus();   // 🚨 處置神器名單(背景拉,失敗不阻塞)
@@ -12258,7 +12265,7 @@ ${_newsLine}${globalContext}
             const bg = m.side === 'bull' ? 'rgba(248,113,113,0.92)' : m.side === 'bear' ? 'rgba(74,222,128,0.92)' : 'rgba(148,163,184,0.92)';
             const yv = m.anchor === 'high' ? bar.high : bar.low;
             return {
-                xAxis: m.idx, yAxis: yv, value: d.label, symbol: 'circle', symbolSize: 5, itemStyle: { color: bg },
+                xAxis: m.idx, yAxis: yv, value: d.label, patternType: m.type, symbol: 'circle', symbolSize: 5, itemStyle: { color: bg },
                 label: { show: true, formatter: d.label, position: m.anchor === 'high' ? 'top' : 'bottom', color: '#0d1117', fontSize: 9, fontWeight: 'bold', backgroundColor: bg, padding: [2, 4], borderRadius: 4 }
             };
         }).filter(Boolean);
@@ -12283,12 +12290,24 @@ ${_newsLine}${globalContext}
         el.innerHTML = `<span class="text-[9px] text-gray-500 flex-shrink-0 mr-0.5">📐 近期型態</span>${chips}<button onclick="app._explainPattern('__all')" class="flex-shrink-0 text-[10px] text-blue-300 underline ml-1">📖 教學</button>`;
     },
 
+    // V29.3:改用漂亮 jargonModal 彈窗(點 K 線上型態標籤 or 下方 chip 都走這);無 modal 才退回 alert
     _explainPattern(type) {
         const defs = this.PATTERN_DEFS;
-        if (type === '__all') { alert('📐 技術型態教學(純 JS 偵測,僅供參考非買賣建議)\n\n' + Object.values(defs).map(d => `【${d.label}】\n特徵:${d.feature}\n結論:${d.conclusion}`).join('\n\n')); return; }
-        const d = defs[type]; if (!d) return;
-        const sideTxt = d.side === 'bull' ? '🔴 偏多(看漲/築底)' : d.side === 'bear' ? '🟢 偏空(看跌/出貨)' : '⚪ 中性/變盤';
-        alert(`${d.label} ${sideTxt}\n\n📌 特徵:${d.feature}\n\n🎯 結論:${d.conclusion}\n\n⚠️ 純技術型態僅供參考,非買賣建議。`);
+        const titleEl = document.getElementById('jargonTitle'), descEl = document.getElementById('jargonDesc'), modal = document.getElementById('jargonModal');
+        if (!titleEl || !descEl || !modal) {
+            if (type === '__all') { alert('📐 技術型態教學\n\n' + Object.values(defs).map(d => `【${d.label}】\n特徵:${d.feature}\n結論:${d.conclusion}`).join('\n\n')); return; }
+            const dd = defs[type]; if (dd) alert(`${dd.label}\n\n特徵:${dd.feature}\n\n結論:${dd.conclusion}`); return;
+        }
+        if (type === '__all') {
+            titleEl.innerHTML = '📐 技術型態教學';
+            descEl.innerText = Object.values(defs).map(d => `【${d.label}】\n特徵:${d.feature}\n結論:${d.conclusion}`).join('\n\n') + '\n\n⚠️ 純技術型態僅供參考,非買賣建議。';
+        } else {
+            const d = defs[type]; if (!d) return;
+            const sideTxt = d.side === 'bull' ? '🔴 偏多(看漲/築底)' : d.side === 'bear' ? '🟢 偏空(看跌/出貨)' : '⚪ 中性/變盤';
+            titleEl.innerHTML = `📐 ${d.label}　${sideTxt}`;
+            descEl.innerText = `📌 特徵:${d.feature}\n\n🎯 結論:${d.conclusion}\n\n⚠️ 純技術型態僅供參考,非買賣建議。`;
+        }
+        modal.classList.remove('hidden'); modal.style.display = 'flex';
     },
 
     async changeTimeframe(tf) {
@@ -16080,17 +16099,61 @@ ${_newsLine}${globalContext}
     },
 
     renderChartHud(index) {
+      try {
         if (!this.activeData || !this.activeData[index]) return;
-        const d = this.activeData[index]; const ind = this.indicators;
+        const d = this.activeData[index]; const ind = this.indicators || {};
         let prevClose = index > 0 ? this.activeData[index - 1].close : d.open, diff = d.close - prevClose, pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
         let colorClass = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400'), sign = diff > 0 ? '▲' : (diff < 0 ? '▼' : '');
         let html = `<div class="flex items-center gap-2 flex-wrap"><span class="text-white font-bold tracking-wider">${d.date}</span><span class="text-white">收 <span class="font-bold ${colorClass}">${d.close.toFixed(2)}</span></span><span class="${colorClass}">${sign}${Math.abs(diff).toFixed(2)} (${pct.toFixed(2)}%)</span></div><div class="flex flex-wrap gap-x-2 gap-y-1 mt-0.5">`;
-        if (document.getElementById('toggleBB').checked && ind.upperBB[index]) html += `<span class="text-[#c084fc]">布林上軌 ${ind.upperBB[index].toFixed(2)}</span>`;
-        if (document.getElementById('toggleMA5').checked && ind.ma5[index]) html += `<span class="text-[#ffffff]">5MA ${ind.ma5[index].toFixed(2)}</span>`;
-        if (document.getElementById('toggleMA10').checked && ind.ma10[index]) html += `<span class="text-[#facc15]">10MA ${ind.ma10[index].toFixed(2)}</span>`;
-        if (document.getElementById('toggleMA20').checked && ind.ma20[index]) html += `<span class="text-[#c084fc]">20MA ${ind.ma20[index].toFixed(2)}</span>`;
+        // V29.3:補 開/高/低(對齊專業 App 浮動 OHLC 框)
+        if (d.open != null && d.high != null && d.low != null) html += `<span class="text-gray-400">開${d.open.toFixed(2)}</span><span class="text-[#f87171]">高${d.high.toFixed(2)}</span><span class="text-[#4ade80]">低${d.low.toFixed(2)}</span>`;
+        if (document.getElementById('toggleBB')?.checked && ind.upperBB && ind.upperBB[index]) html += `<span class="text-[#c084fc]">布林上軌 ${ind.upperBB[index].toFixed(2)}</span>`;
+        if (document.getElementById('toggleMA5')?.checked && ind.ma5 && ind.ma5[index]) html += `<span class="text-[#ffffff]">5MA ${ind.ma5[index].toFixed(2)}</span>`;
+        if (document.getElementById('toggleMA10')?.checked && ind.ma10 && ind.ma10[index]) html += `<span class="text-[#facc15]">10MA ${ind.ma10[index].toFixed(2)}</span>`;
+        if (document.getElementById('toggleMA20')?.checked && ind.ma20 && ind.ma20[index]) html += `<span class="text-[#c084fc]">20MA ${ind.ma20[index].toFixed(2)}</span>`;
         html += `</div>`;
-        document.getElementById('chartHud').innerHTML = html;
+        const hud = document.getElementById('chartHud'); if (hud) hud.innerHTML = html;
+      } catch (_) {}
+    },
+
+    // V29.3 — K 線「長按 → 十字檢視」(對齊專業 App:長按進場 → 滑動移準星 → ✕ 退出)
+    _wireChartLongPress() {
+        try {
+            const zr = this.chartInstance && this.chartInstance.getZr && this.chartInstance.getZr();
+            if (!zr) return;
+            let timer = null, sx = 0, sy = 0;
+            const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+            zr.on('mousedown', e => {
+                if (this.chartInspect) return;
+                sx = e.offsetX; sy = e.offsetY; clear();
+                timer = setTimeout(() => { this._enterChartInspect({ x: sx, y: sy }); }, 450);
+            });
+            zr.on('mousemove', e => { if (timer && (Math.abs(e.offsetX - sx) > 8 || Math.abs(e.offsetY - sy) > 8)) clear(); });
+            zr.on('mouseup', clear);
+            zr.on('globalout', clear);
+        } catch (_) {}
+    },
+    _enterChartInspect(px) {
+        try {
+            if (!this.chartInstance || !this.activeData || !this.activeData.length) return;
+            this.chartInspect = true;
+            document.getElementById('chartInspectExit')?.classList.remove('hidden');
+            this.renderChart();   // 重繪套用 moveOnMouseMove:false(滑動改移準星,不再平移)
+            let di = this.activeData.length - 1;
+            try { const v = this.chartInstance.convertFromPixel({ xAxisIndex: 0 }, [px.x, px.y]); if (v && typeof v[0] === 'number') di = Math.round(v[0]); } catch (_) {}
+            di = Math.max(0, Math.min(this.activeData.length - 1, di));
+            try { this.chartInstance.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: di }); } catch (_) {}
+            this.renderChartHud(di);
+            this.vibrate && this.vibrate(20);
+        } catch (_) {}
+    },
+    _exitChartInspect() {
+        try {
+            this.chartInspect = false;
+            document.getElementById('chartInspectExit')?.classList.add('hidden');
+            try { this.chartInstance.dispatchAction({ type: 'hideTip' }); } catch (_) {}
+            this.renderChart();
+        } catch (_) {}
     },
 
     renderChart() {
@@ -16131,7 +16194,7 @@ ${_newsLine}${globalContext}
             xAxis: [{ type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { color: '#c9d1d9', fontSize: 10, hideOverlap: true, interval: 'auto' } }],
             yAxis: [{ scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 10 } }, { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 10 } }],
             dataZoom: [
-                { type: 'inside', xAxisIndex: [0, 1], start: currentZoomStart, end: currentZoomEnd, zoomLock: false, preventDefaultMouseMove: false, moveOnMouseMove: true, moveOnMouseWheel: true, throttle: 50 },
+                { type: 'inside', xAxisIndex: [0, 1], start: currentZoomStart, end: currentZoomEnd, zoomLock: false, preventDefaultMouseMove: false, moveOnMouseMove: !this.chartInspect, moveOnMouseWheel: true, throttle: 50 },
                 { type: 'slider', xAxisIndex: [0, 1], start: currentZoomStart, end: currentZoomEnd, height: 18, bottom: 4, borderColor: '#30363d', backgroundColor: '#0d1117', fillerColor: 'rgba(96, 165, 250, 0.25)', handleStyle: { color: '#3b82f6', borderColor: '#1d4ed8' }, textStyle: { color: '#8b949e', fontSize: 9 }, brushSelect: false, throttle: 50 }
             ],
             series: [
