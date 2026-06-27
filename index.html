@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V30.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V30.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V30.0</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V30.1</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1427,6 +1427,7 @@
                 <div class="flex items-center gap-1.5 mb-1">
                     <span class="text-base">📊</span>
                     <span class="text-[12px] font-black text-purple-300 tracking-wide">9 板塊跨市場板塊輪動</span>
+                    <button onclick="app.showJargon('板塊輪動訊號'); event.stopPropagation();" class="text-[11px] text-gray-500 hover:text-blue-300 transition-colors leading-none" title="訊號說明">ⓘ</button>
                     <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
                 </div>
                 <div class="text-[10px] text-gray-400 mb-2">熱錢流向哪個產業一目了然 · <span class="text-red-400">🔺 紅=漲</span> / <span class="text-green-400">🔻 綠=跌</span>(台股慣例)</div>
@@ -2472,6 +2473,7 @@ const app = {
     confidenceMsgCache: "等待運算",
 
     jargonDict: {
+        '板塊輪動訊號': '美股昨夜先收、台股今天接著反應。看「美股昨收」與「台股今日」的差距(缺口)判斷:\n\n• 強烈跟漲:台股明顯落後美股漲幅,補漲動能最強(科技藍)。\n• 跟漲機會:台股小幅落後,有補漲空間(綠)。\n• 同步:兩市齊步,無明顯缺口(灰)。\n• 偏弱:台股反而領先美股,動能轉弱(黃)。\n• 補跌風險:台股領先美股過多,恐回頭補跌(紅)。\n• 台股獨弱:台股自己大跌(<-3%),屬台股自身利空,別跟美股做多(橙)。\n\n數字色:紅=漲、綠=跌(台股慣例)。',
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。就像火箭加速衝刺的階段，遇到務必抱緊處理！',
         '多頭排列': '短期、中期、長期均線由上到下依序排列，且每條都朝上。代表各個天期的投資人都賺錢，有極強的支撐力量。',
         '帶量突破': '股價盤整很久之後，突然出現一根量大且長的紅K棒衝破原本的壓力線。這代表主力發動攻擊了！',
@@ -2587,7 +2589,7 @@ const app = {
 
     showToast(msg, type = 'error') {
         const el = document.createElement('div');
-        el.className = `fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-lg shadow-xl font-bold text-xs max-w-xs text-center transition-opacity duration-500 ${type === 'error' ? 'bg-red-900 border border-red-500 text-red-200' : 'bg-gray-800 border border-gray-600 text-white'}`;
+        el.className = `fixed top-20 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-lg shadow-xl font-bold text-xs max-w-xs text-center transition-opacity duration-500 ${type === 'error' ? 'bg-red-900 border border-red-500 text-red-200' : 'bg-gray-800 border border-gray-600 text-white'}`;
         el.textContent = msg;
         document.body.appendChild(el);
         setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }, 4500);
@@ -9403,7 +9405,9 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
         try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
               if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
         const _shTw = this._sectorHeatCache?.sectors || {};
-        let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2"><div class="text-[10px] text-purple-300 font-bold mb-1.5">📊 9 板塊跨市場對照(美=昨夜收盤 vs 台=今日,符號=台股補漲/補跌方向)</div>';
+        let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2">';
+        // V30.1 — 四欄表頭(只出現一次,取代每列重複的「美」「台」前綴 → 數字垂直對齊)
+        html += '<div class="grid grid-cols-[1fr_50px_50px_82px] gap-1.5 items-center text-[9px] text-gray-500 font-bold pb-1 mb-1 border-b border-[#30363d]"><span>板塊</span><span class="text-right">美股昨收</span><span class="text-right">台股今日</span><span class="text-right">訊號</span></div>';
         for (const [sk, sl] of Object.entries(sectorLabels)) {
             const etf = etfMap[sk];
             // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
@@ -9412,30 +9416,32 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
             const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : null;
             const gap = (usChg != null && twChg != null) ? (usChg - twChg) : null;
             const gapStr = gap != null ? (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%' : '--';
-            let gapBadge = '<span class="text-gray-500 text-[9px]">⏳</span>';
-            // V27.6 — 台股自身明顯下殺(<-3%)時,缺口再大也不是跟漲,而是台股獨有利空 → 不給多方暗示
+            // V27.6 — 台股自身明顯下殺(<-3%)時,缺口再大也不是跟漲,而是台股獨有利空
             const twWeak = (twChg != null && twChg < -3 && gap != null && gap > 0);
-            if (gap != null) {
-                // V28.5 — 改方向符號(箭頭方向與紅綠字一致,取代「點色與字色相反」的圓點)
-                if (twWeak)           gapBadge = '<span class="text-orange-300 font-bold text-[10px]">⚠️ 台股獨弱</span>';
-                else if (gap > 1.5)   gapBadge = '<span class="text-red-300 font-black text-[10px]">⏫ 強烈跟漲</span>';
-                else if (gap > 0.8)   gapBadge = '<span class="text-red-300 font-bold text-[10px]">🔼 跟漲機會</span>';
-                else if (gap < -1.5)  gapBadge = '<span class="text-green-300 font-black text-[10px]">⏬ 補跌風險</span>';
-                else if (gap < -0.8)  gapBadge = '<span class="text-green-300 font-bold text-[10px]">🔽 偏弱</span>';
-                else                  gapBadge = '<span class="text-gray-400 text-[10px]">➡️ 同步</span>';
-            }
+            // V30.1 — Pill 膠囊訊號徽章(無 emoji,終端訊號色板;文字自帶語意,符合「寫字不靠色」)
+            const _pill = (t, c, pulse) => `<span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap ${c}${pulse ? ' animate-pulse' : ''}">${t}</span>`;
+            let gapBadge;
+            if (gap == null)      gapBadge = _pill('—', 'bg-white/5 text-gray-500 border border-[#30363d]');
+            else if (twWeak)      gapBadge = _pill('台股獨弱', 'bg-orange-950 text-orange-400 border border-orange-800/70');
+            else if (gap > 1.5)   gapBadge = _pill('強烈跟漲', 'bg-blue-900/60 text-blue-200 border border-blue-500/60', true);
+            else if (gap > 0.8)   gapBadge = _pill('跟漲機會', 'bg-green-950 text-green-400 border border-green-800/70');
+            else if (gap < -1.5)  gapBadge = _pill('補跌風險', 'bg-red-950 text-red-400 border border-red-800/70');
+            else if (gap < -0.8)  gapBadge = _pill('偏弱', 'bg-yellow-950/70 text-yellow-500 border border-yellow-800/50');
+            else                  gapBadge = _pill('同步', 'bg-white/5 text-gray-400 border border-[#30363d]');
             const usCls = usChg != null ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
             const twCls = twChg != null ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
             const gapCls = gap == null ? 'text-gray-500' : twWeak ? 'text-orange-300 font-bold' : (Math.abs(gap) > 0.8 ? (gap > 0 ? 'text-red-300 font-bold' : 'text-green-300 font-bold') : 'text-gray-400');
+            const _usTxt = usChg != null ? `${usChg >= 0 ? '+' : ''}${usChg.toFixed(1)}%` : '--';
+            const _twTxt = twChg != null ? `${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
             html += `
-                <div class="grid grid-cols-[1.4fr_60px_60px_92px] gap-1 items-center text-[10px] py-1 border-b border-[#21262d] last:border-0">
-                    <span class="text-gray-200 font-bold truncate">${sl}</span>
-                    <span class="${usCls} font-mono text-right">美 ${usChg != null ? (usChg >= 0 ? '+' : '') + usChg.toFixed(1) : '--'}</span>
-                    <span class="${twCls} font-mono text-right">台 ${twChg != null ? (twChg >= 0 ? '+' : '') + twChg.toFixed(1) : '--'}</span>
+                <div class="grid grid-cols-[1fr_50px_50px_82px] gap-1.5 items-center py-1.5 border-b border-[#21262d] last:border-0">
+                    <span class="text-gray-200 font-bold truncate text-[11px]">${sl}</span>
+                    <span class="${usCls} font-mono text-right text-[11px]">${_usTxt}</span>
+                    <span class="${twCls} font-mono text-right text-[11px]">${_twTxt}</span>
                     <span class="text-right">${gapBadge}</span>
                 </div>`;
         }
-        html += '<div class="text-[8px] text-gray-500 mt-1.5 leading-relaxed">💡 美股昨夜領先、台股今日反應:⏫ 台股落後多=補漲機會 ・ ⏬ 補跌風險 ・ ➡️ 同步 ・ ⚠️ 台股獨弱(台股自身大跌,別跟)</div></div>';
+        html += '</div>';   // V30.1 — 底部 💡 長圖例已移除,改標題 ⓘ popover(showJargon('板塊輪動訊號'))
         result.innerHTML = html;
     },
 
@@ -14572,10 +14578,25 @@ ${_newsLine}${globalContext}
         const srcEl = document.getElementById('sectorSource');
         if (srcEl) { srcEl.textContent = `(盤中 ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')})`; srcEl.classList.remove('opacity-60'); }
 
-        if (btn) { btn.disabled = false; btn.textContent = '🔄 盤中即時更新(Fugle)'; }
         if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
         const got = Object.keys(liveChg).length;
-        this.showToast(got ? `✅ 已更新 ${got} 個板塊即時漲跌` : '⚠️ Fugle 額度用盡或 token 失效,稍後再試', got ? 'info' : 'error');
+        // V30.1 — 成功改綁按鈕回饋(綠框 + ✓ 已更新 N 板塊,1.8s 還原),不再彈 toast 擋底部 TabBar;失敗才彈(toast 已移中上方)
+        if (btn) {
+            btn.disabled = false;
+            if (got) {
+                btn.textContent = `✓ 已更新 ${got} 板塊`;
+                btn.classList.add('border-green-500', 'text-green-300');
+                btn.classList.remove('border-purple-700/50', 'text-purple-200');
+                setTimeout(() => {
+                    btn.textContent = '🔄 盤中即時更新';
+                    btn.classList.add('border-purple-700/50', 'text-purple-200');
+                    btn.classList.remove('border-green-500', 'text-green-300');
+                }, 1800);
+            } else {
+                btn.textContent = '🔄 盤中即時更新';
+            }
+        }
+        if (!got) this.showToast('⚠️ Fugle 額度用盡或 token 失效,稍後再試', 'error');
     },
 
     // 🔄 還原上次「盤中即時更新」記憶,切 tab 回來時不會被 sectorHeat 蓋成「(實時)/(範例)」
