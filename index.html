@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V28.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V29.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
                     <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V28.5</span>
+                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V29.0</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1122,12 +1122,14 @@
                             <label class="ma-toggle-lbl text-[#facc15] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA10" checked onchange="app.renderChart()" class="hidden"><span>10</span></label>
                             <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA20" checked onchange="app.renderChart()" class="hidden"><span>20</span></label>
                             <label class="ma-toggle-lbl text-[#4ade80] cursor-pointer flex items-center" title="頭高 / 底高 5-bar fractal 標示(週/月 K 也適用)"><input type="checkbox" id="togglePeaks" checked onchange="app.togglePeaksHandler(this.checked)" class="hidden"><span>底高</span></label>
+                            <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="技術型態/形態學:在 K 線上標註 黑三兵/槌子/吞噬/M頭W底/頭肩 等(純 JS 偵測,點下方 chip 看白話)"><input type="checkbox" id="togglePatterns" checked onchange="app.togglePatternsHandler(this.checked)" class="hidden"><span>📐 型態</span></label>
                         </div>
                     </div>
                     <div id="chartHud" class="px-2 py-1.5 bg-[#21262d] border-b border-[#30363d] min-h-[3rem] text-[13px] font-mono leading-relaxed flex flex-col gap-0.5 text-gray-100">點擊 K 棒顯示詳細數據...</div>
                     <div id="mainChartWrap" class="zoomable-zone w-full flex-grow relative bg-[#000000]">
                         <div id="mainChart" class="w-full h-full min-h-[350px]"></div>
                     </div>
+                    <div id="patternList" class="flex items-center gap-1 px-1 py-1 overflow-x-auto scrollbar-hide border-t border-[#30363d]" style="display:none"></div>
                     <div class="flex justify-between items-center bg-[#161b22] border-t border-[#30363d] p-1 text-xs font-bold mt-auto">
                         <button onclick="app.setSubChart('VOL')" id="btnSubVOL" class="flex-1 py-2 text-blue-400 bg-[#0d1117] rounded border border-[#30363d] transition-colors">成交量</button>
                         <button onclick="app.setSubChart('KD')" id="btnSubKD" class="flex-1 py-2 text-gray-400 border border-transparent transition-colors">KD</button>
@@ -2898,6 +2900,8 @@ const app = {
         // V14.4:K 線「底高」開關 — 從 localStorage 復原 + 同步 checkbox 視覺狀態
         this.showPeaks = localStorage.getItem('showPeaks') !== '0';
         queueMicrotask(() => { const cb = document.getElementById('togglePeaks'); if (cb) cb.checked = this.showPeaks; });
+        this.showPatterns = localStorage.getItem('showPatterns') !== '0';   // V29.0 技術型態預設開
+        queueMicrotask(() => { const cb = document.getElementById('togglePatterns'); if (cb) cb.checked = this.showPatterns; });
         // Detect iOS PWA standalone mode (navigator.standalone is more reliable than CSS media query on some iOS versions)
         if (window.navigator.standalone === true) document.documentElement.classList.add('ios-standalone');
 
@@ -12095,6 +12099,172 @@ ${_newsLine}${globalContext}
         this.renderChart();
     },
 
+    // ═══ V29.0 技術型態 / 形態學引擎(純 JS 偵測,不靠 AI;標註在 K 線圖 markPoint)═══
+    PATTERN_DEFS: {
+        // K 棒型態(side: bull=偏多紅 / bear=偏空綠 / neutral=中性灰)
+        bigBlackHigh: { label: '高檔長黑', side: 'bear', explain: '高檔出現長黑K(大跌、幾乎無下影),通常是主力在高點倒貨 → 偏空,有持股留意停利、空手別追高。' },
+        blackThree:   { label: '黑三兵',   side: 'bear', explain: '連三根黑K且越收越低(三烏鴉),空方連續進攻 → 偏空,別接刀,等止跌再看。' },
+        redThree:     { label: '紅三兵',   side: 'bull', explain: '連三根紅K且越收越高,多方連續進攻、趨勢轉強 → 偏多,但漲多注意追高風險。' },
+        hammer:       { label: '槌子線',   side: 'bull', explain: '低檔長下影、小實體(止跌訊號),買盤在低點承接 → 偏多反轉,需隔日紅K確認才算數。' },
+        hangingMan:   { label: '吊人線',   side: 'bear', explain: '高檔長下影、小實體,漲多後出現賣壓 → 偏空警訊,需隔日黑K確認。' },
+        bullEngulf:   { label: '多頭吞噬', side: 'bull', explain: '今天大紅K完全吃掉昨天黑K,多方強勢反攻 → 偏多反轉訊號。' },
+        bearEngulf:   { label: '空頭吞噬', side: 'bear', explain: '今天大黑K完全吃掉昨天紅K,空方強勢反撲 → 偏空反轉訊號。' },
+        doji:         { label: '十字星',   side: 'neutral', explain: '開盤≈收盤(十字),多空僵持不決 → 變盤前兆,看隔日往哪邊走再決定。' },
+        // 價格型態(形態學)
+        doubleBottom: { label: 'W底',     side: 'bull', explain: '兩次測底沒破(W形),且突破中間頸線 → 底部成立、波段起漲訊號,偏多。' },
+        doubleTop:    { label: 'M頭',     side: 'bear', explain: '兩次攻頂沒過(M形),且跌破中間頸線 → 頭部成立、波段轉跌訊號,偏空。' },
+        hsBottom:     { label: '頭肩底',   side: 'bull', explain: '左肩-頭-右肩三次探底(頭最低),突破頸線 → 大型底部反轉,偏多。' },
+        hsTop:        { label: '頭肩頂',   side: 'bear', explain: '左肩-頭-右肩三次攻頂(頭最高),跌破頸線 → 大型頭部反轉,偏空。' },
+        triangle:     { label: '三角收斂', side: 'neutral', explain: '高點一直降、低點一直升(收斂),能量在壓縮 → 等突破方向出來再進場,別猜。' },
+    },
+
+    togglePatternsHandler(checked) {
+        this.showPatterns = !!checked;
+        localStorage.setItem('showPatterns', checked ? '1' : '0');
+        this.renderChart();
+    },
+
+    // 掃描整段 K 棒,回傳每根偵測到的型態(可多個)
+    _scanKbarPatterns(data) {
+        const out = [];
+        const n = data.length;
+        if (n < 3) return out;
+        const ma20arr = this.indicators?.ma20 || [];
+        for (let i = 0; i < n; i++) {
+            const b = data[i];
+            const o = b.open, c = b.close, h = b.high, l = b.low;
+            if (![o, c, h, l].every(v => typeof v === 'number')) continue;
+            const range = h - l; if (range <= 0) continue;
+            const body = Math.abs(c - o);
+            const upSh = h - Math.max(o, c);
+            const dnSh = Math.min(o, c) - l;
+            const isRed = c > o, isBlack = c < o;
+            const bodyPct = o > 0 ? Math.abs(o - c) / o : 0;
+            const m20 = (typeof ma20arr[i] === 'number') ? ma20arr[i] : null;
+            const high = m20 != null && c > m20 * 1.03;
+            const low  = m20 != null && c < m20 * 0.97;
+            // 高檔長黑
+            if (isBlack && bodyPct > 0.035 && dnSh / range < 0.25 && high) {
+                out.push({ idx: i, type: 'bigBlackHigh', side: 'bear', anchor: 'high' });
+            } else if (body / range < 0.1) {            // 十字星
+                out.push({ idx: i, type: 'doji', side: 'neutral', anchor: 'high' });
+            } else if (dnSh > body * 2 && upSh < body && body / range < 0.4) {  // 槌子/吊人
+                if (low)       out.push({ idx: i, type: 'hammer', side: 'bull', anchor: 'low' });
+                else if (high) out.push({ idx: i, type: 'hangingMan', side: 'bear', anchor: 'high' });
+            }
+            // 吞噬(需前一根)
+            if (i >= 1) {
+                const p = data[i - 1], pBody = Math.abs(p.close - p.open);
+                if (isRed && p.close < p.open && c >= p.open && o <= p.close && body > pBody) {
+                    out.push({ idx: i, type: 'bullEngulf', side: 'bull', anchor: 'low' });
+                } else if (isBlack && p.close > p.open && o >= p.close && c <= p.open && body > pBody) {
+                    out.push({ idx: i, type: 'bearEngulf', side: 'bear', anchor: 'high' });
+                }
+            }
+            // 三兵(需前兩根)
+            if (i >= 2) {
+                const a = data[i - 2], m = data[i - 1];
+                if (isRed && m.close > m.open && a.close > a.open && c > m.close && m.close > a.close) {
+                    out.push({ idx: i, type: 'redThree', side: 'bull', anchor: 'low' });
+                } else if (isBlack && m.close < m.open && a.close < a.open && c < m.close && m.close < a.close) {
+                    out.push({ idx: i, type: 'blackThree', side: 'bear', anchor: 'high' });
+                }
+            }
+        }
+        return out;
+    },
+
+    // 用 5-bar fractal 頭高/底高(this.peaks / this.troughs)偵測價格型態
+    _scanPricePatterns(data) {
+        const out = [];
+        const pk = this.peaks || [], tr = this.troughs || [];
+        const n = data.length; if (!n) return out;
+        const TOL = 0.03, lastC = data[n - 1].close;
+        // W底:最近兩底等高 + 中間有峰高於兩底 + 收盤突破該頸線
+        if (tr.length >= 2) {
+            const t1 = tr[tr.length - 2], t2 = tr[tr.length - 1];
+            if (t1.val > 0 && Math.abs(t1.val - t2.val) / t1.val < TOL) {
+                const mid = pk.filter(p => p.idx > t1.idx && p.idx < t2.idx).sort((a, b) => b.val - a.val)[0];
+                if (mid && mid.val > t2.val * (1 + TOL) && lastC > mid.val) out.push({ idx: t2.idx, type: 'doubleBottom', side: 'bull', anchor: 'low' });
+            }
+        }
+        // M頭:對稱
+        if (pk.length >= 2) {
+            const p1 = pk[pk.length - 2], p2 = pk[pk.length - 1];
+            if (p1.val > 0 && Math.abs(p1.val - p2.val) / p1.val < TOL) {
+                const mid = tr.filter(t => t.idx > p1.idx && t.idx < p2.idx).sort((a, b) => a.val - b.val)[0];
+                if (mid && mid.val < p2.val * (1 - TOL) && lastC < mid.val) out.push({ idx: p2.idx, type: 'doubleTop', side: 'bear', anchor: 'high' });
+            }
+        }
+        // 頭肩頂:最近三峰,頭最高,兩肩相近
+        if (pk.length >= 3) {
+            const [s1, hd, s2] = pk.slice(-3);
+            if (hd.val > s1.val && hd.val > s2.val && s1.val > 0 && Math.abs(s1.val - s2.val) / s1.val < TOL * 1.6) out.push({ idx: hd.idx, type: 'hsTop', side: 'bear', anchor: 'high' });
+        }
+        // 頭肩底:最近三底,頭最低
+        if (tr.length >= 3) {
+            const [s1, hd, s2] = tr.slice(-3);
+            if (hd.val < s1.val && hd.val < s2.val && s1.val > 0 && Math.abs(s1.val - s2.val) / s1.val < TOL * 1.6) out.push({ idx: hd.idx, type: 'hsBottom', side: 'bull', anchor: 'low' });
+        }
+        // 三角收斂:最近兩峰下降 + 最近兩底上升
+        if (pk.length >= 2 && tr.length >= 2) {
+            const p1 = pk[pk.length - 2], p2 = pk[pk.length - 1], t1 = tr[tr.length - 2], t2 = tr[tr.length - 1];
+            if (p2.val < p1.val * 0.995 && t2.val > t1.val * 1.005) out.push({ idx: p2.idx, type: 'triangle', side: 'neutral', anchor: 'high' });
+        }
+        return out;
+    },
+
+    // 合併兩類型態 → 每根去重(優先序)→ cap 最近 12 → 產 markPoint 藥丸 + 存 _lastPatterns
+    _buildPatternMarks(data) {
+        let marks = [];
+        try { marks = marks.concat(this._scanKbarPatterns(data) || []); } catch (_) {}
+        try { marks = marks.concat(this._scanPricePatterns(data) || []); } catch (_) {}
+        const prio = { doubleBottom: 9, doubleTop: 9, hsBottom: 9, hsTop: 9, triangle: 7, bigBlackHigh: 6, bullEngulf: 6, bearEngulf: 6, hammer: 5, hangingMan: 5, blackThree: 4, redThree: 4, doji: 2 };
+        const byIdx = {};
+        marks.forEach(m => { const ex = byIdx[m.idx]; if (!ex || (prio[m.type] || 0) > (prio[ex.type] || 0)) byIdx[m.idx] = m; });
+        let uniq = Object.values(byIdx).sort((a, b) => a.idx - b.idx);
+        if (uniq.length > 12) uniq = uniq.slice(-12);
+        this._lastPatterns = uniq;
+        const defs = this.PATTERN_DEFS;
+        return uniq.map(m => {
+            const d = defs[m.type]; const bar = data[m.idx];
+            if (!d || !bar) return null;
+            const bg = m.side === 'bull' ? 'rgba(248,113,113,0.92)' : m.side === 'bear' ? 'rgba(74,222,128,0.92)' : 'rgba(148,163,184,0.92)';
+            const yv = m.anchor === 'high' ? bar.high : bar.low;
+            return {
+                xAxis: m.idx, yAxis: yv, value: d.label, symbol: 'circle', symbolSize: 5, itemStyle: { color: bg },
+                label: { show: true, formatter: d.label, position: m.anchor === 'high' ? 'top' : 'bottom', color: '#0d1117', fontSize: 9, fontWeight: 'bold', backgroundColor: bg, padding: [2, 4], borderRadius: 4 }
+            };
+        }).filter(Boolean);
+    },
+
+    // K 線圖下方「近期型態」chips(點 chip 看白話)
+    _renderPatternList() {
+        const el = document.getElementById('patternList');
+        if (!el) return;
+        const pats = this._lastPatterns || [];
+        if (this.showPatterns === false || !pats.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
+        el.style.display = '';
+        const defs = this.PATTERN_DEFS, data = this.activeData || [];
+        const chips = [...pats].reverse().slice(0, 8).map(m => {
+            const d = defs[m.type]; if (!d) return '';
+            const dt = data[m.idx]?.date || ''; const mmdd = dt ? String(dt).slice(5) : '';
+            const cls = m.side === 'bull' ? 'text-red-300 border-red-700/60 bg-red-900/20'
+                      : m.side === 'bear' ? 'text-green-300 border-green-700/60 bg-green-900/20'
+                      : 'text-gray-300 border-[#30363d] bg-[#21262d]';
+            return `<button onclick="app._explainPattern('${m.type}')" class="flex-shrink-0 text-[10px] font-bold border rounded px-1.5 py-0.5 ${cls}">${d.label} ${mmdd}</button>`;
+        }).join('');
+        el.innerHTML = `<span class="text-[9px] text-gray-500 flex-shrink-0 mr-0.5">📐 近期型態</span>${chips}<button onclick="app._explainPattern('__all')" class="flex-shrink-0 text-[10px] text-blue-300 underline ml-1">📖 教學</button>`;
+    },
+
+    _explainPattern(type) {
+        const defs = this.PATTERN_DEFS;
+        if (type === '__all') { alert('📐 技術型態教學(純 JS 偵測,僅供參考非買賣建議)\n\n' + Object.values(defs).map(d => `${d.label}:${d.explain}`).join('\n\n')); return; }
+        const d = defs[type]; if (!d) return;
+        const sideTxt = d.side === 'bull' ? '🔴 偏多' : d.side === 'bear' ? '🟢 偏空' : '⚪ 中性/變盤';
+        alert(`${d.label}(${sideTxt})\n\n${d.explain}\n\n⚠️ 純技術型態僅供參考,非買賣建議。`);
+    },
+
     async changeTimeframe(tf) {
         this.currentTF = tf;
         ['D', 'W', 'M'].forEach(t => { document.getElementById(`btnTF_${t}`).className = t === tf ? "px-3 py-1.5 text-sm font-bold bg-blue-600 text-white transition-colors" : "px-3 py-1.5 text-sm font-bold text-gray-400 bg-transparent hover:text-white transition-colors"; });
@@ -15908,6 +16078,11 @@ ${_newsLine}${globalContext}
             }
         }
 
+        // V29.0 — 技術型態/形態學:標註偵測到的 K 棒/價格型態(純 JS,與頭高/底高共用 markPointData)
+        if (this.showPatterns !== false) {
+            try { markPointData = markPointData.concat(this._buildPatternMarks(data) || []); } catch (e) { console.warn('[型態]', e); this._lastPatterns = []; }
+        } else { this._lastPatterns = []; }
+
         const option = {
             animation: false, backgroundColor: 'transparent', tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', axisPointer: { type: 'line', snap: true }, showContent: false },
             axisPointer: { link: [{ xAxisIndex: 'all' }] },
@@ -15952,6 +16127,7 @@ ${_newsLine}${globalContext}
         }
         
         this.chartInstance.setOption(option, { replaceMerge: ['series'] });
+        try { this._renderPatternList(); } catch (_) {}
     },
 
     setSubChart(type) {
