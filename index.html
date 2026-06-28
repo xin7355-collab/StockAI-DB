@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4319,9 +4319,16 @@ ${list}
             </div>`;
         }).join('');
 
+        // V33.3 — ① 主動 vs 被動(0050)勝負標 ② 近120漲多但近20翻黑「短線轉弱」防追高標
+        const bench0050 = (d.benchmarks || []).find(b => b.symbol === '0050')?.perf?.ret_120d ?? null;
         const perfCardHtml = d.etfs.map((e, i) => {
             const m = e.perf || {};
             const shortHist = (m.bars || 0) < 120;
+            const _beat = (m.ret_120d != null && bench0050 != null) ? (m.ret_120d > bench0050) : null;
+            const beatChip = _beat === true  ? '<span class="text-[8px] px-1 py-0.5 rounded bg-red-900/30 text-red-300 border border-red-800/40 font-bold">🔥 贏0050</span>'
+                           : _beat === false ? '<span class="text-[8px] px-1 py-0.5 rounded bg-white/5 text-gray-500 border border-[#30363d]">輸0050</span>' : '';
+            const weakChip = (m.ret_120d != null && m.ret_120d > 0 && m.ret_20d != null && m.ret_20d < 0)
+                           ? '<span class="text-[8px] px-1 py-0.5 rounded bg-green-900/30 text-green-300 border border-green-800/40 font-bold">⚠️ 短線轉弱</span>' : '';
             // V28.4 — 大數字對齊「標籤 + 後端排序(_rank_value 用 ret_120d)」:≥120 bars 顯近120日,<120 顯上市以來
             const headRet = shortHist ? m.ret_incep : (m.ret_120d != null ? m.ret_120d : m.ret_incep);
             return `
@@ -4332,6 +4339,7 @@ ${list}
                             <div class="min-w-0">
                                 <div class="font-bold text-gray-100 text-sm truncate">${e.name || e.symbol}${e.changed_today ? ' <span class="text-[9px] text-amber-400">●今日換股</span>' : ''}</div>
                                 <div class="text-[10px] text-gray-500">${e.symbol} · ${shortHist ? '上市以來' : '近120日'}</div>
+                                ${(beatChip || weakChip) ? `<div class="flex gap-1 mt-0.5">${beatChip}${weakChip}</div>` : ''}
                             </div>
                         </div>
                         <div class="text-right flex-shrink-0">
@@ -4358,6 +4366,7 @@ ${list}
                 <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
                     更新:${d.updated || '—'}。${d.note || ''}<br>
                     💡 加減碼 = 所有主動 ETF 對該股持股量變動加總(估算張數)。<br>
+                    🔥 贏0050 = 近120日打贏大盤被動基準 ・ ⚠️ 短線轉弱 = 長期漲多但近20日翻黑,慎防追高。<br>
                     ⚠️ 主動 ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
                 </div>
             </div>`;
