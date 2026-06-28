@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -511,6 +511,14 @@
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
                         </label>
                     </div>
+                    <!-- 🚨 V32.8 大盤風險提醒門檻:風險指數 ≥ 此分數時推播(沿用上方推播開關+通知權限) -->
+                    <div class="flex items-center justify-between pt-2">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <label class="text-xs font-bold text-orange-400">🚨 大盤風險提醒門檻</label>
+                            <p class="text-[10px] text-gray-500">風險指數 ≥ 此分數時推播提醒（需開上方「盤中即時警報」）。建議 60；數字越小越敏感、越常提醒</p>
+                        </div>
+                        <input type="number" id="set_riskAlertThreshold" min="30" max="95" step="5" onchange="app.saveSettings()" class="w-16 bg-[#010409] text-orange-300 p-1.5 rounded border border-[#30363d] outline-none font-mono text-center text-sm font-black focus:border-orange-500 transition-colors flex-shrink-0">
+                    </div>
                     <div class="flex items-center justify-between pt-2">
                         <div>
                             <label class="text-xs font-bold text-purple-400">🔔 手機推播告警 (iOS 26+)</label>
@@ -817,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -2478,7 +2486,7 @@ const masterWorkerCode = `
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, riskAlertThreshold: 60, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
     MAX_FAV_PER_GROUP: 50,
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
@@ -3708,15 +3716,20 @@ ${list}
         if (!banner) return;
         const score = this._calcRiskScore() ?? 0;
         // V32.3 — 大盤風險主動推播(每日每級一次;沿用「自選股到價推播」開關+通知權限,沒開不吵)
+        // V32.8 — 門檻改使用者自訂(set_riskAlertThreshold,預設 60);跨過自訂門檻就推
         try {
-            if (score >= 60 && this.settings?.watchlistAlert && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                const lvl = score >= 80 ? 'panic' : 'high';
+            const thr = this.settings?.riskAlertThreshold ?? 60;
+            if (score >= thr && this.settings?.watchlistAlert && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                const lvl = score >= 80 ? 'panic' : (score >= 60 ? 'high' : 'warn');
                 const dk = `mktrisk_${lvl}_${this.getTodayStr().replace(/\//g, '-')}`;
                 if (!this._alertCache) this._alertCache = {};
                 if (!this._alertCache[dk]) {
                     this._alertCache[dk] = Date.now();
-                    this._fireAlert(score >= 80 ? '🚨 大盤極度恐慌' : '🔴 大盤高度風險',
-                        `台股風險指數 ${score}/100,${score >= 80 ? '黑天鵝風險極高,嚴控倉位、別接刀' : '市場壓力明顯,謹慎操作、收緊停利'}`, '');
+                    const title = score >= 80 ? '🚨 大盤極度恐慌' : (score >= 60 ? '🔴 大盤高度風險' : '🟠 大盤警戒');
+                    const body = score >= 80 ? '黑天鵝風險極高,嚴控倉位、別接刀'
+                               : score >= 60 ? '市場壓力明顯,謹慎操作、收緊停利'
+                               : '風險升溫,留意減碼、別追高';
+                    this._fireAlert(title, `台股風險指數 ${score}/100（你的門檻 ${thr}）,${body}`, '');
                 }
             }
         } catch (_) {}
@@ -4507,6 +4520,8 @@ ${list}
         document.getElementById('set_finmindKey3').value = this.settings.finmindKey3 || '';
         document.getElementById('set_finmindKey4').value = this.settings.finmindKey4 || '';
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
+        const ratEl = document.getElementById('set_riskAlertThreshold');
+        if (ratEl) ratEl.value = this.settings.riskAlertThreshold ?? 60;
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
         const wuEl = document.getElementById('set_workerUrl');
         if (wuEl) wuEl.value = this.settings.workerUrl || '';
@@ -4620,6 +4635,8 @@ ${list}
         this.settings.finmindKey3 = document.getElementById('set_finmindKey3').value.trim();
         this.settings.finmindKey4 = document.getElementById('set_finmindKey4').value.trim();
         this.settings.massiveKey = document.getElementById('set_massiveKey').value.trim();
+        const ratEl = document.getElementById('set_riskAlertThreshold');
+        if (ratEl) { const v = parseInt(ratEl.value, 10); this.settings.riskAlertThreshold = (Number.isFinite(v) ? Math.max(30, Math.min(95, v)) : 60); }
         const autoRunEl = document.getElementById('set_autoRunChiefAI');
         if (autoRunEl) this.settings.autoRunChiefAI = !!autoRunEl.checked;
         localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
@@ -19320,6 +19337,35 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             if      (goldChg > 2.0) score += 10;
             else if (goldChg > 1.0) score += 6;
             else if (goldChg > 0.5) score += 3;
+        }
+
+        // ───────── V32.8 台股專屬領先因子(原本只看全球宏觀,補上半導體 + 地緣 + 位階)─────────
+        // 🇹🇼 台積電 ADR 夜盤:佔台股權重 ~35%,隔夜最直接的領先指標(跌 → 拉積盤拖累大盤) 0-8
+        const tsmChg = m.tsm?.chg_pct ?? null;
+        if (tsmChg !== null) {
+            if      (tsmChg < -3) score += 8;
+            else if (tsmChg < -2) score += 5;
+            else if (tsmChg < -1) score += 2;
+        }
+        // 🔬 SOX 費城半導體夜盤:台股=半導體權值股,費半重挫 → 台積電/聯發科隔日壓力 0-6
+        const soxChg = m.sox?.chg_pct ?? null;
+        if (soxChg !== null) {
+            if      (soxChg < -3) score += 6;
+            else if (soxChg < -2) score += 4;
+            else if (soxChg < -1) score += 2;
+        }
+        // 🛢️ 油價(Brent)漲幅:戰爭/地緣衝突最敏感 → 通膨 + 風險趨避(你的伊朗情境) 0-6
+        const oilChg = m.ukoil?.chg_pct ?? null;
+        if (oilChg !== null) {
+            if      (oilChg > 6)   score += 6;
+            else if (oilChg > 3)   score += 4;
+            else if (oilChg > 1.5) score += 2;
+        }
+        // 📊 大盤高檔位階(加權指數 60 日百分位):高檔本身 = 回檔風險 0-5
+        const twiiPos = this._macroRiskCache?.twii_pos ?? null;
+        if (typeof twiiPos === 'number') {
+            if      (twiiPos >= 90) score += 5;
+            else if (twiiPos >= 80) score += 3;
         }
 
         // Global news sentiment: bearish ratio adds up to 10 points
