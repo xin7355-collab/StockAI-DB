@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V34.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1075,6 +1075,8 @@
 
                 <!-- 🚦 ETF 跟車狀態(V18.6 — 個股被哪些 ETF 換入/加碼/換出 + 進場價 vs 今價 ±%)-->
                 <div id="etfFollowCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
+                <!-- 🧩 V34.0 ETF 成分股比重(僅 currentSymbol 是 ETF 時顯) -->
+                <div id="etfHoldingsCard" class="hidden bg-[#161b22] border border-blue-700/40 rounded-lg p-3 shadow-lg"></div>
 
                 <!-- 【指揮中樞】週期切換器 + AI 狙擊 -->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
@@ -3825,10 +3827,10 @@ ${list}
     },
     _toggleBenchMgr() { const p = document.getElementById('benchMgrPanel'); if (p) p.classList.toggle('hidden'); },
 
-    // 🗂️ V33.9 — ETF 頁子頁籤切換(順風車 / 績效表),切換前存當前捲動位置
+    // 🗂️ V34.0 — ETF 頁子頁籤切換(順風車 / 績效表),記住上次看的子頁(localStorage)
     _setEtfSubTab(t) {
-        try { const sm = document.querySelector('.scrollable-main'); if (sm) { this._etfScroll = this._etfScroll || {}; this._etfScroll[this._etfSubTab || 'follow'] = sm.scrollTop; } } catch (_) {}
         this._etfSubTab = (t === 'perf') ? 'perf' : 'follow';
+        try { localStorage.setItem('proTerm_etfSubTab', this._etfSubTab); } catch (_) {}
         this.vibrate?.(20);
         this.renderEtfTab();
     },
@@ -3967,6 +3969,44 @@ ${list}
         if (pct <= 5)       return { lamp: '🟢', text: '還沒漲(可跟)', pct, cls: 'text-green-400' };
         if (pct <= 15)      return { lamp: '🟡', text: '漲一段(注意)', pct, cls: 'text-yellow-400' };
         return                 { lamp: '🔴', text: '已漲過(別追)', pct, cls: 'text-red-400' };
+    },
+
+    // 🧩 V34.0 — ETF 偵測(台股 ETF 代號皆 00 開頭) + 成分股比重卡(個股頁差異化:ETF 不看 PE/EPS,看持股)
+    _isETF(sym) { return /^00\d/.test(String(sym || '')); },
+
+    async renderEtfHoldingsCard(sym) {
+        const card = document.getElementById('etfHoldingsCard');
+        if (!card) return;
+        if (!sym || !this._isETF(sym)) { card.classList.add('hidden'); return; }
+        if (!this._etfCache) { try { await this._loadEtfTracking(); } catch (_) {} }
+        const etf = this._etfCache?.etfs?.find(e => String(e.symbol) === String(sym));
+        const holdings = (etf?.holdings || []).filter(h => h.sym && h.weight != null).sort((a, b) => (b.weight || 0) - (a.weight || 0));
+        card.classList.remove('hidden');
+        if (!holdings.length) {
+            card.innerHTML = `<div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-blue-700/40"><h4 class="text-blue-300 font-bold text-sm">🧩 ETF 成分股比重</h4></div><div class="text-[11px] text-gray-500 leading-relaxed">此 ETF 暫無成分股權重資料（目前僅約 20 檔<b class="text-gray-400">主動式 ETF</b>有抓持股明細；0050/0056 等被動 ETF 成分股可至投信官網或 MoneyDJ 查）。</div>`;
+            return;
+        }
+        const top = holdings.slice(0, 15);
+        const maxW = Math.max(...top.map(h => h.weight || 0), 1);
+        const totalW = top.reduce((a, h) => a + (h.weight || 0), 0);
+        const rowsHtml = top.map((h, i) => {
+            const w = h.weight || 0, bar = Math.round(w / maxW * 100);
+            return `<div onclick="app.analyze('${h.sym}'); app.switchAppTab('diag');" class="grid grid-cols-[20px_1fr_46px] gap-2 items-center py-1 border-b border-[#21262d] cursor-pointer hover:bg-[#21262d]">
+                <span class="text-gray-500 font-mono text-[10px]">${i + 1}</span>
+                <div class="min-w-0">
+                    <div class="text-[11px] text-gray-200 truncate"><span class="font-mono text-gray-400 mr-1">${h.sym}</span>${h.name || ''}</div>
+                    <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full bg-blue-500" style="width:${bar}%"></div></div>
+                </div>
+                <span class="text-[11px] font-mono font-bold text-gray-200 text-right">${w.toFixed(1)}%</span>
+            </div>`;
+        }).join('');
+        card.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-blue-700/40">
+                <h4 class="text-blue-300 font-bold text-sm">🧩 ETF 成分股比重 <span class="text-[9px] text-gray-500 font-normal">前 ${top.length} 大</span></h4>
+                <span class="text-[10px] text-gray-500 font-mono">前${top.length}佔 ${totalW.toFixed(1)}%</span>
+            </div>
+            ${rowsHtml}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 點成分股可跳該股診斷 ・ 權重來源:投信/TWSE 申購買回清單(每日盤後),實際以投信官網為準。</div>`;
     },
 
     // V18.6 — 個股頁籌碼 tab 的「ETF 跟車狀態」卡片(進場價追蹤近似版,零採礦)
@@ -4447,7 +4487,8 @@ ${list}
                 </div>`;
         }).join('');
 
-        const _sub = this._etfSubTab || 'follow';
+        const _sub = this._etfSubTab || (() => { try { return localStorage.getItem('proTerm_etfSubTab'); } catch (_) { return null; } })() || 'follow';
+        this._etfSubTab = _sub;
         const _segBtn = (k, label) => `<button onclick="app._setEtfSubTab('${k}')" class="flex-1 py-2 text-xs font-black rounded-md transition-colors ${_sub === k ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-transparent'}">${label}</button>`;
         box.innerHTML = `
             <div class="flex flex-col gap-2.5">
@@ -4494,16 +4535,11 @@ ${list}
                     </div>
                 </div>
             </div>`;
-        // V33.9 — 還原上次該子頁的捲動位置
-        requestAnimationFrame(() => { try { const sm = document.querySelector('.scrollable-main'); if (sm) sm.scrollTop = (this._etfScroll && this._etfScroll[this._etfSubTab || 'follow']) || 0; } catch (_) {} });
+
     },
 
     switchAppTab(tabId, isGoBack = false) {
         try {   // V24.5 — 整段包 try/catch 防中斷(原本某行拋錯就無法切換)
-        // V33.9 — 離開 ETF 頁時存捲動位置(回來自動還原到上次看的地方)
-        if (this.navStack?.[this.navStack.length - 1] === 'etf' && tabId !== 'etf') {
-            try { const _sm = document.querySelector('.scrollable-main'); if (_sm) { this._etfScroll = this._etfScroll || {}; this._etfScroll[this._etfSubTab || 'follow'] = _sm.scrollTop; } } catch (_) {}
-        }
         if(tabId !== 'diag') {
             const _settingsModal = document.getElementById('settingsModal');
             if (_settingsModal && !_settingsModal.classList.contains('hidden')) {
@@ -4658,6 +4694,7 @@ ${list}
             // renderChipGlobal 由 loadBrokerChips/fetchChipTimeline 非同步完成後呼叫，不在此同步觸發
             // V18.6 — ETF 跟車狀態卡(個股被哪些 ETF 動 + 進場價 vs 今價 ±%)
             this.renderEtfFollowCard(this.currentSymbolId);
+            this.renderEtfHoldingsCard?.(this.currentSymbolId);   // V34.0 ETF 成分股
             // V18.8 — 朱家泓策略狀態卡(5MA/20MA/-5% 距離 + 燈號)
             this.renderChuStrategyCard(this.currentSymbolId);
         }
@@ -11489,6 +11526,14 @@ ${peerLine}${newsCtx}
         // V18.5 — 同股掃描進行中時跳過,避免 analyze() 自動觸發 + 使用者切情報 tab 對同股雙重打 API
         if (this._xrayInFlightSym === sym) return;
         this._xrayInFlightSym = sym;
+        // 🧩 V34.0 — ETF 不適用個股本益比/EPS/營收 → 顯說明、跳過抓財報(改看成分股卡)
+        if (this._isETF && this._isETF(sym)) {
+            ['xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout','xrayEpsYoY','xrayEpsQoQ','xrayPb','xrayPeg'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+            const box = document.getElementById('xrayAIBox'), res = document.getElementById('xrayAIResult');
+            if (box && res) { box.classList.remove('hidden'); res.innerHTML = '🧩 <b class="text-blue-300">這是 ETF</b>,不適用個股本益比 / EPS / 營收 / 毛利率。<br>ETF 看的是<b class="text-gray-200">成分股比重、折溢價、配息、追蹤指數</b> — 請看籌碼分頁的<b class="text-blue-300">「🧩 ETF 成分股比重」</b>與<b class="text-amber-300">「🚦 ETF 跟車 / 投信動能」</b>卡。'; }
+            this._xrayInFlightSym = null;
+            return;
+        }
         // 🔬 按鈕已移除(改為自動載入),此處 btn 可能為 null,全程 graceful
         const btn = document.getElementById('fundamentalXrayBtn');
         if (btn) { btn.textContent = '掃描中...'; btn.disabled = true; }
