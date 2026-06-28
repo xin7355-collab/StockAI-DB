@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -18745,76 +18745,228 @@ ${_newsLine}${globalContext}
             }
         } catch(_) {}
 
-        const prompt = `你是「台股技術流宗師」，精通朱家泓的【技術位階】與郭榮哲的【折數過濾】。
-請對下方已算好的技術數據進行審計與戰術指引。
+        // ── V32.9 補算:扣抵價 / MA20 斜率 / 量能 / 週線 / 發動棒防守 / 位階 / JS 評分（全 JS,守防幻覺鐵律）──
+        const ded20 = (n > 20) ? data[n - 20].close : null;   // 明日 MA20 扣抵價（= 月線保衛價）
+        const distDed20 = (ded20 != null && ded20 > 0) ? ((pC - ded20) / ded20 * 100) : null;
+        const slope20 = (ded20 == null) ? '資料不足'
+                      : (pC > ded20 * 1.005) ? '維持上揚'
+                      : (pC < ded20 * 0.995) ? '面臨轉折下彎' : '打底翻揚';
+        // 5 日均量 + 今日量比
+        const _vols5 = data.slice(-6, -1).map(d => d.volume).filter(v => v > 0);
+        const volMa5 = _vols5.length ? Math.round(_vols5.reduce((a, b) => a + b, 0) / _vols5.length) : null;
+        const volRatio = (volMa5 && volMa5 > 0) ? +(pV / volMa5).toFixed(2) : null;
+        // 週線趨勢（週 K MA5/MA20 排列）+ 是否站上週 20MA
+        let weeklyTrend = '盤整待變', aboveW20 = null;
+        try {
+            const wk = this.aggregateData(data, 'W');
+            const wcl = (wk || []).map(c => +c.close).filter(v => v > 0);
+            if (wcl.length >= 21) {
+                const wma5 = wcl.slice(-5).reduce((a, b) => a + b, 0) / 5;
+                const wma20 = wcl.slice(-20).reduce((a, b) => a + b, 0) / 20;
+                const wc = wcl[wcl.length - 1];
+                aboveW20 = wc > wma20;
+                weeklyTrend = (wc > wma5 && wma5 > wma20) ? '多頭保護'
+                            : (wc < wma5 && wma5 < wma20) ? '空頭壓制' : '盤整待變';
+            }
+        } catch (_) {}
+        // 強勢發動棒（近 20 日漲幅 ≥5% 實體長紅）→ 1/2 價 + 最低點 = 結構防守
+        let launchBar = null;
+        for (let i = last; i >= Math.max(1, n - 20); i--) {
+            const d = data[i], dp = data[i - 1];
+            const chg = dp.close > 0 ? (d.close - dp.close) / dp.close * 100 : 0;
+            if (d.close > d.open && chg >= 5) { launchBar = { date: d.date, half: +((d.open + d.close) / 2).toFixed(2), low: +d.low.toFixed(2) }; break; }
+        }
+        // 位階（JS 判，避免 AI 算乖離）
+        const biasMa20 = (ma20 && ma20 > 0) ? ((pC - ma20) / ma20 * 100) : 0;
+        let posStage;
+        if (isFourBull && biasMa20 > 18) posStage = '高檔背離';
+        else if (isFourBull) posStage = '主升飆升';
+        else if (isFourBear || (ma60 && pC < ma60)) posStage = '初跌轉弱';
+        else posStage = '底部起漲';
+        // JS 系統精算 overall_score 0-100（趨勢35 + 均線25 + 訊號20 + 折數位階20）
+        let jsScore = 0;
+        if (trendJudge.includes('多頭')) jsScore += 35; else if (trendJudge.includes('轉折')) jsScore += 15;
+        if (isFourBull) jsScore += 25; else if (!isFourBear) jsScore += 10;
+        jsScore += Math.round(sigCount / 3 * 20);
+        const _fr = parseFloat(foldPct);
+        if (!isNaN(_fr)) { if (_fr >= 9.5) jsScore += 5; else if (_fr >= 8.5) jsScore += 20; else if (_fr >= 7.5) jsScore += 14; else jsScore += 4; }
+        jsScore = Math.max(0, Math.min(100, jsScore));
+        // 部位（從成本輸入框讀，與獵鷹儀表同源）
+        const _costStr = document.getElementById('costInput')?.value?.trim();
+        const posCost = (_costStr && !isNaN(parseFloat(_costStr))) ? parseFloat(_costStr) : null;
+        const posPnl = (posCost && posCost > 0) ? +(((pC - posCost) / posCost) * 100).toFixed(2) : null;
 
-禁止重複念稿數字，嚴禁使用艱澀專有名詞。必須用「國中生與股市新手都能秒懂的大白話」來解釋。
+        const prompt = `# Role
+你是精通台灣股市「K線之神朱家泓」技術體系的 Senior Technical Quantitative Analyst，擅長以「趨勢、均線、K線、成交量」四要素，做極度理性、機械化、非小說式的盤後個股線型結構診斷。
 
-【已預算技術數據 — ${name}（${sym}）】
-- 最新收盤價：${pC}
-- 系統 K 線型態自動判定：${klineStatus}
-- MA5: ${ma5}
-- MA20(月線): ${ma20}
-- 趨勢結論：${trendJudge}
-- 當前折數：${foldPct}
-- 綜合判定：${sigLabel}
-- 🅆 W 底偵測：${wBottom.message}${wBottom.detected ? `（首底 ${wBottom.leg1Date}、二底 ${wBottom.leg2Date}、頸線 ${wBottom.neckline} 元${wBottom.secondLegBuying ? '、現價已貼近二底+止跌訊號' : ''}）` : ''}
+# Constraints
+1. 嚴禁口語投資客白話（如「各位投資朋友」「大黑K空襲太慘」）。高度濃縮，用數據結論 + 技術狀態 + 短語行動點。
+2. 嚴格「日週對照」：週線為保護傘（定波段大方向），日線為精準狙擊點。
+3. 🛑 下方【系統精算數據】的所有數字皆已由程式算好，你「禁止重算、禁止竄改任何數字」，只負責：判定 enum 分類、挑選符合的訊號、寫精煉文字。資料不足或位階不符 → 判「中性觀察」，不准盲目摸底凹單。
 
-請嚴格按照以下四個段落輸出，每段開頭保留【】標題，語氣犀利接地氣：
+# 系統精算數據（${name} ${sym}，已算好，直接引用）
+- 現價/漲跌：收盤 ${pC}（今開${pO} 高${pH} 低${pL}）
+- 系統型態判定：${klineStatus}
+- 趨勢結論（頭頭高底底高）：${trendJudge}
+- 均線排列：MA5 ${ma5} / MA10 ${ma10} / MA20 ${ma20} / MA60 ${ma60}　→ ${isFourBull ? '四線多頭排列' : isFourBear ? '空頭排列' : '均線糾結'}
+- 位階(JS判)：${posStage}（離月線乖離 ${biasMa20.toFixed(1)}%）
+- 明日扣抵：MA20扣抵價 ${ded20 ?? '—'}　現價${distDed20 == null ? '—' : (distDed20 >= 0 ? '高於' : '低於') + '扣抵 ' + Math.abs(distDed20).toFixed(1) + '%'}　→ 月線斜率明日傾向：${slope20}
+- 量能：今量 ${pV} / 5日均量 ${volMa5 ?? '—'}　量比 ${volRatio ?? '—'} 倍
+- 週線：趨勢 ${weeklyTrend}、${aboveW20 == null ? '週線資料不足' : aboveW20 ? '站上週20MA' : '跌破週20MA'}
+- 郭榮哲折數：${foldPct} 折（${foldZone}）
+- W底偵測：${wBottom.message}
+- 發動棒防守：${launchBar ? `最近強勢長紅 ${launchBar.date}，1/2價 ${launchBar.half}、最低 ${launchBar.low}` : '近20日無強勢發動長紅'}
+- 三盞明燈訊號：${sigCount}/3（${sigLabel}）
+- 你的部位：${posCost ? `成本 ${posCost}、損益 ${posPnl}%` : '空手（未填成本）'}
 
-【🔍 朱家泓技術審計 × ${klineStatus}】
-用白話文解釋目前的型態（${klineStatus}）與趨勢（${trendJudge}）代表什麼意思？現在均線是支撐還是壓力？請直接告訴小白現在買安不安全。
-
-【📐 郭榮哲折數過濾 (白話大拍賣解析)】
-絕對不要講深奧術語！請直接告訴小白：「這檔股票從高點跌下來，等於打了 ${foldPct}。現在這個價位算不算大拍賣撿便宜？還是依然在半山腰接刀？」請明確評估這折數安不安全。
-
-【🅆 W 底攻略 / 第二隻腳偵測】
-${wBottom.detected
-  ? `系統已偵測到 W 底型態:首底 ${wBottom.leg1Date} 低點 ${data[data.findIndex(d => d.date === wBottom.leg1Date)]?.low || '?'} / 二底 ${wBottom.leg2Date} 低點 ${data[data.findIndex(d => d.date === wBottom.leg2Date)]?.low || '?'} / 頸線 ${wBottom.neckline} 元${wBottom.secondLegBuying ? '。現價已貼近二底,且過去 3 日有止跌訊號(收紅/下影線)→ 第二隻腳浮現,可分批承接' : ''}。請白話解釋:(1) W 底是什麼(用購物車比喻)(2) 現在處於 W 哪段?(雙底打底完成 / 反彈中 / 攻頸線中)(3) 何時破頸線 ${wBottom.neckline} 元 W 底正式確立?該怎麼買?(4) 失敗訊號:跌破二底 + N 元無條件出場。`
-  : `系統判定近 60 日內無 W 底型態。請白話告訴小白:「目前看不到雙底打底訊號,要嘛還在下跌沒見底,要嘛已經反彈中。」搭配上方折數(${foldPct})說明:現在不是 W 底進場時機,該等什麼條件出現再進?`}
-
-【⚔️ 總監專屬戰術室】
-給出具體的操作紀律指引：當前是否適合進場？短線防守點（5MA = ${ma5}）、波段防守點（月線 = ${ma20}），若持有應設在哪裡？若空手，說明等待什麼條件。
-
-最後獨立一行輸出最終判定：🟢適合建倉 或 🟡觀望等待 或 🔴危險迴避。`;
+# 輸出（嚴格 JSON，禁任何 Markdown 與前後文字，禁 \`\`\`json）
+{
+  "trend_architecture": {
+    "daily_trend": "多頭排列 / 空頭排列 / 橫盤震盪 / 轉折雛形",
+    "weekly_umbrella": "多頭保護 / 空頭壓制 / 盤整待變",
+    "position_stage": "底部起漲 / 主升飆升 / 高檔背離 / 初跌轉弱"
+  },
+  "signal_detector": {
+    "bullish_signals": ["符合的多方經典訊號(如:量增長紅突破5MA與昨高、回後買上漲雛形、突破盤整上緣)，無則空陣列"],
+    "bearish_signals": ["符合的危險訊號(如:高檔量價背離、收長上影變盤線、跌破發動棒1/2價、跌破月線扣抵)，無則空陣列"]
+  },
+  "fold_verdict": "用白話一句評折數 ${foldPct} 折安不安全(大拍賣撿便宜 vs 半山腰接刀)",
+  "actionable_sop": {
+    "tactical_action": "加碼進場 / 分批停利 / 紀律清倉停損 / 綁手觀察",
+    "ai_core_summary": "不超過兩句的精準戰術結論(含日線狙擊點與週線方向)"
+  }
+}`;
 
         try {
-            // 🎯 K 線分析報告:使用者要求純 Gemini 雙 key 輪動,撞 429 直接顯示警示不偷偷 fallback
-            let text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.2, chain: 'gemini-openrouter' });
+            let text = await this._callDeepAI({ prompt, max_tokens: 900, temperature: 0.2, chain: 'gemini-openrouter' });
             if (!text) throw new Error('未設定 AI Key,請至設定填入 Gemini API Key');
+            // JSON 防呆解析:strip ```json 圍欄 + 取首尾大括號 + try/catch
+            let v = null;
+            try {
+                let raw = String(text).trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+                const si = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+                if (si >= 0 && ei > si) raw = raw.slice(si, ei + 1);
+                v = JSON.parse(raw);
+            } catch (_) { v = null; }
+            if (!v || typeof v !== 'object') v = {};
 
-            const secMap = {
-                '【📊 技術指標全面審計】': { border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
-                '【🎯 發動訊號檢核結論】': { border:'border-amber-500',  title:'text-amber-400',  bg:'bg-amber-950/20'  },
-                '【⚔️ 戰術總裁決策指示】': { border:'border-red-500',    title:'text-red-400',    bg:'bg-red-950/20'    },
-                // 新版四段體(2026-06)
-                '【🔍 朱家泓技術審計': { border:'border-blue-500',   title:'text-blue-400',   bg:'bg-blue-950/20'   },
-                '【📐 郭榮哲折數過濾 (白話大拍賣解析)】': { border:'border-amber-500',  title:'text-amber-400',  bg:'bg-amber-950/20'  },
-                '【🅆 W 底攻略 / 第二隻腳偵測】': { border:'border-cyan-500', title:'text-cyan-400', bg:'bg-cyan-950/20' },
-                '【⚔️ 總監專屬戰術室】': { border:'border-red-500',    title:'text-red-400',    bg:'bg-red-950/20'    },
+            // 🛑 防幻覺鐵律:所有數字一律以 JS 為準,強制覆寫(AI 只供 enum 與文字)
+            const ta = v.trend_architecture || {};
+            const sd = v.signal_detector || {};
+            const sop = v.actionable_sop || {};
+            const merged = {
+                stock_id: sym,
+                stock_name: name,
+                overall_score: jsScore,
+                trend_architecture: {
+                    daily_trend: ta.daily_trend || (isFourBull ? '多頭排列' : isFourBear ? '空頭排列' : '橫盤震盪'),
+                    weekly_umbrella: ta.weekly_umbrella || weeklyTrend,
+                    position_stage: ta.position_stage || posStage,
+                },
+                ma_deduction_prediction: {
+                    ma20_slope_tomorrow: slope20,
+                    ma20_defense_price: (ded20 != null) ? +ded20.toFixed(2) : null,
+                    distance_to_ma20_deduction: (distDed20 == null) ? '扣抵資料不足'
+                        : `現價${distDed20 >= 0 ? '高於' : '低於'}扣抵價 ${Math.abs(distDed20).toFixed(1)}%`,
+                },
+                signal_detector: {
+                    bullish_signals: Array.isArray(sd.bullish_signals) ? sd.bullish_signals.slice(0, 5) : [],
+                    bearish_signals: Array.isArray(sd.bearish_signals) ? sd.bearish_signals.slice(0, 5) : [],
+                },
+                fold_filter: { fold_pct: foldPct, fold_zone: foldZone, verdict: (v.fold_verdict || '').toString().slice(0, 120) },
+                w_bottom: { detected: wBottom.detected, message: wBottom.message, neckline: wBottom.neckline, second_leg_buying: wBottom.secondLegBuying },
+                actionable_sop: {
+                    tactical_action: sop.tactical_action || '綁手觀察',
+                    structural_defense_line: launchBar ? launchBar.half : (ma20 != null ? +ma20.toFixed(2) : null),
+                    ai_core_summary: (sop.ai_core_summary || 'AI 摘要產生失敗，請參考上方系統精算數據。').toString().slice(0, 200),
+                },
             };
-            for (const [marker, c] of Object.entries(secMap)) {
-                const esc = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                text = text.replace(new RegExp(esc, 'g'),
-                    `\n<div class="mt-3 ${c.border} border-l-2 pl-2 ${c.bg} rounded-r py-1"><span class="${c.title} font-bold text-xs">${marker}</span></div>`);
-            }
-            text = text
-                .replace(/\*\*(.+?)\*\*/g, '<b class="text-white">$1</b>')
-                .replace(/\n/g, '<br>');
-
-            // 前置數據摘要卡（給使用者確認計算數字）
-            const summary = `<div class="mb-3 text-[10px] font-mono text-gray-500 bg-gray-900/60 border border-gray-700 rounded p-2 grid grid-cols-2 gap-x-4 gap-y-0.5">
-                <span>趨勢：<b class="text-gray-300">${trendJudge.substring(0,8)}</b></span>
-                <span>折數：<b class="text-gray-300">${foldPct}折 ${foldZone.substring(0,4)}</b></span>
-                <span>均線：<b class="text-gray-300">${isFourBull?'四線多排':isFourBear?'空頭排列':'糾結'}</b></span>
-                <span>信號：<b class="text-gray-300">${sigCount}/3 燈亮</b></span>
-            </div>`;
-
-            box.innerHTML = `<div class="text-indigo-100 font-mono leading-loose" style="font-size:0.9rem">${summary}${text}</div>`;
-        } catch(e) {
+            box.innerHTML = this._renderKlineAuditCards(merged, { volRatio, posCost, posPnl, pC });
+        } catch (e) {
             box.innerHTML = `<span class="text-red-400 text-sm">審計失敗：${e.message}</span>`;
         }
         btn.innerHTML = '📐 朱家泓技術審計 × 郭榮哲折數過濾';
+    },
+
+    // 🎨 V32.9 — 朱家泓技術審計 JSON → 卡片渲染（數字皆 JS 權威值）
+    _renderKlineAuditCards(v, extra = {}) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        const sc = v.overall_score;
+        const scoreCls = sc >= 70 ? 'text-red-300' : sc >= 45 ? 'text-yellow-300' : 'text-green-300';
+        const act = v.actionable_sop?.tactical_action || '';
+        const actCls = /加碼|進場/.test(act) ? 'text-red-300 bg-red-900/30 border-red-700/50'
+                     : /停損|清倉/.test(act) ? 'text-green-300 bg-green-900/30 border-green-700/50'
+                     : /停利/.test(act) ? 'text-yellow-300 bg-yellow-900/30 border-yellow-700/50'
+                     : 'text-gray-300 bg-white/5 border-[#30363d]';
+        const chip = (label, val) => `<div class="flex flex-col gap-0.5"><span class="text-[9px] text-gray-500">${label}</span><span class="text-[11px] font-bold text-gray-200">${esc(val)}</span></div>`;
+        const ta = v.trend_architecture || {}, md = v.ma_deduction_prediction || {}, sd = v.signal_detector || {}, ff = v.fold_filter || {}, wb = v.w_bottom || {}, sop = v.actionable_sop || {};
+        const sigList = (arr, color, emptyTxt) => (Array.isArray(arr) && arr.length)
+            ? arr.map(s => `<div class="flex items-start gap-1.5 text-[11px] ${color} leading-snug"><span class="flex-shrink-0">•</span><span class="text-gray-200">${esc(s)}</span></div>`).join('')
+            : `<div class="text-[10px] text-gray-600">${emptyTxt}</div>`;
+        const defLine = sop.structural_defense_line;
+        const _vr = extra.volRatio;
+        return `
+        <div class="flex flex-col gap-2.5 text-gray-200">
+          <!-- Hero:評分 + 行動 -->
+          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="text-[10px] text-gray-500 mb-0.5">📐 技術面系統精算分（JS 客觀計算）</div>
+              <div class="text-[12px] font-bold ${actCls.split(' ')[0]}">${esc(act)}</div>
+              <div class="text-[10px] text-gray-400 mt-1 leading-snug">${esc(sop.ai_core_summary || '')}</div>
+            </div>
+            <div class="flex-shrink-0 text-center">
+              <div class="text-3xl font-black font-mono ${scoreCls} leading-none">${sc}</div>
+              <div class="text-[8px] text-gray-500 mt-0.5">/ 100</div>
+            </div>
+          </div>
+          <!-- 趨勢架構 -->
+          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+            <div class="text-[10px] text-gray-400 font-bold mb-2">🏗️ 趨勢架構（日週對照）</div>
+            <div class="grid grid-cols-3 gap-2">
+              ${chip('日線趨勢', ta.daily_trend)}
+              ${chip('週線保護傘', ta.weekly_umbrella)}
+              ${chip('位階', ta.position_stage)}
+            </div>
+          </div>
+          <!-- 扣抵預測 -->
+          <div class="bg-[#161b22] border-l-4 border-blue-500 border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="text-[10px] text-blue-300 font-bold mb-1">📉 均線扣抵預測（明日月線）</div>
+            <div class="grid grid-cols-3 gap-2">
+              ${chip('月線斜率明日', md.ma20_slope_tomorrow)}
+              ${chip('月線保衛價', md.ma20_defense_price ?? '--')}
+              ${chip('距扣抵', md.distance_to_ma20_deduction)}
+            </div>
+          </div>
+          <!-- 訊號偵測 -->
+          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+            <div class="text-[10px] text-gray-400 font-bold mb-2">🎯 訊號偵測器</div>
+            <div class="grid grid-cols-2 gap-3">
+              <div><div class="text-[10px] text-red-400 font-bold mb-1">📈 多方訊號</div><div class="flex flex-col gap-1">${sigList(sd.bullish_signals, 'text-red-300', '無')}</div></div>
+              <div><div class="text-[10px] text-green-400 font-bold mb-1">📉 危險訊號</div><div class="flex flex-col gap-1">${sigList(sd.bearish_signals, 'text-green-300', '無')}</div></div>
+            </div>
+          </div>
+          <!-- 郭榮哲折數 -->
+          <div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="text-[10px] text-amber-300 font-bold mb-1">📐 郭榮哲折數過濾（大拍賣解析）</div>
+            <div class="flex items-baseline gap-2 mb-1"><span class="text-lg font-black font-mono text-amber-200">${esc(ff.fold_pct)} 折</span><span class="text-[10px] text-gray-400">${esc(ff.fold_zone)}</span></div>
+            ${ff.verdict ? `<div class="text-[11px] text-gray-200 leading-relaxed">${esc(ff.verdict)}</div>` : ''}
+          </div>
+          ${wb.detected ? `
+          <!-- W 底 -->
+          <div class="bg-[#161b22] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="text-[10px] text-cyan-300 font-bold mb-1">🅆 W 底 / 第二隻腳偵測</div>
+            <div class="text-[11px] text-gray-200 leading-relaxed">${esc(wb.message)}</div>
+            ${wb.second_leg_buying ? '<div class="text-[10px] text-cyan-300 font-bold mt-1">→ 現價貼近二底 + 止跌訊號，可分批承接</div>' : ''}
+          </div>` : ''}
+          <!-- 戰術 SOP -->
+          <div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="text-[10px] text-red-300 font-bold mb-1">⚔️ 戰術 SOP</div>
+            <div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] px-2 py-0.5 rounded font-bold border ${actCls}">${esc(act)}</span><span class="text-[10px] text-gray-400">結構防守線 <b class="text-gray-200 font-mono">${defLine ?? '--'}</b></span></div>
+            <div class="text-[11px] text-gray-200 leading-relaxed">${esc(sop.ai_core_summary || '')}</div>
+            ${extra.posCost ? `<div class="text-[10px] text-gray-400 mt-1.5">你的部位:成本 ${extra.posCost}、損益 <b class="${extra.posPnl >= 0 ? 'text-red-300' : 'text-green-300'}">${extra.posPnl >= 0 ? '+' : ''}${extra.posPnl}%</b></div>` : ''}
+          </div>
+          <div class="text-[9px] text-gray-600 text-center pt-1">數字由系統 JS 精算，AI 僅負責型態判讀與戰術文字 · 僅供參考非投資建議</div>
+        </div>`;
     },
 
     async runGlobalMarketAI() {
