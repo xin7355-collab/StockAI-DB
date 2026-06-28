@@ -413,6 +413,49 @@ def load_prev_tracking():
 
 
 # ── 主流程 ──────────────────────────────────────────────────────────────────
+def fetch_etf_premium():
+    """best-effort 抓上市 ETF 折溢價(%):TWSE。回 {sym: premium_float}(正=溢價/負=折價)。
+    ⚠️ 沙箱無外網無法驗證端點 → 上 GitHub Actions 首跑後依 log 調整解析(同 holdings 模式);
+       多端點 + 彈性欄位比對 + 重試,全失敗回 {} 讓前端自動略過,不影響其他資料。"""
+    out = {}
+    candidates = [
+        "https://openapi.twse.com.tw/v1/exchangeReport/ETFReport",
+        "https://www.twse.com.tw/rwd/zh/ETF/etfPLR?response=json",
+        "https://www.twse.com.tw/rwd/zh/fund/MIFI?response=json",
+    ]
+    prem_keys = ("折溢價", "折溢價率", "與淨值差距", "與淨值差距百分比", "溢價折價", "premium", "discount", "PremiumDiscount")
+    sym_keys = ("證券代號", "股票代號", "基金代號", "代號", "stock_id", "Code", "SecuritiesCode")
+    for url in candidates:
+        try:
+            r = session.get(url, timeout=20, headers=_hdrs())
+            if r.status_code != 200:
+                print(f"  [折溢價] {url} → HTTP {r.status_code}")
+                continue
+            j = r.json()
+            rows = []
+            if isinstance(j, list):
+                rows = j
+            elif isinstance(j, dict) and isinstance(j.get("data"), list):
+                fields = j.get("fields") or j.get("tables", [{}])[0].get("fields") if isinstance(j.get("tables"), list) else (j.get("fields") or [])
+                rows = [dict(zip(fields, row)) for row in j["data"] if isinstance(row, list)] if fields else []
+            for it in rows:
+                if not isinstance(it, dict):
+                    continue
+                sym = next((str(it[k]).strip() for k in it if any(sk in k for sk in sym_keys) and it.get(k)), None)
+                pv = next((it[k] for k in it if any(pk in k for pk in prem_keys) and it.get(k) not in (None, "")), None)
+                if sym and pv is not None:
+                    f = _to_float(str(pv).replace("%", "").replace(",", "").strip())
+                    if f is not None:
+                        out[sym] = round(f, 2)
+            if out:
+                print(f"  ✓ [折溢價] {url} 命中 {len(out)} 檔")
+                return out
+        except Exception as e:
+            print(f"  [折溢價] {url} 失敗: {e}")
+    print("  ⚠️ [折溢價] 全部來源失敗,本次無折溢價(前端自動略過,下次再試)")
+    return out
+
+
 def main():
     prev = load_prev_tracking() or {}
     prev_hold = {e["symbol"]: e.get("holdings", []) for e in prev.get("etfs", [])}
@@ -528,6 +571,16 @@ def main():
     # 預設按持股變化排序(降序),前端可二次排
     consensus_stocks.sort(key=lambda x: x["shares_delta"], reverse=True)
 
+    # 🪙 V34.1 — 折溢價(best-effort TWSE;抓不到自動略過,前端 graceful)
+    try:
+        premiums = fetch_etf_premium()
+        for _e in etfs:
+            if _e.get("symbol") in premiums:
+                _e["premium"] = premiums[_e["symbol"]]
+    except Exception as _pe:
+        premiums = {}
+        print(f"  ⚠️ 折溢價附加失敗: {_pe}")
+
     out = {
         "updated": today,
         "top_n": TOP_N,
@@ -542,7 +595,7 @@ def main():
         },
         "consensus_stocks": consensus_stocks[:200],   # V17.15 — 前 200 檔給前端
         "benchmarks": [
-            {"symbol": b, "name": etf_name(b), "perf": perf_with_tr(b, load_prices(b))}
+            {"symbol": b, "name": etf_name(b), "perf": perf_with_tr(b, load_prices(b)), **({"premium": premiums[b]} if b in premiums else {})}
             for b in BENCHMARKS
         ],
     }

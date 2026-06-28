@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V34.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V34.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.0</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.1</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3982,10 +3982,36 @@ ${list}
         const etf = this._etfCache?.etfs?.find(e => String(e.symbol) === String(sym));
         const holdings = (etf?.holdings || []).filter(h => h.sym && h.weight != null).sort((a, b) => (b.weight || 0) - (a.weight || 0));
         card.classList.remove('hidden');
+
+        // 📊 規模(AUM,fund_size 已採) + 折溢價(premium,待採礦;有才顯) chip 列
+        const metaChips = [];
+        const fs = etf?.fund_size;
+        if (typeof fs === 'number' && fs > 0) metaChips.push(`<span class="text-[10px] text-gray-400">規模 <b class="text-gray-200 font-mono">${(fs / 1e8).toFixed(0)} 億</b></span>`);
+        const prem = etf?.premium;   // V34.1 折溢價(% ;採礦後才有)
+        if (typeof prem === 'number') {
+            const pc = prem > 0 ? 'text-red-300' : prem < 0 ? 'text-green-300' : 'text-gray-300';
+            const pl = prem > 0 ? '溢價' : prem < 0 ? '折價' : '平價';
+            metaChips.push(`<span class="text-[10px] text-gray-400">折溢價 <b class="${pc} font-mono">${pl} ${prem > 0 ? '+' : ''}${prem.toFixed(2)}%</b></span>`);
+        }
+        const metaHtml = metaChips.length ? `<div class="flex gap-3 flex-wrap mb-2 pb-2 border-b border-[#21262d]">${metaChips.join('')}</div>` : '';
+
         if (!holdings.length) {
-            card.innerHTML = `<div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-blue-700/40"><h4 class="text-blue-300 font-bold text-sm">🧩 ETF 成分股比重</h4></div><div class="text-[11px] text-gray-500 leading-relaxed">此 ETF 暫無成分股權重資料（目前僅約 20 檔<b class="text-gray-400">主動式 ETF</b>有抓持股明細；0050/0056 等被動 ETF 成分股可至投信官網或 MoneyDJ 查）。</div>`;
+            card.innerHTML = `<div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-blue-700/40"><h4 class="text-blue-300 font-bold text-sm">🧩 ETF 資訊</h4></div>${metaHtml}<div class="text-[11px] text-gray-500 leading-relaxed">此 ETF 暫無成分股權重資料（目前僅約 20 檔<b class="text-gray-400">主動式 ETF</b>有抓持股；0050/0056 等被動 ETF 可至投信官網或 MoneyDJ 查）。</div>`;
             return;
         }
+
+        // 🏭 產業分布(holdings × FinMind industry_category,純前端零採礦)
+        const slMap = new Map((this.allStockList || []).map(x => [x.stock_id, x]));
+        const indMap = {};
+        holdings.forEach(h => { const ind = slMap.get(h.sym)?.industry_category || '其他'; indMap[ind] = (indMap[ind] || 0) + (h.weight || 0); });
+        const indTop = Object.entries(indMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        const indMax = Math.max(...indTop.map(x => x[1]), 1);
+        const indHtml = indTop.length ? `
+            <div class="mb-2 pb-2 border-b border-[#21262d]">
+                <div class="text-[10px] text-gray-400 font-bold mb-1">🏭 產業分布</div>
+                ${indTop.map(([name, w]) => `<div class="grid grid-cols-[1fr_42px] gap-2 items-center py-0.5"><div class="min-w-0"><div class="text-[10px] text-gray-300 truncate">${name}</div><div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full bg-cyan-500" style="width:${Math.round(w / indMax * 100)}%"></div></div></div><span class="text-[10px] font-mono text-gray-300 text-right">${w.toFixed(1)}%</span></div>`).join('')}
+            </div>` : '';
+
         const top = holdings.slice(0, 15);
         const maxW = Math.max(...top.map(h => h.weight || 0), 1);
         const totalW = top.reduce((a, h) => a + (h.weight || 0), 0);
@@ -4002,11 +4028,14 @@ ${list}
         }).join('');
         card.innerHTML = `
             <div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-blue-700/40">
-                <h4 class="text-blue-300 font-bold text-sm">🧩 ETF 成分股比重 <span class="text-[9px] text-gray-500 font-normal">前 ${top.length} 大</span></h4>
+                <h4 class="text-blue-300 font-bold text-sm">🧩 ETF 成分股 / 產業</h4>
                 <span class="text-[10px] text-gray-500 font-mono">前${top.length}佔 ${totalW.toFixed(1)}%</span>
             </div>
+            ${metaHtml}
+            ${indHtml}
+            <div class="text-[10px] text-gray-400 font-bold mb-1">📋 前 ${top.length} 大持股</div>
             ${rowsHtml}
-            <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 點成分股可跳該股診斷 ・ 權重來源:投信/TWSE 申購買回清單(每日盤後),實際以投信官網為準。</div>`;
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 點成分股可跳該股診斷 ・ 權重來源:投信/TWSE 申購買回清單(每日盤後)。</div>`;
     },
 
     // V18.6 — 個股頁籌碼 tab 的「ETF 跟車狀態」卡片(進場價追蹤近似版,零採礦)
