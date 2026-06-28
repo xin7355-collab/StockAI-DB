@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V31.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V31.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1988,6 +1988,18 @@
                         <button onclick="app.favDirectAdd()" class="text-blue-400 font-bold text-sm px-2 py-1.5 border border-blue-800 rounded hover:bg-blue-900/30 transition-colors">➕</button>
                         <ul id="favSearchDropdown" class="hidden absolute top-[100%] left-3 right-3 mt-1 bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-60 z-[300]"></ul>
                     </div>
+                    <!-- 📢 V31.9 多頭待發射:自選掃打底 + 距突破由近到遠(重用 _chuResistanceZones) -->
+                    <div class="mx-2 my-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <span class="text-base">📢</span>
+                            <span class="text-[12px] font-black text-gray-100">多頭待發射</span>
+                            <span class="text-[9px] text-gray-500">距突破由近到遠</span>
+                            <button onclick="app.showJargon('多頭待發射')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+                            <button onclick="app._scanBreakoutCandidates(true); app.vibrate(20);" class="ml-auto text-[10px] text-cyan-300/80 hover:text-cyan-200">🔄 重掃</button>
+                        </div>
+                        <div class="text-[10px] text-gray-500 mb-1.5 leading-relaxed">自選清單中「打底完成、最接近突破壓力」的股票,排最上 = 最可能先發動</div>
+                        <div id="breakoutScanList"><div class="text-[10px] text-gray-600 text-center py-3">進自選頁自動掃描 ・ 或點 🔄 重掃</div></div>
+                    </div>
                     <div id="favEmptyState" class="text-center py-[6rem] text-gray-500 hidden flex-col items-center justify-center">
                         <p class="text-base font-bold mb-2">此清單目前空空如也</p>
                         <button onclick="app.switchAppTab('diag'); document.getElementById('symbolInput').focus();" class="mt-2 bg-blue-900/50 text-blue-400 px-4 py-2 rounded text-sm border border-blue-800 font-bold">去診斷並加入自選</button>
@@ -2531,6 +2543,7 @@ const app = {
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
+        '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、或振幅太大已噴/崩的會自動排除。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
         '盤中主力估算': '⚠️ 重要:台灣證交所「券商分點進出」只在收盤後(約 15:30)才公布,盤中根本沒有真實分點資料。這裡的「盤中主力動向」是用 Fugle 即時「內外盤掛單 + 漲跌量價」估算的方向參考,不是官方分點,可能與收盤後真實分點有出入。盤中當參考、收盤後看下方真實分點才準。',
@@ -4176,7 +4189,7 @@ ${list}
             // 🔄 還原「盤中即時更新」記憶(切 tab 回來不應跳回「實時/範例」)
             setTimeout(() => { try { this._restoreSectorIntradayMemory(); } catch(_) {} }, 1500);
         }
-        if (tabId === 'fav') { try { this.renderFavTabs(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }
+        if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }
         if (tabId === 'inv') { try { this.renderInventory(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
@@ -17124,6 +17137,52 @@ ${_newsLine}${globalContext}
             const eEl = row.querySelector('[data-fav-elim]');
             if (eEl) eEl.innerHTML = this._renderEliminationBadge(data) || '';
         });
+    },
+
+    // 📢 V31.9 多頭待發射:掃自選清單,重用 _chuResistanceZones 取「距最近上方壓力%」,由近到遠排序
+    async _scanBreakoutCandidates(force = false) {
+        const box = document.getElementById('breakoutScanList');
+        if (!box) return;
+        const group = this.activeGroupName;
+        const list = (this.favGroups?.[group] || []).slice(0, 60);
+        if (!list.length) { box.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">自選清單空,先加股票才能掃描待發射</div>'; return; }
+        if (!force && this._breakoutScanCache && this._breakoutScanCache.group === group && (Date.now() - this._breakoutScanCache.ts < 10 * 60 * 1000)) {
+            this._renderBreakoutScan(this._breakoutScanCache.rows); return;
+        }
+        box.innerHTML = `<div class="text-[10px] text-cyan-400/80 text-center py-3">掃描中… (${list.length} 檔)</div>`;
+        const rows = [];
+        await Promise.all(list.map(async (sym) => {
+            try {
+                const data = await this.fetchHistoricalData(sym, false);
+                if (!Array.isArray(data) || data.length < 60) return;
+                const last = data.length - 1, pC = data[last].close;
+                const zones = this._chuResistanceZones(data, last);
+                if (!zones.length) return;   // 無上方壓力 = 已突破,非待發
+                const r20 = data.slice(-20);
+                const hi = Math.max(...r20.map(d => d.high)), lo = Math.min(...r20.map(d => d.low));
+                const rangePct = lo > 0 ? (hi - lo) / lo * 100 : 999;
+                if (rangePct > 22) return;   // 振幅過大(已噴/崩),非打底盤整
+                rows.push({ sym, pC, dist: zones[0].distancePct, resist: zones[0].price, dual: zones[0].count >= 2 });
+            } catch (_) {}
+        }));
+        rows.sort((a, b) => a.dist - b.dist);
+        this._breakoutScanCache = { ts: Date.now(), group, rows };
+        this._renderBreakoutScan(rows);
+    },
+
+    _renderBreakoutScan(rows) {
+        const box = document.getElementById('breakoutScanList');
+        if (!box) return;
+        if (!rows || !rows.length) { box.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-3">自選股目前無「接近突破」的打底候選(已突破 / 資料不足 / 振幅過大已排除)</div>'; return; }
+        box.innerHTML = rows.slice(0, 20).map((r, i) => {
+            const distCls = r.dist <= 2 ? 'text-red-300' : r.dist <= 5 ? 'text-amber-300' : 'text-gray-400';
+            const hot = r.dist <= 2 ? ' 🔥' : '';
+            return `<div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag'); app.vibrate(20);" class="grid grid-cols-[1fr_auto_auto] gap-2 items-center px-2 py-1.5 border-b border-[#21262d] last:border-0 cursor-pointer hover:bg-white/5">
+                <span class="text-[12px] text-gray-100 font-bold truncate">${i + 1}. ${this.getFullStockName(r.sym)}${r.dual ? ' <span class="text-[8px] text-amber-400">雙壓</span>' : ''}</span>
+                <span class="font-mono text-[10px] text-gray-500">壓 ${r.resist.toFixed(2)}</span>
+                <span class="font-mono text-[12px] font-black ${distCls} text-right w-[64px]">距 +${r.dist.toFixed(1)}%${hot}</span>
+            </div>`;
+        }).join('');
     },
 
     removeFromFav(sym) {
