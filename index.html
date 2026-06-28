@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V31.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V31.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1781,9 +1781,9 @@
                 <span id="warRoomTs" class="hidden"></span>
             </div>
 
-            <!-- ③ 五大核心因子:V31.0 去包裝,平鋪頁面黑底(移出 panel 卡,無外框)-->
+            <!-- ③ 六大核心因子:V31.0 去包裝,平鋪頁面黑底(移出 panel 卡,無外框);V31.5 正名五大→六大(實渲染 6 卡)-->
             <div class="px-1">
-                <div class="text-[10px] text-gray-500 font-bold mb-1">📊 五大核心因子 <span class="text-[8px] text-gray-600 font-normal">· 多空判定</span></div>
+                <div class="text-[10px] text-gray-500 font-bold mb-1">📊 六大核心因子 <span class="text-[8px] text-gray-600 font-normal">· 多空判定</span></div>
                 <div id="macroFactorGrid" class="grid grid-cols-2 gap-x-4">
                     <div class="col-span-full text-center text-gray-600 text-[10px] py-2">因子載入中…</div>
                 </div>
@@ -8662,7 +8662,7 @@ const marginByDate = {};
             if (typeof fiSpot === 'number') { sVal = `${fiSpot > 0 ? '+' : ''}${Math.round(fiSpot)}億`; sDir = fiSpot <= -100 ? '偏空' : fiSpot >= 100 ? '偏多' : '中性'; }
             let vVal = na, vDir = '中性';
             if (typeof vix === 'number') { vVal = vix.toFixed(1); vDir = vix >= 20 ? '偏空' : '中性'; }
-            let lVal = na, lDir = '中性';
+            let lVal = na, lDir = '待更新';   // V31.5 — 景氣燈號無資料時顯「待更新」(灰),不偽裝成真的「中性」讀數
             const lmap = { 'red': ['🔴 紅燈', '偏空'], 'yellow-red': ['🟠 黃紅', '偏空'], 'green': ['🟢 綠燈', '中性'], 'yellow-blue': ['🔵 黃藍', '偏多'], 'blue': ['🔵 藍燈', '偏多'] };
             if (bsiLight && lmap[bsiLight]) { lVal = lmap[bsiLight][0]; lDir = lmap[bsiLight][1]; }
             grid.innerHTML = [
@@ -18306,10 +18306,18 @@ ${_newsLine}${globalContext}
             apply('bubbleKlineStatus', 'bubbleKlineSub',      d.kline_status);
             // 融資槓桿：進度條寬度 + 副標題（label 自帶水位百分比與分類）
             if (d.margin_leverage) {
+                const ml = d.margin_leverage;
                 const bar = document.getElementById('bubbleMarginBar');
-                if (bar) bar.style.width = `${Math.max(0, Math.min(100, d.margin_leverage.value || 0))}%`;
+                if (bar) {
+                    // V31.5 — bar 改吃「危險度 level」而非 60 日相對水位,避免「極度危險卻半滿」矛盾;水位% 仍在 label 副文
+                    const lv = ml.level || 'gray';
+                    const w = lv === 'red' ? 92 : lv === 'orange' ? 64 : 32;
+                    const grad = lv === 'red' ? 'from-red-600 to-red-500' : lv === 'orange' ? 'from-orange-500 to-red-500' : 'from-gray-600 to-gray-500';
+                    bar.className = `bg-gradient-to-r ${grad} h-full transition-all`;
+                    bar.style.width = `${w}%`;
+                }
                 const sub = document.getElementById('bubbleMarginSub');
-                if (sub) sub.textContent = d.margin_leverage.label;
+                if (sub) sub.textContent = ml.label;
             }
         } catch (e) {
             console.warn('[bubble] load fail:', e);
