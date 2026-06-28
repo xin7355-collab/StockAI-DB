@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -817,7 +817,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1753,8 +1753,12 @@
 
             <!-- 🎯 V32.1 — 台股大盤指揮中心:Sticky 核心 + 次級頁籤(天氣/因子/風控)+ 滑動切換(消除四框架認知載荷) -->
             <div class="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden flex flex-col">
-                <!-- ① Sticky 核心:標題 + 半圓/結論 + 扁平指數 + 次級頁籤(捲動置頂) -->
-                <div class="sticky top-[46px] z-20 bg-[#161b22] border-b border-[#30363d] p-3 flex flex-col gap-2.5">
+                <!-- ① 核心頭區:標題 + 半圓/結論 + 扁平指數 + 次級頁籤
+                     V32.5 — 移除 sticky top-[46px]:此頭區被外層 overflow-hidden card 包住,
+                     sticky 在不滾動的 card 內釘住時會往下平移、蓋掉下方 #sccPanels 第一列
+                     (天氣卡「短期/中期/長期」、因子卡「散戶情緒/期貨升貼水」標籤被裁切)。
+                     改回正常流 → 整張卡一起捲動,內容不再被卡。 -->
+                <div class="bg-[#161b22] border-b border-[#30363d] p-3 flex flex-col gap-2.5">
                 <!-- 標題列 -->
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
