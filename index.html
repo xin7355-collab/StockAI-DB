@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -817,7 +817,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.5</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -990,8 +990,12 @@
                         <div id="chipBrokerTable"></div>
                     </div>
                     
-                    <div id="directActionBox" class="w-full p-4 md:p-5 transition-all duration-300 lg:grid lg:grid-cols-12 lg:gap-5 flex flex-col items-center justify-center">
-                        <!-- 👈 左戰區 (lg:col-span-7)：大字訊息 / 籌碼驗證（戰術訊號燈已上移至「🧠 首席 AI 全盤分析」區塊）-->
+                    <!-- V32.6 — 移除筆電 lg:grid 7:5 兩欄:左戰區「大字訊息」內容早已上移到
+                         首席 AI 區塊,只剩持倉時的 costPnlBar,未持倉股票左欄全空 → 筆電上撐出
+                         一大塊空黑、右側內容被擠成 5/12。改回單欄(滿寬,與頁面其他卡一致),
+                         持倉時 costPnlBar 自然堆疊在停利停損上方。手機本來就無 lg grid,零影響。 -->
+                    <div id="directActionBox" class="w-full p-4 md:p-5 transition-all duration-300 flex flex-col items-center justify-center">
+                        <!-- 👈 戰區①：大字訊息 / 持倉損益（戰術訊號燈已上移至「🧠 首席 AI 全盤分析」區塊）-->
                         <div class="w-full lg:col-span-7 flex flex-col items-center justify-center">
 
                         <!-- 五維儀/氣象/風險已上移至頂部「首席 AI 全局戰略指揮部」 -->
