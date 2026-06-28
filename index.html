@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.0</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.1</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -2568,6 +2568,7 @@ const app = {
 
         // === 🌍 全球巨頭脈動（8 卡新指標）===
         '黃金': '國際避險指標。漲=資金避險（戰爭/通膨恐慌/升息預期）、跌=風險偏好回升。黃金與美股經常反向。',
+        '投信買盤動能': '🚗 ETF 順風車的核心:判斷「投信(高股息 ETF 的買手)的被動買盤要不要停了」。買盤一停,股價就少一個大靠山。\n\n📊 怎麼算(全程式精算,用真實投信每日買超 trust_net):\n  ・ 動能 % = 今日投信買超 ÷ 近10日單日最高買超。越高=今天還在大買;越低=越接近竭盡。\n  ・ 連買天數 = 投信連續幾天買超。\n  ・ 買超放大/縮小 = 近3日買超均量 vs 前段比較。\n  ・ 累計買超≈幾天均量 = 這波投信買盤相當於幾天的市場成交量(布局深度;單位不一致時自動不顯)。\n\n🎯 燈號(進度條顏色):\n  🟢 安全搭乘(動能強>60%):投信還在大買,可試單 30% 跟車\n  🔵 動能轉弱(動能 25-60% 或買超縮小):減碼觀察、別加碼\n  🟠 買盤竭盡風險(動能<25% 或轉賣超):買盤要停了,勿追高、站對先停利\n\n⚠️ 雙面刃提醒:累計買超越大=支撐越厚,但投信一旦轉賣,賣壓要更久才消化得掉。\n\n📌 這是「動能竭盡」判斷,不是「補貨進度」(ETF 目標總張數無公開資料,硬算會是假數字)。僅供參考,非投資建議。',
         '歐尼爾出貨日': '🅾️ 借用美國股神「歐尼爾(CAN SLIM)」的經典大盤判頂工具,看「機構法人有沒有在偷偷倒貨」。\n\n📊 怎麼算(全程式精算,不靠 AI):\n  ・ 出貨日 = 大盤(加權指數)當天「收黑跌幅 ≥ 0.2%」且「成交量比前一天大」(量增下跌 = 大戶趁高出貨)。\n  ・ 統計近 25 個交易日內有幾根這種出貨日。\n\n🔄 獨家校正(站上高點消退):某根出貨日之後,只要大盤收盤「站回」那根出貨日的最高價,代表多方把那次倒貨吃掉收復了 → 該根失效、從計數扣掉。比單純累加更貼近真實威脅。\n\n🎯 燈號:\n  🟢 0 根:派發健康,多方環境乾淨\n  🟡 1-2 根:零星留意\n  🟠 3-4 根:派發累積,新進場保守\n  🔴 ≥5 根:機構連續派發(歐尼爾經典轉空門檻)→ 做多轉守、減碼、別追高\n\n💡 它也會餵進上方「警戒備戰」風險指數;出貨日越多,風險分越高。\n\n⚠️ 僅供風控參考,非投資建議。',
         '美股期貨夜盤': '🌙 S&P500 期貨(ES)、Nasdaq 期貨(NQ)幾乎 24 小時交易(週日晚上 18:00 美東就開盤)，所以「美股現貨收盤後、台股還沒開盤」那段時間發生的事(戰爭、地緣衝突、隔夜重大消息)，會先反映在期貨夜盤上。\n\n📌 用途:台股週一開盤的「跳空風向球」。\n  ・ 期貨夜盤大跌(綠) → 週一台股大概率低開,持倉先設停損 / 夜盤可買賣權避險\n  ・ 期貨夜盤大漲(紅) → 週一偏多開高\n\n🔄 不會自動更新,要點指數列的 🔄 鈕手動抓最新(透過 Yahoo 公開報價)。它也會餵進上面「警戒備戰」風險指數 → 夜盤轉弱時那個分數會跟著升。\n\n⚠️ 不是水晶球:消息常被提前反映(price-in)或反覆(停戰又開打),只當風險前導訊號,不是必跌保證。週末期貨休市時顯示上週五收盤,要等週日晚上開盤才會動。',
         'WTI原油': '美國西德州原油期貨。漲=經濟旺/通膨壓力大（傳產受益、科技壓抑）、跌=經濟降溫/需求弱。塞翁失馬看產業。',
@@ -3923,6 +3924,74 @@ ${list}
     //                  '/' (47) > '-' (45) → 字串比對 '2026/06/19' > '2026-06-19' = true → 全部 2026 年 K 線被
     //                  skip → entry 找到 2025 年末 → 漲幅算半年累計 → 全 +20% 顯紅(別追)
     //                  修法:normalize 統一成 '-',且用 max-search 不依賴 array 順序
+    // 🚗 V33.1 — 投信被動買盤「動能竭盡」分析(誠實版:用真實 trust_net,不需未知的 ETF target)
+    //   momentum/連買/趨勢 為比值不受單位影響;cover_days(累計÷5日均量)超合理範圍自動不顯(防 股/張 單位不一致)
+    _analyzeTrustBuying(arr) {
+        if (!Array.isArray(arr) || arr.length < 6) return null;
+        const recent = arr.slice(-10);
+        const series = recent.map(b => (typeof b.trust_net === 'number') ? b.trust_net
+                                     : (typeof b.invest_trust === 'number') ? b.invest_trust : null);
+        const valid = series.filter(x => x != null);
+        if (valid.length < 3) return null;   // 無投信資料 → 不顯
+        const today = series[series.length - 1];
+        const accumulated = valid.filter(x => x > 0).reduce((a, b) => a + b, 0);   // 近10日累計買超
+        const peak = Math.max(...valid, 0);
+        const momentum = (peak > 0 && typeof today === 'number') ? Math.max(0, Math.round(today / peak * 100)) : 0;
+        // 連續買超天數(從最後一天往回)
+        let consecutive = 0;
+        for (let i = series.length - 1; i >= 0; i--) { if (series[i] != null && series[i] > 0) consecutive++; else break; }
+        // 動能趨勢:近3日均 vs 前段均
+        const last3 = valid.slice(-3), prevSeg = valid.slice(0, -3);
+        const avgL = last3.length ? last3.reduce((a, b) => a + b, 0) / last3.length : 0;
+        const avgP = prevSeg.length ? prevSeg.reduce((a, b) => a + b, 0) / prevSeg.length : avgL;
+        const trend = avgL > avgP * 1.1 ? '放大' : (avgL < avgP * 0.7 ? '縮小' : '持平');
+        // 5日均量 + cover_days(單位防呆)
+        const vols = arr.slice(-5).map(b => (typeof b.volume === 'number' ? b.volume : 0)).filter(v => v > 0);
+        const ma5vol = vols.length ? vols.reduce((a, b) => a + b, 0) / vols.length : null;
+        let coverDays = (ma5vol && ma5vol > 0 && accumulated > 0) ? +(accumulated / ma5vol).toFixed(2) : null;
+        if (coverDays != null && (coverDays < 0.02 || coverDays > 999)) coverDays = null;   // 單位不一致 → 不顯
+        // 風險判定(動能為主訊號)
+        let risk, action, ring;
+        if (typeof today !== 'number' || today <= 0 || momentum < 25) { risk = '買盤竭盡風險'; action = '勿追高 / 站對停利'; ring = 'HIGH'; }
+        else if (momentum < 60 || trend === '縮小') { risk = '動能轉弱'; action = '減碼觀察 / 不加碼'; ring = 'MID'; }
+        else { risk = '安全搭乘'; action = '可試單 30% 跟車'; ring = 'LOW'; }
+        return { today, accumulated, peak, momentum, consecutive, trend, coverDays, risk, action, ring };
+    },
+
+    // 🚗 V33.1 — 投信動能竭盡 widget(高質感進度卡;LOW翠綠/MID科技藍/HIGH亮橘,與 App 風險燈號慣例一致)
+    _renderTrustMomentumWidget(sym, name, techBadge, a) {
+        if (!a) return '';
+        const theme = {
+            LOW:  { bar: 'bg-emerald-500', txt: 'text-emerald-300', em: '🟢' },
+            MID:  { bar: 'bg-blue-500',    txt: 'text-blue-300',    em: '🔵' },
+            HIGH: { bar: 'bg-orange-500',  txt: 'text-orange-400',  em: '🟠' },
+        }[a.ring];
+        const cover = (a.coverDays != null) ? `${a.coverDays} 天均量` : '—';
+        const trendCls = a.trend === '放大' ? 'text-red-300' : a.trend === '縮小' ? 'text-green-300' : 'text-gray-400';
+        return `
+        <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mb-2">
+            <div class="flex items-start justify-between mb-2">
+                <div class="min-w-0">
+                    <div class="flex items-baseline gap-1.5"><span class="text-base font-black text-gray-100 font-mono">${sym}</span><span class="text-xs text-gray-300 truncate">${name || ''}</span></div>
+                    <div class="mt-1">${techBadge}</div>
+                </div>
+                <div class="flex-shrink-0 text-right">
+                    <div class="text-[9px] text-gray-500">投信買盤動能</div>
+                    <div class="text-2xl font-black font-mono ${theme.txt} leading-none">${a.momentum}%</div>
+                </div>
+            </div>
+            <div class="w-full h-2 bg-[#21262d] rounded-full overflow-hidden mb-1"><div class="h-full ${theme.bar} transition-all duration-500" style="width:${Math.min(100, a.momentum)}%"></div></div>
+            <div class="flex items-center justify-between text-[10px] mb-2">
+                <span class="${theme.txt} font-bold">${theme.em} ${a.risk}</span>
+                <span class="text-gray-500">連買 <b class="text-gray-300">${a.consecutive}</b> 天 ・ 買超<b class="${trendCls}">${a.trend}</b></span>
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-[#21262d]">
+                <div class="text-[10px] text-gray-500 leading-tight">近10日累計買超 ≈<br><b class="text-gray-300 font-mono">${cover}</b></div>
+                <button onclick="app.showJargon('投信買盤動能')" class="px-3 py-1.5 rounded-lg text-[11px] font-black border ${a.ring === 'HIGH' ? 'bg-orange-900/30 text-orange-300 border-orange-700/50' : a.ring === 'MID' ? 'bg-blue-900/30 text-blue-300 border-blue-700/50' : 'bg-emerald-900/30 text-emerald-300 border-emerald-700/50'}">${a.action} ⓘ</button>
+            </div>
+        </div>`;
+    },
+
     async renderEtfFollowCard(sym) {
         const card = document.getElementById('etfFollowCard');
         if (!card) return;
@@ -3974,11 +4043,25 @@ ${list}
                 <span class="font-mono text-gray-400 text-right" style="min-width:80px">${sdStr}</span>
             </div>`;
         }).join('');
+        // 🚗 V33.1 — 投信買盤動能竭盡 widget(用本股已載入的 activeData,零網路)
+        const _trustAna = this._analyzeTrustBuying(this.activeData);
+        let _techBadge = '';
+        const _ad = this.activeData || [];
+        if (_ad.length >= 20) {
+            const _c = _ad[_ad.length - 1].close ?? _ad[_ad.length - 1].c;
+            const _m5 = _ad.slice(-5).reduce((s, b) => s + (b.close ?? b.c ?? 0), 0) / 5;
+            const _m20 = _ad.slice(-20).reduce((s, b) => s + (b.close ?? b.c ?? 0), 0) / 20;
+            if (_c > _m5 && _m5 > _m20)  _techBadge = '<span class="text-[9px] px-1.5 py-0.5 rounded bg-red-900/30 text-red-300 border border-red-800/50 font-bold">📈 上揚多排</span>';
+            else if (_c < _m20)          _techBadge = '<span class="text-[9px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-300 border border-green-800/50 font-bold">📉 空頭壓制</span>';
+            else                         _techBadge = '<span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 border border-[#30363d] font-bold">⚖️ 均線糾結</span>';
+        }
+        const trustWidget = this._renderTrustMomentumWidget(sym, this.getStockName(sym), _techBadge, _trustAna);
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
                 <h4 class="text-amber-300 font-bold text-sm">🚦 ETF 跟車狀態</h4>
                 <span class="text-[10px] text-gray-500 font-mono">變動日 ${updated}${entryDate && entryDate !== updated ? `(進場價取 ${entryDate} 收盤)` : ''}</span>
             </div>
+            ${trustWidget}
             <div class="bg-[#0d1117] border border-[#30363d] rounded p-2 mb-2">
                 <div class="flex items-center justify-between text-[12px]">
                     <div>
