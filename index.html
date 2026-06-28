@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3824,6 +3824,14 @@ ${list}
         this.vibrate?.(20); this.renderEtfTab();
     },
     _toggleBenchMgr() { const p = document.getElementById('benchMgrPanel'); if (p) p.classList.toggle('hidden'); },
+
+    // 🗂️ V33.9 — ETF 頁子頁籤切換(順風車 / 績效表),切換前存當前捲動位置
+    _setEtfSubTab(t) {
+        try { const sm = document.querySelector('.scrollable-main'); if (sm) { this._etfScroll = this._etfScroll || {}; this._etfScroll[this._etfSubTab || 'follow'] = sm.scrollTop; } } catch (_) {}
+        this._etfSubTab = (t === 'perf') ? 'perf' : 'follow';
+        this.vibrate?.(20);
+        this.renderEtfTab();
+    },
     // 前端算 ETF 市價報酬(近120/近20日,公式同後端 _ret);含息(還原息)前端做不到,僅內建3檔後端有
     async _calcBenchPerf(sym) {
         try {
@@ -4360,6 +4368,7 @@ ${list}
             const subV = _psort === '20' ? r120 : r20, subLbl = _psort === '20' ? '近120日' : '近20日';
             return `<div onclick="app.analyze('${b.symbol}'); app.switchAppTab('diag');" class="flex-1 bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center cursor-pointer hover:bg-[#21262d] hover:border-amber-700/40 transition-colors active:scale-[0.98]">
                 <div class="text-[10px] text-gray-400 truncate">${b.name}</div>
+                <div class="text-[8px] text-gray-600 font-mono leading-none mb-0.5">${b.symbol}</div>
                 <div class="font-mono font-bold text-sm ${pcls(bigV)}">${pct(bigV)}</div>
                 <div class="text-[8px] text-gray-600">${bigLbl}</div>
                 <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">${subLbl} <span class="${pcls(subV)} font-mono">${pct(subV)}</span></div>
@@ -4380,6 +4389,7 @@ ${list}
                 ${rm}
                 <div onclick="app.analyze('${s}'); app.switchAppTab('diag');" class="cursor-pointer">
                     <div class="text-[10px] text-gray-400 truncate">${cp.name || s}</div>
+                    <div class="text-[8px] text-gray-600 font-mono leading-none mb-0.5">${s}</div>
                     <div class="font-mono font-bold text-sm ${pcls(cp.ret_120d)}">${pct(cp.ret_120d)}</div>
                     <div class="text-[8px] text-gray-600">近120日·市價</div>
                     <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">近20日 <span class="${pcls(cp.ret_20d)} font-mono">${pct(cp.ret_20d)}</span></div>
@@ -4437,45 +4447,63 @@ ${list}
                 </div>`;
         }).join('');
 
+        const _sub = this._etfSubTab || 'follow';
+        const _segBtn = (k, label) => `<button onclick="app._setEtfSubTab('${k}')" class="flex-1 py-2 text-xs font-black rounded-md transition-colors ${_sub === k ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-transparent'}">${label}</button>`;
         box.innerHTML = `
             <div class="flex flex-col gap-2.5">
                 <div class="px-1">
-                    <h3 class="text-base font-black text-amber-300">🏦 ETF 順風車</h3>
-                    <p class="text-[11px] text-gray-500 mt-0.5">追蹤<b class="text-gray-300">績效前段班主動式 ETF</b>,聚合所有經理人對個股的<b class="text-gray-300">加減碼共識</b>。</p>
+                    <h3 class="text-base font-black text-amber-300">🏦 ETF 中心</h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">績效前段班<b class="text-gray-300">主動 ETF</b> + 經理人對個股的<b class="text-gray-300">加減碼共識</b>。</p>
                 </div>
-                ${summaryHtml}
-                ${stocksHtml}
-                ${benchHtml ? `<div>
-                    <div class="flex gap-1.5 items-center">
-                        <div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>
-                        ${benchHtml}
-                        <button onclick="app._toggleBenchMgr()" class="flex-shrink-0 text-gray-500 hover:text-blue-300 text-base px-1 self-stretch" title="管理基準(自己加 ETF)">⚙️</button>
+                <div class="grid grid-cols-2 gap-1 bg-[#0d1117] rounded-lg p-1 sticky top-0 z-10">
+                    ${_segBtn('follow', '🚗 ETF 順風車')}
+                    ${_segBtn('perf', '🏆 ETF 績效表')}
+                </div>
+                <div class="${_sub === 'follow' ? '' : 'hidden'} flex flex-col gap-2.5">
+                    ${summaryHtml}
+                    ${stocksHtml}
+                    <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
+                        更新:${d.updated || '—'}。${d.note || ''}<br>
+                        💡 跟單訊號 = ETF 共識看多 ∩ Falcon≥70 ∩ 主力連買;加減碼 = 所有主動 ETF 對該股持股量變動加總(估算張數)。
                     </div>
-                    ${customBenchHtml ? `<div class="flex gap-1.5 items-center mt-1.5 flex-wrap"><div class="text-[10px] text-blue-400/70 pr-0.5 flex-shrink-0">自訂<br>基準</div>${customBenchHtml}</div>` : ''}
-                    ${benchMgrHtml}
-                </div>` : ''}
-                <div class="px-1 mt-1">
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="text-[11px] text-gray-400 font-bold">🏆 主動 ETF 績效榜</div>
-                        <div class="flex gap-1 text-[9px]">
-                            <button onclick="app._setEtfPerfSort('120')" class="px-2 py-0.5 rounded ${_psort === '120' ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-[#30363d]'} font-bold">近120日</button>
-                            <button onclick="app._setEtfPerfSort('20')" class="px-2 py-0.5 rounded ${_psort === '20' ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-[#30363d]'} font-bold">近20日</button>
+                </div>
+                <div class="${_sub === 'perf' ? '' : 'hidden'} flex flex-col gap-2.5">
+                    ${benchHtml ? `<div>
+                        <div class="flex gap-1.5 items-center">
+                            <div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>
+                            ${benchHtml}
+                            <button onclick="app._toggleBenchMgr()" class="flex-shrink-0 text-gray-500 hover:text-blue-300 text-base px-1 self-stretch" title="管理基準(自己加 ETF)">⚙️</button>
                         </div>
+                        ${customBenchHtml ? `<div class="flex gap-1.5 items-center mt-1.5 flex-wrap"><div class="text-[10px] text-blue-400/70 pr-0.5 flex-shrink-0">自訂<br>基準</div>${customBenchHtml}</div>` : ''}
+                        ${benchMgrHtml}
+                    </div>` : ''}
+                    <div class="px-1 mt-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-[11px] text-gray-400 font-bold">🏆 主動 ETF 績效榜</div>
+                            <div class="flex gap-1 text-[9px]">
+                                <button onclick="app._setEtfPerfSort('120')" class="px-2 py-0.5 rounded ${_psort === '120' ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-[#30363d]'} font-bold">近120日</button>
+                                <button onclick="app._setEtfPerfSort('20')" class="px-2 py-0.5 rounded ${_psort === '20' ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-[#30363d]'} font-bold">近20日</button>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1.5">${perfCardHtml}</div>
                     </div>
-                    <div class="flex flex-col gap-1.5">${perfCardHtml}</div>
-                </div>
-                <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
-                    更新:${d.updated || '—'}。${d.note || ''}<br>
-                    💡 加減碼 = 所有主動 ETF 對該股持股量變動加總(估算張數)。<br>
-                    🔥 贏0050 = 近120日打贏大盤被動基準 ・ ⚠️ 短線轉弱 = 長期漲多但近20日翻黑,慎防追高。<br>
-                    📊 報酬＝收盤市價漲跌,<b class="text-gray-400">已內含經理費/保管費等「內扣費用」</b>;主動列為<b class="text-amber-400/80">市價未還原息</b>;<b class="text-amber-300">被動基準已另顯「💰含息」總報酬(還原配息,高股息真實績效)</b>。皆不含你個人的買賣手續費與證交稅。<br>
-                    ⚠️ 主動 ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
+                    <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
+                        🔥 贏0050 = 近120日打贏大盤被動基準 ・ ⚠️ 短線轉弱 = 長期漲多但近20日翻黑,慎防追高 ・ 💼 持有 = 你庫存裡有。<br>
+                        📊 報酬＝收盤市價漲跌,<b class="text-gray-400">已內含經理費/保管費等「內扣費用」</b>;主動列為<b class="text-amber-400/80">市價未還原息</b>;<b class="text-amber-300">被動基準已另顯「💰含息」總報酬(還原配息,高股息真實績效)</b>。皆不含你個人的買賣手續費與證交稅。<br>
+                        ⚠️ 主動 ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
+                    </div>
                 </div>
             </div>`;
+        // V33.9 — 還原上次該子頁的捲動位置
+        requestAnimationFrame(() => { try { const sm = document.querySelector('.scrollable-main'); if (sm) sm.scrollTop = (this._etfScroll && this._etfScroll[this._etfSubTab || 'follow']) || 0; } catch (_) {} });
     },
 
     switchAppTab(tabId, isGoBack = false) {
         try {   // V24.5 — 整段包 try/catch 防中斷(原本某行拋錯就無法切換)
+        // V33.9 — 離開 ETF 頁時存捲動位置(回來自動還原到上次看的地方)
+        if (this.navStack?.[this.navStack.length - 1] === 'etf' && tabId !== 'etf') {
+            try { const _sm = document.querySelector('.scrollable-main'); if (_sm) { this._etfScroll = this._etfScroll || {}; this._etfScroll[this._etfSubTab || 'follow'] = _sm.scrollTop; } } catch (_) {}
+        }
         if(tabId !== 'diag') {
             const _settingsModal = document.getElementById('settingsModal');
             if (_settingsModal && !_settingsModal.classList.contains('hidden')) {
