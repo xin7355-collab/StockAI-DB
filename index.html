@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -817,7 +817,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1808,6 +1808,9 @@
                     <span><span class="text-gray-500">櫃買</span> <span id="mktTWOII_main" class="font-mono font-black text-gray-200">--</span> <span id="mktTWOII_chg_main" class="font-mono text-[10px] text-gray-500">--</span></span>
                     <span class="text-[#30363d]">|</span>
                     <span class="cursor-pointer" onclick="app.showJargon('台指期結算'); event.stopPropagation();"><span id="taiexFuturesInfo" class="font-mono font-bold text-amber-300">計算中…</span> <span id="taiexFuturesSub" class="text-gray-500 text-[10px]">--</span></span>
+                    <span class="text-[#30363d]">|</span>
+                    <!-- 🌙 V32.7 美股期貨夜盤(S&P/Nasdaq):週末/隔夜地緣消息風向球,點 🔄 更新 -->
+                    <span class="cursor-pointer" onclick="app.showJargon('美股期貨夜盤'); event.stopPropagation();"><span id="usFutNight" class="font-mono text-[10px] text-gray-500">🌙 夜盤 --</span></span>
                     <button id="refreshIndicesBtn" onclick="app._refreshAllIndices()" class="ml-auto text-[10px] text-cyan-300/80 hover:text-cyan-200 flex items-center gap-0.5">🔄<span id="refreshIndicesTs" class="text-[8px] text-cyan-500/60">--</span></button>
                 </div>
                 <div id="riskHistoryBox"></div>
@@ -2549,6 +2552,7 @@ const app = {
 
         // === 🌍 全球巨頭脈動（8 卡新指標）===
         '黃金': '國際避險指標。漲=資金避險（戰爭/通膨恐慌/升息預期）、跌=風險偏好回升。黃金與美股經常反向。',
+        '美股期貨夜盤': '🌙 S&P500 期貨(ES)、Nasdaq 期貨(NQ)幾乎 24 小時交易(週日晚上 18:00 美東就開盤)，所以「美股現貨收盤後、台股還沒開盤」那段時間發生的事(戰爭、地緣衝突、隔夜重大消息)，會先反映在期貨夜盤上。\n\n📌 用途:台股週一開盤的「跳空風向球」。\n  ・ 期貨夜盤大跌(綠) → 週一台股大概率低開,持倉先設停損 / 夜盤可買賣權避險\n  ・ 期貨夜盤大漲(紅) → 週一偏多開高\n\n🔄 不會自動更新,要點指數列的 🔄 鈕手動抓最新(透過 Yahoo 公開報價)。它也會餵進上面「警戒備戰」風險指數 → 夜盤轉弱時那個分數會跟著升。\n\n⚠️ 不是水晶球:消息常被提前反映(price-in)或反覆(停戰又開打),只當風險前導訊號,不是必跌保證。週末期貨休市時顯示上週五收盤,要等週日晚上開盤才會動。',
         'WTI原油': '美國西德州原油期貨。漲=經濟旺/通膨壓力大（傳產受益、科技壓抑）、跌=經濟降溫/需求弱。塞翁失馬看產業。',
         '美元指數': '美元對主要貨幣（歐元/日圓/英鎊）的綜合指數。漲=熱錢回美國（新興市場壓力）、跌=熱錢流出美國（台股利多）。',
         '比特幣': '加密貨幣龍頭，最敏感的風險偏好指標。BTC 暴漲=市場敢冒險（股市偏多）、BTC 崩盤=避險情緒升溫（股市偏空）。',
@@ -3398,7 +3402,9 @@ const app = {
                 dji: conv('dji'), sox: conv('sox'), nvda: conv('nvda'), aapl: conv('aapl'),
                 msft: conv('msft'), us02y: conv('us02y'), ukoil: conv('ukoil'), dxy: conv('dxy'),
                 gold: conv('gold'), usdjpy: conv('usdjpy'),
+                es_fut: conv('esf'), nq_fut: conv('nqf'),   // V32.7 — 美股期貨夜盤,供 _calcRiskScore 反映隔夜/週末
             });
+            this._renderUsFutNight?.();   // V32.7 — 指數列「🌙 期」夜盤顯示
             this._updateWarRoom();
         }
     },
@@ -6402,10 +6408,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const yf = sym => proxyFetch(sym);
 
         try {
-            const [spxJ, ndxJ, vixJ, tsmJ, djiJ, soxJ, nvdaJ, aaplJ, msftJ, us02yJ, ukoilJ, dxyJ, goldJ, usdjpyJ] = await Promise.all([
+            const [spxJ, ndxJ, vixJ, tsmJ, djiJ, soxJ, nvdaJ, aaplJ, msftJ, us02yJ, ukoilJ, dxyJ, goldJ, usdjpyJ, esfJ, nqfJ] = await Promise.all([
                 yf('^GSPC'), yf('^IXIC'), yf('^VIX'), yf('TSM'),
                 yf('^DJI'), yf('^SOX'), yf('NVDA'), yf('AAPL'), yf('MSFT'),
-                yf('^IRX'), yf('BZ=F'), yf('DX-Y.NYB'), yf('GC=F'), yf('JPY=X')
+                yf('^IRX'), yf('BZ=F'), yf('DX-Y.NYB'), yf('GC=F'), yf('JPY=X'),
+                yf('ES=F'), yf('NQ=F')   // V32.7 — 美股期貨夜盤(S&P/Nasdaq,近 24h 交易,反映週末/隔夜地緣消息 → 週一台股跳空風向球)
             ]);
             const extract = (json, label) => {
                 const meta = json?.chart?.result?.[0]?.meta;
@@ -6432,6 +6439,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 dxy:   extract(dxyJ,   'DXY'),
                 gold:  extract(goldJ,  'GOLD'),
                 usdjpy: extract(usdjpyJ, 'USDJPY'),
+                esf:   extract(esfJ,   'ES'),   // V32.7 — S&P500 期貨夜盤
+                nqf:   extract(nqfJ,   'NQ'),   // V32.7 — Nasdaq 期貨夜盤
                 fetchedAt: Date.now()
             };
             localStorage.setItem('proTerminalUSMarket', JSON.stringify(result));
@@ -19221,10 +19230,33 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         if (btn) { btn.innerHTML = '🔄 重新生成盤前報告'; btn.disabled = false; }
     },
 
+    // 🌙 V32.7 — 指數列「美股期貨夜盤」顯示(S&P ES / Nasdaq NQ):反映隔夜/週末地緣消息
+    //   台股慣例:跌(綠)=隔日台股偏空跳空風險、漲(紅)=偏多。抓不到顯「--」不假裝。
+    _renderUsFutNight() {
+        const el = document.getElementById('usFutNight');
+        if (!el) return;
+        const m = this._marketSnapshot || {};
+        const es = m.es_fut?.chg_pct, nq = m.nq_fut?.chg_pct;
+        if (typeof es !== 'number' && typeof nq !== 'number') { el.innerHTML = '🌙 夜盤 --'; el.className = 'font-mono text-[10px] text-gray-500'; return; }
+        const seg = (lbl, v) => {
+            if (typeof v !== 'number') return `${lbl} --`;
+            const col = v > 0 ? 'text-[#f87171]' : v < 0 ? 'text-[#4ade80]' : 'text-gray-400';
+            return `${lbl} <span class="${col}">${v > 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
+        };
+        // 兩者中最弱的決定整體燈號色(跳空風險看最差那個)
+        const worst = Math.min(typeof es === 'number' ? es : 99, typeof nq === 'number' ? nq : 99);
+        const tone = worst <= -1 ? 'text-[#4ade80]' : worst >= 1 ? 'text-[#f87171]' : 'text-gray-500';
+        el.className = `font-mono text-[10px] ${tone}`;
+        el.innerHTML = `🌙 ${seg('S&P期', es)} ${seg('那期', nq)}`;
+    },
+
     _calcRiskScore() {
         const m = this._marketSnapshot || {};
         const vix = m.vix?.close ?? null;
-        const spxChg = m.sp500?.chg_pct ?? null;
+        // V32.7 — 美股方向「期貨夜盤優先」:ES=F(S&P 期)近 24h 交易,週末/隔夜地緣消息
+        //   會即時反映 → 比現貨 ^GSPC(收盤後不動)更早預警週一台股跳空。抓不到期貨才退回現貨。
+        const spxChg = m.es_fut?.chg_pct ?? m.sp500?.chg_pct ?? null;
+        const nqChg  = m.nq_fut?.chg_pct ?? null;   // Nasdaq 期夜盤(科技權值 → 台積電/台股連動)
         const dxyChg = m.dxy?.chg_pct ?? null;
         const goldChg = m.gold?.chg_pct ?? null;
         const usdjpyChg = m.usdjpy?.chg_pct ?? null;
@@ -19259,12 +19291,19 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             else if (dxyChg < -0.5) score -= 2;
         }
 
-        // S&P500 direction: falling = bad (0-8 points)
+        // S&P500(現貨/期貨夜盤)direction: falling = bad (0-8 points)
         if (spxChg !== null) {
             if      (spxChg < -2) score += 8;
             else if (spxChg < -1) score += 5;
             else if (spxChg <  0) score += 2;
             else if (spxChg >  1) score -= 2;
+        }
+
+        // V32.7 — Nasdaq 期貨夜盤:科技權值連動台積電/台股,重挫加風險 (0-6 points)
+        if (nqChg !== null) {
+            if      (nqChg < -2)   score += 6;
+            else if (nqChg < -1)   score += 3;
+            else if (nqChg < -0.3) score += 1;
         }
 
         // USDJPY: sharp drop = yen strengthening = carry trade unwind = black swan signal (0-15 points)
