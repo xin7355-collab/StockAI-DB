@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3850,6 +3850,13 @@ ${list}
         }
         this.renderEtfTab();
     },
+
+    // V33.4 — 績效榜排序切換(近120日 / 近20日)
+    _setEtfPerfSort(k) {
+        this._etfPerfSort = (k === '20') ? '20' : '120';
+        this.vibrate?.(20);
+        this.renderEtfTab();
+    },
     async _initEtfAlert() {
         // 開 App 背景拉一次,今日有 ETF 換股 → nav 紅點提醒(失敗不阻塞)
         try {
@@ -4321,7 +4328,15 @@ ${list}
 
         // V33.3 — ① 主動 vs 被動(0050)勝負標 ② 近120漲多但近20翻黑「短線轉弱」防追高標
         const bench0050 = (d.benchmarks || []).find(b => b.symbol === '0050')?.perf?.ret_120d ?? null;
-        const perfCardHtml = d.etfs.map((e, i) => {
+        // V33.4 — 績效榜可切排序(近120日 / 近20日);前端排序不動後端,複製陣列避免改到 cache
+        const _psort = this._etfPerfSort || '120';
+        const _psKey = e => {
+            const m = e.perf || {};
+            if (_psort === '20') return (m.ret_20d != null ? m.ret_20d : -9999);
+            return (m.ret_120d != null ? m.ret_120d : (m.ret_incep != null ? m.ret_incep : -9999));
+        };
+        const _sortedEtfs = [...d.etfs].sort((a, b) => _psKey(b) - _psKey(a));
+        const perfCardHtml = _sortedEtfs.map((e, i) => {
             const m = e.perf || {};
             const shortHist = (m.bars || 0) < 120;
             const _beat = (m.ret_120d != null && bench0050 != null) ? (m.ret_120d > bench0050) : null;
@@ -4360,7 +4375,13 @@ ${list}
                 ${stocksHtml}
                 ${benchHtml ? `<div class="flex gap-1.5 items-center"><div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>${benchHtml}</div>` : ''}
                 <div class="px-1 mt-1">
-                    <div class="text-[11px] text-gray-400 font-bold mb-1">🏆 主動 ETF 績效榜 <span class="text-[9px] text-gray-600 font-normal">· 近120日(新上市顯上市以來)</span></div>
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="text-[11px] text-gray-400 font-bold">🏆 主動 ETF 績效榜</div>
+                        <div class="flex gap-1 text-[9px]">
+                            <button onclick="app._setEtfPerfSort('120')" class="px-2 py-0.5 rounded ${_psort === '120' ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-[#30363d]'} font-bold">近120日</button>
+                            <button onclick="app._setEtfPerfSort('20')" class="px-2 py-0.5 rounded ${_psort === '20' ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-[#30363d]'} font-bold">近20日</button>
+                        </div>
+                    </div>
                     <div class="flex flex-col gap-1.5">${perfCardHtml}</div>
                 </div>
                 <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
