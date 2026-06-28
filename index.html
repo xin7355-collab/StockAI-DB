@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V31.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V31.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -782,9 +782,12 @@
         <!-- V19.0 — 加回 logo + 🔍 🔔 改 SVG line icon(統一證券 App 風格) -->
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
-                <div class="flex flex-col justify-center cursor-pointer min-w-[88px]" onclick="app.switchAppTab('diag'); app.vibrate(50);">
-                    <h1 class="text-[1.05rem] md:text-[1.15rem] font-black tracking-tight leading-none whitespace-nowrap bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">首席 AI 司令部</h1>
-                    <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">STRATEGY TERMINAL V31.1</span>
+                <!-- V31.2 — 首席 AI logo 換成大盤天氣趨勢(短/中/長,連動 _renderMarketWeatherTrend),點擊回診斷 -->
+                <div class="flex flex-col justify-center cursor-pointer min-w-[92px]" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣趨勢(短/中/長)· 點擊回診斷">
+                    <div id="headerWeather" class="flex items-center gap-2 leading-none">
+                        <span class="text-[10px] text-gray-500">天氣載入中…</span>
+                    </div>
+                    <span class="text-[7px] text-gray-600 font-mono tracking-wider mt-0.5 whitespace-nowrap">大盤天氣 · 短中長 · V31.2</span>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
                 <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
@@ -1430,7 +1433,7 @@
                     <button onclick="app.showJargon('板塊輪動訊號'); event.stopPropagation();" class="text-[11px] text-gray-500 hover:text-blue-300 transition-colors leading-none" title="訊號說明">ⓘ</button>
                     <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
                 </div>
-                <div class="text-[10px] text-gray-400 mb-2">熱錢流向哪個產業一目了然 · <span class="text-red-400">🔺 紅=漲</span> / <span class="text-green-400">🔻 綠=跌</span>(台股慣例)</div>
+                <div class="text-[10px] text-gray-400 mb-2">美股昨夜 vs 台股今日 · <span class="text-red-300">🔴 跟漲</span> <span class="text-amber-300">🟡 委屈</span> <span class="text-green-300">🟢 補跌</span> <span class="text-orange-300">🟠 獨弱</span>(跟漲須美股真漲)</div>
 
                 <!-- 2 按鈕並列:🔄 即時更新 + 🤖 AI 白話判讀 -->
                 <div class="grid grid-cols-2 gap-2 mb-2">
@@ -2456,7 +2459,7 @@ const app = {
     confidenceMsgCache: "等待運算",
 
     jargonDict: {
-        '板塊輪動訊號': '美股昨夜先收、台股今天接著反應。看「美股昨收」與「台股今日」的差距(缺口)判斷:\n\n• 強烈跟漲:台股明顯落後美股漲幅,補漲動能最強(紅,閃爍)。\n• 跟漲機會:台股小幅落後,有補漲空間(紅)。\n• 同步:兩市齊步,無明顯缺口(灰)。\n• 偏弱:台股反而領先美股,動能轉弱(綠)。\n• 補跌風險:台股領先美股過多,恐回頭補跌(綠)。\n• 台股獨弱:台股自己大跌(<-3%),屬台股自身利空,別跟美股做多(橙)。\n\n色彩台股慣例:紅=偏漲(跟漲)、綠=偏跌(補跌)。',
+        '板塊輪動訊號': '美股昨夜先收、台股今天接著走。鐵則:「跟漲」只有在美股真的上漲時才算數(美股沒漲就沒得跟):\n\n• 強烈跟漲(紅閃):美股大漲、台股也漲只是落後很多 → 補漲動能最強。\n• 跟漲機會(紅):美股漲、台股漲幅落後 → 有補漲空間。\n• 委屈待補(黃):美股漲、台股卻收黑(跌<3%)→ 相對弱勢,可能補漲也可能有隱憂,先觀望別追。\n• 台股獨弱(橙):台股自己大跌≥3% → 台股自身利空,別跟美股做多。\n• 補跌風險(綠):美股跌、台股跌更多 → 跟跌/超跌。\n• 逆勢抗跌(紅):台股比美股強(美股跌台股守住,或台股漲更多)→ 相對強勢。\n• 同步(灰):兩市齊步,無明顯落差。\n\n色彩:紅=偏強(跟漲/抗跌)、黃=委屈觀望、綠=偏弱(補跌)、橙=台股獨弱。',
         '大盤天氣趨勢': '用加權指數的均線排列,把大盤分「短期(日)/ 中期(週)/ 長期(月)」三個時間判斷方向(全部由程式算,不靠 AI):\n\n• ☀️ 偏多:收盤 > 短均 > 長均(多頭排列),順勢做多較有利。\n• ☁️ 震盪:均線糾結或交叉,方向不明,別重押、等表態。\n• 🌧️ 偏空:收盤 < 短均 < 長均(空頭排列),反彈偏空、控好部位。\n\n短期=日K MA5/MA20、中期=週K MA5/MA20、長期=月K MA3/MA12;乖離=收盤離長均的百分比。三個天期同方向(如全 ☀️)趨勢最明確;打架(☀️☁️🌧️ 混)代表轉折或盤整,操作要更保守。',
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。就像火箭加速衝刺的階段，遇到務必抱緊處理！',
         '多頭排列': '短期、中期、長期均線由上到下依序排列，且每條都朝上。代表各個天期的投資人都賺錢，有極強的支撐力量。',
@@ -3188,7 +3191,7 @@ const app = {
 
     // 通用警報通知（與 _fireHuntNotification 並存，盤中監控專用單一入口）
     _fireAlert(title, body, sym) {
-        // V19.4 — 記到通知歷史(2 天後自動清),即使通知權限沒開也記,讓使用者能查
+        // V19.4 — 記到通知歷史(3 天後自動清),即使通知權限沒開也記,讓使用者能查
         try { this._recordNotifHistory(title, body, sym); } catch(_) {}
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
         try {
@@ -3205,11 +3208,11 @@ const app = {
         } catch (e) {}
     },
 
-    // V19.4 — 通知歷史:推播 / fireAlert 觸發時都記一筆(2 天後自動清,最多 100 筆)
+    // V19.4 — 通知歷史:推播 / fireAlert 觸發時都記一筆(3 天後自動清,最多 100 筆)
     _recordNotifHistory(title, body, sym) {
         if (!title) return;
         const KEY = 'proTerminalNotifHistory';
-        const TTL = 2 * 24 * 3600 * 1000;   // 2 天
+        const TTL = 3 * 24 * 3600 * 1000;   // 3 天
         const now = Date.now();
         let arr;
         try { arr = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(_) { arr = []; }
@@ -3228,7 +3231,7 @@ const app = {
     _getNotifHistory() {
         try {
             const arr = JSON.parse(localStorage.getItem('proTerminalNotifHistory') || '[]');
-            const TTL = 2 * 24 * 3600 * 1000;
+            const TTL = 3 * 24 * 3600 * 1000;
             const now = Date.now();
             return (arr || []).filter(x => x && (now - (x.at || 0)) < TTL);
         } catch(_) { return []; }
@@ -8687,11 +8690,18 @@ const marginByDate = {};
         }
     },
 
-    // 🌤️ V31.1 — 大盤天氣趨勢(短日/中週/長月):純 JS 算加權指數均線排列,不丟 AI(防幻覺鐵律)
+    // 🌤️ V31.1/V31.2 — 大盤天氣趨勢(短日/中週/長月):純 JS 算加權指數均線排列,不丟 AI(防幻覺鐵律)
     //   多頭排列(收>短均>長均)=☀️偏多 / 空頭排列(收<短均<長均)=🌧️偏空 / 其餘糾結=☁️震盪
+    //   V31.2 — 一次 fetch 雙渲染:頂部 logo(#headerWeather 精簡)+ 台股實戰 panel(#marketWeatherTrend 詳細),自動連動
     async _renderMarketWeatherTrend() {
-        const box = document.getElementById('marketWeatherTrend');
-        if (!box) return;
+        const box  = document.getElementById('marketWeatherTrend');
+        const hbox = document.getElementById('headerWeather');
+        if (!box && !hbox) return;
+        const meta = {
+            bull: { icon: '☀️', txt: '偏多', cls: 'text-red-300',   sub: '多頭排列' },
+            chop: { icon: '☁️', txt: '震盪', cls: 'text-gray-300',  sub: '均線糾結' },
+            bear: { icon: '🌧️', txt: '偏空', cls: 'text-green-300', sub: '空頭排列' },
+        };
         try {
             let rows = this._twiiKlineCache?.rows;
             const fresh = this._twiiKlineCache?.at && (Date.now() - this._twiiKlineCache.at) < 1800000;
@@ -8709,12 +8719,8 @@ const marginByDate = {};
                 { label: '中期', unit: '週', v: this._weatherVerdict(this.aggregateData(rows, 'W'), 5, 20) },
                 { label: '長期', unit: '月', v: this._weatherVerdict(this.aggregateData(rows, 'M'), 3, 12) },
             ];
-            const meta = {
-                bull: { icon: '☀️', txt: '偏多', cls: 'text-red-300',   sub: '多頭排列' },
-                chop: { icon: '☁️', txt: '震盪', cls: 'text-gray-300',  sub: '均線糾結' },
-                bear: { icon: '🌧️', txt: '偏空', cls: 'text-green-300', sub: '空頭排列' },
-            };
-            box.innerHTML = tfs.map(t => {
+            // panel 詳細版:icon + 偏多/震盪/偏空 + 乖離
+            if (box) box.innerHTML = tfs.map(t => {
                 if (!t.v) return `<div class="flex flex-col items-center bg-white/5 rounded-lg py-2 px-1">
                         <div class="text-[9px] text-gray-500 mb-0.5">${t.label}·${t.unit}</div>
                         <div class="text-2xl leading-none opacity-30">🌫️</div>
@@ -8730,9 +8736,15 @@ const marginByDate = {};
                         <div class="text-[8px] text-gray-500 font-mono">乖離 ${biasTxt}</div>
                     </div>`;
             }).join('');
+            // header 精簡版:時間字上色(偏多紅/震盪灰/偏空綠)+ 天氣 icon
+            if (hbox) hbox.innerHTML = tfs.map(t => {
+                const m = t.v ? meta[t.v.key] : { icon: '🌫️', cls: 'text-gray-600' };
+                return `<span class="flex items-center gap-0.5"><span class="text-[10px] font-black ${m.cls} leading-none">${t.label[0]}</span><span class="text-[14px] leading-none">${m.icon}</span></span>`;
+            }).join('');
         } catch (e) {
             console.warn('[weatherTrend]', e);
-            box.innerHTML = `<div class="col-span-full text-center text-gray-600 text-[10px] py-2">趨勢資料抓取中,稍後再看</div>`;
+            if (box)  box.innerHTML  = `<div class="col-span-full text-center text-gray-600 text-[10px] py-2">趨勢資料抓取中,稍後再看</div>`;
+            if (hbox) hbox.innerHTML = `<span class="text-[10px] text-gray-600">天氣稍後</span>`;
         }
     },
 
@@ -9466,23 +9478,33 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
                         : (_shTw[sk] && _shTw[sk].chg != null ? _shTw[sk].chg : null);
             const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : null;
             const gap = (usChg != null && twChg != null) ? (usChg - twChg) : null;
-            const gapStr = gap != null ? (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%' : '--';
-            // V27.6 — 台股自身明顯下殺(<-3%)時,缺口再大也不是跟漲,而是台股獨有利空
-            const twWeak = (twChg != null && twChg < -3 && gap != null && gap > 0);
-            // V30.1 — Pill 膠囊訊號徽章(無 emoji,終端訊號色板;文字自帶語意,符合「寫字不靠色」)
+            // V31.2 — Pill 膠囊訊號徽章(無 emoji,文字自帶語意)
             const _pill = (t, c, pulse) => `<span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap ${c}${pulse ? ' animate-pulse' : ''}">${t}</span>`;
+            // V31.2 — 訊號改「方向感知」:跟漲只在美股實際上漲才成立;美股漲台股卻收黑=委屈;美股跌台股跌更多=補跌;台股自殺=獨弱
+            const _C = {
+                strong: 'bg-red-500/15 text-red-300 border border-red-500/50',
+                red:    'bg-red-500/10 text-red-300 border border-red-700/50',
+                amber:  'bg-amber-500/10 text-amber-300 border border-amber-600/50',
+                orange: 'bg-orange-500/10 text-orange-300 border border-orange-600/50',
+                green:  'bg-green-500/10 text-green-300 border border-green-700/50',
+                gray:   'bg-white/5 text-gray-400 border border-[#30363d]',
+            };
             let gapBadge;
-            // V31.0 — Pill 改回台股慣例:跟漲(看漲)=紅、補跌/偏弱(看跌)=綠、台股獨弱=橙、同步=灰
-            if (gap == null)      gapBadge = _pill('—', 'bg-white/5 text-gray-500 border border-[#30363d]');
-            else if (twWeak)      gapBadge = _pill('台股獨弱', 'bg-orange-950 text-orange-400 border border-orange-800/70');
-            else if (gap > 1.5)   gapBadge = _pill('強烈跟漲', 'bg-red-900/60 text-red-200 border border-red-500/60', true);
-            else if (gap > 0.8)   gapBadge = _pill('跟漲機會', 'bg-red-950 text-red-400 border border-red-800/70');
-            else if (gap < -1.5)  gapBadge = _pill('補跌風險', 'bg-green-900/50 text-green-300 border border-green-600/60');
-            else if (gap < -0.8)  gapBadge = _pill('偏弱', 'bg-green-950 text-green-500 border border-green-800/60');
-            else                  gapBadge = _pill('同步', 'bg-white/5 text-gray-400 border border-[#30363d]');
+            if (usChg == null || twChg == null) {
+                gapBadge = _pill('—', _C.gray);
+            } else {
+                const usUp = usChg > 0.3, usDn = usChg < -0.3;
+                if (twChg <= -3 && gap > 0.5)              gapBadge = _pill('台股獨弱', _C.orange);        // 台股自身大跌,別跟美股做多
+                else if (usUp && twChg > 0.3 && gap > 1.5) gapBadge = _pill('強烈跟漲', _C.strong, true);  // 美漲+台漲落後很多 → 補漲最強
+                else if (usUp && twChg > 0.3 && gap > 0.6) gapBadge = _pill('跟漲機會', _C.red);           // 美漲+台漲落後
+                else if (usUp && twChg <= 0.3)             gapBadge = _pill('委屈待補', _C.amber);         // 美漲台股卻收黑 → 相對弱勢觀望
+                else if (usDn && gap > 0.8)                gapBadge = _pill('補跌風險', _C.green);          // 美跌+台跌更多
+                else if (gap < -0.8)                       gapBadge = _pill('逆勢抗跌', _C.red);            // 台股比美股強
+                else if (gap > 0.8)                        gapBadge = _pill('台股偏弱', _C.green);          // 美平+台跌
+                else                                       gapBadge = _pill('同步', _C.gray);
+            }
             const usCls = usChg != null ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
             const twCls = twChg != null ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
-            const gapCls = gap == null ? 'text-gray-500' : twWeak ? 'text-orange-300 font-bold' : (Math.abs(gap) > 0.8 ? (gap > 0 ? 'text-red-300 font-bold' : 'text-green-300 font-bold') : 'text-gray-400');
             const _usTxt = usChg != null ? `${usChg >= 0 ? '+' : ''}${usChg.toFixed(1)}%` : '--';
             const _twTxt = twChg != null ? `${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
             html += `
@@ -19022,87 +19044,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             dateEl.textContent = dt ? `基於 ${dt}` : '';
         }
 
-        // Heatmap
-        const heatmap = document.getElementById('mktHeatmap');
-        if (!heatmap) return;
-        const m = this._marketSnapshot || {};
-        const fi = this.fiShortQty;
-
-        const cells = [
-            { icon: '📈', name: 'S&P 500',    key: 'sp500',  invert: false },
-            { icon: '💻', name: 'NASDAQ',      key: 'nasdaq', invert: false },
-            { icon: '⚡', name: '費半 SOX',    key: 'sox',    invert: false, hl: true },
-            { icon: '🔥', name: 'VIX',         key: 'vix',    vixMode: true },
-            { icon: '🏭', name: 'TSMC ADR',    key: 'tsm',    invert: false, hl: true },
-            { icon: '🤖', name: 'NVDA',        key: 'nvda',   invert: false },
-            { icon: '🍎', name: 'AAPL',        key: 'aapl',   invert: false },
-            { icon: '🪟', name: 'MSFT',        key: 'msft',   invert: false },
-            { icon: '🏦', name: '美債 2Y',     key: 'us02y',  invert: true  },
-            { icon: '🛢', name: '原油',         key: 'ukoil',  invert: false },
-            { icon: '💵', name: 'DXY',         key: 'dxy',    invert: true  },
-            { icon: '🥇', name: '黃金',         key: 'gold',   invert: false },
-            { icon: '🇯🇵', name: '日圓',        key: 'usdjpy', invert: true  },
-            { icon: '🎯', name: '外資期貨',     key: '__fi',   fiMode: true  },
-        ];
-
-        // Compute all cells with chgSign first, then sort red (bearish) before green (bullish)
-        const computed = cells.map(c => {
-            let chgSign, displayVal, rawChg;
-
-            if (c.fiMode) {
-                if (fi === null) return { c, chgSign: 0, html: `<div class="bg-gray-900/40 rounded p-2 text-center cursor-pointer" onclick="app.openFiFuturesModal();app.vibrate(30);"><div class="text-[9px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[10px] text-gray-600 mt-0.5">--</div></div>` };
-                rawChg = fi >= 0 ? 1 : (fi < -25000 ? -2 : -0.5);
-                displayVal = `${fi >= 0 ? '+' : ''}${(fi / 1000).toFixed(1)}K口`;
-                chgSign = rawChg;
-            } else if (c.vixMode) {
-                const val = m[c.key];
-                if (!val) return { c, chgSign: 0, html: `<div class="bg-gray-900/40 rounded p-2 text-center"><div class="text-[9px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[10px] text-gray-600 mt-0.5">--</div></div>` };
-                const v = val.close ?? 0;
-                rawChg = v > 25 ? -2 : v > 20 ? -0.8 : v > 15 ? 0.2 : 1;
-                displayVal = v.toFixed(1);
-                chgSign = rawChg;
-            } else {
-                const val = m[c.key];
-                if (!val) return { c, chgSign: 0, html: `<div class="bg-gray-900/40 rounded p-2 text-center"><div class="text-[9px] text-gray-600 leading-tight">${c.icon} ${c.name}</div><div class="text-[10px] text-gray-600 mt-0.5">--</div></div>` };
-                rawChg = val.chg_pct ?? 0;
-                chgSign = c.invert ? -rawChg : rawChg;
-                const cl = val.close ?? 0;
-                displayVal = cl >= 1000 ? Math.round(cl).toLocaleString() : cl.toFixed(2);
-            }
-
-            const bgCls = chgSign > 0.5  ? 'bg-red-900/55 border border-red-800/50'
-                        : chgSign > 0    ? 'bg-red-900/30 border border-red-900/30'
-                        : chgSign > -0.5 ? 'bg-green-900/30 border border-green-900/30'
-                        :                  'bg-green-900/55 border border-green-800/50';
-            const txtCls = chgSign > 0.5  ? 'text-[#f87171]'
-                         : chgSign > 0    ? 'text-red-400'
-                         : chgSign > -0.5 ? 'text-green-400'
-                         :                  'text-[#4ade80]';
-            const chgStr = (c.fiMode || c.vixMode) ? '' : `<div class="text-[9px] ${txtCls} opacity-80">${rawChg > 0 ? '+' : ''}${rawChg.toFixed(1)}%</div>`;
-            const ring = c.hl ? ' ring-1 ring-blue-500/40' : '';
-            const clickFi = c.fiMode ? ` onclick="app.openFiFuturesModal();app.vibrate(30);" style="cursor:pointer"` : '';
-            // Mini stacked bar: red=bearish extent, green=bullish extent
-            const barPct = Math.min(Math.abs(chgSign) * 25, 100);
-            const barHtml = `<div class="mt-1 h-0.5 rounded overflow-hidden bg-gray-800/80">
-                <div class="h-full rounded transition-all" style="width:${barPct}%; background:${chgSign > 0 ? '#f87171' : '#4ade80'};"></div>
-            </div>`;
-            const html = `<div class="${bgCls} rounded p-2 text-center${ring}"${clickFi}>
-                <div class="text-[9px] text-gray-400 leading-tight truncate">${c.icon} ${c.name}</div>
-                <div class="text-[11px] font-black ${txtCls} mt-0.5">${displayVal}</div>
-                ${chgStr}${barHtml}
-            </div>`;
-            return { c, chgSign, html };
-        });
-
-        // 外資台指期固定第一格，其餘依空→多排序
-        const fiCell     = computed.find(x => x.c.fiMode);
-        const otherCells = computed.filter(x => !x.c.fiMode);
-        otherCells.sort((a, b) => b.chgSign - a.chgSign);
-        const ordered = fiCell ? [fiCell, ...otherCells] : otherCells;
-        heatmap.innerHTML = ordered.map(x => x.html).join('');
-
-        const ts = document.getElementById('warRoomTs');
-        if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+        // V31.2 — 已清 mktHeatmap 死碼(該 DOM 元素早已移除,整段 cells/computed/排序永不執行;warRoomTs 亦已 hidden)
     },
 
     // 🌐 確保三大全域戰略情報快取就緒（macro_risk / sector_heat / bubble_warning）；
