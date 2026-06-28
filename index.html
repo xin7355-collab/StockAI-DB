@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -115,7 +115,7 @@
         .swipe-content { position: relative; z-index: 10; width: 100%; transition: transform 0.2s ease-out; }
         .swipe-action-btn { position: relative; z-index: 5; }
 
-        .modal-base { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(2px); z-index: 300; display: flex; position: fixed; inset: 0; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-base { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(2px); z-index: 300; display: flex; position: fixed; inset: 0; align-items: flex-start; justify-content: center; overflow-y: auto; padding: max(env(safe-area-inset-top, 0px), 1rem) 1rem max(env(safe-area-inset-bottom, 0px), 1rem) 1rem; }
         .modal-base.hidden { display: none !important; }
         .modal-content { background-color: #1c2128; border: 1px solid #30363d; border-radius: 0.75rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; padding: 1.25rem; }
         .zoomable-zone { transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center; will-change: transform; overscroll-behavior: contain; touch-action: pan-y; }
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3660,6 +3660,19 @@ ${list}
         const banner = document.getElementById('marketAlertBanner');
         if (!banner) return;
         const score = this._calcRiskScore() ?? 0;
+        // V32.3 — 大盤風險主動推播(每日每級一次;沿用「自選股到價推播」開關+通知權限,沒開不吵)
+        try {
+            if (score >= 60 && this.settings?.watchlistAlert && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                const lvl = score >= 80 ? 'panic' : 'high';
+                const dk = `mktrisk_${lvl}_${this.getTodayStr().replace(/\//g, '-')}`;
+                if (!this._alertCache) this._alertCache = {};
+                if (!this._alertCache[dk]) {
+                    this._alertCache[dk] = Date.now();
+                    this._fireAlert(score >= 80 ? '🚨 大盤極度恐慌' : '🔴 大盤高度風險',
+                        `台股風險指數 ${score}/100,${score >= 80 ? '黑天鵝風險極高,嚴控倉位、別接刀' : '市場壓力明顯,謹慎操作、收緊停利'}`, '');
+                }
+            }
+        } catch (_) {}
         if (score >= 80) {
             banner.innerHTML = `<span class="flex-1 text-center">🚨 極度恐慌！風險指數 ${score}/100，黑天鵝風險極高，嚴控倉位</span><button onclick="document.getElementById('marketAlertBanner').classList.add('hidden')" class="ml-2 text-red-300 hover:text-white font-black leading-none flex-shrink-0 text-sm px-1">✕</button>`;
             banner.className = 'flex items-center px-3 py-1 text-[10px] font-bold border-b bg-red-950/90 text-red-300 border-red-700 animate-pulse';
@@ -17941,7 +17954,9 @@ ${_newsLine}${globalContext}
             if (btn) btn.className = this._RADAR_TAB_BASE + (k === key ? cfg.active : this._RADAR_TAB_INACTIVE);
         });
         const hint = document.getElementById('radarMatrixHint');
-        if (hint) hint.textContent = this._RADAR_HINT[key] || '';
+        if (hint) hint.innerHTML = (this._RADAR_HINT[key] || '') + this._radarWinNote(key);
+        // V32.3 — signal_history 未載入時(首次切非送分題分頁)→ 載入後補回勝率小字
+        if (!this._signalHistCache) { try { Promise.resolve(this._loadSignalAccuracy()).then(() => { const h2 = document.getElementById('radarMatrixHint'); if (h2 && this.radarStrategy === key) h2.innerHTML = (this._RADAR_HINT[key] || '') + this._radarWinNote(key); }).catch(()=>{}); } catch(_){} }
         // 切換 layup view vs 處置股 view vs 一般表格
         const layupView = document.getElementById('radarLayupView');
         const tableWrap = document.getElementById('radarTableWrap');
@@ -17968,6 +17983,23 @@ ${_newsLine}${globalContext}
             this.renderRadarMatrix(key);
         }
         this.vibrate(15);
+    },
+
+    // V32.3 — 雷達戰區回測勝率小字:僅送分題/獵鷹有回測(signal_history.json);其餘即時掃描誠實標未回測
+    _radarWinNote(key) {
+        const h = this._signalHistCache;
+        if (key === 'layup') {
+            const s = h?.by_signal?.['🟢送分題'];
+            if (s && s.win_rate_10d != null) return `<div class="mt-1 text-[10px]"><span class="text-green-300 font-bold">✅ 回測勝率 ${s.win_rate_10d}%</span> <span class="text-gray-500">· 平均 ${s.avg_return_10d > 0 ? '+' : ''}${s.avg_return_10d}% · ${s.samples} 樣本(10日扣成本)</span></div>`;
+        } else if (key === 'falcon') {
+            const s = h?.falcon_strategy?.falcon60;
+            if (s && s.win_rate != null) return `<div class="mt-1 text-[10px]"><span class="text-green-300 font-bold">✅ 回測勝率 ${s.win_rate}%</span> <span class="text-gray-500">· 平均 ${s.avg_return > 0 ? '+' : ''}${s.avg_return}% · ${s.samples} 樣本(獵鷹≥60 隔日)</span></div>`;
+        } else if (key === 'attention') {
+            return '<div class="mt-1 text-[10px] text-gray-500">ℹ️ 處置股=風控區(分盤撮合),不納入回測</div>';
+        } else {
+            return '<div class="mt-1 text-[10px] text-gray-500">ℹ️ 此戰區為即時技術掃描,未納入歷史回測(動能/波段/籌碼即時邏輯)</div>';
+        }
+        return '';
     },
 
     // 🦅 把 _falconScores.stocks 動態合成成 radarMatrix.data.falcon
