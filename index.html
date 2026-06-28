@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1857,6 +1857,14 @@
                 </div><!-- /分頁 2 籌碼因子 -->
                 <!-- 分頁 3:風控警示(熔斷示警 + 泡沫風控)-->
                 <div id="sccPanel_risk" class="scc-panel hidden">
+            <!-- 🅾️ V33.0 歐尼爾出貨日(派發日)計數:大盤近25日機構派發強度,純 JS 算 ^TWII,含「站上高點消退」校正 -->
+            <div id="distDayCard" class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 mb-2">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] text-gray-400 font-bold">🅾️ 歐尼爾出貨日 <span class="text-[8px] text-gray-600 font-normal">· 大盤機構派發</span></span>
+                    <button onclick="app.showJargon('歐尼爾出貨日')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+                </div>
+                <div class="text-center text-gray-600 text-[10px] py-2">計算中…</div>
+            </div>
             <!-- 🚨 全球熔斷示警卡(平常 hidden,熔斷才顯;台灣無指數熔斷→顯國際指數+對台股影響)-->
             <div id="circuitBreakerAlert" class="hidden bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-orange-700/40 rounded-lg p-3 shadow-md animate-pulse"></div>
 
@@ -2560,6 +2568,7 @@ const app = {
 
         // === 🌍 全球巨頭脈動（8 卡新指標）===
         '黃金': '國際避險指標。漲=資金避險（戰爭/通膨恐慌/升息預期）、跌=風險偏好回升。黃金與美股經常反向。',
+        '歐尼爾出貨日': '🅾️ 借用美國股神「歐尼爾(CAN SLIM)」的經典大盤判頂工具,看「機構法人有沒有在偷偷倒貨」。\n\n📊 怎麼算(全程式精算,不靠 AI):\n  ・ 出貨日 = 大盤(加權指數)當天「收黑跌幅 ≥ 0.2%」且「成交量比前一天大」(量增下跌 = 大戶趁高出貨)。\n  ・ 統計近 25 個交易日內有幾根這種出貨日。\n\n🔄 獨家校正(站上高點消退):某根出貨日之後,只要大盤收盤「站回」那根出貨日的最高價,代表多方把那次倒貨吃掉收復了 → 該根失效、從計數扣掉。比單純累加更貼近真實威脅。\n\n🎯 燈號:\n  🟢 0 根:派發健康,多方環境乾淨\n  🟡 1-2 根:零星留意\n  🟠 3-4 根:派發累積,新進場保守\n  🔴 ≥5 根:機構連續派發(歐尼爾經典轉空門檻)→ 做多轉守、減碼、別追高\n\n💡 它也會餵進上方「警戒備戰」風險指數;出貨日越多,風險分越高。\n\n⚠️ 僅供風控參考,非投資建議。',
         '美股期貨夜盤': '🌙 S&P500 期貨(ES)、Nasdaq 期貨(NQ)幾乎 24 小時交易(週日晚上 18:00 美東就開盤)，所以「美股現貨收盤後、台股還沒開盤」那段時間發生的事(戰爭、地緣衝突、隔夜重大消息)，會先反映在期貨夜盤上。\n\n📌 用途:台股週一開盤的「跳空風向球」。\n  ・ 期貨夜盤大跌(綠) → 週一台股大概率低開,持倉先設停損 / 夜盤可買賣權避險\n  ・ 期貨夜盤大漲(紅) → 週一偏多開高\n\n🔄 不會自動更新,要點指數列的 🔄 鈕手動抓最新(透過 Yahoo 公開報價)。它也會餵進上面「警戒備戰」風險指數 → 夜盤轉弱時那個分數會跟著升。\n\n⚠️ 不是水晶球:消息常被提前反映(price-in)或反覆(停戰又開打),只當風險前導訊號,不是必跌保證。週末期貨休市時顯示上週五收盤,要等週日晚上開盤才會動。',
         'WTI原油': '美國西德州原油期貨。漲=經濟旺/通膨壓力大（傳產受益、科技壓抑）、跌=經濟降溫/需求弱。塞翁失馬看產業。',
         '美元指數': '美元對主要貨幣（歐元/日圓/英鎊）的綜合指數。漲=熱錢回美國（新興市場壓力）、跌=熱錢流出美國（台股利多）。',
@@ -8783,12 +8792,13 @@ const marginByDate = {};
                               : 'text-gray-400 bg-white/5 border border-[#30363d]';
             const valCls = d => d === '偏多' ? 'text-red-300' : d === '偏空' ? 'text-green-300' : 'text-gray-300';
             // V31.0 — 因子去包裝:無外框,border-b 分隔列,砍 hint + ℹ️(平鋪在黑底上)
-            const card = (icon, name, val, dir) => `
+            const card = (icon, name, val, dir, delta = '') => `
                 <div class="flex flex-col py-1.5 border-b border-[#21262d]/60">
                     <div class="text-[10px] text-gray-500 font-bold mb-0.5">${icon} ${name}</div>
-                    <div class="flex items-baseline gap-2">
+                    <div class="flex items-baseline gap-2 flex-wrap">
                         <span class="text-lg font-black font-mono ${valCls(dir)} leading-none">${val}</span>
                         <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${pillCls(dir)}">${dir}</span>
+                        ${delta}
                     </div>
                 </div>`;
             const na = '<span class="text-gray-600">--</span>';
@@ -8806,12 +8816,37 @@ const marginByDate = {};
             let lVal = na, lDir = '待更新';   // V31.5 — 景氣燈號無資料時顯「待更新」(灰),不偽裝成真的「中性」讀數
             const lmap = { 'red': ['🔴 紅燈', '偏空'], 'yellow-red': ['🟠 黃紅', '偏空'], 'green': ['🟢 綠燈', '中性'], 'yellow-blue': ['🔵 黃藍', '偏多'], 'blue': ['🔵 藍燈', '偏多'] };
             if (bsiLight && lmap[bsiLight]) { lVal = lmap[bsiLight][0]; lDir = lmap[bsiLight][1]; }
+            // 🔼 V33.0 — 籌碼因子日比對 Delta(localStorage 隔日比;同日多次渲染不覆蓋昨日基準)
+            //   ▲ 增=紅 / ▼ 減=綠(台股慣例,純數值方向,不代表多空好壞);首次使用無基準則不顯
+            const _today = this.getTodayStr();
+            const _tvals = {
+                retail:  (typeof retail === 'number')  ? +retail.toFixed(1)   : null,
+                back:    (typeof back === 'number')    ? Math.round(back)      : null,
+                twiiPos: (typeof twiiPos === 'number') ? Math.round(twiiPos)   : null,
+                fiSpot:  (typeof fiSpot === 'number')  ? Math.round(fiSpot)    : null,
+                vix:     (typeof vix === 'number')     ? +vix.toFixed(1)       : null,
+            };
+            let _base = null;
+            try {
+                const snap = JSON.parse(localStorage.getItem('proTerm_chipFactors') || 'null');
+                if (snap && snap.date && snap.date !== _today) localStorage.setItem('proTerm_chipFactorsPrev', JSON.stringify(snap));
+                const prev = JSON.parse(localStorage.getItem('proTerm_chipFactorsPrev') || 'null');
+                _base = (prev && prev.date && prev.date !== _today) ? prev.vals : null;
+                localStorage.setItem('proTerm_chipFactors', JSON.stringify({ date: _today, vals: _tvals }));
+            } catch (_) {}
+            const deltaHtml = (key, suffix = '') => {
+                if (!_base || _base[key] == null || _tvals[key] == null) return '';
+                const d = +(_tvals[key] - _base[key]).toFixed(1);
+                if (d === 0) return `<span class="text-[8px] text-gray-600 font-mono">— 持平</span>`;
+                const up = d > 0;
+                return `<span class="text-[8px] font-mono ${up ? 'text-red-300' : 'text-green-300'}" title="較昨日">${up ? '▲ +' : '▼ '}${d}${suffix}</span>`;
+            };
             grid.innerHTML = [
-                card('👥', '散戶情緒', rVal, rDir),
-                card('🎯', '期貨升貼水', bVal, bDir),
-                card('📊', '大盤分位', pVal, pDir),
-                card('💰', '外資現貨', sVal, sDir),
-                card('😱', 'VIX 恐慌', vVal, vDir),
+                card('👥', '散戶情緒', rVal, rDir, deltaHtml('retail', '%')),
+                card('🎯', '期貨升貼水', bVal, bDir, deltaHtml('back')),
+                card('📊', '大盤分位', pVal, pDir, deltaHtml('twiiPos', '%')),
+                card('💰', '外資現貨', sVal, sDir, deltaHtml('fiSpot', '億')),
+                card('😱', 'VIX 恐慌', vVal, vDir, deltaHtml('vix')),
                 card('🌡️', '景氣燈號', lVal, lDir),
             ].join('');
         }
@@ -8891,6 +8926,74 @@ const marginByDate = {};
             console.warn('[weatherTrend]', e);
             if (box)  box.innerHTML  = `<div class="col-span-full text-center text-gray-600 text-[10px] py-2">趨勢資料抓取中,稍後再看</div>`;
             if (hbox) hbox.innerHTML = `<span class="text-[10px] text-gray-600">天氣稍後</span>`;
+        }
+    },
+
+    // 🅾️ V33.0 — 歐尼爾出貨日(Distribution Day)計數（純 JS，含「多方覆蓋消退」校正）
+    //   出貨日 = 大盤收盤跌幅 ≥ 0.2% 且 成交量 > 前一日量（量增下跌＝機構在派發倒貨）。
+    //   消退規則 = 之後任一天收盤「站上」某出貨日最高價 → 該日被多方收復，從計數移除。
+    //   只計近 lookback(預設25)交易日內仍有效者。≥5 根 = 大盤遭機構派發，做多轉守（歐尼爾經典門檻）。
+    _calcDistributionDays(rows, lookback = 25) {
+        if (!Array.isArray(rows) || rows.length < 8) return null;
+        const n = rows.length;
+        const active = [];   // {idx, high} 仍有效的出貨日
+        for (let i = 1; i < n; i++) {
+            const c = +rows[i].close, pc = +rows[i - 1].close, v = +rows[i].volume, pv = +rows[i - 1].volume, hi = +rows[i].high;
+            if (c > 0 && pc > 0 && v > 0 && pv > 0) {
+                const chgPct = (c - pc) / pc * 100;
+                if (chgPct <= -0.2 && v > pv) active.push({ idx: i, high: hi });   // 量增下跌＝派發
+            }
+            // 多方覆蓋消退:今收站上某出貨日最高 → 移除
+            for (let k = active.length - 1; k >= 0; k--) if (c > 0 && c > active[k].high) active.splice(k, 1);
+        }
+        const cutoff = (n - 1) - lookback;   // 只計近 lookback 日內仍有效者
+        return active.filter(a => a.idx > cutoff).length;
+    },
+
+    // 🅾️ 渲染歐尼爾出貨日卡（重用 _twiiKlineCache，與大盤天氣同源；零採礦）
+    async _renderDistributionDays() {
+        const box = document.getElementById('distDayCard');
+        if (!box) return;
+        try {
+            let rows = this._twiiKlineCache?.rows;
+            const fresh = this._twiiKlineCache?.at && (Date.now() - this._twiiKlineCache.at) < 1800000;
+            if (!rows || !fresh) {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const url = new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`;
+                const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+                if (!r.ok) throw new Error('TWII ' + r.status);
+                rows = await r.json();
+                if (!Array.isArray(rows) || rows.length < 30) throw new Error('TWII 資料不足');
+                this._twiiKlineCache = { rows, at: Date.now() };
+            }
+            const dd = this._calcDistributionDays(rows, 25);
+            this._distDayCount = dd;   // 供 _calcRiskScore 連動
+            if (dd == null) throw new Error('資料不足');
+            // 燈號:≥5 紅(派發過重)/ 3-4 橙(轉守)/ 1-2 黃(留意)/ 0 綠(健康)
+            const lvl = dd >= 5 ? { c: 'text-red-300', bar: 'bg-red-500', tag: '🔴 機構派發過重', adv: '大盤遭連續倒貨,做多轉守、減碼控倉、別追高' }
+                      : dd >= 3 ? { c: 'text-orange-300', bar: 'bg-orange-500', tag: '🟠 派發轉守', adv: '派發訊號累積,新進場保守、嚴設停損' }
+                      : dd >= 1 ? { c: 'text-yellow-300', bar: 'bg-yellow-500', tag: '🟡 輕微留意', adv: '零星派發,仍屬正常波動,留意是否續增' }
+                      : { c: 'text-green-300', bar: 'bg-green-500', tag: '🟢 派發健康', adv: '近期無機構倒貨跡象,多方環境相對乾淨' };
+            const pct = Math.min(100, dd / 6 * 100);
+            box.innerHTML = `
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] text-gray-400 font-bold">🅾️ 歐尼爾出貨日 <span class="text-[8px] text-gray-600 font-normal">· 大盤機構派發(近25日)</span></span>
+                    <button onclick="app.showJargon('歐尼爾出貨日')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+                </div>
+                <div class="flex items-end gap-3">
+                    <div class="flex-shrink-0 text-center">
+                        <div class="text-3xl font-black font-mono ${lvl.c} leading-none">${dd}</div>
+                        <div class="text-[8px] text-gray-500 mt-0.5">出貨日 / 5 警戒</div>
+                    </div>
+                    <div class="flex-1 min-w-0 pb-0.5">
+                        <div class="text-[11px] font-bold ${lvl.c} mb-1">${lvl.tag}</div>
+                        <div class="w-full h-1.5 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${lvl.bar}" style="width:${pct}%"></div></div>
+                    </div>
+                </div>
+                <div class="text-[10px] text-gray-400 leading-relaxed mt-2 border-t border-[#21262d] pt-1.5">💡 ${lvl.adv}</div>`;
+        } catch (e) {
+            console.warn('[distDay]', e);
+            box.innerHTML = `<div class="flex items-center justify-between mb-1"><span class="text-[10px] text-gray-400 font-bold">🅾️ 歐尼爾出貨日</span><button onclick="app.showJargon('歐尼爾出貨日')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button></div><div class="text-[10px] text-gray-600 py-2">大盤資料抓取中,稍後再看</div>`;
         }
     },
 
@@ -13205,6 +13308,8 @@ ${_newsLine}${globalContext}
 
         // 🌤️ V31.1 — 大盤天氣趨勢(短日/中週/長月,純 JS 算加權指數均線排列)
         this._renderMarketWeatherTrend();
+        // 🅾️ V33.0 — 歐尼爾出貨日計數(大盤機構派發,純 JS 算 ^TWII)
+        this._renderDistributionDays();
 
         // 🏭 Q3:每細分板塊下方填入對應美股 ETF 漲跌
         this._renderSectorEtfs(j.sector_etfs);
@@ -19518,6 +19623,14 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         if (typeof twiiPos === 'number') {
             if      (twiiPos >= 90) score += 5;
             else if (twiiPos >= 80) score += 3;
+        }
+        // 🅾️ V33.0 歐尼爾出貨日:大盤近25日機構派發數,≥5 經典轉空門檻 0-10
+        const _dd = this._distDayCount;
+        if (typeof _dd === 'number') {
+            if      (_dd >= 6) score += 10;
+            else if (_dd >= 5) score += 7;
+            else if (_dd >= 3) score += 4;
+            else if (_dd >= 1) score += 1;
         }
 
         // Global news sentiment: bearish ratio adds up to 10 points
