@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -123,6 +123,39 @@
         #mainChartWrap, #mainChart { overscroll-behavior: contain; touch-action: pan-y; }
         
         .sparkline-canvas { width: 100%; height: 30px; }
+
+        /* ============================================================
+           V32.4 — 筆電/桌機「置中 App 框」(雙系統相容)
+           只在 ≥1024px(桌機/筆電)生效;手機/平板直立(<1024px)完全不受影響。
+           原本手機優先的卡片被拉到 1280px 過寬、底部導覽鍵橫向攤開、左右空蕩
+           → 收成置中固定寬的「App 視窗」,左右畫框線 + 框外更暗,看起來像專業終端機。
+           ============================================================ */
+        @media (min-width: 1024px) {
+            /* 框外背景更暗,凸顯中央 App 欄 */
+            body { background-color: #05070a; }
+            .header-fixed { background-color: #05070a; }
+            .nav-fixed    { background-color: #05070a; }
+
+            /* 四個結構層收成同寬置中(內層 max-w-7xl 子卡會自動跟著縮,無需逐一改) */
+            .header-fixed > header,
+            #marketAlertBanner,
+            #minerStatusBanner,
+            #appMainArea,
+            .nav-fixed > nav {
+                max-width: 64rem !important;   /* 1024px 舒適終端寬,2 欄診斷版面仍有空間 */
+            }
+
+            /* App 框左右邊線(header / 內容 / 底部導覽 三段對齊成連續直線)+ 框內底色 + 外陰影 */
+            .header-fixed > header,
+            #marketAlertBanner,
+            #appMainArea,
+            .nav-fixed > nav {
+                border-left: 1px solid #30363d;
+                border-right: 1px solid #30363d;
+                background-color: #0d1117;
+            }
+            #appMainArea { box-shadow: 0 0 40px rgba(0,0,0,0.55); }
+        }
     </style>
 </head>
 <body class="flex flex-col">
@@ -784,7 +817,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
