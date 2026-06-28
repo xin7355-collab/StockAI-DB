@@ -19,6 +19,10 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 import requests
+try:
+    import yfinance as yf   # V33.6 — 含息總報酬(還原息)用;跑 etf_miner 的 job 已裝(daily_miner.yml)
+except Exception:
+    yf = None
 
 DATA_DIR = "data"
 OUT = Path(DATA_DIR) / "etf_tracking.json"
@@ -129,6 +133,40 @@ def perf_metrics(rows):
         "bars": len(closes),
         "last_date": (rows[-1].get("date") if rows else None),
     }
+
+
+def total_return_metrics(sym):
+    """含息總報酬(還原息):yfinance auto_adjust=True(配息+拆股還原)算近120/近20日。
+    高股息 ETF 配息多,市價未還原息會低估真實報酬,此函式補真實含息總報酬。
+    台股 ETF 多上市→ .TW;抓不到再試 .TWO。失敗回 None(前端 fallback 市價報酬)。"""
+    if yf is None or not sym:
+        return None
+    for suffix in (".TW", ".TWO"):
+        try:
+            h = yf.Ticker(sym + suffix).history(period="220d", auto_adjust=True)
+            if h is None or h.empty:
+                continue
+            closes = [float(c) for c in h["Close"].tolist() if c and c > 0]
+            if len(closes) < MIN_HISTORY:
+                continue
+            return {
+                "tr_120d": _ret(closes, min(PERF_LOOKBACK, len(closes) - 1)),
+                "tr_20d": _ret(closes, min(20, len(closes) - 1)),
+            }
+        except Exception:
+            continue
+    return None
+
+
+def perf_with_tr(sym, rows):
+    """市價報酬 + 含息總報酬合併(含息抓失敗就只有市價,前端自會 fallback)。"""
+    m = perf_metrics(rows)
+    if m:
+        tr = total_return_metrics(sym)
+        if tr:
+            m["tr_120d"] = tr.get("tr_120d")
+            m["tr_20d"] = tr.get("tr_20d")
+    return m
 
 
 def _rank_value(m):
@@ -504,7 +542,7 @@ def main():
         },
         "consensus_stocks": consensus_stocks[:200],   # V17.15 — 前 200 檔給前端
         "benchmarks": [
-            {"symbol": b, "name": etf_name(b), "perf": perf_metrics(load_prices(b))}
+            {"symbol": b, "name": etf_name(b), "perf": perf_with_tr(b, load_prices(b))}
             for b in BENCHMARKS
         ],
     }
