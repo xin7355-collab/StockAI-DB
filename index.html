@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4388,6 +4388,7 @@ ${list}
                     更新:${d.updated || '—'}。${d.note || ''}<br>
                     💡 加減碼 = 所有主動 ETF 對該股持股量變動加總(估算張數)。<br>
                     🔥 贏0050 = 近120日打贏大盤被動基準 ・ ⚠️ 短線轉弱 = 長期漲多但近20日翻黑,慎防追高。<br>
+                    📊 報酬＝收盤市價漲跌,<b class="text-gray-400">已內含經理費/保管費等「內扣費用」</b>;但<b class="text-amber-400/80">未還原息</b>→高股息 ETF(如 0056/00878)真實「含息總報酬」會更高;且不含你個人的買賣手續費與證交稅。<br>
                     ⚠️ 主動 ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
                 </div>
             </div>`;
