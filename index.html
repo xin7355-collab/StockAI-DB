@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V31.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V31.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -981,6 +981,8 @@
                         </div>
                         <!-- 📐 V31.7 明日均線保衛價(扣抵):盤中跌破即在均線正式下彎前 1-2 天示警 -->
                         <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                        <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
+                        <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                         <div class="w-full mt-2">
                             <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('institutionTargetBody', this); app.vibrate(30);">💡 法人共識目標價 <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
                             <div id="institutionTargetBody" class="hidden mt-1">
@@ -2528,6 +2530,7 @@ const app = {
         '量縮窒息': '成交量萎縮到 5 日均量的 6 成以下 = 買賣雙方都觀望。盤整末端的量縮常是變盤前兆,要等放量表態才知道方向。',
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
+        '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
         '盤中主力估算': '⚠️ 重要:台灣證交所「券商分點進出」只在收盤後(約 15:30)才公布,盤中根本沒有真實分點資料。這裡的「盤中主力動向」是用 Fugle 即時「內外盤掛單 + 漲跌量價」估算的方向參考,不是官方分點,可能與收盤後真實分點有出入。盤中當參考、收盤後看下方真實分點才準。',
@@ -16013,6 +16016,40 @@ ${_newsLine}${globalContext}
                 _mhg.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">明日均線保衛價</span><button onclick="app.showJargon('扣抵')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button></div>${_hero}${_rows}`;
                 _mhg.classList.remove('hidden');
             } else { _mhg.classList.add('hidden'); }
+        }
+        // 🧱 V31.8 突破棒防守監測器:回掃 ≤25 根找最近爆量長紅(實體漲幅≥5% + 量≥前5根均量×1.5),½價=結構防守價
+        const _bg = document.getElementById('breakoutGuard');
+        if (_bg) {
+            let _boBar = null, _boIdx = -1;
+            for (let j = last; j >= Math.max(1, last - 25); j--) {
+                const b = data[j]; if (!b) continue;
+                const _o = b.open ?? b.o, _c = b.close ?? b.c, _v = b.volume ?? 0;
+                if (!_o || !_c) continue;
+                const _pv = data.slice(Math.max(0, j - 5), j).map(x => x.volume ?? 0);
+                const _avgv = _pv.length ? _pv.reduce((a, x) => a + x, 0) / _pv.length : _v;
+                if (_c > _o && (_c - _o) / _o >= 0.05 && _avgv > 0 && _v >= _avgv * 1.5) { _boBar = b; _boIdx = j; break; }
+            }
+            if (_boBar) {
+                const _o = _boBar.open ?? _boBar.o, _c = _boBar.close ?? _boBar.c, mid = (_o + _c) / 2;
+                const daysAgo = last - _boIdx, curVR = vma5 > 0 ? pV / vma5 : 1, diffMid = (pC - mid) / mid * 100;
+                let ic, bcls, status, msg;
+                if (pC < mid) {
+                    ic = '🔴'; bcls = 'border-red-500'; status = '結構已破';
+                    msg = '跌破突破長紅 ½ 價 = 這波多頭結構轉弱,多單防守離場、別凹單。';
+                } else if (pC <= _c && pC >= mid * 0.98 && pL >= mid * 0.98 && curVR < 0.85) {
+                    ic = '✅'; bcls = 'border-green-500'; status = '回後買上漲';
+                    msg = '回檔到 ½ 價附近 + 量縮不破 = 朱老師「回後買上漲」潛在買點,結構未破可分批加碼。';
+                } else {
+                    ic = '🟢'; bcls = 'border-green-500'; status = '結構守穩';
+                    msg = '現價站穩突破長紅 ½ 價之上,這波結構健康,沿線續抱。';
+                }
+                const _scls = pC >= mid ? 'text-green-300' : 'text-red-300';
+                _bg.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">🧱</span><span class="text-[12px] font-black text-gray-100">突破棒防守</span><span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-[#30363d] ${_scls}">${ic} ${status}</span><button onclick="app.showJargon('突破棒防守')" class="text-[10px] text-gray-500 hover:text-blue-300 ml-auto">❓</button></div>
+                    <div class="flex items-baseline gap-2 mb-1.5"><span class="text-[10px] text-gray-500">結構防守價(½)</span><span class="font-mono text-lg font-black ${_scls}">${mid.toFixed(2)}</span><span class="font-mono text-[10px] ${_scls}">現價 ${diffMid >= 0 ? '+' : ''}${diffMid.toFixed(1)}%</span></div>
+                    <div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 ${bcls} pl-2.5 py-1.5 rounded-r leading-relaxed">${msg}</div>
+                    <div class="text-[9px] text-gray-500 mt-1.5">📍 ${daysAgo} 天前爆量長紅 開 ${_o.toFixed(2)} → 收 ${_c.toFixed(2)}(實體 +${((_c - _o) / _o * 100).toFixed(1)}%)</div>`;
+                _bg.classList.remove('hidden');
+            } else { _bg.classList.add('hidden'); }
         }
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
         const _tpSlReasonEl = document.getElementById('tpSlReason');
