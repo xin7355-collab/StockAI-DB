@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V31.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3167,6 +3167,43 @@ const app = {
                     const stopPx = (entryCost * 0.95).toFixed(2);
                     trigger('stop5', '🚨 鐵血停損 -5%', `現價 ${nowPrice.toFixed(2)} 跌破成本 ${entryCost.toFixed(2)} 的停損價 ${stopPx}(朱:認賠出場)`);
                 }
+                // ⚠️ V32.0 ① 跌破扣抵保衛價(20MA 今日恐下彎,比跌破均線本身更早 1-2 天):今收 < kdata[len-20]
+                if (kdata.length >= 20) {
+                    const dikang20 = kdata[kdata.length - 20].close;
+                    if (dikang20 && prevClose >= dikang20 && nowPrice < dikang20)
+                        trigger('dnDikang20', '⚠️ 跌破扣抵保衛價', `現價 ${nowPrice.toFixed(2)} 跌破 20MA 扣抵價 ${dikang20.toFixed(2)},月線今日恐下彎`);
+                }
+                // 🔴 V32.0 ② 跌破突破棒½價(回掃 ≤25 找爆量長紅,跌破其中點=結構轉弱)
+                let _boMid = null;
+                for (let j = kdata.length - 1; j >= Math.max(0, kdata.length - 25); j--) {
+                    const _b = kdata[j]; if (!_b) continue;
+                    const _o = _b.open, _c = _b.close, _v = _b.volume || 0;
+                    if (!_o || !_c) continue;
+                    const _pv = kdata.slice(Math.max(0, j - 5), j).map(x => x.volume || 0);
+                    const _av = _pv.length ? _pv.reduce((a, x) => a + x, 0) / _pv.length : _v;
+                    if (_c > _o && (_c - _o) / _o >= 0.05 && _av > 0 && _v >= _av * 1.5) { _boMid = (_o + _c) / 2; break; }
+                }
+                if (_boMid && prevClose >= _boMid && nowPrice < _boMid)
+                    trigger('dnBoMid', '🔴 跌破突破棒½價', `現價 ${nowPrice.toFixed(2)} 跌破結構防守 ${_boMid.toFixed(2)},這波多頭結構轉弱`);
+                // 📉 V32.0 ③ 高檔出貨(最近 settled bar,每日最多 1 次):近 60 高 + 爆量 + 小實體/長上影
+                try {
+                    const _lb = kdata[kdata.length - 1];
+                    const _s60 = kdata.slice(-61, -1);
+                    const _h60 = _s60.length ? Math.max(..._s60.map(r => r.high || 0)) : 0;
+                    const _a5 = kdata.slice(-6, -1).map(r => r.volume || 0);
+                    const _avg5 = _a5.length ? _a5.reduce((a, x) => a + x, 0) / _a5.length : 0;
+                    const _o = _lb.open, _c = _lb.close, _h = _lb.high, _l = _lb.low, _v = _lb.volume || 0;
+                    const _tot = _h - _l, _up = _h - Math.max(_o, _c), _bodyAbs = _c > 0 ? Math.abs(_c - _o) / _c : 0;
+                    if (_h60 > 0 && _h >= _h60 * 0.98 && _avg5 > 0 && _v >= _avg5 * 2 && _tot > 0 && (_up / _tot > 0.4 || _bodyAbs < 0.015)) {
+                        const _today = this.getTodayStr().replace(/\//g, '-');
+                        const _dk = `chuhuo_${sym}_${_today}`;
+                        if (!this._alertCache) this._alertCache = {};
+                        if (!this._alertCache[_dk]) {
+                            this._alertCache[_dk] = Date.now();
+                            this._fireAlert('📉 高檔出貨訊號', `${name}(${sym}) 近高爆量收小實體/長上影,主力恐高檔出貨,有貨分批停利`, sym);
+                        }
+                    }
+                } catch (_) {}
 
                 await new Promise(r => setTimeout(r, 1500)); // 每股間隔 1.5s 避免 Fugle 429
             } catch (e) {
