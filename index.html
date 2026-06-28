@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V31.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V31.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -782,14 +782,14 @@
         <!-- V19.0 — 加回 logo + 🔍 🔔 改 SVG line icon(統一證券 App 風格) -->
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
-                <!-- V31.3 — 頂部:左「大盤趨勢」+版本,右「目前天氣」圖卡(短期/日線),連動 _renderMarketWeatherTrend,點擊回診斷 -->
-                <div class="flex items-center gap-2 cursor-pointer min-w-[92px]" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <div class="flex flex-col justify-center leading-none">
-                        <span class="text-[13px] md:text-sm font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
-                        <span class="text-[8px] text-gray-500 font-mono tracking-widest mt-0.5">V31.3</span>
-                    </div>
-                    <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
-                        <span class="text-[11px] text-gray-500">…</span>
+                <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
+                <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V31.4</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
+                        <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
+                            <span class="text-[11px] text-gray-500">…</span>
+                        </div>
                     </div>
                 </div>
                 <!-- 📖 散戶實戰作戰手冊 -->
@@ -1405,73 +1405,8 @@
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-4">
 
-            <!-- ════════ 🔮 預判中心(全球 tab 第一張) — V25.9 限色降噪:紫粉霓虹 → 暗灰 + 橘 accent ════════ -->
-            <div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-lg p-3 shadow-md">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-2xl">🔮</span>
-                        <div>
-                            <div class="text-base font-black text-purple-200">🔮 預判中心</div>
-                            <div class="text-[9px] text-purple-400">跨市場 lead-lag · 今日異動 · 自選股機會 · 高勝率推播</div>
-                        </div>
-                    </div>
-                    <span class="text-[8px] text-gray-500" id="predictAiTime">--</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button id="predictAiBtn" onclick="app.analyzePredictCenter()" ondblclick="app.analyzePredictCenter({force:true})" class="text-[11px] font-black text-purple-300 bg-[#161b22] border border-purple-600/40 hover:bg-[#1c2128] hover:border-purple-500/60 rounded-lg py-2.5 transition-colors">🔮 AI 4 段預判<br><span class="text-[8px] font-normal opacity-80">(雙擊強制重抽)</span></button>
-                    <button id="anomalyAiBtn" onclick="app.analyzeMarketAnomaly()" ondblclick="app.analyzeMarketAnomaly({force:true})" class="text-[11px] font-black text-red-300 bg-[#161b22] border border-red-600/40 hover:bg-[#1c2128] hover:border-red-500/60 rounded-lg py-2.5 transition-colors">⚡ 大跌/大漲剖析<br><span class="text-[8px] font-normal opacity-80">(為什麼今天)</span></button>
-                </div>
-                <div id="predictAiResult" class="text-[11px] text-gray-200 leading-relaxed">
-                    <div class="text-center text-gray-500 py-3 text-[10px]">點上方按鈕開始 ・ 全手動觸發 ・ 15 分鐘內快取</div>
-                </div>
-                <div id="anomalyAiResult" class="text-[11px] text-gray-200 leading-relaxed mt-2"></div>
-            </div>
+            <!-- V31.4 — 「台股預判」+「9 板塊跨市場板塊輪動」已搬至下方「🇹🇼 台股實戰」sub-tab 最上(原常駐於此 sub-tab 之上) -->
 
-            <!-- 📊 V26.14 — 9 板塊跨市場板塊輪動整合卡(取代原「資金板塊輪動」整卡 + 預判中心內的 9 板塊缺口按鈕,
-                          使用者要求:「上方資金輪的東西移到 9 板塊跨市場缺口明細,重新做一個整合」) -->
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <span class="text-base">📊</span>
-                    <span class="text-[12px] font-black text-purple-300 tracking-wide">9 板塊跨市場板塊輪動</span>
-                    <button onclick="app.showJargon('板塊輪動訊號'); event.stopPropagation();" class="text-[11px] text-gray-500 hover:text-blue-300 transition-colors leading-none" title="訊號說明">ⓘ</button>
-                    <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
-                </div>
-                <div class="text-[10px] text-gray-400 mb-2">美股昨夜 vs 台股今日 · <span class="text-red-300">🔴 跟漲</span> <span class="text-amber-300">🟡 委屈</span> <span class="text-green-300">🟢 補跌</span> <span class="text-orange-300">🟠 獨弱</span>(跟漲須美股真漲)</div>
-
-                <!-- 2 按鈕並列:🔄 即時更新 + 🤖 AI 白話判讀 -->
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors">🔄 盤中即時更新</button>
-                    <button id="sectorAiBtn" onclick="app.analyzeSectorRotationAI()" ondblclick="app.analyzeSectorRotationAI({force:true})" class="text-[10px] font-bold text-purple-300 bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 rounded transition-colors">🤖 AI 白話判讀</button>
-                </div>
-
-                <!-- 進度條 + AI 結果 -->
-                <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
-                <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
-
-                <!-- V27.6 — 標題已在 renderSectorGapTable 卡片內,此處不再重複(刪冗餘小標題) -->
-                <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
-
-                <!-- 美股對標速查表(摺疊) -->
-                <div class="border border-[#30363d] rounded">
-                    <button onclick="document.getElementById('sectorBenchTable').classList.toggle('hidden'); this.querySelector('[data-chevron]').textContent = document.getElementById('sectorBenchTable').classList.contains('hidden') ? '▾' : '▴';" class="w-full flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-cyan-300 hover:bg-[#161b22] transition-colors">
-                        <span>📖 看不懂?點此查美股對標 ETF 速查表</span>
-                        <span data-chevron class="text-gray-500">▾</span>
-                    </button>
-                    <div id="sectorBenchTable" class="hidden text-[10px] border-t border-[#30363d] divide-y divide-[#21262d]">
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🇺🇸 美股(AI)</span><span class="text-gray-200">SOXX · SMH · NVDA</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🖥️ 伺服器代工</span><span class="text-gray-200">SMCI · DELL · HPE</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">⚡ 重電基建</span><span class="text-gray-200">GEV · POWL · ETN</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">📦 先進封裝</span><span class="text-gray-200">AVGO · AMD · TSM</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🔗 高速傳輸CPO</span><span class="text-gray-200">ANET · COHR · LITE</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">❄️ 散熱零組件</span><span class="text-gray-200">VRT · TT</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🤖 實體機器人</span><span class="text-gray-200">SYM · ROK · TSLA</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🏦 金融避風港</span><span class="text-gray-200">XLF · JPM</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🛰️ 低軌衛星</span><span class="text-gray-200">IRDM · SATS · RKLB</span></div>
-                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">💾 記憶體 DRAM</span><span class="text-gray-200">MU · WDC</span></div>
-                        <div class="px-2.5 py-1.5 text-[9px] text-gray-500 leading-relaxed">💡 美股昨晚漲 → 台股今天同板塊預期跟漲;若反向跌 → 注意拉回。直接 Google 對標 ticker 看走勢即可。</div>
-                    </div>
-                </div>
-            </div>
 
             <!-- 【區 1】台股風險指數半圓 — V31.0 已融合進「台股實戰」綜合指揮中心頂部 Header(與出貨指數結論並排);全球大環境分頁不再常駐半圓 -->
 
@@ -1697,6 +1632,72 @@
 
             <!-- ════════ 【區 3-B】🇹🇼 台股實戰 ════════ -->
             <div id="subContent_tw" class="hidden flex-col gap-3">
+
+            <!-- ════════ 🔮 台股預判(V31.4 從市場頁頂部搬至台股實戰最上;改名 預判中心→台股預判)════════ -->
+            <div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-lg p-3 shadow-md">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🔮</span>
+                        <div>
+                            <div class="text-base font-black text-purple-200">台股預判</div>
+                        </div>
+                    </div>
+                    <span class="text-[8px] text-gray-500" id="predictAiTime">--</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button id="predictAiBtn" onclick="app.analyzePredictCenter()" ondblclick="app.analyzePredictCenter({force:true})" class="text-[11px] font-black text-purple-300 bg-[#161b22] border border-purple-600/40 hover:bg-[#1c2128] hover:border-purple-500/60 rounded-lg py-2.5 transition-colors">🔮 AI 4 段預判<br><span class="text-[8px] font-normal opacity-80">(雙擊強制重抽)</span></button>
+                    <button id="anomalyAiBtn" onclick="app.analyzeMarketAnomaly()" ondblclick="app.analyzeMarketAnomaly({force:true})" class="text-[11px] font-black text-red-300 bg-[#161b22] border border-red-600/40 hover:bg-[#1c2128] hover:border-red-500/60 rounded-lg py-2.5 transition-colors">⚡ 大跌/大漲剖析<br><span class="text-[8px] font-normal opacity-80">(為什麼今天)</span></button>
+                </div>
+                <div id="predictAiResult" class="text-[11px] text-gray-200 leading-relaxed">
+                    <div class="text-center text-gray-500 py-3 text-[10px]">點上方按鈕開始 ・ 全手動觸發 ・ 15 分鐘內快取</div>
+                </div>
+                <div id="anomalyAiResult" class="text-[11px] text-gray-200 leading-relaxed mt-2"></div>
+            </div>
+
+            <!-- 📊 V26.14/V31.4 — 9 板塊跨市場板塊輪動整合卡(隨台股預判一併搬至台股實戰最上) -->
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="text-base">📊</span>
+                    <span class="text-[12px] font-black text-purple-300 tracking-wide">9 板塊跨市場板塊輪動</span>
+                    <button onclick="app.showJargon('板塊輪動訊號'); event.stopPropagation();" class="text-[11px] text-gray-500 hover:text-blue-300 transition-colors leading-none" title="訊號說明">ⓘ</button>
+                    <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
+                </div>
+                <div class="text-[10px] text-gray-400 mb-2">美股昨夜 vs 台股今日 · <span class="text-red-300">🔴 跟漲</span> <span class="text-amber-300">🟡 委屈</span> <span class="text-green-300">🟢 補跌</span> <span class="text-orange-300">🟠 獨弱</span>(跟漲須美股真漲)</div>
+
+                <!-- 2 按鈕並列:🔄 即時更新 + 🤖 AI 白話判讀 -->
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors">🔄 盤中即時更新</button>
+                    <button id="sectorAiBtn" onclick="app.analyzeSectorRotationAI()" ondblclick="app.analyzeSectorRotationAI({force:true})" class="text-[10px] font-bold text-purple-300 bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 rounded transition-colors">🤖 AI 白話判讀</button>
+                </div>
+
+                <!-- 進度條 + AI 結果 -->
+                <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
+                <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
+
+                <!-- V27.6 — 標題已在 renderSectorGapTable 卡片內,此處不再重複(刪冗餘小標題) -->
+                <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
+
+                <!-- 美股對標速查表(摺疊) -->
+                <div class="border border-[#30363d] rounded">
+                    <button onclick="document.getElementById('sectorBenchTable').classList.toggle('hidden'); this.querySelector('[data-chevron]').textContent = document.getElementById('sectorBenchTable').classList.contains('hidden') ? '▾' : '▴';" class="w-full flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold text-cyan-300 hover:bg-[#161b22] transition-colors">
+                        <span>📖 看不懂?點此查美股對標 ETF 速查表</span>
+                        <span data-chevron class="text-gray-500">▾</span>
+                    </button>
+                    <div id="sectorBenchTable" class="hidden text-[10px] border-t border-[#30363d] divide-y divide-[#21262d]">
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🇺🇸 美股(AI)</span><span class="text-gray-200">SOXX · SMH · NVDA</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🖥️ 伺服器代工</span><span class="text-gray-200">SMCI · DELL · HPE</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">⚡ 重電基建</span><span class="text-gray-200">GEV · POWL · ETN</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">📦 先進封裝</span><span class="text-gray-200">AVGO · AMD · TSM</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🔗 高速傳輸CPO</span><span class="text-gray-200">ANET · COHR · LITE</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">❄️ 散熱零組件</span><span class="text-gray-200">VRT · TT</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🤖 實體機器人</span><span class="text-gray-200">SYM · ROK · TSLA</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🏦 金融避風港</span><span class="text-gray-200">XLF · JPM</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">🛰️ 低軌衛星</span><span class="text-gray-200">IRDM · SATS · RKLB</span></div>
+                        <div class="grid grid-cols-[1fr_2fr] gap-2 px-2.5 py-1.5"><span class="text-gray-400">💾 記憶體 DRAM</span><span class="text-gray-200">MU · WDC</span></div>
+                        <div class="px-2.5 py-1.5 text-[9px] text-gray-500 leading-relaxed">💡 美股昨晚漲 → 台股今天同板塊預期跟漲;若反向跌 → 注意拉回。直接 Google 對標 ticker 看走勢即可。</div>
+                    </div>
+                </div>
+            </div>
 
             <!-- 📰 即時情報與新聞解析（內嵌版，版面同全球大環境）-->
             <div class="bg-[#010409] rounded-xl border border-amber-900/50 p-3">
@@ -9231,7 +9232,7 @@ high_chance_stocks 只列 ≤3 檔機率 ≥60% 的自選股,prob 寫整數機�
             const today = new Date().toISOString().slice(0, 10);
             const lastKey = 'predict_alert_last_' + today;
             if (localStorage.getItem(lastKey)) return;
-            const title = '🔮 預判中心:' + (p.lead_lag_verdict || '高勝率機會').slice(0, 30);
+            const title = '🔮 台股預判:' + (p.lead_lag_verdict || '高勝率機會').slice(0, 30);
             const body = (p.tomorrow_strategy || '').slice(0, 80);
             if (this._fireAlert) this._fireAlert(title, body, '');
             localStorage.setItem(lastKey, '1');
