@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4351,14 +4351,18 @@ ${list}
         // ── 段 3:被動基準 + 主動 ETF 績效卡(極簡)─────────────────────────
         // V32.2 — 被動基準改顯「近120日」(ret_120d),與主動 ETF 同期可公平比較(原顯 ret_incep=上市以來~5年,0050 +219% 誤導)
         // V33.2 — 被動基準:① 可點擊連到個股(analyze) ② 補顯「近20日」(後端 perf 本就有 ret_20d,與主動同期可比)
+        // V33.8 — 排序切換(近120/近20)時被動基準大字也跟著切,與主動榜同期可比
+        const _psort = this._etfPerfSort || '120';
         const benchHtml = (d.benchmarks || []).filter(b => b.perf).map(b => {
-            const br = (b.perf.ret_120d != null ? b.perf.ret_120d : b.perf.ret_incep);
+            const r120 = (b.perf.ret_120d != null ? b.perf.ret_120d : b.perf.ret_incep);
             const r20 = b.perf.ret_20d;
+            const bigV = _psort === '20' ? r20 : r120, bigLbl = _psort === '20' ? '近20日' : '近120日';
+            const subV = _psort === '20' ? r120 : r20, subLbl = _psort === '20' ? '近120日' : '近20日';
             return `<div onclick="app.analyze('${b.symbol}'); app.switchAppTab('diag');" class="flex-1 bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center cursor-pointer hover:bg-[#21262d] hover:border-amber-700/40 transition-colors active:scale-[0.98]">
                 <div class="text-[10px] text-gray-400 truncate">${b.name}</div>
-                <div class="font-mono font-bold text-sm ${pcls(br)}">${pct(br)}</div>
-                <div class="text-[8px] text-gray-600">近120日</div>
-                <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">近20日 <span class="${pcls(r20)} font-mono">${pct(r20)}</span></div>
+                <div class="font-mono font-bold text-sm ${pcls(bigV)}">${pct(bigV)}</div>
+                <div class="text-[8px] text-gray-600">${bigLbl}</div>
+                <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">${subLbl} <span class="${pcls(subV)} font-mono">${pct(subV)}</span></div>
                 ${b.perf.tr_120d != null ? `<div class="text-[9px] mt-0.5 border-t border-amber-700/20 pt-0.5 text-amber-300/90" title="含息總報酬(還原配息),高股息真實績效">💰含息 <span class="font-mono font-bold">${pct(b.perf.tr_120d)}</span></div>` : ''}
             </div>`;
         }).join('');
@@ -4394,8 +4398,7 @@ ${list}
 
         // V33.3 — ① 主動 vs 被動(0050)勝負標 ② 近120漲多但近20翻黑「短線轉弱」防追高標
         const bench0050 = (d.benchmarks || []).find(b => b.symbol === '0050')?.perf?.ret_120d ?? null;
-        // V33.4 — 績效榜可切排序(近120日 / 近20日);前端排序不動後端,複製陣列避免改到 cache
-        const _psort = this._etfPerfSort || '120';
+        // V33.4 — 績效榜可切排序(近120日 / 近20日);前端排序不動後端,複製陣列避免改到 cache(_psort 已於上方 benchHtml 前定義)
         const _psKey = e => {
             const m = e.perf || {};
             if (_psort === '20') return (m.ret_20d != null ? m.ret_20d : -9999);
@@ -4410,17 +4413,20 @@ ${list}
                            : _beat === false ? '<span class="text-[8px] px-1 py-0.5 rounded bg-white/5 text-gray-500 border border-[#30363d]">輸0050</span>' : '';
             const weakChip = (m.ret_120d != null && m.ret_120d > 0 && m.ret_20d != null && m.ret_20d < 0)
                            ? '<span class="text-[8px] px-1 py-0.5 rounded bg-green-900/30 text-green-300 border border-green-800/40 font-bold">⚠️ 短線轉弱</span>' : '';
+            // V33.8 — 你持有的主動 ETF(對照庫存 proTerminalInv)標「💼 持有」+ 紫框,好找
+            const _held = (this.inventory || []).some(it => String(it.symbol) === String(e.symbol));
+            const heldChip = _held ? '<span class="text-[8px] px-1 py-0.5 rounded bg-purple-900/40 text-purple-200 border border-purple-500/50 font-bold">💼 持有</span>' : '';
             // V28.4 — 大數字對齊「標籤 + 後端排序(_rank_value 用 ret_120d)」:≥120 bars 顯近120日,<120 顯上市以來
             const headRet = shortHist ? m.ret_incep : (m.ret_120d != null ? m.ret_120d : m.ret_incep);
             return `
-                <div onclick="app.analyze('${e.symbol}'); app.switchAppTab('diag');" class="bg-[#161b22] border ${e.changed_today ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-[#1c2128] hover:border-amber-600/40 transition-colors active:scale-[0.99]">
+                <div onclick="app.analyze('${e.symbol}'); app.switchAppTab('diag');" class="bg-[#161b22] border ${_held ? 'border-purple-500/60' : e.changed_today ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-[#1c2128] hover:border-amber-600/40 transition-colors active:scale-[0.99]">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2 min-w-0">
                             <span class="text-gray-500 font-mono text-xs w-4 flex-shrink-0">${i + 1}</span>
                             <div class="min-w-0">
                                 <div class="font-bold text-gray-100 text-sm truncate">${e.name || e.symbol}${e.changed_today ? ' <span class="text-[9px] text-amber-400">●今日換股</span>' : ''}</div>
                                 <div class="text-[10px] text-gray-500">${e.symbol} · ${shortHist ? '上市以來' : '近120日'}</div>
-                                ${(beatChip || weakChip) ? `<div class="flex gap-1 mt-0.5">${beatChip}${weakChip}</div>` : ''}
+                                ${(heldChip || beatChip || weakChip) ? `<div class="flex gap-1 mt-0.5 flex-wrap">${heldChip}${beatChip}${weakChip}</div>` : ''}
                             </div>
                         </div>
                         <div class="text-right flex-shrink-0">
