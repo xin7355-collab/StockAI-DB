@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V32.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V32.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -784,7 +784,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V32.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4141,11 +4141,15 @@ ${list}
             </div>` : '';
 
         // ── 段 3:被動基準 + 主動 ETF 績效卡(極簡)─────────────────────────
-        const benchHtml = (d.benchmarks || []).filter(b => b.perf).map(b =>
-            `<div class="flex-1 bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center">
+        // V32.2 — 被動基準改顯「近120日」(ret_120d),與主動 ETF 同期可公平比較(原顯 ret_incep=上市以來~5年,0050 +219% 誤導)
+        const benchHtml = (d.benchmarks || []).filter(b => b.perf).map(b => {
+            const br = (b.perf.ret_120d != null ? b.perf.ret_120d : b.perf.ret_incep);
+            return `<div class="flex-1 bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center">
                 <div class="text-[10px] text-gray-400 truncate">${b.name}</div>
-                <div class="font-mono font-bold text-sm ${pcls(b.perf.ret_incep)}">${pct(b.perf.ret_incep)}</div>
-            </div>`).join('');
+                <div class="font-mono font-bold text-sm ${pcls(br)}">${pct(br)}</div>
+                <div class="text-[8px] text-gray-600">近120日</div>
+            </div>`;
+        }).join('');
 
         const perfCardHtml = d.etfs.map((e, i) => {
             const m = e.perf || {};
@@ -4180,7 +4184,7 @@ ${list}
                 ${stocksHtml}
                 ${benchHtml ? `<div class="flex gap-1.5 items-center"><div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>${benchHtml}</div>` : ''}
                 <div class="px-1 mt-1">
-                    <div class="text-[11px] text-gray-400 font-bold mb-1">🏆 主動 ETF 績效榜(可點看持股的話?後續迭代)</div>
+                    <div class="text-[11px] text-gray-400 font-bold mb-1">🏆 主動 ETF 績效榜 <span class="text-[9px] text-gray-600 font-normal">· 近120日(新上市顯上市以來)</span></div>
                     <div class="flex flex-col gap-1.5">${perfCardHtml}</div>
                 </div>
                 <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
