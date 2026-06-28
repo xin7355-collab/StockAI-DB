@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V33.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V33.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V33.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3802,6 +3802,42 @@ ${list}
         }
         return this._etfCache;
     },
+
+    // ⚙️ V33.7 — 自訂被動基準(使用者前端自加,存 localStorage,市價報酬前端即時算)
+    _loadCustomBenchmarks() {
+        try { const a = JSON.parse(localStorage.getItem('proTerm_customBench') || '[]'); return Array.isArray(a) ? a.slice(0, 8) : []; } catch (_) { return []; }
+    },
+    _saveCustomBenchmarks(arr) { try { localStorage.setItem('proTerm_customBench', JSON.stringify(arr.slice(0, 8))); } catch (_) {} },
+    _addCustomBench() {
+        const el = document.getElementById('benchAddInput');
+        const sym = (el && el.value || '').trim().toUpperCase();
+        if (!sym) return;
+        if (!/^[0-9]{4,6}[A-Z]?$/.test(sym)) { alert('ETF 代號格式不對,範例:0050 / 00878 / 00919'); return; }
+        if (['0050', '0056', '00878'].includes(sym)) { alert(sym + ' 已是內建基準,不用重複加'); return; }
+        const cur = this._loadCustomBenchmarks();
+        if (cur.includes(sym)) { alert(sym + ' 已在你的自訂基準了'); return; }
+        if (cur.length >= 8) { alert('自訂基準最多 8 檔,請先移除一些'); return; }
+        cur.push(sym); this._saveCustomBenchmarks(cur); this.vibrate?.(20); this.renderEtfTab();
+    },
+    _removeCustomBench(sym) {
+        this._saveCustomBenchmarks(this._loadCustomBenchmarks().filter(s => s !== sym));
+        this.vibrate?.(20); this.renderEtfTab();
+    },
+    _toggleBenchMgr() { const p = document.getElementById('benchMgrPanel'); if (p) p.classList.toggle('hidden'); },
+    // 前端算 ETF 市價報酬(近120/近20日,公式同後端 _ret);含息(還原息)前端做不到,僅內建3檔後端有
+    async _calcBenchPerf(sym) {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL(`data/${sym}.json`, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(10000) });
+            if (!r.ok) return { sym, error: true };
+            const rows = await r.json();
+            if (!Array.isArray(rows)) return { sym, error: true };
+            const closes = rows.map(x => +x.close).filter(v => v > 0);
+            if (closes.length < 15) return { sym, error: true };
+            const _r = (cs, n) => { const base = cs.length > n ? cs[cs.length - 1 - n] : cs[0]; return base ? +((cs[cs.length - 1] / base - 1) * 100).toFixed(1) : null; };
+            return { sym, name: this.getStockName(sym), ret_120d: _r(closes, Math.min(120, closes.length - 1)), ret_20d: _r(closes, Math.min(20, closes.length - 1)) };
+        } catch (_) { return { sym, error: true }; }
+    },
     // V17.18 — Falcon 建倉分(0-100,含技術+籌碼+板塊+大盤)+ factors 內已 bake 主力連N日買超
     _falconScoresCache: null,
     // V18.3 — 改名避免被 line 5978 同名 method 覆蓋(JS object literal 後者覆蓋前者);
@@ -4327,6 +4363,35 @@ ${list}
             </div>`;
         }).join('');
 
+        // ⚙️ V33.7 — 自訂被動基準(前端即時算市價報酬,可移除;含息僅內建3檔後端有)
+        const _custBench = this._loadCustomBenchmarks();
+        const _custPerfs = await Promise.all(_custBench.map(s => this._calcBenchPerf(s)));
+        const customBenchHtml = _custBench.map((s, i) => {
+            const cp = _custPerfs[i] || { sym: s, error: true };
+            const rm = `<button onclick="event.stopPropagation(); app._removeCustomBench('${s}')" class="absolute -top-1 -right-1 w-4 h-4 bg-[#21262d] border border-[#30363d] rounded-full text-gray-500 hover:text-red-400 text-[9px] leading-none flex items-center justify-center" title="移除">✕</button>`;
+            if (cp.error) {
+                return `<div class="flex-1 min-w-[72px] bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center relative">${rm}<div class="text-[10px] text-gray-400 truncate">${s}</div><div class="text-[9px] text-gray-600 py-1.5">資料不足/未採礦</div></div>`;
+            }
+            return `<div class="flex-1 min-w-[72px] bg-[#0d1117] border border-blue-700/30 rounded p-1.5 text-center relative">
+                ${rm}
+                <div onclick="app.analyze('${s}'); app.switchAppTab('diag');" class="cursor-pointer">
+                    <div class="text-[10px] text-gray-400 truncate">${cp.name || s}</div>
+                    <div class="font-mono font-bold text-sm ${pcls(cp.ret_120d)}">${pct(cp.ret_120d)}</div>
+                    <div class="text-[8px] text-gray-600">近120日·市價</div>
+                    <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">近20日 <span class="${pcls(cp.ret_20d)} font-mono">${pct(cp.ret_20d)}</span></div>
+                </div>
+            </div>`;
+        }).join('');
+        const benchMgrHtml = `
+            <div id="benchMgrPanel" class="hidden bg-[#0d1117] border border-blue-700/30 rounded-lg p-2.5 mt-1.5">
+                <div class="text-[10px] text-blue-300 font-bold mb-1.5">⚙️ 管理被動基準（自己加 ETF 當對照）</div>
+                <div class="flex gap-1.5 items-center">
+                    <input id="benchAddInput" type="search" inputmode="numeric" placeholder="輸入 ETF 代號（如 00919）" class="flex-1 min-w-0 bg-[#010409] text-gray-200 px-2 py-1.5 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-sm" onkeydown="if(event.key==='Enter'){event.preventDefault();app._addCustomBench();}">
+                    <button onclick="app._addCustomBench()" class="px-3 py-1.5 bg-blue-700/40 text-blue-200 border border-blue-600/50 rounded text-xs font-bold flex-shrink-0">＋ 新增</button>
+                </div>
+                <div class="text-[9px] text-gray-500 mt-1.5 leading-relaxed">💡 自訂基準顯「市價報酬」（前端即時算、即時生效）；💰含息僅內建 0050/0056/00878 有（還原息需後端）。資料存在你這支手機。</div>
+            </div>`;
+
         // V33.3 — ① 主動 vs 被動(0050)勝負標 ② 近120漲多但近20翻黑「短線轉弱」防追高標
         const bench0050 = (d.benchmarks || []).find(b => b.symbol === '0050')?.perf?.ret_120d ?? null;
         // V33.4 — 績效榜可切排序(近120日 / 近20日);前端排序不動後端,複製陣列避免改到 cache
@@ -4374,7 +4439,15 @@ ${list}
                 </div>
                 ${summaryHtml}
                 ${stocksHtml}
-                ${benchHtml ? `<div class="flex gap-1.5 items-center"><div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>${benchHtml}</div>` : ''}
+                ${benchHtml ? `<div>
+                    <div class="flex gap-1.5 items-center">
+                        <div class="text-[10px] text-gray-500 pr-0.5 flex-shrink-0">被動<br>基準</div>
+                        ${benchHtml}
+                        <button onclick="app._toggleBenchMgr()" class="flex-shrink-0 text-gray-500 hover:text-blue-300 text-base px-1 self-stretch" title="管理基準(自己加 ETF)">⚙️</button>
+                    </div>
+                    ${customBenchHtml ? `<div class="flex gap-1.5 items-center mt-1.5 flex-wrap"><div class="text-[10px] text-blue-400/70 pr-0.5 flex-shrink-0">自訂<br>基準</div>${customBenchHtml}</div>` : ''}
+                    ${benchMgrHtml}
+                </div>` : ''}
                 <div class="px-1 mt-1">
                     <div class="flex items-center justify-between mb-1">
                         <div class="text-[11px] text-gray-400 font-bold">🏆 主動 ETF 績效榜</div>
