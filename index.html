@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1162,6 +1162,8 @@
                     <div id="brokerChipContent" class="w-full mt-2">
                         <div class="text-center py-6 text-gray-600 text-xs animate-pulse">📡 正在攔截分點情報...</div>
                     </div>
+                    <!-- 🎯 V35.9 — 主力分點戰情(主力成本/連續吸籌/集中度;資料乾淨才點亮,壞則顯維護中) -->
+                    <div id="brokerWarRoom" class="w-full mt-2"></div>
                 </div>
 
             </div>
@@ -10800,22 +10802,126 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return cleaned || bid || `分點${rank + 1}`;
     },
 
+    // 🛡️ V35.9 — 分點資料品質檢查:過期/汙染就別顯亂碼券商名,改誠實顯維護中
+    _chipQuality(records, dataDate) {
+        if (!Array.isArray(records) || !records.length) return { ok: false, reason: '尚無分點資料' };
+        if (dataDate) {
+            const dd = new Date(String(dataDate).replace(/\//g, '-')).getTime();
+            if (Number.isFinite(dd)) {
+                const days = Math.floor((Date.now() - dd) / 86400000);
+                if (days > 10) return { ok: false, reason: `分點資料停更 ${days} 天` };
+            }
+        }
+        // 汙染:近 3 天分點,名與代號雙雙是純數字/含逗號數字 = 解析錯位
+        let total = 0, bad = 0;
+        for (const rec of records.slice(-3)) {
+            for (const x of [...(rec.buyers || []), ...(rec.sellers || [])]) {
+                const nm = String(x.bnm || x.broker_name || '').trim();
+                const bid = String(x.bid || x.broker_id || '').trim();
+                total++;
+                if (/^[\d,]+$/.test(nm) && /^[\d,]+$/.test(bid)) bad++;
+            }
+        }
+        if (total >= 3 && bad / total > 0.5) return { ok: false, reason: '分點資料解析異常(券商名變數字)' };
+        return { ok: true, reason: '' };
+    },
+
+    // 🎯 V35.9 — 主力分點戰情:連續吸籌天數 + 主力成本估 + 前5大集中度(純公式,資料乾淨才算)
+    renderBrokerWarRoom() {
+        const el = document.getElementById('brokerWarRoom');
+        if (!el) return;
+        const records = this._chipRecords;
+        const q = this._chipQuality(records, this._chipDataDate);
+        if (!q.ok) {
+            el.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
+                <div class="text-[11px] font-bold text-amber-300 mb-1">⚠️ 主力分點戰情：維護中</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${q.reason}。免費分點靠證交所 BSR(雲端破驗證碼)近期不穩;要穩定分點建議升級 FinMind Sponsor。<br>(法人 / 融資不受影響,上方照常顯示)</div>
+            </div>`;
+            return;
+        }
+        // 每日主力淨額(買超分點 net 合計 − 賣超分點 |net| 合計)
+        const daily = records.map(rec => {
+            const b = (rec.buyers || []).reduce((s, x) => s + (x.net || 0), 0);
+            const sNeg = (rec.sellers || []).reduce((s, x) => s + Math.abs(x.net || 0), 0);
+            return { date: rec.date, net: b - sNeg };
+        });
+        // 連續同向天數(從最後往回)
+        let streak = 0, dir = 0;
+        for (let i = daily.length - 1; i >= 0; i--) {
+            const d = daily[i].net;
+            if (d === 0) break;
+            const cur = d > 0 ? 1 : -1;
+            if (dir === 0) dir = cur;
+            if (cur === dir) streak++; else break;
+        }
+        // 主力成本:rawDailyData close 依日對齊,買超日 Σ(close×net)/Σ(net)
+        const closeByDate = {};
+        for (const r of (this.rawDailyData || [])) {
+            const dk = String(r.date || r.t || '').slice(0, 10).replace(/\//g, '-');
+            if (dk) closeByDate[dk] = +r.close || 0;
+        }
+        let buyVal = 0, buyNet = 0;
+        for (const d of daily) {
+            const dk = String(d.date || '').slice(0, 10).replace(/\//g, '-');
+            const c = closeByDate[dk];
+            if (c && d.net > 0) { buyVal += c * d.net; buyNet += d.net; }
+        }
+        const cost = buyNet > 0 ? (buyVal / buyNet) : null;
+        const lastClose = (this.rawDailyData || []).length ? +this.rawDailyData[this.rawDailyData.length - 1].close : null;
+        // 集中度:最後一天前 5 大買超佔總買超
+        const last = records[records.length - 1] || {};
+        const lb = (last.buyers || []).map(x => Math.abs(x.net || 0)).sort((a, b) => b - a);
+        const top5 = lb.slice(0, 5).reduce((s, v) => s + v, 0);
+        const allb = lb.reduce((s, v) => s + v, 0);
+        const conc = allb > 0 ? (top5 / allb * 100) : null;
+        const streakTxt = streak >= 2
+            ? (dir > 0 ? `<span class="text-red-400 font-black">連 ${streak} 天吸籌</span>` : `<span class="text-green-400 font-black">連 ${streak} 天倒貨</span>`)
+            : '<span class="text-gray-400">方向未連續</span>';
+        const costTxt = cost ? `<span class="font-mono font-black text-gray-100">${cost.toFixed(1)}</span>` : '<span class="text-gray-500">—</span>';
+        const costVs = (cost && lastClose) ? (lastClose >= cost
+            ? `<span class="text-red-400 text-[10px]">現價高於主力成本 +${((lastClose - cost) / cost * 100).toFixed(1)}%（主力帳面獲利,支撐較穩）</span>`
+            : `<span class="text-green-400 text-[10px]">現價低於主力成本 ${((lastClose - cost) / cost * 100).toFixed(1)}%（主力套牢,留意解套賣壓）</span>`) : '';
+        const concTxt = conc != null ? `<span class="font-mono font-black ${conc >= 40 ? 'text-red-400' : 'text-gray-200'}">${conc.toFixed(0)}%</span>` : '—';
+        el.innerHTML = `
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+            <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1.5">🎯 主力分點戰情<span class="text-[9px] text-gray-500 font-normal">(純公式・非 AI)</span></div>
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-[#0d1117] rounded p-2 text-center">
+                    <div class="text-[9px] text-gray-500 mb-1">主力方向</div>
+                    <div class="text-[11px]">${streakTxt}</div>
+                </div>
+                <div class="bg-[#0d1117] rounded p-2 text-center">
+                    <div class="text-[9px] text-gray-500 mb-1">主力成本估</div>
+                    <div class="text-base">${costTxt}</div>
+                </div>
+                <div class="bg-[#0d1117] rounded p-2 text-center">
+                    <div class="text-[9px] text-gray-500 mb-1">前5大集中度</div>
+                    <div class="text-base">${concTxt}</div>
+                </div>
+            </div>
+            ${costVs ? `<div class="mt-2 text-center">${costVs}</div>` : ''}
+            <div class="text-[9px] text-gray-600 mt-2 leading-snug">💡 主力成本=買超日收盤依量加權・集中度≥40%=主力鎖籌・全公式計算非 AI・僅供參考</div>
+        </div>`;
+    },
+
     async loadBrokerChips(sym, forceRefresh) {
         if (!sym) return;
         const box    = document.getElementById('brokerChipContent');
         const dateLbl = document.getElementById('brokerChipDate');
         if (!box) return;
 
-        // 快取 TTL：6小時
-        const cacheKey = `brokerChips_${sym}`;
+        // 快取 TTL：6小時(V35.9 — key 升 v2 使舊版亂碼分點快取自動失效)
+        const cacheKey = `brokerChips_v2_${sym}`;
         if (forceRefresh) localStorage.removeItem(cacheKey);  // 強制刷新時清除舊快取（含舊格式壞資料）
         if (!forceRefresh) {
             const c = localStorage.getItem(cacheKey);
             if (c) {
                 try {
-                    const { ts, html, dateLabel, periods } = JSON.parse(c);
+                    const { ts, html, dateLabel, periods, records: cRec, dataDate: cDate } = JSON.parse(c);
                     if (Date.now() - ts < 6 * 3600 * 1000) {
                         if (dateLbl) dateLbl.textContent = dateLabel;
+                        this._chipRecords = cRec || null;     // V35.9 — 還原供戰情卡
+                        this._chipDataDate = cDate || null;
                         if (periods && Object.keys(periods).length) {
                             // 多週期快取：還原後依當前選取週期渲染
                             this._chipPeriods    = periods;
@@ -10828,6 +10934,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                             box.innerHTML = html;
                             this.renderChipGlobal(this._activeChipPeriod || '3d');
                         }
+                        this.renderBrokerWarRoom();           // V35.9 — 戰情卡(快取路徑)
                         return;
                     }
                 } catch(e) {}
@@ -10891,6 +10998,23 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 }
             }
 
+            // 🛡️ V35.9 — 分點品質防呆 + 戰情卡:過期/汙染就別渲染亂碼券商名,改誠實顯維護中
+            this._chipRecords = records;
+            this._chipDataDate = objDate || latest.date;
+            const _cq = this._chipQuality(records, this._chipDataDate);
+            if (!_cq.ok) {
+                box.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
+                    <div class="text-[11px] font-bold text-amber-300 mb-1">⚠️ 主力分點維護中</div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">${_cq.reason}。免費分點靠證交所 BSR 雲端抓取,近期不穩(顯示的分點可能過期/錯位);穩定分點建議升級 FinMind Sponsor。</div>
+                </div>`;
+                this._chipPeriods = null;
+                document.getElementById('chipGlobalPeriodBtns')?.classList.add('hidden');
+                this.renderChipGlobal(this._activeChipPeriod || '3d');   // 法人/融資 bars 照常(不依賴分點)
+                this.renderBrokerWarRoom();
+                return;
+            }
+            this.renderBrokerWarRoom();   // 乾淨 → 戰情卡上線(獨立於下方分點表渲染)
+
             // ── 多週期模式（新版 JSON 有 periods）：用週期切換按鈕渲染 ──
             if (chipPeriods) {
                 this._chipPeriods     = chipPeriods;
@@ -10898,7 +11022,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 this._chipSym         = sym;
                 document.getElementById('chipGlobalPeriodBtns')?.classList.remove('hidden');
                 this.renderChipGlobal(this._activeChipPeriod || '3d');
-                localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), periods: chipPeriods, dateLabel }));
+                localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), periods: chipPeriods, dateLabel, records, dataDate: this._chipDataDate }));
                 return;
             }
 // 否則（舊格式 / 後端 api 路徑）→ 動態計算 1/3/5/10 日週期，並沿用累積長條圖 fallback
@@ -11000,7 +11124,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             </div>`;
 
             box.innerHTML = html;
-            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html, dateLabel }));
+            localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html, dateLabel, records, dataDate: this._chipDataDate }));
             this.renderChipGlobal(this._activeChipPeriod || '3d');  // 更新法人/融資週期標籤
 
         } catch(e) {
