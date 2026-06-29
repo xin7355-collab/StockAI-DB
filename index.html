@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1461,6 +1461,22 @@
                         💡 分析此股所屬<b class="text-cyan-300">產業板塊</b>的趨勢、上下游、競爭格局與受惠/受害程度（DeepSeek 深度推理）。
                     </div>
                     <div id="industryReportResult" class="hidden bg-[#0d1117] rounded p-2.5 border border-cyan-900/40 text-gray-200 text-sm leading-relaxed"></div>
+                </div>
+
+                <!-- 🏭 V35.2 — 同業數據對比(事實面・非 AI):同業 PE + 產業中位 + 法人板塊流向 -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
+                    <h4 class="text-cyan-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
+                        <div class="flex items-center gap-1.5"><span>🏭</span> 同業數據對比 <span class="text-[9px] text-gray-500 font-normal">(事實面・非 AI)</span></div>
+                        <button id="peerCompareBtn"
+                            onclick="app.renderPeerCompareCard(app.currentSymbolId); app.vibrate(30);"
+                            class="text-[10px] font-mono bg-cyan-900/30 hover:bg-cyan-700/40 text-cyan-300 px-2 py-0.5 rounded border border-cyan-700/50 transition-colors disabled:opacity-40">
+                            📊 載入同業數據
+                        </button>
+                    </h4>
+                    <div class="bg-cyan-950/20 border border-cyan-900/30 rounded px-2.5 py-1.5 text-[10px] text-cyan-200/70 leading-relaxed mb-2">
+                        💡 用<b class="text-cyan-300">既有採礦資料</b>比同業 PE、產業中位 PE、近 5 日法人板塊流向 —— <b class="text-cyan-300">純事實、不靠 AI、不撞 429</b>。
+                    </div>
+                    <div id="peerCompareResult" class="hidden"></div>
                 </div>
 
             </div>
@@ -4769,6 +4785,13 @@ ${list}
             this.applyXrayCache(this.currentSymbolId);
             // 🏭 產業報告:有快取直接顯示(標日期),沒有則顯示空白等使用者點生成
             this.showIndustryReportCache(this.currentSymbolId);
+            // 🏭 V35.2 — 同業數據面板:切股時收合重置(避免顯上一檔同業),等使用者重點「載入同業數據」
+            try {
+                const _pcBox = document.getElementById('peerCompareResult');
+                const _pcBtn = document.getElementById('peerCompareBtn');
+                if (_pcBox) { _pcBox.classList.add('hidden'); _pcBox.innerHTML = ''; }
+                if (_pcBtn) { _pcBtn.disabled = false; _pcBtn.textContent = '📊 載入同業數據'; _pcBtn.classList.remove('opacity-60'); }
+            } catch (_) {}
             // EPS / 月營收 ECharts 在情報 tab 隱藏時 init → 容器寬度 0 → 柱子擠左
             // 切到情報 tab 時 resize 一次，讓圖表恢復滿版分布
             setTimeout(() => {
@@ -6331,6 +6354,118 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         } catch (e) {
             console.warn('[industry PE] load fail:', e);
             return null;
+        }
+    },
+
+    // 🏭 V35.2 — 全市場基本面快取(fundamentals_cache.json:{sym:{pe,yield_rate}}),供同業 PE 對比(一次抓全市場,免逐檔 API)
+    async _loadFundCache() {
+        if (this._fundCacheAll && (Date.now() - this._fundCacheAll.ts) < 24 * 3600e3) return this._fundCacheAll.data;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/fundamentals_cache.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+            if (!r.ok) return null;
+            const data = await r.json();
+            this._fundCacheAll = { ts: Date.now(), data: data || {} };
+            return this._fundCacheAll.data;
+        } catch (e) { console.warn('[fundCache] load fail:', e); return null; }
+    },
+
+    // 🏭 取同業清單:優先 curated 9 板塊,併入 FinMind industry_category 同產業(去重 + 含自己)
+    _getIndustryPeers(sym) {
+        const info = (this.allStockList || []).find(s => s.stock_id === sym);
+        const ind = info?.industry_category || '';
+        let peers = [];
+        if (ind && ind !== 'Index' && !/ETF|大盤|指數/.test(ind)) {
+            peers = (this.allStockList || []).filter(s => s.industry_category === ind).map(s => s.stock_id);
+        }
+        const sec = this._resolveSector?.(sym);
+        if (sec?.syms) peers = [...sec.syms, ...peers];
+        peers = Array.from(new Set([sym, ...peers]));
+        return { industry: sec?.name || ind || '同產業', peers };
+    },
+
+    // 🏭 同業數據對比(事實面,非 AI):同業 PE + 產業中位 PE + 法人板塊流向。全用既有採礦靜態資料,零 AI、不撞 429
+    async renderPeerCompareCard(sym) {
+        const box = document.getElementById('peerCompareResult');
+        const btn = document.getElementById('peerCompareBtn');
+        if (!box) return;
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 載入中…'; btn.classList.add('opacity-60'); }
+        box.classList.remove('hidden');
+        box.innerHTML = '<div class="text-center text-cyan-400 animate-pulse py-3 text-xs">📊 彙整同業數據中…</div>';
+        try {
+            const [fundCache, peData] = await Promise.all([this._loadFundCache(), this._loadIndustryPeData()]);
+            const { industry, peers } = this._getIndustryPeers(sym);
+            const medianPe = peData?.industries?.[industry]?.median_pe ?? null;
+            // 1) 同業 PE(從全市場快取,免逐檔 API);只留有 PE 的,依 PE 升冪,上限 14 檔
+            let rows = peers.map(p => ({ sym: p, name: this.getStockName(p) || p, pe: (fundCache?.[p]?.pe ?? null) }))
+                            .filter(r => typeof r.pe === 'number' && r.pe > 0 && r.pe < 300);
+            rows.sort((a, b) => a.pe - b.pe);
+            if (!rows.find(r => r.sym === sym)) {
+                const selfPe = fundCache?.[sym]?.pe;
+                if (typeof selfPe === 'number' && selfPe > 0) rows.unshift({ sym, name: this.getStockName(sym) || sym, pe: selfPe });
+            }
+            rows = rows.slice(0, 14);
+            if (!rows.length) {
+                box.innerHTML = '<div class="bg-[#161b22] border-l-4 border-gray-500 border-y border-r border-[#30363d] rounded-r p-3"><div class="text-[11px] text-gray-300 leading-relaxed">此產業暫無足夠同業 PE 資料(採礦中或冷門股),稍後再試。</div></div>';
+                if (btn) { btn.disabled = false; btn.textContent = '🔄 重新載入'; btn.classList.remove('opacity-60'); }
+                return;
+            }
+            // 2) 法人板塊流向:抓各同業 data/{sym}.json 近 5 日(外資+投信)合計(靜態檔,無金鑰、不撞 429)
+            const instResults = await Promise.all(rows.map(async r => {
+                try {
+                    const data = await this.fetchHistoricalData(r.sym);
+                    if (!Array.isArray(data) || !data.length) return { sym: r.sym, inst5: null };
+                    const last5 = data.slice(-5);
+                    const inst5 = last5.reduce((sum, b) =>
+                        sum + (b.foreign_net ?? b.foreign_inv ?? 0) + (b.trust_net ?? b.invest_trust ?? 0), 0);
+                    return { sym: r.sym, inst5: Math.round(inst5) };
+                } catch (_) { return { sym: r.sym, inst5: null }; }
+            }));
+            const instMap = {}; instResults.forEach(x => instMap[x.sym] = x.inst5);
+            const sectorInst = instResults.reduce((s, x) => s + (x.inst5 || 0), 0);
+            // 3) 渲染
+            const selfPe = fundCache?.[sym]?.pe ?? null;
+            const peVsMedian = (medianPe && selfPe) ? (selfPe < medianPe ? `本檔偏便宜(PE ${selfPe} < 產業 ${medianPe})` : `本檔偏貴(PE ${selfPe} > 產業 ${medianPe})`) : '';
+            const peColor = (pe) => (medianPe == null) ? 'text-gray-200'
+                : (pe < medianPe * 0.85 ? 'text-green-400' : (pe > medianPe * 1.3 ? 'text-red-400' : 'text-gray-200'));  // 估值色:綠=便宜/紅=貴(對齊 X光 PE,非漲跌色)
+            const instTxt = (v) => v == null ? '<span class="text-gray-600">—</span>'
+                : (v > 0 ? `<span class="text-red-400 font-bold">+${v.toLocaleString()}</span>`     // 法人買超=紅(台股漲跌色)
+                         : (v < 0 ? `<span class="text-green-400 font-bold">${v.toLocaleString()}</span>` : '<span class="text-gray-400">0</span>'));
+            const rowHtml = rows.map(r => `
+                <div class="grid grid-cols-[1fr_56px_84px] gap-2 items-center py-1.5 border-b border-[#21262d] ${r.sym === sym ? 'bg-cyan-950/20 -mx-1 px-1 rounded' : ''}">
+                    <div class="min-w-0 cursor-pointer" onclick="document.getElementById('symbolInput').value='${r.sym}'; app.analyze();">
+                        <span class="text-[11px] text-gray-200 font-bold">${r.name}</span>
+                        <span class="text-[9px] text-gray-500 font-mono ml-1">${r.sym}</span>${r.sym === sym ? '<span class="text-[8px] text-cyan-400 ml-1">本檔</span>' : ''}
+                    </div>
+                    <div class="font-mono font-black text-right text-sm ${peColor(r.pe)}">${r.pe}</div>
+                    <div class="font-mono text-right text-[11px]">${instTxt(instMap[r.sym])}</div>
+                </div>`).join('');
+            box.innerHTML = `
+                <div class="space-y-2">
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] font-bold text-cyan-300">🏭 ${industry}</span>
+                            <span class="text-[10px] text-gray-400 font-mono">產業中位 PE <b class="text-gray-100">${medianPe ?? '—'}</b></span>
+                        </div>
+                        ${peVsMedian ? `<div class="text-[10px] ${selfPe < medianPe ? 'text-green-300' : 'text-red-300'} leading-snug">${peVsMedian}</div>` : ''}
+                    </div>
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+                        <div class="grid grid-cols-[1fr_56px_84px] gap-2 text-[9px] text-gray-500 font-bold border-b border-[#30363d] pb-1 mb-0.5">
+                            <span>同業(點可跳該股)</span><span class="text-right">PE</span><span class="text-right">近5日法人(張)</span>
+                        </div>
+                        ${rowHtml}
+                        <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-[#30363d]">
+                            <span class="text-[10px] text-gray-400 font-bold">📊 族群近5日法人合計</span>
+                            <span class="font-mono font-black text-sm ${sectorInst > 0 ? 'text-red-400' : (sectorInst < 0 ? 'text-green-400' : 'text-gray-300')}">${sectorInst > 0 ? '+' : ''}${sectorInst.toLocaleString()} 張</span>
+                        </div>
+                        <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 PE 來自全市場快取・法人=外資+投信近5日合計(紅買綠賣)・估值色綠=便宜紅=貴・全事實數據非 AI</div>
+                    </div>
+                </div>`;
+            if (btn) { btn.disabled = false; btn.textContent = '🔄 重新載入'; btn.classList.remove('opacity-60'); }
+        } catch (e) {
+            console.warn('[peerCompare]', e);
+            box.innerHTML = `<div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-3"><div class="text-[11px] text-gray-300">同業數據載入失敗,稍後再試。</div></div>`;
+            if (btn) { btn.disabled = false; btn.textContent = '🔄 重新載入'; btn.classList.remove('opacity-60'); }
         }
     },
 
