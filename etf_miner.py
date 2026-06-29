@@ -466,7 +466,7 @@ def main():
 
     ranked = []
     for s in actives:
-        m = perf_metrics(load_prices(s))
+        m = perf_with_tr(s, load_prices(s))   # V34.3 — 主動 ETF 也算含息(tr_120d/tr_20d),與被動同基礎可比
         if m:
             ranked.append((s, m))
     ranked.sort(key=lambda t: _rank_value(t[1]), reverse=True)
