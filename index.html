@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1042,6 +1042,8 @@
                         <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                         <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
                         <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                        <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
+                        <div id="kbarHalfTactics" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3 mt-2"></div>
                         <div class="w-full mt-2">
                             <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('institutionTargetBody', this); app.vibrate(30);">💡 法人共識目標價 <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
                             <div id="institutionTargetBody" class="hidden mt-1">
@@ -10904,6 +10906,56 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         </div>`;
     },
 
+    // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
+    //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
+    renderKbarTactics(data) {
+        const el = document.getElementById('kbarHalfTactics');
+        if (!el) return;
+        if (!Array.isArray(data) || data.length < 6) { el.classList.add('hidden'); return; }
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const pC = C(data[last]);
+        const sigs = [];
+        const bigVol = (j) => { const pv = data.slice(Math.max(0, j - 5), j).map(V); const av = pv.length ? pv.reduce((a, x) => a + x, 0) / pv.length : V(data[j]); return av > 0 && V(data[j]) >= av * 1.5; };
+
+        // ① 大量長黑 ½ 止跌訊號(回掃 ≤25 根)
+        for (let j = last; j >= Math.max(1, last - 25); j--) {
+            const b = data[j]; if (!b || !O(b) || !C(b)) continue;
+            if (C(b) < O(b) && (O(b) - C(b)) / O(b) >= 0.05 && bigVol(j)) {
+                const mid = (H(b) + L(b)) / 2, daysAgo = last - j;
+                if (pC > mid) sigs.push({ tone: 'bull', title: '止跌反彈訊號', val: mid, msg: `現價站上 ${daysAgo} 天前大量長黑的 ½ 平均成本 ${mid.toFixed(2)} → 套牢賣壓被消化,空方轉弱、止跌反彈機率增(朱:抢反弹基本條件)。` });
+                else sigs.push({ tone: 'flat', title: '大量長黑壓制中', val: mid, msg: `現價仍在 ${daysAgo} 天前大量長黑 ½ ${mid.toFixed(2)} 之下,賣壓未解,反彈需先站上此線。` });
+                break;
+            }
+        }
+        // ② 假突破 / 假跌破(找最近爆量長紅/長黑,隔 1-2 日反向收破其 ½)
+        for (let j = last - 1; j >= Math.max(1, last - 25); j--) {
+            const b = data[j]; if (!b || !O(b) || !C(b) || !bigVol(j)) continue;
+            const mid = (H(b) + L(b)) / 2;
+            if (C(b) > O(b) && (C(b) - O(b)) / O(b) >= 0.04) {   // 大量長紅 → 查假突破
+                for (let k = j + 1; k <= Math.min(last, j + 2); k++) { const n = data[k]; if (n && C(n) < O(n) && C(n) < mid) { sigs.push({ tone: 'bear', title: '假突破警訊', val: mid, msg: `大量長紅突破後 ${k - j} 日內黑K跌破其 ½ ${mid.toFixed(2)} = 假突破,昨天買的一半已賠錢,多單先跑(朱:假突破易真下跌)。` }); break; } }
+                break;
+            }
+            if (C(b) < O(b) && (O(b) - C(b)) / O(b) >= 0.04) {   // 大量長黑 → 查假跌破
+                for (let k = j + 1; k <= Math.min(last, j + 2); k++) { const n = data[k]; if (n && C(n) > O(n) && C(n) > mid) { sigs.push({ tone: 'bull', title: '假跌破訊號', val: mid, msg: `大量長黑跌破後 ${k - j} 日內紅K突破其 ½ ${mid.toFixed(2)} = 假跌破,空單先跑、止跌反彈機率高。` }); break; } }
+                break;
+            }
+        }
+        // ③ 收盤 vs 昨高/昨低
+        const prev = data[last - 1], pH = H(prev), pL = L(prev);
+        if (pH && pC > pH) sigs.push({ tone: 'bull', title: '收盤轉強', val: pH, msg: `今收 ${pC.toFixed(2)} 突破昨高 ${pH.toFixed(2)} = 買方力道轉強。` });
+        else if (pL && pC < pL) sigs.push({ tone: 'bear', title: '收盤轉弱', val: pL, msg: `今收 ${pC.toFixed(2)} 跌破昨低 ${pL.toFixed(2)} = 賣方力道轉強。` });
+
+        if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' } };
+        const rows = sigs.map(s => { const t = sty[s.tone] || sty.flat; return `<div class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5">
+            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} <span class="font-mono text-gray-500 font-normal text-[10px]">½ ${s.val.toFixed(2)}</span></div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('');
+        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒 ½價戰法</span><span class="text-[9px] text-gray-500">朱家泓・純公式</span></div>${rows}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 ½價=(最高+最低)/2=當天平均成本・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.classList.remove('hidden');
+    },
+
     async loadBrokerChips(sym, forceRefresh) {
         if (!sym) return;
         const box    = document.getElementById('brokerChipContent');
@@ -17077,6 +17129,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 _bg.classList.remove('hidden');
             } else { _bg.classList.add('hidden'); }
         }
+        // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
+        try { this.renderKbarTactics(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
         const _tpSlReasonEl = document.getElementById('tpSlReason');
         if (_tpSlReasonEl) {
