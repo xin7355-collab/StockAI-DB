@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -6425,9 +6425,29 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             }));
             const instMap = {}; instResults.forEach(x => instMap[x.sym] = x.inst5);
             const sectorInst = instResults.reduce((s, x) => s + (x.inst5 || 0), 0);
-            // 3) 渲染
+            // 3) 渲染 + 本檔 vs 同業均值(從顯示中的同業即時算,缺值自動略過)
             const selfPe = fundCache?.[sym]?.pe ?? null;
-            const peVsMedian = (medianPe && selfPe) ? (selfPe < medianPe ? `本檔偏便宜(PE ${selfPe} < 產業 ${medianPe})` : `本檔偏貴(PE ${selfPe} > 產業 ${medianPe})`) : '';
+            const selfYoy = fundCache?.[sym]?.rev_yoy ?? null;
+            const selfGm = fundCache?.[sym]?.gross_margin ?? null;
+            const _avg = (arr) => { const v = arr.filter(x => typeof x === 'number'); return v.length ? Math.round(v.reduce((s, x) => s + x, 0) / v.length * 10) / 10 : null; };
+            const peerPe = _avg(rows.filter(r => r.sym !== sym).map(r => r.pe));
+            const peerYoy = _avg(rows.filter(r => r.sym !== sym).map(r => r.yoy));
+            const peerGm = _avg(rows.filter(r => r.sym !== sym).map(r => r.gm));
+            const peVsMedian = (medianPe && selfPe) ? (selfPe < medianPe ? `本檔偏便宜(PE ${selfPe} < 產業中位 ${medianPe})` : `本檔偏貴(PE ${selfPe} > 產業中位 ${medianPe})`) : '';
+            // 對比列:self 與同業均值並排,self 依「好壞」上色(PE低=便宜綠/YoY高=成長紅/毛利高=紅)
+            const cmpRow = (label, self, peer, unit, betterHigh) => {
+                if (self == null && peer == null) return '';
+                let sCls = 'text-gray-100';
+                if (self != null && peer != null) {
+                    const better = betterHigh ? self > peer : self < peer;
+                    sCls = better ? (betterHigh ? 'text-red-400' : 'text-green-400') : (betterHigh ? 'text-green-400' : 'text-red-400');
+                }
+                return `<div class="grid grid-cols-[44px_1fr_1fr] gap-1 items-center text-[10px] py-0.5">
+                    <span class="text-gray-500">${label}</span>
+                    <span class="font-mono font-black text-right ${sCls}">${self == null ? '—' : self + unit}</span>
+                    <span class="font-mono text-right text-gray-400">${peer == null ? '—' : peer + unit}</span>
+                </div>`;
+            };
             const peColor = (pe) => (medianPe == null) ? 'text-gray-200'
                 : (pe < medianPe * 0.85 ? 'text-green-400' : (pe > medianPe * 1.3 ? 'text-red-400' : 'text-gray-200'));  // 估值色:綠=便宜/紅=貴(對齊 X光 PE,非漲跌色)
             const instTxt = (v) => v == null ? '<span class="text-gray-600">—</span>'
@@ -6455,7 +6475,13 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                             <span class="text-[11px] font-bold text-cyan-300">🏭 ${industry}</span>
                             <span class="text-[10px] text-gray-400 font-mono">產業中位 PE <b class="text-gray-100">${medianPe ?? '—'}</b></span>
                         </div>
-                        ${peVsMedian ? `<div class="text-[10px] ${selfPe < medianPe ? 'text-green-300' : 'text-red-300'} leading-snug">${peVsMedian}</div>` : ''}
+                        ${peVsMedian ? `<div class="text-[10px] ${selfPe < medianPe ? 'text-green-300' : 'text-red-300'} leading-snug mb-1">${peVsMedian}</div>` : ''}
+                        <div class="grid grid-cols-[44px_1fr_1fr] gap-1 text-[9px] text-gray-600 font-bold border-t border-[#30363d] pt-1">
+                            <span></span><span class="text-right">本檔</span><span class="text-right">同業均值</span>
+                        </div>
+                        ${cmpRow('PE', selfPe, peerPe, '', false)}
+                        ${cmpRow('營收YoY', selfYoy, peerYoy, '%', true)}
+                        ${cmpRow('毛利', selfGm, peerGm, '%', true)}
                     </div>
                     <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
                         <div class="grid grid-cols-[1fr_40px_50px_46px_66px] gap-1.5 text-[9px] text-gray-500 font-bold border-b border-[#30363d] pb-1 mb-0.5">
