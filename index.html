@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3152,6 +3152,8 @@ const app = {
         // V20.6 — 每日首次開 App:掃自選+庫存,有處置風險(注意/處置/即將出關)就推 1 則
         //         localStorage 記日期,同一天不重複
         setTimeout(() => this._dailyDisposedAlertSweep(), 3000);
+        // 📐 V36.5 — 開 App(含盤後)掃 K棒戰法/量能型態推播(等 IDB K線就緒,localStorage 每日去重)
+        setTimeout(() => this._kbarDailySweep(), 6000);
     },
 
     // V20.6 — 每日開 App 掃自選/庫存,有處置風險自動推播 (1 天 1 次)
@@ -3192,6 +3194,48 @@ const app = {
         alerts.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
         if (alerts.length > 3) {
             this._fireAlert('📊 處置股盤點摘要', `你還有 ${alerts.length - 3} 檔股有處置風險,點🔔看歷史通知`, '');
+        }
+    },
+
+    // 📐 V36.5 — K棒戰法/量能 訊號 → 推播(盤中 pulse + 盤後開App sweep 共用);localStorage 每日去重(防重載重發)
+    _kbarFiredToday(key) {
+        const today = this.getTodayStr();
+        const lsKey = 'proTerminalKbarFired';
+        let obj = {};
+        try { obj = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch (_) { obj = {}; }
+        if (obj._d !== today) obj = { _d: today };   // 跨日自動清空
+        if (obj[key]) return true;
+        obj[key] = 1;
+        try { localStorage.setItem(lsKey, JSON.stringify(obj)); } catch (_) {}
+        return false;
+    },
+    _kbarTryFire(sym, name, kdata) {
+        if (!Array.isArray(kdata) || kdata.length < 8) return;
+        const push = [];
+        (this._detectStarPatterns?.(kdata) || []).forEach(s => push.push(s));                                  // 夜星/晨星(轉折最強)
+        (this._detect2BarReversal?.(kdata) || []).forEach(s => { if (/吞噬/.test(s.title)) push.push(s); });   // 長黑/長紅吞噬=主力出貨/進貨
+        (this._detectBoxBreakout?.(kdata) || []).forEach(s => push.push(s));                                   // K線橫盤突破/跌破=進出場
+        (this._detectVolumeSignals?.(kdata) || []).forEach(s => { if (/出貨量|攻擊量|換手量/.test(s.title)) push.push(s); });
+        for (const s of push) {
+            if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
+            const emo = s.tone === 'bull' ? '🔺' : (s.tone === 'bear' ? '🔻' : (s.tone === 'warn' ? '⚠️' : '⚪'));
+            this._fireAlert(`${emo} ${s.title}`, `${name}(${sym}) ${String(s.msg || '').slice(0, 90)}`, sym);
+        }
+    },
+    // 📐 V36.5 — 每日開 App(含盤後)掃自選+庫存,觸發 K棒戰法/量能型態就推(純讀 IDB K線,免 Fugle)
+    async _kbarDailySweep() {
+        if (!this.settings.watchlistAlert) return;
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const fav = this.favGroups?.[this.activeGroupName] || [];
+        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const allSyms = [...new Set([...fav, ...inv.map(i => i.symbol).filter(Boolean)])];
+        if (!allSyms.length) return;
+        for (const sym of allSyms.slice(0, 60)) {   // 上限 60 檔防爆
+            try {
+                const cached = await this.idb.get(`proTerm_kline_${sym}`);
+                const kdata = cached?.data;
+                if (kdata && kdata.length >= 8) this._kbarTryFire(sym, this.getStockName(sym) || sym, kdata);
+            } catch (_) {}
         }
     },
 
@@ -3302,6 +3346,9 @@ const app = {
                         }
                     }
                 } catch (_) {}
+
+                // 📐 V36.5 — 朱家泓 K棒戰法/量能 型態推播(盤中+盤後共用 helper,localStorage 每日去重)
+                try { this._kbarTryFire(sym, name, kdata); } catch (_) {}
 
                 await new Promise(r => setTimeout(r, 1500)); // 每股間隔 1.5s 避免 Fugle 429
             } catch (e) {
@@ -11046,8 +11093,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const red = C(cur) > O(cur), black = C(cur) < O(cur);
         // 攻擊量(進貨):放大量 + 紅K + 非高檔
         if (vr >= 1.2 && red && !isHigh) out.push({ tone: 'bull', title: '攻擊量(主力進貨)', val: V(cur), msg: `量放大 ${vr.toFixed(1)}× 均量 + 紅K上漲、非高檔 → 攻擊量/主力進貨,起漲有量易續攻。` });
-        // 出貨量:高檔爆量 + 黑K
-        if (vr >= 1.5 && black && isHigh) out.push({ tone: 'bear', title: '高檔出貨量', val: V(cur), msg: `高檔爆量 ${vr.toFixed(1)}× + 黑K → 主力出貨量,有貨分批停利、別追。` });
+        // 出貨量:高檔爆量 + 黑K(漲近一倍=主力目標區,出貨機率更高 — 朱家泓 #43)
+        if (vr >= 1.5 && black && isHigh) { const dbl = lo > 0 && C(cur) >= lo * 1.9; out.push({ tone: 'bear', title: '高檔出貨量', val: V(cur), msg: `高檔爆量 ${vr.toFixed(1)}× + 黑K → 主力出貨量${dbl ? '(已自低點漲近一倍=主力目標區,出貨機率高)' : ''},有貨分批停利、別追。` }); }
         // 止跌量:低檔量縮到半 + 未破近5日低
         if (vr <= 0.5 && isLow) { const lo5 = Math.min(...data.slice(last - 5, last).map(L)); if (L(cur) >= lo5) out.push({ tone: 'flat', title: '止跌量(量縮窒息)', val: V(cur), msg: `低檔量縮至 ${(vr * 100).toFixed(0)}% 均量 + 未破前低 → 量縮窒息,留意打底止跌(待紅K放量確認)。` }); }
         // 換手量:近 5 日內高檔大量黑K,被今日紅K收盤過其高
