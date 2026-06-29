@@ -414,6 +414,303 @@ def load_prev_tracking():
 
 # ── 主流程 ──────────────────────────────────────────────────────────────────
 def fetch_etf_premium():
+    """抓證交所 mis.twse all_etf.txt:全市場 ETF 即時淨值與折溢價。回 {sym: premium_float}(正=溢價/負=折價)。
+    欄位對照(官方介接格式 ver1.5):a=代號 e=成交價 f=預估淨值 g=預估折溢價幅度(%) h=前日淨值。
+    取 g 欄(預估折溢價幅度)。GitHub Actions 連得到 mis.twse;失敗回 {} 前端 graceful。"""
+    out = {}
+    url = "https://mis.twse.com.tw/stock/data/all_etf.txt"
+    try:
+        r = session.get(url, timeout=20, headers={
+            "User-Agent": random.choice(_UA),
+            "Referer": "https://mis.twse.com.tw/stock/various-areas/etf-price/indicator-disclosure-etf?lang=zhHant",
+            "Accept": "application/json, text/plain, */*",
+        })
+        if r.status_code != 200:
+            print(f"  ⚠️ [折溢價] mis.twse HTTP {r.status_code}")
+            return out
+        j = r.json()
+        # 外層:{"a1":[...]} 或 {"msgArray":[...]} 或直接 list;容錯取第一個 list value
+        arr = None
+        if isinstance(j, list):
+            arr = j
+        elif isinstance(j, dict):
+            for k in ("a1", "msgArray", "data", "aaData"):
+                if isinstance(j.get(k), list):
+                    arr = j[k]; break
+            if arr is None:
+                arr = next((v for v in j.values() if isinstance(v, list)), None)
+        for it in (arr or []):
+            if not isinstance(it, dict):
+                continue
+            sym = str(it.get("a", "")).strip()
+            g = it.get("g")   # 預估折溢價幅度(%)
+            if sym and g not in (None, "", "-", "未結出"):
+                f = _to_float(str(g).replace("%", "").replace(",", "").strip())
+                if f is not None:
+                    out[sym] = round(f, 2)
+        print(f"  {'✓' if out else '⚠️'} [折溢價] mis.twse all_etf 命中 {len(out)} 檔"
+              + (f"(例:{list(out.items())[:3]})" if out else "(g 欄全空或結構不符)"))
+    except Exception as e:
+        print(f"  ⚠️ [折溢價] all_etf 失敗: {type(e).__name__}: {e}")
+    return out
+
+
+def perf_with_tr(sym, rows):
+    """市價報酬 + 含息總報酬合併(含息抓失敗就只有市價,前端自會 fallback)。"""
+    m = perf_metrics(rows)
+    if m:
+        tr = total_return_metrics(sym)
+        if tr:
+            m["tr_120d"] = tr.get("tr_120d")
+            m["tr_20d"] = tr.get("tr_20d")
+    return m
+
+
+def _rank_value(m):
+    v = m.get("ret_120d")
+    return v if v is not None else (m.get("ret_incep") if m.get("ret_incep") is not None else -9999)
+
+
+# ── 持股抓取(Tier 2)：泛用解析器(JSON / HTML 表格皆可) + 多來源容錯 ──────────
+# 設計成「格式無關」：不論 etfinfo / 投信 JSON / HTML 表格，皆能抽出 {sym,name,weight}。
+# 確切端點上雲探針確認後填入 HOLDINGS_SOURCES，解析器本身已本機單元測試。
+_CODE_KEYS = ("code", "stockcode", "stock_id", "stockno", "stockId", "symbol",
+              "證券代號", "股票代號", "代號", "成分股代號", "個股代號")
+_NAME_KEYS = ("name", "stockname", "stock_name", "stockName", "證券名稱",
+              "股票名稱", "名稱", "成分股名稱", "個股名稱")
+_WEIGHT_KEYS = ("weight", "weights", "ratio", "percent", "percentage", "pct",
+                "權重", "比例", "投資比例", "持股權重", "比重", "佔淨值比例")
+
+
+def _to_float(v):
+    try:
+        return float(str(v).replace("%", "").replace(",", "").strip())
+    except Exception:
+        return None
+
+
+def _pick(d, keys):
+    low = {str(k).lower(): k for k in d.keys()}
+    for k in keys:
+        if k in d:
+            return d[k]
+        if k.lower() in low:
+            return d[low[k.lower()]]
+    return None
+
+
+def _normalize_holdings(items):
+    """list[dict] → [{sym,name,weight}]，抽代號/名稱/權重，去重(同代號留權重大者)。"""
+    out = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        code = _pick(it, _CODE_KEYS)
+        if code is None:
+            continue
+        m = re.search(r"\d{4,6}[A-Z]?", str(code))
+        if not m:
+            continue
+        out.append({"sym": m.group(0),
+                    "name": (str(_pick(it, _NAME_KEYS)).strip() if _pick(it, _NAME_KEYS) else ""),
+                    "weight": _to_float(_pick(it, _WEIGHT_KEYS))})
+    best = {}
+    for h in out:
+        if h["sym"] not in best or (h["weight"] or 0) > (best[h["sym"]]["weight"] or 0):
+            best[h["sym"]] = h
+    return list(best.values())
+
+
+def _looks_like_holdings(lst):
+    return (isinstance(lst, list) and len(lst) >= 3 and isinstance(lst[0], dict)
+            and _pick(lst[0], _CODE_KEYS) is not None and _pick(lst[0], _WEIGHT_KEYS) is not None)
+
+
+def _deep_find_holdings(obj, depth=0):
+    """遞迴在任意 JSON 中找出「看起來像持股清單」的 list。"""
+    if depth > 6:
+        return None
+    if isinstance(obj, list):
+        if _looks_like_holdings(obj):
+            return obj
+        for x in obj:
+            r = _deep_find_holdings(x, depth + 1)
+            if r:
+                return r
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            r = _deep_find_holdings(v, depth + 1)
+            if r:
+                return r
+    return None
+
+
+def _holdings_from_json(text):
+    lst = _deep_find_holdings(json.loads(text))
+    return _normalize_holdings(lst) if lst else []
+
+
+_ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
+_CELL_RE = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _holdings_from_html(html):
+    """從 HTML 表格列抽出 持股(代號 + 中文名 + 含% 的權重)。無 bs4 依賴。"""
+    rows = []
+    for rm in _ROW_RE.findall(html):
+        cells = [_TAG_RE.sub("", c).strip() for c in _CELL_RE.findall(rm)]
+        if len(cells) < 2:
+            continue
+        code = next((c for c in cells if re.fullmatch(r"\d{4,6}[A-Z]?", c)), None)
+        if not code:
+            continue
+        weight = next((_to_float(c) for c in cells if "%" in c and re.search(r"\d", c)), None)
+        chin = [c for c in cells if re.search(r"[一-鿿]", c)]
+        rows.append({"code": code, "name": (max(chin, key=len) if chin else ""), "weight": weight})
+    return _normalize_holdings(rows)
+
+
+# 持股+名稱來源:etfinfo.tw 官方 API(每日同步,回 info.name 與成分股 code/name/weight)
+ETFINFO_API = "https://www.etfinfo.tw/api/etf/{s}"
+
+# 基金規模(NAV/AUM)候選 key — 用於「估算共識買賣超張數」
+_FUND_SIZE_KEYS = ("fund_size", "fundSize", "total_nav", "totalNav", "nav_total",
+                   "totalAsset", "total_asset", "aum", "scale", "fundScale",
+                   "資產規模", "基金規模", "淨資產", "總資產", "受益權單位淨資產")
+
+
+def _deep_find_scalar(obj, keys, depth=0):
+    """遞迴在 JSON 中找含 keys 之一的純量(數字字串),回傳 float 或 None"""
+    if depth > 6 or obj is None:
+        return None
+    if isinstance(obj, dict):
+        # 直接命中
+        for k in keys:
+            if k in obj:
+                v = _to_float(obj[k])
+                if v and v > 0:
+                    return v
+            # 大小寫不敏感比對
+            for ok in obj.keys():
+                if str(ok).lower() == str(k).lower():
+                    v = _to_float(obj[ok])
+                    if v and v > 0:
+                        return v
+        for v in obj.values():
+            r = _deep_find_scalar(v, keys, depth + 1)
+            if r:
+                return r
+    elif isinstance(obj, list):
+        for x in obj:
+            r = _deep_find_scalar(x, keys, depth + 1)
+            if r:
+                return r
+    return None
+
+
+def fetch_etf_detail(sym):
+    """回傳 (name, holdings[{sym,name,weight}], fund_size_or_None)。
+    用 etfinfo /api/etf/{code};失敗回 (None, [], None)。
+    fund_size 是新增欄位:基金規模(單位通常為元),用於估算「整體 ETF 共識買賣超張數」。"""
+    try:
+        time.sleep(0.4)  # 對 etfinfo 禮貌節流(10+ 檔序列抓取,避免被限流)
+        r = session.get(ETFINFO_API.format(s=sym), headers=_hdrs(), timeout=15)
+        if r.status_code != 200 or not r.text:
+            print(f"  · etfinfo {sym} status={r.status_code}")
+            return None, [], None
+        d = r.json()
+        name = ((d.get("info") or {}).get("name")) if isinstance(d, dict) else None
+        lst = _deep_find_holdings(d)
+        holds = _normalize_holdings(lst) if lst else []
+        holds.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
+        fund_size = _deep_find_scalar(d, _FUND_SIZE_KEYS)
+        if holds:
+            print(f"  ✓ etfinfo {sym}: name={name} holdings={len(holds)} fund_size={fund_size}")
+        return name, holds, fund_size
+    except Exception as e:
+        print(f"  ⚠️ etfinfo {sym}: {type(e).__name__}: {e}")
+        return None, [], None
+
+
+def _latest_close(stock_sym):
+    """讀 data/{sym}.json 最後一筆 close,沒檔案回 None"""
+    p = Path(DATA_DIR) / f"{stock_sym}.json"
+    if not p.exists():
+        return None
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        if isinstance(d, list) and d:
+            last = d[-1] if isinstance(d[-1], dict) else None
+            return _to_float(last.get("close")) if last else None
+    except Exception:
+        pass
+    return None
+
+
+def _attach_est_shares(holdings, fund_size, price_cache):
+    """為每檔持股加 est_shares = (weight%/100 × fund_size) ÷ 股價。
+    無 fund_size 或無股價就跳過(保持 None)。價格走 price_cache 共用 — 同一支股票
+    在多檔 ETF 內共用 close,避免重讀 JSON。
+    """
+    if not fund_size or fund_size <= 0:
+        return
+    for h in holdings:
+        w = h.get("weight")
+        if not w or w <= 0:
+            continue
+        s = h.get("sym")
+        if not s:
+            continue
+        if s not in price_cache:
+            price_cache[s] = _latest_close(s)
+        px = price_cache[s]
+        if px and px > 0:
+            # est_shares 單位「張」(1 張 = 1000 股)
+            est = (w / 100.0) * fund_size / px / 1000.0
+            h["est_shares"] = round(est, 1)
+
+
+# ── 換股 diff ──────────────────────────────────────────────────────────────
+EMPTY_CHANGES = {"added": [], "removed": [], "weight_up": [], "weight_down": []}
+
+
+def diff_holdings(prev, curr):
+    pm = {h["sym"]: h for h in prev if h.get("sym")}
+    cm = {h["sym"]: h for h in curr if h.get("sym")}
+    added = [cm[s] for s in cm if s not in pm]
+    removed = [pm[s] for s in pm if s not in cm]
+    up, down = [], []
+    for s in cm:
+        if s in pm:
+            dw = round((cm[s].get("weight") or 0) - (pm[s].get("weight") or 0), 2)
+            if dw >= WEIGHT_DELTA:
+                # est_shares_delta = 新 est_shares - 舊 est_shares(同 ETF 規模下)
+                eds = None
+                ec = cm[s].get("est_shares"); ep = pm[s].get("est_shares")
+                if ec is not None and ep is not None:
+                    eds = round(ec - ep, 1)
+                up.append({**cm[s], "dw": dw, **({"est_shares_delta": eds} if eds is not None else {})})
+            elif dw <= -WEIGHT_DELTA:
+                eds = None
+                ec = cm[s].get("est_shares"); ep = pm[s].get("est_shares")
+                if ec is not None and ep is not None:
+                    eds = round(ec - ep, 1)
+                down.append({**cm[s], "dw": dw, **({"est_shares_delta": eds} if eds is not None else {})})
+    return {"added": added, "removed": removed, "weight_up": up, "weight_down": down}
+
+
+def load_prev_tracking():
+    if OUT.exists():
+        try:
+            return json.loads(OUT.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+    return None
+
+
+# ── 主流程 ──────────────────────────────────────────────────────────────────
+def fetch_etf_premium():
     """best-effort 抓上市 ETF 折溢價(%):TWSE。回 {sym: premium_float}(正=溢價/負=折價)。
     ⚠️ 沙箱無外網無法驗證端點 → 上 GitHub Actions 首跑後依 log 調整解析(同 holdings 模式);
        多端點 + 彈性欄位比對 + 重試,全失敗回 {} 讓前端自動略過,不影響其他資料。"""
