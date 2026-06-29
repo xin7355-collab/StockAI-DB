@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -2567,6 +2567,7 @@ const app = {
         '大盤天氣趨勢': '用加權指數的均線排列,把大盤分「短期(日)/ 中期(週)/ 長期(月)」三個時間判斷方向(全部由程式算,不靠 AI):\n\n• ☀️ 偏多:收盤 > 短均 > 長均(多頭排列),順勢做多較有利。\n• ☁️ 震盪:均線糾結或交叉,方向不明,別重押、等表態。\n• 🌧️ 偏空:收盤 < 短均 < 長均(空頭排列),反彈偏空、控好部位。\n\n短期=日K MA5/MA20、中期=週K MA5/MA20、長期=月K MA3/MA12;乖離=收盤離長均的百分比。三個天期同方向(如全 ☀️)趨勢最明確;打架(☀️☁️🌧️ 混)代表轉折或盤整,操作要更保守。',
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。就像火箭加速衝刺的階段，遇到務必抱緊處理！',
         '多頭排列': '短期、中期、長期均線由上到下依序排列，且每條都朝上。代表各個天期的投資人都賺錢，有極強的支撐力量。',
+        '波段趨勢': '朱家泓「趨勢第一」鐵律 — 用波段轉折高/低點(K線圖上紅「頭」綠「底」)判方向,不是看均線排列:\n\n• 🔴 波段多頭 = 頭頭高 + 底底高(高點越墊越高、低點也越墊越高)→ 只做多。\n• 🟢 波段空頭 = 頭頭低 + 底底低(高點越來越低、低點破前低)→ 只做空、嚴禁摸底接刀。\n• 🟡 盤整轉折 = 六字口訣出現破口(如頭頭低但底底高)→ 方向不明,短線先休息。\n\n⭐ 趨勢改變最早警訊:多頭回檔「跌破前低」= 第一個轉弱訊號(比跌破月線更嚴重,90% 不再過前高)。天大地大趨勢最大,趨勢一變策略就要跟著變。',
         '帶量突破': '股價盤整很久之後，突然出現一根量大且長的紅K棒衝破原本的壓力線。這代表主力發動攻擊了！',
         '爆量': '今天的成交量比平常多出一倍以上。注意：高檔爆大量通常代表有很多人（尤其是主力）在偷偷倒貨。',
         '長黑K': '實體部分很大（跌幅深）的黑色K線。代表今天空方力道極強，這根K線的高點會成為未來極大的壓力。',
@@ -10994,6 +10995,38 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V36.3 — 朱家泓 K線橫盤突破/跌破(純型態):≥3 根橫盤(窄幅) → 收盤過上頸線=突破(多單買點)/破下頸線=跌破(空)
+    _detectBoxBreakout(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 5) return out;
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        for (let e = last; e >= Math.max(4, last - 1); e--) {   // 突破 K 在最後 1-2 根
+            const conf = data[e];
+            if (!O(conf) || !C(conf)) continue;
+            for (let n = 3; n <= 6; n++) {                       // 橫盤 3-6 根
+                const s = e - n;
+                if (s < 0) break;
+                const box = data.slice(s, e);
+                if (box.length < 3) continue;
+                const boxHi = Math.max(...box.map(H)), boxLo = Math.min(...box.map(L));
+                if (!boxHi || boxHi <= boxLo) continue;
+                if ((boxHi - boxLo) / boxLo > 0.08) continue;    // 窄幅(<8%)才算橫盤
+                const when = (last - e) === 0 ? '剛' : (last - e) + '天前';
+                if (C(conf) > boxHi && C(conf) > O(conf) && (C(conf) - O(conf)) / O(conf) >= 0.02) {
+                    out.push({ tone: 'bull', title: 'K線橫盤突破', val: boxHi, msg: `橫盤 ${n} 根後${when}紅K收盤突破上頸線 ${boxHi.toFixed(2)}=橫盤突破;波段多頭下為買點,回測頸線不破可加碼。` });
+                    return out;
+                }
+                if (C(conf) < boxLo && C(conf) < O(conf) && (O(conf) - C(conf)) / O(conf) >= 0.02) {
+                    out.push({ tone: 'bear', title: 'K線橫盤跌破', val: boxLo, msg: `橫盤 ${n} 根後${when}黑K收盤跌破下頸線 ${boxLo.toFixed(2)}=橫盤跌破;波段空頭下為空點/避開,別搶反彈。` });
+                    return out;
+                }
+            }
+        }
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -11036,7 +11069,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         else if (pL && pC < pL) sigs.push({ tone: 'bear', title: '收盤轉弱', val: pL, msg: `今收 ${pC.toFixed(2)} 跌破昨低 ${pL.toFixed(2)} = 賣方力道轉強。` });
 
         // ⭐ V36.1 — 三根 K棒 夜星/晨星轉折(最重要的反轉訊號,置頂)
-        try { sigs.unshift(...this._detectStarPatterns(data), ...this._detect2BarReversal(data)); } catch (_) {}
+        try { sigs.unshift(...this._detectStarPatterns(data), ...this._detect2BarReversal(data), ...this._detectBoxBreakout(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' } };
@@ -16969,9 +17002,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const _chu = this._computeChuTechProfile(this.activeData, this.indicators);
         const featTags = [];
         // V17.8 — 文案壓縮,讓 stockTags inline-wrap 排得更密
-        if (_chu.trendJudge.startsWith('✅'))      featTags.push({ kind: '趨勢', text: '多頭排列', tone: 'good', jargon: '多頭排列' });
-        else if (_chu.trendJudge.startsWith('❌')) featTags.push({ kind: '趨勢', text: '空頭排列', tone: 'danger' });
-        else if (_chu.trendJudge.startsWith('⚠️')) featTags.push({ kind: '趨勢', text: '轉折警戒', tone: 'warn' });
+        if (_chu.trendJudge.startsWith('✅'))      featTags.push({ kind: '趨勢', text: '波段多頭', tone: 'good', jargon: '波段趨勢' });
+        else if (_chu.trendJudge.startsWith('❌')) featTags.push({ kind: '趨勢', text: '波段空頭', tone: 'danger', jargon: '波段趨勢' });
+        else if (_chu.trendJudge.startsWith('⚠️')) featTags.push({ kind: '趨勢', text: '盤整轉折', tone: 'warn', jargon: '波段趨勢' });
         if (isIslandReversal) featTags.push({ kind: '型態', text: '島狀反轉', tone: 'island' });
         if (isBigBlackK)      featTags.push({ kind: '型態', text: '大黑K', tone: 'danger' });
         if (brokenPrevLow)    featTags.push({ kind: '破線', text: '跌破前低', tone: 'danger', jargon: '跌破前低' });
