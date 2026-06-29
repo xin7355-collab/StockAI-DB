@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -12058,6 +12058,20 @@ ${peerLine}${newsCtx}
         let payoutRatio = (totalDiv != null && annualEps && annualEps > 0) ? (totalDiv / annualEps * 100) : null;
         // 發配率 — FinMind 算不出就用採礦預算值
         if (payoutRatio == null && haveMinePayout) payoutRatio = Number(localFund.payout_ratio);
+
+        // V35.6 — 全市場快取 fallback:非籌碼觀察清單股(localFund 空)+ FinMind 即時抓取失敗/未填 token 時,
+        //          改用已部署的全市場 fundamentals_cache.json 補 PE/殖利率(+採礦補上後的 YoY),免整片「採礦更新中」
+        try {
+            if (pe == null || yieldRate == null || latestYoy == null) {
+                const _fcAll = await this._loadFundCache();
+                const _fcv = _fcAll && _fcAll[sym];
+                if (_fcv) {
+                    if (pe == null && typeof _fcv.pe === 'number' && _fcv.pe > 0) { pe = _fcv.pe; localFund.pe_source = 'TWSE_TTM'; }
+                    if (yieldRate == null && typeof _fcv.yield_rate === 'number') yieldRate = _fcv.yield_rate;
+                    if (latestYoy == null && typeof _fcv.rev_yoy === 'number') latestYoy = _fcv.rev_yoy;
+                }
+            }
+        } catch (_) {}
 
         // 存真實基本面快取（完整版：含年化 EPS），供法人目標價推估使用
         // FinMind 失敗時 annualEps 會是 null；目標價函式會用本地 TWSE PE 反推 fallback
