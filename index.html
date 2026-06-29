@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -17065,25 +17065,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (!box) return;
         box.classList.remove('hidden');
 
-        // 💾 24hr cache:同一支股票當日只打 1 次 Groq;切 tab/換成本不重打
-        // 想強制重算 → opts.force = true(由 cache 區的「🔄 重算」連結觸發)
-        const today = this.getTodayStr();
-        const cacheKey = `consensusCache_${sym}_${today}`;
-        if (!opts.force) {
-            try {
-                const raw = localStorage.getItem(cacheKey);
-                if (raw) {
-                    const obj = JSON.parse(raw);
-                    if (obj && obj.html) {
-                        const ts = new Date(obj.ts || Date.now());
-                        const timeLabel = `${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}`;
-                        box.innerHTML = obj.html + `<div class="text-[10px] text-gray-500 mt-1">📦 今日 ${timeLabel} 已算 · <a href="#" onclick="event.preventDefault(); event.stopPropagation(); app.fetchInstitutionTarget('${sym}', ${Number(pC) || 0}, {force:true});" class="text-blue-400 underline">🔄 重算</a></div>`;
-                        return;
-                    }
-                }
-            } catch(_) {}
-        }
-
+        // V35.7 — 改純 JS 公式後即時算、免 API 額度,不再需要 24hr cache(也避免讀到舊 AI 壞結果)
         const fc = this._fundCache;
         // 把所有「無法推估」的訊息改成橙色加粗 + 具體原因，避免使用者誤以為功能壞掉
         const showHint = (msg, color = 'text-orange-300') => {
@@ -17113,38 +17095,39 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 🛡️ fallbackNote 完全移除：FinMind 配額耗盡用 TWSE PE 反推時，不再顯示警告文字，保持畫面乾淨
         const fallbackNote = '';
         console.log('[fundamentals]', sym, 'annualEps from:', fc.annualEps != null ? 'FinMind 季報加總' : (pe ? 'TWSE PE 反推' : '無資料'), '| pe=', pe, '| annualEps=', annualEps);
-        // V18.7 — 改 Gemini(原 Groq 8b)
-        const geminiKeys = this._getGeminiKeys();
-        if (!geminiKeys.length) {
-            showHint('🔑 法人目標價:請至「⚙️ 設定」填寫 Gemini API Key 才能計算', 'text-yellow-300');
-            return;
-        }
-        showHint('💡 法人目標價推估中…', 'text-indigo-300');
-        // 配息與否決定可用估值法（無配息→禁用殖利率法）
-        const divLine = (dividend && dividend > 0)
-            ? `近年股利：${dividend} 元，殖利率：${yieldNow}%。可考慮殖利率法。`
-            : `此股目前不配息，嚴禁用殖利率法，請改用 PE 法 / PEG / 同業比價。`;
-        const prompt = `你是台股法人研究員，依下列「真實數據」推估合理目標價區間，禁止自行虛構或更改數字。\n股票：${sym}，現價：${pC}，年化EPS：${annualEps.toFixed(2)} 元，本益比PE：${pe ? pe.toFixed(1) : 'N/A'} 倍。\n${divLine}\n請先判斷股票類型（成長股/景氣循環股/成熟收益股），挑選最合適估值法，給目標價低標與高標（必須與現價量級相符，例如現價上千元的股票目標價也應在相近量級）。\n輸出純JSON：{"stock_type":"...","method":"...","low":數字,"high":數字,"reason":"20字內"}`;
+        // V35.7 — 改純 JS 公式(取代 AI,遵守鐵律「🛑 禁止 AI 算數學」):
+        //   合理價 = 年化EPS × 合理PE。合理PE 取「產業中位 PE」(同業比價法,industry_pe.json 已採礦),
+        //   無產業資料則退回個股自身 PE;區間 = 中值 ×0.85 / ×1.15。配息股附殖利率法參考價。
+        let fairPE = null, peMethod = '';
         try {
-            // V18.7 — 改 Gemini(原 Groq 8b)。max_tokens 加大至 400 留餘裕,Gemini 偶會 wrap ```json 要清
-            const text = await this._callGemini({ prompt, max_tokens: 400, temperature: 0.2, model: 'gemini-2.5-flash' });
-            const parsed = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
-            let { stock_type = '', method = '', low = 0, high = 0, reason = '' } = parsed;
-            let lowN = parseFloat(low), highN = parseFloat(high);
-            if (!lowN || !highN) { box.textContent = '💡 法人目標價：資料不足無法推估'; return; }
-            // 量級防呆：AI 給的目標價與現價量級差太多（>3倍或<1/3）視為幻覺，棄用
-            if (highN > pC * 3 || lowN < pC / 3) { box.textContent = '💡 法人目標價：AI 推估量級異常，已略過'; return; }
-            if (lowN > highN) { const t = lowN; lowN = highN; highN = t; }
-            const resultHtml = `<span class="text-gray-300 font-semibold">${lowN}～${highN}</span>（${stock_type}・${method}）<br><span class="text-gray-600">${reason}${fallbackNote ? '<br>' + fallbackNote : ''}</span>`;
-            box.innerHTML = resultHtml;
-            // 💾 寫入當日 cache,下次切 tab/換成本不再打 Groq
-            try {
-                localStorage.setItem(cacheKey, JSON.stringify({ html: resultHtml, ts: Date.now() }));
-                this._purgeStaleConsensusCache();
-            } catch(_) {}
-        } catch(e) {
-            box.textContent = '💡 法人目標價推估失敗';
+            const peData = await this._loadIndustryPeData();
+            const ind = peData?.map?.[sym];
+            const mPe = ind && peData?.industries?.[ind]?.median_pe;
+            if (typeof mPe === 'number' && mPe > 0) { fairPE = mPe; peMethod = `同業比價法・${ind} 中位 PE ${mPe}`; }
+        } catch(_) {}
+        if (fairPE == null && pe && pe > 0) { fairPE = pe; peMethod = `個股 PE 法(${pe.toFixed(1)} 倍)`; }
+        if (fairPE == null || fairPE <= 0) { showHint('💡 法人共識目標價：暫無合理 PE 可估', 'text-gray-500'); return; }
+
+        const mid = annualEps * fairPE;
+        const lowN = +(mid * 0.85).toFixed(mid >= 100 ? 0 : 1);
+        const highN = +(mid * 1.15).toFixed(mid >= 100 ? 0 : 1);
+        const upside = (pC && pC > 0) ? ((mid - pC) / pC * 100) : null;
+        const upTxt = upside == null ? '' : (upside >= 0
+            ? `<span class="text-red-400 font-bold text-[11px]">▲ 中值距現價 +${upside.toFixed(1)}%</span>`
+            : `<span class="text-green-400 font-bold text-[11px]">▼ 中值距現價 ${upside.toFixed(1)}%</span>`);
+        let divRefLine = '';
+        if (dividend && dividend > 0) {
+            const yldFair = +(dividend / 0.045).toFixed(1);
+            divRefLine = `<div class="text-[10px] text-gray-500 mt-1">📌 殖利率法參考：年股利 ${dividend} 元 ÷ 合理殖利率 4.5% ≈ <b class="text-gray-300">${yldFair}</b> 元</div>`;
         }
+        box.innerHTML = `
+            <div class="flex items-baseline gap-2 flex-wrap">
+                <span class="text-gray-100 font-black text-lg font-mono">${lowN} ～ ${highN}</span>
+                ${upTxt}
+            </div>
+            <div class="text-[10px] text-gray-500 mt-0.5 leading-snug">${peMethod}<br>算式：年化EPS ${annualEps.toFixed(2)} × PE ${fairPE.toFixed(1)} = ${mid.toFixed(mid >= 100 ? 0 : 1)}（區間 ±15%）</div>
+            ${divRefLine}
+            <div class="text-[9px] text-gray-600 mt-1">💡 純公式計算・免 AI 免額度・僅供參考非投資建議</div>`;
     },
 
     // 清掉 7 天前的 consensusCache_* 防止 localStorage 撐爆(5MB 上限)
