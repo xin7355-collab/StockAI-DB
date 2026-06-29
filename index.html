@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V34.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -284,6 +284,20 @@
                 </div>
 
                 <div class="space-y-4 border-b border-[#30363d] pb-4">
+                    <!-- ⭐ V35 — 手動 AI 引擎選擇 + 金鑰健檢 -->
+                    <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-blue-700/40 rounded">
+                        <label class="text-xs font-bold text-blue-300 flex items-center gap-1.5">🎛️ AI 引擎選擇<span class="text-[9px] text-gray-500 font-normal">(撞 429 時手動指定)</span></label>
+                        <select id="set_aiEngine" onchange="app.saveSettings()" class="w-full bg-[#010409] text-blue-200 p-2 rounded border border-[#30363d] outline-none text-sm focus:border-blue-500 transition-colors">
+                            <option value="auto">🤖 自動(智慧路由,推薦)</option>
+                            <option value="gemini1">💎 只用 Gemini 金鑰1</option>
+                            <option value="gemini2">💎 只用 Gemini 金鑰2</option>
+                            <option value="groq">⚡ 只用 Groq</option>
+                            <option value="openrouter">🚀 只用 OpenRouter(DeepSeek R1)</option>
+                        </select>
+                        <p class="text-[10px] text-gray-500 leading-snug">選「自動」維持原本智慧切換;選特定引擎則<b class="text-blue-300">全部分析強制走它</b>,可比較哪個 AI 較準、或避開撞 429 的金鑰。</p>
+                        <button id="aiKeyTestBtn" onclick="app.testAllAiKeys()" class="mt-0.5 px-3 py-1.5 bg-blue-900/40 border border-blue-700/60 hover:bg-blue-800/50 text-blue-200 text-xs font-bold rounded transition-colors">🩺 測試所有金鑰</button>
+                        <div id="aiKeyTestResult"></div>
+                    </div>
                     <p class="text-[10px] text-gray-500 leading-tight -mt-1">每組 key 旁有 <span class="text-purple-300">☑</span> 啟動開關;取消打勾即<b class="text-amber-300">暫時停用該 key</b>(輪動會跳過,設定保留)。</p>
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-purple-400 mb-1">🧠 Groq API Key 池(雙 key 輪動,降低 TPD 限流壓力)</label>
@@ -825,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1496,18 +1510,7 @@
                 </div>
             </div>
 
-            <!-- 📊 今日全球彙整(AI 把 15 則新聞摘成「全球市場動態 + 美股焦點」結構化重點)-->
-            <div class="bg-gradient-to-br from-blue-950/30 to-[#0d1117] border border-blue-700/40 rounded-xl p-3 mb-2">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-xs font-black text-blue-300 flex items-center gap-1.5">📊 今日全球彙整 <span class="text-[9px] text-gray-500 font-normal">(AI 摘要)</span></div>
-                    <button onclick="app.analyzeGlobalNewsSummary({force:true}); app.vibrate(30);"
-                            id="globalNewsSummaryBtn"
-                            class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-700/50 rounded px-1.5 py-0.5">🔄 重新彙整</button>
-                </div>
-                <div id="globalNewsSummary" class="text-[12px] text-gray-300 leading-relaxed">
-                    <div class="text-[10px] text-blue-200/70 text-center py-3">💡 點右上「🔄 重新彙整」生成今日新聞 AI 摘要(省 Groq 配額,改為手動觸發)</div>
-                </div>
-            </div>
+            <!-- V35 — 「今日全球彙整(AI 摘要)」卡已移除(使用者要求取消新聞 AI 分析) -->
 
             <!-- ════════ 🌟 黃金動線：全球宏觀風險 ➔ 4 戰區 ➔ 戰略指揮部 ➔ 泡沫預警 ════════ -->
             <div class="bg-[#010409] rounded-xl border border-cyan-900/50 p-3">
@@ -1668,12 +1671,10 @@
                 <div class="flex items-center justify-between mb-1.5">
                     <div class="text-[10px] font-black text-blue-300">📡 全球即時情報</div>
                     <div class="flex items-center gap-1.5">
-                        <button onclick="app.analyzeGlobalNewsAI()" id="globalNewsAiBtn" class="text-[9px] font-bold text-purple-200 bg-purple-900/40 border border-purple-700/60 hover:bg-purple-900/60 rounded px-2 py-0.5 transition-colors">🤖 AI 翻譯</button>
-                        <button onclick="app._clearGlobalNewsAiCache()" class="text-[9px] font-bold text-gray-300 bg-[#21262d] border border-[#30363d] hover:bg-[#30363d] rounded px-2 py-0.5 transition-colors">🗑️ 清除翻譯</button>
                         <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
                     </div>
                 </div>
-                <div class="text-[8px] text-gray-600 mb-1.5">💡 點「🤖 AI 翻譯」翻成中文;點「🗑️ 清除翻譯」還原英文</div>
+                <div class="text-[8px] text-gray-600 mb-1.5">💡 標題已由採礦機自動翻成中文(免 AI、不耗額度)</div>
                 <div id="globalNewsList" class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-3">載入中...</div>
                 </div>
@@ -3486,6 +3487,23 @@ const app = {
         this.vibrate?.(40);
     },
 
+    // 📅 V35 — 新聞時間統一台灣格式 + Asia/Taipei 時區換算(取代英文 ISO 切片)
+    //   有時間 → 「6/29 14:30」;只有日期 → 「6/29」;解析失敗 → 原字串前段
+    _fmtNewsTime(raw) {
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return String(raw).slice(0, 10).replace('T', ' ');
+        try {
+            const hasTime = /\d{1,2}:\d{2}/.test(String(raw)) || /T\d{2}/.test(String(raw));
+            const opts = hasTime
+                ? { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
+                : { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' };
+            return d.toLocaleString('zh-TW', opts).replace(/上午|下午/g, '').trim();
+        } catch (_) {
+            return `${d.getMonth() + 1}/${d.getDate()}`;
+        }
+    },
+
     async fetchGlobalNews() {
         const list = document.getElementById('globalNewsList');
         const ts   = document.getElementById('globalNewsTs');
@@ -3511,13 +3529,8 @@ const app = {
                 const impact = (rawImpact && rawImpact !== '暫無分析') ? rawImpact.slice(0, 30) : '—';
                 // 改用 <a> 取代 window.open，iOS PWA 內嵌瀏覽器無法被擋
                 const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
-                // 日期改 zh-TW：Date 解析失敗才退回原本字串切片
-                const _pubLabel = (() => {
-                    if (!item.published) return '';
-                    const d = new Date(item.published);
-                    if (isNaN(d.getTime())) return (item.published || '').slice(5, 11);
-                    return d.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
-                })();
+                // V35 — 統一台灣格式 + Asia/Taipei 時區(6/29 14:30)
+                const _pubLabel = this._fmtNewsTime(item.published);
                 return `<a href="${safeUrl}" target="_blank" rel="noopener" class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors no-underline">
                     <span class="text-[8px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
                     <div class="flex-1 min-w-0">
@@ -3718,7 +3731,7 @@ ${list}
                     <div class="text-[13px] text-gray-200 font-bold leading-snug">${t}</div>
                     <div class="text-[11px] ${ic} mt-0.5">${im}</div>
                 </div>
-                <div class="text-[10px] text-gray-600 flex-shrink-0 mt-0.5">${(item.published || '').slice(5, 11)}</div>
+                <div class="text-[10px] text-gray-600 flex-shrink-0 mt-0.5">${this._fmtNewsTime(item.published)}</div>
             </a>`;
         }).join('');
     },
@@ -4831,6 +4844,8 @@ ${list}
         document.getElementById('set_finmindKey3').value = this.settings.finmindKey3 || '';
         document.getElementById('set_finmindKey4').value = this.settings.finmindKey4 || '';
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
+        const aiEngEl = document.getElementById('set_aiEngine');
+        if (aiEngEl) aiEngEl.value = this.settings.aiEngine || 'auto';
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) ratEl.value = this.settings.riskAlertThreshold ?? 60;
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
@@ -4946,6 +4961,8 @@ ${list}
         this.settings.finmindKey3 = document.getElementById('set_finmindKey3').value.trim();
         this.settings.finmindKey4 = document.getElementById('set_finmindKey4').value.trim();
         this.settings.massiveKey = document.getElementById('set_massiveKey').value.trim();
+        const aiEngEl = document.getElementById('set_aiEngine');
+        if (aiEngEl) this.settings.aiEngine = aiEngEl.value || 'auto';
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) { const v = parseInt(ratEl.value, 10); this.settings.riskAlertThreshold = (Number.isFinite(v) ? Math.max(30, Math.min(95, v)) : 60); }
         const autoRunEl = document.getElementById('set_autoRunChiefAI');
@@ -4999,6 +5016,101 @@ ${list}
         return !!this._apiBase
             || this._getGeminiKeys().length > 0
             || this._getOpenRouterKeys().length > 0;
+    },
+
+    // ⭐ V35 — 手動 AI 引擎覆寫:設定頁下拉選定後,所有 AI 分析強制走該引擎(用來比較哪個 AI 較準 / 測哪把 key 壞)
+    //   'auto' = 維持原本智慧路由(Gemini→OpenRouter 等);其餘值強制單一引擎,失敗直接 throw 不偷偷 fallback
+    _forcedEngine() {
+        const e = this.settings?.aiEngine || 'auto';
+        return e === 'auto' ? null : e;
+    },
+    // 強制走指定引擎(供 _callAI / _callDeepAI 在 _forcedEngine() 非空時呼叫)
+    async _callForcedEngine(engine, { prompt, promptSimple, promptFull, systemInstruction, max_tokens = 1800, temperature = 0.4 }) {
+        const pShort = promptSimple || prompt || promptFull || '';
+        const pFull  = promptFull   || prompt || promptSimple || '';
+        if (engine === 'gemini1' || engine === 'gemini2') {
+            const idx = engine === 'gemini2' ? 1 : 0;
+            const content = await this._callGemini({ prompt: pShort, systemInstruction, max_tokens, temperature, model: 'gemini-2.5-flash', forceKeyIndex: idx });
+            if (!content) throw new Error('Gemini 回應為空');
+            this._setAIStatus('gemini', idx + 1, 'success');
+            return content;
+        }
+        if (engine === 'groq') {
+            const key = (this.settings.groqKey || this.settings.groqKey2 || '').trim();
+            if (!key) throw new Error('Groq 金鑰未填寫');
+            const _msgs = systemInstruction ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: pShort }] : [{ role: 'user', content: pShort }];
+            this._setAIStatus('groq', 1, 'trying');
+            const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: _msgs, max_tokens, temperature })
+            }, { timeout: 60000, maxRetries: 1 });
+            if (!res.ok) { this._recordAIFail('groq', 1, res.status); this._setAIStatus('groq', 1, 'rate-limited'); throw new Error(`Groq HTTP ${res.status}`); }
+            const data = await res.json();
+            const content = data?.choices?.[0]?.message?.content;
+            if (!content) throw new Error('Groq 回應為空');
+            this._setAIStatus('groq', 1, 'success');
+            return content;
+        }
+        if (engine === 'openrouter') {
+            const key = this._getOpenRouterKeys()[0] || (this.settings.openrouterKey || '').trim();
+            if (!key) throw new Error('OpenRouter 金鑰未填寫');
+            const _msgs = systemInstruction ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: pFull }] : [{ role: 'user', content: pFull }];
+            this._setAIStatus('openrouter', 1, 'trying');
+            const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/', 'X-Title': 'StockAI-DB' },
+                body: JSON.stringify({ model: 'deepseek/deepseek-r1:free', messages: _msgs, max_tokens, temperature })
+            }, { timeout: 90000, maxRetries: 1 });
+            if (!res.ok) { this._recordAIFail('openrouter', 1, res.status); this._setAIStatus('openrouter', 1, 'rate-limited'); throw new Error(`OpenRouter HTTP ${res.status}`); }
+            const data = await res.json();
+            const content = data?.choices?.[0]?.message?.content;
+            if (!content) throw new Error('OpenRouter 回應為空');
+            this._setAIStatus('openrouter', 1, 'success');
+            return content;
+        }
+        throw new Error(`未知 AI 引擎:${engine}`);
+    },
+    // 🩺 V35 — 金鑰健檢:逐一打每把已填的 key(極短 prompt),回報 ✅通/❌壞,結果顯示在設定頁
+    async testAllAiKeys() {
+        const box = document.getElementById('aiKeyTestResult');
+        const btn = document.getElementById('aiKeyTestBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '🩺 測試中…'; btn.classList.add('opacity-60'); }
+        if (box) box.innerHTML = '<div class="text-[10px] text-blue-300 animate-pulse py-1">逐一測試每把金鑰中…</div>';
+        const targets = [];
+        const s = this.settings;
+        if ((s.geminiKey1 || '').trim()) targets.push({ name: 'Gemini 金鑰1', fn: () => this._callGemini({ prompt: '回覆OK兩字', max_tokens: 8, forceKeyIndex: 0 }) });
+        if ((s.geminiKey2 || '').trim()) targets.push({ name: 'Gemini 金鑰2', fn: () => this._callGemini({ prompt: '回覆OK兩字', max_tokens: 8, forceKeyIndex: 1 }) });
+        if ((s.groqKey  || '').trim()) targets.push({ name: 'Groq 金鑰1', fn: () => this._pingGroqKey(s.groqKey.trim()) });
+        if ((s.groqKey2 || '').trim()) targets.push({ name: 'Groq 金鑰2', fn: () => this._pingGroqKey(s.groqKey2.trim()) });
+        if ((s.openrouterKey  || '').trim()) targets.push({ name: 'OpenRouter 金鑰1', fn: () => this._pingOpenRouterKey(s.openrouterKey.trim()) });
+        if ((s.openrouterKey2 || '').trim()) targets.push({ name: 'OpenRouter 金鑰2', fn: () => this._pingOpenRouterKey(s.openrouterKey2.trim()) });
+        if (!targets.length) {
+            if (box) box.innerHTML = '<div class="text-[10px] text-yellow-400 py-1">⚠️ 尚未填寫任何 AI 金鑰</div>';
+            if (btn) { btn.disabled = false; btn.textContent = '🩺 測試所有金鑰'; btn.classList.remove('opacity-60'); }
+            return;
+        }
+        const rows = [];
+        for (const t of targets) {
+            try { await t.fn(); rows.push(`<div class="flex items-center justify-between py-0.5"><span class="text-gray-300">${t.name}</span><span class="text-green-400 font-bold">✅ 正常</span></div>`); }
+            catch (e) { rows.push(`<div class="flex items-center justify-between py-0.5"><span class="text-gray-300">${t.name}</span><span class="text-red-400 font-bold">❌ ${String(e.message || e).slice(0, 28)}</span></div>`); }
+        }
+        if (box) box.innerHTML = `<div class="text-[10px] space-y-0.5">${rows.join('')}</div>`;
+        if (btn) { btn.disabled = false; btn.textContent = '🩺 測試所有金鑰'; btn.classList.remove('opacity-60'); }
+    },
+    async _pingGroqKey(key) {
+        const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 })
+        }, { timeout: 20000, maxRetries: 0 });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return true;
+    },
+    async _pingOpenRouterKey(key) {
+        const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/', 'X-Title': 'StockAI-DB' },
+            body: JSON.stringify({ model: 'deepseek/deepseek-r1:free', messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 })
+        }, { timeout: 30000, maxRetries: 0 });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return true;
     },
 
     // [AI 狀態追蹤] V14.16 — 擴充為「每次 attempt / 429 / switch / success / failed」5 狀態都更新
@@ -5165,8 +5277,15 @@ ${list}
     //   ② thinkingConfig.thinkingBudget=0 — 關 Gemini 2.5 Thinking,字數預算全給輸出(原本被思考吃掉)
     //   ③ systemInstruction 欄位(可選)— 角色/字數/格式規矩塞這裡,跟股票數據分離
     //                                     Gemini 對 system 級 prompt 服從度遠高於混在 user 訊息內
-    async _callGemini({ prompt, systemInstruction = null, max_tokens = 900, temperature = 0.3, model = 'gemini-2.5-flash' }) {
-        const keys = this._getGeminiKeys();
+    async _callGemini({ prompt, systemInstruction = null, max_tokens = 900, temperature = 0.3, model = 'gemini-2.5-flash', forceKeyIndex = null }) {
+        let keys = this._getGeminiKeys();
+        // ⭐ V35 — 手動引擎覆寫:強制指定第 N 把 Gemini 金鑰(忽略啟動開關與輪動,直打那一把)
+        if (forceKeyIndex != null) {
+            const raw = [this.settings.geminiKey1, this.settings.geminiKey2].map(k => (k || '').trim());
+            const one = raw[forceKeyIndex];
+            if (!one) throw new Error(`Gemini 金鑰 #${forceKeyIndex + 1} 未填寫`);
+            keys = [one];
+        }
         if (!keys.length) throw new Error('Gemini key 未設定');
         if (this._geminiKeyIdx == null) this._geminiKeyIdx = 0;
         const reqBody = {
@@ -6317,6 +6436,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         // 🔥 注入 AI 自律條款(禁用模糊詞,強迫鐵血決策)
         prompt = this._injectDisciplineClause(prompt);
 
+        // ⭐ V35 — 手動引擎覆寫:設定頁選了特定引擎就強制走它(忽略下方自動鏈)
+        const _forced = this._forcedEngine();
+        if (_forced) return await this._callForcedEngine(_forced, { prompt, systemInstruction, max_tokens, temperature });
+
         // ═══ 輕任務鏈(能力優先:最快的 Groq 8b 打頭陣,Gemini 穩定兜底,OpenRouter 殿後)═══
         // 後端 proxy 若存在仍最優先(伺服器自有 key 池);純手機則 Groq 8b → Gemini → OpenRouter
 
@@ -6563,6 +6686,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             }
             throw lastErr || new Error('OpenRouter 雙 key 全失敗');
         };
+
+        // ⭐ V35 — 手動引擎覆寫:設定頁選了特定引擎就強制走它(忽略 chain 自動路由)
+        const _forced = this._forcedEngine();
+        if (_forced) return await this._callForcedEngine(_forced, { promptSimple, promptFull, systemInstruction, max_tokens, temperature });
 
         // 🎯 依 chain 參數路由(使用者要求各功能用不同鏈,避免 Groq 撞 429 影響重要分析)
         if (chain === 'gemini-only') {
@@ -18933,8 +19060,7 @@ ${_newsLine}${globalContext}
         const tsEl  = document.getElementById('newsLastUpdated');
         if (!body && !embed) return;
         const renderItems = async (items) => {
-            // V15.6 — V14.16 SKIP_AI=1 後採礦端不寫 ai_reason,改前端即時跑(localStorage 快取避免重打)
-            try { items = await this._ensureNewsAI(items); } catch(_){}
+            // V35 — 取消前端 AI 判讀(使用者要求);僅顯示新聞本身,ai_reason 若採礦端已寫則沿用
             const html = items.map(n => {
                 // tone 支援採礦端的 ai_sentiment + 舊欄位 + 範例頭條的 tone
                 const tone = n.tone || n.sentiment || n.ai_sentiment || '';
