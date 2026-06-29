@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V34.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V34.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4429,19 +4429,29 @@ ${list}
         // V32.2 — 被動基準改顯「近120日」(ret_120d),與主動 ETF 同期可公平比較(原顯 ret_incep=上市以來~5年,0050 +219% 誤導)
         // V33.2 — 被動基準:① 可點擊連到個股(analyze) ② 補顯「近20日」(後端 perf 本就有 ret_20d,與主動同期可比)
         // V33.8 — 排序切換(近120/近20)時被動基準大字也跟著切,與主動榜同期可比
+        // V34.2 — 💰含息(真實總報酬=市價+配息還原)升為視覺主角 + 🏆 標出含息最強(真實最厲害那隻)
         const _psort = this._etfPerfSort || '120';
+        const _trMax = Math.max(...(d.benchmarks || []).map(b => (typeof b.perf?.tr_120d === 'number' ? b.perf.tr_120d : -Infinity)));
         const benchHtml = (d.benchmarks || []).filter(b => b.perf).map(b => {
             const r120 = (b.perf.ret_120d != null ? b.perf.ret_120d : b.perf.ret_incep);
             const r20 = b.perf.ret_20d;
             const bigV = _psort === '20' ? r20 : r120, bigLbl = _psort === '20' ? '近20日' : '近120日';
             const subV = _psort === '20' ? r120 : r20, subLbl = _psort === '20' ? '近120日' : '近20日';
-            return `<div onclick="app.analyze('${b.symbol}'); app.switchAppTab('diag');" class="flex-1 bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center cursor-pointer hover:bg-[#21262d] hover:border-amber-700/40 transition-colors active:scale-[0.98]">
-                <div class="text-[10px] text-gray-400 truncate">${b.name}</div>
+            const tr = b.perf.tr_120d;
+            const isBest = (typeof tr === 'number') && tr === _trMax && _trMax > -Infinity;
+            return `<div onclick="app.analyze('${b.symbol}'); app.switchAppTab('diag');" class="flex-1 bg-[#0d1117] border ${isBest ? 'border-amber-500/60' : 'border-[#30363d]'} rounded p-1.5 text-center cursor-pointer hover:bg-[#21262d] hover:border-amber-700/40 transition-colors active:scale-[0.98] relative">
+                ${isBest ? '<span class="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[8px] bg-amber-600 text-white px-1.5 rounded-full font-bold whitespace-nowrap">🏆 真實最強</span>' : ''}
+                <div class="text-[10px] text-gray-400 truncate ${isBest ? 'mt-0.5' : ''}">${b.name}</div>
                 <div class="text-[8px] text-gray-600 font-mono leading-none mb-0.5">${b.symbol}</div>
-                <div class="font-mono font-bold text-sm ${pcls(bigV)}">${pct(bigV)}</div>
-                <div class="text-[8px] text-gray-600">${bigLbl}</div>
-                <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">${subLbl} <span class="${pcls(subV)} font-mono">${pct(subV)}</span></div>
-                ${b.perf.tr_120d != null ? `<div class="text-[9px] mt-0.5 border-t border-amber-700/20 pt-0.5 text-amber-300/90" title="含息總報酬(還原配息),高股息真實績效">💰含息 <span class="font-mono font-bold">${pct(b.perf.tr_120d)}</span></div>` : ''}
+                ${typeof tr === 'number'
+                    ? `<div class="border-b border-amber-700/30 pb-1 mb-1">
+                        <div class="text-[8px] text-amber-400/80 leading-none">💰 含息總報酬</div>
+                        <div class="font-mono font-black text-base ${isBest ? 'text-amber-200' : 'text-amber-300'} leading-tight">${pct(tr)}</div>
+                       </div>
+                       <div class="text-[9px] text-gray-500">市價 <span class="${pcls(bigV)} font-mono">${pct(bigV)}</span> <span class="text-gray-600">·${bigLbl}</span></div>`
+                    : `<div class="font-mono font-bold text-sm ${pcls(bigV)}">${pct(bigV)}</div>
+                       <div class="text-[8px] text-gray-600">${bigLbl}</div>
+                       <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">${subLbl} <span class="${pcls(subV)} font-mono">${pct(subV)}</span></div>`}
             </div>`;
         }).join('');
 
@@ -4559,7 +4569,7 @@ ${list}
                     </div>
                     <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
                         🔥 贏0050 = 近120日打贏大盤被動基準 ・ ⚠️ 短線轉弱 = 長期漲多但近20日翻黑,慎防追高 ・ 💼 持有 = 你庫存裡有。<br>
-                        📊 報酬＝收盤市價漲跌,<b class="text-gray-400">已內含經理費/保管費等「內扣費用」</b>;主動列為<b class="text-amber-400/80">市價未還原息</b>;<b class="text-amber-300">被動基準已另顯「💰含息」總報酬(還原配息,高股息真實績效)</b>。皆不含你個人的買賣手續費與證交稅。<br>
+                        📊 報酬＝收盤市價漲跌,<b class="text-gray-400">已內含經理費/保管費等「內扣費用」</b>;主動列為<b class="text-amber-400/80">市價未還原息</b>;<b class="text-amber-300">被動基準改以「💰含息總報酬」為主角(=市價+配息還原,已是總數免再加),🏆=含息最強那隻</b>。皆不含你個人的買賣手續費與證交稅。<br>
                         ⚠️ 主動 ETF 2025/5 才上市、績效史短,排名僅供參考,勿單看短期報酬重押。
                     </div>
                 </div>
