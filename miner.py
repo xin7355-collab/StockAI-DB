@@ -2442,29 +2442,17 @@ def fetch_broker_chips():
             base_src = 'cache(TWSE空)'
             print(f"  ⏭️ TWSE 基本面回空,沿用既有 fundamentals_cache.json({len(fund_cache)} 檔)再補 YoY/毛利")
 
-        # V35.5 — 營收 YoY + 毛利率與 TWSE 脫鉤:不論 TWSE 成敗都補(來源 FinMind 獨立) + 自我診斷 __status
+        # V35.8 — bulk YoY/毛利:經 __status 實證 FinMind 免費版「不帶 data_id」抓營收/財報回 0,已棄用。
+        #   改在下方分點逐檔迴圈把「觀察清單已算好的 YoY/毛利」併入(免費、零額外 API);全市場 YoY/毛利需 Sponsor。
         if fund_cache:
-            yoy_map, gm_map = {}, {}
-            try:
-                yoy_map = fetch_bulk_revenue_yoy()
-                gm_map  = fetch_bulk_gross_margin()
-                for s, v in fund_cache.items():
-                    if not isinstance(v, dict):
-                        continue
-                    if s in yoy_map: v['rev_yoy'] = yoy_map[s]
-                    if s in gm_map:  v['gross_margin'] = gm_map[s]
-            except Exception as e:
-                print(f"  ⚠️ 併入 YoY/毛利失敗:{e}")
             yoy_hits = sum(1 for v in fund_cache.values() if isinstance(v, dict) and 'rev_yoy' in v)
             gm_hits  = sum(1 for v in fund_cache.values() if isinstance(v, dict) and 'gross_margin' in v)
-            # __status:前端按 sym 讀不受影響;供從 gh-pages 直接看採集結果(仿折溢價自我診斷)
             fund_cache['__status'] = {'base': base_src, 'updated': date.today().strftime('%Y-%m-%d'),
-                                      'yoy_raw': len(yoy_map), 'gm_raw': len(gm_map),
-                                      'yoy_hits': yoy_hits, 'gm_hits': gm_hits}
+                                      'yoy_src': 'watchlist', 'yoy_hits': yoy_hits, 'gm_hits': gm_hits}
             fc_path.write_text(json.dumps(fund_cache, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-            print(f"  💾 全市場基本面快取 → data/fundamentals_cache.json({len([k for k in fund_cache if not str(k).startswith('__')])} 檔;YoY raw {len(yoy_map)}→命中 {yoy_hits}、毛利 raw {len(gm_map)}→命中 {gm_hits})")
+            print(f"  💾 全市場基本面快取(PE/殖利率)→ data/fundamentals_cache.json({len([k for k in fund_cache if not str(k).startswith('__')])} 檔);YoY/毛利待逐檔迴圈後併入")
         else:
-            print("  ⏭️ fund_cache 為空(TWSE 回空且無既有快取),跳過 YoY/毛利")
+            print("  ⏭️ fund_cache 為空(TWSE 回空且無既有快取),跳過")
 
         if twse_fund:
 
@@ -2533,6 +2521,7 @@ def fetch_broker_chips():
 
     updated = 0
     broker_name_map: dict = {}  # 累積 bid→中文名 供 broker_names.json
+    _fund_extra: dict = {}      # V35.8 — 收集觀察清單已算好的 {sym:{rev_yoy,gross_margin}},迴圈後併入全市場快取
     for sym in watchlist:
         # ① 提前讀取 out_file → existing_obj（供 TTL 判斷和後面寫入共用）
         out_file = chips_dir / f'{sym}.json'
@@ -2764,7 +2753,42 @@ def fetch_broker_chips():
         }
         out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')
 
+        # V35.8 — 收集本檔已算好的 YoY/毛利,迴圈後併入全市場快取(免費,零額外 API;取代失效的 bulk)
+        try:
+            _fd = fundamentals or {}
+            _ry = _fd.get('revenue_yoy')
+            _gmt = _fd.get('gross_margin_trend') or ''
+            _gm = None
+            if _gmt:
+                _ms = re.findall(r'([\d.]+)%', _gmt)   # 趨勢字串末值 = 最新毛利率
+                if _ms: _gm = float(_ms[-1])
+            _ex = {}
+            if _ry is not None:
+                try: _ex['rev_yoy'] = round(float(_ry), 1)
+                except Exception: pass
+            if _gm is not None: _ex['gross_margin'] = _gm
+            if _ex: _fund_extra[sym] = _ex
+        except Exception: pass
+
     print(f"  ✅ 分點籌碼完成：更新了 {updated} 檔股票的主力動向")
+
+    # V35.8 — 把觀察清單已算好的 YoY/毛利併入全市場 fundamentals_cache.json(bulk 免費版抓不到,改逐檔重用)
+    try:
+        if _fund_extra and fc_path.exists():
+            _fc = json.loads(fc_path.read_text(encoding='utf-8'))
+            if isinstance(_fc, dict):
+                for s, ex in _fund_extra.items():
+                    if isinstance(_fc.get(s), dict): _fc[s].update(ex)
+                    else: _fc[s] = dict(ex)
+                _yh = sum(1 for k, v in _fc.items() if not str(k).startswith('__') and isinstance(v, dict) and 'rev_yoy' in v)
+                _gh = sum(1 for k, v in _fc.items() if not str(k).startswith('__') and isinstance(v, dict) and 'gross_margin' in v)
+                _st = _fc.get('__status') if isinstance(_fc.get('__status'), dict) else {}
+                _st.update({'yoy_src': 'watchlist', 'watchlist_extra': len(_fund_extra), 'yoy_hits': _yh, 'gm_hits': _gh})
+                _fc['__status'] = _st
+                fc_path.write_text(json.dumps(_fc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                print(f"  💾 觀察清單 YoY/毛利併入全市場快取:{len(_fund_extra)} 檔(命中 YoY {_yh}/毛利 {_gh})")
+    except Exception as e:
+        print(f"  ⚠️ 觀察清單 YoY/毛利併入失敗:{e}")
 
     # 寫入券商名稱字典（broker_names.json），合併舊資料再更新
     # 同時用 TaiwanBrokerInfo 白名單清洗舊污染資料（股票公司名誤入）
