@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.5</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1040,6 +1040,8 @@
                         </div>
                         <!-- 📐 V31.7 明日均線保衛價(扣抵):盤中跌破即在均線正式下彎前 1-2 天示警 -->
                         <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                        <!-- 🩺 V36.6 進場體檢:把 K棒戰法/量能/均線所有純公式訊號彙總成一個紅綠燈總結(初學者用) -->
+                        <div id="entryCheckup" class="hidden w-full rounded-lg p-3 mb-2"></div>
                         <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
                         <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                         <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
@@ -2641,6 +2643,7 @@ const app = {
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
+        '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🟢 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🔴 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 這是型態統計、不是預言:紅燈不代表一定跌、綠燈也不保證漲,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、或振幅太大已噴/崩的會自動排除。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
@@ -11158,6 +11161,107 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
+    // 🩺 V36.6 — 進場體檢(初學者一目了然):把 K棒戰法/三星轉折/吞噬/橫盤/量能 + 均線結構
+    //   全部純公式訊號彙總成「該不該進場」紅綠燈總結。禁 AI 算數,純 JS 計分,僅供參考。
+    _entryCheckup(data) {
+        if (!Array.isArray(data) || data.length < 20) return null;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const pC = C(data[last]); if (!pC) return null;
+        const ma = n => { const s = data.slice(-n); return s.reduce((a, b) => a + C(b), 0) / s.length; };
+        const ma5 = ma(5), ma20 = ma(20);
+        const prevMa5 = (() => { const s = data.slice(-6, -1); return s.reduce((a, b) => a + C(b), 0) / s.length; })();
+
+        // ① 收集所有純公式型態訊號
+        let sigs = [];
+        try { sigs.push(...this._detectStarPatterns(data)); } catch (_) {}
+        try { sigs.push(...this._detect2BarReversal(data)); } catch (_) {}
+        try { sigs.push(...this._detectBoxBreakout(data)); } catch (_) {}
+        try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
+        const weight = t => /夜星|晨星|孤島|群星/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破/.test(t) ? 2 : 1);
+
+        let bull = 0, bear = 0; const goodR = [], badR = [];
+        for (const s of sigs) {
+            const w = weight(s.title || '');
+            if (s.tone === 'bull') { bull += w; goodR.push(s.title); }
+            else if (s.tone === 'bear') { bear += w; badR.push(s.title); }
+            else if (s.tone === 'warn') { bear += 1; badR.push(s.title); }
+        }
+
+        // ② 均線結構(初學者最該懂:站上 5MA/月線 + 多頭排列 + 5MA 上彎)
+        let struct = 0; const maParts = [];
+        if (pC >= ma5) { struct += 1; maParts.push('站上5日線'); } else { struct -= 1; maParts.push('跌破5日線'); }
+        if (pC >= ma20) { struct += 1; maParts.push('站上月線'); } else { struct -= 1; maParts.push('跌破月線'); }
+        if (ma5 >= ma20) struct += 1; else struct -= 1;
+        if (ma5 >= prevMa5) struct += 1; else struct -= 1;
+        const trendTxt = (pC >= ma5 && ma5 >= ma20) ? '均線多頭排列' : (pC < ma20 && ma5 < ma20) ? '均線空頭排列' : '均線糾結待表態';
+
+        // ③ 計分 0-100(50 中性,訊號淨值 ×7,均線結構 ×5)
+        let score = 50 + (bull - bear) * 7 + struct * 5;
+        score = Math.max(2, Math.min(98, Math.round(score)));
+        const conflict = bull >= 2 && bear >= 2;   // 多空訊號打架 → 強制觀望
+
+        let light, verdict, vColor, action;
+        if (conflict) {
+            light = '🟡'; verdict = '訊號分歧・觀望'; vColor = 'yellow';
+            action = '多空訊號同時出現(主力可能正在換手),方向不明先別進,等突破或跌破關鍵價再動。';
+        } else if (score >= 65) {
+            light = '🟢'; verdict = '偏多・可留意進場'; vColor = 'red';
+            action = '型態偏多可分批試單(別一次全押),買進就設停損:跌破5日線或前一根低點先退,賺了沿5日線抱。';
+        } else if (score <= 38) {
+            light = '🔴'; verdict = '偏空・不宜進場'; vColor = 'green';
+            action = '目前偏空,不要進場接刀(接到下跌中的股票像接掉下來的刀子);手上有貨的人留意停利停損,別凹單。';
+        } else {
+            light = '🟡'; verdict = '中性・再等等'; vColor = 'yellow';
+            action = '訊號不夠明確,先觀望。等出現「紅K放量站上5日線」或明確型態(晨星/突破)再考慮進場。';
+        }
+
+        // 理由條列(白話,最多 5 條):權重高的型態優先 + 均線一句
+        const seen = new Set(); const bullets = [];
+        const pushB = (good, txt) => { if (!txt || seen.has(txt)) return; seen.add(txt); bullets.push({ good, txt }); };
+        goodR.slice(0, 3).forEach(t => pushB(true, t));
+        badR.slice(0, 3).forEach(t => pushB(false, t));
+        bullets.push({ ma: true, good: struct >= 0, txt: `${trendTxt}(${maParts.join('・')})` });
+
+        return { score, light, verdict, vColor, action, bullets, bull, bear };
+    },
+
+    renderEntryCheckup(data) {
+        const el = document.getElementById('entryCheckup');
+        if (!el) return;
+        const r = this._entryCheckup(data);
+        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const c = r.vColor;   // red=偏多 green=偏空 yellow=觀望(台股色)
+        const bg = c === 'red' ? 'bg-red-900/30 border-red-500' : c === 'green' ? 'bg-green-900/30 border-green-500' : 'bg-yellow-900/20 border-yellow-500';
+        const sc = c === 'red' ? 'text-red-300' : c === 'green' ? 'text-green-300' : 'text-yellow-300';
+        const rows = r.bullets.map(b => {
+            const icon = b.ma ? '📏' : (b.good ? '🔺' : '🔻');
+            const tc = b.good ? 'text-red-300' : 'text-green-300';
+            return `<div class="flex items-center gap-1.5 text-[11px] ${tc}"><span>${icon}</span><span class="text-gray-200">${b.txt}</span></div>`;
+        }).join('');
+        el.className = `w-full rounded-lg p-3 mb-2 border ${bg}`;
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-1.5"><span class="text-base">🩺</span><span class="text-[12px] font-black text-gray-100">進場體檢</span><span class="text-[9px] text-gray-500">朱家泓全訊號彙總・純公式</span></div>
+                <button onclick="app.showJargon('進場體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+            </div>
+            <div class="flex items-center gap-3 mb-2">
+                <div class="text-3xl">${r.light}</div>
+                <div class="flex-1">
+                    <div class="text-base font-black ${sc} leading-tight">${r.verdict}</div>
+                    <div class="text-[10px] text-gray-400">進場友善度 <span class="font-mono font-black ${sc} text-sm">${r.score}</span>/100 ・ 偏多訊號 ${r.bull} / 偏空訊號 ${r.bear}</div>
+                </div>
+            </div>
+            <div class="bg-[#0d1117]/60 rounded p-2 mb-2 space-y-1">${rows}</div>
+            <div class="bg-[#161b22] border-l-4 border-${c}-500 border-y border-r border-[#30363d] rounded-r p-2">
+                <div class="text-[10px] font-bold ${sc} mb-0.5">💡 對策</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${r.action}</div>
+            </div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">⚠️ 純技術型態彙總(非投資建議),紅燈≠一定跌、綠燈≠保證漲;務必搭配停損紀律。</div>`;
+        el.classList.remove('hidden');
+    },
+
     async loadBrokerChips(sym, forceRefresh) {
         if (!sym) return;
         const box    = document.getElementById('brokerChipContent');
@@ -17333,6 +17437,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         }
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
         try { this.renderKbarTactics(data); } catch (_) {}
+        // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
+        try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
         const _tpSlReasonEl = document.getElementById('tpSlReason');
         if (_tpSlReasonEl) {
