@@ -909,6 +909,75 @@ def fetch_industry_map() -> dict:
     return industry_map
 
 
+def fetch_bulk_revenue_yoy() -> dict:
+    """V35.3 — FinMind TaiwanStockMonthRevenue bulk(不帶 data_id):全市場最新月營收 YoY。
+    回 {sym: yoy_float}。供前端「同業數據對比」用,失敗回 {} 不影響主流程。"""
+    try:
+        end = date.today()
+        start = end - timedelta(days=70)   # 涵蓋最近 1~2 個月公告
+        url = ('https://api.finmindtrade.com/api/v4/data'
+               '?dataset=TaiwanStockMonthRevenue'
+               f'&start_date={start.strftime("%Y-%m-%d")}&end_date={end.strftime("%Y-%m-%d")}')
+        j = fm_request(url, timeout=40)
+        rows = (j or {}).get('data') or []
+        latest = {}   # sym -> (date, yoy)
+        for r in rows:
+            sid = str(r.get('stock_id') or '').strip()
+            if not _valid_stock(sid):
+                continue
+            d = str(r.get('date') or '')
+            yoy = r.get('revenue_year_growth')
+            if yoy is None:
+                continue
+            if sid not in latest or d > latest[sid][0]:
+                latest[sid] = (d, yoy)
+        out = {}
+        for sid, (_d, yoy) in latest.items():
+            try:    out[sid] = round(float(yoy), 1)
+            except Exception: pass
+        return out
+    except Exception as e:
+        print(f"  ⚠️ bulk 營收 YoY 失敗:{e}")
+        return {}
+
+
+def fetch_bulk_gross_margin() -> dict:
+    """V35.3 — FinMind TaiwanStockFinancialStatements bulk(不帶 data_id):全市場最新季毛利率。
+    回 {sym: gm_float}(毛利率 %)。失敗回 {} 不影響主流程。"""
+    try:
+        end = date.today()
+        start = end - timedelta(days=150)   # 涵蓋最近 1~2 季財報
+        url = ('https://api.finmindtrade.com/api/v4/data'
+               '?dataset=TaiwanStockFinancialStatements'
+               f'&start_date={start.strftime("%Y-%m-%d")}&end_date={end.strftime("%Y-%m-%d")}')
+        j = fm_request(url, timeout=60)
+        rows = (j or {}).get('data') or []
+        acc = {}   # sym -> { date -> {Revenue, GrossProfit} }
+        for r in rows:
+            sid = str(r.get('stock_id') or '').strip()
+            if not _valid_stock(sid):
+                continue
+            typ = (r.get('type') or '').strip()
+            if typ not in ('Revenue', 'GrossProfit'):
+                continue
+            d = str(r.get('date') or '')
+            try:    val = float(r.get('value') or 0)
+            except Exception: continue
+            acc.setdefault(sid, {}).setdefault(d, {})[typ] = val
+        out = {}
+        for sid, by_date in acc.items():
+            for d in sorted(by_date.keys(), reverse=True):   # 取最新一季同時有 Revenue+GrossProfit
+                rev = by_date[d].get('Revenue')
+                gp  = by_date[d].get('GrossProfit')
+                if rev and gp and rev > 0:
+                    out[sid] = round(gp / rev * 100, 1)
+                    break
+        return out
+    except Exception as e:
+        print(f"  ⚠️ bulk 毛利率失敗:{e}")
+        return {}
+
+
 def aggregate_industry_pe(fund_cache: dict, industry_map: dict) -> dict:
     """把全市場 PE/PB 按產業分組,算每組中位數 + P25/P75/P90 + 標記景氣循環產業。
     V16.2:加 PB 分位數(median/p25/p75/p90),供前端動態 P/B 判斷取代固定門檻。
@@ -2361,6 +2430,16 @@ def fetch_broker_chips():
         if twse_fund:
             fund_cache = {s: {'pe': v.get('pe'), 'yield_rate': v.get('yield_rate')}
                           for s, v in twse_fund.items() if isinstance(v, dict)}
+            # V35.3 — 併入全市場營收 YoY + 毛利率(供前端「同業數據對比」;bulk FinMind 不帶 data_id,best-effort)
+            try:
+                yoy_map = fetch_bulk_revenue_yoy()
+                gm_map  = fetch_bulk_gross_margin()
+                for s in fund_cache:
+                    if s in yoy_map: fund_cache[s]['rev_yoy'] = yoy_map[s]
+                    if s in gm_map:  fund_cache[s]['gross_margin'] = gm_map[s]
+                print(f"  💾 併入營收 YoY {len(yoy_map)} 檔、毛利率 {len(gm_map)} 檔")
+            except Exception as e:
+                print(f"  ⚠️ 併入 YoY/毛利失敗(保留 PE/殖利率快取):{e}")
             Path('data', 'fundamentals_cache.json').write_text(
                 json.dumps(fund_cache, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
             print(f"  💾 全市場基本面快取 → data/fundamentals_cache.json（{len(fund_cache)} 檔）")

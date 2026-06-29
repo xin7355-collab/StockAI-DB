@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -6397,12 +6397,14 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const { industry, peers } = this._getIndustryPeers(sym);
             const medianPe = peData?.industries?.[industry]?.median_pe ?? null;
             // 1) 同業 PE(從全市場快取,免逐檔 API);只留有 PE 的,依 PE 升冪,上限 14 檔
-            let rows = peers.map(p => ({ sym: p, name: this.getStockName(p) || p, pe: (fundCache?.[p]?.pe ?? null) }))
+            let rows = peers.map(p => ({ sym: p, name: this.getStockName(p) || p, pe: (fundCache?.[p]?.pe ?? null),
+                                         yoy: (fundCache?.[p]?.rev_yoy ?? null), gm: (fundCache?.[p]?.gross_margin ?? null) }))
                             .filter(r => typeof r.pe === 'number' && r.pe > 0 && r.pe < 300);
             rows.sort((a, b) => a.pe - b.pe);
             if (!rows.find(r => r.sym === sym)) {
                 const selfPe = fundCache?.[sym]?.pe;
-                if (typeof selfPe === 'number' && selfPe > 0) rows.unshift({ sym, name: this.getStockName(sym) || sym, pe: selfPe });
+                if (typeof selfPe === 'number' && selfPe > 0) rows.unshift({ sym, name: this.getStockName(sym) || sym, pe: selfPe,
+                                                                             yoy: (fundCache?.[sym]?.rev_yoy ?? null), gm: (fundCache?.[sym]?.gross_margin ?? null) });
             }
             rows = rows.slice(0, 14);
             if (!rows.length) {
@@ -6431,14 +6433,20 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const instTxt = (v) => v == null ? '<span class="text-gray-600">—</span>'
                 : (v > 0 ? `<span class="text-red-400 font-bold">+${v.toLocaleString()}</span>`     // 法人買超=紅(台股漲跌色)
                          : (v < 0 ? `<span class="text-green-400 font-bold">${v.toLocaleString()}</span>` : '<span class="text-gray-400">0</span>'));
+            const yoyTxt = (v) => (typeof v !== 'number') ? '<span class="text-gray-600">—</span>'
+                : (v > 0 ? `<span class="text-red-400 font-bold">+${v}%</span>`                       // 營收成長=紅(好,台股色)
+                         : (v < 0 ? `<span class="text-green-400 font-bold">${v}%</span>` : '<span class="text-gray-400">0%</span>'));
+            const gmTxt  = (v) => (typeof v !== 'number') ? '<span class="text-gray-600">—</span>' : `<span class="text-gray-200">${v}%</span>`;
             const rowHtml = rows.map(r => `
-                <div class="grid grid-cols-[1fr_56px_84px] gap-2 items-center py-1.5 border-b border-[#21262d] ${r.sym === sym ? 'bg-cyan-950/20 -mx-1 px-1 rounded' : ''}">
-                    <div class="min-w-0 cursor-pointer" onclick="document.getElementById('symbolInput').value='${r.sym}'; app.analyze();">
+                <div class="grid grid-cols-[1fr_40px_50px_46px_66px] gap-1.5 items-center py-1.5 border-b border-[#21262d] ${r.sym === sym ? 'bg-cyan-950/20 -mx-1 px-1 rounded' : ''}">
+                    <div class="min-w-0 cursor-pointer leading-tight" onclick="document.getElementById('symbolInput').value='${r.sym}'; app.analyze();">
                         <span class="text-[11px] text-gray-200 font-bold">${r.name}</span>
-                        <span class="text-[9px] text-gray-500 font-mono ml-1">${r.sym}</span>${r.sym === sym ? '<span class="text-[8px] text-cyan-400 ml-1">本檔</span>' : ''}
+                        <span class="text-[8px] text-gray-500 font-mono ml-1">${r.sym}</span>${r.sym === sym ? '<span class="text-[8px] text-cyan-400 ml-1">本檔</span>' : ''}
                     </div>
-                    <div class="font-mono font-black text-right text-sm ${peColor(r.pe)}">${r.pe}</div>
-                    <div class="font-mono text-right text-[11px]">${instTxt(instMap[r.sym])}</div>
+                    <div class="font-mono font-black text-right text-[13px] ${peColor(r.pe)}">${r.pe}</div>
+                    <div class="font-mono text-right text-[10px]">${yoyTxt(r.yoy)}</div>
+                    <div class="font-mono text-right text-[10px]">${gmTxt(r.gm)}</div>
+                    <div class="font-mono text-right text-[10px]">${instTxt(instMap[r.sym])}</div>
                 </div>`).join('');
             box.innerHTML = `
                 <div class="space-y-2">
@@ -6450,15 +6458,15 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                         ${peVsMedian ? `<div class="text-[10px] ${selfPe < medianPe ? 'text-green-300' : 'text-red-300'} leading-snug">${peVsMedian}</div>` : ''}
                     </div>
                     <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
-                        <div class="grid grid-cols-[1fr_56px_84px] gap-2 text-[9px] text-gray-500 font-bold border-b border-[#30363d] pb-1 mb-0.5">
-                            <span>同業(點可跳該股)</span><span class="text-right">PE</span><span class="text-right">近5日法人(張)</span>
+                        <div class="grid grid-cols-[1fr_40px_50px_46px_66px] gap-1.5 text-[9px] text-gray-500 font-bold border-b border-[#30363d] pb-1 mb-0.5">
+                            <span>同業(點可跳)</span><span class="text-right">PE</span><span class="text-right">營收YoY</span><span class="text-right">毛利</span><span class="text-right">法人5日</span>
                         </div>
                         ${rowHtml}
                         <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-[#30363d]">
                             <span class="text-[10px] text-gray-400 font-bold">📊 族群近5日法人合計</span>
                             <span class="font-mono font-black text-sm ${sectorInst > 0 ? 'text-red-400' : (sectorInst < 0 ? 'text-green-400' : 'text-gray-300')}">${sectorInst > 0 ? '+' : ''}${sectorInst.toLocaleString()} 張</span>
                         </div>
-                        <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 PE 來自全市場快取・法人=外資+投信近5日合計(紅買綠賣)・估值色綠=便宜紅=貴・全事實數據非 AI</div>
+                        <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 PE/YoY/毛利來自全市場快取・YoY紅升綠降・法人=外資+投信5日(張,紅買綠賣)・PE色綠便宜紅貴・全事實非 AI</div>
                     </div>
                 </div>`;
             if (btn) { btn.disabled = false; btn.textContent = '🔄 重新載入'; btn.classList.remove('opacity-60'); }
