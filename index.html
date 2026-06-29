@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.0</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.1</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -10906,6 +10906,58 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         </div>`;
     },
 
+    // ⭐ V36.1 — 朱家泓 三根 K棒轉折(純型態):夜星(高檔轉下)/晨星(低檔轉上),中間 1-3 變盤線,
+    //   右K收破左長K中點=確認;孤島(兩側跳空)最強;爆量加強;群星(≥2變盤線)後續控盤更久
+    _detectStarPatterns(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 5) return out;
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const body = b => Math.abs(C(b) - O(b));
+        const small = b => O(b) && body(b) / O(b) < 0.018;            // 變盤線(小實體)
+        const longUp = b => C(b) > O(b) && O(b) && (C(b) - O(b)) / O(b) >= 0.03;
+        const longDn = b => C(b) < O(b) && O(b) && (O(b) - C(b)) / O(b) >= 0.03;
+        const bigVol = j => { const pv = data.slice(Math.max(0, j - 5), j).map(V); const av = pv.length ? pv.reduce((a, x) => a + x, 0) / pv.length : V(data[j]); return av > 0 && V(data[j]) >= av * 1.5; };
+        const tryStar = (bear) => {
+            for (let e = last; e >= Math.max(3, last - 2); e--) {     // 確認 K 在最後 1-3 根
+                const conf = data[e];
+                if (bear ? !longDn(conf) : !longUp(conf)) continue;
+                for (let nmid = 1; nmid <= 3; nmid++) {               // 中間 1-3 變盤線
+                    const sIdx = e - nmid - 1;
+                    if (sIdx < 0) break;
+                    let starsOk = true;
+                    for (let m = sIdx + 1; m < e; m++) if (!small(data[m])) { starsOk = false; break; }
+                    if (!starsOk) continue;
+                    const lead = data[sIdx];
+                    if (bear ? !longUp(lead) : !longDn(lead)) continue;
+                    const mid = (O(lead) + C(lead)) / 2;
+                    if (bear ? C(conf) >= mid : C(conf) <= mid) continue;   // 確認:收破左長K中點
+                    const win = data.slice(Math.max(0, sIdx - 20), sIdx + 1);
+                    if (bear) { const hi = Math.max(...win.map(H)); if (!hi || H(lead) < hi * 0.94) continue; }   // 相對高檔
+                    else { const lo = Math.min(...win.map(L)); if (!lo || L(lead) > lo * 1.06) continue; }        // 相對低檔
+                    const island = bear
+                        ? (L(data[sIdx + 1]) > H(lead) && H(conf) < L(data[e - 1]))
+                        : (H(data[sIdx + 1]) < L(lead) && L(conf) > H(data[e - 1]));
+                    const big = bigVol(e), daysAgo = last - e;
+                    const name = bear
+                        ? (island ? '孤島夜星(最強)' : (nmid >= 2 ? '群星夜星' : '夜星轉折'))
+                        : (island ? '孤島晨星(最強)' : (nmid >= 2 ? '群星晨星' : '晨星轉折'));
+                    out.push({
+                        tone: bear ? 'bear' : 'bull', title: name + (big ? '+爆量' : ''), val: mid,
+                        msg: bear
+                            ? `高檔${daysAgo === 0 ? '剛' : daysAgo + '天前'}出現${name}(左長紅+${nmid}變盤線+右長黑收破紅K中點 ${mid.toFixed(2)})=轉折向下確認${big ? ',爆量力道更強' : ''}。多單跌破右黑K低 ${L(conf).toFixed(2)} 或 5MA 先出。`
+                            : `低檔${daysAgo === 0 ? '剛' : daysAgo + '天前'}出現${name}(左長黑+${nmid}變盤線+右長紅突破黑K中點 ${mid.toFixed(2)})=轉折向上確認${big ? ',爆量止跌更強' : ''}。站上右紅K高 ${H(conf).toFixed(2)} 可分批進場。`
+                    });
+                    return;
+                }
+            }
+        };
+        tryStar(true);    // 夜星
+        tryStar(false);   // 晨星
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -10947,12 +10999,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (pH && pC > pH) sigs.push({ tone: 'bull', title: '收盤轉強', val: pH, msg: `今收 ${pC.toFixed(2)} 突破昨高 ${pH.toFixed(2)} = 買方力道轉強。` });
         else if (pL && pC < pL) sigs.push({ tone: 'bear', title: '收盤轉弱', val: pL, msg: `今收 ${pC.toFixed(2)} 跌破昨低 ${pL.toFixed(2)} = 賣方力道轉強。` });
 
+        // ⭐ V36.1 — 三根 K棒 夜星/晨星轉折(最重要的反轉訊號,置頂)
+        try { sigs.unshift(...this._detectStarPatterns(data)); } catch (_) {}
+
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' } };
         const rows = sigs.map(s => { const t = sty[s.tone] || sty.flat; return `<div class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5">
-            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} <span class="font-mono text-gray-500 font-normal text-[10px]">½ ${s.val.toFixed(2)}</span></div>
+            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} <span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span></div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('');
-        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒 ½價戰法</span><span class="text-[9px] text-gray-500">朱家泓・純公式</span></div>${rows}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 ½價=(最高+最低)/2=當天平均成本・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
     },
 
