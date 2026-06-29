@@ -2427,22 +2427,46 @@ def fetch_broker_chips():
     # 🦅 獵鷹建倉分:把全市場 PE/殖利率 dump 成 cache,供 radar_miner 算「低本益比」因子(全市場覆蓋)
     #    抓成功才覆寫,失敗(空 dict)時保留昨日 last-good,避免洗掉。
     try:
+        fc_path = Path('data', 'fundamentals_cache.json')
+        # 基底 PE/殖利率:TWSE 成功用新值;TWSE 回空則沿用既有快取(不洗掉),YoY/毛利照樣補
         if twse_fund:
             fund_cache = {s: {'pe': v.get('pe'), 'yield_rate': v.get('yield_rate')}
                           for s, v in twse_fund.items() if isinstance(v, dict)}
-            # V35.3 — 併入全市場營收 YoY + 毛利率(供前端「同業數據對比」;bulk FinMind 不帶 data_id,best-effort)
+            base_src = 'TWSE'
+        else:
+            try:
+                _ex = json.loads(fc_path.read_text(encoding='utf-8'))
+                fund_cache = {k: v for k, v in _ex.items() if not str(k).startswith('__')} if isinstance(_ex, dict) else {}
+            except Exception:
+                fund_cache = {}
+            base_src = 'cache(TWSE空)'
+            print(f"  ⏭️ TWSE 基本面回空,沿用既有 fundamentals_cache.json({len(fund_cache)} 檔)再補 YoY/毛利")
+
+        # V35.5 — 營收 YoY + 毛利率與 TWSE 脫鉤:不論 TWSE 成敗都補(來源 FinMind 獨立) + 自我診斷 __status
+        if fund_cache:
+            yoy_map, gm_map = {}, {}
             try:
                 yoy_map = fetch_bulk_revenue_yoy()
                 gm_map  = fetch_bulk_gross_margin()
-                for s in fund_cache:
-                    if s in yoy_map: fund_cache[s]['rev_yoy'] = yoy_map[s]
-                    if s in gm_map:  fund_cache[s]['gross_margin'] = gm_map[s]
-                print(f"  💾 併入營收 YoY {len(yoy_map)} 檔、毛利率 {len(gm_map)} 檔")
+                for s, v in fund_cache.items():
+                    if not isinstance(v, dict):
+                        continue
+                    if s in yoy_map: v['rev_yoy'] = yoy_map[s]
+                    if s in gm_map:  v['gross_margin'] = gm_map[s]
             except Exception as e:
-                print(f"  ⚠️ 併入 YoY/毛利失敗(保留 PE/殖利率快取):{e}")
-            Path('data', 'fundamentals_cache.json').write_text(
-                json.dumps(fund_cache, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-            print(f"  💾 全市場基本面快取 → data/fundamentals_cache.json（{len(fund_cache)} 檔）")
+                print(f"  ⚠️ 併入 YoY/毛利失敗:{e}")
+            yoy_hits = sum(1 for v in fund_cache.values() if isinstance(v, dict) and 'rev_yoy' in v)
+            gm_hits  = sum(1 for v in fund_cache.values() if isinstance(v, dict) and 'gross_margin' in v)
+            # __status:前端按 sym 讀不受影響;供從 gh-pages 直接看採集結果(仿折溢價自我診斷)
+            fund_cache['__status'] = {'base': base_src, 'updated': date.today().strftime('%Y-%m-%d'),
+                                      'yoy_raw': len(yoy_map), 'gm_raw': len(gm_map),
+                                      'yoy_hits': yoy_hits, 'gm_hits': gm_hits}
+            fc_path.write_text(json.dumps(fund_cache, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+            print(f"  💾 全市場基本面快取 → data/fundamentals_cache.json({len([k for k in fund_cache if not str(k).startswith('__')])} 檔;YoY raw {len(yoy_map)}→命中 {yoy_hits}、毛利 raw {len(gm_map)}→命中 {gm_hits})")
+        else:
+            print("  ⏭️ fund_cache 為空(TWSE 回空且無既有快取),跳過 YoY/毛利")
+
+        if twse_fund:
 
             # 🏷️ 產業相對 PE 聚合(供前端 X 光機算「比同業便宜?」)
             print("  🏭 抓產業類別 + 算每產業中位數 PE...")
@@ -2497,7 +2521,7 @@ def fetch_broker_chips():
             except Exception as e:
                 print(f"  ⚠️ 產業 PE 聚合失敗(不影響主流程):{e}")
         else:
-            print("  ⏭️ TWSE 基本面回空,保留既有 fundamentals_cache.json 不覆寫")
+            print("  ⏭️ TWSE 基本面回空,跳過產業 PE 聚合(YoY/毛利已獨立補入既有快取)")
     except Exception as e:
         print(f"  ⚠️ fundamentals_cache 寫檔失敗(不影響主流程):{e}")
 
