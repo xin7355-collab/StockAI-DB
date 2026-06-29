@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11027,6 +11027,36 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V36.4 — 朱家泓 量能戰法(純公式,量配位置+K棒:同樣爆量 起漲=攻擊量/高檔=出貨量):
+    //   基本量=5日均量;攻擊量≥1.2×、爆量≥2×、止跌量≤0.5×
+    _detectVolumeSignals(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 8) return out;
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const cur = data[last];
+        const base = data.slice(last - 5, last).map(V).reduce((a, x) => a + x, 0) / 5;   // 基本量=前5日均量
+        if (!base || !O(cur)) return out;
+        const vr = V(cur) / base;
+        const win = data.slice(-60), hi = Math.max(...win.map(H)), lo = Math.min(...win.map(L));
+        const rng = hi - lo;
+        const pos = rng > 0 ? (C(cur) - lo) / rng : 0.5;   // 0=低檔 1=高檔
+        const isHigh = pos >= 0.80, isLow = pos <= 0.30;
+        const red = C(cur) > O(cur), black = C(cur) < O(cur);
+        // 攻擊量(進貨):放大量 + 紅K + 非高檔
+        if (vr >= 1.2 && red && !isHigh) out.push({ tone: 'bull', title: '攻擊量(主力進貨)', val: V(cur), msg: `量放大 ${vr.toFixed(1)}× 均量 + 紅K上漲、非高檔 → 攻擊量/主力進貨,起漲有量易續攻。` });
+        // 出貨量:高檔爆量 + 黑K
+        if (vr >= 1.5 && black && isHigh) out.push({ tone: 'bear', title: '高檔出貨量', val: V(cur), msg: `高檔爆量 ${vr.toFixed(1)}× + 黑K → 主力出貨量,有貨分批停利、別追。` });
+        // 止跌量:低檔量縮到半 + 未破近5日低
+        if (vr <= 0.5 && isLow) { const lo5 = Math.min(...data.slice(last - 5, last).map(L)); if (L(cur) >= lo5) out.push({ tone: 'flat', title: '止跌量(量縮窒息)', val: V(cur), msg: `低檔量縮至 ${(vr * 100).toFixed(0)}% 均量 + 未破前低 → 量縮窒息,留意打底止跌(待紅K放量確認)。` }); }
+        // 換手量:近 5 日內高檔大量黑K,被今日紅K收盤過其高
+        for (let j = last - 1; j >= Math.max(1, last - 5); j--) { const b = data[j]; if (!b) continue; const vrj = V(b) / (data.slice(j - 5, j).map(V).reduce((a, x) => a + x, 0) / 5 || 1); const posj = rng > 0 ? (C(b) - lo) / rng : 0.5; if (C(b) < O(b) && vrj >= 1.8 && posj >= 0.7) { if (red && C(cur) > H(b)) out.push({ tone: 'bull', title: '換手量(洗籌續攻)', val: H(b), msg: `高檔大量黑K(${(last - j)}天前)被今日紅K收盤過高 ${H(b).toFixed(2)} → 換手成功,強勢股洗掉浮額易再攻。` }); break; } }
+        // 強反彈量:低檔爆量 + 紅K過昨高(非多頭,僅反彈)
+        if (isLow && vr >= 2 && red && data[last - 1] && C(cur) > H(data[last - 1])) out.push({ tone: 'warn', title: '強反彈量(非多頭)', val: V(cur), msg: `低檔爆量 ${vr.toFixed(1)}× + 紅K過昨高 → 強反彈訊號(僅反彈非轉多),搶要設停利、跌破5MA就跑。` });
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -11070,11 +11100,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
         // ⭐ V36.1 — 三根 K棒 夜星/晨星轉折(最重要的反轉訊號,置頂)
         try { sigs.unshift(...this._detectStarPatterns(data), ...this._detect2BarReversal(data), ...this._detectBoxBreakout(data)); } catch (_) {}
+        try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-        const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' } };
+        const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' }, warn: { c: 'text-yellow-300', b: 'border-yellow-500', tag: '⚠️留意' } };
         const rows = sigs.map(s => { const t = sty[s.tone] || sty.flat; return `<div class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5">
-            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} <span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span></div>
+            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}</div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('');
         el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
