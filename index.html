@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V35.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V35.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.0</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V35.1</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -6691,6 +6691,13 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const _forced = this._forcedEngine();
         if (_forced) return await this._callForcedEngine(_forced, { promptSimple, promptFull, systemInstruction, max_tokens, temperature });
 
+        // ⭐ V35.1 — item2:深度分析「全面優先 Groq」(使用者要求);Groq 撞 429/失敗才依原 chain 走 Gemini/OpenRouter 備援
+        //   只在「自動」模式(無強制引擎)且 settings.aiPreferGroq !== false(預設開)時生效
+        if (this.settings?.aiPreferGroq !== false && this._getGroqKeys().length && !this._isProviderCoolingDown('groq')) {
+            try { return await tryGroq(); }
+            catch (e) { this._markProviderCoolingDown('groq', 30); console.warn('[_callDeepAI] Groq 優先失敗,改走原 chain 備援:', e?.message || e); }
+        }
+
         // 🎯 依 chain 參數路由(使用者要求各功能用不同鏈,避免 Groq 撞 429 影響重要分析)
         if (chain === 'gemini-only') {
             // 純 Gemini:撞 429 直接 throw(不偷偷 fallback,使用者明確要求)
@@ -12472,53 +12479,38 @@ ${peerLine}${newsCtx}
                 ? _newsRaw.split('\n').filter(l => l.trim()).slice(0, 8).map((l, i) => `${i+1}. ${l}`).join('\n')
                 : '近期無重大新聞';
 
-const fullPrompt = `你是人稱「哲哲」的台股知名分析師,口語直白、像直播跟「各位投資朋友」喊盤,口頭禪「抱緊處理」。
-語氣:白話文、國中生看得懂、多用比喻(把財報術語翻譯成生活例子,例如「毛利率」=「賣 100 元真的賺幾元」),禁止艱澀術語。
-請對 ${sym} 做「全面性深度解讀」,結合技術 + 籌碼 + 消息 + 全球,讓散戶秒懂該怎麼操作。
+const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大白話、國中生看得懂、多用生活比喻(例:毛利率=「賣 100 元真的賺幾元」、本益比=「幾年回本」),禁止艱澀術語(術語要先翻成比喻再用)。
+請只針對 ${sym} 的「財報體質」做深度解讀 —— 不要扯新聞、籌碼、大盤(那些別張卡已負責),專心把這張財報講清楚。
 
-【財報六大面向】
+【財報數據(只能用這些,沒有的不准編)】
 - EPS(最新季):${epsStr} ｜ 營收 YoY:${yoyStr}
 - 本益比 PE:${peStr} ｜ 殖利率:${yieldStr}
 - 毛利率趨勢:${gmTrendStr || '無資料'} ｜ 股利發配率:${paStr}
 - 最新每股股利:${divStr}
 
-【近 5 日籌碼(張)】
-- 三大法人:${_instLine}
-- 融資融券:${_marginLine}
-- 主力分點(若有):${_brokerLine}
-
-【近 14 日新聞清單】(總裁必須一條條判讀真偽與炒作意圖)
-${_newsLine}${globalContext}
-
 ━━━━━━━━━━━━━━━━━━━━
 輸出格式(必須照順序,可加 emoji,白話犀利):
 
-1️⃣ **精準判定**(一行,四選一):🔥成長火箭 / ⚠️空氣泡泡 / 🚨價值陷阱 / ⚖️中性觀察
+1️⃣ **體質判定**(一行,四選一):🔥成長火箭 / ⚠️空氣泡泡 / 🚨價值陷阱 / ⚖️中性觀察
 
-2️⃣ **體質拆解**(80-120 字):用大白話戳破財報粉飾,點出 EPS/營收/毛利/PE 哪個最關鍵
+2️⃣ **獲利拆解**(80-120 字):EPS 與營收 YoY 是真成長還是虛胖?點出最關鍵的那個數字,用比喻講成白話
 
-3️⃣ **籌碼解讀**(60-100 字):三大法人在進場還是出貨?融資爆量還是退潮?(若分點欄顯示「無法取得」,跳過分點分析,不要編造券商名稱)
+3️⃣ **賺錢品質**(60-100 字):毛利率趨勢往上還往下?代表競爭力變強還變弱?(毛利=賣 100 元實拿幾元)
 
-4️⃣ **📰 新聞真偽判讀**(每則新聞一行,用標籤標示):
-   - 🟢實質利好:確實會推升業績/股價的真利多(例:大客戶下單、產能擴張、合約簽訂)
-   - 🟡誘多炒作:話術包裝題材,缺乏實質訂單支撐,易曇花一現(例:概念股蹭題、模糊的「合作意向」)
-   - 🔴利空誘空 / 騙散戶:看似利空但其實是主力洗盤吃貨;或看似利好但其實是出貨前的拉抬
-   - ⚪雜訊:不影響股價,可忽略
-   每則新聞後加一句「股價是否已反映?」+ 操作指令(可進場 / 已過熱避開 / 騙人請忽略)
+4️⃣ **估值與配息**(60-100 字):現在 PE 算貴還便宜?用「幾年回本」解釋;殖利率/配息率值不值得存股
 
-5️⃣ **💰 操作建議**(50-80 字):結合上方 4 項,給「可進場 / 觀望續抱 / 鎖利減碼 / 撤退避開」明確指令 + 具體價位${_hasGlobal ? `
-
-6️⃣ **🌐 全球資金共鳴**(一句話):當前全球環境順風還是逆風?` : ''}
+5️⃣ **💰 財報結論**(50-80 字):綜合上面,這張財報屬於「可買進 / 可續抱 / 觀望 / 避開」,一句話講清楚為什麼
 
 ━━━━━━━━━━━━━━━━━━━━
 🛑 嚴格遵守:
-- 新聞真偽判讀**必須逐則標示**,不可整批含糊帶過
-- 操作指令必須含「明確動作」+「具體位置或天數」,禁止只說「觀察」「再看看」
-- 講話像哲哲,白話如直播,多用比喻,禁艱澀術語(EPS/PEG 等先解釋再用)`;
+- 只談財報體質,不要扯新聞、籌碼、大盤(那些別的卡負責),別離題
+- 🚫 絕對禁止編造數字 —— 只能用上面給的數據,沒有的就直接說「資料不足」
+- 每段給明確結論,禁止「再觀察」「看看」「審慎評估」等廢話
+- 講話像權證小哥,術語(EPS/PE/毛利率)先翻成生活比喻再用`;
             let aiText = null;
             try {
-                // 🎯 X 光掃描:使用者要求改走 Gemini 雙 key 輪動 + OpenRouter 備援(取消 Groq)
-                aiText = await this._callDeepAI({prompt: fullPrompt, max_tokens: 600, temperature: 0.55, chain: 'gemini-openrouter'});
+                // V35.1 — 改聚焦財報體質提示詞 + max_tokens 600→1100 防 5 段截斷;鏈走 Groq 優先(_callDeepAI 內 aiPreferGroq)
+                aiText = await this._callDeepAI({prompt: fullPrompt, max_tokens: 1100, temperature: 0.5, chain: 'gemini-openrouter'});
             } catch(e2) {
                 console.error('[fundamentals AI]', e2);
             }
