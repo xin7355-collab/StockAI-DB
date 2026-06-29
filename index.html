@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V34.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V34.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -825,7 +825,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V34.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -18158,12 +18158,23 @@ ${_newsLine}${globalContext}
             const totalVal = price * shares * 1000;
             const totalPnL = totalVal - totalCost;
             const totalPct = cost > 0 && price > 0 ? ((price - cost) / cost) * 100 : 0;
-            // 今日損益:用 _invKlineCache 取昨收推算 — 倒數第二筆 close 是昨收(最後一筆 = 今天 close)
+            // 今日損益(V34.x 修):昨收 = 最近一筆「日期 < 今天」的 K 線收盤(專業 App 邏輯)。
+            //   修正 Fugle 即時價覆蓋 currentPrice、但今天還沒進 K 線時,舊版誤抓「倒數第二筆=前天」
+            //   → 變成多日漲跌(如智原 周一 vs 周四 -8.5%,正解應 vs 周五 +1.45%)的 bug。
+            //   不論今天有沒有在 K 線最後筆,都正確取到「上一交易日收盤」。
             const klineArr = this._invKlineCache?.[item.symbol] || [];
             let prevClose = price, todayChgPct = 0, todayPnL = 0;
-            if (klineArr.length >= 2) {
-                prevClose = +klineArr[klineArr.length - 2].close || price;
-                if (prevClose > 0) {
+            if (klineArr.length >= 1) {
+                const _today = this.getTodayStr().replace(/\//g, '-');
+                let pc = null;
+                for (let i = klineArr.length - 1; i >= 0; i--) {
+                    const d = String(klineArr[i].date || klineArr[i].t || '').slice(0, 10).replace(/\//g, '-');
+                    const c = +klineArr[i].close;
+                    if (d && d < _today && c > 0) { pc = c; break; }
+                }
+                if (pc == null && klineArr.length >= 2) pc = +klineArr[klineArr.length - 2].close;   // 無日期欄 fallback
+                if (pc && pc > 0) {
+                    prevClose = pc;
                     todayChgPct = (price - prevClose) / prevClose * 100;
                     todayPnL = (price - prevClose) * shares * 1000;
                 }
@@ -18213,7 +18224,7 @@ ${_newsLine}${globalContext}
             const priceCls = isLimitUp ? 'bg-red-600 text-white px-1.5 rounded inline-block'
                             : isLimitDown ? 'bg-green-600 text-white px-1.5 rounded inline-block'
                             : 'text-white';
-            const bgClass = totalPct <= -5 ? 'bg-[#3b0a0a]' : 'bg-[#1c2128]';
+            const bgClass = 'bg-[#1c2128]';   // V34.x — 移除整列紅底(使用者要求,損益已用文字顏色表達)
             const cname = this.getStockName(item.symbol) || item.symbol;
             const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol && a.enabled !== false);
 
