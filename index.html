@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V39.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V39.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -997,8 +997,7 @@
                                 <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
                             </div>
                         </div>
-                        <!-- 🦅 獵鷹建倉儀表板(JS 即時,讀 falcon_scores.json,不需 AI)-->
-                        <div id="falconDashboard" class="hidden w-full bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-cyan-800/40 rounded-xl p-3 shadow-lg"></div>
+                        <!-- 🦅 V39.2 獵鷹建倉儀表板已移除(連根拔除);黑天鵝防禦矩陣已搬到「大盤趨勢→盤前大盤體檢」 -->
                     </div>
                     <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
                         <div class="flex-1 flex flex-col gap-0.5">
@@ -2215,7 +2214,6 @@
                         <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
                         <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
                         <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70">(風控)</span></button>
-                        <button onclick="app.switchRadarStrategy('falcon')" id="radarTabFalcon" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🦅 獵鷹建倉 <span class="opacity-70">(AI分≥60)</span></button>
                         <button onclick="app.openChuMasterModal(); app.vibrate(20);" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓選股</button>
                     </div>
 
@@ -3064,8 +3062,8 @@ const app = {
         // V22.3 — 景氣燈號純自動:清舊 localStorage 卡住的手動值,等 updateGlobalRiskGrid 拉 NDC 自動套用
         try { localStorage.removeItem('proTerminalBsiLight'); } catch(_){}
         setTimeout(() => this.renderBsiLight(), 100);
-        this._loadFalconScores();      // 🦅 獵鷹建倉分(背景拉,失敗不阻塞)
-        this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝警報文案顯示具體 %)
+        // 🦅 V39.2 獵鷹建倉系統已連根拔除(使用者要求);falcon_scores.json 不再載入
+        this._loadMacroRiskCache();    // 🌍 macro_risk.json 真實數值快取(供黑天鵝防禦矩陣顯示具體 %)
         this._loadMarketStats();       // 📊 V16.2 全市場 P/B 分位數(供動態 P/B 判斷,取代固定 <2/>5 門檻)
         this._loadTaiexMA240Bias();    // 🐂 V16.5 大盤位階(讀 data/^TWII.json 算 240MA,治本)
         this._startMinerStatusPolling();   // ⛏️ V16.4 採礦中 banner:GitHub API + miner_status.json 雙保險 poll
@@ -4007,23 +4005,17 @@ ${list}
         return this._falconScoresCache;
     },
     // V17.18 — 跟單訊號 3-gate 評分:ETF 共識 + Falcon ≥ 70 + 主力連 N 日買超
-    _calcEtfFollowSignal(stock, falconMap) {
+    _calcEtfFollowSignal(stock) {
+        // 🦅 V39.2 falcon 連根拔除後改純「ETF 共識換入」強度(原 falcon≥70 + 主力連買 gate 來自 falcon_scores.json,已無資料源)
         const gates = {
-            etf:    stock.etf_count >= 5 && stock.shares_delta > 0,
-            falcon: false,
-            chip:   false,
+            etf:    stock.etf_count >= 5 && stock.shares_delta > 0,   // 5+ 檔 ETF 同步加碼
+            strong: stock.etf_count >= 8 && stock.shares_delta > 0,   // 8+ 檔 = 強共識
         };
-        const f = falconMap[stock.sym];
-        if (f) {
-            gates.falcon = (f.score || 0) >= 70;
-            gates.chip   = (f.factors || []).some(x => /主力連\d日買超/.test(x));
-        }
-        const score = (gates.etf ? 1 : 0) + (gates.falcon ? 1 : 0) + (gates.chip ? 1 : 0);
+        const score = (gates.etf ? 1 : 0) + (gates.strong ? 1 : 0);
         let tag = '';
-        if (score === 3)      tag = '<span class="text-red-300 text-[10px] font-bold ml-1">🌟 跟單級</span>';
-        else if (score === 2) tag = '<span class="text-orange-300 text-[10px] font-bold ml-1">✅ 可考慮</span>';
-        else if (score === 1) tag = '<span class="text-yellow-300 text-[10px] font-bold ml-1">🟡 訊號弱</span>';
-        return { score, gates, tag, falconScore: f ? (f.score || 0) : 0 };
+        if (gates.strong)   tag = '<span class="text-red-300 text-[10px] font-bold ml-1">🌟 多檔ETF換入</span>';
+        else if (gates.etf) tag = '<span class="text-orange-300 text-[10px] font-bold ml-1">✅ ETF換入</span>';
+        return { score, gates, tag, falconScore: 0 };
     },
     // V18.4 — ETF 表頭欄位點擊排序:同欄 toggle 升降序,異欄切換並預設 desc
     _etfSortBy(key) {
@@ -4473,7 +4465,7 @@ ${list}
             box.innerHTML = `<div class="p-6 text-center text-gray-500 text-sm">🏦 ETF 順風車資料準備中<br><span class="text-xs">首次雲端採礦後自動啟用(每日盤後更新)</span></div>`;
             return;
         }
-        const falconMap = await this._loadFalconScoresMap();  // V18.3 — 改用 Map 版,避免被 line 5978 同名 method 覆蓋成 undefined
+        // 🦅 V39.2 falcon 連根拔除:跟單訊號改純 ETF 共識換入(不再讀 falcon_scores.json)
         const pct = v => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v}%`);
         const pcls = v => (v == null ? 'text-gray-500' : v >= 0 ? 'text-red-400' : 'text-green-400');
         const userSet = this._userHoldSet();
@@ -4507,7 +4499,7 @@ ${list}
             fallbackUsed = true;
         }
         // 每檔算跟單訊號(0-3 分)+ 掛 _follow 屬性供排序
-        stocks.forEach(s => { s._follow = this._calcEtfFollowSignal(s, falconMap); });
+        stocks.forEach(s => { s._follow = this._calcEtfFollowSignal(s); });
         // V18.4 — 表頭欄位點擊排序(取代舊版 4 個 preset 按鈕)
         const sortKey = this._etfSortKey || 'follow';
         const sortDir = this._etfSortDir || 'desc';
@@ -5735,10 +5727,9 @@ ${list}
                 document.getElementById('exportAreaContainer').classList.add('hidden');
                 area.value = '';
                 this.showToast(`✅ 還原完成!${invN} 檔持股 / ${favN} 自選 / 設定全部復原`, 'info');
-                // V16.9 — 重抓 in-memory 衍生資料(剛剛清空),確保獵鷹分/年線乖離/市場 stats 即時新算
+                // V16.9 — 重抓 in-memory 衍生資料(剛剛清空),確保年線乖離/市場 stats 即時新算
                 this._loadMacroRiskCache?.();
                 this._loadMarketStats?.();
-                this._loadFalconScores?.();
                 this._loadTaiexMA240Bias?.();
                 this.refreshInventoryPrices();
                 this.renderFavTabs();
@@ -8863,12 +8854,7 @@ const marginByDate = {};
         const factors = [];
         let totalScore = 0, weightSum = 0;
 
-        // 1. Falcon 建倉分(權重 25)
-        const falcon = this._falconScores?.scores?.[sym];
-        if (falcon && falcon.score != null) {
-            factors.push({ icon: '🦅', name: 'Falcon 建倉', score: falcon.score, max: 100, weight: 25, txt: `${falcon.score}/100 ${falcon.label || ''}` });
-            totalScore += falcon.score * 25; weightSum += 25 * 100;
-        }
+        // 1. 🦅 V39.2 Falcon 建倉分已連根拔除;其餘因子靠 weightSum 正規化,分數不受影響
 
         // 2. 注意股掃描(逆向加分:hit 越少越好;權重 15)
         const scan = (Array.isArray(this.activeData) && this.activeData.length >= 30) ? this._calcAttentionScan(sym) : null;
@@ -9754,7 +9740,8 @@ const marginByDate = {};
                 <div class="text-[10px] font-bold ${sc} mb-0.5">💡 一句話總結</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">${summary}</div>
             </div>
-            <div class="text-[9px] text-gray-600 leading-snug">🔧 仍採集中:大盤融資券餘額、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>`;
+            <div class="text-[9px] text-gray-600 leading-snug">🔧 仍採集中:大盤融資券餘額、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>
+            ${this._blackSwanMatrixHtml()}`;
         el.classList.remove('hidden');
     },
 
@@ -10879,7 +10866,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             console.log(`[TAIEX MA240] last=${last} ma240=${ma240.toFixed(0)} bias=${bias}%`);
             // 已渲染處立刻補畫
             this._renderChuPositionChip?.();
-            if (this.currentSymbolId) this.renderFalconDashboard?.();
+            try { this.renderMarketBriefing(); } catch (_) {}   // 🌍 V39.2 年線乖離更新→刷新盤前大盤體檢(黑天鵝矩陣在內)
             // V16.9 — 朱老師四關卡 Gate 1 + 趨勢警報橫條也跟著重畫(同源 regime,
             //         否則頂部 chip 顯多頭、Gate 1 卡 fallback「整備中」→ 使用者看到矛盾)
             if (this.currentSymbolId && Array.isArray(this.activeData) && this.activeData.length && this.indicators) {
@@ -10904,8 +10891,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 // V16.6 — merge 不 replace,避免洗掉 V16.5 _loadTaiexMA240Bias 已寫進去的 taiex_ma240_bias
                 this._macroRiskCache = { ...(this._macroRiskCache || {}), ...j };
                 console.log(`[macro_risk] 已載入 (gold ${j.gold_chg_pct}% / wti ${j.wti_chg_pct}% / kospi ${j.kospi_chg_pct}% / jpy3d ${j.jpy_chg_3d}%)`);
-                // 已渲染過的獵鷹儀表板補畫一次,讓警報文案立刻顯示真實數值
-                if (this.currentSymbolId) this.renderFalconDashboard?.();
                 // 📌 朱老師建議部位 chip 依 taiex_ma240_bias 立刻更新
                 this._renderChuPositionChip?.();
                 // 🐛 V38.6 投信/自營/合計/外資現貨/夜盤(macro_risk)載入後刷新盤前大盤體檢(原本不刷→顯「採集中」)
@@ -17505,103 +17490,56 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
 
     // 🦅 獵鷹建倉儀表板:當前股的建倉分 + 因子 + 🌍 全球宏觀黑天鵝防禦矩陣(JS 即時,不需 AI)
-    renderFalconDashboard() {
-        const box = document.getElementById('falconDashboard');
-        if (!box) return;
-        const f = this._falconOf(this.currentSymbolId);
-        if (!f) { box.classList.add('hidden'); return; }
-        box.classList.remove('hidden');
-        // 持有者:依成本損益位移分數
-        const costStr = document.getElementById('costInput')?.value?.trim();
-        const cost = (costStr && !isNaN(parseFloat(costStr))) ? parseFloat(costStr) : null;
-        const cur = this.activeData?.length ? this.activeData[this.activeData.length - 1].close : null;
-        let shown = f.score, held = false, profitPct = null;
-        if (cost && cost > 0 && cur > 0) {
-            profitPct = (cur - cost) / cost * 100;
-            shown = this._heldAdjustFalcon(f.score, profitPct);
-            held = true;
-        }
-        // ⏱️ 盤初激戰時段(台北 09:00-09:30):分數自動打 8 折 + 警告,防使用者用早盤雜訊建倉
-        let isOpenChaos = false, openChaosDelta = 0;
-        try {
-            const _parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
-            const _th = parseInt(_parts.find(p => p.type === 'hour').value, 10);
-            const _tm = parseInt(_parts.find(p => p.type === 'minute').value, 10);
-            isOpenChaos = (_th === 9 && _tm < 30);
-        } catch (_) {}
-        if (isOpenChaos) {
-            const adj = Math.round(shown * 0.8);
-            openChaosDelta = adj - shown;
-            shown = adj;
-        }
-        const col = shown >= 75 ? 'text-red-400' : shown >= 60 ? 'text-orange-400' : shown >= 45 ? 'text-yellow-400' : 'text-gray-400';
-        const ring = shown >= 75 ? 'border-red-500' : shown >= 60 ? 'border-orange-500' : shown >= 45 ? 'border-yellow-600' : 'border-gray-600';
-        const mf = this._falconScores?.macro_flags || {};
-        // 📊 警報文案動態化:讀 macro_risk.json 真實數值(_macroRiskCache)組裝具體 % 數字,
-        // 讓使用者一眼看到「為什麼觸發」的真實證據,不用懷疑警報真假
+    // 🌍 V39.2 全球宏觀黑天鵝防禦矩陣(原長在獵鷹卡,改純讀 macro_risk.json,搬到盤前大盤體檢內)
+    //   旗標門檻對齊 macro_miner.py:日圓 USDJPY 3日<-1.5%、金/油單日>3%、KOSPI<-1.5%、年線乖離>20%
+    _blackSwanMatrixHtml() {
         const mr = this._macroRiskCache || {};
-        const _fmtSigned = v => (v == null || isNaN(v)) ? '?' : (v >= 0 ? `+${v.toFixed(1)}%` : `${v.toFixed(1)}%`);
+        const _fmtSigned = v => (v == null || isNaN(v)) ? '?' : (+v >= 0 ? `+${(+v).toFixed(1)}%` : `${(+v).toFixed(1)}%`);
         const warns = [];
-        if (isOpenChaos) warns.push(['⏱️', `09:00-09:30 開盤激戰期,獵鷹建倉分自動打 8 折(${openChaosDelta}),建議等 11:00 量價穩定後再決策。`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
-        if (mf.jpy_surge) {
-            const jpy3 = mr.jpy_chg_3d;
-            warns.push(['💴', `日圓 3 日急升 USDJPY ${_fmtSigned(jpy3)}(代表日圓走強),套息交易急迫平倉,外資恐拋售權值股!`, 'bg-red-900/40 border-red-600 text-red-200']);
-        }
-        if (mf.metal_oil_spike) {
-            const gold = mr.gold_chg_pct;
-            const wti  = mr.wti_chg_pct;
+        const jpy3 = mr.jpy_chg_3d, gold = mr.gold_chg_pct, wti = mr.wti_chg_pct, kospi = mr.kospi_chg_pct, bias = mr.taiex_ma240_bias;
+        if (typeof jpy3 === 'number' && jpy3 < -1.5)
+            warns.push(['💴', `日圓 3 日急升 USDJPY ${_fmtSigned(jpy3)}(日圓走強),套息交易急迫平倉,外資恐拋售權值股!`, 'bg-red-900/40 border-red-600 text-red-200']);
+        {
             const goldSurge = typeof gold === 'number' && gold > 3;
             const wtiSurge  = typeof wti  === 'number' && wti  > 3;
-            let msg;
-            if (goldSurge && wtiSurge) msg = `黃金 ${_fmtSigned(gold)} / 原油 ${_fmtSigned(wti)} 雙雙單日異常暴漲,地緣政治+通膨同步升溫,避開高位科技股!`;
-            else if (goldSurge)        msg = `黃金單日異常暴漲 ${_fmtSigned(gold)}(避險資金湧入),地緣政治風險升高,避開高位科技股!`;
-            else if (wtiSurge)         msg = `原油單日異常暴漲 ${_fmtSigned(wti)}(通膨/地緣風險),避開高位科技股!`;
-            else                       msg = `金屬/能源異常波動(黃金 ${_fmtSigned(gold)} / 原油 ${_fmtSigned(wti)}),通膨巨獸甦醒,避開高位科技股!`;
-            warns.push(['🛢️', msg, 'bg-orange-900/40 border-orange-600 text-orange-200']);
+            if (goldSurge || wtiSurge) {
+                let msg;
+                if (goldSurge && wtiSurge) msg = `黃金 ${_fmtSigned(gold)} / 原油 ${_fmtSigned(wti)} 雙雙單日異常暴漲,地緣政治+通膨同步升溫,避開高位科技股!`;
+                else if (goldSurge)        msg = `黃金單日異常暴漲 ${_fmtSigned(gold)}(避險資金湧入),地緣政治風險升高,避開高位科技股!`;
+                else                       msg = `原油單日異常暴漲 ${_fmtSigned(wti)}(通膨/地緣風險),避開高位科技股!`;
+                warns.push(['🛢️', msg, 'bg-orange-900/40 border-orange-600 text-orange-200']);
+            }
         }
-        if (mf.kospi_dump) {
-            const kospi = mr.kospi_chg_pct;
+        if (typeof kospi === 'number' && kospi < -1.5)
             warns.push(['🇰🇷', `韓股 KOSPI 單日重挫 ${_fmtSigned(kospi)},亞股遭外資集體提款,台股留意跟跌!`, 'bg-orange-900/40 border-orange-600 text-orange-200']);
-        }
-        // V17.0 — 改用 V16.5 _loadTaiexMA240Bias 即時算的 taiex_ma240_bias(取代已退役 macro_miner.blackswan.market_bias_high)
-        //         > +20% 視為「極端貪婪泡沫區」,觸發警示文案
-        const _liveBias = mr.taiex_ma240_bias;
-        if (typeof _liveBias === 'number' && _liveBias > 20) {
-            warns.push(['📈', `台股年線乖離率 ${_fmtSigned(_liveBias)},市場處於極端貪婪泡沫區,空手買入請極度克制!`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
-        }
-        const factorChips = (f.factors || []).map(x => `<span class="text-[9px] bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">${x}</span>`).join('');
-        const heldNote = held ? `<div class="text-[10px] text-gray-400 mt-0.5">🎯 已依你成本損益 ${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% 調整(空手原始分 ${f.score})</div><div class="text-[9px] text-gray-500 mt-0.5">ℹ️ 此為「新進場時機」評分;你已持有,操作以上方燈號結論為準(避開=不宜新買,非叫你賣)</div>` : '';
-        // 📊 D 路徑:市場狀態 chip — V17.2 整合朱老師建議部位 % 進來,讓頂部 chuPositionChip 可砍掉
-        const advice = this._chuPositionAdvice();
-        const regimeChip = `<div class="flex items-center gap-1.5 mt-1.5 text-[11px] flex-wrap">
-            <span class="font-bold ${advice.color} px-2 py-0.5 rounded border">${advice.regimeLabel}</span>
-            <span class="font-bold text-blue-300">建議 ${advice.pct}</span>
-            <span class="text-gray-400">${advice.advice}</span>
-            ${typeof advice.bias === 'number' ? `<span class="text-[9px] text-gray-600 font-mono">(年線乖離 ${advice.bias >= 0 ? '+' : ''}${advice.bias.toFixed(1)}%)</span>` : ''}
-        </div>`;
-        box.innerHTML = `
-            <!-- 🦅 V39.1 大圓圈壓成小 chip 列(不再與首席 AI 裁決搶視覺;建倉分降為參考情報) -->
-            <div class="flex items-center gap-x-2 gap-y-0.5 flex-wrap">
-                <span class="text-[11px] font-bold text-cyan-300">🦅 獵鷹建倉分</span>
-                <span class="font-mono font-black text-sm ${col}">${shown}<span class="text-gray-600 text-[9px] font-normal">/100</span></span>
-                <span class="text-[11px] font-bold ${col}">${f.label}</span>
-                <button onclick="app.showJargon('獵鷹建倉分'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button>
-                <span class="text-[9px] text-gray-600 w-full leading-snug">參考情報・最終進出場結論以上方「🧠 首席 AI」黃卡為準</span>
-            </div>
-            ${heldNote}
+        if (typeof bias === 'number' && bias > 20)
+            warns.push(['📈', `台股年線乖離率 ${_fmtSigned(bias)},市場處於極端貪婪泡沫區,空手買入請極度克制!`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
+
+        // 朱老師建議部位 chip(大盤 regime,讀 taiex_ma240_bias,非個股)
+        let regimeChip = '';
+        try {
+            const a = this._chuPositionAdvice?.();
+            if (a) regimeChip = `<div class="flex items-center gap-1.5 mt-2 text-[11px] flex-wrap">
+                <span class="font-bold ${a.color} px-2 py-0.5 rounded border">${a.regimeLabel}</span>
+                <span class="font-bold text-blue-300">建議 ${a.pct}</span>
+                <span class="text-gray-400">${a.advice}</span>
+                ${typeof a.bias === 'number' ? `<span class="text-[9px] text-gray-600 font-mono">(年線乖離 ${a.bias >= 0 ? '+' : ''}${a.bias.toFixed(1)}%)</span>` : ''}
+            </div>`;
+        } catch (_) {}
+
+        const warnsHtml = warns.length
+            ? warns.map(([ic, msg, cls]) => `<div class="${cls} border rounded px-2 py-1 text-[10px] font-bold leading-snug mb-1 animate-pulse">${ic} 警報:${msg}</div>`).join('')
+            : `<div class="text-[10px] text-green-300/70">無黑天鵝警報,全球環境正常 ✅</div>`;
+
+        return `<div class="mt-2 pt-2 border-t border-[#30363d]">
+            <div class="text-[10px] font-black text-red-300 mb-1">🌍 全球宏觀黑天鵝防禦矩陣</div>
+            ${warnsHtml}
             ${regimeChip}
-            ${warns.length ? `<div class="mt-2 pt-2 border-t border-gray-700/50">
-                <div class="flex items-center justify-between mb-1">
-                    <div class="text-[10px] font-black text-red-300">🌍 全球宏觀黑天鵝防禦矩陣</div>
-                    ${this._falconScores?.updated ? `<div class="text-[9px] text-gray-500 font-mono" title="盤後採礦判定時間,每日 16:30 自動更新一次(黃金/原油/KOSPI 等日線數據要等收盤才有完整漲跌)">⏱️ ${this._falconScores.updated} 盤後</div>` : ''}
-                </div>
-                ${warns.map(([ic, msg, cls]) => `<div class="${cls} border rounded px-2 py-1 text-[10px] font-bold leading-snug mb-1 animate-pulse">${ic} 警報:${msg}</div>`).join('')}
-                <div class="text-[9px] text-gray-500/80 mt-1 leading-snug">📌 黑天鵝旗標為盤後採礦判定(macro_risk.json),已併入「台股風險指數」加成計算(每觸發 1 個 +5 分,上限 +20)</div>
-            </div>` : `<div class="mt-2 pt-2 border-t border-gray-700/50 text-[10px] text-green-300/70">🌍 全球宏觀:無黑天鵝警報,環境正常 ✅${this._falconScores?.updated ? `<span class="text-gray-600 ml-2">(📅 ${this._falconScores.updated})</span>` : ''}</div>`}`;
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">📌 盤後採礦判定(macro_risk.json),每觸發 1 個併入「台股風險指數」+5(上限 +20)・標「?」者下次 16:30 採礦後補</div>
+        </div>`;
     },
 
     refreshStrategy() {
-        this.renderFalconDashboard();   // 🦅 即時更新獵鷹建倉儀表板(在 guard 前,確保永遠刷新)
         if (!this.activeData || !this.activeData.length || !this.indicators.ma20) return;
         this.findPeaksAndTroughs();
 
@@ -19714,7 +19652,6 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         swing:     { id: 'radarTabSwing',     active: 'bg-green-600/20 text-green-300 border-green-500' },
         sniper:    { id: 'radarTabSniper',    active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
-        falcon:    { id: 'radarTabFalcon',    active: 'bg-red-700/30 text-red-200 border-red-500' },
     },
     _RADAR_HINT: {
         layup:     '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
@@ -19802,11 +19739,6 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             if (tableWrap) tableWrap.classList.add('hidden');
             if (attView) attView.classList.remove('hidden');
             this.renderAttentionView();
-        } else if (key === 'falcon') {
-            if (layupView) layupView.classList.add('hidden');
-            if (tableWrap) tableWrap.classList.remove('hidden');
-            this._injectFalconRadarData();
-            this.renderRadarMatrix('falcon');
         } else {
             if (layupView) layupView.classList.add('hidden');
             if (tableWrap) tableWrap.classList.remove('hidden');
@@ -19821,37 +19753,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (key === 'layup') {
             const s = h?.by_signal?.['🟢送分題'];
             if (s && s.win_rate_10d != null) return `<div class="mt-1 text-[10px]"><span class="text-green-300 font-bold">✅ 回測勝率 ${s.win_rate_10d}%</span> <span class="text-gray-500">· 平均 ${s.avg_return_10d > 0 ? '+' : ''}${s.avg_return_10d}% · ${s.samples} 樣本(10日扣成本)</span></div>`;
-        } else if (key === 'falcon') {
-            const s = h?.falcon_strategy?.falcon60;
-            if (s && s.win_rate != null) return `<div class="mt-1 text-[10px]"><span class="text-green-300 font-bold">✅ 回測勝率 ${s.win_rate}%</span> <span class="text-gray-500">· 平均 ${s.avg_return > 0 ? '+' : ''}${s.avg_return}% · ${s.samples} 樣本(獵鷹≥60 隔日)</span></div>`;
         } else if (key === 'attention') {
             return '<div class="mt-1 text-[10px] text-gray-500">ℹ️ 處置股=風控區(分盤撮合),不納入回測</div>';
         } else {
             return '<div class="mt-1 text-[10px] text-gray-500">ℹ️ 此戰區為即時技術掃描,未納入歷史回測(動能/波段/籌碼即時邏輯)</div>';
         }
         return '';
-    },
-
-    // 🦅 把 _falconScores.stocks 動態合成成 radarMatrix.data.falcon
-    // 篩 score >= 60，sort 降冪，取前 30，由 renderRadarMatrix 渲染
-    _injectFalconRadarData() {
-        const stocks = this._falconScores?.stocks || {};
-        const picks = Object.entries(stocks)
-            .filter(([_, f]) => Number.isFinite(f?.score) && f.score >= 60)
-            .sort((a, b) => (b[1].score || 0) - (a[1].score || 0))
-            .slice(0, 30)
-            .map(([sym, f]) => ({
-                sym,
-                close:      Number.isFinite(f.close) ? f.close : 0,
-                gain:       Number.isFinite(f.gain)  ? f.gain  : null,
-                turnover_e: Number.isFinite(f.turnover_e) ? f.turnover_e : 0,
-                status:     `分數 ${f.score}` + (Array.isArray(f.factors) && f.factors.length
-                                                ? ' · ' + f.factors.slice(0, 2).join(' ')
-                                                : ''),
-            }));
-        if (!this.radarMatrix) this.radarMatrix = { updated: this._falconScores?.updated || '', data: {} };
-        if (!this.radarMatrix.data) this.radarMatrix.data = {};
-        this.radarMatrix.data.falcon = picks;
     },
 
     // ===== 📚 朱家泓五大選股法 modal =====
@@ -21740,15 +21647,11 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 ? `法人連買 ${sig.instStreak || 0} 天、近10日買超 ${sig.instDays || 0}/10 天${sig.isLayup ? '(⭐已達送分題條件)' : ''}`
                 : '計算中';
 
-            // 🦅 獵鷹建倉分(全市場每股 0-100 空手建倉吸引力,融合微觀+全球宏觀煞車,JS 已預算)
-            const _falcon = this._falconOf(sym);
-            const _falconLine = _falcon
-                ? `${_falcon.score}/100 ${_falcon.label}${_falcon.factors?.length ? ` · 因子:${_falcon.factors.slice(0, 4).join('/')}` : ''}${(this._falconScores?.macro_lines || []).length ? ` · 全球煞車:${this._falconScores.macro_lines.join('/')}` : ''}`
-                : '無資料(此股不在獵鷹評分範圍)';
+            // 🦅 V39.2 獵鷹建倉分已連根拔除,不再餵首席 AI
             // V27.5 — 首席當總指揮:再餵「綜合操作評分卡結論」+「法人反轉/投信做帳卡」(原本沒餵 → 各卡矛盾根源)
             const _ms = this._lastMasterScore;
             const _masterLine = (_ms && _ms.score != null)
-                ? `${_ms.score}/100 ${_ms.verdict}(6 因子加權:獵鷹/法人反轉/投信做帳/注意股/景氣/越關大尾)`
+                ? `${_ms.score}/100 ${_ms.verdict}(加權:法人反轉/投信做帳/注意股/景氣/越關大尾)`
                 : '計算中(此股因子不足)';
             const _ir = this._lastInstSignal;
             const _instRevLine = (_ir && (_ir.fiReverse || _ir.dressUp))
@@ -21858,8 +21761,7 @@ ${_chuPosPlan}
 - 🧟 群魔亂舞漲停家數：${junkLine}
 - 🔥 大盤板塊輪動：${usMask(sectorRotationLine)}
 - 🎯 系統量化燈號（traffic_light 必須與此一致）：${sigLine}
-- 🦅 獵鷹建倉分（全球宏觀融合空手建倉吸引力,0-100,作為 traffic_light 參考之一）：${_falconLine}
-- 📊 綜合操作評分卡結論（6 因子加權,你是總指揮,traffic_light 須與此同向；不同必說明為何）：${_masterLine}
+- 📊 綜合操作評分卡結論（多因子加權,你是總指揮,traffic_light 須與此同向；不同必說明為何）：${_masterLine}
 - 🏛️ 法人反轉/投信做帳卡：${_instRevLine}
 - 📈 法人買盤動能：${_instStreakLine}
 - 💎 本益比 PE：${_peLabel}${_isLowPE ? '（低 PE 區,符合保護傘條件）' : ''}
@@ -21867,9 +21769,9 @@ ${_chuPosPlan}
 - ${newsLine}
 
 ━━━━━━━━━━━━━━━━━━━━
-🎖️ 你是「總指揮」— 上方的系統量化燈號 / 綜合操作評分 / 獵鷹分 / 多空計分 / 法人反轉 都是你的幕僚情報,你要整合成「單一一致」的最終結論(使用者只看你這一份,不該再去比對各卡)：
+🎖️ 你是「總指揮」— 上方的系統量化燈號 / 綜合操作評分 / 多空計分 / 法人反轉 都是你的幕僚情報,你要整合成「單一一致」的最終結論(使用者只看你這一份,不該再去比對各卡)：
 1. traffic_light **必須與「系統量化燈號」+「綜合操作評分」同方向**(都偏多→🔴可以買;都偏空→🟢不能買;明顯分歧才→🟡觀望)。
-2. 幕僚彼此衝突時,裁決優先序:**系統量化燈號 > 綜合操作評分 > 獵鷹分 > 籌碼/法人**;你做最終拍板,不要含糊。
+2. 幕僚彼此衝突時,裁決優先序:**系統量化燈號 > 綜合操作評分 > 籌碼/法人**;你做最終拍板,不要含糊。
 3. detail_action 的【📊 大盤與籌碼全景】**第一句必須先給整合結論**,格式範例:「綜合系統燈號🔴、評分 78、獵鷹 82 → 我的結論是【可以買】,因為三大訊號一致偏多」;若有分歧也要說「我以系統燈號為準,所以…」。讓使用者一眼知道聽你的、不再迷惘。
 
 ━━━━━━━━━━━━━━━━━━━━
