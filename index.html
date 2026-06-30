@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V37.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3234,6 +3234,7 @@ const app = {
         (this._detectStarPatterns?.(kdata) || []).forEach(s => push.push(s));                                  // 夜星/晨星(轉折最強)
         (this._detect2BarReversal?.(kdata) || []).forEach(s => { if (/吞噬/.test(s.title)) push.push(s); });   // 長黑/長紅吞噬=主力出貨/進貨
         (this._detectBoxBreakout?.(kdata) || []).forEach(s => push.push(s));                                   // K線橫盤突破/跌破=進出場
+        (this._detectChuLongEntry?.(kdata) || []).forEach(s => { if (/做多買點/.test(s.title)) push.push(s); }); // ⭐ V37.0 朱式等做多買點(回後站5MA)
         (this._detectVolumeSignals?.(kdata) || []).forEach(s => { if (/出貨量|攻擊量|換手量/.test(s.title)) push.push(s); });
         for (const s of push) {
             if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
@@ -11251,6 +11252,45 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V37.0 — 朱家泓「等做多」買點(六字口訣:頭頭高+底底高 → 回後沒破前低 + 今日站上5MA = 進場):
+    //   純公式自含波段轉折判斷,不依賴 _chu。回偏多訊號(剛站上)或中性提示(多頭但追高)。
+    _detectChuLongEntry(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 30) return out;
+        const n = data.length, last = n - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const ma = (k, end) => { const s = data.slice(end - k + 1, end + 1); return s.length ? s.reduce((a, b) => a + C(b), 0) / s.length : null; };
+        const ma5 = ma(5, last), ma5y = ma(5, last - 1);
+        if (!ma5 || !ma5y) return out;
+        const pC = C(data[last]), yC = C(data[last - 1]);
+        // 波段轉折(±8 收盤 fractal,掃近 120 日)→ 頭頭高 / 底底高
+        const SW = 8, from = Math.max(0, n - 120), peaks = [], troughs = [];
+        for (let i = from + SW; i <= last - SW; i++) {
+            const w = data.slice(i - SW, i + SW + 1), mx = Math.max(...w.map(C)), mn = Math.min(...w.map(C));
+            if (C(data[i]) === mx) peaks.push({ idx: i, v: C(data[i]) });
+            if (C(data[i]) === mn) troughs.push({ idx: i, v: C(data[i]) });
+        }
+        if (peaks.length < 2 || troughs.length < 2) return out;
+        const peakUp = peaks[peaks.length - 1].v > peaks[peaks.length - 2].v;
+        const troughUp = troughs[troughs.length - 1].v > troughs[troughs.length - 2].v;
+        const lastTrough = troughs[troughs.length - 1].v;   // 最近前低(沒破它才維持底底高)
+        if (!(peakUp && troughUp)) return out;   // 非波段多頭 → 朱:不可做多
+        const noBreakLow = pC > lastTrough && L(data[last]) > lastTrough * 0.99;   // 沒破前低
+        const red = pC > O(data[last]);
+        const justReclaim = yC < ma5y && pC >= ma5;   // 昨在5MA下、今收站上 = 剛站上
+        const aboveMa5 = pC >= ma5;
+        const high60 = Math.max(...data.slice(-60).map(b => +((b?.high ?? b?.h) || 0)));
+        const chasing = high60 > 0 && pC >= high60 * 0.97;   // 已近波段高 = 追高區
+        if (justReclaim && noBreakLow && red) {
+            out.push({ tone: 'bull', title: '朱式做多買點', val: ma5, msg: `波段多頭(頭頭高+底底高)+ 回後沒破前低 ${lastTrough.toFixed(2)} + 今日紅K站上5日線 ${ma5.toFixed(2)} = 朱家泓「等做多」進場訊號;買進設停損:跌破5日線或前低就走。` });
+        } else if (aboveMa5 && noBreakLow && chasing) {
+            out.push({ tone: 'flat', title: '多頭但追高', val: ma5, msg: `波段多頭但已近波段高點(追高區)= 朱:買低不追高,別追;等回檔不破前低 ${lastTrough.toFixed(2)} 再站上5日線才是買點。` });
+        } else if (!aboveMa5 && noBreakLow) {
+            out.push({ tone: 'flat', title: '多頭回檔等買點', val: ma5, msg: `波段多頭回檔中、暫未破前低 ${lastTrough.toFixed(2)};鎖股等待 → 待紅K站回5日線 ${ma5.toFixed(2)} 且不破前低即「等做多」買點。` });
+        }
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -11294,6 +11334,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
         // ⭐ V36.1 — 三根 K棒 夜星/晨星轉折(最重要的反轉訊號,置頂)
         try { sigs.unshift(...this._detectStarPatterns(data), ...this._detect2BarReversal(data), ...this._detectBoxBreakout(data)); } catch (_) {}
+        try { sigs.unshift(...this._detectChuLongEntry(data)); } catch (_) {}   // ⭐ V37.0 朱式等做多買點(置頂)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -11322,8 +11363,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectStarPatterns(data)); } catch (_) {}
         try { sigs.push(...this._detect2BarReversal(data)); } catch (_) {}
         try { sigs.push(...this._detectBoxBreakout(data)); } catch (_) {}
+        try { sigs.push(...this._detectChuLongEntry(data)); } catch (_) {}   // ⭐ V37.0 朱式等做多買點
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
-        const weight = t => /夜星|晨星|孤島|群星/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破/.test(t) ? 2 : 1);
+        const weight = t => /夜星|晨星|孤島|群星|做多買點/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破/.test(t) ? 2 : 1);
 
         let bull = 0, bear = 0; const goodR = [], badR = [];
         for (const s of sigs) {
