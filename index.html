@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V37.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V37.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3236,6 +3236,7 @@ const app = {
         (this._detectBoxBreakout?.(kdata) || []).forEach(s => push.push(s));                                   // K線橫盤突破/跌破=進出場
         (this._detectChuLongEntry?.(kdata) || []).forEach(s => { if (/做多買點/.test(s.title)) push.push(s); }); // ⭐ V37.0 朱式等做多買點(回後站5MA)
         (this._detectChuOverheat?.(kdata) || []).forEach(s => { if (/停利|爆量隔天|過熱/.test(s.title)) push.push(s); }); // ⭐ V37.2 多頭過熱停利(持倉者)
+        (this._detectChuShortTrend?.(kdata) || []).forEach(s => { if (/轉多訊號|急跌爆量/.test(s.title)) push.push(s); }); // ⭐ V37.3 空頭轉多(抄底)/急跌爆量
         (this._detectVolumeSignals?.(kdata) || []).forEach(s => { if (/出貨量|攻擊量|換手量/.test(s.title)) push.push(s); });
         for (const s of push) {
             if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
@@ -11335,6 +11336,54 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V37.3 — 朱家泓「空頭」辨別(多頭鏡像):頭頭低+底底低+月線下 = 空頭。
+    //   對做多者:① 別接刀警示 ② 空頭轉多(抄底)訊號;對做空者:高勝率空點。純公式。
+    _detectChuShortTrend(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 30) return out;
+        const n = data.length, last = n - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const ma = (k, end) => { const s = data.slice(end - k + 1, end + 1); return s.length ? s.reduce((a, b) => a + C(b), 0) / s.length : null; };
+        const ma5 = ma(5, last), ma5y = ma(5, last - 1), ma20 = ma(20, last);
+        if (!ma5 || !ma5y) return out;
+        const pC = C(data[last]), yC = C(data[last - 1]);
+        const SW = 8, from = Math.max(0, n - 120), peaks = [], troughs = [];
+        for (let i = from + SW; i <= last - SW; i++) {
+            const w = data.slice(i - SW, i + SW + 1), mx = Math.max(...w.map(C)), mn = Math.min(...w.map(C));
+            if (C(data[i]) === mx) peaks.push(C(data[i]));
+            if (C(data[i]) === mn) troughs.push(C(data[i]));
+        }
+        if (peaks.length < 2 || troughs.length < 2) return out;
+        const peakDown = peaks[peaks.length - 1] < peaks[peaks.length - 2];
+        const troughDown = troughs[troughs.length - 1] < troughs[troughs.length - 2];
+        const lastPeak = peaks[peaks.length - 1];
+        if (!(peakDown && troughDown)) return out;   // 非空頭
+        const belowMa20 = ma20 ? pC < ma20 : true;
+        const base = data.slice(last - 6, last - 1).map(V).reduce((a, x) => a + x, 0) / 5;
+        const todayBody = O(data[last]) > 0 ? (pC - O(data[last])) / O(data[last]) * 100 : 0;
+        // ① 急跌爆量 → 易強反彈/主力進場(優先,給做多者抄底前哨)
+        if (todayBody <= -4 && base > 0 && V(data[last]) >= base * 1.8) {
+            out.push({ tone: 'warn', title: '空頭急跌爆量', val: ma5, msg: `空頭末段長黑(${todayBody.toFixed(1)}%)+ 爆量(${(V(data[last]) / base).toFixed(1)}×)→ 朱:急跌爆量易引強反彈/主力進場;做空者準備回補,做多者等紅K站5日線可搶反彈(僅反彈,待底底高才轉多)。` });
+            return out;
+        }
+        // ② 反彈突破月線 + 過前高 = 空頭轉多(抄底進場訊號)
+        if (ma20 && pC > ma20 && pC > lastPeak) {
+            out.push({ tone: 'bull', title: '空頭轉多訊號', val: ma20, msg: `反彈站上月線 ${ma20.toFixed(2)} + 過前高 ${lastPeak.toFixed(2)} → 朱:空頭轉強、頭頭低被破,空單回補;後續不破前低成底底高即翻多,留意做多進場。` });
+            return out;
+        }
+        // ③ 空頭順勢:反彈跌破5MA = 做空點(高勝率分級);否則別接刀警示
+        const justBreak5 = yC >= ma5y && pC < ma5, black = pC < O(data[last]), brokeYLow = pC < L(data[last - 1]);
+        if (justBreak5 && black && belowMa20) {
+            const hi = todayBody <= -2 && brokeYLow;
+            if (hi) out.push({ tone: 'bear', title: '高勝率做空點', val: ma5, msg: `空頭(頭頭低底底低)+ 月線下,反彈後黑K跌 ${Math.abs(todayBody).toFixed(1)}% 跌破5日線 ${ma5.toFixed(2)} 且破昨低 ${L(data[last - 1]).toFixed(2)} = 朱式高勝率空點;做多者:這是下跌續勢,別接刀。` });
+            else out.push({ tone: 'bear', title: '空頭反彈空點', val: ma5, msg: `空頭反彈後跌破5日線 ${ma5.toFixed(2)} = 順勢空點(力道未滿);做多者:仍是空頭,別搶反彈接刀。` });
+        } else {
+            out.push({ tone: 'bear', title: '空頭趨勢(別接刀)', val: ma5, msg: `頭頭低 + 底底低${belowMa20 ? ' + 月線下彎' : ''} = 空頭趨勢;朱:不是多頭就別做多、別摸底接刀,等「急跌爆量」或「突破月線過前高」的轉多訊號再進場。` });
+        }
+        return out;
+    },
+
     // ⭐ V37.1 — 朱家泓「盤整」辨別(第三種趨勢):非頭頭高底底高、非頭頭低底底低 = 盤整。
     //   畫上頸線(壓力)/下頸線(支撐),提醒「箱內別做、突破做多、跌破做空」+ 三角收斂偵測。純公式。
     _detectConsolidation(data) {
@@ -11415,6 +11464,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // ⭐ V36.1 — 三根 K棒 夜星/晨星轉折(最重要的反轉訊號,置頂)
         try { sigs.unshift(...this._detectStarPatterns(data), ...this._detect2BarReversal(data), ...this._detectBoxBreakout(data)); } catch (_) {}
         try { sigs.unshift(...this._detectChuLongEntry(data)); } catch (_) {}   // ⭐ V37.0/37.2 朱式等做多買點(置頂,高勝率分級)
+        try { sigs.unshift(...this._detectChuShortTrend(data)); } catch (_) {}  // ⭐ V37.3 空頭辨別/別接刀/轉多抄底(置頂)
         try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}     // ⭐ V37.1 盤整觀望/三角收斂
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}       // ⭐ V37.2 多頭過熱停利
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
@@ -11446,10 +11496,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detect2BarReversal(data)); } catch (_) {}
         try { sigs.push(...this._detectBoxBreakout(data)); } catch (_) {}
         try { sigs.push(...this._detectChuLongEntry(data)); } catch (_) {}   // ⭐ V37.0 朱式等做多買點
+        try { sigs.push(...this._detectChuShortTrend(data)); } catch (_) {}  // ⭐ V37.3 空頭(別接刀/轉多)
         try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}  // ⭐ V37.1 盤整觀望(中性,推 verdict 往觀望)
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}    // ⭐ V37.2 過熱停利(warn,壓低進場分)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
-        const weight = t => /夜星|晨星|孤島|群星|做多買點/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破/.test(t) ? 2 : 1);
+        const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
         let bull = 0, bear = 0; const goodR = [], badR = [];
         for (const s of sigs) {
