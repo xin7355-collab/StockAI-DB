@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -20540,6 +20540,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const posCost = (_costStr && !isNaN(parseFloat(_costStr))) ? parseFloat(_costStr) : null;
         const posPnl = (posCost && posCost > 0) ? +(((pC - posCost) / posCost) * 100).toFixed(2) : null;
 
+        // 📐 V38.5 注入朱家泓/林穎 K棒型態偵測器(純公式,與進場體檢/K棒戰法卡同源)→ AI 報告依此分析
+        const kbarPatterns = [];
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectVolumeSignals'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
+        const patternsTxt = kbarPatterns.length
+            ? kbarPatterns.slice(0, 16).map(s => `${s.tone === 'bull' ? '🔺偏多' : s.tone === 'bear' ? '🔻偏空' : s.tone === 'warn' ? '⚠️留意' : '⚪中性'}「${s.title}」`).join('、')
+            : '無明顯型態訊號';
+
         const prompt = `# Role
 你是精通台灣股市「K線之神朱家泓」技術體系的 Senior Technical Quantitative Analyst，擅長以「趨勢、均線、K線、成交量」四要素，做極度理性、機械化、非小說式的盤後個股線型結構診斷。
 
@@ -20547,6 +20554,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 1. 嚴禁口語投資客白話（如「各位投資朋友」「大黑K空襲太慘」）。高度濃縮，用數據結論 + 技術狀態 + 短語行動點。
 2. 嚴格「日週對照」：週線為保護傘（定波段大方向），日線為精準狙擊點。
 3. 🛑 下方【系統精算數據】的所有數字皆已由程式算好，你「禁止重算、禁止竄改任何數字」，只負責：判定 enum 分類、挑選符合的訊號、寫精煉文字。資料不足或位階不符 → 判「中性觀察」，不准盲目摸底凹單。
+4. 📐 signal_detector 的多空訊號「優先採用」下方【朱家泓/林穎 K棒型態偵測】已偵測到的型態(夜星/晨星/吞噬/三角收斂/弱中透強/長上下影/做多買點/底部頸線突破/過熱/乖離/換手量等,皆純公式算好的事實),別自行另編型態。把偵測到的型態用朱家泓/林穎角度解讀其多空意義。
 
 # 系統精算數據（${name} ${sym}，已算好，直接引用）
 - 現價/漲跌：收盤 ${pC}（今開${pO} 高${pH} 低${pL}）
@@ -20561,6 +20569,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 - W底偵測：${wBottom.message}
 - 發動棒防守：${launchBar ? `最近強勢長紅 ${launchBar.date}，1/2價 ${launchBar.half}、最低 ${launchBar.low}` : '近20日無強勢發動長紅'}
 - 三盞明燈訊號：${sigCount}/3（${sigLabel}）
+- 📐 朱家泓/林穎 K棒型態偵測(純公式已偵測,務必納入判讀)：${patternsTxt}
 - 你的部位：${posCost ? `成本 ${posCost}、損益 ${posPnl}%` : '空手（未填成本）'}
 
 # 輸出（嚴格 JSON，禁任何 Markdown 與前後文字，禁 \`\`\`json）
