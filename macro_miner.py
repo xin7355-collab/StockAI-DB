@@ -347,6 +347,57 @@ def fetch_foreign_spot_net():
         return None, None, str(e)[:100]
 
 
+def fetch_three_inst_net():
+    """🌅 V36.8 — TWSE BFI82U 三大法人:投信 / 自營商 / 三大法人合計買賣超(億元)。
+    沿用 fetch_foreign_spot_net 同一端點(已實證可達),只是改抓投信/自營列。
+    回 {trust, dealer, total} 億元(抓不到的鍵為 None)+ date + error。
+    """
+    try:
+        import re
+        url = "https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&response=json"
+        r = http.get(url, headers=HEADERS, timeout=10)
+        if r.status_code != 200:
+            return {}, None, f"HTTP {r.status_code}"
+        j = r.json()
+        data = j.get("data") or []
+        date_str = j.get("date") or datetime.now().strftime("%Y%m%d")
+        if not data:
+            return {}, date_str, "BFI82U 回 0 列"
+        fields = j.get("fields") or []
+        diff_idx = None
+        for i, f in enumerate(fields):
+            f = (f or "").replace(" ", "")
+            if "差額" in f or "買賣超" in f:
+                diff_idx = i
+                break
+        if diff_idx is None:
+            diff_idx = len(data[0]) - 1 if data and len(data[0]) > 1 else None
+        trust_y, dealer_y, total_y = 0, 0, None
+        trust_hit, dealer_hit = False, False
+        for row in data:
+            name = (row[0] or "").replace(" ", "")
+            try:
+                val = int(str(row[diff_idx]).replace(",", ""))
+            except (ValueError, IndexError, TypeError):
+                continue
+            if "投信" in name:
+                trust_y += val; trust_hit = True
+            elif "自營" in name:   # 自營商(自行買賣)+(避險)兩列都累加
+                dealer_y += val; dealer_hit = True
+            elif "合計" in name or "三大法人" in name:
+                total_y = val
+        out = {
+            "trust":  round(trust_y / 1e8, 2) if trust_hit else None,
+            "dealer": round(dealer_y / 1e8, 2) if dealer_hit else None,
+            "total":  round(total_y / 1e8, 2) if total_y is not None else None,
+        }
+        print(f"  [BFI82U 三大法人] 投信={out['trust']} 自營={out['dealer']} 合計={out['total']} 億")
+        return out, date_str, None
+    except Exception as e:
+        print(f"  ⚠️ TWSE 三大法人(投信/自營)失敗: {e}")
+        return {}, None, str(e)[:100]
+
+
 # ════════ TAIFEX 官方 OpenAPI JSON（schema 具名、穩定，取代易碎的 CSV/HTML 爬蟲）════════
 # 本機沙箱無法直連 taifex（Host not in allowlist），只有 GitHub Actions 可達；
 # 故採「多候選端點 + 中/英 key 模糊比對 + 失敗 dump 全部 key」設計，讓 CI log 必能揭露真實 schema。
@@ -1397,6 +1448,13 @@ def main():
     spot, sdate, serr = fetch_foreign_spot_net()
     out["fi_spot_net"], out["fi_spot_date"], out["fi_spot_error"] = spot, sdate, serr
     print(f"     → {spot} 億（{sdate}, err={serr}）")
+
+    # 🌅 V36.8 — 三大法人(投信/自營商/合計)買賣超,供盤前大盤體檢
+    inst3, idate, ierr = fetch_three_inst_net()
+    out["fi_trust_net"]  = inst3.get("trust")
+    out["fi_dealer_net"] = inst3.get("dealer")
+    out["fi_total_net"]  = inst3.get("total")
+    out["fi_three_date"], out["fi_three_error"] = idate, ierr
 
     print("[4/8] 抓取 TAIFEX 外資臺指期淨口數…")
     fut, ferr = fetch_foreign_futures_net()

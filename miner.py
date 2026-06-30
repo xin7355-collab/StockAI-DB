@@ -2193,6 +2193,7 @@ def fetch_us_macro_cache():
     today   = date.today()
     symbols = {'sp500': '^GSPC', 'nasdaq': '^IXIC', 'tsm': 'TSM',
                'dji': '^DJI', 'vix': '^VIX',
+               'asx': 'ASX', 'umc': 'UMC',   # 🌅 V36.8 日月光 ADR / 聯電 ADR(盤前大盤體檢用)
                'sox': '^SOX', 'nvda': 'NVDA', 'aapl': 'AAPL', 'msft': 'MSFT',
                'us02y': '^IRX',     # 13W T-Bill 短債利率（Fed 政策風向）
                'ukoil': 'BZ=F',     # 布蘭特原油期貨
