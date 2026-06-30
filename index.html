@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -15975,12 +15975,21 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 <div class="text-[10px] text-gray-300 leading-relaxed">發動K突破價 ${fmtPrice(b1)} 比現價 ${fmtPrice(pCnow)} 高 ${((b1 - pCnow) / pCnow * 100).toFixed(1)}%(突破後正回檔)。現在追=追高;朱式做法:改等「回測 5MA 企穩」的加碼批次,或股價站回突破點再試單,別在半山腰接。</div>
             </div>`
             : '';
+        // 🐛 V40.9 空頭排列時「突破型做多計畫」是逆勢(依過去發動K排,股已轉空)→ 最上方紅警示,與頂部空頭警告一致,別矛盾
+        const isDowntrend = plan.ma20 != null && plan.ma5 != null && pCnow < plan.ma20 && plan.ma5 < plan.ma20;
+        const trendWarn = isDowntrend
+            ? `<div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2">
+                <div class="text-[10px] font-bold text-red-300 mb-0.5">🚫 此股目前空頭排列,做多計畫=逆勢</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">現價 ${fmtPrice(pCnow)} 跌破月線 ${fmtPrice(plan.ma20)}、5MA &lt; 月線 = 空頭。下方計畫是依「過去發動 K」排的突破做多,股已轉空時逆勢接刀風險高。朱式:<b class="text-red-300">空頭別接刀</b>,等「站回月線 + 底底高」轉多再做多。</div>
+            </div>`
+            : '';
         box.innerHTML = `
             <div class="text-orange-400 font-bold text-sm flex items-center justify-between mb-2">
                 <span>📐 朱老師分批進場計畫</span>
                 ${triggerInfo}
             </div>
             <div class="text-[9px] text-gray-500 mb-1.5">現價 <span class="font-mono text-yellow-300 font-bold">${fmtPrice(pCnow)}</span> ・ 三批為「突破型」進場:試單追突破發動點、加碼順 5MA、回後撿回檔</div>
+            ${trendWarn}
             ${chaseWarn}
             <div class="grid grid-cols-3 gap-2 text-center mb-2">
                 <div class="bg-yellow-900/20 border border-yellow-700/40 rounded px-1 py-1.5">
@@ -15995,8 +16004,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 </div>
                 <div class="bg-purple-900/20 border border-purple-700/40 rounded px-1 py-1.5">
                     <div class="text-[9px] text-purple-300 font-bold">🥉 回後 40%</div>
-                    <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch3?.price)}</div>
-                    ${deltaTxt(plan.batch3?.price)}
+                    <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch3?.ma20Hint)}</div>
+                    <div class="text-[8px] text-purple-300/70 leading-none">回測 20MA 區</div>
+                    ${deltaTxt(plan.batch3?.ma20Hint)}
                 </div>
             </div>
             <button onclick="app._showChuPlanFull()" class="w-full py-2 bg-orange-900/30 hover:bg-orange-900/50 border border-orange-700/50 text-orange-200 text-[11px] font-bold rounded transition-colors">📖 查看完整策略(預算試算 + 停損點 + 鐵律) →</button>`;
