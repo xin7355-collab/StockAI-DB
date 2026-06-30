@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V37.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V37.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11468,6 +11468,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V37.8 — 葛蘭碧「乖離過大」(遛狗理論):股價離月線(20MA)太遠會被拉回。純公式。
+    _detectMaDeviation(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 25) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const ma20 = data.slice(-20).reduce((a, b) => a + C(b), 0) / 20;
+        const pC = C(data[last]);
+        if (!ma20 || !pC) return out;
+        const dev = (pC - ma20) / ma20 * 100;
+        if (dev >= 15) out.push({ tone: 'warn', title: '正乖離過大', val: ma20, msg: `股價離月線 +${dev.toFixed(0)}%(>15%,遛狗理論繩子拉到底)→ 漲多易拉回月線 ${ma20.toFixed(2)} 附近;短多別追高,黑K跌破5日線先停利一趟。` });
+        else if (dev <= -15) out.push({ tone: 'warn', title: '負乖離過大', val: ma20, msg: `股價離月線 ${dev.toFixed(0)}%(<-15%,跌過頭)→ 易彈回月線 ${ma20.toFixed(2)} 附近;搶反彈要等大量紅K站上5日線(僅短彈非轉多,跌破5日線就跑)。` });
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -11516,6 +11531,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}     // ⭐ V37.1 盤整觀望/三角收斂
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}       // ⭐ V37.2 多頭過熱停利
         try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}      // ⭐ V37.6 K棒強弱(弱中透強/強中透弱/長影線)
+        try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}        // ⭐ V37.8 葛蘭碧乖離過大(遛狗理論)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -11549,6 +11565,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}  // ⭐ V37.1 盤整觀望(中性,推 verdict 往觀望)
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}    // ⭐ V37.2 過熱停利(warn,壓低進場分)
         try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}   // ⭐ V37.6 K棒強弱(弱中透強/強中透弱)
+        try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}    // ⭐ V37.8 乖離過大(warn)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
