@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11712,10 +11712,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 else if (c === 'red' && pnlPct >= 0) { hv = '✊ 該抱'; hc = 'red'; ha = `型態偏多且帳上有賺 → 沿 5 日線 ${ma5v.toFixed(2)} 續抱,跌破 5 日線或前低再分批停利。`; }
                 else { hv = '👀 續抱觀察'; hc = 'yellow'; ha = `方向未明 → 設好防線:跌破 5 日線 ${ma5v.toFixed(2)} 或固定停損價 ${slPrice.toFixed(2)}(成本-5%)就先走。`; }
                 const hsc = hc === 'red' ? 'text-red-300' : hc === 'green' ? 'text-green-300' : 'text-yellow-300';
+                // 💼 V38.2 K線戰法防線(朱):守前一日最低點(標股離5日線遠時用此最跟得上)
+                const pYLow = +((data[data.length - 2]?.low ?? data[data.length - 2]?.l) || 0);
+                const isHotStock = ma5v > 0 && pC >= ma5v * 1.12;   // 離5日線>12% = 標股,K線戰法較貼
                 heldHtml = `<div class="bg-[#161b22] border-l-4 border-${hc}-500 border-y border-r border-[#30363d] rounded-r p-2 mt-2">
                     <div class="flex items-center justify-between mb-0.5"><span class="text-[10px] font-bold ${hsc}">💼 你的庫存 ${hv}</span><span class="font-mono text-[10px] ${pnlPct >= 0 ? 'text-red-300' : 'text-green-300'}">${pnlTxt}</span></div>
                     <div class="text-[10px] text-gray-300 leading-relaxed">${ha}</div>
-                    <div class="text-[9px] text-gray-500 mt-1 font-mono">🛡️ 固定停損 ${slPrice.toFixed(2)}(成本-5%) ・ 停利防線 5日線 ${ma5v.toFixed(2)}</div></div>`;
+                    <div class="text-[9px] text-gray-500 mt-1 font-mono leading-relaxed">🛡️ 固定停損 ${slPrice.toFixed(2)}(成本-5%) ・ 停利防線 5日線 ${ma5v.toFixed(2)}${pYLow > 0 ? ` ・ K線戰法守昨低 ${pYLow.toFixed(2)}` : ''}${isHotStock ? '(標股離5日線遠,建議改用K線戰法守昨低)' : ''}</div></div>`;
             }
         } catch (_) {}
         el.className = `w-full rounded-lg p-3 mb-2 border ${bg}`;
