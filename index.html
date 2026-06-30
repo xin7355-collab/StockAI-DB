@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -12765,10 +12765,10 @@ ${lightExplain[queryType]}
             if (hits.length) newsCtx = '\n【近期相關新聞】\n' + hits.map(it => '- ' + (it.title_zh || it.title)).join('\n');
         } catch(_) {}
 
-        // generic(全市場 fallback)無 curated 同業 → 讓 AI 自行點名同業(產業常識)
+        // generic(全市場 fallback)無 curated 同業 → 🐛 V38.8 禁止 AI 自編代號(常配錯:台積電被寫成 1802、環球晶被當封裝廠)
         const peerLine = sector.names
-            ? `【板塊代表股】${sector.names}`
-            : `【同業】請依產業常識自行點名 2-3 檔台股同業(含代號)`;
+            ? `【板塊代表股(只能用這些代號)】${sector.names}`
+            : `【同業】本檔無內建同業清單 → 🛑 禁止杜撰任何股票代號,只描述產業角色(例:上游矽晶圓廠、中游晶圓代工、下游封測),不確定的公司一律不掛代號`;
 
         const prompt = `你是台股產業分析師,用白話文、權證小哥風格(國中生也能懂),分析下方產業板塊。
 
@@ -12793,7 +12793,8 @@ ${peerLine}${newsCtx}
 ▌5. 🎯 一句話總結
 這個產業現在值不值得佈局,給初學者一句白話結論。
 
-🛑 嚴禁編造具體財報數字(營收/EPS),只談產業趨勢與邏輯。`;
+🛑 嚴禁編造具體財報數字(營收/EPS),只談產業趨勢與邏輯。
+🛑 嚴禁杜撰「公司名＋股票代號」配對 — 你很常把代號配錯(台積電是 2330、聯電是 2303、環球晶 6488 是上游「矽晶圓材料」廠不是封裝廠)。除了上方【板塊代表股】提供的代號外,一律「只講產業角色不掛代號」,不確定就不要寫數字代號。`;
 
         try {
             // 🎯 產業趨勢報告:OpenRouter R1 深度推理優先,撞 429 fallback Gemini(跳過 Groq)
@@ -13146,13 +13147,16 @@ ${peerLine}${newsCtx}
                 const prevN = epsRows.slice(-half * 2, -half).reduce((s, r) => s + (r.value || 0), 0);
                 if (prevN > 0) {
                     const epsGrowth = (lastN - prevN) / Math.abs(prevN) * 100;
-                    if (pe != null && pe > 0 && epsGrowth > 0) {
+                    if (epsGrowth <= 0) {
+                        pegLabel = '⚠️ 衰退'; pegColor = 'text-amber-400';
+                    } else if (epsGrowth < 2) {
+                        // 🐛 V38.8 成長近乎停滯(<2%):PEG=PE÷成長率 會爆衝成 50~100 的失真巨數(如 56.45/0.62=91),不顯數字改顯停滯
+                        pegLabel = '⚠️ 成長停滯'; pegColor = 'text-amber-400';
+                    } else if (pe != null && pe > 0) {
                         peg = pe / epsGrowth;
                         if (peg < 1) { pegLabel = '🟢 便宜'; pegColor = 'text-green-400'; }
                         else if (peg < 2) { pegLabel = '🟡 合理'; pegColor = 'text-yellow-400'; }
                         else { pegLabel = '🔴 昂貴'; pegColor = 'text-red-400'; }
-                    } else if (epsGrowth <= 0) {
-                        pegLabel = '⚠️ 衰退'; pegColor = 'text-amber-400';
                     }
                 }
             }
@@ -13611,6 +13615,10 @@ ${peerLine}${newsCtx}
             const peStr    = pe          != null ? `${pe.toFixed(1)}x`          : '無資料';
             const yieldStr = yieldRate   != null ? `${yieldRate.toFixed(2)}%`   : '無資料';
             const paStr    = payoutRatio != null ? `${payoutRatio.toFixed(1)}%` : '無資料';
+            // 🐛 V38.8 配息率>100% 是吃老本警訊,別讓 AI 誤判成「配息很大方」
+            const payoutNote = (payoutRatio != null && payoutRatio > 100)
+                ? `(⚠️ 超過 100%:配出去的比賺的還多,在吃老本/動用過去存的獲利,屬警訊,不可說「配息大方很好」)`
+                : (payoutRatio != null && payoutRatio === 0) ? `(今年未配息)` : '';
             const divStr   = totalDiv    != null ? `${totalDiv.toFixed(2)} 元`  : '無資料';
             // 從首頁戰情室 DOM 拿全球宏觀（無資料時用「--」，不額外發 fetch）
             const _g = id => document.getElementById(id + '_main')?.innerText?.trim() || document.getElementById(id)?.innerText?.trim() || '--';
@@ -13665,7 +13673,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 【財報數據(只能用這些,沒有的不准編)】
 - EPS(最新季):${epsStr} ｜ 營收 YoY:${yoyStr}
 - 本益比 PE:${peStr} ｜ 殖利率:${yieldStr}
-- 毛利率趨勢:${gmTrendStr || '無資料'} ｜ 股利發配率:${paStr}
+- 毛利率趨勢:${gmTrendStr || '無資料'} ｜ 股利發配率:${paStr}${payoutNote}
 - 最新每股股利:${divStr}
 
 ━━━━━━━━━━━━━━━━━━━━
