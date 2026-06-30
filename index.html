@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V37.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V37.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11289,7 +11289,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const retrace = upLeg > 0 ? (recentPeak - lastTrough) / upLeg : 0;
         const pullTag = retrace > 0 ? (retrace < 0.5 ? ` ・強勢回檔(回${(retrace * 100).toFixed(0)}%<½,續漲機率高)` : ` ・弱勢回檔(回${(retrace * 100).toFixed(0)}%>½,偏弱、優先選回檔更小的股)`) : '';
         // ⭐ V37.5 季線(60MA)壓力(朱:上月線後季線是3月套牢解套壓力,到季線不漲先短獲利)
-        const ma60 = ma(60, last), ma60p5 = ma(60, last - 5);
+        // 🐛 V37.9 修:季線須有滿 60 根才準,資料 <60 根時 ma(60,...) 會少算 → 誤報季線壓力
+        const ma60 = data.length >= 60 ? ma(60, last) : null, ma60p5 = data.length >= 65 ? ma(60, last - 5) : null;
         const seasonPress = (ma60 && pC < ma60 && pC >= ma60 * 0.97 && ma60p5 && ma60 <= ma60p5) ? ` ・⚠️逼近下彎季線 ${ma60.toFixed(2)}(3月套牢解套壓力),不過就短線先獲利` : '';
         if (justReclaim && noBreakLow && red) {
             // ⭐ V37.2 高勝率三條件(朱):① 紅K實體≥2% ② 量增 ③ 收盤過昨日最高;再加站月線
@@ -11483,6 +11484,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V37.9 — 朱家泓「淘汰選股法」:圖形雜亂(月線下+黑K過多)= 別選別浪費時間。純公式。
+    _detectAvoidFlags(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 20) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0);
+        const ma20 = data.slice(-20).reduce((a, b) => a + C(b), 0) / 20;
+        const win = data.slice(-15);
+        let black = 0; win.forEach(b => { if (C(b) < O(b)) black++; });
+        const blackRatio = black / win.length;
+        if (ma20 && C(data[last]) < ma20 && blackRatio >= 0.6) {
+            out.push({ tone: 'bear', title: '圖形雜亂(淘汰)', val: ma20, msg: `近15根 ${black} 根黑K(${(blackRatio * 100).toFixed(0)}%)+ 收盤在月線下 → 朱式淘汰選股法:黑K多、弱勢雜亂的股別選,把資金挪去乾淨的多頭股,別在爛股浪費時間與資金。` });
+        }
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -11532,6 +11549,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}       // ⭐ V37.2 多頭過熱停利
         try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}      // ⭐ V37.6 K棒強弱(弱中透強/強中透弱/長影線)
         try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}        // ⭐ V37.8 葛蘭碧乖離過大(遛狗理論)
+        try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}         // ⭐ V37.9 淘汰法(圖形雜亂)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -11566,6 +11584,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}    // ⭐ V37.2 過熱停利(warn,壓低進場分)
         try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}   // ⭐ V37.6 K棒強弱(弱中透強/強中透弱)
         try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}    // ⭐ V37.8 乖離過大(warn)
+        try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}     // ⭐ V37.9 淘汰法(圖形雜亂,bear)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
