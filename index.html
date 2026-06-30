@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1029,8 +1029,20 @@
                         <div id="costPnlBar" class="hidden w-full mt-2 space-y-1.5"></div>
                         </div>
 
-                        <!-- 👉 右戰區 (lg:col-span-5)：動態停利停損 / 法人共識 / 永豐智慧單 -->
+                        <!-- 👉 右戰區 (lg:col-span-5)：V38.9 合併重疊卡降噪 — 進場總評 / 價位作戰圖 / 操作SOP -->
                         <div class="w-full lg:col-span-5 flex flex-col gap-3 mt-4 lg:mt-0">
+
+                        <!-- 🩺 進場總評:以「進場體檢」為主卡(已彙整 K棒/量能/均線所有純公式訊號 + 交叉參照綜合評分);朱老師四關卡併入下方收合詳情 -->
+                        <div id="entryCheckup" class="hidden w-full rounded-lg p-3 mb-2"></div>
+                        <div class="w-full -mt-1">
+                            <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('entryDetailBody', this); app.vibrate(30);">📌 朱老師四關卡詳情（大盤/週K/位階/進場訊號） <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
+                            <div id="entryDetailBody" class="hidden flex flex-col gap-2 mt-1">
+                                <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
+                                <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
+                            </div>
+                        </div>
+
+                        <!-- 🎯 價位作戰圖:以「動態停利停損線」為主卡;明日均線保衛/突破棒/K棒戰法併入下方收合「更多守價」 -->
                         <div id="precisionPricesBox" class="w-full mt-4 lg:mt-0 bg-[#010409] border border-[#30363d] rounded p-3 grid grid-cols-3 gap-1 text-center shadow-inner relative">
                             <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1c2128] px-3 py-0.5 text-xs text-blue-400 font-bold tracking-widest border border-[#30363d] rounded-full whitespace-nowrap">動態停利停損線</div>
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt1Label">🎯 第一目標</span><span class="text-[#f87171] font-mono font-black text-lg lg:text-xl" id="tgt1Price">--</span></div>
@@ -1038,14 +1050,19 @@
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg lg:text-xl" id="defPrice">--</span></div>
                             <div id="tpSlReason" class="col-span-3 hidden text-[10px] text-amber-400/90 mt-1.5 leading-snug px-1 text-left"></div>
                         </div>
-                        <!-- 📐 V31.7 明日均線保衛價(扣抵):盤中跌破即在均線正式下彎前 1-2 天示警 -->
-                        <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
-                        <!-- 🩺 V36.6 進場體檢:把 K棒戰法/量能/均線所有純公式訊號彙總成一個紅綠燈總結(初學者用) -->
-                        <div id="entryCheckup" class="hidden w-full rounded-lg p-3 mb-2"></div>
-                        <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
-                        <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
-                        <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
-                        <div id="kbarHalfTactics" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3 mt-2"></div>
+                        <div class="w-full">
+                            <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('priceDetailBody', this); app.vibrate(30);">📐 更多守價（明日均線保衛・突破棒・K棒戰法） <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
+                            <div id="priceDetailBody" class="hidden flex flex-col gap-2 mt-1">
+                                <!-- 📐 V31.7 明日均線保衛價(扣抵):盤中跌破即在均線正式下彎前 1-2 天示警 -->
+                                <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                                <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
+                                <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                                <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
+                                <div id="kbarHalfTactics" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3 mt-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- 💡 法人共識目標價(原已摺疊) -->
                         <div class="w-full mt-2">
                             <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('institutionTargetBody', this); app.vibrate(30);">💡 法人共識目標價 <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
                             <div id="institutionTargetBody" class="hidden mt-1">
@@ -1053,14 +1070,10 @@
                             </div>
                         </div>
 
-                        <!-- V19.2 — 永豐智慧單卡已合併到「朱老師離場 SOP」(內容重複),
-                                     朱老師理論為主 + 永豐 App 操作步驟附在底下;
-                                     舊 sinopacOrderCard div 移除 -->
-                        <!-- 已刪除：tomorrowScriptText、smartOrderInstruction、sinopacOrderCard -->
+                        <!-- V19.2 — 永豐智慧單卡已合併到「朱老師離場 SOP」(內容重複) -->
                         <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;預估量 + 位階 + 完美買點 + 高檔回吐)-->
                         <div id="chuIntradayCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
-                        <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
-                        <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
+                        <!-- 🎯 操作 SOP(實際下單依據,常駐):分批進場計畫 + 離場 -->
                         <!-- 📐 V14.11 朱老師分批進場計畫器(3-3-4 三批:試單/5MA加碼/回後買上漲)-->
                         <div id="chuPositionPlanCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
                         <!-- 📌 朱老師離場 SOP(停損 A/B + 停利短/中長)-->
