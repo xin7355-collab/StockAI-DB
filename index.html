@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V37.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V37.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11458,6 +11458,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 長下影線(低檔):殺低被買回 = 買盤支撐
         if (range > 0 && body > 0 && lower >= body * 1.5 && lower >= range * 0.4 && isLow)
             out.push({ tone: 'bull', title: '長下影線(支撐)', val: l, msg: `長下影線(盤中殺到 ${l.toFixed(2)} 被買回收 ${c.toFixed(2)})→ 低檔有買盤承接,留意止跌;明日紅K站上更確認。` });
+        // ⭐ V37.7 變盤線(十字/紡錘=小實體,多空勢均力敵):高檔=反轉警示、低檔=止跌前兆
+        const bodyPctO = o > 0 ? Math.abs(c - o) / o * 100 : 99;
+        const isDoji = range > 0 && body <= range * 0.32 && bodyPctO < 1.6;
+        if (isDoji && upper < range * 0.85 && lower < range * 0.85) {   // 排除已被長影線歸類的(墓碑/T字)
+            if (isHigh) out.push({ tone: 'warn', title: '高檔變盤線', val: c, msg: `高檔出現小實體變盤線(十字/紡錘,多空勢均力敵)→ 漲勢受阻、變盤警示;看次日:開低收黑即反轉,多單留意。變盤線低點 ${l.toFixed(2)} 被跌破易啟動一波下跌。` });
+            else if (isLow) out.push({ tone: 'warn', title: '低檔變盤線', val: c, msg: `低檔出現小實體變盤線(多空勢均力敵)→ 跌勢受阻、止跌前兆;看次日:開高收紅即轉強反彈(搭配爆量/KD向上勝率更高)。` });
+        }
         return out;
     },
 
