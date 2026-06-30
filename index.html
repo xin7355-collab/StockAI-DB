@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -5036,6 +5036,16 @@ ${list}
                 });
             }, 120);
         }
+    },
+
+    // 🐛 V40.3 ECharts 容器在 tab 隱藏/寬度未定時 init/setOption → 柱子擠成左邊一條(月營收圖實測)。
+    //   ResizeObserver 在容器「拿到真實寬度」那刻自動 resize,涵蓋 tab 切換/旋轉/延遲 layout 所有時機,一勞永逸。
+    _observeChartResize(el) {
+        if (!el || el._chartRO || typeof ResizeObserver === 'undefined' || typeof echarts === 'undefined') return;
+        el._chartRO = new ResizeObserver(() => {
+            try { const inst = echarts.getInstanceByDom(el); if (inst && el.clientWidth > 0) inst.resize(); } catch (_) {}
+        });
+        el._chartRO.observe(el);
     },
 
     _syncMarketTab() {
@@ -13598,6 +13608,7 @@ ${peerLine}${newsCtx}
         if (epsTrendEl) {
             if (epsSlice.length > 0) {
                 const epsChart = echarts.getInstanceByDom(epsTrendEl) || echarts.init(epsTrendEl, 'dark');
+                this._observeChartResize(epsTrendEl);
                 epsChart.setOption({
                     backgroundColor: 'transparent',
                     grid: { left: 38, right: 6, top: 14, bottom: 22 },
@@ -13687,6 +13698,7 @@ ${peerLine}${newsCtx}
                 const hasPrice = priceArr.some(p => p !== null);
                 const xLabels = rvSlice.map(r => `${String(r.revenue_year).slice(2)}/${String(r.revenue_month).padStart(2,'0')}`);
                 const revChart = echarts.getInstanceByDom(rvTrendEl) || echarts.init(rvTrendEl, 'dark');
+                this._observeChartResize(rvTrendEl);
                 revChart.setOption({
                     backgroundColor: 'transparent',
                     grid: { left: 48, right: hasPrice ? 46 : 6, top: 18, bottom: 28 },
