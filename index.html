@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -2658,7 +2658,7 @@ const app = {
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
-        '盤前大盤體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🟢 開高偏多 / 🟡 中性震盪 / 🔴 開低偏空。\n\n🔧 目前「採集中」的(下次採礦補):投信/自營商買賣超、大盤融資券餘額、日月光/聯電 ADR、台指期夜盤源修復。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
+        '盤前大盤體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🟢 開高偏多 / 🟡 中性震盪 / 🔴 開低偏空。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源修復。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
         '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🟢 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🔴 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 這是型態統計、不是預言:紅燈不代表一定跌、綠燈也不保證漲,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、或振幅太大已噴/崩的會自動排除。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
@@ -9639,7 +9639,16 @@ const marginByDate = {};
         const tsm = g('usBar_tsm'), tsmChg = g('usBar_tsm_chg'), vix = g('usBar_vix');
         const fi = this.fiShortQty;
         const fiSpot = this._macroRiskCache?.fi_spot_net;   // 外資現貨買賣超(億)
+        const fiTrust = this._macroRiskCache?.fi_trust_net;   // 🌅 V36.8 投信(億)
+        const fiDealer = this._macroRiskCache?.fi_dealer_net;  // 自營商(億)
+        const fiTotal = this._macroRiskCache?.fi_total_net;    // 三大法人合計(億)
         const txNight = this._macroRiskCache?.taifex_tx_now;   // 台指期夜盤(可能 null)
+        const snap = this._marketSnapshot || {};               // 🌅 V36.8 macro_cache 原始(含 asx/umc ADR)
+        const adrPct = k => { const c = snap[k]?.chg_pct; return (c == null) ? null : +c; };
+        const asxChg = adrPct('asx'), umcChg = adrPct('umc');
+        const pctStr = v => (v == null) ? null : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+        const pctClr = v => (v == null) ? 'text-gray-500' : (v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400');
+        const yiLine = v => Number.isFinite(+v) ? `<span class="${+v >= 0 ? 'text-red-300' : 'text-green-300'} font-mono font-bold">${+v >= 0 ? '+' : ''}${(+v).toFixed(0)}億</span>` : `<span class="text-gray-500">採集中</span>`;
 
         // ② 加權技術面(對 ^TWII 跑進場體檢,純公式)
         let tech = null;
@@ -9662,6 +9671,9 @@ const marginByDate = {};
         if (Number.isFinite(vixN)) { if (vixN < 20) s += 1; else if (vixN > 30) s -= 2; else if (vixN > 25) s -= 1; }
         if (fi !== null && fi !== undefined) { if (fi > -10000) s += 1; else if (fi <= -40000) s -= 2; else if (fi <= -25000) s -= 1; }
         if (Number.isFinite(+fiSpot)) { if (+fiSpot > 0) s += 1; else if (+fiSpot < -200) s -= 1; }
+        if (asxChg != null) s += asxChg > 0 ? 0.5 : asxChg < 0 ? -0.5 : 0;   // 日月光 ADR
+        if (umcChg != null) s += umcChg > 0 ? 0.5 : umcChg < 0 ? -0.5 : 0;   // 聯電 ADR
+        if (Number.isFinite(+fiTotal)) { if (+fiTotal > 0) s += 1; else if (+fiTotal < -200) s -= 1; }   // 三大法人合計
         if (tech) s += (tech.vColor === 'red' ? 2 : tech.vColor === 'green' ? -2 : 0);
 
         let light, verdict, vColor, summary;
@@ -9702,17 +9714,22 @@ const marginByDate = {};
                 <div class="text-gray-400">💻 NASDAQ ${fmt(ndxChg, clr(ndxChg))}</div>
                 <div class="text-gray-400">🔌 費半 ${fmt(soxChg, clr(soxChg))}</div>
                 <div class="text-gray-400">🏭 台積ADR ${fmt(tsmChg, clr(tsmChg))}</div>
+                <div class="text-gray-400">📦 日月光ADR <span class="font-mono ${pctClr(asxChg)}">${pctStr(asxChg) || '採集中'}</span></div>
+                <div class="text-gray-400">🔧 聯電ADR <span class="font-mono ${pctClr(umcChg)}">${pctStr(umcChg) || '採集中'}</span></div>
                 <div class="text-gray-400">😱 VIX ${fmt(vix)}</div>
                 <div class="text-gray-400">🌃 夜盤 ${txNightLine}</div>
                 <div class="text-gray-400">🌐 外資現貨 ${fiSpotLine}</div>
                 <div class="text-gray-400">🎯 外資台指期 ${fiLine}</div>
+                <div class="text-gray-400">🏦 投信 ${yiLine(fiTrust)}</div>
+                <div class="text-gray-400">🏢 自營商 ${yiLine(fiDealer)}</div>
+                <div class="col-span-2 text-gray-400">⚖️ 三大法人合計 ${yiLine(fiTotal)}</div>
                 <div class="col-span-2 text-gray-400 border-t border-[#21262d] pt-1 mt-0.5">📐 加權技術 ${techLine}</div>
             </div>
             <div class="bg-[#161b22] border-l-4 border-${vColor}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
                 <div class="text-[10px] font-bold ${sc} mb-0.5">💡 一句話總結</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">${summary}</div>
             </div>
-            <div class="text-[9px] text-gray-600 leading-snug">🔧 採集中:投信/自營商買賣超、大盤融資券餘額、日月光/聯電 ADR(下次採礦補齊)・點「加權」可看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>`;
+            <div class="text-[9px] text-gray-600 leading-snug">🔧 仍採集中:大盤融資券餘額、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>`;
         el.classList.remove('hidden');
     },
 
