@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -9841,8 +9841,10 @@ const marginByDate = {};
         // ① 指數值:US 大盤直接讀 macro_cache 物件(數值最可靠,不靠 DOM relay);加權/櫃買用 processMacroData DOM,加權再以 macro_cache.twii 補
         const usPct = k => { const c = usm[k]?.chg_pct; return (c == null || isNaN(c)) ? null : +c; };
         const pctStr = v => (v == null) ? null : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
-        const twii = g('mktTWII') || (usm.twii?.close != null ? (+usm.twii.close).toFixed(0) : ''), twiiChg = g('mktTWII_chg') || (pctStr(usPct('twii')) || '');
-        const twoii = g('mktTWOII') || (usm.twoii?.close != null ? (+usm.twoii.close).toFixed(2) : ''), twoiiChg = g('mktTWOII_chg') || (pctStr(usPct('twoii')) || '');   // 🐛 V40.1 櫃買改可讀 macro_cache.twoii(採礦端官方 TPEX 補)
+        // 🐛 V40.8 DOM relay 顯「--」占位時是 truthy → 卡住 macro_cache fallback(加權明明有值卻顯 --)。只認「含數字」的 DOM 值,否則改用 macro_cache
+        const gNum = id => { const v = g(id); return (v && /\d/.test(v)) ? v : ''; };
+        const twii = gNum('mktTWII') || (usm.twii?.close != null ? (+usm.twii.close).toFixed(0) : ''), twiiChg = gNum('mktTWII_chg') || (pctStr(usPct('twii')) || '');
+        const twoii = gNum('mktTWOII') || (usm.twoii?.close != null ? (+usm.twoii.close).toFixed(2) : ''), twoiiChg = gNum('mktTWOII_chg') || (pctStr(usPct('twoii')) || '');   // 🐛 V40.1 櫃買讀 macro_cache.twoii(採礦端官方 TPEX 補)
         const djiChg = pctStr(usPct('dji')) || '', ndxChg = pctStr(usPct('nasdaq')) || '', spxChg = pctStr(usPct('sp500')) || '', soxChg = pctStr(usPct('sox')) || '', tsmChg = pctStr(usPct('tsm')) || '';
         const vix = (usm.vix?.close != null) ? (+usm.vix.close).toFixed(2) : '';
         const fi = this.fiShortQty;
