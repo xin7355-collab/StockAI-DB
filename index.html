@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11594,9 +11594,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' }, warn: { c: 'text-yellow-300', b: 'border-yellow-500', tag: '⚠️留意' } };
-        const rows = sigs.map(s => { const t = sty[s.tone] || sty.flat; return `<div class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5">
+        const MAXROWS = 10;   // 🐛 V38.3 防訊號過載:最多顯 10 條(已 unshift 把最重要的轉折/買賣點置頂)
+        const more = sigs.length - MAXROWS;
+        const rows = sigs.slice(0, MAXROWS).map(s => { const t = sty[s.tone] || sty.flat; return `<div class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5">
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}</div>
-            <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('');
+            <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('') + (more > 0 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${more} 條次要訊號(以上方進場體檢總結為準)</div>` : '');
         el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
     },
@@ -11631,11 +11633,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
         let bull = 0, bear = 0; const goodR = [], badR = [];
+        let bkCounted = false;   // 🐛 V38.3 防重複加分:同一次「突破」(橫盤突破/底部頸線突破)只計一次
         for (const s of sigs) {
-            const w = weight(s.title || '');
-            if (s.tone === 'bull') { bull += w; goodR.push(s.title); }
-            else if (s.tone === 'bear') { bear += w; badR.push(s.title); }
-            else if (s.tone === 'warn') { bear += 1; badR.push(s.title); }
+            const t = s.title || '';
+            if (s.tone === 'bull' && /突破/.test(t) && !/假突破/.test(t)) {
+                if (bkCounted) continue;   // 第二個突破訊號不再加分(避免分數虛高),卡片仍照顯
+                bkCounted = true;
+            }
+            const w = weight(t);
+            if (s.tone === 'bull') { bull += w; goodR.push(t); }
+            else if (s.tone === 'bear') { bear += w; badR.push(t); }
+            else if (s.tone === 'warn') { bear += 1; badR.push(t); }
         }
 
         // ② 均線結構(初學者最該懂:站上 5MA/月線 + 多頭排列 + 5MA 上彎)
