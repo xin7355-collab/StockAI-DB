@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.0</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.1</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1517,8 +1517,8 @@
             <!-- ════════ 【區 2】🚀 盤前戰情(原 AI 全球綜合解析,改造為盤前作戰報告)════════ -->
             <button onclick="app.openGlobalAIModal(); app.vibrate(50);" id="btnGlobalAIHeader"
                     class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-indigo-600/40 hover:border-indigo-500/60 rounded-lg py-3.5 px-4 flex flex-col items-center justify-center gap-1 transition-all font-black text-base text-indigo-300 shadow-md">
-                <div class="flex items-center gap-2"><span class="text-xl">🚀</span><span class="tracking-wide">盤前戰情</span></div>
-                <span class="text-indigo-300 text-[11px] font-bold">隔夜美股+ADR+拉積盤+川普/黃仁勳 → 三劇本實戰指令</span>
+                <div class="flex items-center gap-2"><span class="text-xl">🚀</span><span class="tracking-wide">盤前作戰簡報</span></div>
+                <span class="text-indigo-300 text-[11px] font-bold">美股隔夜 × 拉積盤精算 × 巨頭情報 × 三劇本進場指令</span>
             </button>
 
             <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
@@ -2672,7 +2672,7 @@ const app = {
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
-        '盤前大盤體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🟢 開高偏多 / 🟡 中性震盪 / 🔴 開低偏空。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源修復。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
+        '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🟢 開高偏多 / 🟡 中性震盪 / 🔴 開低偏空。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源修復。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
         '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🟢 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🔴 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 這是型態統計、不是預言:紅燈不代表一定跌、綠燈也不保證漲,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、或振幅太大已噴/崩的會自動排除。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
@@ -9898,7 +9898,7 @@ const marginByDate = {};
         const _fiBigShort = (fi != null && fi <= -40000);
         const _fiNote = _fiBigShort ? `惟外資台指期 ${(fi / 10000).toFixed(1)} 萬口仍極空` : '外資沒大空';
         let light, verdict, vColor, summary;
-        if (s >= 3) { light = '🟢'; verdict = '開高偏多'; vColor = 'red'; summary = `隔夜美股+台積電 ADR 偏強、${_fiNote},今天台股有機會開高;${_fiBigShort ? '順勢但開高別追高、提防外資空單回補後拉回。' : '順勢操作但別追高,留意上方壓力。'}`; }
+        if (s >= 3) { light = '🟢'; verdict = '開高偏多'; vColor = 'red'; summary = `隔夜美股+台積電 ADR 偏強、${_fiNote},今天台股有機會開高;${_fiBigShort ? '順勢但開高別追高,外資台指期仍掛大空單,慎防開高走低、賣壓回測支撐。' : '順勢操作但別追高,留意上方壓力。'}`; }
         else if (s <= -3) { light = '🔴'; verdict = '開低偏空'; vColor = 'green'; summary = '隔夜美股/ADR 偏弱或外資偏空,今天台股開低機率高;手上有貨顧好停損,空手別急著接刀。'; }
         else { light = '🟡'; verdict = '中性震盪'; vColor = 'yellow'; summary = `多空訊號互有拉扯,今天大盤方向不明、開平機率高${_fiBigShort ? '(外資台指期極空,反彈偏空操作)' : ''};別重押,等站穩 5 日線/月線且帶量再順勢。`; }
         const sc = vColor === 'red' ? 'text-red-300' : vColor === 'green' ? 'text-green-300' : 'text-yellow-300';
@@ -9937,34 +9937,59 @@ const marginByDate = {};
             basisLine = `<span class="${tagCls} font-mono font-bold">${contango ? '順價差 +' : '逆價差 -'}${mag} 點</span><span class="text-gray-500 text-[9px]">${read}</span>`;
         }
 
+        // 🐛 V41.1 指數點位:美股四雄/費半/TSM ADR 不再只顯 %,補上指數絕對點位(與加權「45000 +0.96%」格式一致)
+        const lvl = k => { const c = usm[k]?.close; if (c == null || isNaN(c)) return ''; const n = +c; return n >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : n.toFixed(2); };
+        // 一格 = 指數名 + 點位 + 漲跌%(點位缺則只顯 %,兩者皆缺顯「採集中」)
+        const idxCell = (label, k, chg) => {
+            const L = lvl(k);
+            const lvlHtml = L ? `<span class="font-mono font-bold text-gray-200">${L}</span>` : '';
+            const chgHtml = chg ? `<span class="font-mono ${clr(chg)}">${chg}</span>` : '';
+            const right = (L || chg) ? `${lvlHtml}${L && chg ? ' ' : ''}${chgHtml}` : `<span class="text-gray-500 text-[9px]">採集中</span>`;
+            return `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${right}</span></div>`;
+        };
+        const adrCell = (label, v) => `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="font-mono ${pctClr(v)}">${pctStr(v) || '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>`;
+        const chipCell = (label, html) => `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${html}</span></div>`;
+
         el.className = `w-full rounded-lg p-3 border ${bg}`;
         el.innerHTML = `
             <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前大盤體檢</span><span class="text-[9px] text-gray-500">純公式總結</span></div>
-                <button onclick="app.showJargon('盤前大盤體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+                <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前體檢</span><span class="text-[9px] text-gray-500">純公式總結</span></div>
+                <button onclick="app.showJargon('盤前體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
             </div>
             <div class="flex items-center gap-3 mb-2">
                 <div class="text-3xl">${light}</div>
                 <div class="flex-1"><div class="text-base font-black ${sc} leading-tight">今天 ${verdict}</div><div class="text-[10px] text-gray-400">大盤開盤方向分數 <span class="font-mono font-black ${sc}">${s > 0 ? '+' : ''}${s}</span></div></div>
             </div>
-            <div class="bg-[#0d1117]/60 rounded p-2 mb-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                <div class="text-gray-400">📊 加權 ${fmt(twii, clr(twiiChg))} ${fmt(twiiChg, clr(twiiChg))}</div>
-                <div class="text-gray-400">📈 櫃買 ${twoii ? `${fmt(twoii, clr(twoiiChg))} ${fmt(twoiiChg, clr(twoiiChg))}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</div>
-                <div class="text-gray-400">🇺🇸 道瓊 ${fmt(djiChg, clr(djiChg))}</div>
-                <div class="text-gray-400">💻 NASDAQ ${fmt(ndxChg, clr(ndxChg))}</div>
-                <div class="text-gray-400">🔌 費半 ${fmt(soxChg, clr(soxChg))}</div>
-                <div class="text-gray-400">🏭 台積ADR ${fmt(tsmChg, clr(tsmChg))}</div>
-                <div class="text-gray-400">📦 日月光ADR <span class="font-mono ${pctClr(asxChg)}">${pctStr(asxChg) || '採集中'}</span></div>
-                <div class="text-gray-400">🔧 聯電ADR <span class="font-mono ${pctClr(umcChg)}">${pctStr(umcChg) || '採集中'}</span></div>
-                <div class="text-gray-400">😱 VIX ${fmt(vix)}</div>
-                <div class="text-gray-400">🌃 夜盤 ${txNightLine}</div>
-                <div class="text-gray-400">🌐 外資現貨 ${fiSpotLine}</div>
-                <div class="text-gray-400">🎯 外資台指期 ${fiLine}</div>
-                <div class="col-span-2 text-gray-400">⚖️ 期現基差 ${basisLine}</div>
-                <div class="text-gray-400">🏦 投信 ${yiLine(fiTrust)}</div>
-                <div class="text-gray-400">🏢 自營商 ${yiLine(fiDealer)}</div>
-                <div class="col-span-2 text-gray-400">⚖️ 三大法人合計 ${yiLine(fiTotal)}</div>
-                <div class="col-span-2 text-gray-400 border-t border-[#21262d] pt-1 mt-0.5">📐 加權技術 ${techLine}</div>
+            <div class="bg-[#0d1117]/60 rounded p-2 mb-2 space-y-1.5 text-[10px]">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📊 加權</span><span class="text-right">${twii ? `<span class="font-mono font-bold text-gray-200">${twii}</span>${twiiChg ? ` <span class="font-mono ${clr(twiiChg)}">${twiiChg}</span>` : ''}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
+                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📈 櫃買</span><span class="text-right">${twoii ? `<span class="font-mono font-bold text-gray-200">${twoii}</span>${twoiiChg ? ` <span class="font-mono ${clr(twoiiChg)}">${twoiiChg}</span>` : ''}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
+                </div>
+                <div class="border-t border-[#21262d] pt-1.5">
+                    <div class="text-[9px] text-gray-600 font-bold mb-1">🌙 美股隔夜</div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        ${idxCell('🇺🇸 道瓊', 'dji', djiChg)}
+                        ${idxCell('💻 NASDAQ', 'nasdaq', ndxChg)}
+                        ${idxCell('🔌 費半', 'sox', soxChg)}
+                        ${idxCell('🏭 台積ADR', 'tsm', tsmChg)}
+                        ${adrCell('📦 日月光ADR', asxChg)}
+                        ${adrCell('🔧 聯電ADR', umcChg)}
+                        <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">😱 VIX</span><span class="text-right">${vix ? `<span class="font-mono font-bold text-gray-200">${vix}</span>` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
+                        <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">🌃 夜盤</span><span class="text-right">${txNightLine}</span></div>
+                    </div>
+                </div>
+                <div class="border-t border-[#21262d] pt-1.5">
+                    <div class="text-[9px] text-gray-600 font-bold mb-1">🏦 外資/法人籌碼</div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        ${chipCell('🌐 外資現貨', fiSpotLine)}
+                        ${chipCell('🎯 外資台指期', fiLine)}
+                        ${chipCell('🏦 投信', yiLine(fiTrust))}
+                        ${chipCell('🏢 自營商', yiLine(fiDealer))}
+                        ${chipCell('⚖️ 三大法人合計', yiLine(fiTotal))}
+                    </div>
+                    <div class="flex items-baseline justify-between gap-1 mt-1"><span class="text-gray-400">⚖️ 期現基差</span><span class="text-right">${basisLine}</span></div>
+                </div>
+                <div class="border-t border-[#21262d] pt-1.5 flex items-baseline justify-between gap-1"><span class="text-gray-400">📐 加權技術</span><span class="text-right">${techLine}</span></div>
             </div>
             <div class="bg-[#161b22] border-l-4 border-${vColor}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
                 <div class="text-[10px] font-bold ${sc} mb-0.5">💡 一句話總結</div>
@@ -21249,11 +21274,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 🦅 年線乖離率(^TWII 240MA)已停用:yfinance 對 GHA runner 持續抓不到 240 日 ^TWII 歷史,
         //    改由「外資期/VIX/恐慌貪婪/融資餘額/期現比」綜合判讀大盤位階(_marketPanorama 已涵蓋)
 
-        const prompt = `你是雙重身分的盤前報告撰寫人:
-① 資深「產業分析師」:講供應鏈、景氣循環、產能與訂單的語言,負責產業/科技巨頭段落
-② 資深「股票策略分析師」:講點位、籌碼、風報比、部位配置的語言,負責數據掃描與實戰策略段落
-你具備台積電(2330)與低軌衛星供應鏈洞察力,擅長分析「拉積盤」資金黑洞效應,並解析川普政治經濟學與黃仁勳 AI 宏圖。
-任務:依下方系統已整合的真實數據與情報,產出今日盤前戰情。
+        const prompt = `你是台股自營部的「盤前作戰簡報撰寫官」,清晨 8 點對操盤手做 3 分鐘口頭簡報的風格:先講結論、再給彈藥、最後下指令。語氣像權證小哥——大白話、直球、國中生都聽得懂,但每句都要能換成「今天怎麼下單」。
+你同時懂兩件事:① 半導體供應鏈與台積電(2330)「拉積盤」資金黑洞效應、低軌衛星鏈、川普政經與黃仁勳 AI 宏圖;② 點位、籌碼、風報比、部位配置。
+任務:把下方系統「已精算好的真實數據+情報」吃透,產出今日盤前作戰簡報。你只負責「判讀與下指令」,所有數字一律引用系統值,嚴禁自己算。
 
 🛑 鐵則:
 - 嚴禁 Markdown 表格,改用條列式,用 --- 作分隔線
@@ -21310,89 +21333,56 @@ ${radarSection}
 ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLine}` : ''}${newsSection}
 ━━━━━━━━━━━━━━━━━━━━
 
-嚴格依下列格式輸出(emoji 與 --- 分隔線必須保留,每段標題後空一行再寫內容):
+嚴格依下列格式輸出(emoji 標題與 --- 分隔線必須保留,每段標題後空一行再寫內容;全文控制在精煉、可執行,不灌水):
 
-🚀 ${_today} 盤前戰情
+🚀 ${_today} 盤前作戰簡報
 
-🟢 全球隔夜觀測
-
-[以 2 句話總結美股與 ADR 表現,點名最關鍵的隔夜訊號,結合上方真實數據]
-
-⚠️ 拉積盤預警: ${_tsmEstPts != null ? `經系統計算,今日台積電 ADR 變動 ${tsmChg} → 預估貢獻指數約 **${_tsmEstPts}** 點。若開盤 OTC 指數未能同步轉強,慎防中小型股「賺指數賠價差」黑洞效應。` : '台積電 ADR 資料不足,拉積盤推估暫缺,以即時 TSM 走勢觀察。'}
+📊 一句話定調
+[用 1 句話講「今天偏多/偏空/震盪」+ 最關鍵的隔夜理由(結合 SP500/費半/TSM ADR/外資期 ${fiLabel}),操盤手讀完就知道今天該攻還是該守]
 
 ---
 
-📊 盤前數據掃描
+🟢 隔夜定調與拉積盤
 
-🔹 TSM (ADR): **${tsm}** (${tsmChg})
-👉 影響: [一句話評對台積電開盤預估]
-
-🔹 費半 (SOX): **${sox}** (${soxChg})
-👉 影響: [半導體設備族群連動評估]
-
-🔹 美元指數: **${dxy}** (${dxyChg})
-👉 影響: [當日匯率壓力與外資資金流向評估]
-
-🔹 亞股連動: 日經 ${fmtMr(mr.nikkei)} / KOSPI ${fmtMr(mr.kospi)} [簡評]
+🔹 美股四雄 + 費半: [2 句總結 SP500 ${spxChg}・那斯達克 ${ndxChg}・道瓊・費半 ${soxChg} 與 VIX ${vix},點名最關鍵的隔夜訊號]
+🔹 拉積盤精算: ${_tsmEstPts != null ? `台積電 ADR ${tsmChg} → 系統預估貢獻指數約 **${_tsmEstPts}** 點。${Math.abs(_tsmEstPts) >= 60 ? '若開盤 OTC 指數未同步轉強,慎防中小型股「賺指數賠價差」黑洞——權值拉、散戶股不漲。' : '影響中性,觀察開盤 OTC 是否跟上。'}` : '台積電 ADR 資料不足,拉積盤推估暫缺,以即時 TSM 走勢觀察。'}
+👉 對台股開盤: [一句話下結論——權值股 vs 中小型股今天誰強]
 
 ---
 
-🦅 川普動態與股市博弈報告 (獨立觀測)
+🦅 巨頭情報雷達 (有料才寫,顯示「今日無重大更新」者直接寫「無重大事件,維持原框架」,嚴禁瞎掰)
 
-🔹 最新言論/事件: ${_trumpRaw}
-🔹 動機與股市連動: [若上方有事件,分析時機與美股走勢關聯;若顯示「今日無重大更新」,寫「無事件可分析,維持先前政策框架」]
-🔹 未來意圖推演: [預測對台/美股潛在衝擊,若無事件則寫「靜待後續發言」]
-
----
-
-🖥️ 黃仁勳 AI 軍備動態 (獨立觀測)
-
-🔹 最新言論/行程: ${_huangRaw}
-🔹 供應鏈訊號: [若上方有動態,分析其對先進封裝/HBM/散熱的牽動,點名相關台股代號;若無寫「靜待 GTC 或法說催化」]
-🔹 資金效應推演: [預測對 AI 伺服器/機器人/自駕族群資金流向影響]
+🔹 川普政經: ${_trumpRaw}
+👉 [若有事件:時機與台/美股連動 + 受影響台股族群;無則「靜待後續發言」]
+🔹 黃仁勳/NVIDIA: ${_huangRaw}
+👉 [若有動態:對先進封裝/HBM/散熱/AI 伺服器牽動,點名台股代號;無則「靜待 GTC 或法說催化」]
+🔹 SpaceX / Kuiper 衛星鏈: ${_spacexRaw} ・ ${_kuiperRaw}
+👉 [若有料:帶出低軌衛星台股代碼;無則「無」]
 
 ---
 
-🛰️ 科技巨頭動態 (SpaceX / Kuiper)
+🔍 今日鎖定 (從上方雷達掃描 + 4 戰區挑,禁自創代號)
 
-🛰️ SpaceX (馬斯克): ${_spacexRaw}
-👉 影響標的: [動態帶出台股代碼與名稱,如低軌衛星概念股;若無填「無」]
-
-🛰️ Project Kuiper (亞馬遜): ${_kuiperRaw}
-👉 影響標的: [動態帶出台股代碼與名稱;若無填「無」]
+📍 關鍵位階: 壓力 [數值] / 支撐 [數值](結合外資台指期 ${fiLabel} 判讀,大空單時支撐易破)
+💰 偏多攻擊 (低基期/剛轉強): 👉 [挑 1-2 檔代碼 + 理由:打底完成/站上月線/法人回補]
+⚔️ 偏空提防 (破線/法人棄養): 👉 [挑 1-2 檔代碼 + 理由:高檔爆量/投信連賣]
 
 ---
 
-🔍 籌碼雷達與實戰策略
+🎭 今日三劇本 (機率由系統依風險分數 ${_risk}/100、外資期、VIX 真實推導,禁改寫機率數字)
 
-📍 關鍵位階: 壓力位 [數值] / 支撐位 [數值] (結合外資台指期 ${fiLabel} 判讀)
-📍 法人集結: [族群名稱] (依雷達掃描 + 4 戰區判斷:還有肉 vs 已過熱)
-
-💰 空手者關注 (低基期/題材保護):
-👉 [從雷達結果挑代碼](理由: 打底完成 / 剛站上月線 等)
-
-⚔️ 空仇者觀察 (破線/法人棄養):
-👉 [從雷達結果挑代碼](理由: 高檔爆量 / 投信連賣 等)
+🟢 劇本 A 全面攻擊 [機率 ${_pBull}%]: 隔夜美股紅 + TSM ADR ${tsmChg || '--'} + 外資期 ${fiLabel} → 操作: [點名族群代碼的具體進場指令]
+🟡 劇本 B 拉積盤盤整 [機率 ${_pNeutral}%]: 權值拉、OTC 開高走低 → 操作: 切忌追高權值股,提防假突破,等中小型股表態。
+🔴 劇本 C 開高走低 [機率 ${_pBear}%]: 外資期 ${fiLabel} 空單壓盤 + 風險分數 ${_risk}/100 → 操作: [減碼/防禦/停損具體指令]
 
 ---
 
-🎭 今日操盤三劇本 (盤中應對 — 機率由系統依風險分數/外資期/VIX 真實推導,禁改寫)
-
-🟢 劇本 A (利多/全面噴出) [機率 ${_pBull}%]
-條件: 隔夜 SP500/SOX 收紅 + TSM ADR ${tsmChg || '--'} + 外資期 ${fiLabel}
-操作: [具體進場建議,要點名族群代碼]
-
-🟡 劇本 B (盤整/拉積盤) [機率 ${_pNeutral}%]
-條件: 大盤大漲但 OTC 指數開高走低或翻黑
-操作: 資金排擠浮現!切忌追高權值股,留意假開高走低。
-
-🔴 劇本 C (利空/開高走低) [機率 ${_pBear}%]
-條件: 外資期 ${fiLabel}(空單未平倉) + 風險分數 ${_risk}/100
-操作: [減碼或防禦建議]
+⚡ 今日作戰指令
+[收尾 1 句:今天「主攻方向 + 一個最該做的動作 + 一個最該避開的雷」,講人話、給命令]
 
 ---
 
-⚠️ 免責聲明: 以上資訊經多方財經機構與系統數據核對,內容僅供參考,投資人應自負盈虧。`;
+⚠️ 免責聲明: 以上經系統數據核對,純公式+AI 判讀僅供參考,投資人應自負盈虧。`;
 
         try {
             // 🚀 盤前報告 = 旗艦級分析,Gemini 2.5 Flash 為主撞 429 fallback OpenRouter R1
@@ -21402,7 +21392,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 .replace(/\*\*(.+?)\*\*/g, '<b class="text-yellow-300 font-bold">$1</b>')
                 .replace(/^---$/gm, '<hr class="my-2 border-gray-700"/>')
                 .replace(/^(🚀[^\n]+)$/gm, '<div class="mt-3 mb-2 text-purple-300 font-black text-base">$1</div>')
-                .replace(/^(🟢|🟡|🔴|📊|🦅|🖥️|🛰️|🔍|🎭|⚠️ 免責)([^\n]+)$/gm, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">$1$2</div>')
+                .replace(/^(🟢|🟡|🔴|📊|🦅|🖥️|🛰️|🔍|🎭|⚡|⚠️ 免責)([^\n]+)$/gm, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">$1$2</div>')
                 .replace(/^(🔹|👉|📍|💰|⚔️)([^\n]+)$/gm, '<div class="ml-2 text-gray-300 mt-0.5">$1$2</div>')
                 .replace(/\n/g, '<br>');
             if (result) result.innerHTML = html;
