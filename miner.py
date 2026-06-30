@@ -1222,6 +1222,20 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             arrow = '↑' if diff > 0 else '↓'
             result['gross_margin_trend'] = (
                 '→'.join(f'{g}%' for g in gms) + f'（{arrow}{abs(diff)}pp）')
+        # 🆕 三率三升:營業利益率 + 淨利率 趨勢(與毛利率同法,供前端三率三升卡 + 多空計分 F 系列因子)
+        def _margin_trend(type_names):
+            num_rows = sorted([r for r in rows if r.get('type') in type_names], key=lambda x: x.get('date', ''))
+            num_by_q = {r['date']: float(r.get('value', 0) or 0) for r in num_rows[-6:]}
+            cq = sorted(set(num_by_q) & set(rev_by_q))[-3:]
+            ms = [round(num_by_q[q] / rev_by_q[q] * 100, 1) for q in cq if rev_by_q.get(q, 0) > 0]
+            if len(ms) >= 2:
+                d = round(ms[-1] - ms[0], 1)
+                return '→'.join(f'{m}%' for m in ms) + f'（{"↑" if d > 0 else "↓"}{abs(d)}pp）'
+            return None
+        op_trend  = _margin_trend({'OperatingIncome'})
+        net_trend = _margin_trend({'IncomeAfterTaxes', 'ProfitAfterTax', 'NetIncome'})
+        if op_trend:  result['op_margin_trend']  = op_trend
+        if net_trend: result['net_margin_trend'] = net_trend
         # 最近4季 EPS + Revenue 摘要（季別格式：date 欄直接用）
         rev_sorted = sorted([r for r in rows if r.get('type') == 'Revenue'],
                             key=lambda x: x.get('date', ''))
@@ -2699,6 +2713,8 @@ def fetch_broker_chips():
                 'pb_unavailable':     (_pbr is None),   # V15.7 P/B 無資料源 flag(V15.9 多了 FinMind PER source 後 false rate 大降)
                 'yield_rate':         _yld,
                 'gross_margin_trend': fm_fund.get('gross_margin_trend'),
+                'op_margin_trend':    fm_fund.get('op_margin_trend'),    # 🆕 營業利益率趨勢(三率三升)
+                'net_margin_trend':   fm_fund.get('net_margin_trend'),   # 🆕 淨利率趨勢(三率三升)
                 'payout_ratio':       fm_fund.get('payout_ratio'),
                 'total_dividend':     fm_fund.get('total_dividend'),
                 'total_dividend_4q':  fm_fund.get('total_dividend_4q'),
