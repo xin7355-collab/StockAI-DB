@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4278,14 +4278,36 @@ ${list}
                 if (d > todayDate) { todayDate = d; todayPx = close; }
             }
         }
-        const lamp = this._etfFollowLamp(entryPx, todayPx);
-        const pctStr = lamp.pct == null ? '—' : `${lamp.pct >= 0 ? '+' : ''}${lamp.pct.toFixed(1)}%`;
+        let lamp = this._etfFollowLamp(entryPx, todayPx);
+        // 🐛 V40.2 day-0 修正:ETF 換股當日=最新交易日時 entryPx==todayPx → 必為 +0.0%「還沒漲(可跟)」誤導。
+        //   改看「該股換股當日自身漲幅」:當天已大漲=進場價就是當日高,跟車=追高(與籌碼卡『勿追高』一致)
+        const isDay0 = !!(entryDate && entryDate === todayDate);
+        let entryDayChg = null;
+        if (entryDate && Array.isArray(this.activeData)) {
+            const sorted = this.activeData
+                .map(b => ({ d: String(b.date || b.t || '').slice(0, 10).replace(/\//g, '-'), c: (b.close ?? b.c) }))
+                .filter(x => x.d && x.c != null).sort((a, b) => a.d < b.d ? -1 : 1);
+            const i = sorted.findIndex(x => x.d === entryDate);
+            if (i > 0 && sorted[i - 1].c > 0) entryDayChg = (sorted[i].c - sorted[i - 1].c) / sorted[i - 1].c * 100;
+        }
+        if (isDay0) {
+            if (entryDayChg != null && entryDayChg >= 5)
+                lamp = { lamp: '🟡', text: `換股當日已噴 +${entryDayChg.toFixed(1)}% ・ 進場=當日高,追高小心`, pct: 0, cls: 'text-yellow-400' };
+            else if (entryDayChg != null && entryDayChg <= -3)
+                lamp = { lamp: '🟢', text: `換股當日回 ${entryDayChg.toFixed(1)}% ・ 進場價偏低可留意`, pct: 0, cls: 'text-green-400' };
+            else
+                lamp = { lamp: '⚪', text: 'ETF 今日才換入 ・ 進場=今收,明起追蹤走勢', pct: 0, cls: 'text-gray-400' };
+        }
+        const pctStr = (isDay0 || lamp.pct == null) ? '—' : `${lamp.pct >= 0 ? '+' : ''}${lamp.pct.toFixed(1)}%`;
         // 動作分組計數
         const cntIn = actions.filter(a => a.action === 1).length;
         const cntUp = actions.filter(a => a.action === 2).length;
         const cntDn = actions.filter(a => a.action === 3).length;
         const cntOut = actions.filter(a => a.action === 4).length;
         const verdict = (() => {
+            // 🐛 V40.2 換股當日該股已大漲(+5%↑)→ 進場價=當日高,跟車=追在高點,不可顯「適合跟車」(修台燿 +8% 卻喊可跟 vs 籌碼卡勿追高矛盾)
+            if ((cntIn + cntUp) >= 1 && entryDayChg != null && entryDayChg >= 5)
+                return { txt: `🟡 多檔 ETF 換入,但該股換股當日已噴 <b>+${entryDayChg.toFixed(1)}%</b> → 跟車=追在當日高點,<b>留意追高</b>(寧等回測再進)`, cls: 'text-yellow-300 bg-yellow-900/30 border-yellow-700' };
             // 跟車總評
             if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 5)  return { txt: '🟢 多檔 ETF 共識加碼,且還沒漲過 → <b>適合跟車</b>',  cls: 'text-green-300 bg-green-900/30 border-green-700' };
             if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 15) return { txt: '🟡 多檔 ETF 加碼但已漲一段,跟車要小心 <b>追高風險</b>', cls: 'text-yellow-300 bg-yellow-900/30 border-yellow-700' };
@@ -4324,7 +4346,7 @@ ${list}
             <div class="bg-[#0d1117] border border-[#30363d] rounded p-2 mb-2">
                 <div class="flex items-center justify-between text-[12px]">
                     <div>
-                        <div class="text-gray-400 text-[10px]">ETF 進場價 ≈ <span class="font-mono text-gray-300">${entryPx != null ? entryPx.toFixed(2) : '—'}</span></div>
+                        <div class="text-gray-400 text-[10px]">ETF 進場價 ≈ <span class="font-mono text-gray-300">${entryPx != null ? entryPx.toFixed(2) : '—'}</span>${entryDayChg != null ? ` <span class="${entryDayChg >= 0 ? 'text-red-300' : 'text-green-300'} text-[9px]">(換股當日該股 ${entryDayChg >= 0 ? '+' : ''}${entryDayChg.toFixed(1)}%)</span>` : ''}</div>
                         <div class="text-gray-400 text-[10px]">今日收盤 <span class="font-mono text-gray-300">${todayPx != null ? todayPx.toFixed(2) : '—'}</span></div>
                     </div>
                     <div class="text-right">
@@ -4336,7 +4358,7 @@ ${list}
             <div class="text-[10px] text-gray-500 mb-1">📊 動作明細 ・ 換入 ${cntIn} ・ 加碼 ${cntUp} ・ 減碼 ${cntDn} ・ 換出 ${cntOut}</div>
             <div>${rowsHtml}</div>
             <div class="mt-2 px-2 py-1.5 rounded border ${verdict.cls} text-[11px] leading-snug">${verdict.txt}</div>
-            <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 進場價為「主動 ETF 換股當日(${updated})該股收盤價」近似;若你開股當天還沒採礦完整,等盤後或重整再看</div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 進場價為「主動 ETF 換股當日(${updated})該股收盤價」近似。${isDay0 ? '今天剛換股→進場價=今收,當日漲跌已含在「換股當日漲幅」(當天若已大漲=跟車就是追在當日高點),明起才有相對 ETF 的後續走勢可追蹤。' : '若你開股當天還沒採礦完整,等盤後或重整再看。'}</div>
         `;
         card.classList.remove('hidden');
     },
