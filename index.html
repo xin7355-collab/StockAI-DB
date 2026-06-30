@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -5030,17 +5030,26 @@ ${list}
                 if (_pcBox) { _pcBox.classList.add('hidden'); _pcBox.innerHTML = ''; }
                 if (_pcBtn) { _pcBtn.disabled = false; _pcBtn.textContent = '📊 載入同業數據'; _pcBtn.classList.remove('opacity-60'); }
             } catch (_) {}
-            // EPS / 月營收 ECharts 在情報 tab 隱藏時 init → 容器寬度 0 → 柱子擠左
-            // 切到情報 tab 時 resize 一次，讓圖表恢復滿版分布
-            setTimeout(() => {
-                if (typeof echarts === 'undefined') return;
-                ['xrayEpsTrend', 'xrayRevTrend'].forEach(id => {
-                    const el = document.getElementById(id);
-                    const inst = el && echarts.getInstanceByDom(el);
-                    if (inst) inst.resize();
-                });
-            }, 120);
+            // 🐛 V40.5 EPS / 月營收 ECharts 容器寬度 0 時 init → 柱子擠左/全空白。
+            //   改「重試 resize」:每 150ms 檢查,容器拿到寬度才 resize,最多 ~1.5s,直到兩圖都好(搭配 _observeChartResize 雙保險)
+            this._retryResizeXrayCharts();
         }
+    },
+
+    _retryResizeXrayCharts() {
+        let tries = 0;
+        const tick = () => {
+            if (typeof echarts === 'undefined') return;
+            let pending = false;
+            ['xrayEpsTrend', 'xrayRevTrend'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const inst = echarts.getInstanceByDom(el);
+                if (inst) { if (el.clientWidth > 0) inst.resize(); else pending = true; }
+            });
+            if (pending && tries++ < 10) setTimeout(tick, 150);
+        };
+        setTimeout(tick, 60);
     },
 
     // 🐛 V40.3 ECharts 容器在 tab 隱藏/寬度未定時 init/setOption → 柱子擠成左邊一條(月營收圖實測)。
@@ -19268,13 +19277,18 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (!rows || !rows.length) { box.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-3">無足夠 K 線可體檢(資料不足或尚未載入,點任一股看詳情後再回來重掃)</div>'; return; }
         box.innerHTML = rows.slice(0, 30).map((r, i) => {
             const sc = r.vColor === 'red' ? 'text-red-300' : r.vColor === 'green' ? 'text-green-300' : 'text-yellow-300';
+            // 🐛 V40.5 ETF(00 開頭)個股型態偵測(晨星/做多買點)語意不精準 → 改標「趨勢」+ ETF chip,分數同義為趨勢強弱
+            const isETF = /^00/.test(String(r.sym));
+            let vWord = r.verdict.split('・')[0];
+            if (isETF) vWord = vWord.replace('偏多', '趨勢強').replace('中性', '趨勢中').replace('偏空', '趨勢弱');
+            const etfTag = isETF ? ' <span class="text-[8px] text-amber-300 border border-amber-700/40 rounded px-1 align-middle">ETF·趨勢</span>' : '';
             return `<div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag'); app.vibrate(20);" class="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center px-2 py-1.5 border-b border-[#21262d] last:border-0 cursor-pointer hover:bg-white/5">
                 <span class="text-base">${r.light}</span>
-                <span class="text-[12px] text-gray-100 font-bold truncate">${this.getFullStockName(r.sym)}${r.held ? ' <span class="text-[8px] text-purple-300">💼持有</span>' : ''}</span>
-                <span class="text-[10px] ${sc}">${r.verdict.split('・')[0]}</span>
+                <span class="text-[12px] text-gray-100 font-bold truncate">${this.getFullStockName(r.sym)}${r.held ? ' <span class="text-[8px] text-purple-300">💼持有</span>' : ''}${etfTag}</span>
+                <span class="text-[10px] ${sc}">${vWord}</span>
                 <span class="font-mono text-[13px] font-black ${sc} text-right w-[40px]">${r.score}</span>
             </div>`;
-        }).join('') + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">分數=進場友善度 0-100・🟢偏多🟡觀望🔴偏空・純公式僅供參考,進場務必設停損</div>`;
+        }).join('') + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">分數=進場友善度 0-100・🟢偏多🟡觀望🔴偏空・<b class="text-amber-400/80">ETF 改看「趨勢」(型態偵測對 ETF 較不精準)</b>・純公式僅供參考,進場務必設停損</div>`;
     },
 
     removeFromFav(sym) {
