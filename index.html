@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1390,6 +1390,8 @@
                             <span id="xrayGmCompare" class="text-[9px] font-mono text-gray-500 mt-0.5"></span>
                         </div>
                     </div>
+                    <!-- 🆕 三率三升(毛利率/營益率/淨利率 同步趨勢,純公式) -->
+                    <div id="xrayTriRate" class="hidden mb-2"></div>
                     <!-- 📊 估值(本益比 PE,獨立寬版) -->
                     <div class="inline-flex items-center text-blue-300 text-xs font-black mt-2 mb-1.5 bg-blue-900/40 border-l-[3px] border-blue-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📊 估值</div>
                     <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex justify-between items-center mb-1.5 border border-blue-900/40">
@@ -2691,6 +2693,7 @@ const app = {
         '產業相對PE': '產業相對 PE = 個股 PE ÷ 該產業中位數 PE。看「跟同業比是便宜還是貴」。例:航運平均 PE 7,長榮 PE 5 → 相對 0.71(同業便宜);半導體平均 PE 22,台積電 PE 28 → 相對 1.27(同業偏貴)。綠 <0.8 比同業便宜 / 黃 0.8-1.2 中性 / 紅 >1.2 比同業貴。⚠️ 航運/塑化/鋼鐵等景氣循環股,PE 低反而是景氣高點,別誤判。',
         '殖利率': '殖利率 = 每年配的現金股利 ÷ 股價,白話就是「把錢放這檔股票,一年領幾 % 利息」。5% 以上算高息(定存才 1-2%),適合存股族。顏色是「健康度」:綠=高息(>5%)、黃=普通、灰=低息(<2%),不是漲跌色。注意高殖利率也可能是股價大跌造成的假象。',
         '毛利率趨勢': '毛利率 = (營收−成本) ÷ 營收,代表「每賣 100 元賺幾元的真本事」。趨勢上升(↑)=產品變值錢 / 成本控制好,是好事;下降(↓)=殺價競爭或成本漲,要小心。台股慣例:上升紅(好)、下降綠(壞)。',
+        '三率三升': '「三率」= 毛利率(賣的本事)、營業利益率(本業賺錢效率,扣掉管銷研發後)、淨利率(最後真正落袋的%)。三個近 3 季「同時往上」= 三率三升 🔥,代表獲利能力「每一層都在變好」,不只是營收衝量,是真的更會賺 — 法人最愛的基本面強訊號。\n\n• 🔥 三率三升:獲利結構全面改善,基本面最強\n• ⚠️ 二升一降:改善中但有隱憂,看掉的是哪一率(例如毛利升但淨利降=可能業外虧/費用爆)\n• 🔴 三率三降:獲利全面惡化,基本面轉弱\n\n資料源:損益表(營收/毛利/營業利益/稅後淨利),全 JS 純公式算,不丟給 AI(防幻覺)。觀察清單 ~100 檔由採礦預算好,其他股進個股頁即時抓。',
         '股利發配率': '發配率 = 配出去的股利 ÷ 賺到的盈餘,代表「賺 100 元拿幾元出來分給股東」。顏色是「健康度」:綠=<70%(留錢繼續成長,穩健)、黃=70-100%(配很大方)、紅=>100%(賺的不夠還硬配,吃老本要警覺),不是漲跌色。',
         '每股股利': '每股股利 = 每持有 1 股,公司今年配給你多少錢(現金+股票)。例如配 4 元,你有 1 張(1000 股)就領 4000 元。配越多對存股族越好,但要搭配「發配率」看是否健康(別吃老本硬配)。',
         '每季EPS': 'EPS = 每股盈餘 = 公司幫每 1 股賺了多少錢,是獲利能力的核心指標。長條圖一季比一季高(QoQ 正)=獲利動能往上,台股慣例紅=成長(好)、綠=衰退(壞)。連續幾季成長的公司,股價通常比較有撐。',
@@ -8187,6 +8190,14 @@ const marginByDate = {};
             hit: epsYoyPct != null && epsYoyPct < 0,
             msg: epsYoyPct == null ? naMsg : epsYoyPct < 0 ? `${okBear}:EPS YoY ${epsYoyPct.toFixed(1)}%`
                 : `${safe}:EPS YoY +${epsYoyPct.toFixed(1)}%` });
+        // 🆕 F7 三率三升:毛利率/營業利益率/淨利率 近 3 季同升 = 獲利結構全面改善(採礦端 op/net_margin_trend 補)
+        const _triDir = s => { const m = (s || '').match(/([↑↓])/); return m ? (m[1] === '↑' ? 1 : -1) : null; };
+        const _triDs = [_triDir(fund?.gross_margin_trend), _triDir(fund?.op_margin_trend), _triDir(fund?.net_margin_trend)];
+        const _triKnown = _triDs.filter(x => x != null), _triUps = _triKnown.filter(x => x > 0).length;
+        rules.push({ id: 'F7', cat: 'fund', name: '三率三升(毛利/營益/淨利同升)', hint: '獲利結構全面改善,法人最愛強訊號', side: 'bull', weight: 2,
+            hit: _triKnown.length >= 3 && _triUps === 3,
+            msg: _triKnown.length < 3 ? '⚪ 三率資料不足(待採礦補營益/淨利率)'
+                : _triUps === 3 ? `${okBull}:三率三升🔥獲利全面變好` : `${safe}:三率 ${_triUps}升${3 - _triUps}降` });
 
         // ═══ 🔧 技術/型態(4 條) ═══
         rules.push({ id: 'T1', cat: 'tech', name: '60 日漲幅健康(-10%~+20%)', hint: '中期走勢溫和,不過熱不過冷', side: 'bull', weight: 1,
@@ -13068,6 +13079,32 @@ ${peerLine}${newsCtx}
         this.fetchFundamentalAnalysis(sym, { skipAI: cacheFresh && aiRestored });
     },
 
+    // 🆕 三率三升卡:毛利率/營益率/淨利率 同步趨勢(純公式,源自損益表;台股色 升=紅 降=綠)
+    _renderTriRateCard(triRates, triV) {
+        const el = document.getElementById('xrayTriRate');
+        if (!el) return;
+        if (!triV) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        el.classList.remove('hidden');
+        const toneCls = { bull: 'border-red-500 bg-red-900/25', bear: 'border-green-500 bg-green-900/25', warn: 'border-yellow-500 bg-yellow-900/20', flat: 'border-[#30363d] bg-[#161b22]' }[triV.tone] || 'border-[#30363d] bg-[#161b22]';
+        const txtCls = { bull: 'text-red-200', bear: 'text-green-200', warn: 'text-yellow-200', flat: 'text-gray-300' }[triV.tone] || 'text-gray-300';
+        const arrow = d => d > 0 ? '<span class="text-red-300 font-bold">↑ 升</span>' : d < 0 ? '<span class="text-green-300 font-bold">↓ 降</span>' : '<span class="text-gray-500">→ 平</span>';
+        const rows = (triRates || []).map(t => `<div class="flex items-center justify-between text-[10px] py-0.5 border-b border-[#21262d] last:border-0">
+            <span class="text-gray-400 w-10 flex-shrink-0">${t.name}</span>
+            <span class="font-mono text-gray-300 truncate mx-2 flex-1 text-right">${t.str || '—'}</span>
+            <span class="w-12 text-right">${t.dir == null ? '<span class="text-gray-600">—</span>' : arrow(t.dir)}</span>
+        </div>`).join('');
+        el.innerHTML = `
+            <div class="border-l-4 ${toneCls} border-y border-r border-[#30363d] rounded-r p-2.5">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="text-base">${triV.icon}</span>
+                    <span class="text-[12px] font-black ${txtCls}">${triV.txt}</span>
+                    <button onclick="app.showJargon('三率三升')" class="ml-auto text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+                </div>
+                <div class="bg-[#0d1117]/50 rounded px-2 py-1 mb-1">${rows}</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${triV.desc}</div>
+            </div>`;
+    },
+
     async fetchFundamentalAnalysis(sym, opts = {}) {
         if (!sym) return;
         // V18.5 — 同股掃描進行中時跳過,避免 analyze() 自動觸發 + 使用者切情報 tab 對同股雙重打 API
@@ -13196,6 +13233,40 @@ ${peerLine}${newsCtx}
                 if (m) gmTrend = (m[1] === '↑' ? 1 : -1) * parseFloat(m[2]);
                 else gmTrend = 0;
             }
+
+            // 🆕 三率三升:營業利益率(OperatingIncome) + 淨利率(IncomeAfterTaxes),與毛利率同源損益表,零額外 API
+            for (const r of (fsRes.data || [])) {
+                const q = r.date?.substring(0, 7) || String(r.year);
+                if (!byQ[q]) byQ[q] = {};
+                if (r.type === 'OperatingIncome') byQ[q].op = r.value;
+                if (r.type === 'IncomeAfterTaxes' || r.type === 'ProfitAfterTax' || r.type === 'NetIncome') byQ[q].net = r.value;
+            }
+            const _marginArr = key => Object.keys(byQ).filter(q => byQ[q][key] != null && byQ[q].rev > 0).sort().slice(-3).map(q => byQ[q][key] / byQ[q].rev * 100);
+            const opArr = _marginArr('op'), netArr = _marginArr('net');
+            // 三率方向(+1升/-1降/null):優先前端算的數值,否則解採礦預生成字串(觀察清單由 miner 補)
+            const _dirArr = a => a.length >= 2 ? Math.sign(+(a[a.length - 1] - a[0]).toFixed(2)) : null;
+            const _dirStr = s => { const m = (s || '').match(/([↑↓])/); return m ? (m[1] === '↑' ? 1 : -1) : null; };
+            const _str3 = a => a.length ? a.map(v => v.toFixed(1) + '%').join('→') : null;
+            const gmDir  = _dirArr(gmArr.slice(-3)) ?? (gmTrend != null ? Math.sign(gmTrend) : null);
+            const opDir  = _dirArr(opArr)  ?? _dirStr(localFund.op_margin_trend);
+            const netDir = _dirArr(netArr) ?? _dirStr(localFund.net_margin_trend);
+            const triRates = [
+                { name: '毛利率', dir: gmDir,  str: _str3(gmArr.slice(-3)) || localFund.gross_margin_trend || null },
+                { name: '營益率', dir: opDir,  str: _str3(opArr) || localFund.op_margin_trend || null },
+                { name: '淨利率', dir: netDir, str: _str3(netArr) || localFund.net_margin_trend || null },
+            ];
+            const _known = triRates.filter(t => t.dir != null);
+            const _ups = _known.filter(t => t.dir > 0).length, _downs = _known.filter(t => t.dir < 0).length;
+            let triV = null;
+            if (_known.length >= 3) {
+                if (_ups === 3)        triV = { tone: 'bull', icon: '🔥', txt: '三率三升', desc: '毛利率／營益率／淨利率全面提升 = 獲利結構整層變好,法人最愛的基本面強訊號(本業真的更會賺)' };
+                else if (_downs === 3) triV = { tone: 'bear', icon: '🔴', txt: '三率三降', desc: '三率同步下滑 = 獲利能力全面惡化,基本面轉弱要警覺' };
+                else if (_ups === 2)   triV = { tone: 'warn', icon: '⚠️', txt: '二升一降', desc: `三率 2 升 1 降,改善中但有隱憂 — 掉的是「${_known.find(t => t.dir < 0)?.name || '某率'}」要留意` };
+                else                   triV = { tone: 'flat', icon: '⚖️', txt: '升降互見', desc: '三率方向分歧,獲利結構待觀察,別只看單一率' };
+            } else if (_known.length >= 1) {
+                triV = { tone: 'flat', icon: '⏳', txt: '資料整備中', desc: '三率部分季度缺(損益表尚未補齊),下次採礦或非觀察清單股進場後重抓' };
+            }
+            this._renderTriRateCard(triRates, triV);
 
 // Revenue YoY
         const revData = (revRes.data||[]).sort((a,b)=> (`${a.revenue_year}${String(a.revenue_month).padStart(2,'0')}`> `${b.revenue_year}${String(b.revenue_month).padStart(2,'0')}`) ? 1:-1);
@@ -13886,6 +13957,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 - EPS(最新季):${epsStr} ｜ 營收 YoY:${yoyStr}
 - 本益比 PE:${peStr} ｜ 殖利率:${yieldStr}
 - 毛利率趨勢:${gmTrendStr || '無資料'} ｜ 股利發配率:${paStr}${payoutNote}
+- 📐 三率(近3季):毛利率 ${triRates[0].str || '無'}｜營益率 ${triRates[1].str || '無'}｜淨利率 ${triRates[2].str || '無'} → 系統判定:${triV ? triV.txt : '資料不足'}${triV && triV.txt === '三率三升' ? '(獲利結構全面改善,基本面強)' : ''}
 - 最新每股股利:${divStr}
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -13895,7 +13967,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
 2️⃣ **獲利拆解**(80-120 字):EPS 與營收 YoY 是真成長還是虛胖?點出最關鍵的那個數字,用比喻講成白話
 
-3️⃣ **賺錢品質**(60-100 字):毛利率趨勢往上還往下?代表競爭力變強還變弱?(毛利=賣 100 元實拿幾元)
+3️⃣ **賺錢品質**(60-100 字):看「三率」— 若系統判定為「三率三升」務必點出這是獲利全面變好的強訊號;若二升一降要講掉的是哪一率代表什麼(毛利=賣的本事、營益率=本業效率、淨利率=最後落袋)。用白話講競爭力變強還變弱。
 
 4️⃣ **估值與配息**(60-100 字):現在 PE 算貴還便宜?用「幾年回本」解釋;殖利率/配息率值不值得存股
 
