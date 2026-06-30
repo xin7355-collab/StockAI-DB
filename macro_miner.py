@@ -295,107 +295,118 @@ def fetch_us10y_yield():
         return None, str(e)[:100]
 
 
-def fetch_foreign_spot_net():
-    """TWSE 三大法人買賣超 — 外資（買賣差額，單位：億元）
+def _fetch_bfi82u_rows():
+    """🌅 V41.3 — TWSE 三大法人買賣金額統計表(BFI82U)統一抓取器。
+    回 ([(單位名稱, 買賣差額_元), ...], date_str, error)。
 
-    BFI82U schema 過去曾把外資拆成「外資及陸資（不含外資自營商）」+「外資自營商」兩列；
-    某些日期合併、某些拆開。改成 regex 寬鬆比對「外資」字頭、累加所有外資相關列，
-    並印 raw response 供 log 直接看欄位。
+    根因:原本只打 www.twse.com.tw 的 rwd 端點,GHA runner 常被回 HTTP 307(WAF/轉址)
+    → 外資現貨/投信/自營/合計 全採不到。改「官方 OpenAPI 為主、rwd 為備援」:
+      ① openapi.twse.com.tw/v1/fund/BFI82U — 具名 JSON、專為程式存取、無 307,最穩。
+      ② 失敗才 fallback 舊 rwd 端點(維持原行為,不會比現況更糟)。
     """
+    # ① 官方 OpenAPI(dict 陣列,鍵:單位名稱 / 買賣差額)
+    try:
+        r = http.get("https://openapi.twse.com.tw/v1/fund/BFI82U",
+                     headers={**HEADERS, "Accept": "application/json"}, timeout=12)
+        if r.status_code == 200:
+            arr = r.json()
+            rows = []
+            for o in (arr or []):
+                if not isinstance(o, dict):
+                    continue
+                name = str(o.get("單位名稱") or o.get("name") or "").replace(" ", "")
+                diff = o.get("買賣差額") or o.get("差額") or o.get("買賣超") or ""
+                try:
+                    rows.append((name, int(str(diff).replace(",", ""))))
+                except (ValueError, TypeError):
+                    pass
+            if rows:
+                print(f"  [BFI82U/OpenAPI] 命中 {len(rows)} 列")
+                return rows, datetime.now().strftime("%Y%m%d"), None
+            print("  [BFI82U/OpenAPI] 回 200 但解析 0 列,改試 rwd")
+        else:
+            print(f"  [BFI82U/OpenAPI] HTTP {r.status_code},改試 rwd")
+    except Exception as e:
+        print(f"  ⚠️ BFI82U OpenAPI 失敗({e}),改試 rwd")
+
+    # ② 備援:舊 rwd 端點(array-of-arrays,需找「買賣差額」欄位 index)
     try:
         url = "https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&response=json"
-        r = http.get(url, headers=HEADERS, timeout=10)
+        r = http.get(url, headers=HEADERS, timeout=10, allow_redirects=True)
         if r.status_code != 200:
             return None, None, f"HTTP {r.status_code}"
         j = r.json()
         data = j.get("data") or []
         date_str = j.get("date") or datetime.now().strftime("%Y%m%d")
-        print(f"  [BFI82U] stat={j.get('stat')} rows={len(data)} fields={j.get('fields', [])[:6]}")
         if not data:
             return None, date_str, "BFI82U 回 0 列"
-        import re
-        matched_rows = []
-        diff_idx = None
-        # diff 欄位：找「買賣差額」「買賣超」其中一個（schema 變化）
         fields = j.get("fields") or []
+        diff_idx = None
         for i, f in enumerate(fields):
             f = (f or "").replace(" ", "")
             if "差額" in f or "買賣超" in f:
                 diff_idx = i
                 break
         if diff_idx is None:
-            # 退一步：固定取最後一個數值欄（通常就是差額）
             diff_idx = len(data[0]) - 1 if data and len(data[0]) > 1 else None
-        total_net_yuan = 0
+        rows = []
         for row in data:
             name = (row[0] or "").replace(" ", "")
-            # 寬鬆比對：任何外資相關列都納入（包含「外資及陸資」「外資自營商」等）
-            if re.search(r"外資", name):
-                try:
-                    val = int(str(row[diff_idx]).replace(",", ""))
-                    total_net_yuan += val
-                    matched_rows.append((name, val))
-                except (ValueError, IndexError, TypeError):
-                    pass
-        if not matched_rows:
-            print(f"  [BFI82U] 找不到外資列，全部 names={[(row[0] or '').replace(' ', '') for row in data]}")
-            return None, date_str, "找不到外資列"
-        print(f"  [BFI82U] 命中：{matched_rows}（合計 {total_net_yuan / 1e8:.2f} 億）")
-        return round(total_net_yuan / 1e8, 2), date_str, None  # 億元
+            try:
+                rows.append((name, int(str(row[diff_idx]).replace(",", ""))))
+            except (ValueError, IndexError, TypeError):
+                pass
+        if not rows:
+            return None, date_str, "解析 0 列"
+        print(f"  [BFI82U/rwd] 命中 {len(rows)} 列")
+        return rows, date_str, None
     except Exception as e:
-        print(f"  ⚠️ TWSE 外資買賣超失敗: {e}")
+        print(f"  ⚠️ BFI82U rwd 也失敗: {e}")
         return None, None, str(e)[:100]
+
+
+def fetch_foreign_spot_net():
+    """TWSE 三大法人買賣超 — 外資（買賣差額，單位：億元）。
+    寬鬆比對「外資」字頭,累加所有外資相關列(含「外資及陸資」「外資自營商」)。"""
+    import re
+    rows, date_str, err = _fetch_bfi82u_rows()
+    if not rows:
+        return None, date_str, err
+    total_net_yuan = 0
+    matched_rows = []
+    for name, val in rows:
+        if re.search(r"外資", name):
+            total_net_yuan += val
+            matched_rows.append((name, val))
+    if not matched_rows:
+        print(f"  [BFI82U] 找不到外資列,全部 names={[n for n, _ in rows]}")
+        return None, date_str, "找不到外資列"
+    print(f"  [BFI82U] 外資命中:{matched_rows}（合計 {total_net_yuan / 1e8:.2f} 億）")
+    return round(total_net_yuan / 1e8, 2), date_str, None  # 億元
 
 
 def fetch_three_inst_net():
     """🌅 V36.8 — TWSE BFI82U 三大法人:投信 / 自營商 / 三大法人合計買賣超(億元)。
-    沿用 fetch_foreign_spot_net 同一端點(已實證可達),只是改抓投信/自營列。
-    回 {trust, dealer, total} 億元(抓不到的鍵為 None)+ date + error。
-    """
-    try:
-        import re
-        url = "https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&response=json"
-        r = http.get(url, headers=HEADERS, timeout=10)
-        if r.status_code != 200:
-            return {}, None, f"HTTP {r.status_code}"
-        j = r.json()
-        data = j.get("data") or []
-        date_str = j.get("date") or datetime.now().strftime("%Y%m%d")
-        if not data:
-            return {}, date_str, "BFI82U 回 0 列"
-        fields = j.get("fields") or []
-        diff_idx = None
-        for i, f in enumerate(fields):
-            f = (f or "").replace(" ", "")
-            if "差額" in f or "買賣超" in f:
-                diff_idx = i
-                break
-        if diff_idx is None:
-            diff_idx = len(data[0]) - 1 if data and len(data[0]) > 1 else None
-        trust_y, dealer_y, total_y = 0, 0, None
-        trust_hit, dealer_hit = False, False
-        for row in data:
-            name = (row[0] or "").replace(" ", "")
-            try:
-                val = int(str(row[diff_idx]).replace(",", ""))
-            except (ValueError, IndexError, TypeError):
-                continue
-            if "投信" in name:
-                trust_y += val; trust_hit = True
-            elif "自營" in name:   # 自營商(自行買賣)+(避險)兩列都累加
-                dealer_y += val; dealer_hit = True
-            elif "合計" in name or "三大法人" in name:
-                total_y = val
-        out = {
-            "trust":  round(trust_y / 1e8, 2) if trust_hit else None,
-            "dealer": round(dealer_y / 1e8, 2) if dealer_hit else None,
-            "total":  round(total_y / 1e8, 2) if total_y is not None else None,
-        }
-        print(f"  [BFI82U 三大法人] 投信={out['trust']} 自營={out['dealer']} 合計={out['total']} 億")
-        return out, date_str, None
-    except Exception as e:
-        print(f"  ⚠️ TWSE 三大法人(投信/自營)失敗: {e}")
-        return {}, None, str(e)[:100]
+    回 {trust, dealer, total} 億元(抓不到的鍵為 None)+ date + error。"""
+    rows, date_str, err = _fetch_bfi82u_rows()
+    if not rows:
+        return {}, date_str, err
+    trust_y, dealer_y, total_y = 0, 0, None
+    trust_hit, dealer_hit = False, False
+    for name, val in rows:
+        if "投信" in name:
+            trust_y += val; trust_hit = True
+        elif "自營" in name:   # 自營商(自行買賣)+(避險)兩列都累加
+            dealer_y += val; dealer_hit = True
+        elif "合計" in name or "三大法人" in name:
+            total_y = val
+    out = {
+        "trust":  round(trust_y / 1e8, 2) if trust_hit else None,
+        "dealer": round(dealer_y / 1e8, 2) if dealer_hit else None,
+        "total":  round(total_y / 1e8, 2) if total_y is not None else None,
+    }
+    print(f"  [BFI82U 三大法人] 投信={out['trust']} 自營={out['dealer']} 合計={out['total']} 億")
+    return out, date_str, None
 
 
 # ════════ TAIFEX 官方 OpenAPI JSON（schema 具名、穩定，取代易碎的 CSV/HTML 爬蟲）════════
