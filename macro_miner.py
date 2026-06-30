@@ -1571,7 +1571,12 @@ def main():
     tx_now = fetch_taifex_tx_now()
     out["taifex_tx_now"] = tx_now
     if tx_now.get("price") is not None:
-        print(f"   → {tx_now['price']} ({tx_now['chg']:+.2f}%)")
+        # 🛡️ V36.9 修:OpenAPI fallback 時 chg=None,舊 f-string {None:+.2f} 會頂層崩潰
+        #    → macro_risk.json 自 2026-06-26 起整支沒寫出。改成 chg 缺值時不格式化。
+        if tx_now.get("chg") is not None:
+            print(f"   → {tx_now['price']} ({tx_now['chg']:+.2f}%)")
+        else:
+            print(f"   → {tx_now['price']}(估,無前日比較)")
     else:
         print(f"   → 失敗:{tx_now.get('error')}")
 
