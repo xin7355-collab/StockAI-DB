@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V39.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V39.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.5</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4670,6 +4670,67 @@ ${list}
                 </div>`;
         }).join('');
 
+        // ── 🚦 V39.6 ETF 順風車重新設計:共識新寵 / 核心持股池 / 庫存對照(全用現成 cross_ref,零採礦)──
+        const cref = d.cross_ref || {};
+        const _nmMap = {};
+        (d.consensus_stocks || []).forEach(s => { if (s.sym) _nmMap[String(s.sym)] = s.name || _nmMap[String(s.sym)]; });
+        (d.etfs || []).forEach(e => ['added', 'weight_up', 'weight_down', 'removed'].forEach(k => (e.changes?.[k] || []).forEach(x => { if (x.sym && x.name) _nmMap[String(x.sym)] = x.name; })));
+        const nmOf = sym => _nmMap[String(sym)] || this.getStockName(sym) || sym;
+        const isTW = sym => /^\d{4}$/.test(String(sym));   // 4 碼台股(外股如 000660 無 K 線資料)
+
+        // 🔥 今日共識新寵(hot_adds:今天被幾檔主動 ETF「同步新建倉」)
+        const hotAdds = (cref.hot_adds || []).filter(x => (x.count || 0) >= 2).slice(0, 15);
+        const hotAddsHtml = hotAdds.length ? `
+            <div class="bg-[#161b22] border border-amber-600/40 rounded-lg overflow-hidden">
+                <div class="bg-[#0d1117] border-b border-amber-700/50 px-3 py-2 text-[12px] text-amber-200 font-bold">🔥 今日共識新寵 <span class="text-[9px] text-gray-500 font-normal block mt-0.5">幾檔主動 ETF「今天同步新建倉」越多檔=經理人集體新看好(最強跟車訊號)</span></div>
+                <div class="flex flex-col">${hotAdds.map((x, i) => {
+                    const c = x.count || 0;
+                    const cCls = c >= 5 ? 'text-red-300' : c >= 3 ? 'text-orange-300' : 'text-yellow-300';
+                    return `<div onclick="app.analyze('${x.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="flex items-center gap-2 px-3 py-1.5 border-b border-[#21262d] hover:bg-[#21262d] cursor-pointer">
+                        <span class="text-[10px] text-gray-600 font-mono w-4 flex-shrink-0">${i + 1}</span>
+                        <div class="min-w-0 flex-1"><div class="text-white font-bold text-[13px] truncate">${nmOf(x.sym)} <span class="text-[10px] text-gray-500 font-mono">${x.sym}</span></div><div class="etfEC text-[9px] text-gray-600 mt-0.5" data-sym="${x.sym}">${isTW(x.sym) ? '📍 接價體檢中…' : '🌐 外股無K線'}</div></div>
+                        <span class="${cCls} font-bold text-[12px] whitespace-nowrap flex-shrink-0">${c >= 5 ? '🔥' : ''} ${c} 檔同步新買</span>
+                    </div>`;
+                }).join('')}</div>
+            </div>` : '';
+
+        // 🏆 經理人核心持股池(by_stock 廣度:被幾檔主動 ETF「同時抱」)
+        const byStock = cref.by_stock || {};
+        const corePool = Object.entries(byStock).map(([sym, arr]) => ({ sym, n: Array.isArray(arr) ? arr.length : 0 })).filter(x => x.n >= 6).sort((a, b) => b.n - a.n).slice(0, 12);
+        const corePoolHtml = corePool.length ? `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                <div class="bg-[#0d1117] border-b border-[#30363d] px-3 py-2 text-[12px] text-gray-200 font-bold">🏆 經理人核心持股池 <span class="text-[9px] text-gray-500 font-normal block mt-0.5">被最多主動 ETF「同時抱」的,長線共識核心(數字=幾檔 ETF 持有)</span></div>
+                <div class="flex flex-wrap gap-1.5 p-2.5">${corePool.map(x => {
+                    const nCls = x.n >= 9 ? 'border-red-600/50 text-red-200' : x.n >= 7 ? 'border-orange-600/40 text-orange-200' : 'border-[#30363d] text-gray-300';
+                    return `<button onclick="app.analyze('${x.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="bg-[#0d1117] border ${nCls} rounded px-2 py-1 text-[11px] font-bold">${nmOf(x.sym)} <span class="text-[9px] opacity-70">${x.n}檔</span></button>`;
+                }).join('')}</div>
+            </div>` : '';
+
+        // 💼 我的庫存 × 主動 ETF(庫存被幾檔抱 + 今天有沒有被新買/減碼)
+        let myInvHtml = '';
+        try {
+            const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+            const addedSet = new Set(), downSet = new Set();
+            (d.etfs || []).forEach(e => {
+                (e.changes?.added || []).forEach(x => addedSet.add(String(x.sym)));
+                (e.changes?.weight_up || []).forEach(x => addedSet.add(String(x.sym)));
+                (e.changes?.weight_down || []).forEach(x => downSet.add(String(x.sym)));
+                (e.changes?.removed || []).forEach(x => downSet.add(String(x.sym)));
+            });
+            const rows = (inv || []).map(it => {
+                const sym = String(it.symbol || it.sym || '').trim(); if (!sym) return '';
+                const n = Array.isArray(byStock[sym]) ? byStock[sym].length : 0;
+                const newBuy = addedSet.has(sym), cut = downSet.has(sym);
+                if (n === 0 && !newBuy && !cut)
+                    return `<div class="flex items-center justify-between px-3 py-1.5 border-b border-[#21262d]"><span class="text-[12px] text-gray-400">${nmOf(sym)} <span class="text-[9px] text-gray-600 font-mono">${sym}</span></span><span class="text-[10px] text-gray-600">主動 ETF 未持有</span></div>`;
+                const badge = newBuy ? '<span class="text-red-300 text-[10px] font-bold">🆕 今日被新買</span>'
+                            : cut ? '<span class="text-green-300 text-[10px] font-bold">📉 今日被減碼/換出</span>'
+                            : '<span class="text-gray-400 text-[10px]">持有中</span>';
+                return `<div onclick="app.analyze('${sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="flex items-center justify-between px-3 py-1.5 border-b border-[#21262d] hover:bg-[#21262d] cursor-pointer"><span class="text-[12px] text-white font-bold min-w-0 truncate">${nmOf(sym)} <span class="text-[9px] text-gray-500 font-mono">${sym}</span> <span class="text-[10px] text-gray-500">·${n}檔ETF抱</span></span>${badge}</div>`;
+            }).filter(Boolean).join('');
+            if (rows) myInvHtml = `<div class="bg-[#161b22] border border-purple-700/30 rounded-lg overflow-hidden"><div class="bg-[#0d1117] border-b border-purple-700/40 px-3 py-2 text-[12px] text-purple-200 font-bold">💼 我的庫存 × 主動 ETF <span class="text-[9px] text-gray-500 font-normal">經理人有沒有跟你站同邊</span></div><div class="flex flex-col">${rows}</div></div>`;
+        } catch (_) {}
+
         const _sub = this._etfSubTab || (() => { try { return localStorage.getItem('proTerm_etfSubTab'); } catch (_) { return null; } })() || 'follow';
         this._etfSubTab = _sub;
         const _segBtn = (k, label) => `<button onclick="app._setEtfSubTab('${k}')" class="flex-1 py-2 text-xs font-black rounded-md transition-colors ${_sub === k ? 'bg-amber-700/40 text-amber-200 border border-amber-600/50' : 'text-gray-500 border border-transparent'}">${label}</button>`;
@@ -4685,10 +4746,16 @@ ${list}
                 </div>
                 <div class="${_sub === 'follow' ? '' : 'hidden'} flex flex-col gap-2.5">
                     ${summaryHtml}
-                    ${stocksHtml}
+                    ${hotAddsHtml}
+                    ${corePoolHtml}
+                    ${myInvHtml}
+                    <details class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                        <summary class="px-3 py-2 text-[11px] text-gray-400 font-bold cursor-pointer select-none">📋 全部持股明細(含未換股)・按張數變化排序</summary>
+                        ${stocksHtml}
+                    </details>
                     <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
                         更新:${d.updated || '—'}。${d.note || ''}<br>
-                        💡 跟單訊號 = ETF 共識看多 ∩ Falcon≥70 ∩ 主力連買;加減碼 = 所有主動 ETF 對該股持股量變動加總(估算張數)。
+                        💡 共識新寵 = 今天被幾檔主動 ETF 同步新建倉(經理人集體新看好);核心持股池 = 被最多 ETF 同時抱的長線核心。純法人被動持股推估,僅供參考非投資建議。
                     </div>
                 </div>
                 <div class="${_sub === 'perf' ? '' : 'hidden'} flex flex-col gap-2.5">
@@ -4719,6 +4786,36 @@ ${list}
                 </div>
             </div>`;
 
+        // 📍 V39.6 跟車接價體檢:對共識新寵(台股)拉 K 線標位階(別追高),lazy 不阻塞渲染
+        try { this._etfEntryCheckBatch(hotAdds.filter(x => isTW(x.sym)).slice(0, 6).map(x => x.sym)); } catch (_) {}
+    },
+
+    // 📍 V39.6 對 ETF 共識新寵逐檔拉 data/{sym}.json 算位階(月線上下 + 高/低檔),填進 .etfEC 提示「跟對做別追高」
+    async _etfEntryCheckBatch(syms) {
+        if (!Array.isArray(syms) || !syms.length) return;
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+        await Promise.all(syms.map(async sym => {
+            const el = document.querySelector(`.etfEC[data-sym="${sym}"]`);
+            if (!el) return;
+            try {
+                const r = await fetch(new URL(`data/${sym}.json`, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+                if (!r.ok) { el.innerHTML = ''; return; }
+                const j = await r.json();
+                const arr = Array.isArray(j) ? j : (j.data || j.ohlcv || []);
+                const closes = arr.map(o => +(o.close ?? o.c)).filter(v => v > 0);
+                if (closes.length < 20) { el.innerHTML = ''; return; }
+                const pC = closes[closes.length - 1];
+                const ma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+                const seg = closes.slice(-60);
+                const hi = Math.max(...seg), lo = Math.min(...seg);
+                const aboveMa20 = pC >= ma20;
+                const pos = (hi > lo) ? (pC - lo) / (hi - lo) : 0.5;   // 0=低檔 1=高檔
+                const posTxt = pos >= 0.85 ? '高檔·追高留意' : pos <= 0.3 ? '低檔·相對便宜' : '中段';
+                const maTxt = aboveMa20 ? '月線上' : '月線下';
+                const cls = !aboveMa20 ? 'text-green-300' : (pos >= 0.85 ? 'text-orange-300' : 'text-red-300');
+                el.innerHTML = `<span class="${cls} font-bold">📍 ${maTxt}·${posTxt}</span> <span class="text-gray-600 font-mono">現 ${pC.toFixed(1)}</span>`;
+            } catch (_) { el.innerHTML = ''; }
+        }));
     },
 
     switchAppTab(tabId, isGoBack = false) {
