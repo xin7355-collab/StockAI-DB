@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3249,12 +3249,13 @@ const app = {
         if (!Array.isArray(kdata) || kdata.length < 8) return;
         const push = [];
         (this._detectStarPatterns?.(kdata) || []).forEach(s => push.push(s));                                  // 夜星/晨星(轉折最強)
-        (this._detect2BarReversal?.(kdata) || []).forEach(s => { if (/吞噬/.test(s.title)) push.push(s); });   // 長黑/長紅吞噬=主力出貨/進貨
+        (this._detect2BarReversal?.(kdata) || []).forEach(s => { if (/吞噬|遭遇/.test(s.title)) push.push(s); });   // 長黑/長紅吞噬=主力出貨/進貨;⭐ V41.4 遭遇線(一日封口,爆量=出貨)
         (this._detectBoxBreakout?.(kdata) || []).forEach(s => push.push(s));                                   // K線橫盤突破/跌破=進出場
         (this._detectChuLongEntry?.(kdata) || []).forEach(s => { if (/做多買點/.test(s.title)) push.push(s); }); // ⭐ V37.0 朱式等做多買點(回後站5MA)
         (this._detectChuOverheat?.(kdata) || []).forEach(s => { if (/停利|爆量隔天|過熱/.test(s.title)) push.push(s); }); // ⭐ V37.2 多頭過熱停利(持倉者)
         (this._detectChuShortTrend?.(kdata) || []).forEach(s => { if (/轉多訊號|轉強|急跌爆量/.test(s.title)) push.push(s); }); // ⭐ V37.3/37.4 空頭轉多/轉強(過前高)/急跌爆量
         (this._detectBottomBreakout?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V38.0 底部頸線突破(形態買點+目標價)
+        (this._detectPressureTest?.(kdata) || []).forEach(s => push.push(s));   // ⭐ V41.4 測壓有壓(多單別追)/測撐有撐(可承接)
         (this._detectVolumeSignals?.(kdata) || []).forEach(s => { if (/出貨量|攻擊量|換手量/.test(s.title)) push.push(s); });
         for (const s of push) {
             if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
