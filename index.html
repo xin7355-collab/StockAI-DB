@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1176,8 +1176,14 @@
 
                 <div id="onboard_kline" class="onboard-panel relative bg-amber-900/15 border border-amber-700/40 rounded-lg p-3 text-[11px] leading-relaxed text-gray-300">
                     <button onclick="app.dismissOnboard('kline')" class="absolute top-1 right-2 text-gray-400 hover:text-white text-base leading-none font-bold">×</button>
-                    <div class="font-black text-amber-200 mb-0.5">📈 K 線怎麼看</div>
-                    <div>紅綠柱 = 當日收盤<b>漲(紅) / 跌(綠)</b>。下方均線：🟡5MA(短)、🟢10MA(中)、🟧20MA(月線・最重要)、🔵60MA(季線)。<b class="text-white">月線是多空分水嶺</b> — 站上多頭、跌破空頭。</div>
+                    <div class="font-black text-amber-200 mb-0.5">📈 K 線怎麼看（朱家泓／林穎 4 要素順序）</div>
+                    <div class="flex flex-col gap-1">
+                        <div><b class="text-white">①趨勢</b>：頭頭高+底底高=多頭、頭頭低+底底低=空頭、其餘=盤整。先定方向再進場。</div>
+                        <div><b class="text-white">②均線</b>：🟡5MA(短) 🟢10MA(中) 🟧20MA(月線・多空分水嶺,站上多/跌破空) 🔵60MA(季線・大波段命脈)。</div>
+                        <div><b class="text-white">③K線</b>：紅柱=收漲、綠柱=收跌；長紅長黑看力道、變盤線(十字/紡錘)看轉折、夜星/晨星/吞噬看反轉。</div>
+                        <div><b class="text-white">④量</b>：量增配長紅才有效突破；爆量隔天黑K留意假突破出貨。</div>
+                        <div class="text-gray-500 mt-0.5">👉 下方「📐 K線分析報告」就是用這套朱／林角度,純公式偵測好型態後自動幫你判讀。</div>
+                    </div>
                 </div>
 
                 <div class="bg-[#0d1117] border border-amber-700/40 rounded-lg px-3 py-2.5 flex flex-col gap-2">
@@ -20502,7 +20508,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 5 日均量 + 今日量比
         const _vols5 = data.slice(-6, -1).map(d => d.volume).filter(v => v > 0);
         const volMa5 = _vols5.length ? Math.round(_vols5.reduce((a, b) => a + b, 0) / _vols5.length) : null;
-        const volRatio = (volMa5 && volMa5 > 0) ? +(pV / volMa5).toFixed(2) : null;
+        const volRatio = (volMa5 && volMa5 > 0 && pV > 0) ? +(pV / volMa5).toFixed(2) : null;   // 🐛 V38.7 pV=0(量未到)時設 null 顯「—」,不再誤顯「量比 0 倍」
         // 週線趨勢（週 K MA5/MA20 排列）+ 是否站上週 20MA
         let weeklyTrend = '盤整待變', aboveW20 = null;
         try {
