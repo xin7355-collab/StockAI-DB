@@ -2207,37 +2207,42 @@ def fetch_us_macro_cache():
     result = {}
     for key, ticker in symbols.items():
         try:
+            is_long = key in LONG_HIST_KEYS
             # 🛡️ SIGALRM 硬逾時，防 yfinance 無限 hang
             #    台股指數抓 2y(供前端個股頁完整功能)、其他維持 10d(省 API 額度)
-            _period = '2y' if key in LONG_HIST_KEYS else '10d'
+            _period = '2y' if is_long else '10d'
             hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period=_period), 30, None)
-            if hist is None or hist.empty:
+            yf_empty = (hist is None or hist.empty)
+            # 🐛 V40.1 長線台股指數(twii/twoii)即使 yfinance 空/逾時也「不可 continue」,
+            #    否則跳過官方來源 + 不寫 ^TWII.json → 個股頁加權 K 線停更(實測停在 6/10)。
+            #    twoii(^TWO)yfinance 幾乎永遠回空 → 櫃買全靠官方 TPEX。非長線指數維持空就跳過。
+            if yf_empty and not is_long:
                 continue
-            prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
-            last = hist.iloc[-1]
-            result[key] = {
-                'date':    str(last.name.date()),
-                'close':   round(float(last['Close']), 2),
-                'prev':    round(float(prev['Close']), 2),
-                'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
-                                  float(prev['Close']) * 100, 2),
-            }
-            # 🎯 ^TWII / ^TWO 寫成 data/^TWII.json / data/^TWO.json 個股格式(對齊 list of OHLCV),
-            #    讓前端 analyze('^TWII') / analyze('^TWO') 可查到加權/上櫃指數完整 K 線。
-            #    同時保留舊 macro_cache 的 twii_history(120 日)向下相容 build_bubble_warning。
-            if key in LONG_HIST_KEYS:
-                yf_rows = [
-                    {'date':   str(idx.date()).replace('-', '/'),
-                     'open':   round(float(row['Open']), 2),
-                     'high':   round(float(row['High']), 2),
-                     'low':    round(float(row['Low']), 2),
-                     'close':  round(float(row['Close']), 2),
-                     'volume': (int(row['Volume']) if (row['Volume'] == row['Volume']) else 0)}
-                    for idx, row in hist.iterrows()
-                    if (row['Close'] == row['Close'])   # dropna
-                ]
-                # 🏛️ 官方來源覆蓋(主要):TWSE TAIEX(twii)/ TPEX OTC(twoii)抓最近 2 個月權威 OHLC,
-                #    yfinance 仍保留長歷史供 240MA 計算;官方失敗則純用 yfinance(現行 fallback)
+            yf_rows = []
+            if not yf_empty:
+                prev = hist.iloc[-2] if len(hist) >= 2 else hist.iloc[-1]
+                last = hist.iloc[-1]
+                result[key] = {
+                    'date':    str(last.name.date()),
+                    'close':   round(float(last['Close']), 2),
+                    'prev':    round(float(prev['Close']), 2),
+                    'chg_pct': round((float(last['Close']) - float(prev['Close'])) /
+                                      float(prev['Close']) * 100, 2),
+                }
+                if is_long:
+                    yf_rows = [
+                        {'date':   str(idx.date()).replace('-', '/'),
+                         'open':   round(float(row['Open']), 2),
+                         'high':   round(float(row['High']), 2),
+                         'low':    round(float(row['Low']), 2),
+                         'close':  round(float(row['Close']), 2),
+                         'volume': (int(row['Volume']) if (row['Volume'] == row['Volume']) else 0)}
+                        for idx, row in hist.iterrows()
+                        if (row['Close'] == row['Close'])   # dropna
+                    ]
+            # 🎯 ^TWII / ^TWOII 寫成 data/^*.json 個股格式(對齊 list of OHLCV),供前端 analyze('^TWII') 查完整 K 線。
+            if is_long:
+                # 🏛️ 官方來源(主要):TWSE TAIEX(twii)/ TPEX OTC(twoii)抓最近 2 個月權威 OHLC
                 official_rows = None
                 try:
                     if key == 'twii':
@@ -2247,36 +2252,44 @@ def fetch_us_macro_cache():
                 except Exception as _e:
                     print(f"  ⚠️ 官方來源 {key} 抓取例外: {str(_e)[:80]}")
                 if official_rows:
-                    print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆覆蓋最近 yfinance(權威值優先)")
-                long_rows = _merge_official_over_yf(yf_rows, official_rows)
+                    print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆")
+                fname = '^TWOII.json' if key == 'twoii' else f"^{key.upper()}.json"
+                # yfinance 逾時/空時,讀磁碟既有 ^*.json(origin/data restore)當長歷史底,官方鮮值疊上 → 保歷史又即時
+                base_rows = yf_rows
+                if not base_rows:
+                    try:
+                        _p = Path(DATA_DIR, fname)
+                        if _p.exists():
+                            base_rows = json.loads(_p.read_text(encoding='utf-8')) or []
+                            print(f"  ♻️ {key} yfinance 空 → 沿用磁碟 {len(base_rows)} 筆長歷史,官方鮮值疊上")
+                    except Exception as _e:
+                        print(f"  ⚠️ 讀既有 {fname} 失敗:{_e}")
+                long_rows = _merge_official_over_yf(base_rows, official_rows) if official_rows else base_rows
                 # 個股格式檔
                 if long_rows:
-                    fname = f"^{key.upper()}.json"   # ^TWII.json / ^TWOII.json
-                    # ^TWO 的 ticker 我們寫成 ^TWOII.json 對齊前端 analyze('^TWOII') 呼叫
-                    if key == 'twoii':
-                        fname = '^TWOII.json'
                     try:
                         Path(DATA_DIR, fname).write_text(
                             json.dumps(long_rows, ensure_ascii=False, separators=(',', ':')),
                             encoding='utf-8')
-                        print(f"  💾 {fname}: {len(long_rows)} 筆 OHLCV(供前端個股查詢頁)")
+                        print(f"  💾 {fname}: {len(long_rows)} 筆 OHLCV ({long_rows[-1].get('date','?')})")
                     except Exception as _e:
                         print(f"  ⚠️ 寫 {fname} 失敗:{_e}")
-                # macro_cache 內保留 twii_history(120 日,給泡沫預警用,避免改其他下游)
-                if key == 'twii':
-                    result['twii_history'] = long_rows[-120:] if long_rows else []
-                    # 若官方覆蓋過,最新一筆 close/prev/chg_pct 也用官方值校正(更準)
-                    if official_rows and len(official_rows) >= 2:
-                        last_o = official_rows[-1]
-                        prev_o = official_rows[-2]
-                        if prev_o['close'] > 0:
-                            result[key] = {
-                                'date': last_o['date'].replace('/', '-'),
-                                'close': last_o['close'],
-                                'prev': prev_o['close'],
-                                'chg_pct': round((last_o['close'] - prev_o['close']) / prev_o['close'] * 100, 2),
-                            }
-            print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
+                # macro_cache 內保留 twii_history / twoii_history(120 日,泡沫預警 + 盤前大盤體檢櫃買用)
+                hist_key = 'twii_history' if key == 'twii' else 'twoii_history'
+                result[hist_key] = long_rows[-120:] if long_rows else []
+                # 單值(date/close/prev/chg_pct):官方最準優先,否則 yfinance(已設),否則 long_rows 末兩根
+                src2 = official_rows if (official_rows and len(official_rows) >= 2) else (long_rows if len(long_rows) >= 2 else None)
+                if src2 and (official_rows or key not in result):
+                    lo, po = src2[-1], src2[-2]
+                    if po.get('close', 0) > 0:
+                        result[key] = {
+                            'date': str(lo['date']).replace('/', '-'),
+                            'close': lo['close'],
+                            'prev': po['close'],
+                            'chg_pct': round((lo['close'] - po['close']) / po['close'] * 100, 2),
+                        }
+            if key in result:
+                print(f"  {key}: {result[key]['close']} ({result[key]['chg_pct']:+.2f}%)")
         except Exception as e:
             print(f"  ⚠️  {ticker}: {e}")
     if not result:
