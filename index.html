@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V39.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -9835,10 +9835,13 @@ const marginByDate = {};
         if (Number.isFinite(+fiTotal)) { if (+fiTotal > 0) s += 1; else if (+fiTotal < -200) s -= 1; }   // 三大法人合計
         if (tech) s += (tech.vColor === 'red' ? 2 : tech.vColor === 'green' ? -2 : 0);
 
+        // 🐛 V40.0 外資台指期極空(≤-4萬口)時不可硬說「外資沒大空」(實測 -83,063 口卻顯偏多致矛盾)→ 動態加註
+        const _fiBigShort = (fi != null && fi <= -40000);
+        const _fiNote = _fiBigShort ? `惟外資台指期 ${(fi / 10000).toFixed(1)} 萬口仍極空` : '外資沒大空';
         let light, verdict, vColor, summary;
-        if (s >= 3) { light = '🟢'; verdict = '開高偏多'; vColor = 'red'; summary = '隔夜美股+台積電 ADR 偏強、外資沒大空,今天台股有機會開高;順勢操作但別追高,留意上方壓力。'; }
+        if (s >= 3) { light = '🟢'; verdict = '開高偏多'; vColor = 'red'; summary = `隔夜美股+台積電 ADR 偏強、${_fiNote},今天台股有機會開高;${_fiBigShort ? '順勢但開高別追高、提防外資空單回補後拉回。' : '順勢操作但別追高,留意上方壓力。'}`; }
         else if (s <= -3) { light = '🔴'; verdict = '開低偏空'; vColor = 'green'; summary = '隔夜美股/ADR 偏弱或外資偏空,今天台股開低機率高;手上有貨顧好停損,空手別急著接刀。'; }
-        else { light = '🟡'; verdict = '中性震盪'; vColor = 'yellow'; summary = '多空訊號互有拉扯,今天大盤方向不明、開平機率高;別重押,等站穩 5 日線/月線且帶量再順勢。'; }
+        else { light = '🟡'; verdict = '中性震盪'; vColor = 'yellow'; summary = `多空訊號互有拉扯,今天大盤方向不明、開平機率高${_fiBigShort ? '(外資台指期極空,反彈偏空操作)' : ''};別重押,等站穩 5 日線/月線且帶量再順勢。`; }
         const sc = vColor === 'red' ? 'text-red-300' : vColor === 'green' ? 'text-green-300' : 'text-yellow-300';
         const bg = vColor === 'red' ? 'bg-red-900/25 border-red-500/60' : vColor === 'green' ? 'bg-green-900/25 border-green-500/60' : 'bg-yellow-900/15 border-yellow-500/50';
 
