@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.5</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -6257,6 +6257,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             }
         }
         this._updateWarRoom();
+        this._marketSnapshot = m;   // 🐛 V38.6 確保 ADR(asx/umc)等就緒供盤前大盤體檢
+        try { this.renderMarketBriefing(); } catch (_) {}   // 🐛 V38.6 道瓊/費半/ADR 載入後刷新盤前大盤體檢(原本不刷→顯--)
     },
 
     // ═══════════════════════════════════════════════════════════════════
@@ -10896,6 +10898,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (this.currentSymbolId) this.renderFalconDashboard?.();
                 // 📌 朱老師建議部位 chip 依 taiex_ma240_bias 立刻更新
                 this._renderChuPositionChip?.();
+                // 🐛 V38.6 投信/自營/合計/外資現貨/夜盤(macro_risk)載入後刷新盤前大盤體檢(原本不刷→顯「採集中」)
+                try { this.renderMarketBriefing(); } catch (_) {}
             }
         } catch (e) {
             console.warn('[macro_risk] 載入失敗(警報文案會 fallback 「黃金 ?」):', e?.message || e);
