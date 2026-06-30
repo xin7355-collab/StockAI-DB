@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11441,14 +11441,48 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (atHigh && longUp(b1) && C(b2) < O(b2)) {
                 if (O(b2) >= C(b1) && C(b2) <= O(b1)) { out.push({ tone: 'bear', title: '長黑吞噬(主力出貨)' + (big ? '+爆量' : ''), val: L(b2), msg: `高檔${when}長黑吞噬(黑K完全吃掉前紅K實體)=最強空訊、主力出貨${big ? ',爆量更兇' : ''};跌破黑K低 ${L(b2).toFixed(2)} 多單快跑。` }); break; }
                 if (O(b2) >= C(b1) && C(b2) < mid1 && C(b2) > O(b1)) { out.push({ tone: 'bear', title: '長黑覆蓋(烏雲罩頂)', val: mid1, msg: `高檔${when}黑K開高走低、收破前紅K中點 ${mid1.toFixed(2)}=多方轉弱,收破前紅K低更確認。` }); break; }
+                // ⭐ V41.4 遭遇線(一日封口):黑K開高走低、收盤打回前紅K收盤(≈最高實體)→ 執掌;爆量=出貨
+                if (O(b2) > C(b1) && C(b2) >= mid1 && C(b1) && Math.abs(C(b2) - C(b1)) / C(b1) < 0.012) { out.push({ tone: 'bear', title: '長黑遭遇(一日封口)' + (big ? '+爆量' : ''), val: L(b2), msg: `高檔${when}黑K開高走低、收盤打回前紅K收盤 ${C(b1).toFixed(2)}(開盤跳空缺口當天封掉)=多方執掌${big ? ',且爆量=主力出貨,別當小回' : ''};次日開低或跌破今低 ${L(b2).toFixed(2)} 多單先走。` }); break; }
             }
             if (atHigh && longUp(b1) && small(b2) && H(b2) <= H(b1) && L(b2) >= L(b1)) { out.push({ tone: 'bear', title: '高檔母子懷抱', val: L(b1), msg: `高檔${when}母子懷抱(小K縮在前長紅內)=多方休息,次日開低跌破 ${L(b1).toFixed(2)} 變盤確認。` }); break; }
             // 低檔 黑紅配(偏多)
             if (atLow && longDn(b1) && C(b2) > O(b2)) {
                 if (O(b2) <= C(b1) && C(b2) >= O(b1)) { out.push({ tone: 'bull', title: '長紅吞噬(主力進貨)' + (big ? '+爆量' : ''), val: H(b2), msg: `低檔${when}長紅吞噬(紅K完全吃掉前黑K實體)=最強多訊/一日反轉、主力進貨${big ? ',爆量更強' : ''};站上紅K高 ${H(b2).toFixed(2)} 可分批進。` }); break; }
                 if (O(b2) <= C(b1) && C(b2) > mid1 && C(b2) < O(b1)) { out.push({ tone: 'bull', title: '長紅貫穿(旭日東升)', val: mid1, msg: `低檔${when}紅K開低走高、收破前黑K中點 ${mid1.toFixed(2)}=空方轉弱,站上前黑K高更確認。` }); break; }
+                // ⭐ V41.4 遭遇線(一日封口)鏡像:紅K開低走高、收盤拉回前黑K收盤 → 空方力竭、止跌
+                if (O(b2) < C(b1) && C(b2) <= mid1 && C(b1) && Math.abs(C(b2) - C(b1)) / C(b1) < 0.012) { out.push({ tone: 'bull', title: '長紅遭遇(一日封口)' + (big ? '+爆量' : ''), val: H(b2), msg: `低檔${when}紅K開低走高、收盤拉回前黑K收盤 ${C(b1).toFixed(2)}(向下跳空當天封掉)=空方力竭、止跌訊號${big ? ',爆量更強' : ''};次日開高或站上今高 ${H(b2).toFixed(2)} 可分批接。` }); break; }
             }
             if (atLow && longDn(b1) && small(b2) && H(b2) <= H(b1) && L(b2) >= L(b1)) { out.push({ tone: 'bull', title: '低檔母子懷抱', val: H(b1), msg: `低檔${when}母子懷抱=空方力竭,次日開高站上 ${H(b1).toFixed(2)} 變盤確認。` }); break; }
+        }
+        return out;
+    },
+
+    // ⭐ V41.4 — 朱家泓「最高價測壓 / 最低價測撐」(K棒四元素第29課):
+    //   今高觸前波壓力沒過 + 留長上影 = 測壓有壓(賣壓警示,多單跑);今低觸前波支撐撐住 + 留長下影 = 測撐有撐(可承接)
+    _detectPressureTest(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 25) return out;
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const cur = data[last];
+        const o = O(cur), c = C(cur), h = H(cur), l = L(cur);
+        if (!o || !c || !h || !l) return out;
+        const rng = h - l; if (rng <= 0) return out;
+        const body = Math.abs(c - o);
+        const upShadow = h - Math.max(o, c), dnShadow = Math.min(o, c) - l;
+        // 前波壓力/支撐:近 60 根(排除最近 2 根,避免拿今天當前波)
+        const win = data.slice(Math.max(0, last - 60), last - 1);
+        if (win.length < 5) return out;
+        const prevHigh = Math.max(...win.map(H)), prevLow = Math.min(...win.map(L));
+        if (!prevHigh || !prevLow) return out;
+        // 測壓有壓:今高觸前波高(0.985~1.03×)、收盤沒過、留長上影(上影 ≥ 實體 且 ≥ 全K 35%)
+        if (h >= prevHigh * 0.985 && h <= prevHigh * 1.03 && c < prevHigh && upShadow >= body && upShadow >= rng * 0.35) {
+            out.push({ tone: 'warn', title: '測壓有壓(前高賣壓)', val: prevHigh, msg: `今日衝到 ${h.toFixed(2)} 測前波壓力 ${prevHigh.toFixed(2)} 沒過、收 ${c.toFixed(2)} 留長上影=有人趁高賣(朱:預壓有壓);多單別追高,沒收過 ${prevHigh.toFixed(2)} 先觀望,次日開低易回。` });
+        }
+        // 測撐有撐:今低觸前波低(0.97~1.015×)、收盤沒破、留長下影
+        else if (l <= prevLow * 1.015 && l >= prevLow * 0.97 && c > prevLow && dnShadow >= body && dnShadow >= rng * 0.35) {
+            out.push({ tone: 'bull', title: '測撐有撐(前低支撐)', val: prevLow, msg: `今日下殺到 ${l.toFixed(2)} 測前波支撐 ${prevLow.toFixed(2)} 撐住、收 ${c.toFixed(2)} 留長下影=有買盤承接(朱:預撐有撐);次日開高可分批承接,收破 ${prevLow.toFixed(2)} 再停損。` });
         }
         return out;
     },
@@ -11850,16 +11884,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}         // ⭐ V37.9 淘汰法(圖形雜亂)
         try { sigs.unshift(...this._detectBottomBreakout(data)); } catch (_) {}  // ⭐ V38.0 底部頸線突破+目標價(置頂)
         try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}          // ⭐ V38.0 均線糾結(一字底)
+        try { sigs.push(...this._detectPressureTest(data)); } catch (_) {}       // ⭐ V41.4 測壓有壓/測撐有撐(最高最低價測前波)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        // ⭐ V41.4 開盤定生死:出現變盤/轉折K時,提醒「次日開盤定強弱」(朱家泓鐵律)
+        const hasTurn = sigs.some(s => /變盤|遭遇|吞噬|覆蓋|貫穿|母子|夜星|晨星|測壓|測撐|紅黑|執掌/.test(s.title || ''));
         const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' }, warn: { c: 'text-yellow-300', b: 'border-yellow-500', tag: '⚠️留意' } };
         const MAXROWS = 10;   // 🐛 V38.3 防訊號過載:最多顯 10 條(已 unshift 把最重要的轉折/買賣點置頂)
         const more = sigs.length - MAXROWS;
         const rows = sigs.slice(0, MAXROWS).map(s => { const t = sty[s.tone] || sty.flat; return `<div class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5">
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}</div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('') + (more > 0 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${more} 條次要訊號(以上方進場體檢總結為準)</div>` : '');
-        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
+        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
     },
 
@@ -11889,6 +11927,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}     // ⭐ V37.9 淘汰法(圖形雜亂,bear)
         try { sigs.push(...this._detectBottomBreakout(data)); } catch (_) {} // ⭐ V38.0 底部頸線突破(bull)
         try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}      // ⭐ V38.0 均線糾結(flat)
+        try { sigs.push(...this._detectPressureTest(data)); } catch (_) {}   // ⭐ V41.4 測壓有壓(warn)/測撐有撐(bull)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
