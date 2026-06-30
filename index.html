@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V37.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V38.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3237,6 +3237,7 @@ const app = {
         (this._detectChuLongEntry?.(kdata) || []).forEach(s => { if (/做多買點/.test(s.title)) push.push(s); }); // ⭐ V37.0 朱式等做多買點(回後站5MA)
         (this._detectChuOverheat?.(kdata) || []).forEach(s => { if (/停利|爆量隔天|過熱/.test(s.title)) push.push(s); }); // ⭐ V37.2 多頭過熱停利(持倉者)
         (this._detectChuShortTrend?.(kdata) || []).forEach(s => { if (/轉多訊號|轉強|急跌爆量/.test(s.title)) push.push(s); }); // ⭐ V37.3/37.4 空頭轉多/轉強(過前高)/急跌爆量
+        (this._detectBottomBreakout?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V38.0 底部頸線突破(形態買點+目標價)
         (this._detectVolumeSignals?.(kdata) || []).forEach(s => { if (/出貨量|攻擊量|換手量/.test(s.title)) push.push(s); });
         for (const s of push) {
             if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
@@ -11500,6 +11501,43 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V38.0 — 林穎/朱家泓 底部形態突破 + 目標價(頭肩底/三重底/圓弧底/W底 通用:頸線突破,
+    //   目標價=突破點+頸線到底等幅距離)。純公式,六七成機率到目標價。
+    _detectBottomBreakout(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 35) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const cur = data[last], pC = C(cur);
+        if (!(pC > O(cur))) return out;   // 須紅K
+        const win = data.slice(last - 31, last);   // 前 30 根(不含今天)= 底部整理區
+        const neckline = Math.max(...win.map(H)), baseLow = Math.min(...win.map(L));
+        if (baseLow <= 0) return out;
+        const rangePct = (neckline - baseLow) / baseLow * 100;
+        if (pC > neckline && rangePct <= 35 && rangePct >= 6) {   // 收盤過頸線、底部整理(非劇噴非死水)
+            const base5 = data.slice(last - 5, last).map(V).reduce((a, x) => a + x, 0) / 5;
+            const volUp = base5 > 0 && V(cur) >= base5 * 1.2;
+            const target = pC + (neckline - baseLow), tgtPct = (target - pC) / pC * 100;
+            out.push({ tone: 'bull', title: '底部頸線突破(形態)', val: neckline, msg: `紅K收盤突破近30日頸線 ${neckline.toFixed(2)}${volUp ? ' + 量增' : '(量未明顯增,留意補量)'} = 底部形態(頭肩底/三重底/圓弧底/W底類)突破;形態目標價約 ${target.toFixed(2)}(+${tgtPct.toFixed(0)}%,頸線到底等幅);停損跌破頸線 ${neckline.toFixed(2)}。` });
+        }
+        return out;
+    },
+
+    // ⭐ V38.0 — 一字底/均線糾結(四線5/10/20/60糾結=能量壓縮,「均線糾結財神報到」,突破常出飆股)
+    _detectMaCluster(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 60) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const ma = k => data.slice(last - k + 1, last + 1).reduce((a, b) => a + C(b), 0) / k;
+        const arr = [ma(5), ma(10), ma(20), ma(60)], hi = Math.max(...arr), lo = Math.min(...arr);
+        if (lo <= 0) return out;
+        const spread = (hi - lo) / lo * 100;
+        if (spread <= 3.5) out.push({ tone: 'flat', title: '均線糾結(一字底)', val: hi, msg: `四條均線(5/10/20/60)糾結在 ${spread.toFixed(1)}% 內 = 一字底/能量壓縮(「均線糾結財神報到」);先鎖股,等帶量紅K突破上頸線即多單進場(均線糾結突破常出飆股)。` });
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -11550,6 +11588,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}      // ⭐ V37.6 K棒強弱(弱中透強/強中透弱/長影線)
         try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}        // ⭐ V37.8 葛蘭碧乖離過大(遛狗理論)
         try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}         // ⭐ V37.9 淘汰法(圖形雜亂)
+        try { sigs.unshift(...this._detectBottomBreakout(data)); } catch (_) {}  // ⭐ V38.0 底部頸線突破+目標價(置頂)
+        try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}          // ⭐ V38.0 均線糾結(一字底)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -11585,6 +11625,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}   // ⭐ V37.6 K棒強弱(弱中透強/強中透弱)
         try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}    // ⭐ V37.8 乖離過大(warn)
         try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}     // ⭐ V37.9 淘汰法(圖形雜亂,bear)
+        try { sigs.push(...this._detectBottomBreakout(data)); } catch (_) {} // ⭐ V38.0 底部頸線突破(bull)
+        try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}      // ⭐ V38.0 均線糾結(flat)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
