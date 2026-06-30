@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V39.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V39.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -4000,17 +4000,30 @@ ${list}
         return this._falconScoresCache;
     },
     // V17.18 — 跟單訊號 3-gate 評分:ETF 共識 + Falcon ≥ 70 + 主力連 N 日買超
+    // 🚦 V39.4 ETF 跟車訊號重新設計(純 ETF 資料,禁 AI):三維度 + 雙向(跟對做加碼 / 對著做減碼)
+    //   ① 廣度 etf_count(幾檔 ETF 同步動作=共識) ② 方向 shares_delta(淨加碼/淨減碼)
+    //   ③ 力道 market_val_delta_e(億,真金白銀大小;fallback 估算缺時改用張數)
     _calcEtfFollowSignal(stock) {
-        // 🦅 V39.2 falcon 連根拔除後改純「ETF 共識換入」強度(原 falcon≥70 + 主力連買 gate 來自 falcon_scores.json,已無資料源)
-        const gates = {
-            etf:    stock.etf_count >= 5 && stock.shares_delta > 0,   // 5+ 檔 ETF 同步加碼
-            strong: stock.etf_count >= 8 && stock.shares_delta > 0,   // 8+ 檔 = 強共識
-        };
-        const score = (gates.etf ? 1 : 0) + (gates.strong ? 1 : 0);
-        let tag = '';
-        if (gates.strong)   tag = '<span class="text-red-300 text-[10px] font-bold ml-1">🌟 多檔ETF換入</span>';
-        else if (gates.etf) tag = '<span class="text-orange-300 text-[10px] font-bold ml-1">✅ ETF換入</span>';
-        return { score, gates, tag, falconScore: 0 };
+        const cnt = stock.etf_count || 0;
+        const sd  = stock.shares_delta || 0;        // 淨持股變化(張):>0 加碼 / <0 減碼
+        const mv  = stock.market_val_delta_e || 0;  // 市值變化(億):力道
+        const span = (cls, txt) => `<span class="${cls} text-[10px] font-bold ml-1">${txt}</span>`;
+        const big = mv >= 3 || sd >= 3000;          // 大力道(億或張任一達標)
+        if (sd > 0) {
+            // 📈 ETF 淨加碼 → 跟對做(台股色:紅=看多)
+            if (cnt >= 8 && big)      return { score: 3, dir: 'buy', tag: span('text-red-300',    '🌟 強力跟車(廣+大量)') };
+            if (cnt >= 5)             return { score: 2, dir: 'buy', tag: span('text-orange-300', '✅ 可考慮跟(多檔共識)') };
+            if (cnt >= 3 || big)      return { score: 1, dir: 'buy', tag: span('text-yellow-300', '🟡 訊號偏弱(共識不足)') };
+            return { score: 0, dir: 'buy', tag: '' };
+        }
+        if (sd < 0) {
+            // 📉 ETF 淨減碼/換出 → 對著做或避開(綠=看空)
+            const heavy = cnt >= 5 || mv <= -3 || sd <= -3000;
+            return heavy
+                ? { score: -2, dir: 'sell', tag: span('text-green-300', '🔻 多檔ETF減碼(避開/對著做)') }
+                : { score: -1, dir: 'sell', tag: span('text-green-400', '🔻 ETF 小幅減碼') };
+        }
+        return { score: 0, dir: 'flat', tag: '' };
     },
     // V18.4 — ETF 表頭欄位點擊排序:同欄 toggle 升降序,異欄切換並預設 desc
     _etfSortBy(key) {
@@ -4545,9 +4558,10 @@ ${list}
                 }).join('')}</div>
                 ${fallbackUsed ? `<div class="text-[9px] text-amber-400 px-2 pt-2">⚠️ 近似估算 — 持股合計 / 市值變化欄需待下次盤後採礦完整資料</div>` : ''}
                 <div class="text-[10px] text-gray-500 px-2 py-2 leading-relaxed">
-                    💡 跟單訊號 = ① ETF 共識看多(≥5 檔加碼) ∩ ② Falcon ≥ 70(綜合建倉分) ∩ ③ 主力連 2-3 日買超<br>
-                    🌟 3/3 高勝率(可跟) ・ ✅ 2/3 可考慮 ・ 🟡 1/3 訊號弱 ・ (空) 0/3 別跟<br>
-                    💡 點欄位標題切換排序(再點切升降序),點任一列跳診斷分析
+                    💡 跟車訊號(純 ETF 資料)= ① 廣度 幾檔 ETF 同步動作 ② 方向 淨加碼/淨減碼 ③ 力道 市值變化(億)<br>
+                    📈 <span class="text-red-300">跟對做</span>:🌟 強力跟車(≥8檔+大量) ・ ✅ 可考慮(≥5檔共識) ・ 🟡 訊號偏弱<br>
+                    📉 <span class="text-green-300">對著做/避開</span>:🔻 多檔ETF減碼(≥5檔在賣) ・ 🔻 ETF 小幅減碼<br>
+                    💡 點欄位標題切換排序(再點切升降序),點任一列跳診斷分析 ・ 純法人被動買賣推估,僅供參考非投資建議
                 </div>
             </div>` : '';
 
