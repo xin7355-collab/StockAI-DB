@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V39.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V39.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -990,13 +990,8 @@
                         </button>
                         <div class="text-center text-[8px] text-gray-500 -mt-1">15 分鐘內快取 ・ 雙擊強制重抽</div>
                         <div id="stockPredictResult" class="text-[11px] text-gray-200 leading-relaxed"></div>
-                        <!-- 🚥 戰術訊號燈（從首頁移入；JS 即時運算,不需 AI,額度耗盡也照常顯示）-->
-                        <div id="tacticalSignalPanel" class="w-full bg-gradient-to-br from-[#0d1117] to-[#161b22] border border-[#30363d] rounded-xl p-3 shadow-lg">
-                            <div class="flex items-center gap-2">
-                                <div id="confLed" class="w-3.5 h-3.5 rounded-full bg-gray-500"></div>
-                                <span id="confText" class="text-xs font-bold text-gray-400 tracking-wide">信心燈號：等待運算</span>
-                            </div>
-                        </div>
+                        <!-- 🚥 V39.3 戰術訊號燈卡已移除(使用者要求);computeUnifiedSignal 仍餵首席 AI + 頂部指揮部 LED,updateConfidenceLed 對 confLed/confText 已 null-guard -->
+
                         <!-- 🦅 V39.2 獵鷹建倉儀表板已移除(連根拔除);黑天鵝防禦矩陣已搬到「大盤趨勢→盤前大盤體檢」 -->
                     </div>
                     <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
@@ -15663,23 +15658,43 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // V25.5 — 首頁精簡(60 行 → 24 行)只顯 3 批進場價概要 + 「查看完整策略」按鈕
         // 完整詳細(預算試算 + 停損點 + 鐵律 + 心法)收進 alert modal
         this._chuPlanCache = plan;   // 暫存供 _showChuPlanFull 用
+        // 🐛 V39.3 加「vs現價」對照 + 試單價在現價上方(突破後回落)時的追高警示
+        const pCnow = plan.pC;
+        const deltaTxt = (p) => {
+            if (p == null || !pCnow) return '';
+            const d = (p - pCnow) / pCnow * 100;
+            const cls = d > 0 ? 'text-red-300' : d < 0 ? 'text-green-300' : 'text-gray-500';
+            return `<div class="text-[8px] font-mono ${cls} mt-0.5">${d >= 0 ? '+' : ''}${d.toFixed(1)}% vs現價</div>`;
+        };
+        const b1 = plan.batch1?.price;
+        const chaseWarn = (b1 != null && pCnow && b1 > pCnow * 1.01)
+            ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2">
+                <div class="text-[10px] font-bold text-yellow-300 mb-0.5">⚠️ 試單價已在現價上方,別追高</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">發動K突破價 ${fmtPrice(b1)} 比現價 ${fmtPrice(pCnow)} 高 ${((b1 - pCnow) / pCnow * 100).toFixed(1)}%(突破後正回檔)。現在追=追高;朱式做法:改等「回測 5MA 企穩」的加碼批次,或股價站回突破點再試單,別在半山腰接。</div>
+            </div>`
+            : '';
         box.innerHTML = `
             <div class="text-orange-400 font-bold text-sm flex items-center justify-between mb-2">
                 <span>📐 朱老師分批進場計畫</span>
                 ${triggerInfo}
             </div>
+            <div class="text-[9px] text-gray-500 mb-1.5">現價 <span class="font-mono text-yellow-300 font-bold">${fmtPrice(pCnow)}</span> ・ 三批為「突破型」進場:試單追突破發動點、加碼順 5MA、回後撿回檔</div>
+            ${chaseWarn}
             <div class="grid grid-cols-3 gap-2 text-center mb-2">
                 <div class="bg-yellow-900/20 border border-yellow-700/40 rounded px-1 py-1.5">
                     <div class="text-[9px] text-yellow-300 font-bold">🥇 試單 30%</div>
                     <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch1?.price)}</div>
+                    ${deltaTxt(plan.batch1?.price)}
                 </div>
                 <div class="bg-blue-900/20 border border-blue-700/40 rounded px-1 py-1.5">
                     <div class="text-[9px] text-blue-300 font-bold">🥈 加碼 30%</div>
                     <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch2?.price)}</div>
+                    ${deltaTxt(plan.batch2?.price)}
                 </div>
                 <div class="bg-purple-900/20 border border-purple-700/40 rounded px-1 py-1.5">
                     <div class="text-[9px] text-purple-300 font-bold">🥉 回後 40%</div>
                     <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch3?.price)}</div>
+                    ${deltaTxt(plan.batch3?.price)}
                 </div>
             </div>
             <button onclick="app._showChuPlanFull()" class="w-full py-2 bg-orange-900/30 hover:bg-orange-900/50 border border-orange-700/50 text-orange-200 text-[11px] font-bold rounded transition-colors">📖 查看完整策略(預算試算 + 停損點 + 鐵律) →</button>`;
@@ -21780,7 +21795,7 @@ ${_chuPosPlan}
   "traffic_light": "格式『<emoji+三選一> — <25 字內現價與均線即時肉搏描述>』。三選一必須是 🔴可以買 或 🟡觀望 或 🟢不能買（紅漲綠跌!與系統量化建議${sigVerdictHint ? ` ${sigVerdictHint}` : ''} 一致）。範例：'🔴可以買 — 趨勢狂飆，不破 **${ma5} 元** 抱緊處理' / '🟡觀望 — 月線拉鋸，等突破再出手' / '🟢不能買 — 跌破季線，主力倒貨先閃'。ETF 標的可改寫如 '🔴可以買 — 跌價殖利率升，**金字塔低接**' 但仍保留三選一。",
   "summary": "30 字內首頁黃卡，哲哲口吻強烈動詞 emoji 開頭，融合屬性 + 數據 + 風險為一句話，必須帶具體點位。🛑 兩條鐵則：(1) 開頭動詞必須與 traffic_light 同向 — 🔴可以買→抱緊🔥/低接試單🤔/建倉、🟡觀望→觀望🤨、🟢不能買→快逃🚨/出貨🤑/避開，嚴禁燈號🔴🟡卻喊快逃。(2) 句中價位只能寫真實價格數字（現價 ${currentPrice}、均線 ${ma5}/${ma20} 等），**嚴禁把股票代號 ${sym} 當成價格寫進句子**（錯誤示範：『${sym} 低於 ${ma20} 元』←代號不是價格；正確：『${ma20DirTxt} 元』←方向務必照上方 JS 算好的『現價vs均線方向』，禁自己判高低寫反）。",
   "bottom_bar": "15~20 字內置底浮動條，依庫存狀態動態組合，所有數字與動詞用 **xxx** 包起。範例（空手空頭）：『空頭成型，**空手觀望等待**』；（有持股獲利 +30%）：『防守 **${ma5} 元** 鎖巨利🔥』；（ETF 跌均線）：『殖利率攀升，**金字塔低接🤔**』；（強勢突破）：『站穩 **${ma20} 元** **加碼🔥**』。",
-  "detail_action": "三段體,標題一字不差,段間用 \\n,每段 70~130 字,全程哲哲口吻(直白、敢說、跟投資朋友對話)。\\n【📊 大盤與籌碼全景】用上方大盤全景(加權/VIX/恐懼貪婪/散戶多空/外資期現/融資槓桿/板塊輪動)判讀大環境順風還是逆風,再接到本檔籌碼安定度與法人動能,一氣呵成說「現在的環境適不適合碰這檔」。\\n★中段「身分段」依【庫存狀態:${invLine}】**只准輸出一段、且只寫使用者真實身分**(空手就別寫持有、有持股就別寫空手):\\n · 若空手→標題用【🟥 空手者策略】:能不能進?能進的話**何時建倉**(現在就進 vs 等回測哪條均線)、具體進場價、分幾批、什麼情況取消(跌破哪裡)。不能進就說為什麼+什麼條件才能進。禁談停利停損(沒部位)。\\n · 若有持股→標題用【🟦 持有者策略】:依**實際損益**給**一種**指令(獲利→移動停利/續抱具體價位;虧損→停損或反彈逃命),**正獲利時嚴禁出現「套牢/反彈逃命」字**,禁同時列舉獲利者/套牢者兩種。\\n【🛡️ 風控紅線】明確給:停損價(跌破哪裡無條件出場)、部位上限建議(幾成資金)、本檔當前最大的一個風險點是什麼。\\n⚠️ 鐵律:身分段二選一(只寫使用者真實身分那段);三段標題一字不差;禁複述本 prompt 規則文字、禁出現『天條』『庫存狀態:』『禁列舉』等 meta 字眼,違反視為無效輸出。"
+  "detail_action": "三段體,標題一字不差,段間用 \\n,**每段 45~75 字、結論寫在第一句**,哲哲口吻但精簡犀利、零廢話(禁『根據資料』『以下為您分析』『綜合來看』等贅詞)。\\n【📊 大盤與籌碼全景】第一句先一槌定音(環境順風還逆風),再用 1-2 個最關鍵數據(加權/VIX/外資期現/法人動能擇要)佐證,別把所有指標都唸一遍。\\n★中段「身分段」依【庫存狀態:${invLine}】**只准輸出一段、只寫使用者真實身分**(空手別寫持有、有股別寫空手):\\n · 若空手→【🟥 空手者策略】:第一句先講能不能進,再給何時建倉(現在 vs 等回測哪條均線)+具體進場價+取消條件(跌破哪)。不能進就一句講明條件。禁談停利停損。\\n · 若有股→【🟦 持有者策略】:依**實際損益**給**一種**指令(獲利→移動停利/續抱具體價;虧損→停損價),正獲利嚴禁出現「套牢/逃命」,禁同列兩種。\\n【🛡️ 風控紅線】一句講停損價(跌破哪無條件走)+部位上限(幾成)+當前最大風險點,不展開。\\n⚠️ 鐵律:身分段二選一;三段標題一字不差;每段最多 75 字寧短勿長;禁複述本 prompt 規則、禁出現『天條』『庫存狀態:』等 meta 字眼,違反視為無效。"
 }`;
 
             // 🎯 首席 AI 全盤分析:使用者要求純 Gemini 雙 key 輪動(深度推理保留 Gemini 2.5),撞 429 直接 throw 不偷偷 fallback
