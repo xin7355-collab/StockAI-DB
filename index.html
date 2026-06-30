@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V40.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.0</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.1</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -9785,7 +9785,7 @@ const marginByDate = {};
         const usPct = k => { const c = usm[k]?.chg_pct; return (c == null || isNaN(c)) ? null : +c; };
         const pctStr = v => (v == null) ? null : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
         const twii = g('mktTWII') || (usm.twii?.close != null ? (+usm.twii.close).toFixed(0) : ''), twiiChg = g('mktTWII_chg') || (pctStr(usPct('twii')) || '');
-        const twoii = g('mktTWOII'), twoiiChg = g('mktTWOII_chg');
+        const twoii = g('mktTWOII') || (usm.twoii?.close != null ? (+usm.twoii.close).toFixed(2) : ''), twoiiChg = g('mktTWOII_chg') || (pctStr(usPct('twoii')) || '');   // 🐛 V40.1 櫃買改可讀 macro_cache.twoii(採礦端官方 TPEX 補)
         const djiChg = pctStr(usPct('dji')) || '', ndxChg = pctStr(usPct('nasdaq')) || '', spxChg = pctStr(usPct('sp500')) || '', soxChg = pctStr(usPct('sox')) || '', tsmChg = pctStr(usPct('tsm')) || '';
         const vix = (usm.vix?.close != null) ? (+usm.vix.close).toFixed(2) : '';
         const fi = this.fiShortQty;
@@ -9859,6 +9859,25 @@ const marginByDate = {};
             ? `<span class="font-mono ${txNight.chg > 0 ? 'text-red-300' : txNight.chg < 0 ? 'text-green-300' : 'text-gray-300'}">${(+txNight.price).toFixed(0)}${txNight.chg != null ? ` (${txNight.chg > 0 ? '+' : ''}${txNight.chg}%)` : '(估)'}</span>`
             : `<span class="text-gray-500">採集中(夜盤源修復中)</span>`;
 
+        // 🐛 V40.1 期現基差(taifex_backwardation = 期-現:>0 順價差/<0 逆價差)→ 判讀外資大空單是「避險套利」還是「真看空」
+        //   分析師觀點:外資大空單若伴隨順價差,常是「買現賣期」期現套利鎖利(保證獲利),不可純當看空
+        const basis = mr.taifex_backwardation;
+        let basisLine = `<span class="text-gray-500">採集中</span>`;
+        if (typeof basis === 'number' && isFinite(basis)) {
+            const contango = basis > 0;   // 期>現=順價差
+            const mag = Math.abs(basis).toFixed(0);
+            const tagCls = contango ? 'text-red-300' : 'text-green-300';
+            let read = '';
+            if (fi != null && fi <= -25000) {
+                read = contango
+                    ? '・大空單+順價差 → 恐含「買現賣期」期現套利避險,別純當看空'
+                    : '・逆價差+大空單 → 避險解讀打折,偏真實看空壓力(留意現貨跟跌)';
+            } else if (fi != null && fi > -10000) {
+                read = contango ? '・順價差偏多方結構' : '・逆價差,留意';
+            }
+            basisLine = `<span class="${tagCls} font-mono font-bold">${contango ? '順價差 +' : '逆價差 -'}${mag} 點</span><span class="text-gray-500 text-[9px]">${read}</span>`;
+        }
+
         el.className = `w-full rounded-lg p-3 border ${bg}`;
         el.innerHTML = `
             <div class="flex items-center justify-between mb-2">
@@ -9871,7 +9890,7 @@ const marginByDate = {};
             </div>
             <div class="bg-[#0d1117]/60 rounded p-2 mb-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
                 <div class="text-gray-400">📊 加權 ${fmt(twii, clr(twiiChg))} ${fmt(twiiChg, clr(twiiChg))}</div>
-                <div class="text-gray-400">📈 櫃買 ${twoii ? `${fmt(twoii, clr(twoiiChg))} ${fmt(twoiiChg, clr(twoiiChg))}` : '<span class="text-gray-500 text-[9px]">採集中(需 FinMind 即時)</span>'}</div>
+                <div class="text-gray-400">📈 櫃買 ${twoii ? `${fmt(twoii, clr(twoiiChg))} ${fmt(twoiiChg, clr(twoiiChg))}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</div>
                 <div class="text-gray-400">🇺🇸 道瓊 ${fmt(djiChg, clr(djiChg))}</div>
                 <div class="text-gray-400">💻 NASDAQ ${fmt(ndxChg, clr(ndxChg))}</div>
                 <div class="text-gray-400">🔌 費半 ${fmt(soxChg, clr(soxChg))}</div>
@@ -9882,6 +9901,7 @@ const marginByDate = {};
                 <div class="text-gray-400">🌃 夜盤 ${txNightLine}</div>
                 <div class="text-gray-400">🌐 外資現貨 ${fiSpotLine}</div>
                 <div class="text-gray-400">🎯 外資台指期 ${fiLine}</div>
+                <div class="col-span-2 text-gray-400">⚖️ 期現基差 ${basisLine}</div>
                 <div class="text-gray-400">🏦 投信 ${yiLine(fiTrust)}</div>
                 <div class="text-gray-400">🏢 自營商 ${yiLine(fiDealer)}</div>
                 <div class="col-span-2 text-gray-400">⚖️ 三大法人合計 ${yiLine(fiTotal)}</div>
