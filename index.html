@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V36.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V36.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V36.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1505,6 +1505,9 @@
                 <div class="flex items-center gap-2"><span class="text-xl">🚀</span><span class="tracking-wide">盤前戰情</span></div>
                 <span class="text-indigo-300 text-[11px] font-bold">隔夜美股+ADR+拉積盤+川普/黃仁勳 → 三劇本實戰指令</span>
             </button>
+
+            <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
+            <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
 
             <!-- ════════ 【區 3】分頁切替:🌍 全球大環境 / 🇹🇼 台股實戰(V25.9 sticky 化:固定頂部不再 layout shift)════════ -->
             <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md">
@@ -2655,6 +2658,7 @@ const app = {
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
+        '盤前大盤體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🟢 開高偏多 / 🟡 中性震盪 / 🔴 開低偏空。\n\n🔧 目前「採集中」的(下次採礦補):投信/自營商買賣超、大盤融資券餘額、日月光/聯電 ADR、台指期夜盤源修復。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
         '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🟢 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🔴 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 這是型態統計、不是預言:紅燈不代表一定跌、綠燈也不保證漲,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、或振幅太大已噴/崩的會自動排除。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
@@ -6196,6 +6200,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         if(this.currentSymbolId) this.refreshStrategy();
         this._updateWarRoom();
         this._checkMarketAlerts();
+        try { this.renderMarketBriefing(); } catch(_){}   // 🌅 V36.8 盤前大盤體檢(指數值就緒後刷新)
     },
 
     _renderUSBar(m) {
@@ -9615,6 +9620,100 @@ const marginByDate = {};
             if (box)  box.innerHTML  = `<div class="col-span-full text-center text-gray-600 text-[10px] py-2">趨勢資料抓取中,稍後再看</div>`;
             if (hbox) hbox.innerHTML = `<span class="text-[10px] text-gray-600">天氣稍後</span>`;
         }
+    },
+
+    // 🌅 V36.8 — 盤前大盤體檢:朱老師盤前儀表板的純公式版。讀已載入的指數值 + 對 ^TWII 跑進場體檢,
+    //   彙總成「今天開盤偏多/偏空」一句話總結。禁 AI 算數,全 JS 計分。缺的資料源標「採集中」。
+    async renderMarketBriefing() {
+        const el = document.getElementById('marketBriefing');
+        if (!el) return;
+        const g = id => (document.getElementById(id + '_main')?.innerText?.trim() || document.getElementById(id)?.innerText?.trim() || '').replace(/\s+/g, '');
+        const sign = s => /^\+/.test(s) ? 1 : (/^-|^▽|^▼/.test(s) ? -1 : 0);   // 漲跌方向(台股紅漲)
+        const clr = s => { const d = sign(s); return d > 0 ? 'text-red-300' : d < 0 ? 'text-green-300' : 'text-gray-400'; };
+        const fmt = (v, c) => `<span class="font-mono ${c || 'text-gray-200'}">${v || '--'}</span>`;
+
+        // ① 指數值(已由 processMacroData/relay 填好)
+        const twii = g('mktTWII'), twiiChg = g('mktTWII_chg'), twoii = g('mktTWOII'), twoiiChg = g('mktTWOII_chg');
+        const dji = g('usBar_dji'), djiChg = g('usBar_dji_chg'), ndx = g('usBar_ndx'), ndxChg = g('usBar_ndx_chg');
+        const spx = g('usBar_spx'), spxChg = g('usBar_spx_chg'), sox = g('usBar_sox'), soxChg = g('usBar_sox_chg');
+        const tsm = g('usBar_tsm'), tsmChg = g('usBar_tsm_chg'), vix = g('usBar_vix');
+        const fi = this.fiShortQty;
+        const fiSpot = this._macroRiskCache?.fi_spot_net;   // 外資現貨買賣超(億)
+        const txNight = this._macroRiskCache?.taifex_tx_now;   // 台指期夜盤(可能 null)
+
+        // ② 加權技術面(對 ^TWII 跑進場體檢,純公式)
+        let tech = null;
+        try {
+            let rows = this._twiiKlineCache?.rows;
+            if (!rows) {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(12000) });
+                if (r.ok) { rows = await r.json(); if (Array.isArray(rows) && rows.length >= 30) this._twiiKlineCache = { rows, at: Date.now() }; }
+            }
+            if (Array.isArray(rows) && rows.length >= 20) tech = this._entryCheckup(rows);
+        } catch (_) {}
+
+        // ③ 開盤方向計分(純公式)
+        let s = 0;
+        [djiChg, ndxChg, spxChg].forEach(c => s += sign(c));            // 美股三雄
+        s += sign(soxChg) * 1.5;                                        // 費半(半導體最連動)
+        s += sign(tsmChg) * 2;                                          // 台積電 ADR(權重最高)
+        const vixN = parseFloat((vix || '').replace(/[^0-9.]/g, ''));
+        if (Number.isFinite(vixN)) { if (vixN < 20) s += 1; else if (vixN > 30) s -= 2; else if (vixN > 25) s -= 1; }
+        if (fi !== null && fi !== undefined) { if (fi > -10000) s += 1; else if (fi <= -40000) s -= 2; else if (fi <= -25000) s -= 1; }
+        if (Number.isFinite(+fiSpot)) { if (+fiSpot > 0) s += 1; else if (+fiSpot < -200) s -= 1; }
+        if (tech) s += (tech.vColor === 'red' ? 2 : tech.vColor === 'green' ? -2 : 0);
+
+        let light, verdict, vColor, summary;
+        if (s >= 3) { light = '🟢'; verdict = '開高偏多'; vColor = 'red'; summary = '隔夜美股+台積電 ADR 偏強、外資沒大空,今天台股有機會開高;順勢操作但別追高,留意上方壓力。'; }
+        else if (s <= -3) { light = '🔴'; verdict = '開低偏空'; vColor = 'green'; summary = '隔夜美股/ADR 偏弱或外資偏空,今天台股開低機率高;手上有貨顧好停損,空手別急著接刀。'; }
+        else { light = '🟡'; verdict = '中性震盪'; vColor = 'yellow'; summary = '多空訊號互有拉扯,今天大盤方向不明、開平機率高;別重押,等站穩 5 日線/月線且帶量再順勢。'; }
+        const sc = vColor === 'red' ? 'text-red-300' : vColor === 'green' ? 'text-green-300' : 'text-yellow-300';
+        const bg = vColor === 'red' ? 'bg-red-900/25 border-red-500/60' : vColor === 'green' ? 'bg-green-900/25 border-green-500/60' : 'bg-yellow-900/15 border-yellow-500/50';
+
+        // 加權技術一行
+        const techLine = tech
+            ? `<span class="${tech.vColor === 'red' ? 'text-red-300' : tech.vColor === 'green' ? 'text-green-300' : 'text-yellow-300'} font-bold">${tech.light} ${tech.verdict}</span> <span class="text-gray-500">(體檢 ${tech.score}分)</span>`
+            : `<span class="text-gray-500">技術資料載入中</span>`;
+        const fiLine = (fi !== null && fi !== undefined)
+            ? `<span class="${fi > -10000 ? 'text-red-300' : fi > -25000 ? 'text-yellow-300' : 'text-green-300'} font-mono font-bold">${fi >= 0 ? '+' : ''}${(+fi).toLocaleString()} 口</span> <span class="text-gray-500 text-[9px]">${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}</span>`
+            : `<span class="text-gray-500">採集中</span>`;
+        const fiSpotLine = Number.isFinite(+fiSpot)
+            ? `<span class="${+fiSpot >= 0 ? 'text-red-300' : 'text-green-300'} font-mono font-bold">${+fiSpot >= 0 ? '+' : ''}${(+fiSpot).toFixed(0)} 億</span>`
+            : `<span class="text-gray-500">採集中</span>`;
+        const txNightLine = (txNight && txNight.price)
+            ? `<span class="font-mono ${txNight.chg > 0 ? 'text-red-300' : txNight.chg < 0 ? 'text-green-300' : 'text-gray-300'}">${(+txNight.price).toFixed(0)}${txNight.chg != null ? ` (${txNight.chg > 0 ? '+' : ''}${txNight.chg}%)` : '(估)'}</span>`
+            : `<span class="text-gray-500">採集中(夜盤源修復中)</span>`;
+
+        el.className = `w-full rounded-lg p-3 border ${bg}`;
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前大盤體檢</span><span class="text-[9px] text-gray-500">純公式總結</span></div>
+                <button onclick="app.showJargon('盤前大盤體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+            </div>
+            <div class="flex items-center gap-3 mb-2">
+                <div class="text-3xl">${light}</div>
+                <div class="flex-1"><div class="text-base font-black ${sc} leading-tight">今天 ${verdict}</div><div class="text-[10px] text-gray-400">大盤開盤方向分數 <span class="font-mono font-black ${sc}">${s > 0 ? '+' : ''}${s}</span></div></div>
+            </div>
+            <div class="bg-[#0d1117]/60 rounded p-2 mb-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                <div class="text-gray-400">📊 加權 ${fmt(twii, clr(twiiChg))} ${fmt(twiiChg, clr(twiiChg))}</div>
+                <div class="text-gray-400">📈 櫃買 ${fmt(twoii, clr(twoiiChg))} ${fmt(twoiiChg, clr(twoiiChg))}</div>
+                <div class="text-gray-400">🇺🇸 道瓊 ${fmt(djiChg, clr(djiChg))}</div>
+                <div class="text-gray-400">💻 NASDAQ ${fmt(ndxChg, clr(ndxChg))}</div>
+                <div class="text-gray-400">🔌 費半 ${fmt(soxChg, clr(soxChg))}</div>
+                <div class="text-gray-400">🏭 台積ADR ${fmt(tsmChg, clr(tsmChg))}</div>
+                <div class="text-gray-400">😱 VIX ${fmt(vix)}</div>
+                <div class="text-gray-400">🌃 夜盤 ${txNightLine}</div>
+                <div class="text-gray-400">🌐 外資現貨 ${fiSpotLine}</div>
+                <div class="text-gray-400">🎯 外資台指期 ${fiLine}</div>
+                <div class="col-span-2 text-gray-400 border-t border-[#21262d] pt-1 mt-0.5">📐 加權技術 ${techLine}</div>
+            </div>
+            <div class="bg-[#161b22] border-l-4 border-${vColor}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
+                <div class="text-[10px] font-bold ${sc} mb-0.5">💡 一句話總結</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${summary}</div>
+            </div>
+            <div class="text-[9px] text-gray-600 leading-snug">🔧 採集中:投信/自營商買賣超、大盤融資券餘額、日月光/聯電 ADR(下次採礦補齊)・點「加權」可看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>`;
+        el.classList.remove('hidden');
     },
 
     // 🅾️ V33.0 — 歐尼爾出貨日(Distribution Day)計數（純 JS，含「多方覆蓋消退」校正）
@@ -14034,6 +14133,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { localStorage.setItem('mktSubTab', tab); } catch(_) {}
         // 進入台股實戰自動拉一次即時情報（_newsCache 1 分鐘內會走快取，不會狂打）
         if (tab === 'tw') { this.loadNewsHeadlines(); try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} }
+        if (tab === 'global') { try { this.renderMarketBriefing(); } catch(_){} }
     },
 
     // 📑 V32.1 大盤指揮中心次級頁籤(天氣/因子/風控):切換 + 淡入 + 左右滑動
