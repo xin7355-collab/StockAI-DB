@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1514,12 +1514,7 @@
 
             <!-- 🧠 一句話結論 + 首席戰術腳本已移至「台股實戰」綜合指揮中心底部風控層(V30.0,在泡沫風控之後) -->
 
-            <!-- ════════ 【區 2】🚀 盤前戰情(原 AI 全球綜合解析,改造為盤前作戰報告)════════ -->
-            <button onclick="app.openGlobalAIModal(); app.vibrate(50);" id="btnGlobalAIHeader"
-                    class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-indigo-600/40 hover:border-indigo-500/60 rounded-lg py-3.5 px-4 flex flex-col items-center justify-center gap-1 transition-all font-black text-base text-indigo-300 shadow-md">
-                <div class="flex items-center gap-2"><span class="text-xl">🚀</span><span class="tracking-wide">盤前作戰簡報</span></div>
-                <span class="text-indigo-300 text-[11px] font-bold">美股隔夜 × 拉積盤精算 × 巨頭情報 × 三劇本進場指令</span>
-            </button>
+            <!-- ════════ 【區 2】🚀 盤前作戰簡報按鈕已移除(V41.3 使用者要求);盤前體檢純公式卡保留為主要盤前資訊 ════════ -->
 
             <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
             <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
@@ -9861,7 +9856,8 @@ const marginByDate = {};
         const adrPct = k => { const c = usm[k]?.chg_pct; return (c == null) ? null : +c; };   // asx/umc ADR
         const asxChg = adrPct('asx'), umcChg = adrPct('umc');
         const pctClr = v => (v == null) ? 'text-gray-500' : (v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400');
-        const yiLine = v => Number.isFinite(+v) ? `<span class="${+v >= 0 ? 'text-red-300' : 'text-green-300'} font-mono font-bold">${+v >= 0 ? '+' : ''}${(+v).toFixed(0)}億</span>` : `<span class="text-gray-500">採集中</span>`;
+        // 🐛 V41.3 修「+0億」假資料:原 Number.isFinite(+v) 對 null/'' 會因 +null===0 判 true → 採集失敗(投信/自營/合計=null)被誤顯「+0億」。改嚴格擋掉 null/空字串。
+        const yiLine = v => (v != null && v !== '' && Number.isFinite(+v)) ? `<span class="${+v >= 0 ? 'text-red-300' : 'text-green-300'} font-mono font-bold">${+v >= 0 ? '+' : ''}${(+v).toFixed(0)}億</span>` : `<span class="text-gray-500">採集中</span>`;
 
         // ② 加權技術面(跑進場體檢,純公式)
         // 🐛 V39.8 優先用 macro_cache.twii_history(最新含今日,120 根);^TWII.json 常停更落後(實測停在 6/10 而大盤已 6/30)→ 改備援
@@ -9916,7 +9912,7 @@ const marginByDate = {};
         const fiLine = (fi !== null && fi !== undefined)
             ? `<span class="${fi > -10000 ? 'text-red-300' : fi > -25000 ? 'text-yellow-300' : 'text-green-300'} font-mono font-bold">${fi >= 0 ? '+' : ''}${(+fi).toLocaleString()} 口</span> <span class="text-gray-500 text-[9px]">${fi > -10000 ? '偏多' : fi > -25000 ? '中性' : fi > -40000 ? '偏空' : '極空'}</span>`
             : `<span class="text-gray-500">採集中</span>`;
-        const fiSpotLine = Number.isFinite(+fiSpot)
+        const fiSpotLine = (fiSpot != null && fiSpot !== '' && Number.isFinite(+fiSpot))
             ? `<span class="${+fiSpot >= 0 ? 'text-red-300' : 'text-green-300'} font-mono font-bold">${+fiSpot >= 0 ? '+' : ''}${(+fiSpot).toFixed(0)} 億</span>`
             : `<span class="text-gray-500">採集中</span>`;
         const txNightLine = (txNight && txNight.price)
