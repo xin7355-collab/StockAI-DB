@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -272,10 +272,10 @@
                 <div class="flex flex-col gap-1 pt-1 border-b border-gray-700 pb-4">
                     <label class="text-xs font-bold text-indigo-400">🧠 AI 戰略靈魂編輯器 (Prompt)</label>
                     <p class="text-[10px] text-gray-500 leading-tight mb-1">自訂分析風格，真實數據會自動餵入下方指令中。</p>
-                    <label class="flex items-start gap-2 mb-2 text-[11px] text-gray-300 cursor-pointer select-none">
-                        <input type="checkbox" id="set_autoRunChiefAI" onchange="app.saveSettings()" class="w-4 h-4 accent-indigo-500 mt-0.5 flex-shrink-0">
-                        <span>個股切換時<b class="text-indigo-300">自動執行首席 AI</b>(吃 Groq 配額,預設關閉;關閉後仍可手動點 🧠 按鈕)</span>
-                    </label>
+                    <div class="flex items-start gap-2 mb-2 text-[11px] text-gray-400">
+                        <span class="flex-shrink-0">🔇</span>
+                        <span>首席 AI 已改<b class="text-indigo-300">純手動</b>:開 App / 切個股<b class="text-gray-200">不再自動跑</b>(省 Groq 配額),要分析時點下方 🧠「首席 AI 全盤分析」鈕即可。</span>
+                    </div>
                     <textarea id="set_aiPrompt" oninput="app.saveSettings()" class="bg-[#010409] text-gray-300 p-2 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-indigo-500 transition-colors h-28 scrollbar-hide" placeholder="輸入您的專屬 AI 提示詞..."></textarea>
                     <div class="flex gap-2 mt-1.5">
                         <button onclick="app.resetPrompt('default')" class="flex-1 px-2 py-1.5 bg-gray-800 text-[10px] font-bold text-gray-300 rounded border border-gray-600 hover:bg-gray-700 transition-colors">預設首席模式</button>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1706,15 +1706,17 @@
                 </div>
             </div>
 
-            <!-- 📡 全球即時情報(V21.2 改:AI 翻譯改手動按鈕 + 上滑清快取) -->
+            <!-- 📡 全球即時情報(V41.2:標題免AI;AI 解讀改手動按鈕,點才跑、用 Gemini 不吃 Groq) -->
             <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
                 <div class="flex items-center justify-between mb-1.5">
                     <div class="text-[10px] font-black text-blue-300">📡 全球即時情報</div>
                     <div class="flex items-center gap-1.5">
+                        <button id="globalNewsAiBtn" onclick="app.analyzeGlobalNewsSummary({force:true}); app.vibrate(30);" class="text-[9px] text-amber-300 bg-amber-900/30 border border-amber-700/60 hover:bg-amber-800/40 rounded px-2 py-0.5 font-bold transition-colors">🤖 AI 解讀</button>
                         <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
                     </div>
                 </div>
-                <div class="text-[8px] text-gray-600 mb-1.5">💡 標題已由採礦機自動翻成中文(免 AI、不耗額度)</div>
+                <div class="text-[8px] text-gray-600 mb-1.5">💡 標題已由採礦機自動翻成中文(免 AI、不耗額度);要白話彙整再點「🤖 AI 解讀」(手動才跑)</div>
+                <div id="globalNewsSummary" class="hidden bg-[#0d1117] border border-amber-900/40 rounded-lg p-2.5 mb-2 text-[11px]"></div>
                 <div id="globalNewsList" class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-3">載入中...</div>
                 </div>
@@ -3765,15 +3767,17 @@ const app = {
     },
 
     // 📊 全球新聞 AI 彙整:把 15 則新聞摘成「全球市場動態 + 美股焦點」兩段(類似 LINE 轉發格式)
-    //    fetchGlobalNews + analyzeGlobalNewsAI 拉完後自動 silent 觸發;sessionStorage 一日一次
+    //    V41.2 — 改「手動按鈕」觸發(全球即時情報卡「🤖 AI 解讀」鈕),不再自動 silent 跑;用 Gemini 不吃 Groq
     async analyzeGlobalNewsSummary(opts) {
         const items = this._globalNewsItems || [];
         const force = !!(opts && opts.force);
         const silent = !!(opts && opts.silent);
         const box = document.getElementById('globalNewsSummary');
         if (!box) return;
+        box.classList.remove('hidden');   // 手動點才顯,點下去就展開
+        const btn = document.getElementById('globalNewsAiBtn');
         if (!items.length) {
-            box.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">無新聞可彙整</div>';
+            box.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">情報尚未載入,稍等幾秒再點</div>';
             return;
         }
         // V18.7 — 改 Gemini(原 Groq 70b)
@@ -3782,6 +3786,8 @@ const app = {
             box.innerHTML = '<div class="text-[10px] text-yellow-400/80 text-center py-2">⚠️ 請至「⚙️ 設定」填 Gemini API Key 才能 AI 彙整</div>';
             return;
         }
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 解讀中…'; btn.classList.add('opacity-60'); }
+        const _restoreBtn = () => { if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 解讀'; btn.classList.remove('opacity-60'); } };
         // 快取:同批新聞 (key=第一則 url + 條數) 一日只彙整一次,force 時強制重打
         const cacheKey = `gnewsSummary_${(items[0].url || items[0].title || '').slice(0, 80)}_${items.length}`;
         if (!force) {
@@ -3789,7 +3795,7 @@ const app = {
                 const raw = sessionStorage.getItem(cacheKey);
                 if (raw) {
                     const c = JSON.parse(raw);
-                    if (Date.now() - c.at < 8 * 3600e3) { box.innerHTML = c.html; return; }
+                    if (Date.now() - c.at < 8 * 3600e3) { box.innerHTML = c.html; _restoreBtn(); return; }
                 }
             } catch(_) {}
         }
@@ -3834,8 +3840,9 @@ ${list}
             try { sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch(_) {}
         } catch(e) {
             console.warn('[analyzeGlobalNewsSummary]', e);
-            box.innerHTML = `<div class="text-[10px] text-red-400/80 text-center py-2">AI 彙整失敗:${e.message}</div>`;
-            if (!silent) alert(`AI 彙整失敗:${e.message}`);
+            box.innerHTML = `<div class="text-[10px] text-red-400/80 text-center py-2">AI 解讀失敗,稍後再點:${this._aiFriendlyError ? this._aiFriendlyError(e.message) : e.message}</div>`;
+        } finally {
+            _restoreBtn();
         }
     },
 
@@ -5146,8 +5153,7 @@ ${list}
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         const wlEl = document.getElementById('set_watchlistAlert');
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
-        const arEl = document.getElementById('set_autoRunChiefAI');
-        if (arEl) arEl.checked = this.settings.autoRunChiefAI === true;
+        // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),設定頁 checkbox 已移除
         this._applyFontSizeUI(this.settings.fontSize || 'medium');
         document.getElementById('exportAreaContainer').classList.add('hidden');
         // 📊 渲染今日 AI key 使用統計(Q4:回答「哪把 key 撞 429」)
@@ -5248,8 +5254,7 @@ ${list}
         if (aiEngEl) this.settings.aiEngine = aiEngEl.value || 'auto';
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) { const v = parseInt(ratEl.value, 10); this.settings.riskAlertThreshold = (Number.isFinite(v) ? Math.max(30, Math.min(95, v)) : 60); }
-        const autoRunEl = document.getElementById('set_autoRunChiefAI');
-        if (autoRunEl) this.settings.autoRunChiefAI = !!autoRunEl.checked;
+        // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),不再讀寫此設定
         localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
@@ -17675,9 +17680,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
     async _triggerAIRecalcIfDirty(source) {
         if (!this.currentSymbolId || !this.activeData || !this.activeData.length) return;
-        // 🔇 自動觸發節流:預設關閉「切換個股就自動跑首席 AI」,避免吃 Groq 配額
-        // 想要回到舊行為:設定頁勾選「個股切換時自動執行首席 AI」
-        if (source === 'autoload' && this.settings.autoRunChiefAI !== true) {
+        // 🔇 V41.2 — 使用者要求:徹底關閉「開 App / 切個股」自動跑首席 AI(每次開程式都偷打 Groq 配額)。
+        //   首席 AI 一律改「手動」:點 🧠 首席 AI 全盤分析鈕才跑。autoload 來源永遠略過,不再看任何設定。
+        //   (手動觸發如改成本走非 autoload 來源,不受此限)
+        if (source === 'autoload') {
             this._showAIIdleHint();
             return;
         }
