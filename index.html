@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V40.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V40.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -9791,7 +9791,7 @@ const marginByDate = {};
                         <div class="text-[9px] text-gray-500 mb-0.5">${t.label}·${t.unit}</div>
                         <div class="text-2xl leading-none">${m.icon}</div>
                         <div class="text-[12px] font-black ${m.cls} mt-0.5">${m.txt}</div>
-                        <div class="text-[8px] text-gray-600 mt-0.5">${m.sub}</div>
+                        <div class="text-[8px] text-gray-600 mt-0.5">${t.v.sub || m.sub}</div>
                         <div class="text-[8px] text-gray-500 font-mono">乖離 ${biasTxt}</div>
                     </div>`;
             }).join('');
@@ -10056,11 +10056,16 @@ const marginByDate = {};
         const c = closes[closes.length - 1];
         const ms = maAt(shortN), ml = maAt(longN);
         if (ms == null || ml == null) return null;
-        let key = 'chop';
+        const bias = +((c - ml) / ml * 100).toFixed(1);
+        // 🐛 V41.0 早多/早空修正:原本嚴格要求 收>短均>長均 才算偏多,導致「突破初期」(價已大幅站上長均,
+        //   但短均還沒追過長均)被誤判「震盪·均線糾結」— 實測週線乖離 +17% 卻顯震盪(對標 App 顯中多)。
+        //   改:價明顯站上長均(乖離≥+6%)即算偏多(早多)、明顯破長均(≤-6%)算偏空,並標誠實副標(非多頭排列)。
+        let key = 'chop', sub = null;
         if (c > ms && ms > ml)      key = 'bull';
         else if (c < ms && ms < ml) key = 'bear';
-        const bias = +((c - ml) / ml * 100).toFixed(1);
-        return { key, bias };
+        else if (bias >= 6)  { key = 'bull'; sub = '價站長均上·短均待順(早多)'; }
+        else if (bias <= -6) { key = 'bear'; sub = '價破長均下·短均待順(早空)'; }
+        return { key, bias, sub };
     },
 
     // 🏭 Q3:渲染每細分板塊下方的對應美股 ETF 現價 + 漲跌(對標連動性一目了然)
