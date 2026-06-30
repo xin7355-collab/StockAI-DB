@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V37.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V37.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.5</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11431,6 +11431,36 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V37.6 — 林穎 K棒強弱研判(紅黑K ≠ 漲跌):弱中透強/強中透弱 + 長上下影線。純公式。
+    //   紅K=開低收高(多方強)、黑K=開高收低(空方強);再比「今收 vs 昨收」看真漲跌。
+    _detectKbarStrength(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 10) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const cur = data[last], o = O(cur), c = C(cur), h = H(cur), l = L(cur), pc = C(data[last - 1]);
+        if (!o || !c || !pc) return out;
+        const win = data.slice(-60), hi = Math.max(...win.map(H)), lo = Math.min(...win.map(L)), rng = hi - lo;
+        const pos = rng > 0 ? (c - lo) / rng : 0.5;   // 0 低檔 1 高檔
+        const isHigh = pos >= 0.65, isLow = pos <= 0.35;
+        const body = Math.abs(c - o), range = h - l;
+        const upper = h - Math.max(o, c), lower = Math.min(o, c) - l;   // 上影 / 下影
+        const red = c > o, black = c < o;
+        const chg = (c - pc) / pc * 100;
+        // 弱中透強:紅K(開低收高、多方撐)但收盤仍 < 昨收 → 低檔=止跌訊號
+        if (red && c < pc && isLow) out.push({ tone: 'bull', title: '弱中透強(止跌)', val: c, msg: `今收紅K(開低收高、多方有撐)但收盤 ${c.toFixed(2)} 仍低於昨收 ${pc.toFixed(2)}(跌${Math.abs(chg).toFixed(1)}%)→ 低檔「弱中透強」,有買盤進場撐住,留意止跌反彈(待明日紅K確認)。` });
+        // 強中透弱:黑K(開高收低、空方搶)但收盤仍 > 昨收 → 高檔=出貨警訊
+        if (black && c > pc && isHigh) out.push({ tone: 'bear', title: '強中透弱(出貨警訊)', val: c, msg: `今收黑K(開高收低、空方搶)但收盤 ${c.toFixed(2)} 仍高於昨收(漲${chg.toFixed(1)}%)→ 高檔「強中透弱」,開高有人趁高偷賣/獲利了結,持倉者留意,明日開低易跌。` });
+        // 長上影線(高檔):衝高被打回 = 賣壓
+        if (range > 0 && body > 0 && upper >= body * 1.5 && upper >= range * 0.4 && isHigh)
+            out.push({ tone: 'bear', title: '長上影線(賣壓)', val: h, msg: `長上影線(盤中衝到 ${h.toFixed(2)} 被打回收 ${c.toFixed(2)})→ 高檔有人趁高賣、多方攻不上去,留意轉弱;明日開盤定多空。` });
+        // 長下影線(低檔):殺低被買回 = 買盤支撐
+        if (range > 0 && body > 0 && lower >= body * 1.5 && lower >= range * 0.4 && isLow)
+            out.push({ tone: 'bull', title: '長下影線(支撐)', val: l, msg: `長下影線(盤中殺到 ${l.toFixed(2)} 被買回收 ${c.toFixed(2)})→ 低檔有買盤承接,留意止跌;明日紅K站上更確認。` });
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     renderKbarTactics(data) {
@@ -11478,6 +11508,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.unshift(...this._detectChuShortTrend(data)); } catch (_) {}  // ⭐ V37.3 空頭辨別/別接刀/轉多抄底(置頂)
         try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}     // ⭐ V37.1 盤整觀望/三角收斂
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}       // ⭐ V37.2 多頭過熱停利
+        try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}      // ⭐ V37.6 K棒強弱(弱中透強/強中透弱/長影線)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -11510,6 +11541,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectChuShortTrend(data)); } catch (_) {}  // ⭐ V37.3 空頭(別接刀/轉多)
         try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}  // ⭐ V37.1 盤整觀望(中性,推 verdict 往觀望)
         try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}    // ⭐ V37.2 過熱停利(warn,壓低進場分)
+        try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}   // ⭐ V37.6 K棒強弱(弱中透強/強中透弱)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
