@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V37.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V37.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V37.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11284,6 +11284,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const aboveMa5 = pC >= ma5;
         const high60 = Math.max(...data.slice(-60).map(b => +((b?.high ?? b?.h) || 0)));
         const chasing = high60 > 0 && pC >= high60 * 0.97;   // 已近波段高 = 追高區
+        // ⭐ V37.5 回檔強弱(朱:漲10回3=強勢,回檔越小越強,優先做回檔小的)
+        const recentPeak = peaks[peaks.length - 1].v, priorTrough = troughs[troughs.length - 2].v, upLeg = recentPeak - priorTrough;
+        const retrace = upLeg > 0 ? (recentPeak - lastTrough) / upLeg : 0;
+        const pullTag = retrace > 0 ? (retrace < 0.5 ? ` ・強勢回檔(回${(retrace * 100).toFixed(0)}%<½,續漲機率高)` : ` ・弱勢回檔(回${(retrace * 100).toFixed(0)}%>½,偏弱、優先選回檔更小的股)`) : '';
+        // ⭐ V37.5 季線(60MA)壓力(朱:上月線後季線是3月套牢解套壓力,到季線不漲先短獲利)
+        const ma60 = ma(60, last), ma60p5 = ma(60, last - 5);
+        const seasonPress = (ma60 && pC < ma60 && pC >= ma60 * 0.97 && ma60p5 && ma60 <= ma60p5) ? ` ・⚠️逼近下彎季線 ${ma60.toFixed(2)}(3月套牢解套壓力),不過就短線先獲利` : '';
         if (justReclaim && noBreakLow && red) {
             // ⭐ V37.2 高勝率三條件(朱):① 紅K實體≥2% ② 量增 ③ 收盤過昨日最高;再加站月線
             const body = O(data[last]) > 0 ? (pC - O(data[last])) / O(data[last]) * 100 : 0;
@@ -11292,15 +11299,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const onMa20 = ma20 ? pC >= ma20 : true;
             const hiProb = body >= 2 && volUp && overY;   // 三大核心條件全中 = 8 成勝率
             if (hiProb) {
-                out.push({ tone: 'bull', title: '高勝率做多買點', val: ma5, msg: `波段多頭 + 回後站上5日線 ${ma5.toFixed(2)},且 紅K實體 +${body.toFixed(1)}% + 量增 + 收盤過昨高 ${H(data[last - 1]).toFixed(2)}${onMa20 ? ' + 站月線' : ''} = 朱家泓高勝率買點(約8成);停損:跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
+                out.push({ tone: 'bull', title: '高勝率做多買點', val: ma5, msg: `波段多頭 + 回後站上5日線 ${ma5.toFixed(2)},且 紅K實體 +${body.toFixed(1)}% + 量增 + 收盤過昨高 ${H(data[last - 1]).toFixed(2)}${onMa20 ? ' + 站月線' : ''} = 朱家泓高勝率買點(約8成)${pullTag}${seasonPress};停損:跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
             } else {
                 const miss = `${body >= 2 ? '' : '紅K<2% '}${volUp ? '' : '量未增 '}${overY ? '' : '未過昨高'}`.trim();
-                out.push({ tone: 'bull', title: '朱式做多買點(力道偏弱)', val: ma5, msg: `波段多頭 + 站上5日線 ${ma5.toFixed(2)} 但攻擊力道未滿(${miss})→ 可小量試;等三條件齊(紅K≥2% + 量增 + 過昨高)勝率才到8成。停損跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
+                out.push({ tone: 'bull', title: '朱式做多買點(力道偏弱)', val: ma5, msg: `波段多頭 + 站上5日線 ${ma5.toFixed(2)} 但攻擊力道未滿(${miss})→ 可小量試${pullTag}${seasonPress};等三條件齊(紅K≥2% + 量增 + 過昨高)勝率才到8成。停損跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
             }
         } else if (aboveMa5 && noBreakLow && chasing) {
             out.push({ tone: 'flat', title: '多頭但追高', val: ma5, msg: `波段多頭但已近波段高點(追高區)= 朱:買低不追高,別追;等回檔不破前低 ${lastTrough.toFixed(2)} 再站上5日線才是買點。` });
         } else if (!aboveMa5 && noBreakLow) {
-            out.push({ tone: 'flat', title: '多頭回檔等買點', val: ma5, msg: `波段多頭回檔中、暫未破前低 ${lastTrough.toFixed(2)};鎖股等待 → 待紅K站回5日線 ${ma5.toFixed(2)} 且不破前低即「等做多」買點。` });
+            out.push({ tone: 'flat', title: '多頭回檔等買點', val: ma5, msg: `波段多頭回檔中、暫未破前低 ${lastTrough.toFixed(2)}${pullTag};鎖股等待 → 待紅K站回5日線 ${ma5.toFixed(2)} 且不破前低即「等做多」買點。` });
         }
         return out;
     },
