@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V38.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V39.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V38.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V39.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -10485,9 +10485,7 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
 請嚴格輸出純 JSON,禁 \`\`\`json 標籤,格式:
 {
   "tomorrow_verdict": "🟢 隔日大漲機率 XX% / 🟡 普通震盪 / 🟠 微跌風險 / 🔴 大跌風險 XX%",
-  "main_reason": "(40字內)主因 — 結合該股技術/籌碼/對應板塊判讀",
-  "entry_strategy": "(50字內)進場策略 — 具體價位(現價多少進、停損抓哪)",
-  "exit_target": "(40字內)停利停損目標位",
+  "main_reason": "(50字內)主因 — 結合該股技術/籌碼/對應板塊判讀隔日方向。🛑 只談機率與原因,禁自編進場價/停利停損價(那些下方專屬卡已 JS 算好,你算會跟它們打架)",
   "risk_warning": "(40字內)風險警示 — 若有則寫,沒有寫「無」"
 }`;
         const btn = document.querySelector('[onclick*="analyzeStockPredict"]');
@@ -10503,19 +10501,12 @@ ${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat
                         <div class="text-lg font-black ${verdictCls}">${p.tomorrow_verdict || '--'}</div>
                         <div class="text-[11px] text-gray-300 mt-1 leading-relaxed">${p.main_reason || ''}</div>
                     </div>
-                    <div class="mb-2 pb-2 border-b border-cyan-700/40">
-                        <div class="text-[10px] text-cyan-300 font-bold mb-0.5">💰 進場策略 + 具體價位</div>
-                        <div class="text-[11px] text-gray-200 leading-relaxed">${p.entry_strategy || '--'}</div>
-                    </div>
-                    <div class="mb-2 pb-2 border-b border-cyan-700/40">
-                        <div class="text-[10px] text-green-300 font-bold mb-0.5">🎯 停利 / 停損目標位</div>
-                        <div class="text-[11px] text-gray-200 leading-relaxed">${p.exit_target || '--'}</div>
-                    </div>
-                    <div>
+                    <div class="mb-1">
                         <div class="text-[10px] text-red-300 font-bold mb-0.5">⚠️ 風險警示</div>
                         <div class="text-[11px] text-gray-200 leading-relaxed">${p.risk_warning || '--'}</div>
                     </div>
-                    <div class="text-[8px] text-gray-600 mt-2 text-right">🤖 Gemini ${new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'})}</div>
+                    <div class="text-[9px] text-gray-500 leading-snug border-t border-cyan-700/30 pt-1.5">💰 進出場價請看下方「動態停利停損線」+「分批進場計畫」卡(JS 精算,不靠 AI 猜)</div>
+                    <div class="text-[8px] text-gray-600 mt-1 text-right">🤖 Gemini ${new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'})}</div>
                 </div>
             `;
             result.innerHTML = html;
@@ -21576,6 +21567,10 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             // 1. 精準提取 MA5, MA20 避免 AI 算數幻覺
             const ma5 = ind.ma5[lastIdx] ? ind.ma5[lastIdx].toFixed(2) : '--';
             const ma20 = ind.ma20[lastIdx] ? ind.ma20[lastIdx].toFixed(2) : '--';
+            // 🐛 V39.0 現價vs均線方向「JS 算好」餵 AI(禁 AI 自己判方向→曾出現 2410>月線2372 卻寫「低於月線」)
+            const _m20v = ind.ma20[lastIdx], _m5v = ind.ma5[lastIdx];
+            const ma20DirTxt = (_m20v != null) ? `現價 ${currentPrice} ${currentPrice >= _m20v ? '高於' : '低於'}月線 ${ma20}` : '月線資料不足';
+            const ma5DirTxt  = (_m5v  != null) ? `${currentPrice >= _m5v ? '站上' : '跌破'}5MA ${ma5}` : '';
 
             // 2. 自動判別 K 線狀態 (取代舊版 4 顆按鈕)
             // V16.9 — MA 任一 null(指標未算好)時顯「⏳ 整備中」,不寫死「盤整中」誤導
@@ -21858,6 +21853,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 - 🛡️ 個股三大法人籌碼安定度：${chipSafetyLine}
 - ⚖️ 多空優勢計分（V21.5，JS 28 規則精算，禁重算；traffic_light 必須與此呼應，見鐵律 6️⃣）：${bbLine}
 - 📐 技術位階（系統精算，禁重算）：趨勢 ${chu?.trendJudge || '中性'}｜均線 ${chu?.maArrangement || '糾結'}｜折數 ${chu?.foldPct ?? '—'}折 ${chu?.foldZone || ''}
+- 📐 現價vs均線方向（JS 已算好，務必照此方向寫、禁寫反）：${ma20DirTxt}、${ma5DirTxt}
 - 📐 朱老師分批進場計畫（JS 精算，禁自算，依【庫存狀態】引用對應批次）：
 ${_chuPosPlan}
 - 🚨 型態警報：${patternAlertsText}
@@ -21884,7 +21880,7 @@ ${_chuPosPlan}
 ⚠️ 只准輸出純 JSON，**必須有且只有這 4 個 key**，禁 \`\`\`json 標籤、禁前後說明文字：
 {
   "traffic_light": "格式『<emoji+三選一> — <25 字內現價與均線即時肉搏描述>』。三選一必須是 🔴可以買 或 🟡觀望 或 🟢不能買（紅漲綠跌!與系統量化建議${sigVerdictHint ? ` ${sigVerdictHint}` : ''} 一致）。範例：'🔴可以買 — 趨勢狂飆，不破 **${ma5} 元** 抱緊處理' / '🟡觀望 — 月線拉鋸，等突破再出手' / '🟢不能買 — 跌破季線，主力倒貨先閃'。ETF 標的可改寫如 '🔴可以買 — 跌價殖利率升，**金字塔低接**' 但仍保留三選一。",
-  "summary": "30 字內首頁黃卡，哲哲口吻強烈動詞 emoji 開頭，融合屬性 + 數據 + 風險為一句話，必須帶具體點位。🛑 兩條鐵則：(1) 開頭動詞必須與 traffic_light 同向 — 🔴可以買→抱緊🔥/低接試單🤔/建倉、🟡觀望→觀望🤨、🟢不能買→快逃🚨/出貨🤑/避開，嚴禁燈號🔴🟡卻喊快逃。(2) 句中價位只能寫真實價格數字（現價 ${currentPrice}、均線 ${ma5}/${ma20} 等），**嚴禁把股票代號 ${sym} 當成價格寫進句子**（錯誤示範：『${sym} 低於 ${ma20} 元』←代號不是價格；正確：『現價 ${currentPrice} 低於月線 ${ma20} 元』）。",
+  "summary": "30 字內首頁黃卡，哲哲口吻強烈動詞 emoji 開頭，融合屬性 + 數據 + 風險為一句話，必須帶具體點位。🛑 兩條鐵則：(1) 開頭動詞必須與 traffic_light 同向 — 🔴可以買→抱緊🔥/低接試單🤔/建倉、🟡觀望→觀望🤨、🟢不能買→快逃🚨/出貨🤑/避開，嚴禁燈號🔴🟡卻喊快逃。(2) 句中價位只能寫真實價格數字（現價 ${currentPrice}、均線 ${ma5}/${ma20} 等），**嚴禁把股票代號 ${sym} 當成價格寫進句子**（錯誤示範：『${sym} 低於 ${ma20} 元』←代號不是價格；正確：『${ma20DirTxt} 元』←方向務必照上方 JS 算好的『現價vs均線方向』，禁自己判高低寫反）。",
   "bottom_bar": "15~20 字內置底浮動條，依庫存狀態動態組合，所有數字與動詞用 **xxx** 包起。範例（空手空頭）：『空頭成型，**空手觀望等待**』；（有持股獲利 +30%）：『防守 **${ma5} 元** 鎖巨利🔥』；（ETF 跌均線）：『殖利率攀升，**金字塔低接🤔**』；（強勢突破）：『站穩 **${ma20} 元** **加碼🔥**』。",
   "detail_action": "三段體,標題一字不差,段間用 \\n,每段 70~130 字,全程哲哲口吻(直白、敢說、跟投資朋友對話)。\\n【📊 大盤與籌碼全景】用上方大盤全景(加權/VIX/恐懼貪婪/散戶多空/外資期現/融資槓桿/板塊輪動)判讀大環境順風還是逆風,再接到本檔籌碼安定度與法人動能,一氣呵成說「現在的環境適不適合碰這檔」。\\n★中段「身分段」依【庫存狀態:${invLine}】**只准輸出一段、且只寫使用者真實身分**(空手就別寫持有、有持股就別寫空手):\\n · 若空手→標題用【🟥 空手者策略】:能不能進?能進的話**何時建倉**(現在就進 vs 等回測哪條均線)、具體進場價、分幾批、什麼情況取消(跌破哪裡)。不能進就說為什麼+什麼條件才能進。禁談停利停損(沒部位)。\\n · 若有持股→標題用【🟦 持有者策略】:依**實際損益**給**一種**指令(獲利→移動停利/續抱具體價位;虧損→停損或反彈逃命),**正獲利時嚴禁出現「套牢/反彈逃命」字**,禁同時列舉獲利者/套牢者兩種。\\n【🛡️ 風控紅線】明確給:停損價(跌破哪裡無條件出場)、部位上限建議(幾成資金)、本檔當前最大的一個風險點是什麼。\\n⚠️ 鐵律:身分段二選一(只寫使用者真實身分那段);三段標題一字不差;禁複述本 prompt 規則文字、禁出現『天條』『庫存狀態:』『禁列舉』等 meta 字眼,違反視為無效輸出。"
 }`;
