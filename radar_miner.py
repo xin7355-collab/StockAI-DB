@@ -252,15 +252,15 @@ def _chu_bottom(sym, rows):
     if drop_from_high < 20:
         return None
 
-    # 啟動紅 K:量 > 20MA量 × 2,且 收 > 開、漲幅 > 0.5%
+    # 啟動紅 K:量 ≥ 20日均量 × 2,且 收 > 開、漲幅 > 0.5%
+    #   V41.14 修:底部長期量縮,「昨量」本身就很低 → 原本 1.2×昨量 根本不是爆量(且與卡片說明「爆2倍量」、
+    #   本函式 L255 註解都不符)。底部轉折的爆量必須對比「長期量縮的基準量」= 20日均量,×2 才是主力大戶真進貨。
     day_gain = (c - pc) / pc * 100
     if not (c > o and day_gain > 0.5):
         return None
-    # V15.4 朱老師心法:量增最精準訊號是「今日量 ≥ 昨日量 × 1.2」(昨量是離今天最近的籌碼抵抗位,主力表態最實質)
-    v_yesterday = vols[-2] if len(vols) >= 2 else 0
-    if not (v_yesterday > 0 and v >= v_yesterday * 1.2):
-        return None
     v_avg_20 = sum(vols[-20:]) / 20
+    if not (v_avg_20 > 0 and v >= v_avg_20 * 2):
+        return None
 
     turnover = c * v
     return {
