@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -2209,6 +2209,8 @@
                         <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
                         <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70">(風控)</span></button>
                         <button onclick="app.openChuMasterModal(); app.vibrate(20);" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓選股</button>
+                        <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌅 K棒轉多 <span class="opacity-70">(找買點)</span></button>
+                        <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌃 K棒轉空 <span class="opacity-70">(找賣點)</span></button>
                     </div>
 
                     <!-- 當前策略一句話說明條 -->
@@ -20097,6 +20099,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         swing:     { id: 'radarTabSwing',     active: 'bg-green-600/20 text-green-300 border-green-500' },
         sniper:    { id: 'radarTabSniper',    active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
+        kbar_bull: { id: 'radarTabKbarBull',  active: 'bg-red-600/25 text-red-300 border-red-500' },
+        kbar_bear: { id: 'radarTabKbarBear',  active: 'bg-green-600/25 text-green-300 border-green-500' },
     },
     _RADAR_HINT: {
         layup:     '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
@@ -20105,6 +20109,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         sniper:    '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
         attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
         falcon:    '🦅 獵鷹建倉｜全市場 AI 評分 ≥ 60 的標的(紅榜 ≥75 / 橙榜 60-74),分數越高越優先,綜合動能·籌碼·技術·風險。',
+        kbar_bull: '🌅 K棒轉多｜全市場掃朱家泓 K棒戰法「偏多轉折」:晨星/長紅吞噬/長紅遭遇/測撐有撐,都配合成交量。純公式,右欄顯命中訊號。→ 找進場買點,站上訊號 K 高點或 5MA 再分批進。',
+        kbar_bear: '🌃 K棒轉空｜全市場掃朱家泓 K棒戰法「偏空轉折/出貨」:夜星/長黑吞噬/長黑遭遇/測壓有壓/量價背離,都配合成交量。純公式。→ 手上有貨的顧停損、空手別追高,跌破訊號 K 低點多單先走。',
     },
     // radar_matrix.json 尚未採礦時的示範資料（接線採礦後自動換成真資料）
     _RADAR_FAKE: {
