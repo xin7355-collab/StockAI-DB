@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.29</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.30</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.29</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.30</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -12034,6 +12034,88 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V41.30 — 葛蘭碧八大買賣點(以月線 20MA 為準,純公式)。買4/賣4(乖離過大)已由 _detectMaDeviation 涵蓋,
+    //   此處補其餘 6 式:買1突破/買2假跌破/買3回測支撐 ・ 賣1跌破/賣2假突破/賣3反彈受阻。回最相關一式。
+    _detectGranville(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 24) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const maAt = end => { const s = data.slice(end - 19, end + 1); return s.length === 20 ? s.reduce((a, b) => a + C(b), 0) / 20 : null; };
+        const ma = maAt(last), maY = maAt(last - 1), maOld = maAt(last - 3);
+        if (ma == null || maY == null || maOld == null || ma <= 0) return out;
+        const pC = C(data[last]), yC = C(data[last - 1]), pH = H(data[last]), pL = L(data[last]), red = pC > O(data[last]);
+        const slopeUp = ma > maOld, slopeDn = ma < maOld;
+        const nearAbove = pC >= ma && (pC - ma) / ma <= 0.03, nearBelow = pC <= ma && (ma - pC) / ma <= 0.03;
+        // 依優先序回一式(避免同時多個均線訊號洗版)
+        if (yC < maY && pC > ma && !slopeDn) out.push({ tone: 'bull', title: '葛蘭碧買1(突破月線)', val: ma, msg: `股價由下向上突破月線 ${ma.toFixed(2)}、月線走平或翻揚 = 葛蘭碧第 1 買點(黃金交叉),波段轉多起手;守住月線續抱。` });
+        else if (yC > maY && pC < ma && !slopeUp) out.push({ tone: 'bear', title: '葛蘭碧賣1(跌破月線)', val: ma, msg: `股價由上向下跌破月線 ${ma.toFixed(2)}、月線走平或下彎 = 葛蘭碧第 1 賣點(死亡交叉),波段轉空;多單出場。` });
+        else if (slopeUp && pL < ma && pC > ma) out.push({ tone: 'bull', title: '葛蘭碧買2(假跌破站回)', val: ma, msg: `月線 ${ma.toFixed(2)} 上揚中,盤中跌破後今收又站回月線之上 = 葛蘭碧第 2 買點(假跌破),洗盤結束;跌破不站回才轉空。` });
+        else if (slopeDn && pH > ma && pC < ma) out.push({ tone: 'bear', title: '葛蘭碧賣2(假突破跌回)', val: ma, msg: `月線 ${ma.toFixed(2)} 下彎中,盤中突破後今收又跌回月線之下 = 葛蘭碧第 2 賣點(假突破),反彈無力;別追。` });
+        else if (slopeUp && nearAbove && red) out.push({ tone: 'bull', title: '葛蘭碧買3(回測月線支撐)', val: ma, msg: `月線 ${ma.toFixed(2)} 上揚,股價回測到月線附近未破又收紅 = 葛蘭碧第 3 買點(支撐反彈);跌破月線則失守。` });
+        else if (slopeDn && nearBelow && !red) out.push({ tone: 'bear', title: '葛蘭碧賣3(反彈受阻月線)', val: ma, msg: `月線 ${ma.toFixed(2)} 下彎,股價反彈到月線附近過不了又收黑 = 葛蘭碧第 3 賣點(壓力受阻);站上月線才解除。` });
+        return out;
+    },
+
+    // ⭐ V41.30 — 頭部型態跌破頸線(M頭/頭肩頂/三重頂 通用,純公式,對稱 _detectBottomBreakout):
+    //   收盤跌破近30日頭部整理下緣(頸線支撐)= 頭部成立,附等幅測跌目標價。
+    _detectTopBreakdown(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 35) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const cur = data[last], pC = C(cur);
+        if (!(pC < O(cur))) return out;   // 須黑K
+        const win = data.slice(last - 31, last);   // 前 30 根(不含今天)= 頭部整理區
+        const neckline = Math.min(...win.map(L)), topHigh = Math.max(...win.map(H));
+        if (neckline <= 0) return out;
+        const rangePct = (topHigh - neckline) / neckline * 100;
+        if (pC < neckline && rangePct <= 35 && rangePct >= 6) {
+            const base5 = data.slice(last - 5, last).map(V).reduce((a, x) => a + x, 0) / 5;
+            const volUp = base5 > 0 && V(cur) >= base5 * 1.2;
+            const target = pC - (topHigh - neckline), tgtPct = pC > 0 ? (pC - target) / pC * 100 : 0;
+            out.push({ tone: 'bear', title: '頭部頸線跌破(形態)', val: neckline, msg: `黑K收盤跌破近 30 日頸線 ${neckline.toFixed(2)}${volUp ? ' + 量增(出貨)' : ''} = 頭部形態(M頭/頭肩頂/三重頂類)跌破;形態目標價約 ${target.toFixed(2)}(-${tgtPct.toFixed(0)}%,頭到頸線等幅);多單快跑,反彈到頸線 ${neckline.toFixed(2)} 過不了再減。` });
+        }
+        return out;
+    },
+
+    // ⭐ V41.30 — 趨勢線突破/跌破(純公式):兩個上升低點連成上升趨勢線(跌破=轉弱)/ 兩個下降高點連成下降趨勢線(突破=轉強)。
+    _detectTrendline(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 30) return out;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const n = data.length, last = n - 1, SW = 4, from = Math.max(SW, n - 60);
+        const peaks = [], troughs = [];
+        for (let i = from; i <= last - SW; i++) {
+            const w = data.slice(i - SW, i + SW + 1).map(C), c = C(data[i]);
+            if (c === Math.max(...w)) peaks.push(i);
+            if (c === Math.min(...w)) troughs.push(i);
+        }
+        const pC = C(data[last]), yC = C(data[last - 1]);
+        // 上升趨勢線(兩個抬高的低點)
+        if (troughs.length >= 2) {
+            const a = troughs[troughs.length - 2], b = troughs[troughs.length - 1];
+            if (b > a && C(data[b]) > C(data[a])) {
+                const slope = (C(data[b]) - C(data[a])) / (b - a);
+                const proj = C(data[b]) + slope * (last - b), projY = C(data[b]) + slope * (last - 1 - b);
+                if (proj > 0 && slope > 0 && pC < proj * 0.995 && yC >= projY * 0.995)
+                    out.push({ tone: 'warn', title: '跌破上升趨勢線', val: proj, msg: `今收 ${pC.toFixed(2)} 跌破由兩個墊高低點連成的上升趨勢線(約 ${proj.toFixed(2)})→ 波段上升結構轉弱,留意回檔;重新站回線上才續多。` });
+            }
+        }
+        // 下降趨勢線(兩個下移的高點)
+        if (peaks.length >= 2) {
+            const a = peaks[peaks.length - 2], b = peaks[peaks.length - 1];
+            if (b > a && C(data[b]) < C(data[a])) {
+                const slope = (C(data[b]) - C(data[a])) / (b - a);
+                const proj = C(data[b]) + slope * (last - b), projY = C(data[b]) + slope * (last - 1 - b);
+                if (proj > 0 && slope < 0 && pC > proj * 1.005 && yC <= projY * 1.005)
+                    out.push({ tone: 'bull', title: '突破下降趨勢線', val: proj, msg: `今收 ${pC.toFixed(2)} 突破由兩個下移高點連成的下降趨勢線(約 ${proj.toFixed(2)})→ 下降結構鬆動、波段有機會由空轉強;帶量突破更確認。` });
+            }
+        }
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     // ⚡ V41.15 — 朱老師四大金剛(依老師原文):👑趨勢(頭頭高底底高) / 📈均線(多頭排列) / 🕯️K線(發動棒/轉折) / 📊成交量(價量配合/背離)
@@ -12190,6 +12272,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.unshift(...this._detectIndicatorDivergence(data)); } catch (_) {}  // ⭐ V41.29 KD/MACD 頂底背離(置頂,轉折訊號)
         try { sigs.unshift(...this._detectGap(data)); } catch (_) {}                  // ⭐ V41.29 缺口跳空+分類(置頂)
         try { sigs.push(...this._detectMaKoudi(data)); } catch (_) {}                 // ⭐ V41.29 均線扣抵值(明日均線揚/抑領先預警)
+        try { sigs.unshift(...this._detectTopBreakdown(data)); } catch (_) {}         // ⭐ V41.30 頭部頸線跌破+目標價(置頂)
+        try { sigs.push(...this._detectGranville(data)); } catch (_) {}               // ⭐ V41.30 葛蘭碧八大買賣點(月線)
+        try { sigs.push(...this._detectTrendline(data)); } catch (_) {}               // ⭐ V41.30 趨勢線突破/跌破
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         // ⭐ V41.4 開盤定生死:出現變盤/轉折K時,提醒「次日開盤定強弱」(朱家泓鐵律)
@@ -12221,7 +12306,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const grab = fn => { try { (this[fn]?.(data) || []).forEach(s => patSigs.push(s)); } catch (_) {} };
         ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
          '_detectPressureTest', '_detectHeavyResistance', '_detectMaDeviation', '_detectBoxBreakout',
-         '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi'].forEach(grab);   // ⭐ V41.29 背離/缺口/扣抵納入型態分
+         '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi',
+         '_detectTopBreakdown', '_detectGranville', '_detectTrendline'].forEach(grab);   // ⭐ V41.29/30 背離/缺口/扣抵/頭部/葛蘭碧/趨勢線納入型態分
         const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
         const launch = body >= 3 && C(data[last]) > H(data[last - 1]);   // 強勢發動棒
         let B = 0, R = 0;
@@ -21542,7 +21628,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 📐 V38.5 注入朱家泓/林穎 K棒型態偵測器(純公式,與進場體檢/K棒戰法卡同源)→ AI 報告依此分析
         const kbarPatterns = [];
         // V41.11 補齊漏注入的新偵測器:測壓測撐/量價背離/壓力沉重/均線糾結(原 AI 報告看不到這 4 個新訊號)
-        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi', '_detectTopBreakdown', '_detectGranville', '_detectTrendline'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
         const patternsTxt = kbarPatterns.length
             ? kbarPatterns.slice(0, 16).map(s => `${s.tone === 'bull' ? '🔺偏多' : s.tone === 'bear' ? '🔻偏空' : s.tone === 'warn' ? '⚠️留意' : '⚪中性'}「${s.title}」`).join('、')
             : '無明顯型態訊號';
@@ -21554,7 +21640,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 1. 嚴禁口語投資客白話（如「各位投資朋友」「大黑K空襲太慘」）。高度濃縮，用數據結論 + 技術狀態 + 短語行動點。
 2. 嚴格「日週對照」：週線為保護傘（定波段大方向），日線為精準狙擊點。
 3. 🛑 下方【系統精算數據】的所有數字皆已由程式算好，你「禁止重算、禁止竄改任何數字」，只負責：判定 enum 分類、挑選符合的訊號、寫精煉文字。資料不足或位階不符 → 判「中性觀察」，不准盲目摸底凹單。
-4. 📐 signal_detector 的多空訊號「優先採用」下方【朱家泓/林穎 K棒型態偵測】已偵測到的型態(夜星/晨星/吞噬/三角收斂/弱中透強/長上下影/做多買點/底部頸線突破/過熱/乖離/換手量/向上向下缺口/KD-MACD頂底背離/均線扣抵翻揚或轉弱等,皆純公式算好的事實),別自行另編型態。把偵測到的型態用朱家泓/林穎角度解讀其多空意義。
+4. 📐 signal_detector 的多空訊號「優先採用」下方【朱家泓/林穎 K棒型態偵測】已偵測到的型態(夜星/晨星/吞噬/三角收斂/弱中透強/長上下影/做多買點/底部頸線突破/過熱/乖離/換手量/向上向下缺口/KD-MACD頂底背離/均線扣抵翻揚或轉弱/頭部頸線跌破/葛蘭碧買賣點/趨勢線突破跌破等,皆純公式算好的事實),別自行另編型態。把偵測到的型態用朱家泓/林穎角度解讀其多空意義。
 
 # 系統精算數據（${name} ${sym}，已算好，直接引用）
 - 現價/漲跌：收盤 ${pC}（今開${pO} 高${pH} 低${pL}）
