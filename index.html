@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.32</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.33</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.32</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.33</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -12214,7 +12214,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[12px] font-black text-gray-100">⚡ 朱老師四大金剛</span>
-                <span class="text-[9px] text-gray-500">趨勢+均線+K線+量 · 純公式</span>
+                <button onclick="app.showGuardianHelp()" class="text-[9px] text-gray-500 hover:text-amber-300">📖 教學</button>
             </div>
             <div class="grid grid-cols-2 gap-1.5 mb-2">${cells}</div>
             <div class="bg-[#161b22] border-l-4 ${bc} border-y border-r border-[#30363d] rounded-r p-2">
@@ -12296,7 +12296,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}</div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('') + (more > 0 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${more} 條次要訊號(以上方進場體檢總結為準)</div>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
-        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
     },
 
@@ -19615,6 +19615,16 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 if (btn) { btn.disabled = false; btn.innerHTML = '🔄 重新分析這檔打法'; }
             }
         }, 40);
+    },
+
+    // 📖 V41.33 — 四大金剛白話教學(小白:怎麼用這張卡)
+    showGuardianHelp() {
+        alert('⚡ 朱老師四大金剛 — 怎麼用(小白版)\n\n朱老師說:看盤不要只看一個指標,要「四個一起看」,四個同方向才可靠。這張卡就是自動幫你檢查這四個:\n\n👑 趨勢:是不是「頭頭高、底底高」= 多頭波段(反之頭頭低底底低=空頭)。先定方向。\n📈 均線:是不是「多頭排列」MA5>MA10>MA20>MA60、月線上揚。\n🕯️ K線:今天有沒有強勢發動棒(長紅破昨高)或轉折K(晨星/吞噬)。\n📊 成交量:漲有沒有帶量(價漲量增=真);還是量價背離(漲沒量=假)。\n\n🚦 怎麼判讀(看下面那行燈號):\n  🟢 四大金剛齊發(多4)= 信度最高,順勢進、守 5MA,跌破就走。\n  🟢 三金剛偏多 = 可留意,補齊缺的那個更穩。\n  🟡 分歧 = 四個不同調(轉折/盤整),方向不明先觀望。\n  🔴 金剛偏空 = 別做多、別接刀,有貨顧好停損。\n\n💡 台股色:紅=偏多、綠=偏空。純公式算的事實,不是叫你一定要買賣,是幫你「四個面向一次看齊」。');
+    },
+
+    // 📖 V41.33 — K棒戰法白話教學
+    showKbarTacticsHelp() {
+        alert('📐 K棒戰法 — 怎麼用(小白版)\n\n這張卡用純公式(不是 AI 亂猜)幫你抓出朱家泓/林穎的 K 棒型態,每條訊號標紅(偏多)或綠(偏空):\n\n🔺 紅=偏多訊號(晨星/長紅吞噬/向上缺口/底部突破/回後買上漲…)\n🔻 綠=偏空訊號(夜星/長黑吞噬/向下缺口/測壓有壓/頂背離/做頭…)\n⚪ 中性 / ⚠️ 留意\n\n幾個常用的白話:\n• ½價=(最高+最低)÷2=當天平均成本,站上偏多、跌破偏空。\n• 缺口不補繼續走、補掉就轉弱。\n• KD/MACD 背離=價創高但指標沒跟上=動能衰竭,高檔要小心。\n• 均線扣抵=提前 1-2 天算出月線明天會往上還往下。\n\n🔑 朱老師鐵律「開盤定生死」:出現變盤/轉折K後,看<次日開盤>——開低=變盤確認多單該跑;開高=化解疑慮可續抱。\n\n💡 訊號很多條時,以個股頁上方「進場體檢」的紅綠燈總結為準,別每條分開看。純公式、僅供參考,實際要配合大盤與停損。');
     },
 
     // 🎯 V41.32 — 打法表「怎麼看」總說明(小白:期望值 vs 勝率 vs 賺賠比)
