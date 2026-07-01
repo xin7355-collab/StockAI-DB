@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.24</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.25</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.24</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.25</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1457,37 +1457,7 @@
                     </div>
                 </div>
 
-                <!-- 🏭 產業趨勢報告(AI 深度推理:該股所屬板塊的上下游/競爭/受惠受害)-->
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                    <h4 class="text-cyan-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
-                        <div class="flex items-center gap-1.5"><span>🏭</span> 產業趨勢報告 <span id="industryTag" class="text-[9px] text-gray-600 font-mono font-normal"></span></div>
-                        <button id="industryReportBtn"
-                            onclick="app.runIndustryReport(app.currentSymbolId); app.vibrate(30);"
-                            class="text-[10px] font-mono bg-cyan-900/30 hover:bg-cyan-700/40 text-cyan-300 px-2 py-0.5 rounded border border-cyan-700/50 transition-colors disabled:opacity-40">
-                            生成報告
-                        </button>
-                    </h4>
-                    <div class="bg-cyan-950/20 border border-cyan-900/30 rounded px-2.5 py-1.5 text-[10px] text-cyan-200/70 leading-relaxed mb-2">
-                        💡 分析此股所屬<b class="text-cyan-300">產業板塊</b>的趨勢、上下游、競爭格局與受惠/受害程度（DeepSeek 深度推理）。
-                    </div>
-                    <div id="industryReportResult" class="hidden bg-[#0d1117] rounded p-2.5 border border-cyan-900/40 text-gray-200 text-sm leading-relaxed"></div>
-                </div>
-
-                <!-- 🏭 V35.2 — 同業數據對比(事實面・非 AI):同業 PE + 產業中位 + 法人板塊流向 -->
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
-                    <h4 class="text-cyan-400 font-bold text-sm mb-2 flex items-center justify-between border-b border-gray-700 pb-1.5">
-                        <div class="flex items-center gap-1.5"><span>🏭</span> 同業數據對比 <span class="text-[9px] text-gray-500 font-normal">(事實面・非 AI)</span></div>
-                        <button id="peerCompareBtn"
-                            onclick="app.renderPeerCompareCard(app.currentSymbolId); app.vibrate(30);"
-                            class="text-[10px] font-mono bg-cyan-900/30 hover:bg-cyan-700/40 text-cyan-300 px-2 py-0.5 rounded border border-cyan-700/50 transition-colors disabled:opacity-40">
-                            📊 載入同業數據
-                        </button>
-                    </h4>
-                    <div class="bg-cyan-950/20 border border-cyan-900/30 rounded px-2.5 py-1.5 text-[10px] text-cyan-200/70 leading-relaxed mb-2">
-                        💡 用<b class="text-cyan-300">既有採礦資料</b>比同業 PE、產業中位 PE、近 5 日法人板塊流向 —— <b class="text-cyan-300">純事實、不靠 AI、不撞 429</b>。
-                    </div>
-                    <div id="peerCompareResult" class="hidden"></div>
-                </div>
+                <!-- 🏭 V41.25 產業趨勢報告 + 同業數據對比已移除(改用基本頁上方「🔎 免費查公司」的產業/供應鏈查詢,免 AI 額度) -->
 
             </div>
 
