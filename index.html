@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.17</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.18</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -787,11 +787,12 @@
                 <button onclick="document.getElementById('chuMasterModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
             </div>
             <!-- 4 個子 tab 切換 -->
-            <div class="grid grid-cols-4 gap-1.5 mb-3">
+            <div class="grid grid-cols-3 gap-1.5 mb-3">
                 <button onclick="app.switchChuTab('chu_perfect6')" id="chuTab_perfect6" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🍀 六六大順</button>
                 <button onclick="app.switchChuTab('chu_top_gainer')" id="chuTab_top_gainer" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🔥 特別報價</button>
                 <button onclick="app.switchChuTab('chu_bottom')" id="chuTab_bottom" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🥣 底部轉折</button>
                 <button onclick="app.switchChuTab('chu_riding5ma')" id="chuTab_riding5ma" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚀 5MA飆股</button>
+                <button onclick="app.switchChuTab('chu_backtest')" id="chuTab_backtest" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 期望值榜</button>
             </div>
             <!-- 白話說明卡(每 tab 切換時更新) -->
             <div id="chuTabDesc" class="bg-purple-900/15 border-l-4 border-purple-500 pl-3 pr-2 py-2 rounded-r mb-3 text-[12px] leading-relaxed text-gray-200"></div>
@@ -839,7 +840,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.17</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.18</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -20484,6 +20485,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         chu_top_gainer: { id: 'chuTab_top_gainer', active: 'bg-red-600/30 text-red-200 border-red-500',        name: '🔥 特別報價' },
         chu_bottom:     { id: 'chuTab_bottom',     active: 'bg-amber-600/30 text-amber-200 border-amber-500',  name: '🥣 底部轉折' },
         chu_riding5ma:  { id: 'chuTab_riding5ma',  active: 'bg-pink-600/30 text-pink-200 border-pink-500',     name: '🚀 5MA飆股' },
+        chu_backtest:   { id: 'chuTab_backtest',   active: 'bg-cyan-600/30 text-cyan-200 border-cyan-500',     name: '🎯 期望值榜' },
     },
     _CHU_TAB_BASE: 'chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all ',
     _CHU_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
@@ -20491,6 +20493,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         chu_perfect6: `<b class="text-green-300">🍀 六六大順</b>(完美股):像體操滿分,股價同時做出 <b>4 個核心動作</b> — 均線排隊(多頭)、紅 K(漲幅 > 0.5%)、爆量(≥ 5日均量 ×1.2)、創 20 日新高,再加 MACD/KD/月線上揚的<b class="text-yellow-300">品質分(0-25)</b>。<br><br>📋 <b>操作:</b>盤後看到 → <b class="text-cyan-300">隔日開盤站穩 5MA 進</b>,跌破 5MA 立停。<br>⚠️ 這種股很少出現,有 1-3 檔就偷笑。0 檔代表市場沒完美股,別硬找。`,
         chu_top_gainer: `<b class="text-red-300">🔥 特別報價</b>(漲幅榜):**今天漲幅 ≥3% 的強勢紅K股**,扣掉冷門(成交額 < 5000 萬、< 2000 張、ETF、處置股一律排除)後**取量能前 30**,留下有量、主力真表態的強股。<br><br>📋 <b>操作:</b>隔日強勢開高跟進,弱開不追。<br>⚠️ <b class="text-yellow-300">漲停股跳空缺口可能就是高點</b>,要看當天量。`,
         chu_bottom: `<b class="text-amber-300">🥣 底部轉折</b>(起飛股):像鍋底冒泡的湯,長期跌完(<b>距高點 ≥ 20%</b>)、近 20 日波動率極低(<3%)、貼著半年線,**某天突然爆 2 倍量噴紅 K** — 主力大戶在進貨。<br><br>📋 <b>操作:</b>看<b class="text-cyan-300">隔日是否續攻</b>,連 2 天爆量才是真,只爆 1 天可能假突破。<br>⚠️ 抓底神器,但常騙人。`,
+        chu_backtest: `<b class="text-cyan-300">🎯 期望值榜</b>(照朱老師紀律最會賺的股):全市場掃描,對每檔跑「回後買上漲進場 + 跌破5MA停利 / 破進場K低或 −5% 停損」的**歷史波段回測**,只留<b class="text-yellow-300">正期望值 + 交易數 ≥ 5</b>的,依<b>每趟期望值</b>由高到低排。<br><br>📋 <b>操作:</b>從這裡挑股放觀察名單,**等它出現「四大金剛齊發 / 回後買上漲」訊號再進**,不是叫你現在追。<br>⚠️ 過去績效不代表未來;期望值是「照紀律做的長期優勢」,單筆還是會賠,務必守停損。`,
         chu_riding5ma: `<b class="text-pink-300">🚀 5MA 飆股主升段</b>(妖股):沿著 5MA 噴的強勢股,**近 5 日 ≥ 2 根漲 5%、今日最低沒跌破 5MA、今收突破昨收、MA5 未明顯下彎(5日斜率 > −2%)、乖離 < +15%**。連續紅 K 不回頭。<br><br>📋 <b>操作:</b>跌破 5MA 立刻出(不是 20MA),<b class="text-yellow-300">部位要小</b>。<br>⚠️ 最爽也最危險 — 沒抓到時間點就是接最後一棒。`,
     },
     _chuCurrentTab: 'chu_perfect6',
@@ -20528,6 +20531,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const updated = document.getElementById('chuTabUpdated');
         if (!body) return;
         let picks = (this.radarMatrix?.data || {})[key] || [];
+        // 🎯 V41.18 期望值榜:回測統計榜,不套四關/位階 pipeline,自成一支渲染
+        if (key === 'chu_backtest') { this._renderChuBacktestList(body, updated, picks); return; }
         // V17.3 — 整合朱老師四關通關卡狀態:採礦端已寫 warning 欄位(位階過高/高檔出貨),
         //         前端漏顯導致選股清單跟四關通關卡看起來矛盾(其實兩個都對,只是這份清單沒標)。
         //         三件事:① 顯 warning chip ② 排序預設「無警示者優先」③ 頂部加總結
@@ -20616,6 +20621,39 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     <span class="text-gray-500">${(p.turnover_e || 0).toFixed(1)}億</span>
                 </div>
                 ${warnChip}
+            </div>`;
+        }).join('');
+    },
+
+    // 🎯 V41.18 — 期望值榜專屬渲染(回測統計:期望值/勝率/賺賠比/累積,依期望值排序)
+    _renderChuBacktestList(body, updated, picks) {
+        if (updated) updated.innerHTML = `更新時間:${this.radarMatrix?.updated || ''} · 共 ${picks.length} 檔 · 依「每趟期望值」由高到低`;
+        if (!picks.length) {
+            body.innerHTML = `<div class="text-center py-8 text-gray-500 text-[12px]">⚠️ 目前沒有符合的股<br><span class="text-gray-600 text-[10px]">(只收「正期望值 + 歷史 ≥5 趟」的股,寧缺勿濫;採礦後更新)</span></div>`;
+            return;
+        }
+        const banner = `<div class="mb-2 px-2.5 py-2 rounded-lg bg-cyan-950/40 border border-cyan-800/60 text-[11px] leading-snug text-cyan-100">🎯 這些股「照朱老師紀律(回後買上漲進場 + 跌破5MA停利 / −5%停損)」<b>歷史回測期望值最高</b>。<br>👉 從這裡挑股放觀察名單,<b>等訊號(四大金剛齊發/回後買上漲)再進</b>,不是現在追。過去績效不代表未來。</div>`;
+        body.innerHTML = banner + picks.map(p => {
+            const cname = this.getStockName(p.sym) || '';
+            const exp = p.expectancy != null ? p.expectancy : (p.gain || 0);
+            const expC = exp >= 0 ? 'text-red-300' : 'text-green-300';
+            const wr = p.win_rate != null ? p.win_rate : 0;
+            const pl = p.pl_ratio != null ? p.pl_ratio : 0;
+            const tot = p.total_return != null ? p.total_return : 0;
+            const plStr = pl >= 99 ? '全贏' : (+pl).toFixed(2);
+            const cell = (lbl, val, cls) => `<div class="text-center"><div class="text-[9px] text-gray-500">${lbl}</div><div class="text-[13px] font-black font-mono ${cls || 'text-gray-100'}">${val}</div></div>`;
+            return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.analyze('${p.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border border-[#30363d] hover:border-cyan-600/50 rounded-lg p-2.5 cursor-pointer transition-colors mb-2">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <div class="flex items-baseline gap-2 min-w-0"><span class="font-bold text-cyan-300 text-[15px] font-mono">${p.sym}</span><span class="text-gray-300 text-[12px] truncate">${cname}</span></div>
+                    <span class="text-gray-400 text-[11px] font-mono">${(p.close || 0).toFixed(2)}</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1 bg-[#0d1117]/60 rounded p-1.5">
+                    ${cell('每趟期望', (exp >= 0 ? '+' : '') + (+exp).toFixed(2) + '%', expC)}
+                    ${cell('勝率', (+wr).toFixed(0) + '%', wr >= 50 ? 'text-red-300' : 'text-yellow-300')}
+                    ${cell('賺賠比', plStr, pl >= 1.5 ? 'text-red-300' : 'text-gray-100')}
+                    ${cell('累積', (tot >= 0 ? '+' : '') + (+tot).toFixed(0) + '%', tot >= 0 ? 'text-red-300' : 'text-green-300')}
+                </div>
+                <div class="text-[9px] text-gray-600 mt-1">歷史 ${p.trades || 0} 趟 · 點看個股「回測」頁完整明細</div>
             </div>`;
         }).join('');
     },
