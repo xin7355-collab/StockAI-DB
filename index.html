@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.28</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.29</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.28</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.29</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -11939,6 +11939,101 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V41.29 — 朱家泓「均線扣抵值」(判均線未來走向,純公式):明日 MA(N) 揚/抑 由「今收 vs 扣抵值」決定
+    //   扣抵值 = 明日要從均線窗口扣掉的那根收盤 = data[last-(N-1)].close。今收 > 扣抵值 → 明日均線續揚。
+    //   最有價值訊號:① 均線目前未揚但今收已站上扣抵 → 即將翻揚(領先偏多)② 均線在揚但今收跌破扣抵 → 恐轉弱。
+    _detectMaKoudi(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 62) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const pC = C(data[last]);
+        const maAt = (N, end) => { const s = data.slice(end - N + 1, end + 1); return s.length === N ? s.reduce((a, b) => a + C(b), 0) / N : null; };
+        for (const [N, label] of [[20, '月線(20MA)'], [60, '季線(60MA)']]) {
+            const maNow = maAt(N, last), maPrev = maAt(N, last - 1), koudi = C(data[last - (N - 1)]);
+            if (maNow == null || maPrev == null || !koudi) continue;
+            const rising = maNow >= maPrev;
+            if (!rising && pC > koudi * 1.002) {
+                out.push({ tone: 'bull', title: `${label}即將翻揚`, val: koudi, msg: `${label}目前${maNow < maPrev ? '下彎' : '走平'}中,但今收 ${pC.toFixed(2)} 已站上扣抵值 ${koudi.toFixed(2)}(明日要扣掉的那根)→ 朱家泓扣抵:明日均線<b>即將翻揚</b>,是均線轉多的領先訊號,守住扣抵值續看多。` });
+            } else if (rising && pC < koudi) {
+                out.push({ tone: 'warn', title: `${label}恐轉弱`, val: koudi, msg: `${label}目前上揚,但今收 ${pC.toFixed(2)} 已跌破扣抵值 ${koudi.toFixed(2)}→ 扣抵:明日均線恐由揚轉平/下彎,是均線走弱的<b>提前 1-2 天</b>預警,多單留意、別等跌破均線本身才跑。` });
+            }
+        }
+        return out;
+    },
+
+    // ⭐ V41.29 — 缺口(跳空)偵測+分類(純公式):向上/向下跳空、是否回補、突破缺口 vs 竭盡缺口
+    //   朱家泓鐵律「缺口不補繼續走、補掉就轉弱」。掃近 10 根找最近一個未回補(或剛回補)的有效缺口(≥0.4%)。
+    _detectGap(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 15) return out;
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const bigVol = j => { const w = data.slice(Math.max(0, j - 5), j).map(V); const a = w.length ? w.reduce((s, x) => s + x, 0) / w.length : V(data[j]); return a > 0 && V(data[j]) >= a * 1.5; };
+        for (let j = last; j >= Math.max(1, last - 10); j--) {
+            const b = data[j], p = data[j - 1]; if (!b || !p) continue;
+            const daysAgo = last - j;
+            // 向上跳空:今低 > 昨高
+            if (L(b) > H(p) && H(p) > 0 && (L(b) - H(p)) / H(p) >= 0.004) {
+                const gapBot = H(p), gapTop = L(b);
+                const filled = data.slice(j + 1).some(x => L(x) <= gapBot);   // 之後有跌回缺口下緣=回補
+                // 竭盡缺口:跳空前已連漲一段(近6日漲幅>12%)且在相對高檔
+                const run = C(data[last - Math.min(last, 6)]) > 0 ? (C(b) - C(data[Math.max(0, j - 6)])) / C(data[Math.max(0, j - 6)]) * 100 : 0;
+                if (filled) out.push({ tone: 'warn', title: '向上缺口已回補', val: gapBot, msg: `${daysAgo === 0 ? '今日' : daysAgo + '天前'}向上跳空缺口(${gapBot.toFixed(2)}~${gapTop.toFixed(2)})已被回補 → 朱:缺口補掉、上攻動能轉弱,別追、看能否守住。` });
+                else if (run >= 12) out.push({ tone: 'warn', title: '疑似竭盡缺口(高檔)', val: gapBot, msg: `連漲一段後${daysAgo === 0 ? '今日' : daysAgo + '天前'}再向上跳空(${gapBot.toFixed(2)}~${gapTop.toFixed(2)})→ 恐為末端竭盡缺口,隔天不續強或回補即反轉,獲利分批跑。` });
+                else out.push({ tone: 'bull', title: bigVol(j) ? '向上突破缺口(帶量)' : '向上跳空未回補', val: gapBot, msg: `${daysAgo === 0 ? '今日' : daysAgo + '天前'}向上跳空缺口(${gapBot.toFixed(2)}~${gapTop.toFixed(2)})未回補${bigVol(j) ? '、且帶量=突破缺口' : ''} → 朱:缺口不補繼續走,強勢;回測 ${gapBot.toFixed(2)} 不破可續抱/承接。` });
+                break;
+            }
+            // 向下跳空:今高 < 昨低
+            if (H(b) < L(p) && L(p) > 0 && (L(p) - H(b)) / L(p) >= 0.004) {
+                const gapTop = L(p), gapBot = H(b);
+                const filled = data.slice(j + 1).some(x => H(x) >= gapTop);
+                if (filled) out.push({ tone: 'bull', title: '向下缺口已回補', val: gapTop, msg: `${daysAgo === 0 ? '今日' : daysAgo + '天前'}向下跳空缺口(${gapBot.toFixed(2)}~${gapTop.toFixed(2)})已被回補 → 空方力竭、止跌轉強跡象,站穩可留意。` });
+                else out.push({ tone: 'bear', title: '向下跳空未回補', val: gapTop, msg: `${daysAgo === 0 ? '今日' : daysAgo + '天前'}向下跳空缺口(${gapBot.toFixed(2)}~${gapTop.toFixed(2)})未回補 → 弱勢,朱:缺口不補繼續跌;反彈到缺口 ${gapTop.toFixed(2)} 附近易有壓,別接刀。` });
+                break;
+            }
+        }
+        return out;
+    },
+
+    // ⭐ V41.29 — 指標背離(KD / MACD 頂背離/底背離,純公式讀 this.indicators):
+    //   頂背離=價創新高但 K/dif 沒創高(動能衰竭,賣訊);底背離=價創新低但 K/dif 沒創低(跌勢趨緩,買訊)。
+    _detectIndicatorDivergence(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 40) return out;
+        const ind = this.indicators || {};
+        const K = ind.k, DIF = ind.dif;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const n = data.length, last = n - 1, SW = 4, from = Math.max(SW, n - 60);
+        const peaks = [], troughs = [];
+        for (let i = from; i <= last - SW; i++) {
+            const w = data.slice(i - SW, i + SW + 1).map(C), c = C(data[i]);
+            if (c === Math.max(...w)) peaks.push(i);
+            if (c === Math.min(...w)) troughs.push(i);
+        }
+        const arrOK = a => Array.isArray(a) && a.length === n;
+        const indVal = (a, i) => (arrOK(a) && a[i] != null && Number.isFinite(+a[i])) ? +a[i] : null;
+        // 頂背離(取最近兩個波峰;最近峰須在最後 8 根內才算即時)
+        if (peaks.length >= 2) {
+            const p2 = peaks[peaks.length - 1], p1 = peaks[peaks.length - 2];
+            if (last - p2 <= 8 && C(data[p2]) > C(data[p1])) {
+                const k2 = indVal(K, p2), k1 = indVal(K, p1), d2 = indVal(DIF, p2), d1 = indVal(DIF, p1);
+                const kdDiv = k2 != null && k1 != null && k2 < k1, macdDiv = d2 != null && d1 != null && d2 < d1;
+                if (kdDiv || macdDiv) out.push({ tone: 'bear', title: `${kdDiv && macdDiv ? 'KD+MACD' : kdDiv ? 'KD' : 'MACD'} 頂背離`, val: C(data[p2]), msg: `股價${(last - p2) === 0 ? '今日' : (last - p2) + '天前'}創波段新高 ${C(data[p2]).toFixed(2)}(>前高 ${C(data[p1]).toFixed(2)}),但 ${kdDiv && macdDiv ? 'KD 與 MACD 都' : kdDiv ? 'KD' : 'MACD'}沒跟著創高=<b>上漲動能衰竭</b>(頂背離),高檔賣訊,別追高、有貨分批停利。` });
+            }
+        }
+        // 底背離(取最近兩個波谷)
+        if (troughs.length >= 2) {
+            const t2 = troughs[troughs.length - 1], t1 = troughs[troughs.length - 2];
+            if (last - t2 <= 8 && C(data[t2]) < C(data[t1])) {
+                const k2 = indVal(K, t2), k1 = indVal(K, t1), d2 = indVal(DIF, t2), d1 = indVal(DIF, t1);
+                const kdDiv = k2 != null && k1 != null && k2 > k1, macdDiv = d2 != null && d1 != null && d2 > d1;
+                if (kdDiv || macdDiv) out.push({ tone: 'bull', title: `${kdDiv && macdDiv ? 'KD+MACD' : kdDiv ? 'KD' : 'MACD'} 底背離`, val: C(data[t2]), msg: `股價${(last - t2) === 0 ? '今日' : (last - t2) + '天前'}創波段新低 ${C(data[t2]).toFixed(2)}(<前低 ${C(data[t1]).toFixed(2)}),但 ${kdDiv && macdDiv ? 'KD 與 MACD 都' : kdDiv ? 'KD' : 'MACD'}沒跟著創低=<b>跌勢動能趨緩</b>(底背離),低檔買訊,待紅K站上5日線可分批承接。` });
+            }
+        }
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     // ⚡ V41.15 — 朱老師四大金剛(依老師原文):👑趨勢(頭頭高底底高) / 📈均線(多頭排列) / 🕯️K線(發動棒/轉折) / 📊成交量(價量配合/背離)
@@ -12092,6 +12187,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectVolPriceDiverge(data)); } catch (_) {}    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮)
         try { sigs.push(...this._detectHeavyResistance(data)); } catch (_) {}    // ⭐ V41.9 壓力沉重反覆過不了(朱:過不了的股票別選)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
+        try { sigs.unshift(...this._detectIndicatorDivergence(data)); } catch (_) {}  // ⭐ V41.29 KD/MACD 頂底背離(置頂,轉折訊號)
+        try { sigs.unshift(...this._detectGap(data)); } catch (_) {}                  // ⭐ V41.29 缺口跳空+分類(置頂)
+        try { sigs.push(...this._detectMaKoudi(data)); } catch (_) {}                 // ⭐ V41.29 均線扣抵值(明日均線揚/抑領先預警)
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         // ⭐ V41.4 開盤定生死:出現變盤/轉折K時,提醒「次日開盤定強弱」(朱家泓鐵律)
@@ -12103,7 +12201,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}</div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('') + (more > 0 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${more} 條次要訊號(以上方進場體檢總結為準)</div>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
-        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
     },
 
@@ -12122,7 +12220,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const patSigs = [];
         const grab = fn => { try { (this[fn]?.(data) || []).forEach(s => patSigs.push(s)); } catch (_) {} };
         ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
-         '_detectPressureTest', '_detectHeavyResistance', '_detectMaDeviation', '_detectBoxBreakout'].forEach(grab);
+         '_detectPressureTest', '_detectHeavyResistance', '_detectMaDeviation', '_detectBoxBreakout',
+         '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi'].forEach(grab);   // ⭐ V41.29 背離/缺口/扣抵納入型態分
         const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
         const launch = body >= 3 && C(data[last]) > H(data[last - 1]);   // 強勢發動棒
         let B = 0, R = 0;
@@ -21443,7 +21542,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 📐 V38.5 注入朱家泓/林穎 K棒型態偵測器(純公式,與進場體檢/K棒戰法卡同源)→ AI 報告依此分析
         const kbarPatterns = [];
         // V41.11 補齊漏注入的新偵測器:測壓測撐/量價背離/壓力沉重/均線糾結(原 AI 報告看不到這 4 個新訊號)
-        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
         const patternsTxt = kbarPatterns.length
             ? kbarPatterns.slice(0, 16).map(s => `${s.tone === 'bull' ? '🔺偏多' : s.tone === 'bear' ? '🔻偏空' : s.tone === 'warn' ? '⚠️留意' : '⚪中性'}「${s.title}」`).join('、')
             : '無明顯型態訊號';
@@ -21455,7 +21554,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 1. 嚴禁口語投資客白話（如「各位投資朋友」「大黑K空襲太慘」）。高度濃縮，用數據結論 + 技術狀態 + 短語行動點。
 2. 嚴格「日週對照」：週線為保護傘（定波段大方向），日線為精準狙擊點。
 3. 🛑 下方【系統精算數據】的所有數字皆已由程式算好，你「禁止重算、禁止竄改任何數字」，只負責：判定 enum 分類、挑選符合的訊號、寫精煉文字。資料不足或位階不符 → 判「中性觀察」，不准盲目摸底凹單。
-4. 📐 signal_detector 的多空訊號「優先採用」下方【朱家泓/林穎 K棒型態偵測】已偵測到的型態(夜星/晨星/吞噬/三角收斂/弱中透強/長上下影/做多買點/底部頸線突破/過熱/乖離/換手量等,皆純公式算好的事實),別自行另編型態。把偵測到的型態用朱家泓/林穎角度解讀其多空意義。
+4. 📐 signal_detector 的多空訊號「優先採用」下方【朱家泓/林穎 K棒型態偵測】已偵測到的型態(夜星/晨星/吞噬/三角收斂/弱中透強/長上下影/做多買點/底部頸線突破/過熱/乖離/換手量/向上向下缺口/KD-MACD頂底背離/均線扣抵翻揚或轉弱等,皆純公式算好的事實),別自行另編型態。把偵測到的型態用朱家泓/林穎角度解讀其多空意義。
 
 # 系統精算數據（${name} ${sym}，已算好，直接引用）
 - 現價/漲跌：收盤 ${pC}（今開${pO} 高${pH} 低${pL}）
