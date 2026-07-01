@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.33</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.34</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.33</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.34</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -9952,11 +9952,22 @@ const marginByDate = {};
         const adrCell = (label, v) => `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="font-mono ${pctClr(v)}">${pctStr(v) || '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>`;
         const chipCell = (label, html) => `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${html}</span></div>`;
 
+        // 📅 V41.34 — 資料基準日:採礦時間(台北)+ 台股最新收盤日,讓使用者知道「現在看的是哪一天的資料」
+        const _updRaw = String(mr.updated || '');
+        const _updShow = _updRaw.length >= 16 ? `${_updRaw.slice(5, 10).replace('-', '/')} ${_updRaw.slice(11, 16)}` : '';
+        const _twiiDate = (Array.isArray(usm.twii_history) && usm.twii_history.length) ? String(usm.twii_history[usm.twii_history.length - 1].date || '').replace(/-/g, '/').slice(-5) : '';
+        const _basis = _updShow || _twiiDate || '—';
+
         el.className = `w-full rounded-lg p-3 border ${bg}`;
         el.innerHTML = `
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between mb-1.5">
                 <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前體檢</span><span class="text-[9px] text-gray-500">純公式總結</span></div>
                 <button onclick="app.showJargon('盤前體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
+            </div>
+            <div class="text-[9px] text-gray-500 mb-2 leading-snug flex items-center gap-x-1.5 gap-y-0.5 flex-wrap border-b border-[#21262d] pb-1.5">
+                <span>📅 資料採集 <b class="text-gray-300">${_basis}</b>${_twiiDate ? `(台股 ${_twiiDate} 收盤)` : ''}</span>
+                <span class="text-gray-600">·</span>
+                <span>隔夜美股 → 預判<b class="text-gray-300">下一個交易日</b>開盤</span>
             </div>
             <div class="flex items-center gap-3 mb-2">
                 <div class="text-3xl">${light}</div>
@@ -9965,7 +9976,7 @@ const marginByDate = {};
             <div class="bg-[#0d1117]/60 rounded p-2 mb-2 space-y-1.5 text-[10px]">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📊 加權</span><span class="text-right">${twii ? `<span class="font-mono font-bold text-gray-200">${twii}</span>${twiiChg ? ` <span class="font-mono ${clr(twiiChg)}">${twiiChg}</span>` : ''}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
-                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📈 櫃買</span><span class="text-right">${twoii ? `<span class="font-mono font-bold text-gray-200">${twoii}</span>${twoiiChg ? ` <span class="font-mono ${clr(twoiiChg)}">${twoiiChg}</span>` : ''}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
+                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📈 櫃買</span><span class="text-right">${twoii ? `<span class="font-mono font-bold text-gray-200">${twoii}</span>${twoiiChg ? ` <span class="font-mono ${clr(twoiiChg)}">${twoiiChg}</span>` : ''}` : `<span onclick="alert('📈 櫃買(OTC)指數暫時抓不到\\n\\n上櫃指數的免費資料來源近期不穩,採礦端正在修。標「採集中」代表這一格暫時沒抓到值,下次盤後(16:30 台北)採礦會再試著補上。\\n\\n👉 不影響上市加權、美股隔夜、外資法人等其他判讀,可先看那些。')" class="text-yellow-500/80 text-[9px] cursor-pointer underline decoration-dotted">採集中 ⓘ</span>`}</span></div>
                 </div>
                 <div class="border-t border-[#21262d] pt-1.5">
                     <div class="text-[9px] text-gray-600 font-bold mb-1">🌙 美股隔夜</div>
