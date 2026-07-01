@@ -531,6 +531,188 @@ def fetch_attention_disposal_status():
         print(f"⚠️ attention_history.json 累積失敗(不影響主流程):{e}")
 
 
+# ════════════════════════════════════════════════════════════════════
+# 📐 K棒轉折雷達(V41.7)— 朱家泓 K棒戰法純公式偵測器,port 自前端 index.html:
+#   _detectStarPatterns(夜星/晨星)・_detect2BarReversal(吞噬/覆蓋/貫穿/遭遇/母子)
+#   ・_detectPressureTest(測壓/測撐+量)・_detectVolPriceDiverge(量價背離)
+#   全市場掃 → data/radar_matrix.json 的 kbar_bull / kbar_bear。閾值與前端逐一對齊。
+# ════════════════════════════════════════════════════════════════════
+def _kb_o(b): return float(b.get('open') or b.get('o') or 0)
+def _kb_c(b): return float(b.get('close') or b.get('c') or 0)
+def _kb_h(b): return float(b.get('high') or b.get('h') or 0)
+def _kb_l(b): return float(b.get('low') or b.get('l') or 0)
+def _kb_v(b): return float(b.get('volume') or 0)
+def _kb_body(b): return abs(_kb_c(b) - _kb_o(b))
+def _kb_small(b):
+    o = _kb_o(b); return o > 0 and _kb_body(b) / o < 0.018
+def _kb_long_up(b):
+    o = _kb_o(b); return _kb_c(b) > o and o > 0 and (_kb_c(b) - o) / o >= 0.03
+def _kb_long_dn(b):
+    o = _kb_o(b); return _kb_c(b) < o and o > 0 and (o - _kb_c(b)) / o >= 0.03
+def _kb_bigvol(data, j):
+    pv = [_kb_v(x) for x in data[max(0, j - 5):j]]
+    av = sum(pv) / len(pv) if pv else _kb_v(data[j])
+    return av > 0 and _kb_v(data[j]) >= av * 1.5
+
+
+def _kb_star(data, bear):
+    """三根K棒 夜星(bear)/晨星(bull):左長K + 1-3 變盤線 + 右長K收破左K中點;孤島最強。"""
+    last = len(data) - 1
+    for e in range(last, max(3, last - 2) - 1, -1):
+        conf = data[e]
+        if (not _kb_long_dn(conf)) if bear else (not _kb_long_up(conf)):
+            continue
+        for nmid in range(1, 4):
+            s_idx = e - nmid - 1
+            if s_idx < 0:
+                break
+            if not all(_kb_small(data[m]) for m in range(s_idx + 1, e)):
+                continue
+            lead = data[s_idx]
+            if (not _kb_long_up(lead)) if bear else (not _kb_long_dn(lead)):
+                continue
+            mid = (_kb_o(lead) + _kb_c(lead)) / 2
+            if (_kb_c(conf) >= mid) if bear else (_kb_c(conf) <= mid):
+                continue
+            win = data[max(0, s_idx - 20):s_idx + 1]
+            if bear:
+                hi = max((_kb_h(x) for x in win), default=0)
+                if not hi or _kb_h(lead) < hi * 0.94:
+                    continue
+            else:
+                lo = min((_kb_l(x) for x in win), default=0)
+                if not lo or _kb_l(lead) > lo * 1.06:
+                    continue
+            island = ((_kb_l(data[s_idx + 1]) > _kb_h(lead) and _kb_h(conf) < _kb_l(data[e - 1])) if bear
+                      else (_kb_h(data[s_idx + 1]) < _kb_l(lead) and _kb_l(conf) > _kb_h(data[e - 1])))
+            big = _kb_bigvol(data, e)
+            if bear:
+                name = '孤島夜星' if island else ('群星夜星' if nmid >= 2 else '夜星轉折')
+            else:
+                name = '孤島晨星' if island else ('群星晨星' if nmid >= 2 else '晨星轉折')
+            return name + ('+爆量' if big else '')
+    return None
+
+
+def _kb_2bar(data):
+    """兩根K棒反轉:高檔紅黑配(偏空)/低檔黑紅配(偏多),確認 K 在最後 1-2 根。"""
+    if len(data) < 4:
+        return None
+    last = len(data) - 1
+    for e in range(last, max(2, last - 1) - 1, -1):
+        b2 = data[e]; b1 = data[e - 1]
+        if not _kb_o(b1) or not _kb_o(b2):
+            continue
+        win = data[max(0, e - 1 - 20):e - 1]
+        hi = max((_kb_h(x) for x in win), default=_kb_h(b1))
+        lo = min((_kb_l(x) for x in win), default=_kb_l(b1))
+        at_high = hi and _kb_h(b1) >= hi * 0.96
+        at_low = lo and _kb_l(b1) <= lo * 1.04
+        big = _kb_bigvol(data, e)
+        mid1 = (_kb_o(b1) + _kb_c(b1)) / 2
+        O2, C2, O1, C1 = _kb_o(b2), _kb_c(b2), _kb_o(b1), _kb_c(b1)
+        H2, L2, H1, L1 = _kb_h(b2), _kb_l(b2), _kb_h(b1), _kb_l(b1)
+        # 高檔紅黑配(偏空)
+        if at_high and _kb_long_up(b1) and C2 < O2:
+            if O2 >= C1 and C2 <= O1:
+                return ('bear', '長黑吞噬(主力出貨)' + ('+爆量' if big else ''))
+            if O2 >= C1 and C2 < mid1 and C2 > O1:
+                return ('bear', '長黑覆蓋(烏雲罩頂)')
+            if O2 > C1 and C2 >= mid1 and C1 and abs(C2 - C1) / C1 < 0.012:
+                return ('bear', '長黑遭遇(一日封口)' + ('+爆量' if big else ''))
+        if at_high and _kb_long_up(b1) and _kb_small(b2) and H2 <= H1 and L2 >= L1:
+            return ('bear', '高檔母子懷抱')
+        # 低檔黑紅配(偏多)
+        if at_low and _kb_long_dn(b1) and C2 > O2:
+            if O2 <= C1 and C2 >= O1:
+                return ('bull', '長紅吞噬(主力進貨)' + ('+爆量' if big else ''))
+            if O2 <= C1 and C2 > mid1 and C2 < O1:
+                return ('bull', '長紅貫穿(旭日東升)')
+            if O2 < C1 and C2 <= mid1 and C1 and abs(C2 - C1) / C1 < 0.012:
+                return ('bull', '長紅遭遇(一日封口)' + ('+爆量' if big else ''))
+        if at_low and _kb_long_dn(b1) and _kb_small(b2) and H2 <= H1 and L2 >= L1:
+            return ('bull', '低檔母子懷抱')
+    return None
+
+
+def _kb_pressure(data):
+    """測壓有壓(前高賣壓,偏空)/測撐有撐(前低支撐,偏多),配合成交量。"""
+    if len(data) < 25:
+        return None
+    last = len(data) - 1; cur = data[last]
+    o, c, h, l = _kb_o(cur), _kb_c(cur), _kb_h(cur), _kb_l(cur)
+    if not o or not c or not h or not l:
+        return None
+    rng = h - l
+    if rng <= 0:
+        return None
+    body = abs(c - o)
+    up_sh = h - max(o, c); dn_sh = min(o, c) - l
+    vol5 = [_kb_v(x) for x in data[max(0, last - 5):last]]
+    avg_v = sum(vol5) / len(vol5) if vol5 else _kb_v(cur)
+    vr = _kb_v(cur) / avg_v if avg_v > 0 else 1
+    big_v = vr >= 1.5; shrink_v = vr <= 0.7
+    win = data[max(0, last - 60):last - 1]
+    if len(win) < 5:
+        return None
+    prev_high = max(_kb_h(x) for x in win); prev_low = min(_kb_l(x) for x in win)
+    if not prev_high or not prev_low:
+        return None
+    if h >= prev_high * 0.985 and h <= prev_high * 1.03 and c < prev_high and up_sh >= body and up_sh >= rng * 0.35:
+        return ('bear', '測壓有壓(前高賣壓)' + ('+爆量' if big_v else ''))
+    if l <= prev_low * 1.015 and l >= prev_low * 0.97 and c > prev_low and dn_sh >= body and dn_sh >= rng * 0.35:
+        return ('bull', '測撐有撐(前低支撐)' + ('+量縮' if shrink_v else ''))
+    return None
+
+
+def _kb_diverge(data):
+    """量價背離:無量創高 / 高檔價漲量縮(皆偏空,出貨前兆)。"""
+    if len(data) < 25:
+        return None
+    last = len(data) - 1; cur = data[last]
+    c = _kb_c(cur); v = _kb_v(cur)
+    if not c or not v:
+        return None
+    prior = data[max(0, last - 20):last]
+    if len(prior) < 15:
+        return None
+    hi20 = max(_kb_c(x) for x in prior)
+    avg_v = sum(_kb_v(x) for x in prior) / len(prior)
+    if avg_v <= 0:
+        return None
+    vr = v / avg_v
+    if c >= hi20 and vr < 0.9:
+        return ('bear', '無量創高(量價背離)')
+    hi60 = max(_kb_h(x) for x in data[max(0, last - 60):last + 1])
+    if hi60 and c >= hi60 * 0.93 and last >= 3:
+        rising = c > _kb_c(data[last - 1]) and _kb_c(data[last - 1]) > _kb_c(data[last - 2])
+        vol_down = v < _kb_v(data[last - 1]) and _kb_v(data[last - 1]) < _kb_v(data[last - 2])
+        if rising and vol_down:
+            return ('bear', '價漲量縮(高檔背離)')
+    return None
+
+
+def detect_kbar_signals(rows):
+    """回 (bull_titles, bear_titles) — 對齊前端 4 個 K棒偵測器。rows = OHLCV list。"""
+    bull, bear = [], []
+    if not isinstance(rows, list) or len(rows) < 25:
+        return bull, bear
+    sb = _kb_star(rows, True)
+    if sb:
+        bear.append(sb)
+    su = _kb_star(rows, False)
+    if su:
+        bull.append(su)
+    for fn in (_kb_2bar, _kb_pressure, _kb_diverge):
+        try:
+            r = fn(rows)
+        except Exception:
+            r = None
+        if r:
+            (bull if r[0] == 'bull' else bear).append(r[1])
+    return bull, bear
+
+
 def main():
     print("🚀 啟動【首席雷達矩陣】全市場掃描引擎...")
 
@@ -544,6 +726,9 @@ def main():
         'chu_top_gainer': [],   # 🔥 特別報價(模組 B)
         'chu_bottom': [],       # 🥣 底部轉折(模組 D)
         'chu_riding5ma': [],    # 🚀 5MA 飆股主升段(模組 E)
+        # 📐 K棒轉折雷達(V41.7):純公式 K棒戰法全市場掃描
+        'kbar_bull': [],        # 🌅 K棒轉多(晨星/長紅吞噬遭遇/測撐)
+        'kbar_bear': [],        # 🌃 K棒轉空(夜星/長黑吞噬遭遇/測壓/量價背離)
     }
 
     # 朱家泓選股法共用排除名單(處置/注意/全額交割)
@@ -705,6 +890,20 @@ def main():
                 if rec_e:
                     matrix['chu_riding5ma'].append(rec_e)
 
+            # 📐 K棒轉折雷達(V41.7):純公式,全市場皆掃。過濾流動性不足(<3千萬)+處置/注意股
+            if turnover >= 30_000_000 and sym not in chu_attention_set:
+                kb_bull, kb_bear = detect_kbar_signals(raw_data[-70:])
+                if kb_bull:
+                    matrix['kbar_bull'].append({
+                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                        'gain': day_gain, 'status': ' + '.join(kb_bull[:2])
+                    })
+                if kb_bear:
+                    matrix['kbar_bear'].append({
+                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                        'gain': day_gain, 'status': ' + '.join(kb_bear[:2])
+                    })
+
             processed_count += 1
 
         except Exception:
@@ -722,6 +921,10 @@ def main():
     matrix['chu_bottom'].sort(key=lambda x: x['gain'], reverse=True)
     matrix['chu_riding5ma'].sort(key=lambda x: x.get('cum_5d', 0), reverse=True)
 
+    # 📐 K棒轉折雷達:成交額大到小(流動性優先,散戶好進出)
+    matrix['kbar_bull'].sort(key=lambda x: x['turnover_e'], reverse=True)
+    matrix['kbar_bear'].sort(key=lambda x: x['turnover_e'], reverse=True)
+
     # 輸出最終雷達矩陣
     output = {
         'updated': date.today().isoformat(),
@@ -735,6 +938,9 @@ def main():
             'chu_top_gainer': matrix['chu_top_gainer'][:30],
             'chu_bottom': matrix['chu_bottom'][:20],
             'chu_riding5ma': matrix['chu_riding5ma'][:20],
+            # 📐 K棒轉折雷達(各取前 30 檔)
+            'kbar_bull': matrix['kbar_bull'][:30],
+            'kbar_bear': matrix['kbar_bear'][:30],
         }
     }
 
@@ -753,6 +959,7 @@ def main():
     print(f"      🔥 特別報價: {len(output['data']['chu_top_gainer'])} 檔")
     print(f"      🥣 底部轉折: {len(output['data']['chu_bottom'])} 檔")
     print(f"      🚀 5MA飆股: {len(output['data']['chu_riding5ma'])} 檔")
+    print(f"   📐 K棒轉折雷達:🌅 轉多 {len(output['data']['kbar_bull'])} 檔 / 🌃 轉空 {len(output['data']['kbar_bear'])} 檔")
     print(f"💾 已匯出至 {OUTPUT_FILE}")
 
 
