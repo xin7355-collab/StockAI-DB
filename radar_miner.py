@@ -336,6 +336,62 @@ def _chu_riding5ma(sym, rows):
     return result
 
 
+def _chu_backtest(sym, rows):
+    """🎯 模組 F(V41.18):朱式波段回測期望值榜。逐根模擬「回後買上漲進場 + 跌破5MA停利 / 破進場K低或-5%停損」,
+    只收「正期望值 + 交易數 ≥ 5」的股,依每趟期望值排序。需資料 ≥ 90 筆。與前端 _chuSwingBacktest 同邏輯。"""
+    if len(rows) < 90:
+        return None
+    closes = [r.get('close', 0) or 0 for r in rows]
+    opens = [r.get('open', 0) or 0 for r in rows]
+    highs = [r.get('high', closes[i]) or 0 for i, r in enumerate(rows)]
+    lows = [r.get('low', closes[i]) or 0 for i, r in enumerate(rows)]
+    vols = [r.get('volume', 0) or 0 for r in rows]
+    n = len(rows)
+    if closes[-1] <= 0:
+        return None
+    ma5 = [sum(closes[max(0, i - 4):i + 1]) / len(closes[max(0, i - 4):i + 1]) for i in range(n)]
+    ma20 = [sum(closes[max(0, i - 19):i + 1]) / len(closes[max(0, i - 19):i + 1]) for i in range(n)]
+    trades = []
+    pos = None   # (idx, px, stop)
+    for i in range(21, n):
+        m5, m20, m5p = ma5[i], ma20[i], ma5[i - 1]
+        c, o, pc, ph = closes[i], opens[i], closes[i - 1], highs[i - 1]
+        if pos is None:
+            uptrend = c > m20 and m5 >= m20
+            reclaim5 = pc < m5p and c >= m5
+            body = (c - o) / o * 100 if o > 0 else 0
+            vol_up = vols[i] > vols[i - 1]
+            if uptrend and reclaim5 and body >= 2 and vol_up and c > ph:
+                pos = (i, c, min(lows[i], c * 0.95))
+        else:
+            if c <= pos[2] or c < m5:   # 破停損 或 跌破5MA
+                trades.append((c - pos[1]) / pos[1] * 100)
+                pos = None
+    if len(trades) < 5:
+        return None
+    wins = [t for t in trades if t > 0]
+    losses = [t for t in trades if t <= 0]
+    win_rate = len(wins) / len(trades) * 100
+    expectancy = sum(trades) / len(trades)
+    if expectancy <= 0:   # 只收正期望值
+        return None
+    avg_win = sum(wins) / len(wins) if wins else 0
+    avg_loss = sum(losses) / len(losses) if losses else 0
+    pl_ratio = abs(avg_win / avg_loss) if avg_loss != 0 else 99
+    comp = 1.0
+    for t in trades:
+        comp *= (1 + t / 100)
+    return {
+        'sym': sym, 'close': round(closes[-1], 2),
+        'expectancy': round(expectancy, 2),
+        'win_rate': round(win_rate, 0),
+        'pl_ratio': round(pl_ratio, 2),
+        'trades': len(trades),
+        'total_return': round((comp - 1) * 100, 0),
+        'gain': round(expectancy, 2),   # 供排序/前端 gain 欄相容
+    }
+
+
 # V15.4 朱老師心法:高檔異量過濾(連漲 5+ 日 + 60 日天量 + 長上影 + 乖離 > 15% = 多頭高檔出貨)
 def _chu_top_distribution_warning(rows):
     """朱老師高檔出貨警告 — 4 條全中紅、僅乖離過熱黃,讓使用者一眼識破追高陷阱。"""
@@ -728,6 +784,7 @@ def main():
         'chu_top_gainer': [],   # 🔥 特別報價(模組 B)
         'chu_bottom': [],       # 🥣 底部轉折(模組 D)
         'chu_riding5ma': [],    # 🚀 5MA 飆股主升段(模組 E)
+        'chu_backtest': [],     # 🎯 朱式波段回測期望值榜(模組 F,V41.18)
         # 📐 K棒轉折雷達(V41.7):純公式 K棒戰法全市場掃描
         'kbar_bull': [],        # 🌅 K棒轉多(晨星/長紅吞噬遭遇/測撐)
         'kbar_bear': [],        # 🌃 K棒轉空(夜星/長黑吞噬遭遇/測壓/量價背離)
@@ -891,6 +948,10 @@ def main():
                 rec_e = _chu_riding5ma(sym, raw_data)
                 if rec_e:
                     matrix['chu_riding5ma'].append(rec_e)
+                # 🎯 模組 F 朱式波段回測期望值(需 ≥ 90 筆)
+                rec_f = _chu_backtest(sym, raw_data)
+                if rec_f:
+                    matrix['chu_backtest'].append(rec_f)
 
             # 📐 K棒轉折雷達(V41.7):純公式,全市場皆掃。過濾流動性不足(<3千萬)+處置/注意股
             if turnover >= 30_000_000 and sym not in chu_attention_set:
@@ -922,6 +983,7 @@ def main():
     matrix['chu_top_gainer'].sort(key=lambda x: (x.get('gain', 0), x.get('turnover_e', 0)), reverse=True)
     matrix['chu_bottom'].sort(key=lambda x: x.get('gain', 0), reverse=True)
     matrix['chu_riding5ma'].sort(key=lambda x: x.get('cum_5d', 0), reverse=True)
+    matrix['chu_backtest'].sort(key=lambda x: x.get('expectancy', 0), reverse=True)
 
     # 📐 K棒轉折雷達:成交額大到小(流動性優先,散戶好進出)
     matrix['kbar_bull'].sort(key=lambda x: x['turnover_e'], reverse=True)
@@ -940,6 +1002,7 @@ def main():
             'chu_top_gainer': matrix['chu_top_gainer'][:30],
             'chu_bottom': matrix['chu_bottom'][:20],
             'chu_riding5ma': matrix['chu_riding5ma'][:20],
+            'chu_backtest': matrix['chu_backtest'][:30],
             # 📐 K棒轉折雷達(各取前 30 檔)
             'kbar_bull': matrix['kbar_bull'][:30],
             'kbar_bear': matrix['kbar_bear'][:30],
