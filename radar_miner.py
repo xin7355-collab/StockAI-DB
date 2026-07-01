@@ -187,6 +187,8 @@ def _chu_perfect6(sym, rows):
 
 def _chu_top_gainer(sym, rows):
     """🔥 模組 B:特別報價。紅 K + 漲幅 ≥ 3% + 成交額 ≥ 5000 萬 + 成交量 ≥ 2000 張。"""
+    if len(rows) < 2:   # V41.14 防禦:需今+昨兩根才算漲幅(原僅靠呼叫端 _chu_skip 擋,補上自身守門)
+        return None
     closes = [r.get('close', 0) or 0 for r in rows]
     opens = [r.get('open', 0) or 0 for r in rows]
     c, o, v = closes[-1], opens[-1], rows[-1].get('volume', 0) or 0
@@ -917,8 +919,8 @@ def main():
 
     # 📚 朱家泓四模組排序(各自最適合的排序鍵)
     matrix['chu_perfect6'].sort(key=lambda x: (x.get('quality', 0), x['turnover_e']), reverse=True)
-    matrix['chu_top_gainer'].sort(key=lambda x: (x['gain'], x['turnover_e']), reverse=True)
-    matrix['chu_bottom'].sort(key=lambda x: x['gain'], reverse=True)
+    matrix['chu_top_gainer'].sort(key=lambda x: (x.get('gain', 0), x.get('turnover_e', 0)), reverse=True)
+    matrix['chu_bottom'].sort(key=lambda x: x.get('gain', 0), reverse=True)
     matrix['chu_riding5ma'].sort(key=lambda x: x.get('cum_5d', 0), reverse=True)
 
     # 📐 K棒轉折雷達:成交額大到小(流動性優先,散戶好進出)
