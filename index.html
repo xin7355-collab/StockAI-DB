@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.19</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.20</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -840,7 +840,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.19</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.20</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1239,15 +1239,16 @@
                     <div id="chuBacktestEmpty" class="text-[11px] text-gray-500 text-center py-3">📊 朱老師方式波段回測載入中(資料 ≥60 根才算)…</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【朱老師機率】\n\n機率欄=基於近 5 日 K 線 + 量能 + KD/MACD + 籌碼 + 大盤環境的「歷史相似型態」隔日勝率統計(純歷史數學運算,非 AI 預測、非保證)。\n\n• 今日該行 = 目前型態的歷史隔日上漲機率\n• 歷史日(最近 10 個交易日):有過去快照優先用快照,沒有就同一算法現場補算(純歷史 K 線比對,零 AI 介入)\n• Alpha 分:當日綜合戰力分(技術面+籌碼面+大盤環境,逐日重算)\n• 隔日實際漲跌:從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄:預測機率 ≥ 50% 且實際漲 = ● 對,反之 ○ 反\n\n⚠️ 這是「隔日」統計,天生接近五五波,僅供參考;真正該看的是上方「朱老師方式波段回測」的期望值與賺賠比。\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">🎯 朱老師機率 <span class="text-[10px] text-gray-500 font-normal ml-1">(點擊看說明)</span></h2>
-                    <!-- V26.23 — 砍 patWinRate 函數名暴露 + 對齊 Pill 圖例(● / ○ 取代 ✅/❌) -->
-                    <div class="text-[9px] text-gray-500 mb-2 leading-tight">ⓘ 機率計算基於歷史相似 K 線特徵之勝率統計(純歷史數學運算,非 AI 預測)・ Alpha 分為當日綜合戰力(逐日重算)</div>
-                    <div class="text-[9px] text-gray-500 mb-1.5 flex items-center gap-3">
-                        <span class="flex items-center gap-1">📖 <span class="inline-block bg-green-500/10 text-green-400 border border-green-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">● 對</span> = 預測方向命中</span>
+                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【朱老師機率(四大金剛逐日判讀)】\n\n這張表不再是「隔日相似 K 線」的接近五五波統計。V41.20 起底層換成朱家泓四大金剛,逐日用純公式判讀:\n\n👑 趨勢:波段頭頭高+底底高=多 / 頭頭低+底底低=空\n📈 均線:MA5>MA10>MA20>MA60 多頭排列\n🕯️ K線:強勢發動棒(長紅破昨高)/ 三星・兩根轉折\n📊 成交量:價漲量增=配合 / 量增黑K=出貨\n\n• 金剛欄 = 當日「幾個金剛同方向」→ 🟢偏多(多≥3)/ 🔴偏空(空≥3)/ 🟡分歧\n• Alpha 分:當日綜合戰力分(技術面+籌碼面+大盤環境,逐日重算)\n• 隔日實際漲跌:從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄:金剛偏多且隔日漲(或偏空且隔日跌)= ● 對;方向反 = ○ 反;分歧 = — 觀望(朱老師教條:四大金剛不同調就不下單)\n\n⚠️ 這仍是「隔日」對照,朱老師本質是波段(賺大賠小),真正該看的是上方「朱老師方式波段回測」的期望值與賺賠比。\n🟢 偏多｜🔴 偏空｜🟡 分歧觀望')">🎯 朱老師機率 <span class="text-[10px] text-gray-500 font-normal ml-1">(點擊看說明)</span></h2>
+                    <!-- 🎯 V41.20 底層換成四大金剛逐日判讀(取代隔日相似 K 線統計) -->
+                    <div class="text-[9px] text-gray-500 mb-2 leading-tight">ⓘ 金剛欄=朱老師四大金剛(趨勢/均線/K線/量)當日同方向數,純公式非 AI ・ Alpha 分為當日綜合戰力(逐日重算)</div>
+                    <div class="text-[9px] text-gray-500 mb-1.5 flex items-center gap-3 flex-wrap">
+                        <span class="flex items-center gap-1">📖 <span class="inline-block bg-green-500/10 text-green-400 border border-green-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">● 對</span> = 金剛方向命中隔日</span>
                         <span class="flex items-center gap-1"><span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">○ 反</span> = 方向反了</span>
+                        <span class="flex items-center gap-1"><span class="inline-block bg-gray-500/10 text-gray-400 border border-gray-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">— 觀望</span> = 分歧不下單</span>
                     </div>
                     <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">我的機率</th><th class="py-1.5 px-1 font-bold text-center">Alpha 分</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
+                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">四大金剛</th><th class="py-1.5 px-1 font-bold text-center">Alpha 分</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
                         <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="5" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
                     </table>
                 </div>
@@ -19013,19 +19014,77 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 重點看「每趟期望值」與「賺賠比」——朱老師是靠「高勝率進場 + 嚴格停損」賺大賠小,不是靠猜隔日漲跌。純公式歷史回測,過去績效不代表未來。</div>`;
     },
 
+    // 🎯 V41.20 — 朱老師四大金剛「歷史逐日」計算(給回測表底層用):對任一歷史 bar index i 算趨勢/均線/K線/量
+    //   與 renderFourGuardians 完全同邏輯,差別只在吃 index(讀 this.indicators[i] 對齊,_matchStarAt/_match2BarAt 傳 i)。
+    //   回 {bull,bear,verdict,states};verdict:多3+=bull / 空3+=bear / 其餘 neutral(分歧=朱老師不下單)。純公式零 AI。
+    _fourGuardianScoreAt(data, i) {
+        if (!Array.isArray(data) || i < 20 || i > data.length - 1) return null;
+        const ind = this.indicators || {};
+        if (!Array.isArray(ind.ma5)) return null;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const G = [];
+        // ① 👑 趨勢:±8 fractal(data[0..i]),頭頭高+底底高=多 / 頭頭低+底底低=空
+        {
+            const SW = 8, from = Math.max(0, i - 120), peaks = [], troughs = [];
+            for (let j = from + SW; j <= i - SW; j++) {
+                const w = data.slice(j - SW, j + SW + 1), mx = Math.max(...w.map(C)), mn = Math.min(...w.map(C));
+                if (C(data[j]) === mx) peaks.push(C(data[j]));
+                if (C(data[j]) === mn) troughs.push(C(data[j]));
+            }
+            let st = 'neutral';
+            if (peaks.length >= 2 && troughs.length >= 2) {
+                const ph = peaks[peaks.length - 1] > peaks[peaks.length - 2], th = troughs[troughs.length - 1] > troughs[troughs.length - 2];
+                const pl = peaks[peaks.length - 1] < peaks[peaks.length - 2], tl = troughs[troughs.length - 1] < troughs[troughs.length - 2];
+                if (ph && th) st = 'bull'; else if (pl && tl) st = 'bear';
+            }
+            G.push(st);
+        }
+        // ② 📈 均線:多頭排列 MA5>MA10>MA20>MA60(index 對齊 this.indicators)
+        {
+            const ma5 = ind.ma5?.[i], ma10 = ind.ma10?.[i], ma20 = ind.ma20?.[i], ma60 = ind.ma60?.[i], pC = C(data[i]);
+            let st = 'neutral';
+            if ([ma5, ma10, ma20, ma60].every(x => x != null)) {
+                if (ma5 >= ma10 && ma10 >= ma20 && ma20 >= ma60) st = 'bull';
+                else if (ma5 < ma10 && ma10 < ma20) st = 'bear';
+            } else if (ma5 != null && ma20 != null) {
+                st = pC >= ma5 && ma5 >= ma20 ? 'bull' : (pC < ma5 && ma5 < ma20 ? 'bear' : 'neutral');
+            }
+            G.push(st);
+        }
+        // ③ 🕯️ K線:發動棒(長紅≥3%破昨高)+ 三星/兩根轉折 tone(單一引擎 _matchStarAt/_match2BarAt at i)
+        {
+            const body = O(data[i]) > 0 ? (C(data[i]) - O(data[i])) / O(data[i]) * 100 : 0;
+            const launch = body >= 3 && i > 0 && C(data[i]) > H(data[i - 1]);
+            let kb = 0;
+            try { const m = this._matchStarAt(data, i); if (m) kb += m.tone === 'bull' ? 1 : -1; } catch (_) {}
+            try { const m = this._match2BarAt(data, i); if (m) kb += m.tone === 'bull' ? 1 : -1; } catch (_) {}
+            let st = 'neutral';
+            if (launch && kb >= 0) st = 'bull';
+            else if (kb > 0) st = 'bull';
+            else if (kb < 0) st = 'bear';
+            G.push(st);
+        }
+        // ④ 📊 成交量:價漲量增=多 / 量增黑K(出貨)=空 / 其餘中性
+        {
+            const vma5 = ind.vma5?.[i], vCur = V(data[i]), vPrev = i > 0 ? V(data[i - 1]) : 0, red = C(data[i]) >= O(data[i]);
+            const volUp = vPrev > 0 && vCur >= vPrev * 1.2, bigVol = vma5 > 0 && vCur >= vma5 * 1.5;
+            let st = 'neutral';
+            if (red && (volUp || bigVol)) st = 'bull';
+            else if (!red && (volUp || bigVol)) st = 'bear';
+            G.push(st);
+        }
+        const bull = G.filter(x => x === 'bull').length, bear = G.filter(x => x === 'bear').length;
+        let verdict = 'neutral';
+        if (bull >= 3) verdict = 'bull'; else if (bear >= 3) verdict = 'bear';
+        return { bull, bear, verdict, states: G };
+    },
+
     renderBacktest() {
         try { this._renderChuBacktest(); } catch (_) {}   // 🎯 V41.17 朱老師方式波段回測
         const tbody = document.getElementById('backtestTableBody');
         const data = this.activeData, last = data.length - 1;
         if (last < 10) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
-
-        // 機率來源:① localStorage 快照(每日 K 線分析自動寫入)優先
-        //          ② 沒快照就用 _computePatWinRateAt 即時補算(與 worker 同算法)
-        const sym = this.currentSymbolId;
-        const histSnap = (JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}'))[sym] || [];
-        const byDate = {};
-        for (const r of histSnap) byDate[String(r.date || '').replace(/-/g, '/')] = r;
-        const marketCtx = this._buildMarketCtx ? this._buildMarketCtx() : null;
 
         let html = '';
         for (let i = last; i >= Math.max(0, last - 9); i--) {
@@ -19037,30 +19096,17 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const sign = diff > 0 ? '+' : '';
             const dShort = String(data[i].date || '').replace(/^\d{4}\//, '');
 
-            // 我的 patWinRate:快照優先,沒快照即時補算(可能走降級)
-            const snap = byDate[data[i].date];
-            let wr = null, wc = null, src = null;
-            if (snap && Number.isFinite(snap.patWinRate)) {
-                wr = Number(snap.patWinRate); wc = snap.patCount; src = 'snap';
+            // 🎯 V41.20 底層換掉:「我的機率」欄 → 朱老師四大金剛(趨勢/均線/K線/量)逐日判讀
+            const g = this._fourGuardianScoreAt(data, i);
+            let gVerdict = null, wrHtml;
+            if (g) {
+                gVerdict = g.verdict;
+                const light = g.verdict === 'bull' ? '🟢' : (g.verdict === 'bear' ? '🔴' : '🟡');
+                const label = g.verdict === 'bull' ? '偏多' : (g.verdict === 'bear' ? '偏空' : '分歧');
+                const col = g.verdict === 'bull' ? 'text-red-400' : (g.verdict === 'bear' ? 'text-green-400' : 'text-yellow-400');
+                wrHtml = `<span class="${col} text-base font-black" title="趨勢/均線/K線/成交量 四大金剛,同方向 ${g.bull} 個做多、${g.bear} 個做空">${light} ${g.bull}/4</span><div class="text-[9px] text-gray-500">${label}</div>`;
             } else {
-                const live = this._computePatWinRateAt(data, this.indicators, i, marketCtx);
-                if (live) { wr = Number(live.winRate); wc = live.count; src = live.source; }
-            }
-            // V14.4:※ 標示降級層級,讓使用者知道補算可信度
-            const srcMark = {
-                snap:       { mark: '', tip: '當日完整過濾 + 自動快照' },
-                full:       { mark: '', tip: '完整過濾(法人+大盤+量能)' },
-                no_fi:      { mark: ' <span class="text-gray-500 text-[10px] cursor-help" title="樣本不足,已放寬法人同向過濾(可信度尚可)">※</span>', tip: '' },
-                no_fi_mkt:  { mark: ' <span class="text-gray-500 text-[10px] cursor-help" title="樣本不足,已放寬法人+大盤同向過濾(可信度中等)">※※</span>', tip: '' },
-                loose_sim:  { mark: ' <span class="text-orange-400 text-[10px] cursor-help" title="樣本嚴重不足,已放寬相似度門檻 2 倍(低信賴度,僅供參考)">※※※</span>', tip: '' },
-            }[src] || { mark: '', tip: '' };
-            let wrHtml;
-            if (wr != null && Number.isFinite(wr)) {
-                const wrCol = wr >= 65 ? 'text-red-400' : wr >= 50 ? 'text-yellow-400' : 'text-green-400';
-                wrHtml = `<span class="${wrCol} text-base font-black"${srcMark.tip ? ` title="${srcMark.tip}"` : ''}>${wr.toFixed(1)}%</span>${srcMark.mark}`;
-                if (wc) wrHtml += `<div class="text-[9px] text-gray-500">${wc} 樣本</div>`;
-            } else {
-                wrHtml = '<span class="text-gray-600 text-[10px]">📝 樣本不足</span>';
+                wrHtml = '<span class="text-gray-600 text-[10px]">📝 資料不足</span>';
             }
 
             // Alpha 分 — 當日綜合戰力分(逐日重算,讓使用者能對照「分數高時是否真的漲」)
@@ -19087,16 +19133,17 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 const nColor = nDiff > 0 ? 'text-[#f87171]' : nDiff < 0 ? 'text-[#4ade80]' : 'text-gray-500';
                 const nSign = nDiff > 0 ? '+' : '';
                 nextHtml = `<span class="${nColor} text-xs font-mono font-bold">${nSign}${nPct.toFixed(2)}%</span>`;
-                if (wr != null && Number.isFinite(wr)) {
-                    const predUp = wr >= 50;
+                // 🎯 V41.20 對/反:依朱老師四大金剛方向 vs 隔日實際;分歧(neutral)=朱老師不下單 → 觀望不計對錯
+                if (gVerdict === 'bull' || gVerdict === 'bear') {
+                    const predUp = gVerdict === 'bull';
                     const actualUp = nDiff > 0;
                     const hit = predUp === actualUp;
                     // V26.22 — Pill Badge 化(取代純文字 ✅/❌,Bloomberg 風)
                     hitHtml = hit
-                        ? '<span class="inline-block bg-green-500/10 text-green-400 border border-green-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="預測對:漲跌方向命中">● 對</span>'
-                        : '<span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="預測錯:方向反了">○ 反</span>';
+                        ? '<span class="inline-block bg-green-500/10 text-green-400 border border-green-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="四大金剛方向命中隔日">● 對</span>'
+                        : '<span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="四大金剛方向與隔日相反">○ 反</span>';
                 } else {
-                    hitHtml = '<span class="text-gray-600 text-[10px]">—</span>';
+                    hitHtml = '<span class="inline-block bg-gray-500/10 text-gray-400 border border-gray-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="四大金剛分歧,朱老師教條=不下單">— 觀望</span>';
                 }
             } else {
                 nextHtml = '<span class="text-gray-500 text-[10px]">明日待定</span>';
