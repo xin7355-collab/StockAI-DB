@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.31</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.32</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.31</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.32</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -19571,7 +19571,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (!Array.isArray(data) || data.length < 80) { box.classList.remove('hidden'); box.innerHTML = '<div class="text-[11px] text-gray-400 py-2 text-center">此股歷史資料不足 80 根,無法可靠回測打法(換主流波段股再試)。</div>'; return; }
         const d = new Date(), dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const ckey = `playbook_${sym}`;   // 依股號(非股號+日期)→ 每檔只留一筆,不會無限累積
-        try { const c = JSON.parse(localStorage.getItem(ckey) || 'null'); if (c && c.date === dateStr && c.html) { box.classList.remove('hidden'); box.innerHTML = c.html; return; } } catch (_) {}
+        try { const c = JSON.parse(localStorage.getItem(ckey) || 'null'); if (c && c.date === dateStr && c.html) { this._lastPlaybook = { ranked: c.ranked || [], per: c.per || null }; box.classList.remove('hidden'); box.innerHTML = c.html; return; } } catch (_) {}
         if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 分析中(逐根回測)…'; }
         setTimeout(() => {
             try {
@@ -19580,12 +19580,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 const pos = ranked.filter(r => r.expectancy > 0);
                 const neg = ranked.filter(r => r.expectancy <= -0.3 && r.count >= 4);
                 const eCol = e => e > 0.5 ? 'text-red-300' : e >= 0 ? 'text-yellow-300' : 'text-green-300';
+                this._lastPlaybook = { ranked, per };   // 供點型態看教學時取用(含快取還原)
                 const rows = ranked.map((r, idx) => {
                     const star = (idx < 3 && r.expectancy > 0) ? ' <span class="text-amber-300">⭐主打</span>' : (r.expectancy <= -0.3 && r.count >= 4 ? ' <span class="text-green-400">⚠️避開</span>' : '');
                     const barW = Math.max(4, Math.min(100, 50 + r.expectancy * 20));
                     const barC = r.expectancy > 0.5 ? 'bg-red-400' : r.expectancy >= 0 ? 'bg-yellow-400' : 'bg-green-400';
-                    return `<div class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d]">
-                        <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star}</div>
+                    return `<div onclick="app.showPlaybookPatternHelp(${idx})" class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors">
+                        <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star} <span class="text-[9px] text-amber-400/80 font-normal">👆點看怎麼做</span></div>
                             <div class="text-[9px] text-gray-500 font-mono">勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次</div>
                             <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full ${barC}" style="width:${barW}%"></div></div></div>
                         <div class="font-mono font-black text-right text-sm ${eCol(r.expectancy)}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</div>
@@ -19598,7 +19599,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         <div class="text-sm font-black text-amber-200 mb-0.5">${per ? per.tag : '—'}</div>
                         <div class="text-[10px] text-gray-300 leading-relaxed">${per ? per.desc : ''}</div>
                     </div>
-                    <div class="text-[10px] text-gray-500 mb-1">📊 型態實戰回測排名(這檔自己的歷史 ・ 依每趟期望值排序)</div>
+                    <div class="bg-blue-900/15 border-l-2 border-blue-500/60 pl-2 py-1.5 rounded-r mb-2 text-[10px] text-blue-100/90 leading-relaxed cursor-pointer" onclick="app.showPlaybookConceptHelp()">🎓 <b>為什麼勝率 40% 還是「主打」?</b> 排名看的是<b>每趟期望值</b>不是勝率 —— 勝率低但「賺賠比」高(賺大賠小)長期照樣賺。這就是朱老師精神:不是靠猜對,是靠對的時候賺多、錯的時候賠少。<span class="text-blue-300">(點看完整說明)</span></div>
+                    <div class="text-[10px] text-gray-500 mb-1">📊 型態實戰回測排名(這檔自己的歷史 ・ 依每趟期望值排序 ・ <b class="text-amber-400/80">點任一列看怎麼操作</b>)</div>
                     ${rows || '<div class="text-[11px] text-gray-500 py-2 text-center">歷史訊號太少,無足夠樣本回測。</div>'}
                     <div class="bg-[#0d1117] border border-[#30363d] rounded p-2 mt-2 text-[11px] leading-relaxed">
                         <div class="text-gray-200"><span class="text-red-300 font-bold">✅ 主打:</span>${bestTxt}</div>
@@ -19606,13 +19608,41 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     </div>
                     <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 進場=型態訊號日收盤、出場=跌破5MA或跌破進場K低/−5%停損,最多抱20天。純公式歷史回測,過去績效不代表未來、僅供參考。</div>`;
                 box.classList.remove('hidden'); box.innerHTML = html;
-                try { localStorage.setItem(ckey, JSON.stringify({ date: dateStr, html })); } catch (_) {}
+                try { localStorage.setItem(ckey, JSON.stringify({ date: dateStr, html, ranked, per })); } catch (_) {}
             } catch (e) {
                 box.classList.remove('hidden'); box.innerHTML = `<div class="text-[11px] text-gray-400 py-2 text-center">分析失敗,稍後再試。</div>`;
             } finally {
                 if (btn) { btn.disabled = false; btn.innerHTML = '🔄 重新分析這檔打法'; }
             }
         }, 40);
+    },
+
+    // 🎯 V41.32 — 打法表「怎麼看」總說明(小白:期望值 vs 勝率 vs 賺賠比)
+    showPlaybookConceptHelp() {
+        alert('🎓 這張表怎麼看(小白必讀)\n\n很多人只看「勝率」,以為勝率高才好 —— 這是散戶最大的錯覺。\n\n真正決定賺不賺的是【每趟期望值】= 平均每做一趟賺(賠)多少 %,它同時考慮了:\n  • 勝率(對的機率)\n  • 賺賠比(對的時候賺多少 ÷ 錯的時候賠多少)\n\n📊 舉例:一招勝率只有 40%,但賺的時候賺 +5%、賠的時候只賠 -2%(賺賠比 2.5)\n  → 10 趟裡對 4 趟賺 20%、錯 6 趟賠 12% → 淨賺 +8% → 每趟期望值 +0.8% ✅ 還是賺!\n\n這就是朱老師的核心:「賺大賠小」—— 不是靠猜對,是靠<對的時候抱住賺多、錯的時候快停損賠少>。\n\n👉 所以本表【依期望值排名】,不是依勝率。期望值 > 0 才值得做,越大越好。\n👉 ⭐主打 = 期望值最高的前 3 名;⚠️避開 = 期望值為負(這檔用這招長期會賠)。\n\n⚠️ 純歷史回測,過去不代表未來;仍要看當下大盤與個股狀況,並嚴守停損。');
+    },
+
+    // 🎯 V41.32 — 點型態列 → 白話教學(是什麼/怎麼認/怎麼做SOP)+ 帶入這檔實際回測數字
+    showPlaybookPatternHelp(idx) {
+        const r = (this._lastPlaybook?.ranked || [])[idx];
+        if (!r) { alert('請先點「分析這檔的最佳打法」產生結果。'); return; }
+        const name = r.key.replace(/^\S+\s/, '');
+        const H = {
+            '回後買上漲': { what: '多頭股「回檔後、重新站上 5 日線」的第二次起漲點(朱老師招牌買點)。', spot: '波段多頭(頭頭高、底底高)+ 回檔沒破前低 + 今天紅K重新站上 5 日線 + 帶量、收盤過昨天最高。', how: '收盤確認訊號當天進場 → 停損:跌破 5 日線 或 跌破前一個低點 → 停利:跌破 5 日線就跑。', tip: '只在波段多頭做;大盤黑天鵝、或高檔大量長紅½被跌破(做頭)時別做。' },
+            '晨星轉折': { what: '低檔「3 根 K 棒」的打底反轉:左長黑 + 中間小K(變盤線)+ 右長紅。', spot: '相對低檔出現、左黑右紅,右邊那根紅K收盤要「站回左邊長黑K的中點以上」才算數。', how: '晨星成立後、隔天開高不破就進場 → 停損跌破晨星「最低點」→ 停利跌破 5 日線。', tip: '要在相對低檔才有意義;高檔出現類似型態別當反轉。' },
+            '長紅吞噬/貫穿': { what: '低檔一根長紅K「吃掉」前一根黑K = 一日反轉,買方強勢奪回主導。', spot: '低檔、今天紅K實體完全包住(吞噬)或收盤穿過前黑K一半以上(貫穿)。', how: '收盤確認進場 → 停損跌破這根紅K最低 → 停利跌破 5 日線。', tip: '帶量更有效;高檔的「長黑吞噬」則是反向賣訊。' },
+            '底部頸線突破': { what: '底部整理一段(頭肩底/W底/三重底類)後,帶量紅K突破上頸線 = 底部完成。', spot: '收盤突破近 30 日整理區的頸線(上緣壓力),最好帶量。', how: '突破當天收盤進場 → 停損跌破頸線 → 目標價≈頸線到底部的等幅(卡片會標)。', tip: '沒帶量的突破容易假,留意補量;跌回頸線下方就是假突破。' },
+            '箱型突破': { what: '股價在一個上下箱型裡來回,終於突破箱頂 = 可能轉波段。', spot: '收盤突破箱型上緣,帶量最佳。', how: '突破進場 → 停損跌回箱內(箱頂下方)→ 續強抱波段。', tip: '這檔若「假突破多」(看性格標籤),箱型突破期望值常為負 → 寧可等回測箱頂不破再進。' },
+            '向上缺口突破': { what: '跳空向上留缺口,且缺口沒被回補 = 強勢續攻(朱:缺口不補繼續走)。', spot: '今天最低 > 昨天最高(跳空),之後沒有跌回補掉缺口;帶量=突破缺口更強。', how: '缺口不補可續抱/回測缺口下緣不破承接 → 停損跌破並回補缺口。', tip: '高檔連漲後的跳空可能是「竭盡缺口」(末端反轉),要小心分辨。' },
+            '葛蘭碧買點': { what: '股價回到「上揚的月線」附近又彈起,月線像地板撐住 = 葛蘭碧經典買點。', spot: '月線(20MA)上揚中,股價回測到月線附近沒跌破(或假跌破又站回)。', how: '收紅確認進場 → 停損跌破月線 → 順勢抱到跌破 5 日線或月線。', tip: '月線要「上揚」才算支撐;月線下彎時的靠近是壓力不是支撐。' },
+            '均線扣抵翻揚': { what: '用「扣抵值」提前算出:月線/季線即將由平轉揚 = 均線轉多的領先訊號。', spot: '今天收盤站上「扣抵值」(明天要從均線扣掉的那根收盤),代表明天均線會往上。', how: '領先偏多訊號,可搭配其他買點分批進 → 守住扣抵值續看多。', tip: '這是「領先」訊號、還沒確認,別單獨重壓,配合回後買上漲/紅K更穩。' },
+            '發動棒破昨高': { what: '一根長紅(漲幅≥3%)且收盤過昨天最高 = 攻擊發動、多方點火。', spot: '實體長紅、收盤價 > 昨天最高價,帶量更強。', how: '追這種要快、停損也要快:跌破發動棒一半或最低就走。', tip: '高檔的發動棒容易變「最後一根」,這檔若期望值為負(看排名)代表追高常被套,寧可等回檔。' },
+        };
+        const h = H[name] || { what: '這個型態的白話說明整理中。', spot: '—', how: '進場=訊號日收盤、停損=跌破5日線或−5%。', tip: '—' };
+        const verdict = r.expectancy > 0
+            ? `這檔用「${name}」歷史上是【正期望值 +${r.expectancy.toFixed(1)}%/趟】,${r.expectancy > 0.5 ? '相對好用,可列主打' : '小賺、可搭配用'}。`
+            : `這檔用「${name}」歷史上是【負期望值 ${r.expectancy.toFixed(1)}%/趟】→ 這招在這檔不好賺,建議避開、換主打的型態。`;
+        alert(`${r.key}\n\n【是什麼】${h.what}\n\n【怎麼認】${h.spot}\n\n【怎麼做】${h.how}\n\n【小白提醒】${h.tip}\n\n【這檔的成績】勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ 樣本 ${r.count} 次 ・ 每趟期望值 ${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%\n→ ${verdict}\n\n⚠️ 純歷史回測,過去不代表未來;實際仍要看大盤與個股當下狀況,嚴守停損。`);
     },
 
     renderBacktest() {
