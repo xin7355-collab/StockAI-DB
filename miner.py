@@ -154,6 +154,14 @@ def fm_request(url_base: str, timeout: int = 20):
                 return None
             time.sleep(1.0)  # 切換後稍待再打
             continue
+        # 🐛 修:伺服器暫時錯誤(5xx)也換 token 重試,對齊「非200 fallback」精神;
+        #   用同一 tried 集合確保會終止(全試過即回 None),不碰 402 付費牆熱路徑
+        if res.status_code in (500, 502, 503, 504):
+            print(f'  ⚠️ [fm_request] 收到 {res.status_code}(伺服器暫時錯誤),換 token 重試...')
+            if not FINMIND_TOKENS or not rotate_finmind_token(tried):
+                return None
+            time.sleep(1.0)
+            continue
         try:
             return res.json()
         except Exception:
@@ -646,11 +654,14 @@ def fetch_market_institutional(d: date) -> dict:
                 a = agg.setdefault(sid, {'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0})
                 inst = (row.get('name') or '').strip()
                 net  = (row.get('buy') or 0) - (row.get('sell') or 0)
-                if '外資' in inst:
+                # 🐛 修:FinMind 此 dataset 的 name 是英文列舉(Foreign_Investor/Investment_Trust/
+                #   Dealer_self/Dealer_Hedging/Foreign_Dealer_Self),舊版只比中文 → 全部落空補 0。
+                #   中英雙比對;Foreign 先判(讓 Foreign_Dealer_Self 歸外資,不誤入自營)。
+                if '外資' in inst or 'Foreign' in inst:
                     a['foreign_net'] += int(net)
-                elif '投信' in inst:
+                elif '投信' in inst or 'Trust' in inst or 'Investment' in inst:
                     a['trust_net'] += int(net)
-                elif '自營' in inst:
+                elif '自營' in inst or 'Dealer' in inst:
                     a['dealer_net'] += int(net)
             for sid, v in agg.items():
                 if sid not in res:
@@ -2064,11 +2075,14 @@ def fetch_futures_cache():
     try:
         j = fm_request(url_base, timeout=15)
         if j and j.get('status') == 200 and j.get('data'):
-            foreign_data = [d for d in j['data'] if '外資' in d.get('name', '')]
+            # 🐛 修:name 為英文列舉(Foreign_Investor…)中英雙比對;
+            #   且此 dataset 無 open_interest_net_volume 欄 → 改用多空未平倉餘額相減算淨口數。
+            foreign_data = [d for d in j['data'] if '外資' in d.get('name', '') or 'Foreign' in d.get('name', '')]
             if foreign_data:
                 latest = foreign_data[-1]
-                net_direct = latest.get('open_interest_net_volume')
-                net_oi = int(net_direct) if net_direct is not None else 0
+                long_bal  = int(latest.get('long_open_interest_balance_volume') or 0)
+                short_bal = int(latest.get('short_open_interest_balance_volume') or 0)
+                net_oi = long_bal - short_bal
                 long_oi = max(0, net_oi)
                 short_oi = max(0, -net_oi)
                 if long_oi > 0 or short_oi > 0:

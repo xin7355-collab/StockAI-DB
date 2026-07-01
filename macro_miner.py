@@ -322,7 +322,7 @@ def _fetch_bfi82u_rows():
                     pass
             if rows:
                 print(f"  [BFI82U/OpenAPI] 命中 {len(rows)} 列")
-                return rows, datetime.now().strftime("%Y%m%d"), None
+                return rows, datetime.now(timezone(timedelta(hours=8))).strftime("%Y%m%d"), None  # 🐛 修:用台北時區,避免 UTC runner 跨午夜標錯交易日
             print("  [BFI82U/OpenAPI] 回 200 但解析 0 列,改試 rwd")
         else:
             print(f"  [BFI82U/OpenAPI] HTTP {r.status_code},改試 rwd")
@@ -337,7 +337,7 @@ def _fetch_bfi82u_rows():
             return None, None, f"HTTP {r.status_code}"
         j = r.json()
         data = j.get("data") or []
-        date_str = j.get("date") or datetime.now().strftime("%Y%m%d")
+        date_str = j.get("date") or datetime.now(timezone(timedelta(hours=8))).strftime("%Y%m%d")  # 🐛 修:台北時區
         if not data:
             return None, date_str, "BFI82U 回 0 列"
         fields = j.get("fields") or []
@@ -396,7 +396,7 @@ def fetch_three_inst_net():
     for name, val in rows:
         if "投信" in name:
             trust_y += val; trust_hit = True
-        elif "自營" in name:   # 自營商(自行買賣)+(避險)兩列都累加
+        elif "自營" in name and "外資" not in name:   # 自營商(自行買賣)+(避險);🐛 修:排除「外資自營商」(已計入外資,避免自營被重複灌數)
             dealer_y += val; dealer_hit = True
         elif "合計" in name or "三大法人" in name:
             total_y = val
