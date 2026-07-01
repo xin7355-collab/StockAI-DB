@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.22</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.23</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -840,7 +840,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.22</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.23</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1085,7 +1085,7 @@
             <!-- 籌碼全面追蹤（三大法人 + 主力分點合併）-->
             <div id="subContentChip" class="hidden flex-col gap-3 mt-2 px-2 md:px-4">
 
-                <!-- 📊 V20.8 — 綜合操作評分卡(收所有訊號 → 1 個總分 + 1 句話操作建議) -->
+                <!-- 🔬 V20.8/V41.23 — 籌碼綜合評分卡(收籌碼/法人/風控/景氣訊號 → 1 個總分 + 1 句話操作建議) -->
                 <div id="masterScoreCard" class="hidden bg-[#161b22] border border-blue-700/40 rounded-lg p-3 shadow-lg"></div>
 
                 <!-- 🔄 V20.8 — 三大法人反轉訊號(賣轉買/買轉賣) + 投信做帳 -->
@@ -1202,6 +1202,8 @@
                     </button>
                     <div id="klineAuditResult" class="hidden w-full bg-[#010409] border border-amber-500/40 rounded-lg p-4 text-sm text-gray-200 leading-loose min-h-[20rem]"></div>
                 </div>
+                <!-- 🕯️ V41.23 — K線型態+量 評分卡(朱家泓做法:型態強弱 × 價量配合,純公式) -->
+                <div id="kbarScoreCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
                     <div class="flex items-center gap-2 px-1 py-1 border-b border-[#30363d] flex-nowrap overflow-x-auto scrollbar-hide">
                         <div class="flex bg-[#161b22] rounded border border-[#30363d] overflow-hidden flex-shrink-0" id="tfBtnGroup">
@@ -9085,7 +9087,7 @@ const marginByDate = {};
 
         box.innerHTML = `
             <div class="flex items-center justify-between mb-1 pb-1.5 border-b border-blue-700/40">
-                <h4 class="text-blue-300 font-bold text-sm">📊 綜合操作評分</h4>
+                <h4 class="text-blue-300 font-bold text-sm">🔬 籌碼綜合評分</h4>
                 <button onclick="alert('${formulaTxt}')" class="text-[9px] text-gray-500 hover:text-blue-300 flex items-center gap-1">${factors.length} 因子加權 ⓘ</button>
             </div>
             <div class="text-[9px] text-gray-500 mb-2">👇 參考訊號 ・ 最終以上方 🧠 首席 AI 為準</div>
@@ -12075,6 +12077,85 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
+    // 🕯️ V41.23 — K線頁「型態+量」評分卡(朱家泓做法:型態強弱 × 價量配合,純公式,0-100 分):
+    //   ① 型態分:單一引擎 K棒型態訊號多空相抵(晨星/吞噬/貫穿/發動棒=多,夜星/長黑/假突破/測壓/做頭=空)
+    //   ② 量分:朱鐵律「量增配長紅才有效突破 / 無量創高、量增黑K=假突破出貨」
+    //   總分 = 型態 55% + 量 45%(禁 AI 算,全 JS 公式)
+    renderKbarScore(data) {
+        const el = document.getElementById('kbarScoreCard');
+        if (!el) return;
+        if (!Array.isArray(data) || data.length < 20) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), V = b => +((b?.volume ?? 0) || 0);
+
+        // ── ① 型態分:收集單一引擎 K棒型態訊號,多(bull)減空(bear/warn)──
+        const patSigs = [];
+        const grab = fn => { try { (this[fn]?.(data) || []).forEach(s => patSigs.push(s)); } catch (_) {} };
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
+         '_detectPressureTest', '_detectHeavyResistance', '_detectMaDeviation', '_detectBoxBreakout'].forEach(grab);
+        const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
+        const launch = body >= 3 && C(data[last]) > H(data[last - 1]);   // 強勢發動棒
+        let B = 0, R = 0;
+        patSigs.forEach(s => { if (s.tone === 'bull') B++; else if (s.tone === 'bear' || s.tone === 'warn') R++; });
+        if (launch) B++;
+        const patScore = Math.max(0, Math.min(100, 50 + (B - R) * 12));
+        const bullTitles = patSigs.filter(s => s.tone === 'bull').map(s => s.title);
+        if (launch) bullTitles.unshift(`強勢發動棒 +${body.toFixed(1)}%`);
+        const bearTitles = patSigs.filter(s => s.tone === 'bear' || s.tone === 'warn').map(s => s.title);
+        const patTxt = (B || R)
+            ? `${B ? '🔺' + bullTitles.slice(0, 2).join('/') : ''}${(B && R) ? '　' : ''}${R ? '🔻' + bearTitles.slice(0, 2).join('/') : ''}`
+            : '無明顯型態(整理中)';
+
+        // ── ② 量分:朱「量增配長紅才有效突破 / 背離、量增黑K=假突破出貨」──
+        const vArr = data.slice(Math.max(0, last - 5), last).map(V);
+        const avgV = vArr.length ? vArr.reduce((a, x) => a + x, 0) / vArr.length : V(data[last]);
+        const vCur = V(data[last]), vPrev = V(data[last - 1]), red = C(data[last]) >= O(data[last]);
+        const volUp = vPrev > 0 && vCur >= vPrev * 1.2, bigVol = avgV > 0 && vCur >= avgV * 1.5;
+        let diverge = false; try { diverge = (this._detectVolPriceDiverge(data) || []).length > 0; } catch (_) {}
+        let volScore = 50, volTxt = avgV > 0 ? `量能中性 ${(vCur / avgV).toFixed(1)}×均量` : '量能中性';
+        if (red && bigVol && !diverge) { volScore = 88; volTxt = `帶量長紅 ${(vCur / avgV).toFixed(1)}×均量(有效突破)`; }
+        else if (red && volUp && !diverge) { volScore = 72; volTxt = '價漲量增(量增配紅K)'; }
+        else if (diverge) { volScore = 22; volTxt = '量價背離(無量創高/量縮=假突破)'; }
+        else if (!red && (volUp || bigVol)) { volScore = 18; volTxt = '量增黑K(爆量出貨賣壓)'; }
+        else if (avgV > 0 && vCur <= avgV * 0.6) { volScore = 45; volTxt = `量縮 ${(vCur / avgV * 100).toFixed(0)}%(觀望等表態)`; }
+
+        // ── 總分:型態 55% + 量 45% ──
+        const total = Math.round(patScore * 0.55 + volScore * 0.45);
+        let verdict, vCls, action;
+        if (total >= 72)      { verdict = '🔴 強勢型態·價量俱揚'; vCls = 'border-red-600 bg-red-900/40 text-red-200';       action = '型態偏多 + 量能配合 → <b>順勢做多,守 5MA,跌破就走</b>'; }
+        else if (total >= 56) { verdict = '🔴 偏多·型態成形';     vCls = 'border-red-700 bg-red-900/25 text-red-200';       action = '型態偏多但量或攻擊力道未滿 → <b>可留意,等帶量長紅再追</b>'; }
+        else if (total >= 44) { verdict = '🟡 中性·型態量能分歧'; vCls = 'border-yellow-600 bg-yellow-900/30 text-yellow-200'; action = '型態與量不同調 → <b>觀望等表態,別急進場</b>'; }
+        else if (total >= 28) { verdict = '🟢 偏弱·型態轉差';     vCls = 'border-green-700 bg-green-900/30 text-green-300';   action = '型態轉弱 → <b>別追高,持股顧好停損</b>'; }
+        else                  { verdict = '🟢 弱勢型態·量能出貨'; vCls = 'border-green-600 bg-green-900/40 text-green-200';   action = '型態破壞 + 量能出貨 → <b>空手勿接刀,持股分批出</b>'; }
+
+        const row = (icon, name, weight, txt, score) => {
+            const sc = score >= 70 ? 'text-red-300' : score >= 44 ? 'text-yellow-300' : 'text-green-300';
+            const bc = score >= 70 ? 'bg-red-400' : score >= 44 ? 'bg-yellow-400' : 'bg-green-400';
+            return `<div class="grid grid-cols-[1fr_auto_44px] gap-2 items-center py-1.5 border-b border-[#21262d]">
+                <div><div class="text-[11px] text-gray-200 font-bold flex items-center gap-1"><span>${icon}</span>${name}</div><div class="text-[9px] text-gray-500 font-mono">權重 ${weight}%</div></div>
+                <div class="flex flex-col items-end gap-0.5"><span class="text-[9px] text-gray-400 truncate max-w-[150px] text-right" title="${txt}">${txt}</span><div class="w-[100px] h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${bc} transition-all" style="width:${Math.min(score, 100)}%"></div></div></div>
+                <div class="font-mono font-black text-right text-base ${sc}">${score}</div></div>`;
+        };
+        const formula = '🕯️ K線評分算法(朱家泓做法,純公式非 AI)\\n\\n① 型態分(權重 55%)\\n  基準 50,每個偏多型態 +12、偏空型態 −12\\n  多:晨星/長紅吞噬/貫穿/發動棒/底部突破/測撐…\\n  空:夜星/長黑吞噬/烏雲/假突破/測壓有壓/乖離過大/做頭…\\n\\n② 量分(權重 45%)\\n  帶量長紅(≥1.5×均量)=88 有效突破\\n  價漲量增=72 / 量價背離=22 假突破\\n  量增黑K=18 出貨 / 量縮=45 觀望\\n\\n總分 = 型態×0.55 + 量×0.45\\n🔴≥72 強勢 / 56-71 偏多 / 44-55 中性 / 28-43 偏弱 / <28 弱勢(台股色:紅多綠空)';
+
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-1 pb-1.5 border-b border-amber-700/40">
+                <h4 class="text-amber-300 font-bold text-sm">🕯️ K線型態+量 評分</h4>
+                <button onclick="alert('${formula}')" class="text-[9px] text-gray-500 hover:text-amber-300 flex items-center gap-1">朱家泓做法 ⓘ</button>
+            </div>
+            <div class="text-[9px] text-gray-500 mb-2">👇 只看「型態強弱 × 價量配合」,趨勢/均線見上方四大金剛 ・ 純公式非 AI</div>
+            <div class="rounded-lg border ${vCls} px-3 py-2.5 mb-2 text-center">
+                <div class="text-4xl font-black font-mono leading-none mb-0.5">${total}<span class="text-base text-gray-400">/100</span></div>
+                <div class="text-[13px] font-bold mt-1">${verdict}</div>
+            </div>
+            <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-2 text-[11px] text-gray-300 leading-snug">${action}</div>
+            <div class="text-[10px] text-gray-500 mb-1 leading-tight">📊 兩因子分數明細</div>
+            ${row('🕯️', 'K線型態', 55, patTxt, patScore)}
+            ${row('📊', '成交量', 45, volTxt, volScore)}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 朱鐵律:量增配長紅才是有效突破;爆量隔天黑K留意假突破出貨。型態轉折需次日開盤確認。僅供參考非投資建議。</div>`;
+        el.classList.remove('hidden');
+    },
+
     // 🩺 V36.6 — 進場體檢(初學者一目了然):把 K棒戰法/三星轉折/吞噬/橫盤/量能 + 均線結構
     //   全部純公式訊號彙總成「該不該進場」紅綠燈總結。禁 AI 算數,純 JS 計分,僅供參考。
     _entryCheckup(data) {
@@ -12215,7 +12296,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const diverge = (eDir === 'bull' && mDir === 'bear') || (eDir === 'bear' && mDir === 'bull');
                 const mc = m >= 65 ? 'text-red-300' : m <= 44 ? 'text-green-300' : 'text-yellow-300';
                 xrefHtml = `<div class="text-[10px] text-gray-400 mb-2 flex items-center gap-x-1.5 gap-y-0.5 flex-wrap">
-                    <span>📊 綜合操作評分 <span class="font-mono font-black ${mc}">${m}</span>/100 <span class="text-gray-600 text-[9px]">(含籌碼+基本面)</span></span>
+                    <span>🔬 籌碼綜合評分 <span class="font-mono font-black ${mc}">${m}</span>/100 <span class="text-gray-600 text-[9px]">(含籌碼+基本面)</span></span>
                     ${diverge ? `<span class="text-yellow-300 font-bold text-[9px]">⚠️ 與技術面分歧(一面多一面空)→ 保守看待、別重押</span>` : `<span class="text-gray-600 text-[9px]">・與技術面方向一致 ✓</span>`}</div>`;
             }
         } catch (_) {}
@@ -18490,6 +18571,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
         try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
         try { this.renderKbarTactics(data); } catch (_) {}
+        try { this.renderKbarScore(data); } catch (_) {}       // 🕯️ V41.23 K線頁 型態+量 評分卡
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
@@ -22494,7 +22576,7 @@ ${_chuPosPlan}
 - 🧟 群魔亂舞漲停家數：${junkLine}
 - 🔥 大盤板塊輪動：${usMask(sectorRotationLine)}
 - 🎯 系統量化燈號（traffic_light 必須與此一致）：${sigLine}
-- 📊 綜合操作評分卡結論（多因子加權,你是總指揮,traffic_light 須與此同向；不同必說明為何）：${_masterLine}
+- 🔬 籌碼綜合評分卡結論（多因子加權,你是總指揮,traffic_light 須與此同向；不同必說明為何）：${_masterLine}
 - 🏛️ 法人反轉/投信做帳卡：${_instRevLine}
 - 📈 法人買盤動能：${_instStreakLine}
 - 💎 本益比 PE：${_peLabel}${_isLowPE ? '（低 PE 區,符合保護傘條件）' : ''}
@@ -22502,9 +22584,9 @@ ${_chuPosPlan}
 - ${newsLine}
 
 ━━━━━━━━━━━━━━━━━━━━
-🎖️ 你是「總指揮」— 上方的系統量化燈號 / 綜合操作評分 / 多空計分 / 法人反轉 都是你的幕僚情報,你要整合成「單一一致」的最終結論(使用者只看你這一份,不該再去比對各卡)：
-1. traffic_light **必須與「系統量化燈號」+「綜合操作評分」同方向**(都偏多→🔴可以買;都偏空→🟢不能買;明顯分歧才→🟡觀望)。
-2. 幕僚彼此衝突時,裁決優先序:**系統量化燈號 > 綜合操作評分 > 籌碼/法人**;你做最終拍板,不要含糊。
+🎖️ 你是「總指揮」— 上方的系統量化燈號 / 籌碼綜合評分 / 多空計分 / 法人反轉 都是你的幕僚情報,你要整合成「單一一致」的最終結論(使用者只看你這一份,不該再去比對各卡)：
+1. traffic_light **必須與「系統量化燈號」+「籌碼綜合評分」同方向**(都偏多→🔴可以買;都偏空→🟢不能買;明顯分歧才→🟡觀望)。
+2. 幕僚彼此衝突時,裁決優先序:**系統量化燈號 > 籌碼綜合評分 > 籌碼/法人**;你做最終拍板,不要含糊。
 3. detail_action 的【📊 大盤與籌碼全景】**第一句必須先給整合結論**,格式範例:「綜合系統燈號🔴、評分 78、獵鷹 82 → 我的結論是【可以買】,因為三大訊號一致偏多」;若有分歧也要說「我以系統燈號為準,所以…」。讓使用者一眼知道聽你的、不再迷惘。
 
 ━━━━━━━━━━━━━━━━━━━━
