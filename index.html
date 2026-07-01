@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.23</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.24</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -297,6 +297,16 @@
                         <p class="text-[10px] text-gray-500 leading-snug">選「自動」維持原本智慧切換;選特定引擎則<b class="text-blue-300">全部分析強制走它</b>,可比較哪個 AI 較準、或避開撞 429 的金鑰。</p>
                         <button id="aiKeyTestBtn" onclick="app.testAllAiKeys()" class="mt-0.5 px-3 py-1.5 bg-blue-900/40 border border-blue-700/60 hover:bg-blue-800/50 text-blue-200 text-xs font-bold rounded transition-colors">🩺 測試所有金鑰</button>
                         <div id="aiKeyTestResult"></div>
+                    </div>
+                    <!-- 🔎 V41.24 — 免費查公司引擎(不耗自家 AI 額度,開外部免費 AI 網頁帶問題) -->
+                    <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-amber-700/40 rounded">
+                        <label class="text-xs font-bold text-amber-300 flex items-center gap-1.5">🔎 免費查公司 引擎<span class="text-[9px] text-gray-500 font-normal">(不耗自家 AI 額度)</span></label>
+                        <select id="set_freeAiEngine" onchange="app.saveSettings()" class="w-full bg-[#010409] text-amber-200 p-2 rounded border border-[#30363d] outline-none text-sm focus:border-amber-500 transition-colors">
+                            <option value="perplexity">🟣 Perplexity(推薦・AI 答案 + 附來源)</option>
+                            <option value="google">🔵 Google 搜尋(萬用)</option>
+                            <option value="chatgpt">🟢 ChatGPT(需登入)</option>
+                        </select>
+                        <p class="text-[10px] text-gray-500 leading-snug">個股「基本」分頁的 <b class="text-amber-300">🔎 免費查公司</b> 按鈕會把股名帶入問題、開這個引擎的網頁直接給答案 —— <b class="text-amber-300">用它的免費額度,不扣我們的 API</b>。</p>
                     </div>
                     <p class="text-[10px] text-gray-500 leading-tight -mt-1">每組 key 旁有 <span class="text-purple-300">☑</span> 啟動開關;取消打勾即<b class="text-amber-300">暫時停用該 key</b>(輪動會跳過,設定保留)。</p>
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
@@ -840,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.23</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.24</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1308,6 +1318,23 @@
 
             <!-- 🏢 企業情報與消息體檢 -->
             <div id="subContentCorp" class="hidden flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
+
+                <!-- 🔎 V41.24 — 免費查公司(帶股名開外部免費 AI,不耗自家 API 額度) -->
+                <div class="bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-sm">
+                    <div class="flex items-center justify-between mb-1.5 border-b border-amber-700/30 pb-1.5">
+                        <h4 class="text-amber-300 font-bold text-sm flex items-center gap-1.5">🔎 免費查公司 <span class="text-[9px] text-gray-500 font-normal">(不耗 AI 額度)</span></h4>
+                        <button onclick="app.showFreeAiHelp();" class="text-[9px] text-gray-500 hover:text-amber-300">📖 說明</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="app._openFreeAi('biz')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">🏭 這家公司在做什麼?</button>
+                        <button onclick="app._openFreeAi('news')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">📰 最近新聞/利多利空?</button>
+                        <button onclick="app._openFreeAi('rev')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">💰 營收獲利/EPS/毛利?</button>
+                        <button onclick="app._openFreeAi('chain')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">🔗 產業前景/供應鏈?</button>
+                        <button onclick="app._openFreeAi('risk')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">⚠️ 有什麼風險/地雷?</button>
+                        <button onclick="app._openFreeAi('custom')" class="text-[11px] font-bold text-amber-200 bg-amber-900/15 hover:bg-amber-900/30 border border-amber-700/50 hover:border-amber-600 rounded px-2 py-2 text-left leading-snug transition-colors">✏️ 自己打問題…</button>
+                    </div>
+                    <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 用外部免費 AI 網頁的額度,會另開分頁。適合查「公司/新聞/產品」等文字問題;K線/籌碼數字仍看下方各卡。引擎可在 ⚙️ 設定頁切換。</div>
+                </div>
 
                 <!-- 🔬 個股基本面 X 光機（置頂;自動載入快取,但提供「重新掃描」按鈕讓使用者強制重抓）-->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
@@ -5103,6 +5130,8 @@ ${list}
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         const aiEngEl = document.getElementById('set_aiEngine');
         if (aiEngEl) aiEngEl.value = this.settings.aiEngine || 'auto';
+        const freeEngEl = document.getElementById('set_freeAiEngine');   // 🔎 V41.24 免費查公司引擎
+        if (freeEngEl) freeEngEl.value = this.settings.freeAiEngine || 'perplexity';
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) ratEl.value = this.settings.riskAlertThreshold ?? 60;
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
@@ -5219,6 +5248,8 @@ ${list}
         this.settings.massiveKey = document.getElementById('set_massiveKey').value.trim();
         const aiEngEl = document.getElementById('set_aiEngine');
         if (aiEngEl) this.settings.aiEngine = aiEngEl.value || 'auto';
+        const freeEngEl = document.getElementById('set_freeAiEngine');   // 🔎 V41.24 免費查公司引擎
+        if (freeEngEl) this.settings.freeAiEngine = freeEngEl.value || 'perplexity';
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) { const v = parseInt(ratEl.value, 10); this.settings.riskAlertThreshold = (Number.isFinite(v) ? Math.max(30, Math.min(95, v)) : 60); }
         // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),不再讀寫此設定
@@ -12154,6 +12185,43 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ${row('📊', '成交量', 45, volTxt, volScore)}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 朱鐵律:量增配長紅才是有效突破;爆量隔天黑K留意假突破出貨。型態轉折需次日開盤確認。僅供參考非投資建議。</div>`;
         el.classList.remove('hidden');
+    },
+
+    // 🔎 V41.24 — 免費查公司:把股名帶入固定提示詞,開外部免費 AI 網頁直接給答案(不耗自家 API 額度)
+    _openFreeAi(kind) {
+        const sym = this.currentSymbolId;
+        if (!sym) { this.showToast?.('請先選一檔股票再查', 'info'); return; }
+        const name = (this.getStockName?.(sym) || sym);
+        const tag = `${name}(${sym})`;
+        const templates = {
+            biz:   `${tag} 這家台股上市公司在做什麼?主要產品、客戶、競爭優勢,用白話講給散戶聽`,
+            news:  `${tag} 這檔台股最近有什麼新聞?有沒有利多或利空消息?請附日期與來源`,
+            rev:   `${tag} 這檔台股最新一季營收、獲利、EPS、毛利率、年增率 YoY 各是多少?`,
+            chain: `${tag} 這檔台股所屬產業前景如何?上下游供應鏈與主要競爭對手有哪些?`,
+            risk:  `${tag} 投資 ${name} 這檔台股有什麼風險、地雷或該注意的地方?`,
+        };
+        let query;
+        if (kind === 'custom') {
+            const extra = prompt(`想問 ${tag} 什麼?(會帶股名一起丟給免費 AI)`, '');
+            if (extra == null || !extra.trim()) return;
+            query = `${tag} ${extra.trim()}`;
+        } else {
+            query = templates[kind] || `${tag} 公司介紹`;
+        }
+        const q = encodeURIComponent(query);
+        const engine = (this.settings?.freeAiEngine) || localStorage.getItem('proTerminalFreeAiEngine') || 'perplexity';
+        const urls = {
+            perplexity: `https://www.perplexity.ai/search?q=${q}`,
+            google:     `https://www.google.com/search?q=${q}`,
+            chatgpt:    `https://chatgpt.com/?q=${q}&hints=search`,
+        };
+        const url = urls[engine] || urls.perplexity;
+        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { location.href = url; }
+        this.vibrate?.(30);
+    },
+
+    showFreeAiHelp() {
+        alert('🔎 免費查公司 — 怎麼運作?\n\n把「股名 + 固定問題」丟給外部免費 AI 網頁(預設 Perplexity),直接在那邊跑出答案。\n\n✅ 用外部網頁的免費額度,完全不扣我們自家的 AI API(不會像 Gemini 一下就爆)。\n✅ 點按鈕會另開分頁/App;手機會開對應網頁。\n\n適合查:公司在做什麼、最新新聞、營收獲利、產業供應鏈、風險地雷等「文字型」問題。\n\n⚠️ K線、均線、籌碼、法人這些「數字」還是看 App 內我們自己算好的卡(那些才精準,外部 AI 不會算)。\n\n🔧 想換引擎(Perplexity / Google / ChatGPT)→ 右上 ⚙️ 設定頁 →「🔎 免費查公司 引擎」。');
     },
 
     // 🩺 V36.6 — 進場體檢(初學者一目了然):把 K棒戰法/三星轉折/吞噬/橫盤/量能 + 均線結構
