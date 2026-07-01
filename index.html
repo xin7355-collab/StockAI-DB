@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.27</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.28</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.27</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.28</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -2520,11 +2520,12 @@ const app = {
     MAX_FAV_PER_GROUP: 50,
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
-    favGroups: JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] },
-    monitorList: JSON.parse(localStorage.getItem('proTerminalHunt') || '[]'),
+    // 🐛 V41.28 修:localStorage 壞資料時 JSON.parse 會 throw,在物件建構期炸掉 → 整個 app 白畫面。全部包 try/catch。
+    favGroups: (() => { try { return JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] }; } catch (_) { return { "首席自選清單": [] }; } })(),
+    monitorList: (() => { try { return JSON.parse(localStorage.getItem('proTerminalHunt') || '[]') || []; } catch (_) { return []; } })(),
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
     isFavEditMode: false,
-    inventory: JSON.parse(localStorage.getItem('proTerminalInv')) || [],
+    inventory: (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv')) || []; } catch (_) { return []; } })(),
     // V17.6 / V17.21 — 個股限價單告警 [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}]
     //          一條件一筆(同股可多筆),觸及即 Worker 推 Telegram + sw.js 推瀏覽器通知,6h throttle 防重
     //          V17.21 自動把舊 {sym, upper, lower} 拆成新格式
@@ -2986,7 +2987,7 @@ const app = {
         // Detect iOS PWA standalone mode (navigator.standalone is more reliable than CSS media query on some iOS versions)
         if (window.navigator.standalone === true) document.documentElement.classList.add('ios-standalone');
 
-        let saved = JSON.parse(localStorage.getItem('proTerminalSettings'));
+        let saved; try { saved = JSON.parse(localStorage.getItem('proTerminalSettings')); } catch (_) { saved = null; }   // 🐛 V41.28 修:設定壞掉不該讓 init 整個炸掉
         if (saved) {
             if(saved.fugleToken && !saved.fugleToken1) saved.fugleToken1 = saved.fugleToken;
             // [Token 輪動] 向下相容：舊版單一 finmindKey 遷移至 finmindKey1
@@ -4975,6 +4976,7 @@ ${list}
     },
 
     switchSubTab(tab) {
+        this._activeSubTab = tab;   // 🐛 V41.28 記錄當前 sub-tab,切股時 analyze 才知道要補跑哪個載入器
         ['Strategy', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
             const el = document.getElementById(`subContent${t}`);
             if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
@@ -6141,7 +6143,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         // 【終極修復】加上 ?t=${Date.now()} 強制破壞快取，保證戰情室即時更新
         const _futuresUrl  = new URL('futures_cache.json', _ghBase).href + `?t=${Date.now()}`;
         const _macroUrl    = new URL('macro_cache.json',   _ghBase).href + `?t=${Date.now()}`;
-        let cache = JSON.parse(localStorage.getItem(cacheKey));
+        let cache; try { cache = JSON.parse(localStorage.getItem(cacheKey)); } catch (_) { cache = null; }   // 🐛 V41.28 修:壞快取不該讓戰情室 bar 整個不載入
         if (cache && cache.date === todayStr && (now - cache.ts < 172800000) && (cache.data?.taiex?.length > 0 || cache.data?.fiShort !== null)) {
             this.processMacroData(cache.data);
             // If fiShort is null in cache, still try to fetch it in background
@@ -10227,14 +10229,16 @@ const marginByDate = {};
             '2317':'server','2303':'dram','3711':'packaging','5269':'cpo','3443':'server',
             '4977':'cpo','3617':'cpo','4961':'cpo','2002':'finance','2027':'finance',
         };
+        // 🐛 V41.28 修:原讀不存在的 DOM「.sector-heat」→ 台股盤中永遠 null。改用與 analyzeMarketAnomaly 相同的真實來源。
+        let _intraTw = null;
+        try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
+              if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
+        const _shTw = this._sectorHeatCache?.sectors || {};
         const syncLines = [];
         for (const [sk, sl] of Object.entries(sectorLabels)) {
             const etf = etfMap[sk];
-            const heatEl = document.querySelector(`[data-sector="${sk}"] .sector-heat`);
-            const rawTxt = heatEl?.textContent || '';
-            const twAbs = parseFloat(rawTxt.replace(/[^\d.\-]/g, ''));
-            const isTwNeg = rawTxt.includes('-') || rawTxt.includes('🔻');
-            const twChg = !isNaN(twAbs) ? (isTwNeg ? -Math.abs(twAbs) : twAbs) : null;
+            const twChg = (_intraTw && _intraTw[sk] != null) ? _intraTw[sk]
+                        : (_shTw[sk] && _shTw[sk].chg != null ? _shTw[sk].chg : null);
             const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : null;
             // V23.1 — 混合對標細項(主+副 ticker 各別 chg + 權重)餵給 AI 更精準判讀
             const comps = etf?.components || [];
@@ -10692,8 +10696,9 @@ SP500: ${sp != null ? parseFloat(sp).toFixed(2) + '%' : '--'} / NASDAQ: ${nq != 
         const ma20 = arr.slice(-20).reduce((s, d) => s + d.close, 0) / 20;
         const vol20 = arr.slice(-20).reduce((s, d) => s + d.volume, 0) / 20;
         const volRatio = (last.volume / vol20).toFixed(1);
-        const fi3 = arr.slice(-3).reduce((s, d) => s + (d.foreign_net || 0), 0);
-        const fi10 = arr.slice(-10).reduce((s, d) => s + (d.foreign_net || 0), 0);
+        // 🐛 V41.28 修:foreign_net 單位是「股」,其他路徑都 /1000 轉「張」;此處漏轉 → 餵 AI 灌水 1000 倍
+        const fi3 = arr.slice(-3).reduce((s, d) => s + (d.foreign_net || 0), 0) / 1000;
+        const fi10 = arr.slice(-10).reduce((s, d) => s + (d.foreign_net || 0), 0) / 1000;
         // 對應板塊
         const stockToSector = {
             '2382':'伺服器代工','2330':'先進封裝','3034':'CPO光通訊','1519':'重電基建','3017':'散熱',
@@ -10722,7 +10727,7 @@ SP500: ${sp != null ? parseFloat(sp).toFixed(2) + '%' : '--'} / NASDAQ: ${nq != 
 近 3 日外資:${fi3 >= 0 ? '+' : ''}${Math.round(fi3).toLocaleString()} 張 / 近 10 日:${fi10 >= 0 ? '+' : ''}${Math.round(fi10).toLocaleString()} 張
 
 【對應美股板塊對標】
-${sectorEtf ? `${sectorEtf.etf}:${sectorEtf.chg_pct >= 0 ? '+' : ''}${parseFloat(sectorEtf.chg_pct).toFixed(2)}%` : '(無對應板塊資料)'}
+${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct))) ? `${sectorEtf.etf}:${parseFloat(sectorEtf.chg_pct) >= 0 ? '+' : ''}${parseFloat(sectorEtf.chg_pct).toFixed(2)}%` : '(無對應板塊資料)'}
 
 【大盤背景】
 美股 SP500:${sp != null ? parseFloat(sp).toFixed(2) + '%' : '--'} / NASDAQ:${nq != null ? parseFloat(nq).toFixed(2) + '%' : '--'} / 日經:${jp != null ? parseFloat(jp).toFixed(2) + '%' : '--'}
@@ -14675,6 +14680,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             }
         }
 
+        // 🐛 V41.28 修:抓資料期間使用者又切了別檔 → 舊的這次別再把資料畫上去,避免慢的請求蓋掉新股畫面
+        if (this.currentSymbolId !== targetSym) return;
         this.applyLatestPrice(fugleData, null);
         // ⚡ V14.8:保存最新 Fugle 報價,供 _renderChuIntradayCard 取用算盤中即時雷達
         if (!this._lastFugleData) this._lastFugleData = {};
@@ -14698,6 +14705,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // V20.8 — 法人反轉 + 投信做帳 + 綜合操作評分(順序重要:先反轉算 _lastInstSignal,評分才能用)
         try { this.renderInstReverseCard(targetSym); } catch(_) {}
         try { this.renderMasterScoreCard(targetSym); } catch(_) {}
+        // 🐛 V41.28 修:籌碼/多空 sub-tab 的載入器原本只在「切 tab」時跑,切股沒補 → 停在該 tab 換股會殘留舊股資料。
+        //   依當前 sub-tab 補跑對應載入器(多數時候在首席 tab,不會多打 API)。
+        const _sub = this._activeSubTab || 'strategy';
+        if (_sub === 'chip') {
+            try { this.fetchChipTimeline(targetSym, true); this.loadBrokerChips(targetSym, true); this.renderEtfHoldingsCard?.(targetSym); } catch(_) {}
+        } else if (_sub === 'bullbear') {
+            try { this.renderBullBearCard(targetSym); } catch(_) {}
+        }
 
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
@@ -17250,7 +17265,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (srcEl) {
             if (isFake) srcEl.textContent = '(範例)';
             else if (fromCache) {
-                const mins = Math.round((Date.now() - JSON.parse(localStorage.getItem('sectorHeatLastGood')).at) / 60000);
+                // 🐛 V41.28 修:再讀一次可能回 null → .at 崩;包 try/catch 安全取 at
+                let _at = Date.now(); try { const _sg = JSON.parse(localStorage.getItem('sectorHeatLastGood') || 'null'); if (_sg && _sg.at) _at = _sg.at; } catch (_) {}
+                const mins = Math.round((Date.now() - _at) / 60000);
                 // 分鐘數 + 顏色提示新鮮度:<10 分綠、<30 分黃、其餘紅
                 const freshColor = mins < 10 ? 'text-green-400' : mins < 30 ? 'text-yellow-300' : 'text-red-400';
                 srcEl.textContent = `(記憶 ${mins}分前)`;
@@ -17962,7 +17979,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         // V27.5 — 快取鍵加入「綜合評分 + 系統燈號」狀態:輸入訊號變動即自動失效重抽,避免首席顯舊結論 vs 各卡即時不同步
         const sigState = `${this._lastMasterScore?.score ?? ''}|${this.unifiedSignal?.level ?? ''}`;
-        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this._hashStr((this.settings.aiPrompt || '') + sigState)}`;
+        // 🐛 V41.28 修:加入 AI 引擎 → 切引擎(gemini/groq…)重跑同股不再吃到舊引擎的快取
+        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this.settings.aiEngine || 'auto'}|${this._hashStr((this.settings.aiPrompt || '') + sigState)}`;
     },
     _getCachedAI(sym, costKey) {
         try {
@@ -23752,8 +23770,9 @@ ${_chuPosPlan}
         }
         const alertCountEl = document.getElementById('huntAlertCount');
         if (alertCountEl) {
+            // 🐛 V41.28 修:徽章帶靜態 hidden class,設 style.display='' 清不掉 class → 有訊號也不顯。改切 hidden class。
             alertCountEl.innerText = allAlerts.length || '';
-            alertCountEl.style.display = allAlerts.length > 0 ? '' : 'none';
+            alertCountEl.classList.toggle('hidden', allAlerts.length === 0);
         }
         const alertBox = document.getElementById('huntAlertBox');
         if (alertBox) {
