@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.26</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.27</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.26</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.27</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -7857,7 +7857,7 @@ const marginByDate = {};
         let r5;
         const chipCache = this._attChipCache?.[sym];
         if (chipCache) {
-            // 取最新一日,算前 10 家買進淨額 / 總買進額(>90% = 主力高度集中)
+            // 取最新一日,算前 10 家買進淨額 / 總買進額(≥80% = 主力高度集中,對齊下方 r5Hit 門檻)
             const concRatio = chipCache.conc_pct_top10;   // 已預算 0-100
             const r5Hit = concRatio != null && concRatio >= 80;
             r5 = {
@@ -8910,6 +8910,8 @@ const marginByDate = {};
     renderInstReverseCard(sym) {
         const box = document.getElementById('instReverseCard');
         if (!box) return;
+        // 🐛 V41.27 修:每次進來先清空,避免早退時殘留「上一檔」的反轉/做帳訊號被綜合評分誤用(跨股污染)
+        this._lastInstSignal = null;
         if (!Array.isArray(this.activeData) || this.activeData.length < 10) { box.classList.add('hidden'); return; }
         const arr = this.activeData;
         const n = arr.length;
@@ -9048,7 +9050,8 @@ const marginByDate = {};
         // 5. 投信做帳(權重 15)
         if (this._lastInstSignal?.dressUp) {
             const dupTitle = this._lastInstSignal.dressUp.title;
-            const dupScore = dupTitle.includes('落袋') ? 25 : dupTitle.includes('做帳行情啟動') ? 80 : 50;
+            // 🐛 V41.27 修:對齊實際 dressUp 標題(獲利了結/做帳行情/行情中性期),舊字串「落袋/做帳行情啟動」永遠不匹配 → 分數恆 50 失效
+            const dupScore = dupTitle.includes('獲利了結') ? 25 : dupTitle.includes('做帳行情') ? 80 : 50;
             factors.push({ icon: '💼', name: '投信做帳', score: dupScore, max: 100, weight: 15, txt: dupTitle.slice(0, 16) });
             totalScore += dupScore * 15; weightSum += 15 * 100;
         }
@@ -11636,7 +11639,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 止跌量:低檔量縮到半 + 未破近5日低
         if (vr <= 0.5 && isLow) { const lo5 = Math.min(...data.slice(last - 5, last).map(L)); if (L(cur) >= lo5) out.push({ tone: 'flat', title: '止跌量(量縮窒息)', val: V(cur), msg: `低檔量縮至 ${(vr * 100).toFixed(0)}% 均量 + 未破前低 → 量縮窒息,留意打底止跌(待紅K放量確認)。` }); }
         // 換手量:近 5 日內高檔大量黑K,被今日紅K收盤過其高
-        for (let j = last - 1; j >= Math.max(1, last - 5); j--) { const b = data[j]; if (!b) continue; const vrj = V(b) / (data.slice(j - 5, j).map(V).reduce((a, x) => a + x, 0) / 5 || 1); const posj = rng > 0 ? (C(b) - lo) / rng : 0.5; if (C(b) < O(b) && vrj >= 1.8 && posj >= 0.7) { if (red && C(cur) > H(b)) out.push({ tone: 'bull', title: '換手量(洗籌續攻)', val: H(b), msg: `高檔大量黑K(${(last - j)}天前)被今日紅K收盤過高 ${H(b).toFixed(2)} → 換手成功,強勢股洗掉浮額易再攻。` }); break; } }
+        for (let j = last - 1; j >= Math.max(1, last - 5); j--) { const b = data[j]; if (!b) continue; const _bw = data.slice(Math.max(0, j - 5), j).map(V); const _ba = _bw.length ? _bw.reduce((a, x) => a + x, 0) / _bw.length : 0; const vrj = _ba > 0 ? V(b) / _ba : 0; const posj = rng > 0 ? (C(b) - lo) / rng : 0.5; if (C(b) < O(b) && vrj >= 1.8 && posj >= 0.7) { if (red && C(cur) > H(b)) out.push({ tone: 'bull', title: '換手量(洗籌續攻)', val: H(b), msg: `高檔大量黑K(${(last - j)}天前)被今日紅K收盤過高 ${H(b).toFixed(2)} → 換手成功,強勢股洗掉浮額易再攻。` }); break; } }
         // 強反彈量:低檔爆量 + 紅K過昨高(非多頭,僅反彈)
         if (isLow && vr >= 2 && red && data[last - 1] && C(cur) > H(data[last - 1])) out.push({ tone: 'warn', title: '強反彈量(非多頭)', val: V(cur), msg: `低檔爆量 ${vr.toFixed(1)}× + 紅K過昨高 → 強反彈訊號(僅反彈非轉多),搶要設停利、跌破5MA就跑。` });
         return out;
@@ -19198,7 +19201,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 ${g('賺賠比', r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(2), r.plRatio >= 1.5 ? 'text-red-300' : 'text-gray-100')}
                 ${g('每趟期望值', (r.avgProfit >= 0 ? '+' : '') + r.avgProfit.toFixed(2) + '%', pos(r.avgProfit))}
                 ${g('累積報酬', (r.totalReturn >= 0 ? '+' : '') + r.totalReturn.toFixed(0) + '%', pos(r.totalReturn))}
-                ${g('最大回撤', r.maxDD.toFixed(0) + '%', 'text-green-300')}
+                ${g('最大回撤', r.maxDD.toFixed(0) + '%', 'text-gray-300')}
             </div>
             <div class="text-[10px] text-gray-500 mb-1.5">平均賺 <b class="text-red-300">+${r.avgWin.toFixed(1)}%</b> / 平均賠 <b class="text-green-300">${r.avgLoss.toFixed(1)}%</b> · 平均抱 ${r.avgBars.toFixed(0)} 天</div>
             <div class="bg-[#161b22] border-l-4 ${vc.replace('text-', 'border-').replace('-300', '-500')} border-y border-r border-[#30363d] rounded-r p-2">
@@ -21650,7 +21653,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 } else {
                     if (!staticJson) {
                         const ghBase = window.location.href.split('?')[0].split('#')[0];
-                        const r = await this.safeFetch(new URL('data/radar.json', ghBase).href, {}, { timeout: 8000, maxRetries: 1 });
+                        // 🐛 V41.27 修:補上 ?t= 破快取(專案鐵律),否則採礦更新後 CDN/PWA 供舊 radar.json
+                        const r = await this.safeFetch(new URL('data/radar.json', ghBase).href + '?t=' + Date.now(), {}, { timeout: 8000, maxRetries: 1 });
                         if (r.ok) staticJson = await r.json();
                     }
                     if (staticJson) {
@@ -23402,8 +23406,13 @@ ${_chuPosPlan}
         const pC = closes[i], pO = opens[i], ma20 = ma20arr[i], vma5 = vma5arr[i];
         const ma20prev = ma20arr[i - 1];
         const pullbackDepth = (pC - ma20) / ma20;
-        const wasPulledBack = closes.slice(Math.max(0, i - 6), i).some(c => {
-            const d = (c - ma20arr[Math.min(n-1, i)]) / ma20arr[Math.min(n-1, i)];
+        // 🐛 V41.27 修:原用 ma20arr[Math.min(n-1,i)]=今日月線比對每根舊收盤(Math.min 恆=i),
+        //   強勢急拉時舊收盤全落在今日月線下方 → 回檔判定失準。改用「該根當日的月線」逐根比。
+        const from = Math.max(0, i - 6);
+        const wasPulledBack = closes.slice(from, i).some((c, k) => {
+            const m = ma20arr[from + k];
+            if (!m) return false;
+            const d = (c - m) / m;
             return d >= -0.07 && d <= 0.03;
         });
         const nearMA20 = pullbackDepth >= -0.03 && pullbackDepth <= 0.06;
@@ -23429,7 +23438,9 @@ ${_chuPosPlan}
     _checkFalseBreakdown(tech, entry) {
         const { closes, opens, vols, n, ma20arr, vma5arr } = tech;
         if (n < 10) return null;
-        const recentLow = entry.recentLow || Math.min(...closes.slice(-25, -3));
+        // 🐛 V41.27 修:改用「當下」近 25 日低點,不再優先吃加入監控當時凍結的 entry.recentLow
+        //   (股價走高後仍拿舊低點比對 → 破底翻永遠不觸發或比到失效的古老價位)
+        const recentLow = Math.min(...closes.slice(-25, -3));
         if (!recentLow || recentLow <= 0) return null;
         const i = n - 1;
         const pC = closes[i], pO = opens[i];
