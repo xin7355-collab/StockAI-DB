@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.14</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.14</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.15</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1051,6 +1051,8 @@
                                 <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                                 <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
                                 <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                                <!-- ⚡ V41.15 朱老師四大金剛:趨勢均線 + 量 + MACD + KD 四個一起看,同方向才進場(純公式) -->
+                                <div id="fourGuardians" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3 mt-2"></div>
                                 <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
                                 <div id="kbarHalfTactics" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3 mt-2"></div>
                             </div>
@@ -11945,6 +11947,71 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
+    // ⚡ V41.15 — 朱老師四大金剛:趨勢均線 / 成交量 / MACD / KD 四個一起看,同方向=高信度(純公式,讀 this.indicators)
+    renderFourGuardians(data) {
+        const el = document.getElementById('fourGuardians');
+        if (!el) return;
+        const ind = this.indicators || {};
+        if (!Array.isArray(data) || data.length < 20 || !Array.isArray(ind.ma5)) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const at = a => Array.isArray(a) ? a[a.length - 1] : null, atp = a => Array.isArray(a) ? a[a.length - 2] : null;
+        const pC = C(data[last]);
+        const G = [];
+        // ① 趨勢均線(多頭排列:收 > 5MA > 20MA)
+        const ma5 = at(ind.ma5), ma20 = at(ind.ma20), ma5p = atp(ind.ma5);
+        if (ma5 != null && ma20 != null) {
+            const st = (pC >= ma5 && ma5 >= ma20) ? 'bull' : (pC < ma5 && ma5 < ma20) ? 'bear' : 'neutral';
+            const rising = ma5p != null ? ma5 >= ma5p : true;
+            G.push({ icon: '🧭', name: '趨勢均線', state: st, note: st === 'bull' ? `站上5MA、多頭排列${rising ? '、5MA上揚' : ''}` : st === 'bear' ? '跌破5MA、空頭排列' : '均線糾結待表態' });
+        }
+        // ② 成交量(價漲量增=多 / 量增黑K或量縮=空)
+        const vma5 = at(ind.vma5), vCur = V(data[last]), red = C(data[last]) >= O(data[last]);
+        if (vma5 && vCur) {
+            const vr = vCur / vma5;
+            const st = (vr >= 1.2 && red) ? 'bull' : ((vr >= 1.2 && !red) || (vr <= 0.6 && !red)) ? 'bear' : 'neutral';
+            G.push({ icon: '📊', name: '成交量', state: st, note: st === 'bull' ? `量增 ${vr.toFixed(1)}× 配紅K(價漲量增)` : st === 'bear' ? (vr >= 1.2 ? '量增配黑K(賣壓)' : `量縮 ${(vr * 100).toFixed(0)}%(無力)`) : `量能中性 ${vr.toFixed(1)}×` });
+        }
+        // ③ MACD(DIF > MACD 快線在上=多 + 柱狀增強)
+        const dif = at(ind.dif), macd = at(ind.macd), osc = at(ind.osc), oscp = atp(ind.osc);
+        if (dif != null && macd != null) {
+            const st = (dif > macd) ? 'bull' : (dif < macd) ? 'bear' : 'neutral';
+            const barUp = (osc != null && oscp != null) ? osc >= oscp : null;
+            G.push({ icon: '📈', name: 'MACD', state: st, note: st === 'bull' ? `DIF>MACD(多方${barUp === true ? '、柱增' : ''})` : st === 'bear' ? 'DIF<MACD(空方)' : '零軸糾結' });
+        }
+        // ④ KD(K > D=多,含金叉/低檔/高檔鈍化提示)
+        const k = at(ind.k), d = at(ind.d), kp = atp(ind.k), dp = atp(ind.d);
+        if (k != null && d != null) {
+            const gold = (kp != null && dp != null) ? (kp <= dp && k > d) : false;
+            const st = (k > d) ? 'bull' : (k < d) ? 'bear' : 'neutral';
+            G.push({ icon: '🎯', name: 'KD', state: st, note: st === 'bull' ? `K>D${gold ? '(剛金叉)' : ''}${k < 25 ? '·低檔' : k > 80 ? '·高檔留意' : ''}` : st === 'bear' ? `K<D${k > 75 ? '(高檔死叉)' : ''}` : 'KD糾結' });
+        }
+        if (G.length < 4) { el.classList.add('hidden'); el.innerHTML = ''; return; }   // 指標未齊不顯,避免誤導
+        const bull = G.filter(x => x.state === 'bull').length, bear = G.filter(x => x.state === 'bear').length;
+        let light, verdict, vc, adv;
+        if (bull === 4) { light = '🟢'; verdict = '四大金剛齊發'; vc = 'red'; adv = '四個同方向做多,信度最高;順勢進、守 5MA,跌破就走。'; }
+        else if (bull === 3) { light = '🟢'; verdict = '三金剛偏多'; vc = 'red'; adv = `偏多可留意,補齊缺的「${(G.find(x => x.state !== 'bull') || {}).name || ''}」再進更穩。`; }
+        else if (bear >= 3) { light = '🔴'; verdict = '金剛偏空'; vc = 'green'; adv = '多數金剛翻空,別做多、別接刀;手上有貨顧好停損。'; }
+        else { light = '🟡'; verdict = '金剛分歧'; vc = 'yellow'; adv = '四大金剛不同調(轉折/盤整),方向不明先觀望,等站齊同方向再動。'; }
+        const sc = vc === 'red' ? 'text-red-300' : vc === 'green' ? 'text-green-300' : 'text-yellow-300';
+        const bc = vc === 'red' ? 'border-red-500' : vc === 'green' ? 'border-green-500' : 'border-yellow-500';
+        const stc = s => s === 'bull' ? 'text-red-300 border-red-500/50 bg-red-900/15' : s === 'bear' ? 'text-green-300 border-green-500/50 bg-green-900/15' : 'text-gray-400 border-[#30363d] bg-white/5';
+        const stTag = s => s === 'bull' ? '🔺多' : s === 'bear' ? '🔻空' : '⚪中';
+        const cells = G.map(x => `<div class="border rounded p-2 ${stc(x.state)}"><div class="flex items-center justify-between text-[11px] font-bold"><span>${x.icon} ${x.name}</span><span>${stTag(x.state)}</span></div><div class="text-[9px] text-gray-500 mt-0.5 leading-tight">${x.note}</div></div>`).join('');
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[12px] font-black text-gray-100">⚡ 朱老師四大金剛</span>
+                <span class="text-[9px] text-gray-500">趨勢+量+MACD+KD · 純公式</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 mb-2">${cells}</div>
+            <div class="bg-[#161b22] border-l-4 ${bc} border-y border-r border-[#30363d] rounded-r p-2">
+                <div class="text-[11px] font-bold ${sc} mb-0.5">${light} ${verdict}(多 ${bull} / 空 ${bear})</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${adv}</div>
+            </div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 四個同方向=高信度;分歧=轉折/盤整先觀望。紅偏多綠偏空(台股色)·全公式非投資建議。</div>`;
+        el.classList.remove('hidden');
+    },
+
     renderKbarTactics(data) {
         const el = document.getElementById('kbarHalfTactics');
         if (!el) return;
@@ -18425,6 +18492,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             } else { _bg.classList.add('hidden'); }
         }
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
+        try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+量+MACD+KD)
         try { this.renderKbarTactics(data); } catch (_) {}
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
