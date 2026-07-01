@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.8</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.9</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3259,6 +3259,8 @@ const app = {
         (this._detectBottomBreakout?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V38.0 底部頸線突破(形態買點+目標價)
         (this._detectPressureTest?.(kdata) || []).forEach(s => push.push(s));   // ⭐ V41.4 測壓有壓(多單別追)/測撐有撐(可承接)
         (this._detectVolPriceDiverge?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮=出貨前兆)
+        (this._detectHeavyResistance?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V41.9 壓力沉重反覆過不了(別選/多單先走)
+        (this._detectChuLongEntry?.(kdata) || []).forEach(s => { if (/做頭不建議/.test(s.title)) push.push(s); }); // ⭐ V41.9 回後買上漲做頭警示
         (this._detectVolumeSignals?.(kdata) || []).forEach(s => { if (/出貨量|攻擊量|換手量/.test(s.title)) push.push(s); });
         for (const s of push) {
             if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
@@ -11529,6 +11531,55 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V41.9 — 反覆遇壓不過(朱:「遇壓有壓、過不了的股票很難賺,別選」):近 14 根多次摸到前波壓力卻收不過
+    _detectHeavyResistance(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 25) return out;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), V = b => +((b?.volume ?? 0) || 0);
+        // 壓力 = 較舊區間(10~45 根前)最高;測壓窗 = 近 10 根。兩段分開,避免拿測試中的近 K 當壓力自我參照
+        const zone = data.slice(Math.max(0, last - 45), Math.max(1, last - 9));
+        if (zone.length < 8) return out;
+        const res = Math.max(...zone.map(H));
+        if (!res) return out;
+        let fails = 0, bigFail = false;
+        for (let i = Math.max(0, last - 9); i <= last; i++) {
+            const b = data[i];
+            if (H(b) >= res * 0.98 && C(b) < res) {   // 摸到壓力但收盤沒過
+                fails++;
+                const pv = data.slice(Math.max(0, i - 5), i).map(V);
+                const av = pv.length ? pv.reduce((a, x) => a + x, 0) / pv.length : V(b);
+                if (av > 0 && V(b) >= av * 1.5) bigFail = true;   // 爆量測壓不過=賣壓更重
+            }
+        }
+        if (fails >= 2 && C(data[last]) < res * 0.99) {
+            out.push({ tone: 'warn', title: '壓力沉重‧反覆過不了', val: res, msg: `近期 ${fails} 次摸到壓力 ${res.toFixed(2)} 都收不過${bigFail ? '(還帶爆量賣壓)' : ''}=遇壓有壓;朱家泓:過不了的股票很難賺,別選、多單過不了先走,等真的帶量收過 ${res.toFixed(2)} 再看。` });
+        }
+        return out;
+    },
+
+    // ⭐ V41.9 — 高檔大量長紅 ½ 被收盤跌破 = 做頭(朱:主力出貨,此後「不要再回後買上漲」)。回 {mid, jAgo} 或 null
+    _topHalfBreak(data) {
+        if (!Array.isArray(data) || data.length < 12) return null;
+        const last = data.length - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const win = data.slice(-60), hi = Math.max(...win.map(H)), lo = Math.min(...win.map(L)), rng = hi - lo;
+        for (let j = last - 1; j >= Math.max(1, last - 12); j--) {   // 近 12 根找高檔大量長紅
+            const b = data[j]; if (!O(b) || !C(b)) continue;
+            const body = O(b) > 0 ? (C(b) - O(b)) / O(b) : 0;
+            const pv = data.slice(Math.max(0, j - 5), j).map(V);
+            const av = pv.length ? pv.reduce((a, x) => a + x, 0) / pv.length : V(b);
+            const bigVol = av > 0 && V(b) >= av * 1.8;
+            const pos = rng > 0 ? (C(b) - lo) / rng : 0.5;
+            if (body >= 0.04 && bigVol && pos >= 0.72) {   // 高檔大量長紅(主力出貨訊號)
+                const mid = (H(b) + L(b)) / 2;
+                for (let k = j + 1; k <= last; k++) { if (C(data[k]) < mid) return { mid, jAgo: last - j }; }   // 之後有收盤跌破 ½
+            }
+        }
+        return null;
+    },
+
     // ⭐ V36.3 — 朱家泓 K線橫盤突破/跌破(純型態):≥3 根橫盤(窄幅) → 收盤過上頸線=突破(多單買點)/破下頸線=跌破(空)
     _detectBoxBreakout(data) {
         const out = [];
@@ -11629,6 +11680,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🐛 V37.9 修:季線須有滿 60 根才準,資料 <60 根時 ma(60,...) 會少算 → 誤報季線壓力
         const ma60 = data.length >= 60 ? ma(60, last) : null, ma60p5 = data.length >= 65 ? ma(60, last - 5) : null;
         const seasonPress = (ma60 && pC < ma60 && pC >= ma60 * 0.97 && ma60p5 && ma60 <= ma60p5) ? ` ・⚠️逼近下彎季線 ${ma60.toFixed(2)}(3月套牢解套壓力),不過就短線先獲利` : '';
+        // ⭐ V41.9 回後買上漲的「不能做」守門(朱:高檔大量長紅½跌破=做頭,不要再回後買上漲)
+        const topBreak = this._topHalfBreak?.(data);
+        if (justReclaim && noBreakLow && red && topBreak) {
+            out.push({ tone: 'warn', title: '回後買上漲‧做頭不建議', val: topBreak.mid, msg: `雖是波段多頭、回後站上5日線,但 ${topBreak.jAgo} 天前「高檔大量長紅」的 ½ ${topBreak.mid.toFixed(2)} 已被收盤跌破=做頭/主力出貨訊號;朱家泓鐵律:此後「不要再回後買上漲」,先觀望別追,等重新帶量站回 ½ 上方再說。` });
+            return out;
+        }
         if (justReclaim && noBreakLow && red) {
             // ⭐ V37.2 高勝率三條件(朱):① 紅K實體≥2% ② 量增 ③ 收盤過昨日最高;再加站月線
             const body = O(data[last]) > 0 ? (pC - O(data[last])) / O(data[last]) * 100 : 0;
@@ -11928,6 +11985,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}          // ⭐ V38.0 均線糾結(一字底)
         try { sigs.push(...this._detectPressureTest(data)); } catch (_) {}       // ⭐ V41.4 測壓有壓/測撐有撐(最高最低價測前波,V41.6 配量)
         try { sigs.push(...this._detectVolPriceDiverge(data)); } catch (_) {}    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮)
+        try { sigs.push(...this._detectHeavyResistance(data)); } catch (_) {}    // ⭐ V41.9 壓力沉重反覆過不了(朱:過不了的股票別選)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -11972,6 +12030,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}      // ⭐ V38.0 均線糾結(flat)
         try { sigs.push(...this._detectPressureTest(data)); } catch (_) {}   // ⭐ V41.4 測壓有壓(warn)/測撐有撐(bull)
         try { sigs.push(...this._detectVolPriceDiverge(data)); } catch (_) {} // ⭐ V41.6 量價背離(warn,壓低進場分)
+        try { sigs.push(...this._detectHeavyResistance(data)); } catch (_) {} // ⭐ V41.9 壓力沉重反覆過不了(warn)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
