@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.25</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.26</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.25</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.26</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1001,6 +1001,8 @@
                         </button>
                         <div class="text-center text-[8px] text-gray-500 -mt-1">15 分鐘內快取 ・ 雙擊強制重抽</div>
                         <div id="stockPredictResult" class="text-[11px] text-gray-200 leading-relaxed"></div>
+                        <!-- 🔎 V41.26 免費備援:自家 AI 撞額度時,開外部免費 AI 查最新消息/為何漲跌(不耗額度) -->
+                        <button onclick="app._openFreeAiStock('latest'); app.vibrate(30);" title="開外部免費 AI(Perplexity 等)查這檔最新消息,不耗自家 AI 額度" class="w-full bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 text-amber-300 py-2 rounded-lg text-[12px] font-bold shadow-sm flex justify-center items-center gap-1.5 transition-all">🔎 免費查最新消息/為何漲跌 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
                         <!-- 🚥 V39.3 戰術訊號燈卡已移除(使用者要求);computeUnifiedSignal 仍餵首席 AI + 頂部指揮部 LED,updateConfidenceLed 對 confLed/confText 已 null-guard -->
 
                         <!-- 🦅 V39.2 獵鷹建倉儀表板已移除(連根拔除);黑天鵝防禦矩陣已搬到「大盤趨勢→盤前大盤體檢」 -->
@@ -1268,6 +1270,8 @@
 
             <!-- 🚨 V20.5 — 處置股 tab(從籌碼 tab 搬過來 + 加實戰操作秘訣) -->
             <div id="subContentDisposed" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
+                <!-- 🔎 V41.26 免費查:這檔為何被處置/有何消息(外部 AI,不耗額度) -->
+                <button onclick="app._openFreeAiStock('dispose'); app.vibrate(30);" title="開外部免費 AI 查這檔被處置的原因與相關消息" class="w-full bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 text-amber-300 py-2 rounded-lg text-[12px] font-bold shadow-sm flex justify-center items-center gap-1.5 transition-all">🔎 查這檔為何被處置/有何消息 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
                 <!-- 注意股 8 款掃描 + 處置預測 -->
                 <div id="attentionScanCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
                 <!-- 雙刀流核心心法卡(處置/注意/必關時觸發) -->
@@ -1717,6 +1721,8 @@
                     <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors">🔄 盤中即時更新</button>
                     <button id="sectorAiBtn" onclick="app.analyzeSectorRotationAI()" ondblclick="app.analyzeSectorRotationAI({force:true})" class="text-[10px] font-bold text-purple-300 bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 rounded transition-colors">🤖 AI 白話判讀</button>
                 </div>
+                <!-- 🔎 V41.26 免費查:為何某類股/題材今天大漲(外部 AI,不耗額度) -->
+                <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" title="開外部免費 AI 查最近類股/題材輪動原因,不耗自家額度" class="w-full mb-2 text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded py-1.5 transition-colors">🔎 免費查:為何類股/題材輪動 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
 
                 <!-- 進度條 + AI 結果 -->
                 <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
@@ -3823,14 +3829,19 @@ ${list}
             const t  = (item.title_zh || item.title || '').slice(0, 80) + ((item.title_zh || item.title || '').length > 80 ? '…' : '');
             const im = (item.impact && item.impact !== '暫無分析') ? item.impact.slice(0, 50) : '—';
             const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
-            return `<a href="${safeUrl}" target="_blank" rel="noopener" class="flex items-start gap-1.5 py-1.5 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors no-underline">
+            // 🔎 V41.26 標題用於「深入查」onclick:去掉會破 JS 字串的引號/反斜線(改全形,不影響搜尋)
+            const safeTitle = (item.title_zh || item.title || '').slice(0, 120).replace(/\\/g, '').replace(/'/g, '’').replace(/"/g, '”');
+            return `<div class="flex items-start gap-1.5 py-1.5 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors">
                 <span class="text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
-                <div class="flex-1 min-w-0">
+                <a href="${safeUrl}" target="_blank" rel="noopener" class="flex-1 min-w-0 no-underline">
                     <div class="text-[13px] text-gray-200 font-bold leading-snug">${t}</div>
                     <div class="text-[11px] ${ic} mt-0.5">${im}</div>
+                </a>
+                <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span class="text-[10px] text-gray-600">${this._fmtNewsTime(item.published)}</span>
+                    <button onclick="app._openFreeAiNews('${safeTitle}'); app.vibrate(20);" title="用免費 AI 深入查這則新聞的來龍去脈(不耗自家額度)" class="text-[9px] font-bold text-amber-300 bg-amber-900/20 hover:bg-amber-900/40 border border-amber-700/40 rounded px-1.5 py-0.5 whitespace-nowrap transition-colors">🔎 深入查</button>
                 </div>
-                <div class="text-[10px] text-gray-600 flex-shrink-0 mt-0.5">${this._fmtNewsTime(item.published)}</div>
-            </a>`;
+            </div>`;
         }).join('');
     },
 
@@ -4741,6 +4752,8 @@ ${list}
                     <h3 class="text-base font-black text-amber-300">🏦 ETF 中心</h3>
                     <p class="text-[11px] text-gray-500 mt-0.5">績效前段班<b class="text-gray-300">主動 ETF</b> + 經理人對個股的<b class="text-gray-300">加減碼共識</b>。</p>
                 </div>
+                <!-- 🔎 V41.26 免費查 ETF 成分/配息/費用率(外部 AI,不耗額度) -->
+                <button onclick="app._freeAiEtfPrompt(); app.vibrate(30);" title="輸入 ETF 代號/名稱,用外部免費 AI 查成分股、配息、費用率" class="w-full text-[11px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded py-2 transition-colors">🔎 免費查 ETF 成分/配息/費用率 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
                 <div class="grid grid-cols-2 gap-1 bg-[#0d1117] rounded-lg p-1 sticky top-0 z-10">
                     ${_segBtn('follow', '🚗 ETF 順風車')}
                     ${_segBtn('perf', '🏆 ETF 績效表')}
@@ -9970,6 +9983,14 @@ const marginByDate = {};
                 <div class="text-[10px] text-gray-300 leading-relaxed">${summary}</div>
             </div>
             <div class="text-[9px] text-gray-600 leading-snug">🔧 仍採集中:櫃買指數、大盤融資券餘額、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>
+            <div class="mt-2 pt-2 border-t border-[#21262d]">
+                <div class="text-[9px] text-gray-500 mb-1">🔎 免費查宏觀事件(外部 AI,不耗額度)</div>
+                <div class="grid grid-cols-3 gap-1.5">
+                    <button onclick="app._openFreeAiMacro('usnight'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">🌏 美股為何漲跌</button>
+                    <button onclick="app._openFreeAiMacro('calendar'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">📅 本週財經行事曆</button>
+                    <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">🔥 類股題材輪動</button>
+                </div>
+            </div>
             ${this._blackSwanMatrixHtml()}`;
         el.classList.remove('hidden');
     },
@@ -12178,7 +12199,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } else {
             query = templates[kind] || `${tag} 公司介紹`;
         }
-        const q = encodeURIComponent(query);
+        this._freeAiOpen(query);
+    },
+
+    // 🔎 V41.26 — 通用「免費查」開網頁(任意問題,不限個股;設定頁引擎共用)
+    _freeAiOpen(query) {
+        if (!query || !String(query).trim()) return;
+        const q = encodeURIComponent(String(query).trim());
         const engine = (this.settings?.freeAiEngine) || localStorage.getItem('proTerminalFreeAiEngine') || 'perplexity';
         const urls = {
             perplexity: `https://www.perplexity.ai/search?q=${q}`,
@@ -12188,6 +12215,46 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const url = urls[engine] || urls.perplexity;
         try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { location.href = url; }
         this.vibrate?.(30);
+    },
+
+    // 🔎 V41.26 — 個股情境查(首席頁/處置頁):帶當前股名 + 指定角度
+    _openFreeAiStock(kind) {
+        const sym = this.currentSymbolId;
+        if (!sym) { this.showToast?.('請先選一檔股票再查', 'info'); return; }
+        const name = (this.getStockName?.(sym) || sym), tag = `${name}(${sym})`;
+        const map = {
+            latest:  `${tag} 這檔台股最近為什麼漲或跌?有什麼最新消息、法人動向或題材?請附日期與來源`,
+            dispose: `${tag} 這檔台股為什麼被列為注意股或處置股?最近有什麼相關消息或市場傳聞?`,
+        };
+        this._freeAiOpen(map[kind] || `${tag} 最新消息`);
+    },
+
+    // 🔎 V41.26 — 大盤/宏觀事件查(盤前體檢/全球大環境,不需個股)
+    _openFreeAiMacro(kind) {
+        const map = {
+            usnight:  `今晚或最近一個交易日美股道瓊、那斯達克、費半 SOX 為什麼漲或跌?主要原因與對台股的影響,附日期來源`,
+            calendar: `本週有哪些重要的財經大事與經濟數據公布?(例如 FOMC 利率、美國 CPI、非農就業、台積電法說)請按日期列出`,
+            sector:   `最近台股哪些類股或題材在輪動大漲?背後原因是什麼?附日期與來源`,
+        };
+        this._freeAiOpen(map[kind] || map.calendar);
+    },
+
+    // 🔎 V41.26 — ETF 查(ETF 頁):輸入代號/名稱後查成分/配息/費用率
+    _openFreeAiEtf(sym, name) {
+        const tag = (name ? `${name}(${sym})` : (sym || 'ETF'));
+        this._freeAiOpen(`${tag} 這檔台股 ETF 的前十大成分股、配息頻率與殖利率、內扣費用率各是多少?請附來源`);
+    },
+    _freeAiEtfPrompt() {
+        const v = prompt('要查哪一檔 ETF?輸入代號或名稱(例:0050、00878、元大高股息)', '');
+        if (v == null || !v.trim()) return;
+        this._openFreeAiEtf(v.trim());
+    },
+
+    // 🔎 V41.26 — 新聞「深入查」(帶標題丟免費 AI 追來龍去脈)
+    _openFreeAiNews(title) {
+        const t = String(title || '').trim();
+        if (!t) return;
+        this._freeAiOpen(`「${t}」這則財經新聞的來龍去脈、後續發展,以及對相關台股的影響?請附日期與來源`);
     },
 
     showFreeAiHelp() {
