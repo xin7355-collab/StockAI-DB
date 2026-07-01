@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.18</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.19</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -840,7 +840,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.18</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.19</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1233,59 +1233,13 @@
             </div>
 
             <div id="subContentBacktest" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
-                <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-blue-500">
-                    <h3 class="text-gray-400 text-xs font-bold tracking-widest mb-3 flex items-center border-b border-gray-700 pb-2 cursor-pointer" onclick="alert('【AI 雲端大數據波段回測】\n\n本功能基於台股歷史大數據模型，比對該股目前 K 線型態，模擬過去 20 年在相似型態下的波段勝率與預期獲利空間，作為您抱單信心的參考。\n\n🔴 ≥65% 高勝率：歷史上這種型態隔日漲機率高，可積極關注\n🟡 50-64% 中等：勝率普通，需搭配其他指標佐證\n🟢 <50% 偏低：歷史上這種型態隔日漲機率偏低，宜謹慎\n\n⚠️ 注意：本功能為統計回測，非預測。過去績效不代表未來結果，請務必做好風控。')"><span class="text-blue-400 mr-1.5">🔮</span> AI 雲端大數據波段回測預判 <span class="text-[10px] text-gray-600 ml-1 font-normal">（點擊看說明）</span></h3>
-                    <div class="mb-3">
-                        <!-- V26.20 — Micro Tags 降噪:原整段彩色文字 → 一句白話 + Micro Tags 列 -->
-                        <div class="text-[11px] text-gray-400 mb-1.5">AI 雲端波段模型已完成多維度特徵掃描比對</div>
-                        <div class="flex flex-wrap gap-1 mb-1.5">
-                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">近5日K線</span>
-                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">成交量能</span>
-                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">KD/MACD</span>
-                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">布林帶</span>
-                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">法人籌碼</span>
-                            <span class="bg-white/5 text-gray-400 text-[10px] px-2 py-0.5 rounded">大盤環境</span>
-                            <span class="bg-white/5 text-gray-500 text-[9px] px-2 py-0.5 rounded">· 限近 1 年樣本</span>
-                        </div>
-                        <div id="patFilterTags" class="text-[10px] text-cyan-300/70 mb-1.5"></div>
-                        <!-- V26.21 — 三大核心指標卡:動態邊框 + 動態數值色 + text-2xl 大字 -->
-                        <div class="grid grid-cols-3 gap-2 text-center mt-1.5">
-                            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5" id="patCountCard">
-                                <div class="text-[9px] text-gray-500 mb-1">高度相似樣本</div>
-                                <div class="text-2xl font-black font-mono text-gray-100" id="patCount">--</div>
-                            </div>
-                            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5" id="patWinRateCard">
-                                <div class="text-[9px] text-gray-500 mb-1">隔日上漲機率</div>
-                                <div class="text-2xl font-black font-mono text-gray-300" id="patWinRate">--%</div>
-                            </div>
-                            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5" id="patAvgRetCard">
-                                <div class="text-[9px] text-gray-500 mb-1">隔日平均漲幅</div>
-                                <div class="text-2xl font-black font-mono text-gray-300" id="patAvgRet">--</div>
-                            </div>
-                        </div>
-                        <!-- V26.21 — 圖例改圓點型動態 legend(取代彩色字串) -->
-                        <div class="flex items-center justify-center gap-3 mt-2 text-[9px] text-gray-500">
-                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>≥65% 高勝率</span>
-                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>50-64% 中等</span>
-                            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>&lt;50% 偏低</span>
-                        </div>
-                        <div id="patHighAlert" class="hidden text-xs font-bold text-center text-[#f87171] bg-red-950/40 border border-red-800/50 rounded px-2 py-1.5 mt-1.5 animate-pulse"></div>
-                        <div id="myPredHistBox" class="bg-gray-800 rounded p-2 border border-gray-600 mt-2 text-[11px]"><div class="text-[10px] text-gray-500">尚未累積任何已驗證快照</div></div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="text-xs text-gray-500 mb-1.5">【長線波段回測】(依據 5MA/20MA 進出場)</div>
-                        <div class="grid grid-cols-3 gap-1.5 text-center">
-                            <div class="bg-gray-800 rounded p-2"><div class="text-xs text-gray-400">交易次數</div><div class="font-bold text-white text-lg mt-0.5" id="btCount">--</div></div>
-                            <div class="bg-gray-800 rounded p-2"><div class="text-xs text-gray-400">波段勝率</div><div class="font-bold text-white text-lg mt-0.5" id="btWinRate">--</div></div>
-                            <div class="bg-gray-800 rounded p-2"><div class="text-xs text-gray-400">單趟均利</div><div class="font-bold text-white text-lg mt-0.5" id="btAvgProfit">--</div></div>
-                        </div>
-                    </div>
-                    <!-- 🎯 V41.17 朱老師方式波段回測(回後買上漲進場 + 跌破5MA停利 + 破進場K低/-5%停損)-->
-                    <div id="chuBacktestCard" class="hidden mt-3"></div>
-                    <div class="text-base bg-gray-900 border border-blue-500/30 p-3 rounded text-gray-300 leading-relaxed font-bold" id="predictionConclusion">等待數據運算...</div>
+                <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-cyan-500">
+                    <!-- 🎯 V41.19 回測頁精簡:移除「AI 雲端多維掃描」+「5MA/20MA 長線波段回測」,只留朱老師方式波段回測(卡片自帶標題與結論) -->
+                    <div id="chuBacktestCard" class="hidden"></div>
+                    <div id="chuBacktestEmpty" class="text-[11px] text-gray-500 text-center py-3">📊 朱老師方式波段回測載入中(資料 ≥60 根才算)…</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【歷史隔日上漲機率】\n\n機率欄與上方「AI 雲端大數據波段回測預判」完全同源 — 基於近 5 日 K 線 + 量能 + KD/MACD + 籌碼 + 大盤環境的歷史型態相似度匹配,純歷史數學運算,非 AI 預測。\n\n• 今日該行 = 上方顯示的機率,絕對一致\n• 歷史日(最近 10 個交易日):有過去快照優先用快照,沒有就用同一算法現場補算(純歷史 K 線比對,零 AI 介入)\n• Alpha 分:當日綜合戰力分(技術面+籌碼面+大盤環境,逐日重算)— 觀察「分數高時是否隔日真的漲」可比較哪種分數區段勝率較高\n• 隔日實際漲跌:從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄:預測機率 ≥ 50% 且實際漲 = ● 對,反之 ○ 反\n\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">📅 歷史隔日上漲機率 <span class="text-[10px] text-gray-500 font-normal ml-1">(點擊看說明)</span></h2>
+                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【朱老師機率】\n\n機率欄=基於近 5 日 K 線 + 量能 + KD/MACD + 籌碼 + 大盤環境的「歷史相似型態」隔日勝率統計(純歷史數學運算,非 AI 預測、非保證)。\n\n• 今日該行 = 目前型態的歷史隔日上漲機率\n• 歷史日(最近 10 個交易日):有過去快照優先用快照,沒有就同一算法現場補算(純歷史 K 線比對,零 AI 介入)\n• Alpha 分:當日綜合戰力分(技術面+籌碼面+大盤環境,逐日重算)\n• 隔日實際漲跌:從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄:預測機率 ≥ 50% 且實際漲 = ● 對,反之 ○ 反\n\n⚠️ 這是「隔日」統計,天生接近五五波,僅供參考;真正該看的是上方「朱老師方式波段回測」的期望值與賺賠比。\n🔴 ≥65% 高勝率｜🟡 50-64% 中等｜🟢 <50% 偏低')">🎯 朱老師機率 <span class="text-[10px] text-gray-500 font-normal ml-1">(點擊看說明)</span></h2>
                     <!-- V26.23 — 砍 patWinRate 函數名暴露 + 對齊 Pill 圖例(● / ○ 取代 ✅/❌) -->
                     <div class="text-[9px] text-gray-500 mb-2 leading-tight">ⓘ 機率計算基於歷史相似 K 線特徵之勝率統計(純歷史數學運算,非 AI 預測)・ Alpha 分為當日綜合戰力(逐日重算)</div>
                     <div class="text-[9px] text-gray-500 mb-1.5 flex items-center gap-3">
@@ -19024,8 +18978,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     _renderChuBacktest() {
         const el = document.getElementById('chuBacktestCard');
         if (!el) return;
+        const emptyEl = document.getElementById('chuBacktestEmpty');
         const r = this._chuSwingBacktest(this.activeData);
-        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; if (emptyEl) { emptyEl.classList.remove('hidden'); emptyEl.textContent = '📊 歷史資料不足(需 ≥60 根 K 線),無法跑波段回測'; } return; }
+        if (emptyEl) emptyEl.classList.add('hidden');
         if (!r.count) {
             el.classList.remove('hidden');
             el.innerHTML = `<div class="text-xs text-gray-500 mb-1.5">🎯【朱老師方式波段回測】(回後買上漲 + 跌破5MA停利)</div><div class="bg-[#161b22] border border-[#30363d] rounded p-3 text-[11px] text-gray-400">此股歷史區間內沒出現符合「回後買上漲」的進場點(嚴格紀律,寧缺勿濫);換強勢波段股再看。</div>`;
@@ -19159,6 +19115,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
 
     updatePredictionUI(trades, patternStats) {
+        // 🎯 V41.19 回測頁精簡:AI 雲端多維卡 + 5MA/20MA 回測卡已移除 → 這些 DOM 不存在,直接跳過不再更新
+        if (!document.getElementById('btCount')) return;
         if (trades) {
             const count = trades.length, winTrades = trades.filter(t => t.profitPct > 0);
             const winRate = count > 0 ? ((winTrades.length / count) * 100).toFixed(1) : 0;
