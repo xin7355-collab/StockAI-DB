@@ -1629,13 +1629,38 @@ def main():
     out["fi_complex_conclusion"] = judge_fi_complex(fut, spot)
     print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
 
-    # 🛡️ 斷崖防護：對每個 None 欄位，用昨天 macro_risk.json 的值補上，
-    # 並標記 _from_cache_yesterday=True；避免單日 API 抽風就讓使用者看到大片「整編」
+    # 🛡️ 斷崖防護：對每個 None 欄位，用「上一次的 macro_risk.json」補值，
+    # 並標記 _from_cache_yesterday=True；避免單日 API 抽風(如 TWSE 307)就讓使用者看到大片「採集中」。
+    #   來源優先序(V41.13 修 macro_cron fresh-checkout 無本地檔 → 斷崖防護整個跳過、單次 307 就全 None):
+    #     ① 本地 data/macro_risk.json(daily_miner 會 git archive origin/data 鋪好)
+    #     ② 線上 data 分支 raw(snapshot 備份,通常最完整)
+    #     ③ 線上 gh-pages(已部署版)
     try:
+        prev = None
         if OUTPUT_FILE.exists():
-            prev = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+            try: prev = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+            except Exception: prev = None
+        if not prev or all(prev.get(k) is None for k in ("fi_spot_net", "fi_total_net")):
+            for _label, _url in (("data 分支 raw", "https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/data/data/macro_risk.json"),
+                                  ("gh-pages", "https://xin7355-collab.github.io/StockAI-DB/data/macro_risk.json")):
+                try:
+                    _r = http.get(_url, timeout=12)
+                    if _r.status_code == 200:
+                        _j = _r.json()
+                        # 取「法人有值」的那份當基準,避免拿到同樣是 null 的版本
+                        if _j.get("fi_total_net") is not None or (not prev):
+                            prev = _j
+                            print(f"  🛡️ 斷崖防護：本地舊檔缺法人,改抓線上 {_label} 版當基準")
+                            if _j.get("fi_total_net") is not None:
+                                break
+                except Exception as _e:
+                    print(f"  ⚠️ 斷崖防護抓線上 {_label} 失敗：{_e}")
+        if prev:
             patched = []
             for key in ("us10y_yield", "us2y_yield", "fi_spot_net", "fi_futures_net",
+                        # 🌅 V41.13 三大法人(投信/自營/合計)也納入斷崖防護(V36.8 加了欄位卻漏加保護 → 單次 307 就消失)
+                        "fi_trust_net", "fi_dealer_net", "fi_total_net",
+                        "fi_spot_date", "fi_three_date",
                         "usdtwd", "fear_greed", "fear_greed_label",
                         "retail_ls_pct", "taifex_backwardation",
                         # 🌍 全球巨頭脈動 10 指標斷崖防護(V21 加 SP500/NASDAQ)
