@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.15</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.16</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.15</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.16</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1051,7 +1051,7 @@
                                 <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                                 <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
                                 <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
-                                <!-- ⚡ V41.15 朱老師四大金剛:趨勢均線 + 量 + MACD + KD 四個一起看,同方向才進場(純公式) -->
+                                <!-- ⚡ V41.15 朱老師四大金剛:趨勢 + 均線 + K線 + 量 四個一起看,同方向才進場(純公式) -->
                                 <div id="fourGuardians" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3 mt-2"></div>
                                 <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
                                 <div id="kbarHalfTactics" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3 mt-2"></div>
@@ -11947,44 +11947,76 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
-    // ⚡ V41.15 — 朱老師四大金剛:趨勢均線 / 成交量 / MACD / KD 四個一起看,同方向=高信度(純公式,讀 this.indicators)
+    // ⚡ V41.15 — 朱老師四大金剛(依老師原文):👑趨勢(頭頭高底底高) / 📈均線(多頭排列) / 🕯️K線(發動棒/轉折) / 📊成交量(價量配合/背離)
+    //   四個交互驗證,同方向=高信度。純公式,讀 rawDailyData + this.indicators + 既有 K棒/量能偵測器(單一引擎)。
     renderFourGuardians(data) {
         const el = document.getElementById('fourGuardians');
         if (!el) return;
         const ind = this.indicators || {};
-        if (!Array.isArray(data) || data.length < 20 || !Array.isArray(ind.ma5)) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        if (!Array.isArray(data) || data.length < 25 || !Array.isArray(ind.ma5)) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         const last = data.length - 1;
-        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), V = b => +((b?.volume ?? 0) || 0);
         const at = a => Array.isArray(a) ? a[a.length - 1] : null, atp = a => Array.isArray(a) ? a[a.length - 2] : null;
         const pC = C(data[last]);
         const G = [];
-        // ① 趨勢均線(多頭排列:收 > 5MA > 20MA)
-        const ma5 = at(ind.ma5), ma20 = at(ind.ma20), ma5p = atp(ind.ma5);
-        if (ma5 != null && ma20 != null) {
-            const st = (pC >= ma5 && ma5 >= ma20) ? 'bull' : (pC < ma5 && ma5 < ma20) ? 'bear' : 'neutral';
-            const rising = ma5p != null ? ma5 >= ma5p : true;
-            G.push({ icon: '🧭', name: '趨勢均線', state: st, note: st === 'bull' ? `站上5MA、多頭排列${rising ? '、5MA上揚' : ''}` : st === 'bear' ? '跌破5MA、空頭排列' : '均線糾結待表態' });
+        // ① 👑 趨勢:波段頭底(頭頭高+底底高=多 / 頭頭低+底底低=空),±8 fractal(同 _detectChuLongEntry)
+        {
+            const n = data.length, SW = 8, from = Math.max(0, n - 120), peaks = [], troughs = [];
+            for (let i = from + SW; i <= n - 1 - SW; i++) {
+                const w = data.slice(i - SW, i + SW + 1), mx = Math.max(...w.map(C)), mn = Math.min(...w.map(C));
+                if (C(data[i]) === mx) peaks.push(C(data[i]));
+                if (C(data[i]) === mn) troughs.push(C(data[i]));
+            }
+            let st = 'neutral', note = '波段頭底未成形(盤整/資料不足)';
+            if (peaks.length >= 2 && troughs.length >= 2) {
+                const ph = peaks[peaks.length - 1] > peaks[peaks.length - 2], th = troughs[troughs.length - 1] > troughs[troughs.length - 2];
+                const pl = peaks[peaks.length - 1] < peaks[peaks.length - 2], tl = troughs[troughs.length - 1] < troughs[troughs.length - 2];
+                if (ph && th) { st = 'bull'; note = '頭頭高、底底高(波段多頭)'; }
+                else if (pl && tl) { st = 'bear'; note = '頭頭低、底底低(波段空頭)'; }
+                else { st = 'neutral'; note = '頭底走勢不一致(盤整/轉折)'; }
+            }
+            G.push({ icon: '👑', name: '趨勢', state: st, note });
         }
-        // ② 成交量(價漲量增=多 / 量增黑K或量縮=空)
-        const vma5 = at(ind.vma5), vCur = V(data[last]), red = C(data[last]) >= O(data[last]);
-        if (vma5 && vCur) {
-            const vr = vCur / vma5;
-            const st = (vr >= 1.2 && red) ? 'bull' : ((vr >= 1.2 && !red) || (vr <= 0.6 && !red)) ? 'bear' : 'neutral';
-            G.push({ icon: '📊', name: '成交量', state: st, note: st === 'bull' ? `量增 ${vr.toFixed(1)}× 配紅K(價漲量增)` : st === 'bear' ? (vr >= 1.2 ? '量增配黑K(賣壓)' : `量縮 ${(vr * 100).toFixed(0)}%(無力)`) : `量能中性 ${vr.toFixed(1)}×` });
+        // ② 📈 均線:多頭排列 MA5>MA10>MA20>MA60 + 月線上揚
+        {
+            const ma5 = at(ind.ma5), ma10 = at(ind.ma10), ma20 = at(ind.ma20), ma60 = at(ind.ma60), ma20p = atp(ind.ma20);
+            let st = 'neutral', note = '均線交纏未表態';
+            if ([ma5, ma10, ma20, ma60].every(x => x != null)) {
+                const m20Up = ma20p != null ? ma20 >= ma20p : true;
+                if (ma5 >= ma10 && ma10 >= ma20 && ma20 >= ma60) { st = 'bull'; note = `多頭排列(5>10>20>60${m20Up ? '、月線上揚' : ''})`; }
+                else if (ma5 < ma10 && ma10 < ma20) { st = 'bear'; note = '空頭排列(短均壓長均)'; }
+                else { st = 'neutral'; note = '均線糾結待表態'; }
+            } else if (ma5 != null && ma20 != null) {   // 資料不足 60 根,退看 5/20
+                st = pC >= ma5 && ma5 >= ma20 ? 'bull' : pC < ma5 && ma5 < ma20 ? 'bear' : 'neutral';
+                note = st === 'bull' ? '站上5MA、5>20' : st === 'bear' ? '跌破5MA、5<20' : '均線糾結';
+            }
+            G.push({ icon: '📈', name: '均線', state: st, note });
         }
-        // ③ MACD(DIF > MACD 快線在上=多 + 柱狀增強)
-        const dif = at(ind.dif), macd = at(ind.macd), osc = at(ind.osc), oscp = atp(ind.osc);
-        if (dif != null && macd != null) {
-            const st = (dif > macd) ? 'bull' : (dif < macd) ? 'bear' : 'neutral';
-            const barUp = (osc != null && oscp != null) ? osc >= oscp : null;
-            G.push({ icon: '📈', name: 'MACD', state: st, note: st === 'bull' ? `DIF>MACD(多方${barUp === true ? '、柱增' : ''})` : st === 'bear' ? 'DIF<MACD(空方)' : '零軸糾結' });
+        // ③ 🕯️ K線:發動棒(長紅≥3%破昨高)/ 高檔變盤/轉折(讀單一引擎 K棒訊號淨值)
+        {
+            const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
+            const launch = body >= 3 && C(data[last]) > H(data[last - 1]);   // 強勢發動棒
+            let kb = 0;
+            try { [...(this._detectStarPatterns(data) || []), ...(this._detect2BarReversal(data) || []), ...(this._detectKbarStrength?.(data) || [])].forEach(s => { kb += s.tone === 'bull' ? 1 : (s.tone === 'bear' || s.tone === 'warn') ? -1 : 0; }); } catch (_) {}
+            let st, note;
+            if (launch && kb >= 0) { st = 'bull'; note = `強勢發動棒(長紅 +${body.toFixed(1)}% 破昨高)`; }
+            else if (kb > 0) { st = 'bull'; note = '出現偏多轉折K(晨星/吞噬/貫穿等)'; }
+            else if (kb < 0) { st = 'bear'; note = '高檔變盤/賣壓K(夜星/長黑/長上影等)'; }
+            else { st = 'neutral'; note = 'K棒中性,等發動棒或轉折'; }
+            G.push({ icon: '🕯️', name: 'K線', state: st, note });
         }
-        // ④ KD(K > D=多,含金叉/低檔/高檔鈍化提示)
-        const k = at(ind.k), d = at(ind.d), kp = atp(ind.k), dp = atp(ind.d);
-        if (k != null && d != null) {
-            const gold = (kp != null && dp != null) ? (kp <= dp && k > d) : false;
-            const st = (k > d) ? 'bull' : (k < d) ? 'bear' : 'neutral';
-            G.push({ icon: '🎯', name: 'KD', state: st, note: st === 'bull' ? `K>D${gold ? '(剛金叉)' : ''}${k < 25 ? '·低檔' : k > 80 ? '·高檔留意' : ''}` : st === 'bear' ? `K<D${k > 75 ? '(高檔死叉)' : ''}` : 'KD糾結' });
+        // ④ 📊 成交量:價漲量增(配合)=多 / 量價背離、量增黑K(出貨)=空 / 量縮=中
+        {
+            const vma5 = at(ind.vma5), vCur = V(data[last]), vPrev = V(data[last - 1]), red = C(data[last]) >= O(data[last]);
+            const volUp = vPrev > 0 && vCur >= vPrev * 1.2, bigVol = vma5 > 0 && vCur >= vma5 * 1.5;
+            let diverge = false;
+            try { diverge = (this._detectVolPriceDiverge(data) || []).length > 0; } catch (_) {}
+            let st = 'neutral', note = vma5 ? `量能中性 ${(vCur / vma5).toFixed(1)}×均量` : '量能中性';
+            if (red && (volUp || bigVol) && !diverge) { st = 'bull'; note = `價漲量增(${bigVol ? (vCur / vma5).toFixed(1) + '×均量' : '>昨量1.2×'})`; }
+            else if (diverge) { st = 'bear'; note = '量價背離(量縮/無量創高=動能衰竭)'; }
+            else if (!red && (volUp || bigVol)) { st = 'bear'; note = '量增配黑K(恐慌/出貨賣壓)'; }
+            else if (vma5 > 0 && vCur <= vma5 * 0.6) { st = 'neutral'; note = `量縮 ${(vCur / vma5 * 100).toFixed(0)}%(觀望,等表態)`; }
+            G.push({ icon: '📊', name: '成交量', state: st, note });
         }
         if (G.length < 4) { el.classList.add('hidden'); el.innerHTML = ''; return; }   // 指標未齊不顯,避免誤導
         const bull = G.filter(x => x.state === 'bull').length, bear = G.filter(x => x.state === 'bear').length;
@@ -12001,7 +12033,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[12px] font-black text-gray-100">⚡ 朱老師四大金剛</span>
-                <span class="text-[9px] text-gray-500">趨勢+量+MACD+KD · 純公式</span>
+                <span class="text-[9px] text-gray-500">趨勢+均線+K線+量 · 純公式</span>
             </div>
             <div class="grid grid-cols-2 gap-1.5 mb-2">${cells}</div>
             <div class="bg-[#161b22] border-l-4 ${bc} border-y border-r border-[#30363d] rounded-r p-2">
@@ -18492,7 +18524,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             } else { _bg.classList.add('hidden'); }
         }
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
-        try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+量+MACD+KD)
+        try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
         try { this.renderKbarTactics(data); } catch (_) {}
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
