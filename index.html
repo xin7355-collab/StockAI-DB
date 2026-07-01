@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.13</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.13</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.14</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -20307,10 +20307,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     _CHU_TAB_BASE: 'chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all ',
     _CHU_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
     _CHU_DESC: {
-        chu_perfect6: `<b class="text-green-300">🍀 六六大順</b>(完美股):像體操滿分,股價同時做出 <b>4 個核心動作</b> — 均線排隊(多頭)、紅 K、爆量、創 20 日新高,再加 MACD/KD/月線上揚的<b class="text-yellow-300">品質分(0-25)</b>。<br><br>📋 <b>操作:</b>盤後看到 → <b class="text-cyan-300">隔日開盤站穩 5MA 進</b>,跌破 5MA 立停。<br>⚠️ 這種股很少出現,有 1-3 檔就偷笑。0 檔代表市場沒完美股,別硬找。`,
-        chu_top_gainer: `<b class="text-red-300">🔥 特別報價</b>(漲幅榜):**今天漲幅前 30 名扣掉冷門股**(成交額 < 5000 萬、< 2000 張、ETF、處置股一律排除),留下有量、主力真表態的強股。<br><br>📋 <b>操作:</b>隔日強勢開高跟進,弱開不追。<br>⚠️ <b class="text-yellow-300">漲停股跳空缺口可能就是高點</b>,要看當天量。`,
+        chu_perfect6: `<b class="text-green-300">🍀 六六大順</b>(完美股):像體操滿分,股價同時做出 <b>4 個核心動作</b> — 均線排隊(多頭)、紅 K(漲幅 > 0.5%)、爆量(≥ 5日均量 ×1.2)、創 20 日新高,再加 MACD/KD/月線上揚的<b class="text-yellow-300">品質分(0-25)</b>。<br><br>📋 <b>操作:</b>盤後看到 → <b class="text-cyan-300">隔日開盤站穩 5MA 進</b>,跌破 5MA 立停。<br>⚠️ 這種股很少出現,有 1-3 檔就偷笑。0 檔代表市場沒完美股,別硬找。`,
+        chu_top_gainer: `<b class="text-red-300">🔥 特別報價</b>(漲幅榜):**今天漲幅 ≥3% 的強勢紅K股**,扣掉冷門(成交額 < 5000 萬、< 2000 張、ETF、處置股一律排除)後**取量能前 30**,留下有量、主力真表態的強股。<br><br>📋 <b>操作:</b>隔日強勢開高跟進,弱開不追。<br>⚠️ <b class="text-yellow-300">漲停股跳空缺口可能就是高點</b>,要看當天量。`,
         chu_bottom: `<b class="text-amber-300">🥣 底部轉折</b>(起飛股):像鍋底冒泡的湯,長期跌完(<b>距高點 ≥ 20%</b>)、近 20 日波動率極低(<3%)、貼著半年線,**某天突然爆 2 倍量噴紅 K** — 主力大戶在進貨。<br><br>📋 <b>操作:</b>看<b class="text-cyan-300">隔日是否續攻</b>,連 2 天爆量才是真,只爆 1 天可能假突破。<br>⚠️ 抓底神器,但常騙人。`,
-        chu_riding5ma: `<b class="text-pink-300">🚀 5MA 飆股主升段</b>(妖股):沿著 5MA 噴的妖股,**MA5 5 日斜率 > 5%、近 5 日 ≥ 2 根漲 5%、今日最低沒跌破 5MA、乖離 < +15%**。連續紅 K 不回頭。<br><br>📋 <b>操作:</b>跌破 5MA 立刻出(不是 20MA),<b class="text-yellow-300">部位要小</b>。<br>⚠️ 最爽也最危險 — 沒抓到時間點就是接最後一棒。`,
+        chu_riding5ma: `<b class="text-pink-300">🚀 5MA 飆股主升段</b>(妖股):沿著 5MA 噴的強勢股,**近 5 日 ≥ 2 根漲 5%、今日最低沒跌破 5MA、今收突破昨收、MA5 未明顯下彎(5日斜率 > −2%)、乖離 < +15%**。連續紅 K 不回頭。<br><br>📋 <b>操作:</b>跌破 5MA 立刻出(不是 20MA),<b class="text-yellow-300">部位要小</b>。<br>⚠️ 最爽也最危險 — 沒抓到時間點就是接最後一棒。`,
     },
     _chuCurrentTab: 'chu_perfect6',
 
