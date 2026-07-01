@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.30</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.31</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.30</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.31</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1247,6 +1247,16 @@
             </div>
 
             <div id="subContentBacktest" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
+                <!-- 🎯 V41.31 — 個股打法適配儀(性格標籤 + 型態實戰回測排名) -->
+                <div class="panel p-4 border border-amber-700/40 rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-amber-500">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <h2 class="text-base font-black text-amber-300 flex items-center gap-1.5">🎯 這檔適合什麼打法</h2>
+                        <button onclick="app.showJargon?.('打法適配') || alert('【個股打法適配儀】\n\n每檔股票脾氣不同,同一招在 A 股神準、在 B 股卻虧。這裡用「這檔自己的歷史」算出:\n\n① 性格標籤:趨勢波段股 / 箱型區間股 / 高波動飆股 / 牛皮存股型 → 決定打法方向。\n② 型態回測排名:把 ~9 個進場型態逐個對這檔歷史回測(訊號日收盤進場、跌破5MA或-5%停損出場),算勝率+每趟期望值+樣本,排名。\n\n👉 主打前 2-3 名正期望值型態,避開負期望值的。純公式歷史回測,過去不代表未來。')" class="text-[9px] text-gray-500 hover:text-amber-300">📖 說明</button>
+                    </div>
+                    <div id="playbookCard" class="hidden"></div>
+                    <button id="playbookBtn" onclick="app.analyzeStockPlaybook(); app.vibrate(30);" class="w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">🎯 分析這檔的最佳打法</button>
+                    <div class="text-center text-[9px] text-gray-500 mt-1">純公式回測 ・ 約 2-4 秒 ・ 當日快取</div>
+                </div>
                 <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-cyan-500">
                     <!-- 🎯 V41.19 回測頁精簡:移除「AI 雲端多維掃描」+「5MA/20MA 長線波段回測」,只留朱老師方式波段回測(卡片自帶標題與結論) -->
                     <div id="chuBacktestCard" class="hidden"></div>
@@ -19477,6 +19487,132 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         let verdict = 'neutral';
         if (bull >= 3) verdict = 'bull'; else if (bear >= 3) verdict = 'bear';
         return { bull, bear, verdict, states: G };
+    },
+
+    // 🎯 V41.31 — 個股性格分類(純公式):趨勢波段股 / 箱型區間股 / 高波動飆股 / 牛皮存股型
+    _stockPersonality(data) {
+        if (!Array.isArray(data) || data.length < 30) return null;
+        const n = data.length, last = n - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const win = Math.min(60, n - 1), from = last - win;
+        let rangeSum = 0, pathSum = 0, gaps = 0;
+        for (let j = from + 1; j <= last; j++) {
+            const c = C(data[j]); if (c > 0) rangeSum += (H(data[j]) - L(data[j])) / c * 100;
+            pathSum += Math.abs(C(data[j]) - C(data[j - 1]));
+            if (L(data[j]) > H(data[j - 1]) || H(data[j]) < L(data[j - 1])) gaps++;
+        }
+        const vol = rangeSum / win;                                   // 日均振幅 %
+        const eff = pathSum > 0 ? Math.abs(C(data[last]) - C(data[from])) / pathSum : 0;   // 趨勢效率 0~1
+        let tag, desc;
+        if (eff >= 0.30) { tag = '🚀 強趨勢波段股'; desc = `趨勢明確、一路墊高(趨勢效率 ${(eff * 100).toFixed(0)}%)→ 順勢<b>抱波段</b>最賺:回後買上漲、均線扣抵、順勢加碼最好用;<b>別做區間</b>高出低進,會被巴。`; }
+        else if (vol >= 4.5) { tag = '⚡ 高波動飆股'; desc = `振幅大、快漲快跌(日均振幅 ${vol.toFixed(1)}%)→ 只<b>順勢短打</b>、嚴設停損別凹單;吃發動棒/缺口突破,<b>忌重壓過夜</b>。`; }
+        else if (vol <= 1.7) { tag = '😴 牛皮存股型'; desc = `波動很小、牛皮(日均振幅 ${vol.toFixed(1)}%)→ 技術訊號鈍、短打難賺;看<b>基本面存股</b>或等<b>帶量突破</b>脫離牛皮再進。`; }
+        else { tag = '📦 箱型區間股'; desc = `上下箱型整理(趨勢效率僅 ${(eff * 100).toFixed(0)}%)→ <b>箱底買、箱頂賣</b>,別追突破(這檔假突破多);等真的帶量突破再轉波段做。`; }
+        return { tag, desc, vol, eff, gaps };
+    },
+
+    // 🎯 V41.31 — 型態實戰回測:對這檔歷史逐根測每個進場型態(訊號日收盤進、跌破5MA或-5%停損出),排勝率+期望值
+    _patternFitBacktest(data) {
+        if (!Array.isArray(data) || data.length < 80) return null;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const sub = i => data.slice(0, i + 1);
+        const anyBull = (fn, i, re) => { try { return (this[fn](sub(i)) || []).some(s => s.tone === 'bull' && (!re || re.test(s.title || ''))); } catch (_) { return false; } };
+        const P = [
+            { key: '🎯 回後買上漲', test: i => anyBull('_detectChuLongEntry', i, /做多買點/) },
+            { key: '🌅 晨星轉折',   test: i => { try { const m = this._matchStarAt(data, i); return !!(m && m.tone === 'bull'); } catch (_) { return false; } } },
+            { key: '🔨 長紅吞噬/貫穿', test: i => { try { const m = this._match2BarAt(data, i); return !!(m && m.tone === 'bull'); } catch (_) { return false; } } },
+            { key: '🧱 底部頸線突破', test: i => anyBull('_detectBottomBreakout', i) },
+            { key: '📦 箱型突破',   test: i => anyBull('_detectBoxBreakout', i) },
+            { key: '🚀 向上缺口突破', test: i => anyBull('_detectGap', i, /缺口|突破/) },
+            { key: '📈 葛蘭碧買點', test: i => anyBull('_detectGranville', i) },
+            { key: '📐 均線扣抵翻揚', test: i => anyBull('_detectMaKoudi', i) },
+            { key: '💪 發動棒破昨高', test: i => { const o = O(data[i]), c = C(data[i]); return i > 0 && o > 0 && (c - o) / o * 100 >= 3 && c > H(data[i - 1]); } },
+        ];
+        const bt = test => {
+            const trades = [];
+            let i = 45;
+            while (i < last) {
+                let fired = false; try { fired = test(i); } catch (_) {}
+                if (fired) {
+                    const entry = C(data[i]);
+                    if (entry > 0) {
+                        const stop = Math.min(L(data[i]), entry * 0.95);
+                        let exitP = C(data[last]), exitIdx = last; const endJ = Math.min(last, i + 20);
+                        for (let j = i + 1; j <= endJ; j++) {
+                            const c = C(data[j]);
+                            const ma5 = j >= 4 ? (C(data[j]) + C(data[j - 1]) + C(data[j - 2]) + C(data[j - 3]) + C(data[j - 4])) / 5 : null;
+                            if (c <= stop) { exitP = stop; exitIdx = j; break; }
+                            if (ma5 != null && c < ma5) { exitP = c; exitIdx = j; break; }
+                            if (j === endJ) { exitP = c; exitIdx = j; }
+                        }
+                        trades.push((exitP - entry) / entry * 100);
+                        i = exitIdx + 1; continue;
+                    }
+                }
+                i++;
+            }
+            const n = trades.length; if (n < 3) return null;
+            const wins = trades.filter(t => t > 0), losses = trades.filter(t => t < 0);
+            const avgWin = wins.length ? wins.reduce((a, b) => a + b, 0) / wins.length : 0;
+            const avgLoss = losses.length ? losses.reduce((a, b) => a + b, 0) / losses.length : 0;
+            return { count: n, winRate: wins.length / n * 100, expectancy: trades.reduce((a, b) => a + b, 0) / n, plRatio: avgLoss < 0 ? Math.abs(avgWin / avgLoss) : (avgWin > 0 ? 99 : 0) };
+        };
+        const ranked = P.map(p => { const r = bt(p.test); return r ? { key: p.key, ...r } : null; }).filter(Boolean).sort((a, b) => b.expectancy - a.expectancy);
+        return ranked;
+    },
+
+    // 🎯 V41.31 — 個股打法適配儀:性格 + 型態回測排名(按鈕觸發,當日快取)
+    analyzeStockPlaybook() {
+        const box = document.getElementById('playbookCard');
+        const btn = document.getElementById('playbookBtn');
+        if (!box) return;
+        const data = this.activeData, sym = this.currentSymbolId;
+        if (!Array.isArray(data) || data.length < 80) { box.classList.remove('hidden'); box.innerHTML = '<div class="text-[11px] text-gray-400 py-2 text-center">此股歷史資料不足 80 根,無法可靠回測打法(換主流波段股再試)。</div>'; return; }
+        const d = new Date(), dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const ckey = `playbook_${sym}`;   // 依股號(非股號+日期)→ 每檔只留一筆,不會無限累積
+        try { const c = JSON.parse(localStorage.getItem(ckey) || 'null'); if (c && c.date === dateStr && c.html) { box.classList.remove('hidden'); box.innerHTML = c.html; return; } } catch (_) {}
+        if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 分析中(逐根回測)…'; }
+        setTimeout(() => {
+            try {
+                const per = this._stockPersonality(data);
+                const ranked = this._patternFitBacktest(data) || [];
+                const pos = ranked.filter(r => r.expectancy > 0);
+                const neg = ranked.filter(r => r.expectancy <= -0.3 && r.count >= 4);
+                const eCol = e => e > 0.5 ? 'text-red-300' : e >= 0 ? 'text-yellow-300' : 'text-green-300';
+                const rows = ranked.map((r, idx) => {
+                    const star = (idx < 3 && r.expectancy > 0) ? ' <span class="text-amber-300">⭐主打</span>' : (r.expectancy <= -0.3 && r.count >= 4 ? ' <span class="text-green-400">⚠️避開</span>' : '');
+                    const barW = Math.max(4, Math.min(100, 50 + r.expectancy * 20));
+                    const barC = r.expectancy > 0.5 ? 'bg-red-400' : r.expectancy >= 0 ? 'bg-yellow-400' : 'bg-green-400';
+                    return `<div class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d]">
+                        <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star}</div>
+                            <div class="text-[9px] text-gray-500 font-mono">勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次</div>
+                            <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full ${barC}" style="width:${barW}%"></div></div></div>
+                        <div class="font-mono font-black text-right text-sm ${eCol(r.expectancy)}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</div>
+                    </div>`;
+                }).join('');
+                const bestTxt = pos.length ? pos.slice(0, 3).map(r => r.key.replace(/^\S+\s/, '')).join('、') : '無明顯正期望值型態(這檔難用技術短打)';
+                const avoidTxt = neg.length ? neg.map(r => r.key.replace(/^\S+\s/, '')).join('、') : '無明顯地雷型態';
+                const html = `
+                    <div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                        <div class="text-sm font-black text-amber-200 mb-0.5">${per ? per.tag : '—'}</div>
+                        <div class="text-[10px] text-gray-300 leading-relaxed">${per ? per.desc : ''}</div>
+                    </div>
+                    <div class="text-[10px] text-gray-500 mb-1">📊 型態實戰回測排名(這檔自己的歷史 ・ 依每趟期望值排序)</div>
+                    ${rows || '<div class="text-[11px] text-gray-500 py-2 text-center">歷史訊號太少,無足夠樣本回測。</div>'}
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded p-2 mt-2 text-[11px] leading-relaxed">
+                        <div class="text-gray-200"><span class="text-red-300 font-bold">✅ 主打:</span>${bestTxt}</div>
+                        <div class="text-gray-200 mt-0.5"><span class="text-green-300 font-bold">⚠️ 避開:</span>${avoidTxt}</div>
+                    </div>
+                    <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 進場=型態訊號日收盤、出場=跌破5MA或跌破進場K低/−5%停損,最多抱20天。純公式歷史回測,過去績效不代表未來、僅供參考。</div>`;
+                box.classList.remove('hidden'); box.innerHTML = html;
+                try { localStorage.setItem(ckey, JSON.stringify({ date: dateStr, html })); } catch (_) {}
+            } catch (e) {
+                box.classList.remove('hidden'); box.innerHTML = `<div class="text-[11px] text-gray-400 py-2 text-center">分析失敗,稍後再試。</div>`;
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '🔄 重新分析這檔打法'; }
+            }
+        }, 40);
     },
 
     renderBacktest() {
