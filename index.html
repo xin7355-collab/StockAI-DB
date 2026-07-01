@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -15442,12 +15442,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const mr = this._macroRiskCache || {};
         const bias = mr.taiex_ma240_bias;
         // 若無年線乖離資料,fallback 用 taiex_chg_pct 短期判斷
-        let regime, label, advice, color;
+        let regime, label, advice, color, overheat = false;
         if (typeof bias === 'number') {
             if (bias > 5) {
-                regime = 'bull'; label = '🐂 多頭';
-                advice = '可順勢做多、進場條件可放寬';
-                color = 'text-red-300 bg-red-900/40 border-red-700';
+                // 🐛 V41.8 年線乖離 >20% = 極端貪婪泡沫區,不可再喊「順勢加碼」(對齊黑天鵝警報 + 朱老師 gate3 位階檢查:嚴重偏離月線絕不追高)
+                overheat = bias > 20;
+                regime = 'bull'; label = overheat ? '🐂 多頭(過熱)' : '🐂 多頭';
+                advice = overheat ? '年線乖離過大、位階偏高,絕不追高;做多只留強勢股且嚴設停損,提防急拉回' : '可順勢做多、進場條件可放寬';
+                color = overheat ? 'text-orange-300 bg-orange-900/40 border-orange-700' : 'text-red-300 bg-red-900/40 border-red-700';
             } else if (bias < -5) {
                 regime = 'bear'; label = '🐻 空頭';
                 advice = '空手觀望、進場大幅收緊';
@@ -15463,7 +15465,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             advice = '大盤年線資料整備中,先看個股訊號';
             color = 'text-gray-400 bg-gray-800/60 border-gray-600';
         }
-        return { regime, label, advice, color, bias };
+        return { regime, label, advice, color, bias, overheat };
     },
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -15487,8 +15489,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const r = this._detectMarketRegime();
         let pct, color, advice;
         if (r.regime === 'bull') {
-            pct = '8 成'; advice = '可順勢做多,擇優股建倉';
-            color = 'text-red-200 bg-red-900/40 border-red-700';
+            if (r.overheat) {
+                // 🐛 V41.8 位階過高(年線乖離>20%)→ 降部位、別追高,對齊上方泡沫警報,不再自相矛盾喊 8 成
+                pct = '3~5 成(只留強勢股)'; advice = '位階過高、乖離過大,絕不追高;嚴設停損、分批停利,提防急拉回';
+                color = 'text-orange-200 bg-orange-900/40 border-orange-700';
+            } else {
+                pct = '8 成'; advice = '可順勢做多,擇優股建倉';
+                color = 'text-red-200 bg-red-900/40 border-red-700';
+            }
         } else if (r.regime === 'bear') {
             pct = '3 成以下 或 空手'; advice = '空手觀望最安全,別硬接刀';
             color = 'text-green-200 bg-green-900/40 border-green-700';
