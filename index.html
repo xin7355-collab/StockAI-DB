@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.20</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.21</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -840,7 +840,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.20</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.21</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1239,16 +1239,16 @@
                     <div id="chuBacktestEmpty" class="text-[11px] text-gray-500 text-center py-3">📊 朱老師方式波段回測載入中(資料 ≥60 根才算)…</div>
                 </div>
                 <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【朱老師機率(四大金剛逐日判讀)】\n\n這張表不再是「隔日相似 K 線」的接近五五波統計。V41.20 起底層換成朱家泓四大金剛,逐日用純公式判讀:\n\n👑 趨勢:波段頭頭高+底底高=多 / 頭頭低+底底低=空\n📈 均線:MA5>MA10>MA20>MA60 多頭排列\n🕯️ K線:強勢發動棒(長紅破昨高)/ 三星・兩根轉折\n📊 成交量:價漲量增=配合 / 量增黑K=出貨\n\n• 金剛欄 = 當日「幾個金剛同方向」→ 🟢偏多(多≥3)/ 🔴偏空(空≥3)/ 🟡分歧\n• Alpha 分:當日綜合戰力分(技術面+籌碼面+大盤環境,逐日重算)\n• 隔日實際漲跌:從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄:金剛偏多且隔日漲(或偏空且隔日跌)= ● 對;方向反 = ○ 反;分歧 = — 觀望(朱老師教條:四大金剛不同調就不下單)\n\n⚠️ 這仍是「隔日」對照,朱老師本質是波段(賺大賠小),真正該看的是上方「朱老師方式波段回測」的期望值與賺賠比。\n🟢 偏多｜🔴 偏空｜🟡 分歧觀望')">🎯 朱老師機率 <span class="text-[10px] text-gray-500 font-normal ml-1">(點擊看說明)</span></h2>
+                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【朱老師機率(四大金剛逐日判讀)】\n\n這張表不再是「隔日相似 K 線」的接近五五波統計。V41.20 起底層換成朱家泓四大金剛,逐日用純公式判讀:\n\n👑 趨勢:波段頭頭高+底底高=多 / 頭頭低+底底低=空\n📈 均線:MA5>MA10>MA20>MA60 多頭排列\n🕯️ K線:強勢發動棒(長紅破昨高)/ 三星・兩根轉折\n📊 成交量:價漲量增=配合 / 量增黑K=出貨\n\n• 金剛欄 = 當日「幾個金剛同方向」→ 🟢偏多(多≥3)/ 🔴偏空(空≥3)/ 🟡分歧\n• 回後買上漲:當日是否出現朱老師進場點 → 🎯高勝率(三條件齊,約8成)/ ⚡力道弱(可小量試)/ 🚫做頭(別追)\n• 隔日實際漲跌:從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄:金剛偏多且隔日漲(或偏空且隔日跌)= ● 對;方向反 = ○ 反;分歧 = — 觀望(朱老師教條:四大金剛不同調就不下單)\n\n⚠️ 這仍是「隔日」對照,朱老師本質是波段(賺大賠小),真正該看的是上方「朱老師方式波段回測」的期望值與賺賠比。\n🟢 偏多｜🔴 偏空｜🟡 分歧觀望')">🎯 朱老師機率 <span class="text-[10px] text-gray-500 font-normal ml-1">(點擊看說明)</span></h2>
                     <!-- 🎯 V41.20 底層換成四大金剛逐日判讀(取代隔日相似 K 線統計) -->
-                    <div class="text-[9px] text-gray-500 mb-2 leading-tight">ⓘ 金剛欄=朱老師四大金剛(趨勢/均線/K線/量)當日同方向數,純公式非 AI ・ Alpha 分為當日綜合戰力(逐日重算)</div>
+                    <div class="text-[9px] text-gray-500 mb-2 leading-tight">ⓘ 金剛欄=朱老師四大金剛(趨勢/均線/K線/量)當日同方向數 ・ 回後買上漲=當日是否出現朱式進場點(🎯高勝率/⚡力道弱/🚫做頭),皆純公式非 AI</div>
                     <div class="text-[9px] text-gray-500 mb-1.5 flex items-center gap-3 flex-wrap">
                         <span class="flex items-center gap-1">📖 <span class="inline-block bg-green-500/10 text-green-400 border border-green-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">● 對</span> = 金剛方向命中隔日</span>
                         <span class="flex items-center gap-1"><span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">○ 反</span> = 方向反了</span>
                         <span class="flex items-center gap-1"><span class="inline-block bg-gray-500/10 text-gray-400 border border-gray-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">— 觀望</span> = 分歧不下單</span>
                     </div>
                     <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">四大金剛</th><th class="py-1.5 px-1 font-bold text-center">Alpha 分</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
+                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">四大金剛</th><th class="py-1.5 px-1 font-bold text-center">回後買上漲</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
                         <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="5" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
                     </table>
                 </div>
@@ -2258,9 +2258,13 @@
             <!-- Strategy Guide -->
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg overflow-hidden">
                 <button onclick="document.getElementById('huntGuide').classList.toggle('hidden')" class="w-full text-left p-3 text-sm font-bold text-gray-400 hover:text-white flex justify-between items-center transition-colors">
-                    <span>📖 四大獵殺策略說明（點擊展開）</span><span>▼</span>
+                    <span>📖 五大獵殺策略說明（點擊展開）</span><span>▼</span>
                 </button>
                 <div id="huntGuide" class="hidden p-3 pt-0 text-xs text-gray-300 space-y-3 border-t border-[#30363d] mt-1 pt-3 leading-relaxed">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-red-400 font-black">🎯 策略王牌：回後買上漲（朱老師高勝率買點）</span>
+                        <span class="text-gray-400">波段多頭（頭頭高+底底高）+ 回檔<b class="text-yellow-300">不破前低</b> + 今日紅K<b class="text-yellow-300">重新站上 5MA</b> + 實體 ≥ 2% + 量增 + 收破昨高 → 朱家泓約<b class="text-red-300">8成勝率</b>的第二段起漲買點。已含「高檔大量長紅½跌破=做頭別追」守門。<b class="text-yellow-300">這是回測期望值最高的訊號,每檔監控股都掃。</b></span>
+                    </div>
                     <div class="flex flex-col gap-1">
                         <span class="text-red-400 font-black">📈 策略一：月線起漲（站上月線+紅K）</span>
                         <span class="text-gray-400">判斷時機：股價回測<span class="text-purple-300">月線（20MA）</span>並收紅K，月線仍在上升。主力洗盤結束、第二段攻勢起點。<b class="text-yellow-300">放寬版：不要求爆量，紅K帶量 ≥ 5日均量即可。</b></span>
@@ -19109,19 +19113,20 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 wrHtml = '<span class="text-gray-600 text-[10px]">📝 資料不足</span>';
             }
 
-            // Alpha 分 — 當日綜合戰力分(逐日重算,讓使用者能對照「分數高時是否真的漲」)
-            let alphaHtml;
+            // 🎯 V41.20 回後買上漲訊號(取代看不懂的 Alpha 分):當日是否出現朱老師「回後買上漲」進場點
+            //   逐日切 data[0..i] 丟同一顆 _detectChuLongEntry(個股頁 K棒戰法/期望值榜用的那顆),純公式零 AI
+            let chuHtml;
             try {
-                const alpha = this.getAlphaScoreData(data, this.indicators, i, this.twiiState);
-                const s = Math.round(Number(alpha.totalScore));
-                if (Number.isFinite(s)) {
-                    const aCol = s >= 75 ? 'text-red-400' : s >= 45 ? 'text-yellow-400' : 'text-green-400';
-                    alphaHtml = `<span class="${aCol} text-base font-black">${s}</span>`;
-                } else {
-                    alphaHtml = '<span class="text-gray-600 text-[10px]">—</span>';
-                }
+                const sigs = this._detectChuLongEntry(data.slice(0, i + 1)) || [];
+                const buy  = sigs.find(s => s.tone === 'bull' && /高勝率做多買點/.test(s.title || ''));
+                const weak = sigs.find(s => s.tone === 'bull' && /做多買點/.test(s.title || ''));
+                const head = sigs.find(s => /做頭不建議/.test(s.title || ''));
+                if (buy)       chuHtml = '<span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="回檔後站上5MA + 紅K實體≥2% + 量增 + 收破昨高 = 朱老師約8成勝率買點">🎯 高勝率</span>';
+                else if (weak) chuHtml = '<span class="inline-block bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="站上5MA但攻擊力道未滿(紅K/量/過昨高缺一),可小量試">⚡ 力道弱</span>';
+                else if (head) chuHtml = '<span class="inline-block bg-gray-500/10 text-gray-400 border border-gray-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="高檔大量長紅½被跌破=做頭,朱:此後不要再回後買上漲">🚫 做頭</span>';
+                else           chuHtml = '<span class="text-gray-600 text-[10px]">—</span>';
             } catch (_) {
-                alphaHtml = '<span class="text-gray-600 text-[10px]">—</span>';
+                chuHtml = '<span class="text-gray-600 text-[10px]">—</span>';
             }
 
             // 隔日實際漲跌(已過了的歷史日才能算,今日該行尚未發生 → '明日待定')
@@ -19154,7 +19159,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 <td class="py-2 px-1 text-gray-300 text-xs">${dShort}</td>
                 <td class="py-2 px-1 text-right"><span class="font-bold text-white text-sm">${pC.toFixed(2)}</span><div class="text-[10px] mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>
                 <td class="py-2 px-1 text-center">${wrHtml}</td>
-                <td class="py-2 px-1 text-center">${alphaHtml}</td>
+                <td class="py-2 px-1 text-center">${chuHtml}</td>
                 <td class="py-2 px-1 text-center">${nextHtml}<div class="text-[9px] mt-0.5">${hitHtml}</div></td>
             </tr>`;
         }
@@ -23307,6 +23312,36 @@ ${_chuPosPlan}
         return null;
     },
 
+    // 🎯 V41.20 — 朱老師「回後買上漲」獵殺告警(每檔監控股都掃,不限選股法):
+    //   直接套個股頁 K棒戰法 / 期望值榜回測用的同一顆 _detectChuLongEntry(波段多頭 + 回檔不破前低 +
+    //   紅K站回5MA + 量增 + 過昨高,含高檔做頭守門)。這是回測期望值最高的進場訊號。
+    _checkChuLongEntry(data, entry) {
+        try {
+            const sigs = this._detectChuLongEntry(data) || [];
+            const buy = sigs.find(s => s.tone === 'bull' && /高勝率做多買點/.test(s.title || ''));
+            if (buy) {
+                return {
+                    strategy: 'chu_pullback_relaunch',
+                    label: '🎯 回後買上漲',
+                    title: '【朱老師 回後買上漲・高勝率】',
+                    msg: buy.msg,
+                    fullMsg: `🎯 朱家泓「回後買上漲」高勝率買點成型:${buy.msg}`,
+                };
+            }
+            const weak = sigs.find(s => s.tone === 'bull' && /做多買點/.test(s.title || ''));
+            if (weak) {
+                return {
+                    strategy: 'chu_pullback_relaunch',
+                    label: '🎯 回後買上漲',
+                    title: '【朱老師 回後買上漲・力道偏弱】',
+                    msg: weak.msg,
+                    fullMsg: `⚡ 朱家泓「回後買上漲」雛形(攻擊力道未滿,可小量試):${weak.msg}`,
+                };
+            }
+        } catch (_) {}
+        return null;
+    },
+
     // ── 朱家泓五大選股法專屬觸發（按 entry.strategySource 選用）─────────
     // 🍀 六六大順 / 🚀 5MA飆股：今日盤中沒跌破 5MA + 紅K → 「隔日站穩 5MA 進」訊號
     _checkChu5MAEntry(tech, entry) {
@@ -23429,6 +23464,7 @@ ${_chuPosPlan}
                 entry.currentMA5   = ma5arr[n - 1];
                 entry.currentMA20  = ma20arr[n - 1];
                 const checks = [
+                    this._checkChuLongEntry(data, entry),   // 🎯 V41.20 朱老師回後買上漲(最高期望值,每檔都掃)
                     this._checkPullbackRelaunch(tech, entry),
                     this._checkFalseBreakdown(tech, entry),
                     this._checkForeignBuy3d(tech, entry),
@@ -23479,6 +23515,7 @@ ${_chuPosPlan}
 
     _strategyLabel(s) {
         const map = {
+            chu_pullback_relaunch: '🎯 回後買上漲',
             pullback:          '📈 月線起漲',
             breakdown:         '🔄 破底翻',
             foreign_buy:       '🐂 外資連買3日',
