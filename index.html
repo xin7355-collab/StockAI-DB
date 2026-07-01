@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V41.10</title>
+    <title>首席 AI 司令部 | 戰略終端 V41.11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -839,7 +839,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.10</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V41.11</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -14537,6 +14537,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         hsBottom:     { label: '頭肩底',   side: 'bull', feature: '左肩-頭-右肩三次探底(頭最低),突破頸線。', conclusion: '大型底部反轉,偏多。' },
         hsTop:        { label: '頭肩頂',   side: 'bear', feature: '左肩-頭-右肩三次攻頂(頭最高),跌破頸線。', conclusion: '大型頭部反轉,偏空。' },
         triangle:     { label: '三角收斂', side: 'neutral', feature: '高點一直降、低點一直升(收斂)。', conclusion: '能量壓縮,等突破方向出來再進場,別猜。' },
+        // 📐 兩根反轉(V41.11 補齊,對齊卡片)
+        darkCloud:    { label: '烏雲罩頂', side: 'bear', feature: '高檔:前長紅 + 今黑K開高走低,收盤跌進前紅K實體、破中點但未吃穿。', conclusion: '多方轉弱,收破前紅K低點更確認,偏空。' },
+        piercing:     { label: '旭日東升', side: 'bull', feature: '低檔:前長黑 + 今紅K開低走高,收盤突破前黑K中點但未吃穿。', conclusion: '空方轉弱,站上前黑K高點更確認,偏多。' },
+        meetingBear:  { label: '高檔遭遇', side: 'bear', feature: '高檔:前長紅 + 今黑K開高走低、收盤打回前紅K收盤(缺口當天封掉)。', conclusion: '多方執掌,爆量=主力出貨;跌破今低多單先走。' },
+        meetingBull:  { label: '低檔遭遇', side: 'bull', feature: '低檔:前長黑 + 今紅K開低走高、收盤拉回前黑K收盤。', conclusion: '空方力竭止跌;站上今高可分批接。' },
+        haramiBear:   { label: '高檔母子', side: 'bear', feature: '高檔:前長紅 + 今小K完全縮在前紅K實體內(孕育)。', conclusion: '多方休息、動能收斂,次日開低跌破即變盤。' },
+        haramiBull:   { label: '低檔母子', side: 'bull', feature: '低檔:前長黑 + 今小K完全縮在前黑K實體內。', conclusion: '空方力竭、動能收斂,次日開高站上即變盤轉多。' },
     },
 
     togglePatternsHandler(checked) {
@@ -14576,13 +14583,26 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 if (low)       out.push({ idx: i, type: 'hammer', side: 'bull', anchor: 'low' });
                 else if (high) out.push({ idx: i, type: 'hangingMan', side: 'bear', anchor: 'high' });
             }
-            // ── 吞噬(長紅/長黑 完全蓋過前一根)──
+            // ── 兩根反轉:吞噬 / 覆蓋(烏雲) / 貫穿(旭日) / 遭遇 / 母子懷抱(V41.11 補齊,對齊卡片 _detect2BarReversal)──
             if (i >= 1) {
                 const p = data[i - 1], pBody = Math.abs(p.close - p.open);
-                if (isRed && p.close < p.open && c >= p.open && o <= p.close && body > pBody) {
-                    out.push({ idx: i, type: 'bullEngulf', side: 'bull', anchor: 'low' });
-                } else if (isBlack && p.close > p.open && o >= p.close && c <= p.open && body > pBody) {
-                    out.push({ idx: i, type: 'bearEngulf', side: 'bear', anchor: 'high' });
+                const pMid = (p.open + p.close) / 2, pIsRed = p.close > p.open, pIsBlack = p.close < p.open;
+                const pLongRed = pIsRed && _bodyR(p) > 0.5, pLongBlack = pIsBlack && _bodyR(p) > 0.5;
+                if (isRed && pIsBlack && c >= p.open && o <= p.close && body > pBody) {
+                    out.push({ idx: i, type: 'bullEngulf', side: 'bull', anchor: 'low' });       // 長紅吞噬
+                } else if (isBlack && pIsRed && o >= p.close && c <= p.open && body > pBody) {
+                    out.push({ idx: i, type: 'bearEngulf', side: 'bear', anchor: 'high' });      // 長黑吞噬
+                } else if (high && pLongRed && isBlack && o > p.close && c < pMid && c > p.open) {
+                    out.push({ idx: i, type: 'darkCloud', side: 'bear', anchor: 'high' });       // 高檔覆蓋(烏雲罩頂)
+                } else if (low && pLongBlack && isRed && o < p.close && c > pMid && c < p.open) {
+                    out.push({ idx: i, type: 'piercing', side: 'bull', anchor: 'low' });         // 低檔貫穿(旭日東升)
+                } else if (high && pLongRed && isBlack && o > p.close && p.close > 0 && Math.abs(c - p.close) / p.close < 0.012) {
+                    out.push({ idx: i, type: 'meetingBear', side: 'bear', anchor: 'high' });     // 高檔遭遇(一日封口)
+                } else if (low && pLongBlack && isRed && o < p.close && p.close > 0 && Math.abs(c - p.close) / p.close < 0.012) {
+                    out.push({ idx: i, type: 'meetingBull', side: 'bull', anchor: 'low' });      // 低檔遭遇
+                } else if (_bodyR(b) < 0.35 && b.high <= p.high && b.low >= p.low) {              // 母子懷抱(今小K縮在前長K內)
+                    if (high && pLongRed) out.push({ idx: i, type: 'haramiBear', side: 'bear', anchor: 'high' });
+                    else if (low && pLongBlack) out.push({ idx: i, type: 'haramiBull', side: 'bull', anchor: 'low' });
                 }
             }
             // ── 三兵 + 一星二陽/二陰(需前兩根)──
@@ -14681,7 +14701,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { marks = marks.concat(this._scanKbarPatterns(data) || []); } catch (_) {}
         try { marks = marks.concat(this._scanPricePatterns(data) || []); } catch (_) {}
         // V41.10 三根K棒轉折(晨星/夜星/群星)優先序須高於吞噬,否則確認長K同時是吞噬時星會被蓋掉(原缺 prio → 預設 0 被吃)
-        const prio = { doubleBottom: 9, doubleTop: 9, hsBottom: 9, hsTop: 9, morningStar: 8, eveningStar: 8, clusterMorningStar: 8, clusterEveningStar: 8, dawnStar: 7, duskStar: 7, triangle: 7, bigBlackHigh: 6, bullEngulf: 6, bearEngulf: 6, redStarTwo: 6, blackStarTwo: 6, hammer: 5, hangingMan: 5, lowLongRed: 5, blackThree: 4, redThree: 4 };
+        const prio = { doubleBottom: 9, doubleTop: 9, hsBottom: 9, hsTop: 9, morningStar: 8, eveningStar: 8, clusterMorningStar: 8, clusterEveningStar: 8, dawnStar: 7, duskStar: 7, triangle: 7, bigBlackHigh: 6, bullEngulf: 6, bearEngulf: 6, darkCloud: 6, piercing: 6, meetingBear: 6, meetingBull: 6, redStarTwo: 6, blackStarTwo: 6, haramiBear: 5, haramiBull: 5, hammer: 5, hangingMan: 5, lowLongRed: 5, blackThree: 4, redThree: 4 };
         const byIdx = {};
         marks.forEach(m => { const ex = byIdx[m.idx]; if (!ex || (prio[m.type] || 0) > (prio[ex.type] || 0)) byIdx[m.idx] = m; });
         let uniq = Object.values(byIdx).sort((a, b) => a.idx - b.idx);
@@ -21009,7 +21029,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         // 📐 V38.5 注入朱家泓/林穎 K棒型態偵測器(純公式,與進場體檢/K棒戰法卡同源)→ AI 報告依此分析
         const kbarPatterns = [];
-        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectVolumeSignals'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
+        // V41.11 補齊漏注入的新偵測器:測壓測撐/量價背離/壓力沉重/均線糾結(原 AI 報告看不到這 4 個新訊號)
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
         const patternsTxt = kbarPatterns.length
             ? kbarPatterns.slice(0, 16).map(s => `${s.tone === 'bull' ? '🔺偏多' : s.tone === 'bear' ? '🔻偏空' : s.tone === 'warn' ? '⚠️留意' : '⚪中性'}「${s.title}」`).join('、')
             : '無明顯型態訊號';
