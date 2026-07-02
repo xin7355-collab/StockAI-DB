@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V42.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -12325,8 +12325,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' }, warn: { c: 'text-yellow-300', b: 'border-yellow-500', tag: '⚠️留意' } };
         const MAXROWS = 10;   // 🐛 V38.3 防訊號過載:最多顯 10 條(已 unshift 把最重要的轉折/買賣點置頂)
         const more = sigs.length - MAXROWS;
-        const rows = sigs.slice(0, MAXROWS).map(s => { const t = sty[s.tone] || sty.flat; return `<div class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5">
-            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}</div>
+        const rows = sigs.slice(0, MAXROWS).map(s => { const t = sty[s.tone] || sty.flat; const _tt = String(s.title || '').replace(/'/g, '’'); return `<div onclick="app.showKbarSignalHelp('${_tt}')" class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5 cursor-pointer hover:bg-white/5 transition-colors">
+            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}<span class="text-[9px] text-amber-400/70 font-normal ml-1">👆教學</span></div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('') + (more > 0 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${more} 條次要訊號(以上方進場體檢總結為準)</div>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
         el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
@@ -19745,6 +19745,47 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             ${row('🟢 賣4', 'border-green-500', '乖離過大(追高回落)', '均線上揚,股價<b>遠高於均線(正乖離過大)</b>,漲過頭。', '追高易套,漲多要分批停利、別追;等回檔到均線再找買點。', '✅ App 偵測:「正乖離過大」(K棒戰法卡)')}
             <div class="text-[10px] text-gray-500 mt-2 leading-relaxed">💡 <b>實戰重點</b>:8 個點裡最實用、勝率最高的是 <b class="text-red-300">買3(回測支撐)</b> 和 <b class="text-green-300">賣1(跌破均線)</b> —— 一個順勢低接、一個果斷停損,正是「賺大賠小」。買4/賣4 是逆勢搶反彈/追高風險最高,只適合短打高手。<br><br>⚠️ 均線常用月線(20MA);快多頭可搭 5MA/10MA,大波段看季線(60MA)。純公式僅供參考,實際嚴守停損。</div>`;
         this._showRichModal('📈 葛蘭碧八大法則(完整操作)', html);
+    },
+
+    // 📖 V42.4 — K棒戰法訊號「型態百科」:用關鍵字對應概念(一個概念涵蓋多個訊號標題,好維護)
+    showKbarSignalHelp(title) {
+        const t = String(title || '');
+        if (/葛蘭碧/.test(t)) { this.showGranvilleFull(); return; }
+        const W = [
+            { re: /晨星/, icon: '🌅', name: '晨星轉折(底部反轉)', what: '低檔 3 根 K 棒打底反轉:左長黑 + 中間小K(變盤線)+ 右長紅,常是波段低點。', spot: '要在相對低檔,右邊紅K收盤須站回左邊長黑K的中點以上;若兩側跳空=孤島晨星(更強)。', how: '成立後隔天開高不破就進場 → 停損跌破晨星最低點 → 停利跌破 5 日線。', tip: '高檔出現類似型態不算,別當反轉。' },
+            { re: /夜星/, icon: '🌃', name: '夜星轉折(高檔反轉)', what: '高檔 3 根 K 棒作頭反轉:左長紅 + 中間小K + 右長黑,常是波段高點。', spot: '相對高檔,右邊黑K收破左邊長紅K中點;兩側跳空=孤島夜星(最兇)。', how: '多單減碼/出場,跌破右黑K低或 5MA 先走;放空要等破頸線且大盤配合。', tip: '一根長黑不等於反轉,要 3 根結構齊 + 相對高檔才算。' },
+            { re: /吞噬/, icon: '🔨', name: '吞噬(一日反轉)', what: '一根 K 完全「吃掉」前一根實體:低檔長紅吞噬=主力進貨(多)、高檔長黑吞噬=主力出貨(空)。', spot: '今天實體完全包住昨天實體,位置(低檔/高檔)決定多空。', how: '低檔長紅吞噬:站上紅K高分批進、停損紅K低;高檔長黑吞噬:跌破黑K低多單快跑。', tip: '帶量更有效;要看它出現在低檔還是高檔。' },
+            { re: /貫穿|旭日/, icon: '🌄', name: '長紅貫穿(旭日東升)', what: '低檔紅K開低走高、收盤穿過前一根黑K的一半以上 = 空方轉弱、止跌偏多。', spot: '低檔、紅K收在前黑K中點之上(未完全吞噬但過半)。', how: '站上前黑K高更確認,收盤進場、停損紅K低。', tip: '穿越越多越強;帶量佳。' },
+            { re: /烏雲|覆蓋/, icon: '☁️', name: '烏雲罩頂(長黑覆蓋)', what: '高檔黑K開高走低、收破前一根紅K的一半以下 = 多方轉弱的高檔賣訊。', spot: '高檔、黑K收在前紅K中點之下。', how: '多單減碼,收破前紅K低更確認,別追高。', tip: '是「賣訊」,不是進場點。' },
+            { re: /母子/, icon: '🤱', name: '母子懷抱(變盤前兆)', what: '一根小K縮在前一根長K實體之內 = 多空休息、變盤前兆(方向看隔天)。', spot: '高檔母子(縮在長紅內)偏轉弱、低檔母子(縮在長黑內)偏轉強。', how: '看隔天:高檔母子開低跌破=空、低檔母子開高站上=多,順著突破方向做。', tip: '母子只是「暫停」,不表態別急著進。' },
+            { re: /遭遇/, icon: '🤝', name: '遭遇線(一日封口)', what: '開高/低走勢當天被打回前一根收盤價(把跳空缺口當天封掉)= 反轉訊號。', spot: '高檔長黑遭遇(收回前紅K收盤)偏空;低檔長紅遭遇(收回前黑K收盤)偏多。', how: '順反轉方向:高檔遭遇多單走、低檔遭遇可分批接;爆量更強。', tip: '要看是高檔(空)還是低檔(多)。' },
+            { re: /缺口|跳空|竭盡/, icon: '🚀', name: '缺口(跳空)', what: '跳空留下沒成交的缺口。朱鐵律:缺口不補繼續走、補掉就轉弱。', spot: '向上缺口=今低>昨高;向下缺口=今高<昨低。帶量脫離盤整=突破缺口;高檔連漲後跳空=竭盡缺口(易反轉)。', how: '向上缺口不補可續抱、回測缺口下緣不破承接;跌破並回補缺口就走。', tip: '竭盡缺口是末端警訊,隔天不續強就跑。' },
+            { re: /KD|MACD/, icon: '📉', name: '指標背離(動能衰竭)', what: '價創新高但 KD/MACD 沒跟著創高=頂背離(賣訊);價創新低但指標沒創低=底背離(買訊)。', spot: '比較最近兩個波峰(或波谷)的價格 vs 指標高低。', how: '頂背離:高檔別追、有貨分批停利;底背離:待紅K站上 5 日線分批接。', tip: '背離是「動能」警訊,不是馬上反轉,要等 K 線確認。' },
+            { re: /量價背離|無量創高|價漲量縮/, icon: '📊', name: '量價背離(漲沒量)', what: '價漲但量沒跟上(無量創高/價漲量縮)= 買盤後繼無力、易假突破拉回。', spot: '創新高卻量縮、或連漲量一路縮。', how: '沒放量別追高;要看到帶量長紅才是真突破。', tip: '量是能量;無量的高點常是假的。' },
+            { re: /扣抵/, icon: '📐', name: '均線扣抵值', what: '用「扣抵值」提前 1-2 天算出月線/季線明天會往上還往下。', spot: '今收站上扣抵值(明天要從均線扣掉那根)→ 均線即將翻揚(領先偏多);跌破則恐轉弱。', how: '領先訊號,搭配回後買上漲/紅K分批進,別單獨重壓。', tip: '這是「領先」還沒確認,配合其他買點更穩。' },
+            { re: /測壓|測撐/, icon: '📏', name: '測壓 / 測撐', what: '今天最高去測前波壓力沒過+留長上影=測壓有壓(賣訊);今天最低測前波支撐撐住+長下影=測撐有撐(可承接)。', spot: '摸到前波高/低,收盤過不了(或撐住),配爆量/量縮更明確。', how: '測壓有壓多單先走;測撐有撐低接、停損跌破支撐。', tip: '測壓爆量=賣壓重;測撐量縮=賣壓竭盡。' },
+            { re: /乖離/, icon: '🐕', name: '乖離過大(遛狗理論)', what: '股價離均線太遠會被拉回(狗跑太遠被繩子拉回)。正乖離大=追高易回落;負乖離大=跌深易反彈。', spot: '股價與月線相距 >15%。', how: '正乖離大:漲多分批停利別追;負乖離大:搶反彈到均線就好、僅短彈非轉多。', tip: '乖離是「回歸」訊號,不是方向反轉。' },
+            { re: /變盤線/, icon: '✨', name: '變盤線(十字/紡錘)', what: '小實體 K(多空勢均力敵)= 變盤前兆:高檔=反轉警示、低檔=止跌前兆。', spot: '實體很小、上下影線相當。', how: '看隔天表態:高檔變盤開低收黑=反轉;低檔變盤開高收紅=止跌反彈。', tip: '變盤線本身不表態,要等隔天。' },
+            { re: /弱中透強|強中透弱|K棒強弱/, icon: '💪', name: 'K棒強弱(林穎)', what: '紅黑K不等於漲跌:黑K但收盤比昨高=弱中透強(偏多);紅K但收盤比昨低=強中透弱(偏空)。', spot: '看「收盤 vs 昨收」而非單看紅綠。', how: '弱中透強可留意轉強;強中透弱高檔要防拉回。', tip: '別被單根紅綠騙,看收盤相對位置。' },
+            { re: /上影|下影/, icon: '🕯️', name: '長影線', what: '長上影=衝高被殺回(賣壓);長下影=殺低被買回(承接)。', spot: '影線遠比實體長。', how: '高檔長上影多單留意;低檔長下影可分批接、停損影線低。', tip: '要配合位置(高檔/低檔)判讀。' },
+            { re: /頸線.*跌破|頭部/, icon: '⛰️', name: '頭部頸線跌破', what: 'M頭/頭肩頂/三重頂跌破頸線(支撐)= 頭部成立、轉空。', spot: '收盤跌破近 30 日頭部整理的下緣頸線。', how: '多單快跑,反彈到頸線過不了再減;目標≈頭到頸線等幅測跌。', tip: '帶量跌破更確認。' },
+            { re: /頸線|底部/, icon: '🧱', name: '底部頸線突破', what: '頭肩底/W底/三重底整理後,帶量紅K突破上頸線=底部完成、轉多。', spot: '收盤突破近 30 日整理區上頸線,最好帶量。', how: '突破進場、停損跌破頸線;目標≈頸線到底等幅。', tip: '沒量的突破易假,跌回頸線下就走。' },
+            { re: /糾結|一字底/, icon: '🪢', name: '均線糾結(財神報到)', what: '多條均線糾結在一起=能量壓縮,一旦帶量突破常出飆股。', spot: '5/10/20/60 均線擠在很小範圍內。', how: '先鎖股,等帶量紅K突破上頸線再進;跌破則觀望。', tip: '糾結方向不明,別提早猜。' },
+            { re: /趨勢線/, icon: '📈', name: '趨勢線突破/跌破', what: '兩個墊高低點連成上升趨勢線(跌破=轉弱)、兩個下移高點連成下降趨勢線(突破=轉強)。', spot: '股價跌破/突破那條連線。', how: '跌破上升線減碼、站回再進;突破下降線可留意轉強,帶量更確認。', tip: '趨勢線是動態支撐壓力,配合量能看。' },
+            { re: /假突破|假跌破/, icon: '⚠️', name: '假突破 / 假跌破', what: '爆量長紅突破後隔 1-2 日又收破其 ½(假突破,偏空);長黑跌破後又收回 ½(假跌破,偏多)。', spot: '突破棒的 ½=(高+低)/2 被反向收破。', how: '假突破多單先跑;假跌破空單先回、止跌反彈機率高。', tip: '朱:假突破易真下跌,別凹。' },
+            { re: /止跌反彈|收盤轉強|收盤轉弱|壓制中/, icon: '🔄', name: '½價 / 收盤轉強弱', what: '½價=(高+低)/2=當天平均成本;站上大量長黑½=套牢賣壓消化(止跌);今收過昨高=轉強、破昨低=轉弱。', spot: '現價 vs 關鍵 K 的 ½、vs 昨高昨低。', how: '站上止跌可留意反彈;收盤轉強偏多、轉弱偏空。', tip: '½ 是主力/大戶成本區,很關鍵。' },
+            { re: /攻擊量|出貨量|換手量|止跌量|反彈量/, icon: '📊', name: '量能訊號', what: '攻擊量(放量紅K非高檔=進貨)、出貨量(高檔爆量黑K)、換手量(高檔大量黑K被紅K過高=洗籌續攻)、止跌量(低檔量縮)。', spot: '看量倍數 + 紅黑 + 位置(高/低檔)。', how: '攻擊量/換手量偏多可續抱;出貨量減碼;止跌量等紅K放量確認。', tip: '量價要一起看,量是能量。' },
+            { re: /壓力沉重|過不了/, icon: '🧱', name: '反覆過不了(遇壓有壓)', what: '近期多次摸到同一壓力都收不過=賣壓沉重。朱:過不了的股票很難賺,別選。', spot: '近 10 根多次觸壓力、收盤都沒過。', how: '多單過不了先走,等真的帶量收過壓力再看。', tip: '別跟過不了的股票硬耗。' },
+            { re: /過熱|急漲/, icon: '🔥', name: '多頭過熱(高檔留意)', what: '連漲多天/急漲>20%易高檔爆量反轉,末升段留意。', spot: '連漲天數多、累積漲幅大。', how: '持倉者短線分批停利;看到高檔爆量(紅黑都算)隔天不漲就跑。', tip: '過熱不是叫你放空,是提醒別追、該停利。' },
+            { re: /做多買點|回後|追高|等買點/, icon: '🎯', name: '回後買上漲(朱式買點)', what: '波段多頭回檔後、重新站上 5 日線的第二次起漲點。', spot: '頭頭高底底高 + 回檔沒破前低 + 紅K站回 5MA + 帶量過昨高=高勝率(約8成)。', how: '收盤確認進場、停損跌破 5MA 或前低。', tip: '高檔大量長紅½被跌破(做頭)後別再做。' },
+            { re: /盤整|三角|收斂/, icon: '📦', name: '盤整 / 三角收斂', what: '上下區間或越收越窄的三角整理,方向未定。', spot: '高不過前高、低不破前低,量縮。', how: '等帶量突破再順勢做,別在盤整中間追;突破假的就回箱。', tip: '盤整就是觀望,突破才是訊號。' },
+        ];
+        const e = W.find(x => x.re.test(t));
+        if (!e) { alert(`${t}\n\n此訊號的白話教學整理中,可先看卡片內的訊號說明文字。`); return; }
+        const sec = (lb, tx, c) => tx ? `<div class="mb-2"><div class="text-[11px] font-bold ${c || 'text-amber-300'} mb-0.5">${lb}</div><div class="text-[11px] text-gray-200 leading-relaxed">${tx}</div></div>` : '';
+        this._showRichModal(`${e.icon} ${e.name}`,
+            sec('【是什麼】', e.what, 'text-blue-300') + sec('【怎麼認】', e.spot) + sec('【怎麼做】', e.how, 'text-green-300') + sec('【小白提醒】', e.tip, 'text-yellow-300') +
+            `<div class="text-[9px] text-gray-600 mt-2">純公式偵測,僅供參考;實際看大盤與個股當下狀況,嚴守停損。你點的訊號:「${t}」</div>`);
     },
 
     // 📖 V41.33 — 四大金剛白話教學(小白:怎麼用這張卡)
