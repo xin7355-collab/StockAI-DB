@@ -1,0 +1,40 @@
+name: 🏷️ 概念股採礦(probe)
+
+# ⚙️ 探勘用:手動觸發,跑 concept_miner.py 抓 megatime 概念股 → data/concept_stocks.json
+#    先用這支確認網站結構、校正解析;穩定後再併進 daily_miner.yml 常態更新。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🏷️ 跑概念股採礦
+        run: python concept_miner.py
+
+      - name: 📋 印出產物摘要
+        if: always()
+        run: |
+          echo "=== concept_stocks.json (前 3000 字) ==="
+          head -c 3000 data/concept_stocks.json 2>/dev/null || echo "(無檔案)"
+          echo ""
+          echo "=== 檔案大小 ==="
+          ls -la data/concept_stocks.json 2>/dev/null || echo "(無檔案)"
+
+      - name: ⬆️ 上傳 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: concept_stocks
+          path: data/concept_stocks.json
+          if-no-files-found: warn
