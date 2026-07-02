@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V42.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1349,6 +1349,9 @@
                     </div>
                     <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 用外部免費 AI 網頁的額度,會另開分頁。適合查「公司/新聞/產品」等文字問題;K線/籌碼數字仍看下方各卡。引擎可在 ⚙️ 設定頁切換。</div>
                 </div>
+
+                <!-- 📊 V42.2 — 位階溫度計(距歷史高 + 52週位階,判強勢主流 vs 低基期落後) -->
+                <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
 
                 <!-- 🔬 個股基本面 X 光機（置頂;自動載入快取,但提供「重新掃描」按鈕讓使用者強制重抓）-->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
@@ -12330,6 +12333,54 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
+    // 📊 V42.2 — 位階溫度計(純公式):距歷史高折價 + 52週價格位階 → 強勢主流 vs 低基期落後
+    _priceRankData(data) {
+        if (!Array.isArray(data) || data.length < 30) return null;
+        const H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), C = b => +((b?.close ?? b?.c) || 0);
+        const pC = C(data[data.length - 1]);
+        if (!pC) return null;
+        const ath = Math.max(...data.map(H));                       // 歷史最高(全期)
+        const w52 = data.slice(-250);                               // 近 52 週(約 250 交易日)
+        const hi52 = Math.max(...w52.map(H)), lo52 = Math.min(...w52.map(L));
+        const rng = hi52 - lo52;
+        const pos = rng > 0 ? Math.max(0, Math.min(100, (pC - lo52) / rng * 100)) : 50;   // 0=谷底 100=頂
+        const discount = ath > 0 ? (ath - pC) / ath * 100 : 0;      // 距歷史高折價 %
+        const isATH = pC >= ath * 0.999;
+        let tag, tone, desc;
+        if (isATH) { tag = '🚀 強勢創新高'; tone = 'red'; desc = '股價創(或逼近)歷史新高 = 最強勢主流,上方無套牢壓力。順勢做但別追高,等回檔到 5MA/月線再進(用「回後買上漲」抓點)。'; }
+        else if (pos >= 85) { tag = '🔥 強勢主流(近高)'; tone = 'red'; desc = `位階高(在 52 週的 ${pos.toFixed(0)}%)、距高僅 −${discount.toFixed(0)}% = 強勢主流領頭。回檔就是買點,別等破線。`; }
+        else if (pos >= 55) { tag = '📈 中高位階'; tone = 'yellow'; desc = `位階中上(${pos.toFixed(0)}%)、距高 −${discount.toFixed(0)}% = 多頭整理中。等帶量突破前高或回測支撐不破再進。`; }
+        else if (pos >= 30) { tag = '📦 中段整理'; tone = 'yellow'; desc = `位階中段(${pos.toFixed(0)}%)、距高 −${discount.toFixed(0)}% = 上不上下不下。方向不明,等表態(突破 = 轉強、破低 = 轉弱)。`; }
+        else { tag = '🧊 低基期落後'; tone = 'green'; desc = `位階偏低(${pos.toFixed(0)}%)、距高 −${discount.toFixed(0)}% = 低基期落後股。有題材催化才是補漲候選(空間大);沒題材=弱勢,別為了便宜接刀。`; }
+        return { pC, ath, hi52, lo52, pos, discount, isATH, tag, tone, desc };
+    },
+    renderPriceRankCard(data) {
+        const el = document.getElementById('priceRankCard');
+        if (!el) return;
+        const r = this._priceRankData(data);
+        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const tc = r.tone === 'red' ? 'text-red-300' : r.tone === 'green' ? 'text-green-300' : 'text-yellow-300';
+        const bc = r.tone === 'red' ? 'border-red-500' : r.tone === 'green' ? 'border-green-500' : 'border-yellow-500';
+        const barC = r.pos >= 70 ? 'bg-red-400' : r.pos >= 35 ? 'bg-yellow-400' : 'bg-green-400';
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5 border-b border-[#30363d] pb-1.5">
+                <h4 class="font-bold text-sm text-gray-100 flex items-center gap-1.5">📊 位階溫度計 <span class="text-[9px] text-gray-500 font-normal">距高 + 52週位階</span></h4>
+                <button onclick="alert('【位階溫度計】怎麼看(小白版)\\n\\n判斷「這檔在強勢主流、還是低基期落後」——這是選股很重要的相對強弱維度。\\n\\n📏 距歷史高折價 = (歷史最高 − 現價) ÷ 歷史最高。越接近 0%(甚至創新高)= 越強。\\n📊 52週位階 = 現價在近一年高低區間的位置(0%=谷底、100%=最高)。\\n\\n🚀 創新高 / 位階>85% = 強勢主流領頭 → 做回檔買點(別追高)。\\n📦 中段(30~55%)= 等突破表態。\\n🧊 低基期<30% = 落後股,有題材才是補漲候選,沒題材別接刀。\\n\\n💡 搭配「回後買上漲/四大金剛」一起看:強勢主流 + 回後買上漲 = 最好的組合。純公式僅供參考。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖 教學</button>
+            </div>
+            <div class="bg-[#0d1117] border-l-4 ${bc} border-y border-r border-[#30363d] rounded-r p-2 mb-2">
+                <div class="text-sm font-black ${tc} mb-0.5">${r.tag}</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${r.desc}</div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div class="bg-[#0d1117] border border-[#30363d] rounded p-2"><div class="text-[9px] text-gray-500">距歷史高</div><div class="text-lg font-black font-mono ${r.discount <= 3 ? 'text-red-300' : r.discount >= 30 ? 'text-green-300' : 'text-gray-100'}">${r.isATH ? '創新高' : '−' + r.discount.toFixed(0) + '%'}</div><div class="text-[8px] text-gray-600 font-mono">高 ${r.ath.toFixed(r.ath >= 100 ? 0 : 2)}</div></div>
+                <div class="bg-[#0d1117] border border-[#30363d] rounded p-2"><div class="text-[9px] text-gray-500">52週位階</div><div class="text-lg font-black font-mono ${tc}">${r.pos.toFixed(0)}%</div><div class="text-[8px] text-gray-600 font-mono">區間 ${r.lo52.toFixed(r.lo52 >= 100 ? 0 : 2)}~${r.hi52.toFixed(r.hi52 >= 100 ? 0 : 2)}</div></div>
+            </div>
+            <div class="w-full h-2 bg-[#21262d] rounded-full overflow-hidden relative"><div class="h-full ${barC} transition-all" style="width:${r.pos}%"></div></div>
+            <div class="flex justify-between text-[8px] text-gray-600 mt-0.5"><span>谷底</span><span>52週位階</span><span>波段高</span></div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 強勢主流的回檔買點最優;低基期要有題材才做。純公式,搭配四大金剛/回後買上漲一起看。</div>`;
+        el.classList.remove('hidden');
+    },
+
     // 🕯️ V41.23 — K線頁「型態+量」評分卡(朱家泓做法:型態強弱 × 價量配合,純公式,0-100 分):
     //   ① 型態分:單一引擎 K棒型態訊號多空相抵(晨星/吞噬/貫穿/發動棒=多,夜星/長黑/假突破/測壓/做頭=空)
     //   ② 量分:朱鐵律「量增配長紅才有效突破 / 無量創高、量增黑K=假突破出貨」
@@ -18923,6 +18974,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
         try { this.renderKbarTactics(data); } catch (_) {}
         try { this.renderKbarScore(data); } catch (_) {}       // 🕯️ V41.23 K線頁 型態+量 評分卡
+        try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
@@ -19647,6 +19699,54 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         }, 40);
     },
 
+    // 📖 V42.2 — 通用「型態百科」格式化教學彈窗(取代擠成一團的 alert;可重用給任何複雜型態)
+    _showRichModal(title, html) {
+        let m = document.getElementById('richHelpModal');
+        if (!m) {
+            m = document.createElement('div');
+            m.id = 'richHelpModal';
+            m.className = 'fixed inset-0 z-[9999] bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center';
+            m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
+            document.body.appendChild(m);
+        }
+        m.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div class="sticky top-0 bg-[#161b22] border-b border-[#30363d] px-4 py-3 flex items-center justify-between z-10">
+                <h3 class="text-base font-black text-amber-300">${title}</h3>
+                <button onclick="document.getElementById('richHelpModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl font-bold leading-none px-1">✕</button>
+            </div>
+            <div class="p-4 text-gray-200 leading-relaxed">${html}</div>
+        </div>`;
+        m.classList.remove('hidden');
+        this.vibrate?.(20);
+    },
+
+    // 📈 V42.2 — 葛蘭碧八大法則完整教學(4 買 4 賣,含 App 偵測對照)
+    showGranvilleFull() {
+        const row = (badge, bc, title, sit, how, appNote) => `
+            <div class="bg-[#0d1117] border-l-4 ${bc} border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                <div class="text-[12px] font-black mb-1">${badge} ${title}</div>
+                <div class="text-[10px] text-gray-400 mb-1"><b class="text-gray-300">情境:</b>${sit}</div>
+                <div class="text-[10px] text-gray-300 mb-1"><b class="text-amber-300">怎麼做:</b>${how}</div>
+                <div class="text-[9px] text-gray-500">${appNote}</div>
+            </div>`;
+        const html = `
+            <div class="bg-blue-900/15 border-l-2 border-blue-500/60 pl-2.5 py-2 rounded-r mb-3 text-[11px] text-blue-100/90 leading-relaxed">
+                🎓 <b>核心觀念(遛狗理論)</b>:股價像狗、均線像主人牽的繩子 —— 狗跑太遠(乖離過大)一定會被拉回均線附近。葛蘭碧就是用「股價 vs 一條均線(最常用<b>月線 20MA</b>)」的相對關係,抓 8 個買賣點。<b>先決條件:均線的方向</b>(上揚才找買、下彎才找賣)。
+            </div>
+            <div class="text-[11px] font-black text-red-300 mb-1.5">🟥 四個買點(均線上揚時找)</div>
+            ${row('🔴 買1', 'border-red-500', '突破(黃金交叉)', '均線由下彎轉平/上揚,股價由下向上<b>突破均線</b>。', '波段轉多的起手式,收盤站上月線可進場,停損跌破月線。', '✅ App 偵測:「葛蘭碧買1(突破月線)」')}
+            ${row('🔴 買2', 'border-red-500', '假跌破', '均線<b>持續上揚</b>,股價跌破均線後<b>又拉回站上</b>(騙線洗盤)。', '跌破不站回才是真轉空;站回月線之上=洗盤結束,可進。', '✅ App 偵測:「葛蘭碧買2(假跌破站回)」')}
+            ${row('🔴 買3', 'border-red-500', '回測支撐', '均線上揚,股價回檔到均線附近<b>沒跌破又彈起</b>。', '月線當地板、收紅確認進場,停損跌破月線。這就是朱老師「回後買上漲」的葛蘭碧版。', '✅ App 偵測:「葛蘭碧買3(回測支撐)」+「回後買上漲」')}
+            ${row('🔴 買4', 'border-red-500', '跌深反彈', '均線下彎,股價<b>遠低於均線(負乖離過大)</b>,跌過頭。', '搶反彈到均線附近就好,僅短彈非轉多,要快、要設停利,別戀棧。', '✅ App 偵測:「負乖離過大」(K棒戰法卡)')}
+            <div class="text-[11px] font-black text-green-300 mb-1.5 mt-3">🟩 四個賣點(均線下彎時找)</div>
+            ${row('🟢 賣1', 'border-green-500', '跌破(死亡交叉)', '均線由上揚轉平/下彎,股價由上向下<b>跌破均線</b>。', '波段轉空訊號,多單出場、別凹單。', '✅ App 偵測:「葛蘭碧賣1(跌破月線)」')}
+            ${row('🟢 賣2', 'border-green-500', '假突破', '均線<b>持續下彎</b>,股價突破均線後<b>又跌回</b>(反彈無力)。', '突破過不了又跌回=空方主導,別追、有貨續減。', '✅ App 偵測:「葛蘭碧賣2(假突破跌回)」')}
+            ${row('🟢 賣3', 'border-green-500', '反彈受阻', '均線下彎,股價反彈到均線附近<b>過不了又下跌</b>。', '月線變成天花板壓力,反彈就是減碼點,站上月線才解除。', '✅ App 偵測:「葛蘭碧賣3(反彈受阻)」')}
+            ${row('🟢 賣4', 'border-green-500', '乖離過大(追高回落)', '均線上揚,股價<b>遠高於均線(正乖離過大)</b>,漲過頭。', '追高易套,漲多要分批停利、別追;等回檔到均線再找買點。', '✅ App 偵測:「正乖離過大」(K棒戰法卡)')}
+            <div class="text-[10px] text-gray-500 mt-2 leading-relaxed">💡 <b>實戰重點</b>:8 個點裡最實用、勝率最高的是 <b class="text-red-300">買3(回測支撐)</b> 和 <b class="text-green-300">賣1(跌破均線)</b> —— 一個順勢低接、一個果斷停損,正是「賺大賠小」。買4/賣4 是逆勢搶反彈/追高風險最高,只適合短打高手。<br><br>⚠️ 均線常用月線(20MA);快多頭可搭 5MA/10MA,大波段看季線(60MA)。純公式僅供參考,實際嚴守停損。</div>`;
+        this._showRichModal('📈 葛蘭碧八大法則(完整操作)', html);
+    },
+
     // 📖 V41.33 — 四大金剛白話教學(小白:怎麼用這張卡)
     showGuardianHelp() {
         alert('⚡ 朱老師四大金剛 — 怎麼用(小白版)\n\n朱老師說:看盤不要只看一個指標,要「四個一起看」,四個同方向才可靠。這張卡就是自動幫你檢查這四個:\n\n👑 趨勢:是不是「頭頭高、底底高」= 多頭波段(反之頭頭低底底低=空頭)。先定方向。\n📈 均線:是不是「多頭排列」MA5>MA10>MA20>MA60、月線上揚。\n🕯️ K線:今天有沒有強勢發動棒(長紅破昨高)或轉折K(晨星/吞噬)。\n📊 成交量:漲有沒有帶量(價漲量增=真);還是量價背離(漲沒量=假)。\n\n🚦 怎麼判讀(看下面那行燈號):\n  🟢 四大金剛齊發(多4)= 信度最高,順勢進、守 5MA,跌破就走。\n  🟢 三金剛偏多 = 可留意,補齊缺的那個更穩。\n  🟡 分歧 = 四個不同調(轉折/盤整),方向不明先觀望。\n  🔴 金剛偏空 = 別做多、別接刀,有貨顧好停損。\n\n💡 台股色:紅=偏多、綠=偏空。純公式算的事實,不是叫你一定要買賣,是幫你「四個面向一次看齊」。');
@@ -19667,6 +19767,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const r = (this._lastPlaybook?.ranked || [])[idx];
         if (!r) { alert('請先點「分析這檔的最佳打法」產生結果。'); return; }
         const name = r.key.replace(/^\S+\s/, '');
+        // 📈 V42.2 葛蘭碧有完整八大法則 → 開格式化教學彈窗(而非擠一團的 alert)
+        if (name === '葛蘭碧買點') { this.showGranvilleFull(); return; }
         const H = {
             '回後買上漲': { what: '多頭股「回檔後、重新站上 5 日線」的第二次起漲點(朱老師招牌買點)。', spot: '波段多頭(頭頭高、底底高)+ 回檔沒破前低 + 今天紅K重新站上 5 日線 + 帶量、收盤過昨天最高。', how: '收盤確認訊號當天進場 → 停損:跌破 5 日線 或 跌破前一個低點 → 停利:跌破 5 日線就跑。', tip: '只在波段多頭做;大盤黑天鵝、或高檔大量長紅½被跌破(做頭)時別做。' },
             '晨星轉折': { what: '低檔「3 根 K 棒」的打底反轉:左長黑 + 中間小K(變盤線)+ 右長紅。', spot: '相對低檔出現、左黑右紅,右邊那根紅K收盤要「站回左邊長黑K的中點以上」才算數。', how: '晨星成立後、隔天開高不破就進場 → 停損跌破晨星「最低點」→ 停利跌破 5 日線。', tip: '要在相對低檔才有意義;高檔出現類似型態別當反轉。' },
