@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V42.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -974,6 +974,7 @@
                 </div>
                 <div class="flex px-2 pt-1.5 bg-[#0d1117] overflow-x-auto">
                     <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">⚡ 首席</button>
+                    <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📡 即時</button>
                     <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📈 K線</button>
                     <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">🔬 籌碼</button>
                     <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📊 基本</button>
@@ -1196,6 +1197,26 @@
 
             </div>
 
+<div id="subContentLive" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[50vh]">
+                <!-- ⚡ V42.8 — 盤中即時分鐘K線(獨立 tab,免費 Fugle candles,零採礦) -->
+                <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-sm font-black text-cyan-300 flex items-center gap-1.5">⚡ 盤中即時分鐘K</div>
+                        <button onclick="alert('【盤中即時分鐘K】\n\n這是「當天盤中」的分鐘K棒圖(1分/5分),讓你看盤中即時走勢、量能有沒有進來,不用等收盤。\n\n📊 資料來源:免費 Fugle 行情 API(你設定頁填的 token),零採礦。\n⏰ 只有盤中(09:00–13:30)抓得到當天即時分鐘K;非盤中會顯示最近一個交易日的分鐘K(靜態)。\n🔄 免費版有流量限制,所以做成「手動按鈕更新」,不會自己一直跳。想看即時就按一下「載入/更新盤中K」。\n\n下方摘要:\n• 估量達標度%:用目前累計量線性外推今天收盤量,對比昨天總量(80%以上=量能有進來)。\n• 內外盤買賣力道:用五檔委買/委賣量估主力當下偏多偏空(盤中估算,真實分點以收盤後為準)。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 說明</button>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="flex bg-[#0d1117] rounded border border-[#30363d] overflow-hidden flex-shrink-0">
+                            <button id="intraTF_1" onclick="app.setIntradayTF('1')" class="px-3 py-1 text-xs font-bold bg-cyan-700 text-white transition-colors">1分</button>
+                            <button id="intraTF_5" onclick="app.setIntradayTF('5')" class="px-3 py-1 text-xs font-bold text-gray-400 bg-transparent hover:text-white transition-colors">5分</button>
+                        </div>
+                        <button id="intradayKlineBtn" onclick="app.loadIntradayKline(app.currentSymbolId); app.vibrate(20);" class="flex-1 text-xs font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 載入 / 更新盤中K</button>
+                    </div>
+                    <div id="intradayKlineChart" class="w-full h-[300px]"></div>
+                    <div id="intradaySummary" class="hidden mt-2 text-[11px] leading-relaxed"></div>
+                    <div id="intradayHint" class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">👆 盤中(09:00–13:30)進此頁自動拉當日分鐘K;非盤中顯示最近交易日。免費 Fugle 額度有限,手動更新即可。</div>
+                </div>
+            </div>
+
 <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
 
                 <div id="onboard_kline" class="onboard-panel relative bg-amber-900/15 border border-amber-700/40 rounded-lg p-3 text-[11px] leading-relaxed text-gray-300">
@@ -1218,23 +1239,6 @@
                 </div>
                 <!-- 🕯️ V41.23 — K線型態+量 評分卡(朱家泓做法:型態強弱 × 價量配合,純公式) -->
                 <div id="kbarScoreCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
-                <!-- ⚡ V42.7 — 盤中即時分鐘K線面板(免費 Fugle candles,零採礦) -->
-                <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="text-sm font-black text-cyan-300 flex items-center gap-1.5">⚡ 盤中即時分鐘K</div>
-                        <button onclick="alert('【盤中即時分鐘K】\n\n這是「當天盤中」的分鐘K棒圖(1分/5分),讓你看盤中即時走勢、量能有沒有進來,不用等收盤。\n\n📊 資料來源:免費 Fugle 行情 API(你設定頁填的 token),零採礦。\n⏰ 只有盤中(09:00–13:30)抓得到當天即時分鐘K;非盤中會顯示最近一個交易日的分鐘K(靜態)。\n🔄 免費版有流量限制,所以做成「手動按鈕更新」,不會自己一直跳。想看即時就按一下「載入/更新盤中K」。\n\n下方摘要:\n• 估量達標度%:用目前累計量線性外推今天收盤量,對比昨天總量(80%以上=量能有進來)。\n• 內外盤買賣力道:用五檔委買/委賣量估主力當下偏多偏空(盤中估算,真實分點以收盤後為準)。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 說明</button>
-                    </div>
-                    <div class="flex items-center gap-2 mb-2">
-                        <div class="flex bg-[#0d1117] rounded border border-[#30363d] overflow-hidden flex-shrink-0">
-                            <button id="intraTF_1" onclick="app.setIntradayTF('1')" class="px-3 py-1 text-xs font-bold bg-cyan-700 text-white transition-colors">1分</button>
-                            <button id="intraTF_5" onclick="app.setIntradayTF('5')" class="px-3 py-1 text-xs font-bold text-gray-400 bg-transparent hover:text-white transition-colors">5分</button>
-                        </div>
-                        <button id="intradayKlineBtn" onclick="app.loadIntradayKline(app.currentSymbolId); app.vibrate(20);" class="flex-1 text-xs font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 載入 / 更新盤中K</button>
-                    </div>
-                    <div id="intradayKlineChart" class="w-full h-[260px]"></div>
-                    <div id="intradaySummary" class="hidden mt-2 text-[11px] leading-relaxed"></div>
-                    <div id="intradayHint" class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">👆 盤中(09:00–13:30)按上方鈕拉當日分鐘K;非盤中顯示最近交易日。免費 Fugle 額度有限,手動更新即可。</div>
-                </div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
                     <div class="flex items-center gap-2 px-1 py-1 border-b border-[#30363d] flex-nowrap overflow-x-auto scrollbar-hide">
                         <div class="flex bg-[#161b22] rounded border border-[#30363d] overflow-hidden flex-shrink-0" id="tfBtnGroup">
@@ -5009,13 +5013,22 @@ ${list}
 
     switchSubTab(tab) {
         this._activeSubTab = tab;   // 🐛 V41.28 記錄當前 sub-tab,切股時 analyze 才知道要補跑哪個載入器
-        ['Strategy', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
+        ['Strategy', 'Live', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
             const el = document.getElementById(`subContent${t}`);
             if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
             const btn = document.getElementById(`subTabBtn${t}`);
             if (btn) btn.classList.toggle('active', t.toLowerCase() === tab);
         });
         if (tab === 'chart' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
+        // 📡 即時 tab:進頁自動拉當日分鐘K(換股/首次進入才重抓,省 Fugle 額度);已載過同股只 resize
+        if (tab === 'live' && this.currentSymbolId) {
+            if (this._intradayLoadedSym !== this.currentSymbolId) {
+                this.loadIntradayKline(this.currentSymbolId);
+            } else {
+                const el = document.getElementById('intradayKlineChart');
+                if (el && typeof echarts !== 'undefined') { const inst = echarts.getInstanceByDom(el); if (inst) setTimeout(() => { try { inst.resize(); } catch (_) {} }, 100); }
+            }
+        }
         if (tab === 'chip' && this.currentSymbolId) {
             this.fetchChipTimeline(this.currentSymbolId, true);
             this.loadBrokerChips(this.currentSymbolId, true);
