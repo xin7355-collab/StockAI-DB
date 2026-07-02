@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V44.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -859,7 +859,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.0</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.1</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1237,6 +1237,8 @@
                     </div>
                 </details>
 
+                <!-- 🏋️ V44.1 — 權值股超跌反彈告警(只在權值股跌≥25%才顯) -->
+                <div id="heavyReboundCard" class="hidden"></div>
                 <!-- 🗣️ V43.5 — 朱老師口吻 K線型態總評(純公式,點進K線頁即自動顯示,比 AI 準) -->
                 <div id="chuVerdictCard" class="hidden"></div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
@@ -2574,6 +2576,9 @@ const app = {
     currentRadarResults: null, lastRadarType: null, _radarUpdatedAt: '',
     latestNewsCache: "", latestYoyCache: "", latestFinancialAICache: "", autoRefreshTimer: null,
     
+    // 🏋️ V44.1 — 台股主要權值股(TAIEX/0050 前段權值,含金融/半導體/電子/傳產/航運/電信),供「超跌反彈告警」判定
+    _HEAVYWEIGHTS: new Set(['2330','2317','2454','2308','2382','2881','2882','2891','1301','1303','2412','2303','3711','2002','2886','2884','1216','1101','2345','2357','4938','2301','3231','6669','3008','2379','5347','2603','2885','2883','2892','5880','2887','2890','5876','3045','4904','2912','2395','2474','3034','2408','8046','2207','6505','2409','3037','2377','2887','1590','2618']),
+
     fugleKeyIndex: 0,
     lastFugleReqTime: 0,
     _fugleCache: {},   // { symbol: { data, ts } } — 60 秒 TTL，跨頁共享 Fugle 結果，避免重複打 API 或失敗時無資料
@@ -3405,6 +3410,20 @@ const app = {
                 }
                 if (_boMid && prevClose >= _boMid && nowPrice < _boMid)
                     trigger('dnBoMid', '🔴 跌破突破棒½價', `現價 ${nowPrice.toFixed(2)} 跌破結構防守 ${_boMid.toFixed(2)},這波多頭結構轉弱`);
+                // 🏋️ V44.1 — 權值股超跌反彈告警(權值股跌≥25% + 超賣 + 站回5MA=止穩→易彈)
+                if (this._HEAVYWEIGHTS.has(String(sym))) {
+                    const _look = kdata.slice(-120);
+                    const _hi120 = Math.max(..._look.map(r => +r.high || +r.close || 0));
+                    if (_hi120 > 0) {
+                        const _drop = (nowPrice - _hi120) / _hi120 * 100;
+                        const _bias20 = ma20 ? (nowPrice - ma20) / ma20 * 100 : 0;
+                        const _stabilize = prevClose < ma5 && nowPrice >= ma5;   // 昨在5MA下、今站回=止穩訊號
+                        if (_drop <= -25 && _bias20 < -12 && _stabilize) {
+                            const _lo30 = Math.min(...kdata.slice(-30).map(r => +r.low || +r.close || Infinity).filter(v => Number.isFinite(v)));
+                            trigger('heavyRebound', '🏋️ 權值股超跌反彈候選', `從近半年高 ${_hi120.toFixed(1)} 跌 ${Math.abs(_drop).toFixed(0)}% + 超賣 + 站回5MA(止穩),ETF/法人護盤易彈 → 可小量搏反彈,跌破前低 ${Number.isFinite(_lo30) ? _lo30.toFixed(1) : '前低'} 停損`);
+                        }
+                    }
+                }
                 // 📉 V32.0 ③ 高檔出貨(最近 settled bar,每日最多 1 次):近 60 高 + 爆量 + 小實體/長上影
                 try {
                     const _lb = kdata[kdata.length - 1];
@@ -12599,6 +12618,67 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ① 型態分:單一引擎 K棒型態訊號多空相抵(晨星/吞噬/貫穿/發動棒=多,夜星/長黑/假突破/測壓/做頭=空)
     //   ② 量分:朱鐵律「量增配長紅才有效突破 / 無量創高、量增黑K=假突破出貨」
     //   總分 = 型態 55% + 量 45%(禁 AI 算,全 JS 公式)
+    // 🏋️ V44.1 — 權值股超跌反彈偵測(純公式):權值股跌深 ≥25% + 超賣 + 止跌訊號才算「值得搏反彈」
+    //   邏輯:權值股有 ETF/法人護盤,超跌後均值回歸機率高;但基本面壞/未止穩時 25% 只是半山腰 → 分兩級別燈號
+    _detectHeavyweightRebound(data, sym) {
+        try {
+            sym = String(sym || this.currentSymbolId || '').replace(/\.TW.*$/i, '').replace(/^0+/, m => m);
+            const s2 = String(sym).replace(/[^0-9A-Za-z]/g, '');
+            if (!this._HEAVYWEIGHTS.has(s2)) return [];   // 只對權值股觸發
+            if (!Array.isArray(data) || data.length < 60) return [];
+            const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+            const last = data.length - 1, price = C(data[last]);
+            if (!(price > 0)) return [];
+            // 近 120 日(約半年)波段高 → 跌幅
+            const look = data.slice(-120);
+            const hi = Math.max(...look.map(H).filter(v => v > 0));
+            if (!(hi > 0)) return [];
+            const dropPct = (price - hi) / hi * 100;   // 負值
+            if (dropPct > -25) return [];              // 沒跌到 25% 不觸發
+            const absDrop = Math.abs(dropPct).toFixed(0);
+            const ind = this.indicators || {};
+            const at = (arr) => (Array.isArray(arr) && Number.isFinite(+arr[last])) ? +arr[last] : null;
+            const k = at(ind.k), ma5 = at(ind.ma5), ma20 = at(ind.ma20);
+            const biasMa20 = ma20 ? (price - ma20) / ma20 * 100 : null;
+            const oversold = (k != null && k < 25) || (biasMa20 != null && biasMa20 < -12);
+            // 止跌訊號:今紅K站回5MA(昨在5MA下) 或 長下影止跌
+            const o = O(data[last]), c = C(data[last]), h = H(data[last]), l = L(data[last]);
+            const red = c >= o;
+            const prevBelow5 = (ind.ma5 && Number.isFinite(+ind.ma5[last - 1])) ? C(data[last - 1]) < +ind.ma5[last - 1] : false;
+            const backAbove5 = ma5 != null && price >= ma5 && prevBelow5;
+            const bodyAbs = Math.abs(c - o), lowerShadow = (Math.min(o, c) - l);
+            const longLower = (h - l) > 0 && lowerShadow > bodyAbs * 1.5 && lowerShadow / price > 0.015;
+            const stabilizing = (red && backAbove5) || longLower;
+            const nf = v => (+v).toLocaleString('en-US', { maximumFractionDigits: 2 });
+            if (stabilizing && oversold) {
+                return [{ tone: 'bull', title: '🏋️ 權值股超跌反彈候選', val: `跌${absDrop}%`,
+                    msg: `從近半年高 ${nf(hi)} 已跌 <b>${absDrop}%</b>,KD/乖離<b>超賣</b>+出現<b>止跌訊號</b>(${backAbove5 ? '紅K站回5MA' : '長下影止跌'})。權值股有 ETF+法人護盤,超跌後彈升機率較高 → 可<b>小量搏反彈</b>,<b>跌破前低(${nf(Math.min(...look.slice(-30).map(L).filter(v => v > 0)))})立刻停損</b>。⚠️ 若近期有砍單/產業利空,25% 恐只是半山腰,別重押。` }];
+            }
+            return [{ tone: 'warn', title: '🏋️ 權值股跌深但未止穩', val: `跌${absDrop}%`,
+                msg: `從近半年高 ${nf(hi)} 已跌 <b>${absDrop}%</b>,但<b>還沒止穩</b>(未站回5MA/未見長下影量縮)。權值股跌深常有反彈,但<b>別急著接刀</b> → 等 K 線收腳(長下影或連2紅站上5MA)再搏反彈。` }];
+        } catch (_) { return []; }
+    },
+
+    // 🏋️ V44.1 — 權值股超跌反彈告警卡(個股頁,只在權值股跌 ≥25% 才顯)
+    renderHeavyReboundCard(data) {
+        const el = document.getElementById('heavyReboundCard');
+        if (!el) return;
+        const sig = (this._detectHeavyweightRebound(data) || [])[0];
+        if (!sig) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const bull = sig.tone === 'bull';
+        const bar = bull ? 'border-red-500' : 'border-yellow-500';
+        const tcls = bull ? 'text-red-300' : 'text-yellow-300';
+        el.className = 'bg-[#161b22] border-l-4 ' + bar + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+                <div class="text-base font-black ${tcls}">${sig.title} <span class="text-sm font-mono">${sig.val}</span></div>
+                <span class="text-[10px] text-gray-600">純公式·非AI</span>
+            </div>
+            <div class="text-[13px] text-gray-200 leading-relaxed">${sig.msg}</div>
+            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">🏋️ 權值股超跌反彈告警 · 機率參考非保證,基本面壞掉時 25% 恐續跌,僅供參考非投資建議</div>`;
+        el.classList.remove('hidden');
+    },
+
     // 🗣️ V43.5 — 朱老師口吻 K線型態總評(100% 純公式,禁 AI:比 AI 準且不耗額度)
     //   綜合:波段結構(頭頭高底底高)+ 均線多空 + K棒型態偵測 + 歷史高點/前高 + 量能 → 白話講給散戶聽
     renderChuKbarVerdict(data) {
@@ -19550,6 +19630,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
         try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
         try { this.renderKbarTactics(data); } catch (_) {}
+        try { this.renderHeavyReboundCard(data); } catch (_) {}  // 🏋️ V44.1 權值股超跌反彈告警
         try { this.renderChuKbarVerdict(data); } catch (_) {}  // 🗣️ V43.5 朱老師口吻 K線型態總評(純公式,點進K線頁即見)
         // V43.7 移除:📐 K線分析報告(AI) + 🕯️ K線型態+量評分 → 由上方朱老師口吻總評取代
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
