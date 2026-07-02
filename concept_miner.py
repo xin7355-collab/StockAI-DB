@@ -48,7 +48,7 @@ def _txt(s):
     return TAG_RE.sub("", s or "").strip()
 
 
-def get(url, timeout=25, data=None):
+def get(url, timeout=10, data=None, retries=2):
     hdr = {
         "User-Agent": UA,
         "Referer": BASE + "/m/group/newgroup",
@@ -60,19 +60,20 @@ def get(url, timeout=25, data=None):
     if body:
         hdr["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
     req = urllib.request.Request(url, data=body, headers=hdr)
-    for attempt in range(3):
+    for attempt in range(retries):
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 raw = r.read()
                 enc = r.headers.get_content_charset() or "utf-8"
                 return raw.decode(enc, errors="ignore"), r.status
         except urllib.error.HTTPError as e:
-            print(f"   HTTP {e.code} ← {url}")
             if e.code in (403, 404):
                 return None, e.code
+            print(f"   HTTP {e.code} ← {url}")
         except Exception as e:
             print(f"   ERR {url}: {e}")
-        time.sleep(1.5 * (attempt + 1))
+        if attempt < retries - 1:
+            time.sleep(1.0)
     return None, 0
 
 
@@ -304,8 +305,8 @@ def main():
         return
 
     # ===== 正式採礦(結構已確認 V45.9)=====
-    # 1) 四張分類頁 → 收集所有 data-type="{mkt}_{sub}" 族群 + 乾淨名稱
-    CAT_PAGES = ["/m/group/newgroup", "/m/group/mkt0/", "/m/group/mkt1/", "/m/group/mkt5/"]
+    # 1) 分類頁 → 收集 data-type="{mkt}_{sub}" 族群 + 乾淨名稱(跳過 mkt5 指數成分,概念性低且量大)
+    CAT_PAGES = ["/m/group/newgroup", "/m/group/mkt0/", "/m/group/mkt1/"]
     gid_name, order = {}, []
     for p in CAT_PAGES:
         html, st = get(BASE + p)
@@ -314,7 +315,7 @@ def main():
             print(f"⚠️ 分類頁失敗 {p} status={st}")
             continue
         for dt, raw in re.findall(r'data-type="([^"]+)"[^>]*>(.*?)</', html, re.S):
-            if "_" not in dt:
+            if "_" not in dt or dt.split("_", 1)[0] == "5":
                 continue
             nm = _txt(raw)[:24]
             if nm and dt not in gid_name:
@@ -327,10 +328,17 @@ def main():
         _write({}, {}, note="no_groups")
         sys.exit(1)
 
-    # 2) 逐族群 → groupinfo 頁抓成分股 sid
+    # 2) 逐族群 → groupinfo 頁抓成分股 sid(全域時間預算,逾時就寫已抓到的部分)
     cap = int(os.environ.get("CONCEPT_GROUP_CAP", "9999"))
+    budget_s = int(os.environ.get("CONCEPT_TIME_BUDGET", "540"))
+    t0 = time.time()
     groups = {}
+    stopped = False
     for i, gid in enumerate(order[:cap]):
+        if time.time() - t0 > budget_s:
+            print(f"⏱️ 達時間預算 {budget_s}s,停在 {i}/{len(order)},寫入已抓部分")
+            stopped = True
+            break
         x, y = gid.split("_", 1)
         html, st = get(f"{BASE}/m/groupinfo/mkt{x}/st{y}.html")
         if not html:
@@ -339,8 +347,8 @@ def main():
         if sids:
             groups[gid] = {"name": gid_name[gid], "mkt": x, "syms": sids}
         if i % 40 == 0:
-            print(f"  {i}/{len(order)} {gid} {gid_name[gid]} → {len(sids)} 檔")
-        time.sleep(0.12)
+            print(f"  {i}/{len(order)} ({int(time.time()-t0)}s) {gid} {gid_name[gid]} → {len(sids)} 檔")
+        time.sleep(0.08)
 
     # 3) 反查表 by_stock:mkt2(細產業/概念)優先 → 0/1(大分類)→ 5(指數成分)→ 其餘
     prio = {"2": 0, "0": 1, "1": 1, "5": 3}
@@ -352,7 +360,7 @@ def main():
                 lst.append(g["name"])
 
     print(f"\n✅ 族群 {len(groups)} 個 / 個股 {len(by_stock)} 檔有標籤")
-    _write(groups, by_stock)
+    _write(groups, by_stock, note=("partial" if stopped else ""))
 
 
 def _write(groups, by_stock, note=""):
