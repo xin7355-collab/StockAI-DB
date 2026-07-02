@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V44.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -865,7 +865,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.3</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1004,6 +1004,8 @@
                 <div id="todayOrderCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <div class="p-3 bg-[#0d1117] flex flex-col gap-3 relative border-b border-[#30363d]">
+                        <!-- 🧠 首席AI全盤分析 + 🔮 此股預判AI V44.4 隱藏(使用者:版面好看);函式/容器保留供 JS null-safe -->
+                        <div class="hidden">
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" ondblclick="app.runUnifiedGroqAnalysis({force:true}); app.vibrate([30,30,30]);" title="點一下分析；連點兩下強制重抽（會耗 1 次 API 額度）" class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 text-purple-300 py-3 rounded-lg text-base font-black shadow-md flex justify-center items-center gap-2 transition-all">
                             🧠 首席 AI 全盤分析
                         </button>
@@ -1019,17 +1021,17 @@
                         </button>
                         <div class="text-center text-[8px] text-gray-500 -mt-1">15 分鐘內快取 ・ 雙擊強制重抽</div>
                         <div id="stockPredictResult" class="text-[11px] text-gray-200 leading-relaxed"></div>
+                        </div><!-- /隱藏 首席AI + 此股預判AI -->
                         <!-- 🔎 V41.26 免費備援:自家 AI 撞額度時,開外部免費 AI 查最新消息/為何漲跌(不耗額度) -->
                         <button onclick="app._openFreeAiStock('latest'); app.vibrate(30);" title="開外部免費 AI(Perplexity 等)查這檔最新消息,不耗自家 AI 額度" class="w-full bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 text-amber-300 py-2 rounded-lg text-[12px] font-bold shadow-sm flex justify-center items-center gap-1.5 transition-all">🔎 免費查最新消息/為何漲跌 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
                         <!-- 🚥 V39.3 戰術訊號燈卡已移除(使用者要求);computeUnifiedSignal 仍餵首席 AI + 頂部指揮部 LED,updateConfidenceLed 對 confLed/confText 已 null-guard -->
 
                         <!-- 🦅 V39.2 獵鷹建倉儀表板已移除(連根拔除);黑天鵝防禦矩陣已搬到「大盤趨勢→盤前大盤體檢」 -->
                     </div>
-                    <div class="flex bg-[#161b22] border-b border-[#30363d] px-2 pb-2 pt-1 gap-2">
-                        <div class="flex-1 flex flex-col gap-0.5">
-                            <span id="costInputLabel" class="text-[9px] text-gray-500 font-bold text-right pr-1 leading-none">空手</span>
-                            <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 px-2 py-1.5 rounded w-full text-right font-mono text-sm font-bold border border-gray-700 outline-none focus:border-yellow-500 transition-colors" placeholder="成本價" oninput="this.dataset.fromInventory='false'; app.refreshStrategy(); app._updateCostLabel(); app._scheduleAIRecalc('cost');" onblur="app._triggerAIRecalcIfDirty('cost');" onkeydown="if(event.key==='Enter'){event.target.blur();}">
-                        </div>
+                    <!-- 💴 成本價輸入列 V44.4 隱藏(使用者:版面好看);input#costInput 保留在 DOM(21處損益計算靠它讀值,庫存自動填入),庫存損益仍顯於 costPnlBar -->
+                    <div class="hidden">
+                        <input type="number" inputmode="decimal" id="costInput" class="bg-[#010409] text-yellow-400 text-right font-mono" placeholder="成本價" oninput="this.dataset.fromInventory='false'; app.refreshStrategy(); app._updateCostLabel(); app._scheduleAIRecalc('cost');" onblur="app._triggerAIRecalcIfDirty('cost');" onkeydown="if(event.key==='Enter'){event.target.blur();}">
+                        <span id="costInputLabel" class="text-[9px] text-gray-500">空手</span>
                     </div>
                     <input type="hidden" id="chipCostInput" oninput="app.refreshStrategy()">
                     <div id="chipRadarPanel" class="hidden">
