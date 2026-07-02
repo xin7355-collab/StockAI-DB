@@ -9,9 +9,18 @@ on:
         description: '1=深度探勘結構 / 0=正式抓取'
         required: false
         default: '1'
+      deploy:
+        description: '1=抓完把 concept_stocks.json 加進 gh-pages(立即上線)'
+        required: false
+        default: '0'
+
+# 與 deploy_pages / daily_miner deploy 共用 group,避免同時 push gh-pages 撞鎖
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   probe:
@@ -45,3 +54,24 @@ jobs:
           name: concept_stocks
           path: data/concept_stocks.json
           if-no-files-found: warn
+
+      - name: 🌐 加進 gh-pages(立即上線,additive 不動其他檔;deploy=1 才跑)
+        if: ${{ github.event.inputs.deploy == '1' }}
+        run: |
+          set -e
+          [ -f data/concept_stocks.json ] || { echo "無 concept_stocks.json,跳過"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/cs && cp data/concept_stocks.json /tmp/cs/
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout gh-pages 2>/dev/null || { echo "gh-pages 不存在,略過(等 daily_miner 建立)"; exit 0; }
+          mkdir -p data && cp /tmp/cs/concept_stocks.json data/concept_stocks.json
+          git add data/concept_stocks.json
+          git diff --cached --quiet && { echo "無變更"; exit 0; }
+          git commit -m "🏷️ 概念股 concept_stocks.json 更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          for i in 1 2 3 4 5; do
+            git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
+            [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+            sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true
+            git pull --rebase origin gh-pages 2>/dev/null || true
+          done

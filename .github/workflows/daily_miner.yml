@@ -191,6 +191,12 @@ jobs:
         run: |
           python3 miner.py
 
+      - name: 🏷️ 概念股採礦(megatime → concept_stocks.json)
+        continue-on-error: true   # 站方限流/改版都不能拖垮 chips 主流程
+        env:
+          CONCEPT_TIME_BUDGET: '360'   # 最多 6 分,逾時寫已抓部分;會 merge origin/data 舊檔不倒退
+        run: python3 concept_miner.py
+
       - name: 📤 上傳 chips/fundamentals artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -206,6 +212,7 @@ jobs:
             data/fundamentals_cache.json
             data/industry_pe.json
             data/industry_map.json
+            data/concept_stocks.json
             data/market_stats.json
             data/miner_status.json
             broker_names.json
