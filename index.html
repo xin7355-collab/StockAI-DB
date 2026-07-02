@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -887,7 +887,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.1</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.2</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -990,11 +990,13 @@
                             <span id="invBadge" class="hidden inline-block bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500 whitespace-nowrap">💼持股中</span>
                             <!-- 🚨 處置神器 badge:由 refreshStrategy() 依 attentionStatus 動態填字 + show/hide -->
                             <span id="attentionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle"></span>
+                            <!-- 📊 V45.2 總量/量縮(券商報價頭風格,applyLatestPrice 填) -->
+                            <span id="quoteVolInfo" class="hidden text-[10px] text-gray-400 font-mono font-bold whitespace-nowrap"></span>
                         </div>
                     </div>
                     <!-- 右側:價格 + 漲跌(V17.8 — 移除 ✏️ 筆 + 🔄 更新,限價 chip 內嵌漲跌左側)-->
                     <div class="text-right flex flex-col items-end flex-shrink-0">
-                        <span id="livePriceText" class="text-4xl md:text-5xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
+                        <span id="livePriceText" class="text-5xl md:text-6xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
                         <div id="liveDiffWrapper" class="flex items-center gap-1.5 text-gray-400 mt-1 justify-end">
                             <div id="dataSourceBadge" class="flex items-center gap-1 bg-[#161b22] px-1 py-0 rounded border border-[#30363d]">
                                 <span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
@@ -4003,7 +4005,7 @@ ${list}
             document.getElementById('dataSourceText').textContent = '手動現價';
             document.getElementById('dataSourceDot').className = 'w-1.5 h-1.5 rounded-full bg-yellow-400';
             document.getElementById('livePriceText').textContent = val.toFixed(2);
-            document.getElementById('livePriceText').className = 'text-4xl md:text-5xl font-black font-mono text-yellow-400 leading-none tracking-tighter transition-all duration-200';
+            document.getElementById('livePriceText').className = 'text-5xl md:text-6xl font-black font-mono text-yellow-400 leading-none tracking-tighter transition-all duration-200';
         }
     },
 
@@ -6204,6 +6206,7 @@ ${list}
         this.closeGlobalSearchModal();
         document.getElementById('symbolInput').value = sym;
         this.analyze();
+        this.switchAppTab('diag');   // 🐛 V45.2 修:搜尋後跳個股診斷頁(V45.0 隱藏診斷鈕+預設落地庫存後,搜尋不再自動跳個股)
         document.getElementById('symbolInput').value = '';
     },
     _submitGlobalSearch() {
@@ -15484,7 +15487,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             document.getElementById('dataSourceBadge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span class="font-bold text-red-400 text-[10px] font-mono tracking-wide">無資料</span>`;
             const p = document.getElementById('livePriceText');
             p.innerText = '--';
-            p.className = 'text-4xl md:text-5xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200';
+            p.className = 'text-5xl md:text-6xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200';
             document.getElementById('liveDiffAmount').innerText = '--';
             document.getElementById('liveDiffPct').innerText = '(--)';
             if(!silent) document.getElementById('loadingOverlay').style.display = 'none'; return;
@@ -21011,7 +21014,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         priceEl.innerText = currentClose.toFixed(2);
         
         // 基礎樣式
-        priceEl.className = `text-4xl md:text-5xl font-black font-mono leading-none tracking-tighter transition-all duration-200`;
+        priceEl.className = `text-5xl md:text-6xl font-black font-mono leading-none tracking-tighter transition-all duration-200`;
         void priceEl.offsetWidth;
         
         // 🚀 漲跌停亮燈邏輯 (>=9.8% 漲停, <=-9.8% 跌停)
@@ -21028,6 +21031,25 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         
         document.getElementById('liveDiffAmount').innerText = (diff>0?'+':'') + diff.toFixed(2);
         document.getElementById('liveDiffPct').innerText = `(${diff>0?'+':''}${pct.toFixed(2)}%)`; document.getElementById('liveDiffPct').className = `text-xs md:text-sm font-bold font-mono ${color}`;
+
+        // 📊 V45.2 — 頂部報價頭加總量/量縮(券商風格):盤中用估量達標度、盤後用今量vs昨量
+        try {
+            const vEl = document.getElementById('quoteVolInfo');
+            if (vEl) {
+                const raw = this.baseRawData || [];
+                const vp = this._chuVolumeProgress(fugleData, raw);
+                let curVol = vp ? vp.cur : null, deltaPct = null;
+                if (vp && vp.pct != null) deltaPct = vp.pct - 100;                       // 盤中:估量 vs 昨量
+                else if (vp && vp.cur && vp.prevVol) deltaPct = (vp.cur - vp.prevVol) / vp.prevVol * 100;  // 盤後:今量 vs 昨量
+                if (curVol) {
+                    const volTxt = curVol >= 10000 ? (curVol / 10000).toFixed(1) + '萬張' : curVol.toLocaleString() + '張';
+                    let extra = '';
+                    if (deltaPct != null) { const up = deltaPct >= 0; extra = ` · <span class="${up ? 'text-red-300' : 'text-green-300'}">量${up ? '增' : '縮'}${Math.abs(deltaPct).toFixed(0)}%</span>`; }
+                    vEl.innerHTML = `📊 總量 <b class="text-gray-200">${volTxt}</b>${extra}`;
+                    vEl.classList.remove('hidden');
+                } else vEl.classList.add('hidden');
+            }
+        } catch (_) {}
 
         const inInv = this.inventory.find(i => i.symbol === this.currentSymbolId);
         const costEl = document.getElementById('costInput');
