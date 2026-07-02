@@ -6296,17 +6296,40 @@ ${list}
         '3680':['半導體設備','CoWoS先進封裝'],'3131':['半導體設備','晶圓代工'],'3583':['半導體設備','CoWoS先進封裝'],
         '2395':['工業電腦','邊緣AI'],'2357':['主機板','AI伺服器','顯卡'],'2376':['顯卡','AI伺服器','主機板']
     },
+    // 🏷️ V45.10 — 載入 megatime 概念股採礦檔(data/concept_stocks.json),失敗則靠 curated fallback
+    async _loadConceptData() {
+        if (this._conceptCache !== undefined) return this._conceptCache;
+        this._conceptCache = null;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/concept_stocks.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (r.ok) {
+                const j = await r.json();
+                if (j && j.by_stock) this._conceptCache = j;
+            }
+        } catch (_) {}
+        return this._conceptCache;
+    },
     _getStockConcepts(sym) {
         sym = String(sym || '').trim();
         const leader = this._LEADER_MAP[sym] || null;
-        const concepts = this._CONCEPT_MAP[sym] || [];
         const info = (this.allStockList || []).find(s => s.stock_id === sym);
         const industry = (info?.industry_category || '').trim();
+        // 概念股:優先 megatime 採礦(_conceptCache.by_stock),否則退回 curated _CONCEPT_MAP
+        let concepts = this._conceptCache?.by_stock?.[sym];
+        if (!Array.isArray(concepts) || !concepts.length) concepts = this._CONCEPT_MAP[sym] || [];
+        // 去掉與「產業別」重複的標籤(避免 🏭半導體 又出現 #半導體)
+        concepts = concepts.filter(c => c && c !== industry).slice(0, 6);
         return { leader, industry, concepts };
     },
     _renderConceptRow(sym) {
         const el = document.getElementById('stockConceptRow');
         if (!el) return;
+        // 首次呼叫時非阻塞載入採礦檔,載完重繪一次
+        if (this._conceptCache === undefined) {
+            this._loadConceptData().then(() => { if (this.currentSymbolId === sym) this._renderConceptRow(sym); });
+        }
         const { leader, industry, concepts } = this._getStockConcepts(sym);
         const parts = [];
         if (leader)   parts.push(`<span class="text-[10px] font-black text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded px-1.5 py-0.5 whitespace-nowrap">👑 ${leader}</span>`);
