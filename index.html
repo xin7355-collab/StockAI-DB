@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.11</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.12</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -897,7 +897,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.11</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.12</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -1067,8 +1067,7 @@
                         <div class="text-center text-[8px] text-gray-500 -mt-1">15 分鐘內快取 ・ 雙擊強制重抽</div>
                         <div id="stockPredictResult" class="text-[11px] text-gray-200 leading-relaxed"></div>
                         </div><!-- /隱藏 首席AI + 此股預判AI -->
-                        <!-- 🔎 V41.26 免費備援:自家 AI 撞額度時,開外部免費 AI 查最新消息/為何漲跌(不耗額度) -->
-                        <button onclick="app._openFreeAiStock('latest'); app.vibrate(30);" title="開外部免費 AI(Perplexity 等)查這檔最新消息,不耗自家 AI 額度" class="w-full bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 text-amber-300 py-2 rounded-lg text-[12px] font-bold shadow-sm flex justify-center items-center gap-1.5 transition-all">🔎 免費查最新消息/為何漲跌 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
+                        <!-- 🔎 V45.12 免費查最新消息按鈕已刪除(🤖 AI 股神已涵蓋「你可能還想問」免費查) -->
                         <!-- 🚥 V39.3 戰術訊號燈卡已移除(使用者要求);computeUnifiedSignal 仍餵首席 AI + 頂部指揮部 LED,updateConfidenceLed 對 confLed/confText 已 null-guard -->
 
                         <!-- 🦅 V39.2 獵鷹建倉儀表板已移除(連根拔除);黑天鵝防禦矩陣已搬到「大盤趨勢→盤前大盤體檢」 -->
@@ -1097,8 +1096,7 @@
                         <!-- 季節大字卡已停用：改由首席 AI 黃卡 + 詳細評析全面接手 -->
                         <span id="actionMainText" class="hidden"></span>
                         <div id="actionSubText" class="hidden"></div>
-                        <!-- 💰 持倉損益 + 🕵️ 智慧庫存查核 -->
-                        <div id="costPnlBar" class="hidden w-full mt-2 space-y-1.5"></div>
+                        <!-- 💰 V45.12 持倉損益小卡(costPnlBar)已刪除(使用者:版面);JS 已 null-guard -->
                         </div>
 
                         <!-- 👉 右戰區 (lg:col-span-5)：V38.9 合併重疊卡降噪 — 進場總評 / 價位作戰圖 / 操作SOP -->
@@ -1335,8 +1333,9 @@
                         <button onclick="app.showJargon?.('打法適配') || alert('【個股打法適配儀】\n\n每檔股票脾氣不同,同一招在 A 股神準、在 B 股卻虧。這裡用「這檔自己的歷史」算出:\n\n① 性格標籤:趨勢波段股 / 箱型區間股 / 高波動飆股 / 牛皮存股型 → 決定打法方向。\n② 型態回測排名:把 ~9 個進場型態逐個對這檔歷史回測(訊號日收盤進場、跌破5MA或-5%停損出場),算勝率+每趟期望值+樣本,排名。\n\n👉 主打前 2-3 名正期望值型態,避開負期望值的。純公式歷史回測,過去不代表未來。')" class="text-[9px] text-gray-500 hover:text-amber-300">📖 說明</button>
                     </div>
                     <div id="playbookCard" class="hidden"></div>
-                    <button id="playbookBtn" onclick="app.analyzeStockPlaybook(); app.vibrate(30);" class="w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">🎯 分析這檔的最佳打法</button>
-                    <div class="text-center text-[9px] text-gray-500 mt-1">純公式回測 ・ 約 2-4 秒 ・ 當日快取</div>
+                    <!-- 🎯 V45.12 進頁自動分析,大按鈕改隱藏;保留小鈕供手動重抽 -->
+                    <button id="playbookBtn" onclick="app.analyzeStockPlaybook(); app.vibrate(30);" class="hidden w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">🎯 分析這檔的最佳打法</button>
+                    <div class="text-center text-[9px] text-gray-500 mt-1">純公式回測 ・ 進頁自動分析 ・ 當日快取</div>
                 </div>
                 <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-cyan-500">
                     <!-- 🎯 V41.19 回測頁精簡:移除「AI 雲端多維掃描」+「5MA/20MA 長線波段回測」,只留朱老師方式波段回測(卡片自帶標題與結論) -->
@@ -1361,8 +1360,7 @@
 
             <!-- 🚨 V20.5 — 處置股 tab(從籌碼 tab 搬過來 + 加實戰操作秘訣) -->
             <div id="subContentDisposed" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
-                <!-- 🔎 V41.26 免費查:這檔為何被處置/有何消息(外部 AI,不耗額度) -->
-                <button onclick="app._openFreeAiStock('dispose'); app.vibrate(30);" title="開外部免費 AI 查這檔被處置的原因與相關消息" class="w-full bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 text-amber-300 py-2 rounded-lg text-[12px] font-bold shadow-sm flex justify-center items-center gap-1.5 transition-all">🔎 查這檔為何被處置/有何消息 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
+                <!-- 🔎 V45.12 處置頁免費查按鈕已刪除(🤖 AI 股神已涵蓋免費查) -->
                 <!-- 注意股 8 款掃描 + 處置預測 -->
                 <div id="attentionScanCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
                 <!-- 雙刀流核心心法卡(處置/注意/必關時觸發) -->
@@ -1414,22 +1412,7 @@
             <!-- 🏢 企業情報與消息體檢 -->
             <div id="subContentCorp" class="hidden flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
 
-                <!-- 🔎 V41.24 — 免費查公司(帶股名開外部免費 AI,不耗自家 API 額度) -->
-                <div class="bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-sm">
-                    <div class="flex items-center justify-between mb-1.5 border-b border-amber-700/30 pb-1.5">
-                        <h4 class="text-amber-300 font-bold text-sm flex items-center gap-1.5">🔎 免費查公司 <span class="text-[9px] text-gray-500 font-normal">(不耗 AI 額度)</span></h4>
-                        <button onclick="app.showFreeAiHelp();" class="text-[9px] text-gray-500 hover:text-amber-300">📖 說明</button>
-                    </div>
-                    <div class="grid grid-cols-2 gap-1.5">
-                        <button onclick="app._openFreeAi('biz')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">🏭 這家公司在做什麼?</button>
-                        <button onclick="app._openFreeAi('news')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">📰 最近新聞/利多利空?</button>
-                        <button onclick="app._openFreeAi('rev')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">💰 營收獲利/EPS/毛利?</button>
-                        <button onclick="app._openFreeAi('chain')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">🔗 產業前景/供應鏈?</button>
-                        <button onclick="app._openFreeAi('risk')" class="text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-amber-900/20 border border-[#30363d] hover:border-amber-600/60 rounded px-2 py-2 text-left leading-snug transition-colors">⚠️ 有什麼風險/地雷?</button>
-                        <button onclick="app._openFreeAi('custom')" class="text-[11px] font-bold text-amber-200 bg-amber-900/15 hover:bg-amber-900/30 border border-amber-700/50 hover:border-amber-600 rounded px-2 py-2 text-left leading-snug transition-colors">✏️ 自己打問題…</button>
-                    </div>
-                    <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 用外部免費 AI 網頁的額度,會另開分頁。適合查「公司/新聞/產品」等文字問題;K線/籌碼數字仍看下方各卡。引擎可在 ⚙️ 設定頁切換。</div>
-                </div>
+                <!-- 🔎 V45.12 免費查公司卡已刪除(🤖 AI 股神已涵蓋公司/新聞/財報/供應鏈免費查) -->
 
                 <!-- 📊 V42.2 — 位階溫度計(距歷史高 + 52週位階,判強勢主流 vs 低基期落後) -->
                 <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
@@ -2124,11 +2107,10 @@
             </div>
             <div class="p-2">
                 <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative overflow-hidden">
-                    <div class="text-xs text-gray-500 text-center py-2 border-b border-[#21262d] mb-1 font-bold">💡 點擊標的進行診斷 / 向左滑動可刪除</div>
-                    <div id="onboard_fav" class="onboard-panel relative bg-blue-900/15 border-b border-blue-700/40 px-3 py-2 text-[11px] leading-relaxed text-gray-300">
-                        <button onclick="app.dismissOnboard('fav')" class="absolute top-1 right-2 text-gray-400 hover:text-white text-base leading-none font-bold">×</button>
-                        <div class="font-black text-blue-200 mb-0.5">⭐ 自選清單怎麼用</div>
-                        <div>這是你「<b class="text-white">想追蹤但還沒買</b>」的股票清單。輸入代號或中文名按 ➕ 加入；點任一檔可進診斷頁；向左滑可刪除。多群組可在頂端切換。</div>
+                    <!-- ⭐ V45.12 自選說明改點擊彈出(使用者:版面精簡) -->
+                    <div class="flex items-center justify-center gap-2 py-2 border-b border-[#21262d] mb-1">
+                        <span class="text-xs text-gray-400 font-bold">⭐ 自選清單</span>
+                        <button onclick="alert('⭐ 自選清單怎麼用\n\n這是你「想追蹤但還沒買」的股票清單。\n\n・輸入代號或中文名 → 按 ➕ 加入\n・點任一檔 → 進個股診斷頁\n・個股列向左滑動 → 刪除\n・多群組可在頂端切換')" class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-800/60 rounded px-1.5 py-0.5 transition-colors">📖 怎麼用/如何刪除</button>
                     </div>
                     <div id="favSearchContainer" class="flex items-center gap-2 px-3 py-2 border-b border-[#30363d] bg-[#161b22] relative">
                         <input type="text" id="favDirectInput" placeholder="代號或中文名稱，Enter 加入..."
@@ -2175,17 +2157,12 @@
         <div id="tabContentInv" class="flex-col gap-3 p-2 pb-4" style="display:none;min-height:80vh;">
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm">
-                    <h2 class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">K</span> 雲端庫存風控</h2>
+                    <!-- 💼 V45.12 改名「庫存股」+ 點標題彈出說明(移除常駐說明banner) -->
+                    <h2 onclick="alert('💼 庫存股怎麼用\n\n這是你「實際持有」的股票。\n\n・輸入買入價 → 每天自動算盈虧\n・獲利 > 15% → 建議上移停利\n・虧損 > 10% → 提醒評估停損\n・個股列向右滑 → 結算賣出(記錄到回測)')" class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide cursor-pointer"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">庫</span> 庫存股 <span class="text-[10px] text-gray-500 font-normal ml-0.5">📖 點看說明</span></h2>
                     <div class="flex gap-1.5">
                         <!-- V17.12 — 簡化為單一「編輯」按鈕,建倉/刷新整合進編輯頁 -->
                         <button onclick="app.openInventoryEditPage(); app.vibrate(30);" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold shadow-sm transition-colors">✏️ 編輯庫存</button>
                     </div>
-                </div>
-
-                <div id="onboard_inv" class="onboard-panel relative bg-orange-900/15 border-b border-orange-700/40 px-3 py-2 text-[11px] leading-relaxed text-gray-300">
-                    <button onclick="app.dismissOnboard('inv')" class="absolute top-1 right-2 text-gray-400 hover:text-white text-base leading-none font-bold">×</button>
-                    <div class="font-black text-orange-200 mb-0.5">💼 庫存怎麼用</div>
-                    <div>這是你「<b class="text-white">實際持有</b>」的股票。輸入買入價後每天自動計算盈虧；獲利 > 15% 會建議上移停利、虧損 > 10% 會提醒評估停損。右滑可結算（賣出後記錄到回測）。</div>
                 </div>
 
                 <div class="bg-[#161b22] px-3 py-3 border-b border-[#30363d]">
@@ -5153,6 +5130,10 @@ ${list}
         // V21.5 — 多空優勢計分卡(對標籌碼 K 線 App,28 條規則 + 四面向)
         if (tab === 'bullbear' && this.currentSymbolId) {
             this.renderBullBearCard(this.currentSymbolId);
+        }
+        // 🎯 V45.12 — 回測 tab 進頁自動跑打法適配(不用再點按鈕;純公式+當日快取)
+        if (tab === 'backtest' && this.currentSymbolId) {
+            try { this.analyzeStockPlaybook(); } catch (_) {}
         }
         if (tab === 'corp' && this.currentSymbolId) {
             // 🔬 X 光機:localStorage 快取優先(<24hr 直接顯示),過期/缺則背景重抓覆蓋
@@ -15768,6 +15749,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             try { this.fetchChipTimeline(targetSym, true); this.loadBrokerChips(targetSym, true); this.renderEtfHoldingsCard?.(targetSym); } catch(_) {}
         } else if (_sub === 'bullbear') {
             try { this.renderBullBearCard(targetSym); } catch(_) {}
+        } else if (_sub === 'backtest') {
+            try { this.analyzeStockPlaybook(); } catch(_) {}   // 🎯 V45.12 切股自動重跑打法適配
         }
 
         if(!silent) {
