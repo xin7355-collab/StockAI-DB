@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V44.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -860,6 +860,23 @@
     <div id="invModal" class="modal-base hidden" data-edit-idx="-1" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="invModalTitle" class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：1000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button id="invModalConfirmBtn" onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
     <div class="header-fixed w-full flex flex-col shadow-md">
+        <!-- 🤖 V44.8 — AI 股神(庫存純公式全解析,對標籌碼App;輸入問題→免費查引擎,零 API 額度) -->
+        <div id="aiGodModal" class="hidden fixed inset-0 z-[200] bg-[#0d1117] flex flex-col">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] flex-shrink-0">
+                <span class="text-lg font-black text-gray-100">🤖 AI 股神 <span class="text-[10px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1.5 py-0.5 align-middle">庫存股</span></span>
+                <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-2 text-[9px] text-gray-600 flex-shrink-0"><span class="flex-1 border-t border-[#21262d]"></span>歡迎回來 · 逐檔純公式解析<span class="flex-1 border-t border-[#21262d]"></span></div>
+            <div id="aiGodChat" class="flex-1 overflow-y-auto px-3 pb-3 space-y-3 scrollbar-hide"></div>
+            <div class="flex-shrink-0 border-t border-[#30363d] p-2 bg-[#0d1117]">
+                <div id="aiGodChips" class="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2"></div>
+                <div class="flex items-center gap-2">
+                    <input id="aiGodInput" type="text" placeholder="輸入你想了解的股市資訊,送出開免費 AI 查(不耗額度)" class="flex-1 bg-[#161b22] border border-[#30363d] rounded-full px-4 py-2.5 text-sm text-gray-100 outline-none focus:border-cyan-500 transition-colors" onkeydown="if(event.key==='Enter')app.aiGodAsk();">
+                    <button onclick="app.aiGodAsk()" class="w-10 h-10 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center flex-shrink-0 text-lg font-black" title="送出到免費 AI">➤</button>
+                </div>
+            </div>
+        </div>
+
         <!-- V19.0 — 加回 logo + 🔍 🔔 改 SVG line icon(統一證券 App 風格) -->
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
             <!-- V44.6 — 頂部重排(使用者指定):🔍 搜尋 > 🤖 AI司令部 > 版本 > 大盤天氣 > 📖 手冊 > ⚙️ 設定 > 🔔 鈴鐺 -->
@@ -868,12 +885,13 @@
                 <button onclick="app.openGlobalSearchModal(); app.vibrate(30);" class="text-gray-300 hover:text-white flex-shrink-0 p-1" title="搜尋股票">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
-                <!-- 🤖 AI 司令部(回首席/診斷) -->
-                <button onclick="app.switchAppTab('diag'); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="首席 AI / 診斷">🤖</button>
-                <!-- 版本 + 🌦️ 大盤天氣(點擊回診斷) -->
-                <div class="flex items-center gap-1.5 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.7</span>
-                    <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
+                <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
+                <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.8</span>
+                <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
+                <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
+                    <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
+                    <div id="headerWeather" class="flex items-center gap-1">
                         <span class="text-[11px] text-gray-500">…</span>
                     </div>
                 </div>
@@ -12916,6 +12934,94 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             query = templates[kind] || `${tag} 公司介紹`;
         }
         this._freeAiOpen(query);
+    },
+
+    // 🤖 V44.8 — AI 股神:開啟庫存逐檔純公式解析彈窗(對標籌碼App「AI 股神」聊天式)
+    async openAiGod() {
+        const modal = document.getElementById('aiGodModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        const chat = document.getElementById('aiGodChat');
+        const chipsEl = document.getElementById('aiGodChips');
+        if (chipsEl) chipsEl.innerHTML = ['為什麼漲跌', '最新消息', '本季財報', '產業前景', '該買該賣'].map(q => `<button onclick="app.aiGodQuick('${q}')" class="flex-shrink-0 text-[11px] font-bold text-cyan-300 bg-cyan-900/20 border border-cyan-700/40 rounded-full px-3 py-1 hover:bg-cyan-900/40 transition-colors">${q}</button>`).join('');
+        const inv = this.inventory || [];
+        if (!inv.length) { chat.innerHTML = '<div class="text-center text-gray-500 py-10 text-sm leading-relaxed">目前無庫存部位<br>先到「庫存」頁加入持股,我再幫你<b class="text-gray-300">逐檔純公式解析</b>。<br><span class="text-[11px] text-gray-600">或直接在下方輸入問題查任何台股</span></div>'; return; }
+        chat.innerHTML = '<div class="text-center text-gray-500 py-8 text-sm animate-pulse">🤖 AI 股神分析中… (逐檔算技術面+籌碼面)</div>';
+        const bubbles = [];
+        for (const item of inv) {
+            let rows = null;
+            try { rows = await this.fetchHistoricalData(item.symbol, false); } catch (_) {}
+            const name = this.getStockName(item.symbol) || item.symbol;
+            const verdict = this._aiGodStockVerdict(rows);
+            bubbles.push(`<div class="flex gap-2">
+                <div class="text-3xl flex-shrink-0 leading-none mt-1">🤖</div>
+                <div class="flex-1 min-w-0 bg-[#161b22] rounded-2xl rounded-tl-sm p-3 border border-[#30363d]">
+                    <div class="inline-block text-[13px] font-black text-amber-300 bg-[#0d1117] border border-[#30363d] rounded px-2 py-0.5 mb-2">📈 ${name} <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span></div>
+                    <div class="text-[14px] text-gray-200 leading-relaxed">${verdict}</div>
+                    <button onclick="app._openFreeAiForSym('${item.symbol}')" class="mt-2 text-[11px] font-bold text-cyan-300 hover:text-cyan-200">🔎 深入查 ${name} 最新消息 →</button>
+                </div>
+            </div>`);
+        }
+        bubbles.push('<div class="text-[9px] text-gray-600 text-center leading-relaxed px-4 pt-1">⚠️ 以上 100% 純公式(技術面均線/量能/位階 + 籌碼面法人買賣超)判讀,非投資建議、非真人 AI 對話;想問消息/財報/產業請用下方輸入框(開免費 AI,不耗額度)。</div>');
+        chat.innerHTML = bubbles.join('');
+        this.vibrate?.(20);
+    },
+
+    // 🤖 逐檔純公式判讀(技術面均線多空 + 量能 + 位階 + 籌碼面法人近5日買賣超)→ 組一段白話
+    _aiGodStockVerdict(rows) {
+        try {
+            if (!Array.isArray(rows) || rows.length < 20) return '此檔 K 線資料不足(需 ≥20 日),暫無法純公式判讀,可點下方「深入查」看消息面。';
+            const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), V = b => +((b?.volume ?? 0) || 0);
+            const n = rows.length, last = n - 1, price = C(rows[last]);
+            const ma = k => { const s = rows.slice(n - k, n); return s.length === k ? s.reduce((a, b) => a + C(b), 0) / k : null; };
+            const ma5 = ma(5), ma10 = ma(10), ma20 = ma(20);
+            const bull = ma5 && ma10 && ma20 && price > ma5 && ma5 > ma10 && ma10 > ma20;
+            const bear = ma5 && ma20 && price < ma5 && ma5 < ma20;
+            const above20 = ma20 && price > ma20;
+            const vArr = rows.slice(-6, -1).map(V), avgV = vArr.length ? vArr.reduce((a, x) => a + x, 0) / vArr.length : 0;
+            const vCur = V(rows[last]), volUp = avgV > 0 && vCur >= avgV * 1.3, volDn = avgV > 0 && vCur <= avgV * 0.6;
+            const ath = Math.max(...rows.map(H).filter(v => v > 0)), nearAth = ath > 0 && price >= ath * 0.95;
+            const fSum = rows.slice(-5).reduce((a, b) => a + (+b.foreign_net || 0), 0);
+            const tSum = rows.slice(-5).reduce((a, b) => a + (+b.trust_net || 0), 0);
+            const instNet = fSum + tSum, instBull = instNet > 1000, instBear = instNet < -1000;
+            const S = [];
+            if (bull) S.push('技術面均線多頭排列、多方掌控');
+            else if (bear) S.push('技術面均線空頭排列、走勢轉弱');
+            else if (above20) S.push('技術面站上月線、中線偏多但均線略糾結');
+            else S.push('技術面均線糾結整理、方向未明');
+            if (Math.abs(instNet) > 1000) {
+                const lots = Math.round(instNet / 1000);
+                S.push(instBull ? `籌碼面法人近 5 日買超約 ${lots.toLocaleString()} 張、資金偏多` : `籌碼面法人近 5 日賣超約 ${Math.abs(lots).toLocaleString()} 張、資金偏空`);
+            }
+            if (volUp) S.push('成交量放大、量價配合'); else if (volDn) S.push('量能萎縮、觀望氣氛濃');
+            if (nearAth && bull) S.push('股價逼近歷史高、動能強勢'); else if (nearAth && !bull) S.push('位階偏高、留意追高風險');
+            let concl;
+            const bullN = (bull ? 1 : 0) + (instBull ? 1 : 0) + (volUp ? 1 : 0);
+            const bearN = (bear ? 1 : 0) + (instBear ? 1 : 0);
+            if (bullN >= 2) concl = '短中期延續強勢格局機會高。';
+            else if (bearN >= 2) concl = '短線賣壓沉重,留意支撐與估值修正風險。';
+            else if (above20) concl = '短中期維持偏多整理,守住月線可續抱。';
+            else concl = '方向未明,等帶量突破或跌破再表態。';
+            return S.join('，') + '，' + concl;
+        } catch (_) { return '判讀時發生問題,可點下方「深入查」看消息面。'; }
+    },
+
+    // 🤖 底部輸入送出 → 免費查引擎(自動加台股語境)
+    aiGodAsk() {
+        const el = document.getElementById('aiGodInput');
+        const q = (el?.value || '').trim();
+        if (!q) return;
+        this._freeAiOpen(/台股|股|台積|美股/.test(q) ? q : `台股 ${q}`);
+        if (el) el.value = '';
+    },
+    aiGodQuick(q) {
+        const inv = this.inventory || [];
+        const ctx = inv.length ? (this.getStockName(inv[0].symbol) || inv[0].symbol) + '(' + inv[0].symbol + ') ' : '台股 ';
+        this._freeAiOpen(`${ctx}${q}`);
+    },
+    _openFreeAiForSym(sym) {
+        const name = this.getStockName(sym) || sym;
+        this._freeAiOpen(`${name}(${sym}) 這檔台股最新消息、為何漲跌、近期利多利空與法人動向?請附日期與來源`);
     },
 
     // 🔎 V41.26 — 通用「免費查」開網頁(任意問題,不限個股;設定頁引擎共用)
