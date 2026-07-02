@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V43.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V43.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -853,7 +853,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.7</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.8</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1715,29 +1715,10 @@
             <!-- ════════ 【區 3-B】🇹🇼 台股實戰 ════════ -->
             <div id="subContent_tw" class="hidden flex-col gap-3">
 
-            <!-- ════════ 🔮 台股預判(V31.4 從市場頁頂部搬至台股實戰最上;改名 預判中心→台股預判)════════ -->
-            <div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-lg p-3 shadow-md">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-2xl">🔮</span>
-                        <div>
-                            <div class="text-base font-black text-purple-200">台股預判</div>
-                        </div>
-                    </div>
-                    <span class="text-[8px] text-gray-500" id="predictAiTime">--</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button id="predictAiBtn" onclick="app.analyzePredictCenter()" ondblclick="app.analyzePredictCenter({force:true})" class="text-[11px] font-black text-purple-300 bg-[#161b22] border border-purple-600/40 hover:bg-[#1c2128] hover:border-purple-500/60 rounded-lg py-2.5 transition-colors">🔮 AI 4 段預判<br><span class="text-[8px] font-normal opacity-80">(雙擊強制重抽)</span></button>
-                    <button id="anomalyAiBtn" onclick="app.analyzeMarketAnomaly()" ondblclick="app.analyzeMarketAnomaly({force:true})" class="text-[11px] font-black text-red-300 bg-[#161b22] border border-red-600/40 hover:bg-[#1c2128] hover:border-red-500/60 rounded-lg py-2.5 transition-colors">⚡ 大跌/大漲剖析<br><span class="text-[8px] font-normal opacity-80">(為什麼今天)</span></button>
-                </div>
-                <div id="predictAiResult" class="text-[11px] text-gray-200 leading-relaxed">
-                    <div class="text-center text-gray-500 py-3 text-[10px]">點上方按鈕開始 ・ 全手動觸發 ・ 15 分鐘內快取</div>
-                </div>
-                <div id="anomalyAiResult" class="text-[11px] text-gray-200 leading-relaxed mt-2"></div>
-            </div>
+            <!-- 🔮 台股預判卡 V43.8 已刪除(使用者要求);analyzePredictCenter/analyzeMarketAnomaly 函式保留但無 UI 觸發 -->
 
-            <!-- 📊 V26.14/V31.4 — 9 板塊跨市場板塊輪動整合卡(隨台股預判一併搬至台股實戰最上) -->
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+            <!-- 📊 V26.14/V31.4 — 9 板塊跨市場板塊輪動整合卡;V43.8 order:2(中) -->
+            <div style="order:2" class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                 <div class="flex items-center gap-1.5 mb-1">
                     <span class="text-base">📊</span>
                     <span class="text-[12px] font-black text-purple-300 tracking-wide">9 板塊跨市場板塊輪動</span>
@@ -1783,8 +1764,8 @@
                 </div>
             </div>
 
-            <!-- 📰 即時情報與新聞解析（內嵌版，版面同全球大環境）-->
-            <div class="bg-[#010409] rounded-xl border border-amber-900/50 p-3">
+            <!-- 📰 即時情報與新聞解析（內嵌版）;V43.8 order:3 移到最下面 -->
+            <div style="order:3" class="bg-[#010409] rounded-xl border border-amber-900/50 p-3">
                 <div class="flex items-center gap-1.5 justify-between">
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm">📰</span>
@@ -1798,8 +1779,8 @@
                 </div>
             </div>
 
-            <!-- 🎯 V32.1 — 台股大盤指揮中心:Sticky 核心 + 次級頁籤(天氣/因子/風控)+ 滑動切換(消除四框架認知載荷) -->
-            <div class="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden flex flex-col">
+            <!-- 🎯 V32.1 — 台股大盤指揮中心;V43.8 order:1 移到最上(原台股預判位置) -->
+            <div style="order:1" class="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden flex flex-col">
                 <!-- ① 核心頭區:標題 + 半圓/結論 + 扁平指數 + 次級頁籤
                      V32.5 — 移除 sticky top-[46px]:此頭區被外層 overflow-hidden card 包住,
                      sticky 在不滾動的 card 內釘住時會往下平移、蓋掉下方 #sccPanels 第一列
