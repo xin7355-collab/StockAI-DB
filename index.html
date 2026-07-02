@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V43.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V43.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.4</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -3303,15 +3303,41 @@ const app = {
 
     // 盤中自選股監控:突破 5MA / 跌破 20MA / 創 20 日新高新低 → PWA 推播
     // V18.8 — 加朱家泓策略:跌破 5MA 短線停利、跌破進場成本 -5% 鐵血停損(union inventory)
+    // 🎯 V43.4 — 盤中推播用「真假可信度」快速 tag(僅 quote+日K,免額外抓分鐘K,適合 60 秒 pulse)
+    //   量價達標(估量)+ 內外盤委買委賣 → 判突破/跌破是「真」還是可能「假」,附在推播尾巴過濾假訊號
+    _intradayQuickTag(fugle, kdata, dir) {
+        try {
+            if (!fugle) return '';
+            const vp = this._chuVolumeProgress(fugle, kdata);
+            const volPct = (vp && vp.pct != null) ? vp.pct : null;
+            const bid = fugle.bidVol || 0, ask = fugle.askVol || 0, tot = bid + ask;
+            const bp = tot > 0 ? bid / tot * 100 : null;
+            const volStrong = volPct != null && volPct >= 80;
+            const volWeak = volPct != null && volPct < 60;
+            const buySide = bp != null && bp >= 55;
+            const sellSide = bp != null && bp <= 45;
+            if (dir === 'up') {
+                if (volStrong && !sellSide) return ` ✅ 帶量${buySide ? '委買強' : ''},突破較可信`;
+                if (volWeak || sellSide) return ` ⚠️ ${volWeak ? '量縮' : ''}${sellSide ? (volWeak ? '+' : '') + '委賣壓' : ''},恐假突破別追`;
+            } else {
+                if (volStrong && !buySide) return ` 🔻 帶量真破,守紀律停損`;
+                if (volWeak || buySide) return ` 💧 ${volWeak ? '量縮' : ''}${buySide ? (volWeak ? '+' : '') + '委買撐' : ''},或假跌洗盤(別急殺)`;
+            }
+            return '';
+        } catch (_) { return ''; }
+    },
+
     async _watchlistPulse() {
         if (!this.isMarketOpen()) return;
         if (!this.settings.watchlistAlert) return;
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
         // V18.8 union:自選股 + 庫存股(去重),確保庫存被監控
+        // 🎯 V43.4 union 再加「獵殺清單(monitorList)」→ 盤中即時 pulse 也監控獵殺股(原本只收盤掃)
         const group = this.favGroups?.[this.activeGroupName] || [];
         const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
         const invSyms = inv.map(i => i.symbol).filter(Boolean);
-        const allSyms = [...new Set([...group, ...invSyms])];
+        const huntSyms = (this.monitorList || []).map(m => m && (m.sym || m.symbol)).filter(Boolean);
+        const allSyms = [...new Set([...group, ...invSyms, ...huntSyms])];
         if (!allSyms.length) return;
         // 建 cost lookup(沒在 inventory 內的股 entry=null → 跳過 -5% 停損判定)
         const costBy = {};
@@ -3349,6 +3375,9 @@ const app = {
                 if (!nowPrice || nowPrice <= 0) continue;
 
                 const name = this.getStockName(sym) || sym;
+                // 🎯 V43.4 真假可信度 tag(量價+內外盤,過濾假突破/假跌;quote 免額外抓分鐘K)
+                const upTag = this._intradayQuickTag(fugle, kdata, 'up');
+                const dnTag = this._intradayQuickTag(fugle, kdata, 'down');
                 // 訊號判定（cooldown 30 分鐘同股同訊號只發一次）
                 const trigger = (signal, title, body) => {
                     const key = `${sym}_${signal}`;
@@ -3359,12 +3388,12 @@ const app = {
                     this._fireAlert(title, `${name}(${sym}) ${body}`, sym);
                 };
 
-                if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🟢 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}(停利訊號)`);
+                if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🟢 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}(停利訊號)${upTag}`);
                 // V18.8 — 朱家泓:跌破 5MA = 短線停利/停損(原本只監突破,缺賣訊)
-                if (prevClose >= ma5 && nowPrice < ma5)  trigger('dn5',     '🟡 跌破 5MA',   `現價 ${nowPrice.toFixed(2)} 跌破 5MA ${ma5.toFixed(2)}(朱:短線停利/停損)`);
-                if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🔴 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}(中線停損警告)`);
-                if (nowPrice > hi20)                      trigger('hi20',   '🚀 創 20 日新高', `現價 ${nowPrice.toFixed(2)} 突破 ${hi20.toFixed(2)}`);
-                if (nowPrice < lo20)                      trigger('lo20',   '⚠️ 創 20 日新低', `現價 ${nowPrice.toFixed(2)} 跌破 ${lo20.toFixed(2)}`);
+                if (prevClose >= ma5 && nowPrice < ma5)  trigger('dn5',     '🟡 跌破 5MA',   `現價 ${nowPrice.toFixed(2)} 跌破 5MA ${ma5.toFixed(2)}(朱:短線停利/停損)${dnTag}`);
+                if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🔴 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}(中線停損警告)${dnTag}`);
+                if (nowPrice > hi20)                      trigger('hi20',   '🚀 創 20 日新高', `現價 ${nowPrice.toFixed(2)} 突破 ${hi20.toFixed(2)}${upTag}`);
+                if (nowPrice < lo20)                      trigger('lo20',   '⚠️ 創 20 日新低', `現價 ${nowPrice.toFixed(2)} 跌破 ${lo20.toFixed(2)}${dnTag}`);
                 // V18.8 — 朱家泓鐵血停損:跌破進場成本 -5%(只對庫存股,SW 已有 background 推同邏輯,此處盤中即時補)
                 const entryCost = costBy[sym];
                 if (entryCost && nowPrice < entryCost * 0.95) {
