@@ -113,6 +113,40 @@ def discover_group_links(index_html):
     return out
 
 
+def endpoint_probe():
+    """頁面是 JS 動態渲染,真正資料在 AJAX/JSON 端點。掃 HTML + JS bundle 找端點。"""
+    print("🛰️ ENDPOINT PROBE 模式")
+    pages = [BASE + "/m/group/newgroup", BASE + "/m/market/newmarket"]
+    ENDPOINT_RE = re.compile(r"""['"(]\s*(/?[\w./?=&%-]*?(?:ajax|api|json|getdata|group|market|stock|quote)[\w./?=&%-]*?)['")\s]""", re.I)
+    src_re = re.compile(r'<script[^>]+src="([^"]+)"', re.I)
+    for pg in pages:
+        html, status = get(pg)
+        print(f"\n########## PAGE {pg} status={status} len={len(html) if html else 0} ##########")
+        if not html:
+            continue
+        srcs = src_re.findall(html)
+        print(f"  <script src> ({len(srcs)}):")
+        for s in srcs:
+            print("    ", s)
+        # HTML 內疑似端點字串
+        hits = sorted(set(m for m in ENDPOINT_RE.findall(html) if len(m) > 6 and not m.lower().endswith((".js", ".css"))))
+        print(f"  HTML 疑似端點 ({len(hits)}):")
+        for h in hits[:60]:
+            print("    ", h)
+        # 掃前 3 支站內 JS bundle 找端點
+        for s in srcs:
+            su = abs_url(s)
+            if "megatime" not in su:
+                continue
+            js, st = get(su)
+            if not js:
+                continue
+            jh = sorted(set(m for m in ENDPOINT_RE.findall(js) if len(m) > 6 and not m.lower().endswith((".js", ".css"))))
+            print(f"\n  --- JS {su} status={st} len={len(js)} 端點({len(jh)}) ---")
+            for h in jh[:80]:
+                print("      ", h)
+
+
 def deep_probe():
     """探勘各分類頁的結構,把族群連結 + 股票連結 pattern 印出來。"""
     print("🔬 DEEP PROBE 模式")
@@ -152,6 +186,9 @@ def deep_probe():
 def main():
     DATA.mkdir(exist_ok=True)
     print(f"🏷️ concept_miner 啟動 {datetime.now(TPE).isoformat(timespec='seconds')}")
+    if os.environ.get("CONCEPT_PROBE") == "2":
+        endpoint_probe()
+        return
     if os.environ.get("CONCEPT_PROBE") == "1":
         deep_probe()
         return
