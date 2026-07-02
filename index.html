@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V42.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -984,6 +984,8 @@
             </div>
 
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
+                <!-- 📋 V42.5 — 今日作戰指令(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
+                <div id="todayOrderCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <div class="p-3 bg-[#0d1117] flex flex-col gap-3 relative border-b border-[#30363d]">
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" ondblclick="app.runUnifiedGroqAnalysis({force:true}); app.vibrate([30,30,30]);" title="點一下分析；連點兩下強制重抽（會耗 1 次 API 額度）" class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 text-purple-300 py-3 rounded-lg text-base font-black shadow-md flex justify-center items-center gap-2 transition-all">
@@ -12333,6 +12335,71 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
+    // 📋 V42.5 — 今日作戰指令(盤前一眼無腦看):合成所有純公式訊號 → 空手給買點、持股給賣點+損益
+    renderTodayOrder(data) {
+        const el = document.getElementById('todayOrderCard');
+        if (!el) return;
+        if (!Array.isArray(data) || data.length < 25) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const pC = C(data[last]); if (!pC) { el.classList.add('hidden'); return; }
+        const ma = k => { const s = data.slice(last - k + 1, last + 1); return s.length === k ? s.reduce((a, b) => a + C(b), 0) / k : null; };
+        const ma5 = ma(5), ma20 = ma(20);
+        const prevHigh = H(data[last]);                                  // 昨日最高(盤前=進場觸發參考)
+        const prevLow = Math.min(...data.slice(-15).map(L));             // 近期前低(停損參考)
+        const f = n => n == null ? '—' : (n >= 100 ? n.toFixed(0) : n.toFixed(2));
+        // 買賣訊號(朱式回後買上漲引擎)
+        let chu = []; try { chu = this._detectChuLongEntry(data) || []; } catch (_) {}
+        const hi = chu.find(s => s.tone === 'bull' && /高勝率做多買點/.test(s.title || ''));
+        const weak = chu.find(s => s.tone === 'bull' && /做多買點/.test(s.title || ''));
+        const wait = chu.find(s => /回檔等買點|多頭回檔/.test(s.title || ''));
+        const chase = chu.find(s => /追高/.test(s.title || ''));
+        const head = chu.find(s => /做頭/.test(s.title || ''));
+        // 持股(成本/張數)
+        const inInv = (this.inventory || []).find(i => i.symbol === this.currentSymbolId);
+        const costEl = document.getElementById('costInput');
+        const cv = costEl ? parseFloat((costEl.value || '').trim()) : NaN;
+        const cost = (!isNaN(cv) && cv > 0) ? cv : (inInv && inInv.cost > 0 ? inInv.cost : 0);
+        const lots = (inInv && inInv.shares > 0) ? inInv.shares : 1;     // 張(1張=1000股)
+        const held = cost > 0;
+        const amt = px => Math.round((px - cost) * lots * 1000);         // 以 X 價出場的損益金額
+        const moneyTxt = v => `${v >= 0 ? '+' : ''}${v.toLocaleString()} 元${v >= 0 ? '(獲利)' : '(虧損)'}`;
+
+        let light, action, tone, lines = [];
+        if (held) {
+            const pnl = amt(pC), pnlPct = cost > 0 ? (pC - cost) / cost * 100 : 0;
+            const belowMa5 = ma5 && pC < ma5, belowMa20 = ma20 && pC < ma20;
+            if (belowMa20) { light = '🔴'; tone = 'green'; action = '減碼 / 出場'; lines = [`已跌破月線 ${f(ma20)} = 波段轉弱,今天開盤沒站回就<b>減碼或出場</b>,別凹單。`, `目前損益:<b>${moneyTxt(pnl)}</b>(${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%,成本 ${f(cost)}×${lots}張)`]; }
+            else if (belowMa5) { light = '🟡'; tone = 'yellow'; action = '停利防守'; lines = [`跌破 5 日線 ${f(ma5)} = 短線轉弱,朱式:<b>今天沒站回 5MA 先出一趟</b>(落袋為安,回檔再接)。`, `硬防線:跌破月線 ${f(ma20)} 一定走。目前損益:<b>${moneyTxt(pnl)}</b>(${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)`]; }
+            else { light = '🟢'; tone = 'red'; action = '續抱'; const slPnl = ma5 ? amt(ma5) : null; lines = [`站穩 5 日線 ${f(ma5)}、月線 ${f(ma20)} = 續抱。<b>停利防線:跌破 5MA ${f(ma5)} 先跑一趟</b>${slPnl != null ? `(那時約 ${moneyTxt(slPnl)})` : ''}。`, `硬停損:跌破月線 ${f(ma20)} 或成本 −5% ${f(cost * 0.95)}。目前損益:<b>${moneyTxt(pnl)}</b>(${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)`]; }
+        } else {
+            // 空手:給買點或叫你等
+            const stopPct = (pC - prevLow) / pC * 100;
+            if (head) { light = '🔴'; tone = 'green'; action = '別買 · 觀望'; lines = ['高檔出現做頭訊號(大量長紅 ½ 被跌破)= 主力出貨,<b>今天別追</b>,等重新帶量站回再說。']; }
+            else if (hi) { light = '🟢'; tone = 'red'; action = '可進場'; lines = [`朱式高勝率買點成型(約8成)。<b>買點:紅K站上 5 日線 ${f(ma5)} 且過昨高 ${f(prevHigh)} 就進</b>。`, `停損:跌破前低 ${f(prevLow)}(約 −${stopPct.toFixed(1)}%);目標:前高。`]; }
+            else if (weak) { light = '🟡'; tone = 'yellow'; action = '小量試單'; lines = [`站上 5 日線但攻擊力道未滿 → <b>可小量試</b>,別重壓。`, `站上 ${f(ma5)}、過昨高 ${f(prevHigh)} 加碼;停損跌破前低 ${f(prevLow)}。`]; }
+            else if (wait) { light = '⏳'; tone = 'yellow'; action = '等買點'; lines = [`波段多頭回檔中、<b>還沒到買點</b>。等紅K站回 5 日線 ${f(ma5)} 且不破前低 ${f(prevLow)} 再進,現在別急。`]; }
+            else if (chase) { light = '🟡'; tone = 'yellow'; action = '別追高'; lines = [`多頭但已到追高區 → 買低不追高。<b>等回檔到 5 日線 ${f(ma5)} 附近、不破前低 ${f(prevLow)} 再找買點。</b>`]; }
+            else { light = '⛔'; tone = 'gray'; action = '不建議做多'; lines = [`非波段多頭(或訊號不足),今天<b>不建議做多</b>。等站穩月線 ${f(ma20)} 且帶量突破再看。`]; }
+        }
+        const tc = tone === 'red' ? 'text-red-200' : tone === 'green' ? 'text-green-200' : tone === 'yellow' ? 'text-yellow-200' : 'text-gray-300';
+        const bc = tone === 'red' ? 'border-red-500 bg-red-900/25' : tone === 'green' ? 'border-green-500 bg-green-900/25' : tone === 'yellow' ? 'border-yellow-500 bg-yellow-900/15' : 'border-gray-600 bg-[#161b22]';
+        el.className = `w-full rounded-lg border-2 ${bc} p-3 shadow-lg`;
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[12px] font-black text-gray-100">📋 今日這檔怎麼做 <span class="text-[9px] text-gray-500 font-normal">盤前一眼 · 純公式</span></span>
+                <button onclick="alert('【今日作戰指令】\\n\\n把 App 算好的訊號合成一句「今天怎麼做」,盤前看昨收就知道:\\n\\n・空手 → 給你買點價位 + 進場條件 + 停損。\\n・持股(有填成本)→ 給你停利/停損價 + 損益金額試算。\\n\\n用的是朱老師方法:多頭回後站上 5 日線買、跌破 5 日線停利、跌破月線/前低停損。\\n\\n⚠️ 純公式僅供參考;實際以開盤量價為準,嚴守停損。填成本(上方成本價欄或加入庫存)才會顯示持股賣點。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖</button>
+            </div>
+            <div class="flex items-center gap-2.5 mb-1.5">
+                <div class="text-3xl flex-shrink-0">${light}</div>
+                <div class="text-lg font-black ${tc} leading-tight">${action}</div>
+                <div class="ml-auto text-right text-[9px] text-gray-500 leading-tight">參考價 <span class="font-mono font-bold text-gray-300">${f(pC)}</span><br>${held ? `成本 ${f(cost)}` : '空手'}</div>
+            </div>
+            ${lines.map(t => `<div class="text-[11px] text-gray-200 leading-relaxed mb-1">・${t}</div>`).join('')}
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 5MA=短線防守、月線=波段防守、前低=硬停損。${held ? '' : '想看持股賣點 → 填上方「成本價」或加入庫存。'}純公式僅供參考,實際以開盤量價為準。</div>`;
+        el.classList.remove('hidden');
+    },
+
     // 📊 V42.2 — 位階溫度計(純公式):距歷史高折價 + 52週價格位階 → 強勢主流 vs 低基期落後
     _priceRankData(data) {
         if (!Array.isArray(data) || data.length < 30) return null;
@@ -18975,6 +19042,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this.renderKbarTactics(data); } catch (_) {}
         try { this.renderKbarScore(data); } catch (_) {}       // 🕯️ V41.23 K線頁 型態+量 評分卡
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
+        try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日作戰指令(首席頁置頂)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
