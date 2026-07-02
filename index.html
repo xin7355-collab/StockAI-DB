@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V43.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -79,6 +79,12 @@
         /* V43.7 折疊教學:隱藏原生三角(iOS/webkit),只留自訂 ▾ 指示 */
         #onboard_kline > summary::-webkit-details-marker { display: none; }
         #onboard_kline > summary { list-style: none; }
+        /* V43.9 — 全域放大預設字體(對標籌碼K線App 可讀性):只改最小字級,不動版面/圖表寬度 */
+        .text-\[8px\]  { font-size: 9.5px  !important; }
+        .text-\[9px\]  { font-size: 11px   !important; }
+        .text-\[10px\] { font-size: 12px   !important; }
+        .text-\[11px\] { font-size: 13px   !important; }
+        .text-\[12px\] { font-size: 13.5px !important; }
 
         #loadingOverlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); display: none; z-index: 9999;}
         .nav-btn.active { color: #60a5fa; }
@@ -853,7 +859,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1865,7 +1871,7 @@
                 <div id="sccPanel_factor" class="scc-panel hidden">
             <!-- ③ 六大核心因子(平鋪;V31.5 正名五大→六大)-->
             <div class="px-1">
-                <div class="text-[10px] text-gray-400 font-bold mb-1">📊 六大核心因子 <span class="text-[8px] text-gray-600 font-normal">· 多空判定</span></div>
+                <div class="text-[10px] text-gray-400 font-bold mb-1">📊 台股獨有因子 <span class="text-[8px] text-gray-600 font-normal">· 盤前體檢未含(VIX/外資/期現見盤前)</span></div>
                 <div id="macroFactorGrid" class="grid grid-cols-2 gap-x-4">
                     <div class="col-span-full text-center text-gray-600 text-[10px] py-2">因子載入中…</div>
                 </div>
@@ -9760,12 +9766,10 @@ const marginByDate = {};
                 const up = d > 0;
                 return `<span class="text-[8px] font-mono ${up ? 'text-red-300' : 'text-green-300'}" title="較昨日">${up ? '▲ +' : '▼ '}${d}${suffix}</span>`;
             };
+            // V43.9 — 刪除與盤前體檢重複的 3 個因子(期貨升貼水/外資現貨/VIX),只留盤前體檢沒有的獨有因子
             grid.innerHTML = [
                 card('👥', '散戶情緒', rVal, rDir, deltaHtml('retail', '%')),
-                card('🎯', '期貨升貼水', bVal, bDir, deltaHtml('back')),
                 card('📊', '大盤分位', pVal, pDir, deltaHtml('twiiPos', '%')),
-                card('💰', '外資現貨', sVal, sDir, deltaHtml('fiSpot', '億')),
-                card('😱', 'VIX 恐慌', vVal, vDir, deltaHtml('vix')),
                 card('🌡️', '景氣燈號', lVal, lDir),
             ].join('');
         }
