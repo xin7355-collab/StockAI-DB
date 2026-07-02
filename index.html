@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -897,7 +897,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.8</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.9</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -991,6 +991,8 @@
                         </button>
                         <!-- 🤖 V45.5 — AI 股神(個股版):移到 < 右手邊,開啟顯示「本檔」判讀 + 免費查 -->
                         <button onclick="app.openAiGod('stock'); app.vibrate(40);" class="flex-shrink-0 text-[1.75rem] leading-none transition-transform hover:scale-110" title="🤖 AI 股神 · 本檔解析">🤖</button>
+                        <!-- 💼 V45.9 持股中 badge:移到 🤖 右手邊 -->
+                        <span id="invBadge" class="hidden flex-shrink-0 inline-block bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold border border-orange-500 whitespace-nowrap">💼持股中</span>
                         <div class="flex-1 flex items-center justify-center gap-1.5 min-w-0">
                             <button id="navPrevStock" onclick="app.navInventoryStock(-1); app.vibrate(15);" class="hidden flex-shrink-0 text-gray-500 hover:text-cyan-300 text-lg font-black px-0.5 leading-none" title="上一檔庫存股">◀</button>
                             <div onclick="app.openGlobalSearchModal(); app.vibrate(20);" class="flex items-center gap-1.5 cursor-pointer min-w-0" title="點此搜尋股票">
@@ -1021,10 +1023,11 @@
                         </div>
                         <span id="quoteVolInfo" class="hidden ml-auto text-right text-[11px] text-gray-400 font-mono font-bold whitespace-nowrap flex-shrink-0 self-center"></span>
                     </div>
-                    <!-- Row 3:屬性標籤 + 持股/處置 badge -->
-                    <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-0.5 mt-1.5">
+                    <!-- Row 2.5:V45.9 龍頭 / 產業別 / 概念股(仿籌碼K線,curated 對照,點概念丟免費查) -->
+                    <div id="stockConceptRow" class="hidden flex flex-row flex-wrap items-center gap-1 mt-1.5"></div>
+                    <!-- Row 3:技術屬性標籤 + 處置 badge -->
+                    <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-0.5 mt-1">
                         <span id="stockTags" class="inline-flex flex-wrap gap-x-1 gap-y-0.5 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap">讀取中...</span></span>
-                        <span id="invBadge" class="hidden inline-block bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold tracking-widest border border-orange-500 whitespace-nowrap">💼持股中</span>
                         <span id="attentionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle"></span>
                     </div>
                 </div>
@@ -6255,6 +6258,68 @@ ${list}
         const showNext = idx < 0 || idx < syms.length - 1;
         prev.classList.toggle('hidden', !showPrev);
         next.classList.toggle('hidden', !showNext);
+    },
+
+    // 🏷️ V45.9 — 龍頭對照(curated,主流權值/類股龍頭;冷門股不列,只顯 FinMind 產業別)
+    _LEADER_MAP: {
+        '2330':'晶圓代工龍頭','2317':'EMS代工龍頭','2454':'IC設計龍頭','2308':'電源龍頭','2382':'AI伺服器龍頭',
+        '2412':'電信龍頭','2882':'金控龍頭','1301':'塑化龍頭','2002':'鋼鐵龍頭','1101':'水泥龍頭',
+        '2603':'貨櫃航運龍頭','2327':'被動元件龍頭','3711':'封測龍頭','2379':'網通IC龍頭','2345':'網通龍頭',
+        '3037':'ABF載板龍頭','2408':'記憶體龍頭','3008':'光學鏡頭龍頭','2357':'主機板龍頭','1216':'食品龍頭',
+        '2912':'超商龍頭','9910':'製鞋龍頭','3017':'散熱龍頭','1519':'重電龍頭','2395':'工業電腦龍頭',
+        '2207':'汽車龍頭','5871':'租賃龍頭','2884':'金控','1476':'機能布龍頭','2105':'輪胎龍頭',
+        '2201':'汽車','1402':'紡織龍頭','9945':'資產營建','2892':'金控','2891':'金控'
+    },
+    // 🏷️ V45.9 — 概念股/題材 curated 對照(2025-26 熱門主流;點 chip → 免費查該題材)
+    _CONCEPT_MAP: {
+        '2330':['晶圓代工','CoWoS先進封裝','AI晶片','蘋果供應鏈'],'2317':['AI伺服器','GB200/GB300','蘋果供應鏈','電動車'],
+        '2454':['IC設計','AI晶片','手機晶片','ASIC'],'2382':['AI伺服器','GB200/GB300','雲端資料中心'],
+        '3231':['AI伺服器','雲端資料中心'],'6669':['AI伺服器','GB200/GB300','雲端資料中心'],'2356':['AI伺服器','雲端資料中心'],
+        '4938':['AI伺服器','蘋果供應鏈'],'2354':['蘋果供應鏈','機殼','AI伺服器'],'3017':['散熱','AI伺服器','液冷'],
+        '3324':['散熱','AI伺服器','液冷'],'6230':['散熱','AI伺服器'],'8996':['軍工','散熱','航太'],
+        '3037':['ABF載板','AI晶片','先進封裝'],'8046':['ABF載板','AI晶片'],'3189':['ABF載板','IC載板'],
+        '2368':['PCB','AI伺服器','高速板'],'2313':['PCB','網通板'],'4958':['PCB','蘋果供應鏈','軟板'],'6269':['軟板','蘋果供應鏈'],
+        '2408':['記憶體','DRAM','HBM概念','虛擬貨幣'],'2344':['記憶體','利基DRAM','Flash'],'3006':['記憶體','利基DRAM'],
+        '8299':['記憶體','NAND控制IC','Flash'],'4967':['記憶體','DRAM模組'],'2451':['記憶體','DRAM模組'],'6770':['晶圓代工','記憶體','利基DRAM'],
+        '3034':['IC設計','驅動IC'],'2379':['IC設計','網通IC','WiFi'],'3443':['IC設計','ASIC','矽智財'],'3661':['IC設計','ASIC','AI晶片'],
+        '3529':['矽智財IP','記憶體IP'],'6533':['矽智財IP','RISC-V','車用IC'],'4966':['IC設計','高速傳輸IP','矽光子'],'6415':['IC設計','電源管理IC'],
+        '4979':['矽光子','光通訊','CPO'],'3450':['光通訊','矽光子','CPO'],'2455':['砷化鎵','矽光子','光通訊'],'3363':['光通訊','低軌衛星','CPO'],
+        '1519':['重電','電網','綠能'],'1503':['重電','電網'],'1513':['重電','電網'],'2371':['重電','電網','家電'],'1504':['重電','馬達','綠能'],
+        '2345':['網通','AI交換器','800G'],'6285':['網通','低軌衛星','車用'],'5388':['網通','電纜數據機'],
+        '2603':['貨櫃航運','紅海概念'],'2609':['貨櫃航運','紅海概念'],'2615':['貨櫃航運'],'2618':['航空','觀光','旅遊'],'2610':['航空','觀光'],
+        '2327':['被動元件','MLCC','車用'],'2492':['被動元件','MLCC'],'3711':['封測','CoWoS先進封裝'],'6239':['封測','記憶體封裝'],'2449':['封測','測試'],
+        '3008':['光學鏡頭','蘋果供應鏈'],'3406':['光學鏡頭','蘋果供應鏈'],'2474':['蘋果供應鏈','機殼'],'2059':['蘋果供應鏈','散熱','滑軌'],
+        '3665':['電動車','高速連接器','AI伺服器'],'2308':['電源','電動車','AI伺服器','散熱'],'6446':['生技','新藥'],'1795':['生技','學名藥'],
+        '2412':['電信','高股息'],'3045':['電信','高股息'],'4904':['電信','高股息'],'2882':['金控','高股息'],'2891':['金控','高股息'],'2886':['金控','官股'],
+        '1301':['塑化','石化'],'1303':['塑化','石化'],'2002':['鋼鐵','官股','綠能風電'],'2303':['晶圓代工','成熟製程'],
+        '3481':['面板','Mini LED'],'2409':['面板','Mini LED','太陽能'],'2634':['軍工','國防','航太'],'2645':['軍工','航太','維修'],
+        '3680':['半導體設備','CoWoS先進封裝'],'3131':['半導體設備','晶圓代工'],'3583':['半導體設備','CoWoS先進封裝'],
+        '2395':['工業電腦','邊緣AI'],'2357':['主機板','AI伺服器','顯卡'],'2376':['顯卡','AI伺服器','主機板']
+    },
+    _getStockConcepts(sym) {
+        sym = String(sym || '').trim();
+        const leader = this._LEADER_MAP[sym] || null;
+        const concepts = this._CONCEPT_MAP[sym] || [];
+        const info = (this.allStockList || []).find(s => s.stock_id === sym);
+        const industry = (info?.industry_category || '').trim();
+        return { leader, industry, concepts };
+    },
+    _renderConceptRow(sym) {
+        const el = document.getElementById('stockConceptRow');
+        if (!el) return;
+        const { leader, industry, concepts } = this._getStockConcepts(sym);
+        const parts = [];
+        if (leader)   parts.push(`<span class="text-[10px] font-black text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded px-1.5 py-0.5 whitespace-nowrap">👑 ${leader}</span>`);
+        if (industry) parts.push(`<span class="text-[10px] font-bold text-gray-300 bg-white/5 border border-[#30363d] rounded px-1.5 py-0.5 whitespace-nowrap">🏭 ${industry}</span>`);
+        concepts.forEach(c => parts.push(`<span onclick="app._openFreeAiConcept('${c}')" title="點我用免費 AI 查「${c}」題材與同族群主流股" class="cursor-pointer text-[10px] font-bold text-cyan-300 bg-cyan-900/20 border border-cyan-700/40 rounded px-1.5 py-0.5 whitespace-nowrap hover:bg-cyan-900/40 transition-colors">#${c}</span>`));
+        if (!parts.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        el.classList.remove('hidden');
+        el.innerHTML = parts.join('');
+    },
+    _openFreeAiConcept(concept) {
+        const sym = this.currentSymbolId, name = this.getStockName(sym) || sym;
+        this._freeAiOpen(`${name}(${sym}) 屬於「${concept}」概念股嗎?這個題材近期發展、受惠程度,以及同族群還有哪些主流股?請附日期與來源`);
+        this.vibrate?.(20);
     },
 
     _pickGlobalSearch(sym) {
@@ -15578,6 +15643,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (codeEl) codeEl.innerText = `(${targetSym})`;
         symName = `${stockDisplayName} (${targetSym})`;
         this._updateNavArrows();   // V45.5 — 依當前個股位置更新 ◀▶ 顯隱(非循環)
+        this._renderConceptRow(targetSym);   // V45.9 — 龍頭/產業/概念股列
 
         // 🎯 Enter 觸發 / 點搜尋下拉項目後,平滑滾到診斷區,讓使用者看到「畫面有動」
         if (!silent) {
@@ -21152,9 +21218,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             else if(diff < 0) priceEl.classList.add('price-flash-down');
         }
         
-        // #4 金額:+ 改 🔼(跌用 🔽),字體再小;#5 幅度:去掉 + 號、負數保留 -,字體再小
+        // 金額:▲▼ 純三角形上紅綠色(V45.9 改回);幅度:去掉 + 號、負數保留 -
         const amtEl = document.getElementById('liveDiffAmount');
-        amtEl.innerText = `${diff>0?'🔼':diff<0?'🔽':''}${Math.abs(diff).toFixed(2)}`;
+        amtEl.innerText = `${diff>0?'▲':diff<0?'▼':''}${Math.abs(diff).toFixed(2)}`;
         amtEl.className = `text-xs font-black font-mono leading-none ${color}`;
         const pctEl = document.getElementById('liveDiffPct');
         pctEl.innerText = `(${pct.toFixed(2)}%)`;
