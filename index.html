@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V44.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -862,27 +862,27 @@
     <div class="header-fixed w-full flex flex-col shadow-md">
         <!-- V19.0 — 加回 logo + 🔍 🔔 改 SVG line icon(統一證券 App 風格) -->
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
-            <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
-                <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
-                <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.5</span>
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
-                        <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
-                            <span class="text-[11px] text-gray-500">…</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- 📖 散戶實戰作戰手冊 -->
-                <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
-                <!-- ⚙️ 設定 -->
-                <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.2rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
+            <!-- V44.6 — 頂部重排(使用者指定):🔍 搜尋 > 🤖 AI司令部 > 版本 > 大盤天氣 > 📖 手冊 > ⚙️ 設定 > 🔔 鈴鐺 -->
+            <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-2">
                 <!-- 🔍 全螢幕搜尋(SVG line icon) -->
                 <button onclick="app.openGlobalSearchModal(); app.vibrate(30);" class="text-gray-300 hover:text-white flex-shrink-0 p-1" title="搜尋股票">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
+                <!-- 🤖 AI 司令部(回首席/診斷) -->
+                <button onclick="app.switchAppTab('diag'); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="首席 AI / 診斷">🤖</button>
+                <!-- 版本 + 🌦️ 大盤天氣(點擊回診斷) -->
+                <div class="flex items-center gap-1.5 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.6</span>
+                    <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
+                        <span class="text-[11px] text-gray-500">…</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <!-- 📖 散戶實戰作戰手冊 -->
+                <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
+                <!-- ⚙️ 設定 -->
+                <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.2rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
                 <!-- 🔔 提醒(SVG line icon,有紅點 badge) -->
                 <button onclick="app.openPriceAlertModal(''); app.vibrate(30);" class="text-amber-300 hover:text-amber-200 flex-shrink-0 p-1 relative" title="到價監控提醒">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -901,11 +901,11 @@
         <div id="chuTrendAlertBanner" class="hidden"></div>
         <!-- ⛏️ V16.4 採礦中 banner(讀 data/miner_status.json + GitHub Actions API 雙保險,30 秒 poll)-->
         <!-- V19.2 — banner 文字改正面語氣:強調資料已存在(顯目前快照日期),採礦只是「背景更新中」-->
-        <div id="minerStatusBanner" class="hidden bg-[#0d1117]/80 border border-amber-700/40 rounded-md px-3 py-1 text-[10px] text-gray-400 mt-1 mx-auto max-w-7xl flex items-center justify-between gap-2">
-            <span class="flex-1 min-w-0">
-                📊 顯示中:<span id="msLastUpdated" class="text-gray-200 font-mono">--</span> 資料 ・ ⛏️ <span id="msStage" class="text-amber-300/80">背景採礦更新中</span>(完成自動換新)
-            </span>
-            <button onclick="app._loadMinerStatus(true)" class="text-blue-400/70 underline hover:text-blue-200 text-[10px] flex-shrink-0 whitespace-nowrap" title="重新檢查採礦狀態">🔄</button>
+        <!-- 📊 V44.6 — 資料日期/採礦狀態改細條(使用者:太佔版面),可 ✕ 關閉;只在背景採礦時顯 -->
+        <div id="minerStatusBanner" class="hidden px-3 py-0.5 text-[9px] text-gray-500 mx-auto max-w-7xl flex items-center gap-1.5">
+            <span class="flex-1 min-w-0 truncate">📊 <span id="msLastUpdated" class="text-gray-400 font-mono">--</span> 資料・⛏️<span id="msStage" class="text-amber-400/70">採礦更新中</span>,完成自動換新</span>
+            <button onclick="app._loadMinerStatus(true)" class="text-blue-400/60 hover:text-blue-200 flex-shrink-0" title="重新檢查採礦狀態">🔄</button>
+            <button onclick="document.getElementById('minerStatusBanner').classList.add('hidden')" class="text-gray-600 hover:text-white flex-shrink-0 font-bold leading-none px-0.5" title="關閉">✕</button>
         </div>
         <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
         <div style="display:none" aria-hidden="true">
@@ -2162,7 +2162,7 @@
                 </div>
                 <!-- V17.11 — 表頭 + 內容區包在同一個 horizontal scroll container,讓所有 column 寬度對齊 -->
                 <div class="flex-grow bg-[#0d1117] overflow-hidden">
-                    <div class="text-[10px] text-gray-500 text-center py-1 border-b border-[#21262d] font-bold">💡 點擊診斷 ・ 上方「✏️ 編輯」改成本/股數/刪除 ・ ←→ 滑動看更多欄位</div>
+<!-- 💡 操作提示行 V44.6 已刪除(使用者要求版面乾淨) -->
                     <div class="overflow-x-auto">
                         <div class="min-w-[680px]">
                             <!-- V17.11 — 排序 header(寬版,多欄水平 scroll)-->
@@ -3103,8 +3103,8 @@ const app = {
         this.initCommandCenter();
         this.registerServiceWorker();
         setTimeout(() => this.scanAllMonitored(), 8000);
-        // 🌟 開 App 直接落地「全球」分頁，呈現黃金動線（全球宏觀風險➔9大板塊➔指揮部➔泡沫預警）
-        this.switchAppTab('market');
+        // 🌟 V44.6 開 App 直接落地「庫存」分頁(使用者要求),並捲到最上
+        this.switchAppTab('inv');
     },
 
     // 戰略區塊已搬進「全球」分頁；此處僅保險首次填充宏觀觀測台
@@ -4966,7 +4966,7 @@ ${list}
             setTimeout(() => { try { this._restoreSectorIntradayMemory(); } catch(_) {} }, 1500);
         }
         if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); this._scanWatchlistCheckup(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }
-        if (tabId === 'inv') { try { this.renderInventory(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
+        if (tabId === 'inv') { try { this.renderInventory(); window.scrollTo(0, 0); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
