@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -878,7 +878,8 @@
         <div id="aiGodSubtitle" class="flex items-center gap-2 px-4 py-2 text-[9px] text-gray-600 flex-shrink-0"><span class="flex-1 border-t border-[#21262d]"></span>歡迎回來 · 逐檔純公式解析<span class="flex-1 border-t border-[#21262d]"></span></div>
         <div id="aiGodChat" class="flex-1 overflow-y-auto px-3 pb-3 space-y-3 scrollbar-hide"></div>
         <div class="flex-shrink-0 border-t border-[#30363d] p-2 bg-[#0d1117]">
-            <div id="aiGodChips" class="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2"></div>
+            <!-- 🤖 V46.1 底部快捷 chip 已移除(與上方「你可能還想問」重複);保留輸入框自由問 -->
+            <div id="aiGodChips" class="hidden"></div>
             <div class="flex items-center gap-2">
                 <input id="aiGodInput" type="text" placeholder="輸入你想了解的股市資訊…" class="flex-1 bg-[#161b22] border border-[#30363d] rounded-full px-4 py-2.5 text-sm text-gray-100 outline-none focus:border-cyan-500 transition-colors" onkeydown="if(event.key==='Enter')app.aiGodAsk();">
                 <button onclick="app.aiGodAsk()" class="w-10 h-10 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center flex-shrink-0 text-lg font-black" title="送出到免費 AI">➤</button>
@@ -898,7 +899,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.0</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.1</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -5240,7 +5241,7 @@ ${list}
         document.getElementById('set_finmindKey4').value = this.settings.finmindKey4 || '';
         document.getElementById('set_massiveKey').value = this.settings.massiveKey || '';
         const aiEngEl = document.getElementById('set_aiEngine');
-        if (aiEngEl) aiEngEl.value = this.settings.aiEngine || 'auto';
+        if (aiEngEl) aiEngEl.value = this.settings.aiEngine || 'groq';
         const freeEngEl = document.getElementById('set_freeAiEngine');   // 🔎 V41.24 免費查公司引擎
         if (freeEngEl) freeEngEl.value = this.settings.freeAiEngine || 'perplexity';
         const ratEl = document.getElementById('set_riskAlertThreshold');
@@ -5418,7 +5419,7 @@ ${list}
     // ⭐ V35 — 手動 AI 引擎覆寫:設定頁下拉選定後,所有 AI 分析強制走該引擎(用來比較哪個 AI 較準 / 測哪把 key 壞)
     //   'auto' = 維持原本智慧路由(Gemini→OpenRouter 等);其餘值強制單一引擎,失敗直接 throw 不偷偷 fallback
     _forcedEngine() {
-        const e = this.settings?.aiEngine || 'auto';
+        const e = this.settings?.aiEngine || 'groq';
         return e === 'auto' ? null : e;
     },
     // 強制走指定引擎(供 _callAI / _callDeepAI 在 _forcedEngine() 非空時呼叫)
@@ -13077,8 +13078,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!modal) return;
         modal.classList.remove('hidden');
         const chat = document.getElementById('aiGodChat');
-        const chipsEl = document.getElementById('aiGodChips');
-        if (chipsEl) chipsEl.innerHTML = ['為什麼漲跌', '最新消息', '本季財報', '產業前景', '該買該賣'].map(q => `<button onclick="app.aiGodQuick('${q}')" class="flex-shrink-0 text-[11px] font-bold text-cyan-300 bg-cyan-900/20 border border-cyan-700/40 rounded-full px-3 py-1 hover:bg-cyan-900/40 transition-colors">${q}</button>`).join('');
+        // 🤖 V46.1 底部快捷 chip 移除(與「你可能還想問」重複),不再填充
         const badge = document.getElementById('aiGodModeBadge');
         const subtitle = document.getElementById('aiGodSubtitle');
         // 🤖 V45.5 — 個股頁 🤖 進來:只解析「本檔」+ 你可能還想問(免費查);其餘走庫存全解析
@@ -13125,7 +13125,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let rows = null;
         try { rows = await this.fetchHistoricalData(sym, false); } catch (_) {}
         const verdict = this._aiGodStockVerdict(rows);
-        const asks = ['最近為什麼漲跌', '最新消息與法人動向', '本季財報與營收表現', '產業前景與競爭態勢', '目前該買該賣'];
+        // V46.1 — 擴充問題(全質化,走免費 AI;數字仍看 App 內自算卡,禁外部 AI 算)
+        const asks = [
+            '最近為什麼漲跌', '最新消息與法人動向', '本季財報與營收表現',
+            '產業前景與競爭態勢', '同業競爭對手有哪些、誰較強', '除權息與股利政策',
+            '近期法說會/重大訊息重點', '分析師目標價與投資評等',
+            '這檔的護城河與競爭優勢', '目前該買該賣'
+        ];
         const askBtns = asks.map(q => `<button onclick="app.aiGodStockAsk('${q}'); app.vibrate(20);" class="w-full text-left text-[12px] font-bold text-gray-200 bg-[#161b22] border border-[#30363d] hover:border-cyan-600 rounded-lg px-3 py-2.5 transition-colors flex items-center justify-between gap-2"><span>${q}</span><span class="text-cyan-400 text-[11px] flex-shrink-0">🔎 查</span></button>`).join('');
         chat.innerHTML = `
             <div class="flex gap-2">
@@ -14201,11 +14207,12 @@ ${brokerText}
             // 確保「法人共識目標價」的 fundamentals cache (_fundCache) 必有 — 之前因為
             // 「同股不重打」的 _autoFetchedSyms 防重複造成第一次 FinMind 失敗後永不重試
             if (!this._fundCache || this._fundCache.sym !== sym) {
-                this.fetchFundamentalAnalysis(sym);
+                // 🔇 V46.1 — 只載 X光數字/法人目標價,skipAI 不自動打 AI(取消「每次開個股偷跑一次 AI」耗額度)
+                this.fetchFundamentalAnalysis(sym, { skipAI: true });
             }
         } catch(e) {
-            // chips JSON fetch 失敗時仍嘗試走 fetchFundamentalAnalysis，至少法人目標價有機會算出
-            try { this.fetchFundamentalAnalysis(sym); } catch(_) {}
+            // chips JSON fetch 失敗時仍嘗試走 fetchFundamentalAnalysis(skipAI),至少法人目標價有機會算出
+            try { this.fetchFundamentalAnalysis(sym, { skipAI: true }); } catch(_) {}
         }
     },
 
@@ -19340,7 +19347,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // V27.5 — 快取鍵加入「綜合評分 + 系統燈號」狀態:輸入訊號變動即自動失效重抽,避免首席顯舊結論 vs 各卡即時不同步
         const sigState = `${this._lastMasterScore?.score ?? ''}|${this.unifiedSignal?.level ?? ''}`;
         // 🐛 V41.28 修:加入 AI 引擎 → 切引擎(gemini/groq…)重跑同股不再吃到舊引擎的快取
-        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this.settings.aiEngine || 'auto'}|${this._hashStr((this.settings.aiPrompt || '') + sigState)}`;
+        return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this.settings.aiEngine || 'groq'}|${this._hashStr((this.settings.aiPrompt || '') + sigState)}`;
     },
     _getCachedAI(sym, costKey) {
         try {
@@ -20185,8 +20192,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 防呆：沒有真實基本面就不要叫 AI 瞎掰（過去讀不存在的 _stockInfo→全是0→台積電被估成220）
         if (!fc || fc.sym !== sym) {
             showHint('📡 法人目標價：X 光掃描中，請稍候…', 'text-blue-300');
-            // 嘗試補打一次 X 光，避免卡死
-            try { this.fetchFundamentalAnalysis(sym); } catch(_) {}
+            // 嘗試補打一次 X 光(skipAI 只補數字,不自動打 AI)
+            try { this.fetchFundamentalAnalysis(sym, { skipAI: true }); } catch(_) {}
             return;
         }
         const pe = fc.pe != null ? Number(fc.pe) : null;
