@@ -303,78 +303,67 @@ def main():
         deep_probe()
         return
 
-    index_html = None
-    used_index = None
-    for cand in INDEX_CANDIDATES:
-        html, status = get(cand)
-        print(f"index try {cand} → status={status} len={len(html) if html else 0}")
-        if html and len(html) > 500:
-            index_html, used_index = html, cand
-            break
+    # ===== 正式採礦(結構已確認 V45.9)=====
+    # 1) 四張分類頁 → 收集所有 data-type="{mkt}_{sub}" 族群 + 乾淨名稱
+    CAT_PAGES = ["/m/group/newgroup", "/m/group/mkt0/", "/m/group/mkt1/", "/m/group/mkt5/"]
+    gid_name, order = {}, []
+    for p in CAT_PAGES:
+        html, st = get(BASE + p)
+        n_before = len(order)
+        if not html:
+            print(f"⚠️ 分類頁失敗 {p} status={st}")
+            continue
+        for dt, raw in re.findall(r'data-type="([^"]+)"[^>]*>(.*?)</', html, re.S):
+            if "_" not in dt:
+                continue
+            nm = _txt(raw)[:24]
+            if nm and dt not in gid_name:
+                gid_name[dt] = nm
+                order.append(dt)
+        print(f"分類頁 {p}: 累計族群 {len(order)}(+{len(order)-n_before})")
 
-    if not index_html:
-        print("❌ 所有 index 候選都拿不到,結束(可能被擋或改版)")
+    if not order:
+        print("❌ 沒抓到任何族群(megatime 可能改版)")
+        _write({}, {}, note="no_groups")
         sys.exit(1)
 
-    # 🔎 診斷:印出 index 前 40 條 anchor,方便對 URL pattern
-    anchors = A_RE.findall(index_html)
-    print(f"\n=== index anchors: {len(anchors)} 條(前 40)===")
-    for href, inner in anchors[:40]:
-        print(f"  [{_txt(inner)[:16]:<16}] {href}")
-
-    groups = discover_group_links(index_html)
-    print(f"\n=== 疑似族群連結:{len(groups)} 個(前 30)===")
-    for name, u in groups[:30]:
-        print(f"  {name[:20]:<20} {u}")
-
-    if not groups:
-        print("⚠️ index 沒抽到族群連結 → 印 index 前 3000 字給人看結構")
-        print(index_html[:3000])
-        # 仍寫一個空檔,讓 workflow 有產物
-        _write({}, {}, used_index, note="no_groups")
-        return
-
-    # 逐族群抓成分股(第一次跑 cap 上限,避免太久;確認結構後再放寬)
-    cap = int(os.environ.get("CONCEPT_GROUP_CAP", "500"))
-    group_map = {}
-    for i, (name, u) in enumerate(groups[:cap]):
-        html, status = get(u)
+    # 2) 逐族群 → groupinfo 頁抓成分股 sid
+    cap = int(os.environ.get("CONCEPT_GROUP_CAP", "9999"))
+    groups = {}
+    for i, gid in enumerate(order[:cap]):
+        x, y = gid.split("_", 1)
+        html, st = get(f"{BASE}/m/groupinfo/mkt{x}/st{y}.html")
         if not html:
             continue
-        codes = extract_codes(html)
-        # 用頁面 title 補強族群名(index 文字可能太短)
-        if not name:
-            mt = re.search(r"<title>(.*?)</title>", html, re.S)
-            name = _txt(mt.group(1)) if mt else u
-        if codes:
-            group_map.setdefault(name, set()).update(codes)
-        if i < 3:
-            print(f"\n--- 樣本族群[{i}] {name} ({u}) status={status} codes={len(codes)} ---")
-            print("   codes:", sorted(codes)[:20])
-        time.sleep(0.25)
+        sids = sorted(set(re.findall(r"/m/stock/sid(\d{4})", html)))
+        if sids:
+            groups[gid] = {"name": gid_name[gid], "mkt": x, "syms": sids}
+        if i % 40 == 0:
+            print(f"  {i}/{len(order)} {gid} {gid_name[gid]} → {len(sids)} 檔")
+        time.sleep(0.12)
 
-    # 收斂 + 反查表
-    groups_out = {k: sorted(v) for k, v in group_map.items() if v}
+    # 3) 反查表 by_stock:mkt2(細產業/概念)優先 → 0/1(大分類)→ 5(指數成分)→ 其餘
+    prio = {"2": 0, "0": 1, "1": 1, "5": 3}
     by_stock = {}
-    for gname, syms in groups_out.items():
-        for s in syms:
-            by_stock.setdefault(s, [])
-            if gname not in by_stock[s]:
-                by_stock[s].append(gname)
+    for gid, g in sorted(groups.items(), key=lambda kv: prio.get(kv[1]["mkt"], 2)):
+        for s in g["syms"]:
+            lst = by_stock.setdefault(s, [])
+            if g["name"] not in lst and len(lst) < 10:   # 每檔最多 10 個標籤
+                lst.append(g["name"])
 
-    print(f"\n✅ 族群 {len(groups_out)} 個 / 個股 {len(by_stock)} 檔有標籤")
-    _write(groups_out, by_stock, used_index)
+    print(f"\n✅ 族群 {len(groups)} 個 / 個股 {len(by_stock)} 檔有標籤")
+    _write(groups, by_stock)
 
 
-def _write(groups_out, by_stock, used_index, note=""):
+def _write(groups, by_stock, note=""):
     payload = {
         "updated": datetime.now(TPE).isoformat(timespec="seconds"),
         "source": "megatime",
-        "index": used_index,
         "note": note,
-        "group_count": len(groups_out),
-        "groups": groups_out,
-        "by_stock": by_stock,
+        "group_count": len(groups),
+        "stock_count": len(by_stock),
+        "groups": groups,       # gid → {name, mkt, syms}
+        "by_stock": by_stock,   # code → [族群名](前端用,mkt2 概念優先)
     }
     out = DATA / "concept_stocks.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
