@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.13</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -888,32 +888,33 @@
 
     <div class="header-fixed w-full flex flex-col shadow-md">
         <!-- V19.0 — 加回 logo + 🔍 🔔 改 SVG line icon(統一證券 App 風格) -->
-        <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
+        <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-2 gap-2 relative bg-[#0d1117]">
             <!-- V44.6 — 頂部重排(使用者指定):🔍 搜尋 > 🤖 AI司令部 > 版本 > 大盤天氣 > 📖 手冊 > ⚙️ 設定 > 🔔 鈴鐺 -->
+            <!-- V46.0 — 整排放大到與個股置頂同尺寸 -->
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-2">
                 <!-- 🔍 全螢幕搜尋(SVG line icon) -->
                 <button onclick="app.openGlobalSearchModal(); app.vibrate(30);" class="text-gray-300 hover:text-white flex-shrink-0 p-1" title="搜尋股票">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
-                <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.13</span>
+                <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.0</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
-                <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
-                    <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
+                <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
+                    <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
                     <div id="headerWeather" class="flex items-center gap-1">
-                        <span class="text-[11px] text-gray-500">…</span>
+                        <span class="text-[13px] text-gray-500">…</span>
                     </div>
                 </div>
             </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex items-center gap-2.5 flex-shrink-0">
                 <!-- 📖 散戶實戰作戰手冊 -->
-                <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.2rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
+                <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.55rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
                 <!-- ⚙️ 設定 -->
-                <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.2rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
+                <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.55rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
                 <!-- 🔔 提醒(SVG line icon,有紅點 badge) -->
                 <button onclick="app.openPriceAlertModal(''); app.vibrate(30);" class="text-amber-300 hover:text-amber-200 flex-shrink-0 p-1 relative" title="到價監控提醒">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                     <span id="globalAlertDot" class="hidden absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-red-500 ring-1 ring-[#0d1117]"></span>
                 </button>
             </div>
