@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V43.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V43.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.2</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -9894,6 +9894,35 @@ const marginByDate = {};
         }
         mr = mr || {};
 
+        // 🎯 V43.2 融資餘額(bubble_warning.json 已採礦,原本只是沒接進盤前體檢)
+        let bub = this._bubbleCache;
+        if (!bub) {
+            try {
+                const r = await fetch(new URL('data/bubble_warning.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+                if (r.ok) { bub = await r.json(); this._bubbleCache = bub; }
+            } catch (_) {}
+        }
+        // 🎯 V43.2 外資現貨連續買/賣超天數(risk_history.json 逐日 append,累積後自動亮;<3 筆先不顯免誤導)
+        let fiStreak = null;
+        try {
+            let hist = this._riskHistCache;
+            if (!hist) {
+                const r = await fetch(new URL('data/risk_history.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+                if (r.ok) { hist = await r.json(); this._riskHistCache = hist; }
+            }
+            if (Array.isArray(hist) && hist.length >= 3) {
+                const vals = hist.map(h => (h && Number.isFinite(+h.fi_spot_net)) ? +h.fi_spot_net : null).filter(v => v != null);
+                if (vals.length >= 3) {
+                    const lastSign = vals[vals.length - 1] > 0 ? 1 : vals[vals.length - 1] < 0 ? -1 : 0;
+                    if (lastSign !== 0) {
+                        let n = 0;
+                        for (let i = vals.length - 1; i >= 0; i--) { const sg = vals[i] > 0 ? 1 : vals[i] < 0 ? -1 : 0; if (sg === lastSign) n++; else break; }
+                        if (n >= 2) fiStreak = { dir: lastSign, days: n };
+                    }
+                }
+            }
+        } catch (_) {}
+
         // ① 指數值:US 大盤直接讀 macro_cache 物件(數值最可靠,不靠 DOM relay);加權/櫃買用 processMacroData DOM,加權再以 macro_cache.twii 補
         const usPct = k => { const c = usm[k]?.chg_pct; return (c == null || isNaN(c)) ? null : +c; };
         const pctStr = v => (v == null) ? null : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
@@ -10027,6 +10056,17 @@ const marginByDate = {};
         const _twiiDate = (Array.isArray(usm.twii_history) && usm.twii_history.length) ? String(usm.twii_history[usm.twii_history.length - 1].date || '').replace(/-/g, '/').slice(-5) : '';
         const _basis = _updShow || _twiiDate || '—';
 
+        // 🎯 V43.2 大盤融資餘額行(bubble_warning.json)
+        let marginLine = '<span class="text-gray-500">採集中</span>';
+        const _mv = (bub && Number.isFinite(+bub['大盤融資餘額_億元'])) ? +bub['大盤融資餘額_億元'] : null;
+        if (_mv != null) {
+            const mc = _mv > 3200 ? 'text-red-300' : _mv > 2800 ? 'text-yellow-300' : 'text-green-300';
+            const mtag = _mv > 3200 ? '🔴 過熱' : _mv > 2800 ? '🟡 偏高' : '🟢 安定';
+            marginLine = `<span class="${mc} font-mono font-bold">${_mv.toLocaleString('en-US', { maximumFractionDigits: 0 })} 億</span> <span class="text-[9px] ${mc}">${mtag}</span>`;
+        }
+        // 🎯 V43.2 外資現貨連續買/賣超天數 badge
+        const fiStreakTxt = fiStreak ? ` <span class="text-[9px] ${fiStreak.dir > 0 ? 'text-red-400' : 'text-green-400'} font-bold">・連${fiStreak.dir > 0 ? '買' : '賣'}${fiStreak.days}天</span>` : '';
+
         // 🎯 V43.1 大盤關鍵壓力/支撐(從 twii_history 算,對標專業盤前圖)
         let levelsHtml = '';
         try {
@@ -10094,11 +10134,12 @@ const marginByDate = {};
                 <div class="border-t border-[#21262d] pt-1.5">
                     <div class="text-[9px] text-gray-600 font-bold mb-1">🏦 外資/法人籌碼</div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                        ${chipCell('🌐 外資現貨', fiSpotLine)}
+                        ${chipCell('🌐 外資現貨', fiSpotLine + fiStreakTxt)}
                         ${chipCell('🎯 外資台指期', fiLine)}
                         ${chipCell('🏦 投信', yiLine(fiTrust))}
                         ${chipCell('🏢 自營商', yiLine(fiDealer))}
                         ${chipCell('⚖️ 三大法人合計', yiLine(fiTotal))}
+                        ${chipCell('💰 大盤融資', marginLine)}
                     </div>
                     <div class="flex items-baseline justify-between gap-1 mt-1"><span class="text-gray-400">⚖️ 期現基差</span><span class="text-right">${basisLine}</span></div>
                 </div>
@@ -10109,7 +10150,7 @@ const marginByDate = {};
                 <div class="text-[10px] font-bold ${sc} mb-0.5">💡 一句話總結</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">${summary}</div>
             </div>
-            <div class="text-[9px] text-gray-600 leading-snug">🔧 仍採集中:櫃買指數、大盤融資券餘額、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>
+            <div class="text-[9px] text-gray-600 leading-snug">🔧 仍採集中:櫃買指數、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>
             <div class="mt-2 pt-2 border-t border-[#21262d]">
                 <div class="text-[9px] text-gray-500 mb-1">🔎 免費查宏觀事件(外部 AI,不耗額度)</div>
                 <div class="grid grid-cols-3 gap-1.5">
