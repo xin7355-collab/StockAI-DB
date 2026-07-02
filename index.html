@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V42.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -19781,10 +19781,15 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             '發動棒破昨高': { what: '一根長紅(漲幅≥3%)且收盤過昨天最高 = 攻擊發動、多方點火。', spot: '實體長紅、收盤價 > 昨天最高價,帶量更強。', how: '追這種要快、停損也要快:跌破發動棒一半或最低就走。', tip: '高檔的發動棒容易變「最後一根」,這檔若期望值為負(看排名)代表追高常被套,寧可等回檔。' },
         };
         const h = H[name] || { what: '這個型態的白話說明整理中。', spot: '—', how: '進場=訊號日收盤、停損=跌破5日線或−5%。', tip: '—' };
+        // 📖 V42.3 全部型態改用格式化「型態百科」彈窗(比照葛蘭碧),不再用擠一團的 alert
+        const sec = (lb, tx, c) => tx ? `<div class="mb-2"><div class="text-[11px] font-bold ${c || 'text-amber-300'} mb-0.5">${lb}</div><div class="text-[11px] text-gray-200 leading-relaxed">${tx}</div></div>` : '';
         const verdict = r.expectancy > 0
-            ? `這檔用「${name}」歷史上是【正期望值 +${r.expectancy.toFixed(1)}%/趟】,${r.expectancy > 0.5 ? '相對好用,可列主打' : '小賺、可搭配用'}。`
-            : `這檔用「${name}」歷史上是【負期望值 ${r.expectancy.toFixed(1)}%/趟】→ 這招在這檔不好賺,建議避開、換主打的型態。`;
-        alert(`${r.key}\n\n【是什麼】${h.what}\n\n【怎麼認】${h.spot}\n\n【怎麼做】${h.how}\n\n【小白提醒】${h.tip}\n\n【這檔的成績】勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ 樣本 ${r.count} 次 ・ 每趟期望值 ${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%\n→ ${verdict}\n\n⚠️ 純歷史回測,過去不代表未來;實際仍要看大盤與個股當下狀況,嚴守停損。`);
+            ? `這檔用「${name}」歷史【正期望值 +${r.expectancy.toFixed(1)}%/趟】,${r.expectancy > 0.5 ? '相對好用、可列主打' : '小賺、可搭配用'}。`
+            : `這檔用「${name}」歷史【負期望值 ${r.expectancy.toFixed(1)}%/趟】→ 這招在這檔不好賺,建議避開、換主打型態。`;
+        const vc = r.expectancy > 0 ? 'text-red-300' : 'text-green-300';
+        const stats = `<div class="bg-[#0d1117] border-l-4 ${r.expectancy > 0 ? 'border-red-500' : 'border-green-500'} border-y border-r border-[#30363d] rounded-r p-2 mt-1 text-[10px] leading-relaxed"><b class="text-gray-200">📊 這檔的成績:</b>勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次 ・ 期望值 <b class="${vc}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</b><br><span class="text-gray-300">→ ${verdict}</span></div>`;
+        const html = sec('【是什麼】', h.what, 'text-blue-300') + sec('【怎麼認】', h.spot) + sec('【怎麼進場 / 停損停利】', h.how, 'text-green-300') + sec('【小白提醒】', h.tip, 'text-yellow-300') + stats + '<div class="text-[9px] text-gray-600 mt-2">純公式歷史回測,過去不代表未來;實際仍要看大盤與個股當下狀況,嚴守停損。</div>';
+        this._showRichModal(`${r.key}`, html);
     },
 
     renderBacktest() {
