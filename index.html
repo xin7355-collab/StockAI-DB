@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -897,7 +897,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.7</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.8</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -986,11 +986,11 @@
                      ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
                     <!-- Row 1:返回 + 置中股名(◀ 🔍名 代號 ▶)+ ☆ 🚨 -->
                     <div class="flex items-center gap-1">
-                        <button onclick="app.switchAppTab('inv'); app.vibrate(30);" class="flex-shrink-0 text-gray-300 hover:text-white -ml-1" title="返回庫存">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        <button onclick="app.switchAppTab('inv'); app.vibrate(30);" class="flex-shrink-0 text-gray-200 hover:text-white -ml-1 mr-2" title="返回庫存">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                         </button>
                         <!-- 🤖 V45.5 — AI 股神(個股版):移到 < 右手邊,開啟顯示「本檔」判讀 + 免費查 -->
-                        <button onclick="app.openAiGod('stock'); app.vibrate(40);" class="flex-shrink-0 text-[1.35rem] leading-none transition-transform hover:scale-110" title="🤖 AI 股神 · 本檔解析">🤖</button>
+                        <button onclick="app.openAiGod('stock'); app.vibrate(40);" class="flex-shrink-0 text-[1.75rem] leading-none transition-transform hover:scale-110" title="🤖 AI 股神 · 本檔解析">🤖</button>
                         <div class="flex-1 flex items-center justify-center gap-1.5 min-w-0">
                             <button id="navPrevStock" onclick="app.navInventoryStock(-1); app.vibrate(15);" class="hidden flex-shrink-0 text-gray-500 hover:text-cyan-300 text-lg font-black px-0.5 leading-none" title="上一檔庫存股">◀</button>
                             <div onclick="app.openGlobalSearchModal(); app.vibrate(20);" class="flex items-center gap-1.5 cursor-pointer min-w-0" title="點此搜尋股票">
@@ -1013,7 +1013,7 @@
                     <div class="flex items-center gap-2.5 mt-1">
                         <!-- 🕯️ V45.7 個股即時/收盤 K 棒(紅漲綠跌),由 onWorkerMessage 以今日 OHLC 繪製 -->
                         <span id="quoteKbar" class="flex-shrink-0 flex items-center" aria-hidden="true"></span>
-                        <span id="livePriceText" class="text-4xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
+                        <span id="livePriceText" class="text-3xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
                         <div id="liveDiffWrapper" class="flex flex-col items-start justify-center leading-tight text-gray-400">
                             <span id="liveDiffAmount" class="text-lg font-black font-mono leading-none">--</span>
                             <span id="liveDiffPct" class="text-sm font-bold font-mono leading-tight mt-0.5">(--%)</span>
@@ -1249,26 +1249,27 @@
             </div>
 
 <div id="subContentLive" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[50vh]">
+                <!-- ⚠️ V45.7 — 假漲/假跌判讀卡搬到最上面(使用者要求:先看誘多risk 再看K) -->
+                <div id="intradayTruthBox" class="hidden"></div>
                 <!-- ⚡ V42.8 — 盤中即時分鐘K線(獨立 tab,免費 Fugle candles,零採礦) -->
-                <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
-                    <div class="flex items-center justify-between mb-2">
+                <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-2 shadow-lg">
+                    <div class="flex items-center justify-between mb-1.5">
                         <div class="text-sm font-black text-cyan-300 flex items-center gap-1.5">⚡ 盤中即時分鐘K</div>
                         <button onclick="alert('【盤中即時分鐘K】\n\n這是「當天盤中」的分鐘K棒圖(1分/5分),讓你看盤中即時走勢、量能有沒有進來,不用等收盤。\n\n📊 資料來源:免費 Fugle 行情 API(你設定頁填的 token),零採礦。\n⏰ 只有盤中(09:00–13:30)抓得到當天即時分鐘K;非盤中會顯示最近一個交易日的分鐘K(靜態)。\n🔄 免費版有流量限制,所以做成「手動按鈕更新」,不會自己一直跳。想看即時就按一下「載入/更新盤中K」。\n\n下方摘要:\n• 估量達標度%:用目前累計量線性外推今天收盤量,對比昨天總量(80%以上=量能有進來)。\n• 內外盤買賣力道:用五檔委買/委賣量估主力當下偏多偏空(盤中估算,真實分點以收盤後為準)。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 說明</button>
                     </div>
-                    <div class="flex items-center gap-2 mb-2">
+                    <div class="flex items-center gap-2 mb-1.5">
                         <div class="flex bg-[#0d1117] rounded border border-[#30363d] overflow-hidden flex-shrink-0">
                             <button id="intraTF_1" onclick="app.setIntradayTF('1')" class="px-3 py-1 text-xs font-bold bg-cyan-700 text-white transition-colors">1分</button>
                             <button id="intraTF_5" onclick="app.setIntradayTF('5')" class="px-3 py-1 text-xs font-bold text-gray-400 bg-transparent hover:text-white transition-colors">5分</button>
                         </div>
                         <button id="intradayKlineBtn" onclick="app.loadIntradayKline(app.currentSymbolId); app.vibrate(20);" class="flex-1 text-xs font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 載入 / 更新盤中K</button>
                     </div>
-                    <div id="intradayKlineChart" class="w-full h-[300px]"></div>
-                    <div class="text-[9px] text-gray-500 mt-1 flex items-center gap-1"><span class="inline-block w-4 h-0.5 bg-white"></span>白線=分時均價(站上偏強/跌破偏弱)</div>
-                    <div id="intradayTruthBox" class="hidden mt-2"></div>
-                    <div id="intradaySummary" class="hidden mt-2 text-[11px] leading-relaxed"></div>
+                    <div id="intradayKlineChart" class="w-full h-[250px]"></div>
+                    <div class="text-[9px] text-gray-500 mt-0.5 flex items-center gap-1"><span class="inline-block w-4 h-0.5 bg-white"></span>白線=分時均價(站上偏強/跌破偏弱)</div>
+                    <div id="intradaySummary" class="hidden mt-1.5 text-[11px] leading-relaxed"></div>
                     <!-- 📊 V45.1 — 五檔深度階梯 + 即時數據 grid(對標券商即時盤,Fugle 五檔陣列展開) -->
-                    <div id="intradayDepthBox" class="hidden mt-3"></div>
-                    <div id="intradayHint" class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">👆 盤中(09:00–13:30)進此頁自動拉當日分鐘K;非盤中顯示最近交易日。免費 Fugle 額度有限,手動更新即可。</div>
+                    <div id="intradayDepthBox" class="hidden mt-2"></div>
+                    <div id="intradayHint" class="text-[10px] text-gray-500 mt-1 leading-snug">👆 盤中(09:00–13:30)進此頁自動拉當日分鐘K;非盤中顯示最近交易日。免費 Fugle 額度有限,手動更新即可。</div>
                 </div>
             </div>
 
@@ -4027,7 +4028,7 @@ ${list}
             document.getElementById('dataSourceText').textContent = '手動現價';
             document.getElementById('dataSourceDot').className = 'w-1.5 h-1.5 rounded-full bg-yellow-400';
             document.getElementById('livePriceText').textContent = val.toFixed(2);
-            document.getElementById('livePriceText').className = 'text-4xl font-black font-mono text-yellow-400 leading-none tracking-tighter transition-all duration-200';
+            document.getElementById('livePriceText').className = 'text-3xl font-black font-mono text-yellow-400 leading-none tracking-tighter transition-all duration-200';
         }
     },
 
@@ -9292,7 +9293,7 @@ const marginByDate = {};
             </div>
             <div class="text-[9px] text-gray-500 mb-2">👇 參考訊號 ・ 最終以上方 🧠 首席 AI 為準</div>
             <div class="rounded-lg border ${verdictCls} px-3 py-2.5 mb-2 text-center">
-                <div class="text-4xl font-black font-mono leading-none mb-0.5">${finalScore}<span class="text-base text-gray-400">/100</span></div>
+                <div class="text-3xl font-black font-mono leading-none mb-0.5">${finalScore}<span class="text-base text-gray-400">/100</span></div>
                 <div class="text-[13px] font-bold mt-1">${verdict}</div>
             </div>
             <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-2 text-[11px] text-gray-300 leading-snug">${action}</div>
@@ -12969,7 +12970,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             </div>
             <div class="text-[9px] text-gray-500 mb-2">👇 只看「型態強弱 × 價量配合」,趨勢/均線見上方四大金剛 ・ 純公式非 AI</div>
             <div class="rounded-lg border ${vCls} px-3 py-2.5 mb-2 text-center">
-                <div class="text-4xl font-black font-mono leading-none mb-0.5">${total}<span class="text-base text-gray-400">/100</span></div>
+                <div class="text-3xl font-black font-mono leading-none mb-0.5">${total}<span class="text-base text-gray-400">/100</span></div>
                 <div class="text-[13px] font-bold mt-1">${verdict}</div>
             </div>
             <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-2 text-[11px] text-gray-300 leading-snug">${action}</div>
@@ -15592,7 +15593,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             document.getElementById('dataSourceBadge').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span class="font-bold text-red-400 text-[10px] font-mono tracking-wide">無資料</span>`;
             const p = document.getElementById('livePriceText');
             p.innerText = '--';
-            p.className = 'text-4xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200';
+            p.className = 'text-3xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200';
             document.getElementById('liveDiffAmount').innerText = '--';
             document.getElementById('liveDiffPct').innerText = '(--)';
             const _kb = document.getElementById('quoteKbar'); if (_kb) _kb.innerHTML = '';
@@ -15732,7 +15733,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         o = +o; h = +h; l = +l; c = +c;
         if (![o, h, l, c].every(v => Number.isFinite(v) && v > 0) || h < l) return '';
         const up = c >= o, col = up ? '#f87171' : '#4ade80';
-        const W = 16, H = 40, cx = W / 2, bw = 9;
+        const W = 13, H = 32, cx = W / 2, bw = 7;
         const rng = Math.max(h - l, 1e-6);
         const y = p => ((h - p) / rng) * (H - 2) + 1;   // 上下各留 1px 邊
         const yTop = Math.min(y(o), y(c)), yBot = Math.max(y(o), y(c)), bodyH = Math.max(yBot - yTop, 2);
@@ -21136,7 +21137,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         priceEl.innerText = currentClose.toFixed(2);
         
         // 基礎樣式
-        priceEl.className = `text-4xl font-black font-mono leading-none tracking-tighter transition-all duration-200`;
+        priceEl.className = `text-3xl font-black font-mono leading-none tracking-tighter transition-all duration-200`;
         void priceEl.offsetWidth;
         
         // 🚀 漲跌停亮燈邏輯 (>=9.8% 漲停, <=-9.8% 跌停)
@@ -21151,13 +21152,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             else if(diff < 0) priceEl.classList.add('price-flash-down');
         }
         
-        // #4 V45.7 — 漲跌移到現價右手邊、上下堆疊(+17.00 / (+2.98%)),金額+幅度都上色
+        // #4 金額:+ 改 🔼(跌用 🔽),字體再小;#5 幅度:去掉 + 號、負數保留 -,字體再小
         const amtEl = document.getElementById('liveDiffAmount');
-        amtEl.innerText = (diff>0?'+':'') + diff.toFixed(2);
-        amtEl.className = `text-lg font-black font-mono leading-none ${color}`;
+        amtEl.innerText = `${diff>0?'🔼':diff<0?'🔽':''}${Math.abs(diff).toFixed(2)}`;
+        amtEl.className = `text-xs font-black font-mono leading-none ${color}`;
         const pctEl = document.getElementById('liveDiffPct');
-        pctEl.innerText = `(${diff>0?'+':''}${pct.toFixed(2)}%)`;
-        pctEl.className = `text-sm font-bold font-mono leading-tight mt-0.5 ${color}`;
+        pctEl.innerText = `(${pct.toFixed(2)}%)`;
+        pctEl.className = `text-[11px] font-bold font-mono leading-tight mt-0.5 ${color}`;
 
         // #2 🕯️ V45.7 — 現價左側今日 K 棒(即時/收盤):以今日 OHLC 繪 SVG,紅漲(收≥開)綠跌
         try {
