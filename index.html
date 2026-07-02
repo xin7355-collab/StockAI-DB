@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V44.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -871,7 +871,7 @@
             <div class="flex-shrink-0 border-t border-[#30363d] p-2 bg-[#0d1117]">
                 <div id="aiGodChips" class="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2"></div>
                 <div class="flex items-center gap-2">
-                    <input id="aiGodInput" type="text" placeholder="輸入你想了解的股市資訊,送出開免費 AI 查(不耗額度)" class="flex-1 bg-[#161b22] border border-[#30363d] rounded-full px-4 py-2.5 text-sm text-gray-100 outline-none focus:border-cyan-500 transition-colors" onkeydown="if(event.key==='Enter')app.aiGodAsk();">
+                    <input id="aiGodInput" type="text" placeholder="輸入你想了解的股市資訊…" class="flex-1 bg-[#161b22] border border-[#30363d] rounded-full px-4 py-2.5 text-sm text-gray-100 outline-none focus:border-cyan-500 transition-colors" onkeydown="if(event.key==='Enter')app.aiGodAsk();">
                     <button onclick="app.aiGodAsk()" class="w-10 h-10 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center flex-shrink-0 text-lg font-black" title="送出到免費 AI">➤</button>
                 </div>
             </div>
@@ -887,7 +887,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.8</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.9</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -12955,14 +12955,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const verdict = this._aiGodStockVerdict(rows);
             bubbles.push(`<div class="flex gap-2">
                 <div class="text-3xl flex-shrink-0 leading-none mt-1">🤖</div>
-                <div class="flex-1 min-w-0 bg-[#161b22] rounded-2xl rounded-tl-sm p-3 border border-[#30363d]">
-                    <div class="inline-block text-[13px] font-black text-amber-300 bg-[#0d1117] border border-[#30363d] rounded px-2 py-0.5 mb-2">📈 ${name} <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span></div>
+                <div data-aigod-bubble="${item.symbol}" onclick="app.aiGodSelect('${item.symbol}')" class="flex-1 min-w-0 bg-[#161b22] rounded-2xl rounded-tl-sm p-3 border border-[#30363d] cursor-pointer transition-colors">
+                    <button onclick="event.stopPropagation(); app.aiGodGoStock('${item.symbol}')" class="inline-flex items-center gap-1 text-[13px] font-black text-amber-300 bg-[#0d1117] border border-amber-700/40 rounded px-2 py-0.5 mb-2 hover:border-amber-500 transition-colors">📈 ${name} <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span> <span class="text-[10px] text-cyan-400">→ 個股</span></button>
                     <div class="text-[14px] text-gray-200 leading-relaxed">${verdict}</div>
-                    <button onclick="app._openFreeAiForSym('${item.symbol}')" class="mt-2 text-[11px] font-bold text-cyan-300 hover:text-cyan-200">🔎 深入查 ${name} 最新消息 →</button>
+                    <button onclick="event.stopPropagation(); app._openFreeAiForSym('${item.symbol}')" class="mt-2 text-[11px] font-bold text-cyan-300 hover:text-cyan-200">🔎 深入查 ${name} 最新消息 →</button>
                 </div>
             </div>`);
         }
-        bubbles.push('<div class="text-[9px] text-gray-600 text-center leading-relaxed px-4 pt-1">⚠️ 以上 100% 純公式(技術面均線/量能/位階 + 籌碼面法人買賣超)判讀,非投資建議、非真人 AI 對話;想問消息/財報/產業請用下方輸入框(開免費 AI,不耗額度)。</div>');
+        bubbles.push('<div class="text-[9px] text-gray-600 text-center leading-relaxed px-4 pt-1">💡 點<b class="text-amber-400/80">股名</b>跳個股判斷 ・ 點<b class="text-cyan-400/80">整框</b>選定後再點下方問題就用它查 ・ 以上純公式判讀,非投資建議。</div>');
         chat.innerHTML = bubbles.join('');
         this.vibrate?.(20);
     },
@@ -13014,10 +13014,29 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._freeAiOpen(/台股|股|台積|美股/.test(q) ? q : `台股 ${q}`);
         if (el) el.value = '';
     },
+    // 🤖 點整框選定該股(下方快速問題就用它查);點股名 chip 則跳個股判斷
+    aiGodSelect(sym) {
+        this._aiGodSelectedSym = sym;
+        document.querySelectorAll('#aiGodChat [data-aigod-bubble]').forEach(el => {
+            const on = el.dataset.aigodBubble === sym;
+            el.style.borderColor = on ? '#06b6d4' : '';
+            el.style.borderWidth = on ? '2px' : '';
+        });
+        const name = this.getStockName(sym) || sym;
+        this.showToast?.(`已選 ${name} · 點下方問題就用它查`, 'info');
+        this.vibrate?.(15);
+    },
+    aiGodGoStock(sym) {
+        document.getElementById('aiGodModal')?.classList.add('hidden');
+        try { this.analyze(sym); } catch (_) {}
+        this.switchAppTab('diag');
+        this.vibrate?.(30);
+    },
     aiGodQuick(q) {
-        const inv = this.inventory || [];
-        const ctx = inv.length ? (this.getStockName(inv[0].symbol) || inv[0].symbol) + '(' + inv[0].symbol + ') ' : '台股 ';
-        this._freeAiOpen(`${ctx}${q}`);
+        const sym = this._aiGodSelectedSym || (this.inventory?.[0]?.symbol);
+        if (!sym) { this._freeAiOpen(`台股 ${q}`); return; }
+        const name = this.getStockName(sym) || sym;
+        this._freeAiOpen(`${name}(${sym}) ${q}`);
     },
     _openFreeAiForSym(sym) {
         const name = this.getStockName(sym) || sym;
