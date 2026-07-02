@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V43.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V43.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1225,6 +1225,8 @@
                     </div>
                 </div>
 
+                <!-- 🗣️ V43.5 — 朱老師口吻 K線型態總評(純公式,點進K線頁即自動顯示,比 AI 準) -->
+                <div id="chuVerdictCard" class="hidden"></div>
                 <div class="bg-[#0d1117] border border-amber-700/40 rounded-lg px-3 py-2.5 flex flex-col gap-2">
                     <button onclick="app.runKlineAudit(app.currentSymbolId); app.vibrate(30);" id="klineAuditBtn" class="w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
                         📐 K線分析報告
@@ -12614,6 +12616,123 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ① 型態分:單一引擎 K棒型態訊號多空相抵(晨星/吞噬/貫穿/發動棒=多,夜星/長黑/假突破/測壓/做頭=空)
     //   ② 量分:朱鐵律「量增配長紅才有效突破 / 無量創高、量增黑K=假突破出貨」
     //   總分 = 型態 55% + 量 45%(禁 AI 算,全 JS 公式)
+    // 🗣️ V43.5 — 朱老師口吻 K線型態總評(100% 純公式,禁 AI:比 AI 準且不耗額度)
+    //   綜合:波段結構(頭頭高底底高)+ 均線多空 + K棒型態偵測 + 歷史高點/前高 + 量能 → 白話講給散戶聽
+    renderChuKbarVerdict(data) {
+        const el = document.getElementById('chuVerdictCard');
+        if (!el) return;
+        if (!Array.isArray(data) || data.length < 20) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        try {
+            const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0), Vv = b => +((b?.volume ?? 0) || 0);
+            const n = data.length, last = n - 1, price = C(data[last]);
+            if (!(price > 0)) { el.classList.add('hidden'); return; }
+            const ind = this.indicators || {};
+            const maAt = (arr) => (Array.isArray(arr) && Number.isFinite(+arr[last])) ? +arr[last] : null;
+            const ma5 = maAt(ind.ma5), ma20 = maAt(ind.ma20), ma60 = maAt(ind.ma60);
+
+            // ── 歷史高點 / 前高 / 前低 ──
+            let ath = 0, athIdx = 0;
+            for (let i = 0; i < n; i++) { const h = H(data[i]); if (h > ath) { ath = h; athIdx = i; } }
+            const athPct = ath > 0 ? (price - ath) / ath * 100 : 0;   // 距歷史高(負=還沒到)
+            const daysFromAth = last - athIdx;
+            const peaks = this.peaks || [], troughs = this.troughs || [];
+            const recentHigh = peaks.length ? peaks[peaks.length - 1].val : null;   // 前高壓力
+            const recentLow = troughs.length ? troughs[troughs.length - 1].val : null;
+
+            // ── 波段結構(頭頭高底底高)──
+            let trend = 'flat';
+            if (peaks.length >= 2 && troughs.length >= 2) {
+                const pkUp = peaks[peaks.length - 1].val > peaks[peaks.length - 2].val;
+                const trUp = troughs[troughs.length - 1].val > troughs[troughs.length - 2].val;
+                const pkDn = peaks[peaks.length - 1].val < peaks[peaks.length - 2].val;
+                const trDn = troughs[troughs.length - 1].val < troughs[troughs.length - 2].val;
+                if (pkUp && trUp) trend = 'bull';
+                else if (pkDn && trDn) trend = 'bear';
+            }
+
+            // ── K棒型態偵測(重用單一引擎)──
+            const patSigs = [];
+            const grab = fn => { try { (this[fn]?.(data) || []).forEach(s => patSigs.push(s)); } catch (_) {} };
+            ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
+             '_detectPressureTest', '_detectHeavyResistance', '_detectBoxBreakout', '_detectChuLongEntry',
+             '_detectGap', '_detectMaKoudi', '_detectGranville', '_detectTopBreakdown', '_detectTrendline',
+             '_detectVolPriceDiverge'].forEach(grab);
+            const bullPats = [...new Set(patSigs.filter(s => s.tone === 'bull').map(s => s.title))];
+            const bearPats = [...new Set(patSigs.filter(s => s.tone === 'bear' || s.tone === 'warn').map(s => s.title))];
+            const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
+            const launch = body >= 3 && C(data[last]) > H(data[last - 1]);
+            if (launch) bullPats.unshift(`強勢發動棒 +${body.toFixed(1)}%`);
+
+            // ── 量能 ──
+            const vArr = data.slice(Math.max(0, last - 5), last).map(Vv);
+            const avgV = vArr.length ? vArr.reduce((a, x) => a + x, 0) / vArr.length : Vv(data[last]);
+            const vCur = Vv(data[last]), red = C(data[last]) >= O(data[last]);
+            const bigVol = avgV > 0 && vCur >= avgV * 1.5, volShrink = avgV > 0 && vCur <= avgV * 0.6;
+            let diverge = false; try { diverge = (this._detectVolPriceDiverge(data) || []).length > 0; } catch (_) {}
+
+            // ── 綜合評分(型態多空 + 均線 + 趨勢)──
+            let sc = 0;
+            sc += bullPats.length * 1.2 - bearPats.length * 1.2;
+            sc += trend === 'bull' ? 2 : trend === 'bear' ? -2 : 0;
+            if (ma20 != null) sc += price > ma20 ? 1 : -1.5;
+            if (ma5 != null && ma20 != null && ma60 != null && price > ma5 && ma5 > ma20 && ma20 > ma60) sc += 2;   // 完美多頭排列
+            if (red && bigVol && !diverge) sc += 1.5; else if (diverge) sc -= 1.5; else if (!red && bigVol) sc -= 1;
+
+            // ── 朱老師口吻組句 ──
+            const nf = v => v == null ? '--' : (+v).toLocaleString('en-US', { maximumFractionDigits: 2 });
+            const lines = [];
+            // 1) 波段結構
+            if (trend === 'bull') lines.push('📈 <b>波段結構頭頭高、底底高</b>,這是標準多頭,方向對!順著做就贏一半。');
+            else if (trend === 'bear') lines.push('📉 <b>頭頭低、底底低</b>,還在空頭修正,別想著抄底接刀,等打底再說。');
+            else lines.push('➖ 高低點還沒表態,<b>箱型整理</b>中,等帶量突破箱頂再進場,現在別急。');
+            // 2) 均線
+            if (ma5 != null && ma20 != null && ma60 != null && price > ma5 && ma5 > ma20 && ma20 > ma60)
+                lines.push(`📐 站上 5 日、月線 ${nf(ma20)}、季線 ${nf(ma60)},<b>均線多頭排列漂亮</b>,多方掌控。`);
+            else if (ma20 != null && price > ma20) lines.push(`📐 站在月線 ${nf(ma20)} 之上(多空分水嶺),<b>中線偏多</b>,守住就有戲。`);
+            else if (ma20 != null) lines.push(`📐 <b>跌破月線 ${nf(ma20)}</b>(多空分水嶺),中線轉弱,搶反彈要快進快出。`);
+            // 3) K棒型態
+            if (bullPats.length) lines.push(`🕯️ K棒出現 <b class="text-red-300">${bullPats.slice(0, 3).join('、')}</b>,是轉強/發動訊號。`);
+            if (bearPats.length) lines.push(`🕯️ K棒出現 <b class="text-green-300">${bearPats.slice(0, 3).join('、')}</b>,留意轉弱/出貨,別追高。`);
+            if (!bullPats.length && !bearPats.length) lines.push('🕯️ 目前沒有明顯 K 棒轉折型態,盤整等變盤。');
+            // 4) ⭐ 歷史高點 + 創新高機會(使用者要的重點)
+            if (athPct >= -0.3) {
+                lines.push(`🚀 <b class="text-red-300">已經創新高 ${nf(price)}!</b> 上面完全沒有套牢賣壓,只要量能跟得上,<b>續強噴出</b>機率高,回檔不破 5MA 都可續抱。`);
+            } else if (athPct >= -3) {
+                lines.push(`🎯 離歷史高點 <b>${nf(ath)}</b> 只剩 <b class="text-red-300">${Math.abs(athPct).toFixed(1)}%</b>,一旦<b>帶量突破就是創新高</b>,上面套牢賣壓少,有機會噴一波,盯緊量能!`);
+            } else if (athPct >= -15) {
+                lines.push(`🏔️ 目前離歷史高點 <b>${nf(ath)}</b> 還有 ${Math.abs(athPct).toFixed(1)}%,先過<b>前高壓力 ${nf(recentHigh)}</b> 這關,站穩了才有機會挑戰新高。`);
+            } else {
+                lines.push(`🏔️ 距歷史高點 <b>${nf(ath)}</b> 還有 ${Math.abs(athPct).toFixed(1)}%(${daysFromAth} 根前的高、上方套牢賣壓重),<b>別急著喊創新高</b>,先看能不能站穩月線、過前高 ${nf(recentHigh)}。`);
+            }
+            // 5) 量能
+            if (red && bigVol && !diverge) lines.push(`📊 今天<b class="text-red-300">帶量長紅 ${(vCur / avgV).toFixed(1)}×均量</b>,量增配紅 K = 有效突破,量價都對了。`);
+            else if (diverge) lines.push('📊 <b class="text-yellow-300">量價背離</b>(無量創高/量縮),小心假突破,別被騙進場。');
+            else if (!red && bigVol) lines.push('📊 <b class="text-green-300">量增黑 K</b>,爆量收黑 = 主力出貨賣壓,持股當心。');
+            else if (volShrink) lines.push(`📊 量縮到 ${(vCur / avgV * 100).toFixed(0)}% 均量,<b>觀望量</b>,等放量表態再動作。`);
+
+            // ── headline + 對策 ──
+            let tone, headline, cta, barCls, headCls;
+            if (sc >= 4) { tone = 'bull'; headline = '🔴 型態讚!多頭噴相'; cta = '順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
+            else if (sc >= 1.5) { tone = 'bull'; headline = '🔴 型態偏多成形'; cta = '偏多但力道未滿,等帶量長紅過前高再追,回檔不破月線續抱。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
+            else if (sc > -1.5) { tone = 'flat'; headline = '🟡 型態中性整理'; cta = '多空不明,別急進場,等站穩月線+帶量突破前高再說。'; barCls = 'border-yellow-500'; headCls = 'text-yellow-300'; }
+            else if (sc > -4) { tone = 'bear'; headline = '🟢 型態轉弱'; cta = '別追高,持股跌破月線或成本 -5% 鐵血停損,搶反彈快進快出。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
+            else { tone = 'bear'; headline = '🟢 型態壞掉·出貨相'; cta = '空手勿接刀,持股分批出,結構破壞別凹。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
+
+            el.className = 'bg-[#161b22] border-l-4 ' + barCls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
+            el.innerHTML = `
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="text-sm font-black ${headCls}">🗣️ 朱老師這樣看:${headline}</div>
+                    <span class="text-[9px] text-gray-600">純公式 · 非AI</span>
+                </div>
+                <div class="flex flex-col gap-1 text-[11px] text-gray-300 leading-relaxed">
+                    ${lines.map(l => `<div>${l}</div>`).join('')}
+                </div>
+                <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[11px] text-gray-200 leading-relaxed"><b class="${headCls}">💡 操作:</b>${cta}</div>
+                <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📊 現價 ${nf(price)} · 歷史高 ${nf(ath)} · 前高 ${nf(recentHigh)} · 前低 ${nf(recentLow)} · 純數值公式判讀,型態轉折需次日確認,僅供參考非投資建議。</div>`;
+            el.classList.remove('hidden');
+        } catch (e) { console.warn('[chuVerdict]', e); el.classList.add('hidden'); }
+    },
+
     renderKbarScore(data) {
         const el = document.getElementById('kbarScoreCard');
         if (!el) return;
@@ -19448,6 +19567,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
         try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
         try { this.renderKbarTactics(data); } catch (_) {}
+        try { this.renderChuKbarVerdict(data); } catch (_) {}  // 🗣️ V43.5 朱老師口吻 K線型態總評(純公式,點進K線頁即見)
         try { this.renderKbarScore(data); } catch (_) {}       // 🕯️ V41.23 K線頁 型態+量 評分卡
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
         try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日作戰指令(首席頁置頂)
