@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.10</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -870,7 +870,7 @@
 
     <!-- 🤖 V44.8 — AI 股神(庫存純公式全解析,對標籌碼App;輸入問題→免費查引擎,零 API 額度)
          V45.5:移到 header-fixed 之外(個股頁隱藏 header 時,此彈窗才不會被一起 display:none) -->
-    <div id="aiGodModal" class="hidden fixed inset-0 z-[200] bg-[#0d1117] flex flex-col">
+    <div id="aiGodModal" class="hidden fixed inset-0 z-[200] bg-[#0d1117] flex flex-col" style="padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);">
         <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] flex-shrink-0">
             <span class="text-lg font-black text-gray-100">🤖 AI 股神 <span id="aiGodModeBadge" class="text-[10px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1.5 py-0.5 align-middle">庫存股</span></span>
             <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
@@ -897,7 +897,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.10</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.11</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -991,8 +991,8 @@
                         </button>
                         <!-- 🤖 V45.5 — AI 股神(個股版):移到 < 右手邊,開啟顯示「本檔」判讀 + 免費查 -->
                         <button onclick="app.openAiGod('stock'); app.vibrate(40);" class="flex-shrink-0 text-[1.75rem] leading-none transition-transform hover:scale-110" title="🤖 AI 股神 · 本檔解析">🤖</button>
-                        <!-- 💼 V45.9 持股中 badge:移到 🤖 右手邊 -->
-                        <span id="invBadge" class="hidden flex-shrink-0 inline-block bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm font-bold border border-orange-500 whitespace-nowrap">💼持股中</span>
+                        <!-- 💼 V45.11 持股中 badge 已移除(使用者:個股名置中);保留空 stub 供 JS null-safe -->
+                        <span id="invBadge" class="hidden"></span>
                         <div class="flex-1 flex items-center justify-center gap-1.5 min-w-0">
                             <button id="navPrevStock" onclick="app.navInventoryStock(-1); app.vibrate(15);" class="hidden flex-shrink-0 text-gray-500 hover:text-cyan-300 text-lg font-black px-0.5 leading-none" title="上一檔庫存股">◀</button>
                             <div onclick="app.openGlobalSearchModal(); app.vibrate(20);" class="flex items-center gap-1.5 cursor-pointer min-w-0" title="點此搜尋股票">
@@ -2391,8 +2391,8 @@
             <button onclick="app.switchAppTab('diag'); app.vibrate(30);" id="navBtnDiag" class="nav-btn hidden flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow">🎯</span><span class="text-[11px] mt-0.5 font-bold">診斷</span></button>
             <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-3xl drop-shadow">💼</span><span class="text-[11px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[11px] mt-0.5 font-bold">自選</span></button>
-            <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">全球</span></button>
-            <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">雷達</span></button>
+            <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">大盤</span></button>
+            <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
             <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-3xl drop-shadow grayscale-[80%]">⚔️</span><span class="text-[11px] mt-0.5 font-bold">獵殺</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
             <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-3xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
         </nav>
