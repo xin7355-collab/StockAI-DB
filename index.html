@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V44.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -865,7 +865,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.4</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.5</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1003,7 +1003,7 @@
                 <!-- 📋 V42.5 — 今日作戰指令(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
                 <div id="todayOrderCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
-                    <div class="p-3 bg-[#0d1117] flex flex-col gap-3 relative border-b border-[#30363d]">
+                    <div class="px-3 py-2 bg-[#0d1117] flex flex-col gap-2 relative">
                         <!-- 🧠 首席AI全盤分析 + 🔮 此股預判AI V44.4 隱藏(使用者:版面好看);函式/容器保留供 JS null-safe -->
                         <div class="hidden">
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" ondblclick="app.runUnifiedGroqAnalysis({force:true}); app.vibrate([30,30,30]);" title="點一下分析；連點兩下強制重抽（會耗 1 次 API 額度）" class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 text-purple-300 py-3 rounded-lg text-base font-black shadow-md flex justify-center items-center gap-2 transition-all">
@@ -12514,6 +12514,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     renderTodayOrder(data) {
         const el = document.getElementById('todayOrderCard');
         if (!el) return;
+        // V44.5 — 已合併到「🩺 進場體檢」(含具體掛單價),此獨立卡永久隱藏(避免與進場體檢重複)
+        el.classList.add('hidden'); el.innerHTML = ''; return;
         if (!Array.isArray(data) || data.length < 25) { el.classList.add('hidden'); el.innerHTML = ''; return; }
         const last = data.length - 1;
         const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
@@ -13119,6 +13121,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     ${diverge ? `<span class="text-yellow-300 font-bold text-[9px]">⚠️ 與技術面分歧(一面多一面空)→ 保守看待、別重押</span>` : `<span class="text-gray-600 text-[9px]">・與技術面方向一致 ✓</span>`}</div>`;
             }
         } catch (_) {}
+        // 💰 V44.5 — 併入「今日這檔怎麼做」的具體掛單參考價(空手給掛買/持股給掛賣),取代獨立卡
+        let orderHtml = '';
+        try {
+            const CC = b => +((b?.close ?? b?.c) || 0), HH = b => +((b?.high ?? b?.h) || 0), LL = b => +((b?.low ?? b?.l) || 0);
+            const n = data.length, m5 = (() => { const s = data.slice(n - 5, n); return s.length === 5 ? s.reduce((a, b) => a + CC(b), 0) / 5 : null; })();
+            const m20 = (() => { const s = data.slice(n - 20, n); return s.length === 20 ? s.reduce((a, b) => a + CC(b), 0) / 20 : null; })();
+            const yHigh = HH(data[n - 1]), pLow = Math.min(...data.slice(-15).map(LL).filter(v => v > 0));
+            const ff = v => v == null ? '—' : (v >= 100 ? v.toFixed(0) : v.toFixed(2));
+            const heldNow = (() => { try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); return p ? +p.cost : 0; } catch (_) { return 0; } })();
+            let ol;
+            if (heldNow > 0) ol = `💰 <b>掛賣參考</b>:停利 → 跌破 5 日線 <b>${ff(m5)}</b> 掛賣;硬停損 → 跌破月線 <b>${ff(m20)}</b> 或成本−5% <b>${ff(heldNow * 0.95)}</b>`;
+            else if (c === 'red') ol = `💰 <b>掛買參考</b>:穩健 → 5 日線 <b>${ff(m5)}</b> 附近接;積極 → 站上昨高 <b>${ff(yHigh)}</b> 追。停損掛前低 <b>${ff(pLow)}</b>`;
+            else ol = `💰 <b>現在別掛買</b>:等站上月線 <b>${ff(m20)}</b> 或紅K站回 5 日線 <b>${ff(m5)}</b> 再考慮`;
+            orderHtml = `<div class="bg-[#0d1117] border border-amber-700/30 rounded p-2 mt-2 text-[11px] text-gray-200 leading-relaxed">${ol}</div>`;
+        } catch (_) {}
         el.className = `w-full rounded-lg p-3 mb-2 border ${bg}`;
         el.innerHTML = `
             <div class="flex items-center justify-between mb-2">
@@ -13137,7 +13154,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="bg-[#161b22] border-l-4 border-${c}-500 border-y border-r border-[#30363d] rounded-r p-2">
                 <div class="text-[10px] font-bold ${sc} mb-0.5">💡 對策</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">${r.action}</div>
-            </div>${heldHtml}
+            </div>${heldHtml}${orderHtml}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">⚠️ 純技術型態彙總(非投資建議),紅燈≠一定跌、綠燈≠保證漲;務必搭配停損紀律。</div>`;
         el.classList.remove('hidden');
     },
