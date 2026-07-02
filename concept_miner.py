@@ -113,6 +113,36 @@ def discover_group_links(index_html):
     return out
 
 
+def ajax_probe():
+    """已知資料端點 /m/ajax.php + 個股頁 /m/stock/sid。挖 ajax.php 呼叫方式 + 概念族群清單。"""
+    print("🛰️ AJAX PROBE 模式")
+    # 1) 印小 JS 全文,看 ajax.php 怎麼被呼叫(帶什麼參數)
+    for js_url in [BASE + "/m/js/m_all.js?20200326", BASE + "/m/js/swipe.js?20210325"]:
+        js, st = get(js_url)
+        print(f"\n===== JS {js_url} status={st} len={len(js) if js else 0} =====")
+        if js:
+            print(js)
+    # 2) newgroup 頁的 inline <script> 全印(概念族群清單/ajax 呼叫多半在這)
+    html, st = get(BASE + "/m/group/newgroup")
+    print(f"\n===== newgroup inline scripts status={st} =====")
+    if html:
+        for i, block in enumerate(re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)):
+            b = block.strip()
+            if b:
+                print(f"\n--- inline script[{i}] ({len(b)} chars) ---")
+                print(b[:2500])
+        # HTML 內 group_/cate_/cid token
+        toks = sorted(set(re.findall(r"\b((?:group|cate|cid|gid|class|concept)_?[A-Za-z0-9]{1,10})\b", html, re.I)))
+        print(f"\n  group/cate tokens ({len(toks)}):", toks[:80])
+    # 3) 直接試打 ajax.php 幾種常見參數,看回什麼
+    for q in ["", "?type=group", "?mode=group", "?act=group", "?type=newgroup",
+              "?type=market&id=TW50", "?type=group&id=01", "?group=01"]:
+        u = BASE + "/m/ajax.php" + q
+        r, st = get(u)
+        head = (r or "")[:300].replace("\n", " ")
+        print(f"\n  ajax.php{q} → status={st} len={len(r) if r else 0} head={head}")
+
+
 def endpoint_probe():
     """頁面是 JS 動態渲染,真正資料在 AJAX/JSON 端點。掃 HTML + JS bundle 找端點。"""
     print("🛰️ ENDPOINT PROBE 模式")
@@ -186,6 +216,9 @@ def deep_probe():
 def main():
     DATA.mkdir(exist_ok=True)
     print(f"🏷️ concept_miner 啟動 {datetime.now(TPE).isoformat(timespec='seconds')}")
+    if os.environ.get("CONCEPT_PROBE") == "3":
+        ajax_probe()
+        return
     if os.environ.get("CONCEPT_PROBE") == "2":
         endpoint_probe()
         return
