@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.9</title>
+    <title>首席 AI 司令部 | 戰略終端 V43.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.9</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.0</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1204,6 +1204,8 @@
                         <button id="intradayKlineBtn" onclick="app.loadIntradayKline(app.currentSymbolId); app.vibrate(20);" class="flex-1 text-xs font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 載入 / 更新盤中K</button>
                     </div>
                     <div id="intradayKlineChart" class="w-full h-[300px]"></div>
+                    <div class="text-[9px] text-gray-500 mt-1 flex items-center gap-1"><span class="inline-block w-4 h-0.5 bg-white"></span>白線=分時均價(站上偏強/跌破偏弱)</div>
+                    <div id="intradayTruthBox" class="hidden mt-2"></div>
                     <div id="intradaySummary" class="hidden mt-2 text-[11px] leading-relaxed"></div>
                     <div id="intradayHint" class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">👆 盤中(09:00–13:30)進此頁自動拉當日分鐘K;非盤中顯示最近交易日。免費 Fugle 額度有限,手動更新即可。</div>
                 </div>
@@ -17625,6 +17627,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     t: r.date || r.time || '',
                     open: +r.open, high: +r.high, low: +r.low, close: +r.close,
                     volume: +(r.volume ?? r.tradeVolume ?? 0),
+                    average: Number.isFinite(+r.average) ? +r.average : +r.close,   // 分時均價(VWAP)供真假判讀
                 })).filter(c => Number.isFinite(c.open) && Number.isFinite(c.close));
             } catch (_) { return null; }
         }
@@ -17698,8 +17701,89 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             sumEl.innerHTML = parts.join('');
             sumEl.classList.remove('hidden');
         }
+        // 🎯 V43.0 盤中真假判讀燈號卡(分時均價 + 量價 + 內外盤 + 位階)
+        try {
+            const truthBox = document.getElementById('intradayTruthBox');
+            const vpForJudge = (q && q.price) ? this._chuVolumeProgress(q, this.baseRawData || this.rawDailyData || []) : null;
+            this._renderIntradayTruthBox(truthBox, this._intradayTruthJudge(candles, q, vpForJudge));
+        } catch (_) {}
         if (hint) hint.innerHTML = `✅ ${candles.length} 根${tf}分K已載入(${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })})。盤中想更新再按一次鈕。`;
         this.vibrate(15);
+    },
+
+    // 🎯 V43.0 — 盤中真假判讀(免費:分時均價 + 量價配合 + 內外盤 + 位階/開盤型態)
+    //   純機率參考,非鐵證(主力靠騙這些指標洗盤);真正確認要收盤K + T+1 分點
+    _intradayTruthJudge(candles, q, vp) {
+        if (!candles || !candles.length || !q || !q.price) return null;
+        const price = +q.price, prev = +q.prevClose || 0, open = +q.open || price;
+        const dayHigh = +q.high || price, dayLow = +q.low || price;
+        const chgPct = prev > 0 ? (price - prev) / prev * 100 : 0;
+        const lastAvg = candles[candles.length - 1].average || price;
+        const aboveAvg = price >= lastAvg;
+        const avgGapPct = lastAvg > 0 ? (price - lastAvg) / lastAvg * 100 : 0;
+        const volPct = (vp && vp.pct != null) ? vp.pct : null;
+        const volStrong = volPct != null && volPct >= 80;
+        const volWeak = volPct != null && volPct < 60;
+        const bid = q.bidVol || 0, ask = q.askVol || 0, tot = bid + ask;
+        const bp = tot > 0 ? bid / tot * 100 : null;
+        const buySide = bp != null && bp >= 55, sellSide = bp != null && bp <= 45;
+        const pullFromHi = dayHigh > 0 ? (dayHigh - price) / dayHigh * 100 : 0;   // 從當日高回檔%
+        const bounceFromLo = dayLow > 0 ? (price - dayLow) / dayLow * 100 : 0;    // 從當日低反彈%
+        const openHigh = prev > 0 && open > prev * 1.005;   // 開高
+        const openLow = prev > 0 && open < prev * 0.995;    // 開低
+
+        // 因子 chips
+        const chips = [];
+        chips.push(aboveAvg ? { t: `站上均價 +${avgGapPct.toFixed(1)}%`, c: 'red' } : { t: `跌破均價 ${avgGapPct.toFixed(1)}%`, c: 'green' });
+        if (volPct != null) chips.push(volStrong ? { t: `量增達標 ${volPct.toFixed(0)}%`, c: 'red' } : volWeak ? { t: `量縮 ${volPct.toFixed(0)}%`, c: 'gray' } : { t: `量普 ${volPct.toFixed(0)}%`, c: 'yellow' });
+        if (bp != null) chips.push(buySide ? { t: `委買強 ${bp.toFixed(0)}%`, c: 'red' } : sellSide ? { t: `委賣強 ${(100 - bp).toFixed(0)}%`, c: 'green' } : { t: '買賣均衡', c: 'gray' });
+        if (pullFromHi > 3) chips.push({ t: `衝高回檔 ${pullFromHi.toFixed(1)}%`, c: 'yellow' });
+        else if (bounceFromLo > 3 && chgPct < 1) chips.push({ t: `低檔翻揚 ${bounceFromLo.toFixed(1)}%`, c: 'red' });
+
+        // verdict 判斷(台股 紅漲綠跌)
+        let tone, title, msg, cta;
+        if (chgPct > 0.3 && aboveAvg && volStrong && !sellSide && pullFromHi < 3) {
+            tone = 'bull'; title = '🔺 真漲(帶量站均價)';
+            msg = '漲勢有量+站穩分時均價+買盤積極,是實質買盤推升,非誘多。';
+            cta = '💡 對策:偏多可續抱;想上車等回測均價/昨高不破再進,別追最高點。';
+        } else if (chgPct > 0.3 && (!aboveAvg || volWeak || pullFromHi > 3 || sellSide)) {
+            tone = 'warn'; title = '⚠️ 假漲留意(誘多risk)';
+            const why = [!aboveAvg ? '價在均價下' : null, volWeak ? '量縮沒跟上' : null, pullFromHi > 3 ? `衝高已回${pullFromHi.toFixed(1)}%` : null, sellSide ? '委賣壓過' : null].filter(Boolean).join('、');
+            msg = `雖然是紅的,但${why}→ 上漲力道虛,主力可能誘多出貨。`;
+            cta = '💡 對策:別追高;手上有貨守分時均價/昨高,跌破就先落袋,別凹。';
+        } else if (chgPct < -0.3 && !aboveAvg && volStrong && !buySide) {
+            tone = 'bear'; title = '🔻 真跌(帶量破均價)';
+            msg = '下跌有量+跌破均價+買盤縮手,賣壓是真的,不是洗盤。';
+            cta = '💡 對策:偏空,別接刀;有貨反彈到均價附近可減碼,破當日低更弱。';
+        } else if (chgPct < -0.3 && (aboveAvg || volWeak || buySide)) {
+            tone = 'bull'; title = '💧 假跌洗盤(機率高)';
+            const why = [aboveAvg ? '仍站均價上' : null, volWeak ? '殺低量縮' : null, buySide ? '委買仍強' : null, bounceFromLo > 2 ? `已從低點拉回${bounceFromLo.toFixed(1)}%` : null].filter(Boolean).join('、');
+            msg = `雖然是綠的,但${why}→ 像主力洗盤甩轎,不是真崩。`;
+            cta = '💡 對策:持股別被洗掉,守住昨低/當日低再論停損;想買可等它站回均價確認。';
+        } else {
+            tone = 'flat'; title = '➖ 多空未明(觀望)';
+            msg = '價格貼近分時均價、量價沒有明顯訊號,方向未定。';
+            cta = '💡 對策:別急著動作,等帶量站上或跌破均價給明確方向再說。';
+        }
+        return { tone, title, msg, cta, chips };
+    },
+
+    _renderIntradayTruthBox(box, judge) {
+        if (!box) return;
+        if (!judge) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        const bar = { bull: 'border-red-500', bear: 'border-green-500', warn: 'border-yellow-500', flat: 'border-gray-500' }[judge.tone] || 'border-gray-500';
+        const tCls = { bull: 'text-red-300', bear: 'text-green-300', warn: 'text-yellow-300', flat: 'text-gray-300' }[judge.tone] || 'text-gray-300';
+        const chipCls = { red: 'text-red-300 border-red-700/50', green: 'text-green-300 border-green-700/50', yellow: 'text-yellow-300 border-yellow-700/50', gray: 'text-gray-400 border-gray-600' };
+        const chipsHtml = (judge.chips || []).map(c => `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${chipCls[c.c] || chipCls.gray}">${c.t}</span>`).join('');
+        box.classList.remove('hidden');
+        box.innerHTML = `
+            <div class="bg-[#161b22] border-l-4 ${bar} border-y border-r border-[#30363d] rounded-r p-2.5">
+                <div class="text-sm font-black ${tCls} mb-1">${judge.title}</div>
+                <div class="flex flex-wrap gap-1 mb-1.5">${chipsHtml}</div>
+                <div class="text-[11px] text-gray-300 leading-relaxed">${judge.msg}</div>
+                <div class="text-[11px] text-gray-200 leading-relaxed mt-1">${judge.cta}</div>
+                <div class="text-[9px] text-gray-600 mt-1.5 leading-tight">⚠️ 盤中機率參考(免費內外盤+量價估算),主力可能反向騙線,真正確認要收盤K線+隔日分點。</div>
+            </div>`;
     },
 
     _renderIntradayChart(el, candles, tf) {
@@ -17741,6 +17825,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 { name: '分鐘K', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0,
                   itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' },
                   markLine: prevClose != null ? { symbol: ['none', 'none'], silent: true, data: [{ yAxis: prevClose, lineStyle: { type: 'dashed', color: '#8b949e', width: 1, opacity: 0.7 }, label: { show: true, position: 'insideStartTop', formatter: `昨收 ${prevClose}`, color: '#8b949e', fontSize: 9 } }] } : undefined },
+                { name: '分時均價', type: 'line', data: candles.map(c => c.average), xAxisIndex: 0, yAxisIndex: 0, smooth: false, showSymbol: false, lineStyle: { color: '#ffffff', width: 1.5, opacity: 0.9 }, z: 3, tooltip: { show: false } },
                 { name: '量', type: 'bar', data: vols, xAxisIndex: 1, yAxisIndex: 1 },
             ],
         }, { replaceMerge: ['series'] });
