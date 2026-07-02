@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -109,6 +109,11 @@
         /* 📱 V45.3 — 個股頁「推進詳情頁」模式:隱藏底部 nav,內容延展到底(靠左上 < 返回庫存) */
         body.diag-fullscreen .nav-fixed { display: none !important; }
         body.diag-fullscreen .scrollable-main { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
+        /* 📱 V45.5 — 個股頁隱藏全域頂部列(🔍🤖版本大盤📖⚙️🔔)+ 跑馬燈,個股報價頭改當頂部列(靠 sticky-sub 補瀏海安全區) */
+        body.diag-fullscreen .header-fixed { display: none !important; }
+        body.diag-fullscreen #tabContentDiag .sticky-sub { padding-top: env(safe-area-inset-top, 0px); }
+        /* #7 — 個股報價頭「即時/最新報價(Yahoo)」來源小標隱藏(使用者:太雜) */
+        #dataSourceBadge { display: none !important; }
         .sticky-sub { position: sticky; top: 0; z-index: 40; background-color: #0d1117; }
         .sub-tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; color: #8b949e; }
         .sub-tab-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; background-color: rgba(96, 165, 250, 0.1); }
@@ -862,24 +867,25 @@
 
     <div id="invModal" class="modal-base hidden" data-edit-idx="-1" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 id="invModalTitle" class="text-white font-bold mb-3 text-base">➕ 新增持倉部位</h3><div class="relative w-full mb-3" id="invSearchInputWrapper"><span class="text-xs text-gray-400 font-bold mb-1 block">股票代號/名稱</span><input type="search" id="invModalInput" placeholder="代號/名稱" autocapitalize="off" autocomplete="off" oninput="app.handleInvSearchInput(event)" onfocus="app.handleInvSearchInput(event)" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right pr-2 text-base"><ul id="invSearchDropdown" class="hidden absolute top-full left-0 mt-1 w-full bg-[#1c2128] border border-gray-600 rounded-md shadow-2xl overflow-y-auto max-h-40 z-[210]"></ul></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進日期 (時間風控)</span><input type="date" id="invBuyDateInput" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">買進成本 (每股均價)</span><input type="number" id="invCostInput" inputmode="decimal" placeholder="例：100.5" min="0.01" step="0.01" class="w-full bg-[#0d1117] text-yellow-400 p-2.5 rounded border border-[#30363d] outline-none focus:border-yellow-500 font-mono text-right text-base font-bold"></div><div class="w-full mb-4"><span class="text-xs text-gray-400 font-bold mb-1 block">持有股數</span><input type="number" id="invSharesInput" inputmode="decimal" placeholder="例：1000 (股)" min="1" step="1" class="w-full bg-[#0d1117] text-white p-2.5 rounded border border-[#30363d] outline-none focus:border-orange-500 font-mono text-right text-base"></div><div class="flex justify-end gap-2"><button onclick="app.closeInvModal()" class="px-4 py-2 text-gray-400 border border-gray-700 text-sm font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button id="invModalConfirmBtn" onclick="app.confirmAddInventory()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold rounded transition-colors shadow-lg w-1/2">確認建倉</button></div></div></div>
 
-    <div class="header-fixed w-full flex flex-col shadow-md">
-        <!-- 🤖 V44.8 — AI 股神(庫存純公式全解析,對標籌碼App;輸入問題→免費查引擎,零 API 額度) -->
-        <div id="aiGodModal" class="hidden fixed inset-0 z-[200] bg-[#0d1117] flex flex-col">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] flex-shrink-0">
-                <span class="text-lg font-black text-gray-100">🤖 AI 股神 <span class="text-[10px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1.5 py-0.5 align-middle">庫存股</span></span>
-                <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
-            </div>
-            <div class="flex items-center gap-2 px-4 py-2 text-[9px] text-gray-600 flex-shrink-0"><span class="flex-1 border-t border-[#21262d]"></span>歡迎回來 · 逐檔純公式解析<span class="flex-1 border-t border-[#21262d]"></span></div>
-            <div id="aiGodChat" class="flex-1 overflow-y-auto px-3 pb-3 space-y-3 scrollbar-hide"></div>
-            <div class="flex-shrink-0 border-t border-[#30363d] p-2 bg-[#0d1117]">
-                <div id="aiGodChips" class="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2"></div>
-                <div class="flex items-center gap-2">
-                    <input id="aiGodInput" type="text" placeholder="輸入你想了解的股市資訊…" class="flex-1 bg-[#161b22] border border-[#30363d] rounded-full px-4 py-2.5 text-sm text-gray-100 outline-none focus:border-cyan-500 transition-colors" onkeydown="if(event.key==='Enter')app.aiGodAsk();">
-                    <button onclick="app.aiGodAsk()" class="w-10 h-10 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center flex-shrink-0 text-lg font-black" title="送出到免費 AI">➤</button>
-                </div>
+    <!-- 🤖 V44.8 — AI 股神(庫存純公式全解析,對標籌碼App;輸入問題→免費查引擎,零 API 額度)
+         V45.5:移到 header-fixed 之外(個股頁隱藏 header 時,此彈窗才不會被一起 display:none) -->
+    <div id="aiGodModal" class="hidden fixed inset-0 z-[200] bg-[#0d1117] flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] flex-shrink-0">
+            <span class="text-lg font-black text-gray-100">🤖 AI 股神 <span id="aiGodModeBadge" class="text-[10px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1.5 py-0.5 align-middle">庫存股</span></span>
+            <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
+        </div>
+        <div id="aiGodSubtitle" class="flex items-center gap-2 px-4 py-2 text-[9px] text-gray-600 flex-shrink-0"><span class="flex-1 border-t border-[#21262d]"></span>歡迎回來 · 逐檔純公式解析<span class="flex-1 border-t border-[#21262d]"></span></div>
+        <div id="aiGodChat" class="flex-1 overflow-y-auto px-3 pb-3 space-y-3 scrollbar-hide"></div>
+        <div class="flex-shrink-0 border-t border-[#30363d] p-2 bg-[#0d1117]">
+            <div id="aiGodChips" class="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2"></div>
+            <div class="flex items-center gap-2">
+                <input id="aiGodInput" type="text" placeholder="輸入你想了解的股市資訊…" class="flex-1 bg-[#161b22] border border-[#30363d] rounded-full px-4 py-2.5 text-sm text-gray-100 outline-none focus:border-cyan-500 transition-colors" onkeydown="if(event.key==='Enter')app.aiGodAsk();">
+                <button onclick="app.aiGodAsk()" class="w-10 h-10 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center flex-shrink-0 text-lg font-black" title="送出到免費 AI">➤</button>
             </div>
         </div>
+    </div>
 
+    <div class="header-fixed w-full flex flex-col shadow-md">
         <!-- V19.0 — 加回 logo + 🔍 🔔 改 SVG line icon(統一證券 App 風格) -->
         <header class="w-full max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 gap-2 relative bg-[#0d1117]">
             <!-- V44.6 — 頂部重排(使用者指定):🔍 搜尋 > 🤖 AI司令部 > 版本 > 大盤天氣 > 📖 手冊 > ⚙️ 設定 > 🔔 鈴鐺 -->
@@ -890,7 +896,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.4</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.5</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -982,19 +988,27 @@
                         <button onclick="app.switchAppTab('inv'); app.vibrate(30);" class="flex-shrink-0 text-gray-300 hover:text-white -ml-1" title="返回庫存">
                             <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                         </button>
+                        <!-- 🤖 V45.5 — AI 股神(個股版):移到 < 右手邊,開啟顯示「本檔」判讀 + 免費查 -->
+                        <button onclick="app.openAiGod('stock'); app.vibrate(40);" class="flex-shrink-0 text-[1.35rem] leading-none transition-transform hover:scale-110" title="🤖 AI 股神 · 本檔解析">🤖</button>
                         <div class="flex-1 flex items-center justify-center gap-1.5 min-w-0">
-                            <button onclick="app.navInventoryStock(-1); app.vibrate(15);" class="flex-shrink-0 text-gray-500 hover:text-cyan-300 text-lg font-black px-0.5 leading-none" title="上一檔庫存股">◀</button>
+                            <button id="navPrevStock" onclick="app.navInventoryStock(-1); app.vibrate(15);" class="hidden flex-shrink-0 text-gray-500 hover:text-cyan-300 text-lg font-black px-0.5 leading-none" title="上一檔庫存股">◀</button>
                             <div onclick="app.openGlobalSearchModal(); app.vibrate(20);" class="flex items-center gap-1.5 cursor-pointer min-w-0" title="點此搜尋股票">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                                 <div class="min-w-0 text-center">
                                     <span id="quoteName" class="block font-black leading-tight tracking-wide truncate" style="font-size: clamp(1.15rem, 5vw, 1.7rem);">載入中...</span>
-                                    <span id="quoteCode" class="block text-[12px] text-gray-400 font-mono font-bold leading-none">--</span>
+                                    <div class="flex items-center justify-center gap-1.5 leading-none">
+                                        <span id="quoteCode" class="text-[12px] text-gray-400 font-mono font-bold">--</span>
+                                        <span id="quoteCodeDiff" class="hidden text-[12px] font-mono font-black"></span>
+                                    </div>
                                 </div>
                             </div>
-                            <button onclick="app.navInventoryStock(1); app.vibrate(15);" class="flex-shrink-0 text-gray-500 hover:text-cyan-300 text-lg font-black px-0.5 leading-none" title="下一檔庫存股">▶</button>
+                            <button id="navNextStock" onclick="app.navInventoryStock(1); app.vibrate(15);" class="hidden flex-shrink-0 text-gray-500 hover:text-cyan-300 text-lg font-black px-0.5 leading-none" title="下一檔庫存股">▶</button>
                         </div>
                         <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
-                        <span id="priceAlertIcon" class="cursor-pointer text-xl opacity-40 transition-transform hover:scale-110 leading-none flex-shrink-0" title="設定到價監控,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">🚨</span>
+                        <!-- 🔔 V45.5 — 到價監控:🚨 emoji 換成右上角同款鈴鐺 SVG line icon -->
+                        <button id="priceAlertIcon" class="cursor-pointer text-gray-500 hover:text-amber-300 transition-colors leading-none flex-shrink-0 p-0.5" title="設定到價監控,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        </button>
                         <span id="quoteAttBadge" class="hidden"></span>
                     </div>
                     <!-- Row 2:現價超大 + 漲跌(左) ... 總量/量縮(右) -->
@@ -1020,14 +1034,14 @@
                     </div>
                 </div>
                 <div class="flex px-2 pt-1.5 bg-[#0d1117] overflow-x-auto">
-                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">⚡ 首席</button>
-                    <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📡 即時</button>
-                    <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📈 K線</button>
-                    <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">🔬 籌碼</button>
-                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📊 基本</button>
-                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">📅 回測</button>
-                    <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">🚨 處置</button>
-                    <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-1 min-w-[58px] py-2 text-xs font-bold tracking-widest rounded-t-lg whitespace-nowrap">⚖️ 多空</button>
+                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚡ 首席</button>
+                    <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📡 即時</button>
+                    <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📈 K線</button>
+                    <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">🔬 籌碼</button>
+                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📊 基本</button>
+                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📅 回測</button>
+                    <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">🚨 處置</button>
+                    <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚖️ 多空</button>
                 </div>
             </div>
 
@@ -6217,15 +6231,33 @@ ${list}
     },
     // ◀▶ V45.4 — 個股頁頭部箭頭:切換到庫存清單的上一/下一檔(dir=-1/1),循環
     navInventoryStock(dir) {
+        // V45.5 — 非循環:到第一/最後一檔就不再繞回;邊界外的箭頭本身已 hidden(見 _updateNavArrows)
         const syms = (this.inventory || []).map(i => i && i.symbol).filter(Boolean);
-        if (!syms.length) { this.showToast?.('庫存無持股,無法切換', 'info'); return; }
-        if (syms.length === 1 && syms[0] === this.currentSymbolId) { this.showToast?.('庫存只有這一檔', 'info'); return; }
+        if (!syms.length) return;
         let idx = syms.indexOf(this.currentSymbolId);
-        idx = idx < 0 ? (dir > 0 ? 0 : syms.length - 1) : (idx + dir + syms.length) % syms.length;
+        if (idx < 0) { idx = dir > 0 ? 0 : syms.length - 1; }
+        else {
+            idx += dir;
+            if (idx < 0 || idx >= syms.length) return;   // 邊界不循環
+        }
         const el = document.getElementById('symbolInput');
         if (el) el.value = syms[idx];
         this.analyze();
         if (el) el.value = '';
+    },
+
+    // V45.5 — 依庫存有無 + 當前位置決定 ◀▶ 顯隱:無庫存→都隱;第一檔→只顯▶;最後一檔→只顯◀;不在庫存內→都顯(可進入瀏覽)
+    _updateNavArrows() {
+        const prev = document.getElementById('navPrevStock');
+        const next = document.getElementById('navNextStock');
+        if (!prev || !next) return;
+        const syms = (this.inventory || []).map(i => i && i.symbol).filter(Boolean);
+        if (!syms.length) { prev.classList.add('hidden'); next.classList.add('hidden'); return; }
+        const idx = syms.indexOf(this.currentSymbolId);
+        const showPrev = idx < 0 || idx > 0;
+        const showNext = idx < 0 || idx < syms.length - 1;
+        prev.classList.toggle('hidden', !showPrev);
+        next.classList.toggle('hidden', !showNext);
     },
 
     _pickGlobalSearch(sym) {
@@ -12977,13 +13009,24 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // 🤖 V44.8 — AI 股神:開啟庫存逐檔純公式解析彈窗(對標籌碼App「AI 股神」聊天式)
-    async openAiGod() {
+    async openAiGod(mode) {
         const modal = document.getElementById('aiGodModal');
         if (!modal) return;
         modal.classList.remove('hidden');
         const chat = document.getElementById('aiGodChat');
         const chipsEl = document.getElementById('aiGodChips');
         if (chipsEl) chipsEl.innerHTML = ['為什麼漲跌', '最新消息', '本季財報', '產業前景', '該買該賣'].map(q => `<button onclick="app.aiGodQuick('${q}')" class="flex-shrink-0 text-[11px] font-bold text-cyan-300 bg-cyan-900/20 border border-cyan-700/40 rounded-full px-3 py-1 hover:bg-cyan-900/40 transition-colors">${q}</button>`).join('');
+        const badge = document.getElementById('aiGodModeBadge');
+        const subtitle = document.getElementById('aiGodSubtitle');
+        // 🤖 V45.5 — 個股頁 🤖 進來:只解析「本檔」+ 你可能還想問(免費查);其餘走庫存全解析
+        if (mode === 'stock' && this.currentSymbolId) {
+            const name = this.getStockName(this.currentSymbolId) || this.currentSymbolId;
+            if (badge) badge.textContent = '個股';
+            if (subtitle) subtitle.innerHTML = `<span class="flex-1 border-t border-[#21262d]"></span>${name} · 純公式解析<span class="flex-1 border-t border-[#21262d]"></span>`;
+            return this._renderAiGodStockMode();
+        }
+        if (badge) badge.textContent = '庫存股';
+        if (subtitle) subtitle.innerHTML = `<span class="flex-1 border-t border-[#21262d]"></span>歡迎回來 · 逐檔純公式解析<span class="flex-1 border-t border-[#21262d]"></span>`;
         const inv = this.inventory || [];
         if (!inv.length) { chat.innerHTML = '<div class="text-center text-gray-500 py-10 text-sm leading-relaxed">目前無庫存部位<br>先到「庫存」頁加入持股,我再幫你<b class="text-gray-300">逐檔純公式解析</b>。<br><span class="text-[11px] text-gray-600">或直接在下方輸入問題查任何台股</span></div>'; return; }
         chat.innerHTML = '<div class="text-center text-gray-500 py-8 text-sm animate-pulse">🤖 AI 股神分析中… (逐檔算技術面+籌碼面)</div>';
@@ -13005,6 +13048,43 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         bubbles.push('<div class="text-[9px] text-gray-600 text-center leading-relaxed px-4 pt-1">💡 點<b class="text-amber-400/80">股名</b>跳個股判斷 ・ 點<b class="text-cyan-400/80">整框</b>選定後再點下方問題就用它查 ・ 以上純公式判讀,非投資建議。</div>');
         chat.innerHTML = bubbles.join('');
         this.vibrate?.(20);
+    },
+
+    // 🤖 V45.5 — 個股版 AI 股神:本檔純公式判讀 + 你可能還想問(路由到免費查引擎,零 API 額度)
+    async _renderAiGodStockMode() {
+        const chat = document.getElementById('aiGodChat');
+        if (!chat) return;
+        const sym = this.currentSymbolId;
+        if (!sym) { chat.innerHTML = '<div class="text-center text-gray-500 py-10 text-sm">請先選一檔股票</div>'; return; }
+        this._aiGodSelectedSym = sym;
+        const name = this.getStockName(sym) || sym;
+        chat.innerHTML = '<div class="text-center text-gray-500 py-8 text-sm animate-pulse">🤖 AI 股神分析中… (算技術面+籌碼面)</div>';
+        let rows = null;
+        try { rows = await this.fetchHistoricalData(sym, false); } catch (_) {}
+        const verdict = this._aiGodStockVerdict(rows);
+        const asks = ['最近為什麼漲跌', '最新消息與法人動向', '本季財報與營收表現', '產業前景與競爭態勢', '目前該買該賣'];
+        const askBtns = asks.map(q => `<button onclick="app.aiGodStockAsk('${q}'); app.vibrate(20);" class="w-full text-left text-[12px] font-bold text-gray-200 bg-[#161b22] border border-[#30363d] hover:border-cyan-600 rounded-lg px-3 py-2.5 transition-colors flex items-center justify-between gap-2"><span>${q}</span><span class="text-cyan-400 text-[11px] flex-shrink-0">🔎 查</span></button>`).join('');
+        chat.innerHTML = `
+            <div class="flex gap-2">
+                <div class="text-3xl flex-shrink-0 leading-none mt-1">🤖</div>
+                <div class="flex-1 min-w-0 bg-[#161b22] rounded-2xl rounded-tl-sm p-3 border border-[#30363d]">
+                    <div class="inline-flex items-center gap-1 text-[13px] font-black text-amber-300 bg-[#0d1117] border border-amber-700/40 rounded px-2 py-0.5 mb-2">📈 ${name} <span class="text-[10px] text-gray-500 font-mono">${sym}</span></div>
+                    <div class="text-[14px] text-gray-200 leading-relaxed">${verdict}</div>
+                </div>
+            </div>
+            <div class="mt-1">
+                <div class="text-[11px] font-bold text-gray-400 px-1 mb-1.5">💡 你可能還想問<span class="text-gray-600 font-normal">（免費查，不耗額度）</span></div>
+                <div class="flex flex-col gap-1.5">${askBtns}</div>
+            </div>
+            <div class="text-[9px] text-gray-600 text-center leading-relaxed px-4 pt-2">以上純公式判讀,非投資建議 ・ 點問題用免費 AI 查最新消息面。</div>`;
+        this.vibrate?.(20);
+    },
+    // 🤖 個股版「你可能還想問」→ 帶當前股名丟免費查
+    aiGodStockAsk(q) {
+        const sym = this._aiGodSelectedSym || this.currentSymbolId;
+        if (!sym) { this._freeAiOpen(`台股 ${q}`); return; }
+        const name = this.getStockName(sym) || sym;
+        this._freeAiOpen(`${name}(${sym}) ${q}?請附日期與來源`);
     },
 
     // 🤖 逐檔純公式判讀(技術面均線多空 + 量能 + 位階 + 籌碼面法人近5日買賣超)→ 組一段白話
@@ -15500,6 +15580,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         nameEl.innerText = stockDisplayName;
         if (codeEl) codeEl.innerText = `(${targetSym})`;
         symName = `${stockDisplayName} (${targetSym})`;
+        this._updateNavArrows();   // V45.5 — 依當前個股位置更新 ◀▶ 顯隱(非循環)
 
         // 🎯 Enter 觸發 / 點搜尋下拉項目後,平滑滾到診斷區,讓使用者看到「畫面有動」
         if (!silent) {
@@ -17616,6 +17697,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (pa) {
             const conds = (this.priceAlerts || []).filter(a => a.sym === this.currentSymbolId && a.enabled !== false);
             pa.classList.toggle('opacity-40', conds.length === 0);
+            pa.classList.toggle('text-amber-400', conds.length > 0);   // V45.5 鈴鐺:已設監控 → 亮琥珀色
+            pa.classList.toggle('text-gray-500', conds.length === 0);
             if (conds.length > 0) {
                 const parts = conds.map(c => `${c.cond === 'gte' ? '≥' : '≤'} ${c.price}`);
                 pa.title = `🚨 已設 ${conds.length} 筆監控:${parts.join(' · ')} · 點擊管理`;
@@ -21059,6 +21142,15 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         
         document.getElementById('liveDiffAmount').innerText = (diff>0?'+':'') + diff.toFixed(2);
         document.getElementById('liveDiffPct').innerText = `(${diff>0?'+':''}${pct.toFixed(2)}%)`; document.getElementById('liveDiffPct').className = `text-xs md:text-sm font-bold font-mono ${color}`;
+
+        // #8 V45.5 — 個股代號右手邊漲跌幅(仿籌碼K線:▲/▼ 金額 幅%),與現價下方漲跌同步
+        const qcd = document.getElementById('quoteCodeDiff');
+        if (qcd) {
+            const arrow = diff > 0 ? '▲' : (diff < 0 ? '▼' : '');
+            qcd.textContent = `${arrow}${diff>0?'+':''}${diff.toFixed(2)} ${diff>0?'+':''}${pct.toFixed(2)}%`;
+            qcd.className = `text-[12px] font-mono font-black ${color}`;
+            qcd.classList.remove('hidden');
+        }
 
         // 📊 V45.2 — 頂部報價頭加總量/量縮(券商風格):盤中用估量達標度、盤後用今量vs昨量
         try {
