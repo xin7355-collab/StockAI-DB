@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.1</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -899,7 +899,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.1</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.2</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -2190,15 +2190,20 @@
                 <!-- V17.11 — 表頭 + 內容區包在同一個 horizontal scroll container,讓所有 column 寬度對齊 -->
                 <div class="flex-grow bg-[#0d1117] overflow-hidden">
 <!-- 💡 操作提示行 V44.6 已刪除(使用者要求版面乾淨) -->
-                    <!-- V45.13 — 內縮成 4 欄剛好滿版(不再水平 scroll),股數/均價收進股名下方小字 -->
-                    <div class="w-full">
-                        <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[1.5fr_0.95fr_1.05fr_1.05fr] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
-                            <span class="cursor-pointer hover:text-white" onclick="app.sortInventory('name')">庫存股<span id="invSortIcon_name" class="ml-0.5">⇅</span></span>
-                            <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('today')">今日損益<span id="invSortIcon_today" class="ml-0.5">⇅</span></span>
-                            <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('price')">股價<br><span class="text-[9px] opacity-80">漲跌幅</span><span id="invSortIcon_price" class="ml-0.5">⇅</span></span>
-                            <span class="cursor-pointer hover:text-white text-right" onclick="app.sortInventory('total')">總損益<br><span class="text-[9px] opacity-80">報酬率</span><span id="invSortIcon_total" class="ml-0.5">⇅</span></span>
+                    <!-- V46.2 — 恢復左右滑動(寬版多欄水平 scroll);表頭排序 ⇅ 靠最右、文字置中、作用中方向琥珀色 -->
+                    <div class="overflow-x-auto scrollbar-hide">
+                        <div class="min-w-[712px]">
+                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[148px_82px_92px_104px_66px_104px_92px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
+                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('today')"><span>今日損益</span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('price')"><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('total')"><span class="leading-tight">總損益<br><span class="text-[9px] opacity-80">報酬率</span></span><span id="invSortIcon_total" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('shares')"><span>股數</span><span id="invSortIcon_shares" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('cost')"><span class="leading-tight">均價<br><span class="text-[9px] opacity-80">總成本</span></span><span id="invSortIcon_cost" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('marketval')"><span class="leading-tight">市值<br><span class="text-[9px] opacity-80">佔比</span></span><span id="invSortIcon_marketval" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                            </div>
+                            <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                         </div>
-                        <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                     </div>
                 </div>
             </div>
@@ -22089,14 +22094,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             });
         }
 
-        // 排序 icon 顯示(V44.7 — 作用中欄位箭頭琥珀色醒目,對標券商App)
-        ['name', 'shares', 'price', 'marketval', 'today', 'total'].forEach(c => {
+        // 排序 icon(V46.2 — 上下三角獨立堆疊,作用中「那個方向」琥珀色、另一個灰,一眼看出排序)
+        ['name', 'shares', 'price', 'marketval', 'today', 'total', 'cost'].forEach(c => {
             const el = document.getElementById('invSortIcon_' + c);
-            if (el) {
-                const active = sortCfg.col === c;
-                el.textContent = active ? (sortCfg.dir === 'desc' ? '▼' : '▲') : '⇅';
-                el.className = 'ml-0.5 ' + (active ? 'text-amber-400 font-black' : 'text-gray-600');
-            }
+            if (!el) return;
+            const active = sortCfg.col === c;
+            const upC = (active && sortCfg.dir === 'asc')  ? 'text-amber-400' : 'text-gray-600';
+            const dnC = (active && sortCfg.dir === 'desc') ? 'text-amber-400' : 'text-gray-600';
+            el.innerHTML = `<span class="block text-[7px] leading-[7px] ${upC}">▲</span><span class="block text-[7px] leading-[7px] ${dnC}">▼</span>`;
         });
 
         let html = '', totalCostNTD = 0, totalValNTD = 0, totalTodayPnL = 0, totalPrevValNTD = 0;
@@ -22120,13 +22125,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const cname = this.getStockName(item.symbol) || item.symbol;
             const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol && a.enabled !== false);
 
-            // V45.13 — 內縮成 4 欄(庫存股 / 今日損益 / 股價漲跌幅 / 總損益),股數+均價收進股名下方小字
+            // V46.2 — 恢復 7 欄水平 scroll(庫存股/今日損益/股價漲跌幅/總損益/股數/均價總成本/市值佔比)
             // 🔄 現價跳動:與上次渲染比較,漲→紅閃、跌→綠閃(同個股頁 price-flash)
             const _prevP = this._invPrevPrices[item.symbol];
             const priceFlash = (_prevP != null && price !== _prevP) ? (price > _prevP ? 'price-flash-up' : 'price-flash-down') : '';
             this._invPrevPrices[item.symbol] = price;
-            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[1.5fr_0.95fr_1.05fr_1.05fr] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
-                <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 + 股數/均價小字 -->
+            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[148px_82px_92px_104px_66px_104px_92px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+                <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
                     <span class="text-white font-black text-[16px] truncate leading-tight">${cname}</span>
@@ -22134,21 +22139,34 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
                         <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[11px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設到價監控,點此管理' : '設到價監控'}">🚨</span>
                     </div>
-                    <span class="text-[9px] text-gray-600 font-mono leading-tight truncate">${shares} 張 · 均 ${cost.toFixed(2)}</span>
                 </div>
-                <!-- 今日損益(只顯金額;漲跌% 在「股價」欄) -->
+                <!-- 今日損益(只顯金額) -->
                 <div class="text-right">
                     <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${todayPnL>0?'+':''}${Math.round(todayPnL).toLocaleString()}</div>
                 </div>
                 <!-- 股價(現價,會跳動) + 漲跌幅(漲停紅底 / 跌停綠底) -->
                 <div class="text-right">
-                    <div class="font-mono font-black text-[16px] ${priceCls} ${priceFlash} leading-tight">${price.toFixed(2)}</div>
+                    <div class="font-mono font-black text-[15px] ${priceCls} ${priceFlash} leading-tight">${price.toFixed(2)}</div>
                     <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${todayChgPct>0?'+':''}${todayChgPct.toFixed(2)}%</div>
                 </div>
                 <!-- 總損益 + 報酬率 -->
                 <div class="text-right">
                     <div class="font-mono font-black text-[13px] ${totalColor} leading-tight">${totalPnL>0?'+':''}${Math.round(totalPnL).toLocaleString()}</div>
                     <div class="text-[10px] font-bold ${totalColor} font-mono leading-tight">${totalPct>0?'+':''}${totalPct.toFixed(2)}%</div>
+                </div>
+                <!-- 股數 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-gray-200 leading-tight">${(shares*1000).toLocaleString()}</div>
+                </div>
+                <!-- 均價 + 總成本 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-white leading-tight">${cost.toFixed(2)}</div>
+                    <div class="text-[10px] font-mono text-gray-500 leading-tight">${Math.round(totalCost).toLocaleString()}元</div>
+                </div>
+                <!-- 市值 / 佔比 -->
+                <div class="text-right">
+                    <div class="font-mono font-black text-[13px] text-white leading-tight">${Math.round(totalVal).toLocaleString()}</div>
+                    <div class="text-[10px] font-mono text-gray-500 leading-tight invMarketPct" data-val="${totalVal}">--</div>
                 </div>
             </div>`;
           } catch (_rowErr) { console.warn('[庫存列渲染跳過]', r?.item?.symbol, _rowErr?.message); }
