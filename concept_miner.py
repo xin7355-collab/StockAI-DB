@@ -25,6 +25,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import urllib.request
 import urllib.error
+import urllib.parse
 
 BASE = "https://pchome.megatime.com.tw"
 UA = ("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 "
@@ -47,13 +48,18 @@ def _txt(s):
     return TAG_RE.sub("", s or "").strip()
 
 
-def get(url, timeout=25):
-    req = urllib.request.Request(url, headers={
+def get(url, timeout=25, data=None):
+    hdr = {
         "User-Agent": UA,
-        "Referer": BASE + "/",
+        "Referer": BASE + "/m/group/newgroup",
         "Accept": "text/html,application/xhtml+xml,application/json,*/*",
         "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
-    })
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    body = urllib.parse.urlencode(data).encode() if data else None
+    if body:
+        hdr["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
+    req = urllib.request.Request(url, data=body, headers=hdr)
     for attempt in range(3):
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -111,6 +117,32 @@ def discover_group_links(index_html):
         seen.add(u)
         out.append((name, u))
     return out
+
+
+def catalog_probe():
+    """POST /m/ajax.php mode=market_catalog cat=0..N,印回傳的 .plist 族群清單。"""
+    print("🗂️ CATALOG PROBE 模式")
+    for cat in range(0, 16):
+        html, st = get(BASE + "/m/ajax.php", data={"mode": "market_catalog", "cat": cat})
+        if not html or html.strip() == "ERROR":
+            print(f"\ncat={cat} → status={st} EMPTY/ERROR")
+            continue
+        # 抓 .plist data-type + 名稱
+        items = re.findall(r'data-type="([^"]+)"[^>]*>(.*?)</', html, re.S)
+        names = re.findall(r'data-type="([^"]+)"[^>]*>\s*([^<>]{1,20})', html)
+        print(f"\n========== cat={cat} status={st} len={len(html)} items={len(items)} ==========")
+        # 印所有 data-type + 清理後文字
+        seen = []
+        for dt, raw in re.findall(r'data-type="([^"]+)"[^>]*>(.*?)</a>', html, re.S):
+            seen.append((dt, _txt(raw)[:16]))
+        if not seen:
+            for dt, raw in items:
+                seen.append((dt, _txt(raw)[:16]))
+        for dt, nm in seen[:60]:
+            print(f"    {dt:<10} {nm}")
+        if not seen:
+            print("    (無 data-type,印前 800 字)")
+            print("   ", html[:800].replace("\n", " "))
 
 
 def ajax_probe():
@@ -216,6 +248,9 @@ def deep_probe():
 def main():
     DATA.mkdir(exist_ok=True)
     print(f"🏷️ concept_miner 啟動 {datetime.now(TPE).isoformat(timespec='seconds')}")
+    if os.environ.get("CONCEPT_PROBE") == "4":
+        catalog_probe()
+        return
     if os.environ.get("CONCEPT_PROBE") == "3":
         ajax_probe()
         return
