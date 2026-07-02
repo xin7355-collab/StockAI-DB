@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -115,8 +115,9 @@
         /* #7 — 個股報價頭「即時/最新報價(Yahoo)」來源小標隱藏(使用者:太雜) */
         #dataSourceBadge { display: none !important; }
         .sticky-sub { position: sticky; top: 0; z-index: 40; background-color: #0d1117; }
-        .sub-tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; color: #8b949e; }
-        .sub-tab-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; background-color: rgba(96, 165, 250, 0.1); }
+        /* V45.6 — 分頁改仿籌碼K線:未選灰字、選中亮白粗體 + 琥珀底線(不再藍色填色框) */
+        .sub-tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; color: #8b949e; background-color: transparent; }
+        .sub-tab-btn.active { color: #f0f6fc; border-bottom: 2px solid #f59e0b; background-color: transparent; }
         .ma-toggle-lbl span { padding: 2px 6px; border-radius: 4px; transition: all 0.2s; border: 1px solid transparent; }
         .ma-toggle-lbl input[type="checkbox"]:checked + span { opacity: 1; background-color: rgba(255, 255, 255, 0.1); border: 1px solid currentColor; }
         .ma-toggle-lbl input[type="checkbox"]:not(:checked) + span { opacity: 0.3; }
@@ -896,7 +897,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.5</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.6</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -1033,15 +1034,16 @@
                         <span id="attentionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle"></span>
                     </div>
                 </div>
-                <div class="flex px-2 pt-1.5 bg-[#0d1117] overflow-x-auto">
-                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚡ 首席</button>
-                    <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📡 即時</button>
-                    <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📈 K線</button>
-                    <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">🔬 籌碼</button>
-                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📊 基本</button>
-                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📅 回測</button>
-                    <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">🚨 處置</button>
-                    <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-1 min-w-[58px] py-1.5 text-[10px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚖️ 多空</button>
+                <div class="flex items-end px-2 pt-1.5 bg-[#0d1117] overflow-x-auto scrollbar-hide border-b border-[#21262d]">
+                    <span class="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 self-center mr-1.5 ml-0.5"></span>
+                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚡ 首席</button>
+                    <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📡 即時</button>
+                    <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📈 K線</button>
+                    <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">🔬 籌碼</button>
+                    <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📊 基本</button>
+                    <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📅 回測</button>
+                    <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">🚨 處置</button>
+                    <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚖️ 多空</button>
                 </div>
             </div>
 
