@@ -252,13 +252,13 @@ export default {
     },
 
     async scheduled(event, env, ctx) {
-        // V17.5 + V21.3 — 5 cron 排程分流(UTC → 台北 +8):
-        //   "0 21 * * 0-4"  → 05:00 台北 🌃 隔夜美股戰報(V21.3 新)
-        //   "30 0 * * 1-5"  → 08:30 台北 🌅 盤前簡報(V21.3 新)
-        //   "0 1 * * 1-5"   → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發 + ETF 跟單 Top 5
-        //   "0 4 * * 1-5"   → 12:00 台北 🌞 午盤戰報(V21.3 新)
-        //   "0 9 * * 1-5"   → 17:00 台北 🌆 盤後總結(加強既有)
-        //   "*/5 1-5 ..."   → 09:00-13:55 台北 盤中即時掃描
+        // V17.5 + V21.4 — cron 排程分流(UTC → 台北 +8):
+        //   "0 21 * * 0-4"     → 05:00 台北 🌃 隔夜美股戰報
+        //   "0 0 * * 1-5"      → 08:00 台北 🌅 盤前簡報(V21.4 提前 + 精簡)
+        //   "0 1 * * 1-5"      → 09:00 台北 開盤掃 monitorList 推朱家泓 5MA 觸發 + ETF 跟單 Top 5
+        //   "0 4 * * 1-5"      → 12:00 台北 🌞 午盤戰報
+        //   "0 9 * * 1-5"      → 17:00 台北 🌆 盤後總結(加強既有)
+        //   "0,30 1-4"/"0,20 5"→ 09:00-13:20 台北 每 30 分 盤中庫存彙總掃描(runScan,末班 13:20)
         if (event.cron === '0 9 * * 1-5') {
             ctx.waitUntil(runDailySummary(env));
         } else if (event.cron === '0 1 * * 1-5') {
@@ -266,8 +266,8 @@ export default {
             ctx.waitUntil(runEtfFollowMorningPush(env));  // V17.18
         } else if (event.cron === '0 21 * * 0-4') {
             ctx.waitUntil(runOvernightUS(env));    // V21.3 隔夜美股
-        } else if (event.cron === '30 0 * * 1-5') {
-            ctx.waitUntil(runPreMarket(env));      // V21.3 盤前簡報
+        } else if (event.cron === '0 0 * * 1-5') {
+            ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
         } else if (event.cron === '0 4 * * 1-5') {
             ctx.waitUntil(runMidday(env));         // V21.3 午盤戰報
         } else {
@@ -802,6 +802,7 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     // V21.3:訊息改用「逐則發送(帶優先級過濾)」,放棄單則合併以利精準篩選
     // 為避免轟炸,單次 scan 一個用戶最多 6 則(超出 skip),保留最高優先
     const queue = [];   // {stars, text} 物件陣列,結尾按 stars 排序取前 6 則
+    const invAlerts = [];   // 💼 V21.4 — 庫存盤中觸發彙總(-5%/跌破5MA/+20%),結尾合成「一則」發送(不一檔一則轟炸)
 
     if (macroAlert && !(await wasPushed(env, user.chat_id, '__macro__', 'daily'))) {
         const severity = macroAlert.includes('★★★') || macroAlert.includes('暴跌') ? 'high' : 'medium';
@@ -844,15 +845,22 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
             }
         }
 
+        // 💼 V21.4 — 庫存盤中觸發:跌破成本 -5%(朱鐵律)/ 跌破 5MA / 獲利 +20%;收集進 invAlerts 結尾合成一則
         const inv = (user.inventory || []).find(i => i.sym === sym);
         if (inv?.cost > 0 && Number.isFinite(close) && close > 0) {
             const ret = ((close - inv.cost) / inv.cost) * 100;
+            if (ret <= -5 && !(await wasPushed(env, user.chat_id, sym, 'sl5'))) {
+                invAlerts.push(`🔴 ${label} 現價 *${close}*(成本 ${inv.cost}, *${ret.toFixed(1)}%*)→ 已破 -5% 鐵血停損線`);
+                await markPushed(env, user.chat_id, sym, 'sl5');
+            }
+            const b5 = await fetchVolumeBaseline(sym, volBaseCache);
+            if (b5 && b5.ma5 > 0 && close < b5.ma5 && !(await wasPushed(env, user.chat_id, sym, 'below5ma'))) {
+                invAlerts.push(`🟡 ${label} 現價 *${close}* 跌破 5日均價 *${b5.ma5.toFixed(2)}* → 朱:短線停利/停損`);
+                await markPushed(env, user.chat_id, sym, 'below5ma');
+            }
             if (ret >= 20 && !(await wasPushed(env, user.chat_id, sym, 'tp20'))) {
-                queue.push({ stars: 2, text: tplInventoryStop(label, sym, inv.cost, close, ret, 'tp') });
+                invAlerts.push(`🟢 ${label} 獲利 *+${ret.toFixed(1)}%*(成本 ${inv.cost} → ${close})→ 達停利線,可分批落袋`);
                 await markPushed(env, user.chat_id, sym, 'tp20');
-            } else if (ret <= -8 && !(await wasPushed(env, user.chat_id, sym, 'sl8'))) {
-                queue.push({ stars: 3, text: tplInventoryStop(label, sym, inv.cost, close, ret, 'sl') });
-                await markPushed(env, user.chat_id, sym, 'sl8');
             }
         }
 
@@ -909,6 +917,12 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
                 }
             }
         }
+    }
+
+    // 💼 V21.4 — 庫存觸發彙總成「一則」(台北時間標頭),放最前面優先送
+    if (invAlerts.length) {
+        const t = new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 16);   // 台北 HH:MM
+        queue.push({ stars: 3, text: `💼 *庫存盤中盤點* _${t} 台北_\n${SEP}\n${invAlerts.join('\n')}\n\n💡 朱老師心法:跌破成本 -5% 或 5MA = 紀律停損,別凹單;獲利達標分批落袋。` });
     }
 
     if (!queue.length) return;
@@ -1723,6 +1737,17 @@ async function runPreMarket(env) {
     }
     const mmVerdict = mmIndex >= 70 ? '🔴 主力可能殺出' : mmIndex >= 40 ? '🟠 警戒' : mmIndex >= 0 ? '🟡 中性' : '🟢 託盤';
 
+    // 🌅 V21.4 — 開盤方向(簡易純公式,對齊前端盤前體檢的「開高偏多/開低偏空」)
+    let dScore = 0;
+    if (macro) {
+        const sgn = v => (Number.isFinite(+v) ? (v > 0 ? 1 : v < 0 ? -1 : 0) : 0);
+        dScore += sgn(macro.sp500_chg_pct) + sgn(macro.nasdaq_chg_pct);
+        if (Number.isFinite(+macro.vix)) { if (macro.vix < 20) dScore += 1; else if (macro.vix > 30) dScore -= 2; else if (macro.vix > 25) dScore -= 1; }
+        if (Number.isFinite(+macro.fi_spot_net)) { if (macro.fi_spot_net > 0) dScore += 1; else if (macro.fi_spot_net < -200) dScore -= 1; }
+        if (Number.isFinite(+macro.fi_futures_net)) { if (macro.fi_futures_net > 0) dScore += 0.5; else if (macro.fi_futures_net <= -40000) dScore -= 1; }
+    }
+    const dV = dScore >= 2 ? { e: '🟢', t: '開高偏多' } : dScore <= -2 ? { e: '🔴', t: '開低偏空' } : { e: '🟡', t: '中性震盪' };
+
     // 對每用戶推:加入個人化重點 3 檔
     let cursor = undefined;
     while (true) {
@@ -1762,18 +1787,17 @@ async function runPreMarket(env) {
                     }
                 }
 
+                // 🌅 V21.4 — 精簡:方向一句話 + 每項一行(使用者要「簡單講重點」)
                 const text = [
-                    `🌅 *【盤前簡報 ★】${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}*`,
+                    `🌅 *盤前簡報* _${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })} 台北08:00_`,
                     SEP,
-                    macro ? `🇺🇸 SP500 *${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}%* / NASDAQ *${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}%* / VIX *${macro.vix?.toFixed(1)}*` : '',
-                    '',
-                    `🐂 *主力出貨指數 ${mmIndex} 分*`,
-                    `${mmVerdict}${factors.length ? ` (${factors.slice(0, 2).join(' / ')})` : ''}`,
-                    '',
-                    focus.length ? `🎯 *今日自選股重點*\n${focus.map(f => `  ▸ ${f}`).join('\n')}` : '🟢 自選股無高分股,可看通用情報',
-                    outSoon.length ? `\n⚠️ *處置股出獄*\n${outSoon.map(s => `  ▸ ${s}`).join('\n')}` : '',
-                    '',
-                    `📱 [看完整作戰指揮部](${GH_PAGES_BASE}/)`,
+                    `${dV.e} *今天 ${dV.t}*(方向分 ${dScore > 0 ? '+' : ''}${dScore})`,
+                    macro ? `🇺🇸 SP500 ${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}% / NASDAQ ${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}% / VIX ${macro.vix?.toFixed(1)}` : '',
+                    (macro && (Number.isFinite(+macro.fi_spot_net) || Number.isFinite(+macro.fi_futures_net))) ? `🏦 外資現貨 ${Number.isFinite(+macro.fi_spot_net) ? (macro.fi_spot_net >= 0 ? '+' : '') + macro.fi_spot_net + '億' : '—'} / 台指期 ${Number.isFinite(+macro.fi_futures_net) ? macro.fi_futures_net.toLocaleString() + '口' : '—'}` : '',
+                    `🐂 主力出貨指數 ${mmIndex} ${mmVerdict}${factors.length ? `(${factors.slice(0, 2).join('/')})` : ''}`,
+                    focus.length ? `🎯 自選重點:${focus.join('、')}` : '',
+                    outSoon.length ? `⚠️ 處置出獄:${outSoon.join('、')}` : '',
+                    `📱 [完整盤前體檢](${GH_PAGES_BASE}/)`,
                 ].filter(Boolean).join('\n');
                 await tg(env, userData.chat_id, text);
             } catch (_) {}
