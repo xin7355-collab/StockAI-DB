@@ -113,9 +113,48 @@ def discover_group_links(index_html):
     return out
 
 
+def deep_probe():
+    """探勘各分類頁的結構,把族群連結 + 股票連結 pattern 印出來。"""
+    print("🔬 DEEP PROBE 模式")
+    targets = [
+        BASE + "/m/group/newgroup",
+        BASE + "/m/group/mkt0/",
+        BASE + "/m/group/mkt5/",
+    ]
+    NAV_HOSTS = ("shopping", "24h", "member", "news", "show", "ruten", "travel",
+                 "car.pchome", "sms", "live", "webhosting", "myname", "mypaper",
+                 "global.pchome", "piapp", "pchomepay", "interpay", "rakuya",
+                 "faq.pchome", "apis.pchome", "books", "pchomeec", "www.pchome",
+                 "www.m.pchome", "cloudmax", "office-sms")
+    for url in targets:
+        html, status = get(url)
+        print(f"\n########## {url} status={status} len={len(html) if html else 0} ##########")
+        if not html:
+            continue
+        anchors = A_RE.findall(html)
+        # 過濾掉 PChome 大選單/頁尾,只留 megatime 站內、且非首頁導覽
+        keep = []
+        for href, inner in anchors:
+            low = href.lower()
+            if any(h in low for h in NAV_HOSTS):
+                continue
+            if "megatime" not in low and not href.startswith("/"):
+                continue
+            keep.append((_txt(inner)[:18], href))
+        print(f"  站內 anchors: {len(keep)} (全印)")
+        for name, href in keep:
+            print(f"    [{name:<18}] {href}")
+        # 找股票連結 pattern:印出含 4 碼數字的 href 樣本
+        code_hrefs = [h for _, h in keep if re.search(r"\d{4}", h)]
+        print(f"  含4碼 href 樣本({len(code_hrefs)}):", code_hrefs[:15])
+
+
 def main():
     DATA.mkdir(exist_ok=True)
     print(f"🏷️ concept_miner 啟動 {datetime.now(TPE).isoformat(timespec='seconds')}")
+    if os.environ.get("CONCEPT_PROBE") == "1":
+        deep_probe()
+        return
 
     index_html = None
     used_index = None

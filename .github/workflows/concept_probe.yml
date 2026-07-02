@@ -4,6 +4,11 @@ name: 🏷️ 概念股採礦(probe)
 #    先用這支確認網站結構、校正解析;穩定後再併進 daily_miner.yml 常態更新。
 on:
   workflow_dispatch:
+    inputs:
+      probe:
+        description: '1=深度探勘結構 / 0=正式抓取'
+        required: false
+        default: '1'
 
 permissions:
   contents: read
@@ -20,6 +25,8 @@ jobs:
           python-version: '3.11'
 
       - name: 🏷️ 跑概念股採礦
+        env:
+          CONCEPT_PROBE: ${{ github.event.inputs.probe || '1' }}
         run: python concept_miner.py
 
       - name: 📋 印出產物摘要
