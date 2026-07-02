@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V42.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1218,6 +1218,23 @@
                 </div>
                 <!-- 🕯️ V41.23 — K線型態+量 評分卡(朱家泓做法:型態強弱 × 價量配合,純公式) -->
                 <div id="kbarScoreCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
+                <!-- ⚡ V42.7 — 盤中即時分鐘K線面板(免費 Fugle candles,零採礦) -->
+                <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="text-sm font-black text-cyan-300 flex items-center gap-1.5">⚡ 盤中即時分鐘K</div>
+                        <button onclick="alert('【盤中即時分鐘K】\n\n這是「當天盤中」的分鐘K棒圖(1分/5分),讓你看盤中即時走勢、量能有沒有進來,不用等收盤。\n\n📊 資料來源:免費 Fugle 行情 API(你設定頁填的 token),零採礦。\n⏰ 只有盤中(09:00–13:30)抓得到當天即時分鐘K;非盤中會顯示最近一個交易日的分鐘K(靜態)。\n🔄 免費版有流量限制,所以做成「手動按鈕更新」,不會自己一直跳。想看即時就按一下「載入/更新盤中K」。\n\n下方摘要:\n• 估量達標度%:用目前累計量線性外推今天收盤量,對比昨天總量(80%以上=量能有進來)。\n• 內外盤買賣力道:用五檔委買/委賣量估主力當下偏多偏空(盤中估算,真實分點以收盤後為準)。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 說明</button>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="flex bg-[#0d1117] rounded border border-[#30363d] overflow-hidden flex-shrink-0">
+                            <button id="intraTF_1" onclick="app.setIntradayTF('1')" class="px-3 py-1 text-xs font-bold bg-cyan-700 text-white transition-colors">1分</button>
+                            <button id="intraTF_5" onclick="app.setIntradayTF('5')" class="px-3 py-1 text-xs font-bold text-gray-400 bg-transparent hover:text-white transition-colors">5分</button>
+                        </div>
+                        <button id="intradayKlineBtn" onclick="app.loadIntradayKline(app.currentSymbolId); app.vibrate(20);" class="flex-1 text-xs font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 載入 / 更新盤中K</button>
+                    </div>
+                    <div id="intradayKlineChart" class="w-full h-[260px]"></div>
+                    <div id="intradaySummary" class="hidden mt-2 text-[11px] leading-relaxed"></div>
+                    <div id="intradayHint" class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">👆 盤中(09:00–13:30)按上方鈕拉當日分鐘K;非盤中顯示最近交易日。免費 Fugle 額度有限,手動更新即可。</div>
+                </div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
                     <div class="flex items-center gap-2 px-1 py-1 border-b border-[#30363d] flex-nowrap overflow-x-auto scrollbar-hide">
                         <div class="flex bg-[#161b22] rounded border border-[#30363d] overflow-hidden flex-shrink-0" id="tfBtnGroup">
@@ -17560,6 +17577,159 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (btn) { btn.disabled = false; btn.textContent = '🔄 盤中即時更新(Fugle)'; }
         if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
         this.vibrate(15);
+    },
+
+    // ⚡ V42.7 — 盤中即時分鐘K線面板(免費 Fugle candles 端點,零採礦)
+    // 切 1分/5分:改狀態 + 重繪按鈕 + 若已載過就重新拉一次
+    setIntradayTF(tf) {
+        this._intradayTF = tf;
+        ['1', '5'].forEach(t => {
+            const el = document.getElementById(`intraTF_${t}`);
+            if (el) el.className = t === tf
+                ? 'px-3 py-1 text-xs font-bold bg-cyan-700 text-white transition-colors'
+                : 'px-3 py-1 text-xs font-bold text-gray-400 bg-transparent hover:text-white transition-colors';
+        });
+        if (this._intradayLoadedSym) this.loadIntradayKline(this.currentSymbolId);
+    },
+
+    // Fugle 分鐘K:token 輪動 + 429 防護 + 5s timeout,回傳 [{t,open,high,low,close,volume}] 或 null
+    async _fetchFugleCandles(symbol, tf) {
+        const keys = [this.settings.fugleToken1, this.settings.fugleToken2, this.settings.fugleToken3,
+                      this.settings.fugleToken4, this.settings.fugleToken5].filter(k => k && k.trim());
+        if (!keys.length) return null;
+        for (let attempt = 0; attempt < keys.length; attempt++) {
+            const token = keys[this.fugleKeyIndex % keys.length];
+            this.fugleKeyIndex++;
+            const now = Date.now(), gap = now - this.lastFugleReqTime;
+            if (gap < 1100) await new Promise(r => setTimeout(r, 1100 - gap));
+            this.lastFugleReqTime = Date.now();
+            let res;
+            try {
+                const controller = new AbortController(); const tid = setTimeout(() => controller.abort(), 6000);
+                res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/candles/${symbol}?timeframe=${tf}`,
+                    { headers: { 'X-API-KEY': token }, signal: controller.signal });
+                clearTimeout(tid);
+            } catch (_) { return null; }
+            if (res.status === 429) continue;   // 換下一把 token
+            if (!res.ok) return null;
+            try {
+                const json = await res.json();
+                const rows = json.data || json.candles || [];
+                if (!Array.isArray(rows) || !rows.length) return [];
+                return rows.map(r => ({
+                    t: r.date || r.time || '',
+                    open: +r.open, high: +r.high, low: +r.low, close: +r.close,
+                    volume: +(r.volume ?? r.tradeVolume ?? 0),
+                })).filter(c => Number.isFinite(c.open) && Number.isFinite(c.close));
+            } catch (_) { return null; }
+        }
+        return null;   // 所有 token 都 429
+    },
+
+    async loadIntradayKline(sym) {
+        sym = sym || this.currentSymbolId;
+        const btn = document.getElementById('intradayKlineBtn');
+        const hint = document.getElementById('intradayHint');
+        const sumEl = document.getElementById('intradaySummary');
+        const chartEl = document.getElementById('intradayKlineChart');
+        if (!chartEl) return;
+        const keys = [this.settings.fugleToken1, this.settings.fugleToken2, this.settings.fugleToken3,
+                      this.settings.fugleToken4, this.settings.fugleToken5].filter(k => k && k.trim());
+        if (!keys.length) {
+            if (hint) hint.innerHTML = '⚠️ 請先到 <b>⚙️ 設定 → Fugle token</b> 填一組免費金鑰,才能拉盤中分鐘K。<br>(Fugle 官網免費申請行情 API 金鑰)';
+            this.showToast('請先到 ⚙️ 設定填 Fugle token');
+            return;
+        }
+        const tf = this._intradayTF || '1';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 抓取中...'; }
+        let candles = null;
+        try { candles = await this._fetchFugleCandles(sym, tf); } catch (_) {}
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 載入 / 更新盤中K'; }
+
+        if (!candles) {
+            if (hint) hint.innerHTML = '⚠️ Fugle 無回應或免費額度用盡,稍後再按一次。';
+            return;
+        }
+        if (!candles.length) {
+            if (hint) hint.innerHTML = 'ℹ️ 目前無盤中分鐘資料(可能尚未開盤或當日休市),請盤中(09:00–13:30)再試。';
+            return;
+        }
+        this._intradayLoadedSym = sym;
+        this._renderIntradayChart(chartEl, candles, tf);
+
+        // 摘要:估量達標度 + 內外盤買賣力道(用 quote 快照)
+        let q = null;
+        try { q = await this.fetchFugleData(sym); } catch (_) {}
+        if (sumEl) {
+            const parts = [];
+            const nowStr = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            if (q && q.price) {
+                const chgPct = (q.prevClose > 0) ? (q.price - q.prevClose) / q.prevClose * 100 : 0;
+                const cCls = chgPct >= 0 ? 'text-red-300' : 'text-green-300';
+                parts.push(`<div class="text-gray-300">即時 <b class="${cCls}">${q.price} (${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%)</b></div>`);
+                // 估量達標度
+                const vp = this._chuVolumeProgress(q, this.baseRawData || this.rawDailyData || []);
+                if (vp && vp.pct != null) {
+                    const vCls = vp.lamp === 'green' ? 'text-green-300' : vp.lamp === 'yellow' ? 'text-yellow-300' : 'text-red-300';
+                    parts.push(`<div class="text-gray-400">估量達標度 <b class="${vCls}">${vp.pct.toFixed(0)}%</b> <span class="text-[9px] text-gray-500">(預估收盤量 vs 昨量,80%↑量能足)</span></div>`);
+                }
+                // 內外盤買賣力道
+                const bid = q.bidVol || 0, ask = q.askVol || 0, tot = bid + ask;
+                if (tot > 0) {
+                    const bp = bid / tot * 100;
+                    const bpCls = bp >= 55 ? 'text-red-300' : bp <= 45 ? 'text-green-300' : 'text-gray-300';
+                    const bpTxt = bp >= 55 ? '偏多承接' : bp <= 45 ? '偏空調節' : '多空拉鋸';
+                    parts.push(`<div class="text-gray-400">內外盤力道 <b class="${bpCls}">委買 ${bp.toFixed(0)}% vs 委賣 ${(100 - bp).toFixed(0)}% · ${bpTxt}</b></div>`);
+                }
+            }
+            parts.push(`<div class="text-[9px] text-gray-500 mt-1">${this.isMarketOpen() ? `盤中 ${nowStr} 即時` : '⚠️ 非盤中,顯示最近交易日'} · ${tf}分K · 僅供參考,真實分點以收盤後為準</div>`);
+            sumEl.innerHTML = parts.join('');
+            sumEl.classList.remove('hidden');
+        }
+        if (hint) hint.innerHTML = `✅ ${candles.length} 根${tf}分K已載入(${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })})。盤中想更新再按一次鈕。`;
+        this.vibrate(15);
+    },
+
+    _renderIntradayChart(el, candles, tf) {
+        const chart = echarts.getInstanceByDom(el) || echarts.init(el, 'dark');
+        // 時間標籤:date 為 ISO(含 +08:00)→ 取 HH:MM
+        const labels = candles.map(c => {
+            const s = String(c.t);
+            const m = s.match(/T(\d{2}:\d{2})/);
+            if (m) return m[1];
+            try { const d = new Date(s); if (!isNaN(d.getTime())) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; } catch (_) {}
+            return '';
+        });
+        const kData = candles.map(c => [c.open, c.close, c.low, c.high]);
+        const vols = candles.map(c => ({ value: c.volume, itemStyle: { color: c.close >= c.open ? '#f87171' : '#4ade80' } }));
+        const prevClose = candles[0] ? candles[0].open : null;
+        chart.setOption({
+            animation: false, backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, backgroundColor: 'rgba(13,17,23,0.95)', borderColor: '#30363d', textStyle: { color: '#c9d1d9', fontSize: 11 },
+                formatter: (ps) => {
+                    if (!ps || !ps.length) return '';
+                    const i = ps[0].dataIndex, c = candles[i];
+                    const chg = prevClose ? ((c.close - prevClose) / prevClose * 100) : 0;
+                    return `${labels[i]}<br>開 ${c.open} 高 ${c.high}<br>低 ${c.low} 收 <b>${c.close}</b> (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%)<br>量 ${c.volume.toLocaleString()}`;
+                } },
+            axisPointer: { link: [{ xAxisIndex: 'all' }] },
+            grid: [{ left: '13%', right: '3%', top: '6%', height: '60%' }, { left: '13%', right: '3%', top: '72%', height: '20%' }],
+            xAxis: [
+                { type: 'category', data: labels, gridIndex: 0, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#30363d' } } },
+                { type: 'category', data: labels, gridIndex: 1, axisLabel: { color: '#8b949e', fontSize: 9, hideOverlap: true, interval: 'auto' }, axisLine: { lineStyle: { color: '#30363d' } } },
+            ],
+            yAxis: [
+                { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 9 } },
+                { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 9 } },
+            ],
+            series: [
+                { name: '分鐘K', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0,
+                  itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' },
+                  markLine: prevClose != null ? { symbol: ['none', 'none'], silent: true, data: [{ yAxis: prevClose, lineStyle: { type: 'dashed', color: '#8b949e', width: 1, opacity: 0.7 }, label: { show: true, position: 'insideStartTop', formatter: `昨收 ${prevClose}`, color: '#8b949e', fontSize: 9 } }] } : undefined },
+                { name: '量', type: 'bar', data: vols, xAxisIndex: 1, yAxisIndex: 1 },
+            ],
+        }, { replaceMerge: ['series'] });
+        setTimeout(() => { try { chart.resize(); } catch (_) {} }, 50);
     },
 
     // 🌡️ 載入 4 戰區 + 10 細分板塊熱度（後端 build_sector_heat 預先運算）
