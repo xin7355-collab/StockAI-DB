@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V42.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V42.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.5</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V42.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -12382,6 +12382,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             else if (chase) { light = '🟡'; tone = 'yellow'; action = '別追高'; lines = [`多頭但已到追高區 → 買低不追高。<b>等回檔到 5 日線 ${f(ma5)} 附近、不破前低 ${f(prevLow)} 再找買點。</b>`]; }
             else { light = '⛔'; tone = 'gray'; action = '不建議做多'; lines = [`非波段多頭(或訊號不足),今天<b>不建議做多</b>。等站穩月線 ${f(ma20)} 且帶量突破再看。`]; }
         }
+        // 💰 V42.6 具體掛單參考價(白話直接給價):空手給掛買價、持股給掛賣停利/停損價
+        let orderLine = '';
+        if (held) {
+            orderLine = `💰 <b>掛賣參考價</b>:停利 → 跌破 5 日線 <b>${f(ma5)}</b> 就掛賣;硬停損 → 跌破月線 <b>${f(ma20)}</b> 或成本−5% <b>${f(cost * 0.95)}</b> 一定要賣。`;
+        } else if (!head && (hi || weak || wait || chase)) {
+            orderLine = `💰 <b>掛買參考價</b>:穩健 → 掛在 5 日線 <b>${f(ma5)}</b> 附近等拉回接;積極 → 站上昨高 <b>${f(prevHigh)}</b> 追進。買到後停損掛 <b>${f(prevLow)}</b>。`;
+        } else if (!held) {
+            orderLine = `💰 <b>現在別掛買</b>:等站上月線 <b>${f(ma20)}</b>、或紅K站回 5 日線 <b>${f(ma5)}</b> 再考慮。`;
+        }
+        if (orderLine) lines.push(orderLine);
         const tc = tone === 'red' ? 'text-red-200' : tone === 'green' ? 'text-green-200' : tone === 'yellow' ? 'text-yellow-200' : 'text-gray-300';
         const bc = tone === 'red' ? 'border-red-500 bg-red-900/25' : tone === 'green' ? 'border-green-500 bg-green-900/25' : tone === 'yellow' ? 'border-yellow-500 bg-yellow-900/15' : 'border-gray-600 bg-[#161b22]';
         el.className = `w-full rounded-lg border-2 ${bc} p-3 shadow-lg`;
@@ -20934,7 +20944,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
 
     // V17.10 — 排序狀態(name / today / price / total),localStorage 記住
-    _invSort: JSON.parse(localStorage.getItem('proTerminalInvSort') || '{"col":null,"dir":"desc"}'),
+    _invSort: (() => { try { return JSON.parse(localStorage.getItem('proTerminalInvSort') || '{"col":null,"dir":"desc"}') || { col: null, dir: 'desc' }; } catch (_) { return { col: null, dir: 'desc' }; } })(),
 
     sortInventory(col) {
         if (this._invSort.col === col) {
@@ -21026,6 +21036,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         let html = '', totalCostNTD = 0, totalValNTD = 0, totalTodayPnL = 0, totalPrevValNTD = 0;
         for (const r of rows) {
+          try {   // 🐛 V42.6 每列獨立 try/catch:單一庫存列出錯不再拖垮整個列表(新增股票畫面壞掉根治)
             const { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL } = r;
             totalCostNTD += totalCost;
             totalValNTD += totalVal;
@@ -21085,6 +21096,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     <div class="text-[10px] font-mono text-gray-500 leading-tight invMarketPct" data-val="${totalVal}">--</div>
                 </div>
             </div>`;
+          } catch (_rowErr) { console.warn('[庫存列渲染跳過]', r?.item?.symbol, _rowErr?.message); }
         }
         container.innerHTML = html;
         // V17.11 — 市值佔比後補:render 完後計算每檔市值佔比,更新對應 div
