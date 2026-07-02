@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V45.0</title>
+    <title>首席 AI 司令部 | 戰略終端 V45.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -887,7 +887,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.4rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.0</span>
+                <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V45.1</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[13px] font-black text-gray-200 leading-none">大盤</span>
@@ -1242,6 +1242,8 @@
                     <div class="text-[9px] text-gray-500 mt-1 flex items-center gap-1"><span class="inline-block w-4 h-0.5 bg-white"></span>白線=分時均價(站上偏強/跌破偏弱)</div>
                     <div id="intradayTruthBox" class="hidden mt-2"></div>
                     <div id="intradaySummary" class="hidden mt-2 text-[11px] leading-relaxed"></div>
+                    <!-- 📊 V45.1 — 五檔深度階梯 + 即時數據 grid(對標券商即時盤,Fugle 五檔陣列展開) -->
+                    <div id="intradayDepthBox" class="hidden mt-3"></div>
                     <div id="intradayHint" class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">👆 盤中(09:00–13:30)進此頁自動拉當日分鐘K;非盤中顯示最近交易日。免費 Fugle 額度有限,手動更新即可。</div>
                 </div>
             </div>
@@ -7316,6 +7318,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             if (prevClose == null && changePrice != null) prevClose = price - changePrice;
             // 內外盤(委買/委賣 5 檔總量)— 供盤中主力動向估算
             const _sumQty = (arr) => Array.isArray(arr) ? arr.reduce((s, o) => s + (o.size ?? o.volume ?? o.quantity ?? 0), 0) : 0;
+            // V45.1 — 保留五檔陣列(供即時盤五檔深度階梯);正規化成 [{price,size}] 最多5檔
+            const _norm = (arr) => Array.isArray(arr) ? arr.slice(0, 5).map(o => ({ price: +(o.price ?? o.p ?? 0), size: +(o.size ?? o.volume ?? o.quantity ?? 0) })).filter(x => x.price > 0) : [];
+            const bidsArr = _norm(q.bids ?? q.bid ?? q.bidOrders);
+            const asksArr = _norm(q.asks ?? q.ask ?? q.askOrders);
             const bidVol = _sumQty(q.bids ?? q.bid ?? q.bidOrders);
             const askVol = _sumQty(q.asks ?? q.ask ?? q.askOrders);
             const result = {
@@ -7324,9 +7330,10 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 high:      q.highPrice  ?? q.priceHigh?.price  ?? price,
                 low:       q.lowPrice   ?? q.priceLow?.price   ?? price,
                 volume:    q.total?.tradeVolume ?? q.total?.tradeShares ?? 0,
+                lastSize:  q.lastSize ?? q.trade?.size ?? q.lastTrade?.size ?? null,   // 單量
                 prevClose,
                 changePrice,
-                bidVol, askVol,
+                bidVol, askVol, bids: bidsArr, asks: asksArr,
                 isHistorical: false,
             };
             this._fugleCache[symbol] = { data: result, ts: Date.now() };
@@ -18180,8 +18187,70 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const vpForJudge = (q && q.price) ? this._chuVolumeProgress(q, this.baseRawData || this.rawDailyData || []) : null;
             this._renderIntradayTruthBox(truthBox, this._intradayTruthJudge(candles, q, vpForJudge));
         } catch (_) {}
+        // 📊 V45.1 五檔深度階梯 + 即時數據 grid(對標券商即時盤)
+        try {
+            const depthBox = document.getElementById('intradayDepthBox');
+            const vpD = (q && q.price) ? this._chuVolumeProgress(q, this.baseRawData || this.rawDailyData || []) : null;
+            this._renderIntradayDepth(depthBox, q, vpD);
+        } catch (_) {}
         if (hint) hint.innerHTML = `✅ ${candles.length} 根${tf}分K已載入(${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })})。盤中想更新再按一次鈕。`;
         this.vibrate(15);
+    },
+
+    // 📊 V45.1 — 五檔深度階梯 + 即時數據 grid(對標券商即時盤;Fugle 五檔陣列 + quote 數據,零額外抓)
+    _renderIntradayDepth(box, q, vp) {
+        if (!box) return;
+        if (!q || !q.price) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        const bids = Array.isArray(q.bids) ? q.bids : [];
+        const asks = Array.isArray(q.asks) ? q.asks : [];
+        const prev = +q.prevClose || 0;
+        const pxCls = p => prev > 0 ? (p > prev ? 'text-red-300' : p < prev ? 'text-green-300' : 'text-gray-300') : 'text-gray-300';
+        const nf = v => (v == null || !Number.isFinite(+v)) ? '—' : (+v).toLocaleString();
+        let ladderHtml = '';
+        if (bids.length || asks.length) {
+            const maxSz = Math.max(1, ...bids.map(b => b.size), ...asks.map(a => a.size));
+            const bidTot = bids.reduce((s, b) => s + b.size, 0), askTot = asks.reduce((s, a) => s + a.size, 0);
+            const tot = bidTot + askTot;
+            const inPct = tot > 0 ? Math.round(bidTot / tot * 100) : 50;   // 委買占比(對標:內盤綠/外盤紅,此處以委買/委賣量比呈現)
+            const rows = [];
+            for (let i = 0; i < 5; i++) {
+                const b = bids[i], a = asks[i];
+                const bw = b ? Math.round(b.size / maxSz * 100) : 0;
+                const aw = a ? Math.round(a.size / maxSz * 100) : 0;
+                rows.push(`<div class="grid grid-cols-[1fr_54px_54px_1fr] items-center gap-1 h-6 text-[11px] font-mono">
+                    <div class="relative h-4 flex items-center justify-end"><div class="absolute right-0 top-0 h-full bg-red-600/30 rounded-l" style="width:${bw}%"></div><span class="relative pr-1 text-gray-200">${b ? nf(b.size) : ''}</span></div>
+                    <div class="text-right font-bold ${b ? pxCls(b.price) : 'text-gray-600'}">${b ? b.price.toFixed(2) : '—'}</div>
+                    <div class="text-left font-bold ${a ? pxCls(a.price) : 'text-gray-600'}">${a ? a.price.toFixed(2) : '—'}</div>
+                    <div class="relative h-4 flex items-center"><div class="absolute left-0 top-0 h-full bg-green-600/30 rounded-r" style="width:${aw}%"></div><span class="relative pl-1 text-gray-200">${a ? nf(a.size) : ''}</span></div>
+                </div>`);
+            }
+            ladderHtml = `
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="text-[10px] font-bold text-gray-400">📗 五檔委買委賣</span>
+                    <div class="flex-1 flex h-2 rounded overflow-hidden border border-[#30363d]"><div class="bg-red-600" style="width:${inPct}%"></div><div class="bg-green-600" style="width:${100 - inPct}%"></div></div>
+                    <span class="text-[10px] font-mono"><b class="text-red-300">委買 ${inPct}%</b> / <b class="text-green-300">委賣 ${100 - inPct}%</b></span>
+                </div>
+                <div class="grid grid-cols-[1fr_54px_54px_1fr] gap-1 text-[9px] text-gray-500 font-bold mb-0.5"><span class="text-right pr-1">委買量</span><span class="text-right">買價</span><span class="text-left">賣價</span><span class="pl-1">委賣量</span></div>
+                ${rows.join('')}`;
+        } else {
+            ladderHtml = '<div class="text-[10px] text-gray-500 py-2 text-center">五檔資料暫無(非盤中或該檔無報價)</div>';
+        }
+        // 即時數據 grid
+        const amp = prev > 0 ? (q.high - q.low) / prev * 100 : null;
+        const cell = (label, val, cls = 'text-gray-200') => `<div class="flex items-baseline justify-between gap-1 px-2 py-1 border-b border-[#21262d]"><span class="text-[10px] text-gray-500">${label}</span><span class="text-[11px] font-mono font-bold ${cls}">${val}</span></div>`;
+        const stats = `<div class="grid grid-cols-2 gap-x-3 mt-2 bg-[#0d1117]/50 rounded p-1">
+            ${cell('單量', nf(q.lastSize))}
+            ${cell('總量', nf(q.volume))}
+            ${cell('估量', vp && vp.estimated != null ? nf(vp.estimated) : '—')}
+            ${cell('量增/縮', vp && vp.pct != null ? (vp.pct >= 100 ? '+' : '') + (vp.pct - 100).toFixed(0) + '%' : '—', vp && vp.pct != null ? (vp.pct >= 100 ? 'text-red-300' : 'text-green-300') : 'text-gray-200')}
+            ${cell('振幅', amp != null ? amp.toFixed(1) + '%' : '—')}
+            ${cell('高低價差', (q.high && q.low) ? (q.high - q.low).toFixed(2) : '—')}
+            ${cell('開盤', q.open ? q.open.toFixed(2) : '—', pxCls(q.open))}
+            ${cell('參考價', prev ? prev.toFixed(2) : '—')}
+        </div>`;
+        box.className = 'mt-3 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5';
+        box.innerHTML = `<div class="text-[11px] font-black text-gray-200 mb-2">📊 即時五檔 · 數據</div>${ladderHtml}${stats}<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">⚠️ 免費 Fugle 報價,盤中手動/定時更新(非毫秒即時);五檔為當下委掛,真實成交以收盤為準。</div>`;
+        box.classList.remove('hidden');
     },
 
     // 🎯 V43.0 — 盤中真假判讀(免費:分時均價 + 量價配合 + 內外盤 + 位階/開盤型態)
