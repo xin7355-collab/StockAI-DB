@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V43.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V43.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -76,7 +76,10 @@
         .price-flash-down { animation: flashDown 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        
+        /* V43.7 折疊教學:隱藏原生三角(iOS/webkit),只留自訂 ▾ 指示 */
+        #onboard_kline > summary::-webkit-details-marker { display: none; }
+        #onboard_kline > summary { list-style: none; }
+
         #loadingOverlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); display: none; z-index: 9999;}
         .nav-btn.active { color: #60a5fa; }
         .nav-btn.active span:first-child { filter: none; transform: scale(1.1); }
@@ -850,7 +853,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.6</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.7</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1213,28 +1216,23 @@
 
 <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
 
-                <div id="onboard_kline" class="onboard-panel relative bg-amber-900/15 border border-amber-700/40 rounded-lg p-3 text-[11px] leading-relaxed text-gray-300">
-                    <button onclick="app.dismissOnboard('kline')" class="absolute top-1 right-2 text-gray-400 hover:text-white text-base leading-none font-bold">×</button>
-                    <div class="font-black text-amber-200 mb-0.5">📈 K 線怎麼看（朱家泓／林穎 4 要素順序）</div>
-                    <div class="flex flex-col gap-1">
+                <!-- 📈 K線怎麼看：V43.7 折疊(details,預設收合) -->
+                <details id="onboard_kline" class="onboard-panel bg-amber-900/15 border border-amber-700/40 rounded-lg text-[11px] leading-relaxed text-gray-300">
+                    <summary class="font-black text-amber-200 p-3 cursor-pointer select-none list-none flex items-center justify-between">
+                        <span>📈 K 線怎麼看（朱家泓／林穎 4 要素順序）</span>
+                        <span class="text-[9px] text-gray-500 font-normal">▾ 點開教學</span>
+                    </summary>
+                    <div class="flex flex-col gap-1 px-3 pb-3">
                         <div><b class="text-white">①趨勢</b>：頭頭高+底底高=多頭、頭頭低+底底低=空頭、其餘=盤整。先定方向再進場。</div>
                         <div><b class="text-white">②均線</b>：🟡5MA(短) 🟢10MA(中) 🟧20MA(月線・多空分水嶺,站上多/跌破空) 🔵60MA(季線・大波段命脈)。</div>
                         <div><b class="text-white">③K線</b>：紅柱=收漲、綠柱=收跌；長紅長黑看力道、變盤線(十字/紡錘)看轉折、夜星/晨星/吞噬看反轉。</div>
                         <div><b class="text-white">④量</b>：量增配長紅才有效突破；爆量隔天黑K留意假突破出貨。</div>
-                        <div class="text-gray-500 mt-0.5">👉 下方「📐 K線分析報告」就是用這套朱／林角度,純公式偵測好型態後自動幫你判讀。</div>
+                        <div class="text-gray-500 mt-0.5">👉 上方「🗣️ 朱老師這樣看」就是用這套朱／林角度,純公式偵測好型態後自動幫你判讀。</div>
                     </div>
-                </div>
+                </details>
 
                 <!-- 🗣️ V43.5 — 朱老師口吻 K線型態總評(純公式,點進K線頁即自動顯示,比 AI 準) -->
                 <div id="chuVerdictCard" class="hidden"></div>
-                <div class="bg-[#0d1117] border border-amber-700/40 rounded-lg px-3 py-2.5 flex flex-col gap-2">
-                    <button onclick="app.runKlineAudit(app.currentSymbolId); app.vibrate(30);" id="klineAuditBtn" class="w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">
-                        📐 K線分析報告
-                    </button>
-                    <div id="klineAuditResult" class="hidden w-full bg-[#010409] border border-amber-500/40 rounded-lg p-4 text-sm text-gray-200 leading-loose min-h-[20rem]"></div>
-                </div>
-                <!-- 🕯️ V41.23 — K線型態+量 評分卡(朱家泓做法:型態強弱 × 價量配合,純公式) -->
-                <div id="kbarScoreCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
                     <div class="flex items-center gap-2 px-1 py-1 border-b border-[#30363d] flex-nowrap overflow-x-auto scrollbar-hide">
                         <div class="flex bg-[#161b22] rounded border border-[#30363d] overflow-hidden flex-shrink-0" id="tfBtnGroup">
@@ -12718,17 +12716,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             else if (sc > -4) { tone = 'bear'; headline = '🟢 型態轉弱'; cta = '別追高,持股跌破月線或成本 -5% 鐵血停損,搶反彈快進快出。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
             else { tone = 'bear'; headline = '🟢 型態壞掉·出貨相'; cta = '空手勿接刀,持股分批出,結構破壞別凹。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
 
-            el.className = 'bg-[#161b22] border-l-4 ' + barCls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
+            el.className = 'bg-[#161b22] border-l-4 ' + barCls + ' border-y border-r border-[#30363d] rounded-r p-3.5 shadow-lg';
             el.innerHTML = `
-                <div class="flex items-center justify-between mb-1.5">
-                    <div class="text-sm font-black ${headCls}">🗣️ 朱老師這樣看:${headline}</div>
-                    <span class="text-[9px] text-gray-600">純公式 · 非AI</span>
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-lg font-black ${headCls}">🗣️ 朱老師這樣看:${headline}</div>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0 ml-1">純公式·非AI</span>
                 </div>
-                <div class="flex flex-col gap-1 text-[11px] text-gray-300 leading-relaxed">
+                <div class="flex flex-col gap-1.5 text-[15px] text-gray-200 leading-relaxed">
                     ${lines.map(l => `<div>${l}</div>`).join('')}
                 </div>
-                <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[11px] text-gray-200 leading-relaxed"><b class="${headCls}">💡 操作:</b>${cta}</div>
-                <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📊 現價 ${nf(price)} · 歷史高 ${nf(ath)} · 前高 ${nf(recentHigh)} · 前低 ${nf(recentLow)} · 純數值公式判讀,型態轉折需次日確認,僅供參考非投資建議。</div>`;
+                <div class="mt-2.5 bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-[15px] text-gray-100 leading-relaxed"><b class="${headCls}">💡 操作:</b>${cta}</div>
+                <div class="text-[11px] text-gray-500 mt-2 leading-snug">📊 現價 ${nf(price)} · 歷史高 ${nf(ath)} · 前高 ${nf(recentHigh)} · 前低 ${nf(recentLow)} · 純數值公式判讀,型態轉折需次日確認,僅供參考非投資建議。</div>`;
             el.classList.remove('hidden');
         } catch (e) { console.warn('[chuVerdict]', e); el.classList.add('hidden'); }
     },
@@ -19568,7 +19566,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
         try { this.renderKbarTactics(data); } catch (_) {}
         try { this.renderChuKbarVerdict(data); } catch (_) {}  // 🗣️ V43.5 朱老師口吻 K線型態總評(純公式,點進K線頁即見)
-        try { this.renderKbarScore(data); } catch (_) {}       // 🕯️ V41.23 K線頁 型態+量 評分卡
+        // V43.7 移除:📐 K線分析報告(AI) + 🕯️ K線型態+量評分 → 由上方朱老師口吻總評取代
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
         try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日作戰指令(首席頁置頂)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
