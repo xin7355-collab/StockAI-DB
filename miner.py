@@ -94,6 +94,16 @@ _UA_LIST = [
 def _rnd_hdrs() -> dict:
     return {'User-Agent': random.choice(_UA_LIST)}
 
+# 🐛 V43.3 — HEADERS 過去未定義:_fetch_twii/otc_history_official 每次 NameError→被 except 吞→回 None。
+#   加權靠 yfinance ^TWII 補故無感,櫃買 ^TWO yfinance 回空+官方 NameError→twoii_history 全空(盤前體檢櫃買永遠採集中)。
+#   定義後官方 TWSE/TPEX 端點才會真正被呼叫。
+HEADERS = {
+    'User-Agent': _UA_LIST[0],
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+    'Referer': 'https://www.tpex.org.tw/',
+}
+
 # [Token 輪動] 優先讀 FINMIND_TOKENS（複數），再 fallback 到 FINMIND_TOKEN（向下相容）
 _fm_env        = os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN', '')
 FINMIND_TOKENS = [t.strip() for t in _fm_env.split(',') if t.strip()]
@@ -2161,33 +2171,53 @@ def _fetch_otc_history_official(months_back=2):
             cur_m = 12
             cur_y -= 1
     months_to_fetch.reverse()
+
+    def _flt(s):
+        return float(str(s).replace(',', '').replace('--', 'nan'))
+
     for y, m in months_to_fetch:
-        roc = f"{y - 1911}/{m:02d}"
-        url = f"https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php?l=zh-tw&d={roc}"
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=10)
-            if r.status_code != 200:
-                print(f"  [TPEX OTC] {y}/{m:02d} HTTP {r.status_code}")
-                continue
-            j = r.json()
-            if not j.get('aaData'):
-                continue
-            for row in j['aaData']:
-                try:
-                    mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
-                    if not mtch:
-                        continue
-                    iso = f"{int(mtch.group(1))+1911:04d}/{int(mtch.group(2)):02d}/{int(mtch.group(3)):02d}"
-                    def _flt(s):
-                        return float(str(s).replace(',', ''))
-                    o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
-                    rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
-                                     'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
-                except Exception:
+        roc = f"{y - 1911}/{m:02d}"       # 民國 114/06(舊 web 端點格式)
+        ce_first = f"{y:04d}{m:02d}01"    # 西元 20260601(新 rwd/openapi 端點格式)
+        # 🐛 V43.3 — TPEX 2024 改版,舊 /web/...st41_result.php 多半已死;新站改 /rwd/ (對齊 TWSE)。
+        #   多端點輪試 + 相容多種回傳格式(aaData 舊 / data 或 tables[0].data 新)。全失敗才回 None 讓 yfinance/磁碟 fallback。
+        url_candidates = [
+            f"https://www.tpex.org.tw/rwd/zh/afterTrading/otc/st41?date={ce_first}&response=json",
+            f"https://www.tpex.org.tw/www/zh-tw/afterTrading/otc/st41?date={ce_first}&response=json",
+            f"https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php?l=zh-tw&d={roc}",
+        ]
+        got = False
+        for url in url_candidates:
+            if got:
+                break
+            try:
+                r = requests.get(url, headers=HEADERS, timeout=10)
+                if r.status_code != 200:
                     continue
-        except Exception as e:
-            print(f"  [TPEX OTC] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
-            continue
+                j = r.json()
+                data = j.get('aaData') or j.get('data') or (j.get('tables', [{}])[0].get('data') if isinstance(j.get('tables'), list) and j['tables'] else None) or []
+                if not data:
+                    continue
+                added = 0
+                for row in data:
+                    try:
+                        mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
+                        if not mtch:
+                            continue
+                        iso = f"{int(mtch.group(1))+1911:04d}/{int(mtch.group(2)):02d}/{int(mtch.group(3)):02d}"
+                        o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
+                        if not (c == c and c > 0):   # 跳過 NaN/0 收盤
+                            continue
+                        rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
+                                         'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
+                        added += 1
+                    except Exception:
+                        continue
+                if added:
+                    got = True
+            except Exception:
+                continue
+        if not got:
+            print(f"  [TPEX OTC] {y}/{m:02d} 全端點抓取失敗")
     seen, uniq = set(), []
     for r in rows_out:
         if r['date'] not in seen:
