@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V44.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V44.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -87,6 +87,10 @@
         /* 盤前體檢等密集兩欄格:標籤/數字不換行,避免「外資現/貨」「期現/基差」斷字 */
         #marketBriefing .grid > div > span,
         #marketBriefing .grid > div > div > span { white-space: nowrap; }
+        /* V44.3 — 頂部跑馬燈(風險+regime+黑天鵝合併捲動),內容重複2份 + translateX(-50%) 無縫循環 */
+        .marquee-track { display: inline-block; white-space: nowrap; animation: ticker 38s linear infinite; will-change: transform; }
+        @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .marquee-wrap:active .marquee-track { animation-play-state: paused; }
 
         #loadingOverlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); display: none; z-index: 9999;}
         .nav-btn.active { color: #60a5fa; }
@@ -861,7 +865,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.2</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V44.3</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -1789,8 +1793,8 @@
                 </div>
             </div>
 
-            <!-- 🎯 V32.1 — 台股大盤指揮中心;V43.8 order:1 移到最上(原台股預判位置) -->
-            <div style="order:1" class="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden flex flex-col">
+            <!-- 🎯 台股大盤指揮中心 V44.3 已刪除(使用者:覺得沒用);風險分數/regime 仍由頂部跑馬燈顯示,JS null-guard -->
+            <div style="order:1" class="hidden bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden flex flex-col">
                 <!-- ① 核心頭區:標題 + 半圓/結論 + 扁平指數 + 次級頁籤
                      V32.5 — 移除 sticky top-[46px]:此頭區被外層 overflow-hidden card 包住,
                      sticky 在不滾動的 card 內釘住時會往下平移、蓋掉下方 #sccPanels 第一列
@@ -3935,17 +3939,30 @@ ${list}
                 }
             }
         } catch (_) {}
-        if (score >= 80) {
-            banner.innerHTML = `<span class="flex-1 text-center">🚨 極度恐慌！風險指數 ${score}/100，黑天鵝風險極高，嚴控倉位</span><button onclick="document.getElementById('marketAlertBanner').classList.add('hidden')" class="ml-2 text-red-300 hover:text-white font-black leading-none flex-shrink-0 text-sm px-1">✕</button>`;
-            banner.className = 'flex items-center px-3 py-1 text-[10px] font-bold border-b bg-red-950/90 text-red-300 border-red-700 animate-pulse';
-            banner.classList.remove('hidden');
-        } else if (score >= 60) {
-            banner.innerHTML = `<span class="flex-1 text-center">🔴 高度風險！風險指數 ${score}/100，市場壓力明顯，謹慎操作</span><button onclick="document.getElementById('marketAlertBanner').classList.add('hidden')" class="ml-2 text-orange-300 hover:text-white font-black leading-none flex-shrink-0 text-sm px-1">✕</button>`;
-            banner.className = 'flex items-center px-3 py-1 text-[10px] font-bold border-b bg-orange-950/80 text-orange-300 border-orange-800';
-            banner.classList.remove('hidden');
-        } else {
-            banner.classList.add('hidden');
-        }
+        // V44.3 — 頂部跑馬燈:風險指數 + 朱老師 regime 部位建議 + 黑天鵝警報,合併成一條捲動 ticker(取代原黑天鵝矩陣卡 + 多頭過熱 chip)
+        const mr = this._macroRiskCache || {};
+        const _fs = v => (v == null || isNaN(v)) ? '?' : (+v >= 0 ? `+${(+v).toFixed(1)}%` : `${(+v).toFixed(1)}%`);
+        const segs = [];
+        segs.push(score >= 80 ? `🚨 極度恐慌 · 風險指數 ${score}/100 · 嚴控倉位、別接刀`
+                : score >= 60 ? `🔴 高度風險 · 風險指數 ${score}/100 · 市場壓力明顯,謹慎操作、收緊停利`
+                : score >= 40 ? `🟠 警戒 · 風險指數 ${score}/100 · 別追高、嚴設停損`
+                : `🟢 風險偏低 · 風險指數 ${score}/100 · 環境相對乾淨`);
+        try { const a = this._chuPositionAdvice?.(); if (a) segs.push(`${a.regimeLabel} 建議 ${a.pct} · ${a.advice}`); } catch (_) {}
+        try {
+            if (typeof mr.jpy_chg_3d === 'number' && mr.jpy_chg_3d < -1.5) segs.push(`💴 日圓3日急升 ${_fs(mr.jpy_chg_3d)},套息平倉,外資恐拋權值股`);
+            if (typeof mr.gold_chg_pct === 'number' && mr.gold_chg_pct > 3) segs.push(`🛢️ 黃金單日暴漲 ${_fs(mr.gold_chg_pct)},避險升溫,避開高位科技股`);
+            if (typeof mr.wti_chg_pct === 'number' && mr.wti_chg_pct > 3) segs.push(`🛢️ 原油單日暴漲 ${_fs(mr.wti_chg_pct)},通膨/地緣風險`);
+            if (typeof mr.kospi_chg_pct === 'number' && mr.kospi_chg_pct < -1.5) segs.push(`🇰🇷 韓股重挫 ${_fs(mr.kospi_chg_pct)},亞股遭提款,台股留意跟跌`);
+            if (typeof mr.taiex_ma240_bias === 'number' && mr.taiex_ma240_bias > 20) segs.push(`📈 台股年線乖離 ${_fs(mr.taiex_ma240_bias)},極端貪婪泡沫區,買入極度克制`);
+        } catch (_) {}
+        const txt = segs.join('　　◆　　');
+        const accent = score >= 80 ? 'bg-red-950/90 text-red-200 border-red-700'
+                     : score >= 60 ? 'bg-orange-950/85 text-orange-200 border-orange-800'
+                     : score >= 40 ? 'bg-yellow-950/70 text-yellow-100 border-yellow-800'
+                     : 'bg-[#0d1117] text-gray-300 border-[#30363d]';
+        banner.className = `flex items-center overflow-hidden border-b ${accent}`;
+        banner.innerHTML = `<div class="marquee-wrap flex-1 overflow-hidden"><div class="marquee-track text-[11px] font-bold py-1">${txt}　　◆　　${txt}</div></div><button onclick="document.getElementById('marketAlertBanner').classList.add('hidden')" class="px-2 opacity-70 hover:opacity-100 font-black leading-none flex-shrink-0 text-sm">✕</button>`;
+        banner.classList.remove('hidden');
     },
 
     toggleManualPriceInput() {
@@ -10138,10 +10155,9 @@ const marginByDate = {};
                 <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前體檢</span><span class="text-[9px] text-gray-500">純公式總結</span></div>
                 <button onclick="app.showJargon('盤前體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
             </div>
-            <div class="text-[9px] text-gray-500 mb-2 leading-snug flex items-center gap-x-1.5 gap-y-0.5 flex-wrap border-b border-[#21262d] pb-1.5">
-                <span>📅 資料採集 <b class="text-gray-300">${_basis}</b>${_twiiDate ? `(台股 ${_twiiDate} 收盤)` : ''}</span>
-                <span class="text-gray-600">·</span>
-                <span>隔夜美股 → 預判<b class="text-gray-300">下一個交易日</b>開盤</span>
+            <div class="text-[9px] text-gray-500 mb-2 leading-relaxed border-b border-[#21262d] pb-1.5 space-y-0.5">
+                <div>📅 資料採集 <b class="text-gray-300">${_basis}</b>${_twiiDate ? ` <span class="text-gray-600">(台股 ${_twiiDate} 收盤)</span>` : ''}</div>
+                <div>🌙 隔夜美股 → 預判<b class="text-gray-300">下一個交易日</b>開盤</div>
             </div>
             <div class="flex items-center gap-3 mb-2">
                 <div class="text-3xl">${light}</div>
@@ -10176,7 +10192,7 @@ const marginByDate = {};
                         ${chipCell('⚖️ 三大法人合計', yiLine(fiTotal))}
                         ${chipCell('💰 大盤融資', marginLine)}
                     </div>
-                    <div class="flex items-baseline justify-between gap-1 mt-1"><span class="text-gray-400">⚖️ 期現基差</span><span class="text-right">${basisLine}</span></div>
+                    <div class="mt-1.5 pt-1.5 border-t border-[#21262d]/50"><span class="text-gray-400 whitespace-nowrap">⚖️ 期現基差</span><div class="mt-0.5 leading-relaxed">${basisLine}</div></div>
                 </div>
                 <div class="border-t border-[#21262d] pt-1.5 flex items-baseline justify-between gap-1"><span class="text-gray-400">📐 加權技術</span><span class="text-right">${techLine}</span></div>
                 ${levelsHtml}
@@ -10193,8 +10209,7 @@ const marginByDate = {};
                     <button onclick="app._openFreeAiMacro('calendar'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">📅 本週財經行事曆</button>
                     <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">🔥 類股題材輪動</button>
                 </div>
-            </div>
-            ${this._blackSwanMatrixHtml()}`;
+            </div>`;
         el.classList.remove('hidden');
     },
 
