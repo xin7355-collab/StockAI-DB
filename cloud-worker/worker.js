@@ -790,6 +790,8 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     (user.watchlist || []).forEach(s => symbols.add(s));
     (user.monitorList || []).forEach(s => symbols.add(s));
     (user.inventory || []).forEach(i => { if (i?.sym) symbols.add(i.sym); });
+    // 🎯 V21.4 — 獵殺清單 set(供盤中買點觸發時標記為「獵殺進場點」+ 彙總一則)
+    const monitorSet = new Set((user.monitorList || []).map(s => (typeof s === 'string' ? s : s?.sym)).filter(Boolean));
     // V17.6 — 限價告警的 sym 也納入掃描,即使不在自選/監控/庫存
     (user.priceAlerts || []).forEach(a => { if (a?.sym) symbols.add(a.sym); });
 
@@ -803,6 +805,7 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     // 為避免轟炸,單次 scan 一個用戶最多 6 則(超出 skip),保留最高優先
     const queue = [];   // {stars, text} 物件陣列,結尾按 stars 排序取前 6 則
     const invAlerts = [];   // 💼 V21.4 — 庫存盤中觸發彙總(-5%/跌破5MA/+20%),結尾合成「一則」發送(不一檔一則轟炸)
+    const huntAlerts = [];  // 🎯 V21.4 — 獵殺清單盤中買點(帶量站上5MA)彙總,結尾合成「一則」
 
     if (macroAlert && !(await wasPushed(env, user.chat_id, '__macro__', 'daily'))) {
         const severity = macroAlert.includes('★★★') || macroAlert.includes('暴跌') ? 'high' : 'medium';
@@ -872,7 +875,12 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
                 const vRatio = vTodayLots / (base.vma5 * (elapsed / 270));
                 const breakMa5 = live.z > base.ma5;
                 if (vRatio > 1.5 && breakMa5 && !(await wasPushed(env, user.chat_id, sym, 'volBreak5ma'))) {
-                    queue.push({ stars: 2, text: tplChu5MA(label, sym, live.z, base.ma5, vRatio) });
+                    // 🎯 V21.4 — 獵殺清單股 → 彙總成「獵殺買點」一則;其餘(自選/庫存)維持個別 tplChu5MA
+                    if (monitorSet.has(sym)) {
+                        huntAlerts.push(`🎯 ${label} 現價 *${live.z}* 帶量站上 5MA *${base.ma5.toFixed(2)}*(量 *${vRatio.toFixed(1)}×*)→ 朱式進場點`);
+                    } else {
+                        queue.push({ stars: 2, text: tplChu5MA(label, sym, live.z, base.ma5, vRatio) });
+                    }
                     await markPushed(env, user.chat_id, sym, 'volBreak5ma');
                 }
             }
@@ -920,9 +928,13 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     }
 
     // 💼 V21.4 — 庫存觸發彙總成「一則」(台北時間標頭),放最前面優先送
+    const tpeHM = new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 16);   // 台北 HH:MM
     if (invAlerts.length) {
-        const t = new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 16);   // 台北 HH:MM
-        queue.push({ stars: 3, text: `💼 *庫存盤中盤點* _${t} 台北_\n${SEP}\n${invAlerts.join('\n')}\n\n💡 朱老師心法:跌破成本 -5% 或 5MA = 紀律停損,別凹單;獲利達標分批落袋。` });
+        queue.push({ stars: 3, text: `💼 *庫存盤中盤點* _${tpeHM} 台北_\n${SEP}\n${invAlerts.join('\n')}\n\n💡 朱老師心法:跌破成本 -5% 或 5MA = 紀律停損,別凹單;獲利達標分批落袋。` });
+    }
+    // 🎯 V21.4 — 獵殺清單盤中買點彙總成「一則」
+    if (huntAlerts.length) {
+        queue.push({ stars: 2, text: `🎯 *獵殺清單盤中買點* _${tpeHM} 台北_\n${SEP}\n${huntAlerts.join('\n')}\n\n📋 開盤後等量穩,守 5MA 進場(跌破 5MA 立停);量若縮回別追。` });
     }
 
     if (!queue.length) return;

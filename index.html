@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V43.5</title>
+    <title>首席 AI 司令部 | 戰略終端 V43.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -850,7 +850,7 @@
             <div class="flex items-center flex-shrink-0 pl-1 overflow-hidden gap-1.5">
                 <!-- V31.4 — 頂部:最左 V31.4 獨立版本徽章(放大專業 mono);「大盤趨勢」放大 + 目前天氣圖卡 並排一組;點擊回診斷 -->
                 <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤趨勢 · 目前天氣 · 點擊回診斷">
-                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.5</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V43.6</span>
                     <div class="flex items-center gap-1.5">
                         <span class="text-sm md:text-base font-black tracking-tight whitespace-nowrap bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm">大盤趨勢</span>
                         <div id="headerWeather" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-[#30363d]">
@@ -24406,7 +24406,7 @@ ${_chuPosPlan}
             issues.push('⚠️ <b class="text-amber-300">清單全空</b> → worker 沒東西可掃,自然沒推送。請加幾檔自選/庫存/監控');
         }
         if (inv > 0 && invWithCost === 0) {
-            issues.push('⚠️ <b class="text-amber-300">庫存沒填成本</b> → 停利停損規則 skip(規則:庫存 +20% 停利 / -8% 停損,須 cost > 0)');
+            issues.push('⚠️ <b class="text-amber-300">庫存沒填成本</b> → 停利停損規則 skip(規則:庫存 +20% 停利 / -5% 停損 / 跌破 5MA,須 cost > 0)');
         }
         if (monitor === 0) {
             issues.push('💡 <b class="text-blue-300">監控空</b> → 「量爆突破 5MA」+「朱家泓 5MA 朝掃」這兩個推送都 skip。到朱家泓五大選股法 → 一鍵加入監控');
