@@ -119,6 +119,45 @@ def discover_group_links(index_html):
     return out
 
 
+def plist_probe():
+    """.plist data-type='X_Y' 是族群;連到 /m/groupinfo/mkt{X}/st{Y}.html。掃四頁 data-type + 跟一頁看成分股結構。"""
+    print("📇 PLIST PROBE 模式")
+    pages = [BASE + "/m/group/newgroup", BASE + "/m/group/mkt0/",
+             BASE + "/m/group/mkt1/", BASE + "/m/group/mkt5/"]
+    all_dt = []
+    for pg in pages:
+        html, st = get(pg)
+        print(f"\n########## {pg} status={st} len={len(html) if html else 0} ##########")
+        if not html:
+            continue
+        # data-type 的元素(div/a/li 皆可),抓 data-type + 內文
+        pairs = re.findall(r'data-type="([^"]+)"[^>]*>(.*?)</', html, re.S)
+        clean = [(dt, _txt(t)[:20]) for dt, t in pairs]
+        print(f"  data-type 元素:{len(clean)}")
+        for dt, nm in clean[:70]:
+            print(f"    {dt:<10} {nm}")
+        all_dt += [dt for dt, _ in clean]
+    # 跟第一個 X_Y 進 groupinfo 看成分股結構
+    uniq = []
+    for dt in all_dt:
+        if "_" in dt and dt not in uniq:
+            uniq.append(dt)
+    print(f"\n  唯一 data-type(含底線):{len(uniq)},前 20:", uniq[:20])
+    for dt in uniq[:2]:
+        x, y = dt.split("_", 1)
+        gi = f"{BASE}/m/groupinfo/mkt{x}/st{y}.html"
+        html, st = get(gi)
+        print(f"\n===== GROUPINFO {gi} status={st} len={len(html) if html else 0} =====")
+        if html:
+            title = re.search(r"<title>(.*?)</title>", html, re.S)
+            print("  title:", _txt(title.group(1)) if title else "?")
+            sids = re.findall(r"/m/stock/sid(\d{4})", html)
+            print(f"  sid 股票代號({len(sids)}):", sorted(set(sids))[:30])
+            # 若沒抓到 sid,印片段
+            if not sids:
+                print("  (無 sid,前 1200 字)", html[:1200].replace("\n", " "))
+
+
 def catalog_probe():
     """POST /m/ajax.php mode=market_catalog cat=0..N,印回傳的 .plist 族群清單。"""
     print("🗂️ CATALOG PROBE 模式")
@@ -248,6 +287,9 @@ def deep_probe():
 def main():
     DATA.mkdir(exist_ok=True)
     print(f"🏷️ concept_miner 啟動 {datetime.now(TPE).isoformat(timespec='seconds')}")
+    if os.environ.get("CONCEPT_PROBE") == "5":
+        plist_probe()
+        return
     if os.environ.get("CONCEPT_PROBE") == "4":
         catalog_probe()
         return
