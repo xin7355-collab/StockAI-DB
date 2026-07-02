@@ -305,7 +305,10 @@ def main():
         return
 
     # ===== 正式採礦(結構已確認 V45.9)=====
-    # 1) 分類頁 → 收集 data-type="{mkt}_{sub}" 族群 + 乾淨名稱(跳過 mkt5 指數成分,概念性低且量大)
+    # mkt 分類:0/1=官方上市上櫃產業(前端已用 FinMind 🏭 顯,略過);2=細產業;3=集團股;4=概念股;5=指數成分(略)
+    # 概念標籤只要 mkt 2/3/4(最像籌碼App 的概念股),量少速度快、雜訊少(排除權證等)
+    KEEP_MKT = {"2", "3", "4"}
+    # 1) 分類頁 → 收集 data-type="{mkt}_{sub}" 族群 + 乾淨名稱
     CAT_PAGES = ["/m/group/newgroup", "/m/group/mkt0/", "/m/group/mkt1/"]
     gid_name, order = {}, []
     for p in CAT_PAGES:
@@ -315,13 +318,23 @@ def main():
             print(f"⚠️ 分類頁失敗 {p} status={st}")
             continue
         for dt, raw in re.findall(r'data-type="([^"]+)"[^>]*>(.*?)</', html, re.S):
-            if "_" not in dt or dt.split("_", 1)[0] == "5":
+            if "_" not in dt or dt.split("_", 1)[0] not in KEEP_MKT:
                 continue
             nm = _txt(raw)[:24]
             if nm and dt not in gid_name:
                 gid_name[dt] = nm
                 order.append(dt)
         print(f"分類頁 {p}: 累計族群 {len(order)}(+{len(order)-n_before})")
+
+    # 讀舊檔(merge 用:限流導致本次部分失敗時,保留上次成果不倒退)
+    prev = {}
+    try:
+        pf = DATA / "concept_stocks.json"
+        if pf.exists():
+            prev = json.loads(pf.read_text(encoding="utf-8")).get("groups", {}) or {}
+            print(f"📂 讀到舊檔族群 {len(prev)} 個(將 merge)")
+    except Exception as e:
+        print(f"   ⚠️ 舊檔讀取失敗:{e}")
 
     if not order:
         print("❌ 沒抓到任何族群(megatime 可能改版)")
@@ -350,17 +363,23 @@ def main():
             print(f"  {i}/{len(order)} ({int(time.time()-t0)}s) {gid} {gid_name[gid]} → {len(sids)} 檔")
         time.sleep(0.08)
 
-    # 3) 反查表 by_stock:mkt2(細產業/概念)優先 → 0/1(大分類)→ 5(指數成分)→ 其餘
-    prio = {"2": 0, "0": 1, "1": 1, "5": 3}
+    # merge:舊檔族群墊底,本次新抓的覆蓋(本次限流少抓的族群仍保留舊成分)
+    merged = dict(prev)
+    merged.update(groups)
+    print(f"merge:本次 {len(groups)} + 舊 {len(prev)} → 合計 {len(merged)} 族群")
+
+    # 3) 反查表 by_stock:概念(4)> 集團(3)> 細產業(2);排除 >120 檔的過廣族群(雜訊)
+    prio = {"4": 0, "3": 1, "2": 2}
+    usable = {gid: g for gid, g in merged.items() if len(g.get("syms", [])) <= 120}
     by_stock = {}
-    for gid, g in sorted(groups.items(), key=lambda kv: prio.get(kv[1]["mkt"], 2)):
+    for gid, g in sorted(usable.items(), key=lambda kv: prio.get(kv[1].get("mkt", ""), 5)):
         for s in g["syms"]:
             lst = by_stock.setdefault(s, [])
-            if g["name"] not in lst and len(lst) < 10:   # 每檔最多 10 個標籤
+            if g["name"] not in lst and len(lst) < 8:   # 每檔最多 8 個標籤
                 lst.append(g["name"])
 
-    print(f"\n✅ 族群 {len(groups)} 個 / 個股 {len(by_stock)} 檔有標籤")
-    _write(groups, by_stock, note=("partial" if stopped else ""))
+    print(f"\n✅ 族群 {len(merged)} 個(可用 {len(usable)})/ 個股 {len(by_stock)} 檔有標籤")
+    _write(merged, by_stock, note=("partial" if stopped else ""))
 
 
 def _write(groups, by_stock, note=""):
