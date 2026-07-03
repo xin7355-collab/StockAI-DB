@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.3</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -899,7 +899,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.3</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.4</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -2286,6 +2286,9 @@
 
         <div id="tabContentEtf" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
         </div>
+        <!-- 💎 V46.4 — 長線潛力股(renderPotentialTab 動態填充) -->
+        <div id="tabContentPotential" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
+        </div>
         <div id="tabContentHunt" class="flex-col p-2 gap-3 pb-4" style="display:none;min-height:80vh;">
             <!-- Active Alerts Banner -->
             <div id="huntAlertBox" class="hidden flex-col gap-2"></div>
@@ -2376,6 +2379,8 @@
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
             <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-3xl drop-shadow grayscale-[80%]">⚔️</span><span class="text-[11px] mt-0.5 font-bold">獵殺</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
             <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-3xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
+            <!-- 💎 V46.4 — 長線潛力股(低基期翻倍/便宜成長/籌碼默默吸/技術打底,純公式零採礦) -->
+            <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">💎</span><span class="text-[11px] mt-0.5 font-bold">潛力</span></button>
         </nav>
     </div>
 
@@ -4963,7 +4968,7 @@ ${list}
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         this._stopInvPricePoll();   // 🔄 V45.13 離開任何頁先停庫存輪詢,進 inv 再開
 
-        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf'].forEach(tab => {
+        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf', 'Potential'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             const _el = document.getElementById(`tabContent${tab}`);
             if (_el) {
@@ -5007,6 +5012,7 @@ ${list}
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
+        if (tabId === 'potential') { try { this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
         // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
         } catch (e) {   // V24.5 — switchAppTab 整段 try/catch 結尾
             console.error('[switchAppTab]', tabId, e);
@@ -6330,6 +6336,198 @@ ${list}
     _openFreeAiConcept(concept) {
         const sym = this.currentSymbolId, name = this.getStockName(sym) || sym;
         this._freeAiOpen(`${name}(${sym}) 屬於「${concept}」概念股嗎?這個題材近期發展、受惠程度,以及同族群還有哪些主流股?請附日期與來源`);
+        this.vibrate?.(20);
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 💎 V46.4 — 長線潛力股(Tier A:觀察清單+自選+庫存,純公式零採礦,禁 AI 算數)
+    //   7 因子:位階低/估值便宜/成長轉機/籌碼默默吸/技術打底/題材主流/翻倍空間
+    // ═══════════════════════════════════════════════════════════════════════
+    _potentialHotThemes: ['AI','CoWoS','矽光子','記憶體','HBM','重電','軍工','低軌衛星','散熱','ABF','PCB','機器人','矽智財','光通訊','先進封裝','半導體','電動車','工業4.0','5G','伺服器','光學'],
+
+    _calcPotentialScore(sym, kl, fund, medianPe) {
+        try {
+            const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +(b?.volume || 0);
+            const inst = b => (+b?.foreign_net || 0) + (+b?.trust_net || 0);
+            const closes = kl.map(C), highs = kl.map(H), lows = kl.map(L), vols = kl.map(V);
+            const n = closes.length, price = closes[n - 1];
+            if (!(price > 0) || n < 60) return null;
+            const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+            const ma = (k, i) => { const s = closes.slice(i - k + 1, i + 1); return s.length === k ? avg(s) : null; };
+
+            // ① 位階低(0-20):52週(~250日)價格分位越低越好
+            const look = Math.min(250, n);
+            const winHi = Math.max(...highs.slice(-look).filter(v => v > 0));
+            const winLo = Math.min(...lows.slice(-look).filter(v => v > 0));
+            const pos52 = (winHi > winLo) ? (price - winLo) / (winHi - winLo) : 0.5;
+            const f1 = pos52 <= 0.15 ? 20 : pos52 <= 0.25 ? 17 : pos52 <= 0.40 ? 13 : pos52 <= 0.55 ? 8 : pos52 <= 0.70 ? 4 : 0;
+
+            // ② 估值便宜(0-15):PE vs 同業中位 + 殖利率
+            let f2 = 0; const pe = (fund && fund.pe != null) ? +fund.pe : null, yld = (fund && fund.yield_rate != null) ? +fund.yield_rate : null;
+            if (pe != null && pe > 0) {
+                if (medianPe && medianPe > 0) { const r = pe / medianPe; f2 += r <= 0.6 ? 8 : r <= 0.8 ? 6 : r <= 1.0 ? 4 : r <= 1.3 ? 2 : 0; }
+                else { f2 += pe <= 10 ? 7 : pe <= 15 ? 5 : pe <= 20 ? 3 : 0; }
+            }
+            if (yld != null) f2 += yld >= 6 ? 7 : yld >= 4 ? 5 : yld >= 2.5 ? 3 : 0;
+            f2 = Math.min(15, f2);
+
+            // ③ 成長轉機(0-20):營收 YoY + 毛利(fundamentals_cache,非清單股常缺→低分)
+            let f3 = 0; const yoy = (fund && fund.rev_yoy != null && !isNaN(+fund.rev_yoy)) ? +fund.rev_yoy : null;
+            const gm = (fund && typeof fund.gross_margin === 'number') ? fund.gross_margin : null;
+            if (yoy != null) f3 += yoy >= 30 ? 14 : yoy >= 15 ? 10 : yoy >= 5 ? 7 : yoy >= 0 ? 3 : 0;
+            if (gm != null) f3 += gm >= 40 ? 6 : gm >= 25 ? 4 : gm >= 15 ? 2 : 0;
+            f3 = Math.min(20, f3);
+
+            // ④ 籌碼默默吸(0-15):法人近20日淨買(張)+ 股價沒噴 + 量縮打底
+            const last20 = kl.slice(-20);
+            const instLots = last20.reduce((a, b) => a + inst(b), 0) / 1000;
+            const chg20 = closes[Math.max(0, n - 21)] > 0 ? (price / closes[Math.max(0, n - 21)] - 1) : 0;
+            let f4 = 0;
+            if (instLots > 0) f4 += instLots >= 3000 ? 7 : instLots >= 800 ? 5 : instLots >= 100 ? 3 : 1;
+            if (instLots > 0 && chg20 < 0.10) f4 += 4;
+            const v5 = avg(vols.slice(-5)), v60 = avg(vols.slice(-60));
+            if (v60 > 0 && v5 / v60 < 0.9) f4 += 4;
+            f4 = Math.min(15, f4);
+
+            // ⑤ 技術打底翻揚(0-15):月線走平轉揚 + 站上季線 + 季線不下彎 + 底底高
+            const ma20n = ma(20, n - 1), ma20p = ma(20, n - 6), ma60n = ma(60, n - 1), ma60p = ma(60, n - 6);
+            let f5 = 0;
+            if (ma20n && ma20p) { if (ma20n > ma20p) f5 += 5; else if (ma20n >= ma20p * 0.997) f5 += 3; }
+            if (ma60n && price > ma60n) f5 += 4;
+            if (ma60n && ma60p && ma60n >= ma60p) f5 += 2;
+            const loR = Math.min(...lows.slice(-30).filter(v => v > 0)), loP = Math.min(...lows.slice(-60, -30).filter(v => v > 0));
+            if (isFinite(loR) && isFinite(loP) && loR > loP) f5 += 4;
+            f5 = Math.min(15, f5);
+
+            // ⑥ 題材主流(0-10)
+            const conc = (this._conceptCache?.by_stock?.[sym]) || (this._CONCEPT_MAP[sym]) || [];
+            const hits = conc.filter(c => this._potentialHotThemes.some(t => String(c).includes(t)));
+            const f6 = conc.length ? (hits.length >= 2 ? 10 : hits.length === 1 ? 7 : 4) : 0;
+
+            // ⑦ 翻倍空間(0-5):距 5 年高的上檔空間
+            const hi5 = Math.max(...highs.filter(v => v > 0));
+            const upside = hi5 > price ? (hi5 - price) / price : 0;
+            const f7 = upside >= 1.0 ? 5 : upside >= 0.5 ? 4 : upside >= 0.3 ? 3 : upside >= 0.15 ? 2 : upside > 0 ? 1 : 0;
+
+            const score = Math.round(f1 + f2 + f3 + f4 + f5 + f6 + f7);
+            const tags = [];
+            if (f1 >= 13 && upside >= 0.5) tags.push('lowbase');
+            if (f2 >= 8 && f3 >= 9) tags.push('valgrow');
+            if (f4 >= 9) tags.push('chips');
+            if (f5 >= 9) tags.push('tech');
+            return { sym, name: this.getStockName(sym) || sym, score, f: { f1, f2, f3, f4, f5, f6, f7 },
+                     pos52, upside, instLots, pe, yld, yoy, conc: conc.slice(0, 4), tags, price };
+        } catch (_) { return null; }
+    },
+
+    async _potentialScan(force) {
+        const today = this.getTodayStr();
+        if (!force && this._potentialScanCache && this._potentialScanCache.date === today) return this._potentialScanCache.rows;
+        const fundCache = (await this._loadFundCache()) || {};
+        const peData = await this._loadIndustryPeData().catch(() => null);
+        await this._loadConceptData().catch(() => {});
+        const uni = new Set();
+        Object.keys(fundCache).forEach(k => { if (!k.startsWith('__')) uni.add(k); });
+        Object.values(this.favGroups || {}).forEach(arr => (arr || []).forEach(s => s && uni.add(String(s))));
+        (this.inventory || []).forEach(i => i && i.symbol && uni.add(String(i.symbol)));
+        const syms = [...uni].filter(s => /^\d{4}$/.test(s) && !s.startsWith('00'));
+        const rows = []; let done = 0; const total = syms.length;
+        const prog = document.getElementById('potentialProgress');
+        const worker = async (sym) => {
+            try {
+                const kl = await this.fetchHistoricalData(sym, false);
+                if (Array.isArray(kl) && kl.length >= 60) {
+                    let medianPe = null;
+                    try { const { industry } = this._getIndustryPeers(sym); medianPe = peData?.industries?.[industry]?.median_pe ?? null; } catch (_) {}
+                    const r = this._calcPotentialScore(sym, kl, fundCache[sym], medianPe);
+                    if (r) rows.push(r);
+                }
+            } catch (_) {}
+            done++;
+            if (prog && done % 4 === 0) prog.textContent = `🔍 掃描中… ${done}/${total} 檔`;
+        };
+        let idx = 0;
+        await Promise.all(Array.from({ length: Math.min(6, syms.length) }, async () => {
+            while (idx < syms.length) { const my = idx++; await worker(syms[my]); }
+        }));
+        rows.sort((a, b) => b.score - a.score);
+        this._potentialScanCache = { date: today, rows };
+        return rows;
+    },
+
+    async renderPotentialTab() {
+        const box = document.getElementById('tabContentPotential');
+        if (!box) return;
+        if (!this._potentialFilter) this._potentialFilter = 'all';
+        const filt = this._potentialFilter;
+        const chip = (k, label) => `<button onclick="app.setPotentialFilter('${k}')" class="flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${filt === k ? 'bg-cyan-700 text-white border-cyan-500' : 'bg-[#161b22] text-gray-400 border-[#30363d] hover:text-white'}">${label}</button>`;
+        box.innerHTML = `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 mb-2">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-base font-black text-cyan-300 flex items-center gap-1.5">💎 長線潛力股
+                        <button onclick="alert('💎 長線潛力股(純公式,禁 AI 算數)\\n\\n用 7 個因子幫你找「現在便宜、基本面在轉好、主力默默布局、技術剛打底、又搭長線題材」的股票,並估上檔空間。\\n\\n① 位階低(低基期,沒漲過空間大)\\n② 估值便宜(PE低於同業/高殖利率)\\n③ 成長轉機(營收YoY/毛利提升)\\n④ 籌碼默默吸(法人連買但沒噴)\\n⑤ 技術剛打底翻揚(月線轉揚/站季線/底底高)\\n⑥ 題材主流(AI/CoWoS/重電…)\\n⑦ 翻倍空間(距5年高)\\n\\n範圍:觀察清單~100檔 + 你的自選/庫存。非清單冷門股「成長因子」會缺(分數偏低),之後全市場採礦版會補。\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損。')" class="text-[10px] text-gray-500 hover:text-cyan-300">📖</button>
+                    </h2>
+                    <button onclick="app._potentialScanCache=null; app.renderPotentialTab();" class="text-[11px] text-cyan-300/80 hover:text-cyan-200 border border-cyan-700/40 rounded px-2 py-0.5">🔄 重掃</button>
+                </div>
+                <div class="text-[10px] text-gray-500 mt-1 leading-snug">7 因子純公式評分(位階/估值/成長/籌碼/技術/題材/空間),分數越高長線潛力越大 ・ 非投資建議</div>
+                <div class="flex gap-1.5 overflow-x-auto scrollbar-hide mt-2 pb-1">
+                    ${chip('all', '全部')}${chip('lowbase', '🔥 低基期翻倍')}${chip('valgrow', '💰 便宜成長')}${chip('chips', '🕵️ 籌碼默默吸')}${chip('tech', '🌱 技術打底')}
+                </div>
+            </div>
+            <div id="potentialProgress" class="text-center text-cyan-400 text-xs py-3 animate-pulse">🔍 掃描潛力股中…(第一次較久,之後有快取)</div>
+            <div id="potentialList" class="flex flex-col gap-2"></div>`;
+        const rows = await this._potentialScan(false);
+        const prog = document.getElementById('potentialProgress'); if (prog) prog.classList.add('hidden');
+        this._renderPotentialList(rows);
+    },
+
+    setPotentialFilter(k) { this._potentialFilter = k; this.vibrate?.(15); this.renderPotentialTab(); },   // 重繪(掃描有當日快取,瞬間)
+
+    _renderPotentialList(rows) {
+        const list = document.getElementById('potentialList');
+        if (!list) return;
+        const filt = this._potentialFilter || 'all';
+        let arr = (rows || []).slice();
+        if (filt !== 'all') arr = arr.filter(r => r.tags.includes(filt));
+        arr = arr.slice(0, 40);
+        if (!arr.length) { list.innerHTML = `<div class="text-center text-gray-500 text-xs py-8">此篩選暫無符合的潛力股(換個篩選,或到自選/庫存多加幾檔冷門低基期股再重掃)</div>`; return; }
+        const tagMap = { lowbase: '🔥低基期翻倍', valgrow: '💰便宜成長', chips: '🕵️籌碼默默吸', tech: '🌱技術打底' };
+        const scoreCol = s => s >= 75 ? 'text-red-300' : s >= 60 ? 'text-amber-300' : 'text-gray-300';
+        const bar = (v, max, c) => `<div class="h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${c}" style="width:${Math.round(v / max * 100)}%"></div></div>`;
+        list.innerHTML = arr.map((r, i) => {
+            const tags = r.tags.map(t => `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-cyan-900/30 text-cyan-300 border border-cyan-700/40 whitespace-nowrap">${tagMap[t]}</span>`).join(' ');
+            const conc = r.conc.map(c => `<span class="text-[9px] text-cyan-400/80">#${c}</span>`).join(' ');
+            return `<div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 cursor-pointer hover:border-cyan-600/50 transition-colors">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-gray-600 font-mono">#${i + 1}</span>
+                            <span class="text-white font-black text-[15px] truncate">${r.name}</span>
+                            <span class="text-[10px] text-gray-500 font-mono">${r.sym}</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1 mt-0.5">${tags || '<span class="text-[9px] text-gray-600">綜合潛力</span>'} ${conc}</div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <div class="font-mono font-black text-2xl ${scoreCol(r.score)} leading-none">${r.score}</div>
+                        <div class="text-[8px] text-gray-500">潛力分</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-x-2 gap-y-1 mt-2">
+                    <div><div class="text-[8px] text-gray-500 mb-0.5">位階 ${Math.round(r.pos52 * 100)}%</div>${bar(20 - r.f.f1, 20, 'bg-green-400')}</div>
+                    <div><div class="text-[8px] text-gray-500 mb-0.5">估值 ${r.pe != null ? 'PE' + r.pe.toFixed(0) : '—'}</div>${bar(r.f.f2, 15, 'bg-amber-400')}</div>
+                    <div><div class="text-[8px] text-gray-500 mb-0.5">成長 ${r.yoy != null ? (r.yoy > 0 ? '+' : '') + r.yoy.toFixed(0) + '%' : '—'}</div>${bar(r.f.f3, 20, 'bg-red-400')}</div>
+                    <div><div class="text-[8px] text-gray-500 mb-0.5">籌碼 ${r.instLots > 0 ? '法人+' + Math.round(r.instLots) : '—'}</div>${bar(r.f.f4, 15, 'bg-orange-400')}</div>
+                    <div><div class="text-[8px] text-gray-500 mb-0.5">技術打底</div>${bar(r.f.f5, 15, 'bg-cyan-400')}</div>
+                    <div><div class="text-[8px] text-gray-500 mb-0.5">上檔 +${Math.round(r.upside * 100)}%</div>${bar(r.f.f7, 5, 'bg-purple-400')}</div>
+                </div>
+                <button onclick="event.stopPropagation(); app._openFreeAiPotential('${r.sym}');" class="mt-2 w-full text-[10px] font-bold text-cyan-300 bg-[#0d1117] border border-cyan-700/40 rounded py-1 hover:bg-cyan-900/20 transition-colors">🔎 免費查這檔長線題材與轉機</button>
+            </div>`;
+        }).join('');
+    },
+
+    _openFreeAiPotential(sym) {
+        const name = this.getStockName(sym) || sym;
+        this._freeAiOpen(`${name}(${sym}) 這檔台股的長線投資潛力如何?請分析:①它的成長題材與轉機故事 ②基本面(營收獲利趨勢、估值便宜嗎) ③風險與該注意什麼 ④適合分批布局的價位區間概念。請白話、附日期與來源`);
         this.vibrate?.(20);
     },
 
