@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.2</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -899,7 +899,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.2</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.3</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1011,9 +1011,8 @@
                         <button id="priceAlertIcon" class="cursor-pointer text-gray-500 hover:text-amber-300 transition-colors leading-none flex-shrink-0 p-0.5" title="設定到價監控,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                         </button>
-                        <span id="quoteAttBadge" class="hidden"></span>
                     </div>
-                    <!-- Row 2:🕯️K棒 + 現價 + 漲跌(右,上下堆疊) ... 總量/量縮(右) -->
+                    <!-- Row 2:🕯️K棒 + 現價 + 漲跌(右,上下堆疊)+ 🚨處置/注意(現價右手邊,點→免費查戰術)... 總量/量縮(右) -->
                     <div class="flex items-center gap-2.5 mt-1">
                         <!-- 🕯️ V45.7 個股即時/收盤 K 棒(紅漲綠跌),由 onWorkerMessage 以今日 OHLC 繪製 -->
                         <span id="quoteKbar" class="flex-shrink-0 flex items-center" aria-hidden="true"></span>
@@ -1023,14 +1022,16 @@
                             <span id="liveDiffPct" class="text-sm font-bold font-mono leading-tight mt-0.5">(--%)</span>
                             <div id="dataSourceBadge" class="flex items-center gap-1"><span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span><span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時</span></div>
                         </div>
+                        <!-- 🚨 V46.3 處置/注意 告警(現價右手邊,點→免費 AI 戰術提醒);renderQuoteAttBadge 填入 -->
+                        <span id="quoteAttBadge" class="hidden flex-shrink-0 self-center cursor-pointer" onclick="app._openFreeAiDispose(); app.vibrate(30);"></span>
                         <span id="quoteVolInfo" class="hidden ml-auto text-right text-[11px] text-gray-400 font-mono font-bold whitespace-nowrap flex-shrink-0 self-center"></span>
                     </div>
                     <!-- Row 2.5:V45.9 龍頭 / 產業別 / 概念股(仿籌碼K線,curated 對照,點概念丟免費查) -->
                     <div id="stockConceptRow" class="hidden flex flex-row flex-wrap items-center gap-1 mt-1.5"></div>
-                    <!-- Row 3:技術屬性標籤 + 處置 badge -->
+                    <!-- Row 3:技術屬性標籤(處置/注意 badge 已移到 Row 2 現價右側,此處不再重複) -->
                     <div class="flex flex-row flex-wrap items-center gap-x-1 gap-y-0.5 mt-1">
                         <span id="stockTags" class="inline-flex flex-wrap gap-x-1 gap-y-0.5 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap">讀取中...</span></span>
-                        <span id="attentionBadge" class="hidden text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle"></span>
+                        <span id="attentionBadge" class="hidden"></span>
                     </div>
                 </div>
                 <div class="flex items-end px-2 pt-1.5 bg-[#0d1117] overflow-x-auto scrollbar-hide border-b border-[#21262d]">
@@ -1050,7 +1051,8 @@
                 <!-- 📋 V42.5 — 今日作戰指令(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
                 <div id="todayOrderCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
-                    <div class="px-3 py-2 bg-[#0d1117] flex flex-col gap-2 relative">
+                    <!-- V46.3 — 首席AI/此股預判整段隱藏,外層 padding 一併收掉(消除頁面上方空白;內部元素仍在 DOM 供 null-safe) -->
+                    <div class="relative">
                         <!-- 🧠 首席AI全盤分析 + 🔮 此股預判AI V44.4 隱藏(使用者:版面好看);函式/容器保留供 JS null-safe -->
                         <div class="hidden">
                         <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" ondblclick="app.runUnifiedGroqAnalysis({force:true}); app.vibrate([30,30,30]);" title="點一下分析；連點兩下強制重抽（會耗 1 次 API 額度）" class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 text-purple-300 py-3 rounded-lg text-base font-black shadow-md flex justify-center items-center gap-2 transition-all">
@@ -1089,9 +1091,9 @@
                          首席 AI 區塊,只剩持倉時的 costPnlBar,未持倉股票左欄全空 → 筆電上撐出
                          一大塊空黑、右側內容被擠成 5/12。改回單欄(滿寬,與頁面其他卡一致),
                          持倉時 costPnlBar 自然堆疊在停利停損上方。手機本來就無 lg grid,零影響。 -->
-                    <div id="directActionBox" class="w-full p-4 md:p-5 transition-all duration-300 flex flex-col items-center justify-center">
-                        <!-- 👈 戰區①：大字訊息 / 持倉損益（戰術訊號燈已上移至「🧠 首席 AI 全盤分析」區塊）-->
-                        <div class="w-full lg:col-span-7 flex flex-col items-center justify-center">
+                    <div id="directActionBox" class="w-full px-2 pt-2 pb-1 transition-all duration-300 flex flex-col">
+                        <!-- 👈 戰區①：大字訊息（多為隱藏,僅無資料時顯 actionMainText;空時 0 高度不佔版）-->
+                        <div class="w-full lg:col-span-7 flex flex-col">
 
                         <!-- 五維儀/氣象/風險已上移至頂部「首席 AI 全局戰略指揮部」 -->
 
@@ -3221,6 +3223,8 @@ const app = {
         setTimeout(() => this._dailyDisposedAlertSweep(), 3000);
         // 📐 V36.5 — 開 App(含盤後)掃 K棒戰法/量能型態推播(等 IDB K線就緒,localStorage 每日去重)
         setTimeout(() => this._kbarDailySweep(), 6000);
+        // 🏷️ V46.3 — 閒置預載概念股採礦檔(181KB),避免第一次切股時搶頻寬拖慢
+        setTimeout(() => { try { this._loadConceptData(); } catch(_) {} }, 4000);
     },
 
     // V20.6 — 每日開 App 掃自選/庫存,有處置風險自動推播 (1 天 1 次)
@@ -8660,23 +8664,24 @@ const marginByDate = {};
             span.innerHTML = '';
             return;
         }
+        // V46.3 — 文字簡化(只留「處置中 / 注意 / 必關」),詳情(分盤/出關天數)收進 title;點整顆→免費查戰術
         const tags = [];
-        // 處置股(優先,含 N 分撮 + N 天後出關)
+        // 處置股(優先):簡化為「🚨 處置中」,天數放 title
         if (info && (info.status || '').startsWith('🚨')) {
-            const intStr = info.interval ? `${info.interval}分盤` : '處置中';
             let daysStr = '';
             if (info.end_date) {
                 const days = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
-                daysStr = days > 0 ? ` ・ ${days}天後出關` : days === 0 ? ' ・ 今出關' : ` ・ 已出獄${-days}天`;
+                daysStr = days > 0 ? ` · ${days}天後出關` : days === 0 ? ' · 今出關' : ` · 已出獄${-days}天`;
             }
-            tags.push(`<span class="inline-block bg-red-900/80 text-red-200 border border-red-500 rounded px-1.5 py-0.5 text-[10px] font-black ml-1 animate-pulse" title="${(info.threshold || '').replace(/"/g,'&quot;')}">🚨 處置 ${intStr}${daysStr}</span>`);
+            const tip = `處置中${info.interval ? ` ${info.interval}分盤` : ''}${daysStr}｜點我用免費 AI 查戰術`;
+            tags.push(`<span class="inline-block bg-red-900/80 text-red-200 border border-red-500 rounded px-1.5 py-0.5 text-[11px] font-black animate-pulse" title="${tip.replace(/"/g,'&quot;')}">🚨 處置中</span>`);
         } else if (info && (info.status || '').includes('注意')) {
-            tags.push(`<span class="inline-block bg-orange-900/70 text-orange-200 border border-orange-500 rounded px-1.5 py-0.5 text-[10px] font-black ml-1" title="${(info.threshold || '').replace(/"/g,'&quot;')}">⚠️ 注意股</span>`);
+            // 注意股(很可能被關):同款設計,琥珀色
+            tags.push(`<span class="inline-block bg-orange-900/70 text-orange-200 border border-orange-500 rounded px-1.5 py-0.5 text-[11px] font-black" title="注意股(很可能升級處置)｜點我用免費 AI 查戰術">⚠️ 注意</span>`);
         }
-        // 必關股(無論注意/處置都可疊加,代表加重警示)
-        if (isMustClose) {
-            const willBeDays = scan.recentHitDays3 >= 3 ? '即將處置' : scan.recentHitDays5 >= 5 ? '今明處置' : `最快${Math.max(1, 5 - scan.recentHitDays5)}日`;
-            tags.push(`<span class="inline-block bg-purple-900/70 text-purple-200 border border-purple-500 rounded px-1.5 py-0.5 text-[10px] font-black ml-1 animate-pulse" title="${scan.predictText.replace(/"/g,'&quot;')}">💀 必關股 ${willBeDays}</span>`);
+        // 必關股(預測即將被關):無註冊注意/處置時也警示
+        if (isMustClose && !(info && ((info.status||'').startsWith('🚨') || (info.status||'').includes('注意')))) {
+            tags.push(`<span class="inline-block bg-purple-900/70 text-purple-200 border border-purple-500 rounded px-1.5 py-0.5 text-[11px] font-black animate-pulse" title="${scan.predictText.replace(/"/g,'&quot;')}｜點我用免費 AI 查戰術">💀 必關</span>`);
         }
         if (!tags.length) {
             span.classList.add('hidden');
@@ -13264,6 +13269,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._freeAiOpen(map[kind] || `${tag} 最新消息`);
     },
 
+    // 🚨 V46.3 — 處置/注意告警點擊:帶當前列管狀態,開免費 AI 給「戰術提醒」(零額度)
+    _openFreeAiDispose() {
+        const sym = this.currentSymbolId;
+        if (!sym) { this.showToast?.('請先選一檔股票', 'info'); return; }
+        const name = (this.getStockName?.(sym) || sym), tag = `${name}(${sym})`;
+        const info = this.attentionStatus?.[String(sym).trim()];
+        const isDisp = info && (info.status || '').startsWith('🚨');
+        const isNotice = info && (info.status || '').includes('注意');
+        let q;
+        if (isDisp) q = `${tag} 這檔台股目前被列為「處置股(分盤撮合)」。請給我實戰戰術提醒:①為什麼被處置、有什麼消息 ②處置期間該抱還是該跑、出關前後怎麼操作 ③風險與停損點。請白話、附日期與來源`;
+        else if (isNotice) q = `${tag} 這檔台股被列為「注意股」,很可能升級處置。請給戰術提醒:①為什麼被注意、近期消息 ②若被處置該如何提前因應 ③風險與停損。請白話、附日期與來源`;
+        else q = `${tag} 這檔台股近期漲跌劇烈、可能被列注意/處置。請給戰術提醒、風險與停損建議,附日期與來源`;
+        this._freeAiOpen(q);
+        this.vibrate?.(20);
+    },
+
     // 🔎 V41.26 — 大盤/宏觀事件查(盤前體檢/全球大環境,不需個股)
     _openFreeAiMacro(kind) {
         const map = {
@@ -15653,6 +15674,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const nameEl = document.getElementById('quoteName');
         const codeEl = document.getElementById('quoteCode');
         nameEl.innerText = stockDisplayName;
+        // V46.3 — 個股頁股名字級隨長度自動縮(長名如「凱基台灣TOP50」不被切),短名維持大字
+        const _nl = [...(stockDisplayName || '')].length;
+        nameEl.style.fontSize = _nl >= 9 ? 'clamp(0.85rem, 3.4vw, 1.05rem)'
+                              : _nl >= 7 ? 'clamp(0.95rem, 4vw, 1.25rem)'
+                              : 'clamp(1.05rem, 4.6vw, 1.5rem)';
         if (codeEl) codeEl.innerText = `(${targetSym})`;
         symName = `${stockDisplayName} (${targetSym})`;
         this._updateNavArrows();   // V45.5 — 依當前個股位置更新 ◀▶ 顯隱(非循環)
@@ -15767,6 +15793,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             this.fetchCorpEvents(targetSym);
             this.fetchChipCost(targetSym);
             masterWorker.postMessage({ activeData: this.activeData, marketCtx: this._buildMarketCtx() });
+            // ⚡ V46.3 — 報價/名稱/概念已顯即早收 loading 遮罩,指標卡由 worker 回來(onWorkerMessage)再補,切股不再卡「雲端運算中」
+            document.getElementById('loadingOverlay').style.display = 'none';
         } else {
             masterWorker.postMessage({ activeData: this.activeData, marketCtx: this._buildMarketCtx() });
         }
@@ -19770,22 +19798,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const profitPct = (hasCost && pC > 0) ? ((pC - costVal) / costVal) * 100 : null;   // 提前算：移動停利 + 損益卡共用
         const invBadge = document.getElementById('invBadge');
         if(inInv || hasCost) invBadge.classList.remove('hidden'); else invBadge.classList.add('hidden');
-        // 🚨 處置神器:依 attentionStatus 切換 badge 顏色 + 文字
+        // 🚨 V46.3 — Row3 attentionBadge 已停用(處置/注意 統一顯在 Row2 現價右手邊的 quoteAttBadge,避免重複)
         const attBadge = document.getElementById('attentionBadge');
-        if (attBadge) {
-            const attInfo = this.attentionStatus?.[String(this.currentSymbolId).trim()];
-            if (attInfo) {
-                const isDisp = (attInfo.status || '').startsWith('🚨');
-                attBadge.textContent = attInfo.status || '';
-                attBadge.title = attInfo.threshold || '';
-                attBadge.className = isDisp
-                    ? 'text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle bg-red-900/70 text-red-200 border-red-600 animate-pulse'
-                    : 'text-[9px] px-1.5 py-0.5 rounded font-bold border align-middle bg-orange-900/60 text-orange-200 border-orange-600';
-            } else {
-                attBadge.classList.add('hidden');
-                attBadge.textContent = '';
-            }
-        }
+        if (attBadge) { attBadge.classList.add('hidden'); attBadge.textContent = ''; }
 
         // 🚀 5 日速度因子：> 10% 視為極速飆股，必須用 5MA 貼身防守
         const _closes = (this.rawDailyData || []).slice(-6).map(r => r.close);
@@ -22123,6 +22138,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                             : 'text-white';
             const bgClass = 'bg-[#1c2128]';   // V34.x — 移除整列紅底(使用者要求,損益已用文字顏色表達)
             const cname = this.getStockName(item.symbol) || item.symbol;
+            // V46.3 — 股名字級隨長度自動縮(避免「凱基台灣TOP50」被切),148px 欄內剛好放得下
+            const _nlen = [...cname].length;
+            const nameFs = _nlen >= 9 ? 'text-[11px]' : _nlen >= 7 ? 'text-[13px]' : _nlen >= 6 ? 'text-[14px]' : 'text-[16px]';
             const hasAlert = this.priceAlerts?.some(a => a.sym === item.symbol && a.enabled !== false);
 
             // V46.2 — 恢復 7 欄水平 scroll(庫存股/今日損益/股價漲跌幅/總損益/股數/均價總成本/市值佔比)
@@ -22134,7 +22152,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
-                    <span class="text-white font-black text-[16px] truncate leading-tight">${cname}</span>
+                    <span class="text-white font-black ${nameFs} truncate leading-tight">${cname}</span>
                     <div class="flex items-center gap-1">
                         <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
                         <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[11px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設到價監控,點此管理' : '設到價監控'}">🚨</span>
