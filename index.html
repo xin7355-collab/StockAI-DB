@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.6</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -899,7 +899,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.6</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.7</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -2197,12 +2197,12 @@
                         <div class="min-w-[712px]">
                             <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[148px_82px_92px_104px_66px_104px_92px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
                                 <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('today')"><span>今日損益</span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('price')"><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('total')"><span class="leading-tight">總損益<br><span class="text-[9px] opacity-80">報酬率</span></span><span id="invSortIcon_total" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('shares')"><span>股數</span><span id="invSortIcon_shares" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('cost')"><span class="leading-tight">均價<br><span class="text-[9px] opacity-80">總成本</span></span><span id="invSortIcon_cost" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('marketval')"><span class="leading-tight">市值<br><span class="text-[9px] opacity-80">佔比</span></span><span id="invSortIcon_marketval" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span>今日損益</span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('price')"><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('total')"><span id="invSortIcon_total" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">總損益<br><span class="text-[9px] opacity-80">報酬率</span></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('shares')"><span id="invSortIcon_shares" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span>股數</span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('cost')"><span id="invSortIcon_cost" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">均價<br><span class="text-[9px] opacity-80">總成本</span></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('marketval')"><span id="invSortIcon_marketval" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">市值<br><span class="text-[9px] opacity-80">佔比</span></span></span>
                             </div>
                             <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                         </div>
@@ -4967,6 +4967,9 @@ ${list}
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         this._stopInvPricePoll();   // 🔄 V45.13 離開任何頁先停庫存輪詢,進 inv 再開
+        // 💎 V46.7 — 離開潛力頁前記住捲動位置(切走再回來還原,不跳回頂端)
+        const _potElNow = document.getElementById('tabContentPotential');
+        if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = window.scrollY || 0;
 
         ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf', 'Potential'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
@@ -5012,7 +5015,7 @@ ${list}
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
-        if (tabId === 'potential') { try { this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
+        if (tabId === 'potential') { try { this._potentialRestoreScroll = true; this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
         // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
         } catch (e) {   // V24.5 — switchAppTab 整段 try/catch 結尾
             console.error('[switchAppTab]', tabId, e);
@@ -6523,6 +6526,12 @@ ${list}
         const rows = await this._potentialScan(false);
         const prog = document.getElementById('potentialProgress'); if (prog) prog.classList.add('hidden');
         this._renderPotentialList(rows);
+        // 💎 V46.7 — 只在「切回本頁」時還原捲動位置(切篩選重繪不還原)
+        if (this._potentialRestoreScroll) {
+            this._potentialRestoreScroll = false;
+            const _y = this._potentialScrollY || 0;
+            if (_y > 0) requestAnimationFrame(() => window.scrollTo(0, _y));
+        }
     },
 
     setPotentialFilter(k) { this._potentialFilter = k; this.vibrate?.(15); this.renderPotentialTab(); },   // 重繪(掃描有當日快取,瞬間)
@@ -6559,6 +6568,17 @@ ${list}
             const conc = (r.conc || []).map(c => `<span class="text-[9px] text-cyan-400/80">#${c}</span>`).join(' ');
             const risk = (r.riskFlags || []).length ? `<div class="text-[10px] text-red-300/90 font-bold mt-1">${r.riskFlags.join(' ')}</div>` : '';
             const p = r.plan || {};
+            // 🎯 目標價 = 回 5 年高點(純公式 upside,非分析師目標;已破高則標示空間有限)
+            const up = +r.upside || 0;
+            const tgt = up > 0.02
+                ? `<div class="flex items-center justify-between bg-[#0d1117] rounded px-2 py-1 mt-2">
+                       <span class="text-[10px] text-gray-500">🎯 目標價<span class="text-[8px] text-gray-600">(回 5 年高)</span></span>
+                       <span class="font-mono"><span class="text-[14px] font-black text-red-300">${(r.price * (1 + up)).toFixed(1)}</span> <span class="text-[10px] font-bold text-red-400">距今 +${Math.round(up * 100)}%</span></span>
+                   </div>`
+                : `<div class="flex items-center justify-between bg-[#0d1117] rounded px-2 py-1 mt-2">
+                       <span class="text-[10px] text-gray-500">🎯 目標價<span class="text-[8px] text-gray-600">(回 5 年高)</span></span>
+                       <span class="text-[10px] text-gray-400">已接近/突破 5 年高,上檔空間有限</span>
+                   </div>`;
             return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
                 <div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag');" class="cursor-pointer">
                     <div class="flex items-center gap-2.5">
@@ -6579,6 +6599,7 @@ ${list}
                         </div>
                     </div>
                 </div>
+                ${tgt}
                 <!-- ⑤ 分批布局價位 -->
                 <div class="grid grid-cols-3 gap-1.5 mt-2 text-center">
                     <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">🟢 進場參考</div><div class="text-[12px] font-mono font-black text-green-300">${p.entry ?? '—'}</div></div>
