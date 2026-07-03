@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V47.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V47.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -904,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.2</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.3</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -13370,9 +13370,54 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     ${lines.map(l => `<div>${l}</div>`).join('')}
                 </div>
                 <div class="mt-2.5 bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-[15px] text-gray-100 leading-relaxed"><b class="${headCls}">💡 操作:</b>${cta}</div>
+                <div id="kbarWinRateStrip"></div>
                 <div class="text-[11px] text-gray-500 mt-2 leading-snug">📊 現價 ${nf(price)} · 歷史高 ${nf(ath)} · 前高 ${nf(recentHigh)} · 前低 ${nf(recentLow)} · 純數值公式判讀,型態轉折需次日確認,僅供參考非投資建議。</div>`;
             el.classList.remove('hidden');
+            // 🎯 V47.3 K線頁也顯「今日觸發型態 × 本股回測勝率」;背景算(只在有觸發時跑重回測),不卡圖表
+            const _sym = this.currentSymbolId;
+            setTimeout(() => { try { const s = document.getElementById('kbarWinRateStrip'); if (s) s.innerHTML = this._klineWinRateStripHtml(_sym, data); } catch (_) {} }, 60);
         } catch (e) { console.warn('[chuVerdict]', e); el.classList.add('hidden'); }
+    },
+    // 🎯 V47.3 — K線頁「今日觸發型態 × 本股回測勝率」條(與每日提醒同源,純公式)
+    //   便宜前置篩:今日沒觸發任何型態就回空字串(不跑重回測);有觸發才拿該股回測統計
+    _playbookRankedFor(data, sym) {
+        const today = this.getTodayStr?.() || '';
+        const c = this._pbRankCache;
+        if (c && c.sym === sym && c.date === today && c.ranked) return c.ranked;
+        let ranked = [];
+        try { ranked = this._patternFitBacktest(data) || []; } catch (_) {}
+        this._pbRankCache = { sym, date: today, ranked };
+        return ranked;
+    },
+    _klineWinRateStripHtml(sym, data) {
+        if (!Array.isArray(data) || data.length < 80) return '';
+        const fired = this._playbookSignalsToday(data);
+        if (!fired.length) return '';
+        const ranked = this._playbookRankedFor(data, sym);
+        if (!ranked.length) return '';
+        const firedSet = new Set(fired);
+        const top3 = new Set(ranked.slice(0, 3).filter(r => r.expectancy > 0).map(r => r.key));
+        const hits = ranked.filter(r => firedSet.has(r.key));
+        if (!hits.length) return '';
+        const rows = hits.map(r => {
+            const isStar = top3.has(r.key) && r.expectancy > 0;
+            const wr = r.winRate.toFixed(0), pl = r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1), ev = (r.expectancy >= 0 ? '+' : '') + r.expectancy.toFixed(1);
+            const col = isStar ? 'text-red-300' : r.expectancy > 0 ? 'text-yellow-300' : 'text-gray-400';
+            const tag = isStar ? '<span class="text-[9px] font-bold bg-red-900/40 text-red-300 border border-red-700/50 rounded px-1 animate-pulse">⭐主打</span>'
+                : (r.expectancy > 0 ? '<span class="text-[9px] font-bold text-yellow-300">正期望</span>' : '<span class="text-[9px] text-gray-500">參考</span>');
+            return `<div class="flex items-center justify-between gap-2 py-1 border-b border-[#21262d]">
+                <div class="text-[12px] font-bold text-gray-200">${r.key} ${tag}</div>
+                <div class="text-[10px] font-mono ${col}">勝率${wr}% · 賺賠${pl} · 期望${ev}%<span class="text-gray-600"> (${r.count}次)</span></div>
+            </div>`;
+        }).join('');
+        return `<div class="mt-2.5 bg-[#0d1117] border border-amber-700/40 rounded-lg p-2.5">
+            <div class="flex items-center justify-between mb-1">
+                <div class="text-[11px] font-bold text-amber-300">🎯 今日觸發型態 × 本股回測勝率</div>
+                <button onclick="app.switchSubTab('backtest'); app.vibrate(20);" class="text-[9px] text-cyan-300/80 hover:text-cyan-200 border border-cyan-700/40 rounded px-1.5 py-0.5">看完整回測 →</button>
+            </div>
+            ${rows}
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">⭐主打=該股期望值前3且正期望;勝率低但賺賠比高長期照樣賺 · 純公式非投資建議</div>
+        </div>`;
     },
 
     renderKbarScore(data) {
