@@ -2841,6 +2841,16 @@ def fetch_broker_chips():
                 try: _ex['rev_yoy'] = round(float(_ry), 1)
                 except Exception: pass
             if _gm is not None: _ex['gross_margin'] = _gm
+            # 🔥 V48.1 獲利跳訊號(給長線潛力 f3;觀察清單才有,冷門股略過)
+            try:
+                _tri = sum(1 for k in ('gross_margin_trend', 'op_margin_trend', 'net_margin_trend') if '↑' in (_fd.get(k) or ''))
+                if _tri: _ex['tri_up'] = _tri                       # 三率上升數 0-3
+                if _fd.get('is_record_high'): _ex['is_record_high'] = True   # 創營收新高
+                _mrh = _fd.get('monthly_revenue_history') or []
+                if len(_mrh) >= 3:
+                    _r = [float(x.get('rev', 0) or 0) for x in _mrh[-3:]]
+                    if _r[0] > 0 and _r[2] > _r[1] > _r[0]: _ex['rev_mom_up'] = True   # 近3月營收連續走高
+            except Exception: pass
             if _ex: _fund_extra[sym] = _ex
         except Exception: pass
 

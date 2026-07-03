@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -904,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.0</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.1</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -6456,11 +6456,18 @@ ${list}
             if (yld != null) f2 += yld >= 6 ? 7 : yld >= 4 ? 5 : yld >= 2.5 ? 3 : 0;
             f2 = Math.min(15, f2);
 
-            // ③ 成長轉機(0-20):營收 YoY + 毛利(fundamentals_cache,非清單股常缺→低分)
+            // ③ 獲利跳(0-20):營收YoY + 毛利 + 🔥獲利跳催化(三率三升/創營收新高/營收連3月走高)
+            //    V48.1 — 篩掉「便宜但死水」的價值陷阱,凸顯「便宜且獲利正在轉好」的真潛力(催化欄只觀察清單有,冷門股自動退回 YoY+毛利)
             let f3 = 0; const yoy = (fund && fund.rev_yoy != null && !isNaN(+fund.rev_yoy)) ? +fund.rev_yoy : null;
             const gm = (fund && typeof fund.gross_margin === 'number') ? fund.gross_margin : null;
-            if (yoy != null) f3 += yoy >= 30 ? 14 : yoy >= 15 ? 10 : yoy >= 5 ? 7 : yoy >= 0 ? 3 : 0;
-            if (gm != null) f3 += gm >= 40 ? 6 : gm >= 25 ? 4 : gm >= 15 ? 2 : 0;
+            if (yoy != null) f3 += yoy >= 30 ? 12 : yoy >= 15 ? 9 : yoy >= 5 ? 5 : yoy >= 0 ? 2 : 0;
+            if (gm != null) f3 += gm >= 40 ? 5 : gm >= 25 ? 3 : gm >= 15 ? 1 : 0;
+            let jump = 0;
+            const triUp = (fund && Number.isFinite(+fund.tri_up)) ? +fund.tri_up : 0;
+            if (triUp >= 3) jump += 5; else if (triUp === 2) jump += 2;
+            if (fund && fund.is_record_high) jump += 2;
+            if (fund && fund.rev_mom_up) jump += 2;
+            f3 += Math.min(8, jump);
             f3 = Math.min(20, f3);
 
             // ④ 籌碼默默吸(0-15):法人近20日淨買(張)+ 股價沒噴 + 量縮打底
@@ -6522,7 +6529,7 @@ ${list}
             if (f4 >= 9) bits.push(instLots > 0 ? `法人默默買 ${Math.round(instLots)} 張` : '籌碼沉澱');
             if (f5 >= 9) bits.push('技術剛打底翻揚');
             if (f2 >= 8) bits.push(pe != null ? `PE ${pe.toFixed(0)} 偏便宜` : '估值便宜');
-            if (f3 >= 9) bits.push(yoy != null ? `營收 YoY +${yoy.toFixed(0)}%` : '成長轉機');
+            if (f3 >= 9) bits.push(triUp >= 3 ? '🔥三率三升(獲利跳)' : (fund && fund.is_record_high) ? '創營收新高' : (fund && fund.rev_mom_up) ? '營收連3月走高' : yoy != null ? `營收 YoY +${yoy.toFixed(0)}%` : '成長轉機');
             if (f6 >= 7) bits.push('搭主流題材');
             if (upside >= 0.5) bits.push(`距 5 年高還有 +${Math.round(upside * 100)}% 空間`);
             const reason = bits.slice(0, 3).join('、') || '各因子中庸,綜合觀察';

@@ -91,16 +91,28 @@ def score_stock(sym, bars, fund, median_pe, concepts, att):
             f2 += 7 if yld >= 6 else 5 if yld >= 4 else 3 if yld >= 2.5 else 0
         f2 = min(15, f2)
 
-        # ③ 成長轉機(0-20)
+        # ③ 獲利跳(0-20):營收YoY + 毛利 + 🔥催化(三率三升/創營收新高/營收連3月走高;催化欄只觀察清單有)
         f3 = 0
         yoy = fund.get('rev_yoy') if fund else None
         yoy = float(yoy) if isinstance(yoy, (int, float)) else None
         gm = fund.get('gross_margin') if fund else None
         gm = float(gm) if isinstance(gm, (int, float)) else None
         if yoy is not None:
-            f3 += 14 if yoy >= 30 else 10 if yoy >= 15 else 7 if yoy >= 5 else 3 if yoy >= 0 else 0
+            f3 += 12 if yoy >= 30 else 9 if yoy >= 15 else 5 if yoy >= 5 else 2 if yoy >= 0 else 0
         if gm is not None:
-            f3 += 6 if gm >= 40 else 4 if gm >= 25 else 2 if gm >= 15 else 0
+            f3 += 5 if gm >= 40 else 3 if gm >= 25 else 1 if gm >= 15 else 0
+        jump = 0
+        tri_up = fund.get('tri_up') if fund else None
+        tri_up = int(tri_up) if isinstance(tri_up, (int, float)) else 0
+        if tri_up >= 3:
+            jump += 5
+        elif tri_up == 2:
+            jump += 2
+        if fund and fund.get('is_record_high'):
+            jump += 2
+        if fund and fund.get('rev_mom_up'):
+            jump += 2
+        f3 += min(8, jump)
         f3 = min(20, f3)
 
         # ④ 籌碼默默吸(0-15)
@@ -184,7 +196,14 @@ def score_stock(sym, bars, fund, median_pe, concepts, att):
         if f2 >= 8:
             bits.append(f"PE {pe:.0f} 偏便宜" if pe is not None else "估值便宜")
         if f3 >= 9:
-            bits.append(f"營收 YoY +{yoy:.0f}%" if yoy is not None else "成長轉機")
+            if tri_up >= 3:
+                bits.append("🔥三率三升(獲利跳)")
+            elif fund and fund.get('is_record_high'):
+                bits.append("創營收新高")
+            elif fund and fund.get('rev_mom_up'):
+                bits.append("營收連3月走高")
+            else:
+                bits.append(f"營收 YoY +{yoy:.0f}%" if yoy is not None else "成長轉機")
         if f6 >= 7:
             bits.append("搭主流題材")
         if upside >= 0.5:
