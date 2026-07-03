@@ -6445,9 +6445,11 @@ ${list}
             if (upside >= 0.5) bits.push(`距 5 年高還有 +${Math.round(upside * 100)}% 空間`);
             const reason = bits.slice(0, 3).join('、') || '各因子中庸,綜合觀察';
             const industry = ((this.allStockList || []).find(s => s.stock_id === sym)?.industry_category || '').trim();
+            // 🎯 估值目標價(純公式):年化EPS(≈price/PE) × 產業中位PE = price × medianPe/pe;PE 低於同業→有重評價空間
+            const valTarget = (pe != null && pe > 0 && medianPe && medianPe > 0) ? +(price * medianPe / pe).toFixed(1) : null;
 
             return { sym, name: this.getStockName(sym) || sym, score, f: { f1, f2, f3, f4, f5, f6, f7 },
-                     pos52, upside, instLots, pe, yld, yoy, conc: conc.slice(0, 4), tags, price, plan, riskFlags, reason, industry };
+                     pos52, upside, instLots, pe, yld, yoy, conc: conc.slice(0, 4), tags, price, plan, riskFlags, reason, industry, valTarget };
         } catch (_) { return null; }
     },
 
@@ -6568,17 +6570,20 @@ ${list}
             const conc = (r.conc || []).map(c => `<span class="text-[9px] text-cyan-400/80">#${c}</span>`).join(' ');
             const risk = (r.riskFlags || []).length ? `<div class="text-[10px] text-red-300/90 font-bold mt-1">${r.riskFlags.join(' ')}</div>` : '';
             const p = r.plan || {};
-            // 🎯 目標價 = 回 5 年高點(純公式 upside,非分析師目標;已破高則標示空間有限)
+            // 🎯 雙目標價(純公式,非分析師/AI 推估):① 回 5 年高(技術) ② 估值目標=年化EPS×產業中位PE
             const up = +r.upside || 0;
-            const tgt = up > 0.02
-                ? `<div class="flex items-center justify-between bg-[#0d1117] rounded px-2 py-1 mt-2">
-                       <span class="text-[10px] text-gray-500">🎯 目標價<span class="text-[8px] text-gray-600">(回 5 年高)</span></span>
-                       <span class="font-mono"><span class="text-[14px] font-black text-red-300">${(r.price * (1 + up)).toFixed(1)}</span> <span class="text-[10px] font-bold text-red-400">距今 +${Math.round(up * 100)}%</span></span>
-                   </div>`
-                : `<div class="flex items-center justify-between bg-[#0d1117] rounded px-2 py-1 mt-2">
-                       <span class="text-[10px] text-gray-500">🎯 目標價<span class="text-[8px] text-gray-600">(回 5 年高)</span></span>
-                       <span class="text-[10px] text-gray-400">已接近/突破 5 年高,上檔空間有限</span>
-                   </div>`;
+            const _pct = v => `${v >= 0 ? '+' : ''}${Math.round(v)}%`;
+            const _pctCol = v => v >= 0 ? 'text-red-400' : 'text-green-400';
+            const _tgtCell = (icon, label, val, base) => {
+                if (val == null || !(base > 0)) return `<div class="bg-[#0d1117] rounded py-1 px-1.5"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="text-[10px] text-gray-500 mt-0.5">資料不足</div></div>`;
+                const dpct = (val / base - 1) * 100;
+                return `<div class="bg-[#0d1117] rounded py-1 px-1.5"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="mt-0.5 font-mono leading-none"><span class="text-[13px] font-black ${dpct >= 0 ? 'text-red-300' : 'text-green-300'}">${val.toFixed(1)}</span> <span class="text-[9px] font-bold ${_pctCol(dpct)}">${_pct(dpct)}</span></div></div>`;
+            };
+            const backHigh = up > 0.02 ? +(r.price * (1 + up)).toFixed(1) : null;
+            const tgt = `<div class="grid grid-cols-2 gap-1.5 mt-2">
+                    ${_tgtCell('🎯', '回 5 年高', backHigh, r.price)}
+                    ${_tgtCell('💰', '估值目標(產業PE)', r.valTarget ?? null, r.price)}
+                </div>`;
             return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
                 <div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag');" class="cursor-pointer">
                     <div class="flex items-center gap-2.5">

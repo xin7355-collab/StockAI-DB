@@ -191,8 +191,11 @@ def score_stock(sym, bars, fund, median_pe, concepts, att):
             bits.append(f"距 5 年高還有 +{round(upside * 100)}% 空間")
         reason = "、".join(bits[:3]) or "各因子中庸,綜合觀察"
 
+        # 🎯 估值目標價(純公式):年化EPS(≈price/PE) × 產業中位PE = price × median_pe/pe
+        val_target = round(price * median_pe / pe, 1) if (pe is not None and pe > 0 and median_pe and median_pe > 0) else None
+
         return {
-            "sym": sym, "score": score,
+            "sym": sym, "score": score, "valTarget": val_target,
             "f": {"f1": f1, "f2": f2, "f3": f3, "f4": f4, "f5": f5, "f6": f6, "f7": f7},
             "pos52": round(pos52, 3), "upside": round(upside, 3), "instLots": round(inst_lots),
             "pe": round(pe, 2) if pe is not None else None,
