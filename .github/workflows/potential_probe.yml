@@ -63,8 +63,8 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p /tmp/pp && cp data/potential_picks.json /tmp/pp/
-          git fetch origin gh-pages --depth=1 2>/dev/null || true
-          git checkout gh-pages 2>/dev/null || { echo "gh-pages 不存在,略過(等 daily_miner 建立)"; exit 0; }
+          git fetch origin gh-pages --depth=1 || { echo "gh-pages 不存在,略過(等 daily_miner 建立)"; exit 0; }
+          git checkout -B gh-pages FETCH_HEAD
           mkdir -p data && cp /tmp/pp/potential_picks.json data/potential_picks.json
           git add data/potential_picks.json
           git diff --cached --quiet && { echo "無變更"; exit 0; }
