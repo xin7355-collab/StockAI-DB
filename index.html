@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.7</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -899,7 +899,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.7</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.8</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -7167,15 +7167,25 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     },
 
     // 🏭 V35.2 — 全市場基本面快取(fundamentals_cache.json:{sym:{pe,yield_rate}}),供同業 PE 對比(一次抓全市場,免逐檔 API)
+    // 🔄 V46.7 — 併入 fundamentals_rotation.json(每小時輪動採礦補的冷門股 EPS/YoY/毛利);
+    //            合併規則:輪動當底、daily 覆蓋在上(daily 較新較準,輪動只補 daily 缺的欄/檔)。
     async _loadFundCache() {
-        if (this._fundCacheAll && (Date.now() - this._fundCacheAll.ts) < 24 * 3600e3) return this._fundCacheAll.data;
+        if (this._fundCacheAll && (Date.now() - this._fundCacheAll.ts) < 6 * 3600e3) return this._fundCacheAll.data;
         try {
             const base = window.location.href.split('?')[0].split('#')[0];
-            const r = await fetch(new URL('data/fundamentals_cache.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
-            if (!r.ok) return null;
-            const data = await r.json();
-            this._fundCacheAll = { ts: Date.now(), data: data || {} };
-            return this._fundCacheAll.data;
+            const t = Date.now();
+            const [rDaily, rRot] = await Promise.all([
+                fetch(new URL('data/fundamentals_cache.json', base).href + `?t=${t}`, { signal: AbortSignal.timeout(6000) }).catch(() => null),
+                fetch(new URL('data/fundamentals_rotation.json', base).href + `?t=${t}`, { signal: AbortSignal.timeout(6000) }).catch(() => null),
+            ]);
+            const daily = (rDaily && rDaily.ok) ? (await rDaily.json().catch(() => null)) : null;
+            const rot = (rRot && rRot.ok) ? (await rRot.json().catch(() => null)) : null;
+            if (!daily && !rot) return null;
+            const merged = {};
+            if (rot) for (const k in rot) { if (!k.startsWith('__') && rot[k] && typeof rot[k] === 'object') merged[k] = { ...rot[k] }; }
+            if (daily) for (const k in daily) { if (!k.startsWith('__') && daily[k] && typeof daily[k] === 'object') merged[k] = { ...(merged[k] || {}), ...daily[k] }; else if (String(k).startsWith('__')) merged[k] = daily[k]; }
+            this._fundCacheAll = { ts: Date.now(), data: merged };
+            return merged;
         } catch (e) { console.warn('[fundCache] load fail:', e); return null; }
     },
 

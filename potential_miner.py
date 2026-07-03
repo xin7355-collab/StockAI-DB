@@ -211,7 +211,17 @@ def score_stock(sym, bars, fund, median_pe, concepts, att):
 
 def main():
     print(f"💎 potential_miner 啟動 {datetime.now(TPE).isoformat(timespec='seconds')}")
-    fund_all = load("fundamentals_cache.json", {}) or {}
+    # 🔄 合併 daily(fundamentals_cache)+ 輪動(fundamentals_rotation);輪動當底、daily 覆蓋在上
+    fund_all = {}
+    _rot = load("fundamentals_rotation.json", {}) or {}
+    for k, v in _rot.items():
+        if not str(k).startswith("__") and isinstance(v, dict):
+            fund_all[k] = dict(v)
+    _daily = load("fundamentals_cache.json", {}) or {}
+    for k, v in _daily.items():
+        if not str(k).startswith("__") and isinstance(v, dict):
+            fund_all[k] = {**fund_all.get(k, {}), **v}
+    print(f"   基本面來源:daily {sum(1 for x in _daily if not str(x).startswith('__'))} 檔 + 輪動 {sum(1 for x in _rot if not str(x).startswith('__'))} 檔 → 合併 {len(fund_all)} 檔")
     ind_pe = (load("industry_pe.json", {}) or {}).get("industries", {}) or {}
     ind_map = load("industry_map.json", {}) or {}
     concept = (load("concept_stocks.json", {}) or {}).get("by_stock", {}) or {}

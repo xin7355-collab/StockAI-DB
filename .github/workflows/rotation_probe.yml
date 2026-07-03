@@ -1,0 +1,81 @@
+name: 🔄 全市場基本面輪動採礦
+
+# 每小時抓「下一批 150 檔」單檔財報(FinMind 免費版單檔抓得到,bulk 回 0),
+# 併進 data/fundamentals_rotation.json(自己的累積檔,游標滾動),全市場約 14 小時輪一圈。
+# ⚠️ 只寫 fundamentals_rotation.json;絕不動 daily_miner 的 fundamentals_cache.json / OHLCV / 分點。
+# 持久化:推到 data 分支 → daily_miner deploy 的 `git archive origin/data` 會保留它,force-push 不會蓋掉。
+on:
+  schedule:
+    - cron: '23 * * * *'   # 每小時 :23(避開整點高載)
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: '本輪抓幾檔(預設 150)'
+        required: false
+        default: '150'
+
+# 與 deploy_pages / concept / potential probe 共用 group,序列化 gh-pages 推送不打架
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 裝 requests
+        run: pip install --quiet requests
+
+      - name: 📂 拉 data 分支(universe + 既有累積檔 + 游標)
+        run: |
+          git fetch origin data --depth=1 2>&1 || echo "⚠️ data 分支拉取失敗"
+          git checkout FETCH_HEAD -- data/ 2>&1 || echo "⚠️ data/ 取出失敗(首次可能無)"
+          ls data/*.json 2>/dev/null | grep -cE '/[0-9]{4}\.json' | xargs echo "個股 universe:"
+
+      - name: 🔄 跑輪動採礦
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          ROTATION_BATCH_N: ${{ github.event.inputs.batch || '150' }}
+        run: python3 rotation_miner.py
+
+      - name: 📋 印摘要
+        if: always()
+        run: |
+          python3 -c "import json;d=json.load(open('data/fundamentals_rotation.json'));print('status',d.get('__status'));print('cursor',d.get('__cursor'),'/',d.get('__universe'))" 2>/dev/null || echo "(無累積檔)"
+
+      - name: 🌐 推 fundamentals_rotation.json → data 分支(持久)+ gh-pages(前端即時)
+        run: |
+          set +e
+          [ -f data/fundamentals_rotation.json ] || { echo "無累積檔,跳過"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/rot && cp data/fundamentals_rotation.json /tmp/rot/
+
+          push_to () {   # $1 = 分支名
+            local BR="$1"
+            for i in 1 2 3 4 5; do
+              git fetch origin "$BR" --depth=1 2>/dev/null || { echo "  ⚠️ $BR 不存在,跳過"; return 0; }
+              git checkout -f -B "_rot_$BR" FETCH_HEAD 2>/dev/null || { echo "  ⚠️ checkout $BR 失敗"; return 0; }
+              mkdir -p data && cp /tmp/rot/fundamentals_rotation.json data/fundamentals_rotation.json
+              git add -f data/fundamentals_rotation.json
+              if git diff --cached --quiet; then echo "  $BR 無變更"; return 0; fi
+              git commit -q -m "🔄 基本面輪動更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
+              if git push origin "HEAD:$BR" 2>&1; then echo "  ✅ $BR push 成功 ($i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "  ❌ $BR push 連 5 次失敗"; return 0; }
+              echo "  ⚠️ $BR push $i 失敗,sleep $((i*3))s 後重試"; sleep $((i*3))
+            done
+          }
+
+          push_to data       # 持久層(daily_miner archive 靠它保命)
+          push_to gh-pages   # 前端即時讀
+          echo "✅ 輪動推送完成"
