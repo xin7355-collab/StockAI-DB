@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -904,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.1</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.2</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -6665,7 +6665,7 @@ ${list}
     },
 
     async _potentialScan(force) {
-        const mode = this._potentialMode || 'long';                 // 'long' 長線潛力 / 'momentum' 中線黑馬
+        const mode = this._potentialMode || 'momentum';                 // 'long' 長線潛力 / 'momentum' 中線黑馬
         const cacheKey = mode === 'momentum' ? '_momentumScanCache' : '_potentialScanCache';
         const file = mode === 'momentum' ? 'momentum_picks.json' : 'potential_picks.json';
         const scoreFn = mode === 'momentum' ? '_calcMomentumScore' : '_calcPotentialScore';
@@ -6722,7 +6722,7 @@ ${list}
     async renderPotentialTab() {
         const box = document.getElementById('tabContentPotential');
         if (!box) return;
-        const mode = this._potentialMode || 'long';
+        const mode = this._potentialMode || 'momentum';
         const isM = mode === 'momentum';
         if (!this._potentialFilter) this._potentialFilter = 'all';
         const filt = this._potentialFilter;
@@ -6741,7 +6741,7 @@ ${list}
             : `${chip('all', '全部')}${chip('lowbase', '🔥 低基期翻倍')}${chip('valgrow', '💰 便宜成長')}${chip('chips', '🕵️ 籌碼默默吸')}${chip('tech', '🌱 技術打底')}${chip('yield', '🏦 高殖利率')}`;
         box.innerHTML = `
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 mb-2">
-                <div class="flex gap-1 mb-2 bg-[#0d1117] p-1 rounded-lg border border-[#30363d]">${modeBtn('long', '🌱 長線潛力')}${modeBtn('momentum', '🐎 中線黑馬')}</div>
+                <div class="flex gap-1 mb-2 bg-[#0d1117] p-1 rounded-lg border border-[#30363d]">${modeBtn('momentum', '🐎 中線黑馬')}${modeBtn('long', '🌱 長線潛力')}</div>
                 <div class="flex items-center justify-between">
                     <h2 class="text-base font-black ${titleCol} flex items-center gap-1.5">${title}
                         <button onclick="alert('${help}')" class="text-[10px] text-gray-500 hover:text-cyan-300">📖</button>
@@ -6784,7 +6784,7 @@ ${list}
     _renderPotentialList(rows) {
         const list = document.getElementById('potentialList');
         if (!list) return;
-        const isM = (this._potentialMode || 'long') === 'momentum';
+        const isM = (this._potentialMode || 'momentum') === 'momentum';
         const filt = this._potentialFilter || 'all';
         let arr = (rows || []).slice();
         if (filt !== 'all') arr = arr.filter(r => (r.tags || []).includes(filt));
@@ -6829,6 +6829,7 @@ ${list}
                                 <span class="text-[10px] text-gray-600 font-mono">#${i + 1}</span>
                                 <span class="text-white font-black text-[15px] truncate">${r.name}</span>
                                 <span class="text-[10px] text-gray-500 font-mono">${r.sym}</span>
+                                <span class="text-[11px] text-cyan-200 font-mono font-bold flex-shrink-0 ml-auto">現 ${r.price}</span>
                             </div>
                             <div class="flex flex-wrap items-center gap-1 mt-0.5">${isM && r.stage ? `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-900/30 text-amber-300 border border-amber-700/40">${r.stage}</span>` : ''}${tags || '<span class="text-[9px] text-gray-600">綜合</span>'} ${conc}</div>
                             <div class="text-[10px] text-gray-300 leading-snug mt-1">💡 ${r.reason}</div>
