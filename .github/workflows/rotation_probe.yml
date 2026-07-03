@@ -14,9 +14,10 @@ on:
         required: false
         default: '150'
 
-# 與 deploy_pages / concept / potential probe 共用 group,序列化 gh-pages 推送不打架
+# 自己的 group(不與 deploy_pages 共用,避免純前端 push 觸發的部署把本輪 supersede 掉);
+# 本檔用「additive 提交 + fetch/retry」推送,天生容忍 gh-pages 併發,不需共用序列化 group。
 concurrency:
-  group: gh-pages-push
+  group: rotation-push
   cancel-in-progress: false
 
 permissions:
