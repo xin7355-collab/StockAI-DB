@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.4</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -899,7 +899,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.4</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.5</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -6409,20 +6409,61 @@ ${list}
             const upside = hi5 > price ? (hi5 - price) / price : 0;
             const f7 = upside >= 1.0 ? 5 : upside >= 0.5 ? 4 : upside >= 0.3 ? 3 : upside >= 0.15 ? 2 : upside > 0 ? 1 : 0;
 
-            const score = Math.round(f1 + f2 + f3 + f4 + f5 + f6 + f7);
+            // ④-風控扣分 + 🚩標記(踩雷避免)
+            const riskFlags = [];
+            const att = this.attentionStatus?.[String(sym).trim()];
+            if (att && (att.status || '').startsWith('🚨')) riskFlags.push('🚩處置中');
+            else if (att && (att.status || '').includes('注意')) riskFlags.push('🚩注意股');
+            if (pe != null && pe > 60) riskFlags.push('🚩本益比偏高');
+            try { const mb = kl.map(b => +b?.margin_balance || 0); if (mb.length >= 6) { const m0 = mb[mb.length - 6], m1 = mb[mb.length - 1]; if (m0 > 0 && (m1 - m0) / m0 > 0.3) riskFlags.push('🚩融資爆增'); } } catch (_) {}
+            const riskPenalty = Math.min(15, riskFlags.length * 6);
+            const score = Math.max(0, Math.round(f1 + f2 + f3 + f4 + f5 + f6 + f7 - riskPenalty));
+
             const tags = [];
             if (f1 >= 13 && upside >= 0.5) tags.push('lowbase');
             if (f2 >= 8 && f3 >= 9) tags.push('valgrow');
             if (f4 >= 9) tags.push('chips');
             if (f5 >= 9) tags.push('tech');
+            if (yld != null && yld >= 4) tags.push('yield');
+
+            // ⑤ 分批布局價位(靠季線/前低;停損破前低 5%)
+            const prevLow = isFinite(loP) ? loP : (isFinite(loR) ? loR : price * 0.9);
+            const entry = ma60n ? Math.min(price, Math.max(ma60n, prevLow)) : prevLow;
+            const plan = { entry: +entry.toFixed(1), add: +prevLow.toFixed(1), stop: +(prevLow * 0.95).toFixed(1) };
+
+            // ③-白話原因(挑最強 2-3 個因子)
+            const bits = [];
+            if (f1 >= 13) bits.push(`位階僅 ${Math.round(pos52 * 100)}%(低基期)`);
+            if (f4 >= 9) bits.push(instLots > 0 ? `法人默默買 ${Math.round(instLots)} 張` : '籌碼沉澱');
+            if (f5 >= 9) bits.push('技術剛打底翻揚');
+            if (f2 >= 8) bits.push(pe != null ? `PE ${pe.toFixed(0)} 偏便宜` : '估值便宜');
+            if (f3 >= 9) bits.push(yoy != null ? `營收 YoY +${yoy.toFixed(0)}%` : '成長轉機');
+            if (f6 >= 7) bits.push('搭主流題材');
+            if (upside >= 0.5) bits.push(`距 5 年高還有 +${Math.round(upside * 100)}% 空間`);
+            const reason = bits.slice(0, 3).join('、') || '各因子中庸,綜合觀察';
+            const industry = ((this.allStockList || []).find(s => s.stock_id === sym)?.industry_category || '').trim();
+
             return { sym, name: this.getStockName(sym) || sym, score, f: { f1, f2, f3, f4, f5, f6, f7 },
-                     pos52, upside, instLots, pe, yld, yoy, conc: conc.slice(0, 4), tags, price };
+                     pos52, upside, instLots, pe, yld, yoy, conc: conc.slice(0, 4), tags, price, plan, riskFlags, reason, industry };
         } catch (_) { return null; }
     },
 
     async _potentialScan(force) {
         const today = this.getTodayStr();
         if (!force && this._potentialScanCache && this._potentialScanCache.date === today) return this._potentialScanCache.rows;
+        // 🌐 Tier B:優先讀採礦預算好的「全市場潛力榜」(快、涵蓋 ~1800 檔);沒有再退回前端掃清單
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/potential_picks.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+            if (r.ok) {
+                const j = await r.json();
+                if (j && Array.isArray(j.rows) && j.rows.length) {
+                    j.rows.forEach(row => { if (!row.name) row.name = this.getStockName(row.sym) || row.sym; });
+                    this._potentialScanCache = { date: today, rows: j.rows, source: 'miner' };
+                    return j.rows;
+                }
+            }
+        } catch (_) {}
         const fundCache = (await this._loadFundCache()) || {};
         const peData = await this._loadIndustryPeData().catch(() => null);
         await this._loadConceptData().catch(() => {});
@@ -6471,7 +6512,7 @@ ${list}
                 </div>
                 <div class="text-[10px] text-gray-500 mt-1 leading-snug">7 因子純公式評分(位階/估值/成長/籌碼/技術/題材/空間),分數越高長線潛力越大 ・ 非投資建議</div>
                 <div class="flex gap-1.5 overflow-x-auto scrollbar-hide mt-2 pb-1">
-                    ${chip('all', '全部')}${chip('lowbase', '🔥 低基期翻倍')}${chip('valgrow', '💰 便宜成長')}${chip('chips', '🕵️ 籌碼默默吸')}${chip('tech', '🌱 技術打底')}
+                    ${chip('all', '全部')}${chip('lowbase', '🔥 低基期翻倍')}${chip('valgrow', '💰 便宜成長')}${chip('chips', '🕵️ 籌碼默默吸')}${chip('tech', '🌱 技術打底')}${chip('yield', '🏦 高殖利率')}
                 </div>
             </div>
             <div id="potentialProgress" class="text-center text-cyan-400 text-xs py-3 animate-pulse">🔍 掃描潛力股中…(第一次較久,之後有快取)</div>
@@ -6483,46 +6524,84 @@ ${list}
 
     setPotentialFilter(k) { this._potentialFilter = k; this.vibrate?.(15); this.renderPotentialTab(); },   // 重繪(掃描有當日快取,瞬間)
 
+    // 💎 6 因子雷達 SVG(位階/估值/成長/籌碼/技術/題材;純 SVG 免 echarts,40 卡也順)
+    _potentialRadarSvg(f) {
+        const vals = [f.f1 / 20, f.f2 / 15, f.f3 / 20, f.f4 / 15, f.f5 / 15, f.f6 / 10].map(v => Math.max(0.06, Math.min(1, v || 0)));
+        const cx = 34, cy = 34, R = 27;
+        const pt = (i, r) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [cx + Math.cos(a) * R * r, cy + Math.sin(a) * R * r]; };
+        const poly = vals.map((v, i) => pt(i, v).map(n => n.toFixed(1)).join(',')).join(' ');
+        const grid = [0.5, 1].map(r => [0, 1, 2, 3, 4, 5].map(i => pt(i, r).map(n => n.toFixed(1)).join(',')).join(' '));
+        return `<svg width="68" height="68" viewBox="0 0 68 68" class="flex-shrink-0">
+            ${grid.map(g => `<polygon points="${g}" fill="none" stroke="#30363d" stroke-width="0.6"/>`).join('')}
+            <polygon points="${poly}" fill="rgba(34,211,238,0.25)" stroke="#22d3ee" stroke-width="1.3"/></svg>`;
+    },
+
     _renderPotentialList(rows) {
         const list = document.getElementById('potentialList');
         if (!list) return;
         const filt = this._potentialFilter || 'all';
         let arr = (rows || []).slice();
-        if (filt !== 'all') arr = arr.filter(r => r.tags.includes(filt));
+        if (filt !== 'all') arr = arr.filter(r => (r.tags || []).includes(filt));
         arr = arr.slice(0, 40);
         if (!arr.length) { list.innerHTML = `<div class="text-center text-gray-500 text-xs py-8">此篩選暫無符合的潛力股(換個篩選,或到自選/庫存多加幾檔冷門低基期股再重掃)</div>`; return; }
-        const tagMap = { lowbase: '🔥低基期翻倍', valgrow: '💰便宜成長', chips: '🕵️籌碼默默吸', tech: '🌱技術打底' };
+        const tagMap = { lowbase: '🔥低基期翻倍', valgrow: '💰便宜成長', chips: '🕵️籌碼默默吸', tech: '🌱技術打底', yield: '🏦高殖利率' };
         const scoreCol = s => s >= 75 ? 'text-red-300' : s >= 60 ? 'text-amber-300' : 'text-gray-300';
-        const bar = (v, max, c) => `<div class="h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${c}" style="width:${Math.round(v / max * 100)}%"></div></div>`;
-        list.innerHTML = arr.map((r, i) => {
-            const tags = r.tags.map(t => `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-cyan-900/30 text-cyan-300 border border-cyan-700/40 whitespace-nowrap">${tagMap[t]}</span>`).join(' ');
-            const conc = r.conc.map(c => `<span class="text-[9px] text-cyan-400/80">#${c}</span>`).join(' ');
-            return `<div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 cursor-pointer hover:border-cyan-600/50 transition-colors">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-[10px] text-gray-600 font-mono">#${i + 1}</span>
-                            <span class="text-white font-black text-[15px] truncate">${r.name}</span>
-                            <span class="text-[10px] text-gray-500 font-mono">${r.sym}</span>
+        // ⑨ 產業分散提示:榜上同產業佔比過高就提醒別集中
+        const indCount = {}; arr.forEach(r => { if (r.industry) indCount[r.industry] = (indCount[r.industry] || 0) + 1; });
+        const topInd = Object.entries(indCount).sort((a, b) => b[1] - a[1])[0];
+        const diverseNote = (topInd && topInd[1] >= Math.max(4, arr.length * 0.4))
+            ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2 text-[10px] text-yellow-200/90 leading-snug">⚠️ 榜上 <b>${topInd[0]}</b> 佔 ${topInd[1]}/${arr.length} 檔,偏集中 → 分批布局也別把資金全押同族群,分散產業較抗風險。</div>` : '';
+        list.innerHTML = diverseNote + arr.map((r, i) => {
+            const tags = (r.tags || []).map(t => `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-cyan-900/30 text-cyan-300 border border-cyan-700/40 whitespace-nowrap">${tagMap[t] || t}</span>`).join(' ');
+            const conc = (r.conc || []).map(c => `<span class="text-[9px] text-cyan-400/80">#${c}</span>`).join(' ');
+            const risk = (r.riskFlags || []).length ? `<div class="text-[10px] text-red-300/90 font-bold mt-1">${r.riskFlags.join(' ')}</div>` : '';
+            const p = r.plan || {};
+            return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+                <div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag');" class="cursor-pointer">
+                    <div class="flex items-center gap-2.5">
+                        ${this._potentialRadarSvg(r.f)}
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] text-gray-600 font-mono">#${i + 1}</span>
+                                <span class="text-white font-black text-[15px] truncate">${r.name}</span>
+                                <span class="text-[10px] text-gray-500 font-mono">${r.sym}</span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1 mt-0.5">${tags || '<span class="text-[9px] text-gray-600">綜合潛力</span>'} ${conc}</div>
+                            <div class="text-[10px] text-gray-300 leading-snug mt-1">💡 ${r.reason}</div>
+                            ${risk}
                         </div>
-                        <div class="flex flex-wrap items-center gap-1 mt-0.5">${tags || '<span class="text-[9px] text-gray-600">綜合潛力</span>'} ${conc}</div>
-                    </div>
-                    <div class="text-right flex-shrink-0">
-                        <div class="font-mono font-black text-2xl ${scoreCol(r.score)} leading-none">${r.score}</div>
-                        <div class="text-[8px] text-gray-500">潛力分</div>
+                        <div class="text-right flex-shrink-0 self-start">
+                            <div class="font-mono font-black text-2xl ${scoreCol(r.score)} leading-none">${r.score}</div>
+                            <div class="text-[8px] text-gray-500">潛力分</div>
+                        </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-x-2 gap-y-1 mt-2">
-                    <div><div class="text-[8px] text-gray-500 mb-0.5">位階 ${Math.round(r.pos52 * 100)}%</div>${bar(20 - r.f.f1, 20, 'bg-green-400')}</div>
-                    <div><div class="text-[8px] text-gray-500 mb-0.5">估值 ${r.pe != null ? 'PE' + r.pe.toFixed(0) : '—'}</div>${bar(r.f.f2, 15, 'bg-amber-400')}</div>
-                    <div><div class="text-[8px] text-gray-500 mb-0.5">成長 ${r.yoy != null ? (r.yoy > 0 ? '+' : '') + r.yoy.toFixed(0) + '%' : '—'}</div>${bar(r.f.f3, 20, 'bg-red-400')}</div>
-                    <div><div class="text-[8px] text-gray-500 mb-0.5">籌碼 ${r.instLots > 0 ? '法人+' + Math.round(r.instLots) : '—'}</div>${bar(r.f.f4, 15, 'bg-orange-400')}</div>
-                    <div><div class="text-[8px] text-gray-500 mb-0.5">技術打底</div>${bar(r.f.f5, 15, 'bg-cyan-400')}</div>
-                    <div><div class="text-[8px] text-gray-500 mb-0.5">上檔 +${Math.round(r.upside * 100)}%</div>${bar(r.f.f7, 5, 'bg-purple-400')}</div>
+                <!-- ⑤ 分批布局價位 -->
+                <div class="grid grid-cols-3 gap-1.5 mt-2 text-center">
+                    <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">🟢 進場參考</div><div class="text-[12px] font-mono font-black text-green-300">${p.entry ?? '—'}</div></div>
+                    <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">➕ 加碼(前低)</div><div class="text-[12px] font-mono font-black text-amber-300">${p.add ?? '—'}</div></div>
+                    <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">🛑 停損</div><div class="text-[12px] font-mono font-black text-red-300">${p.stop ?? '—'}</div></div>
                 </div>
-                <button onclick="event.stopPropagation(); app._openFreeAiPotential('${r.sym}');" class="mt-2 w-full text-[10px] font-bold text-cyan-300 bg-[#0d1117] border border-cyan-700/40 rounded py-1 hover:bg-cyan-900/20 transition-colors">🔎 免費查這檔長線題材與轉機</button>
+                <!-- ⑥⑦ 操作快捷 -->
+                <div class="flex gap-1.5 mt-2">
+                    <button onclick="app.potentialAddFav('${r.sym}');" class="flex-1 text-[10px] font-bold text-amber-300 bg-[#0d1117] border border-amber-700/40 rounded py-1 hover:bg-amber-900/20 transition-colors">⭐ 加自選</button>
+                    <button onclick="app.openPriceAlertModal('${r.sym}');" class="flex-1 text-[10px] font-bold text-blue-300 bg-[#0d1117] border border-blue-700/40 rounded py-1 hover:bg-blue-900/20 transition-colors">🔔 到價提醒</button>
+                    <button onclick="app._openFreeAiPotential('${r.sym}');" class="flex-1 text-[10px] font-bold text-cyan-300 bg-[#0d1117] border border-cyan-700/40 rounded py-1 hover:bg-cyan-900/20 transition-colors">🔎 免費查</button>
+                </div>
             </div>`;
         }).join('');
+    },
+
+    potentialAddFav(sym) {
+        try {
+            const g = this.activeGroupName;
+            if (!this.favGroups[g]) this.favGroups[g] = [];
+            if (this.favGroups[g].includes(sym)) { this.showToast?.(`${this.getStockName(sym) || sym} 已在自選`, 'info'); return; }
+            this.favGroups[g].push(sym);
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+            this.showToast?.(`✅ 已加入自選:${this.getStockName(sym) || sym}`, 'success');
+            this.vibrate?.(20);
+        } catch (e) { console.warn('[potentialAddFav]', e); }
     },
 
     _openFreeAiPotential(sym) {
