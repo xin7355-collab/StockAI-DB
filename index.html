@@ -14,7 +14,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.9</title>
+    <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
+    <!-- STRATEGY TERMINAL V47.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -902,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.9</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.0</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -3136,7 +3138,7 @@ const app = {
 
         this.setupAutoRefresh();
         this.initSwipeToDelete();
-        // swipe navigation removed per user request
+        this.initEdgeSwipeBack();   // 👉 V47.0 由左緣往右滑 = 上一頁(iOS 返回手勢)
         this.refreshUSMarketBar();
         this.initCommandCenter();
         this.registerServiceWorker();
@@ -3152,6 +3154,43 @@ const app = {
 
 
     
+    // 👉 上一頁:pop navStack,回到上一個分頁(給邊緣返回手勢 + 未來按鈕共用)
+    goBack() {
+        if (!Array.isArray(this.navStack) || this.navStack.length <= 1) {
+            // 已在最底層 → 落地庫存(避免卡死)
+            if (this.navStack?.[this.navStack.length - 1] !== 'inv') this.switchAppTab('inv', true);
+            return false;
+        }
+        this.navStack.pop();
+        const prev = this.navStack[this.navStack.length - 1] || 'inv';
+        this.switchAppTab(prev, true);
+        this.vibrate?.(20);
+        return true;
+    },
+    // 👉 V47.0 iOS 式邊緣返回:從畫面左緣(≤30px)起手、往右滑夠長夠水平 → 上一頁
+    //    只認左緣起手,避開圖表平移 / 列表左滑刪除 / 一般點擊
+    initEdgeSwipeBack() {
+        let sx = 0, sy = 0, st = 0, armed = false;
+        document.addEventListener('touchstart', e => {
+            if (e.touches.length !== 1) { armed = false; return; }
+            const t = e.touches[0];
+            armed = t.clientX <= 30;   // 只從左緣起手才武裝
+            sx = t.clientX; sy = t.clientY; st = Date.now();
+        }, { passive: true });
+        document.addEventListener('touchend', e => {
+            if (!armed) return;
+            armed = false;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - sx, dy = t.clientY - sy, dt = Date.now() - st;
+            if (dx > 70 && Math.abs(dy) < 55 && dt < 650) {
+                // 有開啟中的 modal → 讓 modal 自己處理,不返回上一頁
+                const openModal = Array.from(document.querySelectorAll('.modal-base'))
+                    .some(m => !m.classList.contains('hidden') && m.style.display !== 'none');
+                if (openModal) return;
+                this.goBack();
+            }
+        }, { passive: true });
+    },
     initSwipeToDelete() {
         let swipeStartX = 0, activeSwipeEl = null, swipeDir = null;
         const REVEAL = 72;
@@ -3319,6 +3358,7 @@ const app = {
         const costBy = {}; const heldSet = new Set();
         inv.forEach(i => { if (i.symbol) { heldSet.add(i.symbol); if (i.cost) costBy[i.symbol] = +i.cost; } });
         for (const sym of allSyms.slice(0, 60)) {   // 上限 60 檔防爆
+            if (this._isEtfSym(sym)) continue;   // 🏦 V47.0 ETF 不推自動通知(無處置/朱家泓單股心法,要監控自己去設到價)
             try {
                 const cached = await this.idb.get(`proTerm_kline_${sym}`);
                 const kdata = cached?.data;
@@ -3394,6 +3434,7 @@ const app = {
         for (const item of slice) {
             const sym = typeof item === 'string' ? item : item.symbol;
             if (!sym) continue;
+            if (this._isEtfSym(sym)) continue;   // 🏦 V47.0 ETF 不推盤中自動通知(要監控自己去設到價)
             try {
                 const cached = await this.idb.get(`proTerm_kline_${sym}`);
                 const kdata = cached?.data;
@@ -25020,13 +25061,41 @@ ${_chuPosPlan}
     // V17.21 — 個股到價告警 modal(2 sub-tab:到價設定 / 全部監控)
     //   schema: [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}],一筆 = 一個條件,同股可多筆
     //   觸發即 Worker 推 Telegram + sw.js 推瀏覽器通知,6h throttle 防重
+    // 🏦 台股 ETF 代號 00 開頭(00尾綴如 0050/006208)→ 排除自動通知
+    _isEtfSym(sym) { return /^00/.test(String(sym || '').trim()); },
+    // 🔎 取某檔「目前價」:診斷頁用 activeData,庫存用渲染時存的 _invPrevPrices,都拿不到回 0
+    _lastPriceFor(sym) {
+        sym = String(sym || '').trim().toUpperCase();
+        if (!sym) return 0;
+        if (this.currentSymbolId === sym && this.activeData?.length) {
+            const p = +this.activeData[this.activeData.length - 1].close; if (p > 0) return p;
+        }
+        const ip = this._invPrevPrices?.[sym]; if (ip > 0) return +ip;
+        return 0;
+    },
+    // 🎯 依台股升降單位把價格 snap 到最近檔位(免出現 210.37 這種不可掛的價)
+    _roundTick(p) {
+        p = +p || 0; if (p <= 0) return 0;
+        const t = p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
+        return +(Math.round(p / t) * t).toFixed(2);
+    },
+    // 💤 懶人快設:依現價一鍵算觸發價(現價/±%),並自動選好 ≥/≤ 條件
+    _paQuickSet(pct) {
+        const cur = this._lastPriceFor(this._paCurrentSym);
+        if (!(cur > 0)) { this.showToast?.('目前價抓不到,請直接手動輸入'); return; }
+        let target = pct === 0 ? cur : cur * (1 + pct / 100);
+        target = this._roundTick(target);
+        this._paPrice = target;
+        this._paCond = (target >= cur) ? 'gte' : 'lte';   // 高於現價=漲到才通知;低於=跌到才通知
+        this.vibrate?.(15);
+        this._renderPriceAlertModal();
+    },
     openPriceAlertModal(sym) {
         sym = sym ? String(sym).trim().toUpperCase() : '';
         this._paCurrentSym = sym;
         this._paEditingId = null;
         this._paCond = 'gte';
-        const cur = (sym && this.currentSymbolId === sym && this.activeData?.length)
-                    ? +this.activeData[this.activeData.length - 1].close : 0;
+        const cur = this._lastPriceFor(sym);
         this._paPrice = cur > 0 ? cur : 0;
         // 沒選股 → 直接開「全部監控」分頁
         this._paTab = sym ? 'set' : 'all';
@@ -25127,9 +25196,24 @@ ${_chuPosPlan}
         const editing = !!this._paEditingId;
         const cond = this._paCond || 'gte';
         const price = +this._paPrice || 0;
-        const cur = (sym && this.currentSymbolId === sym && this.activeData?.length)
-                    ? +this.activeData[this.activeData.length - 1].close : null;
+        const curVal = this._lastPriceFor(sym);
+        const cur = curVal > 0 ? curVal : null;
         const condBtn = (val, label) => `<button onclick="app._paSetCond('${val}')" class="flex-1 py-2 rounded text-sm font-bold transition ${cond===val?'bg-amber-700/60 text-white border border-amber-500':'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700'}">${label}</button>`;
+        const qChip = (pct, label, col) => `<button onclick="app._paQuickSet(${pct})" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition ${col} whitespace-nowrap">${label}</button>`;
+        const lazyRow = cur != null ? `
+                <div class="bg-[#0d1117] border border-cyan-900/40 rounded-lg p-2.5">
+                    <div class="text-[11px] text-cyan-300 font-bold mb-2">💤 懶人快設<span class="text-[9px] text-gray-500 font-normal">(依現價 ${cur.toFixed(2)} 一鍵算,免慢慢按)</span></div>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${qChip(0, '現價', 'bg-gray-800 text-gray-200 border-gray-600')}
+                        ${qChip(3, '漲+3%', 'bg-red-900/30 text-red-300 border-red-800/50')}
+                        ${qChip(5, '漲+5%', 'bg-red-900/30 text-red-300 border-red-800/50')}
+                        ${qChip(10, '漲+10%', 'bg-red-900/30 text-red-300 border-red-800/50')}
+                        ${qChip(-3, '跌-3%', 'bg-green-900/30 text-green-300 border-green-800/50')}
+                        ${qChip(-5, '跌-5%', 'bg-green-900/30 text-green-300 border-green-800/50')}
+                        ${qChip(-10, '跌-10%', 'bg-green-900/30 text-green-300 border-green-800/50')}
+                    </div>
+                    <div class="text-[9px] text-gray-600 mt-1.5">點一下自動填觸發價 + 選好條件,下面還能微調</div>
+                </div>` : '';
         return `
             <div class="flex flex-col gap-3">
                 <div class="bg-[#0d1117] border border-amber-900/40 rounded-lg p-3">
@@ -25140,6 +25224,7 @@ ${_chuPosPlan}
                     </div>
                     ${cur != null ? `<div class="text-[11px] text-gray-400 mt-1">目前價 <span class="text-cyan-300 font-bold">${cur.toFixed(2)}</span></div>` : ''}
                 </div>
+                ${lazyRow}
                 <div>
                     <div class="text-[11px] text-gray-400 mb-1.5 font-bold">觸發條件</div>
                     <div class="flex gap-2">

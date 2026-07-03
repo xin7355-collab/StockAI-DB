@@ -1,6 +1,6 @@
 {
-  "name": "首席 AI 司令部",
-  "short_name": "首席 AI",
+  "name": "首席",
+  "short_name": "首席",
   "description": "台股 AI 終端機 - 朱老師心法 / 獵鷹建倉分 / 即時雷達 / 全球巨頭脈動",
   "start_url": "./?source=pwa",
   "scope": "./",
