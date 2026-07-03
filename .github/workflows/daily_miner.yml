@@ -21,6 +21,7 @@ on:
       - 'etf_miner.py'
       - 'extras_miner.py'   # V21.5 — 多空計分卡補三項全市場資料
       - 'potential_miner.py'   # V46.6 — 全市場長線潛力股排名
+      - 'momentum_miner.py'    # V48.0 — 全市場中線黑馬排名
       - '.github/workflows/daily_miner.yml'
 
 # V16.1 — workflow-level concurrency:新 push 觸發時自動 cancel 同 branch 進行中的舊 run
@@ -345,6 +346,10 @@ jobs:
       - name: 💎 potential_miner:全市場長線潛力股排名(此時 data/*.json 已全合併)
         run: |
           python3 potential_miner.py || echo "⚠️ potential_miner 失敗(不擋部署)"
+
+      - name: 🐎 momentum_miner:全市場中線黑馬排名(此時 data/*.json 已全合併)
+        run: |
+          python3 momentum_miner.py || echo "⚠️ momentum_miner 失敗(不擋部署)"
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |

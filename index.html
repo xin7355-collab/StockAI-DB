@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V47.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -904,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.3</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.0</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1303,6 +1303,8 @@
                 <div id="heavyReboundCard" class="hidden"></div>
                 <!-- 🗣️ V43.5 — 朱老師口吻 K線型態總評(純公式,點進K線頁即自動顯示,比 AI 準) -->
                 <div id="chuVerdictCard" class="hidden"></div>
+                <!-- 🎢 V48.0 — 主升段體檢(波段階段判定 + 獲利燃料,純公式) -->
+                <div id="mainRiseCard" class="hidden"></div>
                 <div class="panel w-full flex flex-col bg-[#000000] border border-[#30363d] rounded-lg shadow-sm overflow-hidden flex-grow p-1.5">
                     <div class="flex items-center gap-2 px-1 py-1 border-b border-[#30363d] flex-nowrap overflow-x-auto scrollbar-hide">
                         <div class="flex bg-[#161b22] rounded border border-[#30363d] overflow-hidden flex-shrink-0" id="tfBtnGroup">
@@ -6425,6 +6427,8 @@ ${list}
     //   7 因子:位階低/估值便宜/成長轉機/籌碼默默吸/技術打底/題材主流/翻倍空間
     // ═══════════════════════════════════════════════════════════════════════
     _potentialHotThemes: ['AI','CoWoS','矽光子','記憶體','HBM','重電','軍工','低軌衛星','散熱','ABF','PCB','機器人','矽智財','光通訊','先進封裝','半導體','電動車','工業4.0','5G','伺服器','光學'],
+    // 🐎 中線黑馬「漲價循環」族群(逐字稿:被動元件/MLCC/記憶體/矽晶圓漲價→獲利跳);與 momentum_miner.py HOT_PRICE_THEMES 同步
+    _hotPriceThemes: ['漲價','被動元件','MLCC','電容','電阻','記憶體','DRAM','HBM','NAND','矽晶圓','晶圓','面板','導線架','銅箔基板','ABF','散熱','矽智財','CoWoS','先進封裝','伺服器','AI','矽光子','光通訊','重電','軍工'],
 
     _calcPotentialScore(sym, kl, fund, medianPe) {
         try {
@@ -6531,13 +6535,139 @@ ${list}
         } catch (_) { return null; }
     },
 
+    // 🐎 中線黑馬計分(純 bar 公式,JS＝Python 對齊,不依賴 this.indicators/偵測器 → 可全市場採礦)
+    //   邏輯:主升段技術(已啟動)+ 獲利跳 + 法人卡位 + 中位階 + 漲價族群 + 量增表態(與長線潛力「低基期量縮」相反)
+    _calcMomentumScore(sym, kl, fund, medianPe) {
+        try {
+            const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +(b?.volume || 0);
+            const inst = b => (+b?.foreign_net || 0) + (+b?.trust_net || 0);
+            const closes = kl.map(C), highs = kl.map(H), lows = kl.map(L), vols = kl.map(V);
+            const n = closes.length, price = closes[n - 1];
+            if (!(price > 0) || n < 60) return null;
+            const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+            const ma = (k, i) => { const s = closes.slice(i - k + 1, i + 1); return s.length === k ? avg(s) : null; };
+            const ma5 = ma(5, n - 1), ma10 = ma(10, n - 1), ma20n = ma(20, n - 1), ma20p = ma(20, n - 6), ma60n = ma(60, n - 1);
+
+            // ① 主升段技術(0-30):均線多頭排列 + 月線揚 + 站季線 + 趨勢效率 + 帶量突破
+            const maBull = ma5 != null && ma10 != null && ma20n != null && ma60n != null && ma5 >= ma10 && ma10 >= ma20n && ma20n >= ma60n;
+            const ma20Up = ma20n != null && ma20p != null && ma20n >= ma20p;
+            const aboveMa60 = ma60n != null && price > ma60n;
+            const win = Math.min(60, n - 1), from = n - 1 - win;
+            let path = 0; for (let j = from + 1; j <= n - 1; j++) path += Math.abs(closes[j] - closes[j - 1]);
+            const eff = path > 0 ? Math.abs(closes[n - 1] - closes[from]) / path : 0;
+            const prigHi = Math.max(...highs.slice(-21, -1).filter(v => v > 0));
+            const o1 = O(kl[n - 1]); const body = o1 > 0 ? (price - o1) / o1 * 100 : 0;
+            const breakout = isFinite(prigHi) && price > prigHi && body >= 1.5;
+            let m1 = 0;
+            if (maBull) m1 += 10; else if (ma20n != null && ma60n != null && price > ma20n && price > ma60n) m1 += 5;
+            if (ma20Up) m1 += 4;
+            if (aboveMa60) m1 += 4;
+            m1 += eff >= 0.35 ? 8 : eff >= 0.25 ? 5 : eff >= 0.18 ? 2 : 0;
+            if (breakout) m1 += 4;
+            m1 = Math.min(30, m1);
+
+            // ② 獲利跳(0-25):營收 YoY + 毛利(全市場只有單值毛利;觀察清單有 trend 字串加分)
+            const yoy = (fund && fund.rev_yoy != null && !isNaN(+fund.rev_yoy)) ? +fund.rev_yoy : (fund && fund.revenue_yoy != null ? +fund.revenue_yoy : null);
+            const gm = (fund && typeof fund.gross_margin === 'number') ? fund.gross_margin : null;
+            let m2 = 0;
+            if (yoy != null) m2 += yoy >= 30 ? 12 : yoy >= 15 ? 9 : yoy >= 5 ? 6 : yoy >= 0 ? 2 : 0;
+            if (gm != null) m2 += gm >= 40 ? 7 : gm >= 25 ? 5 : gm >= 15 ? 2 : 0;
+            const gmt = (fund && typeof fund.gross_margin_trend === 'string') ? fund.gross_margin_trend : '';
+            if (/↑/.test(gmt)) m2 += 6;   // 毛利趨勢向上(獲利跳確認,觀察清單才有)
+            m2 = Math.min(25, m2);
+
+            // ③ 法人卡位(0-20):近20日買超張 + 近10日買超天數 + 近5日加速
+            const last20 = kl.slice(-20), last10 = kl.slice(-10);
+            const instLots = last20.reduce((a, b) => a + inst(b), 0) / 1000;
+            const instDays10 = last10.filter(b => inst(b) > 0).length;
+            const i5 = kl.slice(-5).reduce((a, b) => a + inst(b), 0), i5p = kl.slice(-10, -5).reduce((a, b) => a + inst(b), 0);
+            let m3 = 0;
+            if (instLots > 0) m3 += instLots >= 3000 ? 10 : instLots >= 800 ? 7 : instLots >= 100 ? 4 : 1;
+            m3 += instDays10 >= 6 ? 5 : instDays10 >= 4 ? 3 : 0;
+            if (i5 > 0 && i5 > i5p) m3 += 5;   // 法人買盤加速
+            m3 = Math.min(20, m3);
+
+            // ④ 中位階(0-10):黑馬在「已啟動、未到頂」的中段,太低(沉睡)或太高(天花板)都扣
+            const look = Math.min(250, n);
+            const winHi = Math.max(...highs.slice(-look).filter(v => v > 0));
+            const winLo = Math.min(...lows.slice(-look).filter(v => v > 0));
+            const pos52 = (winHi > winLo) ? (price - winLo) / (winHi - winLo) : 0.5;
+            const m4 = (pos52 >= 0.30 && pos52 <= 0.65) ? 10 : (pos52 >= 0.20 && pos52 <= 0.80) ? 6 : 2;
+
+            // ⑤ 漲價族群(0-10)
+            const conc = (this._conceptCache?.by_stock?.[sym]) || (this._CONCEPT_MAP[sym]) || [];
+            const hits = conc.filter(c => this._hotPriceThemes.some(t => String(c).includes(t)));
+            const m5 = conc.length ? (hits.length >= 2 ? 10 : hits.length === 1 ? 6 : 2) : 0;
+
+            // ⑥ 量增表態(0-5):放量(與長線潛力量縮相反)
+            const v5 = avg(vols.slice(-5)), v60 = avg(vols.slice(-60));
+            const m6 = (v60 > 0 && v5 / v60 >= 1.5) ? 5 : (v60 > 0 && v5 / v60 >= 1.1) ? 3 : 0;
+
+            // 上檔(距 5 年高)供目標價
+            const hi5 = Math.max(...highs.filter(v => v > 0));
+            const upside = hi5 > price ? (hi5 - price) / price : 0;
+            const biasMa20 = (ma20n != null && ma20n > 0) ? (price - ma20n) / ma20n * 100 : 0;
+
+            // 風控扣分
+            const riskFlags = [];
+            const att = this.attentionStatus?.[String(sym).trim()];
+            if (att && (att.status || '').startsWith('🚨')) riskFlags.push('🚩處置中');
+            else if (att && (att.status || '').includes('注意')) riskFlags.push('🚩注意股');
+            if (pos52 >= 0.92 && biasMa20 >= 18) riskFlags.push('🚩末升段過熱');
+            const pe = (fund && fund.pe != null) ? +fund.pe : null, yld = (fund && fund.yield_rate != null) ? +fund.yield_rate : null;
+            if (pe != null && pe > 80) riskFlags.push('🚩本益比過高');
+            const riskPenalty = Math.min(18, riskFlags.length * 6);
+            const score = Math.max(0, Math.round(m1 + m2 + m3 + m4 + m5 + m6 - riskPenalty));
+
+            // 階段(輕量,純 bar;不用 ZigZag)
+            let stage;
+            if (pos52 >= 0.92 && biasMa20 >= 18) stage = '⚠️末升段';
+            else if (maBull && eff >= 0.30) stage = '🔥主升段';
+            else if (breakout || (aboveMa60 && ma20Up && pos52 <= 0.55)) stage = '🚀初升段';
+            else if (eff < 0.22) stage = '🟡盤整';
+            else stage = '⚪中性';
+
+            const tags = [];
+            if (m1 >= 22) tags.push('mainrise');
+            if (breakout || (aboveMa60 && ma20Up && pos52 <= 0.55)) tags.push('launch');
+            if (m2 >= 15) tags.push('fuel');
+            if (m3 >= 10) tags.push('inst');
+            if (m5 >= 6) tags.push('hotprice');
+
+            // 分批價位(靠季線/前低)
+            const loP = Math.min(...lows.slice(-30).filter(v => v > 0));
+            const prevLow = isFinite(loP) ? loP : price * 0.93;
+            const entry = ma60n ? Math.min(price, Math.max(ma60n, prevLow)) : prevLow;
+            const plan = { entry: +entry.toFixed(1), add: +prevLow.toFixed(1), stop: +(prevLow * 0.95).toFixed(1) };
+
+            const bits = [];
+            if (stage === '🔥主升段') bits.push('主升段進行中(順勢抱)');
+            else if (stage === '🚀初升段') bits.push('初升段剛啟動');
+            if (yoy != null && yoy >= 15) bits.push(`營收YoY +${yoy.toFixed(0)}%`);
+            if (/↑/.test(gmt)) bits.push('毛利向上(獲利跳)');
+            if (m3 >= 10) bits.push(instLots > 0 ? `法人買超 ${Math.round(instLots)} 張` : '法人卡位');
+            if (m5 >= 6) bits.push('搭漲價族群');
+            if (eff >= 0.30) bits.push(`趨勢效率 ${Math.round(eff * 100)}%`);
+            const reason = bits.slice(0, 3).join('、') || '中線動能中庸,綜合觀察';
+            const industry = ((this.allStockList || []).find(s => s.stock_id === sym)?.industry_category || '').trim();
+            const valTarget = (pe != null && pe > 0 && medianPe && medianPe > 0) ? +(price * medianPe / pe).toFixed(1) : null;
+
+            return { sym, name: this.getStockName(sym) || sym, score, f: { f1: m1, f2: m2, f3: m3, f4: m4, f5: m5, f6: m6, f7: 0 },
+                     stage, pos52, upside, instLots, pe, yld, yoy, conc: conc.slice(0, 4), tags, price, plan, riskFlags, reason, industry, valTarget };
+        } catch (_) { return null; }
+    },
+
     async _potentialScan(force) {
+        const mode = this._potentialMode || 'long';                 // 'long' 長線潛力 / 'momentum' 中線黑馬
+        const cacheKey = mode === 'momentum' ? '_momentumScanCache' : '_potentialScanCache';
+        const file = mode === 'momentum' ? 'momentum_picks.json' : 'potential_picks.json';
+        const scoreFn = mode === 'momentum' ? '_calcMomentumScore' : '_calcPotentialScore';
         const today = this.getTodayStr();
-        if (!force && this._potentialScanCache && this._potentialScanCache.date === today) return this._potentialScanCache.rows;
-        // 🌐 Tier B:優先讀採礦預算好的「全市場潛力榜」(快、涵蓋 ~1800 檔);沒有再退回前端掃清單
+        if (!force && this[cacheKey] && this[cacheKey].date === today) return this[cacheKey].rows;
+        // 🌐 Tier B:優先讀採礦預算好的「全市場榜」;沒有再退回前端掃清單
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const r = await fetch(new URL('data/potential_picks.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+            const r = await fetch(new URL('data/' + file, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
             if (r.ok) {
                 const j = await r.json();
                 if (j && Array.isArray(j.rows) && j.rows.length) {
@@ -6545,7 +6675,7 @@ ${list}
                         if (!row.name) row.name = this.getStockName(row.sym) || row.sym;
                         if (!row.industry) row.industry = ((this.allStockList || []).find(s => s.stock_id === row.sym)?.industry_category || '').trim();
                     });
-                    this._potentialScanCache = { date: today, rows: j.rows, source: 'miner' };
+                    this[cacheKey] = { date: today, rows: j.rows, source: 'miner' };
                     return j.rows;
                 }
             }
@@ -6566,7 +6696,7 @@ ${list}
                 if (Array.isArray(kl) && kl.length >= 60) {
                     let medianPe = null;
                     try { const { industry } = this._getIndustryPeers(sym); medianPe = peData?.industries?.[industry]?.median_pe ?? null; } catch (_) {}
-                    const r = this._calcPotentialScore(sym, kl, fundCache[sym], medianPe);
+                    const r = this[scoreFn](sym, kl, fundCache[sym], medianPe);
                     if (r) rows.push(r);
                 }
             } catch (_) {}
@@ -6578,30 +6708,43 @@ ${list}
             while (idx < syms.length) { const my = idx++; await worker(syms[my]); }
         }));
         rows.sort((a, b) => b.score - a.score);
-        this._potentialScanCache = { date: today, rows };
+        this[cacheKey] = { date: today, rows };
         return rows;
     },
 
     async renderPotentialTab() {
         const box = document.getElementById('tabContentPotential');
         if (!box) return;
+        const mode = this._potentialMode || 'long';
+        const isM = mode === 'momentum';
         if (!this._potentialFilter) this._potentialFilter = 'all';
         const filt = this._potentialFilter;
         const chip = (k, label) => `<button onclick="app.setPotentialFilter('${k}')" class="flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${filt === k ? 'bg-cyan-700 text-white border-cyan-500' : 'bg-[#161b22] text-gray-400 border-[#30363d] hover:text-white'}">${label}</button>`;
+        const modeBtn = (m, label) => `<button onclick="app.setPotentialMode('${m}')" class="flex-1 py-1.5 text-[12px] font-black rounded transition-colors ${mode === m ? 'bg-cyan-700 text-white' : 'text-gray-400 hover:text-white'}">${label}</button>`;
+        const title = isM ? '🐎 中線黑馬' : '💎 長線潛力股';
+        const titleCol = isM ? 'text-amber-300' : 'text-cyan-300';
+        const desc = isM
+            ? '主升段技術 + 獲利跳 + 法人卡位 + 漲價族群 → 抓「已啟動、還沒噴完」的中線飆股 ・ 非投資建議'
+            : '7 因子純公式評分(位階/估值/成長/籌碼/技術/題材/空間),分數越高長線潛力越大 ・ 非投資建議';
+        const help = isM
+            ? '🐎 中線黑馬(純公式,禁 AI 算數)\\n\\n照投顧「漲價→獲利跳→法人評價跳→主升段」的中線飆股邏輯,找「已經啟動、獲利在跳、還沒噴完」的股。\\n\\n① 主升段技術(均線多頭排列+趨勢效率高+帶量突破,已在走)\\n② 獲利跳(營收YoY高/毛利向上=法人開始評價)\\n③ 法人卡位(近20日買超、買盤加速)\\n④ 中位階(不是低基期沉睡,也不是天花板)\\n⑤ 漲價族群(被動元件/MLCC/記憶體/矽晶圓…)\\n⑥ 量增表態(放量,與長線潛力「量縮」相反)\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損、別追末升段。'
+            : '💎 長線潛力股(純公式,禁 AI 算數)\\n\\n用 7 個因子幫你找「現在便宜、基本面在轉好、主力默默布局、技術剛打底、又搭長線題材」的股票,並估上檔空間。\\n\\n① 位階低(低基期)② 估值便宜 ③ 成長轉機 ④ 籌碼默默吸 ⑤ 技術打底 ⑥ 題材主流 ⑦ 翻倍空間\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損。';
+        const chips = isM
+            ? `${chip('all', '全部')}${chip('mainrise', '🔥 主升段中')}${chip('launch', '🚀 初升段')}${chip('fuel', '💰 獲利跳')}${chip('inst', '🕵️ 法人卡位')}${chip('hotprice', '⚡ 漲價族群')}`
+            : `${chip('all', '全部')}${chip('lowbase', '🔥 低基期翻倍')}${chip('valgrow', '💰 便宜成長')}${chip('chips', '🕵️ 籌碼默默吸')}${chip('tech', '🌱 技術打底')}${chip('yield', '🏦 高殖利率')}`;
         box.innerHTML = `
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 mb-2">
+                <div class="flex gap-1 mb-2 bg-[#0d1117] p-1 rounded-lg border border-[#30363d]">${modeBtn('long', '🌱 長線潛力')}${modeBtn('momentum', '🐎 中線黑馬')}</div>
                 <div class="flex items-center justify-between">
-                    <h2 class="text-base font-black text-cyan-300 flex items-center gap-1.5">💎 長線潛力股
-                        <button onclick="alert('💎 長線潛力股(純公式,禁 AI 算數)\\n\\n用 7 個因子幫你找「現在便宜、基本面在轉好、主力默默布局、技術剛打底、又搭長線題材」的股票,並估上檔空間。\\n\\n① 位階低(低基期,沒漲過空間大)\\n② 估值便宜(PE低於同業/高殖利率)\\n③ 成長轉機(營收YoY/毛利提升)\\n④ 籌碼默默吸(法人連買但沒噴)\\n⑤ 技術剛打底翻揚(月線轉揚/站季線/底底高)\\n⑥ 題材主流(AI/CoWoS/重電…)\\n⑦ 翻倍空間(距5年高)\\n\\n範圍:觀察清單~100檔 + 你的自選/庫存。非清單冷門股「成長因子」會缺(分數偏低),之後全市場採礦版會補。\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損。')" class="text-[10px] text-gray-500 hover:text-cyan-300">📖</button>
+                    <h2 class="text-base font-black ${titleCol} flex items-center gap-1.5">${title}
+                        <button onclick="alert('${help}')" class="text-[10px] text-gray-500 hover:text-cyan-300">📖</button>
                     </h2>
-                    <button onclick="app._potentialScanCache=null; app.renderPotentialTab();" class="text-[11px] text-cyan-300/80 hover:text-cyan-200 border border-cyan-700/40 rounded px-2 py-0.5">🔄 重掃</button>
+                    <button onclick="app.rescanPotential();" class="text-[11px] text-cyan-300/80 hover:text-cyan-200 border border-cyan-700/40 rounded px-2 py-0.5">🔄 重掃</button>
                 </div>
-                <div class="text-[10px] text-gray-500 mt-1 leading-snug">7 因子純公式評分(位階/估值/成長/籌碼/技術/題材/空間),分數越高長線潛力越大 ・ 非投資建議</div>
-                <div class="flex gap-1.5 overflow-x-auto scrollbar-hide mt-2 pb-1">
-                    ${chip('all', '全部')}${chip('lowbase', '🔥 低基期翻倍')}${chip('valgrow', '💰 便宜成長')}${chip('chips', '🕵️ 籌碼默默吸')}${chip('tech', '🌱 技術打底')}${chip('yield', '🏦 高殖利率')}
-                </div>
+                <div class="text-[10px] text-gray-500 mt-1 leading-snug">${desc}</div>
+                <div class="flex gap-1.5 overflow-x-auto scrollbar-hide mt-2 pb-1">${chips}</div>
             </div>
-            <div id="potentialProgress" class="text-center text-cyan-400 text-xs py-3 animate-pulse">🔍 掃描潛力股中…(第一次較久,之後有快取)</div>
+            <div id="potentialProgress" class="text-center text-cyan-400 text-xs py-3 animate-pulse">🔍 掃描${isM ? '中線黑馬' : '潛力股'}中…(第一次較久,之後有快取)</div>
             <div id="potentialList" class="flex flex-col gap-2"></div>`;
         const rows = await this._potentialScan(false);
         const prog = document.getElementById('potentialProgress'); if (prog) prog.classList.add('hidden');
@@ -6614,11 +6757,14 @@ ${list}
         }
     },
 
+    setPotentialMode(m) { this._potentialMode = m; this._potentialFilter = 'all'; this.vibrate?.(20); this.renderPotentialTab(); },   // 🐎 切換 長線潛力 ↔ 中線黑馬
+    rescanPotential() { const k = (this._potentialMode === 'momentum') ? '_momentumScanCache' : '_potentialScanCache'; this[k] = null; this.renderPotentialTab(); },
     setPotentialFilter(k) { this._potentialFilter = k; this.vibrate?.(15); this.renderPotentialTab(); },   // 重繪(掃描有當日快取,瞬間)
 
     // 💎 6 因子雷達 SVG(位階/估值/成長/籌碼/技術/題材;純 SVG 免 echarts,40 卡也順)
-    _potentialRadarSvg(f) {
-        const vals = [f.f1 / 20, f.f2 / 15, f.f3 / 20, f.f4 / 15, f.f5 / 15, f.f6 / 10].map(v => Math.max(0.06, Math.min(1, v || 0)));
+    _potentialRadarSvg(f, denoms) {
+        const d = Array.isArray(denoms) && denoms.length === 6 ? denoms : [20, 15, 20, 15, 15, 10];
+        const vals = [f.f1 / d[0], f.f2 / d[1], f.f3 / d[2], f.f4 / d[3], f.f5 / d[4], f.f6 / d[5]].map(v => Math.max(0.06, Math.min(1, v || 0)));
         const cx = 34, cy = 34, R = 27;
         const pt = (i, r) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [cx + Math.cos(a) * R * r, cy + Math.sin(a) * R * r]; };
         const poly = vals.map((v, i) => pt(i, v).map(n => n.toFixed(1)).join(',')).join(' ');
@@ -6631,12 +6777,17 @@ ${list}
     _renderPotentialList(rows) {
         const list = document.getElementById('potentialList');
         if (!list) return;
+        const isM = (this._potentialMode || 'long') === 'momentum';
         const filt = this._potentialFilter || 'all';
         let arr = (rows || []).slice();
         if (filt !== 'all') arr = arr.filter(r => (r.tags || []).includes(filt));
         arr = arr.slice(0, 40);
-        if (!arr.length) { list.innerHTML = `<div class="text-center text-gray-500 text-xs py-8">此篩選暫無符合的潛力股(換個篩選,或到自選/庫存多加幾檔冷門低基期股再重掃)</div>`; return; }
-        const tagMap = { lowbase: '🔥低基期翻倍', valgrow: '💰便宜成長', chips: '🕵️籌碼默默吸', tech: '🌱技術打底', yield: '🏦高殖利率' };
+        if (!arr.length) { list.innerHTML = `<div class="text-center text-gray-500 text-xs py-8">${isM ? '此篩選暫無符合的中線黑馬(換個篩選,或到自選/庫存多加幾檔已啟動的中位階股再重掃)' : '此篩選暫無符合的潛力股(換個篩選,或到自選/庫存多加幾檔冷門低基期股再重掃)'}</div>`; return; }
+        const tagMap = isM
+            ? { mainrise: '🔥主升段中', launch: '🚀初升段', fuel: '💰獲利跳', inst: '🕵️法人卡位', hotprice: '⚡漲價族群' }
+            : { lowbase: '🔥低基期翻倍', valgrow: '💰便宜成長', chips: '🕵️籌碼默默吸', tech: '🌱技術打底', yield: '🏦高殖利率' };
+        const radarDenoms = isM ? [30, 25, 20, 10, 10, 5] : null;
+        const scoreLabel = isM ? '黑馬分' : '潛力分';
         const scoreCol = s => s >= 75 ? 'text-red-300' : s >= 60 ? 'text-amber-300' : 'text-gray-300';
         // ⑨ 產業分散提示:榜上同產業佔比過高就提醒別集中
         const indCount = {}; arr.forEach(r => { if (r.industry) indCount[r.industry] = (indCount[r.industry] || 0) + 1; });
@@ -6665,20 +6816,20 @@ ${list}
             return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
                 <div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag');" class="cursor-pointer">
                     <div class="flex items-center gap-2.5">
-                        ${this._potentialRadarSvg(r.f)}
+                        ${this._potentialRadarSvg(r.f, radarDenoms)}
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-1.5">
                                 <span class="text-[10px] text-gray-600 font-mono">#${i + 1}</span>
                                 <span class="text-white font-black text-[15px] truncate">${r.name}</span>
                                 <span class="text-[10px] text-gray-500 font-mono">${r.sym}</span>
                             </div>
-                            <div class="flex flex-wrap items-center gap-1 mt-0.5">${tags || '<span class="text-[9px] text-gray-600">綜合潛力</span>'} ${conc}</div>
+                            <div class="flex flex-wrap items-center gap-1 mt-0.5">${isM && r.stage ? `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-900/30 text-amber-300 border border-amber-700/40">${r.stage}</span>` : ''}${tags || '<span class="text-[9px] text-gray-600">綜合</span>'} ${conc}</div>
                             <div class="text-[10px] text-gray-300 leading-snug mt-1">💡 ${r.reason}</div>
                             ${risk}
                         </div>
                         <div class="text-right flex-shrink-0 self-start">
                             <div class="font-mono font-black text-2xl ${scoreCol(r.score)} leading-none">${r.score}</div>
-                            <div class="text-[8px] text-gray-500">潛力分</div>
+                            <div class="text-[8px] text-gray-500">${scoreLabel}</div>
                         </div>
                     </div>
                 </div>
@@ -13377,6 +13528,129 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const _sym = this.currentSymbolId;
             setTimeout(() => { try { const s = document.getElementById('kbarWinRateStrip'); if (s) s.innerHTML = this._klineWinRateStripHtml(_sym, data); } catch (_) {} }, 60);
         } catch (e) { console.warn('[chuVerdict]', e); el.classList.add('hidden'); }
+    },
+    // 🎢 V48.0 — 主升段體檢卡:純公式判「這檔在哪一段」(下降/盤整/初升/主升/末升) + 獲利燃料燈
+    //   技術件全部組合現成料(this.indicators MA + this.peaks/troughs + _stockPersonality + 偵測器),零新指標數學
+    renderMainRiseCard(data) {
+        const el = document.getElementById('mainRiseCard');
+        if (!el) return;
+        if (!Array.isArray(data) || data.length < 30) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        try {
+            const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), Vv = b => +(b?.volume || 0);
+            const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+            const n = data.length, last = n - 1, price = C(data[last]);
+            if (!(price > 0)) { el.classList.add('hidden'); return; }
+            const ind = this.indicators || {};
+            const at = arr => (Array.isArray(arr) && Number.isFinite(+arr[last])) ? +arr[last] : null;
+            const atp = arr => (Array.isArray(arr) && Number.isFinite(+arr[last - 1])) ? +arr[last - 1] : null;
+            const ma5 = at(ind.ma5), ma10 = at(ind.ma10), ma20 = at(ind.ma20), ma60 = at(ind.ma60), ma20p = atp(ind.ma20);
+            const maBull = ma5 != null && ma10 != null && ma20 != null && ma60 != null && ma5 >= ma10 && ma10 >= ma20 && ma20 >= ma60;
+            const ma20Up = ma20 != null && ma20p != null && ma20 >= ma20p;
+            const aboveMa60 = ma60 != null && price > ma60;
+            // 波段結構(頭頭高底底高)
+            const peaks = this.peaks || [], troughs = this.troughs || [];
+            let trend = 'flat';
+            if (peaks.length >= 2 && troughs.length >= 2) {
+                const pkUp = peaks[peaks.length - 1].val > peaks[peaks.length - 2].val, trUp = troughs[troughs.length - 1].val > troughs[troughs.length - 2].val;
+                const pkDn = peaks[peaks.length - 1].val < peaks[peaks.length - 2].val, trDn = troughs[troughs.length - 1].val < troughs[troughs.length - 2].val;
+                if (pkUp && trUp) trend = 'bull'; else if (pkDn && trDn) trend = 'bear';
+            }
+            // 趨勢效率 + 位階 + 距歷史高 + 乖離
+            const per = this._stockPersonality(data); const eff = per ? per.eff : 0;
+            const look = Math.min(250, n);
+            const winHi = Math.max(...data.slice(-look).map(H).filter(v => v > 0));
+            const winLo = Math.min(...data.slice(-look).map(L).filter(v => v > 0));
+            const pos52 = (winHi > winLo) ? (price - winLo) / (winHi - winLo) : 0.5;
+            let ath = 0; for (let i = 0; i < n; i++) { const h = H(data[i]); if (h > ath) ath = h; }
+            const athPct = ath > 0 ? (price - ath) / ath * 100 : 0;
+            const biasMa20 = (ma20 != null && ma20 > 0) ? (price - ma20) / ma20 * 100 : 0;
+            // 偵測器(過熱/糾結/突破)
+            const hasBull = (fn, re) => { try { return (this[fn]?.(data) || []).some(s => s.tone === 'bull' && (!re || re.test(s.title || ''))); } catch (_) { return false; } };
+            const overheat = (() => { try { return (this._detectChuOverheat?.(data) || []).length > 0; } catch (_) { return false; } })();
+            const coil = (() => { try { return (this._detectMaCluster?.(data) || []).length > 0; } catch (_) { return false; } })();
+            const breakoutToday = hasBull('_detectBoxBreakout') || hasBull('_detectBottomBreakout') || hasBull('_detectGap', /缺口|突破/);
+
+            // ── 階段判定(六段)──
+            let stage, stageCol, stageBar, stageMsg;
+            if (trend === 'bear' || (!aboveMa60 && !maBull && pos52 < 0.35)) {
+                stage = '⬇️ 下降段'; stageCol = 'text-green-300'; stageBar = 'border-green-500';
+                stageMsg = '結構偏空或破季線,別接刀;等打底、站回季線+均線翻多再看。';
+            } else if (overheat || (pos52 >= 0.9 && biasMa20 >= 18)) {
+                stage = '⚠️ 末升段過熱'; stageCol = 'text-orange-300'; stageBar = 'border-orange-500';
+                stageMsg = '位階高、乖離大,主升段末端;別追高,有貨分批停利,拉回不破月線才續抱。';
+            } else if (maBull && trend === 'bull' && eff >= 0.30 && pos52 < 0.9) {
+                stage = '🔥 主升段進行中'; stageCol = 'text-red-300'; stageBar = 'border-red-500';
+                stageMsg = '均線多頭+趨勢效率高+頭頭高底底高 → 順勢抱波段最賺;回後不破月線可加碼,跌破月線先減。';
+            } else if (breakoutToday || (aboveMa60 && ma20Up && pos52 <= 0.7 && trend !== 'bear')) {
+                stage = '🚀 初升段啟動'; stageCol = 'text-red-300'; stageBar = 'border-red-500';
+                stageMsg = '剛帶量突破/站上季線翻多 → 初升段起漲;回測不破頸線或月線是買點,設好停損別凹。';
+            } else if (coil || eff < 0.25) {
+                stage = '🟡 盤整打底'; stageCol = 'text-yellow-300'; stageBar = 'border-yellow-500';
+                stageMsg = '均線糾結/區間整理,能量累積中;等「帶量長紅突破」表態再進,別在區間追高殺低。';
+            } else {
+                stage = '⚪ 中性待表態'; stageCol = 'text-gray-300'; stageBar = 'border-gray-500';
+                stageMsg = '多空未明;等均線歸多頭排列+帶量突破前高再動作。';
+            }
+
+            // 法人近10日買超(from bars,同步)
+            const _inst = b => (+b?.foreign_net || 0) + (+b?.trust_net || 0);
+            const r10 = data.slice(-10);
+            const instLots10 = r10.reduce((a, b) => a + _inst(b), 0) / 1000;
+            let instStreak = 0; for (let i = r10.length - 1; i >= 0; i--) { if (_inst(r10[i]) > 0) instStreak++; else break; }
+            const instDays = r10.filter(b => _inst(b) > 0).length;
+
+            const _metric = (label, val, col) => `<div class="bg-[#0d1117] rounded px-2 py-1"><div class="text-gray-500">${label}</div><div class="font-bold ${col} mt-0.5 leading-tight">${val}</div></div>`;
+            el.className = 'bg-[#161b22] border-l-4 ' + stageBar + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg mb-2';
+            el.innerHTML = `
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="text-base font-black ${stageCol}">🎢 主升段體檢:${stage}</div>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0 ml-1">純公式·非AI</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 mb-2 text-[10px]">
+                    ${_metric('均線排列', maBull ? (ma20Up ? '多頭+月線揚' : '多頭排列') : '未站多頭', maBull ? 'text-red-300' : 'text-gray-400')}
+                    ${_metric('趨勢效率', (eff * 100).toFixed(0) + '%' + (eff >= 0.3 ? ' 強趨勢' : ''), eff >= 0.3 ? 'text-red-300' : 'text-gray-400')}
+                    ${_metric('波段結構', trend === 'bull' ? '頭頭高底底高' : trend === 'bear' ? '頭頭低底底低' : '盤整', trend === 'bull' ? 'text-red-300' : trend === 'bear' ? 'text-green-300' : 'text-gray-400')}
+                    ${_metric('位階', Math.round(pos52 * 100) + '%' + (athPct > -3 ? ' 近歷史高' : ''), pos52 >= 0.85 ? 'text-orange-300' : pos52 <= 0.35 ? 'text-green-300' : 'text-gray-300')}
+                </div>
+                <div id="mainRiseFuel" class="text-[10px] text-gray-500 mb-1.5">⛽ 獲利燃料檢查中…</div>
+                <div class="bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-[12px] text-gray-200 leading-relaxed"><b class="${stageCol}">💡 操作:</b>${stageMsg}</div>
+                <div class="text-[9px] text-gray-600 mt-1.5">🎢 主升段=獲利跳、法人評價跳升的順勢段;技術判階段+基本面看燃料,純公式非投資建議。</div>`;
+            el.classList.remove('hidden');
+            // 燃料(基本面)非同步補,不卡渲染
+            const sym = this.currentSymbolId;
+            this._injectMainRiseFuel(sym, { instLots10, instStreak, instDays });
+        } catch (e) { console.warn('[mainRise]', e); el.classList.add('hidden'); }
+    },
+    // 🎢 V48.0 — 主升段「獲利燃料」燈(三率三升 + 營收YoY + 創新高 + 法人買超),async 讀 fundamentals 後注入
+    async _injectMainRiseFuel(sym, inst) {
+        const box = document.getElementById('mainRiseFuel');
+        if (!box) return;
+        let fund = {};
+        try { fund = (await this._loadLocalFundamentals(sym)) || {}; } catch (_) {}
+        if (fund.revenue_yoy == null || fund.gross_margin_trend == null) {
+            try { const fc = (await this._loadFundCache()) || {}; const f = fc[sym]; if (f) { if (fund.revenue_yoy == null) fund.revenue_yoy = f.rev_yoy; if (fund.gross_margin == null) fund.gross_margin = f.gross_margin; } } catch (_) {}
+        }
+        if (document.getElementById('mainRiseFuel') !== box) return;   // 已切股,放棄注入
+        const dir = s => { const m = (s || '').match(/([↑↓])/); return m ? (m[1] === '↑' ? 1 : -1) : null; };
+        const dirs = [dir(fund.gross_margin_trend), dir(fund.op_margin_trend), dir(fund.net_margin_trend)].filter(x => x != null);
+        const ups = dirs.filter(x => x > 0).length;
+        const tri = dirs.length >= 3 ? (ups === 3 ? '🔥三率三升' : ups === 2 ? '⚠️二升一降' : '三率互見') : null;
+        const yoy = fund.revenue_yoy != null ? +fund.revenue_yoy : null;
+        const recHigh = fund.is_record_high === true;
+        let fuel = 0;
+        if (ups === 3) fuel += 2; else if (ups === 2) fuel += 1;
+        if (yoy != null && yoy >= 20) fuel += 2; else if (yoy != null && yoy >= 5) fuel += 1;
+        if (recHigh) fuel += 1;
+        if (inst.instLots10 > 0 && inst.instDays >= 5) fuel += 1;
+        const lamp = fuel >= 4 ? { e: '🟢', t: '燃料飽', c: 'text-red-300' } : fuel >= 2 ? { e: '🟡', t: '燃料部分', c: 'text-yellow-300' } : { e: '🔴', t: '燃料不足', c: 'text-gray-400' };
+        const bits = [];
+        if (tri) bits.push(tri);
+        if (yoy != null) bits.push(`營收YoY ${yoy >= 0 ? '+' : ''}${yoy.toFixed(0)}%`);
+        if (recHigh) bits.push('創營收新高');
+        if (inst.instLots10 > 0) bits.push(`法人10日買超${Math.round(inst.instLots10)}張${inst.instStreak >= 2 ? `(連${inst.instStreak}買)` : ''}`);
+        const detail = bits.length ? bits.join(' · ') : '基本面資料整備中(冷門股採礦補齊後顯示)';
+        box.innerHTML = `<div class="flex items-center gap-1.5 flex-wrap"><span class="${lamp.c} font-bold">⛽ 獲利燃料:${lamp.e}${lamp.t}</span><span class="text-gray-500">${detail}</span></div>
+            <div class="text-[9px] text-gray-600 mt-0.5">主升段要有「獲利跳」當燃料才走得遠;純技術突破而無燃料 = 信心較弱的反彈。</div>`;
     },
     // 🎯 V47.3 — K線頁「今日觸發型態 × 本股回測勝率」條(與每日提醒同源,純公式)
     //   便宜前置篩:今日沒觸發任何型態就回空字串(不跑重回測);有觸發才拿該股回測統計
@@ -20530,6 +20804,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this.renderKbarTactics(data); } catch (_) {}
         try { this.renderHeavyReboundCard(data); } catch (_) {}  // 🏋️ V44.1 權值股超跌反彈告警
         try { this.renderChuKbarVerdict(data); } catch (_) {}  // 🗣️ V43.5 朱老師口吻 K線型態總評(純公式,點進K線頁即見)
+        try { this.renderMainRiseCard(data); } catch (_) {}    // 🎢 V48.0 主升段體檢(階段判定+獲利燃料)
         // V43.7 移除:📐 K線分析報告(AI) + 🕯️ K線型態+量評分 → 由上方朱老師口吻總評取代
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
         try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日作戰指令(首席頁置頂)
