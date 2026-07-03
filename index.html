@@ -14,7 +14,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>首席 AI 司令部 | 戰略終端 V46.8</title>
+    <title>首席 AI 司令部 | 戰略終端 V46.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -873,7 +873,10 @@
     <div id="aiGodModal" class="hidden fixed inset-0 z-[200] bg-[#0d1117] flex flex-col" style="padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);">
         <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] flex-shrink-0">
             <span class="text-lg font-black text-gray-100">🤖 AI 股神 <span id="aiGodModeBadge" class="text-[10px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1.5 py-0.5 align-middle">庫存股</span></span>
-            <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <button onclick="const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[10px] font-bold border border-amber-700/40 rounded px-2 py-1 leading-none" title="散戶實戰作戰手冊">📖 手冊</button>
+                <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
+            </div>
         </div>
         <div id="aiGodSubtitle" class="flex items-center gap-2 px-4 py-2 text-[9px] text-gray-600 flex-shrink-0"><span class="flex-1 border-t border-[#21262d]"></span>歡迎回來 · 逐檔純公式解析<span class="flex-1 border-t border-[#21262d]"></span></div>
         <div id="aiGodChat" class="flex-1 overflow-y-auto px-3 pb-3 space-y-3 scrollbar-hide"></div>
@@ -899,7 +902,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.8</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V46.9</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -909,8 +912,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2.5 flex-shrink-0">
-                <!-- 📖 散戶實戰作戰手冊 -->
-                <button onclick="event.stopPropagation(); const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[1.55rem] transition-colors flex-shrink-0 leading-none" title="散戶實戰作戰手冊">📖</button>
+                <!-- 📖 手冊已移入 🤖 AI 股神 彈窗(V46.9,置頂騰空間避免 🔔 溢出) -->
                 <!-- ⚙️ 設定 -->
                 <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.55rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
                 <!-- 🔔 提醒(SVG line icon,有紅點 badge) -->
@@ -2194,15 +2196,15 @@
 <!-- 💡 操作提示行 V44.6 已刪除(使用者要求版面乾淨) -->
                     <!-- V46.2 — 恢復左右滑動(寬版多欄水平 scroll);表頭排序 ⇅ 靠最右、文字置中、作用中方向琥珀色 -->
                     <div class="overflow-x-auto scrollbar-hide">
-                        <div class="min-w-[712px]">
-                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[148px_82px_92px_104px_66px_104px_92px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
-                                <span class="cursor-pointer hover:text-white flex items-center justify-between gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span>今日損益</span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('price')"><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('total')"><span id="invSortIcon_total" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">總損益<br><span class="text-[9px] opacity-80">報酬率</span></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('shares')"><span id="invSortIcon_shares" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span>股數</span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('cost')"><span id="invSortIcon_cost" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">均價<br><span class="text-[9px] opacity-80">總成本</span></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('marketval')"><span id="invSortIcon_marketval" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span><span class="leading-tight">市值<br><span class="text-[9px] opacity-80">佔比</span></span></span>
+                        <div class="min-w-[606px]">
+                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[120px_70px_78px_88px_54px_90px_82px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
+                                <span class="cursor-pointer hover:text-white flex items-center gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span>今日損益</span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('price')"><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('total')"><span class="leading-tight">總損益<br><span class="text-[9px] opacity-80">報酬率</span></span><span id="invSortIcon_total" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('shares')"><span>股數</span><span id="invSortIcon_shares" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('cost')"><span class="leading-tight">均價<br><span class="text-[9px] opacity-80">總成本</span></span><span id="invSortIcon_cost" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('marketval')"><span class="leading-tight">市值<br><span class="text-[9px] opacity-80">佔比</span></span><span id="invSortIcon_marketval" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                             </div>
                             <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                         </div>
@@ -2372,15 +2374,15 @@
         <!-- V45.0 — 底部 nav 重排(庫存>自選>全球>雷達>獵殺>ETF)+ 隱藏診斷 + 放大按鈕(對標券商App) -->
         <nav class="flex justify-around items-center text-gray-500 w-full max-w-7xl mx-auto h-[64px]">
             <!-- 診斷 tab 仍可由 🤖/點個股 跳轉,nav 按鈕隱藏(使用者要求) -->
-            <button onclick="app.switchAppTab('diag'); app.vibrate(30);" id="navBtnDiag" class="nav-btn hidden flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow">🎯</span><span class="text-[11px] mt-0.5 font-bold">診斷</span></button>
-            <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-3xl drop-shadow">💼</span><span class="text-[11px] mt-0.5 font-bold">庫存</span></button>
-            <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[11px] mt-0.5 font-bold">自選</span></button>
-            <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">大盤</span></button>
-            <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
-            <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-3xl drop-shadow grayscale-[80%]">⚔️</span><span class="text-[11px] mt-0.5 font-bold">獵殺</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
-            <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-3xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
+            <button onclick="app.switchAppTab('diag'); app.vibrate(30);" id="navBtnDiag" class="nav-btn hidden flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow">🎯</span><span class="text-[11px] mt-0.5 font-bold">診斷</span></button>
+            <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-xl drop-shadow">💼</span><span class="text-[11px] mt-0.5 font-bold">庫存</span></button>
+            <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[11px] mt-0.5 font-bold">自選</span></button>
+            <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">大盤</span></button>
+            <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
+            <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">⚔️</span><span class="text-[11px] mt-0.5 font-bold">獵殺</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
+            <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
             <!-- 💎 V46.4 — 長線潛力股(低基期翻倍/便宜成長/籌碼默默吸/技術打底,純公式零採礦) -->
-            <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-3xl drop-shadow grayscale-[80%]">💎</span><span class="text-[11px] mt-0.5 font-bold">潛力</span></button>
+            <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">💎</span><span class="text-[11px] mt-0.5 font-bold">潛力</span></button>
         </nav>
     </div>
 
@@ -22464,7 +22466,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const _prevP = this._invPrevPrices[item.symbol];
             const priceFlash = (_prevP != null && price !== _prevP) ? (price > _prevP ? 'price-flash-up' : 'price-flash-down') : '';
             this._invPrevPrices[item.symbol] = price;
-            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[148px_82px_92px_104px_66px_104px_92px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[120px_70px_78px_88px_54px_90px_82px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                 <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
