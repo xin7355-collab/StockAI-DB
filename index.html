@@ -9,13 +9,13 @@
     <!-- V17.0 — PWA installable(Android Chrome 桌面安裝;iOS 已有 apple-mobile-web-app-capable)-->
     <meta name="theme-color" content="#3b82f6">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%230d1117'/%3E%3Ctext x='90' y='125' font-size='130' text-anchor='middle' font-family='Arial'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20512%20512'%3E%3Crect%20width%3D'512'%20height%3D'512'%20fill%3D'%230d1117'%2F%3E%3Cg%20stroke-linecap%3D'round'%3E%3Cline%20x1%3D'150'%20y1%3D'300'%20x2%3D'150'%20y2%3D'384'%20stroke%3D'%2322c55e'%20stroke-width%3D'13'%2F%3E%3Crect%20x%3D'132'%20y%3D'318'%20width%3D'36'%20height%3D'58'%20rx%3D'6'%20fill%3D'%2322c55e'%2F%3E%3Cline%20x1%3D'256'%20y1%3D'250'%20x2%3D'256'%20y2%3D'366'%20stroke%3D'%23ef4444'%20stroke-width%3D'13'%2F%3E%3Crect%20x%3D'238'%20y%3D'272'%20width%3D'36'%20height%3D'76'%20rx%3D'6'%20fill%3D'%23ef4444'%2F%3E%3Cline%20x1%3D'362'%20y1%3D'186'%20x2%3D'362'%20y2%3D'304'%20stroke%3D'%2322c55e'%20stroke-width%3D'13'%2F%3E%3Crect%20x%3D'344'%20y%3D'206'%20width%3D'36'%20height%3D'84'%20rx%3D'6'%20fill%3D'%2322c55e'%2F%3E%3C%2Fg%3E%3Cpath%20d%3D'M100%20346%20L206%20300%20L300%20240%20L420%20144'%20fill%3D'none'%20stroke%3D'%23fbbf24'%20stroke-width%3D'24'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3Cpath%20d%3D'M384%20150%20L420%20144%20L414%20182'%20fill%3D'none'%20stroke%3D'%23fbbf24'%20stroke-width%3D'24'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E">
     <!-- PWA 同步：禁止瀏覽器 HTTP cache，配合 sw.js 動態 JSON 純網路策略，確保改完立刻見效 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -294,7 +294,29 @@
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
             <div class="space-y-4 mb-6">
-                
+
+                <!-- 📦 V48.4 — 資料保險箱移到最上面(使用者要求);備份加密單一檔、可選檔還原 -->
+                <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
+                    <label class="text-sm font-bold text-blue-400">📦 資料保險箱 (備份還原)</label>
+                    <p class="text-[10px] text-gray-500 leading-tight">🔐 備份檔已加密(<b>.sjbak</b> 單一檔),一般人用文字編輯器打開是亂碼、看不到你的持股/金鑰;還原可「選檔案」或貼代碼。</p>
+                    <div class="grid grid-cols-3 gap-2 mb-1">
+                        <button onclick="app.exportData(); app.vibrate(50);" class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📤<br>一鍵備份</button>
+                        <button onclick="app.openImportPanel(); app.vibrate(50);" class="bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📥<br>還原備份</button>
+                        <button onclick="app.clearAllLocalData(); app.vibrate(80);" class="bg-red-900/70 hover:bg-red-800 text-white text-xs py-2 rounded font-bold transition leading-tight border border-red-700">🗑️<br>一鍵刪除</button>
+                    </div>
+                    <div id="exportAreaContainer" class="hidden flex flex-col gap-1.5 mt-1 bg-blue-950/30 border border-blue-800/50 rounded p-2">
+                        <input type="file" id="paBackupFile" accept=".sjbak,.txt,.json" class="hidden" onchange="app._importBackupFile(event)">
+                        <button onclick="document.getElementById('paBackupFile').click(); app.vibrate(30);" class="w-full bg-blue-800/60 hover:bg-blue-700 text-white text-xs py-2 rounded font-bold transition border border-blue-600">📂 選備份檔(.sjbak)還原</button>
+                        <p class="text-[10px] text-blue-300 leading-tight">或把備份代碼貼進下面,按「✅ 確認還原」</p>
+                        <textarea id="exportArea" class="w-full h-20 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="貼上備份代碼(或用上面選檔案)..."></textarea>
+                        <div class="flex gap-1.5">
+                            <button onclick="app.confirmImportData(); app.vibrate(50);" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-xs py-1.5 rounded font-bold transition">✅ 確認還原</button>
+                            <button onclick="app.copyExportData(); app.vibrate(30);" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1.5 rounded font-bold transition">📋 複製</button>
+                            <button onclick="document.getElementById('exportAreaContainer').classList.add('hidden'); app.vibrate(30);" class="bg-gray-800 hover:bg-gray-700 text-white text-xs px-2 py-1.5 rounded font-bold transition border border-gray-600">取消</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex flex-col gap-1 pt-1 border-b border-gray-700 pb-4">
                     <label class="text-xs font-bold text-indigo-400">🧠 AI 戰略靈魂編輯器 (Prompt)</label>
                     <p class="text-[10px] text-gray-500 leading-tight mb-1">自訂分析風格，真實數據會自動餵入下方指令中。</p>
@@ -509,25 +531,8 @@
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
-                    <label class="text-sm font-bold text-blue-400">📦 資料保險箱 (備份還原)</label>
-                    <p class="text-[10px] text-gray-500 leading-tight">V16.8 改一鍵流:備份自動複製+下載檔案;還原顯預覽再確認;刪除 2 段防呆。</p>
-                    <!-- V16.8 — 3 鈕並排:備份 / 還原 / 刪除(取代舊版「產生備份」textarea 兩段式)-->
-                    <div class="grid grid-cols-3 gap-2 mb-1">
-                        <button onclick="app.exportData(); app.vibrate(50);" class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📤<br>一鍵備份</button>
-                        <button onclick="app.openImportPanel(); app.vibrate(50);" class="bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📥<br>還原備份</button>
-                        <button onclick="app.clearAllLocalData(); app.vibrate(80);" class="bg-red-900/70 hover:bg-red-800 text-white text-xs py-2 rounded font-bold transition leading-tight border border-red-700">🗑️<br>一鍵刪除</button>
-                    </div>
-                    <!-- 還原備份面板(預設隱藏,點「還原備份」才展開)-->
-                    <div id="exportAreaContainer" class="hidden flex flex-col gap-1.5 mt-1 bg-blue-950/30 border border-blue-800/50 rounded p-2">
-                        <p class="text-[10px] text-blue-300 leading-tight">📋 把備份代碼貼進下面,按「✅ 確認還原」</p>
-                        <textarea id="exportArea" class="w-full h-24 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="請將備份代碼貼於此處..."></textarea>
-                        <div class="flex gap-1.5">
-                            <button onclick="app.confirmImportData(); app.vibrate(50);" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-xs py-1.5 rounded font-bold transition">✅ 確認還原</button>
-                            <button onclick="app.copyExportData(); app.vibrate(30);" class="bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1.5 rounded font-bold transition">📋 複製</button>
-                            <button onclick="document.getElementById('exportAreaContainer').classList.add('hidden'); app.vibrate(30);" class="bg-gray-800 hover:bg-gray-700 text-white text-xs px-2 py-1.5 rounded font-bold transition border border-gray-600">取消</button>
-                        </div>
-                    </div>
-                    <div class="border-t border-gray-700/50 pt-3 mt-1">
+                    <!-- 📦 資料保險箱已移到設定最上方(V48.4) -->
+                    <div class="pt-1">
                         <label class="text-xs font-bold text-purple-400">📊 預測歷史快照(隔日驗證)</label>
                         <div id="predHistSummary" class="text-[10px] text-gray-500 mt-1 mb-2 leading-tight">尚未累積</div>
                         <div class="flex gap-2">
@@ -904,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.3</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.4</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1012,7 +1017,7 @@
                         </div>
                         <span id="favStarIcon" class="cursor-pointer text-2xl text-gray-500 transition-transform hover:scale-110 leading-none flex-shrink-0" onclick="app.toggleFavorite(); app.vibrate(30);">☆</span>
                         <!-- 🔔 V45.5 — 到價監控:🚨 emoji 換成右上角同款鈴鐺 SVG line icon -->
-                        <button id="priceAlertIcon" class="cursor-pointer text-gray-500 hover:text-amber-300 transition-colors leading-none flex-shrink-0 p-0.5" title="設定到價監控,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">
+                        <button id="priceAlertIcon" class="cursor-pointer text-amber-300 hover:text-amber-200 transition-colors leading-none flex-shrink-0 p-0.5" title="設定到價監控,觸發推 Telegram + 通知" onclick="app.openPriceAlertModal(app.currentSymbolId); app.vibrate(30);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                         </button>
                     </div>
@@ -5994,6 +5999,40 @@ ${list}
     },
 
     // V16.8 — 一鍵備份:直接複製剪貼簿 + 自動下載 .txt 檔(不再先展 textarea 兩段式)
+    // 🔐 V48.4 — 備份輕度混淆(非軍事級,目的:一般人用文字編輯器打開是亂碼、看不到你的持股/金鑰)
+    //   格式:'SJB1' + base64( XOR(utf8bytes, keybytes) )。匯入相容舊版純 base64。
+    _backupKey: 'SJ-首席戰情-備份金鑰-2026',
+    _obfuscate(jsonStr) {
+        try {
+            const bin = unescape(encodeURIComponent(jsonStr));
+            const kb = unescape(encodeURIComponent(this._backupKey));
+            let out = '';
+            for (let i = 0; i < bin.length; i++) out += String.fromCharCode(bin.charCodeAt(i) ^ kb.charCodeAt(i % kb.length));
+            return 'SJB1' + btoa(out);
+        } catch (_) { return btoa(unescape(encodeURIComponent(jsonStr))); }
+    },
+    _deobfuscate(code) {
+        code = (code || '').trim();
+        if (code.startsWith('SJB1')) {
+            const raw = atob(code.slice(4));
+            const kb = unescape(encodeURIComponent(this._backupKey));
+            let out = '';
+            for (let i = 0; i < raw.length; i++) out += String.fromCharCode(raw.charCodeAt(i) ^ kb.charCodeAt(i % kb.length));
+            return decodeURIComponent(escape(out));
+        }
+        // 舊版純 base64 相容
+        return decodeURIComponent(escape(atob(code)));
+    },
+    // 📂 選備份檔還原:讀檔內容塞進還原文字框,再按「確認還原」
+    _importBackupFile(e) {
+        const f = e.target && e.target.files && e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = () => { const area = document.getElementById('exportArea'); if (area) area.value = String(r.result || '').trim(); this.showToast?.('✅ 已讀入備份檔,按下方「✅ 確認還原」'); };
+        r.onerror = () => this.showToast?.('❌ 讀檔失敗,請改用「複製代碼貼上」');
+        r.readAsText(f);
+        e.target.value = '';
+    },
     exportData() {
         this.saveSettings();
         const data = {
@@ -6007,21 +6046,21 @@ ${list}
                 fav_groups_count: Object.keys(this.favGroups || {}).length,
             }
         };
-        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+        const encoded = this._obfuscate(JSON.stringify(data));   // V48.4 輕度混淆,一般人打不開看不到內容
 
-        // 同時做 3 件事:① 複製剪貼簿 ② 下載 .txt ③ 顯 toast
+        // 同時做 3 件事:① 複製剪貼簿 ② 下載檔案 ③ 顯 toast
         const _copyPromise = (navigator.clipboard && navigator.clipboard.writeText)
             ? navigator.clipboard.writeText(encoded).then(() => true).catch(() => false)
             : Promise.resolve(false);
 
-        // 下載 .txt 檔(免剪貼簿備份,跨手機/雲端硬碟皆可)
+        // 下載 .sjbak 檔(混淆過,單一檔案,跨手機/雲端硬碟皆可)
         try {
             const today = new Date().toISOString().slice(0, 10);
-            const blob = new Blob([encoded], { type: 'text/plain;charset=utf-8' });
+            const blob = new Blob([encoded], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `stockai_backup_${today}.txt`;
+            a.download = `首席備份_${today}.sjbak`;
             document.body.appendChild(a);
             a.click();
             setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
@@ -6031,8 +6070,8 @@ ${list}
             const invN = data._meta.inv_count, favN = data._meta.fav_groups_count;
             this.showToast(
                 copied
-                    ? `✅ 已複製剪貼簿 + 下載備份檔(${invN} 檔持股 / ${favN} 自選群組)`
-                    : `✅ 已下載備份檔 stockai_backup_${new Date().toISOString().slice(0,10)}.txt(${invN} 檔持股 / ${favN} 自選群組)`,
+                    ? `✅ 已下載備份檔(.sjbak)+ 複製剪貼簿(${invN} 檔持股 / ${favN} 自選群組)・ 已加密,一般人打不開`
+                    : `✅ 已下載備份檔 首席備份_${new Date().toISOString().slice(0,10)}.sjbak(${invN} 檔持股 / ${favN} 自選群組)`,
                 'info'
             );
         });
@@ -6066,8 +6105,8 @@ ${list}
         if (!str) { this.showToast('📥 請將備份代碼貼入文字框內'); return; }
         let data;
         try {
-            data = JSON.parse(decodeURIComponent(escape(atob(str))));
-        } catch (e) { this.showToast('❌ 代碼解析失敗 — 請確認貼上完整的備份代碼'); return; }
+            data = JSON.parse(this._deobfuscate(str));   // V48.4 支援新混淆檔 + 舊 base64
+        } catch (e) { this.showToast('❌ 備份檔解析失敗 — 請確認選對 .sjbak 檔或貼上完整代碼'); return; }
 
         // 預覽要還原什麼,給使用者最後確認機會
         const invN  = Object.keys(data?.inv || {}).length;
@@ -18540,9 +18579,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const pa = document.getElementById('priceAlertIcon');
         if (pa) {
             const conds = (this.priceAlerts || []).filter(a => a.sym === this.currentSymbolId && a.enabled !== false);
-            pa.classList.toggle('opacity-40', conds.length === 0);
-            pa.classList.toggle('text-amber-400', conds.length > 0);   // V45.5 鈴鐺:已設監控 → 亮琥珀色
-            pa.classList.toggle('text-gray-500', conds.length === 0);
+            // V48.4 — 鈴鐺一律亮琥珀(對齊置頂鈴鐺,不再變暗);已設監控更亮一階
+            pa.classList.remove('opacity-40', 'text-gray-500');
+            pa.classList.toggle('text-amber-400', conds.length > 0);
+            pa.classList.toggle('text-amber-300', conds.length === 0);
             if (conds.length > 0) {
                 const parts = conds.map(c => `${c.cond === 'gte' ? '≥' : '≤'} ${c.price}`);
                 pa.title = `🚨 已設 ${conds.length} 筆監控:${parts.join(' · ')} · 點擊管理`;
@@ -25472,12 +25512,45 @@ ${_chuPosPlan}
     },
     // 💤 懶人快設:依現價一鍵算觸發價(現價/±%),並自動選好 ≥/≤ 條件
     _paQuickSet(pct) {
-        const cur = this._lastPriceFor(this._paCurrentSym);
+        const cur = this._paCurPrice > 0 ? this._paCurPrice : this._lastPriceFor(this._paCurrentSym);
         if (!(cur > 0)) { this.showToast?.('目前價抓不到,請直接手動輸入'); return; }
         let target = pct === 0 ? cur : cur * (1 + pct / 100);
         target = this._roundTick(target);
         this._paPrice = target;
         this._paCond = (target >= cur) ? 'gte' : 'lte';   // 高於現價=漲到才通知;低於=跌到才通知
+        this.vibrate?.(15);
+        this._renderPriceAlertModal();
+    },
+    // 🎯 V48.4 — 均線快設:把觸發價設成該股 5/10/20 日均線現值(當前股用 activeData,其它股 fetch)
+    async _paQuickSetMA(period) {
+        const sym = this._paCurrentSym;
+        let kl = (sym === this.currentSymbolId && Array.isArray(this.activeData) && this.activeData.length) ? this.activeData : null;
+        if (!kl) { try { kl = await this.fetchHistoricalData(sym, false); } catch (_) {} }
+        const closes = (Array.isArray(kl) ? kl : []).map(b => +((b.close ?? b.c) || 0)).filter(v => v > 0);
+        if (closes.length < period) { this.showToast?.(`資料不足,算不出 ${period}MA`); return; }
+        const ma = closes.slice(-period).reduce((a, b) => a + b, 0) / period;
+        const target = this._roundTick(ma);
+        this._paPrice = target;
+        const cur = this._paCurPrice > 0 ? this._paCurPrice : this._lastPriceFor(sym);
+        if (cur > 0) this._paCond = target >= cur ? 'gte' : 'lte';
+        this.vibrate?.(15);
+        this._renderPriceAlertModal();
+    },
+    // 🔎 V48.4 — 到價監控搜尋改股:輸入代號或股名 → 換成該股(反查 allStockList),補抓現價
+    async _paSearchStock(q) {
+        q = String(q || '').trim();
+        if (!q) return;
+        let sym = null;
+        if (/^\d{4,6}$/.test(q)) sym = q;
+        else { const hit = (this.allStockList || []).find(s => s.stock_id === q || (this.getStockName?.(s.stock_id) || '').includes(q)); sym = hit ? hit.stock_id : null; }
+        if (!sym) { this.showToast?.(`找不到「${q}」,請輸入股名或代號`); return; }
+        this._paCurrentSym = String(sym).trim().toUpperCase();
+        this._paEditingId = null;
+        this._paCond = 'gte';
+        let cur = this._lastPriceFor(this._paCurrentSym);
+        if (!(cur > 0)) { try { const kl = await this.fetchHistoricalData(this._paCurrentSym, false); if (Array.isArray(kl) && kl.length) cur = +((kl[kl.length - 1].close ?? kl[kl.length - 1].c) || 0); } catch (_) {} }
+        this._paCurPrice = cur > 0 ? cur : 0;
+        this._paPrice = cur > 0 ? this._roundTick(cur) : 0;
         this.vibrate?.(15);
         this._renderPriceAlertModal();
     },
@@ -25487,6 +25560,7 @@ ${_chuPosPlan}
         this._paEditingId = null;
         this._paCond = 'gte';
         const cur = this._lastPriceFor(sym);
+        this._paCurPrice = cur > 0 ? cur : 0;
         this._paPrice = cur > 0 ? cur : 0;
         // 沒選股 → 直接開「全部監控」分頁
         this._paTab = sym ? 'set' : 'all';
@@ -25587,10 +25661,16 @@ ${_chuPosPlan}
         const editing = !!this._paEditingId;
         const cond = this._paCond || 'gte';
         const price = +this._paPrice || 0;
-        const curVal = this._lastPriceFor(sym);
-        const cur = curVal > 0 ? curVal : null;
+        const cur = (this._paCurPrice > 0) ? this._paCurPrice : null;
         const condBtn = (val, label) => `<button onclick="app._paSetCond('${val}')" class="flex-1 py-2 rounded text-sm font-bold transition ${cond===val?'bg-amber-700/60 text-white border border-amber-500':'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700'}">${label}</button>`;
         const qChip = (pct, label, col) => `<button onclick="app._paQuickSet(${pct})" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition ${col} whitespace-nowrap">${label}</button>`;
+        // 📐 均線快設(觸發價 = 該股 5/10/20 日均線現值;不依賴現價,偵測器自算)
+        const maChip = (p, label) => `<button onclick="app._paQuickSetMA(${p})" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold border bg-blue-900/30 text-blue-200 border-blue-800/50 whitespace-nowrap">${label}</button>`;
+        const maRow = sym ? `
+                <div class="bg-[#0d1117] border border-blue-900/40 rounded-lg p-2.5">
+                    <div class="text-[11px] text-blue-300 font-bold mb-2">📐 均線快設<span class="text-[9px] text-gray-500 font-normal">(觸發價設成該股均線現值)</span></div>
+                    <div class="flex flex-wrap gap-1.5">${maChip(5, '5 日線')}${maChip(10, '10 日線')}${maChip(20, '20 日線(月線)')}</div>
+                </div>` : '';
         const lazyRow = cur != null ? `
                 <div class="bg-[#0d1117] border border-cyan-900/40 rounded-lg p-2.5">
                     <div class="text-[11px] text-cyan-300 font-bold mb-2">💤 懶人快設<span class="text-[9px] text-gray-500 font-normal">(依現價 ${cur.toFixed(2)} 一鍵算,免慢慢按)</span></div>
@@ -25608,14 +25688,20 @@ ${_chuPosPlan}
         return `
             <div class="flex flex-col gap-3">
                 <div class="bg-[#0d1117] border border-amber-900/40 rounded-lg p-3">
-                    <div class="text-[10px] text-gray-500 mb-0.5">股票</div>
-                    <div class="flex items-baseline justify-between">
-                        <div class="text-lg font-black text-amber-200">${cname}</div>
-                        <div class="text-xs text-gray-500 font-mono">${sym}</div>
+                    <div class="text-[10px] text-gray-500 mb-1">股票<span class="text-gray-600">(可搜尋換股)</span></div>
+                    <div class="flex items-center gap-2 bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-1.5">
+                        <span class="text-gray-500 text-sm">🔎</span>
+                        <input id="paSearchInput" type="search" enterkeyhint="search" placeholder="輸入代號或股名換股…" onkeydown="if(event.key==='Enter'){event.preventDefault();app._paSearchStock(this.value);}" class="flex-1 bg-transparent text-sm text-gray-100 outline-none min-w-0">
+                        <button onclick="app._paSearchStock(document.getElementById('paSearchInput').value)" class="text-[11px] text-cyan-300 font-bold flex-shrink-0 px-1">查</button>
                     </div>
-                    ${cur != null ? `<div class="text-[11px] text-gray-400 mt-1">目前價 <span class="text-cyan-300 font-bold">${cur.toFixed(2)}</span></div>` : ''}
+                    <div class="flex items-baseline justify-between mt-2">
+                        <div class="text-lg font-black text-amber-200">${cname || '未選股'}</div>
+                        <div class="text-xs text-gray-500 font-mono">${sym || ''}</div>
+                    </div>
+                    ${cur != null ? `<div class="text-[11px] text-gray-400 mt-1">目前價 <span class="text-cyan-300 font-bold">${cur.toFixed(2)}</span></div>` : (sym ? '<div class="text-[10px] text-gray-600 mt-1">(現價抓不到,可用均線快設或手動設觸發價)</div>' : '')}
                 </div>
                 ${lazyRow}
+                ${maRow}
                 <div>
                     <div class="text-[11px] text-gray-400 mb-1.5 font-bold">觸發條件</div>
                     <div class="flex gap-2">
