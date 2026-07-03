@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V47.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V47.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -904,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.1</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.2</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -3357,6 +3357,29 @@ const app = {
             this._fireAlert(`${emo} ${s.title}`, `${name}(${sym}) ${String(s.msg || '').slice(0, 90)}`, sym);
         }
     },
+    // 🎯 V47.2 — 回測勝率型態觸發提醒:今日觸發「該股主打(正期望值)型態」就推,附本股歷史勝率/賺賠比/期望值
+    //   便宜前置篩(今日沒訊號直接跳,不跑重回測);只推 前3主打 + 期望值>0 + 樣本≥5,避免洗頻
+    _winRatePatternTryFire(sym, name, kdata) {
+        if (!Array.isArray(kdata) || kdata.length < 80) return;
+        const firedToday = this._playbookSignalsToday(kdata);
+        if (!firedToday.length) return;                 // 今天沒任何候選型態 → 不跑回測
+        const firedSet = new Set(firedToday);
+        let ranked; try { ranked = this._patternFitBacktest(kdata); } catch (_) { return; }
+        if (!ranked || !ranked.length) return;
+        const top3 = new Set(ranked.slice(0, 3).filter(r => r.expectancy > 0).map(r => r.key));
+        for (const r of ranked) {
+            if (!firedSet.has(r.key)) continue;
+            if (!(r.expectancy > 0 && r.count >= 5 && top3.has(r.key))) continue;   // 只推主打+正期望+樣本足
+            const dkey = `wr_${sym}_${r.key}`;
+            if (this._kbarFiredToday(dkey)) continue;
+            const nm = r.key.replace(/^\S+\s/, '');
+            const wr = r.winRate.toFixed(0);
+            const pl = r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1);
+            const ev = (r.expectancy >= 0 ? '+' : '') + r.expectancy.toFixed(1);
+            this._fireAlert(`🎯 主打型態觸發｜${nm}`,
+                `${name}(${sym}) 今日觸發!此型態在本股歷史 勝率 ${wr}%・賺賠比 ${pl}・每趟期望值 ${ev}%(${r.count} 次)→ 正期望主打,依紀律進場,跌破 5MA 或成本 -5% 就出`, sym);
+        }
+    },
     // 📐 V36.5 — 每日開 App(含盤後)掃自選+庫存,觸發 K棒戰法/量能型態就推(純讀 IDB K線,免 Fugle)
     async _kbarDailySweep() {
         if (!this.settings.watchlistAlert) return;
@@ -3373,6 +3396,8 @@ const app = {
                 const cached = await this.idb.get(`proTerm_kline_${sym}`);
                 const kdata = cached?.data;
                 if (kdata && kdata.length >= 8) this._kbarTryFire(sym, this.getStockName(sym) || sym, kdata);
+                // 🎯 V47.2 回測勝率型態觸發提醒(便宜前置篩,今日有主打訊號才跑回測)
+                if (kdata && kdata.length >= 80) { try { this._winRatePatternTryFire(sym, this.getStockName(sym) || sym, kdata); } catch (_) {} }
                 // 💼 V36.7 — 庫存股每日體檢:轉 🔴偏空 或 跌破成本-5% 鐵血停損 → 推「顧停損」(每日去重)
                 if (heldSet.has(sym) && kdata && kdata.length >= 20) {
                     const name = this.getStockName(sym) || sym;
@@ -21081,14 +21106,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         return { tag, desc, vol, eff, gaps };
     },
 
-    // 🎯 V41.31 — 型態實戰回測:對這檔歷史逐根測每個進場型態(訊號日收盤進、跌破5MA或-5%停損出),排勝率+期望值
-    _patternFitBacktest(data) {
-        if (!Array.isArray(data) || data.length < 80) return null;
-        const last = data.length - 1;
-        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+    // 🎯 V41.31 — 進場型態定義(單一來源,回測與「今日觸發」共用,避免兩份不同步)
+    //   每個 {key, test(i)}:test 回傳「第 i 根收盤時該型態是否成立」
+    _playbookPatternDefs(data) {
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0);
         const sub = i => data.slice(0, i + 1);
         const anyBull = (fn, i, re) => { try { return (this[fn](sub(i)) || []).some(s => s.tone === 'bull' && (!re || re.test(s.title || ''))); } catch (_) { return false; } };
-        const P = [
+        return [
             { key: '🎯 回後買上漲', test: i => anyBull('_detectChuLongEntry', i, /做多買點/) },
             { key: '🌅 晨星轉折',   test: i => { try { const m = this._matchStarAt(data, i); return !!(m && m.tone === 'bull'); } catch (_) { return false; } } },
             { key: '🔨 長紅吞噬/貫穿', test: i => { try { const m = this._match2BarAt(data, i); return !!(m && m.tone === 'bull'); } catch (_) { return false; } } },
@@ -21099,6 +21123,19 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             { key: '📐 均線扣抵翻揚', test: i => anyBull('_detectMaKoudi', i) },
             { key: '💪 發動棒破昨高', test: i => { const o = O(data[i]), c = C(data[i]); return i > 0 && o > 0 && (c - o) / o * 100 >= 3 && c > H(data[i - 1]); } },
         ];
+    },
+    // 🔔 便宜檢查:今天(最後一根)觸發了哪些型態(不跑回測,只跑一次偵測器)→ 給每日提醒當前置篩
+    _playbookSignalsToday(data) {
+        if (!Array.isArray(data) || data.length < 80) return [];
+        const last = data.length - 1;
+        return this._playbookPatternDefs(data).filter(p => { try { return !!p.test(last); } catch (_) { return false; } }).map(p => p.key);
+    },
+    // 🎯 V41.31 — 型態實戰回測:對這檔歷史逐根測每個進場型態(訊號日收盤進、跌破5MA或-5%停損出),排勝率+期望值
+    _patternFitBacktest(data) {
+        if (!Array.isArray(data) || data.length < 80) return null;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const P = this._playbookPatternDefs(data);
         const bt = test => {
             const trades = [];
             let i = 45;
@@ -21128,7 +21165,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const avgLoss = losses.length ? losses.reduce((a, b) => a + b, 0) / losses.length : 0;
             return { count: n, winRate: wins.length / n * 100, expectancy: trades.reduce((a, b) => a + b, 0) / n, plRatio: avgLoss < 0 ? Math.abs(avgWin / avgLoss) : (avgWin > 0 ? 99 : 0) };
         };
-        const ranked = P.map(p => { const r = bt(p.test); return r ? { key: p.key, ...r } : null; }).filter(Boolean).sort((a, b) => b.expectancy - a.expectancy);
+        const ranked = P.map(p => {
+            const r = bt(p.test);
+            if (!r) return null;
+            let firedToday = false; try { firedToday = !!p.test(last); } catch (_) {}
+            return { key: p.key, firedToday, ...r };
+        }).filter(Boolean).sort((a, b) => b.expectancy - a.expectancy);
         return ranked;
     },
 
@@ -21153,10 +21195,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 this._lastPlaybook = { ranked, per };   // 供點型態看教學時取用(含快取還原)
                 const rows = ranked.map((r, idx) => {
                     const star = (idx < 3 && r.expectancy > 0) ? ' <span class="text-amber-300">⭐主打</span>' : (r.expectancy <= -0.3 && r.count >= 4 ? ' <span class="text-green-400">⚠️避開</span>' : '');
+                    // 🔔 V47.2 今日觸發標記(主打+正期望才綠燈亮眼,否則灰提示)
+                    const todayTag = r.firedToday
+                        ? ((idx < 3 && r.expectancy > 0) ? ' <span class="text-[9px] font-bold bg-red-900/40 text-red-300 border border-red-700/50 rounded px-1 animate-pulse">🔔今日觸發</span>' : ' <span class="text-[9px] font-bold text-gray-400 border border-gray-700 rounded px-1">🔔今日觸發</span>')
+                        : '';
                     const barW = Math.max(4, Math.min(100, 50 + r.expectancy * 20));
                     const barC = r.expectancy > 0.5 ? 'bg-red-400' : r.expectancy >= 0 ? 'bg-yellow-400' : 'bg-green-400';
                     return `<div onclick="app.showPlaybookPatternHelp(${idx})" class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors">
-                        <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star} <span class="text-[9px] text-amber-400/80 font-normal">👆點看怎麼做</span></div>
+                        <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star}${todayTag} <span class="text-[9px] text-amber-400/80 font-normal">👆點看怎麼做</span></div>
                             <div class="text-[9px] text-gray-500 font-mono">勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次</div>
                             <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full ${barC}" style="width:${barW}%"></div></div></div>
                         <div class="font-mono font-black text-right text-sm ${eCol(r.expectancy)}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</div>
