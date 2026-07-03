@@ -1,0 +1,77 @@
+name: 💎 長線潛力股採礦(probe)
+
+# 讀 origin/data 全市場 JSON → 跑 potential_miner.py → data/potential_picks.json
+# deploy=1 時 additive 加進 gh-pages(立即上線);穩定後併進 daily_miner 常態更新。
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: '1=抓完把 potential_picks.json 加進 gh-pages(立即上線)'
+        required: false
+        default: '1'
+
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📂 拉 data 分支全市場 JSON + gh-pages 概念檔
+        run: |
+          git fetch origin data --depth=1 2>&1 || echo "⚠️ data 分支拉取失敗"
+          git checkout FETCH_HEAD -- data/ 2>&1 || echo "⚠️ data/ 取出失敗"
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout origin/gh-pages -- data/concept_stocks.json 2>/dev/null || echo "(gh-pages 無 concept_stocks.json,略過題材因子)"
+          ls data/*.json 2>/dev/null | grep -cE '/[0-9]{4}\.json' | xargs echo "個股 json:"
+
+      - name: 💎 跑潛力股採礦
+        run: python3 potential_miner.py
+
+      - name: 📋 印產物摘要
+        if: always()
+        run: |
+          echo "=== potential_picks.json head ==="
+          head -c 1500 data/potential_picks.json 2>/dev/null || echo "(無檔案)"
+          echo ""
+          ls -la data/potential_picks.json 2>/dev/null || echo "(無檔案)"
+
+      - name: ⬆️ 上傳 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: potential_picks
+          path: data/potential_picks.json
+          if-no-files-found: warn
+
+      - name: 🌐 加進 gh-pages(立即上線,additive;deploy=1 才跑)
+        if: ${{ github.event.inputs.deploy == '1' }}
+        run: |
+          set -e
+          [ -f data/potential_picks.json ] || { echo "無檔案,跳過"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/pp && cp data/potential_picks.json /tmp/pp/
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout gh-pages 2>/dev/null || { echo "gh-pages 不存在,略過(等 daily_miner 建立)"; exit 0; }
+          mkdir -p data && cp /tmp/pp/potential_picks.json data/potential_picks.json
+          git add data/potential_picks.json
+          git diff --cached --quiet && { echo "無變更"; exit 0; }
+          git commit -m "💎 潛力股 potential_picks.json 更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          for i in 1 2 3 4 5; do
+            git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
+            [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+            sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true
+            git pull --rebase origin gh-pages 2>/dev/null || true
+          done
