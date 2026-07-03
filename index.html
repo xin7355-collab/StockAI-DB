@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -904,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.2</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.3</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -13626,11 +13626,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             el.classList.remove('hidden');
             // 燃料(基本面)非同步補,不卡渲染
             const sym = this.currentSymbolId;
-            this._injectMainRiseFuel(sym, { instLots10, instStreak, instDays });
+            this._injectMainRiseFuel(sym, { instLots10, instStreak, instDays }).catch(() => {});
         } catch (e) { console.warn('[mainRise]', e); el.classList.add('hidden'); }
     },
     // 🎢 V48.0 — 主升段「獲利燃料」燈(三率三升 + 營收YoY + 創新高 + 法人買超),async 讀 fundamentals 後注入
     async _injectMainRiseFuel(sym, inst) {
+      try {
         const box = document.getElementById('mainRiseFuel');
         if (!box) return;
         let fund = {};
@@ -13659,6 +13660,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const detail = bits.length ? bits.join(' · ') : '基本面資料整備中(冷門股採礦補齊後顯示)';
         box.innerHTML = `<div class="flex items-center gap-1.5 flex-wrap"><span class="${lamp.c} font-bold">⛽ 獲利燃料:${lamp.e}${lamp.t}</span><span class="text-gray-500">${detail}</span></div>
             <div class="text-[9px] text-gray-600 mt-0.5">主升段要有「獲利跳」當燃料才走得遠;純技術突破而無燃料 = 信心較弱的反彈。</div>`;
+      } catch (_) {}
     },
     // 🎯 V47.3 — K線頁「今日觸發型態 × 本股回測勝率」條(與每日提醒同源,純公式)
     //   便宜前置篩:今日沒觸發任何型態就回空字串(不跑重回測);有觸發才拿該股回測統計
@@ -26349,6 +26351,9 @@ ${_chuPosPlan}
 // V23.2 — 🆘 全域 JS 錯誤捕獲 toast(讓使用者能截圖回報具體錯誤)
 window.addEventListener('error', e => {
     console.error('[全域錯誤]', e.message, (e.filename || '?') + ':' + e.lineno);
+    // V48.3 — 跨域 CDN(echarts/Tailwind)錯誤會被瀏覽器遮成「Script error.」且無行號:非本站程式碼、通常不影響操作,
+    //         不彈紅框嚇使用者(只記 console)。真正本站錯誤一定有訊息+行號 → 照舊彈出可回報。
+    if (!e.message || e.message === 'Script error.' || !e.lineno) return;
     try {
         const existed = document.getElementById('_globalErrToast');
         if (existed) return;   // 同錯誤 30 秒內只顯一次,避免狂彈
