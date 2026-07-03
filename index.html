@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V47.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V47.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -904,7 +904,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.0</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V47.1</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -3255,6 +3255,16 @@ const app = {
 
             if (this.isMarketOpen() && this.currentSymbolId && this.navStack[this.navStack.length - 1] === 'diag') {
                 this.analyze(this.currentSymbolId, true, true, true);
+            }
+            // 📡 V47.1 盤中「即時」分頁自動刷:每 ~30s 重抓盤中K + 即時價(價格跳動 flash),只在真的看即時頁時,省 Fugle 額度
+            if (this.isMarketOpen() && this._activeSubTab === 'live' && this.currentSymbolId
+                && this.navStack[this.navStack.length - 1] === 'diag'
+                && this._intradayLoadedSym === this.currentSymbolId) {
+                const _now = Date.now();
+                if (!this._intradayLastAuto || _now - this._intradayLastAuto > 27000) {
+                    this._intradayLastAuto = _now;
+                    this.loadIntradayKline(this.currentSymbolId, true);
+                }
             }
             if (this.isMarketOpen()) {
                 this.refreshUSMarketBar();
@@ -18708,7 +18718,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         return null;   // 所有 token 都 429
     },
 
-    async loadIntradayKline(sym) {
+    async loadIntradayKline(sym, silent) {
         sym = sym || this.currentSymbolId;
         const btn = document.getElementById('intradayKlineBtn');
         const hint = document.getElementById('intradayHint');
@@ -18723,10 +18733,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             return;
         }
         const tf = this._intradayTF || '1';
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ 抓取中...'; }
+        if (btn && !silent) { btn.disabled = true; btn.textContent = '⏳ 抓取中...'; }   // silent=盤中自動刷,不動按鈕避免每 30s 閃
         let candles = null;
         try { candles = await this._fetchFugleCandles(sym, tf); } catch (_) {}
-        if (btn) { btn.disabled = false; btn.textContent = '🔄 載入 / 更新盤中K'; }
+        if (btn && !silent) { btn.disabled = false; btn.textContent = '🔄 載入 / 更新盤中K'; }
 
         if (!candles) {
             if (hint) hint.innerHTML = '⚠️ Fugle 無回應或免費額度用盡,稍後再按一次。';
@@ -18757,7 +18767,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 else if (chgPct < -1 && (bp == null || bp < 50)) { verdict = '🔻 主力偏空調節'; vCls2 = 'text-green-300'; }
                 else { verdict = '➖ 多空拉鋸觀望'; vCls2 = 'text-gray-300'; }
                 parts.push(`<div class="flex items-center gap-1.5 mb-0.5"><span class="text-[10px] text-gray-500">🔴 盤中主力動向</span><b class="${vCls2} text-sm">${verdict}</b></div>`);
-                parts.push(`<div class="text-gray-300">即時 <b class="${cCls}">${q.price} (${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%)</b></div>`);
+                // 🔄 V47.1 即時價「跳動」:與上次同股相比,漲→紅閃、跌→綠閃(只閃數字,說明文字不閃)
+                const _ref = this._intradayFlashRef;
+                const _pf = (_ref && _ref.sym === sym && _ref.price != null && q.price !== _ref.price)
+                    ? (q.price > _ref.price ? 'price-flash-up' : 'price-flash-down') : '';
+                this._intradayFlashRef = { sym, price: q.price };
+                parts.push(`<div class="text-gray-300">即時 <b class="${cCls} ${_pf}">${q.price} (${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%)</b></div>`);
                 // 估量達標度
                 const vp = this._chuVolumeProgress(q, this.baseRawData || this.rawDailyData || []);
                 if (vp && vp.pct != null) {
@@ -18787,8 +18802,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const vpD = (q && q.price) ? this._chuVolumeProgress(q, this.baseRawData || this.rawDailyData || []) : null;
             this._renderIntradayDepth(depthBox, q, vpD);
         } catch (_) {}
-        if (hint) hint.innerHTML = `✅ ${candles.length} 根${tf}分K已載入(${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })})。盤中想更新再按一次鈕。`;
-        this.vibrate(15);
+        if (hint) hint.innerHTML = `✅ ${candles.length} 根${tf}分K已載入(${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })})。${this.isMarketOpen() ? '盤中每 ~30 秒自動更新,價格會跳動。' : '盤中想更新再按一次鈕。'}`;
+        if (!silent) this.vibrate(15);
     },
 
     // 📊 V45.1 — 五檔深度階梯 + 即時數據 grid(對標券商即時盤;Fugle 五檔陣列 + quote 數據,零額外抓)
