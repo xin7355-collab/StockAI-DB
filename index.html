@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V50.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V50.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.6</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.7</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1120,6 +1120,9 @@
                         <!-- 👉 右戰區 (lg:col-span-5)：V38.9 合併重疊卡降噪 — 進場總評 / 價位作戰圖 / 操作SOP -->
                         <div class="w-full lg:col-span-5 flex flex-col gap-3 mt-4 lg:mt-0">
 
+                        <!-- 📊 V50.7 位階溫度計(距歷史高 + 52週位階)移至首席頁進場體檢上方(使用者要求) -->
+                        <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
+
                         <!-- 🩺 進場總評:以「進場體檢」為主卡(已彙整 K棒/量能/均線所有純公式訊號 + 交叉參照綜合評分);朱老師四關卡併入下方收合詳情 -->
                         <div id="entryCheckup" class="hidden w-full rounded-lg p-3 mb-2"></div>
                         <div class="w-full -mt-1">
@@ -1129,6 +1132,9 @@
                                 <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
                             </div>
                         </div>
+
+                        <!-- ⚔️ V50.7 朱家泓策略狀態(距 5MA/20MA/-5% 停損 + 燈號)移至首席頁(使用者要求) -->
+                        <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
 
                         <!-- 🎯 價位作戰圖:以「動態停利停損線」為主卡;明日均線保衛/突破棒/K棒戰法併入下方收合「更多守價」 -->
                         <div id="precisionPricesBox" class="w-full mt-4 lg:mt-0 bg-[#010409] border border-[#30363d] rounded p-3 grid grid-cols-3 gap-1 text-center shadow-inner relative">
@@ -1191,8 +1197,7 @@
                 </div>
                 <!-- V20.5 — 處置相關 3 卡(attentionScan / doubleSword / attentionDetail)已搬到「🚨 處置」tab -->
 
-                <!-- ⚔️ 朱家泓策略狀態(V18.8 — 距離 5MA/20MA/-5% 停損各還多少 + 燈號)-->
-                <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
+                <!-- ⚔️ V50.7 朱家泓策略狀態已移至首席頁(使用者要求) -->
 
                 <!-- 🚦 ETF 跟車狀態(V18.6 — 個股被哪些 ETF 換入/加碼/換出 + 進場價 vs 今價 ±%)-->
                 <div id="etfFollowCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -1434,8 +1439,10 @@
 
                 <!-- 🔎 V45.12 免費查公司卡已刪除(🤖 AI 股神已涵蓋公司/新聞/財報/供應鏈免費查) -->
 
-                <!-- 📊 V42.2 — 位階溫度計(距歷史高 + 52週位階,判強勢主流 vs 低基期落後) -->
-                <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
+                <!-- 📊 V50.7 位階溫度計已移至首席頁進場體檢上方(使用者要求) -->
+
+                <!-- 🔥 V50.7 純公式體質總評移至 X 光機卡上方(使用者要求;讀 _xrayMetrics 算好的數字,零 API) -->
+                <div id="xrayVerdict" class="mb-2"></div>
 
                 <!-- 🔬 個股基本面 X 光機（置頂;自動載入快取,但提供「重新掃描」按鈕讓使用者強制重抓）-->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm">
@@ -1552,8 +1559,7 @@
                         </div>
                         <div id="xrayRevTrend" style="width:100%;height:200px;"></div>
                     </div>
-                    <!-- 🧮 純公式體質總評(取代 AI 自動解讀:讀已算好的營收/三率/估值/配息數字 → 規則產生結論,零 API 額度、零幻覺) -->
-                    <div id="xrayVerdict" class="mb-2"></div>
+                    <!-- 🧮 V50.7 純公式體質總評(#xrayVerdict)已移至本卡上方(使用者要求) -->
                     <!-- 🗑️ V50.6 「🤖 總裁財報解讀(AI)」功能刪除(使用者要求),只留純公式體質總評;此隱藏框僅供 ETF 說明訊息用 -->
                     <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-[#30363d] mt-2">
                         <div id="xrayAIResult" class="text-gray-200 text-base leading-relaxed"></div>
