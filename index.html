@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V50.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.9</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.0</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -10968,25 +10968,40 @@ const marginByDate = {};
         el.className = `w-full rounded-lg p-3 border ${bg}`;
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1.5">
-                <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前體檢</span><span class="text-[9px] text-gray-500">純公式總結</span></div>
+                <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前體檢</span></div>
                 <button onclick="app.showJargon('盤前體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
             </div>
             <div class="text-[9px] text-gray-500 mb-2 leading-relaxed border-b border-[#21262d] pb-1.5 space-y-0.5">
                 <div>📅 資料採集 <b class="text-gray-300">${_basis}</b>${_twiiDate ? ` <span class="text-gray-600">(台股 ${_twiiDate} 收盤)</span>` : ''}</div>
-                <div>🌙 隔夜美股 → 預判<b class="text-gray-300">下一個交易日</b>開盤</div>
             </div>
-            <div class="flex items-center gap-3 mb-2.5 bg-[#0d1117]/50 rounded-lg p-2.5 border ${bg.split(' ').find(c => c.startsWith('border-')) || 'border-[#30363d]'}">
-                <div class="text-4xl leading-none flex-shrink-0">${light}</div>
-                <div class="flex-1 min-w-0">
-                    <div class="text-[9px] text-gray-500 font-bold tracking-widest mb-0.5">今日開盤預判</div>
-                    <div class="text-xl font-black ${sc} leading-none">${verdict}</div>
+            <!-- 🎯 V50.0 開盤預判 + 一句話總結 合併卡 -->
+            <div class="mb-2 bg-[#0d1117]/50 rounded-lg p-2.5 border ${bg.split(' ').find(c => c.startsWith('border-')) || 'border-[#30363d]'}">
+                <div class="flex items-center gap-3">
+                    <div class="text-4xl leading-none flex-shrink-0">${light}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[9px] text-gray-500 font-bold tracking-widest mb-0.5">今日開盤預判</div>
+                        <div class="text-xl font-black ${sc} leading-none">${verdict}</div>
+                    </div>
+                    <div class="text-right flex-shrink-0 pl-2 border-l border-[#30363d]">
+                        <div class="font-mono font-black text-2xl ${sc} leading-none">${s > 0 ? '+' : ''}${s}</div>
+                        <div class="text-[8px] text-gray-500 mt-0.5">方向分數</div>
+                    </div>
                 </div>
-                <div class="text-right flex-shrink-0 pl-2 border-l border-[#30363d]">
-                    <div class="font-mono font-black text-2xl ${sc} leading-none">${s > 0 ? '+' : ''}${s}</div>
-                    <div class="text-[8px] text-gray-500 mt-0.5">方向分數</div>
-                </div>
+                <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed"><span class="${sc} font-bold">💡 </span>${summary}</div>
             </div>
-            <div class="bg-[#0d1117]/60 rounded p-2 mb-2 space-y-1.5 text-[10px]">
+            <!-- 🔎 V50.0 免費查宏觀(移到一句話總結下方) -->
+            <div class="grid grid-cols-3 gap-1.5 mb-2">
+                <button onclick="app._openFreeAiMacro('usnight'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">🌏 美股為何漲跌</button>
+                <button onclick="app._openFreeAiMacro('calendar'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">📅 本週財經行事曆</button>
+                <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">🔥 類股題材輪動</button>
+            </div>
+            <!-- 📊 V50.0 詳細數據(加權～關鍵價位/20日新低)折疊 -->
+            <details class="mb-1.5">
+              <summary class="cursor-pointer flex items-center justify-between bg-[#0d1117]/60 border border-[#21262d] rounded px-2.5 py-2 text-[10px] font-bold text-gray-400 hover:text-gray-200 transition-colors">
+                <span>📊 展開詳細數據 <span class="text-[9px] text-gray-600 font-normal">加權 · 美股隔夜 · 外資法人 · 技術 · 關鍵價位</span></span>
+                <span class="dchev text-gray-500 inline-block">▾</span>
+              </summary>
+              <div class="bg-[#0d1117]/60 rounded p-2 mt-1.5 space-y-1.5 text-[10px]">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📊 加權</span><span class="text-right">${twii ? `<span class="font-mono font-bold text-gray-200">${twii}</span>${twiiChg ? ` <span class="font-mono ${clr(twiiChg)}">${twiiChg}</span>` : ''}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
                     <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📈 櫃買</span><span class="text-right">${twoii ? `<span class="font-mono font-bold text-gray-200">${twoii}</span>${twoiiChg ? ` <span class="font-mono ${clr(twoiiChg)}">${twoiiChg}</span>` : ''}` : `<span onclick="alert('📈 櫃買(OTC)指數暫時抓不到\\n\\n上櫃指數的免費資料來源近期不穩,採礦端正在修。標「採集中」代表這一格暫時沒抓到值,下次盤後(16:30 台北)採礦會再試著補上。\\n\\n👉 不影響上市加權、美股隔夜、外資法人等其他判讀,可先看那些。')" class="text-yellow-500/80 text-[9px] cursor-pointer underline decoration-dotted">採集中 ⓘ</span>`}</span></div>
@@ -11019,20 +11034,9 @@ const marginByDate = {};
                 </div>
                 <div class="border-t border-[#21262d] pt-1.5 flex items-baseline justify-between gap-1"><span class="text-gray-400">📐 加權技術</span><span class="text-right">${techLine}</span></div>
                 ${levelsHtml}
-            </div>
-            <div class="bg-[#161b22] border-l-4 border-${vColor}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
-                <div class="text-[10px] font-bold ${sc} mb-0.5">💡 一句話總結</div>
-                <div class="text-[10px] text-gray-300 leading-relaxed">${summary}</div>
-            </div>
-            <div class="text-[9px] text-gray-600 leading-snug">🔧 仍採集中:櫃買指數、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>
-            <div class="mt-2 pt-2 border-t border-[#21262d]">
-                <div class="text-[9px] text-gray-500 mb-1">🔎 免費查宏觀事件(外部 AI,不耗額度)</div>
-                <div class="grid grid-cols-3 gap-1.5">
-                    <button onclick="app._openFreeAiMacro('usnight'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">🌏 美股為何漲跌</button>
-                    <button onclick="app._openFreeAiMacro('calendar'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">📅 本週財經行事曆</button>
-                    <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" class="text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded px-1.5 py-1.5 leading-tight transition-colors">🔥 類股題材輪動</button>
-                </div>
-            </div>`;
+              </div>
+            </details>
+            <div class="text-[9px] text-gray-600 leading-snug mt-1">🔧 仍採集中:櫃買指數、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>`;
         el.classList.remove('hidden');
     },
 
