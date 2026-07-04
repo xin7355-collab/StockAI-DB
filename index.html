@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.1</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.2</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -7488,6 +7488,19 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             this._fundCacheAll = { ts: Date.now(), data: merged };
             return merged;
         } catch (e) { console.warn('[fundCache] load fail:', e); return null; }
+    },
+
+    // 🌙 V49.2 — 夜間全市場基本面滾動補齊(fund_sweep.py 產)fund_yoy_gm.json:{sym:{yoy,gmt,gm,rec,tri,ts}}
+    //   涵蓋 daily_miner 只補 100 檔以外的冷門/中型股 YoY/毛利,供 X 光機當 fallback(檔案不存在=首次夜跑前,graceful null)
+    async _loadFundYoyGm() {
+        if (this._fundYoyGmAll && (Date.now() - this._fundYoyGmAll.ts) < 6 * 3600e3) return this._fundYoyGmAll.data;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/fund_yoy_gm.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) }).catch(() => null);
+            const d = (r && r.ok) ? (await r.json().catch(() => null)) : null;
+            this._fundYoyGmAll = { ts: Date.now(), data: d || {} };
+            return d || {};
+        } catch (e) { console.warn('[fundYoyGm] load fail:', e); return {}; }
     },
 
     // 🏭 取同業清單:優先 curated 9 板塊,併入 FinMind industry_category 同產業(去重 + 含自己)
@@ -15641,6 +15654,19 @@ ${peerLine}${newsCtx}
                     if (pe == null && typeof _fcv.pe === 'number' && _fcv.pe > 0) { pe = _fcv.pe; localFund.pe_source = 'TWSE_TTM'; }
                     if (yieldRate == null && typeof _fcv.yield_rate === 'number') yieldRate = _fcv.yield_rate;
                     if (latestYoy == null && typeof _fcv.rev_yoy === 'number') latestYoy = _fcv.rev_yoy;
+                }
+            }
+        } catch (_) {}
+
+        // 🌙 V49.2 — 夜間全市場滾動補齊 fund_yoy_gm.json:非觀察清單股(如帆宣)的 YoY / 毛利趨勢 fallback,
+        //           消掉整片「採礦更新中」(此檔在首次夜間 fund_sweep 跑完前不存在 → graceful)
+        try {
+            if (latestYoy == null || gmTrendStr == null) {
+                const _yg = await this._loadFundYoyGm();
+                const _v = _yg && _yg[sym];
+                if (_v) {
+                    if (latestYoy == null && typeof _v.yoy === 'number') latestYoy = _v.yoy;
+                    if (gmTrendStr == null && _v.gmt) { gmTrendStr = _v.gmt; if (gmTrend == null && typeof _v.gm === 'number') gmTrend = _v.gm; }
                 }
             }
         } catch (_) {}
