@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V50.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V50.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.0</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.1</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -10917,6 +10917,42 @@ const marginByDate = {};
         };
         const adrCell = (label, v) => `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="font-mono ${pctClr(v)}">${pctStr(v) || '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>`;
         const chipCell = (label, html) => `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${html}</span></div>`;
+        // 🌍 V50.1 — 全球風險快讀:亞股連動/避險/情緒(數據直接讀已載入的 macro_risk,不用搬整張卡)
+        const gPct = v => (v == null || isNaN(v)) ? null : `${+v >= 0 ? '+' : ''}${(+v).toFixed(2)}%`;
+        const gCell = (label, val, chg) => {
+            const vv = (val != null && !isNaN(val)) ? (+val >= 1000 ? (+val).toLocaleString('en-US', { maximumFractionDigits: 0 }) : (+val).toFixed(2)) : '';
+            const p = gPct(chg);
+            const right = (vv || p)
+                ? `${vv ? `<span class="font-mono font-bold text-gray-200">${vv}</span>` : ''}${vv && p ? ' ' : ''}${p ? `<span class="font-mono ${+chg >= 0 ? 'text-red-300' : 'text-green-300'}">${p}</span>` : ''}`
+                : '<span class="text-gray-500 text-[9px]">採集中</span>';
+            return `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${right}</span></div>`;
+        };
+        const _fg = mr.fear_greed;
+        const fgHtml = (_fg != null && !isNaN(_fg))
+            ? `<span class="font-mono font-bold ${_fg >= 75 ? 'text-red-300' : _fg <= 25 ? 'text-green-300' : 'text-gray-200'}">${Math.round(_fg)}</span> <span class="text-[9px] ${_fg >= 75 ? 'text-red-400' : _fg <= 25 ? 'text-green-400' : 'text-gray-500'}">${_fg >= 75 ? '過熱' : _fg <= 25 ? '極恐' : '中性'}</span>`
+            : '<span class="text-gray-500 text-[9px]">採集中</span>';
+        let asiaNote = '';
+        { const nk = +mr.nikkei_chg_pct, ks = +mr.kospi_chg_pct;
+          const weak = (Number.isFinite(nk) && nk <= -1) || (Number.isFinite(ks) && ks <= -1);
+          const strong = (Number.isFinite(nk) && nk >= 1) && (Number.isFinite(ks) && ks >= 1);
+          if (weak) asiaNote = '<div class="text-[9px] text-green-400/80 mt-1 leading-snug">📉 亞股同盤走弱 → 台股開盤同步承壓,別追多</div>';
+          else if (strong) asiaNote = '<div class="text-[9px] text-red-400/80 mt-1 leading-snug">📈 亞股同盤走強 → 台股開盤氣氛偏多</div>'; }
+        const globalRiskHtml = `
+            <div class="border-t border-[#21262d] pt-1.5">
+                <div class="text-[9px] text-gray-600 font-bold mb-1">🌍 全球風險快讀 <span class="text-gray-700 font-normal">亞股連動 · 避險 · 情緒</span></div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                    ${gCell('🇯🇵 日經', mr.nikkei, mr.nikkei_chg_pct)}
+                    ${gCell('🇰🇷 韓股', mr.kospi, mr.kospi_chg_pct)}
+                    ${gCell('🇭🇰 恆指', mr.hsi, mr.hsi_chg_pct)}
+                    ${gCell('💵 美元DXY', mr.dxy, mr.dxy_chg_pct)}
+                    ${gCell('🥇 黃金', mr.gold, mr.gold_chg_pct)}
+                    ${gCell('🛢️ 原油', mr.wti, mr.wti_chg_pct)}
+                    ${gCell('₿ 比特幣', mr.btc, mr.btc_chg_pct)}
+                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">🧭 恐懼貪婪</span><span class="text-right">${fgHtml}</span></div>
+                </div>
+                ${asiaNote}
+                <div class="text-[8px] text-gray-700 mt-1 leading-snug">💡 避險資產(金/油/美元)大漲=資金轉保守,對高位科技股偏空;亞股是台股同盤最直接的開盤風向。</div>
+            </div>`;
 
         // 📅 V41.34 — 資料基準日:採礦時間(台北)+ 台股最新收盤日,讓使用者知道「現在看的是哪一天的資料」
         const _updRaw = String(mr.updated || '');
@@ -11020,6 +11056,7 @@ const marginByDate = {};
                     </div>
                     ${usCommentHtml}
                 </div>
+                ${globalRiskHtml}
                 <div class="border-t border-[#21262d] pt-1.5">
                     <div class="text-[9px] text-gray-600 font-bold mb-1">🏦 外資/法人籌碼</div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1">
