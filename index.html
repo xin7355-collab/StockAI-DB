@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V50.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V50.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.5</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.6</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1554,13 +1554,8 @@
                     </div>
                     <!-- 🧮 純公式體質總評(取代 AI 自動解讀:讀已算好的營收/三率/估值/配息數字 → 規則產生結論,零 API 額度、零幻覺) -->
                     <div id="xrayVerdict" class="mb-2"></div>
-                    <!-- 🤖 AI 深入解讀改「手動按鈕」(想要更白話的總裁解剖再點,用 Gemini 不吃 Groq 額度) -->
-                    <div class="flex items-center justify-between gap-2 bg-[#0d1117] rounded p-2 border border-[#30363d]">
-                        <span class="text-[10px] text-gray-500 leading-snug">上方＝純公式體質總評(零 AI)。想要更白話的「總裁解剖財報」再點右邊 →</span>
-                        <button id="xrayAiBtn" onclick="app.fetchFundamentalAnalysis(app.currentSymbolId, {forceAI:true}); app.vibrate(30);" class="flex-shrink-0 text-[10px] font-bold text-purple-300 bg-purple-900/30 border border-purple-700/50 hover:bg-purple-800/40 rounded px-2.5 py-1 transition-colors">🤖 AI 深入解讀</button>
-                    </div>
+                    <!-- 🗑️ V50.6 「🤖 總裁財報解讀(AI)」功能刪除(使用者要求),只留純公式體質總評;此隱藏框僅供 ETF 說明訊息用 -->
                     <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-[#30363d] mt-2">
-                        <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀（AI 產生 · 質化解讀,非計算數字）</div>
                         <div id="xrayAIResult" class="text-gray-200 text-base leading-relaxed"></div>
                     </div>
                 </div>
@@ -2228,15 +2223,14 @@
 <!-- 💡 操作提示行 V44.6 已刪除(使用者要求版面乾淨) -->
                     <!-- V46.2 — 恢復左右滑動(寬版多欄水平 scroll);表頭排序 ⇅ 靠最右、文字置中、作用中方向琥珀色 -->
                     <div class="overflow-x-auto scrollbar-hide">
-                        <div class="min-w-[606px]">
-                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[120px_70px_78px_88px_54px_90px_82px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
+                        <div class="min-w-[520px]">
+                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[120px_70px_78px_88px_54px_90px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
                                 <span class="cursor-pointer hover:text-white flex items-center gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span>今日損益</span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('price')"><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('total')"><span class="leading-tight">總損益<br><span class="text-[9px] opacity-80">報酬率</span></span><span id="invSortIcon_total" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('shares')"><span>股數</span><span id="invSortIcon_shares" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('cost')"><span class="leading-tight">均價<br><span class="text-[9px] opacity-80">總成本</span></span><span id="invSortIcon_cost" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('marketval')"><span class="leading-tight">市值<br><span class="text-[9px] opacity-80">佔比</span></span><span id="invSortIcon_marketval" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                             </div>
                             <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                         </div>
@@ -15524,16 +15518,7 @@ ${peerLine}${newsCtx}
                     if (c.latestEps != null) this._latestEpsCache = c.latestEps;
                     // <24hr 視為新鮮,不重抓
                     cacheFresh = (Date.now() - (c.ts || 0)) < 24 * 3600 * 1000;
-                    // V18.5 — 還原快取的 AI 解析文字,進場「自動」即顯,免使用者手動點「🔄 重新掃描」
-                    if (cacheFresh && c.aiText) {
-                        const box = document.getElementById('xrayAIBox');
-                        const res = document.getElementById('xrayAIResult');
-                        if (box && res) {
-                            box.classList.remove('hidden');
-                            res.innerHTML = this._renderMdText(c.aiText);
-                            aiRestored = true;
-                        }
-                    }
+                    // 🗑️ V50.6 AI 財報解讀功能已刪除 → 不再還原舊快取 AI 文字(避免刪掉的功能又冒出來)
                 }
             }
         } catch(_) {}
@@ -23240,7 +23225,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const _prevP = this._invPrevPrices[item.symbol];
             const priceFlash = (_prevP != null && price !== _prevP) ? (price > _prevP ? 'price-flash-up' : 'price-flash-down') : '';
             this._invPrevPrices[item.symbol] = price;
-            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[120px_70px_78px_88px_54px_90px_82px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[120px_70px_78px_88px_54px_90px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                 <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
@@ -23273,22 +23258,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     <div class="font-mono font-black text-[13px] text-white leading-tight">${cost.toFixed(2)}</div>
                     <div class="text-[10px] font-mono text-gray-500 leading-tight">${Math.round(totalCost).toLocaleString()}元</div>
                 </div>
-                <!-- 市值 / 佔比 -->
-                <div class="text-right">
-                    <div class="font-mono font-black text-[13px] text-white leading-tight">${Math.round(totalVal).toLocaleString()}</div>
-                    <div class="text-[10px] font-mono text-gray-500 leading-tight invMarketPct" data-val="${totalVal}">--</div>
-                </div>
             </div>`;
           } catch (_rowErr) { console.warn('[庫存列渲染跳過]', r?.item?.symbol, _rowErr?.message); }
         }
         container.innerHTML = html;
-        // V17.11 — 市值佔比後補:render 完後計算每檔市值佔比,更新對應 div
-        const allRows = container.querySelectorAll('.invMarketPct');
-        allRows.forEach(el => {
-            const v = +el.dataset.val || 0;
-            const pct = totalValNTD > 0 ? (v / totalValNTD * 100) : 0;
-            el.textContent = pct.toFixed(1) + '%';
-        });
+        // 🗑️ V50.6 市值佔比欄已刪除(使用者要求)
 
         // 統計卡
         const tPnlNTD = totalValNTD - totalCostNTD;
