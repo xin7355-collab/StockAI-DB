@@ -253,6 +253,9 @@ GLOBAL_NEWS_SOURCES = {
     # ➕ 使用者指定來源:中央社國際財經(繁中、datacenter 可達)+ NASA 發射公告(衛星題材)
     "中央社國際":     "https://feeds.feedburner.com/rsscna/intworld",
     "NASA 發射":      "https://www.nasa.gov/feed/",
+    # 🇰🇷🇯🇵 V50.5 使用者要求:韓/日影響台股的重大新聞(三星/SK海力士=記憶體對手;東京威力=半導體設備;軟銀/Nikkei)
+    "韓股記憶體":     "https://news.google.com/rss/search?q=Samsung+OR+%22SK+Hynix%22+OR+Korea+(chip+OR+semiconductor+OR+memory+OR+HBM)&hl=en&gl=US&ceid=US:en",
+    "日股半導體":     "https://news.google.com/rss/search?q=Japan+(Nikkei+OR+SoftBank+OR+%22Tokyo+Electron%22+OR+Renesas+OR+chip+OR+semiconductor)&hl=en&gl=US&ceid=US:en",
 }
 GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
 
@@ -302,18 +305,37 @@ def _is_tw_relevant(title: str, url: str = '') -> bool:
 
 def fetch_global_news():
     """抓取全球財經 RSS，用 Groq 批次分析對台股的影響，輸出 data/global_news.json"""
-    print("\n📡 全球即時情報採集中...")
+    print("\n📡 盤前新聞(美/韓/日)採集中...")
     from datetime import timezone, timedelta
+    import calendar
+    TPE = timezone(timedelta(hours=8))
     now_utc = datetime.now(timezone.utc)
-    cutoff = now_utc - timedelta(hours=48)
+    now_tpe = now_utc.astimezone(TPE)
+    # 🕔 V50.5 盤前新聞窗(台北):end=最近已過的 05:00;start=前一交易日 05:00(end 落週一→往前抓到週五,涵蓋週末)
+    _five = now_tpe.replace(hour=5, minute=0, second=0, microsecond=0)
+    win_end = _five if now_tpe >= _five else _five - timedelta(days=1)
+    _back = 3 if win_end.weekday() == 0 else 1
+    win_start = win_end - timedelta(days=_back)
+    print(f"  🕔 盤前新聞窗(台北):{win_start:%m/%d %H:%M} → {win_end:%m/%d %H:%M}(截止 05:00)")
 
-    items = []
+    def _in_window(entry):
+        pp = entry.get('published_parsed') or entry.get('updated_parsed')
+        if not pp:
+            return None   # 無時間→不確定,當備援
+        try:
+            dt = datetime.fromtimestamp(calendar.timegm(pp), TPE)
+            return win_start <= dt <= win_end
+        except Exception:
+            return None
+
+    items = []          # 命中盤前窗內
+    fallback = []       # 無精確時間的近期新聞(窗內全空時才用,避免整片空白)
     skipped_irrelevant = 0
     for source, url in GLOBAL_NEWS_SOURCES.items():
         try:
             feed = feedparser.parse(url, request_headers={'User-Agent': 'Mozilla/5.0 universal_radar/1.0'})
             count = 0
-            for entry in feed.entries[:15]:  # 從 10 提高到 15，給 filter 更多挑選空間
+            for entry in feed.entries[:20]:
                 title = (entry.get("title", "") or "").strip()
                 link  = entry.get("link", "") or ""
                 pub   = entry.get("published", "") or entry.get("updated", "") or ""
@@ -323,18 +345,31 @@ def fetch_global_news():
                 if not _is_tw_relevant(title, link):
                     skipped_irrelevant += 1
                     continue
-                items.append({"source": source, "title": title, "url": link, "published": pub})
-                count += 1
-                if count >= 6:  # 每源最多 6 則（5 源 = 上限 30 則）
+                rec = {"source": source, "title": title, "url": link, "published": pub}
+                w = _in_window(entry)
+                if w is True:
+                    items.append(rec); count += 1
+                elif w is None:
+                    fallback.append(rec)
+                # w is False → 盤前窗外(太舊/今日盤中),丟棄
+                if count >= 6:  # 每源最多 6 則
                     break
-            print(f"  {source}: {count} 篇")
+            print(f"  {source}: {count} 篇(窗內)")
         except Exception as e:
             print(f"  ⚠️ {source} 失敗: {e}")
 
     print(f"  🔍 對台股無關過濾掉 {skipped_irrelevant} 則")
+    if not items and fallback:
+        print(f"  ⚠️ 盤前窗內 0 則(RSS 多無精確時間)→ 用備援 {len(fallback)} 則")
+        items = fallback
     if not items:
         print("  ⚠️ 無法取得全球新聞")
         return
+    # 新到舊排序,讓翻譯額度優先給最新的
+    def _ts(it):
+        try: return time.mktime(time.strptime(it.get('published', ''), '%a, %d %b %Y %H:%M:%S %Z'))
+        except Exception: return 0
+    items.sort(key=_ts, reverse=True)
 
     # 批次呼叫 Groq 分析每則新聞對台股的影響(控 token)
     # [Key 輪動] 走 _call_groq_with_rotation,撞 429 自動換下一把冰 key

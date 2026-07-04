@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V50.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V50.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.4</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.5</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -3833,13 +3833,31 @@ const app = {
             const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
             if (!r.ok) throw new Error('fetch failed');
             const data = await r.json();
-            if (!data.items || !data.items.length) { list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>'; return; }
-            this._globalNewsItems = data.items;
+            // 🇹🇼 V50.5 併入台股新聞(radar_news.json)→ 盤前新聞重點=台股+美/韓/日,一次看完
+            let twItems = [];
+            try {
+                const rr = await fetch(new URL('data/radar_news.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+                if (rr.ok) {
+                    const rj = await rr.json();
+                    const arr = Array.isArray(rj) ? rj : (rj.items || rj.news || rj.data || []);
+                    twItems = arr.slice(0, 12).map(n => {
+                        const sen = n.ai_sentiment || n.sentiment || '';
+                        return { source: n.source || '台股', title: n.title || '', title_zh: n.title || '',
+                            url: n.link || n.url || '#', published: n.published_time || n.published || '',
+                            impact: (sen && sen !== '待分析' && sen !== '中立') ? sen : '',
+                            impact_level: /利多|bullish/.test(sen) ? 'bullish' : /利空|bearish/.test(sen) ? 'bearish' : 'neutral' };
+                    }).filter(n => n.title);
+                }
+            } catch (_) {}
+            const _seen = new Set();
+            const merged = [...twItems, ...((data.items) || [])].filter(it => { const k = it.url || it.title; if (!k || _seen.has(k)) return false; _seen.add(k); return true; });
+            if (!merged.length) { list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>'; return; }
+            this._globalNewsItems = merged;
             const srcColor = { Reuters: 'bg-orange-900/60 text-orange-300', MarketWatch: 'bg-blue-900/60 text-blue-300', CNBC: 'bg-red-900/60 text-red-300' };
             const impColor = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-gray-400' };
             // 即使 Groq AI 加值未生效（impact = '暫無分析'）也要顯示新聞本身，
             // 只過濾掉完全沒標題的空項目
-            const rows = data.items.filter(item => item.title_zh || item.title).map(item => {
+            const rows = merged.filter(item => item.title_zh || item.title).map(item => {
                 const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
                 const ic = impColor[item.impact_level] || 'text-gray-500';
                 const displayTitle = (item.title_zh || item.title || '').slice(0, 50) + ((item.title_zh || item.title || '').length > 50 ? '…' : '');
