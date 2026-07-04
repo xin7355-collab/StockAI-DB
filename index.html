@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V50.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V50.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.8</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.9</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1624,7 +1624,7 @@
                 <div class="flex items-center justify-between mb-1.5">
                     <div class="text-[11px] font-black text-amber-300">🗞️ 盤前新聞重點</div>
                     <div class="flex items-center gap-1.5">
-                        <button id="globalNewsAiBtn" onclick="app.analyzeGlobalNewsSummary({force:true}); app.vibrate(30);" class="text-[9px] text-amber-300 bg-amber-900/30 border border-amber-700/60 hover:bg-amber-800/40 rounded px-2 py-0.5 font-bold transition-colors">🤖 分析影響台股</button>
+                        <button onclick="app._searchNewsKeyword(); app.vibrate(30);" class="text-[9px] text-cyan-300 bg-cyan-900/30 border border-cyan-700/60 hover:bg-cyan-800/40 rounded px-2 py-0.5 font-bold transition-colors">🔍 搜尋關鍵字</button>
                         <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
                     </div>
                 </div>
@@ -14210,8 +14210,28 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             chatgpt:    `https://chatgpt.com/?q=${q}&hints=search`,
         };
         const url = urls[engine] || urls.perplexity;
-        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { location.href = url; }
+        // 🐛 V50.9 修 iOS PWA 殘留空白分頁:window.open 在 standalone PWA 會另開一個 Safari 分頁,
+        //   Perplexity 用 universal link 交棒給 App 後,那個 Safari 分頁變空白「搜尋或輸入網站名稱」,
+        //   返回首席還要手動關。改用真實 <a target="_blank"> 點擊 → iOS 由系統層把連結交給 Perplexity App,
+        //   不再殘留空白分頁(此專案新聞標題連結早已用同法,實證 iOS PWA 可用)。Android 亦正常(回來即回 App)。
+        try {
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => a.remove(), 0);
+        } catch (_) {
+            try { window.open(url, '_blank', 'noopener,noreferrer'); } catch (__) { location.href = url; }
+        }
         this.vibrate?.(30);
+    },
+
+    // 🔍 V50.9 — 盤前新聞「搜尋關鍵字」:輸入股名/題材/事件 → Perplexity 查它對台股的最新影響(取代原自動 AI 分析鈕,點才開、不燒自家額度)
+    _searchNewsKeyword() {
+        const kw = (prompt('輸入關鍵字(股名 / 題材 / 事件),用 Perplexity 查它對台股的最新影響:') || '').trim();
+        if (!kw) return;
+        this._freeAiOpen(`台股「${kw}」最近有哪些相關新聞與消息?對台股(尤其相關族群/權值股)是利多還利空?請白話、附日期與來源`);
     },
 
     // 🔎 V41.26 — 個股情境查(首席頁/處置頁):帶當前股名 + 指定角度
@@ -17773,7 +17793,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             if (sev === 'mid')  return '<span class="text-[8px] font-black text-yellow-300 bg-yellow-900/40 border border-yellow-700 px-1 rounded">中</span>';
             return '<span class="text-[8px] font-black text-gray-400 bg-gray-800/60 border border-gray-700 px-1 rounded">低</span>';
         };
-        const rows = events.map((ev, idx) => {
+        // 📅 V50.9 — 法說會單獨折疊:財經行事曆常有一堆法說會把核彈事件淹沒,把「法說」類收進 <details>,主列表只留宏觀核彈事件
+        const isEarnings = ev => /法說|法人說明會|earnings/i.test(String(ev.event || ''));
+        const renderRow = (ev, idx) => {
             const d = new Date(ev.date + 'T00:00:00');
             if (isNaN(d.getTime())) return '';
             const diffDays = Math.round((d - today) / 86400000);
@@ -17794,8 +17816,19 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 + '</div>'
                 + '<div id="evImpact_' + idx + '" class="hidden px-1 pb-1.5"></div>'
                 + '</div>';
-        }).join('');
-        list.innerHTML = bannerHtml + (rows || '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 14 日無重大事件</div>');
+        };
+        const mainRows  = events.map((ev, idx) => isEarnings(ev) ? '' : renderRow(ev, idx)).join('');
+        const earnRows  = events.map((ev, idx) => isEarnings(ev) ? renderRow(ev, idx) : '').join('');
+        const earnCount = events.filter(isEarnings).length;
+        const earnBlock = earnCount
+            ? '<details class="mt-1 border-t border-gray-800/40 pt-1">'
+                + '<summary class="cursor-pointer select-none list-none flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-amber-300 py-0.5 px-1">'
+                +   '<span class="dchev inline-block transition-transform text-gray-500">▾</span>📢 法說會 <span class="text-gray-600 font-normal">(' + earnCount + ' 場) · 點開</span>'
+                + '</summary>'
+                + '<div class="mt-0.5">' + earnRows + '</div>'
+                + '</details>'
+            : '';
+        list.innerHTML = bannerHtml + (mainRows || (earnBlock ? '' : '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 14 日無重大事件</div>')) + earnBlock;
         // 🤖 預載入高 severity D-1/D-0 事件的 AI 推測(用既有快取機制,空閒時靜默 fetch)
         if (imminent.length) {
             const eventsRef = events;
