@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.4</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.5</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -7121,6 +7121,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
 
         if (macro.taiex && macro.taiex.length > 0) {
             const taiex = macro.taiex, last = taiex[taiex.length-1], prev = taiex.length > 1 ? taiex[taiex.length-2] : last;
+            this._macroTaiexSeries = macro.taiex;   // 🐛 V49.5 存新鮮加權序列(macro_cache 有更新),供年線乖離 merge 蓋過停更的 ^TWII.json
             const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)}</span>`;
@@ -12124,10 +12125,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 console.log(`[TAIEX MA240] 資料 ${rows?.length || 0} 筆 < 240,等下次採礦補滿`);
                 return;
             }
-            const closes = rows
-                .map(r => +r.close)
-                .filter(v => Number.isFinite(v) && v > 0);
+            // 🐛 V49.5 — ^TWII.json 曾停更(實測卡 6/10);用 macro_cache 的新鮮加權序列 merge 蓋過 → 年線乖離不再卡舊值
+            //   以「日期」為鍵合併:^TWII.json 當長歷史底,macro.taiex 覆蓋/補上較新日期,取最新 close 當現價、重算 MA240
+            const byDate = new Map();
+            const _norm = d => String(d || '').replace(/-/g, '/');   // 統一日期分隔符(/ 對 -)
+            for (const row of rows) { const d = _norm(row.date), c = +row.close; if (d && Number.isFinite(c) && c > 0) byDate.set(d, c); }
+            // 新鮮序列優先用 macro_cache.twii_history(完整 2025末→今日、免 token);退而求其次 macro.taiex(FinMind 近 10 日、需 token)
+            const fresh = (Array.isArray(this.usMacroCache?.twii_history) && this.usMacroCache.twii_history.length)
+                ? this.usMacroCache.twii_history
+                : (Array.isArray(this._macroTaiexSeries) ? this._macroTaiexSeries : []);
+            let mergedNew = 0, freshMax = '';
+            for (const row of fresh) { const d = _norm(row.date), c = +row.close; if (d && Number.isFinite(c) && c > 0) { if (!byDate.has(d)) mergedNew++; byDate.set(d, c); if (d > freshMax) freshMax = d; } }
+            const closes = [...byDate.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(e => e[1]);
             if (closes.length < 240) return;
+            const histMax = _norm(rows[rows.length - 1]?.date);
+            const staleDays = (freshMax && histMax && freshMax > histMax) ? mergedNew : 0;   // ^TWII.json 落後的交易日數(靠 macro 補上)
             const last   = closes[closes.length - 1];
             const ma240  = closes.slice(-240).reduce((a, b) => a + b, 0) / 240;
             const bias   = +((last - ma240) / ma240 * 100).toFixed(2);
@@ -12135,7 +12147,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             this._macroRiskCache.taiex_ma240_bias = bias;
             this._macroRiskCache.taiex_ma240      = +ma240.toFixed(0);
             this._macroRiskCache.taiex_last_close = last;
-            console.log(`[TAIEX MA240] last=${last} ma240=${ma240.toFixed(0)} bias=${bias}%`);
+            this._macroRiskCache.taiex_hist_stale_days = staleDays;   // >0 = ^TWII.json 停更、已用 macro 新鮮值補算
+            console.log(`[TAIEX MA240] last=${last} ma240=${ma240.toFixed(0)} bias=${bias}% (merged ${mergedNew} 新日期,^TWII.json 落後 ${staleDays} 天)`);
             // 已渲染處立刻補畫
             this._renderChuPositionChip?.();
             try { this.renderMarketBriefing(); } catch (_) {}   // 🌍 V39.2 年線乖離更新→刷新盤前大盤體檢(黑天鵝矩陣在內)
