@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.0</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.1</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -18196,6 +18196,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 ${neg.length ? `<div class="flex flex-wrap gap-1 mb-1">${chips(neg, 'green')}</div>` : ''}
                 ${(!pos.length && !neg.length && note.length) ? `<div class="flex flex-wrap gap-1 mb-1">${chips(note, 'gray')}</div>` : ''}
                 <div class="text-[11px] text-gray-300 leading-relaxed mt-1.5">💡 ${act}</div>
+                ${tone === 'flat' ? `<button onclick="app._openFreeAi('rev'); app.vibrate(20);" class="mt-2 w-full text-[11px] font-bold text-amber-300 bg-amber-900/20 hover:bg-amber-900/35 border border-amber-700/50 rounded py-1.5 transition-colors">🔎 想現在就知道?免費查這檔的營收 / 毛利 / EPS <span class="text-[9px] text-gray-500 font-normal">(開外部免費 AI,不耗額度)</span></button>` : ''}
                 <div class="text-[9px] text-gray-600 mt-1.5">🧮 純公式綜合(營收成長 / 三率 / 估值 / 配息 / 填息),零 AI、零幻覺;紅=加分 綠=扣分,非投資建議。</div>
             </div>`;
     },
