@@ -74,14 +74,16 @@
 - ⛔ **仍須先問使用者**的例外:① 大規模重構/架構大改 ② 刪檔/刪資料 ③ 改 GitHub Actions workflow 邏輯 ④ 動 `data/` 內快取 ⑤ 不確定是否會壞時
 - 壞了 → 使用者說「壞了」→ Claude 直接修;或 `git revert HEAD` 回退
 
-### 版本號規則(STRATEGY TERMINAL Vx.y)⭐ 使用者要求:每次更新版本號要一直往上加
-- **小數位 +0.1**:每次 Claude push 純前端/小邏輯改動(UI 調整、bug fix、小功能補強) → V14.2 → V14.3 → V14.4 ...
-- **主版本 +1**:大事件改版(架構大改、採礦機重做、新增整個 tab、AI 模型升級、整批功能重做) → V14.x → V15.0
-- **位置**:`index.html` 兩處必須**同步**改:
-  - `<title>首席 AI 司令部 | 戰略終端 V14.x</title>` (~line 12)
-  - `<span ...>STRATEGY TERMINAL V14.x</span>` (~line 694)
-- **時機**:每次 push main 前 bump 一次,commit message 寫「Vx.y → Vx.z」
-- **判斷小 vs 大**:Claude 自行判斷,有疑問問使用者
+### 版本號規則(STRATEGY TERMINAL Vx.y)⭐ 使用者明示(2026-07-04 更新):純 +0.1 里程表,不分大小改
+- **一律 +0.1**:每次 push 都 bump 小數位 **+0.1**,不管改動大小(UI 調整、bug fix、小功能、大功能、採礦、workflow 全都 +0.1) → V49.4 → V49.5 → V49.6 …
+- **逢 .9 進位**:`.9` 的下一版 = 主版本 +1、小數歸 0 → **V49.9 → V50.0 → V50.1 …**,以此類推(像里程表)
+- **不再分「小改 vs 大改」**:舊的「大事件才主版本 +1」規則已作廢,一律 +0.1 讓版本一直往上加
+- **位置**:`index.html` 兩處必須**同步**改(用 `sed` 一次改兩處最保險):
+  - 版本註解:`<!-- STRATEGY TERMINAL Vx.y … -->` (~line 18)
+  - 置頂 badge:`<span …>Vx.y</span>` (~line 912)
+  - (`<title>首席</title>` 不含版本號,不用動)
+- **時機**:每次 push main 前 bump 一次,commit message 開頭寫「Vx.y → Vx.z」
+- **驗證**:push 前 `grep -c '>Vx.y</span>' index.html` 確認新版號有改到(=1)
 
 ### 部署後「看到舊版」處理（Service Worker 快取，已根治）⭐ 使用者常反映
 - **「還是舊版」≠「沒合併」**：先確認部署本身有沒有成功，不要急著重推。指令：
@@ -238,7 +240,17 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 - **PR 寫測試清單**:每張 PR body 給 Test plan(使用者上線後可逐項勾)
 - **PR rebase**:撞 main conflict 時 `git rebase origin/main` + `git push --force`
 
-### 🐛 定期修 bug(V25.2 後新增,使用者要求)
+### 🐛 定期修 bug(V25.2 後新增,使用者要求;V49.5 強化定期節奏)
+**節奏鐵則(使用者明示:要定期修 bug)**:
+- **每次改功能「順便修 bug」**:做新功能 / 改介面時,若順手看到附近有 bug,一併修掉(分 commit,別混在功能 commit 裡)。
+- **每推 3-5 版做一次「主動巡邏」**:跑多代理 bug 掃描(見下),把確認的 bug 分批修。
+- **多代理審查 + 人工驗證流程(鐵則,V41.27 起實證有效)**:
+  1. 派 2+ 個 `Explore` 代理平行掃(前端一組、採礦/workflow 一組),各自只回「確認的 bug + 行號 + 具體失敗情境 + CONFIRMED/SUSPICIOUS」。
+  2. **人工逐條讀原始碼驗證真偽** —— 約 1/3 是誤報或設計取捨,**別照單全收**。
+  3. 只修「人工確認為真」的,誤報要在 commit message 寫明「已驗證非 bug」留紀錄。
+  4. 四驗證 + 分 Batch commit,每個 Batch 版本 +0.1。
+- **git/workflow 類 bug 要「實測」不要用猜的**:改 workflow 的 git 流程時,開 `/tmp` 小 repo 實測 `git checkout -f` / `git add -f` / gitignore 交互(如 V49.4 實測 `checkout -f` 可越過 gitignore untracked 衝突),別靠推理。
+
 **每次 push main 前必跑的「四驗證」**(原三驗證 + 新增第 4 個):
 1. `node --check`(抽 inline JS 語法)
 2. `python3 -m py_compile *.py`(後端語法)
@@ -290,8 +302,13 @@ END { if (bal>0) print "❌ tabContentMarket 少 "bal" 個 </div>!" }' index.htm
 | **新增 data/*.json 檔** | ① daily_miner deploy 底層 `git archive origin/data` 會保留(append 類檔靠這保命,如 risk_history)② 前端 fetch 用動態 `ghBase` + `?t=${Date.now()}` ③ 確認 daily_miner.yml push paths 是否需納入觸發 |
 | **新計分因子**(獵鷹/主力出貨/多空) | ① 卡片「因子來源」說明文字同步 ② 首席 AI 若注入該訊號要更新 ③ 數值單位確認(億/張/口/%,記取 `fi_spot_net`=億) |
 | **改燈號/verdict 文案** | 同一決策的多張卡(首席/綜合評分/系統燈號)語義要一致,別紅綠相反(V27.5 已統一改「寫字不靠色」) |
+| **加新偵測器/型態**(朱家泓/林穎 K 棒) | 務必**同時**加進三處清單:`renderKbarTactics` + `renderKbarScore` patSigs + `runKlineAudit` grab list(V41.29 教訓,漏一處該訊號就不同步) |
+| **新增 setCell 純公式卡**(取代 AI) | ① 指標暫存 `this._xrayMetrics` 逐項寫入 ② 末端統一產結論(如 `_renderXrayVerdict`)③ **資料充足度守門**:缺關鍵維度顯「整備中」別硬判 ④ 切股競態守門 `currentSymbolId!==sym` return |
+| **夜間 fund_sweep 改欄位**(fund_yoy_gm.json) | ① 前端 `_loadFundYoyGm()` fallback 讀取欄名一致 ② X 光機 YoY/毛利 fallback 鏈 ③ fund_sweep.py 輸出欄名跟前端**完全一致** ④ 獨立檔靠 daily_miner `git archive origin/data` 保留,勿併回 fundamentals_cache.json(會被下午重建洗掉) |
 
-**鐵則**:任何「後端產資料 → 前端讀」的改動,push 前 `grep` 雙向對欄名;新資料源先確認 daily_miner 觸發路徑 + deploy 保留機制。
+**鐵則(⭐ 使用者明示:更新新功能時,相關的東西也要一併更新邏輯)**:
+- 任何「後端產資料 → 前端讀」的改動,push 前 `grep` 雙向對欄名;新資料源先確認 daily_miner 觸發路徑 + deploy 保留機制。
+- **加功能 = 順藤摸瓜**:改 A 前先想「A 連到哪些 B/C/D」(說明文字、AI prompt、評分、快取、fallback 鏈、其他共用同 DOM ID 的卡),一次補齊,別只改單點留下對接斷掉的 bug。
 
 ---
 
@@ -655,6 +672,32 @@ done
 | `_detectTrendline` | 趨勢線:兩上升低點連線跌破=轉弱 / 兩下降高點連線突破=轉強 |
 - **已完整覆蓋**:½價/晨昏星/吞噬貫穿/假突破/測壓測撐/量價背離/回後買上漲/四大金剛/K棒強弱(林穎)/底部頸線/均線糾結/乖離/處置股。
 - **刻意不做**:艾略特波浪(太主觀,`頭頭高底底高`波段結構已涵蓋實務需求)。
+
+## 🧮 V49.x — 基本面 X 光機改純公式 + 潛力頁三層對照 + 夜間全市場補齊
+
+### 基本面 X 光機「取消 AI 改數字」(V49.0)
+- **澄清**:此頁所有**數字**(投資屬性雷達 / PE / YoY / 毛利 / 殖利率 / 填息 / PEG / P/B)本來就全是純公式(JS + FinMind + 採礦快取),已符合「禁 AI 算數」。唯一 AI 是最底下「總裁解讀」那段**質化文字**。
+- **純公式體質總評**(`_renderXrayVerdict`):讀 `this._xrayMetrics` 已算好的數字 → 規則產生 🔥強勁/✅穩健/⚖️中性/🚨偏弱 + 體質分 + 利多(紅)利空(綠)chip + 白話對策。零 API、零幻覺、秒出。
+- **AI 改手動按鈕**(`forceAI`):想要更白話再點,預設不跑省額度(同全球新聞 V41.2 做法)。
+- **鐵則**:負向因子要**真的計入 score/max** 才會拉低分數(V49.4 修「吃老本」只顯 chip 不扣分的 bug)。
+- **降噪**:移除 12 張卡的霓虹漸層(`bg-gradient-to-br to-*-950`)→ 純色,符合 V25.8 設計規範。
+
+### 潛力/黑馬三層對照(V48.8/V48.9)
+- 🌡️ **大盤環境權重**:`_calcRiskScore()` 高 → 分數打折(黑馬 0.93/0.85/0.75、長線較輕 0.97/0.92/0.85);排名不變,只反映系統性風險。
+- 🏭 **同業比價**:同產業(本榜)內分數排名,🥇同業最強 / ⚠️同業落後;避免買落後補漲弱勢股。
+- 💵 **停利金額**:目標價下方「每張 +X 元」=(目標−現價)×1000(僅目標>現價時顯)。
+
+### 🌙 夜間全市場基本面滾動補齊(V49.2 — fund_sweep.py + fund_sweep.yml)
+- **痛點**:FinMind 免費版「全市場 bulk」回 0 筆,daily_miner 只逐檔補 `HOT_CHIPS_LIMIT=100` 檔 → 其餘 ~1900 檔冷門股 YoY/毛利永遠「採礦更新中」。
+- **解法**:另一支夜間輕量採礦,**滾動式**每晚挑「最舊/沒抓過」的 N 檔(預算 500)逐檔免費抓,節流 3s/檔防 429,~4-5 個交易夜輪完全市場,之後永遠優先刷最舊 → 全市場維持 ~5 天新鮮。
+- **時間**:cron `0 18 * * 1-5` = 台北凌晨 02:00(週二~六)。
+- **為何不吃白天額度(關鍵)**:採礦用 **GitHub Secrets 的 `FINMIND_TOKENS` + GitHub IP**,跟手機前端 **localStorage 的 key** 是**不同 token、不同 IP,額度完全分開**。
+- **連動安全鐵則**:輸出寫**獨立檔** `data/fund_yoy_gm.json`,**不動** daily_miner 重建的 `fundamentals_cache.json`(否則會被下午完整採礦洗掉);靠 daily deploy 的 `git archive origin/data` 自動保留。前端 `_loadFundYoyGm()` 當 YoY/毛利 fallback。
+- **workflow git 陷阱(實測修過,V49.4)**:`data/*.json` 在 main 是 gitignore →
+  - 還原資料用 `git show origin/data:檔 > 檔`(**不要** `git checkout origin/data -- data/`,會把整批 stage 進 index 弄髒工作區)。
+  - 切分支前 `git reset --hard` + `git clean -fdq`,再 `git checkout -f`(可越過 gitignore untracked 衝突,已實測)。
+  - `git add -f`(強制越過 gitignore)+ `git commit -- 檔`(明確 pathspec,只提交這一檔,別洩漏無關檔到 gh-pages)。
+- **自我修復**:命中 < `FUND_MIN_HITS`(20)不覆寫、不部署(保留舊檔);部分完成也 OK,下晚接著補,永不整批歸零。
 
 ## GitHub 帳號
 - 帳號:`xin7355-collab`
