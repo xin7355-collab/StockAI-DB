@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.7</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.8</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -6773,7 +6773,7 @@ ${list}
             ? '主升段技術 + 獲利跳 + 法人卡位 + 漲價族群 → 抓「已啟動、還沒噴完」的中線飆股 ・ 非投資建議'
             : '7 因子純公式評分(位階/估值/成長/籌碼/技術/題材/空間),分數越高長線潛力越大 ・ 非投資建議';
         const help = isM
-            ? '🐎 中線黑馬(純公式,禁 AI 算數)\\n\\n照投顧「漲價→獲利跳→法人評價跳→主升段」的中線飆股邏輯,找「已經啟動、獲利在跳、還沒噴完」的股。\\n\\n① 主升段技術(均線多頭排列+趨勢效率高+帶量突破,已在走)\\n② 獲利跳(營收YoY高/毛利向上=法人開始評價)\\n③ 法人卡位(近20日買超、買盤加速)\\n④ 中位階(不是低基期沉睡,也不是天花板)\\n⑤ 漲價族群(被動元件/MLCC/記憶體/矽晶圓…)\\n⑥ 量增表態(放量,與長線潛力「量縮」相反)\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損、別追末升段。'
+            ? '🐎 中線黑馬(純公式,禁 AI 算數)\\n\\n照投顧「漲價→獲利跳→法人評價跳→主升段」的中線飆股邏輯,找「已經啟動、獲利在跳、還沒噴完」的股。\\n\\n① 主升段技術(均線多頭排列+趨勢效率高+帶量突破,已在走)\\n② 獲利跳(營收YoY高/毛利向上=法人開始評價)\\n③ 法人卡位(近20日買超、買盤加速)\\n④ 中位階(不是低基期沉睡,也不是天花板)\\n⑤ 漲價族群(被動元件/MLCC/記憶體/矽晶圓…)\\n⑥ 量增表態(放量,與長線潛力「量縮」相反)\\n\\n🆕 三層對照:\\n・🌡️ 大盤環境權重:大盤風險高(過熱)時黑馬分自動打折,大字=環境調整後、括號=原始分。\\n・🏭 同業比價:同產業(本榜)內排名,🥇同業最強=領漲;⚠️同業落後=可能只是補漲的弱勢股。\\n・💵 停利金額:目標價下方「每張 +X 元」= 從現價漲到目標、1 張(1000股)可賺多少。\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損、別追末升段。'
             : '💎 長線潛力股(純公式,禁 AI 算數)\\n\\n用 7 個因子幫你找「現在便宜、基本面在轉好、主力默默布局、技術剛打底、又搭長線題材」的股票,並估上檔空間。\\n\\n① 位階低(低基期)② 估值便宜 ③ 成長轉機 ④ 籌碼默默吸 ⑤ 技術打底 ⑥ 題材主流 ⑦ 翻倍空間\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損。';
         const chips = isM
             ? `${chip('all', '全部')}${chip('mainrise', '🔥 主升段中')}${chip('launch', '🚀 初升段')}${chip('fuel', '💰 獲利跳')}${chip('inst', '🕵️ 法人卡位')}${chip('hotprice', '⚡ 漲價族群')}`
@@ -6840,7 +6840,18 @@ ${list}
         const topInd = Object.entries(indCount).sort((a, b) => b[1] - a[1])[0];
         const diverseNote = (topInd && topInd[1] >= Math.max(4, arr.length * 0.4))
             ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2 text-[10px] text-yellow-200/90 leading-snug">⚠️ 榜上 <b>${topInd[0]}</b> 佔 ${topInd[1]}/${arr.length} 檔,偏集中 → 分批布局也別把資金全押同族群,分散產業較抗風險。</div>` : '';
-        list.innerHTML = diverseNote + arr.map((r, i) => {
+        // 🌡️ 大盤環境權重:市場過熱/高風險時,黑馬分打折(排名不變,反映「逆勢難為」的系統性風險;只作用於中線黑馬)
+        let envScore = 0; try { envScore = this._calcRiskScore?.() ?? 0; } catch (_) {}
+        const envMult = isM ? (envScore >= 80 ? 0.75 : envScore >= 60 ? 0.85 : envScore >= 40 ? 0.93 : 1) : 1;
+        const envCol = envScore >= 80 ? 'red' : envScore >= 60 ? 'orange' : 'yellow';
+        const envNote = (envMult < 1)
+            ? `<div class="bg-[#161b22] border-l-4 border-${envCol}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2 text-[10px] leading-snug"><span class="text-${envCol}-300 font-bold">🌡️ 大盤風險 ${envScore}/100</span> <span class="text-gray-300">→ 黑馬分已打 ${(envMult * 10).toFixed(1).replace('.0', '')} 折(大字=環境調整後,括號=原始分);系統性風險升高時黑馬也難逆勢,降低期望、收緊停損、部位縮小。</span></div>` : '';
+        // 🏭 產業比價:同產業(本榜)內以分數排名,標「同業最強/落後」→ 避免買到落後補漲的弱勢股
+        const byInd = {};
+        arr.forEach(r => { const k = r.industry || ''; if (!k) return; (byInd[k] = byInd[k] || []).push(r); });
+        Object.values(byInd).forEach(g => g.sort((a, b) => (b.score || 0) - (a.score || 0)));
+        const indRankOf = (r) => { const g = byInd[r.industry || '']; if (!g || g.length < 2) return null; return { rank: g.indexOf(r) + 1, n: g.length }; };
+        list.innerHTML = envNote + diverseNote + arr.map((r, i) => {
             // 中線黑馬:stage 徽章已表達「初升段/主升段」階段,顯示時剔除同義的 mainrise/launch tag(仍保留作篩選鍵),避免「初升段×2」重複
             const dispTags = isM ? (r.tags || []).filter(t => t !== 'mainrise' && t !== 'launch') : (r.tags || []);
             const tags = dispTags.map(t => `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-cyan-900/30 text-cyan-300 border border-cyan-700/40 whitespace-nowrap">${tagMap[t] || t}</span>`).join(' ');
@@ -6854,7 +6865,9 @@ ${list}
             const _tgtCell = (icon, label, val, base) => {
                 if (val == null || !(base > 0)) return `<div class="bg-[#0d1117] rounded py-1 px-1.5"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="text-[10px] text-gray-500 mt-0.5">資料不足</div></div>`;
                 const dpct = (val / base - 1) * 100;
-                return `<div class="bg-[#0d1117] rounded py-1 px-1.5"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="mt-0.5 font-mono leading-none"><span class="text-[13px] font-black ${dpct >= 0 ? 'text-red-300' : 'text-green-300'}">${val.toFixed(1)}</span> <span class="text-[9px] font-bold ${_pctCol(dpct)}">${_pct(dpct)}</span></div></div>`;
+                // 💵 停利金額試算:每張(1000股)從現價漲到目標可賺多少(僅目標高於現價時顯示)
+                const gainRow = dpct > 0.5 ? `<div class="text-[8px] text-red-400/90 font-mono mt-0.5">每張 +${Math.round((val - base) * 1000).toLocaleString()} 元</div>` : '';
+                return `<div class="bg-[#0d1117] rounded py-1 px-1.5"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="mt-0.5 font-mono leading-none"><span class="text-[13px] font-black ${dpct >= 0 ? 'text-red-300' : 'text-green-300'}">${val.toFixed(1)}</span> <span class="text-[9px] font-bold ${_pctCol(dpct)}">${_pct(dpct)}</span></div>${gainRow}</div>`;
             };
             const backHigh = up > 0.02 ? +(r.price * (1 + up)).toFixed(1) : null;
             const tgt = `<div class="grid grid-cols-2 gap-1.5 mt-2">
@@ -6872,13 +6885,13 @@ ${list}
                                 <span class="text-[10px] text-gray-500 font-mono">${r.sym}</span>
                                 <span class="text-[11px] text-cyan-200 font-mono font-bold flex-shrink-0 ml-auto">現 ${r.price}</span>
                             </div>
-                            <div class="flex flex-wrap items-center gap-1 mt-0.5">${isM && r.stage ? `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-900/30 text-amber-300 border border-amber-700/40">${r.stage}</span>` : ''}${tags || '<span class="text-[9px] text-gray-600">綜合</span>'} ${conc}</div>
+                            <div class="flex flex-wrap items-center gap-1 mt-0.5">${isM && r.stage ? `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-900/30 text-amber-300 border border-amber-700/40">${r.stage}</span>` : ''}${(() => { const ir = indRankOf(r); if (!ir) return ''; if (ir.rank === 1) return `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-red-900/30 text-red-300 border border-red-700/40">🥇同業最強</span>`; if (ir.rank === ir.n) return `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-[#21262d] text-gray-400 border border-[#30363d]">⚠️同業落後 #${ir.rank}/${ir.n}</span>`; return `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-[#21262d] text-gray-300 border border-[#30363d]">同業 #${ir.rank}/${ir.n}</span>`; })()}${tags || '<span class="text-[9px] text-gray-600">綜合</span>'} ${conc}</div>
                             <div class="text-[10px] text-gray-300 leading-snug mt-1">💡 ${r.reason}</div>
                             ${risk}
                         </div>
                         <div class="text-right flex-shrink-0 self-start">
-                            <div class="font-mono font-black text-2xl ${scoreCol(r.score)} leading-none">${r.score}</div>
-                            <div class="text-[8px] text-gray-500">${scoreLabel}</div>
+                            <div class="font-mono font-black text-2xl ${scoreCol(envMult < 1 ? Math.round(r.score * envMult) : r.score)} leading-none">${envMult < 1 ? Math.round(r.score * envMult) : r.score}</div>
+                            <div class="text-[8px] text-gray-500">${scoreLabel}${envMult < 1 ? `<span class="text-gray-600 font-mono"> ・原${r.score}</span>` : ''}</div>
                         </div>
                     </div>
                 </div>
