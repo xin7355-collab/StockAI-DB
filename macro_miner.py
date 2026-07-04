@@ -146,6 +146,15 @@ def _compute_upcoming_macro_events(today, window_days=14):
                 _add(date(year, month, 15), f"📞 {qs_map[month]} 法說旺季 (大型權值股密集召開,留意異動)")
             except ValueError:
                 pass
+            # 🆕 V50.6 台積電法說(權值王,全市場最看的法說,約每季中):Jan16/Apr17/Jul17/Oct16 → 取該月第一個 ≥ 該日的平日
+            _tsmc_day = {1: 16, 4: 17, 7: 17, 10: 16}[month]
+            try:
+                _d = date(year, month, _tsmc_day)
+                while _d.weekday() >= 5:   # 落到週末順延到週一
+                    _d += timedelta(days=1)
+                _add(_d, f"📞 台積電(2330){qs_map[month]}法說會 (權值王財測=全市場風向,前後波動大)")
+            except ValueError:
+                pass
 
         # 6️⃣ 股東會旺季 + 法定截止
         if month == 5:
