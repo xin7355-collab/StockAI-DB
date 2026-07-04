@@ -249,7 +249,7 @@ HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
 # V15.8 — fundamentals schema 版本標記:每次 miner.py 改動 fundamentals 結構就 bump,
 #         自動 invalidate 全市場 cache(避免 V15.7 修了欄位但 cache 7 天內擋住新邏輯)
-MINER_VERSION = 'V16.5'
+MINER_VERSION = 'V16.6'   # V16.6 bump:三率 op_margin_trend/net_margin_trend(2026-07-02 新增)未 bump 版本 → 舊快取(<7天)不失效,強制重抓補三率
 
 # ── 券商戰術標籤庫 ────────────────────────────────────────────────────────────
 TACTICAL_TAGS = {
