@@ -285,6 +285,92 @@ http.mount("https://", HTTPAdapter(max_retries=Retry(
 HEADERS = {"User-Agent": "Mozilla/5.0 macro_miner/1.0"}
 
 
+def _parse_date_flexible(s):
+    """'115/07/17'(民國) / '1150717' / '2026/07/17' / '2026-07-17' → date;失敗回 None。"""
+    from datetime import date
+    s = str(s or "").strip().replace("-", "/").replace(".", "/")
+    if not s:
+        return None
+    # 純數字 7-8 碼:民國(1150717) 或西元(20260717)
+    if s.isdigit() and len(s) in (7, 8):
+        if len(s) == 7:      # 民國 YYYMMDD
+            y, m, d = int(s[:3]) + 1911, int(s[3:5]), int(s[5:7])
+        else:                # 西元 YYYYMMDD
+            y, m, d = int(s[:4]), int(s[4:6]), int(s[6:8])
+        try: return date(y, m, d)
+        except Exception: return None
+    parts = [p for p in s.split("/") if p != ""]
+    if len(parts) != 3:
+        return None
+    try:
+        y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+        if y < 1911:         # 民國年
+            y += 1911
+        return date(y, m, d)
+    except Exception:
+        return None
+
+
+def fetch_earnings_calls(window_days=14):
+    """📞 抓 TWSE OpenAPI 法人說明會(法說會)一覽表 → 回未來 window 天內 [{date, event}]。
+    ⚠️ 端點/欄位名可能需依實際回應微調(候選端點,首次跑看 log)。任何失敗回 [],絕不影響主流程。"""
+    from datetime import date, timedelta
+    today, end = date.today(), date.today() + timedelta(days=window_days)
+    candidates = [
+        # TWSE OpenAPI 具名 JSON(無 307);_L=上市 _O=上櫃(候選 dataset code,首次跑確認)
+        ("https://openapi.twse.com.tw/v1/opendata/t187ap02_L", "上市"),
+        ("https://openapi.twse.com.tw/v1/opendata/t187ap02_O", "上櫃"),
+    ]
+
+    def _find_key(row, *musts):
+        for k in row.keys():
+            if all(m in k for m in musts):
+                return k
+        return None
+
+    out = []
+    for url, mk in candidates:
+        try:
+            r = http.get(url, headers={**HEADERS, "Accept": "application/json"}, timeout=15)
+            if r.status_code != 200:
+                print(f"  ⚠️ 法說會 {mk} HTTP {r.status_code}(端點可能需調整)")
+                continue
+            rows = r.json()
+            if not isinstance(rows, list) or not rows:
+                print(f"  ⚠️ 法說會 {mk} 回非陣列/空")
+                continue
+            k_date = _find_key(rows[0], "說明會", "日期") or _find_key(rows[0], "法說", "日期") or _find_key(rows[0], "日期")
+            k_code = _find_key(rows[0], "公司", "代號") or _find_key(rows[0], "代號")
+            k_name = _find_key(rows[0], "公司", "名稱") or _find_key(rows[0], "公司", "簡稱") or _find_key(rows[0], "名稱")
+            k_time = _find_key(rows[0], "說明會", "時間") or _find_key(rows[0], "時間")
+            if not (k_date and k_code):
+                print(f"  ⚠️ 法說會 {mk} 找不到日期/代號欄位,keys={list(rows[0].keys())[:8]}")
+                continue
+            hit = 0
+            for row in rows:
+                d = _parse_date_flexible(row.get(k_date))
+                code = str(row.get(k_code) or "").strip()
+                name = str((row.get(k_name) if k_name else "") or "").strip()
+                if d is None or not code or not (today <= d <= end):
+                    continue
+                t = str((row.get(k_time) if k_time else "") or "").strip()
+                ev = f"📞 {name}({code}) 法說會" + (f" {t}" if t else "")
+                out.append({"date": d.isoformat(), "event": ev})
+                hit += 1
+            print(f"  📞 法說會 {mk}: {hit} 場(窗內 {window_days} 天)")
+        except Exception as e:
+            print(f"  ⚠️ 法說會 {mk} 例外:{str(e)[:70]}")
+    # 去重 + 依日期排序
+    seen, uniq = set(), []
+    for e in sorted(out, key=lambda x: x["date"]):
+        kk = (e["date"], e["event"])
+        if kk in seen:
+            continue
+        seen.add(kk)
+        uniq.append(e)
+    return uniq
+
+
 def fetch_us10y_yield():
     """美債 10Y 殖利率 (^TNX，數值 = 殖利率 * 10，需 /10 還原 %)"""
     try:
@@ -1740,7 +1826,16 @@ def main():
     try:
         from datetime import date as _date
         out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14)
-        print(f"📅 未來 14 日核彈事件:{len(out['upcoming_macro_events'])} 場")
+        # 📞 併入 TWSE 法說會逐檔日期(失敗回 [] 不影響演算法事件)
+        try:
+            _ec = fetch_earnings_calls(window_days=14)
+            if _ec:
+                out["upcoming_macro_events"] = sorted(
+                    out["upcoming_macro_events"] + _ec, key=lambda x: x["date"])
+                print(f"  📞 法說會併入 {len(_ec)} 場 → 行事曆共 {len(out['upcoming_macro_events'])} 場")
+        except Exception as _e:
+            print(f"  ⚠️ 法說會併入失敗(不影響):{_e}")
+        print(f"📅 未來 14 日財經行事曆:{len(out['upcoming_macro_events'])} 場")
         for ev in out["upcoming_macro_events"]:
             print(f"     · {ev['date']}  {ev['event']}")
     except Exception as e:
