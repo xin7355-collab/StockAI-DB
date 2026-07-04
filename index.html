@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.8</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.9</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -6774,7 +6774,7 @@ ${list}
             : '7 因子純公式評分(位階/估值/成長/籌碼/技術/題材/空間),分數越高長線潛力越大 ・ 非投資建議';
         const help = isM
             ? '🐎 中線黑馬(純公式,禁 AI 算數)\\n\\n照投顧「漲價→獲利跳→法人評價跳→主升段」的中線飆股邏輯,找「已經啟動、獲利在跳、還沒噴完」的股。\\n\\n① 主升段技術(均線多頭排列+趨勢效率高+帶量突破,已在走)\\n② 獲利跳(營收YoY高/毛利向上=法人開始評價)\\n③ 法人卡位(近20日買超、買盤加速)\\n④ 中位階(不是低基期沉睡,也不是天花板)\\n⑤ 漲價族群(被動元件/MLCC/記憶體/矽晶圓…)\\n⑥ 量增表態(放量,與長線潛力「量縮」相反)\\n\\n🆕 三層對照:\\n・🌡️ 大盤環境權重:大盤風險高(過熱)時黑馬分自動打折,大字=環境調整後、括號=原始分。\\n・🏭 同業比價:同產業(本榜)內排名,🥇同業最強=領漲;⚠️同業落後=可能只是補漲的弱勢股。\\n・💵 停利金額:目標價下方「每張 +X 元」= 從現價漲到目標、1 張(1000股)可賺多少。\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損、別追末升段。'
-            : '💎 長線潛力股(純公式,禁 AI 算數)\\n\\n用 7 個因子幫你找「現在便宜、基本面在轉好、主力默默布局、技術剛打底、又搭長線題材」的股票,並估上檔空間。\\n\\n① 位階低(低基期)② 估值便宜 ③ 成長轉機 ④ 籌碼默默吸 ⑤ 技術打底 ⑥ 題材主流 ⑦ 翻倍空間\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損。';
+            : '💎 長線潛力股(純公式,禁 AI 算數)\\n\\n用 7 個因子幫你找「現在便宜、基本面在轉好、主力默默布局、技術剛打底、又搭長線題材」的股票,並估上檔空間。\\n\\n① 位階低(低基期)② 估值便宜 ③ 成長轉機 ④ 籌碼默默吸 ⑤ 技術打底 ⑥ 題材主流 ⑦ 翻倍空間\\n\\n🆕 三層對照:\\n・🌡️ 大盤環境權重:大盤過熱時潛力分自動打折(長線折數較輕),大字=環境調整後、括號=原始分。\\n・🏭 同業比價:同產業(本榜)內排名,🥇同業最強=領漲;⚠️同業落後=可能是補漲的弱勢股。\\n・💵 停利金額:目標價下方「每張 +X 元」= 從現價漲到目標、1 張(1000股)可賺多少。\\n\\n⚠️ 純技術/財務彙總,非投資建議,務必自設停損。';
         const chips = isM
             ? `${chip('all', '全部')}${chip('mainrise', '🔥 主升段中')}${chip('launch', '🚀 初升段')}${chip('fuel', '💰 獲利跳')}${chip('inst', '🕵️ 法人卡位')}${chip('hotprice', '⚡ 漲價族群')}`
             : `${chip('all', '全部')}${chip('lowbase', '🔥 低基期翻倍')}${chip('valgrow', '💰 便宜成長')}${chip('chips', '🕵️ 籌碼默默吸')}${chip('tech', '🌱 技術打底')}${chip('yield', '🏦 高殖利率')}`;
@@ -6840,12 +6840,15 @@ ${list}
         const topInd = Object.entries(indCount).sort((a, b) => b[1] - a[1])[0];
         const diverseNote = (topInd && topInd[1] >= Math.max(4, arr.length * 0.4))
             ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2 text-[10px] text-yellow-200/90 leading-snug">⚠️ 榜上 <b>${topInd[0]}</b> 佔 ${topInd[1]}/${arr.length} 檔,偏集中 → 分批布局也別把資金全押同族群,分散產業較抗風險。</div>` : '';
-        // 🌡️ 大盤環境權重:市場過熱/高風險時,黑馬分打折(排名不變,反映「逆勢難為」的系統性風險;只作用於中線黑馬)
+        // 🌡️ 大盤環境權重:市場過熱/高風險時,分數打折(排名不變,反映系統性風險);黑馬折數重、長線折數輕
         let envScore = 0; try { envScore = this._calcRiskScore?.() ?? 0; } catch (_) {}
-        const envMult = isM ? (envScore >= 80 ? 0.75 : envScore >= 60 ? 0.85 : envScore >= 40 ? 0.93 : 1) : 1;
+        const envMult = envScore >= 80 ? (isM ? 0.75 : 0.85) : envScore >= 60 ? (isM ? 0.85 : 0.92) : envScore >= 40 ? (isM ? 0.93 : 0.97) : 1;
         const envCol = envScore >= 80 ? 'red' : envScore >= 60 ? 'orange' : 'yellow';
+        const envMsg = isM
+            ? '系統性風險升高時黑馬也難逆勢,降低期望、收緊停損、部位縮小。'
+            : '大盤過熱時資金可能還沒輪到低基期股、或系統性回檔會拖累;長線可分批布局、別急重壓,等回檔進場更安全。';
         const envNote = (envMult < 1)
-            ? `<div class="bg-[#161b22] border-l-4 border-${envCol}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2 text-[10px] leading-snug"><span class="text-${envCol}-300 font-bold">🌡️ 大盤風險 ${envScore}/100</span> <span class="text-gray-300">→ 黑馬分已打 ${(envMult * 10).toFixed(1).replace('.0', '')} 折(大字=環境調整後,括號=原始分);系統性風險升高時黑馬也難逆勢,降低期望、收緊停損、部位縮小。</span></div>` : '';
+            ? `<div class="bg-[#161b22] border-l-4 border-${envCol}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2 text-[10px] leading-snug"><span class="text-${envCol}-300 font-bold">🌡️ 大盤風險 ${envScore}/100</span> <span class="text-gray-300">→ ${scoreLabel}已打 ${(envMult * 10).toFixed(1).replace('.0', '')} 折(大字=環境調整後,括號=原始分);${envMsg}</span></div>` : '';
         // 🏭 產業比價:同產業(本榜)內以分數排名,標「同業最強/落後」→ 避免買到落後補漲的弱勢股
         const byInd = {};
         arr.forEach(r => { const k = r.industry || ''; if (!k) return; (byInd[k] = byInd[k] || []).push(r); });
