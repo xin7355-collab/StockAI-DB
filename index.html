@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.9</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.0</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1445,7 +1445,7 @@
                     </h4>
                     <!-- V14.15:📊 投資屬性 3 軸雷達(波段價值/長期存股/短線價差,對標籌碼K線) -->
                     <div class="inline-flex items-center text-purple-300 text-xs font-black mt-2 mb-1.5 bg-purple-900/40 border-l-[3px] border-purple-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📊 投資屬性</div>
-                    <div class="bg-gradient-to-br from-[#0d1117] to-purple-950/30 rounded-lg p-2 mb-2 border border-purple-900/40">
+                    <div class="bg-[#0d1117] rounded-lg p-2 mb-2 border border-purple-900/40">
                         <div class="flex items-stretch gap-2">
                             <div id="xrayInvRadar" class="flex-shrink-0" style="width:140px;height:140px;"></div>
                             <div class="flex-1 flex flex-col justify-center gap-1.5 text-[11px]">
@@ -1463,12 +1463,12 @@
                     <!-- 💰 盈利力(營收成長 + 毛利率趨勢) -->
                     <div class="inline-flex items-center text-emerald-300 text-xs font-black mt-2 mb-1.5 bg-emerald-900/40 border-l-[3px] border-emerald-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">💰 盈利力</div>
                     <div class="grid grid-cols-2 gap-1.5 mb-2">
-                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-emerald-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-emerald-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">營收 YoY <button onclick="app.showJargon('營收YoY'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayYoy" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                             <span id="xrayRevMom" class="text-[10px] font-mono text-gray-500"></span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-emerald-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-emerald-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-emerald-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">毛利率 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayGrossMargin" class="font-mono font-black text-xl leading-tight text-gray-600">--</span>
                             <div id="xrayGmSpark" style="width:100%;height:22px;margin-top:1px;"></div>
@@ -1479,7 +1479,7 @@
                     <div id="xrayTriRate" class="hidden mb-2"></div>
                     <!-- 📊 估值(本益比 PE,獨立寬版) -->
                     <div class="inline-flex items-center text-blue-300 text-xs font-black mt-2 mb-1.5 bg-blue-900/40 border-l-[3px] border-blue-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📊 估值</div>
-                    <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2.5 flex justify-between items-center mb-1.5 border border-blue-900/40">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 flex justify-between items-center mb-1.5 border border-blue-900/40">
                         <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1.5">本益比 PE <button onclick="app.showJargon('本益比PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPeTag" class="text-[10px] font-mono px-1.5 py-0.5 rounded"></span></span>
                         <span class="flex items-baseline gap-1.5">
                             <span id="xrayPe" class="font-mono font-black text-2xl text-gray-600 leading-none">--</span>
@@ -1488,15 +1488,15 @@
                     </div>
                     <!-- 🎯 PEG + 🏷️ 產業相對 PE + 📐 股價淨值比 P/B (V14.15 新增 P/B,景氣循環 + 資產股估值關鍵) -->
                     <div class="grid grid-cols-3 gap-1.5 mb-1.5">
-                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">PEG <button onclick="app.showJargon('PEG'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayPegTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayPeg" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">vs 同業 <button onclick="app.showJargon('產業相對PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button> <span id="xrayIndustryPeTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayIndustryPe" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-blue-950/40 rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2 flex flex-col gap-0.5 border border-blue-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">P/B <button onclick="app.showJargon('股價淨值比PB'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayPb" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
@@ -1506,26 +1506,26 @@
                     <!-- 🎁 配息力(殖利率 + 股利發配率 + 最新每股股利) -->
                     <div class="inline-flex items-center text-amber-300 text-xs font-black mt-2 mb-1.5 bg-amber-900/40 border-l-[3px] border-amber-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">🎁 配息力</div>
                     <div class="grid grid-cols-2 gap-1.5 mb-1.5">
-                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">殖利率 <button onclick="app.showJargon('殖利率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayYield" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">股利發配率 <button onclick="app.showJargon('股利發配率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayPayout" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
-                    <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex justify-between items-center mb-2 border border-amber-900/40">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 flex justify-between items-center mb-2 border border-amber-900/40">
                         <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">💵 最新每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                         <span id="xrayDividend" class="font-mono font-black text-xl text-gray-600 leading-none">--</span>
                     </div>
                     <!-- V14.15:填息機率 + 平均填息天數(對標籌碼K線) -->
                     <div class="grid grid-cols-2 gap-1.5 mb-1.5">
-                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">📊 填息機率<span class="text-[8px] text-gray-500">(近 5 年)</span> <button onclick="app.showJargon('填息機率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayFillProb" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
-                        <div class="bg-gradient-to-br from-[#0d1117] to-amber-950/40 rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
+                        <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
                             <span class="text-gray-400 text-[10px] font-mono uppercase tracking-wide inline-flex items-center gap-1">⏱️ 平均填息天數 <button onclick="app.showJargon('平均填息天數'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300 normal-case">ⓘ</button></span>
                             <span id="xrayFillDays" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
@@ -1547,8 +1547,15 @@
                         </div>
                         <div id="xrayRevTrend" style="width:100%;height:200px;"></div>
                     </div>
-                    <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-purple-900/40">
-                        <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀</div>
+                    <!-- 🧮 純公式體質總評(取代 AI 自動解讀:讀已算好的營收/三率/估值/配息數字 → 規則產生結論,零 API 額度、零幻覺) -->
+                    <div id="xrayVerdict" class="mb-2"></div>
+                    <!-- 🤖 AI 深入解讀改「手動按鈕」(想要更白話的總裁解剖再點,用 Gemini 不吃 Groq 額度) -->
+                    <div class="flex items-center justify-between gap-2 bg-[#0d1117] rounded p-2 border border-[#30363d]">
+                        <span class="text-[10px] text-gray-500 leading-snug">上方＝純公式體質總評(零 AI)。想要更白話的「總裁解剖財報」再點右邊 →</span>
+                        <button id="xrayAiBtn" onclick="app.fetchFundamentalAnalysis(app.currentSymbolId, {forceAI:true}); app.vibrate(30);" class="flex-shrink-0 text-[10px] font-bold text-purple-300 bg-purple-900/30 border border-purple-700/50 hover:bg-purple-800/40 rounded px-2.5 py-1 transition-colors">🤖 AI 深入解讀</button>
+                    </div>
+                    <div id="xrayAIBox" class="hidden bg-[#0d1117] rounded p-2.5 border border-[#30363d] mt-2">
+                        <div class="text-purple-400 text-[10px] font-mono font-bold mb-1.5">🤖 總裁財報解讀（AI 產生 · 質化解讀,非計算數字）</div>
                         <div id="xrayAIResult" class="text-gray-200 text-base leading-relaxed"></div>
                     </div>
                 </div>
@@ -15396,9 +15403,11 @@ ${peerLine}${newsCtx}
         // V18.5 — 同股掃描進行中時跳過,避免 analyze() 自動觸發 + 使用者切情報 tab 對同股雙重打 API
         if (this._xrayInFlightSym === sym) return;
         this._xrayInFlightSym = sym;
+        this._xrayMetrics = { sym };   // 🧮 純公式體質總評用的指標暫存(逐項算好塞進來,末端統一產結論)
         // 🧩 V34.0 — ETF 不適用個股本益比/EPS/營收 → 顯說明、跳過抓財報(改看成分股卡)
         if (this._isETF && this._isETF(sym)) {
             ['xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout','xrayEpsYoY','xrayEpsQoQ','xrayPb','xrayPeg'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+            const _vet = document.getElementById('xrayVerdict'); if (_vet) _vet.innerHTML = '';   // ETF 無個股體質總評,清空避免卡「計算中…」
             const box = document.getElementById('xrayAIBox'), res = document.getElementById('xrayAIResult');
             if (box && res) { box.classList.remove('hidden'); res.innerHTML = '🧩 <b class="text-blue-300">這是 ETF</b>,不適用個股本益比 / EPS / 營收 / 毛利率。<br>ETF 看的是<b class="text-gray-200">成分股比重、折溢價、配息、追蹤指數</b> — 請看籌碼分頁的<b class="text-blue-300">「🧩 ETF 成分股比重」</b>與<b class="text-amber-300">「🚦 ETF 跟車 / 投信動能」</b>卡。'; }
             this._xrayInFlightSym = null;
@@ -15413,6 +15422,7 @@ ${peerLine}${newsCtx}
             const el = document.getElementById(id);
             if (el) el.innerHTML = '<span class="animate-pulse text-gray-600 text-xs">…</span>';
         });
+        { const _v = document.getElementById('xrayVerdict'); if (_v) _v.innerHTML = '<div class="text-center text-gray-600 text-[11px] py-3 animate-pulse">🧮 體質總評計算中…</div>'; }
 
         const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
         const d = new Date(); d.setFullYear(d.getFullYear() - 2);
@@ -15553,6 +15563,7 @@ ${peerLine}${newsCtx}
                 triV = { tone: 'flat', icon: '⏳', txt: '資料整備中', desc: '三率部分季度缺(損益表尚未補齊),下次採礦或非觀察清單股進場後重抓' };
             }
             this._renderTriRateCard(triRates, triV);
+            this._xrayMetrics.triV = triV;
 
 // Revenue YoY
         const revData = (revRes.data||[]).sort((a,b)=> (`${a.revenue_year}${String(a.revenue_month).padStart(2,'0')}`> `${b.revenue_year}${String(b.revenue_month).padStart(2,'0')}`) ? 1:-1);
@@ -15669,6 +15680,7 @@ ${peerLine}${newsCtx}
         }
         // V14.15:股價淨值比 P/B(miner.py 從 BWIBBU_d 抓 pbr,V15.9 FinMind PER 補)
         const pb = (localFund.pb != null) ? Number(localFund.pb) : null;
+        this._xrayMetrics.pb = pb;
         // V15.7 — P/B 無資料源(BWIBBU_d 對某些股拿不到)時,顯具體提示而非含糊「採礦更新中」
         if (pb == null && localFund.pb_unavailable) {
             const pbEl = document.getElementById('xrayPb');
@@ -15723,6 +15735,7 @@ ${peerLine}${newsCtx}
                     }
                 }
             }
+            this._xrayMetrics.peg = peg; this._xrayMetrics.pegLabel = pegLabel;
             if (pegEl) {
                 // V16.5 — 改寫文案:「季數累積中」非「採礦更新中」(後者跨日就過期、誤導使用者以為當下在採礦)
                 if (peg != null) {
@@ -15757,6 +15770,7 @@ ${peerLine}${newsCtx}
                 else if (relRatio <= 1.2) { relLabel = '🟡 中性'; relColor = 'text-yellow-400'; }
                 else { relLabel = '🔴 同業偏貴'; relColor = 'text-red-400'; }
             }
+            this._xrayMetrics.relPe = relRatio;
             if (ipEl) {
                 // V14.4:relRatio 算不出來區分「真不適用(未在產業表)」vs「採礦更新中」
                 if (relRatio != null) {
@@ -15928,6 +15942,7 @@ ${peerLine}${newsCtx}
         // V14.15:填息機率 + 平均填息天數 + 近 5 次明細
         try {
             const fillProb = (localFund.dividend_fill_prob != null) ? Number(localFund.dividend_fill_prob) : null;
+            this._xrayMetrics.fillProb = fillProb;
             const fillDays = (localFund.dividend_avg_fill_days != null) ? Number(localFund.dividend_avg_fill_days) : null;
             const fillHist = Array.isArray(localFund.dividend_fill_history) ? localFund.dividend_fill_history : [];
             const fpEl = document.getElementById('xrayFillProb');
@@ -16165,7 +16180,12 @@ ${peerLine}${newsCtx}
 
             // 🐛 V40.6 數字卡已渲染完成。skipAI=true(快取已還原 AI 文字)→ 到此即返回,不重打 AI 省額度,
             //   但數字卡每次切股/進tab都重抓→永遠是當前股、不再顯舊股或「---」半成品。
-            if (opts.skipAI) { if (btn) { btn.disabled = false; } this._xrayInFlightSym = null; return; }
+            // 🧮 純公式體質總評:把函式作用域內的指標補進暫存,產生零 AI 的結論卡(每次都跑,快取還原也顯)
+            Object.assign(this._xrayMetrics, { pe, yield: yieldRate, yoy: latestYoy, payout: payoutRatio, gmDelta: gmTrend, gmStr: gmTrendStr, eps: latestEps });
+            try { this._renderXrayVerdict(); } catch (_) {}
+
+            // 🤖 AI 深入解讀改「手動觸發」:預設一律略過(省 API 額度),只有點「🤖 AI 深入解讀」鈕(forceAI)才跑
+            if (opts.skipAI || !opts.forceAI) { if (btn) { btn.disabled = false; } this._xrayInFlightSym = null; return; }
 
             // AI
             const xrayAIBox = document.getElementById('xrayAIBox');
@@ -18100,6 +18120,84 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             minBudget,
             cheapPrice,
         };
+    },
+
+    // 🧮 純公式體質總評(取代 AI 自動解讀):讀 this._xrayMetrics 已算好的數字 → 規則產生結論,零 API、零幻覺、秒出
+    //   台股色慣例:利多 chip 紅、利空 chip 綠;結論邊框用非漲跌色(琥珀/橙/灰)避免紅綠誤讀
+    _renderXrayVerdict() {
+        const box = document.getElementById('xrayVerdict');
+        if (!box) return;
+        const m = this._xrayMetrics || {};
+        const has = v => v != null && Number.isFinite(+v);
+        let score = 0, max = 0; const pos = [], neg = [], note = [];
+        // ── 獲利:營收 YoY ──
+        if (has(m.yoy)) { max += 2; const y = +m.yoy;
+            if (y >= 30) { score += 2; pos.push(`營收年增 +${y.toFixed(0)}%(高成長)`); }
+            else if (y >= 10) { score += 1.4; pos.push(`營收年增 +${y.toFixed(0)}%(穩成長)`); }
+            else if (y >= 0) { score += 0.8; note.push(`營收年增 +${y.toFixed(0)}%(溫和)`); }
+            else { neg.push(`營收年增 ${y.toFixed(0)}%(衰退)`); } }
+        // ── 獲利:三率 ──
+        if (m.triV && m.triV.txt) { const t = m.triV.txt;
+            if (t === '三率三升') { max += 2; score += 2; pos.push('三率三升(獲利全面變好)'); }
+            else if (t === '三率三降') { max += 2; neg.push('三率三降(獲利全面惡化)'); }
+            else if (t === '二升一降') { max += 2; score += 1; note.push('三率二升一降(改善中有隱憂)'); } }
+        // ── 估值:PEG > vs同業 > PE(擇一可得者)──
+        if (has(m.peg)) { max += 2; const g = +m.peg;
+            if (g < 1) { score += 2; pos.push(`PEG ${g.toFixed(2)}(成長相對便宜)`); }
+            else if (g < 2) { score += 1.2; note.push(`PEG ${g.toFixed(2)}(合理)`); }
+            else { neg.push(`PEG ${g.toFixed(2)}(偏貴)`); } }
+        else if (has(m.relPe)) { max += 1.5; const r = +m.relPe;
+            if (r < 0.8) { score += 1.5; pos.push(`比同業便宜(${r.toFixed(2)}x)`); }
+            else if (r <= 1.2) { score += 0.9; note.push('估值與同業相當'); }
+            else { neg.push(`比同業貴(${r.toFixed(2)}x)`); } }
+        else if (has(m.pe)) { max += 1.5; const p = +m.pe;
+            if (p < 15) { score += 1.5; pos.push(`本益比 ${p.toFixed(1)}(低,回本快)`); }
+            else if (p < 25) { score += 1; note.push(`本益比 ${p.toFixed(1)}(中性)`); }
+            else if (p < 40) { score += 0.4; note.push(`本益比 ${p.toFixed(1)}(偏高)`); }
+            else { neg.push(`本益比 ${p.toFixed(1)}(很貴,回本久)`); } }
+        // ── 配息:殖利率 + 發配率 + 填息 ──
+        if (has(m.yield)) { max += 1.5; const yd = +m.yield;
+            if (yd >= 5) { score += 1.5; pos.push(`殖利率 ${yd.toFixed(1)}%(高)`); }
+            else if (yd >= 3) { score += 1; pos.push(`殖利率 ${yd.toFixed(1)}%`); }
+            else if (yd >= 1) { score += 0.5; note.push(`殖利率 ${yd.toFixed(1)}%`); }
+            else { note.push(`殖利率 ${yd.toFixed(1)}%(低,非存股型)`); } }
+        if (has(m.payout) && +m.payout > 100) neg.push(`配息率 ${(+m.payout).toFixed(0)}%>100%(吃老本)`);
+        if (has(m.fillProb)) { max += 1; const f = +m.fillProb;
+            if (f >= 90) { score += 1; pos.push(`填息機率 ${f.toFixed(0)}%(幾乎必填)`); }
+            else if (f >= 70) { score += 0.7; note.push(`填息機率 ${f.toFixed(0)}%`); }
+            else if (f < 50) { neg.push(`填息機率 ${f.toFixed(0)}%(常填不回)`); } }
+        // ── 資料充足度守門(禁在資料不全時硬判「偏弱」,避免誤殺:如營收/三率還在採礦更新中)──
+        const hasProfit = has(m.yoy) || (m.triV && ['三率三升', '三率三降', '二升一降'].includes(m.triV.txt));
+        const hasVal = has(m.peg) || has(m.relPe) || has(m.pe);
+        const hasDiv = has(m.yield);
+        const pillars = (hasProfit ? 1 : 0) + (hasVal ? 1 : 0) + (hasDiv ? 1 : 0);
+        // ── 綜合判定 ──
+        const pct = max > 0 ? score / max : null;
+        let tone, verdict, act;
+        if (pct == null || !hasProfit || pillars < 2) {
+            tone = 'flat'; verdict = '⏳ 財報資料整備中';
+            act = !hasProfit
+                ? '最關鍵的「獲利」數字(營收年增 / 三率)還在採礦更新中(非籌碼觀察清單股常見) → 先不下體質結論,以免誤判;等採礦補上或點上方「🔄 重新掃描」,先看 K 線 / 籌碼頁。'
+                : '財報只到部分指標,還不夠下綜合結論;等採礦補齊或點「🔄 重新掃描」。下方已顯示目前拿得到的訊號。';
+        }
+        else if (pct >= 0.75) { tone = 'bull'; verdict = '🔥 體質強勁'; act = '獲利、估值、配息多項亮燈 → 基本面站在你這邊。搭配技術面找買點分批進,仍要設停損。'; }
+        else if (pct >= 0.55) { tone = 'good'; verdict = '✅ 體質穩健'; act = '基本面中上,適合波段或存股。搭配 K 線決定進出、別追高。'; }
+        else if (pct >= 0.35) { tone = 'warn'; verdict = '⚖️ 中性偏保守'; act = '亮點與隱憂並存,別只靠基本面 → 要有技術/籌碼加持才進,嚴設停損。'; }
+        else { tone = 'bear'; verdict = '🚨 體質偏弱 / 偏貴'; act = '獲利或估值有警訊 → 不適合存股長抱;真要做只做短線價差,快進快出。'; }
+        const col = { bull: 'red', good: 'amber', warn: 'yellow', bear: 'orange', flat: 'gray' }[tone];
+        const chips = (arr, c) => arr.slice(0, 4).map(t => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-${c}-900/25 text-${c}-300 border border-${c}-800/40 whitespace-nowrap">${t}</span>`).join(' ');
+        box.innerHTML = `
+            <div class="bg-[#161b22] border-l-4 border-${col}-500 border-y border-r border-[#30363d] rounded-r p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="text-base font-black text-${col}-300">${verdict}</div>
+                    ${pct != null ? `<div class="text-[10px] text-gray-500 font-mono">體質分 <span class="text-gray-300 font-black">${Math.round(pct * 100)}</span>/100</div>` : ''}
+                </div>
+                ${pos.length ? `<div class="flex flex-wrap gap-1 mb-1">${chips(pos, 'red')}</div>` : ''}
+                ${neg.length ? `<div class="flex flex-wrap gap-1 mb-1">${chips(neg, 'green')}</div>` : ''}
+                ${(!pos.length && !neg.length && note.length) ? `<div class="flex flex-wrap gap-1 mb-1">${chips(note, 'gray')}</div>` : ''}
+                <div class="text-[11px] text-gray-300 leading-relaxed mt-1.5">💡 ${act}</div>
+                <div class="text-[9px] text-gray-600 mt-1.5">🧮 純公式綜合(營收成長 / 三率 / 估值 / 配息 / 填息),零 AI、零幻覺;紅=加分 綠=扣分,非投資建議。</div>
+            </div>`;
     },
 
     // V14.15 — 投資屬性 3 軸雷達(波段價值 / 長期存股 / 短線價差)— 全 JS 算
