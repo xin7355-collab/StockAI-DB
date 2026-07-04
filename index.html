@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.8</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.9</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -10975,9 +10975,16 @@ const marginByDate = {};
                 <div>📅 資料採集 <b class="text-gray-300">${_basis}</b>${_twiiDate ? ` <span class="text-gray-600">(台股 ${_twiiDate} 收盤)</span>` : ''}</div>
                 <div>🌙 隔夜美股 → 預判<b class="text-gray-300">下一個交易日</b>開盤</div>
             </div>
-            <div class="flex items-center gap-3 mb-2">
-                <div class="text-3xl">${light}</div>
-                <div class="flex-1"><div class="text-base font-black ${sc} leading-tight">今天 ${verdict}</div><div class="text-[10px] text-gray-400">大盤開盤方向分數 <span class="font-mono font-black ${sc}">${s > 0 ? '+' : ''}${s}</span></div></div>
+            <div class="flex items-center gap-3 mb-2.5 bg-[#0d1117]/50 rounded-lg p-2.5 border ${bg.split(' ').find(c => c.startsWith('border-')) || 'border-[#30363d]'}">
+                <div class="text-4xl leading-none flex-shrink-0">${light}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[9px] text-gray-500 font-bold tracking-widest mb-0.5">今日開盤預判</div>
+                    <div class="text-xl font-black ${sc} leading-none">${verdict}</div>
+                </div>
+                <div class="text-right flex-shrink-0 pl-2 border-l border-[#30363d]">
+                    <div class="font-mono font-black text-2xl ${sc} leading-none">${s > 0 ? '+' : ''}${s}</div>
+                    <div class="text-[8px] text-gray-500 mt-0.5">方向分數</div>
+                </div>
             </div>
             <div class="bg-[#0d1117]/60 rounded p-2 mb-2 space-y-1.5 text-[10px]">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1">
