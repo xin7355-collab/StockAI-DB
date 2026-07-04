@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V50.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V50.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -914,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.2</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.3</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1586,6 +1586,17 @@
             <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
             <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
 
+            <!-- 📅 V50.3 財經行事曆(原「即將引爆」,移到盤前體檢下方常駐;未來 14 日核彈事件+法說會,出自 macro_risk.json.upcoming_macro_events) -->
+            <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[11px] font-black text-amber-300">📅 財經行事曆 <span class="text-[9px] text-gray-500 font-normal">未來 14 日 · 核彈事件 + 法說會</span></div>
+                    <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
+                </div>
+                <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
+                    <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
+                </div>
+            </div>
+
             <!-- ════════ 【區 3】V49.8 — 整段(板塊輪動/盤前新聞/全球環境/台股因子)收進「展開更多」摺疊,讓盤前體檢當主角、減雜訊 ════════ -->
             <details>
               <summary class="cursor-pointer flex items-center justify-between gap-2 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 mb-3 text-[12px] font-black text-gray-200 hover:border-cyan-700/50 transition-colors">
@@ -1596,27 +1607,18 @@
             <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md">
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global"
                         class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors bg-cyan-700/40 text-cyan-200 border border-cyan-500/50">
-                    🌍 全球大環境
+                    🗞️ 盤前新聞
                 </button>
                 <button onclick="app.switchMarketSubTab('tw')" id="subTab_tw"
                         class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent">
-                    🇹🇼 台股實戰
+                    🔄 資金輪動
                 </button>
             </div>
 
             <!-- ════════ 【區 3-A】🌍 全球大環境 ════════ -->
             <div id="subContent_global" class="flex flex-col gap-3">
 
-            <!-- 📅 即將引爆(未來 14 日核彈事件,演算法計算自 macro_risk.json.upcoming_macro_events)-->
-            <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5 mb-2">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-[10px] font-black text-amber-300">📅 即將引爆 (未來 14 日核彈)</div>
-                    <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
-                </div>
-                <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
-                    <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
-                </div>
-            </div>
+            <!-- 📅 即將引爆 → 已改名「財經行事曆」並移到盤前體檢卡下方(V50.3) -->
 
             <!-- V35 — 「今日全球彙整(AI 摘要)」卡已移除(使用者要求取消新聞 AI 分析) -->
 
@@ -3846,14 +3848,19 @@ const app = {
                 const safeUrl = (item.url || '#').replace(/"/g, '&quot;');
                 // V35 — 統一台灣格式 + Asia/Taipei 時區(6/29 14:30)
                 const _pubLabel = this._fmtNewsTime(item.published);
-                return `<a href="${safeUrl}" target="_blank" rel="noopener" class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 hover:bg-gray-800/30 rounded px-1 transition-colors no-underline">
+                // 🔎 V50.3 — 每則右邊加 Perplexity 深入查(取代原自動 AI 翻譯,點才開、不耗自家額度)
+                const _q = (item.title_zh || item.title || '').replace(/['"\\]/g, '').slice(0, 90);
+                return `<div class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 rounded px-1">
                     <span class="text-[8px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
-                    <div class="flex-1 min-w-0">
+                    <a href="${safeUrl}" target="_blank" rel="noopener" class="flex-1 min-w-0 no-underline hover:bg-gray-800/30 rounded">
                         <div class="text-[10px] text-gray-300 leading-tight">${displayTitle}</div>
                         <div class="text-[9px] ${ic} mt-0.5">${impact}</div>
+                    </a>
+                    <div class="flex flex-col items-end flex-shrink-0 gap-0.5">
+                        <span class="text-[8px] text-gray-600">${_pubLabel}</span>
+                        <button onclick="app._freeAiOpen('${_q} 這則新聞對台股(尤其半導體/AI/權值股)有什麼影響?利多還利空?請白話+附來源'); app.vibrate(20);" class="text-[8px] font-bold text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-1 py-0.5 hover:bg-amber-800/30 transition-colors">🔎 查</button>
                     </div>
-                    <div class="text-[8px] text-gray-600 flex-shrink-0 mt-0.5">${_pubLabel}</div>
-                </a>`;
+                </div>`;
             });
             list.innerHTML = rows.length ? rows.join('') : '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>';
             if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
@@ -11018,12 +11025,16 @@ const marginByDate = {};
 
         el.className = `w-full rounded-lg p-3 border ${bg}`;
         el.innerHTML = `
-            <div class="flex items-center justify-between mb-1.5">
-                <div class="flex items-center gap-1.5"><span class="text-base">🌅</span><span class="text-[12px] font-black text-gray-100">盤前體檢</span></div>
-                <button onclick="app.showJargon('盤前體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
-            </div>
-            <div class="text-[9px] text-gray-500 mb-2 leading-relaxed border-b border-[#21262d] pb-1.5 space-y-0.5">
-                <div>📅 資料採集 <b class="text-gray-300">${_basis}</b>${_twiiDate ? ` <span class="text-gray-600">(台股 ${_twiiDate} 收盤)</span>` : ''}</div>
+            <div class="flex items-start justify-between gap-2 mb-2 border-b border-[#21262d] pb-1.5">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xl leading-none">🌅</span>
+                    <span class="text-lg font-black text-gray-100 leading-none">盤前體檢</span>
+                    <button onclick="app.showJargon('盤前體檢')" class="text-[13px] text-gray-500 hover:text-blue-300 leading-none">❓</button>
+                </div>
+                <div class="text-[9px] text-gray-500 text-right leading-tight flex-shrink-0">
+                    <div>📅 資料採集 <b class="text-gray-300">${_basis}</b></div>
+                    ${_twiiDate ? `<div class="text-gray-600">(台股 ${_twiiDate} 收盤)</div>` : ''}
+                </div>
             </div>
             <!-- 🎯 V50.0 開盤預判 + 一句話總結 合併卡 -->
             <div class="mb-2 bg-[#0d1117]/50 rounded-lg p-2.5 border ${bg.split(' ').find(c => c.startsWith('border-')) || 'border-[#30363d]'}">
