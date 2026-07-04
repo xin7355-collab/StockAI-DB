@@ -211,6 +211,8 @@ jobs:
             data/bubble_warning.json
             data/sector_heat.json
             data/delisted_stocks.json
+            data/^TWII.json
+            data/^TWOII.json
             data/fundamentals_cache.json
             data/industry_pe.json
             data/industry_map.json
