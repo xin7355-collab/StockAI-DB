@@ -101,7 +101,7 @@ jobs:
             if git diff --cached --quiet; then
               echo "ℹ️ $BR 無變更"; return 0
             fi
-            git commit -m "🌙 夜間基本面補齊 fund_yoy_gm.json $(date -u '+%Y-%m-%d %H:%M UTC')" -q
+            git commit -q -m "🌙 夜間基本面補齊 fund_yoy_gm.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/fund_yoy_gm.json
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
@@ -110,7 +110,7 @@ jobs:
               git reset --hard -q "origin/$BR" 2>/dev/null || true
               cp /tmp/fund_yoy_gm.json data/fund_yoy_gm.json
               git add -f data/fund_yoy_gm.json
-              git commit -m "🌙 夜間基本面補齊 fund_yoy_gm.json $(date -u '+%Y-%m-%d %H:%M UTC')" -q 2>/dev/null || true
+              git commit -q -m "🌙 夜間基本面補齊 fund_yoy_gm.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/fund_yoy_gm.json 2>/dev/null || true
             done
           }
 

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.3</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.4</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -16206,6 +16206,8 @@ ${peerLine}${newsCtx}
 
             // 🐛 V40.6 數字卡已渲染完成。skipAI=true(快取已還原 AI 文字)→ 到此即返回,不重打 AI 省額度,
             //   但數字卡每次切股/進tab都重抓→永遠是當前股、不再顯舊股或「---」半成品。
+            // 🛡️ 切股競態守門:抓取期間使用者已切到別股 → 別把這股(sym)的指標蓋進當前股的暫存/總評卡,避免顯示到錯股
+            if (this.currentSymbolId && this.currentSymbolId !== sym) { this._xrayInFlightSym = null; return; }
             // 🧮 純公式體質總評:把函式作用域內的指標補進暫存,產生零 AI 的結論卡(每次都跑,快取還原也顯)
             Object.assign(this._xrayMetrics, { pe, yield: yieldRate, yoy: latestYoy, payout: payoutRatio, gmDelta: gmTrend, gmStr: gmTrendStr, eps: latestEps });
             try { this._renderXrayVerdict(); } catch (_) {}
@@ -18187,7 +18189,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             else if (yd >= 3) { score += 1; pos.push(`殖利率 ${yd.toFixed(1)}%`); }
             else if (yd >= 1) { score += 0.5; note.push(`殖利率 ${yd.toFixed(1)}%`); }
             else { note.push(`殖利率 ${yd.toFixed(1)}%(低,非存股型)`); } }
-        if (has(m.payout) && +m.payout > 100) neg.push(`配息率 ${(+m.payout).toFixed(0)}%>100%(吃老本)`);
+        if (has(m.payout) && +m.payout > 100) { max += 2; neg.push(`配息率 ${(+m.payout).toFixed(0)}%>100%(吃老本)`); }   // 計入分母當一個「失分維度」,讓吃老本真的拉低體質分(否則綠字警語但分數沒動)
         if (has(m.fillProb)) { max += 1; const f = +m.fillProb;
             if (f >= 90) { score += 1; pos.push(`填息機率 ${f.toFixed(0)}%(幾乎必填)`); }
             else if (f >= 70) { score += 0.7; note.push(`填息機率 ${f.toFixed(0)}%`); }
