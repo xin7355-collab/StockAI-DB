@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V48.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V48.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.6</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V48.7</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -6841,7 +6841,9 @@ ${list}
         const diverseNote = (topInd && topInd[1] >= Math.max(4, arr.length * 0.4))
             ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2 text-[10px] text-yellow-200/90 leading-snug">⚠️ 榜上 <b>${topInd[0]}</b> 佔 ${topInd[1]}/${arr.length} 檔,偏集中 → 分批布局也別把資金全押同族群,分散產業較抗風險。</div>` : '';
         list.innerHTML = diverseNote + arr.map((r, i) => {
-            const tags = (r.tags || []).map(t => `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-cyan-900/30 text-cyan-300 border border-cyan-700/40 whitespace-nowrap">${tagMap[t] || t}</span>`).join(' ');
+            // 中線黑馬:stage 徽章已表達「初升段/主升段」階段,顯示時剔除同義的 mainrise/launch tag(仍保留作篩選鍵),避免「初升段×2」重複
+            const dispTags = isM ? (r.tags || []).filter(t => t !== 'mainrise' && t !== 'launch') : (r.tags || []);
+            const tags = dispTags.map(t => `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-cyan-900/30 text-cyan-300 border border-cyan-700/40 whitespace-nowrap">${tagMap[t] || t}</span>`).join(' ');
             const conc = (r.conc || []).map(c => `<span class="text-[9px] text-cyan-400/80">#${c}</span>`).join(' ');
             const risk = (r.riskFlags || []).length ? `<div class="text-[10px] text-red-300/90 font-bold mt-1">${r.riskFlags.join(' ')}</div>` : '';
             const p = r.plan || {};
