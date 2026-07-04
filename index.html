@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -89,6 +89,10 @@
         /* 盤前體檢等密集兩欄格:標籤/數字不換行,避免「外資現/貨」「期現/基差」斷字 */
         #marketBriefing .grid > div > span,
         #marketBriefing .grid > div > div > span { white-space: nowrap; }
+        /* V49.8 — 摺疊卡:隱藏 <summary> 原生三角標記(iOS Safari 也吃),用自訂 ▾ */
+        summary { list-style: none; }
+        summary::-webkit-details-marker { display: none; }
+        details[open] > summary .dchev { transform: rotate(180deg); }
         /* V44.3 — 頂部跑馬燈(風險+regime+黑天鵝合併捲動),內容重複2份 + translateX(-50%) 無縫循環 */
         .marquee-track { display: inline-block; white-space: nowrap; animation: ticker 38s linear infinite; will-change: transform; }
         @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -910,7 +914,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.7</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.8</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -1582,7 +1586,13 @@
             <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
             <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
 
-            <!-- ════════ 【區 3】分頁切替:🌍 全球大環境 / 🇹🇼 台股實戰(V25.9 sticky 化:固定頂部不再 layout shift)════════ -->
+            <!-- ════════ 【區 3】V49.8 — 整段(板塊輪動/盤前新聞/全球環境/台股因子)收進「展開更多」摺疊,讓盤前體檢當主角、減雜訊 ════════ -->
+            <details>
+              <summary class="cursor-pointer flex items-center justify-between gap-2 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 mb-3 text-[12px] font-black text-gray-200 hover:border-cyan-700/50 transition-colors">
+                <span>📂 展開更多市場資訊 <span class="text-[10px] text-gray-500 font-normal ml-1">板塊輪動 · 盤前新聞 · 全球環境 · 台股因子</span></span>
+                <span class="dchev text-gray-500 transition-transform inline-block">▾</span>
+              </summary>
+            <!-- ════════ 分頁切替:🌍 全球大環境 / 🇹🇼 台股實戰(V25.9 sticky)════════ -->
             <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md">
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global"
                         class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors bg-cyan-700/40 text-cyan-200 border border-cyan-500/50">
@@ -2118,6 +2128,7 @@
             <!-- ════════ 黃金動線結束 ════════ -->
 
             </div><!-- ════ 台股實戰 tab 結束 ════ -->
+            </details><!-- ════ V49.8 展開更多 摺疊結束 ════ -->
 
             <!-- 🔄 重新整理按鈕已遷至「全球宏觀風險觀測台」標題列右側 icon(避免底部塞無關按鈕) -->
         </div>
