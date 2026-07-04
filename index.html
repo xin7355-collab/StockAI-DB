@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V49.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V49.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -909,7 +909,7 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.5</span>
+                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V49.6</span>
                 <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
                 <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
@@ -4085,7 +4085,8 @@ ${list}
             if (typeof mr.gold_chg_pct === 'number' && mr.gold_chg_pct > 3) segs.push(`🛢️ 黃金單日暴漲 ${_fs(mr.gold_chg_pct)},避險升溫,避開高位科技股`);
             if (typeof mr.wti_chg_pct === 'number' && mr.wti_chg_pct > 3) segs.push(`🛢️ 原油單日暴漲 ${_fs(mr.wti_chg_pct)},通膨/地緣風險`);
             if (typeof mr.kospi_chg_pct === 'number' && mr.kospi_chg_pct < -1.5) segs.push(`🇰🇷 韓股重挫 ${_fs(mr.kospi_chg_pct)},亞股遭提款,台股留意跟跌`);
-            if (typeof mr.taiex_ma240_bias === 'number' && mr.taiex_ma240_bias > 20) segs.push(`📈 台股年線乖離 ${_fs(mr.taiex_ma240_bias)},極端貪婪泡沫區,買入極度克制`);
+            // 🫧 V49.6 — 乖離雙軌:優先顯「技術過熱 × 台積電獲利是否有撐」的判斷,退回原純技術文案
+            if (typeof mr.taiex_ma240_bias === 'number' && mr.taiex_ma240_bias > 20) segs.push(mr.taiex_bubble_msg || `📈 台股年線乖離 ${_fs(mr.taiex_ma240_bias)},極端貪婪泡沫區,買入極度克制`);
         } catch (_) {}
         const txt = segs.join('　　◆　　');
         const accent = score >= 80 ? 'bg-red-950/90 text-red-200 border-red-700'
@@ -12149,6 +12150,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             this._macroRiskCache.taiex_last_close = last;
             this._macroRiskCache.taiex_hist_stale_days = staleDays;   // >0 = ^TWII.json 停更、已用 macro 新鮮值補算
             console.log(`[TAIEX MA240] last=${last} ma240=${ma240.toFixed(0)} bias=${bias}% (merged ${mergedNew} 新日期,^TWII.json 落後 ${staleDays} 天)`);
+            // 🫧 V49.6 — 乖離「雙軌」判斷:技術過熱 vs 是否有獲利支撐(台積電為權值/AI 代表)→ 更新頂部跑馬燈訊息
+            try { await this._computeTaiexBubbleVerdict(bias); } catch (_) {}
+            try { this._checkMarketAlerts?.(); } catch (_) {}
             // 已渲染處立刻補畫
             this._renderChuPositionChip?.();
             try { this.renderMarketBriefing(); } catch (_) {}   // 🌍 V39.2 年線乖離更新→刷新盤前大盤體檢(黑天鵝矩陣在內)
@@ -12162,6 +12166,34 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 } catch (e) { console.warn('[V16.9 chu re-render]', e); }
             }
         } catch (e) { console.warn('[TAIEX MA240] 計算失敗', e); }
+    },
+
+    // 🫧 V49.6 — 年線乖離「雙軌」判斷(純公式,禁 AI):技術過熱(乖離) × 獲利支撐(台積電 2330 為權值~40%+AI/CoWoS 代表)
+    //   目的:回答「乖離很高,但 AI 需求是真的,這樣漲還好嗎?」→ 分「🟡漲多但獲利有撐」vs「🔴純投機過熱」,別只看乖離喊泡沫
+    async _computeTaiexBubbleVerdict(bias) {
+        this._macroRiskCache = this._macroRiskCache || {};
+        if (!(typeof bias === 'number' && bias > 20)) { this._macroRiskCache.taiex_bubble_msg = null; return; }
+        let yoy = null, rec = false, pe = null;
+        try {
+            const fc = await this._loadFundCache(); const f = (fc && fc['2330']) || {};
+            if (typeof f.rev_yoy === 'number') yoy = f.rev_yoy;
+            if (typeof f.pe === 'number' && f.pe > 0) pe = f.pe;
+            rec = !!f.is_record_high;
+        } catch (_) {}
+        if (yoy == null) { try { const yg = await this._loadFundYoyGm(); const g = (yg && yg['2330']) || {}; if (typeof g.yoy === 'number') yoy = g.yoy; if (g.rec) rec = true; } catch (_) {} }
+        // 獲利支撐分:台積電營收 YoY 為主(真 AI 需求會反映在營收)、創營收新高加分、本益比極高扣分(估值擴張警訊)
+        let sup = 0;
+        if (yoy != null) { if (yoy >= 25) sup += 2; else if (yoy >= 10) sup += 1; else if (yoy < 0) sup -= 2; }
+        if (rec) sup += 1;
+        if (pe != null) { if (pe <= 25) sup += 1; else if (pe >= 40) sup -= 1; }
+        const bpct = `+${bias.toFixed(0)}%`;
+        const eTxt = yoy != null ? `台積YoY ${yoy >= 0 ? '+' : ''}${yoy.toFixed(0)}%${rec ? '·創營收新高' : ''}` : '台積獲利數據待補';
+        let msg;
+        if (yoy == null) msg = `📈 台股年線乖離 ${bpct}(技術極高)· 需看獲利是否跟上(${eTxt})→ 別只看漲幅、控好部位`;
+        else if (sup >= 2) msg = `🟡 台股年線乖離 ${bpct} 高,但獲利有撐(${eTxt})→ AI 真需求撐估值、非無腦泡沫;別追高,拉回不破月線再進`;
+        else if (sup <= 0) msg = `🔴 台股年線乖離 ${bpct} 極端貪婪泡沫,且獲利沒跟上(${eTxt})→ 估值擴張純資金投機,嚴設停損防急殺`;
+        else msg = `⚠️ 台股年線乖離 ${bpct} 偏高,獲利僅部分支撐(${eTxt})→ 高檔震盪,控好部位別重壓`;
+        this._macroRiskCache.taiex_bubble_msg = msg;
     },
 
     // 黃金 +X% / 原油 +X% / KOSPI -X% 等具體數值;原本是 lazy 載入時機晚,造成顯示「?」
