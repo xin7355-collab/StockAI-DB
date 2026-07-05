@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V52.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -21543,7 +21543,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
             if (this.peaks.length > 0) {
                 const lastPeak = this.peaks[this.peaks.length - 1];
-                markLineData.push({ name: '前高壓力', yAxis: lastPeak.val, lineStyle: { type: 'dashed', color: '#f87171', width: 1.5, opacity: 0.8 }, label: { show: true, position: 'insideStartTop', formatter: '前高 {c}', color: '#f87171', fontSize: 10, fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.7)', padding: [2, 4], borderRadius: 2 } });
+                markLineData.push({ name: '頸線壓力', yAxis: lastPeak.val, lineStyle: { type: 'dashed', color: '#f87171', width: 1.5, opacity: 0.8 }, label: { show: true, position: 'insideStartTop', formatter: '頸線/前高 {c}', color: '#f87171', fontSize: 10, fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.7)', padding: [2, 4], borderRadius: 2 } });
             }
             if (this.troughs.length > 0) {
                 const lastTrough = this.troughs[this.troughs.length - 1];
@@ -21903,6 +21903,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             { key: '📈 葛蘭碧買點', test: i => anyBull('_detectGranville', i) },
             { key: '📐 均線扣抵翻揚', test: i => anyBull('_detectMaKoudi', i) },
             { key: '💪 發動棒破昨高', test: i => { const o = O(data[i]), c = C(data[i]); return i > 0 && o > 0 && (c - o) / o * 100 >= 3 && c > H(data[i - 1]); } },
+            // 🆕 V52.1 使用者要求多加型態(全走既有 bull 偵測器,樣本不足會自動略過)
+            { key: '📉 KD/MACD底背離', test: i => anyBull('_detectIndicatorDivergence', i, /底背離/) },
+            { key: '📏 突破下降趨勢線', test: i => anyBull('_detectTrendline', i, /突破|趨勢線/) },
+            { key: '🔊 帶量攻擊(主力量)', test: i => anyBull('_detectVolumeSignals', i, /攻擊量|換手量/) },
         ];
     },
     // 🔔 便宜檢查:今天(最後一根)觸發了哪些型態(不跑回測,只跑一次偵測器)→ 給每日提醒當前置篩
@@ -22166,6 +22170,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             '葛蘭碧買點': { what: '股價回到「上揚的月線」附近又彈起,月線像地板撐住 = 葛蘭碧經典買點。', spot: '月線(20MA)上揚中,股價回測到月線附近沒跌破(或假跌破又站回)。', how: '收紅確認進場 → 停損跌破月線 → 順勢抱到跌破 5 日線或月線。', tip: '月線要「上揚」才算支撐;月線下彎時的靠近是壓力不是支撐。' },
             '均線扣抵翻揚': { what: '用「扣抵值」提前算出:月線/季線即將由平轉揚 = 均線轉多的領先訊號。', spot: '今天收盤站上「扣抵值」(明天要從均線扣掉的那根收盤),代表明天均線會往上。', how: '領先偏多訊號,可搭配其他買點分批進 → 守住扣抵值續看多。', tip: '這是「領先」訊號、還沒確認,別單獨重壓,配合回後買上漲/紅K更穩。' },
             '發動棒破昨高': { what: '一根長紅(漲幅≥3%)且收盤過昨天最高 = 攻擊發動、多方點火。', spot: '實體長紅、收盤價 > 昨天最高價,帶量更強。', how: '追這種要快、停損也要快:跌破發動棒一半或最低就走。', tip: '高檔的發動棒容易變「最後一根」,這檔若期望值為負(看排名)代表追高常被套,寧可等回檔。' },
+            'KD/MACD底背離': { what: '股價又創新低、但 KD 或 MACD 沒跟著創低 = 跌勢動能變弱,可能打底反轉的領先訊號。', spot: '近期波段新低,但 KD/MACD 的這個低點比前一個低點還高。', how: '別急著猜底,等「紅K站上 5 日線」再分批承接 → 停損跌破最近低點 → 停利跌破 5 日線。', tip: '背離是「動能警訊」不是「立刻反轉」,一定要等紅K確認,否則容易越接越低。' },
+            '突破下降趨勢線': { what: '把兩個往下移的高點連成一條下降壓力線,今天收盤把它突破 = 空頭結構鬆動、可能由空轉強。', spot: '今收站上由兩個下移高點連成的下降趨勢線,帶量更確認。', how: '突破確認進場 → 停損跌回趨勢線下方 → 順勢抱到跌破 5 日線。', tip: '沒量的突破容易假;跌回線下就是假突破,別凹單。' },
+            '帶量攻擊(主力量)': { what: '出現明顯放大的量(攻擊量/換手量)配合上漲 = 主力進貨或洗籌續攻的痕跡。', spot: '成交量明顯大於均量、且股價收紅上攻。', how: '順著量做多、快進快出 → 停損跌破帶量那根的最低 → 量縮不漲就先減碼。', tip: '高檔爆量要小心是「出貨量」(量大不漲或收黑=反向賣訊),別看到量就追。' },
         };
         const h = H[name] || { what: '這個型態的白話說明整理中。', spot: '—', how: '進場=訊號日收盤、停損=跌破5日線或−5%。', tip: '—' };
         // 📖 V42.3 全部型態改用格式化「型態百科」彈窗(比照葛蘭碧),不再用擠一團的 alert
