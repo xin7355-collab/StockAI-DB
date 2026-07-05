@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -22153,11 +22153,26 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 const nf = v => v >= 100 ? (+v).toFixed(1) : (+v).toFixed(2);
                 const pC = +arr[L].close;
                 const ma5 = arr.slice(-5).reduce((s, d) => s + (+d.close), 0) / 5;
+                const ma20 = arr.slice(-20).reduce((s, d) => s + (+d.close), 0) / Math.min(20, arr.length);
+                const win = arr.slice(-30);
+                const hi30 = Math.max(...win.map(d => +d.high || +d.close));   // 頸線/前高參考(近30日壓力)
+                const lo30 = Math.min(...win.map(d => +d.low || +d.close));    // 底部參考
+                const target = hi30 + (hi30 - lo30);                            // 等幅測幅目標(突破成立後)
                 const belowMa5 = pC <= ma5;
                 const riskAmt = Math.round((pC - ma5) * 1000);          // 每張到 5MA 的距離(元)
                 const riskPct = pC > 0 ? (pC - ma5) / pC * 100 : 0;
                 const evAmt = Math.round(pC * (r.expectancy / 100) * 1000);   // 期望值換算每張約多少元
-                let lines = `現價 <b class="text-gray-100">${nf(pC)}</b> ・ 5MA <b>${nf(ma5)}</b>(多數打法的停損/停利參考線)`;
+                // 📍 V51.9 目前狀態:把「歷史統計」對照「現在有沒有成立」,避免拿 100% 勝率硬做下跌股
+                let lines = '';
+                if (pC < ma5 && pC < ma20) {
+                    lines += `📍 <b class="text-yellow-300">目前狀態:均線空頭排列(在 5MA、月線之下)</b><br>→ 這種「站上才做多」的打法<b>現在還沒成立</b>,上面 100% / 期望值是<b>歷史統計、不是現在的訊號</b>,別拿它硬做下跌中的股票。<br>👉 要等「帶量紅K站回頸線/前高 <b class="text-red-300">${nf(hi30)}</b>」出現,才是這個打法的進場點。<br><br>`;
+                } else if (pC >= hi30 * 0.999) {
+                    lines += `📍 <b class="text-red-300">目前狀態:已站上頸線/前高 ${nf(hi30)} → 突破成立中</b><br>→ 等幅測幅<b>目標價(建議分批賣出)≈ <span class="text-red-300">${nf(target)}</span></b>;停損守頸線 ${nf(hi30)} 下方(跌回=假突破先撤)。<br><br>`;
+                } else {
+                    const gap = pC > 0 ? (hi30 - pC) / pC * 100 : 0;
+                    lines += `📍 <b class="text-gray-100">目前狀態:還沒突破頸線/前高 ${nf(hi30)}</b>(現價還差 ${gap.toFixed(1)}%)<br>→ 等「帶量紅K站上 <b class="text-red-300">${nf(hi30)}</b>」才是進場點;突破後等幅<b>目標(分批賣)≈ ${nf(target)}</b>。<br><br>`;
+                }
+                lines += `現價 <b class="text-gray-100">${nf(pC)}</b> ・ 5MA <b>${nf(ma5)}</b> ・ 月線 <b>${nf(ma20)}</b>`;
                 if (belowMa5) {
                     lines += `<br>⚠️ 現價已在 5MA 之下 → 這類「站上才做多」的打法<b class="text-yellow-300">尚未成立</b>,等紅K站回 5MA 再說,別提前猜。`;
                 } else {
@@ -22172,7 +22187,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     lines += `<br><br>💼 <b class="text-purple-300">你的庫存</b>:成本 <b>${nf(cost)}</b> × ${sh} 張 ・ 現在帳面 <b class="${pnlNow >= 0 ? 'text-red-300' : 'text-green-300'}">${pnlNow >= 0 ? '+' : ''}${pnlNow.toLocaleString()} 元</b>`;
                     lines += `<br>若守 5MA(${nf(ma5)})當停損、真的跌到才出:帳面會變 <b class="${pnlAtStop >= 0 ? 'text-red-300' : 'text-green-300'}">${pnlAtStop >= 0 ? '+' : ''}${pnlAtStop.toLocaleString()} 元</b>`;
                 }
-                priceBlock = `<div class="bg-[#0d1117] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-2 mt-1 text-[10px] leading-relaxed text-gray-300">🎯 <b class="text-cyan-300">帶入你的價位(即時算給你看)</b><br>${lines}</div>`;
+                priceBlock = `<div class="bg-[#0d1117] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-2 mt-1 text-[10px] leading-relaxed text-gray-300">🎯 <b class="text-cyan-300">現在該怎麼做(帶你的現價/庫存即時算)</b><br>${lines}</div>`;
             }
         } catch (_) {}
         const html = sec('【是什麼】', h.what, 'text-blue-300') + sec('【怎麼認】', h.spot) + sec('【怎麼進場 / 停損停利】', h.how, 'text-green-300') + sec('【小白提醒】', h.tip, 'text-yellow-300') + stats + priceBlock + '<div class="text-[9px] text-gray-600 mt-2">純公式歷史回測,過去不代表未來;實際仍要看大盤與個股當下狀況,嚴守停損。5MA 停損為通用估算,實際停損以上方【怎麼進場】的型態專屬點位為準。</div>';
