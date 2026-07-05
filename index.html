@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -293,7 +293,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -666,7 +666,7 @@
                 </div>
                 <div class="bg-yellow-900/15 border-l-4 border-yellow-500 pl-3 pr-2 py-2 rounded-r">
                     <div class="font-black text-yellow-300 mb-1">📡 盤中 09:30 ~ 13:00 ｜ 雷達兵法鎖定與紀律控管</div>
-                    <div class="text-gray-300 mb-1">「首席戰略雷達矩陣」動態掃描全市場 1967 檔個股,依三大策略嚴格執行紀律。</div>
+                    <div class="text-gray-300 mb-1">「選股池」動態掃描全市場 1967 檔個股,依三大策略嚴格執行紀律。</div>
                     <ul class="list-none text-[12px] text-gray-400 space-y-2 pl-1">
                         <li>
                             <div class="font-black text-red-300">🏎️ 渣男賽車（動能爆發）</div>
@@ -737,7 +737,7 @@
     <div id="radarManualModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
         <div class="modal-content max-w-xl max-h-[85vh] overflow-y-auto bg-[#0d1117]/80 backdrop-blur-lg border border-cyan-700/40" onclick="event.stopPropagation()">
             <div class="flex items-center justify-between mb-3 pb-2 border-b border-[#30363d]">
-                <h3 class="text-cyan-300 font-black text-lg">🎯 首席雷達矩陣操作指南</h3>
+                <h3 class="text-cyan-300 font-black text-lg">🎯 選股池操作指南</h3>
                 <button onclick="document.getElementById('radarManualModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
             </div>
             <div class="space-y-3 text-sm leading-relaxed">
@@ -2204,8 +2204,8 @@
                     <!-- 標題列：大標 + 雷達實戰說明書 -->
                     <div class="flex justify-between items-center gap-2 flex-wrap">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <h2 class="text-base font-bold text-cyan-400 flex items-center gap-1">🎯 首席戰略雷達矩陣</h2>
-                            <button onclick="const m=document.getElementById('radarManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(20);" class="text-[10px] text-cyan-200 bg-cyan-900/30 border border-cyan-600/60 rounded px-2 py-0.5 hover:bg-cyan-800/40 transition-colors whitespace-nowrap font-bold" title="雷達實戰說明書">ℹ️ 雷達實戰說明書</button>
+                            <h2 class="text-base font-bold text-cyan-400 flex items-center gap-1">🎯 選股池</h2>
+                            <button onclick="const m=document.getElementById('radarManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(20);" class="text-[10px] text-cyan-200 bg-cyan-900/30 border border-cyan-600/60 rounded px-2 py-0.5 hover:bg-cyan-800/40 transition-colors whitespace-nowrap font-bold" title="選股池實戰說明書">ℹ️ 選股池說明書</button>
                         </div>
                     </div>
 
@@ -2571,9 +2571,9 @@ const app = {
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
     // 🐛 V41.28 修:localStorage 壞資料時 JSON.parse 會 throw,在物件建構期炸掉 → 整個 app 白畫面。全部包 try/catch。
-    favGroups: (() => { try { return JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "首席自選清單": [] }; } catch (_) { return { "首席自選清單": [] }; } })(),
+    favGroups: (() => { try { return JSON.parse(localStorage.getItem('proTerminalFavGroups')) || { "自選清單": [] }; } catch (_) { return { "自選清單": [] }; } })(),
     monitorList: (() => { try { return JSON.parse(localStorage.getItem('proTerminalHunt') || '[]') || []; } catch (_) { return []; } })(),
-    activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "首席自選清單",
+    activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "自選清單",
     isFavEditMode: false,
     inventory: (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv')) || []; } catch (_) { return []; } })(),
     // V17.6 / V17.21 — 個股限價單告警 [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}]
@@ -3051,6 +3051,16 @@ const app = {
             this.settings = { ...this.settings, ...saved };
         }
         this._migrateKeyArrays();   // 🔑 V51.2 舊固定 key 欄位 → 動態陣列(向下相容,只跑一次)
+        // 📝 V51.3 舊「首席自選清單」群組改名「自選清單」(既有使用者資料遷移,只跑一次)
+        try {
+            if (this.favGroups && this.favGroups['首席自選清單'] && !this.favGroups['自選清單']) {
+                this.favGroups['自選清單'] = this.favGroups['首席自選清單'];
+                delete this.favGroups['首席自選清單'];
+                if (this.activeGroupName === '首席自選清單') this.activeGroupName = '自選清單';
+                localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+                localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
+            }
+        } catch (_) {}
 
         if (!this.settings.aiPrompt) {
             this.settings.aiPrompt = AI_PROMPT_TEMPLATES.default;
@@ -6164,7 +6174,7 @@ ${list}
                 localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
                 localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
                 localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
-                this.activeGroupName = Object.keys(this.favGroups)[0] || "首席自選清單";
+                this.activeGroupName = Object.keys(this.favGroups)[0] || "自選清單";
                 localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
 
                 // V16.8 — 不關閉 settings modal(避免「跳掉」),只收起還原面板 + toast 確認
@@ -22614,7 +22624,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             delete this.favGroups[group];
             const remainingKeys = Object.keys(this.favGroups);
             if(remainingKeys.length === 0) {
-                this.activeGroupName = "首席自選清單";
+                this.activeGroupName = "自選清單";
                 this.favGroups[this.activeGroupName] = [];
             } else {
                 this.activeGroupName = remainingKeys[0];
@@ -23420,7 +23430,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                  close, open: data[last].open || close, prevClose, recentVols };
     },
 
-    // ===== 🎯 首席戰略雷達矩陣（三大戰區：動能 / 波段 / 籌碼）=====
+    // ===== 🎯 選股池（原「首席戰略雷達矩陣」;三大戰區：動能 / 波段 / 籌碼）=====
     radarStrategy: 'momentum',
     radarMatrix: null,
     _radarIsDemo: false,
