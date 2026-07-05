@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -21991,7 +21991,38 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 }).join('');
                 const bestTxt = pos.length ? pos.slice(0, 3).map(r => r.key.replace(/^\S+\s/, '')).join('、') : '無明顯正期望值型態(這檔難用技術短打)';
                 const avoidTxt = neg.length ? neg.map(r => r.key.replace(/^\S+\s/, '')).join('、') : '無明顯地雷型態';
+                // 🎯 V52.0 「現在這檔正在用什麼型態 + 該怎麼做」置頂卡:把歷史排名變成當下的行動指引(使用者要求)
+                const _nm = r => r.key.replace(/^\S+\s/, '');
+                const _L = data.length - 1, _pC = +data[_L].close;
+                const _ma5 = data.slice(-5).reduce((s, x) => s + (+x.close), 0) / 5;
+                const _ma20 = data.slice(-20).reduce((s, x) => s + (+x.close), 0) / Math.min(20, data.length);
+                const _regime = (_pC < _ma5 && _pC < _ma20) ? '均線空頭排列(現價在 5MA、月線之下)' : (_pC > _ma5 && _pC > _ma20) ? '均線多頭排列(現價站上 5MA、月線)' : '均線糾結、方向不明';
+                const _firedMain = ranked.filter((r, i) => r.firedToday && i < 3 && r.expectancy > 0);
+                const _firedAvoid = ranked.filter(r => r.firedToday && r.expectancy <= -0.3 && r.count >= 4);
+                const _firedOther = ranked.filter(r => r.firedToday);
+                let nowCard;
+                if (_firedMain.length) {
+                    const r0 = _firedMain[0];
+                    nowCard = `<div class="bg-red-900/25 border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                        <div class="text-sm font-black text-red-200 mb-0.5">🔔 現在觸發:${_nm(r0)} <span class="text-[10px] font-normal">(這檔主打 +${r0.expectancy.toFixed(1)}%/趟)</span></div>
+                        <div class="text-[10px] text-gray-200 leading-relaxed">今天 K 線出現這檔<b>歷史最會賺</b>的型態 → 可依紀律進場。<b class="text-amber-300">👇 點下面「${_nm(r0)}」那一列</b>會即時算頸線/停損/目標給你。目前 ${_regime}。</div></div>`;
+                } else if (_firedAvoid.length) {
+                    const r0 = _firedAvoid[0];
+                    nowCard = `<div class="bg-green-900/20 border-l-4 border-green-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                        <div class="text-sm font-black text-green-200 mb-0.5">⚠️ 現在觸發:${_nm(r0)}(這檔<b>避開</b>型態 ${r0.expectancy.toFixed(1)}%)</div>
+                        <div class="text-[10px] text-gray-200 leading-relaxed">這招在這檔歷史<b>長期是賠的</b> → 別做,等主打型態出現再說。目前 ${_regime}。</div></div>`;
+                } else if (_firedOther.length) {
+                    const r0 = _firedOther[0];
+                    nowCard = `<div class="bg-yellow-900/15 border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                        <div class="text-sm font-black text-yellow-200 mb-0.5">🔔 現在觸發:${_nm(r0)} <span class="text-[10px] font-normal">(期望值 ${r0.expectancy >= 0 ? '+' : ''}${r0.expectancy.toFixed(1)}%,非主打)</span></div>
+                        <div class="text-[10px] text-gray-200 leading-relaxed">訊號普通 → 想做就<b>輕倉、嚴設停損</b>,點該列看即時點位。目前 ${_regime}。</div></div>`;
+                } else {
+                    nowCard = `<div class="bg-[#0d1117] border-l-4 border-gray-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                        <div class="text-sm font-black text-gray-100 mb-0.5">📍 現在沒有明確型態訊號 → 觀望</div>
+                        <div class="text-[10px] text-gray-300 leading-relaxed">今天這檔 K 線<b>沒觸發任何進場型態</b>,別硬做。目前 ${_regime}。<br>等這檔的主打「<b class="text-red-300">${bestTxt}</b>」出現再動 —— 下面排名點任一列,會即時告訴你「頸線在哪、站上多少才算、目標多少」。</div></div>`;
+                }
                 const html = `
+                    ${nowCard}
                     <div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
                         <div class="text-sm font-black text-amber-200 mb-0.5">${per ? per.tag : '—'}</div>
                         <div class="text-[10px] text-gray-300 leading-relaxed">${per ? per.desc : ''}</div>
