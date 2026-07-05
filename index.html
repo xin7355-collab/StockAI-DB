@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V53.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V53.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1122,12 +1122,10 @@
                             </div>
                         </div>
 
-                        <!-- 💡 法人共識目標價(原已摺疊) -->
-                        <div class="w-full mt-2">
-                            <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('institutionTargetBody', this); app.vibrate(30);">💡 法人共識目標價 <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
-                            <div id="institutionTargetBody" class="hidden mt-1">
-                                <div id="institutionTargetBox" class="w-full text-center text-xs leading-relaxed px-1"><span class="text-gray-400"><span class="text-gray-300 font-semibold">2200～2600</span> (PEG估值)</span></div>
-                            </div>
+                        <!-- 💡 V53.x 法人共識目標價:常駐直顯(移除收合,不用再點更新);純公式估值(年化EPS×產業中位PE),非 AI -->
+                        <div class="w-full mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+                            <div class="text-[11px] font-bold text-gray-400 mb-1 text-center flex items-center justify-center gap-1">💡 法人共識目標價 <span class="text-[9px] text-gray-600 font-normal">純公式・年化EPS×產業PE</span></div>
+                            <div id="institutionTargetBox" class="w-full text-center text-xs leading-relaxed px-1"><span class="text-gray-500">估值計算中…</span></div>
                         </div>
 
                         <!-- V19.2 — 永豐智慧單卡已合併到「朱老師離場 SOP」(內容重複) -->
@@ -18903,18 +18901,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 🎯 目標/防守區(V53.x — 併入原「動態停利停損線」的 t1/t2/def,合三卡為一張出場總表)
         const dx = this._dynExit || {};
         const numOK = v => typeof v === 'number' && isFinite(v) && v > 0;
-        const targetSection = (numOK(dx.t1) || numOK(dx.t2) || numOK(dx.def)) ? `
+        // 🐛 修:def(防守底線)常等於下方 5MA/20MA 停利或鐵血停損 → 同一價位重複兩列(如 5MA 189.80 出現兩次)。
+        //    只在「唯一防守價(如前低/島狀逃命)」與其他列不同時才顯 def,避免重複。
+        const _same = (a, b) => numOK(a) && numOK(b) && Math.abs(a - b) < 0.02;
+        const defUnique = numOK(dx.def) && !_same(dx.def, x.takeShort) && !_same(dx.def, x.takeLong) && !_same(dx.def, x.stopB) && !_same(dx.def, x.stopA?.low);
+        const targetSection = (numOK(dx.t1) || numOK(dx.t2) || defUnique) ? `
             <div class="mt-2">
-                <div class="text-[11px] font-black text-amber-300 mb-1 flex items-center gap-1">🎯 目標 / 波段防守</div>
+                <div class="text-[11px] font-black text-amber-300 mb-1 flex items-center gap-1">🎯 目標價 / 逃命防守</div>
                 ${numOK(dx.t1) ? rowHtml('', dx.t1L || '🎯 第一目標', '', dx.t1, 'text-red-400', pnlText(dx.t1)) : ''}
                 ${numOK(dx.t2) ? rowHtml('', dx.t2L || '🚀 第二目標', '', dx.t2, 'text-red-400', pnlText(dx.t2)) : ''}
-                ${numOK(dx.def) ? rowHtml('', dx.defL || '🛡️ 防守底線', '', dx.def, 'text-green-400', pnlText(dx.def)) : ''}
+                ${defUnique ? rowHtml('', dx.defL || '🛡️ 逃命防守', '', dx.def, 'text-green-400', pnlText(dx.def)) : ''}
             </div>` : '';
 
-        // 📤 停利區
+        // 📤 停利區(標題改中性:停利價可能低於成本 → 顯示賣將虧損,不宜寫死「賺錢」)
         const takeSection = (x.takeShort || x.takeLong) ? `
             <div class="mt-2">
-                <div class="text-[11px] font-black text-green-300 mb-1 flex items-center gap-1">📤 出場(停利賺錢)</div>
+                <div class="text-[11px] font-black text-green-300 mb-1 flex items-center gap-1">📤 停利出場點(跌破均線出場)</div>
                 ${x.takeShort ? rowHtml('🎯', '短線停利', '價格跌破 5MA 隔日賣', x.takeShort, 'text-green-400', pnlText(x.takeShort)) : ''}
                 ${x.takeLong  ? rowHtml('🎯', '中長停利', '價格跌破 20MA 結束波段', x.takeLong,  'text-green-400', pnlText(x.takeLong))  : ''}
             </div>` : '';
@@ -21145,6 +21147,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             }
         }
 
+        // 🆕 V53.x — 三率三升 badge(毛利率/營益率/淨利率 趨勢,純公式;點 ⓘ 看白話說明)。
+        //   資料源:全市場 fundamentals_cache(採礦預生成 trend 箭頭),觀察清單~100檔最完整;無資料則不顯(不誤導)。
+        try {
+            const _ff = this._fundCacheAll?.data?.[this.currentSymbolId] || null;
+            if (_ff) {
+                const _td = s => { const m = (s || '').match(/([↑↓])/); return m ? (m[1] === '↑' ? 1 : -1) : null; };
+                const _ds = [_td(_ff.gross_margin_trend), _td(_ff.op_margin_trend), _td(_ff.net_margin_trend)].filter(v => v != null);
+                if (_ds.length >= 3) {
+                    const _ups = _ds.filter(v => v > 0).length;
+                    if (_ups === 3)      featTags.push({ kind: '基本', text: '三率三升', tone: 'good',   jargon: '三率三升' });
+                    else if (_ups === 0) featTags.push({ kind: '基本', text: '三率三降', tone: 'danger', jargon: '三率三升' });
+                    else                 featTags.push({ kind: '基本', text: `三率${_ups}升${3 - _ups}降`, tone: 'warn', jargon: '三率三升' });
+                }
+            } else if (!this._fundCacheAll) { this._loadFundCache?.(); }  // 尚未載入 → 背景載入,下次刷新即顯
+        } catch (_) {}
+
         // 🎯 5 級提醒制度(統一動作標籤,初學者一眼看懂該不該做)
         // 舊 tone(bullish/bearish/danger/...)透過 _toneToAction 自動映射;新代碼可直接傳 action 欄位
         const _toneToAction = {
@@ -21477,9 +21495,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         };
         // 防呆：沒有真實基本面就不要叫 AI 瞎掰（過去讀不存在的 _stockInfo→全是0→台積電被估成220）
         if (!fc || fc.sym !== sym) {
-            showHint('📡 法人目標價：X 光掃描中，請稍候…', 'text-blue-300');
-            // 嘗試補打一次 X 光(skipAI 只補數字,不自動打 AI)
-            try { this.fetchFundamentalAnalysis(sym, { skipAI: true }); } catch(_) {}
+            showHint('📡 法人共識目標價：估值計算中…', 'text-blue-300');
+            // V53.x — 補算基本面後「自動重算目標價」(不需使用者再點更新);每檔只自動補一次,避免無資料時無限重試
+            if (this._itTried !== sym) {
+                this._itTried = sym;
+                Promise.resolve(this.fetchFundamentalAnalysis(sym, { skipAI: true }))
+                    .then(() => { if (this.currentSymbolId === sym) this.fetchInstitutionTarget(sym, pC, opts); })
+                    .catch(() => {});
+            }
             return;
         }
         const pe = fc.pe != null ? Number(fc.pe) : null;
