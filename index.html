@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V52.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1287,7 +1287,7 @@
                             <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="hidden"><span>布林</span></label>
                         </div>
                     </div>
-                    <div id="chartHud" class="px-2 py-1.5 bg-[#21262d] border-b border-[#30363d] min-h-[3rem] text-[13px] font-mono leading-relaxed flex flex-col gap-0.5 text-gray-100">點擊 K 棒顯示詳細數據...</div>
+                    <div id="chartHud" class="px-2 py-1 bg-[#21262d] border-b border-[#30363d] text-[11px] font-mono leading-tight flex flex-col gap-0 text-gray-100">點擊 K 棒顯示詳細數據...</div>
                     <div id="mainChartWrap" class="zoomable-zone w-full flex-grow relative bg-[#000000]">
                         <div id="mainChart" class="w-full h-full min-h-[350px]"></div>
                         <button id="chartInspectExit" onclick="app._exitChartInspect()" class="hidden absolute top-1 right-1 z-20 w-7 h-7 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-black shadow-lg flex items-center justify-center" title="離開十字檢視,回到平移模式">✕</button>
@@ -16893,10 +16893,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             if (fugleData.prevClose != null) this._fuglePrevClose = fugleData.prevClose;
             // 【時間防禦線優化】只要有最新報價，無條件融入時序，確保週末/假日不漏接
             if (this.rawDailyData[lastIdx].date === todayStr) {
-                this.rawDailyData[lastIdx].close = fugleData.price; 
+                this.rawDailyData[lastIdx].close = fugleData.price;
                 this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, fugleData.high);
-                this.rawDailyData[lastIdx].low = Math.min(this.rawDailyData[lastIdx].low, fugleData.low); 
-                this.rawDailyData[lastIdx].volume = fugleData.volume;
+                this.rawDailyData[lastIdx].low = Math.min(this.rawDailyData[lastIdx].low, fugleData.low);
+                // 🐛 修:即時報價常不帶「當日累計量」,只有正的成交量才覆寫,否則保留採礦的真實收盤量(避免最新一根量柱消失)
+                if (Number(fugleData.volume) > 0) this.rawDailyData[lastIdx].volume = fugleData.volume;
             } else {
                 // 日期不同時直接追加今日快照節點，使非開盤時段的比較基準落在最新一筆歷史交易日
                 this.rawDailyData.push({ 
@@ -21473,7 +21474,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const d = this.activeData[index]; const ind = this.indicators || {};
         let prevClose = index > 0 ? this.activeData[index - 1].close : d.open, diff = d.close - prevClose, pct = prevClose > 0 ? (diff / prevClose) * 100 : 0;
         let colorClass = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400'), sign = diff > 0 ? '▲' : (diff < 0 ? '▼' : '');
-        let html = `<div class="flex items-center gap-2 flex-wrap"><span class="text-white font-bold tracking-wider">${d.date}</span><span class="text-white">收 <span class="font-bold ${colorClass}">${d.close.toFixed(2)}</span></span><span class="${colorClass}">${sign}${Math.abs(diff).toFixed(2)} (${pct.toFixed(2)}%)</span></div><div class="flex flex-wrap gap-x-2 gap-y-1 mt-0.5">`;
+        let html = `<div class="flex items-center gap-x-1.5 gap-y-0 flex-wrap leading-tight"><span class="text-white font-bold tracking-wide">${d.date}</span><span class="text-white">收 <span class="font-bold ${colorClass}">${d.close.toFixed(2)}</span></span><span class="${colorClass}">${sign}${Math.abs(diff).toFixed(2)} (${pct.toFixed(2)}%)</span></div><div class="flex flex-wrap gap-x-1.5 gap-y-0 leading-tight">`;
         // V29.3:補 開/高/低(對齊專業 App 浮動 OHLC 框)
         if (d.open != null && d.high != null && d.low != null) html += `<span class="text-gray-400">開${d.open.toFixed(2)}</span><span class="text-[#f87171]">高${d.high.toFixed(2)}</span><span class="text-[#4ade80]">低${d.low.toFixed(2)}</span>`;
         if (document.getElementById('toggleBB')?.checked && ind.upperBB && ind.upperBB[index]) html += `<span class="text-[#c084fc]">布林上軌 ${ind.upperBB[index].toFixed(2)}</span>`;
