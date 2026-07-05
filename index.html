@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -293,7 +293,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -371,59 +371,20 @@
                     <p class="text-[10px] text-gray-500 leading-tight -mt-1">每組 key 旁有 <span class="text-purple-300">☑</span> 啟動開關;取消打勾即<b class="text-amber-300">暫時停用該 key</b>(輪動會跳過,設定保留)。</p>
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-purple-400 mb-1">🧠 Groq API Key 池(雙 key 輪動,降低 TPD 限流壓力)</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-purple-400">console.groq.com</span> → API Keys → Create。負責<b class="text-purple-300">新聞翻譯、彙整等輕量分析</b>,也是深度推理撞 429 時的備援。</p>
-                        <div class="flex gap-1.5 items-center mb-1.5">
-                            <input type="checkbox" id="enable_groqKey" onchange="app.saveSettings()" class="w-4 h-4 accent-purple-500 flex-shrink-0" title="啟動/停用此 key" checked>
-                            <span class="text-[10px] font-mono text-purple-600 w-10 flex-shrink-0">Key 1</span>
-                            <input type="password" id="set_groqKey" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-purple-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="gsk_...">
-                            <button onclick="app.verifyAPI('groq')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_groq"></div>
-                        </div>
-                        <div class="flex gap-1.5 items-center">
-                            <input type="checkbox" id="enable_groqKey2" onchange="app.saveSettings()" class="w-4 h-4 accent-purple-500 flex-shrink-0" title="啟動/停用此 key" checked>
-                            <span class="text-[10px] font-mono text-purple-700 w-10 flex-shrink-0">Key 2</span>
-                            <input type="password" id="set_groqKey2" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-purple-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-purple-500 transition-colors" placeholder="備援 Key 2...">
-                            <button onclick="app.verifyAPI('groq2')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_groq2"></div>
-                        </div>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-purple-400">console.groq.com</span> → API Keys → Create。負責<b class="text-purple-300">新聞翻譯、彙整等輕量分析</b>,也是深度推理撞 429 時的備援。<b class="text-gray-400">☑ 啟用 · 驗 驗證 · 🗑️ 刪列 · ➕ 加列</b></p>
+                        <div id="keyRows_groq"></div>
                     </div>
 
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-cyan-400 mb-1">🚀 OpenRouter API Key 池(雙 key 輪動,DeepSeek R1 深度推理)</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前戰情、首席五維、籌碼/技術深度分析</b>。第一把撞 429 自動切第二把 + jitter,全失敗 fallback Gemini / Groq。</p>
-                        <div class="flex gap-1.5 items-center mb-1.5">
-                            <input type="checkbox" id="enable_openrouterKey" onchange="app.saveSettings()" class="w-4 h-4 accent-cyan-500 flex-shrink-0" title="啟動/停用此 key" checked>
-                            <span class="text-[10px] font-mono text-cyan-600 w-10 flex-shrink-0">Key 1</span>
-                            <input type="password" id="set_openrouterKey" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-cyan-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="sk-or-v1-...">
-                            <button onclick="app.verifyAPI('openrouter')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_openrouter"></div>
-                        </div>
-                        <div class="flex gap-1.5 items-center">
-                            <input type="checkbox" id="enable_openrouterKey2" onchange="app.saveSettings()" class="w-4 h-4 accent-cyan-500 flex-shrink-0" title="啟動/停用此 key" checked>
-                            <span class="text-[10px] font-mono text-cyan-700 w-10 flex-shrink-0">Key 2</span>
-                            <input type="password" id="set_openrouterKey2" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-cyan-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-cyan-500 transition-colors" placeholder="備援 Key 2...">
-                            <button onclick="app.verifyAPI('openrouter2')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_openrouter2"></div>
-                        </div>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前戰情、首席五維、籌碼/技術深度分析</b>。第一把撞 429 自動切下一把 + jitter,全失敗 fallback Gemini / Groq。</p>
+                        <div id="keyRows_openrouter"></div>
                     </div>
 
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-amber-400 mb-1">🤖 Google Gemini API Key 池(第三條輪動鏈,雙 key 共 500 req/day)</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-amber-400">aistudio.google.com</span> → Get API key。OpenRouter 撞 429 時自動接手(Gemini 2.5 Flash),雙 key 內部輪動,降低 Groq 限流壓力。</p>
-                        <div class="flex gap-1.5 items-center mb-1.5">
-                            <input type="checkbox" id="enable_geminiKey1" onchange="app.saveSettings()" class="w-4 h-4 accent-amber-500 flex-shrink-0" title="啟動/停用此 key" checked>
-                            <span class="text-[10px] font-mono text-amber-600 w-10 flex-shrink-0">Key 1</span>
-                            <input type="password" id="set_geminiKey1" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-amber-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="AIzaSy...">
-                            <button onclick="app.verifyAPI('gemini1')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_gemini1"></div>
-                        </div>
-                        <div class="flex gap-1.5 items-center">
-                            <input type="checkbox" id="enable_geminiKey2" onchange="app.saveSettings()" class="w-4 h-4 accent-amber-500 flex-shrink-0" title="啟動/停用此 key" checked>
-                            <span class="text-[10px] font-mono text-amber-700 w-10 flex-shrink-0">Key 2</span>
-                            <input type="password" id="set_geminiKey2" oninput="app.saveSettings()" class="flex-1 min-w-0 bg-[#010409] text-amber-400/70 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-amber-500 transition-colors" placeholder="備援 Key 2...">
-                            <button onclick="app.verifyAPI('gemini2')" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0">驗</button>
-                            <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_gemini2"></div>
-                        </div>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-amber-400">aistudio.google.com</span> → Get API key。OpenRouter 撞 429 時自動接手(Gemini 2.5 Flash),多 key 內部輪動,降低 Groq 限流壓力。</p>
+                        <div id="keyRows_gemini"></div>
                     </div>
 
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
@@ -3089,7 +3050,8 @@ const app = {
             }
             this.settings = { ...this.settings, ...saved };
         }
-        
+        this._migrateKeyArrays();   // 🔑 V51.2 舊固定 key 欄位 → 動態陣列(向下相容,只跑一次)
+
         if (!this.settings.aiPrompt) {
             this.settings.aiPrompt = AI_PROMPT_TEMPLATES.default;
         }
@@ -5368,17 +5330,9 @@ ${list}
         // 🗑️ V51.1 set_aiPrompt UI 已刪 → null-guard(人設仍走 settings.aiPrompt 預設)
         const _apEl = document.getElementById('set_aiPrompt');
         if (_apEl) _apEl.value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
-        document.getElementById('set_groqKey').value = this.settings.groqKey || '';
-        document.getElementById('set_groqKey2').value = this.settings.groqKey2 || '';
-        document.getElementById('set_openrouterKey').value = this.settings.openrouterKey || '';
-        document.getElementById('set_openrouterKey2').value = this.settings.openrouterKey2 || '';
-        document.getElementById('set_geminiKey1').value = this.settings.geminiKey1 || '';
-        document.getElementById('set_geminiKey2').value = this.settings.geminiKey2 || '';
-        // 啟動/關閉 checkbox(預設打勾 true);若 settings 內為 false 就取消
-        ['groqKey','groqKey2','openrouterKey','openrouterKey2','geminiKey1','geminiKey2'].forEach(k => {
-            const cb = document.getElementById(`enable_${k}`);
-            if (cb) cb.checked = this.settings[`enable_${k}`] !== false;
-        });
+        // 🔑 V51.2 Groq / OpenRouter / Gemini 改動態 key 列(可 ➕ 新增 / 🗑️ 刪除),逐 provider 渲染
+        this._migrateKeyArrays();
+        ['groq', 'openrouter', 'gemini'].forEach(p => this._renderKeyRows(p));
         document.getElementById('set_fugleToken1').value = this.settings.fugleToken1 || '';
         document.getElementById('set_fugleToken2').value = this.settings.fugleToken2 || '';
         document.getElementById('set_fugleToken3').value = this.settings.fugleToken3 || '';
@@ -5487,18 +5441,8 @@ ${list}
     saveSettings() {
         const _apEl = document.getElementById('set_aiPrompt');
         if (_apEl) this.settings.aiPrompt = _apEl.value.trim();
-        this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
-        this.settings.groqKey2 = document.getElementById('set_groqKey2').value.trim();
-        this.settings.openrouterKey = document.getElementById('set_openrouterKey').value.trim();
-        const orK2El = document.getElementById('set_openrouterKey2');
-        if (orK2El) this.settings.openrouterKey2 = orK2El.value.trim();
-        this.settings.geminiKey1 = document.getElementById('set_geminiKey1').value.trim();
-        this.settings.geminiKey2 = document.getElementById('set_geminiKey2').value.trim();
-        // 啟動/關閉 checkbox 狀態存進 settings(預設為 true)
-        ['groqKey','groqKey2','openrouterKey','openrouterKey2','geminiKey1','geminiKey2'].forEach(k => {
-            const cb = document.getElementById(`enable_${k}`);
-            if (cb) this.settings[`enable_${k}`] = !!cb.checked;
-        });
+        // 🔑 V51.2 Groq / OpenRouter / Gemini key 改動態陣列(settings.groqKeys/openrouterKeys/geminiKeys),
+        //   由 _updateKeyRow / _toggleKeyRow 即時維護,不再從固定欄位讀 → 此處不用再讀(欄位已移除)
         this.settings.fugleToken1 = document.getElementById('set_fugleToken1').value.trim();
         this.settings.fugleToken2 = document.getElementById('set_fugleToken2').value.trim();
         this.settings.fugleToken3 = document.getElementById('set_fugleToken3').value.trim();
@@ -5521,34 +5465,78 @@ ${list}
         if(this.currentSymbolId && this.activeData.length > 0) this.refreshStrategy();
     },
 
-    // [Groq] 收集已填寫且「啟動」的 Groq Key(雙 key 池,429/401 自動切下一把)
-    // 設定頁 ☑ checkbox 取消打勾 → enable_groqKey/2 = false → 此 key 暫時不參與輪動
-    _getGroqKeys() {
-        return [
-            { k: this.settings.groqKey,  on: this.settings.enable_groqKey  !== false },
-            { k: this.settings.groqKey2, on: this.settings.enable_groqKey2 !== false },
-        ].filter(x => x.on && (x.k || '').trim()).map(x => x.k.trim());
+    // 🔑 V51.2 AI Key 改「動態陣列」(可 ➕ 新增 / 🗑️ 刪除列,不用改程式欄位)
+    //   settings.groqKeys / openrouterKeys / geminiKeys = [{k:'金鑰', on:true}, ...]
+    _keyProviderMeta: {
+        groq:       { arr: 'groqKeys',       label: 'Groq',       color: 'purple', placeholder: 'gsk_...' },
+        openrouter: { arr: 'openrouterKeys', label: 'OpenRouter', color: 'cyan',   placeholder: 'sk-or-v1-...' },
+        gemini:     { arr: 'geminiKeys',     label: 'Gemini',     color: 'amber',  placeholder: 'AIzaSy...' },
     },
-
-    // [OpenRouter] 取雙 key 陣列(過濾空字串 + 啟動狀態),供 _callAI / _callDeepAI 輪動
-    _getOpenRouterKeys() {
-        return [
-            { k: this.settings.openrouterKey,  on: this.settings.enable_openrouterKey  !== false },
-            { k: this.settings.openrouterKey2, on: this.settings.enable_openrouterKey2 !== false },
-        ].filter(x => x.on && (x.k || '').trim()).map(x => x.k.trim());
+    // 向下相容:首次進來把舊固定欄位(groqKey/groqKey2…)搬進陣列,之後只用陣列
+    _migrateKeyArrays() {
+        const s = this.settings;
+        const seed = (arrName, pairs) => {
+            if (Array.isArray(s[arrName])) return;
+            s[arrName] = pairs.map(([kName, enName]) => ({ k: (s[kName] || '').trim(), on: s[enName] !== false }));
+        };
+        seed('groqKeys',       [['groqKey', 'enable_groqKey'], ['groqKey2', 'enable_groqKey2']]);
+        seed('openrouterKeys', [['openrouterKey', 'enable_openrouterKey'], ['openrouterKey2', 'enable_openrouterKey2']]);
+        seed('geminiKeys',     [['geminiKey1', 'enable_geminiKey1'], ['geminiKey2', 'enable_geminiKey2']]);
+        // 至少留 1 列空欄可填
+        ['groqKeys', 'openrouterKeys', 'geminiKeys'].forEach(p => { if (!Array.isArray(s[p]) || !s[p].length) s[p] = [{ k: '', on: true }]; });
     },
+    _keyArr(provider) { const m = this._keyProviderMeta[provider]; return m ? (this.settings[m.arr] || []) : []; },
 
-    // 向下相容:舊呼叫 _getOpenRouterKey() 改回第一把啟動中的
-    _getOpenRouterKey() {
-        return this._getOpenRouterKeys()[0] || '';
+    // [Groq/OpenRouter/Gemini] 取「已填寫且啟動」的 key 陣列(429/401 自動切下一把)
+    _getGroqKeys()       { return this._keyArr('groq').filter(x => x && x.on !== false && (x.k || '').trim()).map(x => x.k.trim()); },
+    _getOpenRouterKeys() { return this._keyArr('openrouter').filter(x => x && x.on !== false && (x.k || '').trim()).map(x => x.k.trim()); },
+    _getGeminiKeys()     { return this._keyArr('gemini').filter(x => x && x.on !== false && (x.k || '').trim()).map(x => x.k.trim()); },
+    _getOpenRouterKey()  { return this._getOpenRouterKeys()[0] || ''; },   // 向下相容:舊呼叫取第一把啟動中的
+
+    // 🖥️ 渲染某 provider 的 key 列(輸入改陣列不重繪保留焦點;新增/刪除/勾選才重繪)
+    _renderKeyRows(provider) {
+        const m = this._keyProviderMeta[provider];
+        const box = document.getElementById(`keyRows_${provider}`);
+        if (!m || !box) return;
+        const col = m.color, arr = this.settings[m.arr] || [];
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        box.innerHTML = arr.map((row, i) => `
+            <div class="flex gap-1.5 items-center mb-1.5">
+                <input type="checkbox" ${row && row.on !== false ? 'checked' : ''} onchange="app._toggleKeyRow('${provider}',${i},this.checked)" class="w-4 h-4 accent-${col}-500 flex-shrink-0" title="啟動/停用此 key">
+                <span class="text-[10px] font-mono text-${col}-600 w-9 flex-shrink-0">Key ${i + 1}</span>
+                <input type="password" value="${esc(row && row.k)}" oninput="app._updateKeyRow('${provider}',${i},this.value)" class="flex-1 min-w-0 bg-[#010409] text-${col}-400 p-1.5 rounded border border-[#30363d] outline-none font-mono text-sm focus:border-${col}-500 transition-colors" placeholder="${m.placeholder}">
+                <button onclick="app._verifyKeyRow('${provider}',${i})" class="px-2 py-1.5 bg-gray-800 text-xs font-bold rounded border border-[#30363d] hover:bg-gray-700 transition flex-shrink-0" title="驗證此把 key">驗</button>
+                <div class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0 ring-1 ring-inset ring-gray-400" id="led_${provider}_${i}"></div>
+                <button onclick="app._delKeyRow('${provider}',${i})" class="px-2 py-1.5 bg-red-900/40 text-red-300 text-xs font-bold rounded border border-red-800/60 hover:bg-red-800/50 transition flex-shrink-0" title="刪除此列">🗑️</button>
+            </div>`).join('')
+            + `<button onclick="app._addKeyRow('${provider}')" class="mt-0.5 w-full px-2 py-1.5 bg-${col}-900/30 text-${col}-300 text-[11px] font-bold rounded border border-${col}-700/50 hover:bg-${col}-800/40 transition">➕ 新增 ${m.label} Key</button>`;
     },
-
-    // [Gemini] 取雙 key 陣列(過濾空字串 + 啟動狀態),供 _callGemini 內部輪動
-    _getGeminiKeys() {
-        return [
-            { k: this.settings.geminiKey1, on: this.settings.enable_geminiKey1 !== false },
-            { k: this.settings.geminiKey2, on: this.settings.enable_geminiKey2 !== false },
-        ].filter(x => x.on && (x.k || '').trim()).map(x => x.k.trim());
+    _updateKeyRow(provider, i, val) { const a = this.settings[this._keyProviderMeta[provider]?.arr]; if (a && a[i]) { a[i].k = val; this.saveSettings(); } },   // 不重繪 → 保留輸入焦點
+    _toggleKeyRow(provider, i, on)  { const a = this.settings[this._keyProviderMeta[provider]?.arr]; if (a && a[i]) { a[i].on = !!on; this.saveSettings(); } },
+    _addKeyRow(provider) { const a = this.settings[this._keyProviderMeta[provider]?.arr]; if (a) { a.push({ k: '', on: true }); this.saveSettings(); this._renderKeyRows(provider); this.vibrate?.(20); } },
+    _delKeyRow(provider, i) { const a = this.settings[this._keyProviderMeta[provider]?.arr]; if (a) { a.splice(i, 1); if (!a.length) a.push({ k: '', on: true }); this.saveSettings(); this._renderKeyRows(provider); this.vibrate?.(20); } },
+    // 🩺 單列驗證:打該 provider 的 /models(或 Gemini ?key=)200 + 非空 = 綠燈
+    async _verifyKeyRow(provider, i) {
+        this.saveSettings();
+        const key = (this._keyArr(provider)[i]?.k || '').trim();
+        const led = document.getElementById(`led_${provider}_${i}`);
+        const setLed = ok => { if (led) led.className = `w-3 h-3 rounded-full flex-shrink-0 ${ok ? 'shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500' : 'bg-red-500'}`; };
+        if (!key) { setLed(false); return; }
+        if (led) led.className = 'w-3 h-3 rounded-full flex-shrink-0 animate-pulse bg-yellow-400';
+        try {
+            let ok = false;
+            if (provider === 'groq') {
+                const r = await this.safeFetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 8000, maxRetries: 1 });
+                const j = await r.json().catch(() => ({})); ok = r.status === 200 && j?.data?.length > 0;
+            } else if (provider === 'openrouter') {
+                const r = await this.safeFetch('https://openrouter.ai/api/v1/models', { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 8000, maxRetries: 1 });
+                const j = await r.json().catch(() => ({})); ok = r.status === 200 && Array.isArray(j?.data);
+            } else if (provider === 'gemini') {
+                const r = await this.safeFetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`, {}, { timeout: 8000, maxRetries: 1 });
+                const j = await r.json().catch(() => ({})); ok = r.status === 200 && Array.isArray(j?.models) && j.models.length > 0;
+            }
+            setLed(ok);
+        } catch (_) { setLed(false); }
     },
 
     // [防呆] 是否設定了任一可用 AI 通道(後端 / Gemini / Groq / OpenRouter)
@@ -5586,7 +5574,7 @@ ${list}
             return content;
         }
         if (engine === 'groq') {
-            const key = (this.settings.groqKey || this.settings.groqKey2 || '').trim();
+            const key = this._getGroqKeys()[0] || '';
             if (!key) throw new Error('Groq 金鑰未填寫');
             const _msgs = systemInstruction ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: pShort }] : [{ role: 'user', content: pShort }];
             this._setAIStatus('groq', 1, 'trying');
@@ -5626,13 +5614,10 @@ ${list}
         if (btn) { btn.disabled = true; btn.textContent = '🩺 測試中…'; btn.classList.add('opacity-60'); }
         if (box) box.innerHTML = '<div class="text-[10px] text-blue-300 animate-pulse py-1">逐一測試每把金鑰中…</div>';
         const targets = [];
-        const s = this.settings;
-        if ((s.geminiKey1 || '').trim()) targets.push({ name: 'Gemini 金鑰1', fn: () => this._callGemini({ prompt: '回覆OK兩字', max_tokens: 8, forceKeyIndex: 0 }) });
-        if ((s.geminiKey2 || '').trim()) targets.push({ name: 'Gemini 金鑰2', fn: () => this._callGemini({ prompt: '回覆OK兩字', max_tokens: 8, forceKeyIndex: 1 }) });
-        if ((s.groqKey  || '').trim()) targets.push({ name: 'Groq 金鑰1', fn: () => this._pingGroqKey(s.groqKey.trim()) });
-        if ((s.groqKey2 || '').trim()) targets.push({ name: 'Groq 金鑰2', fn: () => this._pingGroqKey(s.groqKey2.trim()) });
-        if ((s.openrouterKey  || '').trim()) targets.push({ name: 'OpenRouter 金鑰1', fn: () => this._pingOpenRouterKey(s.openrouterKey.trim()) });
-        if ((s.openrouterKey2 || '').trim()) targets.push({ name: 'OpenRouter 金鑰2', fn: () => this._pingOpenRouterKey(s.openrouterKey2.trim()) });
+        // 🔑 V51.2 改逐一測動態 key 陣列(每 provider 全部已填的列,forceKeyIndex 對齊 _keyArr 位置)
+        this._keyArr('gemini').forEach((row, i) => { const k = (row.k || '').trim(); if (k) targets.push({ name: `Gemini 金鑰${i + 1}`, fn: () => this._callGemini({ prompt: '回覆OK兩字', max_tokens: 8, forceKeyIndex: i }) }); });
+        this._keyArr('groq').forEach((row, i) => { const k = (row.k || '').trim(); if (k) targets.push({ name: `Groq 金鑰${i + 1}`, fn: () => this._pingGroqKey(k) }); });
+        this._keyArr('openrouter').forEach((row, i) => { const k = (row.k || '').trim(); if (k) targets.push({ name: `OpenRouter 金鑰${i + 1}`, fn: () => this._pingOpenRouterKey(k) }); });
         if (!targets.length) {
             if (box) box.innerHTML = '<div class="text-[10px] text-yellow-400 py-1">⚠️ 尚未填寫任何 AI 金鑰</div>';
             if (btn) { btn.disabled = false; btn.textContent = '🩺 測試所有金鑰'; btn.classList.remove('opacity-60'); }
@@ -5831,7 +5816,7 @@ ${list}
         let keys = this._getGeminiKeys();
         // ⭐ V35 — 手動引擎覆寫:強制指定第 N 把 Gemini 金鑰(忽略啟動開關與輪動,直打那一把)
         if (forceKeyIndex != null) {
-            const raw = [this.settings.geminiKey1, this.settings.geminiKey2].map(k => (k || '').trim());
+            const raw = this._keyArr('gemini').map(x => (x.k || '').trim());
             const one = raw[forceKeyIndex];
             if (!one) throw new Error(`Gemini 金鑰 #${forceKeyIndex + 1} 未填寫`);
             keys = [one];
