@@ -5,6 +5,10 @@ name: 🌙 夜間全市場基本面補齊 (fund_sweep)
 #    不動 daily_miner 重建的 fundamentals_cache.json,daily deploy 用 git archive
 #    origin/data 鋪底層會自動保留 → 不會被下午的完整採礦洗掉。
 #
+# 🚀 平行分片(4 shard):按股號 %4 分工,每個 shard 綁「一組專屬 FinMind token」同時開工,
+#    額度分開不互撞 → 全市場基本面每晚都刷得完一輪(不再需要 1-2 晚)。
+#    只有最後 merge job 會 push(不會多分支同時 force-push 打架)。
+#
 # 為何不影響白天:採礦用 GitHub Secrets 的 FINMIND_TOKENS + GitHub IP,跟你手機
 #    前端 localStorage 的 key 是不同 token/IP,額度完全分開。
 
@@ -15,9 +19,9 @@ on:
   workflow_dispatch:
     inputs:
       budget:
-        description: '本晚最多補幾檔(預設 500)'
+        description: '每個 shard 最多補幾檔(預設 1500,4 shard 合計遠超全市場)'
         required: false
-        default: '500'
+        default: '1500'
 
 # 與 deploy_pages.yml / daily_miner deploy 共用 group,避免同時 push 打架 (cannot lock ref)
 concurrency:
@@ -28,9 +32,15 @@ permissions:
   contents: write
 
 jobs:
+  # ── 平行分片:4 個 shard 各綁一組 token、各抓自己 %4 的 partition,輸出 partial 檔 ──
   sweep:
+    name: ⛏️ 基本面分片 ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 300   # 節流採礦可能跑 1-3 小時,給足時間(GitHub 上限 6h)
+    timeout-minutes: 120   # 每 shard 約 500 檔 ×(3s 節流+請求)≈ 30-40 分,給足餘裕
+    strategy:
+      fail-fast: false     # 某 shard 的 token 被限流不影響其他 shard
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - name: 📥 下載程式碼 (main)
         uses: actions/checkout@v4
@@ -47,36 +57,90 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: 📂 還原所需資料 (origin/data → data/,只取兩檔,避免弄髒工作區)
+      - name: 📂 還原所需資料 (origin/data → data/,只取兩檔)
         run: |
           git fetch origin data 2>/dev/null || echo "⚠️ 尚無 data 分支(首跑)"
           mkdir -p data
-          # 只需宇宙來源 fundamentals_cache.json + 既有 fund_yoy_gm.json(可能不存在);分開取、各自容錯
           git show origin/data:data/fundamentals_cache.json > data/fundamentals_cache.json 2>/dev/null || echo "⚠️ 無 fundamentals_cache.json(首跑會略過)"
           git show origin/data:data/fund_yoy_gm.json > data/fund_yoy_gm.json 2>/dev/null || echo "ℹ️ 尚無 fund_yoy_gm.json(首次夜跑,從零建)"
-          # 還原是用重導向寫檔(非 git checkout),不動 index;data/*.json 在 main 本就 gitignore → 工作區乾淨
           echo "還原後 data/ 檔案數:$(ls data 2>/dev/null | wc -l)"
 
-      - name: 🌙 執行夜間基本面滾動補齊
-        id: sweep
+      - name: 🌙 執行分片基本面補齊 (shard ${{ matrix.shard }})
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           FUND_NIGHTLY_BUDGET: ${{ github.event.inputs.budget || '1500' }}
           FUND_SLEEP: '3.0'
           FUND_MIN_HITS: '20'
+          SHARD_INDEX: ${{ matrix.shard }}
+          SHARD_TOTAL: '4'
         run: |
           set +e
           python3 fund_sweep.py
+          echo "shard ${{ matrix.shard }} rc=$?(分片模式一律不自己 gate,交給 merge)"
+          exit 0
+
+      - name: 📤 上傳本 shard partial
+        uses: actions/upload-artifact@v4
+        with:
+          name: fund-shard-${{ matrix.shard }}
+          path: data/fund_yoy_gm.shard${{ matrix.shard }}.json
+          if-no-files-found: warn   # 宇宙為空/token 全掛時可能沒產出,warn 不當失敗
+          retention-days: 2
+
+  # ── 合併 + 部署:疊 4 個 partial 到老檔上,gate 總命中,只有這一步 push ──
+  merge:
+    name: 🔀 合併 + 部署
+    needs: sweep
+    if: always()   # 即使某 shard 失敗也把拿得到的 partial 合併(缺的 partition 保留舊資料)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依 (只需 requests)
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: 📂 還原老檔 (origin/data → data/,merge 疊在上面)
+        run: |
+          git fetch origin data 2>/dev/null || echo "⚠️ 尚無 data 分支(首跑)"
+          mkdir -p data
+          git show origin/data:data/fundamentals_cache.json > data/fundamentals_cache.json 2>/dev/null || echo "⚠️ 無 fundamentals_cache.json"
+          git show origin/data:data/fund_yoy_gm.json > data/fund_yoy_gm.json 2>/dev/null || echo "ℹ️ 尚無 fund_yoy_gm.json(首次夜跑)"
+
+      - name: 📥 下載全部 shard partial → data/
+        uses: actions/download-artifact@v4
+        continue-on-error: true   # 宇宙為空/全 shard 無產出時 pattern 抓不到 → 不讓 merge job 掛,交給 --merge 判 shards_seen==0
+        with:
+          pattern: fund-shard-*
+          path: data
+          merge-multiple: true   # 各 artifact 內的 shard 檔攤平進 data/
+
+      - name: 🔀 合併 partial → fund_yoy_gm.json
+        id: merge
+        env:
+          FUND_MIN_HITS: '20'
+          SHARD_TOTAL: '4'
+        run: |
+          set +e
+          echo "合併前 data/ 內容:"; ls -1 data | grep -E 'fund_yoy_gm|shard' || true
+          python3 fund_sweep.py --merge
           rc=$?
-          echo "sweep_rc=$rc" >> "$GITHUB_OUTPUT"
-          # rc=0 成功要部署;rc=2 命中太少不部署;其他非 0 也不部署(保留舊檔)
-          if [ "$rc" -ne 0 ]; then
-            echo "⚠️ fund_sweep 回傳 $rc → 不部署,保留線上舊檔"
-          fi
+          echo "merge_rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" -ne 0 ] && echo "⚠️ merge 回傳 $rc → 不部署,保留線上舊檔"
           exit 0
 
       - name: 🚀 部署 fund_yoy_gm.json 到 gh-pages + data (只更新這一檔)
-        if: steps.sweep.outputs.sweep_rc == '0'
+        if: steps.merge.outputs.merge_rc == '0'
         run: |
           set -e
           if [ ! -f data/fund_yoy_gm.json ]; then
@@ -117,4 +181,4 @@ jobs:
           # 先 gh-pages(前端讀這個,立即生效),再 data(讓 daily_miner deploy 的 git archive 保留)
           deploy_branch gh-pages
           deploy_branch data
-          echo "✅ 夜間基本面已部署"
+          echo "✅ 夜間基本面(4 shard 平行)已部署"

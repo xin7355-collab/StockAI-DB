@@ -44,6 +44,32 @@ BUDGET = int(os.getenv('FUND_NIGHTLY_BUDGET', '1500'))
 SLEEP = float(os.getenv('FUND_SLEEP', '3.0'))
 MIN_HITS = int(os.getenv('FUND_MIN_HITS', '20'))
 
+# 🚀 平行分片(matrix):SHARD_TOTAL 個 shard 各綁「一組專屬 token」同時開工,額度分開不互撞。
+#    SHARD_TOTAL=1(預設)= 舊的單一 job 行為,完全向下相容。
+SHARD_INDEX = int(os.getenv('SHARD_INDEX', '0'))
+SHARD_TOTAL = int(os.getenv('SHARD_TOTAL', '1'))
+SHARD_OUT = DATA_DIR / f'fund_yoy_gm.shard{SHARD_INDEX}.json'   # 分片模式的 partial 輸出(給 merge job 合併)
+
+# 分片模式:把本 shard 的 FinMind token 池「釘死」成專屬那一組 → 各 shard 額度獨立,不會共用一批 token 一起撞 429
+if SHARD_TOTAL > 1 and miner.FINMIND_TOKENS:
+    _pin = miner.FINMIND_TOKENS[SHARD_INDEX % len(miner.FINMIND_TOKENS)]
+    miner.FINMIND_TOKENS = [_pin]
+    miner.FINMIND_TOKEN = _pin
+    miner._finmind_token_idx = 0
+    print(f"🔑 shard {SHARD_INDEX}/{SHARD_TOTAL} 綁定專屬 FinMind token #{(SHARD_INDEX % 4) + 1}(額度獨立)")
+
+
+def _in_my_shard(sym: str) -> bool:
+    """按股號穩定分工:SHARD_TOTAL=1 時全收;否則 int(股號) % SHARD_TOTAL 命中本 shard 才收。"""
+    if SHARD_TOTAL <= 1:
+        return True
+    try:
+        n = int(sym)
+    except Exception:
+        n = sum(ord(c) for c in str(sym))
+    return (n % SHARD_TOTAL) == SHARD_INDEX
+
+
 TPE = timezone(timedelta(hours=8))
 
 
@@ -96,13 +122,14 @@ def load_existing() -> dict:
 
 
 def pick_targets(universe: list, existing: dict) -> list:
-    """滾動挑選:沒抓過的優先,其次照 ts 由舊到新,取前 BUDGET 檔。"""
+    """滾動挑選:先濾出本 shard 負責的股(分片模式),再沒抓過優先、照 ts 由舊到新,取前 BUDGET 檔。"""
+    mine = [s for s in universe if _in_my_shard(s)]
     def sort_key(sym):
         e = existing.get(sym)
         ts = (e or {}).get('ts') if isinstance(e, dict) else None
         # 沒抓過 → 空字串排最前;有抓過 → 照 ts 字串(舊的在前)
         return (ts is not None, ts or '')
-    return sorted(universe, key=sort_key)[:BUDGET]
+    return sorted(mine, key=sort_key)[:BUDGET]
 
 
 def main():
@@ -159,6 +186,20 @@ def main():
             print(f"  … {i}/{len(targets)} 檔 | 命中 {hits} | 已跑 {el}s")
         time.sleep(SLEEP)
 
+    # 🚀 分片模式:只輸出「本 shard 處理過的股」的 partial 檔給 merge job 合併,不自己 gate/部署。
+    #    (即使命中少也照寫 partial;merge job 統一 gate 總命中數,漏抓的股保留舊 partition)
+    if SHARD_TOTAL > 1:
+        part = {s: existing[s] for s in targets if s in existing}
+        part['__shard'] = {
+            'index': SHARD_INDEX, 'total': SHARD_TOTAL,
+            'processed': len(targets), 'hits': hits, 'generated': _now_iso(),
+        }
+        DATA_DIR.mkdir(exist_ok=True)
+        SHARD_OUT.write_text(json.dumps(part, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print(f"✅ shard {SHARD_INDEX} 寫入 {SHARD_OUT}:處理 {len(targets)} 檔 / 命中 {hits} 檔(交給 merge 合併)")
+        return 0
+
+    # 單一 job 模式(SHARD_TOTAL=1):維持原本自己 gate + 寫全檔的行為
     if hits < MIN_HITS:
         print(f"❌ 本次僅命中 {hits} 檔(< 門檻 {MIN_HITS}),疑似 token 全被限流/斷網 → 不覆寫、不部署,保留舊檔")
         return 2   # workflow 判 exit code:非 0 → 不部署
@@ -179,5 +220,59 @@ def main():
     return 0
 
 
+def merge_mode():
+    """🔀 merge job:把老 fund_yoy_gm.json + 各 shard partial 疊起來 → 寫全檔。
+       疊法:老檔打底,每個 shard 的 partition entries 覆蓋上去(partition 互斥,無衝突)。
+       gate:所有 shard 本晚總命中 < MIN_HITS → 不覆寫、不部署(回 2),保留線上舊檔。"""
+    merged = load_existing()               # 老的全市場檔(workflow 已從 origin/data 還原)
+    base_keys = sum(1 for k in merged if not str(k).startswith('__'))
+    total_hits = 0
+    shards_seen = 0
+    for i in range(SHARD_TOTAL if SHARD_TOTAL > 1 else 4):
+        p = DATA_DIR / f'fund_yoy_gm.shard{i}.json'
+        if not p.exists():
+            print(f"⚠️ 缺 shard{i} partial({p}),跳過(該 partition 保留舊資料)")
+            continue
+        try:
+            d = json.loads(p.read_text(encoding='utf-8'))
+        except Exception as e:
+            print(f"⚠️ shard{i} partial 壞掉,跳過:{e}")
+            continue
+        meta = d.pop('__shard', {}) if isinstance(d, dict) else {}
+        total_hits += int(meta.get('hits', 0) or 0)
+        shards_seen += 1
+        for sym, entry in d.items():
+            if str(sym).startswith('__'):
+                continue
+            merged[sym] = entry
+        print(f"  ✅ 疊入 shard{i}:{len(d)} 檔 / 命中 {meta.get('hits', '?')}")
+
+    if shards_seen == 0:
+        print("❌ 完全沒有任何 shard partial → 不部署,保留舊檔")
+        return 2
+    if total_hits < MIN_HITS:
+        print(f"❌ 全 shard 本晚總命中 {total_hits} 檔(< 門檻 {MIN_HITS}),疑似 token 全被限流 → 不覆寫、不部署")
+        return 2
+
+    universe = load_universe()
+    covered = sum(1 for k, v in merged.items()
+                  if not str(k).startswith('__') and isinstance(v, dict) and ('yoy' in v or 'gmt' in v))
+    merged['__status'] = {
+        'generated': _now_iso(),
+        'universe': len(universe),
+        'covered': covered,
+        'this_run_hits': total_hits,
+        'shards': shards_seen,
+        'budget': BUDGET,
+        'source': 'fund_sweep_nightly_parallel',
+    }
+    DATA_DIR.mkdir(exist_ok=True)
+    OUT_PATH.write_text(json.dumps(merged, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    print(f"✅ merge 完成:{shards_seen} shard 總命中 {total_hits} 檔 | 全市場覆蓋 {covered}/{len(universe)} 檔(老檔 {base_keys} → 新 {covered})")
+    return 0
+
+
 if __name__ == '__main__':
+    if '--merge' in sys.argv:
+        sys.exit(merge_mode())
     sys.exit(main())
