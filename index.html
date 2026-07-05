@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V50.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -293,7 +293,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-xs text-gray-500 font-normal">| 經理人風控</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -914,9 +914,9 @@
                 </button>
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
-                <span class="text-[13px] font-mono font-bold text-cyan-400 tracking-wider px-2 py-1 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V50.9</span>
-                <!-- 🌦️【大盤 + 天氣】包成一個框(V44.8 使用者要求),點擊回診斷看大盤 -->
-                <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.switchAppTab('diag'); app.vibrate(50);" title="大盤天氣 · 點擊回診斷">
+                <!-- 🔖 V50.9 版本號已移至 ⚙️ 設定頁標題列(使用者要求:想看到又不佔置頂版面) -->
+                <!-- 🌦️【大盤 + 天氣】包成一個框,V50.9 點擊改開「大盤天氣」彈窗(說明+即時趨勢+白話結論) -->
+                <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.showMarketWeatherPopup(); app.vibrate(50);" title="大盤天氣 · 點擊看說明與即時趨勢">
                     <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
                     <div id="headerWeather" class="flex items-center gap-1">
                         <span class="text-[13px] text-gray-500">…</span>
@@ -1640,7 +1640,8 @@
             <!-- V35 — 「今日全球彙整(AI 摘要)」卡已移除(使用者要求取消新聞 AI 分析) -->
 
             <!-- ════════ 🌟 黃金動線：全球宏觀風險 ➔ 4 戰區 ➔ 戰略指揮部 ➔ 泡沫預警 ════════ -->
-            <div class="bg-[#010409] rounded-xl border border-cyan-900/50 p-3">
+            <!-- 🙈 V50.9 使用者要求隱藏此明細卡(資料仍照常 fetch → 餵盤前體檢/首席 AI/風險分數,只是不顯示這張卡) -->
+            <div class="hidden bg-[#010409] rounded-xl border border-cyan-900/50 p-3">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🌐</span><span class="text-sm font-black text-cyan-300 tracking-wide">全球宏觀風險觀測台</span><span id="macroRiskSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span><button onclick="app.refreshAllMarketData(); app.vibrate(30);" class="text-gray-500 hover:text-cyan-300 text-xs leading-none px-1 transition-colors" title="重新整理市場數據(宏觀/美股/全球新聞)">🔄</button></div>
                 <div class="text-[10px] text-gray-500 mb-2 mt-0.5">📊 掌握全球大氣候與外資籌碼動向，定多空生死。</div>
                 <div id="macroExtraLine" class="hidden text-[10px] mb-2 -mt-1 px-1 leading-relaxed"></div>
@@ -1695,7 +1696,8 @@
             </div>
 
             <!-- 🌍 V26.3 全球巨頭脈動(10 卡 Equal Height 4 段式,大數值 + chg% 合一行,文字限色) -->
-            <div class="bg-[#161b22] rounded-lg border border-[#30363d] p-3">
+            <!-- 🙈 V50.9 使用者要求隱藏此明細卡(資料仍照常 fetch → 餵盤前體檢亞股/情緒加減分,只是不顯示這張卡) -->
+            <div class="hidden bg-[#161b22] rounded-lg border border-[#30363d] p-3">
                 <div class="flex items-center gap-1.5"><span class="text-sm">🌍</span><span class="text-sm font-black text-gray-100 tracking-wide">全球巨頭脈動</span><span id="bigPlayerSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span></div>
                 <div class="text-[10px] text-gray-500 mb-2 mt-0.5">📊 黃金 / 原油 / 美元 / BTC / VIX / 亞股 / 美股 — 國際資金真實流向(台股 80% 看美股臉色)</div>
                 <div class="grid grid-cols-2 gap-2">
@@ -10730,6 +10732,50 @@ const marginByDate = {};
             console.warn('[weatherTrend]', e);
             if (box)  box.innerHTML  = `<div class="col-span-full text-center text-gray-600 text-[10px] py-2">趨勢資料抓取中,稍後再看</div>`;
             if (hbox) hbox.innerHTML = `<span class="text-[10px] text-gray-600">天氣稍後</span>`;
+        }
+    },
+
+    // 🌤️ V50.9 — 置頂「大盤天氣」點擊彈窗:說明怎麼看/怎麼操作 + 即時抓加權指數算短/中/長趨勢 + 白話結論(純公式,零 AI)
+    async showMarketWeatherPopup() {
+        this.vibrate?.(30);
+        try {
+            // 確保 ^TWII 加權日K 有載入(沿用天氣快取,30 分內免重抓)
+            let rows = this._twiiKlineCache?.rows;
+            const fresh = this._twiiKlineCache?.at && (Date.now() - this._twiiKlineCache.at) < 1800000;
+            if (!rows || !fresh) { await this._renderMarketWeatherTrend(); rows = this._twiiKlineCache?.rows; }
+            if (!Array.isArray(rows) || rows.length < 30) { alert('🌤️ 大盤天氣資料抓取中,稍等幾秒再點一次。'); return; }
+            const nameMap = { bull: '☀️ 偏多(多頭排列)', chop: '☁️ 震盪(均線糾結)', bear: '🌧️ 偏空(空頭排列)' };
+            const tfs = [
+                { label: '短期(日線)', v: this._weatherVerdict(rows, 5, 20) },
+                { label: '中期(週線)', v: this._weatherVerdict(this.aggregateData(rows, 'W'), 5, 20) },
+                { label: '長期(月線)', v: this._weatherVerdict(this.aggregateData(rows, 'M'), 3, 12) },
+            ];
+            const lines = tfs.map(t => {
+                if (!t.v) return `・${t.label}:🌫️ 資料不足`;
+                const bias = (t.v.bias > 0 ? '+' : '') + t.v.bias + '%';
+                return `・${t.label}:${nameMap[t.v.key] || '—'} ・乖離 ${bias}`;
+            }).join('\n');
+            const bulls = tfs.filter(t => t.v && t.v.key === 'bull').length;
+            const bears = tfs.filter(t => t.v && t.v.key === 'bear').length;
+            let concl;
+            if (bulls >= 2)      concl = '短中長多數 ☀️ 偏多 → 大環境站你這邊,做多順風、回檔找買點;但短期若已大漲要防過熱、收緊停利。';
+            else if (bears >= 2) concl = '多數 🌧️ 偏空 → 大盤逆風,少做多、嚴設停損,別逆勢接刀,等轉晴再積極。';
+            else                 concl = '多空糾結(晴時多雲)→ 方向不明,別重押,輕倉觀望,等短中長轉一致再加碼。';
+            alert('🌤️ 大盤天氣是什麼?\n\n'
+                + '用「加權指數的均線排列」判斷大盤現在偏多還偏空,分短(日)/中(週)/長(月)三個時間框:\n'
+                + '☀️ 偏多 = 收盤 > 短均 > 長均(多頭排列)\n'
+                + '🌧️ 偏空 = 收盤 < 短均 < 長均(空頭排列)\n'
+                + '☁️ 震盪 = 均線糾結、方向不明\n\n'
+                + '📊 目前大盤天氣(即時):\n' + lines + '\n\n'
+                + '💡 白話結論:\n' + concl + '\n\n'
+                + '🧭 怎麼操作:\n'
+                + '・多數 ☀️ = 順風,做多為主、回檔找買點\n'
+                + '・多數 🌧️ = 逆風,減碼保守、嚴設停損、別接刀\n'
+                + '・☁️ 糾結 = 輕倉觀望,等轉一致再動\n\n'
+                + '(純加權指數均線公式,零 AI、非投資建議;搭配個股「進場體檢」一起看)');
+        } catch (e) {
+            console.warn('[marketWeatherPopup]', e);
+            alert('🌤️ 大盤天氣資料抓取中,稍等幾秒再點一次。');
         }
     },
 
