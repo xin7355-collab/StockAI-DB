@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V52.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -16912,11 +16912,18 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     volume: fugleData.volume || 0
                 });
                 lastIdx++;
+            } else {
+                // 🐛 非盤中(週末/假日/盤前盤後):即時報價其實是「最近交易日的最終收盤」。
+                //    ⛔ 不追加一根「未來/非交易日 + 零成交量」的幽靈 K 棒(舊 bug:K 線日期怪怪的)。
+                //    ✅ 改為把最新收盤價「校正進最後一根真實交易日」,讓頭部大字報價 + 最後一根 K 棒
+                //       都顯示正確最新價 —— 尤其採礦端若殘留盤中快照收盤(如上櫃股正式日 K 尚未覆蓋),
+                //       這裡用即時報價把它補正,不必等下次盤後採礦。
+                //    註:rawDailyData 每次都由 baseRawData 重建,此覆蓋僅影響「顯示」,不寫回資料檔,零持久風險。
+                this.rawDailyData[lastIdx].close = fugleData.price;
+                this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, fugleData.high || fugleData.price);
+                this.rawDailyData[lastIdx].low  = Math.min(this.rawDailyData[lastIdx].low,  fugleData.low  || fugleData.price);
+                // volume 保留採礦值(即時報價常不帶當日累計量,避免最新一根量柱歸零)
             }
-            // 🐛 修「K 線日期怪怪的 / 最新一根沒成交量」:非盤中(週末/假日/盤前盤後)絕不追加一根
-            //    「今日日期」的新 K 棒。非盤中的「即時報價」其實只是上一交易日的收盤價,硬追加會生出
-            //    一根「未來/非交易日 + 零成交量」的幽靈 K 棒。此時最後一根維持最近真實交易日即可,
-            //    頭部大字報價亦以該根收盤為準(採礦端若殘留盤中快照收盤,會於下次盤後採礦覆蓋校正)。
         }
         // When fugleData.isHistorical === true the rawDailyData is already correct — no modification needed
         if (manualPrice !== null && !isNaN(manualPrice) && manualPrice > 0) {
