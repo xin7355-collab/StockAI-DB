@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V53.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V53.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1306,6 +1306,7 @@
                             <label class="ma-toggle-lbl text-[#a78bfa] cursor-pointer flex items-center" title="外資成本線:近60日買賣量加權平均價(外資主要進出價位估算,非官方揭露)。上櫃/冷門股法人資料為空時不顯示"><input type="checkbox" id="toggleFCost" onchange="app.renderChart()" class="hidden"><span>外資</span></label>
                             <label class="ma-toggle-lbl text-[#2dd4bf] cursor-pointer flex items-center" title="投信成本線:近60日買賣量加權平均價(投信主要進出價位估算)"><input type="checkbox" id="toggleTCost" onchange="app.renderChart()" class="hidden"><span>投信</span></label>
                             <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="庫存成本線(你的持股均價水平線;需先填成本或在庫存表建立)"><input type="checkbox" id="toggleInvCost" onchange="app.renderChart()" class="hidden"><span>庫存</span></label>
+                            <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="除權息 K線標記:除息交易日插「息」旗標,點旗標用 Perplexity 查填息狀況(僅日線)"><input type="checkbox" id="toggleExDiv" checked onchange="app.renderChart()" class="hidden"><span>息</span></label>
                         </div>
                     </div>
                     <div class="relative">
@@ -3116,6 +3117,7 @@ const app = {
         this.chartInstance.on('click', params => {
             try {
                 if (params && params.componentType === 'markPoint' && params.data && params.data.patternType) { this._explainPattern(params.data.patternType); return; }
+                if (params && params.componentType === 'markPoint' && params.data && params.data.exDivDate) { this._openExDivPerplexity(params.data.exDivDate); return; }
                 if (params && typeof params.dataIndex === 'number') this.renderChartHud(params.dataIndex);
             } catch (_) {}
         });
@@ -14377,6 +14379,36 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._freeAiOpen(map[kind] || `${tag} 最新消息`);
     },
 
+    // ✂️ V53.x — 除權息 K線標記:抓近 5 年除權息「除息交易日」+ 配息配股額(FinMind),快取供 renderChart 插旗標
+    async _loadExDividends(sym) {
+        if (this._exDivCache && this._exDivCache.sym === sym) return this._exDivCache.list;
+        try {
+            const tok = this._getFinmindToken() ? `&token=${this._getFinmindToken()}` : '';
+            const y = new Date().getFullYear();
+            const res = await this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=${sym}&start_date=${y - 5}-01-01${tok}`, {}, { timeout: 8000, maxRetries: 1 });
+            const j = await res.json();
+            const list = [];
+            for (const r of (j.data || [])) {
+                const exDate = r.CashExDividendTradingDate || r.StockExDividendTradingDate || null;
+                if (!exDate || !/^\d{4}-\d{2}-\d{2}$/.test(exDate)) continue;
+                const cash = (r.CashEarningsDistribution || 0) + (r.CashStatutorySurplus || 0);
+                const stock = (r.StockEarningsDistribution || 0) + (r.StockStatutorySurplus || 0);
+                if (cash <= 0 && stock <= 0) continue;
+                list.push({ date: exDate.replace(/-/g, '/'), cash, stock });
+            }
+            this._exDivCache = { sym, list };
+            return list;
+        } catch (_) { this._exDivCache = { sym, list: [] }; return []; }
+    },
+    // ✂️ 點 K 線除權息旗標 → Perplexity 查填息狀況(零額度)
+    _openExDivPerplexity(dateStr) {
+        const sym = this.currentSymbolId;
+        if (!sym) return;
+        const name = (this.getStockName?.(sym) || sym), tag = `${name}(${sym})`;
+        this._freeAiOpen(`${tag} 在 ${dateStr} 除權息,配息配股各多少?除息後有沒有「填息」(股價漲回除息前價位)?花了幾天填息?對存股 / 波段操作的影響?請白話說明,附日期與來源`);
+        this.vibrate?.(20);
+    },
+
     // 🚨 V46.3 — 處置/注意告警點擊:帶當前列管狀態,開免費 AI 給「操作提醒」(零額度)
     _openFreeAiDispose() {
         const sym = this.currentSymbolId;
@@ -16926,6 +16958,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if(!silent) {
             document.getElementById('chipCostInput').value = '';
             this.fetchCorpEvents(targetSym);
+            // ✂️ V53.x — 抓除權息日期,完成後重繪 K 線插「息」旗標(每檔快取,不重複抓)
+            this._loadExDividends(targetSym).then(() => { if (this.currentSymbolId === targetSym) { try { this.renderChart(); } catch (_) {} } }).catch(() => {});
             this.fetchChipCost(targetSym);
             masterWorker.postMessage({ activeData: this.activeData, marketCtx: this._buildMarketCtx() });
             // ⚡ V46.3 — 報價/名稱/概念已顯即早收 loading 遮罩,指標卡由 worker 回來(onWorkerMessage)再補,切股不再卡「雲端運算中」
@@ -21668,6 +21702,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (this.showPatterns !== false) {
             try { markPointData = markPointData.concat(this._buildPatternMarks(data) || []); } catch (e) { console.warn('[型態]', e); this._lastPatterns = []; }
         } else { this._lastPatterns = []; }
+
+        // ✂️ V53.x — 除權息 K線標記(僅日線;點旗標→Perplexity 查填息)。資料由 _loadExDividends 快取,日期對齊 activeData 才標。
+        if (this.currentTF === 'D' && document.getElementById('toggleExDiv')?.checked && this._exDivCache && this._exDivCache.sym === this.currentSymbolId) {
+            const _dIdx = {}; dates.forEach((d, i) => { _dIdx[d] = i; });
+            for (const ev of (this._exDivCache.list || [])) {
+                const idx = _dIdx[ev.date];
+                if (idx == null || !data[idx]) continue;
+                markPointData.push({
+                    name: '除息', xAxis: idx, yAxis: data[idx].low, value: '息',
+                    symbol: 'pin', symbolSize: 20, symbolRotate: 180, symbolOffset: [0, '60%'],
+                    itemStyle: { color: '#fbbf24' },
+                    label: { show: true, formatter: '息', color: '#000', fontSize: 9, fontWeight: 'bold' },
+                    exDivDate: ev.date
+                });
+            }
+        }
 
         // 💰 現價右軸標籤(對標籌碼K線):最新收盤畫淡虛線,右端貼現價色塊(紅漲綠跌 vs 昨收)
         try {
