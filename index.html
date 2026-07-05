@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V53.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V53.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1076,7 +1076,7 @@
                             <button onclick="app._scrollToCard('priceRankCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-blue-500 hover:text-blue-300 transition-colors">📊 位階</button>
                             <button onclick="app._scrollToCard('entryCheckup')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-red-500 hover:text-red-300 transition-colors">🎯 進場</button>
                             <button onclick="app._scrollToCard('chuPositionPlanCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-orange-500 hover:text-orange-300 transition-colors">📐 分批</button>
-                            <button onclick="app._scrollToCard('chuStrategyCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-green-500 hover:text-green-300 transition-colors">🛡️ 出場</button>
+                            <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-green-500 hover:text-green-300 transition-colors">🛡️ 出場</button>
                             <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-cyan-500 hover:text-cyan-300 transition-colors">📝 下單</button>
                         </div>
 
@@ -1100,7 +1100,8 @@
                         <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
 
                         <!-- 🎯 價位作戰圖:以「動態停利停損線」為主卡;明日均線保衛/突破棒/K棒戰法併入下方收合「更多守價」 -->
-                        <div id="precisionPricesBox" class="w-full mt-4 lg:mt-0 bg-[#010409] border border-[#30363d] rounded p-3 grid grid-cols-3 gap-1 text-center shadow-inner relative">
+                        <!-- V53.x — 動態停利停損線已併入「出場總表」(chuExitSopCard);此卡隱藏但保留 DOM(refreshStrategy 仍寫入,供出場總表 stash 目標值) -->
+                        <div id="precisionPricesBox" class="hidden w-full mt-4 lg:mt-0 bg-[#010409] border border-[#30363d] rounded p-3 grid grid-cols-3 gap-1 text-center shadow-inner relative">
                             <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1c2128] px-3 py-0.5 text-xs text-blue-400 font-bold tracking-widest border border-[#30363d] rounded-full whitespace-nowrap">動態停利停損線</div>
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt1Label">🎯 第一目標</span><span class="text-[#f87171] font-mono font-black text-lg lg:text-xl" id="tgt1Price">--</span></div>
                             <div class="flex flex-col justify-center pt-1 border-l border-r border-[#30363d]"><span class="text-xs text-gray-500 font-bold mb-0.5" id="tgt2Label">🚀 第二目標</span><span class="text-[#f87171] font-mono font-black text-lg lg:text-xl" id="tgt2Price">--</span></div>
@@ -4627,6 +4628,8 @@ ${list}
     renderChuStrategyCard(sym) {
         const card = document.getElementById('chuStrategyCard');
         if (!card) return;
+        // V53.x — 5MA/20MA/鐵血停損已併入「出場總表」(chuExitSopCard),此卡停用避免重複顯示
+        card.classList.add('hidden'); card.innerHTML = ''; return;
         if (!sym || !Array.isArray(this.activeData) || this.activeData.length < 20) { card.classList.add('hidden'); return; }
         const arr = this.activeData;
         const last20 = arr.slice(-20);
@@ -18897,6 +18900,17 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 ${pnl ? `<div class="text-right">${pnl}</div>` : ''}
             </div>`;
 
+        // 🎯 目標/防守區(V53.x — 併入原「動態停利停損線」的 t1/t2/def,合三卡為一張出場總表)
+        const dx = this._dynExit || {};
+        const numOK = v => typeof v === 'number' && isFinite(v) && v > 0;
+        const targetSection = (numOK(dx.t1) || numOK(dx.t2) || numOK(dx.def)) ? `
+            <div class="mt-2">
+                <div class="text-[11px] font-black text-amber-300 mb-1 flex items-center gap-1">🎯 目標 / 波段防守</div>
+                ${numOK(dx.t1) ? rowHtml('', dx.t1L || '🎯 第一目標', '', dx.t1, 'text-red-400', pnlText(dx.t1)) : ''}
+                ${numOK(dx.t2) ? rowHtml('', dx.t2L || '🚀 第二目標', '', dx.t2, 'text-red-400', pnlText(dx.t2)) : ''}
+                ${numOK(dx.def) ? rowHtml('', dx.defL || '🛡️ 防守底線', '', dx.def, 'text-green-400', pnlText(dx.def)) : ''}
+            </div>` : '';
+
         // 📤 停利區
         const takeSection = (x.takeShort || x.takeLong) ? `
             <div class="mt-2">
@@ -18975,9 +18989,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         box.innerHTML = `
             <div class="text-yellow-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="alert('📌 朱老師心法 — 離場機制\\n\\n' + app._chuOriginalText.exit)">
-                <span>⚔️ 朱老師離場 SOP <span class="text-[10px] text-gray-500 font-normal">(點看心法)</span></span>
+                <span>🎯 出場總表 <span class="text-[10px] text-gray-500 font-normal">(目標/停利/停損・點看心法)</span></span>
                 <span class="text-[10px] text-gray-500 font-normal">現價 ${x.pC.toFixed(2)}</span>
             </div>
+            ${targetSection}
             ${takeSection}
             ${stopSection}
             ${sharesNote}
@@ -21271,6 +21286,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         document.getElementById('tgt1Price').innerHTML = this.getPriceHTML(t1_val, pC); document.getElementById('tgt2Price').innerHTML = this.getPriceHTML(t2_val, pC);
         document.getElementById('defPrice').innerHTML = this.getPriceHTML(def_val, pC); document.getElementById('defLabel').innerText = defLabel;
+        // V53.x — stash 動態目標/防守值,供合併後的「出場總表」(chuExitSopCard)一起顯示
+        try { this._dynExit = { t1: t1_val, t2: t2_val, def: def_val, t1L: (document.getElementById('tgt1Label')?.innerText || '🎯 第一目標'), t2L: (document.getElementById('tgt2Label')?.innerText || '🚀 第二目標'), defL: defLabel, pC }; } catch (_) {}
         // 📐 V31.7 明日均線保衛價(扣抵):MA(N) 明日續揚 ⟺ 明日收盤 > 今窗最舊那根扣抵收盤 data[last-(N-1)]
         const _mhg = document.getElementById('maHoldGuard');
         if (_mhg) {
