@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -293,11 +293,22 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
             <div class="space-y-4 mb-6">
+
+                <!-- 🔤 V51.1 介面字體大小移到設定頁最上方(使用者要求:最常調、放最上好按) -->
+                <div class="flex items-center justify-between pt-1 border-b border-gray-700 pb-4">
+                    <label class="text-xs font-bold text-cyan-400">🔤 介面字體大小</label>
+                    <div class="flex gap-1" id="fontSizeBtns">
+                        <button onclick="app.setFontSize('small')" id="btn_font_small" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">小</button>
+                        <button onclick="app.setFontSize('medium')" id="btn_font_medium" class="px-2.5 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors">中</button>
+                        <button onclick="app.setFontSize('large')" id="btn_font_large" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">大</button>
+                        <button onclick="app.setFontSize('xl')" id="btn_font_xl" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">特大</button>
+                    </div>
+                </div>
 
                 <!-- 📦 V48.4 — 資料保險箱移到最上面(使用者要求);備份加密單一檔、可選檔還原 -->
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
@@ -330,19 +341,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-1 pt-1 border-b border-gray-700 pb-4">
-                    <label class="text-xs font-bold text-indigo-400">🧠 AI 戰略靈魂編輯器 (Prompt)</label>
-                    <p class="text-[10px] text-gray-500 leading-tight mb-1">自訂分析風格，真實數據會自動餵入下方指令中。</p>
-                    <div class="flex items-start gap-2 mb-2 text-[11px] text-gray-400">
-                        <span class="flex-shrink-0">🔇</span>
-                        <span>首席 AI 已改<b class="text-indigo-300">純手動</b>:開 App / 切個股<b class="text-gray-200">不再自動跑</b>(省 Groq 配額),要分析時點下方 🧠「首席 AI 全盤分析」鈕即可。</span>
-                    </div>
-                    <textarea id="set_aiPrompt" oninput="app.saveSettings()" class="bg-[#010409] text-gray-300 p-2 rounded border border-[#30363d] outline-none font-mono text-xs focus:border-indigo-500 transition-colors h-28 scrollbar-hide" placeholder="輸入您的專屬 AI 提示詞..."></textarea>
-                    <div class="flex gap-2 mt-1.5">
-                        <button onclick="app.resetPrompt('default')" class="flex-1 px-2 py-1.5 bg-gray-800 text-[10px] font-bold text-gray-300 rounded border border-gray-600 hover:bg-gray-700 transition-colors">預設首席模式</button>
-                        <button onclick="app.resetPrompt('dualBlade')" class="flex-1 px-2 py-1.5 bg-indigo-900/50 text-[10px] font-bold text-indigo-300 border border-indigo-700 rounded hover:bg-indigo-800/50 transition-colors">🔥小哥雙刀流強化</button>
-                    </div>
-                </div>
+                <!-- 🗑️ V51.1 「🧠 AI 戰略靈魂編輯器 (Prompt)」UI 已刪除(使用者要求);AI 人設固定走預設首席模式(soul 端 `|| AI_PROMPT_TEMPLATES.default` fallback,不受影響) -->
 
                 <div class="space-y-4 border-b border-[#30363d] pb-4">
                     <!-- ⭐ V35 — 手動 AI 引擎選擇 + 金鑰健檢 -->
@@ -544,16 +543,7 @@
                 </div>
 
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
-                    <!-- 📦 資料保險箱 + 📊 預測歷史快照 已移到設定最上方(V48.4 / V49.7) -->
-                    <div class="flex items-center justify-between pt-2">
-                        <label class="text-xs font-bold text-cyan-400">🔤 介面字體大小</label>
-                        <div class="flex gap-1" id="fontSizeBtns">
-                            <button onclick="app.setFontSize('small')" id="btn_font_small" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">小</button>
-                            <button onclick="app.setFontSize('medium')" id="btn_font_medium" class="px-2.5 py-1.5 text-xs font-bold rounded border border-blue-600 bg-blue-900/50 text-blue-300 transition-colors">中</button>
-                            <button onclick="app.setFontSize('large')" id="btn_font_large" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">大</button>
-                            <button onclick="app.setFontSize('xl')" id="btn_font_xl" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">特大</button>
-                        </div>
-                    </div>
+                    <!-- 📦 資料保險箱 + 📊 預測歷史快照 已移到設定最上方(V48.4 / V49.7);🔤 介面字體大小 V51.1 移到設定頁最上方 -->
                     <div class="flex items-center justify-between pt-2">
                         <label class="text-xs font-bold text-yellow-400">🔊 價格語音告警</label>
                         <label class="relative inline-flex items-center cursor-pointer">
@@ -915,12 +905,12 @@
                 <!-- 🤖 AI 股神(庫存純公式分析彈窗) -->
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
                 <!-- 🔖 V50.9 版本號已移至 ⚙️ 設定頁標題列(使用者要求:想看到又不佔置頂版面) -->
-                <!-- 🌦️【大盤 + 天氣】包成一個框,V50.9 點擊改開「大盤天氣」彈窗(說明+即時趨勢+白話結論) -->
-                <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0" onclick="app.showMarketWeatherPopup(); app.vibrate(50);" title="大盤天氣 · 點擊看說明與即時趨勢">
-                    <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
-                    <div id="headerWeather" class="flex items-center gap-1">
-                        <span class="text-[13px] text-gray-500">…</span>
-                    </div>
+            </div>
+            <!-- 🌦️ V51.1 【大盤 + 天氣】置中(使用者要求):獨立 absolute 置中於 header,不受左右兩組寬度影響;點擊開「台股現在怎麼操作」彈窗 -->
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" onclick="app.showMarketWeatherPopup(); app.vibrate(50);" title="大盤天氣 · 點擊看台股現在怎麼操作">
+                <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
+                <div id="headerWeather" class="flex items-center gap-1">
+                    <span class="text-[13px] text-gray-500">…</span>
                 </div>
             </div>
             <div class="flex items-center gap-2.5 flex-shrink-0">
@@ -5375,7 +5365,9 @@ ${list}
     },
 
     openSettings() {
-        document.getElementById('set_aiPrompt').value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
+        // 🗑️ V51.1 set_aiPrompt UI 已刪 → null-guard(人設仍走 settings.aiPrompt 預設)
+        const _apEl = document.getElementById('set_aiPrompt');
+        if (_apEl) _apEl.value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
         document.getElementById('set_groqKey').value = this.settings.groqKey || '';
         document.getElementById('set_groqKey2').value = this.settings.groqKey2 || '';
         document.getElementById('set_openrouterKey').value = this.settings.openrouterKey || '';
@@ -5480,7 +5472,8 @@ ${list}
 
     resetPrompt(type) {
         this.settings.aiPrompt = AI_PROMPT_TEMPLATES[type];
-        document.getElementById('set_aiPrompt').value = this.settings.aiPrompt;
+        const _apEl = document.getElementById('set_aiPrompt');
+        if (_apEl) _apEl.value = this.settings.aiPrompt;
         this.saveSettings();
         this.vibrate(30);
     },
@@ -5492,7 +5485,8 @@ ${list}
     },
 
     saveSettings() {
-        this.settings.aiPrompt = document.getElementById('set_aiPrompt').value.trim();
+        const _apEl = document.getElementById('set_aiPrompt');
+        if (_apEl) this.settings.aiPrompt = _apEl.value.trim();
         this.settings.groqKey = document.getElementById('set_groqKey').value.trim();
         this.settings.groqKey2 = document.getElementById('set_groqKey2').value.trim();
         this.settings.openrouterKey = document.getElementById('set_openrouterKey').value.trim();
@@ -10757,22 +10751,23 @@ const marginByDate = {};
             }).join('\n');
             const bulls = tfs.filter(t => t.v && t.v.key === 'bull').length;
             const bears = tfs.filter(t => t.v && t.v.key === 'bear').length;
-            let concl;
-            if (bulls >= 2)      concl = '短中長多數 ☀️ 偏多 → 大環境站你這邊,做多順風、回檔找買點;但短期若已大漲要防過熱、收緊停利。';
-            else if (bears >= 2) concl = '多數 🌧️ 偏空 → 大盤逆風,少做多、嚴設停損,別逆勢接刀,等轉晴再積極。';
-            else                 concl = '多空糾結(晴時多雲)→ 方向不明,別重押,輕倉觀望,等短中長轉一致再加碼。';
-            alert('🌤️ 大盤天氣是什麼?\n\n'
-                + '用「加權指數的均線排列」判斷大盤現在偏多還偏空,分短(日)/中(週)/長(月)三個時間框:\n'
-                + '☀️ 偏多 = 收盤 > 短均 > 長均(多頭排列)\n'
-                + '🌧️ 偏空 = 收盤 < 短均 < 長均(空頭排列)\n'
-                + '☁️ 震盪 = 均線糾結、方向不明\n\n'
-                + '📊 目前大盤天氣(即時):\n' + lines + '\n\n'
-                + '💡 白話結論:\n' + concl + '\n\n'
-                + '🧭 怎麼操作:\n'
-                + '・多數 ☀️ = 順風,做多為主、回檔找買點\n'
-                + '・多數 🌧️ = 逆風,減碼保守、嚴設停損、別接刀\n'
-                + '・☁️ 糾結 = 輕倉觀望,等轉一致再動\n\n'
-                + '(純加權指數均線公式,零 AI、非投資建議;搭配個股「進場體檢」一起看)');
+            const shortV = tfs[0].v, longV = tfs[2].v;
+            // 🎯 V51.1 直接給「台股現在怎麼操作」的具體對策(持股成數/方向/停損),不再只做名詞說明
+            let op;
+            if (bulls >= 2)      op = '順風做多 🟢\n・持股可拉到 6-7 成,以強勢主流 / 權值股為主\n・回檔到 5MA、10MA 分批接,不追高\n・短期已大漲(乖離大)先收緊停利、別 All-in';
+            else if (bears >= 2) op = '逆風保守 🔴\n・持股降到 2-3 成或先空手,別逆勢接刀\n・手上有部位嚴設停損,跌破就走、別凹\n・等短、中期由 🌧️ 轉 ☀️ 再加碼';
+            else                 op = '糾結輕倉 🟡\n・持股 3-4 成,只做最強勢那幾檔\n・快進快出、不留大部位過夜\n・等短中長轉成同一方向再加碼';
+            // 📌 短長背離補充(多頭裡的回檔 vs 空頭反彈)
+            let nuance = '';
+            if (longV && shortV) {
+                if (longV.key === 'bull' && shortV.key === 'bear')      nuance = '\n\n📌 長多頭 + 短回檔 = 多頭裡的回檔,別怕,守住月線就找買點分批進。';
+                else if (longV.key === 'bear' && shortV.key === 'bull') nuance = '\n\n📌 長空頭 + 短反彈 = 多半是空頭反彈,別當反轉,彈到壓力先減碼、別追。';
+            }
+            alert('🌤️ 大盤天氣 → 台股現在怎麼操作\n\n'
+                + '📊 目前(即時):\n' + lines + '\n\n'
+                + '🎯 建議操作:\n' + op + nuance + '\n\n'
+                + '🛡️ 不管晴雨都要:設好停損、別單押一檔、順勢比預測重要。\n'
+                + '(純加權指數均線公式,非投資建議;搭配個股「進場體檢」一起看)');
         } catch (e) {
             console.warn('[marketWeatherPopup]', e);
             alert('🌤️ 大盤天氣資料抓取中,稍等幾秒再點一次。');
