@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V52.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1285,6 +1285,18 @@
                             <label class="ma-toggle-lbl text-[#4ade80] cursor-pointer flex items-center" title="頭高 / 底高 5-bar fractal 標示(週/月 K 也適用)"><input type="checkbox" id="togglePeaks" checked onchange="app.togglePeaksHandler(this.checked)" class="hidden"><span>底高</span></label>
                             <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="技術型態/形態學:在 K 線上標註 黑三兵/槌子/吞噬/M頭W底/頭肩 等(純 JS 偵測,點標籤或下方 chip 看白話)"><input type="checkbox" id="togglePatterns" checked onchange="app.togglePatternsHandler(this.checked)" class="hidden"><span>型態</span></label>
                             <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="hidden"><span>布林</span></label>
+                            <span class="w-px h-4 bg-[#30363d] flex-shrink-0"></span>
+                            <label class="ma-toggle-lbl text-[#3b82f6] cursor-pointer flex items-center" title="60 日均線(季線)"><input type="checkbox" id="toggleMA60" checked onchange="app.renderChart()" class="hidden"><span>60</span></label>
+                            <label class="ma-toggle-lbl text-[#ec4899] cursor-pointer flex items-center" title="120 日均線(半年線)"><input type="checkbox" id="toggleMA120" onchange="app.renderChart()" class="hidden"><span>120</span></label>
+                            <label class="ma-toggle-lbl text-[#f97316] cursor-pointer flex items-center" title="240 日均線(年線)"><input type="checkbox" id="toggleMA240" onchange="app.renderChart()" class="hidden"><span>240</span></label>
+                            <span class="w-px h-4 bg-[#30363d] flex-shrink-0"></span>
+                            <label class="ma-toggle-lbl text-[#06b6d4] cursor-pointer flex items-center" title="指數平滑移動平均 EMA5(對近期價格更敏感)"><input type="checkbox" id="toggleEMA5" onchange="app.renderChart()" class="hidden"><span>E5</span></label>
+                            <label class="ma-toggle-lbl text-[#84cc16] cursor-pointer flex items-center" title="EMA20"><input type="checkbox" id="toggleEMA20" onchange="app.renderChart()" class="hidden"><span>E20</span></label>
+                            <label class="ma-toggle-lbl text-[#f43f5e] cursor-pointer flex items-center" title="EMA60"><input type="checkbox" id="toggleEMA60" onchange="app.renderChart()" class="hidden"><span>E60</span></label>
+                            <span class="w-px h-4 bg-[#30363d] flex-shrink-0"></span>
+                            <label class="ma-toggle-lbl text-[#a78bfa] cursor-pointer flex items-center" title="外資成本線(移動平均成本法估算,非官方揭露;僅有法人資料的股票會顯示)"><input type="checkbox" id="toggleFCost" onchange="app.renderChart()" class="hidden"><span>外資</span></label>
+                            <label class="ma-toggle-lbl text-[#2dd4bf] cursor-pointer flex items-center" title="投信成本線(移動平均成本法估算)"><input type="checkbox" id="toggleTCost" onchange="app.renderChart()" class="hidden"><span>投信</span></label>
+                            <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="庫存成本線(你的持股均價水平線;需先填成本或在庫存表建立)"><input type="checkbox" id="toggleInvCost" onchange="app.renderChart()" class="hidden"><span>庫存</span></label>
                         </div>
                     </div>
                     <div class="relative">
@@ -2433,7 +2445,7 @@ const masterWorkerCode = `
         const closes = data.map(d => d.close), highs = data.map(d => d.high), lows = data.map(d => d.low), vols = data.map(d => d.volume);
         const sma = (arr, period) => arr.map((val, i) => i < period - 1 ? null : arr.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period);
         
-        const ma5 = sma(closes, 5), ma10 = sma(closes, 10), ma20 = sma(closes, 20), ma60 = sma(closes, 60), vma5 = sma(vols, 5);
+        const ma5 = sma(closes, 5), ma10 = sma(closes, 10), ma20 = sma(closes, 20), ma60 = sma(closes, 60), ma120 = sma(closes, 120), ma240 = sma(closes, 240), vma5 = sma(vols, 5);
         
         const upperBB = [], lowerBB = [];
         for (let i = 0; i < closes.length; i++) {
@@ -2454,6 +2466,13 @@ const masterWorkerCode = `
         
         const ema = (arr, period) => { const k_f = 2 / (period + 1), res = [arr[0]]; for(let i=1; i<arr.length; i++) res.push(arr[i] * k_f + res[i-1] * (1 - k_f)); return res; };
         const dif = ema(closes, 12).map((v, i) => v - ema(closes, 26)[i]), macd = ema(dif, 9), osc = dif.map((v, i) => (v - macd[i]) * 2);
+
+        // V52.x — EMA(null-pad 暖身:前 period-1 為 null,用 SMA 播種再遞推,避免早期假線)
+        const emaPad = (arr, period) => { const kf = 2/(period+1), res = new Array(arr.length).fill(null); if (arr.length < period) return res; let s = arr.slice(0, period).reduce((a,b)=>a+b,0)/period; res[period-1] = s; for (let i=period;i<arr.length;i++){ s = arr[i]*kf + s*(1-kf); res[i] = s; } return res; };
+        const ema5 = emaPad(closes,5), ema20 = emaPad(closes,20), ema60 = emaPad(closes,60);
+        // V52.x — 法人成本線:移動平均成本法(淨買加權進成本、淨賣減部位;部位歸零則重置)。單位=股數,全 0 則整條 null 不畫(冷門/上櫃無法人資料的股票自動不顯)。
+        const costLine = (key) => { const out = new Array(data.length).fill(null); let pos = 0, basis = 0; for (let i=0;i<data.length;i++){ const net = Number(data[i][key]) || 0, px = closes[i]; if (net > 0 && px > 0){ basis = (basis*pos + px*net)/(pos+net); pos += net; } else if (net < 0){ pos += net; if (pos <= 0){ pos = 0; } } out[i] = pos > 0 ? basis : null; } return out; };
+        const foreignCost = costLine('foreign_net'), trustCost = costLine('trust_net');
 
         let result = [];
         for (let i = 0; i < data.length; i++) {
@@ -2563,7 +2582,7 @@ const masterWorkerCode = `
             }
         }
 
-        self.postMessage({ ma5, ma10, ma20, ma60, vma5, upperBB, lowerBB, k, d, dif, macd, osc, trades, markPoints, patternStats });
+        self.postMessage({ ma5, ma10, ma20, ma60, ma120, ma240, ema5, ema20, ema60, foreignCost, trustCost, vma5, upperBB, lowerBB, k, d, dif, macd, osc, trades, markPoints, patternStats });
     };
 `;
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
@@ -16965,6 +16984,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             } else {
                 currentCandle.date = d.date; currentCandle.high = Math.max(currentCandle.high, d.high);
                 currentCandle.low = Math.min(currentCandle.low, d.low); currentCandle.close = d.close; currentCandle.volume += d.volume;
+                // V52.x — 法人淨額週/月加總(供成本線在週/月線也正確;日線走上方深拷貝原值)
+                currentCandle.foreign_net = (currentCandle.foreign_net || 0) + (d.foreign_net || 0);
+                currentCandle.trust_net = (currentCandle.trust_net || 0) + (d.trust_net || 0);
             }
         });
         if (currentCandle) aggregated.push(currentCandle);
@@ -21575,6 +21597,25 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             try { markPointData = markPointData.concat(this._buildPatternMarks(data) || []); } catch (e) { console.warn('[型態]', e); this._lastPatterns = []; }
         } else { this._lastPatterns = []; }
 
+        // 💰 現價右軸標籤(對標籌碼K線):最新收盤畫淡虛線,右端貼現價色塊(紅漲綠跌 vs 昨收)
+        try {
+            const lastC = data[data.length - 1]?.close;
+            const prevC = this._fuglePrevClose ?? (data.length > 1 ? data[data.length - 2].close : lastC);
+            if (lastC > 0) {
+                const cCol = lastC > prevC ? '#f87171' : (lastC < prevC ? '#4ade80' : '#8b949e');
+                markLineData.push({ yAxis: lastC, symbol: ['none', 'none'], lineStyle: { color: cCol, type: 'dashed', width: 1, opacity: 0.45 }, label: { show: true, position: 'end', formatter: lastC.toFixed(2), color: '#fff', backgroundColor: cCol, padding: [2, 4], borderRadius: 2, fontSize: 10, fontWeight: 'bold' } });
+            }
+        } catch (_) {}
+        // 📦 庫存成本線(你的持股均價;優先取成本輸入框,否則庫存表)— 需勾「庫存」toggle
+        try {
+            if (document.getElementById('toggleInvCost')?.checked) {
+                const _inv = (this.inventory || []).find(i => String(i.symbol) === String(this.currentSymbolId));
+                const _ci = parseFloat((document.getElementById('costInput')?.value || '').trim());
+                const _myCost = (!isNaN(_ci) && _ci > 0) ? _ci : (_inv && _inv.cost > 0 ? +_inv.cost : 0);
+                if (_myCost > 0) markLineData.push({ yAxis: _myCost, symbol: ['none', 'none'], lineStyle: { color: '#fbbf24', type: 'dashed', width: 1.5, opacity: 0.9 }, label: { show: true, position: 'insideStartBottom', formatter: '庫存成本 ' + _myCost.toFixed(2), color: '#fbbf24', backgroundColor: 'rgba(0,0,0,0.75)', padding: [2, 4], borderRadius: 2, fontSize: 10, fontWeight: 'bold' } });
+            }
+        } catch (_) {}
+
         const option = {
             animation: false, backgroundColor: 'transparent', tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', axisPointer: { type: 'line', snap: true }, showContent: false },
             axisPointer: { link: [{ xAxisIndex: 'all' }] },
@@ -21610,7 +21651,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (!document.getElementById('toggleMA5').checked) option.series[1].data = [];
         if (!document.getElementById('toggleMA10').checked) option.series[2].data = [];
         if (!document.getElementById('toggleMA20').checked) option.series[3].data = [];
-        
+
+        // V52.x — MA60(既有 series[4],加 toggle 可關)/ MA120 / MA240 / EMA / 法人成本線(對標籌碼K線)
+        if (!document.getElementById('toggleMA60')?.checked) option.series[4].data = [];
+        const _pushLine = (id, name, arr, color, width, dash) => {
+            if (document.getElementById(id)?.checked && arr && arr.some(v => v != null)) {
+                option.series.push({ name, type: 'line', data: arr, showSymbol: false, smooth: false, connectNulls: !!dash, lineStyle: { width, color, type: dash ? 'dashed' : 'solid' }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
+            }
+        };
+        _pushLine('toggleMA120', 'MA120', ind.ma120, '#ec4899', 1.5, false);
+        _pushLine('toggleMA240', 'MA240', ind.ma240, '#f97316', 1.5, false);
+        _pushLine('toggleEMA5', 'EMA5', ind.ema5, '#06b6d4', 1, false);
+        _pushLine('toggleEMA20', 'EMA20', ind.ema20, '#84cc16', 1, false);
+        _pushLine('toggleEMA60', 'EMA60', ind.ema60, '#f43f5e', 1, false);
+        _pushLine('toggleFCost', '外資成本', ind.foreignCost, '#a78bfa', 1.5, true);
+        _pushLine('toggleTCost', '投信成本', ind.trustCost, '#2dd4bf', 1.5, true);
+
         if (this.currentSubChart === 'VOL') {
             option.yAxis[1].min = null; option.yAxis[1].max = null;   // 解除 KD 殘留的 0~100 範圍,讓 ECharts 重算 auto-scale
             const vols = data.map(d => ({ value: d.volume, itemStyle: { color: d.close >= d.open ? '#f87171' : '#4ade80' } }));
