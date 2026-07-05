@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V53.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V53.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -13705,9 +13705,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             }
             if (!hit) return;
             const dLabel = hitDays === 0 ? '就是今天' : hitDays === 1 ? '下一個交易日' : `${hitDays} 個交易日內`;
-            el.innerHTML = `<div class="bg-amber-900/25 border-l-4 border-amber-500 rounded-r px-2.5 py-1.5 mt-1.5 flex items-start gap-2">
-                <span class="text-base flex-shrink-0 leading-none mt-0.5">📢</span>
-                <div class="text-[11px] leading-snug text-amber-100"><b class="text-amber-300">法說會提醒</b> · ${hitDate}(${dLabel})<div class="text-gray-300 mt-0.5">法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)→ 留意消息面、控好部位、別重壓過會。</div></div>
+            el.innerHTML = `<div class="bg-amber-900/25 border-l-4 border-amber-500 rounded-r px-2.5 py-1.5 mt-1.5">
+                <div class="flex items-start gap-2">
+                    <span class="text-base flex-shrink-0 leading-none mt-0.5">📢</span>
+                    <div class="text-[11px] leading-snug text-amber-100"><b class="text-amber-300">法說會提醒</b> · ${hitDate}(${dLabel})<div class="text-gray-300 mt-0.5">法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)→ 留意消息面、控好部位、別重壓過會。</div></div>
+                </div>
+                <button onclick="app._openFreeAiStock('earnings'); app.vibrate(20);" class="mt-1.5 w-full text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/30 border border-amber-700/50 rounded py-1.5 transition-colors">🔎 用 Perplexity 查這次法說會重點是「好 / 壞」 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
             </div>`;
             el.classList.remove('hidden');
         } catch (_) {}
@@ -14369,6 +14372,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const map = {
             latest:  `${tag} 這檔台股最近為什麼漲或跌?有什麼最新消息、法人動向或題材?請附日期與來源`,
             dispose: `${tag} 這檔台股為什麼被列為注意股或處置股?最近有什麼相關消息或市場傳聞?`,
+            earnings: `${tag} 這檔台股最近一次法說會(或財報電話會議)的重點與財測展望是什麼?法人 / 分析師解讀偏「利多(好)」還是「利空(壞)」?會後股價反應如何?請用白話條列,附日期與來源`,
         };
         this._freeAiOpen(map[kind] || `${tag} 最新消息`);
     },
