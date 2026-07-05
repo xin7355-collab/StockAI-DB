@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -379,7 +379,7 @@
 
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-cyan-400 mb-1">🚀 OpenRouter API Key 池(雙 key 輪動,DeepSeek R1 深度推理)</label>
-                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前戰情、首席五維、籌碼/技術深度分析</b>。第一把撞 429 自動切下一把 + jitter,全失敗 fallback Gemini / Groq。</p>
+                        <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前速報、首席五維、籌碼/技術深度分析</b>。第一把撞 429 自動切下一把 + jitter,全失敗 fallback Gemini / Groq。</p>
                         <div id="keyRows_openrouter"></div>
                     </div>
 
@@ -557,7 +557,7 @@
         </div>
     </div>
 
-    <!-- 🗡️ 獵殺監控抽屜（向右滑動顯示，從左側滑入，4秒後自動收起） -->
+    <!-- 🗡️ 觀察監控抽屜（向右滑動顯示，從左側滑入，4秒後自動收起） -->
     <div id="huntSlidePanel"
          style="position:fixed; top:calc(env(safe-area-inset-top, 0px) + 120px); left:-130px; z-index:150; transition:left 0.3s ease;"
          onclick="event.stopPropagation()">
@@ -565,7 +565,7 @@
             <span id="monitorHuntIcon"
                   class="text-2xl cursor-pointer hover:scale-110 transition-transform leading-none"
                   onclick="app.toggleMonitor();app.vibrate(30);app.closeHuntPanel();">🗡️</span>
-            <span class="text-gray-500 text-[10px] font-mono tracking-wide">獵殺</span>
+            <span class="text-gray-500 text-[10px] font-mono tracking-wide">觀察</span>
         </div>
     </div>
 
@@ -607,11 +607,11 @@
          onclick="if(event.target===this){app.closeGlobalAIModal();}">
         <div class="modal-content max-w-lg mx-4 overflow-y-auto max-h-[85vh]" onclick="event.stopPropagation()">
             <div class="flex items-center justify-between mb-3 border-b border-gray-700 pb-2">
-                <span class="text-indigo-300 font-black text-sm">🚀 盤前戰情</span>
+                <span class="text-indigo-300 font-black text-sm">🚀 盤前速報</span>
                 <button onclick="app.closeGlobalAIModal()" class="text-gray-500 hover:text-gray-300 text-lg leading-none">✕</button>
             </div>
             <div id="globalAIModalBody" class="bg-[#010409] rounded-lg p-3 text-gray-200 text-sm leading-relaxed min-h-[80px]">
-                <span class="text-gray-600 text-xs">按下方按鈕生成今日盤前戰情...</span>
+                <span class="text-gray-600 text-xs">按下方按鈕生成今日盤前速報...</span>
             </div>
             <button onclick="app.runGlobalMarketAI(); app.vibrate(50);" id="btnGlobalAIModal"
                     class="mt-3 w-full bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 text-purple-300 py-2.5 rounded-lg text-sm font-black shadow-md flex justify-center items-center gap-2 transition-all">
@@ -638,11 +638,11 @@
         </div>
     </div>
 
-    <!-- 📖 司令部操作手冊（散戶實戰指引）-->
+    <!-- 📖 操作手冊（散戶實戰指引）-->
     <div id="operationManualModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
         <div class="modal-content max-w-2xl max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
             <div class="flex items-center justify-between mb-3 pb-2 border-b border-[#30363d]">
-                <h3 class="text-amber-300 font-black text-lg">📖 司令部操作手冊</h3>
+                <h3 class="text-amber-300 font-black text-lg">📖 操作手冊</h3>
                 <button onclick="document.getElementById('operationManualModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
             </div>
             <p class="text-xs text-gray-500 italic mb-3">散戶實戰時間軸 — 跟著走、不踩雷</p>
@@ -667,7 +667,7 @@
                     </ul>
                 </div>
                 <div class="bg-yellow-900/15 border-l-4 border-yellow-500 pl-3 pr-2 py-2 rounded-r">
-                    <div class="font-black text-yellow-300 mb-1">📡 盤中 09:30 ~ 13:00 ｜ 雷達兵法鎖定與紀律控管</div>
+                    <div class="font-black text-yellow-300 mb-1">📡 盤中 09:30 ~ 13:00 ｜ 選股方法鎖定與紀律控管</div>
                     <div class="text-gray-300 mb-1">「選股池」動態掃描全市場 1967 檔個股,依三大策略嚴格執行紀律。</div>
                     <ul class="list-none text-[12px] text-gray-400 space-y-2 pl-1">
                         <li>
@@ -681,11 +681,11 @@
                             <div class="pl-3"><span class="text-gray-500">紀律：</span>沿 <b class="text-green-300">月線</b> 操作,不破不出場！大資金月線上分批金字塔長抱,等波段利潤擴大</div>
                         </li>
                         <li>
-                            <div class="font-black text-purple-300">🎯 狙擊手（籌碼集中）</div>
+                            <div class="font-black text-purple-300">🎯 主力鎖股（籌碼集中）</div>
                             <div class="pl-3"><span class="text-gray-500">演算法：</span>股價貼著 <b class="text-amber-300">月線</b> 盤整、前三大主力買盤集中度 &gt;= <b class="text-amber-300">30%</b></div>
-                            <div class="pl-3"><span class="text-gray-500">紀律：</span>月線盤整期精準現股狙擊試單。<b class="text-red-300">天條:主力一連賣我們就跑！</b></div>
+                            <div class="pl-3"><span class="text-gray-500">紀律：</span>月線盤整期精準現股卡位試單。<b class="text-red-300">天條:主力一連賣我們就跑！</b></div>
                             <div class="pl-3 mt-1.5 border-l-2 border-amber-700/50 pl-2"><span class="text-gray-400 font-bold">🥣 碗型底頸線回測:</span>底部突破後回測 <b class="text-amber-300">頸線</b>,若遇「大盤回檔但量能極度萎縮」且頸線有守 → <b class="text-amber-300">絕佳買點</b>(冠軍操盤手實戰常用)</div>
-                            <div class="pl-3 mt-1 border-l-2 border-amber-700/50 pl-2"><span class="text-gray-400 font-bold">📈 上升軌道下緣:</span>業績成長股沿 <b class="text-amber-300">上升軌道</b> 走揚,回測 <b class="text-amber-300">軌道下緣</b> 收長下影線時 → 精準狙擊</div>
+                            <div class="pl-3 mt-1 border-l-2 border-amber-700/50 pl-2"><span class="text-gray-400 font-bold">📈 上升軌道下緣:</span>業績成長股沿 <b class="text-amber-300">上升軌道</b> 走揚,回測 <b class="text-amber-300">軌道下緣</b> 收長下影線時 → 精準卡位</div>
                         </li>
                     </ul>
                 </div>
@@ -702,7 +702,7 @@
                 </div>
                 <div class="bg-purple-900/15 border-l-4 border-purple-500 pl-3 pr-2 py-2 rounded-r">
                     <div class="font-black text-purple-300 mb-1">🌙 盤後 13:40 ~ 14:30 ｜ 盤後交易與深夜期貨避險金盾</div>
-                    <div class="text-gray-300 mb-1">現貨收盤後的延伸戰術,供非即時追高者優雅建倉,並為持倉構築機構級全時風控防空洞。</div>
+                    <div class="text-gray-300 mb-1">現貨收盤後的延伸策略,供非即時追高者優雅建倉,並為持倉建立機構級全時風控防護。</div>
                     <ul class="list-none text-[12px] text-gray-400 space-y-2 pl-1">
                         <li>
                             <div class="font-black text-amber-300">💰 13:40 ~ 14:30 ｜ 盤後定價交易</div>
@@ -713,7 +713,7 @@
                             <div class="pl-3">針對高價頂級權值股（如台積電）,利用盤後零股通道進行「<b class="text-cyan-300">金字塔逢低分批低接</b>」,執行無壓力長線存股。</div>
                         </li>
                         <li>
-                            <span class="text-gray-500">等系統每日 16:30 採礦更新（三大法人 / 主力分點 / 雷達）後覆盤,用雷達兵法掃出明日觀察清單、加入 ⭐ 自選。</span>
+                            <span class="text-gray-500">等系統每日 16:30 採礦更新（三大法人 / 主力分點 / 雷達）後覆盤,用選股方法掃出明日觀察清單、加入 ⭐ 自選。</span>
                         </li>
                     </ul>
                 </div>
@@ -730,7 +730,7 @@
                 </div>
             </div>
             <div class="text-center mt-4 pt-3 border-t border-[#30363d]">
-                <button onclick="document.getElementById('operationManualModal').classList.add('hidden')" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded text-sm font-bold transition-colors">收到！開始作戰</button>
+                <button onclick="document.getElementById('operationManualModal').classList.add('hidden')" class="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded text-sm font-bold transition-colors">知道了,開始看盤</button>
             </div>
         </div>
     </div>
@@ -764,7 +764,7 @@
                 </div>
 
                 <div class="bg-purple-900/15 border-l-4 border-purple-500 pl-3 pr-2 py-2 rounded-r">
-                    <div class="font-black text-purple-300 mb-1">3. 🎯 狙擊手 (籌碼集中)</div>
+                    <div class="font-black text-purple-300 mb-1">3. 🎯 主力鎖股 (籌碼集中)</div>
                     <ul class="text-gray-300 text-[13px] space-y-0.5 list-none pl-0">
                         <li><b class="text-gray-100">適合：</b>喜歡看大戶、跟著主力偷偷上車的散戶。</li>
                         <li><b class="text-gray-100">邏輯：</b>股價還沒大漲，但分點大戶或投信正在集中買超。</li>
@@ -799,9 +799,9 @@
             <div id="chuTabBody" class="space-y-1.5"></div>
             <div id="chuTabUpdated" class="text-[10px] text-gray-600 text-center pt-3 mt-3 border-t border-[#21262d]"></div>
             <div class="text-[10px] text-amber-300/80 text-center pt-1 leading-relaxed">⚠️ 表內股價為盤後採礦「當日收盤」，今日盤中即時價請點卡片進入個股頁查看</div>
-            <!-- 📥 一鍵全加當前 tab 入獵殺 -->
+            <!-- 📥 一鍵全加當前 tab 入觀察 -->
             <button onclick="app.addAllChuTabToMonitor(); app.vibrate(40);" class="w-full mt-3 bg-purple-700 hover:bg-purple-600 text-white py-2 rounded-lg text-[12px] font-black shadow-lg flex justify-center items-center gap-1.5 transition-all">
-                📥 一鍵全加當前 tab 進獵殺名單
+                📥 一鍵全加當前 tab 進觀察名單
             </button>
             <!-- 模組 C 淘汰選股法說明(底部固定區) -->
             <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2 rounded-r mt-3 text-[11px] leading-relaxed text-gray-300">
@@ -839,7 +839,7 @@
         <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] flex-shrink-0">
             <span class="text-lg font-black text-gray-100">🤖 AI 股神 <span id="aiGodModeBadge" class="text-[10px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1.5 py-0.5 align-middle">庫存股</span></span>
             <div class="flex items-center gap-3 flex-shrink-0">
-                <button onclick="const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[10px] font-bold border border-amber-700/40 rounded px-2 py-1 leading-none" title="散戶實戰作戰手冊">📖 手冊</button>
+                <button onclick="const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[10px] font-bold border border-amber-700/40 rounded px-2 py-1 leading-none" title="散戶實戰操作手冊">📖 手冊</button>
                 <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
             </div>
         </div>
@@ -945,7 +945,7 @@
                 <!-- 🚨 Fugle Token 未設定提示(分析時無 token → 顯示醒目橫條)-->
                 <div id="fugleNoTokenBanner" class="hidden cursor-pointer bg-red-900/40 border-b-2 border-red-600 text-red-200 text-xs font-bold leading-snug px-3 py-2 hover:bg-red-900/60 transition-colors"
                      onclick="const m=document.getElementById('settingsModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);">
-                    ⚠️ <span class="text-red-100">Fugle 即時報價 Token 未設定</span> → 點此到「⚙️ 戰情設定中心」填入(免費申請:<span class="underline">fugle.tw</span>)
+                    ⚠️ <span class="text-red-100">Fugle 即時報價 Token 未設定</span> → 點此到「⚙️ 設定中心」填入(免費申請:<span class="underline">fugle.tw</span>)
                 </div>
                 <!-- V20.7 — pt 2.5→1 / pb 1.5→0.5 壓縮上方空白(原一大片空) -->
                 <!-- 🎯 V45.4 券商風格個股報價頭:置中股名(◀▶ 切換庫存個股 + 點名開搜尋)+ 現價超大 -->
@@ -978,7 +978,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                         </button>
                     </div>
-                    <!-- Row 2:🕯️K棒 + 現價 + 漲跌(右,上下堆疊)+ 🚨處置/注意(現價右手邊,點→免費查戰術)... 總量/量縮(右) -->
+                    <!-- Row 2:🕯️K棒 + 現價 + 漲跌(右,上下堆疊)+ 🚨處置/注意(現價右手邊,點→免費查操作建議)... 總量/量縮(右) -->
                     <div class="flex items-center gap-2.5 mt-1">
                         <!-- 🕯️ V45.7 個股即時/收盤 K 棒(紅漲綠跌),由 onWorkerMessage 以今日 OHLC 繪製 -->
                         <span id="quoteKbar" class="flex-shrink-0 flex items-center" aria-hidden="true"></span>
@@ -988,7 +988,7 @@
                             <span id="liveDiffPct" class="text-sm font-bold font-mono leading-tight mt-0.5">(--%)</span>
                             <div id="dataSourceBadge" class="flex items-center gap-1"><span id="dataSourceDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span><span id="dataSourceText" class="font-bold text-blue-400 text-[10px] font-mono tracking-wide">即時</span></div>
                         </div>
-                        <!-- 🚨 V46.3 處置/注意 告警(現價右手邊,點→免費 AI 戰術提醒);renderQuoteAttBadge 填入 -->
+                        <!-- 🚨 V46.3 處置/注意 告警(現價右手邊,點→免費 AI 操作提醒);renderQuoteAttBadge 填入 -->
                         <span id="quoteAttBadge" class="hidden flex-shrink-0 self-center cursor-pointer" onclick="app._openFreeAiDispose(); app.vibrate(30);"></span>
                         <span id="quoteVolInfo" class="hidden ml-auto text-right text-[11px] text-gray-400 font-mono font-bold whitespace-nowrap flex-shrink-0 self-center"></span>
                     </div>
@@ -1004,7 +1004,7 @@
                 </div>
                 <div class="flex items-end px-2 pt-1.5 bg-[#0d1117] overflow-x-auto scrollbar-hide border-b border-[#21262d]">
                     <span class="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 self-center mr-1.5 ml-0.5"></span>
-                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">首席</button>
+                    <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">總覽</button>
                     <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">即時</button>
                     <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">K線</button>
                     <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">籌碼</button>
@@ -1016,7 +1016,7 @@
             </div>
 
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
-                <!-- 📋 V42.5 — 今日作戰指令(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
+                <!-- 📋 V42.5 — 今日操作重點(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
                 <div id="todayOrderCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <!-- V46.3 — 首席AI/此股預判整段隱藏,外層 padding 一併收掉(消除頁面上方空白;內部元素仍在 DOM 供 null-safe) -->
@@ -1155,7 +1155,7 @@
                 <!-- 🧩 V34.0 ETF 成分股比重(僅 currentSymbol 是 ETF 時顯) -->
                 <div id="etfHoldingsCard" class="hidden bg-[#161b22] border border-blue-700/40 rounded-lg p-3 shadow-lg"></div>
 
-                <!-- 【指揮中樞】週期切換器 + AI 狙擊 -->
+                <!-- 【指揮中樞】週期切換器 + AI 卡位 -->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                     <div class="flex gap-2 items-center">
                         <div id="chipGlobalPeriodBtns" class="flex gap-1 flex-1">
@@ -1217,7 +1217,7 @@
                     <div id="brokerChipContent" class="w-full mt-2">
                         <div class="text-center py-6 text-gray-600 text-xs animate-pulse">📡 正在攔截分點情報...</div>
                     </div>
-                    <!-- 🎯 V35.9 — 主力分點戰情(主力成本/連續吸籌/集中度;資料乾淨才點亮,壞則顯維護中) -->
+                    <!-- 🎯 V35.9 — 主力分點動向(主力成本/連續吸籌/集中度;資料乾淨才點亮,壞則顯維護中) -->
                     <div id="brokerWarRoom" class="w-full mt-2"></div>
                 </div>
 
@@ -1533,7 +1533,7 @@
 
             <!-- 🧠 一句話結論 + 首席戰術腳本已移至「台股實戰」綜合指揮中心底部風控層(V30.0,在泡沫風控之後) -->
 
-            <!-- ════════ 【區 2】🚀 盤前作戰簡報按鈕已移除(V41.3 使用者要求);盤前體檢純公式卡保留為主要盤前資訊 ════════ -->
+            <!-- ════════ 【區 2】🚀 盤前速報按鈕已移除(V41.3 使用者要求);盤前體檢純公式卡保留為主要盤前資訊 ════════ -->
 
             <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
             <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
@@ -1829,7 +1829,7 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <span class="text-base">🎯</span>
-                        <span class="text-sm font-black text-gray-100 tracking-wide">台股大盤綜合指揮中心</span>
+                        <span class="text-sm font-black text-gray-100 tracking-wide">台股大盤總覽</span>
                         <button onclick="app.showJargon('市場風險指數')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
                     </div>
                     <div class="flex items-center gap-1.5">
@@ -1922,7 +1922,7 @@
             <!-- 🚨 全球熔斷示警卡(平常 hidden,熔斷才顯;台灣無指數熔斷→顯國際指數+對台股影響)-->
             <div id="circuitBreakerAlert" class="hidden bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-orange-700/40 rounded-lg p-3 shadow-md animate-pulse"></div>
 
-            <!-- 💥 V22.0 — 泡沫風控指揮中心(風格 D 白話親民:4 維度白話改名 + hero 提示句 + 圓角大) -->
+            <!-- 💥 V22.0 — 泡沫風控面板(風格 D 白話親民:4 維度白話改名 + hero 提示句 + 圓角大) -->
             <!--    結構:標題 + hero 提示 + 上半 4 維度燈號(永顯)+ 下半真假泡沫判讀(觸發時自動展開) -->
             <div id="bubbleCrashCard" class="hidden relative bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm overflow-hidden">
                 <!-- V31.0 — 去重框(原 border-l-4 紅 + 脈衝光條)→ 一般卡;長文改輕量 border-l-2 提示框 -->
@@ -1930,7 +1930,7 @@
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
                         <span class="text-base animate-pulse">💥</span>
-                        <span class="text-base font-black text-red-300 tracking-wider">泡沫風控指揮中心</span>
+                        <span class="text-base font-black text-red-300 tracking-wider">泡沫風控面板</span>
                     </div>
                     <span id="bubbleSource" class="text-[8px] text-gray-500 opacity-60">(範例)</span>
                 </div>
@@ -2081,7 +2081,7 @@
                     </div>
                     <span id="riskGridStatus" class="hidden"></span>
                 </div>
-                <!-- V21.8 — 牛市泡沫 4 維度卡已搬至 #bubbleCrashCard 合併「泡沫風控指揮中心」(使用者反映兩個功能重複) -->
+                <!-- V21.8 — 牛市泡沫 4 維度卡已搬至 #bubbleCrashCard 合併「泡沫風控面板」(使用者反映兩個功能重複) -->
             </div>
             <!-- ════════ 黃金動線結束 ════════ -->
 
@@ -2214,7 +2214,7 @@
                         <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題 <span class="opacity-70">(高勝率)</span></button>
                         <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70">(動能)</span></button>
                         <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
-                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 狙擊手 <span class="opacity-70">(籌碼)</span></button>
+                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 主力鎖股 <span class="opacity-70">(籌碼)</span></button>
                         <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70">(風控)</span></button>
                         <button onclick="app.openChuMasterModal(); app.vibrate(20);" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓選股</button>
                         <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌅 K棒轉多 <span class="opacity-70">(找買點)</span></button>
@@ -2283,7 +2283,7 @@
             <!-- Header -->
             <div class="flex justify-between items-center px-1">
                 <div class="flex items-center gap-2">
-                    <h3 class="text-base font-black text-red-400">⚔️ 獵殺監控清單</h3>
+                    <h3 class="text-base font-black text-red-400">⚔️ 重點觀察清單</h3>
                     <span class="text-xs text-gray-500 bg-[#1c2128] px-2 py-0.5 rounded-full border border-[#30363d]">
                         <span id="huntCount">0</span> 檔
                     </span>
@@ -2295,9 +2295,9 @@
                 <span id="huntScanStatusText">掃描中...</span>
             </div>
 
-            <!-- 🗡️ 獵殺清單說明 banner（觸發 ≠ 立刻買進,只是強烈關注）-->
+            <!-- 🗡️ 觀察清單說明 banner（觸發 ≠ 立刻買進,只是強烈關注）-->
             <div class="bg-[#161b22] border-l-4 border-purple-500 border-y border-r border-[#30363d] rounded-lg p-3 text-xs leading-relaxed">
-                <div class="font-black text-purple-300 mb-1.5 text-sm">🗡️ 獵殺清單怎麼用?</div>
+                <div class="font-black text-purple-300 mb-1.5 text-sm">🗡️ 觀察清單怎麼用?</div>
                 <div class="text-gray-300 space-y-1">
                     <div>✅ <b class="text-green-300">觸發訊號 = 「強烈關注」</b>,<b class="text-yellow-300">不等於立刻買進</b>。</div>
                     <div>📋 <b class="text-blue-300">用法</b>:看到觸發 → 點開個股看詳細(獵鷹分 / AI / 籌碼)→ 確認再進場。</div>
@@ -2309,7 +2309,7 @@
             <!-- Strategy Guide -->
             <div class="bg-[#1c2128] border border-[#30363d] rounded-lg overflow-hidden">
                 <button onclick="document.getElementById('huntGuide').classList.toggle('hidden')" class="w-full text-left p-3 text-sm font-bold text-gray-400 hover:text-white flex justify-between items-center transition-colors">
-                    <span>📖 五大獵殺策略說明（點擊展開）</span><span>▼</span>
+                    <span>📖 五大觀察策略說明（點擊展開）</span><span>▼</span>
                 </button>
                 <div id="huntGuide" class="hidden p-3 pt-0 text-xs text-gray-300 space-y-3 border-t border-[#30363d] mt-1 pt-3 leading-relaxed">
                     <div class="flex flex-col gap-1">
@@ -2356,7 +2356,7 @@
         <span id="aiStatusChipText">⚡ AI 待命</span>
     </div>
     <div class="nav-fixed w-full">
-        <!-- V45.0 — 底部 nav 重排(庫存>自選>全球>雷達>獵殺>ETF)+ 隱藏診斷 + 放大按鈕(對標券商App) -->
+        <!-- V45.0 — 底部 nav 重排(庫存>自選>全球>雷達>觀察>ETF)+ 隱藏診斷 + 放大按鈕(對標券商App) -->
         <nav class="flex justify-around items-center text-gray-500 w-full max-w-7xl mx-auto h-[64px]">
             <!-- 診斷 tab 仍可由 🤖/點個股 跳轉,nav 按鈕隱藏(使用者要求) -->
             <button onclick="app.switchAppTab('diag'); app.vibrate(30);" id="navBtnDiag" class="nav-btn hidden flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow">🎯</span><span class="text-[11px] mt-0.5 font-bold">診斷</span></button>
@@ -2364,7 +2364,7 @@
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[11px] mt-0.5 font-bold">自選</span></button>
             <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">大盤</span></button>
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
-            <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">⚔️</span><span class="text-[11px] mt-0.5 font-bold">獵殺</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
+            <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">👀</span><span class="text-[11px] mt-0.5 font-bold">觀察</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
             <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
             <!-- 💎 V46.4 — 長線潛力股(低基期翻倍/便宜成長/籌碼默默吸/技術打底,純公式零採礦) -->
             <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">💎</span><span class="text-[11px] mt-0.5 font-bold">潛力</span></button>
@@ -2392,7 +2392,7 @@ const AI_PROMPT_TEMPLATES = {
 【🏭 基本與消息面】
 點出最新月營收 YoY 表現及財務摘要（毛利率、EPS）的異常處。評估近期重大消息屬於利多或利空，特別提醒處置/注意股。若無消息，以股票代號推估產業景氣現況。
 
-【⚔️ 總監戰術室】
+【📋 操作建議】
 對比庫存成本與現價，明確算出帳面損益。
 - 目前空手：給出明確進場條件（如：「站回 XX 元才進場」）。
 - 獲利中：給出具體減碼/停利點位 (T1)。
@@ -3441,7 +3441,7 @@ const app = {
         if (!this.settings.watchlistAlert) return;
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
         // V18.8 union:自選股 + 庫存股(去重),確保庫存被監控
-        // 🎯 V43.4 union 再加「獵殺清單(monitorList)」→ 盤中即時 pulse 也監控獵殺股(原本只收盤掃)
+        // 🎯 V43.4 union 再加「觀察清單(monitorList)」→ 盤中即時 pulse 也監控觀察股(原本只收盤掃)
         const group = this.favGroups?.[this.activeGroupName] || [];
         const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
         const invSyms = inv.map(i => i.symbol).filter(Boolean);
@@ -5115,7 +5115,7 @@ ${list}
         if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); this._scanWatchlistCheckup(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }
         if (tabId === 'inv') { try { this.renderInventory(); window.scrollTo(0, 0); this._startInvPricePoll(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
-        if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 獵殺', e); } }
+        if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 觀察', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
         if (tabId === 'potential') { try { this._potentialRestoreScroll = true; this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
         // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
@@ -7917,7 +7917,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     },
 
     // 🚀 深度推理(能力優先):Gemini 2.5 Flash → OpenRouter DeepSeek R1(o1 級最強推理)→ Groq 70b 兜底
-    //    用於盤前戰情、首席五維、籌碼/技術深度分析等重型 prompt
+    //    用於盤前速報、首席五維、籌碼/技術深度分析等重型 prompt
     //    雙 prompt 支援:R1 推理強用 full;Gemini/Groq 用 simple(較短、減 AI 思考負擔)
     //    舊呼叫只傳 prompt 仍向下相容(full=simple=prompt)
     async _callDeepAI({ prompt, prompts, systemInstruction = null, max_tokens = 1800, temperature = 0.4, chain = 'auto' }) {
@@ -9332,7 +9332,7 @@ const marginByDate = {};
             span.innerHTML = '';
             return;
         }
-        // V46.3 — 文字簡化(只留「處置中 / 注意 / 必關」),詳情(分盤/出關天數)收進 title;點整顆→免費查戰術
+        // V46.3 — 文字簡化(只留「處置中 / 注意 / 必關」),詳情(分盤/出關天數)收進 title;點整顆→免費查操作建議
         const tags = [];
         // 處置股(優先):簡化為「🚨 處置中」,天數放 title
         if (info && (info.status || '').startsWith('🚨')) {
@@ -9341,15 +9341,15 @@ const marginByDate = {};
                 const days = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
                 daysStr = days > 0 ? ` · ${days}天後出關` : days === 0 ? ' · 今出關' : ` · 已出獄${-days}天`;
             }
-            const tip = `處置中${info.interval ? ` ${info.interval}分盤` : ''}${daysStr}｜點我用免費 AI 查戰術`;
+            const tip = `處置中${info.interval ? ` ${info.interval}分盤` : ''}${daysStr}｜點我用免費 AI 查操作建議`;
             tags.push(`<span class="inline-block bg-red-900/80 text-red-200 border border-red-500 rounded px-1.5 py-0.5 text-[11px] font-black animate-pulse" title="${tip.replace(/"/g,'&quot;')}">🚨 處置中</span>`);
         } else if (info && (info.status || '').includes('注意')) {
             // 注意股(很可能被關):同款設計,琥珀色
-            tags.push(`<span class="inline-block bg-orange-900/70 text-orange-200 border border-orange-500 rounded px-1.5 py-0.5 text-[11px] font-black" title="注意股(很可能升級處置)｜點我用免費 AI 查戰術">⚠️ 注意</span>`);
+            tags.push(`<span class="inline-block bg-orange-900/70 text-orange-200 border border-orange-500 rounded px-1.5 py-0.5 text-[11px] font-black" title="注意股(很可能升級處置)｜點我用免費 AI 查操作建議">⚠️ 注意</span>`);
         }
         // 必關股(預測即將被關):無註冊注意/處置時也警示
         if (isMustClose && !(info && ((info.status||'').startsWith('🚨') || (info.status||'').includes('注意')))) {
-            tags.push(`<span class="inline-block bg-purple-900/70 text-purple-200 border border-purple-500 rounded px-1.5 py-0.5 text-[11px] font-black animate-pulse" title="${scan.predictText.replace(/"/g,'&quot;')}｜點我用免費 AI 查戰術">💀 必關</span>`);
+            tags.push(`<span class="inline-block bg-purple-900/70 text-purple-200 border border-purple-500 rounded px-1.5 py-0.5 text-[11px] font-black animate-pulse" title="${scan.predictText.replace(/"/g,'&quot;')}｜點我用免費 AI 查操作建議">💀 必關</span>`);
         }
         if (!tags.length) {
             span.classList.add('hidden');
@@ -12499,7 +12499,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return { ok: true, reason: '' };
     },
 
-    // 🎯 V35.9 — 主力分點戰情:連續吸籌天數 + 主力成本估 + 前5大集中度(純公式,資料乾淨才算)
+    // 🎯 V35.9 — 主力分點動向:連續吸籌天數 + 主力成本估 + 前5大集中度(純公式,資料乾淨才算)
     renderBrokerWarRoom() {
         const el = document.getElementById('brokerWarRoom');
         if (!el) return;
@@ -12507,7 +12507,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const q = this._chipQuality(records, this._chipDataDate);
         if (!q.ok) {
             el.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
-                <div class="text-[11px] font-bold text-amber-300 mb-1">⚠️ 主力分點戰情：維護中</div>
+                <div class="text-[11px] font-bold text-amber-300 mb-1">⚠️ 主力分點動向：維護中</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">${q.reason}。免費分點靠證交所 BSR(雲端破驗證碼)近期不穩;要穩定分點建議升級 FinMind Sponsor。<br>(法人 / 融資不受影響,上方照常顯示)</div>
             </div>`;
             return;
@@ -12557,7 +12557,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const concTxt = conc != null ? `<span class="font-mono font-black ${conc >= 40 ? 'text-red-400' : 'text-gray-200'}">${conc.toFixed(0)}%</span>` : '—';
         el.innerHTML = `
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-            <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1.5">🎯 主力分點戰情<span class="text-[9px] text-gray-500 font-normal">(純公式・非 AI)</span></div>
+            <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1.5">🎯 主力分點動向<span class="text-[9px] text-gray-500 font-normal">(純公式・非 AI)</span></div>
             <div class="grid grid-cols-3 gap-2">
                 <div class="bg-[#0d1117] rounded p-2 text-center">
                     <div class="text-[9px] text-gray-500 mb-1">主力方向</div>
@@ -13505,7 +13505,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
-    // 📋 V42.5 — 今日作戰指令(盤前一眼無腦看):合成所有純公式訊號 → 空手給買點、持股給賣點+損益
+    // 📋 V42.5 — 今日操作重點(盤前一眼無腦看):合成所有純公式訊號 → 空手給買點、持股給賣點+損益
     renderTodayOrder(data) {
         const el = document.getElementById('todayOrderCard');
         if (!el) return;
@@ -13570,7 +13570,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[12px] font-black text-gray-100">📋 今日這檔怎麼做 <span class="text-[9px] text-gray-500 font-normal">盤前一眼 · 純公式</span></span>
-                <button onclick="alert('【今日作戰指令】\\n\\n把 App 算好的訊號合成一句「今天怎麼做」,盤前看昨收就知道:\\n\\n・空手 → 給你買點價位 + 進場條件 + 停損。\\n・持股(有填成本)→ 給你停利/停損價 + 損益金額試算。\\n\\n用的是朱老師方法:多頭回後站上 5 日線買、跌破 5 日線停利、跌破月線/前低停損。\\n\\n⚠️ 純公式僅供參考;實際以開盤量價為準,嚴守停損。填成本(上方成本價欄或加入庫存)才會顯示持股賣點。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖</button>
+                <button onclick="alert('【今日操作重點】\\n\\n把 App 算好的訊號合成一句「今天怎麼做」,盤前看昨收就知道:\\n\\n・空手 → 給你買點價位 + 進場條件 + 停損。\\n・持股(有填成本)→ 給你停利/停損價 + 損益金額試算。\\n\\n用的是朱老師方法:多頭回後站上 5 日線買、跌破 5 日線停利、跌破月線/前低停損。\\n\\n⚠️ 純公式僅供參考;實際以開盤量價為準,嚴守停損。填成本(上方成本價欄或加入庫存)才會顯示持股賣點。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖</button>
             </div>
             <div class="flex items-center gap-2.5 mb-1.5">
                 <div class="text-3xl flex-shrink-0">${light}</div>
@@ -14330,7 +14330,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._freeAiOpen(map[kind] || `${tag} 最新消息`);
     },
 
-    // 🚨 V46.3 — 處置/注意告警點擊:帶當前列管狀態,開免費 AI 給「戰術提醒」(零額度)
+    // 🚨 V46.3 — 處置/注意告警點擊:帶當前列管狀態,開免費 AI 給「操作提醒」(零額度)
     _openFreeAiDispose() {
         const sym = this.currentSymbolId;
         if (!sym) { this.showToast?.('請先選一檔股票', 'info'); return; }
@@ -14339,9 +14339,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const isDisp = info && (info.status || '').startsWith('🚨');
         const isNotice = info && (info.status || '').includes('注意');
         let q;
-        if (isDisp) q = `${tag} 這檔台股目前被列為「處置股(分盤撮合)」。請給我實戰戰術提醒:①為什麼被處置、有什麼消息 ②處置期間該抱還是該跑、出關前後怎麼操作 ③風險與停損點。請白話、附日期與來源`;
-        else if (isNotice) q = `${tag} 這檔台股被列為「注意股」,很可能升級處置。請給戰術提醒:①為什麼被注意、近期消息 ②若被處置該如何提前因應 ③風險與停損。請白話、附日期與來源`;
-        else q = `${tag} 這檔台股近期漲跌劇烈、可能被列注意/處置。請給戰術提醒、風險與停損建議,附日期與來源`;
+        if (isDisp) q = `${tag} 這檔台股目前被列為「處置股(分盤撮合)」。請給我實戰操作提醒:①為什麼被處置、有什麼消息 ②處置期間該抱還是該跑、出關前後怎麼操作 ③風險與停損點。請白話、附日期與來源`;
+        else if (isNotice) q = `${tag} 這檔台股被列為「注意股」,很可能升級處置。請給操作提醒:①為什麼被注意、近期消息 ②若被處置該如何提前因應 ③風險與停損。請白話、附日期與來源`;
+        else q = `${tag} 這檔台股近期漲跌劇烈、可能被列注意/處置。請給操作提醒、風險與停損建議,附日期與來源`;
         this._freeAiOpen(q);
         this.vibrate?.(20);
     },
@@ -17298,7 +17298,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                                   season, maBullish, instStreak, instDays, isLayup };
 
         // ── 風控優先(跌破月線一律先降級,紀律不變)──
-        if (isHighRisk) return { ...base, level: '🔴', tag: '紅燈', label: '戰術撤退',
+        if (isHighRisk) return { ...base, level: '🔴', tag: '紅燈', label: '轉弱減碼',
             action: '月線跌破 + 型態破壞（島狀反轉/大黑K/跌破前低）。請分批撤退、保留現金等下一波。',
             ledClass: 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-pulse-fast' };
         if (isModerateRisk) return { ...base, level: '🟠', tag: '橘燈', label: '減碼觀望',
@@ -17550,7 +17550,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         // 戰略總司令敘述：依五維結果組合精準指令
         const narrate = (() => {
-            if (d.isHighRisk) return '型態與基本面雙重警訊，立即啟動戰術撤退：所有部位按紀律出場保本，嚴禁低接攤平，現金為王等待重新建立支撐再評估。';
+            if (d.isHighRisk) return '型態與基本面雙重警訊，立即減碼保本：所有部位按紀律出場保本，嚴禁低接攤平，現金為王等待重新建立支撐再評估。';
             if (d.isYoYGood && d.isChipGood && d.isPriceDropping) return '基本面與籌碼雙支撐，價格回測 5MA 屬大戶洗盤洗碗。建議「分批建立多單」：當下 1/3 倉，跌破 5MA 再 1/3、20MA 再 1/3；防守底線設 20MA 跌破無條件撤。';
             if (d.ctx?.season === '夏') return '多頭確認且趨勢明朗，但須警戒乖離過大。持倉沿 5MA 抱牢；新增部位請靜待回檔 5MA 不破、確認紅K 站回，再行防守式建多單。';
             if (d.ctx?.season === '冬') return '趨勢轉空、均線下彎，長線部位無情減碼。嚴禁摸底接刀；空手者保持現金為王，等月線重新走平再評估反彈布局。';
@@ -20270,7 +20270,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         // 🏆 Day 2 路徑 B:整套系統策略組合回測 vs 0050(雙線圖 + 摘要)
         this._loadStrategyBacktest();
-        // 🎯 Day 4 戰術組合策略(從 signal_history.json 的 combos 欄位讀)
+        // 🎯 Day 4 訊號組合策略(從 signal_history.json 的 combos 欄位讀)
         this._loadComboBacktest();
         // 🔬 Walk-forward 樣本外驗證(讀 data/walk_forward.json)
         this._loadWalkForward();
@@ -20278,7 +20278,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this._loadPaperTrade();
     },
 
-    // 🎯 戰術組合策略 Top 10:讀 signal_history.json 內的 combos 欄位(同檔,不必另開 fetch)
+    // 🎯 訊號組合策略 Top 10:讀 signal_history.json 內的 combos 欄位(同檔,不必另開 fetch)
     _loadComboBacktest() {
         const box = document.getElementById('signalAccuracyBox');
         if (!box) return;
@@ -20299,7 +20299,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const sectionHtml = `
         <div id="comboBacktestSection" class="col-span-full mt-3 pt-2 border-t-2 border-fuchsia-700/60">
             <div class="text-xs text-fuchsia-300 font-black mb-1.5 flex items-center gap-1">
-                🎯 戰術組合策略 Top 10 <span class="text-gray-500 font-normal text-[10px]">(同日 ≥ 2 訊號觸發,樣本 ≥ 15)</span>
+                🎯 訊號組合策略 Top 10 <span class="text-gray-500 font-normal text-[10px]">(同日 ≥ 2 訊號觸發,樣本 ≥ 15)</span>
             </div>
             <div class="text-[9px] text-gray-500 mb-1.5">兩個訊號同日觸發 → 信號更強,勝率通常高於單訊號。</div>
             <div class="grid grid-cols-2 gap-1.5">${rowsHtml}</div>
@@ -20636,7 +20636,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             '【🟦 持有者策略】':       'text-blue-400 border-blue-500',
             '【🛡️ 風控紅線】':         'text-orange-400 border-orange-500',
             '【🌏 總體位階與大局觀】':  'text-cyan-400 border-cyan-500',
-            '【⚔️ 總監專屬戰術室】':   'text-purple-400 border-purple-500',
+            '【📋 操作建議】':   'text-purple-400 border-purple-500',
             '【🔥 首席操盤手終極喊話】': 'text-orange-400 border-orange-500',
         };
         // V26.7 — 「【📊 大盤與籌碼全景】」section 後段 <p> 卡片化(視覺看板感強化,看不下去長文字)
@@ -21268,7 +21268,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // V43.7 移除:📐 K線分析報告(AI) + 🕯️ K線型態+量評分 → 由上方朱老師口吻總評取代
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
         try { this._renderStockEarningsReminder(this.currentSymbolId); } catch (_) {}   // 📢 V51.6 法說會提醒(現價下方,2 交易日內)
-        try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日作戰指令(首席頁置頂)
+        try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日操作重點(首席頁置頂)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
@@ -23502,7 +23502,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         layup:     '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
         momentum:  '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。今日小回不破 5 日線仍算動能，別看到今日小跌就嚇跑。',
         swing:     '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
-        sniper:    '🎯 狙擊手｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
+        sniper:    '🎯 主力鎖股｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
         attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
         falcon:    '🦅 獵鷹建倉｜全市場 AI 評分 ≥ 60 的標的(紅榜 ≥75 / 橙榜 60-74),分數越高越優先,綜合動能·籌碼·技術·風險。',
         kbar_bull: '🌅 K棒轉多｜全市場掃朱家泓 K棒戰法「偏多轉折」:晨星/長紅吞噬/長紅遭遇/測撐有撐,都配合成交量。純公式,右欄顯命中訊號。→ 找進場買點,站上訊號 K 高點或 5MA 再分批進。',
@@ -23714,7 +23714,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const gainStr = ((p.gain || 0) > 0 ? '+' : '') + (p.gain || 0).toFixed(2) + '%';
             const isHunted = this.monitorList.some(m => m.sym === p.sym);
             const huntBtn = isHunted
-                ? `<span class="text-green-400 text-[10px] font-bold whitespace-nowrap" title="已在獵殺名單中">⚔️ 已監控</span>`
+                ? `<span class="text-green-400 text-[10px] font-bold whitespace-nowrap" title="已在觀察名單中">⚔️ 已監控</span>`
                 : `<button onclick="event.stopPropagation(); app.addChuPickToMonitor('${p.sym}','${key}');" class="text-purple-200 bg-purple-900/40 border border-purple-600/60 rounded px-1.5 py-0.5 text-[10px] font-bold hover:bg-purple-800/40 whitespace-nowrap" title="加入監控 → 隔日 09:00+ 開 App 自動掃 5MA + 紅 K + 量增,觸發跳通知(免再記)">🎯 加入</button>`;
             const cname = p.name || this.getStockName(p.sym) || '';
             // V17.3 — 邊框依警示等級換色,一眼看出可不可以進
@@ -23787,7 +23787,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         }).join('');
     },
 
-    // 從五大選股法 modal 加入單檔到獵殺（帶 strategySource 對應觸發）
+    // 從五大選股法 modal 加入單檔到觀察（帶 strategySource 對應觸發）
     async addChuPickToMonitor(sym, strategySource) {
         if (this.monitorList.some(m => m.sym === sym)) return;
         const data = await this.fetchHistoricalData(sym, false);
@@ -23802,7 +23802,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         }
     },
 
-    // 把當前 tab 全部 picks 一鍵加入獵殺
+    // 把當前 tab 全部 picks 一鍵加入觀察
     async addAllChuTabToMonitor() {
         const key = this._chuCurrentTab;
         const picks = (this.radarMatrix?.data || {})[key] || [];
@@ -23826,7 +23826,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         }
         this._renderChuPickList(key);
         this.renderHuntTab();
-        alert(`✅ 一鍵全加完成\n\n  • 新加入：${added} 檔\n  • 已存在（跳過）：${skipped} 檔\n  • 資料不足（失敗）：${failed} 檔\n\n獵殺掃描時會根據選股法套用專屬進場觸發。`);
+        alert(`✅ 一鍵全加完成\n\n  • 新加入：${added} 檔\n  • 已存在（跳過）：${skipped} 檔\n  • 資料不足（失敗）：${failed} 檔\n\n觀察掃描時會根據選股法套用專屬進場觸發。`);
     },
 
     // V17.4 — 只加綠燈股(無 warning)到監控,跳過已過熱/出貨警示
@@ -24362,7 +24362,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
 # Constraints
 1. 嚴禁口語投資客白話（如「各位投資朋友」「大黑K空襲太慘」）。高度濃縮，用數據結論 + 技術狀態 + 短語行動點。
-2. 嚴格「日週對照」：週線為保護傘（定波段大方向），日線為精準狙擊點。
+2. 嚴格「日週對照」：週線為保護傘（定波段大方向），日線為精準卡位點。
 3. 🛑 下方【系統精算數據】的所有數字皆已由程式算好，你「禁止重算、禁止竄改任何數字」，只負責：判定 enum 分類、挑選符合的訊號、寫精煉文字。資料不足或位階不符 → 判「中性觀察」，不准盲目摸底凹單。
 4. 📐 signal_detector 的多空訊號「優先採用」下方【朱家泓/林穎 K棒型態偵測】已偵測到的型態(夜星/晨星/吞噬/三角收斂/弱中透強/長上下影/做多買點/底部頸線突破/過熱/乖離/換手量/向上向下缺口/KD-MACD頂底背離/均線扣抵翻揚或轉弱/頭部頸線跌破/葛蘭碧買賣點/趨勢線突破跌破等,皆純公式算好的事實),別自行另編型態。把偵測到的型態用朱家泓/林穎角度解讀其多空意義。
 
@@ -24396,7 +24396,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
   "fold_verdict": "用白話一句評折數 ${foldPct} 折安不安全(大拍賣撿便宜 vs 半山腰接刀)",
   "actionable_sop": {
     "tactical_action": "加碼進場 / 分批停利 / 紀律清倉停損 / 綁手觀察",
-    "ai_core_summary": "不超過兩句的精準戰術結論(含日線狙擊點與週線方向)"
+    "ai_core_summary": "不超過兩句的精準操作結論(含日線卡位點與週線方向)"
   }
 }`;
 
@@ -24523,12 +24523,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
           </div>` : ''}
           <!-- 戰術 SOP -->
           <div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-3">
-            <div class="text-[10px] text-red-300 font-bold mb-1">⚔️ 戰術 SOP</div>
+            <div class="text-[10px] text-red-300 font-bold mb-1">📋 操作 SOP</div>
             <div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] px-2 py-0.5 rounded font-bold border ${actCls}">${esc(act)}</span><span class="text-[10px] text-gray-400">結構防守線 <b class="text-gray-200 font-mono">${defLine ?? '--'}</b></span></div>
             <div class="text-[11px] text-gray-200 leading-relaxed">${esc(sop.ai_core_summary || '')}</div>
             ${extra.posCost ? `<div class="text-[10px] text-gray-400 mt-1.5">你的部位:成本 ${extra.posCost}、損益 <b class="${extra.posPnl >= 0 ? 'text-red-300' : 'text-green-300'}">${extra.posPnl >= 0 ? '+' : ''}${extra.posPnl}%</b></div>` : ''}
           </div>
-          <div class="text-[9px] text-gray-600 text-center pt-1">數字由系統 JS 精算，AI 僅負責型態判讀與戰術文字 · 僅供參考非投資建議</div>
+          <div class="text-[9px] text-gray-600 text-center pt-1">數字由系統 JS 精算，AI 僅負責型態判讀與操作文字 · 僅供參考非投資建議</div>
         </div>`;
     },
 
@@ -24538,7 +24538,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const result = document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult');
         // 🛡️ 無任何 AI Key:別開空窗轉圈,直接提示+跳設定(否則使用者只看到一條空白)
         if (!this._hasAnyAIKey()) {
-            alert('⚠️ 尚未設定任何 AI Key,無法生成盤前戰情。\n請至 ⚙️ 設定填入 Gemini / Groq / OpenRouter 任一條金鑰。');
+            alert('⚠️ 尚未設定任何 AI Key,無法生成盤前速報。\n請至 ⚙️ 設定填入 Gemini / Groq / OpenRouter 任一條金鑰。');
             this.openSettings();
             return;
         }
@@ -24798,9 +24798,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 🦅 年線乖離率(^TWII 240MA)已停用:yfinance 對 GHA runner 持續抓不到 240 日 ^TWII 歷史,
         //    改由「外資期/VIX/恐慌貪婪/融資餘額/期現比」綜合判讀大盤位階(_marketPanorama 已涵蓋)
 
-        const prompt = `你是台股自營部的「盤前作戰簡報撰寫官」,清晨 8 點對操盤手做 3 分鐘口頭簡報的風格:先講結論、再給彈藥、最後下指令。語氣像權證小哥——大白話、直球、國中生都聽得懂,但每句都要能換成「今天怎麼下單」。
+        const prompt = `你是台股自營部的「盤前速報撰寫員」,清晨 8 點對操盤手做 3 分鐘口頭速報的風格:先講結論、再給重點、最後講今天怎麼做。語氣像權證小哥——大白話、直球、國中生都聽得懂,但每句都要能換成「今天怎麼下單」。
 你同時懂兩件事:① 半導體供應鏈與台積電(2330)「拉積盤」資金黑洞效應、低軌衛星鏈、川普政經與黃仁勳 AI 宏圖;② 點位、籌碼、風報比、部位配置。
-任務:把下方系統「已精算好的真實數據+情報」吃透,產出今日盤前作戰簡報。你只負責「判讀與下指令」,所有數字一律引用系統值,嚴禁自己算。
+任務:把下方系統「已精算好的真實數據+情報」吃透,產出今日盤前速報。你只負責「判讀與操作建議」,所有數字一律引用系統值,嚴禁自己算。
 
 🛑 鐵則:
 - 嚴禁 Markdown 表格,改用條列式,用 --- 作分隔線
@@ -24859,7 +24859,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
 嚴格依下列格式輸出(emoji 標題與 --- 分隔線必須保留,每段標題後空一行再寫內容;全文控制在精煉、可執行,不灌水):
 
-🚀 ${_today} 盤前作戰簡報
+🚀 ${_today} 盤前速報
 
 📊 一句話定調
 [用 1 句話講「今天偏多/偏空/震盪」+ 最關鍵的隔夜理由(結合 SP500/費半/TSM ADR/外資期 ${fiLabel}),操盤手讀完就知道今天該攻還是該守]
@@ -24901,7 +24901,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
 ---
 
-⚡ 今日作戰指令
+⚡ 今日操作重點
 [收尾 1 句:今天「主攻方向 + 一個最該做的動作 + 一個最該避開的雷」,講人話、給命令]
 
 ---
@@ -25233,16 +25233,16 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         let seg2;
         if (isAttRisk) {
             seg2 = hasStock
-                ? `【⚔️ 總監專屬戰術室】🚨 本檔已被 TWSE 列管(${attLine})!持股者請 **提防主力尾盤突襲**,嚴格執行 **無情停利**,絕不賭「越關越大尾」。`
-                : `【⚔️ 總監專屬戰術室】🚨 本檔已被 TWSE 列管(${attLine})!**嚴禁新建倉,空手觀望**,等出獄且量縮止穩再評估,切勿追高接刀。`;
+                ? `【📋 操作建議】🚨 本檔已被 TWSE 列管(${attLine})!持股者請 **提防主力尾盤突襲**,嚴格執行 **無情停利**,絕不賭「越關越大尾」。`
+                : `【📋 操作建議】🚨 本檔已被 TWSE 列管(${attLine})!**嚴禁新建倉,空手觀望**,等出獄且量縮止穩再評估,切勿追高接刀。`;
         } else if (hasStock) {
             const pnlStr = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%';
-            seg2 = `【⚔️ 總監專屬戰術室】持有成本 **${fmt(cost)} 元**,帳面 **${pnlStr}**。`
+            seg2 = `【📋 操作建議】持有成本 **${fmt(cost)} 元**,帳面 **${pnlStr}**。`
                  + (verdict.startsWith('🔴') ? `已破關鍵均線,建議 **減碼撤退** 保留現金,反彈不過月線不接。`
                   : verdict.startsWith('🟢') ? `趨勢健康,**守穩 ${fmt(ma5)} 元 5MA 抱緊**,跌破再調節。`
                   : `月線附近拉鋸,**守 ${fmt(ma20)} 元**,跌破減碼、站回再加。`);
         } else {
-            seg2 = `【⚔️ 總監專屬戰術室】目前空手。`
+            seg2 = `【📋 操作建議】目前空手。`
                  + (verdict.startsWith('🟢') ? `趨勢偏多,可等回測 **${fmt(ma5)} 元** 不破再 **閒錢低接試單**。`
                   : verdict.startsWith('🔴') ? `空方格局,**手綁好觀望等待**,勿伸手接刀。`
                   : `等站穩 **${fmt(ma20)} 元** 月線突破再 **建倉**,跌破續觀望。`);
@@ -25270,7 +25270,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         if (!this._hasDeepAIKey()) {
             if (silent) return;  // 自動模式：沒 Key 安靜略過
             box.classList.remove('hidden');
-            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 戰情設定中心」填入 <b>Gemini 或 OpenRouter API Key</b>。</div>';
+            box.innerHTML = '<div class="text-yellow-400 font-bold bg-yellow-900/30 p-3 rounded border border-yellow-800 text-xs">⚠️ 請先至「⚙️ 設定中心」填入 <b>Gemini 或 OpenRouter API Key</b>。</div>';
             this.openSettings();
             return;
         }
@@ -25703,7 +25703,7 @@ ${_chuPosPlan}
                     if (fallback) {
                         this._renderUnifiedAIResult(fallback, { staleBannerMsg: `${friendlyMsg}；股票數據與圖表不受影響` });
                     } else {
-                        box.innerHTML = `<div class="text-yellow-300 font-bold bg-yellow-900/30 border border-yellow-600 p-3 rounded leading-relaxed">⚠️ ${friendlyMsg}<br><span class="text-xs text-yellow-200/70">小提醒：可至「⚙️ 戰情設定中心」填入第二把 Groq Key 或連接後端 API（多把 key 輪動），或稍後再回來看分析。</span></div>`;
+                        box.innerHTML = `<div class="text-yellow-300 font-bold bg-yellow-900/30 border border-yellow-600 p-3 rounded leading-relaxed">⚠️ ${friendlyMsg}<br><span class="text-xs text-yellow-200/70">小提醒：可至「⚙️ 設定中心」填入第二把 Groq Key 或連接後端 API（多把 key 輪動），或稍後再回來看分析。</span></div>`;
                     }
                 }
             } else {
@@ -25898,8 +25898,8 @@ ${_chuPosPlan}
         }
     },
 
-    // 共用：把個股加入獵殺名單
-    // strategySource: 'chu_perfect6' | 'chu_top_gainer' | 'chu_bottom' | 'chu_riding5ma' | null（一般獵殺）
+    // 共用：把個股加入觀察名單
+    // strategySource: 'chu_perfect6' | 'chu_top_gainer' | 'chu_bottom' | 'chu_riding5ma' | null（一般觀察）
     // opts.silent: true 時不跳 alert（給「一鍵全加」批次用）
     // V17.21 — 個股到價告警 modal(2 sub-tab:到價設定 / 全部監控)
     //   schema: [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}],一筆 = 一個條件,同股可多筆
@@ -26338,15 +26338,15 @@ ${_chuPosPlan}
                 chu_top_gainer: '🔥 特別報價',
                 chu_bottom:     '🥣 底部轉折',
                 chu_riding5ma:  '🚀 5MA飆股',
-            }[strategySource] || '一般獵殺';
+            }[strategySource] || '一般觀察';
             const trigLabel = {
                 chu_perfect6:   '🎯 站穩 5MA 進場（紅K + 沒跌破 5MA）',
                 chu_top_gainer: '🔥 隔日強勢開高 > 1%',
                 chu_bottom:     '🚀 連 2 日爆量續攻',
                 chu_riding5ma:  '🎯 站穩 5MA 進場（紅K + 沒跌破 5MA）',
-            }[strategySource] || '4 種通用獵殺訊號';
+            }[strategySource] || '4 種通用觀察訊號';
             const lines = [
-                `✅ 已加入獵殺監控！`,
+                `✅ 已加入觀察監控！`,
                 ``,
                 `📋 來源：${srcLabel}`,
                 `🎯 進場觸發：${trigLabel}`,
@@ -26535,7 +26535,7 @@ ${_chuPosPlan}
         return null;
     },
 
-    // 🎯 V41.20 — 朱老師「回後買上漲」獵殺告警(每檔監控股都掃,不限選股法):
+    // 🎯 V41.20 — 朱老師「回後買上漲」觀察告警(每檔監控股都掃,不限選股法):
     //   直接套個股頁 K棒戰法 / 期望值榜回測用的同一顆 _detectChuLongEntry(波段多頭 + 回檔不破前低 +
     //   紅K站回5MA + 量增 + 過昨高,含高檔做頭守門)。這是回測期望值最高的進場訊號。
     _checkChuLongEntry(data, entry) {
@@ -26717,7 +26717,7 @@ ${_chuPosPlan}
         // Show summary
         if (total > 0) {
             const statusMsg = newAlerts.length > 0
-                ? `✅ 掃描完成！發現 ${newAlerts.length} 個獵殺訊號`
+                ? `✅ 掃描完成！發現 ${newAlerts.length} 個觀察訊號`
                 : `✅ 掃描完成，${total} 檔均無訊號`;
             if (statusText) { statusText.textContent = statusMsg; statusDiv.classList.remove('hidden'); }
             setTimeout(() => { if (statusDiv) statusDiv.classList.add('hidden'); }, 4000);
@@ -26747,7 +26747,7 @@ ${_chuPosPlan}
             chu_bottom_follow: '🚀 連2日爆量續攻',
             chu_top_open:      '🔥 強勢開高跟進',
         };
-        if (s && !map[s]) console.warn('[獵殺] 未知 strategy key,未翻譯:', s);   // V28.3 防呆:日後漏譯即時發現
+        if (s && !map[s]) console.warn('[觀察] 未知 strategy key,未翻譯:', s);   // V28.3 防呆:日後漏譯即時發現
         return map[s] || s;
     },
 
@@ -26821,7 +26821,7 @@ ${_chuPosPlan}
             const alertBadge = todayFired.length > 0 ? `<span class="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">${todayFired.length} 告警</span>` : '';
             const hasBorder = todayFired.length > 0;
             // V28.3 — 顯「為何在監控」策略來源(entry.strategySource 已存,卡上原本沒顯)
-            const srcLabel = { chu_perfect6: '🍀 六六大順', chu_top_gainer: '🔥 特別報價', chu_bottom: '🥣 底部轉折', chu_riding5ma: '🚀 5MA飆股' }[entry.strategySource] || '🗡️ 一般獵殺';
+            const srcLabel = { chu_perfect6: '🍀 六六大順', chu_top_gainer: '🔥 特別報價', chu_bottom: '🥣 底部轉折', chu_riding5ma: '🚀 5MA飆股' }[entry.strategySource] || '🗡️ 一般觀察';
             const srcBadge = `<span class="text-[9px] bg-[#21262d] text-gray-400 px-1 rounded border border-[#30363d]">${srcLabel}</span>`;
             return `<div class="bg-[#1c2128] border ${hasBorder ? 'border-red-500' : 'border-[#30363d]'} rounded-lg p-3 flex items-center gap-3">
                 <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${entry.sym}'); app.switchAppTab('diag');">
