@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -293,7 +293,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -10741,25 +10741,25 @@ const marginByDate = {};
                 const bias = (t.v.bias > 0 ? '+' : '') + t.v.bias + '%';
                 return `・${t.label}:${nameMap[t.v.key] || '—'} ・乖離 ${bias}`;
             }).join('\n');
-            const bulls = tfs.filter(t => t.v && t.v.key === 'bull').length;
-            const bears = tfs.filter(t => t.v && t.v.key === 'bear').length;
+            // 🎯 V51.5 建議操作改用大盤風控 regime(_chuPositionAdvice)= 置頂跑馬燈同一套邏輯 → 不再自相矛盾
+            //   (原 V51.1 只看均線多頭排列就喊 6-7 成,忽略「年線乖離過大/過熱」,跟跑馬燈的「多頭過熱 3~5 成」打架)
+            let advBlock;
+            try {
+                const adv = this._chuPositionAdvice();
+                advBlock = (adv && adv.pct) ? `${adv.regimeLabel} · 建議 ${adv.pct}\n${adv.advice}` : '資料整備中(年線位階待補),先看短中長天氣方向、別重押。';
+            } catch (_) { advBlock = '資料整備中,先看短中長天氣方向、別重押。'; }
+            // 📌 短長背離補充(多頭裡的回檔 vs 空頭反彈)— 純天氣觀察,輔助用
             const shortV = tfs[0].v, longV = tfs[2].v;
-            // 🎯 V51.1 直接給「台股現在怎麼操作」的具體對策(持股成數/方向/停損),不再只做名詞說明
-            let op;
-            if (bulls >= 2)      op = '順風做多 🟢\n・持股可拉到 6-7 成,以強勢主流 / 權值股為主\n・回檔到 5MA、10MA 分批接,不追高\n・短期已大漲(乖離大)先收緊停利、別 All-in';
-            else if (bears >= 2) op = '逆風保守 🔴\n・持股降到 2-3 成或先空手,別逆勢接刀\n・手上有部位嚴設停損,跌破就走、別凹\n・等短、中期由 🌧️ 轉 ☀️ 再加碼';
-            else                 op = '糾結輕倉 🟡\n・持股 3-4 成,只做最強勢那幾檔\n・快進快出、不留大部位過夜\n・等短中長轉成同一方向再加碼';
-            // 📌 短長背離補充(多頭裡的回檔 vs 空頭反彈)
             let nuance = '';
             if (longV && shortV) {
-                if (longV.key === 'bull' && shortV.key === 'bear')      nuance = '\n\n📌 長多頭 + 短回檔 = 多頭裡的回檔,別怕,守住月線就找買點分批進。';
-                else if (longV.key === 'bear' && shortV.key === 'bull') nuance = '\n\n📌 長空頭 + 短反彈 = 多半是空頭反彈,別當反轉,彈到壓力先減碼、別追。';
+                if (longV.key === 'bull' && shortV.key === 'bear')      nuance = '\n\n📌 長多頭 + 短回檔 = 多頭裡的回檔,守住月線再找買點、別怕。';
+                else if (longV.key === 'bear' && shortV.key === 'bull') nuance = '\n\n📌 長空頭 + 短反彈 = 多半是空頭反彈,彈到壓力先減碼、別追。';
             }
             alert('🌤️ 大盤天氣 → 台股現在怎麼操作\n\n'
                 + '📊 目前(即時):\n' + lines + '\n\n'
-                + '🎯 建議操作:\n' + op + nuance + '\n\n'
+                + '🎯 建議操作(對齊置頂大盤風險指數):\n' + advBlock + nuance + '\n\n'
                 + '🛡️ 不管晴雨都要:設好停損、別單押一檔、順勢比預測重要。\n'
-                + '(純加權指數均線公式,非投資建議;搭配個股「進場體檢」一起看)');
+                + '(加權指數均線天氣 + 大盤風控 regime,非投資建議;搭配個股「進場體檢」一起看)');
         } catch (e) {
             console.warn('[marketWeatherPopup]', e);
             alert('🌤️ 大盤天氣資料抓取中,稍等幾秒再點一次。');
@@ -23225,7 +23225,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             //   → 變成多日漲跌(如智原 周一 vs 周四 -8.5%,正解應 vs 周五 +1.45%)的 bug。
             //   不論今天有沒有在 K 線最後筆,都正確取到「上一交易日收盤」。
             const klineArr = this._invKlineCache?.[item.symbol] || [];
-            let prevClose = price, todayChgPct = 0, todayPnL = 0;
+            // 🐛 V51.5 hasPrev:有無「上一交易日收盤」可算今日漲跌。沒 K 資料(如新 ETF 009816 / 抓不到 <25 筆)時,
+            //   舊版默默顯 0.00% 會誤導(看起來像今天平盤,其實是資料沒載到)→ 改回傳 hasPrev,前端顯「--」不顯 0。
+            let prevClose = price, todayChgPct = 0, todayPnL = 0, hasPrev = false;
             if (klineArr.length >= 1) {
                 const _today = this.getTodayStr().replace(/\//g, '-');
                 let pc = null;
@@ -23239,9 +23241,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     prevClose = pc;
                     todayChgPct = (price - prevClose) / prevClose * 100;
                     todayPnL = (price - prevClose) * shares * 1000;
+                    hasPrev = true;
                 }
             }
-            return { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL };
+            return { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL, hasPrev };
         }).filter(r => r);
 
         // V17.10/V17.11 — 排序(支援 name/shares/cost/marketval/today/total)
@@ -23277,7 +23280,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         let html = '', totalCostNTD = 0, totalValNTD = 0, totalTodayPnL = 0, totalPrevValNTD = 0;
         for (const r of rows) {
           try {   // 🐛 V42.6 每列獨立 try/catch:單一庫存列出錯不再拖垮整個列表(新增股票畫面壞掉根治)
-            const { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL } = r;
+            const { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL, hasPrev } = r;
             totalCostNTD += totalCost;
             totalValNTD += totalVal;
             totalTodayPnL += todayPnL;
@@ -23287,7 +23290,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             // V19.2 — 漲跌停顯示改在「現價」數字本身加紅/綠底白字(仿券商 App 樣式)
             const isLimitUp   = todayChgPct >= 9.5;
             const isLimitDown = todayChgPct <= -9.5;
-            const todayColor = todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
+            const todayColor = !hasPrev ? 'text-gray-500' : todayPnL > 0 ? 'text-[#f87171]' : (todayPnL < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             const priceCls = isLimitUp ? 'bg-red-600 text-white px-1.5 rounded inline-block'
                             : isLimitDown ? 'bg-green-600 text-white px-1.5 rounded inline-block'
                             : 'text-white';
@@ -23313,14 +23316,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[11px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設到價監控,點此管理' : '設到價監控'}">🚨</span>
                     </div>
                 </div>
-                <!-- 今日損益(只顯金額) -->
+                <!-- 今日損益(只顯金額;無上一交易日資料顯「--」不誤導平盤) -->
                 <div class="text-right">
-                    <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${todayPnL>0?'+':''}${Math.round(todayPnL).toLocaleString()}</div>
+                    <div class="font-mono font-black text-[13px] ${todayColor} leading-tight">${hasPrev ? (todayPnL>0?'+':'')+Math.round(todayPnL).toLocaleString() : '--'}</div>
                 </div>
                 <!-- 股價(現價,會跳動) + 漲跌幅(漲停紅底 / 跌停綠底) -->
                 <div class="text-right">
                     <div class="font-mono font-black text-[15px] ${priceCls} ${priceFlash} leading-tight">${price.toFixed(2)}</div>
-                    <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${todayChgPct>0?'+':''}${todayChgPct.toFixed(2)}%</div>
+                    <div class="text-[10px] font-bold ${todayColor} font-mono leading-tight">${hasPrev ? (todayChgPct>0?'+':'')+todayChgPct.toFixed(2)+'%' : '--'}</div>
                 </div>
                 <!-- 總損益 + 報酬率 -->
                 <div class="text-right">
