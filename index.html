@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -73,6 +73,8 @@
         @keyframes flashDown { 0% { background-color: rgba(74, 222, 128, 0.5); transform: scale(0.98); } 100% { background-color: transparent; transform: scale(1); } }
         @keyframes siren { 0% { background-color: #7f1d1d; color: #fff; } 50% { background-color: #1e3a8a; color: #fff; } 100% { background-color: #7f1d1d; color: #fff; } }
         @keyframes pulse-fast { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+        .animate-pulse-slow { animation: pulse-slow 1.8s ease-in-out infinite; }
         
         .price-flash-up { animation: flashUp 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         .price-flash-down { animation: flashDown 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -293,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -875,6 +877,8 @@
                 </div>
             </div>
             <div class="flex items-center gap-2.5 flex-shrink-0">
+                <!-- ⛏️ V51.6 採礦中圖示(⚙️ 左側):採礦中才顯示 + 慢閃,採礦完自動消失;點看採礦說明/資料日期 -->
+                <button id="minerHeaderBtn" onclick="app.showMinerInfoPopup(); app.vibrate(20);" class="hidden text-amber-400 hover:text-amber-300 text-[1.4rem] leading-none flex-shrink-0 animate-pulse-slow" title="採礦中 · 點看說明與資料日期">⛏️</button>
                 <!-- 📖 手冊已移入 🤖 AI 股神 彈窗(V46.9,置頂騰空間避免 🔔 溢出) -->
                 <!-- ⚙️ 設定 -->
                 <button onclick="app.openSettings(); app.vibrate(50);" class="text-gray-400 hover:text-white text-[1.55rem] transition-transform hover:rotate-90 flex-shrink-0" title="設定">⚙️</button>
@@ -897,11 +901,8 @@
         <!-- ⛏️ V16.4 採礦中 banner(讀 data/miner_status.json + GitHub Actions API 雙保險,30 秒 poll)-->
         <!-- V19.2 — banner 文字改正面語氣:強調資料已存在(顯目前快照日期),採礦只是「背景更新中」-->
         <!-- 📊 V44.6 — 資料日期/採礦狀態改細條(使用者:太佔版面),可 ✕ 關閉;只在背景採礦時顯 -->
-        <div id="minerStatusBanner" class="hidden px-3 py-0.5 text-[9px] text-gray-500 mx-auto max-w-7xl flex items-center gap-1.5">
-            <span class="flex-1 min-w-0 truncate">📊 <span id="msLastUpdated" class="text-gray-400 font-mono">--</span> 資料・⛏️<span id="msStage" class="text-amber-400/70">採礦更新中</span>,完成自動換新</span>
-            <button onclick="app._loadMinerStatus(true)" class="text-blue-400/60 hover:text-blue-200 flex-shrink-0" title="重新檢查採礦狀態">🔄</button>
-            <button onclick="document.getElementById('minerStatusBanner').classList.add('hidden')" class="text-gray-600 hover:text-white flex-shrink-0 font-bold leading-none px-0.5" title="關閉">✕</button>
-        </div>
+        <!-- ⛏️ V51.6 跑馬燈下方的採礦提示细條已移除(使用者要求)→ 改為置頂 ⚙️ 左側的 ⛏️ 慢閃圖示,點看說明 -->
+        <span id="msStage" class="hidden"></span><span id="msLastUpdated" class="hidden"></span>
         <!-- 資料中繼容器：父層 display:none 確保 JS 改 className 後子元素仍不可見 -->
         <div style="display:none" aria-hidden="true">
             <span id="mktFI"></span>
@@ -991,6 +992,8 @@
                         <span id="quoteAttBadge" class="hidden flex-shrink-0 self-center cursor-pointer" onclick="app._openFreeAiDispose(); app.vibrate(30);"></span>
                         <span id="quoteVolInfo" class="hidden ml-auto text-right text-[11px] text-gray-400 font-mono font-bold whitespace-nowrap flex-shrink-0 self-center"></span>
                     </div>
+                    <!-- 📢 V51.6 法說會提醒(現價下方):此股 2 個交易日內有法說會才顯,提醒股價常大波動 -->
+                    <div id="stockEarningsReminder" class="hidden"></div>
                     <!-- Row 2.5:V45.9 龍頭 / 產業別 / 概念股(仿籌碼K線,curated 對照,點概念丟免費查) -->
                     <div id="stockConceptRow" class="hidden flex flex-row flex-wrap items-center gap-1 mt-1.5"></div>
                     <!-- Row 3:技術屬性標籤(處置/注意 badge 已移到 Row 2 現價右側,此處不再重複) -->
@@ -12198,32 +12201,40 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) { /* silent — 不擾正常使用 */ }
     },
 
+    // ⛏️ V51.6 — 採礦狀態改「置頂 ⚙️ 左側 ⛏️ 慢閃圖示」:採礦中才顯示,採礦完自動消失(不再用跑馬燈下方細條)
     _updateMinerBanner() {
-        const banner = document.getElementById('minerStatusBanner');
-        if (!banner) return;
+        const btn = document.getElementById('minerHeaderBtn');
+        if (!btn) return;
         const ms = this._minerStatus;
-        if (!ms || ms.status !== 'mining') {
-            banner.classList.add('hidden');
-            return;
-        }
-        banner.classList.remove('hidden');
-        const stageEl = document.getElementById('msStage');
-        const updEl   = document.getElementById('msLastUpdated');
-        if (stageEl) {
-            const stageZh = {
-                'ohlcv_batch':        'K線+法人批次',
-                'chips_fundamentals': '籌碼+基本面',
-                'start':              '啟動中',
-                '排隊中':              '排隊中',
-                '採礦中':              '採礦中',
-            }[ms.stage] || (ms.stage || '處理中');
-            stageEl.textContent = stageZh;
-        }
-        if (updEl) {
-            // 顯示「目前快照日期」— 用上次 ready 時間,或今早 08:30(UTC) 推算
-            const last = ms.last_updated || ms.started_at || '';
-            updEl.textContent = last ? last.slice(0, 10) : '前一日';
-        }
+        if (ms && ms.status === 'mining') btn.classList.remove('hidden');
+        else btn.classList.add('hidden');
+    },
+    _minerStageZh(stage) {
+        return {
+            'ohlcv_batch':        'K線 + 三大法人 批次',
+            'chips_fundamentals': '主力分點 + 基本面',
+            'start':              '啟動中',
+            '排隊中':              '排隊中(等雲端配額)',
+            '採礦中':              '採礦中',
+        }[stage] || (stage || '處理中');
+    },
+    // ⛏️ 點置頂 ⛏️ → 採礦說明彈窗(現在挖到哪、資料是哪天、要多久)
+    showMinerInfoPopup() {
+        this.vibrate?.(20);
+        const ms = this._minerStatus || {};
+        const stageZh = this._minerStageZh(ms.stage);
+        let started = '--';
+        try { if (ms.started_at) started = new Date(ms.started_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (_) {}
+        const snap = (ms.last_updated || ms.started_at || '').slice(0, 10) || '前一交易日';
+        alert('⛏️ 採礦中(背景更新資料)\n\n'
+            + '📍 目前階段:' + stageZh + '\n'
+            + '🕐 開始時間:' + started + '\n'
+            + '📅 你現在看到的資料日期:' + snap + '(採礦完成才會換成最新)\n\n'
+            + '📊 這在做什麼?\n'
+            + '系統正在雲端後台(GitHub Actions,不吃你手機額度/IP)重新抓最新的:股價 K 線、三大法人買賣超、主力分點、基本面(營收/EPS/三率)、雷達選股。\n\n'
+            + '⏱️ 要多久?\n'
+            + '完整採礦約 30-60 分鐘。採礦時你看到的是「上一次」的資料,一樣可以正常操作;完成後這顆 ⛏️ 會自動消失、開著的頁面自動換新版。\n\n'
+            + '💡 這顆 ⛏️ 只在採礦中出現,消失就代表跑完了、資料已是最新。');
     },
 
     _startMinerStatusPolling() {
@@ -13603,20 +13614,60 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1.5 border-b border-[#30363d] pb-1.5">
                 <h4 class="font-bold text-sm text-gray-100 flex items-center gap-1.5">📊 位階溫度計 <span class="text-[9px] text-gray-500 font-normal">距高 + 52週位階</span></h4>
-                <button onclick="alert('【位階溫度計】怎麼看(小白版)\\n\\n判斷「這檔在強勢主流、還是低基期落後」——這是選股很重要的相對強弱維度。\\n\\n📏 距歷史高折價 = (歷史最高 − 現價) ÷ 歷史最高。越接近 0%(甚至創新高)= 越強。\\n📊 52週位階 = 現價在近一年高低區間的位置(0%=谷底、100%=最高)。\\n\\n🚀 創新高 / 位階>85% = 強勢主流領頭 → 做回檔買點(別追高)。\\n📦 中段(30~55%)= 等突破表態。\\n🧊 低基期<30% = 落後股,有題材才是補漲候選,沒題材別接刀。\\n\\n💡 搭配「回後買上漲/四大金剛」一起看:強勢主流 + 回後買上漲 = 最好的組合。純公式僅供參考。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖 教學</button>
+                <button onclick="alert('【位階溫度計】怎麼看(小白版)\\n\\n判斷「這檔在強勢主流、還是低基期落後」——選股很重要的相對強弱維度。\\n\\n📏 距歷史高折價 = (歷史最高 − 現價) ÷ 歷史最高。越接近 0%(甚至創新高)= 越強。\\n\\n🏷️ 打幾折 = 現價 ÷ 歷史高 × 10(像大拍賣的折數)。例:現價是高點的 77% → 7.7 折。折數越低=離高點越遠、跌越多。\\n\\n🧭 52週位階 白話講:把「這一年的最低價當 0 分、最高價當 100 分」,現價落在幾分。\\n・80~100 分 = 幾乎在一年高點附近(強、貴、追高風險)\\n・40~60 分 = 卡在半山腰(方向不明)\\n・0~30 分 = 快貼近一年低點(便宜、但可能是弱勢/破底,別只因便宜就買)\\n\\n❓「強勢股打 75 折是好買點」是真的嗎?\\n半真半假:它講的是「強勢股回檔約 25%(到高點的 75%)常回到月線/季線支撐,是找買點的參考區」。但這只是「經驗法則、不是鐵律」——\\n✅ 要同時看:①趨勢還在多頭(沒破月線)②有量守穩③基本面沒壞。\\n❌ 單看折數就接刀很危險:弱勢股/破線股打 5 折還會再跌(接掉下來的刀)。\\n👉 正解:強勢股(位階>55、沒破月線)+ 回檔到 7~8 折附近 + 出現「回後買上漲」訊號 = 較好的買點;純折數便宜不代表能買。\\n\\n💡 搭配「回後買上漲/四大金剛/進場體檢」一起看。純公式僅供參考,非投資建議。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖 教學</button>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${bc} border-y border-r border-[#30363d] rounded-r p-2 mb-2">
                 <div class="text-sm font-black ${tc} mb-0.5">${r.tag}</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">${r.desc}</div>
             </div>
             <div class="grid grid-cols-2 gap-2 mb-2">
-                <div class="bg-[#0d1117] border border-[#30363d] rounded p-2"><div class="text-[9px] text-gray-500">距歷史高</div><div class="text-lg font-black font-mono ${r.discount <= 3 ? 'text-red-300' : r.discount >= 30 ? 'text-green-300' : 'text-gray-100'}">${r.isATH ? '創新高' : '−' + r.discount.toFixed(0) + '%'}</div><div class="text-[8px] text-gray-600 font-mono">高 ${r.ath.toFixed(r.ath >= 100 ? 0 : 2)}</div></div>
-                <div class="bg-[#0d1117] border border-[#30363d] rounded p-2"><div class="text-[9px] text-gray-500">52週位階</div><div class="text-lg font-black font-mono ${tc}">${r.pos.toFixed(0)}%</div><div class="text-[8px] text-gray-600 font-mono">區間 ${r.lo52.toFixed(r.lo52 >= 100 ? 0 : 2)}~${r.hi52.toFixed(r.hi52 >= 100 ? 0 : 2)}</div></div>
+                <div class="bg-[#0d1117] border border-[#30363d] rounded p-2"><div class="text-[9px] text-gray-500">距歷史高</div><div class="text-lg font-black font-mono ${r.discount <= 3 ? 'text-red-300' : r.discount >= 30 ? 'text-green-300' : 'text-gray-100'}">${r.isATH ? '創新高' : '−' + r.discount.toFixed(0) + '%'}</div><div class="text-[8px] text-gray-600 font-mono">高 ${r.ath.toFixed(r.ath >= 100 ? 0 : 2)}</div><div class="text-[10px] font-mono font-black text-cyan-300 mt-0.5" title="現價 ÷ 歷史高 × 10。強勢股回檔到 7~8 折附近常是找買點區(非鐵律)">${r.isATH ? '約 10 折' : '現在 ' + (r.pC / r.ath * 10).toFixed(1) + ' 折'}</div></div>
+                <div class="bg-[#0d1117] border border-[#30363d] rounded p-2"><div class="text-[9px] text-gray-500">52週位階</div><div class="text-lg font-black font-mono ${tc}">${r.pos.toFixed(0)}%</div><div class="text-[8px] text-gray-600 font-mono">區間 ${r.lo52.toFixed(r.lo52 >= 100 ? 0 : 2)}~${r.hi52.toFixed(r.hi52 >= 100 ? 0 : 2)}</div><div class="text-[9px] text-gray-400 mt-0.5 leading-snug">${r.pos >= 85 ? '≈ 一年最高處 · 強勢' : r.pos >= 55 ? '一年區間偏中上' : r.pos >= 30 ? '一年區間正中間' : '≈ 一年最低處 · 低基期'}</div></div>
             </div>
             <div class="w-full h-2 bg-[#21262d] rounded-full overflow-hidden relative"><div class="h-full ${barC} transition-all" style="width:${r.pos}%"></div></div>
             <div class="flex justify-between text-[8px] text-gray-600 mt-0.5"><span>谷底</span><span>52週位階</span><span>波段高</span></div>
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 強勢主流的回檔買點最優;低基期要有題材才做。純公式,搭配四大金剛/回後買上漲一起看。</div>`;
         el.classList.remove('hidden');
+    },
+
+    // 📢 V51.6 — 幾個「交易日」後(跳過六日;今天=0,已過=-1)。不含國定假日,近似夠用
+    _tradingDaysUntil(dateStr) {
+        try {
+            const target = new Date(String(dateStr).slice(0, 10) + 'T00:00:00');
+            if (isNaN(target.getTime())) return null;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            if (target < today) return -1;
+            let n = 0; const d = new Date(today);
+            while (d < target) { d.setDate(d.getDate() + 1); const wd = d.getDay(); if (wd !== 0 && wd !== 6) n++; }
+            return n;
+        } catch (_) { return null; }
+    },
+    // 📢 V51.6 — 個股法說會提醒(現價下方):此股 2 個交易日內有法說會才顯(來源:財經行事曆 upcoming_macro_events)
+    _renderStockEarningsReminder(sym) {
+        const el = document.getElementById('stockEarningsReminder');
+        if (!el) return;
+        el.classList.add('hidden'); el.innerHTML = '';
+        try {
+            const events = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || [];
+            if (!Array.isArray(events) || !events.length || !sym) return;
+            const name = (this.getStockName(sym) || '').replace(/-KY|\*|　/g, '').trim();
+            let hit = null, hitDays = 99, hitDate = '';
+            for (const ev of events) {
+                const t = String(ev && ev.event || '');
+                if (!/法說|法人說明會/.test(t)) continue;
+                if (!(name && t.includes(name)) && !t.includes(String(sym))) continue;   // 事件文字需含此股名或代號
+                const td = this._tradingDaysUntil(ev.date);
+                if (td == null || td < 0 || td > 2) continue;   // 只在 2 個交易日內提醒
+                if (td < hitDays) { hitDays = td; hit = t; hitDate = String(ev.date || '').slice(0, 10); }
+            }
+            if (!hit) return;
+            const dLabel = hitDays === 0 ? '就是今天' : hitDays === 1 ? '下一個交易日' : `${hitDays} 個交易日內`;
+            el.innerHTML = `<div class="bg-amber-900/25 border-l-4 border-amber-500 rounded-r px-2.5 py-1.5 mt-1.5 flex items-start gap-2">
+                <span class="text-base flex-shrink-0 leading-none mt-0.5">📢</span>
+                <div class="text-[11px] leading-snug text-amber-100"><b class="text-amber-300">法說會提醒</b> · ${hitDate}(${dLabel})<div class="text-gray-300 mt-0.5">法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)→ 留意消息面、控好部位、別重壓過會。</div></div>
+            </div>`;
+            el.classList.remove('hidden');
+        } catch (_) {}
     },
 
     // 🕯️ V41.23 — K線頁「型態+量」評分卡(朱家泓做法:型態強弱 × 價量配合,純公式,0-100 分):
@@ -21216,6 +21267,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this.renderMainRiseCard(data); } catch (_) {}    // 🎢 V48.0 主升段體檢(階段判定+獲利燃料)
         // V43.7 移除:📐 K線分析報告(AI) + 🕯️ K線型態+量評分 → 由上方朱老師口吻總評取代
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
+        try { this._renderStockEarningsReminder(this.currentSymbolId); } catch (_) {}   // 📢 V51.6 法說會提醒(現價下方,2 交易日內)
         try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日作戰指令(首席頁置頂)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
