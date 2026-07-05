@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V52.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -16922,7 +16922,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 this.rawDailyData[lastIdx].close = fugleData.price;
                 this.rawDailyData[lastIdx].high = Math.max(this.rawDailyData[lastIdx].high, fugleData.high || fugleData.price);
                 this.rawDailyData[lastIdx].low  = Math.min(this.rawDailyData[lastIdx].low,  fugleData.low  || fugleData.price);
-                // volume 保留採礦值(即時報價常不帶當日累計量,避免最新一根量柱歸零)
+                // 🔊 成交量:即時報價若帶「完整日成交量」(通常會 > 採礦殘留的盤中快照量)才往上補,
+                //    讓最新一根量柱補滿;⛔ 絕不往下蓋(報價無量/半日量時保留採礦值,避免量柱歸零 — V52.2 陷阱)。
+                if (Number(fugleData.volume) > (Number(this.rawDailyData[lastIdx].volume) || 0)) {
+                    this.rawDailyData[lastIdx].volume = fugleData.volume;
+                }
             }
         }
         // When fugleData.isHistorical === true the rawDailyData is already correct — no modification needed
