@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V53.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V53.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1071,6 +1071,15 @@
                         <!-- 👉 右戰區 (lg:col-span-5)：V38.9 合併重疊卡降噪 — 進場總評 / 價位作戰圖 / 操作SOP -->
                         <div class="w-full lg:col-span-5 flex flex-col gap-3 mt-4 lg:mt-0">
 
+                        <!-- 🧭 V53.x 分段錨點導覽:一點跳到對應區塊(位階→進場→分批→出場→下單) -->
+                        <div class="w-full flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+                            <button onclick="app._scrollToCard('priceRankCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-blue-500 hover:text-blue-300 transition-colors">📊 位階</button>
+                            <button onclick="app._scrollToCard('entryCheckup')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-red-500 hover:text-red-300 transition-colors">🎯 進場</button>
+                            <button onclick="app._scrollToCard('chuPositionPlanCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-orange-500 hover:text-orange-300 transition-colors">📐 分批</button>
+                            <button onclick="app._scrollToCard('chuStrategyCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-green-500 hover:text-green-300 transition-colors">🛡️ 出場</button>
+                            <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-cyan-500 hover:text-cyan-300 transition-colors">📝 下單</button>
+                        </div>
+
                         <!-- 📊 V50.7 位階溫度計(距歷史高 + 52週位階)移至首席頁進場體檢上方(使用者要求) -->
                         <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
 
@@ -1083,6 +1092,9 @@
                                 <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
                             </div>
                         </div>
+
+                        <!-- 📐 V14.11 朱老師分批進場計畫器(3-3-4:試單/5MA加碼/回後買上漲);V53.x 上移至進場區,決策流集中 -->
+                        <div id="chuPositionPlanCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
 
                         <!-- ⚔️ V50.7 朱家泓策略狀態(距 5MA/20MA/-5% 停損 + 燈號)移至首席頁(使用者要求) -->
                         <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -1120,9 +1132,7 @@
                         <!-- V19.2 — 永豐智慧單卡已合併到「朱老師離場 SOP」(內容重複) -->
                         <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;預估量 + 位階 + 完美買點 + 高檔回吐)-->
                         <div id="chuIntradayCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
-                        <!-- 🎯 操作 SOP(實際下單依據,常駐):分批進場計畫 + 離場 -->
-                        <!-- 📐 V14.11 朱老師分批進場計畫器(3-3-4 三批:試單/5MA加碼/回後買上漲)-->
-                        <div id="chuPositionPlanCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
+                        <!-- 🎯 操作 SOP(實際下單依據,常駐):離場;分批進場計畫已上移至進場區(V53.x) -->
                         <!-- 📌 朱老師離場 SOP(停損 A/B + 停利短/中長)-->
                         <div id="chuExitSopCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300"></div>
                         </div>
@@ -2764,6 +2774,14 @@ const app = {
     },
 
     vibrate(ms) { if(navigator.vibrate) navigator.vibrate(ms); },
+
+    // 🧭 V53.x — 分段錨點:平滑捲動到指定卡片(hidden 無資料的卡不跳,改提示)
+    _scrollToCard(id) {
+        const el = document.getElementById(id);
+        if (!el || el.offsetParent === null) { this.showToast?.('該區塊目前無資料', 'info'); return; }
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        this.vibrate?.(15);
+    },
 
     showToast(msg, type = 'error') {
         const el = document.createElement('div');
