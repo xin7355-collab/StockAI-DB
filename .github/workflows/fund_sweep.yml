@@ -61,7 +61,7 @@ jobs:
         id: sweep
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
-          FUND_NIGHTLY_BUDGET: ${{ github.event.inputs.budget || '500' }}
+          FUND_NIGHTLY_BUDGET: ${{ github.event.inputs.budget || '1500' }}
           FUND_SLEEP: '3.0'
           FUND_MIN_HITS: '20'
         run: |

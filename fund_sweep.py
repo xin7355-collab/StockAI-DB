@@ -21,7 +21,7 @@
       YoY/毛利的 fallback 來源讀。
 
 環境變數:
-  FUND_NIGHTLY_BUDGET  每晚最多補幾檔(預設 500)
+  FUND_NIGHTLY_BUDGET  每晚最多補幾檔(預設 1500,約 1-2 晚輪完全市場;token 不足會自動降級只補到能補的)
   FUND_SLEEP           每檔之間 sleep 秒數,節流防 429(預設 3.0)
   FUND_MIN_HITS        本次至少成功幾檔才算數、才讓 workflow 部署(預設 20)
   FINMIND_TOKENS       (沿用 miner.py)逗號分隔多組 token,fm_request 自動輪動
@@ -40,7 +40,7 @@ DATA_DIR = Path('data')
 FC_PATH = DATA_DIR / 'fundamentals_cache.json'      # daily_miner 產的全市場 PE/殖利率(當「宇宙」用)
 OUT_PATH = DATA_DIR / 'fund_yoy_gm.json'            # 🌙 本腳本專屬輸出(獨立檔,daily deploy 會保留)
 
-BUDGET = int(os.getenv('FUND_NIGHTLY_BUDGET', '500'))
+BUDGET = int(os.getenv('FUND_NIGHTLY_BUDGET', '1500'))
 SLEEP = float(os.getenv('FUND_SLEEP', '3.0'))
 MIN_HITS = int(os.getenv('FUND_MIN_HITS', '20'))
 
