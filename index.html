@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V52.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -21578,9 +21578,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const option = {
             animation: false, backgroundColor: 'transparent', tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', axisPointer: { type: 'line', snap: true }, showContent: false },
             axisPointer: { link: [{ xAxisIndex: 'all' }] },
-            grid: [{ left: '12%', right: '2%', top: '5%', height: '53%' }, { left: '12%', right: '2%', top: '63%', height: '28%' }],
+            grid: [{ left: '2%', right: '14%', top: '5%', height: '53%' }, { left: '2%', right: '14%', top: '63%', height: '28%' }],
             xAxis: [{ type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { color: '#c9d1d9', fontSize: 10, hideOverlap: true, interval: 'auto' } }],
-            yAxis: [{ scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 10 } }, { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 10 } }],
+            // V52.x — 價格軸(190/180/170…)移到右側,對標籌碼K線 App(慣用右軸看現價)
+            yAxis: [{ scale: true, position: 'right', gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 10 } }, { scale: true, position: 'right', gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 10 } }],
             dataZoom: [
                 { type: 'inside', xAxisIndex: [0, 1], start: currentZoomStart, end: currentZoomEnd, zoomLock: false, preventDefaultMouseMove: false, moveOnMouseMove: !this.chartInspect, moveOnMouseWheel: true, throttle: 50 },
                 { type: 'slider', xAxisIndex: [0, 1], start: currentZoomStart, end: currentZoomEnd, height: 18, bottom: 4, borderColor: '#30363d', backgroundColor: '#0d1117', fillerColor: 'rgba(96, 165, 250, 0.25)', handleStyle: { color: '#3b82f6', borderColor: '#1d4ed8' }, textStyle: { color: '#8b949e', fontSize: 9 }, brushSelect: false, throttle: 50 }
