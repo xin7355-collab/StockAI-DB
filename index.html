@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V52.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V52.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V52.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1287,10 +1287,13 @@
                             <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="hidden"><span>布林</span></label>
                         </div>
                     </div>
-                    <div id="chartHud" class="px-2 py-1 bg-[#21262d] border-b border-[#30363d] text-[11px] font-mono leading-tight flex flex-col gap-0 text-gray-100">點擊 K 棒顯示詳細數據...</div>
+                    <div class="relative">
+                        <div id="chartHud" class="px-2 py-1 pr-10 bg-[#21262d] border-b border-[#30363d] text-[11px] font-mono leading-tight flex flex-col gap-0 text-gray-100">點擊 K 棒顯示詳細數據...</div>
+                        <!-- ✕ 離開十字檢視鈕:移到灰色資訊列右上(不再蓋最新 K 棒);當 sibling 不放進 #chartHud,避免被 renderChartHud 覆寫清掉 -->
+                        <button id="chartInspectExit" onclick="app._exitChartInspect()" class="hidden absolute top-1/2 -translate-y-1/2 right-1.5 z-20 w-7 h-7 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-black shadow-lg flex items-center justify-center" title="離開十字檢視,回到平移模式">✕</button>
+                    </div>
                     <div id="mainChartWrap" class="zoomable-zone w-full flex-grow relative bg-[#000000]">
                         <div id="mainChart" class="w-full h-full min-h-[350px]"></div>
-                        <button id="chartInspectExit" onclick="app._exitChartInspect()" class="hidden absolute top-1 right-1 z-20 w-7 h-7 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-black shadow-lg flex items-center justify-center" title="離開十字檢視,回到平移模式">✕</button>
                     </div>
                     <div id="patternList" class="flex items-center gap-1 px-1 py-1 overflow-x-auto scrollbar-hide border-t border-[#30363d]" style="display:none"></div>
                     <div class="flex justify-between items-center bg-[#161b22] border-t border-[#30363d] p-1 text-xs font-bold mt-auto">
