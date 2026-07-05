@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -22144,7 +22144,38 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             : `這檔用「${name}」歷史【負期望值 ${r.expectancy.toFixed(1)}%/趟】→ 這招在這檔不好賺,建議避開、換主打型態。`;
         const vc = r.expectancy > 0 ? 'text-red-300' : 'text-green-300';
         const stats = `<div class="bg-[#0d1117] border-l-4 ${r.expectancy > 0 ? 'border-red-500' : 'border-green-500'} border-y border-r border-[#30363d] rounded-r p-2 mt-1 text-[10px] leading-relaxed"><b class="text-gray-200">📊 這檔的成績:</b>勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次 ・ 期望值 <b class="${vc}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</b><br><span class="text-gray-300">→ ${verdict}</span></div>`;
-        const html = sec('【是什麼】', h.what, 'text-blue-300') + sec('【怎麼認】', h.spot) + sec('【怎麼進場 / 停損停利】', h.how, 'text-green-300') + sec('【小白提醒】', h.tip, 'text-yellow-300') + stats + '<div class="text-[9px] text-gray-600 mt-2">純公式歷史回測,過去不代表未來;實際仍要看大盤與個股當下狀況,嚴守停損。</div>';
+        // 🎯 V51.8 帶入現價 + 你的庫存成本,把打法算成「實際數字」(現價/5MA停損/每張風險/期望金額/庫存停損損益)
+        let priceBlock = '';
+        try {
+            const arr = this.activeData || [];
+            const L = arr.length - 1;
+            if (L >= 5) {
+                const nf = v => v >= 100 ? (+v).toFixed(1) : (+v).toFixed(2);
+                const pC = +arr[L].close;
+                const ma5 = arr.slice(-5).reduce((s, d) => s + (+d.close), 0) / 5;
+                const belowMa5 = pC <= ma5;
+                const riskAmt = Math.round((pC - ma5) * 1000);          // 每張到 5MA 的距離(元)
+                const riskPct = pC > 0 ? (pC - ma5) / pC * 100 : 0;
+                const evAmt = Math.round(pC * (r.expectancy / 100) * 1000);   // 期望值換算每張約多少元
+                let lines = `現價 <b class="text-gray-100">${nf(pC)}</b> ・ 5MA <b>${nf(ma5)}</b>(多數打法的停損/停利參考線)`;
+                if (belowMa5) {
+                    lines += `<br>⚠️ 現價已在 5MA 之下 → 這類「站上才做多」的打法<b class="text-yellow-300">尚未成立</b>,等紅K站回 5MA 再說,別提前猜。`;
+                } else {
+                    lines += `<br>若現在進場、跌破 5MA 就停損:每張最多賠約 <b class="text-green-300">${Math.abs(riskAmt).toLocaleString()} 元</b>(-${Math.abs(riskPct).toFixed(1)}%)`;
+                }
+                lines += `<br>歷史每趟期望值 ${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}% → 以現價估約 <b class="${evAmt >= 0 ? 'text-red-300' : 'text-green-300'}">${evAmt >= 0 ? '+' : ''}${evAmt.toLocaleString()} 元/張</b>(歷史平均,非保證)`;
+                const inv = (this.inventory || []).find(i => i.symbol === this.currentSymbolId);
+                if (inv && +inv.cost > 0) {
+                    const cost = +inv.cost, sh = +inv.shares || 0;
+                    const pnlNow = Math.round((pC - cost) * sh * 1000);
+                    const pnlAtStop = Math.round((ma5 - cost) * sh * 1000);
+                    lines += `<br><br>💼 <b class="text-purple-300">你的庫存</b>:成本 <b>${nf(cost)}</b> × ${sh} 張 ・ 現在帳面 <b class="${pnlNow >= 0 ? 'text-red-300' : 'text-green-300'}">${pnlNow >= 0 ? '+' : ''}${pnlNow.toLocaleString()} 元</b>`;
+                    lines += `<br>若守 5MA(${nf(ma5)})當停損、真的跌到才出:帳面會變 <b class="${pnlAtStop >= 0 ? 'text-red-300' : 'text-green-300'}">${pnlAtStop >= 0 ? '+' : ''}${pnlAtStop.toLocaleString()} 元</b>`;
+                }
+                priceBlock = `<div class="bg-[#0d1117] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-2 mt-1 text-[10px] leading-relaxed text-gray-300">🎯 <b class="text-cyan-300">帶入你的價位(即時算給你看)</b><br>${lines}</div>`;
+            }
+        } catch (_) {}
+        const html = sec('【是什麼】', h.what, 'text-blue-300') + sec('【怎麼認】', h.spot) + sec('【怎麼進場 / 停損停利】', h.how, 'text-green-300') + sec('【小白提醒】', h.tip, 'text-yellow-300') + stats + priceBlock + '<div class="text-[9px] text-gray-600 mt-2">純公式歷史回測,過去不代表未來;實際仍要看大盤與個股當下狀況,嚴守停損。5MA 停損為通用估算,實際停損以上方【怎麼進場】的型態專屬點位為準。</div>';
         this._showRichModal(`${r.key}`, html);
     },
 
@@ -23038,14 +23069,17 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                             <button disabled class="flex-1 bg-[#21262d] text-gray-600 px-3 py-2 rounded text-sm font-bold cursor-not-allowed" title="尚未支援">融券</button>
                         </div>
                     </div>
-                    <!-- 總股數(− input + 股)-->
-                    <div class="grid grid-cols-[80px_1fr] items-center gap-2">
-                        <label class="text-sm text-gray-300 font-bold">總股數</label>
-                        <div class="flex items-center gap-1">
-                            <button onclick="app._adjManualShares(-1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-3 py-2 rounded text-lg font-bold w-12">−</button>
-                            <input type="number" id="manualAddSharesInput" placeholder="0" min="0" step="1000" oninput="app._manualAddState.shares = +this.value || 0;" class="flex-1 bg-[#0d1117] text-white text-center px-2 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base">
-                            <button onclick="app._adjManualShares(1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-3 py-2 rounded text-lg font-bold w-12">+</button>
-                            <span class="text-gray-400 text-sm font-bold ml-1">股</span>
+                    <!-- 總股數(− input + 股);V51.8 修:input 加 min-w-0 防 + 與「股」被擠出畫面 + 加「= X 張」換算提示 -->
+                    <div class="grid grid-cols-[80px_1fr] items-start gap-2">
+                        <label class="text-sm text-gray-300 font-bold pt-2">股數</label>
+                        <div class="flex flex-col gap-0.5 min-w-0">
+                            <div class="flex items-center gap-1">
+                                <button onclick="app._adjManualShares(-1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-2 py-2 rounded text-lg font-bold flex-shrink-0 w-10">−</button>
+                                <input type="number" id="manualAddSharesInput" placeholder="1000 = 1 張" min="0" step="1000" oninput="app._manualAddState.shares = +this.value || 0; app._updateManualLotHint();" class="flex-1 min-w-0 bg-[#0d1117] text-white text-center px-1 py-2 rounded border border-[#30363d] outline-none focus:border-blue-500 font-mono text-base">
+                                <button onclick="app._adjManualShares(1000)" class="bg-[#21262d] hover:bg-gray-700 text-white px-2 py-2 rounded text-lg font-bold flex-shrink-0 w-10">+</button>
+                                <span class="text-gray-400 text-sm font-bold flex-shrink-0">股</span>
+                            </div>
+                            <div id="manualLotHint" class="text-[10px] text-cyan-300 font-mono pl-1">= 0 張(1 張 = 1000 股)</div>
                         </div>
                     </div>
                     <!-- 成本均價 -->
@@ -23091,6 +23125,16 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this._manualAddState.shares = Math.max(0, (this._manualAddState.shares || 0) + delta);
         const input = document.getElementById('manualAddSharesInput');
         if (input) input.value = this._manualAddState.shares;
+        this._updateManualLotHint();
+    },
+    // 💡 V51.8 即時把「股數」換算成「張」給使用者看,避免股/張搞混(1 張 = 1000 股;零股照顯小數)
+    _updateManualLotHint() {
+        const el = document.getElementById('manualLotHint');
+        if (!el) return;
+        const sh = (this._manualAddState && this._manualAddState.shares) || 0;
+        const lots = sh / 1000;
+        const lotStr = Number.isInteger(lots) ? lots : +lots.toFixed(3);
+        el.textContent = `= ${lotStr} 張(1 張 = 1000 股)`;
     },
 
     _confirmManualAdd() {
