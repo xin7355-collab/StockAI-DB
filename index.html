@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V51.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V51.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -293,7 +293,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 戰情設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V51.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1020,10 +1020,7 @@
                     <div class="relative">
                         <!-- 🧠 首席AI全盤分析 + 🔮 此股預判AI V44.4 隱藏(使用者:版面好看);函式/容器保留供 JS null-safe -->
                         <div class="hidden">
-                        <button onclick="app.runUnifiedGroqAnalysis(); app.vibrate(50);" ondblclick="app.runUnifiedGroqAnalysis({force:true}); app.vibrate([30,30,30]);" title="點一下分析；連點兩下強制重抽（會耗 1 次 API 額度）" class="w-full bg-[#161b22] hover:bg-[#1c2128] border border-purple-600/40 hover:border-purple-500/60 text-purple-300 py-3 rounded-lg text-base font-black shadow-md flex justify-center items-center gap-2 transition-all">
-                            🧠 首席 AI 全盤分析
-                        </button>
-                        <div class="text-center text-[9px] text-gray-500 -mt-1.5">點一下分析 · 連點兩下強制重抽（耗 1 次額度）</div>
+                        <!-- 🗑️ V51.4 「🧠 全盤分析」AI 功能已刪除(使用者要求);按鈕移除、函式 no-op,不再打 AI/耗額度 -->
                         <!-- 🧠 AI 首席總評 + 詳評（V27.5 — 移到首席按鈕正下方,結果緊接按鈕,不再被其他卡推到下面）-->
                         <div id="aiTranslatorCard" class="w-full bg-[#161b22] border border-[#30363d] rounded-xl shadow-sm transition-all duration-300">
                             <div class="p-3 text-center text-gray-500 text-sm">🤖 點上方按鈕產生 AI 首席總評</div>
@@ -20685,8 +20682,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 }
             }
         }
-        // 註:trigger cache 設定挪到 runUnifiedGroqAnalysis 成功路徑,避免失敗的 429 佔住 5 分鐘槽位
-        this.runUnifiedGroqAnalysis({ silent: true, _autoTriggerKey: cacheKey });
+        // 🗑️ V51.4 「🧠 全盤分析」AI 已刪除 → 不再自動觸發(原 runUnifiedGroqAnalysis 已 no-op,此呼叫一併移除)
+        // this.runUnifiedGroqAnalysis({ silent: true, _autoTriggerKey: cacheKey });
     },
 
     // 自動觸發 miss 時不渲染文字(原紫色提示已移除,使用者反饋為多餘 UI)
@@ -25202,6 +25199,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     },
 
     async runUnifiedGroqAnalysis(opts = {}) {
+        // 🗑️ V51.4 「🧠 全盤分析」AI 功能已刪除(使用者要求):no-op 早退,不再打 AI、不耗額度;
+        //   函式保留供既有呼叫端(自動觸發 / 舊按鈕)null-safe,不會報錯。下方原邏輯保留但永不執行。
+        return;
         const silent = !!opts.silent;   // 自動觸發 (silent=true) 時不彈 alert、不開設定中心
         const force = !!opts.force;     // 🆕 雙擊強制重抽:略過兩層快取直打 AI(改提示詞/想重抽時用)
         const box = document.getElementById('geminiResultBox');
