@@ -27,8 +27,13 @@ except ImportError:
     print("需要 requests:pip install requests", file=sys.stderr)
     sys.exit(2)
 
-# www.twse.com.tw/rwd 正規盤後端點(miner.py 實證從 GitHub 可用);iPhone UA 對齊 miner._HDRS
-TWTB4U_URL = 'https://www.twse.com.tw/rwd/zh/afterTrading/TWTB4U'   # 每日當日沖銷交易標的及成交量值
+# www.twse.com.tw 盤後端點(miner.py 實證從 GitHub 可用);iPhone UA 對齊 miner._HDRS
+# 每日當日沖銷交易標的及成交量值:兩種 URL 樣式都試(exchangeReport 舊路徑 miner 用於 MI_MARGN;rwd 新路徑用於 STOCK_DAY)
+TWTB4U_URL_TEMPLATES = [
+    'https://www.twse.com.tw/exchangeReport/TWTB4U?response=json&date={d}&selectType=All',
+    'https://www.twse.com.tw/rwd/zh/afterTrading/TWTB4U?response=json&date={d}&selectType=All',
+    'https://www.twse.com.tw/exchangeReport/TWTB4U?response=json&date={d}',
+]
 HDRS = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
 
 OUT = os.environ.get('DT_OUT', 'data/daytrade_stats.json')
@@ -51,24 +56,34 @@ def _taipei_today():
     return (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date()
 
 
-def fetch_twtb4u(date_yyyymmdd):
-    """回傳 (parsed_dict_or_None, note)。TWSE 回 {stat, fields, data:[[...]]}"""
-    url = f'{TWTB4U_URL}?response=json&date={date_yyyymmdd}&selectType=All'
+def _get_one(url):
     try:
         r = requests.get(url, headers=HDRS, timeout=25)
         body = r.text or ''
         if r.status_code != 200 or not body.strip():
-            return None, f"HTTP {r.status_code}, {len(body)} bytes"
+            return None, f"HTTP {r.status_code}, {len(body)}B"
         try:
             j = r.json()
         except Exception as je:
-            return None, f"HTTP 200 非 JSON({str(je)[:40]}) 前60:{body[:60]!r}"
+            return None, f"200 非JSON({str(je)[:30]}) 前50:{body[:50]!r}"
         stat = j.get('stat')
         if stat != 'OK':
             return None, f"stat={stat!r}"
-        return j, f"OK, fields={len(j.get('fields', []))}, data={len(j.get('data', []))}"
+        return j, f"OK fields={len(j.get('fields', []))} data={len(j.get('data', []))}"
     except Exception as e:
-        return None, f"{type(e).__name__}: {str(e)[:60]}"
+        return None, f"{type(e).__name__}:{str(e)[:50]}"
+
+
+def fetch_twtb4u(date_yyyymmdd):
+    """試多種 URL 樣式,第一個 stat=OK 且有 data 的就用。回傳 (j_or_None, note)"""
+    notes = []
+    for tpl in TWTB4U_URL_TEMPLATES:
+        j, note = _get_one(tpl.format(d=date_yyyymmdd))
+        style = tpl.split('twse.com.tw/', 1)[1].split('?', 1)[0]
+        notes.append(f"{style}:{note}")
+        if j and j.get('data'):
+            return j, ' | '.join(notes)
+    return None, ' | '.join(notes)
 
 
 def main():
@@ -79,7 +94,7 @@ def main():
     j = None
     used_date = None
     base = _taipei_today()
-    for back in range(0, 7):
+    for back in range(0, 4):
         d = base - datetime.timedelta(days=back)
         ymd = d.strftime('%Y%m%d')
         jj, note = fetch_twtb4u(ymd)
@@ -92,7 +107,10 @@ def main():
         time.sleep(1.0)
 
     if not j:
-        print(f"❌ 連續 7 天都抓不到當沖資料 → rc=1 不部署")
+        print("❌❌ 全部日期/URL 樣式都抓不到當沖資料 → rc=1 不部署")
+        print("=== FULL DEBUG (複製給 Claude 校準)===")
+        print(json.dumps(debug, ensure_ascii=False))
+        print("=== END DEBUG ===")
         try:
             os.makedirs('data', exist_ok=True)
             with open('data/daytrade_stats.debug.json', 'w', encoding='utf-8') as f:
