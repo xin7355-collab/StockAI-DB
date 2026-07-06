@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V54.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1011,6 +1011,7 @@
                     <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">基本</button>
                     <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">回測</button>
                     <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">處置</button>
+                    <button onclick="app.switchSubTab('daytrade')" id="subTabBtnDayTrade" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚡當沖</button>
                     <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">多空</button>
                 </div>
             </div>
@@ -1396,6 +1397,17 @@
                 <div id="disposedPlaybookCard" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg"></div>
                 <!-- V26.26 — 資料來源頁尾簡化:砍 data/chips/jsym / margin_balance / FinMind / Python 原始碼 / daily_miner 等技術術語 -->
                 <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 數據來源:台灣證券交易所(TWSE)官方 OpenAPI 盤後自動同步 · 實際以 TWSE 公告為準 · 投資有風險,僅供風控參考</div>
+            </div>
+
+            <!-- ⚡ V54.3 — 當沖客儀表板 tab(全純公式:漲跌停/振幅/VWAP/量能/損益試算/相對大盤/紀律 SOP;重用即時報價) -->
+            <div id="subContentDayTrade" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
+                <div class="flex items-center justify-between">
+                    <div class="text-[11px] text-gray-400 font-bold flex items-center gap-1"><span>⚡</span>當沖作戰台</div>
+                    <button onclick="app.renderDayTradeTab(app.currentSymbolId); app.vibrate(15);" class="text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded px-2 py-1 hover:bg-cyan-900/50 transition-colors">🔄 更新即時</button>
+                </div>
+                <!-- 7 大卡由 renderDayTradeTab 動態填入(計算機/SOP 恆顯,即時卡盤中才有數字) -->
+                <div id="dayTradeBody" class="flex flex-col gap-3"></div>
+                <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 當沖 = 同日買進賣出沖銷,證交稅減半(0.15%);需券商開通資格且標的可現股當沖 · 處置股禁當沖 · 本頁純公式試算,僅供紀律參考,投資有風險</div>
             </div>
 
             <!-- ⚖️ V21.5 — 多空優勢計分卡(對標籌碼 K 線 App「多空優勢」總覽頁)-->
@@ -5269,7 +5281,7 @@ ${list}
 
     switchSubTab(tab) {
         this._activeSubTab = tab;   // 🐛 V41.28 記錄當前 sub-tab,切股時 analyze 才知道要補跑哪個載入器
-        ['Strategy', 'Live', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
+        ['Strategy', 'Live', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'DayTrade', 'BullBear'].forEach(t => {
             const el = document.getElementById(`subContent${t}`);
             if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
             const btn = document.getElementById(`subTabBtn${t}`);
@@ -5306,6 +5318,10 @@ ${list}
         // V21.5 — 多空優勢計分卡(對標籌碼 K 線 App,28 條規則 + 四面向)
         if (tab === 'bullbear' && this.currentSymbolId) {
             this.renderBullBearCard(this.currentSymbolId);
+        }
+        // ⚡ V54.3 — 當沖作戰台(純公式 7 卡,重用即時報價/分鐘K/量能達標)
+        if (tab === 'daytrade' && this.currentSymbolId) {
+            this.renderDayTradeTab(this.currentSymbolId);
         }
         // 🎯 V45.12 — 回測 tab 進頁自動跑打法適配(不用再點按鈕;純公式+當日快取)
         if (tab === 'backtest' && this.currentSymbolId) {
@@ -7218,6 +7234,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const taiex = macro.taiex, last = taiex[taiex.length-1], prev = taiex.length > 1 ? taiex[taiex.length-2] : last;
             this._macroTaiexSeries = macro.taiex;   // 🐛 V49.5 存新鮮加權序列(macro_cache 有更新),供年線乖離 merge 蓋過停更的 ^TWII.json
             const price = last.close, diff = price - prev.close, pct = prev.close > 0 ? (diff / prev.close) * 100 : 0;
+            this._taiexTodayPct = pct;   // ⚡ V54.3 供當沖「相對大盤強弱」卡
             const color = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-400');
             document.getElementById('mktTWII').innerHTML = `<span class="${color}">${price.toFixed(0)}</span>`;
             document.getElementById('mktTWII_chg').innerHTML = `<span class="${color}">${diff > 0 ? '+' : ''}${pct.toFixed(2)}%</span>`;
@@ -26339,6 +26356,286 @@ ${_chuPosPlan}
         const ip = this._invPrevPrices?.[sym]; if (ip > 0) return +ip;
         return 0;
     },
+
+    // ⚡ V54.3 — 當沖漲跌停價(台股 ±10%,漲停向下 snap 檔位、跌停向上 snap,才是可掛的合法價)
+    _dtLimitPrice(base, dir) {
+        base = +base || 0; if (base <= 0) return null;
+        const raw = dir > 0 ? base * 1.1 : base * 0.9;
+        const t = raw < 10 ? 0.01 : raw < 50 ? 0.05 : raw < 100 ? 0.1 : raw < 500 ? 0.5 : raw < 1000 ? 1 : 5;
+        const snapped = dir > 0 ? Math.floor(raw / t) * t : Math.ceil(raw / t) * t;
+        return +snapped.toFixed(2);
+    },
+
+    // ⚡ V54.3 — 當沖作戰台:純公式 7 卡(漲跌停/振幅/開盤定調/VWAP生命線/量能/損益試算/相對大盤/紀律SOP)
+    //   重用即時報價(fetchFugleData)+ 分鐘K VWAP(_fetchFugleCandles)+ 量能達標(_chuVolumeProgress),零 AI 零採礦
+    async renderDayTradeTab(sym) {
+        sym = sym || this.currentSymbolId;
+        const box = document.getElementById('dayTradeBody');
+        if (!box || !sym) return;
+        const name = this.getStockName(sym) || sym;
+        const baseRaw = this.baseRawData || this.rawDailyData || [];
+        const marketOpen = this.isMarketOpen();
+        box.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">⏳ 讀取即時報價中…</div>';
+
+        // 即時報價(盤中)/ 盤後拿最近交易日快照
+        let q = null;
+        try { q = await this.fetchFugleData(sym); } catch (_) {}
+        if (this.currentSymbolId !== sym) return;   // 切股競態守門
+
+        // 昨收:即時報價官方昨收優先 → 採礦倒數第二筆
+        let prevClose = (this._fuglePrevClose && this._fuglePrevClose > 0) ? this._fuglePrevClose : null;
+        if (!prevClose && q && q.prevClose > 0) prevClose = q.prevClose;
+        if (!prevClose && baseRaw.length >= 2) prevClose = +baseRaw[baseRaw.length - 2].close;
+        if (!prevClose && baseRaw.length) prevClose = +baseRaw[baseRaw.length - 1].close;
+
+        const price = (q && q.price > 0) ? +q.price : (baseRaw.length ? +baseRaw[baseRaw.length - 1].close : 0);
+        const openP = (q && q.open > 0) ? +q.open : (baseRaw.length ? +(baseRaw[baseRaw.length - 1].open || 0) : 0);
+        const highP = (q && q.high > 0) ? +q.high : (baseRaw.length ? +(baseRaw[baseRaw.length - 1].high || 0) : 0);
+        const lowP  = (q && q.low > 0)  ? +q.low  : (baseRaw.length ? +(baseRaw[baseRaw.length - 1].low || 0) : 0);
+        const chgPct = (prevClose > 0 && price > 0) ? (price - prevClose) / prevClose * 100 : null;
+
+        // VWAP(分時均價)— 抓當日分鐘K 最後一根 average
+        let vwap = null;
+        if (marketOpen) {
+            try { const cs = await this._fetchFugleCandles(sym, this._intradayTF || '1'); if (Array.isArray(cs) && cs.length) vwap = +cs[cs.length - 1].average; } catch (_) {}
+            if (this.currentSymbolId !== sym) return;
+        }
+
+        const cards = [];
+        const _f2 = n => (n == null || !Number.isFinite(+n)) ? '—' : (+n).toFixed(2);
+        const limitUp = this._dtLimitPrice(prevClose, 1);
+        const limitDown = this._dtLimitPrice(prevClose, -1);
+
+        // ── 卡1:⚡ 當沖儀表板 ──────────────────────────────
+        const att = this.attentionStatus?.[sym];
+        const isDisposed = att && String(att.status || '').startsWith('🚨');
+        const isAttention = att && String(att.status || '').startsWith('⚠️');
+        let canBadge, canDesc;
+        if (this._isEtfSym(sym)) { canBadge = '<span class="text-[10px] font-black text-cyan-300 bg-cyan-900/40 border border-cyan-700/50 rounded px-1.5 py-0.5">ETF・可當沖</span>'; canDesc = 'ETF 多可現股當沖(先確認券商標的表)'; }
+        else if (isDisposed) { canBadge = '<span class="text-[10px] font-black text-red-200 bg-red-700 rounded px-1.5 py-0.5 animate-pulse">🚨 處置中・禁當沖</span>'; canDesc = '分盤撮合(每5~20分1次),不可現股當沖,強行掛也難成交'; }
+        else if (isAttention) { canBadge = '<span class="text-[10px] font-black text-yellow-200 bg-yellow-900/50 border border-yellow-600 rounded px-1.5 py-0.5">⚠️ 注意股・波動大</span>'; canDesc = '可當沖但已被警示,再觸發恐升級處置,單量放小'; }
+        else { canBadge = '<span class="text-[10px] font-black text-green-200 bg-green-900/50 border border-green-600 rounded px-1.5 py-0.5">🟢 一般可當沖</span>'; canDesc = '需券商開通現股當沖資格,且標的須為可當沖股(排除全額交割/處置)'; }
+        const amp = (prevClose > 0 && highP > 0 && lowP > 0) ? (highP - lowP) / prevClose * 100 : null;
+        const distUp = (limitUp && price > 0) ? (limitUp - price) / price * 100 : null;
+        const distDown = (limitDown && price > 0) ? (price - limitDown) / price * 100 : null;
+        const chgCls = chgPct == null ? 'text-gray-300' : chgPct >= 0 ? 'text-red-400' : 'text-green-400';
+        cards.push(`
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-[12px] font-black text-gray-100 flex items-center gap-1">⚡ 當沖儀表板 <span class="text-[10px] text-gray-500 font-normal">${name}</span></div>
+                ${canBadge}
+            </div>
+            <div class="flex items-end gap-3 mb-2">
+                <div class="text-3xl font-black font-mono ${chgCls}">${_f2(price)}</div>
+                <div class="text-sm font-bold font-mono ${chgCls} pb-1">${chgPct == null ? '' : (chgPct >= 0 ? '▲+' : '▼') + chgPct.toFixed(2) + '%'}</div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <div class="bg-red-900/30 border border-red-700/50 rounded p-2 text-center">
+                    <div class="text-[9px] text-red-300 mb-0.5">🔺 漲停價</div>
+                    <div class="text-base font-black font-mono text-red-300">${_f2(limitUp)}</div>
+                    <div class="text-[9px] text-gray-500">${distUp == null ? '' : '距 ' + distUp.toFixed(1) + '%'}</div>
+                </div>
+                <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center">
+                    <div class="text-[9px] text-gray-400 mb-0.5">📊 當日振幅</div>
+                    <div class="text-base font-black font-mono text-gray-100">${amp == null ? '—' : amp.toFixed(1) + '%'}</div>
+                    <div class="text-[9px] text-gray-500">${(highP > 0 && lowP > 0) ? _f2(lowP) + '~' + _f2(highP) : ''}</div>
+                </div>
+                <div class="bg-green-900/30 border border-green-700/50 rounded p-2 text-center">
+                    <div class="text-[9px] text-green-300 mb-0.5">🔻 跌停價</div>
+                    <div class="text-base font-black font-mono text-green-300">${_f2(limitDown)}</div>
+                    <div class="text-[9px] text-gray-500">${distDown == null ? '' : '距 ' + distDown.toFixed(1) + '%'}</div>
+                </div>
+            </div>
+            <div class="bg-[#0d1117] border-l-4 ${isDisposed ? 'border-red-500' : isAttention ? 'border-yellow-500' : 'border-cyan-500'} pl-2.5 py-1.5 rounded-r">
+                <div class="text-[10px] text-gray-300 leading-relaxed">${isDisposed ? '🛑 ' : '💡 '}${canDesc}</div>
+            </div>
+        </div>`);
+
+        // ── 卡2:🔔 開盤定調條 ──────────────────────────────
+        const gap = (prevClose > 0 && openP > 0) ? (openP - prevClose) / prevClose * 100 : null;
+        let openTone, openCls, openCta;
+        if (gap == null) { openTone = '無開盤資料'; openCls = 'text-gray-400 border-gray-600'; openCta = '盤中(09:00 後)才有今日開盤價'; }
+        else if (gap >= 3) { openTone = '🚀 大幅跳空開高'; openCls = 'text-red-300 border-red-600'; openCta = '強勢但追高風險大;等回測開盤價/前高不破再順勢做多,破了快閃'; }
+        else if (gap >= 0.5) { openTone = '🔺 開高偏多'; openCls = 'text-red-300 border-red-600'; openCta = '開高走高做多順勢;站不穩開盤價(翻黑)則觀望,別凹'; }
+        else if (gap > -0.5) { openTone = '➖ 開平盤'; openCls = 'text-gray-300 border-gray-500'; openCta = '方向未定,等第一根 5 分K + VWAP 表態再決定多空'; }
+        else if (gap > -3) { openTone = '🔻 開低偏空'; openCls = 'text-green-300 border-green-600'; openCta = '開低走低做空順勢;帶量拉過開盤價(翻紅)才考慮轉多'; }
+        else { openTone = '💥 大幅跳空開低'; openCls = 'text-green-300 border-green-600'; openCta = '恐慌殺低易急跌;搶反彈只做快進快出,別接刀凹單'; }
+        cards.push(`
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-[12px] font-black text-gray-100">🔔 開盤定調</div>
+                <div class="text-[10px] text-gray-500">開盤 ${_f2(openP)} vs 昨收 ${_f2(prevClose)}</div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-lg font-black ${openCls.split(' ')[0]}">${openTone}</div>
+                <div class="text-xl font-black font-mono ${gap == null ? 'text-gray-400' : gap >= 0 ? 'text-red-400' : 'text-green-400'}">${gap == null ? '' : (gap >= 0 ? '跳空+' : '跳空') + gap.toFixed(2) + '%'}</div>
+            </div>
+            <div class="bg-[#0d1117] border-l-4 ${openCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-2">
+                <div class="text-[10px] text-gray-300 leading-relaxed">💡 ${openCta}</div>
+            </div>
+        </div>`);
+
+        // ── 卡3:🩸 VWAP 生命線 ──────────────────────────────
+        let vwapInner;
+        if (vwap && price > 0) {
+            const above = price >= vwap;
+            const dpct = (price - vwap) / vwap * 100;
+            vwapInner = `
+            <div class="flex items-end gap-3 mb-2">
+                <div class="text-2xl font-black ${above ? 'text-red-400' : 'text-green-400'}">${above ? '🔺 站上均價' : '🔻 跌破均價'}</div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">分時均價 VWAP</div><div class="text-base font-black font-mono text-white">${_f2(vwap)}</div></div>
+                <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">現價偏離</div><div class="text-base font-black font-mono ${above ? 'text-red-400' : 'text-green-400'}">${dpct >= 0 ? '+' : ''}${dpct.toFixed(2)}%</div></div>
+            </div>
+            <div class="bg-[#0d1117] border-l-4 ${above ? 'border-red-500' : 'border-green-500'} pl-2.5 py-1.5 rounded-r">
+                <div class="text-[10px] text-gray-300 leading-relaxed">💡 ${above ? '價在均價之上=當沖偏多方,做多有撐;跌破均價就是多單停損線。' : '價在均價之下=當沖偏空方,順勢做空;站回均價之上才考慮翻多。'}</div>
+            </div>`;
+        } else {
+            vwapInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 分時均價(VWAP)盤中(09:00–13:30)載入即時分鐘K後顯示。VWAP=當日所有成交的平均成本線,站上偏多、跌破偏空,是當沖最重要的多空分水嶺。</div></div>`;
+        }
+        cards.push(`
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+            <div class="text-[12px] font-black text-gray-100 mb-2">🩸 VWAP 生命線 <span class="text-[9px] text-gray-500 font-normal">分時均價=多空分水嶺</span></div>
+            ${vwapInner}
+        </div>`);
+
+        // ── 卡4:⚡ 量能達標度(重用 _chuVolumeProgress)──────────
+        const vp = (q && q.price) ? this._chuVolumeProgress(q, baseRaw) : null;
+        let volInner;
+        if (vp && vp.pct != null) {
+            const vCls = vp.lamp === 'green' ? 'text-green-300' : vp.lamp === 'yellow' ? 'text-yellow-300' : 'text-red-300';
+            const vB = vp.lamp === 'green' ? 'border-green-500' : vp.lamp === 'yellow' ? 'border-yellow-500' : 'border-red-500';
+            const fmtV = v => v == null ? '—' : (v >= 10000 ? (v / 10000).toFixed(1) + '萬張' : v.toLocaleString() + '張');
+            volInner = `
+            <div class="flex items-end gap-2 mb-2">
+                <div class="text-3xl font-black font-mono ${vCls}">${vp.pct.toFixed(0)}<span class="text-base">%</span></div>
+                <div class="text-[10px] text-gray-500 pb-1">預估收盤量 vs 昨量</div>
+            </div>
+            <div class="text-[10px] text-gray-400 mb-2">預估 ${fmtV(vp.estimated)} ・ 昨量 ${fmtV(vp.prevVol)} ・ 已成交 ${fmtV(vp.cur)}(${vp.elapsed} 分鐘）</div>
+            <div class="bg-[#0d1117] border-l-4 ${vB} pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">💡 ${vp.pct >= 80 ? '量能充足(≥80%),波動夠當沖有肉;有量的方向才可靠。' : vp.pct >= 50 ? '量能中等,行情不夠奔放,當沖獲利空間有限,單量放小。' : '量縮(<50%)→ 波動小、易被假動作洗,當沖勝率低,寧可空手。'}</div></div>`;
+        } else {
+            volInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 盤中開盤 5 分鐘後,用「已成交量 × 270 / 已過分鐘」線性外推預估收盤量,對比昨量算達標度。當沖要「有量才有波動」,達標度 ≥80% 才夠奔放。</div></div>`;
+        }
+        cards.push(`
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+            <div class="text-[12px] font-black text-gray-100 mb-2">⚡ 量能達標度 <span class="text-[9px] text-gray-500 font-normal">有量才有波動</span></div>
+            ${volInner}
+        </div>`);
+
+        // ── 卡5:🧮 當沖損益試算機(純公式,恆顯)──────────────
+        const pre = price > 0 ? this._roundTick(price).toFixed(2) : '';
+        this._dtLastCur = price > 0 ? this._roundTick(price) : null;
+        cards.push(`
+        <div class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
+            <div class="text-[12px] font-black text-cyan-200 mb-1">🧮 當沖損益試算機 <span class="text-[9px] text-gray-500 font-normal">證交稅減半 0.15%</span></div>
+            <div class="text-[10px] text-gray-500 mb-2">輸入買/賣價 + 張數,算出扣完手續費+證交稅的「淨賺多少元」</div>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div><label class="text-[10px] text-gray-400">買進價</label><input id="dtBuyPrice" type="number" step="0.01" inputmode="decimal" value="${pre}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+                <div><label class="text-[10px] text-gray-400">賣出價</label><input id="dtSellPrice" type="number" step="0.01" inputmode="decimal" value="${pre}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+                <div><label class="text-[10px] text-gray-400">張數</label><input id="dtLots" type="number" step="1" min="1" inputmode="numeric" value="1" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+                <div><label class="text-[10px] text-gray-400">手續費折數 <span class="text-gray-600">(電子單常 0.28)</span></label><input id="dtFeeDisc" type="number" step="0.01" min="0.1" max="1" inputmode="decimal" value="0.28" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+            </div>
+            <div id="dtResult"></div>
+        </div>`);
+
+        // ── 卡6:⚖️ 相對大盤強弱 ──────────────────────────────
+        const twiiPct = this._taiexTodayPct;
+        let rsInner;
+        if (chgPct != null && twiiPct != null && Number.isFinite(twiiPct)) {
+            const rel = chgPct - twiiPct;
+            const strong = rel >= 0;
+            const relTone = rel >= 1 ? '💪 明顯強於大盤' : rel >= 0.2 ? '🔺 略強於大盤' : rel > -0.2 ? '➖ 與大盤同步' : rel > -1 ? '🔻 略弱於大盤' : '⚠️ 明顯弱於大盤';
+            const relCls = rel >= 0.2 ? 'text-red-400 border-red-500' : rel <= -0.2 ? 'text-green-400 border-green-500' : 'text-gray-300 border-gray-500';
+            rsInner = `
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">本股今日</div><div class="text-base font-black font-mono ${chgPct >= 0 ? 'text-red-400' : 'text-green-400'}">${chgPct >= 0 ? '+' : ''}${chgPct.toFixed(2)}%</div></div>
+                <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">加權指數今日</div><div class="text-base font-black font-mono ${twiiPct >= 0 ? 'text-red-400' : 'text-green-400'}">${twiiPct >= 0 ? '+' : ''}${twiiPct.toFixed(2)}%</div></div>
+            </div>
+            <div class="text-center text-lg font-black ${relCls.split(' ')[0]} mb-1">${relTone} <span class="text-sm font-mono">(${rel >= 0 ? '+' : ''}${rel.toFixed(2)}%)</span></div>
+            <div class="bg-[#0d1117] border-l-4 ${relCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">💡 ${strong ? '強過大盤=相對強勢股,大盤反彈時它衝更快,當沖做多優先挑這種。' : '弱於大盤=相對弱勢,大盤跌時它跌更兇,做空優先挑弱勢股;做多請避開。'}</div></div>`;
+        } else {
+            rsInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 盤中比對「本股今日漲跌% vs 加權指數今日漲跌%」。強過大盤=相對強勢(做多優選)、弱於大盤=相對弱勢(做空優選)。需盤中即時報價 + 大盤報價才能算。</div></div>`;
+        }
+        cards.push(`
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+            <div class="text-[12px] font-black text-gray-100 mb-2">⚖️ 相對大盤強弱 <span class="text-[9px] text-gray-500 font-normal">挑強做多・挑弱做空</span></div>
+            ${rsInner}
+        </div>`);
+
+        // ── 卡7:📋 當沖紀律 SOP(Vertical Stepper,恆顯)──────
+        const steps = [
+            { c: 'cyan',   t: '① 開盤觀察(09:00–09:15)', d: '先看開盤定調 + 第一根 5 分K,別在開盤前 15 分鐘急著進場(最亂)。' },
+            { c: 'green',  t: '② 進場條件(順勢)', d: '做多:站上 VWAP + 量能達標 ≥80% + 相對強於大盤。做空:跌破 VWAP + 相對弱於大盤。三個條件對齊才進。' },
+            { c: 'red',    t: '③ 硬停損(鐵律)', d: '多單:跌破 VWAP 或 -1.5% 立刻砍。空單:站回 VWAP 立刻回補。單筆虧損上限 = 本金 1%,絕不凹單、不攤平。' },
+            { c: 'yellow', t: '④ 停利', d: '有量拉抬續抱、量縮或觸前高/前低就分批出;賺 2~3% 先落袋一半,剩下移動停利。' },
+            { c: 'orange', t: '⑤ 收盤前平倉(13:25)', d: '⚠️ 現股當沖務必當日沖銷!13:25 前一定平倉,沒平掉會被強制以市價成交或變隔日交割(要付全額),風險爆增。' },
+        ];
+        const stepHtml = steps.map((s, i) => `
+            <div class="flex gap-2.5">
+                <div class="flex flex-col items-center flex-shrink-0">
+                    <div class="w-5 h-5 rounded-full bg-${s.c}-600 text-white text-[10px] font-black flex items-center justify-center">${i + 1}</div>
+                    ${i < steps.length - 1 ? '<div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>' : ''}
+                </div>
+                <div class="flex-1 pb-2.5">
+                    <div class="text-[11px] font-bold text-${s.c}-300">${s.t}</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${s.d}</div>
+                </div>
+            </div>`).join('');
+        cards.push(`
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+            <div class="text-[12px] font-black text-gray-100 mb-2">📋 當沖紀律 SOP <span class="text-[9px] text-gray-500 font-normal">照表操課不情緒化</span></div>
+            ${stepHtml}
+            <div class="bg-red-900/20 border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1"><div class="text-[10px] text-red-200 leading-relaxed">🛑 當沖是零和高風險遊戲,90% 散戶長期虧損。沒紀律=送錢,新手先用小量練手感,守停損活得久比賺得快重要。</div></div>
+        </div>`);
+
+        if (this.currentSymbolId !== sym) return;
+        box.innerHTML = cards.join('');
+        try { this._calcDayTradePnl(); } catch (_) {}
+    },
+
+    // ⚡ V54.3 — 當沖損益試算:含手續費(0.1425%×折數,買賣各一次)+ 證交稅(當沖減半 0.15%,賣出收)
+    _calcDayTradePnl() {
+        const el = id => document.getElementById(id);
+        const out = el('dtResult'); if (!out) return;
+        const buy = +(el('dtBuyPrice')?.value) || 0;
+        const sell = +(el('dtSellPrice')?.value) || 0;
+        const lots = Math.max(1, Math.floor(+(el('dtLots')?.value) || 1));
+        let disc = +(el('dtFeeDisc')?.value); if (!(disc > 0)) disc = 1; if (disc > 1) disc = 1;
+        if (!(buy > 0) || !(sell > 0)) { out.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-2">請輸入買進價與賣出價</div>'; return; }
+        const shares = lots * 1000;
+        const buyAmt = buy * shares, sellAmt = sell * shares;
+        const buyFee = Math.round(buyAmt * 0.001425 * disc);
+        const sellFee = Math.round(sellAmt * 0.001425 * disc);
+        const tax = Math.round(sellAmt * 0.0015);   // 當沖證交稅減半
+        const gross = (sell - buy) * shares;
+        const cost = buyFee + sellFee + tax;
+        const net = Math.round(gross - cost);
+        const netPct = buyAmt > 0 ? net / buyAmt * 100 : 0;
+        const win = net >= 0;
+        const netCls = win ? 'text-red-400' : 'text-green-400';
+        // 損益兩平賣價:sell 使 net=0 → sell*shares*(1-0.001425*disc-0.0015) = buy*shares*(1+0.001425*disc)
+        const bep = buy * (1 + 0.001425 * disc) / (1 - 0.001425 * disc - 0.0015);
+        out.innerHTML = `
+        <div class="bg-[#0d1117] border border-[#30363d] rounded p-2.5">
+            <div class="flex items-baseline justify-between mb-1.5">
+                <span class="text-[11px] text-gray-400">淨損益</span>
+                <span class="text-2xl font-black font-mono ${netCls}">${net >= 0 ? '+' : ''}${net.toLocaleString()} 元</span>
+            </div>
+            <div class="flex items-baseline justify-between mb-2">
+                <span class="text-[10px] text-gray-500">淨報酬率</span>
+                <span class="text-sm font-black font-mono ${netCls}">${netPct >= 0 ? '+' : ''}${netPct.toFixed(2)}%（${win ? '獲利' : '虧損'}）</span>
+            </div>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] border-t border-[#21262d] pt-1.5">
+                <div class="flex justify-between"><span class="text-gray-500">價差毛利</span><span class="font-mono ${gross >= 0 ? 'text-red-300' : 'text-green-300'}">${gross >= 0 ? '+' : ''}${gross.toLocaleString()}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">買進手續費</span><span class="font-mono text-gray-300">-${buyFee.toLocaleString()}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">賣出手續費</span><span class="font-mono text-gray-300">-${sellFee.toLocaleString()}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">證交稅(減半)</span><span class="font-mono text-gray-300">-${tax.toLocaleString()}</span></div>
+            </div>
+            <div class="text-[10px] text-gray-500 mt-1.5 pt-1.5 border-t border-[#21262d]">💡 損益兩平賣價 ≈ <b class="text-yellow-300 font-mono">${bep.toFixed(2)}</b>(賣超過這價才真的賺,含來回成本 ${((0.001425 * disc * 2 + 0.0015) * 100).toFixed(3)}%)</div>
+        </div>`;
+    },
+
     // 🎯 依台股升降單位把價格 snap 到最近檔位(免出現 210.37 這種不可掛的價)
     _roundTick(p) {
         p = +p || 0; if (p <= 0) return 0;
