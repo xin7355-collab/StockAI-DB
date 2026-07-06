@@ -1859,22 +1859,40 @@ def run():
                             new_rows.sort(key=lambda x: x['date'])
                             print(f"  📈 {sym} yfinance 強化補洞 {added} 筆(歷史不足 2 年,抓 730 天範圍 / 共 {len(yf_rows)} 天可用)")
                 else:
-                    # 模式 B:歷史已足 → 只補最近 10 天的當日資料
-                    missing_recent = [d for d in trading_days[-10:] if d.strftime('%Y/%m/%d') not in got_dates]
-                    if missing_recent:
+                    # 模式 B:歷史已足 → 補最近 10 天「缺漏」+ 校正「殘留盤中快照」
+                    recent_10 = [d.strftime('%Y/%m/%d') for d in trading_days[-10:]]
+                    missing_recent = [ds for ds in recent_10 if ds not in got_dates]
+                    # 🆕 V54.x — 上櫃股 TPEX 舊端點(www.tpex.org.tw/web/...st43/3itrade)已失效 → 最近交易日常殘留
+                    #    MIS 盤中快照(收盤/量非最終),官方這次沒回來校正,舊邏輯「只補缺漏」永遠不覆蓋它(如 5483 07/03=196.5)。
+                    #    修:用 yfinance(auto_adjust=False=原始價=官方收盤)校正「最近 10 日、官方這次沒重抓到、且收盤與現存
+                    #    差 ≥1.5%」的日子 → 判定為殘留快照,加進 new_rows 讓下方覆蓋邏輯改為最終值。TWSE 股官方有回→不受影響。
+                    official_dates = {r['date'] for r in new_rows}   # 這次 TWSE/TPEX 真的有回的日子
+                    stale_recent = [ds for ds in recent_10 if ds in existing_map and ds not in official_dates]
+                    if missing_recent or stale_recent:
                         yf_rows = yfinance_ohlcv_fallback(sym, market_type, days_back=30)
                         if yf_rows:
                             before_len = len(new_rows)
-                            missing_set = {d.strftime('%Y/%m/%d') for d in missing_recent}
+                            yf_by_date = {r['date']: r for r in yf_rows}
                             existing_dates = {r['date'] for r in new_rows}
-                            for r in yf_rows:
-                                if r['date'] in missing_set and r['date'] not in existing_dates:
-                                    new_rows.append(r)
-                                    existing_dates.add(r['date'])
+                            # (a) 補完全缺漏的日子
+                            for ds in missing_recent:
+                                yr = yf_by_date.get(ds)
+                                if yr and ds not in existing_dates:
+                                    new_rows.append(yr); existing_dates.add(ds)
+                            # (b) 校正殘留盤中快照(收盤差 ≥1.5%;auto_adjust=False 無除權息誤差,官方≈yfinance 通常 <0.1%)
+                            n_fix = 0
+                            for ds in stale_recent:
+                                yr = yf_by_date.get(ds)
+                                if not yr or ds in existing_dates:
+                                    continue
+                                old_c = existing_map[ds].get('close') or 0
+                                if old_c > 0 and abs(yr['close'] - old_c) / old_c >= 0.015:
+                                    new_rows.append(yr); existing_dates.add(ds); n_fix += 1
+                                    print(f"  🔧 {sym} {ds} 疑殘留盤中快照(收 {old_c}→yfinance {yr['close']}),yfinance 校正覆蓋")
                             added = len(new_rows) - before_len
                             if added > 0:
                                 new_rows.sort(key=lambda x: x['date'])
-                                print(f"  📈 {sym} yfinance 補洞 {added} 筆 (TWSE/TPEX 缺 {len(missing_recent)} 天)")
+                                print(f"  📈 {sym} yfinance 補洞/校正 {added} 筆 (缺 {len(missing_recent)} + 殘留快照校正 {n_fix})")
 
                 # ── 🛡️ 【時間護盾與 MIS 即時快照補丁】 ──
                 tw_now = datetime.now(timezone(timedelta(hours=8)))
