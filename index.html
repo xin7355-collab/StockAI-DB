@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V54.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -322,7 +322,8 @@
                         <button onclick="app.clearAllLocalData(); app.vibrate(80);" class="bg-red-900/70 hover:bg-red-800 text-white text-xs py-2 rounded font-bold transition leading-tight border border-red-700">🗑️<br>一鍵刪除</button>
                     </div>
                     <div id="exportAreaContainer" class="hidden flex flex-col gap-1.5 mt-1 bg-blue-950/30 border border-blue-800/50 rounded p-2">
-                        <input type="file" id="paBackupFile" accept=".sjbak,.txt,.json" class="hidden" onchange="app._importBackupFile(event)">
+                        <!-- ⚠️ V54.6 不設 accept:iOS 不認 .sjbak 自訂副檔名會反灰不給選 → 開放全部檔案,選到後由 _importBackupFile 驗證內容 -->
+                        <input type="file" id="paBackupFile" class="hidden" onchange="app._importBackupFile(event)">
                         <button onclick="document.getElementById('paBackupFile').click(); app.vibrate(30);" class="w-full bg-blue-800/60 hover:bg-blue-700 text-white text-xs py-2 rounded font-bold transition border border-blue-600">📂 選備份檔(.sjbak)還原</button>
                         <p class="text-[10px] text-blue-300 leading-tight">或把備份代碼貼進下面,按「✅ 確認還原」</p>
                         <textarea id="exportArea" class="w-full h-20 bg-[#010409] text-gray-400 p-2 rounded border border-gray-600 text-xs font-mono outline-none focus:border-blue-500 focus:text-white transition-colors" placeholder="貼上備份代碼(或用上面選檔案)..."></textarea>
@@ -2324,10 +2325,13 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button id="dtAccelBtn" onclick="app._toggleDtAccel(); app.vibrate(15);" class="text-[11px] font-bold text-gray-300 bg-[#21262d] border border-[#30363d] rounded px-2.5 py-1.5 hover:bg-[#2d333b] transition-colors">⚡ 加速 OFF</button>
                     <button onclick="app._openDayTradeSearch(); app.vibrate(15);" class="text-[11px] font-bold text-white bg-blue-700/60 border border-blue-500/50 rounded px-2.5 py-1.5 hover:bg-blue-600/60 transition-colors">🔍 換股</button>
                     <button onclick="app.renderDayTradeTab(app.currentSymbolId); app.vibrate(15);" class="text-[11px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded px-2.5 py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 更新</button>
                 </div>
             </div>
+            <!-- ⚡ V54.6 加速刷價狀態列(ON 時顯示,盤後/切走自動停) -->
+            <div id="dtAccelBar" class="hidden text-[10px] text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-2 py-1 mb-1 flex items-center justify-between"><span>⚡ 加速刷價中(每 3 秒)</span><span id="dtAccelTick" class="text-gray-500 font-mono">—</span></div>
             <!-- 7 大卡由 renderDayTradeTab 動態填入(無選股時顯空狀態引導搜尋) -->
             <div id="dayTradeBody" class="flex flex-col gap-3"></div>
             <div class="text-center text-[10px] text-gray-600 mt-2 leading-relaxed">※ 當沖 = 同日買進賣出沖銷,證交稅減半(0.15%);需券商開通資格且標的可現股當沖 · 處置股禁當沖 · 本頁純公式試算,僅供紀律參考,投資有風險</div>
@@ -5149,6 +5153,7 @@ ${list}
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         this._stopInvPricePoll();   // 🔄 V45.13 離開任何頁先停庫存輪詢,進 inv 再開
+        if (tabId !== 'daytrade') { try { this._stopDtAccel?.(); } catch (_) {} }   // ⚡ V54.6 離開當沖頁停加速刷價
         // 💎 V46.7 — 離開潛力頁前記住捲動位置(切走再回來還原,不跳回頂端)
         const _potElNow = document.getElementById('tabContentPotential');
         if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = window.scrollY || 0;
@@ -26395,10 +26400,12 @@ ${_chuPosPlan}
 
     // ⚡ V54.3 — 當沖作戰台:純公式 7 卡(漲跌停/振幅/開盤定調/VWAP生命線/量能/損益試算/相對大盤/紀律SOP)
     //   重用即時報價(fetchFugleData)+ 分鐘K VWAP(_fetchFugleCandles)+ 量能達標(_chuVolumeProgress),零 AI 零採礦
-    async renderDayTradeTab(sym) {
+    async renderDayTradeTab(sym, opts = {}) {
         sym = sym || this.currentSymbolId;
         const box = document.getElementById('dayTradeBody');
         if (!box) return;
+        // ⚡ V54.6 加速刷價:正在填損益試算機時跳過這次刷新,不打斷使用者輸入
+        if (opts.fast && document.activeElement && ['dtBuyPrice','dtSellPrice','dtLots','dtFeeDisc'].includes(document.activeElement.id)) return;
         const name = sym ? (this.getStockName(sym) || sym) : '';
         const baseRaw = (sym && this.currentSymbolId === sym) ? (this.baseRawData || this.rawDailyData || []) : [];
         const marketOpen = this.isMarketOpen();
@@ -26417,7 +26424,7 @@ ${_chuPosPlan}
             </div>`;
             return;
         }
-        box.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">⏳ 讀取即時報價中…</div>';
+        if (!opts.fast) box.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">⏳ 讀取即時報價中…</div>';
 
         // 即時報價(盤中)/ 盤後拿最近交易日快照
         let q = null;
@@ -26437,10 +26444,14 @@ ${_chuPosPlan}
         const chgPct = (prevClose > 0 && price > 0) ? (price - prevClose) / prevClose * 100 : null;
 
         // VWAP(分時均價)— 抓當日分鐘K 最後一根 average
+        //   ⚡ V54.6 加速刷價的「快 tick」不重抓分鐘K(VWAP 變化慢),沿用上次值省額度;整點 tick 才重抓
         let vwap = null;
-        if (marketOpen) {
+        if (marketOpen && opts.fast && this._dtLastVwap && this._dtLastVwap.sym === sym) {
+            vwap = this._dtLastVwap.v;
+        } else if (marketOpen) {
             try { const cs = await this._fetchFugleCandles(sym, this._intradayTF || '1'); if (Array.isArray(cs) && cs.length) vwap = +cs[cs.length - 1].average; } catch (_) {}
             if (this.currentSymbolId !== sym) return;
+            if (vwap != null) this._dtLastVwap = { sym, v: vwap };
         }
 
         const cards = [];
@@ -26703,17 +26714,23 @@ ${_chuPosPlan}
         </div>`);
 
         // ── 卡5:🧮 當沖損益試算機(純公式,恆顯)──────────────
-        const pre = price > 0 ? this._roundTick(price).toFixed(2) : '';
+        //   ⚡ V54.6 保留使用者已輸入值(加速刷價/切 tab 重繪不洗掉);換股才用現價重填
+        if (!this._dtCalcState || this._dtCalcState.sym !== sym) this._dtCalcState = null;
+        const defPre = price > 0 ? this._roundTick(price).toFixed(2) : '';
+        const preBuy = this._dtCalcState ? this._dtCalcState.buy : defPre;
+        const preSell = this._dtCalcState ? this._dtCalcState.sell : defPre;
+        const preLots = this._dtCalcState ? this._dtCalcState.lots : '1';
+        const preDisc = this._dtCalcState ? this._dtCalcState.disc : '0.28';
         this._dtLastCur = price > 0 ? this._roundTick(price) : null;
         cards.push(`
         <div class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
             <div class="text-[12px] font-black text-cyan-200 mb-1">🧮 當沖損益試算機 <span class="text-[9px] text-gray-500 font-normal">證交稅減半 0.15%</span></div>
             <div class="text-[10px] text-gray-500 mb-2">輸入買/賣價 + 張數,算出扣完手續費+證交稅的「淨賺多少元」</div>
             <div class="grid grid-cols-2 gap-2 mb-2">
-                <div><label class="text-[10px] text-gray-400">買進價</label><input id="dtBuyPrice" type="number" step="0.01" inputmode="decimal" value="${pre}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
-                <div><label class="text-[10px] text-gray-400">賣出價</label><input id="dtSellPrice" type="number" step="0.01" inputmode="decimal" value="${pre}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
-                <div><label class="text-[10px] text-gray-400">張數</label><input id="dtLots" type="number" step="1" min="1" inputmode="numeric" value="1" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
-                <div><label class="text-[10px] text-gray-400">手續費折數 <span class="text-gray-600">(電子單常 0.28)</span></label><input id="dtFeeDisc" type="number" step="0.01" min="0.1" max="1" inputmode="decimal" value="0.28" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+                <div><label class="text-[10px] text-gray-400">買進價</label><input id="dtBuyPrice" type="number" step="0.01" inputmode="decimal" value="${preBuy}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+                <div><label class="text-[10px] text-gray-400">賣出價</label><input id="dtSellPrice" type="number" step="0.01" inputmode="decimal" value="${preSell}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+                <div><label class="text-[10px] text-gray-400">張數</label><input id="dtLots" type="number" step="1" min="1" inputmode="numeric" value="${preLots}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
+                <div><label class="text-[10px] text-gray-400">手續費折數 <span class="text-gray-600">(電子單常 0.28)</span></label><input id="dtFeeDisc" type="number" step="0.01" min="0.1" max="1" inputmode="decimal" value="${preDisc}" oninput="app._calcDayTradePnl()" class="w-full mt-0.5 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 text-sm font-mono font-bold text-gray-100 focus:border-cyan-500 outline-none"></div>
             </div>
             <div id="dtResult"></div>
         </div>`);
@@ -26778,6 +26795,50 @@ ${_chuPosPlan}
         try { this._calcDayTradePnl(); } catch (_) {}
     },
 
+    // ⚡ V54.6 — 當沖加速刷價:盤中單一檔每 3 秒刷即時報價,VWAP 每 ~30 秒才重抓(省額度)
+    //   安全閥:只在當沖頁顯示+盤中+有選股+App 前景才刷;切走/收盤/背景自動停;打字試算時跳過
+    _dtAccelOn: false,
+    _dtAccelTimer: null,
+    _dtAccelCount: 0,
+    _toggleDtAccel() {
+        if (this._dtAccelOn) { this._stopDtAccel(); return; }
+        if (!this.currentSymbolId) { this.showToast?.('請先搜尋一檔股票再開加速', 'info'); return; }
+        if (!this.isMarketOpen()) { this.showToast?.('非盤中(09:00–13:30)不需加速刷價', 'info'); return; }
+        this._startDtAccel();
+    },
+    _startDtAccel() {
+        this._stopDtAccel();
+        this._dtAccelOn = true;
+        this._dtAccelCount = 0;
+        const btn = document.getElementById('dtAccelBtn');
+        if (btn) { btn.textContent = '⚡ 加速 ON'; btn.className = 'text-[11px] font-bold text-amber-100 bg-amber-600/70 border border-amber-400/60 rounded px-2.5 py-1.5 transition-colors animate-pulse'; }
+        document.getElementById('dtAccelBar')?.classList.remove('hidden');
+        this._dtAccelTick(true);   // 立刻刷一次(含 VWAP)
+        this._dtAccelTimer = setInterval(() => this._dtAccelTick(false), 3000);
+    },
+    _stopDtAccel() {
+        this._dtAccelOn = false;
+        if (this._dtAccelTimer) { clearInterval(this._dtAccelTimer); this._dtAccelTimer = null; }
+        const btn = document.getElementById('dtAccelBtn');
+        if (btn) { btn.textContent = '⚡ 加速 OFF'; btn.className = 'text-[11px] font-bold text-gray-300 bg-[#21262d] border border-[#30363d] rounded px-2.5 py-1.5 hover:bg-[#2d333b] transition-colors'; }
+        document.getElementById('dtAccelBar')?.classList.add('hidden');
+    },
+    _dtAccelTick(full) {
+        if (!this._dtAccelOn) return;
+        // 守門:當沖頁要顯示 + 盤中 + 有選股 + App 前景;任一不成立就自動停
+        const visible = document.getElementById('tabContentDayTrade')?.style.display !== 'none';
+        if (document.hidden || !visible || !this.currentSymbolId || !this.isMarketOpen()) {
+            this._stopDtAccel();
+            return;
+        }
+        this._dtAccelCount++;
+        // 每 10 次(~30 秒)做一次「完整刷」重抓 VWAP 分鐘K;其餘走快刷(不重抓分鐘K)
+        const isFull = full || (this._dtAccelCount % 10 === 0);
+        const tickEl = document.getElementById('dtAccelTick');
+        if (tickEl) { try { tickEl.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); } catch (_) {} }
+        this.renderDayTradeTab(this.currentSymbolId, { fast: !isFull });
+    },
+
     // ⚡ V54.3 — 當沖損益試算:含手續費(0.1425%×折數,買賣各一次)+ 證交稅(當沖減半 0.15%,賣出收)
     _calcDayTradePnl() {
         const el = id => document.getElementById(id);
@@ -26786,6 +26847,8 @@ ${_chuPosPlan}
         const sell = +(el('dtSellPrice')?.value) || 0;
         const lots = Math.max(1, Math.floor(+(el('dtLots')?.value) || 1));
         let disc = +(el('dtFeeDisc')?.value); if (!(disc > 0)) disc = 1; if (disc > 1) disc = 1;
+        // ⚡ V54.6 記住目前輸入值,供加速刷價/重繪時保留(不被現價洗掉)
+        this._dtCalcState = { sym: this.currentSymbolId, buy: el('dtBuyPrice')?.value || '', sell: el('dtSellPrice')?.value || '', lots: el('dtLots')?.value || '1', disc: el('dtFeeDisc')?.value || '0.28' };
         if (!(buy > 0) || !(sell > 0)) { out.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-2">請輸入買進價與賣出價</div>'; return; }
         const shares = lots * 1000;
         const buyAmt = buy * shares, sellAmt = sell * shares;
