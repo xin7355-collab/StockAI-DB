@@ -27,13 +27,18 @@ except ImportError:
     print("需要 requests:pip install requests", file=sys.stderr)
     sys.exit(2)
 
-# www.twse.com.tw 盤後端點(miner.py 實證從 GitHub 可用);iPhone UA 對齊 miner._HDRS
-# 每日當日沖銷交易標的及成交量值:兩種 URL 樣式都試(exchangeReport 舊路徑 miner 用於 MI_MARGN;rwd 新路徑用於 STOCK_DAY)
-TWTB4U_URL_TEMPLATES = [
-    'https://www.twse.com.tw/exchangeReport/TWTB4U?response=json&date={d}&selectType=All',
-    'https://www.twse.com.tw/rwd/zh/afterTrading/TWTB4U?response=json&date={d}&selectType=All',
-    'https://www.twse.com.tw/exchangeReport/TWTB4U?response=json&date={d}',
-]
+# www.twse.com.tw/exchangeReport 盤後端點(實證:此 host+path 回合法 JSON;rwd 路徑回 HTML,openapi 回空)
+# 每日當日沖銷交易標的:報表代碼不確定(TWTB4U 回 stat=OK 但空)→ 試多個代碼 × selectType,哪個回 fields>0 用哪個
+_EXR = 'https://www.twse.com.tw/exchangeReport/'
+_DT_REPORTS = ['TWT84U', 'TWTB4U', 'TWT92U']
+_DT_SELTYPES = ['All', 'ALLBUT0999', '']
+
+def _dt_urls(d):
+    for rep in _DT_REPORTS:
+        for st in _DT_SELTYPES:
+            q = f'response=json&date={d}' + (f'&selectType={st}' if st else '')
+            yield rep, f'{_EXR}{rep}?{q}'
+
 HDRS = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
 
 OUT = os.environ.get('DT_OUT', 'data/daytrade_stats.json')
@@ -75,14 +80,15 @@ def _get_one(url):
 
 
 def fetch_twtb4u(date_yyyymmdd):
-    """試多種 URL 樣式,第一個 stat=OK 且有 data 的就用。回傳 (j_or_None, note)"""
+    """試多報表代碼 × selectType,第一個 fields>0 且有 data 的就用。回傳 (j_or_None, note)"""
     notes = []
-    for tpl in TWTB4U_URL_TEMPLATES:
-        j, note = _get_one(tpl.format(d=date_yyyymmdd))
-        style = tpl.split('twse.com.tw/', 1)[1].split('?', 1)[0]
-        notes.append(f"{style}:{note}")
-        if j and j.get('data'):
+    for rep, url in _dt_urls(date_yyyymmdd):
+        j, note = _get_one(url)
+        st = url.split('selectType=', 1)[1] if 'selectType=' in url else '(none)'
+        notes.append(f"{rep}/{st}:{note}")
+        if j and j.get('fields') and j.get('data'):
             return j, ' | '.join(notes)
+        time.sleep(0.4)
     return None, ' | '.join(notes)
 
 
