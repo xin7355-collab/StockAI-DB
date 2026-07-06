@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V54.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -26493,6 +26493,143 @@ ${_chuPosPlan}
             </div>
         </div>`);
 
+        // ── 昨日 K(供 CDP/Pivot/關卡):最後一根「非今日」的日K ──
+        let yBar = null;
+        if (baseRaw.length) {
+            const _t = new Date();
+            const todayStr = `${_t.getFullYear()}/${String(_t.getMonth()+1).padStart(2,'0')}/${String(_t.getDate()).padStart(2,'0')}`;
+            const lastB = baseRaw[baseRaw.length - 1];
+            const lastIsToday = lastB && String(lastB.date || '').replace(/-/g, '/') === todayStr;
+            yBar = (lastIsToday && baseRaw.length >= 2) ? baseRaw[baseRaw.length - 2] : lastB;
+        }
+        const yH = yBar ? +yBar.high : 0, yL = yBar ? +yBar.low : 0;
+        const yC = (prevClose > 0) ? prevClose : (yBar ? +yBar.close : 0);
+        const yO = yBar ? +(yBar.open || 0) : 0;
+
+        // ── 卡:🎯 CDP 逆勢 + 樞紐點 Pivot(純公式,盤後照顯)──
+        if (yH > 0 && yL > 0 && yC > 0 && yH >= yL) {
+            const rt = p => this._roundTick(p);
+            const range = yH - yL;
+            // Pivot
+            const P = (yH + yL + yC) / 3;
+            const R1 = 2 * P - yL, S1 = 2 * P - yH;
+            const R2 = P + range, S2 = P - range;
+            // CDP
+            const CDP = (yH + yL + 2 * yC) / 4;
+            const AH = CDP + range, NH = 2 * CDP - yL, NL = 2 * CDP - yH, AL = CDP - range;
+            // 現價落在哪一區(Pivot)
+            const px = price > 0 ? price : yC;
+            let zone, zCls;
+            if (px >= R2) { zone = '🔥 突破 R2 強壓 → 過熱,追多嚴設停損'; zCls = 'text-red-300 border-red-500'; }
+            else if (px >= R1) { zone = '🔺 R1~R2 多方區 → 站穩偏多,壓力在 R2'; zCls = 'text-red-300 border-red-500'; }
+            else if (px >= P) { zone = '➕ 樞紐~R1 偏多 → 守樞紐 P 做多'; zCls = 'text-red-300 border-red-500'; }
+            else if (px >= S1) { zone = '➖ S1~樞紐 偏空 → 破樞紐 P 轉弱'; zCls = 'text-green-300 border-green-500'; }
+            else if (px >= S2) { zone = '🔻 S1~S2 空方區 → 支撐在 S2'; zCls = 'text-green-300 border-green-500'; }
+            else { zone = '💥 跌破 S2 弱撐 → 破位,搶反彈快進快出'; zCls = 'text-green-300 border-green-500'; }
+            const lvl = (lbl, v, c) => `<div class="flex items-center justify-between py-1 border-b border-[#21262d] last:border-0"><span class="text-[10px] ${c}">${lbl}</span><span class="text-[12px] font-mono font-black ${c}">${rt(v).toFixed(2)}</span></div>`;
+            cards.push(`
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[12px] font-black text-gray-100">🎯 樞紐點 + CDP 關卡 <span class="text-[9px] text-gray-500 font-normal">昨日H/L/C推今日壓撐</span></div>
+                    <span class="text-[9px] text-gray-500">昨 ${_f2(yH)}/${_f2(yL)}/${_f2(yC)}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-x-3">
+                    <div>
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">樞紐點 Pivot</div>
+                        ${lvl('R2 強壓', R2, 'text-red-300')}
+                        ${lvl('R1 壓力', R1, 'text-red-300')}
+                        ${lvl('P 樞紐', P, 'text-gray-200')}
+                        ${lvl('S1 支撐', S1, 'text-green-300')}
+                        ${lvl('S2 強撐', S2, 'text-green-300')}
+                    </div>
+                    <div>
+                        <div class="text-[9px] text-gray-500 font-bold mb-0.5">CDP 逆勢五值</div>
+                        ${lvl('AH 最高', AH, 'text-red-300')}
+                        ${lvl('NH 近高', NH, 'text-red-200')}
+                        ${lvl('CDP 中', CDP, 'text-gray-200')}
+                        ${lvl('NL 近低', NL, 'text-green-200')}
+                        ${lvl('AL 最低', AL, 'text-green-300')}
+                    </div>
+                </div>
+                <div class="bg-[#0d1117] border-l-4 ${zCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-2">
+                    <div class="text-[10px] ${zCls.split(' ')[0]} font-bold mb-0.5">現價 ${_f2(px)} 位置</div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">${zone}</div>
+                </div>
+                <details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer list-none">📖 怎麼用?</summary><div class="text-[9px] text-gray-500 leading-relaxed mt-1">樞紐點:站上 P 偏多、跌破 P 偏空,R1/R2 是上檔壓力(碰到易回)、S1/S2 是下檔支撐(碰到易彈)。CDP 逆勢:價在 AH 附近偏過熱、AL 附近偏超賣;NH~NL 之間屬盤整,突破 AH 追多、跌破 AL 追空。</div></details>
+            </div>`);
+        }
+
+        // ── 卡:📏 昨日關鍵價位 + 整數大關(純公式)──
+        if (yH > 0 && yL > 0 && yC > 0) {
+            const px = price > 0 ? price : yC;
+            const niceStep = p => p >= 1000 ? 50 : p >= 500 ? 25 : p >= 100 ? 10 : p >= 50 ? 5 : p >= 10 ? 1 : 0.5;
+            const st = niceStep(px);
+            const upKey = Math.ceil((px + 1e-6) / st) * st;
+            const downKey = Math.floor((px - 1e-6) / st) * st;
+            const dpct = v => px > 0 ? ((v - px) / px * 100) : null;
+            const cell = (lbl, v, cls) => { const d = dpct(v); return `<div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">${lbl}</div><div class="text-sm font-black font-mono ${cls}">${_f2(v)}</div><div class="text-[9px] text-gray-500">${d == null ? '' : (d >= 0 ? '+' : '') + d.toFixed(1) + '%'}</div></div>`; };
+            cards.push(`
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+                <div class="text-[12px] font-black text-gray-100 mb-2">📏 昨日關卡 + 整數大關 <span class="text-[9px] text-gray-500 font-normal">當沖必守價位</span></div>
+                <div class="grid grid-cols-4 gap-2 mb-2">
+                    ${cell('昨高', yH, 'text-red-300')}
+                    ${cell('昨低', yL, 'text-green-300')}
+                    ${cell('昨收', yC, 'text-gray-100')}
+                    ${cell('今開', openP > 0 ? openP : yO, 'text-gray-100')}
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    ${cell('🔼 上方整數關', upKey, 'text-red-300')}
+                    ${cell('🔽 下方整數關', downKey, 'text-green-300')}
+                </div>
+                <div class="bg-[#0d1117] border-l-4 border-cyan-500 pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-300 leading-relaxed">💡 昨高/整數大關=上檔壓力(帶量過了才追);昨低/下方整數關=下檔支撐(破了轉弱)。開盤先看今開卡在哪兩個關卡之間,當沖就在這區間內高出低進。</div></div>
+            </div>`);
+        }
+
+        // ── 卡:📊 波動適合度 ATR(純公式,判斷有沒有肉可沖)──
+        {
+            const _t2 = new Date();
+            const todayStr2 = `${_t2.getFullYear()}/${String(_t2.getMonth()+1).padStart(2,'0')}/${String(_t2.getDate()).padStart(2,'0')}`;
+            const lastB2 = baseRaw.length ? baseRaw[baseRaw.length - 1] : null;
+            const lastIsToday2 = lastB2 && String(lastB2.date || '').replace(/-/g, '/') === todayStr2;
+            const closedEnd = lastIsToday2 ? baseRaw.length - 1 : baseRaw.length;   // 不含今日形成中K
+            const N = 14;
+            let atrPct = null, avgAmp = null;
+            if (closedEnd >= N + 1) {
+                let trSum = 0, ampSum = 0, cnt = 0;
+                for (let i = closedEnd - N; i < closedEnd; i++) {
+                    const b = baseRaw[i], pc = +baseRaw[i - 1].close, h = +b.high, l = +b.low;
+                    if (!(h > 0 && l > 0 && pc > 0)) continue;
+                    trSum += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+                    ampSum += (h - l) / pc * 100; cnt++;
+                }
+                if (cnt > 0) { const ref = price > 0 ? price : yC; atrPct = ref > 0 ? (trSum / cnt) / ref * 100 : null; avgAmp = ampSum / cnt; }
+            }
+            let fitInner;
+            if (atrPct != null) {
+                let tone, tCls, tB, cta;
+                if (atrPct >= 5) { tone = '🔥 高波動・沖起來有肉'; tCls = 'text-red-300'; tB = 'border-red-500'; cta = '一天平均振幅大,價差空間足,當沖首選;但也易巴來巴去,嚴設停損。'; }
+                else if (atrPct >= 3) { tone = '✅ 中高波動・適合當沖'; tCls = 'text-red-200'; tB = 'border-red-400'; cta = '波動中上,有價差可賺,搭配量能達標就能沖。'; }
+                else if (atrPct >= 1.8) { tone = '⚖️ 中等波動・普通'; tCls = 'text-yellow-300'; tB = 'border-yellow-500'; cta = '波動普通,價差有限,手續費+稅吃掉不少,單量別太大。'; }
+                else { tone = '🐌 低波動・牛皮股'; tCls = 'text-gray-400'; tB = 'border-gray-500'; cta = '一天沒什麼波動,當沖賺不到價差還倒貼成本,不建議沖這種。'; }
+                fitInner = `
+                <div class="flex items-end gap-3 mb-2">
+                    <div class="text-2xl font-black ${tCls}">${tone}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">ATR14 波動率</div><div class="text-base font-black font-mono ${tCls}">${atrPct.toFixed(2)}%</div></div>
+                    <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">平均日振幅</div><div class="text-base font-black font-mono text-gray-100">${avgAmp != null ? avgAmp.toFixed(2) + '%' : '—'}</div></div>
+                </div>
+                <div class="bg-[#0d1117] border-l-4 ${tB} pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">💡 ${cta}</div></div>`;
+            } else {
+                fitInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">資料不足(需近 15 個交易日 K 線)算 ATR 波動率,稍後再看。</div></div>`;
+            }
+            cards.push(`
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+                <div class="text-[12px] font-black text-gray-100 mb-2">📊 波動適合度 <span class="text-[9px] text-gray-500 font-normal">ATR14・有沒有肉可沖</span></div>
+                ${fitInner}
+            </div>`);
+        }
+
         // ── 卡2:🔔 開盤定調條 ──────────────────────────────
         const gap = (prevClose > 0 && openP > 0) ? (openP - prevClose) / prevClose * 100 : null;
         let openTone, openCls, openCta;
@@ -26625,11 +26762,16 @@ ${_chuPosPlan}
                 </div>
             </div>`).join('');
         cards.push(`
-        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-            <div class="text-[12px] font-black text-gray-100 mb-2">📋 當沖紀律 SOP <span class="text-[9px] text-gray-500 font-normal">照表操課不情緒化</span></div>
-            ${stepHtml}
-            <div class="bg-red-900/20 border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1"><div class="text-[10px] text-red-200 leading-relaxed">🛑 當沖是零和高風險遊戲,90% 散戶長期虧損。沒紀律=送錢,新手先用小量練手感,守停損活得久比賺得快重要。</div></div>
-        </div>`);
+        <details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg">
+            <summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between">
+                <span class="text-[12px] font-black text-gray-100">📋 當沖紀律 SOP <span class="text-[9px] text-gray-500 font-normal">照表操課不情緒化</span></span>
+                <span class="text-gray-500 text-[10px]">點開 ▾</span>
+            </summary>
+            <div class="px-3 pb-3 pt-1 border-t border-[#21262d]">
+                ${stepHtml}
+                <div class="bg-red-900/20 border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1"><div class="text-[10px] text-red-200 leading-relaxed">🛑 當沖是零和高風險遊戲,90% 散戶長期虧損。沒紀律=送錢,新手先用小量練手感,守停損活得久比賺得快重要。</div></div>
+            </div>
+        </details>`);
 
         if (this.currentSymbolId !== sym) return;
         box.innerHTML = cards.join('');
