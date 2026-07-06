@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V55.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V55.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3176,6 +3176,7 @@ const app = {
         try { this._renderTaiexFutures(); } catch(_) {}
         setInterval(() => { try { this._renderTaiexFutures(); } catch(_) {} }, 60_000);
         setInterval(() => { try { this._maybeAutoRefreshIndices(); } catch(_) {} }, 30_000);
+        setInterval(() => { try { this._dtCloseReminderCheck(); } catch(_) {} }, 30_000);   // ⚡ V55.3 當沖 13:25 平倉提醒
         this._ensureChuLockGroup();    // 📌 朱老師鎖股 favGroup 預設建立(空清單,等使用者鎖)
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
@@ -5329,6 +5330,7 @@ ${list}
         }
         // ⚡ V55.2 — 當沖作戰台 sub-tab(即時右側)
         if (tab === 'daytrade' && this.currentSymbolId) {
+            this._dtMarkUsed();   // ⏰ 標記今天用過當沖頁 → 13:25 才提醒平倉
             this.renderDayTradeTab(this.currentSymbolId);
         }
         // 🎯 V45.12 — 回測 tab 進頁自動跑打法適配(不用再點按鈕;純公式+當日快取)
@@ -26457,7 +26459,7 @@ ${_chuPosPlan}
 
         // VWAP(分時均價)+ ORB(開盤 15 分區間)— 同一份分鐘K 一次算完
         //   ⚡ V54.6 加速刷價的「快 tick」不重抓分鐘K(VWAP 慢、ORB 09:15 後固定),沿用上次值省額度;整點 tick 才重抓
-        let vwap = null, orb = null;
+        let vwap = null, orb = null, dtAtrPct = null;   // dtAtrPct:ATR 卡算完會回填,供頂部作戰指令
         const cachedOrb = (this._dtLastOrb && this._dtLastOrb.sym === sym) ? this._dtLastOrb : null;
         if (marketOpen && opts.fast && this._dtLastVwap && this._dtLastVwap.sym === sym) {
             vwap = this._dtLastVwap.v; orb = cachedOrb;
@@ -26489,6 +26491,7 @@ ${_chuPosPlan}
         const dtEligible = dtListReady && (dtStatsMap[sym] != null);
 
         const cards = [];
+        const detail = [];   // ⚡ V55.3 折疊「進階分析」卡
         const _f2 = n => (n == null || !Number.isFinite(+n)) ? '—' : (+n).toFixed(2);
         const limitUp = this._dtLimitPrice(prevClose, 1);
         const limitDown = this._dtLimitPrice(prevClose, -1);
@@ -26573,7 +26576,7 @@ ${_chuPosPlan}
             else if (px >= S2) { zone = '🔻 S1~S2 空方區 → 支撐在 S2'; zCls = 'text-green-300 border-green-500'; }
             else { zone = '💥 跌破 S2 弱撐 → 破位,搶反彈快進快出'; zCls = 'text-green-300 border-green-500'; }
             const lvl = (lbl, v, c, cond) => { const rv = rt(v); return `<div class="flex items-center justify-between py-1 border-b border-[#21262d] last:border-0"><span class="text-[10px] ${c} flex items-center gap-1">${lbl}${cond ? `<button onclick="app._dtAddAlert(${rv},'${cond}'); event.stopPropagation();" class="text-amber-400 text-[10px]" title="設到價提醒">🔔</button>` : ''}</span><span class="text-[12px] font-mono font-black ${c}">${rv.toFixed(2)}</span></div>`; };
-            cards.push(`
+            detail.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                 <div class="flex items-center justify-between mb-2">
                     <div class="text-[12px] font-black text-gray-100">🎯 樞紐點 + CDP 關卡 <span class="text-[9px] text-gray-500 font-normal">昨日H/L/C推今日壓撐</span></div>
@@ -26614,7 +26617,7 @@ ${_chuPosPlan}
             const downKey = Math.floor((px - 1e-6) / st) * st;
             const dpct = v => px > 0 ? ((v - px) / px * 100) : null;
             const cell = (lbl, v, cls, cond) => { const d = dpct(v); const rv = this._roundTick(v); return `<div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">${lbl}</div><div class="text-sm font-black font-mono ${cls}">${_f2(v)}</div><div class="text-[9px] text-gray-500">${d == null ? '' : (d >= 0 ? '+' : '') + d.toFixed(1) + '%'}${cond ? ` <button onclick="app._dtAddAlert(${rv},'${cond}'); event.stopPropagation();" class="text-amber-400" title="設到價提醒">🔔</button>` : ''}</div></div>`; };
-            cards.push(`
+            detail.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                 <div class="text-[12px] font-black text-gray-100 mb-2">📏 昨日關卡 + 整數大關 <span class="text-[9px] text-gray-500 font-normal">當沖必守價位</span></div>
                 <div class="grid grid-cols-4 gap-2 mb-2">
@@ -26650,6 +26653,7 @@ ${_chuPosPlan}
                 }
                 if (cnt > 0) { const ref = price > 0 ? price : yC; atrPct = ref > 0 ? (trSum / cnt) / ref * 100 : null; avgAmp = ampSum / cnt; }
             }
+            dtAtrPct = atrPct;   // ⚡ V55.3 提升到函式作用域供頂部作戰指令用
             let fitInner;
             if (atrPct != null) {
                 let tone, tCls, tB, cta;
@@ -26669,7 +26673,7 @@ ${_chuPosPlan}
             } else {
                 fitInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">資料不足(需近 15 個交易日 K 線)算 ATR 波動率,稍後再看。</div></div>`;
             }
-            cards.push(`
+            detail.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                 <div class="text-[12px] font-black text-gray-100 mb-2">📊 波動適合度 <span class="text-[9px] text-gray-500 font-normal">ATR14・有沒有肉可沖</span></div>
                 ${fitInner}
@@ -26696,7 +26700,7 @@ ${_chuPosPlan}
             } else {
                 elInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">🛠️ 官方可當沖清單整備中(每交易日收盤後由 TWSE 更新)。上線後這裡會顯「這檔官方可不可以現股當沖」的權威判定。</div></div>`;
             }
-            cards.push(`
+            detail.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                 <div class="text-[12px] font-black text-gray-100 mb-2">🎯 官方可當沖資格 <span class="text-[9px] text-gray-500 font-normal">TWSE 官方清單・權威判定</span></div>
                 ${elInner}
@@ -26712,7 +26716,7 @@ ${_chuPosPlan}
         else if (gap > -0.5) { openTone = '➖ 開平盤'; openCls = 'text-gray-300 border-gray-500'; openCta = '方向未定,等第一根 5 分K + VWAP 表態再決定多空'; }
         else if (gap > -3) { openTone = '🔻 開低偏空'; openCls = 'text-green-300 border-green-600'; openCta = '開低走低做空順勢;帶量拉過開盤價(翻紅)才考慮轉多'; }
         else { openTone = '💥 大幅跳空開低'; openCls = 'text-green-300 border-green-600'; openCta = '恐慌殺低易急跌;搶反彈只做快進快出,別接刀凹單'; }
-        cards.push(`
+        detail.push(`
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
             <div class="flex items-center justify-between mb-2">
                 <div class="text-[12px] font-black text-gray-100">🔔 開盤定調</div>
@@ -26746,7 +26750,7 @@ ${_chuPosPlan}
         } else {
             vwapInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 分時均價(VWAP)盤中(09:00–13:30)載入即時分鐘K後顯示。VWAP=當日所有成交的平均成本線,站上偏多、跌破偏空,是當沖最重要的多空分水嶺。</div></div>`;
         }
-        cards.push(`
+        detail.push(`
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
             <div class="text-[12px] font-black text-gray-100 mb-2">🩸 VWAP 生命線 <span class="text-[9px] text-gray-500 font-normal">分時均價=多空分水嶺</span></div>
             ${vwapInner}
@@ -26773,7 +26777,7 @@ ${_chuPosPlan}
         } else {
             orbInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 開盤區間突破(ORB)= 開盤 09:00–09:15 的最高/最低。盤中載入分鐘K 後顯示:價突破上緣做多、跌破下緣做空(當沖經典策略),等幅測幅抓目標價。需盤中即時分鐘K。</div></div>`;
         }
-        cards.push(`
+        detail.push(`
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
             <div class="text-[12px] font-black text-gray-100 mb-2">🚀 開盤區間突破 ORB <span class="text-[9px] text-gray-500 font-normal">開盤15分高低・突破順勢</span></div>
             ${orbInner}
@@ -26796,7 +26800,7 @@ ${_chuPosPlan}
         } else {
             volInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 盤中開盤 5 分鐘後,用「已成交量 × 270 / 已過分鐘」線性外推預估收盤量,對比昨量算達標度。當沖要「有量才有波動」,達標度 ≥80% 才夠奔放。</div></div>`;
         }
-        cards.push(`
+        detail.push(`
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
             <div class="text-[12px] font-black text-gray-100 mb-2">⚡ 量能達標度 <span class="text-[9px] text-gray-500 font-normal">有量才有波動</span></div>
             ${volInner}
@@ -26842,7 +26846,7 @@ ${_chuPosPlan}
         } else {
             rsInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 盤中比對「本股今日漲跌% vs 加權指數今日漲跌%」。強過大盤=相對強勢(做多優選)、弱於大盤=相對弱勢(做空優選)。需盤中即時報價 + 大盤報價才能算。</div></div>`;
         }
-        cards.push(`
+        detail.push(`
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
             <div class="text-[12px] font-black text-gray-100 mb-2">⚖️ 相對大盤強弱 <span class="text-[9px] text-gray-500 font-normal">挑強做多・挑弱做空</span></div>
             ${rsInner}
@@ -26879,7 +26883,64 @@ ${_chuPosPlan}
             </div>
         </details>`);
 
+        // ⚡ V55.3 — 頂部「今日當沖作戰指令」hero:直接給 可不可進場 + 掛單計畫(進場/停損/停利價)+ 每張賺多少
+        {
+            const rt = p => this._roundTick(p);
+            const notEligible = dtListReady && !dtEligible && !this._isEtfSym(sym);
+            let vTone, vC, vNote, showPlan = true;
+            if (isDisposed) { vTone = '🔴 今天不要當沖'; vC = 'red'; vNote = '處置股分盤撮合(每5~20分成交1次),不可現股當沖。'; showPlan = false; }
+            else if (notEligible) { vTone = '🟠 非當沖標的'; vC = 'orange'; vNote = '不在 TWSE 官方可當沖清單內(上櫃股另計,以券商標的表為準);不建議硬做。'; showPlan = false; }
+            else if (dtAtrPct != null && dtAtrPct < 1.8) { vTone = '🟡 可沖但沒肉'; vC = 'yellow'; vNote = `一天平均波動只有 ${dtAtrPct.toFixed(1)}%,價差空間小、手續費+稅容易吃光,今天建議空手或極小量。`; }
+            else { vTone = '🟢 可以當沖'; vC = 'green'; vNote = (dtAtrPct != null ? `波動 ${dtAtrPct.toFixed(1)}% 有肉,` : '') + (dtEligible ? '官方認證可當沖,' : '') + '照下面掛單計畫、嚴設停損操作。'; }
+            const vMap = { red: 'text-red-400 border-red-500', orange: 'text-orange-400 border-orange-500', yellow: 'text-yellow-300 border-yellow-500', green: 'text-green-400 border-green-500' };
+            const atrMove = Math.max(0.012, (dtAtrPct != null ? dtAtrPct / 100 : 0.03));   // 一個 ATR 幅度當停利目標(至少 1.2%)
+            const useOrb = !!orb;
+            const longRef = rt(useOrb ? orb.high : yH), shortRef = rt(useOrb ? orb.low : yL);
+            const longEntry = longRef, longStop = rt(Math.max(yL, longEntry * (1 - 0.015))), longTgt = rt(longEntry * (1 + atrMove));
+            const shortEntry = shortRef, shortStop = rt(Math.min(yH, shortEntry * (1 + 0.015))), shortTgt = rt(shortEntry * (1 - atrMove));
+            const longWin = Math.round((longTgt - longEntry) * 1000), longLoss = Math.round((longStop - longEntry) * 1000);
+            const shortWin = Math.round((shortEntry - shortTgt) * 1000), shortLoss = Math.round((shortEntry - shortStop) * 1000);
+            const refTxt = useOrb ? '開盤15分區間' : '昨日高低';
+            let planHtml = '';
+            if (showPlan) {
+                planHtml = `
+                <div class="text-[10px] text-gray-500 mt-2 mb-1">📋 掛單計畫(依${refTxt}算,每張=1000股)</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-red-900/20 border border-red-700/40 rounded p-2">
+                        <div class="text-[10px] font-black text-red-300 mb-1">📈 做多(突破追)</div>
+                        <div class="flex justify-between text-[10px] py-0.5"><span class="text-gray-400">進場</span><span class="font-mono font-black text-red-300">站上 ${longEntry.toFixed(2)}</span></div>
+                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">停損</span><span class="font-mono font-black text-green-300">${longStop.toFixed(2)} <span class="text-gray-500">(${longLoss}元)</span></span></div>
+                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">停利賣</span><span class="font-mono font-black text-red-300">${longTgt.toFixed(2)} <span class="text-gray-500">(+${longWin}元)</span></span></div>
+                    </div>
+                    <div class="bg-green-900/20 border border-green-700/40 rounded p-2">
+                        <div class="text-[10px] font-black text-green-300 mb-1">📉 做空(跌破空)</div>
+                        <div class="flex justify-between text-[10px] py-0.5"><span class="text-gray-400">進場</span><span class="font-mono font-black text-green-300">跌破 ${shortEntry.toFixed(2)}</span></div>
+                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">停損</span><span class="font-mono font-black text-red-300">${shortStop.toFixed(2)} <span class="text-gray-500">(${shortLoss}元)</span></span></div>
+                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">回補買</span><span class="font-mono font-black text-green-300">${shortTgt.toFixed(2)} <span class="text-gray-500">(+${shortWin}元)</span></span></div>
+                    </div>
+                </div>
+                <div class="bg-[#0d1117] border-l-4 border-cyan-500 pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-300 leading-relaxed">💡 <b>怎麼掛?</b>當沖<b>別無腦掛漲停買</b>(會買在最高、常買不到)。做多是「價<b>站上 ${longEntry.toFixed(2)}</b> 才追」(掛此價之上或直接市價),做空是「<b>跌破 ${shortEntry.toFixed(2)}</b> 才空」。進場後<b>停損價一定同時掛好</b>,絕不凹單;<b>13:25 前務必平倉</b>。漲停鎖死另有搶漲停打法,非此順勢單。</div></div>`;
+            }
+            const hero = `
+            <div class="bg-[#161b22] border-2 ${vMap[vC].split(' ')[1]} rounded-lg p-3 shadow-lg">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="text-[11px] font-black text-gray-400">🎯 今日當沖作戰指令</div>
+                    <div class="text-[9px] text-gray-500">現價 ${_f2(price)}${marketOpen ? ' · 盤中' : ' · 盤前/盤後'}</div>
+                </div>
+                <div class="text-2xl font-black ${vMap[vC].split(' ')[0]} mb-1">${vTone}</div>
+                <div class="bg-[#0d1117] border-l-4 ${vMap[vC].split(' ')[1]} pl-2.5 py-1.5 rounded-r"><div class="text-[11px] text-gray-200 leading-relaxed">${vNote}</div></div>
+                ${planHtml}
+            </div>`;
+            cards.unshift(hero);
+        }
+
         if (this.currentSymbolId !== sym) return;
+        // ⚡ V55.3 組裝:hero(cards[0]即儀表板前的作戰指令)+ 儀表板/損益/SOP 恆顯,其餘進「📊 進階分析」摺疊
+        const advanced = detail.length ? `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg"><summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between"><span class="text-[12px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤</span></span><span class="text-gray-500 text-[10px]">點開 ▾</span></summary><div class="px-2 pb-2 pt-1 border-t border-[#21262d] flex flex-col gap-2">${detail.join('')}</div></details>` : '';
+        // 把「進階分析」插在損益試算(cards 最後第2個,SOP 是最後)前
+        const _sop = cards.pop();   // SOP
+        cards.push(advanced);
+        cards.push(_sop);
         box.innerHTML = cards.join('');
         try { this._calcDayTradePnl(); } catch (_) {}
     },
@@ -26926,6 +26987,24 @@ ${_chuPosPlan}
         const tickEl = document.getElementById('dtAccelTick');
         if (tickEl) { try { tickEl.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); } catch (_) {} }
         this.renderDayTradeTab(this.currentSymbolId, { fast: !isFull });
+    },
+
+    // ⏰ V55.3 — 當沖 13:25 平倉提醒:只提醒「今天開過當沖頁」的人,一天一次(app 開著時觸發)
+    _dtMarkUsed() { try { localStorage.setItem('dtUsedDate', new Date().toDateString()); } catch (_) {} },
+    _dtCloseReminderCheck() {
+        const now = new Date();
+        const day = now.getDay();
+        if (day === 0 || day === 6) return;                 // 週末不提醒
+        const t = now.getHours() * 60 + now.getMinutes();
+        if (t < 13 * 60 + 20 || t > 13 * 60 + 27) return;   // 只在 13:20~13:27 這個窗口
+        const today = now.toDateString();
+        try {
+            if (localStorage.getItem('dtUsedDate') !== today) return;        // 今天沒開過當沖頁就不吵
+            if (localStorage.getItem('dtCloseRemindDate') === today) return; // 一天只提醒一次
+            localStorage.setItem('dtCloseRemindDate', today);
+        } catch (_) { return; }
+        this._fireAlert('⏰ 當沖平倉倒數(13:25)', '手上的當沖單記得在 13:25 前沖掉!沒平掉會變隔日交割(要付全額)或被券商盤中強制平倉。', '');
+        try { this.showToast?.('⏰ 當沖平倉倒數:13:25 前記得沖掉手上當沖單', 'info'); } catch (_) {}
     },
 
     // 🔔 V54.6 — 從當沖關卡卡一鍵設到價提醒(重用既有 priceAlerts + worker 推播)
