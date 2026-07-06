@@ -165,6 +165,18 @@ def main():
             entry['r'] = round(dv / tv * 100, 1)   # 當沖比重 %
         stats[code] = entry
 
+    # 🔎 把診斷 note 印到 stdout(log 直接看得到,不用下載 artifact)
+    print("  🔎 [debug] 當沖候選端點嘗試:")
+    for a in dt_attempts:
+        print(f"       {a['url'].rsplit('/',1)[-1]}: {a['note']} → rows={a['rows']}")
+    print(f"  🔎 [debug] STOCK_DAY_ALL: {debug.get('stockday_note')} → rows={len(sd_rows)}")
+    print(f"  🔎 [debug] TPEX: {debug.get('tpex_note')}")
+    if dt_rows:
+        print(f"  🔎 [debug] 當沖首列 keys: {debug.get('daytrade_keys')}")
+        print(f"  🔎 [debug] 當沖首列樣本: {debug.get('daytrade_sample')}")
+    if sd_rows:
+        print(f"  🔎 [debug] 收盤首列 keys: {debug.get('stockday_keys')}")
+
     hits = len(stats)
     with_ratio = sum(1 for e in stats.values() if 'r' in e)
     print(f"  📊 當沖命中 {hits} 檔,其中 {with_ratio} 檔有比重(配對到總量)")
