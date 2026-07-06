@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V54.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7646,6 +7646,19 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             this._fundYoyGmAll = { ts: Date.now(), data: d || {} };
             return d || {};
         } catch (e) { console.warn('[fundYoyGm] load fail:', e); return {}; }
+    },
+
+    // ⚡ V54.8 — 當沖熱度(daytrade_probe.py 產)daytrade_stats.json:{sym:{v,tot,r}}(當沖量/總量/當沖比重%)
+    //   收盤後 TWSE TWTB4U;檔案不存在=首次採礦前,graceful null,前端顯「整備中」
+    async _loadDayTradeStats() {
+        if (this._dtStatsAll && (Date.now() - this._dtStatsAll.ts) < 3 * 3600e3) return this._dtStatsAll.data;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/daytrade_stats.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) }).catch(() => null);
+            const d = (r && r.ok) ? (await r.json().catch(() => null)) : null;
+            this._dtStatsAll = { ts: Date.now(), data: d || {} };
+            return d || {};
+        } catch (e) { console.warn('[daytradeStats] load fail:', e); return {}; }
     },
 
     // 🏭 取同業清單:優先 curated 9 板塊,併入 FinMind industry_category 同產業(去重 + 含自己)
@@ -26654,6 +26667,40 @@ ${_chuPosPlan}
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                 <div class="text-[12px] font-black text-gray-100 mb-2">📊 波動適合度 <span class="text-[9px] text-gray-500 font-normal">ATR14・有沒有肉可沖</span></div>
                 ${fitInner}
+            </div>`);
+        }
+
+        // ── 卡:🌡️ 當沖熱度(daytrade_probe.py 採礦,收盤後 TWSE 官方當沖統計)──
+        let dtHeat = null, dtMeta = null;
+        try { const ds = await this._loadDayTradeStats(); if (this.currentSymbolId !== sym) return; dtHeat = ds && ds[sym]; dtMeta = ds && ds.__meta; } catch (_) {}
+        {
+            let heatInner;
+            const ratio = dtHeat && (typeof dtHeat.r === 'number') ? dtHeat.r : null;
+            const dtVol = dtHeat && (typeof dtHeat.v === 'number') ? dtHeat.v : null;
+            if (ratio != null) {
+                let tone, tCls, tB, cta;
+                if (ratio >= 40) { tone = '🔥 當沖極熱'; tCls = 'text-red-400'; tB = 'border-red-500'; cta = '市場當沖比重很高,流動性+波動足、進出好進好出,但也代表籌碼浮動大、易被隔日沖巴,嚴設停損。'; }
+                else if (ratio >= 25) { tone = '✅ 當沖活躍'; tCls = 'text-red-200'; tB = 'border-red-400'; cta = '當沖參與度高,適合當沖,流動性佳、掛單好成交。'; }
+                else if (ratio >= 12) { tone = '⚖️ 當沖普通'; tCls = 'text-yellow-300'; tB = 'border-yellow-500'; cta = '當沖比中等,沖得動但沒到熱門,單量別太大以免不好出。'; }
+                else { tone = '🥶 當沖冷清'; tCls = 'text-gray-400'; tB = 'border-gray-500'; cta = '市場當沖少、流動性偏低,掛單不易成交、易滑價,不建議當沖這種。'; }
+                heatInner = `
+                <div class="flex items-end gap-3 mb-2">
+                    <div class="text-2xl font-black ${tCls}">${tone}</div>
+                    <div class="text-2xl font-black font-mono ${tCls} pb-0.5">${ratio.toFixed(1)}%</div>
+                </div>
+                <div class="text-[10px] text-gray-400 mb-2">當沖比重 = 當沖成交量 ÷ 當日總成交量${dtVol != null ? ` ・ 當沖量約 ${Math.round(dtVol / 1000).toLocaleString()} 張` : ''}${dtMeta && dtMeta.date ? ` ・ ${dtMeta.date}` : ''}</div>
+                <div class="bg-[#0d1117] border-l-4 ${tB} pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">💡 ${cta}</div></div>`;
+            } else if (dtVol != null) {
+                heatInner = `
+                <div class="text-lg font-black text-gray-200 mb-1">當沖量約 ${Math.round(dtVol / 1000).toLocaleString()} 張</div>
+                <div class="bg-[#0d1117] border-l-4 border-gray-500 pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">有官方當沖量,但尚未配到當日總量算比重。有量代表市場有人當沖這檔。</div></div>`;
+            } else {
+                heatInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">🛠️ 當沖熱度整備中(每個交易日收盤後由 TWSE 官方當沖統計更新)。上線後這裡會顯:當沖比重 % + 這檔市場當沖熱不熱、適不適合沖。冷門股或今日無當沖則不顯數字。</div></div>`;
+            }
+            cards.push(`
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+                <div class="text-[12px] font-black text-gray-100 mb-2">🌡️ 當沖熱度 <span class="text-[9px] text-gray-500 font-normal">官方當沖比重・適不適合沖</span></div>
+                ${heatInner}
             </div>`);
         }
 

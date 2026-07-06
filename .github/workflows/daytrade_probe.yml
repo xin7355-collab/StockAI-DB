@@ -1,0 +1,115 @@
+name: ⚡ 當沖熱度採礦 (daytrade_probe)
+
+# ⚡ 收盤後抓 TWSE 官方「每日當日沖銷交易標的」(TWTB4U OpenAPI)+ 全市場收盤量,
+#    算每檔「當沖比重」→ 輸出獨立檔 data/daytrade_stats.json,前端當沖頁顯
+#    「這檔市場當沖多不多 = 適不適合沖」。
+#
+# 低風險設計(對齊 fund_sweep):
+#   - 純 TWSE 免費 OpenAPI,全市場一次呼叫,不吃 FinMind 額度、不逐檔迴圈。
+#   - 輸出獨立檔,不動 daily_miner 重建的任何快取;push gh-pages(前端讀)+ data
+#     (讓 daily_miner deploy 的 git archive origin/data 自動保留)。
+#   - 自我守門:命中 < DT_MIN_HITS 時 python rc=1 → 不部署,保留線上舊檔。
+#
+# 排程時間刻意排在 daily_miner(08:30 UTC)之後,避免同時間搶跑;concurrency 共用
+#   gh-pages-push group,萬一時間重疊也會排隊不會同時 force-push 打架。
+
+on:
+  schedule:
+    # 10:00 UTC(週一~五)= 台北 18:00,收盤(13:30)+ 結算後,TWTB4U 必已公布,且晚於 daily_miner
+    - cron: '0 10 * * 1-5'
+  workflow_dispatch:   # 可手動觸發(首次校準 __debug 用)
+
+# 與 deploy_pages.yml / daily_miner deploy / fund_sweep 共用 group,避免同時 push 打架 (cannot lock ref)
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    name: ⚡ 抓當沖熱度 + 部署
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依 (只需 requests)
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: ⚡ 抓當沖熱度 → data/daytrade_stats.json
+        id: probe
+        env:
+          DT_MIN_HITS: '30'
+        run: |
+          set +e
+          mkdir -p data
+          python3 daytrade_probe.py
+          rc=$?
+          echo "probe_rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "probe rc=$rc"
+          exit 0
+
+      - name: 📤 上傳診斷檔 (失敗時看真實欄位)
+        if: steps.probe.outputs.probe_rc != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: daytrade-debug
+          path: data/daytrade_stats.debug.json
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: 🚀 部署 daytrade_stats.json 到 gh-pages + data (只更新這一檔)
+        if: steps.probe.outputs.probe_rc == '0'
+        run: |
+          set -e
+          if [ ! -f data/daytrade_stats.json ]; then
+            echo "❌ 找不到 data/daytrade_stats.json,跳過部署"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 產出先存 /tmp(data/ 在 main 是 gitignore 的未追蹤檔,切分支前要清乾淨)
+          cp data/daytrade_stats.json /tmp/daytrade_stats.json
+
+          deploy_branch () {
+            local BR="$1"
+            # 每次切分支前硬清:丟掉追蹤修改 + 未追蹤檔(含 data/),避免 checkout 因髒工作區 abort
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            mkdir -p data
+            cp /tmp/daytrade_stats.json data/daytrade_stats.json
+            git add -f data/daytrade_stats.json   # -f:該分支若也 gitignore data/*.json 仍強制加入
+            if git diff --cached --quiet; then
+              echo "ℹ️ $BR 無變更"; return 0
+            fi
+            git commit -q -m "⚡ 當沖熱度 daytrade_stats.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/daytrade_stats.json
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
+              git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              cp /tmp/daytrade_stats.json data/daytrade_stats.json
+              git add -f data/daytrade_stats.json
+              git commit -q -m "⚡ 當沖熱度 daytrade_stats.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/daytrade_stats.json 2>/dev/null || true
+            done
+          }
+
+          # 先 gh-pages(前端讀這個,立即生效),再 data(讓 daily_miner deploy 的 git archive 保留)
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 當沖熱度已部署"
