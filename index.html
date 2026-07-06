@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V55.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V55.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -370,6 +370,12 @@
                             <option value="chatgpt">🟢 ChatGPT(需登入)</option>
                         </select>
                         <p class="text-[10px] text-gray-500 leading-snug">個股「基本」分頁的 <b class="text-amber-300">🔎 免費查公司</b> 按鈕會把股名帶入問題、開這個引擎的網頁直接給答案 —— <b class="text-amber-300">用它的免費額度,不扣我們的 API</b>。</p>
+                    </div>
+                    <!-- 💰 V55.7 — 我的券商手續費折數(全 App 損益試算共用:當沖試算機/作戰指令掛單淨賺賠) -->
+                    <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-cyan-700/40 rounded">
+                        <label class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">💰 我的券商手續費折數<span class="text-[9px] text-gray-500 font-normal">(電子單常見 0.2~0.6 折)</span></label>
+                        <input id="set_feeDiscount" type="number" step="0.01" min="0.1" max="1" inputmode="decimal" placeholder="0.28" onchange="app.saveSettings()" class="w-full bg-[#010409] text-cyan-200 p-2 rounded border border-[#30363d] outline-none text-sm font-mono font-bold focus:border-cyan-500 transition-colors">
+                        <p class="text-[10px] text-gray-500 leading-snug">牌價手續費 0.1425%×折數。設一次,<b class="text-cyan-300">當沖試算機、作戰指令的掛單賺賠元</b>全部自動用你的折數算(在試算機改折數也會自動記住回這裡)。</p>
                     </div>
                     <p class="text-[10px] text-gray-500 leading-tight -mt-1">每組 key 旁有 <span class="text-purple-300">☑</span> 啟動開關;取消打勾即<b class="text-amber-300">暫時停用該 key</b>(輪動會跳過,設定保留)。</p>
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
@@ -1022,6 +1028,8 @@
                 <div id="todayOrderCard" class="hidden"></div>
                 <!-- 🎯 V55.4 — 現在該怎麼做(朱式買點直判:回後買上漲 → 進場/等/別追,附進場價+停損+勝率) -->
                 <div id="chuActionCard" class="hidden"></div>
+                <!-- 🃏 V55.7 — 打法雷達:這檔回測期望值最高的打法「觸發中/等訊號」直判 + 進場/停損/目標算好 -->
+                <div id="playbookRadarCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <!-- V46.3 — 首席AI/此股預判整段隱藏,外層 padding 一併收掉(消除頁面上方空白;內部元素仍在 DOM 供 null-safe) -->
                     <div class="relative">
@@ -5444,6 +5452,8 @@ ${list}
         if (aiEngEl) aiEngEl.value = this.settings.aiEngine || 'groq';
         const freeEngEl = document.getElementById('set_freeAiEngine');   // 🔎 V41.24 免費查公司引擎
         if (freeEngEl) freeEngEl.value = this.settings.freeAiEngine || 'perplexity';
+        const feeEl = document.getElementById('set_feeDiscount');   // 💰 V55.7 券商手續費折數
+        if (feeEl) feeEl.value = this.settings.feeDiscount ?? 0.28;
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) ratEl.value = this.settings.riskAlertThreshold ?? 60;
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
@@ -5554,6 +5564,8 @@ ${list}
         if (aiEngEl) this.settings.aiEngine = aiEngEl.value || 'auto';
         const freeEngEl = document.getElementById('set_freeAiEngine');   // 🔎 V41.24 免費查公司引擎
         if (freeEngEl) this.settings.freeAiEngine = freeEngEl.value || 'perplexity';
+        const feeEl = document.getElementById('set_feeDiscount');   // 💰 V55.7 券商手續費折數(0.1~1,壞值回 0.28)
+        if (feeEl) { const v = parseFloat(feeEl.value); this.settings.feeDiscount = (Number.isFinite(v) && v >= 0.1 && v <= 1) ? v : 0.28; }
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) { const v = parseInt(ratEl.value, 10); this.settings.riskAlertThreshold = (Number.isFinite(v) ? Math.max(30, Math.min(95, v)) : 60); }
         // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),不再讀寫此設定
@@ -13677,6 +13689,88 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
+    // 🃏 V55.7 — 打法雷達(總覽置頂):用回測頁同一套「型態實戰回測排名」,直接告訴使用者
+    //   「這檔最會賺的打法現在觸發了沒」+ 進場/停損/目標/每張淨賺賠 全算好(使用者要:別讓我自己拼)
+    renderPlaybookRadar(data) {
+        const el = document.getElementById('playbookRadarCard');
+        if (!el) return;
+        const sym = this.currentSymbolId;
+        if (!Array.isArray(data) || data.length < 80 || !sym) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const paint = (ranked) => {
+            if (this.currentSymbolId !== sym) return;
+            if (!Array.isArray(ranked) || !ranked.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+            const last = data.length - 1;
+            const C = b => +((b?.close ?? b?.c) || 0), Lo = b => +((b?.low ?? b?.l) || 0);
+            const pC = C(data[last]);
+            const rt = p => this._roundTick ? this._roundTick(p) : +(+p).toFixed(2);
+            const nm = k => String(k || '').replace(/^\S+\s/, '');
+            // 主打(前3且正期望)中找「今天觸發」或「1~3天內觸發且現價仍在停損上(訊號還有效)」
+            let defs = null; try { defs = this._playbookPatternDefs(data); } catch (_) {}
+            const tops = ranked.filter((r, i) => i < 3 && r.expectancy > 0);
+            let hit = null;
+            for (const r of tops) {
+                if (r.firedToday) { hit = { r, ago: 0 }; break; }
+                const d0 = defs && defs.find(p => p.key === r.key);
+                if (!d0) continue;
+                for (let a = 1; a <= 3; a++) {
+                    let f = false; try { f = !!d0.test(last - a); } catch (_) {}
+                    if (f) { const e0 = C(data[last - a]); if (pC > Math.min(Lo(data[last - a]), e0 * 0.95)) hit = { r, ago: a }; break; }
+                }
+                if (hit) break;
+            }
+            const avoidFired = ranked.find(r => r.firedToday && r.expectancy <= -0.3 && r.count >= 4);
+            const stat = r => `勝率 ${r.winRate.toFixed(0)}%・賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)}・${r.count} 次・每趟 ${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%`;
+            let big, tc, bc, inner;
+            if (hit) {
+                const sigIdx = last - hit.ago, e = C(data[sigIdx]);
+                const stop = rt(Math.min(Lo(data[sigIdx]), e * 0.95));
+                const plr = hit.r.plRatio >= 99 ? 2 : Math.min(Math.max(hit.r.plRatio, 1), 4);
+                const tgt = rt(e + plr * (e - stop));
+                const _fd = (this.settings?.feeDiscount >= 0.1 && this.settings?.feeDiscount <= 1) ? this.settings.feeDiscount : 0.28;
+                const net = (b, s) => Math.round((s - b) * 1000 - (b + s) * 1000 * 0.001425 * _fd - s * 1000 * 0.003);   // 波段=一般稅 0.3%
+                const buyRef = hit.ago === 0 ? rt(pC) : rt(Math.min(pC, e * 1.01));
+                const cell = (l, v, c, sub) => `<div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">${l}</div><div class="text-sm font-black font-mono ${c}">${v}</div>${sub ? `<div class="text-[9px] text-gray-500">${sub}</div>` : ''}</div>`;
+                big = `✅ ${nm(hit.r.key)}・${hit.ago === 0 ? '今天觸發' : hit.ago + ' 天前觸發・仍有效'}`;
+                tc = 'text-red-400'; bc = 'border-red-500';
+                inner = `
+                <div class="text-[10px] text-gray-400 font-mono mb-1.5">${stat(hit.r)}(本股歷史)</div>
+                <div class="grid grid-cols-3 gap-1.5 mb-1.5">
+                    ${cell('進場', buyRef.toFixed(2), 'text-red-300', hit.ago === 0 ? '直接買/市價' : '不追高於此')}
+                    ${cell('停損', stop.toFixed(2), 'text-green-300', `${net(buyRef, stop)}元/張`)}
+                    ${cell('參考目標', tgt.toFixed(2), 'text-red-300', `+${net(buyRef, tgt)}元/張`)}
+                </div>
+                <div class="text-[9px] text-gray-500 leading-snug">💡 出場紀律:跌破 5 日線或停損價就出,最多抱 20 天(=回測同一套規則);賺賠元已扣手續費${_fd}折+稅。</div>`;
+            } else if (avoidFired) {
+                big = `⚠️ 觸發的是「${nm(avoidFired.key)}」= 這檔的地雷型態`;
+                tc = 'text-green-400'; bc = 'border-green-500';
+                inner = `<div class="text-[10px] text-gray-300 leading-relaxed">這招在這檔歷史是<b>賠錢的</b>(${stat(avoidFired)})→ 別做,等主打型態出現。</div>`;
+            } else {
+                const t0 = tops[0] || ranked[0];
+                big = `⏳ 等訊號:主打「${nm(t0.key)}」未出現`;
+                tc = 'text-gray-300'; bc = 'border-gray-500';
+                inner = `
+                <div class="text-[10px] text-gray-400 font-mono mb-1">${stat(t0)}(本股歷史最會賺)</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">主打=這檔<b>歷史期望值最高</b>的打法,但要「訊號當天出現」才進場 —— 今天沒觸發就<b>別硬做</b>,等它出現我會在這裡亮綠燈+算好進場/停損/目標。</div>`;
+            }
+            el.className = `bg-[#161b22] border-2 ${bc} rounded-lg p-3 shadow-lg`;
+            el.innerHTML = `
+                <div class="flex items-center justify-between mb-0.5">
+                    <div class="text-[11px] font-black text-gray-400">🃏 打法雷達 <span class="text-[9px] text-gray-500 font-normal">這檔最會賺的打法・回測同源</span></div>
+                    <button onclick="app.switchSubTab('backtest'); app.vibrate(20);" class="text-[9px] text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">完整排名 →</button>
+                </div>
+                <div class="text-base font-black ${tc} mb-1 leading-snug">${big}</div>
+                ${inner}`;
+            el.classList.remove('hidden');
+        };
+        // 當日快取(回測頁同一份 playbook_{sym});沒有就背景算一次
+        const d = new Date(), ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        try { const c = JSON.parse(localStorage.getItem(`playbook_${sym}`) || 'null'); if (c && c.date === ds && Array.isArray(c.ranked) && c.ranked.length) { paint(c.ranked); return; } } catch (_) {}
+        el.className = 'bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg';
+        el.innerHTML = '<div class="text-[10px] text-gray-500">🃏 打法雷達分析中(逐根回測本股歷史)…</div>';
+        el.classList.remove('hidden');
+        setTimeout(() => { try { paint(this._patternFitBacktest(data) || []); } catch (_) { el.classList.add('hidden'); } }, 60);
+    },
+
     renderTodayOrder(data) {
         const el = document.getElementById('todayOrderCard');
         if (!el) return;
@@ -21617,6 +21711,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this._renderStockEarningsReminder(this.currentSymbolId); } catch (_) {}   // 📢 V51.6 法說會提醒(現價下方,2 交易日內)
         try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日操作重點(首席頁置頂)
         try { this.renderChuActionCard(data); } catch (_) {}   // 🎯 V55.4 現在該怎麼做(朱式買點直判)
+        try { this.renderPlaybookRadar(data); } catch (_) {}   // 🃏 V55.7 打法雷達(主打打法觸發了沒+點位算好)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
@@ -26869,7 +26964,7 @@ ${_chuPosPlan}
         const preBuy = this._dtCalcState ? this._dtCalcState.buy : defPre;
         const preSell = this._dtCalcState ? this._dtCalcState.sell : defPre;
         const preLots = this._dtCalcState ? this._dtCalcState.lots : '1';
-        const preDisc = this._dtCalcState ? this._dtCalcState.disc : '0.28';
+        const preDisc = this._dtCalcState ? this._dtCalcState.disc : String(this.settings?.feeDiscount ?? 0.28);   // 💰 V55.7 預設吃設定中心折數
         this._dtLastCur = price > 0 ? this._roundTick(price) : null;
         cards.push(`
         <div class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
@@ -26954,8 +27049,11 @@ ${_chuPosPlan}
             const longRef = rt(useOrb ? orb.high : yH), shortRef = rt(useOrb ? orb.low : yL);
             const longEntry = longRef, longStop = rt(Math.max(yL, longEntry * (1 - 0.015))), longTgt = rt(longEntry * (1 + atrMove));
             const shortEntry = shortRef, shortStop = rt(Math.min(yH, shortEntry * (1 + 0.015))), shortTgt = rt(shortEntry * (1 - atrMove));
-            const longWin = Math.round((longTgt - longEntry) * 1000), longLoss = Math.round((longStop - longEntry) * 1000);
-            const shortWin = Math.round((shortEntry - shortTgt) * 1000), shortLoss = Math.round((shortEntry - shortStop) * 1000);
+            // 💰 V55.7 賺賠元改「淨額」:扣手續費(0.1425%×你的折數,買賣各一次)+ 當沖證交稅減半 0.15%(賣出收)
+            const _fd = (this.settings?.feeDiscount >= 0.1 && this.settings?.feeDiscount <= 1) ? this.settings.feeDiscount : 0.28;
+            const _dtNet = (buyP, sellP) => Math.round((sellP - buyP) * 1000 - (buyP + sellP) * 1000 * 0.001425 * _fd - sellP * 1000 * 0.0015);
+            const longWin = _dtNet(longEntry, longTgt), longLoss = _dtNet(longEntry, longStop);
+            const shortWin = _dtNet(shortTgt, shortEntry), shortLoss = _dtNet(shortStop, shortEntry);
             const refTxt = useOrb ? '開盤15分' : '昨日高低';
             // 🎯 V55.5 今日多空傾向(盤中:現價vs昨收 + vs VWAP + vs 大盤,同向≥2 才表態)
             let biasLine = '';
@@ -26978,7 +27076,7 @@ ${_chuPosPlan}
             let planHtml = '';
             if (showPlan) {
                 planHtml = `
-                <div class="text-[10px] text-gray-500 mt-2 mb-1">📋 掛單計畫(依${refTxt}算・每張1000股)</div>
+                <div class="text-[10px] text-gray-500 mt-2 mb-1">📋 掛單計畫(依${refTxt}算・每張1000股・賺賠已扣手續費${_fd}折+當沖稅)</div>
                 <div class="grid grid-cols-2 gap-2">
                     <div class="bg-red-900/20 border border-red-700/40 rounded p-2">
                         <div class="text-[11px] font-black text-red-300 mb-1 flex items-center flex-wrap">📈 做多${_stat(longHit, longDist)}</div>
@@ -27109,7 +27207,13 @@ ${_chuPosPlan}
         const lots = Math.max(1, Math.floor(+(el('dtLots')?.value) || 1));
         let disc = +(el('dtFeeDisc')?.value); if (!(disc > 0)) disc = 1; if (disc > 1) disc = 1;
         // ⚡ V54.6 記住目前輸入值,供加速刷價/重繪時保留(不被現價洗掉)
-        this._dtCalcState = { sym: this.currentSymbolId, buy: el('dtBuyPrice')?.value || '', sell: el('dtSellPrice')?.value || '', lots: el('dtLots')?.value || '1', disc: el('dtFeeDisc')?.value || '0.28' };
+        this._dtCalcState = { sym: this.currentSymbolId, buy: el('dtBuyPrice')?.value || '', sell: el('dtSellPrice')?.value || '', lots: el('dtLots')?.value || '1', disc: el('dtFeeDisc')?.value || String(this.settings?.feeDiscount ?? 0.28) };
+        // 💰 V55.7 在試算機改折數 → 自動記回設定中心(全 App 損益共用,下次開直接是你的折數)
+        if (disc >= 0.1 && disc <= 1 && this.settings && this.settings.feeDiscount !== disc) {
+            this.settings.feeDiscount = disc;
+            try { localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings)); } catch (_) {}
+            const sEl = document.getElementById('set_feeDiscount'); if (sEl) sEl.value = disc;
+        }
         if (!(buy > 0) || !(sell > 0)) { out.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-2">請輸入買進價與賣出價</div>'; return; }
         const shares = lots * 1000;
         const buyAmt = buy * shares, sellAmt = sell * shares;
