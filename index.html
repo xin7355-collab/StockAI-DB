@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V53.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V53.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1307,6 +1307,8 @@
                             <label class="ma-toggle-lbl text-[#2dd4bf] cursor-pointer flex items-center" title="投信成本線:近60日買賣量加權平均價(投信主要進出價位估算)"><input type="checkbox" id="toggleTCost" onchange="app.renderChart()" class="hidden"><span>投信</span></label>
                             <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="庫存成本線(你的持股均價水平線;需先填成本或在庫存表建立)"><input type="checkbox" id="toggleInvCost" onchange="app.renderChart()" class="hidden"><span>庫存</span></label>
                             <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="除權息 K線標記:除息交易日插「息」旗標,點旗標用 Perplexity 查填息狀況(僅日線)"><input type="checkbox" id="toggleExDiv" checked onchange="app.renderChart()" class="hidden"><span>息</span></label>
+                            <label class="ma-toggle-lbl text-[#60a5fa] cursor-pointer flex items-center" title="財報公告旗標(標準公告日近似:Q1約5/15、Q2約8/14、Q3約11/14、年報約3/31);點旗標用 Perplexity 查該季財報好壞(僅日線)"><input type="checkbox" id="toggleFinRpt" onchange="app.renderChart()" class="hidden"><span>財</span></label>
+                            <label class="ma-toggle-lbl text-[#34d399] cursor-pointer flex items-center" title="月營收公告旗標(近似每月10日);點旗標用 Perplexity 查該月營收 YoY 好壞(僅日線,較密預設關)"><input type="checkbox" id="toggleRev" onchange="app.renderChart()" class="hidden"><span>營</span></label>
                         </div>
                     </div>
                     <div class="relative">
@@ -3118,6 +3120,8 @@ const app = {
             try {
                 if (params && params.componentType === 'markPoint' && params.data && params.data.patternType) { this._explainPattern(params.data.patternType); return; }
                 if (params && params.componentType === 'markPoint' && params.data && params.data.exDivDate) { this._openExDivPerplexity(params.data.exDivDate); return; }
+                if (params && params.componentType === 'markPoint' && params.data && params.data.finRpt) { this._openFinRptPerplexity(params.data.finRpt); return; }
+                if (params && params.componentType === 'markPoint' && params.data && params.data.revMonth) { this._openRevPerplexity(params.data.revMonth); return; }
                 if (params && typeof params.dataIndex === 'number') this.renderChartHud(params.dataIndex);
             } catch (_) {}
         });
@@ -14408,6 +14412,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._freeAiOpen(`${tag} 在 ${dateStr} 除權息,配息配股各多少?除息後有沒有「填息」(股價漲回除息前價位)?花了幾天填息?對存股 / 波段操作的影響?請白話說明,附日期與來源`);
         this.vibrate?.(20);
     },
+    // 📊 點 K 線財報旗標 → Perplexity 查該季財報好壞(零額度)
+    _openFinRptPerplexity(q) {
+        const sym = this.currentSymbolId; if (!sym) return;
+        const name = (this.getStockName?.(sym) || sym), tag = `${name}(${sym})`;
+        this._freeAiOpen(`${tag} ${q} 財報結果如何(EPS、營收、毛利率、獲利年增)?法人 / 分析師解讀偏「利多(好)」還是「利空(壞)」?公布後股價反應?請白話條列,附日期與來源`);
+        this.vibrate?.(20);
+    },
+    // 📅 點 K 線月營收旗標 → Perplexity 查該月營收好壞(零額度)
+    _openRevPerplexity(ym) {
+        const sym = this.currentSymbolId; if (!sym) return;
+        const name = (this.getStockName?.(sym) || sym), tag = `${name}(${sym})`;
+        this._freeAiOpen(`${tag} ${ym} 月營收多少?年增(YoY)、月增(MoM)是成長還是衰退?創新高了嗎?對股價的影響?請白話說明,附日期與來源`);
+        this.vibrate?.(20);
+    },
 
     // 🚨 V46.3 — 處置/注意告警點擊:帶當前列管狀態,開免費 AI 給「操作提醒」(零額度)
     _openFreeAiDispose() {
@@ -21716,6 +21734,24 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     label: { show: true, formatter: '息', color: '#000', fontSize: 9, fontWeight: 'bold' },
                     exDivDate: ev.date
                 });
+            }
+        }
+        // 📅 V53.x — 財報/月營收 旗標(標準公告日「近似」,零抓取;點旗標→Perplexity 查該期好壞)。僅日線,預設關(避免擠)。
+        if (this.currentTF === 'D' && dates.length) {
+            const _first = dates[0], _last = dates[dates.length - 1];
+            const _nearIdx = target => { if (target < _first || target > _last) return -1; for (let i = 0; i < dates.length; i++) { if (dates[i] >= target) return i; } return -1; };
+            const _fy = +_first.slice(0, 4), _ly = +_last.slice(0, 4);
+            if (document.getElementById('toggleFinRpt')?.checked) {
+                for (let y = _fy; y <= _ly; y++) for (const [md, ql] of [['05/15', 'Q1'], ['08/14', 'Q2'], ['11/14', 'Q3'], ['03/31', '年報']]) {
+                    const idx = _nearIdx(`${y}/${md}`); if (idx < 0 || !data[idx]) continue;
+                    markPointData.push({ name: '財報', xAxis: idx, yAxis: data[idx].high, value: '財', symbol: 'pin', symbolSize: 18, itemStyle: { color: '#60a5fa' }, label: { show: true, formatter: '財', color: '#000', fontSize: 9, fontWeight: 'bold' }, finRpt: `${y} ${ql}` });
+                }
+            }
+            if (document.getElementById('toggleRev')?.checked) {
+                for (let y = _fy; y <= _ly; y++) for (let m = 1; m <= 12; m++) {
+                    const mm = String(m).padStart(2, '0'); const idx = _nearIdx(`${y}/${mm}/10`); if (idx < 0 || !data[idx]) continue;
+                    markPointData.push({ name: '營收', xAxis: idx, yAxis: data[idx].high, value: '營', symbol: 'pin', symbolSize: 16, itemStyle: { color: '#34d399' }, label: { show: true, formatter: '營', color: '#000', fontSize: 8, fontWeight: 'bold' }, revMonth: `${y}/${mm}` });
+                }
             }
         }
 
