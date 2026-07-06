@@ -51,7 +51,7 @@ jobs:
       - name: ⚡ 抓當沖熱度 → data/daytrade_stats.json
         id: probe
         env:
-          DT_MIN_HITS: '30'
+          DT_MIN_HITS: '500'   # 官方可當沖清單約 1300+ 檔,命中 <500 視為抓殘缺不覆寫
         run: |
           set +e
           mkdir -p data

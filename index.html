@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V55.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -26483,6 +26483,12 @@ ${_chuPosPlan}
             if (orb) this._dtLastOrb = orb; else if (cachedOrb) orb = cachedOrb;
         }
 
+        // 🎯 官方可當沖標的清單(daytrade_probe TWT84U)— 早載,供 badge + 資格卡共用
+        let dtStatsMap = null, dtMeta = null;
+        try { const ds = await this._loadDayTradeStats(); if (this.currentSymbolId !== sym) return; dtStatsMap = ds || null; dtMeta = ds && ds.__meta; } catch (_) {}
+        const dtListReady = !!(dtMeta && dtMeta.hits > 0);
+        const dtEligible = dtListReady && (dtStatsMap[sym] != null);
+
         const cards = [];
         const _f2 = n => (n == null || !Number.isFinite(+n)) ? '—' : (+n).toFixed(2);
         const limitUp = this._dtLimitPrice(prevClose, 1);
@@ -26493,8 +26499,10 @@ ${_chuPosPlan}
         const isDisposed = att && String(att.status || '').startsWith('🚨');
         const isAttention = att && String(att.status || '').startsWith('⚠️');
         let canBadge, canDesc;
-        if (this._isEtfSym(sym)) { canBadge = '<span class="text-[10px] font-black text-cyan-300 bg-cyan-900/40 border border-cyan-700/50 rounded px-1.5 py-0.5">ETF・可當沖</span>'; canDesc = 'ETF 多可現股當沖(先確認券商標的表)'; }
-        else if (isDisposed) { canBadge = '<span class="text-[10px] font-black text-red-200 bg-red-700 rounded px-1.5 py-0.5 animate-pulse">🚨 處置中・禁當沖</span>'; canDesc = '分盤撮合(每5~20分1次),不可現股當沖,強行掛也難成交'; }
+        if (isDisposed) { canBadge = '<span class="text-[10px] font-black text-red-200 bg-red-700 rounded px-1.5 py-0.5 animate-pulse">🚨 處置中・禁當沖</span>'; canDesc = '分盤撮合(每5~20分1次),不可現股當沖,強行掛也難成交'; }
+        else if (dtListReady && dtEligible) { canBadge = '<span class="text-[10px] font-black text-green-200 bg-green-900/50 border border-green-600 rounded px-1.5 py-0.5">🟢 官方可當沖</span>'; canDesc = 'TWSE 官方認證可現股當沖標的' + (isAttention ? ',但已列注意股,單量放小' : '(仍需券商先開通當沖資格)'); }
+        else if (dtListReady && !dtEligible) { canBadge = '<span class="text-[10px] font-black text-orange-200 bg-orange-900/50 border border-orange-600 rounded px-1.5 py-0.5">🚫 非當沖標的</span>'; canDesc = '不在 TWSE 今日可現股當沖清單內(全額交割/暫停當沖/興櫃等),不建議當沖'; }
+        else if (this._isEtfSym(sym)) { canBadge = '<span class="text-[10px] font-black text-cyan-300 bg-cyan-900/40 border border-cyan-700/50 rounded px-1.5 py-0.5">ETF・多可當沖</span>'; canDesc = 'ETF 多可現股當沖(官方清單整備中,先確認券商標的表)'; }
         else if (isAttention) { canBadge = '<span class="text-[10px] font-black text-yellow-200 bg-yellow-900/50 border border-yellow-600 rounded px-1.5 py-0.5">⚠️ 注意股・波動大</span>'; canDesc = '可當沖但已被警示,再觸發恐升級處置,單量放小'; }
         else { canBadge = '<span class="text-[10px] font-black text-green-200 bg-green-900/50 border border-green-600 rounded px-1.5 py-0.5">🟢 一般可當沖</span>'; canDesc = '需券商開通現股當沖資格,且標的須為可當沖股(排除全額交割/處置)'; }
         const amp = (prevClose > 0 && highP > 0 && lowP > 0) ? (highP - lowP) / prevClose * 100 : null;
@@ -26670,45 +26678,28 @@ ${_chuPosPlan}
             </div>`);
         }
 
-        // ── 卡:🌡️ 當沖熱度(daytrade_probe.py 採礦,收盤後 TWSE 官方當沖統計)──
-        let dtHeat = null, dtMeta = null;
-        try { const ds = await this._loadDayTradeStats(); if (this.currentSymbolId !== sym) return; dtHeat = ds && ds[sym]; dtMeta = ds && ds.__meta; } catch (_) {}
+        // ── 卡:🎯 官方可當沖資格(daytrade_probe TWT84U 官方可當沖標的清單)──
         {
-            let heatInner;
-            // 當沖比重:採礦只給當沖量(股),前端用「當沖量 ÷ 該股當日總量(K線/即時量)」自算(單位統一成張)
-            const dtVolShares = dtHeat && (typeof dtHeat.v === 'number') ? dtHeat.v : null;
-            const dtLots = dtVolShares != null ? Math.round(dtVolShares / 1000) : null;
-            let ratio = dtHeat && (typeof dtHeat.r === 'number') ? dtHeat.r : null;
-            if (ratio == null && dtVolShares != null) {
-                let totLots = null;
-                if (q && Number(q.volume) > 0) totLots = Number(q.volume);   // fugle 即時量=張
-                else if (baseRaw.length) { const rv = Number(baseRaw[baseRaw.length - 1].volume) || 0; totLots = rv > 0 ? (rv < 1e6 ? rv : rv / 1000) : null; }   // K線量:<1e6 視為張,否則股/1000
-                if (totLots && totLots > 0) ratio = Math.min(100, (dtVolShares / 1000) / totLots * 100);
-            }
-            if (ratio != null) {
-                let tone, tCls, tB, cta;
-                if (ratio >= 40) { tone = '🔥 當沖極熱'; tCls = 'text-red-400'; tB = 'border-red-500'; cta = '市場當沖比重很高,流動性+波動足、進出好進好出,但也代表籌碼浮動大、易被隔日沖巴,嚴設停損。'; }
-                else if (ratio >= 25) { tone = '✅ 當沖活躍'; tCls = 'text-red-200'; tB = 'border-red-400'; cta = '當沖參與度高,適合當沖,流動性佳、掛單好成交。'; }
-                else if (ratio >= 12) { tone = '⚖️ 當沖普通'; tCls = 'text-yellow-300'; tB = 'border-yellow-500'; cta = '當沖比中等,沖得動但沒到熱門,單量別太大以免不好出。'; }
-                else { tone = '🥶 當沖冷清'; tCls = 'text-gray-400'; tB = 'border-gray-500'; cta = '市場當沖少、流動性偏低,掛單不易成交、易滑價,不建議當沖這種。'; }
-                heatInner = `
-                <div class="flex items-end gap-3 mb-2">
-                    <div class="text-2xl font-black ${tCls}">${tone}</div>
-                    <div class="text-2xl font-black font-mono ${tCls} pb-0.5">${ratio.toFixed(1)}%</div>
-                </div>
-                <div class="text-[10px] text-gray-400 mb-2">當沖比重 = 當沖成交量 ÷ 當日總成交量${dtLots != null ? ` ・ 當沖量約 ${dtLots.toLocaleString()} 張` : ''}${dtMeta && dtMeta.date ? ` ・ ${dtMeta.date}` : ''}</div>
-                <div class="bg-[#0d1117] border-l-4 ${tB} pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">💡 ${cta}</div></div>`;
-            } else if (dtLots != null) {
-                heatInner = `
-                <div class="text-lg font-black text-gray-200 mb-1">當沖量約 ${dtLots.toLocaleString()} 張</div>
-                <div class="bg-[#0d1117] border-l-4 border-gray-500 pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">有官方當沖量,但尚未配到當日總量算比重(切到有K線量的個股即會顯比重)。</div></div>`;
+            let elInner;
+            if (dtListReady) {
+                if (isDisposed) {
+                    elInner = `<div class="text-2xl font-black text-red-400 mb-1">🚨 處置中・禁當沖</div><div class="bg-[#0d1117] border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">處置股分盤撮合,不可現股當沖。</div></div>`;
+                } else if (dtEligible) {
+                    elInner = `
+                    <div class="text-2xl font-black text-green-400 mb-1">🟢 官方可現股當沖</div>
+                    <div class="bg-[#0d1117] border-l-4 border-green-500 pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">✅ 這檔在 TWSE「可當日沖銷交易標的」清單內(${dtMeta.date || ''}),可現股當沖。實際下單仍需先在券商簽署當沖風險預告書、開通資格。</div></div>`;
+                } else {
+                    elInner = `
+                    <div class="text-2xl font-black text-orange-400 mb-1">🚫 非現股當沖標的</div>
+                    <div class="bg-[#0d1117] border-l-4 border-orange-500 pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">這檔不在 TWSE 今日可當沖清單內(可能是全額交割股、暫停當沖、或非上市)。硬做風險高,不建議當沖。</div></div>`;
+                }
             } else {
-                heatInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">🛠️ 當沖熱度整備中(每個交易日收盤後由 TWSE 官方當沖統計更新)。上線後這裡會顯:當沖比重 % + 這檔市場當沖熱不熱、適不適合沖。冷門股或今日無當沖則不顯數字。</div></div>`;
+                elInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">🛠️ 官方可當沖清單整備中(每交易日收盤後由 TWSE 更新)。上線後這裡會顯「這檔官方可不可以現股當沖」的權威判定。</div></div>`;
             }
             cards.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-                <div class="text-[12px] font-black text-gray-100 mb-2">🌡️ 當沖熱度 <span class="text-[9px] text-gray-500 font-normal">官方當沖比重・適不適合沖</span></div>
-                ${heatInner}
+                <div class="text-[12px] font-black text-gray-100 mb-2">🎯 官方可當沖資格 <span class="text-[9px] text-gray-500 font-normal">TWSE 官方清單・權威判定</span></div>
+                ${elInner}
             </div>`);
         }
 

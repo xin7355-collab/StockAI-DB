@@ -134,18 +134,18 @@ def main():
     if j.get('data'):
         print(f"  🔎 sample: {j['data'][0]}")
 
-    # 找欄位 index:證券代號 + 當日沖銷交易成交股數
+    # TWT84U = 官方「可(得為)當日沖銷交易標的清單」(逐檔,無成交量)→ 收錄清單即代表該檔可現股當沖
     def fi(*kws):
         for i, f in enumerate(fields):
             if any(k in str(f) for k in kws):
                 return i
         return None
     i_code = fi('證券代號', '股票代號', '代號')
-    i_vol = fi('成交股數')   # '當日沖銷交易成交股數'(買賣「金額」欄含'成交金額'不含'股數',不會誤中)
+    i_vol = fi('成交股數')   # 若未來換到有成交量的報表,這裡就會抓到 → 順便存 v
     print(f"  🔎 i_code={i_code}, i_vol={i_vol}")
 
     stats = {}
-    if i_code is not None and i_vol is not None:
+    if i_code is not None:
         for row in (j.get('data') or []):
             try:
                 code = str(row[i_code]).strip()
@@ -153,13 +153,15 @@ def main():
                 continue
             if not (code.isdigit() and len(code) == 4) and not code.startswith('00'):
                 continue
-            dv = _num(row[i_vol]) if i_vol < len(row) else None
-            if dv is None or dv <= 0:
-                continue
-            stats[code] = {'v': int(dv)}
+            entry = 1   # 預設:1 = 在官方可當沖清單內
+            if i_vol is not None and i_vol < len(row):
+                dv = _num(row[i_vol])
+                if dv and dv > 0:
+                    entry = {'v': int(dv)}
+            stats[code] = entry
 
     hits = len(stats)
-    print(f"  📊 當沖命中 {hits} 檔")
+    print(f"  📊 可當沖標的命中 {hits} 檔")
 
     if hits < MIN_HITS:
         print(f"❌ 命中 {hits} < DT_MIN_HITS({MIN_HITS}) → rc=1 不覆寫(保留舊檔)")
@@ -176,8 +178,8 @@ def main():
             'date': used_date,
             'updated_utc': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M'),
             'hits': hits,
-            'source': 'TWSE TWTB4U(每日當日沖銷交易標的)',
-            'note': '比重由前端用當沖量 ÷ 該股當日總量(K線量)計算',
+            'source': 'TWSE TWT84U(官方可當日沖銷交易標的清單)',
+            'note': 'sym→1 = 官方可現股當沖;{v:..}=有成交量的報表才會出現',
         },
     }
     out.update(stats)
