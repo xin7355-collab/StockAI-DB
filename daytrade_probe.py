@@ -30,11 +30,19 @@ except ImportError:
     print("需要 requests:pip install requests", file=sys.stderr)
     sys.exit(2)
 
-TWSE_DAYTRADE_URL = 'https://openapi.twse.com.tw/v1/exchangeReport/TWTB4U'        # 每日當日沖銷交易標的及成交量值(上市,逐檔)
-TWSE_STOCKDAY_ALL = 'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL'  # 每日收盤行情-全部(上市,逐檔含 TradeVolume 總成交股數)
-TPEX_DAYTRADE_URL = 'https://www.tpex.org.tw/openapi/v1/tpex_daytrading_trans'     # 上櫃當沖(best-effort,欄位不確定→__debug 觀察)
+# ⚠️ 用「真瀏覽器 UA」— TWSE OpenAPI 對 bot-like UA 會回 200 空 body(首跑實測踩到)
+_OAPI = 'https://openapi.twse.com.tw/v1/exchangeReport/'
+# 每日當日沖銷交易標的及成交量值:官方資料集 ID 不確定 → 試多個候選,哪個回 rows 就用哪個(__debug 記錄)
+TWSE_DAYTRADE_CANDIDATES = [_OAPI + x for x in ('TWT84U', 'TWTB4U', 'TWT92U', 'TWT94U')]
+TWSE_STOCKDAY_ALL = _OAPI + 'STOCK_DAY_ALL'   # 每日收盤行情-全部(逐檔含 TradeVolume 總成交股數)
+TPEX_DAYTRADE_URL = 'https://www.tpex.org.tw/openapi/v1/tpex_daytrading_trans'  # 上櫃當沖(best-effort)
 
-HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; StockAI-daytrade-probe/1.0)', 'Accept': 'application/json'}
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+    'Referer': 'https://openapi.twse.com.tw/',
+}
 
 OUT = os.environ.get('DT_OUT', 'data/daytrade_stats.json')
 MIN_HITS = int(os.environ.get('DT_MIN_HITS', '30'))
@@ -68,35 +76,58 @@ def _pick_code(row):
 
 
 def fetch_json(url, tag, retries=3):
+    """回傳 (rows_list, note字串);note 記 HTTP/長度供 __debug 診斷"""
+    note = ''
     for i in range(retries):
         try:
             r = requests.get(url, headers=HEADERS, timeout=25)
-            if r.status_code == 200:
-                data = r.json()
+            body = (r.text or '')
+            note = f"HTTP {r.status_code}, {len(body)} bytes"
+            if r.status_code == 200 and body.strip():
+                try:
+                    data = r.json()
+                except Exception as je:
+                    note = f"HTTP 200 但非 JSON({str(je)[:40]});前 60 字:{body[:60]!r}"
+                    return [], note
                 if isinstance(data, list) and data:
                     print(f"  ✅ {tag}:{len(data)} 列")
-                    return data
-                print(f"  ⚠️ {tag}:回應非預期(type={type(data).__name__} len={len(data) if hasattr(data,'__len__') else '?'})")
-                return data if isinstance(data, list) else []
-            print(f"  ⚠️ {tag}:HTTP {r.status_code}(第 {i+1} 次)")
+                    return data, f"HTTP 200, {len(data)} 列"
+                note = f"HTTP 200 但非 list/空(type={type(data).__name__})"
+                return (data if isinstance(data, list) else []), note
+            print(f"  ⚠️ {tag}:{note}(第 {i+1} 次)")
         except Exception as e:
-            print(f"  ⚠️ {tag}:{e}(第 {i+1} 次)")
+            note = f"{type(e).__name__}: {str(e)[:60]}"
+            print(f"  ⚠️ {tag}:{note}(第 {i+1} 次)")
         time.sleep(2 * (i + 1))
-    return []
+    return [], note
+
+
+def fetch_first(urls, tag):
+    """依序試多個候選 URL,第一個回 rows 的就用;回 (rows, used_url, attempts)"""
+    attempts = []
+    for u in urls:
+        rows, note = fetch_json(u, f"{tag}[{u.rsplit('/',1)[-1]}]", retries=2)
+        attempts.append({'url': u, 'note': note, 'rows': len(rows)})
+        if rows:
+            return rows, u, attempts
+    return [], None, attempts
 
 
 def main():
     print("⚡ 當沖熱度採礦開始")
     debug = {}
 
-    # ── 1. TWSE 逐檔當沖量 ──────────────────────────────
-    dt_rows = fetch_json(TWSE_DAYTRADE_URL, 'TWSE TWTB4U 當沖')
+    # ── 1. TWSE 逐檔當沖量(試多個候選資料集 ID)──────────
+    dt_rows, dt_url, dt_attempts = fetch_first(TWSE_DAYTRADE_CANDIDATES, 'TWSE 當沖')
+    debug['daytrade_attempts'] = dt_attempts
+    debug['daytrade_used_url'] = dt_url
     if dt_rows:
-        debug['twtb4u_keys'] = list(dt_rows[0].keys())
-        debug['twtb4u_sample'] = dt_rows[0]
+        debug['daytrade_keys'] = list(dt_rows[0].keys())
+        debug['daytrade_sample'] = dt_rows[0]
 
     # ── 2. TWSE 逐檔總成交股數(算比重的分母)────────────
-    sd_rows = fetch_json(TWSE_STOCKDAY_ALL, 'TWSE STOCK_DAY_ALL 收盤')
+    sd_rows, sd_note = fetch_json(TWSE_STOCKDAY_ALL, 'TWSE STOCK_DAY_ALL 收盤')
+    debug['stockday_note'] = sd_note
     if sd_rows:
         debug['stockday_keys'] = list(sd_rows[0].keys())
         debug['stockday_sample'] = sd_rows[0]
@@ -110,7 +141,8 @@ def main():
             tot_vol[str(code).strip()] = v
 
     # ── 3. 上櫃當沖(best-effort,先觀察欄位)──────────────
-    tpex_rows = fetch_json(TPEX_DAYTRADE_URL, 'TPEX 上櫃當沖', retries=2)
+    tpex_rows, tpex_note = fetch_json(TPEX_DAYTRADE_URL, 'TPEX 上櫃當沖', retries=2)
+    debug['tpex_note'] = tpex_note
     if tpex_rows and isinstance(tpex_rows, list) and tpex_rows:
         debug['tpex_keys'] = list(tpex_rows[0].keys())
         debug['tpex_sample'] = tpex_rows[0]
