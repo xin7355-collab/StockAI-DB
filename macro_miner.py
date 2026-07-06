@@ -1343,11 +1343,16 @@ def fetch_taifex_tx_now():
                     return {"price": round(last, 2), "chg": chg, "est": False, "error": None}
     except Exception as e:
         print(f"   ⚠️ 台指期 yfinance 失敗:{str(e)[:80]} → 改用 TAIFEX 官方 OpenAPI")
-    # ② V27.3 — yfinance 失敗 → TAIFEX 官方 OpenAPI 近月收盤(reliable;無前日比較 chg=None,前端 est 分支顯純價)
+    # ② V27.3 — yfinance 失敗 → TAIFEX 官方 OpenAPI 近月收盤
+    #   V54.x — 救「夜盤不計分」:OpenAPI 期貨行情本身就帶「漲跌」欄,直接取來算 chg%
+    #   → 有漲跌% 就 est=False(前端會計分);真的取不到才退回純價 est=True。
     try:
-        off = _taifex_openapi_tx_fut_close()
+        off, off_pct = _taifex_openapi_tx_close_change()
         if off and off > 0:
-            print(f"   ✅ 台指期改用 TAIFEX 官方 OpenAPI 收盤:{off}")
+            if off_pct is not None:
+                print(f"   ✅ 台指期 OpenAPI 收盤 {off}、漲跌 {off_pct}% → 夜盤可計分")
+                return {"price": round(float(off), 2), "chg": off_pct, "est": False, "error": None}
+            print(f"   ✅ 台指期改用 TAIFEX 官方 OpenAPI 收盤:{off}(無漲跌欄,顯純價)")
             return {"price": round(float(off), 2), "chg": None, "est": True, "error": None}
     except Exception as e:
         return {"price": None, "chg": None, "est": False, "error": f"both failed: {str(e)[:60]}"}
@@ -1391,6 +1396,57 @@ def _taifex_openapi_tx_fut_close():
     if best_close is None:
         print(f"  [台指逆價差 OpenAPI] 未匹配 TX 列；keys={list(data[0].keys())}；契約={sorted(seen)[:20]}")
     return best_close
+
+
+def _taifex_openapi_tx_close_change():
+    """V54.x — 官方 OpenAPI『期貨每日交易行情』→ TX 近月 (收盤價, 漲跌%)。失敗回 (None, None)。
+    救「台指期夜盤不計分」:yfinance ^TXF=F 失敗時,改直接從 OpenAPI 的漲跌欄算 %。
+    漲跌%:① 直接的百分比欄(ChangePercent/%Change/漲跌幅) ② 漲跌價 ÷ 昨收(收盤−漲跌價)。"""
+    data, err = _taifex_openapi(["DailyMarketReportFut", "DailyMarketReportFutures"])
+    if not data:
+        print(f"  [台指期夜盤 OpenAPI] 期貨行情端點失敗：{err}")
+        return None, None
+
+    def _numf(v):
+        try:
+            return float(str(v).replace(",", "").replace("%", "").replace("▲", "").replace("▼", "-").strip())
+        except Exception:
+            return None
+
+    best_close, best_pct, best_oi = None, None, -1.0
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        _, contract = _find_key(row, ['Contract', '契約', '商品', 'Commodity'])
+        cstr = str(contract).strip() if contract is not None else ""
+        if cstr not in ("TX", "TXF", "臺股期貨"):
+            continue
+        _, exp = _find_key(row, ['ContractMonth', '到期', '契約月', '月份', 'Delivery'])
+        if exp is not None and ("週" in str(exp) or "W" in str(exp).upper()):
+            continue  # 排除週契約
+        close = (_row_pick(row, 'Last') or _row_pick(row, '收盤')
+                 or _row_pick(row, 'SettlementPrice') or _row_pick(row, '結算')
+                 or _row_pick(row, '最後成交'))
+        if close is None or close <= 0:
+            continue
+        # 漲跌%:先找現成百分比欄,沒有再用漲跌價 ÷ 昨收
+        pct = None
+        _, praw = _find_key(row, ['ChangePercent', '%Change', 'Change%', '漲跌百分比', '漲跌幅'])
+        pv = _numf(praw) if praw is not None else None
+        if pv is not None and -20 < pv < 20:
+            pct = round(pv, 2)
+        else:
+            _, craw = _find_key(row, ['Change', '漲跌'])
+            cv = _numf(craw) if craw is not None else None
+            if cv is not None and (close - cv) > 0:
+                pct = round(cv / (close - cv) * 100, 2)
+        oi = (_row_pick(row, 'OpenInterest') or _row_pick(row, '未沖銷')
+              or _row_pick(row, '未平倉') or 0)
+        if oi >= best_oi:
+            best_oi, best_close, best_pct = oi, close, pct
+    if best_close is None:
+        print(f"  [台指期夜盤 OpenAPI] 未匹配 TX 列；keys={list(data[0].keys())}")
+    return best_close, best_pct
 
 
 def fetch_taifex_backwardation():
