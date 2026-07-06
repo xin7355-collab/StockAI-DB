@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V54.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -26443,15 +26443,31 @@ ${_chuPosPlan}
         const lowP  = (q && q.low > 0)  ? +q.low  : (baseRaw.length ? +(baseRaw[baseRaw.length - 1].low || 0) : 0);
         const chgPct = (prevClose > 0 && price > 0) ? (price - prevClose) / prevClose * 100 : null;
 
-        // VWAP(分時均價)— 抓當日分鐘K 最後一根 average
-        //   ⚡ V54.6 加速刷價的「快 tick」不重抓分鐘K(VWAP 變化慢),沿用上次值省額度;整點 tick 才重抓
-        let vwap = null;
+        // VWAP(分時均價)+ ORB(開盤 15 分區間)— 同一份分鐘K 一次算完
+        //   ⚡ V54.6 加速刷價的「快 tick」不重抓分鐘K(VWAP 慢、ORB 09:15 後固定),沿用上次值省額度;整點 tick 才重抓
+        let vwap = null, orb = null;
+        const cachedOrb = (this._dtLastOrb && this._dtLastOrb.sym === sym) ? this._dtLastOrb : null;
         if (marketOpen && opts.fast && this._dtLastVwap && this._dtLastVwap.sym === sym) {
-            vwap = this._dtLastVwap.v;
+            vwap = this._dtLastVwap.v; orb = cachedOrb;
         } else if (marketOpen) {
-            try { const cs = await this._fetchFugleCandles(sym, this._intradayTF || '1'); if (Array.isArray(cs) && cs.length) vwap = +cs[cs.length - 1].average; } catch (_) {}
+            try {
+                const cs = await this._fetchFugleCandles(sym, this._intradayTF || '1');
+                if (Array.isArray(cs) && cs.length) {
+                    vwap = +cs[cs.length - 1].average;
+                    // ORB:09:00–09:15 的最高/最低(1分K 取 540~554,5分K 取 540/545/550)
+                    let oh = null, ol = null;
+                    for (const c of cs) {
+                        const mm = String(c.t).match(/(\d{2}):(\d{2})/);
+                        if (!mm) continue;
+                        const hm = +mm[1] * 60 + +mm[2];
+                        if (hm >= 540 && hm < 555) { const h = +c.high, l = +c.low; if (h > 0) oh = oh == null ? h : Math.max(oh, h); if (l > 0) ol = ol == null ? l : Math.min(ol, l); }
+                    }
+                    if (oh != null && ol != null && oh >= ol) orb = { sym, high: oh, low: ol };
+                }
+            } catch (_) {}
             if (this.currentSymbolId !== sym) return;
             if (vwap != null) this._dtLastVwap = { sym, v: vwap };
+            if (orb) this._dtLastOrb = orb; else if (cachedOrb) orb = cachedOrb;
         }
 
         const cards = [];
@@ -26537,7 +26553,7 @@ ${_chuPosPlan}
             else if (px >= S1) { zone = '➖ S1~樞紐 偏空 → 破樞紐 P 轉弱'; zCls = 'text-green-300 border-green-500'; }
             else if (px >= S2) { zone = '🔻 S1~S2 空方區 → 支撐在 S2'; zCls = 'text-green-300 border-green-500'; }
             else { zone = '💥 跌破 S2 弱撐 → 破位,搶反彈快進快出'; zCls = 'text-green-300 border-green-500'; }
-            const lvl = (lbl, v, c) => `<div class="flex items-center justify-between py-1 border-b border-[#21262d] last:border-0"><span class="text-[10px] ${c}">${lbl}</span><span class="text-[12px] font-mono font-black ${c}">${rt(v).toFixed(2)}</span></div>`;
+            const lvl = (lbl, v, c, cond) => { const rv = rt(v); return `<div class="flex items-center justify-between py-1 border-b border-[#21262d] last:border-0"><span class="text-[10px] ${c} flex items-center gap-1">${lbl}${cond ? `<button onclick="app._dtAddAlert(${rv},'${cond}'); event.stopPropagation();" class="text-amber-400 text-[10px]" title="設到價提醒">🔔</button>` : ''}</span><span class="text-[12px] font-mono font-black ${c}">${rv.toFixed(2)}</span></div>`; };
             cards.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                 <div class="flex items-center justify-between mb-2">
@@ -26547,19 +26563,19 @@ ${_chuPosPlan}
                 <div class="grid grid-cols-2 gap-x-3">
                     <div>
                         <div class="text-[9px] text-gray-500 font-bold mb-0.5">樞紐點 Pivot</div>
-                        ${lvl('R2 強壓', R2, 'text-red-300')}
-                        ${lvl('R1 壓力', R1, 'text-red-300')}
+                        ${lvl('R2 強壓', R2, 'text-red-300', 'gte')}
+                        ${lvl('R1 壓力', R1, 'text-red-300', 'gte')}
                         ${lvl('P 樞紐', P, 'text-gray-200')}
-                        ${lvl('S1 支撐', S1, 'text-green-300')}
-                        ${lvl('S2 強撐', S2, 'text-green-300')}
+                        ${lvl('S1 支撐', S1, 'text-green-300', 'lte')}
+                        ${lvl('S2 強撐', S2, 'text-green-300', 'lte')}
                     </div>
                     <div>
                         <div class="text-[9px] text-gray-500 font-bold mb-0.5">CDP 逆勢五值</div>
-                        ${lvl('AH 最高', AH, 'text-red-300')}
-                        ${lvl('NH 近高', NH, 'text-red-200')}
+                        ${lvl('AH 最高', AH, 'text-red-300', 'gte')}
+                        ${lvl('NH 近高', NH, 'text-red-200', 'gte')}
                         ${lvl('CDP 中', CDP, 'text-gray-200')}
-                        ${lvl('NL 近低', NL, 'text-green-200')}
-                        ${lvl('AL 最低', AL, 'text-green-300')}
+                        ${lvl('NL 近低', NL, 'text-green-200', 'lte')}
+                        ${lvl('AL 最低', AL, 'text-green-300', 'lte')}
                     </div>
                 </div>
                 <div class="bg-[#0d1117] border-l-4 ${zCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-2">
@@ -26578,19 +26594,19 @@ ${_chuPosPlan}
             const upKey = Math.ceil((px + 1e-6) / st) * st;
             const downKey = Math.floor((px - 1e-6) / st) * st;
             const dpct = v => px > 0 ? ((v - px) / px * 100) : null;
-            const cell = (lbl, v, cls) => { const d = dpct(v); return `<div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">${lbl}</div><div class="text-sm font-black font-mono ${cls}">${_f2(v)}</div><div class="text-[9px] text-gray-500">${d == null ? '' : (d >= 0 ? '+' : '') + d.toFixed(1) + '%'}</div></div>`; };
+            const cell = (lbl, v, cls, cond) => { const d = dpct(v); const rv = this._roundTick(v); return `<div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">${lbl}</div><div class="text-sm font-black font-mono ${cls}">${_f2(v)}</div><div class="text-[9px] text-gray-500">${d == null ? '' : (d >= 0 ? '+' : '') + d.toFixed(1) + '%'}${cond ? ` <button onclick="app._dtAddAlert(${rv},'${cond}'); event.stopPropagation();" class="text-amber-400" title="設到價提醒">🔔</button>` : ''}</div></div>`; };
             cards.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
                 <div class="text-[12px] font-black text-gray-100 mb-2">📏 昨日關卡 + 整數大關 <span class="text-[9px] text-gray-500 font-normal">當沖必守價位</span></div>
                 <div class="grid grid-cols-4 gap-2 mb-2">
-                    ${cell('昨高', yH, 'text-red-300')}
-                    ${cell('昨低', yL, 'text-green-300')}
+                    ${cell('昨高', yH, 'text-red-300', 'gte')}
+                    ${cell('昨低', yL, 'text-green-300', 'lte')}
                     ${cell('昨收', yC, 'text-gray-100')}
                     ${cell('今開', openP > 0 ? openP : yO, 'text-gray-100')}
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                    ${cell('🔼 上方整數關', upKey, 'text-red-300')}
-                    ${cell('🔽 下方整數關', downKey, 'text-green-300')}
+                    ${cell('🔼 上方整數關', upKey, 'text-red-300', 'gte')}
+                    ${cell('🔽 下方整數關', downKey, 'text-green-300', 'lte')}
                 </div>
                 <div class="bg-[#0d1117] border-l-4 border-cyan-500 pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-300 leading-relaxed">💡 昨高/整數大關=上檔壓力(帶量過了才追);昨低/下方整數關=下檔支撐(破了轉弱)。開盤先看今開卡在哪兩個關卡之間,當沖就在這區間內高出低進。</div></div>
             </div>`);
@@ -26688,6 +26704,33 @@ ${_chuPosPlan}
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
             <div class="text-[12px] font-black text-gray-100 mb-2">🩸 VWAP 生命線 <span class="text-[9px] text-gray-500 font-normal">分時均價=多空分水嶺</span></div>
             ${vwapInner}
+        </div>`);
+
+        // ── 卡:🚀 開盤區間突破 ORB(開盤 15 分高低,突破做多/跌破做空)──
+        let orbInner;
+        if (orb && orb.high > 0 && orb.low > 0) {
+            const oH = this._roundTick(orb.high), oL = this._roundTick(orb.low), rng = orb.high - orb.low;
+            const px = price > 0 ? price : oH;
+            const upTgt = this._roundTick(orb.high + rng), dnTgt = this._roundTick(orb.low - rng);
+            let tone, tCls, tB, cta;
+            if (px > orb.high) { tone = '🔺 突破上緣 → 做多'; tCls = 'text-red-400'; tB = 'border-red-500'; cta = `站穩區間上緣 ${oH} 做多,停損設回區間內;滿足目標 ${upTgt}(等幅測幅)。`; }
+            else if (px < orb.low) { tone = '🔻 跌破下緣 → 做空'; tCls = 'text-green-400'; tB = 'border-green-500'; cta = `跌破區間下緣 ${oL} 做空,停損設回區間內;滿足目標 ${dnTgt}(等幅測幅)。`; }
+            else { tone = '➖ 區間內 → 觀望'; tCls = 'text-gray-300'; tB = 'border-gray-500'; cta = `價仍在開盤區間 ${oL}~${oH} 內,方向未定;等帶量突破上緣做多、跌破下緣做空,別在區間內來回被巴。`; }
+            orbInner = `
+            <div class="text-lg font-black ${tCls} mb-2">${tone}</div>
+            <div class="grid grid-cols-3 gap-2 mb-2">
+                <div class="bg-red-900/30 border border-red-700/50 rounded p-2 text-center"><div class="text-[9px] text-red-300 mb-0.5">區間上緣</div><div class="text-sm font-black font-mono text-red-300">${oH}</div><button onclick="app._dtAddAlert(${oH},'gte'); event.stopPropagation();" class="text-[9px] text-amber-300 mt-0.5">🔔 突破提醒</button></div>
+                <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">區間幅度</div><div class="text-sm font-black font-mono text-gray-100">${(rng / (orb.low) * 100).toFixed(1)}%</div><div class="text-[9px] text-gray-500">${_f2(rng)}</div></div>
+                <div class="bg-green-900/30 border border-green-700/50 rounded p-2 text-center"><div class="text-[9px] text-green-300 mb-0.5">區間下緣</div><div class="text-sm font-black font-mono text-green-300">${oL}</div><button onclick="app._dtAddAlert(${oL},'lte'); event.stopPropagation();" class="text-[9px] text-amber-300 mt-0.5">🔔 跌破提醒</button></div>
+            </div>
+            <div class="bg-[#0d1117] border-l-4 ${tB} pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">💡 ${cta}</div></div>`;
+        } else {
+            orbInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 開盤區間突破(ORB)= 開盤 09:00–09:15 的最高/最低。盤中載入分鐘K 後顯示:價突破上緣做多、跌破下緣做空(當沖經典策略),等幅測幅抓目標價。需盤中即時分鐘K。</div></div>`;
+        }
+        cards.push(`
+        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+            <div class="text-[12px] font-black text-gray-100 mb-2">🚀 開盤區間突破 ORB <span class="text-[9px] text-gray-500 font-normal">開盤15分高低・突破順勢</span></div>
+            ${orbInner}
         </div>`);
 
         // ── 卡4:⚡ 量能達標度(重用 _chuVolumeProgress)──────────
@@ -26837,6 +26880,24 @@ ${_chuPosPlan}
         const tickEl = document.getElementById('dtAccelTick');
         if (tickEl) { try { tickEl.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); } catch (_) {} }
         this.renderDayTradeTab(this.currentSymbolId, { fast: !isFull });
+    },
+
+    // 🔔 V54.6 — 從當沖關卡卡一鍵設到價提醒(重用既有 priceAlerts + worker 推播)
+    _dtAddAlert(price, cond) {
+        const sym = this.currentSymbolId;
+        if (!sym) { this.showToast?.('請先選一檔股票'); return; }
+        price = +price;
+        if (!Number.isFinite(price) || price <= 0) { this.showToast?.('價位無效'); return; }
+        cond = (cond === 'lte') ? 'lte' : 'gte';
+        const list = Array.isArray(this.priceAlerts) ? this.priceAlerts.slice() : [];
+        const dup = list.find(a => a.sym === sym && a.cond === cond && +a.price === price);
+        if (dup) { dup.enabled = true; dup.addedAt = Date.now(); }
+        else list.push({ id: `${sym}_${cond}_${price}_${Date.now()}`, sym, cond, price, enabled: true, addedAt: Date.now() });
+        this.priceAlerts = list;
+        this._savePriceAlerts();
+        const cname = this.getStockName?.(sym) || sym;
+        this.showToast?.(`🔔 已設到價:${cname} ${cond === 'gte' ? '≥' : '≤'} ${price}(碰到即推播,點🔔鈴鐺可管理)`, 'info');
+        this.vibrate?.([30, 30]);
     },
 
     // ⚡ V54.3 — 當沖損益試算:含手續費(0.1425%×折數,買賣各一次)+ 證交稅(當沖減半 0.15%,賣出收)
