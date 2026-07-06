@@ -87,9 +87,10 @@ jobs:
             # 每次切分支前硬清:丟掉追蹤修改 + 未追蹤檔(含 data/),避免 checkout 因髒工作區 abort
             git reset --hard -q 2>/dev/null || true
             git clean -fdq 2>/dev/null || true
-            git fetch origin "$BR" 2>/dev/null || true
-            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
-            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            # ⚠️ actions/checkout 只配 main 的 fetch refspec → 無 refs/remotes/origin/$BR,DWIM checkout 會失敗。
+            #    改用 FETCH_HEAD:git fetch origin $BR 成功才切,-B 強制建/重置本地分支到抓回的 tip(gh-pages/data 皆穩)
+            if ! git fetch origin "$BR" 2>/dev/null; then echo "⚠️ fetch $BR 失敗(可能無此分支),跳過"; return 0; fi
+            git checkout -f -B "$BR" FETCH_HEAD 2>/dev/null || { echo "⚠️ checkout $BR 失敗,跳過"; return 0; }
             mkdir -p data
             cp /tmp/daytrade_stats.json data/daytrade_stats.json
             git add -f data/daytrade_stats.json   # -f:該分支若也 gitignore data/*.json 仍強制加入
