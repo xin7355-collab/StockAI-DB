@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V55.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -13685,7 +13685,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     renderChuActionCard(data) {
         const el = document.getElementById('chuActionCard');
         if (!el) return;
-        if (!Array.isArray(data) || data.length < 30) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        if (!Array.isArray(data) || data.length < 30) { el.classList.add('hidden'); el.innerHTML = ''; this._chuActionVerdict = null; return; }
         let sigs = [];
         try { sigs = this._detectChuLongEntry(data) || []; } catch (_) {}
         const find = re => sigs.find(s => re.test(s.title || ''));
@@ -13716,6 +13716,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             big = '⚪ 現在非朱式買點'; head = '非「波段多頭+回檔不破前低」格局'; cls = 'gray';
             cta = '現在不是回後買上漲的盤(不是波段多頭、或已破前低)。回後買上漲只做「上升趨勢中回檔、止穩再上」,不是抄近期新低。等趨勢轉多再看。'; sub = '';
         }
+        // ⚖️ V56.0 仲裁中樞:直判卡=總覽頁的「老大」,分批計畫/打法雷達讀這個決定要不要蓋「先別執行」
+        this._chuActionVerdict = { cls, big, sym: this.currentSymbolId };
         const map = { green: ['text-green-400', 'border-green-500'], yellow: ['text-yellow-300', 'border-yellow-500'], red: ['text-red-400', 'border-red-500'], gray: ['text-gray-300', 'border-gray-500'] };
         const [tc, bc] = map[cls];
         el.className = `bg-[#161b22] border-2 ${bc} rounded-lg p-3 shadow-lg`;
@@ -13781,7 +13783,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     ${cell('停損', stop.toFixed(2), 'text-green-300', `${net(buyRef, stop)}元/張`)}
                     ${cell('參考目標', tgt.toFixed(2), 'text-red-300', `+${net(buyRef, tgt)}元/張`)}
                 </div>
-                <div class="text-[9px] text-gray-500 leading-snug">💡 出場紀律:跌破 5 日線或停損價就出,最多抱 20 天(=回測同一套規則);賺賠元已扣手續費${_fd}折+稅。</div>`;
+                <div class="text-[9px] text-gray-500 leading-snug">💡 出場紀律:跌破 5 日線或停損價就出,最多抱 20 天(=回測同一套規則);賺賠元已扣手續費${_fd}折+稅。</div>
+                ${(() => { const av = this._chuActionVerdict; return (av && av.sym === sym && av.cls !== 'green')
+                    ? `<div class="bg-[#0d1117] border-l-2 border-yellow-500 pl-2 py-1 rounded-r text-[9px] text-yellow-300/90 leading-snug mt-1">⚖️ 對帳:上方朱式買點目前是「${av.big}」,跟這裡不衝突 — 那是<b>波段</b>格局判斷,這是<b>短線突破</b>劇本。想穩=等上方轉 🟢 再進;想搶短=只小量+嚴守上面停損價。</div>`
+                    : ''; })()}`;
             } else if (avoidFired) {
                 big = `⚠️ 觸發的是「${nm(avoidFired.key)}」= 這檔的地雷型態`;
                 tc = 'text-green-400'; bc = 'border-green-500';
@@ -17153,6 +17158,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this.latestFinancialAICache = '';
         this._fuglePrevClose = null;
         this._lastMasterScore = null;   // 🐛 V55.8 切股必清:否則進場體檢的「籌碼綜合評分」交叉參照會把 A 股分數當 B 股顯示
+        this._chuActionVerdict = null;  // ⚖️ V56.0 仲裁結論也是 per-stock,切股必清
         if(!silent) document.getElementById('symbolInput').value = '';
 
         // Clear AI result boxes when switching stocks (avoids stale results misleading user)
@@ -19149,17 +19155,27 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 <div class="text-[10px] text-gray-300 leading-relaxed">現價 ${fmtPrice(pCnow)} 跌破月線 ${fmtPrice(plan.ma20)}、5MA &lt; 月線 = 空頭。下方計畫是依「過去發動 K」排的突破做多,股已轉空時逆勢接刀風險高。朱式:<b class="text-red-300">空頭別接刀</b>,等「站回月線 + 底底高」轉多再做多。</div>
             </div>`
             : '';
-        // 🚦 V55.9 折疊列燈號:空頭=紅、追高=黃,否則直接給試單價
+        // ⚖️ V56.0 仲裁:頂部「現在該怎麼做」還沒亮綠 → 分批計畫蓋「先別執行」,不再一卡喊等、一卡喊加碼
+        const _av = this._chuActionVerdict;
+        const gateHold = !isDowntrend && _av && _av.sym === this.currentSymbolId && _av.cls !== 'green';
+        const gateWarn = gateHold
+            ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2">
+                <div class="text-[10px] font-bold text-yellow-300 mb-0.5">⏸️ 頂部直判目前是「${_av.big}」→ 此計畫先別執行</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">下面三批價是照「發動K劇本」預先算好的作戰地圖;等頂部「🎯 現在該怎麼做」轉 🟢 可進場再照表操作,現在先鎖股觀察。</div>
+            </div>`
+            : '';
+        // 🚦 V55.9 折疊列燈號:空頭=紅、仲裁未綠=⏸、追高=黃,否則直接給試單價
         this._setLight('lightPlan', isDowntrend ? '<span class="text-red-300">🚫 空頭勿執行</span>'
+            : (gateHold ? '<span class="text-yellow-300">⏸️ 等頂部轉綠</span>'
             : (chaseWarn ? '<span class="text-yellow-300">⚠️ 別追高・等回測</span>'
-            : `<span class="text-orange-300">試單 ${fmtPrice(b1)}</span>`));
+            : `<span class="text-orange-300">試單 ${fmtPrice(b1)}</span>`)));
         box.innerHTML = `
             <div class="text-orange-400 font-bold text-sm flex items-center justify-between mb-2">
                 <span>📐 朱老師分批進場計畫</span>
                 ${triggerInfo}
             </div>
             <div class="text-[9px] text-gray-500 mb-1.5">現價 <span class="font-mono text-yellow-300 font-bold">${fmtPrice(pCnow)}</span> ・ 三批為「突破型」進場:試單追突破發動點、加碼順 5MA、回後撿回檔</div>
-            ${trendWarn}
+            ${trendWarn}${gateWarn}
             ${chaseWarn}
             <div class="grid grid-cols-3 gap-2 text-center mb-2">
                 <div class="bg-yellow-900/20 border border-yellow-700/40 rounded px-1 py-1.5">
