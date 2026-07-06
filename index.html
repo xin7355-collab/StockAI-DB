@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V55.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V55.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1020,6 +1020,8 @@
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
                 <!-- 📋 V42.5 — 今日操作重點(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
                 <div id="todayOrderCard" class="hidden"></div>
+                <!-- 🎯 V55.4 — 現在該怎麼做(朱式買點直判:回後買上漲 → 進場/等/別追,附進場價+停損+勝率) -->
+                <div id="chuActionCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <!-- V46.3 — 首席AI/此股預判整段隱藏,外層 padding 一併收掉(消除頁面上方空白;內部元素仍在 DOM 供 null-safe) -->
                     <div class="relative">
@@ -13624,6 +13626,57 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // 📋 V42.5 — 今日操作重點(盤前一眼無腦看):合成所有純公式訊號 → 空手給買點、持股給賣點+損益
+    // 🎯 V55.4 — 「現在該怎麼做」直判卡:把 _detectChuLongEntry(回後買上漲引擎)最強訊號翻成一句行動指令
+    //   使用者要:直接告訴我「現在是回後買上漲、馬上進場 or 等」+ 進場價/停損/勝率,別讓我自己拼
+    renderChuActionCard(data) {
+        const el = document.getElementById('chuActionCard');
+        if (!el) return;
+        if (!Array.isArray(data) || data.length < 30) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        let sigs = [];
+        try { sigs = this._detectChuLongEntry(data) || []; } catch (_) {}
+        const find = re => sigs.find(s => re.test(s.title || ''));
+        const hi = find(/高勝率做多買點/), weak = find(/力道偏弱/), topWarn = find(/做頭不建議/),
+              chase = find(/多頭但追高/), wait = find(/回檔等買點/);
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const pC = C(data[last]);
+        const rt = p => this._roundTick ? this._roundTick(p) : +(+p).toFixed(2);
+        // 決策:挑最該講的一個
+        let head, sub, cta, cls, big;
+        if (hi) {
+            big = '🟢 現在可進場'; head = '回後買上漲・高勝率買點(約8成)'; cls = 'green';
+            cta = `馬上可進場;進場參考站上 5 日線 ${rt(hi.val).toFixed(2)},停損跌破 5 日線或前低就砍。`; sub = hi.msg;
+        } else if (weak) {
+            big = '🟡 可小量試單'; head = '回後買上漲・力道偏弱'; cls = 'yellow';
+            cta = `站回 5 日線 ${rt(weak.val).toFixed(2)} 了但攻擊力道未滿(紅K/量/過昨高沒到齊)→ 只小量試,等力道齊再加。`; sub = weak.msg;
+        } else if (topWarn) {
+            big = '🔴 別買(做頭)'; head = '回後買上漲・做頭不建議'; cls = 'red';
+            cta = `雖回後站上 5 日線,但高檔大量長紅 ½ ${rt(topWarn.val).toFixed(2)} 已被跌破=主力出貨;朱鐵律:此後別再回後買上漲,先觀望。`; sub = topWarn.msg;
+        } else if (wait) {
+            big = '⏳ 還不是買點・等'; head = '多頭回檔中,等站回 5 日線'; cls = 'gray';
+            cta = `現在回檔中還沒站上 5 日線 ${rt(wait.val).toFixed(2)};鎖股等「紅K站回 5 日線 + 不破前低」出現才是回後買上漲買點。`; sub = wait.msg;
+        } else if (chase) {
+            big = '🟡 別追高・等回檔'; head = '波段多頭但已到追高區'; cls = 'yellow';
+            cta = `已近波段高點,朱:買低不追高;等回檔不破前低、再站回 5 日線 ${rt(chase.val).toFixed(2)} 才進。`; sub = chase.msg;
+        } else {
+            big = '⚪ 現在非朱式買點'; head = '非「波段多頭+回檔不破前低」格局'; cls = 'gray';
+            cta = '現在不是回後買上漲的盤(不是波段多頭、或已破前低)。回後買上漲只做「上升趨勢中回檔、止穩再上」,不是抄近期新低。等趨勢轉多再看。'; sub = '';
+        }
+        const map = { green: ['text-green-400', 'border-green-500'], yellow: ['text-yellow-300', 'border-yellow-500'], red: ['text-red-400', 'border-red-500'], gray: ['text-gray-300', 'border-gray-500'] };
+        const [tc, bc] = map[cls];
+        el.className = `bg-[#161b22] border-2 ${bc} rounded-lg p-3 shadow-lg`;
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+                <div class="text-[11px] font-black text-gray-400">🎯 現在該怎麼做(朱式買點)</div>
+                <div class="text-[9px] text-gray-500">現價 ${pC ? pC.toFixed(2) : '—'}</div>
+            </div>
+            <div class="text-2xl font-black ${tc} mb-0.5">${big}</div>
+            <div class="text-[11px] font-bold text-gray-200 mb-1.5">${head}</div>
+            <div class="bg-[#0d1117] border-l-4 ${bc} pl-2.5 py-1.5 rounded-r"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${cta}</div></div>
+            <details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer list-none">📖 什麼是「回後買上漲」?勝率為何高?</summary><div class="text-[10px] text-gray-400 leading-relaxed mt-1">回後買上漲=<b>上升趨勢中</b>股價回檔到支撐(5日線/前低),<b>止穩再往上</b>那一刻買 —— 不是抄「近期新低」(那叫破底翻,風險高)。順著既有多頭趨勢、又等回檔便宜點進場,所以勝率高;朱家泓高勝率版再要求「紅K實體≥2% + 量增 + 收盤過昨高」三條件齊(約8成)。停損固定跌破 5 日線或前低,虧損小、賺賠比好。</div></details>`;
+        el.classList.remove('hidden');
+    },
+
     renderTodayOrder(data) {
         const el = document.getElementById('todayOrderCard');
         if (!el) return;
@@ -21561,6 +21614,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
         try { this._renderStockEarningsReminder(this.currentSymbolId); } catch (_) {}   // 📢 V51.6 法說會提醒(現價下方,2 交易日內)
         try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日操作重點(首席頁置頂)
+        try { this.renderChuActionCard(data); } catch (_) {}   // 🎯 V55.4 現在該怎麼做(朱式買點直判)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
