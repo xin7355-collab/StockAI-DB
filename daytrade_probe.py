@@ -163,9 +163,33 @@ def main():
     twse_hits = len(stats)
     print(f"  📊 上市(TWSE)可當沖命中 {twse_hits} 檔")
 
-    # ── 上櫃(TPEX)可當沖清單:試多候選端點,格式不確定→通用解析 + debug 印到 stdout ──
+    # ── 上櫃(TPEX)可當沖清單 ──
     tpex_added = 0
     tpex_debug = []
+
+    # 🔎 先掃 TPEX OpenAPI swagger.json 自動找「當沖/沖銷」相關端點(不靠猜,直接讀官方目錄)
+    try:
+        sr = requests.get('https://www.tpex.org.tw/openapi/swagger.json', headers=HDRS, timeout=20)
+        if sr.status_code == 200 and sr.text.strip():
+            sj = sr.json()
+            paths = sj.get('paths', {}) if isinstance(sj, dict) else {}
+            hits_sw = []
+            for p, meta in paths.items():
+                blob = (p + ' ' + json.dumps(meta, ensure_ascii=False))
+                if any(k in blob for k in ['當沖', '沖銷', 'day', 'Day', 'intraday', 'Intraday', 'DayTrad']):
+                    summ = ''
+                    try: summ = meta.get('get', {}).get('summary', '')
+                    except Exception: pass
+                    hits_sw.append(f"{p}  «{summ}»")
+            print(f"  🔎 TPEX swagger 共 {len(paths)} 端點;當沖相關:")
+            for h in hits_sw[:20]:
+                print(f"       {h}")
+            debug['tpex_swagger_daytrade'] = hits_sw[:20]
+        else:
+            print(f"  🔎 TPEX swagger.json HTTP {sr.status_code}, {len(sr.text)}B")
+    except Exception as e:
+        print(f"  🔎 TPEX swagger 掃描失敗:{type(e).__name__}:{str(e)[:50]}")
+
     # ⚠️ 不可放 tpex_disposal_information(那是「處置股」= 禁當沖,語意相反,首跑誤併過 22 檔已移除)
     #    可當沖清單約 800+ 檔 → 加 TPEX_MIN 門檻,小清單一律不信(擋掉處置/注意等錯資料集)
     TPEX_MIN = 200
