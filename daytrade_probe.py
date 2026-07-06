@@ -160,8 +160,61 @@ def main():
                     entry = {'v': int(dv)}
             stats[code] = entry
 
+    twse_hits = len(stats)
+    print(f"  📊 上市(TWSE)可當沖命中 {twse_hits} 檔")
+
+    # ── 上櫃(TPEX)可當沖清單:試多候選端點,格式不確定→通用解析 + debug 印到 stdout ──
+    tpex_added = 0
+    tpex_debug = []
+    tpex_urls = [
+        'https://www.tpex.org.tw/openapi/v1/tpex_intraday_trading_securities',
+        'https://www.tpex.org.tw/openapi/v1/tpex_daytrading_transaction',
+        'https://www.tpex.org.tw/openapi/v1/tpex_disposal_information',
+        'https://www.tpex.org.tw/www/zh-tw/intraday/dayTradList?type=json',
+    ]
+    for u in tpex_urls:
+        try:
+            r = requests.get(u, headers=HDRS, timeout=20)
+            body = (r.text or '')
+            note = f"HTTP {r.status_code}, {len(body)}B"
+            rows = None
+            if r.status_code == 200 and body.strip():
+                try:
+                    jj = r.json()
+                    if isinstance(jj, list):
+                        rows = jj
+                    elif isinstance(jj, dict):
+                        rows = jj.get('data') or jj.get('aaData') or (jj.get('tables', [{}])[0].get('data') if jj.get('tables') else None)
+                    note += f", json={type(jj).__name__}, rows={len(rows) if rows else 0}"
+                    if rows:
+                        note += f", sample={rows[0]}"
+                except Exception as je:
+                    note += f", 非JSON 前50:{body[:50]!r}"
+            tpex_debug.append({'url': u.rsplit('/', 1)[-1], 'note': note})
+            print(f"  🔎 TPEX {u.rsplit('/',1)[-1]}: {note}")
+            if rows:
+                for row in rows:
+                    code = None
+                    if isinstance(row, dict):
+                        for k in ('Code', 'SecuritiesCompanyCode', 'code', '證券代號', 'stkno', 'StockNo'):
+                            if k in row and str(row[k]).strip():
+                                code = str(row[k]).strip(); break
+                    elif isinstance(row, list) and row:
+                        code = str(row[0]).strip()
+                    if code and ((code.isdigit() and len(code) == 4) or code.startswith('00')):
+                        if code not in stats:
+                            stats[code] = 1
+                            tpex_added += 1
+                if tpex_added:
+                    print(f"  ✅ TPEX 併入上櫃可當沖 {tpex_added} 檔(用 {u.rsplit('/',1)[-1]})")
+                    break
+        except Exception as e:
+            tpex_debug.append({'url': u.rsplit('/', 1)[-1], 'note': f"{type(e).__name__}:{str(e)[:40]}"})
+            print(f"  🔎 TPEX {u.rsplit('/',1)[-1]}: {type(e).__name__}:{str(e)[:40]}")
+    debug['tpex'] = tpex_debug
+
     hits = len(stats)
-    print(f"  📊 可當沖標的命中 {hits} 檔")
+    print(f"  📊 可當沖總命中 {hits} 檔(上市 {twse_hits} + 上櫃 {tpex_added})")
 
     if hits < MIN_HITS:
         print(f"❌ 命中 {hits} < DT_MIN_HITS({MIN_HITS}) → rc=1 不覆寫(保留舊檔)")
@@ -178,8 +231,9 @@ def main():
             'date': used_date,
             'updated_utc': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M'),
             'hits': hits,
-            'source': 'TWSE TWT84U(官方可當日沖銷交易標的清單)',
-            'note': 'sym→1 = 官方可現股當沖;{v:..}=有成交量的報表才會出現',
+            'source': 'TWSE TWT84U(上市)+ TPEX(上櫃)官方可當日沖銷交易標的清單',
+            'twse': twse_hits, 'tpex': tpex_added,
+            'note': 'sym→1 = 官方可現股當沖(上市+上櫃)',
         },
     }
     out.update(stats)
