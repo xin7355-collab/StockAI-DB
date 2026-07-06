@@ -25,12 +25,33 @@
 
 ## GitHub Actions Workflow
 
-### 三支 workflow 分工（重要）
+### 兩支「部署」workflow 分工（最重要,先記這兩支）
 | Workflow | 觸發 | 用途 | 生效時間 |
 |----------|------|------|----------|
-| `daily_miner.yml` | cron / 手動 / push `miner.py`·`macro_miner.py`·`radar_miner.py`·`chief_ai_batch.py`·`daily_miner.yml` | 完整採礦 + 部署 gh-pages/data | 30-60 分 |
-| `deploy_pages.yml` | push `index.html` / `sw.js` 到 main / 手動 | **只部署 index.html + sw.js 到 gh-pages,不採礦** | **~1 分鐘** |
-| `macro_probe.yml` | (自身用途) | 總經探針 | — |
+| `daily_miner.yml` | cron 週一~五 16:30 / 手動 / push `miner.py`·`macro_miner.py`·`radar_miner.py`·`backtest.py`·`walk_forward.py`·`paper_trade.py`·`etf_miner.py`·`extras_miner.py`·`potential_miner.py`·`momentum_miner.py`·`daily_miner.yml` | 完整採礦 + 部署 gh-pages/data（20 批次 matrix 併發） | 30-60 分 |
+| `deploy_pages.yml` | push `index.html`·`sw.js`·`manifest.json` 到 main / 手動 | **只部署前端到 gh-pages,不採礦** | **~1 分鐘** |
+
+### 完整 workflow 清單（V55.7 現況,共 ~16 支;採礦端已長成一整片艦隊）
+| Workflow | 觸發 | 用途 |
+|----------|------|------|
+| `daily_miner.yml` | cron 16:30 / push 採礦 py | **主力**:全市場 OHLCV+法人+籌碼+雷達+潛力+黑馬,matrix 併發 → 部署 gh-pages/data |
+| `deploy_pages.yml` | push `index.html`/`sw.js`/`manifest.json` | **秒級前端部署**(唯一前端部署,勿再增第二支) |
+| `cancel-stale-miners.yml` | push 採礦 py / 手動 | 連續 push 時取消孤兒 daily_miner run(省配額) |
+| `fund_sweep.yml` | cron `0 18 * * 1-5`(台北 02:00) | 夜間全市場基本面 YoY/毛利滾動補齊 → `data/fund_yoy_gm.json` |
+| `rotation_probe.yml` | cron `23 * * * *`(每小時 :23) | 全市場基本面時間輪動採礦 → `fundamentals_rotation.json` |
+| `macro_cron.yml` | cron `0 */4 * * *`(每 4 小時) | 總經採礦定時同步(macro_miner) |
+| `macro_probe.yml` | push `macro_miner.py` / 手動 | 總經採礦驗證探針 |
+| `news_express.yml` | cron `0 1,5,9,13 * * 1-5` / push `universal_radar.py` | 即時新聞快訊 → `global_news.json` |
+| `news_premarket.yml` | cron `30 21 * * 0-4`(台北 05:30) | 盤前新聞晨採 |
+| `daytrade_probe.yml` | cron `0 10 * * 1-5`(盤後) | **當沖熱度採礦** → `data/daytrade_stats.json`(V54.8+) |
+| `concept_probe.yml` | 手動 | 概念股採礦 → `concept_stocks.json` |
+| `momentum_probe.yml` | 手動 | 中線黑馬採礦 probe |
+| `potential_probe.yml` | 手動 | 長線潛力股採礦 probe |
+| `etf_probe.yml` | push `etf_probe.py` / 手動 | ETF 持股來源探針(純診斷) |
+| `telegram_alert.yml` | 手動(cron 已停,改 Cloudflare Worker) | Telegram 警報系統 |
+| `deploy_worker.yml` | push `cloud-worker/**` | 部署 Cloudflare Worker(定時推播) |
+
+> ⚙️ **命名慣例**:`*_probe.yml` / `*_miner` = 獨立輕量採礦,各寫**獨立 `data/*.json`**,靠 daily_miner deploy 的 `git archive origin/data` 自動保留(勿併回 daily_miner 重建的檔,會被下午洗掉)。核心「部署」永遠只有 `daily_miner`(採礦+全部署) 和 `deploy_pages`(純前端) 兩支。
 
 - **`daily_miner.yml` 執行策略**：採 **20 批次同步併發 (Matrix Parallel)**，打破時間限制，大幅縮短全市場採礦時間。
 - **無損合併**：每個子任務獨立抓取負責的股票後，`merge` 任務將 JSON 完美合併。
@@ -112,15 +133,63 @@
 ## 資料檔案位置
 
 ```
-data/*.json          每支股票的 OHLCV + 法人籌碼（最多1200筆，約5年）
-data/chips/*.json    主力分點籌碼（滾動20個交易日）
-data/broker_names.json  券商代碼→名稱對照表（從 TWSE T86 累積建立）
-data/radar.json      雷達預運算結果（底部/飆股/綜合強勢）
-data/top_picks.json  AI 戰略選股（三位一體篩選前 30 名）
-futures_cache.json   外資台指期未平倉淨口數
-macro_cache.json     美股大盤日收資料（SP500/NASDAQ/VIX/TSM）
+# ── 核心 K 線 / 籌碼 ──
+data/{sym}.json          每支股票的 OHLCV + 法人籌碼（最多1200筆，約5年）
+data/chips/*.json        主力分點籌碼（滾動20個交易日）
+data/broker_names.json   券商代碼→名稱對照表（從 TWSE T86 累積建立）
+futures_cache.json       外資台指期未平倉淨口數
+macro_cache.json         美股大盤日收資料（SP500/NASDAQ/VIX/TSM）
 margin_cache_stock.json  個股融資融券餘額快取
+
+# ── 選股 / 雷達 / 排名（miner.py + radar_miner + potential/momentum）──
+data/radar.json          雷達預運算結果（底部/飆股/綜合強勢）
+data/radar_matrix.json   雷達矩陣
+data/top_picks.json      AI 戰略選股（三位一體篩選前 30 名）
+data/falcon_scores.json  獵鷹計分（主力/多空/起漲）
+data/inst_rank.json      法人買賣超排名
+data/market_stats.json   大盤統計
+data/miner_status.json   採礦健康度自我診斷
+
+# ── 基本面（fund_sweep + rotation + miner）──
+data/fundamentals_cache.json    {sym:{pe,yield_rate,rev_yoy?,gross_margin?}} + __status 診斷鍵
+data/fund_yoy_gm.json           夜間全市場 YoY/毛利滾動補齊（fund_sweep.py 獨立檔）
+data/fundamentals_rotation.json 基本面時間輪動（rotation_miner.py，每小時）
+data/industry_pe.json           產業中位 PE（法人目標價純公式用）
+data/industry_map.json          個股→產業對照
+
+# ── 處置股 ──
+data/attention_status.json   注意/處置即時狀態
+data/attention_forecast.json 越關越大尾預測
+data/attention_history.json  注意股歷史
+
+# ── 總經 / 新聞（macro_miner + universal_radar）──
+data/macro_risk.json     總經風險（板塊 ETF 對標 sector_etfs 等）
+data/risk_history.json   風險指數歷史快照
+data/sector_heat.json    板塊熱度
+data/global_news.json    即時新聞快訊
+data/tech_giants_news.json 科技巨頭新聞
+data/radar_news.json     雷達新聞
+data/bubble_warning.json 泡沫警示
+
+# ── 當沖（daytrade_probe，V54.8+）──
+data/daytrade_stats.json 全市場每檔當沖成交股數（前端算當沖比重）
+data/day_trade.json      當沖相關
+
+# ── 驗證 / 回測 / 紙上跟單 ──
+data/strategy_backtest.json 系統勝率回測（backtest.py）
+data/walk_forward.json      樣本外驗證（walk_forward.py，防 overfit）
+data/paper_trades.json      紙上跟單（paper_trade.py，驗證預測力）
+data/signal_history.json    訊號歷史
+
+# ── 其他 ──
+data/concept_stocks.json 概念股（concept_miner.py）
+data/etf_tracking.json   ETF 跟車狀態
+data/tdcc.json           集保戶股權分散
+data/chief_ai_cache.json 首席 AI 快取
+data/manual_events.json  人工事件（唯一在 main 追蹤的 data 檔;其餘 data/*.json 皆 gitignore）
 ```
+
+> 📌 **data 檔 gitignore 規則**:`data/*.json` 在 **main 分支是 gitignore**(只 `manual_events.json` 例外);實體資料只活在 **gh-pages / data 兩個 orphan 分支**。採礦 workflow 用 `git add -f` 強制越過 gitignore 提交,deploy 用 `git archive origin/data` 鋪底保留 append 類檔。改採礦 git 流程務必**實測**(見「定期修 bug」章的 V49.4 git 陷阱)。
 
 ### 資料流圖（K 線從採礦到渲染怎麼跑）
 
@@ -143,7 +212,33 @@ futures_cache.json、macro_cache.json、margin_cache_stock.json
 
 ---
 
-## 採礦機重點（miner.py）
+## 採礦機艦隊（Python 檔索引）
+
+`miner.py` 是主力,但採礦端已長成一整片艦隊。改任何一支前先對照這張表(避免動錯檔):
+
+| 檔案 | 角色 | 輸出 | 觸發 workflow |
+|------|------|------|--------------|
+| `miner.py` | **主力**:全市場 OHLCV+法人+分點+雷達+選股 | `{sym}.json`·`chips/`·`radar*`·`top_picks`·`falcon_scores`·`inst_rank`… | daily_miner |
+| `macro_miner.py` | 總經:美股大盤/VIX/板塊 ETF/風險 | `macro_risk.json`·`risk_history`·`sector_heat` | macro_cron / macro_probe |
+| `radar_miner.py` | 雷達預運算(底部/飆股/綜合強勢) | `radar.json`·`radar_matrix` | daily_miner |
+| `potential_miner.py` | 全市場長線潛力股排名(Tier B) | 潛力排名 | daily_miner / potential_probe |
+| `momentum_miner.py` | 全市場中線黑馬排名(Tier B) | 黑馬排名 | daily_miner / momentum_probe |
+| `fund_sweep.py` | 夜間全市場基本面 YoY/毛利滾動補齊 | `fund_yoy_gm.json`(獨立檔) | fund_sweep |
+| `rotation_miner.py` | 基本面時間輪動(每小時) | `fundamentals_rotation.json` | rotation_probe |
+| `extras_miner.py` | 多空計分卡補三項全市場資料(V21.5) | 多空計分 | daily_miner |
+| `concept_miner.py` | 概念股採礦 | `concept_stocks.json` | concept_probe |
+| `etf_miner.py` / `etf_probe.py` | ETF 持股/跟車 | `etf_tracking.json` | daily_miner / etf_probe |
+| `universal_radar.py` | 新聞/純數據 JSON 解析(嚴格純 JSON) | `global_news.json` 等 | news_express / news_premarket |
+| `daytrade_probe.py` | 當沖熱度(TWSE TWTB4U 全市場)(V54.8+) | `daytrade_stats.json` | daytrade_probe |
+| `backtest.py` | 系統勝率回測(Tier 4) | `strategy_backtest.json` | daily_miner |
+| `walk_forward.py` | 樣本外驗證(防 overfit) | `walk_forward.json` | daily_miner |
+| `paper_trade.py` | 紙上跟單(驗證未來預測力) | `paper_trades.json` | daily_miner |
+| `alert_system.py` | Telegram 警報(戰區三);cron 已停,主推改 Cloudflare Worker | 推播 | telegram_alert / cloud-worker |
+| `api.py` | 後端 API(開盤日報/新聞研判/預測稽核,**維持 Groq**) | — | (Cloudflare/外部) |
+
+> 🧩 **獨立採礦鐵則**:每支輕量採礦寫**自己的 `data/*.json`**,靠 daily_miner deploy 的 `git archive origin/data` 保留;**勿併回 miner.py 重建的檔**(如 `fundamentals_cache.json` 會被下午完整採礦洗掉)。新增 data/*.json 必確認在對應 workflow 的 upload-artifact `path:` 清單內(V35.x 曾漏傳導致舊檔從不被覆蓋)。
+
+## miner.py 重點
 
 ### 資料來源與極限防禦
 1. **OHLCV 與法人**：直接抓取 TWSE/TPEX 免費 API，並具備 SQLite WAL 鎖死防護與 JSON 分散式合併。
@@ -698,6 +793,42 @@ done
   - 切分支前 `git reset --hard` + `git clean -fdq`,再 `git checkout -f`(可越過 gitignore untracked 衝突,已實測)。
   - `git add -f`(強制越過 gitignore)+ `git commit -- 檔`(明確 pathspec,只提交這一檔,別洩漏無關檔到 gh-pages)。
 - **自我修復**:命中 < `FUND_MIN_HITS`(20)不覆寫、不部署(保留舊檔);部分完成也 OK,下晚接著補,永不整批歸零。
+
+## ⚡ 當沖作戰台(V54.x~V55.x — 大功能,純公式為主 + 一支獨立採礦)
+
+台股當沖客專用模組。渲染函式 `renderDayTradeTab`,DOM `#subContentDayTrade` / `#dayTradeBody`,sub-tab 按鈕 `#subTabBtnDayTrade`。
+
+### 演進脈絡(別被搬來搬去搞混,認最終位置)
+- **V54.2** 當沖首度做成個股頁籤(處置旁),7 卡全純公式(零採礦零 API)。
+- **V54.3/V54.4** 一度改「頂層底部導覽 tab」(大盤右側)、移除個股頁籤。
+- **V54.6/V54.7 Batch A** — **ORB 開盤區間突破** + 樞紐點/關卡**一鍵到價推播**。
+- **V54.8~V55.0 Batch B** — **當沖熱度改「官方可當沖清單」**(TWSE 不開放免費逐檔比重);新增 `daytrade_probe.py` 抓 TWSE `TWTB4U` → `data/daytrade_stats.json`,前端用「當沖量 ÷ 該股當日總量(前端自有 K 線量)」算比重。
+- **V55.2** ⭐ **當沖移回個股 sub-tab(即時右側)** = **目前最終位置**;`subContentDayTrade` 就是它。
+- **V55.3~V55.7** 大簡化:**頂部「作戰指令」**(可否進場 + 掛單計畫 + 今日多空傾向一句話 + 已達進場價閃燈)+ 其餘卡摺疊 + **13:25 平倉提醒** + 朱式買點直判卡 + 🃏 打法雷達。
+
+### 鐵則
+- **純公式優先**:進場價/掛單/樞紐點/ORB/關卡全 JS 自算(禁外部 AI 算數,同全站鐵律)。當沖熱度是唯一需採礦的維度。
+- **切股競態守門必做**:當沖頁曾殘留上一檔股價/掛單價(V55.4/V55.5 修);切股 `currentSymbolId !== sym` 一律 return + reset。
+- **可當沖清單只當「正面證明」**:不在官方清單**不亂喊 🚫 不可**(V55.1 修上櫃誤判);處置股禁當沖是另條規則。
+- **手續費折數全 App 共用**:設定中心「我的手續費折數」→ 當沖損益試算、離場 SOP 都讀同一份(V55.7)。
+
+### daytrade_probe.py 採礦踩雷紀錄(2026-07-06 實測,別再踩)
+- `openapi.twse.com.tw` 對 **GitHub Actions IP 回 200 空陣列 `[]`** → 改用 `www.twse.com.tw/exchangeReport`(miner.py 的 twse_ohlcv 實證此 host 從 GitHub 可用)。
+- **bot-like UA 被 TWSE 回空** → 用 iPhone 瀏覽器 UA(對齊 `miner._HDRS`)。
+- 上櫃(TPEX)可當沖清單走 `tpex_securities` 端點(swagger.json 掃描確認,別靠猜);上櫃處置股別誤當可當沖。
+- 命中 < `DT_MIN_HITS`(30)→ rc=1 不覆寫、不部署,保留線上舊檔(同全站「部分完成也 OK」自我修復原則)。
+
+## 📌 V50~V55 重大功能盤點(2026-07,接續 V49.x)
+
+| 版本 | 內容 |
+|------|------|
+| V50~V53 | 潛力/黑馬/輪動採礦成熟(potential/momentum/rotation_miner 三支獨立 Tier B);新聞晨採 + 即時快訊雙 workflow(news_premarket / news_express);免費查(Perplexity 深連結)全站佈點 |
+| V53.9/V54.0 | K 線下方「🔎 免費查事件」按鈕列(除權息/財報/月營收/法說會);移除抓不到的法說會旗標 |
+| V54.0~V54.2 | 庫存/漲跌停即時報價改用**官方昨收**(修庫存誤判漲停跳紅底);上櫃殘留盤中快照 yfinance 自動校正;台指期夜盤改 OpenAPI 取漲跌%(盤前預判滿血) |
+| **V54.2~V55.7** | **⚡ 當沖作戰台**(見上節);ORB / 樞紐點到價推播 / 當沖熱度採礦 / 作戰指令大簡化 |
+| V55.3~V55.7 | 總覽頁「🎯 現在該怎麼做(朱式買點直判)」大卡 + 🃏 打法雷達直判卡;手續費折數全 App 共用 |
+
+> 🗒️ **版號現況**:index.html 已到 **V55.7**(里程表 +0.1 規則,見「版本號規則」章)。此文件記到 V55.x;更早的 V18~V49 里程碑散見上方各專章,勿刪。
 
 ## GitHub 帳號
 - 帳號:`xin7355-collab`
