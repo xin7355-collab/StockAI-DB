@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 title 保持「首席」兩字:iOS 推播「from …」來源會顯示 document.title,長字會擋住訊息内容 -->
-    <!-- STRATEGY TERMINAL V53.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V53.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>首席</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V53.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1309,6 +1309,7 @@
                             <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="除權息 K線標記:除息交易日插「息」旗標,點旗標用 Perplexity 查填息狀況(僅日線)"><input type="checkbox" id="toggleExDiv" checked onchange="app.renderChart()" class="hidden"><span>息</span></label>
                             <label class="ma-toggle-lbl text-[#60a5fa] cursor-pointer flex items-center" title="財報公告旗標(標準公告日近似:Q1約5/15、Q2約8/14、Q3約11/14、年報約3/31);點旗標用 Perplexity 查該季財報好壞(僅日線)"><input type="checkbox" id="toggleFinRpt" onchange="app.renderChart()" class="hidden"><span>財</span></label>
                             <label class="ma-toggle-lbl text-[#34d399] cursor-pointer flex items-center" title="月營收公告旗標(近似每月10日);點旗標用 Perplexity 查該月營收 YoY 好壞(僅日線,較密預設關)"><input type="checkbox" id="toggleRev" onchange="app.renderChart()" class="hidden"><span>營</span></label>
+                            <label class="ma-toggle-lbl text-[#f472b6] cursor-pointer flex items-center" title="法說會旗標(TWSE 公開資料實抓,只有近期/排定場次);點旗標用 Perplexity 查那次法說會重點好壞(僅日線)"><input type="checkbox" id="toggleEarnCall" checked onchange="app.renderChart()" class="hidden"><span>說</span></label>
                         </div>
                     </div>
                     <div class="relative">
@@ -3122,6 +3123,7 @@ const app = {
                 if (params && params.componentType === 'markPoint' && params.data && params.data.exDivDate) { this._openExDivPerplexity(params.data.exDivDate); return; }
                 if (params && params.componentType === 'markPoint' && params.data && params.data.finRpt) { this._openFinRptPerplexity(params.data.finRpt); return; }
                 if (params && params.componentType === 'markPoint' && params.data && params.data.revMonth) { this._openRevPerplexity(params.data.revMonth); return; }
+                if (params && params.componentType === 'markPoint' && params.data && params.data.earnCallDate) { this._openEarnCallPerplexity(params.data.earnCallDate); return; }
                 if (params && typeof params.dataIndex === 'number') this.renderChartHud(params.dataIndex);
             } catch (_) {}
         });
@@ -14426,6 +14428,60 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._freeAiOpen(`${tag} ${ym} 月營收多少?年增(YoY)、月增(MoM)是成長還是衰退?創新高了嗎?對股價的影響?請白話說明,附日期與來源`);
         this.vibrate?.(20);
     },
+    // 📞 法說會日期解析(民國/西元 皆可,複製 macro_miner._parse_date_flexible)→ 回 YYYY/MM/DD 對齊 activeData
+    _parseTwseDate(v) {
+        let s = String(v || '').trim().replace(/[-.]/g, '/');
+        if (!s) return null;
+        let y, m, d;
+        if (/^\d+$/.test(s) && (s.length === 7 || s.length === 8)) {
+            if (s.length === 7) { y = +s.slice(0, 3) + 1911; m = +s.slice(3, 5); d = +s.slice(5, 7); }
+            else { y = +s.slice(0, 4); m = +s.slice(4, 6); d = +s.slice(6, 8); }
+        } else {
+            const parts = s.split('/').filter(p => p !== '');
+            if (parts.length !== 3) return null;
+            y = +parts[0]; m = +parts[1]; d = +parts[2];
+            if (y < 1911) y += 1911;
+        }
+        if (!y || !m || !d || m > 12 || d > 31) return null;
+        return `${y}/${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`;
+    },
+    // 📞 法說會 K線標記:前端直抓 TWSE OpenAPI 法人說明會一覽(t187ap02,公開 API,零採礦),篩本股日期
+    async _loadEarningsCalls(sym) {
+        if (this._earnCallCache && this._earnCallCache.sym === sym) return this._earnCallCache.list;
+        const urls = ['https://openapi.twse.com.tw/v1/opendata/t187ap02_L', 'https://openapi.twse.com.tw/v1/opendata/t187ap02_O'];
+        const grab = async (u) => {
+            for (const f of [u, `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`]) {
+                try { const r = await fetch(f, { signal: AbortSignal.timeout(8000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) return j; } } catch (_) {}
+            }
+            return null;
+        };
+        const list = [];
+        try {
+            for (const u of urls) {
+                const rows = await grab(u);
+                if (!Array.isArray(rows) || !rows.length) continue;
+                const ks = Object.keys(rows[0]);
+                const kDate = ks.find(k => k.includes('說明會') && k.includes('日期')) || ks.find(k => k.includes('法說') && k.includes('日期')) || ks.find(k => k.includes('日期'));
+                const kCode = ks.find(k => k.includes('公司') && k.includes('代號')) || ks.find(k => k.includes('代號'));
+                const kTime = ks.find(k => k.includes('時間'));
+                if (!kDate || !kCode) continue;
+                for (const r of rows) {
+                    if (String(r[kCode] || '').trim() !== String(sym)) continue;
+                    const dt = this._parseTwseDate(r[kDate]);
+                    if (dt) list.push({ date: dt, time: String((kTime && r[kTime]) || '').trim() });
+                }
+            }
+        } catch (_) {}
+        this._earnCallCache = { sym, list };
+        return list;
+    },
+    // 📞 點 K 線法說會旗標 → Perplexity 查該次重點好壞(零額度)
+    _openEarnCallPerplexity(dateStr) {
+        const sym = this.currentSymbolId; if (!sym) return;
+        const name = (this.getStockName?.(sym) || sym), tag = `${name}(${sym})`;
+        this._freeAiOpen(`${tag} 在 ${dateStr} 舉行法說會,重點與財測展望是什麼?法人 / 分析師解讀偏「利多(好)」還是「利空(壞)」?會後股價反應?請白話條列,附日期與來源`);
+        this.vibrate?.(20);
+    },
 
     // 🚨 V46.3 — 處置/注意告警點擊:帶當前列管狀態,開免費 AI 給「操作提醒」(零額度)
     _openFreeAiDispose() {
@@ -16978,6 +17034,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             this.fetchCorpEvents(targetSym);
             // ✂️ V53.x — 抓除權息日期,完成後重繪 K 線插「息」旗標(每檔快取,不重複抓)
             this._loadExDividends(targetSym).then(() => { if (this.currentSymbolId === targetSym) { try { this.renderChart(); } catch (_) {} } }).catch(() => {});
+            // 📞 V53.x — 抓法說會日期(TWSE OpenAPI),完成後重繪插「說」旗標
+            this._loadEarningsCalls(targetSym).then(() => { if (this.currentSymbolId === targetSym) { try { this.renderChart(); } catch (_) {} } }).catch(() => {});
             this.fetchChipCost(targetSym);
             masterWorker.postMessage({ activeData: this.activeData, marketCtx: this._buildMarketCtx() });
             // ⚡ V46.3 — 報價/名稱/概念已顯即早收 loading 遮罩,指標卡由 worker 回來(onWorkerMessage)再補,切股不再卡「雲端運算中」
@@ -21752,6 +21810,20 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     const mm = String(m).padStart(2, '0'); const idx = _nearIdx(`${y}/${mm}/10`); if (idx < 0 || !data[idx]) continue;
                     markPointData.push({ name: '營收', xAxis: idx, yAxis: data[idx].high, value: '營', symbol: 'pin', symbolSize: 16, itemStyle: { color: '#34d399' }, label: { show: true, formatter: '營', color: '#000', fontSize: 8, fontWeight: 'bold' }, revMonth: `${y}/${mm}` });
                 }
+            }
+        }
+        // 📞 V53.x — 法說會 K線標記(TWSE OpenAPI 實抓,零採礦;點旗標→Perplexity 查那次好壞)。僅日線,日期對齊才標。
+        if (this.currentTF === 'D' && document.getElementById('toggleEarnCall')?.checked && this._earnCallCache && this._earnCallCache.sym === this.currentSymbolId) {
+            const _cIdx = {}; dates.forEach((d, i) => { _cIdx[d] = i; });
+            for (const ev of (this._earnCallCache.list || [])) {
+                const idx = _cIdx[ev.date]; if (idx == null || !data[idx]) continue;
+                markPointData.push({
+                    name: '法說', xAxis: idx, yAxis: data[idx].low, value: '說',
+                    symbol: 'pin', symbolSize: 20, symbolRotate: 180, symbolOffset: [0, '120%'],
+                    itemStyle: { color: '#f472b6' },
+                    label: { show: true, formatter: '說', color: '#fff', fontSize: 9, fontWeight: 'bold' },
+                    earnCallDate: ev.date
+                });
             }
         }
 
