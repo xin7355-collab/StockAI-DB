@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V55.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V55.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -13849,6 +13849,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // 📊 V42.2 — 位階溫度計(純公式):距歷史高折價 + 52週價格位階 → 強勢主流 vs 低基期落後
     _priceRankData(data) {
+        // 🐛 V55.8 永遠用「日K」算 52 週位階:傳入的 activeData 會隨週/月 TF 聚合,250 根週K≈5年,位階/折數會算錯
+        if (Array.isArray(this.rawDailyData) && this.rawDailyData.length >= 30) data = this.rawDailyData;
         if (!Array.isArray(data) || data.length < 30) return null;
         const H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), C = b => +((b?.close ?? b?.c) || 0);
         const pC = C(data[data.length - 1]);
@@ -14120,7 +14122,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             el.classList.remove('hidden');
             // 🎯 V47.3 K線頁也顯「今日觸發型態 × 本股回測勝率」;背景算(只在有觸發時跑重回測),不卡圖表
             const _sym = this.currentSymbolId;
-            setTimeout(() => { try { const s = document.getElementById('kbarWinRateStrip'); if (s) s.innerHTML = this._klineWinRateStripHtml(_sym, data); } catch (_) {} }, 60);
+            setTimeout(() => { try { if (this.currentSymbolId !== _sym) return; const s = document.getElementById('kbarWinRateStrip'); if (s) s.innerHTML = this._klineWinRateStripHtml(_sym, data); } catch (_) {} }, 60);   // 🐛 V55.8 補切股守門
         } catch (e) { console.warn('[chuVerdict]', e); el.classList.add('hidden'); }
     },
     // 🎢 V48.0 — 主升段體檢卡:純公式判「這檔在哪一段」(下降/盤整/初升/主升/末升) + 獲利燃料燈
@@ -17106,6 +17108,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this.latestYoyCache = '';
         this.latestFinancialAICache = '';
         this._fuglePrevClose = null;
+        this._lastMasterScore = null;   // 🐛 V55.8 切股必清:否則進場體檢的「籌碼綜合評分」交叉參照會把 A 股分數當 B 股顯示
         if(!silent) document.getElementById('symbolInput').value = '';
 
         // Clear AI result boxes when switching stocks (avoids stale results misleading user)
@@ -21596,8 +21599,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             else if (profitPct < -10) profitHint = '虧損超過 10%,評估是否執行停損';
             // 🛡️ 硬停損墊:成本 -8% 與前20日低取較高者(防散戶凹單;漲多後改由移動停利接手)
             const hardStop = (prevLow20 !== null && profitPct < 15)
-                ? Math.max(costVal * 0.92, Math.min(prevLow20, costVal * 0.98))
-                : costVal * 0.92;
+                ? Math.max(costVal * 0.95, Math.min(prevLow20, costVal * 0.98))
+                : costVal * 0.95;   // 🐛 V55.8 原 -8%(0.92)與全 App 其他 7 處鐵血停損 -5%(0.95)打架,統一 -5%
             const hitHard = pC <= hardStop;
             // V26.6 — 倉位狀態 Bloomberg 風 4 格 grid + 大字現價(取代原一行文字)
             const _invEntry = (this.inventory || []).find(i => i.symbol === this.currentSymbolId);
@@ -21871,6 +21874,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const mPe = ind && peData?.industries?.[ind]?.median_pe;
             if (typeof mPe === 'number' && mPe > 0) { fairPE = mPe; peMethod = `同業比價法・${ind} 中位 PE ${mPe}`; }
         } catch(_) {}
+        if (this.currentSymbolId !== sym) return;   // 🐛 V55.8 切股競態守門:await 產業 PE(冷快取走網路)期間切股,別把舊股目標價畫到新股頁
         if (fairPE == null && pe && pe > 0) { fairPE = pe; peMethod = `個股 PE 法(${pe.toFixed(1)} 倍)`; }
         if (fairPE == null || fairPE <= 0) { showHint('💡 法人共識目標價：暫無合理 PE 可估', 'text-gray-500'); return; }
 
