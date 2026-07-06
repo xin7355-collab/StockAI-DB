@@ -3,20 +3,17 @@
 """
 ⚡ 當沖熱度採礦 (daytrade_probe.py)
 
-用途:抓 TWSE 官方「每日當日沖銷交易標的及成交量值」(TWTB4U OpenAPI),
-      算每檔「當沖比重 = 當沖成交股數 ÷ 當日總成交股數」,輸出獨立檔
-      data/daytrade_stats.json,前端當沖頁顯「這檔市場當沖多不多 = 適不適合沖」。
+用途:抓 TWSE 官方「每日當日沖銷交易標的及成交量值」(TWTB4U)→ 每檔當沖成交股數,
+      輸出獨立檔 data/daytrade_stats.json。前端當沖頁用「當沖量 ÷ 該股當日總量(前端自有K線量)」
+      算當沖比重,顯「這檔市場當沖多不多 = 適不適合沖」。
 
-設計(對齊 fund_sweep 低風險原則):
-  - 全市場一次 OpenAPI 呼叫,不逐檔迴圈、不吃 FinMind 額度(純 TWSE 免費 OpenAPI)。
-  - 輸出獨立檔,不動 daily_miner 重建的任何快取;daily deploy 的 git archive origin/data 自動保留。
-  - 帶 __debug 自我診斷欄:第一次跑把原始欄位名 + 樣本列一起存進 json,
-    跑完看真實欄位再校準(TWSE OpenAPI 欄位名可能與預期不同,不靠猜)。
-  - 自我守門:命中檔數 < DT_MIN_HITS(預設 30)不覆寫、rc=1 不部署,保留線上舊檔。
+實測踩雷紀錄(2026-07-06):
+  - openapi.twse.com.tw 對 GitHub Actions IP 回 HTTP 200 空陣列 [] → 改用 www.twse.com.tw/rwd
+    正規盤後端點(miner.py 的 twse_ohlcv 實證此 host 從 GitHub 可用)。
+  - bot-like UA 會被 TWSE 回空 → 用 iPhone 瀏覽器 UA(對齊 miner._HDRS)。
 
-環境變數:
-  DT_MIN_HITS   最少命中檔數才覆寫(預設 30)
-  DT_OUT        輸出路徑(預設 data/daytrade_stats.json)
+設計:純 TWSE 免費端點,全市場一次呼叫,不吃 FinMind 額度、不逐檔迴圈;帶 __debug 自我診斷欄;
+      命中 < DT_MIN_HITS(30)rc=1 不覆寫、不部署,保留線上舊檔。
 """
 import os
 import sys
@@ -30,32 +27,19 @@ except ImportError:
     print("需要 requests:pip install requests", file=sys.stderr)
     sys.exit(2)
 
-# ⚠️ 用「真瀏覽器 UA」— TWSE OpenAPI 對 bot-like UA 會回 200 空 body(首跑實測踩到)
-_OAPI = 'https://openapi.twse.com.tw/v1/exchangeReport/'
-# 每日當日沖銷交易標的及成交量值:官方資料集 ID 不確定 → 試多個候選,哪個回 rows 就用哪個(__debug 記錄)
-TWSE_DAYTRADE_CANDIDATES = [_OAPI + x for x in ('TWT84U', 'TWTB4U', 'TWT92U', 'TWT94U')]
-TWSE_STOCKDAY_ALL = _OAPI + 'STOCK_DAY_ALL'   # 每日收盤行情-全部(逐檔含 TradeVolume 總成交股數)
-TPEX_DAYTRADE_URL = 'https://www.tpex.org.tw/openapi/v1/tpex_daytrading_trans'  # 上櫃當沖(best-effort)
-
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/javascript, */*; q=0.01',
-    'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
-    'Referer': 'https://openapi.twse.com.tw/',
-}
+# www.twse.com.tw/rwd 正規盤後端點(miner.py 實證從 GitHub 可用);iPhone UA 對齊 miner._HDRS
+TWTB4U_URL = 'https://www.twse.com.tw/rwd/zh/afterTrading/TWTB4U'   # 每日當日沖銷交易標的及成交量值
+HDRS = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'}
 
 OUT = os.environ.get('DT_OUT', 'data/daytrade_stats.json')
 MIN_HITS = int(os.environ.get('DT_MIN_HITS', '30'))
 
 
 def _num(v):
-    """把 '1,234,000' / '1234000' / 1234000 → float;非數字回 None"""
     if v is None:
         return None
-    if isinstance(v, (int, float)):
-        return float(v)
-    s = str(v).strip().replace(',', '').replace('　', '').replace(' ', '')
-    if s in ('', '--', '---', 'N/A', 'null', '除權', '除息'):
+    s = str(v).strip().replace(',', '')
+    if s in ('', '--', '---', 'N/A', 'null'):
         return None
     try:
         return float(s)
@@ -63,157 +47,121 @@ def _num(v):
         return None
 
 
-def _pick(row, keys):
-    """從一列 dict 依序找第一個存在且非空的 key 值"""
-    for k in keys:
-        if k in row and str(row[k]).strip() not in ('', 'null', 'None'):
-            return row[k]
-    return None
+def _taipei_today():
+    return (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date()
 
 
-def _pick_code(row):
-    return _pick(row, ['Code', 'code', 'SecuritiesCode', 'StockNo', '證券代號', '股票代號', '代號'])
-
-
-def fetch_json(url, tag, retries=3):
-    """回傳 (rows_list, note字串);note 記 HTTP/長度供 __debug 診斷"""
-    note = ''
-    for i in range(retries):
+def fetch_twtb4u(date_yyyymmdd):
+    """回傳 (parsed_dict_or_None, note)。TWSE 回 {stat, fields, data:[[...]]}"""
+    url = f'{TWTB4U_URL}?response=json&date={date_yyyymmdd}&selectType=All'
+    try:
+        r = requests.get(url, headers=HDRS, timeout=25)
+        body = r.text or ''
+        if r.status_code != 200 or not body.strip():
+            return None, f"HTTP {r.status_code}, {len(body)} bytes"
         try:
-            r = requests.get(url, headers=HEADERS, timeout=25)
-            body = (r.text or '')
-            note = f"HTTP {r.status_code}, {len(body)} bytes"
-            if r.status_code == 200 and body.strip():
-                try:
-                    data = r.json()
-                except Exception as je:
-                    note = f"HTTP 200 但非 JSON({str(je)[:40]});前 60 字:{body[:60]!r}"
-                    return [], note
-                if isinstance(data, list) and data:
-                    print(f"  ✅ {tag}:{len(data)} 列")
-                    return data, f"HTTP 200, {len(data)} 列"
-                note = f"HTTP 200 但非 list/空(type={type(data).__name__})"
-                return (data if isinstance(data, list) else []), note
-            print(f"  ⚠️ {tag}:{note}(第 {i+1} 次)")
-        except Exception as e:
-            note = f"{type(e).__name__}: {str(e)[:60]}"
-            print(f"  ⚠️ {tag}:{note}(第 {i+1} 次)")
-        time.sleep(2 * (i + 1))
-    return [], note
-
-
-def fetch_first(urls, tag):
-    """依序試多個候選 URL,第一個回 rows 的就用;回 (rows, used_url, attempts)"""
-    attempts = []
-    for u in urls:
-        rows, note = fetch_json(u, f"{tag}[{u.rsplit('/',1)[-1]}]", retries=2)
-        attempts.append({'url': u, 'note': note, 'rows': len(rows)})
-        if rows:
-            return rows, u, attempts
-    return [], None, attempts
+            j = r.json()
+        except Exception as je:
+            return None, f"HTTP 200 非 JSON({str(je)[:40]}) 前60:{body[:60]!r}"
+        stat = j.get('stat')
+        if stat != 'OK':
+            return None, f"stat={stat!r}"
+        return j, f"OK, fields={len(j.get('fields', []))}, data={len(j.get('data', []))}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {str(e)[:60]}"
 
 
 def main():
     print("⚡ 當沖熱度採礦開始")
-    debug = {}
+    debug = {'attempts': []}
 
-    # ── 1. TWSE 逐檔當沖量(試多個候選資料集 ID)──────────
-    dt_rows, dt_url, dt_attempts = fetch_first(TWSE_DAYTRADE_CANDIDATES, 'TWSE 當沖')
-    debug['daytrade_attempts'] = dt_attempts
-    debug['daytrade_used_url'] = dt_url
-    if dt_rows:
-        debug['daytrade_keys'] = list(dt_rows[0].keys())
-        debug['daytrade_sample'] = dt_rows[0]
+    # 從台北今天往回找最近一個「有當沖資料」的交易日(涵蓋假日/當日未公布)
+    j = None
+    used_date = None
+    base = _taipei_today()
+    for back in range(0, 7):
+        d = base - datetime.timedelta(days=back)
+        ymd = d.strftime('%Y%m%d')
+        jj, note = fetch_twtb4u(ymd)
+        debug['attempts'].append({'date': ymd, 'note': note})
+        print(f"  🔎 TWTB4U {ymd}: {note}")
+        if jj and jj.get('data'):
+            j = jj
+            used_date = ymd
+            break
+        time.sleep(1.0)
 
-    # ── 2. TWSE 逐檔總成交股數(算比重的分母)────────────
-    sd_rows, sd_note = fetch_json(TWSE_STOCKDAY_ALL, 'TWSE STOCK_DAY_ALL 收盤')
-    debug['stockday_note'] = sd_note
-    if sd_rows:
-        debug['stockday_keys'] = list(sd_rows[0].keys())
-        debug['stockday_sample'] = sd_rows[0]
-    tot_vol = {}
-    for row in sd_rows:
-        code = _pick_code(row)
-        if not code:
-            continue
-        v = _num(_pick(row, ['TradeVolume', 'Trade_Volume', 'tradeVolume', '成交股數', 'Volume']))
-        if v and v > 0:
-            tot_vol[str(code).strip()] = v
+    if not j:
+        print(f"❌ 連續 7 天都抓不到當沖資料 → rc=1 不部署")
+        try:
+            os.makedirs('data', exist_ok=True)
+            with open('data/daytrade_stats.debug.json', 'w', encoding='utf-8') as f:
+                json.dump({'__debug': debug}, f, ensure_ascii=False, indent=1)
+        except Exception:
+            pass
+        return 1
 
-    # ── 3. 上櫃當沖(best-effort,先觀察欄位)──────────────
-    tpex_rows, tpex_note = fetch_json(TPEX_DAYTRADE_URL, 'TPEX 上櫃當沖', retries=2)
-    debug['tpex_note'] = tpex_note
-    if tpex_rows and isinstance(tpex_rows, list) and tpex_rows:
-        debug['tpex_keys'] = list(tpex_rows[0].keys())
-        debug['tpex_sample'] = tpex_rows[0]
+    fields = j.get('fields', [])
+    debug['used_date'] = used_date
+    debug['fields'] = fields
+    if j.get('data'):
+        debug['sample_row'] = j['data'][0]
+    print(f"  🔎 fields: {fields}")
+    if j.get('data'):
+        print(f"  🔎 sample: {j['data'][0]}")
 
-    # ── 4. 組裝 {code: {v, tot, r}} ─────────────────────
+    # 找欄位 index:證券代號 + 當日沖銷交易成交股數
+    def fi(*kws):
+        for i, f in enumerate(fields):
+            if any(k in str(f) for k in kws):
+                return i
+        return None
+    i_code = fi('證券代號', '股票代號', '代號')
+    i_vol = fi('成交股數')   # '當日沖銷交易成交股數'(買賣「金額」欄含'成交金額'不含'股數',不會誤中)
+    print(f"  🔎 i_code={i_code}, i_vol={i_vol}")
+
     stats = {}
-    for row in dt_rows:
-        code = _pick_code(row)
-        if not code:
-            continue
-        code = str(code).strip()
-        # 當沖成交股數:TWTB4U 常見欄名(不確定→多候選 + __debug 校準)
-        dv = _num(_pick(row, ['Volume', 'TradeVolume', 'DayTradingVolume', '成交股數', '當日沖銷交易成交股數', '成交量']))
-        if dv is None or dv <= 0:
-            continue
-        entry = {'v': int(dv)}
-        tv = tot_vol.get(code)
-        if tv and tv > 0:
-            entry['tot'] = int(tv)
-            entry['r'] = round(dv / tv * 100, 1)   # 當沖比重 %
-        stats[code] = entry
-
-    # 🔎 把診斷 note 印到 stdout(log 直接看得到,不用下載 artifact)
-    print("  🔎 [debug] 當沖候選端點嘗試:")
-    for a in dt_attempts:
-        print(f"       {a['url'].rsplit('/',1)[-1]}: {a['note']} → rows={a['rows']}")
-    print(f"  🔎 [debug] STOCK_DAY_ALL: {debug.get('stockday_note')} → rows={len(sd_rows)}")
-    print(f"  🔎 [debug] TPEX: {debug.get('tpex_note')}")
-    if dt_rows:
-        print(f"  🔎 [debug] 當沖首列 keys: {debug.get('daytrade_keys')}")
-        print(f"  🔎 [debug] 當沖首列樣本: {debug.get('daytrade_sample')}")
-    if sd_rows:
-        print(f"  🔎 [debug] 收盤首列 keys: {debug.get('stockday_keys')}")
+    if i_code is not None and i_vol is not None:
+        for row in (j.get('data') or []):
+            try:
+                code = str(row[i_code]).strip()
+            except Exception:
+                continue
+            if not (code.isdigit() and len(code) == 4) and not code.startswith('00'):
+                continue
+            dv = _num(row[i_vol]) if i_vol < len(row) else None
+            if dv is None or dv <= 0:
+                continue
+            stats[code] = {'v': int(dv)}
 
     hits = len(stats)
-    with_ratio = sum(1 for e in stats.values() if 'r' in e)
-    print(f"  📊 當沖命中 {hits} 檔,其中 {with_ratio} 檔有比重(配對到總量)")
+    print(f"  📊 當沖命中 {hits} 檔")
 
-    # ── 5. 守門:命中太少不覆寫(保留線上舊檔)────────────
     if hits < MIN_HITS:
-        print(f"❌ 命中 {hits} < DT_MIN_HITS({MIN_HITS}) → 不覆寫、rc=1 不部署(保留舊檔)")
-        # 仍把 debug 落地到暫存,方便看失敗原因(不覆寫正式輸出)
+        print(f"❌ 命中 {hits} < DT_MIN_HITS({MIN_HITS}) → rc=1 不覆寫(保留舊檔)")
         try:
             os.makedirs('data', exist_ok=True)
             with open('data/daytrade_stats.debug.json', 'w', encoding='utf-8') as f:
                 json.dump({'__debug': debug, 'hits': hits}, f, ensure_ascii=False, indent=1)
-            print("  ℹ️ 已寫 data/daytrade_stats.debug.json 供診斷")
-        except Exception as e:
-            print(f"  ⚠️ 寫 debug 失敗:{e}")
+        except Exception:
+            pass
         return 1
 
-    # 日期:TWTB4U 樣本若有 Date 就用它,否則今天
-    dt_date = None
-    if dt_rows:
-        dt_date = _pick(dt_rows[0], ['Date', 'date', '日期'])
     out = {
         '__meta': {
-            'date': dt_date or datetime.datetime.utcnow().strftime('%Y%m%d'),
+            'date': used_date,
             'updated_utc': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M'),
             'hits': hits,
-            'with_ratio': with_ratio,
-            'source': 'TWSE OpenAPI TWTB4U + STOCK_DAY_ALL',
+            'source': 'TWSE TWTB4U(每日當日沖銷交易標的)',
+            'note': '比重由前端用當沖量 ÷ 該股當日總量(K線量)計算',
         },
-        '__debug': debug,   # 首跑觀察真實欄位;校準穩定後可精簡
     }
     out.update(stats)
 
     os.makedirs(os.path.dirname(OUT) or '.', exist_ok=True)
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
-    print(f"✅ 已寫 {OUT}({hits} 檔,含比重 {with_ratio} 檔)")
+    print(f"✅ 已寫 {OUT}({hits} 檔,日期 {used_date})")
     return 0
 
 
