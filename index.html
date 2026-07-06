@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V54.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1011,7 +1011,6 @@
                     <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">基本</button>
                     <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">回測</button>
                     <button onclick="app.switchSubTab('disposed')" id="subTabBtnDisposed" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">處置</button>
-                    <button onclick="app.switchSubTab('daytrade')" id="subTabBtnDayTrade" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚡當沖</button>
                     <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-shrink-0 px-3.5 py-2 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">多空</button>
                 </div>
             </div>
@@ -1399,16 +1398,7 @@
                 <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 數據來源:台灣證券交易所(TWSE)官方 OpenAPI 盤後自動同步 · 實際以 TWSE 公告為準 · 投資有風險,僅供風控參考</div>
             </div>
 
-            <!-- ⚡ V54.3 — 當沖客儀表板 tab(全純公式:漲跌停/振幅/VWAP/量能/損益試算/相對大盤/紀律 SOP;重用即時報價) -->
-            <div id="subContentDayTrade" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
-                <div class="flex items-center justify-between">
-                    <div class="text-[11px] text-gray-400 font-bold flex items-center gap-1"><span>⚡</span>當沖作戰台</div>
-                    <button onclick="app.renderDayTradeTab(app.currentSymbolId); app.vibrate(15);" class="text-[10px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded px-2 py-1 hover:bg-cyan-900/50 transition-colors">🔄 更新即時</button>
-                </div>
-                <!-- 7 大卡由 renderDayTradeTab 動態填入(計算機/SOP 恆顯,即時卡盤中才有數字) -->
-                <div id="dayTradeBody" class="flex flex-col gap-3"></div>
-                <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 當沖 = 同日買進賣出沖銷,證交稅減半(0.15%);需券商開通資格且標的可現股當沖 · 處置股禁當沖 · 本頁純公式試算,僅供紀律參考,投資有風險</div>
-            </div>
+            <!-- ⚡ V54.4 — 當沖 tab 已改為頂層底部導覽(大盤右側),見 #tabContentDayTrade -->
 
             <!-- ⚖️ V21.5 — 多空優勢計分卡(對標籌碼 K 線 App「多空優勢」總覽頁)-->
             <div id="subContentBullBear" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
@@ -2323,6 +2313,25 @@
         <!-- 💎 V46.4 — 長線潛力股(renderPotentialTab 動態填充) -->
         <div id="tabContentPotential" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
         </div>
+        <!-- ⚡ V54.4 — 當沖作戰台(頂層 tab,大盤右側):純公式 7 卡,重用即時報價/分鐘K/量能達標 -->
+        <div id="tabContentDayTrade" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
+            <div class="sticky top-0 z-30 bg-[#0d1117]/95 backdrop-blur flex items-center justify-between px-1 py-2 mb-1 border-b border-[#21262d]">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-base">⚡</span>
+                    <div class="min-w-0">
+                        <div id="dtHeaderName" class="text-sm font-black text-gray-100 truncate">當沖作戰台</div>
+                        <div class="text-[9px] text-gray-500">純公式・當沖客一頁看盡</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button onclick="app._openDayTradeSearch(); app.vibrate(15);" class="text-[11px] font-bold text-white bg-blue-700/60 border border-blue-500/50 rounded px-2.5 py-1.5 hover:bg-blue-600/60 transition-colors">🔍 換股</button>
+                    <button onclick="app.renderDayTradeTab(app.currentSymbolId); app.vibrate(15);" class="text-[11px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded px-2.5 py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 更新</button>
+                </div>
+            </div>
+            <!-- 7 大卡由 renderDayTradeTab 動態填入(無選股時顯空狀態引導搜尋) -->
+            <div id="dayTradeBody" class="flex flex-col gap-3"></div>
+            <div class="text-center text-[10px] text-gray-600 mt-2 leading-relaxed">※ 當沖 = 同日買進賣出沖銷,證交稅減半(0.15%);需券商開通資格且標的可現股當沖 · 處置股禁當沖 · 本頁純公式試算,僅供紀律參考,投資有風險</div>
+        </div>
         <div id="tabContentHunt" class="flex-col p-2 gap-3 pb-4" style="display:none;min-height:80vh;">
             <!-- Active Alerts Banner -->
             <div id="huntAlertBox" class="hidden flex-col gap-2"></div>
@@ -2410,6 +2419,7 @@
             <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-xl drop-shadow">💼</span><span class="text-[11px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[11px] mt-0.5 font-bold">自選</span></button>
             <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">大盤</span></button>
+            <button onclick="app.switchAppTab('daytrade'); app.vibrate(30);" id="navBtnDayTrade" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">⚡</span><span class="text-[11px] mt-0.5 font-bold">當沖</span></button>
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
             <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">👀</span><span class="text-[11px] mt-0.5 font-bold">觀察</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
             <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
@@ -5143,7 +5153,7 @@ ${list}
         const _potElNow = document.getElementById('tabContentPotential');
         if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = window.scrollY || 0;
 
-        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf', 'Potential'].forEach(tab => {
+        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf', 'Potential', 'DayTrade'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             const _el = document.getElementById(`tabContent${tab}`);
             if (_el) {
@@ -5188,6 +5198,7 @@ ${list}
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 觀察', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
         if (tabId === 'potential') { try { this._potentialRestoreScroll = true; this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
+        if (tabId === 'daytrade') { try { this.renderDayTradeTab(this.currentSymbolId); } catch(e) { this._handleTabRenderError('daytrade', '⚡ 當沖', e); } }
         // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
         } catch (e) {   // V24.5 — switchAppTab 整段 try/catch 結尾
             console.error('[switchAppTab]', tabId, e);
@@ -5281,7 +5292,7 @@ ${list}
 
     switchSubTab(tab) {
         this._activeSubTab = tab;   // 🐛 V41.28 記錄當前 sub-tab,切股時 analyze 才知道要補跑哪個載入器
-        ['Strategy', 'Live', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'DayTrade', 'BullBear'].forEach(t => {
+        ['Strategy', 'Live', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
             const el = document.getElementById(`subContent${t}`);
             if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
             const btn = document.getElementById(`subTabBtn${t}`);
@@ -5318,10 +5329,6 @@ ${list}
         // V21.5 — 多空優勢計分卡(對標籌碼 K 線 App,28 條規則 + 四面向)
         if (tab === 'bullbear' && this.currentSymbolId) {
             this.renderBullBearCard(this.currentSymbolId);
-        }
-        // ⚡ V54.3 — 當沖作戰台(純公式 7 卡,重用即時報價/分鐘K/量能達標)
-        if (tab === 'daytrade' && this.currentSymbolId) {
-            this.renderDayTradeTab(this.currentSymbolId);
         }
         // 🎯 V45.12 — 回測 tab 進頁自動跑打法適配(不用再點按鈕;純公式+當日快取)
         if (tab === 'backtest' && this.currentSymbolId) {
@@ -7051,14 +7058,34 @@ ${list}
         this.vibrate?.(20);
     },
 
-    _pickGlobalSearch(sym) {
+    async _pickGlobalSearch(sym) {
         if (!sym) return;
         this._addRecentSearch(sym);
         this.closeGlobalSearchModal();
         document.getElementById('symbolInput').value = sym;
+        // ⚡ V54.4 — 若由「當沖」頁的 🔍 換股 開的搜尋,分析完回當沖頁(不跳診斷頁)
+        const rt = this._searchReturnTab; this._searchReturnTab = null;
+        if (rt === 'daytrade') {
+            this.switchAppTab('daytrade');
+            try { await this.analyze(sym); } catch (_) {}
+            document.getElementById('symbolInput').value = '';
+            this.renderDayTradeTab(sym);
+            return;
+        }
         this.analyze();
         this.switchAppTab('diag');   // 🐛 V45.2 修:搜尋後跳個股診斷頁(V45.0 隱藏診斷鈕+預設落地庫存後,搜尋不再自動跳個股)
         document.getElementById('symbolInput').value = '';
+    },
+    // ⚡ V54.4 — 從當沖頁開搜尋(記住回當沖頁);_pickDayTradeStock=最近看過 chip 直接載入
+    _openDayTradeSearch() { this._searchReturnTab = 'daytrade'; this.openGlobalSearchModal(); },
+    async _pickDayTradeStock(sym) {
+        if (!sym) return;
+        this._addRecentSearch(sym);
+        this.switchAppTab('daytrade');
+        document.getElementById('symbolInput').value = sym;
+        try { await this.analyze(sym); } catch (_) {}
+        document.getElementById('symbolInput').value = '';
+        this.renderDayTradeTab(sym);
     },
     _submitGlobalSearch() {
         const input = document.getElementById('globalSearchInput');
@@ -26371,10 +26398,25 @@ ${_chuPosPlan}
     async renderDayTradeTab(sym) {
         sym = sym || this.currentSymbolId;
         const box = document.getElementById('dayTradeBody');
-        if (!box || !sym) return;
-        const name = this.getStockName(sym) || sym;
-        const baseRaw = this.baseRawData || this.rawDailyData || [];
+        if (!box) return;
+        const name = sym ? (this.getStockName(sym) || sym) : '';
+        const baseRaw = (sym && this.currentSymbolId === sym) ? (this.baseRawData || this.rawDailyData || []) : [];
         const marketOpen = this.isMarketOpen();
+        // 更新頂部標題(頂層 tab 用)
+        const hdr = document.getElementById('dtHeaderName');
+        if (hdr) hdr.textContent = sym ? `${name} ${sym}` : '當沖作戰台';
+        // 🈳 無選股 / 尚未分析該股 → 空狀態引導搜尋(頂層 tab 進來可能還沒選股)
+        if (!sym || this.currentSymbolId !== sym || !baseRaw.length) {
+            box.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 px-4">
+                <div class="text-6xl text-gray-700 mb-3">⚡</div>
+                <div class="text-sm text-gray-300 font-bold mb-1">先挑一檔要當沖的股票</div>
+                <div class="text-[11px] text-gray-500 mb-5 text-center leading-relaxed">搜尋任一台股 → 自動載入即時報價,算漲跌停/振幅/VWAP/量能/損益試算/相對大盤/紀律 SOP(全純公式,零 AI)</div>
+                <button onclick="app._openDayTradeSearch(); app.vibrate(20);" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-black rounded-lg shadow-md transition-colors">🔍 搜尋股票</button>
+                ${this._getRecentSearches().length ? `<div class="mt-6 w-full max-w-xs"><div class="text-[10px] text-gray-500 mb-1.5 text-center">最近看過</div><div class="flex flex-wrap gap-2 justify-center">${this._getRecentSearches().slice(0, 6).map(s => `<button onclick="app._pickDayTradeStock('${s}'); app.vibrate(15);" class="bg-[#161b22] border border-[#30363d] hover:border-cyan-600/50 rounded px-2.5 py-1.5 text-[11px] font-bold text-gray-200 transition-colors">${this.getStockName(s) || s} <span class="text-[9px] text-gray-500 font-mono">${s}</span></button>`).join('')}</div></div>` : ''}
+            </div>`;
+            return;
+        }
         box.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">⏳ 讀取即時報價中…</div>';
 
         // 即時報價(盤中)/ 盤後拿最近交易日快照
