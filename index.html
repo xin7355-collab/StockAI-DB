@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V55.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V55.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V55.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1092,21 +1092,46 @@
                             <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-cyan-500 hover:text-cyan-300 transition-colors">📝 下單</button>
                         </div>
 
-                        <!-- 📊 V50.7 位階溫度計(距歷史高 + 52週位階)移至首席頁進場體檢上方(使用者要求) -->
-                        <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
-
-                        <!-- 🩺 進場總評:以「進場體檢」為主卡(已彙整 K棒/量能/均線所有純公式訊號 + 交叉參照綜合評分);朱老師四關卡併入下方收合詳情 -->
-                        <div id="entryCheckup" class="hidden w-full rounded-lg p-3 mb-2"></div>
-                        <div class="w-full -mt-1">
-                            <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('entryDetailBody', this); app.vibrate(30);">📌 朱老師四關卡詳情（大盤/週K/位階/進場訊號） <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
-                            <div id="entryDetailBody" class="hidden flex flex-col gap-2 mt-1">
-                                <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
-                                <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
+                        <!-- 🚦 V55.9 折疊減負:位階/體檢/分批/法人目標收成「一行燈號列」,點開才展開(散戶一眼:頂部做什麼 + 這裡幾個燈為什麼) -->
+                        <!-- 📊 位階溫度計(V50.7 移入;V55.9 收合) -->
+                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyRank', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📊 位階溫度計</span>
+                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightRank" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                            </div>
+                            <div id="ovBodyRank" class="ov-body hidden px-2 pb-2">
+                                <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
                             </div>
                         </div>
 
-                        <!-- 📐 V14.11 朱老師分批進場計畫器(3-3-4:試單/5MA加碼/回後買上漲);V53.x 上移至進場區,決策流集中 -->
-                        <div id="chuPositionPlanCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
+                        <!-- 🩺 進場體檢(主卡)+ 朱老師四關卡詳情(V55.9 一起收進體檢殼內) -->
+                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyCheckup', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🩺 進場體檢</span>
+                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightCheckup" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                            </div>
+                            <div id="ovBodyCheckup" class="ov-body hidden px-2 pb-2">
+                                <div id="entryCheckup" class="hidden w-full rounded-lg p-3 mb-2"></div>
+                                <div class="w-full -mt-1">
+                                    <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('entryDetailBody', this); app.vibrate(30);">📌 朱老師四關卡詳情（大盤/週K/位階/進場訊號） <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
+                                    <div id="entryDetailBody" class="ov-body hidden flex flex-col gap-2 mt-1">
+                                        <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
+                                        <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 📐 朱老師分批進場計畫器(V14.11;V55.9 收合) -->
+                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyPlan', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📐 分批進場計畫</span>
+                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightPlan" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                            </div>
+                            <div id="ovBodyPlan" class="ov-body hidden px-2 pb-2">
+                                <div id="chuPositionPlanCard" class="hidden w-full bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
+                            </div>
+                        </div>
 
                         <!-- ⚔️ V50.7 朱家泓策略狀態(距 5MA/20MA/-5% 停損 + 燈號)移至首席頁(使用者要求) -->
                         <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -1122,7 +1147,7 @@
                         </div>
                         <div class="w-full">
                             <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('priceDetailBody', this); app.vibrate(30);">📐 更多守價（明日均線保衛・突破棒・K棒戰法） <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
-                            <div id="priceDetailBody" class="hidden flex flex-col gap-2 mt-1">
+                            <div id="priceDetailBody" class="ov-body hidden flex flex-col gap-2 mt-1">
                                 <!-- 📐 V31.7 明日均線保衛價(扣抵):盤中跌破即在均線正式下彎前 1-2 天示警 -->
                                 <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                                 <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
@@ -1134,10 +1159,16 @@
                             </div>
                         </div>
 
-                        <!-- 💡 V53.x 法人共識目標價:常駐直顯(移除收合,不用再點更新);純公式估值(年化EPS×產業中位PE),非 AI -->
-                        <div class="w-full mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
-                            <div class="text-[11px] font-bold text-gray-400 mb-1 text-center flex items-center justify-center gap-1">💡 法人共識目標價 <span class="text-[9px] text-gray-600 font-normal">純公式・年化EPS×產業PE</span></div>
-                            <div id="institutionTargetBox" class="w-full text-center text-xs leading-relaxed px-1"><span class="text-gray-500">估值計算中…</span></div>
+                        <!-- 💡 法人共識目標價(純公式估值;V55.9 收合,燈號列直接顯區間) -->
+                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyInst', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">💡 法人目標價</span>
+                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightInst" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                            </div>
+                            <div id="ovBodyInst" class="ov-body hidden px-2 pb-2">
+                                <div class="text-[9px] text-gray-600 text-center mb-1">純公式・年化EPS×產業中位PE(非 AI)</div>
+                                <div id="institutionTargetBox" class="w-full text-center text-xs leading-relaxed px-1"><span class="text-gray-500">估值計算中…</span></div>
+                            </div>
                         </div>
 
                         <!-- V19.2 — 永豐智慧單卡已合併到「朱老師離場 SOP」(內容重複) -->
@@ -2816,7 +2847,18 @@ const app = {
     // 🧭 V53.x — 分段錨點:平滑捲動到指定卡片(hidden 無資料的卡不跳,改提示)
     _scrollToCard(id) {
         const el = document.getElementById(id);
-        if (!el || el.offsetParent === null) { this.showToast?.('該區塊目前無資料', 'info'); return; }
+        if (!el) { this.showToast?.('該區塊目前無資料', 'info'); return; }
+        // 🚦 V55.9 目標卡若被收在折疊殼(ov-body)裡,先自動展開再捲動(否則 offsetParent===null 會誤判無資料)
+        let p = el.parentElement;
+        while (p && p.id !== 'subContentStrategy') {
+            if (p.classList?.contains('ov-body') && p.classList.contains('hidden')) {
+                p.classList.remove('hidden');
+                const chev = p.previousElementSibling?.querySelector?.('[data-chevron]');
+                if (chev) chev.textContent = '▴';
+            }
+            p = p.parentElement;
+        }
+        if (el.offsetParent === null) { this.showToast?.('該區塊目前無資料', 'info'); return; }
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         this.vibrate?.(15);
     },
@@ -13874,8 +13916,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const el = document.getElementById('priceRankCard');
         if (!el) return;
         const r = this._priceRankData(data);
-        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; this._setLight('lightRank', '—'); return; }
         const tc = r.tone === 'red' ? 'text-red-300' : r.tone === 'green' ? 'text-green-300' : 'text-yellow-300';
+        this._setLight('lightRank', `<span class="${tc}">${r.tag}・${r.pos.toFixed(0)}%位階</span>`);   // 🚦 V55.9 折疊列燈號
         const bc = r.tone === 'red' ? 'border-red-500' : r.tone === 'green' ? 'border-green-500' : 'border-yellow-500';
         const barC = r.pos >= 70 ? 'bg-red-400' : r.pos >= 35 ? 'bg-yellow-400' : 'bg-green-400';
         el.innerHTML = `
@@ -14849,8 +14892,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const el = document.getElementById('entryCheckup');
         if (!el) return;
         const r = this._entryCheckup(data);
-        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; this._setLight('lightCheckup', '—'); return; }
         const c = r.vColor;   // red=偏多 green=偏空 yellow=觀望(台股色)
+        this._setLight('lightCheckup', `<span class="${c === 'red' ? 'text-red-300' : c === 'green' ? 'text-green-300' : 'text-yellow-300'}">${r.light} ${r.verdict}・${r.score}分</span>`);   // 🚦 V55.9 折疊列燈號
         const bg = c === 'red' ? 'bg-red-900/30 border-red-500' : c === 'green' ? 'bg-green-900/30 border-green-500' : 'bg-yellow-900/20 border-yellow-500';
         const sc = c === 'red' ? 'text-red-300' : c === 'green' ? 'text-green-300' : 'text-yellow-300';
         const rows = r.bullets.map(b => {
@@ -19013,7 +19057,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const box = document.getElementById('chuPositionPlanCard');
         if (!box) return;
         const plan = this._chuPositionPlan(data, ind, last, this.budgetPerStock);
-        if (!plan) { box.classList.add('hidden'); return; }
+        if (!plan) { box.classList.add('hidden'); this._setLight('lightPlan', '—'); return; }
         box.classList.remove('hidden');
 
         const fmtPrice = v => v == null ? '—' : v.toFixed(2);
@@ -19105,6 +19149,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 <div class="text-[10px] text-gray-300 leading-relaxed">現價 ${fmtPrice(pCnow)} 跌破月線 ${fmtPrice(plan.ma20)}、5MA &lt; 月線 = 空頭。下方計畫是依「過去發動 K」排的突破做多,股已轉空時逆勢接刀風險高。朱式:<b class="text-red-300">空頭別接刀</b>,等「站回月線 + 底底高」轉多再做多。</div>
             </div>`
             : '';
+        // 🚦 V55.9 折疊列燈號:空頭=紅、追高=黃,否則直接給試單價
+        this._setLight('lightPlan', isDowntrend ? '<span class="text-red-300">🚫 空頭勿執行</span>'
+            : (chaseWarn ? '<span class="text-yellow-300">⚠️ 別追高・等回測</span>'
+            : `<span class="text-orange-300">試單 ${fmtPrice(b1)}</span>`));
         box.innerHTML = `
             <div class="text-orange-400 font-bold text-sm flex items-center justify-between mb-2">
                 <span>📐 朱老師分批進場計畫</span>
@@ -21816,6 +21864,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (chev) chev.textContent = nowHidden ? '▾' : '▴';
     },
 
+    // 🚦 V55.9 — 總覽折疊列的「燈號摘要」:各 render 函式算完結論後填一行字(收合狀態也看得到重點)
+    _setLight(id, html) {
+        try { const el = document.getElementById(id); if (el) el.innerHTML = html || '—'; } catch (_) {}
+    },
+
     // V19.2 — 永豐智慧單已合併到朱老師 SOP,此 method 改為 noop 但保留簽名避免 caller 炸
     //         停利/停損具體價位由 _renderChuExitSop 用朱老師理論計算後一次顯出
     //         pC/defVal/t1Val/t2Val/season 仍存到 _lastSinopacCtx 供 SOP 卡末段「永豐 App 操作」用
@@ -21834,6 +21887,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 把所有「無法推估」的訊息改成橙色加粗 + 具體原因，避免使用者誤以為功能壞掉
         const showHint = (msg, color = 'text-orange-300') => {
             box.innerHTML = `<span class="${color} font-bold">${msg}</span>`;
+            this._setLight('lightInst', '<span class="text-gray-500">暫無估值</span>');   // 🚦 V55.9 折疊列燈號
         };
         // 防呆：沒有真實基本面就不要叫 AI 瞎掰（過去讀不存在的 _stockInfo→全是0→台積電被估成220）
         if (!fc || fc.sym !== sym) {
@@ -21898,6 +21952,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             <div class="text-[10px] text-gray-500 mt-0.5 leading-snug">${peMethod}<br>算式：年化EPS ${annualEps.toFixed(2)} × PE ${fairPE.toFixed(1)} = ${mid.toFixed(mid >= 100 ? 0 : 1)}（區間 ±15%）</div>
             ${divRefLine}
             <div class="text-[9px] text-gray-600 mt-1">💡 純公式計算・免 AI 免額度・僅供參考非投資建議</div>`;
+        // 🚦 V55.9 折疊列燈號:直接給區間 + 距現價 %
+        this._setLight('lightInst', `<span class="text-gray-200 font-mono">${lowN}～${highN}</span>${upside != null ? ` <span class="${upside >= 0 ? 'text-red-300' : 'text-green-300'}">${upside >= 0 ? '+' : ''}${upside.toFixed(0)}%</span>` : ''}`);
     },
 
     // 清掉 7 天前的 consensusCache_* 防止 localStorage 撐爆(5MB 上限)
