@@ -14,8 +14,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <!-- 📛 V54.1 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V54.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
+    <!-- STRATEGY TERMINAL V54.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V54.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -21250,7 +21250,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const high60 = _slice60.length ? Math.max(..._slice60.map(r => r.high || 0)) : 0;
             if (high60 > 0 && pC >= high60) featTags.push({ kind: '突破', text: '創60新高', tone: 'bullish', jargon: '創新高' });
             // 🆕 漲停鎖死豁免:接近漲停(>=9%)時買賣鎖死、成交量本來就縮,以下量縮警示屬正常,不誤報
-            const _isNearLimitUp = !!pC1 && (pC - pC1) / pC1 >= 0.09;
+            // 🐛 V54.x — 昨收優先用即時報價的官方昨收(_fuglePrevClose),避免採礦殘留舊收盤(如 5483 07/03=196.5)
+            //   讓 +4% 被算成 +11% 誤判漲停鎖死;無即時昨收才退回 K 線 pC1。
+            const _prevForLimit = (this._fuglePrevClose && this._fuglePrevClose > 0) ? this._fuglePrevClose : pC1;
+            const _isNearLimitUp = !!_prevForLimit && (pC - _prevForLimit) / _prevForLimit >= 0.09;
             if (_isNearLimitUp) featTags.push({ kind: '量價', text: '漲停鎖死', tone: 'bullish' });
             // 量縮窒息
             if (!_isNearLimitUp && volRatio < 0.6) featTags.push({ kind: '量價', text: '量縮', tone: 'info', jargon: '量縮窒息' });
@@ -23628,11 +23631,15 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 const fugle = await this.fetchFugleData(item.symbol);
                 if (fugle && Number(fugle.price) > 0) {
                     item.currentPrice = fugle.price;
+                    if (Number(fugle.prevClose) > 0) item.prevCloseLive = fugle.prevClose;   // 官方昨收,供漲跌幅算(防採礦舊收盤誤判漲停)
                 } else {
                     // 🐛 V54.x 修:Fugle 無 token / 429 時補 Yahoo 即時報價備援(對齊個股頁的 fetchFugle→Yahoo 鏈),
                     //    否則庫存頁露出採礦殘留的舊收盤(上櫃股 5483 顯 196.5,即時實際 210.5,與個股頁不一致)
                     const yq = await this._fetchYahooQuote(item.symbol).catch(() => null);
-                    if (yq && Number(yq.price) > 0) item.currentPrice = yq.price;
+                    if (yq && Number(yq.price) > 0) {
+                        item.currentPrice = yq.price;
+                        if (Number(yq.prevClose) > 0) item.prevCloseLive = yq.prevClose;
+                    }
                 }
             } catch (e) { console.warn(`[refreshInv] ${item.symbol}`, e?.message); }
         }));
@@ -23703,6 +23710,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     todayPnL = (price - prevClose) * shares * 1000;
                     hasPrev = true;
                 }
+            }
+            // 🐛 V54.x — 優先用即時報價的「官方昨收」(Yahoo chartPreviousClose / Fugle referencePrice),
+            //   避免採礦殘留舊收盤(如上櫃 5483 07/03=196.5)害今日漲跌算成 +11% 誤判漲停跳紅底。即時昨收才是真昨收。
+            if (Number(item.prevCloseLive) > 0) {
+                prevClose = Number(item.prevCloseLive);
+                todayChgPct = (price - prevClose) / prevClose * 100;
+                todayPnL = (price - prevClose) * shares * 1000;
+                hasPrev = true;
             }
             return { item, idx, price, cost, shares, totalCost, totalVal, totalPnL, totalPct, prevClose, todayChgPct, todayPnL, hasPrev };
         }).filter(r => r);
