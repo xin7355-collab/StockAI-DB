@@ -166,10 +166,12 @@ def main():
     # ── 上櫃(TPEX)可當沖清單:試多候選端點,格式不確定→通用解析 + debug 印到 stdout ──
     tpex_added = 0
     tpex_debug = []
+    # ⚠️ 不可放 tpex_disposal_information(那是「處置股」= 禁當沖,語意相反,首跑誤併過 22 檔已移除)
+    #    可當沖清單約 800+ 檔 → 加 TPEX_MIN 門檻,小清單一律不信(擋掉處置/注意等錯資料集)
+    TPEX_MIN = 200
     tpex_urls = [
         'https://www.tpex.org.tw/openapi/v1/tpex_intraday_trading_securities',
         'https://www.tpex.org.tw/openapi/v1/tpex_daytrading_transaction',
-        'https://www.tpex.org.tw/openapi/v1/tpex_disposal_information',
         'https://www.tpex.org.tw/www/zh-tw/intraday/dayTradList?type=json',
     ]
     for u in tpex_urls:
@@ -192,7 +194,7 @@ def main():
                     note += f", 非JSON 前50:{body[:50]!r}"
             tpex_debug.append({'url': u.rsplit('/', 1)[-1], 'note': note})
             print(f"  🔎 TPEX {u.rsplit('/',1)[-1]}: {note}")
-            if rows:
+            if rows and len(rows) >= TPEX_MIN:   # 只信「大清單」= 真的可當沖(小清單多為處置/注意等錯資料集)
                 for row in rows:
                     code = None
                     if isinstance(row, dict):
@@ -208,6 +210,8 @@ def main():
                 if tpex_added:
                     print(f"  ✅ TPEX 併入上櫃可當沖 {tpex_added} 檔(用 {u.rsplit('/',1)[-1]})")
                     break
+            elif rows:
+                print(f"  ⏭️ TPEX {u.rsplit('/',1)[-1]} 只有 {len(rows)} 列(<{TPEX_MIN})→ 不信,跳過")
         except Exception as e:
             tpex_debug.append({'url': u.rsplit('/', 1)[-1], 'note': f"{type(e).__name__}:{str(e)[:40]}"})
             print(f"  🔎 TPEX {u.rsplit('/',1)[-1]}: {type(e).__name__}:{str(e)[:40]}")
