@@ -1201,13 +1201,12 @@ def fetch_twii_240ma_bias():
     return None, None, "重試後仍失敗"
 
 
-def fetch_usdtwd():
-    """新台幣匯率 USD/TWD — yfinance TWD=X
-    V57.8 加 1日/5日變化%:USDTWD 上升=台幣貶值=外資匯出(提款機)風向,餵盤前體檢計分。
-    回 (匯率, 1日%, 5日%, err)。"""
+def _fetch_fx(ticker, name):
+    """通用匯率抓取(USD/XXX)— 回 (匯率, 1日%, 5日%, err)。
+    V57.9 供台幣/韓元/人民幣共用:值上升=該幣貶值;亞幣競貶=外資撤亞洲風向。"""
     try:
         import yfinance as yf
-        hist = yf.Ticker("TWD=X").history(period="1mo", auto_adjust=False)
+        hist = yf.Ticker(ticker).history(period="1mo", auto_adjust=False)
         if hist is None or hist.empty:
             return None, None, None, "yfinance 回空"
         closes = hist["Close"].dropna()
@@ -1218,8 +1217,13 @@ def fetch_usdtwd():
         chg5 = round((last / float(closes.iloc[-6]) - 1) * 100, 2) if len(closes) >= 6 and float(closes.iloc[-6]) > 0 else None
         return round(last, 3), chg1, chg5, None
     except Exception as e:
-        print(f"  ⚠️ USD/TWD 抓取失敗: {e}")
+        print(f"  ⚠️ {name} 抓取失敗: {e}")
         return None, None, None, str(e)[:100]
+
+
+def fetch_usdtwd():
+    """新台幣匯率 USD/TWD — V57.8 加 1日/5日變化%(貶值=外資提款風向)"""
+    return _fetch_fx("TWD=X", "USD/TWD")
 
 
 def fetch_fear_greed():
@@ -1576,6 +1580,8 @@ def main():
         "usdtwd_error": None,
         "usdtwd_chg_pct": None,   # 💱 V57.8 台幣 1 日變化%(正=貶值)
         "usdtwd_chg_5d":  None,   # 💱 V57.8 台幣 5 日變化%(正=連貶=外資提款風向)
+        "krw": None, "krw_chg_pct": None, "krw_chg_5d": None, "krw_error": None,   # 💱 V57.9 韓元(亞幣競貶)
+        "cny": None, "cny_chg_pct": None, "cny_chg_5d": None, "cny_error": None,   # 💱 V57.9 人民幣(中國資金外逃)
         "fear_greed":       None,
         "fear_greed_label": None,
         "fear_greed_error": None,
@@ -1638,6 +1644,12 @@ def main():
     out["usdtwd"], out["usdtwd_error"] = twd, twderr
     out["usdtwd_chg_pct"], out["usdtwd_chg_5d"] = twd1, twd5   # 💱 V57.8 貶值=外資提款風向
     print(f"     → {twd}（1日 {twd1}% / 5日 {twd5}%, err={twderr}）")
+
+    # 💱 V57.9 韓元/人民幣(亞幣競貶偵測:台幣+韓元 5 日同貶=外資撤亞洲)
+    for _tk, _nm, _key in (("KRW=X", "USD/KRW 韓元", "krw"), ("CNY=X", "USD/CNY 人民幣", "cny")):
+        _fx, _fx1, _fx5, _fxerr = _fetch_fx(_tk, _nm)
+        out[_key], out[f"{_key}_chg_pct"], out[f"{_key}_chg_5d"], out[f"{_key}_error"] = _fx, _fx1, _fx5, _fxerr
+        print(f"     → {_nm}: {_fx}（1日 {_fx1}% / 5日 {_fx5}%, err={_fxerr}）")
 
     print("[6/8] 抓取 CNN 恐懼與貪婪指數…")
     fg, fglabel, fgerr = fetch_fear_greed()
@@ -1823,7 +1835,9 @@ def main():
                         # 🌅 V41.13 三大法人(投信/自營/合計)也納入斷崖防護(V36.8 加了欄位卻漏加保護 → 單次 307 就消失)
                         "fi_trust_net", "fi_dealer_net", "fi_total_net",
                         "fi_spot_date", "fi_three_date",
-                        "usdtwd", "usdtwd_chg_pct", "usdtwd_chg_5d", "fear_greed", "fear_greed_label",
+                        "usdtwd", "usdtwd_chg_pct", "usdtwd_chg_5d",
+                        "krw", "krw_chg_pct", "krw_chg_5d", "cny", "cny_chg_pct", "cny_chg_5d",
+                        "fear_greed", "fear_greed_label",
                         "retail_ls_pct", "taifex_backwardation",
                         # 🌍 全球巨頭脈動 10 指標斷崖防護(V21 加 SP500/NASDAQ)
                         "gold_usd", "gold_chg_pct", "wti_oil", "wti_chg_pct",

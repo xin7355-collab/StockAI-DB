@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -11150,11 +11150,18 @@ const marginByDate = {};
         const _twdC = +mr.usdtwd_chg_pct, _twd5 = +mr.usdtwd_chg_5d;
         if (Number.isFinite(_twdC)) { if (_twdC >= 0.4) s -= 1; else if (_twdC >= 0.15) s -= 0.5; else if (_twdC <= -0.4) s += 1; else if (_twdC <= -0.15) s += 0.5; }
         if (Number.isFinite(_twd5) && _twd5 >= 1) s -= 0.5;
+        // 💱 V57.9 亞幣競貶:台幣+韓元 5 日同貶 ≥0.8% = 外資整籃撤出亞洲(比單一貨幣更兇)再扣 1;人民幣 5 日急貶 ≥1.2%(中國資金外逃)扣 0.5
+        const _krw5 = +mr.krw_chg_5d, _cny5 = +mr.cny_chg_5d;
+        const _asiaFxDump = Number.isFinite(_twd5) && _twd5 >= 0.8 && Number.isFinite(_krw5) && _krw5 >= 0.8;
+        if (_asiaFxDump) s -= 1;
+        if (Number.isFinite(_cny5) && _cny5 >= 1.2) s -= 0.5;
 
         // 🐛 V40.0 外資台指期極空(≤-4萬口)時不可硬說「外資沒大空」(實測 -83,063 口卻顯偏多致矛盾)→ 動態加註
         const _fiBigShort = (fi != null && fi <= -40000);
         const _fiNote = _fiBigShort ? `惟外資台指期 ${(fi / 10000).toFixed(1)} 萬口仍極空` : '外資沒大空';
         s = Math.round(s * 10) / 10;   // 🐛 V57.7 順便修:0.5 權重連加的浮點誤差(避免顯示 -7.000000000000001)
+        // 📊 V57.9 使用者要求「分數簡單一點」:內部 s(約 ±10)換算成「開盤風向 0~100」,50=中性,量條直接填到幾分,數字與條完全對得上
+        const sPct = Math.max(0, Math.min(100, Math.round(50 + s * 5)));
         let light, verdict, vColor, summary;
         if (s >= 3) { light = '🟢'; verdict = '開高偏多'; vColor = 'red'; summary = `隔夜美股+台積電 ADR 偏強、${_fiNote},今天台股有機會開高;${_fiBigShort ? '順勢但開高別追高,外資台指期仍掛大空單,慎防開高走低、賣壓回測支撐。' : '順勢操作但別追高,留意上方壓力。'}`; }
         else if (s <= -3) { light = '🔴'; verdict = '開低偏空'; vColor = 'green'; summary = '隔夜美股/ADR 偏弱或外資偏空,今天台股開低機率高;手上有貨顧好停損,空手別急著接刀。'; }
@@ -11172,10 +11179,12 @@ const marginByDate = {};
           else if (_st) summary += ' 🌏 亞股同盤走強,開盤氣氛偏多。';
           if (Number.isFinite(_fgN) && _fgN >= 80) summary += ` 🧭 市場情緒過熱(恐懼貪婪 ${Math.round(_fgN)}),追高風險升高。`;
           else if (Number.isFinite(_fgN) && _fgN <= 20) summary += ` 🧭 市場極度恐慌(恐懼貪婪 ${Math.round(_fgN)}),超跌易現反彈。`; }
-        // 💱 V57.8 台幣警語:5 日連貶=外資把股票換美金匯出(提款機),比單日更有殺傷力
-        if (Number.isFinite(_twd5) && _twd5 >= 1) summary += ` 💱 台幣 5 日急貶 ${_twd5.toFixed(1)}%,外資匯出跡象(提款機模式),權值股留意外資賣壓。`;
+        // 💱 V57.8/V57.9 匯率警語:亞幣競貶 > 台幣單獨貶 > 台幣升值;人民幣急貶另計(中國資金外逃)
+        if (_asiaFxDump) summary += ` 💱 亞幣競貶(台幣5日貶${_twd5.toFixed(1)}%、韓元貶${_krw5.toFixed(1)}%),外資整批撤出亞洲,對台股系統性偏空。`;
+        else if (Number.isFinite(_twd5) && _twd5 >= 1) summary += ` 💱 台幣 5 日急貶 ${_twd5.toFixed(1)}%,外資匯出跡象(提款機模式),權值股留意外資賣壓。`;
         else if (Number.isFinite(_twdC) && _twdC >= 0.4) summary += ` 💱 台幣今日急貶 ${_twdC.toFixed(2)}%,留意外資是否轉匯出。`;
         else if (Number.isFinite(_twd5) && _twd5 <= -1) summary += ` 💱 台幣 5 日升值 ${Math.abs(_twd5).toFixed(1)}%,外資匯入,資金面偏多。`;
+        if (Number.isFinite(_cny5) && _cny5 >= 1.2) summary += ` 🇨🇳 人民幣 5 日急貶 ${_cny5.toFixed(1)}%,中國資金外逃警訊,亞股連帶承壓。`;
         const sc = vColor === 'red' ? 'text-red-300' : vColor === 'green' ? 'text-green-300' : 'text-yellow-300';
         const bg = vColor === 'red' ? 'bg-red-900/25 border-red-500/60' : vColor === 'green' ? 'bg-green-900/25 border-green-500/60' : 'bg-yellow-900/15 border-yellow-500/50';
 
@@ -11234,11 +11243,15 @@ const marginByDate = {};
                 : '<span class="text-gray-500 text-[9px]">採集中</span>';
             return `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${right}</span></div>`;
         };
-        // 💱 V57.8 台幣格:USDTWD 升=台幣貶(對台股壞=綠)/降=台幣升(好=紅),與一般漲跌色相反,故自訂不走 gCell
-        const _twdV = mr.usdtwd;
-        const twdHtml = (_twdV != null && !isNaN(_twdV))
-            ? `<span class="font-mono font-bold text-gray-200">${(+_twdV).toFixed(2)}</span>${Number.isFinite(+mr.usdtwd_chg_pct) ? ` <span class="font-mono ${+mr.usdtwd_chg_pct > 0 ? 'text-green-300' : +mr.usdtwd_chg_pct < 0 ? 'text-red-300' : 'text-gray-400'}">${+mr.usdtwd_chg_pct > 0 ? '貶' : +mr.usdtwd_chg_pct < 0 ? '升' : ''}${Math.abs(+mr.usdtwd_chg_pct).toFixed(2)}%</span>` : ''}`
-            : '<span class="text-gray-500 text-[9px]">採集中</span>';
+        // 💱 V57.8/V57.9 匯率格(值=USD/該幣,上升=該幣「貶」):台/韓/人民幣貶=外資撤亞洲(綠=壞);
+        //   日圓相反:圓貶=套息續作風險偏好(紅=好)、圓升=套息平倉黑天鵝(綠=壞)
+        const fxCell = (label, val, chg, upCls, dnCls) => {
+            const c = +chg;
+            const right = (val != null && !isNaN(val))
+                ? `<span class="font-mono font-bold text-gray-200">${(+val).toFixed(+val >= 100 ? 1 : 2)}</span>${Number.isFinite(c) ? ` <span class="font-mono ${c > 0 ? upCls : c < 0 ? dnCls : 'text-gray-400'}">${c > 0 ? '貶' : c < 0 ? '升' : ''}${Math.abs(c).toFixed(2)}%</span>` : ''}`
+                : '<span class="text-gray-500 text-[9px]">採集中</span>';
+            return `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${right}</span></div>`;
+        };
         const _fg = mr.fear_greed;
         const fgHtml = (_fg != null && !isNaN(_fg))
             ? `<span class="font-mono font-bold ${_fg >= 75 ? 'text-red-300' : _fg <= 25 ? 'text-green-300' : 'text-gray-200'}">${Math.round(_fg)}</span> <span class="text-[9px] ${_fg >= 75 ? 'text-red-400' : _fg <= 25 ? 'text-green-400' : 'text-gray-500'}">${_fg >= 75 ? '過熱' : _fg <= 25 ? '極恐' : '中性'}</span>`
@@ -11257,14 +11270,17 @@ const marginByDate = {};
                     ${gCell('🇰🇷 韓股', mr.kospi, mr.kospi_chg_pct)}
                     ${gCell('🇭🇰 恆指', mr.hsi, mr.hsi_chg_pct)}
                     ${gCell('💵 美元DXY', mr.dxy, mr.dxy_chg_pct)}
-                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">💱 台幣</span><span class="text-right">${twdHtml}</span></div>
+                    ${fxCell('💱 台幣', mr.usdtwd, mr.usdtwd_chg_pct, 'text-green-300', 'text-red-300')}
+                    ${fxCell('🇰🇷 韓元', mr.krw, mr.krw_chg_pct, 'text-green-300', 'text-red-300')}
+                    ${fxCell('🇨🇳 人民幣', mr.cny, mr.cny_chg_pct, 'text-green-300', 'text-red-300')}
+                    ${fxCell('🇯🇵 日圓', mr.jpy, mr.jpy_chg_pct, 'text-red-300', 'text-green-300')}
                     ${gCell('🥇 黃金', mr.gold, mr.gold_chg_pct)}
                     ${gCell('🛢️ 原油', mr.wti, mr.wti_chg_pct)}
                     ${gCell('₿ 比特幣', mr.btc, mr.btc_chg_pct)}
                     <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">🧭 恐懼貪婪</span><span class="text-right">${fgHtml}</span></div>
                 </div>
                 ${asiaNote}
-                <div class="text-[8px] text-gray-700 mt-1 leading-snug">💡 避險資產(金/油/美元)大漲=資金轉保守,對高位科技股偏空;亞股是台股同盤最直接的開盤風向;台幣「貶」=外資把台股換美金匯出(提款機)、「升」=外資匯入偏多。</div>
+                <div class="text-[8px] text-gray-700 mt-1 leading-snug">💡 避險資產(金/油/美元)大漲=資金轉保守,對高位科技股偏空;亞股是台股同盤最直接的開盤風向;台幣「貶」=外資把台股換美金匯出(提款機)、「升」=匯入偏多;台幣+韓元同貶=亞幣競貶(外資整批撤亞洲);日圓相反:圓升=套息平倉黑天鵝。</div>
             </div>`;
 
         // 📅 V41.34 — 資料基準日:採礦時間(台北)+ 台股最新收盤日,讓使用者知道「現在看的是哪一天的資料」
@@ -11336,23 +11352,19 @@ const marginByDate = {};
                         <div class="text-xl font-black ${sc} leading-none">${verdict}</div>
                     </div>
                     <div class="text-right flex-shrink-0 pl-2 border-l border-[#30363d]">
-                        <div class="font-mono font-black text-base ${sc} leading-none">${s > 0 ? '+' : ''}${s}<span class="text-[9px] font-normal text-gray-500"> 分</span></div>
-                        <div class="text-[8px] text-gray-500 mt-0.5">方向分數</div>
+                        <div class="font-mono font-black text-xl ${sc} leading-none">${sPct}<span class="text-[9px] font-normal text-gray-500">/100</span></div>
+                        <div class="text-[8px] text-gray-500 mt-0.5">開盤風向</div>
                     </div>
                 </div>
-                <!-- 📊 V57.8 方向分數量條重做(V57.7 顯示怪:改全 inline style 定位,不依賴動態 class):±10 分滿格,紅右偏多/綠左偏空 -->
+                <!-- 📊 V57.9 開盤風向量條(0~100 直填,50=中性;分數幾分條就填到幾 %,一眼對得上) -->
                 ${(() => {
-                    const _w = Math.min(50, Math.abs(s) / 10 * 50);
-                    const _fill = s >= 0
-                        ? `left:50%;width:${_w.toFixed(1)}%;background:#f87171;border-radius:0 9999px 9999px 0;`
-                        : `left:${(50 - _w).toFixed(1)}%;width:${_w.toFixed(1)}%;background:#4ade80;border-radius:9999px 0 0 9999px;`;
-                    return `<div class="mt-2 flex items-center gap-1.5">
-                        <span class="text-[8px] text-green-400 font-bold flex-shrink-0">偏空 -10</span>
-                        <div class="relative flex-1" style="height:9px;background:#21262d;border-radius:9999px;">
-                            <div style="position:absolute;top:0;bottom:0;${_fill}opacity:.85;"></div>
+                    const _zone = sPct >= 65 ? '#f87171' : sPct <= 35 ? '#4ade80' : '#facc15';
+                    return `<div class="mt-2">
+                        <div class="relative" style="height:9px;background:#21262d;border-radius:9999px;">
+                            <div style="position:absolute;top:0;bottom:0;left:0;width:${sPct}%;background:${_zone};opacity:.85;border-radius:9999px;"></div>
                             <div style="position:absolute;top:-2px;bottom:-2px;left:50%;width:2px;margin-left:-1px;background:#8b949e;border-radius:1px;"></div>
                         </div>
-                        <span class="text-[8px] text-red-400 font-bold flex-shrink-0">+10 偏多</span>
+                        <div class="flex justify-between mt-0.5 text-[8px]"><span class="text-green-400 font-bold">0 偏空</span><span class="text-gray-500">50 中性</span><span class="text-red-400 font-bold">偏多 100</span></div>
                     </div>`;
                 })()}
                 <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed"><span class="${sc} font-bold">💡 </span>${summary}</div>
