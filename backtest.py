@@ -622,7 +622,123 @@ STRATEGY_MAX_HOLD_DAYS   = 30     # 持有 30 個交易日時間止損
 STRATEGY_MIN_FALCON      = 85     # 🔧 進場獵鷹分門檻(原 75,調 85 過濾雜訊)
 
 
-def simulate_strategy(rows, sym, attention_set):
+# ── 🥊 選股池擂台:各模式進場規則(近似前端定義,純 OHLCV+法人可歷史回放) ──
+#    出場紀律與獵鷹完全相同(跌破20MA/+20%停利/-8%硬停損/30日時間止損)→ 公平對打只比進場
+#    註:主力鎖股(分點僅滾動20日)、處置股(風控非策略)、K棒轉多空(JS 偵測器)不入擂台
+def _arena_rule_layup(rows, idx, closes):
+    """⭐送分題:站上月線 + 多頭排列 + 法人連 3 買(同前端 isLayup 定義)"""
+    c = closes[idx]
+    ma20 = _ma(closes, idx, 20)
+    if not ma20 or c <= ma20: return False
+    if not sig_ma_bullish_alignment(rows, idx): return False
+    return sig_inst_buy_streak3(rows, idx)
+
+
+def _arena_rule_racer(rows, idx, closes):
+    """🏎️渣男賽車(動能):5 日漲幅 ≥10% + 量 ≥5日均 1.5 倍 + 收紅(追動能)"""
+    if idx < 6: return False
+    c, c5 = closes[idx], closes[idx - 5]
+    if c5 <= 0 or (c - c5) / c5 * 100 < 10: return False
+    r = rows[idx]
+    o = r.get('open', 0) or 0
+    if o <= 0 or c <= o: return False
+    v = r.get('volume', 0) or 0
+    va = sum((rows[i].get('volume', 0) or 0) for i in range(idx - 5, idx)) / 5
+    return va > 0 and v >= va * 1.5
+
+
+def _arena_rule_turtle(rows, idx, closes):
+    """🐢烏龜過河(波段):首日站回月線(金叉)+ 月線走平以上 + 量增 2 成"""
+    if idx < 21: return False
+    c, pc = closes[idx], closes[idx - 1]
+    ma20 = _ma(closes, idx, 20); pma20 = _ma(closes, idx - 1, 20)
+    if not (ma20 and pma20): return False
+    if not (c > ma20 and pc <= pma20): return False
+    if ma20 < pma20 * 0.999: return False
+    v = rows[idx].get('volume', 0) or 0
+    va = sum((rows[i].get('volume', 0) or 0) for i in range(idx - 5, idx)) / 5
+    return va > 0 and v >= va * 1.2
+
+
+def _arena_rule_chu(rows, idx, closes):
+    """📚朱家泓(回後買上漲近似):中期多頭(20MA>60MA)+ 昨收 5MA 下(回檔)+ 今紅K站回 5MA + 量增"""
+    ma20 = _ma(closes, idx, 20); ma60 = _ma(closes, idx, 60)
+    if not (ma20 and ma60 and ma20 > ma60): return False
+    ma5 = _ma(closes, idx, 5); pma5 = _ma(closes, idx - 1, 5)
+    if not (ma5 and pma5): return False
+    c, pc = closes[idx], closes[idx - 1]
+    o = rows[idx].get('open', 0) or 0
+    if not (pc <= pma5 and c > ma5 and o > 0 and c > o): return False
+    return (rows[idx].get('volume', 0) or 0) > (rows[idx - 1].get('volume', 0) or 0)
+
+
+ARENA_MODES = [
+    ('layup',  '⭐ 送分題(高勝率)',   _arena_rule_layup),
+    ('racer',  '🏎️ 渣男賽車(動能)',  _arena_rule_racer),
+    ('turtle', '🐢 烏龜過河(波段)',  _arena_rule_turtle),
+    ('chu',    '📚 朱家泓(回後買)',  _arena_rule_chu),
+]
+
+
+def backtest_arena():
+    """🥊 選股池擂台:各模式用「同一套出場紀律」全市場回放,回傳可直接比較的統計。
+    誠實原則:①不算全倉滾入複利(那會灌水)②每筆對標大盤同窗報酬(beat_rate)③樣本太小標記。"""
+    attention_set = _load_attention_set()
+    bench = _load_bench_series()
+    import bisect as _bs
+    if bench:
+        _lbl, _ser = bench
+        _bd = [d.replace('/', '-') for d, _ in _ser]
+        _bc = [c for _, c in _ser]
+        def _bclose(dn):
+            i = _bs.bisect_right(_bd, dn) - 1
+            return _bc[i] if i >= 0 else None
+    else:
+        def _bclose(dn): return None
+
+    per_mode = {k: [] for k, _, _ in ARENA_MODES}
+    for f in DATA_DIR.glob("*.json"):
+        sym = f.stem
+        if not (len(sym) == 4 and sym.isdigit()) and not sym.startswith('00'):
+            continue
+        try:
+            rows = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(rows, list): continue
+            for key, _name, fn in ARENA_MODES:
+                per_mode[key].extend(simulate_strategy(rows, sym, attention_set, entry_fn=fn))
+        except Exception:
+            continue
+
+    modes_out = []
+    for key, name, _fn in ARENA_MODES:
+        trades = per_mode[key]
+        if not trades:
+            modes_out.append({'key': key, 'name': name, 'trades': 0})
+            continue
+        rets = [t['net_return'] for t in trades]
+        wins = [r for r in rets if r > 0]; losses = [r for r in rets if r <= 0]
+        wr = len(wins) / len(rets) * 100
+        exp = sum(rets) / len(rets)
+        plr = ((sum(wins) / len(wins)) / abs(sum(losses) / len(losses))) if (wins and losses) else None
+        beat = None; cnt = 0; bt = 0
+        for t in trades:
+            b0 = _bclose(t['entry_date'].replace('/', '-'))
+            b1 = _bclose(t['exit_date'].replace('/', '-'))
+            if b0 and b1 and b0 > 0:
+                cnt += 1
+                if t['net_return'] > (b1 / b0 - 1) * 100: bt += 1
+        if cnt: beat = round(bt / cnt * 100, 1)
+        modes_out.append({
+            'key': key, 'name': name, 'trades': len(trades),
+            'win_rate': round(wr, 1), 'expectancy': round(exp, 2),
+            'pl_ratio': round(plr, 2) if plr is not None else None,
+            'beat_rate': beat,
+        })
+    modes_out.sort(key=lambda m: (m.get('expectancy') is None, -(m.get('expectancy') or -999)))
+    return {'exit_rules': '同獵鷹出場紀律(跌破20MA/+20%停利/-8%硬停損/30日),只換進場規則,扣同樣成本', 'modes': modes_out}
+
+
+def simulate_strategy(rows, sym, attention_set, entry_fn=None):
     """模擬「跟著系統訊號交易」單檔策略回測。
     🔧 規則(收緊進場 + 20MA 防守線):
     進場條件(全部 AND):
@@ -652,18 +768,25 @@ def simulate_strategy(rows, sym, attention_set):
         c = closes[idx]
         if c <= 0: continue
         if not in_position:
-            # 🔧 進場條件(收緊):獵鷹 ≥85 + 多頭排列 + 站上 5MA + 5MA 上揚
-            try:
-                score = _falcon_score_simplified(rows, idx)
-                if score is None or score < STRATEGY_MIN_FALCON: continue
-                if not sig_ma_bullish_alignment(rows, idx): continue
-                ma5 = _ma(closes, idx, 5)
-                ma5_prev = _ma(closes, idx - 1, 5)
-                if not (ma5 and ma5_prev): continue
-                if c <= ma5: continue          # 必須收盤站上 5MA
-                if ma5 <= ma5_prev: continue   # 5MA 必須上揚
-            except Exception:
-                continue
+            # 🥊 擂台模式:entry_fn 指定進場規則(選股池各模式近似版);未指定=現行獵鷹規則。出場紀律完全相同
+            if entry_fn is not None:
+                try:
+                    if not entry_fn(rows, idx, closes): continue
+                except Exception:
+                    continue
+            else:
+                # 🔧 進場條件(收緊):獵鷹 ≥85 + 多頭排列 + 站上 5MA + 5MA 上揚
+                try:
+                    score = _falcon_score_simplified(rows, idx)
+                    if score is None or score < STRATEGY_MIN_FALCON: continue
+                    if not sig_ma_bullish_alignment(rows, idx): continue
+                    ma5 = _ma(closes, idx, 5)
+                    ma5_prev = _ma(closes, idx - 1, 5)
+                    if not (ma5 and ma5_prev): continue
+                    if c <= ma5: continue          # 必須收盤站上 5MA
+                    if ma5 <= ma5_prev: continue   # 5MA 必須上揚
+                except Exception:
+                    continue
             # 進場:用隔日收盤近似隔日開盤(簡化)
             if idx + 1 >= n: continue
             entry_price = closes[idx + 1]
@@ -1149,6 +1272,13 @@ def main():
             'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
             **strategy_result,
         }
+        # 🥊 選股池擂台:各模式同出場紀律對打(失敗不影響主回測)
+        try:
+            strategy_payload['arena'] = backtest_arena()
+            for m in strategy_payload['arena']['modes']:
+                print(f"   🥊 {m['name']}:{m.get('trades', 0)} 筆 / 勝率 {m.get('win_rate', '--')}% / 期望值 {m.get('expectancy', '--')}%/筆 / 逐筆贏大盤 {m.get('beat_rate', '--')}%")
+        except Exception as _e:
+            print(f"   ⚠️ 擂台回測失敗(不影響主回測):{_e}")
         STRATEGY_FILE.write_text(json.dumps(strategy_payload, ensure_ascii=False, indent=2), encoding='utf-8')
         s = strategy_result.get('strategy') or {}
         b = strategy_result.get('benchmark') or {}

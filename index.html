@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -21060,6 +21060,31 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 </div>
             </div>
             <div class="text-[10px] text-gray-500 mb-1">出場原因分佈:${exitHtml || '<span class="text-gray-600">無資料</span>'}</div>
+            ${(() => {
+                // 🥊 V56.9 選股池擂台:各模式同出場紀律對打(backtest.py arena 產);舊 json 無 arena 時整段不顯
+                const ar = data.arena; if (!ar || !Array.isArray(ar.modes) || !ar.modes.length) return '';
+                const falconRow = { name: '🦅 獵鷹85(現行)', trades: s.total_trades, win_rate: s.win_rate, expectancy: s.avg_return, pl_ratio: s.profit_factor, beat_rate: data.trade_matched?.beat_rate };
+                const all = [...ar.modes, falconRow].sort((a, b) => (b.expectancy ?? -999) - (a.expectancy ?? -999));
+                const rowH = (m, i) => {
+                    if (!m.trades) return `<div class="grid grid-cols-[1fr_52px_44px_44px_52px] gap-1 items-center py-1 border-b border-[#21262d] last:border-0 text-[10px]"><span class="text-gray-500">${m.name}</span><span class="col-span-4 text-gray-600 text-right">歷史無觸發</span></div>`;
+                    const eC = m.expectancy > 0 ? 'text-red-300' : 'text-green-300';
+                    const bC = m.beat_rate >= 50 ? 'text-red-300' : 'text-gray-400';
+                    const few = m.trades < 30 ? '<span class="text-yellow-400 text-[8px]">⚠️樣本少</span>' : '';
+                    return `<div class="grid grid-cols-[1fr_52px_44px_44px_52px] gap-1 items-center py-1 border-b border-[#21262d] last:border-0 text-[10px] font-mono">
+                        <span class="text-gray-200 font-bold truncate">${i === 0 ? '🥇' : ''}${m.name}${few}</span>
+                        <span class="${eC} font-black text-right">${m.expectancy > 0 ? '+' : ''}${(+m.expectancy).toFixed(2)}%</span>
+                        <span class="text-gray-400 text-right">${(+m.win_rate).toFixed(0)}%</span>
+                        <span class="text-gray-400 text-right">${m.pl_ratio != null ? (+m.pl_ratio).toFixed(1) : '--'}</span>
+                        <span class="${bC} text-right">${m.beat_rate != null ? (+m.beat_rate).toFixed(0) + '%' : '--'}</span>
+                    </div>`;
+                };
+                return `<div class="mt-2 pt-2 border-t border-[#21262d]">
+                    <div class="text-[11px] font-black text-amber-300 mb-1">🥊 選股池擂台 <span class="text-[9px] text-gray-500 font-normal">${ar.exit_rules || '同一套出場紀律,只換進場'}</span></div>
+                    <div class="grid grid-cols-[1fr_52px_44px_44px_52px] gap-1 text-[9px] text-gray-500 pb-0.5"><span>模式</span><span class="text-right">期望值/筆</span><span class="text-right">勝率</span><span class="text-right">賺賠比</span><span class="text-right">贏大盤</span></div>
+                    ${all.map(rowH).join('')}
+                    <div class="text-[9px] text-gray-600 mt-1 leading-snug">📖 <b class="text-gray-400">怎麼挑:期望值>0 且 贏大盤≥50% 且 樣本≥30 筆</b>的模式才值得跟。<b class="text-gray-400">勝率單看沒意義</b> — 勝率低但賺賠比高照樣賺(賺大賠小),勝率高賺賠比爛照樣虧;所以擂台按「期望值」排名。回測非保證,進場都要設停損。</div>
+                </div>`;
+            })()}
             <div id="strategyEquityChart" style="width:100%;height:180px;"></div>
         </div>`;
         box.querySelector('#signalAccuracyBody').insertAdjacentHTML('beforeend', sectionHtml);
