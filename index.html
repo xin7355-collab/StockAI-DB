@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -11145,6 +11145,11 @@ const marginByDate = {};
         s += _asiaScore(_hs) * 0.5;      // 🇭🇰 恆指(中國政策盤,連動較弱→半權重)
         const _fgN = +mr.fear_greed;
         if (Number.isFinite(_fgN)) { if (_fgN >= 80) s -= 0.5; else if (_fgN <= 20) s += 0.5; }   // 極貪(froth 偏空)/極恐(超跌偏多),輕權重反轉傾向
+        // 💱 V57.8 台幣匯率(使用者要求):USDTWD 上升=台幣貶值=外資匯出(提款機模式)。
+        //   單日急貶 ≥0.4% 扣 1、小貶 ≥0.15% 扣 0.5;升值反向加分;5 日連貶 ≥1% 再扣 0.5(趨勢比單日重要)
+        const _twdC = +mr.usdtwd_chg_pct, _twd5 = +mr.usdtwd_chg_5d;
+        if (Number.isFinite(_twdC)) { if (_twdC >= 0.4) s -= 1; else if (_twdC >= 0.15) s -= 0.5; else if (_twdC <= -0.4) s += 1; else if (_twdC <= -0.15) s += 0.5; }
+        if (Number.isFinite(_twd5) && _twd5 >= 1) s -= 0.5;
 
         // 🐛 V40.0 外資台指期極空(≤-4萬口)時不可硬說「外資沒大空」(實測 -83,063 口卻顯偏多致矛盾)→ 動態加註
         const _fiBigShort = (fi != null && fi <= -40000);
@@ -11167,6 +11172,10 @@ const marginByDate = {};
           else if (_st) summary += ' 🌏 亞股同盤走強,開盤氣氛偏多。';
           if (Number.isFinite(_fgN) && _fgN >= 80) summary += ` 🧭 市場情緒過熱(恐懼貪婪 ${Math.round(_fgN)}),追高風險升高。`;
           else if (Number.isFinite(_fgN) && _fgN <= 20) summary += ` 🧭 市場極度恐慌(恐懼貪婪 ${Math.round(_fgN)}),超跌易現反彈。`; }
+        // 💱 V57.8 台幣警語:5 日連貶=外資把股票換美金匯出(提款機),比單日更有殺傷力
+        if (Number.isFinite(_twd5) && _twd5 >= 1) summary += ` 💱 台幣 5 日急貶 ${_twd5.toFixed(1)}%,外資匯出跡象(提款機模式),權值股留意外資賣壓。`;
+        else if (Number.isFinite(_twdC) && _twdC >= 0.4) summary += ` 💱 台幣今日急貶 ${_twdC.toFixed(2)}%,留意外資是否轉匯出。`;
+        else if (Number.isFinite(_twd5) && _twd5 <= -1) summary += ` 💱 台幣 5 日升值 ${Math.abs(_twd5).toFixed(1)}%,外資匯入,資金面偏多。`;
         const sc = vColor === 'red' ? 'text-red-300' : vColor === 'green' ? 'text-green-300' : 'text-yellow-300';
         const bg = vColor === 'red' ? 'bg-red-900/25 border-red-500/60' : vColor === 'green' ? 'bg-green-900/25 border-green-500/60' : 'bg-yellow-900/15 border-yellow-500/50';
 
@@ -11225,6 +11234,11 @@ const marginByDate = {};
                 : '<span class="text-gray-500 text-[9px]">採集中</span>';
             return `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${right}</span></div>`;
         };
+        // 💱 V57.8 台幣格:USDTWD 升=台幣貶(對台股壞=綠)/降=台幣升(好=紅),與一般漲跌色相反,故自訂不走 gCell
+        const _twdV = mr.usdtwd;
+        const twdHtml = (_twdV != null && !isNaN(_twdV))
+            ? `<span class="font-mono font-bold text-gray-200">${(+_twdV).toFixed(2)}</span>${Number.isFinite(+mr.usdtwd_chg_pct) ? ` <span class="font-mono ${+mr.usdtwd_chg_pct > 0 ? 'text-green-300' : +mr.usdtwd_chg_pct < 0 ? 'text-red-300' : 'text-gray-400'}">${+mr.usdtwd_chg_pct > 0 ? '貶' : +mr.usdtwd_chg_pct < 0 ? '升' : ''}${Math.abs(+mr.usdtwd_chg_pct).toFixed(2)}%</span>` : ''}`
+            : '<span class="text-gray-500 text-[9px]">採集中</span>';
         const _fg = mr.fear_greed;
         const fgHtml = (_fg != null && !isNaN(_fg))
             ? `<span class="font-mono font-bold ${_fg >= 75 ? 'text-red-300' : _fg <= 25 ? 'text-green-300' : 'text-gray-200'}">${Math.round(_fg)}</span> <span class="text-[9px] ${_fg >= 75 ? 'text-red-400' : _fg <= 25 ? 'text-green-400' : 'text-gray-500'}">${_fg >= 75 ? '過熱' : _fg <= 25 ? '極恐' : '中性'}</span>`
@@ -11243,13 +11257,14 @@ const marginByDate = {};
                     ${gCell('🇰🇷 韓股', mr.kospi, mr.kospi_chg_pct)}
                     ${gCell('🇭🇰 恆指', mr.hsi, mr.hsi_chg_pct)}
                     ${gCell('💵 美元DXY', mr.dxy, mr.dxy_chg_pct)}
+                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">💱 台幣</span><span class="text-right">${twdHtml}</span></div>
                     ${gCell('🥇 黃金', mr.gold, mr.gold_chg_pct)}
                     ${gCell('🛢️ 原油', mr.wti, mr.wti_chg_pct)}
                     ${gCell('₿ 比特幣', mr.btc, mr.btc_chg_pct)}
                     <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">🧭 恐懼貪婪</span><span class="text-right">${fgHtml}</span></div>
                 </div>
                 ${asiaNote}
-                <div class="text-[8px] text-gray-700 mt-1 leading-snug">💡 避險資產(金/油/美元)大漲=資金轉保守,對高位科技股偏空;亞股是台股同盤最直接的開盤風向。</div>
+                <div class="text-[8px] text-gray-700 mt-1 leading-snug">💡 避險資產(金/油/美元)大漲=資金轉保守,對高位科技股偏空;亞股是台股同盤最直接的開盤風向;台幣「貶」=外資把台股換美金匯出(提款機)、「升」=外資匯入偏多。</div>
             </div>`;
 
         // 📅 V41.34 — 資料基準日:採礦時間(台北)+ 台股最新收盤日,讓使用者知道「現在看的是哪一天的資料」
@@ -11325,17 +11340,21 @@ const marginByDate = {};
                         <div class="text-[8px] text-gray-500 mt-0.5">方向分數</div>
                     </div>
                 </div>
-                <!-- 📊 V57.7 方向分數量條(使用者要求:-7 大字改量條;±10 分滿格,紅右偏多/綠左偏空,台股色) -->
-                <div class="mt-2 flex items-center gap-1.5">
-                    <span class="text-[8px] text-green-400 font-bold flex-shrink-0">偏空</span>
-                    <div class="relative flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden">
-                        ${s >= 0
-                            ? `<div class="absolute inset-y-0 left-1/2 bg-red-500/80 rounded-r-full" style="width:${Math.min(50, Math.abs(s) / 10 * 50).toFixed(1)}%"></div>`
-                            : `<div class="absolute inset-y-0 right-1/2 bg-green-500/80 rounded-l-full" style="width:${Math.min(50, Math.abs(s) / 10 * 50).toFixed(1)}%"></div>`}
-                        <div class="absolute inset-y-0 left-1/2 w-px bg-gray-500"></div>
-                    </div>
-                    <span class="text-[8px] text-red-400 font-bold flex-shrink-0">偏多</span>
-                </div>
+                <!-- 📊 V57.8 方向分數量條重做(V57.7 顯示怪:改全 inline style 定位,不依賴動態 class):±10 分滿格,紅右偏多/綠左偏空 -->
+                ${(() => {
+                    const _w = Math.min(50, Math.abs(s) / 10 * 50);
+                    const _fill = s >= 0
+                        ? `left:50%;width:${_w.toFixed(1)}%;background:#f87171;border-radius:0 9999px 9999px 0;`
+                        : `left:${(50 - _w).toFixed(1)}%;width:${_w.toFixed(1)}%;background:#4ade80;border-radius:9999px 0 0 9999px;`;
+                    return `<div class="mt-2 flex items-center gap-1.5">
+                        <span class="text-[8px] text-green-400 font-bold flex-shrink-0">偏空 -10</span>
+                        <div class="relative flex-1" style="height:9px;background:#21262d;border-radius:9999px;">
+                            <div style="position:absolute;top:0;bottom:0;${_fill}opacity:.85;"></div>
+                            <div style="position:absolute;top:-2px;bottom:-2px;left:50%;width:2px;margin-left:-1px;background:#8b949e;border-radius:1px;"></div>
+                        </div>
+                        <span class="text-[8px] text-red-400 font-bold flex-shrink-0">+10 偏多</span>
+                    </div>`;
+                })()}
                 <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed"><span class="${sc} font-bold">💡 </span>${summary}</div>
             </div>
             <!-- 🔎 V50.0 免費查宏觀(移到一句話總結下方) -->
@@ -13930,6 +13949,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[9px] text-gray-500 truncate">${label}</div>
                 <div class="text-sm font-black font-mono ${v != null ? vc(v) : 'text-gray-600'}">${v != null ? f1(v) : '—'}</div>
             </div>`;
+            // 🎨 V57.8 外框跟著情境上色(使用者要求):同 Alert Box 色系但淡一階,一眼看出這卡當下是警示還是安心
+            el.className = `bg-[#161b22] border rounded-lg p-2.5 ${bcls}/50`;
             el.innerHTML = `
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[11px] font-black text-gray-200 whitespace-nowrap">🌡️ 本股 vs 大盤</span>
@@ -25867,7 +25888,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const us2yStr   = fmtMr(mr.us2y_yield,             '%');
         const fgStr     = fmtMr(mr.fear_greed);
         const retailStr = fmtMr(mr.retail_ls_pct,          '%');
-        const twdStr    = fmtMr(mr.usdtwd);
+        // 💱 V57.8 台幣附 5 日趨勢(貶=外資提款風向),讓首席 AI 判讀有據
+        const twdStr    = fmtMr(mr.usdtwd) + (Number.isFinite(+mr.usdtwd_chg_5d) ? `(5日${+mr.usdtwd_chg_5d > 0 ? '貶' : '升'}${Math.abs(+mr.usdtwd_chg_5d).toFixed(1)}%${+mr.usdtwd_chg_5d >= 1 ? ',外資匯出提款風向' : ''})` : '');
         const backStr   = fmtMr(mr.taifex_backwardation);
         const fiSpotStr = mr.fi_spot_net == null ? '待採' : `${mr.fi_spot_net > 0 ? '+' : ''}${mr.fi_spot_net} 億`;
         // 🌍 全球 8 巨頭脈動（macro_risk.json 新採欄位）
@@ -26175,6 +26197,14 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             else if (dxyChg >  0.5) score += 8;
             else if (dxyChg >  0)   score += 4;
             else if (dxyChg < -0.5) score -= 2;
+        }
+
+        // 💱 V57.8 台幣 5 日連貶 = 外資把台股換美金匯出(提款機),小權重 (0-6 points)
+        const _twd5r = +(this._macroRiskCache?.usdtwd_chg_5d);
+        if (Number.isFinite(_twd5r)) {
+            if      (_twd5r >= 1.5) score += 6;
+            else if (_twd5r >= 1.0) score += 4;
+            else if (_twd5r >= 0.5) score += 2;
         }
 
         // S&P500(現貨/期貨夜盤)direction: falling = bad (0-8 points)

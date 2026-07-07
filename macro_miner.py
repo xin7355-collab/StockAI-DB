@@ -1202,16 +1202,24 @@ def fetch_twii_240ma_bias():
 
 
 def fetch_usdtwd():
-    """新台幣匯率 USD/TWD — yfinance TWD=X"""
+    """新台幣匯率 USD/TWD — yfinance TWD=X
+    V57.8 加 1日/5日變化%:USDTWD 上升=台幣貶值=外資匯出(提款機)風向,餵盤前體檢計分。
+    回 (匯率, 1日%, 5日%, err)。"""
     try:
         import yfinance as yf
-        hist = yf.Ticker("TWD=X").history(period="5d", auto_adjust=False)
+        hist = yf.Ticker("TWD=X").history(period="1mo", auto_adjust=False)
         if hist is None or hist.empty:
-            return None, "yfinance 回空"
-        return round(float(hist["Close"].iloc[-1]), 3), None
+            return None, None, None, "yfinance 回空"
+        closes = hist["Close"].dropna()
+        if not len(closes):
+            return None, None, None, "無有效收盤"
+        last = float(closes.iloc[-1])
+        chg1 = round((last / float(closes.iloc[-2]) - 1) * 100, 2) if len(closes) >= 2 and float(closes.iloc[-2]) > 0 else None
+        chg5 = round((last / float(closes.iloc[-6]) - 1) * 100, 2) if len(closes) >= 6 and float(closes.iloc[-6]) > 0 else None
+        return round(last, 3), chg1, chg5, None
     except Exception as e:
         print(f"  ⚠️ USD/TWD 抓取失敗: {e}")
-        return None, str(e)[:100]
+        return None, None, None, str(e)[:100]
 
 
 def fetch_fear_greed():
@@ -1566,6 +1574,8 @@ def main():
         "us2y_error":   None,
         "usdtwd":       None,
         "usdtwd_error": None,
+        "usdtwd_chg_pct": None,   # 💱 V57.8 台幣 1 日變化%(正=貶值)
+        "usdtwd_chg_5d":  None,   # 💱 V57.8 台幣 5 日變化%(正=連貶=外資提款風向)
         "fear_greed":       None,
         "fear_greed_label": None,
         "fear_greed_error": None,
@@ -1624,9 +1634,10 @@ def main():
     print(f"     → {fut} 口（err={ferr}）")
 
     print("[5/8] 抓取新台幣匯率 (USD/TWD)…")
-    twd, twderr = fetch_usdtwd()
+    twd, twd1, twd5, twderr = fetch_usdtwd()
     out["usdtwd"], out["usdtwd_error"] = twd, twderr
-    print(f"     → {twd}（err={twderr}）")
+    out["usdtwd_chg_pct"], out["usdtwd_chg_5d"] = twd1, twd5   # 💱 V57.8 貶值=外資提款風向
+    print(f"     → {twd}（1日 {twd1}% / 5日 {twd5}%, err={twderr}）")
 
     print("[6/8] 抓取 CNN 恐懼與貪婪指數…")
     fg, fglabel, fgerr = fetch_fear_greed()
@@ -1812,7 +1823,7 @@ def main():
                         # 🌅 V41.13 三大法人(投信/自營/合計)也納入斷崖防護(V36.8 加了欄位卻漏加保護 → 單次 307 就消失)
                         "fi_trust_net", "fi_dealer_net", "fi_total_net",
                         "fi_spot_date", "fi_three_date",
-                        "usdtwd", "fear_greed", "fear_greed_label",
+                        "usdtwd", "usdtwd_chg_pct", "usdtwd_chg_5d", "fear_greed", "fear_greed_label",
                         "retail_ls_pct", "taifex_backwardation",
                         # 🌍 全球巨頭脈動 10 指標斷崖防護(V21 加 SP500/NASDAQ)
                         "gold_usd", "gold_chg_pct", "wti_oil", "wti_chg_pct",
