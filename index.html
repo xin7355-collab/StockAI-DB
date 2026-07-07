@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1461,14 +1461,7 @@
                     </div>
                     <div id="dtScanBody" class="hidden px-1 pb-1.5"></div>
                 </div>
-                <!-- 🩹 V56.6 錯殺撿便宜:自選+庫存「今天大跌但體質沒壞」掃描(基本面/法人/趨勢三關+免費查利空),預設收合 -->
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg mb-1">
-                    <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app._wkScanToggle(this); app.vibrate(20);">
-                        <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🩹 錯殺撿便宜</span>
-                        <span class="flex items-center gap-1.5 min-w-0"><span id="wkScanSummary" class="text-[11px] font-bold text-gray-500 truncate">大跌但體質沒壞・點開掃描</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
-                    </div>
-                    <div id="wkScanBody" class="hidden px-1 pb-1.5"></div>
-                </div>
+                <!-- 🩹 V57.5 錯殺撿便宜已搬到「選股池」左欄類別(使用者要求);_wkScanToggle 保留無 UI 觸發 -->
                 <div id="dayTradeBody" class="flex flex-col gap-3"></div>
                 <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 當沖 = 同日買進賣出沖銷,證交稅減半(0.15%);需券商開通資格且標的可現股當沖 · 處置股禁當沖 · 純公式試算僅供紀律參考</div>
             </div>
@@ -2295,39 +2288,31 @@
 
         <div id="tabContentRadar" class="flex-col p-2 relative pb-4" style="display:none;min-height:80vh;">
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative">
-                <div class="sticky top-0 z-50 bg-[#0d1117] border-b border-[#30363d] p-3 shadow-md flex flex-col gap-3 rounded-t-[8px]">
-                    <!-- 標題列：大標 + 雷達實戰說明書 -->
-                    <div class="flex justify-between items-center gap-2 flex-wrap">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <h2 class="text-base font-bold text-cyan-400 flex items-center gap-1">🎯 選股池</h2>
-                            <button onclick="const m=document.getElementById('radarManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(20);" class="text-[10px] text-cyan-200 bg-cyan-900/30 border border-cyan-600/60 rounded px-2 py-0.5 hover:bg-cyan-800/40 transition-colors whitespace-nowrap font-bold" title="選股池實戰說明書">ℹ️ 選股池說明書</button>
-                        </div>
-                    </div>
-
-                    <!-- 🎛️ 策略切換卡 (Tabs) · 2 欄 grid 一眼全覽(V57.0 壓縮:鈕變矮字變小,列表早點露出) -->
-                    <div class="grid grid-cols-2 gap-1.5">
-                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題 <span class="opacity-70 text-[9px]">(高勝率)</span></button>
-                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70 text-[9px]">(動能)</span></button>
-                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70 text-[9px]">(波段)</span></button>
-                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 主力鎖股 <span class="opacity-70 text-[9px]">(籌碼)</span></button>
-                        <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70 text-[9px]">(風控)</span></button>
-                        <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓選股</button>
-                        <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌅 K棒轉多 <span class="opacity-70 text-[9px]">(找買點)</span></button>
-                        <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌃 K棒轉空 <span class="opacity-70 text-[9px]">(找賣點)</span></button>
-                    </div>
-
-                    <!-- 當前策略一句話說明條(V57.0 預設收 2 行,點展開 — 說明別擠掉名單) -->
-                    <div id="radarMatrixHint" onclick="this.classList.toggle('max-h-10'); app.vibrate(10);" class="max-h-10 overflow-hidden cursor-pointer text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1 leading-relaxed transition-all" title="點一下展開/收合完整說明"></div>
-
-                    <!-- 🔥 V57.1 題材脈動:夜間 RSS 熱度 + 族群領頭羊(清晨 06:30 採礦更新),預設收合 -->
-                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg">
-                        <div class="flex items-center justify-between px-3 py-2 cursor-pointer select-none" onclick="app._themePulseToggle(this); app.vibrate(20);">
-                            <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🔥 題材脈動</span>
-                            <span class="flex items-center gap-1.5 min-w-0"><span id="themePulseSummary" class="text-[11px] font-bold text-gray-500 truncate">今天哪個題材最熱・點開</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
-                        </div>
-                        <div id="themePulseBody" class="hidden px-2 pb-2"></div>
-                    </div>
+                <div class="border-b border-[#30363d] px-3 py-2 flex justify-between items-center gap-2 flex-wrap rounded-t-[8px]">
+                    <h2 class="text-base font-bold text-cyan-400 flex items-center gap-1">🎯 選股池</h2>
+                    <button onclick="const m=document.getElementById('radarManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(20);" class="text-[10px] text-cyan-200 bg-cyan-900/30 border border-cyan-600/60 rounded px-2 py-0.5 hover:bg-cyan-800/40 transition-colors whitespace-nowrap font-bold" title="選股池實戰說明書">ℹ️ 選股池說明書</button>
                 </div>
+
+                <!-- 🎛️ V57.5 左欄類別 rail + 右欄內容(參考專業 App 焦點股版型:類別在左直欄,名單在右) -->
+                <div class="flex gap-1.5 items-start flex-grow min-h-0 p-1.5">
+                    <!-- 左欄:選股種類(sticky,可自己上下捲) -->
+                    <div class="flex flex-col gap-1 w-[84px] flex-shrink-0 sticky top-1 self-start max-h-[85vh] overflow-y-auto scrollbar-hide">
+                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題<span class="block text-[8px] opacity-60 font-normal mt-0.5">高勝率</span></button>
+                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車<span class="block text-[8px] opacity-60 font-normal mt-0.5">動能</span></button>
+                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河<span class="block text-[8px] opacity-60 font-normal mt-0.5">波段</span></button>
+                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 主力鎖股<span class="block text-[8px] opacity-60 font-normal mt-0.5">籌碼</span></button>
+                        <button onclick="app.switchRadarStrategy('wrongkill')" id="radarTabWrongkill" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🩹 錯殺撿便宜<span class="block text-[8px] opacity-60 font-normal mt-0.5">大跌抗性</span></button>
+                        <button onclick="app.switchRadarStrategy('theme')" id="radarTabTheme" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🔥 題材脈動<span class="block text-[8px] opacity-60 font-normal mt-0.5">新聞熱度</span></button>
+                        <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股<span class="block text-[8px] opacity-60 font-normal mt-0.5">風控</span></button>
+                        <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌅 K棒轉多<span class="block text-[8px] opacity-60 font-normal mt-0.5">找買點</span></button>
+                        <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌃 K棒轉空<span class="block text-[8px] opacity-60 font-normal mt-0.5">找賣點</span></button>
+                        <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓<span class="block text-[8px] opacity-60 font-normal mt-0.5">選股法</span></button>
+                    </div>
+
+                    <!-- 右欄:說明條 + 各類別內容 -->
+                    <div class="flex-1 min-w-0 flex flex-col gap-1.5">
+                        <!-- 當前策略一句話說明條(預設收 2 行,點展開) -->
+                        <div id="radarMatrixHint" onclick="this.classList.toggle('max-h-10'); app.vibrate(10);" class="max-h-10 overflow-hidden cursor-pointer text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1 leading-relaxed transition-all" title="點一下展開/收合完整說明"></div>
 
                 <!-- ⭐ 送分題 view(layup tab 專用,預設隱藏) -->
                 <div id="radarLayupView" class="hidden flex-grow">
@@ -2371,7 +2356,27 @@
                     </div>
                 </div>
 
+                <!-- 🩹 V57.5 錯殺撿便宜 view(從當沖頁搬入選股池;wkScanBody 沿用原 ID,掃描函式零改) -->
+                <div id="radarWrongkillView" class="hidden flex-grow">
+                    <div class="flex items-center justify-between mb-1 px-1">
+                        <span class="text-[11px] text-gray-400 font-bold">今天大跌但體質沒壞的股</span>
+                        <button onclick="const b=document.getElementById('wkScanBody'); if(b) delete b.dataset.scanned; app._wkScanRun(); app.vibrate(20);" class="text-[10px] text-cyan-300/80 hover:text-cyan-200">🔄 重掃</button>
+                    </div>
+                    <div id="wkScanBody"></div>
+                </div>
+
+                <!-- 🔥 V57.5 題材脈動 view(從收合卡改為選股池類別) -->
+                <div id="radarThemeView" class="hidden flex-grow">
+                    <div class="flex items-center justify-between mb-1 px-1">
+                        <span id="themePulseSummary" class="text-[11px] text-gray-400 font-bold">🔥 題材熱度榜</span>
+                        <span class="text-[9px] text-gray-600">每交易日 00:30・06:30 自動更新</span>
+                    </div>
+                    <div id="themePulseBody"></div>
+                </div>
+
                 <div id="radarMatrixUpdated" class="text-[10px] text-gray-600 text-center py-2 border-t border-[#21262d]"></div>
+                    </div><!-- /右欄 -->
+                </div><!-- /左右欄 flex -->
             </div>
         </div>
 
@@ -24457,13 +24462,15 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     radarMatrix: null,
     _radarIsDemo: false,
 
-    _RADAR_TAB_BASE: 'radar-tab flex-shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap border transition-all ',   // 🎨 V57.0 壓縮:原 px-3 py-2 text-xs 8 顆鈕佔掉大半屏
+    _RADAR_TAB_BASE: 'radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all ',   // 🎨 V57.5 左欄直排(參考專業 App 焦點股版型)
     _RADAR_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
     _RADAR_TABS: {
         layup:     { id: 'radarTabLayup',     active: 'bg-yellow-600/30 text-yellow-200 border-yellow-500' },
         momentum:  { id: 'radarTabMomentum',  active: 'bg-red-600/20 text-red-300 border-red-500' },
         swing:     { id: 'radarTabSwing',     active: 'bg-green-600/20 text-green-300 border-green-500' },
         sniper:    { id: 'radarTabSniper',    active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
+        wrongkill: { id: 'radarTabWrongkill', active: 'bg-emerald-600/25 text-emerald-200 border-emerald-500' },
+        theme:     { id: 'radarTabTheme',     active: 'bg-amber-600/25 text-amber-200 border-amber-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
         kbar_bull: { id: 'radarTabKbarBull',  active: 'bg-red-600/25 text-red-300 border-red-500' },
         kbar_bear: { id: 'radarTabKbarBear',  active: 'bg-green-600/25 text-green-300 border-green-500' },
@@ -24474,6 +24481,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         swing:     '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
         sniper:    '🎯 主力鎖股｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
         attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
+        wrongkill: '🩹 錯殺撿便宜｜今天大跌 ≥4% 但體質沒壞(原多頭+回測支撐+法人沒跑+營收成長)。先「🔎查利空」確認沒公司壞消息,再等紅K站回5日線進 — 別今天接刀。',
+        theme:     '🔥 題材脈動｜Google 新聞 3 日熱度排行 + 👑 同族群 5 日最強前3。點題材名=免費 AI 查最新發展、點新聞標題=看原文、點股名=進該股總覽。',
         falcon:    '🦅 獵鷹建倉｜全市場 AI 評分 ≥ 60 的標的(紅榜 ≥75 / 橙榜 60-74),分數越高越優先,綜合動能·籌碼·技術·風險。',
         kbar_bull: '🌅 K棒轉多｜全市場掃朱家泓 K棒戰法「偏多轉折」:晨星/長紅吞噬/長紅遭遇/測撐有撐,都配合成交量。純公式,右欄顯命中訊號。→ 找進場買點,站上訊號 K 高點或 5MA 再分批進。',
         kbar_bear: '🌃 K棒轉空｜全市場掃朱家泓 K棒戰法「偏空轉折/出貨」:夜星/長黑吞噬/長黑遭遇/測壓有壓/量價背離,都配合成交量。純公式。→ 手上有貨的顧停損、空手別追高,跌破訊號 K 低點多單先走。',
@@ -24542,23 +24551,28 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (hint) hint.innerHTML = (this._RADAR_HINT[key] || '') + this._radarWinNote(key);
         // V32.3 — signal_history 未載入時(首次切非送分題分頁)→ 載入後補回勝率小字
         if (!this._signalHistCache) { try { Promise.resolve(this._loadSignalAccuracy()).then(() => { const h2 = document.getElementById('radarMatrixHint'); if (h2 && this.radarStrategy === key) h2.innerHTML = (this._RADAR_HINT[key] || '') + this._radarWinNote(key); }).catch(()=>{}); } catch(_){} }
-        // 切換 layup view vs 處置股 view vs 一般表格
+        // 切換各類別 view(V57.5 左欄式:layup/表格/處置 + 新增 錯殺/題材)
         const layupView = document.getElementById('radarLayupView');
         const tableWrap = document.getElementById('radarTableWrap');
         const attView   = document.getElementById('radarAttentionView');
-        if (attView) attView.classList.add('hidden');
+        const wkView    = document.getElementById('radarWrongkillView');
+        const themeView = document.getElementById('radarThemeView');
+        [layupView, tableWrap, attView, wkView, themeView].forEach(v => v && v.classList.add('hidden'));
         if (key === 'layup') {
             if (layupView) layupView.classList.remove('hidden');
-            if (tableWrap) tableWrap.classList.add('hidden');
             this._loadChiefCacheForSendScore();
             this._loadSignalAccuracy();
         } else if (key === 'attention') {
-            if (layupView) layupView.classList.add('hidden');
-            if (tableWrap) tableWrap.classList.add('hidden');
             if (attView) attView.classList.remove('hidden');
             this.renderAttentionView();
+        } else if (key === 'wrongkill') {
+            if (wkView) wkView.classList.remove('hidden');
+            const b = document.getElementById('wkScanBody');
+            if (b && !b.dataset.scanned) this._wkScanRun();
+        } else if (key === 'theme') {
+            if (themeView) themeView.classList.remove('hidden');
+            this._themePulseFresh();
         } else {
-            if (layupView) layupView.classList.add('hidden');
             if (tableWrap) tableWrap.classList.remove('hidden');
             this.renderRadarMatrix(key);
         }
@@ -24618,15 +24632,21 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             return d || {};
         } catch (_) { return {}; }
     },
-    _themePulseToggle(header) {
+    _themePulseToggle(header) {   // (V57.5 收合卡已改為選股池類別,保留供相容)
         this.toggleCollapse('themePulseBody', header);
+        this._themePulseFresh();
+    },
+    // 🐛 V57.5 修:原 dataset.rendered 一設永不過期 → 改時間戳,超過 30 分自動重抓
+    _themePulseFresh() {
         const body = document.getElementById('themePulseBody');
-        if (body && !body.classList.contains('hidden') && !body.dataset.rendered) this._renderThemePulse();
+        if (!body) return;
+        const ts = +body.dataset.rendered || 0;
+        if (Date.now() - ts > 30 * 60e3) this._renderThemePulse();
     },
     async _renderThemePulse() {
         const body = document.getElementById('themePulseBody'), sum = document.getElementById('themePulseSummary');
         if (!body) return;
-        body.dataset.rendered = '1';
+        body.dataset.rendered = String(Date.now());   // 🐛 V57.5 時間戳:30 分後自動視為過期重抓
         body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">⏳ 載入題材熱度…</div>';
         try {
             const base = window.location.href.split('?')[0].split('#')[0];
@@ -24644,24 +24664,26 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const leaders = radar?.data?.concept_leaders || {};
             const lkeys = Object.keys(leaders);
             const top = themes.slice(0, 12);
-            if (sum) sum.innerHTML = `<span class="text-amber-300">最熱:${top[0].kw} ${top[0].heat}則</span>`;
+            if (sum) sum.innerHTML = `🔥 題材熱度榜 <span class="text-amber-300">最熱:${top[0].kw} ${top[0].heat}則</span>`;
+            // 🐛 V57.5 修:①新聞標題改可點開原文(原本整列都開 AI 查,標題點了卻不是看新聞) ②標題跳脫防含 <> 破版 ③整列 onclick 移除防誤觸
+            const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             body.innerHTML = top.map(t => {
                 const it = (t.items || [])[0];
-                // 領頭羊:概念名與題材關鍵字互含即配對(如 kw=記憶體 ↔ 概念「記憶體」)
                 const lk = lkeys.find(k => k === t.kw) || lkeys.find(k => k.includes(t.kw) || t.kw.includes(k));
                 const ld = lk ? (leaders[lk] || []).slice(0, 3) : [];
                 const ldHtml = ld.length ? `<div class="text-[9px] text-gray-500 mt-0.5 truncate">👑 ${ld.map(x =>
-                    `<span onclick="event.stopPropagation(); app._wkOpenStock('${x.sym}');" class="cursor-pointer text-amber-300/90">${this.getStockName(x.sym) || x.sym} <span class="${x.g5 >= 0 ? 'text-red-300' : 'text-green-300'}">${x.g5 >= 0 ? '+' : ''}${x.g5}%</span></span>`).join('・')}</div>` : '';
-                return `<div class="px-1.5 py-1.5 border-b border-[#21262d] last:border-0 cursor-pointer" onclick="app._openFreeAiConcept('${t.kw}')" title="點我用免費 AI 查「${t.kw}」最新發展">
+                    `<span onclick="app._wkOpenStock('${x.sym}'); app.vibrate(15);" class="cursor-pointer text-amber-300/90">${this.getStockName(x.sym) || x.sym} <span class="${x.g5 >= 0 ? 'text-red-300' : 'text-green-300'}">${x.g5 >= 0 ? '+' : ''}${x.g5}%</span></span>`).join('・')}</div>` : '';
+                const newsUrl = (it && it.u) ? String(it.u).replace(/['"]/g, '') : '';
+                return `<div class="px-1.5 py-1.5 border-b border-[#21262d] last:border-0">
                     <div class="flex items-center justify-between">
-                        <span class="text-[11px] font-bold text-cyan-300">#${t.kw}</span>
+                        <span onclick="app._openFreeAiConcept('${t.kw}')" class="cursor-pointer text-[11px] font-bold text-cyan-300" title="免費 AI 查「${t.kw}」最新發展">#${t.kw} <span class="text-[8px] text-gray-600 font-normal">🔎</span></span>
                         <span class="text-[10px] font-mono ${t.heat >= 10 ? 'text-red-300 font-black' : t.heat >= 4 ? 'text-yellow-300' : 'text-gray-500'}">3日 ${t.heat} 則</span>
                     </div>
-                    ${it ? `<div class="text-[10px] text-gray-400 truncate mt-0.5">${it.t}<span class="text-gray-600"> ・${it.src}${it.d ? ' ' + it.d : ''}</span></div>` : ''}
+                    ${it ? `<div ${newsUrl ? `onclick="window.open('${newsUrl}','_blank'); app.vibrate(15);" class="cursor-pointer text-[10px] text-gray-400 truncate mt-0.5 hover:text-gray-200"` : 'class="text-[10px] text-gray-400 truncate mt-0.5"'} title="點我看新聞原文">📰 ${esc(it.t)}<span class="text-gray-600"> ・${esc(it.src)}${it.d ? ' ' + it.d : ''}</span></div>` : ''}
                     ${ldHtml}
                 </div>`;
             }).join('') +
-            `<div class="text-[9px] text-gray-600 px-1.5 pt-1.5 leading-snug">熱度=Google 新聞 3 日則數(清晨自動更新)・👑=同族群 5 日最強前 3(盤後採礦)・點題材列=免費 AI 查最新發展、點 👑 股名=進該股總覽。</div>`;
+            `<div class="text-[9px] text-gray-600 px-1.5 pt-1.5 leading-snug">熱度=Google 新聞 3 日則數(清晨自動更新)・👑=同族群 5 日最強前 3(盤後採礦)・<b class="text-gray-400">點 #題材=AI 查最新發展、點 📰 標題=看新聞原文、點 👑 股名=進該股總覽</b>。</div>`;
         } catch (_) {
             body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">載入失敗,稍後再點。</div>';
             delete body.dataset.rendered;
