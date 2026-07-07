@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -22526,6 +22526,34 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this.renderChart();
     },
 
+    // 📊 V58.0 — KD/MACD 副圖按鈕加「當前狀態」小字(不切副圖也一眼看到金叉/死叉、紅柱/綠柱)
+    _updateSubChartBadges() {
+        const ind = this.indicators || {};
+        const last = (this.activeData?.length || this.rawDailyData?.length || 0) - 1;
+        const at = (arr, i) => (Array.isArray(arr) && arr[i] != null) ? +arr[i] : null;
+        const kdBtn = document.getElementById('btnSubKD'), mcBtn = document.getElementById('btnSubMACD');
+        if (kdBtn) {
+            const k1 = at(ind.k, last), d1 = at(ind.d, last), k0 = at(ind.k, last - 1), d0 = at(ind.d, last - 1);
+            let tag = '';
+            if (k1 != null && d1 != null && k0 != null && d0 != null) {
+                if (k0 <= d0 && k1 > d1) tag = `<span class="block text-[8px] text-red-400 font-normal leading-none mt-0.5">金叉${k1 < 30 ? '·低檔' : k1 > 80 ? '·高檔' : ''}</span>`;
+                else if (k0 >= d0 && k1 < d1) tag = `<span class="block text-[8px] text-green-400 font-normal leading-none mt-0.5">死叉${k1 > 70 ? '·高檔' : ''}</span>`;
+                else tag = `<span class="block text-[8px] ${k1 > d1 ? 'text-red-400/70' : 'text-green-400/70'} font-normal leading-none mt-0.5">K${Math.round(k1)} ${k1 > d1 ? '多' : '空'}</span>`;
+            }
+            kdBtn.innerHTML = `KD${tag}`;
+        }
+        if (mcBtn) {
+            const o1 = at(ind.osc, last), o0 = at(ind.osc, last - 1);
+            let tag = '';
+            if (o1 != null && o0 != null) {
+                if (o0 <= 0 && o1 > 0) tag = `<span class="block text-[8px] text-red-400 font-normal leading-none mt-0.5">翻紅柱</span>`;
+                else if (o0 >= 0 && o1 < 0) tag = `<span class="block text-[8px] text-green-400 font-normal leading-none mt-0.5">翻綠柱</span>`;
+                else tag = `<span class="block text-[8px] ${o1 > 0 ? 'text-red-400/70' : 'text-green-400/70'} font-normal leading-none mt-0.5">${o1 > 0 ? '紅柱' : '綠柱'}${Math.abs(o1) > Math.abs(o0) ? '增' : '縮'}</span>`;
+            }
+            mcBtn.innerHTML = `MACD${tag}`;
+        }
+    },
+
     // 🔁 與 worker 內 patternStats 同算法的 main-thread 版,接受任意 targetIdx 對歷史日重算
     //     ⚠️ 改 worker patternStats 時這個函式必須同步改,否則上方 60% 跟下方歷史會對不起來
     // V14.4:加 4 層降級補算 — full → 去法人 → 去大盤 → 寬 sim;LOOKBACK 240 → 800
@@ -23393,6 +23421,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this.indicators = data;
         const { trades, markPoints, patternStats } = data;
         this.currentMarkPoints = markPoints;
+        try { this._updateSubChartBadges(); } catch (_) {}   // 📊 V58.0 KD/MACD 按鈕即時狀態小字
 
         const lastIdx = this.rawDailyData.length - 1, currentClose = this.rawDailyData[lastIdx].close;
         // Prefer Fugle referencePrice (set in applyLatestPrice). Fallback: scan backwards for the
@@ -25282,14 +25311,19 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const tsEl  = document.getElementById('newsLastUpdated');
         if (!body && !embed) return;
         const renderItems = async (items) => {
-            // V35 — 取消前端 AI 判讀(使用者要求);僅顯示新聞本身,ai_reason 若採礦端已寫則沿用
+            // V58.0 — 重點新聞置頂(利多/利空排前、中立在後,組內維持時間序)+ 標題優先用採礦端繁中翻譯
+            const _pri = n => { const t = n.tone || n.sentiment || n.ai_sentiment || ''; return (t.includes('利多') || t === 'bull' || t.includes('利空') || t === 'bear') ? 0 : 1; };
+            items = [...items].sort((a, b) => _pri(a) - _pri(b));
             const html = items.map(n => {
                 // tone 支援採礦端的 ai_sentiment + 舊欄位 + 範例頭條的 tone
                 const tone = n.tone || n.sentiment || n.ai_sentiment || '';
                 const dot = tone.includes('利多') || tone === 'bull' ? '🟥'
                           : tone.includes('利空') || tone === 'bear' ? '🟩' : '⚪';
+                // 🎨 V58.0 顏色區分(台股色):利多=紅左框、利空=綠左框、中立=灰
+                const toneBorder = tone.includes('利多') || tone === 'bull' ? 'border-l-4 border-l-red-500'
+                                 : tone.includes('利空') || tone === 'bear' ? 'border-l-4 border-l-green-500' : '';
                 const src = (n.source || n.source_name) ? `<span class="text-gray-600">${n.source || n.source_name}</span>` : '';
-                const t = n.title || n.headline || n.summary || '';
+                const t = n.title_zh || n.title || n.headline || n.summary || '';
                 const safeUrl = (n.url || n.link || '').replace(/"/g, '&quot;');
                 // 🧠 AI 簡介:V15.6 改前端 on-demand 即時跑(原採礦端 V14.16 起 SKIP_AI)
                 const aiImpact = n.ai_reason || n.ai_impact || '';
@@ -25300,7 +25334,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     try { const d = new Date(raw); if (!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; } catch(_){}
                     return String(raw).slice(0, 16).replace('T', ' ');
                 })();
-                const card = `<div class="bg-[#0d1117]/70 border border-[#30363d] rounded p-2.5 transition-colors ${safeUrl ? 'hover:border-amber-700/60 cursor-pointer' : ''}">
+                const card = `<div class="bg-[#0d1117]/70 border border-[#30363d] ${toneBorder} rounded p-2.5 transition-colors ${safeUrl ? 'hover:border-amber-700/60 cursor-pointer' : ''}">
                     <div class="flex items-start gap-1.5"><span class="flex-shrink-0">${dot}</span>
                     <div class="flex-1 min-w-0"><div class="text-gray-200 text-[13px] font-bold leading-snug">${t}</div>
                     ${aiImpact ? `<div class="text-amber-300 text-[11px] mt-0.5 leading-snug">💡 ${aiImpact}</div>` : ''}

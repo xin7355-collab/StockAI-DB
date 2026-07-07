@@ -20,9 +20,11 @@ import feedparser
 from pathlib import Path
 from datetime import datetime
 
-# V14.16 — 採礦時不再跑 Groq AI(改前端打開時即時跑,節省 TPD 配額讓使用者手動分析少撞 429)
-#         要恢復:env SKIP_AI=0 或刪此環境變數
-SKIP_AI = os.environ.get("SKIP_AI", "1") == "1"
+# V58.0 — 恢復採礦端 Groq AI(使用者要求:翻譯+判讀都後端做好,前端零額度)。
+#         額度帳:每 run 最多 NEWS_AI_CAP(25) 次 8b-instant 小呼叫,3 支 workflow 一天約 200 次
+#         ≈ 7 萬 tokens,遠低於免費 TPD(50萬);sleep 2.5s 控 RPM。要關:env SKIP_AI=1。
+SKIP_AI = os.environ.get("SKIP_AI", "0") == "1"
+NEWS_AI_CAP = int(os.environ.get("NEWS_AI_CAP", "25"))   # 每 run 最多 AI 分析則數(最新優先)
 
 # ── [Key 輪動] 多把 Groq API key 池（鏡像 api.py 同款邏輯，per-key 冷卻自動復活）──
 _groq_env = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY", "")
@@ -142,35 +144,38 @@ SUMMARY_MAXLEN = 300
 
 
 def analyze_sentiment(title: str, summary: str) -> tuple:
-    """呼叫 Groq AI 進行利多/利空判讀，回傳 (sentiment, reason)。
+    """V58.0 一次 Groq 呼叫做完 4 件事(不多花額度):利多/利空 + 20字理由 + 英文標題翻繁中 + 是否台股重點。
+    回傳 (sentiment, reason, title_zh, important)。
     [Key 輪動] 多把 key 自動切換,全部撞限額才 fallback 為「中立」。"""
-    # V14.16:採礦端不跑 AI,前端打開時即時分析(節省 TPD 配額讓使用者手動分析少撞 429)
     if SKIP_AI:
-        return ("待分析", "")
+        return ("待分析", "", "", True)
     if not GROQ_API_KEYS:
-        return ("中立", "未設定 GROQ_API_KEY")
+        return ("中立", "未設定 GROQ_API_KEY", "", True)
 
     user_prompt = (
-        f"你是一個專業的財經情緒分析系統。請分析以下台股情報，判斷其對個股或供應鏈的影響為【利多】、【利空】或【中立】。\n\n"
+        f"你是台股情報過濾與判讀系統。分析以下新聞:\n"
         f"標題：{title}\n"
         f"摘要：{summary[:SUMMARY_MAXLEN]}\n\n"
-        f"輸出要求：\n"
-        f"1. 必須輸出純 JSON 格式，絕對不要包含 Markdown backticks (如 ```json)。\n"
-        f"2. 格式範例：{{\"sentiment\": \"利多\", \"reason\": \"此處填寫20字內具體原因\"}}"
+        f"輸出純 JSON(絕對不要 Markdown backticks),欄位:\n"
+        f"{{\"sentiment\":\"利多|利空|中立\",\"reason\":\"20字內具體原因(繁體中文)\","
+        f"\"title_zh\":\"標題若非繁體中文則翻成繁中(30字內);已是繁中就回空字串\","
+        f"\"important\":true}}\n"
+        f"important 判斷:對台股個股/供應鏈/半導體/大盤有實質影響=true;"
+        f"生活消費、體育娛樂、與台股無關的外國本地新聞、廣告業配=false。"
     )
     payload = {
         "model":           GROQ_MODEL,
         "messages":        [{"role": "user", "content": user_prompt}],
-        "max_tokens":      120,
+        "max_tokens":      180,
         "temperature":     0.3,
         "response_format": {"type": "json_object"},
     }
 
     res = _call_groq_with_rotation(payload, label="analyze_sentiment")
     if res is None:
-        return ("中立", "AI 暫時無法分析")
+        return ("中立", "AI 暫時無法分析", "", True)
     if res.status_code != 200:
-        return ("中立", f"API 錯誤 {res.status_code}")
+        return ("中立", f"API 錯誤 {res.status_code}", "", True)
 
     try:
         content = res.json()["choices"][0]["message"]["content"].strip()
@@ -180,10 +185,12 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
             print(f"  ⚠️ Groq 回傳異常 sentiment={sentiment!r}，已退回中立。原始 content={content[:120]}")
             sentiment = "中立"
         reason = str(parsed.get("reason", "")).strip()[:30] or "AI 未提供說明"
-        return (sentiment, reason)
+        title_zh = str(parsed.get("title_zh", "")).strip()[:50]
+        important = bool(parsed.get("important", True))
+        return (sentiment, reason, title_zh, important)
     except Exception as e:
         print(f"  ⚠️ analyze_sentiment 解析例外：{e}")
-        return ("中立", "AI 暫時無法分析")
+        return ("中立", "AI 暫時無法分析", "", True)
 
 
 def _fetch_rss_with_encoding_fallback(url: str):
@@ -224,6 +231,13 @@ def fetch_feed(source_name: str, url: str) -> list:
             hits = [k for k in KEYWORDS if k in combined]
             if not hits:
                 continue
+            # V58.0 — 記精確時間戳供「最新優先」排序(AI 額度 CAP 先給最新的)
+            _pp = entry.get("published_parsed") or entry.get("updated_parsed")
+            try:
+                import calendar as _cal
+                _ts = _cal.timegm(_pp) if _pp else 0
+            except Exception:
+                _ts = 0
             matched.append({
                 "source_name":      source_name,
                 "title":            title,
@@ -231,6 +245,7 @@ def fetch_feed(source_name: str, url: str) -> list:
                 "published_time":   entry.get("published", "") or entry.get("updated", ""),
                 "matched_keywords": hits,
                 "_summary":         summary,
+                "_ts":              _ts,
             })
         print(f"  📡 {source_name}：總 {len(feed.entries)} 篇，命中 {len(matched)} 篇")
     except Exception as e:
@@ -478,34 +493,51 @@ def main():
         all_matched.extend(fetch_feed(name, url))
         time.sleep(0.5)
 
-    print(f"\n🎯 共命中 {len(all_matched)} 篇，啟動 AI 情緒判讀")
+    # V58.0 — 最新優先 + AI 額度上限(CAP):額度先給最新新聞,舊的不分析也不呈現
+    all_matched.sort(key=lambda x: x.get("_ts") or 0, reverse=True)
+    todo = all_matched[:NEWS_AI_CAP]
+    print(f"\n🎯 共命中 {len(all_matched)} 篇,AI 判讀最新 {len(todo)} 篇(CAP={NEWS_AI_CAP})")
 
     results = []
-    for i, item in enumerate(all_matched):
-        sentiment, reason = analyze_sentiment(item["title"], item["_summary"])
+    for i, item in enumerate(todo):
+        sentiment, reason, title_zh, important = analyze_sentiment(item["title"], item["_summary"])
         item.pop("_summary", None)
+        item.pop("_ts", None)
         item["ai_sentiment"] = sentiment
         item["ai_reason"]    = reason
+        if title_zh:
+            item["title_zh"] = title_zh
+        item["important"] = important
         results.append(item)
-        
-        # 【修復】縮排對齊！讓印出進度的邏輯正確包在迴圈內
-        if (i + 1) % 5 == 0 or i == len(all_matched) - 1:
-            print(f"  進度：{i+1}/{len(all_matched)}（{sentiment} — {reason}）")
-        
+
+        if (i + 1) % 5 == 0 or i == len(todo) - 1:
+            print(f"  進度：{i+1}/{len(todo)}（{sentiment}{'・重點' if important else ''} — {reason}）")
+
         # 【致命危機修復】Groq 免費版限制 30 RPM (每分鐘 30 次)。
         # 強制冷卻 2.5 秒 (相當於一分鐘最多 24 次)，確保絕對不會觸發 429 封鎖！
         time.sleep(2.5)
 
+    # V58.0 — 只呈現「台股重點」(使用者要求:其他不用呈現);守門避免空白:
+    #   重點 <5 → 補「非中立」;仍 <5 → 補最新的湊 5;最終最多 15 則
+    keep = [r for r in results if r.get("important")]
+    if len(keep) < 5:
+        extra = [r for r in results if r not in keep and r.get("ai_sentiment") in ("利多", "利空")]
+        keep += extra[:5 - len(keep)]
+    if len(keep) < 5:
+        keep += [r for r in results if r not in keep][:5 - len(keep)]
+    keep = keep[:15]
+    print(f"  🔍 重點過濾:{len(results)} 篇 → 呈現 {len(keep)} 篇")
+
     output = {
         "updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
-        "count":   len(results),
-        "data":    results,
+        "count":   len(keep),
+        "data":    keep,
     }
     OUTPUT_FILE.write_text(
         json.dumps(output, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
-    print(f"\n✅ 已輸出 {len(results)} 篇 → {OUTPUT_FILE}")
+    print(f"\n✅ 已輸出 {len(keep)} 篇 → {OUTPUT_FILE}")
 
     fetch_global_news()
     fetch_tech_giants_news()
