@@ -112,7 +112,8 @@ BIZ_SOURCES = [
     ('TWSE上市', 'https://openapi.twse.com.tw/v1/opendata/t187ap03_L'),
     ('TPEX上櫃', 'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O'),
 ]
-_BIZ_FIELD_PAT = ('主要經營業務', '營業項目', '所營事業', '主要業務')
+_BIZ_FIELD_PAT = ('主要經營業務', '營業項目', '所營事業', '主要業務',
+                  'MainBusiness', 'Business')   # run#2 實測:TPEX openapi 欄位是英文
 _SYM_FIELD_PAT = ('公司代號', 'SecuritiesCompanyCode', 'CompanyCode', 'Code')
 
 
@@ -139,7 +140,7 @@ def build_biz_profile():
                 continue
             biz_k = _detect_field(arr[0], _BIZ_FIELD_PAT)
             sym_k = _detect_field(arr[0], _SYM_FIELD_PAT)
-            print(f'  [{label}] 欄位偵測:sym={sym_k} biz={biz_k} / keys 樣本={list(arr[0].keys())[:12]}')
+            print(f'  [{label}] 欄位偵測:sym={sym_k} biz={biz_k} / 全部 keys={list(arr[0].keys())}')
             if not biz_k or not sym_k:
                 continue
             n0 = len(profiles)

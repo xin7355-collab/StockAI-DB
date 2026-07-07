@@ -81,7 +81,12 @@ jobs:
             if git diff --cached --quiet; then
               echo "ℹ️ $BR 無變更"; return 0
             fi
-            git commit -q -m "🔥 夜間情報採礦 theme_news/biz_profile $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/theme_news.json data/biz_profile.json
+            # 🐛 pathspec 只列「真的有產出」的檔(run#2 教訓:寫死兩檔名,只產一檔就 pathspec 炸)
+            local paths=()
+            for f in theme_news.json biz_profile.json; do
+              [ -f "/tmp/$f" ] && paths+=("data/$f")
+            done
+            git commit -q -m "🔥 夜間情報採礦 theme_news/biz_profile $(date -u '+%Y-%m-%d %H:%M UTC')" -- "${paths[@]}"
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
@@ -91,7 +96,7 @@ jobs:
               for f in theme_news.json biz_profile.json; do
                 [ -f "/tmp/$f" ] && { cp "/tmp/$f" "data/$f"; git add -f "data/$f"; }
               done
-              git commit -q -m "🔥 夜間情報採礦 theme_news/biz_profile $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/theme_news.json data/biz_profile.json 2>/dev/null || true
+              git commit -q -m "🔥 夜間情報採礦 theme_news/biz_profile $(date -u '+%Y-%m-%d %H:%M UTC')" -- "${paths[@]}" 2>/dev/null || true
             done
           }
 
