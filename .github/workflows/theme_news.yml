@@ -65,9 +65,10 @@ jobs:
             local BR="$1"
             git reset --hard -q 2>/dev/null || true
             git clean -fdq 2>/dev/null || true
-            git fetch origin "$BR" 2>/dev/null || true
-            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
-            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            # 🐛 run#3 教訓:checkout@v4 只抓觸發分支,`git checkout -f data` 會「無分支」跳過 →
+            #    改 daytrade_probe 實證過的 FETCH_HEAD 切法(fetch 成功才切,失敗才是真的無分支)
+            if ! git fetch origin "$BR" 2>/dev/null; then echo "⚠️ 無 $BR 分支,跳過"; return 0; fi
+            git checkout -f -B "$BR" FETCH_HEAD 2>/dev/null || { echo "⚠️ 切 $BR 失敗,跳過"; return 0; }
             mkdir -p data
             local staged=0
             for f in theme_news.json biz_profile.json; do
@@ -92,7 +93,7 @@ jobs:
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
               echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
               git fetch origin "$BR" 2>/dev/null || true
-              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              git reset --hard -q FETCH_HEAD 2>/dev/null || true
               for f in theme_news.json biz_profile.json; do
                 [ -f "/tmp/$f" ] && { cp "/tmp/$f" "data/$f"; git add -f "data/$f"; }
               done

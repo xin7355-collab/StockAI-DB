@@ -112,14 +112,16 @@ BIZ_SOURCES = [
     ('TWSE上市', 'https://openapi.twse.com.tw/v1/opendata/t187ap03_L'),
     ('TPEX上櫃', 'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O'),
 ]
-_BIZ_FIELD_PAT = ('主要經營業務', '營業項目', '所營事業', '主要業務',
-                  'MainBusiness', 'Business')   # run#2 實測:TPEX openapi 欄位是英文
+_BIZ_FIELD_PAT = ('主要經營業務', '營業項目', '所營事業', '主要業務', 'MainBusiness')
+_BIZ_FIELD_EXCLUDE = ('UnifiedBusinessNo', 'BusinessNo', '統一編號')   # run#3 教訓:'Business' 誤中統編欄
 _SYM_FIELD_PAT = ('公司代號', 'SecuritiesCompanyCode', 'CompanyCode', 'Code')
 
 
-def _detect_field(sample, patterns):
-    """在官方 JSON 的 keys 裡自動找欄位(對 GitHub IP 各資料集欄名不一的防禦)。"""
+def _detect_field(sample, patterns, exclude=()):
+    """在官方 JSON 的 keys 裡自動找欄位(對 GitHub IP 各資料集欄名不一的防禦);exclude 擋統編類假陽性。"""
     for k in sample.keys():
+        if any(e in k for e in exclude):
+            continue
         for p in patterns:
             if p in k:
                 return k
@@ -138,7 +140,7 @@ def build_biz_profile():
             if not isinstance(arr, list) or not arr:
                 print(f'  [{label}] 回空或非陣列(GitHub IP 可能被擋) → 跳過')
                 continue
-            biz_k = _detect_field(arr[0], _BIZ_FIELD_PAT)
+            biz_k = _detect_field(arr[0], _BIZ_FIELD_PAT, exclude=_BIZ_FIELD_EXCLUDE)
             sym_k = _detect_field(arr[0], _SYM_FIELD_PAT)
             print(f'  [{label}] 欄位偵測:sym={sym_k} biz={biz_k} / 全部 keys={list(arr[0].keys())}')
             if not biz_k or not sym_k:
@@ -147,6 +149,9 @@ def build_biz_profile():
             for row in arr:
                 sym = str(row.get(sym_k, '')).strip()
                 biz = str(row.get(biz_k, '')).strip().replace('\n', ' ').replace('\r', '')
+                # 內容防呆:純數字/破折號 = 抓到編號類欄位,不是業務說明 → 丟棄(run#3 統編教訓)
+                if re.fullmatch(r'[\d\s\-\.]+', biz or ''):
+                    continue
                 if sym and biz and (sym.isdigit() and 4 <= len(sym) <= 6):
                     profiles[sym] = {'biz': biz[:120]}
             print(f'  [{label}] 收 {len(profiles) - n0} 家')
@@ -165,7 +170,10 @@ def build_biz_profile():
 def main():
     print('🔥 夜間情報採礦啟動', _now_iso())
     ok_a = build_theme_news()
-    ok_b = build_biz_profile()
+    # ⏸️ B 公司本業「暫停」:run#3 印出全部欄位確認 — TWSE/TPEX 官方「公司基本資料」都沒有
+    #    業務說明文字欄(只有產業別/統編等),先誠實下架;找到穩定來源再打開(程式保留,防呆已補)
+    ok_b = False
+    print('⏸️ 公司本業暫停(官方基本資料 API 無業務說明欄,實測 run#3 全欄位確認)')
     if not ok_a and not ok_b:
         return 2
     return 0

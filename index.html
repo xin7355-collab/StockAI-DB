@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6654,7 +6654,7 @@ ${list}
             this._loadBizProfile().then(bp => {
                 if (this.currentSymbolId !== sym) return;
                 const biz = bp?.profiles?.[sym]?.biz;
-                if (!biz) return;
+                if (!biz || /^[\d\s\-\.]+$/.test(biz)) return;   // 🐛 V57.4 純數字=誤抓統編的壞資料,不顯
                 const el2 = document.getElementById('stockConceptRow');
                 if (!el2 || el2.querySelector('.biz-line')) return;
                 el2.insertAdjacentHTML('beforeend', `<div class="biz-line w-full text-[10px] text-gray-500 truncate cursor-pointer" onclick="this.classList.toggle('truncate')" title="官方登記主要經營業務(點展開全文)">🏭 本業:${biz}</div>`);
@@ -13857,40 +13857,61 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 }
             } catch (_) {}
             if (this.currentSymbolId !== sym) return;
-            // 持股 → 結論接停損線講(給信心要具體)
-            let slTxt = '';
+            // 持股 → 結論接停損線講(給信心要具體);存純數字,句子各情境自己組
+            let slPrice = null;
             try {
                 const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
                 const pos = inv.find(i => i.symbol === sym && +i.cost > 0);
-                if (pos) { const uni = this._unifiedExitPlan(data, +pos.cost); if (uni?.stopFinal) slTxt = `,守好停損 ${uni.stopFinal.toFixed(2)} 就好、別自己嚇自己`; }
+                if (pos) { const uni = this._unifiedExitPlan(data, +pos.cost); if (uni?.stopFinal) slPrice = uni.stopFinal.toFixed(2); }
             } catch (_) {}
+            // 🎨 V57.4 重設計:三格數字 + 「診斷一句 / 👉 行動一句」兩段式;新增 🟠 族群性回檔情境
             const f1 = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
-            const expTxt = betaOk ? `以它跟大盤的連動性照理該 ${f1(expPct)},實際 ${f1(stkPct)}` : `它 ${f1(stkPct)}`;
-            const grpDownTxt = (grpPct != null && grpPct <= -0.5) ? `、族群(${grpName})也在跌 ${f1(grpPct)}` : '';
-            const askBtn = `<button onclick="app._wkAskWhy('${sym}'); app.vibrate(20);" class="ml-1 text-[9px] font-bold text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-1 py-0.5">🔎 查利空</button>`;
-            let tone, bcls, msg;
-            if (mktPct <= -0.3 && excess <= -0.8 && !(grpPct != null && grpPct <= -0.5)) {
+            const vc = v => v > 0.05 ? 'text-red-400' : v < -0.05 ? 'text-green-400' : 'text-gray-300';
+            const grpDown = grpPct != null && grpPct <= -0.5, grpUp = grpPct != null && grpPct >= 0.5;
+            const askBtn = `<button onclick="app._wkAskWhy('${sym}'); app.vibrate(20);" class="ml-1 text-[9px] font-bold text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-1.5 py-0.5">🔎 查利空</button>`;
+            const betaTxt = betaOk ? `以它的個性(連動度 ${beta.toFixed(1)})照算會 ${f1(expPct)},實際 ${f1(stkPct)}` : '';
+            let tone, bcls, diag, act;
+            if (mktPct <= -0.3 && excess <= -0.8 && !grpDown) {
                 tone = '🔴'; bcls = 'border-red-500';
-                msg = `大盤只跌 ${f1(mktPct)},${expTxt} — <b>跌得比大盤和族群都兇,可能是個股自己的事</b>,先查有沒有利空再決定。${askBtn}`;
+                diag = `大盤只跌 ${f1(mktPct)}、族群沒跟跌,它卻跌 ${f1(stkPct)} — 這個跌幅<b>用大盤解釋不了,比較像個股自己的消息</b>。`;
+                act = `先查有沒有利空,再決定按停損走或續抱 — 別急著凹、也別亂砍。${askBtn}`;
+            } else if (excess <= -0.8 && grpDown) {
+                tone = '🟠'; bcls = 'border-orange-500';
+                diag = `它跌 ${f1(stkPct)} 比大盤(${f1(mktPct)})兇,但同題材也在跌(族群 ${f1(grpPct)}) — <b>是整個題材在退燒,不是它單獨出事</b>。`;
+                act = slPrice ? `守住停損 <b>${slPrice}</b>;題材轉弱時<b>反彈先不加碼</b>,等族群止穩再說。` : `題材轉弱時反彈先不加碼,等族群止穩再說。`;
             } else if (mktPct <= -0.3 && stkPct <= 0.2) {
                 tone = '🟢'; bcls = 'border-green-500';
-                msg = `大盤跌 ${f1(mktPct)} 拖累${grpDownTxt} — ${expTxt}${excess >= 0.8 ? ',<b>比預期抗跌</b>(有買盤在接)' : ',跟著大盤走而已'}。<b>不是這檔自己出事</b>${slTxt}。`;
+                diag = `大盤跌 ${f1(mktPct)}${grpDown ? `、族群也跌 ${f1(grpPct)}` : ''} — ${betaTxt ? betaTxt + (excess >= 0.8 ? ',<b>比照算的抗跌,有買盤默默在接</b>' : ',屬正常反應') : `它 ${f1(stkPct)} 與大盤同向`}。<b>是大盤的錯,不是它的錯</b>。`;
+                act = slPrice ? `只要顧一件事:<b>停損 ${slPrice} 沒破就抱著</b>,別被大盤嚇出場。` : `按上方主卡的紀律走,不用因大盤恐慌。`;
             } else if (mktPct >= 0.3 && excess <= -0.8) {
                 tone = '🟡'; bcls = 'border-yellow-500';
-                msg = `大盤漲 ${f1(mktPct)} 它卻只有 ${f1(stkPct)} — <b>資金今天不在這</b>,別急著加碼,等它跟上再說。`;
+                diag = `大盤漲 ${f1(mktPct)},它只有 ${f1(stkPct)} — <b>今天資金沒流進這檔</b>。`;
+                act = `持股先不動;想加碼等它跟上大盤再說。`;
             } else if (mktPct >= 0.3 && excess >= 0.8) {
                 tone = '🔥'; bcls = 'border-red-500';
-                msg = `大盤漲 ${f1(mktPct)},它更強(${f1(stkPct)}${grpPct != null && grpPct >= 0.5 ? `,族群 ${grpName} 也同步 ${f1(grpPct)}` : ''}) — <b>主流資金股</b>,沿 5 日線抱、別亂下車。`;
+                diag = `大盤漲 ${f1(mktPct)},它更強(${f1(stkPct)}${grpUp ? `,族群也旺 ${f1(grpPct)}` : ''}) — <b>主流資金正在買的股</b>。`;
+                act = `沿 5 日線抱好,別提早下車。`;
             } else {
                 tone = '⚪'; bcls = 'border-gray-600';
-                msg = `與大盤同步(大盤 ${f1(mktPct)}、它 ${f1(stkPct)}${grpPct != null ? `、族群 ${f1(grpPct)}` : ''}),沒有特別強弱 — 看上面自身訊號操作即可。`;
+                diag = `本股與大盤同步,沒有特別強弱。`;
+                act = `依上方主卡的訊號操作即可。`;
             }
+            const cell = (label, v) => `<div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center min-w-0">
+                <div class="text-[9px] text-gray-500 truncate">${label}</div>
+                <div class="text-sm font-black font-mono ${v != null ? vc(v) : 'text-gray-600'}">${v != null ? f1(v) : '—'}</div>
+            </div>`;
             el.innerHTML = `
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] font-black text-gray-400">🌡️ 本股 vs 大盤${this.isMarketOpen() ? '' : '(以最近收盤計)'}${(!mktLive && this.isMarketOpen()) ? ' <span class="text-[8px] text-gray-600">大盤非即時</span>' : ''}</span>
-                    <span class="text-[9px] font-mono text-gray-500">本股 ${f1(stkPct)}・大盤 ${f1(mktPct)}${grpPct != null ? `・族群 ${f1(grpPct)}` : ''}</span>
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] font-black text-gray-200 whitespace-nowrap">🌡️ 本股 vs 大盤</span>
+                    <span class="text-[8px] text-gray-600 flex-shrink-0">${this.isMarketOpen() ? (mktLive ? '盤中即時' : '盤中・大盤延遲') : '以最近收盤計'}</span>
                 </div>
-                <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r"><div class="text-[11px] text-gray-200 leading-relaxed">${tone} ${msg}</div></div>`;
+                <div class="grid grid-cols-3 gap-1.5 mb-1.5">
+                    ${cell('本股', stkPct)}${cell('大盤', mktPct)}${cell(grpName ? `族群・${grpName}` : '族群', grpPct)}
+                </div>
+                <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r">
+                    <div class="text-[11px] text-gray-200 leading-relaxed">${tone} ${diag}</div>
+                    <div class="text-[11px] text-gray-100 leading-relaxed mt-1">👉 ${act}</div>
+                </div>`;
             el.classList.remove('hidden');
         } catch (_) { try { el.classList.add('hidden'); } catch (__) {} }
     },
