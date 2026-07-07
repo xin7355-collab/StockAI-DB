@@ -2943,6 +2943,16 @@ def build_radar_cache():
 
     print("\n🚀 啟動全局雷達掃描 (植入高勝率量化三引擎 + 妖股雷達 + 錯殺雷達)...")
 
+    # 👑 族群領頭羊用:預載概念股對照(concept_stocks.json by_stock);檔案缺=不產 concept_leaders
+    _cl_map = {}
+    try:
+        _cj = json.loads(Path(DATA_DIR).joinpath('concept_stocks.json').read_text(encoding='utf-8'))
+        if isinstance(_cj, dict) and isinstance(_cj.get('by_stock'), dict):
+            _cl_map = _cj['by_stock']
+    except Exception:
+        pass
+    _cl_acc = {}
+
     # 🩹 錯殺雷達用:預載全市場營收 YoY(fundamentals_cache 主 + 夜間 fund_yoy_gm 補),檔案缺=該項不計分
     _wk_yoy = {}
     try:
@@ -3019,6 +3029,17 @@ def build_radar_cache():
                 pass
 
             # 【獲利引擎 3】乖離率防守：過濾掉偏離月線大於 15% 的股票，拒絕追高
+            # 👑 族群領頭羊:每檔按概念歸戶,存 5 日漲幅;掃完後每個概念取前 3 強(純數據,零 AI)
+            try:
+                _cl_tags = _cl_map.get(sym)
+                if _cl_tags and len(raw) >= 6 and raw[-6]['close'] > 0:
+                    _g5 = (c - raw[-6]['close']) / raw[-6]['close'] * 100
+                    for _tag in _cl_tags[:8]:
+                        if _tag:
+                            _cl_acc.setdefault(_tag, []).append((sym, round(_g5, 1), round(c, 2)))
+            except Exception:
+                pass
+
             # 🩹 錯殺雷達:今日大跌 ≤-4% 但體質沒壞(原多頭+回測月/季線支撐+法人沒跑+營收成長)
             #   ETF 不算(族群齊跌非錯殺);放在乖離守門前,大跌股不會被多頭追高濾網跳過
             try:
@@ -3077,6 +3098,11 @@ def build_radar_cache():
     # 🩹 錯殺榜:分數高在前、同分跌深在前,取前 30
     results['wrongkill'].sort(key=lambda x: (-x.get('score', 0), x.get('chg', 0)))
     results['wrongkill'] = results['wrongkill'][:30]
+    # 👑 族群領頭羊:每概念取 5 日漲幅前 3 強(成員 ≥3 檔的概念才列,避免一人族群沒意義)
+    results['concept_leaders'] = {
+        tag: [{'sym': s, 'g5': g, 'close': cl} for s, g, cl in sorted(members, key=lambda x: -x[1])[:3]]
+        for tag, members in _cl_acc.items() if len(members) >= 3
+    }
 
     Path(DATA_DIR).mkdir(exist_ok=True)
     Path(DATA_DIR).joinpath('radar.json').write_text(

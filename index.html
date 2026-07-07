@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2332,6 +2332,15 @@
 
                     <!-- 當前策略一句話說明條(V57.0 預設收 2 行,點展開 — 說明別擠掉名單) -->
                     <div id="radarMatrixHint" onclick="this.classList.toggle('max-h-10'); app.vibrate(10);" class="max-h-10 overflow-hidden cursor-pointer text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1 leading-relaxed transition-all" title="點一下展開/收合完整說明"></div>
+
+                    <!-- 🔥 V57.1 題材脈動:夜間 RSS 熱度 + 族群領頭羊(清晨 06:30 採礦更新),預設收合 -->
+                    <div class="bg-[#161b22] border border-[#30363d] rounded-lg">
+                        <div class="flex items-center justify-between px-3 py-2 cursor-pointer select-none" onclick="app._themePulseToggle(this); app.vibrate(20);">
+                            <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🔥 題材脈動</span>
+                            <span class="flex items-center gap-1.5 min-w-0"><span id="themePulseSummary" class="text-[11px] font-bold text-gray-500 truncate">今天哪個題材最熱・點開</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                        </div>
+                        <div id="themePulseBody" class="hidden px-2 pb-2"></div>
+                    </div>
                 </div>
 
                 <!-- ⭐ 送分題 view(layup tab 專用,預設隱藏) -->
@@ -6651,9 +6660,20 @@ ${list}
         if (leader)   parts.push(`<span class="text-[10px] font-black text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded px-1.5 py-0.5 whitespace-nowrap">👑 ${leader}</span>`);
         if (industry) parts.push(`<span class="text-[10px] font-bold text-gray-300 bg-white/5 border border-[#30363d] rounded px-1.5 py-0.5 whitespace-nowrap">🏭 ${industry}</span>`);
         concepts.forEach(c => parts.push(`<span onclick="app._openFreeAiConcept('${c}')" title="點我用免費 AI 查「${c}」題材與同族群主流股" class="cursor-pointer text-[10px] font-bold text-cyan-300 bg-cyan-900/20 border border-cyan-700/40 rounded px-1.5 py-0.5 whitespace-nowrap hover:bg-cyan-900/40 transition-colors">#${c}</span>`));
-        if (!parts.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-        el.classList.remove('hidden');
-        el.innerHTML = parts.join('');
+        if (!parts.length) { el.classList.add('hidden'); el.innerHTML = ''; }
+        else { el.classList.remove('hidden'); el.innerHTML = parts.join(''); }
+        // 🏭 V57.1 官方本業(biz_profile.json 夜間採礦):公司到底在做什麼,以官方登記為準;非同步補一行,切股守門
+        try {
+            this._loadBizProfile().then(bp => {
+                if (this.currentSymbolId !== sym) return;
+                const biz = bp?.profiles?.[sym]?.biz;
+                if (!biz) return;
+                const el2 = document.getElementById('stockConceptRow');
+                if (!el2 || el2.querySelector('.biz-line')) return;
+                el2.insertAdjacentHTML('beforeend', `<div class="biz-line w-full text-[10px] text-gray-500 truncate cursor-pointer" onclick="this.classList.toggle('truncate')" title="官方登記主要經營業務(點展開全文)">🏭 本業:${biz}</div>`);
+                el2.classList.remove('hidden');
+            }).catch(() => {});
+        } catch (_) {}
     },
     _openFreeAiConcept(concept) {
         const sym = this.currentSymbolId, name = this.getStockName(sym) || sym;
@@ -24440,6 +24460,77 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const tab = tabMap[champ.key];
             if (tab && !this._radarUserPicked && this.radarStrategy !== tab) this.switchRadarStrategy(tab, true);
         } catch (_) {}
+    },
+
+    // 🔥 V57.1 — 題材脈動:theme_news.json(清晨 RSS 熱度)+ radar.json concept_leaders(族群領頭羊)
+    async _loadRadarJson() {
+        if (this._radarJsonCache && (Date.now() - this._radarJsonCache.ts) < 30 * 60e3) return this._radarJsonCache.data;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/radar.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+            const d = (r && r.ok) ? await r.json().catch(() => null) : null;
+            this._radarJsonCache = { ts: Date.now(), data: d };
+            return d;
+        } catch (_) { return null; }
+    },
+    async _loadBizProfile() {
+        if (this._bizProfileAll && (Date.now() - this._bizProfileAll.ts) < 12 * 3600e3) return this._bizProfileAll.data;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/biz_profile.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) }).catch(() => null);
+            const d = (r && r.ok) ? await r.json().catch(() => null) : null;
+            this._bizProfileAll = { ts: Date.now(), data: d || {} };
+            return d || {};
+        } catch (_) { return {}; }
+    },
+    _themePulseToggle(header) {
+        this.toggleCollapse('themePulseBody', header);
+        const body = document.getElementById('themePulseBody');
+        if (body && !body.classList.contains('hidden') && !body.dataset.rendered) this._renderThemePulse();
+    },
+    async _renderThemePulse() {
+        const body = document.getElementById('themePulseBody'), sum = document.getElementById('themePulseSummary');
+        if (!body) return;
+        body.dataset.rendered = '1';
+        body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">⏳ 載入題材熱度…</div>';
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const [tn, radar] = await Promise.all([
+                fetch(new URL('data/theme_news.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+                this._loadRadarJson(),
+            ]);
+            const themes = tn?.themes;
+            if (!Array.isArray(themes) || !themes.length) {
+                body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3 leading-relaxed">題材熱度資料還沒產出 — 每交易日清晨 06:30 自動採礦,明早再看。</div>';
+                if (sum) sum.textContent = '資料準備中';
+                delete body.dataset.rendered;   // 下次點開再試
+                return;
+            }
+            const leaders = radar?.data?.concept_leaders || {};
+            const lkeys = Object.keys(leaders);
+            const top = themes.slice(0, 12);
+            if (sum) sum.innerHTML = `<span class="text-amber-300">最熱:${top[0].kw} ${top[0].heat}則</span>`;
+            body.innerHTML = top.map(t => {
+                const it = (t.items || [])[0];
+                // 領頭羊:概念名與題材關鍵字互含即配對(如 kw=記憶體 ↔ 概念「記憶體」)
+                const lk = lkeys.find(k => k === t.kw) || lkeys.find(k => k.includes(t.kw) || t.kw.includes(k));
+                const ld = lk ? (leaders[lk] || []).slice(0, 3) : [];
+                const ldHtml = ld.length ? `<div class="text-[9px] text-gray-500 mt-0.5 truncate">👑 ${ld.map(x =>
+                    `<span onclick="event.stopPropagation(); app._wkOpenStock('${x.sym}');" class="cursor-pointer text-amber-300/90">${this.getStockName(x.sym) || x.sym} <span class="${x.g5 >= 0 ? 'text-red-300' : 'text-green-300'}">${x.g5 >= 0 ? '+' : ''}${x.g5}%</span></span>`).join('・')}</div>` : '';
+                return `<div class="px-1.5 py-1.5 border-b border-[#21262d] last:border-0 cursor-pointer" onclick="app._openFreeAiConcept('${t.kw}')" title="點我用免費 AI 查「${t.kw}」最新發展">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-cyan-300">#${t.kw}</span>
+                        <span class="text-[10px] font-mono ${t.heat >= 10 ? 'text-red-300 font-black' : t.heat >= 4 ? 'text-yellow-300' : 'text-gray-500'}">3日 ${t.heat} 則</span>
+                    </div>
+                    ${it ? `<div class="text-[10px] text-gray-400 truncate mt-0.5">${it.t}<span class="text-gray-600"> ・${it.src}${it.d ? ' ' + it.d : ''}</span></div>` : ''}
+                    ${ldHtml}
+                </div>`;
+            }).join('') +
+            `<div class="text-[9px] text-gray-600 px-1.5 pt-1.5 leading-snug">熱度=Google 新聞 3 日則數(清晨自動更新)・👑=同族群 5 日最強前 3(盤後採礦)・點題材列=免費 AI 查最新發展、點 👑 股名=進該股總覽。</div>`;
+        } catch (_) {
+            body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">載入失敗,稍後再點。</div>';
+            delete body.dataset.rendered;
+        }
     },
 
     // V32.3 — 雷達戰區回測勝率小字:僅送分題/獵鷹有回測(signal_history.json);其餘即時掃描誠實標未回測
