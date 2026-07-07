@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1451,6 +1451,14 @@
                     </div>
                 </div>
                 <div id="dtAccelBar" class="hidden text-[10px] text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-2 py-1 flex items-center justify-between"><span>⚡ 加速刷價中(每 3 秒)</span><span id="dtAccelTick" class="text-gray-500 font-mono">—</span></div>
+                <!-- ⚡ V56.5 今日當沖候選:自選+庫存盤前預篩(官方可當沖+振幅≥2%+量≥1000張),預設收合保持精簡 -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg mb-1">
+                    <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app._dtScanToggle(this); app.vibrate(20);">
+                        <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">⚡ 今日當沖候選</span>
+                        <span class="flex items-center gap-1.5 min-w-0"><span id="dtScanSummary" class="text-[11px] font-bold text-gray-500 truncate">自選+庫存篩・點開掃描</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                    </div>
+                    <div id="dtScanBody" class="hidden px-1 pb-1.5"></div>
+                </div>
                 <div id="dayTradeBody" class="flex flex-col gap-3"></div>
                 <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 當沖 = 同日買進賣出沖銷,證交稅減半(0.15%);需券商開通資格且標的可現股當沖 · 處置股禁當沖 · 純公式試算僅供紀律參考</div>
             </div>
@@ -27266,6 +27274,75 @@ ${_chuPosPlan}
         // 📌 V56.4 還原捲動位置(下一影格,等瀏覽器排版完)
         requestAnimationFrame(() => { if (Math.abs(window.scrollY - _dtScrollY) > 4) window.scrollTo(0, _dtScrollY); });
         try { this._calcDayTradePnl(); } catch (_) {}
+    },
+
+    // ⚡ V56.5 — 今日當沖候選掃描:自選+庫存 → ①官方可當沖 ②近5日均振幅≥2%(有肉) ③昨量≥1000張(跑得掉)
+    //   資料:IndexedDB 快取優先、缺的才抓 data/{sym}.json(上限20檔防爆流量);零採礦零 AI
+    _dtScanToggle(header) {
+        this.toggleCollapse('dtScanBody', header);
+        const body = document.getElementById('dtScanBody');
+        if (body && !body.classList.contains('hidden') && !body.dataset.scanned) this._dtScanRun();
+    },
+    async _dtScanRun() {
+        const body = document.getElementById('dtScanBody'), sum = document.getElementById('dtScanSummary');
+        if (!body) return;
+        body.dataset.scanned = '1';
+        body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">⏳ 掃描自選+庫存中…</div>';
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const fav = Object.values(this.favGroups || {}).flat();
+            const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+            const syms = [...new Set([...fav, ...inv.map(i => i.symbol)])].filter(s => s && !this._isEtfSym(String(s))).map(String).slice(0, 60);
+            if (!syms.length) { body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">自選清單和庫存都是空的 — 先加幾檔股票再來掃。</div>'; if (sum) sum.textContent = '無股可掃'; return; }
+            let dtStats = null, dtReady = false;
+            try { const ds = await this._loadDayTradeStats(); dtStats = ds || null; dtReady = !!(ds && ds.__meta && ds.__meta.hits > 0); } catch (_) {}
+            const todayStr = this.getTodayStr();
+            const rows = []; let fetches = 0, notEligible = 0, noMeat = 0;
+            for (const s of syms) {
+                if (dtReady && dtStats[s] == null) { notEligible++; continue; }   // 官方清單有載且不在內 → 不可當沖
+                let k = null;
+                try { const c = await this.idb.get(`proTerm_kline_${s}`); k = c?.data; } catch (_) {}
+                if ((!Array.isArray(k) || k.length < 25) && fetches < 20) {
+                    fetches++;
+                    try { const r = await fetch(new URL(`data/${s}.json`, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) k = j; } } catch (_) {}
+                }
+                if (!Array.isArray(k) || k.length < 25) continue;
+                if (String(k[k.length - 1]?.date || '').replace(/-/g, '/') === todayStr) k = k.slice(0, -1);   // 今日未收盤棒不算「昨日」
+                if (k.length < 21) continue;
+                const seg = k.slice(-6);
+                let rSum = 0, rN = 0;
+                for (let i = 1; i < seg.length; i++) { const pc = +seg[i - 1].close, h = +seg[i].high, l = +seg[i].low; if (pc > 0 && h >= l) { rSum += (h - l) / pc * 100; rN++; } }
+                const rangePct = rN ? rSum / rN : 0;
+                const vRaw = +(seg[seg.length - 1].volume || 0);
+                const yVol = vRaw < 1_000_000 ? Math.round(vRaw) : Math.round(vRaw / 1000);   // 股/張 auto-detect(同 _chuVolumeProgress)
+                if (rangePct < 2 || yVol < 1000) { noMeat++; continue; }
+                const yC = +seg[seg.length - 1].close;
+                const ma5 = k.slice(-5).reduce((a, b) => a + (+b.close || 0), 0) / 5;
+                const ma20 = k.slice(-20).reduce((a, b) => a + (+b.close || 0), 0) / 20;
+                const bias = (yC > ma5 && ma5 > ma20) ? ['偏多', 'text-red-300'] : (yC < ma5 && ma5 < ma20) ? ['偏空', 'text-green-300'] : ['中性', 'text-gray-400'];
+                rows.push({ s, rangePct, yVol, bias });
+            }
+            rows.sort((a, b) => b.rangePct - a.rangePct);
+            const top = rows.slice(0, 8);
+            if (sum) sum.innerHTML = top.length ? `<span class="text-yellow-300">🎯 ${top.length} 檔有肉可沖</span>` : '<span class="text-gray-500">今天沒候選</span>';
+            if (!top.length) {
+                body.innerHTML = `<div class="text-center text-gray-500 text-[10px] py-3 leading-relaxed">自選+庫存 ${syms.length} 檔裡今天沒有夠格的當沖候選<br>(${dtReady ? `不可當沖 ${notEligible} 檔・` : ''}波動或量不夠 ${noMeat} 檔)— 沒肉就別硬沖,空手也是操作。</div>`;
+                return;
+            }
+            body.innerHTML = top.map(r => `
+                <div onclick="app._pickDayTradeStock('${r.s}'); app.vibrate(15);" class="flex items-center justify-between px-2 py-1.5 border-b border-[#21262d] last:border-0 cursor-pointer hover:bg-white/5 rounded">
+                    <span class="text-[11px] font-bold text-gray-200 truncate">${this.getStockName(r.s) || r.s} <span class="text-[9px] text-gray-500 font-mono">${r.s}</span></span>
+                    <span class="flex items-center gap-2 flex-shrink-0 font-mono text-[10px]">
+                        <span class="text-yellow-300 font-black">${r.rangePct.toFixed(1)}%</span>
+                        <span class="text-gray-500">${r.yVol >= 10000 ? (r.yVol / 1000).toFixed(1) + '萬張' : r.yVol.toLocaleString() + '張'}</span>
+                        <span class="${r.bias[1]} font-bold">${r.bias[0]}</span>
+                    </span>
+                </div>`).join('') +
+                `<div class="text-[9px] text-gray-600 px-2 pt-1.5 leading-snug">依昨日資料盤前預篩(振幅=近5日均${dtReady ? '・官方可當沖已過濾' : '・官方清單未載,請自行確認可當沖'});點一檔進作戰台看即時掛單計畫。</div>`;
+        } catch (_) {
+            body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">掃描失敗,稍後再點一次。</div>';
+            delete body.dataset.scanned;
+        }
     },
 
     // ⚡ V54.6 — 當沖加速刷價:盤中單一檔每 3 秒刷即時報價,VWAP 每 ~30 秒才重抓(省額度)
