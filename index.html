@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1458,6 +1458,14 @@
                         <span class="flex items-center gap-1.5 min-w-0"><span id="dtScanSummary" class="text-[11px] font-bold text-gray-500 truncate">自選+庫存篩・點開掃描</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
                     </div>
                     <div id="dtScanBody" class="hidden px-1 pb-1.5"></div>
+                </div>
+                <!-- 🩹 V56.6 錯殺撿便宜:自選+庫存「今天大跌但體質沒壞」掃描(基本面/法人/趨勢三關+免費查利空),預設收合 -->
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg mb-1">
+                    <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app._wkScanToggle(this); app.vibrate(20);">
+                        <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🩹 錯殺撿便宜</span>
+                        <span class="flex items-center gap-1.5 min-w-0"><span id="wkScanSummary" class="text-[11px] font-bold text-gray-500 truncate">大跌但體質沒壞・點開掃描</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                    </div>
+                    <div id="wkScanBody" class="hidden px-1 pb-1.5"></div>
                 </div>
                 <div id="dayTradeBody" class="flex flex-col gap-3"></div>
                 <div class="text-center text-[10px] text-gray-600 mt-1 leading-relaxed">※ 當沖 = 同日買進賣出沖銷,證交稅減半(0.15%);需券商開通資格且標的可現股當沖 · 處置股禁當沖 · 純公式試算僅供紀律參考</div>
@@ -27339,6 +27347,118 @@ ${_chuPosPlan}
                     </span>
                 </div>`).join('') +
                 `<div class="text-[9px] text-gray-600 px-2 pt-1.5 leading-snug">依昨日資料盤前預篩(振幅=近5日均${dtReady ? '・官方可當沖已過濾' : '・官方清單未載,請自行確認可當沖'});點一檔進作戰台看即時掛單計畫。</div>`;
+        } catch (_) {
+            body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">掃描失敗,稍後再點一次。</div>';
+            delete body.dataset.scanned;
+        }
+    },
+
+    // 🩹 V56.6 — 錯殺撿便宜掃描:自選+庫存「今天大跌(≤-4%)但體質沒壞」→ 錯殺分排行(全純公式)
+    //   體質三關:①基本面(營收YoY>0) ②法人近5日沒跑 ③原本多頭、跌完剛好回測月線/季線支撐
+    //   排除:注意/處置股、本來就空頭排列(那叫趨勢延續不是錯殺);真利空靠「🔎查利空」人腦把關
+    _wkScanToggle(header) {
+        this.toggleCollapse('wkScanBody', header);
+        const body = document.getElementById('wkScanBody');
+        if (body && !body.classList.contains('hidden') && !body.dataset.scanned) this._wkScanRun();
+    },
+    _wkAskWhy(sym) {
+        const name = this.getStockName(sym) || sym;
+        this._freeAiOpen(`${name}(${sym}) 這檔台股今天股價大跌的原因是什麼?是「公司自身利空」(財報爆雷/砍單/處分/董監出事)還是「大盤或族群系統性下跌」拖累?請條列並附日期與來源;若查不到個股利空請明講「無個股利空」`);
+    },
+    _wkOpenStock(sym) {
+        if (!sym) return;
+        try { this._addRecentSearch(sym); } catch (_) {}
+        this.switchAppTab('diag');
+        const si = document.getElementById('symbolInput'); if (si) si.value = sym;
+        this.analyze();
+        try { this.switchSubTab('strategy'); } catch (_) {}
+        if (si) si.value = '';
+    },
+    async _wkScanRun() {
+        const body = document.getElementById('wkScanBody'), sum = document.getElementById('wkScanSummary');
+        if (!body) return;
+        body.dataset.scanned = '1';
+        body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">⏳ 掃描自選+庫存(找大跌+驗體質)…</div>';
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const fav = Object.values(this.favGroups || {}).flat();
+            const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+            const syms = [...new Set([...fav, ...inv.map(i => i.symbol)])].filter(s => s && !this._isEtfSym(String(s))).map(String).slice(0, 30);
+            if (!syms.length) { body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">自選清單和庫存都是空的 — 先加幾檔股票再來掃。</div>'; if (sum) sum.textContent = '無股可掃'; return; }
+            const [fundCache, yoyGm] = await Promise.all([
+                this._loadFundCache().catch(() => null),
+                this._loadFundYoyGm().catch(() => null),
+            ]);
+            const mktOpen = this.isMarketOpen();
+            const todayStr = this.getTodayStr();
+            const rows = []; let fetches = 0, dropN = 0;
+            for (const s of syms) {
+                // 注意/處置股不算錯殺(有官方風控事件)
+                if (this.attentionStatus?.[s]) continue;
+                let k = null;
+                try { const c = await this.idb.get(`proTerm_kline_${s}`); k = c?.data; } catch (_) {}
+                if ((!Array.isArray(k) || k.length < 65) && fetches < 20) {
+                    fetches++;
+                    try { const r = await fetch(new URL(`data/${s}.json`, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) k = j; } } catch (_) {}
+                }
+                if (!Array.isArray(k) || k.length < 65) continue;
+                // 「跌之前」的基準資料:剔除今日棒
+                let base = k;
+                if (String(k[k.length - 1]?.date || '').replace(/-/g, '/') === todayStr) base = k.slice(0, -1);
+                if (base.length < 60) continue;
+                const prevC = +base[base.length - 1].close || 0;
+                if (!prevC) continue;
+                // 今日跌幅:盤中抓即時報價;非盤中用 K 線最後一根 vs 前一根
+                let price = null, chg = null;
+                if (mktOpen) {
+                    let q = null; try { q = await this.fetchFugleData(s); } catch (_) {}
+                    await new Promise(r => setTimeout(r, 120));   // 溫柔節流,別打爆免費報價
+                    if (q && q.price > 0 && !q.isHistorical) { price = +q.price; const pc = (+q.prevClose > 0) ? +q.prevClose : prevC; chg = (price - pc) / pc * 100; }
+                }
+                if (chg == null) {
+                    const lastB = k[k.length - 1], prevB = k[k.length - 2];
+                    if (lastB && prevB && +prevB.close > 0) { price = +lastB.close; chg = (price - +prevB.close) / +prevB.close * 100; }
+                }
+                if (chg == null || chg > -4) continue;   // 第一關:今天真的大跌
+                dropN++;
+                // 體質評分(資料缺的項不硬判,分母跟著調 — 缺關鍵維度顯示會註明)
+                const chips = []; let score = 0, maxScore = 0;
+                const yoy = (fundCache?.[s]?.rev_yoy != null) ? +fundCache[s].rev_yoy : ((yoyGm?.[s]?.yoy != null) ? +yoyGm[s].yoy : null);
+                if (yoy != null) { maxScore += 30; if (yoy > 0) { score += 30; chips.push('✓營收+' + yoy.toFixed(0) + '%'); } else chips.push('✗營收' + yoy.toFixed(0) + '%'); }
+                let net5 = 0, hasInst = false;
+                for (const b of base.slice(-5)) { const f = +b.foreign_net || 0, t = +b.trust_net || 0; if (b.foreign_net != null || b.trust_net != null) hasInst = true; net5 += f + t; }
+                if (hasInst) { maxScore += 30; if (net5 >= 0) { score += 30; chips.push('✓法人沒跑'); } else chips.push('✗法人賣'); }
+                const ma20 = base.slice(-20).reduce((a, b) => a + (+b.close || 0), 0) / 20;
+                const ma60 = base.slice(-60).reduce((a, b) => a + (+b.close || 0), 0) / 60;
+                maxScore += 40;
+                const wasBull = prevC > ma20 && ma20 >= ma60;   // 跌之前是多頭結構
+                if (wasBull) { score += 25; chips.push('✓原本多頭'); }
+                if (price >= ma20 * 0.97) { score += 15; chips.push('✓月線附近'); }
+                else if (price >= ma60 * 0.97) { score += 10; chips.push('✓季線附近'); }
+                const pct100 = maxScore > 0 ? Math.round(score / maxScore * 100) : 0;
+                if (!wasBull || pct100 < 50) continue;   // 本來就空頭=趨勢延續,不是錯殺
+                rows.push({ s, chg, pct100, chips, ma20 });
+            }
+            rows.sort((a, b) => b.pct100 - a.pct100 || a.chg - b.chg);
+            const top = rows.slice(0, 8);
+            if (sum) sum.innerHTML = top.length ? `<span class="text-yellow-300">🩹 ${top.length} 檔疑似錯殺</span>` : '<span class="text-gray-500">今天沒錯殺股</span>';
+            if (!top.length) {
+                body.innerHTML = `<div class="text-center text-gray-500 text-[10px] py-3 leading-relaxed">自選+庫存 ${syms.length} 檔:${dropN ? `大跌 ${dropN} 檔但體質都沒過關(本來就偏空/法人在跑)→ 那是「該跌」不是錯殺,別接刀。` : `今天沒有跌超過 -4% 的 — 沒大跌就沒便宜可撿。`}</div>`;
+                return;
+            }
+            body.innerHTML = top.map(r => `
+                <div class="px-2 py-1.5 border-b border-[#21262d] last:border-0">
+                    <div class="flex items-center justify-between">
+                        <span onclick="app._wkOpenStock('${r.s}'); app.vibrate(15);" class="text-[11px] font-bold text-gray-200 truncate cursor-pointer">${this.getStockName(r.s) || r.s} <span class="text-[9px] text-gray-500 font-mono">${r.s}</span></span>
+                        <span class="flex items-center gap-2 flex-shrink-0 font-mono text-[10px]">
+                            <span class="text-green-300 font-black">${r.chg.toFixed(1)}%</span>
+                            <span class="text-yellow-300 font-black">${r.pct100}分</span>
+                            <button onclick="app._wkAskWhy('${r.s}'); app.vibrate(20);" class="text-[9px] font-bold text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-1 py-0.5">🔎查利空</button>
+                        </span>
+                    </div>
+                    <div class="text-[9px] text-gray-500 mt-0.5">${r.chips.join('・')} ・ 月線 ${r.ma20.toFixed(2)}</div>
+                </div>`).join('') +
+                `<div class="text-[9px] text-gray-600 px-2 pt-1.5 leading-snug">🛑 <b class="text-gray-400">別今天接刀</b>:先點「🔎查利空」確認沒有公司利空,再等<b class="text-gray-400">紅K站回 5 日線</b>才進(回後買上漲),或掛月線價等支撐;點股名進總覽看完整買點判定。錯殺分=基本面+法人+趨勢純公式,非投資建議。</div>`;
         } catch (_) {
             body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">掃描失敗,稍後再點一次。</div>';
             delete body.dataset.scanned;
