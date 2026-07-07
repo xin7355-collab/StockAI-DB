@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1658,12 +1658,7 @@
                 </div>
             </div>
 
-            <!-- ════════ 【區 3】V49.8 — 整段(板塊輪動/盤前新聞/全球環境/台股因子)收進「展開更多」摺疊,讓盤前體檢當主角、減雜訊 ════════ -->
-            <details>
-              <summary class="cursor-pointer flex items-center justify-between gap-2 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 mb-3 text-[12px] font-black text-gray-200 hover:border-cyan-700/50 transition-colors">
-                <span>📂 展開更多市場資訊 <span class="text-[10px] text-gray-500 font-normal ml-1">板塊輪動 · 盤前新聞 · 全球環境 · 台股因子</span></span>
-                <span class="dchev text-gray-500 transition-transform inline-block">▾</span>
-              </summary>
+            <!-- ════════ 【區 3】V57.2 — 「展開更多」摺疊取消(使用者要求):盤前新聞/資金輪動直接顯示 ════════ -->
             <!-- ════════ 分頁切替:🌍 全球大環境 / 🇹🇼 台股實戰(V25.9 sticky)════════ -->
             <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md">
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global"
@@ -2195,7 +2190,7 @@
             <!-- ════════ 黃金動線結束 ════════ -->
 
             </div><!-- ════ 台股實戰 tab 結束 ════ -->
-            </details><!-- ════ V49.8 展開更多 摺疊結束 ════ -->
+            <!-- ════ V57.2 展開更多摺疊已取消(原 </details> 位置) ════ -->
 
             <!-- 🔄 重新整理按鈕已遷至「全球宏觀風險觀測台」標題列右側 icon(避免底部塞無關按鈕) -->
         </div>
@@ -2234,18 +2229,7 @@
                         <div class="text-[10px] text-gray-500 mb-1.5 leading-relaxed">自選清單中「打底完成、最接近突破壓力」的股票,排最上 = 最可能先發動</div>
                         <div id="breakoutScanList"><div class="text-[10px] text-gray-600 text-center py-3">進自選頁自動掃描 ・ 或點 🔄 重掃</div></div>
                     </div>
-                    <!-- 🩺 V36.7 進場體檢榜:自選+庫存全掃,🟢偏多排最上(重用 _entryCheckup 純公式) -->
-                    <div class="mx-2 my-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-                        <div class="flex items-center gap-1.5 mb-1">
-                            <span class="text-base">🩺</span>
-                            <span class="text-[12px] font-black text-gray-100">進場體檢榜</span>
-                            <span class="text-[9px] text-gray-500">🟢偏多排最上</span>
-                            <button onclick="app.showJargon('進場體檢')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
-                            <button onclick="app._scanWatchlistCheckup(true); app.vibrate(20);" class="ml-auto text-[10px] text-cyan-300/80 hover:text-cyan-200">🔄 重掃</button>
-                        </div>
-                        <div class="text-[10px] text-gray-500 mb-1.5 leading-relaxed">自選+庫存全部跑一次進場體檢,把今天型態最漂亮(🟢偏多)的排最上面,一頁看完該注意誰</div>
-                        <div id="watchCheckupList"><div class="text-[10px] text-gray-600 text-center py-3">進自選頁自動掃描 ・ 或點 🔄 重掃</div></div>
-                    </div>
+                    <!-- 🗑️ V57.2 進場體檢榜已刪除(使用者要求);_scanWatchlistCheckup/_renderWatchlistCheckup 函式保留但無 UI 觸發,box null-guard 安全 -->
                     <div id="favEmptyState" class="text-center py-[6rem] text-gray-500 hidden flex-col items-center justify-center">
                         <p class="text-base font-bold mb-2">此清單目前空空如也</p>
                         <button onclick="app.switchAppTab('diag'); document.getElementById('symbolInput').focus();" class="mt-2 bg-blue-900/50 text-blue-400 px-4 py-2 rounded text-sm border border-blue-800 font-bold">去診斷並加入自選</button>
@@ -5267,7 +5251,8 @@ ${list}
             // 🔄 還原「盤中即時更新」記憶(切 tab 回來不應跳回「實時/範例」)
             setTimeout(() => { try { this._restoreSectorIntradayMemory(); } catch(_) {} }, 1500);
         }
-        if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); this._scanWatchlistCheckup(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }
+        if (tabId !== 'fav') { try { this._resetFavEditMode(); } catch(_) {} }   // 🐛 V57.2 切走自動退出自選編輯模式
+        if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }   // 🗑️ V57.2 進場體檢榜已刪(_scanWatchlistCheckup 不再呼叫)
         if (tabId === 'inv') { try { this.renderInventory(); window.scrollTo(0, 0); this._startInvPricePoll(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
         if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } try { this._applyArenaChampion(); } catch(_) {} }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 觀察', e); } }
@@ -7668,14 +7653,18 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
 
     async _loadLocalFundamentals(sym) {
         // 讀取 miner.py 採礦好的 fundamentals block（含 TWSE BWIBBU_d 的 PE / 殖利率）
+        // 🐛 V57.2 成功結果留一份 per-sym 快取:行動網路偶發 fetch 失敗時,X 光的 EPS/月營收圖
+        //    改用上次成功資料,不再「標頭有 QoQ、圖表卻顯暫無」兩路徑打架
         try {
             const base = window.location.href.split('?')[0].split('#')[0];
             const url  = new URL(`data/chips/${sym}.json`, base).href;
             const res  = await fetch(url + `?v=${Date.now()}`);
-            if (!res.ok) return null;
+            if (!res.ok) return (this._localFundLast?.sym === sym) ? this._localFundLast.data : null;
             const raw  = await res.json();
-            return Array.isArray(raw) ? null : (raw.fundamentals || null);
-        } catch(e) { return null; }
+            const fund = Array.isArray(raw) ? null : (raw.fundamentals || null);
+            if (fund) this._localFundLast = { sym, data: fund };
+            return fund || ((this._localFundLast?.sym === sym) ? this._localFundLast.data : null);
+        } catch(e) { return (this._localFundLast?.sym === sym) ? this._localFundLast.data : null; }
     },
 
     // 🏷️ 產業相對 PE 資料(產業中位數 PE + 個股→產業對照),24 hr client cache
@@ -23399,6 +23388,18 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this.renderFavTabs();
     },
 
+    // 🐛 V57.2 離開自選頁自動退出編輯模式(使用者:切走再回來編輯筆應該恢復)
+    _resetFavEditMode() {
+        if (!this.isFavEditMode) return;
+        this.isFavEditMode = false;
+        const btn = document.getElementById('btnFavEdit');
+        if (btn) {
+            btn.innerText = '✏️';
+            btn.className = 'ml-1 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-xl font-bold bg-[#161b22] px-2 py-1 rounded border border-[#30363d]';
+        }
+        try { this.renderFavTabs(); } catch (_) {}
+    },
+
     // 只切按鈕 active class，不重畫整列（避免 mobile touchend 派發到重畫後別位置的按鈕）
     selectFavGroup(group) {
         if (this.isFavEditMode) return;
@@ -23427,11 +23428,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             if (this.isFavEditMode) {
                 html += `<button class="px-2 py-1.5 text-red-400 font-black hover:text-red-300" onclick="app.deleteFavGroup('${group}')">✕</button>`;
             }
-            // 改呼叫 selectFavGroup，不再 inline 改 state + 整列重畫
-            html += `<button class="px-3 py-2 text-sm font-bold" onclick="app.selectFavGroup('${group}')">${group}</button>`;
-            if (this.isFavEditMode) {
-                html += `<button class="px-2 py-1.5 text-gray-400 font-bold hover:text-white" onclick="app.renameFavGroup('${group}')">✏️</button>`;
-            }
+            // 🐛 V57.2 使用者:編輯模式每個 tab 多一支 ✏️ 太雜 → 移除;編輯模式下「點清單名稱」= 改名
+            html += this.isFavEditMode
+                ? `<button class="px-3 py-2 text-sm font-bold underline decoration-dotted" onclick="app.renameFavGroup('${group}')" title="點名稱改名">${group}</button>`
+                : `<button class="px-3 py-2 text-sm font-bold" onclick="app.selectFavGroup('${group}')">${group}</button>`;
             html += `</div>`;
         }
         if (!this.isFavEditMode) {
