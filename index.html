@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -27441,12 +27441,7 @@ ${_chuPosPlan}
             }
             rows.sort((a, b) => b.pct100 - a.pct100 || a.chg - b.chg);
             const top = rows.slice(0, 8);
-            if (sum) sum.innerHTML = top.length ? `<span class="text-yellow-300">🩹 ${top.length} 檔疑似錯殺</span>` : '<span class="text-gray-500">今天沒錯殺股</span>';
-            if (!top.length) {
-                body.innerHTML = `<div class="text-center text-gray-500 text-[10px] py-3 leading-relaxed">自選+庫存 ${syms.length} 檔:${dropN ? `大跌 ${dropN} 檔但體質都沒過關(本來就偏空/法人在跑)→ 那是「該跌」不是錯殺,別接刀。` : `今天沒有跌超過 -4% 的 — 沒大跌就沒便宜可撿。`}</div>`;
-                return;
-            }
-            body.innerHTML = top.map(r => `
+            const rowHtml = r => `
                 <div class="px-2 py-1.5 border-b border-[#21262d] last:border-0">
                     <div class="flex items-center justify-between">
                         <span onclick="app._wkOpenStock('${r.s}'); app.vibrate(15);" class="text-[11px] font-bold text-gray-200 truncate cursor-pointer">${this.getStockName(r.s) || r.s} <span class="text-[9px] text-gray-500 font-mono">${r.s}</span></span>
@@ -27457,7 +27452,26 @@ ${_chuPosPlan}
                         </span>
                     </div>
                     <div class="text-[9px] text-gray-500 mt-0.5">${r.chips.join('・')} ・ 月線 ${r.ma20.toFixed(2)}</div>
-                </div>`).join('') +
+                </div>`;
+            const mineHtml = top.length
+                ? `<div class="text-[10px] font-bold text-gray-400 px-2 pt-1 pb-0.5">📌 你的自選+庫存${mktOpen ? '(即時)' : '(最近交易日)'}</div>` + top.map(rowHtml).join('')
+                : `<div class="text-center text-gray-500 text-[10px] py-2.5 leading-relaxed">自選+庫存 ${syms.length} 檔:${dropN ? `大跌 ${dropN} 檔但體質都沒過關(本來就偏空/法人在跑)→ 那是「該跌」不是錯殺,別接刀。` : `今天沒有跌超過 -4% 的 — 沒大跌就沒便宜可撿。`}</div>`;
+            // 🌏 V56.7 全市場錯殺榜(radar.json 盤後採礦產):撿自選以外的便宜;前端再濾注意/處置股
+            let mktHtml = '', mktN = 0;
+            try {
+                const rr = await fetch(new URL('data/radar.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+                const rj = rr.ok ? await rr.json() : null;
+                if (rj?.data) {
+                    const wk = (rj.data.wrongkill || []).filter(x => x && x.sym && !this.attentionStatus?.[x.sym]).slice(0, 10);
+                    mktN = wk.length;
+                    const mkHead = `<div class="text-[10px] font-bold text-gray-400 px-2 pt-2 pb-0.5 border-t border-[#21262d] mt-1">🌏 全市場錯殺榜 <span class="text-[9px] text-gray-600 font-normal">盤後採礦・每交易日傍晚更新</span></div>`;
+                    if (wk.length) mktHtml = mkHead + wk.map(x => rowHtml({ s: x.sym, chg: +x.chg, pct100: +x.score, chips: x.flags || [], ma20: +x.ma20 || 0 })).join('');
+                    else if (!('wrongkill' in rj.data)) mktHtml = mkHead + '<div class="text-[9px] text-gray-600 px-2 py-1.5">等下一次盤後採礦啟用(今天傍晚後)。</div>';
+                    else mktHtml = mkHead + '<div class="text-[9px] text-gray-600 px-2 py-1.5">最近交易日全市場沒有夠格的錯殺股。</div>';
+                }
+            } catch (_) {}
+            if (sum) sum.innerHTML = (top.length || mktN) ? `<span class="text-yellow-300">🩹 自選 ${top.length}・全市場 ${mktN}</span>` : '<span class="text-gray-500">今天沒錯殺股</span>';
+            body.innerHTML = mineHtml + mktHtml +
                 `<div class="text-[9px] text-gray-600 px-2 pt-1.5 leading-snug">🛑 <b class="text-gray-400">別今天接刀</b>:先點「🔎查利空」確認沒有公司利空,再等<b class="text-gray-400">紅K站回 5 日線</b>才進(回後買上漲),或掛月線價等支撐;點股名進總覽看完整買點判定。錯殺分=基本面+法人+趨勢純公式,非投資建議。</div>`;
         } catch (_) {
             body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">掃描失敗,稍後再點一次。</div>';

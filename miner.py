@@ -2938,10 +2938,27 @@ def _quick_ind(data):
 
 
 def build_radar_cache():
-    results   = {'bottom': [], 'surge': [], 'score': [], 'monster': []}
+    results   = {'bottom': [], 'surge': [], 'score': [], 'monster': [], 'wrongkill': []}
     processed = 0
 
-    print("\n🚀 啟動全局雷達掃描 (植入高勝率量化三引擎 + 妖股雷達)...")
+    print("\n🚀 啟動全局雷達掃描 (植入高勝率量化三引擎 + 妖股雷達 + 錯殺雷達)...")
+
+    # 🩹 錯殺雷達用:預載全市場營收 YoY(fundamentals_cache 主 + 夜間 fund_yoy_gm 補),檔案缺=該項不計分
+    _wk_yoy = {}
+    try:
+        _fc = json.loads(Path(DATA_DIR).joinpath('fundamentals_cache.json').read_text(encoding='utf-8'))
+        for _k, _v in _fc.items():
+            if not str(_k).startswith('__') and isinstance(_v, dict) and _v.get('rev_yoy') is not None:
+                _wk_yoy[_k] = float(_v['rev_yoy'])
+    except Exception:
+        pass
+    try:
+        _fg = json.loads(Path(DATA_DIR).joinpath('fund_yoy_gm.json').read_text(encoding='utf-8'))
+        for _k, _v in _fg.items():
+            if not str(_k).startswith('__') and isinstance(_v, dict) and _v.get('yoy') is not None:
+                _wk_yoy.setdefault(_k, float(_v['yoy']))
+    except Exception:
+        pass
     for f in Path(DATA_DIR).glob('*.json'):
         if f.name in ('radar.json', 'top_picks.json', 'macro_cache.json', 'futures_cache.json', 'broker_names.json', 'radar_news.json'):
             continue
@@ -3002,6 +3019,40 @@ def build_radar_cache():
                 pass
 
             # 【獲利引擎 3】乖離率防守：過濾掉偏離月線大於 15% 的股票，拒絕追高
+            # 🩹 錯殺雷達:今日大跌 ≤-4% 但體質沒壞(原多頭+回測月/季線支撐+法人沒跑+營收成長)
+            #   ETF 不算(族群齊跌非錯殺);放在乖離守門前,大跌股不會被多頭追高濾網跳過
+            try:
+                wk_chg = (c - pc) / pc * 100 if pc > 0 else 0
+                if wk_chg <= -4 and not sym.startswith('00') and len(raw) >= 60:
+                    ma60 = sum(r['close'] for r in raw[-60:]) / 60
+                    was_bull = ma60 > 0 and pc > ma20 and ma20 >= ma60
+                    near_sup = c >= ma20 * 0.97 or c >= ma60 * 0.97
+                    if was_bull and near_sup:
+                        wk_score, wk_max, wk_flags = 25, 40, ['✓原本多頭']
+                        if c >= ma20 * 0.97:
+                            wk_score += 15; wk_flags.append('✓月線附近')
+                        else:
+                            wk_score += 10; wk_flags.append('✓季線附近')
+                        wk_max += 30
+                        if inst_net_5d >= 0:
+                            wk_score += 30; wk_flags.append('✓法人沒跑')
+                        else:
+                            wk_flags.append('✗法人賣')
+                        _yoy = _wk_yoy.get(sym)
+                        if _yoy is not None:
+                            wk_max += 30
+                            if _yoy > 0:
+                                wk_score += 30; wk_flags.append(f'✓營收+{_yoy:.0f}%')
+                            else:
+                                wk_flags.append(f'✗營收{_yoy:.0f}%')
+                        wk_pct = round(wk_score / wk_max * 100)
+                        if wk_pct >= 50:
+                            results['wrongkill'].append({
+                                'sym': sym, 'close': round(c, 2), 'chg': round(wk_chg, 1),
+                                'score': wk_pct, 'flags': wk_flags, 'ma20': round(ma20, 2)})
+            except Exception:
+                pass
+
             bias_20 = (c - ma20) / ma20 if ma20 > 0 else 0
             if bias_20 > 0.15:
                 continue
@@ -3023,6 +3074,9 @@ def build_radar_cache():
 
     # 妖股依 5 日漲幅排序，最妖在前
     results['monster'].sort(key=lambda x: x.get('gain5d', 0), reverse=True)
+    # 🩹 錯殺榜:分數高在前、同分跌深在前,取前 30
+    results['wrongkill'].sort(key=lambda x: (-x.get('score', 0), x.get('chg', 0)))
+    results['wrongkill'] = results['wrongkill'][:30]
 
     Path(DATA_DIR).mkdir(exist_ok=True)
     Path(DATA_DIR).joinpath('radar.json').write_text(
@@ -3031,7 +3085,7 @@ def build_radar_cache():
         encoding='utf-8')
 
     print(f"  ✅ 雷達：掃描 {processed} 檔，"
-          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} / 妖股 {len(results['monster'])}")
+          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} / 妖股 {len(results['monster'])} / 錯殺 {len(results['wrongkill'])}")
 
 
 # ── 💥 牛市泡沫破裂預警系統 ─────────────────────────────────────────────────
