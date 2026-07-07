@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -13716,19 +13716,43 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             big = '⚪ 現在非朱式買點'; head = '非「波段多頭+回檔不破前低」格局'; cls = 'gray';
             cta = '現在不是回後買上漲的盤(不是波段多頭、或已破前低)。回後買上漲只做「上升趨勢中回檔、止穩再上」,不是抄近期新低。等趨勢轉多再看。'; sub = '';
         }
-        // ⚖️ V56.0 仲裁中樞:直判卡=總覽頁的「老大」,分批計畫/打法雷達讀這個決定要不要蓋「先別執行」
+        // ⚖️ V56.0 仲裁中樞:直判卡=總覽頁的「老大」,分批計畫/打法雷達讀這個決定要不要蓋「先別執行」(存「進場面」判定)
         this._chuActionVerdict = { cls, big, sym: this.currentSymbolId };
+        // 💼 V56.2 持倉感知:有庫存 → 主卡切「出場管理」視角(數字中樞給兩條防線 + 今天動作 + 損益元);
+        //   空手才顯進場判。進場面結論降為小字(供加碼參考),仲裁 stash 不變(分批計畫照舊被 gate)。
+        let title = '🎯 現在該怎麼做(朱式買點・🌊 波段)';
+        let entryLine = '';
+        try {
+            const _inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+            const _pos = _inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0);
+            if (_pos && pC > 0) {
+                const _cost = +_pos.cost, _sh = +_pos.shares || 0;
+                const uni = this._unifiedExitPlan(data, _cost);
+                const pnlPct = (pC - _cost) / _cost * 100;
+                const pnlNTD = _sh > 0 ? Math.round((pC - _cost) * _sh * 1000) : null;
+                const _m = v => v == null ? '' : `・${v >= 0 ? '+' : ''}${v.toLocaleString()} 元${v >= 0 ? '(獲利)' : '(虧損)'}`;
+                const tpS = uni?.takeShort, tpL = uni?.takeLong, slF = uni?.stopFinal;
+                entryLine = `<div class="text-[9px] text-gray-500 mt-1.5">📎 進場/加碼面:${big}(想加碼看下方分批計畫)</div>`;
+                title = '🎯 現在該怎麼做(你的庫存)';
+                head = `成本 ${_cost} ・ 損益 ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%${_m(pnlNTD)}`;
+                if (pnlPct <= -10) { big = '🚨 立刻停損出場'; cls = 'red'; cta = `已虧超過 10% = 朱式「絕對停損」:非走不可、別凹單,留住本金才有下一次(小賠賺回容易、大賠很難)。`; }
+                else if (slF && pC <= slF) { big = '🔴 已破停損線・出場'; cls = 'red'; cta = `現價 ${pC.toFixed(2)} 已跌破停損線 <b>${slF.toFixed(2)}</b>(發動K低 vs 成本-5% 取較高)→ 按紀律出場,別等反彈。`; }
+                else if (tpS && pC < tpS) { big = pnlPct > 0 ? '🟡 破5日線・先賣一半停利' : '🟡 破5日線・警戒'; cls = 'yellow'; cta = `⚡短線紀律:已跌破 5 日線 ${tpS.toFixed(2)} → ${pnlPct > 0 ? '先賣一半鎖住獲利,剩的看月線' : `盯緊停損線 <b>${slF ? slF.toFixed(2) : '—'}</b>,破了全出`};🌊 波段客可改守月線 ${tpL ? tpL.toFixed(2) : '—'}(跌破才出)。`; }
+                else { big = '🟢 續抱・兩張單掛好'; cls = 'green'; cta = `掛好就不用盯盤:①⚡短線停利 → 跌破 5 日線 <b>${tpS ? tpS.toFixed(2) : '—'}</b> 賣一半;②🛡️停損 → 跌破 <b>${slF ? slF.toFixed(2) : '—'}</b> 全部出。🌊 想抱波段大段改守月線 ${tpL ? tpL.toFixed(2) : '—'}。`; }
+            }
+        } catch (_) {}
         const map = { green: ['text-green-400', 'border-green-500'], yellow: ['text-yellow-300', 'border-yellow-500'], red: ['text-red-400', 'border-red-500'], gray: ['text-gray-300', 'border-gray-500'] };
         const [tc, bc] = map[cls];
         el.className = `bg-[#161b22] border-2 ${bc} rounded-lg p-3 shadow-lg`;
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1">
-                <div class="text-[11px] font-black text-gray-400">🎯 現在該怎麼做(朱式買點)</div>
+                <div class="text-[11px] font-black text-gray-400">${title}</div>
                 <div class="text-[9px] text-gray-500">現價 ${pC ? pC.toFixed(2) : '—'}</div>
             </div>
             <div class="text-2xl font-black ${tc} mb-0.5">${big}</div>
             <div class="text-[11px] font-bold text-gray-200 mb-1.5">${head}</div>
             <div class="bg-[#0d1117] border-l-4 ${bc} pl-2.5 py-1.5 rounded-r"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${cta}</div></div>
+            ${entryLine}
             <details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer list-none">📖 什麼是「回後買上漲」?勝率為何高?</summary><div class="text-[10px] text-gray-400 leading-relaxed mt-1">回後買上漲=<b>上升趨勢中</b>股價回檔到支撐(5日線/前低),<b>止穩再往上</b>那一刻買 —— 不是抄「近期新低」(那叫破底翻,風險高)。順著既有多頭趨勢、又等回檔便宜點進場,所以勝率高;朱家泓高勝率版再要求「紅K實體≥2% + 量增 + 收盤過昨高」三條件齊(約8成)。停損固定跌破 5 日線或前低,虧損小、賺賠比好。</div></details>`;
         el.classList.remove('hidden');
     },
@@ -13776,12 +13800,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const cell = (l, v, c, sub) => `<div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">${l}</div><div class="text-sm font-black font-mono ${c}">${v}</div>${sub ? `<div class="text-[9px] text-gray-500">${sub}</div>` : ''}</div>`;
                 big = `✅ ${nm(hit.r.key)}・${hit.ago === 0 ? '今天觸發' : hit.ago + ' 天前觸發・仍有效'}`;
                 tc = 'text-red-400'; bc = 'border-red-500';
+                const pctTo = v => `${v >= buyRef ? '+' : ''}${((v - buyRef) / buyRef * 100).toFixed(1)}%`;   // 🎨 V56.2 高價股一張數十萬,改 % 為主、元/張縮括號
                 inner = `
                 <div class="text-[10px] text-gray-400 font-mono mb-1.5">${stat(hit.r)}(本股歷史)</div>
+                ${hit.r.count < 8 ? `<div class="text-[9px] text-yellow-300/90 mb-1.5">⚠️ 此打法在本股只出現過 ${hit.r.count} 次,樣本少、統計參考性低 → 只能小量試,勝率別當真。</div>` : ''}
                 <div class="grid grid-cols-3 gap-1.5 mb-1.5">
                     ${cell('進場', buyRef.toFixed(2), 'text-red-300', hit.ago === 0 ? '直接買/市價' : '不追高於此')}
-                    ${cell('停損', stop.toFixed(2), 'text-green-300', `${net(buyRef, stop)}元/張`)}
-                    ${cell('參考目標', tgt.toFixed(2), 'text-red-300', `+${net(buyRef, tgt)}元/張`)}
+                    ${cell('停損', stop.toFixed(2), 'text-green-300', `${pctTo(stop)}<span class="text-[8px]">(${net(buyRef, stop).toLocaleString()}/張)</span>`)}
+                    ${cell('參考目標', tgt.toFixed(2), 'text-red-300', `${pctTo(tgt)}<span class="text-[8px]">(+${net(buyRef, tgt).toLocaleString()}/張)</span>`)}
                 </div>
                 <div class="text-[9px] text-gray-500 leading-snug">💡 出場紀律:跌破 5 日線或停損價就出,最多抱 20 天(=回測同一套規則);賺賠元已扣手續費${_fd}折+稅。</div>
                 ${(() => { const av = this._chuActionVerdict; return (av && av.sym === sym && av.cls !== 'green')
@@ -13802,7 +13828,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             el.className = `bg-[#161b22] border-2 ${bc} rounded-lg p-3 shadow-lg`;
             el.innerHTML = `
                 <div class="flex items-center justify-between mb-0.5">
-                    <div class="text-[11px] font-black text-gray-400">🃏 打法雷達 <span class="text-[9px] text-gray-500 font-normal">這檔最會賺的打法・回測同源</span></div>
+                    <div class="text-[11px] font-black text-gray-400">🃏 打法雷達 <span class="text-[9px] text-amber-300/80 font-normal">⚡短線(最多抱20天)</span><span class="text-[9px] text-gray-500 font-normal">・回測同源</span></div>
                     <button onclick="app.switchSubTab('backtest'); app.vibrate(20);" class="text-[9px] text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">完整排名 →</button>
                 </div>
                 <div class="text-base font-black ${tc} mb-1 leading-snug">${big}</div>
@@ -19175,7 +19201,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const gateHold = !isDowntrend && _av && _av.sym === this.currentSymbolId && _av.cls !== 'green';
         const gateWarn = gateHold
             ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2">
-                <div class="text-[10px] font-bold text-yellow-300 mb-0.5">⏸️ 頂部直判目前是「${_av.big}」→ 此計畫先別執行</div>
+                <div class="text-[10px] font-bold text-yellow-300 mb-0.5">⏸️ 進場面判定目前是「${_av.big}」→ 此計畫先別執行</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">下面三批價是照「發動K劇本」預先算好的作戰地圖;等頂部「🎯 現在該怎麼做」轉 🟢 可進場再照表操作,現在先鎖股觀察。</div>
             </div>`
             : '';
@@ -21732,17 +21758,18 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const g5 = _guard(5), g20 = _guard(20), g60 = _guard(60);
             const _row = (label, g) => {
                 if (g == null) return '';
-                const safe = pC > g, diff = (pC - g) / g * 100, cls = safe ? 'text-green-300' : 'text-red-300';
+                // 🎨 V56.2 台股色統一:續揚(漲)=紅、恐下彎(跌)=綠(原本紅綠相反,使用者指正)
+                const safe = pC > g, diff = (pC - g) / g * 100, cls = safe ? 'text-red-300' : 'text-green-300';
                 return `<div class="grid grid-cols-[auto_1fr_auto] gap-2 items-center py-1 border-b border-[#21262d] last:border-0">
                     <span class="text-[11px] text-gray-300"><b>${label}</b> <span class="text-[9px] text-gray-500">保衛價</span></span>
                     <span class="font-mono text-[12px] font-black ${cls}">${g.toFixed(2)}</span>
-                    <span class="${cls} font-mono text-[10px] text-right">${safe ? '🟢續揚' : '🔴恐下彎'} ${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%</span>
+                    <span class="${cls} font-mono text-[10px] text-right">${safe ? '🔺續揚' : '🔻恐下彎'} ${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%</span>
                 </div>`;
             };
             const _rows = [_row('5MA', g5), _row('20MA', g20), _row('60MA', g60)].join('');
             if (_rows) {
                 const _hero = g20 != null
-                    ? `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 ${pC > g20 ? 'border-green-500' : 'border-red-500'} pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">明日收盤需 <b class="${pC > g20 ? 'text-green-300' : 'text-red-300'} font-mono">≥ ${g20.toFixed(2)}</b> 元,20MA 才維持上揚;跌破則月線下彎轉向。</div>`
+                    ? `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 ${pC > g20 ? 'border-red-500' : 'border-green-500'} pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">明日收盤需 <b class="${pC > g20 ? 'text-red-300' : 'text-green-300'} font-mono">≥ ${g20.toFixed(2)}</b> 元,20MA 才維持上揚;跌破則月線下彎轉向。</div>`
                     : '';
                 _mhg.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">明日均線保衛價</span><button onclick="app.showJargon('扣抵')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button></div>${_hero}${_rows}`;
                 _mhg.classList.remove('hidden');
