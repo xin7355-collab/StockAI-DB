@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2295,18 +2295,21 @@
 
                 <!-- 🎛️ V57.5 左欄類別 rail + 右欄內容(參考專業 App 焦點股版型:類別在左直欄,名單在右) -->
                 <div class="flex gap-1.5 items-start flex-grow min-h-0 p-1.5">
-                    <!-- 左欄:選股種類(sticky,可自己上下捲) -->
+                    <!-- 左欄:選股種類(sticky,可自己上下捲)— V57.6 三行式標籤:emoji / 名稱 / 副標,84px 窄欄不再換行斷字 -->
                     <div class="flex flex-col gap-1 w-[84px] flex-shrink-0 sticky top-1 self-start max-h-[85vh] overflow-y-auto scrollbar-hide">
-                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題<span class="block text-[8px] opacity-60 font-normal mt-0.5">高勝率</span></button>
-                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車<span class="block text-[8px] opacity-60 font-normal mt-0.5">動能</span></button>
-                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河<span class="block text-[8px] opacity-60 font-normal mt-0.5">波段</span></button>
-                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 主力鎖股<span class="block text-[8px] opacity-60 font-normal mt-0.5">籌碼</span></button>
-                        <button onclick="app.switchRadarStrategy('wrongkill')" id="radarTabWrongkill" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🩹 錯殺撿便宜<span class="block text-[8px] opacity-60 font-normal mt-0.5">大跌抗性</span></button>
-                        <button onclick="app.switchRadarStrategy('theme')" id="radarTabTheme" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🔥 題材脈動<span class="block text-[8px] opacity-60 font-normal mt-0.5">新聞熱度</span></button>
-                        <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股<span class="block text-[8px] opacity-60 font-normal mt-0.5">風控</span></button>
-                        <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌅 K棒轉多<span class="block text-[8px] opacity-60 font-normal mt-0.5">找買點</span></button>
-                        <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌃 K棒轉空<span class="block text-[8px] opacity-60 font-normal mt-0.5">找賣點</span></button>
-                        <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓<span class="block text-[8px] opacity-60 font-normal mt-0.5">選股法</span></button>
+                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">⭐</span><span class="block text-[10px] mt-1">送分題</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高勝率</span></button>
+                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🏎️</span><span class="block text-[10px] mt-1">渣男賽車</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">動能</span></button>
+                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🐢</span><span class="block text-[10px] mt-1">烏龜過河</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">波段</span></button>
+                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🎯</span><span class="block text-[10px] mt-1">主力鎖股</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">籌碼</span></button>
+                        <button onclick="app.switchRadarStrategy('monster')" id="radarTabMonster" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🐲</span><span class="block text-[10px] mt-1">妖股雷達</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">連續飆漲</span></button>
+                        <button onclick="app.switchRadarStrategy('foreign3')" id="radarTabForeign3" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🏦</span><span class="block text-[10px] mt-1">外資連買</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">連3買超</span></button>
+                        <button onclick="app.switchRadarStrategy('trust3')" id="radarTabTrust3" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🏛️</span><span class="block text-[10px] mt-1">投信連買</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">連3買超</span></button>
+                        <button onclick="app.switchRadarStrategy('wrongkill')" id="radarTabWrongkill" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🩹</span><span class="block text-[10px] mt-1">錯殺便宜</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">大跌抗性</span></button>
+                        <button onclick="app.switchRadarStrategy('theme')" id="radarTabTheme" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🔥</span><span class="block text-[10px] mt-1">題材脈動</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">新聞熱度</span></button>
+                        <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🚨</span><span class="block text-[10px] mt-1">處置股</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">風控</span></button>
+                        <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🌅</span><span class="block text-[10px] mt-1">K棒轉多</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找買點</span></button>
+                        <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🌃</span><span class="block text-[10px] mt-1">K棒轉空</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找賣點</span></button>
+                        <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法"><span class="block text-sm leading-none">📚</span><span class="block text-[10px] mt-1">朱家泓</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">選股法</span></button>
                     </div>
 
                     <!-- 右欄:說明條 + 各類別內容 -->
@@ -2334,14 +2337,13 @@
                     <table class="w-full text-left border-collapse" style="table-layout: fixed;">
                         <thead>
                             <tr class="border-b border-[#30363d] text-gray-400 text-[11px] tracking-wider bg-[#0d1117]">
-                                <th class="py-2 px-2 font-bold" style="width: 38%;">股票</th>
-                                <th class="py-2 px-1 font-bold text-right" style="width: 18%;">收盤</th>
-                                <th class="py-2 px-1 font-bold text-right" style="width: 18%;">成交額</th>
-                                <th class="py-2 px-2 font-bold text-right" style="width: 26%;">狀態/漲幅</th>
+                                <th class="py-2 px-2 font-bold" style="width: 40%;">股票</th>
+                                <th class="py-2 px-1 font-bold text-right" style="width: 22%;">收盤·成交額</th>
+                                <th class="py-2 px-2 font-bold text-right" style="width: 38%;">狀態/漲幅</th>
                             </tr>
                         </thead>
                         <tbody id="radarMatrixBody" class="text-sm">
-                            <tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">雷達待命中…</td></tr>
+                            <tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm">雷達待命中…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -24469,6 +24471,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         momentum:  { id: 'radarTabMomentum',  active: 'bg-red-600/20 text-red-300 border-red-500' },
         swing:     { id: 'radarTabSwing',     active: 'bg-green-600/20 text-green-300 border-green-500' },
         sniper:    { id: 'radarTabSniper',    active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
+        monster:   { id: 'radarTabMonster',   active: 'bg-fuchsia-600/25 text-fuchsia-200 border-fuchsia-500' },
+        foreign3:  { id: 'radarTabForeign3',  active: 'bg-sky-600/25 text-sky-200 border-sky-500' },
+        trust3:    { id: 'radarTabTrust3',    active: 'bg-indigo-600/25 text-indigo-200 border-indigo-500' },
         wrongkill: { id: 'radarTabWrongkill', active: 'bg-emerald-600/25 text-emerald-200 border-emerald-500' },
         theme:     { id: 'radarTabTheme',     active: 'bg-amber-600/25 text-amber-200 border-amber-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
@@ -24480,6 +24485,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         momentum:  '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。今日小回不破 5 日線仍算動能，別看到今日小跌就嚇跑。',
         swing:     '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
         sniper:    '🎯 主力鎖股｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
+        monster:   '🐲 妖股雷達｜5 日漲 ≥20% 或 10 日漲 ≥30%,配合 2 倍爆量的連續飆漲股。妖股會續妖但也會突然斷頭 — 只用閒錢小部位,跌破 5 日線無條件出場,嚴禁重壓。',
+        foreign3:  '🏦 外資連買｜外資連續 3 天都買超的個股,按 3 日累計買超張數排行。外資是最大咖的長線資金,連買=看好;搭配站上月線再進更穩。',
+        trust3:    '🏛️ 投信連買｜投信連續 3 天都買超的個股,按 3 日累計張數排行。投信愛鎖中小型股+季底作帳行情,連買常是波段起漲訊號;但投信一轉賣要跟著跑。',
         attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
         wrongkill: '🩹 錯殺撿便宜｜今天大跌 ≥4% 但體質沒壞(原多頭+回測支撐+法人沒跑+營收成長)。先「🔎查利空」確認沒公司壞消息,再等紅K站回5日線進 — 別今天接刀。',
         theme:     '🔥 題材脈動｜Google 新聞 3 日熱度排行 + 👑 同族群 5 日最強前3。點題材名=免費 AI 查最新發展、點新聞標題=看原文、點股名=進該股總覽。',
@@ -24512,7 +24520,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     async loadRadarMatrix() {
         const body = document.getElementById('radarMatrixBody');
         if (body && !this.radarMatrix) {
-            body.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm animate-pulse">雷達掃描中…</td></tr>`;
+            body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm animate-pulse">雷達掃描中…</td></tr>`;
         }
         // 已有真資料就不重抓；尚未載入或目前是示範資料時，嘗試抓真檔
         if (!this.radarMatrix || this._radarIsDemo) {
@@ -24572,6 +24580,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         } else if (key === 'theme') {
             if (themeView) themeView.classList.remove('hidden');
             this._themePulseFresh();
+        } else if (key === 'monster' || key === 'foreign3' || key === 'trust3') {
+            // 🐲🏦🏛️ V57.6 妖股/外資連買/投信連買:資料在 radar.json(夜間採礦),共用表格容器
+            if (tableWrap) tableWrap.classList.remove('hidden');
+            this._renderRadarJsonList(key);
         } else {
             if (tableWrap) tableWrap.classList.remove('hidden');
             this.renderRadarMatrix(key);
@@ -24605,7 +24617,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const tabMap = { layup: 'layup', falcon: 'layup', racer: 'momentum', turtle: 'swing', chu: null };
             const btnMap = { layup: 'radarTabLayup', falcon: 'radarTabLayup', racer: 'radarTabMomentum', turtle: 'radarTabSwing', chu: 'radarTabChu' };
             const btn = document.getElementById(btnMap[champ.key]);
-            if (btn && !btn.innerHTML.includes('🥇')) { btn.innerHTML = '🥇' + btn.innerHTML; btn.title = `擂台冠軍:期望值 ${champ.expectancy > 0 ? '+' : ''}${(+champ.expectancy).toFixed(2)}%/筆(樣本 ${champ.trades} 筆),已自動設為預設`; }
+            if (btn && !btn.innerHTML.includes('🥇')) {
+                // V57.6 三行式標籤:🥇 併進第一行 emoji span(直接 prepend innerHTML 會自己佔一行)
+                const s1 = btn.querySelector('span');
+                if (s1) s1.textContent = '🥇' + s1.textContent; else btn.innerHTML = '🥇' + btn.innerHTML;
+                btn.title = `擂台冠軍:期望值 ${champ.expectancy > 0 ? '+' : ''}${(+champ.expectancy).toFixed(2)}%/筆(樣本 ${champ.trades} 筆),已自動設為預設`;
+            }
             const tab = tabMap[champ.key];
             if (tab && !this._radarUserPicked && this.radarStrategy !== tab) this.switchRadarStrategy(tab, true);
         } catch (_) {}
@@ -24618,7 +24635,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const base = window.location.href.split('?')[0].split('#')[0];
             const r = await fetch(new URL('data/radar.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
             const d = (r && r.ok) ? await r.json().catch(() => null) : null;
-            this._radarJsonCache = { ts: Date.now(), data: d };
+            // 🐛 V57.6 修:抓失敗(null)不進 30 分快取,下次切 tab 立即重試(原本失敗也鎖 30 分)
+            if (d) this._radarJsonCache = { ts: Date.now(), data: d };
             return d;
         } catch (_) { return null; }
     },
@@ -25084,13 +25102,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         }
 
         if (!list.length) {
-            body.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-gray-500 text-sm">此戰區今日無符合標的，換個策略看看 👀</td></tr>`;
+            body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm">此戰區今日無符合標的，換個策略看看 👀</td></tr>`;
             return;
         }
 
         // V28.2 — 採礦失敗 fallback 到示範資料時,表格頂插明顯警告列(避免把範例股當真)
         const demoWarn = this._radarIsDemo
-            ? `<tr><td colspan="4" class="bg-amber-900/30 border border-amber-600 text-amber-200 text-center py-2 text-[11px] font-bold">⚠️ 以下為示範資料(採礦尚未完成),非真實選股 — 請稍後重新整理</td></tr>`
+            ? `<tr><td colspan="3" class="bg-amber-900/30 border border-amber-600 text-amber-200 text-center py-2 text-[11px] font-bold">⚠️ 以下為示範資料(採礦尚未完成),非真實選股 — 請稍後重新整理</td></tr>`
             : '';
         body.innerHTML = demoWarn + list.map((m, i) => {
             const name = this.getStockName(m.sym);
@@ -25099,22 +25117,72 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const gainStr = g === null ? '' : `<span class="${gainCls} font-mono font-bold text-[11px]">今 ${g > 0 ? '+' : ''}${g}%</span>`;
             const turn = (typeof m.turnover_e === 'number') ? m.turnover_e.toFixed(1) : (m.turnover_e || '—');
             return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
-                <td class="py-2.5 px-2 align-top">
-                    <div class="flex items-start gap-1.5">
-                        <span class="text-gray-600 text-[10px] font-mono w-3 text-right flex-shrink-0 mt-0.5">${i + 1}</span>
-                        <div class="flex flex-col leading-tight min-w-0 flex-1">
-                            <span class="text-[10px] text-gray-500 font-mono">${m.sym}${this._renderFalconBadge(m.sym)}${this._renderAttentionBadge(m.sym)}</span>
-                            <span class="font-bold text-gray-100 text-[13px] truncate" title="${name}">${name}</span>
-                        </div>
-                    </div>
+                ${this._radarStockTd(m.sym, name, i)}
+                <td class="py-2.5 px-1 text-right align-middle leading-tight">
+                    <span class="font-mono font-bold text-gray-100 text-[13px]">${m.close}</span>
+                    <span class="block font-mono text-cyan-300/80 text-[9px]">${turn} 億</span>
                 </td>
-                <td class="py-2.5 px-1 text-right font-mono font-bold text-gray-100 text-[13px] align-middle">${m.close}</td>
-                <td class="py-2.5 px-1 text-right font-mono text-cyan-300 text-[12px] align-middle">${turn}</td>
                 <td class="py-2.5 px-2 text-right align-middle">
                     <div class="flex flex-col items-end gap-0.5">
                         <span class="text-[10px] text-amber-300 font-bold leading-tight">${(m.status || '').replace('最高動能', '近5日最噴')}</span>
                         ${gainStr}
                     </div>
+                </td>
+            </tr>`;
+        }).join('');
+    },
+
+    // 🎨 V57.6 — 選股池表格「股票」欄共用樣板(renderRadarMatrix / _renderRadarJsonList 同款)
+    _radarStockTd(sym, name, i) {
+        return `<td class="py-2.5 px-2 align-top">
+            <div class="flex items-start gap-1.5">
+                <span class="text-gray-600 text-[10px] font-mono w-3 text-right flex-shrink-0 mt-0.5">${i + 1}</span>
+                <div class="flex flex-col leading-tight min-w-0 flex-1">
+                    <span class="text-[10px] text-gray-500 font-mono">${sym}${this._renderFalconBadge(sym)}${this._renderAttentionBadge(sym)}</span>
+                    <span class="font-bold text-gray-100 text-[13px] truncate" title="${name}">${name}</span>
+                </div>
+            </div>
+        </td>`;
+    },
+
+    // 🐲🏦🏛️ V57.6 — 妖股/外資連買/投信連買:讀 radar.json(夜間採礦)渲染進共用表格
+    //   舊 radar.json 還沒有 foreign3/trust3 時顯「今晚採礦後啟用」;切股競態守門(radarStrategy 變了就不寫)
+    async _renderRadarJsonList(key) {
+        const body = document.getElementById('radarMatrixBody');
+        const updatedEl = document.getElementById('radarMatrixUpdated');
+        if (!body) return;
+        body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm animate-pulse">雷達掃描中…</td></tr>`;
+        const d = await this._loadRadarJson();
+        if (this.radarStrategy !== key) return;   // 使用者已切走,別覆蓋別人的畫面
+        const list = d?.data?.[key];
+        if (updatedEl) updatedEl.textContent = `更新：${d?.updated || '—'}`;
+        if (!Array.isArray(list)) {
+            body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm">🌙 這是新榜單,今晚盤後採礦更新後啟用<br><span class="text-[10px] text-gray-600">(每交易日 16:30 後自動產出)</span></td></tr>`;
+            return;
+        }
+        if (!list.length) {
+            body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm">此戰區今日無符合標的，換個策略看看 👀</td></tr>`;
+            return;
+        }
+        body.innerHTML = list.map((m, i) => {
+            const name = this.getStockName(m.sym);
+            let statusHtml = '';
+            if (key === 'monster') {
+                const nl = m.near_limit_up ? `<span class="text-[9px] bg-red-600 text-white px-1 rounded font-bold">近漲停</span>` : '';
+                statusHtml = `<span class="text-[10px] text-fuchsia-300 font-bold leading-tight">5日+${m.gain5d}%・量比${m.vol_ratio}x</span>
+                    <span class="text-[10px] text-red-300 font-mono">10日+${m.gain10d}% ${nl}</span>`;
+            } else {
+                const g = (typeof m.chg === 'number') ? m.chg : null;
+                const gCls = g === null ? 'text-gray-400' : (g > 0 ? 'text-red-400' : (g < 0 ? 'text-green-400' : 'text-gray-400'));
+                const who = key === 'foreign3' ? '外資' : '投信';
+                statusHtml = `<span class="text-[10px] text-amber-300 font-bold leading-tight">${who}3日買超 ${(m.sum3 || 0).toLocaleString()} 張</span>
+                    ${g === null ? '' : `<span class="${gCls} font-mono font-bold text-[11px]">今 ${g > 0 ? '+' : ''}${g}%</span>`}`;
+            }
+            return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
+                ${this._radarStockTd(m.sym, name, i)}
+                <td class="py-2.5 px-1 text-right align-middle"><span class="font-mono font-bold text-gray-100 text-[13px]">${m.close}</span></td>
+                <td class="py-2.5 px-2 text-right align-middle">
+                    <div class="flex flex-col items-end gap-0.5">${statusHtml}</div>
                 </td>
             </tr>`;
         }).join('');

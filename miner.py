@@ -2938,7 +2938,8 @@ def _quick_ind(data):
 
 
 def build_radar_cache():
-    results   = {'bottom': [], 'surge': [], 'score': [], 'monster': [], 'wrongkill': []}
+    results   = {'bottom': [], 'surge': [], 'score': [], 'monster': [], 'wrongkill': [],
+                 'foreign3': [], 'trust3': []}   # 🏦 V57.6 外資/投信連 3 買榜(對標專業 App 多方分類)
     processed = 0
 
     print("\n🚀 啟動全局雷達掃描 (植入高勝率量化三引擎 + 妖股雷達 + 錯殺雷達)...")
@@ -3040,6 +3041,21 @@ def build_radar_cache():
             except Exception:
                 pass
 
+            # 🏦 V57.6 外資/投信連 3 買榜:法人資料單位「股」→ 張;ETF 不列(法人買 ETF 非個股訊號)
+            try:
+                if not sym.startswith('00') and len(raw) >= 3:
+                    _chg1 = (c - pc) / pc * 100 if pc > 0 else 0
+                    _f3 = [(r.get('foreign_net') or 0) for r in raw[-3:]]
+                    _t3 = [(r.get('trust_net') or 0) for r in raw[-3:]]
+                    if all(v > 0 for v in _f3):
+                        results['foreign3'].append({'sym': sym, 'close': round(c, 2),
+                                                    'chg': round(_chg1, 1), 'sum3': round(sum(_f3) / 1000)})
+                    if all(v > 0 for v in _t3):
+                        results['trust3'].append({'sym': sym, 'close': round(c, 2),
+                                                  'chg': round(_chg1, 1), 'sum3': round(sum(_t3) / 1000)})
+            except Exception:
+                pass
+
             # 🩹 錯殺雷達:今日大跌 ≤-4% 但體質沒壞(原多頭+回測月/季線支撐+法人沒跑+營收成長)
             #   ETF 不算(族群齊跌非錯殺);放在乖離守門前,大跌股不會被多頭追高濾網跳過
             try:
@@ -3098,6 +3114,9 @@ def build_radar_cache():
     # 🩹 錯殺榜:分數高在前、同分跌深在前,取前 30
     results['wrongkill'].sort(key=lambda x: (-x.get('score', 0), x.get('chg', 0)))
     results['wrongkill'] = results['wrongkill'][:30]
+    # 🏦 外資/投信連買榜:3 日買超合計(張)大在前,取 30 檔
+    results['foreign3'].sort(key=lambda x: -x.get('sum3', 0)); results['foreign3'] = results['foreign3'][:30]
+    results['trust3'].sort(key=lambda x: -x.get('sum3', 0)); results['trust3'] = results['trust3'][:30]
     # 👑 族群領頭羊:每概念取 5 日漲幅前 3 強(成員 ≥3 檔的概念才列,避免一人族群沒意義)
     results['concept_leaders'] = {
         tag: [{'sym': s, 'g5': g, 'close': cl} for s, g, cl in sorted(members, key=lambda x: -x[1])[:3]]
@@ -3111,7 +3130,8 @@ def build_radar_cache():
         encoding='utf-8')
 
     print(f"  ✅ 雷達：掃描 {processed} 檔，"
-          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} / 妖股 {len(results['monster'])} / 錯殺 {len(results['wrongkill'])}")
+          f"底部 {len(results['bottom'])} / 飆股 {len(results['surge'])} / 綜合 {len(results['score'])} / 妖股 {len(results['monster'])} / 錯殺 {len(results['wrongkill'])}"
+          f" / 外資連買 {len(results['foreign3'])} / 投信連買 {len(results['trust3'])}")
 
 
 # ── 💥 牛市泡沫破裂預警系統 ─────────────────────────────────────────────────
