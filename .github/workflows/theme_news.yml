@@ -6,7 +6,9 @@ name: 🔥 夜間情報採礦 (theme_news)
 
 on:
   schedule:
-    - cron: '30 22 * * 0-4'   # UTC 22:30 週日~四 = 台北 06:30 週一~五
+    # 一天兩趟(使用者要求盡量提早,但 06:30 那趟不能省 — 美股收盤在台北凌晨 4-5 點,早跑會漏隔夜新聞):
+    - cron: '30 16 * * 0-4'   # UTC 16:30 週日~四 = 台北 00:30 週一~五(前晚台股盤後新聞)
+    - cron: '30 22 * * 0-4'   # UTC 22:30 週日~四 = 台北 06:30 週一~五(補美股收盤後,開盤前最完整)
   workflow_dispatch:
 
 # 與 deploy_pages / daily_miner / fund_sweep 共用 group,避免同時 push gh-pages 撞鎖
