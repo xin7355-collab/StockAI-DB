@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -26707,6 +26707,8 @@ ${_chuPosPlan}
         if (!box) return;
         // ⚡ V54.6 加速刷價:正在填損益試算機時跳過這次刷新,不打斷使用者輸入
         if (opts.fast && document.activeElement && ['dtBuyPrice','dtSellPrice','dtLots','dtFeeDisc'].includes(document.activeElement.id)) return;
+        // 📌 V56.4 刷新保持捲動位置:記住現在滑到哪,render 完還原(舊版整頁重畫會跳回頂部)
+        const _dtScrollY = window.scrollY;
         const name = sym ? (this.getStockName(sym) || sym) : '';
         const baseRaw = (sym && this.currentSymbolId === sym) ? (this.baseRawData || this.rawDailyData || []) : [];
         const marketOpen = this.isMarketOpen();
@@ -26725,7 +26727,8 @@ ${_chuPosPlan}
             </div>`;
             return;
         }
-        if (!opts.fast) box.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">⏳ 讀取即時報價中…</div>';
+        // 📌 V56.4 只有「第一次」才顯 loading 佔位;重刷直接原地換內容(佔位會讓頁面高度塌掉 → 瀏覽器把捲動夾回頂部)
+        if (!opts.fast && !box.dataset.rendered) box.innerHTML = '<div class="text-center text-gray-500 text-xs py-6">⏳ 讀取即時報價中…</div>';
 
         // 即時報價(盤中)/ 盤後拿最近交易日快照
         let q = null;
@@ -27178,13 +27181,19 @@ ${_chuPosPlan}
             if (isDisposed) { vTone = '🔴 今天不要當沖'; vC = 'red'; vNote = '處置股分盤撮合(每5~20分成交1次),不可現股當沖。'; showPlan = false; }
             else if (notEligible) { vTone = '🟠 非當沖標的'; vC = 'orange'; vNote = '不在 TWSE 官方可當沖清單內(上櫃股另計,以券商標的表為準);不建議硬做。'; showPlan = false; }
             else if (dtAtrPct != null && dtAtrPct < 1.8) { vTone = '🟡 可沖但沒肉'; vC = 'yellow'; vNote = `一天平均波動只有 ${dtAtrPct.toFixed(1)}%,價差空間小、手續費+稅容易吃光,今天建議空手或極小量。`; }
-            else { vTone = '🟢 可以當沖'; vC = 'green'; vNote = (dtAtrPct != null ? `波動 ${dtAtrPct.toFixed(1)}% 有肉,` : '') + (dtEligible ? '官方認證可當沖,' : '') + '照下面掛單計畫、嚴設停損操作。'; }
+            else { vTone = '🟢 具備當沖條件'; vC = 'green'; vNote = (dtAtrPct != null ? `波動 ${dtAtrPct.toFixed(1)}% 有肉,` : '') + (dtEligible ? '官方認證可當沖。' : '') + '<b class="text-yellow-300">⚠️ 這不是叫你現在進場</b> — 要等下面掛單價「觸發」才動手,沒觸發就空手。'; }   // 🎨 V56.4 改名:原「可以當沖」被誤讀成「可以進場」
             const vMap = { red: 'text-red-400 border-red-500', orange: 'text-orange-400 border-orange-500', yellow: 'text-yellow-300 border-yellow-500', green: 'text-green-400 border-green-500' };
             const atrMove = Math.max(0.012, (dtAtrPct != null ? dtAtrPct / 100 : 0.03));   // 一個 ATR 幅度當停利目標(至少 1.2%)
             const useOrb = !!orb;
+            // 🐛 V56.4 漲跌停夾限:當沖當天必平倉,所有進場/停損/停利價不可能超出今日漲跌停
+            //   (實例:環球晶 -7% 時舊版給「回補 1150」,但跌停 1201.5 → 根本跌不到的目標=誤導)
+            const _clampP = v => { let p = v; if (limitUp && p > limitUp) p = limitUp; if (limitDown && p < limitDown) p = limitDown; return rt(p); };
             const longRef = rt(useOrb ? orb.high : yH), shortRef = rt(useOrb ? orb.low : yL);
-            const longEntry = longRef, longStop = rt(Math.max(yL, longEntry * (1 - 0.015))), longTgt = rt(longEntry * (1 + atrMove));
-            const shortEntry = shortRef, shortStop = rt(Math.min(yH, shortEntry * (1 + 0.015))), shortTgt = rt(shortEntry * (1 - atrMove));
+            const longEntry = _clampP(longRef), longStop = _clampP(Math.max(yL, longEntry * (1 - 0.015))), longTgt = _clampP(longEntry * (1 + atrMove));
+            const shortEntry = _clampP(shortRef), shortStop = _clampP(Math.min(yH, shortEntry * (1 + 0.015))), shortTgt = _clampP(shortEntry * (1 - atrMove));
+            const _tgtTag = (v, lim, txt) => (lim && v === rt(lim)) ? `<span class="text-[8px] text-yellow-300">(${txt})</span>` : '';
+            // ⚠️ 距漲/跌停剩餘空間不足 3% → 追單肉不夠警告(如 -7% 才想追空,離跌停只剩 3%)
+            const nearUp = distUp != null && distUp <= 3, nearDown = distDown != null && distDown <= 3;
             // 💰 V55.7 賺賠元改「淨額」:扣手續費(0.1425%×你的折數,買賣各一次)+ 當沖證交稅減半 0.15%(賣出收)
             const _fd = (this.settings?.feeDiscount >= 0.1 && this.settings?.feeDiscount <= 1) ? this.settings.feeDiscount : 0.28;
             const _dtNet = (buyP, sellP) => Math.round((sellP - buyP) * 1000 - (buyP + sellP) * 1000 * 0.001425 * _fd - sellP * 1000 * 0.0015);
@@ -27218,16 +27227,18 @@ ${_chuPosPlan}
                         <div class="text-[11px] font-black text-red-300 mb-1 flex items-center flex-wrap">📈 做多${_stat(longHit, longDist)}</div>
                         <div class="flex justify-between text-[10px] py-0.5"><span class="text-gray-400">進場</span><span class="font-mono font-black text-red-300">站上 ${longEntry.toFixed(2)}</span></div>
                         <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">停損</span><span class="font-mono font-black text-green-300">${longStop.toFixed(2)}<span class="text-gray-500"> ${longLoss}元</span></span></div>
-                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">停利</span><span class="font-mono font-black text-red-300">${longTgt.toFixed(2)}<span class="text-gray-500"> +${longWin}元</span></span></div>
+                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">停利</span><span class="font-mono font-black text-red-300">${longTgt.toFixed(2)}${_tgtTag(longTgt, limitUp, '漲停')}<span class="text-gray-500"> +${longWin}元</span></span></div>
+                        ${nearUp ? `<div class="text-[9px] text-yellow-300 mt-1 leading-snug">⚠️ 已近漲停(剩 ${distUp.toFixed(1)}%),追多肉不夠、鎖死出不掉,別追。</div>` : ''}
                     </div>
                     <div class="bg-green-900/20 border border-green-700/40 rounded p-2">
                         <div class="text-[11px] font-black text-green-300 mb-1 flex items-center flex-wrap">📉 做空${_stat(shortHit, shortDist)}</div>
                         <div class="flex justify-between text-[10px] py-0.5"><span class="text-gray-400">進場</span><span class="font-mono font-black text-green-300">跌破 ${shortEntry.toFixed(2)}</span></div>
                         <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">停損</span><span class="font-mono font-black text-red-300">${shortStop.toFixed(2)}<span class="text-gray-500"> ${shortLoss}元</span></span></div>
-                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">回補</span><span class="font-mono font-black text-green-300">${shortTgt.toFixed(2)}<span class="text-gray-500"> +${shortWin}元</span></span></div>
+                        <div class="flex justify-between text-[10px] py-0.5 border-t border-[#21262d]"><span class="text-gray-400">回補</span><span class="font-mono font-black text-green-300">${shortTgt.toFixed(2)}${_tgtTag(shortTgt, limitDown, '跌停')}<span class="text-gray-500"> +${shortWin}元</span></span></div>
+                        ${nearDown ? `<div class="text-[9px] text-yellow-300 mt-1 leading-snug">⚠️ 已近跌停(剩 ${distDown.toFixed(1)}%),追空肉不夠、隨時鎖死,別追。</div>` : ''}
                     </div>
                 </div>
-                <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">💡 別無腦掛漲停;<b class="text-gray-300">站上 ${longEntry.toFixed(2)} 才追多、跌破 ${shortEntry.toFixed(2)} 才空</b>,進場同時掛停損,<b class="text-gray-300">13:25 前平倉</b>。</div>`;
+                <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">💡 <b class="text-gray-300">掛法:</b>進場用「觸價單」(站上 ${longEntry.toFixed(2)} 觸價買/跌破 ${shortEntry.toFixed(2)} 觸價空),<b class="text-gray-300">成交後立刻掛「觸價停損」</b>;別無腦掛漲停、別用市價追,<b class="text-gray-300">13:25 前平倉</b>。</div>`;
             }
             const hero = `
             <div class="bg-[#161b22] border-2 ${vMap[vC].split(' ')[1]} rounded-lg p-3 shadow-lg">
@@ -27251,6 +27262,9 @@ ${_chuPosPlan}
         cards.push(advanced);
         cards.push(_sop);
         box.innerHTML = cards.join('');
+        box.dataset.rendered = '1';
+        // 📌 V56.4 還原捲動位置(下一影格,等瀏覽器排版完)
+        requestAnimationFrame(() => { if (Math.abs(window.scrollY - _dtScrollY) > 4) window.scrollTo(0, _dtScrollY); });
         try { this._calcDayTradePnl(); } catch (_) {}
     },
 
