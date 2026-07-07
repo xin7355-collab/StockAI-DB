@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -21015,6 +21015,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             <div class="text-xs text-amber-300 font-black mb-2 flex items-center gap-1">
                 🏆 整套系統 vs ${b.benchmark || '大盤'} <span class="text-gray-500 font-normal text-[10px]">(${data.entry_rule || '獵鷹進場'} / ${data.exit_rules || ''} / 扣手續費 ${data.cost_pct}%)</span>
             </div>
+            <div class="text-[9px] text-gray-500 -mt-1 mb-1.5 leading-snug">⚠️ 此回測驗的是「獵鷹分≥85 整套進出場紀律」,<b class="text-gray-400">不是上面送分題名單本身</b>;每天採礦自動重算。</div>
             ${(() => {
                 const bench = b.benchmark || '大盤';
                 const tm = data.trade_matched;
@@ -21038,14 +21039,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             })()}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-2">
                 <div class="bg-amber-950/30 rounded p-1.5 border border-amber-900/40">
-                    <div class="text-[9px] text-gray-500">策略累計報酬</div>
+                    <div class="text-[9px] text-gray-500">策略累計報酬 <span class="text-gray-600">(全倉理想化)</span></div>
                     <div class="font-mono font-black text-base ${arColor}">${s.cumulative_return > 0 ? '+' : ''}${s.cumulative_return}%</div>
                     <div class="text-[9px] text-gray-500">${s.total_trades} 筆 · 平均持有 ${s.avg_holding_days}日</div>
                 </div>
                 <div class="bg-amber-950/30 rounded p-1.5 border border-amber-900/40">
                     <div class="text-[9px] text-gray-500">策略年化</div>
                     <div class="font-mono font-black text-base ${annColor}">${s.annualized_return == null ? '--' : (s.annualized_return > 0 ? '+' : '') + s.annualized_return + '%'}</div>
-                    <div class="text-[9px] text-gray-500">勝率 <span class="${wrColor} font-bold">${s.win_rate}%</span> / Sharpe ${s.sharpe}</div>
+                    <div class="text-[9px] text-gray-500">勝率 <span class="${wrColor} font-bold">${s.win_rate}%</span> / Sharpe ${s.sharpe}${(+s.sharpe < 0.5) ? '<span class="text-yellow-400">(極低,靠爆賺單撐)</span>' : ''}</div>
                 </div>
                 <div class="bg-cyan-950/30 rounded p-1.5 border border-cyan-900/40">
                     <div class="text-[9px] text-gray-500">${b.benchmark || '0050'} 年化</div>
