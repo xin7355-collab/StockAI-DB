@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2318,20 +2318,20 @@
                         </div>
                     </div>
 
-                    <!-- 🎛️ 策略切換卡 (Tabs) · 2 欄 grid 一眼全覽 -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題 <span class="opacity-70">(高勝率)</span></button>
-                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70">(動能)</span></button>
-                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70">(波段)</span></button>
-                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 主力鎖股 <span class="opacity-70">(籌碼)</span></button>
-                        <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70">(風控)</span></button>
-                        <button onclick="app.openChuMasterModal(); app.vibrate(20);" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓選股</button>
-                        <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌅 K棒轉多 <span class="opacity-70">(找買點)</span></button>
-                        <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab px-3 py-2 rounded-lg text-xs font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌃 K棒轉空 <span class="opacity-70">(找賣點)</span></button>
+                    <!-- 🎛️ 策略切換卡 (Tabs) · 2 欄 grid 一眼全覽(V57.0 壓縮:鈕變矮字變小,列表早點露出) -->
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">⭐ 送分題 <span class="opacity-70 text-[9px]">(高勝率)</span></button>
+                        <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏎️ 渣男賽車 <span class="opacity-70 text-[9px]">(動能)</span></button>
+                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🐢 烏龜過河 <span class="opacity-70 text-[9px]">(波段)</span></button>
+                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 主力鎖股 <span class="opacity-70 text-[9px]">(籌碼)</span></button>
+                        <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚨 處置股 <span class="opacity-70 text-[9px]">(風控)</span></button>
+                        <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法">📚 朱家泓選股</button>
+                        <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌅 K棒轉多 <span class="opacity-70 text-[9px]">(找買點)</span></button>
+                        <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🌃 K棒轉空 <span class="opacity-70 text-[9px]">(找賣點)</span></button>
                     </div>
 
-                    <!-- 當前策略一句話說明條 -->
-                    <div id="radarMatrixHint" class="text-[11px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 leading-relaxed"></div>
+                    <!-- 當前策略一句話說明條(V57.0 預設收 2 行,點展開 — 說明別擠掉名單) -->
+                    <div id="radarMatrixHint" onclick="this.classList.toggle('max-h-10'); app.vibrate(10);" class="max-h-10 overflow-hidden cursor-pointer text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1 leading-relaxed transition-all" title="點一下展開/收合完整說明"></div>
                 </div>
 
                 <!-- ⭐ 送分題 view(layup tab 專用,預設隱藏) -->
@@ -5260,7 +5260,7 @@ ${list}
         }
         if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); this._scanWatchlistCheckup(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }
         if (tabId === 'inv') { try { this.renderInventory(); window.scrollTo(0, 0); this._startInvPricePoll(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
-        if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } }
+        if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } try { this._applyArenaChampion(); } catch(_) {} }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 觀察', e); } }
         if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
         if (tabId === 'potential') { try { this._potentialRestoreScroll = true; this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
@@ -24302,7 +24302,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     radarMatrix: null,
     _radarIsDemo: false,
 
-    _RADAR_TAB_BASE: 'radar-tab flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-all ',
+    _RADAR_TAB_BASE: 'radar-tab flex-shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap border transition-all ',   // 🎨 V57.0 壓縮:原 px-3 py-2 text-xs 8 顆鈕佔掉大半屏
     _RADAR_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
     _RADAR_TABS: {
         layup:     { id: 'radarTabLayup',     active: 'bg-yellow-600/30 text-yellow-200 border-yellow-500' },
@@ -24375,8 +24375,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this.switchRadarStrategy(this.radarStrategy || 'layup');
     },
 
-    switchRadarStrategy(key) {
+    switchRadarStrategy(key, _auto) {
         if (!this._RADAR_TABS[key]) key = 'layup';
+        if (!_auto) this._radarUserPicked = true;   // 🥇 V57.0 使用者手動切過 → 擂台冠軍不再搶預設(尊重選擇)
         this.radarStrategy = key;
         Object.entries(this._RADAR_TABS).forEach(([k, cfg]) => {
             const btn = document.getElementById(cfg.id);
@@ -24407,6 +24408,38 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             this.renderRadarMatrix(key);
         }
         this.vibrate(15);
+    },
+
+    // 🥇 V57.0 — 擂台冠軍自動接「預設模式」:讀 strategy_backtest.json 的 arena(V56.9 backtest.py 產),
+    //   期望值最高(樣本≥30,優先取「贏大盤≥50%」者)的模式自動成為選股池預設 tab + 🥇 徽章。
+    //   使用者本次手動切過 tab 就不搶;朱家泓無列表 tab 只掛徽章;尚無 arena 資料(等採礦)則靜默,下次再試。
+    async _applyArenaChampion() {
+        if (this._arenaChampDone) return;
+        try {
+            if (!this._strategyBtCache) {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/strategy_backtest.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) }).catch(() => null);
+                this._strategyBtCache = (r && r.ok) ? await r.json().catch(() => null) : null;
+            }
+            const d = this._strategyBtCache;
+            const modes = d?.arena?.modes;
+            if (!Array.isArray(modes) || !modes.length) return;
+            this._arenaChampDone = true;
+            const s = d.strategy || {};
+            const cand = [...modes, { key: 'falcon', trades: s.total_trades, expectancy: s.avg_return, beat_rate: d.trade_matched?.beat_rate }]
+                .filter(m => (m.trades || 0) >= 30 && m.expectancy != null);
+            if (!cand.length) return;
+            const good = cand.filter(m => (m.beat_rate ?? 0) >= 50);
+            const pool = good.length ? good : cand;
+            pool.sort((a, b) => b.expectancy - a.expectancy);
+            const champ = pool[0];
+            const tabMap = { layup: 'layup', falcon: 'layup', racer: 'momentum', turtle: 'swing', chu: null };
+            const btnMap = { layup: 'radarTabLayup', falcon: 'radarTabLayup', racer: 'radarTabMomentum', turtle: 'radarTabSwing', chu: 'radarTabChu' };
+            const btn = document.getElementById(btnMap[champ.key]);
+            if (btn && !btn.innerHTML.includes('🥇')) { btn.innerHTML = '🥇' + btn.innerHTML; btn.title = `擂台冠軍:期望值 ${champ.expectancy > 0 ? '+' : ''}${(+champ.expectancy).toFixed(2)}%/筆(樣本 ${champ.trades} 筆),已自動設為預設`; }
+            const tab = tabMap[champ.key];
+            if (tab && !this._radarUserPicked && this.radarStrategy !== tab) this.switchRadarStrategy(tab, true);
+        } catch (_) {}
     },
 
     // V32.3 — 雷達戰區回測勝率小字:僅送分題/獵鷹有回測(signal_history.json);其餘即時掃描誠實標未回測
