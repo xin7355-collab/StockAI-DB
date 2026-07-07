@@ -1835,15 +1835,28 @@ def main():
     except Exception as e:
         print(f"  ⚠️ 斷崖防護讀舊檔失敗：{e}（不影響本次寫檔）")
 
-    # 🛡️ V27.8 — 全球指數/升貼水「離譜值守門」:超出合理範圍 = yfinance/來源誤值(如 KOSPI 8411、
-    #          日經 69360、升貼水 +1972)→ 設 None(前端顯 --);放斷崖防護「之後」,連昨日殘留壞值也一起擋。
+    # 🛡️ V27.8 — 全球指數/升貼水「離譜值守門」:超出合理範圍 = yfinance/來源誤值 → 設 None(前端顯 --);
+    #          放斷崖防護「之後」,連昨日殘留壞值也一起擋。
+    # 🐛 V57.7 — 絕對上限會過時!2026-07 日經真的漲到 68k、KOSPI 7.6k,被舊上限(65000/6000)每天誤殺
+    #          → 前端「採集中」永不復原。改法:絕對範圍只留「數量級」超寬底線(擋 KOSPI 回成日經點位那種錯),
+    #          精準守門改用「與上一份有效值比,單日 ±25% 不可能(熔斷都到不了)」的相對判斷,永不過時。
     try:
-        _INDEX_SANITY = {'nikkei': (15000, 65000), 'kospi': (1000, 6000), 'hsi': (8000, 40000),
-                         'sp500': (2000, 13000), 'nasdaq': (6000, 40000)}
+        _INDEX_SANITY = {'nikkei': (8000, 200000), 'kospi': (800, 30000), 'hsi': (5000, 90000),
+                         'sp500': (1500, 40000), 'nasdaq': (4000, 120000)}
+        _prev_idx = prev if isinstance(prev, dict) else {}
         for _k, (_lo, _hi) in _INDEX_SANITY.items():
             _v = out.get(_k)
-            if isinstance(_v, (int, float)) and not (_lo <= _v <= _hi):
-                print(f"  ⚠️ {_k}={_v} 超出合理範圍 [{_lo},{_hi}] → 判定來源誤值,設 None(不顯壞值)")
+            if not isinstance(_v, (int, float)):
+                continue
+            _bad_reason = None
+            if not (_lo <= _v <= _hi):
+                _bad_reason = f"超出數量級範圍 [{_lo},{_hi}]"
+            else:
+                _pv = _prev_idx.get(_k)
+                if isinstance(_pv, (int, float)) and _pv > 0 and abs(_v / _pv - 1) > 0.25:
+                    _bad_reason = f"與上次有效值 {_pv} 差 {abs(_v / _pv - 1) * 100:.0f}%(單日不可能)"
+            if _bad_reason:
+                print(f"  ⚠️ {_k}={_v} {_bad_reason} → 判定來源誤值,設 None(不顯壞值)")
                 out[_k] = None
                 out[f"{_k}_chg_pct"] = None
         _tb = out.get('taifex_backwardation')

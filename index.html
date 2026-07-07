@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -95,8 +95,9 @@
         summary { list-style: none; }
         summary::-webkit-details-marker { display: none; }
         details[open] > summary .dchev { transform: rotate(180deg); }
-        /* V44.3 — 頂部跑馬燈(風險+regime+黑天鵝合併捲動),內容重複2份 + translateX(-50%) 無縫循環 */
-        .marquee-track { display: inline-block; white-space: nowrap; animation: ticker 38s linear infinite; will-change: transform; }
+        /* V44.3 — 頂部跑馬燈(風險+regime+黑天鵝合併捲動),內容重複2份 + translateX(-50%) 無縫
+           V57.7 — 使用者要求:跑一趟就自動收起 → iteration 改 1(animationend 由 JS 收 banner,內容變了才再播) */
+        .marquee-track { display: inline-block; white-space: nowrap; animation: ticker 38s linear 1 forwards; will-change: transform; }
         @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .marquee-wrap:active .marquee-track { animation-play-state: paused; }
 
@@ -295,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4243,13 +4244,23 @@ ${list}
             if (typeof mr.taiex_ma240_bias === 'number' && mr.taiex_ma240_bias > 20) segs.push(mr.taiex_bubble_msg || `📈 台股年線乖離 ${_fs(mr.taiex_ma240_bias)},極端貪婪泡沫區,買入極度克制`);
         } catch (_) {}
         const txt = segs.join('　　◆　　');
+        // 🎬 V57.7 — 跑一趟就自動收起:同內容本次 session 只播一遍(資料刷新重呼叫也不重播);內容變了(新警報)才再播一趟
+        if (this._marqueeDoneTxt === txt) { banner.classList.add('hidden'); return; }
         const accent = score >= 80 ? 'bg-red-950/90 text-red-200 border-red-700'
                      : score >= 60 ? 'bg-orange-950/85 text-orange-200 border-orange-800'
                      : score >= 40 ? 'bg-yellow-950/70 text-yellow-100 border-yellow-800'
                      : 'bg-[#0d1117] text-gray-300 border-[#30363d]';
         banner.className = `flex items-center overflow-hidden border-b ${accent}`;
-        banner.innerHTML = `<div class="marquee-wrap flex-1 overflow-hidden"><div class="marquee-track text-[11px] font-bold py-1">${txt}　　◆　　${txt}</div></div><button onclick="document.getElementById('marketAlertBanner').classList.add('hidden')" class="px-2 opacity-70 hover:opacity-100 font-black leading-none flex-shrink-0 text-sm">✕</button>`;
+        // 🐛 V57.7 順便修:✕ 手動關掉也要記「這條內容看過了」,否則下次資料刷新又跳出來
+        this._marqueeLastTxt = txt;
+        banner.innerHTML = `<div class="marquee-wrap flex-1 overflow-hidden"><div class="marquee-track text-[11px] font-bold py-1">${txt}　　◆　　${txt}</div></div><button onclick="app._marqueeDoneTxt=app._marqueeLastTxt;document.getElementById('marketAlertBanner').classList.add('hidden')" class="px-2 opacity-70 hover:opacity-100 font-black leading-none flex-shrink-0 text-sm">✕</button>`;
         banner.classList.remove('hidden');
+        try {
+            banner.querySelector('.marquee-track').addEventListener('animationend', () => {
+                this._marqueeDoneTxt = txt;
+                banner.classList.add('hidden');
+            }, { once: true });
+        } catch (_) {}
     },
 
     toggleManualPriceInput() {
@@ -11138,6 +11149,7 @@ const marginByDate = {};
         // 🐛 V40.0 外資台指期極空(≤-4萬口)時不可硬說「外資沒大空」(實測 -83,063 口卻顯偏多致矛盾)→ 動態加註
         const _fiBigShort = (fi != null && fi <= -40000);
         const _fiNote = _fiBigShort ? `惟外資台指期 ${(fi / 10000).toFixed(1)} 萬口仍極空` : '外資沒大空';
+        s = Math.round(s * 10) / 10;   // 🐛 V57.7 順便修:0.5 權重連加的浮點誤差(避免顯示 -7.000000000000001)
         let light, verdict, vColor, summary;
         if (s >= 3) { light = '🟢'; verdict = '開高偏多'; vColor = 'red'; summary = `隔夜美股+台積電 ADR 偏強、${_fiNote},今天台股有機會開高;${_fiBigShort ? '順勢但開高別追高,外資台指期仍掛大空單,慎防開高走低、賣壓回測支撐。' : '順勢操作但別追高,留意上方壓力。'}`; }
         else if (s <= -3) { light = '🔴'; verdict = '開低偏空'; vColor = 'green'; summary = '隔夜美股/ADR 偏弱或外資偏空,今天台股開低機率高;手上有貨顧好停損,空手別急著接刀。'; }
@@ -11309,9 +11321,20 @@ const marginByDate = {};
                         <div class="text-xl font-black ${sc} leading-none">${verdict}</div>
                     </div>
                     <div class="text-right flex-shrink-0 pl-2 border-l border-[#30363d]">
-                        <div class="font-mono font-black text-2xl ${sc} leading-none">${s > 0 ? '+' : ''}${s}</div>
+                        <div class="font-mono font-black text-base ${sc} leading-none">${s > 0 ? '+' : ''}${s}<span class="text-[9px] font-normal text-gray-500"> 分</span></div>
                         <div class="text-[8px] text-gray-500 mt-0.5">方向分數</div>
                     </div>
+                </div>
+                <!-- 📊 V57.7 方向分數量條(使用者要求:-7 大字改量條;±10 分滿格,紅右偏多/綠左偏空,台股色) -->
+                <div class="mt-2 flex items-center gap-1.5">
+                    <span class="text-[8px] text-green-400 font-bold flex-shrink-0">偏空</span>
+                    <div class="relative flex-1 h-2 bg-[#21262d] rounded-full overflow-hidden">
+                        ${s >= 0
+                            ? `<div class="absolute inset-y-0 left-1/2 bg-red-500/80 rounded-r-full" style="width:${Math.min(50, Math.abs(s) / 10 * 50).toFixed(1)}%"></div>`
+                            : `<div class="absolute inset-y-0 right-1/2 bg-green-500/80 rounded-l-full" style="width:${Math.min(50, Math.abs(s) / 10 * 50).toFixed(1)}%"></div>`}
+                        <div class="absolute inset-y-0 left-1/2 w-px bg-gray-500"></div>
+                    </div>
+                    <span class="text-[8px] text-red-400 font-bold flex-shrink-0">偏多</span>
                 </div>
                 <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed"><span class="${sc} font-bold">💡 </span>${summary}</div>
             </div>
@@ -20107,7 +20130,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             { id: 'bpNasdaq', type: 'nasdaq', val: j.nasdaq,    chg: j.nasdaq_chg_pct, decim: 0 },
         ];
         // V27.8 — 前端防呆:離譜指數值(後端萬一漏接守門)顯 ⚠️ 提示,不直接誤導當真
-        const _FE_SANITY = { nikkei:[15000,65000], kospi:[1000,6000], hsi:[8000,40000], sp500:[2000,13000], nasdaq:[6000,40000] };
+        // 🐛 V57.7 — 絕對上限會過時(2026-07 日經真到 68k、KOSPI 7.6k 被舊上限誤標 ⚠️)→ 放寬成「數量級」底線,精準守門交給後端相對判斷
+        const _FE_SANITY = { nikkei:[8000,200000], kospi:[800,30000], hsi:[5000,90000], sp500:[1500,40000], nasdaq:[4000,120000] };
         let nullCnt = 0;
         ITEMS.forEach(it => {
             const v = num(it.val), c = num(it.chg);
