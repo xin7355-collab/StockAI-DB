@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V56.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V56.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V56.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1282,7 +1282,7 @@
                 <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-2 shadow-lg">
                     <div class="flex items-center justify-between mb-1.5">
                         <div class="text-sm font-black text-cyan-300 flex items-center gap-1.5">⚡ 盤中即時分鐘K</div>
-                        <button onclick="alert('【盤中即時分鐘K】\n\n這是「當天盤中」的分鐘K棒圖(1分/5分),讓你看盤中即時走勢、量能有沒有進來,不用等收盤。\n\n📊 資料來源:免費 Fugle 行情 API(你設定頁填的 token),零採礦。\n⏰ 只有盤中(09:00–13:30)抓得到當天即時分鐘K;非盤中會顯示最近一個交易日的分鐘K(靜態)。\n🔄 免費版有流量限制,所以做成「手動按鈕更新」,不會自己一直跳。想看即時就按一下「載入/更新盤中K」。\n\n下方摘要:\n• 估量達標度%:用目前累計量線性外推今天收盤量,對比昨天總量(80%以上=量能有進來)。\n• 內外盤買賣力道:用五檔委買/委賣量估主力當下偏多偏空(盤中估算,真實分點以收盤後為準)。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 說明</button>
+                        <button onclick="alert('【盤中即時分鐘K】\n\n這是「當天盤中」的分鐘K棒圖(1分/5分),讓你看盤中即時走勢、量能有沒有進來,不用等收盤。\n\n📊 資料來源:免費 Fugle 行情 API(你設定頁填的 token),零採礦。\n⏰ 只有盤中(09:00–13:30)抓得到當天即時分鐘K;非盤中會顯示最近一個交易日的分鐘K(靜態)。\n🔄 免費版有流量限制,所以做成「手動按鈕更新」,不會自己一直跳。想看即時就按一下「載入/更新盤中K」。\n\n下方摘要:\n• 估量達標度%:用目前累計量搭配「分時量能曲線」(開盤爆量的U型)推估今天收盤量,對比昨天總量(80%以上=量能有進來)。\n• 內外盤買賣力道:用五檔委買/委賣量估主力當下偏多偏空(盤中估算,真實分點以收盤後為準)。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 說明</button>
                     </div>
                     <div class="flex items-center gap-2 mb-1.5">
                         <div class="flex bg-[#0d1117] rounded border border-[#30363d] overflow-hidden flex-shrink-0">
@@ -19541,21 +19541,37 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     // 朱老師盤中心法配套:預估量達標 + 即時位階燈 + 完美買點 + 高檔回吐警告
     // 全部用 Fugle quote + 本地昨日 K 推算,不接 5/15 分 K(留 Phase B)
 
-    // 盤中已過交易分鐘(09:00-13:30 - 午休 11:30-13:00,共 270 分鐘)
+    // 盤中已過交易分鐘(台股 09:00-13:30「連續交易」共 270 分鐘)
+    // 🐛 V56.3 修:原本把 11:30-13:00 當「午休」凍結 — 那是陸股/港股制,台股沒有午休!
+    //   舊版凍結後 elapsed 最多 180 分、公式卻乘 270 → 下午估量永遠高估 1.5 倍
     _chuElapsedMinutes() {
         const now = new Date();
         const day = now.getDay();
         if (day === 0 || day === 6) return null;
         const h = now.getHours(), m = now.getMinutes();
         const t = h * 60 + m;
-        const open = 9 * 60, lunchStart = 11 * 60 + 30, lunchEnd = 13 * 60, close = 13 * 60 + 30;
+        const open = 9 * 60, close = 13 * 60 + 30;
         if (t < open || t > close) return null;
-        if (t <= lunchStart) return t - open;                          // 早盤
-        if (t <= lunchEnd)   return lunchStart - open;                  // 午休(凍結 150 分)
-        return (lunchStart - open) + (t - lunchEnd);                    // 午盤
+        return t - open;
     },
 
-    // B1. 預估量達標度 — 線性外推:預估總量 = 累計量 × 270 / 已過分鐘
+    // 🧮 V56.3 — 台股分時量能曲線(U型):開盤爆量、盤中清淡、尾盤收盤集合競價再放量。
+    //   回傳「到第 elapsed 分鐘時,通常已走完全日量的比例」(市場典型值,對齊專業 App 估法)。
+    //   純線性外推在開盤初期會灌水 5-6 倍(09:10 通常已走完全日 ~23% 的量,不是 10/270=3.7%)。
+    _twVolCurveFrac(elapsed) {
+        const pts = [[0, 0], [5, 0.15], [10, 0.23], [15, 0.28], [30, 0.37], [60, 0.48], [90, 0.56], [120, 0.63], [150, 0.69], [180, 0.75], [210, 0.81], [240, 0.88], [265, 0.95], [270, 1]];
+        if (elapsed == null || elapsed <= 0) return 0;
+        if (elapsed >= 270) return 1;
+        for (let i = 1; i < pts.length; i++) {
+            if (elapsed <= pts[i][0]) {
+                const x0 = pts[i - 1][0], y0 = pts[i - 1][1], x1 = pts[i][0], y1 = pts[i][1];
+                return y0 + (y1 - y0) * (elapsed - x0) / (x1 - x0);
+            }
+        }
+        return 1;
+    },
+
+    // B1. 預估量達標度 — V56.3 改「分時量能曲線」推估:預估總量 = 累計量 ÷ 該時點典型累計比例(取代線性外推)
     _chuVolumeProgress(fugleData, baseRawData) {
         if (!fugleData || !baseRawData || !baseRawData.length) return null;
         const cur = Number(fugleData.volume) || 0;
@@ -19574,7 +19590,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const prevVolRaw = Number((lastIsToday && prevBar ? prevBar : lastBar).volume) || 0;
         const prevVol = prevVolRaw < 1_000_000 ? Math.round(prevVolRaw) : Math.round(prevVolRaw / 1000);
         if (!elapsed || elapsed < 5 || !prevVol || !cur) return { cur, prevVol, estimated: null, pct: null, lamp: 'gray' };
-        const estimated = Math.round(cur * 270 / elapsed);
+        const frac = this._twVolCurveFrac(elapsed);
+        const estimated = frac > 0 ? Math.round(cur / frac) : null;
+        if (estimated == null) return { cur, prevVol, estimated: null, pct: null, lamp: 'gray' };
         const pct = prevVol > 0 ? (estimated / prevVol * 100) : 0;
         const lamp = pct >= 80 ? 'green' : pct >= 50 ? 'yellow' : 'red';
         return { cur, prevVol, estimated, pct, lamp, elapsed };
@@ -19678,12 +19696,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         box.innerHTML = `
             <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[11px] font-bold text-cyan-300">⚡ 朱老師盤中即時雷達</span>
-                <span class="text-[9px] text-gray-500 font-mono">${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} · 線性外推</span>
+                <span class="text-[9px] text-gray-500 font-mono">${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} · 分時量能曲線</span>
             </div>
             <div class="flex gap-1.5 mb-1.5">${volBlock}${posBlock}</div>
             ${perfectBlock}
             ${exitDeltaBlock ? '<div class="mt-1.5">' + exitDeltaBlock + '</div>' : ''}
-            <div class="mt-1.5 text-[9px] text-gray-600 leading-tight">💡 預估量為線性外推估算(10:30 後最準);朱老師盤中心法重點是<b>「量達標 + 位階 +2-3%」</b>同時成立才進場,缺一不可。</div>
+            <div class="mt-1.5 text-[9px] text-gray-600 leading-tight">💡 預估量用「分時量能曲線」推估(開盤爆量已修正,不再灌水;越晚越準);朱老師盤中心法重點是<b>「量達標 + 位階 +2-3%」</b>同時成立才進場,缺一不可。</div>
         `;
     },
 
@@ -27067,7 +27085,7 @@ ${_chuPosPlan}
             <div class="text-[10px] text-gray-400 mb-2">預估 ${fmtV(vp.estimated)} ・ 昨量 ${fmtV(vp.prevVol)} ・ 已成交 ${fmtV(vp.cur)}(${vp.elapsed} 分鐘）</div>
             <div class="bg-[#0d1117] border-l-4 ${vB} pl-2.5 py-1.5 rounded-r"><div class="text-[10px] text-gray-300 leading-relaxed">💡 ${vp.pct >= 80 ? '量能充足(≥80%),波動夠當沖有肉;有量的方向才可靠。' : vp.pct >= 50 ? '量能中等,行情不夠奔放,當沖獲利空間有限,單量放小。' : '量縮(<50%)→ 波動小、易被假動作洗,當沖勝率低,寧可空手。'}</div></div>`;
         } else {
-            volInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 盤中開盤 5 分鐘後,用「已成交量 × 270 / 已過分鐘」線性外推預估收盤量,對比昨量算達標度。當沖要「有量才有波動」,達標度 ≥80% 才夠奔放。</div></div>`;
+            volInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 盤中開盤 5 分鐘後,用「分時量能曲線」(開盤爆量、盤中清淡的 U 型)推估收盤量,對比昨量算達標度。當沖要「有量才有波動」,達標度 ≥80% 才夠奔放。</div></div>`;
         }
         detail.push(`
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
