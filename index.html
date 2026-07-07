@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V57.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V57.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -295,7 +295,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V57.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1028,6 +1028,8 @@
                 <div id="todayOrderCard" class="hidden"></div>
                 <!-- 🎯 V55.4 — 現在該怎麼做(朱式買點直判:回後買上漲 → 進場/等/別追,附進場價+停損+勝率) -->
                 <div id="chuActionCard" class="hidden"></div>
+                <!-- 🌡️ V57.3 — 盤中 vs 大盤:這檔的漲跌是大盤害的還是自己出事?(相對強弱+連動度+族群對照,一句話結論) -->
+                <div id="mktCompareCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-2.5"></div>
                 <!-- 🃏 V55.7 — 打法雷達:這檔回測期望值最高的打法「觸發中/等訊號」直判 + 進場/停損/目標算好 -->
                 <div id="playbookRadarCard" class="hidden"></div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
@@ -13782,6 +13784,117 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
+    // 🌡️ V57.3 — 盤中 vs 大盤判讀:這檔的漲跌是「大盤害的」還是「自己出事」?
+    //   三層純公式:①相對強弱(個股% vs 大盤%,含近60日連動度推「照理該跌多少」)
+    //   ②族群對照(概念領頭羊 2 檔即時) ③一句話結論(給信心或警告,持股接停損線講)
+    //   大盤%:Fugle 加權指數 IX0001 即時優先,失敗退 macro 快取(標「非即時」);全程守門絕不炸主流程
+    async renderMktCompare(data) {
+        const el = document.getElementById('mktCompareCard');
+        if (!el) return;
+        const sym = this.currentSymbolId;
+        try {
+            if (!sym || !Array.isArray(data) || data.length < 30) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+            const lastB = data[data.length - 1], prevB = data[data.length - 2];
+            const pC = +(lastB.close ?? lastB.c) || 0;
+            const prevC = (this._fuglePrevClose > 0) ? this._fuglePrevClose : (+(prevB?.close ?? prevB?.c) || 0);
+            if (!pC || !prevC) { el.classList.add('hidden'); return; }
+            const stkPct = (pC - prevC) / prevC * 100;
+            // 大盤今日%
+            let mktPct = null, mktLive = false;
+            try {
+                const q = await this.fetchFugleData('IX0001');
+                if (q && q.price > 0 && !q.isHistorical && q.prevClose > 0) { mktPct = (q.price - q.prevClose) / q.prevClose * 100; mktLive = true; }
+            } catch (_) {}
+            if (mktPct == null && this._taiexTodayPct != null && Number.isFinite(this._taiexTodayPct)) mktPct = this._taiexTodayPct;
+            if (this.currentSymbolId !== sym) return;
+            if (mktPct == null) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+            // 連動度(近60日日報酬迴歸斜率);大盤序列缺/對不齊 → 退用純相對強弱
+            let beta = 1.0, betaOk = false;
+            try {
+                const tx = this._macroTaiexSeries;
+                if (Array.isArray(tx) && tx.length >= 40) {
+                    const mMap = {};
+                    tx.forEach(r => { const d = String(r.date || '').replace(/\//g, '-'); if (d && +r.close > 0) mMap[d] = +r.close; });
+                    const xs = [], ys = [];
+                    for (let i = Math.max(1, data.length - 60); i < data.length; i++) {
+                        const d0 = String(data[i - 1].date || '').replace(/\//g, '-'), d1 = String(data[i].date || '').replace(/\//g, '-');
+                        const m0 = mMap[d0], m1 = mMap[d1];
+                        const c0 = +(data[i - 1].close ?? data[i - 1].c ?? 0), c1 = +(data[i].close ?? data[i].c ?? 0);
+                        if (m0 > 0 && m1 > 0 && c0 > 0 && c1 > 0) { xs.push((m1 - m0) / m0 * 100); ys.push((c1 - c0) / c0 * 100); }
+                    }
+                    if (xs.length >= 30) {
+                        const mx = xs.reduce((a, b) => a + b, 0) / xs.length, my = ys.reduce((a, b) => a + b, 0) / ys.length;
+                        let cov = 0, varx = 0;
+                        for (let i = 0; i < xs.length; i++) { cov += (xs[i] - mx) * (ys[i] - my); varx += (xs[i] - mx) ** 2; }
+                        if (varx > 0 && Number.isFinite(cov / varx)) { beta = Math.max(-3, Math.min(3, cov / varx)); betaOk = true; }
+                    }
+                }
+            } catch (_) {}
+            const expPct = betaOk ? beta * mktPct : mktPct;   // 照連動性「照理該」的幅度
+            const excess = stkPct - expPct;
+            // 族群對照:第一個有領頭羊資料的概念,抓 2 檔同儕即時(排除自己,120ms 節流)
+            let grpPct = null, grpName = '';
+            try {
+                const { concepts } = this._getStockConcepts(sym);
+                const radar = await this._loadRadarJson();
+                const leaders = radar?.data?.concept_leaders || {};
+                const lkeys = Object.keys(leaders);
+                for (const c of (concepts || []).slice(0, 4)) {
+                    const lk = lkeys.find(k => k === c) || lkeys.find(k => k.includes(c) || c.includes(k));
+                    if (!lk) continue;
+                    const peers = (leaders[lk] || []).filter(x => x && x.sym !== sym).slice(0, 2);
+                    if (!peers.length) continue;
+                    const ps = [];
+                    for (const p of peers) {
+                        try {
+                            const q = await this.fetchFugleData(p.sym);
+                            if (q && q.price > 0 && !q.isHistorical && q.prevClose > 0) ps.push((q.price - q.prevClose) / q.prevClose * 100);
+                        } catch (_) {}
+                        await new Promise(r => setTimeout(r, 120));
+                    }
+                    if (ps.length) { grpPct = ps.reduce((a, b) => a + b, 0) / ps.length; grpName = c; }
+                    break;
+                }
+            } catch (_) {}
+            if (this.currentSymbolId !== sym) return;
+            // 持股 → 結論接停損線講(給信心要具體)
+            let slTxt = '';
+            try {
+                const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+                const pos = inv.find(i => i.symbol === sym && +i.cost > 0);
+                if (pos) { const uni = this._unifiedExitPlan(data, +pos.cost); if (uni?.stopFinal) slTxt = `,守好停損 ${uni.stopFinal.toFixed(2)} 就好、別自己嚇自己`; }
+            } catch (_) {}
+            const f1 = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+            const expTxt = betaOk ? `以它跟大盤的連動性照理該 ${f1(expPct)},實際 ${f1(stkPct)}` : `它 ${f1(stkPct)}`;
+            const grpDownTxt = (grpPct != null && grpPct <= -0.5) ? `、族群(${grpName})也在跌 ${f1(grpPct)}` : '';
+            const askBtn = `<button onclick="app._wkAskWhy('${sym}'); app.vibrate(20);" class="ml-1 text-[9px] font-bold text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-1 py-0.5">🔎 查利空</button>`;
+            let tone, bcls, msg;
+            if (mktPct <= -0.3 && excess <= -0.8 && !(grpPct != null && grpPct <= -0.5)) {
+                tone = '🔴'; bcls = 'border-red-500';
+                msg = `大盤只跌 ${f1(mktPct)},${expTxt} — <b>跌得比大盤和族群都兇,可能是個股自己的事</b>,先查有沒有利空再決定。${askBtn}`;
+            } else if (mktPct <= -0.3 && stkPct <= 0.2) {
+                tone = '🟢'; bcls = 'border-green-500';
+                msg = `大盤跌 ${f1(mktPct)} 拖累${grpDownTxt} — ${expTxt}${excess >= 0.8 ? ',<b>比預期抗跌</b>(有買盤在接)' : ',跟著大盤走而已'}。<b>不是這檔自己出事</b>${slTxt}。`;
+            } else if (mktPct >= 0.3 && excess <= -0.8) {
+                tone = '🟡'; bcls = 'border-yellow-500';
+                msg = `大盤漲 ${f1(mktPct)} 它卻只有 ${f1(stkPct)} — <b>資金今天不在這</b>,別急著加碼,等它跟上再說。`;
+            } else if (mktPct >= 0.3 && excess >= 0.8) {
+                tone = '🔥'; bcls = 'border-red-500';
+                msg = `大盤漲 ${f1(mktPct)},它更強(${f1(stkPct)}${grpPct != null && grpPct >= 0.5 ? `,族群 ${grpName} 也同步 ${f1(grpPct)}` : ''}) — <b>主流資金股</b>,沿 5 日線抱、別亂下車。`;
+            } else {
+                tone = '⚪'; bcls = 'border-gray-600';
+                msg = `與大盤同步(大盤 ${f1(mktPct)}、它 ${f1(stkPct)}${grpPct != null ? `、族群 ${f1(grpPct)}` : ''}),沒有特別強弱 — 看上面自身訊號操作即可。`;
+            }
+            el.innerHTML = `
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] font-black text-gray-400">🌡️ 本股 vs 大盤${this.isMarketOpen() ? '' : '(以最近收盤計)'}${(!mktLive && this.isMarketOpen()) ? ' <span class="text-[8px] text-gray-600">大盤非即時</span>' : ''}</span>
+                    <span class="text-[9px] font-mono text-gray-500">本股 ${f1(stkPct)}・大盤 ${f1(mktPct)}${grpPct != null ? `・族群 ${f1(grpPct)}` : ''}</span>
+                </div>
+                <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r"><div class="text-[11px] text-gray-200 leading-relaxed">${tone} ${msg}</div></div>`;
+            el.classList.remove('hidden');
+        } catch (_) { try { el.classList.add('hidden'); } catch (__) {} }
+    },
+
     // 🃏 V55.7 — 打法雷達(總覽置頂):用回測頁同一套「型態實戰回測排名」,直接告訴使用者
     //   「這檔最會賺的打法現在觸發了沒」+ 進場/停損/目標/每張淨賺賠 全算好(使用者要:別讓我自己拼)
     renderPlaybookRadar(data) {
@@ -21889,6 +22002,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this._renderStockEarningsReminder(this.currentSymbolId); } catch (_) {}   // 📢 V51.6 法說會提醒(現價下方,2 交易日內)
         try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日操作重點(首席頁置頂)
         try { this.renderChuActionCard(data); } catch (_) {}   // 🎯 V55.4 現在該怎麼做(朱式買點直判)
+        try { this.renderMktCompare(data); } catch (_) {}      // 🌡️ V57.3 本股 vs 大盤(async 自跑,不卡主流程)
         try { this.renderPlaybookRadar(data); } catch (_) {}   // 🃏 V55.7 打法雷達(主打打法觸發了沒+點位算好)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
