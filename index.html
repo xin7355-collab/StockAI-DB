@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -11114,7 +11114,17 @@ const marginByDate = {};
         // 🐛 V40.8 DOM relay 顯「--」占位時是 truthy → 卡住 macro_cache fallback(加權明明有值卻顯 --)。只認「含數字」的 DOM 值,否則改用 macro_cache
         const gNum = id => { const v = g(id); return (v && /\d/.test(v)) ? v : ''; };
         const twii = gNum('mktTWII') || (usm.twii?.close != null ? (+usm.twii.close).toFixed(0) : ''), twiiChg = gNum('mktTWII_chg') || (pctStr(usPct('twii')) || '');
-        const twoii = gNum('mktTWOII') || (usm.twoii?.close != null ? (+usm.twoii.close).toFixed(2) : ''), twoiiChg = gNum('mktTWOII_chg') || (pctStr(usPct('twoii')) || '');   // 🐛 V40.1 櫃買讀 macro_cache.twoii(採礦端官方 TPEX 補)
+        let twoii = gNum('mktTWOII') || (usm.twoii?.close != null ? (+usm.twoii.close).toFixed(2) : ''), twoiiChg = gNum('mktTWOII_chg') || (pctStr(usPct('twoii')) || '');   // 🐛 V40.1 櫃買讀 macro_cache.twoii(採礦端官方 TPEX 補)
+        // 🐛 V58.5 修「櫃買永遠採集中」:FinMind 匿名常 429 → 補 Fugle 櫃買指數 IX0043 備援(同加權 IX0001 已實證可用)
+        if (!twoii) {
+            try {
+                const _qo = await this.fetchFugleData('IX0043');
+                if (_qo && +_qo.price > 0) {
+                    twoii = (+_qo.price).toFixed(2);
+                    if (+_qo.prevClose > 0) { const _c = (+_qo.price - +_qo.prevClose) / +_qo.prevClose * 100; twoiiChg = `${_c >= 0 ? '+' : ''}${_c.toFixed(2)}%`; }
+                }
+            } catch (_) {}
+        }
         const djiChg = pctStr(usPct('dji')) || '', ndxChg = pctStr(usPct('nasdaq')) || '', spxChg = pctStr(usPct('sp500')) || '', soxChg = pctStr(usPct('sox')) || '', tsmChg = pctStr(usPct('tsm')) || '';
         const vix = (usm.vix?.close != null) ? (+usm.vix.close).toFixed(2) : '';
         const fi = this.fiShortQty;
@@ -11388,15 +11398,15 @@ const marginByDate = {};
                     </div>
                     <div class="text-right flex-shrink-0 pl-2 border-l border-[#30363d]">
                         <div class="font-mono font-black text-xl ${sc} leading-none">${sPct}<span class="text-[9px] font-normal text-gray-500">/100</span></div>
-                        <div class="text-[8px] text-gray-500 mt-0.5">開盤風向</div>
+                        <div class="text-[8px] ${sc} mt-0.5 font-bold">${sPct <= 15 ? '極度偏空' : sPct <= 35 ? '偏空' : sPct < 65 ? '中性' : sPct < 85 ? '偏多' : '極度偏多'}</div>
                     </div>
                 </div>
-                <!-- 📊 V57.9 開盤風向量條(0~100 直填,50=中性;分數幾分條就填到幾 %,一眼對得上) -->
+                <!-- 📊 V57.9 開盤風向量條(0~100 直填,50=中性);V58.5 修 0 分空條看似壞掉 → 最少填 2% 顯示色塊 -->
                 ${(() => {
                     const _zone = sPct >= 65 ? '#f87171' : sPct <= 35 ? '#4ade80' : '#facc15';
                     return `<div class="mt-2">
                         <div class="relative" style="height:9px;background:#21262d;border-radius:9999px;">
-                            <div style="position:absolute;top:0;bottom:0;left:0;width:${sPct}%;background:${_zone};opacity:.85;border-radius:9999px;"></div>
+                            <div style="position:absolute;top:0;bottom:0;left:0;width:${Math.max(sPct, 2)}%;background:${_zone};opacity:.85;border-radius:9999px;"></div>
                             <div style="position:absolute;top:-2px;bottom:-2px;left:50%;width:2px;margin-left:-1px;background:#8b949e;border-radius:1px;"></div>
                         </div>
                         <div class="flex justify-between mt-0.5 text-[8px]"><span class="text-green-400 font-bold">0 偏空</span><span class="text-gray-500">50 中性</span><span class="text-red-400 font-bold">偏多 100</span></div>
@@ -11452,7 +11462,7 @@ const marginByDate = {};
                 ${levelsHtml}
               </div>
             </details>
-            <div class="text-[9px] text-gray-600 leading-snug mt-1">🔧 仍採集中:櫃買指數、台指期夜盤源修復(下次採礦補)・標「採集中」者下次 16:30 採礦後自動補上 ・ 點「加權」看大盤完整 K 棒戰法 ・ 純公式僅供參考</div>`;
+            `;
         el.classList.remove('hidden');
     },
 
