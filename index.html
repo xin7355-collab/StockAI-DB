@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.6(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -11108,8 +11108,23 @@ const marginByDate = {};
             }
         } catch (_) {}
 
-        // ① 指數值:US 大盤直接讀 macro_cache 物件(數值最可靠,不靠 DOM relay);加權/櫃買用 processMacroData DOM,加權再以 macro_cache.twii 補
-        const usPct = k => { const c = usm[k]?.chg_pct; return (c == null || isNaN(c)) ? null : +c; };
+        // 🐛 V58.7 修「盤前體檢美股停在舊交易日」大 bug:
+        //   macro_cache.json(miner.py 產)的美股區塊會 stale(實測停在 07-07 崩盤日),但 macro_risk.json
+        //   (macro_miner.py,每 4hr cron)的美股是新鮮的。判反的症狀:費半/台積ADR 顯兩天前崩盤 -4.65%,
+        //   實際當日反彈 +2%,害「開盤預判」用舊崩盤數據算成「極度偏空 0 分」。
+        //   偵測:兩檔 sp500 漲跌不一致 = macro_cache 是較舊的交易日 → 過期。
+        //   ① sp500/nasdaq/vix/dji/sox/tsm/asx/umc 一律優先讀 macro_risk 的新鮮值(採礦端 V58.7 已補齊)
+        //   ② macro_risk 尚無該欄(等採礦)且 macro_cache 過期 → 回 null(顯「採集中」、不採計開盤分數,不用舊崩盤誤導)
+        const _usStale = (mr.sp500_chg_pct != null && usm.sp500?.chg_pct != null
+                          && Math.abs(+mr.sp500_chg_pct - +usm.sp500.chg_pct) > 0.02);
+        const _MR_US = { sp500: 'sp500_chg_pct', nasdaq: 'nasdaq_chg_pct', dji: 'dji_chg_pct',
+                         sox: 'sox_chg_pct', tsm: 'tsm_chg_pct', asx: 'asx_chg_pct', umc: 'umc_chg_pct' };
+        const usPct = k => {
+            const mk = _MR_US[k];
+            if (mk && mr[mk] != null && !isNaN(mr[mk])) return +mr[mk];   // 新鮮檔優先
+            if (_usStale && ['dji', 'sox', 'tsm', 'asx', 'umc'].includes(k)) return null;   // 舊檔過期 → 不用崩盤舊值
+            const c = usm[k]?.chg_pct; return (c == null || isNaN(c)) ? null : +c;
+        };
         const pctStr = v => (v == null) ? null : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
         // 🐛 V40.8 DOM relay 顯「--」占位時是 truthy → 卡住 macro_cache fallback(加權明明有值卻顯 --)。只認「含數字」的 DOM 值,否則改用 macro_cache
         const gNum = id => { const v = g(id); return (v && /\d/.test(v)) ? v : ''; };
@@ -11126,15 +11141,15 @@ const marginByDate = {};
             } catch (_) {}
         }
         const djiChg = pctStr(usPct('dji')) || '', ndxChg = pctStr(usPct('nasdaq')) || '', spxChg = pctStr(usPct('sp500')) || '', soxChg = pctStr(usPct('sox')) || '', tsmChg = pctStr(usPct('tsm')) || '';
-        const vix = (usm.vix?.close != null) ? (+usm.vix.close).toFixed(2) : '';
+        // 🐛 V58.7 VIX 也優先讀新鮮的 macro_risk(macro_cache 停 07-07 顯 18.41,實際 16.9)
+        const vix = (mr.vix != null && !isNaN(mr.vix)) ? (+mr.vix).toFixed(2) : ((usm.vix?.close != null && !_usStale) ? (+usm.vix.close).toFixed(2) : '');
         const fi = this.fiShortQty;
         const fiSpot = mr.fi_spot_net;     // 外資現貨買賣超(億)
         const fiTrust = mr.fi_trust_net;   // 投信(億)
         const fiDealer = mr.fi_dealer_net; // 自營商(億)
         const fiTotal = mr.fi_total_net;   // 三大法人合計(億)
         const txNight = mr.taifex_tx_now;  // 台指期夜盤(可能 null)
-        const adrPct = k => { const c = usm[k]?.chg_pct; return (c == null) ? null : +c; };   // asx/umc ADR
-        const asxChg = adrPct('asx'), umcChg = adrPct('umc');
+        const asxChg = usPct('asx'), umcChg = usPct('umc');   // 🐛 V58.7 ADR 走 usPct(含新鮮檔優先+過期守門)
         const pctClr = v => (v == null) ? 'text-gray-500' : (v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400');
         // 🐛 V41.3 修「+0億」假資料:原 Number.isFinite(+v) 對 null/'' 會因 +null===0 判 true → 採集失敗(投信/自營/合計=null)被誤顯「+0億」。改嚴格擋掉 null/空字串。
         const yiLine = v => (v != null && v !== '' && Number.isFinite(+v)) ? `<span class="${+v >= 0 ? 'text-red-300' : 'text-green-300'} font-mono font-bold">${+v >= 0 ? '+' : ''}${(+v).toFixed(0)}億</span>` : `<span class="text-gray-500">採集中</span>`;
@@ -11267,7 +11282,11 @@ const marginByDate = {};
         }
 
         // 🐛 V41.1 指數點位:美股四雄/費半/TSM ADR 不再只顯 %,補上指數絕對點位(與加權「45000 +0.96%」格式一致)
-        const lvl = k => { const c = usm[k]?.close; if (c == null || isNaN(c)) return ''; const n = +c; return n >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : n.toFixed(2); };
+        // 🐛 V58.7 過期守門:macro_cache 停舊交易日時,macro_cache-only 欄(dji/sox/tsm/asx/umc)點位也一起藏(不顯舊崩盤點位,配合上面 usPct 只顯「採集中」)
+        const lvl = k => {
+            if (_usStale && ['dji', 'sox', 'tsm', 'asx', 'umc'].includes(k) && !(_MR_US[k] && mr[_MR_US[k]] != null)) return '';
+            const c = usm[k]?.close; if (c == null || isNaN(c)) return ''; const n = +c; return n >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : n.toFixed(2);
+        };
         // 一格 = 指數名 + 點位 + 漲跌%(點位缺則只顯 %,兩者皆缺顯「採集中」)
         const idxCell = (label, k, chg) => {
             const L = lvl(k);

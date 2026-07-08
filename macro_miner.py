@@ -875,6 +875,12 @@ def fetch_kospi():    return _fetch_yf_close("^KS11",    "韓股 KOSPI")
 def fetch_jpy():      return _fetch_yf_close("JPY=X",    "日圓匯率")     # ⚠️ JPY=X = USD/JPY(每美元兌幾日圓);日圓升值=此值下跌
 def fetch_sp500():    return _fetch_yf_close("^GSPC",    "標普 500")    # 🌎 美股大盤旗艦(台股最強連動)
 def fetch_nasdaq():   return _fetch_yf_close("^IXIC",    "那斯達克")    # 🌎 美股科技指標(台積電/半導體連動)
+# 💡 V58.7 補齊盤前體檢美股欄(原只在 miner.py 的 macro_cache,會 stale;放進 macro_risk 每 4hr cron 保新鮮)
+def fetch_dji():      return _fetch_yf_close("^DJI",     "道瓊")
+def fetch_sox():      return _fetch_yf_close("^SOX",     "費半")        # 半導體最連動台股
+def fetch_tsm_adr():  return _fetch_yf_close("TSM",      "台積電ADR")    # NYSE:TSM
+def fetch_asx_adr():  return _fetch_yf_close("ASX",      "日月光ADR")    # NYSE:ASX(ASE Tech)
+def fetch_umc_adr():  return _fetch_yf_close("UMC",      "聯電ADR")      # NYSE:UMC
 
 
 def fetch_twii_position():
@@ -1603,6 +1609,12 @@ def main():
         "kospi":          None, "kospi_chg_pct":  None, "kospi_error":  None,
         "sp500":          None, "sp500_chg_pct":  None, "sp500_error":  None,
         "nasdaq":         None, "nasdaq_chg_pct": None, "nasdaq_error": None,
+        # 💡 V58.7 盤前體檢美股欄(道瓊/費半/三大 ADR),放新鮮檔避免 macro_cache stale
+        "dji":            None, "dji_chg_pct":    None, "dji_error":    None,
+        "sox":            None, "sox_chg_pct":    None, "sox_error":    None,
+        "tsm":            None, "tsm_chg_pct":    None, "tsm_error":    None,
+        "asx":            None, "asx_chg_pct":    None, "asx_error":    None,
+        "umc":            None, "umc_chg_pct":    None, "umc_error":    None,
         # ── 🌡️ 景氣對策信號(Q2 自動,前端 fallback 手動下拉)──
         "business_signal": None,    # {light, score, month, source, error}
         # ── 🏭 美股產業 ETF 板塊對應(Q3 板塊輪動配 ETF)──
@@ -1680,11 +1692,17 @@ def main():
         ("韓股KOSPI",     "kospi",  fetch_kospi),
         ("標普500",      "sp500",  fetch_sp500),
         ("那斯達克",      "nasdaq", fetch_nasdaq),
+        ("道瓊",         "dji",    fetch_dji),        # 💡 V58.7 盤前體檢美股欄補進新鮮檔
+        ("費半",         "sox",    fetch_sox),
+        ("台積電ADR",     "tsm",    fetch_tsm_adr),
+        ("日月光ADR",     "asx",    fetch_asx_adr),
+        ("聯電ADR",       "umc",    fetch_umc_adr),
     ]
     key_alias = {"gold": "gold_usd", "wti": "wti_oil", "dxy": "dxy",
                  "btc": "btc_usd", "vix": "vix", "nikkei": "nikkei",
                  "hsi": "hsi", "kospi": "kospi",
-                 "sp500": "sp500", "nasdaq": "nasdaq"}
+                 "sp500": "sp500", "nasdaq": "nasdaq",
+                 "dji": "dji", "sox": "sox", "tsm": "tsm", "asx": "asx", "umc": "umc"}
     for i, (name, key, fn) in enumerate(big_player_fns, 9):
         print(f"[{i}/18] {name}…")
         val, chg, err = fn()
@@ -1845,6 +1863,9 @@ def main():
                         "vix", "vix_chg_pct", "nikkei", "nikkei_chg_pct",
                         "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct",
                         "sp500", "sp500_chg_pct", "nasdaq", "nasdaq_chg_pct",
+                        # 💡 V58.7 道瓊/費半/三大 ADR 斷崖防護
+                        "dji", "dji_chg_pct", "sox", "sox_chg_pct", "tsm", "tsm_chg_pct",
+                        "asx", "asx_chg_pct", "umc", "umc_chg_pct",
                         # 🌡️ 景氣燈號 + 🏭 板塊 ETF(V21 斷崖防護)
                         "business_signal", "sector_etfs",
                         # 🦅 獵鷹建倉宏觀因子(API 偶失敗時沿用昨日,避免顯示待採)
@@ -1867,7 +1888,8 @@ def main():
     #          精準守門改用「與上一份有效值比,單日 ±25% 不可能(熔斷都到不了)」的相對判斷,永不過時。
     try:
         _INDEX_SANITY = {'nikkei': (8000, 200000), 'kospi': (800, 30000), 'hsi': (5000, 90000),
-                         'sp500': (1500, 40000), 'nasdaq': (4000, 120000)}
+                         'sp500': (1500, 40000), 'nasdaq': (4000, 120000),
+                         'dji': (20000, 120000), 'sox': (2000, 60000)}   # 💡 V58.7 道瓊/費半數量級守門(ADR 是個股價,免守門)
         _prev_idx = prev if isinstance(prev, dict) else {}
         for _k, (_lo, _hi) in _INDEX_SANITY.items():
             _v = out.get(_k)
