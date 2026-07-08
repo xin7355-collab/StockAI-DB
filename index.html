@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1085,6 +1085,9 @@
 
                         <!-- 👉 右戰區 (lg:col-span-5)：V38.9 合併重疊卡降噪 — 進場總評 / 價位作戰圖 / 操作SOP -->
                         <div class="w-full lg:col-span-5 flex flex-col gap-3 mt-4 lg:mt-0">
+
+                        <!-- 📈 V58.1 趨勢照表操課(總覽置頂主卡,朱家泓中心思想:K線趨勢為主、位置第二、K棒第三、量只是輔助;照表操課) -->
+                        <div id="trendCommandCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
 
                         <!-- 🧭 V53.x 分段錨點導覽:一點跳到對應區塊(位階→進場→分批→出場→下單) -->
                         <div class="w-full flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
@@ -12580,6 +12583,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 try {
                     const _last = this.activeData.length - 1;
                     this._renderChuFourGates?.(this.activeData, this.indicators, _last);
+                    this._renderTrendCommand?.(this.activeData, this.indicators, _last);   // 📈 V58.1 趨勢照表操課主卡
                     this._renderChuTrendAlert?.(this.indicators);
                 } catch (e) { console.warn('[V16.9 chu re-render]', e); }
             }
@@ -18794,6 +18798,132 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
 
     // ── A2. 四關通關卡 ──────────────────────────────────────────────────────
+    // 📈 V58.1 — 趨勢照表操課(總覽置頂主卡,朱家泓中心思想):
+    //   趨勢(均線三線多空排)> 位置(起漲/行進/高檔/低檔)> K棒 > 量(基本量=5日均量,攻擊/爆量/止跌只是輔助)。
+    //   查表給一句「現在做什麼」+ 具體價位;持倉感知(有庫存=出場紀律優先)。純公式零 AI。
+    _renderTrendCommand(data, ind, last) {
+        const box = document.getElementById('trendCommandCard');
+        if (!box) return;
+        try {
+            if (!data || !ind || !ind.ma20 || last == null || last < 25) { box.classList.add('hidden'); return; }
+            const at = (a, i) => (Array.isArray(a) && a[i] != null) ? +a[i] : null;
+            const C = +data[last].close, V = +data[last].volume || 0;
+            const ma5 = at(ind.ma5, last), ma20 = at(ind.ma20, last), ma60 = at(ind.ma60, last);
+            const ma20Up = ma20 != null && at(ind.ma20, last - 2) != null && ma20 > at(ind.ma20, last - 2);
+            if (ma5 == null || ma20 == null || ma60 == null || !(C > 0)) { box.classList.add('hidden'); return; }
+            // ① 趨勢(朱:趨勢最重要,均線三線多空排 + 月線方向)
+            const bull = ma5 > ma20 && ma20 > ma60 && ma20Up;
+            const bear = ma5 < ma20 && ma20 < ma60 && !ma20Up;
+            const trend = bull ? 'bull' : bear ? 'bear' : 'flat';
+            const trendTxt = bull ? '多頭' : bear ? '空頭' : '盤整';
+            const trendIcon = bull ? '🔴' : bear ? '🟢' : '🟡';
+            const trendSub = bull ? '三線多排・月線向上' : bear ? '三線空排・月線下彎' : '均線糾結・方向不明';
+            // ② 位置(起漲/行進間/高檔過熱/低檔)
+            const bias20 = (C - ma20) / ma20 * 100;
+            let sigType = '無明確訊號'; try { sigType = this._chuClassifyEntrySignal(data, ind, last); } catch (_) {}
+            let pos, posTone;
+            if (trend === 'bull') {
+                if (sigType !== '無明確訊號') { pos = `起漲(${sigType})`; posTone = 'text-red-300'; }
+                else if (bias20 > 12) { pos = `高檔過熱(離月線 +${bias20.toFixed(1)}%)`; posTone = 'text-orange-300'; }
+                else if (bias20 > 5) { pos = `行進間偏高(離月線 +${bias20.toFixed(1)}%)`; posTone = 'text-yellow-300'; }
+                else { pos = `行進間(離月線 ${bias20 >= 0 ? '+' : ''}${bias20.toFixed(1)}%)`; posTone = 'text-gray-300'; }
+            } else if (trend === 'bear') {
+                const lo20 = Math.min(...data.slice(Math.max(0, last - 19), last + 1).map(d => +d.low || 9e9));
+                pos = C <= lo20 * 1.02 ? '空頭低檔(近20日低附近)' : (C >= ma20 * 0.97 ? '反彈近月線(有壓)' : '下跌行進間');
+                posTone = 'text-green-300';
+            } else { pos = '盤整區間(等表態)'; posTone = 'text-yellow-300'; }
+            // ③ 量(輔助):今量 vs 基本量(5日均量);優先用量能偵測器的語境判定(攻擊/出貨/換手/止跌)
+            const vma5 = at(ind.vma5, last) || (data.slice(Math.max(0, last - 4), last + 1).reduce((a, d) => a + (+d.volume || 0), 0) / 5);
+            const vr = vma5 > 0 ? V / vma5 : null;
+            let volSig = null; try { volSig = (this._detectVolumeSignals(data) || [])[0] || null; } catch (_) {}
+            let volTxt, volTone;
+            if (volSig) { volTxt = `${volSig.title}${vr != null ? `(${vr.toFixed(1)}× 基本量)` : ''}`; volTone = volSig.tone === 'bull' ? 'text-red-300' : volSig.tone === 'bear' ? 'text-green-300' : 'text-gray-300'; }
+            else if (vr == null) { volTxt = '量資料不足'; volTone = 'text-gray-500'; }
+            else if (vr >= 2) { volTxt = `爆大量 ${vr.toFixed(1)}×(看隔天:漲=換手量、跌=出貨量)`; volTone = 'text-orange-300'; }
+            else if (vr >= 1.2) { volTxt = `放大量 ${vr.toFixed(1)}× 基本量`; volTone = 'text-red-300'; }
+            else if (vr <= 0.55) { volTxt = trend === 'bull' ? `量縮 ${vr.toFixed(1)}×(多頭量縮照漲,別怕)` : `量縮 ${vr.toFixed(1)}×(下跌量縮=止跌前兆)`; volTone = 'text-gray-300'; }
+            else { volTxt = `正常量 ${vr.toFixed(1)}× 基本量`; volTone = 'text-gray-400'; }
+            // ④ 照表操課(持倉感知:有庫存=出場紀律優先;空手=進場紀律)
+            let cost = null;
+            try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) cost = +p.cost; } catch (_) {}
+            let plan = null; try { plan = this._unifiedExitPlan(data, cost); } catch (_) {}
+            const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
+            const stop5 = nf(ma5);
+            let cmd, cmdTone, cmdBorder;
+            if (trend === 'bull') {
+                if (cost) {
+                    cmd = `抱好,別被大盤或洗盤嚇下車。<b>跌破 5 日線 ${stop5} 停利</b>${plan?.stopFinal ? `、鐵血停損 <b>${nf(plan.stopFinal)}</b>` : ''};高檔爆大量出黑K=出貨量,隔天不漲就走。`;
+                    cmdTone = 'text-red-200'; cmdBorder = 'border-red-500';
+                } else if (sigType !== '無明確訊號') {
+                    cmd = `<b>起漲第一根(${sigType})</b>${vr != null && vr >= 1.2 ? ' + 攻擊量 — 跟主力同一根進場' : ',但量還沒放大,先買半量、補量再加'} → 可分批進,<b>停損=訊號K低點或 5 日線 ${stop5}</b>。`;
+                    cmdTone = 'text-red-200'; cmdBorder = 'border-red-500';
+                } else if (bias20 > 12) {
+                    cmd = `過熱<b>別追</b>(一追高就容易被主力洗盤,買高賣低)。放進自選等回檔;回測月線不破 + 紅K + 攻擊量 = 下一次起漲點再進。`;
+                    cmdTone = 'text-orange-200'; cmdBorder = 'border-orange-500';
+                } else {
+                    cmd = `行進間<b>不追高</b>。等「回後買上漲」:回檔不破月線 → 紅K + 放大量再進,永遠買在起漲第一根。`;
+                    cmdTone = 'text-yellow-200'; cmdBorder = 'border-yellow-500';
+                }
+            } else if (trend === 'bear') {
+                cmd = cost
+                    ? `空頭趨勢,<b>反彈到 5 日線 ${stop5} 或月線先出</b>,別凹單等解套。低檔爆量長紅只是搶反彈,不代表回多頭。`
+                    : `<b>空頭不做多</b>。低檔爆量長紅=搶反彈量(不是攻擊量),要等「底底高 + 過前高」多頭確認才有起漲第一根。`;
+                cmdTone = 'text-green-200'; cmdBorder = 'border-green-500';
+            } else {
+                cmd = cost
+                    ? `盤整區間,守好停損 ${plan?.stopFinal ? `<b>${nf(plan.stopFinal)}</b>` : `5 日線 <b>${stop5}</b>`},等帶量表態再決定加減碼。`
+                    : `盤整<b>別猜方向</b>。等帶量(≥1.2× 基本量)長紅突破盤整區再進 — 突破那根就是起漲第一根。`;
+                cmdTone = 'text-yellow-200'; cmdBorder = 'border-yellow-500';
+            }
+            let mkt = ''; try { const m = this._chuPositionAdvice(); if (m) mkt = `🌡️ 大盤${m.regimeLabel}・建議總部位 ${m.pct}(大盤決定你敢押多少)`; } catch (_) {}
+            box.className = `w-full bg-[#161b22] border rounded-lg p-3 ${trend === 'bull' ? 'border-red-500/60' : trend === 'bear' ? 'border-green-500/60' : 'border-yellow-500/50'}`;
+            box.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[12px] font-black text-gray-100">📈 趨勢照表操課 <span class="text-[9px] text-gray-500 font-normal">K線為主・其他都是輔助</span></span>
+                    <button onclick="app._showTrendCommandHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button>
+                </div>
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="flex-shrink-0 text-center pr-3 border-r border-[#30363d]">
+                        <div class="text-2xl font-black ${trend === 'bull' ? 'text-red-400' : trend === 'bear' ? 'text-green-400' : 'text-yellow-400'} leading-none whitespace-nowrap">${trendIcon} ${trendTxt}</div>
+                        <div class="text-[9px] text-gray-500 mt-1 whitespace-nowrap">${trendSub}</div>
+                    </div>
+                    <div class="flex-1 min-w-0 space-y-1">
+                        <div class="text-[11px] leading-tight"><span class="text-gray-500">位置</span> <span class="${posTone} font-bold">${pos}</span></div>
+                        <div class="text-[11px] leading-tight"><span class="text-gray-500">量(輔助)</span> <span class="${volTone} font-bold">${volTxt}</span></div>
+                        ${mkt ? `<div class="text-[9px] text-gray-500 leading-tight">${mkt}</div>` : ''}
+                    </div>
+                </div>
+                <div class="bg-[#0d1117] border-l-4 ${cmdBorder} pl-2.5 py-2 rounded-r">
+                    <div class="text-[11px] ${cmdTone} leading-relaxed">👉 ${cmd}</div>
+                </div>
+                <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📖 心法:趨勢 &gt; 位置 &gt; K棒 &gt; 量 — 量/籌碼/消息/基本面都只是輔助,K線圖才是主軸;下方所有卡片都是參考,照這張表操課就好。</div>`;
+            box.classList.remove('hidden');
+        } catch (_) { try { box.classList.add('hidden'); } catch (__) {} }
+    },
+
+    _showTrendCommandHelp() {
+        alert(`📈 趨勢照表操課 — 為什麼這張卡是主軸?
+
+【中心思想(朱家泓)】
+K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌碼再漂亮,股價不漲就是不漲 — 所有題材都是為了拉抬股價服務的。所以判斷順序永遠是:
+① 趨勢(最重要):均線三線多排=多頭、空排=空頭、糾結=盤整
+② 位置:起漲?行進間?高檔?低檔?同一根爆大量,起漲=攻擊量、高檔=出貨量,意義完全相反
+③ K棒:紅黑、長短、變盤線
+④ 量(最後輔助):基本量=5日均量;攻擊量≥1.2×、爆大量≥2×、止跌量≤0.5×
+
+【照表操課】
+・多頭+起漲第一根+攻擊量 → 進場(跟主力同一根),停損=訊號K低點
+・多頭行進間 → 不追高,等回後買上漲
+・多頭高檔 → 別追;爆大量黑K=出貨量,隔天不漲快跑
+・爆大量看隔天:漲=換手量(續攻)、跌=出貨量(快跑)
+・空頭 → 不做多;低檔爆量長紅只是搶反彈
+・盤整 → 別猜,等帶量突破
+・多頭量縮照漲,別怕;下跌量縮=止跌前兆
+
+【信心從哪來】
+不是從預測來,是從紀律來:買在起漲第一根 → 主力洗盤跟你無關;停損價寫死 → 最大虧損進場前就知道。照表操課,不用猜明天。`);
+    },
+
     _chuFourGates(data, ind, last) {
         if (!data || !ind || last == null || last < 0) return null;
         const pC = data[last].close;
@@ -19932,6 +20062,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     //             並渲染盤中即時雷達卡;盤後反之。
     _chuRenderAll(data, ind, last) {
         this._renderChuFourGates(data, ind, last);
+        this._renderTrendCommand(data, ind, last);      // 📈 V58.1 趨勢照表操課主卡(總覽置頂)
         this._renderChuPositionPlan(data, ind, last);   // V14.11 分批進場計畫器
         this._renderChuExitSop(data, ind, last);
         this._renderChuTrendAlert(ind);
