@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.5(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -20525,13 +20525,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (q && q.price) {
                 const chgPct = (q.prevClose > 0) ? (q.price - q.prevClose) / q.prevClose * 100 : 0;
                 const cCls = chgPct >= 0 ? 'text-red-300' : 'text-green-300';
-                // 內外盤買賣力道(先算,供主力動向 verdict 用)
+                // 五檔委掛比(掛單,非成交 — 只當參考)
                 const bid = q.bidVol || 0, ask = q.askVol || 0, tot = bid + ask;
                 const bp = tot > 0 ? bid / tot * 100 : null;
-                // 🔴 盤中主力動向 verdict(併入即時頁,取代原籌碼頁獨立卡,同一顆鈕更新)
+                // 📊 V58.5 真內外盤估算(成交面):分鐘K上漲量=外盤(主動買)/下跌量=內盤(主動賣)。
+                //   🐛 修「與專業 App 判讀相反」:原用五檔「委掛」比當內外盤 → 上漲日上方掛賣多(想賣高價)
+                //   被誤判「偏空調節+誘多」;實際成交外盤 55%(主動買)明明偏多(中美晶 5483 實證)。
+                const io = this._estInOutFromCandles(candles);
                 let verdict, vCls2;
-                if (chgPct > 1 && (bp == null || bp >= 50)) { verdict = '🔺 主力偏多承接'; vCls2 = 'text-red-300'; }
-                else if (chgPct < -1 && (bp == null || bp < 50)) { verdict = '🔻 主力偏空調節'; vCls2 = 'text-green-300'; }
+                const _dirPct = io ? io.outPct : bp;   // 有成交估算用成交,沒有才退回委掛
+                if (chgPct > 1 && (_dirPct == null || _dirPct >= 50)) { verdict = '🔺 主力偏多承接'; vCls2 = 'text-red-300'; }
+                else if (chgPct < -1 && (_dirPct == null || _dirPct < 50)) { verdict = '🔻 主力偏空調節'; vCls2 = 'text-green-300'; }
                 else { verdict = '➖ 多空拉鋸觀望'; vCls2 = 'text-gray-300'; }
                 parts.push(`<div class="flex items-center gap-1.5 mb-0.5"><span class="text-[10px] text-gray-500">🔴 盤中主力動向</span><b class="${vCls2} text-sm">${verdict}</b></div>`);
                 // 🔄 V47.1 即時價「跳動」:與上次同股相比,漲→紅閃、跌→綠閃(只閃數字,說明文字不閃)
@@ -20546,11 +20550,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     const vCls = vp.lamp === 'green' ? 'text-green-300' : vp.lamp === 'yellow' ? 'text-yellow-300' : 'text-red-300';
                     parts.push(`<div class="text-gray-400">估量達標度 <b class="${vCls}">${vp.pct.toFixed(0)}%</b> <span class="text-[9px] text-gray-500">(預估收盤量 vs 昨量,80%↑量能足)</span></div>`);
                 }
-                // 內外盤買賣力道明細
+                // 📊 V58.5 內外盤(成交估算,對齊專業 App)+ 五檔委掛(誠實分開標,掛單≠成交)
+                if (io) {
+                    const ioCls = io.outPct >= 55 ? 'text-red-300' : io.outPct <= 45 ? 'text-green-300' : 'text-gray-300';
+                    const ioTxt = io.outPct >= 55 ? '主動買盤強' : io.outPct <= 45 ? '主動賣壓重' : '多空均衡';
+                    parts.push(`<div class="text-gray-400">內外盤(成交估算) <b class="${ioCls}">內 ${io.inPct.toFixed(0)}% / 外 ${io.outPct.toFixed(0)}% · ${ioTxt}</b></div>`);
+                }
                 if (bp != null) {
-                    const bpCls = bp >= 55 ? 'text-red-300' : bp <= 45 ? 'text-green-300' : 'text-gray-300';
-                    const bpTxt = bp >= 55 ? '偏多承接' : bp <= 45 ? '偏空調節' : '多空拉鋸';
-                    parts.push(`<div class="text-gray-400">內外盤力道 <b class="${bpCls}">委買 ${bp.toFixed(0)}% vs 委賣 ${(100 - bp).toFixed(0)}% · ${bpTxt}</b></div>`);
+                    parts.push(`<div class="text-gray-400">五檔委掛 <b class="text-gray-300">委買 ${bp.toFixed(0)}% vs 委賣 ${(100 - bp).toFixed(0)}%</b> <span class="text-[9px] text-gray-500">(掛單≠成交;上漲日上方掛賣多屬正常供給)</span></div>`);
                 }
             }
             parts.push(`<div class="text-[9px] text-gray-500 mt-1">${this.isMarketOpen() ? `盤中 ${nowStr} 即時` : '⚠️ 非盤中,顯示最近交易日'} · ${tf}分K · 主力動向為內外盤+量價估算,非官方分點,真實分點收盤後為準</div>`);
@@ -20613,12 +20620,28 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         // 即時數據 grid
         const amp = prev > 0 ? (q.high - q.low) / prev * 100 : null;
+        // 📊 V58.5 盤後 fallback:收盤後估量=總量、量增/縮=總量 vs 昨量(對齊專業 App;原顯「—」)
+        let _estV = (vp && vp.estimated != null) ? vp.estimated : null;
+        let _volPct = (vp && vp.pct != null) ? vp.pct : null;
+        if ((_estV == null || _volPct == null) && +q.volume > 0 && !this.isMarketOpen()) {
+            try {
+                const _rows = this.baseRawData || this.rawDailyData || [];
+                const _tds = this.getTodayStr();
+                let _pvLots = null;
+                for (let i = _rows.length - 1; i >= 0; i--) {
+                    const d = String(_rows[i].date || '').replace(/-/g, '/');
+                    if (d !== _tds && +_rows[i].volume > 0) { _pvLots = +_rows[i].volume / 1000; break; }   // 採礦量單位=股 → 張
+                }
+                if (_estV == null) _estV = +q.volume;
+                if (_volPct == null && _pvLots > 0) _volPct = (+q.volume) / _pvLots * 100;
+            } catch (_) {}
+        }
         const cell = (label, val, cls = 'text-gray-200') => `<div class="flex items-baseline justify-between gap-1 px-2 py-1 border-b border-[#21262d]"><span class="text-[10px] text-gray-500">${label}</span><span class="text-[11px] font-mono font-bold ${cls}">${val}</span></div>`;
         const stats = `<div class="grid grid-cols-2 gap-x-3 mt-2 bg-[#0d1117]/50 rounded p-1">
             ${cell('單量', nf(q.lastSize))}
             ${cell('總量', nf(q.volume))}
-            ${cell('估量', vp && vp.estimated != null ? nf(vp.estimated) : '—')}
-            ${cell('量增/縮', vp && vp.pct != null ? (vp.pct >= 100 ? '+' : '') + (vp.pct - 100).toFixed(0) + '%' : '—', vp && vp.pct != null ? (vp.pct >= 100 ? 'text-red-300' : 'text-green-300') : 'text-gray-200')}
+            ${cell('估量', _estV != null ? nf(_estV) : '—')}
+            ${cell('量增/縮', _volPct != null ? (_volPct >= 100 ? '+' : '') + (_volPct - 100).toFixed(0) + '%' : '—', _volPct != null ? (_volPct >= 100 ? 'text-red-300' : 'text-green-300') : 'text-gray-200')}
             ${cell('振幅', amp != null ? amp.toFixed(1) + '%' : '—')}
             ${cell('高低價差', (q.high && q.low) ? (q.high - q.low).toFixed(2) : '—')}
             ${cell('開盤', q.open ? q.open.toFixed(2) : '—', pxCls(q.open))}
@@ -20629,8 +20652,30 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         box.classList.remove('hidden');
     },
 
+    // 📊 V58.5 — 真內外盤估算(成交面,對齊專業 App「內X%/外Y%」):
+    //   逐根分鐘K,收盤高於前一根=該分鐘量算外盤(主動買)、低於=內盤(主動賣)、持平=中立。
+    //   免逐筆 tick 資料(免費版拿不到),量價估算方向與籌碼K線實測一致(中美晶 5483 內45/外55)。
+    _estInOutFromCandles(candles) {
+        try {
+            if (!Array.isArray(candles) || candles.length < 3) return null;
+            let out = 0, inn = 0, neu = 0, pc = null;
+            for (const c of candles) {
+                const v = +c.volume || 0;
+                const cl = +c.close, op = +c.open;
+                if (!(cl > 0)) continue;
+                const ref = (pc != null) ? pc : op;
+                if (v > 0) { if (cl > ref) out += v; else if (cl < ref) inn += v; else neu += v; }
+                pc = cl;
+            }
+            const tot = out + inn + neu;
+            if (!(tot > 0)) return null;
+            return { outPct: (out + neu / 2) / tot * 100, inPct: (inn + neu / 2) / tot * 100, tot };
+        } catch (_) { return null; }
+    },
+
     // 🎯 V43.0 — 盤中真假判讀(免費:分時均價 + 量價配合 + 內外盤 + 位階/開盤型態)
     //   純機率參考,非鐵證(主力靠騙這些指標洗盤);真正確認要收盤K + T+1 分點
+    //   V58.5 — 內外盤改「成交估算」(分鐘K量價),不再用五檔委掛比誤判(掛單≠成交)
     _intradayTruthJudge(candles, q, vp) {
         if (!candles || !candles.length || !q || !q.price) return null;
         const price = +q.price, prev = +q.prevClose || 0, open = +q.open || price;
@@ -20642,8 +20687,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const volPct = (vp && vp.pct != null) ? vp.pct : null;
         const volStrong = volPct != null && volPct >= 80;
         const volWeak = volPct != null && volPct < 60;
-        const bid = q.bidVol || 0, ask = q.askVol || 0, tot = bid + ask;
-        const bp = tot > 0 ? bid / tot * 100 : null;
+        // 📊 V58.5 買賣方力道改「成交內外盤估算」:外盤(主動買)≥55%=買方強;≤45%=賣方強。
+        //   原用五檔委掛比 → 上漲日掛賣多被誤判「委賣壓過→誘多」,與實際成交方向相反(中美晶實證)
+        const _io = this._estInOutFromCandles(candles);
+        const bp = _io ? _io.outPct : null;
         const buySide = bp != null && bp >= 55, sellSide = bp != null && bp <= 45;
         const pullFromHi = dayHigh > 0 ? (dayHigh - price) / dayHigh * 100 : 0;   // 從當日高回檔%
         const bounceFromLo = dayLow > 0 ? (price - dayLow) / dayLow * 100 : 0;    // 從當日低反彈%
@@ -20654,7 +20701,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const chips = [];
         chips.push(aboveAvg ? { t: `站上均價 +${avgGapPct.toFixed(1)}%`, c: 'red' } : { t: `跌破均價 ${avgGapPct.toFixed(1)}%`, c: 'green' });
         if (volPct != null) chips.push(volStrong ? { t: `量增達標 ${volPct.toFixed(0)}%`, c: 'red' } : volWeak ? { t: `量縮 ${volPct.toFixed(0)}%`, c: 'gray' } : { t: `量普 ${volPct.toFixed(0)}%`, c: 'yellow' });
-        if (bp != null) chips.push(buySide ? { t: `委買強 ${bp.toFixed(0)}%`, c: 'red' } : sellSide ? { t: `委賣強 ${(100 - bp).toFixed(0)}%`, c: 'green' } : { t: '買賣均衡', c: 'gray' });
+        if (bp != null) chips.push(buySide ? { t: `外盤 ${bp.toFixed(0)}%(主動買)`, c: 'red' } : sellSide ? { t: `內盤 ${(100 - bp).toFixed(0)}%(主動賣)`, c: 'green' } : { t: '內外盤均衡', c: 'gray' });
         if (pullFromHi > 3) chips.push({ t: `衝高回檔 ${pullFromHi.toFixed(1)}%`, c: 'yellow' });
         else if (bounceFromLo > 3 && chgPct < 1) chips.push({ t: `低檔翻揚 ${bounceFromLo.toFixed(1)}%`, c: 'red' });
 
@@ -20666,7 +20713,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             cta = '💡 對策:偏多可續抱;想上車等回測均價/昨高不破再進,別追最高點。';
         } else if (chgPct > 0.3 && (!aboveAvg || volWeak || pullFromHi > 3 || sellSide)) {
             tone = 'warn'; title = '⚠️ 假漲留意(誘多risk)';
-            const why = [!aboveAvg ? '價在均價下' : null, volWeak ? '量縮沒跟上' : null, pullFromHi > 3 ? `衝高已回${pullFromHi.toFixed(1)}%` : null, sellSide ? '委賣壓過' : null].filter(Boolean).join('、');
+            const why = [!aboveAvg ? '價在均價下' : null, volWeak ? '量縮沒跟上' : null, pullFromHi > 3 ? `衝高已回${pullFromHi.toFixed(1)}%` : null, sellSide ? '內盤成交多(主動賣壓)' : null].filter(Boolean).join('、');
             msg = `雖然是紅的,但${why}→ 上漲力道虛,主力可能誘多出貨。`;
             cta = '💡 對策:別追高;手上有貨守分時均價/昨高,跌破就先落袋,別凹。';
         } else if (chgPct < -0.3 && !aboveAvg && volStrong && !buySide) {
@@ -20675,7 +20722,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             cta = '💡 對策:偏空,別接刀;有貨反彈到均價附近可減碼,破當日低更弱。';
         } else if (chgPct < -0.3 && (aboveAvg || volWeak || buySide)) {
             tone = 'bull'; title = '💧 假跌洗盤(機率高)';
-            const why = [aboveAvg ? '仍站均價上' : null, volWeak ? '殺低量縮' : null, buySide ? '委買仍強' : null, bounceFromLo > 2 ? `已從低點拉回${bounceFromLo.toFixed(1)}%` : null].filter(Boolean).join('、');
+            const why = [aboveAvg ? '仍站均價上' : null, volWeak ? '殺低量縮' : null, buySide ? '外盤仍強(主動買)' : null, bounceFromLo > 2 ? `已從低點拉回${bounceFromLo.toFixed(1)}%` : null].filter(Boolean).join('、');
             msg = `雖然是綠的,但${why}→ 像主力洗盤甩轎,不是真崩。`;
             cta = '💡 對策:持股別被洗掉,守住昨低/當日低再論停損;想買可等它站回均價確認。';
         } else {
