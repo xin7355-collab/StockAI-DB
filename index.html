@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.4(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1152,18 +1152,30 @@
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg lg:text-xl" id="defPrice">--</span></div>
                             <div id="tpSlReason" class="col-span-3 hidden text-[10px] text-amber-400/90 mt-1.5 leading-snug px-1 text-left"></div>
                         </div>
-                        <div class="w-full">
-                            <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('priceDetailBody', this); app.vibrate(30);">📐 更多守價（均線保衛・突破棒・四大金剛・K棒戰法） <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
-                            <div id="priceDetailBody" class="ov-body hidden flex flex-col gap-2 mt-1">
-                                <!-- V58.2 樣式統一:四卡同款殼(bg-[#161b22] border-[#30363d] rounded-lg p-3),間距交給父層 gap-2,不再各自 mt-2 -->
-                                <!-- 📐 V31.7 明日均線保衛價(扣抵):盤中跌破即在均線正式下彎前 1-2 天示警 -->
-                                <div id="maHoldGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
-                                <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
-                                <div id="breakoutGuard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
-                                <!-- ⚡ V41.15 朱老師四大金剛:趨勢 + 均線 + K線 + 量 四個一起看,同方向才進場(純公式) -->
-                                <div id="fourGuardians" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                        <!-- 📐 V58.4「更多守價」中間層拆除(使用者:點開是明日均線保衛戰很怪)→ 改兩張與位階/體檢同款的收合卡 -->
+                        <!-- 📐 明日均線保衛(扣抵價):盤中跌破即在均線正式下彎前 1-2 天示警 -->
+                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyGuard', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📐 明日均線保衛</span>
+                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightGuard" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                            </div>
+                            <div id="ovBodyGuard" class="ov-body hidden px-2 pb-2">
+                                <div id="maHoldGuard" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
+                            </div>
+                        </div>
+                        <!-- 📐 K棒戰法(含突破棒防守・四大金剛,V58.4 三卡合併一殼) -->
+                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyKbar', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📐 K棒戰法 <span class="text-[9px] text-gray-500 font-normal">含突破棒・四大金剛</span></span>
+                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightKbar" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
+                            </div>
+                            <div id="ovBodyKbar" class="ov-body hidden flex flex-col gap-2 px-2 pb-2">
                                 <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
-                                <div id="kbarHalfTactics" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                                <div id="kbarHalfTactics" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
+                                <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
+                                <div id="breakoutGuard" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
+                                <!-- ⚡ V41.15 朱老師四大金剛:趨勢 + 均線 + K線 + 量 四個一起看,同方向才進場(純公式) -->
+                                <div id="fourGuardians" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
                             </div>
                         </div>
 
@@ -2294,10 +2306,7 @@
 
         <div id="tabContentRadar" class="flex-col p-2 relative pb-4" style="display:none;min-height:80vh;">
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative">
-                <div class="border-b border-[#30363d] px-3 py-2 flex justify-between items-center gap-2 flex-wrap rounded-t-[8px]">
-                    <h2 class="text-base font-bold text-cyan-400 flex items-center gap-1">🎯 選股池</h2>
-                    <button onclick="const m=document.getElementById('radarManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(20);" class="text-[10px] text-cyan-200 bg-cyan-900/30 border border-cyan-600/60 rounded px-2 py-0.5 hover:bg-cyan-800/40 transition-colors whitespace-nowrap font-bold" title="選股池實戰說明書">ℹ️ 選股池說明書</button>
-                </div>
+                <!-- 🗑️ V58.4 「🎯 選股池 + ℹ️ 說明書」標題列已刪除(使用者要求省空間);radarManualModal DOM 保留但無觸發鈕 -->
 
                 <!-- 🎛️ V57.5 左欄類別 rail + 右欄內容(參考專業 App 焦點股版型:類別在左直欄,名單在右) -->
                 <div class="flex gap-1.5 items-start flex-grow min-h-0 p-1.5">
@@ -7115,6 +7124,9 @@ ${list}
             const _tgtCell = (icon, label, val, base) => {
                 if (val == null || !(base > 0)) return `<div class="bg-[#0d1117] rounded py-1 px-1.5"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="text-[10px] text-gray-500 mt-0.5">資料不足</div></div>`;
                 const dpct = (val / base - 1) * 100;
+                // ⚠️ V58.4 修誤導:估值目標遠低於現價(≤-15%)=這檔 PE 比同業貴很多,不是「跌價目標」
+                //   (太子 2511 榜首卻顯「估值目標 4.1 -52%」自相矛盾)→ 改顯白話警示:估值不支撐,漲勢靠題材/成長
+                if (dpct <= -15) return `<div class="bg-[#0d1117] rounded py-1 px-1.5 border border-yellow-700/30"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="text-[10px] font-bold text-yellow-300 mt-0.5 leading-tight">⚠️ PE 比同業貴 ${Math.abs(Math.round(dpct))}%</div><div class="text-[8px] text-gray-500 mt-0.5 leading-tight">估值不支撐,漲勢靠題材/成長 — 更要嚴守停損</div></div>`;
                 // 💵 停利金額試算:每張(1000股)從現價漲到目標可賺多少(僅目標高於現價時顯示)
                 const gainRow = dpct > 0.5 ? `<div class="text-[8px] text-red-400/90 font-mono mt-0.5">每張 +${Math.round((val - base) * 1000).toLocaleString()} 元</div>` : '';
                 return `<div class="bg-[#0d1117] rounded py-1 px-1.5"><div class="text-[8px] text-gray-500">${icon} ${label}</div><div class="mt-0.5 font-mono leading-none"><span class="text-[13px] font-black ${dpct >= 0 ? 'text-red-300' : 'text-green-300'}">${val.toFixed(1)}</span> <span class="text-[9px] font-bold ${_pctCol(dpct)}">${_pct(dpct)}</span></div>${gainRow}</div>`;
@@ -13777,7 +13789,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectGranville(data)); } catch (_) {}               // ⭐ V41.30 葛蘭碧八大買賣點(月線)
         try { sigs.push(...this._detectTrendline(data)); } catch (_) {}               // ⭐ V41.30 趨勢線突破/跌破
 
-        if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; try { this._setLight('lightKbar', '無訊號'); } catch (_) {} return; }
+        // 🚦 V58.4 收合列燈號:訊號數 + 多空傾向(拆自「更多守價」後這卡有自己的收合殼)
+        try {
+            const _nb = sigs.filter(s => s.tone === 'bull').length, _ns = sigs.filter(s => s.tone === 'bear').length;
+            this._setLight('lightKbar', `<span class="${_nb > _ns ? 'text-red-300' : _ns > _nb ? 'text-green-300' : 'text-gray-300'}">${sigs.length} 訊號${_nb > _ns ? '・偏多' : _ns > _nb ? '・偏空' : ''}</span>`);
+        } catch (_) {}
         // ⭐ V41.4 開盤定生死:出現變盤/轉折K時,提醒「次日開盤定強弱」(朱家泓鐵律)
         const hasTurn = sigs.some(s => /變盤|遭遇|吞噬|覆蓋|貫穿|母子|夜星|晨星|測壓|測撐|紅黑|執掌|背離/.test(s.title || ''));
         const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' }, warn: { c: 'text-yellow-300', b: 'border-yellow-500', tag: '⚠️留意' } };
@@ -22217,7 +22234,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     : '';
                 _mhg.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">明日均線保衛價</span><button onclick="app.showJargon('扣抵')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button></div>${_hero}${_rows}`;
                 _mhg.classList.remove('hidden');
-            } else { _mhg.classList.add('hidden'); }
+                // 🚦 V58.4 收合列燈號:20MA 保衛價 + 守住/跌破(拆自「更多守價」後這卡有自己的收合殼)
+                try { this._setLight('lightGuard', g20 != null ? `<span class="font-mono ${pC > g20 ? 'text-red-300' : 'text-green-300'}">20MA ${g20.toFixed(2)} ${pC > g20 ? '守住' : '跌破'}</span>` : '—'); } catch (_) {}
+            } else { _mhg.classList.add('hidden'); try { this._setLight('lightGuard', '—'); } catch (_) {} }
         }
         // 🧱 V31.8 突破棒防守監測器:回掃 ≤25 根找最近爆量長紅(實體漲幅≥5% + 量≥前5根均量×1.5),½價=結構防守價
         const _bg = document.getElementById('breakoutGuard');
@@ -24852,7 +24871,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } else if (key === 'wrongkill') {
             if (wkView) wkView.classList.remove('hidden');
             const b = document.getElementById('wkScanBody');
-            if (b && !b.dataset.scanned) this._wkScanRun();
+            // 📡 V58.4 盤中即時感:掃過但超過 5 分鐘 → 自動重掃(自選+庫存本來就抓即時報價,只是原本掃一次就凍住)
+            const _wkTs = +(b?.dataset.scannedTs || 0);
+            if (b && (!b.dataset.scanned || (this.isMarketOpen() && Date.now() - _wkTs > 5 * 60e3))) this._wkScanRun();
         } else if (key === 'theme') {
             if (themeView) themeView.classList.remove('hidden');
             this._themePulseFresh();
@@ -28043,6 +28064,7 @@ ${_chuPosPlan}
         const body = document.getElementById('wkScanBody'), sum = document.getElementById('wkScanSummary');
         if (!body) return;
         body.dataset.scanned = '1';
+        body.dataset.scannedTs = String(Date.now());   // 📡 V58.4 盤中 5 分鐘過期自動重掃
         body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">⏳ 掃描自選+庫存(找大跌+驗體質)…</div>';
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
