@@ -3058,15 +3058,22 @@ def build_radar_cache():
 
             # 🩹 錯殺雷達:今日大跌 ≤-4% 但體質沒壞(原多頭+回測月/季線支撐+法人沒跑+營收成長)
             #   ETF 不算(族群齊跌非錯殺);放在乖離守門前,大跌股不會被多頭追高濾網跳過
+            #   🐛 V58.3 三修(2026-07-07 跌停潮實證):
+            #   ①|chg|>11% 排除 — 普通股跌停頂多 -10%,超過=興櫃(無漲跌幅限制)暴走或大除息缺口,不是錯殺
+            #   ②前一日暴漲 ≥8% 的隔日回檔=妖股獲利了結(雷虎生 +46.6% 隔天 -13.3% 竟得 100 分),不是錯殺
+            #   ③「月線附近」補上限 — 原只查 c≥ma20×0.97,高於月線 51% 也算「附近」;改回測支撐帶 0.97~1.08
             try:
                 wk_chg = (c - pc) / pc * 100 if pc > 0 else 0
-                if wk_chg <= -4 and not sym.startswith('00') and len(raw) >= 60:
+                _ppc = raw[-3]['close'] if len(raw) >= 3 else 0
+                _prev_gain = (pc - _ppc) / _ppc * 100 if _ppc > 0 else 0
+                if -11 <= wk_chg <= -4 and _prev_gain < 8 and not sym.startswith('00') and len(raw) >= 60:
                     ma60 = sum(r['close'] for r in raw[-60:]) / 60
                     was_bull = ma60 > 0 and pc > ma20 and ma20 >= ma60
-                    near_sup = c >= ma20 * 0.97 or c >= ma60 * 0.97
-                    if was_bull and near_sup:
+                    near_ma20 = ma20 > 0 and ma20 * 0.97 <= c <= ma20 * 1.08
+                    near_ma60 = ma60 > 0 and ma60 * 0.97 <= c <= ma60 * 1.08
+                    if was_bull and (near_ma20 or near_ma60):
                         wk_score, wk_max, wk_flags = 25, 40, ['✓原本多頭']
-                        if c >= ma20 * 0.97:
+                        if near_ma20:
                             wk_score += 15; wk_flags.append('✓月線附近')
                         else:
                             wk_score += 10; wk_flags.append('✓季線附近')
@@ -3083,6 +3090,10 @@ def build_radar_cache():
                             else:
                                 wk_flags.append(f'✗營收{_yoy:.0f}%')
                         wk_pct = round(wk_score / wk_max * 100)
+                        if _yoy is None:
+                            # 缺營收驗證不給滿分(修「全榜齊 100 分」的虛胖信心)
+                            wk_pct = min(wk_pct, 90)
+                            wk_flags.append('⚠️營收未驗')
                         if wk_pct >= 50:
                             results['wrongkill'].append({
                                 'sym': sym, 'close': round(c, 2), 'chg': round(wk_chg, 1),

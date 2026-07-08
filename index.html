@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.3(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3419,6 +3419,23 @@ const app = {
         // 盤中自選股全套監控：每 60 秒掃描一輪（round-robin 5 檔/輪避免 Fugle 429）
         if (this.watchlistInterval) clearInterval(this.watchlistInterval);
         this.watchlistInterval = setInterval(() => this._watchlistPulse(), 60000);
+        // 📱 V58.3 — iOS PWA「假死」自癒(使用者反映常要強制關閉重開才正常):
+        //   系統凍結頁面太久 → 計時器/連線全死、fetch promise 卡住 → 畫面像壞掉。
+        //   偵測法:心跳戳記 15s 一次,被凍結時心跳停 → 切回前景看斷了多久:
+        //   >30 分 = 環境大概率已爛 → 整頁重載(等同使用者手動關掉重開,但自動);
+        //   3~30 分 = 軟修復:重抓當前個股/庫存報價 + 重啟輪詢,不打擾使用者。
+        this._lastAliveTs = Date.now();
+        setInterval(() => { this._lastAliveTs = Date.now(); }, 15000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return;
+            const gap = Date.now() - (this._lastAliveTs || Date.now());
+            this._lastAliveTs = Date.now();
+            if (gap > 30 * 60e3) { try { location.reload(); } catch (_) {} return; }
+            if (gap > 3 * 60e3) {
+                try { if (this.currentSymbolId && this.navStack?.[this.navStack.length - 1] === 'diag') this.analyze(this.currentSymbolId, true, true, true); } catch (_) {}
+                try { const invVisible = document.getElementById('tabContentInv')?.style.display !== 'none'; if (invVisible && (this.inventory || []).length) this.refreshInventoryPrices(); } catch (_) {}
+            }
+        });
         // V20.6 — 每日首次開 App:掃自選+庫存,有處置風險(注意/處置/即將出關)就推 1 則
         //         localStorage 記日期,同一天不重複
         setTimeout(() => this._dailyDisposedAlertSweep(), 3000);
@@ -8292,10 +8309,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         return await tryOpenRouter();   // 失敗就 throw,呼叫端自行 catch + 顯失敗 UI
     },
 
-    async fetchFugleData(symbol) {
+    async fetchFugleData(symbol, maxAgeMs = 60000) {
         // 60 秒內若已有此股的成功結果，直接重用（庫存頁先抓到的價格，個股頁也能拿到）
+        // V58.3 — maxAgeMs 可調:庫存頁輪詢傳 15000(20s 輪詢撞 60s 快取 → 實際 1 分鐘才動一次,太慢)
         const cached = this._fugleCache[symbol];
-        if (cached && (Date.now() - cached.ts) < 60000) return cached.data;
+        if (cached && (Date.now() - cached.ts) < maxAgeMs) return cached.data;
 
         if (this.apiRateLimited) return null;
         const keys = [this.settings.fugleToken1, this.settings.fugleToken2,
@@ -24416,6 +24434,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _startInvPricePoll() {
         this._stopInvPricePoll();
         if (!(this.inventory || []).length) return;
+        // 🐛 V58.3 修「庫存現價刷新太慢」:①進頁立即刷一輪(原本要等第一個 20s tick)
+        try { this.refreshInventoryPrices(); } catch (_) {}
         this._invPollTimer = setInterval(() => {
             const invVisible = document.getElementById('tabContentInv')?.style.display !== 'none';
             if (invVisible && (this.isMarketOpen ? this.isMarketOpen() : true)) {
@@ -24430,13 +24450,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         //          單檔 fetch 失敗用 catch 不阻塞其他檔(showOK=false 各自獨立)
         await Promise.all((this.inventory || []).map(async (item) => {
             try {
-                const data = await this.fetchHistoricalData(item.symbol, false);
-                item.currentPrice = data && data.length > 0 ? data[data.length-1].close : item.cost;
-                // 朱家泓淘汰選股法需要 25 筆 K 線,存獨立 cache(避免污染 localStorage)
-                if (Array.isArray(data) && data.length >= 25) {
-                    this._invKlineCache[item.symbol] = data.slice(-30);
+                // 🐛 V58.3 提速:歷史 K 只在本 session 第一輪抓(朱家泓淘汰法用),之後輪詢只打即時報價
+                if (!this._invKlineCache[item.symbol]) {
+                    const data = await this.fetchHistoricalData(item.symbol, false);
+                    if (data && data.length > 0 && !(Number(item.currentPrice) > 0)) item.currentPrice = data[data.length - 1].close;
+                    if (Array.isArray(data) && data.length >= 25) {
+                        this._invKlineCache[item.symbol] = data.slice(-30);
+                    }
                 }
-                const fugle = await this.fetchFugleData(item.symbol);
+                const fugle = await this.fetchFugleData(item.symbol, 15000);
                 if (fugle && Number(fugle.price) > 0) {
                     item.currentPrice = fugle.price;
                     if (Number(fugle.prevClose) > 0) item.prevCloseLive = fugle.prevClose;   // 官方昨收,供漲跌幅算(防採礦舊收盤誤判漲停)
