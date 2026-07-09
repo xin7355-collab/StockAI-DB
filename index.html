@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -25511,6 +25511,31 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         body.innerHTML = html;
     },
 
+    // 🌊 V58.9 大盤動態濾網(使用者要求):大盤風險分數偏高 或 加權跌破5日線 → 追突破類訊號(渣男賽車/妖股)自動標記不推薦
+    _breakoutFilterState() {
+        try {
+            const risk = this._calcRiskScore?.();
+            let below5 = false;
+            const s = this._macroTaiexSeries;
+            if (Array.isArray(s) && s.length >= 5) {
+                const c5 = s.slice(-5).map(x => +x.close || 0).filter(v => v > 0);
+                if (c5.length >= 5) { const ma5 = c5.reduce((a, b) => a + b, 0) / 5; below5 = c5[c5.length - 1] < ma5; }
+            }
+            const highRisk = (risk != null && risk >= 50);
+            const parts = [];
+            if (highRisk) parts.push(`大盤風險 ${risk} 分偏高`);
+            if (below5) parts.push('加權跌破5日線');
+            return { active: !!(highRisk || below5), reason: parts.join('、'), risk, below5 };
+        } catch (_) { return { active: false, reason: '' }; }
+    },
+    // 追突破戰區(渣男賽車 momentum / 妖股 monster)才套濾網;波段/籌碼類不套
+    _radarBreakoutBannerRow(key) {
+        if (key !== 'momentum' && key !== 'monster') return '';
+        const bf = this._breakoutFilterState();
+        if (!bf.active) return '';
+        return `<tr><td colspan="3" class="bg-orange-950/30 border border-orange-700/40 text-orange-200/90 text-left py-2 px-2.5 text-[10px] leading-relaxed">⚠️ <b>因大盤震盪（${bf.reason}），此類「追突破」訊號已自動過濾不予推薦</b>。盤整/破線時追突破勝率大降 → 下方灰字僅供參考,建議等大盤站回5日線再考慮,或改看波段(烏龜過河)/主力鎖股類。</td></tr>`;
+    },
+
     renderRadarMatrix(key) {
         const body = document.getElementById('radarMatrixBody');
         const updatedEl = document.getElementById('radarMatrixUpdated');
@@ -25532,13 +25557,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const demoWarn = this._radarIsDemo
             ? `<tr><td colspan="3" class="bg-amber-900/30 border border-amber-600 text-amber-200 text-center py-2 text-[11px] font-bold">⚠️ 以下為示範資料(採礦尚未完成),非真實選股 — 請稍後重新整理</td></tr>`
             : '';
-        body.innerHTML = demoWarn + list.map((m, i) => {
+        // 🌊 V58.9 大盤動態濾網:突破戰區在大盤震盪時列頂加警示 + 下方股列灰掉(標記不推薦,不隱藏)
+        const _bfBanner = this._radarBreakoutBannerRow(key);
+        const _bfGrey = _bfBanner ? 'opacity-50' : '';
+        body.innerHTML = demoWarn + _bfBanner + list.map((m, i) => {
             const name = this.getStockName(m.sym);
             const g = (typeof m.gain === 'number') ? m.gain : null;
             const gainCls = g === null ? 'text-gray-400' : (g > 0 ? 'text-red-400' : (g < 0 ? 'text-green-400' : 'text-gray-400'));
             const gainStr = g === null ? '' : `<span class="${gainCls} font-mono font-bold text-[11px]">今 ${g > 0 ? '+' : ''}${g}%</span>`;
             const turn = (typeof m.turnover_e === 'number') ? m.turnover_e.toFixed(1) : (m.turnover_e || '—');
-            return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
+            return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer ${_bfGrey}" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
                 ${this._radarStockTd(m.sym, name, i)}
                 <td class="py-2.5 px-1 text-right align-middle leading-tight">
                     <span class="font-mono font-bold text-gray-100 text-[13px]">${m.close}</span>
@@ -25586,7 +25614,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm">此戰區今日無符合標的，換個策略看看 👀</td></tr>`;
             return;
         }
-        body.innerHTML = list.map((m, i) => {
+        // 🌊 V58.9 大盤動態濾網:妖股(monster)追突破類,大盤震盪時列頂警示 + 股列灰掉
+        const _bfBanner = this._radarBreakoutBannerRow(key);
+        const _bfGrey = _bfBanner ? 'opacity-50' : '';
+        body.innerHTML = _bfBanner + list.map((m, i) => {
             const name = this.getStockName(m.sym);
             let statusHtml = '';
             if (key === 'monster') {
@@ -25600,7 +25631,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 statusHtml = `<span class="text-[10px] text-amber-300 font-bold leading-tight">${who}3日買超 ${(m.sum3 || 0).toLocaleString()} 張</span>
                     ${g === null ? '' : `<span class="${gCls} font-mono font-bold text-[11px]">今 ${g > 0 ? '+' : ''}${g}%</span>`}`;
             }
-            return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
+            return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer ${_bfGrey}" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
                 ${this._radarStockTd(m.sym, name, i)}
                 <td class="py-2.5 px-1 text-right align-middle"><span class="font-mono font-bold text-gray-100 text-[13px]">${m.close}</span></td>
                 <td class="py-2.5 px-2 text-right align-middle">
@@ -28067,6 +28098,25 @@ ${_chuPosPlan}
                 </div>
                 <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">💡 <b class="text-gray-300">掛法:</b>進場用「觸價單」(站上 ${longEntry.toFixed(2)} 觸價買/跌破 ${shortEntry.toFixed(2)} 觸價空),<b class="text-gray-300">成交後立刻掛「觸價停損」</b>;別無腦掛漲停、別用市價追,<b class="text-gray-300">13:25 前平倉</b>。</div>`;
             }
+            // 📊 V58.9 當沖量能過濾(使用者要 1.5×):前段預估全日量需 ≥ 5日均量×1.5,否則疑假突破(沒波動的突破易被打回)
+            let volGate = null;
+            try {
+                if (marketOpen && vp && vp.estimated != null) {
+                    const _tds = this.getTodayStr();
+                    const _toLots = v => { const n = Number(v) || 0; return n < 1e6 ? Math.round(n) : Math.round(n / 1000); };
+                    const _v5 = [];
+                    for (let i = baseRaw.length - 1; i >= 0 && _v5.length < 5; i--) {
+                        const d = String(baseRaw[i].date || '').replace(/-/g, '/');
+                        if (d !== _tds) _v5.push(_toLots(baseRaw[i].volume));
+                    }
+                    const vma5 = _v5.length >= 3 ? _v5.reduce((a, b) => a + b, 0) / _v5.length : null;
+                    if (vma5 && vma5 > 0) volGate = { pass: vp.estimated >= vma5 * 1.5, need: Math.round(vma5 * 1.5), est: Math.round(vp.estimated) };
+                }
+            } catch (_) {}
+            const volGateHtml = volGate ? (volGate.pass
+                ? `<div class="bg-green-900/15 border-l-4 border-green-600 pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[10px] text-green-200/90 leading-relaxed">✅ <b>量能達標</b>:前段預估全日 ${volGate.est.toLocaleString()} 張 ≥ 5日均量×1.5(${volGate.need.toLocaleString()} 張)→ 突破有量撐,較不是假突破。</div></div>`
+                : `<div class="bg-orange-900/20 border-l-4 border-orange-500 pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[10px] text-orange-200 leading-relaxed">⚠️ <b>量能不足・疑假突破</b>:預估全日 ${volGate.est.toLocaleString()} 張 &lt; 5日均量×1.5(${volGate.need.toLocaleString()} 張)→ 沒量的突破容易被打回,<b>先別追</b>,等量真的放大再進。</div></div>`)
+                : '';
             const hero = `
             <div class="bg-[#161b22] border-2 ${vMap[vC].split(' ')[1]} rounded-lg p-3 shadow-lg">
                 <div class="flex items-center justify-between">
@@ -28076,6 +28126,7 @@ ${_chuPosPlan}
                 <div class="text-2xl font-black ${vMap[vC].split(' ')[0]}">${vTone}</div>
                 ${biasLine}
                 <div class="bg-[#0d1117] border-l-4 ${vMap[vC].split(' ')[1]} pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">${vNote}</div></div>
+                ${volGateHtml}
                 ${planHtml}
             </div>`;
             cards.unshift(hero);
