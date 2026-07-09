@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.7(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V58.8(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -296,7 +296,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -17555,39 +17555,37 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const hLC = document.getElementById('headerLastClose'); if (hLC) hLC.innerText = prevCloseVal.toFixed(2);
         }
 
-        let fugleData = null;
-        fugleData = await this.fetchFugleData(targetSym);
-        if (fugleData) {
-            this._hasLivePrice = !!(fugleData && !fugleData.isHistorical);
-            const marketOpen = this.isMarketOpen();
-            document.getElementById('dataSourceText').innerText = marketOpen ? "即時報價" : "最新報價";
-            document.getElementById('dataSourceText').className = marketOpen
-                ? "font-bold text-green-400 text-[10px] font-mono tracking-wide"
-                : "font-bold text-blue-400 text-[10px] font-mono tracking-wide";
-            document.getElementById('dataSourceDot').className = marketOpen
-                ? "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
-                : "w-1.5 h-1.5 rounded-full bg-blue-400";
-        } else {
-            // Fugle 全 429 → 改用 Yahoo Finance 即時報價備援（不再直接退回歷史收盤）
+        // ⚡ V58.8 提速(修「點個股卡雲端運算中很久」):即時報價「限時 2.5 秒」,逾時先用歷史收盤把畫面畫好+收遮罩,
+        //   真報價背景回來再升級價格(切股守門);盤中 10s 自動刷也會補。原本 await Fugle→(429退)Yahoo 鏈會卡數秒。
+        const _setQBadge = (txt, txtCls, dotCls) => {
+            const t = document.getElementById('dataSourceText'), d = document.getElementById('dataSourceDot');
+            if (t) { t.innerText = txt; t.className = txtCls; }
+            if (d) d.className = dotCls;
+        };
+        const _acquireQuote = async () => {
+            const open = this.isMarketOpen();
+            const q = await this.fetchFugleData(targetSym);
+            if (q) {
+                this._hasLivePrice = !!(q && !q.isHistorical);
+                _setQBadge(open ? '即時報價' : '最新報價', `font-bold ${open ? 'text-green-400' : 'text-blue-400'} text-[10px] font-mono tracking-wide`, open ? 'w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse' : 'w-1.5 h-1.5 rounded-full bg-blue-400');
+                return q;
+            }
             const yq = await this._fetchYahooQuote(targetSym).catch(() => null);
             if (yq) {
-                fugleData = yq;
                 this._hasLivePrice = !yq.isHistorical;
-                const marketOpen = this.isMarketOpen();
-                document.getElementById('dataSourceText').innerText = marketOpen ? "即時報價(Yahoo)" : "最新報價(Yahoo)";
-                document.getElementById('dataSourceText').className = "font-bold text-green-400 text-[10px] font-mono tracking-wide";
-                document.getElementById('dataSourceDot').className = marketOpen
-                    ? "w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
-                    : "w-1.5 h-1.5 rounded-full bg-green-400";
-            } else {
-                this._hasLivePrice = false;
-                fugleData = this._getHistoricalLatestAsPrice();
-                if (!this.apiRateLimited) {
-                    document.getElementById('dataSourceText').innerText = "連線異常(歷史收盤)";
-                    document.getElementById('dataSourceText').className = "font-bold text-yellow-400 text-[10px] font-mono tracking-wide";
-                    document.getElementById('dataSourceDot').className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
-                }
+                _setQBadge(open ? '即時報價(Yahoo)' : '最新報價(Yahoo)', 'font-bold text-green-400 text-[10px] font-mono tracking-wide', open ? 'w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse' : 'w-1.5 h-1.5 rounded-full bg-green-400');
+                return yq;
             }
+            this._hasLivePrice = false;
+            if (!this.apiRateLimited) _setQBadge('連線異常(歷史收盤)', 'font-bold text-yellow-400 text-[10px] font-mono tracking-wide', 'w-1.5 h-1.5 rounded-full bg-yellow-500');
+            return this._getHistoricalLatestAsPrice();
+        };
+        const _quoteP = _acquireQuote();
+        let fugleData = await Promise.race([_quoteP, new Promise(r => setTimeout(() => r('__QT__'), 2500))]);
+        const _quoteTimedOut = (fugleData === '__QT__');
+        if (_quoteTimedOut) {
+            fugleData = this._getHistoricalLatestAsPrice();
+            _setQBadge('報價載入中…', 'font-bold text-blue-400 text-[10px] font-mono tracking-wide', 'w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse');
         }
 
         // 🐛 V41.28 修:抓資料期間使用者又切了別檔 → 舊的這次別再把資料畫上去,避免慢的請求蓋掉新股畫面
@@ -17639,6 +17637,18 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             document.getElementById('loadingOverlay').style.display = 'none';
         } else {
             masterWorker.postMessage({ activeData: this.activeData, marketCtx: this._buildMarketCtx() });
+        }
+        // ⚡ V58.8 背景升級即時報價:逾時先用歷史收盤畫好,真報價回來再更新價格+重算指標(切股守門)
+        if (_quoteTimedOut) {
+            _quoteP.then(q => {
+                if (!q || q === '__QT__' || this.currentSymbolId !== targetSym) return;
+                try {
+                    this.applyLatestPrice(q, null);
+                    if (q && !q.isHistorical) { if (!this._lastFugleData) this._lastFugleData = {}; this._lastFugleData[targetSym] = q; }
+                    this.activeData = this.aggregateData(this.rawDailyData, this.currentTF);
+                    masterWorker.postMessage({ activeData: this.activeData, marketCtx: this._buildMarketCtx() });
+                } catch (_) {}
+            }).catch(() => {});
         }
         } catch(e) {
             console.error('[analyze] 未預期錯誤:', e);
@@ -18959,6 +18969,44 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 cmd = `<b>⚪ 盤整別猜方向</b>。等帶量(≥1.2× 基本量)長紅突破盤整區再進 — 突破那根就是起漲第一根。`;
                 cmdBorder = 'border-gray-500';
             }
+            // 🩹 V58.8 套牢診斷(使用者要求:深套時判「錯殺可等回補 / 洗盤 / 真轉弱該走」+ 信心對策)
+            //   只在「有庫存 + 深套 ≤ -8%」顯,合併 Q2(錯殺)+ Q3(洗盤 vs 真跌);全純公式复用既有訊號,不新增卡。
+            let trappedHtml = '';
+            if (cost && pnlPct != null && pnlPct <= -8) {
+                // 法人近 5 日(張;foreign_net/trust_net 單位股 ÷1000)
+                let inst5 = 0, hasInst = false;
+                for (const b of data.slice(-5)) { const f = +b.foreign_net || 0, t = +b.trust_net || 0; if (b.foreign_net != null || b.trust_net != null) hasInst = true; inst5 += (f + t) / 1000; }
+                const instFled = hasInst && inst5 < -500;      // 法人明顯撤(>500 張)
+                const instStay = hasInst && inst5 >= -500;     // 法人沒大跑
+                const ma60_5ago = at(ind.ma60, last - 5);
+                const ma60Up = ma60_5ago != null && ma60 > ma60_5ago;
+                const wasBull = C >= ma60 * 0.92 && ma60Up;    // 還在季線附近 + 季線上揚 = 原多頭未破
+                const nearSup = C >= ma20 * 0.95 || C >= ma60 * 0.95;   // 貼月/季線支撐
+                const volShrink = vr != null && vr <= 0.8;     // 殺低量縮(賣壓竭盡/洗盤特徵)
+                const twPct = (typeof this._taiexTodayPct === 'number') ? this._taiexTodayPct : null;
+                let regimeBad = false; try { const rg = this._chuPositionAdvice(); regimeBad = rg && rg.regime === 'bear'; } catch (_) {}
+                const mktWashing = (twPct != null && twPct <= -0.5) || regimeBad;   // 大盤本身在跌/空頭
+                let tTone, tVerdict, tAdvice, tBorder;
+                if (instFled && !wasBull) {
+                    tTone = '🔴'; tBorder = 'border-red-500'; tVerdict = '真轉弱(不是錯殺)';
+                    tAdvice = `法人 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b>、季線也破了 → 趨勢真的壞,別凹單等解套。反彈到 5 日線 ${stop5} 或成本附近先減碼,守停損 <b>${nf(slF)}</b> 破了全出。`;
+                } else if (mktWashing && instStay && nearSup) {
+                    tTone = '🟡'; tBorder = 'border-yellow-500'; tVerdict = '洗盤帶下來(大盤在洗)';
+                    tAdvice = `${twPct != null && twPct <= -0.5 ? `今天大盤也跌 ${twPct.toFixed(1)}%,` : '大盤環境偏弱,'}法人沒跑(5日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張)+ 還貼均線${volShrink ? ' + 殺低量縮' : ''} → 像主力/大盤一起<b>洗轎</b>,不是它單獨出事。大盤止穩它就回,守 <b>${nf(slF)}</b> 不破別自己嚇出場。`;
+                } else if (instStay && wasBull && nearSup) {
+                    tTone = '🟢'; tBorder = 'border-green-500'; tVerdict = '像錯殺(體質沒壞)';
+                    tAdvice = `原多頭未破(季線上揚)+ 法人沒跑 + 貼支撐${volShrink ? ' + 量縮' : ''} → 比較像<b>被錯殺</b>,不是基本面壞。可等回補:先「🔎 查利空」確認沒公司壞消息,守 <b>${nf(slF)}</b> 不破就抱著等紅K站回 5 日線 ${stop5},別追殺在最低。`;
+                } else {
+                    tTone = '🟡'; tBorder = 'border-yellow-500'; tVerdict = '體質中性・再觀察';
+                    tAdvice = `套 ${pnlPct.toFixed(1)}% 但訊號不明(法人 ${hasInst ? (inst5 >= 0 ? '+' : '') + Math.round(inst5).toLocaleString() + ' 張' : '無資料'})。守停損 <b>${nf(slF)}</b> 是底線,破了照紀律走;沒破就等大盤/法人表態再決定,別急著砍也別加碼。`;
+                }
+                const askBtn = `<button onclick="app._wkAskWhy('${this.currentSymbolId}'); app.vibrate(20);" class="text-[9px] font-bold text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-1.5 py-0.5 ml-1">🔎 查利空</button>`;
+                trappedHtml = `<div class="bg-[#0d1117] border-l-4 ${tBorder} border-y border-r border-[#30363d] rounded-r p-2.5 mt-2">
+                    <div class="text-[11px] font-bold text-gray-200 mb-1">🩹 套牢診斷:${tTone} ${tVerdict}${askBtn}</div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">${tAdvice}</div>
+                    <div class="text-[8px] text-gray-600 mt-1">💡 只在庫存深套(≤-8%)顯;錯殺=可等回補、洗盤=大盤/主力甩轎、真轉弱=該走。真的破停損還是要走。</div>
+                </div>`;
+            }
             // 📎 朱式買點引擎參考(空手時,讀仲裁 verdict;chuActionCard V58.2 起 UI 隱藏,引擎照跑)
             let chuLine = '';
             try { const v = this._chuActionVerdict; if (!cost && v && v.sym === this.currentSymbolId && v.big) chuLine = `<div class="text-[9px] text-gray-500 mt-1 leading-tight">📎 朱式買點引擎:${v.big}(分批價位看下方「分批進場計畫」)</div>`; } catch (_) {}
@@ -18986,6 +19034,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 <div class="bg-[#0d1117] border-l-4 ${cmdBorder} pl-2.5 py-2 rounded-r">
                     <div class="text-[11px] text-gray-100 leading-relaxed">👉 ${cmd}</div>
                 </div>
+                ${trappedHtml}
                 ${chuLine}
                 <div id="trendInstLine" class="${instCached ? '' : 'hidden'} text-[9px] text-gray-500 mt-1 leading-tight">${instCached}</div>
                 <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📖 心法:趨勢 &gt; 位置 &gt; K棒 &gt; 量 — 量/籌碼/消息/基本面都只是輔助,K線圖才是主軸;下方所有卡片都是參考,照這張表操課就好。</div>`;
