@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V58.9(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V59.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -292,11 +292,25 @@
         </div>
     </div>
 
+    <!-- 📖 V59.0 永豐智慧單全攻略(7 種單型 + 踩雷 + App 價位對應):純教學,零 API 零採礦 -->
+    <div id="sinopacGuideModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';">
+        <div class="modal-content max-w-[24rem] max-h-[88vh] p-0 flex flex-col" onclick="event.stopPropagation()">
+            <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-gray-700 rounded-t-lg">
+                <h3 class="text-amber-300 font-black text-base flex items-center gap-2">⚔️ 永豐智慧單全攻略</h3>
+                <button onclick="document.getElementById('sinopacGuideModal').classList.add('hidden'); document.getElementById('sinopacGuideModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
+            </div>
+            <div id="sinopacGuideBody" class="flex-1 overflow-y-auto px-4 py-3"></div>
+            <div class="sticky bottom-0 bg-[#0d1117] px-4 py-3 border-t border-gray-700 rounded-b-lg">
+                <button onclick="document.getElementById('sinopacGuideModal').classList.add('hidden'); document.getElementById('sinopacGuideModal').style.display='none';" class="w-full bg-amber-700 hover:bg-amber-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我學會了 💪</button>
+            </div>
+        </div>
+    </div>
+
     <div id="settingsModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';">
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V58.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V59.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -19794,6 +19808,71 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         ].join('\n');
     },
 
+    // 📖 V59.0 — 永豐智慧單全攻略:7 種單型白話教學 + 小白踩雷 + 把 App 算好的價位對應到「該設哪張單、填什麼」
+    //   純教學零 API;動態段落復用 _unifiedExitPlan(停損/停利/移動停利),把分析變成可照抄的下單參數(1+1>2)
+    _showSinoPacGuide() {
+        const body = document.getElementById('sinopacGuideBody');
+        const modal = document.getElementById('sinopacGuideModal');
+        if (!body || !modal) return;
+        // ① 動態:這檔的建議單(有載入個股 + 有算出停損停利才顯)
+        let dyn = '';
+        try {
+            const data = this.baseRawData || this.rawDailyData;
+            let cost = null;
+            try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) cost = +p.cost; } catch (_) {}
+            const plan = (Array.isArray(data) && data.length >= 25) ? this._unifiedExitPlan(data, cost) : null;
+            const nm = this.getStockName?.(this.currentSymbolId) || this.currentSymbolId;
+            if (plan && (plan.stopFinal || plan.takeShort)) {
+                const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
+                dyn = `<div class="bg-amber-950/25 border border-amber-700/40 rounded-lg p-2.5 mb-3">
+                    <div class="text-[11px] font-black text-amber-200 mb-1.5">🎯 ${nm} 直接照抄(App 已幫你算好)</div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed space-y-1">
+                        <div>• <b class="text-green-300">停損停利單</b>:停損觸發 ≤ <b class="font-mono text-green-300">${nf(plan.stopFinal)}</b>、停利觸發 ≥ <b class="font-mono text-red-300">${nf(plan.takeShort)}</b>(先賣一半,剩的守月線 ${nf(plan.takeLong)})</div>
+                        <div>• <b class="text-cyan-300">移動出場單</b>:想抱波段讓獲利奔跑 → 設「回檔 5% 出場」,停利線自動往上墊</div>
+                        ${cost ? '' : '<div class="text-[9px] text-amber-400">⚠️ 未填庫存成本,停利用技術價;填成本後會加「-10% 鐵血停損」對照</div>'}
+                    </div>
+                    <div class="text-[8px] text-gray-500 mt-1">※ 價位是 App 算的參考,實際去永豐 App 手動輸入;觸發≠成交,看流動性/漲跌停</div>
+                </div>`;
+            }
+        } catch (_) {}
+        // ② 7 種單型(依情境 A/B/C 分組)
+        const card = (n, name, tag, tagCls, plain, fit) => `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 mb-2">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="w-5 h-5 rounded-full bg-[#30363d] text-gray-200 text-[10px] font-black flex items-center justify-center flex-shrink-0">${n}</span>
+                    <span class="text-[12px] font-black text-gray-100">${name}</span>
+                    <span class="text-[8px] font-bold px-1.5 py-0.5 rounded ${tagCls} ml-auto">${tag}</span>
+                </div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">💬 ${plain}</div>
+                <div class="text-[9px] text-gray-500 mt-1">👤 適合:${fit}</div>
+            </div>`;
+        const sec = t => `<div class="text-[11px] font-black text-amber-300 mt-3 mb-1.5 border-l-4 border-amber-500 pl-2">${t}</div>`;
+        body.innerHTML = dyn
+            + sec('🟢 情境 A ・ 常見交易,最好上手')
+            + card(1, '快速單', '新手首選', 'bg-green-900/40 text-green-300', '「台積電跌到 900 我要買 1 張」→ 成交價 ≤ 900 自動送買單。單一股票、9 種條件擇一。', '心裡有目標價、上班沒空盯盤')
+            + card(2, '停損停利單', '克服人性', 'bg-blue-900/40 text-blue-300', '成本 100,設「漲到 120 停利 + 跌到 90 停損」,哪個先到自動賣。針對手上庫存設。', '賺價差、怕「漲捨不得賣、跌不甘心賣」套牢的人')
+            + sec('🟡 情境 B ・ 盤面震盪,短線進出')
+            + card(3, '母子單', '當沖防忘記', 'bg-orange-900/40 text-orange-300', '母單「買進成交」→ 子單自動開始盯停利/停損。買完自動幫你顧出場,不會忘記回補。', '愛當沖、常忘記平倉的人')
+            + card(4, '移動出場單', '讓獲利奔跑', 'bg-cyan-900/40 text-cyan-300', '設「回檔 5% 出場」。股票一路漲、停利線一路往上墊;從高點回跌 5% 才賣。漲多賺多又鎖利。', '抓到波段、想續抱又怕獲利吐回去')
+            + card(5, '多條件單', 'DIY 策略', 'bg-purple-900/40 text-purple-300', '7 組條件,AND=全成立才觸發、OR=一個成立就觸發。例:「大盤漲 + 量放大 + 突破前高」三者同時才進。', '有自己進出邏輯、想組合條件(你這種懂系統的最愛)')
+            + sec('🔵 情境 C ・ 存股/中長線佈局')
+            + card(6, '長效單', '慢慢等', 'bg-teal-900/40 text-teal-300', '監控最長 30 天,長期守著目標價。適合低價熱門股、落後補漲族群。', '不急著成交、慢慢等目標價的佈局型')
+            + card(7, '定時定量單', '大單分批', 'bg-indigo-900/40 text-indigo-300', '要買 10 張怕拉高價,系統一段時間內拆小單分批買,貼近區間均價。', '資金量大、想壓低衝擊成本的中實戶/大戶')
+            + `<div class="bg-red-950/25 border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5 mt-3">
+                <div class="text-[11px] font-black text-red-300 mb-1.5">🚨 小白最容易踩的雷</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed space-y-1">
+                    <div>① <b class="text-red-200">觸發 ≠ 一定成交</b>:條件到了才送單,成不成交還看流動性/漲跌停/你掛的委託價,設太極端可能買不到。</div>
+                    <div>② <b class="text-red-200">不能改、只能刪</b>:設錯就刪掉重設,不像一般委託能改價。</div>
+                    <div>③ <b class="text-red-200">會到期</b>:最長 30 天,過了監控日就失效。</div>
+                    <div>④ <b class="text-red-200">狀態去哪看</b>:送出→「智慧單 > 監控中」;觸發成交→「已觸發/完成」;過期→「歷史紀錄」。</div>
+                    <div>⑤ <b class="text-red-200">它只是輔助</b>:系統照你設的參數執行,判斷對錯還是你自己負責。</div>
+                </div>
+            </div>`
+            + `<div class="text-[9px] text-gray-600 mt-3 leading-relaxed">💡 用法心法:先看本 App 的「照表操課 + 離場 SOP」算出<b>進場價/停損/停利</b>,再回永豐 App 挑對應單型照抄參數 — 分析在這邊做、執行交給永豐自動盯,克服人性、上班也不怕漏掉。資料來源:永豐證券官方說明,僅整理教學非投資建議。</div>`;
+        modal.classList.remove('hidden'); modal.style.display = 'flex';
+        this.vibrate?.(15);
+    },
+
     _renderChuExitSop(data, ind, last) {
         const box = document.getElementById('chuExitSopCard');
         if (!box) return;
@@ -19875,7 +19954,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // V26.9 — 永豐 App SOP 改 Vertical Stepper(取代原純文字 ❶❷❸,使用者面臨虧損焦慮時更易讀)
         const sinopacHtml = (sinopacStop > 0 && sinopacTake > 0) ? `
             <div class="mt-3 pt-2 border-t border-dashed border-[#30363d]">
-                <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1">⚔️ 永豐 App 智慧單 SOP</div>
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[11px] font-bold text-amber-300 flex items-center gap-1">⚔️ 永豐 App 智慧單 SOP</div>
+                    <button onclick="app._showSinoPacGuide(); event.stopPropagation();" class="text-[9px] font-bold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded-full px-2 py-0.5 hover:bg-amber-800/40 transition-colors whitespace-nowrap">📖 7 種單全攻略</button>
+                </div>
                 <div class="pl-1">
                     <div class="flex gap-2.5">
                         <div class="flex flex-col items-center flex-shrink-0">
