@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V59.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V59.2(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -310,7 +310,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V59.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V59.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -891,13 +891,8 @@
                 <button onclick="app.openAiGod(); app.vibrate(40);" class="text-[1.75rem] leading-none flex-shrink-0 transition-transform hover:scale-110" title="🤖 AI 股神 · 庫存全解析">🤖</button>
                 <!-- 🔖 V50.9 版本號已移至 ⚙️ 設定頁標題列(使用者要求:想看到又不佔置頂版面) -->
             </div>
-            <!-- 🌦️ V51.1 【大盤 + 天氣】置中(使用者要求):獨立 absolute 置中於 header,不受左右兩組寬度影響;點擊開「台股現在怎麼操作」彈窗 -->
-            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 border border-[#30363d] cursor-pointer flex-shrink-0 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" onclick="app.showMarketWeatherPopup(); app.vibrate(50);" title="大盤天氣 · 點擊看台股現在怎麼操作">
-                <span class="text-[15px] font-black text-gray-200 leading-none">大盤</span>
-                <div id="headerWeather" class="flex items-center gap-1">
-                    <span class="text-[13px] text-gray-500">…</span>
-                </div>
-            </div>
+            <!-- 🗑️ V59.2 置頂「大盤 ☁️ 震盪」已刪除(使用者要求);headerWeather stub 保留供 JS null-safe -->
+            <div id="headerWeather" class="hidden"></div>
             <div class="flex items-center gap-2.5 flex-shrink-0">
                 <!-- ⛏️ V51.6 採礦中圖示(⚙️ 左側):採礦中才顯示 + 慢閃,採礦完自動消失;點看採礦說明/資料日期 -->
                 <button id="minerHeaderBtn" onclick="app.showMinerInfoPopup(); app.vibrate(20);" class="hidden text-amber-400 hover:text-amber-300 text-[1.4rem] leading-none flex-shrink-0 animate-pulse-slow" title="採礦中 · 點看說明與資料日期">⛏️</button>
@@ -2300,10 +2295,10 @@
                 <!-- V17.11 — 表頭 + 內容區包在同一個 horizontal scroll container,讓所有 column 寬度對齊 -->
                 <div class="flex-grow bg-[#0d1117] overflow-hidden">
 <!-- 💡 操作提示行 V44.6 已刪除(使用者要求版面乾淨) -->
-                    <!-- V46.2 — 恢復左右滑動(寬版多欄水平 scroll);表頭排序 ⇅ 靠最右、文字置中、作用中方向琥珀色 -->
-                    <div class="overflow-x-auto scrollbar-hide">
-                        <div class="min-w-[520px]">
-                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[120px_70px_78px_88px_54px_90px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
+                    <!-- V46.2 左右滑動;🧊 V59.2 凍結:清單改容器內捲(max-height + overflow-auto),表頭 sticky top-0 固定於捲動區頂;上方統計卡因清單自捲、面板不撐破頁面 → 也不被捲走 -->
+                    <div class="overflow-auto scrollbar-hide" style="max-height: calc(100dvh - 336px);">
+                        <div class="min-w-[466px]">
+                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[96px_66px_76px_88px_52px_88px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
                                 <span class="cursor-pointer hover:text-white flex items-center gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span>今日損益</span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('price')"><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
@@ -2322,10 +2317,14 @@
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative">
                 <!-- 🗑️ V58.4 「🎯 選股池 + ℹ️ 說明書」標題列已刪除(使用者要求省空間);radarManualModal DOM 保留但無觸發鈕 -->
 
-                <!-- 🎛️ V57.5 左欄類別 rail + 右欄內容(參考專業 App 焦點股版型:類別在左直欄,名單在右) -->
-                <div class="flex gap-1.5 items-start flex-grow min-h-0 p-1.5">
-                    <!-- 左欄:選股種類(sticky,可自己上下捲)— V57.6 三行式標籤:emoji / 名稱 / 副標,84px 窄欄不再換行斷字 -->
-                    <div class="flex flex-col gap-1 w-[84px] flex-shrink-0 sticky top-1 self-start max-h-[85vh] overflow-y-auto scrollbar-hide">
+                <!-- 🎛️ V59.2 選股種類改「抽屜」(修左右滑動拉扯 + 右邊名單太窄):預設隱藏,點鈕彈出 grid,選一個就收起,名單全寬 -->
+                <div class="flex flex-col gap-1.5 flex-grow min-h-0 p-1.5">
+                    <button onclick="app._toggleRadarRail()" class="w-full flex items-center justify-between bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2.5 flex-shrink-0 hover:border-cyan-600/50 transition-colors">
+                        <span class="text-[12px] font-bold text-cyan-300 flex items-center gap-1.5">☰ 選股種類 <span id="radarCurrentCat" class="text-gray-100">⭐ 送分題</span></span>
+                        <span id="radarRailChevron" class="text-gray-500 text-[11px] transition-transform">▾</span>
+                    </button>
+                    <!-- 抽屜:grid 排列,選一個就自動收起 -->
+                    <div id="radarRailDrawer" class="hidden grid grid-cols-4 gap-1 bg-[#0d1117] border border-[#30363d] rounded-lg p-1.5 flex-shrink-0">
                         <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">⭐</span><span class="block text-[10px] mt-1">送分題</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高勝率</span></button>
                         <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🏎️</span><span class="block text-[10px] mt-1">渣男賽車</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">動能</span></button>
                         <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🐢</span><span class="block text-[10px] mt-1">烏龜過河</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">波段</span></button>
@@ -2339,11 +2338,11 @@
                         <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🌅</span><span class="block text-[10px] mt-1">K棒轉多</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找買點</span></button>
                         <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🌃</span><span class="block text-[10px] mt-1">K棒轉空</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找賣點</span></button>
                         <button onclick="app.switchRadarStrategy('potential')" id="radarTabPotential" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">💎</span><span class="block text-[10px] mt-1">潛力黑馬</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">長線/中線</span></button>
-                        <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法"><span class="block text-sm leading-none">📚</span><span class="block text-[10px] mt-1">朱家泓</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">選股法</span></button>
+                        <button onclick="app._closeRadarRail(); app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法"><span class="block text-sm leading-none">📚</span><span class="block text-[10px] mt-1">朱家泓</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">選股法</span></button>
                     </div>
 
-                    <!-- 右欄:說明條 + 各類別內容 -->
-                    <div class="flex-1 min-w-0 flex flex-col gap-1.5">
+                    <!-- 名單區(全寬,不再被左欄擠窄) -->
+                    <div class="w-full min-w-0 flex flex-col gap-1.5">
                         <!-- 當前策略一句話說明條(預設收 2 行,點展開) -->
                         <div id="radarMatrixHint" onclick="this.classList.toggle('max-h-10'); app.vibrate(10);" class="max-h-10 overflow-hidden cursor-pointer text-[10px] text-gray-400 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1 leading-relaxed transition-all" title="點一下展開/收合完整說明"></div>
 
@@ -24842,7 +24841,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const _prevP = this._invPrevPrices[item.symbol];
             const priceFlash = (_prevP != null && price !== _prevP) ? (price > _prevP ? 'price-flash-up' : 'price-flash-down') : '';
             this._invPrevPrices[item.symbol] = price;
-            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[120px_70px_78px_88px_54px_90px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+            html += `<div class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[96px_66px_76px_88px_52px_88px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                 <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
@@ -25056,14 +25055,29 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this.switchRadarStrategy(this.radarStrategy || 'layup');
     },
 
+    // 🎛️ V59.2 選股種類抽屜開合(修拉扯:類別藏起來,點鈕才彈)
+    _toggleRadarRail() {
+        const d = document.getElementById('radarRailDrawer'), c = document.getElementById('radarRailChevron');
+        if (!d) return;
+        const open = d.classList.toggle('hidden') === false;
+        if (c) c.style.transform = open ? 'rotate(180deg)' : '';
+        this.vibrate?.(15);
+    },
+    _closeRadarRail() {
+        const d = document.getElementById('radarRailDrawer'), c = document.getElementById('radarRailChevron');
+        if (d && !d.classList.contains('hidden')) { d.classList.add('hidden'); if (c) c.style.transform = ''; }
+    },
+
     switchRadarStrategy(key, _auto) {
         if (!this._RADAR_TABS[key]) key = 'layup';
-        if (!_auto) this._radarUserPicked = true;   // 🥇 V57.0 使用者手動切過 → 擂台冠軍不再搶預設(尊重選擇)
+        if (!_auto) { this._radarUserPicked = true; this._closeRadarRail(); }   // 🥇 V57.0 手動切過→擂台冠軍不搶;V59.2 選完收抽屜
         this.radarStrategy = key;
         Object.entries(this._RADAR_TABS).forEach(([k, cfg]) => {
             const btn = document.getElementById(cfg.id);
             if (btn) btn.className = this._RADAR_TAB_BASE + (k === key ? cfg.active : this._RADAR_TAB_INACTIVE);
         });
+        // V59.2 更新抽屜鈕上的「當前類別」標籤(取該 tab 的 emoji + 名稱)
+        try { const b = document.getElementById(this._RADAR_TABS[key]?.id); const cc = document.getElementById('radarCurrentCat'); if (b && cc) { const sp = b.querySelectorAll('span'); cc.textContent = `${sp[0]?.textContent || ''} ${sp[1]?.textContent || ''}`.trim(); } } catch (_) {}
         const hint = document.getElementById('radarMatrixHint');
         if (hint) hint.innerHTML = (this._RADAR_HINT[key] || '') + this._radarWinNote(key);
         // V32.3 — signal_history 未載入時(首次切非送分題分頁)→ 載入後補回勝率小字
