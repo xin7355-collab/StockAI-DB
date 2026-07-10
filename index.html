@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V59.0(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
+    <!-- STRATEGY TERMINAL V59.1(版本顯示在置頂 badge + manifest;此處刻意不放版本) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -310,7 +310,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V59.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V59.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2338,6 +2338,7 @@
                         <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🚨</span><span class="block text-[10px] mt-1">處置股</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">風控</span></button>
                         <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🌅</span><span class="block text-[10px] mt-1">K棒轉多</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找買點</span></button>
                         <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">🌃</span><span class="block text-[10px] mt-1">K棒轉空</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找賣點</span></button>
+                        <button onclick="app.switchRadarStrategy('potential')" id="radarTabPotential" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-sm leading-none">💎</span><span class="block text-[10px] mt-1">潛力黑馬</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">長線/中線</span></button>
                         <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法"><span class="block text-sm leading-none">📚</span><span class="block text-[10px] mt-1">朱家泓</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">選股法</span></button>
                     </div>
 
@@ -2404,6 +2405,9 @@
                     </div>
                     <div id="themePulseBody"></div>
                 </div>
+
+                <!-- 💎 V59.1 潛力黑馬 view(從底部💎 tab 併入選股池;renderPotentialTab 自帶長線/中線切換) -->
+                <div id="radarPotentialView" class="hidden flex-grow"></div>
 
                 <div id="radarMatrixUpdated" class="text-[10px] text-gray-600 text-center py-2 border-t border-[#21262d]"></div>
                     </div><!-- /右欄 -->
@@ -2507,8 +2511,8 @@
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
             <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">👀</span><span class="text-[11px] mt-0.5 font-bold">觀察</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
             <button onclick="app.switchAppTab('etf'); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">ETF</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
-            <!-- 💎 V46.4 — 長線潛力股(低基期翻倍/便宜成長/籌碼默默吸/技術打底,純公式零採礦) -->
-            <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">💎</span><span class="text-[11px] mt-0.5 font-bold">潛力</span></button>
+            <!-- 💎 V59.1 潛力頁已併入「選股」→ 選股池左欄「💎 潛力黑馬」;底部 tab 移除,空出導覽空間 -->
+            <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="hidden"></button>
         </nav>
     </div>
 
@@ -7029,7 +7033,8 @@ ${list}
     },
 
     async renderPotentialTab() {
-        const box = document.getElementById('tabContentPotential');
+        // 💎 V59.1 併入選股池:優先渲染進選股池的 radarPotentialView,舊 tabContentPotential 已無導覽入口(fallback 保留)
+        const box = document.getElementById('radarPotentialView') || document.getElementById('tabContentPotential');
         if (!box) return;
         const mode = this._potentialMode || 'momentum';
         const isM = mode === 'momentum';
@@ -24981,6 +24986,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
         kbar_bull: { id: 'radarTabKbarBull',  active: 'bg-red-600/25 text-red-300 border-red-500' },
         kbar_bear: { id: 'radarTabKbarBear',  active: 'bg-green-600/25 text-green-300 border-green-500' },
+        potential: { id: 'radarTabPotential', active: 'bg-cyan-600/25 text-cyan-200 border-cyan-500' },
     },
     _RADAR_HINT: {
         layup:     '⭐ 送分題｜AI 夜跑掃描 🟢 標的(沒掃到時 fallback 雷達 swing+momentum),含歷史回測勝率,讓您看得到也敢買。',
@@ -24996,6 +25002,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         falcon:    '🦅 獵鷹建倉｜全市場 AI 評分 ≥ 60 的標的(紅榜 ≥75 / 橙榜 60-74),分數越高越優先,綜合動能·籌碼·技術·風險。',
         kbar_bull: '🌅 K棒轉多｜全市場掃朱家泓 K棒戰法「偏多轉折」:晨星/長紅吞噬/長紅遭遇/測撐有撐,都配合成交量。純公式,右欄顯命中訊號。→ 找進場買點,站上訊號 K 高點或 5MA 再分批進。',
         kbar_bear: '🌃 K棒轉空｜全市場掃朱家泓 K棒戰法「偏空轉折/出貨」:夜星/長黑吞噬/長黑遭遇/測壓有壓/量價背離,都配合成交量。純公式。→ 手上有貨的顧停損、空手別追高,跌破訊號 K 低點多單先走。',
+        potential: '💎 潛力黑馬｜🌱 長線潛力(7因子純公式:低基期/便宜/成長/籌碼/技術/題材/空間)+ 🐎 中線黑馬(主升段+獲利跳+法人卡位+漲價族群)。下方可切長線/中線,含大盤環境權重打折+同業比價+停利金額。',
     },
     // radar_matrix.json 尚未採礦時的示範資料（接線採礦後自動換成真資料）
     _RADAR_FAKE: {
@@ -25067,11 +25074,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const attView   = document.getElementById('radarAttentionView');
         const wkView    = document.getElementById('radarWrongkillView');
         const themeView = document.getElementById('radarThemeView');
-        [layupView, tableWrap, attView, wkView, themeView].forEach(v => v && v.classList.add('hidden'));
+        const potView   = document.getElementById('radarPotentialView');
+        [layupView, tableWrap, attView, wkView, themeView, potView].forEach(v => v && v.classList.add('hidden'));
         if (key === 'layup') {
             if (layupView) layupView.classList.remove('hidden');
             this._loadChiefCacheForSendScore();
             this._loadSignalAccuracy();
+        } else if (key === 'potential') {
+            // 💎 V59.1 潛力黑馬:併入選股池,renderPotentialTab 自帶長線/中線切換,渲染進 radarPotentialView
+            if (potView) potView.classList.remove('hidden');
+            try { this.renderPotentialTab(); } catch (_) {}
         } else if (key === 'attention') {
             if (attView) attView.classList.remove('hidden');
             this.renderAttentionView();
