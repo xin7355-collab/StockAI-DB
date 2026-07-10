@@ -1,0 +1,64 @@
+name: ✅ CI 四驗證守門 (ci_verify)
+
+# 每次 push main / 開 PR 自動跑「四驗證」,壞代碼紅燈擋下。
+# ⚠️ 純檢查:不部署、不採礦、不 push 任何東西(permissions 只給 read)。
+# ⚠️ 這是「紅燈提醒」不是硬閘門 — 使用者直接 push main 無 PR 流程,CI 只負責事後亮紅燈,
+#    要當硬閘門需另開 branch protection(使用者目前不用,維持現狀)。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - '**.py'
+      - 'scripts/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🟢 設定 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 1️⃣ node --check(index.html inline JS 語法)
+        run: |
+          awk '/<script>/{f=1;next}/<\/script>/{f=0}f' index.html > /tmp/inline.js
+          node --check /tmp/inline.js
+          echo "✅ inline JS 語法 OK"
+
+      - name: 2️⃣ py_compile(所有 *.py 語法)
+        run: |
+          python3 -m py_compile *.py
+          echo "✅ Python 語法 OK"
+
+      - name: 3️⃣ prompt 變數齊全(check_prompt_vars.py)
+        run: python3 scripts/check_prompt_vars.py
+
+      - name: 4️⃣ HTML div 平衡(tabContentMarket 不巢狀)
+        run: |
+          awk '/id="tabContentMarket"/{start=NR; bal=0}
+          start && NR>=start {
+              o=gsub(/<div/, "<div");
+              c=gsub(/<\/div>/, "</div>");
+              bal += o - c;
+              if (bal==0) { print "✅ tabContentMarket 閉合於 L"NR; found=1; exit 0 }
+          }
+          END {
+              if (!found) { print "❌ 找不到 tabContentMarket 或未閉合(少 "bal" 個 </div>)!"; exit 1 }
+          }' index.html
