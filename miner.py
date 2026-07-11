@@ -10,6 +10,7 @@ import os, sys
 import random
 import re
 import signal
+import traceback
 import sqlite3
 import requests
 import io
@@ -3727,23 +3728,35 @@ def cleanup_weekend_rows():
         print(f"  🧹 清掉週末污染紀錄:{cleaned_rows} 筆橫跨 {cleaned_files} 個股檔")
 
 
+def _safe_step(label, fn, *args, **kwargs):
+    """執行一個「彼此獨立」的採礦步驟。任一步失敗只記錄 traceback 並回 None,
+    不讓單一步驟的例外中斷後續獨立步驟(避免一步掛掉就讓雷達/選股 JSON 全部停更變舊值)。"""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        print(f"  ⚠️ 步驟「{label}」失敗,已跳過並續跑後續:{type(e).__name__}: {e}")
+        traceback.print_exc()
+        return None
+
+
 if __name__ == '__main__':
     # V15.0:ONLY_CHIPS=1 → 跳過 OHLCV 採礦,直接跑全市場 fundamentals + chips + futures + macro
     #        (對應 daily_miner.yml 新增的 chips_miner 平行 job)
     ONLY_CHIPS = bool(int(os.getenv('ONLY_CHIPS', '0')))
     if ONLY_CHIPS:
         print("🎯 V15.0 ONLY_CHIPS=1:跳過 OHLCV,直接跑全市場 chips + fundamentals + futures + macro")
-        init_db()
+        init_db()   # DB 初始化屬前提,失敗就該中止(不吞)
         # 不跑 cleanup_weekend_rows / run / export_json(OHLCV 由 mine matrix 跑)
-        fetch_broker_chips()
-        fetch_futures_cache()
-        fetch_us_macro_cache()
-        build_radar_cache()      # 讀 SQLite 既有 OHLCV(從 origin/data restore)
-        build_bubble_warning()
-        build_sector_heat()
-        generate_top_picks()
+        # 🛡️ 各步驟彼此獨立 → 逐步包 _safe_step,一步失敗仍續跑其餘(不讓整批停更)
+        _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)
+        _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)
+        _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)
+        _safe_step("雷達掃描 build_radar_cache", build_radar_cache)   # 讀 SQLite 既有 OHLCV(從 origin/data restore)
+        _safe_step("泡沫預警 build_bubble_warning", build_bubble_warning)
+        _safe_step("板塊熱度 build_sector_heat", build_sector_heat)
+        _safe_step("三位一體選股 generate_top_picks", generate_top_picks)
         print("🌍 啟動全局宏觀風險採礦 (macro_miner)...")
-        os.system("python3 macro_miner.py")
+        _safe_step("宏觀風險 macro_miner", lambda: os.system("python3 macro_miner.py"))
         print("✅ ONLY_CHIPS 完成")
         sys.exit(0)
 
@@ -3759,22 +3772,27 @@ if __name__ == '__main__':
         print("⚡ V15.0:全市場 chips/fundamentals 已交給 chips_miner job 跑,batch 0 略過")
     elif not SKIP_GLOBAL:
         # 🥇 把吃 FinMind 額度最重的工作放最前面：分點分布要逐檔打 API，token 池滿格時搶先消化
-        fetch_broker_chips()    # 分點籌碼 → data/chips/*.json （FinMind 重度依賴）
-        fetch_futures_cache()   # 外資期貨 → futures_cache.json （TAIFEX，不吃 FinMind 額度）
-        fetch_us_macro_cache()  # 美股大盤 → macro_cache.json （yfinance）
-        build_radar_cache()     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
-        build_bubble_warning()  # 💥 牛市泡沫預警 → data/bubble_warning.json （讀現成 artifacts）
-        build_sector_heat()     # 🌡️ 4 戰區+9 細分板塊熱度 → data/sector_heat.json （治本前端燈號全灰）
-        generate_top_picks()    # 三位一體選股 → data/top_picks.json （需 chips 已就緒）
+        # 🛡️ 各步驟彼此獨立 → 逐步包 _safe_step,一步失敗仍續跑其餘(避免單點失敗讓 radar/top_picks 全停更)
+        _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)    # data/chips/*.json （FinMind 重度依賴）
+        _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)   # futures_cache.json （TAIFEX，不吃 FinMind 額度）
+        _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)  # macro_cache.json （yfinance）
+        _safe_step("雷達掃描 build_radar_cache", build_radar_cache)     # 雷達掃描（從 SQLite 讀）→ SQLite + radar.json
+        _safe_step("泡沫預警 build_bubble_warning", build_bubble_warning)  # 💥 → data/bubble_warning.json
+        _safe_step("板塊熱度 build_sector_heat", build_sector_heat)     # 🌡️ → data/sector_heat.json
+        _safe_step("三位一體選股 generate_top_picks", generate_top_picks)    # → data/top_picks.json （需 chips 已就緒）
 
         print("🌍 啟動全局宏觀風險採礦 (macro_miner)...")
-        os.system("python3 macro_miner.py")
-        # ── 🧹 【資料庫自動瘦身術】 ──
+        _safe_step("宏觀風險 macro_miner", lambda: os.system("python3 macro_miner.py"))
+        # ── 🧹 【資料庫自動瘦身術】 ──（VACUUM 失敗不該讓整批採礦白跑,故也包起來）
         print("\n🧹 執行資料庫碎片重組與瘦身 (VACUUM)...")
-        vac_conn = sqlite3.connect(DB_PATH, timeout=30.0)
-        vac_conn.execute("VACUUM;")
-        vac_conn.close()
-        print("  ✅ 瘦身完成！")
+        def _vacuum():
+            vac_conn = sqlite3.connect(DB_PATH, timeout=30.0)
+            try:
+                vac_conn.execute("VACUUM;")
+            finally:
+                vac_conn.close()
+            print("  ✅ 瘦身完成！")
+        _safe_step("資料庫瘦身 VACUUM", _vacuum)
         # ──────────────────────────────
     else:
         print("⚡ SKIP_GLOBAL=1：略過籌碼/期貨/美股/雷達（純 OHLCV 批次）")

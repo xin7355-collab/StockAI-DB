@@ -13,6 +13,7 @@ import os
 import json
 import time
 import re
+import traceback
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -539,8 +540,15 @@ def main():
     )
     print(f"\n✅ 已輸出 {len(keep)} 篇 → {OUTPUT_FILE}")
 
-    fetch_global_news()
-    fetch_tech_giants_news()
+    # 🛡️ 兩者輸出各自獨立的 JSON(global_news / tech_giants_news)→ 隔離,
+    #    前者失敗不該讓後者也不產出(否則前端盤前戰情少一整段)。
+    for _label, _fn in (("盤前全球新聞 fetch_global_news", fetch_global_news),
+                        ("科技巨頭情報 fetch_tech_giants_news", fetch_tech_giants_news)):
+        try:
+            _fn()
+        except Exception as e:
+            print(f"  ⚠️ 步驟「{_label}」失敗,已跳過:{type(e).__name__}: {e}")
+            traceback.print_exc()
 
 
 if __name__ == "__main__":
