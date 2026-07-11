@@ -814,6 +814,10 @@
                 <button onclick="app.switchChuTab('chu_bottom')" id="chuTab_bottom" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🥣 底部轉折</button>
                 <button onclick="app.switchChuTab('chu_riding5ma')" id="chuTab_riding5ma" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🚀 5MA飆股</button>
                 <button onclick="app.switchChuTab('chu_backtest')" id="chuTab_backtest" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 期望值榜</button>
+                <button onclick="app.switchChuTab('chu_entry')" id="chuTab_entry" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🎯 回後買上漲</button>
+                <button onclick="app.switchChuTab('chu_granville')" id="chuTab_granville" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">📐 葛蘭碧</button>
+                <button onclick="app.switchChuTab('chu_box')" id="chuTab_box" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">📦 橫盤突破</button>
+                <button onclick="app.switchChuTab('chu_diverge')" id="chuTab_diverge" class="chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🔀 背離</button>
             </div>
             <!-- 白話說明卡(每 tab 切換時更新) -->
             <div id="chuTabDesc" class="bg-purple-900/15 border-l-4 border-purple-500 pl-3 pr-2 py-2 rounded-r mb-3 text-[12px] leading-relaxed text-gray-200"></div>
@@ -25259,6 +25263,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         chu_bottom:     { id: 'chuTab_bottom',     active: 'bg-amber-600/30 text-amber-200 border-amber-500',  name: '🥣 底部轉折' },
         chu_riding5ma:  { id: 'chuTab_riding5ma',  active: 'bg-pink-600/30 text-pink-200 border-pink-500',     name: '🚀 5MA飆股' },
         chu_backtest:   { id: 'chuTab_backtest',   active: 'bg-cyan-600/30 text-cyan-200 border-cyan-500',     name: '🎯 期望值榜' },
+        chu_entry:      { id: 'chuTab_entry',      active: 'bg-rose-600/30 text-rose-200 border-rose-500',     name: '🎯 回後買上漲' },
+        chu_granville:  { id: 'chuTab_granville',  active: 'bg-teal-600/30 text-teal-200 border-teal-500',     name: '📐 葛蘭碧' },
+        chu_box:        { id: 'chuTab_box',        active: 'bg-lime-600/30 text-lime-200 border-lime-500',     name: '📦 橫盤突破' },
+        chu_diverge:    { id: 'chuTab_diverge',    active: 'bg-violet-600/30 text-violet-200 border-violet-500', name: '🔀 背離' },
     },
     _CHU_TAB_BASE: 'chu-tab px-2 py-2 rounded-lg text-[11px] font-bold border transition-all ',
     _CHU_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
@@ -25268,6 +25276,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         chu_bottom: `<b class="text-amber-300">🥣 底部轉折</b>(起飛股):像鍋底冒泡的湯,長期跌完(<b>距高點 ≥ 20%</b>)、近 20 日波動率極低(<3%)、貼著半年線,**某天突然爆 2 倍量噴紅 K** — 主力大戶在進貨。<br><br>📋 <b>操作:</b>看<b class="text-cyan-300">隔日是否續攻</b>,連 2 天爆量才是真,只爆 1 天可能假突破。<br>⚠️ 抓底神器,但常騙人。`,
         chu_backtest: `<b class="text-cyan-300">🎯 期望值榜</b>(照朱老師紀律最會賺的股):全市場掃描,對每檔跑「回後買上漲進場 + 跌破5MA停利 / 破進場K低或 −5% 停損」的**歷史波段回測**,只留<b class="text-yellow-300">正期望值 + 交易數 ≥ 5</b>的,依<b>每趟期望值</b>由高到低排。<br><br>📋 <b>操作:</b>從這裡挑股放觀察名單,**等它出現「四大金剛齊發 / 回後買上漲」訊號再進**,不是叫你現在追。<br>⚠️ 過去績效不代表未來;期望值是「照紀律做的長期優勢」,單筆還是會賠,務必守停損。`,
         chu_riding5ma: `<b class="text-pink-300">🚀 5MA 飆股主升段</b>(妖股):沿著 5MA 噴的強勢股,**近 5 日 ≥ 2 根漲 5%、今日最低沒跌破 5MA、今收突破昨收、MA5 未明顯下彎(5日斜率 > −2%)、乖離 < +15%**。連續紅 K 不回頭。<br><br>📋 <b>操作:</b>跌破 5MA 立刻出(不是 20MA),<b class="text-yellow-300">部位要小</b>。<br>⚠️ 最爽也最危險 — 沒抓到時間點就是接最後一棒。`,
+        chu_entry: `<b class="text-rose-300">🎯 回後買上漲</b>(旗艦訊號):全市場掃朱老師六字口訣 — <b>波段多頭(頭頭高+底底高)+ 回檔不破前低 + 今日紅K重新站上 5MA</b>。<b class="text-yellow-300">🎯 高勝率</b>=紅K實體≥2%+量增+過昨高+上方空間≥10%;<b>⚡ 力道弱</b>=部分條件未齊或空間不足。有 <b>⚠️ 紅旗</b> 代表踩到「淘汰 13 條」風險(末升段/破月線/量價背離…)。<br><br>📋 <b>操作:</b>高勝率隔日站穩 5MA 進、停損跌破 5MA 或前低;力道弱小量試單。`,
+        chu_granville: `<b class="text-teal-300">📐 葛蘭碧買點</b>:以月線(20MA)為準的經典四買點 — <b>買1突破月線(黃金交叉)、買2假跌破站回、買3回測月線收紅</b>(買4負乖離另有雷達)。附當日量能訊號(攻擊/出貨量)。<br><br>📋 <b>操作:</b>買1波段轉多起手、買2洗盤結束、買3支撐反彈;跌破月線失守。`,
+        chu_box: `<b class="text-lime-300">📦 K線橫盤突破</b>:前面 3-6 根<b>窄幅(<8%)橫盤</b>後,今日<b>紅K實體≥2% 收盤突破上頸線</b>=橫盤突破,波段多頭下為買點。<br><br>📋 <b>操作:</b>回測頸線不破可加碼;跌破頸線=假突破,退場。`,
+        chu_diverge: `<b class="text-violet-300">🔀 KD/MACD 背離</b>:<b>頂背離</b>=價創新高但 KD/MACD 沒跟著創高(動能衰竭,<b class="text-green-300">賣訊</b>);<b>底背離</b>=價創新低但指標沒跟著創低(跌勢趨緩,<b class="text-red-300">買訊</b>)。<br><br>📋 <b>操作:</b>頂背離高檔分批停利別追;底背離待紅K站上 5MA 分批承接。`,
     },
     _chuCurrentTab: 'chu_perfect6',
 
@@ -25306,6 +25318,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         let picks = (this.radarMatrix?.data || {})[key] || [];
         // 🎯 V41.18 期望值榜:回測統計榜,不套四關/位階 pipeline,自成一支渲染
         if (key === 'chu_backtest') { this._renderChuBacktestList(body, updated, picks); return; }
+        // 🎯 建議2:回後買上漲/葛蘭碧/橫盤突破/背離 — status 字串型訊號,自成一支輕量渲染(不走四關 pipeline)
+        if (['chu_entry', 'chu_granville', 'chu_box', 'chu_diverge'].includes(key)) {
+            this._renderChuSignalList(body, updated, picks, key); return;
+        }
         // V17.3 — 整合朱老師四關通關卡狀態:採礦端已寫 warning 欄位(位階過高/高檔出貨),
         //         前端漏顯導致選股清單跟四關通關卡看起來矛盾(其實兩個都對,只是這份清單沒標)。
         //         三件事:① 顯 warning chip ② 排序預設「無警示者優先」③ 頂部加總結
@@ -25427,6 +25443,44 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     ${cell('累積', (tot >= 0 ? '+' : '') + (+tot).toFixed(0) + '%', tot >= 0 ? 'text-red-300' : 'text-green-300')}
                 </div>
                 <div class="text-[9px] text-gray-600 mt-1">歷史 ${p.trades || 0} 趟 · 點看個股「回測」頁完整明細</div>
+            </div>`;
+        }).join('');
+    },
+
+    // 🎯 建議2 — 回後買上漲/葛蘭碧/橫盤突破/背離:status 字串型全市場訊號的輕量列表
+    _renderChuSignalList(body, updated, picks, key) {
+        const themeC = { chu_entry: 'rose', chu_granville: 'teal', chu_box: 'lime', chu_diverge: 'violet' }[key] || 'purple';
+        if (updated) updated.innerHTML = `更新時間:${this.radarMatrix?.updated || ''} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考`;
+        if (!picks.length) {
+            body.innerHTML = `<div class="text-center py-8 text-gray-500 text-[12px]">⚠️ 今日無股票符合此訊號<br><span class="text-gray-600 text-[10px]">(純公式全市場掃描,0 檔代表市場沒有符合的標的,別硬找)</span></div>`;
+            return;
+        }
+        body.innerHTML = picks.map(p => {
+            const cname = this.getStockName(p.sym) || '';
+            const isHunted = this.monitorList.some(m => m.sym === p.sym);
+            const huntBtn = isHunted
+                ? `<span class="text-green-400 text-[10px] font-bold whitespace-nowrap" title="已在觀察名單中">⚔️ 已監控</span>`
+                : `<button onclick="event.stopPropagation(); app.addChuPickToMonitor('${p.sym}','${key}');" class="text-${themeC}-200 bg-${themeC}-900/40 border border-${themeC}-600/60 rounded px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap" title="加入監控">🎯 加入</button>`;
+            // 背離的賣訊(頂背離)用綠框警示、其餘偏多用主題色
+            const bear = key === 'chu_diverge' && p.side === 'bear';
+            const borderCls = bear ? 'border-green-700/60 hover:border-green-500' : `border-${themeC}-800/50 hover:border-${themeC}-500`;
+            // 回後買上漲的進場/停損/空間細節
+            const extra = key === 'chu_entry'
+                ? `<div class="grid grid-cols-3 gap-1 bg-[#0d1117]/60 rounded p-1.5 mt-1.5 text-center">
+                       <div><div class="text-[9px] text-gray-500">參考進場</div><div class="text-[12px] font-black font-mono text-rose-200">${(p.entry || 0).toFixed(2)}</div></div>
+                       <div><div class="text-[9px] text-gray-500">停損(前低)</div><div class="text-[12px] font-black font-mono text-green-300">${(p.stop || 0).toFixed(2)}</div></div>
+                       <div><div class="text-[9px] text-gray-500">上方空間</div><div class="text-[12px] font-black font-mono ${(p.upside_room || 0) >= 10 ? 'text-red-300' : 'text-yellow-300'}">${(p.upside_room || 0).toFixed(0)}%</div></div>
+                   </div>`
+                : '';
+            const flags = (p.red_flags && p.red_flags.length)
+                ? `<div class="mt-1 text-[10px] text-amber-300">⚠️ ${p.red_flags.join('、')}</div>` : '';
+            return `<div onclick="document.getElementById('chuMasterModal').classList.add('hidden'); app.analyze('${p.sym}'); app.switchAppTab('diag');" class="bg-[#161b22] border ${borderCls} rounded-lg p-2.5 cursor-pointer transition-colors mb-2">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-baseline gap-2 min-w-0"><span class="font-bold text-${themeC}-300 text-[15px] font-mono">${p.sym}</span><span class="text-gray-300 text-[12px] truncate">${cname}</span></div>
+                    <div class="flex items-center gap-2 whitespace-nowrap"><span class="text-gray-400 text-[11px] font-mono">${(p.close || 0).toFixed(2)}</span>${huntBtn}</div>
+                </div>
+                <div class="text-[11px] text-gray-300 mt-1 leading-snug">${p.status || ''}</div>
+                ${extra}${flags}
             </div>`;
         }).join('');
     },
