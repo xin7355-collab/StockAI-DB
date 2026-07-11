@@ -101,7 +101,9 @@ def bang_stage(closes, k=8):
         return {'stage': 'na', 'rise_from_trough': 0.0, 'trend': st['trend']}
     rise = (closes[-1] - st['last_trough']) / st['last_trough'] * 100
     n_peaks = len(st['peaks'])
-    if rise >= 100 or n_peaks >= 4:
+    # 末升段 = 漲幅一倍(主判據)或「多波段且已有相當漲幅」(第3波後);
+    # 純用 n_peaks 會誤殺震盪股(120天±8 fractal 容易湊到4峰卻漲幅不大)→ 波數須搭配漲幅≥50%
+    if rise >= 100 or (n_peaks >= 4 and rise >= 50):
         stage = 'end'
     elif rise < 8:
         stage = 'base'
