@@ -13,6 +13,8 @@ import json
 import math
 import requests
 from pathlib import Path
+
+from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
 from datetime import date, datetime
 
 DATA_DIR = Path("data")
@@ -65,8 +67,7 @@ def _chu_macd_hist(closes, fast=12, slow=26, sig=9):
     EMA 標準公式:EMA_t = α·close + (1-α)·EMA_{t-1},α=2/(N+1)。"""
     # 🛡️ 先剔除非有限收盤(None/NaN/±Inf),避免髒資料把整條 EMA 污染成 NaN;
     #    清洗後再判斷筆數是否仍足夠。
-    closes = [c for c in closes if isinstance(c, (int, float))
-              and not isinstance(c, bool) and math.isfinite(c)]
+    closes = [c for c in closes if is_finite_num(c)]
     if len(closes) < slow + sig:
         return None
     def _ema(values, n):
@@ -95,7 +96,7 @@ def _chu_macd_hist(closes, fast=12, slow=26, sig=9):
         dea = d * k_sig + dea * (1 - k_sig)
     hist = difs[-1] - dea  # 今日 MACD 柱
     # 🛡️ 雙保險:結果非有限值一律回 None,不讓 NaN 冒充成「MACD 訊號」
-    return hist if math.isfinite(hist) else None
+    return hist if is_finite_num(hist) else None
 
 
 def _chu_kd(rows, n=9):
@@ -122,17 +123,16 @@ def _chu_kd(rows, n=9):
 def _chu_stdev_ratio(closes):
     """近 20 日標準差 / 均價(波動率)。資料 < 20 回 None。"""
     # 🛡️ 先剔除非有限收盤,避免 NaN 讓 av<=0 判斷失效(NaN 比較恆 False 會漏網)
-    closes = [c for c in closes if isinstance(c, (int, float))
-              and not isinstance(c, bool) and math.isfinite(c)]
+    closes = [c for c in closes if is_finite_num(c)]
     if len(closes) < 20:
         return None
     w = closes[-20:]
-    avg = sum(w) / 20
-    if not math.isfinite(avg) or avg <= 0:
+    av = sum(w) / 20
+    if not is_finite_num(av) or av <= 0:
         return None
-    var = sum((c - avg) ** 2 for c in w) / 20
-    ratio = (var ** 0.5) / avg
-    return ratio if math.isfinite(ratio) else None
+    var = sum((c - av) ** 2 for c in w) / 20
+    ratio = (var ** 0.5) / av
+    return ratio if is_finite_num(ratio) else None
 
 
 def _chu_perfect6(sym, rows):

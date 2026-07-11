@@ -17,6 +17,8 @@ import math
 from pathlib import Path
 from datetime import datetime
 
+from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
+
 DATA_DIR = Path("data")
 OUTPUT_FILE = DATA_DIR / "signal_history.json"
 
@@ -52,8 +54,7 @@ def _ma(closes, idx, period):
     if not seg:
         return None
     # 🛡️ 視窗含 None/NaN/±Inf → 回 None,不讓髒資料算出污染的均線
-    if not all(isinstance(c, (int, float)) and not isinstance(c, bool)
-               and math.isfinite(c) for c in seg):
+    if not all(is_finite_num(c) for c in seg):
         return None
     return sum(seg) / period
 
@@ -457,15 +458,14 @@ def _falcon_score_simplified(rows, idx):
     if idx < 22: return None
     # 🛡️ 只留有限收盤(NaN 為 truthy 會漏過 if r.get('close') 過濾,污染均線並使 round() 崩潰)
     closes = [r.get('close') for r in rows[:idx + 1]
-              if isinstance(r.get('close'), (int, float))
-              and not isinstance(r.get('close'), bool) and math.isfinite(r.get('close')) and r.get('close')]
+              if is_finite_num(r.get('close')) and r.get('close')]
     if len(closes) < 22: return None
     c = closes[-1]
     def ma(n):
         if len(closes) < n:
             return None
         r = sum(closes[-n:]) / n
-        return r if math.isfinite(r) else None
+        return r if is_finite_num(r) else None
     ma5, ma20, ma60 = ma(5), ma(20), ma(60)
     base = 50
     if ma20:

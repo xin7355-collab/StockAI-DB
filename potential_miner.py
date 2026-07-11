@@ -21,6 +21,8 @@ import math
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
+from common import avg, is_finite_num   # 🧩 共用工具(單一真相來源,見 common.py)
+
 DATA = Path(__file__).parent / "data"
 TPE = timezone(timedelta(hours=8))
 TOP_N = 250
@@ -47,10 +49,6 @@ def load(name, default=None):
         return default
 
 
-def avg(a):
-    return sum(a) / len(a) if a else 0.0
-
-
 def score_stock(sym, bars, fund, median_pe, concepts, att):
     try:
         closes = [float(b.get('close') or 0) for b in bars]
@@ -70,7 +68,7 @@ def score_stock(sym, bars, fund, median_pe, concepts, att):
                 return None
             r = avg(s)
             # 🛡️ 視窗含 NaN/±Inf 會讓均線變非有限值 → 回 None(呼叫端已用真值判斷)
-            return r if math.isfinite(r) else None
+            return r if is_finite_num(r) else None
 
         # ① 位階低(0-20)
         look = min(250, n)

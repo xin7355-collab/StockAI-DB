@@ -21,6 +21,8 @@ import random
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 
+from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
+
 # ── 🎯 分點 Sniper 選用相依(雲端 batch 0 才裝;裝不到就靜默退回 FinMind)──
 # Pillow 10+ 移除 ANTIALIAS 會讓 ddddocr 啟動崩潰,先補相容墊片
 try:
@@ -341,16 +343,21 @@ def write_radar_to_db(results):
     c = conn.cursor()
     today = date.today().isoformat()
     c.execute("DELETE FROM radar_results")
-    for strategy, items in results.items():
-        for item in items:
-            c.execute(
-                "INSERT OR REPLACE INTO radar_results VALUES (?,?,?,?,?)",
-                (strategy, item['sym'], item.get('close', 0), today,
-                 json.dumps({k: v for k, v in item.items() if k != 'sym'}))
-            )
+    # 🚀 批次 upsert:原本雙層迴圈逐筆 execute → 攤平成一個 batch 用 executemany 一次寫入,
+    #    大幅減少 Python↔SQLite 往返;整個函式仍是單次 commit(不影響交易語意)。
+    batch = [
+        (strategy, item['sym'], item.get('close', 0), today,
+         json.dumps({k: v for k, v in item.items() if k != 'sym'}))
+        for strategy, items in results.items()
+        for item in items
+    ]
+    if batch:
+        c.executemany(
+            "INSERT OR REPLACE INTO radar_results VALUES (?,?,?,?,?)",
+            batch)
     conn.commit()
     conn.close()
-    print(f"  ✅ 雷達寫入 SQLite（{sum(len(v) for v in results.values())} 筆）")
+    print(f"  ✅ 雷達寫入 SQLite（{len(batch)} 筆,批次寫入）")
 
 
 # ── TWSE OHLCV（上市股票月資料）──────────────────────────────────────────────
@@ -2925,14 +2932,9 @@ def _quick_ind(data):
     # 🛡️ 只留「有限」收盤價:排除 None / 字串 / NaN / ±Inf。
     #    json.loads 預設 allow_nan=True,上游若寫出 NaN,讀回即 float('nan');
     #    isinstance(nan, float) 為 True 會漏網,污染 MA/布林全變 NaN 卻無聲。
-    closes = [d['close'] for d in data
-              if isinstance(d.get('close'), (int, float))
-              and not isinstance(d['close'], bool)
-              and math.isfinite(d['close'])]
+    closes = [d['close'] for d in data if is_finite_num(d.get('close'))]
     # 🛡️ 成交量同樣防呆:volume 為 null(None)時 sum() 會直接 TypeError 崩潰
-    def _safe_vol(v):
-        return v if isinstance(v, (int, float)) and math.isfinite(v) else 0
-    vols   = [_safe_vol(d.get('volume', 0)) for d in data]
+    vols   = [v if is_finite_num(v) else 0 for v in (d.get('volume', 0) for d in data)]
     if len(closes) < 22: return None
     ma   = lambda n, a=closes: sum(a[-n:]) / n
     pma  = lambda n, a=closes: sum(a[-n-1:-1]) / n
