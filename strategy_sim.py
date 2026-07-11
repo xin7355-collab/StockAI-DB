@@ -236,14 +236,14 @@ def simulate_chu_exit(bars, entry_idx, entry_px=None):
         # 未鎖利前,固定停損仍有效
         if not locked and c <= hard_stop:
             return _exit(entry, c, i, entry_idx, '破固定停損(進場K低/-5%)')
-    # 資料尾端仍持有 → 以最後收盤結算(未平倉)
-    return _exit(entry, closes[-1], n - 1, entry_idx, '尚未出場(資料末端結算)')
+    # 資料尾端仍持有 → 以最後收盤結算(未平倉,closed=False 供向前追蹤判斷「還在持有」)
+    return _exit(entry, closes[-1], n - 1, entry_idx, '尚未出場(資料末端結算)', closed=False)
 
 
-def _exit(entry, exit_px, exit_idx, entry_idx, reason):
+def _exit(entry, exit_px, exit_idx, entry_idx, reason, closed=True):
     return {'exit_idx': exit_idx, 'exit_px': round(exit_px, 2),
             'return_pct': round((exit_px - entry) / entry * 100, 2),
-            'bars_held': exit_idx - entry_idx, 'reason': reason}
+            'bars_held': exit_idx - entry_idx, 'reason': reason, 'closed': closed}
 
 
 def backtest_chu_swing(bars, cost_pct=0.0):
@@ -369,4 +369,164 @@ def granville(bars):
         out.append({'side': 'buy', 'point': 4, 'name': f'負乖離過大{dev:.0f}%搶反彈'})
     elif dev >= 15 and pC < closes[-2]:
         out.append({'side': 'sell', 'point': 4, 'name': f'正乖離過大{dev:.0f}%轉空'})
+    return out
+
+
+# ── K線橫盤突破 第 2-3、6-3 章 ── port 自前端 _detectBoxBreakout ─────────────
+def box_breakout(bars):
+    """近 1-2 根是否突破/跌破前面 3-6 根「窄幅(<8%)橫盤」的上/下頸線。
+    回 dict 或 None:{side:'bull'/'bear', neck, when_ago, box_n}。"""
+    if not bars or len(bars) < 5:
+        return None
+    last = len(bars) - 1
+    for e in range(last, max(3, last - 1) - 1, -1):
+        conf = bars[e]
+        if _o(conf) <= 0 or _c(conf) <= 0:
+            continue
+        for nlen in range(3, 7):                 # 橫盤 3-6 根
+            s = e - nlen
+            if s < 0:
+                break
+            box = bars[s:e]
+            if len(box) < 3:
+                continue
+            box_hi = max(_h(b) for b in box)
+            box_lo = min(_l(b) for b in box)
+            if box_hi <= 0 or box_hi <= box_lo:
+                continue
+            if (box_hi - box_lo) / box_lo > 0.08:   # 窄幅 <8% 才算橫盤
+                continue
+            body = (_c(conf) - _o(conf)) / _o(conf) if _o(conf) > 0 else 0
+            if _c(conf) > box_hi and _c(conf) > _o(conf) and body >= 0.02:
+                return {'side': 'bull', 'neck': round(box_hi, 2), 'when_ago': last - e, 'box_n': nlen}
+            if _c(conf) < box_lo and _c(conf) < _o(conf) and (-body) >= 0.02:
+                return {'side': 'bear', 'neck': round(box_lo, 2), 'when_ago': last - e, 'box_n': nlen}
+    return None
+
+
+# ── 量能戰法(攻擊/出貨/止跌/換手/強反彈量)第 4 章 ── port 自 _detectVolumeSignals ──
+def volume_signals(bars):
+    """回訊號 list:[{tone:'bull'/'bear'/'flat'/'warn', name}]。基本量=前5日均量。"""
+    out = []
+    if not bars or len(bars) < 8:
+        return out
+    last = len(bars) - 1
+    cur = bars[last]
+    base = sum(_v(b) for b in bars[last - 5:last]) / 5
+    if base <= 0 or _o(cur) <= 0:
+        return out
+    vr = _v(cur) / base
+    win = bars[-60:]
+    hi = max(_h(b) for b in win)
+    lo = min(_l(b) for b in win)
+    rng = hi - lo
+    pos = (_c(cur) - lo) / rng if rng > 0 else 0.5      # 0=低檔 1=高檔
+    is_high, is_low = pos >= 0.80, pos <= 0.30
+    red, black = _c(cur) > _o(cur), _c(cur) < _o(cur)
+    if vr >= 1.2 and red and not is_high:
+        out.append({'tone': 'bull', 'name': f'攻擊量{vr:.1f}×(主力進貨)'})
+    if vr >= 1.5 and black and is_high:
+        dbl = lo > 0 and _c(cur) >= lo * 1.9
+        out.append({'tone': 'bear', 'name': f'高檔出貨量{vr:.1f}×' + ('(漲近一倍)' if dbl else '')})
+    if vr <= 0.5 and is_low:
+        lo5 = min(_l(b) for b in bars[last - 5:last])
+        if _l(cur) >= lo5:
+            out.append({'tone': 'flat', 'name': f'止跌量(量縮{vr*100:.0f}%未破前低)'})
+    # 換手量:近5日內高檔大量黑K,被今日紅K收盤過其高
+    for j in range(last - 1, max(1, last - 5) - 1, -1):
+        b = bars[j]
+        bw = [_v(x) for x in bars[max(0, j - 5):j]]
+        ba = sum(bw) / len(bw) if bw else 0
+        vrj = _v(b) / ba if ba > 0 else 0
+        posj = (_c(b) - lo) / rng if rng > 0 else 0.5
+        if _c(b) < _o(b) and vrj >= 1.8 and posj >= 0.7:
+            if red and _c(cur) > _h(b):
+                out.append({'tone': 'bull', 'name': f'換手量(過{last-j}天前高檔大量黑K高)'})
+            break
+    if is_low and vr >= 2 and red and _c(cur) > _h(bars[last - 1]):
+        out.append({'tone': 'warn', 'name': f'強反彈量{vr:.1f}×(非多頭,僅反彈)'})
+    return out
+
+
+# ── KD / MACD-DIF 序列(供背離)──────────────────────────────────────────────
+def kd_series(bars, n=9):
+    """台股慣用 Stochastic Slow 的 K 序列(與 radar._chu_kd 同法)。前 n-1 根為 None。"""
+    out = [None] * len(bars)
+    K, D = 50.0, 50.0
+    for i in range(len(bars)):
+        if i < n - 1:
+            continue
+        w = bars[i - n + 1: i + 1]
+        hi = max(_h(b) for b in w)
+        lo = min(_l(b) for b in w)
+        c = _c(bars[i])
+        rsv = (c - lo) / (hi - lo) * 100 if hi > lo else 50.0
+        K = (2 / 3) * K + (1 / 3) * rsv
+        D = (2 / 3) * D + (1 / 3) * K
+        out[i] = K
+    return out
+
+
+def dif_series(closes, fast=12, slow=26):
+    """MACD 的 DIF(EMA_fast - EMA_slow)序列(與 radar._chu_macd_hist 同法)。前 slow-1 根為 None。"""
+    closes = _clean_closes(closes)
+    out = [None] * len(closes)
+    if len(closes) < slow:
+        return out
+    kf, ksl = 2 / (fast + 1), 2 / (slow + 1)
+    ef = sum(closes[:fast]) / fast
+    es = sum(closes[:slow]) / slow
+    for i in range(len(closes)):
+        if i >= fast:
+            ef = closes[i] * kf + ef * (1 - kf)
+        if i >= slow:
+            es = closes[i] * ksl + es * (1 - ksl)
+        if i >= slow - 1:
+            out[i] = ef - es
+    return out
+
+
+# ── 指標背離(KD/MACD 頂/底背離)第 5 章 ── port 自前端 _detectIndicatorDivergence ──
+def divergence(bars):
+    """回訊號 list:[{side:'bear'/'bull', kind:'KD'/'MACD'/'KD+MACD', name}]。
+       頂背離=價創新高但 K/DIF 沒創高(賣訊);底背離=價創新低但 K/DIF 沒創低(買訊)。
+       用 ±4 收盤 fractal 取最近兩波峰/波谷,最近極值須在最後 8 根內才算即時。"""
+    out = []
+    if not bars or len(bars) < 40:
+        return out
+    closes = [_c(b) for b in bars]
+    n = len(closes)
+    K = kd_series(bars)
+    DIF = dif_series(closes)
+    SW, last = 4, n - 1
+    frm = max(SW, n - 60)
+    peaks, troughs = [], []
+    for i in range(frm, last - SW + 1):
+        w = closes[i - SW: i + SW + 1]
+        if closes[i] == max(w):
+            peaks.append(i)
+        if closes[i] == min(w):
+            troughs.append(i)
+
+    def _val(a, i):
+        return a[i] if (0 <= i < len(a) and is_finite_num(a[i])) else None
+
+    if len(peaks) >= 2:
+        p2, p1 = peaks[-1], peaks[-2]
+        if last - p2 <= 8 and closes[p2] > closes[p1]:
+            k2, k1, d2, d1 = _val(K, p2), _val(K, p1), _val(DIF, p2), _val(DIF, p1)
+            kd_div = k2 is not None and k1 is not None and k2 < k1
+            macd_div = d2 is not None and d1 is not None and d2 < d1
+            if kd_div or macd_div:
+                kind = 'KD+MACD' if (kd_div and macd_div) else ('KD' if kd_div else 'MACD')
+                out.append({'side': 'bear', 'kind': kind, 'name': f'{kind}頂背離(動能衰竭,賣訊)'})
+    if len(troughs) >= 2:
+        t2, t1 = troughs[-1], troughs[-2]
+        if last - t2 <= 8 and closes[t2] < closes[t1]:
+            k2, k1, d2, d1 = _val(K, t2), _val(K, t1), _val(DIF, t2), _val(DIF, t1)
+            kd_div = k2 is not None and k1 is not None and k2 > k1
+            macd_div = d2 is not None and d1 is not None and d2 > d1
+            if kd_div or macd_div:
+                kind = 'KD+MACD' if (kd_div and macd_div) else ('KD' if kd_div else 'MACD')
+                out.append({'side': 'bull', 'kind': kind, 'name': f'{kind}底背離(跌勢趨緩,買訊)'})
     return out

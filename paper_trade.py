@@ -21,6 +21,9 @@ from backtest import (
     sig_ma_bullish_alignment, apply_real_cost, _load_attention_set,
     ROUND_TRIP_COST_PCT,
 )
+from strategy_sim import chu_long_entry, simulate_chu_exit   # 🎯 建議3:回後買上漲 + 朱式動態出場(向前追蹤)
+
+CHU_SIGNAL = '🎯 回後買上漲(朱式出場)'   # 用朱式動態出場(跌破5MA/破進場K低)追蹤,而非固定 N 日
 
 DATA_DIR = Path("data")
 OUTPUT_FILE = DATA_DIR / "paper_trades.json"
@@ -112,6 +115,24 @@ def record_today_signals(attention_set, today):
                     triggered += 1
             except Exception:
                 pass
+
+            # 🎯 建議3:回後買上漲 → 以「朱式動態出場」追蹤(非固定 N 日;由 update_chu_swing_exits 逐日判斷出場)
+            try:
+                _ce = chu_long_entry(rows)
+                if _ce and _ce.get('grade') in ('high', 'weak'):
+                    new_trades.append({
+                        'open_date': today_str,
+                        'symbol': sym,
+                        'signal': CHU_SIGNAL,
+                        'entry_close': round(entry_price, 2),
+                        'grade': _ce['grade'],
+                        'chu_swing': True,       # 標記:用朱式出場而非 fwd 視窗
+                        'chu_exit': None,
+                        'status': 'open',
+                    })
+                    triggered += 1
+            except Exception:
+                pass
         except Exception:
             continue
     print(f"📝 今日訊號掃描:{scanned} 檔有今日資料,{triggered} 筆訊號觸發")
@@ -139,6 +160,7 @@ def update_open_trades(trades, today):
 
     for t in trades:
         if t.get('status') != 'open': continue
+        if t.get('chu_swing'): continue   # 🎯 朱式出場由 update_chu_swing_exits 處理,不走固定 N 日視窗
         rows = get_rows(t['symbol'])
         if not rows: continue
         open_idx = _find_idx_by_date(rows, t['open_date'])
@@ -200,6 +222,81 @@ def summarize(trades):
     return out
 
 
+def update_chu_swing_exits(trades, today, max_hold=60):
+    """🎯 建議3:對 open 的「回後買上漲」trade,用 simulate_chu_exit 逐日判斷是否已朱式出場
+    (跌破5MA停利 / 破進場K低-5%停損 / 獲利升級鎖利)。已出場則記 chu_exit 並轉 closed。
+    持有超過 max_hold 根仍未觸發出場 → 以最新收盤強制結算(避免永久掛單)。"""
+    updated = closed = 0
+    cache = {}
+
+    def get_rows(sym):
+        if sym in cache:
+            return cache[sym]
+        f = DATA_DIR / f"{sym}.json"
+        try:
+            r = json.loads(f.read_text(encoding='utf-8')) if f.exists() else None
+            cache[sym] = r if isinstance(r, list) else None
+        except Exception:
+            cache[sym] = None
+        return cache[sym]
+
+    for t in trades:
+        if t.get('status') != 'open' or not t.get('chu_swing'):
+            continue
+        rows = get_rows(t['symbol'])
+        if not rows:
+            continue
+        entry_idx = _find_idx_by_date(rows, t['open_date'])
+        if entry_idx is None or entry_idx >= len(rows) - 1:
+            continue
+        ex = simulate_chu_exit(rows, entry_idx, entry_px=t.get('entry_close'))
+        if not ex:
+            continue
+        held = len(rows) - 1 - entry_idx
+        if ex.get('closed'):
+            net = apply_real_cost(ex['return_pct'])
+            t['chu_exit'] = {
+                'return_gross': ex['return_pct'], 'return_net': round(net, 2),
+                'reason': ex['reason'], 'bars_held': ex['bars_held'],
+                'exit_date': _normalize_date(rows[ex['exit_idx']].get('date', '')),
+            }
+            t['status'] = 'closed'
+            closed += 1
+        elif held >= max_hold:
+            net = apply_real_cost(ex['return_pct'])
+            t['chu_exit'] = {
+                'return_gross': ex['return_pct'], 'return_net': round(net, 2),
+                'reason': f'持有滿{max_hold}根強制結算', 'bars_held': held,
+                'exit_date': _normalize_date(rows[-1].get('date', '')),
+            }
+            t['status'] = 'closed'
+            closed += 1
+        else:
+            updated += 1   # 仍持有
+    print(f"🎯 回後買上漲(朱式出場)更新:{closed} 筆平倉、{updated} 筆仍持有")
+    return trades
+
+
+def summarize_chu_swing(trades):
+    """回後買上漲(朱式出場)實戰統計:勝率 / 平均淨報酬 / 平均持有天數。"""
+    closed = [t['chu_exit'] for t in trades
+              if t.get('chu_swing') and t.get('status') == 'closed' and t.get('chu_exit')]
+    if not closed:
+        return None
+    nets = [e['return_net'] for e in closed if e.get('return_net') is not None]
+    if not nets:
+        return None
+    wins = [x for x in nets if x > 0]
+    holds = [e['bars_held'] for e in closed if e.get('bars_held') is not None]
+    return {
+        'closed_trades': len(nets),
+        'win_rate': round(len(wins) / len(nets) * 100, 1),
+        'avg_return_net': round(sum(nets) / len(nets), 2),
+        'avg_bars_held': round(sum(holds) / len(holds), 1) if holds else None,
+        'exit_rule': '跌破5MA停利 / 破進場K低-5%停損 / +7%鎖利、+20%加速停利',
+    }
+
+
 def main():
     today = date.today()
     print(f"📝 Paper Trade 紙上跟單 — {today.strftime('%Y-%m-%d')}")
@@ -224,9 +321,12 @@ def main():
 
     # Step 2: 對 open trade 計算 fwd 報酬
     trades = update_open_trades(trades, today)
+    # Step 2.5: 🎯 建議3 — 回後買上漲用朱式動態出場逐日判斷平倉
+    trades = update_chu_swing_exits(trades, today)
 
     # Step 3: 累計指標
     summary = summarize(trades)
+    chu_swing_summary = summarize_chu_swing(trades)
     opened = sum(1 for t in trades if t.get('status') == 'open')
     closed_n = sum(1 for t in trades if t.get('status') == 'closed')
 
@@ -242,11 +342,16 @@ def main():
         'tracking_windows': list(TRADE_WINDOWS),
         'note': 'Paper Trade 累積實戰績效;扣手續費+證交稅+滑價後的淨報酬;訊號累計樣本 >= 30 才有統計意義。',
         'summary': summary,
+        'chu_swing_summary': chu_swing_summary,   # 🎯 建議3:回後買上漲(朱式動態出場)實戰統計
         'trades': trades_to_keep,
     }
     OUTPUT_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f"✅ Paper Trade 已寫 → {OUTPUT_FILE}")
     print(f"   累計 {len(trades)} 筆(open {opened} / closed {closed_n})")
+    if chu_swing_summary:
+        print(f"🎯 回後買上漲(朱式出場)實戰:{chu_swing_summary['closed_trades']} 筆平倉、"
+              f"勝率 {chu_swing_summary['win_rate']}%、平均淨報酬 {chu_swing_summary['avg_return_net']:+.2f}%、"
+              f"平均持有 {chu_swing_summary['avg_bars_held']} 根")
 
     # 列前 10 個訊號的 10 日實戰勝率(只列樣本 >= 5)
     if summary:
