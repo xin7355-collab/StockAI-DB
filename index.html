@@ -60,7 +60,36 @@
             return null;
         }
 
-        return { isFiniteNum, C, O, H, L, V, boxBreakout };
+        // 量能戰法(第4章)— 對齊 strategy_sim.py::volume_signals。回結構化 [{kind,tone,...}],
+        // 前端據 kind 組 UI 訊息。kind: attack/distribution/stall/handover/rebound。
+        function volumeSignals(bars) {
+            const out = [];
+            if (!Array.isArray(bars) || bars.length < 8) return out;
+            const last = bars.length - 1, cur = bars[last];
+            let base = 0; for (let i = last - 5; i < last; i++) base += V(bars[i]); base /= 5;
+            if (base <= 0 || O(cur) <= 0) return out;
+            const vr = V(cur) / base;
+            const win = bars.slice(-60);
+            const hi = Math.max(...win.map(H)), lo = Math.min(...win.map(L));
+            const rng = hi - lo;
+            const pos = rng > 0 ? (C(cur) - lo) / rng : 0.5;   // 0=低檔 1=高檔
+            const isHigh = pos >= 0.80, isLow = pos <= 0.30;
+            const red = C(cur) > O(cur), black = C(cur) < O(cur);
+            if (vr >= 1.2 && red && !isHigh) out.push({ kind: 'attack', tone: 'bull', vr, val: V(cur) });
+            if (vr >= 1.5 && black && isHigh) { const doubled = lo > 0 && C(cur) >= lo * 1.9; out.push({ kind: 'distribution', tone: 'bear', vr, doubled, val: V(cur) }); }
+            if (vr <= 0.5 && isLow) { let lo5 = Infinity; for (let i = last - 5; i < last; i++) lo5 = Math.min(lo5, L(bars[i])); if (L(cur) >= lo5) out.push({ kind: 'stall', tone: 'flat', vr, val: V(cur) }); }
+            for (let j = last - 1; j >= Math.max(1, last - 5); j--) {   // 換手量:近5日高檔大量黑K被今日紅K過高
+                const b = bars[j]; if (!b) continue;
+                let ba = 0, cnt = 0; for (let i = Math.max(0, j - 5); i < j; i++) { ba += V(bars[i]); cnt++; } ba = cnt ? ba / cnt : 0;
+                const vrj = ba > 0 ? V(b) / ba : 0;
+                const posj = rng > 0 ? (C(b) - lo) / rng : 0.5;
+                if (C(b) < O(b) && vrj >= 1.8 && posj >= 0.7) { if (red && C(cur) > H(b)) out.push({ kind: 'handover', tone: 'bull', daysAgo: last - j, hi: round2(H(b)), val: round2(H(b)) }); break; }
+            }
+            if (isLow && vr >= 2 && red && C(cur) > H(bars[last - 1])) out.push({ kind: 'rebound', tone: 'warn', vr, val: V(cur) });
+            return out;
+        }
+
+        return { isFiniteNum, C, O, H, L, V, boxBreakout, volumeSignals };
     })();
     </script>
     <style>
@@ -13208,31 +13237,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // ⭐ V36.4 — 朱家泓 量能戰法(純公式,量配位置+K棒:同樣爆量 起漲=攻擊量/高檔=出貨量):
     //   基本量=5日均量;攻擊量≥1.2×、爆量≥2×、止跌量≤0.5×
+    // 🧩 單一真相遷移:邏輯改呼叫 window.StrategySim.volumeSignals(對齊 strategy_sim.py),
+    //    本函式只把結構化結果組成前端 UI 訊息(tone/title/val/msg)。
     _detectVolumeSignals(data) {
         const out = [];
-        if (!Array.isArray(data) || data.length < 8) return out;
-        const last = data.length - 1;
-        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
-              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
-        const cur = data[last];
-        const base = data.slice(last - 5, last).map(V).reduce((a, x) => a + x, 0) / 5;   // 基本量=前5日均量
-        if (!base || !O(cur)) return out;
-        const vr = V(cur) / base;
-        const win = data.slice(-60), hi = Math.max(...win.map(H)), lo = Math.min(...win.map(L));
-        const rng = hi - lo;
-        const pos = rng > 0 ? (C(cur) - lo) / rng : 0.5;   // 0=低檔 1=高檔
-        const isHigh = pos >= 0.80, isLow = pos <= 0.30;
-        const red = C(cur) > O(cur), black = C(cur) < O(cur);
-        // 攻擊量(進貨):放大量 + 紅K + 非高檔
-        if (vr >= 1.2 && red && !isHigh) out.push({ tone: 'bull', title: '攻擊量(主力進貨)', val: V(cur), msg: `量放大 ${vr.toFixed(1)}× 均量 + 紅K上漲、非高檔 → 攻擊量/主力進貨,起漲有量易續攻。` });
-        // 出貨量:高檔爆量 + 黑K(漲近一倍=主力目標區,出貨機率更高 — 朱家泓 #43)
-        if (vr >= 1.5 && black && isHigh) { const dbl = lo > 0 && C(cur) >= lo * 1.9; out.push({ tone: 'bear', title: '高檔出貨量', val: V(cur), msg: `高檔爆量 ${vr.toFixed(1)}× + 黑K → 主力出貨量${dbl ? '(已自低點漲近一倍=主力目標區,出貨機率高)' : ''},有貨分批停利、別追。` }); }
-        // 止跌量:低檔量縮到半 + 未破近5日低
-        if (vr <= 0.5 && isLow) { const lo5 = Math.min(...data.slice(last - 5, last).map(L)); if (L(cur) >= lo5) out.push({ tone: 'flat', title: '止跌量(量縮窒息)', val: V(cur), msg: `低檔量縮至 ${(vr * 100).toFixed(0)}% 均量 + 未破前低 → 量縮窒息,留意打底止跌(待紅K放量確認)。` }); }
-        // 換手量:近 5 日內高檔大量黑K,被今日紅K收盤過其高
-        for (let j = last - 1; j >= Math.max(1, last - 5); j--) { const b = data[j]; if (!b) continue; const _bw = data.slice(Math.max(0, j - 5), j).map(V); const _ba = _bw.length ? _bw.reduce((a, x) => a + x, 0) / _bw.length : 0; const vrj = _ba > 0 ? V(b) / _ba : 0; const posj = rng > 0 ? (C(b) - lo) / rng : 0.5; if (C(b) < O(b) && vrj >= 1.8 && posj >= 0.7) { if (red && C(cur) > H(b)) out.push({ tone: 'bull', title: '換手量(洗籌續攻)', val: H(b), msg: `高檔大量黑K(${(last - j)}天前)被今日紅K收盤過高 ${H(b).toFixed(2)} → 換手成功,強勢股洗掉浮額易再攻。` }); break; } }
-        // 強反彈量:低檔爆量 + 紅K過昨高(非多頭,僅反彈)
-        if (isLow && vr >= 2 && red && data[last - 1] && C(cur) > H(data[last - 1])) out.push({ tone: 'warn', title: '強反彈量(非多頭)', val: V(cur), msg: `低檔爆量 ${vr.toFixed(1)}× + 紅K過昨高 → 強反彈訊號(僅反彈非轉多),搶要設停利、跌破5MA就跑。` });
+        const sigs = (window.StrategySim && window.StrategySim.volumeSignals(data)) || [];
+        for (const s of sigs) {
+            if (s.kind === 'attack') out.push({ tone: 'bull', title: '攻擊量(主力進貨)', val: s.val, msg: `量放大 ${s.vr.toFixed(1)}× 均量 + 紅K上漲、非高檔 → 攻擊量/主力進貨,起漲有量易續攻。` });
+            else if (s.kind === 'distribution') out.push({ tone: 'bear', title: '高檔出貨量', val: s.val, msg: `高檔爆量 ${s.vr.toFixed(1)}× + 黑K → 主力出貨量${s.doubled ? '(已自低點漲近一倍=主力目標區,出貨機率高)' : ''},有貨分批停利、別追。` });
+            else if (s.kind === 'stall') out.push({ tone: 'flat', title: '止跌量(量縮窒息)', val: s.val, msg: `低檔量縮至 ${(s.vr * 100).toFixed(0)}% 均量 + 未破前低 → 量縮窒息,留意打底止跌(待紅K放量確認)。` });
+            else if (s.kind === 'handover') out.push({ tone: 'bull', title: '換手量(洗籌續攻)', val: s.val, msg: `高檔大量黑K(${s.daysAgo}天前)被今日紅K收盤過高 ${s.hi.toFixed(2)} → 換手成功,強勢股洗掉浮額易再攻。` });
+            else if (s.kind === 'rebound') out.push({ tone: 'warn', title: '強反彈量(非多頭)', val: s.val, msg: `低檔爆量 ${s.vr.toFixed(1)}× + 紅K過昨高 → 強反彈訊號(僅反彈非轉多),搶要設停利、跌破5MA就跑。` });
+        }
         return out;
     },
 
