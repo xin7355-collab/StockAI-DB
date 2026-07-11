@@ -15,6 +15,7 @@ import requests
 from pathlib import Path
 
 from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
+from strategy_sim import chu_long_entry, chu_eliminate   # 🎯 回後買上漲(旗艦訊號)+ 淘汰13條(全市場 port)
 from datetime import date, datetime
 
 DATA_DIR = Path("data")
@@ -796,6 +797,7 @@ def main():
         'chu_bottom': [],       # 🥣 底部轉折(模組 D)
         'chu_riding5ma': [],    # 🚀 5MA 飆股主升段(模組 E)
         'chu_backtest': [],     # 🎯 朱式波段回測期望值榜(模組 F,V41.18)
+        'chu_entry': [],        # 🎯 回後買上漲(旗艦訊號全市場 port,建議2):頭頭高底底高+回站5MA+上方空間gate
         # 📐 K棒轉折雷達(V41.7):純公式 K棒戰法全市場掃描
         'kbar_bull': [],        # 🌅 K棒轉多(晨星/長紅吞噬遭遇/測撐)
         'kbar_bear': [],        # 🌃 K棒轉空(夜星/長黑吞噬遭遇/測壓/量價背離)
@@ -963,6 +965,20 @@ def main():
                 rec_f = _chu_backtest(sym, raw_data)
                 if rec_f:
                     matrix['chu_backtest'].append(rec_f)
+                # 🎯 建議2:回後買上漲(旗艦訊號全市場 port)。只收 high/weak 進場級,
+                #    附「上方空間%、波段階段、淘汰紅旗」。追高/等待級不進榜(避免雜訊)。
+                rec_g = chu_long_entry(raw_data)
+                if rec_g and rec_g.get('grade') in ('high', 'weak'):
+                    flags = chu_eliminate(raw_data)
+                    matrix['chu_entry'].append({
+                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                        'grade': rec_g['grade'], 'entry': rec_g['entry'], 'stop': rec_g['stop'],
+                        'upside_room': rec_g['upside_room'], 'stage': rec_g['stage'],
+                        'reason': rec_g['reason'],
+                        'red_flags': flags[:3],   # 淘汰紅旗(有則提醒風險)
+                        'status': ('🎯高勝率' if rec_g['grade'] == 'high' else '⚡力道弱')
+                                  + (f" · ⚠️{flags[0]}" if flags else ''),
+                    })
 
             # 📐 K棒轉折雷達(V41.7):純公式,全市場皆掃。過濾流動性不足(<3千萬)+處置/注意股
             if turnover >= 30_000_000 and sym not in chu_attention_set:
@@ -995,6 +1011,9 @@ def main():
     matrix['chu_bottom'].sort(key=lambda x: x.get('gain', 0), reverse=True)
     matrix['chu_riding5ma'].sort(key=lambda x: x.get('cum_5d', 0), reverse=True)
     matrix['chu_backtest'].sort(key=lambda x: x.get('expectancy', 0), reverse=True)
+    # 🎯 回後買上漲:高勝率在前、無淘汰紅旗在前、上方空間大在前
+    matrix['chu_entry'].sort(key=lambda x: (x.get('grade') == 'high', not x.get('red_flags'),
+                                            x.get('upside_room', 0), x.get('turnover_e', 0)), reverse=True)
 
     # 📐 K棒轉折雷達:成交額大到小(流動性優先,散戶好進出)
     matrix['kbar_bull'].sort(key=lambda x: x['turnover_e'], reverse=True)
@@ -1014,6 +1033,7 @@ def main():
             'chu_bottom': matrix['chu_bottom'][:20],
             'chu_riding5ma': matrix['chu_riding5ma'][:20],
             'chu_backtest': matrix['chu_backtest'][:30],
+            'chu_entry': matrix['chu_entry'][:30],   # 🎯 回後買上漲(建議2)
             # 📐 K棒轉折雷達(各取前 30 檔)
             'kbar_bull': matrix['kbar_bull'][:30],
             'kbar_bear': matrix['kbar_bear'][:30],
@@ -1035,6 +1055,7 @@ def main():
     print(f"      🔥 特別報價: {len(output['data']['chu_top_gainer'])} 檔")
     print(f"      🥣 底部轉折: {len(output['data']['chu_bottom'])} 檔")
     print(f"      🚀 5MA飆股: {len(output['data']['chu_riding5ma'])} 檔")
+    print(f"      🎯 回後買上漲: {len(output['data']['chu_entry'])} 檔(旗艦訊號全市場)")
     print(f"   📐 K棒轉折雷達:🌅 轉多 {len(output['data']['kbar_bull'])} 檔 / 🌃 轉空 {len(output['data']['kbar_bear'])} 檔")
     print(f"💾 已匯出至 {OUTPUT_FILE}")
 

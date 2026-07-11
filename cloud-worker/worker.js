@@ -86,15 +86,15 @@ const SEP = '━━━━━━━━━━━━━━━━━━━━';
 
 // V21.3 ── 計算進場/停損/目標價(統一規則,避免每個模板自己算)
 //   進場區:現價 ± 1%(寬鬆;盤中追價或拉回都接得到)
-//   停損:現價 × 0.96(-4%)
-//   目標:現價 × 1.08(+8%)
+//   停損:現價 × 0.95(-5%)  ← 對齊朱家泓紀律(3~10%、常用 -5%)
+//   目標:現價 × 1.10(+10%) ← 對齊朱家泓短線停利目標 +10%
 function calcLevels(price) {
     const p = Number(price);
     if (!Number.isFinite(p) || p <= 0) return null;
     const entryLow  = (p * 0.99).toFixed(2);
     const entryHigh = (p * 1.01).toFixed(2);
-    const stop      = (p * 0.96).toFixed(2);
-    const target    = (p * 1.08).toFixed(2);
+    const stop      = (p * 0.95).toFixed(2);
+    const target    = (p * 1.10).toFixed(2);
     return { entryLow, entryHigh, stop, target };
 }
 
@@ -104,7 +104,7 @@ function calcLevels(price) {
 function tplFalcon(label, sym, score, price, reasons) {
     const lv = calcLevels(price);
     const lvBlock = lv
-        ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh} 區間\n  ▸ 停損:${lv.stop}(-4%)\n  ▸ 目標:${lv.target}(+8%)`
+        ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh} 區間\n  ▸ 停損:${lv.stop}(-5%)\n  ▸ 目標:${lv.target}(+10%)`
         : `🎯 *操作建議*\n  ▸ 等明日 9:00 開盤定價`;
     const why = (reasons && reasons.length)
         ? `💡 *為什麼觸發?*\n${reasons.slice(0, 3).map((r, i) => `  ${['①','②','③'][i]} ${r}`).join('\n')}`
@@ -150,7 +150,7 @@ function tplChu5MA(label, sym, price, ma5, volRatio) {
         `📊 收 *${price}* > 5MA *${ma5?.toFixed(2)}*`,
         `📈 量增 *${volRatio?.toFixed(1)}×* 5日均量`,
         '',
-        lv ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh}\n  ▸ 停損:跌破 5MA *${ma5?.toFixed(2)}* 立停\n  ▸ 目標:${lv.target}(+8%)`
+        lv ? `🎯 *操作建議*\n  ▸ 進場:${lv.entryLow} ~ ${lv.entryHigh}\n  ▸ 停損:跌破 5MA *${ma5?.toFixed(2)}* 立停\n  ▸ 目標:${lv.target}(+10%)`
            : `🎯 進場:盤中拉回 5MA 附近(${ma5?.toFixed(2)})`,
         '',
         `💡 *為什麼觸發?*`,

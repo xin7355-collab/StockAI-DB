@@ -18,6 +18,7 @@ from pathlib import Path
 from datetime import datetime
 
 from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
+import strategy_sim                  # 🎯 朱家泓策略核心(回後買上漲 + 朱式動態出場模擬)
 
 DATA_DIR = Path("data")
 OUTPUT_FILE = DATA_DIR / "signal_history.json"
@@ -1090,6 +1091,9 @@ def main():
     scanned = 0
     skipped_zombie = 0
     skipped_attention = 0
+    # 🎯 建議1:回後買上漲「朱式動態出場」逐檔期望值(跌破5MA停利/破進場K低-5%停損/獲利升級鎖利)
+    #    每檔只算一次(O(n)),與固定 N 日視窗回測互補 → 反映這套策略真正的紀律出場績效
+    chu_swing_agg = []
 
     for f in DATA_DIR.glob("*.json"):
         sym = f.stem
@@ -1144,6 +1148,12 @@ def main():
                 fs['n'] += 1
                 fs['sum_ret'] += ret
                 if ret > 0: fs['wins'] += 1
+
+            # 🎯 建議1:回後買上漲 × 朱式動態出場(每檔一次,聚合成全市場期望值)
+            _cs = strategy_sim.backtest_chu_swing(rows, cost_pct=ROUND_TRIP_COST_PCT)
+            if _cs:
+                chu_swing_agg.append(_cs)
+
             scanned += 1
         except Exception:
             continue
@@ -1218,6 +1228,27 @@ def main():
     combo_results.sort(key=lambda x: x['win_rate_10d'] * x['avg_return'], reverse=True)
     combo_top = combo_results[:30]
 
+    # 🎯 建議1:回後買上漲「朱式動態出場」全市場彙總(每檔一趟期望值 → 全市場統計)
+    chu_swing_summary = None
+    if chu_swing_agg:
+        _pos = [s for s in chu_swing_agg if s.get('positive')]
+        _all_trades = sum(s['trades'] for s in chu_swing_agg)
+        _exp = [s['expectancy'] for s in chu_swing_agg]
+        _wr = [s['win_rate'] for s in chu_swing_agg]
+        chu_swing_summary = {
+            'stocks_with_signal': len(chu_swing_agg),
+            'stocks_positive_ev': len(_pos),
+            'positive_ev_ratio': round(len(_pos) / len(chu_swing_agg) * 100, 1),
+            'total_trades': _all_trades,
+            'avg_expectancy_pct': round(sum(_exp) / len(_exp), 2),
+            'avg_win_rate_pct': round(sum(_wr) / len(_wr), 1),
+            'exit_rule': '跌破5MA停利 / 破進場K低或-5%停損 / 獲利+7%鎖利、+20%加速停利',
+        }
+        print(f"\n🎯 回後買上漲 × 朱式動態出場(建議1):{len(chu_swing_agg)} 檔有訊號、"
+              f"{len(_pos)} 檔正期望值({chu_swing_summary['positive_ev_ratio']}%)、"
+              f"平均期望值 {chu_swing_summary['avg_expectancy_pct']:+.2f}%/趟、"
+              f"平均勝率 {chu_swing_summary['avg_win_rate_pct']:.0f}%")
+
     payload = {
         'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
         'replay_days': REPLAY_DAYS,
@@ -1232,6 +1263,7 @@ def main():
         'tier_stocks': tier_stocks,   # 各 tier 掃到幾檔
         'falcon_strategy': falcon_strategy,
         'combos': combo_top,   # 🎯 Day 4:戰術組合策略 Top 30(樣本 ≥ 15 才列入)
+        'chu_swing_backtest': chu_swing_summary,   # 🎯 建議1:回後買上漲 × 朱式動態出場 全市場期望值
         '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群 + 戰術組合。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
     }
 
