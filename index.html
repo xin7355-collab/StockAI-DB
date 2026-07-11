@@ -20,6 +20,49 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- 🧩 朱家泓策略共用模組(前端單一真相):與後端 strategy_sim.py 逐條對齊。
+         偵測器逐步遷移為「呼叫此模組算邏輯 + 前端只組 UI 訊息」,避免前後端漂移。 -->
+    <script>
+    window.StrategySim = (function () {
+        'use strict';
+        const isFiniteNum = x => typeof x === 'number' && Number.isFinite(x);
+        const num = x => isFiniteNum(x) ? x : (isFiniteNum(+x) ? +x : 0);
+        const C = b => num(b && (b.close ?? b.c));
+        const O = b => num(b && (b.open ?? b.o));
+        const H = b => num(b && (b.high ?? b.h));
+        const L = b => num(b && (b.low ?? b.l));
+        const V = b => num(b && (b.volume));
+        const round2 = x => Math.round(x * 100) / 100;
+
+        // K線橫盤突破(第2-3/6-3章)— 對齊 strategy_sim.py::box_breakout
+        // 回 {side:'bull'/'bear', neck, whenAgo, boxN} 或 null。
+        function boxBreakout(bars) {
+            if (!Array.isArray(bars) || bars.length < 5) return null;
+            const last = bars.length - 1;
+            for (let e = last; e >= Math.max(3, last - 1); e--) {   // 突破 K 在最後 1-2 根
+                const conf = bars[e];
+                if (O(conf) <= 0 || C(conf) <= 0) continue;
+                for (let n = 3; n <= 6; n++) {                       // 橫盤 3-6 根
+                    const s = e - n;
+                    if (s < 0) break;
+                    const box = bars.slice(s, e);
+                    if (box.length < 3) continue;
+                    const boxHi = Math.max(...box.map(H)), boxLo = Math.min(...box.map(L));
+                    if (boxHi <= 0 || boxHi <= boxLo) continue;
+                    if ((boxHi - boxLo) / boxLo > 0.08) continue;    // 窄幅(<8%)才算橫盤
+                    const body = O(conf) > 0 ? (C(conf) - O(conf)) / O(conf) : 0;
+                    if (C(conf) > boxHi && C(conf) > O(conf) && body >= 0.02)
+                        return { side: 'bull', neck: round2(boxHi), whenAgo: last - e, boxN: n };
+                    if (C(conf) < boxLo && C(conf) < O(conf) && (-body) >= 0.02)
+                        return { side: 'bear', neck: round2(boxLo), whenAgo: last - e, boxN: n };
+                }
+            }
+            return null;
+        }
+
+        return { isFiniteNum, C, O, H, L, V, boxBreakout };
+    })();
+    </script>
     <style>
         html { font-size: 100%; touch-action: manipulation; width: 100%; height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0d1117; }
         /* 預設中型字體微放大 6%（內容字 14px → ~15px），維持小於 text-base (16px) 不破格 */
@@ -13148,33 +13191,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // ⭐ V36.3 — 朱家泓 K線橫盤突破/跌破(純型態):≥3 根橫盤(窄幅) → 收盤過上頸線=突破(多單買點)/破下頸線=跌破(空)
+    // 🧩 單一真相遷移:邏輯改呼叫 window.StrategySim.boxBreakout(對齊 strategy_sim.py),
+    //    本函式只負責把結果組成前端 UI 訊息(tone/title/msg)。
     _detectBoxBreakout(data) {
         const out = [];
-        if (!Array.isArray(data) || data.length < 5) return out;
-        const last = data.length - 1;
-        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
-              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
-        for (let e = last; e >= Math.max(4, last - 1); e--) {   // 突破 K 在最後 1-2 根
-            const conf = data[e];
-            if (!O(conf) || !C(conf)) continue;
-            for (let n = 3; n <= 6; n++) {                       // 橫盤 3-6 根
-                const s = e - n;
-                if (s < 0) break;
-                const box = data.slice(s, e);
-                if (box.length < 3) continue;
-                const boxHi = Math.max(...box.map(H)), boxLo = Math.min(...box.map(L));
-                if (!boxHi || boxHi <= boxLo) continue;
-                if ((boxHi - boxLo) / boxLo > 0.08) continue;    // 窄幅(<8%)才算橫盤
-                const when = (last - e) === 0 ? '剛' : (last - e) + '天前';
-                if (C(conf) > boxHi && C(conf) > O(conf) && (C(conf) - O(conf)) / O(conf) >= 0.02) {
-                    out.push({ tone: 'bull', title: 'K線橫盤突破', val: boxHi, msg: `橫盤 ${n} 根後${when}紅K收盤突破上頸線 ${boxHi.toFixed(2)}=橫盤突破;波段多頭下為買點,回測頸線不破可加碼。` });
-                    return out;
-                }
-                if (C(conf) < boxLo && C(conf) < O(conf) && (O(conf) - C(conf)) / O(conf) >= 0.02) {
-                    out.push({ tone: 'bear', title: 'K線橫盤跌破', val: boxLo, msg: `橫盤 ${n} 根後${when}黑K收盤跌破下頸線 ${boxLo.toFixed(2)}=橫盤跌破;波段空頭下為空點/避開,別搶反彈。` });
-                    return out;
-                }
-            }
+        const r = window.StrategySim && window.StrategySim.boxBreakout(data);
+        if (!r) return out;
+        const when = r.whenAgo === 0 ? '剛' : r.whenAgo + '天前';
+        if (r.side === 'bull') {
+            out.push({ tone: 'bull', title: 'K線橫盤突破', val: r.neck, msg: `橫盤 ${r.boxN} 根後${when}紅K收盤突破上頸線 ${r.neck.toFixed(2)}=橫盤突破;波段多頭下為買點,回測頸線不破可加碼。` });
+        } else {
+            out.push({ tone: 'bear', title: 'K線橫盤跌破', val: r.neck, msg: `橫盤 ${r.boxN} 根後${when}黑K收盤跌破下頸線 ${r.neck.toFixed(2)}=橫盤跌破;波段空頭下為空點/避開,別搶反彈。` });
         }
         return out;
     },
