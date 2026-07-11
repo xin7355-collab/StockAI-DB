@@ -21,6 +21,7 @@
 # ════════════════════════════════════════════════════════════════════════════
 import asyncio
 import json
+import math
 import os
 import sqlite3
 import time
@@ -1041,9 +1042,14 @@ def query_stock_data(symbol: str) -> str:
             pass # 備援接口失敗則靜默降級，維持原歷史陣列計算
         # ────────────────────────────────────────
 
-        closes = [r[1] for r in rows]
-        ma5  = round(sum(closes[-5:]) / min(5, len(closes)), 2) if len(closes) >= 1 else None
-        ma20 = round(sum(closes[-20:]) / min(20, len(closes)), 2) if len(closes) >= 1 else None
+        # 🛡️ 過濾非有限收盤:DB close 可能為 NULL(或盤中快照補值異常),
+        #    直接 sum([..., None, ...]) 會 TypeError 崩潰整個 /api/tech_ai 端點。
+        closes = [r[1] for r in rows
+                  if isinstance(r[1], (int, float)) and not isinstance(r[1], bool) and math.isfinite(r[1])]
+        # 🛡️ 歷史不足不硬算:MA5 需 5 根、MA20 需 20 根,否則回 None。
+        #    原本用 min(20, len) 當分母 → 只有 3 根也會算出「假 MA20」餵給 AI,誤導判斷。
+        ma5  = round(sum(closes[-5:])  / 5,  2) if len(closes) >= 5  else None
+        ma20 = round(sum(closes[-20:]) / 20, 2) if len(closes) >= 20 else None
         recent5 = rows[-5:]
         lines = [f"股票代號：{symbol}（最近 {len(recent5)} 天 OHLCV + 法人+融資）"]
         lines.append(f"MA5={ma5}  MA20={ma20}")
