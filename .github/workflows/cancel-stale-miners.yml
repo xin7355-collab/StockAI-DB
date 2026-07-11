@@ -15,6 +15,7 @@ on:
       - 'walk_forward.py'
       - 'paper_trade.py'
       - 'etf_miner.py'
+      - 'common.py'            # 🧩 共用工具模組(daily_miner 各腳本皆 import)
       - '.github/workflows/daily_miner.yml'
   workflow_dispatch:    # 也支援手動觸發,清掉孤兒
 

@@ -22,6 +22,7 @@ on:
       - 'extras_miner.py'   # V21.5 — 多空計分卡補三項全市場資料
       - 'potential_miner.py'   # V46.6 — 全市場長線潛力股排名
       - 'momentum_miner.py'    # V48.0 — 全市場中線黑馬排名
+      - 'common.py'            # 🧩 共用工具模組:miner/radar/backtest/momentum/potential 皆 import 它,改動須重跑驗證
       - '.github/workflows/daily_miner.yml'
 
 # V16.1 — workflow-level concurrency:新 push 觸發時自動 cancel 同 branch 進行中的舊 run
