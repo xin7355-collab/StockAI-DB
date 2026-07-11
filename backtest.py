@@ -1094,6 +1094,8 @@ def main():
     # 🎯 建議1:回後買上漲「朱式動態出場」逐檔期望值(跌破5MA停利/破進場K低-5%停損/獲利升級鎖利)
     #    每檔只算一次(O(n)),與固定 N 日視窗回測互補 → 反映這套策略真正的紀律出場績效
     chu_swing_agg = []
+    # 🎯 三均線分批出場(第8-5章)全出 vs 分批 對照 → 看「長線保護短線」是否更優
+    chu_swing_scaled_agg = []
 
     for f in DATA_DIR.glob("*.json"):
         sym = f.stem
@@ -1149,10 +1151,16 @@ def main():
                 fs['sum_ret'] += ret
                 if ret > 0: fs['wins'] += 1
 
-            # 🎯 建議1:回後買上漲 × 朱式動態出場(每檔一次,聚合成全市場期望值)
+            # 🎯 建議1:回後買上漲 × 朱式動態出場(全出)
             _cs = strategy_sim.backtest_chu_swing(rows, cost_pct=ROUND_TRIP_COST_PCT)
             if _cs:
                 chu_swing_agg.append(_cs)
+            # 🎯 第8-5章:同進場、改「三均線分批」出場 → 對照哪種出場更優
+            _css = strategy_sim.backtest_chu_swing(
+                rows, cost_pct=ROUND_TRIP_COST_PCT,
+                exit_fn=strategy_sim.simulate_three_ma_scaled_exit)
+            if _css:
+                chu_swing_scaled_agg.append(_css)
 
             scanned += 1
         except Exception:
@@ -1228,26 +1236,31 @@ def main():
     combo_results.sort(key=lambda x: x['win_rate_10d'] * x['avg_return'], reverse=True)
     combo_top = combo_results[:30]
 
-    # 🎯 建議1:回後買上漲「朱式動態出場」全市場彙總(每檔一趟期望值 → 全市場統計)
-    chu_swing_summary = None
-    if chu_swing_agg:
-        _pos = [s for s in chu_swing_agg if s.get('positive')]
-        _all_trades = sum(s['trades'] for s in chu_swing_agg)
-        _exp = [s['expectancy'] for s in chu_swing_agg]
-        _wr = [s['win_rate'] for s in chu_swing_agg]
-        chu_swing_summary = {
-            'stocks_with_signal': len(chu_swing_agg),
+    # 🎯 建議1 + 第8-5章:回後買上漲全市場彙總,對照「全出」vs「三均線分批」兩種出場
+    def _summarize_chu_agg(agg, exit_rule):
+        if not agg:
+            return None
+        _pos = [s for s in agg if s.get('positive')]
+        return {
+            'stocks_with_signal': len(agg),
             'stocks_positive_ev': len(_pos),
-            'positive_ev_ratio': round(len(_pos) / len(chu_swing_agg) * 100, 1),
-            'total_trades': _all_trades,
-            'avg_expectancy_pct': round(sum(_exp) / len(_exp), 2),
-            'avg_win_rate_pct': round(sum(_wr) / len(_wr), 1),
-            'exit_rule': '跌破5MA停利 / 破進場K低或-5%停損 / 獲利+7%鎖利、+20%加速停利',
+            'positive_ev_ratio': round(len(_pos) / len(agg) * 100, 1),
+            'total_trades': sum(s['trades'] for s in agg),
+            'avg_expectancy_pct': round(sum(s['expectancy'] for s in agg) / len(agg), 2),
+            'avg_win_rate_pct': round(sum(s['win_rate'] for s in agg) / len(agg), 1),
+            'exit_rule': exit_rule,
         }
-        print(f"\n🎯 回後買上漲 × 朱式動態出場(建議1):{len(chu_swing_agg)} 檔有訊號、"
-              f"{len(_pos)} 檔正期望值({chu_swing_summary['positive_ev_ratio']}%)、"
-              f"平均期望值 {chu_swing_summary['avg_expectancy_pct']:+.2f}%/趟、"
-              f"平均勝率 {chu_swing_summary['avg_win_rate_pct']:.0f}%")
+    chu_swing_summary = _summarize_chu_agg(
+        chu_swing_agg, '跌破5MA停利 / 破進場K低或-5%停損 / 獲利+7%鎖利、+20%加速停利')
+    chu_swing_scaled_summary = _summarize_chu_agg(
+        chu_swing_scaled_agg, '三均線分批:跌破5/10/20MA各賣1/3、急漲>20%跌破5MA全出')
+    if chu_swing_summary:
+        print(f"\n🎯 回後買上漲全市場出場對照(建議1 + 第8-5章):")
+        print(f"   [全出]   {chu_swing_summary['stocks_with_signal']} 檔、正EV {chu_swing_summary['positive_ev_ratio']}%、"
+              f"平均期望值 {chu_swing_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_summary['avg_win_rate_pct']:.0f}%")
+        if chu_swing_scaled_summary:
+            print(f"   [分批3張] {chu_swing_scaled_summary['stocks_with_signal']} 檔、正EV {chu_swing_scaled_summary['positive_ev_ratio']}%、"
+                  f"平均期望值 {chu_swing_scaled_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_scaled_summary['avg_win_rate_pct']:.0f}%")
 
     payload = {
         'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
@@ -1263,7 +1276,8 @@ def main():
         'tier_stocks': tier_stocks,   # 各 tier 掃到幾檔
         'falcon_strategy': falcon_strategy,
         'combos': combo_top,   # 🎯 Day 4:戰術組合策略 Top 30(樣本 ≥ 15 才列入)
-        'chu_swing_backtest': chu_swing_summary,   # 🎯 建議1:回後買上漲 × 朱式動態出場 全市場期望值
+        'chu_swing_backtest': chu_swing_summary,   # 🎯 建議1:回後買上漲 × 朱式動態出場(全出)
+        'chu_swing_scaled_backtest': chu_swing_scaled_summary,   # 🎯 第8-5章:三均線分批出場(對照)
         '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群 + 戰術組合。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
     }
 

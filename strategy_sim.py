@@ -203,6 +203,8 @@ def simulate_chu_exit(bars, entry_idx, entry_px=None):
        跌破5MA 收盤 → 停利/停損出場。
        動態升級:獲利曾達 +7% → 取消固定停損,只守 5MA(鎖住不再賠);
                  獲利曾達 +20% → 高檔爆量長黑/長上影收黑 隔根即出(加速停利)。"""
+    if not bars:
+        return None
     n = len(bars)
     if entry_idx < 0 or entry_idx >= n - 1:
         return None
@@ -246,9 +248,69 @@ def _exit(entry, exit_px, exit_idx, entry_idx, reason, closed=True):
             'bars_held': exit_idx - entry_idx, 'reason': reason, 'closed': closed}
 
 
-def backtest_chu_swing(bars, cost_pct=0.0):
+def simulate_three_ma_scaled_exit(bars, entry_idx, entry_px=None):
+    """三均線分批出場(第 8-5 章「長線保護短線」):3 張等額。
+       跌破5MA賣1張、跌破10MA賣1張、跌破20MA賣尾張;急漲曾>20% 後跌破5MA → 三張全出。
+    回 dict:{return_pct(3張加權平均), exit_idx(最後一張出場), bars_held, closed, reasons}。
+    介面與 simulate_chu_exit 相容(exit_idx/return_pct/closed),可互換給 backtest_chu_swing。"""
+    if not bars:
+        return None
+    n = len(bars)
+    if entry_idx < 0 or entry_idx >= n - 1:
+        return None
+    closes = [_c(b) for b in bars]
+    ma5 = _ma_series(closes, 5)
+    ma10 = _ma_series(closes, 10)
+    ma20 = _ma_series(closes, 20)
+    entry = entry_px if (entry_px and entry_px > 0) else closes[entry_idx]
+    if entry <= 0:
+        return None
+    shares = {'5': None, '10': None, '20': None}   # 每張的 (exit_idx, exit_px, reason)
+
+    def _sell(key, i, reason):
+        if shares[key] is None:
+            shares[key] = (i, closes[i], reason)
+
+    peak_ret = 0.0
+    for i in range(entry_idx + 1, n):
+        c = closes[i]
+        peak_ret = max(peak_ret, (c - entry) / entry)
+        # 急漲曾 >20% 後跌破5MA → 三張全出(鎖住主升段利潤)
+        if peak_ret >= 0.20 and ma5[i] > 0 and c < ma5[i]:
+            for kma in shares:
+                _sell(kma, i, '急漲>20%跌破5MA全出')
+            break
+        if ma5[i] > 0 and c < ma5[i]:
+            _sell('5', i, '跌破5MA賣1/3')
+        if ma10[i] > 0 and c < ma10[i]:
+            _sell('10', i, '跌破10MA賣1/3')
+        if ma20[i] > 0 and c < ma20[i]:
+            _sell('20', i, '跌破20MA賣尾1/3')
+        if all(v is not None for v in shares.values()):
+            break
+
+    closed_all = all(v is not None for v in shares.values())
+    # 尾端未出的張以最後收盤結算(未平倉)
+    for kma in shares:
+        if shares[kma] is None:
+            shares[kma] = (n - 1, closes[-1], '尚未出場(末端結算)')
+    rets = [(px - entry) / entry * 100 for (_i, px, _r) in shares.values()]
+    exit_idx = max(i for (i, _px, _r) in shares.values())
+    return {
+        'return_pct': round(sum(rets) / 3, 2),
+        'exit_idx': exit_idx,
+        'bars_held': exit_idx - entry_idx,
+        'closed': closed_all,
+        'reasons': [shares[k][2] for k in ('5', '10', '20')],
+    }
+
+
+def backtest_chu_swing(bars, cost_pct=0.0, exit_fn=None):
     """回後買上漲進場 + 朱式出場 的逐根回測期望值。回 dict 或 None(交易<5筆/負期望值)。
-    取代原本散在 radar_miner._chu_backtest 的內嵌邏輯,並改用 simulate_chu_exit(含動態移動停損)。"""
+    取代原本散在 radar_miner._chu_backtest 的內嵌邏輯。
+    exit_fn:出場模型,預設 simulate_chu_exit(全出);可傳 simulate_three_ma_scaled_exit(三均線分批)比較。"""
+    if exit_fn is None:
+        exit_fn = simulate_chu_exit
     if not bars or len(bars) < 90:
         return None
     closes = [_c(b) for b in bars]
@@ -264,7 +326,7 @@ def backtest_chu_swing(bars, cost_pct=0.0):
         body = (c - o) / o * 100 if o > 0 else 0
         vol_up = _v(bars[i]) > _v(bars[i - 1])
         if uptrend and reclaim5 and body >= 2 and vol_up and c > ph:
-            ex = simulate_chu_exit(bars, i)
+            ex = exit_fn(bars, i)
             if ex:
                 trades.append(ex['return_pct'] - cost_pct)
                 i = ex['exit_idx'] + 1     # 出場後才找下一次進場(不重疊)
