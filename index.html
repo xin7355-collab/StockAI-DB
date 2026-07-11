@@ -194,7 +194,41 @@
             return out;
         }
 
-        return { isFiniteNum, C, O, H, L, V, boxBreakout, volumeSignals, maSeries, granville, kdSeries, difSeries, divergence };
+        // 轉折波高低點(±k 收盤 fractal,近 lookback 日)— 對齊 strategy_sim.py::find_swings。
+        function findSwings(closes, k, lookback) {
+            k = k || 8; lookback = lookback || 120;
+            const n = closes.length, peaks = [], troughs = [];
+            if (n < 2 * k + 1) return { peaks, troughs };
+            const from = Math.max(0, n - lookback);
+            for (let i = from + k; i <= n - k - 1; i++) {
+                const w = closes.slice(i - k, i + k + 1);
+                if (closes[i] === Math.max(...w)) peaks.push({ idx: i, v: closes[i] });
+                if (closes[i] === Math.min(...w)) troughs.push({ idx: i, v: closes[i] });
+            }
+            return { peaks, troughs };
+        }
+        // 趨勢結構(頭頭高底底高)— 對齊 strategy_sim.py::trend_structure。
+        // 回 {trend:'bull'/'bear'/'range', peakUp, higherHigh, troughUp, lastPeak, lastTrough, priorTrough, peaks, troughs}。
+        function trendStructure(closes, k) {
+            k = k || 8;
+            const sw = findSwings(closes, k), peaks = sw.peaks, troughs = sw.troughs;
+            const res = { trend: 'range', peakUp: false, higherHigh: false, troughUp: false, lastPeak: null, lastTrough: null, priorTrough: null, peaks, troughs };
+            if (peaks.length < 2 || troughs.length < 2 || !closes.length) return res;
+            const pC = closes[closes.length - 1];
+            res.peakUp = peaks[peaks.length - 1].v > peaks[peaks.length - 2].v;   // V42.1 噴出股:正創更高高點也算頭頭高
+            res.higherHigh = pC > peaks[peaks.length - 1].v;
+            res.troughUp = troughs[troughs.length - 1].v > troughs[troughs.length - 2].v;
+            res.lastPeak = peaks[peaks.length - 1].v;
+            res.lastTrough = troughs[troughs.length - 1].v;
+            res.priorTrough = troughs[troughs.length - 2].v;
+            const peakDn = peaks[peaks.length - 1].v < peaks[peaks.length - 2].v;
+            const troughDn = troughs[troughs.length - 1].v < troughs[troughs.length - 2].v;
+            if ((res.peakUp || res.higherHigh) && res.troughUp) res.trend = 'bull';
+            else if (peakDn && troughDn) res.trend = 'bear';
+            return res;
+        }
+
+        return { isFiniteNum, C, O, H, L, V, boxBreakout, volumeSignals, maSeries, granville, kdSeries, difSeries, divergence, findSwings, trendStructure };
     })();
     </script>
     <style>
@@ -13369,20 +13403,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const ma5 = ma(5, last), ma5y = ma(5, last - 1), ma20 = ma(20, last);
         if (!ma5 || !ma5y) return out;
         const pC = C(data[last]), yC = C(data[last - 1]);
-        // 波段轉折(±8 收盤 fractal,掃近 120 日)→ 頭頭高 / 底底高
-        const SW = 8, from = Math.max(0, n - 120), peaks = [], troughs = [];
-        for (let i = from + SW; i <= last - SW; i++) {
-            const w = data.slice(i - SW, i + SW + 1), mx = Math.max(...w.map(C)), mn = Math.min(...w.map(C));
-            if (C(data[i]) === mx) peaks.push({ idx: i, v: C(data[i]) });
-            if (C(data[i]) === mn) troughs.push({ idx: i, v: C(data[i]) });
-        }
-        if (peaks.length < 2 || troughs.length < 2) return out;
-        const peakUp = peaks[peaks.length - 1].v > peaks[peaks.length - 2].v;
-        // ⭐ V42.1 快速飆股補丁:近期新高還沒滿 ±8 根無法被確認成波峰 → 若今價已過「前一個確認波峰」=正在創更高高點,
-        //   也視為頭頭高(修正國巨/聯發科這類噴出股被誤判「非多頭」而漏掉朱老師買點的問題)。
-        const higherHigh = pC > peaks[peaks.length - 1].v;
-        const troughUp = troughs[troughs.length - 1].v > troughs[troughs.length - 2].v;
-        const lastTrough = troughs[troughs.length - 1].v;   // 最近前低(沒破它才維持底底高)
+        // 🧩 波段轉折(±8 收盤 fractal,頭頭高/底底高)改用共用 window.StrategySim.trendStructure
+        //    (對齊 strategy_sim.py;含 V42.1 噴出股 higherHigh 補丁),分級/訊息/做頭邏輯維持不變。
+        const _ts = window.StrategySim && window.StrategySim.trendStructure(data.map(b => C(b)));
+        if (!_ts || _ts.peaks.length < 2 || _ts.troughs.length < 2) return out;
+        const peaks = _ts.peaks, troughs = _ts.troughs;
+        const peakUp = _ts.peakUp, higherHigh = _ts.higherHigh, troughUp = _ts.troughUp;
+        const lastTrough = _ts.lastTrough;   // 最近前低(沒破它才維持底底高)
         if (!((peakUp || higherHigh) && troughUp)) return out;   // 非波段多頭 → 朱:不可做多
         const noBreakLow = pC > lastTrough && L(data[last]) > lastTrough * 0.99;   // 沒破前低
         const red = pC > O(data[last]);
