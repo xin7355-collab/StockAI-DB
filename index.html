@@ -127,7 +127,74 @@
             return out;
         }
 
-        return { isFiniteNum, C, O, H, L, V, boxBreakout, volumeSignals, maSeries, granville };
+        // KD(台股 Stochastic Slow)K 序列 — 對齊 strategy_sim.py::kd_series(與 App 圖表 worker 同法)。
+        function kdSeries(bars, n) {
+            n = n || 9;
+            const out = new Array(bars.length).fill(null);
+            let K = 50, D = 50;
+            for (let i = 0; i < bars.length; i++) {
+                if (i < n - 1) continue;
+                const w = bars.slice(i - n + 1, i + 1);
+                const hi = Math.max(...w.map(H)), lo = Math.min(...w.map(L));
+                const c = C(bars[i]);
+                const rsv = hi > lo ? (c - lo) / (hi - lo) * 100 : 50;
+                K = (2 / 3) * K + (1 / 3) * rsv;
+                D = (2 / 3) * D + (1 / 3) * K;
+                out[i] = K;
+            }
+            return out;
+        }
+        // MACD DIF(EMA_fast - EMA_slow,SMA 播種)— 對齊 strategy_sim.py::dif_series。
+        function difSeries(closes, fast, slow) {
+            fast = fast || 12; slow = slow || 26;
+            const out = new Array(closes.length).fill(null);
+            if (closes.length < slow) return out;
+            const kf = 2 / (fast + 1), ksl = 2 / (slow + 1);
+            let ef = 0, es = 0;
+            for (let i = 0; i < fast; i++) ef += closes[i]; ef /= fast;
+            for (let i = 0; i < slow; i++) es += closes[i]; es /= slow;
+            for (let i = 0; i < closes.length; i++) {
+                if (i >= fast) ef = closes[i] * kf + ef * (1 - kf);
+                if (i >= slow) es = closes[i] * ksl + es * (1 - ksl);
+                if (i >= slow - 1) out[i] = ef - es;
+            }
+            return out;
+        }
+        // KD/MACD 頂底背離 — 對齊 strategy_sim.py::divergence(內部自算 KD/DIF,不依賴外部 indicators)。
+        // 回 [{side:'bear'/'bull', kind:'KD'/'MACD'/'KD+MACD', close, prevClose, daysAgo}]。
+        function divergence(bars) {
+            const out = [];
+            if (!Array.isArray(bars) || bars.length < 40) return out;
+            const closes = bars.map(C), n = closes.length;
+            const K = kdSeries(bars), DIF = difSeries(closes);
+            const SW = 4, last = n - 1, from = Math.max(SW, n - 60);
+            const peaks = [], troughs = [];
+            for (let i = from; i <= last - SW; i++) {
+                const w = closes.slice(i - SW, i + SW + 1);
+                if (closes[i] === Math.max(...w)) peaks.push(i);
+                if (closes[i] === Math.min(...w)) troughs.push(i);
+            }
+            const val = (a, i) => (i >= 0 && i < a.length && isFiniteNum(a[i])) ? a[i] : null;
+            if (peaks.length >= 2) {
+                const p2 = peaks[peaks.length - 1], p1 = peaks[peaks.length - 2];
+                if (last - p2 <= 8 && closes[p2] > closes[p1]) {
+                    const k2 = val(K, p2), k1 = val(K, p1), d2 = val(DIF, p2), d1 = val(DIF, p1);
+                    const kd = k2 != null && k1 != null && k2 < k1, macd = d2 != null && d1 != null && d2 < d1;
+                    if (kd || macd) out.push({ side: 'bear', kind: kd && macd ? 'KD+MACD' : kd ? 'KD' : 'MACD', close: round2(closes[p2]), prevClose: round2(closes[p1]), daysAgo: last - p2 });
+                }
+            }
+            if (troughs.length >= 2) {
+                const t2 = troughs[troughs.length - 1], t1 = troughs[troughs.length - 2];
+                if (last - t2 <= 8 && closes[t2] < closes[t1]) {
+                    const k2 = val(K, t2), k1 = val(K, t1), d2 = val(DIF, t2), d1 = val(DIF, t1);
+                    const kd = k2 != null && k1 != null && k2 > k1, macd = d2 != null && d1 != null && d2 > d1;
+                    if (kd || macd) out.push({ side: 'bull', kind: kd && macd ? 'KD+MACD' : kd ? 'KD' : 'MACD', close: round2(closes[t2]), prevClose: round2(closes[t1]), daysAgo: last - t2 });
+                }
+            }
+            return out;
+        }
+
+        return { isFiniteNum, C, O, H, L, V, boxBreakout, volumeSignals, maSeries, granville, kdSeries, difSeries, divergence };
     })();
     </script>
     <style>
@@ -13643,37 +13710,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // ⭐ V41.29 — 指標背離(KD / MACD 頂背離/底背離,純公式讀 this.indicators):
     //   頂背離=價創新高但 K/dif 沒創高(動能衰竭,賣訊);底背離=價創新低但 K/dif 沒創低(跌勢趨緩,買訊)。
+    // 🧩 單一真相遷移:邏輯改呼叫 window.StrategySim.divergence(對齊 strategy_sim.py,內部自算 KD/DIF)。
+    //    改為自足計算(不再依賴 this.indicators.k/.dif);背離只比較近期兩波峰的 KD/DIF,
+    //    EMA 種子差異早已衰減,結果與原本讀圖表 indicators 一致。前端只組 UI 訊息。
     _detectIndicatorDivergence(data) {
         const out = [];
-        if (!Array.isArray(data) || data.length < 40) return out;
-        const ind = this.indicators || {};
-        const K = ind.k, DIF = ind.dif;
-        const C = b => +((b?.close ?? b?.c) || 0);
-        const n = data.length, last = n - 1, SW = 4, from = Math.max(SW, n - 60);
-        const peaks = [], troughs = [];
-        for (let i = from; i <= last - SW; i++) {
-            const w = data.slice(i - SW, i + SW + 1).map(C), c = C(data[i]);
-            if (c === Math.max(...w)) peaks.push(i);
-            if (c === Math.min(...w)) troughs.push(i);
-        }
-        const arrOK = a => Array.isArray(a) && a.length === n;
-        const indVal = (a, i) => (arrOK(a) && a[i] != null && Number.isFinite(+a[i])) ? +a[i] : null;
-        // 頂背離(取最近兩個波峰;最近峰須在最後 8 根內才算即時)
-        if (peaks.length >= 2) {
-            const p2 = peaks[peaks.length - 1], p1 = peaks[peaks.length - 2];
-            if (last - p2 <= 8 && C(data[p2]) > C(data[p1])) {
-                const k2 = indVal(K, p2), k1 = indVal(K, p1), d2 = indVal(DIF, p2), d1 = indVal(DIF, p1);
-                const kdDiv = k2 != null && k1 != null && k2 < k1, macdDiv = d2 != null && d1 != null && d2 < d1;
-                if (kdDiv || macdDiv) out.push({ tone: 'bear', title: `${kdDiv && macdDiv ? 'KD+MACD' : kdDiv ? 'KD' : 'MACD'} 頂背離`, val: C(data[p2]), msg: `股價${(last - p2) === 0 ? '今日' : (last - p2) + '天前'}創波段新高 ${C(data[p2]).toFixed(2)}(>前高 ${C(data[p1]).toFixed(2)}),但 ${kdDiv && macdDiv ? 'KD 與 MACD 都' : kdDiv ? 'KD' : 'MACD'}沒跟著創高=<b>上漲動能衰竭</b>(頂背離),高檔賣訊,別追高、有貨分批停利。` });
-            }
-        }
-        // 底背離(取最近兩個波谷)
-        if (troughs.length >= 2) {
-            const t2 = troughs[troughs.length - 1], t1 = troughs[troughs.length - 2];
-            if (last - t2 <= 8 && C(data[t2]) < C(data[t1])) {
-                const k2 = indVal(K, t2), k1 = indVal(K, t1), d2 = indVal(DIF, t2), d1 = indVal(DIF, t1);
-                const kdDiv = k2 != null && k1 != null && k2 > k1, macdDiv = d2 != null && d1 != null && d2 > d1;
-                if (kdDiv || macdDiv) out.push({ tone: 'bull', title: `${kdDiv && macdDiv ? 'KD+MACD' : kdDiv ? 'KD' : 'MACD'} 底背離`, val: C(data[t2]), msg: `股價${(last - t2) === 0 ? '今日' : (last - t2) + '天前'}創波段新低 ${C(data[t2]).toFixed(2)}(<前低 ${C(data[t1]).toFixed(2)}),但 ${kdDiv && macdDiv ? 'KD 與 MACD 都' : kdDiv ? 'KD' : 'MACD'}沒跟著創低=<b>跌勢動能趨緩</b>(底背離),低檔買訊,待紅K站上5日線可分批承接。` });
+        const sigs = (window.StrategySim && window.StrategySim.divergence(data)) || [];
+        for (const s of sigs) {
+            const ind = s.kind === 'KD+MACD' ? 'KD 與 MACD 都' : s.kind;
+            const when = s.daysAgo === 0 ? '今日' : s.daysAgo + '天前';
+            if (s.side === 'bear') {
+                out.push({ tone: 'bear', title: `${s.kind} 頂背離`, val: s.close, msg: `股價${when}創波段新高 ${s.close.toFixed(2)}(>前高 ${s.prevClose.toFixed(2)}),但 ${ind}沒跟著創高=<b>上漲動能衰竭</b>(頂背離),高檔賣訊,別追高、有貨分批停利。` });
+            } else {
+                out.push({ tone: 'bull', title: `${s.kind} 底背離`, val: s.close, msg: `股價${when}創波段新低 ${s.close.toFixed(2)}(<前低 ${s.prevClose.toFixed(2)}),但 ${ind}沒跟著創低=<b>跌勢動能趨緩</b>(底背離),低檔買訊,待紅K站上5日線可分批承接。` });
             }
         }
         return out;
