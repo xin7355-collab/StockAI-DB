@@ -27,3 +27,8 @@ Thumbs.db
 # 新聞快取（由後端動態生成）
 news_cache.json
 .claude/
+
+# 本地檔案（不進 git）
+skills-lock.json
+筆記本/
+逐字稿/

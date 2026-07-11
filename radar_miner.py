@@ -10,6 +10,7 @@ radar_miner.py — 首席 AI 司令部：三大戰略雷達矩陣引擎
 """
 import os
 import json
+import math
 import requests
 from pathlib import Path
 from datetime import date, datetime
@@ -62,6 +63,10 @@ def _chu_skip(sym, rows, attention_set, min_rows=22):
 def _chu_macd_hist(closes, fast=12, slow=26, sig=9):
     """算今日 MACD 柱(DIF - DEA)。資料 < slow+sig 回 None。
     EMA 標準公式:EMA_t = α·close + (1-α)·EMA_{t-1},α=2/(N+1)。"""
+    # 🛡️ 先剔除非有限收盤(None/NaN/±Inf),避免髒資料把整條 EMA 污染成 NaN;
+    #    清洗後再判斷筆數是否仍足夠。
+    closes = [c for c in closes if isinstance(c, (int, float))
+              and not isinstance(c, bool) and math.isfinite(c)]
     if len(closes) < slow + sig:
         return None
     def _ema(values, n):
@@ -88,7 +93,9 @@ def _chu_macd_hist(closes, fast=12, slow=26, sig=9):
     dea = sum(difs[:sig]) / sig
     for d in difs[sig:]:
         dea = d * k_sig + dea * (1 - k_sig)
-    return difs[-1] - dea  # 今日 MACD 柱
+    hist = difs[-1] - dea  # 今日 MACD 柱
+    # 🛡️ 雙保險:結果非有限值一律回 None,不讓 NaN 冒充成「MACD 訊號」
+    return hist if math.isfinite(hist) else None
 
 
 def _chu_kd(rows, n=9):
@@ -114,14 +121,18 @@ def _chu_kd(rows, n=9):
 
 def _chu_stdev_ratio(closes):
     """近 20 日標準差 / 均價(波動率)。資料 < 20 回 None。"""
+    # 🛡️ 先剔除非有限收盤,避免 NaN 讓 av<=0 判斷失效(NaN 比較恆 False 會漏網)
+    closes = [c for c in closes if isinstance(c, (int, float))
+              and not isinstance(c, bool) and math.isfinite(c)]
     if len(closes) < 20:
         return None
     w = closes[-20:]
     avg = sum(w) / 20
-    if avg <= 0:
+    if not math.isfinite(avg) or avg <= 0:
         return None
     var = sum((c - avg) ** 2 for c in w) / 20
-    return (var ** 0.5) / avg
+    ratio = (var ** 0.5) / avg
+    return ratio if math.isfinite(ratio) else None
 
 
 def _chu_perfect6(sym, rows):

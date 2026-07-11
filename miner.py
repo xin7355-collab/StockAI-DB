@@ -2921,8 +2921,17 @@ def fetch_broker_chips():
 # ── 雷達預運算 ────────────────────────────────────────────────────────────────
 def _quick_ind(data):
     if len(data) < 22: return None
-    closes = [d['close'] for d in data if isinstance(d.get('close'), (int, float))]
-    vols   = [d.get('volume', 0) for d in data]
+    # 🛡️ 只留「有限」收盤價:排除 None / 字串 / NaN / ±Inf。
+    #    json.loads 預設 allow_nan=True,上游若寫出 NaN,讀回即 float('nan');
+    #    isinstance(nan, float) 為 True 會漏網,污染 MA/布林全變 NaN 卻無聲。
+    closes = [d['close'] for d in data
+              if isinstance(d.get('close'), (int, float))
+              and not isinstance(d['close'], bool)
+              and math.isfinite(d['close'])]
+    # 🛡️ 成交量同樣防呆:volume 為 null(None)時 sum() 會直接 TypeError 崩潰
+    def _safe_vol(v):
+        return v if isinstance(v, (int, float)) and math.isfinite(v) else 0
+    vols   = [_safe_vol(d.get('volume', 0)) for d in data]
     if len(closes) < 22: return None
     ma   = lambda n, a=closes: sum(a[-n:]) / n
     pma  = lambda n, a=closes: sum(a[-n-1:-1]) / n
@@ -2931,6 +2940,9 @@ def _quick_ind(data):
     vma5 = sum(vols[-5:]) / 5 if vols else 0
     var20    = sum((c - ma20) ** 2 for c in closes[-20:]) / 20
     upper_bb = ma20 + 2 * var20 ** 0.5
+    # 🛡️ 雙保險:任一指標非有限值(理論上已被上面過濾擋掉)則整筆放棄,不讓 NaN 流入雷達
+    if not all(math.isfinite(x) for x in (ma5, ma10, ma20, pma5, pma10, pma20, vma5, upper_bb)):
+        return None
     return {'close': closes[-1], 'prev_close': closes[-2],
             'ma5': ma5, 'ma10': ma10, 'ma20': ma20,
             'pma5': pma5, 'pma10': pma10, 'pma20': pma20,

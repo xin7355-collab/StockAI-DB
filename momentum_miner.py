@@ -18,6 +18,7 @@
 """
 import re
 import json
+import math
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -70,7 +71,11 @@ def score_stock(sym, bars, fund, median_pe, concepts, att):
 
         def ma(k, i):
             s = closes[i - k + 1:i + 1]
-            return avg(s) if len(s) == k else None
+            if len(s) != k:
+                return None
+            r = avg(s)
+            # 🛡️ 視窗含 NaN/±Inf 會讓均線變非有限值 → 回 None(呼叫端已用 is not None 判斷)
+            return r if math.isfinite(r) else None
 
         def inst(b):
             return float(b.get('foreign_net') or 0) + float(b.get('trust_net') or 0)

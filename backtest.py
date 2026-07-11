@@ -45,11 +45,17 @@ def _load_attention_set():
 # ═══════════════════════════════════════════════════════════════════
 
 def _ma(closes, idx, period):
-    """closes[idx] 當日往回 period 日均線(含當日)。不足回 None。"""
+    """closes[idx] 當日往回 period 日均線(含當日)。不足或含非有限值回 None。"""
     if idx + 1 < period:
         return None
     seg = closes[idx - period + 1: idx + 1]
-    return sum(seg) / period if seg else None
+    if not seg:
+        return None
+    # 🛡️ 視窗含 None/NaN/±Inf → 回 None,不讓髒資料算出污染的均線
+    if not all(isinstance(c, (int, float)) and not isinstance(c, bool)
+               and math.isfinite(c) for c in seg):
+        return None
+    return sum(seg) / period
 
 
 def _inst_sum(row):
@@ -449,11 +455,17 @@ def classify_signal_legacy(rows, idx):
 def _falcon_score_simplified(rows, idx):
     """🦅 簡化版獵鷹建倉分(回測用)"""
     if idx < 22: return None
-    closes = [r.get('close') for r in rows[:idx + 1] if r.get('close')]
+    # 🛡️ 只留有限收盤(NaN 為 truthy 會漏過 if r.get('close') 過濾,污染均線並使 round() 崩潰)
+    closes = [r.get('close') for r in rows[:idx + 1]
+              if isinstance(r.get('close'), (int, float))
+              and not isinstance(r.get('close'), bool) and math.isfinite(r.get('close')) and r.get('close')]
     if len(closes) < 22: return None
     c = closes[-1]
     def ma(n):
-        return sum(closes[-n:]) / n if len(closes) >= n else None
+        if len(closes) < n:
+            return None
+        r = sum(closes[-n:]) / n
+        return r if math.isfinite(r) else None
     ma5, ma20, ma60 = ma(5), ma(20), ma(60)
     base = 50
     if ma20:
