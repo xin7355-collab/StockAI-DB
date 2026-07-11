@@ -89,7 +89,45 @@
             return out;
         }
 
-        return { isFiniteNum, C, O, H, L, V, boxBreakout, volumeSignals };
+        // 移動平均序列(對齊 strategy_sim.py::_ma_series):前段不足用較短視窗,不回 null。
+        function maSeries(closes, period) {
+            const out = [];
+            for (let i = 0; i < closes.length; i++) {
+                const s = closes.slice(Math.max(0, i - period + 1), i + 1);
+                out.push(s.length ? s.reduce((a, b) => a + b, 0) / s.length : 0);
+            }
+            return out;
+        }
+
+        // 📏 均線斜率(上揚/下彎)回看天數準則(朱式):
+        //    短線飆股/抓剛突破(5MA) → 3 天(反應快、不錯過第一根發動);
+        //    中長線波段/高勝率(20MA/60MA) → 5 天(過濾假突破與盤整雜訊)。
+        // 葛蘭碧建立在 20MA(月線)= 波段訊號 → 用 5 天斜率。對齊 strategy_sim.py::granville。
+        function granville(bars) {
+            const out = [];
+            if (!Array.isArray(bars) || bars.length < 25) return out;
+            const closes = bars.map(C);
+            const n = closes.length;
+            const ma = maSeries(closes, 20);
+            const m = ma[n - 1], mY = ma[n - 2];
+            if (m <= 0 || mY <= 0) return out;
+            const pC = closes[n - 1], yC = closes[n - 2];
+            const pH = H(bars[n - 1]), pL = L(bars[n - 1]), oCur = O(bars[n - 1]);
+            const slopeUp = n >= 6 && ma[n - 1] > ma[n - 6];   // 5 天斜率(20MA 波段)
+            const slopeDn = n >= 6 && ma[n - 1] < ma[n - 6];
+            const dev = (pC - m) / m * 100;
+            if (yC < mY && pC > m && !slopeDn) out.push({ side: 'buy', point: 1, ma: round2(m) });
+            else if (yC > mY && pC < m && !slopeUp) out.push({ side: 'sell', point: 1, ma: round2(m) });
+            else if (slopeUp && pL < m && pC > m) out.push({ side: 'buy', point: 2, ma: round2(m) });
+            else if (slopeDn && pH > m && pC < m) out.push({ side: 'sell', point: 2, ma: round2(m) });
+            else if (slopeUp && m <= pC && pC <= m * 1.03 && pC > oCur) out.push({ side: 'buy', point: 3, ma: round2(m) });
+            else if (slopeDn && m * 0.97 <= pC && pC <= m && pC < oCur) out.push({ side: 'sell', point: 3, ma: round2(m) });
+            if (dev <= -15 && pC > yC) out.push({ side: 'buy', point: 4, ma: round2(m) });        // 買4:負乖離過大(遛狗)
+            else if (dev >= 15 && pC < yC) out.push({ side: 'sell', point: 4, ma: round2(m) });   // 賣4:正乖離過大
+            return out;
+        }
+
+        return { isFiniteNum, C, O, H, L, V, boxBreakout, volumeSignals, maSeries, granville };
     })();
     </script>
     <style>
@@ -13643,24 +13681,23 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // ⭐ V41.30 — 葛蘭碧八大買賣點(以月線 20MA 為準,純公式)。買4/賣4(乖離過大)已由 _detectMaDeviation 涵蓋,
     //   此處補其餘 6 式:買1突破/買2假跌破/買3回測支撐 ・ 賣1跌破/賣2假突破/賣3反彈受阻。回最相關一式。
+    // 🧩 單一真相遷移:邏輯改呼叫 window.StrategySim.granville(對齊 strategy_sim.py,20MA 波段用 5 天斜率),
+    //    本函式取「買/賣 1-3 式」中最相關一式(買4/賣4 乖離另由 _detectMaDeviation 呈現),前端只組 UI 訊息。
     _detectGranville(data) {
         const out = [];
-        if (!Array.isArray(data) || data.length < 24) return out;
-        const last = data.length - 1;
-        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
-        const maAt = end => { const s = data.slice(end - 19, end + 1); return s.length === 20 ? s.reduce((a, b) => a + C(b), 0) / 20 : null; };
-        const ma = maAt(last), maY = maAt(last - 1), maOld = maAt(last - 3);
-        if (ma == null || maY == null || maOld == null || ma <= 0) return out;
-        const pC = C(data[last]), yC = C(data[last - 1]), pH = H(data[last]), pL = L(data[last]), red = pC > O(data[last]);
-        const slopeUp = ma > maOld, slopeDn = ma < maOld;
-        const nearAbove = pC >= ma && (pC - ma) / ma <= 0.03, nearBelow = pC <= ma && (ma - pC) / ma <= 0.03;
-        // 依優先序回一式(避免同時多個均線訊號洗版)
-        if (yC < maY && pC > ma && !slopeDn) out.push({ tone: 'bull', title: '葛蘭碧買1(突破月線)', val: ma, msg: `股價由下向上突破月線 ${ma.toFixed(2)}、月線走平或翻揚 = 葛蘭碧第 1 買點(黃金交叉),波段轉多起手;守住月線續抱。` });
-        else if (yC > maY && pC < ma && !slopeUp) out.push({ tone: 'bear', title: '葛蘭碧賣1(跌破月線)', val: ma, msg: `股價由上向下跌破月線 ${ma.toFixed(2)}、月線走平或下彎 = 葛蘭碧第 1 賣點(死亡交叉),波段轉空;多單出場。` });
-        else if (slopeUp && pL < ma && pC > ma) out.push({ tone: 'bull', title: '葛蘭碧買2(假跌破站回)', val: ma, msg: `月線 ${ma.toFixed(2)} 上揚中,盤中跌破後今收又站回月線之上 = 葛蘭碧第 2 買點(假跌破),洗盤結束;跌破不站回才轉空。` });
-        else if (slopeDn && pH > ma && pC < ma) out.push({ tone: 'bear', title: '葛蘭碧賣2(假突破跌回)', val: ma, msg: `月線 ${ma.toFixed(2)} 下彎中,盤中突破後今收又跌回月線之下 = 葛蘭碧第 2 賣點(假突破),反彈無力;別追。` });
-        else if (slopeUp && nearAbove && red) out.push({ tone: 'bull', title: '葛蘭碧買3(回測月線支撐)', val: ma, msg: `月線 ${ma.toFixed(2)} 上揚,股價回測到月線附近未破又收紅 = 葛蘭碧第 3 買點(支撐反彈);跌破月線則失守。` });
-        else if (slopeDn && nearBelow && !red) out.push({ tone: 'bear', title: '葛蘭碧賣3(反彈受阻月線)', val: ma, msg: `月線 ${ma.toFixed(2)} 下彎,股價反彈到月線附近過不了又收黑 = 葛蘭碧第 3 賣點(壓力受阻);站上月線才解除。` });
+        const sigs = (window.StrategySim && window.StrategySim.granville(data)) || [];
+        const g = sigs.find(s => s.point <= 3);   // 只取 1-3 式(4 式乖離另處理)
+        if (!g) return out;
+        const ma = g.ma, mf = ma.toFixed(2);
+        const MSG = {
+            'buy1':  { tone: 'bull', title: '葛蘭碧買1(突破月線)', msg: `股價由下向上突破月線 ${mf}、月線走平或翻揚 = 葛蘭碧第 1 買點(黃金交叉),波段轉多起手;守住月線續抱。` },
+            'sell1': { tone: 'bear', title: '葛蘭碧賣1(跌破月線)', msg: `股價由上向下跌破月線 ${mf}、月線走平或下彎 = 葛蘭碧第 1 賣點(死亡交叉),波段轉空;多單出場。` },
+            'buy2':  { tone: 'bull', title: '葛蘭碧買2(假跌破站回)', msg: `月線 ${mf} 上揚中,盤中跌破後今收又站回月線之上 = 葛蘭碧第 2 買點(假跌破),洗盤結束;跌破不站回才轉空。` },
+            'sell2': { tone: 'bear', title: '葛蘭碧賣2(假突破跌回)', msg: `月線 ${mf} 下彎中,盤中突破後今收又跌回月線之下 = 葛蘭碧第 2 賣點(假突破),反彈無力;別追。` },
+            'buy3':  { tone: 'bull', title: '葛蘭碧買3(回測月線支撐)', msg: `月線 ${mf} 上揚,股價回測到月線附近未破又收紅 = 葛蘭碧第 3 買點(支撐反彈);跌破月線則失守。` },
+            'sell3': { tone: 'bear', title: '葛蘭碧賣3(反彈受阻月線)', msg: `月線 ${mf} 下彎,股價反彈到月線附近過不了又收黑 = 葛蘭碧第 3 賣點(壓力受阻);站上月線才解除。` },
+        }[g.side + g.point];
+        if (MSG) out.push({ tone: MSG.tone, title: MSG.title, val: ma, msg: MSG.msg });
         return out;
     },
 
