@@ -173,17 +173,21 @@ def chu_long_entry(bars, k=8):
         vol_up = _v(bars[-1]) > _v(bars[-2])
         over_y = pC > _h(bars[-2])
         on_ma20 = pC >= ma20[-1] if ma20[-1] > 0 else True
-        hi_prob = body >= 2 and vol_up and over_y and on_ma20
+        # 📏 逐字稿6-2 鐵則:收>20MA 且 20MA 上彎(缺一不可)。月線上彎用 5 天斜率(波段準則)。
+        ma20_up = ma20[-1] >= ma20[-6] if n >= 25 else True
+        hi_prob = body >= 2 and vol_up and over_y and on_ma20 and ma20_up
         if hi_prob and upside_room >= 10 and stage != 'end':
-            return _mk('high', f'高勝率:回站5MA+紅K{body:.1f}%+量增+過昨高,上方空間{upside_room:.0f}%')
-        # 空間不足或末升段 → 即使三條件齊也只給 weak(第 4 建議 gate)
+            return _mk('high', f'高勝率:回站5MA+紅K{body:.1f}%+量增+過昨高+站月線上彎,上方空間{upside_room:.0f}%')
+        # 缺鐵則 / 空間不足 / 末升段 → 只給 weak
         miss = []
         if body < 2: miss.append('紅K<2%')
         if not vol_up: miss.append('量未增')
         if not over_y: miss.append('未過昨高')
+        if not on_ma20: miss.append('未站月線')
+        if not ma20_up: miss.append('月線未上彎')
         if upside_room < 10: miss.append(f'上方空間僅{upside_room:.0f}%<10%')
         if stage == 'end': miss.append('末升段(漲幅過大)')
-        return _mk('weak', '力道/空間偏弱:' + ('、'.join(miss) if miss else '待三條件齊'))
+        return _mk('weak', '力道/空間偏弱:' + ('、'.join(miss) if miss else '待鐵則齊'))
     if above_ma5 and chasing:
         return _mk('chase', '多頭但追高:近波段高,等回檔不破前低再站上5MA')
     if not above_ma5:

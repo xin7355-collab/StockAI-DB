@@ -13439,12 +13439,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const volUp = V(data[last]) > V(data[last - 1]);
             const overY = pC > H(data[last - 1]);   // 突破昨日 K 線最高點(昨日盤中壓力)
             const onMa20 = ma20 ? pC >= ma20 : true;
-            const hiProb = body >= 2 && volUp && overY;   // 三大核心條件全中 = 8 成勝率
+            // 📏 逐字稿6-2 鐵則:回後買上漲須「收 > 20MA 且 20MA 上彎」(缺一不可)。
+            //    月線上彎用 5 天斜率(波段訊號準則)。列入高勝率鐵則。
+            const ma20p5 = data.length >= 25 ? ma(20, last - 5) : null;
+            const ma20Up = (ma20 != null && ma20p5 != null) ? ma20 >= ma20p5 : true;
+            const hiProb = body >= 2 && volUp && overY && onMa20 && ma20Up;   // 紅K≥2%+量增+過昨高+站月線+月線上彎 = 8 成勝率
             if (hiProb) {
-                out.push({ tone: 'bull', title: '高勝率做多買點', val: ma5, msg: `波段多頭 + 回後站上5日線 ${ma5.toFixed(2)},且 紅K實體 +${body.toFixed(1)}% + 量增 + 收盤過昨高 ${H(data[last - 1]).toFixed(2)}${onMa20 ? ' + 站月線' : ''} = 朱家泓高勝率買點(約8成)${pullTag}${seasonPress};停損:跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
+                out.push({ tone: 'bull', title: '高勝率做多買點', val: ma5, msg: `波段多頭 + 回後站上5日線 ${ma5.toFixed(2)},且 紅K實體 +${body.toFixed(1)}% + 量增 + 收盤過昨高 ${H(data[last - 1]).toFixed(2)} + 站月線上彎 = 朱家泓高勝率買點(約8成)${pullTag}${seasonPress};停損:跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
             } else {
-                const miss = `${body >= 2 ? '' : '紅K<2% '}${volUp ? '' : '量未增 '}${overY ? '' : '未過昨高'}`.trim();
-                out.push({ tone: 'bull', title: '朱式做多買點(力道偏弱)', val: ma5, msg: `波段多頭 + 站上5日線 ${ma5.toFixed(2)} 但攻擊力道未滿(${miss})→ 可小量試${pullTag}${seasonPress};等三條件齊(紅K≥2% + 量增 + 過昨高)勝率才到8成。停損跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
+                const miss = `${body >= 2 ? '' : '紅K<2% '}${volUp ? '' : '量未增 '}${overY ? '' : '未過昨高 '}${onMa20 ? '' : '未站月線 '}${ma20Up ? '' : '月線未上彎'}`.trim();
+                out.push({ tone: 'bull', title: '朱式做多買點(力道偏弱)', val: ma5, msg: `波段多頭 + 站上5日線 ${ma5.toFixed(2)} 但鐵則未齊(${miss})→ 可小量試${pullTag}${seasonPress};等鐵則齊(紅K≥2% + 量增 + 過昨高 + 站月線上彎)勝率才到8成。停損跌破5日線或前低 ${lastTrough.toFixed(2)}。` });
             }
         } else if (aboveMa5 && noBreakLow && chasing) {
             out.push({ tone: 'flat', title: '多頭但追高', val: ma5, msg: `波段多頭但已近波段高點(追高區)= 朱:買低不追高,別追;等回檔不破前低 ${lastTrough.toFixed(2)} 再站上5日線才是買點。` });
