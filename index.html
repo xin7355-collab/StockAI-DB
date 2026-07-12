@@ -15,8 +15,9 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V61.7(自選頁「✏️ 編輯」全螢幕頁:新增/排序/勾選刪除/新增至其他清單/清單管理;移除突兀 FAB;
-         庫存表 w-max 修列底色 + 今日損益兩行表頭;欄位式卡片 + 趨勢欄;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V61.8(OBV 能量潮全面導入:worker 算 OBV/OBV_MA20/VMA20;OBV 副圖(第4顆鈕)實線+虛線;
+         📊 OBV 量價聯合診斷面板(量價齊揚/無量誘多/頂底背離/高檔爆量防呆/量價狀態/個股vs大盤避風港);OBV 背離接進三處型態引擎;
+         全純公式零採礦零 AI;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -522,7 +523,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1689,6 +1690,7 @@
                         <button onclick="app.setSubChart('VOL')" id="btnSubVOL" class="flex-1 py-2 text-blue-400 bg-[#0d1117] rounded border border-[#30363d] transition-colors">成交量</button>
                         <button onclick="app.setSubChart('KD')" id="btnSubKD" class="flex-1 py-2 text-gray-400 border border-transparent transition-colors">KD</button>
                         <button onclick="app.setSubChart('MACD')" id="btnSubMACD" class="flex-1 py-2 text-gray-400 border border-transparent transition-colors">MACD</button>
+                        <button onclick="app.setSubChart('OBV')" id="btnSubOBV" class="flex-1 py-2 text-gray-400 border border-transparent transition-colors">OBV</button>
                     </div>
                     <!-- 🔎 V53.x 免費查事件(Perplexity,不耗自家額度):除權息填息 / 財報好壞 / 月營收好壞 / 法說會好壞。對應上方 K 線旗標,但改成好按的按鈕 -->
                     <div class="flex items-center gap-1.5 px-1.5 py-1.5 border-t border-[#30363d] overflow-x-auto scrollbar-hide bg-[#161b22]">
@@ -1698,6 +1700,8 @@
                         <button onclick="app._openFreeAiStock('revenue'); app.vibrate(20);" title="Perplexity 查最近月營收 YoY 好壞(不耗額度)" class="flex-shrink-0 text-[10px] font-bold text-green-300 bg-[#0d1117] border border-green-700/50 rounded-full px-2.5 py-1 hover:bg-green-900/25 transition-colors">📅 營收</button>
                         <button onclick="app._openFreeAiStock('earnings'); app.vibrate(20);" title="Perplexity 查最近一次法說會重點好壞(不耗額度)" class="flex-shrink-0 text-[10px] font-bold text-pink-300 bg-[#0d1117] border border-pink-700/50 rounded-full px-2.5 py-1 hover:bg-pink-900/25 transition-colors">📞 法說會</button>
                     </div>
+                    <!-- 📊 V61.8 OBV 量價聯合診斷面板(純公式:OBV vs 均線 + OBV vs 位階背離 + 朱家泓量價狀態 + 個股vs大盤相對強弱);renderObvPanel 填入,無資料 hidden -->
+                    <div id="obvJointPanel" class="hidden border-t border-[#30363d] bg-[#0d1117] p-3"></div>
                 </div>
             </div>
 
@@ -2856,8 +2860,18 @@ const masterWorkerCode = `
         const closes = data.map(d => d.close), highs = data.map(d => d.high), lows = data.map(d => d.low), vols = data.map(d => d.volume);
         const sma = (arr, period) => arr.map((val, i) => i < period - 1 ? null : arr.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period);
         
-        const ma5 = sma(closes, 5), ma10 = sma(closes, 10), ma20 = sma(closes, 20), ma60 = sma(closes, 60), ma120 = sma(closes, 120), ma240 = sma(closes, 240), vma5 = sma(vols, 5);
-        
+        const ma5 = sma(closes, 5), ma10 = sma(closes, 10), ma20 = sma(closes, 20), ma60 = sma(closes, 60), ma120 = sma(closes, 120), ma240 = sma(closes, 240), vma5 = sma(vols, 5), vma20 = sma(vols, 20);
+
+        // 📊 V61.8 OBV 能量潮(On-Balance Volume):收盤漲→累加當日量、跌→遞減、平→不變;
+        //   OBV_MA20 = OBV 的 20 日均線(平滑判趨勢,OBV 上穿 OBV_MA20 = 資金動能轉強)。純推導零採礦。
+        const obv = new Array(closes.length).fill(0);
+        for (let i = 1; i < closes.length; i++) {
+            if (closes[i] > closes[i-1]) obv[i] = obv[i-1] + (vols[i] || 0);
+            else if (closes[i] < closes[i-1]) obv[i] = obv[i-1] - (vols[i] || 0);
+            else obv[i] = obv[i-1];
+        }
+        const obvMa20 = sma(obv, 20);
+
         const upperBB = [], lowerBB = [];
         for (let i = 0; i < closes.length; i++) {
             if (i < 19) { upperBB.push(null); lowerBB.push(null); continue; }
@@ -2995,7 +3009,7 @@ const masterWorkerCode = `
             }
         }
 
-        self.postMessage({ ma5, ma10, ma20, ma60, ma120, ma240, ema5, ema20, ema60, foreignCost, trustCost, vma5, upperBB, lowerBB, k, d, dif, macd, osc, trades, markPoints, patternStats });
+        self.postMessage({ ma5, ma10, ma20, ma60, ma120, ma240, ema5, ema20, ema60, foreignCost, trustCost, vma5, vma20, obv, obvMa20, upperBB, lowerBB, k, d, dif, macd, osc, trades, markPoints, patternStats });
     };
 `;
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
@@ -13966,6 +13980,45 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // 📊 V61.8 OBV 頂/底背離(能量潮版,與 _detectIndicatorDivergence 同「擺盪指標背離」邏輯):
+    //   價創新高但 OBV 沒跟著創高=頂背離(主力拉高出貨);價創新低但 OBV 拒破底=底背離(暗中吸籌)。自足算 OBV,零採礦。
+    _detectObvDivergence(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 30) return out;
+        const C = b => +((b?.close ?? b?.c) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const n = data.length;
+        const obv = new Array(n).fill(0);
+        for (let i = 1; i < n; i++) {
+            const c = C(data[i]), pc = C(data[i - 1]);
+            obv[i] = c > pc ? obv[i - 1] + V(data[i]) : c < pc ? obv[i - 1] - V(data[i]) : obv[i - 1];
+        }
+        const last = n - 1, SW = 3, from = Math.max(SW, n - 60);
+        const peaks = [], troughs = [];
+        for (let i = from; i <= last - SW; i++) {
+            const w = data.slice(i - SW, i + SW + 1).map(C), c = C(data[i]);
+            if (c === Math.max(...w)) peaks.push(i);
+            if (c === Math.min(...w)) troughs.push(i);
+        }
+        const FRESH = 6;   // 最近一個轉折點須在近 6 根內才算「當下」背離,避免陳年噪點
+        if (peaks.length >= 2) {
+            const a = peaks[peaks.length - 2], b = peaks[peaks.length - 1];
+            if (last - b <= FRESH && C(data[b]) > C(data[a]) && obv[b] < obv[a]) {
+                const when = last - b === 0 ? '今日' : (last - b) + '天前';
+                out.push({ tone: 'bear', title: 'OBV 頂背離', val: C(data[b]),
+                    msg: `股價${when}創波段新高 ${C(data[b]).toFixed(2)}(>前高 ${C(data[a]).toFixed(2)}),但 <b>OBV 能量潮沒跟著創高</b>=買盤量能未同步,主力疑拉高出貨(頂背離);高檔賣訊,嚴禁追高、有貨分批停利。` });
+            }
+        }
+        if (troughs.length >= 2) {
+            const a = troughs[troughs.length - 2], b = troughs[troughs.length - 1];
+            if (last - b <= FRESH && C(data[b]) < C(data[a]) && obv[b] > obv[a]) {
+                const when = last - b === 0 ? '今日' : (last - b) + '天前';
+                out.push({ tone: 'bull', title: 'OBV 底背離', val: C(data[b]),
+                    msg: `股價${when}創波段新低 ${C(data[b]).toFixed(2)}(<前低 ${C(data[a]).toFixed(2)}),但 <b>OBV 能量潮拒絕破底</b>=散戶恐慌殺低、主力暗中吸籌(底背離);待紅K站上5日線可分批承接。` });
+            }
+        }
+        return out;
+    },
+
     // ⭐ V41.30 — 葛蘭碧八大買賣點(以月線 20MA 為準,純公式)。買4/賣4(乖離過大)已由 _detectMaDeviation 涵蓋,
     //   此處補其餘 6 式:買1突破/買2假跌破/買3回測支撐 ・ 賣1跌破/賣2假突破/賣3反彈受阻。回最相關一式。
     // 🧩 單一真相遷移:邏輯改呼叫 window.StrategySim.granville(對齊 strategy_sim.py,20MA 波段用 5 天斜率),
@@ -14284,6 +14337,98 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
     },
 
+    // 📊 V61.8 OBV 量價聯合診斷面板(純公式零 AI):OBV vs 均線(趨勢確認)+ OBV vs 位階(背離)
+    //   + 高檔爆量防呆(>VMA5×2 收黑/長上影)+ 朱家泓量價狀態 + 個股vs大盤相對強弱。K線圖下方。
+    renderObvPanel(data) {
+        const el = document.getElementById('obvJointPanel');
+        if (!el) return;
+        const ind = this.indicators || {};
+        const n = Array.isArray(data) ? data.length : 0;
+        if (n < 25 || !Array.isArray(ind.obv) || !Array.isArray(ind.obvMa20) || !Array.isArray(ind.ma20)) {
+            el.classList.add('hidden'); el.innerHTML = ''; return;
+        }
+        const last = n - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), O = b => +((b?.open ?? b?.o) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const pC = C(data[last]), pO = O(data[last]);
+        const ma20 = ind.ma20[last], vma5 = Array.isArray(ind.vma5) ? ind.vma5[last] : null;
+        const obv = ind.obv, obvMa = ind.obvMa20;
+        if (ma20 == null || obv[last] == null || obvMa[last] == null) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+
+        const box = (color, icon, title, msg) =>
+            `<div class="bg-[#161b22] border-l-4 border-${color}-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                <div class="text-[11px] font-bold text-${color}-300 mb-1">${icon} ${title}</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${msg}</div>
+            </div>`;
+        let html = '';
+
+        // ① OBV vs 均線(趨勢確認)
+        const priceUp = pC > ma20, obvUp = obv[last] > obvMa[last];
+        const obvSlope5 = obv[last] - (obv[last - 5] ?? obv[last]);   // 近5日 OBV 增減
+        if (priceUp && obvUp) {
+            html += box('red', '🚀', '動能爆發(量價齊揚)', `股價站上 20MA ${ma20.toFixed(2)},且 <b>OBV 同步站上 OBV_MA20</b>=價漲量增,資金真金白銀進場,完美多頭起漲點;拉回不破月線可勇敢建倉、守 5 日線。`);
+        } else if (priceUp && !obvUp) {
+            html += box('yellow', '⚠️', '虛假繁榮(無量誘多)', `股價站上 20MA ${ma20.toFixed(2)},但 <b>OBV 卻在 OBV_MA20 之下${obvSlope5 < 0 ? '且持續下滑' : ''}</b>=無量反彈誘多,主力未實質介入;極度克制建倉衝動,等 OBV 站上均線再說。`);
+        } else if (!priceUp && !obvUp) {
+            html += box('green', '📉', '量價齊跌(空方掌控)', `股價跌破 20MA ${ma20.toFixed(2)},OBV 也在 OBV_MA20 之下=價跌量能同步流失,空頭排列別接刀;等站回月線 + OBV 翻揚才轉多。`);
+        } else {
+            html += box('green', '🌱', '價弱量穩(留意打底)', `股價在 20MA ${ma20.toFixed(2)} 之下,但 <b>OBV 仍撐在 OBV_MA20 之上</b>=殺低但籌碼沒鬆,惜售打底苗頭;需帶量紅K站回月線確認,別預設立場。`);
+        }
+
+        // ② OBV vs 位階(背離)— 重用單一背離引擎
+        try {
+            (this._detectObvDivergence(data) || []).forEach(s => {
+                if (s.tone === 'bear') html += box('red', '🚨', '致命警報:' + s.title, s.msg);
+                else html += box('green', '🎯', '狙擊提示:' + s.title, s.msg);
+            });
+        } catch (_) {}
+
+        // ③ 高檔爆量防呆(朱老師:多頭高檔爆量 >5日均量2倍 + 收黑/長上影 = 出貨)
+        if (vma5 && vma5 > 0) {
+            const todayV = V(data[last]), body = Math.abs(pC - pO), range = H(data[last]) - L(data[last]);
+            const upShadow = H(data[last]) - Math.max(pC, pO);
+            const isBlack = pC < pO, longUpper = range > 0 && upShadow >= body * 1.5 && upShadow >= range * 0.4;
+            const hi20 = Math.max(...data.slice(Math.max(0, last - 19), last + 1).map(H));
+            const atHigh = hi20 > 0 && pC >= hi20 * 0.93;
+            if (todayV >= vma5 * 2 && (isBlack || longUpper) && atHigh) {
+                html += box('orange', '🔴', '高檔爆量出貨防呆警報', `今日爆量 <b>${(todayV / vma5).toFixed(1)}× 5日均量</b>(>2 倍)且${isBlack ? '收黑K' : '留長上影'}於相對高檔=典型主力出貨型態,強烈建議<b>減碼/清倉</b>,別凹單;若隔天量縮止穩再觀察。`);
+            }
+        }
+
+        // ④ 朱家泓量價狀態(重用既有量能引擎,取最相關一則)
+        try {
+            const vs = (this._detectVolumeSignals(data) || [])[0];
+            if (vs) {
+                const c = vs.tone === 'bull' ? 'red' : vs.tone === 'bear' ? 'green' : 'gray';
+                const ic = vs.tone === 'bull' ? '🔺' : vs.tone === 'bear' ? '🔻' : '⚪';
+                html += box(c, ic, '今日量價狀態:' + vs.title, vs.msg || vs.note || '');
+            }
+        } catch (_) {}
+
+        // ⑤ 個股 vs 大盤 相對強弱(輕量版:個股 OBV 斜率 vs 大盤價格斜率)
+        const tx = Array.isArray(this._macroTaiexSeries) ? this._macroTaiexSeries : null;
+        if (tx && tx.length >= 6) {
+            const txC = tx.map(d => +(d?.close ?? d?.c ?? 0)).filter(v => v > 0);
+            if (txC.length >= 6) {
+                const txSlope = txC[txC.length - 1] - txC[txC.length - 6];   // 大盤近5日價格增減
+                if (obvSlope5 > 0 && txSlope < 0) {
+                    html += box('red', '🛡️', '資金避風港(逆勢吸金)', `大盤加權近 5 日走跌,但 <b>本股 OBV 逆勢向上</b>=資金正從其他股票撤出、湧入這檔避風港,相對強勢;大盤止穩時常率先領漲,回檔可留意。`);
+                } else if (obvSlope5 < 0 && txSlope > 0) {
+                    html += box('green', '💧', '落後大盤(資金外流)', `大盤加權近 5 日走揚,但 <b>本股 OBV 反而下滑</b>=資金外流、相對弱勢,避免買落後補漲的弱股;等 OBV 轉強再說。`);
+                }
+            }
+        }
+
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[12px] font-black text-gray-100">📊 OBV 量價聯合診斷</span>
+                <span class="text-[9px] text-gray-500">純公式・非AI</span>
+            </div>
+            ${html}
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">OBV=能量潮(收漲加量/收跌減量累加),上穿自身 20MA=動能轉強。紅偏多綠偏空(台股色)·純公式參考,務必自設停損,非投資建議。</div>`;
+        el.classList.remove('hidden');
+    },
+
     renderKbarTactics(data) {
         const el = document.getElementById('kbarHalfTactics');
         if (!el) return;
@@ -14344,6 +14489,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectHeavyResistance(data)); } catch (_) {}    // ⭐ V41.9 壓力沉重反覆過不了(朱:過不了的股票別選)
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         try { sigs.unshift(...this._detectIndicatorDivergence(data)); } catch (_) {}  // ⭐ V41.29 KD/MACD 頂底背離(置頂,轉折訊號)
+        try { sigs.unshift(...this._detectObvDivergence(data)); } catch (_) {}         // 📊 V61.8 OBV 頂底背離(置頂,量價轉折)
         try { sigs.unshift(...this._detectGap(data)); } catch (_) {}                  // ⭐ V41.29 缺口跳空+分類(置頂)
         try { sigs.push(...this._detectMaKoudi(data)); } catch (_) {}                 // ⭐ V41.29 均線扣抵值(明日均線揚/抑領先預警)
         try { sigs.unshift(...this._detectTopBreakdown(data)); } catch (_) {}         // ⭐ V41.30 頭部頸線跌破+目標價(置頂)
@@ -15207,7 +15353,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const grab = fn => { try { (this[fn]?.(data) || []).forEach(s => patSigs.push(s)); } catch (_) {} };
         ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
          '_detectPressureTest', '_detectHeavyResistance', '_detectMaDeviation', '_detectBoxBreakout',
-         '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi',
+         '_detectIndicatorDivergence', '_detectObvDivergence', '_detectGap', '_detectMaKoudi',
          '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(grab);   // ⭐ V41.29/30 背離/缺口/扣抵/頭部/葛蘭碧/趨勢線 + V60.x 月線穿季線/N字底/ABC + V61.x 轉折確認/直漲停頓/艾略特 納入型態分
         const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
         const launch = body >= 3 && C(data[last]) > H(data[last - 1]);   // 強勢發動棒
@@ -23026,6 +23172,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
         try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
         try { this.renderKbarTactics(data); } catch (_) {}
+        try { this.renderObvPanel(data); } catch (_) {}          // 📊 V61.8 OBV 量價聯合診斷面板
         try { this.renderHeavyReboundCard(data); } catch (_) {}  // 🏋️ V44.1 權值股超跌反彈告警
         try { this.renderChuKbarVerdict(data); } catch (_) {}  // 🗣️ V43.5 朱老師口吻 K線型態總評(純公式,點進K線頁即見)
         try { this.renderMainRiseCard(data); } catch (_) {}    // 🎢 V48.0 主升段體檢(階段判定+獲利燃料)
@@ -23467,15 +23614,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             option.series.push({ name: 'DIF', type: 'line', data: ind.dif, smooth: true, showSymbol: false, lineStyle: { color: '#facc15', width: 1.5 }, xAxisIndex: 1, yAxisIndex: 1 });
             option.series.push({ name: 'MACD', type: 'line', data: ind.macd, smooth: true, showSymbol: false, lineStyle: { color: '#3b82f6', width: 1.5 }, xAxisIndex: 1, yAxisIndex: 1 });
             option.series.push({ name: 'OSC', type: 'bar', data: ind.osc.map(v => ({ value: v, itemStyle: { color: v >= 0 ? '#f87171' : '#4ade80' } })), xAxisIndex: 1, yAxisIndex: 1 });
+        } else if (this.currentSubChart === 'OBV') {
+            // 📊 V61.8 OBV 能量潮副圖:OBV 實線(橘)+ OBV_MA20 虛線(藍);OBV 上穿均線=資金動能轉強。
+            //   OBV 是累加值(股),/1000 轉張,軸標籤 K/M 縮寫;含負值 → 解除 KD 的 0~100 上下限。
+            option.yAxis[1].min = null; option.yAxis[1].max = null;
+            option.yAxis[1].axisLabel = { color: '#8b949e', fontSize: 10, formatter: v => { const a = Math.abs(v); return a >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : a >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v.toFixed(0); } };
+            const toLot = arr => (arr || []).map(v => v == null ? null : Math.round(v / 1000));   // 股 → 張
+            option.series.push({ name: 'OBV', type: 'line', data: toLot(ind.obv), smooth: true, showSymbol: false, lineStyle: { color: '#f59e0b', width: 1.5 }, xAxisIndex: 1, yAxisIndex: 1 });
+            option.series.push({ name: 'OBV_MA20', type: 'line', data: toLot(ind.obvMa20), smooth: true, showSymbol: false, lineStyle: { color: '#60a5fa', width: 1, type: 'dashed' }, xAxisIndex: 1, yAxisIndex: 1 });
         }
-        
+
         this.chartInstance.setOption(option, { replaceMerge: ['series'] });
         try { this._renderPatternList(); } catch (_) {}
     },
 
     setSubChart(type) {
         this.currentSubChart = type;
-        ['VOL', 'KD', 'MACD'].forEach(b => {
+        ['VOL', 'KD', 'MACD', 'OBV'].forEach(b => {
             const el = document.getElementById(`btnSub${b}`);
             if(el) el.className = b === type ? "flex-1 py-2 text-blue-400 bg-[#0d1117] rounded border border-[#30363d] transition-colors" : "flex-1 py-2 text-gray-400 border border-transparent transition-colors";
         });
@@ -23507,6 +23662,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 else tag = `<span class="block text-[8px] ${o1 > 0 ? 'text-red-400/70' : 'text-green-400/70'} font-normal leading-none mt-0.5">${o1 > 0 ? '紅柱' : '綠柱'}${Math.abs(o1) > Math.abs(o0) ? '增' : '縮'}</span>`;
             }
             mcBtn.innerHTML = `MACD${tag}`;
+        }
+        // 📊 V61.8 OBV 按鈕小字:OBV vs OBV_MA20(上穿=動能轉強)
+        const obvBtn = document.getElementById('btnSubOBV');
+        if (obvBtn) {
+            const o1 = at(ind.obv, last), m1 = at(ind.obvMa20, last), o0 = at(ind.obv, last - 1), m0 = at(ind.obvMa20, last - 1);
+            let tag = '';
+            if (o1 != null && m1 != null && o0 != null && m0 != null) {
+                if (o0 <= m0 && o1 > m1) tag = `<span class="block text-[8px] text-red-400 font-normal leading-none mt-0.5">量能轉強</span>`;
+                else if (o0 >= m0 && o1 < m1) tag = `<span class="block text-[8px] text-green-400 font-normal leading-none mt-0.5">量能轉弱</span>`;
+                else tag = `<span class="block text-[8px] ${o1 > m1 ? 'text-red-400/70' : 'text-green-400/70'} font-normal leading-none mt-0.5">${o1 > m1 ? '量增' : '量減'}</span>`;
+            }
+            obvBtn.innerHTML = `OBV${tag}`;
         }
     },
 
@@ -24382,6 +24549,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const { trades, markPoints, patternStats } = data;
         this.currentMarkPoints = markPoints;
         try { this._updateSubChartBadges(); } catch (_) {}   // 📊 V58.0 KD/MACD 按鈕即時狀態小字
+        try { this.renderObvPanel(this.activeData || this.rawDailyData); } catch (_) {}   // 📊 V61.8 指標到位後刷新 OBV 聯合診斷面板
 
         const lastIdx = this.rawDailyData.length - 1, currentClose = this.rawDailyData[lastIdx].close;
         // Prefer Fugle referencePrice (set in applyLatestPrice). Fallback: scan backwards for the
@@ -26919,7 +27087,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 📐 V38.5 注入朱家泓/林穎 K棒型態偵測器(純公式,與進場體檢/K棒戰法卡同源)→ AI 報告依此分析
         const kbarPatterns = [];
         // V41.11 補齊漏注入的新偵測器:測壓測撐/量價背離/壓力沉重/均線糾結(原 AI 報告看不到這 4 個新訊號)
-        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi', '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectObvDivergence', '_detectGap', '_detectMaKoudi', '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
         const patternsTxt = kbarPatterns.length
             ? kbarPatterns.slice(0, 16).map(s => `${s.tone === 'bull' ? '🔺偏多' : s.tone === 'bear' ? '🔻偏空' : s.tone === 'warn' ? '⚠️留意' : '⚪中性'}「${s.title}」`).join('、')
             : '無明顯型態訊號';
