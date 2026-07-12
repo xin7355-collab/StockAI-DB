@@ -249,7 +249,10 @@ def simulate_chu_exit(bars, entry_idx, entry_px=None):
                 return _exit(entry, c, i, entry_idx, '高檔爆量長黑/上影加速停利')
         # 跌破 5MA 收盤 → 出場(停利或停損)
         if ma5[i] > 0 and c < ma5[i]:
-            return _exit(entry, c, i, entry_idx, '跌破5MA')
+            # 📏 8-3:小賺(本波峰值<7%、固定停損仍在保護)就跌破5MA先「續抱」,等下一波累積過門檻
+            #        再守5MA停利,避免只賺1-2%被洗(回測實證守5MA過緊→負期望值)。虧損則照常出。
+            if not (peak_ret < 0.07 and ret > 0):
+                return _exit(entry, c, i, entry_idx, '跌破5MA')
         # 未鎖利前,固定停損仍有效(-5%~-10% 區間)
         if not locked and c <= hard_stop:
             return _exit(entry, c, i, entry_idx, '破固定停損(進場K低/-5%)')
