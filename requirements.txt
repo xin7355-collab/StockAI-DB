@@ -1,0 +1,25 @@
+# StockAI-DB 依賴清單(採礦機 miner/radar/macro/fund_sweep + api.py 後端 + backtest)
+# 對齊 .github/workflows/daily_miner.yml 的 pip install;GCP/Docker 上雲 24h 盯盤用。
+# 金鑰一律走環境變數(os.environ)/GitHub Secrets,不硬編碼(已審查:無 hard-coded key)。
+
+# ── 採礦核心(OHLCV/法人/期貨/美股大盤)──
+requests>=2.31
+urllib3>=2.0
+yfinance>=0.2.40
+pandas>=2.0
+numpy>=1.24
+
+# ── 新聞 / 情報 ──
+feedparser>=6.0
+duckduckgo-search>=6.0
+
+# ── 分點 Sniper(BSR 驗證碼 OCR;裝不到會靜默退回 FinMind)──
+# ddddocr 會連帶裝 Pillow(miner.py 以 try/except 選用,補 ANTIALIAS 相容墊片)
+ddddocr>=1.4
+beautifulsoup4>=4.12
+
+# ── API 後端 api.py(開盤戰略日報 / 新聞研判 / 預測稽核,Groq)──
+fastapi>=0.104
+uvicorn>=0.24
+httpx>=0.27
+pydantic>=2.5
