@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V60.3(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V60.4(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5321,6 +5321,9 @@ ${list}
             // 🆕 缺口6(12-4):現金水位高 = 主動經理人降持股避險「轉守」(cash_ratio 由 etf_miner 算,採礦更新後才有)
             const defensiveChip = (typeof e.cash_ratio === 'number' && e.cash_ratio >= 15)
                            ? `<span class="text-[8px] px-1 py-0.5 rounded bg-blue-900/30 text-blue-300 border border-blue-800/40 font-bold">🛡️ 高現金${e.cash_ratio.toFixed(0)}%(轉守)</span>` : '';
+            // 🆕 缺口7(12-3):單一成分股集中度過高(>40%)警示(top1 由 etf_miner 算,採礦更新後才有)
+            const concChip = (e.top1 && typeof e.top1.weight === 'number' && e.top1.weight > 40)
+                           ? `<span class="text-[8px] px-1 py-0.5 rounded bg-orange-900/30 text-orange-300 border border-orange-800/40 font-bold">⚠️ 集中${(e.top1.name || e.top1.sym || '')}${e.top1.weight.toFixed(0)}%</span>` : '';
             // V33.8 — 你持有的主動 ETF(對照庫存 proTerminalInv)標「💼 持有」+ 紫框,好找
             const _held = (this.inventory || []).some(it => String(it.symbol) === String(e.symbol));
             const heldChip = _held ? '<span class="text-[8px] px-1 py-0.5 rounded bg-purple-900/40 text-purple-200 border border-purple-500/50 font-bold">💼 持有</span>' : '';
@@ -5334,7 +5337,7 @@ ${list}
                             <div class="min-w-0">
                                 <div class="font-bold text-gray-100 text-sm truncate">${e.name || e.symbol}${e.changed_today ? ' <span class="text-[9px] text-amber-400">●今日換股</span>' : ''}</div>
                                 <div class="text-[10px] text-gray-500">${e.symbol} · ${shortHist ? '上市以來' : '近120日'}${e.fund_size > 0 ? ` · 規模${_fmtAUM(e.fund_size)}` : ''}</div>
-                                ${(heldChip || beatChip || weakChip || eatOldChip || sizeChip || brandChip || defensiveChip) ? `<div class="flex gap-1 mt-0.5 flex-wrap">${heldChip}${sizeChip}${brandChip}${defensiveChip}${beatChip}${weakChip}${eatOldChip}</div>` : ''}
+                                ${(heldChip || beatChip || weakChip || eatOldChip || sizeChip || brandChip || defensiveChip || concChip) ? `<div class="flex gap-1 mt-0.5 flex-wrap">${heldChip}${sizeChip}${brandChip}${defensiveChip}${concChip}${beatChip}${weakChip}${eatOldChip}</div>` : ''}
                             </div>
                         </div>
                         <div class="text-right flex-shrink-0">
@@ -5345,6 +5348,28 @@ ${list}
                     </div>
                 </div>`;
         }).join('');
+
+        // 🆕 缺口7(12-3):市值型 ETF 單一持股集中度對照卡(0050 集中 vs 00922/00923 等權重)。concentration 由 etf_miner 算,採礦更新後才有。
+        const _conc = (d.concentration || []).filter(c => c.top1 && typeof c.top1.weight === 'number');
+        const concListHtml = _conc.length ? `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="text-[11px] text-gray-300 font-bold">🧩 市值型集中度對照</div>
+                    <button onclick="alert('【市值型 ETF 集中度】\\n\\n市值型 ETF 依「市值大小」配權重,龍頭股會佔很重 → 買 0050 約一半資金押在台積電一檔(集中度高、跟台積電高度連動)。\\n\\n00922/00923 等「等權重/Smart Beta」把單一股上限壓到約一成 → 分散、不押單一龍頭。\\n\\n🟠 單一成分股 >40% = 集中度過高(漲跌看龍頭臉色);想分散選等權重。')" class="text-gray-500 text-[10px]">📖 教學</button>
+                </div>
+                <div class="flex flex-col gap-1.5">${_conc.map(c => {
+                    const w = c.top1.weight, hi = w > 40;
+                    const nm = c.top1.name || c.top1.sym || '';
+                    return `<div onclick="app.analyze('${c.symbol}'); app.switchAppTab('diag');" class="cursor-pointer">
+                        <div class="flex items-center justify-between text-[11px] mb-0.5">
+                            <span class="text-gray-200 font-bold">${c.name || c.symbol} <span class="text-gray-500 font-mono text-[9px]">${c.symbol}</span></span>
+                            <span class="font-mono ${hi ? 'text-orange-300 font-black' : 'text-gray-300'}">${nm} ${w.toFixed(1)}%${hi ? ' ⚠️' : ''}</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${hi ? 'bg-orange-500' : 'bg-gray-500'}" style="width:${Math.min(100, w)}%"></div></div>
+                    </div>`;
+                }).join('')}</div>
+                <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">🟠 單一成分股 &gt;40% = 集中度過高(跟龍頭高度連動);等權重型(如 00922/00923)單股約一成、較分散。點列跳診斷。</div>
+            </div>` : '';
 
         // ── 🚦 V39.6 ETF 順風車重新設計:共識新寵 / 核心持股池 / 庫存對照(全用現成 cross_ref,零採礦)──
         const cref = d.cross_ref || {};
@@ -5456,6 +5481,7 @@ ${list}
                         </div>
                         <div class="flex flex-col gap-1.5">${perfCardHtml}</div>
                     </div>
+                    ${concListHtml}
                     <div class="text-[10px] text-gray-600 px-1 pb-2 leading-relaxed">
                         🔥 贏0050 = 近120日打贏大盤被動基準 ・ ⚠️ 短線轉弱 = 長期漲多但近20日翻黑,慎防追高 ・ 💼 持有 = 你庫存裡有。<br>
                         📊 報酬＝收盤市價漲跌,<b class="text-gray-400">已內含經理費/保管費等「內扣費用」</b>;主動列為<b class="text-amber-400/80">市價未還原息</b>;<b class="text-amber-300">被動基準改以「💰含息總報酬」為主角(=市價+配息還原,已是總數免再加),🏆=含息最強那隻</b>。皆不含你個人的買賣手續費與證交稅。<br>
