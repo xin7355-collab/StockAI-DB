@@ -21,9 +21,11 @@ from backtest import (
     sig_ma_bullish_alignment, apply_real_cost, _load_attention_set,
     ROUND_TRIP_COST_PCT,
 )
-from strategy_sim import chu_long_entry, simulate_chu_exit   # 🎯 建議3:回後買上漲 + 朱式動態出場(向前追蹤)
+from strategy_sim import chu_long_entry, simulate_long_ma_exit   # 🎯 建議3:回後買上漲 + 長線守20MA出場(向前追蹤)
 
-CHU_SIGNAL = '🎯 回後買上漲(朱式出場)'   # 用朱式動態出場(跌破5MA/破進場K低)追蹤,而非固定 N 日
+# 🏆 回測實證(2529 檔/480日):回後買上漲是「波段」進場,守20MA(朱8-4長線)唯一正期望值
+#    (+0.18%/趟),明顯優於守5MA(-0.21%,太緊被洗)→ live 追蹤改用長線守20MA 出場模型。
+CHU_SIGNAL = '🎯 回後買上漲(守20MA出場)'   # 守月線20MA、獲利>20%改守5MA鎖利;-10%絕對停損
 
 DATA_DIR = Path("data")
 OUTPUT_FILE = DATA_DIR / "paper_trades.json"
@@ -223,9 +225,10 @@ def summarize(trades):
 
 
 def update_chu_swing_exits(trades, today, max_hold=60):
-    """🎯 建議3:對 open 的「回後買上漲」trade,用 simulate_chu_exit 逐日判斷是否已朱式出場
-    (跌破5MA停利 / 破進場K低-5%停損 / 獲利升級鎖利)。已出場則記 chu_exit 並轉 closed。
-    持有超過 max_hold 根仍未觸發出場 → 以最新收盤強制結算(避免永久掛單)。"""
+    """🎯 建議3:對 open 的「回後買上漲」trade,用 simulate_long_ma_exit 逐日判斷是否已出場
+    (長線守月線20MA停利 / 獲利>20%改守5MA鎖利 / -10%絕對停損)。已出場則記 chu_exit 並轉 closed。
+    持有超過 max_hold 根仍未觸發出場 → 以最新收盤強制結算(避免永久掛單)。
+    (回測實證:回後買上漲波段用守20MA 正期望值,優於守5MA;見 strategy_sim 出場模型。)"""
     updated = closed = 0
     cache = {}
 
@@ -249,7 +252,7 @@ def update_chu_swing_exits(trades, today, max_hold=60):
         entry_idx = _find_idx_by_date(rows, t['open_date'])
         if entry_idx is None or entry_idx >= len(rows) - 1:
             continue
-        ex = simulate_chu_exit(rows, entry_idx, entry_px=t.get('entry_close'))
+        ex = simulate_long_ma_exit(rows, entry_idx, entry_px=t.get('entry_close'))
         if not ex:
             continue
         held = len(rows) - 1 - entry_idx
