@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V60.9(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V61.0(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -969,6 +969,82 @@
         </div>
     </div>
 
+    <!-- 🧠 贏家心法（10/11/7 系列:獲利目標/散戶錯誤/贏家守則/套牢自救/停損心法） -->
+    <div id="mindsetModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
+        <div class="modal-content max-w-2xl max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-[#30363d]">
+                <h3 class="text-purple-300 font-black text-lg">🧠 贏家心法</h3>
+                <button onclick="document.getElementById('mindsetModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <p class="text-xs text-gray-500 italic mb-3">技術是招式,心法是內功 — 散戶輸的多半不是技術,是紀律與人性</p>
+            <div class="space-y-4 text-sm leading-relaxed">
+                <!-- A. 獲利目標 + 複利試算(11-2) -->
+                <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2.5 rounded-r">
+                    <div class="font-black text-red-300 mb-1.5">🎯 獲利目標:月 5% ・ 年 60%(不是每天賺)</div>
+                    <div class="text-[12px] text-gray-300 mb-2 leading-relaxed">目標不是天天當沖,是<b class="text-red-300">兩週做一檔、每次賺 2.5%</b>,一個月操作 2 次 = 月 5%、年 60%。慢慢滾複利,才是散戶翻身的路。</div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-[11px] text-gray-400">本金</span>
+                        <input id="goalCapInput" type="number" inputmode="decimal" value="60" oninput="app._calcGoalTable()" class="w-24 bg-[#010409] text-yellow-400 text-right font-mono text-sm px-2 py-1 rounded border border-[#30363d] outline-none focus:border-red-500">
+                        <span class="text-[11px] text-gray-400">萬元</span>
+                    </div>
+                    <div id="goalTable" class="text-[12px]"></div>
+                    <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💡 以年報酬 60% 複利估算(逐字稿範例:60 萬滾 6 年約 1000 萬)。實際會有賺有賠,重點是<b class="text-gray-400">紀律做對的交易、賺大賠小</b>,而非追求每筆都賺。</div>
+                </div>
+                <!-- B. 贏家 5 守則(11-1) -->
+                <div class="bg-amber-900/15 border-l-4 border-amber-500 pl-3 pr-2 py-2.5 rounded-r">
+                    <div class="font-black text-amber-300 mb-1.5">🏆 贏家 5 大守則</div>
+                    <ul class="list-none text-[12px] text-gray-300 space-y-1.5">
+                        <li><b class="text-amber-200">① 永遠先控風險</b>:每筆進場前先想「錯了在哪停損」,資金越大越要守紀律。</li>
+                        <li><b class="text-amber-200">② 集中火力 2-5 檔</b>(最多 8 檔):資金分散顧不過來,不如集中在最強的幾檔。</li>
+                        <li><b class="text-amber-200">③ 汰弱換強</b>:手上只留上漲的股,跌 3-5% 的弱股換成強股,別抱一堆套牢股。</li>
+                        <li><b class="text-amber-200">④ 只做高勝率型態</b>:符合技術條件才進(多頭回後買/突破),橫盤、空頭不碰。</li>
+                        <li><b class="text-amber-200">⑤ 相信技術、紀律執行</b>:不聽明牌、不憑感覺,照 K 線圖與紀律做,贏在執行力。</li>
+                    </ul>
+                </div>
+                <!-- C. 散戶 8 大錯誤(10-2) -->
+                <div class="bg-green-900/15 border-l-4 border-green-500 pl-3 pr-2 py-2.5 rounded-r">
+                    <div class="font-black text-green-300 mb-1.5">💀 散戶 8 大致命錯誤(對照正解)</div>
+                    <div class="text-[12px] text-gray-200 mb-2 bg-[#161b22] border border-[#30363d] rounded p-2 leading-relaxed">核心一句:<b class="text-green-300">散戶 = 小賺小賺小賺、一次大賠</b>;<b class="text-red-300">贏家 = 大賺大賺、一次小賠</b>。差別只在「賺賠比」。</div>
+                    <ul class="list-none text-[11px] text-gray-400 space-y-1.5">
+                        <li>❌ <b class="text-gray-300">小賺大賠</b>(賺一點就跑、賠了凹到大賠)→ ✅ 停損要快、獲利要抱(賺大賠小)</li>
+                        <li>❌ <b class="text-gray-300">聽消息/追明牌</b>買股 → ✅ 只信自己看得懂的 K 線與技術條件</li>
+                        <li>❌ <b class="text-gray-300">下跌一直攤平</b>(越攤越低)→ ✅ 下跌不准攤平,弱勢就停損</li>
+                        <li>❌ <b class="text-gray-300">想一夜致富、賭身家</b> → ✅ 分批進場、控制單檔部位</li>
+                        <li>❌ <b class="text-gray-300">太早停利</b>(飆股漲一天就賣掉)→ ✅ 沿 5MA/月線抱,不破不出</li>
+                        <li>❌ <b class="text-gray-300">不敢買創新高股</b> → ✅ 強者恆強,創高帶量是續攻訊號</li>
+                        <li>❌ <b class="text-gray-300">盤前無策略、盤中亂做</b> → ✅ 盤後鎖股、隔日照紀律執行</li>
+                        <li>❌ <b class="text-gray-300">買「好公司」就死抱套牢</b> → ✅ 好公司也要對的位置(月線之上)才買</li>
+                    </ul>
+                </div>
+                <!-- D. 套牢自救分級(10-1) -->
+                <div class="bg-orange-900/15 border-l-4 border-orange-500 pl-3 pr-2 py-2.5 rounded-r">
+                    <div class="font-black text-orange-300 mb-1.5">🩹 套牢了怎麼辦?依虧損分級處理</div>
+                    <ul class="list-none text-[12px] text-gray-300 space-y-1.5">
+                        <li><b class="text-orange-200">虧 &lt; 10%</b>:立刻停損,小賠 5-7% 出場,拿回 9 成資金去賺別檔(別讓小賠變大賠)。</li>
+                        <li><b class="text-orange-200">虧 10-20%</b>:等反彈,反彈<b>過不了前高</b>就認賠賣;過前高再看能否轉多。</li>
+                        <li><b class="text-orange-200">虧 &gt; 20% 且空頭確認</b>:賣出、<b>反手做空</b>賺價差解套,或換成強勢多頭股。</li>
+                        <li><b class="text-orange-200">已跌到低檔、出大量止跌打底</b>:別賣在最低點,等站上 5MA、底底高再處理。</li>
+                    </ul>
+                    <div class="text-[10px] text-gray-500 mt-1.5">💡 個股頁輸入你的成本後,App 會依你當前虧損幅度自動對應這裡的動作。</div>
+                </div>
+                <!-- E. 停損正面思考(7-3) -->
+                <div class="bg-blue-900/15 border-l-4 border-blue-500 pl-3 pr-2 py-2.5 rounded-r">
+                    <div class="font-black text-blue-300 mb-1.5">🧘 為什麼要停損?(克服凹單人性)</div>
+                    <ul class="list-none text-[12px] text-gray-300 space-y-1.5">
+                        <li><b class="text-blue-200">① 停損是為了賺錢</b>:拉回 95% 資金去賺會漲的股,不是認輸。</li>
+                        <li><b class="text-blue-200">② 小賠容易翻本</b>:賠 5% 用 95% 賺回很快;賠 50% 要漲一倍才回本。</li>
+                        <li><b class="text-blue-200">③ 避開快速下跌</b>:早走一步,躲過主力倒貨的急殺段。</li>
+                        <li><b class="text-blue-200">④ 高賣低買回</b>:停損不是永別,跌完更低價再接回,何樂不為。</li>
+                        <li><b class="text-blue-200">⑤ 留得青山在</b>:資金還在就有機會,凹到套牢就失去主動權。</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="text-center mt-4 pt-3 border-t border-[#30363d]">
+                <button onclick="document.getElementById('mindsetModal').classList.add('hidden')" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded text-sm font-bold transition-colors">記住了,紀律操作</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ℹ️ 雷達實戰說明書（毛玻璃彈窗） -->
     <div id="radarManualModal" class="modal-base hidden" onclick="this.classList.add('hidden')">
         <div class="modal-content max-w-xl max-h-[85vh] overflow-y-auto bg-[#0d1117]/80 backdrop-blur-lg border border-cyan-700/40" onclick="event.stopPropagation()">
@@ -1077,6 +1153,7 @@
         <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] flex-shrink-0">
             <span class="text-lg font-black text-gray-100">🤖 AI 股神 <span id="aiGodModeBadge" class="text-[10px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1.5 py-0.5 align-middle">庫存股</span></span>
             <div class="flex items-center gap-3 flex-shrink-0">
+                <button onclick="const m=document.getElementById('mindsetModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30); app._calcGoalTable();" class="text-purple-300 hover:text-purple-200 text-[10px] font-bold border border-purple-700/40 rounded px-2 py-1 leading-none" title="贏家心法:獲利目標/散戶錯誤/贏家守則/套牢自救">🧠 心法</button>
                 <button onclick="const m=document.getElementById('operationManualModal'); m.classList.remove('hidden'); m.style.display='flex'; app.vibrate(30);" class="text-amber-300 hover:text-amber-200 text-[10px] font-bold border border-amber-700/40 rounded px-2 py-1 leading-none" title="散戶實戰操作手冊">📖 手冊</button>
                 <button onclick="document.getElementById('aiGodModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl leading-none px-1" title="關閉">✕</button>
             </div>
@@ -3109,6 +3186,27 @@ const app = {
     },
 
     vibrate(ms) { if(navigator.vibrate) navigator.vibrate(ms); },
+
+    // 🧠 贏家心法(11-2):月5%/年60% 獲利目標 → 本金複利 6 年試算表(逐字稿:60萬滾6年約1000萬)
+    _calcGoalTable() {
+        const el = document.getElementById('goalTable');
+        if (!el) return;
+        const cap = Math.max(0, parseFloat(document.getElementById('goalCapInput')?.value) || 0);
+        if (cap <= 0) { el.innerHTML = '<div class="text-gray-500 text-[11px]">輸入本金看複利成長</div>'; return; }
+        const monthGoal = cap * 0.05;   // 月 5%
+        let v = cap, rows = '';
+        for (let y = 1; y <= 6; y++) {
+            v = v * 1.6;   // 年 60% 複利
+            const disp = v >= 10000 ? (v / 10000).toFixed(2) + ' 億' : Math.round(v).toLocaleString() + ' 萬';
+            rows += `<div class="grid grid-cols-[auto_1fr] gap-2 items-center py-0.5 border-b border-[#21262d]"><span class="text-gray-500 text-[11px]">第 ${y} 年</span><span class="text-right font-mono font-black text-red-300">${disp}</span></div>`;
+        }
+        el.innerHTML = `
+            <div class="bg-[#161b22] border border-[#30363d] rounded p-2 mb-1.5">
+                <div class="flex justify-between text-[11px]"><span class="text-gray-400">月目標(5%)</span><span class="font-mono font-bold text-red-300">≈ ${monthGoal.toLocaleString(undefined,{maximumFractionDigits:1})} 萬 / 月</span></div>
+                <div class="flex justify-between text-[10px] text-gray-500 mt-0.5"><span>拆解</span><span>兩週做一檔 · 每次 +2.5% · 月 2 次</span></div>
+            </div>
+            ${rows}`;
+    },
 
     // 🧭 V53.x — 分段錨點:平滑捲動到指定卡片(hidden 無資料的卡不跳,改提示)
     _scrollToCard(id) {
