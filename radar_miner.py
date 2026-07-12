@@ -17,7 +17,7 @@ from pathlib import Path
 from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
 from strategy_sim import (chu_long_entry, chu_eliminate,   # 🎯 回後買上漲(旗艦)+ 淘汰13條
                           granville, box_breakout, divergence, volume_signals,   # 建議2:葛蘭碧/橫盤突破/背離/量能 全市場 port
-                          reversal_candle)   # 第2-6/2-7章:單根變盤線(高/低檔轉折警訊)
+                          reversal_candle, half_price_signal)   # 第2-6/2-7章單根變盤線 + 2-9章½價多空分界
 from datetime import date, datetime
 
 DATA_DIR = Path("data")
@@ -789,6 +789,13 @@ def detect_kbar_signals(rows):
         rc = None
     if rc:
         (bull if rc['side'] == 'bull' else bear).append(rc['name'])
+    # 第2-9章:大量長K ½價多空分界(已被反向收破才算轉勢確認,避免只是接近)
+    try:
+        hp = half_price_signal(rows)
+    except Exception:
+        hp = None
+    if hp and hp.get('broken'):
+        (bull if hp['side'] == 'bull' else bear).append(hp['name'])
     return bull, bear
 
 
