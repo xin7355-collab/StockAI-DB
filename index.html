@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V60.8(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V60.9(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -13566,11 +13566,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (peaks.length < 2 || troughs.length < 2) return out;
         const peakDown = peaks[peaks.length - 1] < peaks[peaks.length - 2];
         const troughDown = troughs[troughs.length - 1] < troughs[troughs.length - 2];
-        const lastPeak = peaks[peaks.length - 1];
+        const lastPeak = peaks[peaks.length - 1], lastTrough = troughs[troughs.length - 1];
         if (!(peakDown && troughDown)) return out;   // 非空頭
         const belowMa20 = ma20 ? pC < ma20 : true;
         const base = data.slice(last - 6, last - 1).map(V).reduce((a, x) => a + x, 0) / 5;
         const todayBody = O(data[last]) > 0 ? (pC - O(data[last])) / O(data[last]) * 100 : 0;
+        // 📏 6-8 反彈幅度(黃金分割):反彈越淺空方越強;彈過 0.618 = 多方轉強,不宜再空
+        const downLeg = lastPeak - lastTrough;
+        const rebHigh = Math.max(...data.slice(Math.max(0, last - 10), last + 1).map(H));
+        const rebFrac = downLeg > 0 ? Math.max(0, Math.min(1.2, (rebHigh - lastTrough) / downLeg)) : 0;
+        // 📏 6-8 並排紅K假跌破:彈後空的黑K,次日並排長紅收盤過昨高 = 假跌破,空單停損回補
+        if (pC > O(data[last]) && C(data[last - 1]) < O(data[last - 1]) && pC > H(data[last - 1]) && belowMa20) {
+            out.push({ tone: 'warn', title: '並排紅K假跌破', val: H(data[last - 1]), msg: `昨黑K、今日並排長紅收盤過昨高 ${H(data[last - 1]).toFixed(2)} = 朱 6-8 空頭「假跌破」,先前的做空點失效,空單停損回補、別凹單。` });
+            return out;
+        }
         // ① 急跌爆量 → 易強反彈/主力進場(優先,給做多者抄底前哨)
         if (todayBody <= -4 && base > 0 && V(data[last]) >= base * 1.8) {
             out.push({ tone: 'warn', title: '空頭急跌爆量', val: ma5, msg: `空頭末段長黑(${todayBody.toFixed(1)}%)+ 爆量(${(V(data[last]) / base).toFixed(1)}×)→ 朱:急跌爆量易引強反彈/主力進場;做空者準備回補,做多者等紅K站5日線可搶反彈(僅反彈,待底底高才轉多)。` });
@@ -13585,12 +13594,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             }
             return out;
         }
-        // ③ 空頭順勢:反彈跌破5MA = 做空點(高勝率分級);否則別接刀警示
+        // ③ 空頭順勢:反彈跌破5MA = 做空點(高勝率分級);但彈過 0.618 = 多方轉強不宜空(6-8)
         const justBreak5 = yC >= ma5y && pC < ma5, black = pC < O(data[last]), brokeYLow = pC < L(data[last - 1]);
-        if (justBreak5 && black && belowMa20) {
-            const hi = todayBody <= -2 && brokeYLow;
-            if (hi) out.push({ tone: 'bear', title: '高勝率做空點', val: ma5, msg: `空頭(頭頭低底底低)+ 月線下,反彈後黑K跌 ${Math.abs(todayBody).toFixed(1)}% 跌破5日線 ${ma5.toFixed(2)} 且破昨低 ${L(data[last - 1]).toFixed(2)} = 朱式高勝率空點;做多者:這是下跌續勢,別接刀。` });
-            else out.push({ tone: 'bear', title: '空頭反彈空點', val: ma5, msg: `空頭反彈後跌破5日線 ${ma5.toFixed(2)} = 順勢空點(力道未滿);做多者:仍是空頭,別搶反彈接刀。` });
+        if (justBreak5 && black && belowMa20 && rebFrac > 0.618) {
+            out.push({ tone: 'warn', title: '反彈過半不宜空', val: ma5, msg: `雖跌破5日線,但這波反彈幅度已達 ${(rebFrac * 100).toFixed(0)}%(過黃金分割 0.618)→ 朱 6-8:反彈越深空方越弱、多方轉強,不宜再追空;等跌破前低 ${lastTrough.toFixed(2)} 確認弱勢再說。` });
+        } else if (justBreak5 && black && belowMa20) {
+            const hi = todayBody <= -2 && brokeYLow, shallow = rebFrac <= 0.382;
+            if (hi) out.push({ tone: 'bear', title: '高勝率做空點', val: ma5, msg: `空頭(頭頭低底底低)+ 月線下,反彈${shallow ? `淺(僅${(rebFrac * 100).toFixed(0)}%<0.382,最強空)` : ''}後黑K跌 ${Math.abs(todayBody).toFixed(1)}% 跌破5日線 ${ma5.toFixed(2)} 且破昨低 ${L(data[last - 1]).toFixed(2)} = 朱式高勝率空點;做多者:這是下跌續勢,別接刀。` });
+            else out.push({ tone: 'bear', title: '空頭反彈空點', val: ma5, msg: `空頭反彈${shallow ? '淺' : ''}後跌破5日線 ${ma5.toFixed(2)} = 順勢空點(力道未滿);做多者:仍是空頭,別搶反彈接刀。` });
         } else {
             out.push({ tone: 'bear', title: '空頭趨勢(別接刀)', val: ma5, msg: `頭頭低 + 底底低${belowMa20 ? ' + 月線下彎' : ''} = 空頭趨勢;朱:不是多頭就別做多、別摸底接刀,等「急跌爆量」或「突破月線過前高」的轉多訊號再進場。` });
         }
