@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V61.4(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V61.5(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -13842,7 +13842,26 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const base5 = data.slice(last - 5, last).map(V).reduce((a, x) => a + x, 0) / 5;
             const volUp = base5 > 0 && V(cur) >= base5 * 1.2;
             const target = pC + (neckline - baseLow), tgtPct = (target - pC) / pC * 100;
-            out.push({ tone: 'bull', title: '底部頸線突破(形態)', val: neckline, msg: `紅K收盤突破近30日頸線 ${neckline.toFixed(2)}${volUp ? ' + 量增' : '(量未明顯增,留意補量)'} = 底部形態(頭肩底/三重底/圓弧底/W底類)突破;形態目標價約 ${target.toFixed(2)}(+${tgtPct.toFixed(0)}%,頸線到底等幅);停損跌破頸線 ${neckline.toFixed(2)}。` });
+            // 🆕 六型逐一命名:用底部整理區局部低點分類(W底/三重底/頭肩底/圓弧底)。一字底=_detectMaCluster、N字底=_detectNBottom 另有。
+            const seg = data.slice(last - 31, last), _sw = 3, lows = [];
+            for (let i = _sw; i <= seg.length - 1 - _sw; i++) {
+                const w = seg.slice(i - _sw, i + _sw + 1).map(L);
+                if (L(seg[i]) === Math.min(...w)) lows.push(L(seg[i]));
+            }
+            const near = (a, b) => a > 0 && Math.abs(a - b) / a <= 0.035;
+            let ptype = '底部頸線';
+            if (lows.length >= 3) {
+                const a = lows[lows.length - 3], b = lows[lows.length - 2], c = lows[lows.length - 1];
+                if (near(a, b) && near(b, c)) ptype = '三重底';
+                else if (b < a * 0.965 && b < c * 0.965 && near(a, c)) ptype = '頭肩底';
+            }
+            if (ptype === '底部頸線' && lows.length >= 2 && near(lows[lows.length - 2], lows[lows.length - 1])) ptype = 'W底(雙重底)';
+            if (ptype === '底部頸線') {
+                const scl = seg.map(C), mi = scl.indexOf(Math.min(...scl));
+                if (mi >= seg.length * 0.3 && mi <= seg.length * 0.7 && rangePct <= 20) ptype = '圓弧底(碗型)';
+            }
+            const named = ptype !== '底部頸線';
+            out.push({ tone: 'bull', title: (named ? ptype : '底部頸線突破') + '(形態)', val: neckline, msg: `紅K收盤突破近30日頸線 ${neckline.toFixed(2)}${volUp ? ' + 量增' : '(量未明顯增,留意補量)'} = ${named ? `<b>${ptype}</b>(型態推估)` : '底部形態(頭肩底/三重底/圓弧底/W底類)'}突破;形態目標價約 ${target.toFixed(2)}(+${tgtPct.toFixed(0)}%,頸線到底等幅);停損跌破頸線 ${neckline.toFixed(2)}。` });
         }
         return out;
     },
@@ -14136,6 +14155,46 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // ⭐ V61.x — 艾略特波浪(推估,純公式;使用者要求覆蓋 CLAUDE.md「刻意不做」)。
+    //   保守:只在符合三大鐵律(第2浪未破起點/第4浪不重疊第1浪/第3浪非最短)時標「推估」,嚴格 gating 防主觀誤導。
+    _detectElliott(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 50) return out;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const n = data.length, last = n - 1, SW = 4, from = Math.max(SW, n - 140);
+        const sw = [];
+        for (let i = from; i <= last - SW; i++) {
+            const w = data.slice(i - SW, i + SW + 1).map(C), c = C(data[i]);
+            if (c === Math.max(...w)) sw.push({ i, v: c, t: 1 });
+            else if (c === Math.min(...w)) sw.push({ i, v: c, t: -1 });
+        }
+        // 去連續同型(峰留較高、谷留較低)→ 交替擺盪點
+        const pts = [];
+        for (const p of sw) {
+            const L = pts[pts.length - 1];
+            if (L && L.t === p.t) { if ((p.t === 1 && p.v > L.v) || (p.t === -1 && p.v < L.v)) pts[pts.length - 1] = p; }
+            else pts.push(p);
+        }
+        if (pts.length < 4) return out;
+        const pat = pts.map(p => p.t).join(',');
+        const pC = C(data[last]);
+        // 完成上升五浪(谷峰谷峰谷峰)→ 防 ABC 修正
+        if (pts.length >= 6 && pat.endsWith('-1,1,-1,1,-1,1')) {
+            const [L0, P1, L2, P3, L4, P5] = pts.slice(-6);
+            const w1 = P1.v - L0.v, w3 = P3.v - L2.v, w5 = P5.v - L4.v;
+            const ruleA = L2.v > L0.v, ruleC = L4.v > P1.v, hh = P3.v > P1.v && P5.v > P3.v, rule3 = !(w3 < w1 && w3 < w5);
+            if (w1 > 0 && ruleA && ruleC && hh && rule3 && (last - P5.i) <= 6)
+                out.push({ tone: 'warn', title: '艾略特 完成五浪(推估)', val: P5.v, msg: `推估上升五浪走完(符合三鐵律:第2浪未破起點、第4浪不重疊第1浪、第3浪非最短,峰位 ${P5.v.toFixed(2)})→ 波浪理論後續易進入 <b>ABC 修正</b>,漲多別追、留意回檔。純結構推估、非鐵律,以實際跌破轉折為準。` });
+        }
+        // 進行中:剛完成 1-2 浪、正走第 3 浪主升段(現價過第1浪高)
+        if (pts.length >= 4 && pat.endsWith('-1,1,-1,1')) {
+            const [L0, P1, L2, P3] = pts.slice(-4);
+            if (L2.v > L0.v && pC > P1.v && (last - P3.i) <= 8)
+                out.push({ tone: 'bull', title: '艾略特 第3浪推進(推估)', val: P1.v, msg: `推估正走第 3 浪主升段(第1浪上攻、第2浪回檔未破起點 ${L0.v.toFixed(2)}、現價過第1浪高 ${P1.v.toFixed(2)})→ 第3浪通常最強最長,順勢做多;跌破第2浪低 ${L2.v.toFixed(2)} 才轉弱。純結構推估。` });
+        }
+        return out;
+    },
+
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
     //   ① 大量長黑 ½ 被突破=止跌反彈 ② 假突破/假跌破(突破棒隔1-2日反向收破½)③ 收盤 vs 昨高/昨低 轉強弱
     // ⚡ V41.15 — 朱老師四大金剛(依老師原文):👑趨勢(頭頭高底底高) / 📈均線(多頭排列) / 🕯️K線(發動棒/轉折) / 📊成交量(價量配合/背離)
@@ -14288,6 +14347,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectAbcBreakout(data)); } catch (_) {}         // ⭐ V60.x ABC下降切線突破(6-5)
         try { sigs.unshift(...this._detectReversalConfirm(data)); } catch (_) {}  // ⭐ V61.x 轉折K次日開盤確認(2-9,置頂)
         try { sigs.push(...this._detectStall(data)); } catch (_) {}               // ⭐ V61.x 高檔直漲停頓力竭前兆(2-9)
+        try { sigs.push(...this._detectElliott(data)); } catch (_) {}             // ⭐ V61.x 艾略特波浪(推估,使用者要求)
         try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}          // ⭐ V38.0 均線糾結(一字底)
         try { sigs.push(...this._detectPressureTest(data)); } catch (_) {}       // ⭐ V41.4 測壓有壓/測撐有撐(最高最低價測前波,V41.6 配量)
         try { sigs.push(...this._detectVolPriceDiverge(data)); } catch (_) {}    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮)
@@ -14898,7 +14958,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
              '_detectPressureTest', '_detectHeavyResistance', '_detectBoxBreakout', '_detectChuLongEntry',
              '_detectGap', '_detectMaKoudi', '_detectGranville', '_detectTopBreakdown', '_detectTrendline',
-             '_detectVolPriceDiverge', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall'].forEach(grab);
+             '_detectVolPriceDiverge', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(grab);
             const bullPats = [...new Set(patSigs.filter(s => s.tone === 'bull').map(s => s.title))];
             const bearPats = [...new Set(patSigs.filter(s => s.tone === 'bear' || s.tone === 'warn').map(s => s.title))];
             const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
@@ -15158,7 +15218,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
          '_detectPressureTest', '_detectHeavyResistance', '_detectMaDeviation', '_detectBoxBreakout',
          '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi',
-         '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall'].forEach(grab);   // ⭐ V41.29/30 背離/缺口/扣抵/頭部/葛蘭碧/趨勢線 + V60.x 月線穿季線/N字底/ABC + V61.x 轉折確認/直漲停頓 納入型態分
+         '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(grab);   // ⭐ V41.29/30 背離/缺口/扣抵/頭部/葛蘭碧/趨勢線 + V60.x 月線穿季線/N字底/ABC + V61.x 轉折確認/直漲停頓/艾略特 納入型態分
         const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
         const launch = body >= 3 && C(data[last]) > H(data[last - 1]);   // 強勢發動棒
         let B = 0, R = 0;
@@ -26626,7 +26686,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 📐 V38.5 注入朱家泓/林穎 K棒型態偵測器(純公式,與進場體檢/K棒戰法卡同源)→ AI 報告依此分析
         const kbarPatterns = [];
         // V41.11 補齊漏注入的新偵測器:測壓測撐/量價背離/壓力沉重/均線糾結(原 AI 報告看不到這 4 個新訊號)
-        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi', '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectGap', '_detectMaKoudi', '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
         const patternsTxt = kbarPatterns.length
             ? kbarPatterns.slice(0, 16).map(s => `${s.tone === 'bull' ? '🔺偏多' : s.tone === 'bear' ? '🔻偏空' : s.tone === 'warn' ? '⚠️留意' : '⚪中性'}「${s.title}」`).join('、')
             : '無明顯型態訊號';
