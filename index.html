@@ -15,8 +15,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V61.5(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
-         + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V61.6(自選頁重設計:FAB 浮動新增鈕 + 欄位式卡片 + 趨勢欄;
+         策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2518,20 +2518,7 @@
             </div>
             <div class="p-2">
                 <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative overflow-hidden">
-                    <!-- ⭐ V45.12 自選說明改點擊彈出(使用者:版面精簡) -->
-                    <div class="flex items-center justify-center gap-2 py-2 border-b border-[#21262d] mb-1">
-                        <span class="text-xs text-gray-400 font-bold">⭐ 自選清單</span>
-                        <button onclick="alert('⭐ 自選清單怎麼用\n\n這是你「想追蹤但還沒買」的股票清單。\n\n・輸入代號或中文名 → 按 ➕ 加入\n・點任一檔 → 進個股診斷頁\n・個股列向左滑動 → 刪除\n・多群組可在頂端切換')" class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-800/60 rounded px-1.5 py-0.5 transition-colors">📖 怎麼用/如何刪除</button>
-                    </div>
-                    <div id="favSearchContainer" class="flex items-center gap-2 px-3 py-2 border-b border-[#30363d] bg-[#161b22] relative">
-                        <input type="text" id="favDirectInput" placeholder="代號或中文名稱，Enter 加入..."
-                            autocomplete="off" inputmode="text"
-                            class="flex-1 bg-[#0d1117] text-white px-2 py-1.5 rounded border border-[#30363d] text-sm outline-none focus:border-blue-500 font-mono"
-                            oninput="app.handleFavSearchInput(event)" onfocus="app.handleFavSearchInput(event)"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('favSearchDropdown').classList.add('hidden');app.favDirectAdd();}">
-                        <button onclick="app.favDirectAdd()" class="text-blue-400 font-bold text-sm px-2 py-1.5 border border-blue-800 rounded hover:bg-blue-900/30 transition-colors">➕</button>
-                        <ul id="favSearchDropdown" class="hidden absolute top-[100%] left-3 right-3 mt-1 bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-60 z-[300]"></ul>
-                    </div>
+                    <!-- ⭐ V61.6 自選頁重設計:刪除說明列 + 固定搜尋列 → 改右下角浮動新增鈕(FAB,見 tabContentFav 底部) -->
                     <!-- 📢 V31.9 多頭待發射:自選掃打底 + 距突破由近到遠(重用 _chuResistanceZones) -->
                     <div class="mx-2 my-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                         <div class="flex items-center gap-1.5 mb-1">
@@ -2549,8 +2536,34 @@
                         <p class="text-base font-bold mb-2">此清單目前空空如也</p>
                         <button onclick="app.switchAppTab('diag'); document.getElementById('symbolInput').focus();" class="mt-2 bg-blue-900/50 text-blue-400 px-4 py-2 rounded text-sm border border-blue-800 font-bold">去診斷並加入自選</button>
                     </div>
-                    <div id="favListContainer" class="flex flex-col pb-4 pt-1"></div>
+                    <div id="favListContainer" class="flex flex-col pb-24 pt-1"></div>
                 </div>
+            </div>
+            <!-- ➕ V61.6 浮動新增鈕(FAB):右下角,滑動時隱藏、停頓 0.6s 浮出;點開新增個股 bottom sheet -->
+            <button id="favAddFab" onclick="app.openFavAddSheet()" aria-label="新增自選個股"
+                class="fixed bottom-20 right-4 z-[400] w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-3xl font-bold shadow-lg shadow-blue-900/60 flex items-center justify-center active:scale-90"
+                style="transition: transform .32s cubic-bezier(.22,1,.36,1), opacity .32s;">＋</button>
+        </div>
+
+        <!-- ➕ V61.6 新增自選個股 bottom sheet(FAB 點開;沿用 favDirectInput / favSearchDropdown,既有 handleFavSearchInput / favDirectAdd 不動) -->
+        <div id="favAddSheet" class="hidden fixed inset-0 z-[500] bg-black/60 flex items-end justify-center" onclick="if(event.target===this)app.closeFavAddSheet()">
+            <div class="w-full max-w-md bg-[#161b22] border-t border-[#30363d] rounded-t-2xl p-4 pb-8 shadow-2xl">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-black text-gray-100">➕ 新增自選個股</span>
+                    <button onclick="app.closeFavAddSheet()" class="text-gray-400 hover:text-white text-xl leading-none">✕</button>
+                </div>
+                <div class="relative">
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="favDirectInput" placeholder="代號或中文名稱，Enter 加入..."
+                            autocomplete="off" inputmode="text"
+                            class="flex-1 bg-[#0d1117] text-white px-3 py-2.5 rounded-lg border border-[#30363d] text-sm outline-none focus:border-blue-500 font-mono"
+                            oninput="app.handleFavSearchInput(event)" onfocus="app.handleFavSearchInput(event)"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('favSearchDropdown').classList.add('hidden');app.favDirectAdd();}">
+                        <button onclick="app.favDirectAdd()" class="text-blue-300 font-bold text-sm px-3 py-2.5 border border-blue-800 rounded-lg hover:bg-blue-900/30 transition-colors">➕</button>
+                    </div>
+                    <ul id="favSearchDropdown" class="hidden absolute top-[100%] left-0 right-0 mt-1 bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-60 z-[520]"></ul>
+                </div>
+                <div class="text-[10px] text-gray-500 mt-2.5 leading-relaxed">輸入代號或中文名 → 按 Enter/➕ 加入。可連續加多檔，加完點 ✕ 關閉。</div>
             </div>
         </div>
 
@@ -3604,7 +3617,7 @@ const app = {
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#searchContainer')) document.getElementById('searchDropdown')?.classList.add('hidden');
             if (!e.target.closest('#invSearchInputWrapper')) document.getElementById('invSearchDropdown')?.classList.add('hidden');
-            if (!e.target.closest('#favSearchContainer')) document.getElementById('favSearchDropdown')?.classList.add('hidden');
+            if (!e.target.closest('#favAddSheet')) document.getElementById('favSearchDropdown')?.classList.add('hidden');
         });
 
         await this.fetchStockList();
@@ -24566,7 +24579,45 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         this._addToGroup(sym, this.activeGroupName);
         input.value = '';
-        input.focus();
+        document.getElementById('favSearchDropdown')?.classList.add('hidden');
+        input.focus();   // 保持開著,方便連續加多檔
+    },
+
+    // ➕ V61.6 FAB 新增自選 bottom sheet
+    openFavAddSheet() {
+        const sheet = document.getElementById('favAddSheet');
+        if (!sheet) return;
+        sheet.classList.remove('hidden');
+        const input = document.getElementById('favDirectInput');
+        if (input) { input.value = ''; setTimeout(() => input.focus(), 60); }
+        this.vibrate?.(20);
+    },
+    closeFavAddSheet() {
+        const sheet = document.getElementById('favAddSheet');
+        if (!sheet) return;
+        sheet.classList.add('hidden');
+        document.getElementById('favSearchDropdown')?.classList.add('hidden');
+        document.getElementById('favDirectInput')?.blur();
+    },
+    // 🎬 V61.6 FAB 滑動隱藏、停頓浮出(專業 App 手感);全域捲動監聽只裝一次
+    _initFavFab() {
+        if (this._favFabInit) return;
+        this._favFabInit = true;
+        const onScroll = () => {
+            const fab = document.getElementById('favAddFab');
+            // FAB 在 tabContentFav 內,tab 非顯示時 fixed 元素也隱藏 → 直接操作即可
+            if (!fab || fab.offsetParent === null) return;
+            if (document.getElementById('favAddSheet') && !document.getElementById('favAddSheet').classList.contains('hidden')) return;
+            fab.style.opacity = '0';
+            fab.style.transform = 'translateY(24px) scale(.85)';
+            clearTimeout(this._favFabTimer);
+            this._favFabTimer = setTimeout(() => {
+                fab.style.opacity = '1';
+                fab.style.transform = 'translateY(0) scale(1)';
+            }, 600);
+        };
+        // 捲動事件不冒泡,capture=true 才能抓到內層捲動容器
+        document.addEventListener('scroll', onScroll, true);
     },
 
     updateFavIcon() {
@@ -24685,6 +24736,25 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         });
     },
 
+    // 📈 V61.6 自選卡趨勢欄:純公式均線三線多空排(同 _renderTrendCommand 定義),回傳 badge HTML
+    //   台股色:紅=多頭、綠=空頭、黃=盤整。零 AI 零採礦,只吃 K 線收盤。
+    _favTrendTag(data) {
+        const dim = '<span class="text-[10px] text-gray-600 font-bold">--</span>';
+        if (!Array.isArray(data) || data.length < 60) return dim;
+        const closes = data.map(d => +d.close).filter(v => v > 0);
+        const n = closes.length;
+        if (n < 60) return dim;
+        const ma = k => closes.slice(n - k).reduce((a, b) => a + b, 0) / k;
+        const ma5 = ma(5), ma20 = ma(20), ma60 = ma(60);
+        const ma20prev = closes.slice(n - 22, n - 2).reduce((a, b) => a + b, 0) / 20;
+        const ma20Up = ma20 > ma20prev;
+        const bull = ma5 > ma20 && ma20 > ma60 && ma20Up;
+        const bear = ma5 < ma20 && ma20 < ma60 && !ma20Up;
+        if (bull) return '<span class="text-[11px] text-red-400 font-black leading-tight">🔴 多頭</span>';
+        if (bear) return '<span class="text-[11px] text-green-400 font-black leading-tight">🟢 空頭</span>';
+        return '<span class="text-[11px] text-yellow-400 font-black leading-tight">🟡 盤整</span>';
+    },
+
     _getQuickSeasonTag(data) {
         if (!data || data.length < 21) return '';
         const len = data.length, last = len - 1;
@@ -24714,31 +24784,33 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if(list.length === 0) { container.innerHTML = ''; emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
         emptyState?.classList.add('hidden'); emptyState?.classList.remove('flex');
 
-        // Pass 1：同步畫出所有列（名稱+badge+佔位價），清單「立刻」出現，不被網路卡住
+        // Pass 1：同步畫出所有列（名稱+代號+趨勢欄+佔位價），清單「立刻」出現，不被網路卡住
+        // 🎨 V61.6 參考專業 App 欄位式排版:名稱／代號 ｜ 趨勢(多頭/盤整/空頭) ｜ 股價／漲跌幅
+        //   已移除:四季 season badge、之前的提醒 elimination badge(使用者要求)
         let html = '';
         for (let sym of list) {
             html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]" data-fav-row="${sym}">
                 <div class="absolute inset-y-0 right-0 w-[80px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer delete-btn swipe-action-btn text-sm" onclick="event.stopPropagation(); app.removeFromFav('${sym}')">刪除</div>
-                <div class="swipe-content relative bg-gradient-to-r from-[#1c2128] to-[#161b22] px-3 py-2.5 flex items-center gap-2 w-full" style="transform: translateX(0px);">
-                    <div class="drag-handle text-gray-600 hover:text-white text-lg flex-shrink-0">☰</div>
+                <div class="swipe-content relative bg-[#1c2128] px-3 py-3 flex items-center gap-2 w-full" style="transform: translateX(0px);">
+                    <div class="drag-handle text-gray-600 hover:text-white text-base flex-shrink-0">☰</div>
                     <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-bold text-white text-base truncate">${this.getFullStockName(sym)}</span>
-                            <span data-fav-season class="flex-shrink-0"></span>
-                            ${this._renderFalconBadge(sym)}
-                            ${this._renderAttentionBadge(sym)}
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-bold text-white text-[15px] truncate">${this.getStockName(sym)}</span>
+                            ${this._renderFalconBadge(sym)}${this._renderAttentionBadge(sym)}
                         </div>
-                        <div class="flex items-center gap-1.5 mt-0.5">
-                            <span data-fav-price class="text-sm font-bold font-mono text-gray-400">--</span>
-                            <span data-fav-diff class="text-[10px] font-mono"></span>
-                        </div>
-                        <div data-fav-elim class="mt-1 flex flex-wrap gap-1"></div>
+                        <div class="text-[10px] text-gray-500 font-mono mt-0.5">${sym}</div>
+                    </div>
+                    <div data-fav-trend class="flex-shrink-0 w-[58px] text-center"><span class="text-[10px] text-gray-600 font-bold">--</span></div>
+                    <div class="flex-shrink-0 w-[86px] text-right cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
+                        <div data-fav-price class="text-[15px] font-black font-mono text-gray-400 leading-tight">--</div>
+                        <div data-fav-diff class="text-[10px] font-mono leading-tight mt-0.5"></div>
                     </div>
                     ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
                 </div>
             </div>`;
         }
         container.innerHTML = html;
+        this._initFavFab();
         if (this.sortableFav) this.sortableFav.destroy();
         this.sortableFav = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
 
@@ -24765,11 +24837,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const pEl = row.querySelector('[data-fav-price]');
             if (pEl) { pEl.textContent = priceText; pEl.className = `text-sm font-bold font-mono ${priceColor}`; }
             const dEl = row.querySelector('[data-fav-diff]');
-            if (dEl) { dEl.textContent = diffText; dEl.className = `text-[10px] font-mono ${priceColor}`; }
-            const sEl = row.querySelector('[data-fav-season]');
-            if (sEl) sEl.innerHTML = this._getQuickSeasonTag(data) || '';
-            const eEl = row.querySelector('[data-fav-elim]');
-            if (eEl) eEl.innerHTML = this._renderEliminationBadge(data) || '';
+            if (dEl) { dEl.textContent = diffText; dEl.className = `text-[10px] font-mono leading-tight mt-0.5 ${priceColor}`; }
+            const tEl = row.querySelector('[data-fav-trend]');
+            if (tEl) tEl.innerHTML = this._favTrendTag(data);   // 🎨 V61.6 多頭/盤整/空頭趨勢(取代四季+提醒)
         });
     },
 
