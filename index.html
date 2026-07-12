@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V61.2(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V61.3(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -22914,23 +22914,35 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             }
             if (_boBar) {
                 const _o = _boBar.open ?? _boBar.o, _c = _boBar.close ?? _boBar.c, mid = (_o + _c) / 2;
+                const _oH = _boBar.high ?? _boBar.h ?? _c, _oL = _boBar.low ?? _boBar.l ?? _o;   // 🆕 缺口2:三價=最高/½/最低
                 const daysAgo = last - _boIdx, curVR = vma5 > 0 ? pV / vma5 : 1, diffMid = (pC - mid) / mid * 100;
+                // 🆕 缺口2(2-4):大量長紅三價分層防守 — 跌破最高價=攻擊力減弱、跌破½=多方轉弱、跌破最低價=多空易位
                 let ic, bcls, status, msg;
-                if (pC < mid) {
-                    ic = '🔴'; bcls = 'border-red-500'; status = '結構已破';
-                    msg = '跌破突破長紅 ½ 價 = 這波多頭結構轉弱,多單防守離場、別凹單。';
-                } else if (pC <= _c && pC >= mid * 0.98 && pL >= mid * 0.98 && curVR < 0.85) {
-                    ic = '✅'; bcls = 'border-green-500'; status = '回後買上漲';
-                    msg = '回檔到 ½ 價附近 + 量縮不破 = 朱老師「回後買上漲」潛在買點,結構未破可分批加碼。';
+                if (pC < _oL) {
+                    ic = '💀'; bcls = 'border-red-500'; status = '多空易位';
+                    msg = '跌破突破長紅「最低價」= 多空完全易位,此後這根長紅最低點反轉成上方壓力,多單清倉、別凹單。';
+                } else if (pC < mid) {
+                    ic = '🔴'; bcls = 'border-red-500'; status = '多方轉弱';
+                    msg = '跌破突破長紅 ½ 價(當日平均成本)= 多方轉弱、易引大量賣壓,多單防守離場。';
+                } else if (pC < _oH) {
+                    if (pC >= mid * 0.98 && pL >= mid * 0.98 && curVR < 0.85) {
+                        ic = '✅'; bcls = 'border-green-500'; status = '回後買上漲';
+                        msg = '回檔到 ½~最高價之間 + 量縮不破 = 朱老師「回後買上漲」潛在買點,結構未破可分批加碼。';
+                    } else {
+                        ic = '🟡'; bcls = 'border-yellow-500'; status = '攻擊力減弱';
+                        msg = '跌破突破長紅「最高價」= 攻擊力道減弱,3-5 天內須站回最高價,否則易轉折;守住 ½ 仍算健康。';
+                    }
                 } else {
-                    ic = '🟢'; bcls = 'border-green-500'; status = '結構守穩';
-                    msg = '現價站穩突破長紅 ½ 價之上,這波結構健康,沿線續抱。';
+                    ic = '🟢'; bcls = 'border-green-500'; status = '攻擊力最強';
+                    msg = '現價站上突破長紅「最高價」之上 = 攻擊力道最強,這波結構最健康,沿線續抱。';
                 }
                 const _scls = pC >= mid ? 'text-green-300' : 'text-red-300';
+                const _pxCell = (lbl, v, hit) => `<div class="flex flex-col items-center flex-1 ${hit ? 'bg-white/5 rounded' : ''} py-0.5"><span class="text-[8px] text-gray-500">${lbl}</span><span class="font-mono text-[11px] font-bold ${pC >= v ? 'text-green-300' : 'text-red-300'}">${v.toFixed(2)}</span></div>`;
                 _bg.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">🧱</span><span class="text-[12px] font-black text-gray-100">突破棒防守</span><span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-[#30363d] ${_scls}">${ic} ${status}</span><button onclick="app.showJargon('突破棒防守')" class="text-[10px] text-gray-500 hover:text-blue-300 ml-auto">❓</button></div>
-                    <div class="flex items-baseline gap-2 mb-1.5"><span class="text-[10px] text-gray-500">結構防守價(½)</span><span class="font-mono text-lg font-black ${_scls}">${mid.toFixed(2)}</span><span class="font-mono text-[10px] ${_scls}">現價 ${diffMid >= 0 ? '+' : ''}${diffMid.toFixed(1)}%</span></div>
+                    <div class="flex items-stretch gap-1 mb-1.5 text-center">${_pxCell('最高·攻擊', _oH, pC >= _oH)}${_pxCell('½·成本', mid, pC >= mid)}${_pxCell('最低·易位', _oL, pC >= _oL)}</div>
+                    <div class="text-[9px] text-gray-500 text-center mb-1.5">現價 ${pC.toFixed(2)}(距½ ${diffMid >= 0 ? '+' : ''}${diffMid.toFixed(1)}%)</div>
                     <div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 ${bcls} pl-2.5 py-1.5 rounded-r leading-relaxed">${msg}</div>
-                    <div class="text-[9px] text-gray-500 mt-1.5">📍 ${daysAgo} 天前爆量長紅 開 ${_o.toFixed(2)} → 收 ${_c.toFixed(2)}(實體 +${((_c - _o) / _o * 100).toFixed(1)}%)</div>`;
+                    <div class="text-[9px] text-gray-500 mt-1.5">📍 ${daysAgo} 天前爆量長紅 開 ${_o.toFixed(2)} → 收 ${_c.toFixed(2)}(實體 +${((_c - _o) / _o * 100).toFixed(1)}%),高 ${_oH.toFixed(2)} / 低 ${_oL.toFixed(2)}</div>`;
                 _bg.classList.remove('hidden');
             } else { _bg.classList.add('hidden'); }
         }
