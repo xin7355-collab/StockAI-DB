@@ -506,11 +506,18 @@ def main():
             changed = bool(changes["added"] or changes["removed"])
             got_holdings += 1
 
+        # 🆕 缺口6(12-4 主動式空頭防禦):現金水位 ≈ 100% − Σ(全部成分股權重)。
+        #    主動 ETF 經理人可提高現金避險 → 現金水位上升 = 轉守訊號。用「完整」curr_h(截斷前)算,
+        #    權重覆蓋不足(<70%,多為 PCF 抓取不全)則回 None 不誤判成假高現金。
+        _wsum = sum((h.get("weight") or 0) for h in curr_h)
+        cash_ratio = round(max(0.0, 100.0 - _wsum), 1) if _wsum >= 70 else None
+
         etfs.append({
             "symbol": s,
             "name": api_name or etf_name(s),
             "perf": m,
             "fund_size": fund_size,
+            "cash_ratio": cash_ratio,
             "holdings": curr_h[:HOLD_TOP],
             "holdings_count": len(curr_h),
             "changes": changes,
