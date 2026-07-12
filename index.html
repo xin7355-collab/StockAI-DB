@@ -15,9 +15,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V62.0(⚙️K線指標設定 modal 對標籌碼K線:均線 checkbox+色塊+可調週期拉桿 2-240 即時預覽 + 取消/確定 + 日週月時間軸;
-         均線改 display slots(與策略引擎固定 MA5/20/60 分離);V61.9 雙副圖(成交量/法人買賣超/KD/MACD/OBV)+ sticky 圖釘;
-         分K/還原K/主力成本/融資成本 因無資料源未列;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V62.1(副圖選擇器改覆蓋在各副圖左上角(對標籌碼K線);設定 modal 每組均線 + 全部「↺ 還原預設」;
+         V62.0 均線可調週期拉桿 2-240 + 取消/確定;V61.9 雙副圖 + sticky 圖釘;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -504,9 +503,9 @@
             </div>
             <div class="overflow-y-auto px-4 py-3 flex-1">
                 <div class="flex items-center gap-1.5 mb-2"><span class="w-1 h-4 bg-orange-400 rounded"></span><span class="text-[13px] font-bold text-gray-100">均線設定</span><span class="text-[10px] text-gray-500">(範圍 2-240)</span></div>
-                <div class="text-[11px] font-bold text-gray-400 mb-1">MA:簡單移動平均線</div>
+                <div class="flex items-center justify-between mb-1"><span class="text-[11px] font-bold text-gray-400">MA:簡單移動平均線</span><button onclick="app._resetMaSlots('ma')" class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-800/60 rounded px-2 py-0.5">↺ 還原預設</button></div>
                 <div id="kchartMaRows" class="mb-4"></div>
-                <div class="text-[11px] font-bold text-gray-400 mb-1">EMA:指數平滑移動平均線</div>
+                <div class="flex items-center justify-between mb-1"><span class="text-[11px] font-bold text-gray-400">EMA:指數平滑移動平均線</span><button onclick="app._resetMaSlots('ema')" class="text-[10px] text-blue-300 hover:text-blue-200 border border-blue-800/60 rounded px-2 py-0.5">↺ 還原預設</button></div>
                 <div id="kchartEmaRows" class="mb-4"></div>
                 <div class="flex items-center gap-1.5 mb-2"><span class="w-1 h-4 bg-orange-400 rounded"></span><span class="text-[13px] font-bold text-gray-100">其他指標</span></div>
                 <div class="grid grid-cols-2 gap-x-3 gap-y-2.5 mb-2">
@@ -524,7 +523,8 @@
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleFinRpt" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">財報公告</span></label>
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleRev" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">月營收</span></label>
                 </div>
-                <div class="text-[9px] text-gray-600 leading-snug mt-3">💡 拖拉桿改均線週期(2-240,即時預覽);此為圖表顯示線,朱家泓判讀仍固定用 MA5/20/60。副圖在 K 線上方 toolbar 選。</div>
+                <button onclick="app._resetAllKchart()" class="w-full mt-3 py-2 text-[12px] font-bold text-gray-300 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-lg">↺ 還原全部預設(均線+指標+旗標)</button>
+                <div class="text-[9px] text-gray-600 leading-snug mt-2">💡 拖拉桿改均線週期(2-240,即時預覽);此為圖表顯示線,朱家泓判讀仍固定用 MA5/20/60。副圖選擇器在各副圖左上角。</div>
             </div>
             <div class="flex border-t border-gray-700 flex-shrink-0">
                 <button onclick="app.closeKchartSettings(true)" class="flex-1 py-3 text-gray-300 font-bold text-[15px] hover:bg-white/5">取消</button>
@@ -569,7 +569,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1701,16 +1701,8 @@
                             <button onclick="app.changeTimeframe('W')" id="btnTF_W" class="px-2.5 py-1 text-[13px] font-bold text-gray-400 bg-transparent hover:text-white transition-colors">週</button>
                             <button onclick="app.changeTimeframe('M')" id="btnTF_M" class="px-2.5 py-1 text-[13px] font-bold text-gray-400 bg-transparent hover:text-white transition-colors">月</button>
                         </div>
-                        <div class="flex items-center gap-1 flex-shrink-0 min-w-0">
-                            <span class="text-[9px] text-gray-500 font-bold flex-shrink-0">副圖</span>
-                            <select id="subSel1" onchange="app.setSubSlot(1, this.value)" class="flex-shrink bg-[#161b22] text-gray-200 text-[11px] font-bold rounded border border-[#30363d] px-1 py-1 outline-none focus:border-blue-500 max-w-[90px]">
-                                <option value="VOL">成交量</option><option value="INST">法人買賣超</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
-                            </select>
-                            <select id="subSel2" onchange="app.setSubSlot(2, this.value)" class="flex-shrink bg-[#161b22] text-gray-200 text-[11px] font-bold rounded border border-[#30363d] px-1 py-1 outline-none focus:border-blue-500 max-w-[90px]">
-                                <option value="INST">法人買賣超</option><option value="VOL">成交量</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
-                            </select>
-                        </div>
                         <div class="flex-1"></div>
+                        <span class="text-[9px] text-gray-500 flex-shrink-0">副圖選擇器在各副圖左上角 →</span>
                         <button onclick="app.openKchartSettings(); app.vibrate(20);" title="K線指標設定(均線/成本線/型態旗標)" class="flex-shrink-0 text-gray-300 hover:text-white bg-[#161b22] border border-[#30363d] rounded px-2 py-1 text-[15px] leading-none">⚙️</button>
                     </div>
                     <!-- 🎛️ V61.9 指標設定 modal 已移到頁面頂層(避開 sticky 卡的 z-index 堆疊陷阱),見 kchartSettingsModal -->
@@ -1721,6 +1713,13 @@
                     </div>
                     <div id="mainChartWrap" class="zoomable-zone w-full flex-grow relative bg-[#000000]">
                         <div id="mainChart" class="w-full h-full min-h-[460px]"></div>
+                        <!-- 🎛️ V62.1 副圖選擇器覆蓋在各副圖左上角(對標籌碼K線);top 由 renderChart 依版面動態設定 -->
+                        <select id="subSel1" onchange="app.setSubSlot(1, this.value)" class="hidden absolute left-1 z-[6] bg-[#161b22]/85 text-gray-200 text-[10px] font-bold rounded border border-[#30363d] px-1 py-0.5 outline-none">
+                            <option value="VOL">成交量</option><option value="INST">法人買賣超</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
+                        </select>
+                        <select id="subSel2" onchange="app.setSubSlot(2, this.value)" class="hidden absolute left-1 z-[6] bg-[#161b22]/85 text-gray-200 text-[10px] font-bold rounded border border-[#30363d] px-1 py-0.5 outline-none">
+                            <option value="INST">法人買賣超</option><option value="VOL">成交量</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
+                        </select>
                     </div>
                     <div id="patternList" class="flex items-center gap-1 px-1 py-1 overflow-x-auto scrollbar-hide border-t border-[#30363d]" style="display:none"></div>
                     <!-- 🎛️ V61.9 舊「成交量/KD/MACD/OBV」單選鈕已移除 → 改上方 toolbar 兩個「副圖」下拉,可同時看 2 個 -->
@@ -23645,6 +23644,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         _subModes.forEach((mode, i) => { try { this._pushSubSeries(option, mode, i + 1, data, ind); } catch (_) {} });
 
         this.chartInstance.setOption(option, { replaceMerge: ['series'] });
+        // 🎛️ V62.1 副圖選擇器覆蓋到各副圖左上角:依 _LAY 的格頂 % 定位(略過「無」的副圖)
+        try {
+            const sel1 = document.getElementById('subSel1'), sel2 = document.getElementById('subSel2');
+            let _gi = 1;
+            const place = (sel, mode) => {
+                if (!sel) return;
+                if (mode === 'NONE' || _gi > 2) { sel.classList.add('hidden'); return; }
+                sel.style.top = `calc(${_LAY[_gi][0]} + 2px)`;
+                sel.value = mode; sel.classList.remove('hidden'); _gi++;
+            };
+            place(sel1, this.subChart1 || 'NONE');
+            place(sel2, this.subChart2 || 'NONE');
+        } catch (_) {}
         try { this._renderPatternList(); } catch (_) {}
     },
 
@@ -23755,6 +23767,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this._saveMaSlots();
         this._renderKchartMaRows();
         this.renderChart();
+    },
+    // ↺ V62.1 還原該組均線預設(週期+開關+顏色回到出廠值)
+    _MA_DEFAULT() { return [{ p: 5, on: true, c: '#ffffff' }, { p: 10, on: true, c: '#facc15' }, { p: 20, on: true, c: '#c084fc' }, { p: 60, on: true, c: '#3b82f6' }, { p: 120, on: false, c: '#ec4899' }, { p: 240, on: false, c: '#f97316' }]; },
+    _EMA_DEFAULT() { return [{ p: 5, on: false, c: '#06b6d4' }, { p: 20, on: false, c: '#84cc16' }, { p: 60, on: false, c: '#f43f5e' }]; },
+    _resetMaSlots(type) {
+        if (type === 'ma') this.maSlots = this._MA_DEFAULT(); else this.emaSlots = this._EMA_DEFAULT();
+        this._saveMaSlots();
+        this._renderKchartMaRows();
+        this.renderChart();
+        this.vibrate?.(20);
+    },
+    // ↺ V62.1 還原全部:均線 + 其他指標/型態旗標 checkbox 回出廠(修使用者誤拖後想一鍵歸零)
+    _resetAllKchart() {
+        this.maSlots = this._MA_DEFAULT(); this.emaSlots = this._EMA_DEFAULT(); this._saveMaSlots();
+        const DEF = { toggleFCost: false, toggleTCost: false, toggleInvCost: false, toggleBB: true, togglePeaks: true, togglePatterns: true, toggleExDiv: true, toggleFinRpt: false, toggleRev: false };
+        Object.entries(DEF).forEach(([id, on]) => { const el = document.getElementById(id); if (el) el.checked = on; });
+        this.showPeaks = true; this.showPatterns = true;
+        this._renderKchartMaRows();
+        this.renderChart();
+        this.vibrate?.(30);
+        this.showToast?.('✅ 已還原全部預設', 'info');
     },
     _syncKchartTf() {
         document.querySelectorAll('#kchartTfTabs button[data-ktf]').forEach(b => {
