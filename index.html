@@ -15,8 +15,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V62.1(副圖選擇器改覆蓋在各副圖左上角(對標籌碼K線);設定 modal 每組均線 + 全部「↺ 還原預設」;
-         V62.0 均線可調週期拉桿 2-240 + 取消/確定;V61.9 雙副圖 + sticky 圖釘;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V62.2(朱老師總評納入 OBV 能量潮 + KD/MACD 綜合分析並計入評分;副圖左上角加即時數值;副圖版面壓縮變薄;
+         刪 toolbar 提示字;V62.1 副圖選擇器覆蓋各副圖左上角 + 還原預設;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -569,7 +569,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1702,7 +1702,6 @@
                             <button onclick="app.changeTimeframe('M')" id="btnTF_M" class="px-2.5 py-1 text-[13px] font-bold text-gray-400 bg-transparent hover:text-white transition-colors">月</button>
                         </div>
                         <div class="flex-1"></div>
-                        <span class="text-[9px] text-gray-500 flex-shrink-0">副圖選擇器在各副圖左上角 →</span>
                         <button onclick="app.openKchartSettings(); app.vibrate(20);" title="K線指標設定(均線/成本線/型態旗標)" class="flex-shrink-0 text-gray-300 hover:text-white bg-[#161b22] border border-[#30363d] rounded px-2 py-1 text-[15px] leading-none">⚙️</button>
                     </div>
                     <!-- 🎛️ V61.9 指標設定 modal 已移到頁面頂層(避開 sticky 卡的 z-index 堆疊陷阱),見 kchartSettingsModal -->
@@ -1712,14 +1711,20 @@
                         <button id="chartInspectExit" onclick="app._exitChartInspect()" class="hidden absolute top-1/2 -translate-y-1/2 right-1.5 z-20 w-7 h-7 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-black shadow-lg flex items-center justify-center" title="離開十字檢視,回到平移模式">✕</button>
                     </div>
                     <div id="mainChartWrap" class="zoomable-zone w-full flex-grow relative bg-[#000000]">
-                        <div id="mainChart" class="w-full h-full min-h-[460px]"></div>
-                        <!-- 🎛️ V62.1 副圖選擇器覆蓋在各副圖左上角(對標籌碼K線);top 由 renderChart 依版面動態設定 -->
-                        <select id="subSel1" onchange="app.setSubSlot(1, this.value)" class="hidden absolute left-1 z-[6] bg-[#161b22]/85 text-gray-200 text-[10px] font-bold rounded border border-[#30363d] px-1 py-0.5 outline-none">
-                            <option value="VOL">成交量</option><option value="INST">法人買賣超</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
-                        </select>
-                        <select id="subSel2" onchange="app.setSubSlot(2, this.value)" class="hidden absolute left-1 z-[6] bg-[#161b22]/85 text-gray-200 text-[10px] font-bold rounded border border-[#30363d] px-1 py-0.5 outline-none">
-                            <option value="INST">法人買賣超</option><option value="VOL">成交量</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
-                        </select>
+                        <div id="mainChart" class="w-full h-full min-h-[400px]"></div>
+                        <!-- 🎛️ V62.2 副圖選擇器 + 即時數值覆蓋在各副圖左上角(對標籌碼K線);top 由 renderChart 依版面動態設定 -->
+                        <div id="subOv1" class="hidden absolute left-1 z-[6] flex items-center gap-1">
+                            <select id="subSel1" onchange="app.setSubSlot(1, this.value)" class="bg-[#161b22]/85 text-gray-200 text-[10px] font-bold rounded border border-[#30363d] px-1 py-0.5 outline-none">
+                                <option value="VOL">成交量</option><option value="INST">法人買賣超</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
+                            </select>
+                            <span id="subVal1" class="text-[10px] font-mono font-bold text-gray-300"></span>
+                        </div>
+                        <div id="subOv2" class="hidden absolute left-1 z-[6] flex items-center gap-1">
+                            <select id="subSel2" onchange="app.setSubSlot(2, this.value)" class="bg-[#161b22]/85 text-gray-200 text-[10px] font-bold rounded border border-[#30363d] px-1 py-0.5 outline-none">
+                                <option value="INST">法人買賣超</option><option value="VOL">成交量</option><option value="KD">KD</option><option value="MACD">MACD</option><option value="OBV">OBV</option><option value="NONE">無</option>
+                            </select>
+                            <span id="subVal2" class="text-[10px] font-mono font-bold text-gray-300"></span>
+                        </div>
                     </div>
                     <div id="patternList" class="flex items-center gap-1 px-1 py-1 overflow-x-auto scrollbar-hide border-t border-[#30363d]" style="display:none"></div>
                     <!-- 🎛️ V61.9 舊「成交量/KD/MACD/OBV」單選鈕已移除 → 改上方 toolbar 兩個「副圖」下拉,可同時看 2 個 -->
@@ -15145,6 +15150,28 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const bigVol = avgV > 0 && vCur >= avgV * 1.5, volShrink = avgV > 0 && vCur <= avgV * 0.6;
             let diverge = false; try { diverge = (this._detectVolPriceDiverge(data) || []).length > 0; } catch (_) {}
 
+            // ── 📊 V62.2 OBV 能量潮 + KD + MACD 綜合(使用者要求:朱老師納入 OBV 及其他技術綜合分析)──
+            const _atL = arr => (Array.isArray(arr) && Number.isFinite(+arr[last])) ? +arr[last] : null;
+            const _atP = arr => (Array.isArray(arr) && Number.isFinite(+arr[last - 1])) ? +arr[last - 1] : null;
+            const obvNow = _atL(ind.obv), obvMaNow = _atL(ind.obvMa20);
+            const obvState = (obvNow != null && obvMaNow != null) ? (obvNow > obvMaNow ? 'up' : 'down') : null;
+            let obvDiv = null; try { obvDiv = (this._detectObvDivergence(data) || [])[0] || null; } catch (_) {}
+            const kNow = _atL(ind.k), dNow = _atL(ind.d), kPrev = _atP(ind.k), dPrev = _atP(ind.d);
+            let kdState = null;
+            if (kNow != null && dNow != null && kPrev != null && dPrev != null) {
+                if (kPrev <= dPrev && kNow > dNow) kdState = kNow < 30 ? 'goldLow' : 'gold';
+                else if (kPrev >= dPrev && kNow < dNow) kdState = kNow > 70 ? 'deadHigh' : 'dead';
+                else kdState = kNow > dNow ? 'up' : 'down';
+            }
+            const oscNow = _atL(ind.osc), oscPrev = _atP(ind.osc);
+            let macdState = null;
+            if (oscNow != null && oscPrev != null) {
+                if (oscPrev <= 0 && oscNow > 0) macdState = 'turnRed';
+                else if (oscPrev >= 0 && oscNow < 0) macdState = 'turnGreen';
+                else if (oscNow > 0) macdState = Math.abs(oscNow) >= Math.abs(oscPrev) ? 'redUp' : 'redDown';
+                else macdState = Math.abs(oscNow) >= Math.abs(oscPrev) ? 'greenUp' : 'greenDown';
+            }
+
             // ── 綜合評分(型態多空 + 均線 + 趨勢)──
             let sc = 0;
             sc += bullPats.length * 1.2 - bearPats.length * 1.2;
@@ -15152,6 +15179,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (ma20 != null) sc += price > ma20 ? 1 : -1.5;
             if (ma5 != null && ma20 != null && ma60 != null && price > ma5 && ma5 > ma20 && ma20 > ma60) sc += 2;   // 完美多頭排列
             if (red && bigVol && !diverge) sc += 1.5; else if (diverge) sc -= 1.5; else if (!red && bigVol) sc -= 1;
+            // 📊 OBV + KD + MACD 綜合納入評分
+            if (obvState === 'up') sc += 1; else if (obvState === 'down') sc -= 1;
+            if (obvDiv) sc += obvDiv.tone === 'bull' ? 1.5 : -1.5;
+            if (kdState === 'goldLow') sc += 1.2; else if (kdState === 'gold') sc += 0.6; else if (kdState === 'deadHigh') sc -= 1.2; else if (kdState === 'dead') sc -= 0.6;
+            if (macdState === 'turnRed') sc += 1; else if (macdState === 'turnGreen') sc -= 1; else if (macdState === 'redUp') sc += 0.5; else if (macdState === 'greenDown') sc -= 0.5;
 
             // ── 朱老師口吻組句 ──
             const nf = v => v == null ? '--' : (+v).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -15184,6 +15216,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             else if (diverge) lines.push('📊 <b class="text-yellow-300">量價背離</b>(無量創高/量縮),小心假突破,別被騙進場。');
             else if (!red && bigVol) lines.push('📊 <b class="text-green-300">量增黑 K</b>,爆量收黑 = 主力出貨賣壓,持股當心。');
             else if (volShrink) lines.push(`📊 量縮到 ${(vCur / avgV * 100).toFixed(0)}% 均量,<b>觀望量</b>,等放量表態再動作。`);
+            // 6) 📊 OBV 能量潮(V62.2)
+            if (obvState || obvDiv) {
+                let s6 = '🌊 <b>OBV 能量潮</b>:';
+                if (obvDiv && obvDiv.tone === 'bear') s6 += '<b class="text-green-300">頂背離</b>(價創高、量能沒跟上=疑主力出貨),別追高;';
+                else if (obvDiv && obvDiv.tone === 'bull') s6 += '<b class="text-red-300">底背離</b>(價創低、量能拒破底=主力偷吸貨),留意報復性反彈;';
+                if (obvState === 'up') s6 += '量能站上 OBV 均線 = <b class="text-red-300">資金動能轉強</b>,價漲有量撐。';
+                else if (obvState === 'down') s6 += '量能在 OBV 均線之下 = <b class="text-green-300">資金動能偏弱</b>,漲勢要打折。';
+                lines.push(s6);
+            }
+            // 7) 🎯 KD / MACD 指標綜合(V62.2)
+            const kdTxt = kdState === 'goldLow' ? '<b class="text-red-300">KD 低檔黃金交叉</b>(強買訊)' : kdState === 'gold' ? 'KD 黃金交叉(偏多)' : kdState === 'deadHigh' ? '<b class="text-green-300">KD 高檔死亡交叉</b>(強賣訊)' : kdState === 'dead' ? 'KD 死亡交叉(偏空)' : kdState === 'up' ? 'KD 多方向上' : kdState === 'down' ? 'KD 空方向下' : null;
+            const macdTxt = macdState === 'turnRed' ? '<b class="text-red-300">MACD 翻紅柱</b>(動能轉多)' : macdState === 'turnGreen' ? '<b class="text-green-300">MACD 翻綠柱</b>(動能轉空)' : macdState === 'redUp' ? 'MACD 紅柱增(多方加速)' : macdState === 'redDown' ? 'MACD 紅柱縮(多方減速)' : macdState === 'greenUp' ? 'MACD 綠柱增(空方加速)' : macdState === 'greenDown' ? 'MACD 綠柱縮(空方減速)' : null;
+            if (kdTxt || macdTxt) lines.push(`🎯 <b>指標綜合</b>:${[kdTxt, macdTxt].filter(Boolean).join(' ・ ')}。`);
 
             // ── headline + 對策 ──
             let tone, headline, cta, barCls, headCls;
@@ -23590,10 +23635,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🎛️ V61.9 雙副圖版面:依 subChart1/subChart2 幾個非「無」決定 3 格(主圖+副1+副2)高度;標籤放最底格
         const _subModes = [this.subChart1, this.subChart2].map(m => m || 'NONE').filter(m => m !== 'NONE');
         const _nSub = _subModes.length;
+        // 🎛️ V62.2 壓縮副圖空間(使用者要求):副圖變薄、間距收緊,主圖佔比更大
         const _LAY = ({
-            0: [['4%', '88%'], ['96%', '0%'], ['98%', '0%']],
-            1: [['4%', '58%'], ['66%', '26%'], ['98%', '0%']],
-            2: [['4%', '45%'], ['53%', '18%'], ['74%', '18%']],
+            0: [['3%', '89%'], ['96%', '0%'], ['98%', '0%']],
+            1: [['3%', '62%'], ['69%', '23%'], ['98%', '0%']],
+            2: [['3%', '51%'], ['57%', '15%'], ['75%', '15%']],
         })[_nSub];
         const _labelGrid = _nSub;   // 0→主圖 1→副1 2→副2(最底格顯日期)
         const option = {
@@ -23644,18 +23690,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         _subModes.forEach((mode, i) => { try { this._pushSubSeries(option, mode, i + 1, data, ind); } catch (_) {} });
 
         this.chartInstance.setOption(option, { replaceMerge: ['series'] });
-        // 🎛️ V62.1 副圖選擇器覆蓋到各副圖左上角:依 _LAY 的格頂 % 定位(略過「無」的副圖)
+        // 🎛️ V62.2 副圖選擇器 + 即時數值覆蓋到各副圖左上角:依 _LAY 的格頂 % 定位(略過「無」的副圖)
         try {
-            const sel1 = document.getElementById('subSel1'), sel2 = document.getElementById('subSel2');
             let _gi = 1;
-            const place = (sel, mode) => {
-                if (!sel) return;
-                if (mode === 'NONE' || _gi > 2) { sel.classList.add('hidden'); return; }
-                sel.style.top = `calc(${_LAY[_gi][0]} + 2px)`;
-                sel.value = mode; sel.classList.remove('hidden'); _gi++;
+            const place = (ovId, selId, valId, mode) => {
+                const ov = document.getElementById(ovId), sel = document.getElementById(selId), val = document.getElementById(valId);
+                if (!ov) return;
+                if (mode === 'NONE' || _gi > 2) { ov.classList.add('hidden'); return; }
+                ov.style.top = `calc(${_LAY[_gi][0]} + 2px)`;
+                if (sel) sel.value = mode;
+                if (val) val.innerHTML = this._subLatestVal(mode, data, ind);
+                ov.classList.remove('hidden'); _gi++;
             };
-            place(sel1, this.subChart1 || 'NONE');
-            place(sel2, this.subChart2 || 'NONE');
+            place('subOv1', 'subSel1', 'subVal1', this.subChart1 || 'NONE');
+            place('subOv2', 'subSel2', 'subVal2', this.subChart2 || 'NONE');
         } catch (_) {}
         try { this._renderPatternList(); } catch (_) {}
     },
@@ -23694,6 +23742,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
     },
 
+    // 🎛️ V62.2 副圖左上角即時數值(對標籌碼K線的「成交量 85K張 / 主力 買超xxx」)
+    _subLatestVal(mode, data, ind) {
+        try {
+            const last = data.length - 1;
+            const fmt = n => Math.abs(n) >= 1000 ? (n / 1000).toFixed(1) + 'K' : Math.round(n);
+            if (mode === 'VOL') { const v = Math.round((+data[last].volume || 0) / 1000); return `<span class="text-gray-400">${fmt(v)}張</span>`; }
+            if (mode === 'INST') { const net = ((+data[last].foreign_net || 0) + (+data[last].trust_net || 0)) / 1000; const c = net >= 0 ? 'text-red-400' : 'text-green-400'; return `<span class="${c}">${net >= 0 ? '買超' : '賣超'} ${fmt(Math.abs(net))}張</span>`; }
+            if (mode === 'KD') { const k = ind.k?.[last], d = ind.d?.[last]; if (k == null || d == null) return ''; const c = k > d ? 'text-red-400' : 'text-green-400'; return `<span class="${c}">K${Math.round(k)} D${Math.round(d)}</span>`; }
+            if (mode === 'MACD') { const o = ind.osc?.[last]; if (o == null) return ''; const c = o >= 0 ? 'text-red-400' : 'text-green-400'; return `<span class="${c}">OSC ${(+o).toFixed(2)}</span>`; }
+            if (mode === 'OBV') { const o = ind.obv?.[last], m = ind.obvMa20?.[last]; if (o == null) return ''; const c = (m != null && o > m) ? 'text-red-400' : 'text-green-400'; return `<span class="${c}">${(m != null && o > m) ? '量增·動能強' : '量減·動能弱'}</span>`; }
+        } catch (_) {}
+        return '';
+    },
     // 🎛️ V61.9 副圖下拉切換(slot 1/2);同步兩個 select 的 value,存 settings
     setSubSlot(slot, mode) {
         if (slot === 1) this.subChart1 = mode; else this.subChart2 = mode;
