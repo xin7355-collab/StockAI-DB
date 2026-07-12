@@ -15,9 +15,9 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V61.9(K線頁改造:toolbar 精簡→日週月+副圖1/副圖2 下拉(可同時看 2 個)+⚙️指標設定 modal(均線/EMA/成本線/型態旗標全收進去);
-         雙副圖 3 格版面(主圖+副1+副2),新增「法人買賣超」副圖;K線圖表卡 sticky 圖釘;字體縮小圖表加高;
-         OBV 能量潮(V61.8):worker 算 OBV/OBV_MA20/VMA20 + 副圖 + 量價聯合診斷面板;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V62.0(⚙️K線指標設定 modal 對標籌碼K線:均線 checkbox+色塊+可調週期拉桿 2-240 即時預覽 + 取消/確定 + 日週月時間軸;
+         均線改 display slots(與策略引擎固定 MA5/20/60 分離);V61.9 雙副圖(成交量/法人買賣超/KD/MACD/OBV)+ sticky 圖釘;
+         分K/還原K/主力成本/融資成本 因無資料源未列;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -487,44 +487,49 @@
     </div>
     <div id="scoreDetailModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[24rem]" onclick="event.stopPropagation()"><div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-3"><h3 class="text-white font-black text-lg">📊 Alpha 動能評分報告</h3><button onclick="document.getElementById('scoreDetailModal').classList.add('hidden'); document.getElementById('scoreDetailModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button></div><div class="text-xs text-gray-500 mb-3 leading-relaxed">融合大師型態學，加入紅黑棒係數與島型反轉偵測機制。</div><div id="scoreDetailContent" class="flex flex-col gap-2 text-sm font-mono text-gray-300 bg-[#0d1117] p-3 rounded-lg border border-[#30363d]"></div></div></div>
 
-    <!-- ⚙️ V61.9 K線指標設定 modal(頁面頂層,避開 sticky 卡 z-index 陷阱;renderChart 讀這些 checkbox.checked) -->
-    <div id="kchartSettingsModal" class="modal-base hidden" onclick="if(event.target===this){app.closeKchartSettings();}">
-        <div class="modal-content max-w-[24rem] max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2 sticky top-0 bg-[#161b22] z-10">
-                <h3 class="text-white font-black text-base flex items-center gap-1.5">⚙️ K線指標設定</h3>
-                <button onclick="app.closeKchartSettings()" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+    <!-- ⚙️ V61.10 K線指標設定 modal(對標籌碼K線:均線 checkbox+色塊+可調週期拉桿 2-240 + 取消/確定;頁面頂層避 sticky z-index 陷阱) -->
+    <div id="kchartSettingsModal" class="modal-base hidden" onclick="if(event.target===this){app.closeKchartSettings(true);}">
+        <div class="modal-content max-w-[26rem] max-h-[88vh] flex flex-col p-0 overflow-hidden" onclick="event.stopPropagation()">
+            <div class="flex justify-center items-center px-4 py-3 border-b border-gray-700 flex-shrink-0 relative">
+                <h3 class="text-white font-black text-base">K線指標設定</h3>
+                <button onclick="app.closeKchartSettings(true)" class="absolute right-3 text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
             </div>
-            <div class="text-[11px] font-bold text-orange-300 mb-1.5">📏 均線 MA</div>
-            <div class="flex flex-wrap gap-2 text-sm font-bold font-mono items-center mb-3">
-                <label class="ma-toggle-lbl text-[#ffffff] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA5" checked onchange="app.renderChart()" class="hidden"><span>MA5</span></label>
-                <label class="ma-toggle-lbl text-[#facc15] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA10" checked onchange="app.renderChart()" class="hidden"><span>MA10</span></label>
-                <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleMA20" checked onchange="app.renderChart()" class="hidden"><span>MA20</span></label>
-                <label class="ma-toggle-lbl text-[#3b82f6] cursor-pointer flex items-center" title="60 日均線(季線)"><input type="checkbox" id="toggleMA60" checked onchange="app.renderChart()" class="hidden"><span>MA60</span></label>
-                <label class="ma-toggle-lbl text-[#ec4899] cursor-pointer flex items-center" title="120 日均線(半年線)"><input type="checkbox" id="toggleMA120" onchange="app.renderChart()" class="hidden"><span>MA120</span></label>
-                <label class="ma-toggle-lbl text-[#f97316] cursor-pointer flex items-center" title="240 日均線(年線)"><input type="checkbox" id="toggleMA240" onchange="app.renderChart()" class="hidden"><span>MA240</span></label>
+            <!-- 時間軸:日/週/月 可用;分K/還原K 需分鐘/還原股價資料(暫無) -->
+            <div class="flex items-center justify-center gap-1 px-3 py-2 border-b border-[#21262d] flex-shrink-0 text-[13px] font-bold" id="kchartTfTabs">
+                <button onclick="app.changeTimeframe('D'); app._syncKchartTf();" data-ktf="D" class="px-3 py-1 rounded">日</button>
+                <button onclick="app.changeTimeframe('W'); app._syncKchartTf();" data-ktf="W" class="px-3 py-1 rounded">週</button>
+                <button onclick="app.changeTimeframe('M'); app._syncKchartTf();" data-ktf="M" class="px-3 py-1 rounded">月</button>
+                <span class="px-3 py-1 text-gray-600" title="需分鐘K資料(暫無資料源)">分K</span>
+                <span class="px-3 py-1 text-gray-600" title="需還原權值股價(暫無資料源)">還原K</span>
             </div>
-            <div class="text-[11px] font-bold text-orange-300 mb-1.5">📐 EMA 指數平滑</div>
-            <div class="flex flex-wrap gap-2 text-sm font-bold font-mono items-center mb-3">
-                <label class="ma-toggle-lbl text-[#06b6d4] cursor-pointer flex items-center" title="指數平滑移動平均 EMA5(對近期價格更敏感)"><input type="checkbox" id="toggleEMA5" onchange="app.renderChart()" class="hidden"><span>EMA5</span></label>
-                <label class="ma-toggle-lbl text-[#84cc16] cursor-pointer flex items-center" title="EMA20"><input type="checkbox" id="toggleEMA20" onchange="app.renderChart()" class="hidden"><span>EMA20</span></label>
-                <label class="ma-toggle-lbl text-[#f43f5e] cursor-pointer flex items-center" title="EMA60"><input type="checkbox" id="toggleEMA60" onchange="app.renderChart()" class="hidden"><span>EMA60</span></label>
+            <div class="overflow-y-auto px-4 py-3 flex-1">
+                <div class="flex items-center gap-1.5 mb-2"><span class="w-1 h-4 bg-orange-400 rounded"></span><span class="text-[13px] font-bold text-gray-100">均線設定</span><span class="text-[10px] text-gray-500">(範圍 2-240)</span></div>
+                <div class="text-[11px] font-bold text-gray-400 mb-1">MA:簡單移動平均線</div>
+                <div id="kchartMaRows" class="mb-4"></div>
+                <div class="text-[11px] font-bold text-gray-400 mb-1">EMA:指數平滑移動平均線</div>
+                <div id="kchartEmaRows" class="mb-4"></div>
+                <div class="flex items-center gap-1.5 mb-2"><span class="w-1 h-4 bg-orange-400 rounded"></span><span class="text-[13px] font-bold text-gray-100">其他指標</span></div>
+                <div class="grid grid-cols-2 gap-x-3 gap-y-2.5 mb-2">
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleFCost" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">外資成本</span><span class="w-4 h-0.5 rounded" style="background:#a78bfa"></span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleTCost" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">投信成本</span><span class="w-4 h-0.5 rounded" style="background:#2dd4bf"></span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleInvCost" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">庫存成本</span><span class="w-4 h-0.5 rounded" style="background:#fbbf24"></span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">布林軌道</span><span class="w-4 h-0.5 rounded" style="background:#c084fc"></span></label>
+                </div>
+                <div class="text-[10px] text-gray-500 mb-1">主力成本(分點,僅觀察清單)、融資成本 暫無全市場資料源,未列入。</div>
+                <div class="flex items-center gap-1.5 mb-2 mt-3"><span class="w-1 h-4 bg-orange-400 rounded"></span><span class="text-[13px] font-bold text-gray-100">型態標記 / 事件旗標</span></div>
+                <div class="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="togglePeaks" checked onchange="app.togglePeaksHandler(this.checked)" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">頭高/底高</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="togglePatterns" checked onchange="app.togglePatternsHandler(this.checked)" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">技術型態</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleExDiv" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">除權息</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleFinRpt" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">財報公告</span></label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleRev" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">月營收</span></label>
+                </div>
+                <div class="text-[9px] text-gray-600 leading-snug mt-3">💡 拖拉桿改均線週期(2-240,即時預覽);此為圖表顯示線,朱家泓判讀仍固定用 MA5/20/60。副圖在 K 線上方 toolbar 選。</div>
             </div>
-            <div class="text-[11px] font-bold text-orange-300 mb-1.5">💰 成本線 / 通道</div>
-            <div class="flex flex-wrap gap-2 text-sm font-bold font-mono items-center mb-3">
-                <label class="ma-toggle-lbl text-[#a78bfa] cursor-pointer flex items-center" title="外資成本線:近60日買賣量加權平均價(外資主要進出價位估算,非官方揭露)。上櫃/冷門股法人資料為空時不顯示"><input type="checkbox" id="toggleFCost" onchange="app.renderChart()" class="hidden"><span>外資成本</span></label>
-                <label class="ma-toggle-lbl text-[#2dd4bf] cursor-pointer flex items-center" title="投信成本線:近60日買賣量加權平均價(投信主要進出價位估算)"><input type="checkbox" id="toggleTCost" onchange="app.renderChart()" class="hidden"><span>投信成本</span></label>
-                <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="庫存成本線(你的持股均價水平線;需先填成本或在庫存表建立)"><input type="checkbox" id="toggleInvCost" onchange="app.renderChart()" class="hidden"><span>庫存成本</span></label>
-                <label class="ma-toggle-lbl text-[#c084fc] cursor-pointer flex items-center"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="hidden"><span>布林軌道</span></label>
+            <div class="flex border-t border-gray-700 flex-shrink-0">
+                <button onclick="app.closeKchartSettings(true)" class="flex-1 py-3 text-gray-300 font-bold text-[15px] hover:bg-white/5">取消</button>
+                <button onclick="app.closeKchartSettings(false)" class="flex-1 py-3 text-blue-300 font-bold text-[15px] border-l border-gray-700 hover:bg-blue-900/20">確定</button>
             </div>
-            <div class="text-[11px] font-bold text-orange-300 mb-1.5">🏷️ 型態標記 / 事件旗標</div>
-            <div class="flex flex-wrap gap-2 text-sm font-bold font-mono items-center mb-2">
-                <label class="ma-toggle-lbl text-[#4ade80] cursor-pointer flex items-center" title="頭高 / 底高 5-bar fractal 標示(週/月 K 也適用)"><input type="checkbox" id="togglePeaks" checked onchange="app.togglePeaksHandler(this.checked)" class="hidden"><span>底高</span></label>
-                <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="技術型態/形態學:在 K 線上標註 黑三兵/槌子/吞噬/M頭W底/頭肩 等(純 JS 偵測,點標籤或下方 chip 看白話)"><input type="checkbox" id="togglePatterns" checked onchange="app.togglePatternsHandler(this.checked)" class="hidden"><span>型態</span></label>
-                <label class="ma-toggle-lbl text-[#fbbf24] cursor-pointer flex items-center" title="除權息 K線標記:除息交易日插「息」旗標,點旗標用 Perplexity 查填息狀況(僅日線)"><input type="checkbox" id="toggleExDiv" checked onchange="app.renderChart()" class="hidden"><span>除息</span></label>
-                <label class="ma-toggle-lbl text-[#60a5fa] cursor-pointer flex items-center" title="財報公告旗標(標準公告日近似:Q1約5/15、Q2約8/14、Q3約11/14、年報約3/31);點旗標用 Perplexity 查該季財報好壞(僅日線)"><input type="checkbox" id="toggleFinRpt" onchange="app.renderChart()" class="hidden"><span>財報</span></label>
-                <label class="ma-toggle-lbl text-[#34d399] cursor-pointer flex items-center" title="月營收公告旗標(近似每月10日);點旗標用 Perplexity 查該月營收 YoY 好壞(僅日線,較密預設關)"><input type="checkbox" id="toggleRev" onchange="app.renderChart()" class="hidden"><span>營收</span></label>
-            </div>
-            <div class="text-[9px] text-gray-600 leading-snug mt-2">點一下切換顯示/隱藏,亮色=開。副圖(成交量/法人買賣超/KD/MACD/OBV)在 K 線上方 toolbar 選,可同時看 2 個。</div>
         </div>
     </div>
     <!-- V21.7 — Q1.1 jargon modal 修破圖:加 max-h + flex + scroll 區 + 頂部 ✕ 鈕(原本內容多會超出畫面且無關閉鍵)-->
@@ -564,7 +569,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3076,6 +3081,9 @@ const app = {
     apiDataCache: {}, allStockList: [], baseRawData: [], rawDailyData: [], activeData: [], indicators: {},
     navStack: ['diag'], currentSymbolId: '2330', currentTF: 'D', currentSubChart: 'VOL',
     subChart1: 'VOL', subChart2: 'INST',   // 🎛️ V61.9 雙副圖:可同時看 2 個(成交量/法人買賣超/KD/MACD/OBV/無)
+    // 🎛️ V61.10 均線可調週期 slots(顯示用,2-240;策略引擎仍用 worker 固定 MA5/20/60)
+    maSlots: [{ p: 5, on: true, c: '#ffffff' }, { p: 10, on: true, c: '#facc15' }, { p: 20, on: true, c: '#c084fc' }, { p: 60, on: true, c: '#3b82f6' }, { p: 120, on: false, c: '#ec4899' }, { p: 240, on: false, c: '#f97316' }],
+    emaSlots: [{ p: 5, on: false, c: '#06b6d4' }, { p: 20, on: false, c: '#84cc16' }, { p: 60, on: false, c: '#f43f5e' }],
     chartInstance: null, edgeSwipeStartX: 999,
     currentUSMarket: 'neutral', currentStrategyContext: {},
     _aiRecalcTimer: null, _lastAITrigger: null,   // 自動 AI 分析：debounce 計時器 + 5 分鐘 cache key
@@ -3544,6 +3552,7 @@ const app = {
         // V24.6 — V24.5 init 強塞段已刪(改用 HTML 寫死救援頭,5 個 tab 開頭直接 hardcoded)
         this._initOnboard();
         try { this._initSubChartSel(); } catch (_) {}   // 🎛️ V61.9 還原雙副圖選擇
+        try { this._initKchartSettings(); } catch (_) {}   // 🎛️ V61.10 還原均線可調週期 slots
         // V21.3 ── Telegram 深連結支援:?sym=2330 自動跳該股(初始 sym 在 init 流程後才 switch)
         try {
             const qSym = new URLSearchParams(window.location.search).get('sym');
@@ -23443,9 +23452,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // V29.3:補 開/高/低(對齊專業 App 浮動 OHLC 框)
         if (d.open != null && d.high != null && d.low != null) html += `<span class="text-gray-400">開${d.open.toFixed(2)}</span><span class="text-[#f87171]">高${d.high.toFixed(2)}</span><span class="text-[#4ade80]">低${d.low.toFixed(2)}</span>`;
         if (document.getElementById('toggleBB')?.checked && ind.upperBB && ind.upperBB[index]) html += `<span class="text-[#c084fc]">布林上軌 ${ind.upperBB[index].toFixed(2)}</span>`;
-        if (document.getElementById('toggleMA5')?.checked && ind.ma5 && ind.ma5[index]) html += `<span class="text-[#ffffff]">5MA ${ind.ma5[index].toFixed(2)}</span>`;
-        if (document.getElementById('toggleMA10')?.checked && ind.ma10 && ind.ma10[index]) html += `<span class="text-[#facc15]">10MA ${ind.ma10[index].toFixed(2)}</span>`;
-        if (document.getElementById('toggleMA20')?.checked && ind.ma20 && ind.ma20[index]) html += `<span class="text-[#c084fc]">20MA ${ind.ma20[index].toFixed(2)}</span>`;
+        // 🎛️ V61.10 HUD 顯標準 5/10/20 MA(策略引擎用的固定週期);對應 slot 有開才顯
+        const _slotOn = p => (this.maSlots || []).some(s => s.on && s.p === p);
+        if (_slotOn(5) && ind.ma5 && ind.ma5[index]) html += `<span class="text-[#ffffff]">5MA ${ind.ma5[index].toFixed(2)}</span>`;
+        if (_slotOn(10) && ind.ma10 && ind.ma10[index]) html += `<span class="text-[#facc15]">10MA ${ind.ma10[index].toFixed(2)}</span>`;
+        if (_slotOn(20) && ind.ma20 && ind.ma20[index]) html += `<span class="text-[#c084fc]">20MA ${ind.ma20[index].toFixed(2)}</span>`;
         html += `</div>`;
         const hud = document.getElementById('chartHud'); if (hud) hud.innerHTML = html;
       } catch (_) {}
@@ -23598,13 +23609,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 { type: 'slider', xAxisIndex: [0, 1, 2], start: currentZoomStart, end: currentZoomEnd, height: 18, bottom: 4, borderColor: '#30363d', backgroundColor: '#0d1117', fillerColor: 'rgba(96, 165, 250, 0.25)', handleStyle: { color: '#3b82f6', borderColor: '#1d4ed8' }, textStyle: { color: '#8b949e', fontSize: 9 }, brushSelect: false, throttle: 50 }
             ],
             series: [
-                { name: 'K線', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' }, markPoint: { data: markPointData }, markLine: { symbol: ['none', 'none'], data: markLineData, animation: false } },
-                { name: 'MA5', type: 'line', data: ind.ma5, smooth: false, showSymbol: false, lineStyle: { width: 1.5, color: '#ffffff' }, xAxisIndex: 0, yAxisIndex: 0 },
-                { name: 'MA10', type: 'line', data: ind.ma10, smooth: false, showSymbol: false, lineStyle: { width: 1.5, color: '#facc15' }, xAxisIndex: 0, yAxisIndex: 0 },
-                { name: 'MA20', type: 'line', data: ind.ma20, smooth: false, showSymbol: false, lineStyle: { width: 2, color: '#c084fc' }, xAxisIndex: 0, yAxisIndex: 0 },
-                { name: 'MA60', type: 'line', data: ind.ma60, smooth: false, showSymbol: false, lineStyle: { width: 2, color: '#3b82f6' }, xAxisIndex: 0, yAxisIndex: 0 }
+                { name: 'K線', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' }, markPoint: { data: markPointData }, markLine: { symbol: ['none', 'none'], data: markLineData, animation: false } }
             ]
         };
+
+        // 🎛️ V61.10 均線改「可調週期」display slots(2-240,設定 modal 拉桿即時變);與策略引擎(worker 固定 MA5/20/60)分離,純顯示不影響判讀
+        const _closes = data.map(d => +((d?.close ?? d?.c) || 0));
+        const _sma = p => _closes.map((_, i) => i < p - 1 ? null : _closes.slice(i - p + 1, i + 1).reduce((a, b) => a + b, 0) / p);
+        const _emaCalc = p => { const kf = 2 / (p + 1), out = new Array(_closes.length).fill(null); if (_closes.length < p) return out; let s = _closes.slice(0, p).reduce((a, b) => a + b, 0) / p; out[p - 1] = s; for (let i = p; i < _closes.length; i++) { s = _closes[i] * kf + s * (1 - kf); out[i] = s; } return out; };
+        (this.maSlots || []).forEach(sl => { if (sl.on && sl.p >= 2) option.series.push({ name: `MA${sl.p}`, type: 'line', data: _sma(sl.p), smooth: false, showSymbol: false, lineStyle: { width: sl.p >= 20 ? 2 : 1.5, color: sl.c }, xAxisIndex: 0, yAxisIndex: 0, z: 2 }); });
+        (this.emaSlots || []).forEach(sl => { if (sl.on && sl.p >= 2) option.series.push({ name: `EMA${sl.p}`, type: 'line', data: _emaCalc(sl.p), smooth: false, showSymbol: false, lineStyle: { width: 1, color: sl.c }, xAxisIndex: 0, yAxisIndex: 0, z: 2 }); });
 
         // V29.2 ZigZag 連接線:把頭/底轉折點連成折線(專業 App 籌碼K線最明顯的差異),壓在 K 棒下層
         if (this.showPeaks !== false && this.zigzag && this.zigzag.length >= 2) {
@@ -23618,22 +23632,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             option.series.push({ name: 'LowerBB', type: 'line', data: ind.lowerBB, smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#c084fc', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0 });
         }
 
-        if (!document.getElementById('toggleMA5').checked) option.series[1].data = [];
-        if (!document.getElementById('toggleMA10').checked) option.series[2].data = [];
-        if (!document.getElementById('toggleMA20').checked) option.series[3].data = [];
-
-        // V52.x — MA60(既有 series[4],加 toggle 可關)/ MA120 / MA240 / EMA / 法人成本線(對標籌碼K線)
-        if (!document.getElementById('toggleMA60')?.checked) option.series[4].data = [];
+        // 💰 成本線(外資/投信)仍讀設定 modal 的 checkbox；MA/EMA 已改上方 slot 動態產生
         const _pushLine = (id, name, arr, color, width, dash) => {
             if (document.getElementById(id)?.checked && arr && arr.some(v => v != null)) {
                 option.series.push({ name, type: 'line', data: arr, showSymbol: false, smooth: false, connectNulls: !!dash, lineStyle: { width, color, type: dash ? 'dashed' : 'solid' }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
             }
         };
-        _pushLine('toggleMA120', 'MA120', ind.ma120, '#ec4899', 1.5, false);
-        _pushLine('toggleMA240', 'MA240', ind.ma240, '#f97316', 1.5, false);
-        _pushLine('toggleEMA5', 'EMA5', ind.ema5, '#06b6d4', 1, false);
-        _pushLine('toggleEMA20', 'EMA20', ind.ema20, '#84cc16', 1, false);
-        _pushLine('toggleEMA60', 'EMA60', ind.ema60, '#f43f5e', 1, false);
         _pushLine('toggleFCost', '外資成本', ind.foreignCost, '#a78bfa', 1.5, true);
         _pushLine('toggleTCost', '投信成本', ind.trustCost, '#2dd4bf', 1.5, true);
 
@@ -23696,14 +23700,67 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (s1) s1.value = this.subChart1;
         if (s2) s2.value = this.subChart2;
     },
-    // ⚙️ V61.9 K線指標設定 modal(收納均線/EMA/成本線/型態旗標 toggle)
+    // ⚙️ V61.10 K線指標設定 modal(對標籌碼K線:均線色塊 + 可調週期拉桿 2-240 + 取消/確定)
     openKchartSettings() {
+        this._kchartSnapshot = JSON.stringify({ ma: this.maSlots, ema: this.emaSlots });   // 供「取消」還原
+        this._renderKchartMaRows();
+        this._syncKchartTf();
         const m = document.getElementById('kchartSettingsModal');
         if (m) { m.classList.remove('hidden'); m.style.display = 'flex'; }
     },
-    closeKchartSettings() {
+    // revert=true(取消/背景/✕)→ 還原快照;false(確定)→ 保留
+    closeKchartSettings(revert) {
+        if (revert && this._kchartSnapshot) {
+            try { const s = JSON.parse(this._kchartSnapshot); this.maSlots = s.ma; this.emaSlots = s.ema; this._saveMaSlots(); this.renderChart(); } catch (_) {}
+        }
         const m = document.getElementById('kchartSettingsModal');
         if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+    },
+    _saveMaSlots() { try { localStorage.setItem('proTerminalMaSlots', JSON.stringify({ ma: this.maSlots, ema: this.emaSlots })); } catch (_) {} },
+    _initKchartSettings() {
+        try {
+            const s = JSON.parse(localStorage.getItem('proTerminalMaSlots') || 'null');
+            if (s && Array.isArray(s.ma) && s.ma.length) this.maSlots = s.ma;
+            if (s && Array.isArray(s.ema) && s.ema.length) this.emaSlots = s.ema;
+        } catch (_) {}
+    },
+    // 均線列:checkbox(色塊)+ 週期 label + 拉桿(2-240)
+    _renderKchartMaRows() {
+        const row = (type, sl, i) => {
+            const on = sl.on, lbl = (type === 'ma' ? 'MA' : 'EMA') + sl.p;
+            return `<div class="flex items-center gap-2 py-1.5">
+                <button onclick="app._maSlotToggle('${type}',${i})" class="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-white text-[13px] font-black ${on ? 'bg-orange-500' : 'border-2 border-gray-600'}">${on ? '✓' : ''}</button>
+                <span id="maLbl_${type}_${i}" class="w-[52px] text-[13px] font-bold font-mono text-gray-100 flex-shrink-0">${lbl}</span>
+                <span class="w-4 h-0.5 rounded flex-shrink-0" style="background:${sl.c}"></span>
+                <input type="range" min="2" max="240" value="${sl.p}" oninput="app._maSlotSet('${type}',${i},this.value)" class="flex-1 min-w-0 accent-orange-500">
+            </div>`;
+        };
+        const ma = document.getElementById('kchartMaRows'), ema = document.getElementById('kchartEmaRows');
+        if (ma) ma.innerHTML = this.maSlots.map((sl, i) => row('ma', sl, i)).join('');
+        if (ema) ema.innerHTML = this.emaSlots.map((sl, i) => row('ema', sl, i)).join('');
+    },
+    _maSlotSet(type, i, val) {
+        const slots = type === 'ma' ? this.maSlots : this.emaSlots;
+        if (!slots[i]) return;
+        slots[i].p = Math.max(2, Math.min(240, parseInt(val) || 2));
+        const lbl = document.getElementById(`maLbl_${type}_${i}`);
+        if (lbl) lbl.textContent = (type === 'ma' ? 'MA' : 'EMA') + slots[i].p;
+        this._saveMaSlots();
+        this.renderChart();
+    },
+    _maSlotToggle(type, i) {
+        const slots = type === 'ma' ? this.maSlots : this.emaSlots;
+        if (!slots[i]) return;
+        slots[i].on = !slots[i].on;
+        this._saveMaSlots();
+        this._renderKchartMaRows();
+        this.renderChart();
+    },
+    _syncKchartTf() {
+        document.querySelectorAll('#kchartTfTabs button[data-ktf]').forEach(b => {
+            const active = b.getAttribute('data-ktf') === this.currentTF;
+            b.className = active ? 'px-3 py-1 rounded bg-orange-500 text-white' : 'px-3 py-1 rounded text-gray-300 hover:text-white';
+        });
     },
 
     // 📊 V58.0 — KD/MACD 副圖按鈕加「當前狀態」小字(不切副圖也一眼看到金叉/死叉、紅柱/綠柱)
