@@ -163,6 +163,53 @@ def total_return_metrics(sym):
     return None
 
 
+def dividend_fill_metrics(sym, max_divs=6, fill_window=120):
+    """🆕 缺口3(12-3):ETF 填息力。近 max_divs 次配息,每次除息後多少天內「填息」
+    (收盤回到除息前一日收盤 = 填息目標)。回 {fill_rate(%), avg_fill_days, samples} 或 None。
+    用 yfinance 原始(未還原)收盤 + 配息序列;全程容錯,任何失敗回 None(前端自動隱藏)。
+    填息力是高息 ETF 的硬指標(逐字稿:填息越快越強;配息頻率只是心理安慰)。"""
+    if yf is None or not sym:
+        return None
+    for suffix in (".TW", ".TWO"):
+        try:
+            t = yf.Ticker(sym + suffix)
+            h = t.history(period="2y", auto_adjust=False)
+            if h is None or h.empty:
+                continue
+            divs = t.dividends
+            if divs is None or len(divs) == 0:
+                continue
+            closes = h["Close"]
+            idx = list(closes.index)
+            filled = total = days_sum = 0
+            for exdate, amt in list(divs.items())[-max_divs:]:
+                if not amt or amt <= 0:
+                    continue
+                pos = next((i for i, dt in enumerate(idx) if dt.date() >= exdate.date()), None)
+                if not pos:            # None 或 0(除息前一日無資料)都跳過
+                    continue
+                pre_close = float(closes.iloc[pos - 1])
+                if pre_close <= 0:
+                    continue
+                total += 1
+                for j in range(pos, min(len(idx), pos + fill_window)):
+                    if float(closes.iloc[j]) >= pre_close:
+                        filled += 1
+                        days_sum += (j - pos + 1)
+                        break
+            if total == 0:
+                return None
+            res = {"fill_rate": round(filled / total * 100, 0),
+                   "avg_fill_days": round(days_sum / filled, 0) if filled else None,
+                   "samples": total}
+            print(f"  ✓ [填息] {sym}: 填息率 {res['fill_rate']}% / 平均 {res['avg_fill_days']} 天 / {total} 次")
+            return res
+        except Exception as _fe:
+            print(f"  · [填息] {sym}{suffix}: {type(_fe).__name__}: {str(_fe)[:60]}")
+            continue
+    return None
+
+
 def perf_with_tr(sym, rows):
     """市價報酬 + 含息總報酬合併(含息抓失敗就只有市價,前端自會 fallback)。"""
     m = perf_metrics(rows)
@@ -669,7 +716,9 @@ def main():
         },
         "consensus_stocks": consensus_stocks[:200],   # V17.15 — 前 200 檔給前端
         "benchmarks": [
-            {"symbol": b, "name": etf_name(b), "perf": perf_with_tr(b, load_prices(b)), **({"premium": premiums[b]} if b in premiums else {})}
+            {"symbol": b, "name": etf_name(b), "perf": perf_with_tr(b, load_prices(b)),
+             "fill": dividend_fill_metrics(b),   # 🆕 缺口3:填息力(高息 ETF 硬指標)
+             **({"premium": premiums[b]} if b in premiums else {})}
             for b in BENCHMARKS
         ],
     }
