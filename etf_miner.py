@@ -287,6 +287,25 @@ _FUND_SIZE_KEYS = ("fund_size", "fundSize", "total_nav", "totalNav", "nav_total"
                    "totalAsset", "total_asset", "aum", "scale", "fundScale",
                    "資產規模", "基金規模", "淨資產", "總資產", "受益權單位淨資產")
 
+# 🆕 缺口1(12-3):總費用率(內扣)。etfinfo 可能有 expense/fee 欄,best-effort 抓,抓不到回 None。
+_FEE_KEYS = ("expense_ratio", "expenseRatio", "expense", "totalExpense", "total_expense",
+             "ter", "totalExpenseRatio", "managementFee", "management_fee", "fee",
+             "內扣", "總費用率", "總開銷", "經理費", "管理費", "費用率")
+
+
+def _norm_expense(v):
+    """把抓到的費用值正規化成「%」。TW ETF 內扣多在 0.3~1.5%。
+    只在「可信格式」才回值,無法判定格式(避免顯示錯誤數字)一律回 None(誠實優先)。
+      0.0005~0.03 = 小數格式(0.004→0.4%);0.05~3 = 已是百分比;其餘 → None。"""
+    v = _to_float(v)
+    if not v or v <= 0:
+        return None
+    if 0.0005 <= v <= 0.03:
+        return round(v * 100, 3)
+    if 0.05 <= v <= 3:
+        return round(v, 3)
+    return None
+
 
 def _deep_find_scalar(obj, keys, depth=0):
     """遞迴在 JSON 中找含 keys 之一的純量(數字字串),回傳 float 或 None"""
@@ -318,27 +337,29 @@ def _deep_find_scalar(obj, keys, depth=0):
 
 
 def fetch_etf_detail(sym):
-    """回傳 (name, holdings[{sym,name,weight}], fund_size_or_None)。
-    用 etfinfo /api/etf/{code};失敗回 (None, [], None)。
-    fund_size 是新增欄位:基金規模(單位通常為元),用於估算「整體 ETF 共識買賣超張數」。"""
+    """回傳 (name, holdings[{sym,name,weight}], fund_size_or_None, expense_ratio_or_None)。
+    用 etfinfo /api/etf/{code};失敗回 (None, [], None, None)。
+    fund_size:基金規模(元),估算共識買賣超張數。expense_ratio:總費用率(%,缺口1,best-effort)。"""
     try:
         time.sleep(0.4)  # 對 etfinfo 禮貌節流(10+ 檔序列抓取,避免被限流)
         r = session.get(ETFINFO_API.format(s=sym), headers=_hdrs(), timeout=15)
         if r.status_code != 200 or not r.text:
             print(f"  · etfinfo {sym} status={r.status_code}")
-            return None, [], None
+            return None, [], None, None
         d = r.json()
         name = ((d.get("info") or {}).get("name")) if isinstance(d, dict) else None
         lst = _deep_find_holdings(d)
         holds = _normalize_holdings(lst) if lst else []
         holds.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
         fund_size = _deep_find_scalar(d, _FUND_SIZE_KEYS)
+        _fee_raw = _deep_find_scalar(d, _FEE_KEYS)   # 缺口1:best-effort,首跑 log 出原始值供迭代
+        expense_ratio = _norm_expense(_fee_raw)
         if holds:
-            print(f"  ✓ etfinfo {sym}: name={name} holdings={len(holds)} fund_size={fund_size}")
-        return name, holds, fund_size
+            print(f"  ✓ etfinfo {sym}: name={name} holdings={len(holds)} fund_size={fund_size} fee_raw={_fee_raw}→{expense_ratio}%")
+        return name, holds, fund_size, expense_ratio
     except Exception as e:
         print(f"  ⚠️ etfinfo {sym}: {type(e).__name__}: {e}")
-        return None, [], None
+        return None, [], None, None
 
 
 def _latest_close(stock_sym):
@@ -494,7 +515,7 @@ def main():
     got_holdings = 0
     price_cache = {}  # 個股最新 close 共用 cache(估算張數時避免重讀 JSON)
     for s, m in top:
-        api_name, curr_h, fund_size = fetch_etf_detail(s)
+        api_name, curr_h, fund_size, expense_ratio = fetch_etf_detail(s)
         # 估算每檔持股張數(必須在 diff 之前算,讓 diff 拿得到 est_shares 算 delta)
         if curr_h and fund_size:
             _attach_est_shares(curr_h, fund_size, price_cache)
@@ -525,6 +546,7 @@ def main():
             "name": api_name or etf_name(s),
             "perf": m,
             "fund_size": fund_size,
+            "expense_ratio": expense_ratio,
             "cash_ratio": cash_ratio,
             "top1": top1,
             "holdings": curr_h[:HOLD_TOP],
@@ -614,7 +636,7 @@ def main():
     concentration = []
     for cs in CONC_WATCH:
         try:
-            c_name, c_holds, _cfs = fetch_etf_detail(cs)
+            c_name, c_holds, _cfs, _cfee = fetch_etf_detail(cs)
             if not c_holds:
                 continue
             c_holds.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
