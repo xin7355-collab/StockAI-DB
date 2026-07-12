@@ -15,8 +15,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V61.6(自選頁重設計:FAB 浮動新增鈕 + 欄位式卡片 + 趨勢欄;
-         策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V61.7(自選頁「✏️ 編輯」全螢幕頁:新增/排序/勾選刪除/新增至其他清單/清單管理;移除突兀 FAB;
+         庫存表 w-max 修列底色 + 今日損益兩行表頭;欄位式卡片 + 趨勢欄;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2514,11 +2514,12 @@
         <div id="tabContentFav" class="flex-col pb-4" style="display:none;min-height:80vh;">
             <div class="sticky top-0 z-40 bg-[#0d1117] border-b border-[#30363d] shadow-sm flex items-center w-full pr-1 pt-1 pb-1">
                 <div id="favGroupTabs" class="flex items-center flex-grow overflow-x-auto scrollbar-hide py-0.5"></div>
-                <button onclick="app.toggleFavEditMode(); app.vibrate(30);" id="btnFavEdit" class="ml-1 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-xl font-bold bg-[#161b22] px-2 py-1 rounded border border-[#30363d]">✏️</button>
+                <!-- ✏️ V61.7 改「編輯」全螢幕頁(參考專業 App):新增/排序/刪除/新增至/清單管理一頁搞定;取代原 FAB + 內嵌切換 -->
+                <button onclick="app.openFavEditPage(); app.vibrate(30);" id="btnFavEdit" class="ml-1 flex-shrink-0 text-[13px] font-bold text-gray-200 hover:text-white bg-[#21262d] hover:bg-[#30363d] px-3 py-1.5 rounded-lg border border-[#30363d] transition-colors flex items-center gap-1"><span class="text-[15px]">✏️</span>編輯</button>
             </div>
             <div class="p-2">
                 <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative overflow-hidden">
-                    <!-- ⭐ V61.6 自選頁重設計:刪除說明列 + 固定搜尋列 → 改右下角浮動新增鈕(FAB,見 tabContentFav 底部) -->
+                    <!-- ⭐ V61.7 自選頁:新增/排序/刪除/新增至 全收進「✏️ 編輯」全螢幕頁(openFavEditPage);已移除突兀的浮動 + 鈕 -->
                     <!-- 📢 V31.9 多頭待發射:自選掃打底 + 距突破由近到遠(重用 _chuResistanceZones) -->
                     <div class="mx-2 my-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                         <div class="flex items-center gap-1.5 mb-1">
@@ -2536,34 +2537,8 @@
                         <p class="text-base font-bold mb-2">此清單目前空空如也</p>
                         <button onclick="app.switchAppTab('diag'); document.getElementById('symbolInput').focus();" class="mt-2 bg-blue-900/50 text-blue-400 px-4 py-2 rounded text-sm border border-blue-800 font-bold">去診斷並加入自選</button>
                     </div>
-                    <div id="favListContainer" class="flex flex-col pb-24 pt-1"></div>
+                    <div id="favListContainer" class="flex flex-col pb-6 pt-1"></div>
                 </div>
-            </div>
-            <!-- ➕ V61.6 浮動新增鈕(FAB):右下角,滑動時隱藏、停頓 0.6s 浮出;點開新增個股 bottom sheet -->
-            <button id="favAddFab" onclick="app.openFavAddSheet()" aria-label="新增自選個股"
-                class="fixed bottom-20 right-4 z-[400] w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-3xl font-bold shadow-lg shadow-blue-900/60 flex items-center justify-center active:scale-90"
-                style="transition: transform .32s cubic-bezier(.22,1,.36,1), opacity .32s;">＋</button>
-        </div>
-
-        <!-- ➕ V61.6 新增自選個股 bottom sheet(FAB 點開;沿用 favDirectInput / favSearchDropdown,既有 handleFavSearchInput / favDirectAdd 不動) -->
-        <div id="favAddSheet" class="hidden fixed inset-0 z-[500] bg-black/60 flex items-end justify-center" onclick="if(event.target===this)app.closeFavAddSheet()">
-            <div class="w-full max-w-md bg-[#161b22] border-t border-[#30363d] rounded-t-2xl p-4 pb-8 shadow-2xl">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-sm font-black text-gray-100">➕ 新增自選個股</span>
-                    <button onclick="app.closeFavAddSheet()" class="text-gray-400 hover:text-white text-xl leading-none">✕</button>
-                </div>
-                <div class="relative">
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="favDirectInput" placeholder="代號或中文名稱，Enter 加入..."
-                            autocomplete="off" inputmode="text"
-                            class="flex-1 bg-[#0d1117] text-white px-3 py-2.5 rounded-lg border border-[#30363d] text-sm outline-none focus:border-blue-500 font-mono"
-                            oninput="app.handleFavSearchInput(event)" onfocus="app.handleFavSearchInput(event)"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('favSearchDropdown').classList.add('hidden');app.favDirectAdd();}">
-                        <button onclick="app.favDirectAdd()" class="text-blue-300 font-bold text-sm px-3 py-2.5 border border-blue-800 rounded-lg hover:bg-blue-900/30 transition-colors">➕</button>
-                    </div>
-                    <ul id="favSearchDropdown" class="hidden absolute top-[100%] left-0 right-0 mt-1 bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-60 z-[520]"></ul>
-                </div>
-                <div class="text-[10px] text-gray-500 mt-2.5 leading-relaxed">輸入代號或中文名 → 按 Enter/➕ 加入。可連續加多檔，加完點 ✕ 關閉。</div>
             </div>
         </div>
 
@@ -2603,10 +2578,11 @@
 <!-- 💡 操作提示行 V44.6 已刪除(使用者要求版面乾淨) -->
                     <!-- V46.2 左右滑動;🧊 V59.2 凍結:清單改容器內捲(max-height + overflow-auto),表頭 sticky top-0 固定於捲動區頂;上方統計卡因清單自捲、面板不撐破頁面 → 也不被捲走 -->
                     <div class="overflow-auto scrollbar-hide" style="max-height: calc(100dvh - 336px);">
-                        <div class="min-w-[466px]">
+                        <!-- 🐛 V61.7 w-max:讓外框寬度=最寬列的內容寬(而非只吃 466px 視窗寬)→ 橫捲到最右時「均價/總成本」欄列底色也填滿,不再露出頁面底色 -->
+                        <div class="w-max min-w-[466px]">
                             <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[96px_66px_76px_88px_52px_88px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
                                 <span class="cursor-pointer hover:text-white flex items-center gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
-                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span>今日損益</span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
+                                <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span class="leading-tight">今日<br><span class="text-[9px] opacity-80">損益</span></span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('price')"><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('total')"><span class="leading-tight">總損益<br><span class="text-[9px] opacity-80">報酬率</span></span><span id="invSortIcon_total" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('shares')"><span>股數</span><span id="invSortIcon_shares" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
@@ -3261,6 +3237,7 @@ const app = {
         const modal = document.getElementById('confirmModal');
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
+        modal.style.zIndex = '10001';   // ✏️ V61.7 確認框永遠置頂(蓋過全螢幕編輯頁 z-9999 + 子 modal 10000)
         const btn = document.getElementById('confirmBtn');
         btn.onclick = () => { modal.classList.add('hidden'); modal.style.display = 'none'; callback(); };
     },
@@ -3617,7 +3594,7 @@ const app = {
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#searchContainer')) document.getElementById('searchDropdown')?.classList.add('hidden');
             if (!e.target.closest('#invSearchInputWrapper')) document.getElementById('invSearchDropdown')?.classList.add('hidden');
-            if (!e.target.closest('#favAddSheet')) document.getElementById('favSearchDropdown')?.classList.add('hidden');
+            if (!e.target.closest('#favEditAddRow')) document.getElementById('favSearchDropdown')?.classList.add('hidden');
         });
 
         await this.fetchStockList();
@@ -7642,7 +7619,7 @@ ${list}
         if (!val || this.allStockList.length === 0) { dd.classList.add('hidden'); return; }
         const matches = this._filterStockList(val, 8);
         if (matches.length > 0) {
-            dd.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="app._addToGroup('${m.stock_id}', app.activeGroupName); document.getElementById('favDirectInput').value=''; document.getElementById('favSearchDropdown').classList.add('hidden');"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span><span class="ml-1 font-bold text-sm">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
+            dd.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="app._addToGroup('${m.stock_id}', app.activeGroupName); document.getElementById('favDirectInput').value=''; document.getElementById('favSearchDropdown').classList.add('hidden'); app._favEditRerender && app._favEditRerender();"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span><span class="ml-1 font-bold text-sm">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
             dd.classList.remove('hidden');
         } else dd.classList.add('hidden');
     },
@@ -24580,44 +24557,230 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this._addToGroup(sym, this.activeGroupName);
         input.value = '';
         document.getElementById('favSearchDropdown')?.classList.add('hidden');
-        input.focus();   // 保持開著,方便連續加多檔
+        // ✏️ V61.7 若在編輯頁,重畫清單顯示新股,再把焦點還給(重建後的)輸入框,方便連續加
+        this._favEditRerender?.();
+        setTimeout(() => document.getElementById('favDirectInput')?.focus(), 0);
     },
 
-    // ➕ V61.6 FAB 新增自選 bottom sheet
-    openFavAddSheet() {
-        const sheet = document.getElementById('favAddSheet');
-        if (!sheet) return;
-        sheet.classList.remove('hidden');
-        const input = document.getElementById('favDirectInput');
-        if (input) { input.value = ''; setTimeout(() => input.focus(), 60); }
-        this.vibrate?.(20);
+    // ✏️ V61.7 自選「編輯」全螢幕頁(參考專業 App):新增個股 / 手動排序 / 勾選刪除 / 新增至其他清單 / 清單改名刪除。
+    //   取代原突兀的浮動 + 鈕;沿用 favDirectInput / favSearchDropdown(既有 handleFavSearchInput / favDirectAdd 不動)。
+    openFavEditPage() {
+        let modal = document.getElementById('favEditPageModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'favEditPageModal';
+            modal.className = 'fixed inset-0 z-[9999] bg-[#0d1117] flex flex-col hidden';
+            modal.style.display = 'none';
+            document.body.appendChild(modal);
+        }
+        this._favEditSel = new Set();
+        this._renderFavEditPage(modal);
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
     },
-    closeFavAddSheet() {
-        const sheet = document.getElementById('favAddSheet');
-        if (!sheet) return;
-        sheet.classList.add('hidden');
-        document.getElementById('favSearchDropdown')?.classList.add('hidden');
-        document.getElementById('favDirectInput')?.blur();
+    closeFavEditPage() {
+        const modal = document.getElementById('favEditPageModal');
+        if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+        if (this._favEditSortable) { try { this._favEditSortable.destroy(); } catch (_) {} this._favEditSortable = null; }
+        // 回主自選頁,重畫 tab + 清單(反映排序/刪除/新增)
+        try { this.renderFavTabs(); } catch (_) {}
     },
-    // 🎬 V61.6 FAB 滑動隱藏、停頓浮出(專業 App 手感);全域捲動監聽只裝一次
-    _initFavFab() {
-        if (this._favFabInit) return;
-        this._favFabInit = true;
-        const onScroll = () => {
-            const fab = document.getElementById('favAddFab');
-            // FAB 在 tabContentFav 內,tab 非顯示時 fixed 元素也隱藏 → 直接操作即可
-            if (!fab || fab.offsetParent === null) return;
-            if (document.getElementById('favAddSheet') && !document.getElementById('favAddSheet').classList.contains('hidden')) return;
-            fab.style.opacity = '0';
-            fab.style.transform = 'translateY(24px) scale(.85)';
-            clearTimeout(this._favFabTimer);
-            this._favFabTimer = setTimeout(() => {
-                fab.style.opacity = '1';
-                fab.style.transform = 'translateY(0) scale(1)';
-            }, 600);
-        };
-        // 捲動事件不冒泡,capture=true 才能抓到內層捲動容器
-        document.addEventListener('scroll', onScroll, true);
+    _renderFavEditPage(modal) {
+        const group = this.activeGroupName;
+        const list = this.favGroups[group] || [];
+        const sel = this._favEditSel || (this._favEditSel = new Set());
+        const groupKeys = Object.keys(this.favGroups);
+        // 清單分頁(切換要編輯哪個清單)
+        const tabsHtml = groupKeys.map(g => {
+            const active = g === group;
+            const cnt = (this.favGroups[g] || []).length;
+            return `<button onclick="app._favEditSwitchGroup('${g.replace(/'/g, "\\'")}')" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-bold border transition-colors ${active ? 'bg-blue-900/30 text-blue-300 border-blue-700' : 'bg-[#161b22] text-gray-400 border-[#30363d] hover:text-gray-200'}">${g} <span class="text-[9px] text-gray-500 font-mono">${cnt}</span></button>`;
+        }).join('');
+        // 個股列(勾選框 + 上移 + 名稱/代號 + 拖曳把手 + 單筆刪)
+        let rowsHtml;
+        if (!list.length) {
+            rowsHtml = `<div class="text-center py-16 text-gray-500 text-sm">此清單目前空空如也<br><span class="text-[11px] text-gray-600">用上方搜尋列加入第一檔</span></div>`;
+        } else {
+            rowsHtml = list.map(sym => {
+                const checked = sel.has(sym);
+                return `<div data-fav-edit-row="${sym}" class="flex items-center gap-2 px-3 py-3 border-b border-[#21262d] bg-[#161b22]">
+                    <button onclick="app._favEditToggleSelect('${sym}')" class="flex-shrink-0 w-6 h-6 rounded-full border-2 ${checked ? 'bg-blue-500 border-blue-500' : 'border-gray-600'} flex items-center justify-center text-white text-[13px] leading-none">${checked ? '✓' : ''}</button>
+                    <button onclick="app._favEditMoveTop('${sym}')" title="移到最上" class="flex-shrink-0 text-gray-400 hover:text-blue-300 text-lg font-bold w-7 text-center">↑</button>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-white font-bold text-[14px] truncate">${this.getStockName(sym)}</div>
+                        <div class="text-[10px] text-gray-500 font-mono">${sym}</div>
+                    </div>
+                    <button onclick="app._favEditDeleteOne('${sym}')" class="flex-shrink-0 text-gray-500 hover:text-red-400 text-lg w-7 text-center">🗑️</button>
+                    <div class="fav-edit-handle flex-shrink-0 text-gray-600 hover:text-white text-xl w-7 text-center cursor-grab">≡</div>
+                </div>`;
+            }).join('');
+        }
+        const selCount = sel.size;
+        const allChecked = list.length > 0 && selCount === list.length;
+        const otherGroups = groupKeys.length > 1;
+        modal.innerHTML = `
+            <!-- 頂列:< 上一頁 + 標題 + 清單改名/刪除 -->
+            <div class="flex items-center gap-2 px-2 py-3 border-b border-[#30363d] bg-[#0d1117]">
+                <button onclick="app.closeFavEditPage(); app.vibrate(20);" class="flex items-center text-blue-300 hover:text-blue-200 text-[15px] font-bold pl-1 pr-2 py-1"><span class="text-2xl leading-none mr-0.5">‹</span>上一頁</button>
+                <span class="flex-1 text-center text-[15px] font-black text-white truncate">編輯 · ${group}</span>
+                <button onclick="app.renameFavGroup('${group.replace(/'/g, "\\'")}')" class="text-[12px] text-gray-400 hover:text-white px-2 py-1">改名</button>
+                <button onclick="app._favEditDeleteGroup('${group.replace(/'/g, "\\'")}')" class="text-[12px] text-red-400/80 hover:text-red-300 px-2 py-1">刪清單</button>
+            </div>
+            <!-- 清單分頁 -->
+            <div class="flex items-center gap-1.5 px-2 py-2 overflow-x-auto scrollbar-hide border-b border-[#21262d] bg-[#0d1117]">
+                ${tabsHtml}
+                <button onclick="app._favEditNewGroup()" class="flex-shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-bold text-gray-400 hover:text-white border border-dashed border-[#30363d]">＋ 新清單</button>
+            </div>
+            <!-- 新增個股搜尋列 -->
+            <div id="favEditAddRow" class="relative px-2 py-2 border-b border-[#30363d] bg-[#0d1117]">
+                <div class="flex items-center gap-2">
+                    <input type="text" id="favDirectInput" placeholder="輸入代號或中文名，Enter 加入此清單…"
+                        autocomplete="off" inputmode="text"
+                        class="flex-1 bg-[#161b22] text-white px-3 py-2.5 rounded-lg border border-[#30363d] text-sm outline-none focus:border-blue-500 font-mono"
+                        oninput="app.handleFavSearchInput(event)" onfocus="app.handleFavSearchInput(event)"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('favSearchDropdown').classList.add('hidden');app.favDirectAdd();}">
+                    <button onclick="app.favDirectAdd()" class="text-white bg-blue-600 hover:bg-blue-500 font-bold text-sm px-4 py-2.5 rounded-lg transition-colors">➕</button>
+                </div>
+                <ul id="favSearchDropdown" class="hidden absolute top-[100%] left-2 right-2 mt-1 bg-[#1c2128] border border-gray-500 rounded shadow-2xl overflow-y-auto max-h-60 z-[520]"></ul>
+            </div>
+            <!-- 個股清單(可拖曳排序) -->
+            <div id="favEditList" class="flex-1 overflow-y-auto">${rowsHtml}</div>
+            <!-- 底部操作列:全選 / 刪除 / 新增至 -->
+            <div class="flex items-center gap-2 px-3 py-3 border-t border-[#30363d] bg-[#0d1117]" style="padding-bottom: max(12px, env(safe-area-inset-bottom));">
+                <button onclick="app._favEditToggleAll()" class="flex items-center gap-1.5 text-[13px] font-bold ${allChecked ? 'text-blue-300' : 'text-gray-300'} hover:text-white">
+                    <span class="w-5 h-5 rounded-full border-2 ${allChecked ? 'bg-blue-500 border-blue-500' : 'border-gray-600'} flex items-center justify-center text-white text-[11px] leading-none">${allChecked ? '✓' : ''}</span>全選
+                </button>
+                <span class="text-[11px] text-gray-500 font-mono">${selCount ? `已選 ${selCount}` : ''}</span>
+                <div class="flex-1"></div>
+                <button onclick="app._favEditDeleteSelected()" ${selCount ? '' : 'disabled'} class="text-[13px] font-bold px-3 py-2 rounded-lg ${selCount ? 'text-red-300 bg-red-900/30 border border-red-800 hover:bg-red-900/50' : 'text-gray-600 bg-[#161b22] border border-[#30363d] cursor-not-allowed'}">🗑️ 刪除</button>
+                <button onclick="app._favEditAddToOther()" ${selCount && otherGroups ? '' : 'disabled'} class="text-[13px] font-bold px-3 py-2 rounded-lg ${selCount && otherGroups ? 'text-blue-300 bg-blue-900/30 border border-blue-800 hover:bg-blue-900/50' : 'text-gray-600 bg-[#161b22] border border-[#30363d] cursor-not-allowed'}">📁 新增至</button>
+            </div>`;
+        // 拖曳排序:結束時把新順序寫回 favGroups[group]
+        const listEl = document.getElementById('favEditList');
+        if (this._favEditSortable) { try { this._favEditSortable.destroy(); } catch (_) {} }
+        if (listEl && list.length) {
+            this._favEditSortable = Sortable.create(listEl, {
+                handle: '.fav-edit-handle', animation: 150,
+                onEnd: () => {
+                    const order = [...listEl.querySelectorAll('[data-fav-edit-row]')].map(el => el.getAttribute('data-fav-edit-row'));
+                    if (order.length) {
+                        this.favGroups[this.activeGroupName] = order;
+                        localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+                    }
+                }
+            });
+        }
+    },
+    _favEditRerender() {
+        const modal = document.getElementById('favEditPageModal');
+        if (modal && modal.style.display !== 'none') this._renderFavEditPage(modal);
+    },
+    _favEditSwitchGroup(g) {
+        if (!this.favGroups[g]) return;
+        this.activeGroupName = g;
+        localStorage.setItem('proTerminalActiveGroup', g);
+        this._favEditSel = new Set();
+        this._favEditRerender();
+    },
+    _favEditToggleSelect(sym) {
+        const sel = this._favEditSel || (this._favEditSel = new Set());
+        if (sel.has(sym)) sel.delete(sym); else sel.add(sym);
+        this._favEditRerender();
+    },
+    _favEditToggleAll() {
+        const list = this.favGroups[this.activeGroupName] || [];
+        const sel = this._favEditSel || (this._favEditSel = new Set());
+        if (sel.size === list.length) this._favEditSel = new Set();
+        else this._favEditSel = new Set(list);
+        this._favEditRerender();
+    },
+    _favEditMoveTop(sym) {
+        const list = this.favGroups[this.activeGroupName] || [];
+        const idx = list.indexOf(sym);
+        if (idx > 0) {
+            list.splice(idx, 1); list.unshift(sym);
+            this.favGroups[this.activeGroupName] = list;
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+            this.vibrate?.(15);
+            this._favEditRerender();
+        }
+    },
+    _favEditDeleteOne(sym) {
+        const list = this.favGroups[this.activeGroupName] || [];
+        const idx = list.indexOf(sym);
+        if (idx > -1) {
+            list.splice(idx, 1);
+            this._favEditSel?.delete(sym);
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+            if (sym === this.currentSymbolId) this.updateFavIcon();
+            this.vibrate?.(20);
+            this._favEditRerender();
+        }
+    },
+    _favEditDeleteSelected() {
+        const sel = this._favEditSel;
+        if (!sel || !sel.size) return;
+        this.showConfirm(`確定刪除選取的 ${sel.size} 檔?`, () => {
+            let list = this.favGroups[this.activeGroupName] || [];
+            list = list.filter(s => !sel.has(s));
+            this.favGroups[this.activeGroupName] = list;
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+            this._favEditSel = new Set();
+            this.updateFavIcon();
+            this._favEditRerender();
+        });
+    },
+    // 📁 新增至:把選取的股「複製」到其他清單(不動原清單)
+    _favEditAddToOther() {
+        const sel = this._favEditSel;
+        if (!sel || !sel.size) return;
+        const targets = Object.keys(this.favGroups).filter(g => g !== this.activeGroupName);
+        if (!targets.length) { this.showToast('沒有其他清單可加入,先新增一個'); return; }
+        const list = document.getElementById('favPickerList');
+        const syms = [...sel];
+        list.innerHTML = targets.map(grp => {
+            const cur = this.favGroups[grp] || [];
+            const room = this.MAX_FAV_PER_GROUP - cur.length;
+            const willAdd = syms.filter(s => !cur.includes(s)).length;
+            const full = room <= 0;
+            return `<button class="w-full py-2 px-3 rounded text-sm font-bold border ${full ? 'border-gray-700 text-gray-600 cursor-not-allowed' : 'border-blue-700 text-blue-300 hover:bg-blue-900/40'} transition-colors flex justify-between items-center"
+                ${full ? 'disabled' : `onclick="app._favEditDoAddTo('${grp.replace(/'/g, "\\'")}'); document.getElementById('favPickerModal').classList.add('hidden'); document.getElementById('favPickerModal').style.display='none';"`}>
+                <span>${grp}</span><span class="text-[10px] text-gray-500 font-mono">+${willAdd} → ${cur.length}/${this.MAX_FAV_PER_GROUP}</span>
+            </button>`;
+        }).join('');
+        const m = document.getElementById('favPickerModal');
+        m.classList.remove('hidden'); m.style.display = 'flex'; m.style.zIndex = '10000';   // 蓋過編輯頁 z-9999
+    },
+    _favEditDoAddTo(grp) {
+        const sel = this._favEditSel;
+        if (!sel || !sel.size || !this.favGroups[grp]) return;
+        let added = 0;
+        for (const sym of sel) {
+            const cur = this.favGroups[grp];
+            if (cur.length >= this.MAX_FAV_PER_GROUP) break;
+            if (!cur.includes(sym)) { cur.push(sym); added++; }
+        }
+        localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+        this.showToast(`✅ 已加入「${grp}」${added} 檔`);
+        this._favEditRerender();
+    },
+    _favEditNewGroup() {
+        document.getElementById('groupModalTitle').innerText = '➕ 新增自選清單';
+        document.getElementById('groupModalMode').value = 'create';
+        const m = document.getElementById('groupModal');
+        m.classList.remove('hidden'); m.style.display = 'flex'; m.style.zIndex = '10000';   // 蓋過編輯頁 z-9999
+        // 新增清單後 confirmGroupAction 會切到新清單並 renderFavTabs;編輯頁在關閉時同步
+    },
+    _favEditDeleteGroup(group) {
+        if (Object.keys(this.favGroups).length <= 1) { this.showToast('至少保留一個清單'); return; }
+        this.showConfirm(`確定要刪除整個【${group}】清單嗎?此操作不可逆!`, () => {
+            delete this.favGroups[group];
+            this.activeGroupName = Object.keys(this.favGroups)[0];
+            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+            localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
+            this._favEditSel = new Set();
+            this._favEditRerender();
+        });
     },
 
     updateFavIcon() {
@@ -24710,6 +24873,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
         localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
         document.getElementById('groupModal').classList.add('hidden'); document.getElementById('groupModal').style.display='none'; document.getElementById('groupNameInput').value = ''; this.renderFavTabs();
+        this._favEditRerender?.();   // ✏️ V61.7 編輯頁開著時同步(新增/改名清單後 tab + 標題即時更新)
     },
 
     renameFavGroup(oldName) {
@@ -24717,7 +24881,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         document.getElementById('groupModalMode').value = `rename:${oldName}`;
         document.getElementById('groupNameInput').value = oldName;
         const modal = document.getElementById('groupModal');
-        modal.classList.remove('hidden'); modal.style.display='flex';
+        modal.classList.remove('hidden'); modal.style.display='flex'; modal.style.zIndex = '10000';   // ✏️ V61.7 蓋過編輯頁 z-9999
     },
 
     deleteFavGroup(group) {
@@ -24810,7 +24974,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>`;
         }
         container.innerHTML = html;
-        this._initFavFab();
         if (this.sortableFav) this.sortableFav.destroy();
         this.sortableFav = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
 
