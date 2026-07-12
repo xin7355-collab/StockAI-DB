@@ -15,8 +15,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V62.6(bug巡邏修3項:①miner MIS快照量張→股×1000(修1000倍量差)②日分價量全零量假關卡線③日分價量改算可視範圍(修K棒壓扁);
-         日分價量(V62.5)+ miner非交易日幽靈K根治(V16.7/8);版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V62.7(自選頁:①刪「📌朱老師鎖股」tab ②編輯頁修瀏海(safe-area)③主清單取消拖曳排序+左右滑刪(移到編輯頁)
+         +加欄位表頭(個股/趨勢/股價漲跌幅)+持有💼庫存標記;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -571,7 +571,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3641,7 +3641,15 @@ const app = {
         setInterval(() => { try { this._renderTaiexFutures(); } catch(_) {} }, 60_000);
         setInterval(() => { try { this._maybeAutoRefreshIndices(); } catch(_) {} }, 30_000);
         setInterval(() => { try { this._dtCloseReminderCheck(); } catch(_) {} }, 30_000);   // ⚡ V55.3 當沖 13:25 平倉提醒
-        this._ensureChuLockGroup();    // 📌 朱老師鎖股 favGroup 預設建立(空清單,等使用者鎖)
+        // 🗑️ V62.7 移除「📌 朱老師鎖股」自選 tab(使用者要求;無 UI 觸發、恆空清單 → 開頁清掉)
+        try {
+            if (this.favGroups[this._chuLockGroupName]) {
+                delete this.favGroups[this._chuLockGroupName];
+                if (this.activeGroupName === this._chuLockGroupName) this.activeGroupName = Object.keys(this.favGroups)[0] || '自選清單';
+                localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
+                localStorage.setItem('proTerminalActiveGroup', this.activeGroupName);
+            }
+        } catch (_) {}
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
         masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
 
@@ -25028,6 +25036,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             modal.id = 'favEditPageModal';
             modal.className = 'fixed inset-0 z-[9999] bg-[#0d1117] flex flex-col hidden';
             modal.style.display = 'none';
+            // 🐛 V62.7 修「編輯功能超過瀏海」:頂列下移到 safe-area(iPhone 動態島/瀏海)下方
+            modal.style.paddingTop = 'env(safe-area-inset-top, 0px)';
             document.body.appendChild(modal);
         }
         this._favEditSel = new Set();
@@ -25405,34 +25415,36 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if(list.length === 0) { container.innerHTML = ''; emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
         emptyState?.classList.add('hidden'); emptyState?.classList.remove('flex');
 
-        // Pass 1：同步畫出所有列（名稱+代號+趨勢欄+佔位價），清單「立刻」出現，不被網路卡住
-        // 🎨 V61.6 參考專業 App 欄位式排版:名稱／代號 ｜ 趨勢(多頭/盤整/空頭) ｜ 股價／漲跌幅
-        //   已移除:四季 season badge、之前的提醒 elimination badge(使用者要求)
-        let html = '';
+        // Pass 1：同步畫出所有列。V62.7 使用者要求:主清單取消拖曳排序 + 左右滑刪(這些都移到「✏️ 編輯」頁);
+        //   加欄位表頭(個股 / 趨勢 / 股價·漲跌幅);持有庫存股顯 💼 標記。
+        let heldSet = new Set();
+        try { heldSet = new Set(JSON.parse(localStorage.getItem('proTerminalInv') || '[]').map(i => String(i.symbol))); } catch (_) {}
+        let html = `<div class="flex items-center gap-2 mx-2 px-3 py-1.5 border-b border-[#30363d] text-[10px] text-gray-500 font-bold sticky top-0 bg-[#0d1117] z-10">
+            <span class="flex-1">個股</span>
+            <span class="w-[58px] text-center">趨勢</span>
+            <span class="w-[86px] text-right">股價·漲跌幅</span>
+            <span class="w-4"></span>
+        </div>`;
         for (let sym of list) {
-            html += `<div class="relative m-2 rounded-lg border border-[#30363d] shadow-sm overflow-hidden bg-[#1c2128]" data-fav-row="${sym}">
-                <div class="absolute inset-y-0 right-0 w-[80px] bg-red-600 flex items-center justify-center text-white font-bold cursor-pointer delete-btn swipe-action-btn text-sm" onclick="event.stopPropagation(); app.removeFromFav('${sym}')">刪除</div>
-                <div class="swipe-content relative bg-[#1c2128] px-3 py-3 flex items-center gap-2 w-full" style="transform: translateX(0px);">
-                    <div class="drag-handle text-gray-600 hover:text-white text-base flex-shrink-0">☰</div>
-                    <div class="flex-1 min-w-0 cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-bold text-white text-[15px] truncate">${this.getStockName(sym)}</span>
-                            ${this._renderFalconBadge(sym)}${this._renderAttentionBadge(sym)}
-                        </div>
-                        <div class="text-[10px] text-gray-500 font-mono mt-0.5">${sym}</div>
+            const held = heldSet.has(String(sym)) ? '<span class="text-[9px] text-purple-300 border border-purple-700/50 rounded px-1 flex-shrink-0">💼庫存</span>' : '';
+            html += `<div class="m-2 rounded-lg border border-[#30363d] shadow-sm bg-[#1c2128] px-3 py-3 flex items-center gap-2 cursor-pointer active:bg-[#21262d] transition-colors" data-fav-row="${sym}" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-bold text-white text-[15px] truncate">${this.getStockName(sym)}</span>
+                        ${held}${this._renderFalconBadge(sym)}${this._renderAttentionBadge(sym)}
                     </div>
-                    <div data-fav-trend class="flex-shrink-0 w-[58px] text-center"><span class="text-[10px] text-gray-600 font-bold">--</span></div>
-                    <div class="flex-shrink-0 w-[86px] text-right cursor-pointer" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
-                        <div data-fav-price class="text-[15px] font-black font-mono text-gray-400 leading-tight">--</div>
-                        <div data-fav-diff class="text-[10px] font-mono leading-tight mt-0.5"></div>
-                    </div>
-                    ${this.isFavEditMode ? `<button class="text-gray-500 flex-shrink-0 hover:text-red-400 font-bold transition-colors text-xl delete-btn" onclick="app.removeFromFav('${sym}')">✕</button>` : `<button class="text-gray-500 flex-shrink-0 hover:text-blue-400 font-bold transition-colors text-xl" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">〉</button>`}
+                    <div class="text-[10px] text-gray-500 font-mono mt-0.5">${sym}</div>
                 </div>
+                <div data-fav-trend class="flex-shrink-0 w-[58px] text-center"><span class="text-[10px] text-gray-600 font-bold">--</span></div>
+                <div class="flex-shrink-0 w-[86px] text-right">
+                    <div data-fav-price class="text-[15px] font-black font-mono text-gray-400 leading-tight">--</div>
+                    <div data-fav-diff class="text-[10px] font-mono leading-tight mt-0.5"></div>
+                </div>
+                <span class="text-gray-600 flex-shrink-0 text-xl leading-none">〉</span>
             </div>`;
         }
         container.innerHTML = html;
-        if (this.sortableFav) this.sortableFav.destroy();
-        this.sortableFav = Sortable.create(container, { handle: '.drag-handle', animation: 150 });
+        if (this.sortableFav) { try { this.sortableFav.destroy(); } catch (_) {} this.sortableFav = null; }   // V62.7 主清單不再拖曳排序(移到編輯頁)
 
         // Pass 2：並行抓價格,回來 patch 對應列（單檔失敗只影響該列,不再整張空白）
         list.forEach(async (sym) => {
