@@ -574,15 +574,25 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
         if res.get('msgArray'):
             msg = res['msgArray'][0]
             z = msg.get('z', '-')
-            live_price = float(z) if z != '-' else float(msg.get('y', 0))
-            if live_price > 0:
+            # 🐛 V16.7 根治「非交易日幽靈 K 棒」(端午 6/19 / 颱風假 / 臨時休市 等):
+            #   非交易日 MIS 沒有真實成交價 → z='-';舊版 fallback 到 y(昨收)並寫入一根量體極小的假 K,
+            #   污染前端 K 線(6/19 量 178245、假日尾棒量 0)。改為「今日必須有真實成交價 z 且量 > 0」才補快照,
+            #   自動涵蓋所有非交易日(不必維護節日/颱風行事曆)。週末已在上方擋掉,這裡再擋平日休市。
+            if z == '-':
+                return {}
+            try:
+                live_price = float(z)
+            except (TypeError, ValueError):
+                return {}
+            vol = int(msg.get('v', 0) or 0)
+            if live_price > 0 and vol > 0:
                 return {
                     'date': tw_now.strftime('%Y/%m/%d'),
                     'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
                     'high': float(msg.get('h', live_price) if msg.get('h', '-') != '-' else live_price),
                     'low': float(msg.get('l', live_price) if msg.get('l', '-') != '-' else live_price),
                     'close': live_price,
-                    'volume': int(msg.get('v', 0))
+                    'volume': vol
                 }
     except Exception:
         pass
