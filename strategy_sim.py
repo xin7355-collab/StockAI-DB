@@ -175,9 +175,11 @@ def chu_long_entry(bars, k=8):
         on_ma20 = pC >= ma20[-1] if ma20[-1] > 0 else True
         # 📏 逐字稿6-2 鐵則:收>20MA 且 20MA 上彎(缺一不可)。月線上彎用 5 天斜率(波段準則)。
         ma20_up = ma20[-1] >= ma20[-6] if n >= 25 else True
-        hi_prob = body >= 2 and vol_up and over_y and on_ma20 and ma20_up
+        # 📏 逐字稿6-2 黃金分割:回檔 >0.618 上方全是解套賣壓 → 即使站上5MA也不算高勝率(降級)。
+        shallow = retrace <= 0.618
+        hi_prob = body >= 2 and vol_up and over_y and on_ma20 and ma20_up and shallow
         if hi_prob and upside_room >= 10 and stage != 'end':
-            return _mk('high', f'高勝率:回站5MA+紅K{body:.1f}%+量增+過昨高+站月線上彎,上方空間{upside_room:.0f}%')
+            return _mk('high', f'高勝率:回站5MA+紅K{body:.1f}%+量增+過昨高+站月線上彎+回檔淺{retrace:.0%},上方空間{upside_room:.0f}%')
         # 缺鐵則 / 空間不足 / 末升段 → 只給 weak
         miss = []
         if body < 2: miss.append('紅K<2%')
@@ -185,6 +187,7 @@ def chu_long_entry(bars, k=8):
         if not over_y: miss.append('未過昨高')
         if not on_ma20: miss.append('未站月線')
         if not ma20_up: miss.append('月線未上彎')
+        if not shallow: miss.append(f'回檔過深{retrace:.0%}(>0.618解套賣壓重)')
         if upside_room < 10: miss.append(f'上方空間僅{upside_room:.0f}%<10%')
         if stage == 'end': miss.append('末升段(漲幅過大)')
         return _mk('weak', '力道/空間偏弱:' + ('、'.join(miss) if miss else '待鐵則齊'))
@@ -219,7 +222,10 @@ def simulate_chu_exit(bars, entry_idx, entry_px=None):
     entry = entry_px if (entry_px and entry_px > 0) else closes[entry_idx]
     if entry <= 0:
         return None
-    hard_stop = min(_l(bars[entry_idx]), entry * 0.95)
+    # 📏 逐字稿7-3 絕對停損鐵則:虧損超過 10% 一律出場,任何情況(含鎖利後)不可再凹。
+    #    初始固定停損取「進場K低 / -5%」較嚴者,但地板永不低於 -10%(進場買在漲停附近時 K 低可能 <-10%)。
+    abs_floor = entry * 0.90
+    hard_stop = max(min(_l(bars[entry_idx]), entry * 0.95), abs_floor)
     peak_ret = 0.0
     locked = False              # 獲利 ≥7% 後鎖利(取消固定停損)
     accel = False               # 獲利 ≥20% 後啟動加速停利
@@ -231,6 +237,9 @@ def simulate_chu_exit(bars, entry_idx, entry_px=None):
             locked = True
         if peak_ret >= 0.20:
             accel = True
+        # 7-3 絕對停損鐵則:跌幅 >10% 一律出(含鎖利後跳空,守 5MA 也擋不住的破口)
+        if c <= abs_floor:
+            return _exit(entry, c, i, entry_idx, '破絕對停損-10%(鐵則)')
         # 加速停利:高檔爆量長黑或長上影收黑 → 出場
         if accel:
             rng = _h(bars[i]) - _l(bars[i])
@@ -241,7 +250,7 @@ def simulate_chu_exit(bars, entry_idx, entry_px=None):
         # 跌破 5MA 收盤 → 出場(停利或停損)
         if ma5[i] > 0 and c < ma5[i]:
             return _exit(entry, c, i, entry_idx, '跌破5MA')
-        # 未鎖利前,固定停損仍有效
+        # 未鎖利前,固定停損仍有效(-5%~-10% 區間)
         if not locked and c <= hard_stop:
             return _exit(entry, c, i, entry_idx, '破固定停損(進場K低/-5%)')
     # 資料尾端仍持有 → 以最後收盤結算(未平倉,closed=False 供向前追蹤判斷「還在持有」)
@@ -272,6 +281,7 @@ def simulate_three_ma_scaled_exit(bars, entry_idx, entry_px=None):
     if entry <= 0:
         return None
     shares = {'5': None, '10': None, '20': None}   # 每張的 (exit_idx, exit_px, reason)
+    stop_px = entry * 0.95                          # 8-3/8-5 初始 -5% 停損
 
     def _sell(key, i, reason):
         if shares[key] is None:
@@ -281,6 +291,11 @@ def simulate_three_ma_scaled_exit(bars, entry_idx, entry_px=None):
     for i in range(entry_idx + 1, n):
         c = closes[i]
         peak_ret = max(peak_ret, (c - entry) / entry)
+        # 📏 8-3/8-5 初始停損鐵則:仍在虧損且跌破 -5% → 三張「全部一起停損」(不分批,避免小賠拖成大賠)
+        if c <= stop_px and c < entry and any(v is None for v in shares.values()):
+            for kma in shares:
+                _sell(kma, i, '破-5%停損三張全出')
+            break
         # 急漲曾 >20% 後跌破5MA → 三張全出(鎖住主升段利潤)
         if peak_ret >= 0.20 and ma5[i] > 0 and c < ma5[i]:
             for kma in shares:
@@ -309,6 +324,62 @@ def simulate_three_ma_scaled_exit(bars, entry_idx, entry_px=None):
         'closed': closed_all,
         'reasons': [shares[k][2] for k in ('5', '10', '20')],
     }
+
+
+def simulate_kline_exit(bars, entry_idx, entry_px=None):
+    """K線轉折短線出場(第 8-2 章):每天守「前一根 K 線最低點」,收盤跌破前一日低點即出場
+       (逐日上移,兼具移動停利)。專用於離 5MA 太遠、噴出中的飆股(守 5MA 會太早出)。
+       仍保留 -10% 絕對停損地板(7-3)。介面與 simulate_chu_exit 相容,可傳給 backtest_chu_swing。"""
+    if not bars:
+        return None
+    n = len(bars)
+    if entry_idx < 0 or entry_idx >= n - 1:
+        return None
+    closes = [_c(b) for b in bars]
+    entry = entry_px if (entry_px and entry_px > 0) else closes[entry_idx]
+    if entry <= 0:
+        return None
+    abs_floor = entry * 0.90
+    for i in range(entry_idx + 1, n):
+        c = closes[i]
+        if c <= abs_floor:
+            return _exit(entry, c, i, entry_idx, '破絕對停損-10%(鐵則)')
+        prev_low = _l(bars[i - 1])
+        if prev_low > 0 and c < prev_low:
+            return _exit(entry, c, i, entry_idx, '跌破前一日K低(轉折出場)')
+    return _exit(entry, closes[-1], n - 1, entry_idx, '尚未出場(資料末端結算)', closed=False)
+
+
+def simulate_long_ma_exit(bars, entry_idx, entry_px=None):
+    """長線均線出場(第 8-4 章):停利守月線 20MA(而非 5MA),抱得住波段;
+       獲利曾 >20% 改守 5MA 鎖利(主升段末端加速);仍保留 -10% 絕對停損地板(7-3)。
+       (逐字稿另有「趨勢確認轉空頭即出」,實務上頭頭低多已跌破 20MA,為維持 O(n) 不逐根重算轉折波,
+        以「跌破 20MA」近似涵蓋。)介面與 simulate_chu_exit 相容,可傳給 backtest_chu_swing。"""
+    if not bars:
+        return None
+    n = len(bars)
+    if entry_idx < 0 or entry_idx >= n - 1:
+        return None
+    closes = [_c(b) for b in bars]
+    ma5 = _ma_series(closes, 5)
+    ma20 = _ma_series(closes, 20)
+    entry = entry_px if (entry_px and entry_px > 0) else closes[entry_idx]
+    if entry <= 0:
+        return None
+    abs_floor = entry * 0.90
+    peak_ret = 0.0
+    for i in range(entry_idx + 1, n):
+        c = closes[i]
+        peak_ret = max(peak_ret, (c - entry) / entry)
+        if c <= abs_floor:
+            return _exit(entry, c, i, entry_idx, '破絕對停損-10%(鐵則)')
+        # 獲利曾 >20% → 改守 5MA 鎖利;否則守月線 20MA(長線抱波段)
+        if peak_ret >= 0.20:
+            if ma5[i] > 0 and c < ma5[i]:
+                return _exit(entry, c, i, entry_idx, '跌破5MA(鎖利)')
+        elif ma20[i] > 0 and c < ma20[i]:
+            return _exit(entry, c, i, entry_idx, '跌破20MA(長線停利)')
+    return _exit(entry, closes[-1], n - 1, entry_idx, '尚未出場(資料末端結算)', closed=False)
 
 
 def backtest_chu_swing(bars, cost_pct=0.0, exit_fn=None):
@@ -399,6 +470,22 @@ def chu_eliminate(bars, k=8):
     # 2 上漲後轉盤整、趨勢不明
     if st['trend'] == 'range' and not ma20_up:
         reasons.append('盤整/趨勢不明、月線未上揚')
+    # 7 高檔爆量長黑(開高走低)— 5-3 淘汰第7條:相對高檔單日爆量長黑,短期過不了
+    if n >= 6:
+        win = bars[-60:]
+        whi = max(_h(b) for b in win)
+        wlo = min(_l(b) for b in win)
+        pos = (c - wlo) / (whi - wlo) if whi > wlo else 0.5
+        base5 = sum(_v(b) for b in bars[-6:-1]) / 5
+        o_last = _o(bars[-1])
+        if pos >= 0.7 and base5 > 0 and _v(bars[-1]) >= base5 * 2 \
+           and c < o_last and o_last > 0 and (o_last - c) / c >= 0.03:
+            reasons.append('高檔爆量長黑(開高走低,短期過不了)')
+    # 11 高檔指標背離 + 頭頭低 — 5-3 淘汰第11條:指標領先反應轉空,立即淘汰
+    peaks = st.get('peaks') or []
+    peak_dn = len(peaks) >= 2 and peaks[-1][1] < peaks[-2][1]
+    if peak_dn and any(d.get('side') == 'bear' for d in divergence(bars)):
+        reasons.append('高檔頭頭低+KD/MACD頂背離(動能轉空)')
     return reasons
 
 
@@ -513,6 +600,13 @@ def volume_signals(bars):
             break
     if is_low and vr >= 2 and red and _c(cur) > _h(bars[last - 1]):
         out.append({'tone': 'warn', 'name': f'強反彈量{vr:.1f}×(非多頭,僅反彈)'})
+    # 調節量(第 4-3 高檔爆量三型之一):高檔大量後回檔「價跌量急縮」、守月線不破前低 → 主力調節,易再過高
+    if not is_low and black and vr <= 0.5:
+        ma20 = _ma_series([_c(b) for b in bars], 20)
+        on_ma20 = ma20[-1] > 0 and _c(cur) >= ma20[-1]
+        prior_low = min(_l(b) for b in bars[last - 5:last]) if last >= 5 else _l(cur)
+        if on_ma20 or _l(cur) > prior_low:
+            out.append({'tone': 'bull', 'name': f'調節量(回檔量縮{vr*100:.0f}%守撐,易再過高)'})
     return out
 
 
@@ -598,3 +692,94 @@ def divergence(bars):
                 kind = 'KD+MACD' if (kd_div and macd_div) else ('KD' if kd_div else 'MACD')
                 out.append({'side': 'bull', 'kind': kind, 'name': f'{kind}底背離(跌勢趨緩,買訊)'})
     return out
+
+
+# ── 每日強弱(收盤過昨高/破昨低)第 2-2 章 ── port 自前端 chu_long_entry 內埋的 over_y ──
+def bar_strength(bars):
+    """每日最基本強弱(第 2-2 章):收盤過昨高=多方轉強;收盤破昨低=空方轉強;之間=區間震盪。
+    回 {state:'strong'/'weak'/'range', ref_high, ref_low}。供選股/警報共用(原本只埋在 chu_long_entry 門檻)。"""
+    if not bars or len(bars) < 2:
+        return {'state': 'range', 'ref_high': None, 'ref_low': None}
+    c, yh, yl = _c(bars[-1]), _h(bars[-2]), _l(bars[-2])
+    state = 'strong' if c > yh else ('weak' if c < yl else 'range')
+    return {'state': state, 'ref_high': round(yh, 2), 'ref_low': round(yl, 2)}
+
+
+# ── 均線排列(月線穿季線黃金交叉 + 多空排列)第 1-9 章 ────────────────────────
+def ma_alignment(closes):
+    """均線排列(第 1-9 章)。月線(20MA)上穿季線(60MA)黃金交叉 → 可轉中長線佈局;
+       5>10>20>60 完全多頭排列 = 強勢;反向 = 空頭排列。
+       回 {golden_cross_2060, dead_cross_2060, bull_stack, bear_stack}。"""
+    closes = _clean_closes(closes)
+    n = len(closes)
+    out = {'golden_cross_2060': False, 'dead_cross_2060': False,
+           'bull_stack': False, 'bear_stack': False}
+    if n < 61:
+        return out
+    ma5, ma10 = _ma_series(closes, 5), _ma_series(closes, 10)
+    ma20, ma60 = _ma_series(closes, 20), _ma_series(closes, 60)
+    out['golden_cross_2060'] = ma20[-2] < ma60[-2] and ma20[-1] >= ma60[-1]
+    out['dead_cross_2060'] = ma20[-2] > ma60[-2] and ma20[-1] <= ma60[-1]
+    out['bull_stack'] = ma5[-1] > ma10[-1] > ma20[-1] > ma60[-1]
+    out['bear_stack'] = ma5[-1] < ma10[-1] < ma20[-1] < ma60[-1]
+    return out
+
+
+# ── 移動扣抵預測(未卜先知均線何時上彎)第 3-2 章 ──────────────────────────────
+def ma_koudi_forecast(closes, period=20):
+    """移動扣抵(第 3-2 章):不必等,先算 N 日均線未來會上彎還是下彎。
+       原理:明日均線 = 今日均線 +(明日收盤 − 明日要扣掉的舊收盤)/N。以「現價」近似明日收盤:
+       現價 > 扣抵值 → 均線上彎(反之下彎)。回:
+       {deduct_value(明日扣抵值), will_turn_up, days_to_turn}。
+       days_to_turn:以現價持平推估「幾天後」均線轉上彎(掃未來會被扣掉的舊收盤序列),None=近端不會轉。"""
+    closes = _clean_closes(closes)
+    n = len(closes)
+    if n < period + 1:
+        return {'deduct_value': None, 'will_turn_up': None, 'days_to_turn': None}
+    cur = closes[-1]
+    deduct = closes[-period]                       # 明日要扣掉的最舊那根收盤
+    will_up = cur > deduct
+    days = None                                    # 未來 period-1 天陸續扣掉 closes[-period..-2]
+    for k, v in enumerate(closes[-period: -1], start=1):
+        if cur > v:
+            days = k
+            break
+    return {'deduct_value': round(deduct, 2), 'will_turn_up': will_up, 'days_to_turn': days}
+
+
+# ── 二分之一價分界(大量長K的最強多空分水嶺)第 2-9 章 ────────────────────────
+def half_price_signal(bars, lookback=20):
+    """二分之一價(第 2-9 章):大量長K的 ½=(當根H+當根L)/2 是最強多空分界(當根平均成本)。
+       高檔大量長紅之後,收盤「跌破」其 ½ → 多方轉弱/主力出貨確認(不可再回後買上漲);
+       低檔大量長黑之後,收盤「站上」其 ½ → 套牢賣壓消化/止跌確認(可搶反彈)。
+       取最近 lookback 根內、最近一根符合的大量長K。回 dict 或 None:
+       {ref_idx, half, side:'bear'/'bull', broken, name}。大量=量≥前5日均量×1.5,長K=實體≥4%。"""
+    if not bars or len(bars) < 8:
+        return None
+    n = len(bars)
+    last = n - 1
+    c = _c(bars[last])
+    for j in range(last - 1, max(0, last - lookback) - 1, -1):
+        vol = _v(bars[j])
+        base = [_v(b) for b in bars[max(0, j - 5):j]]
+        avg = sum(base) / len(base) if base else 0
+        if avg <= 0 or vol < avg * 1.5:
+            continue
+        o, cl, hi, lo = _o(bars[j]), _c(bars[j]), _h(bars[j]), _l(bars[j])
+        if o <= 0 or hi <= lo:
+            continue
+        body = (cl - o) / o * 100
+        half = (hi + lo) / 2
+        win = bars[max(0, j - 59): j + 1]
+        whi = max(_h(b) for b in win)
+        wlo = min(_l(b) for b in win)
+        pos = (cl - wlo) / (whi - wlo) if whi > wlo else 0.5     # 0=低檔 1=高檔
+        if body >= 4 and pos >= 0.7:                            # 高檔大量長紅
+            broken = c < half
+            return {'ref_idx': j, 'half': round(half, 2), 'side': 'bear', 'broken': broken,
+                    'name': f'高檔大量長紅½={half:.2f}' + ('(已跌破→多方轉弱)' if broken else '(守住→多方仍強)')}
+        if body <= -4 and pos <= 0.3:                           # 低檔大量長黑
+            reclaim = c > half
+            return {'ref_idx': j, 'half': round(half, 2), 'side': 'bull', 'broken': reclaim,
+                    'name': f'低檔大量長黑½={half:.2f}' + ('(已站上→止跌確認)' if reclaim else '(壓著→賣壓未消)')}
+    return None

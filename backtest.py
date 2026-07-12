@@ -1101,6 +1101,9 @@ def main():
     chu_swing_agg = []
     # 🎯 三均線分批出場(第8-5章)全出 vs 分批 對照 → 看「長線保護短線」是否更優
     chu_swing_scaled_agg = []
+    # 🎯 第8-2章:K線轉折出場(守前一日K低,飆股專用);第8-4章:長線守20MA出場 → 四種出場模型同進場對照
+    chu_swing_kline_agg = []
+    chu_swing_long_agg = []
 
     for f in DATA_DIR.glob("*.json"):
         sym = f.stem
@@ -1166,6 +1169,18 @@ def main():
                 exit_fn=strategy_sim.simulate_three_ma_scaled_exit)
             if _css:
                 chu_swing_scaled_agg.append(_css)
+            # 🎯 第8-2章:同進場、改「K線轉折(守前一日K低)」出場 — 飆股專用
+            _csk = strategy_sim.backtest_chu_swing(
+                rows, cost_pct=ROUND_TRIP_COST_PCT,
+                exit_fn=strategy_sim.simulate_kline_exit)
+            if _csk:
+                chu_swing_kline_agg.append(_csk)
+            # 🎯 第8-4章:同進場、改「長線守20MA」出場 — 抱波段
+            _csl = strategy_sim.backtest_chu_swing(
+                rows, cost_pct=ROUND_TRIP_COST_PCT,
+                exit_fn=strategy_sim.simulate_long_ma_exit)
+            if _csl:
+                chu_swing_long_agg.append(_csl)
 
             scanned += 1
         except Exception:
@@ -1259,13 +1274,23 @@ def main():
         chu_swing_agg, '跌破5MA停利 / 破進場K低或-5%停損 / 獲利+7%鎖利、+20%加速停利')
     chu_swing_scaled_summary = _summarize_chu_agg(
         chu_swing_scaled_agg, '三均線分批:跌破5/10/20MA各賣1/3、急漲>20%跌破5MA全出')
+    chu_swing_kline_summary = _summarize_chu_agg(
+        chu_swing_kline_agg, '第8-2章K線轉折:守前一日K低,跌破即出(飆股專用)')
+    chu_swing_long_summary = _summarize_chu_agg(
+        chu_swing_long_agg, '第8-4章長線:守月線20MA,獲利>20%改守5MA鎖利')
     if chu_swing_summary:
-        print(f"\n🎯 回後買上漲全市場出場對照(建議1 + 第8-5章):")
-        print(f"   [全出]   {chu_swing_summary['stocks_with_signal']} 檔、正EV {chu_swing_summary['positive_ev_ratio']}%、"
+        print(f"\n🎯 回後買上漲全市場出場對照(4 種出場模型):")
+        print(f"   [全出守5MA]   {chu_swing_summary['stocks_with_signal']} 檔、正EV {chu_swing_summary['positive_ev_ratio']}%、"
               f"平均期望值 {chu_swing_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_summary['avg_win_rate_pct']:.0f}%")
         if chu_swing_scaled_summary:
-            print(f"   [分批3張] {chu_swing_scaled_summary['stocks_with_signal']} 檔、正EV {chu_swing_scaled_summary['positive_ev_ratio']}%、"
+            print(f"   [分批3張]     {chu_swing_scaled_summary['stocks_with_signal']} 檔、正EV {chu_swing_scaled_summary['positive_ev_ratio']}%、"
                   f"平均期望值 {chu_swing_scaled_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_scaled_summary['avg_win_rate_pct']:.0f}%")
+        if chu_swing_kline_summary:
+            print(f"   [K線轉折]     {chu_swing_kline_summary['stocks_with_signal']} 檔、正EV {chu_swing_kline_summary['positive_ev_ratio']}%、"
+                  f"平均期望值 {chu_swing_kline_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_kline_summary['avg_win_rate_pct']:.0f}%")
+        if chu_swing_long_summary:
+            print(f"   [長線守20MA]  {chu_swing_long_summary['stocks_with_signal']} 檔、正EV {chu_swing_long_summary['positive_ev_ratio']}%、"
+                  f"平均期望值 {chu_swing_long_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_long_summary['avg_win_rate_pct']:.0f}%")
 
     payload = {
         'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
@@ -1283,6 +1308,8 @@ def main():
         'combos': combo_top,   # 🎯 Day 4:戰術組合策略 Top 30(樣本 ≥ 15 才列入)
         'chu_swing_backtest': chu_swing_summary,   # 🎯 建議1:回後買上漲 × 朱式動態出場(全出)
         'chu_swing_scaled_backtest': chu_swing_scaled_summary,   # 🎯 第8-5章:三均線分批出場(對照)
+        'chu_swing_kline_backtest': chu_swing_kline_summary,   # 🎯 第8-2章:K線轉折出場(對照)
+        'chu_swing_long_backtest': chu_swing_long_summary,   # 🎯 第8-4章:長線守20MA出場(對照)
         '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群 + 戰術組合。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
     }
 
