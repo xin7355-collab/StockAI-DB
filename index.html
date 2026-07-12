@@ -15,8 +15,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V62.4(修台灣節日幽靈K棒:端午6/19量178245/假日尾棒量0 被寫成假K → 用「量<中位量2%」濾除,最後交易日回正7/9;
-         移除 scroll-snap(吸附太下面)→ 改由 K線圖表卡 sticky 提供頂部日週月;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V62.5(日分價量/成本套牢分佈:每日量分配到高低價區間→左側橫條+POC套牢關卡虛線;⚙️設定開關;純日K自算零採礦;
+         採礦端 miner V16.7 根治非交易日幽靈K棒(z='-'不補);版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -514,8 +514,9 @@
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleTCost" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">投信成本</span><span class="w-4 h-0.5 rounded" style="background:#2dd4bf"></span></label>
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleInvCost" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">庫存成本</span><span class="w-4 h-0.5 rounded" style="background:#fbbf24"></span></label>
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">布林軌道</span><span class="w-4 h-0.5 rounded" style="background:#c084fc"></span></label>
+                    <label class="flex items-center gap-2 cursor-pointer" title="日分價量:把每日成交量分配到當日高低價區間,疊出「哪個價位套牢/成本最密集」;黃色最長那條=套牢最重的關卡價(POC)"><input type="checkbox" id="toggleVolProfile" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">日分價量</span><span class="text-[9px] text-gray-500">套牢分佈</span></label>
                 </div>
-                <div class="text-[10px] text-gray-500 mb-1">主力成本(分點,僅觀察清單)、融資成本 暫無全市場資料源,未列入。</div>
+                <div class="text-[10px] text-gray-500 mb-1">日分價量=成本套牢區(左側橫條,黃=套牢最重關卡)。主力成本(分點,僅觀察清單)、融資成本暫無全市場資料源。</div>
                 <div class="flex items-center gap-1.5 mb-2 mt-3"><span class="w-1 h-4 bg-orange-400 rounded"></span><span class="text-[13px] font-bold text-gray-100">型態標記 / 事件旗標</span></div>
                 <div class="grid grid-cols-2 gap-x-3 gap-y-2.5">
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="togglePeaks" checked onchange="app.togglePeaksHandler(this.checked)" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">頭高/底高</span></label>
@@ -570,7 +571,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -23702,7 +23703,44 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🎛️ V61.9 雙副圖:subChart1→格1、subChart2→格2(略過「無」);各自把 series 塞進對應 axis
         _subModes.forEach((mode, i) => { try { this._pushSubSeries(option, mode, i + 1, data, ind); } catch (_) {} });
 
-        this.chartInstance.setOption(option, { replaceMerge: ['series'] });
+        // 📊 V62.5 日分價量(成本套牢分佈):把每日量分配到當日高低價區間 → 左側橫條;黃=套牢最重關卡(POC)。純日 K 自算。
+        try {
+            if (document.getElementById('toggleVolProfile')?.checked && data.length >= 10) {
+                const lows = data.map(d => +((d?.low ?? d?.l) || 0)).filter(v => v > 0);
+                const highs = data.map(d => +((d?.high ?? d?.h) || 0)).filter(v => v > 0);
+                const pMin = Math.min(...lows), pMax = Math.max(...highs);
+                if (pMax > pMin) {
+                    const BINS = 42, binSize = (pMax - pMin) / BINS;
+                    const bins = new Array(BINS).fill(0);
+                    for (const d of data) {
+                        const lo = +((d?.low ?? d?.l) || 0), hi = +((d?.high ?? d?.h) || 0), v = +((d?.volume) || 0);
+                        if (!(hi >= lo) || lo <= 0 || v <= 0) continue;
+                        const b0 = Math.max(0, Math.floor((lo - pMin) / binSize)), b1 = Math.min(BINS - 1, Math.floor((hi - pMin) / binSize));
+                        const per = v / (b1 - b0 + 1);
+                        for (let b = b0; b <= b1; b++) bins[b] += per;
+                    }
+                    const maxBin = Math.max(...bins, 1), pocIdx = bins.indexOf(maxBin);
+                    const yLo = pMin - binSize, yHi = pMax + binSize;
+                    // 主價格軸鎖成全距(讓橫條精準對齊價位);橫條 grid 疊在主圖上,只佔左側 ~26%
+                    option.yAxis[0].min = yLo; option.yAxis[0].max = yHi; option.yAxis[0].scale = false;
+                    const g0 = option.grid[0];
+                    option.grid.push({ left: g0.left, right: g0.right, top: g0.top, height: g0.height });
+                    const gi = option.grid.length - 1;
+                    option.xAxis.push({ type: 'value', gridIndex: gi, min: 0, max: maxBin * 3.8, show: false });
+                    option.yAxis.push({ type: 'value', gridIndex: gi, min: yLo, max: yHi, show: false });
+                    const xi = option.xAxis.length - 1, yi = option.yAxis.length - 1;
+                    const profData = bins.map((v, b) => ({ value: [v, pMin + (b + 0.5) * binSize], itemStyle: { color: b === pocIdx ? 'rgba(250,204,21,0.5)' : 'rgba(139,148,158,0.26)' } }));
+                    option.series.push({ name: '日分價量', type: 'bar', data: profData, xAxisIndex: xi, yAxisIndex: yi, barWidth: '62%', z: 0, silent: true, tooltip: { show: false } });
+                    // POC 關卡價虛線標註
+                    const pocPrice = pMin + (pocIdx + 0.5) * binSize;
+                    option.series[0].markLine = option.series[0].markLine || { symbol: ['none', 'none'], data: [] };
+                    option.series[0].markLine.data.push({ yAxis: pocPrice, lineStyle: { color: '#facc15', type: 'dotted', width: 1, opacity: 0.7 }, label: { show: true, position: 'insideEndTop', formatter: `套牢關卡 ${pocPrice.toFixed(2)}`, color: '#facc15', fontSize: 9, backgroundColor: 'rgba(0,0,0,0.6)', padding: [1, 3] } });
+                }
+            }
+        } catch (_) {}
+
+        // 📊 V62.5 replaceMerge 納入 grid/xAxis/yAxis:日分價量關掉時,動態加的第 4 格/軸要被移除(否則 merge 殘留)
+        this.chartInstance.setOption(option, { replaceMerge: ['series', 'grid', 'xAxis', 'yAxis'] });
         // 🎛️ V62.2 副圖選擇器 + 即時數值覆蓋到各副圖左上角:依 _LAY 的格頂 % 定位(略過「無」的副圖)
         try {
             let _gi = 1;
