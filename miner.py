@@ -584,7 +584,14 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
                 live_price = float(z)
             except (TypeError, ValueError):
                 return {}
-            vol = int(msg.get('v', 0) or 0)
+            # 🐛 V16.8 MIS 'v'(累積成交量)單位=「張」,但歷史 STOCK_DAY/yfinance volume=「股」→ ×1000 對齊,
+            #   否則今日快照量柱比歷史小 ~1000 倍(5日均量/量比失真、殭屍股誤判;且會被前端「量<中位量2%」濾除)。
+            #   v 可能為 '-'/''/含逗號 → 穩健解析,失敗或 0 視為無成交(非交易日/極冷門)不補。
+            _vraw = str(msg.get('v', '0')).replace(',', '').strip()
+            try:
+                vol = int(float(_vraw)) * 1000 if _vraw not in ('', '-') else 0
+            except (TypeError, ValueError):
+                vol = 0
             if live_price > 0 and vol > 0:
                 return {
                     'date': tw_now.strftime('%Y/%m/%d'),
@@ -613,7 +620,8 @@ def fetch_market_institutional(d: date) -> dict:
         url = f'https://www.twse.com.tw/rwd/zh/fund/T86?response=json&date={d8}&selectType=ALL'
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=15).json()
         if j.get('stat') == 'OK':
-            fields = j.get('fields', [])
+            # 🐛 V16.8 fields 正規化成字串:防某欄為 None → `'外' in f` TypeError → 整批上市法人斷檔
+            fields = [str(f) if f is not None else '' for f in j.get('fields', [])]
             idx_id = next((i for i, f in enumerate(fields) if '證券代號' in f), None)
             idx_f  = next((i for i, f in enumerate(fields) if '外' in f and '買賣超' in f), None)
             idx_t  = next((i for i, f in enumerate(fields) if '投信買賣超' in f), None)
