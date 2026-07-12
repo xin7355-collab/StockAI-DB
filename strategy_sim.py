@@ -385,6 +385,48 @@ def simulate_long_ma_exit(bars, entry_idx, entry_px=None):
     return _exit(entry, closes[-1], n - 1, entry_idx, '尚未出場(資料末端結算)', closed=False)
 
 
+def simulate_trendline_exit(bars, entry_idx, entry_px=None):
+    """飆股上升切線出場(第 6-15 章):守「兩個墊高低點連成的上升切線」,收盤跌破切線投影即出
+       (比守 5MA 更貼合噴出中的飆股)。無有效上升切線時退守 5MA。仍保留 -10% 絕對停損地板(7-3)。
+       介面與 simulate_chu_exit 相容,可傳給 backtest_chu_swing 比較期望值。"""
+    if not bars:
+        return None
+    n = len(bars)
+    if entry_idx < 0 or entry_idx >= n - 1:
+        return None
+    closes = [_c(b) for b in bars]
+    ma5 = _ma_series(closes, 5)
+    entry = entry_px if (entry_px and entry_px > 0) else closes[entry_idx]
+    if entry <= 0:
+        return None
+    abs_floor = entry * 0.90
+    k = 3
+    lows = [i for i in range(k, n - k) if closes[i] == min(closes[i - k: i + k + 1])]
+
+    def _proj(i):
+        """兩個「已確認(idx+k<i,無前視)且抬高」的最近 swing low 連線,投影到第 i 根。無則 None。"""
+        valid = [idx for idx in lows if idx + k < i]
+        if len(valid) < 2:
+            return None
+        a, b = valid[-2], valid[-1]
+        if not (b > a and closes[b] > closes[a]):
+            return None
+        slope = (closes[b] - closes[a]) / (b - a)
+        return closes[b] + slope * (i - b) if slope > 0 else None
+
+    for i in range(entry_idx + 1, n):
+        c = closes[i]
+        if c <= abs_floor:
+            return _exit(entry, c, i, entry_idx, '破絕對停損-10%(鐵則)')
+        proj = _proj(i)
+        if proj is not None:
+            if c < proj:
+                return _exit(entry, c, i, entry_idx, '跌破上升切線(飆股出場)')
+        elif ma5[i] > 0 and c < ma5[i]:
+            return _exit(entry, c, i, entry_idx, '跌破5MA(無切線退守)')
+    return _exit(entry, closes[-1], n - 1, entry_idx, '尚未出場(資料末端結算)', closed=False)
+
+
 def backtest_chu_swing(bars, cost_pct=0.0, exit_fn=None):
     """回後買上漲進場 + 朱式出場 的逐根回測期望值。回 dict 或 None(交易<5筆/負期望值)。
     取代原本散在 radar_miner._chu_backtest 的內嵌邏輯。

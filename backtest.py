@@ -1104,6 +1104,7 @@ def main():
     # 🎯 第8-2章:K線轉折出場(守前一日K低,飆股專用);第8-4章:長線守20MA出場 → 四種出場模型同進場對照
     chu_swing_kline_agg = []
     chu_swing_long_agg = []
+    chu_swing_trend_agg = []   # 🎯 第6-15章:飆股上升切線出場
 
     for f in DATA_DIR.glob("*.json"):
         sym = f.stem
@@ -1181,6 +1182,12 @@ def main():
                 exit_fn=strategy_sim.simulate_long_ma_exit)
             if _csl:
                 chu_swing_long_agg.append(_csl)
+            # 🎯 第6-15章:同進場、改「飆股上升切線」出場 — 守切線比守5MA貼
+            _cst = strategy_sim.backtest_chu_swing(
+                rows, cost_pct=ROUND_TRIP_COST_PCT,
+                exit_fn=strategy_sim.simulate_trendline_exit)
+            if _cst:
+                chu_swing_trend_agg.append(_cst)
 
             scanned += 1
         except Exception:
@@ -1278,6 +1285,8 @@ def main():
         chu_swing_kline_agg, '第8-2章K線轉折:守前一日K低,跌破即出(飆股專用)')
     chu_swing_long_summary = _summarize_chu_agg(
         chu_swing_long_agg, '第8-4章長線:守月線20MA,獲利>20%改守5MA鎖利')
+    chu_swing_trend_summary = _summarize_chu_agg(
+        chu_swing_trend_agg, '第6-15章飆股:守兩墊高低點上升切線,跌破即出(無切線退守5MA)')
     if chu_swing_summary:
         print(f"\n🎯 回後買上漲全市場出場對照(4 種出場模型):")
         print(f"   [全出守5MA]   {chu_swing_summary['stocks_with_signal']} 檔、正EV {chu_swing_summary['positive_ev_ratio']}%、"
@@ -1291,6 +1300,9 @@ def main():
         if chu_swing_long_summary:
             print(f"   [長線守20MA]  {chu_swing_long_summary['stocks_with_signal']} 檔、正EV {chu_swing_long_summary['positive_ev_ratio']}%、"
                   f"平均期望值 {chu_swing_long_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_long_summary['avg_win_rate_pct']:.0f}%")
+        if chu_swing_trend_summary:
+            print(f"   [飆股切線]    {chu_swing_trend_summary['stocks_with_signal']} 檔、正EV {chu_swing_trend_summary['positive_ev_ratio']}%、"
+                  f"平均期望值 {chu_swing_trend_summary['avg_expectancy_pct']:+.2f}%/趟、勝率 {chu_swing_trend_summary['avg_win_rate_pct']:.0f}%")
 
     payload = {
         'updated': datetime.now().strftime('%Y-%m-%d %H:%M'),
@@ -1310,6 +1322,7 @@ def main():
         'chu_swing_scaled_backtest': chu_swing_scaled_summary,   # 🎯 第8-5章:三均線分批出場(對照)
         'chu_swing_kline_backtest': chu_swing_kline_summary,   # 🎯 第8-2章:K線轉折出場(對照)
         'chu_swing_long_backtest': chu_swing_long_summary,   # 🎯 第8-4章:長線守20MA出場(對照)
+        'chu_swing_trend_backtest': chu_swing_trend_summary,   # 🎯 第6-15章:飆股上升切線出場(對照)
         '_note': '擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群 + 戰術組合。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。',
     }
 
