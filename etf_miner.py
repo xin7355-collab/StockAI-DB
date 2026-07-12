@@ -36,6 +36,11 @@ WEIGHT_DELTA = 0.3    # 加減碼判定門檻(權重變動 %)
 # 被動式基準(當對照組，不參與「主動前段班」排名)
 BENCHMARKS = ["0050", "0056", "00878"]
 
+# 🆕 缺口7(12-3 市值型集中度):市值型 ETF 單一成分股集中度對照。
+#   逐字稿核心例:0050 台積電佔約 5 成(買 0050 等於買半個台積電)vs 00922 等權重降到約 1 成。
+#   抓這幾檔的 holdings 算 top1 集中度,讓使用者一眼看出「集中 vs 分散」。
+CONC_WATCH = ["0050", "006208", "00922", "00923"]
+
 session = requests.Session()
 _UA = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -511,6 +516,9 @@ def main():
         #    權重覆蓋不足(<70%,多為 PCF 抓取不全)則回 None 不誤判成假高現金。
         _wsum = sum((h.get("weight") or 0) for h in curr_h)
         cash_ratio = round(max(0.0, 100.0 - _wsum), 1) if _wsum >= 70 else None
+        # 🆕 缺口7:單一成分股集中度(用現成 curr_h[0],零額外網路)。>40% 前端標「集中度過高」。
+        _t1 = curr_h[0] if curr_h else None
+        top1 = {"sym": _t1.get("sym"), "name": _t1.get("name"), "weight": _t1.get("weight")} if _t1 else None
 
         etfs.append({
             "symbol": s,
@@ -518,6 +526,7 @@ def main():
             "perf": m,
             "fund_size": fund_size,
             "cash_ratio": cash_ratio,
+            "top1": top1,
             "holdings": curr_h[:HOLD_TOP],
             "holdings_count": len(curr_h),
             "changes": changes,
@@ -600,10 +609,33 @@ def main():
         premiums = {}
         print(f"  ⚠️ 折溢價附加失敗: {_pe}")
 
+    # 🆕 缺口7(12-3):市值型 ETF 單一持股集中度對照(0050 集中 vs 00922/00923 等權重分散)。
+    #   用既有 fetch_etf_detail(CI 有網路),抓不到就略過該檔(不誤判)。
+    concentration = []
+    for cs in CONC_WATCH:
+        try:
+            c_name, c_holds, _cfs = fetch_etf_detail(cs)
+            if not c_holds:
+                continue
+            c_holds.sort(key=lambda x: (x.get("weight") or 0), reverse=True)
+            t1 = c_holds[0]
+            top5w = round(sum((h.get("weight") or 0) for h in c_holds[:5]), 1)
+            concentration.append({
+                "symbol": cs,
+                "name": c_name or etf_name(cs),
+                "top1": {"sym": t1.get("sym"), "name": t1.get("name"), "weight": t1.get("weight")},
+                "top5_weight": top5w,
+                "holdings_count": len(c_holds),
+            })
+            print(f"  ✓ [集中度] {cs}: top1={t1.get('sym')} {t1.get('weight')}% / top5={top5w}%")
+        except Exception as _ce:
+            print(f"  ⚠️ [集中度] {cs}: {type(_ce).__name__}: {str(_ce)[:80]}")
+
     out = {
         "updated": today,
         "_premium_status": _PREMIUM_STATUS,
         "top_n": TOP_N,
+        "concentration": concentration,
         "note": "主動式 ETF 2025/5 才上市，績效史短勿過度解讀；持股來自每日 PCF，"
                 "顯示『—』代表該檔持股抓取尚在調校中。",
         "etfs": etfs,
