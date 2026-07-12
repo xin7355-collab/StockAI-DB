@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V61.0(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V61.1(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V61.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -20353,11 +20353,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ? `近 10 日找到 ${x.stopA.date} 漲 +${x.stopA.chg.toFixed(1)}% 的大紅 K → 其最低點當停損`
             : '近 10 日無大紅 K 發動點,此線不啟用';
         const stopBSub = cost ? `成本 ${cost.toFixed(2)} × 95% — 鐵血認賠線,任何狀況都不破` : '需先填入庫存成本價才能計算';
+        // 🆕 缺口7(7-2):絕對停損 -10% 底線(任何理由都得走,即使技術/鐵血線更寬)
+        const abs10 = cost ? cost * 0.90 : null;
         const stopSection = `
             <div class="mt-3">
                 <div class="text-[11px] font-black text-red-300 mb-1 flex items-center gap-1">🛡️ 守底(停損認賠)</div>
                 ${rowHtml('A', '技術停損', stopASub, x.stopA?.low, 'text-red-400', x.stopA ? pnlText(x.stopA.low) : '')}
                 ${rowHtml('B', '鐵血停損', stopBSub, x.stopB, 'text-red-400', x.stopB ? pnlText(x.stopB) : '')}
+                ${abs10 ? rowHtml('C', '絕對底線 -10%', '朱7-2:跌幅超過 10% 絕不再凹,任何理由都得走', abs10, 'text-red-400', pnlText(abs10)) : ''}
             </div>`;
 
         // ⚔️ 永豐 App 操作步驟(濃縮)
@@ -20415,6 +20418,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="text-[9px] text-gray-600 mt-2 text-right">※ 需自行至永豐 App 手動輸入</div>
             </div>` : '';
 
+        // 🆕 缺口4(10-1 套牢自救分級)/ 缺口8(7-3 獲利>7%鎖利)— 依你當前損益給動態動作
+        const posPnl = cost ? ((x.pC - cost) / cost * 100) : null;
+        let statusSection = '';
+        if (posPnl != null) {
+            if (posPnl <= -20) statusSection = `<div class="mt-2 bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r p-2.5"><div class="text-[11px] font-bold text-orange-300 mb-1">🩹 深套 ${posPnl.toFixed(0)}%:反手做空 / 換股</div><div class="text-[10px] text-gray-300 leading-relaxed">虧損已超 20%,若空頭確認(頭頭低底底低)→ 認賠賣出、反手做空賺價差解套,或換成強勢多頭股;除非已到低檔出大量止跌打底,否則別死抱等解套。</div></div>`;
+            else if (posPnl <= -10) statusSection = `<div class="mt-2 bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r p-2.5"><div class="text-[11px] font-bold text-orange-300 mb-1">🩹 中套 ${posPnl.toFixed(0)}%:反彈不過前高就走</div><div class="text-[10px] text-gray-300 leading-relaxed">虧損 10-20%,等反彈 —— 反彈<b>過不了前高</b>就認賠出場,別期待原地解套;若反彈過前高再看能否轉多續抱。</div></div>`;
+            else if (posPnl < 0) statusSection = `<div class="mt-2 bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5"><div class="text-[11px] font-bold text-red-300 mb-1">🩹 小虧 ${posPnl.toFixed(1)}%:最該果斷停損的區間</div><div class="text-[10px] text-gray-300 leading-relaxed">虧損未達 10% —— 跌破上面停損線立刻走,小賠 5-7% 拿回 9 成資金去賺別檔;<b>別讓小賠凹成大賠</b>(散戶最致命的錯)。</div></div>`;
+            else if (posPnl >= 7) statusSection = `<div class="mt-2 bg-[#161b22] border-l-4 border-green-500 border-y border-r border-[#30363d] rounded-r p-2.5"><div class="text-[11px] font-bold text-green-300 mb-1">🔒 已獲利 +${posPnl.toFixed(0)}%:停損上移鎖利</div><div class="text-[10px] text-gray-300 leading-relaxed">獲利已達 7%(離停損很遠)→ 把停損上移到<b>成本 ${cost.toFixed(2)} 之上</b>,改守 5MA 移動停利,保證這趟不會賠;沿均線抱、不破不出(朱 7-3)。</div></div>`;
+        }
         const sharesNote = cost
             ? `<div class="text-[9px] text-gray-500 mt-1">📊 損益按你的成本 ${cost.toFixed(2)} 元 ${sharesUnit >= 1 ? `× ${sharesTotal.toLocaleString()} 股` : '× 1 張(1000 股)'} 試算</div>`
             : '<div class="text-[9px] text-amber-400 mt-1">⚠️ 未設成本 → 庫存填入後才能算「賣的話虧多少」</div>';
@@ -20427,6 +20439,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${targetSection}
             ${takeSection}
             ${stopSection}
+            ${statusSection}
             ${sharesNote}
             <div class="mt-1.5 text-[10px] text-gray-500 leading-snug">
                 💡 <b class="text-gray-300">停損二選一</b>:兩條線中「比較高」那條優先(嚴格);
