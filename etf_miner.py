@@ -41,6 +41,20 @@ BENCHMARKS = ["0050", "0056", "00878"]
 #   抓這幾檔的 holdings 算 top1 集中度,讓使用者一眼看出「集中 vs 分散」。
 CONC_WATCH = ["0050", "006208", "00922", "00923"]
 
+# 🆕 缺口4(12-5 資產配置分層):ETF 類型。只標「可確定」的,未知不標(避免誤分類)。
+#   主動型由代號規則(00\d{3}A)判定;其餘查此已知字典。
+ETF_CATEGORY = {
+    "0050": "市值型", "006208": "市值型", "00922": "市值型(等權)", "00923": "市值型(等權)",
+    "0056": "高息", "00878": "高息", "00919": "高息", "00929": "高息", "00713": "高息低波", "00701": "高息低波",
+}
+
+
+def etf_category(sym):
+    """回 ETF 類型字串或 None(未知不猜)。主動型:00\\d{3}A;其餘查 ETF_CATEGORY。"""
+    if re.fullmatch(r"00\d{3}[A-Z]", str(sym)):
+        return "主動型"
+    return ETF_CATEGORY.get(str(sym))
+
 session = requests.Session()
 _UA = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -544,6 +558,8 @@ def fetch_etf_premium():
 def main():
     prev = load_prev_tracking() or {}
     prev_hold = {e["symbol"]: e.get("holdings", []) for e in prev.get("etfs", [])}
+    # 🆕 缺口8(12-4 主動靈活度):換股頻率 EWMA(decay 0.9)。日日換≈10、週換≈2,越高越常調整持股。
+    prev_turnover = {e["symbol"]: (e.get("turnover_score") or 0) for e in prev.get("etfs", [])}
     today = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
 
     actives = list_active_etfs()
@@ -587,6 +603,8 @@ def main():
         # 🆕 缺口7:單一成分股集中度(用現成 curr_h[0],零額外網路)。>40% 前端標「集中度過高」。
         _t1 = curr_h[0] if curr_h else None
         top1 = {"sym": _t1.get("sym"), "name": _t1.get("name"), "weight": _t1.get("weight")} if _t1 else None
+        # 🆕 缺口8:換股靈活度 EWMA(今日有換股 +1,舊值衰減 0.9)。
+        turnover_score = round(prev_turnover.get(s, 0) * 0.9 + (1 if changed else 0), 2)
 
         etfs.append({
             "symbol": s,
@@ -596,6 +614,8 @@ def main():
             "expense_ratio": expense_ratio,
             "cash_ratio": cash_ratio,
             "top1": top1,
+            "category": etf_category(s),          # 🆕 缺口4
+            "turnover_score": turnover_score,      # 🆕 缺口8
             "holdings": curr_h[:HOLD_TOP],
             "holdings_count": len(curr_h),
             "changes": changes,
