@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V60.1(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V60.2(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5298,6 +5298,10 @@ ${list}
             return (m.ret_120d != null ? m.ret_120d : (m.ret_incep != null ? m.ret_incep : -9999));
         };
         const _sortedEtfs = [...d.etfs].sort((a, b) => _psKey(b) - _psKey(a));
+        // 🆕 缺口5(12-5):規模 TOP5 徽章 + AUM 顯示 + 投信品牌白名單(fund_size/name 皆現成)
+        const _top5Size = new Set([...d.etfs].filter(e => e.fund_size > 0).sort((a, b) => b.fund_size - a.fund_size).slice(0, 5).map(e => e.symbol));
+        const _fmtAUM = v => (typeof v === 'number' && v > 0) ? (v >= 1e8 ? (v / 1e8).toFixed(0) + '億' : (v / 1e4).toFixed(0) + '萬') : '';
+        const _brandWL = ['國泰', '元大', '富邦', '群益', '統一', '野村', '復華'];   // 12-5:長期績效佳投信白名單
         const perfCardHtml = _sortedEtfs.map((e, i) => {
             const m = e.perf || {};
             const shortHist = (m.bars || 0) < 120;
@@ -5306,6 +5310,14 @@ ${list}
                            : _beat === false ? '<span class="text-[8px] px-1 py-0.5 rounded bg-white/5 text-gray-500 border border-[#30363d]">輸0050</span>' : '';
             const weakChip = (m.ret_120d != null && m.ret_120d > 0 && m.ret_20d != null && m.ret_20d < 0)
                            ? '<span class="text-[8px] px-1 py-0.5 rounded bg-green-900/30 text-green-300 border border-green-800/40 font-bold">⚠️ 短線轉弱</span>' : '';
+            // 🆕 缺口2(12-1):市價跌(ret_120d<0)但含息正(tr_120d>0)= 配息掩蓋跌價「吃老本」,別被月月配迷惑
+            const eatOldChip = (m.ret_120d != null && m.ret_120d < 0 && m.tr_120d != null && m.tr_120d > 0)
+                           ? '<span class="text-[8px] px-1 py-0.5 rounded bg-green-900/30 text-green-300 border border-green-800/40 font-bold">⚠️ 吃老本(配息掩蓋跌價)</span>' : '';
+            // 🆕 缺口5(12-5):規模 TOP5 徽章 + 投信品牌白名單加分
+            const sizeChip = _top5Size.has(e.symbol)
+                           ? '<span class="text-[8px] px-1 py-0.5 rounded bg-amber-900/30 text-amber-300 border border-amber-700/40 font-bold">🏆 規模TOP5</span>' : '';
+            const _brand = _brandWL.find(b => (e.name || '').includes(b));
+            const brandChip = _brand ? `<span class="text-[8px] px-1 py-0.5 rounded bg-white/5 text-gray-300 border border-[#30363d]">🏢 ${_brand}</span>` : '';
             // V33.8 — 你持有的主動 ETF(對照庫存 proTerminalInv)標「💼 持有」+ 紫框,好找
             const _held = (this.inventory || []).some(it => String(it.symbol) === String(e.symbol));
             const heldChip = _held ? '<span class="text-[8px] px-1 py-0.5 rounded bg-purple-900/40 text-purple-200 border border-purple-500/50 font-bold">💼 持有</span>' : '';
@@ -5318,8 +5330,8 @@ ${list}
                             <span class="text-gray-500 font-mono text-xs w-4 flex-shrink-0">${i + 1}</span>
                             <div class="min-w-0">
                                 <div class="font-bold text-gray-100 text-sm truncate">${e.name || e.symbol}${e.changed_today ? ' <span class="text-[9px] text-amber-400">●今日換股</span>' : ''}</div>
-                                <div class="text-[10px] text-gray-500">${e.symbol} · ${shortHist ? '上市以來' : '近120日'}</div>
-                                ${(heldChip || beatChip || weakChip) ? `<div class="flex gap-1 mt-0.5 flex-wrap">${heldChip}${beatChip}${weakChip}</div>` : ''}
+                                <div class="text-[10px] text-gray-500">${e.symbol} · ${shortHist ? '上市以來' : '近120日'}${e.fund_size > 0 ? ` · 規模${_fmtAUM(e.fund_size)}` : ''}</div>
+                                ${(heldChip || beatChip || weakChip || eatOldChip || sizeChip || brandChip) ? `<div class="flex gap-1 mt-0.5 flex-wrap">${heldChip}${sizeChip}${brandChip}${beatChip}${weakChip}${eatOldChip}</div>` : ''}
                             </div>
                         </div>
                         <div class="text-right flex-shrink-0">
