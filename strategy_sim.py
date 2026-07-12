@@ -783,3 +783,46 @@ def half_price_signal(bars, lookback=20):
             return {'ref_idx': j, 'half': round(half, 2), 'side': 'bull', 'broken': reclaim,
                     'name': f'低檔大量長黑½={half:.2f}' + ('(已站上→止跌確認)' if reclaim else '(壓著→賣壓未消)')}
     return None
+
+
+# ── 單根變盤線(高/低檔轉折警訊)第 2-6、2-7 章 ──────────────────────────────
+def reversal_candle(bars):
+    """單根變盤線在高/低檔即為轉折警訊(第 2-6/2-7 章,次日確認)。
+       高檔(近60日位階≥0.8):十字/紡錘/墓碑/倒錘/長上影 → 偏空變盤;
+       低檔(位階≤0.3):十字/紡錘/T字/錘子/長下影 → 偏多變盤。
+       變盤線 = 實體 ≤ 全距×0.3。回 dict 或 None:{side:'bear'/'bull', name, pos}。"""
+    if not bars or len(bars) < 20:
+        return None
+    cur = bars[-1]
+    o, c, h, l = _o(cur), _c(cur), _h(cur), _l(cur)
+    if o <= 0 or h <= l:
+        return None
+    rng = h - l
+    body = abs(c - o)
+    up_sh = h - max(o, c)
+    dn_sh = min(o, c) - l
+    if body > rng * 0.3:                       # 實體太大 → 非變盤線
+        return None
+    win = bars[-60:]
+    whi = max(_h(b) for b in win)
+    wlo = min(_l(b) for b in win)
+    pos = (c - wlo) / (whi - wlo) if whi > wlo else 0.5
+
+    def _name():
+        if body <= rng * 0.1:                  # 幾乎無實體 = 十字家族
+            if up_sh >= rng * 0.6 and dn_sh < rng * 0.3:
+                return '墓碑/倒T變盤'
+            if dn_sh >= rng * 0.6 and up_sh < rng * 0.3:
+                return '蜻蜓/T字變盤'
+            return '十字變盤線'
+        if up_sh >= body * 2 and dn_sh <= body:
+            return '倒錘/長上影'
+        if dn_sh >= body * 2 and up_sh <= body:
+            return '錘子/長下影'
+        return '紡錘變盤線'
+
+    if pos >= 0.8:
+        return {'side': 'bear', 'name': f'高檔{_name()}(轉折警訊,次日確認)', 'pos': round(pos, 2)}
+    if pos <= 0.3:
+        return {'side': 'bull', 'name': f'低檔{_name()}(轉折警訊,次日確認)', 'pos': round(pos, 2)}
+    return None
