@@ -125,7 +125,8 @@ def sig_kd_dead_cross(rows, idx):
 
 
 def sig_volume_breakout(rows, idx):
-    """爆量長紅:成交量 ≥ 5 日均量 1.5 倍 + 收紅 + 收盤站月線"""
+    """爆量長紅:成交量 ≥ 5 日均量 1.5 倍 + 紅K實體 ≥ 1.5% + 收盤站月線。
+    📏 逐字稿(2-4 實體長紅/4-4 攻擊量):突破要「有力道的紅K實體」,量大但十字/小實體是假突破。"""
     avg5 = _avg_volume_lots(rows, idx)
     if not avg5: return False
     v_lots = (rows[idx].get('volume', 0) or 0) / 1000
@@ -133,8 +134,9 @@ def sig_volume_breakout(rows, idx):
     o = rows[idx].get('open', 0)
     closes = [r.get('close', 0) for r in rows]
     ma20 = _ma(closes, idx, 20)
-    if not (ma20 and c > 0): return False
-    return v_lots >= avg5 * 1.5 and c > o and c > ma20
+    if not (ma20 and c > 0 and o > 0): return False
+    body_pct = (c - o) / o                              # 紅K實體佔比
+    return v_lots >= avg5 * 1.5 and body_pct >= 0.015 and c > ma20
 
 
 def sig_new_high_60d(rows, idx):
@@ -154,14 +156,17 @@ def sig_break_prev_low(rows, idx):
 
 
 def sig_break_ma60(rows, idx):
-    """跌破季線(60MA):收盤跌破 60MA 且前一日仍站上"""
+    """跌破季線(60MA):收盤跌破 60MA + 前一日仍站上 + 季線走平/下彎(5天斜率)。
+    📏 逐字稿(葛蘭碧賣點/趨勢改變):跌破「仍上揚」的均線多為洗盤假跌破 → 須季線非上揚才算有效賣訊。"""
     closes = [r.get('close', 0) for r in rows]
     ma60 = _ma(closes, idx, 60)
     ma60_prev = _ma(closes, idx - 1, 60)
     if not (ma60 and ma60_prev): return False
+    ma60_5ago = _ma(closes, idx - 5, 60)                 # 5 天前季線(波段斜率準則)
+    down_or_flat = ma60_5ago is None or ma60 <= ma60_5ago  # 季線走平或下彎
     c = closes[idx]
     c_prev = closes[idx - 1]
-    return c < ma60 and c_prev >= ma60_prev
+    return c < ma60 and c_prev >= ma60_prev and down_or_flat
 
 
 def sig_ma5_golden(rows, idx):
