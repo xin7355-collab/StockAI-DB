@@ -283,49 +283,60 @@ def simulate_three_ma_scaled_exit(bars, entry_idx, entry_px=None):
     entry = entry_px if (entry_px and entry_px > 0) else closes[entry_idx]
     if entry <= 0:
         return None
-    shares = {'5': None, '10': None, '20': None}   # 每張的 (exit_idx, exit_px, reason)
+    # 📏 8-5 買回機制:跌破對應均線賣 1 張,之後收盤又「站回」該均線就補回 1 張(維持部位),
+    #    直到三條都跌破或觸發全出。每張逐輪累計 round-trip P&L(相對原始 entry,等權 1/3)。
+    mas = {'5': ma5, '10': ma10, '20': ma20}
+    shares = {k: {'held': True, 'buy': entry, 'realized': 0.0, 'done': False} for k in mas}
     stop_px = entry * 0.95                          # 8-3/8-5 初始 -5% 停損
-
-    def _sell(key, i, reason):
-        if shares[key] is None:
-            shares[key] = (i, closes[i], reason)
-
     peak_ret = 0.0
+    last_act = entry_idx
+
+    def _closeall(i, _reason):
+        for s in shares.values():
+            if not s['done']:
+                if s['held']:
+                    s['realized'] += (closes[i] - s['buy']) / entry * 100
+                    s['held'] = False
+                s['done'] = True
+
     for i in range(entry_idx + 1, n):
         c = closes[i]
         peak_ret = max(peak_ret, (c - entry) / entry)
-        # 📏 8-3/8-5 初始停損鐵則:仍在虧損且跌破 -5% → 三張「全部一起停損」(不分批,避免小賠拖成大賠)
-        if c <= stop_px and c < entry and any(v is None for v in shares.values()):
-            for kma in shares:
-                _sell(kma, i, '破-5%停損三張全出')
+        # 8-3/8-5 初始停損鐵則:仍虧損且跌破 -5% → 三張全出(避免小賠拖成大賠)
+        if c <= stop_px and c < entry and any(not s['done'] for s in shares.values()):
+            _closeall(i, 'stop'); last_act = i
             break
         # 急漲曾 >20% 後跌破5MA → 三張全出(鎖住主升段利潤)
         if peak_ret >= 0.20 and ma5[i] > 0 and c < ma5[i]:
-            for kma in shares:
-                _sell(kma, i, '急漲>20%跌破5MA全出')
+            _closeall(i, 'accel'); last_act = i
             break
-        if ma5[i] > 0 and c < ma5[i]:
-            _sell('5', i, '跌破5MA賣1/3')
-        if ma10[i] > 0 and c < ma10[i]:
-            _sell('10', i, '跌破10MA賣1/3')
-        if ma20[i] > 0 and c < ma20[i]:
-            _sell('20', i, '跌破20MA賣尾1/3')
-        if all(v is not None for v in shares.values()):
-            break
+        for k, s in shares.items():
+            if s['done']:
+                continue
+            ma = mas[k][i]
+            if ma <= 0:
+                continue
+            if s['held'] and c < ma:                 # 跌破 → 賣出該張,累計已實現
+                s['realized'] += (c - s['buy']) / entry * 100
+                s['held'] = False
+                last_act = i
+            elif (not s['held']) and c >= ma:        # 站回 → 買回該張
+                s['buy'] = c
+                s['held'] = True
+                last_act = i
 
-    closed_all = all(v is not None for v in shares.values())
-    # 尾端未出的張以最後收盤結算(未平倉)
-    for kma in shares:
-        if shares[kma] is None:
-            shares[kma] = (n - 1, closes[-1], '尚未出場(末端結算)')
-    rets = [(px - entry) / entry * 100 for (_i, px, _r) in shares.values()]
-    exit_idx = max(i for (i, _px, _r) in shares.values())
+    all_done = all(s['done'] for s in shares.values())
+    # 尾端仍持有的張以最後收盤結算(未平倉)
+    for s in shares.values():
+        if not s['done'] and s['held']:
+            s['realized'] += (closes[-1] - s['buy']) / entry * 100
+    exit_idx = max(last_act, entry_idx + 1)
     return {
-        'return_pct': round(sum(rets) / 3, 2),
+        'return_pct': round(sum(s['realized'] for s in shares.values()) / 3, 2),
         'exit_idx': exit_idx,
         'bars_held': exit_idx - entry_idx,
-        'closed': closed_all,
-        'reasons': [shares[k][2] for k in ('5', '10', '20')],
+        'closed': all_done,
+        'reasons': ['三均線分批+買回(跌破賣/站回補)'],
     }
 
 
