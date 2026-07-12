@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V60.5(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
+    <!-- STRATEGY TERMINAL V60.6(策略引擎 strategy_sim + 回後買上漲/葛蘭碧/橫盤/背離全市場 tab
          + 前端單一真相 StrategySim + 逐字稿6-2 20MA上彎鐵則;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -522,7 +522,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V60.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5256,6 +5256,7 @@ ${list}
                     : `<div class="font-mono font-bold text-sm ${pcls(bigV)}">${pct(bigV)}</div>
                        <div class="text-[8px] text-gray-600">${bigLbl}</div>
                        <div class="text-[9px] text-gray-500 mt-0.5 border-t border-[#21262d] pt-0.5">${subLbl} <span class="${pcls(subV)} font-mono">${pct(subV)}</span></div>`}
+                ${(b.fill && typeof b.fill.fill_rate === 'number') ? `<div class="text-[8px] mt-0.5 border-t border-[#21262d] pt-0.5 ${b.fill.fill_rate >= 80 ? 'text-red-300' : b.fill.fill_rate >= 50 ? 'text-gray-400' : 'text-green-300'}" title="近${b.fill.samples}次配息的填息率/平均填息天數(收盤回到除息前一日)">💧填息 ${b.fill.fill_rate.toFixed(0)}%${b.fill.avg_fill_days ? ` ·${b.fill.avg_fill_days.toFixed(0)}天` : ''}</div>` : ''}
             </div>`;
         }).join('');
 
