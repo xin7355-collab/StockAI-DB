@@ -32,3 +32,6 @@ news_cache.json
 skills-lock.json
 筆記本/
 逐字稿/
+
+# Shioaji SDK 執行時產生的 log(勿進版控)
+shioaji.log
