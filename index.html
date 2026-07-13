@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V62.9(當沖作戰室:大盤風向(外資台指期)+昨漲停隔日沖追蹤+撐壓速查+個股期貨夜盤補漲(資料hook,接券商/付費期貨API自動生效);即時判讀補漲跌停鎖死(V62.8);版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V63.1(當沖作戰室新增「🏀 個股期貨夜盤漲幅榜」補漲雷達:永豐Shioaji採268檔近月個股期貨,漲最多前10點擊跳股;即時判讀補漲跌停鎖死(V62.8);版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -29064,6 +29064,42 @@ ${_chuPosPlan}
         </div>`;
     },
 
+    // 🏀 V63.1 近月個股期貨夜盤漲幅榜(全市場 268 檔,漲最多前 10)——「補漲雷達」入口
+    //   夜盤(15:00~次日05:00)期貨已漲、隔天現貨還沒跟 = 補漲機率高;點任一檔跳看該股當沖頁
+    _dtFutureLeaders(curSym) {
+        const cache = this._stockFutureCache;
+        if (!cache || typeof cache !== 'object') return '';
+        const arr = Object.keys(cache).map(k => {
+            const d = cache[k] || {};
+            return { sym: String(k), nc: +d.nightChgPct, ts: d.ts || '' };
+        }).filter(o => isFinite(o.nc));
+        if (arr.length < 3) return '';
+        const top = arr.slice().sort((a, b) => b.nc - a.nc).slice(0, 10);
+        const tsStr = (top[0] && top[0].ts) || '';
+        const rows = top.map((o, i) => {
+            const nm = this.getStockName(o.sym) || o.sym;
+            const cls = o.nc > 0 ? 'text-red-300' : o.nc < 0 ? 'text-green-300' : 'text-gray-300';
+            const hot = o.nc >= 3;
+            const isCur = String(o.sym) === String(curSym);
+            return `<div onclick="app.analyze('${o.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="grid grid-cols-[20px_1fr_auto] gap-2 items-center px-1.5 py-1 border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] ${isCur ? 'bg-cyan-900/20' : ''}">
+                <span class="text-[10px] font-mono ${i < 3 ? 'text-amber-300 font-black' : 'text-gray-600'}">${i + 1}</span>
+                <span class="text-[11px] text-gray-200 font-bold truncate">${hot ? '🔥 ' : ''}${nm} <span class="text-[9px] text-gray-500 font-mono">${o.sym}</span>${isCur ? ' <span class="text-[9px] text-cyan-300">◀ 本檔</span>' : ''}</span>
+                <span class="text-[12px] font-mono font-black ${cls}">${o.nc >= 0 ? '+' : ''}${o.nc.toFixed(2)}%</span>
+            </div>`;
+        }).join('');
+        return `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg">
+            <summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between">
+                <span class="text-[12px] font-black text-cyan-200">🏀 個股期貨夜盤漲幅榜 <span class="text-[9px] text-gray-500 font-normal">近月 ${arr.length} 檔・漲最多前10</span></span>
+                <span class="text-gray-500 text-[10px]">點開 ▾</span>
+            </summary>
+            <div class="px-2 pb-2 pt-1 border-t border-[#21262d]">
+                <div class="text-[9px] text-gray-600 mb-1 px-1 leading-snug">💡 夜盤(15:00~次日05:00)個股期貨已漲、隔天現貨還沒跟上 = 補漲機率高。點任一檔跳看該股。${tsStr ? ` · 更新 ${tsStr}` : ''}</div>
+                ${rows}
+                <div class="text-[9px] text-gray-600 mt-1 px-1 leading-snug">⚠️ 個股期貨量小易被拉抬做假,開盤務必確認現貨有量再進,別追高。</div>
+            </div>
+        </details>`;
+    },
+
     async renderDayTradeTab(sym, opts = {}) {
         sym = sym || this.currentSymbolId;
         const box = document.getElementById('dayTradeBody');
@@ -29640,6 +29676,8 @@ ${_chuPosPlan}
         if (this.currentSymbolId !== sym) return;
         // 🎯 V62.9 當沖作戰室(大盤風向+昨漲停隔日沖+撐壓+個股期貨夜盤 hook)插在作戰指令下方
         try { const _bx = this._dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw); if (_bx) cards.splice(1, 0, _bx); } catch (_) {}
+        // 🏀 V63.1 個股期貨夜盤漲幅榜(補漲雷達入口)插在作戰室下方
+        try { const _fl = this._dtFutureLeaders(sym); if (_fl) cards.splice(2, 0, _fl); } catch (_) {}
         // ⚡ V55.3 組裝:hero(cards[0]即儀表板前的作戰指令)+ 儀表板/損益/SOP 恆顯,其餘進「📊 進階分析」摺疊
         const advanced = detail.length ? `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg"><summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between"><span class="text-[12px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤</span></span><span class="text-gray-500 text-[10px]">點開 ▾</span></summary><div class="px-2 pb-2 pt-1 border-t border-[#21262d] flex flex-col gap-2">${detail.join('')}</div></details>` : '';
         // 把「進階分析」插在損益試算(cards 最後第2個,SOP 是最後)前
