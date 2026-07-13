@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V65.4(總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V65.5(總覽頂卡改「🚦現在怎麼做」三情境決策卡(依使用者規格):①持有=續抱/警戒減碼/建議離場/立刻停損+「📉回檔健檢」三分法(大戶5日賣超>500張=危險回檔該走/大戶反而買超+守月線=洗散戶→給加碼指令(回測月線不破+紅K可加碼一次)/大盤拖累+大戶沒跑=健康回檔續抱)+深套≤-8%維持原套牢4分法 ②建倉=線型+籌碼(大戶5日買賣超+連N買)一行摘要+可以布局/等買點+目標價(動態停利引擎t1/t2,無則前高)+還有幾%空間+賺賠比(≥2划算)+到目標約賺X元 ③空頭=別碰/建議離場;停損格防打架:空手時跟規則同一條線(起漲=5日線/等買點=月線/盤整=前低),持有=統一停損引擎;⚠️注意單條優先序:大盤偏空>大戶出貨>爆量>賺賠不划算;前版:總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -583,7 +583,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -19886,103 +19886,140 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     <span class="font-mono font-black text-sm ${pc}">${pnlAmt != null ? `${pnlAmt >= 0 ? '+' : ''}${pnlAmt.toLocaleString()} 元${pnlAmt >= 0 ? '(獲利)' : '(虧損)'} ` : ''}${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</span>
                 </div>`;
             }
-            // 🚦 V65.4 表層極簡(使用者:新手要一眼看懂):大字答案「可不可以做」+ 白話一句 + 觸價指令
-            //    判斷邏輯與舊版完全相同(準度不變),只改「顯示層」;細節收進「🔍 系統怎麼判斷的」摺疊
+            // 🚦 V65.5 三情境決策卡(使用者需求:持有→怎麼操作+目標+回檔健檢+該不該加碼;
+            //    建倉→線型+籌碼+目標+還有幾%空間+跌破哪出場;空頭→建議離場)
+            //    判斷引擎不變(趨勢階梯/出場紀律/統一停損/-10%絕對停損),只重寫表層,給散戶信心但不無腦
             const nfP = v => (v != null && isFinite(v)) ? `<b class="font-mono text-gray-50">${(+v).toFixed(2)}</b>` : null;
             const _pks = this.peaks || [], _trs = this.troughs || [];
             const rHigh = _pks.length ? _pks[_pks.length - 1].val : null;
             const rLow = _trs.length ? _trs[_trs.length - 1].val : null;
+            // 📊 大戶籌碼(法人 5/10 日買賣超,股→張;全市場都有此資料)— 算一次,建倉/回檔健檢共用
+            let inst5 = 0, inst10 = 0, hasInst = false, instStreak = 0;
+            for (const b of data.slice(-10)) { if (b.foreign_net != null || b.trust_net != null) hasInst = true; inst10 += ((+b.foreign_net || 0) + (+b.trust_net || 0)) / 1000; }
+            for (const b of data.slice(-5)) { inst5 += ((+b.foreign_net || 0) + (+b.trust_net || 0)) / 1000; }
+            for (let i = data.length - 1; i >= 0; i--) { if (((+data[i].foreign_net || 0) + (+data[i].trust_net || 0)) > 0) instStreak++; else break; }
+            const instFled = hasInst && inst5 < -500;    // 大戶明顯在跑(5日賣超>500張)
+            const instStay = hasInst && inst5 >= -500;   // 大戶沒大跑
+            const instBuy = hasInst && inst5 > 300;      // 大戶在買
+            // 🎯 目標價(動態停利停損引擎 t1/t2,同 tick 算好;沒有就用前高)→ 還有幾%空間 + 賺賠比
+            const dx0 = this._dynExit || {};
+            const _num = v => typeof v === 'number' && isFinite(v) && v > 0;
+            let tgt = null, tgtLb = '';
+            if (_num(dx0.t1) && dx0.t1 > C * 1.005) { tgt = dx0.t1; tgtLb = '第一目標'; }
+            else if (_num(dx0.t2) && dx0.t2 > C * 1.005) { tgt = dx0.t2; tgtLb = '波段目標'; }
+            else if (_num(rHigh) && rHigh > C * 1.005) { tgt = rHigh; tgtLb = '前高'; }
+            // 🛡️ 停損格「跟規則同一個價」防打架:持有=統一停損引擎;空手=規則講哪條線就用哪條(起漲=5日線/等買點=月線/盤整=前低)
+            let stopShow = null, stopLb = '';
+            if (cost) { stopShow = slF; stopLb = '停損價'; }
+            else if (trend === 'bull' && sigType !== '無明確訊號') { stopShow = ma5; stopLb = '5日線'; }
+            else if (trend === 'bull') { stopShow = ma20; stopLb = '月線'; }
+            else if (trend === 'flat') { stopShow = rLow; stopLb = '前低'; }
+            if (!(stopShow != null && isFinite(stopShow) && stopShow > 0 && stopShow < C)) stopShow = null;
+            const upPct = tgt != null ? (tgt - C) / C * 100 : null;
+            const dnPct = stopShow != null ? (C - stopShow) / C * 100 : null;
+            const rr = (upPct != null && dnPct != null && dnPct > 0.3) ? upPct / dnPct : null;
+            // 🧬 線型 / 籌碼 一行摘要(一眼看懂,術語最少)
+            const lineTxt = trend === 'bull' ? (sigType !== '無明確訊號' ? `多頭・買點出現(${sigType})` : bias20 > 12 ? '多頭・但短線漲太多' : '多頭・行進間') : trend === 'bear' ? '空頭・還在跌' : '盤整・方向不明';
+            const lineCls = trend === 'bull' ? 'text-red-300' : trend === 'bear' ? 'text-green-300' : 'text-yellow-300';
+            const chipTxt = !hasInst ? '大戶資料整備中' : instBuy ? `大戶 5 日買超 ${Math.round(inst5).toLocaleString()} 張${instStreak >= 2 ? `・連 ${instStreak} 天買` : ''}(在收貨)` : instFled ? `大戶 5 日賣超 ${Math.abs(Math.round(inst5)).toLocaleString()} 張(在出貨)` : `大戶 5 日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張(沒大動作)`;
+            const chipCls = !hasInst ? 'text-gray-500' : instBuy ? 'text-red-300' : instFled ? 'text-green-300' : 'text-gray-300';
+            // ── 大字答案 + 白話一句 + 觸價指令(碰到價位就動作)──
             let big, bigCls, cmdBorder, why;
             const rules = [];
             if (cost) {
-                // 持倉:出場紀律階梯(絕對停損 → 破停損線 → 空頭 → 破5日線 → 續抱兩張單)
                 if (pnlPct <= -10) { big = '🚨 立刻出場'; bigCls = 'text-red-400'; cmdBorder = 'border-red-500';
                     why = `已經虧 ${pnlPct.toFixed(1)}%,超過「-10% 絕對停損」底線 — 不走只會越賠越多,留住本金才有下一次。`;
                     rules.push('🔻 直接賣出,別等反彈(小賠好賺回,大賠很難)');
                 } else if (slF != null && C <= slF) { big = '🔴 出場'; bigCls = 'text-red-400'; cmdBorder = 'border-red-500';
-                    why = `現價 ${C.toFixed(2)} 已經跌破停損價 ${nf(slF)} — 按紀律出場,別等反彈。`;
-                    rules.push(`🔻 已破 ${nfP(slF)} → 賣出,別凹單`);
+                    why = '已經跌破停損價 — 按紀律出場,錯了小賠,凹了大賠。';
+                    rules.push(`🔻 已破停損 ${nfP(slF)} → 賣出,別凹單`);
                     rules.push(`🔺 之後站回 5 日線 ${nfP(ma5)} 再重新評估`);
-                } else if (trend === 'bear') { big = '🔴 反彈就出'; bigCls = 'text-red-400'; cmdBorder = 'border-red-500';
-                    why = '這檔已翻成空頭(一直跌),抱著只會越套越深;反彈是給你出場用的,不是加碼用的。';
+                } else if (trend === 'bear') { big = '🔴 建議離場'; bigCls = 'text-red-400'; cmdBorder = 'border-red-500';
+                    why = '這檔已翻成空頭(愈盤愈低),抱著只會越套越深 — 反彈是給你離場用的,不是加碼用的。';
                     rules.push(`🔺 反彈碰到 5 日線 ${nfP(ma5)} → 先出一半以上`);
-                    if (slF != null) rules.push(`🔻 跌破 ${nfP(slF)} → 全部出`);
-                } else if (tpS != null && C < tpS) { big = '🟡 警戒・準備減碼'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500';
-                    why = `已跌破 5 日線 ${nf(tpS)},短線轉弱${pnlPct > 0 ? ' — 先把一半獲利放進口袋' : ' — 盯緊停損,沒破前不加碼'}。`;
+                    if (slF != null) rules.push(`🔻 跌破 ${nfP(slF)} → 全部出,不等了`);
+                } else if (tpS != null && C < tpS) { big = '🟡 警戒・先減碼'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500';
+                    why = pnlPct > 0 ? '短線轉弱(跌破 5 日線)— 先把一半獲利放進口袋,剩下的讓它去跑。' : '短線轉弱(跌破 5 日線)— 沒破停損前不砍,但也絕不加碼攤平。';
                     if (pnlPct > 0) rules.push('🔻 現在 → 先賣一半,鎖住獲利');
                     if (slF != null) rules.push(`🔻 再跌破 ${nfP(slF)} → 全部出場`);
                     rules.push(`🔺 站回 5 日線 ${nfP(tpS)} → 解除警戒,續抱`);
                 } else { big = '🟢 續抱'; bigCls = 'text-red-400'; cmdBorder = 'border-green-500';
-                    why = '趨勢還在你這邊;把下面兩張單掛好,就不用整天盯盤。';
+                    why = '趨勢還在你這邊,漲勢沒壞就別亂動;掛好下面兩張單,就不用整天盯盤。';
                     if (tpS != null) rules.push(`🔻 跌破 5 日線 ${nfP(tpS)} → 賣一半停利`);
                     if (slF != null) rules.push(`🔻 跌破 ${nfP(slF)} → 全部出場`);
-                    if (tpL != null) rules.push(`🌊 想抱大波段 → 改守月線 ${nfP(tpL)}(跌破才出)`);
+                    if (tpL != null && tpL !== tpS) rules.push(`🌊 想抱大波段 → 改守月線 ${nfP(tpL)}(跌破才出)`);
                 }
             } else if (trend === 'bull') {
-                if (sigType !== '無明確訊號') { big = '🟢 可以做'; bigCls = 'text-red-400'; cmdBorder = 'border-green-500';
-                    why = `正在起漲(${sigType})${vr != null && vr >= 1.2 ? ',量也放大了 — 跟主力同一根進場' : ',但量還沒放大 — 先買一半就好'}。`;
-                    rules.push(`🔺 現價 ${nfP(C)} 附近分批買進${vr != null && vr < 1.2 ? '(半量,量放大再補)' : ''}`);
+                if (sigType !== '無明確訊號') { big = '🟢 可以布局'; bigCls = 'text-red-400'; cmdBorder = 'border-green-500';
+                    why = `買點出現(${sigType})${instBuy ? ',大戶也在收貨 — 線型籌碼同方向' : instFled ? ',但大戶在出貨 — 先買半量試就好' : vr != null && vr >= 1.2 ? ',量也放大了 — 跟主力同一根進場' : ',量還沒放大 — 先買一半'}。`;
+                    rules.push(`🔺 現價 ${nfP(C)} 附近分批買進${(instFled || (vr != null && vr < 1.2)) ? '(半量)' : ''}`);
                     rules.push(`🔻 買了就掛:跌破 5 日線 ${nfP(ma5)} → 停損出場`);
-                } else if (bias20 > 12) { big = '🔴 先別追'; bigCls = 'text-orange-400'; cmdBorder = 'border-red-500';
-                    why = `這檔是強,但漲太多了(比月線高 ${bias20.toFixed(0)}%)— 現在追很容易買在短期最高點被洗掉。`;
-                    rules.push(`🔺 等回到月線 ${nfP(ma20)} 附近不破 + 出紅K → 再買`);
+                } else if (bias20 > 12) { big = '🟠 強・但先別追'; bigCls = 'text-orange-400'; cmdBorder = 'border-orange-500';
+                    why = `線型是好的,只是短線漲太多(比月線高 ${bias20.toFixed(0)}%)— 現在追容易買在短期最高點被洗掉。`;
+                    rules.push(`🔺 回到月線 ${nfP(ma20)} 附近不破 + 出紅K → 進場`);
                     rules.push(`🔻 之後若跌破月線 ${nfP(ma20)} → 這檔先放掉`);
-                } else { big = '🟡 可以做・但等買點'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500';
-                    why = '這檔是多頭沒錯,只是「現在」不是好買點 — 買貴了一樣賠錢。';
+                } else { big = '🟡 可以布局・等買點'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500';
+                    why = `這檔是多頭${instBuy ? ',大戶也在收貨' : ''},只是「現在」不是最好的買點 — 等下面兩個位置其中一個到,再出手。`;
                     if (rHigh != null && rHigh > C) rules.push(`🔺 帶量突破前高 ${nfP(rHigh)} → 買進(突破那根就進)`);
                     rules.push(`🔺 或回檔到月線 ${nfP(ma20)} 不破 + 出紅K → 買進`);
-                    rules.push(`🔻 跌破月線 ${nfP(ma20)} → 不做了`);
+                    rules.push(`🔻 跌破月線 ${nfP(ma20)} → 這檔不做`);
                 }
             } else if (trend === 'bear') { big = '🔴 別碰'; bigCls = 'text-green-400'; cmdBorder = 'border-red-500';
-                why = '這檔在空頭(一直跌的股票),現在買 = 接下落的刀子,十次有九次越接越低。';
-                rules.push(`🔺 至少站回月線 ${nfP(ma20)} 且不再創新低 → 才重新考慮`);
+                why = '這檔在空頭(愈盤愈低),現在買 = 接下落的刀子;錢放在多頭股才會長大。';
+                rules.push(`🔺 站回月線 ${nfP(ma20)} 且不再創新低 → 才重新考慮`);
                 rules.push('⚪ 在那之前 → 空手,看看就好');
             } else { big = '🟡 先等它表態'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500';
-                why = '這檔在盤整(方向不明),現在進場一半機率被上下洗出去 — 等它自己說話。';
+                why = '這檔在盤整(方向不明),現在進場一半機率被上下洗出去 — 讓它自己先說話。';
                 if (rHigh != null) rules.push(`🔺 帶量突破前高 ${nfP(rHigh)} → 買進(那根就是起漲第一根)`);
                 if (rLow != null) rules.push(`🔻 跌破前低 ${nfP(rLow)} → 轉弱,這檔不做`);
             }
-            // ⚠️ 注意(只挑一條最重要的,避免資訊轟炸)
+            // ⚠️ 注意(只挑一條最重要的,避免轟炸)
             let warn = '';
             try { const m0 = this._chuPositionAdvice(); if (m0 && m0.regime === 'bear') warn = `大盤現在偏空 — 就算這檔訊號再好,部位也要放小(建議總部位 ${m0.pct})。`; } catch (_) {}
+            if (!warn && !cost && trend === 'bull' && instFled) warn = '線型是多頭,但大戶這幾天在出貨 — 只買半量,或等大戶回頭再進。';
             if (!warn && vr != null && vr >= 2) warn = bias20 > 12 ? '今天高檔爆大量 — 明天不漲就是主力出貨,要提前走。' : '今天爆大量 — 看明天:漲=換手繼續做,跌=出貨快跑。';
-            // 🩹 V58.8 套牢診斷(使用者要求:深套時判「錯殺可等回補 / 洗盤 / 真轉弱該走」+ 信心對策)
-            //   只在「有庫存 + 深套 ≤ -8%」顯,合併 Q2(錯殺)+ Q3(洗盤 vs 真跌);全純公式复用既有訊號,不新增卡。
+            if (!warn && rr != null && rr < 1 && !cost && trend === 'bull') warn = `到目標只剩 +${upPct.toFixed(0)}%、停損卻要虧 ${dnPct.toFixed(1)}% — 賺賠不划算,等回檔再進比較聰明。`;
+            // 🩺 回檔健檢 / 套牢診斷(持有時;全純公式:大盤因素 twPct + 大戶動向 inst5 + 支撐/量縮)
+            //    使用者需求:回檔要分「危險(該走)/大盤拖累(續抱)/洗散戶(可加碼)」;深套 ≤-8% 走原套牢 4 分法
             let trappedHtml = '';
-            if (cost && pnlPct != null && pnlPct <= -8) {
-                // 法人近 5 日(張;foreign_net/trust_net 單位股 ÷1000)
-                let inst5 = 0, hasInst = false;
-                for (const b of data.slice(-5)) { const f = +b.foreign_net || 0, t = +b.trust_net || 0; if (b.foreign_net != null || b.trust_net != null) hasInst = true; inst5 += (f + t) / 1000; }
-                const instFled = hasInst && inst5 < -500;      // 法人明顯撤(>500 張)
-                const instStay = hasInst && inst5 >= -500;     // 法人沒大跑
+            if (cost && pnlPct != null) {
                 const ma60_5ago = at(ind.ma60, last - 5);
                 const ma60Up = ma60_5ago != null && ma60 > ma60_5ago;
-                const wasBull = C >= ma60 * 0.92 && ma60Up;    // 還在季線附近 + 季線上揚 = 原多頭未破
-                const nearSup = C >= ma20 * 0.95 || C >= ma60 * 0.95;   // 貼月/季線支撐
-                const volShrink = vr != null && vr <= 0.8;     // 殺低量縮(賣壓竭盡/洗盤特徵)
+                const wasBull = C >= ma60 * 0.92 && ma60Up;
+                const nearSup = C >= ma20 * 0.95 || C >= ma60 * 0.95;
+                const volShrink = vr != null && vr <= 0.8;
                 const twPct = (typeof this._taiexTodayPct === 'number') ? this._taiexTodayPct : null;
                 let regimeBad = false; try { const rg = this._chuPositionAdvice(); regimeBad = rg && rg.regime === 'bear'; } catch (_) {}
-                const mktWashing = (twPct != null && twPct <= -0.5) || regimeBad;   // 大盤本身在跌/空頭
-                let tTone, tVerdict, tAdvice, tBorder;
-                if (instFled && !wasBull) {
-                    tTone = '🔴'; tBorder = 'border-red-500'; tVerdict = '真轉弱(不是錯殺)';
-                    tAdvice = `法人 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b>、季線也破了 → 趨勢真的壞,別凹單等解套。反彈到 5 日線 ${stop5} 或成本附近先減碼,守停損 <b>${nf(slF)}</b> 破了全出。`;
-                } else if (mktWashing && instStay && nearSup) {
-                    tTone = '🟡'; tBorder = 'border-yellow-500'; tVerdict = '洗盤帶下來(大盤在洗)';
-                    tAdvice = `${twPct != null && twPct <= -0.5 ? `今天大盤也跌 ${twPct.toFixed(1)}%,` : '大盤環境偏弱,'}法人沒跑(5日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張)+ 還貼均線${volShrink ? ' + 殺低量縮' : ''} → 像主力/大盤一起<b>洗轎</b>,不是它單獨出事。大盤止穩它就回,守 <b>${nf(slF)}</b> 不破別自己嚇出場。`;
-                } else if (instStay && wasBull && nearSup) {
-                    tTone = '🟢'; tBorder = 'border-green-500'; tVerdict = '像錯殺(體質沒壞)';
-                    tAdvice = `原多頭未破(季線上揚)+ 法人沒跑 + 貼支撐${volShrink ? ' + 量縮' : ''} → 比較像<b>被錯殺</b>,不是基本面壞。可等回補:先「🔎 查利空」確認沒公司壞消息,守 <b>${nf(slF)}</b> 不破就抱著等紅K站回 5 日線 ${stop5},別追殺在最低。`;
-                } else {
-                    tTone = '🟡'; tBorder = 'border-yellow-500'; tVerdict = '體質中性・再觀察';
-                    tAdvice = `套 ${pnlPct.toFixed(1)}% 但訊號不明(法人 ${hasInst ? (inst5 >= 0 ? '+' : '') + Math.round(inst5).toLocaleString() + ' 張' : '無資料'})。守停損 <b>${nf(slF)}</b> 是底線,破了照紀律走;沒破就等大盤/法人表態再決定,別急著砍也別加碼。`;
-                }
+                const mktDrag = (twPct != null && twPct <= -0.5) || regimeBad;
+                const pulling = trend !== 'bear' && (C < ma5 || (rHigh != null && C <= rHigh * 0.97));   // 回檔中(短線轉弱或距前高 3%+)
                 const askBtn = `<button onclick="app._wkAskWhy('${this.currentSymbolId}'); app.vibrate(20);" class="text-[9px] font-bold text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-1.5 py-0.5 ml-1">🔎 查利空</button>`;
-                trappedHtml = `<div class="bg-[#0d1117] border-l-4 ${tBorder} border-y border-r border-[#30363d] rounded-r p-2.5 mt-2">
-                    <div class="text-[11px] font-bold text-gray-200 mb-1">🩹 套牢診斷:${tTone} ${tVerdict}${askBtn}</div>
-                    <div class="text-[10px] text-gray-300 leading-relaxed">${tAdvice}</div>
-                    <div class="text-[8px] text-gray-600 mt-1">💡 只在庫存深套(≤-8%)顯;錯殺=可等回補、洗盤=大盤/主力甩轎、真轉弱=該走。真的破停損還是要走。</div>
-                </div>`;
+                const diagBox = (border, title, body) => `<div class="bg-[#0d1117] border-l-4 ${border} border-y border-r border-[#30363d] rounded-r p-2.5 mt-2">
+                    <div class="text-[11px] font-bold text-gray-200 mb-1">${title}${askBtn}</div>
+                    <div class="text-[11px] text-gray-300 leading-relaxed">${body}</div></div>`;
+                if (pnlPct <= -8) {
+                    // 深套 4 分法(原 V58.8 套牢診斷,邏輯不變)
+                    if (instFled && !wasBull) trappedHtml = diagBox('border-red-500', '🩹 套牢診斷:🔴 真轉弱,不是錯殺',
+                        `大戶 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b>、季線也破了 → 趨勢真的壞掉,別凹單等解套。反彈到 5 日線 ${stop5} 先減碼,跌破 <b>${nf(slF)}</b> 全出。`);
+                    else if (mktDrag && instStay && nearSup) trappedHtml = diagBox('border-yellow-500', '🩹 套牢診斷:🟡 大盤在洗,不是它出事',
+                        `${twPct != null && twPct <= -0.5 ? `今天大盤跌 ${twPct.toFixed(1)}%,` : '大盤環境偏弱,'}大戶沒跑(5日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張)、還守在均線附近${volShrink ? ',跌時量縮(沒人搶著賣)' : ''} → 是被大盤帶下來的。大盤止穩它就回,守 <b>${nf(slF)}</b> 不破別自己嚇出場。`);
+                    else if (instStay && wasBull && nearSup) trappedHtml = diagBox('border-green-500', '🩹 套牢診斷:🟢 像錯殺,體質沒壞',
+                        `多頭結構沒破(季線還上揚)+ 大戶沒跑 + 守在支撐上${volShrink ? ' + 量縮' : ''} → 比較像被錯殺。先「查利空」確認公司沒壞消息 → 守 <b>${nf(slF)}</b> 抱著,等紅K站回 5 日線 ${stop5}。`);
+                    else trappedHtml = diagBox('border-yellow-500', '🩹 套牢診斷:🟡 訊號不明・再觀察',
+                        `套 ${pnlPct.toFixed(1)}% 但多空證據不足(大戶 5 日 ${hasInst ? (inst5 >= 0 ? '+' : '') + Math.round(inst5).toLocaleString() + ' 張' : '無資料'})。底線就是 <b>${nf(slF)}</b>:破了照紀律走;沒破就等表態,別急著砍也別加碼攤平。`);
+                } else if (pulling) {
+                    // 一般回檔 3 分法(V65.5 新):危險回檔(大戶跑)/ 洗散戶(可加碼)/ 大盤拖累・量縮健康回檔
+                    if (instFled) trappedHtml = diagBox('border-red-500', '📉 回檔健檢:🔴 大戶在跑,危險回檔',
+                        `這波回檔大戶 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b> — 不是洗盤,是真的在出。${pnlPct > 0 ? `你還有 +${pnlPct.toFixed(1)}% 獲利,先賣一半保住;` : '反彈就減碼;'}跌破 <b>${nf(slF)}</b> 全出。`);
+                    else if (instBuy && C >= ma20) {
+                        trappedHtml = diagBox('border-green-500', '📉 回檔健檢:🟢 大戶沒走,在洗散戶',
+                            `回檔但大戶 5 日反而<b>買超 +${Math.round(inst5).toLocaleString()} 張</b>${volShrink ? ',而且跌時量縮(被洗的是散戶,大戶沒賣)' : ''} → 這叫洗盤,守好停損就不用怕。`);
+                        rules.push(`🔺 加碼機會:回測月線 ${nfP(ma20)} 不破 + 出紅K → 可加碼一次(總部位別超過原規劃)`);
+                    }
+                    else if (mktDrag && instStay) trappedHtml = diagBox('border-yellow-500', '📉 回檔健檢:🟡 大盤拖累的健康回檔',
+                        `${twPct != null && twPct <= -0.5 ? `今天大盤跌 ${twPct.toFixed(1)}%,` : '大盤偏弱,'}它跟著回,大戶沒跑(5日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張)→ 健康回檔。續抱守 <b>${nf(slF)}</b>,先不加碼,等大盤止穩。`);
+                    else if (instStay && volShrink) trappedHtml = diagBox('border-yellow-500', '📉 回檔健檢:🟡 量縮健康回檔',
+                        `回檔量縮(沒人搶著賣)+ 大戶沒大動作 → 上漲中的正常呼吸。守 <b>${nf(slF)}</b>,站回 5 日線 ${stop5} 就恢復攻擊。`);
+                }
             }
             // 📎 朱式買點引擎參考(空手時,讀仲裁 verdict;chuActionCard V58.2 起 UI 隱藏,引擎照跑)
             let chuLine = '';
@@ -19990,16 +20027,42 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             // 💡 法人估值行(fetchInstitutionTarget 算好後鏡射進來,快取防重繪清空)
             const instCached = (this._instLineCache && this._instLineCache.sym === this.currentSymbolId) ? this._instLineCache.html : '';
             let mkt = ''; try { const m = this._chuPositionAdvice(); if (m) mkt = `🌡️ 大盤${m.regimeLabel}・建議總部位 ${m.pct}(大盤決定你敢押多少)`; } catch (_) {}
+            // 🎯 目標/停損/賺賠比 三格(散戶信心:進場前就知道賺多少、賠多少、划不划算)
+            const tgtEarn = (cost && shares > 0 && tgt != null) ? Math.round((tgt - cost) * shares * 1000) : null;
+            const statGrid = (tgt != null && dnPct != null && trend !== 'bear') ? `
+                <div class="grid grid-cols-3 gap-1.5 my-2 text-center">
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5">
+                        <div class="text-[9px] text-gray-500">🎯 目標・${tgtLb}</div>
+                        <div class="font-mono font-black text-base text-red-300">${tgt.toFixed(2)}</div>
+                        <div class="text-[9px] text-red-300 font-bold">還有 +${upPct.toFixed(0)}% 空間</div>
+                        ${tgtEarn != null && tgtEarn > 0 ? `<div class="text-[8px] text-gray-500">到目標約賺 ${tgtEarn.toLocaleString()} 元</div>` : ''}
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5">
+                        <div class="text-[9px] text-gray-500">🛡️ 跌破就走・${stopLb}</div>
+                        <div class="font-mono font-black text-base text-green-300">${stopShow.toFixed(2)}</div>
+                        <div class="text-[9px] text-green-300 font-bold">最多虧 -${dnPct.toFixed(1)}%</div>
+                    </div>
+                    <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5">
+                        <div class="text-[9px] text-gray-500">⚖️ 賺賠比</div>
+                        <div class="font-mono font-black text-base ${rr != null && rr >= 2 ? 'text-red-300' : rr != null && rr >= 1 ? 'text-yellow-300' : 'text-gray-400'}">${rr != null ? rr.toFixed(1) + ' : 1' : '—'}</div>
+                        <div class="text-[9px] ${rr != null && rr >= 2 ? 'text-red-300' : 'text-gray-500'} font-bold">${rr != null ? (rr >= 2 ? '划算,值得做' : rr >= 1 ? '普通' : '不划算') : ''}</div>
+                    </div>
+                </div>` : '';
             box.className = `w-full bg-[#161b22] border rounded-lg p-3 ${trend === 'bull' ? 'border-red-500/60' : trend === 'bear' ? 'border-green-500/60' : 'border-yellow-500/50'}`;
             box.innerHTML = `
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[12px] font-black text-gray-100">🚦 這檔可不可以做</span>
+                    <span class="text-[12px] font-black text-gray-100">🚦 現在怎麼做</span>
                     <button onclick="app._showTrendCommandHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button>
                 </div>
                 ${invLine}
                 <div class="text-2xl font-black ${bigCls} leading-tight">${big}</div>
-                <div class="text-[12px] text-gray-300 leading-relaxed mt-1 mb-2">${why}</div>
-                <div class="bg-[#0d1117] border-l-4 ${cmdBorder} rounded-r px-2.5 py-2">
+                <div class="text-[12px] text-gray-300 leading-relaxed mt-1">${why}</div>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-[11px]">
+                    <span><span class="text-gray-500">線型</span> <b class="${lineCls}">${lineTxt}</b></span>
+                    <span><span class="text-gray-500">籌碼</span> <b class="${chipCls}">${chipTxt}</b></span>
+                </div>
+                ${statGrid}
+                <div class="bg-[#0d1117] border-l-4 ${cmdBorder} rounded-r px-2.5 py-2 ${statGrid ? '' : 'mt-2'}">
                     <div class="text-[10px] font-bold text-gray-500 mb-0.5">📍 照這樣做(碰到價位就動作,不用猜)</div>
                     ${rules.map(r => `<div class="text-[12px] text-gray-100 leading-relaxed py-0.5">${r}</div>`).join('')}
                 </div>
@@ -20015,12 +20078,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         <div class="flex-1 min-w-0 space-y-1">
                             <div class="text-[11px] leading-tight"><span class="text-gray-500">位置</span> <span class="${posTone} font-bold">${pos}</span></div>
                             <div class="text-[11px] leading-tight"><span class="text-gray-500">量(輔助)</span> <span class="${volTone} font-bold">${volTxt}</span></div>
+                            <div class="text-[11px] leading-tight"><span class="text-gray-500">大戶10日</span> <span class="text-gray-300 font-bold font-mono">${hasInst ? (inst10 >= 0 ? '+' : '') + Math.round(inst10).toLocaleString() + ' 張' : '—'}</span></div>
                             ${mkt ? `<div class="text-[9px] text-gray-500 leading-tight">${mkt}</div>` : ''}
                         </div>
                     </div>
                     ${chuLine}
                     <div id="trendInstLine" class="${instCached ? '' : 'hidden'} text-[9px] text-gray-500 leading-tight">${instCached}</div>
-                    <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📖 判斷順序:趨勢 &gt; 位置 &gt; K棒 &gt; 量;K棒/型態細節請切到「K線」頁看「🗣️ 朱老師這樣看」,總覽只給結論。</div>
+                    <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📖 判斷順序:趨勢 &gt; 位置 &gt; K棒 &gt; 量;目標=動態停利引擎、停損=統一停損引擎、大戶=法人買賣超。K棒/型態細節切「K線」頁看「🗣️ 朱老師這樣看」,總覽只給結論。</div>
                 </div>`;
             box.classList.remove('hidden');
         } catch (_) { try { box.classList.add('hidden'); } catch (__) {} }
