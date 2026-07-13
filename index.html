@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V63.5(當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V63.6(當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3666,6 +3666,7 @@ const app = {
         await this.fetchMacroData();
         this._loadStockFutures();   // 🔌 V62.9 個股期貨夜盤(非阻塞;無檔靜默)
         this._startLiveQuotePoll(); // 📸 V63.2 全市場即時快照輪詢(現價基準 + 當沖強勢榜 + 台指期)
+        this._loadDaytradePack();   // 📊 V63.6 當沖/大盤方向資料包(選擇權 P/C Ratio)
 
         // V21.3 ── Telegram 深連結:?sym=2330 優先,沒有則預設 2330
         const initialSym = this._deepLinkSym || '2330';
@@ -29144,6 +29145,20 @@ ${_chuPosPlan}
         }, 15000);
     },
     _stopLiveQuotePoll() { if (this._liveTimer) { clearInterval(this._liveTimer); this._liveTimer = null; } },
+
+    // 📊 V63.6 當沖/大盤方向免費資料包(daytrade_data_miner 產出:選擇權 P/C Ratio 等);盤後 1 次,載一次即可
+    _daytradePack: null,
+    async _loadDaytradePack() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/daytrade_pack.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j && typeof j === 'object') this._daytradePack = j;
+        } catch (_) {}   // 無檔=靜默(卡片自動不顯)
+    },
+
     // 🎯 V62.9 當沖作戰室:大盤風向(外資台指期)+ 昨漲停隔日沖追蹤 + 撐壓速查 + 個股期貨夜盤補漲(hook)
     _dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) {
         const parts = [];
@@ -29159,6 +29174,25 @@ ${_chuPosPlan}
                 <div class="text-[10px] text-gray-500 font-bold mb-0.5">🌙 大盤風向(外資台指期未平倉 ${(+fi).toLocaleString('en-US')} 口)</div>
                 <div class="text-[13px] font-black ${w.c}">${w.t}</div>
                 <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${w.m}</div>
+            </div>`);
+        }
+        // ①-附 選擇權 P/C Ratio(大盤情緒溫度,免費 TAIFEX;誠實標「情緒參考非明牌」,不給買賣指令)
+        const pc = this._daytradePack && this._daytradePack.pcRatio;
+        if (pc && (pc.oiRatio != null || pc.volRatio != null)) {
+            const oi = pc.oiRatio, vol = pc.volRatio;
+            let tone = { c: 'text-gray-300', t: '⚪ 中性', m: '買賣權未平倉接近均衡,方向由當下量價主導。' };
+            if (oi != null) {
+                if (oi >= 115) tone = { c: 'text-yellow-300', t: '🟡 避險偏濃', m: '賣權未平倉明顯多於買權 → 市場避險/偏保守氣氛濃(傳統當「過度悲觀」的逆向參考,非明牌)。' };
+                else if (oi <= 85) tone = { c: 'text-red-300', t: '🔴 偏樂觀', m: '買權未平倉多於賣權 → 市場偏樂觀甚至過熱,當沖追高留意回檔。' };
+            }
+            const dstr = (pc.date && pc.date.length >= 8) ? `${pc.date.slice(4, 6)}/${pc.date.slice(6, 8)}` : '';
+            parts.push(`<div class="bg-[#0d1117] border border-[#30363d] rounded p-2">
+                <div class="flex items-center justify-between mb-0.5">
+                    <span class="text-[10px] text-gray-500 font-bold">🎯 選擇權 P/C Ratio(大盤情緒${dstr ? ' ' + dstr : ''})</span>
+                    <span class="text-[11px] text-gray-500 cursor-pointer" onclick="event.stopPropagation(); alert('選擇權 Put/Call Ratio 教學：\\n\\n• 未平倉 P/C 比 = 賣權(看跌保護)未平倉 ÷ 買權(看漲)未平倉 ×100%。\\n• 比值「高」= 賣權多 = 避險/偏空氣氛濃，傳統被當「散戶過度悲觀」的反向(逆勢偏多)參考。\\n• 比值「低」= 買權多 = 市場偏樂觀甚至過熱。\\n\\n⚠️ 這是「情緒溫度」參考，不是買賣明牌；當沖仍以個股當下量價、內外盤為主。');">📖</span>
+                </div>
+                <div class="text-[13px] font-black ${tone.c}">${tone.t} <span class="text-[11px] font-mono text-gray-400">未平倉 P/C ${oi != null ? oi.toFixed(0) + '%' : '--'}${vol != null ? ' · 成交 ' + vol.toFixed(0) + '%' : ''}</span></div>
+                <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${tone.m}</div>
             </div>`);
         }
         // 🐛 V63.0 統一「昨日」索引(修 bug 巡邏 CONFIRMED:②③ 索引矛盾)—— 同 renderDayTradeTab 慣例:
