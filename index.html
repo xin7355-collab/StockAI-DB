@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V65.6(bug巡邏修3件(多代理掃描+人工驗證):①決策卡統計格跟大字指令打臉——「立刻出場/出場」時仍顯「目標+賺賠比划算值得做」→ gridMode 三態(full=續抱/警戒/可以布局才顯三格;hint=等買點/別追/盤整只顯目標一行,因從現價算賺賠比會失真,等買點到再算;none=出場指令/空頭不顯)②賺賠不划算警語同步只在 full 模式觸發 ③K線指標設定「取消」原本只還原均線、副圖改動卻留著 → 快照含 subChart1/2,取消一併還原+回寫 localStorage;前版:總覽頂卡改「🚦現在怎麼做」三情境決策卡(依使用者規格):①持有=續抱/警戒減碼/建議離場/立刻停損+「📉回檔健檢」三分法(大戶5日賣超>500張=危險回檔該走/大戶反而買超+守月線=洗散戶→給加碼指令(回測月線不破+紅K可加碼一次)/大盤拖累+大戶沒跑=健康回檔續抱)+深套≤-8%維持原套牢4分法 ②建倉=線型+籌碼(大戶5日買賣超+連N買)一行摘要+可以布局/等買點+目標價(動態停利引擎t1/t2,無則前高)+還有幾%空間+賺賠比(≥2划算)+到目標約賺X元 ③空頭=別碰/建議離場;停損格防打架:空手時跟規則同一條線(起漲=5日線/等買點=月線/盤整=前低),持有=統一停損引擎;⚠️注意單條優先序:大盤偏空>大戶出貨>爆量>賺賠不划算;前版:總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V65.7(總覽改四頁籤(使用者規格):🚦現在怎麼做/💼庫存/🎯進場(持有時自動改名➕加碼)/🛡️出場;預設落「現在怎麼做」+緊急紅點(出場級指令→出場籤紅閃、持有→庫存籤損益色點)、換股自動回第一籤;💼庫存頁=損益hero+回檔健檢/套牢診斷(從主卡移入)+➕加碼策略(趨勢翻空/大戶出貨/虧損>8%=明講不適合加碼;健康時給三招:回測月線不破+紅K加碼一次/連2-3日站5MA順勢加碼/帶量突破前高追,總部位守停損),無庫存=EmptyState導去進場;目標價三大格縮成一行小字(使用者:太佔版位);🌡️本股vs大盤結論鏡射一句話進主卡(分析師講法,卡片本體收進場籤);回後買上漲三版本基準標名防混淆(突破棒½支撐版vs站回5MA vs 20MA觀察區,價位不同是正常);主卡早退清庫存頁防跨股殘留;前版:bug巡邏修3件(多代理掃描+人工驗證):①決策卡統計格跟大字指令打臉——「立刻出場/出場」時仍顯「目標+賺賠比划算值得做」→ gridMode 三態(full=續抱/警戒/可以布局才顯三格;hint=等買點/別追/盤整只顯目標一行,因從現價算賺賠比會失真,等買點到再算;none=出場指令/空頭不顯)②賺賠不划算警語同步只在 full 模式觸發 ③K線指標設定「取消」原本只還原均線、副圖改動卻留著 → 快照含 subChart1/2,取消一併還原+回寫 localStorage;前版:總覽頂卡改「🚦現在怎麼做」三情境決策卡(依使用者規格):①持有=續抱/警戒減碼/建議離場/立刻停損+「📉回檔健檢」三分法(大戶5日賣超>500張=危險回檔該走/大戶反而買超+守月線=洗散戶→給加碼指令(回測月線不破+紅K可加碼一次)/大盤拖累+大戶沒跑=健康回檔續抱)+深套≤-8%維持原套牢4分法 ②建倉=線型+籌碼(大戶5日買賣超+連N買)一行摘要+可以布局/等買點+目標價(動態停利引擎t1/t2,無則前高)+還有幾%空間+賺賠比(≥2划算)+到目標約賺X元 ③空頭=別碰/建議離場;停損格防打架:空手時跟規則同一條線(起漲=5日線/等買點=月線/盤整=前低),持有=統一停損引擎;⚠️注意單條優先序:大盤偏空>大戶出貨>爆量>賺賠不划算;前版:總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -583,7 +583,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.6</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.7</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1390,11 +1390,25 @@
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
                 <!-- 📋 V42.5 — 今日操作重點(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
                 <div id="todayOrderCard" class="hidden"></div>
-                <!-- 📈 V58.2 趨勢照表操課(總覽唯一置頂主卡,V58.1 從右戰區上移):K線趨勢為主+庫存損益+照表指令;
-                     🎯 現在該怎麼做(chuActionCard)已併入此卡,UI 隱藏但仲裁 _chuActionVerdict 照算(分批計畫 gate 用) -->
-                <div id="trendCommandCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
-                <div id="chuActionCard" class="hidden"></div>
-                <!-- 🌡️ 盤中vs大盤、🃏 打法雷達:V65.3 三卡整併,移入下方「① 進場明細」「② 進場劇本」殼內(降噪,總覽只留 3 張主卡) -->
+                <!-- 🗂️ V65.7 總覽四頁籤(使用者規格):現在怎麼做/庫存/進場/出場;預設落在「現在怎麼做」(答案已自動依身分切換),
+                     緊急時對應頁籤亮紅點;持有時「進場」自動改名「加碼」(進場引擎當加碼評估用) -->
+                <div id="ovTabBar" class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5 sticky top-0 z-30 bg-[#0d1117]/95 backdrop-blur pt-1">
+                    <button data-ovtab="now" onclick="app.switchOvTab('now')" class="flex-shrink-0 text-[12px] font-bold rounded-full px-3.5 py-1.5 border transition-colors">🚦 現在怎麼做</button>
+                    <button data-ovtab="inv" onclick="app.switchOvTab('inv')" class="flex-shrink-0 text-[12px] font-bold rounded-full px-3.5 py-1.5 border transition-colors">💼 庫存<span id="ovTabInvDot" class="hidden ml-0.5"></span></button>
+                    <button data-ovtab="entry" onclick="app.switchOvTab('entry')" class="flex-shrink-0 text-[12px] font-bold rounded-full px-3.5 py-1.5 border transition-colors"><span id="ovTabEntryLb">🎯 進場</span></button>
+                    <button data-ovtab="exit" onclick="app.switchOvTab('exit')" class="flex-shrink-0 text-[12px] font-bold rounded-full px-3.5 py-1.5 border transition-colors">🛡️ 出場<span id="ovTabExitDot" class="hidden ml-0.5"></span></button>
+                </div>
+                <!-- 🚦 頁籤① 現在怎麼做:趨勢照表操課主卡(三情境決策)+ 盤中即時雷達 -->
+                <div data-ovpane="now" class="flex flex-col gap-2">
+                    <div id="trendCommandCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                    <div id="chuActionCard" class="hidden"></div>
+                    <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;V65.7 移入「現在怎麼做」頁籤) -->
+                    <div id="chuIntradayCard" class="hidden w-full bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
+                </div>
+                <!-- 💼 頁籤② 庫存:損益 + 回檔健檢/套牢診斷 + 加碼策略(_renderTrendCommand 同引擎寫入) -->
+                <div data-ovpane="inv" style="display:none" class="flex flex-col gap-2">
+                    <div id="invTabCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
+                </div>
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <!-- V46.3 — 首席AI/此股預判整段隱藏,外層 padding 一併收掉(消除頁面上方空白;內部元素仍在 DOM 供 null-safe) -->
                     <div class="relative">
@@ -1450,14 +1464,9 @@
 
                         <!-- 📈 V58.2 趨勢照表操課已上移到總覽最頂(subContentStrategy 第一張) -->
 
-                        <!-- 🧭 分段錨點導覽(V65.3 三卡版:①進場明細→②進場劇本→③防守出場) -->
-                        <div class="w-full flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
-                            <button onclick="app._scrollToCard('entryCheckup')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-red-500 hover:text-red-300 transition-colors">🩺 進場明細</button>
-                            <button onclick="app._scrollToCard('chuPositionPlanCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-orange-500 hover:text-orange-300 transition-colors">🃏 進場劇本</button>
-                            <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-green-500 hover:text-green-300 transition-colors">🛡️ 防守出場</button>
-                        </div>
-
-                        <!-- ═══ V65.3 總覽三卡整併:①進場明細 ②進場劇本 ③防守出場(主結論永遠在頂部「趨勢照表操課」,三卡是明細,打架時以頂部為準) ═══ -->
+                        <!-- 🧭 錨點導覽已由 V65.7 總覽四頁籤(ovTabBar)取代 -->
+                        <!-- 🎯 頁籤③ 進場(持有時改名「加碼」):進場明細 + 進場劇本(主結論在「現在怎麼做」,打架時以它為準) -->
+                        <div data-ovpane="entry" style="display:none" class="w-full flex flex-col gap-3">
                         <!-- ① 🩺 進場明細(合併原 進場體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價 五張) -->
                         <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
                             <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyEntry', this); app.vibrate(20);">
@@ -1496,6 +1505,7 @@
                                 <div id="chuPositionPlanCard" class="hidden w-full bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
                             </div>
                         </div>
+                        </div><!-- /data-ovpane=entry -->
 
                         <!-- ⚔️ V50.7 朱家泓策略狀態(距 5MA/20MA/-5% 停損 + 燈號)移至首席頁(使用者要求) -->
                         <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -1509,7 +1519,8 @@
                             <div id="tpSlReason" class="col-span-3 hidden text-[10px] text-amber-400/90 mt-1.5 leading-snug px-1 text-left"></div>
                         </div>
 
-                        <!-- ③ 🛡️ 防守出場(合併原 出場總表+明日均線保衛+K棒戰法(½價/突破棒/四大金剛) 四張;防守價由近到遠一次看) -->
+                        <!-- 🛡️ 頁籤④ 出場:防守出場(合併原 出場總表+明日均線保衛+K棒戰法(½價/突破棒/四大金剛) 四張;防守價由近到遠一次看) -->
+                        <div data-ovpane="exit" style="display:none" class="w-full flex flex-col gap-3">
                         <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
                             <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyExit', this); app.vibrate(20);">
                                 <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🛡️ 防守出場 <span class="text-[9px] text-gray-500 font-normal">停利停損・保衛價・K棒</span></span>
@@ -1527,9 +1538,8 @@
                                 <div id="fourGuardians" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
                             </div>
                         </div>
-
-                        <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;預估量 + 位階 + 完美買點 + 高檔回吐)-->
-                        <div id="chuIntradayCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
+                        </div><!-- /data-ovpane=exit -->
+                        <!-- ⚡ 盤中即時雷達 chuIntradayCard V65.7 移到頁籤①「現在怎麼做」 -->
                         </div>
                     </div>
                     
@@ -14859,6 +14869,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     <div class="text-[11px] text-gray-100 leading-relaxed mt-1">👉 ${act}</div>
                 </div>`;
             el.classList.remove('hidden');
+            // 🗂️ V65.7 同結論鏡射一句話到「現在怎麼做」主卡(tcMktLine 槽;快取防主卡重繪清空)
+            try {
+                const line = `<span class="text-gray-500">vs大盤</span> ${tone} ${diag}`;
+                this._mktLineCache = { sym, html: line };
+                const slot = document.getElementById('tcMktLine');
+                if (slot && this.currentSymbolId === sym) { slot.innerHTML = line; slot.classList.remove('hidden'); }
+            } catch (_) {}
         } catch (_) { try { el.classList.add('hidden'); } catch (__) {} }
     },
 
@@ -19829,12 +19846,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const box = document.getElementById('trendCommandCard');
         if (!box) return;
         try {
-            if (!data || !ind || !ind.ma20 || last == null || last < 25) { box.classList.add('hidden'); return; }
+            const _hideInvTab = () => { try { const b = document.getElementById('invTabCard'); if (b) { b.classList.add('hidden'); b.innerHTML = ''; } } catch (_) {} };   // 🗂️ V65.7 早退時一併清庫存頁,防跨股殘留
+            if (!data || !ind || !ind.ma20 || last == null || last < 25) { box.classList.add('hidden'); _hideInvTab(); return; }
             const at = (a, i) => (Array.isArray(a) && a[i] != null) ? +a[i] : null;
             const C = +data[last].close, V = +data[last].volume || 0;
             const ma5 = at(ind.ma5, last), ma20 = at(ind.ma20, last), ma60 = at(ind.ma60, last);
             const ma20Up = ma20 != null && at(ind.ma20, last - 2) != null && ma20 > at(ind.ma20, last - 2);
-            if (ma5 == null || ma20 == null || ma60 == null || !(C > 0)) { box.classList.add('hidden'); return; }
+            if (ma5 == null || ma20 == null || ma60 == null || !(C > 0)) { box.classList.add('hidden'); _hideInvTab(); return; }
             // ① 趨勢(朱:趨勢最重要,均線三線多空排 + 月線方向)
             const bull = ma5 > ma20 && ma20 > ma60 && ma20Up;
             const bear = ma5 < ma20 && ma20 < ma60 && !ma20Up;
@@ -20029,27 +20047,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             // 💡 法人估值行(fetchInstitutionTarget 算好後鏡射進來,快取防重繪清空)
             const instCached = (this._instLineCache && this._instLineCache.sym === this.currentSymbolId) ? this._instLineCache.html : '';
             let mkt = ''; try { const m = this._chuPositionAdvice(); if (m) mkt = `🌡️ 大盤${m.regimeLabel}・建議總部位 ${m.pct}(大盤決定你敢押多少)`; } catch (_) {}
-            // 🎯 目標/停損/賺賠比 三格(散戶信心:進場前就知道賺多少、賠多少、划不划算)
+            // 🎯 目標/停損/賺賠比 — V65.7 依使用者「太佔版位」改成一行小字(數字都在,不佔版)
             const tgtEarn = (cost && shares > 0 && tgt != null) ? Math.round((tgt - cost) * shares * 1000) : null;
             const statGrid = (gridMode === 'full' && tgt != null && dnPct != null) ? `
-                <div class="grid grid-cols-3 gap-1.5 my-2 text-center">
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5">
-                        <div class="text-[9px] text-gray-500">🎯 目標・${tgtLb}</div>
-                        <div class="font-mono font-black text-base text-red-300">${tgt.toFixed(2)}</div>
-                        <div class="text-[9px] text-red-300 font-bold">還有 +${upPct.toFixed(0)}% 空間</div>
-                        ${tgtEarn != null && tgtEarn > 0 ? `<div class="text-[8px] text-gray-500">到目標約賺 ${tgtEarn.toLocaleString()} 元</div>` : ''}
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5">
-                        <div class="text-[9px] text-gray-500">🛡️ 跌破就走・${stopLb}</div>
-                        <div class="font-mono font-black text-base text-green-300">${stopShow.toFixed(2)}</div>
-                        <div class="text-[9px] text-green-300 font-bold">最多虧 -${dnPct.toFixed(1)}%</div>
-                    </div>
-                    <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5">
-                        <div class="text-[9px] text-gray-500">⚖️ 賺賠比</div>
-                        <div class="font-mono font-black text-base ${rr != null && rr >= 2 ? 'text-red-300' : rr != null && rr >= 1 ? 'text-yellow-300' : 'text-gray-400'}">${rr != null ? rr.toFixed(1) + ' : 1' : '—'}</div>
-                        <div class="text-[9px] ${rr != null && rr >= 2 ? 'text-red-300' : 'text-gray-500'} font-bold">${rr != null ? (rr >= 2 ? '划算,值得做' : rr >= 1 ? '普通' : '不划算') : ''}</div>
-                    </div>
-                </div>` : '';
+                <div class="text-[11px] text-gray-300 mt-1.5 leading-relaxed">🎯 目標(${tgtLb})<b class="font-mono text-red-300"> ${tgt.toFixed(2)}</b>(還有 +${upPct.toFixed(0)}%${tgtEarn != null && tgtEarn > 0 ? `,到目標約賺 ${tgtEarn.toLocaleString()} 元` : ''})・🛡️ 跌破 <b class="font-mono text-green-300">${stopShow.toFixed(2)}</b> 走(-${dnPct.toFixed(1)}%)・⚖️ 賺賠 <b class="${rr != null && rr >= 2 ? 'text-red-300' : rr != null && rr >= 1 ? 'text-yellow-300' : 'text-gray-400'}">${rr != null ? rr.toFixed(1) + ':1' + (rr >= 2 ? ' 划算' : rr >= 1 ? '' : ' 不划算') : '—'}</b></div>` : '';
             // 🎯 hint 模式(等買點):只給目標一行;賺賠比等真的到買點再算(從現價算會失真 — V65.6 巡邏修)
             const tgtHint = (gridMode === 'hint' && tgt != null) ? `<div class="text-[11px] text-gray-300 mt-1.5">🎯 目標(${tgtLb})<b class="font-mono text-red-300"> ${tgt.toFixed(2)}</b> — 從現價還有 <b class="text-red-300">+${upPct.toFixed(0)}%</b> 空間;賺賠比等買點到了再算才準。</div>` : '';
             box.className = `w-full bg-[#161b22] border rounded-lg p-3 ${trend === 'bull' ? 'border-red-500/60' : trend === 'bear' ? 'border-green-500/60' : 'border-yellow-500/50'}`;
@@ -20065,13 +20066,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     <span><span class="text-gray-500">線型</span> <b class="${lineCls}">${lineTxt}</b></span>
                     <span><span class="text-gray-500">籌碼</span> <b class="${chipCls}">${chipTxt}</b></span>
                 </div>
+                <div id="tcMktLine" class="${(this._mktLineCache && this._mktLineCache.sym === this.currentSymbolId) ? '' : 'hidden'} text-[11px] text-gray-300 leading-relaxed mt-1">${(this._mktLineCache && this._mktLineCache.sym === this.currentSymbolId) ? this._mktLineCache.html : ''}</div>
                 ${statGrid}${tgtHint}
-                <div class="bg-[#0d1117] border-l-4 ${cmdBorder} rounded-r px-2.5 py-2 ${statGrid ? '' : 'mt-2'}">
+                <div class="bg-[#0d1117] border-l-4 ${cmdBorder} rounded-r px-2.5 py-2 mt-2">
                     <div class="text-[10px] font-bold text-gray-500 mb-0.5">📍 照這樣做(碰到價位就動作,不用猜)</div>
                     ${rules.map(r => `<div class="text-[12px] text-gray-100 leading-relaxed py-0.5">${r}</div>`).join('')}
                 </div>
                 ${warn ? `<div class="text-[11px] text-yellow-300 leading-relaxed mt-1.5">⚠️ ${warn}</div>` : ''}
-                ${trappedHtml}
                 <div class="text-center text-[10px] text-gray-500 cursor-pointer select-none mt-2 flex items-center justify-center gap-1" onclick="app.toggleCollapse('tcDetailBody', this); app.vibrate(20);">🔍 系統怎麼判斷的 <span class="text-[10px]" data-chevron>▾</span></div>
                 <div id="tcDetailBody" class="ov-body hidden mt-1.5 border-t border-[#21262d] pt-2">
                     <div class="flex items-center gap-3 mb-1.5">
@@ -20091,6 +20092,51 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📖 判斷順序:趨勢 &gt; 位置 &gt; K棒 &gt; 量;目標=動態停利引擎、停損=統一停損引擎、大戶=法人買賣超。K棒/型態細節切「K線」頁看「🗣️ 朱老師這樣看」,總覽只給結論。</div>
                 </div>`;
             box.classList.remove('hidden');
+            // 💼 V65.7 庫存頁籤(同一引擎的第二個輸出):損益 + 回檔健檢/套牢診斷 + ➕ 加碼策略;無庫存=導去進場
+            try {
+                const invBox = document.getElementById('invTabCard');
+                if (invBox) {
+                    if (cost) {
+                        const pnlAmt2 = shares > 0 ? Math.round((C - cost) * shares * 1000) : null;
+                        const pc2 = pnlPct >= 0 ? 'text-red-400' : 'text-green-400';
+                        let addHtml;
+                        if (trend === 'bear') addHtml = `<div class="text-[11px] text-gray-300 leading-relaxed">🚫 <b>現在不適合加碼</b>:趨勢已翻空,加碼=攤平接刀。先照「出場」頁籤的紀律處理。</div>`;
+                        else if (instFled) addHtml = `<div class="text-[11px] text-gray-300 leading-relaxed">🚫 <b>現在不適合加碼</b>:大戶 5 日賣超 ${Math.abs(Math.round(inst5)).toLocaleString()} 張,在出貨 — 等大戶回頭再說。</div>`;
+                        else if (pnlPct <= -8) addHtml = `<div class="text-[11px] text-gray-300 leading-relaxed">🚫 <b>虧損中禁止加碼攤平</b>(越攤越平躺)。先看下方診斷,守好停損。</div>`;
+                        else addHtml = `
+                            <div class="text-[12px] text-gray-100 leading-relaxed py-0.5">🔺 回測月線 ${nfP(ma20)} 不破 + 出紅K → 可加碼一次</div>
+                            <div class="text-[12px] text-gray-100 leading-relaxed py-0.5">🔺 連 2-3 天收在 5 日線 ${nfP(ma5)} 上 → 順勢加碼(分批第二批)</div>
+                            ${rHigh != null && rHigh > C ? `<div class="text-[12px] text-gray-100 leading-relaxed py-0.5">🔺 帶量突破前高 ${nfP(rHigh)} → 可加碼追第一根</div>` : ''}
+                            <div class="text-[10px] text-gray-500 mt-1">加碼後總部位別超過原規劃;全部部位一律守停損 <b class="font-mono">${nf(slF)}</b>。</div>`;
+                        invBox.innerHTML = `
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[12px] font-black text-gray-100">💼 我的庫存・怎麼操作</span>
+                                <button onclick="app.switchOvTab('exit')" class="text-[9px] text-gray-500 hover:text-green-300">出場價位 →</button>
+                            </div>
+                            <div class="flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-2 mb-1.5">
+                                <span class="text-[11px] text-gray-400">成本 <b class="font-mono text-gray-100">${cost}</b>${shares > 0 ? `・${shares} 張` : ''}</span>
+                                <span class="font-mono font-black text-base ${pc2}">${pnlAmt2 != null ? `${pnlAmt2 >= 0 ? '+' : ''}${pnlAmt2.toLocaleString()} 元 ` : ''}${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</span>
+                            </div>
+                            <div class="text-[13px] font-black ${bigCls} mb-1">${big}</div>
+                            ${trappedHtml || `<div class="text-[11px] text-gray-400 leading-relaxed">${trend === 'bear' ? '空頭趨勢,依「出場」頁籤紀律離場。' : '目前沒有異常回檔;照「現在怎麼做」的兩張單掛好即可。'}</div>`}
+                            <div class="mt-2 bg-[#0d1117] border-l-4 border-blue-500 rounded-r px-2.5 py-2">
+                                <div class="text-[10px] font-bold text-gray-500 mb-0.5">➕ 加碼策略(不是叫你加,是條件到了才加)</div>
+                                ${addHtml}
+                            </div>`;
+                        invBox.classList.remove('hidden');
+                    } else {
+                        invBox.innerHTML = `
+                            <div class="flex flex-col items-center justify-center py-5 px-3">
+                                <div class="text-4xl text-gray-700 mb-2">📦</div>
+                                <div class="text-sm text-gray-300 font-bold mb-1">你沒有這檔的庫存</div>
+                                <div class="text-[10px] text-gray-500 mb-3 text-center leading-relaxed">想買的話,看「進場」頁籤的買點與分批計畫;買了在庫存表輸入成本,這裡就會變成你的持股操作台。</div>
+                                <button onclick="app.switchOvTab('entry'); app.vibrate(20);" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg shadow-md">🎯 看進場計畫</button>
+                            </div>`;
+                        invBox.classList.remove('hidden');
+                    }
+                }
+            } catch (_) {}
+            this._updateOvTabBadges(cost, pnlPct, big);
         } catch (_) { try { box.classList.add('hidden'); } catch (__) {} }
     },
 
@@ -20779,7 +20825,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="bg-purple-900/20 border border-purple-700/40 rounded px-1 py-1.5">
                     <div class="text-[9px] text-purple-300 font-bold">🥉 回後 40%</div>
                     <div class="text-[11px] font-mono text-white font-bold">${fmtPrice(plan.batch3?.ma20Hint)}</div>
-                    <div class="text-[8px] text-purple-300/70 leading-none">回測 20MA 區</div>
+                    <div class="text-[8px] text-purple-300/70 leading-none">20MA 觀察區(非進場價)</div>
                     ${deltaTxt(plan.batch3?.ma20Hint)}
                 </div>
             </div>
@@ -23551,8 +23597,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     msg = '跌破突破長紅 ½ 價(當日平均成本)= 多方轉弱、易引大量賣壓,多單防守離場。';
                 } else if (pC < _oH) {
                     if (pC >= mid * 0.98 && pL >= mid * 0.98 && curVR < 0.85) {
-                        ic = '✅'; bcls = 'border-green-500'; status = '回後買上漲';
-                        msg = '回檔到 ½~最高價之間 + 量縮不破 = 朱老師「回後買上漲」潛在買點,結構未破可分批加碼。';
+                        ic = '✅'; bcls = 'border-green-500'; status = '回後買上漲・½支撐版';
+                        msg = '回檔到 ½~最高價之間 + 量縮不破 = 朱老師「回後買上漲」潛在買點(此版基準=突破棒½價;打法雷達/分批計畫的回後買上漲基準=站回5MA那根與20MA觀察區,價位不同是正常的),結構未破可分批加碼。';
                     } else {
                         ic = '🟡'; bcls = 'border-yellow-500'; status = '攻擊力減弱';
                         msg = '跌破突破長紅「最高價」= 攻擊力道減弱,3-5 天內須站回最高價,否則易轉折;守住 ½ 仍算健康。';
@@ -23677,6 +23723,39 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch(e) { console.warn('[chu] render fail:', e); }
     },
 
+    // 🗂️ V65.7 總覽四頁籤:現在怎麼做/庫存/進場(持有時=加碼)/出場;pane 用 data-ovpane wrapper 的 display 切,
+    //    不動內部卡片的 classList hidden(渲染器照常控制自己的卡),避免互相打架
+    switchOvTab(name, opts) {
+        this._ovTab = name;
+        try {
+            document.querySelectorAll('[data-ovpane]').forEach(el => { el.style.display = el.dataset.ovpane === name ? '' : 'none'; });
+            document.querySelectorAll('[data-ovtab]').forEach(b => {
+                const on = b.dataset.ovtab === name;
+                b.className = `flex-shrink-0 text-[12px] font-bold rounded-full px-3.5 py-1.5 border transition-colors ${on ? 'bg-blue-600/20 text-blue-200 border-blue-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
+            });
+        } catch (_) {}
+        if (!opts || !opts.auto) this.vibrate?.(20);
+    },
+    // 🗂️ 頁籤徽章:庫存點=損益色、出場點=出場級指令時紅閃、進場標籤持有時改「加碼」;換股自動回「現在怎麼做」
+    _updateOvTabBadges(cost, pnlPct, big) {
+        try {
+            if (this._ovTabSym !== this.currentSymbolId) { this._ovTabSym = this.currentSymbolId; this._ovTab = 'now'; }
+            const invDot = document.getElementById('ovTabInvDot');
+            if (invDot) {
+                if (cost && pnlPct != null) { invDot.textContent = '●'; invDot.className = `ml-0.5 text-[9px] ${pnlPct >= 0 ? 'text-red-400' : 'text-green-400'}`; }
+                else invDot.className = 'hidden ml-0.5';
+            }
+            const exitDot = document.getElementById('ovTabExitDot');
+            if (exitDot) {
+                const urgent = /出場|離場|停損/.test(big || '');
+                exitDot.textContent = '●';
+                exitDot.className = urgent ? 'ml-0.5 text-[9px] text-red-400 animate-pulse' : 'hidden ml-0.5';
+            }
+            const entryLb = document.getElementById('ovTabEntryLb');
+            if (entryLb) entryLb.textContent = cost ? '➕ 加碼' : '🎯 進場';
+            this.switchOvTab(this._ovTab || 'now', { auto: true });
+        } catch (_) {}
+    },
     // 🆕 卡片收合瘦身:切換 body 的 hidden + 旋轉 ▾ 箭頭(預設收合,點標題展開)
     toggleCollapse(bodyId, headerEl) {
         const body = document.getElementById(bodyId);
