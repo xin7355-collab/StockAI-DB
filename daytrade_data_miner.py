@@ -156,45 +156,9 @@ def get_large_trader():
     return res
 
 
-def discover_sbl():
-    """從 TWSE OpenAPI 官方清單(swagger)自動找『借券/融券/當沖』相關端點,印出來校準。
-    一次跑就能拿到正確 path,不用瞎猜。"""
-    print('🔎 掃 TWSE OpenAPI 清單找借券端點…', flush=True)
-    import urllib.request
-    for spec_url in ('https://openapi.twse.com.tw/v1/swagger.json', 'https://openapi.twse.com.tw/openapi/swagger.json'):
-        try:
-            req = urllib.request.Request(spec_url, headers={'User-Agent': UA})
-            with urllib.request.urlopen(req, timeout=25) as r:
-                spec = json.loads(r.read().decode('utf-8-sig', errors='replace'))
-        except Exception as e:
-            print(f'  swagger {spec_url} ❌ {str(e)[:80]}', flush=True)
-            continue
-        paths = spec.get('paths', {})
-        print(f'  swagger 共 {len(paths)} 個端點', flush=True)
-        kw = ['借券', '融券', 'lending', 'SBL', 'Short', 'Borrow', '當日沖銷', '當沖', 'DayTrad']
-        hit = []
-        for p, meta in paths.items():
-            summary = ''
-            try:
-                summary = str(list(meta.values())[0].get('summary', ''))
-            except Exception:
-                pass
-            blob = (p + ' ' + summary)
-            if any(k.lower() in blob.lower() for k in kw):
-                hit.append(f'{p}  「{summary}」')
-        for h in hit[:25]:
-            print('   ▸ ' + h, flush=True)
-        return
-    print('  ❌ 找不到 swagger', flush=True)
-
-
 def main():
     pack = {'updated': datetime.now(TW).isoformat(), 'ts': _now_str()}
     ok = 0
-    try:
-        discover_sbl()   # 🔬 一次性:找借券端點(校準完會拿掉)
-    except Exception as e:
-        print(f'discover 出錯:{e}', flush=True)
 
     dtr = get_dt_restrict()
     if dtr:
