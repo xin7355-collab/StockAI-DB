@@ -42,9 +42,9 @@ jobs:
           deploy_branch () {
             local BR="$1"
             git reset --hard -q 2>/dev/null || true
-            git clean -fdq 2>/dev/null || true
-            git fetch origin "$BR" 2>/dev/null || true
-            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支(等 daily_miner 先建),跳過"; return 0; }
+            git clean -fdxq 2>/dev/null || true   # -x:連 gitignore 的 data/*.json 也清,避免 checkout 撞未追蹤衝突
+            echo "→ fetch origin $BR"; git fetch origin "$BR" || echo "  (fetch $BR 失敗)"
+            git checkout -f "$BR" || { echo "⚠️ checkout $BR 失敗(見上錯誤),跳過"; return 0; }
             git reset --hard -q "origin/$BR" 2>/dev/null || true
             mkdir -p data
             cp /tmp/dtp.json data/daytrade_pack.json

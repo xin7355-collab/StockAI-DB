@@ -70,26 +70,29 @@ def _find(d, *cands):
     return None
 
 
-def get_day_trade():
-    """TWSE 每日當日沖銷交易標的及成交量值 → 當沖熱度榜"""
-    print('📊 當沖熱度(TWSE TWTB4U)…', flush=True)
+def get_dt_restrict():
+    """TWSE 每日當日沖銷交易標的(TWTB4U)→ 現股當沖『限制/暫停』清單(當沖安全警示)。
+    此表欄位 = Date/Code/Name/Suspension;Suspension=Y 表『暫停先賣後買現股當沖』(處置/警示常見)。
+    當沖前必看:被暫停的只能『先買後賣』或不能當沖,硬做會違約。"""
+    print('🚫 現股當沖限制表(TWSE TWTB4U)…', flush=True)
     data = fetch_json('https://openapi.twse.com.tw/v1/exchangeReport/TWTB4U', 'TWTB4U')
     if not isinstance(data, list) or not data:
         return None
-    out = []
+    suspend = []
+    total = 0
     for row in data:
         if not isinstance(row, dict):
             continue
-        code = _find(row, 'Code', 'SecuritiesCompanyCode', 'StockNo', '證券代號')
-        name = _find(row, 'Name', '證券名稱')
-        vol = _num(_find(row, 'Volume', 'TotalVolume', '當日沖銷交易成交股數', '成交股數'))
-        code = str(code).strip() if code else ''
-        if not code.isdigit() or len(code) < 4:
+        code = str(_find(row, 'Code', '證券代號') or '').strip()
+        name = str(_find(row, 'Name', '證券名稱') or '').strip()
+        susp = str(_find(row, 'Suspension', '暫停當沖') or '').strip().upper()
+        if not code:
             continue
-        out.append({'code': code, 'name': str(name or '').strip(), 'dtVol': int(vol) if vol else 0})
-    out.sort(key=lambda x: -x['dtVol'])
-    print(f'  ✅ 當沖標的 {len(out)} 檔', flush=True)
-    return out[:100]   # 前 100 熱門
+        total += 1
+        if susp in ('Y', '是', 'TRUE', '1'):
+            suspend.append({'code': code, 'name': name})
+    print(f'  ✅ 名單 {total} 檔,其中暫停當沖 {len(suspend)} 檔', flush=True)
+    return {'total': total, 'suspend': suspend}
 
 
 def get_pc_ratio():
@@ -117,9 +120,9 @@ def main():
     pack = {'updated': datetime.now(TW).isoformat(), 'ts': _now_str()}
     ok = 0
 
-    dt = get_day_trade()
-    if dt:
-        pack['dayTrade'] = dt
+    dtr = get_dt_restrict()
+    if dtr:
+        pack['dtRestrict'] = dtr
         ok += 1
 
     pc = get_pc_ratio()
