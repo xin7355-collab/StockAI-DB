@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V64.2(現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V64.3(當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -29220,79 +29220,101 @@ ${_chuPosPlan}
         } catch (_) {}   // 無檔=靜默(卡片自動不顯)
     },
 
-    // 🎯 V62.9 當沖作戰室:大盤風向(外資台指期)+ 昨漲停隔日沖追蹤 + 撐壓速查 + 個股期貨夜盤補漲(hook)
+    // 📈 V64.3 這檔「當沖做多(開盤買、收盤賣)」歷史統計,依開盤情境分組(給 🚦 直接算勝率用)
+    _dtLongStats(baseRaw) {
+        if (!Array.isArray(baseRaw) || baseRaw.length < 40) return null;
+        const arr = baseRaw.slice(-150);
+        const mk = () => ({ n: 0, win: 0, sumW: 0, cW: 0, sumL: 0, cL: 0 });
+        const B = { up: mk(), flat: mk(), dn: mk(), all: mk() };
+        for (let i = 1; i < arr.length; i++) {
+            const o = +arr[i].open, c = +arr[i].close, pc = +arr[i - 1].close;
+            if (!(o > 0) || !(c > 0) || !(pc > 0)) continue;
+            const oc = (o - pc) / pc * 100, r = (c - o) / o * 100;
+            const key = oc > 1 ? 'up' : oc < -1 ? 'dn' : 'flat';
+            [B[key], B.all].forEach(b => { b.n++; if (c > o) { b.win++; b.sumW += r; b.cW++; } else if (c < o) { b.sumL += r; b.cL++; } });
+        }
+        return B;
+    },
+
+    // 🎯 V64.3 當沖作戰室(精簡版):🚦 今天直接建議做多/做空+勝率 + 條件顯示的隔日沖/期貨補漲
     _dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) {
         const parts = [];
         const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '--';
-        // ═══ 🧭 大盤方向(合併:外資台指期 + 選擇權 P/C + 大額交易人 → 一句「今天適不適合當沖做多」)═══
-        const dirSigs = [];
-        const fi = this.fiShortQty;
-        if (fi != null && isFinite(fi)) {
-            const s = fi > 5000 ? 1 : fi <= -25000 ? -1 : fi <= -10000 ? -0.5 : 1;
-            dirSigs.push({ name: '外資台指期未平倉', val: `${(+fi).toLocaleString('en-US')} 口`, s, fresh: '每日' });
-        }
-        const pc = this._daytradePack && this._daytradePack.pcRatio;
-        if (pc && pc.oiRatio != null) {
-            const s = pc.oiRatio >= 115 ? 0.5 : pc.oiRatio <= 85 ? -0.5 : 0;   // 賣權多=避險濃,傳統當溫和逆向偏多參考
-            dirSigs.push({ name: '選擇權 P/C 情緒', val: `未平倉 ${pc.oiRatio.toFixed(0)}%`, s, fresh: '盤後' });
-        }
-        const lt = this._daytradePack && this._daytradePack.largeTrader;
-        if (lt && lt.all && isFinite(+lt.all.top10Net)) {
-            const n = +lt.all.top10Net;
-            const s = n > 2000 ? 1 : n < -2000 ? -1 : 0;
-            dirSigs.push({ name: '台指期大額交易人', val: `前10大淨 ${n >= 0 ? '+' : ''}${n.toLocaleString('en-US')}`, s, fresh: '盤後' });
-        }
-        // 族群同步強弱(先算,供 🚦 燈與明細共用)
-        let groupSig = null;
-        try {
-            const pr = this._getIndustryPeers ? this._getIndustryPeers(sym) : null;
-            if (pr && Array.isArray(pr.peers) && pr.peers.length >= 3 && this._liveQuotes) {
-                const cs = pr.peers.map(p => this._liveQuote(p)).filter(q => q && q.c != null && isFinite(+q.c)).map(q => +q.c);
-                if (cs.length >= 3) {
-                    const up = cs.filter(c => c > 0).length, upPct = up / cs.length * 100;
-                    const avg = cs.reduce((a, c) => a + c, 0) / cs.length;
-                    let s, t;
-                    if (upPct >= 70 && avg >= 1) { s = 1; t = '🔴 同步走強'; }
-                    else if (upPct <= 30 && avg <= -1) { s = -1; t = '🟢 走弱'; }
-                    else { s = 0; t = '⚪ 分歧'; }
-                    groupSig = { s, t, industry: pr.industry, n: cs.length, up, avg };
-                }
-            }
-        } catch (_) {}
-        // ═══ 🚦 一鍵總結:這檔現在做多順不順(融合 大盤方向 + 族群 + 開盤價 + 量,一眼看)═══
-        const macroScore = dirSigs.reduce((a, x) => a + x.s, 0);
-        const myQ = this._liveQuote(sym);
-        const myVr = (myQ && myQ.vr != null && isFinite(+myQ.vr)) ? +myQ.vr : null;
-        const posSig = (price > 0 && openP > 0) ? (price >= openP ? 1 : -1) : 0;   // 站上開盤價=多方掌控
-        const volSig = (myVr != null && myVr >= 1.5) ? 0.5 : 0;
-        const total = posSig * 1.5 + (groupSig ? groupSig.s : 0) + volSig + macroScore * 0.5;   // 個股位置最重,大盤當背景
-        if (dirSigs.length || groupSig || (price > 0 && openP > 0)) {
-            const L = total >= 1.5 ? { c: 'text-red-400', bd: 'border-red-500', t: '🔴 順勢偏多 · 可找點做多', sop: `站上開盤價${groupSig && groupSig.s > 0 ? '、族群同步強' : ''}${myVr != null && myVr >= 1.5 ? `、量比 ${myVr.toFixed(1)} 有量` : ''} → 站穩開盤價之上、有量再進,進場<b>立刻設停損</b>(跌破開盤價就出)。` }
-                : total <= -1 ? { c: 'text-green-400', bd: 'border-green-500', t: '🟢 偏空 · 別追多 / 快進快出', sop: `${posSig < 0 ? '已跌破開盤價' : '大盤或族群偏弱'} → 做多勝率低,想做只能快打快跑;沒把握這檔今天就<b>觀望</b>。` }
-                : { c: 'text-yellow-300', bd: 'border-yellow-500', t: '⚪ 觀望 · 訊號不明', sop: '多空打架或沒量 → 別勉強,等「站上開盤價 + 放量」再考慮,沒把握就<b>空手</b>(不做也是操作)。' };
-            const brk = [];
-            if (price > 0 && openP > 0) brk.push(['個股位置(即時)', price >= openP ? `站上開盤價 ${openP.toFixed(2)} 🔴` : `跌破開盤價 ${openP.toFixed(2)} 🟢`]);
-            if (myVr != null) brk.push(['這檔量比(約5分)', `${myVr.toFixed(1)} 倍${myVr >= 1.5 ? ' 🔴爆量' : ''}`]);
-            if (groupSig) brk.push([`族群 ${groupSig.industry}(約5分)`, groupSig.t]);
-            dirSigs.forEach(x => brk.push([`${x.name}(${x.fresh})`, `${x.val} ${x.s > 0 ? '🔴' : x.s < 0 ? '🟢' : '⚪'}`]));
-            const brkRows = brk.map(r => `<div class="flex items-center justify-between py-0.5"><span class="text-[10px] text-gray-400">${r[0]}</span><span class="text-[10px] font-mono text-gray-300">${r[1]}</span></div>`).join('');
-            parts.push(`<div class="bg-[#161b22] border-2 ${L.bd} rounded-lg p-2.5">
-                <div class="text-[10px] font-black text-gray-400 mb-0.5">🚦 這檔現在做多順不順?<span class="text-[8px] text-gray-600 font-normal">大盤+族群+開盤價+量 綜合</span></div>
-                <div class="text-lg font-black ${L.c}">${L.t}</div>
-                <div class="text-[10px] text-gray-200 mt-1 leading-snug bg-[#0d1117] border-l-2 ${L.bd} pl-2 py-1 rounded-r"><b class="${L.c}">✅ 怎麼做:</b>${L.sop}</div>
-                <details class="mt-1"><summary class="text-[9px] text-gray-500 cursor-pointer">看每項訊號 + 資料時效 ▾</summary><div class="mt-1">${brkRows}<div class="text-[8px] text-gray-600 mt-1 leading-snug">⏱️ 個股位置=即時、量比/族群=約5分快照、外資未平倉=每日、P/C・大額交易人=盤後T+1(背景)。真正下單看個股頁即時價。</div></div></details>
-            </div>`);
-        }
-        // ── 分隔:以下是「這一檔」今天的操作線索(關卡價/隔日沖/期貨補漲)──
-        parts.push(`<div class="text-[9px] text-gray-600 font-bold border-t border-[#21262d] pt-1.5 mt-0.5">📍 這一檔今天的操作線索</div>`);
-        // 🐛 V63.0 統一「昨日」索引(修 bug 巡邏 CONFIRMED:②③ 索引矛盾)—— 同 renderDayTradeTab 慣例:
-        //   最後一根是今日成形K時,昨日=length-2,否則=length-1
+        // 昨日 K 索引(最後一根是今日成形K→昨日=len-2,否則 len-1);供 關卡價 + 隔日沖用
         const _todayStr = this.getTodayStr();
         const _lastB = Array.isArray(baseRaw) ? baseRaw[baseRaw.length - 1] : null;
         const _lastIsToday = _lastB && String(_lastB.date || '').replace(/-/g, '/') === _todayStr;
         const _yIdx = (_lastIsToday && baseRaw.length >= 2) ? baseRaw.length - 2 : baseRaw.length - 1;
         const yBar = (baseRaw && _yIdx >= 0) ? baseRaw[_yIdx] : null;
         const yPrev = (baseRaw && _yIdx - 1 >= 0) ? baseRaw[_yIdx - 1] : null;
+        // ── 大盤方向訊號(外資台指期 + 選擇權P/C + 大額交易人)→ 只當 🚦 勝率的加減分,不獨立成卡 ──
+        const dirSigs = [];
+        const fi = this.fiShortQty;
+        if (fi != null && isFinite(fi)) { const s = fi > 5000 ? 1 : fi <= -25000 ? -1 : fi <= -10000 ? -0.5 : 1; dirSigs.push({ name: '外資台指期', val: `${(+fi).toLocaleString('en-US')} 口`, s, fresh: '每日' }); }
+        const pc = this._daytradePack && this._daytradePack.pcRatio;
+        if (pc && pc.oiRatio != null) { const s = pc.oiRatio >= 115 ? 0.5 : pc.oiRatio <= 85 ? -0.5 : 0; dirSigs.push({ name: '選擇權 P/C', val: `${pc.oiRatio.toFixed(0)}%`, s, fresh: '盤後' }); }
+        const lt = this._daytradePack && this._daytradePack.largeTrader;
+        if (lt && lt.all && isFinite(+lt.all.top10Net)) { const n = +lt.all.top10Net; const s = n > 2000 ? 1 : n < -2000 ? -1 : 0; dirSigs.push({ name: '台指期大額交易人', val: `前10大淨 ${n >= 0 ? '+' : ''}${n.toLocaleString('en-US')}`, s, fresh: '盤後' }); }
+        const macroScore = dirSigs.reduce((a, x) => a + x.s, 0);
+        const macroTxt = macroScore >= 1 ? '偏多' : macroScore <= -1 ? '偏空' : '中性';
+        // 族群同步強弱
+        let groupSig = null;
+        try {
+            const pr = this._getIndustryPeers ? this._getIndustryPeers(sym) : null;
+            if (pr && Array.isArray(pr.peers) && pr.peers.length >= 3 && this._liveQuotes) {
+                const cs = pr.peers.map(p => this._liveQuote(p)).filter(q => q && q.c != null && isFinite(+q.c)).map(q => +q.c);
+                if (cs.length >= 3) {
+                    const up = cs.filter(c => c > 0).length, upPct = up / cs.length * 100, avg = cs.reduce((a, c) => a + c, 0) / cs.length;
+                    const s = (upPct >= 70 && avg >= 1) ? 1 : (upPct <= 30 && avg <= -1) ? -1 : 0;
+                    groupSig = { s, t: s > 0 ? '同步走強' : s < 0 ? '走弱' : '分歧', industry: pr.industry, n: cs.length };
+                }
+            }
+        } catch (_) {}
+        // ═══ 🚦 今天直接建議:做多/做空/觀望 + 勝率(這檔歷史勝率 × 今天大盤方向,不用你判斷)═══
+        const myQ = this._liveQuote(sym);
+        const myVr = (myQ && myQ.vr != null && isFinite(+myQ.vr)) ? +myQ.vr : null;
+        const posSig = (price > 0 && openP > 0) ? (price >= openP ? 1 : -1) : 0;
+        const stats = this._dtLongStats(baseRaw);
+        let verdict = null;
+        if (stats) {
+            let bkey = 'all', blabel = '近期整體';
+            if (openP > 0 && prevClose > 0) { const oc = (openP - prevClose) / prevClose * 100; bkey = oc > 1 ? 'up' : oc < -1 ? 'dn' : 'flat'; blabel = oc > 1 ? '開高' : oc < -1 ? '開低' : '開平'; }
+            let b = stats[bkey];
+            if (!b || b.n < 8) { b = stats.all; blabel = '近期整體'; }
+            if (b && b.n >= 8) {
+                const winRate = b.win / b.n * 100, avgWin = b.cW ? b.sumW / b.cW : 0, avgLoss = b.cL ? b.sumL / b.cL : 0;
+                const adj = macroScore * 3 + (posSig > 0 ? 5 : posSig < 0 ? -8 : 0) + (groupSig ? groupSig.s * 4 : 0) + (myVr != null && myVr >= 1.5 ? 3 : 0);
+                const longAdj = Math.max(20, Math.min(85, winRate + adj));
+                let dir;
+                if (longAdj >= 55) dir = { c: 'text-red-400', bd: 'border-red-500', t: `🔴 今天建議「做多」· 勝率約 ${longAdj.toFixed(0)}%`, sop: `站穩開盤價${openP > 0 ? ' ' + openP.toFixed(2) : ''} 之上、有量再進,<b>跌破開盤價就停損</b>。` };
+                else if (longAdj <= 45) dir = { c: 'text-green-400', bd: 'border-green-500', t: `🟢 今天「別做多」· 做多勝率僅 ${longAdj.toFixed(0)}%`, sop: `這檔今天做多不划算(收盤常低於開盤)。想空要有券源、跌破開盤價/前低再進,快打快跑。` };
+                else dir = { c: 'text-yellow-300', bd: 'border-yellow-500', t: `⚪ 今天「觀望」· 多空各半(約 ${longAdj.toFixed(0)}%)`, sop: `勝率不上不下 → 等站上開盤價 + 放量再考慮,沒把握就空手。` };
+                verdict = { dir, winRate, avgWin, avgLoss, blabel, n: b.n };
+            }
+        }
+        // 關卡價一行(取代原本 6 格撐壓表)
+        let guardLine = '';
+        if (yBar) {
+            const yH = +yBar.high, yL = +yBar.low;
+            if (yH > 0 || yL > 0) guardLine = `<div class="text-[10px] text-gray-300 mt-1"><span class="text-gray-500">關卡:</span>壓 <b class="text-red-300 font-mono">${nf(Math.max(yH || 0, highP || 0))}</b> / 撐 <b class="text-green-300 font-mono">${nf(yL)}</b> <span class="text-gray-500">(站上壓可續、破撐就跑=停損)</span></div>`;
+        }
+        if (verdict || dirSigs.length || (price > 0 && openP > 0)) {
+            const V = verdict ? verdict.dir : (posSig > 0 ? { c: 'text-red-400', bd: 'border-red-500', t: '🔴 站上開盤價 · 偏多', sop: '站穩開盤價之上、有量再進,跌破就停損。' } : posSig < 0 ? { c: 'text-green-400', bd: 'border-green-500', t: '🟢 跌破開盤價 · 偏弱', sop: '做多勝率低,快打快跑或觀望。' } : { c: 'text-yellow-300', bd: 'border-yellow-500', t: '⚪ 資料整備中', sop: '等開盤價/歷史資料齊再判。' });
+            const winSentence = verdict ? `<div class="text-[10px] text-gray-200 mt-1 leading-snug">這檔<b>${verdict.blabel}做多</b>(開盤買、收盤賣)近 ${verdict.n} 天有 <b>${verdict.winRate.toFixed(0)}%</b> 賺錢,平均賺 <b class="text-red-300">+${verdict.avgWin.toFixed(1)}%</b>、賠 <b class="text-green-300">${verdict.avgLoss.toFixed(1)}%</b>;再套今天大盤<b>${macroTxt}</b>${groupSig ? `、族群${groupSig.t}` : ''} → 得出上面建議。</div>` : '';
+            const brk = [];
+            if (price > 0 && openP > 0) brk.push(['個股位置(即時)', price >= openP ? '站上開盤價 🔴' : '跌破開盤價 🟢']);
+            if (myVr != null) brk.push(['這檔量比(約5分)', `${myVr.toFixed(1)} 倍${myVr >= 1.5 ? ' 🔴爆量' : ''}`]);
+            if (groupSig) brk.push([`族群 ${groupSig.industry}`, groupSig.t + (groupSig.s > 0 ? ' 🔴' : groupSig.s < 0 ? ' 🟢' : ' ⚪')]);
+            dirSigs.forEach(x => brk.push([`${x.name}(${x.fresh})`, `${x.val} ${x.s > 0 ? '🔴' : x.s < 0 ? '🟢' : '⚪'}`]));
+            const brkRows = brk.map(r => `<div class="flex items-center justify-between py-0.5"><span class="text-[10px] text-gray-400">${r[0]}</span><span class="text-[10px] font-mono text-gray-300">${r[1]}</span></div>`).join('');
+            parts.push(`<div class="bg-[#161b22] border-2 ${V.bd} rounded-lg p-2.5">
+                <div class="text-[10px] font-black text-gray-400 mb-0.5">🚦 今天這檔怎麼做?<span class="text-[8px] text-gray-600 font-normal">歷史勝率 × 今天大盤方向</span></div>
+                <div class="text-base font-black ${V.c} leading-tight">${V.t}</div>
+                <div class="text-[10px] text-gray-200 mt-1 leading-snug bg-[#0d1117] border-l-2 ${V.bd} pl-2 py-1 rounded-r"><b class="${V.c}">✅ 怎麼做:</b>${V.sop}</div>
+                ${guardLine}${winSentence}
+                <details class="mt-1"><summary class="text-[9px] text-gray-500 cursor-pointer">看每項訊號 + 資料時效 ▾</summary><div class="mt-1">${brkRows}<div class="text-[8px] text-gray-600 mt-1 leading-snug">⏱️ 個股位置=即時、量比/族群=約5分、外資=每日、P/C・大額=盤後T+1。下單看個股頁即時價。</div></div></details>
+            </div>`);
+        }
         // ② 昨漲停鎖死 → 今日隔日沖追蹤
         if (yBar && yPrev) {
             const p2 = +yPrev.close;
@@ -29305,16 +29327,6 @@ ${_chuPosPlan}
                     <div class="text-[10px] text-gray-300 leading-snug">${openStrong ? '今開高延續強勢' : '今開平/開低'} · 現 ${now >= 0 ? '+' : ''}${now.toFixed(2)}%。<br><b class="text-orange-300">✅ 怎麼做:</b><b class="text-red-300">開高、且不破開盤價</b>=強勢延續,可續抱搶噴出;<b class="text-green-300">開高後跌破開盤價</b>=主力可能出貨,<b>快跑別凹</b>。看到<b>爆量打開漲停</b>就是關鍵轉折,要提高警覺。</div>
                 </div>`);
             }
-        }
-        // ③ 當沖撐壓速查(關卡價)— 昨高/昨低用同一個「昨日」索引
-        if (yBar) {
-            const yH = +yBar.high, yL = +yBar.low;
-            const rows = [['昨高(壓)', yH, 'text-red-300'], ['今高', highP, 'text-red-200'], ['昨收·均衡', prevClose, 'text-gray-300'], ['今開', openP, 'text-gray-300'], ['今低', lowP, 'text-green-200'], ['昨低(撐)', yL, 'text-green-300']].filter(r => r[1] > 0);
-            if (rows.length) parts.push(`<div class="bg-[#0d1117] border border-[#30363d] rounded p-2">
-                <div class="text-[10px] text-gray-500 font-bold mb-1">📏 當沖撐壓速查(關卡價)</div>
-                <div class="grid grid-cols-2 gap-x-3 gap-y-0.5">${rows.map(r => `<div class="flex justify-between"><span class="text-[10px] text-gray-500">${r[0]}</span><span class="text-[11px] font-mono font-bold ${r[2]}">${nf(r[1])}</span></div>`).join('')}</div>
-                <div class="text-[9px] text-gray-500 mt-1 leading-snug"><b class="text-gray-300">✅ 怎麼看:</b>價<b class="text-red-300">站上昨高/今高</b>=突破偏多可續抱;<b class="text-green-300">跌破昨低/今低</b>=轉弱該跑;貼近昨收=均衡先觀望。這些關卡就是你設<b>停利/停損</b>的位置。</div>
-            </div>`);
         }
         // ④ 個股期貨夜盤補漲(hook,有資料才顯 → 無資料源時整張不出現,不顯技術字)
         const fut = this._stockFutureNight(sym);
@@ -29435,59 +29447,6 @@ ${_chuPosPlan}
                 <span class="text-gray-500 text-[10px]">點開 ▾${this._liveTs ? ` · ${this._liveTs}` : ''}</span>
             </summary>
             <div class="px-2 pb-2 pt-1 border-t border-[#21262d]">${inner}</div>
-        </details>`;
-    },
-
-    // 📈 V63.7 當沖回測(純公式,用歷史K)——「開高/開平/開低 → 當沖做多(開盤買、收盤賣)」的實際勝率+期望值
-    //   給數據不給感覺:這檔開高追不追得?開低攤平會不會更糟?用它自己近 ~150 天的統計說話。
-    _dtBacktest(baseRaw) {
-        if (!Array.isArray(baseRaw) || baseRaw.length < 60) return '';
-        const arr = baseRaw.slice(-150);
-        const B = { up: { n: 0, win: 0, ret: 0, label: '開高 >1%', hint: '追高當沖' }, flat: { n: 0, win: 0, ret: 0, label: '開平 ±1%', hint: '' }, dn: { n: 0, win: 0, ret: 0, label: '開低 <-1%', hint: '低接當沖' } };
-        for (let i = 1; i < arr.length; i++) {
-            const o = +arr[i].open, c = +arr[i].close, pc = +arr[i - 1].close;
-            if (!(o > 0) || !(c > 0) || !(pc > 0)) continue;
-            const openChg = (o - pc) / pc * 100;
-            const dayRet = (c - o) / o * 100;   // 當沖做多:開盤買→收盤賣
-            const b = openChg > 1 ? B.up : openChg < -1 ? B.dn : B.flat;
-            b.n++; if (c > o) b.win++; b.ret += dayRet;
-        }
-        const tot = B.up.n + B.flat.n + B.dn.n;
-        if (tot < 30) return '';
-        const row = (b) => {
-            if (b.n < 5) return `<div class="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-1.5 py-1 border-b border-[#21262d]"><span class="text-[11px] text-gray-300 font-bold">${b.label}</span><span class="text-[10px] text-gray-600 text-right col-span-3">樣本不足(${b.n})</span></div>`;
-            const wr = b.win / b.n * 100, ev = b.ret / b.n;
-            const wrCls = wr >= 60 ? 'text-red-300' : wr <= 40 ? 'text-green-300' : 'text-gray-300';
-            const evCls = ev > 0 ? 'text-red-300' : ev < 0 ? 'text-green-300' : 'text-gray-300';
-            return `<div class="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-1.5 py-1 border-b border-[#21262d]">
-                <span class="text-[11px] text-gray-200 font-bold">${b.label}</span>
-                <span class="text-[9px] text-gray-500 font-mono w-[38px] text-right">${b.n}天</span>
-                <span class="text-[12px] font-mono font-black ${wrCls} w-[52px] text-right">${wr.toFixed(0)}%</span>
-                <span class="text-[11px] font-mono font-black ${evCls} w-[54px] text-right">${ev >= 0 ? '+' : ''}${ev.toFixed(2)}%</span>
-            </div>`;
-        };
-        // 白話結論:挑樣本足夠、期望值最好的情境
-        const cand = [B.up, B.flat, B.dn].filter(b => b.n >= 5);
-        let verdict = '樣本不足,無法下結論。';
-        if (cand.length) {
-            const best = cand.slice().sort((a, b) => (b.ret / b.n) - (a.ret / a.n))[0];
-            const bev = best.ret / best.n, bwr = best.win / best.n * 100;
-            if (bev > 0.1) verdict = `這檔近 ${tot} 天,<b class="text-red-300">${best.label}</b> 時當沖做多最有利:勝率 ${bwr.toFixed(0)}%、平均每天 <b class="text-red-300">+${bev.toFixed(2)}%</b>。`;
-            else verdict = `這檔近 ${tot} 天,各開盤情境當沖做多期望值都不佳(最好 ${best.label} 也才 ${bev.toFixed(2)}%)→ <b class="text-green-300">不適合開盤追多當沖</b>,或改順勢短打快跑。`;
-        }
-        return `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg">
-            <summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between">
-                <span class="text-[12px] font-black text-cyan-200">📈 當沖回測 <span class="text-[9px] text-gray-500 font-normal">開盤買→收盤賣・近${tot}天勝率</span></span>
-                <span class="text-gray-500 text-[10px]">點開 ▾</span>
-            </summary>
-            <div class="px-2 pb-2 pt-1 border-t border-[#21262d]">
-                <div class="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-1.5 py-0.5 text-[9px] text-gray-500 font-bold border-b border-[#30363d]">
-                    <span>開盤情境</span><span class="w-[38px] text-right">樣本</span><span class="w-[52px] text-right">勝率</span><span class="w-[54px] text-right">期望值</span>
-                </div>
-                ${row(B.up)}${row(B.flat)}${row(B.dn)}
-                <div class="text-[10px] text-gray-300 mt-1.5 px-1 leading-snug">${verdict}</div>
-                <div class="text-[9px] text-gray-600 mt-1 px-1 leading-snug">💡 勝率=收盤>開盤的天數比;期望值=平均每天「開盤買、收盤賣」報酬%。純這檔歷史統計,不代表未來,僅參考傾向。</div>
-            </div>
         </details>`;
     },
 
@@ -30073,8 +30032,7 @@ ${_chuPosPlan}
         try { const _bx = this._dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw); if (_bx) cards.splice(_dtIns++, 0, _bx); } catch (_) {}
         // 🚀 V63.5 當沖雷達(整合:追得到強勢 + 漲停鎖死 + 個股期貨補漲,一張卡)
         try { const _rd = this._dtRadar(sym); if (_rd) cards.splice(_dtIns++, 0, _rd); } catch (_) {}
-        // 📈 V63.7 當沖回測(這檔開盤買→收盤賣的歷史勝率)
-        try { const _bt = this._dtBacktest(baseRaw); if (_bt) cards.splice(_dtIns++, 0, _bt); } catch (_) {}
+        // (V64.3 當沖回測獨立卡已移除 → 勝率併進 🚦 燈的「今天建議做多/做空+勝率」)
         // ⚡ V55.3 組裝:hero(cards[0]即儀表板前的作戰指令)+ 儀表板/損益/SOP 恆顯,其餘進「📊 進階分析」摺疊
         const advanced = detail.length ? `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg"><summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between"><span class="text-[12px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤</span></span><span class="text-gray-500 text-[10px]">點開 ▾</span></summary><div class="px-2 pb-2 pt-1 border-t border-[#21262d] flex flex-col gap-2">${detail.join('')}</div></details>` : '';
         // 把「進階分析」插在損益試算(cards 最後第2個,SOP 是最後)前
