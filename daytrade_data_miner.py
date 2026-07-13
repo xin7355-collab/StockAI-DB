@@ -117,34 +117,43 @@ def get_pc_ratio():
 
 
 def get_large_trader():
-    """TAIFEX 期貨大額交易人未平倉(台指期前5/前10大交易人多空)→ 主力口袋方向。
-    端點未證實,試多個候選;fetch_json 會印格式讓我校準。"""
-    print('🐋 期貨大額交易人(TAIFEX)…', flush=True)
-    for url in (
-        'https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures',
-        'https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFuture',
-        'https://openapi.taifex.com.tw/v1/LargeTradersFutures',
-    ):
-        data = fetch_json(url, 'LargeTrader')
-        if isinstance(data, list) and data:
-            # 先整包留最新台指(TX)那筆的原始 dict,前端/我下輪再挑欄位
-            tx = [r for r in data if isinstance(r, dict) and 'TX' in str(r).upper()]
-            return {'url': url, 'sample': (tx[:2] if tx else data[:2])}
-    return None
+    """TAIFEX 台指期(TX)大額交易人未平倉 → 前5大/前10大交易人淨多空(主力口袋方向)。
+    欄位:Date/Contract/ContractName/SettlementMonth/TypeOfTraders/Top5Buy/Top5Sell/Top10Buy/Top10Sell/OIOfMarket。
+    TypeOfTraders:0=全部交易人、1=特定法人(大戶)。取 TX + 全部交易人 + OI 最大那個月份(主力近月)。"""
+    print('🐋 台指期大額交易人(TAIFEX)…', flush=True)
+    data = fetch_json('https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures', 'LargeTrader')
+    if not isinstance(data, list) or not data:
+        return None
+    # 只留 TX(臺股期貨),取最新日期
+    tx = [r for r in data if isinstance(r, dict) and str(_find(r, 'Contract') or '').strip().upper() == 'TX']
+    if not tx:
+        return None
+    latest = max(str(_find(r, 'Date') or '') for r in tx)
+    tx = [r for r in tx if str(_find(r, 'Date') or '') == latest]
 
+    def pick(type_of):
+        rows = [r for r in tx if str(_find(r, 'TypeOfTraders') or '') == type_of]
+        rows = [r for r in rows if (_num(_find(r, 'OIOfMarket')) or 0) > 100]   # 濾掉 666666 之類的假月份
+        if not rows:
+            return None
+        r = max(rows, key=lambda x: _num(_find(x, 'OIOfMarket')) or 0)   # OI 最大 = 主力近月
+        t5b, t5s = _num(_find(r, 'Top5Buy')), _num(_find(r, 'Top5Sell'))
+        t10b, t10s = _num(_find(r, 'Top10Buy')), _num(_find(r, 'Top10Sell'))
+        if None in (t5b, t5s, t10b, t10s):
+            return None
+        return {'top5Net': int(t5b - t5s), 'top10Net': int(t10b - t10s), 'oi': int(_num(_find(r, 'OIOfMarket')) or 0)}
 
-def get_short_sell():
-    """TWSE 借券賣出餘額(空方壓力/軋空候選)。端點未證實,試候選;fetch_json 印格式。"""
-    print('📉 借券賣出餘額(TWSE)…', flush=True)
-    for url in (
-        'https://openapi.twse.com.tw/v1/exchangeReport/TWT72U',
-        'https://openapi.twse.com.tw/v1/exchangeReport/TWT93U',
-        'https://openapi.twse.com.tw/v1/securities_lending/TWT72U',
-    ):
-        data = fetch_json(url, 'ShortSell')
-        if isinstance(data, list) and data:
-            return {'url': url, 'sample': data[:2]}
-    return None
+    allt = pick('0')   # 全部交易人
+    spec = pick('1')   # 特定法人(大戶)
+    if not allt and not spec:
+        return None
+    res = {'date': latest}
+    if allt:
+        res['all'] = allt
+    if spec:
+        res['spec'] = spec
+    print(f'  ✅ 大額交易人: {res}', flush=True)
+    return res
 
 
 def main():
@@ -161,13 +170,10 @@ def main():
         pack['pcRatio'] = pc
         ok += 1
 
-    # 🔬 探針(端點未證實,先抓格式;成功也順便存,前端下輪接)
     lt = get_large_trader()
     if lt:
-        pack['_largeTraderProbe'] = lt
-    ss = get_short_sell()
-    if ss:
-        pack['_shortSellProbe'] = ss
+        pack['largeTrader'] = lt
+        ok += 1
 
     if ok == 0:
         print('❌ 所有來源都失敗 → 不產出 JSON(保留舊檔)', flush=True)
