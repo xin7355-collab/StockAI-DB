@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V65.2(修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V65.3(總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -583,7 +583,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.2</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.3</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1394,10 +1394,7 @@
                      🎯 現在該怎麼做(chuActionCard)已併入此卡,UI 隱藏但仲裁 _chuActionVerdict 照算(分批計畫 gate 用) -->
                 <div id="trendCommandCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                 <div id="chuActionCard" class="hidden"></div>
-                <!-- 🌡️ V57.3 — 盤中 vs 大盤:這檔的漲跌是大盤害的還是自己出事?(相對強弱+連動度+族群對照,一句話結論) -->
-                <div id="mktCompareCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-2.5"></div>
-                <!-- 🃏 V55.7 — 打法雷達:這檔回測期望值最高的打法「觸發中/等訊號」直判 + 進場/停損/目標算好 -->
-                <div id="playbookRadarCard" class="hidden"></div>
+                <!-- 🌡️ 盤中vs大盤、🃏 打法雷達:V65.3 三卡整併,移入下方「① 進場明細」「② 進場劇本」殼內(降噪,總覽只留 3 張主卡) -->
                 <div class="bg-[#1c2128] border border-gray-700 rounded-lg shadow-lg relative overflow-hidden flex flex-col" id="strategyMainBox">
                     <!-- V46.3 — 首席AI/此股預判整段隱藏,外層 padding 一併收掉(消除頁面上方空白;內部元素仍在 DOM 供 null-safe) -->
                     <div class="relative">
@@ -1453,52 +1450,49 @@
 
                         <!-- 📈 V58.2 趨勢照表操課已上移到總覽最頂(subContentStrategy 第一張) -->
 
-                        <!-- 🧭 V53.x 分段錨點導覽:一點跳到對應區塊(位階→進場→分批→出場→下單) -->
+                        <!-- 🧭 分段錨點導覽(V65.3 三卡版:①進場明細→②進場劇本→③防守出場) -->
                         <div class="w-full flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
-                            <button onclick="app._scrollToCard('priceRankCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-blue-500 hover:text-blue-300 transition-colors">📊 位階</button>
-                            <button onclick="app._scrollToCard('entryCheckup')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-red-500 hover:text-red-300 transition-colors">🎯 進場</button>
-                            <button onclick="app._scrollToCard('chuPositionPlanCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-orange-500 hover:text-orange-300 transition-colors">📐 分批</button>
-                            <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-green-500 hover:text-green-300 transition-colors">🛡️ 出場</button>
-                            <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-cyan-500 hover:text-cyan-300 transition-colors">📝 下單</button>
+                            <button onclick="app._scrollToCard('entryCheckup')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-red-500 hover:text-red-300 transition-colors">🩺 進場明細</button>
+                            <button onclick="app._scrollToCard('chuPositionPlanCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-orange-500 hover:text-orange-300 transition-colors">🃏 進場劇本</button>
+                            <button onclick="app._scrollToCard('chuExitSopCard')" class="flex-shrink-0 text-[11px] font-bold text-gray-300 bg-[#161b22] border border-[#30363d] rounded-full px-3 py-1 hover:border-green-500 hover:text-green-300 transition-colors">🛡️ 防守出場</button>
                         </div>
 
-                        <!-- 🚦 V55.9 折疊減負:位階/體檢/分批/法人目標收成「一行燈號列」,點開才展開(散戶一眼:頂部做什麼 + 這裡幾個燈為什麼) -->
-                        <!-- 📊 位階溫度計(V50.7 移入;V55.9 收合) -->
+                        <!-- ═══ V65.3 總覽三卡整併:①進場明細 ②進場劇本 ③防守出場(主結論永遠在頂部「趨勢照表操課」,三卡是明細,打架時以頂部為準) ═══ -->
+                        <!-- ① 🩺 進場明細(合併原 進場體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價 五張) -->
                         <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
-                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyRank', this); app.vibrate(20);">
-                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📊 位階溫度計</span>
-                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightRank" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
-                            </div>
-                            <div id="ovBodyRank" class="ov-body hidden px-2 pb-2">
-                                <div id="priceRankCard" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
-                            </div>
-                        </div>
-
-                        <!-- 🩺 進場體檢(主卡)+ 朱老師四關卡詳情(V55.9 一起收進體檢殼內) -->
-                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
-                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyCheckup', this); app.vibrate(20);">
-                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🩺 進場體檢</span>
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyEntry', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🩺 進場明細 <span class="text-[9px] text-gray-500 font-normal">體檢・位階・大盤・目標價</span></span>
                                 <span class="flex items-center gap-1.5 min-w-0"><span id="lightCheckup" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
                             </div>
-                            <div id="ovBodyCheckup" class="ov-body hidden px-2 pb-2">
-                                <div id="entryCheckup" class="hidden w-full rounded-lg p-3 mb-2"></div>
+                            <div id="ovBodyEntry" class="ov-body hidden flex flex-col gap-2 px-2 pb-2">
+                                <div id="entryCheckup" class="hidden w-full rounded-lg p-3"></div>
                                 <div class="w-full -mt-1">
                                     <div class="text-center text-xs text-gray-400 font-semibold cursor-pointer select-none flex items-center justify-center gap-1" onclick="app.toggleCollapse('entryDetailBody', this); app.vibrate(30);">📌 朱老師四關卡詳情（大盤/週K/位階/進場訊號） <span class="text-gray-500 text-[10px]" data-chevron>▾</span></div>
                                     <div id="entryDetailBody" class="ov-body hidden flex flex-col gap-2 mt-1">
-                                        <!-- 📌 朱老師四關通關卡(大盤/週K/位階/進場訊號)-->
-                                        <div id="chuFourGatesCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
+                                        <div id="chuFourGatesCard" class="hidden w-full bg-[#0d1117] border border-amber-700/40 rounded-xl p-3"></div>
                                     </div>
                                 </div>
+                                <!-- 🌡️ 盤中 vs 大盤(V65.3 從頂層移入:這檔的漲跌是大盤害的還是自己出事) -->
+                                <div id="mktCompareCard" class="hidden bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5"></div>
+                                <!-- 📊 位階溫度計 -->
+                                <div class="flex items-center justify-between px-1 pt-1"><span class="text-[11px] font-bold text-gray-300 flex-shrink-0">📊 位階溫度計</span><span id="lightRank" class="text-[11px] font-bold text-gray-500 truncate">—</span></div>
+                                <div id="priceRankCard" class="hidden bg-[#0d1117] border border-[#30363d] rounded-lg p-3 shadow-sm"></div>
+                                <!-- 💡 法人目標價(純公式估值) -->
+                                <div class="flex items-center justify-between px-1 pt-1"><span class="text-[11px] font-bold text-gray-300 flex-shrink-0">💡 法人目標價 <span class="text-[9px] text-gray-600 font-normal">純公式・年化EPS×產業中位PE</span></span><span id="lightInst" class="text-[11px] font-bold text-gray-500 truncate">—</span></div>
+                                <div id="institutionTargetBox" class="w-full text-center text-xs leading-relaxed px-1 pb-1"><span class="text-gray-500">估值計算中…</span></div>
                             </div>
                         </div>
 
-                        <!-- 📐 朱老師分批進場計畫器(V14.11;V55.9 收合) -->
+                        <!-- ② 🃏 進場劇本(合併原 打法雷達+分批進場計畫 兩張;同一個 gate:頂部未轉綠都先別執行) -->
                         <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
                             <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyPlan', this); app.vibrate(20);">
-                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📐 分批進場計畫</span>
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🃏 進場劇本 <span class="text-[9px] text-gray-500 font-normal">打法×分批價位</span></span>
                                 <span class="flex items-center gap-1.5 min-w-0"><span id="lightPlan" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
                             </div>
-                            <div id="ovBodyPlan" class="ov-body hidden px-2 pb-2">
+                            <div id="ovBodyPlan" class="ov-body hidden flex flex-col gap-2 px-2 pb-2">
+                                <!-- 🃏 打法雷達:這檔回測期望值最高的打法「觸發中/等訊號」直判(V65.3 從頂層移入) -->
+                                <div id="playbookRadarCard" class="hidden"></div>
+                                <!-- 📐 朱老師分批進場計畫器(3-3-4 三批,JS 精算) -->
                                 <div id="chuPositionPlanCard" class="hidden w-full bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
                             </div>
                         </div>
@@ -1506,7 +1500,6 @@
                         <!-- ⚔️ V50.7 朱家泓策略狀態(距 5MA/20MA/-5% 停損 + 燈號)移至首席頁(使用者要求) -->
                         <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
 
-                        <!-- 🎯 價位作戰圖:以「動態停利停損線」為主卡;明日均線保衛/突破棒/K棒戰法併入下方收合「更多守價」 -->
                         <!-- V53.x — 動態停利停損線已併入「出場總表」(chuExitSopCard);此卡隱藏但保留 DOM(refreshStrategy 仍寫入,供出場總表 stash 目標值) -->
                         <div id="precisionPricesBox" class="hidden w-full mt-4 lg:mt-0 bg-[#010409] border border-[#30363d] rounded p-3 grid grid-cols-3 gap-1 text-center shadow-inner relative">
                             <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1c2128] px-3 py-0.5 text-xs text-blue-400 font-bold tracking-widest border border-[#30363d] rounded-full whitespace-nowrap">動態停利停損線</div>
@@ -1515,51 +1508,28 @@
                             <div class="flex flex-col justify-center pt-1"><span class="text-xs text-gray-500 font-bold mb-0.5" id="defLabel">🛡️ 防守底線</span><span class="text-[#4ade80] font-mono font-black text-lg lg:text-xl" id="defPrice">--</span></div>
                             <div id="tpSlReason" class="col-span-3 hidden text-[10px] text-amber-400/90 mt-1.5 leading-snug px-1 text-left"></div>
                         </div>
-                        <!-- 📐 V58.4「更多守價」中間層拆除(使用者:點開是明日均線保衛戰很怪)→ 改兩張與位階/體檢同款的收合卡 -->
-                        <!-- 📐 明日均線保衛(扣抵價):盤中跌破即在均線正式下彎前 1-2 天示警 -->
+
+                        <!-- ③ 🛡️ 防守出場(合併原 出場總表+明日均線保衛+K棒戰法(½價/突破棒/四大金剛) 四張;防守價由近到遠一次看) -->
                         <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
-                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyGuard', this); app.vibrate(20);">
-                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📐 明日均線保衛</span>
+                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyExit', this); app.vibrate(20);">
+                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🛡️ 防守出場 <span class="text-[9px] text-gray-500 font-normal">停利停損・保衛價・K棒</span></span>
                                 <span class="flex items-center gap-1.5 min-w-0"><span id="lightGuard" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
                             </div>
-                            <div id="ovBodyGuard" class="ov-body hidden px-2 pb-2">
+                            <div id="ovBodyExit" class="ov-body hidden flex flex-col gap-2 px-2 pb-2">
+                                <!-- 📌 出場總表(目標/停利/停損 + 永豐智慧單 SOP,實際下單依據) -->
+                                <div id="chuExitSopCard" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300"></div>
+                                <!-- 📐 明日均線保衛(扣抵價):盤中跌破即在均線正式下彎前 1-2 天示警 -->
                                 <div id="maHoldGuard" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
-                            </div>
-                        </div>
-                        <!-- 📐 K棒戰法(含突破棒防守・四大金剛,V58.4 三卡合併一殼) -->
-                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
-                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyKbar', this); app.vibrate(20);">
-                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">📐 K棒戰法 <span class="text-[9px] text-gray-500 font-normal">含突破棒・四大金剛</span></span>
-                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightKbar" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
-                            </div>
-                            <div id="ovBodyKbar" class="ov-body hidden flex flex-col gap-2 px-2 pb-2">
-                                <!-- 📐 V36.0 朱家泓 K棒 ½價戰法:大量長黑止跌 + 假突破/假跌破 + 收盤轉強弱(純公式) -->
+                                <!-- 📐 K棒戰法 小節(½價戰法/突破棒防守/四大金剛) -->
+                                <div class="flex items-center justify-between px-1 pt-1"><span class="text-[11px] font-bold text-gray-300 flex-shrink-0">📐 K棒戰法 <span class="text-[9px] text-gray-600 font-normal">突破棒・四大金剛</span></span><span id="lightKbar" class="text-[11px] font-bold text-gray-500 truncate">—</span></div>
                                 <div id="kbarHalfTactics" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
-                                <!-- 🧱 V31.8 突破棒防守監測器:最近爆量長紅 ½價=結構防守價 + 回後買上漲活訊號 -->
                                 <div id="breakoutGuard" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
-                                <!-- ⚡ V41.15 朱老師四大金剛:趨勢 + 均線 + K線 + 量 四個一起看,同方向才進場(純公式) -->
                                 <div id="fourGuardians" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
                             </div>
                         </div>
 
-                        <!-- 💡 法人共識目標價(純公式估值;V55.9 收合,燈號列直接顯區間) -->
-                        <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
-                            <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyInst', this); app.vibrate(20);">
-                                <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">💡 法人目標價</span>
-                                <span class="flex items-center gap-1.5 min-w-0"><span id="lightInst" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
-                            </div>
-                            <div id="ovBodyInst" class="ov-body hidden px-2 pb-2">
-                                <div class="text-[9px] text-gray-600 text-center mb-1">純公式・年化EPS×產業中位PE(非 AI)</div>
-                                <div id="institutionTargetBox" class="w-full text-center text-xs leading-relaxed px-1"><span class="text-gray-500">估值計算中…</span></div>
-                            </div>
-                        </div>
-
-                        <!-- V19.2 — 永豐智慧單卡已合併到「朱老師離場 SOP」(內容重複) -->
                         <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;預估量 + 位階 + 完美買點 + 高檔回吐)-->
                         <div id="chuIntradayCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
-                        <!-- 🎯 操作 SOP(實際下單依據,常駐):離場;分批進場計畫已上移至進場區(V53.x) -->
-                        <!-- 📌 朱老師離場 SOP(停損 A/B + 停利短/中長)-->
-                        <div id="chuExitSopCard" class="hidden w-full mt-3 lg:mt-0 bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300"></div>
                         </div>
                     </div>
                     
@@ -20912,6 +20882,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ${abs10 ? rowHtml('C', '絕對底線 -10%', '朱7-2:跌幅超過 10% 絕不再凹,任何理由都得走', abs10, 'text-red-400', pnlText(abs10)) : ''}
             </div>`;
 
+        // 🧱 V65.3 結構防守參考(扣抵保衛/突破棒½/突破棒低)併入出場總表:防守價一次看、由近到遠排好,不再三卡各報各的
+        const gs = this._guardStash || {};
+        const structRows = [];
+        if (numOK(gs.g20) && !_same(gs.g20, x.takeLong) && !_same(gs.g20, x.stopB)) structRows.push({ t: '20MA 扣抵保衛價', s: '明日收盤守住→月線續揚;跌破→月線提前下彎', p: gs.g20 });
+        if (numOK(gs.boMid) && !_same(gs.boMid, x.stopA?.low)) structRows.push({ t: '突破棒 ½ 價', s: '爆量長紅當日平均成本;跌破=多方轉弱', p: gs.boMid });
+        if (numOK(gs.boLow) && !_same(gs.boLow, x.stopA?.low) && !_same(gs.boLow, gs.boMid)) structRows.push({ t: '突破棒最低價', s: '跌破=多空易位,多單清倉', p: gs.boLow });
+        structRows.sort((a, b) => b.p - a.p);   // 價高→低=現價往下先碰到的排前面
+        const structSection = structRows.length ? `
+            <div class="mt-2">
+                <div class="text-[11px] font-black text-cyan-300 mb-1 flex items-center gap-1">🧱 結構防守參考(由近到遠)</div>
+                ${structRows.map(r => rowHtml(x.pC < r.p ? '⚠️' : '🧱', r.t + (x.pC < r.p ? '(已跌破)' : ''), r.s, r.p, x.pC < r.p ? 'text-green-400' : 'text-cyan-300', pnlText(r.p))).join('')}
+            </div>` : '';
+
         // ⚔️ 永豐 App 操作步驟(濃縮)
         const sinopacStop = Math.max(x.stopA?.low || 0, x.stopB || 0);
         const sinopacTake = x.takeShort || x.takeLong || 0;
@@ -20988,6 +20971,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${targetSection}
             ${takeSection}
             ${stopSection}
+            ${structSection}
             ${statusSection}
             ${sharesNote}
             <div class="mt-1.5 text-[10px] text-gray-500 leading-snug">
@@ -23405,10 +23389,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // V53.x — stash 動態目標/防守值,供合併後的「出場總表」(chuExitSopCard)一起顯示
         try { this._dynExit = { t1: t1_val, t2: t2_val, def: def_val, t1L: (document.getElementById('tgt1Label')?.innerText || '🎯 第一目標'), t2L: (document.getElementById('tgt2Label')?.innerText || '🚀 第二目標'), defL: defLabel, pC }; } catch (_) {}
         // 📐 V31.7 明日均線保衛價(扣抵):MA(N) 明日續揚 ⟺ 明日收盤 > 今窗最舊那根扣抵收盤 data[last-(N-1)]
+        this._guardStash = {};   // 🧱 V65.3 結構防守價 stash(扣抵/突破棒½),供出場總表合併顯示,每次刷新重建避免跨股殘留
         const _mhg = document.getElementById('maHoldGuard');
         if (_mhg) {
             const _guard = (N) => { const i = last - (N - 1); return (i >= 0 && data[i]) ? (data[i].close ?? data[i].c) : null; };
             const g5 = _guard(5), g20 = _guard(20), g60 = _guard(60);
+            this._guardStash.g20 = g20;
             const _row = (label, g) => {
                 if (g == null) return '';
                 // 🎨 V56.2 台股色統一:續揚(漲)=紅、恐下彎(跌)=綠(原本紅綠相反,使用者指正)
@@ -23445,6 +23431,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (_boBar) {
                 const _o = _boBar.open ?? _boBar.o, _c = _boBar.close ?? _boBar.c, mid = (_o + _c) / 2;
                 const _oH = _boBar.high ?? _boBar.h ?? _c, _oL = _boBar.low ?? _boBar.l ?? _o;   // 🆕 缺口2:三價=最高/½/最低
+                this._guardStash.boMid = mid; this._guardStash.boLow = _oL;   // 🧱 V65.3 供出場總表「結構防守參考」
                 const daysAgo = last - _boIdx, curVR = vma5 > 0 ? pV / vma5 : 1, diffMid = (pC - mid) / mid * 100;
                 // 🆕 缺口2(2-4):大量長紅三價分層防守 — 跌破最高價=攻擊力減弱、跌破½=多方轉弱、跌破最低價=多空易位
                 let ic, bcls, status, msg;
