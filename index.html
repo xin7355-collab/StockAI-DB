@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V64.5(當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V64.6(當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.5</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.6</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -29305,8 +29305,8 @@ ${_chuPosPlan}
             <div class="text-[10px] text-gray-500 font-bold">🚦 今天這檔怎麼做?<span class="text-[8px] text-gray-600 font-normal">歷史勝率 × 今天大盤方向</span></div>
             <div class="text-base font-black ${V.c} leading-tight mt-0.5">${V.t}</div>
             <div class="text-[10px] text-gray-200 mt-0.5 leading-snug"><b class="${V.c}">✅ 怎麼做:</b>${V.sop}</div>
-            ${guardLine}${winSentence}
-            <details class="mt-1"><summary class="text-[9px] text-gray-500 cursor-pointer">看每項訊號 + 資料時效 ▾</summary><div class="mt-1">${brkRows}<div class="text-[8px] text-gray-600 mt-1 leading-snug">⏱️ 個股位置=即時、量比/族群=約5分、外資=每日、P/C・大額=盤後T+1。下單看個股頁即時價。</div></div></details>
+            ${guardLine}
+            <details class="mt-1"><summary class="text-[9px] text-gray-500 cursor-pointer">▾ 為什麼(勝率怎麼算)+ 各項訊號</summary><div class="mt-1">${winSentence}${brkRows}<div class="text-[8px] text-gray-600 mt-1 leading-snug">⏱️ 個股位置=即時、量比/族群=約5分、外資=每日、P/C・大額=盤後T+1。下單看個股頁即時價。</div></div></details>
         </div>`;
     },
 
@@ -29588,33 +29588,12 @@ ${_chuPosPlan}
         const distUp = (limitUp && price > 0) ? (limitUp - price) / price * 100 : null;
         const distDown = (limitDown && price > 0) ? (price - limitDown) / price * 100 : null;
         const chgCls = chgPct == null ? 'text-gray-300' : chgPct >= 0 ? 'text-red-400' : 'text-green-400';
-        cards.push(`
-        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-            <div class="flex items-center justify-between mb-2">
-                <div class="text-[12px] font-black text-gray-100 flex items-center gap-1">⚡ 當沖儀表板 <span class="text-[10px] text-gray-500 font-normal">${name}</span></div>
-                ${canBadge}
-            </div>
-            <div class="grid grid-cols-3 gap-2 mb-2">
-                <div class="bg-red-900/30 border border-red-700/50 rounded p-2 text-center">
-                    <div class="text-[9px] text-red-300 mb-0.5">🔺 漲停價</div>
-                    <div class="text-base font-black font-mono text-red-300">${_f2(limitUp)}</div>
-                    <div class="text-[9px] text-gray-500">${distUp == null ? '' : '距 ' + distUp.toFixed(1) + '%'}</div>
-                </div>
-                <div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center">
-                    <div class="text-[9px] text-gray-400 mb-0.5">📊 當日振幅</div>
-                    <div class="text-base font-black font-mono text-gray-100">${amp == null ? '—' : amp.toFixed(1) + '%'}</div>
-                    <div class="text-[9px] text-gray-500">${(highP > 0 && lowP > 0) ? _f2(lowP) + '~' + _f2(highP) : ''}</div>
-                </div>
-                <div class="bg-green-900/30 border border-green-700/50 rounded p-2 text-center">
-                    <div class="text-[9px] text-green-300 mb-0.5">🔻 跌停價</div>
-                    <div class="text-base font-black font-mono text-green-300">${_f2(limitDown)}</div>
-                    <div class="text-[9px] text-gray-500">${distDown == null ? '' : '距 ' + distDown.toFixed(1) + '%'}</div>
-                </div>
-            </div>
-            <div class="bg-[#0d1117] border-l-4 ${isDisposed ? 'border-red-500' : isAttention ? 'border-yellow-500' : 'border-cyan-500'} pl-2.5 py-1.5 rounded-r">
-                <div class="text-[10px] text-gray-300 leading-relaxed">${isDisposed ? '🛑 ' : '💡 '}${canDesc}</div>
-            </div>
-        </div>`);
+        // ⚡ V64.6 當沖儀表板獨立卡已移除 → 漲停/振幅/跌停三格併入作戰指令 hero;可當沖 badge 也移到 hero 標題列
+        const dashGrid = `<div class="grid grid-cols-3 gap-2 mt-1.5">
+                <div class="bg-red-900/25 border border-red-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-red-300">🔺 漲停 ${distUp == null ? '' : '<span class="text-gray-500">距' + distUp.toFixed(1) + '%</span>'}</div><div class="text-sm font-black font-mono text-red-300">${_f2(limitUp)}</div></div>
+                <div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">📊 振幅</div><div class="text-sm font-black font-mono text-gray-100">${amp == null ? '—' : amp.toFixed(1) + '%'}</div></div>
+                <div class="bg-green-900/25 border border-green-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-green-300">🔻 跌停 ${distDown == null ? '' : '<span class="text-gray-500">距' + distDown.toFixed(1) + '%</span>'}</div><div class="text-sm font-black font-mono text-green-300">${_f2(limitDown)}</div></div>
+            </div>`;
 
         // ── 昨日 K(供 CDP/Pivot/關卡):最後一根「非今日」的日K ──
         let yBar = null;
@@ -30014,18 +29993,20 @@ ${_chuPosPlan}
                 ? `<div class="bg-green-900/15 border-l-4 border-green-600 pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[10px] text-green-200/90 leading-relaxed">✅ <b>量能達標</b>:前段預估全日 ${volGate.est.toLocaleString()} 張 ≥ 5日均量×1.5(${volGate.need.toLocaleString()} 張)→ 突破有量撐,較不是假突破。</div></div>`
                 : `<div class="bg-orange-900/20 border-l-4 border-orange-500 pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[10px] text-orange-200 leading-relaxed">⚠️ <b>量能不足・疑假突破</b>:預估全日 ${volGate.est.toLocaleString()} 張 &lt; 5日均量×1.5(${volGate.need.toLocaleString()} 張)→ 沒量的突破容易被打回,<b>先別追</b>,等量真的放大再進。</div></div>`)
                 : '';
+            // 🎨 V64.6 精簡:能不能沖=標題列 badge(小);主秀給 🚦 方向勝率+掛單;
+            //   長說明(vNote 資格解釋 + 量能閘門細節)收進「▾ 說明/注意」摺疊,不佔正面
+            const _foldNote = `${vNote}${volGateHtml ? '<div class="mt-1.5">' + volGateHtml + '</div>' : ''}`;
             const hero = `
             <div class="bg-[#161b22] border-2 ${vMap[vC].split(' ')[1]} rounded-lg p-3 shadow-lg">
-                <div class="flex items-center justify-between">
-                    <div class="text-[11px] font-black text-gray-400">🎯 今日當沖作戰指令</div>
-                    <div class="text-[9px] text-gray-500">現價 ${_f2(price)}${marketOpen ? ' · 盤中' : ' · 盤前/盤後'}</div>
+                <div class="flex items-center justify-between gap-2">
+                    <div class="text-[11px] font-black text-gray-400 flex items-center gap-1.5">🎯 今日當沖作戰指令 ${canBadge}</div>
+                    <div class="text-[9px] text-gray-500 flex-shrink-0">現價 ${_f2(price)}${marketOpen ? ' · 盤中' : ' · 盤前/盤後'}</div>
                 </div>
-                <div class="text-2xl font-black ${vMap[vC].split(' ')[0]}">${vTone}</div>
-                ${biasLine}
-                <div class="bg-[#0d1117] border-l-4 ${vMap[vC].split(' ')[1]} pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">${vNote}</div></div>
-                ${showPlan ? (this._dtVerdictInner(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) || '') : ''}
-                ${volGateHtml}
+                <div class="text-lg font-black ${vMap[vC].split(' ')[0]} leading-tight mt-0.5">${vTone}</div>
+                ${showPlan ? (this._dtVerdictInner(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) || '') : `<div class="bg-[#0d1117] border-l-4 ${vMap[vC].split(' ')[1]} pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">${vNote}</div></div>`}
+                ${showPlan ? dashGrid : ''}
                 ${planHtml}
+                ${showPlan ? `<details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer">▾ 資格說明 / 量能提醒</summary><div class="bg-[#0d1117] border-l-2 ${vMap[vC].split(' ')[1]} pl-2 py-1 rounded-r mt-1"><div class="text-[10px] text-gray-300 leading-relaxed">${_foldNote}</div></div></details>` : ''}
             </div>`;
             cards.unshift(hero);
         }
