@@ -1,0 +1,68 @@
+name: 📸 全市場即時快照 (Shioaji)
+
+# 抓「全上市櫃股票 + 台指期」即時價/漲跌%/量 → data/live_quotes.json
+# 供:當沖全市場強勢榜 + 庫存/自選現價基準(免每檔打 Fugle 撞 429)+ 即時台指期
+# ⚠️ 需 GitHub Secrets:SHIOAJI_API_KEY、SHIOAJI_SECRET_KEY(同個股期貨那支,已設好)
+# 🧪 第一次請「Run workflow」手動觸發看 log,確認抓到 >300 檔再靠 cron。
+# ⏱️ 排程:台股盤中(09:00~13:30 = UTC 01:00~05:30)每 5 分鐘一次。
+#    GitHub Actions 排程為 best-effort,尖峰可能延遲數分鐘 → 前端會顯「更新 時間」讓你判斷新鮮度。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 1-4 * * 1-5'      # UTC 01:00~04:55 每 5 分(台北 09:00~12:55)
+    - cron: '0,5,10,15,20,25,30 5 * * 1-5'   # UTC 05:00~05:30(台北 13:00~13:30 收盤)
+
+# 與 deploy_pages / daily_miner / stock_futures 共用 gh-pages-push group,避免同時 push 打架
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 shioaji
+        run: pip install shioaji
+
+      - name: 📸 採全市場即時快照
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+        run: python3 live_snapshot_miner.py
+
+      - name: 🚀 部署 live_quotes.json 到 gh-pages/data(保留其他資料)
+        run: |
+          if [ ! -f live_quotes.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp live_quotes.json /tmp/lq.json
+
+          git fetch origin gh-pages 2>/dev/null || true
+          git checkout gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; exit 1; }
+
+          mkdir -p data
+          cp /tmp/lq.json data/live_quotes.json
+          git add data/live_quotes.json
+          git diff --cached --quiet && echo "無變更,跳過" || {
+            git commit -m "📸 全市場即時快照 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            for i in 1 2 3 4 5; do
+              git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
+              [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+              sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true; git pull --rebase origin gh-pages 2>/dev/null || true
+            done
+          }
+          echo "✅ data/live_quotes.json 已部署"

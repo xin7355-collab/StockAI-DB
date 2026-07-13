@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V63.1(當沖作戰室新增「🏀 個股期貨夜盤漲幅榜」補漲雷達:永豐Shioaji採268檔近月個股期貨,漲最多前10點擊跳股;即時判讀補漲跌停鎖死(V62.8);版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V63.2(全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.1</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.2</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3665,6 +3665,7 @@ const app = {
         await this.fetchStockList();
         await this.fetchMacroData();
         this._loadStockFutures();   // 🔌 V62.9 個股期貨夜盤(非阻塞;無檔靜默)
+        this._startLiveQuotePoll(); // 📸 V63.2 全市場即時快照輪詢(現價基準 + 當沖強勢榜 + 台指期)
 
         // V21.3 ── Telegram 深連結:?sym=2330 優先,沒有則預設 2330
         const initialSym = this._deepLinkSym || '2330';
@@ -5700,6 +5701,7 @@ ${list}
         }
         if (!isGoBack && this.navStack[this.navStack.length - 1] !== tabId) this.navStack.push(tabId);
         this._stopInvPricePoll();   // 🔄 V45.13 離開任何頁先停庫存輪詢,進 inv 再開
+        if (tabId !== 'fav') { try { this._stopFavPricePoll(); } catch (_) {} }   // ⚡ V63.2 離開自選頁停即時輪詢
         if (tabId !== 'diag') { try { this._stopDtAccel?.(); } catch (_) {} }   // ⚡ V55.2 離開個股頁停加速刷價(當沖已改個股 sub-tab)
         // 💎 V46.7 — 離開潛力頁前記住捲動位置(切走再回來還原,不跳回頂端)
         const _potElNow = document.getElementById('tabContentPotential');
@@ -10914,6 +10916,32 @@ const marginByDate = {};
         const sub = document.getElementById('taiexFuturesSub');
         if (!info || !sub) return;
         try {
+        // 📸 V63.2 最優先:永豐 Shioaji 全市場快照的「大台 TXF 近月即時價」(真報價、真漲跌%,非估算)
+        const li = this._liveIdx && this._liveIdx.txf;
+        if (li && li.p != null && isFinite(+li.p)) {
+            const price = +li.p;
+            const chg = (li.c != null && isFinite(+li.c)) ? +li.c : null;
+            const _thirdWed = () => {
+                const n = new Date(), t = new Date(n); t.setHours(0, 0, 0, 0);
+                const c3 = (y, m) => { const f = new Date(y, m, 1); return new Date(y, m, ((3 - f.getDay() + 7) % 7) + 1 + 14); };
+                let s = c3(n.getFullYear(), n.getMonth()); if (s < t) s = c3(n.getFullYear(), n.getMonth() + 1);
+                const d = Math.round((s - t) / 86400000);
+                return d === 0 ? '⚠️ 今結算' : d === 1 ? '📅 明結算' : `📆 結算剩 ${d} 天`;
+            };
+            if (chg != null) {
+                const sign = chg >= 0 ? '+' : '';
+                const cls = chg > 0.05 ? 'text-red-300' : chg < -0.05 ? 'text-green-300' : 'text-gray-300';
+                const arrow = chg > 0.05 ? '🔺' : chg < -0.05 ? '🔻' : '→';
+                info.textContent = `${arrow} ${price.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
+                info.className = `text-[11px] font-black font-mono leading-tight ${cls}`;
+                sub.innerHTML = `<span class="${cls} font-bold">${sign}${chg.toFixed(2)}%</span> ・ <span class="text-gray-500">${_thirdWed()}${this._liveTs ? ' ' + this._liveTs : ''}</span>`;
+            } else {
+                info.textContent = price.toLocaleString('en-US', { minimumFractionDigits: 0 });
+                info.className = 'text-[11px] font-black font-mono leading-tight text-gray-200';
+                sub.innerHTML = `<span class="text-gray-500">大台即時 ・ ${_thirdWed()}</span>`;
+            }
+            return;
+        }
         // V23.3 — 優先顯實時點(後端 yfinance ^TXF=F 抓夜盤);無資料才 fallback 結算時間點
         const tx = this._macroRiskCache?.taifex_tx_now;
         // V27.3 — 估算分支:加權+升貼水(或官方 OpenAPI 收盤)無可靠漲跌方向(夜盤與現貨會背離),只顯純價 + 「估」標記,不上紅綠誤導
@@ -25456,34 +25484,101 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         container.innerHTML = html;
         if (this.sortableFav) { try { this.sortableFav.destroy(); } catch (_) {} this.sortableFav = null; }   // V62.7 主清單不再拖曳排序(移到編輯頁)
 
-        // Pass 2：並行抓價格,回來 patch 對應列（單檔失敗只影響該列,不再整張空白）
+        // 📸 V63.2 先用全市場快照瞬間補上所有列的現價(免等 Fugle,開頁不再滿排「--」)
+        try { this._patchFavPrices(); } catch (_) {}
+        // Pass 2：並行抓即時價,回來 patch 對應列(單檔失敗只影響該列,不再整張空白)
         list.forEach(async (sym) => {
-            let data = null, priceText = "--", diffText = "", priceColor = "text-gray-400";
+            let data = null, price = null, pct = null;
+            const lq = this._liveQuote(sym);
+            if (lq && Number(lq.p) > 0) { price = lq.p; pct = (lq.c != null ? +lq.c : null); }   // 快照基準
             try {
                 data = await this.fetchHistoricalData(sym, false);
-                if (data && data.length > 0) priceText = data[data.length-1].close.toFixed(2);
-                const fugle = await this.fetchFugleData(sym);
-                if (fugle) {
-                    priceText = fugle.price.toFixed(2);
+                const fugle = await this.fetchFugleData(sym).catch(() => null);
+                if (fugle && Number(fugle.price) > 0) {
+                    price = fugle.price;
                     const base = fugle.prevClose ?? (data && data.length > 1 ? data[data.length-2].close : null);
-                    if (base && base > 0) {
-                        const diff = fugle.price - base, pct = (diff / base * 100);
-                        const sign = diff >= 0 ? '+' : '';
-                        diffText = `${sign}${diff.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
-                        priceColor = diff > 0 ? 'text-red-400' : diff < 0 ? 'text-green-400' : 'text-gray-300';
-                    }
+                    if (base && base > 0) pct = (fugle.price - base) / base * 100;
+                } else if (price == null && data && data.length > 0) {
+                    price = data[data.length-1].close;
+                    if (data.length > 1) { const b = data[data.length-2].close; pct = b > 0 ? (price - b) / b * 100 : null; }
                 }
             } catch(e) {}
             const row = container.querySelector(`[data-fav-row="${CSS.escape(String(sym))}"]`);
             if (!row) return;
-            const pEl = row.querySelector('[data-fav-price]');
-            if (pEl) { pEl.textContent = priceText; pEl.className = `text-sm font-bold font-mono ${priceColor}`; }
-            const dEl = row.querySelector('[data-fav-diff]');
-            if (dEl) { dEl.textContent = diffText; dEl.className = `text-[10px] font-mono leading-tight mt-0.5 ${priceColor}`; }
+            if (price != null) this._applyFavPrice(row, sym, price, pct);
             const tEl = row.querySelector('[data-fav-trend]');
             if (tEl) tEl.innerHTML = this._favTrendTag(data);   // 🎨 V61.6 多頭/盤整/空頭趨勢(取代四季+提醒)
         });
+        // ⚡ V63.2 進自選頁啟動即時輪詢(快照 patch 全列 + Fugle round-robin tick)
+        try { this._startFavPricePoll(); } catch (_) {}
     },
+
+    // ⚡ V63.2 自選現價即時化 —— 統一寫價 + 跳動 flash + 漲跌色(紅漲綠跌)
+    _favPrevPrices: {},
+    _favPollTimer: null,
+    _favRRCursor: 0,
+    _applyFavPrice(row, sym, price, pct) {
+        if (!row || !(Number(price) > 0)) return;
+        const prev = this._favPrevPrices[String(sym)];
+        const flash = (prev != null && price !== prev) ? (price > prev ? 'price-flash-up' : 'price-flash-down') : '';
+        this._favPrevPrices[String(sym)] = price;
+        const color = pct == null ? 'text-gray-300' : pct > 0 ? 'text-red-400' : pct < 0 ? 'text-green-400' : 'text-gray-300';
+        const pEl = row.querySelector('[data-fav-price]');
+        if (pEl) {
+            pEl.textContent = (+price).toFixed(2);
+            pEl.className = `text-[15px] font-black font-mono leading-tight ${color} ${flash}`.trim();
+            if (flash) { pEl.classList.remove(flash); void pEl.offsetWidth; pEl.classList.add(flash); }   // 重觸發動畫
+        }
+        const dEl = row.querySelector('[data-fav-diff]');
+        if (dEl) {
+            if (pct != null) {
+                const base = price / (1 + pct / 100), diff = price - base, sign = diff >= 0 ? '+' : '';
+                dEl.textContent = `${sign}${diff.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+            } else dEl.textContent = '';
+            dEl.className = `text-[10px] font-mono leading-tight mt-0.5 ${color}`;
+        }
+    },
+    // 純 DOM:用最新快照 patch 全部自選列(無網路,15s 一次不撞額度)
+    _patchFavPrices() {
+        const list = this.favGroups?.[this.activeGroupName] || [];
+        const container = document.getElementById('favListContainer');
+        if (!container || !list.length) return;
+        list.forEach(sym => {
+            const lq = this._liveQuote(sym);
+            if (!lq || !(Number(lq.p) > 0)) return;
+            const row = container.querySelector(`[data-fav-row="${CSS.escape(String(sym))}"]`);
+            if (row) this._applyFavPrice(row, sym, lq.p, (lq.c != null ? +lq.c : null));
+        });
+    },
+    _startFavPricePoll() {
+        this._stopFavPricePoll();
+        this._favPollTimer = setInterval(async () => {
+            const favVisible = document.getElementById('tabContentFav')?.style.display !== 'none';
+            if (!favVisible || document.hidden || !(this.isMarketOpen ? this.isMarketOpen() : true)) return;
+            this._patchFavPrices();   // 全列快照 patch(免網路,瞬間跳動)
+            // + Fugle round-robin 一小段 → 你當下在看的清單即時 tick,大清單輪流刷避免 429
+            const list = this.favGroups?.[this.activeGroupName] || [];
+            const container = document.getElementById('favListContainer');
+            if (!list.length || !container) return;
+            const N = Math.min(10, list.length);
+            this._favRRCursor = (this._favRRCursor || 0) % list.length;
+            const slice = [];
+            for (let i = 0; i < N; i++) slice.push(list[(this._favRRCursor + i) % list.length]);
+            this._favRRCursor = (this._favRRCursor + N) % list.length;
+            await Promise.all(slice.map(async sym => {
+                try {
+                    const fugle = await this.fetchFugleData(sym).catch(() => null);
+                    if (!fugle || !(Number(fugle.price) > 0)) return;
+                    const row = container.querySelector(`[data-fav-row="${CSS.escape(String(sym))}"]`);
+                    if (!row) return;
+                    const base = fugle.prevClose;
+                    const pct = (Number(base) > 0) ? (fugle.price - base) / base * 100 : null;
+                    this._applyFavPrice(row, sym, fugle.price, pct);
+                } catch (_) {}
+            }));
+        }, 15000);
+    },
+    _stopFavPricePoll() { if (this._favPollTimer) { clearInterval(this._favPollTimer); this._favPollTimer = null; } },
 
     // 📢 V31.9 多頭待發射:掃自選清單,重用 _chuResistanceZones 取「距最近上方壓力%」,由近到遠排序
     async _scanBreakoutCandidates(force = false) {
@@ -25934,10 +26029,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try { this.refreshInventoryPrices(); } catch (_) {}
         this._invPollTimer = setInterval(() => {
             const invVisible = document.getElementById('tabContentInv')?.style.display !== 'none';
-            if (invVisible && (this.isMarketOpen ? this.isMarketOpen() : true)) {
+            if (invVisible && !document.hidden && (this.isMarketOpen ? this.isMarketOpen() : true)) {
                 this.refreshInventoryPrices();
             }
-        }, 20000);
+        }, 12000);   // ⚡ V63.2 20s→12s 加快庫存現價跳動(庫存檔數少,Fugle 並行不撞 429)
     },
     _stopInvPricePoll() { if (this._invPollTimer) { clearInterval(this._invPollTimer); this._invPollTimer = null; } },
 
@@ -25954,6 +26049,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         this._invKlineCache[item.symbol] = data.slice(-30);
                     }
                 }
+                // 📸 V63.2 先用全市場快照當「即時基準」(一次讀全市場,開頁瞬間就有價,不用等 Fugle)
+                const lq = this._liveQuote(item.symbol);
+                if (lq && Number(lq.p) > 0 && !(Number(item.currentPrice) > 0)) item.currentPrice = lq.p;
                 const fugle = await this.fetchFugleData(item.symbol, 15000);
                 if (fugle && Number(fugle.price) > 0) {
                     item.currentPrice = fugle.price;
@@ -25965,6 +26063,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     if (yq && Number(yq.price) > 0) {
                         item.currentPrice = yq.price;
                         if (Number(yq.prevClose) > 0) item.prevCloseLive = yq.prevClose;
+                    } else if (lq && Number(lq.p) > 0) {
+                        item.currentPrice = lq.p;   // Fugle+Yahoo 都失敗 → 用快照現價(至少即時,不露採礦舊收盤)
                     }
                 }
             } catch (e) { console.warn(`[refreshInv] ${item.symbol}`, e?.message); }
@@ -29000,6 +29100,50 @@ ${_chuPosPlan}
             if (j && j.data && typeof j.data === 'object') { this._stockFutureCache = j.data; this._stockFutureUpdated = j.updated || null; }
         } catch (_) {}   // 檔案不存在(還沒接期貨)= 正常,靜默
     },
+
+    // 📸 V63.2 全市場即時快照(live_snapshot_miner.py 產出)——一次讀全市場現價,
+    //   供:當沖全市場強勢榜 + 庫存/自選現價基準(免每檔打 Fugle)+ 即時台指期。無檔=靜默。
+    _liveQuotes: {},        // { sym: {p:價, c:漲跌%, v:量} }
+    _liveIdx: {},           // { txf:{p,c,v}, mxf:{...} }
+    _liveUpdated: null,     // ISO
+    _liveTs: '',            // '07/13 10:32'
+    _liveTimer: null,
+    _liveQuote(sym) { return (this._liveQuotes && this._liveQuotes[String(sym)]) || null; },
+    async _loadLiveQuotes() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/live_quotes.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+            if (!r.ok) return false;
+            const j = await r.json();
+            if (j && j.data && typeof j.data === 'object') {
+                this._liveQuotes = j.data;
+                this._liveIdx = j.idx || {};
+                this._liveUpdated = j.updated || null;
+                this._liveTs = j.ts || '';
+                return true;
+            }
+        } catch (_) {}   // 檔不存在(快照 workflow 還沒跑)= 正常,靜默走 Fugle 舊路
+        return false;
+    },
+    // 盤中每 15 秒重讀快照(一個檔=全市場,無 429 風險);盤後停,省流量
+    _startLiveQuotePoll() {
+        this._stopLiveQuotePoll();
+        this._loadLiveQuotes();   // 立即載一次(開 App 就有基準價)
+        this._liveTimer = setInterval(async () => {
+            if (!(this.isMarketOpen ? this.isMarketOpen() : true)) return;
+            if (document.hidden) return;
+            const changed = await this._loadLiveQuotes();
+            if (!changed) return;
+            // 快照更新 → 若正在看 自選/庫存 頁,重畫價格列(帶跳動 flash)
+            try {
+                const tab = this.navStack?.[this.navStack.length - 1];
+                if (tab === 'fav') this._patchFavPrices();
+                else if (tab === 'inv') this.renderInventory();
+            } catch (_) {}
+        }, 15000);
+    },
+    _stopLiveQuotePoll() { if (this._liveTimer) { clearInterval(this._liveTimer); this._liveTimer = null; } },
     // 🎯 V62.9 當沖作戰室:大盤風向(外資台指期)+ 昨漲停隔日沖追蹤 + 撐壓速查 + 個股期貨夜盤補漲(hook)
     _dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) {
         const parts = [];
@@ -29096,6 +29240,41 @@ ${_chuPosPlan}
                 <div class="text-[9px] text-gray-600 mb-1 px-1 leading-snug">💡 夜盤(15:00~次日05:00)個股期貨已漲、隔天現貨還沒跟上 = 補漲機率高。點任一檔跳看該股。${tsStr ? ` · 更新 ${tsStr}` : ''}</div>
                 ${rows}
                 <div class="text-[9px] text-gray-600 mt-1 px-1 leading-snug">⚠️ 個股期貨量小易被拉抬做假,開盤務必確認現貨有量再進,別追高。</div>
+            </div>
+        </details>`;
+    },
+
+    // 🚀 V63.2 全市場當沖強勢榜(live_snapshot 全市場即時快照,漲幅前 15)——比個股期貨榜更廣(全 ~2000 檔)
+    _dtMarketLeaders(curSym) {
+        const q = this._liveQuotes;
+        if (!q || typeof q !== 'object') return '';
+        const arr = Object.keys(q).map(k => {
+            const d = q[k] || {};
+            return { sym: String(k), c: (d.c != null ? +d.c : null), p: +d.p };
+        }).filter(o => o.c != null && isFinite(o.c) && o.p > 0);
+        if (arr.length < 20) return '';   // 快照沒抓夠 = 不顯(避免誤導)
+        const top = arr.slice().sort((a, b) => b.c - a.c).slice(0, 15);
+        const rows = top.map((o, i) => {
+            const nm = this.getStockName(o.sym) || o.sym;
+            const cls = o.c > 0 ? 'text-red-300' : o.c < 0 ? 'text-green-300' : 'text-gray-300';
+            const lock = o.c >= 9.4 ? ' 🔒' : o.c >= 5 ? ' 🔥' : '';
+            const isCur = String(o.sym) === String(curSym);
+            return `<div onclick="app.analyze('${o.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="grid grid-cols-[20px_1fr_auto_auto] gap-2 items-center px-1.5 py-1 border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] ${isCur ? 'bg-cyan-900/20' : ''}">
+                <span class="text-[10px] font-mono ${i < 3 ? 'text-amber-300 font-black' : 'text-gray-600'}">${i + 1}</span>
+                <span class="text-[11px] text-gray-200 font-bold truncate">${nm}${lock} <span class="text-[9px] text-gray-500 font-mono">${o.sym}</span>${isCur ? ' <span class="text-[9px] text-cyan-300">◀ 本檔</span>' : ''}</span>
+                <span class="text-[10px] font-mono text-gray-500 w-[52px] text-right">${o.p.toFixed(2)}</span>
+                <span class="text-[12px] font-mono font-black ${cls} w-[52px] text-right">+${o.c.toFixed(2)}%</span>
+            </div>`;
+        }).join('');
+        return `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg">
+            <summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between">
+                <span class="text-[12px] font-black text-cyan-200">🚀 全市場當沖強勢榜 <span class="text-[9px] text-gray-500 font-normal">漲幅前15・全 ${arr.length} 檔</span></span>
+                <span class="text-gray-500 text-[10px]">點開 ▾</span>
+            </summary>
+            <div class="px-2 pb-2 pt-1 border-t border-[#21262d]">
+                <div class="text-[9px] text-gray-600 mb-1 px-1 leading-snug">💡 全市場即時漲幅排行(盤中每 5 分鐘更新)。🔒=漲停鎖死(通常買不到)、🔥=強勢。點任一檔跳看。${this._liveTs ? ' · 更新 ' + this._liveTs : ''}</div>
+                ${rows}
+                <div class="text-[9px] text-gray-600 mt-1 px-1 leading-snug">⚠️ 榜首多為漲停鎖死小型股買不到,找「漲 3~6% 有量、還沒鎖死」的才追得到。</div>
             </div>
         </details>`;
     },
@@ -29678,6 +29857,8 @@ ${_chuPosPlan}
         try { const _bx = this._dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw); if (_bx) cards.splice(1, 0, _bx); } catch (_) {}
         // 🏀 V63.1 個股期貨夜盤漲幅榜(補漲雷達入口)插在作戰室下方
         try { const _fl = this._dtFutureLeaders(sym); if (_fl) cards.splice(2, 0, _fl); } catch (_) {}
+        // 🚀 V63.2 全市場當沖強勢榜(全市場即時快照)
+        try { const _ml = this._dtMarketLeaders(sym); if (_ml) cards.splice(3, 0, _ml); } catch (_) {}
         // ⚡ V55.3 組裝:hero(cards[0]即儀表板前的作戰指令)+ 儀表板/損益/SOP 恆顯,其餘進「📊 進階分析」摺疊
         const advanced = detail.length ? `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg"><summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between"><span class="text-[12px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤</span></span><span class="text-gray-500 text-[10px]">點開 ▾</span></summary><div class="px-2 pb-2 pt-1 border-t border-[#21262d] flex flex-col gap-2">${detail.join('')}</div></details>` : '';
         // 把「進階分析」插在損益試算(cards 最後第2個,SOP 是最後)前
