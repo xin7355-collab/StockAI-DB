@@ -15,8 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V62.7(自選頁:①刪「📌朱老師鎖股」tab ②編輯頁修瀏海(safe-area)③主清單取消拖曳排序+左右滑刪(移到編輯頁)
-         +加欄位表頭(個股/趨勢/股價漲跌幅)+持有💼庫存標記;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V62.8(即時真假判讀補「漲停/跌停鎖死」判定:修中美晶漲停鎖死被誤判「多空未明觀望」→ 改顯最強勢多方/最弱勢空方 + 對策;版本顯示在 badge + manifest) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -571,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.7</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.8</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -21646,9 +21645,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (pullFromHi > 3) chips.push({ t: `衝高回檔 ${pullFromHi.toFixed(1)}%`, c: 'yellow' });
         else if (bounceFromLo > 3 && chgPct < 1) chips.push({ t: `低檔翻揚 ${bounceFromLo.toFixed(1)}%`, c: 'red' });
 
+        // 🔴 V62.8 漲停/跌停鎖死優先判定(修:中美晶漲停鎖死被誤判「多空未明觀望」— 鎖住後沒量、價=均價會漏判)
+        const limitUp = chgPct >= 9.4 && price >= dayHigh * 0.999;
+        const limitDown = chgPct <= -9.4 && price <= dayLow * 1.001;
+        if (limitUp || limitDown) chips.unshift(limitUp ? { t: '🔴 漲停鎖死', c: 'red' } : { t: '🟢 跌停鎖死', c: 'green' });
+
         // verdict 判斷(台股 紅漲綠跌)
         let tone, title, msg, cta;
-        if (chgPct > 0.3 && aboveAvg && volStrong && !sellSide && pullFromHi < 3) {
+        if (limitUp) {
+            tone = 'bull'; title = '🔴 漲停鎖死(最強勢多方)';
+            msg = '買盤把股價鎖在漲停、賣壓幾乎消失(委買排隊、委賣掛零),是最強勢的多方訊號,不是「觀望」。';
+            cta = '💡 對策:想買只能掛漲停價排隊等成交;隔日多開高,但留意「打開漲停爆量」= 主力可能趁高出貨。有貨續抱,漲停被打開且量爆再考慮跑。';
+        } else if (limitDown) {
+            tone = 'bear'; title = '🟢 跌停鎖死(最弱勢空方)';
+            msg = '賣壓把股價鎖在跌停、買盤消失(委賣排隊、委買掛零),是最弱勢的空方訊號,不是「觀望」。';
+            cta = '💡 對策:別接刀,跌停排隊賣不一定賣得掉;隔日多開低。只有「打開跌停帶量拉回」才可能是止跌,否則別搶反彈。';
+        } else if (chgPct > 0.3 && aboveAvg && volStrong && !sellSide && pullFromHi < 3) {
             tone = 'bull'; title = '🔺 真漲(帶量站均價)';
             msg = '漲勢有量+站穩分時均價+買盤積極,是實質買盤推升,非誘多。';
             cta = '💡 對策:偏多可續抱;想上車等回測均價/昨高不破再進,別追最高點。';
