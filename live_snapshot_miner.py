@@ -77,9 +77,13 @@ def main():
     stock_contracts = []
     seen = set()
     try:
-        for exch in api.Contracts.Stocks:          # TSE / OTC(/ OES)
+        for exch in api.Contracts.Stocks:          # TSE(上市)/ OTC(上櫃)/ OES(興櫃)
             for c in exch:
                 code = getattr(c, 'code', None) or ''
+                # 🚫 興櫃(OES)排除:無漲跌幅限制,單日可 ±30%↑ 汙染當沖強勢榜,且流動性差不好當沖
+                exch_v = getattr(getattr(c, 'exchange', None), 'value', None) or str(getattr(c, 'exchange', ''))
+                if 'OES' in str(exch_v).upper():
+                    continue
                 # ⚠️ 台股權證/ETN 也是 6 碼「純數字」→ 舊版全掃進來(~3 萬檔,爆檔+汙染強勢榜)。
                 #    只留:① 一般個股 = 4 碼純數字(1101~9958)② ETF/槓桿反向 = 00 開頭(0050/00878/00632R)
                 is_stock = code.isdigit() and len(code) == 4
