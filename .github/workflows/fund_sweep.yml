@@ -153,12 +153,12 @@ jobs:
 
           deploy_branch () {
             local BR="$1"
-            # 每次切分支前硬清:丟掉上一個分支的追蹤修改 + 未追蹤檔(含 data/),避免 checkout 因髒工作區 abort
+            # 每次切分支前硬清:丟掉上一個分支的追蹤修改 + 未追蹤檔(含 gitignore 的 data/),避免 checkout 因髒工作區 abort
             git reset --hard -q 2>/dev/null || true
-            git clean -fdq 2>/dev/null || true
+            git clean -fdxq 2>/dev/null || true
             git fetch origin "$BR" 2>/dev/null || true
-            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
-            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            # 🐛 用 -B + origin/$BR 明確指定分支:避開「data 既是資料夾又是分支名」的 git 歧義 fatal(舊版 data 分支從沒 push 成功)
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             mkdir -p data
             cp /tmp/fund_yoy_gm.json data/fund_yoy_gm.json
             git add -f data/fund_yoy_gm.json   # -f:該分支若也 gitignore data/*.json 仍強制加入

@@ -116,6 +116,37 @@ def get_pc_ratio():
     return res
 
 
+def get_large_trader():
+    """TAIFEX 期貨大額交易人未平倉(台指期前5/前10大交易人多空)→ 主力口袋方向。
+    端點未證實,試多個候選;fetch_json 會印格式讓我校準。"""
+    print('🐋 期貨大額交易人(TAIFEX)…', flush=True)
+    for url in (
+        'https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures',
+        'https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFuture',
+        'https://openapi.taifex.com.tw/v1/LargeTradersFutures',
+    ):
+        data = fetch_json(url, 'LargeTrader')
+        if isinstance(data, list) and data:
+            # 先整包留最新台指(TX)那筆的原始 dict,前端/我下輪再挑欄位
+            tx = [r for r in data if isinstance(r, dict) and 'TX' in str(r).upper()]
+            return {'url': url, 'sample': (tx[:2] if tx else data[:2])}
+    return None
+
+
+def get_short_sell():
+    """TWSE 借券賣出餘額(空方壓力/軋空候選)。端點未證實,試候選;fetch_json 印格式。"""
+    print('📉 借券賣出餘額(TWSE)…', flush=True)
+    for url in (
+        'https://openapi.twse.com.tw/v1/exchangeReport/TWT72U',
+        'https://openapi.twse.com.tw/v1/exchangeReport/TWT93U',
+        'https://openapi.twse.com.tw/v1/securities_lending/TWT72U',
+    ):
+        data = fetch_json(url, 'ShortSell')
+        if isinstance(data, list) and data:
+            return {'url': url, 'sample': data[:2]}
+    return None
+
+
 def main():
     pack = {'updated': datetime.now(TW).isoformat(), 'ts': _now_str()}
     ok = 0
@@ -129,6 +160,14 @@ def main():
     if pc and (pc.get('volRatio') is not None or pc.get('oiRatio') is not None):
         pack['pcRatio'] = pc
         ok += 1
+
+    # 🔬 探針(端點未證實,先抓格式;成功也順便存,前端下輪接)
+    lt = get_large_trader()
+    if lt:
+        pack['_largeTraderProbe'] = lt
+    ss = get_short_sell()
+    if ss:
+        pack['_shortSellProbe'] = ss
 
     if ok == 0:
         print('❌ 所有來源都失敗 → 不產出 JSON(保留舊檔)', flush=True)
