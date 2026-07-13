@@ -75,16 +75,21 @@ def main():
 
     # ── 1) 全上市櫃股票合約 ──
     stock_contracts = []
+    seen = set()
     try:
         for exch in api.Contracts.Stocks:          # TSE / OTC(/ OES)
             for c in exch:
-                code = getattr(c, 'code', None)
-                # 只要「純數字代號」的個股(濾掉權證/ETN 等英數混合);ETF(00開頭)保留
-                if code and code.isdigit() and 4 <= len(code) <= 6:
+                code = getattr(c, 'code', None) or ''
+                # ⚠️ 台股權證/ETN 也是 6 碼「純數字」→ 舊版全掃進來(~3 萬檔,爆檔+汙染強勢榜)。
+                #    只留:① 一般個股 = 4 碼純數字(1101~9958)② ETF/槓桿反向 = 00 開頭(0050/00878/00632R)
+                is_stock = code.isdigit() and len(code) == 4
+                is_etf = code.startswith('00') and 4 <= len(code) <= 6
+                if (is_stock or is_etf) and code not in seen:
+                    seen.add(code)
                     stock_contracts.append((code, c))
     except Exception as e:
         print(f'⚠️ 建股票合約清單出錯:{e}')
-    print(f'📋 股票合約 {len(stock_contracts)} 檔,批次抓快照中…')
+    print(f'📋 股票/ETF 合約 {len(stock_contracts)} 檔(已濾除權證/ETN),批次抓快照中…')
 
     data = {}
     B = 400
