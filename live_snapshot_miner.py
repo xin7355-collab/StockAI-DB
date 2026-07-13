@@ -114,6 +114,19 @@ def main():
                 rec = {'p': round(float(cl), 2), 'v': int(tv or 0)}
                 if cr is not None:
                     rec['c'] = round(float(cr), 2)
+                # 🆕 量比(volume_ratio):今日量 vs 均量,>1.5=爆量 → 當沖雷達「有量的強勢股」用
+                vr = _snap_num(snap, 'volume_ratio')
+                if vr is not None:
+                    try: rec['vr'] = round(float(vr), 2)
+                    except Exception: pass
+                # 🆕 當日振幅%(高-低)/昨收 → 有肉可當沖;昨收 = 今收/(1+漲跌%/100)
+                hi = _snap_num(snap, 'high'); lo = _snap_num(snap, 'low')
+                if hi is not None and lo is not None and cr is not None:
+                    try:
+                        pc = float(cl) / (1 + float(cr) / 100.0)
+                        if pc > 0:
+                            rec['amp'] = round((float(hi) - float(lo)) / pc * 100, 1)
+                    except Exception: pass
                 data[str(code)] = rec
             except Exception:
                 continue
