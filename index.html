@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V64.8(修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V64.9(K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1687,6 +1687,8 @@
                     </div>
                 </details>
 
+                <!-- 📊 V64.9 技術面總評(分析師觀點):統整均線/位階/波段/動能/型態勝率成一段話,置頂 -->
+                <div id="techSummaryCard" class="hidden"></div>
                 <!-- 🏋️ V44.1 — 權值股超跌反彈告警(只在權值股跌≥25%才顯) -->
                 <div id="heavyReboundCard" class="hidden"></div>
                 <!-- 🗣️ V62.3 朱老師這樣看 + 主升段體檢 合併為一張卡(scroll-snap 目標,滑動會卡住) -->
@@ -14636,6 +14638,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
         try { sigs.unshift(...this._detectIndicatorDivergence(data)); } catch (_) {}  // ⭐ V41.29 KD/MACD 頂底背離(置頂,轉折訊號)
         try { sigs.unshift(...this._detectObvDivergence(data)); } catch (_) {}         // 📊 V61.8 OBV 頂底背離(置頂,量價轉折)
+        try { sigs.unshift(...this._detectMomentumLaunch(data)); } catch (_) {}         // 📊 V64.9 OBV×MACD×量 動能發動/轉弱(置頂)
         try { sigs.unshift(...this._detectGap(data)); } catch (_) {}                  // ⭐ V41.29 缺口跳空+分類(置頂)
         try { sigs.push(...this._detectMaKoudi(data)); } catch (_) {}                 // ⭐ V41.29 均線扣抵值(明日均線揚/抑領先預警)
         try { sigs.unshift(...this._detectTopBreakdown(data)); } catch (_) {}         // ⭐ V41.30 頭部頸線跌破+目標價(置頂)
@@ -15360,6 +15363,104 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             setTimeout(() => { try { if (this.currentSymbolId !== _sym) return; const s = document.getElementById('kbarWinRateStrip'); if (s) s.innerHTML = this._klineWinRateStripHtml(_sym, data); } catch (_) {} }, 60);   // 🐛 V55.8 補切股守門
         } catch (e) { console.warn('[chuVerdict]', e); el.classList.add('hidden'); }
     },
+    // 📊 V64.9 OBV × MACD × 量 動能發動偵測器(純公式,單一型態引擎格式)
+    //   OBV 上翹(量能先行)+ MACD 翻紅/黃金交叉 + 量增 → 可能發動;反向 → 動能轉弱
+    _detectMomentumLaunch(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 35) return out;
+        const C = b => +((b?.close ?? b?.c) || 0), V = b => +((b?.volume ?? 0) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const n = data.length, last = n - 1;
+        const obv = new Array(n).fill(0);
+        for (let i = 1; i < n; i++) { const c = C(data[i]), pc = C(data[i - 1]); obv[i] = c > pc ? obv[i - 1] + V(data[i]) : c < pc ? obv[i - 1] - V(data[i]) : obv[i - 1]; }
+        const obvUp = obv[last] > obv[last - 5], obvDn = obv[last] < obv[last - 5];
+        const ind = this.indicators || {};
+        const dif = Array.isArray(ind.dif) ? ind.dif : null, sig = Array.isArray(ind.macd) ? ind.macd : null;
+        let macdBull = false, macdCross = false, macdBear = false;
+        if (dif && sig && Number.isFinite(dif[last]) && Number.isFinite(sig[last]) && Number.isFinite(dif[last - 1]) && Number.isFinite(sig[last - 1])) {
+            const hist = dif[last] - sig[last], histP = dif[last - 1] - sig[last - 1];
+            macdBull = hist > 0; macdCross = histP <= 0 && hist > 0; macdBear = hist < 0 && histP >= 0;
+        }
+        const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+        const v3 = data.slice(-3).map(V), vN = data.slice(-23, -3).map(V);
+        const volRatio = avg(vN) > 0 ? avg(v3) / avg(vN) : 1;
+        if (obvUp && (macdBull || macdCross) && volRatio >= 1.2) {
+            const stop = Math.min(...data.slice(-3).map(L).filter(v => v > 0));
+            out.push({ tone: 'bull', title: '量能動能發動', val: `量比${volRatio.toFixed(1)}`, msg: `OBV 上翹(量能先行)+ MACD ${macdCross ? '今日黃金交叉' : '翻紅'} + 量增 → 買賣力道轉強,<b>可能發動</b>。守近3日低 <b>${isFinite(stop) ? stop.toFixed(2) : '—'}</b>(跌破就跑),沒破可續抱。` });
+        } else if (obvDn && (macdBear || (dif && sig && Number.isFinite(dif[last]) && dif[last] - sig[last] < 0))) {
+            out.push({ tone: 'bear', title: '量能動能轉弱', val: `量比${volRatio.toFixed(1)}`, msg: `OBV 下彎 + MACD ${macdBear ? '今日死叉' : '翻黑'} → 買盤退潮、反彈無力;有貨逢高減,跌破前低快跑。` });
+        }
+        return out;
+    },
+
+    // 📊 V64.9 技術面總評(分析師觀點):把 均線排列/位階/波段結構/動能(OBV·MACD·量)/今日型態勝率
+    //   統整成「一段分析師敘述 + 明確立場 + 關鍵價位 + 操作」,直接寫結果,不用使用者自己拼各卡。
+    renderTechSummary(data) {
+        const el = document.getElementById('techSummaryCard');
+        if (!el) return;
+        if (!Array.isArray(data) || data.length < 30) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        try {
+            const sym = this.currentSymbolId, name = this.getStockName(sym) || sym;
+            const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
+            const n = data.length, last = n - 1, price = C(data[last]);
+            if (!(price > 0)) { el.classList.add('hidden'); return; }
+            const ind = this.indicators || {};
+            const at = a => (Array.isArray(a) && Number.isFinite(+a[last])) ? +a[last] : null;
+            const atp = a => (Array.isArray(a) && Number.isFinite(+a[last - 1])) ? +a[last - 1] : null;
+            const ma5 = at(ind.ma5), ma10 = at(ind.ma10), ma20 = at(ind.ma20), ma60 = at(ind.ma60), ma20p = atp(ind.ma20);
+            const has4 = [ma5, ma10, ma20, ma60].every(v => v != null);
+            const maBull = has4 && ma5 >= ma10 && ma10 >= ma20 && ma20 >= ma60;
+            const maBear = has4 && ma5 <= ma10 && ma10 <= ma20 && ma20 <= ma60;
+            const ma20Up = ma20 != null && ma20p != null && ma20 >= ma20p;
+            const look = Math.min(250, n);
+            const winHi = Math.max(...data.slice(-look).map(H).filter(v => v > 0)), winLo = Math.min(...data.slice(-look).map(L).filter(v => v > 0));
+            const pos = (winHi > winLo) ? (price - winLo) / (winHi - winLo) : 0.5;
+            const peaks = this.peaks || [], troughs = this.troughs || [];
+            let struct = '盤整整理';
+            if (peaks.length >= 2 && troughs.length >= 2) {
+                const pu = peaks[peaks.length - 1].val > peaks[peaks.length - 2].val, tu = troughs[troughs.length - 1].val > troughs[troughs.length - 2].val;
+                const pd = peaks[peaks.length - 1].val < peaks[peaks.length - 2].val, td = troughs[troughs.length - 1].val < troughs[troughs.length - 2].val;
+                if (pu && tu) struct = '多頭(頭頭高底底高)'; else if (pd && td) struct = '空頭(頭頭低底底低)';
+            }
+            let mom = null; try { mom = (this._detectMomentumLaunch(data) || [])[0] || null; } catch (_) {}
+            let fired = [], ranked = []; try { fired = this._playbookSignalsToday(data) || []; } catch (_) {} try { ranked = this._playbookRankedFor(data, sym) || []; } catch (_) {}
+            const firedSet = new Set(fired), hits = ranked.filter(r => firedSet.has(r.key));
+            const hi60 = Math.max(...data.slice(-60).map(H).filter(v => v > 0)), lo60 = Math.min(...data.slice(-60).map(L).filter(v => v > 0));
+            // 立場計分
+            const bull = (maBull ? 2 : 0) + (struct.startsWith('多頭') ? 1 : 0) + (mom && mom.tone === 'bull' ? 2 : 0) + (pos >= 0.5 && pos < 0.9 ? 0.5 : 0);
+            const bear = (maBear ? 2 : 0) + (struct.startsWith('空頭') ? 1 : 0) + (mom && mom.tone === 'bear' ? 2 : 0) + (pos < 0.35 ? 0.5 : 0) + (pos >= 0.92 ? 1 : 0);
+            let stance, sc, sb;
+            if (bull - bear >= 2) { stance = '🔴 技術偏多'; sc = 'text-red-300'; sb = 'border-red-500'; }
+            else if (bear - bull >= 2) { stance = '🟢 技術偏空'; sc = 'text-green-300'; sb = 'border-green-500'; }
+            else { stance = '⚪ 中性待表態'; sc = 'text-yellow-300'; sb = 'border-yellow-500'; }
+            const maTxt = maBull ? ('均線多頭排列' + (ma20Up ? '、月線上揚' : '')) : maBear ? '均線空頭排列' : '均線糾結';
+            const posTxt = pos >= 0.85 ? ('高位階' + (pos >= 0.95 ? '(貼近波段高)' : '')) : pos <= 0.35 ? '低位階' : '中位階';
+            const momTxt = mom ? `<b class="${mom.tone === 'bull' ? 'text-red-300' : 'text-green-300'}">${mom.title}</b>` : 'MACD/OBV 動能持平';
+            let winTxt;
+            if (hits.length) { const best = hits.slice().sort((a, b) => b.expectancy - a.expectancy)[0]; winTxt = `今日觸發 <b>${best.key}</b> → 本股歷史勝率 <b class="${best.expectancy > 0 ? 'text-red-300' : 'text-gray-300'}">${best.winRate.toFixed(0)}%</b>、賺賠比 ${best.plRatio >= 99 ? '全贏' : best.plRatio.toFixed(1)}、期望值 ${best.expectancy >= 0 ? '+' : ''}${best.expectancy.toFixed(1)}%(${best.count}次)。`; }
+            else winTxt = '今日無明確主打型態觸發。';
+            const narrative = `以技術面看,<b>${name}</b> 目前為<b class="${sc}">${struct.split('(')[0]}</b>結構、${maTxt}、${posTxt}(位階 ${Math.round(pos * 100)}%)。動能:${momTxt}${mom ? '' : ''}。${winTxt}`;
+            let action;
+            if (stance.includes('偏多')) action = `順勢偏多:回測不破月線 <b class="font-mono">${ma20 ? ma20.toFixed(1) : '—'}</b> 是加碼/買點,帶量站上前高 <b class="font-mono">${hi60.toFixed(1)}</b> 續強;跌破月線先減。`;
+            else if (stance.includes('偏空')) action = `偏空別接刀:反彈到月線 <b class="font-mono">${ma20 ? ma20.toFixed(1) : '—'}</b> / 前高 <b class="font-mono">${hi60.toFixed(1)}</b> 是減碼/空點;等打底站回均線再看多。`;
+            else action = `中性觀望:區間 <b class="font-mono">${lo60.toFixed(1)}~${hi60.toFixed(1)}</b> 內別追高殺低,等「帶量突破前高 ${hi60.toFixed(1)}」或「跌破前低 ${lo60.toFixed(1)}」表態再動。`;
+            el.className = `bg-[#161b22] border-2 ${sb} rounded-lg p-3 shadow-lg mb-1`;
+            el.innerHTML = `
+                <div class="flex items-center justify-between mb-1 gap-2">
+                    <div class="text-[12px] font-black text-cyan-200 flex-shrink-0">📊 技術面總評 · 分析師觀點</div>
+                    <span class="text-base font-black ${sc} flex-shrink-0">${stance}</span>
+                </div>
+                <div class="text-[12px] text-gray-200 leading-relaxed">${narrative}</div>
+                <div class="bg-[#0d1117] border-l-4 ${sb} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[11px] text-gray-200 leading-relaxed"><b class="${sc}">🎯 操作:</b>${action}</div></div>
+                <div class="grid grid-cols-3 gap-1.5 mt-2 text-center text-[10px]">
+                    <div class="bg-[#0d1117] rounded px-1 py-1"><div class="text-gray-500">壓力·前高</div><div class="font-mono font-black text-red-300">${hi60.toFixed(1)}</div></div>
+                    <div class="bg-[#0d1117] rounded px-1 py-1"><div class="text-gray-500">月線·攻守</div><div class="font-mono font-black text-gray-200">${ma20 ? ma20.toFixed(1) : '—'}</div></div>
+                    <div class="bg-[#0d1117] rounded px-1 py-1"><div class="text-gray-500">支撐·前低</div><div class="font-mono font-black text-green-300">${lo60.toFixed(1)}</div></div>
+                </div>
+                <div class="text-[9px] text-gray-600 mt-1.5">📊 統整 均線/位階/波段/動能(OBV·MACD·量)/型態勝率 → 一句話結論;純公式非投資建議,下方各卡為細節依據。</div>`;
+            el.classList.remove('hidden');
+        } catch (e) { console.warn('[techSummary]', e); el.classList.add('hidden'); el.innerHTML = ''; }
+    },
+
     // 🎢 V48.0 — 主升段體檢卡:純公式判「這檔在哪一段」(下降/盤整/初升/主升/末升) + 獲利燃料燈
     //   技術件全部組合現成料(this.indicators MA + this.peaks/troughs + _stockPersonality + 偵測器),零新指標數學
     renderMainRiseCard(data) {
@@ -15540,7 +15641,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         ['_detectStarPatterns', '_detect2BarReversal', '_detectKbarStrength', '_detectBottomBreakout',
          '_detectPressureTest', '_detectHeavyResistance', '_detectMaDeviation', '_detectBoxBreakout',
          '_detectIndicatorDivergence', '_detectObvDivergence', '_detectGap', '_detectMaKoudi',
-         '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(grab);   // ⭐ V41.29/30 背離/缺口/扣抵/頭部/葛蘭碧/趨勢線 + V60.x 月線穿季線/N字底/ABC + V61.x 轉折確認/直漲停頓/艾略特 納入型態分
+         '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott', '_detectMomentumLaunch'].forEach(grab);   // ⭐ V41.29/30 背離/缺口/扣抵/頭部/葛蘭碧/趨勢線 + V60.x 月線穿季線/N字底/ABC + V61.x 轉折確認/直漲停頓/艾略特 + V64.9 OBV×MACD×量動能發動 納入型態分
         const body = O(data[last]) > 0 ? (C(data[last]) - O(data[last])) / O(data[last]) * 100 : 0;
         const launch = body >= 3 && C(data[last]) > H(data[last - 1]);   // 強勢發動棒
         let B = 0, R = 0;
@@ -23384,6 +23485,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try { this.renderKbarTactics(data); } catch (_) {}
         try { this.renderObvPanel(data); } catch (_) {}          // 📊 V61.8 OBV 量價聯合診斷面板
         try { this.renderHeavyReboundCard(data); } catch (_) {}  // 🏋️ V44.1 權值股超跌反彈告警
+        try { this.renderTechSummary(data); } catch (_) {}     // 📊 V64.9 技術面總評(分析師觀點,統整置頂)
         try { this.renderChuKbarVerdict(data); } catch (_) {}  // 🗣️ V43.5 朱老師口吻 K線型態總評(純公式,點進K線頁即見)
         try { this.renderMainRiseCard(data); } catch (_) {}    // 🎢 V48.0 主升段體檢(階段判定+獲利燃料)
         // V43.7 移除:📐 K線分析報告(AI) + 🕯️ K線型態+量評分 → 由上方朱老師口吻總評取代
@@ -27568,7 +27670,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 📐 V38.5 注入朱家泓/林穎 K棒型態偵測器(純公式,與進場體檢/K棒戰法卡同源)→ AI 報告依此分析
         const kbarPatterns = [];
         // V41.11 補齊漏注入的新偵測器:測壓測撐/量價背離/壓力沉重/均線糾結(原 AI 報告看不到這 4 個新訊號)
-        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectObvDivergence', '_detectGap', '_detectMaKoudi', '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
+        ['_detectStarPatterns', '_detect2BarReversal', '_detectBoxBreakout', '_detectChuLongEntry', '_detectChuShortTrend', '_detectConsolidation', '_detectChuOverheat', '_detectKbarStrength', '_detectMaDeviation', '_detectAvoidFlags', '_detectBottomBreakout', '_detectMaCluster', '_detectPressureTest', '_detectVolPriceDiverge', '_detectHeavyResistance', '_detectVolumeSignals', '_detectIndicatorDivergence', '_detectObvDivergence', '_detectGap', '_detectMaKoudi', '_detectTopBreakdown', '_detectGranville', '_detectTrendline', '_detectMaGoldenCross', '_detectNBottom', '_detectAbcBreakout', '_detectReversalConfirm', '_detectStall', '_detectElliott', '_detectMomentumLaunch'].forEach(fn => { try { (this[fn]?.(data) || []).forEach(s => kbarPatterns.push(s)); } catch (_) {} });
         const patternsTxt = kbarPatterns.length
             ? kbarPatterns.slice(0, 16).map(s => `${s.tone === 'bull' ? '🔺偏多' : s.tone === 'bear' ? '🔻偏空' : s.tone === 'warn' ? '⚠️留意' : '⚪中性'}「${s.title}」`).join('、')
             : '無明顯型態訊號';
