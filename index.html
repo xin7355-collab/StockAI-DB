@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V63.8(台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V63.9(族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -29210,6 +29210,26 @@ ${_chuPosPlan}
                 <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${t.m}</div>
             </div>`);
         }
+        // ①-附3 族群同步強弱(同業一起強 = 主力拉整族群,個股順勢機率高;用全市場快照即時算)
+        try {
+            const pr = this._getIndustryPeers ? this._getIndustryPeers(sym) : null;
+            if (pr && Array.isArray(pr.peers) && pr.peers.length >= 3 && this._liveQuotes) {
+                const cs = pr.peers.map(p => this._liveQuote(p)).filter(q => q && q.c != null && isFinite(+q.c)).map(q => +q.c);
+                if (cs.length >= 3) {
+                    const up = cs.filter(c => c > 0).length, upPct = up / cs.length * 100;
+                    const avg = cs.reduce((s, c) => s + c, 0) / cs.length;
+                    let g;
+                    if (upPct >= 70 && avg >= 1) g = { c: 'text-red-300', t: '🔴 族群同步走強', m: `同業 ${cs.length} 檔有 ${up} 檔漲、平均 +${avg.toFixed(1)}% → 主力拉整族群,這檔順勢機率高。` };
+                    else if (upPct <= 30 && avg <= -1) g = { c: 'text-green-300', t: '🟢 族群走弱', m: `同業多數在跌(平均 ${avg.toFixed(1)}%)→ 逆勢做多要小心,別接整族群的刀。` };
+                    else g = { c: 'text-gray-300', t: '⚪ 族群分歧', m: `同業 ${up}/${cs.length} 檔漲、平均 ${avg >= 0 ? '+' : ''}${avg.toFixed(1)}% → 沒明顯族群共振,看個股自己量價。` };
+                    parts.push(`<div class="bg-[#0d1117] border border-[#30363d] rounded p-2">
+                        <div class="text-[10px] text-gray-500 font-bold mb-0.5">🧬 族群同步強弱(${pr.industry} · 同業 ${cs.length} 檔)</div>
+                        <div class="text-[13px] font-black ${g.c}">${g.t}</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${g.m}</div>
+                    </div>`);
+                }
+            }
+        } catch (_) {}
         // 🐛 V63.0 統一「昨日」索引(修 bug 巡邏 CONFIRMED:②③ 索引矛盾)—— 同 renderDayTradeTab 慣例:
         //   最後一根是今日成形K時,昨日=length-2,否則=length-1
         const _todayStr = this.getTodayStr();
