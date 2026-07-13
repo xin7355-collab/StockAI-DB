@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.9</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.0</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3664,6 +3664,7 @@ const app = {
 
         await this.fetchStockList();
         await this.fetchMacroData();
+        this._loadStockFutures();   // 🔌 V62.9 個股期貨夜盤(非阻塞;無檔靜默)
 
         // V21.3 ── Telegram 深連結:?sym=2330 優先,沒有則預設 2330
         const initialSym = this._deepLinkSym || '2330';
@@ -20830,10 +20831,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // ── A4. 鎖股名冊 ────────────────────────────────────────────────────────
     _ensureChuLockGroup() {
-        if (!this.favGroups[this._chuLockGroupName]) {
-            this.favGroups[this._chuLockGroupName] = [];
-            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
-        }
+        // 🗑️ V63.0 已停用(V62.7 移除「📌 朱老師鎖股」tab):no-op,避免 toggleChuLockStock 復活已刪清單
     },
 
     _isInChuLock(sym) {
@@ -28991,6 +28989,17 @@ ${_chuPosPlan}
     _stockFutureNight(sym) {
         return (this._stockFutureCache && this._stockFutureCache[String(sym)]) || null;
     },
+    // 🔌 V62.9 載入個股期貨夜盤(stock_futures_miner.py 產出);無檔=靜默(卡片自動隱藏)
+    async _loadStockFutures() {
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/stock_futures_night.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(4000) });
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j && j.data && typeof j.data === 'object') { this._stockFutureCache = j.data; this._stockFutureUpdated = j.updated || null; }
+        } catch (_) {}   // 檔案不存在(還沒接期貨)= 正常,靜默
+    },
     // 🎯 V62.9 當沖作戰室:大盤風向(外資台指期)+ 昨漲停隔日沖追蹤 + 撐壓速查 + 個股期貨夜盤補漲(hook)
     _dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) {
         const parts = [];
@@ -29008,11 +29017,19 @@ ${_chuPosPlan}
                 <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${w.m}</div>
             </div>`);
         }
+        // 🐛 V63.0 統一「昨日」索引(修 bug 巡邏 CONFIRMED:②③ 索引矛盾)—— 同 renderDayTradeTab 慣例:
+        //   最後一根是今日成形K時,昨日=length-2,否則=length-1
+        const _todayStr = this.getTodayStr();
+        const _lastB = Array.isArray(baseRaw) ? baseRaw[baseRaw.length - 1] : null;
+        const _lastIsToday = _lastB && String(_lastB.date || '').replace(/-/g, '/') === _todayStr;
+        const _yIdx = (_lastIsToday && baseRaw.length >= 2) ? baseRaw.length - 2 : baseRaw.length - 1;
+        const yBar = (baseRaw && _yIdx >= 0) ? baseRaw[_yIdx] : null;
+        const yPrev = (baseRaw && _yIdx - 1 >= 0) ? baseRaw[_yIdx - 1] : null;
         // ② 昨漲停鎖死 → 今日隔日沖追蹤
-        if (Array.isArray(baseRaw) && baseRaw.length >= 2) {
-            const last = baseRaw[baseRaw.length - 1], p2 = +baseRaw[baseRaw.length - 2].close;
-            const lastChg = p2 > 0 ? (+last.close - p2) / p2 * 100 : 0;
-            if (lastChg >= 9.4 && +last.close >= (+last.high || +last.close) * 0.999) {
+        if (yBar && yPrev) {
+            const p2 = +yPrev.close;
+            const yChg = p2 > 0 ? (+yBar.close - p2) / p2 * 100 : 0;
+            if (yChg >= 9.4 && +yBar.close >= (+yBar.high || +yBar.close) * 0.999) {
                 const openStrong = openP > 0 && prevClose > 0 && openP >= prevClose;
                 const now = (chgPct != null) ? chgPct : 0;
                 parts.push(`<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r p-2">
@@ -29021,9 +29038,9 @@ ${_chuPosPlan}
                 </div>`);
             }
         }
-        // ③ 當沖撐壓速查(關卡價)
-        if (Array.isArray(baseRaw) && baseRaw.length >= 2) {
-            const yH = +baseRaw[baseRaw.length - 2].high, yL = +baseRaw[baseRaw.length - 2].low;
+        // ③ 當沖撐壓速查(關卡價)— 昨高/昨低用同一個「昨日」索引
+        if (yBar) {
+            const yH = +yBar.high, yL = +yBar.low;
             const rows = [['昨高(壓)', yH, 'text-red-300'], ['今高', highP, 'text-red-200'], ['昨收·均衡', prevClose, 'text-gray-300'], ['今開', openP, 'text-gray-300'], ['今低', lowP, 'text-green-200'], ['昨低(撐)', yL, 'text-green-300']].filter(r => r[1] > 0);
             if (rows.length) parts.push(`<div class="bg-[#0d1117] border border-[#30363d] rounded p-2">
                 <div class="text-[10px] text-gray-500 font-bold mb-1">📏 當沖撐壓速查(關卡價)</div>

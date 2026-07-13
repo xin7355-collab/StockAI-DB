@@ -1,0 +1,66 @@
+name: 🏀 個股期貨夜盤採礦 (Shioaji)
+
+# 抓「個股期貨近月合約」即時漲跌%(含夜盤)→ data/stock_futures_night.json
+# ⚠️ 需先設 GitHub Secrets:SHIOAJI_API_KEY、SHIOAJI_SECRET_KEY(永豐 e-Leader 產生;只做行情不下單→免憑證)
+# 🧪 第一次請用「Run workflow」手動觸發,看 log 確認登入/抓取成功再靠 cron 自動跑。
+on:
+  workflow_dispatch:
+  schedule:
+    # 台北夜盤:22:00(UTC 14:00,美股盤前)、次日 05:00(UTC 21:00,夜盤收)· 週一~五
+    - cron: '0 14 * * 1-5'
+    - cron: '0 21 * * 1-5'
+
+# 與 deploy_pages / daily_miner 共用 gh-pages-push group,避免同時 push gh-pages 打架
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 shioaji
+        run: pip install shioaji
+
+      - name: 🏀 採個股期貨夜盤
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+        run: python3 stock_futures_miner.py
+
+      - name: 🚀 部署 stock_futures_night.json 到 gh-pages/data(保留其他資料)
+        run: |
+          if [ ! -f stock_futures_night.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp stock_futures_night.json /tmp/sfn.json
+
+          git fetch origin gh-pages 2>/dev/null || true
+          git checkout gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; exit 1; }
+
+          mkdir -p data
+          cp /tmp/sfn.json data/stock_futures_night.json
+          git add data/stock_futures_night.json
+          git diff --cached --quiet && echo "無變更,跳過" || {
+            git commit -m "🏀 個股期貨夜盤 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            for i in 1 2 3 4 5; do
+              git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
+              [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+              sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true; git pull --rebase origin gh-pages 2>/dev/null || true
+            done
+          }
+          echo "✅ data/stock_futures_night.json 已部署"

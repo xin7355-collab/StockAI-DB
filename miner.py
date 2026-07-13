@@ -592,12 +592,20 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
                 vol = int(float(_vraw)) * 1000 if _vraw not in ('', '-') else 0
             except (TypeError, ValueError):
                 vol = 0
+            # 🐛 V16.9 o/h/l 穩健解析:MIS 可能回 ''/非數字(非只 '-')→ 舊版 float('') 崩潰被外層 except 吞掉、
+            #   整根快照靜默漏補;改用安全轉型,壞值 fallback 到 live_price。
+            def _sf(k):
+                try:
+                    raw = str(msg.get(k, '')).replace(',', '').strip()
+                    return float(raw) if raw not in ('', '-') else live_price
+                except (TypeError, ValueError):
+                    return live_price
             if live_price > 0 and vol > 0:
                 return {
                     'date': tw_now.strftime('%Y/%m/%d'),
-                    'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
-                    'high': float(msg.get('h', live_price) if msg.get('h', '-') != '-' else live_price),
-                    'low': float(msg.get('l', live_price) if msg.get('l', '-') != '-' else live_price),
+                    'open': _sf('o'),
+                    'high': _sf('h'),
+                    'low': _sf('l'),
                     'close': live_price,
                     'volume': vol
                 }
