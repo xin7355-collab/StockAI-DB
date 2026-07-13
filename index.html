@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V64.4(當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V64.5(當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.4</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V64.5</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1810,6 +1810,7 @@
                     <div class="text-[11px] text-gray-400 font-bold flex items-center gap-1"><span>⚡</span>當沖作戰台 <span class="text-[9px] text-gray-600 font-normal">純公式</span></div>
                     <div class="flex items-center gap-1.5 flex-shrink-0">
                         <button onclick="app._showDtGuide(); app.vibrate(15);" class="text-[11px] font-bold text-cyan-200 bg-[#21262d] border border-cyan-700/40 rounded px-2.5 py-1.5 hover:bg-cyan-900/30 transition-colors">📖 新手</button>
+                        <button onclick="app._showDtAdvanced(); app.vibrate(15);" class="text-[11px] font-bold text-gray-300 bg-[#21262d] border border-[#30363d] rounded px-2.5 py-1.5 hover:bg-[#2d333b] transition-colors">📊 進階</button>
                         <button id="dtAccelBtn" onclick="app._toggleDtAccel(); app.vibrate(15);" class="text-[11px] font-bold text-gray-300 bg-[#21262d] border border-[#30363d] rounded px-2.5 py-1.5 hover:bg-[#2d333b] transition-colors">⚡ 加速 OFF</button>
                         <button onclick="app.renderDayTradeTab(app.currentSymbolId); app.vibrate(15);" class="text-[11px] font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded px-2.5 py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 更新</button>
                     </div>
@@ -29374,7 +29375,9 @@ ${_chuPosPlan}
                 ${box('border-gray-500', 'text-gray-200', '⏱️ 資料多即時?會有差嗎?(很重要)',
                     '<b class="text-red-300">秒級即時</b>(下單那刻看這個):個股頁現價、五檔、內外盤(即時盤 tab)。<br><b class="text-yellow-300">約 5 分鐘</b>:當沖雷達、族群、大盤現價 → <b>選股/看氛圍</b>夠用,但別拿 5 分鐘前的價去掛單。<br><b class="text-gray-400">盤後 T+1</b>:選擇權 P/C、大額交易人 → 是「昨天主力態度」,當<b>今天大方向背景</b>,不是即時進出訊號。<br>👉 <b class="text-cyan-200">下單那一刻一定看「個股頁即時價/五檔」,其他都是背景參考。</b>')}
                 ${box('border-red-600', 'text-red-300', '🛡️ 當沖鐵則(新手記這 3 條就好)',
-                    '① 進場<b>先想好停損價</b>(通常設開盤價或前低下方),到價<b>無條件出場</b>,不要凹。<br>② <b>收盤前一定平倉</b>(13:25 前),當沖不留單過夜(留了就變隔日沖風險)。<br>③ 沒量、看不懂就<b>不做</b> —— 不做也是一種操作,保住本金最重要。')}`;
+                    '① 進場<b>先想好停損價</b>(通常設開盤價或前低下方),到價<b>無條件出場</b>,不要凹。<br>② <b>收盤前一定平倉</b>(13:25 前),當沖不留單過夜(留了就變隔日沖風險)。<br>③ 沒量、看不懂就<b>不做</b> —— 不做也是一種操作,保住本金最重要。')}
+                ${box('border-cyan-500', 'text-cyan-300', '📋 當沖紀律 SOP(照表操課不情緒化)',
+                    '<b class="text-cyan-300">①開盤觀察</b>(09:00–09:15):看開盤定調+第一根5分K,別開盤前15分急進場(最亂)。<br><b class="text-green-300">②進場</b>(順勢):做多=站上VWAP+量能≥80%+強過大盤;做空=跌破VWAP+弱於大盤。三條件對齊才進。<br><b class="text-red-300">③硬停損</b>:多單跌破VWAP或-1.5%立刻砍、空單站回VWAP回補;單筆虧損上限=本金1%,絕不凹單攤平。<br><b class="text-yellow-300">④停利</b>:有量續抱、量縮或觸前高低分批出;賺2~3%先落袋一半。<br><b class="text-orange-300">⑤收盤前平倉</b>(13:25):現股當沖務必當日沖銷,沒平掉會變隔日交割付全額,風險爆增。<br>🛑 當沖 90% 散戶長期虧損,守停損活得久比賺得快重要。')}`;
     },
     // 📖 V64.4 以 modal 顯示新手教學(header 按鈕觸發)
     _showDtGuide() {
@@ -29392,6 +29395,26 @@ ${_chuPosPlan}
                 <button onclick="document.getElementById('dtGuideModal')?.remove()" class="text-gray-400 hover:text-white text-2xl leading-none">✕</button>
             </div>
             <div class="p-3 flex flex-col gap-2.5">${this._dtBeginnerGuide()}</div>
+        </div>`;
+        m.style.display = 'flex';
+    },
+    // 📊 V64.5 以 modal 顯示進階分析(樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤)
+    _showDtAdvanced() {
+        const html = this._dtAdvancedHtml || '<div class="text-[11px] text-gray-500 text-center py-6">進階資料整備中(多需盤中即時報價;稍後再點)。</div>';
+        let m = document.getElementById('dtAdvModal');
+        if (!m) {
+            m = document.createElement('div');
+            m.id = 'dtAdvModal';
+            m.className = 'fixed inset-0 z-[9999] bg-black/70 flex items-end sm:items-center justify-center';
+            m.addEventListener('click', (e) => { if (e.target === m) m.remove(); });
+            document.body.appendChild(m);
+        }
+        m.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto shadow-2xl" style="padding-bottom:env(safe-area-inset-bottom)">
+            <div class="sticky top-0 bg-[#161b22] flex items-center justify-between px-4 py-3 border-b border-[#30363d] z-10">
+                <span class="text-[13px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・VWAP・ORB・量能・相對大盤</span></span>
+                <button onclick="document.getElementById('dtAdvModal')?.remove()" class="text-gray-400 hover:text-white text-2xl leading-none">✕</button>
+            </div>
+            <div class="p-3">${html}</div>
         </div>`;
         m.style.display = 'flex';
     },
@@ -29570,10 +29593,6 @@ ${_chuPosPlan}
             <div class="flex items-center justify-between mb-2">
                 <div class="text-[12px] font-black text-gray-100 flex items-center gap-1">⚡ 當沖儀表板 <span class="text-[10px] text-gray-500 font-normal">${name}</span></div>
                 ${canBadge}
-            </div>
-            <div class="flex items-end gap-3 mb-2">
-                <div class="text-3xl font-black font-mono ${chgCls}">${_f2(price)}</div>
-                <div class="text-sm font-bold font-mono ${chgCls} pb-1">${chgPct == null ? '' : (chgPct >= 0 ? '▲+' : '▼') + chgPct.toFixed(2) + '%'}</div>
             </div>
             <div class="grid grid-cols-3 gap-2 mb-2">
                 <div class="bg-red-900/30 border border-red-700/50 rounded p-2 text-center">
@@ -29907,36 +29926,7 @@ ${_chuPosPlan}
             ${rsInner}
         </div>`);
 
-        // ── 卡7:📋 當沖紀律 SOP(Vertical Stepper,恆顯)──────
-        const steps = [
-            { c: 'cyan',   t: '① 開盤觀察(09:00–09:15)', d: '先看開盤定調 + 第一根 5 分K,別在開盤前 15 分鐘急著進場(最亂)。' },
-            { c: 'green',  t: '② 進場條件(順勢)', d: '做多:站上 VWAP + 量能達標 ≥80% + 相對強於大盤。做空:跌破 VWAP + 相對弱於大盤。三個條件對齊才進。' },
-            { c: 'red',    t: '③ 硬停損(鐵律)', d: '多單:跌破 VWAP 或 -1.5% 立刻砍。空單:站回 VWAP 立刻回補。單筆虧損上限 = 本金 1%,絕不凹單、不攤平。' },
-            { c: 'yellow', t: '④ 停利', d: '有量拉抬續抱、量縮或觸前高/前低就分批出;賺 2~3% 先落袋一半,剩下移動停利。' },
-            { c: 'orange', t: '⑤ 收盤前平倉(13:25)', d: '⚠️ 現股當沖務必當日沖銷!13:25 前一定平倉,沒平掉會被強制以市價成交或變隔日交割(要付全額),風險爆增。' },
-        ];
-        const stepHtml = steps.map((s, i) => `
-            <div class="flex gap-2.5">
-                <div class="flex flex-col items-center flex-shrink-0">
-                    <div class="w-5 h-5 rounded-full bg-${s.c}-600 text-white text-[10px] font-black flex items-center justify-center">${i + 1}</div>
-                    ${i < steps.length - 1 ? '<div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>' : ''}
-                </div>
-                <div class="flex-1 pb-2.5">
-                    <div class="text-[11px] font-bold text-${s.c}-300">${s.t}</div>
-                    <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${s.d}</div>
-                </div>
-            </div>`).join('');
-        cards.push(`
-        <details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg">
-            <summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between">
-                <span class="text-[12px] font-black text-gray-100">📋 當沖紀律 SOP <span class="text-[9px] text-gray-500 font-normal">照表操課不情緒化</span></span>
-                <span class="text-gray-500 text-[10px]">點開 ▾</span>
-            </summary>
-            <div class="px-3 pb-3 pt-1 border-t border-[#21262d]">
-                ${stepHtml}
-                <div class="bg-red-900/20 border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1"><div class="text-[10px] text-red-200 leading-relaxed">🛑 當沖是零和高風險遊戲,90% 散戶長期虧損。沒紀律=送錢,新手先用小量練手感,守停損活得久比賺得快重要。</div></div>
-            </div>
-        </details>`);
+        // 📋 V64.5 當沖紀律 SOP 已移進「📖 新手」modal(_dtBeginnerGuide),不再獨立成卡
 
         // ⚡ V55.3 — 頂部「今日當沖作戰指令」hero:直接給 可不可進場 + 掛單計畫(進場/停損/停利價)+ 每張賺多少
         {
@@ -30049,12 +30039,9 @@ ${_chuPosPlan}
         // 🚀 V63.5 當沖雷達(整合:追得到強勢 + 漲停鎖死 + 個股期貨補漲,一張卡)
         try { const _rd = this._dtRadar(sym); if (_rd) cards.splice(_dtIns++, 0, _rd); } catch (_) {}
         // (V64.3 當沖回測獨立卡已移除 → 勝率併進 🚦 燈的「今天建議做多/做空+勝率」)
-        // ⚡ V55.3 組裝:hero(cards[0]即儀表板前的作戰指令)+ 儀表板/損益/SOP 恆顯,其餘進「📊 進階分析」摺疊
-        const advanced = detail.length ? `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg"><summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between"><span class="text-[12px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤</span></span><span class="text-gray-500 text-[10px]">點開 ▾</span></summary><div class="px-2 pb-2 pt-1 border-t border-[#21262d] flex flex-col gap-2">${detail.join('')}</div></details>` : '';
-        // 把「進階分析」插在損益試算(cards 最後第2個,SOP 是最後)前
-        const _sop = cards.pop();   // SOP
-        cards.push(advanced);
-        cards.push(_sop);
+        // ⚡ V64.5 組裝:主線只留 作戰指令(hero)+ 作戰室 + 雷達 + 儀表板 + 損益;
+        //   SOP 進「📖 新手」modal、進階分析(樞紐/CDP/VWAP/ORB/量能/波動/相對大盤)進「📊 進階」modal,不佔卡
+        this._dtAdvancedHtml = detail.length ? `<div class="flex flex-col gap-2">${detail.join('')}</div>` : '';
         box.innerHTML = cards.join('');
         box.dataset.rendered = '1';
         // 📌 V56.4 還原捲動位置(下一影格,等瀏覽器排版完)
