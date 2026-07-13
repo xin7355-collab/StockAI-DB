@@ -57,7 +57,7 @@ def main():
                 prev = fut_by_stock.get(uc)
                 # 取交割日最近且未過期(> 今日)的近月合約
                 today = datetime.now(TW).strftime('%Y/%m/%d')
-                if dd and dd < today:
+                if not dd or dd < today:   # 🐛 空交割日占位合約也跳過(否則 '' < 任何日期 → 被誤選成近月)
                     continue
                 if prev is None or dd < str(getattr(prev, 'delivery_date', '') or '9999'):
                     fut_by_stock[uc] = c
@@ -96,6 +96,13 @@ def main():
         api.logout()
     except Exception:
         pass
+
+    # 🐛 自我修復:抓太少(如深夜多數無成交 change_rate=None)不覆寫,不寫檔 → workflow 略過部署,
+    #    保留上一輪(22:00)的好資料,避免用空 {} 洗掉夜盤補漲卡。
+    MIN_FUT = 30
+    if len(out) < MIN_FUT:
+        print(f'❌ 只抓到 {len(out)} 檔(< {MIN_FUT},夜盤多數無成交)→ 不產出 JSON,保留上一輪資料')
+        sys.exit(1)
 
     payload = {'updated': datetime.now(TW).isoformat(), 'data': out}
     with open('stock_futures_night.json', 'w', encoding='utf-8') as f:

@@ -50,7 +50,7 @@ def _near_month(cat):
     best = None
     for c in cat:
         dd = str(getattr(c, 'delivery_date', '') or '')
-        if dd and dd < today:
+        if not dd or dd < today:   # 🐛 空交割日的占位/連續合約也要跳過(否則 '' < 任何日期 → 被誤選成近月)
             continue
         if best is None or dd < str(getattr(best, 'delivery_date', '') or '9999'):
             best = c

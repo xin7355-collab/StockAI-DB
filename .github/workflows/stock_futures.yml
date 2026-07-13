@@ -42,25 +42,39 @@ jobs:
           SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
         run: python3 stock_futures_miner.py
 
-      - name: 🚀 部署 stock_futures_night.json 到 gh-pages/data(保留其他資料)
+      - name: 🚀 部署 stock_futures_night.json 到 gh-pages + data(雙分支保存)
         run: |
           if [ ! -f stock_futures_night.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # data/ 在 main 是 gitignore 未追蹤檔,切分支前存到 /tmp
           cp stock_futures_night.json /tmp/sfn.json
 
-          git fetch origin gh-pages 2>/dev/null || true
-          git checkout gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; exit 1; }
-
-          mkdir -p data
-          cp /tmp/sfn.json data/stock_futures_night.json
-          git add data/stock_futures_night.json
-          git diff --cached --quiet && echo "無變更,跳過" || {
-            git commit -m "🏀 個股期貨夜盤 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true   # 硬清未追蹤(含 data/),避免 checkout 因髒工作區 abort
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支(等 daily_miner 先建),跳過"; return 0; }
+            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            mkdir -p data
+            cp /tmp/sfn.json data/stock_futures_night.json
+            git add -f data/stock_futures_night.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🏀 個股期貨夜盤 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/stock_futures_night.json
             for i in 1 2 3 4 5; do
-              git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
-              [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
-              sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true; git pull --rebase origin gh-pages 2>/dev/null || true
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
+              git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              cp /tmp/sfn.json data/stock_futures_night.json
+              git add -f data/stock_futures_night.json
+              git commit -q -m "🏀 個股期貨夜盤 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/stock_futures_night.json 2>/dev/null || true
             done
           }
-          echo "✅ data/stock_futures_night.json 已部署"
+
+          # 先 gh-pages(前端讀這個,立即生效),再 data(讓 daily_miner deploy 的 git archive origin/data 保留,不被下午完整採礦洗掉)
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 個股期貨夜盤已雙分支部署(gh-pages + data)"

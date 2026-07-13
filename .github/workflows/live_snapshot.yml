@@ -44,7 +44,11 @@ jobs:
           SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
         run: python3 live_snapshot_miner.py
 
-      - name: 🚀 部署 live_quotes.json 到 gh-pages/data(保留其他資料)
+      # ℹ️ 只 push gh-pages,不進 data 分支(刻意):live_quotes 是「每 5 分鐘重生」的即時快照,
+      #    盤中會不斷刷新、盤後前端不讀(isMarketOpen 守門)。daily_miner 下午洗掉它無妨——
+      #    下個交易日開盤第一次 cron 就重建。若進 data 分支反而讓備份分支每 5 分鐘 churn 一次,不值得。
+      #    (對比 stock_futures_night.json 是隔夜持久資料 → 那支才走雙分支保存。)
+      - name: 🚀 部署 live_quotes.json 到 gh-pages(即時快照,每 5 分鐘重生)
         run: |
           if [ ! -f live_quotes.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
           git config user.name  "github-actions[bot]"

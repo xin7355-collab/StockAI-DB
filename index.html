@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V63.3(興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V63.4(bug巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.3</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V63.4</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -29264,7 +29264,7 @@ ${_chuPosPlan}
                 <span class="text-[10px] font-mono ${i < 3 ? 'text-amber-300 font-black' : 'text-gray-600'}">${i + 1}</span>
                 <span class="text-[11px] text-gray-200 font-bold truncate">${nm}${lock} <span class="text-[9px] text-gray-500 font-mono">${o.sym}</span>${isCur ? ' <span class="text-[9px] text-cyan-300">◀ 本檔</span>' : ''}</span>
                 <span class="text-[10px] font-mono text-gray-500 w-[52px] text-right">${o.p.toFixed(2)}</span>
-                <span class="text-[12px] font-mono font-black ${cls} w-[52px] text-right">+${o.c.toFixed(2)}%</span>
+                <span class="text-[12px] font-mono font-black ${cls} w-[52px] text-right">${o.c >= 0 ? '+' : ''}${o.c.toFixed(2)}%</span>
             </div>`;
         }).join('');
         return `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg">
@@ -29855,11 +29855,13 @@ ${_chuPosPlan}
 
         if (this.currentSymbolId !== sym) return;
         // 🎯 V62.9 當沖作戰室(大盤風向+昨漲停隔日沖+撐壓+個股期貨夜盤 hook)插在作戰指令下方
-        try { const _bx = this._dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw); if (_bx) cards.splice(1, 0, _bx); } catch (_) {}
+        // 🐛 V63.4 用「相對游標」插卡:某張選配卡回 '' 時(如無期貨資料),後面卡不會插錯位置
+        let _dtIns = 1;   // hero 在 index 0,選配卡從 1 開始依序往下插
+        try { const _bx = this._dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw); if (_bx) cards.splice(_dtIns++, 0, _bx); } catch (_) {}
         // 🏀 V63.1 個股期貨夜盤漲幅榜(補漲雷達入口)插在作戰室下方
-        try { const _fl = this._dtFutureLeaders(sym); if (_fl) cards.splice(2, 0, _fl); } catch (_) {}
+        try { const _fl = this._dtFutureLeaders(sym); if (_fl) cards.splice(_dtIns++, 0, _fl); } catch (_) {}
         // 🚀 V63.2 全市場當沖強勢榜(全市場即時快照)
-        try { const _ml = this._dtMarketLeaders(sym); if (_ml) cards.splice(3, 0, _ml); } catch (_) {}
+        try { const _ml = this._dtMarketLeaders(sym); if (_ml) cards.splice(_dtIns++, 0, _ml); } catch (_) {}
         // ⚡ V55.3 組裝:hero(cards[0]即儀表板前的作戰指令)+ 儀表板/損益/SOP 恆顯,其餘進「📊 進階分析」摺疊
         const advanced = detail.length ? `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg"><summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between"><span class="text-[12px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤</span></span><span class="text-gray-500 text-[10px]">點開 ▾</span></summary><div class="px-2 pb-2 pt-1 border-t border-[#21262d] flex flex-col gap-2">${detail.join('')}</div></details>` : '';
         // 把「進階分析」插在損益試算(cards 最後第2個,SOP 是最後)前
