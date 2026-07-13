@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V62.8(即時真假判讀補「漲停/跌停鎖死」判定:修中美晶漲停鎖死被誤判「多空未明觀望」→ 改顯最強勢多方/最弱勢空方 + 對策;版本顯示在 badge + manifest) -->
+    <!-- STRATEGY TERMINAL V62.9(當沖作戰室:大盤風向(外資台指期)+昨漲停隔日沖追蹤+撐壓速查+個股期貨夜盤補漲(資料hook,接券商/付費期貨API自動生效);即時判讀補漲跌停鎖死(V62.8);版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -570,7 +570,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V62.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -28985,6 +28985,68 @@ ${_chuPosPlan}
 
     // ⚡ V54.3 — 當沖作戰台:純公式 7 卡(漲跌停/振幅/開盤定調/VWAP生命線/量能/損益試算/相對大盤/紀律SOP)
     //   重用即時報價(fetchFugleData)+ 分鐘K VWAP(_fetchFugleCandles)+ 量能達標(_chuVolumeProgress),零 AI 零採礦
+    // 🔌 V62.9 個股期貨夜盤資料 hook:目前無即時期貨資料源 → 回 null(卡片自動隱藏,不顯技術字)。
+    //   未來接券商即時 API(永豐 Shioaji / 群益,免費需帳戶)或付費行情:讓採礦端/前端把資料寫進
+    //   this._stockFutureCache[sym] = { nightChgPct: 夜盤個股期貨漲跌%, oi?: 未平倉, ts? } → 下面卡片自動生效。
+    _stockFutureNight(sym) {
+        return (this._stockFutureCache && this._stockFutureCache[String(sym)]) || null;
+    },
+    // 🎯 V62.9 當沖作戰室:大盤風向(外資台指期)+ 昨漲停隔日沖追蹤 + 撐壓速查 + 個股期貨夜盤補漲(hook)
+    _dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) {
+        const parts = [];
+        const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '--';
+        // ① 大盤風向濾網(外資台指期未平倉淨口數 → 順勢當沖)
+        const fi = this.fiShortQty;
+        if (fi != null && isFinite(fi)) {
+            const w = fi > 5000 ? { t: '🔴 偏多', c: 'text-red-300', m: '外資台指期站淨多方 → 當沖偏多順勢做,做多勝率較高。' }
+                : fi <= -25000 ? { t: '🟢 偏空', c: 'text-green-300', m: '外資台指期大幅淨空 → 當沖偏空,做多要快進快出別戀棧。' }
+                : fi <= -10000 ? { t: '🟡 中性偏空', c: 'text-yellow-300', m: '外資台指期小空 → 當沖中性,以個股當下量價為主。' }
+                : { t: '🔴 偏多', c: 'text-red-300', m: '外資台指期多方無憂 → 當沖偏多順勢。' };
+            parts.push(`<div class="bg-[#0d1117] border border-[#30363d] rounded p-2">
+                <div class="text-[10px] text-gray-500 font-bold mb-0.5">🌙 大盤風向(外資台指期未平倉 ${(+fi).toLocaleString('en-US')} 口)</div>
+                <div class="text-[13px] font-black ${w.c}">${w.t}</div>
+                <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${w.m}</div>
+            </div>`);
+        }
+        // ② 昨漲停鎖死 → 今日隔日沖追蹤
+        if (Array.isArray(baseRaw) && baseRaw.length >= 2) {
+            const last = baseRaw[baseRaw.length - 1], p2 = +baseRaw[baseRaw.length - 2].close;
+            const lastChg = p2 > 0 ? (+last.close - p2) / p2 * 100 : 0;
+            if (lastChg >= 9.4 && +last.close >= (+last.high || +last.close) * 0.999) {
+                const openStrong = openP > 0 && prevClose > 0 && openP >= prevClose;
+                const now = (chgPct != null) ? chgPct : 0;
+                parts.push(`<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r p-2">
+                    <div class="text-[11px] font-bold text-orange-300 mb-0.5">🔒 昨漲停鎖死 → 今日隔日沖追蹤</div>
+                    <div class="text-[10px] text-gray-300 leading-snug">${openStrong ? '今開高延續強勢' : '今開平/開低'} · 現 ${now >= 0 ? '+' : ''}${now.toFixed(2)}%。<b class="text-red-300">開高續強不破開盤價=續抱搶噴</b>;<b class="text-green-300">開高走弱跌破開盤價=主力出貨快跑別凹</b>。爆量打開漲停是關鍵。</div>
+                </div>`);
+            }
+        }
+        // ③ 當沖撐壓速查(關卡價)
+        if (Array.isArray(baseRaw) && baseRaw.length >= 2) {
+            const yH = +baseRaw[baseRaw.length - 2].high, yL = +baseRaw[baseRaw.length - 2].low;
+            const rows = [['昨高(壓)', yH, 'text-red-300'], ['今高', highP, 'text-red-200'], ['昨收·均衡', prevClose, 'text-gray-300'], ['今開', openP, 'text-gray-300'], ['今低', lowP, 'text-green-200'], ['昨低(撐)', yL, 'text-green-300']].filter(r => r[1] > 0);
+            if (rows.length) parts.push(`<div class="bg-[#0d1117] border border-[#30363d] rounded p-2">
+                <div class="text-[10px] text-gray-500 font-bold mb-1">📏 當沖撐壓速查(關卡價)</div>
+                <div class="grid grid-cols-2 gap-x-3 gap-y-0.5">${rows.map(r => `<div class="flex justify-between"><span class="text-[10px] text-gray-500">${r[0]}</span><span class="text-[11px] font-mono font-bold ${r[2]}">${nf(r[1])}</span></div>`).join('')}</div>
+                <div class="text-[9px] text-gray-600 mt-1 leading-snug">站上昨高/今高=偏多可續;跌破昨低/今低=偏空;貼近昨收=均衡觀望。純公式參考。</div>
+            </div>`);
+        }
+        // ④ 個股期貨夜盤補漲(hook,有資料才顯 → 無資料源時整張不出現,不顯技術字)
+        const fut = this._stockFutureNight(sym);
+        if (fut && isFinite(+fut.nightChgPct)) {
+            const nc = +fut.nightChgPct, sc = (chgPct != null) ? chgPct : 0, gap = nc - sc, catchUp = gap >= 1.5;
+            parts.push(`<div class="bg-[#161b22] border-l-4 ${catchUp ? 'border-red-500' : 'border-gray-600'} border-y border-r border-[#30363d] rounded-r p-2">
+                <div class="text-[11px] font-bold ${catchUp ? 'text-red-300' : 'text-gray-300'} mb-0.5">🏀 個股期貨夜盤 ${nc >= 0 ? '+' : ''}${nc.toFixed(2)}% vs 現貨 ${sc >= 0 ? '+' : ''}${sc.toFixed(2)}%</div>
+                <div class="text-[10px] text-gray-300 leading-snug">${catchUp ? `夜盤期貨領先現貨 +${gap.toFixed(1)}% → <b class="text-red-300">補漲機率高</b>,留意開盤追買點(但個股期貨量小易假,確認有量再進)。` : '期貨與現貨差距不大,無明顯補漲/補跌訊號。'}</div>
+            </div>`);
+        }
+        if (!parts.length) return '';
+        return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg p-2.5 flex flex-col gap-2">
+            <div class="text-[11px] font-black text-cyan-200">🎯 當沖作戰室 <span class="text-[9px] text-gray-500 font-normal">大盤風向・隔日沖・撐壓・期貨補漲</span></div>
+            ${parts.join('')}
+        </div>`;
+    },
+
     async renderDayTradeTab(sym, opts = {}) {
         sym = sym || this.currentSymbolId;
         const box = document.getElementById('dayTradeBody');
@@ -29559,6 +29621,8 @@ ${_chuPosPlan}
         }
 
         if (this.currentSymbolId !== sym) return;
+        // 🎯 V62.9 當沖作戰室(大盤風向+昨漲停隔日沖+撐壓+個股期貨夜盤 hook)插在作戰指令下方
+        try { const _bx = this._dtBattleExtras(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw); if (_bx) cards.splice(1, 0, _bx); } catch (_) {}
         // ⚡ V55.3 組裝:hero(cards[0]即儀表板前的作戰指令)+ 儀表板/損益/SOP 恆顯,其餘進「📊 進階分析」摺疊
         const advanced = detail.length ? `<details class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg"><summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between"><span class="text-[12px] font-black text-gray-100">📊 進階分析 <span class="text-[9px] text-gray-500 font-normal">樞紐/CDP・關卡・VWAP・ORB・量能・波動・相對大盤</span></span><span class="text-gray-500 text-[10px]">點開 ▾</span></summary><div class="px-2 pb-2 pt-1 border-t border-[#21262d] flex flex-col gap-2">${detail.join('')}</div></details>` : '';
         // 把「進階分析」插在損益試算(cards 最後第2個,SOP 是最後)前
