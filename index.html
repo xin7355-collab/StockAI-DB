@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V66.0(整併三頁+免費資料缺就略過:①籌碼頁「大戶總結」缺資料維度直接略過那行(法人撈不到整卡隱藏,融資券/分點缺就不顯,不放「無資料/整備中」噪音);②總覽主卡「籌碼」格法人缺就整條略過不顯;③籌碼頁原始數據(週期切換+三大法人+融資券+主力分點)收進「📊看原始數據」摺疊,頂部只留大戶總結;④基本面X光完整12項數據收進「🔬看完整基本面數據」摺疊,體質總評當常駐headline;⑤處置頁新增「🚨這檔離被關還有幾步」headline(純公式:已處置剩N天/即將被關再觸N天/危險邊緣剩N步/累積中/安全),明細收在下方8款掃描;全部與總覽同邏輯=結論在上、明細收合;前版:籌碼頁刪 AI 改純公式(使用者要求):①移除🤖AI籌碼解析(analyzeChipUnified 的 Gemini 呼叫整段刪除,不再耗額度)②新增「🐘大戶籌碼總結」純公式卡(與總覽同邏輯:大字結論 大戶在收貨/偏買/沒動作/偏賣/出貨 + 白話明細 外資10日買賣超及連N天方向/投信+自營內資站買賣方/融資券散戶車擠或洗乾淨/主力分點集中度 + 一句操作)③敘述全改計算:資料來自既有 _chipPeriodSums(法人融資券1·3·5·10日)+每日連續方向+_brokerChipSummary(分點),零AI零幻覺④masterScoreCard 移除「以首席AI為準」殘留字⑤指揮中樞移除AI鈕只留週期切換⑥onboard 教學改「純公式幫你算好」;前版:修總覽三事:①「現在怎麼做/庫存」頁籤最下面的空白卡片 = strategyMainBox 外框(它只裝進場/出場兩pane,now/inv時兩者display:none露出空框)→ 改透明外殼,pane內各卡自帶樣式;②「現在怎麼做」主卡併入「🐾這檔的脾氣」慣性提醒(_stockHabitLine):性格標籤+日均振幅%+換算成元(±X元)+敘述式「請注意」該注意什麼(飆股別過夜/強趨勢別做區間/牛皮等突破/箱型別追突破)+跳空多加註;③早退(資料不足)時一併重設頁籤回「現在怎麼做」防跨股殘留;前版:總覽改四頁籤(使用者規格):🚦現在怎麼做/💼庫存/🎯進場(持有時自動改名➕加碼)/🛡️出場;預設落「現在怎麼做」+緊急紅點(出場級指令→出場籤紅閃、持有→庫存籤損益色點)、換股自動回第一籤;💼庫存頁=損益hero+回檔健檢/套牢診斷(從主卡移入)+➕加碼策略(趨勢翻空/大戶出貨/虧損>8%=明講不適合加碼;健康時給三招:回測月線不破+紅K加碼一次/連2-3日站5MA順勢加碼/帶量突破前高追,總部位守停損),無庫存=EmptyState導去進場;目標價三大格縮成一行小字(使用者:太佔版位);🌡️本股vs大盤結論鏡射一句話進主卡(分析師講法,卡片本體收進場籤);回後買上漲三版本基準標名防混淆(突破棒½支撐版vs站回5MA vs 20MA觀察區,價位不同是正常);主卡早退清庫存頁防跨股殘留;前版:bug巡邏修3件(多代理掃描+人工驗證):①決策卡統計格跟大字指令打臉——「立刻出場/出場」時仍顯「目標+賺賠比划算值得做」→ gridMode 三態(full=續抱/警戒/可以布局才顯三格;hint=等買點/別追/盤整只顯目標一行,因從現價算賺賠比會失真,等買點到再算;none=出場指令/空頭不顯)②賺賠不划算警語同步只在 full 模式觸發 ③K線指標設定「取消」原本只還原均線、副圖改動卻留著 → 快照含 subChart1/2,取消一併還原+回寫 localStorage;前版:總覽頂卡改「🚦現在怎麼做」三情境決策卡(依使用者規格):①持有=續抱/警戒減碼/建議離場/立刻停損+「📉回檔健檢」三分法(大戶5日賣超>500張=危險回檔該走/大戶反而買超+守月線=洗散戶→給加碼指令(回測月線不破+紅K可加碼一次)/大盤拖累+大戶沒跑=健康回檔續抱)+深套≤-8%維持原套牢4分法 ②建倉=線型+籌碼(大戶5日買賣超+連N買)一行摘要+可以布局/等買點+目標價(動態停利引擎t1/t2,無則前高)+還有幾%空間+賺賠比(≥2划算)+到目標約賺X元 ③空頭=別碰/建議離場;停損格防打架:空手時跟規則同一條線(起漲=5日線/等買點=月線/盤整=前低),持有=統一停損引擎;⚠️注意單條優先序:大盤偏空>大戶出貨>爆量>賺賠不划算;前版:總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V66.1(全球指數免費即時(使用者問哪些能免費即時→放前端設定):實測後只有比特幣是「免金鑰+CORS開放+真即時」可行→大盤「全球巨頭脈動」的比特幣改前端 CoinGecko 秒級(設定頁新增「🌍全球指數即時來源」開關 set_liveBtc 預設開,_refreshLiveBtc 每60秒且僅大盤頁顯示時才抓,offsetParent守門省流量,抓失敗/CORS/限流靜默保留後端值零風險);日經/韓股/恆指/VIX/DXY/ADR 屬授權指數免費抓不到即時→維持盤中後端採礦(已在設定文案誠實說明);加權/櫃買可用Fugle key前端即時待下版;前版:整併三頁+免費資料缺就略過:①籌碼頁「大戶總結」缺資料維度直接略過那行(法人撈不到整卡隱藏,融資券/分點缺就不顯,不放「無資料/整備中」噪音);②總覽主卡「籌碼」格法人缺就整條略過不顯;③籌碼頁原始數據(週期切換+三大法人+融資券+主力分點)收進「📊看原始數據」摺疊,頂部只留大戶總結;④基本面X光完整12項數據收進「🔬看完整基本面數據」摺疊,體質總評當常駐headline;⑤處置頁新增「🚨這檔離被關還有幾步」headline(純公式:已處置剩N天/即將被關再觸N天/危險邊緣剩N步/累積中/安全),明細收在下方8款掃描;全部與總覽同邏輯=結論在上、明細收合;前版:籌碼頁刪 AI 改純公式(使用者要求):①移除🤖AI籌碼解析(analyzeChipUnified 的 Gemini 呼叫整段刪除,不再耗額度)②新增「🐘大戶籌碼總結」純公式卡(與總覽同邏輯:大字結論 大戶在收貨/偏買/沒動作/偏賣/出貨 + 白話明細 外資10日買賣超及連N天方向/投信+自營內資站買賣方/融資券散戶車擠或洗乾淨/主力分點集中度 + 一句操作)③敘述全改計算:資料來自既有 _chipPeriodSums(法人融資券1·3·5·10日)+每日連續方向+_brokerChipSummary(分點),零AI零幻覺④masterScoreCard 移除「以首席AI為準」殘留字⑤指揮中樞移除AI鈕只留週期切換⑥onboard 教學改「純公式幫你算好」;前版:修總覽三事:①「現在怎麼做/庫存」頁籤最下面的空白卡片 = strategyMainBox 外框(它只裝進場/出場兩pane,now/inv時兩者display:none露出空框)→ 改透明外殼,pane內各卡自帶樣式;②「現在怎麼做」主卡併入「🐾這檔的脾氣」慣性提醒(_stockHabitLine):性格標籤+日均振幅%+換算成元(±X元)+敘述式「請注意」該注意什麼(飆股別過夜/強趨勢別做區間/牛皮等突破/箱型別追突破)+跳空多加註;③早退(資料不足)時一併重設頁籤回「現在怎麼做」防跨股殘留;前版:總覽改四頁籤(使用者規格):🚦現在怎麼做/💼庫存/🎯進場(持有時自動改名➕加碼)/🛡️出場;預設落「現在怎麼做」+緊急紅點(出場級指令→出場籤紅閃、持有→庫存籤損益色點)、換股自動回第一籤;💼庫存頁=損益hero+回檔健檢/套牢診斷(從主卡移入)+➕加碼策略(趨勢翻空/大戶出貨/虧損>8%=明講不適合加碼;健康時給三招:回測月線不破+紅K加碼一次/連2-3日站5MA順勢加碼/帶量突破前高追,總部位守停損),無庫存=EmptyState導去進場;目標價三大格縮成一行小字(使用者:太佔版位);🌡️本股vs大盤結論鏡射一句話進主卡(分析師講法,卡片本體收進場籤);回後買上漲三版本基準標名防混淆(突破棒½支撐版vs站回5MA vs 20MA觀察區,價位不同是正常);主卡早退清庫存頁防跨股殘留;前版:bug巡邏修3件(多代理掃描+人工驗證):①決策卡統計格跟大字指令打臉——「立刻出場/出場」時仍顯「目標+賺賠比划算值得做」→ gridMode 三態(full=續抱/警戒/可以布局才顯三格;hint=等買點/別追/盤整只顯目標一行,因從現價算賺賠比會失真,等買點到再算;none=出場指令/空頭不顯)②賺賠不划算警語同步只在 full 模式觸發 ③K線指標設定「取消」原本只還原均線、副圖改動卻留著 → 快照含 subChart1/2,取消一併還原+回寫 localStorage;前版:總覽頂卡改「🚦現在怎麼做」三情境決策卡(依使用者規格):①持有=續抱/警戒減碼/建議離場/立刻停損+「📉回檔健檢」三分法(大戶5日賣超>500張=危險回檔該走/大戶反而買超+守月線=洗散戶→給加碼指令(回測月線不破+紅K可加碼一次)/大盤拖累+大戶沒跑=健康回檔續抱)+深套≤-8%維持原套牢4分法 ②建倉=線型+籌碼(大戶5日買賣超+連N買)一行摘要+可以布局/等買點+目標價(動態停利引擎t1/t2,無則前高)+還有幾%空間+賺賠比(≥2划算)+到目標約賺X元 ③空頭=別碰/建議離場;停損格防打架:空手時跟規則同一條線(起漲=5日線/等買點=月線/盤整=前低),持有=統一停損引擎;⚠️注意單條優先序:大盤偏空>大戶出貨>爆量>賺賠不划算;前版:總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -583,7 +583,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V66.0</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V66.1</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -664,6 +664,15 @@
                         <label class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">💰 我的券商手續費折數<span class="text-[9px] text-gray-500 font-normal">(電子單常見 0.2~0.6 折)</span></label>
                         <input id="set_feeDiscount" type="number" step="0.01" min="0.1" max="1" inputmode="decimal" placeholder="0.28" onchange="app.saveSettings()" class="w-full bg-[#010409] text-cyan-200 p-2 rounded border border-[#30363d] outline-none text-sm font-mono font-bold focus:border-cyan-500 transition-colors">
                         <p class="text-[10px] text-gray-500 leading-snug">牌價手續費 0.1425%×折數。設一次,<b class="text-cyan-300">當沖試算機、作戰指令的掛單賺賠元</b>全部自動用你的折數算(在試算機改折數也會自動記住回這裡)。</p>
+                    </div>
+                    <!-- 🌍 V66.1 — 全球指數即時來源(免費、免金鑰):比特幣改前端 CoinGecko 秒級,其餘授權指數維持後端採礦 -->
+                    <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-orange-700/40 rounded">
+                        <label class="text-xs font-bold text-orange-300 flex items-center gap-1.5">🌍 全球指數即時來源<span class="text-[9px] text-gray-500 font-normal">(免費・免金鑰)</span></label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="set_liveBtc" onchange="app.saveSettings(); app._refreshLiveBtc();" class="w-4 h-4 accent-orange-500 flex-shrink-0">
+                            <span class="text-[13px] text-gray-200">₿ 比特幣改前端即時(CoinGecko)</span>
+                        </label>
+                        <p class="text-[10px] text-gray-500 leading-snug">開啟後「大盤 → 全球巨頭脈動」的 <b class="text-orange-300">比特幣</b>改用 CoinGecko 免費 API 秒級更新(免金鑰、手機直抓)。<b class="text-gray-400">日經/韓股/恆指/VIX/ADR 等屬授權指數,免費抓不到即時,維持盤中後端採礦</b>(抓失敗自動退回後端值,零風險)。</p>
                     </div>
                     <p class="text-[10px] text-gray-500 leading-tight -mt-1">每組 key 旁有 <span class="text-purple-300">☑</span> 啟動開關;取消打勾即<b class="text-amber-300">暫時停用該 key</b>(輪動會跳過,設定保留)。</p>
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
@@ -3657,6 +3666,7 @@ const app = {
         // V21.8 — 台指期狀態:init 跑一次 + 每分鐘更新 + 每 30 秒檢查重點時間自動 refetch
         try { this._renderTaiexFutures(); } catch(_) {}
         setInterval(() => { try { this._renderTaiexFutures(); } catch(_) {} }, 60_000);
+        setInterval(() => { try { this._refreshLiveBtc(); } catch(_) {} }, 60_000);   // ₿ V66.1 比特幣前端即時(僅大盤頁顯示時真的抓,見 offsetParent 守門)
         setInterval(() => { try { this._maybeAutoRefreshIndices(); } catch(_) {} }, 30_000);
         setInterval(() => { try { this._dtCloseReminderCheck(); } catch(_) {} }, 30_000);   // ⚡ V55.3 當沖 13:25 平倉提醒
         // 🗑️ V62.7 移除「📌 朱老師鎖股」自選 tab(使用者要求;無 UI 觸發、恆空清單 → 開頁清掉)
@@ -6022,6 +6032,8 @@ ${list}
         if (freeEngEl) freeEngEl.value = this.settings.freeAiEngine || 'perplexity';
         const feeEl = document.getElementById('set_feeDiscount');   // 💰 V55.7 券商手續費折數
         if (feeEl) feeEl.value = this.settings.feeDiscount ?? 0.28;
+        const liveBtcEl = document.getElementById('set_liveBtc');   // 🌍 V66.1 比特幣前端即時(預設開)
+        if (liveBtcEl) liveBtcEl.checked = this.settings.liveBtc !== false;
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) ratEl.value = this.settings.riskAlertThreshold ?? 60;
         document.getElementById('set_localApiUrl').value = this.settings.localApiUrl || '';
@@ -6134,6 +6146,8 @@ ${list}
         if (freeEngEl) this.settings.freeAiEngine = freeEngEl.value || 'perplexity';
         const feeEl = document.getElementById('set_feeDiscount');   // 💰 V55.7 券商手續費折數(0.1~1,壞值回 0.28)
         if (feeEl) { const v = parseFloat(feeEl.value); this.settings.feeDiscount = (Number.isFinite(v) && v >= 0.1 && v <= 1) ? v : 0.28; }
+        const liveBtcEl = document.getElementById('set_liveBtc');   // 🌍 V66.1 比特幣前端即時開關
+        if (liveBtcEl) this.settings.liveBtc = liveBtcEl.checked;
         const ratEl = document.getElementById('set_riskAlertThreshold');
         if (ratEl) { const v = parseInt(ratEl.value, 10); this.settings.riskAlertThreshold = (Number.isFinite(v) ? Math.max(30, Math.min(95, v)) : 60); }
         // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),不再讀寫此設定
@@ -19599,6 +19613,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         // 🌍 全球巨頭脈動(10 卡:黃金/原油/美元/BTC/VIX/日經/恆指/韓股/SP500/NASDAQ)
         this.updateBigPlayers(j);
+        // ₿ V66.1 比特幣前端即時覆蓋(免費 CoinGecko;設定可關,抓失敗保留後端值)
+        try { this._refreshLiveBtc(); } catch (_) {}
 
         // 🚨 V21.8 — 全球熔斷示警(平常 hidden,任一指數接近/觸發熔斷才顯)
         try { this._renderCircuitBreakerAlert(); } catch(e) { console.warn('[circuit-breaker]', e); }
@@ -21590,6 +21606,30 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>`;
         document.body.appendChild(modal);
         this.vibrate(15);
+    },
+
+    // 🌍 V66.1 — 比特幣前端免費即時(CoinGecko,免金鑰、CORS 開放、手機直抓);抓失敗自動保留後端值(零風險)
+    //   使用者要求:能免費即時的指數放前端。BTC 是這批唯一「免 key + CORS + 真即時」可行的;授權指數(日經/VIX/ADR)免費抓不到即時,維持後端。
+    async _refreshLiveBtc() {
+        try {
+            if (this.settings.liveBtc === false) return;
+            const valEl = document.getElementById('bpBtc');
+            if (!valEl || valEl.offsetParent === null) return;   // 不在大盤頁/未顯示 → 略過(省流量)
+            const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true', { signal: AbortSignal.timeout(6000) });
+            if (!r.ok) return;
+            const d = await r.json();
+            const p = d?.bitcoin?.usd, c = d?.bitcoin?.usd_24h_change;
+            if (!(p > 0)) return;
+            valEl.textContent = Math.round(p).toLocaleString('en-US');
+            valEl.title = '前端即時 · CoinGecko';
+            const chgEl = document.getElementById('bpBtcChg');
+            if (chgEl && Number.isFinite(c)) { chgEl.textContent = `${c > 0 ? '+' : ''}${c.toFixed(2)}%`; chgEl.className = `text-[10px] font-mono mt-0.5 ${c > 0.1 ? 'text-red-400' : c < -0.1 ? 'text-green-400' : 'text-gray-400'}`; }
+            const meanEl = document.getElementById('bpBtcMeaning');
+            if (meanEl && Number.isFinite(c)) {
+                const m = c > 5 ? { t: '🚀 風險亢奮·同步利多科技股', cl: 'bg-green-900/40 text-green-300' } : c > 2 ? { t: '🟢 風險偏好回升', cl: 'bg-green-900/30 text-green-300' } : c < -5 ? { t: '😱 風險暴跌·科技股小心', cl: 'bg-red-900/40 text-red-200' } : c < -2 ? { t: '🔻 風險情緒轉弱', cl: 'bg-red-900/30 text-red-300' } : { t: '✅ 情緒平穩·即時', cl: 'bg-gray-800/40 text-gray-400' };
+                meanEl.textContent = m.t; meanEl.className = `text-[9px] mt-1 px-1.5 py-0.5 rounded leading-snug ${m.cl}`;
+            }
+        } catch (_) { /* CORS/離線/限流 → 靜默保留後端值 */ }
     },
 
     // 🌍 全球巨頭脈動渲染（8 卡）— 黃金/BTC 漲為避險升溫=紅、VIX 漲特例紅警示、跌綠
