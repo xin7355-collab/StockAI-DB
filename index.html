@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V65.8(修總覽三事:①「現在怎麼做/庫存」頁籤最下面的空白卡片 = strategyMainBox 外框(它只裝進場/出場兩pane,now/inv時兩者display:none露出空框)→ 改透明外殼,pane內各卡自帶樣式;②「現在怎麼做」主卡併入「🐾這檔的脾氣」慣性提醒(_stockHabitLine):性格標籤+日均振幅%+換算成元(±X元)+敘述式「請注意」該注意什麼(飆股別過夜/強趨勢別做區間/牛皮等突破/箱型別追突破)+跳空多加註;③早退(資料不足)時一併重設頁籤回「現在怎麼做」防跨股殘留;前版:總覽改四頁籤(使用者規格):🚦現在怎麼做/💼庫存/🎯進場(持有時自動改名➕加碼)/🛡️出場;預設落「現在怎麼做」+緊急紅點(出場級指令→出場籤紅閃、持有→庫存籤損益色點)、換股自動回第一籤;💼庫存頁=損益hero+回檔健檢/套牢診斷(從主卡移入)+➕加碼策略(趨勢翻空/大戶出貨/虧損>8%=明講不適合加碼;健康時給三招:回測月線不破+紅K加碼一次/連2-3日站5MA順勢加碼/帶量突破前高追,總部位守停損),無庫存=EmptyState導去進場;目標價三大格縮成一行小字(使用者:太佔版位);🌡️本股vs大盤結論鏡射一句話進主卡(分析師講法,卡片本體收進場籤);回後買上漲三版本基準標名防混淆(突破棒½支撐版vs站回5MA vs 20MA觀察區,價位不同是正常);主卡早退清庫存頁防跨股殘留;前版:bug巡邏修3件(多代理掃描+人工驗證):①決策卡統計格跟大字指令打臉——「立刻出場/出場」時仍顯「目標+賺賠比划算值得做」→ gridMode 三態(full=續抱/警戒/可以布局才顯三格;hint=等買點/別追/盤整只顯目標一行,因從現價算賺賠比會失真,等買點到再算;none=出場指令/空頭不顯)②賺賠不划算警語同步只在 full 模式觸發 ③K線指標設定「取消」原本只還原均線、副圖改動卻留著 → 快照含 subChart1/2,取消一併還原+回寫 localStorage;前版:總覽頂卡改「🚦現在怎麼做」三情境決策卡(依使用者規格):①持有=續抱/警戒減碼/建議離場/立刻停損+「📉回檔健檢」三分法(大戶5日賣超>500張=危險回檔該走/大戶反而買超+守月線=洗散戶→給加碼指令(回測月線不破+紅K可加碼一次)/大盤拖累+大戶沒跑=健康回檔續抱)+深套≤-8%維持原套牢4分法 ②建倉=線型+籌碼(大戶5日買賣超+連N買)一行摘要+可以布局/等買點+目標價(動態停利引擎t1/t2,無則前高)+還有幾%空間+賺賠比(≥2划算)+到目標約賺X元 ③空頭=別碰/建議離場;停損格防打架:空手時跟規則同一條線(起漲=5日線/等買點=月線/盤整=前低),持有=統一停損引擎;⚠️注意單條優先序:大盤偏空>大戶出貨>爆量>賺賠不划算;前版:總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
+    <!-- STRATEGY TERMINAL V65.9(籌碼頁刪 AI 改純公式(使用者要求):①移除🤖AI籌碼解析(analyzeChipUnified 的 Gemini 呼叫整段刪除,不再耗額度)②新增「🐘大戶籌碼總結」純公式卡(與總覽同邏輯:大字結論 大戶在收貨/偏買/沒動作/偏賣/出貨 + 白話明細 外資10日買賣超及連N天方向/投信+自營內資站買賣方/融資券散戶車擠或洗乾淨/主力分點集中度 + 一句操作)③敘述全改計算:資料來自既有 _chipPeriodSums(法人融資券1·3·5·10日)+每日連續方向+_brokerChipSummary(分點),零AI零幻覺④masterScoreCard 移除「以首席AI為準」殘留字⑤指揮中樞移除AI鈕只留週期切換⑥onboard 教學改「純公式幫你算好」;前版:修總覽三事:①「現在怎麼做/庫存」頁籤最下面的空白卡片 = strategyMainBox 外框(它只裝進場/出場兩pane,now/inv時兩者display:none露出空框)→ 改透明外殼,pane內各卡自帶樣式;②「現在怎麼做」主卡併入「🐾這檔的脾氣」慣性提醒(_stockHabitLine):性格標籤+日均振幅%+換算成元(±X元)+敘述式「請注意」該注意什麼(飆股別過夜/強趨勢別做區間/牛皮等突破/箱型別追突破)+跳空多加註;③早退(資料不足)時一併重設頁籤回「現在怎麼做」防跨股殘留;前版:總覽改四頁籤(使用者規格):🚦現在怎麼做/💼庫存/🎯進場(持有時自動改名➕加碼)/🛡️出場;預設落「現在怎麼做」+緊急紅點(出場級指令→出場籤紅閃、持有→庫存籤損益色點)、換股自動回第一籤;💼庫存頁=損益hero+回檔健檢/套牢診斷(從主卡移入)+➕加碼策略(趨勢翻空/大戶出貨/虧損>8%=明講不適合加碼;健康時給三招:回測月線不破+紅K加碼一次/連2-3日站5MA順勢加碼/帶量突破前高追,總部位守停損),無庫存=EmptyState導去進場;目標價三大格縮成一行小字(使用者:太佔版位);🌡️本股vs大盤結論鏡射一句話進主卡(分析師講法,卡片本體收進場籤);回後買上漲三版本基準標名防混淆(突破棒½支撐版vs站回5MA vs 20MA觀察區,價位不同是正常);主卡早退清庫存頁防跨股殘留;前版:bug巡邏修3件(多代理掃描+人工驗證):①決策卡統計格跟大字指令打臉——「立刻出場/出場」時仍顯「目標+賺賠比划算值得做」→ gridMode 三態(full=續抱/警戒/可以布局才顯三格;hint=等買點/別追/盤整只顯目標一行,因從現價算賺賠比會失真,等買點到再算;none=出場指令/空頭不顯)②賺賠不划算警語同步只在 full 模式觸發 ③K線指標設定「取消」原本只還原均線、副圖改動卻留著 → 快照含 subChart1/2,取消一併還原+回寫 localStorage;前版:總覽頂卡改「🚦現在怎麼做」三情境決策卡(依使用者規格):①持有=續抱/警戒減碼/建議離場/立刻停損+「📉回檔健檢」三分法(大戶5日賣超>500張=危險回檔該走/大戶反而買超+守月線=洗散戶→給加碼指令(回測月線不破+紅K可加碼一次)/大盤拖累+大戶沒跑=健康回檔續抱)+深套≤-8%維持原套牢4分法 ②建倉=線型+籌碼(大戶5日買賣超+連N買)一行摘要+可以布局/等買點+目標價(動態停利引擎t1/t2,無則前高)+還有幾%空間+賺賠比(≥2划算)+到目標約賺X元 ③空頭=別碰/建議離場;停損格防打架:空手時跟規則同一條線(起漲=5日線/等買點=月線/盤整=前低),持有=統一停損引擎;⚠️注意單條優先序:大盤偏空>大戶出貨>爆量>賺賠不划算;前版:總覽表層改新手版(使用者:表層要簡單明瞭,判斷過程藏起來,重點是準):頂卡改「🚦這檔可不可以做」——大字答案(🟢可以做/🟡等買點/🔴別碰/持有:續抱/警戒/出場)+白話一句為什麼+「📍照這樣做」觸價指令(突破X→買/跌破Y→停損,碰到價位就動作不用猜)+⚠️只挑一條最重要注意;判斷邏輯與舊版完全相同準度不變,趨勢/位置/量/心法細節全收進「🔍系統怎麼判斷的」摺疊(tcDetailBody);K棒細節導引去K線頁看朱老師卡;前版:總覽三卡整併:10 區塊→3 張主卡「①🩺進場明細(體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價)②🃏進場劇本(打法雷達+分批進場計畫,同一gate)③🛡️防守出場(出場總表+明日均線保衛+K棒戰法½價/突破棒/四大金剛)」,主結論永遠在頂部趨勢照表操課;出場總表新增「🧱結構防守參考」把扣抵保衛價/突破棒½價/突破棒最低價由近到遠排進同一張表(_guardStash 每次刷新重建防跨股殘留),防守價不再三卡各報各的;錨點導覽改三鈕;前版:修「副圖關閉後叫不回來」:K線指標設定 modal 新增「副圖1/副圖2」下拉救回入口(圖上小選單被設「無」會跟著消失的死巷),_syncSubSelectors 三處雙向同步;分批進場計畫空頭時文案不再打架:副標改「轉多後才啟用的突破做多劇本,先不執行」,與收合列「🚫空頭勿執行」一致;前版:K線頁三卡合一:把「🎢主升段體檢」fold 進「🗣️朱老師這樣看」——階段偏多/偏空直接加減進綜合分數(分數說話)、階段+獲利燃料改成卡內一行敘述,不再單獨渲染 mainRiseCard;新增「⚖️多空訊號衝突仲裁」:當天同時出現偏多(轉強)+偏空(出貨/假突破)型態時,用「本股回測勝率」判該聽哪個(以華通為例:突破下降趨勢線本股勝率高→偏多為主,破月線/前低才翻臉),不再兩個訊號並列讓使用者自己猜;抽 _mainRiseStage helper 單一真相來源;前版:合併「技術面總評」進「朱老師這樣看」成單一卡(刪較不準的總評卡、加關鍵價位三格用真前高、跌破月線不喊多頭噴相改「偏多但月線壓著」);前版:K線頁新增「📊技術面總評·分析師觀點」統整卡(置頂:均線/位階/波段/動能/型態勝率→一句話立場+關鍵價+操作,直接寫主升段結果與勝率);新增OBV×MACD×量動能發動偵測器(併進K棒戰法/評分/AI三處);修「收盤後今日成交量/OBV/MACD消失或錯誤」:即時報價當日量改「只增不減」,不再把採礦好的完整全日量洗成盤後殘值(華通+5%卻顯量縮的bug);當沖版面重排:①候選+雷達+作戰室(隔日沖/期貨)合併成一張「⚡選股中心」大卡(渲染進#dtHubBody)②漲跌停/振幅移到作戰指令卡最頂端;主線=選股中心+作戰指令+損益;當沖再瘦身:作戰指令正面只留「能不能沖badge+方向勝率+關卡+漲跌停振幅+掛單」,長說明(資格解釋/量能/歷史勝率算法/各訊號)全收進▾摺疊;儀表板整卡併入hero;當沖頁大精簡:主線只留 作戰指令+作戰室+雷達+儀表板+損益;SOP併進📖新手modal、進階分析改📊進階按鈕modal、儀表板砍掉與hero重複的現價行;當沖再精簡:🚦方向勝率併入「今日當沖作戰指令」hero(能不能沖+方向建議+勝率+關卡+掛單一張卡);新手必看改 header「📖新手」按鈕開 modal 不佔卡;當沖頁精簡+直接給答案:🚦燈直接寫「今天建議做多/做空+勝率%」(這檔歷史勝率×大盤方向,免使用者判斷)、砍掉期望值術語改「平均賺/賠」、撐壓表縮成一行關卡、刪當沖回測獨立卡;現價 Fugle WebSocket 即時串流(毫秒級跳動,加值層:失敗自動退回既有輪詢零風險,只串當前個股、切股/離頁自動關);🚦一鍵當沖總結燈(融合大盤方向+族群+開盤價+量→順勢偏多/偏空/觀望,明細與時效收合);期貨正逆價差(期>現正價差易補漲);當沖版面重整+新手化:大盤方向三訊號(外資期+P/C+大額)合併成一句「今天適合做多嗎」+對策;各訊號加「✅怎麼做」SOP;新增「📖當沖新手必看」教學卡(看什麼漲跌/漲停怎麼辦/資料時效/停損鐵則);族群同步強弱(同業一起強=主力拉整族群,用全市場快照即時算)加進當沖作戰室;台指期大額交易人前10大淨多空(免費TAIFEX,主力方向)加進當沖作戰室;當沖回測:開盤買→收盤賣近150天勝率+期望值(開高/開平/開低分組,純公式歷史統計);當沖作戰室加「選擇權 P/C Ratio 大盤情緒」(免費TAIFEX,誠實標情緒參考非明牌+教學);daytrade資料包miner;修workflow「data既是資料夾又是分支名」git歧義(checkout -B origin/BR);當沖雷達整合:把「全市場強勢榜+個股期貨補漲榜」併成一張「當沖雷達」三區【追得到強勢=漲2.5~7.5%+爆量量比、漲停鎖死、期貨補漲】,live_snapshot 加量比vr+振幅amp;內外盤五檔沿用既有即時盤 tab 不重複;先前 bug 巡邏修:①當沖榜相對游標插卡(某卡缺時不錯位)②強勢榜負值+-顯示 ③個股期貨夜盤雙分支保存(不被daily_miner洗掉)④夜盤空結果不覆寫 ⑤近月合約空交割日守門;興櫃排除:後端 live_snapshot 濾掉 OES 興櫃、前端強勢榜雙保險濾 ±10.5% 以上無限制股;全市場即時快照 live_snapshot(永豐Shioaji採全上市櫃+台指期,盤中每5分鐘):①🚀全市場當沖強勢榜 ②庫存/自選現價基準免撞Fugle額度 ③即時大台TXF報價;庫存輪詢20s→12s、自選新增即時輪詢+跳動flash+快照baseline;版本顯示在 badge) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -583,7 +583,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.8</span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V65.9</span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1552,6 +1552,9 @@
             <!-- 籌碼全面追蹤（三大法人 + 主力分點合併）-->
             <div id="subContentChip" class="hidden flex-col gap-3 mt-2 px-2 md:px-4">
 
+                <!-- 🐘 V65.9 籌碼白話總結(純公式,取代原🤖AI解析):大戶在收/在倒 大字 + 外資/投信/融資券/分點 白話,零 AI 零額度 -->
+                <div id="chipVerdictCard" class="hidden"></div>
+
                 <!-- 🔬 V20.8/V41.23 — 籌碼綜合評分卡(收籌碼/法人/風控/景氣訊號 → 1 個總分 + 1 句話操作建議) -->
                 <div id="masterScoreCard" class="hidden bg-[#161b22] border border-blue-700/40 rounded-lg p-3 shadow-lg"></div>
 
@@ -1561,7 +1564,7 @@
                 <div id="onboard_chip" class="onboard-panel relative bg-purple-900/15 border border-purple-700/40 rounded-lg p-3 text-[11px] leading-relaxed text-gray-300">
                     <button onclick="app.dismissOnboard('chip')" class="absolute top-1 right-2 text-gray-400 hover:text-white text-base leading-none font-bold">×</button>
                     <div class="font-black text-purple-200 mb-0.5">🔬 籌碼頁怎麼看</div>
-                    <div>重點看兩件事：① <b class="text-white">法人連續方向</b>（連買連賣 > 單日漲跌幅）② <b class="text-white">主力分點集中度</b>。下方「🤖 AI 解析」會用白話文整合給你聽 — 不用自己算。</div>
+                    <div>重點看兩件事：① <b class="text-white">法人連續方向</b>（連買連賣 > 單日漲跌幅）② <b class="text-white">主力分點集中度</b>。最上面「🐘 大戶籌碼總結」已用白話幫你算好整合 — 純公式、不用自己算、也不耗 AI 額度。</div>
                 </div>
                 <!-- V20.5 — 處置相關 3 卡(attentionScan / doubleSword / attentionDetail)已搬到「🚨 處置」tab -->
 
@@ -1572,20 +1575,14 @@
                 <!-- 🧩 V34.0 ETF 成分股比重(僅 currentSymbol 是 ETF 時顯) -->
                 <div id="etfHoldingsCard" class="hidden bg-[#161b22] border border-blue-700/40 rounded-lg p-3 shadow-lg"></div>
 
-                <!-- 【指揮中樞】週期切換器 + AI 卡位 -->
+                <!-- 【指揮中樞】週期切換器(V65.9 移除🤖AI解析,改上方純公式「大戶籌碼總結」)-->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-                    <div class="flex gap-2 items-center">
-                        <div id="chipGlobalPeriodBtns" class="flex gap-1 flex-1">
-                            <button data-period="1d"  onclick="app.renderChipGlobal('1d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">1日</button>
-                            <button data-period="3d"  onclick="app.renderChipGlobal('3d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
-                            <button data-period="5d"  onclick="app.renderChipGlobal('5d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
-                            <button data-period="10d" onclick="app.renderChipGlobal('10d')" class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
-                        </div>
-                        <button onclick="app.analyzeChipUnified(app.currentSymbolId)" id="chipUnifiedAIBtn"
-                            class="py-2 px-3 rounded-lg text-sm font-bold text-white border border-indigo-500/50 hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(79,70,229,0.4)] transition-all flex-shrink-0 whitespace-nowrap"
-                            style="background:linear-gradient(90deg,rgba(30,27,75,0.8),rgba(127,29,29,0.8))">🤖 AI 解析</button>
+                    <div id="chipGlobalPeriodBtns" class="flex gap-1">
+                        <button data-period="1d"  onclick="app.renderChipGlobal('1d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">1日</button>
+                        <button data-period="3d"  onclick="app.renderChipGlobal('3d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
+                        <button data-period="5d"  onclick="app.renderChipGlobal('5d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
+                        <button data-period="10d" onclick="app.renderChipGlobal('10d')" class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
                     </div>
-                    <div id="chipUnifiedAIResult" class="hidden mt-2 bg-[#050505] border border-indigo-900/80 rounded-lg p-3 text-sm text-gray-300 leading-relaxed shadow-inner"></div>
                 </div>
 
                 <!-- 【宏觀籌碼】三大法人 + 融資券（並排）-->
@@ -10700,6 +10697,101 @@ const marginByDate = {};
     // V20.8 — 綜合操作評分卡(整合所有訊號)
     //   收 6 大訊號:Falcon / 注意股掃描 / 越關大尾 / 法人反轉 / 投信做帳 / 景氣燈號
     //   加權算總分 0-100,給 1 行白話操作結論
+    // 🐘 V65.9 — 大戶籌碼白話總結(100% 純公式,取代原🤖AI解析;與總覽同邏輯:大字結論 + 白話明細 + 一句操作)
+    //   資料全來自既有純公式:_chipPeriodSums(法人/融資券 1/3/5/10日)+ 每日 foreign/trust 連續方向 + _brokerChipSummary(分點)
+    renderChipVerdict(sym) {
+        const box = document.getElementById('chipVerdictCard');
+        if (!box) return;
+        const arr = this.rawDailyData || [];
+        if (!sym || !Array.isArray(arr) || arr.length < 5) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        try {
+            const ps = {}; [1, 3, 5, 10].forEach(n => ps[n] = this._chipPeriodSums(arr, n));
+            if (!ps[10].hasInst && !ps[10].hasMargin) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            const sgn = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+            // 連續方向(從每日 foreign_net / trust_net 反推,0 值當中斷但不算反向)
+            const streak = (getter) => {
+                let s = 0, dir = 0;
+                for (let i = arr.length - 1; i >= 0; i--) {
+                    const v = getter(arr[i]); if (!Number.isFinite(v) || v === 0) { if (s === 0) continue; else break; }
+                    const d = v > 0 ? 1 : -1;
+                    if (s === 0) { dir = d; s = 1; } else if (d === dir) s++; else break;
+                }
+                return { n: s, dir };
+            };
+            const fSt = streak(b => (+b.foreign_net || +b.foreign_inv || 0));
+            const tSt = streak(b => (+b.trust_net || +b.invest_trust || 0));
+            const f10 = ps[10].foreign, f3 = ps[3].foreign, t10 = ps[10].trust, d10 = ps[10].dealer;
+            // ── 純公式評分(外資權重最高 → 投信 → 融資券 → 分點)──
+            let sc = 0;
+            if (ps[10].hasInst) {
+                sc += f10 > 0 ? 1.5 : f10 < 0 ? -1.5 : 0;
+                sc += f3 > 0 ? 0.8 : f3 < 0 ? -0.8 : 0;
+                if (fSt.n >= 3) sc += fSt.dir > 0 ? 1 : -1;
+                sc += t10 > 0 ? 1 : t10 < 0 ? -1 : 0;
+                if (tSt.n >= 3) sc += tSt.dir > 0 ? 0.5 : -0.5;
+            }
+            if (ps[10].hasMargin) sc += ps[10].marginDelta > 0 ? -0.6 : 0.4;   // 融資增=散戶追高車擠(偏空);融資減=籌碼洗乾淨(偏多)
+            // ── 主力分點(_brokerChipSummary,雲端常被 TWSE 擋;資料乾淨才計分)──
+            let brokerLine = '';
+            const bd = this._brokerChipSummary;
+            if (bd && bd.sym === sym && bd.periods && bd.periods['10d']) {
+                const p10 = bd.periods['10d'];
+                const buyTop = (p10.buy || []).slice(0, 3), selTop = (p10.sell || []).slice(0, 3);
+                const buySum = buyTop.reduce((a, x) => a + (x.net || 0), 0);
+                const selSum = Math.abs(selTop.reduce((a, x) => a + (x.net || 0), 0));
+                if (buySum > 0 || selSum > 0) {
+                    sc += buySum > selSum * 1.3 ? 0.8 : selSum > buySum * 1.3 ? -0.8 : 0;
+                    const nm = x => (x.broker_name || x.broker_id || '').slice(0, 4);
+                    const bStr = buyTop.map(x => `${nm(x)}${sgn(Math.round(x.net))}`).join('、') || '無';
+                    const sStr = selTop.map(x => `${nm(x)}${sgn(Math.round(x.net))}`).join('、') || '無';
+                    brokerLine = `🕵️ <b>主力分點(10日)</b>:買超 ${bStr};賣超 ${sStr}張 → ${buySum > selSum * 1.3 ? '<b class="text-red-300">買盤較集中</b>' : selSum > buySum * 1.3 ? '<b class="text-green-300">賣壓較集中</b>' : '買賣分散、無明顯主力'}。`;
+                }
+            }
+            // ── 大字結論 ──
+            let big, bigCls, bcls;
+            if (sc >= 3) { big = '🔴 大戶大力收貨'; bigCls = 'text-red-400'; bcls = 'border-red-500'; }
+            else if (sc >= 1) { big = '🔴 大戶偏買'; bigCls = 'text-red-300'; bcls = 'border-red-500'; }
+            else if (sc > -1) { big = '🟡 大戶沒明顯動作'; bigCls = 'text-yellow-300'; bcls = 'border-yellow-500'; }
+            else if (sc > -3) { big = '🟢 大戶偏賣'; bigCls = 'text-green-300'; bcls = 'border-green-500'; }
+            else { big = '🟢 大戶大力出貨'; bigCls = 'text-green-400'; bcls = 'border-green-500'; }
+            // ── 白話明細 ──
+            const lines = [];
+            if (ps[10].hasInst) {
+                const fWord = f10 > 0 ? '買超' : f10 < 0 ? '賣超' : '持平';
+                const fStreakTxt = fSt.n >= 3 ? `,已<b class="${fSt.dir > 0 ? 'text-red-300' : 'text-green-300'}">連 ${fSt.n} 天${fSt.dir > 0 ? '買' : '賣'}</b>(連續方向比單日更重要)` : '';
+                lines.push(`🏛️ <b>外資</b>(最大咖):10日${fWord} <b class="${f10 >= 0 ? 'text-red-300' : 'text-green-300'}">${sgn(f10)}</b> 張、近3日 ${sgn(f3)} 張${fStreakTxt}。`);
+                const inWord = (t10 + d10) > 0 ? '站買方' : (t10 + d10) < 0 ? '站賣方' : '沒動作';
+                lines.push(`🧑‍💼 <b>投信+自營</b>(內資):10日投信 ${sgn(t10)}、自營 ${sgn(d10)} 張 → 內資${inWord}${tSt.n >= 3 ? `,投信<b class="${tSt.dir > 0 ? 'text-red-300' : 'text-green-300'}">連 ${tSt.n} 天${tSt.dir > 0 ? '買' : '賣'}</b>` : ''}。`);
+            }
+            if (ps[10].hasMargin) {
+                const mUp = ps[10].marginDelta > 0;
+                lines.push(`💳 <b>融資券</b>(散戶指標):10日融資 ${sgn(ps[10].marginDelta)} 張 → ${mUp ? '<b class="text-green-300">散戶在追高、車變擠</b>(籌碼偏亂,漲多留意)' : '<b class="text-red-300">散戶退場、籌碼洗乾淨</b>(比較穩)'};融券 ${sgn(ps[10].shortDelta)} 張。`);
+            }
+            if (brokerLine) lines.push(brokerLine);
+            else lines.push(`🕵️ <b>主力分點</b>:資料整備中(免費分點來源常被交易所擋,以三大法人為主判斷即可)。`);
+            // ── 一句操作 ──
+            const act = sc >= 1 ? '大戶站買方 → 籌碼面偏多,順著做、別跟大戶對作;搭配「總覽」的價位進出。'
+                : sc > -1 ? '大戶多空不明 → 籌碼沒方向,別只靠籌碼進場,看「總覽」K線訊號為主。'
+                : '大戶站賣方 → 籌碼面偏空,別接刀;持股跌破停損就走,空手等大戶回頭再看。';
+            box.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
+            box.innerHTML = `
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[12px] font-black text-gray-100">🐘 大戶籌碼總結</span>
+                    <span class="text-[9px] text-gray-600 flex-shrink-0">純公式·非AI</span>
+                </div>
+                <div class="text-2xl font-black ${bigCls} leading-tight mb-1.5">${big}</div>
+                <div class="flex flex-col gap-1 text-[12px] text-gray-200 leading-relaxed">
+                    ${lines.map(l => `<div>${l}</div>`).join('')}
+                </div>
+                <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[12px] text-gray-100 leading-relaxed"><b class="${bigCls}">💡 操作:</b>${act}</div>
+                <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📊 純公式:外資/投信/自營 1·3·5·10 日買賣超 + 連續方向 + 融資券變化 + 主力分點集中度,零 AI 零額度;籌碼為輔,進出以 K 線為主。</div>`;
+            box.classList.remove('hidden');
+        } catch (e) { console.warn('[chipVerdict]', e); box.classList.add('hidden'); }
+    },
+
+    // ⛔ V65.9 原🤖AI籌碼解析已改純公式「大戶籌碼總結」(renderChipVerdict);此函式保留為 no-op 防舊 onclick 殘留報錯
+    analyzeChipUnified() { try { this.renderChipVerdict(this.currentSymbolId); } catch (_) {} },
+
     renderMasterScoreCard(sym) {
         const box = document.getElementById('masterScoreCard');
         if (!box) return;
@@ -10796,7 +10888,7 @@ const marginByDate = {};
                 <h4 class="text-blue-300 font-bold text-sm">🔬 籌碼綜合評分</h4>
                 <button onclick="alert('${formulaTxt}')" class="text-[9px] text-gray-500 hover:text-blue-300 flex items-center gap-1">${factors.length} 因子加權 ⓘ</button>
             </div>
-            <div class="text-[9px] text-gray-500 mb-2">👇 參考訊號 ・ 最終以上方 🧠 首席 AI 為準</div>
+            <div class="text-[9px] text-gray-500 mb-2">👇 純公式加權參考訊號(非投資建議)</div>
             <div class="rounded-lg border ${verdictCls} px-3 py-2.5 mb-2 text-center">
                 <div class="text-3xl font-black font-mono leading-none mb-0.5">${finalScore}<span class="text-base text-gray-400">/100</span></div>
                 <div class="text-[13px] font-bold mt-1">${verdict}</div>
@@ -16670,6 +16762,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
         // 供 AI 解析讀取多週期摘要
         this._brokerChipSummary = { sym: this._chipSym, periods: this._chipPeriods, activePeriod: period };
+        try { if (this._chipSym === this.currentSymbolId) this.renderChipVerdict(this.currentSymbolId); } catch (_) {}   // 🐘 V65.9 分點到齊後刷新總結卡的分點行
     },
 
     // 全局週期切換：同步按鈕樣式 + 法人條 + 融資券條 + 主力分點
@@ -16783,123 +16876,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.innerHTML = marginRow + shortRow;
     },
 
-    async analyzeChipUnified(sym) {
-        if (!sym) return;
-        const btn = document.getElementById('chipUnifiedAIBtn');
-        const result = document.getElementById('chipUnifiedAIResult');
-        btn.textContent = '🤖 分析中，請稍候...';
-        btn.disabled = true;
-        result.classList.remove('hidden');
-        const hasBackend = !!this._apiBase;
-        const hasGroqKey = this._getGroqKeys().length > 0;
-        if (!this._hasDeepAIKey()) {
-            result.innerHTML = '<span class="text-yellow-400 text-xs font-bold">⚠️ 請先至「⚙️ 設定」填入 Gemini 或 OpenRouter API Key,即可在手機直接使用 AI 分析。</span>';
-            btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
-            btn.disabled = false;
-            return;
-        }
-        result.innerHTML = '<span class="animate-pulse text-indigo-400 text-[10px]">AI 正在整合法人 + 主力分點資料...</span>';
-
-        const currentPrice = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length - 1].close : '未知';
-        const tokenStr = this._getFinmindToken() ? `&token=${encodeURIComponent(this._getFinmindToken())}` : ''; // [Token 輪動]
-        const d = new Date(); d.setDate(d.getDate() - 20);
-        const startDate = d.toISOString().split('T')[0];
-
-        // 1. 取每日陣列：優先 OHLCV 快取（不耗 FinMind 配額）；無籌碼欄位才 fallback FinMind
-        let dailyArr = [];
-        if (this.rawDailyData?.length > 0) {
-            const hasChip = this.rawDailyData.slice(-10).some(r =>
-                Math.abs(r.foreign_net ?? r.foreign_inv ?? 0) > 0 ||
-                Math.abs(r.trust_net   ?? r.invest_trust ?? 0) > 0 ||
-                Math.abs(r.dealer_net  ?? r.dealer_inv   ?? 0) > 0
-            );
-            if (hasChip) dailyArr = this.rawDailyData;
-        }
-        if (!dailyArr.length) {
-            try {
-                const [instRes, marginRes] = await Promise.all([
-                    this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInstitutionalInvestors&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 }).then(r=>r.json()).catch(()=>({data:[]})),
-                    this.safeFetch(`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockMarginPurchaseShortSale&data_id=${sym}&start_date=${startDate}${tokenStr}`, {}, { timeout: 8000, maxRetries: 2 }).then(r=>r.json()).catch(()=>({data:[]}))
-                ]);
-                const byDate = {};
-                for (const r of (instRes.data||[])) {
-                    if (!byDate[r.date]) byDate[r.date] = { date: r.date, foreign_net:0, trust_net:0, dealer_net:0 };
-                    const net = (parseInt(r.buy)||0)-(parseInt(r.sell)||0);
-                    if (r.name.includes('外資')) byDate[r.date].foreign_net = net;
-                    else if (r.name.includes('投信')) byDate[r.date].trust_net = net;
-                    else if (r.name.includes('自營')) byDate[r.date].dealer_net = net;
-                }
-                // 融資券餘額（取當日餘額供差值計算）
-                for (const r of (marginRes.data||[])) {
-                    if (!byDate[r.date]) byDate[r.date] = { date: r.date, foreign_net:0, trust_net:0, dealer_net:0 };
-                    byDate[r.date].margin_balance = parseInt(r.MarginPurchaseTodayBalance ?? r.MarginPurchaseTotalBalance)||0;
-                    byDate[r.date].short_balance  = parseInt(r.ShortSaleTodayBalance ?? r.ShortSaleTotalBalance)||0;
-                }
-                dailyArr = Object.keys(byDate).sort().map(k => byDate[k]);
-            } catch(e) {}
-        }
-
-        // 2. 用共用 helper 算 1/3/5/10 日多週期濃縮數據（張）
-        const sgn = v => (v >= 0 ? '+' : '') + v;
-        let instText = '無資料', marginText = '無資料';
-        if (dailyArr.length) {
-            const ps = {}; [1,3,5,10].forEach(n => ps[n] = this._chipPeriodSums(dailyArr, n));
-            const line = (label, key) => `【${label}】1日:${sgn(ps[1][key])}, 3日:${sgn(ps[3][key])}, 5日:${sgn(ps[5][key])}, 10日:${sgn(ps[10][key])}`;
-            if (ps[10].hasInst) instText = [line('外資','foreign'), line('投信','trust'), line('自營','dealer')].join('\n');
-            if (ps[10].hasMargin) marginText = line('融資變化','marginDelta') + '\n' + line('融券變化','shortDelta');
-        }
-
-        // 3. 主力分點摘要
-        let brokerText = '主力分點:TWSE 封鎖雲端 IP,本站無法取得真實分點 — 請僅憑三大法人 + 融資券判斷,嚴禁編造券商名稱或進出張數';
-        const bd = this._brokerChipSummary;
-        if (bd && bd.sym === sym) {
-            if (bd.periods) {
-                // 新版多週期摘要：1/3/5/10 日各列前 3 名買/賣
-                const fmtSide = (arr) => (arr || []).slice(0,3)
-                    .map(x => `${x.broker_name || x.broker_id}${(x.net>=0?'+':'')}${Math.round((x.net||0))}`).join('、') || '無';
-                brokerText = ['1d','3d','5d','10d'].map(p => {
-                    const pd = bd.periods[p] || {};
-                    return `${p.replace('d','')}日：買 ${fmtSide(pd.buy)}｜賣 ${fmtSide(pd.sell)}`;
-                }).join('\n');
-            } else if (bd.topBuyers) {
-                // 舊版累積摘要 fallback
-                const topB = bd.topBuyers.slice(0,5).map(([,v],i)=>`${bd.buyLabels[i]}買入${Math.round(v/1000)}K股`).join('、');
-                const topS = bd.topSellers.slice(0,5).map(([,v],i)=>`${bd.selLabels[i]}賣出${Math.round(v/1000)}K股`).join('、');
-                brokerText = `近${bd.days}日累計：買超${bd.totalBuyK}K股，賣超${bd.totalSelK}K股\n積極買進：${topB||'無'}\n積極賣出：${topS||'無'}\n整體傾向：${bd.verdict}`;
-            }
-        }
-
-const prompt = `你是華爾街頂級避險基金的首席籌碼分析師。請用「國中生都能秒懂」的生活化口吻與比喻，為初學者解析以下籌碼資料，並給出具備機構視野的明確建議。
-【股票代號：${sym}】
-【三大法人 1/3/5/10 日動態（張）】
-${instText}
-
-【融資融券 1/3/5/10 日變化（張）】
-${marginText}
-
-【主力分點 多週期 Top3 進出】
-${brokerText}
-請依照下列 5 個重點依序輸出（請加上表情符號，語氣活潑，避免艱澀專有名詞）：
-1️⃣ 外資動向：外資目前是在倒貨還是囤貨？力道強弱？
-2️⃣ 內資大哥（投信與自營）：內資有沒有偷偷進場護盤的跡象？
-3️⃣ 散戶指標（融資券）：現在車上是不是太擠了？散戶正在被割韭菜嗎？
-4️⃣ 主力動向綜合判斷：若上方分點顯示「無法取得」,跳過券商分析,改用三大法人連續方向 + 融資券變化推估主力意圖,嚴禁編造券商名稱或張數。
-5️⃣ 實戰戰略結論：綜合上述籌碼面，現在該上車、觀望，還是快逃？
-
-最後獨立一行輸出：⚠️ 投資有風險，以上僅供參考，請自行判斷。`;
-
-        try {
-            // 🎯 籌碼 AI 解析:使用者要求純 Gemini 雙 key 輪動,撞 429 直接顯示警示不偷偷 fallback
-            const text = await this._callDeepAI({ prompt, max_tokens: 800, temperature: 0.7, chain: 'gemini-openrouter' });
-            if (!text) throw new Error('未設定 AI Key,請至設定填入 Gemini API Key');
-            // V17.20 — 用 _renderMdText 統一處理 markdown(原版只 escape <> 沒轉 **粗體**)
-            result.innerHTML = `<div class="text-indigo-300 font-bold text-[10px] mb-1.5 border-b border-indigo-900/40 pb-1">🤖 AI 籌碼全面解析 — ${sym} @ ${currentPrice}</div><div class="text-gray-200 leading-relaxed text-sm">${this._renderMdText(text)}</div>`;
-        } catch(e) {
-            result.innerHTML = `<span class="text-amber-300 text-xs">${this._aiFriendlyError(e.message)}</span>`;
-        }
-        btn.textContent = '🤖 AI 籌碼全面解析 — 法人 + 主力一次看！';
-        btn.disabled = false;
-    },
 
 
     // 新增：將基本面快取物件填入 X 光機 6 格（供自動載入與手動掃描共用）
@@ -18437,7 +18413,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
         // Clear AI result boxes when switching stocks (avoids stale results misleading user)
         if (isNewStock) {
-            ['geminiResultBox', 'klineAuditResult', 'chipUnifiedAIResult'].forEach(id => {
+            ['geminiResultBox', 'klineAuditResult'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
             });
@@ -18563,6 +18539,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // V20.8 — 法人反轉 + 投信做帳 + 綜合操作評分(順序重要:先反轉算 _lastInstSignal,評分才能用)
         try { this.renderInstReverseCard(targetSym); } catch(_) {}
         try { this.renderMasterScoreCard(targetSym); } catch(_) {}
+        try { this.renderChipVerdict(targetSym); } catch(_) {}   // 🐘 V65.9 純公式大戶籌碼總結(取代AI)
         // 🐛 V41.28 修:籌碼/多空 sub-tab 的載入器原本只在「切 tab」時跑,切股沒補 → 停在該 tab 換股會殘留舊股資料。
         //   依當前 sub-tab 補跑對應載入器(多數時候在首席 tab,不會多打 API)。
         const _sub = this._activeSubTab || 'strategy';
