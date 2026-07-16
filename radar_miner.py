@@ -536,51 +536,57 @@ def fetch_attention_disposal_status():
             print(f"   ⚠️ {status_label} OpenAPI 失敗:{e}")
             return (False, {})
 
-    def _fetch_first_ok(urls, status_label, threshold_label, parse_punish=False):
-        """多端點候選:依序試,回第一個 fetch_ok 的結果。
-        用於 TPEx OpenAPI slug 各版本可能不同(tpex_disposal_information / tpex_attention_* …),
-        抓到就用、全失敗回 (False, {}),絕不炸。"""
+    # V67.9 自我診斷版:多端點候選,並把「每個端點試了幾筆、ok 嗎、命中哪個」記進 diag,
+    #   寫進 attention_status.json 的 diag 鍵(前端只讀 stocks 不受影響)→ 直接抓 JSON 就能驗證,
+    #   不必挖 workflow log(radar 輸出跑進 /tmp 沒被 cat)。取代舊 _fetch_first_ok。
+    def _fetch_cat(urls, status_label, threshold_label, parse_punish=False):
+        """多端點候選 + 診斷:依序試,回 (out_dict, diag)。
+        diag = {'hit': 命中端點短名|None, 'n': 命中筆數, 'tried': [{'u':短名,'ok':bool,'n':筆數}, ...]}
+        命中定義 = fetch_ok 且有資料;全空但有 ok 端點也照實記(區分「端點壞」vs「端點通但0筆」)。"""
+        tried = []
         for u in urls:
             ok, out = _fetch_openapi(u, status_label, threshold_label, parse_punish=parse_punish)
-            if ok:
-                print(f"   · {status_label} 命中端點 {u.rsplit('/', 1)[-1]} → {len(out)} 檔")
-                return (ok, out, u)
-        return (False, {}, None)
+            short = u.rsplit('/', 1)[-1]
+            tried.append({'u': short, 'ok': bool(ok), 'n': len(out)})
+            if ok and out:
+                print(f"   · {status_label} 命中端點 {short} → {len(out)} 檔")
+                return out, {'hit': short, 'n': len(out), 'tried': tried}
+        return {}, {'hit': None, 'n': 0, 'tried': tried}
 
-    # ── 上市 TWSE(既有,穩定)──
-    notice_ok, attention = _fetch_openapi(
-        "https://openapi.twse.com.tw/v1/announcement/notice",
+    diag = {}
+
+    # ── 上市 TWSE ──(注意加候選 notetrans;處置 punish 既有穩定)
+    attention, diag['tw_notice'] = _fetch_cat(
+        ["https://openapi.twse.com.tw/v1/announcement/notice",
+         "https://openapi.twse.com.tw/v1/announcement/notetrans"],
         "⚠️ 注意股", "注意條款觸發")
-    print(f"   · 上市注意股:{len(attention)} 檔 (fetch_ok={notice_ok})")
+    print(f"   · 上市注意股:{len(attention)} 檔 (hit={diag['tw_notice']['hit']})")
 
-    punish_ok, disposal = _fetch_openapi(
-        "https://openapi.twse.com.tw/v1/announcement/punish",
+    disposal, diag['tw_punish'] = _fetch_cat(
+        ["https://openapi.twse.com.tw/v1/announcement/punish"],
         "🚨 處置中", "已關禁閉", parse_punish=True)
-    _with_end = sum(1 for v in disposal.values() if v.get('end_date'))
-    _with_int = sum(1 for v in disposal.values() if v.get('interval'))
-    print(f"   · 上市處置股:{len(disposal)} 檔 (fetch_ok={punish_ok},含出關日 {_with_end} 檔,含分盤間隔 {_with_int} 檔)")
+    print(f"   · 上市處置股:{len(disposal)} 檔 (hit={diag['tw_punish']['hit']})")
 
-    # ── 上櫃 TPEx 櫃買中心(V67.6 新增:補上中美晶等上櫃股官方注意/處置)──
-    #   OpenAPI slug 版本不一,故用多候選;debug 會印首筆 keys 讓 workflow log 揭露真實欄位。
-    otc_notice_ok, otc_attention, _u1 = _fetch_first_ok(
+    # ── 上櫃 TPEx 櫃買中心 ──(注意/處置各多候選;diag 會揭露哪個 slug 有效)
+    otc_attention, diag['otc_notice'] = _fetch_cat(
         ["https://www.tpex.org.tw/openapi/v1/tpex_attention_stock",
          "https://www.tpex.org.tw/openapi/v1/tpex_attention_info",
          "https://www.tpex.org.tw/openapi/v1/tpex_attention_information",
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention_securities"],
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention_securities",
+         "https://www.tpex.org.tw/openapi/v1/tpex_bulletin_attention_securities"],
         "⚠️ 注意股", "注意條款觸發")
-    print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (fetch_ok={otc_notice_ok})")
+    print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (hit={diag['otc_notice']['hit']})")
 
-    otc_punish_ok, otc_disposal, _u2 = _fetch_first_ok(
+    otc_disposal, diag['otc_punish'] = _fetch_cat(
         ["https://www.tpex.org.tw/openapi/v1/tpex_disposal_information",
          "https://www.tpex.org.tw/openapi/v1/tpex_disposal_securities",
          "https://www.tpex.org.tw/openapi/v1/tpex_disposal"],
         "🚨 處置中", "已關禁閉", parse_punish=True)
-    _otc_end = sum(1 for v in otc_disposal.values() if v.get('end_date'))
-    print(f"   · 上櫃處置股:{len(otc_disposal)} 檔 (fetch_ok={otc_punish_ok},含出關日 {_otc_end} 檔)")
+    print(f"   · 上櫃處置股:{len(otc_disposal)} 檔 (hit={diag['otc_punish']['hit']})")
 
     # 合併:注意先、處置後(處置蓋注意,同股以處置為準);上市/上櫃互不覆蓋(代號不重複)
     result = {**attention, **otc_attention, **disposal, **otc_disposal}
-    _any_ok = notice_ok or punish_ok or otc_notice_ok or otc_punish_ok
+    _any_ok = any(t['ok'] for c in diag.values() for t in c['tried'])
 
     # 斷崖防護:只在「所有端點都 fetch 失敗」時沿用昨日 cache。
     # 若至少一個成功但 result 空,代表當日該市場無事,合法寫入。
@@ -591,6 +597,7 @@ def fetch_attention_disposal_status():
     payload = {
         "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "stocks": result,
+        "diag": diag,   # V67.9 端點自我診斷(前端只讀 stocks,忽略此鍵)
     }
     try:
         ATTENTION_FILE.write_text(
