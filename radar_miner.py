@@ -555,10 +555,10 @@ def fetch_attention_disposal_status():
 
     diag = {}
 
-    # ── 上市 TWSE ──(注意加候選 notetrans;處置 punish 既有穩定)
+    # ── 上市 TWSE ──(V67.9 diag 實證:notetrans 才是真注意端點,notice 回空;notetrans 排前)
     attention, diag['tw_notice'] = _fetch_cat(
-        ["https://openapi.twse.com.tw/v1/announcement/notice",
-         "https://openapi.twse.com.tw/v1/announcement/notetrans"],
+        ["https://openapi.twse.com.tw/v1/announcement/notetrans",
+         "https://openapi.twse.com.tw/v1/announcement/notice"],
         "⚠️ 注意股", "注意條款觸發")
     print(f"   · 上市注意股:{len(attention)} 檔 (hit={diag['tw_notice']['hit']})")
 
@@ -573,7 +573,14 @@ def fetch_attention_disposal_status():
          "https://www.tpex.org.tw/openapi/v1/tpex_attention_info",
          "https://www.tpex.org.tw/openapi/v1/tpex_attention_information",
          "https://www.tpex.org.tw/openapi/v1/tpex_attention_securities",
-         "https://www.tpex.org.tw/openapi/v1/tpex_bulletin_attention_securities"],
+         "https://www.tpex.org.tw/openapi/v1/tpex_bulletin_attention_securities",
+         # 第二批候選(V67.10 diag 實測用):bare / 複數 / 不同語序 / note 系
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention",
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention_stocks",
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention_trading",
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention_trading_information",
+         "https://www.tpex.org.tw/openapi/v1/tpex_note_securities",
+         "https://www.tpex.org.tw/openapi/v1/tpex_notetrans"],
         "⚠️ 注意股", "注意條款觸發")
     print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (hit={diag['otc_notice']['hit']})")
 
