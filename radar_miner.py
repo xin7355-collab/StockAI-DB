@@ -490,7 +490,10 @@ def fetch_attention_disposal_status():
         """
         import re as _re
         try:
-            r = requests.get(url, headers=headers, timeout=10)
+            # Referer 依 host 動態(打 TPEx 就給 tpex referer,避免跨站被擋)
+            _h = dict(headers)
+            _h["Referer"] = "https://www.tpex.org.tw/" if "tpex.org.tw" in url else "https://www.twse.com.tw/"
+            r = requests.get(url, headers=_h, timeout=10)
             rows = r.json()
             if not isinstance(rows, list):
                 return (False, {})
@@ -504,7 +507,9 @@ def fetch_attention_disposal_status():
                     continue
                 sym = str(row.get('Code') or row.get('CompanyCode')
                           or row.get('Symbol') or row.get('StockNo')
-                          or row.get('證券代號') or '').strip()
+                          or row.get('SecuritiesCompanyCode') or row.get('SecuritiesCode')
+                          or row.get('StockCode') or row.get('證券代號')
+                          or row.get('股票代號') or row.get('代號') or '').strip()
                 if not (sym and ((sym.isdigit() and len(sym) == 4) or
                                  (sym.startswith('00') and len(sym) == 5 and sym.isdigit()))):
                     continue
@@ -531,24 +536,56 @@ def fetch_attention_disposal_status():
             print(f"   ⚠️ {status_label} OpenAPI 失敗:{e}")
             return (False, {})
 
+    def _fetch_first_ok(urls, status_label, threshold_label, parse_punish=False):
+        """多端點候選:依序試,回第一個 fetch_ok 的結果。
+        用於 TPEx OpenAPI slug 各版本可能不同(tpex_disposal_information / tpex_attention_* …),
+        抓到就用、全失敗回 (False, {}),絕不炸。"""
+        for u in urls:
+            ok, out = _fetch_openapi(u, status_label, threshold_label, parse_punish=parse_punish)
+            if ok:
+                print(f"   · {status_label} 命中端點 {u.rsplit('/', 1)[-1]} → {len(out)} 檔")
+                return (ok, out, u)
+        return (False, {}, None)
+
+    # ── 上市 TWSE(既有,穩定)──
     notice_ok, attention = _fetch_openapi(
         "https://openapi.twse.com.tw/v1/announcement/notice",
         "⚠️ 注意股", "注意條款觸發")
-    print(f"   · 注意股:{len(attention)} 檔 (fetch_ok={notice_ok})")
+    print(f"   · 上市注意股:{len(attention)} 檔 (fetch_ok={notice_ok})")
 
     punish_ok, disposal = _fetch_openapi(
         "https://openapi.twse.com.tw/v1/announcement/punish",
         "🚨 處置中", "已關禁閉", parse_punish=True)
     _with_end = sum(1 for v in disposal.values() if v.get('end_date'))
     _with_int = sum(1 for v in disposal.values() if v.get('interval'))
-    print(f"   · 處置股:{len(disposal)} 檔 (fetch_ok={punish_ok},含出關日 {_with_end} 檔,含分盤間隔 {_with_int} 檔)")
+    print(f"   · 上市處置股:{len(disposal)} 檔 (fetch_ok={punish_ok},含出關日 {_with_end} 檔,含分盤間隔 {_with_int} 檔)")
 
-    result = {**attention, **disposal}
+    # ── 上櫃 TPEx 櫃買中心(V67.6 新增:補上中美晶等上櫃股官方注意/處置)──
+    #   OpenAPI slug 版本不一,故用多候選;debug 會印首筆 keys 讓 workflow log 揭露真實欄位。
+    otc_notice_ok, otc_attention, _u1 = _fetch_first_ok(
+        ["https://www.tpex.org.tw/openapi/v1/tpex_attention_stock",
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention_info",
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention_information",
+         "https://www.tpex.org.tw/openapi/v1/tpex_attention_securities"],
+        "⚠️ 注意股", "注意條款觸發")
+    print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (fetch_ok={otc_notice_ok})")
 
-    # 斷崖防護:只在「兩個端點都 fetch 失敗(網路/parse 全爆)」時沿用昨日 cache。
-    # 若 fetch 成功但 result 是空 dict,代表今日全市場無事,合法寫入空檔覆蓋掉昨日。
-    if not (notice_ok or punish_ok) and ATTENTION_FILE.exists():
-        print("🛡️  兩個 OpenAPI 端點都失敗,沿用昨日 attention_status.json,不覆蓋")
+    otc_punish_ok, otc_disposal, _u2 = _fetch_first_ok(
+        ["https://www.tpex.org.tw/openapi/v1/tpex_disposal_information",
+         "https://www.tpex.org.tw/openapi/v1/tpex_disposal_securities",
+         "https://www.tpex.org.tw/openapi/v1/tpex_disposal"],
+        "🚨 處置中", "已關禁閉", parse_punish=True)
+    _otc_end = sum(1 for v in otc_disposal.values() if v.get('end_date'))
+    print(f"   · 上櫃處置股:{len(otc_disposal)} 檔 (fetch_ok={otc_punish_ok},含出關日 {_otc_end} 檔)")
+
+    # 合併:注意先、處置後(處置蓋注意,同股以處置為準);上市/上櫃互不覆蓋(代號不重複)
+    result = {**attention, **otc_attention, **disposal, **otc_disposal}
+    _any_ok = notice_ok or punish_ok or otc_notice_ok or otc_punish_ok
+
+    # 斷崖防護:只在「所有端點都 fetch 失敗」時沿用昨日 cache。
+    # 若至少一個成功但 result 空,代表當日該市場無事,合法寫入。
+    if not _any_ok and ATTENTION_FILE.exists():
+        print("🛡️  所有 OpenAPI 端點都失敗,沿用昨日 attention_status.json,不覆蓋")
         return
 
     payload = {
