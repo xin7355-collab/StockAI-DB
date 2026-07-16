@@ -74,16 +74,21 @@
 - ⛔ **仍須先問使用者**的例外:① 大規模重構/架構大改 ② 刪檔/刪資料 ③ 改 GitHub Actions workflow 邏輯 ④ 動 `data/` 內快取 ⑤ 不確定是否會壞時
 - 壞了 → 使用者說「壞了」→ Claude 直接修;或 `git revert HEAD` 回退
 
-### 版本號規則(STRATEGY TERMINAL Vx.y)⭐ 使用者明示(2026-07-04 更新):純 +0.1 里程表,不分大小改
-- **一律 +0.1**:每次 push 都 bump 小數位 **+0.1**,不管改動大小(UI 調整、bug fix、小功能、大功能、採礦、workflow 全都 +0.1) → V49.4 → V49.5 → V49.6 …
-- **逢 .9 進位**:`.9` 的下一版 = 主版本 +1、小數歸 0 → **V49.9 → V50.0 → V50.1 …**,以此類推(像里程表)
-- **不再分「小改 vs 大改」**:舊的「大事件才主版本 +1」規則已作廢,一律 +0.1 讓版本一直往上加
-- **位置**:`index.html` 兩處必須**同步**改(用 `sed` 一次改兩處最保險):
-  - 版本註解:`<!-- STRATEGY TERMINAL Vx.y … -->` (~line 18)
-  - 置頂 badge:`<span …>Vx.y</span>` (~line 912)
-  - (`<title>首席</title>` 不含版本號,不用動)
-- **時機**:每次 push main 前 bump 一次,commit message 開頭寫「Vx.y → Vx.z」
-- **驗證**:push 前 `grep -c '>Vx.y</span>' index.html` 確認新版號有改到(=1)
+### 版本號規則(STRATEGY TERMINAL V 大.中.小)⭐ 使用者明示(2026-07-16 更新):三段式語意版號,從 V68.0.0 起
+- **格式**:`V 大.中.小`(如 **V68.0.0**),像里程表:
+  - **小改**(bug 修、小 UI、小功能、採礦、workflow)→ **末位(小)+1**:V68.0.0 → V68.0.1 → …→ V68.0.9
+  - **逢 9 進位**:小位滿 9 → 進中位、小位歸 0:**V68.0.9 → V68.1.0**
+  - **大改**(大功能、架構大改)→ **個位(大)+1、後兩位歸 0**:→ **V69.0.0**
+  - ⚠️ 中位**只靠小位滿 9 進位**動,不單獨跳;沒有「中改」級,不是小改就是大改。
+- **舊「一律 +0.1」規則作廢**(2026-07-04 那版),改用上面三段式。
+- **位置**:`index.html` **兩處同步**改 + **一處 JS 常數** + **一筆更新紀錄**:
+  - 版本註解:`<!-- STRATEGY TERMINAL V大.中.小 … -->` (~line 18)
+  - 置頂 badge:`<span …>V大.中.小</span>` (設定中心 header,~line 586,`grep -c '>V大.中.小</span>'` 確認=1)
+  - **JS `_APP_VERSION`**(openSettings 前):跟 badge 同步改,否則更新提醒判不出新版
+  - **`_CHANGELOG` 陣列最前面補一筆** `{ v:'V大.中.小', d:['簡述…'] }`(白話簡述,這是跳窗會顯的內容)
+- **更新提醒系統(V68.0.0 起)**:`_checkVersionUpdate()`(init 呼叫)比對 localStorage `proTerm_lastSeenVer` vs `_APP_VERSION`,有新版自動跳一次 `updateLogModal`(只顯比上次新的版本),看完記住不再跳;設定中心「🆕 更新紀錄」可回看全部、「✨ 功能總覽」開 `featuresModal`。
+- **時機**:每次 push main 前 bump,commit message 開頭寫「V舊 → V新」
+- **驗證**:`grep -c '>V大.中.小</span>' index.html`(=1)+ 確認 `_APP_VERSION` 與 badge 一致 + `_CHANGELOG` 有新筆
 
 ### 部署後「看到舊版」處理（Service Worker 快取，已根治）⭐ 使用者常反映
 - **「還是舊版」≠「沒合併」**：先確認部署本身有沒有成功，不要急著重推。指令：
