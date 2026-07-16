@@ -157,8 +157,31 @@ def main():
         rec = bool(fund.get('is_record_high'))
         tri = sum(1 for k in ('gross_margin_trend', 'op_margin_trend', 'net_margin_trend')
                   if '↑' in (fund.get(k) or ''))
-        # 至少要有 YoY 或 毛利趨勢才算有效補到(避免存一堆空殼)
-        if yoy is not None or gmt:
+
+        # 🆕 V68.0.1 擴充:補齊冷門股(如中美晶 5483 不在觀察清單)的
+        #   P/B(多打 1 個 FinMind PER)/ 發配率 / 年化股利 / 填息(本地 OHLCV 算)/ 季 EPS(PEG),
+        #   這些欄位 fetch_finmind_fundamentals 大多已抓到只是原本沒存 → 順手併入,零/低額外成本。
+        pb = payout = div4q = fillp = filld = None
+        qeps = fund.get('quarterly_eps') or []
+        try:
+            payout = fund.get('payout_ratio')
+            div4q = fund.get('total_dividend_4q')
+            per = miner._fetch_finmind_per(sym) or {}   # P/B 需 TaiwanStockPER(唯一新增的一個呼叫)
+            pb = per.get('pb')
+            qdivs = fund.get('quarterly_dividends') or []
+            if qdivs:                                   # 填息:用已抓股利 + 本地 OHLCV,零額外 API
+                op = DATA_DIR / f'{sym}.json'
+                if op.exists():
+                    rows = json.loads(op.read_text(encoding='utf-8'))
+                    if isinstance(rows, list) and rows:
+                        _fh, fillp, filld = miner.compute_dividend_fill_history(qdivs, rows)
+        except Exception as _e:
+            print(f"  · {sym} 擴充欄位略過:{_e}")
+
+        # 有效條件放寬:只要拿到「YoY / 毛利 / 或任一擴充欄位」都算補到(冷門股常只有股利/PBR)
+        has_ext = (pb is not None or payout is not None or div4q is not None
+                   or fillp is not None or (isinstance(qeps, list) and len(qeps) >= 1))
+        if yoy is not None or gmt or has_ext:
             entry = {'ts': _now_iso()}
             if yoy is not None:
                 try:
@@ -173,6 +196,16 @@ def main():
                 entry['rec'] = True
             if tri:
                 entry['tri'] = tri
+            # 擴充欄位(有才存,省空間;前端 X 光 fallback 讀 pb/payout/div/fillp/filld/qeps)
+            try:
+                if pb is not None:     entry['pb'] = round(float(pb), 2)
+                if payout is not None: entry['payout'] = round(float(payout), 1)
+                if div4q is not None:  entry['div'] = round(float(div4q), 2)
+                if fillp is not None:  entry['fillp'] = fillp
+                if filld is not None:  entry['filld'] = filld
+                if isinstance(qeps, list) and qeps: entry['qeps'] = qeps[-8:]   # PEG 需 ≥6 季,存近 8 季夠且控大小
+            except Exception:
+                pass
             existing[sym] = entry
             hits += 1
         else:
