@@ -568,21 +568,12 @@ def fetch_attention_disposal_status():
     print(f"   · 上市處置股:{len(disposal)} 檔 (hit={diag['tw_punish']['hit']})")
 
     # ── 上櫃 TPEx 櫃買中心 ──(注意/處置各多候選;diag 會揭露哪個 slug 有效)
-    otc_attention, diag['otc_notice'] = _fetch_cat(
-        ["https://www.tpex.org.tw/openapi/v1/tpex_attention_stock",
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention_info",
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention_information",
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention_securities",
-         "https://www.tpex.org.tw/openapi/v1/tpex_bulletin_attention_securities",
-         # 第二批候選(V67.10 diag 實測用):bare / 複數 / 不同語序 / note 系
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention",
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention_stocks",
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention_trading",
-         "https://www.tpex.org.tw/openapi/v1/tpex_attention_trading_information",
-         "https://www.tpex.org.tw/openapi/v1/tpex_note_securities",
-         "https://www.tpex.org.tw/openapi/v1/tpex_notetrans"],
-        "⚠️ 注意股", "注意條款觸發")
-    print(f"   · 上櫃注意股:{len(otc_attention)} 檔 (hit={diag['otc_notice']['hit']})")
+    # ⛔ 上櫃注意股:V67.9/V67.10 diag 已實測 11 個候選 slug 全 ok=false(路徑不存在)→
+    #   結論:TPEx 未把「上櫃注意股」放進免費 OpenAPI(只開放處置 tpex_disposal_information)。
+    #   故不再打(免每次採礦白白多 ~110s 失敗請求);上櫃注意股由前端公式推估 + 誠實標「非官方」
+    #   + 官方公告連結涵蓋(index.html renderDispHeadline)。若日後 TPEx 新增注意 OpenAPI 再補。
+    otc_attention = {}
+    diag['otc_notice'] = {'hit': None, 'n': 0, 'note': 'TPEx 未開放上櫃注意 OpenAPI(V67.10 實測 11 slug 全 404),不再打'}
 
     otc_disposal, diag['otc_punish'] = _fetch_cat(
         ["https://www.tpex.org.tw/openapi/v1/tpex_disposal_information",
