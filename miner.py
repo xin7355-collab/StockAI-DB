@@ -2874,6 +2874,15 @@ def fetch_broker_chips():
                 age_days = (date.today() - date.fromisoformat(generated_str)).days
                 skip_finmind = (age_days < FUND_CACHE_DAYS) and (cached_ver == MINER_VERSION)
             except Exception: pass
+        # 💎 V68.2.8 自我修復:快取雖「未過期」但根本沒 EPS/月營收(舊金鑰壞掉時抓到空的)→
+        #   付費金鑰已修好時強制重抓,補上中美晶等上櫃冷門股的財報/月營收(對應基本面頁「暫無」)。
+        if skip_finmind and detect_finmind_paid():
+            _has_fund = bool(cached_fund.get('eps') or cached_fund.get('eps_history')
+                             or cached_fund.get('revenue') or cached_fund.get('rev_yoy')
+                             or cached_fund.get('monthly_revenue'))
+            if not _has_fund:
+                skip_finmind = False
+                print(f"  ♻️ {sym} 快取無 EPS/營收(舊金鑰壞時抓空)→ 付費有效,強制重抓基本面")
 
         # 【極限防爆】提前提取並確保字典絕對不會是 None
         tw_fund = twse_fund.get(sym, {}) or {}
