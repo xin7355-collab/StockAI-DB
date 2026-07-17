@@ -117,6 +117,18 @@ def main():
                     print(f'\n▸ {name}: status={st}  rows={len(rows)}  msg={str(j.get("msg",""))[:80]}')
             except Exception as e:
                 print(f'\n▸ {name}: 例外 {str(e)[:80]}')
+        # 🔎 用無效 dataset 觸發 422,其 detail 常列出所有合法 dataset 名 → 找八大行庫真名
+        try:
+            import requests as _rq2
+            rr = _rq2.get(f'{BASE}/data?dataset=__FINDNAME__&data_id=2330', headers=hdr, timeout=20)
+            txt = rr.text
+            print('\n▸ 合法 dataset 名清單(從 422 detail 撈,找 Government/Bank):')
+            import re as _re
+            hits = _re.findall(r'[A-Za-z]*[Gg]overnment[A-Za-z]*|[A-Za-z]*[Bb]ank[A-Za-z]*|[A-Za-z]*[Ll]ending[A-Za-z]*', txt)
+            print('   命中:', sorted(set(hits))[:20])
+            print('   raw(前1500):', txt[:1500])
+        except Exception as e:
+            print('   enum dump 例外', str(e)[:80])
         print('\n' + '=' * 60)
 
 
