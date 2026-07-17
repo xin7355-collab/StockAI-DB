@@ -116,34 +116,35 @@ FINMIND_TOKEN  = FINMIND_TOKENS[0] if FINMIND_TOKENS else ''  # 向下相容舊�
 _finmind_token_idx: int  = 0      # 目前使用的 Token 索引
 _FINMIND_BLOCKED:   bool = False   # 所有 Token 均耗盡時觸發，保護程式不當機
 FINMIND_PAID = None                # 💰 None=未偵測 / True=付費有效 / False=免費或付費失效(自動降版)
+FINMIND_PAID_TOKEN = ''            # 💰 探測時哪一把 token 通過付費 → 之後付費專屬端點固定用這把(Bearer)
 
 
 def detect_finmind_paid() -> bool:
     """💰 V68.2.6 自動偵測 FinMind 付費(Sponsor)是否有效:打一個付費專屬 dataset(分點)看回 200 還是 402。
     ⭐ 付費失效/退訂/未設 → 回 False → 上層自動「降版」:分點只走免費 BSR、覆蓋縮回免費安全值,
     不會噴錯也不會拿垃圾。全域只探一次(快取)。"""
-    global FINMIND_PAID
+    global FINMIND_PAID, FINMIND_PAID_TOKEN
     if FINMIND_PAID is not None:
         return FINMIND_PAID
     if not FINMIND_TOKENS:
         FINMIND_PAID = False
         print('💰 FinMind:後端未設 token(GitHub Secrets FINMIND_TOKENS 為空)→ 免費模式(降版)')
         return False
-    sd = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d")
-    ed = date.today().strftime("%Y-%m-%d")
-    base = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockTradingDailyReport&data_id=2330'
-    param_forms = (f'&start_date={sd}&end_date={ed}', f'&date={sd}')
-    # 💰 逐把 token 直接試(不靠輪動,避免「第一把是舊/壞 token」擋住後面真正的付費金鑰);
-    #    每把再試兩種參數形式。任一回 200+data 即判付費有效。印出每把 token 的真實 status/msg 供診斷:
-    #    · 402/403 = token 非付費(需升級 Sponsor);400 "Token is illegal" = token 字串本身貼錯/不完整;
-    #    · 200-空 = 日期無資料。
+    # 💰 V68.2.7 正解(FinMind 官方 skill 文件):分點 TaiwanStockTradingDailyReport 走「專屬端點」
+    #   /api/v4/taiwan_stock_trading_daily_report(不是 /data!),參數用 date(單日)、要 Bearer 標頭。
+    #   之前打 /data?dataset=...&start_date= 是錯端點 → 回 400/illegal。改對端點才能真正驗證付費。
+    recent_dates = _recent_finmind_dates(7)   # 近 7 個日曆日(含非交易日,交易日才回 data)
+    # 💰 逐把 token 直接試(不靠輪動,避免舊/壞 token 擋住真正付費金鑰),每把試幾個近日直到有回。
     last_status, last_msg = None, ''
     per_token = []            # [(遮罩後 token, status, msg)]
     for ti, tok in enumerate(FINMIND_TOKENS):
         tok_status, tok_msg = None, ''
-        for pf in param_forms:
+        hdrs = {**_rnd_hdrs(), 'Authorization': f'Bearer {tok}'}
+        for d in recent_dates:
+            url = ('https://api.finmindtrade.com/api/v4/taiwan_stock_trading_daily_report'
+                   f'?data_id=2330&date={d}')
             try:
-                res = http_session.get(base + pf + f'&token={tok}', headers=_rnd_hdrs(), timeout=15)
+                res = http_session.get(url, headers=hdrs, timeout=15)
                 j = res.json() if res is not None else {}
             except Exception as _e:
                 tok_status, tok_msg = 'EXC', str(_e)[:80]
@@ -151,7 +152,10 @@ def detect_finmind_paid() -> bool:
             tok_status, tok_msg = j.get('status'), str(j.get('msg', ''))[:80]
             if j.get('status') == 200 and (j.get('data') or []):
                 FINMIND_PAID = True
+                FINMIND_PAID_TOKEN = tok
                 break
+            if tok_status in (402, 403) or (tok_msg and 'illegal' in tok_msg.lower()):
+                break   # 這把 token 就是不行(非付費/貼錯),不用再試其他日期
         mask = (tok[:6] + '…' + tok[-4:]) if len(tok) > 12 else '(短)'
         per_token.append((mask, tok_status, tok_msg))
         last_status, last_msg = tok_status, tok_msg
@@ -163,11 +167,34 @@ def detect_finmind_paid() -> bool:
         need_pay = any(s in (402, 403) for _, s, _ in per_token)
         hint = ('token 字串貼錯/不完整(FinMind 回 illegal)→ 請重貼完整金鑰到 GitHub Secrets FINMIND_TOKENS' if illegal
                 else 'token 有效但非付費層級 → 需升級 FinMind Sponsor' if need_pay
-                else '參數/連線問題' if last_status not in (None, 200) else '連不到/回空')
+                else '參數/連線問題' if last_status not in (None, 200) else '連不到/回空(近日皆非交易日?)')
         detail = ' ; '.join(f'{m}:status={s}/{msg}' for m, s, msg in per_token)
         print(f'⚠️ FinMind:付費失效/未生效({len(FINMIND_TOKENS)} 把 token 全試過｜{hint})→ 自動降版免費模式(分點只用 BSR)')
         print(f'   逐把探測:{detail}')
     return FINMIND_PAID
+
+
+def _recent_finmind_dates(n_days: int) -> list:
+    """回近 n_days 個日曆日(今天起往回),字串 YYYY-MM-DD。分點端點用單日 date;
+    非交易日 FinMind 回空,交易日才回資料,故多給幾天讓呼叫端自然命中最近交易日。"""
+    today = date.today()
+    return [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n_days)]
+
+
+def fm_paid_get(endpoint: str, params: str, timeout: int = 15):
+    """💰 付費專屬端點統一入口(Bearer 標頭 + 探測時通過的付費 token)。
+    endpoint 例:'taiwan_stock_trading_daily_report'。params 例:'data_id=5483&date=2026-07-16'。
+    回 dict(FinMind 標準 {status,data,msg}) 或 None。未偵測到付費 token 時回 None。"""
+    tok = FINMIND_PAID_TOKEN or (FINMIND_TOKENS[0] if FINMIND_TOKENS else '')
+    if not tok:
+        return None
+    url = f'https://api.finmindtrade.com/api/v4/{endpoint}?{params}'
+    hdrs = {**_rnd_hdrs(), 'Authorization': f'Bearer {tok}'}
+    try:
+        res = http_session.get(url, headers=hdrs, timeout=timeout)
+        return res.json() if res is not None else None
+    except Exception:
+        return None
 
 
 def get_finmind_token() -> str:
@@ -2741,26 +2768,29 @@ def fetch_broker_chips():
             sniper_data = None
         try:
             data_rows = []
-            if paid:   # 💰 降版:未付費 → 不打付費分點(免每檔 402 浪費 + 免 5s 錯誤重試),只靠上面 BSR
-                chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
-                # 💰 V68.2.6 FinMind 付費(Sponsor $999)分點 dataset:正解是 TaiwanStockTradingDailyReport
-                #   (免費版回 402;付費 token 進 FINMIND_TOKENS 後回 200 → 全市場真分點,含上櫃/冷門股如中美晶 5483)
-                url_base = (f'https://api.finmindtrade.com/api/v4/data'
-                            f'?dataset=TaiwanStockTradingDailyReport'
-                            f'&data_id={sym}&start_date={chip_start}')
-                j = fm_request(url_base, timeout=15)
-                if j is None: j = {}
-                # 污染防呆：dataset 已 deprecate 時 FinMind 會回非分點資料，需驗證
-                status_code = j.get('status')
-                data_rows = j.get('data') or []
-                if status_code in (402, 403):
-                    print(f"    💰 分點 {sym} FinMind 回 {status_code}（{j.get('msg', '需付費')}）— 跳過")
-                    data_rows = []
-                elif status_code == 200 and data_rows:
-                    sample = data_rows[0]
-                    if not any(k in sample for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
-                        print(f"    ⚠️ 分點 {sym} FinMind response 欄位不對，keys={list(sample.keys())[:10]} — 跳過避免污染")
+            if paid:   # 💰 降版:未付費 → 不打付費分點(免浪費 + 免錯誤重試),只靠上面 BSR
+                # 💰 V68.2.7 分點正解:專屬端點 taiwan_stock_trading_daily_report(單日 date + Bearer)。
+                #   逐日往回累積 ~11 個交易日(供 1/3/5/10 週期),含上櫃/冷門股如中美晶 5483。
+                seen_dates: set = set()
+                for _d in _recent_finmind_dates(16):
+                    if len(seen_dates) >= 11:
+                        break
+                    j = fm_paid_get('taiwan_stock_trading_daily_report', f'data_id={sym}&date={_d}') or {}
+                    st = j.get('status'); rows = j.get('data') or []
+                    if st in (402, 403):
+                        print(f"    💰 分點 {sym} 回 {st}（{j.get('msg', '需付費')}）— 跳過")
                         data_rows = []
+                        break
+                    if st == 200 and rows:
+                        sample = rows[0]
+                        # 污染防呆:驗證是分點欄位(不是被誤導向其他資料)
+                        if not any(k in sample for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+                            print(f"    ⚠️ 分點 {sym} 欄位不對 keys={list(sample.keys())[:8]} — 跳過避免污染")
+                            data_rows = []
+                            break
+                        data_rows.extend(rows)
+                        seen_dates.add(_d)
+                    time.sleep(0.12)   # 溫柔節流(付費額度高,仍防打太快)
             if data_rows:
                 by_date: dict = {}
                 for r in data_rows:
