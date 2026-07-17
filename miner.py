@@ -233,6 +233,8 @@ CHIP_WATCHLIST = sorted(set([
     '3105','3529','8069','5347','8299','3293','6142','6274',
     # 上櫃活潑中小型（前端 hot_otc 24 檔）
     '6488','6515','6770','3037','8046','4977','6278','6191',
+    '5483','5274','4966','6531','1795','8996',   # V68.2.6 補上櫃常看股(中美晶 5483 等),付費分點必採
+
     # 高股息與權值 ETF（前端 etf_heavy 10 檔）
     '0050','0056','00878','00929','00919',
     '00713','00692','006208','00900','00939',   # ← 新增 5 檔（之前缺失導致該類別半壞）
@@ -248,7 +250,7 @@ CHIP_WATCHLIST = sorted(set([
     '3491','2313','6285',                       # 低軌衛星：昇達科、華通、啟碁
     '2408','2344','8299',                       # 記憶體 DRAM：南亞科、華邦電、群聯（8299 已在,補 2408/2344 確保板塊每輪必採）
 ]))
-HOT_CHIPS_LIMIT = 100   # 分點籌碼 + 基本面 FinMind 呼叫上限（可調整）
+HOT_CHIPS_LIMIT = 180   # 分點籌碼 + 基本面 FinMind 呼叫上限(V68.2.6 付費 6000/hr → 100→180 擴大冷門股覆蓋)
 FUND_CACHE_DAYS = 7     # 基本面快取有效天數（財報季更新，7天重查一次即可）
 # V15.8 — fundamentals schema 版本標記:每次 miner.py 改動 fundamentals 結構就 bump,
 #         自動 invalidate 全市場 cache(避免 V15.7 修了欄位但 cache 7 天內擋住新邏輯)
@@ -2683,8 +2685,10 @@ def fetch_broker_chips():
             sniper_data = None
         try:
             chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
+            # 💰 V68.2.6 FinMind 付費(Sponsor $999)分點 dataset:正解是 TaiwanStockTradingDailyReport
+            #   (免費版回 402;付費 token 進 FINMIND_TOKENS 後回 200 → 全市場真分點,含上櫃/冷門股如中美晶 5483)
             url_base = (f'https://api.finmindtrade.com/api/v4/data'
-                        f'?dataset=TaiwanStockLocalSecuritiesBrokerTransactions'
+                        f'?dataset=TaiwanStockTradingDailyReport'
                         f'&data_id={sym}&start_date={chip_start}')
             j = fm_request(url_base, timeout=15)
             if j is None: j = {}
