@@ -127,18 +127,36 @@ def detect_finmind_paid() -> bool:
         return FINMIND_PAID
     if not FINMIND_TOKENS:
         FINMIND_PAID = False
-        print('💰 FinMind:未設 token → 免費模式(降版)')
+        print('💰 FinMind:後端未設 token(GitHub Secrets FINMIND_TOKENS 為空)→ 免費模式(降版)')
         return False
-    try:
-        probe = ('https://api.finmindtrade.com/api/v4/data'
-                 '?dataset=TaiwanStockTradingDailyReport&data_id=2330'
-                 f'&start_date={(date.today() - timedelta(days=7)).strftime("%Y-%m-%d")}')
-        j = fm_request(probe, timeout=15) or {}
-        FINMIND_PAID = bool(j.get('status') == 200 and (j.get('data') or []))
-    except Exception:
+    sd = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d")
+    ed = date.today().strftime("%Y-%m-%d")
+    # 💰 兩種參數形式都試(不同 FinMind 版本 start_date vs date),任一回 200+data 即判付費有效,
+    #    避免「參數寫法不對」被誤判成「付費失效」。並印出真實 status/msg 供診斷(402=token 非付費/需付費;
+    #    400/422=參數問題;200-空=日期無資料)。
+    last_status, last_msg = None, ''
+    for probe in (
+        f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockTradingDailyReport&data_id=2330&start_date={sd}&end_date={ed}',
+        f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockTradingDailyReport&data_id=2330&date={sd}',
+    ):
+        try:
+            j = fm_request(probe, timeout=15) or {}
+        except Exception as _e:
+            last_status, last_msg = 'EXC', str(_e)[:80]
+            continue
+        last_status, last_msg = j.get('status'), str(j.get('msg', ''))[:100]
+        if j.get('status') == 200 and (j.get('data') or []):
+            FINMIND_PAID = True
+            break
+    else:
         FINMIND_PAID = False
-    print('💰 FinMind:付費(Sponsor)有效 → 分點/擴充覆蓋全開' if FINMIND_PAID
-          else '⚠️ FinMind:付費失效/未生效 → 自動降版免費模式(分點只用 BSR、覆蓋縮回 100)')
+    if FINMIND_PAID:
+        print(f'💰 FinMind:付費(Sponsor)有效 → 分點/擴充覆蓋全開(probe status={last_status})')
+    else:
+        hint = ('token 非付費/需付費 → 請確認 GitHub Secrets 的 FINMIND_TOKENS 已換成付費金鑰' if last_status in (402, 403)
+                else '參數/連線問題,非付費層級判定' if last_status not in (None, 200)
+                else '連不到/回空')
+        print(f'⚠️ FinMind:付費失效/未生效(probe status={last_status} msg={last_msg}｜{hint})→ 自動降版免費模式(分點只用 BSR、覆蓋縮回 100)')
     return FINMIND_PAID
 
 
