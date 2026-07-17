@@ -3894,10 +3894,17 @@ def fetch_govbank_buysell():
         return
     sd = (date.today() - timedelta(days=16)).strftime('%Y-%m-%d')
     ed = date.today().strftime('%Y-%m-%d')
-    j = fm_paid_get('data', f'dataset=TaiwanstockGovernmentBankBuySell&start_date={sd}&end_date={ed}') or {}
-    rows = j.get('data') or []
-    if j.get('status') != 200 or not rows:
-        print(f"  ⚠️ 八大行庫回 status={j.get('status')} msg={str(j.get('msg',''))[:50]} — 保留舊檔")
+    # 🔎 文件寫 TaiwanstockGovernmentBankBuySell 但 FinMind enum 拒(422/status=None)→ 多候選自我探測
+    rows = []
+    for ds in ('TaiwanStockGovernmentBankBuySell', 'TaiwanstockGovernmentBankBuySell',
+               'TaiwanStockGovernmentBankBuySellReport'):
+        j = fm_paid_get('data', f'dataset={ds}&start_date={sd}&end_date={ed}') or {}
+        if j.get('status') == 200 and (j.get('data') or []):
+            rows = j['data']
+            print(f"  🏦 八大行庫 dataset 命中:{ds}")
+            break
+    if not rows:
+        print("  ⚠️ 八大行庫:候選 dataset 皆無資料/被拒 — 保留舊檔")
         return
     by_stock: dict = {}
     for r in rows:
