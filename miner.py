@@ -256,9 +256,20 @@ def fm_request(url_base: str, timeout: int = 20):
             time.sleep(1.0)
             continue
         try:
-            return res.json()
+            body = res.json()
         except Exception:
             return None
+        # 🐛 V68.2.7 token 本身被判非法(貼錯/失效)→ FinMind 回 {status:400, msg:"Token is illegal"}。
+        #   這把 token 不會因重試變好,直接換下一把(可能有另一把有效的付費金鑰);全試過才回 None。
+        #   讓每支 job(法人/基本面…)都不會被「第一把壞 token」整條打死。
+        _bmsg = str(body.get('msg', '')).lower() if isinstance(body, dict) else ''
+        if isinstance(body, dict) and (body.get('status') in (400, 401)) and ('token' in _bmsg or 'illegal' in _bmsg):
+            idx = _finmind_token_idx % max(len(FINMIND_TOKENS), 1)
+            print(f'  ⚠️ [Token 輪動] Token #{idx + 1} 被判非法({body.get("msg")}),換下一把...')
+            if len(FINMIND_TOKENS) > 1 and rotate_finmind_token(tried):
+                time.sleep(0.5)
+                continue
+        return body
 
 BATCH_INDEX    = int(os.getenv('BATCH_INDEX', '0'))
 TOTAL_BATCHES  = int(os.getenv('TOTAL_BATCHES', '1'))
