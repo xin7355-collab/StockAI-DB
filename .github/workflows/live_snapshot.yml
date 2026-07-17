@@ -36,7 +36,7 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 安裝 shioaji
-        run: pip install shioaji
+        run: pip install "shioaji<1.7"   # 📌 1.7.0 移除 login(fetch_contract=) → 釘在 1.6.x 保留既有登入寫法
 
       - name: 📸 採全市場即時快照
         env:

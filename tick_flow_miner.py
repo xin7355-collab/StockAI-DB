@@ -64,7 +64,11 @@ def main():
     import shioaji as sj
     api = sj.Shioaji()
     try:
-        api.login(api_key=key, secret_key=sec, fetch_contract=True)
+        try:
+            api.login(api_key=key, secret_key=sec, fetch_contract=True)
+        except TypeError:
+            # shioaji ≥1.7 移除 login(fetch_contract=) 參數(登入時預設就抓合約)
+            api.login(api_key=key, secret_key=sec)
         print('✅ Shioaji 登入成功,抓合約中…')
     except Exception as e:
         print(f'❌ Shioaji 登入失敗:{e}')
