@@ -1,0 +1,68 @@
+name: 🔬 盤中逐筆內外盤/大單 (Shioaji ticks)
+
+# 用 Shioaji api.ticks 抓「當日量最大前 N 檔」的真實逐筆成交 → data/tick_flow.json
+# 供:盤中作戰室「內外盤 / 大單」從估算升級成真實逐筆(冷門股仍用估算 fallback)
+# ⚠️ 需 GitHub Secrets:SHIOAJI_API_KEY、SHIOAJI_SECRET_KEY(同 live_snapshot,已設好)
+# 🧪 第一次請「Run workflow」手動觸發看 log,確認算到 >20 檔再靠 cron。
+# ⏱️ 排程:台股盤中每 10 分鐘一次(ticks 比 snapshot 重,故 10 分不 5 分)。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '3,13,23,33,43,53 1-4 * * 1-5'   # UTC 01~04 每 10 分(台北 09:00~12:55),錯開 live_snapshot 的整 5 分
+    - cron: '3,13,23 5 * * 1-5'              # UTC 05:03~05:23(台北 13:03~13:23 收盤前)
+
+# 與 deploy_pages / daily_miner / live_snapshot / stock_futures 共用 gh-pages-push group,避免同時 push 打架
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  tickflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 shioaji
+        run: pip install shioaji
+
+      - name: 🔬 採盤中逐筆內外盤/大單
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+        run: python3 tick_flow_miner.py
+
+      # 只 push gh-pages(即時資料,每 10 分重生;daily_miner 下午洗掉無妨,下個交易日重建)
+      - name: 🚀 部署 tick_flow.json 到 gh-pages
+        run: |
+          if [ ! -f tick_flow.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp tick_flow.json /tmp/tf.json
+
+          git fetch origin gh-pages 2>/dev/null || true
+          git checkout gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; exit 1; }
+
+          mkdir -p data
+          cp /tmp/tf.json data/tick_flow.json
+          git add data/tick_flow.json
+          git diff --cached --quiet && echo "無變更,跳過" || {
+            git commit -m "🔬 盤中逐筆內外盤 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            for i in 1 2 3 4 5; do
+              git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
+              [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+              sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true; git pull --rebase origin gh-pages 2>/dev/null || true
+            done
+          }
+          echo "✅ data/tick_flow.json 已部署"
