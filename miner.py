@@ -3894,17 +3894,20 @@ def fetch_govbank_buysell():
         return
     sd = (date.today() - timedelta(days=16)).strftime('%Y-%m-%d')
     ed = date.today().strftime('%Y-%m-%d')
-    # 🔎 文件寫 TaiwanstockGovernmentBankBuySell 但 FinMind enum 拒(422/status=None)→ 多候選自我探測
-    rows = []
-    for ds in ('TaiwanStockGovernmentBankBuySell', 'TaiwanstockGovernmentBankBuySell',
-               'TaiwanStockGovernmentBankBuySellReport'):
-        j = fm_paid_get('data', f'dataset={ds}&start_date={sd}&end_date={ed}') or {}
-        if j.get('status') == 200 and (j.get('data') or []):
-            rows = j['data']
-            print(f"  🏦 八大行庫 dataset 命中:{ds}")
-            break
+    # ✅ 實測 FinMind enum 確認正確名(文件的小寫 Taiwanstock… 是錯的):TaiwanStockGovernmentBankBuySell
+    DS = 'TaiwanStockGovernmentBankBuySell'
+    j = fm_paid_get('data', f'dataset={DS}&start_date={sd}&end_date={ed}') or {}
+    rows = j.get('data') or []
+    if not rows:   # 全市場 bulk 無資料 → 改逐檔觀察清單補(有些 dataset 需 data_id)
+        print(f"  🏦 八大行庫 bulk status={j.get('status')} msg={str(j.get('msg',''))[:40]} → 改逐檔")
+        for sym in CHIP_WATCHLIST:
+            jj = fm_paid_get('data', f'dataset={DS}&data_id={sym}&start_date={sd}&end_date={ed}') or {}
+            rr = jj.get('data') or []
+            if rr:
+                rows.extend(rr)
+            time.sleep(0.1)
     if not rows:
-        print("  ⚠️ 八大行庫:候選 dataset 皆無資料/被拒 — 保留舊檔")
+        print("  ⚠️ 八大行庫:bulk + 逐檔皆無資料 — 保留舊檔")
         return
     by_stock: dict = {}
     for r in rows:
