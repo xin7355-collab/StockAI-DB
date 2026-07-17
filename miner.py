@@ -115,6 +115,31 @@ FINMIND_TOKEN  = FINMIND_TOKENS[0] if FINMIND_TOKENS else ''  # 向下相容舊�
 # [Token 輪動] 全域輪動狀態
 _finmind_token_idx: int  = 0      # 目前使用的 Token 索引
 _FINMIND_BLOCKED:   bool = False   # 所有 Token 均耗盡時觸發，保護程式不當機
+FINMIND_PAID = None                # 💰 None=未偵測 / True=付費有效 / False=免費或付費失效(自動降版)
+
+
+def detect_finmind_paid() -> bool:
+    """💰 V68.2.6 自動偵測 FinMind 付費(Sponsor)是否有效:打一個付費專屬 dataset(分點)看回 200 還是 402。
+    ⭐ 付費失效/退訂/未設 → 回 False → 上層自動「降版」:分點只走免費 BSR、覆蓋縮回免費安全值,
+    不會噴錯也不會拿垃圾。全域只探一次(快取)。"""
+    global FINMIND_PAID
+    if FINMIND_PAID is not None:
+        return FINMIND_PAID
+    if not FINMIND_TOKENS:
+        FINMIND_PAID = False
+        print('💰 FinMind:未設 token → 免費模式(降版)')
+        return False
+    try:
+        probe = ('https://api.finmindtrade.com/api/v4/data'
+                 '?dataset=TaiwanStockTradingDailyReport&data_id=2330'
+                 f'&start_date={(date.today() - timedelta(days=7)).strftime("%Y-%m-%d")}')
+        j = fm_request(probe, timeout=15) or {}
+        FINMIND_PAID = bool(j.get('status') == 200 and (j.get('data') or []))
+    except Exception:
+        FINMIND_PAID = False
+    print('💰 FinMind:付費(Sponsor)有效 → 分點/擴充覆蓋全開' if FINMIND_PAID
+          else '⚠️ FinMind:付費失效/未生效 → 自動降版免費模式(分點只用 BSR、覆蓋縮回 100)')
+    return FINMIND_PAID
 
 
 def get_finmind_token() -> str:
@@ -2525,6 +2550,9 @@ def fetch_broker_chips():
     chips_dir = Path(DATA_DIR) / 'chips'
     chips_dir.mkdir(parents=True, exist_ok=True)
     today_str = date.today().strftime('%Y-%m-%d')
+    # 💰 V68.2.6 自動偵測付費層級 → 決定分點來源 + 覆蓋上限(付費失效自動降版)
+    paid = detect_finmind_paid()
+    eff_limit = HOT_CHIPS_LIMIT if paid else 100   # 降版:免費時覆蓋縮回 100,避免限流
     # V16.4 — chips_miner 平行 job 開頭寫狀態(會疊在 ohlcv_batch 之上)
     write_miner_status('chips_fundamentals', 'mining',
                        {'note': '分點籌碼 + 基本面 + 雷達 + 全球新聞 採礦中'})
@@ -2544,11 +2572,11 @@ def fetch_broker_chips():
             conn.close()
             for sym, _ in rows:
                 priority_set.add(sym)
-                if len(priority_set) >= HOT_CHIPS_LIMIT:
+                if len(priority_set) >= eff_limit:
                     break
         except Exception as e:
             print(f"  ⚠️ 熱門股查詢失敗，回退至 CHIP_WATCHLIST: {e}")
-    watchlist = sorted(priority_set)[:HOT_CHIPS_LIMIT]
+    watchlist = sorted(priority_set)[:eff_limit]
     print(f"  📋 分點籌碼目標：{len(watchlist)} 檔（精選 {len(CHIP_WATCHLIST)} + 熱門補充）")
 
     # 新增：一次查全市場 PE / 殖利率（TWSE）
@@ -2684,25 +2712,27 @@ def fetch_broker_chips():
         except Exception as _e:
             sniper_data = None
         try:
-            chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
-            # 💰 V68.2.6 FinMind 付費(Sponsor $999)分點 dataset:正解是 TaiwanStockTradingDailyReport
-            #   (免費版回 402;付費 token 進 FINMIND_TOKENS 後回 200 → 全市場真分點,含上櫃/冷門股如中美晶 5483)
-            url_base = (f'https://api.finmindtrade.com/api/v4/data'
-                        f'?dataset=TaiwanStockTradingDailyReport'
-                        f'&data_id={sym}&start_date={chip_start}')
-            j = fm_request(url_base, timeout=15)
-            if j is None: j = {}
-            # 污染防呆：dataset 已 deprecate 時 FinMind 會回非分點資料，需驗證
-            status_code = j.get('status')
-            data_rows = j.get('data') or []
-            if status_code in (402, 403):
-                print(f"    💰 分點 {sym} FinMind 回 {status_code}（{j.get('msg', '需付費')}）— 跳過")
-                data_rows = []
-            elif status_code == 200 and data_rows:
-                sample = data_rows[0]
-                if not any(k in sample for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
-                    print(f"    ⚠️ 分點 {sym} FinMind response 欄位不對，keys={list(sample.keys())[:10]} — 跳過避免污染")
+            data_rows = []
+            if paid:   # 💰 降版:未付費 → 不打付費分點(免每檔 402 浪費 + 免 5s 錯誤重試),只靠上面 BSR
+                chip_start = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
+                # 💰 V68.2.6 FinMind 付費(Sponsor $999)分點 dataset:正解是 TaiwanStockTradingDailyReport
+                #   (免費版回 402;付費 token 進 FINMIND_TOKENS 後回 200 → 全市場真分點,含上櫃/冷門股如中美晶 5483)
+                url_base = (f'https://api.finmindtrade.com/api/v4/data'
+                            f'?dataset=TaiwanStockTradingDailyReport'
+                            f'&data_id={sym}&start_date={chip_start}')
+                j = fm_request(url_base, timeout=15)
+                if j is None: j = {}
+                # 污染防呆：dataset 已 deprecate 時 FinMind 會回非分點資料，需驗證
+                status_code = j.get('status')
+                data_rows = j.get('data') or []
+                if status_code in (402, 403):
+                    print(f"    💰 分點 {sym} FinMind 回 {status_code}（{j.get('msg', '需付費')}）— 跳過")
                     data_rows = []
+                elif status_code == 200 and data_rows:
+                    sample = data_rows[0]
+                    if not any(k in sample for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+                        print(f"    ⚠️ 分點 {sym} FinMind response 欄位不對，keys={list(sample.keys())[:10]} — 跳過避免污染")
+                        data_rows = []
             if data_rows:
                 by_date: dict = {}
                 for r in data_rows:
