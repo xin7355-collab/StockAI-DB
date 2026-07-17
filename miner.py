@@ -707,11 +707,17 @@ def fetch_market_institutional(d: date) -> dict:
                     a['trust_net'] += int(net)
                 elif '自營' in inst or 'Dealer' in inst:
                     a['dealer_net'] += int(net)
+            cnt_fix = 0
             for sid, v in agg.items():
+                v_has = bool(v.get('foreign_net') or v.get('trust_net') or v.get('dealer_net'))
                 if sid not in res:
                     res[sid] = v
                     cnt_new += 1
-            print(f"  [FinMind 法人] 補齊 {cnt_new} 檔（多半為上櫃股 / TPEX 失敗的票）")
+                elif v_has and not (res[sid].get('foreign_net') or res[sid].get('trust_net') or res[sid].get('dealer_net')):
+                    # 🐛 V68.2.2 既有但三大法人全 0(TPEx 上櫃 se=EW 缺漏/回 0)→ 用 FinMind 非零值覆蓋(如中美晶 5483)
+                    res[sid] = v
+                    cnt_fix += 1
+            print(f"  [FinMind 法人] 補齊 {cnt_new} 檔（缺漏補進）＋覆蓋 {cnt_fix} 檔（TPEx 回 0 → FinMind 修正）")
         except Exception as e:
             print(f"  ⚠️ [FinMind 法人] 備援失敗：{e}")
 
