@@ -44,30 +44,40 @@ def main():
 
     sd = (date.today() - timedelta(days=10)).strftime('%Y-%m-%d')
     any_paid = False
-    for i, tok in enumerate(tokens, 1):
-        hdr = {'Authorization': f'Bearer {tok}'}
+    for i, raw in enumerate(tokens, 1):
+        # 🧹 JWT 金鑰內不該有任何空白;複製時常把頁面換行的空格一起帶進來 → 全清掉
+        tok = ''.join(raw.split())
         mask = (tok[:8] + '…' + tok[-6:]) if len(tok) > 16 else tok
-        print(f'\n── Token #{i}  {mask}  (長度 {len(tok)} 字元) ──')
-        # 1) 免費資料集:判 token 本身合不合法
-        f_st, f_msg, _ = probe(f'{BASE}/data?dataset=TaiwanStockInfo&data_id=2330', hdr)
-        # 2) 付費分點專屬端點:判付費層級
+        note = f'(原始 {len(raw)} → 清空白後 {len(tok)} 字元)' if len(tok) != len(raw) else f'(長度 {len(tok)} 字元)'
+        print(f'\n── Token #{i}  {mask}  {note} ──')
+        if len(tok) != len(raw):
+            print(f'   🧹 偵測到金鑰內含 {len(raw) - len(tok)} 個空白字元 → 已清除(這通常就是 illegal 主因)')
+        hdr = {'Authorization': f'Bearer {tok}'}
+        # 1a) 免費集,Bearer 標頭
+        fb_st, fb_msg, _ = probe(f'{BASE}/data?dataset=TaiwanStockInfo&data_id=2330', hdr)
+        # 1b) 免費集,?token= query(FinMind /data 舊式帶法,雙保險)
+        fq_st, fq_msg, _ = probe(f'{BASE}/data?dataset=TaiwanStockInfo&data_id=2330&token={tok}', {})
+        # 2) 付費分點專屬端點,Bearer
         p_st, p_msg, p_rows = probe(
             f'{BASE}/taiwan_stock_trading_daily_report?data_id=2330&date={sd}', hdr)
-        print(f'   免費集 TaiwanStockInfo : status={f_st}  msg={f_msg}')
-        print(f'   付費分點 分點端點       : status={p_st}  rows={p_rows}  msg={p_msg}')
+        print(f'   免費集(Bearer)  : status={fb_st}  msg={fb_msg}')
+        print(f'   免費集(?token=) : status={fq_st}  msg={fq_msg}')
+        print(f'   付費分點端點      : status={p_st}  rows={p_rows}  msg={p_msg}')
 
+        free_ok = (fb_st == 200) or (fq_st == 200)
         if p_st == 200 and p_rows > 0:
             print('   → ✅ 付費有效!分點/八大行庫/借券等 Sponsor 資料全開')
             any_paid = True
-        elif ('illegal' in (f_msg or '').lower()) or ('illegal' in (p_msg or '').lower()) \
-                or f_st in (400, 401):
-            print('   → ❌ 金鑰非法(貼錯/截斷/過期)。真金鑰通常 200~400 字元;')
-            print('        若上面長度偏短 = 被截斷。請用 FinMind 會員中心的「複製」鈕重抓完整金鑰,')
-            print('        貼進 GitHub Secrets FINMIND_TOKENS(不要引號、空白、換行)。')
-        elif p_st in (402, 403):
-            print('   → 🟡 金鑰有效,但「非付費層級」→ 分點需 FinMind Sponsor。基本資料仍可用。')
+        elif free_ok and p_st in (402, 403):
+            print('   → 🟡 金鑰有效,但「非付費層級」→ 分點需 FinMind Sponsor(確認帳號付費是否在這把 token)')
+        elif free_ok:
+            print(f'   → 🟡 金鑰合法(免費集通),但付費端點回 {p_st} → 可能該日非交易日,或付費未生效')
+        elif ('illegal' in (fb_msg or fq_msg or p_msg or '').lower()) or fb_st in (400, 401):
+            print('   → ❌ 金鑰非法。已試過「清空白 + Bearer + ?token= 兩種帶法」都被拒 →')
+            print('        代表這把 token 字串本身 FinMind 不認(需在 FinMind 帳號頁按「更新令牌」重產一把,')
+            print('        再用「全選」複製整串貼進 Secret)。')
         else:
-            print(f'   → ⚠️ 未定:免費 status={f_st} / 付費 status={p_st}(可能該日非交易日或連線問題)')
+            print(f'   → ⚠️ 未定:free(Bearer)={fb_st} / free(query)={fq_st} / paid={p_st}')
 
     print('\n' + '=' * 60)
     print('✅ 檢測完成:偵測到有效付費金鑰,採礦機會全開付費資料。' if any_paid
