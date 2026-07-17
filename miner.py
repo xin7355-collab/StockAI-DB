@@ -3994,7 +3994,12 @@ def build_broker_radar():
             obj = json.loads(f.read_text(encoding='utf-8'))
         except Exception:
             continue
-        per = (obj.get('periods') or {}).get('1d') or {}
+        if not isinstance(obj, dict):   # 🛡️ 有些 chips 檔是純 list(舊格式)→ 無 periods,跳過
+            continue
+        periods = obj.get('periods')
+        per = (periods.get('1d') if isinstance(periods, dict) else None) or {}
+        if not isinstance(per, dict):
+            continue
         buys = per.get('buy') or []; sells = per.get('sell') or []
         if buys:
             t = buys[0]
