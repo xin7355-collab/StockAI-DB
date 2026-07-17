@@ -44,6 +44,7 @@ def main():
 
     sd = (date.today() - timedelta(days=10)).strftime('%Y-%m-%d')
     any_paid = False
+    paid_tok = None
     for i, raw in enumerate(tokens, 1):
         # 🧹 JWT 金鑰內不該有任何空白;複製時常把頁面換行的空格一起帶進來 → 全清掉
         tok = ''.join(raw.split())
@@ -68,6 +69,7 @@ def main():
         if p_st == 200 and p_rows > 0:
             print('   → ✅ 付費有效!分點/八大行庫/借券等 Sponsor 資料全開')
             any_paid = True
+            paid_tok = tok
         elif free_ok and p_st in (402, 403):
             print('   → 🟡 金鑰有效,但「非付費層級」→ 分點需 FinMind Sponsor(確認帳號付費是否在這把 token)')
         elif free_ok:
@@ -83,6 +85,39 @@ def main():
     print('✅ 檢測完成:偵測到有效付費金鑰,採礦機會全開付費資料。' if any_paid
           else '⚠️ 檢測完成:沒有任何一把是有效付費金鑰 → 採礦維持免費降版模式。')
     print('=' * 60)
+
+    # ── 📐 付費資料集「真實欄位」實測(給採礦碼照著寫,不靠猜)──
+    if paid_tok:
+        print('\n' + '=' * 60)
+        print('📐 付費資料集 schema 實測(1 筆樣本 → 建 premium 採礦用)')
+        print('=' * 60)
+        hdr = {'Authorization': f'Bearer {paid_tok}'}
+        sd30 = (date.today() - timedelta(days=30)).strftime('%Y-%m-%d')
+        ed = date.today().strftime('%Y-%m-%d')
+        probes = [
+            ('八大行庫 GovernmentBank', f'{BASE}/data?dataset=TaiwanstockGovernmentBankBuySell&start_date={sd}&end_date={ed}', True),
+            ('借券 SecuritiesLending',  f'{BASE}/data?dataset=TaiwanStockSecuritiesLending&data_id=2330&start_date={sd30}&end_date={ed}', True),
+            ('鉅額 BlockTrade',         f'{BASE}/data?dataset=TaiwanStockBlockTrade&data_id=2330&start_date={sd30}&end_date={ed}', True),
+            ('還原股價 PriceAdj',       f'{BASE}/data?dataset=TaiwanStockPriceAdj&data_id=2330&start_date={sd30}&end_date={ed}', True),
+            ('月營收 MonthRevenue',     f'{BASE}/data?dataset=TaiwanStockMonthRevenue&data_id=5483&start_date=2025-01-01&end_date={ed}', True),
+            ('財報 FinancialStatements', f'{BASE}/data?dataset=TaiwanStockFinancialStatements&data_id=5483&start_date=2025-01-01&end_date={ed}', True),
+            ('分點聚合 SecIdAgg',       f'{BASE}/taiwan_stock_trading_daily_report_secid_agg?data_id=2330&start_date={sd}&end_date={ed}', False),
+        ]
+        import requests as _rq
+        for name, url, _ in probes:
+            try:
+                r = _rq.get(url, headers=hdr, timeout=20)
+                j = r.json()
+                st = j.get('status'); rows = j.get('data') or []
+                if st == 200 and rows:
+                    print(f'\n▸ {name}: status=200  rows={len(rows)}')
+                    print(f'   欄位: {list(rows[0].keys())}')
+                    print(f'   樣本: {json.dumps(rows[0], ensure_ascii=False)[:300]}')
+                else:
+                    print(f'\n▸ {name}: status={st}  rows={len(rows)}  msg={str(j.get("msg",""))[:80]}')
+            except Exception as e:
+                print(f'\n▸ {name}: 例外 {str(e)[:80]}')
+        print('\n' + '=' * 60)
 
 
 if __name__ == '__main__':
