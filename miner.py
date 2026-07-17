@@ -2823,9 +2823,13 @@ def fetch_broker_chips():
                     elif bid in broker_info_map: bnm = broker_info_map[bid]
                     else: bnm = bid
                     buy, sel = int(r.get('buy', 0)), int(r.get('sell', 0))
+                    try: price = float(r.get('price') or 0)
+                    except Exception: price = 0.0
                     slot = by_date.setdefault(d, {})
-                    e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0})
+                    e = slot.setdefault(bid, {'broker_id': bid, 'broker_name': bnm, 'net': 0, 'buy': 0, 'sel': 0, 'pv': 0.0, 'vol': 0})
                     e['buy'] += buy; e['sel'] += sel; e['net'] += (buy - sel)
+                    if price > 0:   # 💎 V68.3 均價:Σ(價×量)/Σ量(分點頁顯券商成交均價)
+                        e['pv'] += price * (buy + sel); e['vol'] += (buy + sel)
                     if bnm and not str(bnm).isdigit(): e['broker_name'] = bnm
 
                 if by_date:
@@ -2839,13 +2843,17 @@ def fetch_broker_chips():
                         agg: dict = {}
                         for wd in wdates:
                             for b, e in by_date[wd].items():
-                                a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0, 'buy': 0, 'sel': 0})
+                                a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0, 'buy': 0, 'sel': 0, 'pv': 0.0, 'vol': 0})
                                 a['net'] += e['net']
                                 a['buy'] += e.get('buy', 0)
                                 a['sel'] += e.get('sel', 0)
+                                a['pv'] += e.get('pv', 0.0); a['vol'] += e.get('vol', 0)
                                 if e['broker_name'] and not str(e['broker_name']).isdigit():
                                     a['broker_name'] = e['broker_name']
                         vals = list(agg.values())
+                        for a in vals:   # 💎 均價 + 清掉中間累加欄(縮小 JSON)
+                            a['avg'] = round(a['pv'] / a['vol'], 2) if a.get('vol') else None
+                            a.pop('pv', None); a.pop('vol', None)
                         buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
                         sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
                         return {'buy': buy_top, 'sell': sell_top}
