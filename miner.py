@@ -3881,6 +3881,152 @@ def _safe_step(label, fn, *args, **kwargs):
         return None
 
 
+# ══════════════════════════════════════════════════════════════════
+# 💎 V68.3.0 付費(FinMind Sponsor)壓箱寶:八大行庫護盤 / 借券空方 / 主力分點雷達
+#    全部掛 detect_finmind_paid() → 未付費自動跳過(降版),不噴錯。輸出獨立 JSON,
+#    靠 daily deploy 的 git archive origin/data 保留。欄名依 FinMind 官方 datasets 文件。
+# ══════════════════════════════════════════════════════════════════
+def fetch_govbank_buysell():
+    """🏦 八大行庫(官股)買賣超 → data/govbank.json(政府護盤訊號)。
+    近 ~16 日依 stock_id 聚合官股淨買賣(張)+ 近5/10日累計。未付費跳過。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 八大行庫:未付費,跳過(降版)")
+        return
+    sd = (date.today() - timedelta(days=16)).strftime('%Y-%m-%d')
+    ed = date.today().strftime('%Y-%m-%d')
+    j = fm_paid_get('data', f'dataset=TaiwanstockGovernmentBankBuySell&start_date={sd}&end_date={ed}') or {}
+    rows = j.get('data') or []
+    if j.get('status') != 200 or not rows:
+        print(f"  ⚠️ 八大行庫回 status={j.get('status')} msg={str(j.get('msg',''))[:50]} — 保留舊檔")
+        return
+    by_stock: dict = {}
+    for r in rows:
+        sid = str(r.get('stock_id') or '').strip()
+        if not _valid_stock(sid):
+            continue
+        d = str(r.get('date') or '')
+        try:
+            buy = int(float(r.get('buy') or 0)); sell = int(float(r.get('sell') or 0))
+        except Exception:
+            continue
+        slot = by_stock.setdefault(sid, {})
+        slot[d] = slot.get(d, 0) + (buy - sell)
+    out: dict = {}
+    for sid, dd in by_stock.items():
+        ds = sorted(dd.keys())
+        if not ds:
+            continue
+        out[sid] = {'d': ds[-1], 'net': dd[ds[-1]],
+                    'net5': sum(dd[x] for x in ds[-5:]),
+                    'net10': sum(dd[x] for x in ds[-10:]), 'days': len(ds)}
+    if len(out) < 5:
+        print(f"  ⚠️ 八大行庫只算到 {len(out)} 檔 — 保留舊檔不覆寫")
+        return
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'data': out}
+    tgt = Path(DATA_DIR) / 'govbank.json'; tmp = tgt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(tmp), str(tgt))
+    buyers = sum(1 for v in out.values() if v['net'] > 0)
+    print(f"  ✅ 八大行庫護盤:{len(out)} 檔(今日官股買超 {buyers} 檔)→ data/govbank.json")
+
+
+def fetch_securities_lending():
+    """🩳 借券成交(空方布局)→ data/lending.json。觀察清單逐檔近 ~40 日,
+    彙整借券量趨勢 + 費率 + 近5/前5日暴增倍數(暴增=有人大舉放空)。未付費跳過。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 借券:未付費,跳過(降版)")
+        return
+    sd = (date.today() - timedelta(days=45)).strftime('%Y-%m-%d')
+    ed = date.today().strftime('%Y-%m-%d')
+    out: dict = {}
+    for sym in CHIP_WATCHLIST:
+        j = fm_paid_get('data', f'dataset=TaiwanStockSecuritiesLending&data_id={sym}&start_date={sd}&end_date={ed}') or {}
+        if j.get('status') in (402, 403):
+            print(f"  💰 借券 {sym} 回 {j.get('status')} — 停(非付費層級)")
+            break
+        rows = j.get('data') or []
+        by_date: dict = {}
+        for r in rows:
+            d = str(r.get('date') or '')
+            try:
+                vol = int(float(r.get('volume') or 0))
+            except Exception:
+                vol = 0
+            e = by_date.setdefault(d, {'vol': 0, 'fee': None})
+            e['vol'] += vol
+            fr = r.get('fee_rate')
+            if fr is not None:
+                try: e['fee'] = float(fr)
+                except Exception: pass
+        ds = sorted(by_date.keys())
+        if not ds:
+            continue
+        vol5 = sum(by_date[x]['vol'] for x in ds[-5:])
+        prev5 = sum(by_date[x]['vol'] for x in ds[-10:-5]) if len(ds) >= 10 else 0
+        out[str(sym)] = {'d': ds[-1], 'vol': by_date[ds[-1]]['vol'], 'fee': by_date[ds[-1]]['fee'],
+                         'vol5': vol5, 'surge': round(vol5 / prev5, 2) if prev5 > 0 else None}
+        time.sleep(0.12)
+    if not out:
+        print("  ⚠️ 借券:0 檔(非交易日/無資料)— 保留舊檔")
+        return
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'data': out}
+    tgt = Path(DATA_DIR) / 'lending.json'; tmp = tgt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(tmp), str(tgt))
+    surging = sum(1 for v in out.values() if v.get('surge') and v['surge'] >= 1.5)
+    print(f"  ✅ 借券空方:{len(out)} 檔(借券暴增 {surging} 檔)→ data/lending.json")
+
+
+def build_broker_radar():
+    """🕵️ 主力分點雷達 → data/broker_radar.json:彙整各股 data/chips/*.json 今日(1d)分點,
+    產「今日主力最猛買超/賣超股票排行」+「各分點跨股買賣」(跟單神器)。純後處理零 API。"""
+    cdir = Path(DATA_DIR) / 'chips'
+    if not cdir.exists():
+        print("  ⏭️ 主力雷達:無 chips 目錄,跳過")
+        return
+    stock_top: list = []
+    broker_map: dict = {}
+    for f in cdir.glob('*.json'):
+        sym = f.stem
+        try:
+            obj = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        per = (obj.get('periods') or {}).get('1d') or {}
+        buys = per.get('buy') or []; sells = per.get('sell') or []
+        if buys:
+            t = buys[0]
+            stock_top.append({'sym': sym, 'side': 'buy', 'broker': t.get('broker_name'), 'net': int(t.get('net') or 0)})
+        if sells:
+            t = sells[0]
+            stock_top.append({'sym': sym, 'side': 'sell', 'broker': t.get('broker_name'), 'net': int(t.get('net') or 0)})
+        for x in buys:
+            bn = x.get('broker_name'); net = int(x.get('net') or 0)
+            if bn and not str(bn).isdigit() and net > 0:
+                broker_map.setdefault(bn, {'buy': [], 'sell': []})['buy'].append({'sym': sym, 'net': net})
+        for x in sells:
+            bn = x.get('broker_name'); net = int(x.get('net') or 0)
+            if bn and not str(bn).isdigit() and net < 0:
+                broker_map.setdefault(bn, {'buy': [], 'sell': []})['sell'].append({'sym': sym, 'net': net})
+    buy_rank = sorted([x for x in stock_top if x['side'] == 'buy'], key=lambda x: -x['net'])[:30]
+    sell_rank = sorted([x for x in stock_top if x['side'] == 'sell'], key=lambda x: x['net'])[:30]
+    brokers: dict = {}
+    for bn, d in broker_map.items():
+        d['buy'] = sorted(d['buy'], key=lambda x: -x['net'])[:10]
+        d['sell'] = sorted(d['sell'], key=lambda x: x['net'])[:10]
+        if d['buy'] or d['sell']:
+            brokers[bn] = d
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+               'buy_rank': buy_rank, 'sell_rank': sell_rank, 'brokers': brokers}
+    tgt = Path(DATA_DIR) / 'broker_radar.json'; tmp = tgt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(tmp), str(tgt))
+    print(f"  ✅ 主力雷達:買超榜 {len(buy_rank)} / 賣超榜 {len(sell_rank)} / 分點 {len(brokers)} 家 → data/broker_radar.json")
+
+
 if __name__ == '__main__':
     # V15.0:ONLY_CHIPS=1 → 跳過 OHLCV 採礦,直接跑全市場 fundamentals + chips + futures + macro
     #        (對應 daily_miner.yml 新增的 chips_miner 平行 job)
@@ -3891,6 +4037,9 @@ if __name__ == '__main__':
         # 不跑 cleanup_weekend_rows / run / export_json(OHLCV 由 mine matrix 跑)
         # 🛡️ 各步驟彼此獨立 → 逐步包 _safe_step,一步失敗仍續跑其餘(不讓整批停更)
         _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)
+        _safe_step("八大行庫 fetch_govbank_buysell", fetch_govbank_buysell)   # 💎 付費:官股護盤
+        _safe_step("借券空方 fetch_securities_lending", fetch_securities_lending)  # 💎 付費:借券做空
+        _safe_step("主力雷達 build_broker_radar", build_broker_radar)         # 🕵️ 後處理 chips → 主力排行
         _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)
         _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)
         _safe_step("雷達掃描 build_radar_cache", build_radar_cache)   # 讀 SQLite 既有 OHLCV(從 origin/data restore)
