@@ -109,7 +109,10 @@ HEADERS = {
 
 # [Token 輪動] 優先讀 FINMIND_TOKENS（複數），再 fallback 到 FINMIND_TOKEN（向下相容）
 _fm_env        = os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN', '')
-FINMIND_TOKENS = [t.strip() for t in _fm_env.split(',') if t.strip()]
+# 🧹 V68.2.8 每把 token 清掉「所有」空白字元(不只頭尾)。JWT 金鑰內不得有空白,
+#    但從 FinMind 帳號頁複製金鑰時,常把換行處的空格一起帶進來 → 簽章壞掉 → "Token is illegal"。
+#    (實證:少 1 個空格就從 illegal → 付費分點回 9113 筆。清空白對 JWT 絕對安全。)
+FINMIND_TOKENS = [''.join(t.split()) for t in _fm_env.split(',') if t.strip()]
 FINMIND_TOKEN  = FINMIND_TOKENS[0] if FINMIND_TOKENS else ''  # 向下相容舊引用
 
 # [Token 輪動] 全域輪動狀態
