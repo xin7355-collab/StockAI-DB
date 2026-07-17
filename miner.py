@@ -131,32 +131,42 @@ def detect_finmind_paid() -> bool:
         return False
     sd = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d")
     ed = date.today().strftime("%Y-%m-%d")
-    # 💰 兩種參數形式都試(不同 FinMind 版本 start_date vs date),任一回 200+data 即判付費有效,
-    #    避免「參數寫法不對」被誤判成「付費失效」。並印出真實 status/msg 供診斷(402=token 非付費/需付費;
-    #    400/422=參數問題;200-空=日期無資料)。
+    base = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockTradingDailyReport&data_id=2330'
+    param_forms = (f'&start_date={sd}&end_date={ed}', f'&date={sd}')
+    # 💰 逐把 token 直接試(不靠輪動,避免「第一把是舊/壞 token」擋住後面真正的付費金鑰);
+    #    每把再試兩種參數形式。任一回 200+data 即判付費有效。印出每把 token 的真實 status/msg 供診斷:
+    #    · 402/403 = token 非付費(需升級 Sponsor);400 "Token is illegal" = token 字串本身貼錯/不完整;
+    #    · 200-空 = 日期無資料。
     last_status, last_msg = None, ''
-    for probe in (
-        f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockTradingDailyReport&data_id=2330&start_date={sd}&end_date={ed}',
-        f'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockTradingDailyReport&data_id=2330&date={sd}',
-    ):
-        try:
-            j = fm_request(probe, timeout=15) or {}
-        except Exception as _e:
-            last_status, last_msg = 'EXC', str(_e)[:80]
-            continue
-        last_status, last_msg = j.get('status'), str(j.get('msg', ''))[:100]
-        if j.get('status') == 200 and (j.get('data') or []):
-            FINMIND_PAID = True
+    per_token = []            # [(遮罩後 token, status, msg)]
+    for ti, tok in enumerate(FINMIND_TOKENS):
+        tok_status, tok_msg = None, ''
+        for pf in param_forms:
+            try:
+                res = http_session.get(base + pf + f'&token={tok}', headers=_rnd_hdrs(), timeout=15)
+                j = res.json() if res is not None else {}
+            except Exception as _e:
+                tok_status, tok_msg = 'EXC', str(_e)[:80]
+                continue
+            tok_status, tok_msg = j.get('status'), str(j.get('msg', ''))[:80]
+            if j.get('status') == 200 and (j.get('data') or []):
+                FINMIND_PAID = True
+                break
+        mask = (tok[:6] + '…' + tok[-4:]) if len(tok) > 12 else '(短)'
+        per_token.append((mask, tok_status, tok_msg))
+        last_status, last_msg = tok_status, tok_msg
+        if FINMIND_PAID:
+            print(f'💰 FinMind:付費(Sponsor)有效 → 分點/擴充覆蓋全開(token #{ti+1} {mask} status=200)')
             break
-    else:
-        FINMIND_PAID = False
-    if FINMIND_PAID:
-        print(f'💰 FinMind:付費(Sponsor)有效 → 分點/擴充覆蓋全開(probe status={last_status})')
-    else:
-        hint = ('token 非付費/需付費 → 請確認 GitHub Secrets 的 FINMIND_TOKENS 已換成付費金鑰' if last_status in (402, 403)
-                else '參數/連線問題,非付費層級判定' if last_status not in (None, 200)
-                else '連不到/回空')
-        print(f'⚠️ FinMind:付費失效/未生效(probe status={last_status} msg={last_msg}｜{hint})→ 自動降版免費模式(分點只用 BSR、覆蓋縮回 100)')
+    if not FINMIND_PAID:
+        illegal = any('illegal' in (m or '').lower() for _, _, m in per_token)
+        need_pay = any(s in (402, 403) for _, s, _ in per_token)
+        hint = ('token 字串貼錯/不完整(FinMind 回 illegal)→ 請重貼完整金鑰到 GitHub Secrets FINMIND_TOKENS' if illegal
+                else 'token 有效但非付費層級 → 需升級 FinMind Sponsor' if need_pay
+                else '參數/連線問題' if last_status not in (None, 200) else '連不到/回空')
+        detail = ' ; '.join(f'{m}:status={s}/{msg}' for m, s, msg in per_token)
+        print(f'⚠️ FinMind:付費失效/未生效({len(FINMIND_TOKENS)} 把 token 全試過｜{hint})→ 自動降版免費模式(分點只用 BSR)')
+        print(f'   逐把探測:{detail}')
     return FINMIND_PAID
 
 
