@@ -4068,10 +4068,12 @@ if __name__ == '__main__':
         init_db()   # DB 初始化屬前提,失敗就該中止(不吞)
         # 不跑 cleanup_weekend_rows / run / export_json(OHLCV 由 mine matrix 跑)
         # 🛡️ 各步驟彼此獨立 → 逐步包 _safe_step,一步失敗仍續跑其餘(不讓整批停更)
-        _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)
-        _safe_step("八大行庫 fetch_govbank_buysell", fetch_govbank_buysell)   # 💎 付費:官股護盤
-        _safe_step("借券空方 fetch_securities_lending", fetch_securities_lending)  # 💎 付費:借券做空
-        _safe_step("主力雷達 build_broker_radar", build_broker_radar)         # 🕵️ 後處理 chips → 主力排行
+        # ⚡ V68.3.1 順序修正:govbank/借券「快」(各~1-2分)先跑,避免被最慢的分點迴圈(~29分)
+        #    卡到 chips job 的 30 分 timeout 外(前版 govbank 排分點後→從沒跑到就超時,govbank.json 一直缺)
+        _safe_step("八大行庫 fetch_govbank_buysell", fetch_govbank_buysell)   # 💎 付費:官股護盤(先跑,快)
+        _safe_step("借券空方 fetch_securities_lending", fetch_securities_lending)  # 💎 付費:借券做空(先跑,快)
+        _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)           # 🐢 最慢(分點+基本面 ~29分)放後面
+        _safe_step("主力雷達 build_broker_radar", build_broker_radar)         # 🕵️ 後處理 chips → 主力排行(需在 chips 後)
         _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)
         _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)
         _safe_step("雷達掃描 build_radar_cache", build_radar_cache)   # 讀 SQLite 既有 OHLCV(從 origin/data restore)

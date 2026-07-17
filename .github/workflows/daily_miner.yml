@@ -157,7 +157,7 @@ jobs:
   chips_miner:
     name: 🎯 Chips + Fundamentals 採礦(平行)
     runs-on: ubuntu-latest
-    timeout-minutes: 30   # chips/fundamentals 不該超過 30 分,超過代表 FinMind 限流或 bug
+    timeout-minutes: 45   # V68.3.1 30→45:加了八大行庫+借券+分點16天均價+全基本面後 30 分不夠(govbank 從沒跑到就超時);採礦節點本來就 90 分,45 仍在總預算內
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4.2.2
