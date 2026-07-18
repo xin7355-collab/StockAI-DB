@@ -4124,6 +4124,100 @@ def build_broker_radar():
     print(f"  ✅ 主力雷達:買超榜 {len(buy_rank)} / 賣超榜 {len(sell_rank)} / 分點 {len(brokers)} 家 → data/broker_radar.json")
 
 
+def build_broker_perf():
+    """🧙 券商分點浮動勝率榜 → data/broker_perf.json
+    依各股 chips periods 的分點買超均價(avg)vs SQLite 最新收盤,算每個分點的「浮動勝率 + 平均報酬」。
+    短線=1d 窗(當日買超均價 vs 收盤)、波段=20d 窗(20日累積買超均價 vs 現價)。純後處理零 API。
+    註:這是「近期買超部位的浮動勝率」(非歷史逐筆前瞻回測),用現有資料即時可算;之後可再擴充成累積前瞻版。"""
+    cdir = Path(DATA_DIR) / 'chips'
+    if not cdir.exists():
+        print("  ⏭️ 券商勝率榜:無 chips 目錄,跳過")
+        return
+    close_cache: dict = {}
+
+    def latest_close(sym):
+        if sym in close_cache:
+            return close_cache[sym]
+        c = None
+        try:
+            conn = get_db_conn()
+            row = conn.execute(
+                "SELECT close FROM stock_history WHERE symbol=? AND volume>0 "
+                "ORDER BY trade_date DESC LIMIT 1", (sym,)).fetchone()
+            conn.close()
+            if row and row[0] and float(row[0]) > 0:
+                c = float(row[0])
+        except Exception:
+            c = None
+        close_cache[sym] = c
+        return c
+
+    short_agg: dict = {}
+    swing_agg: dict = {}
+
+    def add(agg, name, ret):
+        a = agg.setdefault(name, {'wins': 0, 'total': 0, 'ret': 0.0})
+        a['total'] += 1
+        a['ret'] += ret
+        if ret > 0:
+            a['wins'] += 1
+
+    for f in cdir.glob('*.json'):
+        sym = f.stem
+        try:
+            obj = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        periods = obj.get('periods')
+        if not isinstance(periods, dict):
+            continue
+        cur = None
+        got_cur = False
+        for win, agg in (('1d', short_agg), ('20d', swing_agg)):
+            per = periods.get(win) or {}
+            buys = per.get('buy') or []
+            if not buys:
+                continue
+            if not got_cur:
+                cur = latest_close(sym)
+                got_cur = True
+            if not cur:
+                break   # 無現價 → 這股兩窗都跳過
+            for x in buys:
+                name = x.get('broker_name')
+                avg = x.get('avg')
+                net = int(x.get('net') or 0)
+                if not name or str(name).isdigit() or not avg or float(avg) <= 0 or net <= 0:
+                    continue
+                ret = (cur - float(avg)) / float(avg) * 100
+                if ret < -30 or ret > 30:   # 濾除權息跳空/髒資料極端值
+                    continue
+                add(agg, name, ret)
+
+    def rank(agg, min_pos=8):
+        rows = []
+        for name, a in agg.items():
+            if a['total'] < min_pos:
+                continue
+            rows.append({'broker': name,
+                         'win_rate': round(a['wins'] / a['total'] * 100, 1),
+                         'avg_ret': round(a['ret'] / a['total'], 2),
+                         'count': a['total']})
+        rows.sort(key=lambda r: (-r['win_rate'], -r['avg_ret']))
+        return rows[:30]
+
+    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+               'short': rank(short_agg), 'swing': rank(swing_agg)}
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    tgt = Path(DATA_DIR) / 'broker_perf.json'
+    tmp = tgt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(tmp), str(tgt))
+    print(f"  ✅ 券商勝率榜:短線 {len(payload['short'])} / 波段 {len(payload['swing'])} 家 → data/broker_perf.json")
+
+
 if __name__ == '__main__':
     # V15.0:ONLY_CHIPS=1 → 跳過 OHLCV 採礦,直接跑全市場 fundamentals + chips + futures + macro
     #        (對應 daily_miner.yml 新增的 chips_miner 平行 job)
@@ -4140,6 +4234,7 @@ if __name__ == '__main__':
         _safe_step("集保分級 fetch_holder_distribution", fetch_holder_distribution)  # 📊 付費:籌碼分佈大戶/散戶(先跑,快)
         _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)           # 🐢 最慢(分點+基本面 ~29分)放後面
         _safe_step("主力雷達 build_broker_radar", build_broker_radar)         # 🕵️ 後處理 chips → 主力排行(需在 chips 後)
+        _safe_step("券商勝率榜 build_broker_perf", build_broker_perf)         # 🧙 後處理 chips + SQLite 現價 → 分點浮動勝率榜(需在 chips 後)
         _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)
         _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)
         _safe_step("雷達掃描 build_radar_cache", build_radar_cache)   # 讀 SQLite 既有 OHLCV(從 origin/data restore)
