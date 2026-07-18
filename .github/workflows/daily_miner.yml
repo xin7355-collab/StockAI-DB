@@ -224,6 +224,7 @@ jobs:
             data/govbank.json
             data/lending.json
             data/broker_radar.json
+            data/holders.json
             broker_names.json
             futures_cache.json
             macro_cache.json

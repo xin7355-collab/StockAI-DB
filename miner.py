@@ -4008,6 +4008,69 @@ def fetch_securities_lending():
     print(f"  ✅ 借券空方:{len(out)} 檔(借券暴增 {surging} 檔)→ data/lending.json")
 
 
+def fetch_holder_distribution():
+    """📊 集保股權持股分級 → data/holders.json(籌碼分佈:千張大戶/散戶 + 週趨勢)。
+    欄位經 finmind_check 探針對 2330 實測:level(more than 1,000,001=千張大戶)/people/percent/unit;週頻(每週五結算)。
+    HoldingSharesPer 是 Backer 層級,前端匿名抓不到 → 靠採礦 Sponsor 金鑰產靜態檔。逐檔觀察清單帶 data_id+start_date 取近~10週。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 集保分級:未付費,跳過")
+        return
+    DS = 'TaiwanStockHoldingSharesPer'
+    BIG = 'more than 1,000,001'
+    RETAIL = {'1-999', '1,000-5,000', '5,001-10,000'}
+    sd = (date.today() - timedelta(days=75)).strftime('%Y-%m-%d')
+    out: dict = {}
+    for sym in CHIP_WATCHLIST:
+        jj = fm_paid_get('data', f'dataset={DS}&data_id={sym}&start_date={sd}') or {}
+        rows = jj.get('data') or []
+        time.sleep(0.15)
+        if not rows:
+            continue
+        by_date: dict = {}
+        for r in rows:
+            by_date.setdefault(str(r.get('date') or ''), {})[str(r.get('HoldingSharesLevel') or '')] = r
+        dates = sorted(d for d in by_date.keys() if d)
+        if not dates:
+            continue
+
+        def _pct(d, lv):
+            try:
+                return float((by_date[d].get(lv) or {}).get('percent') or 0)
+            except Exception:
+                return 0.0
+        big_at = lambda d: _pct(d, BIG)
+        retail_at = lambda d: sum(_pct(d, lv) for lv in RETAIL)
+        latest = dates[-1]
+        prev = dates[-2] if len(dates) >= 2 else None
+        big_now = round(big_at(latest), 2)
+        big_prev = round(big_at(prev), 2) if prev else None
+        retail_now = round(retail_at(latest), 1)
+        mid_now = round(max(0.0, 100.0 - big_now - retail_now), 1)
+        big_row = by_date[latest].get(BIG) or {}
+        try:
+            people = int(float(big_row.get('people') or 0))
+        except Exception:
+            people = 0
+        try:
+            lots = round(float(big_row.get('unit') or 0) / 1000)
+        except Exception:
+            lots = 0
+        hist = [round(big_at(d), 2) for d in dates[-8:]]
+        out[sym] = {'d': latest, 'big': big_now, 'bigPrev': big_prev,
+                    'retail': retail_now, 'mid': mid_now, 'people': people, 'lots': lots, 'hist': hist}
+    if len(out) < 5:
+        print(f"  ⚠️ 集保分級只算到 {len(out)} 檔 — 保留舊檔不覆寫")
+        return
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'data': out}
+    tgt = Path(DATA_DIR) / 'holders.json'
+    tmp = tgt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(tmp), str(tgt))
+    adding = sum(1 for v in out.values() if v.get('bigPrev') is not None and v['big'] - v['bigPrev'] >= 0.3)
+    print(f"  ✅ 集保籌碼分佈:{len(out)} 檔(大戶加碼 {adding} 檔)→ data/holders.json")
+
+
 def build_broker_radar():
     """🕵️ 主力分點雷達 → data/broker_radar.json:彙整各股 data/chips/*.json 今日(1d)分點,
     產「今日主力最猛買超/賣超股票排行」+「各分點跨股買賣」(跟單神器)。純後處理零 API。"""
@@ -4074,6 +4137,7 @@ if __name__ == '__main__':
         #    卡到 chips job 的 30 分 timeout 外(前版 govbank 排分點後→從沒跑到就超時,govbank.json 一直缺)
         _safe_step("八大行庫 fetch_govbank_buysell", fetch_govbank_buysell)   # 💎 付費:官股護盤(先跑,快)
         _safe_step("借券空方 fetch_securities_lending", fetch_securities_lending)  # 💎 付費:借券做空(先跑,快)
+        _safe_step("集保分級 fetch_holder_distribution", fetch_holder_distribution)  # 📊 付費:籌碼分佈大戶/散戶(先跑,快)
         _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)           # 🐢 最慢(分點+基本面 ~29分)放後面
         _safe_step("主力雷達 build_broker_radar", build_broker_radar)         # 🕵️ 後處理 chips → 主力排行(需在 chips 後)
         _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)
