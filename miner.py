@@ -4125,43 +4125,59 @@ def build_broker_radar():
 
 
 def build_broker_perf():
-    """🧙 券商分點浮動勝率榜 → data/broker_perf.json
-    依各股 chips periods 的分點買超均價(avg)vs SQLite 最新收盤,算每個分點的「浮動勝率 + 平均報酬」。
-    短線=1d 窗(當日買超均價 vs 收盤)、波段=20d 窗(20日累積買超均價 vs 現價)。純後處理零 API。
-    註:這是「近期買超部位的浮動勝率」(非歷史逐筆前瞻回測),用現有資料即時可算;之後可再擴充成累積前瞻版。"""
+    """🧙 券商分點勝率榜 → data/broker_perf.json(前瞻回測 + 即時浮動雙軌)
+    ① 累積:每日把各股當日(1d)分點買超(broker, sym, 買超均價)存進 data/broker_signals.json(滾動 ~45 交易日)。
+    ② 前瞻回測:對每筆歷史訊號,查 SQLite 該股訊號日之後 1/5/20 交易日收盤 → 隔日沖/短線/波段的勝率+平均報酬。
+    ③ 即時浮動:當日/20日買超均價 vs 最新收盤(day-1 就有資料,前瞻累積夠之前先頂著)。
+    純後處理零 API;需 chips + SQLite stock_history(chips job 已 restore origin/data)。"""
     cdir = Path(DATA_DIR) / 'chips'
     if not cdir.exists():
         print("  ⏭️ 券商勝率榜:無 chips 目錄,跳過")
         return
-    close_cache: dict = {}
 
-    def latest_close(sym):
-        if sym in close_cache:
-            return close_cache[sym]
-        c = None
+    series_cache: dict = {}
+
+    def get_series(sym):
+        if sym in series_cache:
+            return series_cache[sym]
+        s = []
         try:
             conn = get_db_conn()
-            row = conn.execute(
-                "SELECT close FROM stock_history WHERE symbol=? AND volume>0 "
-                "ORDER BY trade_date DESC LIMIT 1", (sym,)).fetchone()
+            rows = conn.execute(
+                "SELECT trade_date, close FROM stock_history WHERE symbol=? AND volume>0 "
+                "ORDER BY trade_date ASC", (sym,)).fetchall()
             conn.close()
-            if row and row[0] and float(row[0]) > 0:
-                c = float(row[0])
+            s = [(r[0], float(r[1])) for r in rows if r[1] and float(r[1]) > 0]
         except Exception:
-            c = None
-        close_cache[sym] = c
-        return c
+            s = []
+        series_cache[sym] = s
+        return s
 
-    short_agg: dict = {}
-    swing_agg: dict = {}
+    def latest_close(sym):
+        s = get_series(sym)
+        return s[-1][1] if s else None
 
-    def add(agg, name, ret):
+    # ── ① 讀既有累積訊號(chips job 已從 origin/data restore data/)──
+    sig_path = Path(DATA_DIR) / 'broker_signals.json'
+    try:
+        hist = json.loads(sig_path.read_text(encoding='utf-8')) if sig_path.exists() else []
+    except Exception:
+        hist = []
+    if not isinstance(hist, list):
+        hist = []
+
+    float_short: dict = {}
+    float_swing: dict = {}
+
+    def fadd(agg, name, ret):
         a = agg.setdefault(name, {'wins': 0, 'total': 0, 'ret': 0.0})
         a['total'] += 1
         a['ret'] += ret
         if ret > 0:
             a['wins'] += 1
 
+    todays = []
+    seen_dates = set()
     for f in cdir.glob('*.json'):
         sym = f.stem
         try:
@@ -4173,30 +4189,67 @@ def build_broker_perf():
         periods = obj.get('periods')
         if not isinstance(periods, dict):
             continue
-        cur = None
-        got_cur = False
-        for win, agg in (('1d', short_agg), ('20d', swing_agg)):
-            per = periods.get(win) or {}
-            buys = per.get('buy') or []
-            if not buys:
+        sig_date = str(obj.get('data_date') or '')[:10]
+        cur = latest_close(sym)
+        # 即時浮動(1d / 20d 買超均價 vs 現價)
+        for win, agg in (('1d', float_short), ('20d', float_swing)):
+            buys = (periods.get(win) or {}).get('buy') or []
+            if not buys or not cur:
                 continue
-            if not got_cur:
-                cur = latest_close(sym)
-                got_cur = True
-            if not cur:
-                break   # 無現價 → 這股兩窗都跳過
             for x in buys:
-                name = x.get('broker_name')
-                avg = x.get('avg')
-                net = int(x.get('net') or 0)
+                name = x.get('broker_name'); avg = x.get('avg'); net = int(x.get('net') or 0)
                 if not name or str(name).isdigit() or not avg or float(avg) <= 0 or net <= 0:
                     continue
                 ret = (cur - float(avg)) / float(avg) * 100
-                if ret < -30 or ret > 30:   # 濾除權息跳空/髒資料極端值
+                if -30 <= ret <= 30:
+                    fadd(agg, name, ret)
+        # 累積訊號(當日 1d 買超前 5 大分點)
+        if sig_date:
+            seen_dates.add(sig_date)
+            for x in ((periods.get('1d') or {}).get('buy') or [])[:5]:
+                name = x.get('broker_name'); avg = x.get('avg'); net = int(x.get('net') or 0)
+                if not name or str(name).isdigit() or not avg or float(avg) <= 0 or net <= 0:
                     continue
-                add(agg, name, ret)
+                todays.append({'d': sig_date, 'b': name, 's': sym, 'p': round(float(avg), 2)})
 
-    def rank(agg, min_pos=8):
+    # 去掉今日既有(避免同日重複累積)再併入,滾動保留最近 45 交易日
+    if seen_dates:
+        hist = [h for h in hist if h.get('d') not in seen_dates]
+    hist.extend(todays)
+    keep_dates = set(sorted({h['d'] for h in hist if h.get('d')}, reverse=True)[:45])
+    hist = [h for h in hist if h.get('d') in keep_dates]
+
+    # ── ② 前瞻回測(訊號日均價 → N 交易日後收盤)──
+    HZ = (('daytrade', 1), ('short', 5), ('swing', 20))
+    fwd = {k: {} for k, _ in HZ}
+    for h in hist:
+        sym = h.get('s'); entry = h.get('p'); d = h.get('d')
+        if not sym or not entry or entry <= 0 or not d:
+            continue
+        series = get_series(sym)
+        if not series:
+            continue
+        idx = None
+        for i, (dt, _c) in enumerate(series):
+            if dt >= d:
+                idx = i
+                break
+        if idx is None:
+            continue
+        for k, n in HZ:
+            j = idx + n
+            if j >= len(series):
+                continue   # 訊號太新,還沒到 N 交易日後
+            ret = (series[j][1] - entry) / entry * 100
+            if ret < -40 or ret > 60:
+                continue
+            a = fwd[k].setdefault(h['b'], {'wins': 0, 'total': 0, 'ret': 0.0})
+            a['total'] += 1
+            a['ret'] += ret
+            if ret > 0:
+                a['wins'] += 1
+
+    def rank(agg, min_pos):
         rows = []
         for name, a in agg.items():
             if a['total'] < min_pos:
@@ -4208,14 +4261,22 @@ def build_broker_perf():
         rows.sort(key=lambda r: (-r['win_rate'], -r['avg_ret']))
         return rows[:30]
 
-    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-               'short': rank(short_agg), 'swing': rank(swing_agg)}
+    payload = {
+        'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'daytrade': rank(fwd['daytrade'], 12),
+        'short': rank(fwd['short'], 12),
+        'swing': rank(fwd['swing'], 10),
+        'float_short': rank(float_short, 8),
+        'float_swing': rank(float_swing, 8),
+        'signals': len(hist), 'days': len(keep_dates),
+    }
     Path(DATA_DIR).mkdir(exist_ok=True)
-    tgt = Path(DATA_DIR) / 'broker_perf.json'
-    tmp = tgt.with_suffix('.json.tmp')
-    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-    os.replace(str(tmp), str(tgt))
-    print(f"  ✅ 券商勝率榜:短線 {len(payload['short'])} / 波段 {len(payload['swing'])} 家 → data/broker_perf.json")
+    for name, obj in (('broker_signals.json', hist), ('broker_perf.json', payload)):
+        tgt = Path(DATA_DIR) / name
+        tmp = Path(str(tgt) + '.tmp')
+        tmp.write_text(json.dumps(obj, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        os.replace(str(tmp), str(tgt))
+    print(f"  ✅ 券商勝率榜:訊號累積 {len(hist)} 筆/{len(keep_dates)} 日;前瞻 隔日沖{len(payload['daytrade'])}/短線{len(payload['short'])}/波段{len(payload['swing'])}、浮動{len(payload['float_swing'])} → broker_perf.json")
 
 
 if __name__ == '__main__':
