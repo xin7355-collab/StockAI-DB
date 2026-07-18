@@ -3909,22 +3909,24 @@ def fetch_govbank_buysell():
     if not detect_finmind_paid():
         print("  ⏭️ 八大行庫:未付費,跳過(降版)")
         return
-    sd = (date.today() - timedelta(days=16)).strftime('%Y-%m-%d')
-    ed = date.today().strftime('%Y-%m-%d')
-    # ✅ 實測 FinMind enum 確認正確名(文件的小寫 Taiwanstock… 是錯的):TaiwanStockGovernmentBankBuySell
+    # ✅ V68.3.4 實測 FinMind 探針定案(finmind_check.py):
+    #    · 正確名 TaiwanStockGovernmentBankBuySell(大寫 S;文件小寫 Taiwanstock… 是錯的)
+    #    · 這是 single-day 資料集:只帶「單一 start_date」、不帶 end_date(帶了回 400「size too large, we only send one day data」)、不帶 data_id(帶了回 400「data_id don't provide」)
+    #    · 一次回全市場當日八大行庫買賣 → 逐交易日累積近 ~11 日
     DS = 'TaiwanStockGovernmentBankBuySell'
-    j = fm_paid_get('data', f'dataset={DS}&start_date={sd}&end_date={ed}') or {}
-    rows = j.get('data') or []
-    if not rows:   # 全市場 bulk 無資料 → 改逐檔觀察清單補(有些 dataset 需 data_id)
-        print(f"  🏦 八大行庫 bulk status={j.get('status')} msg={str(j.get('msg',''))[:40]} → 改逐檔")
-        for sym in CHIP_WATCHLIST:
-            jj = fm_paid_get('data', f'dataset={DS}&data_id={sym}&start_date={sd}&end_date={ed}') or {}
-            rr = jj.get('data') or []
-            if rr:
-                rows.extend(rr)
-            time.sleep(0.1)
+    rows = []
+    seen_days = 0
+    for d in _recent_finmind_dates(16):
+        if seen_days >= 11:
+            break
+        jj = fm_paid_get('data', f'dataset={DS}&start_date={d}') or {}
+        rr = jj.get('data') or []
+        if rr:
+            rows.extend(rr)
+            seen_days += 1
+        time.sleep(0.12)   # 溫柔節流(付費額度高,仍防打太快)
     if not rows:
-        print("  ⚠️ 八大行庫:bulk + 逐檔皆無資料 — 保留舊檔")
+        print("  ⚠️ 八大行庫:逐日單日抓皆無資料 — 保留舊檔")
         return
     by_stock: dict = {}
     for r in rows:
