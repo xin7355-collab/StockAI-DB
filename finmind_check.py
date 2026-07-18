@@ -131,6 +131,32 @@ def main():
             print('   enum dump 例外', str(e)[:80])
         print('\n' + '=' * 60)
 
+        # 🏦 八大行庫專項探針:大小寫 + bulk/per-stock + date vs range,一次定案正確接法
+        print('\n' + '=' * 60)
+        print('🏦 八大行庫(govbank)接法探針 — 找哪個組合回得到資料')
+        print('=' * 60)
+        import requests as _rq3
+        gv_sd = (date.today() - timedelta(days=16)).strftime('%Y-%m-%d')
+        gv_ed = date.today().strftime('%Y-%m-%d')
+        gv_variants = [
+            ('大寫S bulk range',   f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&start_date={gv_sd}&end_date={gv_ed}'),
+            ('小寫s bulk range',   f'{BASE}/data?dataset=TaiwanstockGovernmentBankBuySell&start_date={gv_sd}&end_date={gv_ed}'),
+            ('大寫S 2330 range',   f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&data_id=2330&start_date={gv_sd}&end_date={gv_ed}'),
+            ('小寫s 2330 range',   f'{BASE}/data?dataset=TaiwanstockGovernmentBankBuySell&data_id=2330&start_date={gv_sd}&end_date={gv_ed}'),
+            ('小寫s bulk single',  f'{BASE}/data?dataset=TaiwanstockGovernmentBankBuySell&start_date={gv_ed}'),
+        ]
+        for label, url in gv_variants:
+            try:
+                r = _rq3.get(url, headers=hdr, timeout=20)
+                j = r.json(); st = j.get('status'); rows = j.get('data') or []
+                extra = ''
+                if rows:
+                    extra = f'  欄位={list(rows[0].keys())}  樣本={json.dumps(rows[0], ensure_ascii=False)[:160]}'
+                print(f'▸ {label}: status={st}  rows={len(rows)}  msg={str(j.get("msg",""))[:50]}{extra}')
+            except Exception as e:
+                print(f'▸ {label}: 例外 {str(e)[:80]}')
+        print('=' * 60)
+
 
 if __name__ == '__main__':
     main()
