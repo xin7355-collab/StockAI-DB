@@ -138,21 +138,25 @@ def main():
         import requests as _rq3
         gv_sd = (date.today() - timedelta(days=16)).strftime('%Y-%m-%d')
         gv_ed = date.today().strftime('%Y-%m-%d')
+        # 近幾個交易日單日測(size 400 通常代表它是 single-day 資料集、不吃 range)
+        gv_days = [(date.today() - timedelta(days=k)).strftime('%Y-%m-%d') for k in range(1, 8)]
         gv_variants = [
-            ('大寫S bulk range',   f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&start_date={gv_sd}&end_date={gv_ed}'),
-            ('小寫s bulk range',   f'{BASE}/data?dataset=TaiwanstockGovernmentBankBuySell&start_date={gv_sd}&end_date={gv_ed}'),
-            ('大寫S 2330 range',   f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&data_id=2330&start_date={gv_sd}&end_date={gv_ed}'),
-            ('小寫s 2330 range',   f'{BASE}/data?dataset=TaiwanstockGovernmentBankBuySell&data_id=2330&start_date={gv_sd}&end_date={gv_ed}'),
-            ('小寫s bulk single',  f'{BASE}/data?dataset=TaiwanstockGovernmentBankBuySell&start_date={gv_ed}'),
+            ('大寫S bulk single start_date', f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&start_date={gv_ed}'),
+            ('大寫S 2330 single start_date', f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&data_id=2330&start_date={gv_ed}'),
+            ('大寫S bulk date=',            f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&date={gv_ed}'),
+            ('大寫S 2330 近3日 range',       f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&data_id=2330&start_date={(date.today()-timedelta(days=3)).strftime("%Y-%m-%d")}&end_date={gv_ed}'),
         ]
+        # 逐日 bulk single 掃前 7 天,找哪天有資料(避開非交易日)
+        for d in gv_days:
+            gv_variants.append((f'大寫S bulk single {d}', f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&start_date={d}'))
         for label, url in gv_variants:
             try:
                 r = _rq3.get(url, headers=hdr, timeout=20)
                 j = r.json(); st = j.get('status'); rows = j.get('data') or []
                 extra = ''
                 if rows:
-                    extra = f'  欄位={list(rows[0].keys())}  樣本={json.dumps(rows[0], ensure_ascii=False)[:160]}'
-                print(f'▸ {label}: status={st}  rows={len(rows)}  msg={str(j.get("msg",""))[:50]}{extra}')
+                    extra = f'  欄位={list(rows[0].keys())}  樣本={json.dumps(rows[0], ensure_ascii=False)[:180]}'
+                print(f'▸ {label}: status={st}  rows={len(rows)}  msg={str(j.get("msg",""))[:120]}{extra}')
             except Exception as e:
                 print(f'▸ {label}: 例外 {str(e)[:80]}')
         print('=' * 60)
