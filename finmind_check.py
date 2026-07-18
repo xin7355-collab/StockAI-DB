@@ -187,6 +187,29 @@ def main():
                 print(f'\n▸ {nm}: 例外 {str(e)[:80]}')
         print('=' * 60)
 
+        # 📐 集保股權持股分級(籌碼分佈用:千張大戶/散戶怎麼分,絕不能猜)
+        print('\n' + '=' * 60)
+        print('📐 集保股權持股分級 HoldingSharesPer 實測(2330,近60日)')
+        print('=' * 60)
+        import requests as _rq5
+        hd_sd = (date.today() - timedelta(days=60)).strftime('%Y-%m-%d')
+        try:
+            r = _rq5.get(f'{BASE}/data?dataset=TaiwanStockHoldingSharesPer&data_id=2330&start_date={hd_sd}', headers=hdr, timeout=25)
+            j = r.json(); rows = j.get('data') or []
+            print(f'▸ status={j.get("status")}  rows={len(rows)}  msg={str(j.get("msg",""))[:60]}')
+            if rows:
+                print(f'   欄位: {list(rows[0].keys())}')
+                latest = max(r0.get('date', '') for r0 in rows)
+                print(f'   最新日 {latest} 各分級:')
+                for r0 in rows:
+                    if r0.get('date') == latest:
+                        print(f'     level={r0.get("HoldingSharesLevel")}  people={r0.get("people")}  percent={r0.get("percent")}  unit={r0.get("unit")}')
+                dates = sorted(set(r0.get('date') for r0 in rows))
+                print(f'   共 {len(dates)} 個日期(週頻?):{dates[-4:]}')
+        except Exception as e:
+            print(f'▸ 例外 {str(e)[:80]}')
+        print('=' * 60)
+
 
 if __name__ == '__main__':
     main()
