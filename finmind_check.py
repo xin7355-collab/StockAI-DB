@@ -162,6 +162,31 @@ def main():
                 print(f'▸ {label}: 例外 {str(e)[:80]}')
         print('=' * 60)
 
+        # 📐 資產負債表 + 現金流量表「真實 type/origin_name」實測(給基本面頁 ROE/負債比/現金流用,不猜欄位)
+        print('\n' + '=' * 60)
+        print('📐 財報細項欄位實測(2330,近2年)→ 建 ROE/負債比/現金流 用')
+        print('=' * 60)
+        import requests as _rq4
+        fin_sd = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d')
+        for nm, ds in [('資產負債表 BalanceSheet', 'TaiwanStockBalanceSheet'),
+                       ('現金流量表 CashFlows', 'TaiwanStockCashFlowsStatement')]:
+            try:
+                r = _rq4.get(f'{BASE}/data?dataset={ds}&data_id=2330&start_date={fin_sd}', headers=hdr, timeout=25)
+                j = r.json(); rows = j.get('data') or []
+                print(f'\n▸ {nm}: status={j.get("status")}  rows={len(rows)}')
+                if rows:
+                    latest = max(r0.get('date', '') for r0 in rows)
+                    items = {}
+                    for r0 in rows:
+                        if r0.get('date') == latest:
+                            items[r0.get('type', '?')] = (r0.get('origin_name', ''), r0.get('value'))
+                    print(f'   最新季 {latest} 共 {len(items)} 個 type:')
+                    for t, (on, v) in sorted(items.items()):
+                        print(f'     {t}  ({on})  = {v}')
+            except Exception as e:
+                print(f'\n▸ {nm}: 例外 {str(e)[:80]}')
+        print('=' * 60)
+
 
 if __name__ == '__main__':
     main()
