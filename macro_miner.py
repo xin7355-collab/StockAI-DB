@@ -881,6 +881,11 @@ def fetch_sox():      return _fetch_yf_close("^SOX",     "費半")        # 半�
 def fetch_tsm_adr():  return _fetch_yf_close("TSM",      "台積電ADR")    # NYSE:TSM
 def fetch_asx_adr():  return _fetch_yf_close("ASX",      "日月光ADR")    # NYSE:ASX(ASE Tech)
 def fetch_umc_adr():  return _fetch_yf_close("UMC",      "聯電ADR")      # NYSE:UMC
+# 💡 V68.8.2 使用者要求:美股期貨(盤後即時風向,比昨收更即時)+ 美債 10 年殖利率(升=科技股壓力)
+def fetch_es_fut():   return _fetch_yf_close("ES=F",     "標普500期貨")   # 小 S&P 期貨
+def fetch_ym_fut():   return _fetch_yf_close("YM=F",     "道瓊期貨")     # 小道瓊期貨
+def fetch_nq_fut():   return _fetch_yf_close("NQ=F",     "那斯達克期貨")  # 小那斯達克期貨(半導體最連動)
+def fetch_ust10y():   return _fetch_yf_close("^TNX",     "美債10年殖利率") # close 值即殖利率%(如 4.25=4.25%)
 
 
 def fetch_twii_position():
@@ -1615,6 +1620,11 @@ def main():
         "tsm":            None, "tsm_chg_pct":    None, "tsm_error":    None,
         "asx":            None, "asx_chg_pct":    None, "asx_error":    None,
         "umc":            None, "umc_chg_pct":    None, "umc_error":    None,
+        # 💡 V68.8.2 美股期貨(盤後即時)+ 美債 10Y 殖利率
+        "es_fut":         None, "es_fut_chg_pct": None, "es_fut_error": None,
+        "ym_fut":         None, "ym_fut_chg_pct": None, "ym_fut_error": None,
+        "nq_fut":         None, "nq_fut_chg_pct": None, "nq_fut_error": None,
+        "ust10y":         None, "ust10y_chg_pct": None, "ust10y_error": None,
         # ── 🌡️ 景氣對策信號(Q2 自動,前端 fallback 手動下拉)──
         "business_signal": None,    # {light, score, month, source, error}
         # ── 🏭 美股產業 ETF 板塊對應(Q3 板塊輪動配 ETF)──
@@ -1697,14 +1707,19 @@ def main():
         ("台積電ADR",     "tsm",    fetch_tsm_adr),
         ("日月光ADR",     "asx",    fetch_asx_adr),
         ("聯電ADR",       "umc",    fetch_umc_adr),
+        ("標普期貨",       "es_fut", fetch_es_fut),      # 💡 V68.8.2 美股期貨(盤後即時)
+        ("道瓊期貨",       "ym_fut", fetch_ym_fut),
+        ("那指期貨",       "nq_fut", fetch_nq_fut),
+        ("美債10Y",       "ust10y", fetch_ust10y),      # 💡 V68.8.2 美債殖利率
     ]
     key_alias = {"gold": "gold_usd", "wti": "wti_oil", "dxy": "dxy",
                  "btc": "btc_usd", "vix": "vix", "nikkei": "nikkei",
                  "hsi": "hsi", "kospi": "kospi",
                  "sp500": "sp500", "nasdaq": "nasdaq",
-                 "dji": "dji", "sox": "sox", "tsm": "tsm", "asx": "asx", "umc": "umc"}
+                 "dji": "dji", "sox": "sox", "tsm": "tsm", "asx": "asx", "umc": "umc",
+                 "es_fut": "es_fut", "ym_fut": "ym_fut", "nq_fut": "nq_fut", "ust10y": "ust10y"}
     for i, (name, key, fn) in enumerate(big_player_fns, 9):
-        print(f"[{i}/18] {name}…")
+        print(f"[{i}] {name}…")
         val, chg, err = fn()
         out[key_alias[key]]      = val
         out[f"{key}_chg_pct"]    = chg
