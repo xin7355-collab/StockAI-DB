@@ -1,0 +1,45 @@
+name: 🔬 董監質押資料源探針 (insider probe)
+
+# 純驗證用:只跑 insider_probe.py,實測「GitHub Actions 環境能不能抓董監質押/內部人」。
+# 不碰 gh-pages / data 分支,零部署風險。push insider_probe.py / 本檔即自動跑。
+# 目的:確認 B 案(董監質押)資料源可行性 → 結果看 log + artifact,可行再正式做採礦。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "insider_probe.py"
+      - ".github/workflows/insider_probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 🔬 董監質押探針
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依套件
+        run: pip install requests --quiet
+
+      - name: 📂 建 data 目錄
+        run: mkdir -p data
+
+      - name: 🔍 執行董監質押資料源探針
+        run: python insider_probe.py || echo "⚠️ 非零退出(仍印出結果)"
+
+      - name: 📤 上傳探針結果 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: insider-probe-result
+          path: data/insider_probe_result.json
+          if-no-files-found: warn
