@@ -3941,6 +3941,7 @@ const app = {
         setTimeout(() => this._dailyDisposedAlertSweep(), 3000);
         // ⚡ V68.7.6 — 明早開 App:掃自選+庫存「昨天爆量大漲/漲停」→ 推「今天隔日沖客可能出貨」提醒(每日去重,只在盤前~盤中推)
         setTimeout(() => this._dailyOvernightAlertSweep(), 4500);
+        setTimeout(() => { try { this._dailyInsiderAlertSweep(); } catch (_) {} }, 5500);   // 🕵️ V68.8.6 內部人籌碼轉弱推播
         // 📐 V36.5 — 開 App(含盤後)掃 K棒戰法/量能型態推播(等 IDB K線就緒,localStorage 每日去重)
         setTimeout(() => this._kbarDailySweep(), 6000);
         // 🧙 V68.5.6 — 神分點跟單:每日開 App 掃訂閱分點今天買超哪些股 → 推播(localStorage 當日去重)
@@ -4020,6 +4021,39 @@ const app = {
         if (!alerts.length) return;
         alerts.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
         if (alerts.length > 3) this._fireAlert('⚡ 隔日沖盤點', `你有 ${alerts.length} 檔昨天爆量大漲/漲停,今天留意隔日沖賣壓,點🔔看歷史`, '');
+    },
+
+    // 🕵️ V68.8.6 — 每日開 App 掃「內部人籌碼轉弱」:自選+庫存中董監高質押(≥50%)/大戶連續減碼(≥3週)→ 推播
+    async _dailyInsiderAlertSweep() {
+        if (!this.settings.watchlistAlert) return;
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const today = this.getTodayStr();
+        if ((localStorage.getItem('proTerminalLastInsiderSweep') || '') === today) return;
+        const gb = window.location.href.split('?')[0].split('#')[0];
+        if (this._insiderCache === undefined) { try { const r = await fetch(new URL('data/insider.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); this._insiderCache = r.ok ? (await r.json()) : null; } catch (_) { this._insiderCache = null; } }
+        if (!this._holdersCache) { try { const r = await fetch(new URL('data/holders.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); this._holdersCache = r.ok ? (await r.json()) : { data: {} }; } catch (_) { this._holdersCache = { data: {} }; } }
+        try { localStorage.setItem('proTerminalLastInsiderSweep', today); } catch (_) {}
+        const fav = this.favGroups?.[this.activeGroupName] || [];
+        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const allSyms = [...new Set([...fav, ...inv.map(i => i.symbol).filter(Boolean)])];
+        if (!allSyms.length) return;
+        const alerts = [];
+        for (const sym of allSyms) {
+            const name = this.getStockName(sym) || sym;
+            const ins = (this._insiderCache && this._insiderCache.data) ? this._insiderCache.data[sym] : null;
+            if (ins && Number.isFinite(+ins.pledge_pct) && +ins.pledge_pct >= 50) {
+                alerts.push({ sym, title: `🏛️ 董監高質押｜${name}`, body: `${name}(${sym}) 董監質押比 ${(+ins.pledge_pct).toFixed(0)}% → 大股東拿一半以上股票借錢,股價大跌恐斷頭賣壓,高檔留意(配合位階看,非必然利空)` });
+                continue;   // 同股一則就好
+            }
+            const h = (this._holdersCache && this._holdersCache.data) ? this._holdersCache.data[sym] : null;
+            if (h && Array.isArray(h.hist) && h.hist.length >= 4) {
+                let dw = 0; for (let i = h.hist.length - 1; i > 0; i--) { if (+h.hist[i] < +h.hist[i - 1] - 0.05) dw++; else break; }
+                if (dw >= 3) alerts.push({ sym, title: `🚨 籌碼鬆動｜${name}`, body: `${name}(${sym}) 千張大戶連續 ${dw} 週減碼 → 大咖籌碼流出、散戶接手,留意跌破支撐(配合股價位階判)` });
+            }
+        }
+        if (!alerts.length) return;
+        alerts.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
+        if (alerts.length > 3) this._fireAlert('🕵️ 內部人籌碼盤點', `你有 ${alerts.length} 檔內部人籌碼轉弱(高質押/大戶減碼),點🔔看歷史`, '');
     },
 
     // 🧙 V68.5.6 — 神分點跟單訂閱(localStorage)+ 每日開 App sweep 推「訂閱分點今天買超哪些股」
@@ -26638,6 +26672,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     else                 featTags.push({ kind: '基本', text: `三率${_ups}升${3 - _ups}降`, tone: 'warn', jargon: '三率三升' });
                 }
             } else if (!this._fundCacheAll) { this._loadFundCache?.(); }  // 尚未載入 → 背景載入,下次刷新即顯
+        } catch (_) {}
+        // 🕵️ V68.8.6 內部人籌碼 badge:董監高質押(≥50%)/ 大戶連續減碼(≥3週)
+        try {
+            const _isym = this.currentSymbolId;
+            const _ins = (this._insiderCache && this._insiderCache.data) ? this._insiderCache.data[_isym] : null;
+            if (_ins && Number.isFinite(+_ins.pledge_pct) && +_ins.pledge_pct >= 50) featTags.push({ kind: '籌碼', text: `董監質押${(+_ins.pledge_pct).toFixed(0)}%`, tone: 'warn', jargon: '董監質押' });
+            else if (this._insiderCache === undefined) { try { const gb = window.location.href.split('?')[0].split('#')[0]; fetch(new URL('data/insider.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null).then(j => { this._insiderCache = j; }).catch(() => { this._insiderCache = null; }); } catch (_) {} }
+            const _h = (this._holdersCache && this._holdersCache.data) ? this._holdersCache.data[_isym] : null;
+            if (_h && Array.isArray(_h.hist) && _h.hist.length >= 4) { let dw = 0; for (let i = _h.hist.length - 1; i > 0; i--) { if (+_h.hist[i] < +_h.hist[i - 1] - 0.05) dw++; else break; } if (dw >= 3) featTags.push({ kind: '籌碼', text: `大戶連${dw}週減`, tone: 'warn', jargon: '籌碼鬆動' }); }
         } catch (_) {}
 
         // 🎯 5 級提醒制度(統一動作標籤,初學者一眼看懂該不該做)
