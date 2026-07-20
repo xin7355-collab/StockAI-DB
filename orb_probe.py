@@ -38,8 +38,9 @@ def _line(s):
 
 
 def _t(ts_ns):
-    """Shioaji ts(奈秒 epoch)→ 台北時間 datetime"""
-    return datetime.fromtimestamp(ts_ns / 1e9, tz=TW)
+    """Shioaji kbars ts(奈秒)已是台灣本地牆鐘時間(naive)→ 用 UTC 讀出即得正確時分(09:00~13:30),
+    不可再套 TW(+8)否則會變 17:00~21:30 → 害 13:00/13:25 時間閘門全誤判(實測 trig 全 0 的元凶)。"""
+    return datetime.fromtimestamp(ts_ns / 1e9, tz=timezone.utc)
 
 
 def find_contract(api, code):
