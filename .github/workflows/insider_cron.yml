@@ -1,0 +1,84 @@
+name: 🏛️ 董監質押採礦同步 (insider daily)
+
+# 每日跑 insider_miner.py → 產 data/insider.json(董監質押比/持股)同步到 gh-pages。
+# 資料源 TWSE OpenAPI t187ap11_L(探針實測 Actions 可達、每日更新、穩定 JSON)。
+# 不動 index.html / macro_risk.json,與其他 workflow 共存。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 20 * * *'   # 台北凌晨 04:00(董監持股每日出表,一天一次足夠)
+  push:
+    branches: [main]
+    paths:
+      - 'insider_miner.py'
+      - '.github/workflows/insider_cron.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: insider-cron
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依套件
+        run: pip install requests --quiet
+
+      - name: 📂 建 data 目錄
+        run: mkdir -p data
+
+      - name: 🏛️ 執行董監質押採礦
+        run: python insider_miner.py
+
+      - name: 📡 同步 data/insider.json 到 gh-pages
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ ! -f data/insider.json ]; then
+            echo "❌ insider.json 不存在(採礦失敗),跳過(保留舊檔)"
+            exit 0
+          fi
+
+          mkdir -p /tmp/insider
+          cp data/insider.json /tmp/insider/
+
+          push_with_retry() {
+            git fetch origin gh-pages
+            git checkout gh-pages
+            git reset --hard origin/gh-pages
+            mkdir -p data
+            cp /tmp/insider/insider.json data/insider.json
+            if git diff --quiet -- data/insider.json; then
+              echo "無變化,跳過 commit"
+              return 0
+            fi
+            git add data/insider.json
+            git commit -m "🏛️ insider daily sync $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push origin gh-pages
+          }
+
+          for i in 1 2 3; do
+            if push_with_retry; then
+              echo "✅ insider.json 已同步 (try $i)"
+              exit 0
+            fi
+            echo "⚠️ try $i 失敗(可能被其他 force-push 卡),重試..."
+            sleep $((i*3))
+          done
+
+          echo "❌ 連 3 次失敗,放棄(明天 cron 再試)"
+          exit 0
