@@ -4225,6 +4225,13 @@ def build_broker_book():
     from collections import Counter
     PERIODS = ('1d', '5d', '10d')
     book: dict = {}   # bid -> {'names':Counter, 'per':{p:{sym:{net,buy,sel,avg}}}}
+    sym_totbuy: dict = {}   # sym -> {p: 全市場當期總買超股數}(供算集中度,unit-safe 同源分點資料)
+    # 產業對照(供資金流向板塊;缺檔則略)
+    industry_map: dict = {}
+    try:
+        industry_map = json.loads((Path(DATA_DIR) / 'industry_map.json').read_text(encoding='utf-8')) or {}
+    except Exception:
+        industry_map = {}
     for f in cdir.glob('*.json'):
         sym = f.stem
         if not _valid_stock(sym):
@@ -4238,6 +4245,9 @@ def build_broker_book():
         pers = obj.get('periods')
         if not isinstance(pers, dict):
             continue
+        recs = obj.get('chips') or []
+        sym_totbuy[sym] = {wn: sum(int(r.get('tot_buy') or 0) for r in recs[-nd:] if isinstance(r, dict))
+                           for wn, nd in (('1d', 1), ('5d', 5), ('10d', 10))}
         for p in PERIODS:
             pd = pers.get(p)
             if not isinstance(pd, dict):
@@ -4311,14 +4321,28 @@ def build_broker_book():
                     it['beh'] = _behavior(it['sym'], per)
                     n1 = it['net']; n10 = (per.get('10d', {}).get(it['sym']) or {}).get('net', 0)
                     it['new'] = bool(n1 > 0 and n10 <= n1 * 1.25)   # 新卡位:部位幾乎全來自今天
+                    # 🎯 集中度/鎖籌:此分點買超股數佔全市場當日總買超 %(unit-safe,同源分點資料)
+                    tot = (sym_totbuy.get(it['sym']) or {}).get('1d', 0)
+                    it['conc'] = round(it['buy'] / tot * 100, 1) if tot > 0 else None
             out_per[p] = {'buy': buys, 'sell': sells}
         tot_buy_1d = sum(x['net'] for x in out_per['1d']['buy'])
         if not (out_per['1d']['buy'] or out_per['1d']['sell'] or out_per['5d']['buy'] or out_per['10d']['buy']):
             continue
+        # 💵 資金流向:今日總買超金額(股×均價,元)+ 板塊分布(top2 產業)
+        tot_buy_val = 0.0
+        sec_agg: dict = {}
+        for it in out_per['1d']['buy']:
+            val = (it.get('buy') or 0) * (it.get('avg') or 0)
+            tot_buy_val += val
+            ind = industry_map.get(it['sym'])
+            if ind:
+                sec_agg[ind] = sec_agg.get(ind, 0) + val
+        sectors = [{'name': k, 'val': int(v)} for k, v in sorted(sec_agg.items(), key=lambda x: -x[1])[:2]]
         brokers[bid] = {
             'id': bid, 'name': name, 'tags': _classify_broker(bid, name),
             'win': _match_perf(name), 'per': out_per,
             'tot_buy_1d': tot_buy_1d, 'n_buy_1d': len(out_per['1d']['buy']),
+            'tot_buy_val': int(tot_buy_val), 'sectors': sectors,
         }
 
     # ── 排行榜 ──────────────────────────────────────────────────────────────
@@ -4358,8 +4382,69 @@ def build_broker_book():
                                   'stocks': sorted(common)[:6], 'n': len(common)})
     alliances = sorted(alliances, key=lambda x: -x['n'])[:20]
 
+    # ── 🎯 跟單精選榜:合成「今日最值得跟的主力買盤」──────────────────────────
+    #   只取「高品質分點」(排隔日沖/避險/散戶大本營)× 好行為(布局/新卡位/留倉),
+    #   依 行為 + 歷史勝率 + 身分(官股/外資/投信/神秘) + 集中度 給分,同股多家好分點買 → 分數疊加。
+    picks: dict = {}
+    for b in lst:
+        tags = b['tags']
+        if any(t in tags for t in ('daytrade', 'hedge', 'retail_hub')):
+            continue
+        bw = _best_win(b)
+        for it in b['per']['1d']['buy']:
+            if str(it['sym']).startswith('00'):
+                continue   # 排 ETF(銀行/官股買 ETF=定期定額/護盤,非主力布局個股;精選只留真個股)
+            beh = it.get('beh')
+            if beh in ('churn', 'daytrade', 'flat'):
+                continue
+            sc = {'accumulate': 40, 'new': 25, 'hold': 12}.get(beh, 0)
+            if it.get('new'):
+                sc += 20
+            if bw >= 60:
+                sc += 30
+            elif bw >= 55:
+                sc += 20
+            elif bw >= 50:
+                sc += 10
+            if 'govbank' in tags:
+                sc += 20
+            if 'foreign' in tags:
+                sc += 15
+            if 'trust' in tags:
+                sc += 10
+            conc = it.get('conc') or 0
+            if conc >= 15:
+                sc += 15
+            elif conc >= 8:
+                sc += 8
+            if sc <= 0:
+                continue
+            pk = picks.setdefault(it['sym'], {'sym': it['sym'], 'score': 0, 'whos': []})
+            pk['score'] += sc
+            pk['whos'].append({'name': b['name'], 'beh': beh, 'new': bool(it.get('new')),
+                               'win': (bw if bw >= 0 else None), 'conc': it.get('conc'), 'tags': tags})
+    follow_picks = sorted(picks.values(), key=lambda x: -x['score'])[:20]
+    for fp in follow_picks:
+        fp['whos'] = sorted(fp['whos'], key=lambda w: -((w['win'] or 0)))[:5]
+        fp['n_broker'] = len(fp['whos'])
+        fp['score'] = round(fp['score'])
+
+    # ── ⚔️ 對敲/作價警示:同分點同股當日買賣都大(churn)──────────────────────
+    churn_list = []
+    for b in lst:
+        if 'hedge' in b['tags']:
+            continue   # 避險本來就大進大出,不算作價
+        for it in b['per']['1d']['buy']:
+            if str(it['sym']).startswith('00'):
+                continue   # 排 ETF(槓桿型 ETF 大進大出是常態,非作價)
+            if it.get('beh') == 'churn':
+                churn_list.append({'broker': b['name'], 'sym': it['sym'],
+                                   'buy': it.get('buy', 0), 'sel': it.get('sel', 0)})
+    churn_list = sorted(churn_list, key=lambda x: -(x['buy'] + x['sel']))[:15]
+
     payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-               'brokers': brokers, 'rank': rank, 'alliances': alliances}
+               'brokers': brokers, 'rank': rank, 'alliances': alliances,
+               'follow_picks': follow_picks, 'churn': churn_list}
     tgt = Path(DATA_DIR) / 'broker_book.json'; tmp = tgt.with_suffix('.json.tmp')
     tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     os.replace(str(tmp), str(tgt))
