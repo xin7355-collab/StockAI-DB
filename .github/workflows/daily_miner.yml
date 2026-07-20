@@ -294,6 +294,31 @@ jobs:
           path: .   # data/chips/, data/radar.json, broker_names.json, futures_cache.json 等同層展開
         continue-on-error: true   # chips_miner 若失敗(timeout/限流),仍部署 mine 結果
 
+      # 🧹 V68.9.9 使用者授權清理:data/chips/ 歷史累積 ~2.6 萬個「非股票代號」空垃圾檔
+      #    (權證/債券/ETN 如 020xxx / 01001T / 02001L,買賣超全空)。只刪 chips 目錄、
+      #    只刪「非 4碼股票 且 非 00 開頭 ETF」→ 真股票/ETF 一律保留;⚠️絕不動 data/ 本體
+      #    (data/ 有 day_trade/inst_rank/falcon_scores 等合法非股票代號檔,誤刪會壞前端)。
+      #    清完後 gh-pages + data 分支都不再帶垃圾(orphan force-push),下輪 archive 也不會再引入。
+      - name: 🧹 清理 chips 垃圾檔(權證/債券空檔,使用者授權)
+        run: |
+          python3 - <<'PY'
+          import glob, os
+          from pathlib import Path
+          def valid(s):
+              return (s.isdigit() and len(s) == 4) or s.startswith('00')
+          removed = kept = 0
+          for f in glob.glob('data/chips/*.json'):
+              sym = Path(f).stem
+              if valid(sym):
+                  kept += 1
+              else:
+                  try:
+                      os.remove(f); removed += 1
+                  except OSError:
+                      pass
+          print(f'🧹 chips 清理:刪除 {removed} 個非股票代號垃圾檔(權證/債券/ETN),保留 {kept} 個股票/ETF')
+          PY
+
       # V14.9 採礦加速 — 斧二:7 個獨立 deploy 階段腳本改 bash `&` 後台並行 + `wait`
       # 串行 ~2.75 分 (universal_radar 30s + macro 15s + radar_miner 30s + backtest 30s
       #              + walk_forward 20s + paper_trade 10s + etf_miner 30s)
