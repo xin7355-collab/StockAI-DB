@@ -226,6 +226,7 @@ jobs:
             data/lending.json
             data/broker_radar.json
             data/broker_perf.json
+            data/broker_book.json
             data/broker_signals.json
             data/holders.json
             broker_names.json

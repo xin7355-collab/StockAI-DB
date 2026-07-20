@@ -4187,6 +4187,185 @@ def build_broker_radar():
     print(f"  ✅ 主力雷達:買超榜 {len(buy_rank)} / 賣超榜 {len(sell_rank)} / 分點 {len(brokers)} 家 → data/broker_radar.json")
 
 
+# ── 外資/官股/隔日沖 分點名稱樣式(供屬性標籤) ──────────────────────────────
+_FOREIGN_KW = ('美林', '摩根', '高盛', '瑞銀', '野村', '港商', '花旗', '美商', '摩根士丹利',
+               '德意志', '麥格理', '里昂', '瑞信', '新加坡商', '法商', '摩根大通', 'jp', 'ubs')
+_GOVBANK_KW = ('合庫', '合作金庫', '臺灣銀行', '台銀', '土地銀行', '土銀', '兆豐', '第一金',
+               '華南', '彰銀', '臺企銀', '台企銀', '農業金庫', '國泰世華')
+
+
+def _classify_broker(bid, name):
+    """🏷️ 分點屬性標籤(純規則零 API)。回 list[str]:daytrade/foreign/govbank/trust/retail_hub。"""
+    tags = []
+    nm = str(name or '')
+    tag_src = str(TACTICAL_TAGS.get(bid, '')) + ' ' + nm
+    if any(k in tag_src for k in ('隔日沖', '當沖', '虎爺')):
+        tags.append('daytrade')
+    low = nm.lower()
+    if any(k in nm for k in _FOREIGN_KW) or any(k in low for k in ('jp', 'ubs')):
+        tags.append('foreign')
+    if any(k in nm for k in _GOVBANK_KW):
+        tags.append('govbank')
+    if '投信' in nm:
+        tags.append('trust')
+    if '避險' in tag_src:
+        tags.append('hedge')   # 權證避險分點(大量進出 ETF/權值,非主力布局訊號)
+    if '總公司' in nm or '總部' in nm:
+        tags.append('retail_hub')
+    return tags
+
+
+def build_broker_book():
+    """🕵️ 分點檔案 → data/broker_book.json:以 broker_id 併檔(修「美林/美林證券」名稱裂開),
+    多週期(1d/5d/10d)反查各分點在買/賣什麼股 + 屬性標籤 + 歷史勝率(接 broker_perf)
+    + 行為(布局型 vs 隔日沖型)+ 新卡位偵測 + 排行榜 + 聯軍偵測。純後處理零 API。"""
+    cdir = Path(DATA_DIR) / 'chips'
+    if not cdir.exists():
+        print("  ⏭️ 分點檔案:無 chips 目錄,跳過"); return
+    from collections import Counter
+    PERIODS = ('1d', '5d', '10d')
+    book: dict = {}   # bid -> {'names':Counter, 'per':{p:{sym:{net,buy,sel,avg}}}}
+    for f in cdir.glob('*.json'):
+        sym = f.stem
+        if not _valid_stock(sym):
+            continue
+        try:
+            obj = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        pers = obj.get('periods')
+        if not isinstance(pers, dict):
+            continue
+        for p in PERIODS:
+            pd = pers.get(p)
+            if not isinstance(pd, dict):
+                continue
+            for side in ('buy', 'sell'):
+                for x in (pd.get(side) or []):
+                    bid = str(x.get('broker_id') or '').strip()
+                    if not bid or ',' in bid or len(bid) > 5:
+                        continue
+                    bnm = x.get('broker_name')
+                    b = book.setdefault(bid, {'names': Counter(), 'per': {}})
+                    if bnm and not str(bnm).isdigit():
+                        b['names'][str(bnm)] += 1
+                    slot = b['per'].setdefault(p, {})
+                    e = slot.setdefault(sym, {'net': 0, 'buy': 0, 'sel': 0, 'avg': None})
+                    e['net'] += int(x.get('net') or 0)
+                    e['buy'] += int(x.get('buy') or 0)
+                    e['sel'] += int(x.get('sel') or 0)
+                    if x.get('avg'):
+                        e['avg'] = x.get('avg')
+
+    # 歷史勝率:接 broker_perf(以「分點名」比對,近似)
+    perf_by_name: dict = {}
+    try:
+        pf = json.loads((Path(DATA_DIR) / 'broker_perf.json').read_text(encoding='utf-8'))
+        for bucket in ('daytrade', 'short', 'swing'):
+            for r in (pf.get(bucket) or []):
+                nm = str(r.get('broker') or '')
+                perf_by_name.setdefault(nm, {})[bucket] = {'win': r.get('win_rate'), 'ret': r.get('avg_ret'), 'n': r.get('count')}
+    except Exception:
+        perf_by_name = {}
+
+    def _match_perf(name):
+        if name in perf_by_name:
+            return perf_by_name[name]
+        base = re.split(r'[-(（]', name)[0]
+        for k, v in perf_by_name.items():
+            if base and (k.startswith(base) or base in k):
+                return v
+        return {}
+
+    def _behavior(sym, per):
+        """布局型 vs 隔日沖型:比 1d/5d/10d 淨額 + 當日買賣對敲。"""
+        n1 = (per.get('1d', {}).get(sym) or {}).get('net', 0)
+        n5 = (per.get('5d', {}).get(sym) or {}).get('net', 0)
+        n10 = (per.get('10d', {}).get(sym) or {}).get('net', 0)
+        d1 = per.get('1d', {}).get(sym) or {}
+        buy1, sel1 = d1.get('buy', 0), d1.get('sel', 0)
+        churn = (min(buy1, sel1) / max(buy1, sel1)) if max(buy1, sel1) > 0 else 0
+        if churn >= 0.6 and (buy1 + sel1) > 0:
+            return 'churn'        # 當日對敲/當沖(買賣都大、淨額小)
+        if n1 > 0 and n10 >= n1 * 1.8:
+            return 'accumulate'   # 布局型:多日持續加碼(10日淨額遠大於今日)
+        if n1 > 0 and n5 <= n1 * 0.6:
+            return 'daytrade'     # 隔日沖型:今天買、5日內沒留住
+        if n1 > 0:
+            return 'hold'         # 有留倉但非明顯加碼
+        return 'flat'
+
+    brokers: dict = {}
+    for bid, b in book.items():
+        name = TACTICAL_TAGS.get(bid) or (b['names'].most_common(1)[0][0] if b['names'] else bid)
+        per = b['per']
+        out_per: dict = {}
+        for p in PERIODS:
+            slot = per.get(p, {})
+            buys = sorted([{'sym': s, **v} for s, v in slot.items() if v['net'] > 0], key=lambda x: -x['net'])[:15]
+            sells = sorted([{'sym': s, **v} for s, v in slot.items() if v['net'] < 0], key=lambda x: x['net'])[:15]
+            if p == '1d':
+                for it in buys:
+                    it['beh'] = _behavior(it['sym'], per)
+                    n1 = it['net']; n10 = (per.get('10d', {}).get(it['sym']) or {}).get('net', 0)
+                    it['new'] = bool(n1 > 0 and n10 <= n1 * 1.25)   # 新卡位:部位幾乎全來自今天
+            out_per[p] = {'buy': buys, 'sell': sells}
+        tot_buy_1d = sum(x['net'] for x in out_per['1d']['buy'])
+        if not (out_per['1d']['buy'] or out_per['1d']['sell'] or out_per['5d']['buy'] or out_per['10d']['buy']):
+            continue
+        brokers[bid] = {
+            'id': bid, 'name': name, 'tags': _classify_broker(bid, name),
+            'win': _match_perf(name), 'per': out_per,
+            'tot_buy_1d': tot_buy_1d, 'n_buy_1d': len(out_per['1d']['buy']),
+        }
+
+    # ── 排行榜 ──────────────────────────────────────────────────────────────
+    lst = list(brokers.values())
+    buy_today = sorted(lst, key=lambda x: -x['tot_buy_1d'])[:20]
+    def _best_win(b):
+        vs = [v.get('win') for v in b['win'].values() if isinstance(v, dict) and v.get('win') is not None]
+        return max(vs) if vs else -1
+    win_rank = sorted([b for b in lst if _best_win(b) >= 0], key=lambda b: -_best_win(b))[:20]
+    # 神秘黑馬:高勝率 + 非大型連鎖(名字沒總公司/知名隔日沖標)
+    mystery = sorted([b for b in lst if _best_win(b) >= 55 and 'retail_hub' not in b['tags']
+                      and 'daytrade' not in b['tags'] and b['tot_buy_1d'] > 0],
+                     key=lambda b: -_best_win(b))[:15]
+    daytrade_fire = sorted([b for b in lst if 'daytrade' in b['tags'] and b['tot_buy_1d'] > 0],
+                           key=lambda x: -x['tot_buy_1d'])[:15]
+
+    def _slim(b):
+        return {'id': b['id'], 'name': b['name'], 'tags': b['tags'], 'win': b['win'],
+                'tot_buy_1d': b['tot_buy_1d'], 'n_buy_1d': b['n_buy_1d'],
+                'top': [x['sym'] for x in b['per']['1d']['buy'][:5]]}
+    rank = {'buy_today': [_slim(b) for b in buy_today], 'win': [_slim(b) for b in win_rank],
+            'mystery': [_slim(b) for b in mystery], 'daytrade_fire': [_slim(b) for b in daytrade_fire]}
+
+    # ── 聯軍偵測:哪些分點常「一起買同一檔」(5日買超交集) ──────────────────
+    #   只看今日活躍(tot_buy_1d>0)且非隔日沖的分點,取 5日買超股集合兩兩交集 ≥2 檔
+    active = [b for b in lst if b['tot_buy_1d'] > 0 and 'daytrade' not in b['tags']]
+    active = sorted(active, key=lambda x: -x['tot_buy_1d'])[:60]   # 限前 60 家算 pair,控複雜度
+    setmap = {b['id']: set(x['sym'] for x in b['per']['5d']['buy']) for b in active}
+    namemap = {b['id']: b['name'] for b in active}
+    alliances = []
+    ids = list(setmap.keys())
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            common = setmap[ids[i]] & setmap[ids[j]]
+            if len(common) >= 2:
+                alliances.append({'a': namemap[ids[i]], 'b': namemap[ids[j]],
+                                  'stocks': sorted(common)[:6], 'n': len(common)})
+    alliances = sorted(alliances, key=lambda x: -x['n'])[:20]
+
+    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+               'brokers': brokers, 'rank': rank, 'alliances': alliances}
+    tgt = Path(DATA_DIR) / 'broker_book.json'; tmp = tgt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(tmp), str(tgt))
+    print(f"  ✅ 分點檔案:{len(brokers)} 家(id 併檔) / 排行 {len(buy_today)} / 聯軍 {len(alliances)} 組 → data/broker_book.json")
+
+
 def build_broker_perf():
     """🧙 券商分點勝率榜 → data/broker_perf.json(前瞻回測 + 即時浮動雙軌)
     ① 累積:每日把各股當日(1d)分點買超(broker, sym, 買超均價)存進 data/broker_signals.json(滾動 ~45 交易日)。
@@ -4399,6 +4578,7 @@ if __name__ == '__main__':
         _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)           # 🐢 最慢(分點+基本面 ~29分)放後面
         _safe_step("主力雷達 build_broker_radar", build_broker_radar)         # 🕵️ 後處理 chips → 主力排行(需在 chips 後)
         _safe_step("券商勝率榜 build_broker_perf", build_broker_perf)         # 🧙 後處理 chips + SQLite 現價 → 分點浮動勝率榜(需在 chips 後)
+        _safe_step("分點檔案 build_broker_book", build_broker_book)           # 🕵️ 後處理 chips + broker_perf → 分點視角(在雷達/勝率後,可讀其產出)
         _safe_step("外資期貨 fetch_futures_cache", fetch_futures_cache)
         _safe_step("美股宏觀 fetch_us_macro_cache", fetch_us_macro_cache)
         _safe_step("雷達掃描 build_radar_cache", build_radar_cache)   # 讀 SQLite 既有 OHLCV(從 origin/data restore)
