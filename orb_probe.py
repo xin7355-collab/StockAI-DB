@@ -229,6 +229,21 @@ def main():
             first_d = bars[0]['t'].strftime('%Y-%m-%d')
             last_d = bars[-1]['t'].strftime('%Y-%m-%d')
             n_days = len(set(b['t'].strftime('%Y-%m-%d') for b in bars))
+            # 🐞 診斷:第一檔印第一個交易日的結構(session 時間、OR 窗、ORH/ORL、多少 rest 收盤突破)
+            if sym == TEST_SYMS[0]:
+                d0 = bars[0]['t'].strftime('%Y-%m-%d')
+                db = sorted([b for b in bars if b['t'].strftime('%Y-%m-%d') == d0], key=lambda x: x['t'])
+                if db:
+                    o_end = db[0]['t'] + timedelta(minutes=OR_MINUTES)
+                    orb = [b for b in db if b['t'] < o_end]
+                    rst = [b for b in db if b['t'] >= o_end]
+                    _orh = max(b['h'] for b in orb) if orb else 0
+                    _orl = min(b['l'] for b in orb) if orb else 0
+                    up = sum(1 for b in rst if b['c'] > _orh)
+                    dn = sum(1 for b in rst if b['c'] < _orl)
+                    _line(f'    🐞 {d0}: 全日 {len(db)} 根({db[0]["t"].strftime("%H:%M")}~{db[-1]["t"].strftime("%H:%M")}) '
+                          f'· OR窗 {len(orb)} 根 ORH={_orh:.2f} ORL={_orl:.2f} · rest {len(rst)} 根,收盤>ORH {up} 根 / <ORL {dn} 根 '
+                          f'· 全日高{max(b["h"] for b in db):.2f}低{min(b["l"] for b in db):.2f}')
             lng = backtest_orb(bars, 'long', debug_tag=(f'{sym}多' if sym == TEST_SYMS[0] else None))
             sht = backtest_orb(bars, 'short')
             result['stocks'][sym] = {'bars': n, 'days': n_days, 'first': first_d, 'last': last_d,
