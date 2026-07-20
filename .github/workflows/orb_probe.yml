@@ -1,0 +1,48 @@
+name: 🔬 開盤區間突破(ORB)分K回測探針
+
+# 純驗證用:只跑 orb_probe.py,實測「Shioaji api.kbars 能抓多深的歷史 1 分K + ORB 回測勝率有無鑑別度」。
+# 不碰 gh-pages / data 分支,零部署風險。push orb_probe.py / 本檔即自動跑;也可 Actions UI 手動 Run。
+# 目的:確認 ORB(分K)可行性 → 可行再正式建 orb_miner 滾動回測全清單。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "orb_probe.py"
+      - ".github/workflows/orb_probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 🔬 ORB 分K 探針
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依套件(Shioaji)
+        run: pip install shioaji --quiet
+
+      - name: 📂 建 data 目錄
+        run: mkdir -p data
+
+      - name: 🔬 執行 ORB 分K 回測探針
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+        run: python orb_probe.py || echo "⚠️ 非零退出(仍印出結果)"
+
+      - name: 📤 上傳探針結果 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orb-probe-result
+          path: data/orb_probe_result.json
+          if-no-files-found: warn
