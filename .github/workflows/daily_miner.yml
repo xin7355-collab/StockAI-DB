@@ -157,7 +157,7 @@ jobs:
   chips_miner:
     name: 🎯 Chips + Fundamentals 採礦(平行)
     runs-on: ubuntu-latest
-    timeout-minutes: 45   # V68.3.1 30→45:加了八大行庫+借券+分點16天均價+全基本面後 30 分不夠(govbank 從沒跑到就超時);採礦節點本來就 90 分,45 仍在總預算內
+    timeout-minutes: 80   # V68.9.8 45→80:分點改全市場滾動(CHIPS_TIME_BUDGET=35分)+ 後處理(broker_radar/perf/futures/macro/radar/top_picks ~25分)+ govbank/借券/集保(~5分),80 留足餘裕不砍後段
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4.2.2
@@ -192,6 +192,7 @@ jobs:
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
           GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
           ONLY_CHIPS: '1'   # V15.0:miner.py 走 chips 專用流程,跳過 OHLCV
+          CHIPS_TIME_BUDGET: '2100'   # V68.9.8 全市場分點時間預算 35 分,到點收工;剩餘下輪「今日已抓→跳過」續抓(熱門股排最前天天新鮮)
         run: |
           python3 miner.py
 

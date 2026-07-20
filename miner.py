@@ -2621,32 +2621,59 @@ def fetch_broker_chips():
     today_str = date.today().strftime('%Y-%m-%d')
     # 💰 V68.2.6 自動偵測付費層級 → 決定分點來源 + 覆蓋上限(付費失效自動降版)
     paid = detect_finmind_paid()
-    eff_limit = HOT_CHIPS_LIMIT if paid else 100   # 降版:免費時覆蓋縮回 100,避免限流
     # V16.4 — chips_miner 平行 job 開頭寫狀態(會疊在 ohlcv_batch 之上)
     write_miner_status('chips_fundamentals', 'mining',
                        {'note': '分點籌碼 + 基本面 + 雷達 + 全球新聞 採礦中'})
-    # ── 動態熱門股清單：CHIP_WATCHLIST（必選）∪ SQLite 近 14 天高量股 ──────────
-    priority_set = set(CHIP_WATCHLIST)   # 用戶精選股永遠優先
+    # ── V68.9.8 全市場滾動分點：不再只抓最熱門 ~180 檔 ──────────────────────────
+    # 痛點:付費卻只抓最熱門 ~180 檔(中華電 2412 等中大型排不進 → 顯「無分點」)。
+    # 解法:抓「全市場」,但受單一付費 token ~6000/hr 硬限 → 分層 + 時間預算 + 逐日續抓:
+    #   ・熱門股(CHIP_WATCHLIST ∪ 成交值 Top N):11 交易日深度(1/3/5/10 週期)、含完整基本面
+    #   ・冷門股(其餘全市場):淺層 3 交易日(1/3 週期)、跳過昂貴逐檔基本面(用 TWSE bulk PE/殖利率)
+    #   ・時間預算(CHIPS_TIME_BUDGET,預設 40 分)到 → 收工,已抓的存檔;下輪「今日已抓→跳過」續抓未完成
+    #   ・熱門股永遠排最前(成交值高→低)→ 大盤主力天天新鮮;冷門長尾每幾天輪一次(同 fund_sweep 滾動哲學)
+    #   ・CHIPS_BATCH/CHIPS_TOTAL round-robin(供未來 matrix 平行;預設 0/1 不分割)
+    CHIPS_BATCH = int(os.getenv('CHIPS_BATCH', '0'))
+    CHIPS_TOTAL = max(1, int(os.getenv('CHIPS_TOTAL', '1')))
+    HOT_TURNOVER_TOP = int(os.getenv('HOT_TURNOVER_TOP', '220'))   # 成交值前 N 視為熱門(深度採)
+    # 成交值(價×量)排序:比純張數更能涵蓋高價中大型(中華電/台積電等)
+    turnover: dict = {}
     if Path(DB_PATH).exists():
         try:
             conn = get_db_conn()
             rows = conn.execute("""
-                SELECT symbol, AVG(volume) AS avg_vol
+                SELECT symbol, AVG(close * volume) AS tv
                 FROM stock_history
-                WHERE trade_date >= date('now', '-14 days')
-                  AND volume IS NOT NULL AND volume > 0
+                WHERE trade_date >= date('now', '-20 days')
+                  AND volume IS NOT NULL AND volume > 0 AND close > 0
                 GROUP BY symbol
-                ORDER BY avg_vol DESC
             """).fetchall()
             conn.close()
-            for sym, _ in rows:
-                priority_set.add(sym)
-                if len(priority_set) >= eff_limit:
-                    break
+            for s, tv in rows:
+                if tv:
+                    turnover[str(s)] = float(tv)
         except Exception as e:
-            print(f"  ⚠️ 熱門股查詢失敗，回退至 CHIP_WATCHLIST: {e}")
-    watchlist = sorted(priority_set)[:eff_limit]
-    print(f"  📋 分點籌碼目標：{len(watchlist)} 檔（精選 {len(CHIP_WATCHLIST)} + 熱門補充）")
+            print(f"  ⚠️ 成交值查詢失敗(改用清單順序): {e}")
+    # 全市場宇宙 = data/*.json ∪ CHIP_WATCHLIST(有效股)
+    _skip_names = {'radar', 'futures_cache', 'macro_cache', 'broker_names', 'top_picks',
+                   'global_news', 'radar_news', 'tech_giants_news'}
+    universe = set(CHIP_WATCHLIST) | {f.stem for f in Path(DATA_DIR).glob('*.json')
+                                      if f.stem not in _skip_names}
+    universe = {s for s in universe if _valid_stock(s)}
+    # 熱門集合:精選清單 + 成交值 Top N(→ 中華電這類中大型必進熱門、天天深度採)
+    _top_by_tv = sorted((s for s in universe if s in turnover),
+                        key=lambda s: -turnover[s])[:HOT_TURNOVER_TOP]
+    hot_set = ({s for s in (set(CHIP_WATCHLIST) | set(_top_by_tv)) if s in universe})
+    if paid:
+        # 排序:熱門優先(成交值高→低),再冷門(成交值高→低);無成交值者殿後(字典序)
+        ordered = sorted(universe, key=lambda s: (0 if s in hot_set else 1, -turnover.get(s, 0.0), s))
+    else:
+        # 免費(BSR only):維持小清單避免限流(全市場需付費 token)
+        ordered = sorted(set(CHIP_WATCHLIST) & universe)[:100]
+    if CHIPS_TOTAL > 1:
+        ordered = [ordered[i] for i in range(CHIPS_BATCH, len(ordered), CHIPS_TOTAL)]
+    watchlist = ordered
+    print(f"  📋 分點籌碼目標(全市場滾動):{len(watchlist)} 檔 | 熱門深度 {len(hot_set)} 檔 | "
+          f"批次 {CHIPS_BATCH}/{CHIPS_TOTAL} | 付費={paid}")
 
     # 新增：一次查全市場 PE / 殖利率（TWSE）
     print("\n📊 抓取 TWSE 全市場本益比 / 殖利率快取...")
@@ -2749,9 +2776,18 @@ def fetch_broker_chips():
     print(f"\n🕵️ 啟動分點籌碼 + 基本面探測 ({len(watchlist)} 檔，請耐心等候避免限流)...")
 
     updated = 0
+    _skipped_today = 0
     broker_name_map: dict = {}  # 累積 bid→中文名 供 broker_names.json
     _fund_extra: dict = {}      # V35.8 — 收集觀察清單已算好的 {sym:{rev_yoy,gross_margin}},迴圈後併入全市場快取
+    _chips_start = time.time()
+    _chips_budget = int(os.getenv('CHIPS_TIME_BUDGET', '2400'))   # V68.9.8 預設 40 分,到點收工續抓
     for sym in watchlist:
+        # ⏱️ V68.9.8 時間預算到 → 本輪收工(已抓存檔;下輪「今日已抓→跳過」續抓未完成的股)
+        if time.time() - _chips_start > _chips_budget:
+            print(f"  ⏳ 分點時間預算 {_chips_budget}s 到,本輪先收工"
+                  f"(更新 {updated} 檔 / 跳過今日已抓 {_skipped_today} 檔);剩餘下輪續抓")
+            break
+        _is_hot = sym in hot_set
         # ① 提前讀取 out_file → existing_obj（供 TTL 判斷和後面寫入共用）
         out_file = chips_dir / f'{sym}.json'
         existing_obj: dict = {}
@@ -2760,6 +2796,14 @@ def fetch_broker_chips():
                 raw = json.loads(out_file.read_text(encoding='utf-8'))
                 existing_obj = {'chips': raw} if isinstance(raw, list) else raw
             except Exception: pass
+
+        # 🔁 V68.9.8 今日已抓過分點 → 跳過(滾動續抓核心:時間預算內往未抓的股推進)
+        #    marker=chips_fetched_on(今日曆日),不靠交易日,盤中資料未出時也能正確跳過
+        if (os.environ.get('FORCE_CHIPS_REFRESH') != '1'
+                and existing_obj.get('chips_fetched_on') == today_str
+                and existing_obj.get('periods')):
+            _skipped_today += 1
+            continue
 
         # ── 分點籌碼：混合雙擎(Sniper 攻 TWSE 真分點 → FinMind 補多週期/上櫃)──
         buyers, sellers, brokers_list = [], [], []
@@ -2785,9 +2829,12 @@ def fetch_broker_chips():
             if paid:   # 💰 降版:未付費 → 不打付費分點(免浪費 + 免錯誤重試),只靠上面 BSR
                 # 💰 V68.2.7 分點正解:專屬端點 taiwan_stock_trading_daily_report(單日 date + Bearer)。
                 #   逐日往回累積 ~11 個交易日(供 1/3/5/10 週期),含上櫃/冷門股如中美晶 5483。
+                # V68.9.8 分層深度:熱門 11 交易日(1/3/5/10 週期);冷門 3 交易日(1/3 週期)控管額度
+                _need_days = 11 if _is_hot else 3
+                _lookback = 16 if _is_hot else 6
                 seen_dates: set = set()
-                for _d in _recent_finmind_dates(16):
-                    if len(seen_dates) >= 11:
+                for _d in _recent_finmind_dates(_lookback):
+                    if len(seen_dates) >= _need_days:
                         break
                     j = fm_paid_get('taiwan_stock_trading_daily_report', f'data_id={sym}&date={_d}') or {}
                     st = j.get('status'); rows = j.get('data') or []
@@ -2857,7 +2904,8 @@ def fetch_broker_chips():
                         buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
                         sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
                         return {'buy': buy_top, 'sell': sell_top}
-                    periods = {f'{n}d': _agg_period(n) for n in (1, 3, 5, 10)}
+                    # V68.9.8 熱門股完整 1/3/5/10 週期;冷門股只抓 3 日 → 只給 1/3d(5/10d 前端顯「熱門股才有」)
+                    periods = {f'{n}d': _agg_period(n) for n in ((1, 3, 5, 10) if _is_hot else (1, 3))}
                     # Sniper 已拿到今日真分點時不被 FinMind 覆蓋(Sniper=官方 TWSE 較準);
                     # 否則用 FinMind 當日資料
                     if not sniper_data:
@@ -2865,7 +2913,7 @@ def fetch_broker_chips():
                         brokers_list = [{'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']} for b, e in by_date[latest_chip_date].items()]
                         buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
                         sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
-                time.sleep(3)
+                time.sleep(3 if _is_hot else 1)   # V68.9.8 冷門股節流減半,全市場滾動更快
         except Exception as e:
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
             time.sleep(5)
@@ -2891,6 +2939,11 @@ def fetch_broker_chips():
             if not _has_fund:
                 skip_finmind = False
                 print(f"  ♻️ {sym} 快取無 EPS/營收(舊金鑰壞時抓空)→ 付費有效,強制重抓基本面")
+
+        # V68.9.8 冷門股:daily 分點迴圈「不」做昂貴逐檔基本面(每檔多次 FinMind call)→ 省額度給全市場分點。
+        #   冷門股基本面走 TWSE bulk PE/殖利率 + 夜間 fund_sweep 滾動補;深度基本面仍留給熱門股。
+        if not _is_hot:
+            skip_finmind = True
 
         # 【極限防爆】提前提取並確保字典絕對不會是 None
         tw_fund = twse_fund.get(sym, {}) or {}
@@ -3002,10 +3055,17 @@ def fetch_broker_chips():
         output = {
             'fundamentals': fundamentals,
             'data_date': recent_dates[-1] if recent_dates else None,  # 最新可用交易日
-            'periods': out_periods,   # 多週期：{1d,3d,5d,10d}，各含 buy/sell（broker_name）
+            'periods': out_periods,   # 多週期：熱門{1d,3d,5d,10d} / 冷門{1d,3d}，各含 buy/sell（broker_name）
             'chips': [records_map[d] for d in recent_dates],
             'data_completeness': data_completeness,
+            'tier': 'hot' if _is_hot else 'cold',   # V68.9.8 分層標記(冷門股週期較淺,前端據此顯示)
         }
+        # 🔁 V68.9.8 只在真的拿到週期資料時才標記「今日已抓」→ 失敗不會誤標而永久跳過;
+        #    失敗則沿用舊標記(舊標記若非今日,下輪仍會重試)
+        if out_periods:
+            output['chips_fetched_on'] = today_str
+        elif existing_obj.get('chips_fetched_on'):
+            output['chips_fetched_on'] = existing_obj['chips_fetched_on']
         out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')
 
         # V35.8 — 收集本檔已算好的 YoY/毛利,迴圈後併入全市場快取(免費,零額外 API;取代失效的 bulk)
@@ -3035,7 +3095,8 @@ def fetch_broker_chips():
             if _ex: _fund_extra[sym] = _ex
         except Exception: pass
 
-    print(f"  ✅ 分點籌碼完成：更新了 {updated} 檔股票的主力動向")
+    print(f"  ✅ 分點籌碼完成：更新 {updated} 檔、今日已抓跳過 {_skipped_today} 檔"
+          f"（全市場滾動；熱門股天天更新、冷門長尾每幾天輪一次）")
 
     # V35.8 — 把觀察清單已算好的 YoY/毛利併入全市場 fundamentals_cache.json(bulk 免費版抓不到,改逐檔重用)
     try:
