@@ -4338,11 +4338,16 @@ def build_broker_book():
             if ind:
                 sec_agg[ind] = sec_agg.get(ind, 0) + val
         sectors = [{'name': k, 'val': int(v)} for k, v in sorted(sec_agg.items(), key=lambda x: -x[1])[:2]]
+        # 🌱 認養股:近 10 日 ∩ 近 5 日都在買超榜(持續布局同一檔)= 該分點的「本命股」
+        _b5 = {x['sym'] for x in out_per['5d']['buy']}
+        _b10 = {x['sym']: x['net'] for x in out_per['10d']['buy']}
+        adopt = sorted([{'sym': s, 'net': n} for s, n in _b10.items() if s in _b5],
+                       key=lambda x: -x['net'])[:4]
         brokers[bid] = {
             'id': bid, 'name': name, 'tags': _classify_broker(bid, name),
             'win': _match_perf(name), 'per': out_per,
             'tot_buy_1d': tot_buy_1d, 'n_buy_1d': len(out_per['1d']['buy']),
-            'tot_buy_val': int(tot_buy_val), 'sectors': sectors,
+            'tot_buy_val': int(tot_buy_val), 'sectors': sectors, 'adopt': adopt,
         }
 
     # ── 排行榜 ──────────────────────────────────────────────────────────────
