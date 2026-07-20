@@ -2635,30 +2635,32 @@ def fetch_broker_chips():
     CHIPS_BATCH = int(os.getenv('CHIPS_BATCH', '0'))
     CHIPS_TOTAL = max(1, int(os.getenv('CHIPS_TOTAL', '1')))
     HOT_TURNOVER_TOP = int(os.getenv('HOT_TURNOVER_TOP', '220'))   # 成交值前 N 視為熱門(深度採)
-    # 成交值(價×量)排序:比純張數更能涵蓋高價中大型(中華電/台積電等)
-    turnover: dict = {}
-    if Path(DB_PATH).exists():
-        try:
-            conn = get_db_conn()
-            rows = conn.execute("""
-                SELECT symbol, AVG(close * volume) AS tv
-                FROM stock_history
-                WHERE trade_date >= date('now', '-20 days')
-                  AND volume IS NOT NULL AND volume > 0 AND close > 0
-                GROUP BY symbol
-            """).fetchall()
-            conn.close()
-            for s, tv in rows:
-                if tv:
-                    turnover[str(s)] = float(tv)
-        except Exception as e:
-            print(f"  ⚠️ 成交值查詢失敗(改用清單順序): {e}")
     # 全市場宇宙 = data/*.json ∪ CHIP_WATCHLIST(有效股)
     _skip_names = {'radar', 'futures_cache', 'macro_cache', 'broker_names', 'top_picks',
                    'global_news', 'radar_news', 'tech_giants_news'}
     universe = set(CHIP_WATCHLIST) | {f.stem for f in Path(DATA_DIR).glob('*.json')
                                       if f.stem not in _skip_names}
     universe = {s for s in universe if _valid_stock(s)}
+    # 成交值(價×量)排序 → 涵蓋高價中大型(中華電/台積電等)。
+    # 🐛 V68.9.9 修:chips job(ONLY_CHIPS)的 SQLite stock_history 是空的(同 broker_perf V68.9.5 教訓),
+    #    原本查 SQLite → turnover 全空 → 熱門只剩 CHIP_WATCHLIST、2412 這種被當冷門排到後面永遠採不到。
+    #    改「直接讀 data/{sym}.json 近 25 筆算 avg(close×volume)」→ chips job 有還原 origin/data 的 JSON,必有值。
+    turnover: dict = {}
+    for _sym in universe:
+        _p = Path(DATA_DIR) / f'{_sym}.json'
+        if not _p.exists():
+            continue
+        try:
+            _rows = json.loads(_p.read_text(encoding='utf-8'))
+            if not isinstance(_rows, list) or not _rows:
+                continue
+            _tv = [float(r.get('close') or 0) * float(r.get('volume') or 0)
+                   for r in _rows[-25:] if isinstance(r, dict) and r.get('close') and r.get('volume')]
+            if _tv:
+                turnover[_sym] = sum(_tv) / len(_tv)
+        except Exception:
+            continue
+    print(f"  📊 成交值排序:{len(turnover)}/{len(universe)} 檔有 OHLCV 可排(其餘殿後)")
     # 熱門集合:精選清單 + 成交值 Top N(→ 中華電這類中大型必進熱門、天天深度採)
     _top_by_tv = sorted((s for s in universe if s in turnover),
                         key=lambda s: -turnover[s])[:HOT_TURNOVER_TOP]
