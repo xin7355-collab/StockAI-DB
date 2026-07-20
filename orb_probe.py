@@ -194,7 +194,14 @@ def main():
 
     api = sj.Shioaji()
     try:
-        api.login(api_key=key, secret_key=sec, fetch_contract=True)
+        try:
+            api.login(api_key=key, secret_key=sec, fetch_contract=True)   # shioaji <1.7
+        except TypeError:
+            api.login(api_key=key, secret_key=sec)                        # shioaji >=1.7(移除 fetch_contract)
+            try:
+                api.fetch_contracts(contract_download=True)
+            except Exception:
+                pass
         _line('✅ Shioaji 登入成功')
     except Exception as e:
         _line(f'❌ Shioaji 登入失敗: {e}')

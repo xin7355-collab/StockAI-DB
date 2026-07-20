@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: 📦 安裝相依套件(Shioaji)
-        run: pip install shioaji --quiet
+        run: pip install "shioaji<1.7" --quiet   # 📌 同 live_snapshot/tick_flow:1.7.0 移除 login(fetch_contract=) → 釘 1.6.x
 
       - name: 📂 建 data 目錄
         run: mkdir -p data
