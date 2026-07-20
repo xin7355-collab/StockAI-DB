@@ -4138,16 +4138,24 @@ def build_broker_perf():
     series_cache: dict = {}
 
     def get_series(sym):
+        # 🐛 V68.9.5 修:chips job(ONLY_CHIPS)沒把 OHLCV 灌進 SQLite → 原本查 stock_history 全空
+        #   → 收盤價 None → 前瞻/浮動/回填全 0。改讀 data/{sym}.json(chips job 已 restore origin/data,
+        #   同 top_picks/radar 的來源)。日期正規化成橫線(JSON 是 2026/07/20 斜線、訊號日是橫線,不統一字串比對會全 skip)。
         if sym in series_cache:
             return series_cache[sym]
         s = []
         try:
-            conn = get_db_conn()
-            rows = conn.execute(
-                "SELECT trade_date, close FROM stock_history WHERE symbol=? AND volume>0 "
-                "ORDER BY trade_date ASC", (sym,)).fetchall()
-            conn.close()
-            s = [(r[0], float(r[1])) for r in rows if r[1] and float(r[1]) > 0]
+            p = Path(DATA_DIR) / f'{sym}.json'
+            if p.exists():
+                arr = json.loads(p.read_text(encoding='utf-8'))
+                if isinstance(arr, list):
+                    for r in arr:
+                        d = str(r.get('date') or '')[:10].replace('/', '-')
+                        c = r.get('close')
+                        v = r.get('volume', 1)
+                        if d and c and float(c) > 0 and (v is None or float(v) > 0):
+                            s.append((d, float(c)))
+                    s.sort(key=lambda x: x[0])
         except Exception:
             s = []
         series_cache[sym] = s
@@ -4192,7 +4200,7 @@ def build_broker_perf():
         sig_date = str(obj.get('data_date') or '')[:10]
         cur = latest_close(sym)
         # 即時浮動(1d / 20d 買超均價 vs 現價)
-        for win, agg in (('1d', float_short), ('20d', float_swing)):
+        for win, agg in (('1d', float_short), ('10d', float_swing)):   # 🐛 V68.9.5 chips 無 20d bucket → 用 10d(最長)
             buys = (periods.get(win) or {}).get('buy') or []
             if not buys or not cur:
                 continue
@@ -4265,7 +4273,7 @@ def build_broker_perf():
         cur = latest_close(sym)
         if not cur:
             continue
-        for win, hz in (('5d', 'short'), ('20d', 'swing')):
+        for win, hz in (('5d', 'short'), ('10d', 'swing')):   # 🐛 V68.9.5 chips 無 20d → swing 回填改用 10d bucket
             for x in ((periods.get(win) or {}).get('buy') or [])[:5]:
                 name = x.get('broker_name'); avg = x.get('avg'); net = int(x.get('net') or 0)
                 if not name or str(name).isdigit() or not avg or float(avg) <= 0 or net <= 0:
