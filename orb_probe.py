@@ -70,23 +70,30 @@ def find_contract(api, code):
     return None
 
 
-def backtest_orb(bars, side='long'):
+STOP_PCT = 0.5           # 停損 %(固定百分比,比用 ORL/ORH 當停損穩定)
+NO_ENTRY_AFTER = (13, 0)  # 這時間後才突破就不進(當沖收尾沒空間)
+
+
+def _after(t, hhmm):
+    return t.hour > hhmm[0] or (t.hour == hhmm[0] and t.minute >= hhmm[1])
+
+
+def backtest_orb(bars, side='long', debug_tag=None):
     """
-    bars: list of dict {t: datetime, o,h,l,c, v}  單一標的多日 1 分K
-    回傳 dict: {days, trig, win, avg_mfe, avg_pnl}
+    bars: list of dict {t,o,h,l,c,v}  單一標的多日 1 分K
+    ORB 正解:開盤前 OR_MINUTES 分定 ORH/ORL;做多=某分K「收盤」突破 ORH 才進場(進場價=該K收盤,
+    非只觸到最高→避免從最高量 MFE 退化成 0);停利 +TARGET_PCT%、停損 -STOP_PCT%、13:25 平倉。
+    回傳 {days, trig, win, win_rate, avg_mfe, avg_pnl}
     """
-    # 分日
     days = {}
     for b in bars:
         days.setdefault(b['t'].strftime('%Y-%m-%d'), []).append(b)
 
-    trig = 0
-    win = 0
-    mfe_sum = 0.0
-    pnl_sum = 0.0
-    for d, day_bars in days.items():
-        day_bars.sort(key=lambda x: x['t'])
-        # 開盤區間(前 OR_MINUTES 分)
+    trig = win = 0
+    mfe_sum = pnl_sum = 0.0
+    dbg_done = False
+    for d in sorted(days.keys()):
+        day_bars = sorted(days[d], key=lambda x: x['t'])
         if not day_bars:
             continue
         open_t = day_bars[0]['t']
@@ -100,71 +107,55 @@ def backtest_orb(bars, side='long'):
         if not (orh > 0 and orl > 0) or orh <= orl:
             continue
 
+        # 找「收盤突破」進場點(且不能太晚)
+        ei = None
+        for i, b in enumerate(rest):
+            if _after(b['t'], NO_ENTRY_AFTER):
+                break
+            if (side == 'long' and b['c'] > orh) or (side == 'short' and b['c'] < orl):
+                ei = i
+                break
+        if ei is None:
+            continue
+        trig += 1
+        entry = rest[ei]['c']
+        seg = rest[ei + 1:]   # 進場後的 K 才算損益(進場那根已用收盤成交)
         if side == 'long':
-            entry = orh
-            target = entry * (1 + TARGET_PCT / 100.0)
-            stop = orl
-            # 找突破進場點
-            ei = None
-            for i, b in enumerate(rest):
-                if b['h'] >= orh:
-                    ei = i
-                    break
-            if ei is None:
-                continue
-            trig += 1
-            seg = rest[ei:]
-            got_win = False
-            mfe = 0.0
-            final = seg[-1]['c']
-            for b in seg:
-                if b['t'].hour > CLOSE_HHMM[0] or (b['t'].hour == CLOSE_HHMM[0] and b['t'].minute >= CLOSE_HHMM[1]):
-                    final = b['c']
-                    break
+            target, stop = entry * (1 + TARGET_PCT / 100), entry * (1 - STOP_PCT / 100)
+        else:
+            target, stop = entry * (1 - TARGET_PCT / 100), entry * (1 + STOP_PCT / 100)
+
+        got_win = False
+        mfe = 0.0
+        final = entry
+        for b in seg:
+            if _after(b['t'], CLOSE_HHMM):
+                final = b['c']
+                break
+            if side == 'long':
                 mfe = max(mfe, (b['h'] - entry) / entry * 100)
                 if b['h'] >= target:
-                    got_win = True
-                    final = target
-                    break
+                    got_win = True; final = target; break
                 if b['l'] <= stop:
-                    final = stop
-                    break
-            if got_win:
-                win += 1
-            mfe_sum += mfe
-            pnl_sum += (final - entry) / entry * 100
-        else:  # short
-            entry = orl
-            target = entry * (1 - TARGET_PCT / 100.0)
-            stop = orh
-            ei = None
-            for i, b in enumerate(rest):
-                if b['l'] <= orl:
-                    ei = i
-                    break
-            if ei is None:
-                continue
-            trig += 1
-            seg = rest[ei:]
-            got_win = False
-            mfe = 0.0
-            final = seg[-1]['c']
-            for b in seg:
-                if b['t'].hour > CLOSE_HHMM[0] or (b['t'].hour == CLOSE_HHMM[0] and b['t'].minute >= CLOSE_HHMM[1]):
-                    final = b['c']
-                    break
+                    final = stop; break
+            else:
                 mfe = max(mfe, (entry - b['l']) / entry * 100)
                 if b['l'] <= target:
-                    got_win = True
-                    final = target
-                    break
+                    got_win = True; final = target; break
                 if b['h'] >= stop:
-                    final = stop
-                    break
-            if got_win:
-                win += 1
-            mfe_sum += mfe
-            pnl_sum += (entry - final) / entry * 100
+                    final = stop; break
+        else:
+            final = seg[-1]['c'] if seg else entry
+
+        if got_win:
+            win += 1
+        mfe_sum += mfe
+        pnl_sum += ((final - entry) if side == 'long' else (entry - final)) / entry * 100
+
+        if debug_tag and not dbg_done:
+            _line(f'    🐞[{debug_tag} {d}] ORH={orh:.2f} ORL={orl:.2f} entry={entry:.2f} '
+                  f'tgt={target:.2f} stop={stop:.2f} win={got_win} mfe={mfe:.2f}% seg={len(seg)}')
+            dbg_done = True
 
     return {
         'days': len(days),
@@ -238,7 +229,7 @@ def main():
             first_d = bars[0]['t'].strftime('%Y-%m-%d')
             last_d = bars[-1]['t'].strftime('%Y-%m-%d')
             n_days = len(set(b['t'].strftime('%Y-%m-%d') for b in bars))
-            lng = backtest_orb(bars, 'long')
+            lng = backtest_orb(bars, 'long', debug_tag=(f'{sym}多' if sym == TEST_SYMS[0] else None))
             sht = backtest_orb(bars, 'short')
             result['stocks'][sym] = {'bars': n, 'days': n_days, 'first': first_d, 'last': last_d,
                                      'long': lng, 'short': sht}
