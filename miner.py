@@ -4249,6 +4249,37 @@ def build_broker_perf():
             if ret > 0:
                 a['wins'] += 1
 
+    # ── ②b 歷史回推(近似,過渡用):沒逐日分點史 → 用現有 chips 的 5d/20d 買超均價當合成訊號,
+    #     forward-test 到最新收盤(≈持有 5/20 交易日的結果),讓短線/波段榜「不用等」立刻有樣本。
+    #     ⚠️ 近似:entry 是區間均價非逐日精確。獨立計數 bf_added,真實前瞻訊號逐日累積後自然稀釋為真數據。
+    bf_added = {'short': 0, 'swing': 0}
+    for f in cdir.glob('*.json'):
+        sym = f.stem
+        try:
+            obj = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        periods = obj.get('periods') if isinstance(obj, dict) else None
+        if not isinstance(periods, dict):
+            continue
+        cur = latest_close(sym)
+        if not cur:
+            continue
+        for win, hz in (('5d', 'short'), ('20d', 'swing')):
+            for x in ((periods.get(win) or {}).get('buy') or [])[:5]:
+                name = x.get('broker_name'); avg = x.get('avg'); net = int(x.get('net') or 0)
+                if not name or str(name).isdigit() or not avg or float(avg) <= 0 or net <= 0:
+                    continue
+                ret = (cur - float(avg)) / float(avg) * 100
+                if ret < -40 or ret > 60:
+                    continue
+                a = fwd[hz].setdefault(name, {'wins': 0, 'total': 0, 'ret': 0.0})
+                a['total'] += 1; a['ret'] += ret
+                if ret > 0:
+                    a['wins'] += 1
+                bf_added[hz] += 1
+    print(f"  📼 歷史回推(近似):短線 +{bf_added['short']} 筆、波段 +{bf_added['swing']} 筆 合成訊號")
+
     def rank(agg, min_pos):
         rows = []
         for name, a in agg.items():
@@ -4264,11 +4295,12 @@ def build_broker_perf():
     payload = {
         'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'daytrade': rank(fwd['daytrade'], 12),
-        'short': rank(fwd['short'], 12),
-        'swing': rank(fwd['swing'], 10),
+        'short': rank(fwd['short'], 8),
+        'swing': rank(fwd['swing'], 8),
         'float_short': rank(float_short, 8),
         'float_swing': rank(float_swing, 8),
         'signals': len(hist), 'days': len(keep_dates),
+        'backfill': bf_added,   # 短線/波段榜含幾筆歷史回推近似(前端標註;真實累積後占比自然下降)
     }
     Path(DATA_DIR).mkdir(exist_ok=True)
     for name, obj in (('broker_signals.json', hist), ('broker_perf.json', payload)):
