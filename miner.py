@@ -4442,9 +4442,68 @@ def build_broker_book():
                                    'buy': it.get('buy', 0), 'sel': it.get('sel', 0)})
     churn_list = sorted(churn_list, key=lambda x: -(x['buy'] + x['sel']))[:15]
 
+    # ── 🏛️ 重要券商:官股/外資/大型/中型/小型 分點損益(近5/10日浮動,萬元)──────────
+    #   以「券商公司」(分點名去分行後綴)彙整各分行 5d/10d 持股浮動損益 =(現價−買超均價)×淨股數。
+    _close_cache: dict = {}
+
+    def _latest_close(sym):
+        if sym in _close_cache:
+            return _close_cache[sym]
+        c = None
+        try:
+            arr = json.loads((Path(DATA_DIR) / f'{sym}.json').read_text(encoding='utf-8'))
+            if isinstance(arr, list):
+                for r in reversed(arr):
+                    cc = r.get('close')
+                    if cc and float(cc) > 0:
+                        c = float(cc); break
+        except Exception:
+            c = None
+        _close_cache[sym] = c
+        return c
+
+    def _slot_pnl(slot):
+        tot = 0.0
+        for sym, v in slot.items():
+            cl = _latest_close(sym)
+            if cl and v.get('avg') and v.get('net'):
+                tot += (cl - float(v['avg'])) * v['net']   # 元
+        return tot / 10000.0   # → 萬元
+
+    firms: dict = {}   # firm -> {pnl5,pnl10,activity,gov,foreign}
+    for bid, b in book.items():
+        name = TACTICAL_TAGS.get(bid) or (b['names'].most_common(1)[0][0] if b['names'] else bid)
+        firm = re.split(r'[-－(（]', str(name))[0].strip() or str(name)
+        tags = _classify_broker(bid, name)
+        per = b['per']
+        p5 = _slot_pnl(per.get('5d', {}))
+        p10 = _slot_pnl(per.get('10d', {}))
+        act = sum(abs(v.get('net', 0)) for v in per.get('5d', {}).values())
+        fr = firms.setdefault(firm, {'name': firm, 'pnl5': 0.0, 'pnl10': 0.0, 'activity': 0, 'gov': False, 'foreign': False})
+        fr['pnl5'] += p5; fr['pnl10'] += p10; fr['activity'] += act
+        if 'govbank' in tags:
+            fr['gov'] = True
+        if 'foreign' in tags:
+            fr['foreign'] = True
+    flist = list(firms.values())
+    for fr in flist:
+        fr['pnl5'] = round(fr['pnl5'], 1); fr['pnl10'] = round(fr['pnl10'], 1)
+    gov = sorted([f for f in flist if f['gov']], key=lambda x: -x['pnl5'])[:8]
+    foreign = sorted([f for f in flist if f['foreign'] and not f['gov']], key=lambda x: -x['pnl5'])[:8]
+    rest = sorted([f for f in flist if not f['gov'] and not f['foreign']], key=lambda x: -x['activity'])
+    large, mid, small = rest[:8], rest[8:23], rest[23:38]
+    large = sorted(large, key=lambda x: -x['pnl5'])
+    mid = sorted(mid, key=lambda x: -x['pnl5'])
+    small = sorted(small, key=lambda x: -x['pnl5'])
+    def _slimf(f):
+        return {'name': f['name'], 'pnl5': f['pnl5'], 'pnl10': f['pnl10']}
+    important = {'gov': [_slimf(f) for f in gov], 'foreign': [_slimf(f) for f in foreign],
+                 'large': [_slimf(f) for f in large], 'mid': [_slimf(f) for f in mid],
+                 'small': [_slimf(f) for f in small]}
+
     payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                'brokers': brokers, 'rank': rank, 'alliances': alliances,
-               'follow_picks': follow_picks, 'churn': churn_list}
+               'follow_picks': follow_picks, 'churn': churn_list, 'important': important}
     tgt = Path(DATA_DIR) / 'broker_book.json'; tmp = tgt.with_suffix('.json.tmp')
     tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     os.replace(str(tmp), str(tgt))
