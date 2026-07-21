@@ -64,12 +64,41 @@ const tgWithLevel = async (env, user, text, stars, opts = {}) => {
     return tg(env, user.chat_id, text, opts);
 };
 
-// V21.3 ── 股票代號 → 中文名 lookup(從 KV names:map 讀,fallback 純代號)
+// V22.2 ── 全市場股名(FinMind TaiwanStockInfo,匿名一次抓,快取 KV 24h + 記憶體)。
+//   讓「推薦股(全市場)」也帶股名,不只使用者自己同步的那些。
+let _fullNamesMem = null;
+async function getFullNames(env) {
+    if (_fullNamesMem) return _fullNamesMem;
+    try {
+        const cached = await env.KV.get('names:full', 'json');
+        if (cached && Object.keys(cached).length > 100) { _fullNamesMem = cached; return cached; }
+    } catch (_) {}
+    try {
+        const r = await fetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo', { signal: AbortSignal.timeout(12000) });
+        if (!r.ok) return {};
+        const j = await r.json();
+        const m = {};
+        for (const row of (j.data || [])) {
+            const sid = String(row.stock_id || '').trim().toUpperCase();
+            const nm = String(row.stock_name || '').trim().slice(0, 20);
+            if (sid && nm) m[sid] = nm;
+        }
+        if (Object.keys(m).length > 100) {
+            _fullNamesMem = m;
+            try { await env.KV.put('names:full', JSON.stringify(m), { expirationTtl: 86400 }); } catch (_) {}
+        }
+        return m;
+    } catch (_) { return {}; }
+}
+
+// V21.3/V22.2 ── 股票代號 → 中文名:先讀使用者同步的 names:map(優先),再退全市場 TaiwanStockInfo,最後純代號
 async function stockLabel(env, sym) {
     if (!sym) return '';
+    const S = String(sym).toUpperCase();
     try {
         const map = await env.KV.get('names:map', 'json');
-        const name = map?.[String(sym).toUpperCase()];
+        let name = map?.[S];
+        if (!name) { const full = await getFullNames(env); name = full?.[S]; }
         return name ? `${name} ${sym}` : String(sym);
     } catch (_) {
         return String(sym);
