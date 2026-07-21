@@ -259,19 +259,17 @@ export default {
         //   "0 4 * * 1-5"      → 12:00 台北 🌞 午盤戰報
         //   "0 9 * * 1-5"      → 17:00 台北 🌆 盤後總結(加強既有)
         //   "0,30 1-4"/"0,20 5"→ 09:00-13:20 台北 每 30 分 盤中庫存彙總掃描(runScan,末班 13:20)
+        // 🧹 V22 精簡:砍掉「隔夜美股戰報」「午盤戰報」兩則長篇廣播(使用者反映沒用),
+        //   只留「盤前精選(08:00)」「盤後精選(17:00)」+ 開盤掃 + 盤中個人警報。
         if (event.cron === '0 9 * * 1-5') {
             ctx.waitUntil(runDailySummary(env));
         } else if (event.cron === '0 1 * * 1-5') {
             ctx.waitUntil(runMonitorChuMorningScan(env));
             ctx.waitUntil(runEtfFollowMorningPush(env));  // V17.18
-        } else if (event.cron === '0 21 * * 0-4') {
-            ctx.waitUntil(runOvernightUS(env));    // V21.3 隔夜美股
         } else if (event.cron === '0 0 * * 1-5') {
             ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
-        } else if (event.cron === '0 4 * * 1-5') {
-            ctx.waitUntil(runMidday(env));         // V21.3 午盤戰報
         } else {
-            ctx.waitUntil(runScan(env));
+            ctx.waitUntil(runScan(env));           // 盤中個人警報(庫存/自選/到價/處置…)
         }
     },
 };
@@ -1600,12 +1598,15 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
     for (const blk of chuBlocks) {
         const picks = (chuMatrixData[blk.key] || []).slice(0, 3);
         if (picks.length) {
-            const syms = picks.map(p => {
+            // 🐛 V22 用 stockLabel 帶股名(舊版只顯代號)
+            const parts2 = [];
+            for (const p of picks) {
                 const g = Number(p.gain) || 0;
                 const sign = g > 0 ? '+' : '';
-                return `${p.sym}(${sign}${g.toFixed(1)}%)`;
-            }).join(' ');
-            chuLines.push(`${blk.label}: ${syms}`);
+                const lab = await stockLabel(env, p.sym);
+                parts2.push(`${lab}(${sign}${g.toFixed(1)}%)`);
+            }
+            chuLines.push(`${blk.label}: ${parts2.join('、')}`);
         }
     }
 
@@ -1758,7 +1759,7 @@ async function runPreMarket(env) {
         if (Number.isFinite(+macro.fi_spot_net)) { if (macro.fi_spot_net > 0) dScore += 1; else if (macro.fi_spot_net < -200) dScore -= 1; }
         if (Number.isFinite(+macro.fi_futures_net)) { if (macro.fi_futures_net > 0) dScore += 0.5; else if (macro.fi_futures_net <= -40000) dScore -= 1; }
     }
-    const dV = dScore >= 2 ? { e: '🟢', t: '開高偏多' } : dScore <= -2 ? { e: '🔴', t: '開低偏空' } : { e: '🟡', t: '中性震盪' };
+    const dV = dScore >= 2 ? { e: '🔴', t: '開高偏多' } : dScore <= -2 ? { e: '🟢', t: '開低偏空' } : { e: '🟡', t: '中性震盪' };   // 紅漲綠跌:偏多🔴 偏空🟢
 
     // 對每用戶推:加入個人化重點 3 檔
     let cursor = undefined;

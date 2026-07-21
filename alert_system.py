@@ -93,96 +93,115 @@ def stock_label(sym):
     return f"{name} {sym}" if name else str(sym)
 
 
+def _tpe_now():
+    """台北時間(GitHub Actions runner 是 UTC → 這裡轉 +8,修時間顯錯)。"""
+    from datetime import timezone, timedelta
+    return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8)))
+
+
+def _market_direction(macro):
+    """簡易大盤方向(對齊前端盤前體檢;紅漲綠跌:偏多🔴 偏空🟢 中性🟡)。"""
+    s = 0.0
+
+    def sgn(v):
+        try:
+            v = float(v)
+            return 1 if v > 0 else -1 if v < 0 else 0
+        except Exception:
+            return 0
+    s += sgn(macro.get('sp500_chg_pct')) + sgn(macro.get('nasdaq_chg_pct'))
+    try:
+        vix = float(macro.get('vix'))
+        if vix < 20:
+            s += 1
+        elif vix > 30:
+            s -= 2
+        elif vix > 25:
+            s -= 1
+    except Exception:
+        pass
+    try:
+        fspot = float(macro.get('fi_spot_net'))
+        if fspot > 0:
+            s += 1
+        elif fspot < -200:
+            s -= 1
+    except Exception:
+        pass
+    if s >= 2:
+        return ('🔴', '偏多', '順勢偏多,開高別追、拉回不破可續抱')
+    if s <= -2:
+        return ('🟢', '偏空', '偏空防守,手上有貨顧停損、空手別急著接刀')
+    return ('🟡', '中性', '方向未定,等站上昨高或跌破昨低再表態')
+
+
 def build_summary():
-    """組「盤前/盤後 摘要」訊息(每天 2 則)。"""
+    """組「盤前/盤後 精選摘要」(每天 2 則)。V22 重新設計:只給最有用的 —
+    大盤一句話 + 籌碼/技術/型態精選(含股名) + 處置注意;砍掉總經長篇/核彈事件/融資水位噪音。
+    """
     macro = load_json("macro_risk.json") or {}
-    bubble = load_json("bubble_warning.json") or {}
+    top_picks = load_json("top_picks.json") or {}
+    radar = load_json("radar.json") or {}
     attention = load_json("attention_status.json") or {}
-    forecast = load_json("attention_forecast.json") or {}
-    radar_matrix = load_json("radar_matrix.json") or {}
 
-    now = datetime.now()
-    title = "📊 *盤前快報*" if 0 <= now.hour < 9 else "📊 *盤後總結*"
+    now = _tpe_now()
+    is_pre = 6 <= now.hour < 12   # 台北早上 = 盤前
+    title = "🌅 *盤前快報*" if is_pre else "🌆 *盤後精選*"
+    lines = [f"{title} _{now.strftime('%m/%d %H:%M')} 台北_", ""]
 
-    lines = [f"{title} _{now.strftime('%m/%d %H:%M')}_", ""]
-
-    # 🌐 總經
-    us10y = macro.get('us10y_yield')
+    # 🌏 今日大盤一句話(白話方向 + 對策)
+    emo, dirt, sop = _market_direction(macro)
     vix = macro.get('vix')
-    fg = macro.get('fear_greed')
-    fi_spot = macro.get('fi_spot_net')
-    fi_fut = macro.get('fi_futures_net')
-    fi_alert = macro.get('fi_ratio_alert')
-    m1b = macro.get('m1b_yoy')
-    lines.append("🌐 *全球總經*")
-    lines.append(f"  · 美債10Y `{us10y}%` / VIX `{vix}` / 恐慌貪婪 `{fg}`")
-    lines.append(f"  · 外資現貨 `{fi_spot} 億` / 期貨 `{fi_fut:+,} 口`" if fi_spot is not None and fi_fut is not None else "  · 外資資料採集中")
-    if fi_alert:
-        lines.append(f"  · {fi_alert}")
-    if m1b is not None:
-        lines.append(f"  · 🏦 M1B YoY `{m1b}%`" + (" ⚠️ 熱錢氾濫" if m1b > 5 else ""))
+    lines.append(f"{emo} *今日大盤:{dirt}*" + (f"　VIX {vix}" if vix is not None else ""))
+    lines.append(f"　💡 {sop}")
     lines.append("")
 
-    # 💣 融資水位
-    margin = bubble.get('margin_balance_billion')
-    margin_status = bubble.get('margin_status', '')
-    if margin is not None:
-        emoji = "🚨" if margin >= 3200 else ("⚠️" if margin >= 2800 else "✅")
-        lines.append(f"💣 *融資水位* {emoji}")
-        lines.append(f"  · 餘額 `{margin} 億` ({margin_status})")
+    # 🌟 今日精選(籌碼+基本面):top_picks = 法人淨流入 + 主力建倉 + 營收成長
+    picks = (top_picks.get('data') or [])[:5]
+    if picks:
+        lines.append("🌟 *今日精選*(法人+主力+基本面)")
+        for p in picks:
+            reasons = '、'.join(str(r) for r in (p.get('reasons') or [])[:2])
+            lines.append(f"　▸ {stock_label(p.get('sym', ''))}　{reasons}")
         lines.append("")
 
-    # 🚨 處置股
-    att_stocks = attention.get('stocks', {})
-    if att_stocks:
-        att_count = sum(1 for v in att_stocks.values() if '處置' in v.get('status', ''))
-        notice_count = sum(1 for v in att_stocks.values() if '注意' in v.get('status', ''))
-        lines.append(f"🚨 *列管股* 處置 `{att_count}` / 注意 `{notice_count}`")
-        # 列前 5 檔處置股代號
-        disposed = [k for k, v in att_stocks.items() if '處置' in v.get('status', '')][:5]
-        if disposed:
-            lines.append(f"  · 處置股: `{', '.join(disposed)}`")
+    # 🚀 技術/型態強勢:超跌可買(帶白話 flags)+ 飆股 + 底部起漲
+    rd = (radar.get('data') or {})
+    tech = []
+    for x in (rd.get('wrongkill') or [])[:2]:
+        fl = '·'.join(str(f) for f in (x.get('flags') or [])[:2])
+        tech.append(f"　▸ {stock_label(x.get('sym', ''))}　超跌可留意" + (f"({fl})" if fl else ''))
+    for x in (rd.get('surge') or [])[:2]:
+        tech.append(f"　▸ {stock_label(x.get('sym', ''))}　🚀 飆股型態(站上均線)")
+    for x in (rd.get('bottom') or [])[:1]:
+        tech.append(f"　▸ {stock_label(x.get('sym', ''))}　🥣 底部起漲")
+    if tech:
+        lines.append("🚀 *技術/型態強勢*")
+        lines.extend(tech[:5])
         lines.append("")
 
-    # ⚠️ 處置門檻預估(明日恐達標)
-    fc_stocks = forecast.get('stocks', {})
-    high_risk = sorted([(k, v) for k, v in fc_stocks.items() if v.get('score', 0) >= 70],
-                       key=lambda x: -x[1]['score'])[:5]
-    if high_risk:
-        lines.append("⚠️ *明日恐達處置門檻*")
-        for sym, info in high_risk:
-            lines.append(f"  · `{sym}` 分數 `{info['score']}` — {info.get('reasons', ['—'])[0]}")
+    # 🏦 法人連 3 日買超(籌碼偏多):外資 / 投信
+    fr = (rd.get('foreign3') or [])[:3]
+    tr = (rd.get('trust3') or [])[:3]
+    if fr or tr:
+        lines.append("🏦 *法人連 3 日買超*(籌碼偏多)")
+        if fr:
+            lines.append("　外資:" + "、".join(stock_label(x.get('sym', '')) for x in fr))
+        if tr:
+            lines.append("　投信:" + "、".join(stock_label(x.get('sym', '')) for x in tr))
         lines.append("")
 
-    # 📅 未來重大事件(14 日視窗,顯示前 6 場)
-    events = (macro.get('upcoming_macro_events') or [])[:6]
-    if events:
-        lines.append("📅 *未來 14 日核彈事件*")
-        for ev in events:
-            lines.append(f"  · `{ev['date']}` {ev['event']}")
+    # 🚨 處置注意(精簡:數量 + 前 3 檔名)
+    att = (attention.get('stocks') or {})
+    disposed = [k for k, v in att.items() if '處置' in (v.get('status') or '')]
+    if disposed:
+        names = '、'.join(stock_label(s) for s in disposed[:3])
+        lines.append(f"🚨 *處置中 {len(disposed)} 檔*:{names}" + (" 等" if len(disposed) > 3 else ""))
+        lines.append("　💡 分盤撮合、流動性差,別當沖")
         lines.append("")
 
-    # 📚 朱家泓今日選股(4 大模組,各取前 3 檔)
-    rm_data = (radar_matrix.get('data') or {})
-    chu_blocks = [
-        ('🍀 六六大順',   'chu_perfect6'),
-        ('🔥 特別報價',   'chu_top_gainer'),
-        ('🥣 底部轉折',   'chu_bottom'),
-        ('🚀 5MA飆股',    'chu_riding5ma'),
-    ]
-    chu_lines = []
-    for label, key in chu_blocks:
-        picks = (rm_data.get(key) or [])[:3]
-        if picks:
-            syms = ' '.join(f"`{p.get('sym','')}({p.get('gain',0):+.1f}%)`" for p in picks)
-            chu_lines.append(f"  · {label}: {syms}")
-    if chu_lines:
-        lines.append("📚 *朱家泓今日選股*(各模組前 3 檔)")
-        lines.extend(chu_lines)
-        lines.append("  💡 _盤後篩選, 隔日參考進場, 跌破 5MA 立停_")
-        lines.append("")
-
-    lines.append("_💡 詳細分析請開 [StockAI 終端機](https://xin7355-collab.github.io/StockAI-DB/)_")
+    lines.append("_🔔 想收「你的庫存/自選」即時提醒 → App 設定綁定 Telegram_")
+    lines.append("_📱 完整分析 [StockAI 終端機](https://xin7355-collab.github.io/StockAI-DB/)_")
     return "\n".join(lines)
 
 
