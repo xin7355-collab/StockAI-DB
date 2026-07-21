@@ -20,12 +20,13 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: cloud-worker
+          # 🐛 WEBHOOK_SECRET 移除:它是「選填」(擋偽造 webhook,worker 內 if(env.WEBHOOK_SECRET) 才用),
+          #   但因 GitHub Secret 沒設 → wrangler 上傳 secret 時「找不到值」→ 整包部署失敗(近1個月每次都掛)。
+          #   拿掉它即可正常部署;想要防偽造保護再到 GitHub Secrets 補 WEBHOOK_SECRET 並加回這兩行。
           secrets: |
             TELEGRAM_BOT_TOKEN
-            WEBHOOK_SECRET
             GEMINI_API_KEY
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
