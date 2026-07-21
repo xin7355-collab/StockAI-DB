@@ -3068,6 +3068,37 @@ def fetch_broker_chips():
             output['chips_fetched_on'] = today_str
         elif existing_obj.get('chips_fetched_on'):
             output['chips_fetched_on'] = existing_obj['chips_fetched_on']
+
+        # 📅 V69.1.6 逐日分點快照(rolling 10 交易日):供前端「昨日 vs 今日」真實比對誰跑掉/誰新進。
+        #    每個交易日把當日(1d)前 15 買/賣分點壓縮成 [名稱, net] 存進 hist,dedup by date,只留最近 10 天。
+        #    existing_obj 由 workflow「git checkout origin/data -- data/」還原 → hist 跨採礦累積不流失。
+        try:
+            def _compact_side(lst):
+                out = []
+                for x in (lst or [])[:15]:
+                    nm = x.get('broker_name') or str(x.get('broker_id') or '')
+                    net = int(x.get('net') or 0)
+                    if nm and not str(nm).isdigit() and net:
+                        out.append([nm, net])
+                return out
+            _hist = existing_obj.get('hist')
+            if not isinstance(_hist, list):
+                _hist = []
+            _p1 = (out_periods or {}).get('1d') or {}
+            _dd = output.get('data_date')
+            if _dd and (_p1.get('buy') or _p1.get('sell')):
+                _snap = {'d': _dd, 'b': _compact_side(_p1.get('buy')), 's': _compact_side(_p1.get('sell'))}
+                if _hist and isinstance(_hist[-1], dict) and _hist[-1].get('d') == _dd:
+                    _hist[-1] = _snap        # 同一交易日重跑 → 覆蓋,不重複
+                else:
+                    _hist.append(_snap)
+                _hist = _hist[-10:]          # 只留最近 10 個交易日
+            if _hist:
+                output['hist'] = _hist
+        except Exception:
+            if existing_obj.get('hist'):
+                output['hist'] = existing_obj['hist']
+
         out_file.write_text(json.dumps(output, ensure_ascii=False), encoding='utf-8')
 
         # V35.8 — 收集本檔已算好的 YoY/毛利,迴圈後併入全市場快取(免費,零額外 API;取代失效的 bulk)
