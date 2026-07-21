@@ -3079,7 +3079,12 @@ def fetch_broker_chips():
                     nm = x.get('broker_name') or str(x.get('broker_id') or '')
                     net = int(x.get('net') or 0)
                     if nm and not str(nm).isdigit() and net:
-                        out.append([nm, net])
+                        av = x.get('avg')
+                        try:
+                            av = round(float(av), 2) if av is not None else None
+                        except Exception:
+                            av = None
+                        out.append([nm, net, av])   # [名稱, net(股), 買賣均價]
                 return out
             _hist = existing_obj.get('hist')
             if not isinstance(_hist, list):
