@@ -150,10 +150,17 @@ futures_cache.json、macro_cache.json、margin_cache_stock.json
 
 ## 採礦機重點（miner.py）
 
+### ⭐ FinMind 是「付費版」（使用者多次明示，鐵律，別再當免費版看待）
+- **使用者的 `FINMIND_TOKENS`（GitHub Secrets，逗號分隔多把）是付費會員 Token**，額度約 **6000 req/hr/把**，**不是**匿名免費額度。
+- 因此**分點（`TaiwanStockTradingDailyReport`）採礦端抓得到**（付費版沒有 402 付費牆）→ 全市場滾動採礦靠的就是這個付費額度。
+- **前端手機端**用的是使用者自己 localStorage 填的 key（可能也是付費），**跟採礦端的 GitHub Secrets Token 不同把、不同 IP，額度分開算**。
+- ⛔ 舊文件寫「FinMind 免費版限制 / 匿名額度 / 分點被付費牆擋(402)」是**早期免費版時代的紀錄**，現在**已付費**，那些限制**多數已不適用**（保留在下方「V35.x」只作歷史脈絡，別再拿來當「做不到」的理由）。
+- **要更全/更快** → 加更多 `FINMIND_TOKENS`（多把輪動額度倍增）或調高 `HOT_TURNOVER_TOP`。
+
 ### 資料來源與極限防禦
 1. **OHLCV 與法人**：直接抓取 TWSE/TPEX 免費 API，並具備 SQLite WAL 鎖死防護與 JSON 分散式合併。
 2. **盤中快照補丁**：若當天歷史 K 線尚未產出，會自動去證交所 MIS 抓取即時快照填補。
-3. **分點籌碼**：透過 FinMind 匿名公開額度 (自動 Token 輪動防 429 封鎖)。
+3. **分點籌碼**：透過 **FinMind 付費版 Token**（使用者已付費，見下方鐵律）抓取，自動 Token 輪動防 429 封鎖。
 4. **外資期貨**：優先直連 **TAIFEX (期交所) 官方 CSV** 解析多空淨額，不再依賴容易斷線或缺漏的第三方 API。
 5. **美股大盤**：yfinance
 
@@ -625,7 +632,7 @@ done
 
 ## 💾 V35.x 資料源學到的鐵律(2026-06-29 連推 V35.0~V36.1)
 
-### FinMind 免費版限制(實證,別再踩)
+### FinMind 免費版限制(⚠️ 歷史脈絡：這是「免費版時代」的紀錄；使用者現已付費，分點 402 付費牆等限制多已不適用，見上方「⭐ FinMind 是付費版」鐵律)
 - **「不帶 data_id 的全市場 bulk」抓營收/財報 = 回 0 筆**(`TaiwanStockMonthRevenue`/`FinancialStatements`);只有 institutional 可 bulk。實證靠 `fundamentals_cache.json` 的 `__status{yoy_raw,gm_raw,yoy_hits,gm_hits}` 自我診斷欄。
 - **分點(`TaiwanStockTradingDailyReport`)= 付費牆擋(回 402)**;免費分點只剩證交所 BSR(破驗證碼),雲端跑極不穩(IP 被擋/驗證碼失敗),曾停更 6 週 + 解析汙染(券商名變數字)。前端 `_chipQuality()` 防呆:過期>10天/汙染→顯「維護中」不顯亂碼。
 - **全市場營收 YoY/毛利**:改用「分點逐檔迴圈順便把觀察清單(~100)已算好的 `revenue_yoy`+`gross_margin_trend` 併入 `fundamentals_cache.json`」(免費,零額外 API);冷門股全市場 YoY/毛利 + 全市場分點 → 需 **FinMind Sponsor(~NT$999/月)** 或 chips job matrix 平行化。
