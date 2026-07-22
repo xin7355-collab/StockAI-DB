@@ -841,6 +841,69 @@ def detect_kbar_signals(rows):
     return bull, bear
 
 
+# 🎯 V69.1.24 口袋支點(Pocket Pivot,Minervini)全市場版 — 與前端 _detectPocketPivot 逐條對齊
+def _pocket_pivot(raw_data):
+    """回傳 status 字串或 None。多頭沿均線整理,今日上漲量 > 近10日最大黑K量 + 貼近10日線。"""
+    if not isinstance(raw_data, list) or len(raw_data) < 25:
+        return None
+    C = lambda b: b.get('close', 0) or 0
+    V = lambda b: b.get('volume', 0) or 0
+    n = len(raw_data); last = n - 1
+    c = C(raw_data[last]); o = raw_data[last].get('open', 0) or 0; v = V(raw_data[last])
+    if not (c > 0 and o > 0 and v > 0):
+        return None
+    closes = [C(b) for b in raw_data]
+    def ma(k):
+        s = closes[-k:]
+        return sum(s) / k if len(s) >= k else None
+    ma10, ma20, ma50 = ma(10), ma(20), ma(50)
+    if not (ma10 and ma20 and c >= ma20 and (ma50 is None or c > ma50)):
+        return None
+    if not (c > C(raw_data[last - 1]) and c >= o):     # 今日收紅上漲
+        return None
+    max_down_vol = 0
+    for j in range(last - 10, last):
+        if j < 1:
+            continue
+        if C(raw_data[j]) < C(raw_data[j - 1]):
+            max_down_vol = max(max_down_vol, V(raw_data[j]))
+    if max_down_vol > 0 and v > max_down_vol and abs(c - ma10) / c * 100 <= 4:
+        volx = v / max_down_vol
+        return f"量 {volx:.1f}× 近10日最大黑K量 · 貼10日線 {ma10:.2f}(主力偷買)"
+    return None
+
+
+# 🚀 V69.1.24 相對強度 RS(個股近20日超額報酬 vs 大盤)— 與前端 _detectRelativeStrength 對齊(只收「強於大盤」)
+def _rs_vs_market(raw_data, twii_ret20):
+    """回傳 (rs, status) 或 None。近20日個股報酬 − 大盤報酬 ≥ 8% = 強勢股。"""
+    if twii_ret20 is None or not isinstance(raw_data, list) or len(raw_data) < 25:
+        return None
+    C = lambda b: b.get('close', 0) or 0
+    n = len(raw_data)
+    c = C(raw_data[n - 1]); c20 = C(raw_data[n - 21])
+    if not (c > 0 and c20 > 0):
+        return None
+    stk_ret = (c - c20) / c20 * 100
+    rs = stk_ret - twii_ret20
+    if rs >= 8:
+        return (rs, f"近20日 {stk_ret:+.1f}% vs 大盤 {twii_ret20:+.1f}% · 超額 +{rs:.1f}%")
+    return None
+
+
+def _fetch_twii_ret20():
+    """大盤(^TWII)近 20 交易日報酬%,供 RS 用;任何失敗回 None(該輪 RS 榜空,不影響其他戰區)。"""
+    try:
+        import yfinance as yf
+        hist = yf.Ticker("^TWII").history(period="2mo")
+        closes = [float(x) for x in hist["Close"].tolist() if x == x]
+        if len(closes) < 21:
+            return None
+        return (closes[-1] - closes[-21]) / closes[-21] * 100
+    except Exception as e:
+        print(f"   ⚠️ RS 大盤基準抓取失敗,本輪 RS 榜略過:{e}")
+        return None
+
+
 def main():
     print("🚀 啟動【首席雷達矩陣】全市場掃描引擎...")
 
@@ -862,7 +925,14 @@ def main():
         # 📐 K棒轉折雷達(V41.7):純公式 K棒戰法全市場掃描
         'kbar_bull': [],        # 🌅 K棒轉多(晨星/長紅吞噬遭遇/測撐)
         'kbar_bear': [],        # 🌃 K棒轉空(夜星/長黑吞噬遭遇/測壓/量價背離)
+        # 🎯🚀 V69.1.24 口袋支點 / 相對強度(全市場版,對齊前端偵測器)
+        'pocket_pivot': [],     # 🎯 口袋支點(Minervini 主力偷買早期買點)
+        'rs_strong': [],        # 🚀 相對強度(近20日超額報酬強於大盤)
     }
+
+    # 🚀 V69.1.24 大盤近20日報酬(RS 相對強度基準),抓一次;失敗則 RS 榜本輪略過
+    twii_ret20 = _fetch_twii_ret20()
+    print(f"   📊 大盤近20日報酬:{('%+.1f%%' % twii_ret20) if twii_ret20 is not None else '抓取失敗(RS 榜本輪略過)'}")
 
     # 朱家泓選股法共用排除名單(處置/注意/全額交割)
     chu_attention_set = _chu_load_attention_set()
@@ -1082,6 +1152,21 @@ def main():
                         'gain': day_gain, 'status': ' + '.join(kb_bear[:2])
                     })
 
+                # 🎯 口袋支點(Minervini 主力偷買)
+                _pp = _pocket_pivot(raw_data)
+                if _pp:
+                    matrix['pocket_pivot'].append({
+                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                        'gain': day_gain, 'status': _pp
+                    })
+                # 🚀 相對強度(強於大盤)
+                _rs = _rs_vs_market(raw_data, twii_ret20)
+                if _rs:
+                    matrix['rs_strong'].append({
+                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                        'gain': day_gain, 'rs': round(_rs[0], 1), 'status': _rs[1]
+                    })
+
             processed_count += 1
 
         except Exception:
@@ -1110,6 +1195,9 @@ def main():
     # 📐 K棒轉折雷達:成交額大到小(流動性優先,散戶好進出)
     matrix['kbar_bull'].sort(key=lambda x: x['turnover_e'], reverse=True)
     matrix['kbar_bear'].sort(key=lambda x: x['turnover_e'], reverse=True)
+    # 🎯 口袋支點:成交額大到小;🚀 相對強度:超額報酬由高到低
+    matrix['pocket_pivot'].sort(key=lambda x: x['turnover_e'], reverse=True)
+    matrix['rs_strong'].sort(key=lambda x: x.get('rs', 0), reverse=True)
 
     # 輸出最終雷達矩陣
     output = {
@@ -1132,6 +1220,9 @@ def main():
             # 📐 K棒轉折雷達(各取前 30 檔)
             'kbar_bull': matrix['kbar_bull'][:30],
             'kbar_bear': matrix['kbar_bear'][:30],
+            # 🎯🚀 口袋支點 / 相對強度(各取前 30 檔)
+            'pocket_pivot': matrix['pocket_pivot'][:30],
+            'rs_strong': matrix['rs_strong'][:30],
         }
     }
 
