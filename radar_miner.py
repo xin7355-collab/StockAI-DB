@@ -904,6 +904,57 @@ def _fetch_twii_ret20():
         return None
 
 
+# 🚦 V69.1.26 全市場當沖歷史勝率(開盤買→收盤賣),依開盤情境分組 — 對齊前端 _dtLongStats
+def _dt_winrate(raw_data):
+    if not isinstance(raw_data, list) or len(raw_data) < 40:
+        return None
+    arr = raw_data[-150:]
+    def mk():
+        return {'n': 0, 'win': 0, 'sumW': 0.0, 'cW': 0, 'sumL': 0.0, 'cL': 0}
+    B = {'up': mk(), 'flat': mk(), 'dn': mk(), 'all': mk()}
+    for i in range(1, len(arr)):
+        o = arr[i].get('open', 0) or 0
+        c = arr[i].get('close', 0) or 0
+        pc = arr[i - 1].get('close', 0) or 0
+        if not (o > 0 and c > 0 and pc > 0):
+            continue
+        oc = (o - pc) / pc * 100
+        r = (c - o) / o * 100
+        key = 'up' if oc > 1 else ('dn' if oc < -1 else 'flat')
+        for b in (B[key], B['all']):
+            b['n'] += 1
+            if c > o:
+                b['win'] += 1; b['sumW'] += r; b['cW'] += 1
+            elif c < o:
+                b['sumL'] += r; b['cL'] += 1
+    def pack(b):
+        if b['n'] < 8:
+            return None
+        long_wr = b['win'] / b['n'] * 100
+        long_avg = b['sumW'] / b['cW'] if b['cW'] else 0
+        short_wr = b['cL'] / b['n'] * 100            # 收黑比率=開盤放空→收盤回補賺錢比率
+        short_avg = -(b['sumL'] / b['cL']) if b['cL'] else 0  # 做多平均賠%的相反=做空平均賺%
+        return {'lwr': round(long_wr, 1), 'lavg': round(long_avg, 2),
+                'swr': round(short_wr, 1), 'savg': round(short_avg, 2), 'n': b['n']}
+    out = {}
+    for k in ('up', 'flat', 'dn', 'all'):
+        p = pack(B[k])
+        if p:
+            out[k] = p
+    return out or None
+
+
+def _amp5(raw_data):
+    """近 5 日均振幅%((高-低)/昨收)— 當沖『有肉』過濾。"""
+    a = raw_data[-6:]
+    vals = []
+    for i in range(1, len(a)):
+        h = a[i].get('high', 0) or 0; lo = a[i].get('low', 0) or 0; pc = a[i - 1].get('close', 0) or 0
+        if h > 0 and lo > 0 and pc > 0:
+            vals.append((h - lo) / pc * 100)
+    return round(sum(vals) / len(vals), 1) if vals else 0
+
+
 def main():
     print("🚀 啟動【首席雷達矩陣】全市場掃描引擎...")
 
@@ -928,6 +979,8 @@ def main():
         # 🎯🚀 V69.1.24 口袋支點 / 相對強度(全市場版,對齊前端偵測器)
         'pocket_pivot': [],     # 🎯 口袋支點(Minervini 主力偷買早期買點)
         'rs_strong': [],        # 🚀 相對強度(近20日超額報酬強於大盤)
+        # 🚦 V69.1.26 全市場當沖歷史勝率(依開盤情境 做多/做空,前端配今日大盤方向挑最高勝率)
+        'daytrade_wr': [],
     }
 
     # 🚀 V69.1.24 大盤近20日報酬(RS 相對強度基準),抓一次;失敗則 RS 榜本輪略過
@@ -1167,6 +1220,17 @@ def main():
                         'gain': day_gain, 'rs': round(_rs[0], 1), 'status': _rs[1]
                     })
 
+            # 🚦 全市場當沖歷史勝率(有肉+跑得掉才收:近5日均振幅≥2% + 成交額≥5千萬 + 昨量≥1000張)
+            _yv = prev.get('volume', 0) or 0
+            _amp = _amp5(raw_data)
+            if turnover >= 50_000_000 and _amp >= 2.0 and _yv >= 1_000_000:
+                _wr = _dt_winrate(raw_data)
+                if _wr:
+                    matrix['daytrade_wr'].append({
+                        'sym': sym, 'close': round(c, 2), 'turnover_e': turnover_e,
+                        'amp5': _amp, 'yvol': round(_yv / 1000), 'wr': _wr
+                    })
+
             processed_count += 1
 
         except Exception:
@@ -1198,6 +1262,8 @@ def main():
     # 🎯 口袋支點:成交額大到小;🚀 相對強度:超額報酬由高到低
     matrix['pocket_pivot'].sort(key=lambda x: x['turnover_e'], reverse=True)
     matrix['rs_strong'].sort(key=lambda x: x.get('rs', 0), reverse=True)
+    # 🚦 當沖勝率:成交額大到小(流動性優先);前端再依今日情境的做多/做空勝率重排
+    matrix['daytrade_wr'].sort(key=lambda x: x['turnover_e'], reverse=True)
 
     # 輸出最終雷達矩陣
     output = {
@@ -1223,6 +1289,8 @@ def main():
             # 🎯🚀 口袋支點 / 相對強度(各取前 30 檔)
             'pocket_pivot': matrix['pocket_pivot'][:30],
             'rs_strong': matrix['rs_strong'][:30],
+            # 🚦 當沖歷史勝率(取流動性前 150 檔,前端配今日情境挑做多/做空各前 N)
+            'daytrade_wr': matrix['daytrade_wr'][:150],
         }
     }
 
