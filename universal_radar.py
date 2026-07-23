@@ -480,6 +480,71 @@ def fetch_tech_giants_news():
     print(f"✅ 科技巨頭情報已輸出 {total} 篇 → {TECH_GIANTS_FILE}")
 
 
+# 📰 V69.5.1 個股消息面:股名 → 代號(權值股 + 熱門族群成分股;新聞標題含股名即歸該股)
+STOCK_NAME_CODE = {
+    '台積電': '2330', '鴻海': '2317', '聯發科': '2454', '台達電': '2308', '廣達': '2382', '緯創': '3231', '緯穎': '6669',
+    '技嘉': '2376', '華碩': '2357', '和碩': '4938', '英業達': '2356', '光寶科': '2301', '智邦': '2345', '瑞昱': '2379',
+    '聯詠': '3034', '聯電': '2303', '大立光': '3008', '日月光': '3711', '弘塑': '3131', '辛耘': '3583', '萬潤': '6187',
+    '世芯': '3661', '創意': '3443', '智原': '3035', '力旺': '3529', '晶心科': '6533', '譜瑞': '4966', '祥碩': '5269',
+    '環球晶': '6488', '中美晶': '5483', '合晶': '6182', '台勝科': '3532', '嘉晶': '3016',
+    '華邦電': '2344', '南亞科': '2408', '群聯': '8299', '旺宏': '2337', '晶豪科': '3006', '十銓': '4967',
+    '欣興': '3037', '南電': '8046', '景碩': '3189', '金像電': '2368', '台郡': '6269',
+    '華城': '1519', '士電': '1503', '中興電': '1513', '東元': '1504', '大亞': '1609',
+    '奇鋐': '3017', '雙鴻': '3324', '健策': '3653', '超眾': '6230', '高力': '8996',
+    '上銀': '2049', '亞德客': '1590', '所羅門': '2359', '廣明': '6188', '崇友': '4506',
+    '漢翔': '2634', '雷虎': '8033', '龍德造船': '6753', '寶一': '8222', '公準': '3178', '千附': '8383',
+    '昇達科': '3491', '華通': '2313', '啟碁': '6285', '台通': '8011', '台揚': '2314',
+    '聯亞': '3081', '聯鈞': '3450', '上詮': '3363', '華星光': '4979', '光環': '3234', '雷笛克': '6869',
+    '安碁資訊': '6690', '零壹': '3029', '精誠': '6214', '敦陽科': '2480',
+    '富邦金': '2881', '國泰金': '2882', '中信金': '2891', '兆豐金': '2886', '玉山金': '2884', '第一金': '2892',
+    '中華電': '2412', '台塑': '1301', '南亞': '1303', '中鋼': '2002',
+}
+_TONE_MAP = {'利多': 'pos', '利空': 'neg', '中立': 'neu'}
+
+
+def build_stock_news(news_items):
+    """📰 把已判讀情緒的新聞,依標題含哪些股名 → data/stock_news.json(個股消息面)。
+    純加值:失敗只印警告,不影響 radar_news 主輸出。標題同時命中「南亞/南亞科」時只留較長者(去子字串誤判)。"""
+    try:
+        names_by_len = sorted(STOCK_NAME_CODE.keys(), key=len, reverse=True)
+        stocks = {}
+        for it in news_items:
+            title = (it.get('title_zh') or it.get('title') or '').strip()
+            if not title:
+                continue
+            hits = [nm for nm in names_by_len if nm in title]
+            # 去子字串:若某股名是另一個已命中股名的子字串(如「南亞」⊂「南亞科」),丟掉短的
+            hits = [nm for nm in hits if not any(nm != o and nm in o for o in hits)]
+            if not hits:
+                continue
+            tone = _TONE_MAP.get(it.get('ai_sentiment', '中立'), 'neu')
+            rec = {
+                'title': title[:60],
+                'source': (it.get('source') or '')[:20],
+                'url': it.get('url') or it.get('link') or '#',
+                'date': (it.get('published') or '')[:16],
+                'tone': tone,
+                'reason': (it.get('reason') or '')[:40],
+            }
+            for nm in hits:
+                code = STOCK_NAME_CODE[nm]
+                bucket = stocks.setdefault(code, [])
+                if any(x.get('url') == rec['url'] or x.get('title') == rec['title'] for x in bucket):
+                    continue
+                bucket.append(rec)
+        # 每檔:利多/利空優先、最多 6 則
+        out_stocks = {}
+        for code, arr in stocks.items():
+            arr.sort(key=lambda x: 0 if x['tone'] != 'neu' else 1)
+            out_stocks[code] = {'items': arr[:6]}
+        out = {'updated': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'), 'stocks': out_stocks}
+        (DATA_DIR / 'stock_news.json').write_text(
+            json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print(f"  ✅ 個股消息面:{len(out_stocks)} 檔有新聞 → data/stock_news.json")
+    except Exception as e:
+        print(f"  ⚠️ build_stock_news 失敗(不影響 radar_news):{type(e).__name__}: {e}")
+
+
 def main():
     print("📡 通用型情報監聽雷達啟動")
     print(f"  關鍵字（{len(KEYWORDS)}）：{', '.join(KEYWORDS)}")
@@ -539,6 +604,9 @@ def main():
         encoding="utf-8"
     )
     print(f"\n✅ 已輸出 {len(keep)} 篇 → {OUTPUT_FILE}")
+
+    # 📰 V69.5.1 個股消息面:用「全部已判讀新聞」比對股名 → data/stock_news.json(涵蓋較廣,非只重點 15 篇)
+    build_stock_news(results)
 
     # 🛡️ 兩者輸出各自獨立的 JSON(global_news / tech_giants_news)→ 隔離,
     #    前者失敗不該讓後者也不產出(否則前端盤前戰情少一整段)。

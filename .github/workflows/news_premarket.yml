@@ -52,7 +52,7 @@ jobs:
       - name: 🚀 部署 3 個新聞檔到 gh-pages + data
         run: |
           set -e
-          FILES="data/radar_news.json data/global_news.json data/tech_giants_news.json"
+          FILES="data/radar_news.json data/global_news.json data/tech_giants_news.json data/stock_news.json"
           HAVE=""
           for f in $FILES; do [ -f "$f" ] && HAVE="$HAVE $f"; done
           if [ -z "$HAVE" ]; then echo "❌ 無任何新聞檔產出,跳過部署"; exit 0; fi

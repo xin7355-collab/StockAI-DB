@@ -54,6 +54,7 @@ jobs:
           cp data/radar_news.json       /tmp/news/ 2>/dev/null || echo "⚠️ radar_news.json 未產出"
           cp data/global_news.json      /tmp/news/ 2>/dev/null || true
           cp data/tech_giants_news.json /tmp/news/ 2>/dev/null || true
+          cp data/stock_news.json       /tmp/news/ 2>/dev/null || true
 
       - name: 🌐 更新 gh-pages(只覆蓋 3 個新聞 JSON,保留股票資料)
         run: |
@@ -71,8 +72,9 @@ jobs:
           cp /tmp/news/radar_news.json       data/ 2>/dev/null || true
           cp /tmp/news/global_news.json      data/ 2>/dev/null || true
           cp /tmp/news/tech_giants_news.json data/ 2>/dev/null || true
+          cp /tmp/news/stock_news.json       data/ 2>/dev/null || true
 
-          git add data/radar_news.json data/global_news.json data/tech_giants_news.json 2>/dev/null || true
+          git add data/radar_news.json data/global_news.json data/tech_giants_news.json data/stock_news.json 2>/dev/null || true
           git diff --cached --quiet && echo "📭 新聞無變化,跳過 commit" || {
             git commit -m "📰 即時新聞更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
             git push origin gh-pages
