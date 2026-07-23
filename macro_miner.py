@@ -983,6 +983,36 @@ SECTOR_ETF_MAP = {
         ],
         'desc': 'DRAM 記憶體(MU + 三星 + SK海力士;HBM 現貨報價待付費源)',
     },
+    # 🆕 V69.5.0 新增熱門板塊(前端 _sectorStocks 對齊;台股特有族群用近似 proxy 對標)
+    'defense': {
+        'primary':   {'ticker': 'PPA', 'name': '美航太國防 ETF', 'weight': 1.0},
+        'secondary': [],
+        'desc': '軍工國防對標(PPA;台股 漢翔/雷虎/龍德造船)',
+    },
+    'wafer': {
+        'primary':   {'ticker': 'SOXX', 'name': '半導體 SOXX', 'weight': 0.6},
+        'secondary': [
+            {'ticker': 'TSM', 'name': '台積電 ADR(晶圓需求)', 'weight': 0.4},
+        ],
+        'desc': '矽晶圓(SOXX+TSM 近似 proxy,無純美股晶圓 ETF;台股 環球晶/中美晶/合晶)',
+    },
+    'pcb': {
+        'primary':   {'ticker': 'SOXX', 'name': '半導體 SOXX', 'weight': 1.0},
+        'secondary': [],
+        'desc': 'PCB/載板(SOXX 近似 proxy,載板隨半導體資本支出;台股 欣興/南電/景碩)',
+    },
+    'asic': {
+        'primary':   {'ticker': 'AVGO', 'name': '博通(客製晶片)', 'weight': 0.6},
+        'secondary': [
+            {'ticker': 'MRVL', 'name': '邁威爾(客製晶片)', 'weight': 0.4},
+        ],
+        'desc': 'ASIC 矽智財(AVGO+MRVL 客製晶片需求;台股 世芯/創意/晶心科)',
+    },
+    'security': {
+        'primary':   {'ticker': 'CIBR', 'name': '美網路資安 ETF', 'weight': 1.0},
+        'secondary': [],
+        'desc': '資安(CIBR;台股 安碁資訊/零壹/精誠)',
+    },
 }
 
 
