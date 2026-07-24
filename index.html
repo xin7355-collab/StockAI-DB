@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.5.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.5.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4107,9 +4107,9 @@ const app = {
                 const raw = await r.json();
                 const P = raw && raw.periods; if (!P || !P['1d']) continue;
                 const hist = Array.isArray(raw.hist) ? raw.hist : null;
-                let cpx = null;
-                try { const cs = raw.chips; if (Array.isArray(cs) && cs.length) cpx = +cs[cs.length - 1].close; } catch (_) {}
-                const v = this._chipScenarioCalc(P, cpx, hist);
+                let cpx = null, scChg = 0;
+                try { const cs = raw.chips; if (Array.isArray(cs) && cs.length) { cpx = +cs[cs.length - 1].close; if (cs.length >= 2) { const pc = +cs[cs.length - 2].close; if (pc > 0) scChg = (cpx - pc) / pc * 100; } } } catch (_) {}
+                const v = this._chipScenarioCalc(P, cpx, hist, scChg);   // 🩹 V69.5.4 傳該股自己的漲跌幅,避免用到當前顯示股的 rawDailyData
                 if (v && v.score <= -2) bear.push({ sym, name: this.getStockName(sym) || sym, top: (v.bear[0] || '').replace(/<[^>]+>/g, '') });
                 await new Promise(r2 => setTimeout(r2, 250));   // 節流
             } catch (_) {}
@@ -6497,8 +6497,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.5.3',
+    _APP_VERSION: 'V69.5.4',
     _CHANGELOG: [
+        { v: 'V69.5.4', dt: '2026-07-24', t: '🛡️ Bug 巡邏:修明日劇本跨股掃描漲停判斷用錯股價', d: [
+            '【多代理巡邏】審查本輪新增(六脈/ADX/當沖燈/檢查表/掃描/回測/準確率/籌碼修正)→ 絕大多數乾淨,揪出 1 個潛在耦合。',
+            '【修】_chipScenarioCalc 的漲停/跌停判斷原本讀全域 this.rawDailyData(=當前顯示股),但它也在「每日籌碼偏空掃描」被跨股呼叫 → 掃到別股時漲停判斷會拿到顯示股的漲跌幅(目前無害:掃描只用 score/bear、不用漲停改的 tone/title,但屬地雷)。改成呼叫端傳入該股自己漲跌幅、現股頁/總覽沒傳才 fallback,徹底移除耦合。',
+            '【驗證】現股頁華星光仍正確顯「漲停鎖死籌碼分歧」;跨股掃描改用各股自己漲跌幅,不再被顯示股污染。',
+        ] },
         { v: 'V69.5.3', dt: '2026-07-24', t: '🎯 當沖候選掃描:掃自選/庫存,列出符合進場檢查的股', d: [
             '【新增】⚡當沖頁上方加「🎯 當沖候選掃描」:點掃描 → 逐檔抓你自選/庫存的盤中K+報價,套「做多進場檢查表」→ 列出現在符合 🔴做多 / 🟢做空 的股(顯 X/Y 條件成立),點股名直接進個股頁。',
             '【就是你要的「推薦個股」】把「一檔一檔自己看」變「一次掃出符合紀律的」;盤中(09:00–13:30)才有資料,非盤中會提示。',
@@ -19557,7 +19562,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   考量:外資分點今日/連續方向 + 隔日沖今買明賣賣壓 + 買超主力套牢(反彈解套壓)+ 真主力吸籌接盤 + 官股/投信護盤。
     //   紅漲綠跌:偏多=紅、偏空=綠、拉鋸=黃。零 AI、非投資建議。
     // 🔮 V69.1.10 明日劇本計算核心(回傳物件,供卡片 HTML + 盤後推播共用)。hist=逐日快照(有的話用真實昨→今倒貨當更強證據)
-    _chipScenarioCalc(P, curPx, hist) {
+    _chipScenarioCalc(P, curPx, hist, chgPctArg) {
         if (!P || !P['1d']) return null;
         const p1 = P['1d'], p5 = P['5d'] || { buy: [], sell: [] }, p10 = P['10d'] || { buy: [], sell: [] };
         const buy1 = p1.buy || [], sell1 = p1.sell || [];
@@ -19593,7 +19598,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let mainNet1 = 0; for (const x of buy1) mainNet1 += (x.net || 0); for (const x of sell1) mainNet1 += (x.net || 0);
         const mainNetLots = L(mainNet1);
         // 🆕 V69.5.1 今日漲跌幅 → 判漲停/跌停鎖死,校正籌碼結論(漲停鎖死不該喊偏空)
-        let chgPct = null; try { const a = this.rawDailyData || []; if (a.length >= 2) { const c = +a[a.length - 1].close, pc = +a[a.length - 2].close; if (pc > 0) chgPct = (c - pc) / pc * 100; } } catch (_) {}
+        //   🩹 V69.5.4 優先用呼叫端傳入的 chgPctArg(跨股掃描才正確);沒傳才 fallback 到 rawDailyData(=當前股,現股頁/總覽用)
+        let chgPct = (typeof chgPctArg === 'number' && isFinite(chgPctArg)) ? chgPctArg : null;
+        if (chgPct == null) { try { const a = this.rawDailyData || []; if (a.length >= 2) { const c = +a[a.length - 1].close, pc = +a[a.length - 2].close; if (pc > 0) chgPct = (c - pc) / pc * 100; } } catch (_) {} }
         const limitUp = chgPct != null && chgPct >= 9.3, limitDn = chgPct != null && chgPct <= -9.3;
 
         let score = 0; const bear = [], bull = [];
