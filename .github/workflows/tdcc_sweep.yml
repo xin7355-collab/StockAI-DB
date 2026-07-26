@@ -1,0 +1,84 @@
+name: 🏦 集保大戶散戶週採礦 (tdcc_sweep)
+
+# V69.6.3 黑科技資料源:TDCC 集保股權分散表開放資料(零金鑰零額度,每週六更新)
+# → 千張大戶比率趨勢 / 散戶人數 / 總發行股數(前端算換手率)。
+# 只更新 data/tdcc_holders.json,不動其它資料;滾動保留 13 週歷史。
+# 沙盒/本機測 403 是 proxy 擋;GitHub Actions 可正常存取(同 TWSE T86 前例)。
+
+on:
+  schedule:
+    - cron: '0 23 * * 5'   # 23:00 UTC 週五 = 台北週六 07:00(TDCC 週六更新後)
+  workflow_dispatch:
+
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  tdcc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: ↩️ 還原舊 tdcc_holders.json(滾動累積歷史)
+        run: |
+          git fetch origin data 2>/dev/null || true
+          mkdir -p data
+          git show origin/data:data/tdcc_holders.json > data/tdcc_holders.json 2>/dev/null && echo "↩️ 已還原舊檔" || echo "ℹ️ 無舊檔(首次跑)"
+
+      - name: 🏦 抓 TDCC 股權分散表
+        id: sweep
+        run: |
+          set +e
+          python3 tdcc_sweep.py
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ -f data/tdcc_holders.json ] && echo "📦 $(du -k data/tdcc_holders.json | cut -f1) KB" || echo "⚠️ 無產出"
+          exit 0
+
+      - name: 🚀 部署到 gh-pages + data
+        run: |
+          set -e
+          F="data/tdcc_holders.json"
+          if [ ! -f "$F" ]; then echo "❌ 無產出檔,跳過部署"; exit 0; fi
+          if [ "${{ steps.sweep.outputs.rc }}" != "0" ]; then echo "⚠️ 採礦非零退出(自我保護不覆寫)→ 跳過部署"; exit 0; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/tdcc && cp "$F" /tmp/tdcc/
+
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            mkdir -p data
+            cp /tmp/tdcc/tdcc_holders.json data/tdcc_holders.json
+            git add -f data/tdcc_holders.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🏦 集保大戶散戶週更 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/tdcc_holders.json
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              cp /tmp/tdcc/tdcc_holders.json data/tdcc_holders.json
+              git add -f data/tdcc_holders.json
+              git commit -q -m "🏦 集保大戶散戶週更 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/tdcc_holders.json 2>/dev/null || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 集保週採礦部署完成"
