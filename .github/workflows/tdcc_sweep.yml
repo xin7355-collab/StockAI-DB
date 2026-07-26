@@ -66,7 +66,8 @@ jobs:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           FINMIND_TOKEN:  ${{ secrets.FINMIND_TOKEN }}
         run: |
-          python3 tdcc_backfill.py || echo "⚠️ 回補非零退出(已補的部分仍保留)"
+          # -u 不緩衝 → 進度 log 即時可見;腳本內建 40 分軟時限自我收工 + checkpoint
+          python3 -u tdcc_backfill.py || echo "⚠️ 回補非零退出(checkpoint 已補的部分仍保留)"
 
       - name: 🚀 部署到 gh-pages + data
         run: |
