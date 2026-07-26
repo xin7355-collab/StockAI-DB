@@ -34,9 +34,15 @@ jobs:
 
       - name: ↩️ 還原舊 tdcc_holders.json(滾動累積歷史)
         run: |
-          git fetch origin data 2>/dev/null || true
+          # ⚠️ checkout@v4 只設觸發分支的 fetch refspec → 必須顯式 refspec 才會建 origin/data(V69.6.4 實測修)
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
           mkdir -p data
-          git show origin/data:data/tdcc_holders.json > data/tdcc_holders.json 2>/dev/null && echo "↩️ 已還原舊檔" || echo "ℹ️ 無舊檔(首次跑)"
+          if git show origin/data:data/tdcc_holders.json > data/tdcc_holders.json 2>/dev/null; then
+            echo "↩️ 已還原舊檔($(du -k data/tdcc_holders.json | cut -f1) KB)"
+          else
+            rm -f data/tdcc_holders.json
+            echo "ℹ️ 無舊檔(首次跑)"
+          fi
 
       - name: 🏦 抓 TDCC 股權分散表
         id: sweep
@@ -62,9 +68,9 @@ jobs:
             local BR="$1"
             git reset --hard -q 2>/dev/null || true
             git clean -fdq 2>/dev/null || true
-            git fetch origin "$BR" 2>/dev/null || true
-            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
-            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            # ⚠️ 顯式 refspec:checkout@v4 預設只認觸發分支,普通 fetch 不會建 origin/$BR → checkout 會誤判「無分支」(V69.6.4 實測修)
+            git fetch origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             mkdir -p data
             cp /tmp/tdcc/tdcc_holders.json data/tdcc_holders.json
             git add -f data/tdcc_holders.json
@@ -73,7 +79,7 @@ jobs:
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
-              sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              sleep $((i*5)); git fetch origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
               cp /tmp/tdcc/tdcc_holders.json data/tdcc_holders.json
               git add -f data/tdcc_holders.json
               git commit -q -m "🏦 集保大戶散戶週更 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/tdcc_holders.json 2>/dev/null || true
