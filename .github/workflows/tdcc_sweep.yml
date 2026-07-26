@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: '0 23 * * 5'   # 23:00 UTC 週五 = 台北週六 07:00(TDCC 週六更新後)
   workflow_dispatch:
+    inputs:
+      backfill:
+        description: '歷史回補(FinMind 抓近13週,一次性)yes/no'
+        required: false
+        default: 'no'
 
 concurrency:
   group: gh-pages-push
@@ -20,7 +25,7 @@ permissions:
 jobs:
   tdcc:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 70   # 回補模式(backfill=yes)約 30-40 分;純週採礦 <5 分
     steps:
       - name: 📥 下載程式碼 (main)
         uses: actions/checkout@v4
@@ -53,6 +58,15 @@ jobs:
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           [ -f data/tdcc_holders.json ] && echo "📦 $(du -k data/tdcc_holders.json | cut -f1) KB" || echo "⚠️ 無產出"
           exit 0
+
+      - name: 🏦 歷史回補(FinMind,手動勾 backfill=yes 才跑)
+        if: ${{ github.event.inputs.backfill == 'yes' }}
+        timeout-minutes: 50
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          FINMIND_TOKEN:  ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          python3 tdcc_backfill.py || echo "⚠️ 回補非零退出(已補的部分仍保留)"
 
       - name: 🚀 部署到 gh-pages + data
         run: |
