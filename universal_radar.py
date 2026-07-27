@@ -502,11 +502,48 @@ STOCK_NAME_CODE = {
 _TONE_MAP = {'利多': 'pos', '利空': 'neg', '中立': 'neu'}
 
 
+def _fetch_full_name_map():
+    """📰 V69.7.2 全市場股名→代號(使用者要求:庫存/自選任何股的新聞都要挖得到,不只 90 檔熱門股)。
+    來源:TWSE/TPEx 官方 OpenAPI 公司基本資料(Actions 可達;失敗 fallback 內建熱門股表)。"""
+    full = {}
+    try:
+        import requests as _rq
+        srcs = [
+            ('上市', 'https://openapi.twse.com.tw/v1/opendata/t187ap03_L'),
+            ('上櫃', 'https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O'),
+        ]
+        for lbl, url in srcs:
+            try:
+                r = _rq.get(url, timeout=25, headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'})
+                if r.status_code != 200:
+                    print(f"  ⚠️ 股名表 {lbl} HTTP {r.status_code}")
+                    continue
+                cnt = 0
+                for row in r.json():
+                    code = str(row.get('公司代號') or row.get('SecuritiesCompanyCode') or '').strip()
+                    name = str(row.get('公司簡稱') or row.get('CompanyAbbreviation') or '').strip()
+                    if code and name and len(name) >= 2 and code[:1].isdigit() and 4 <= len(code) <= 6:
+                        full[name] = code
+                        cnt += 1
+                print(f"  📇 股名表 {lbl}:+{cnt} 檔")
+            except Exception as e:
+                print(f"  ⚠️ 股名表 {lbl} 失敗:{type(e).__name__}")
+    except Exception:
+        pass
+    # 官方表 + 內建表(內建為準,含慣用簡稱如「世芯」;官方全市場補冷門股)
+    if len(full) >= 500:
+        full.update(STOCK_NAME_CODE)
+        return full
+    print("  ⚠️ 全市場股名表不足 500 檔 → 只用內建熱門股表")
+    return dict(STOCK_NAME_CODE)
+
+
 def build_stock_news(news_items):
     """📰 把已判讀情緒的新聞,依標題含哪些股名 → data/stock_news.json(個股消息面)。
     純加值:失敗只印警告,不影響 radar_news 主輸出。標題同時命中「南亞/南亞科」時只留較長者(去子字串誤判)。"""
     try:
-        names_by_len = sorted(STOCK_NAME_CODE.keys(), key=len, reverse=True)
+        name_map = _fetch_full_name_map()
+        names_by_len = sorted(name_map.keys(), key=len, reverse=True)
         stocks = {}
         for it in news_items:
             title = (it.get('title_zh') or it.get('title') or '').strip()
@@ -527,7 +564,7 @@ def build_stock_news(news_items):
                 'reason': (it.get('reason') or '')[:40],
             }
             for nm in hits:
-                code = STOCK_NAME_CODE[nm]
+                code = name_map[nm]
                 bucket = stocks.setdefault(code, [])
                 if any(x.get('url') == rec['url'] or x.get('title') == rec['title'] for x in bucket):
                     continue
