@@ -4113,6 +4113,354 @@ def fetch_securities_lending():
     print(f"  ✅ 借券空方:{len(out)} 檔(借券暴增 {surging} 檔)→ data/lending.json")
 
 
+# ══════════════════════════════════════════════════════════════════
+# 💎 V69.7.8 付費資料第二彈:官方處置 / 當沖比 / 外資水位 / 鉅額 / 產業鏈 / CB / 權證溢價
+#    同 V68.3.0 模式:detect_finmind_paid() 守門、空資料保留舊檔、原子寫檔。
+#    ⚠️ 新檔案必須同步加進 daily_miner.yml chips-data artifact path 清單(V35.x 教訓)。
+# ══════════════════════════════════════════════════════════════════
+def _fm_write_json(fname: str, out: dict, label: str, extra: str = ''):
+    """統一原子寫檔 + log(空 out 由呼叫端先擋)。"""
+    Path(DATA_DIR).mkdir(exist_ok=True)
+    payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'data': out}
+    tgt = Path(DATA_DIR) / fname; tmp = tgt.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    os.replace(str(tmp), str(tgt))
+    print(f"  ✅ {label}:{len(out)} 檔{extra} → data/{fname}")
+
+
+def _fm_bulk_days(dataset: str, want_days: int, look_back: int, sleep_s: float = 0.12) -> list:
+    """single-day 資料集逐日 bulk(比照八大行庫實測:只帶單一 start_date、不帶 data_id/end_date)。
+    回累積 rows;命中 want_days 個有資料的交易日就停。"""
+    rows = []
+    seen = 0
+    for d in _recent_finmind_dates(look_back):
+        if seen >= want_days:
+            break
+        jj = fm_paid_get('data', f'dataset={dataset}&start_date={d}') or {}
+        rr = jj.get('data') or []
+        if rr:
+            rows.extend(rr)
+            seen += 1
+        time.sleep(sleep_s)
+    return rows
+
+
+def fetch_disposition_official():
+    """🚨 官方處置有價證券(TaiwanStockDispositionSecuritiesPeriod)→ data/disposition.json。
+    取代前端 8 款規則「推估」:官方公告的處置起迄日/第幾次/分盤條件。保留處置中 + 出關 14 天內。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 官方處置:未付費,跳過(降版)")
+        return
+    sd = (date.today() - timedelta(days=120)).strftime('%Y-%m-%d')
+    ed = date.today().strftime('%Y-%m-%d')
+    j = fm_paid_get('data', f'dataset=TaiwanStockDispositionSecuritiesPeriod&start_date={sd}&end_date={ed}') or {}
+    rows = j.get('data') or []
+    if not rows:   # 有些公告類資料集不吃 range → 退回逐日 bulk
+        rows = _fm_bulk_days('TaiwanStockDispositionSecuritiesPeriod', 8, 20)
+    if not rows:
+        print(f"  ⚠️ 官方處置:無資料(status={j.get('status')} msg={str(j.get('msg'))[:60]})— 保留舊檔")
+        return
+    cutoff = (date.today() - timedelta(days=14)).strftime('%Y-%m-%d')
+    out: dict = {}
+    for r in rows:
+        sid = str(r.get('stock_id') or '').strip()
+        if not _valid_stock(sid):
+            continue
+        pe = str(r.get('period_end') or '')[:10]
+        if not pe or pe < cutoff:
+            continue   # 早就出關的舊公告不留
+        rec = {'d': str(r.get('date') or '')[:10], 'cnt': r.get('disposition_cnt'),
+               'cond': str(r.get('condition') or '')[:160], 'meas': str(r.get('measure') or '')[:120],
+               'ps': str(r.get('period_start') or '')[:10], 'pe': pe}
+        old = out.get(sid)
+        if not old or pe > old['pe']:
+            out[sid] = rec
+    if not out:
+        print("  ⚠️ 官方處置:過濾後 0 檔(近期無處置股?罕見)— 保留舊檔")
+        return
+    _fm_write_json('disposition.json', out, '官方處置', f"(處置中/剛出關)")
+
+
+def fetch_daytrade_ratio():
+    """⚡ 當沖比率(TaiwanStockDayTrading bulk ÷ SQLite 總量)→ data/daytrade.json。
+    當沖比 5 成以上=浮額全是隔日沖客、籌碼虛;餵籌碼乾淨度 + 當沖頁。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 當沖比:未付費,跳過(降版)")
+        return
+    if not Path(DB_PATH).exists():
+        print("  ⚠️ 當沖比:SQLite 不在(需總量算比率)— 保留舊檔")
+        return
+    rows = _fm_bulk_days('TaiwanStockDayTrading', 6, 12)
+    if not rows:
+        print("  ⚠️ 當沖比:bulk 無資料 — 保留舊檔")
+        return
+    dt: dict = {}
+    for r in rows:
+        sid = str(r.get('stock_id') or '').strip()
+        if not _valid_stock(sid):
+            continue
+        d = str(r.get('date') or '')[:10]
+        try:
+            v = int(float(r.get('Volume') or 0))
+        except Exception:
+            continue
+        if v > 0:
+            dt.setdefault(sid, {})[d] = v
+    all_dates = sorted({d for m in dt.values() for d in m})
+    if not all_dates:
+        print("  ⚠️ 當沖比:0 檔 — 保留舊檔")
+        return
+    conn = get_db_conn()
+    vol_map: dict = {}
+    try:
+        q = conn.execute("SELECT symbol, trade_date, volume FROM stock_history WHERE trade_date >= ?", (all_dates[0],))
+        for sym, d, vol in q.fetchall():
+            if vol and vol > 0:
+                vol_map[(str(sym), str(d)[:10])] = vol
+    finally:
+        conn.close()
+    out: dict = {}
+    for sid, m in dt.items():
+        ds = sorted(m.keys())
+        ratios = []
+        for d in ds:
+            tot = vol_map.get((sid, d))
+            if tot and tot > 0:
+                ratios.append(min(100.0, m[d] / tot * 100))
+        if not ratios:
+            continue
+        out[sid] = {'d': ds[-1], 'r': round(ratios[-1], 1), 'r5': round(sum(ratios[-5:]) / len(ratios[-5:]), 1)}
+    if len(out) < 50:
+        print(f"  ⚠️ 當沖比只算到 {len(out)} 檔(SQLite 未還原?)— 保留舊檔")
+        return
+    hot = sum(1 for v in out.values() if v['r5'] >= 50)
+    _fm_write_json('daytrade.json', out, '當沖比率', f"(5日均當沖比≥50% {hot} 檔)")
+
+
+def fetch_foreign_shareholding():
+    """🌐 外資持股水位(TaiwanStockShareholding bulk)→ data/foreign_hold.json。
+    比單日買賣超更硬的趨勢:持股 % 現值 + 5/20 交易日前 + 窗內高低。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 外資水位:未付費,跳過(降版)")
+        return
+    rows = _fm_bulk_days('TaiwanStockShareholding', 21, 32)
+    if not rows:
+        print("  ⚠️ 外資水位:bulk 無資料 — 保留舊檔")
+        return
+    series: dict = {}
+    for r in rows:
+        sid = str(r.get('stock_id') or '').strip()
+        if not _valid_stock(sid):
+            continue
+        d = str(r.get('date') or '')[:10]
+        try:
+            ratio = float(r.get('ForeignInvestmentSharesRatio'))
+        except (TypeError, ValueError):
+            continue
+        if ratio > 100:   # 有些日期 FinMind 回千分比污染,防呆
+            ratio = ratio / 10 if ratio <= 1000 else None
+        if ratio is None or ratio < 0:
+            continue
+        series.setdefault(sid, {})[d] = ratio
+    out: dict = {}
+    for sid, m in series.items():
+        ds = sorted(m.keys())
+        if len(ds) < 3:
+            continue
+        vals = [m[d] for d in ds]
+        r_now = vals[-1]
+        r5 = vals[-6] if len(vals) >= 6 else vals[0]
+        r20 = vals[-21] if len(vals) >= 21 else vals[0]
+        out[sid] = {'d': ds[-1], 'r': round(r_now, 2), 'r5': round(r5, 2), 'r20': round(r20, 2),
+                    'hi': round(max(vals), 2), 'lo': round(min(vals), 2)}
+    if len(out) < 100:
+        print(f"  ⚠️ 外資水位只算到 {len(out)} 檔 — 保留舊檔")
+        return
+    rising = sum(1 for v in out.values() if v['r'] - v['r20'] >= 0.5)
+    _fm_write_json('foreign_hold.json', out, '外資持股水位', f"(20日增≥0.5% {rising} 檔)")
+
+
+def fetch_block_trade():
+    """🐘 鉅額交易(TaiwanStockBlockTrade bulk)→ data/blocktrade.json。
+    大股東鉅額轉讓=出貨或引進策略投資人前兆;近月事件彙整,前端條件觸發警示。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 鉅額交易:未付費,跳過(降版)")
+        return
+    rows = _fm_bulk_days('TaiwanStockBlockTrade', 20, 30)
+    if not rows:
+        print("  ⚠️ 鉅額交易:bulk 無資料 — 保留舊檔")
+        return
+    agg: dict = {}
+    for r in rows:
+        sid = str(r.get('stock_id') or '').strip()
+        if not _valid_stock(sid):
+            continue
+        d = str(r.get('date') or '')[:10]
+        try:
+            money = float(r.get('trading_money') or 0)
+            vol = int(float(r.get('volume') or 0))
+            price = float(r.get('price') or 0)
+        except Exception:
+            continue
+        if money <= 0:
+            continue
+        e = agg.setdefault(sid, {'n': 0, 'm': 0.0, 'last': None})
+        e['n'] += 1
+        e['m'] += money
+        if not e['last'] or d >= e['last']['d']:
+            e['last'] = {'d': d, 'p': price, 'v': round(vol / 1000), 'm': round(money / 1e8, 2)}
+    out = {sid: {'n': e['n'], 'm': round(e['m'] / 1e8, 2), 'last': e['last']}
+           for sid, e in agg.items() if e['m'] >= 5e7}   # 近月合計 ≥5000 萬才留(雜訊過濾)
+    if not out:
+        print("  ⚠️ 鉅額交易:0 檔 — 保留舊檔")
+        return
+    _fm_write_json('blocktrade.json', out, '鉅額交易', f"(近月)")
+
+
+def fetch_industry_chain():
+    """🔗 產業鏈上下游(TaiwanStockIndustryChain)→ data/industry_chain.json。
+    {sym: [[產業鏈, 子產業], …]};前端做「上游誰/下游誰/同鏈點名」。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 產業鏈:未付費,跳過(降版)")
+        return
+    j = fm_paid_get('data', 'dataset=TaiwanStockIndustryChain', timeout=30) or {}
+    rows = j.get('data') or []
+    if not rows:   # 需要日期參數的話退回帶今天
+        j = fm_paid_get('data', f'dataset=TaiwanStockIndustryChain&start_date={date.today().strftime("%Y-%m-%d")}', timeout=30) or {}
+        rows = j.get('data') or []
+    if len(rows) < 300:
+        print(f"  ⚠️ 產業鏈:僅 {len(rows)} 筆(status={j.get('status')})— 保留舊檔")
+        return
+    out: dict = {}
+    for r in rows:
+        sid = str(r.get('stock_id') or '').strip()
+        if not _valid_stock(sid):
+            continue
+        ind = str(r.get('industry') or '').strip()
+        sub = str(r.get('sub_industry') or '').strip()
+        if not ind:
+            continue
+        lst = out.setdefault(sid, [])
+        pair = [ind, sub]
+        if pair not in lst and len(lst) < 12:
+            lst.append(pair)
+    if len(out) < 200:
+        print(f"  ⚠️ 產業鏈:僅 {len(out)} 檔 — 保留舊檔")
+        return
+    _fm_write_json('industry_chain.json', out, '產業鏈')
+
+
+def fetch_cb_balance():
+    """💳 可轉債餘額異動(TaiwanStockConvertibleBondDailyOverview)→ data/cb_overview.json。
+    CB 餘額近月大減=大戶轉換出貨/拉抬前兆(連籌碼K線都沒做);前端條件觸發警示。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 可轉債:未付費,跳過(降版)")
+        return
+    def _snap(anchor: date) -> dict:
+        for i in range(8):
+            d = (anchor - timedelta(days=i)).strftime('%Y-%m-%d')
+            jj = fm_paid_get('data', f'dataset=TaiwanStockConvertibleBondDailyOverview&start_date={d}') or {}
+            rr = jj.get('data') or []
+            if rr:
+                snap = {}
+                for r in rr:
+                    cb = str(r.get('cb_id') or '').strip()
+                    try:
+                        outamt = float(r.get('OutstandingAmount') or 0)
+                        cp = float(r.get('ConversionPrice') or 0)
+                    except Exception:
+                        continue
+                    if cb and outamt > 0:
+                        snap[cb] = {'out': outamt, 'cp': cp, 'd': d}
+                return snap
+            time.sleep(0.12)
+        return {}
+    now_snap = _snap(date.today())
+    if not now_snap:
+        print("  ⚠️ 可轉債:今檔無資料 — 保留舊檔")
+        return
+    base_snap = _snap(date.today() - timedelta(days=30))
+    out: dict = {}
+    for cb, cur in now_snap.items():
+        sid = cb[:4]
+        if not _valid_stock(sid):
+            continue
+        base = base_snap.get(cb)
+        chg = round((cur['out'] - base['out']) / base['out'] * 100, 1) if (base and base['out'] > 0) else None
+        rec = {'cb': cb, 'd': cur['d'], 'out': round(cur['out'] / 1e8, 2), 'cp': cur['cp'], 'chg': chg}
+        old = out.get(sid)
+        if not old or cur['out'] > old['out'] * 1e8:
+            rec['n'] = (old.get('n', 1) + 1) if old else 1
+            out[sid] = rec
+        else:
+            old['n'] = old.get('n', 1) + 1
+    if len(out) < 30:
+        print(f"  ⚠️ 可轉債僅 {len(out)} 檔 — 保留舊檔")
+        return
+    dumping = sum(1 for v in out.values() if v.get('chg') is not None and v['chg'] <= -10)
+    _fm_write_json('cb_overview.json', out, '可轉債餘額', f"(近月大減≥10% {dumping} 檔)")
+
+
+def fetch_warrant_premium():
+    """📜 權證溢價率(TaiwanStockInfoWithWarrantSummary)→ data/warrant_premium.json。
+    補注意股 8 款規則裡一直缺資料的「第 8 款權證溢價」。認購權證溢價% 的中位數(每標的)。
+    端點行為未實測:bulk 失敗自動退 data_id=標的;都失敗誠實跳過(前端規則8維持隱藏)。"""
+    if not detect_finmind_paid():
+        print("  ⏭️ 權證溢價:未付費,跳過(降版)")
+        return
+    rows = []
+    for d in _recent_finmind_dates(6):
+        jj = fm_paid_get('data', f'dataset=TaiwanStockInfoWithWarrantSummary&start_date={d}', timeout=30) or {}
+        rr = jj.get('data') or []
+        if rr:
+            rows = rr
+            break
+        time.sleep(0.12)
+    if not rows:
+        # 退而求其次:data_id=標的逐檔(只掃觀察清單,驗證端點是否吃 target)
+        probe = fm_paid_get('data', f'dataset=TaiwanStockInfoWithWarrantSummary&data_id=2330&start_date={_recent_finmind_dates(6)[-1]}') or {}
+        pr = probe.get('data') or []
+        if pr and str(pr[0].get('target_stock_id') or '') == '2330':
+            for sym in CHIP_WATCHLIST:
+                jj = fm_paid_get('data', f'dataset=TaiwanStockInfoWithWarrantSummary&data_id={sym}&start_date={_recent_finmind_dates(6)[-1]}') or {}
+                rows.extend(jj.get('data') or [])
+                time.sleep(0.12)
+    if not rows:
+        print("  ⚠️ 權證溢價:兩種端點形式皆無資料(需下次實測)— 跳過,前端規則8維持隱藏")
+        return
+    by_target: dict = {}
+    for r in rows:
+        tgt_id = str(r.get('target_stock_id') or '').strip()
+        if not _valid_stock(tgt_id):
+            continue
+        typ = str(r.get('type') or '')
+        if typ and ('售' in typ or 'put' in typ.lower()):
+            continue   # 只算認購(溢價率過熱訊號)
+        try:
+            wc = float(r.get('close') or 0)          # 權證價
+            tc = float(r.get('target_close') or 0)   # 標的價
+            ratio = float(r.get('exercise_ratio') or 0)
+            strike = float(r.get('fulfillment_price') or 0)
+        except Exception:
+            continue
+        if wc <= 0 or tc <= 0 or ratio <= 0 or strike <= 0:
+            continue
+        prem = (wc / ratio + strike - tc) / tc * 100
+        if -80 < prem < 300:
+            by_target.setdefault(tgt_id, []).append(prem)
+    out: dict = {}
+    for sid, ps in by_target.items():
+        if len(ps) < 3:
+            continue
+        ps.sort()
+        out[sid] = {'n': len(ps), 'prem': round(ps[len(ps) // 2], 1)}
+    if len(out) < 20:
+        print(f"  ⚠️ 權證溢價僅 {len(out)} 檔 — 保留舊檔")
+        return
+    hot = sum(1 for v in out.values() if v['prem'] >= 30)
+    _fm_write_json('warrant_premium.json', out, '權證溢價', f"(中位溢價≥30% {hot} 檔)")
+
+
 def fetch_holder_distribution():
     """📊 集保股權持股分級 → data/holders.json(籌碼分佈:千張大戶/散戶 + 週趨勢)。
     欄位經 finmind_check 探針對 2330 實測:level(more than 1,000,001=千張大戶)/people/percent/unit;週頻(每週五結算)。
@@ -4766,6 +5114,14 @@ if __name__ == '__main__':
         _safe_step("八大行庫 fetch_govbank_buysell", fetch_govbank_buysell)   # 💎 付費:官股護盤(先跑,快)
         _safe_step("借券空方 fetch_securities_lending", fetch_securities_lending)  # 💎 付費:借券做空(先跑,快)
         _safe_step("集保分級 fetch_holder_distribution", fetch_holder_distribution)  # 📊 付費:籌碼分佈大戶/散戶(先跑,快)
+        # 💎 V69.7.8 付費第二彈(全部快步驟,合計 ~90 次 bulk ≈3-4 分,放分點慢迴圈前)
+        _safe_step("官方處置 fetch_disposition_official", fetch_disposition_official)
+        _safe_step("產業鏈 fetch_industry_chain", fetch_industry_chain)
+        _safe_step("當沖比率 fetch_daytrade_ratio", fetch_daytrade_ratio)
+        _safe_step("外資水位 fetch_foreign_shareholding", fetch_foreign_shareholding)
+        _safe_step("鉅額交易 fetch_block_trade", fetch_block_trade)
+        _safe_step("可轉債餘額 fetch_cb_balance", fetch_cb_balance)
+        _safe_step("權證溢價 fetch_warrant_premium", fetch_warrant_premium)
         _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)           # 🐢 最慢(分點+基本面 ~29分)放後面
         _safe_step("主力雷達 build_broker_radar", build_broker_radar)         # 🕵️ 後處理 chips → 主力排行(需在 chips 後)
         _safe_step("券商勝率榜 build_broker_perf", build_broker_perf)         # 🧙 後處理 chips + SQLite 現價 → 分點浮動勝率榜(需在 chips 後)

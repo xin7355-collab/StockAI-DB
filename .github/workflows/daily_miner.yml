@@ -224,6 +224,13 @@ jobs:
             data/miner_status.json
             data/govbank.json
             data/lending.json
+            data/disposition.json
+            data/daytrade.json
+            data/foreign_hold.json
+            data/blocktrade.json
+            data/industry_chain.json
+            data/cb_overview.json
+            data/warrant_premium.json
             data/broker_radar.json
             data/broker_perf.json
             data/broker_book.json

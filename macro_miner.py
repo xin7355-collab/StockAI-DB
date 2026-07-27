@@ -864,6 +864,42 @@ def fetch_m1b_and_fed_assets():
     return out
 
 
+# ── 🌪️ V69.7.8 台指選擇權 VIX(FinMind TaiwanOptionVix,Backer;台股自己的恐慌溫度計)──
+def fetch_tw_vix():
+    """回 (最新 vix, 5日變化%, error)。用 GitHub Secrets FINMIND_TOKENS 第一把;未設/失敗回 None 不崩。"""
+    toks = [t.strip() for t in (os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN') or '').split(',') if t.strip()]
+    if not toks:
+        return None, None, 'no-token'
+    sd = (datetime.now(timezone.utc) - timedelta(days=20)).strftime('%Y-%m-%d')
+    try:
+        res = requests.get('https://api.finmindtrade.com/api/v4/data',
+                           params={'dataset': 'TaiwanOptionVix', 'start_date': sd},
+                           headers={'Authorization': f'Bearer {toks[0]}'}, timeout=15)
+        j = res.json()
+        rows = j.get('data') or []
+        if not rows:
+            return None, None, f"empty(status={j.get('status')})"
+        # 每日可能多筆(含 time)→ 取每日最後一筆,再取近 6 個交易日
+        by_day = {}
+        for r in rows:
+            d = str(r.get('date') or '')[:10]
+            try:
+                v = float(r.get('vix'))
+            except (TypeError, ValueError):
+                continue
+            if d:
+                by_day[d] = v
+        ds = sorted(by_day.keys())
+        if not ds:
+            return None, None, 'no-valid-rows'
+        cur = by_day[ds[-1]]
+        base = by_day[ds[-6]] if len(ds) >= 6 else by_day[ds[0]]
+        chg5 = round((cur - base) / base * 100, 1) if base > 0 else None
+        return round(cur, 2), chg5, None
+    except Exception as e:
+        return None, None, str(e)[:80]
+
+
 def fetch_gold():     return _fetch_yf_close("GC=F",     "黃金")        # 期貨 close usd/oz
 def fetch_wti_oil():  return _fetch_yf_close("CL=F",     "WTI 原油")    # usd/barrel
 def fetch_dxy():      return _fetch_yf_close("DX-Y.NYB", "美元指數")    # 美元指數
@@ -1707,6 +1743,11 @@ def main():
     fg, fglabel, fgerr = fetch_fear_greed()
     out["fear_greed"], out["fear_greed_label"], out["fear_greed_error"] = fg, fglabel, fgerr
     print(f"     → {fg}（{fglabel}, err={fgerr}）")
+
+    print("[6b] 抓取台指選擇權 VIX(台股自己的恐慌溫度計,FinMind)…")
+    twv, twv5, twverr = fetch_tw_vix()
+    out["tw_vix"], out["tw_vix_chg_5d"], out["tw_vix_error"] = twv, twv5, twverr
+    print(f"     → {twv}(5日 {twv5}%, err={twverr})")
 
     print("[7/8] 推算散戶多空比 (TAIFEX 小型臺指期)…")
     rls, rlserr = fetch_retail_long_short()
