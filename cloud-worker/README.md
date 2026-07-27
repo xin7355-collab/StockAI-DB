@@ -206,3 +206,17 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ### deploy_worker.yml 失敗
 - 確認 `CLOUDFLARE_API_TOKEN` 已加到 GitHub Secrets
 - 確認 wrangler.toml 的 KV namespace id 已替換
+
+## 🔔 V22.3 — 手機 Web Push(關 App 也能收推播,iOS 16.4+)
+
+**零額外設定**:VAPID 金鑰由 Worker 第一次用到時自動生成存 KV,不用跑指令、不用設 secret。
+
+1. 把最新版 `worker.js` 重新部署一次(照上面第 5️⃣ 步再跑一次即可)。
+2. 手機用 Safari 開網站 → 分享 → **加入主畫面** → 從主畫面圖示開啟。
+3. App 內 ⚙️ 設定 → 「🔔 手機推播告警」→ 啟用 → 允許通知 → 會立刻收到一則**測試推播**(收到=通了)。
+4. 之後 Worker 盤中每 15 分自動盯:
+   - 庫存跌破 **鐵血停損 -5%** / **絕對底線 -10%**
+   - 你按「🔔 幫我盯這 N 個價」設的**到價提醒**
+   → 關 App、鎖屏都會推到手機(當日去重,不轟炸)。
+
+排錯:啟用時顯「Worker 是舊版」= 還沒重新部署;測試推播沒收到 = 確認是「從主畫面開啟」而非 Safari 分頁。

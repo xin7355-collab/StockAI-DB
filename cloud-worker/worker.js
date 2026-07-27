@@ -273,6 +273,11 @@ export default {
             if (route === 'POST /unbind')  return await handleUnbind(request, env);
             if (route === 'POST /bot')     return await handleBot(request, env, ctx);
             if (route === 'GET /health')   return json({ ok: true, t: Date.now() });
+            // 🔔 V22.3 Web Push(iOS 16.4+ PWA 關 App 推播;VAPID 金鑰自動生成,零設定)
+            if (route === 'GET /vapid')       { const v = await getVapid(env); return json({ key: v.pubB64 }); }
+            if (route === 'POST /push/sub')   return await handlePushSub(request, env);
+            if (route === 'POST /push/unsub') return await handlePushUnsub(request, env);
+            if (route === 'POST /push/test')  return await handlePushTest(request, env);
         } catch (e) {
             return json({ error: 'internal', detail: String(e?.message || e) }, 500);
         }
@@ -302,6 +307,127 @@ export default {
         }
     },
 };
+
+// ═══════════════ 🔔 V22.3 Web Push(iOS 16.4+ PWA 關 App 推播)═══════════════
+// 原理:前端 pushManager.subscribe(VAPID 公鑰)→ 訂閱存 KV(psub:)→ 盤中掃描命中
+// 防守線/盯價 → RFC8291 aes128gcm 加密 + VAPID JWT 簽章 → 打 Apple/Google 推播閘道。
+// VAPID 金鑰第一次用到時自動生成存 KV,使用者零設定。
+const _b64u = {
+    enc: (buf) => { const a = new Uint8Array(buf); let s = ''; for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+    dec: (str) => { let s = String(str).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const raw = atob(s); const a = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) a[i] = raw.charCodeAt(i); return a; },
+};
+async function getVapid(env) {
+    let v = await env.KV.get('vapid:keys', 'json');
+    if (v && v.priv && v.pubB64) return v;
+    const kp = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+    const priv = await crypto.subtle.exportKey('jwk', kp.privateKey);
+    const pubRaw = await crypto.subtle.exportKey('raw', kp.publicKey);
+    v = { priv, pubB64: _b64u.enc(pubRaw) };
+    await env.KV.put('vapid:keys', JSON.stringify(v));
+    return v;
+}
+async function _vapidAuth(env, endpoint) {
+    const v = await getVapid(env);
+    const te = new TextEncoder();
+    const head = _b64u.enc(te.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
+    const pay = _b64u.enc(te.encode(JSON.stringify({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: 'mailto:stockai@users.noreply.github.com' })));
+    const key = await crypto.subtle.importKey('jwk', v.priv, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, te.encode(`${head}.${pay}`));
+    return `vapid t=${head}.${pay}.${_b64u.enc(sig)}, k=${v.pubB64}`;
+}
+// RFC8291:aes128gcm 加密 push payload(WebCrypto 全套,無外部依賴)
+async function _encryptPush(sub, text) {
+    const te = new TextEncoder();
+    const uaPub = _b64u.dec(sub.keys.p256dh);       // 65B 未壓縮公鑰
+    const authSecret = _b64u.dec(sub.keys.auth);    // 16B
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const asKp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+    const asPub = new Uint8Array(await crypto.subtle.exportKey('raw', asKp.publicKey));
+    const uaKey = await crypto.subtle.importKey('raw', uaPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const ecdh = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, asKp.privateKey, 256));
+    const hkdf = async (ikm, sal, info, len) => {
+        const k = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
+        return new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: sal, info }, k, len * 8));
+    };
+    const keyInfo = new Uint8Array([...te.encode('WebPush: info\0'), ...uaPub, ...asPub]);
+    const ikm = await hkdf(ecdh, authSecret, keyInfo, 32);
+    const cek = await hkdf(ikm, salt, te.encode('Content-Encoding: aes128gcm\0'), 16);
+    const nonce = await hkdf(ikm, salt, te.encode('Content-Encoding: nonce\0'), 12);
+    const plain = new Uint8Array([...te.encode(text), 2]);   // 0x02 = 最後一筆 record 分隔符
+    const aesKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, plain));
+    const rs = new Uint8Array(4); new DataView(rs.buffer).setUint32(0, 4096);
+    return new Uint8Array([...salt, ...rs, 65, ...asPub, ...ct]);
+}
+async function sendWebPush(env, sub, payloadObj) {
+    try {
+        const body = await _encryptPush(sub, JSON.stringify(payloadObj));
+        const auth = await _vapidAuth(env, sub.endpoint);
+        const r = await fetch(sub.endpoint, {
+            method: 'POST',
+            headers: { 'Authorization': auth, 'Content-Encoding': 'aes128gcm', 'TTL': '3600', 'Urgency': 'high' },
+            body,
+        });
+        return r.status;   // 201 成功;404/410 = 訂閱已失效
+    } catch (_) { return 0; }
+}
+async function _psubKey(endpoint) {
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(endpoint)));
+    return 'psub:' + _b64u.enc(d).slice(0, 22);
+}
+async function handlePushSub(request, env) {
+    const body = await request.json().catch(() => null);
+    const sub = body && body.sub;
+    if (!sub || !/^https:\/\//.test(String(sub.endpoint || '')) || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return json({ error: 'bad sub' }, 400);
+    const inv = (Array.isArray(body.inventory) ? body.inventory : []).slice(0, 30)
+        .map(i => ({ sym: String(i && i.sym || '').slice(0, 8), cost: +(i && i.cost) || 0, name: String(i && i.name || '').slice(0, 12) }))
+        .filter(i => /^\d{4,6}[A-Z]?$/.test(i.sym));
+    const trig = (Array.isArray(body.triggers) ? body.triggers : []).slice(0, 40)
+        .map(t => ({ sym: String(t && t.sym || '').slice(0, 8), dir: (t && t.dir) === 'gte' ? 'gte' : 'lte', px: +(t && t.px) || 0, name: String(t && t.name || '').slice(0, 12) }))
+        .filter(t => /^\d{4,6}[A-Z]?$/.test(t.sym) && t.px > 0);
+    const key = await _psubKey(sub.endpoint);
+    await env.KV.put(key, JSON.stringify({ sub: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }, inventory: inv, triggers: trig, updated: Date.now() }));
+    return json({ ok: true, inv: inv.length, trig: trig.length });
+}
+async function handlePushUnsub(request, env) {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.endpoint) return json({ error: 'bad req' }, 400);
+    await env.KV.delete(await _psubKey(body.endpoint));
+    return json({ ok: true });
+}
+async function handlePushTest(request, env) {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.endpoint) return json({ error: 'bad req' }, 400);
+    const rec = await env.KV.get(await _psubKey(body.endpoint), 'json');
+    if (!rec || !rec.sub) return json({ error: 'not subscribed' }, 404);
+    const st = await sendWebPush(env, rec.sub, { title: '✅ 推播測試成功', body: '收到這則=關掉 App 也能收到防守告警(庫存破鐵血停損/-10% 絕對底線/盯價到價)。', tag: 'push-test' });
+    return json({ ok: st >= 200 && st < 300, status: st });
+}
+// 盤中掃描 Web Push 用戶(庫存防守線 + 盯價到價;KV psent: 當日去重)
+async function scanPushUser(env, rec, liveQuotes) {
+    const sends = [];
+    const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+    for (const it of (rec.inventory || [])) {
+        const q = liveQuotes.get(it.sym); const price = q && +q.price;
+        if (!(price > 0) || !(+it.cost > 0)) continue;
+        const nm = it.name || it.sym;
+        if (price <= it.cost * 0.90) sends.push({ k: `abs10:${it.sym}:${today}`, title: `🛑 ${nm} 破絕對底線 -10%`, body: `現價 ${price},已低於成本 ${it.cost} 的 -10%(${(it.cost * 0.9).toFixed(2)})→ 任何理由都得走,別凹單。` });
+        else if (price <= it.cost * 0.95) sends.push({ k: `hard5:${it.sym}:${today}`, title: `⚠️ ${nm} 破鐵血停損 -5%`, body: `現價 ${price},跌破成本 ${it.cost} 的 -5% 防守(${(it.cost * 0.95).toFixed(2)})→ 開 App 看「現在怎麼做」照劇本執行。` });
+    }
+    for (const t of (rec.triggers || [])) {
+        const q = liveQuotes.get(t.sym); const price = q && +q.price;
+        if (!(price > 0) || !(+t.px > 0)) continue;
+        if (t.dir === 'gte' ? price >= t.px : price <= t.px)
+            sends.push({ k: `trig:${t.sym}:${t.dir}:${t.px}`, title: `🔔 ${t.name || t.sym} 到價 ${t.px}`, body: `現價 ${price},已${t.dir === 'gte' ? '站上' : '跌到'}你設定的 ${t.px} → 開 App 看該買還是該賣。` });
+    }
+    for (const s of sends.slice(0, 4)) {
+        const sentKey = `psent:${rec._key}:${s.k}`;
+        if (await env.KV.get(sentKey)) continue;
+        const st = await sendWebPush(env, rec.sub, { title: s.title, body: s.body, tag: s.k });
+        if (st === 404 || st === 410) { await env.KV.delete(rec._key); return; }   // 訂閱失效 → 清掉
+        if (st >= 200 && st < 300) await env.KV.put(sentKey, '1', { expirationTtl: 86400 });
+    }
+}
 
 async function handlePending(request, env) {
     const body = await request.json().catch(() => null);
@@ -746,8 +872,32 @@ async function runScan(env) {
         cursor = list.cursor;
     }
 
+    // 🔔 V22.3 Web Push 訂閱戶(iOS PWA 關 App 推播):收集其庫存/盯價股一起抓報價
+    const psubs = [];
+    cursor = undefined;
+    while (true) {
+        const plist = await env.KV.list({ prefix: 'psub:', cursor });
+        for (const key of plist.keys) {
+            try {
+                const rec = JSON.parse((await env.KV.get(key.name)) || 'null');
+                if (!rec || !rec.sub || !rec.sub.endpoint) continue;
+                rec._key = key.name;
+                psubs.push(rec);
+                (rec.inventory || []).forEach(i => { if (i?.sym) allSymbols.add(i.sym); });
+                (rec.triggers || []).forEach(t => { if (t?.sym) allSymbols.add(t.sym); });
+            } catch (_) {}
+        }
+        if (plist.list_complete) break;
+        cursor = plist.cursor;
+    }
+
     const liveQuotes = await fetchTwseMisQuote([...allSymbols]);
     if (!falconMap.size && !macroAlert && !liveQuotes.size) return;
+
+    // 🔔 Web Push 掃描(獨立 try,不影響 Telegram 用戶)
+    for (const rec of psubs) {
+        try { await scanPushUser(env, rec, liveQuotes); } catch (_) {}
+    }
 
     // V16.0 — vma5/ma5 baseline 跨用戶共用 cache(同股不重複 fetch data/{sym}.json)
     const volBaseCache = new Map();
