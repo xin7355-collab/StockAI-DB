@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6456,8 +6456,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.0.7',
+    _APP_VERSION: 'V70.0.8',
     _CHANGELOG: [
+        { v: 'V70.0.8', dt: '2026-07-28', t: '⚡ 六脈點火/熄火訊號(取材你提供的腳本,修正後上車)', d: [
+            'K線頁六脈卡新增「⚡ 六脈點火」:前 1~3 天只有 ≤2 分 → 今天跳到 ≥4 分 + 爆量 1.5 倍以上 = 低檔多脈齊發強啟動,紅框閃爍提示,並附鐵律「無條件停損設今日K線最低點」。',
+            '鏡像「🧯 六脈熄火」:前幾天 ≥4 分 → 今天掉到 ≤2 分 = 動能快速退潮,持股先減碼別等全翻空。',
+            '(你貼的原腳本有 3 個 bug:KD 呼叫把分數蓋掉、MT 函式名錯、點火條件根本沒寫進程式 — 已在對話中逐條說明;App 版是修正共線缺陷後的實作。)',
+        ]},
         { v: 'V70.0.7', dt: '2026-07-28', t: '⚡ 盤中六脈:位置調整 + 黃框標多空 + 更新加速', d: [
             '【位置】盤中六脈移到「大戶 vs 散戶累積流向」正上方(分時圖 → 六脈 → 大戶散戶)。',
             '【黃框看得懂】每個黃框左上直接標「▲多 / ▼空」:黃框=6個燈幾乎同向的順勢時段(順著做),框外=分歧觀望;圖例同步改白話。',
@@ -17425,6 +17430,30 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!el) return;
         let v = null; try { v = this._sixMeridianCalc(data); } catch (_) {}
         if (!v) { els.forEach(x => { x.classList.add('hidden'); x.innerHTML = ''; }); return; }
+        // ⚡ V70.0.8 六脈點火/熄火(取材使用者提供的六脈神劍腳本,修正其共線缺陷後上車):
+        //   點火 = 前 1~3 日僅 ≤2 分 → 今日 ≥4 分 + 今量 ≥ 前5日均量 1.5×(低檔齊發+有錢進場 → 強啟動)
+        //   熄火 = 前 1~3 日曾 ≥4 分 → 今日 ≤2 分(動能退潮,持股減碼訊號)
+        let ignite = null;
+        try {
+            if (Array.isArray(data) && data.length >= 40) {
+                const prevScores = [];
+                for (let k = 1; k <= 3; k++) {
+                    const pv = this._sixMeridianCalc(data.slice(0, data.length - k));
+                    if (pv) prevScores.push(pv.okN);
+                }
+                if (prevScores.length) {
+                    const V = b => +((b?.volume) || 0);
+                    const vToday = V(data[data.length - 1]);
+                    const v5 = data.slice(-6, -1).reduce((s, b) => s + V(b), 0) / 5;
+                    const volX = v5 > 0 ? vToday / v5 : 0;
+                    const minPrev = Math.min(...prevScores), maxPrev = Math.max(...prevScores);
+                    if (minPrev <= 2 && v.okN >= 4 && volX >= 1.5)
+                        ignite = { type: 'fire', from: minPrev, volX };
+                    else if (maxPrev >= 4 && v.okN <= 2)
+                        ignite = { type: 'out', from: maxPrev };
+                }
+            }
+        } catch (_) {}
         // 🎯 V69.5.0 前瞻記錄:六脈喊「買點/右側試單」(okN≥3)才記一筆多方判斷,5交易日後對答案
         try { const d = data[data.length - 1]; const bd = String(d.date || '').replace(/\//g, '-').slice(0, 10); if (v.okN >= 3 && bd) this._logPrediction('six', this.currentSymbolId, 'long', +d.close, bd); } catch (_) {}
         try { this._evalPredictions(this.currentSymbolId, data); } catch (_) {}   // 看這檔就順便對到期的答案(六脈+當沖燈共用日K)
@@ -17444,6 +17473,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="flex items-baseline gap-0.5"><span class="font-mono font-black text-2xl ${tcls} leading-none">${v.okN}</span><span class="text-[10px] text-gray-500">/5</span></div>
             </div>
             <div class="text-base font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
+            ${ignite ? (ignite.type === 'fire'
+                ? `<div class="bg-red-900/30 border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1.5 animate-pulse"><div class="text-[11px] font-black text-red-300">⚡ 六脈點火!${ignite.from} 分 → ${v.okN} 分 + 爆量 ${ignite.volX.toFixed(1)}×</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">低檔多脈齊發+量進場 = 強啟動訊號。進場的話,<b class="text-yellow-300">無條件停損設今日 K 線最低點</b>(點火失敗跌破當日低=假訊號,立走)。</div></div>`
+                : `<div class="bg-green-900/25 border-l-4 border-green-500 pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] font-black text-green-300">🧯 六脈熄火:${ignite.from} 分 → ${v.okN} 分</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">多方動能快速退潮 → 持股先減碼/停利,別等全部翻空才動。</div></div>`) : ''}
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2.5 py-1.5 mt-2">${rows}</div>
             <div class="flex items-center justify-between mt-2 text-[10px]"><span class="text-gray-500">📏 ADX 趨勢強度 <span class="text-gray-600">(過濾盤整假訊號)</span></span><span class="font-mono font-bold ${adxCls}">${adxTxt}</span></div>
             <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-200 leading-relaxed"><b class="${tcls}">✅ 操作:</b>${v.sop}</div></div>
