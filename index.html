@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2918,7 +2918,7 @@
                 <div id="huntGuide" class="hidden p-3 pt-0 text-xs text-gray-300 space-y-3 border-t border-[#30363d] mt-1 pt-3 leading-relaxed">
                     <div class="flex flex-col gap-1">
                         <span class="text-red-400 font-black">🎯 策略王牌：回後買上漲（朱老師高勝率買點）</span>
-                        <span class="text-gray-400">波段多頭（頭頭高+底底高）+ 回檔<b class="text-yellow-300">不破前低</b> + 今日紅K<b class="text-yellow-300">重新站上 5MA</b> + 實體 ≥ 2% + 量增 + 收破昨高 → 朱家泓約<b class="text-red-300">8成勝率</b>的第二段起漲買點。已含「高檔大量長紅½跌破=做頭別追」守門。<b class="text-yellow-300">這是回測期望值最高的訊號,每檔監控股都掃。</b></span>
+                        <span class="text-gray-400">波段多頭（頭頭高+底底高）+ 回檔<b class="text-yellow-300">不破前低</b> + 今日紅K<b class="text-yellow-300">重新站上 5MA</b> + 實體 ≥ 2% + 量增 + 收破昨高 → 朱家泓約<b class="text-red-300">8成勝率</b>的第二段起漲買點。已含「高檔大量長紅平均成本跌破=做頭別追」守門。<b class="text-yellow-300">這是回測期望值最高的訊號,每檔監控股都掃。</b></span>
                     </div>
                     <div class="flex flex-col gap-1">
                         <span class="text-red-400 font-black">📈 策略一：月線起漲（站上月線+紅K）</span>
@@ -4459,7 +4459,7 @@ const app = {
                     if (dikang20 && prevClose >= dikang20 && nowPrice < dikang20)
                         trigger('dnDikang20', '⚠️ 跌破扣抵保衛價', `現價 ${nowPrice.toFixed(2)} 跌破 20MA 扣抵價 ${dikang20.toFixed(2)},月線今日恐下彎`);
                 }
-                // 🔴 V32.0 ② 跌破突破棒½價(回掃 ≤25 找爆量長紅,跌破其中點=結構轉弱)
+                // 🔴 V32.0 ② 跌破突破棒防守價((開+收)÷2,回掃 ≤25 找爆量長紅,跌破=結構轉弱)
                 let _boMid = null;
                 for (let j = kdata.length - 1; j >= Math.max(0, kdata.length - 25); j--) {
                     const _b = kdata[j]; if (!_b) continue;
@@ -4470,7 +4470,7 @@ const app = {
                     if (_c > _o && (_c - _o) / _o >= 0.05 && _av > 0 && _v >= _av * 1.5) { _boMid = (_o + _c) / 2; break; }
                 }
                 if (_boMid && prevClose >= _boMid && nowPrice < _boMid)
-                    trigger('dnBoMid', '🟢 跌破突破棒½價', `現價 ${nowPrice.toFixed(2)} 跌破結構防守 ${_boMid.toFixed(2)},這波多頭結構轉弱`);
+                    trigger('dnBoMid', '🟢 跌破突破棒防守價', `現價 ${nowPrice.toFixed(2)} 跌破結構防守 ${_boMid.toFixed(2)},這波多頭結構轉弱`);
                 // 🏋️ V44.1 — 權值股超跌反彈告警(權值股跌≥25% + 超賣 + 站回5MA=止穩→易彈)
                 if (this._HEAVYWEIGHTS.has(String(sym))) {
                     const _look = kdata.slice(-120);
@@ -6547,8 +6547,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.2',
+    _APP_VERSION: 'V69.9.3',
     _CHANGELOG: [
+        { v: 'V69.9.3', dt: '2026-07-28', t: '🏷️ 「½價」改名:同名不同值問題根治', d: [
+            '過去兩種不同公式都叫「½價」→ 兩張卡數字不同看起來像打架。現在正名:突破棒那條叫「突破棒防守價」((開+收)÷2),K棒戰法/盤勢解讀那條叫「當日平均成本」((高+低)÷2)。',
+            '公式完全沒動,只改名字;全 App 32 處文案同步,不再出現「½價」。',
+        ]},
         { v: 'V69.9.2', dt: '2026-07-28', t: '📦 庫存讀取統一單一入口', d: [
             '原本 24 個地方各自去讀持股清單 → 統一走同一入口,持股資料全 App 保證同一份,也省掉重複解析。',
         ]},
@@ -15782,7 +15786,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // ⭐ V41.9 回後買上漲的「不能做」守門(朱:高檔大量長紅½跌破=做頭,不要再回後買上漲)
         const topBreak = this._topHalfBreak?.(data);
         if (justReclaim && noBreakLow && (red || upDay) && topBreak) {
-            out.push({ tone: 'warn', title: '回後買上漲‧做頭不建議', val: topBreak.mid, msg: `雖是波段多頭、回後站上5日線,但 ${topBreak.jAgo} 天前「高檔大量長紅」的 ½ ${topBreak.mid.toFixed(2)} 已被收盤跌破=做頭/主力出貨訊號;朱家泓鐵律:此後「不要再回後買上漲」,先觀望別追,等重新帶量站回 ½ 上方再說。` });
+            out.push({ tone: 'warn', title: '回後買上漲‧做頭不建議', val: topBreak.mid, msg: `雖是波段多頭、回後站上5日線,但 ${topBreak.jAgo} 天前「高檔大量長紅」的當日平均成本 ${topBreak.mid.toFixed(2)} 已被收盤跌破=做頭/主力出貨訊號;朱家泓鐵律:此後「不要再回後買上漲」,先觀望別追,等重新帶量站回平均成本上方再說。` });
             return out;
         }
         if (justReclaim && noBreakLow && (red || upDay)) {
@@ -16508,17 +16512,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const ma20 = data.slice(-20).reduce((a, b) => a + C(b), 0) / 20;
         const trend = (c > ma20 && ma5 > ma20) ? 'bull' : (c < ma20 && ma5 < ma20) ? 'bear' : 'flat';
         const bd = `${daysAgo} 天前一根長黑K(實體 -${best.body.toFixed(1)}%${best.volX >= 1.5 ? '·爆量' : ''})`;
-        const lv = ` 三價位:最高 ${hi.toFixed(2)}(最強壓力)/ ½ ${half.toFixed(2)}(空單平均成本)/ 最低 ${lo.toFixed(2)}。`;
+        const lv = ` 三價位:最高 ${hi.toFixed(2)}(最強壓力)/ 當日平均成本 ${half.toFixed(2)}(空單成本)/ 最低 ${lo.toFixed(2)}。`;
         let tone, title, msg;
         if (c > hi) {
             tone = 'bull'; title = '🕯️ 站上長黑K高點(壓力變支撐)';
             msg = `現價突破${bd}的最高價 ${hi.toFixed(2)} → 壓力全瓦解、由壓變撐,空方轉弱、易打底轉多;回測 ${hi.toFixed(2)} 不破可偏多。${lv}`;
         } else if (c > half) {
-            tone = 'bull'; title = '🕯️ 突破長黑K½價(空單套牢)';
-            msg = `現價站上${bd}的 ½價 ${half.toFixed(2)}(空單平均成本)→ 做空者開始套牢、易引發停損回補,壓力減弱;再站上最高價 ${hi.toFixed(2)} 壓力就瓦解。${lv}`;
+            tone = 'bull'; title = '🕯️ 站上長黑K平均成本(空單套牢)';
+            msg = `現價站上${bd}的當日平均成本 ${half.toFixed(2)} → 做空者開始套牢、易引發停損回補,壓力減弱;再站上最高價 ${hi.toFixed(2)} 壓力就瓦解。${lv}`;
         } else if (c > lo) {
             tone = 'mid'; title = '🕯️ 卡在長黑K下半段(空方略強)';
-            msg = `現價過了最低價、但過不了 ½價 ${half.toFixed(2)} → 空方仍略強,反彈遇 ½價不過易再跌;${trend === 'bear' ? '空頭可做「彈後空下跌」' : '別急追多,等站上 ½價再說'}。${lv}`;
+            msg = `現價過了最低價、但過不了當日平均成本 ${half.toFixed(2)} → 空方仍略強,反彈遇它不過易再跌;${trend === 'bear' ? '空頭可做「彈後空下跌」' : '別急追多,等站上平均成本再說'}。${lv}`;
         } else {
             tone = 'bear'; title = '🕯️ 壓在長黑K最低價下(最強壓力)';
             msg = `現價在${bd}最低價 ${lo.toFixed(2)}(最強壓力)之下 → 反彈遇此壓不過就是「彈後空下跌」,空方續強;${trend === 'bull' ? '有多單留意:高檔爆量長黑跌破其低=回檔確認' : '空單可續抱'}。${lv}`;
@@ -16558,17 +16562,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const ma20 = data.slice(-20).reduce((a, b) => a + C(b), 0) / 20;
         const trend = (c > ma20 && ma5 > ma20) ? 'bull' : (c < ma20 && ma5 < ma20) ? 'bear' : 'flat';
         const bd = `${daysAgo} 天前一根長紅棒(實體 +${best.body.toFixed(1)}%${best.volX >= 1.5 ? '·爆量' : ''})`;
-        const lv = ` 三價位:最高 ${hi.toFixed(2)}/ ½ ${half.toFixed(2)}(多方平均成本)/ 最低 ${lo.toFixed(2)}(最強支撐)。`;
+        const lv = ` 三價位:最高 ${hi.toFixed(2)}/ 當日平均成本 ${half.toFixed(2)}(多方成本)/ 最低 ${lo.toFixed(2)}(最強支撐)。`;
         let tone, title, msg;
         if (c >= hi) {
             tone = 'bull'; title = '🕯️ 站穩長紅K高點(多方最強)';
             msg = `現價守在${bd}最高價 ${hi.toFixed(2)} 之上 → 多方最強支撐未破、多方續搶,回測不破可續多。${lv}`;
         } else if (c >= half) {
             tone = 'bull'; title = '🕯️ 回測長紅K上半段(支撐仍在)';
-            msg = `現價回到${bd}最高價下、但守住 ½價 ${half.toFixed(2)}(多方平均成本)→ 支撐仍在,${trend === 'bull' ? '整理後常見「回後買上漲」' : '觀察能否守住'};跌破 ½價才轉弱。${lv}`;
+            msg = `現價回到${bd}最高價下、但守住當日平均成本 ${half.toFixed(2)} → 支撐仍在,${trend === 'bull' ? '整理後常見「回後買上漲」' : '觀察能否守住'};跌破平均成本才轉弱。${lv}`;
         } else if (c >= lo) {
-            tone = 'mid'; title = '🕯️ 跌破長紅K½價(多方轉弱)';
-            msg = `現價跌破${bd}的 ½價 ${half.toFixed(2)}(多方平均成本)→ 多方力道轉弱、易引發賣壓;守住最低價 ${lo.toFixed(2)} 還有救,再跌破就多空易位。${lv}`;
+            tone = 'mid'; title = '🕯️ 跌破長紅K平均成本(多方轉弱)';
+            msg = `現價跌破${bd}的當日平均成本 ${half.toFixed(2)} → 多方力道轉弱、易引發賣壓;守住最低價 ${lo.toFixed(2)} 還有救,再跌破就多空易位。${lv}`;
         } else {
             tone = 'bear'; title = '🕯️ 跌破長紅K最低價(多空易位)';
             msg = `現價跌破${bd}最低價 ${lo.toFixed(2)}(最強支撐)→ 多空易位、後續由空方主導,反彈時這根紅K的高/低點反成壓力,多單控好風險。${lv}`;
@@ -16950,8 +16954,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const b = data[j]; if (!b || !O(b) || !C(b)) continue;
             if (C(b) < O(b) && (O(b) - C(b)) / O(b) >= 0.05 && bigVol(j)) {
                 const mid = (H(b) + L(b)) / 2, daysAgo = last - j;
-                if (pC > mid) sigs.push({ tone: 'bull', title: '止跌反彈訊號', val: mid, msg: `現價站上 ${daysAgo} 天前大量長黑的 ½ 平均成本 ${mid.toFixed(2)} → 套牢賣壓被消化,空方轉弱、止跌反彈機率增(朱:抢反弹基本條件)。` });
-                else sigs.push({ tone: 'flat', title: '大量長黑壓制中', val: mid, msg: `現價仍在 ${daysAgo} 天前大量長黑 ½ ${mid.toFixed(2)} 之下,賣壓未解,反彈需先站上此線。` });
+                if (pC > mid) sigs.push({ tone: 'bull', title: '止跌反彈訊號', val: mid, msg: `現價站上 ${daysAgo} 天前大量長黑的當日平均成本 ${mid.toFixed(2)} → 套牢賣壓被消化,空方轉弱、止跌反彈機率增(朱:抢反弹基本條件)。` });
+                else sigs.push({ tone: 'flat', title: '大量長黑壓制中', val: mid, msg: `現價仍在 ${daysAgo} 天前大量長黑當日平均成本 ${mid.toFixed(2)} 之下,賣壓未解,反彈需先站上此線。` });
                 break;
             }
         }
@@ -16960,11 +16964,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const b = data[j]; if (!b || !O(b) || !C(b) || !bigVol(j)) continue;
             const mid = (H(b) + L(b)) / 2;
             if (C(b) > O(b) && (C(b) - O(b)) / O(b) >= 0.04) {   // 大量長紅 → 查假突破
-                for (let k = j + 1; k <= Math.min(last, j + 2); k++) { const n = data[k]; if (n && C(n) < O(n) && C(n) < mid) { sigs.push({ tone: 'bear', title: '假突破警訊', val: mid, msg: `大量長紅突破後 ${k - j} 日內黑K跌破其 ½ ${mid.toFixed(2)} = 假突破,昨天買的一半已賠錢,多單先跑(朱:假突破易真下跌)。` }); break; } }
+                for (let k = j + 1; k <= Math.min(last, j + 2); k++) { const n = data[k]; if (n && C(n) < O(n) && C(n) < mid) { sigs.push({ tone: 'bear', title: '假突破警訊', val: mid, msg: `大量長紅突破後 ${k - j} 日內黑K跌破其當日平均成本 ${mid.toFixed(2)} = 假突破,昨天買的一半已賠錢,多單先跑(朱:假突破易真下跌)。` }); break; } }
                 break;
             }
             if (C(b) < O(b) && (O(b) - C(b)) / O(b) >= 0.04) {   // 大量長黑 → 查假跌破
-                for (let k = j + 1; k <= Math.min(last, j + 2); k++) { const n = data[k]; if (n && C(n) > O(n) && C(n) > mid) { sigs.push({ tone: 'bull', title: '假跌破訊號', val: mid, msg: `大量長黑跌破後 ${k - j} 日內紅K突破其 ½ ${mid.toFixed(2)} = 假跌破,空單先跑、止跌反彈機率高。` }); break; } }
+                for (let k = j + 1; k <= Math.min(last, j + 2); k++) { const n = data[k]; if (n && C(n) > O(n) && C(n) > mid) { sigs.push({ tone: 'bull', title: '假跌破訊號', val: mid, msg: `大量長黑跌破後 ${k - j} 日內紅K突破其當日平均成本 ${mid.toFixed(2)} = 假跌破,空單先跑、止跌反彈機率高。` }); break; } }
                 break;
             }
         }
@@ -17055,7 +17059,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             cta = `站回 5 日線 ${rt(weak.val).toFixed(2)} 了但攻擊力道未滿(紅K/量/過昨高沒到齊)→ 只小量試,等力道齊再加。`; sub = weak.msg;
         } else if (topWarn) {
             big = '🔴 別買(做頭)'; head = '回後買上漲・做頭不建議'; cls = 'red';
-            cta = `雖回後站上 5 日線,但高檔大量長紅 ½ ${rt(topWarn.val).toFixed(2)} 已被跌破=主力出貨;朱鐵律:此後別再回後買上漲,先觀望。`; sub = topWarn.msg;
+            cta = `雖回後站上 5 日線,但高檔大量長紅當日平均成本 ${rt(topWarn.val).toFixed(2)} 已被跌破=主力出貨;朱鐵律:此後別再回後買上漲,先觀望。`; sub = topWarn.msg;
         } else if (wait) {
             big = '⏳ 還不是買點・等'; head = '多頭回檔中,等站回 5 日線'; cls = 'gray';
             cta = `現在回檔中還沒站上 5 日線 ${rt(wait.val).toFixed(2)};鎖股等「紅K站回 5 日線 + 不破前低」出現才是回後買上漲買點。`; sub = wait.msg;
@@ -17380,7 +17384,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } else {
             // 空手:給買點或叫你等
             const stopPct = (pC - prevLow) / pC * 100;
-            if (head) { light = '🔴'; tone = 'green'; action = '別買 · 觀望'; lines = ['高檔出現做頭訊號(大量長紅 ½ 被跌破)= 主力出貨,<b>今天別追</b>,等重新帶量站回再說。']; }
+            if (head) { light = '🔴'; tone = 'green'; action = '別買 · 觀望'; lines = ['高檔出現做頭訊號(大量長紅平均成本被跌破)= 主力出貨,<b>今天別追</b>,等重新帶量站回再說。']; }
             else if (hi) { light = '🟢'; tone = 'red'; action = '可進場'; lines = [`朱式高勝率買點成型(約8成)。<b>買點:紅K站上 5 日線 ${f(ma5)} 且過昨高 ${f(prevHigh)} 就進</b>。`, `停損:跌破前低 ${f(prevLow)}(約 −${stopPct.toFixed(1)}%);目標:前高。`]; }
             else if (weak) { light = '🟡'; tone = 'yellow'; action = '小量試單'; lines = [`站上 5 日線但攻擊力道未滿 → <b>可小量試</b>,別重壓。`, `站上 ${f(ma5)}、過昨高 ${f(prevHigh)} 加碼;停損跌破前低 ${f(prevLow)}。`]; }
             else if (wait) { light = '⏳'; tone = 'yellow'; action = '等買點'; lines = [`波段多頭回檔中、<b>還沒到買點</b>。等紅K站回 5 日線 ${f(ma5)} 且不破前低 ${f(prevLow)} 再進,現在別急。`]; }
@@ -23807,7 +23811,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const bullet = (c, t) => `<div class="flex gap-1.5"><span class="${c} flex-shrink-0">•</span><span>${t}</span></div>`;
         const shortRows = [
             bullet('text-red-400', `壓力:今日高 <b class="font-mono text-red-300">${fp(H)}</b> — 明天開高碰它沒量續攻,短線客易獲利了結,防開高又壓回。`),
-            bullet('text-gray-400', `短線防守:今日平均成本(½價)<b class="font-mono text-gray-200">${fp(half)}</b> — 站上=今天買的人多數賺錢、短多續;跌破=短線先落袋,別戀棧。`),
+            bullet('text-gray-400', `短線防守:當日平均成本 <b class="font-mono text-gray-200">${fp(half)}</b> — 站上=今天買的人多數賺錢、短多續;跌破=短線先落袋,別戀棧。`),
         ];
         if (dtLine) shortRows.push(dtLine);
         const swingRows = [
@@ -25601,7 +25605,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         route('🛑', '絕對底線 -10%', '跌幅超過 10% 絕不再凹,任何理由都得走', abs10, 'text-red-400', 'guard');
         const gs = this._guardStash || {};
         if (numOK(gs.g20) && !_same(gs.g20, x.takeLong) && !_same(gs.g20, x.stopB)) route('🧱', '20MA 扣抵保衛價', '明日收盤守住→月線續揚', gs.g20, 'text-cyan-300', 'guard');
-        if (numOK(gs.boMid) && !_same(gs.boMid, x.stopA?.low)) route('🧱', '突破棒 ½ 價', '爆量長紅當日平均成本', gs.boMid, 'text-cyan-300', 'guard');
+        if (numOK(gs.boMid) && !_same(gs.boMid, x.stopA?.low)) route('🧱', '突破棒防守價', '爆量長紅(開+收)÷2 結構防線', gs.boMid, 'text-cyan-300', 'guard');
         if (numOK(gs.boLow) && !_same(gs.boLow, x.stopA?.low) && !_same(gs.boLow, gs.boMid)) route('🧱', '突破棒最低價', '跌破=多空易位', gs.boLow, 'text-cyan-300', 'guard');
         active.sort((a, b) => b.p - a.p);   // 由近到遠(價高→低,現價往下先碰到的排前面;目標在最上)
         const targetSection = active.length ? `
@@ -29864,14 +29868,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     msg = '跌破突破長紅「最低價」= 多空完全易位,此後這根長紅最低點反轉成上方壓力,多單清倉、別凹單。';
                 } else if (pC < mid) {
                     ic = '🔴'; bcls = 'border-red-500'; status = '多方轉弱';
-                    msg = '跌破突破長紅 ½ 價(當日平均成本)= 多方轉弱、易引大量賣壓,多單防守離場。';
+                    msg = '跌破突破棒防守價((開+收)÷2)= 多方轉弱、易引大量賣壓,多單防守離場。';
                 } else if (pC < _oH) {
                     if (pC >= mid * 0.98 && pL >= mid * 0.98 && curVR < 0.85) {
-                        ic = '✅'; bcls = 'border-green-500'; status = '回後買上漲・½支撐版';
-                        msg = '回檔到 ½~最高價之間 + 量縮不破 = 朱老師「回後買上漲」潛在買點(此版基準=突破棒½價;打法雷達/分批計畫的回後買上漲基準=站回5MA那根與20MA觀察區,價位不同是正常的),結構未破可分批加碼。';
+                        ic = '✅'; bcls = 'border-green-500'; status = '回後買上漲・防守價支撐版';
+                        msg = '回檔到防守價~最高價之間 + 量縮不破 = 朱老師「回後買上漲」潛在買點(此版基準=突破棒防守價;打法雷達/分批計畫的回後買上漲基準=站回5MA那根與20MA觀察區,價位不同是正常的),結構未破可分批加碼。';
                     } else {
                         ic = '🟡'; bcls = 'border-yellow-500'; status = '攻擊力減弱';
-                        msg = '跌破突破長紅「最高價」= 攻擊力道減弱,3-5 天內須站回最高價,否則易轉折;守住 ½ 仍算健康。';
+                        msg = '跌破突破長紅「最高價」= 攻擊力道減弱,3-5 天內須站回最高價,否則易轉折;守住防守價仍算健康。';
                     }
                 } else {
                     ic = '🟢'; bcls = 'border-green-500'; status = '攻擊力最強';
@@ -29880,8 +29884,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const _scls = pC >= mid ? 'text-green-300' : 'text-red-300';
                 const _pxCell = (lbl, v, hit) => `<div class="flex flex-col items-center flex-1 ${hit ? 'bg-white/5 rounded' : ''} py-0.5"><span class="text-[8px] text-gray-500">${lbl}</span><span class="font-mono text-[11px] font-bold ${pC >= v ? 'text-green-300' : 'text-red-300'}">${v.toFixed(2)}</span></div>`;
                 _bg.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">🧱</span><span class="text-[12px] font-black text-gray-100">突破棒防守</span><span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-[#30363d] ${_scls}">${ic} ${status}</span><button onclick="app.showJargon('突破棒防守')" class="text-[10px] text-gray-500 hover:text-blue-300 ml-auto">❓</button></div>
-                    <div class="flex items-stretch gap-1 mb-1.5 text-center">${_pxCell('最高·攻擊', _oH, pC >= _oH)}${_pxCell('½·成本', mid, pC >= mid)}${_pxCell('最低·易位', _oL, pC >= _oL)}</div>
-                    <div class="text-[9px] text-gray-500 text-center mb-1.5">現價 ${pC.toFixed(2)}(距½ ${diffMid >= 0 ? '+' : ''}${diffMid.toFixed(1)}%)</div>
+                    <div class="flex items-stretch gap-1 mb-1.5 text-center">${_pxCell('最高·攻擊', _oH, pC >= _oH)}${_pxCell('防守價', mid, pC >= mid)}${_pxCell('最低·易位', _oL, pC >= _oL)}</div>
+                    <div class="text-[9px] text-gray-500 text-center mb-1.5">現價 ${pC.toFixed(2)}(距防守價 ${diffMid >= 0 ? '+' : ''}${diffMid.toFixed(1)}%)</div>
                     <div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 ${bcls} pl-2.5 py-1.5 rounded-r leading-relaxed">${msg}</div>
                     <div class="text-[9px] text-gray-500 mt-1.5">📍 ${daysAgo} 天前爆量長紅 開 ${_o.toFixed(2)} → 收 ${_c.toFixed(2)}(實體 +${((_c - _o) / _o * 100).toFixed(1)}%),高 ${_oH.toFixed(2)} / 低 ${_oL.toFixed(2)}</div>`;
                 _bg.classList.remove('hidden');
@@ -31374,7 +31378,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             { re: /糾結|一字底/, icon: '🪢', name: '均線糾結(財神報到)', what: '多條均線糾結在一起=能量壓縮,一旦帶量突破常出飆股。', spot: '5/10/20/60 均線擠在很小範圍內。', how: '先鎖股,等帶量紅K突破上頸線再進;跌破則觀望。', tip: '糾結方向不明,別提早猜。' },
             { re: /趨勢線/, icon: '📈', name: '趨勢線突破/跌破', what: '兩個墊高低點連成上升趨勢線(跌破=轉弱)、兩個下移高點連成下降趨勢線(突破=轉強)。', spot: '股價跌破/突破那條連線。', how: '跌破上升線減碼、站回再進;突破下降線可留意轉強,帶量更確認。', tip: '趨勢線是動態支撐壓力,配合量能看。' },
             { re: /假突破|假跌破/, icon: '⚠️', name: '假突破 / 假跌破', what: '爆量長紅突破後隔 1-2 日又收破其 ½(假突破,偏空);長黑跌破後又收回 ½(假跌破,偏多)。', spot: '突破棒的 ½=(高+低)/2 被反向收破。', how: '假突破多單先跑;假跌破空單先回、止跌反彈機率高。', tip: '朱:假突破易真下跌,別凹。' },
-            { re: /止跌反彈|收盤轉強|收盤轉弱|壓制中/, icon: '🔄', name: '½價 / 收盤轉強弱', what: '½價=(高+低)/2=當天平均成本;站上大量長黑½=套牢賣壓消化(止跌);今收過昨高=轉強、破昨低=轉弱。', spot: '現價 vs 關鍵 K 的 ½、vs 昨高昨低。', how: '站上止跌可留意反彈;收盤轉強偏多、轉弱偏空。', tip: '½ 是主力/大戶成本區,很關鍵。' },
+            { re: /止跌反彈|收盤轉強|收盤轉弱|壓制中/, icon: '🔄', name: '當日平均成本 / 收盤轉強弱', what: '當日平均成本=(高+低)÷2(舊稱½價);站上大量長黑平均成本=套牢賣壓消化(止跌);今收過昨高=轉強、破昨低=轉弱。', spot: '現價 vs 關鍵 K 的 ½、vs 昨高昨低。', how: '站上止跌可留意反彈;收盤轉強偏多、轉弱偏空。', tip: '½ 是主力/大戶成本區,很關鍵。' },
             { re: /攻擊量|出貨量|換手量|止跌量|反彈量/, icon: '📊', name: '量能訊號', what: '攻擊量(放量紅K非高檔=進貨)、出貨量(高檔爆量黑K)、換手量(高檔大量黑K被紅K過高=洗籌續攻)、止跌量(低檔量縮)。', spot: '看量倍數 + 紅黑 + 位置(高/低檔)。', how: '攻擊量/換手量偏多可續抱;出貨量減碼;止跌量等紅K放量確認。', tip: '量價要一起看,量是能量。' },
             { re: /壓力沉重|過不了/, icon: '🧱', name: '反覆過不了(遇壓有壓)', what: '近期多次摸到同一壓力都收不過=賣壓沉重。朱:過不了的股票很難賺,別選。', spot: '近 10 根多次觸壓力、收盤都沒過。', how: '多單過不了先走,等真的帶量收過壓力再看。', tip: '別跟過不了的股票硬耗。' },
             { re: /過熱|急漲/, icon: '🔥', name: '多頭過熱(高檔留意)', what: '連漲多天/急漲>20%易高檔爆量反轉,末升段留意。', spot: '連漲天數多、累積漲幅大。', how: '持倉者短線分批停利;看到高檔爆量(紅黑都算)隔天不漲就跑。', tip: '過熱不是叫你放空,是提醒別追、該停利。' },
@@ -31396,7 +31400,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 📖 V41.33 — K棒戰法白話教學
     showKbarTacticsHelp() {
-        alert('📐 K棒戰法 — 怎麼用(小白版)\n\n這張卡用純公式(不是 AI 亂猜)幫你抓出朱家泓/林穎的 K 棒型態,每條訊號標紅(偏多)或綠(偏空):\n\n🔺 紅=偏多訊號(晨星/長紅吞噬/向上缺口/底部突破/回後買上漲…)\n🔻 綠=偏空訊號(夜星/長黑吞噬/向下缺口/測壓有壓/頂背離/做頭…)\n⚪ 中性 / ⚠️ 留意\n\n幾個常用的白話:\n• ½價=(最高+最低)÷2=當天平均成本,站上偏多、跌破偏空。\n• 缺口不補繼續走、補掉就轉弱。\n• KD/MACD 背離=價創高但指標沒跟上=動能衰竭,高檔要小心。\n• 均線扣抵=提前 1-2 天算出月線明天會往上還往下。\n\n🔑 朱老師鐵律「開盤定生死」:出現變盤/轉折K後,看<次日開盤>——開低=變盤確認多單該跑;開高=化解疑慮可續抱。\n\n💡 訊號很多條時,以個股頁上方「進場體檢」的紅綠燈總結為準,別每條分開看。純公式、僅供參考,實際要配合大盤與停損。');
+        alert('📐 K棒戰法 — 怎麼用(小白版)\n\n這張卡用純公式(不是 AI 亂猜)幫你抓出朱家泓/林穎的 K 棒型態,每條訊號標紅(偏多)或綠(偏空):\n\n🔺 紅=偏多訊號(晨星/長紅吞噬/向上缺口/底部突破/回後買上漲…)\n🔻 綠=偏空訊號(夜星/長黑吞噬/向下缺口/測壓有壓/頂背離/做頭…)\n⚪ 中性 / ⚠️ 留意\n\n幾個常用的白話:\n• 當日平均成本=(最高+最低)÷2(舊稱½價),站上偏多、跌破偏空。\n• 缺口不補繼續走、補掉就轉弱。\n• KD/MACD 背離=價創高但指標沒跟上=動能衰竭,高檔要小心。\n• 均線扣抵=提前 1-2 天算出月線明天會往上還往下。\n\n🔑 朱老師鐵律「開盤定生死」:出現變盤/轉折K後,看<次日開盤>——開低=變盤確認多單該跑;開高=化解疑慮可續抱。\n\n💡 訊號很多條時,以個股頁上方「進場體檢」的紅綠燈總結為準,別每條分開看。純公式、僅供參考,實際要配合大盤與停損。');
     },
 
     // 🎯 V41.32 — 打法表「怎麼看」總說明(小白:期望值 vs 勝率 vs 賺賠比)
