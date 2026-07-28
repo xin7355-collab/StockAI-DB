@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3231,6 +3231,9 @@ const app = {
     activeGroupName: localStorage.getItem('proTerminalActiveGroup') || "自選清單",
     isFavEditMode: false,
     inventory: (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv')) || []; } catch (_) { return []; } })(),
+    // 📦 V69.9.2 P2-6:庫存唯一讀取口。6 個寫入端全是 this.inventory 的鏡像(setItem 都 stringify this.inventory),
+    //   故直接讀 this.inventory 即可;原 24 處各自 JSON.parse(localStorage) 全改走這裡(省重複 parse + 單一真相源)。
+    _getInventory() { return Array.isArray(this.inventory) ? this.inventory : []; },
     // V17.6 / V17.21 — 個股限價單告警 [{id, sym, cond:'gte'|'lte', price, enabled, addedAt}]
     //          一條件一筆(同股可多筆),觸及即 Worker 推 Telegram + sw.js 推瀏覽器通知,6h throttle 防重
     //          V17.21 自動把舊 {sym, upper, lower} 拆成新格式
@@ -4061,7 +4064,7 @@ const app = {
         if (!this.attentionStatus) return;
         // Union 自選 + 庫存(去重)
         const fav = this.favGroups?.[this.activeGroupName] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
+        const inv = app._getInventory();
         const allSyms = [...new Set([...fav, ...inv.map(i => i.symbol).filter(Boolean)])];
         if (!allSyms.length) return;
         const alerts = [];
@@ -4102,7 +4105,7 @@ const app = {
         if (!this._liveQuotes || !Object.keys(this._liveQuotes).length) return;
         try { localStorage.setItem('proTerminalLastOvernightSweep', today); } catch (_) {}
         const fav = this.favGroups?.[this.activeGroupName] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const inv = app._getInventory();
         const allSyms = [...new Set([...fav, ...inv.map(i => i.symbol).filter(Boolean)])];
         if (!allSyms.length) return;
         const alerts = [];
@@ -4127,7 +4130,7 @@ const app = {
         if ((localStorage.getItem('proTerminalLastChipScenSweep') || '') === today) return;
         try { localStorage.setItem('proTerminalLastChipScenSweep', today); } catch (_) {}
         const fav = this.favGroups?.[this.activeGroupName] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const inv = app._getInventory();
         const allSyms = [...new Set([...inv.map(i => i.symbol).filter(Boolean), ...fav])].slice(0, 12);   // 庫存優先,上限 12 檔防爆流量
         if (!allSyms.length) return;
         const gb = window.location.href.split('?')[0].split('#')[0];
@@ -4159,7 +4162,7 @@ const app = {
         if ((localStorage.getItem('proTerminalLastBkCandleSweep') || '') === today) return;
         try { localStorage.setItem('proTerminalLastBkCandleSweep', today); } catch (_) {}
         const fav = this.favGroups?.[this.activeGroupName] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const inv = app._getInventory();
         const allSyms = [...new Set([...inv.map(i => i.symbol).filter(Boolean), ...fav])].slice(0, 12);   // 庫存優先,上限 12 檔防爆流量
         if (!allSyms.length) return;
         const gb = window.location.href.split('?')[0].split('#')[0];
@@ -4194,7 +4197,7 @@ const app = {
         if (!this._holdersCache) { try { const r = await fetch(new URL('data/holders.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); this._holdersCache = r.ok ? (await r.json()) : { data: {} }; } catch (_) { this._holdersCache = { data: {} }; } }
         try { localStorage.setItem('proTerminalLastInsiderSweep', today); } catch (_) {}
         const fav = this.favGroups?.[this.activeGroupName] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const inv = app._getInventory();
         const allSyms = [...new Set([...fav, ...inv.map(i => i.symbol).filter(Boolean)])];
         if (!allSyms.length) return;
         const alerts = [];
@@ -4318,7 +4321,7 @@ const app = {
         if (!this.settings.watchlistAlert) return;
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
         const fav = this.favGroups?.[this.activeGroupName] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const inv = app._getInventory();
         const allSyms = [...new Set([...fav, ...inv.map(i => i.symbol).filter(Boolean)])];
         if (!allSyms.length) return;
         const costBy = {}; const heldSet = new Set();
@@ -4382,7 +4385,7 @@ const app = {
         // V18.8 union:自選股 + 庫存股(去重),確保庫存被監控
         // 🎯 V43.4 union 再加「觀察清單(monitorList)」→ 盤中即時 pulse 也監控觀察股(原本只收盤掃)
         const group = this.favGroups?.[this.activeGroupName] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
+        const inv = app._getInventory();
         const invSyms = inv.map(i => i.symbol).filter(Boolean);
         const huntSyms = (this.monitorList || []).map(m => m && (m.sym || m.symbol)).filter(Boolean);
         const allSyms = [...new Set([...group, ...invSyms, ...huntSyms])];
@@ -4577,7 +4580,7 @@ const app = {
             if (localStorage.getItem('proTerm_alertBannerDismissed') === '1') return;
             if (document.getElementById('alertEnableBanner')) return;
             const group = this.favGroups?.[this.activeGroupName] || [];
-            const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+            const inv = app._getInventory();
             if (!group.length && !inv.length) return;   // 沒自選也沒庫存 → 不用提醒
             const b = document.createElement('div');
             b.id = 'alertEnableBanner';
@@ -5607,7 +5610,7 @@ ${list}
         const nowPx = arr[arr.length - 1].close ?? arr[arr.length - 1].c;
         if (!nowPx) { card.classList.add('hidden'); return; }
         // 從 inventory 抓進場資料(沒在庫存就提示加入)
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch(_) { return []; } })();
+        const inv = app._getInventory();
         const invItem = inv.find(i => i.symbol === sym);
         const entryCost = invItem ? +invItem.cost : null;
         const entryDate = invItem?.buyDate || '';
@@ -6033,7 +6036,7 @@ ${list}
         // 💼 我的庫存 × 主動 ETF(庫存被幾檔抱 + 今天有沒有被新買/減碼)
         let myInvHtml = '';
         try {
-            const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+            const inv = app._getInventory();
             const addedSet = new Set(), downSet = new Set();
             (d.etfs || []).forEach(e => {
                 (e.changes?.added || []).forEach(x => addedSet.add(String(x.sym)));
@@ -6544,8 +6547,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.1',
+    _APP_VERSION: 'V69.9.2',
     _CHANGELOG: [
+        { v: 'V69.9.2', dt: '2026-07-28', t: '📦 庫存讀取統一單一入口', d: [
+            '原本 24 個地方各自去讀持股清單 → 統一走同一入口,持股資料全 App 保證同一份,也省掉重複解析。',
+        ]},
         { v: 'V69.9.1', dt: '2026-07-28', t: '📥 大盤 K 線改單一載入口', d: [
             '原本 4 個卡片各自去抓加權指數 K 線 → 統一走同一個 30 分鐘快取,開大盤頁少 3 次重複下載,多卡同時要也只發一次請求。',
         ]},
@@ -17071,7 +17077,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let title = '🎯 現在該怎麼做(朱式買點・🌊 波段)';
         let entryLine = '';
         try {
-            const _inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+            const _inv = app._getInventory();
             const _pos = _inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0);
             if (_pos && pC > 0) {
                 const _cost = +_pos.cost, _sh = +_pos.shares || 0;
@@ -17181,7 +17187,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             // 持股 → 結論接停損線講(給信心要具體);存純數字,句子各情境自己組
             let slPrice = null;
             try {
-                const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+                const inv = app._getInventory();
                 const pos = inv.find(i => i.symbol === sym && +i.cost > 0);
                 if (pos) { const uni = this._unifiedExitPlan(data, +pos.cost); if (uni?.stopFinal) slPrice = uni.stopFinal.toFixed(2); }
             } catch (_) {}
@@ -18605,7 +18611,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             // 持倉
             let cost = null, shares = 0, holdDays = null;
             try {
-                const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+                const inv = app._getInventory();
                 const p = inv.find(i => i.symbol === sym && +i.cost > 0);
                 if (p) { cost = +p.cost; shares = +p.shares || 0; if (p.buyDate) { const bd = new Date(String(p.buyDate).replace(/\//g, '-')); const dd = Math.round((Date.now() - bd.getTime()) / 86400000); if (Number.isFinite(dd) && dd >= 0) holdDays = dd; } }
             } catch (_) {}
@@ -19053,7 +19059,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let heldHtml = '';
         try {
             const sym = this.currentSymbolId;
-            const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]');
+            const inv = app._getInventory();
             const pos = inv.find(i => i.symbol === sym && i.cost);
             const pC = +((data[data.length - 1]?.close ?? data[data.length - 1]?.c) || 0);
             const cost0 = pos ? +pos.cost : 0;
@@ -19106,7 +19112,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const m20 = (() => { const s = data.slice(n - 20, n); return s.length === 20 ? s.reduce((a, b) => a + CC(b), 0) / 20 : null; })();
             const yHigh = HH(data[n - 1]), pLow = Math.min(...data.slice(-15).map(LL).filter(v => v > 0));
             const ff = v => v == null ? '—' : (v >= 100 ? v.toFixed(0) : v.toFixed(2));
-            const heldNow = (() => { try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); return p ? +p.cost : 0; } catch (_) { return 0; } })();
+            const heldNow = (() => { try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); return p ? +p.cost : 0; } catch (_) { return 0; } })();
             let ol;
             if (heldNow > 0) ol = `💰 <b>掛賣參考</b>:停利 → 跌破 5 日線 <b>${ff(m5)}</b> 掛賣;硬停損 → 跌破月線 <b>${ff(m20)}</b> 或成本−5% <b>${ff(heldNow * 0.95)}</b>`;
             else if (c === 'red') ol = `💰 <b>掛買參考</b>:穩健 → 5 日線 <b>${ff(m5)}</b> 附近接;積極 → 站上昨高 <b>${ff(yHigh)}</b> 追。停損掛前低 <b>${ff(pLow)}</b>`;
@@ -23695,7 +23701,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const acc = this.settings.accountSize, riskPct = this.settings.riskPct ?? 1;
             // 持倉
             let cost = null, heldLots = 0;
-            try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) { cost = +p.cost; heldLots = +p.shares || 0; } } catch (_) {}
+            try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) { cost = +p.cost; heldLots = +p.shares || 0; } } catch (_) {}
             if (!acc) {
                 box.className = 'bg-[#161b22] border border-[#30363d] rounded-lg p-3';
                 box.innerHTML = `<div class="flex items-center justify-between mb-1"><span class="text-[12px] font-black text-gray-100">💰 該買幾張(風控部位)</span><button onclick="app.switchAppTab('settings')" class="text-[9px] text-red-300 border border-red-700/50 rounded px-1.5 py-0.5">去設定 →</button></div>
@@ -23875,7 +23881,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             else { volTxt = `正常量 ${vr.toFixed(1)}× 基本量`; volTone = 'text-gray-400'; }
             // ④ 照表操課(持倉感知:有庫存=出場紀律優先;空手=進場紀律)
             let cost = null, shares = 0;
-            try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) { cost = +p.cost; shares = +p.shares || 0; } } catch (_) {}
+            try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) { cost = +p.cost; shares = +p.shares || 0; } } catch (_) {}
             let plan = null; try { plan = this._unifiedExitPlan(data, cost); } catch (_) {}
             const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
             const stop5 = nf(ma5);
@@ -24287,7 +24293,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 const wCls = /大買|偏買/.test(m.word) ? 'text-red-400' : /大賣|偏賣/.test(m.word) ? 'text-green-400' : 'text-gray-300';
                 forceCell = `<div class="flex items-center gap-1.5"><span class="text-gray-500">主力</span><b class="${wCls}">${m.word}</b><span class="font-mono ${cls(m.net)}">${fmt(m.net)}張</span>${m.unlockPx ? `<span class="text-gray-600">·上壓~<b class="text-orange-300 font-mono">${m.unlockPx.toFixed(0)}</b></span>` : ''}</div>`;
                 // 🤝 跟主力同成本:你的成本 ≈ 主力買超王均價(差 ≤3%)→ 判斷能不能跟著等
-                let myCost = null; try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === sym && +i.cost > 0); if (p) myCost = +p.cost; } catch (_) {}
+                let myCost = null; try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === sym && +i.cost > 0); if (p) myCost = +p.cost; } catch (_) {}
                 if (myCost && m.topBuyAvg && Math.abs(myCost - m.topBuyAvg) / m.topBuyAvg <= 0.03) {
                     const notFled = m.net >= 0;
                     sameBoat = `<div class="text-[10px] leading-relaxed ${notFled ? 'text-cyan-200' : 'text-gray-400'} bg-[#161b22] border-l-2 ${notFled ? 'border-cyan-500/60' : 'border-gray-600'} rounded-r px-2 py-1 mt-0.5">🤝 你成本 <b class="font-mono">${myCost}</b> ≈ 主力買超王 <b class="font-mono">${m.topBuyAvg.toFixed(1)}</b> — ${notFled ? `跟主力同一條船,近5日主力還沒跑(淨 ${fmt(m.net)}張)。套牢主力通常會護盤、不會殺在自己成本 → 想做波段可切「波段」跟著守月線等,不必見短線破就砍;但主力一翻空(轉大賣)你要先走。` : `但近5日主力在賣(${fmt(m.net)}張),別把「同成本」當抱死理由 — 破防守線照紀律走。`}</div>`;
@@ -25467,7 +25473,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try {
             const data = this.baseRawData || this.rawDailyData;
             let cost = null;
-            try { const inv = JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) cost = +p.cost; } catch (_) {}
+            try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) cost = +p.cost; } catch (_) {}
             const plan = (Array.isArray(data) && data.length >= 25) ? this._unifiedExitPlan(data, cost) : null;
             const nm = this.getStockName?.(this.currentSymbolId) || this.currentSymbolId;
             if (plan && (plan.stopFinal || plan.takeShort)) {
@@ -31123,7 +31129,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const fav = Object.values(this.favGroups || {}).flat();
-            const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+            const inv = app._getInventory();
             const syms = [...new Set([...fav, ...inv.map(i => i.symbol)])].filter(s => s && !this._isEtfSym(String(s))).map(String).slice(0, 40);
             if (!syms.length) { body.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-8 leading-relaxed">自選清單和庫存都是空的 —<br>先加幾檔股票(⭐ 加自選 或 記一筆庫存)再回來看成績單。</div>'; return; }
             const agg = {};   // key -> {trades, wins, expW, stocks, posStocks, plW, plN}
@@ -32373,7 +32379,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // Pass 1：同步畫出所有列。V62.7 使用者要求:主清單取消拖曳排序 + 左右滑刪(這些都移到「✏️ 編輯」頁);
         //   加欄位表頭(個股 / 趨勢 / 股價·漲跌幅);持有庫存股顯 💼 標記。
         let heldSet = new Set();
-        try { heldSet = new Set(JSON.parse(localStorage.getItem('proTerminalInv') || '[]').map(i => String(i.symbol))); } catch (_) {}
+        try { heldSet = new Set(app._getInventory().map(i => String(i.symbol))); } catch (_) {}
         let html = `<div class="flex items-center gap-2 mx-2 px-3 py-1.5 border-b border-[#30363d] text-[10px] text-gray-500 font-bold sticky top-0 bg-[#0d1117] z-10">
             <span class="flex-1">個股</span>
             <button onclick="event.stopPropagation(); app._toggleFavSort();" class="w-[62px] text-center text-gray-500 hover:text-amber-300 font-bold">總評·趨勢 <span id="favSortInd" class="text-amber-400">${this._favSortByScore ? '▼分' : '⇅'}</span></button>
@@ -32603,7 +32609,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!box) return;
         const group = this.activeGroupName;
         const fav = this.favGroups?.[group] || [];
-        const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+        const inv = app._getInventory();
         const invSet = new Set(inv.map(i => i.symbol).filter(Boolean));
         const list = [...new Set([...fav, ...invSet])].slice(0, 60);
         if (!list.length) { box.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">自選+庫存皆空,先加股票才能體檢</div>'; return; }
@@ -37819,7 +37825,7 @@ ${_chuPosPlan}
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const fav = Object.values(this.favGroups || {}).flat();
-            const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+            const inv = app._getInventory();
             const syms = [...new Set([...fav, ...inv.map(i => i.symbol)])].filter(s => s && !this._isEtfSym(String(s))).map(String).slice(0, 60);
             if (!syms.length) { body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">自選清單和庫存都是空的 — 先加幾檔股票再來掃。</div>'; if (sum) sum.textContent = '無股可掃'; return; }
             let dtStats = null, dtReady = false;
@@ -37943,7 +37949,7 @@ ${_chuPosPlan}
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const fav = Object.values(this.favGroups || {}).flat();
-            const inv = (() => { try { return JSON.parse(localStorage.getItem('proTerminalInv') || '[]'); } catch (_) { return []; } })();
+            const inv = app._getInventory();
             const syms = [...new Set([...fav, ...inv.map(i => i.symbol)])].filter(s => s && !this._isEtfSym(String(s))).map(String).slice(0, 30);
             if (!syms.length) { body.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-3">自選清單和庫存都是空的 — 先加幾檔股票再來掃。</div>'; if (sum) sum.textContent = '無股可掃'; return; }
             const [fundCache, yoyGm] = await Promise.all([

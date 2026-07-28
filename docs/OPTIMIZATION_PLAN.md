@@ -165,7 +165,7 @@
 - 波段轉折偵測迴圈重複 4 次 → 抽 `_swingPoints()`
 - `_detectBlackCandleLevels` / `_detectRedCandleLevels` 逐行鏡像(~55 行)→ 合併帶 dir 參數
 - [x] `^TWII.json` 抓取邏輯複製兩份(13776 / 14468)→ ✅ V69.9.1 實際找到 **4 處**(天氣趨勢/盤前簡報/派發日/年線乖離),統一 `_getTwiiRows()`(30 分快取 + 併發去重)
-- `fav + inv → allSyms` 樣板複製 4 次(4050/4091/4183/4307);`JSON.parse(localStorage.getItem('proTerminalInv'))` 全檔 **25 次** → 抽 `_getInventory()`
+- [x] `JSON.parse(localStorage.getItem('proTerminalInv'))` 全檔 25 次 → ✅ V69.9.2 抽 `_getInventory()`(直讀 this.inventory — 6 個寫入端全是它的鏡像),24 讀取點全改;`fav + inv → allSyms` 樣板 4 次未動(獨立小樣板,風險/收益不划算)
 - `stockToSector` 硬編碼表複製 3 份,且 14658 那份**自身有重複 key**(3017/2474/6669/2317 各寫兩次)
 
 ### [x] P2-7 `_syncMarketTab` 做 30 次 `innerHTML` DOM→DOM 複製 ✅ V69.8.9(修正原計畫)
