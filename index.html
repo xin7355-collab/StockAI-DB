@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.3.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2138,6 +2138,8 @@
                     <div class="text-[11px] font-black text-amber-300">📅 財經行事曆 <span class="text-[9px] text-gray-500 font-normal">未來 14 日 · 核彈事件 + 法說會</span></div>
                     <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
                 </div>
+                <!-- 🤖 V70.3.0 後端 Groq 行事曆解讀(採礦端產,無資料自動隱藏) -->
+                <div id="macroEventsAi" class="hidden mb-2"></div>
                 <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
                 </div>
@@ -2994,7 +2996,7 @@ const AI_PROMPT_TEMPLATES = {
 精準解讀外資、投信、自營近 5 日的買賣超方向（一路買/倒貨）。說明融資與融券變化帶來的風險。若有主力分點資料，點出前三名券商的意圖（吃貨或出貨）。若無明確資料，請根據季節與產業推估可能動向。
 
 【🌏 全球獵場觀】
-解讀 S&P500、NASDAQ 漲跌方向，及 VIX 指數（>20警戒，>30恐慌）。依據外資台指期淨口數判斷多空信心。最後用一句白話總結今日台股面臨的總體環境（順風或逆風）。
+解讀 S&P500、NASDAQ 漲跌方向，及 VIX 指數（參考帶：<20 平靜、20-25 轉趨謹慎、25-30 警戒、>30 恐慌；門檻是經驗值非絕對，須配合趨勢方向解讀）。依據外資台指期淨口數判斷多空信心。最後用一句白話總結今日台股面臨的總體環境（順風或逆風）。
 
 【🏭 基本與消息面】
 點出最新月營收 YoY 表現及財務摘要（毛利率、EPS）的異常處。評估近期重大消息屬於利多或利空，特別提醒處置/注意股。若無消息，以股票代號推估產業景氣現況。
@@ -3007,6 +3009,9 @@ const AI_PROMPT_TEMPLATES = {
 - 深度套牢：依技術面決定停損或等待，絕對不建議無腦攤平。
 - 📐 若提供「朱老師分批進場計畫」(三批 3-3-4 比例) → 必須直接引用上方系統精算的價格、張數，禁自算；空手 → 引用「試單」價；已執行試單 → 看現價是否在「加碼 1」觸發區（連 2-3 日收 5MA 上）。
 - 🚫 任何狀況禁建議「下跌攤平」或「倒金字塔」(底部 1 張、噴上去才一口氣大量追)，違反視為無效輸出。
+- 🚫 **禁止杜撰任何未提供的數據**(如「市場預期 EPS 3.2 元」「法人目標價 XXX」「外資預估」)。所有數字只能引用【當下戰情參數】內的實測值；沒有的資料就明說「無資料」，不可推測後當事實陳述。
+- 🚫 **禁止自行計算**均線、乖離、YoY、勝率等任何數值(系統已算好並提供)；需要數字時直接引用。
+- ⏱️ 所有建議需標明適用時間框架(當沖/短線 3-5 日/波段 2-8 週)，不同框架結論不同時要分開講。
 
 最後獨立一行，僅輸出以下其中一種燈號（不加其他文字）：
 ✅強力買進 或 ⚠️觀望或減碼 或 ⛔強制撤退`,
@@ -6579,8 +6584,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.2.9',
+    _APP_VERSION: 'V70.3.0',
     _CHANGELOG: [
+        { v: 'V70.3.0', dt: '2026-07-28', t: '🤖 財經行事曆改後端 Groq 解讀 + 提示詞健檢', d: [
+            '財經行事曆上方新增「🤖 這兩週怎麼看」:採礦端(GitHub 機器人)用 Groq 70B 分析未來 14 日事件 × 當下市場狀態(VIX/外資期貨/台幣/日韓股),給總結 + 3~5 個重點事件的「影響 + 具體怎麼做」。用機器人的額度,不花你手機的 AI 金鑰。',
+            '所有數字由系統精算後餵給 AI(禁 AI 算數鐵律),AI 只做質化判讀;燈號用 ✅⚠️⛔(紅綠只代表漲跌)。',
+            '順手健檢首席 AI 提示詞並修正 3 個問題:VIX 門檻改分級敘述(原「>20警戒」過於絕對)、新增「禁止杜撰未提供數據」與「禁自行計算」鐵律、建議必須標明適用時間框架。',
+        ]},
         { v: 'V70.2.9', dt: '2026-07-28', t: '🚦 燈號統一收尾:AI 判定與採礦端也一起改', d: [
             '把同一條規則延伸到 AI 提示詞與採礦端:AI 最終判定改「✅強力買進 / ⚠️觀望或減碼 / ⛔強制撤退」;順手修 AI 結論的上色是反的(強力買進以前顯綠色、撤退顯紅色)→ 改回台股慣例(買進紅、撤退綠),且新舊格式都相容不會漏上色。',
             '採礦端(融資水位/雷達避開/回測穩健度/後端 AI 提示)11 處同步。',
@@ -23502,6 +23512,32 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (ts) ts.textContent = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
         // 暫存全列表供 _calcRiskScore 連動黑天鵝矩陣
         this._upcomingMacroEvents = Array.isArray(events) ? events : [];
+        // 🤖 V70.3.0 後端 Groq 解讀(macro_risk.json.macro_events_ai;沒有就隱藏,前端不打 AI 不耗你的額度)
+        try {
+            const aiBox = document.getElementById('macroEventsAi');
+            const ai = this._macroRiskCache && this._macroRiskCache.macro_events_ai;
+            if (aiBox) {
+                if (ai && ai.summary) {
+                    const lvCls = l => l === '⛔' ? 'border-orange-500' : l === '✅' ? 'border-gray-600' : 'border-yellow-500';
+                    const rows = (ai.focus || []).map(f => `
+                        <div class="border-l-2 ${lvCls(f.level)} pl-2 py-1 mt-1 first:mt-0">
+                            <div class="text-[10px] font-bold text-gray-200">${f.level || '⚠️'} ${this._dW(f.date)} ${String(f.event || '').replace(/</g, '&lt;')}</div>
+                            ${f.impact ? `<div class="text-[10px] text-gray-400 leading-snug mt-0.5">${String(f.impact).replace(/</g, '&lt;')}</div>` : ''}
+                            ${f.action ? `<div class="text-[10px] text-cyan-300/90 leading-snug mt-0.5">👉 ${String(f.action).replace(/</g, '&lt;')}</div>` : ''}
+                        </div>`).join('');
+                    aiBox.className = 'mb-2 bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-2.5';
+                    aiBox.innerHTML = `
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <span class="text-[11px] font-black text-amber-300">🤖 這兩週怎麼看 <span class="text-[9px] text-gray-500 font-normal">採礦端 AI 解讀</span></span>
+                            <span class="text-[9px] text-gray-600">${this._dW(ai.updated ? String(ai.updated).slice(0, 10) : null, { rel: 1 })}</span>
+                        </div>
+                        <div class="text-[11px] text-gray-200 leading-relaxed">${String(ai.summary).replace(/</g, '&lt;')}</div>
+                        ${rows ? `<div class="mt-1.5 bg-[#0d1117] rounded p-1.5">${rows}</div>` : ''}
+                        <div class="text-[8px] text-gray-600 mt-1.5">🧮 事件與市場數字由系統精算後餵給 AI,AI 只做影響判讀;非投資建議</div>`;
+                    aiBox.classList.remove('hidden');
+                } else { aiBox.classList.add('hidden'); aiBox.innerHTML = ''; }
+            }
+        } catch (_) {}
         if (!Array.isArray(events) || events.length === 0) {
             list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-2">📭 未來 14 日無重大事件</div>';
             return;

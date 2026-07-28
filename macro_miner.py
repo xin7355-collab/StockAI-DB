@@ -47,6 +47,124 @@ BOJ_SCHEDULE = [
 ]
 
 
+# ═══ 🤖 V70.3.0 Groq 輪動呼叫(採礦端 AI;財經行事曆解讀用) ═══
+_groq_env_mm = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY", "")
+GROQ_KEYS_MM = [t.strip() for t in _groq_env_mm.split(",") if t.strip()]
+GROQ_URL_MM = "https://api.groq.com/openai/v1/chat/completions"
+# llama-3.3-70b:行事曆解讀屬「質化判讀」,用 70b 比 8b 準(專案 AI 分工鐵則:輕量判讀走 Groq)
+GROQ_MODEL_MM = "llama-3.3-70b-versatile"
+
+
+def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
+    """429 自動換 key;全失敗回 None(呼叫端一律要能接受 None)。"""
+    if not GROQ_KEYS_MM:
+        print(f"  ⚠️ [Groq] 無 GROQ_API_KEYS,跳過 {label}")
+        return None
+    payload = {"model": GROQ_MODEL_MM, "messages": messages,
+               "temperature": temperature, "max_tokens": max_tokens}
+    for i, key in enumerate(GROQ_KEYS_MM):
+        try:
+            r = http_session.post(GROQ_URL_MM, json=payload,
+                                  headers={"Authorization": f"Bearer {key}",
+                                           "Content-Type": "application/json"}, timeout=45)
+            if r.status_code == 429:
+                print(f"  ⏳ [Groq] key#{i+1} 429,換下一把")
+                continue
+            if r.status_code != 200:
+                print(f"  ⚠️ [Groq] HTTP {r.status_code} key#{i+1}: {r.text[:120]}")
+                continue
+            return (r.json().get("choices") or [{}])[0].get("message", {}).get("content", "").strip()
+        except Exception as e:
+            print(f"  ⚠️ [Groq] 例外 key#{i+1}: {type(e).__name__}")
+    return None
+
+
+def build_macro_events_ai(out):
+    """📅 V70.3.0 財經行事曆 AI 解讀(使用者要求:後端 Groq 分析)。
+    輸入:未來 14 日事件 + 當下市場狀態(VIX/外資期貨/加權位階/融資水位)。
+    輸出:{summary, focus:[{date,event,impact,action}]} 寫進 macro_risk.json.macro_events_ai。
+    鐵則:①禁 AI 算數 → 所有數字由這裡算好塞進 prompt ②AI 只做「事件→影響→怎麼做」的質化判讀
+         ③失敗回 None 不影響主流程 ④燈號用 ✅⚠️⛔(紅綠只代表漲跌)。"""
+    evs = out.get("upcoming_macro_events") or []
+    if not evs:
+        return None
+    # 只餵「宏觀核彈事件」(法說會逐檔太多、前端另有折疊區),最多 12 筆
+    import re as _re
+    macro_evs = [e for e in evs if not _re.search(r"法說|法人說明會", str(e.get("event", "")))][:12]
+    if not macro_evs:
+        return None
+    ev_lines = "\n".join(f"- {e['date']} {e['event']}(重要度 {e.get('severity', 'low')})" for e in macro_evs)
+    # 市場現況(數字全部後端算好,AI 不准自己算)
+    def _n(k, unit="", d=1):
+        v = out.get(k)
+        if v is None:
+            return "無資料"
+        try:
+            return f"{float(v):.{d}f}{unit}"
+        except Exception:
+            return str(v)
+    fi_fut = out.get("fi_futures_net")
+    fi_txt = f"{int(fi_fut):,} 口" if isinstance(fi_fut, (int, float)) else "無資料"
+    state = (
+        f"VIX {_n('vix')}、標普昨日 {_n('sp500_chg_pct', '%', 2)}、"
+        f"外資台指期未平倉 {fi_txt}、台幣 5 日 {_n('usdtwd_chg_5d', '%', 2)}(正=貶)、"
+        f"韓股 {_n('kospi_chg_pct', '%', 2)}、日經 {_n('nikkei_chg_pct', '%', 2)}、"
+        f"恐懼貪婪 {_n('fear_greed', '', 0)}、台指VIX {_n('tw_vix')}"
+    )
+    sys_msg = (
+        "你是台股資深策略分析師,講白話文,像跟朋友解盤。"
+        "鐵則:①只解讀事件對台股的影響,絕對不要自己計算或杜撰任何數字(所有數字我已給你,直接引用)。"
+        "②不確定的事就說不確定,不要編造「市場預期 X%」這種假數據。"
+        "③台股慣例紅漲綠跌,燈號只用 ✅(可照常操作)⚠️(留意)⛔(避開/降部位),不要用紅綠燈符號表示危險。"
+        "④每則建議必須具體可執行(要不要留倉、幾成部位、盯什麼)。"
+    )
+    user_msg = (
+        f"【未來 14 日台股相關事件】\n{ev_lines}\n\n"
+        f"【目前市場狀態(數字為實測,直接引用勿改)】\n{state}\n\n"
+        "請輸出 JSON(不要 markdown 圍欄,直接輸出物件):\n"
+        '{"summary":"這兩週最該注意什麼,2-3 句白話,講清楚現在市場狀態下這些事件的風險等級",'
+        '"focus":[{"date":"YYYY-MM-DD","event":"事件簡稱","impact":"對台股/哪些族群的實際影響,一句話",'
+        '"action":"具體操作建議(留倉與否/部位幾成/盯什麼價位或指標)","level":"✅或⚠️或⛔"}]}\n'
+        "focus 只挑最重要的 3-5 個事件(依重要度與逼近程度),不要全列。"
+    )
+    raw = _groq_chat_mm([{"role": "system", "content": sys_msg},
+                         {"role": "user", "content": user_msg}], label="財經行事曆解讀")
+    if not raw:
+        return None
+    # JSON 防呆:剝除可能的 markdown 圍欄
+    txt = raw.strip()
+    if txt.startswith("```"):
+        txt = _re.sub(r"^```[a-zA-Z]*\s*", "", txt)
+        txt = _re.sub(r"\s*```$", "", txt)
+    try:
+        data = json.loads(txt)
+    except Exception:
+        m = _re.search(r"\{[\s\S]*\}", txt)
+        if not m:
+            print("  ⚠️ 行事曆 AI 回傳非 JSON,放棄(保留舊解讀)")
+            return None
+        try:
+            data = json.loads(m.group(0))
+        except Exception:
+            print("  ⚠️ 行事曆 AI JSON 解析失敗,放棄")
+            return None
+    if not isinstance(data, dict) or not data.get("summary"):
+        return None
+    focus = [f for f in (data.get("focus") or []) if isinstance(f, dict) and f.get("event")][:5]
+    return {
+        "updated": datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"),
+        "model": GROQ_MODEL_MM,
+        "summary": str(data.get("summary", ""))[:400],
+        "focus": [{
+            "date": str(f.get("date", ""))[:10],
+            "event": str(f.get("event", ""))[:60],
+            "impact": str(f.get("impact", ""))[:200],
+            "action": str(f.get("action", ""))[:200],
+            "level": f.get("level") if f.get("level") in ("✅", "⚠️", "⛔") else "⚠️",
+        } for f in focus],
+    }
+
+
 def _compute_upcoming_macro_events(today, window_days=14):
     """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。
     14 天視窗(2026/06 起,從 7 → 14 涵蓋更多籌備期事件)。
@@ -1697,6 +1815,7 @@ def main():
         "sector_etfs":     None,    # {sector_key: {etf, name, desc, price, chg_pct}}
         # ── 📅 未來 14 日核彈事件(純演算法,主流程結尾計算填入)──
         "upcoming_macro_events": [],
+        "macro_events_ai": None,   # 🤖 V70.3.0 Groq 行事曆解讀
     }
 
     print("─" * 50)
@@ -1957,7 +2076,9 @@ def main():
                         # 🦅 獵鷹建倉宏觀因子(API 偶失敗時沿用昨日,避免顯示待採)
                         "jpy", "jpy_chg_pct", "jpy_chg_3d", "gold_chg_3d", "wti_chg_3d",
                         # 🏦 戰區一新增(FRED 偶失敗時沿用昨日)
-                        "m1b_yoy", "fed_assets_chg_pct", "fi_ratio_alert"):
+                        "m1b_yoy", "fed_assets_chg_pct", "fi_ratio_alert",
+                        # 🤖 V70.3.0 行事曆 AI 解讀(429/無 key 那次沿用上次,不讓卡片忽有忽無)
+                        "macro_events_ai"):
                 if out.get(key) is None and prev.get(key) is not None:
                     out[key] = prev[key]
                     patched.append(key)
@@ -2038,6 +2159,16 @@ def main():
         except Exception as _e:
             print(f"  ⚠️ 法說會併入失敗(不影響):{_e}")
         print(f"📅 未來 14 日財經行事曆:{len(out['upcoming_macro_events'])} 場")
+        # 🤖 V70.3.0 Groq 解讀(失敗不影響行事曆本身)
+        try:
+            _ai = build_macro_events_ai(out)
+            if _ai:
+                out["macro_events_ai"] = _ai
+                print(f"  🤖 行事曆 AI 解讀完成({len(_ai.get('focus') or [])} 則重點)")
+            else:
+                print("  ℹ️ 行事曆 AI 未產出(無 key/429/解析失敗)→ 前端顯純事件表")
+        except Exception as _e:
+            print(f"  ⚠️ 行事曆 AI 例外(不影響):{_e}")
         for ev in out["upcoming_macro_events"]:
             print(f"     · {ev['date']}  {ev['event']}")
     except Exception as e:

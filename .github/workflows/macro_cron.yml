@@ -37,6 +37,9 @@ jobs:
           # 🩹 V69.8.4 P0-6:原本沒傳 token → fetch_tw_vix 永遠 no-token,台指 VIX 恆 null
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           FINMIND_TOKEN:  ${{ secrets.FINMIND_TOKEN }}
+          # 🤖 V70.3.0 財經行事曆 Groq 解讀(沒 key 就跳過,不影響其他總經欄位)
+          GROQ_API_KEYS:  ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:   ${{ secrets.GROQ_API_KEY }}
         run: python macro_miner.py
 
       - name: 📡 同步 data/macro_risk.json 到 gh-pages
