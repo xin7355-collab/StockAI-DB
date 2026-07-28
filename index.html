@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6577,8 +6577,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.2.2',
+    _APP_VERSION: 'V70.2.3',
     _CHANGELOG: [
+        { v: 'V70.2.3', dt: '2026-07-28', t: '📅 資料日期第四批(全卡片系統性掃描補完)', d: [
+            '你說「感覺還有沒做好的」— 對,我做了程式化全掃描(把每張會吃資料的卡列出來逐一比對),又補了 8 張:處置三卡(離被關幾步/雙刀流/越關越大尾,標官方名單日)、處置股總覽(證交所名單日)、風險紀錄(每筆加星期)、三大法人長條、融資融券長條(標是哪個交易日收盤的數字)。',
+        ]},
         { v: 'V70.2.2', dt: '2026-07-28', t: '📅 資料日期第三批 + 寫進開發規則', d: [
             '題材熱度榜補採礦日;並把「所有卡片都要標資料日期、統一格式、禁自己拼字串」寫成開發鐵則,以後新增卡片一律照做,不會再有「不知道是哪天資料」的卡。',
         ]},
@@ -12044,9 +12047,10 @@ const marginByDate = {};
                 const q = encodeURIComponent(`${nm} ${sym} 注意股 處置 證交所 櫃買中心`.trim());
                 linkLine = `<div class="text-[9px] mt-1.5 ${info ? 'text-gray-600' : 'text-orange-400'}">${info ? '✅ 官方公告資料(採礦每日同步)' : '⚠️ 目前僅前端公式推估·非官方'} · <a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener" class="text-cyan-400 underline">🔗 查官方注意/處置公告</a></div>`;
             }
-            const srcTag = info
+            const srcTag = (info
                 ? '<span class="text-[9px] text-green-400 font-bold">官方公告</span>'
-                : '<span class="text-[9px] text-gray-500 font-normal">參考推估·非官方</span>';
+                : '<span class="text-[9px] text-gray-500 font-normal">參考推估·非官方</span>')
+                + (this._attentionUpdated ? ` ${this._dChip(this._attentionUpdated, '名單')}` : '');
             box.className = 'bg-[#161b22] border-l-4 ' + bCls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
             box.innerHTML = `<div class="text-[11px] font-black text-gray-100 mb-1">🚨 這檔離被關還有幾步 ${srcTag}</div>
                 <div class="text-xl font-black ${tCls} leading-tight">${big}</div>
@@ -12268,7 +12272,7 @@ const marginByDate = {};
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-purple-700/40">
                 <h4 class="text-purple-300 font-bold text-sm">⚔️ 雙刀流核心心法</h4>
-                <span class="text-[9px] text-gray-500">處置/注意/必關時自動啟動</span>
+                <span class="text-[9px] text-gray-500">${this._attentionUpdated ? `名單 ${this._dW(this._attentionUpdated)} · ` : ''}處置/注意時自動啟動</span>
             </div>
             <!-- ① 擒賊先擒王(主旗號) -->
             <div class="rounded-lg border border-purple-600/40 bg-purple-900/20 px-3 py-2 text-[11px] text-purple-100 leading-relaxed mb-2">
@@ -12395,7 +12399,7 @@ const marginByDate = {};
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-yellow-700/40">
                 <h4 class="text-yellow-300 font-bold text-sm">📈 越關越大尾預測</h4>
-                <span class="text-[10px] text-gray-500">5 因子 100 分制</span>
+                <span class="text-[10px] text-gray-500">${this._attentionUpdated ? `名單 ${this._dW(this._attentionUpdated)} · ` : ''}5 因子 100 分制</span>
             </div>
             <div class="rounded-lg border ${verdictCls} px-3 py-2 mb-2 text-center">
                 <div class="text-3xl font-black font-mono leading-none mb-1">${total}<span class="text-base text-gray-400">/100</span></div>
@@ -13442,7 +13446,7 @@ const marginByDate = {};
                 const fis = h.fi_spot_net != null ? `${h.fi_spot_net > 0 ? '+' : ''}${Math.round(h.fi_spot_net)}` : '--';
                 const vixCls = h.vix >= 25 ? 'text-red-300' : h.vix >= 20 ? 'text-yellow-300' : 'text-gray-400';
                 const fisCls = (h.fi_spot_net || 0) < -50 ? 'text-red-300' : (h.fi_spot_net || 0) > 50 ? 'text-green-300' : 'text-gray-400';
-                return `<div class="flex items-center justify-between text-[9px] py-0.5 border-b border-[#21262d] last:border-0"><span class="text-gray-500 font-mono">${(h.date || '').slice(5)}</span><span class="${vixCls} font-mono">VIX ${vix}</span><span class="${fisCls} font-mono">外資現 ${fis} 億</span></div>`;
+                return `<div class="flex items-center justify-between text-[9px] py-0.5 border-b border-[#21262d] last:border-0"><span class="text-gray-500 font-mono">${this._dW(h.date)}</span><span class="${vixCls} font-mono">VIX ${vix}</span><span class="${fisCls} font-mono">外資現 ${fis} 億</span></div>`;
             }).join('');
             box.innerHTML = `<details class="mt-1.5"><summary class="text-[9px] text-cyan-400/80 cursor-pointer">📜 近 ${recent.length} 日風險紀錄(保留不清除)</summary><div class="mt-1 bg-[#0d1117] rounded p-1.5">${rows}</div></details>`;
         } catch (_) {
@@ -20452,7 +20456,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 </div>
                 <span class="text-[9px] text-gray-500 shrink-0 text-right leading-tight whitespace-nowrap">${costLabel}</span></div>`;
         };
-        el.innerHTML = row('外資', s.foreign, 'bg-orange-600/70', estCost(['foreign_net','foreign_inv']))
+        // 📅 V70.2.3 這批數字是哪個交易日的(rawDailyData 最後一根)
+        const _dTag = (() => { const a = this.rawDailyData || []; const d = a.length ? a[a.length - 1].date : ''; return d ? `<div class="text-[9px] text-gray-500 mb-1">📅 ${this._dW(d, { rel: 1 })} 收盤資料</div>` : ''; })();
+        el.innerHTML = _dTag + row('外資', s.foreign, 'bg-orange-600/70', estCost(['foreign_net','foreign_inv']))
                      + row('投信', s.trust,   'bg-amber-600/70',  estCost(['trust_net','invest_trust']))
                      + row('自營', s.dealer,  'bg-yellow-600/70', estCost(['dealer_net','dealer_inv']));
     },
@@ -20537,7 +20543,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 }
             }
         } catch (_) {}
-        el.innerHTML = marginRow + shortRow + marginVerdict;
+        // 📅 V70.2.3 這批數字是哪個交易日的(rawDailyData 最後一根)
+        const _dTag = (() => { const a = this.rawDailyData || []; const d = a.length ? a[a.length - 1].date : ''; return d ? `<div class="text-[9px] text-gray-500 mb-1">📅 ${this._dW(d, { rel: 1 })} 收盤資料</div>` : ''; })();
+        el.innerHTML = _dTag + marginRow + shortRow + marginVerdict;
     },
 
 
@@ -34363,6 +34371,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 + '</div></div>';
         }
         if (!html) html = '<div class="text-[11px] text-gray-600 text-center py-4">✅ 今日無注意/處置股(或資料待採礦更新)</div>';
+        // 📅 V70.2.3 官方名單日期(使用者:分不清今天還是上個交易日)
+        if (this._attentionUpdated) html = `<div class="text-[9px] text-gray-500 mb-1.5">📅 證交所官方名單 ${this._dW(this._attentionUpdated, { rel: 1 })}</div>` + html;
 
         // 📡 明日恐達門檻預警(attention_forecast.json,score ≥ 70 前 10)
         try {
