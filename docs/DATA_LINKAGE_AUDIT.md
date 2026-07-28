@@ -55,3 +55,22 @@ git -C <repo> archive origin/gh-pages data futures_cache.json macro_cache.json |
 
 **建議節奏**:每次新增「後端產資料 → 前端讀」的功能後重跑一次,
 確認新欄位真的有被讀、也沒讀到不存在的欄位。
+
+---
+
+## 📌 追蹤中:加權指數(^TWII)資料落後(2026-07-28 使用者抓到)
+
+**現象**:個股 K 線已有 07/28,但 `data/^TWII.json` 最新只到 **07/27**,且 **07/24 整天缺**;
+`macro_cache.twii` 更誇張,停在 **2026-06-30**(近一個月)。
+`macro_cache.twoii_history`(櫃買指數歷史)是 **0 筆空陣列**。
+
+**影響**:盤前體檢的「關鍵壓力/支撐」「分析師解讀」、反攻雷達的「站回 5 日線」
+全都拿舊收盤在算 —— 而且原本**完全沒有提示**。
+
+**V71.2.0 已做(止血)**:`app._twiiLag()` 用 `macro_risk.fi_three_date`
+(三大法人買賣超日期 = 真正的最新交易日)當基準,落後就在 UI 主動標示。
+⛔ 不用「今天日期減一天」推算 —— 碰到連假會誤報。
+
+**待辦(治本)**:`_fetch_twii_history_official` + yfinance 雙源為何會落後 1 天且缺 07/24,
+需要看採礦 log 才能定位(本機打不到 TWSE,proxy 擋)。
+下次 daily_miner 跑完後撈 `data/^TWII.json` 產出前後的 log 對照。

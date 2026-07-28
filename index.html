@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6520,8 +6520,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.1.9',
+    _APP_VERSION: 'V71.2.0',
     _CHANGELOG: [
+        { v: 'V71.2.0', dt: '2026-07-28', t: '⚠️ 加權指數落後會主動警告(你抓到的 07/27 問題)', d: [
+            '你發現盤前體檢寫「台股 07/27 收盤」,但個股 K 線已經有 07/28 → 查證後確認:那個標籤是誠實的,真正的問題是加權指數的資料源本身落後(而且 07/24 那天整天缺)。',
+            '真正危險的是:沒有人提醒你這是舊的 → 於是「站回 5 日線」「關鍵壓力支撐」「分析師解讀」全都拿舊收盤在算,你不知道。',
+            '已加自動偵測:拿「三大法人買賣超日期」當真正的最新交易日基準比對,加權落後就在盤前體檢日期列標「⚠️ 加權指數落後 N 天」,反攻雷達那條也會註明「用的是 07/27 收盤」。',
+            '(用法人日期當基準而不是「今天減一天」,是因為碰到連假那種推算會誤報。這個欄位採礦本來就有產,只是先前全 App 沒人讀 — 正好是上一版連動盤查列出的孤兒欄位之一。)',
+        ]},
         { v: 'V71.1.9', dt: '2026-07-28', t: '🎨 反攻雷達版面重排 + 日韓改成「韓股為準」', d: [
             '【版面】舊版名稱欄固定只有 64px,「日韓同盤翻紅」「外資期貨回補」這種長名字全部斷成兩行,現值又塞在名字底下 → 每列高度忽高忽低(外資那列高到 4 行),整張卡參差不齊。改成每列固定兩行:上排「圖示 名稱 …… 現值 ✅」名字不斷行、數字靠右對齊;下排才是條件說明,佔滿整行不再被擠。左邊多一條細色帶,一眼掃得出哪幾條沒過。',
             '【你問日韓要不要分開看 → 不該一起看,韓股才是主角】韓股半導體權重極高(三星、SK海力士),跟台股同一條供應鏈,連動最直接;日經權重偏汽車/機械/金融,而且漲跌主要由日圓匯率決定(日圓貶→日經漲),原因常跟台股無關 — 而日圓這張卡本來就另外單獨判了,再讓日經進來等於同一件事算兩次。',
@@ -14001,6 +14007,30 @@ const marginByDate = {};
     //   改成看「相對自己」:近 20 日區間位階 + 5 日增減。市場規模再變也不會失效。
     //   回傳 {net, chg5, pct, level, label, color};沒有歷史可比時 level='unknown',
     //   寧可誠實說「基準累積中」也不要拿過時門檻亂判。
+    // 📅 V71.2.0 加權指數資料落後偵測(使用者抓到:盤前體檢寫「台股 07/27 收盤」,但個股 K 線已有 07/28)
+    //   根因:^TWII.json 由 yfinance + TWSE 官方雙源合成,實測會落後個股 1 天、甚至整天缺(07/24 就沒有)。
+    //   ⚠️ 標籤本身是誠實的(它有寫日期),問題是**沒有人提醒你這是落後的** —— 於是
+    //   「站回 5 日線」「關鍵壓力/支撐」「分析師解讀」全都拿舊收盤在算,你不知道。
+    //   判法:拿 macro_risk 的 fi_three_date(三大法人買賣超日期 = 真正的最新交易日)當基準
+    //   —— 這個欄位採礦一直有產、但先前全 App 沒人讀(V71.1.8 連動盤查列出的孤兒欄位之一)。
+    //   ⛔ 不用「今天日期減一天」那種推算:碰到連假會誤報。
+    _twiiLag() {
+        const usm = this.usMacroCache || {}, mr = this._macroRiskCache || {};
+        const h = Array.isArray(usm.twii_history) ? usm.twii_history : [];
+        if (!h.length) return { lag: 0, twii: null, mkt: null };
+        const norm = x => String(x || '').replace(/[/-]/g, '');
+        const twii = norm(h[h.length - 1].date);                     // 20260727
+        const mkt = norm(mr.fi_three_date || mr.fi_spot_date || '');  // 20260728
+        // ⚠️ _dW 吃不了「20260727」這種無分隔格式 → 一併回傳補好分隔的版本供顯示
+        const dash = x => x.length === 8 ? `${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}` : x;
+        if (!twii || mkt.length !== 8) return { lag: 0, twii, mkt: null, twiiD: dash(twii), mktD: null };
+        if (twii >= mkt) return { lag: 0, twii, mkt, twiiD: dash(twii), mktD: dash(mkt) };
+        // 只算「差幾個日曆天」當粗略提示(精確交易日數不重要,重點是有沒有落後)
+        const d = (x) => new Date(+x.slice(0, 4), +x.slice(4, 6) - 1, +x.slice(6, 8));
+        const days = Math.max(1, Math.round((d(mkt) - d(twii)) / 86400e3));
+        return { lag: days, twii, mkt, twiiD: dash(twii), mktD: dash(mkt) };
+    },
+
     _fiFutState() {
         const N = v => (v == null || isNaN(+v)) ? null : +v;
         const net = N(this._futuresCache?.fi_net) ?? N(this._macroRiskCache?.fi_futures_net);
@@ -14101,7 +14131,8 @@ const marginByDate = {};
             fiChg5 == null);
         add('🛢️', '油價不走極端', wti == null ? '—' : `${wti >= 0 ? '+' : ''}${f1(wti)}%`, wti != null && Math.abs(wti) < 3, '單日 ±3% 內(暴漲暴跌兩頭都是恐慌)', wti == null);
         add('💴', '日圓不急升', jpy3 == null ? '—' : `3日 ${jpy3 >= 0 ? '+' : ''}${f1(jpy3)}%`, jpy3 != null && jpy3 > -2, '3 日升值 <2%(急升=套利平倉,2024/8/5 崩盤主因)', jpy3 == null);
-        add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '收盤站回 5MA;站回季線' + (twiiMa60 ? ` ${Math.round(twiiMa60).toLocaleString()}` : '') + ' 才算轉多', twiiC == null);
+        add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '收盤站回 5MA;站回季線' + (twiiMa60 ? ` ${Math.round(twiiMa60).toLocaleString()}` : '') + ' 才算轉多'
+            + (() => { const L = this._twiiLag(); return L.lag > 0 ? ` ・⚠️ 用的是 ${this._dW(L.twiiD)} 收盤(加權資料落後 ${L.lag} 天)` : ''; })(), twiiC == null);
         // 📐 V71.1.6 順逆價差(使用者建議,採礦端 taifex_backwardation 早就有,只是沒被用):
         //   定義 = 台指期近月收盤 − 加權指數收盤;負值=逆價差(避險/看空),正值=正價差(偏多)。
         //   ⚠️ 為什麼要跟外資空單一起看:外資期貨空單有一部分是「現貨多 + 期貨空」的避險對沖,
@@ -14526,7 +14557,9 @@ const marginByDate = {};
         const _updRaw = String(mr.updated || '');
         const _updShow = _updRaw.length >= 16 ? `${this._dW(_updRaw.slice(0, 10), { rel: 1 })} ${_updRaw.slice(11, 16)}` : '';   // V70.2.0 加星期+今日/昨日
         const _twiiDate = (Array.isArray(usm.twii_history) && usm.twii_history.length) ? this._dW(usm.twii_history[usm.twii_history.length - 1].date) : '';
-        const _basis = _updShow || _twiiDate || '—';
+        const _lagI2 = this._twiiLag();
+        const _basis = (_updShow || _twiiDate || '—')
+            + (_lagI2.lag > 0 ? ` <span class="text-amber-300 font-bold">⚠️ 加權指數落後 ${_lagI2.lag} 天(最新交易日 ${this._dW(_lagI2.mktD)})</span>` : '');
 
         // 🎯 V43.2 大盤融資餘額行(bubble_warning.json)
         let marginLine = '<span class="text-gray-500">採集中</span>';
