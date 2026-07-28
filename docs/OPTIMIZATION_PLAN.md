@@ -141,7 +141,9 @@
 - 註解+縮排佔主 script **26.1%**;實測只刪整行註解 gzip 就從 1,057,610 → 897,179(**省 160 KB**)
 - 原始碼保留註解,只有部署產物 minify
 
-### [ ] P2-4 刪除確認全死的函式(**已逐一人工驗證只有定義、無呼叫端**)
+### [x] P2-4 刪除確認全死的函式(**已逐一人工驗證只有定義、無呼叫端**)✅ V69.8.8
+**已刪 13 函式 ~1,175 行**:runKlineAudit / analyzeSectorRotationAI / renderPeerCompareCard / runIndustryReport / renderKbarScore / renderObvPanel(+2 呼叫點)/ analyzePredictCenter / _firePredictAlert(也無呼叫端,一併刪)/ analyzeMarketAnomaly / updatePredictionUI(+1 呼叫點)/ _snapshotPrediction / _verifyPredictions / _renderPredictionAccuracy(+設定頁 1 呼叫點)。
+**修正原計畫**:「預測快照鏈」中 `renderBacktest` 是**活的**(`backtestTableBody` id 存在,L30737 呼叫)→ 保留;實際死鏈是 updatePredictionUI→snapshot→verify→accuracy 四函式(btCount/myPredHistBox id 不存在)。設定頁「快照管理」UI(讀 proTerminalPredHist)保留 — 行為不變(store 自 V41.19 起本就無人寫入)。
 | 函式 | 行號 | 行數 | 驗證結果 |
 |------|------|------|----------|
 | `runKlineAudit` | 35660 | ~249 | 只有定義 + 一句無關註解 |
