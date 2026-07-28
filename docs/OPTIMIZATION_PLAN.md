@@ -145,9 +145,23 @@
 ### [x] P2-2 第 12 行 icon base64 22.3 KB → 改外部 .png ✅ V69.8.7
 - 實作為 .jpg:`apple-touch-icon.jpg`/`icon-192.jpg`/`icon-512.jpg` 實體檔,manifest.json 77KB→982B;deploy_pages.yml + daily_miner.yml 都已加 3 檔搬運;sw.js icon 路徑同步改。**順手修 sw.js TDZ bug**(V69.8.5 的 navigate SWR 分支在 `const reqUrl` 宣告前使用 → 每次導覽 ReferenceError,SWR 從未生效)。
 
-### [ ] P2-3 加 build step(minify)產 `index.min.html` 部署
-- 註解+縮排佔主 script **26.1%**;實測只刪整行註解 gzip 就從 1,057,610 → 897,179(**省 160 KB**)
-- 原始碼保留註解,只有部署產物 minify
+### [x] P2-3 部署產物壓縮 ✅ V71.0.8(**比原估計更好**:gzip 942 KB → 686 KB,省 256 KB)
+- 原始檔 3,114 KB → 2,084 KB(**−33.1%**);inline script 2,803 KB → 1,773 KB
+- **⛔ 沒照原計畫用「刪掉 `//` 開頭的整行」** — 那是土法且危險:樣板字串裡本來就有以 `//` 開頭的
+  中文說明文字,裸刪會把**使用者看得到的文案**一起刪掉,而且**不會有語法錯誤**,壞了看不出來。
+  改用 esbuild 真正的 JS parser(`scripts/build_min.mjs`)。
+- **兩個踩過的坑(已寫進腳本註解)**:
+  1. `keepNames: true` 是**硬需求** — `onclick="app.xxx()"` 是字串,壓縮器看不到,改名就全壞。
+  2. `charset: 'utf8'` 是**必要** — esbuild 預設 `'ascii'` 會把全部中文轉成 `\uXXXX`,
+     功能相同但**體積反而變大**且完全不可讀。(本專案幾乎全中文;這個坑是被腳本第 3 道驗證抓到的。)
+- **4 道驗證**(任一不過 → 部署改用未壓縮原檔,絕不推未驗證產物):可被 `new Function` 解析 /
+  體積有變小但沒小於 40% / 關鍵字串(版本號 + 6 個函式名 + 2 段使用者文案)齊全 / HTML 區段未被動到。
+- **工作區保護**:產物寫到 `/tmp/index.deploy.html`,**絕不動工作區的 index.html** —
+  一旦工作區髒,後面的 `git checkout gh-pages` 會拒絕切換。
+- **連帶必改**:gh-pages 的 index.html 從此不會與 main 逐位元組相同 →
+  **CLAUDE.md 的 md5 部署驗證法作廢**,已改為比對 `_APP_VERSION`
+  (樣式要吃 `: ?['\"]` 兩種,因為壓縮會吃掉空格、單引號換雙引號)。
+- 驗證:壓縮版跑完整 smoke_test + 5 支功能回歸測試全 PASS。
 
 ### [x] P2-4 刪除確認全死的函式(**已逐一人工驗證只有定義、無呼叫端**)✅ V69.8.8
 **已刪 13 函式 ~1,175 行**:runKlineAudit / analyzeSectorRotationAI / renderPeerCompareCard / runIndustryReport / renderKbarScore / renderObvPanel(+2 呼叫點)/ analyzePredictCenter / _firePredictAlert(也無呼叫端,一併刪)/ analyzeMarketAnomaly / updatePredictionUI(+1 呼叫點)/ _snapshotPrediction / _verifyPredictions / _renderPredictionAccuracy(+設定頁 1 呼叫點)。

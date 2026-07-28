@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6525,8 +6525,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.7',
+    _APP_VERSION: 'V71.0.8',
     _CHANGELOG: [
+        { v: 'V71.0.8', dt: '2026-07-28', t: '🗜️ 網頁瘦身 33%:手機開啟更快、更省流量', d: [
+            '從現在起,上傳到網站的版本會自動壓縮(你的原始程式碼不動,註解都還在)。實測 3,113 KB → 2,084 KB,實際傳輸量(壓縮後)從 942 KB 降到 686 KB,少 256 KB —— 手機開 App、4G 環境下最有感。',
+            '安全機制:壓縮完會自動做 4 道檢查(能不能執行、體積有沒有異常、關鍵功能字串在不在、版面有沒有被動到),任何一道沒過就自動改用未壓縮的原檔上線,絕不會推出壞掉的版本。',
+            '🧪 另外做了一件事回答你的問題「有沒有法人偷偷在用的東西」:寫了一支因子探針,拿 2,220 檔股票、3 年日K 實測 8 個機構常用因子。結果寫在下面的說明,重點是——沒有秘密公式,但有兩個台股散戶幾乎不看、而且真的有效的東西。',
+        ]},
         { v: 'V71.0.7', dt: '2026-07-28', t: '🧹 再清 954 行:舊「全盤分析 AI」整條殘骸移除', d: [
             '「🧠 全盤分析」這個 AI 功能其實在 V51.4 就已經停用(一進去就直接返回、不會打 AI),但整整 458 行的程式碼還躺在裡面,連帶一串只有它會用到的相關程式也跟著留著。這次整條清掉,連鎖清了 3 輪共 954 行。',
             '你的操作完全不受影響 — 那個功能早就按不到了,清的是看不見的殘骸。App 又變輕一些。',

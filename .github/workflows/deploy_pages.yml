@@ -29,6 +29,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      # 🗜️ V71.0.8 P2-3 — 部署產物壓縮(原始碼永遠保留註解,只有 gh-pages 上的是壓縮版)
+      #   實測:3,113 KB → 2,084 KB(-33%);gzip 後 942 KB → 686 KB(-256 KB)
+      #   ⛔ 失敗就中止部署,絕不推出未驗證的壓縮版(build_min.mjs 內建 4 道驗證)
+      #   ⚠️ 壓縮後 gh-pages 的 index.html 不再與 main 逐位元組相同 →
+      #      驗證部署是否成功請改比對「版本號」,不要再用 md5 比對(見 CLAUDE.md)
+      - name: 🗜️ 壓縮 index.html（部署產物）
+        run: |
+          set +e
+          npm i --no-audit --no-fund --silent esbuild
+          # ⚠️ 產物寫到 /tmp,**絕不動工作區的 index.html** —
+          #    工作區一髒,後面的 `git checkout gh-pages` 會拒絕切換(local changes would be overwritten)
+          node scripts/build_min.mjs index.html /tmp/index.deploy.html
+          if [ $? -eq 0 ] && [ -s /tmp/index.deploy.html ]; then
+            echo "✅ 使用壓縮版部署"
+          else
+            echo "⚠️ 壓縮或驗證未通過 → 改用未壓縮原檔部署(功能優先於體積,絕不推未驗證產物)"
+            cp index.html /tmp/index.deploy.html
+          fi
+          git checkout -- . 2>/dev/null || true   # 保險:確保工作區乾淨
+
       - name: 🌐 部署到 gh-pages（只更新 index.html 與 sw.js，保留股票資料）
         run: |
           git config user.name  "github-actions[bot]"
@@ -36,7 +56,8 @@ jobs:
 
           # 暫存最新的前端檔案
           mkdir -p /tmp/deploy
-          cp index.html /tmp/deploy/
+          # 🗜️ V71.0.8:上一步產出的部署用 index.html(壓縮版;壓縮失敗時是原檔)
+          cp /tmp/index.deploy.html /tmp/deploy/index.html
           cp sw.js      /tmp/deploy/
           # V17.0 — PWA manifest 一併部署(若不存在則跳過,不阻塞舊版部署)
           [ -f manifest.json ] && cp manifest.json /tmp/deploy/ || true
