@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6525,8 +6525,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.5',
+    _APP_VERSION: 'V71.0.6',
     _CHANGELOG: [
+        { v: 'V71.0.6', dt: '2026-07-28', t: '🧩 當沖頁收納:5 張小卡併成 2 組', d: [
+            '當沖頁「進階分析」裡原本 5 張各自帶邊框的小卡,現在收成 2 組:「🖼️ 今天的框」(必守價位／開盤區間／波動夠不夠沖)和「📉 盤中量價體檢」(分時均價線／量能達標度)。標題只出現一次,滑起來清爽很多。',
+            '內容一個字都沒刪,只是版面收納。',
+            '「🔴 盤中連量偵測」刻意沒併進去 — 它是盤中即時警訊、放在不用展開就看得到的地方,搬進摺疊區反而會讓你錯過。',
+        ]},
         { v: 'V71.0.5', dt: '2026-07-28', t: '🔬 把「偷布局」拿去實測,升級成兩層(深蹲版比較強)', d: [
             '你問「板塊籌碼輪動有沒有用」→ 我沒用猜的,寫了一支回測程式拿真實資料驗。結果:同樣是跌下來的板塊,「外資還在買」的那些,20 個交易日後平均多賺 3.2 個百分點、勝率 70%(對照組 56%)。',
             '再試了 4 種改良版,最好的是「偷布局 + 已經跌深(距 60 日高點 ≥12%)」→ 20 日多賺 3.8 個百分點、勝率 75%。已經做進去,表上會標琥珀色的「🕵️偷布局·深蹲」,比青色那層更值得看。',
@@ -37036,6 +37041,13 @@ ${_chuPosPlan}
 
         const cards = [];
         const detail = [];   // ⚡ V55.3 折疊「進階分析」卡
+        // 🧩 V71.0.6 U-16/U-17 合併卡(使用者鐵則「合併卡片,不要加新卡、資訊不爆炸」):
+        //   原本 5 張各自獨立的小卡 → 收成 2 組共用外框,標題只出現一次,內部用分隔線分列。
+        //   內容一字未改,純版面收納。
+        //   ⛔ 刻意不併入「🔴 盤中連量偵測」:它在常顯區(cards)且是條件觸發的即時警訊,
+        //      搬進這個摺疊區等於把即時訊號藏起來 —— 那是退步不是進步。
+        const dFrame = [];   // U-17 今天的框:必守價位 / 開盤區間 / 波動夠不夠
+        const dVolPx = [];   // U-16 盤中量價體檢:分時均價線 / 量能達標度
         const _f2 = n => (n == null || !Number.isFinite(+n)) ? '—' : (+n).toFixed(2);
         const limitUp = this._dtLimitPrice(prevClose, 1);
         const limitDown = this._dtLimitPrice(prevClose, -1);
@@ -37084,9 +37096,9 @@ ${_chuPosPlan}
             const downKey = Math.floor((px - 1e-6) / st) * st;
             const dpct = v => px > 0 ? ((v - px) / px * 100) : null;
             const cell = (lbl, v, cls, cond) => { const d = dpct(v); const rv = this._roundTick(v); return `<div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">${lbl}</div><div class="text-sm font-black font-mono ${cls}">${_f2(v)}</div><div class="text-[9px] text-gray-500">${d == null ? '' : (d >= 0 ? '+' : '') + d.toFixed(1) + '%'}${cond ? ` <button onclick="app._dtAddAlert(${rv},'${cond}'); event.stopPropagation();" class="text-amber-400" title="設到價提醒">🔔</button>` : ''}</div></div>`; };
-            detail.push(`
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-                <div class="text-[12px] font-black text-gray-100 mb-2">📏 今日必守價位 <span class="text-[9px] text-gray-500 font-normal">${yBar && yBar.date ? `${this._dW(yBar.date)} 高低收` : '昨天高低收'}+整數關卡</span></div>
+            dFrame.push(`
+            <div class="p-3">
+                <div class="text-[11px] font-bold text-gray-200 mb-2">📏 今日必守價位 <span class="text-[9px] text-gray-500 font-normal">${yBar && yBar.date ? `${this._dW(yBar.date)} 高低收` : '昨天高低收'}+整數關卡</span></div>
                 <div class="grid grid-cols-4 gap-2 mb-2">
                     ${cell('昨高', yH, 'text-red-300', 'gte')}
                     ${cell('昨低', yL, 'text-green-300', 'lte')}
@@ -37140,9 +37152,9 @@ ${_chuPosPlan}
             } else {
                 fitInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">資料不足(需近 15 個交易日 K 線)算 ATR 波動率,稍後再看。</div></div>`;
             }
-            detail.push(`
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-                <div class="text-[12px] font-black text-gray-100 mb-2">📊 波動夠不夠沖 <span class="text-[9px] text-gray-500 font-normal">一天平均跳動幅度(有肉才沖)</span></div>
+            dFrame.push(`
+            <div class="p-3">
+                <div class="text-[11px] font-bold text-gray-200 mb-2">📊 波動夠不夠沖 <span class="text-[9px] text-gray-500 font-normal">一天平均跳動幅度(有肉才沖)</span></div>
                 ${fitInner}
             </div>`);
         }
@@ -37183,8 +37195,8 @@ ${_chuPosPlan}
         else if (gap > -0.5) { openTone = '➖ 開平盤'; openCls = 'text-gray-300 border-gray-500'; openCta = '方向未定,等第一根 5 分K + VWAP 表態再決定多空'; }
         else if (gap > -3) { openTone = '🔻 開低偏空'; openCls = 'text-green-300 border-green-600'; openCta = '開低走低做空順勢;帶量拉過開盤價(翻紅)才考慮轉多'; }
         else { openTone = '💥 大幅跳空開低'; openCls = 'text-green-300 border-green-600'; openCta = '恐慌殺低易急跌;搶反彈只做快進快出,別接刀凹單'; }
-        detail.push(`
-        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
+        dVolPx.push(`
+        <div class="p-3">
             <div class="flex items-center justify-between mb-2">
                 <div class="text-[12px] font-black text-gray-100">🔔 開盤定調</div>
                 <div class="text-[10px] text-gray-500">開盤 ${_f2(openP)} vs 昨收 ${_f2(prevClose)}</div>
@@ -37217,9 +37229,9 @@ ${_chuPosPlan}
         } else {
             vwapInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 分時均價(VWAP)盤中(09:00–13:30)載入即時分鐘K後顯示。VWAP=當日所有成交的平均成本線,站上偏多、跌破偏空,是當沖最重要的多空分水嶺。</div></div>`;
         }
-        detail.push(`
-        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-            <div class="text-[12px] font-black text-gray-100 mb-2">🩸 分時均價線 <span class="text-[9px] text-gray-500 font-normal">站上偏多·跌破偏空(VWAP)</span></div>
+        dFrame.push(`
+        <div class="p-3">
+            <div class="text-[11px] font-bold text-gray-200 mb-2">🩸 分時均價線 <span class="text-[9px] text-gray-500 font-normal">站上偏多·跌破偏空(VWAP)</span></div>
             ${vwapInner}
         </div>`);
 
@@ -37244,9 +37256,9 @@ ${_chuPosPlan}
         } else {
             orbInner = `<div class="bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-gray-400 leading-relaxed">⏱️ 開盤區間突破(ORB)= 開盤 09:00–09:15 的最高/最低。盤中載入分鐘K 後顯示:價突破上緣做多、跌破下緣做空(當沖經典策略),等幅測幅抓目標價。需盤中即時分鐘K。</div></div>`;
         }
-        detail.push(`
-        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-            <div class="text-[12px] font-black text-gray-100 mb-2">🚀 開盤區間突破 <span class="text-[9px] text-gray-500 font-normal">開盤前15分高低,突破就順勢做</span></div>
+        dVolPx.push(`
+        <div class="p-3">
+            <div class="text-[11px] font-bold text-gray-200 mb-2">🚀 開盤區間突破 <span class="text-[9px] text-gray-500 font-normal">開盤前15分高低,突破就順勢做</span></div>
             ${orbInner}
         </div>`);
 
@@ -37269,7 +37281,7 @@ ${_chuPosPlan}
         }
         detail.push(`
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-            <div class="text-[12px] font-black text-gray-100 mb-2">⚡ 量能達標度 <span class="text-[9px] text-gray-500 font-normal">有量才有波動</span></div>
+            <div class="text-[11px] font-bold text-gray-200 mb-2">⚡ 量能達標度 <span class="text-[9px] text-gray-500 font-normal">有量才有波動</span></div>
             ${volInner}
         </div>`);
 
@@ -37483,7 +37495,17 @@ ${_chuPosPlan}
         // (V64.3 當沖回測併進 🚦;V64.7 雷達/作戰室併進選股中心)
         // ⚡ V64.5 組裝:主線只留 作戰指令(hero)+ 作戰室 + 雷達 + 儀表板 + 損益;
         //   SOP 進「📖 新手」modal、進階分析(樞紐/CDP/VWAP/ORB/量能/波動/相對大盤)進「📊 進階」modal,不佔卡
-        this._dtAdvancedHtml = detail.length ? `<div class="flex flex-col gap-2">${detail.join('')}</div>` : '';
+        // 🧩 V71.0.6 U-16/U-17:把 5 張小卡收成 2 組共用外框(標題只出現一次,內部分隔線分列)
+        const _dtGroup = (icon, title, sub, arr) => arr.length ? `
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg shadow-lg overflow-hidden">
+                <div class="px-3 py-2 border-b border-[#30363d] bg-white/[0.02]"><span class="text-[12px] font-black text-gray-100">${icon} ${title}</span> <span class="text-[9px] text-gray-500">${sub}</span></div>
+                <div class="divide-y divide-[#21262d]">${arr.join('')}</div>
+            </div>` : '';
+        detail.unshift(
+            _dtGroup('🖼️', '今天的框', '進場前先知道上下界線在哪', dFrame),
+            _dtGroup('📉', '盤中量價體檢', '有沒有量、站不站得住均價', dVolPx),
+        );
+        this._dtAdvancedHtml = detail.filter(Boolean).length ? `<div class="flex flex-col gap-2">${detail.filter(Boolean).join('')}</div>` : '';
         box.innerHTML = cards.join('');
         box.dataset.rendered = '1';
         try { clearTimeout(this._dtLoadWatchdog); this._dtLoadWatchdog = null; } catch (_) {}   // 🐛 V69.1.2 渲染成功→取消看門狗
