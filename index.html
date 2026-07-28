@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6577,8 +6577,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.2.5',
+    _APP_VERSION: 'V70.2.6',
     _CHANGELOG: [
+        { v: 'V70.2.6', dt: '2026-07-28', t: '📅 資料日期收尾批(掃描剩下的全部處理完)', d: [
+            '再補 7 處:自選清單頂部(這批報價是盤中即時還是收盤)、當沖「今日必守價位」(昨高低收是哪一天)、朱老師四關通關卡、朱式波段回測(回測區間起訖)、處置股風控狀態(名單日)、法說會提醒日期加星期。',
+            '掃描剩下未標的都是「不需要日期」的(K線圖本體/型態標籤/即時逐筆卡本來就有時間/隱藏容器),已逐一確認。',
+        ]},
         { v: 'V70.2.5', dt: '2026-07-28', t: '📅 資料日期第六批(主決策卡也標了)', d: [
             '最重要的「🚦 現在怎麼做」現在標明「依哪一天(盤中/收盤)算的」,出場總表、分批進場計畫同步;泡沫風控面板、分點多週期累積、也都補上日期。',
         ]},
@@ -14921,7 +14925,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         else                                            fearLine = `💡 <b>怕關 vs 不怕關</b>:熱門題材股(AI/重電/低軌)被關常洗盤後噴出,投機散戶股被關易崩(看籌碼集中度自行判斷)`;
         return `<div class="mt-2 bg-[#0d1117] border ${isDisp ? 'border-red-700/60' : 'border-orange-700/60'} rounded-lg p-3">
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b ${isDisp ? 'border-red-700/40' : 'border-orange-700/40'}">
-                <h4 class="${isDisp ? 'text-red-300' : 'text-orange-300'} font-bold text-sm">🚨 處置股風控狀態</h4>
+                <h4 class="${isDisp ? 'text-red-300' : 'text-orange-300'} font-bold text-sm">🚨 處置股風控狀態 ${this._dChip(this._attentionUpdated, '名單')}</h4>
                 <span class="${isDisp ? 'text-red-200 bg-red-900/40' : 'text-orange-200 bg-orange-900/40'} px-2 py-0.5 rounded text-[11px] font-bold">${info.status || ''}</span>
             </div>
             <div class="text-[12px] space-y-1.5">
@@ -17340,7 +17344,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             el.innerHTML = `<div class="bg-amber-900/25 border-l-4 border-amber-500 rounded-r px-2.5 py-1.5 mt-1.5">
                 <div class="flex items-start gap-2">
                     <span class="text-base flex-shrink-0 leading-none mt-0.5">📢</span>
-                    <div class="text-[11px] leading-snug text-amber-100"><b class="text-amber-300">法說會提醒</b> · ${hitDate}(${dLabel})<div class="text-gray-300 mt-0.5">法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)→ 留意消息面、控好部位、別重壓過會。</div></div>
+                    <div class="text-[11px] leading-snug text-amber-100"><b class="text-amber-300">法說會提醒</b> · ${this._dW(hitDate)}(${dLabel})<div class="text-gray-300 mt-0.5">法說前後股價常大波動(利多常「利多出盡」、財測不如預期易急殺)→ 留意消息面、控好部位、別重壓過會。</div></div>
                 </div>
                 <div id="earnHistReact"></div>
                 <button onclick="app._openFreeAiStock('earnings'); app.vibrate(20);" class="mt-1.5 w-full text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/30 border border-amber-700/50 rounded py-1.5 transition-colors">🔎 用 Perplexity 查這次法說會重點是「好 / 壞」 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
@@ -24737,7 +24741,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
         box.innerHTML = `
             <div class="text-[11px] font-bold mb-1.5 flex items-center justify-between">
-                <span class="text-amber-300">📌 朱老師四關通關卡</span>
+                <span class="text-amber-300">📌 朱老師四關通關卡 <span class="text-[9px] text-gray-500 font-normal">${this._dW((data[data.length - 1] || {}).date)}</span></span>
                 <span class="text-[10px] text-gray-400 font-normal">${summary}</span>
             </div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-1.5">${gatesHtml}</div>
@@ -30862,7 +30866,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (emptyEl) emptyEl.classList.add('hidden');
         if (!r.count) {
             el.classList.remove('hidden');
-            el.innerHTML = `<div class="text-xs text-gray-500 mb-1.5">🎯【朱老師方式波段回測】(回後買上漲 + 跌破5MA停利)</div><div class="bg-[#161b22] border border-[#30363d] rounded p-3 text-[11px] text-gray-400">此股歷史區間內沒出現符合「回後買上漲」的進場點(嚴格紀律,寧缺勿濫);換強勢波段股再看。</div>`;
+            el.innerHTML = `<div class="text-xs text-gray-500 mb-1.5">🎯【朱老師方式波段回測】(回後買上漲 + 跌破5MA停利)${(() => { const a = this.activeData || []; return a.length >= 2 ? ` <span class="text-[9px] text-gray-600">${this._dW(a[0].date)}~${this._dW(a[a.length - 1].date)}</span>` : ''; })()}</div><div class="bg-[#161b22] border border-[#30363d] rounded p-3 text-[11px] text-gray-400">此股歷史區間內沒出現符合「回後買上漲」的進場點(嚴格紀律,寧缺勿濫);換強勢波段股再看。</div>`;
             return;
         }
         const pos = v => v >= 0 ? 'text-red-300' : 'text-green-300';   // 台股色
@@ -32452,7 +32456,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>
             </div>`;
         }
-        container.innerHTML = html;
+        // 📅 V70.2.6 這批報價是什麼時候的(盤中即時 / 盤後收盤)
+        const _favTs = `<div class="text-[9px] text-gray-500 px-2 pb-1">📅 ${this._dW(new Date())} ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} ${this.isMarketOpen?.() ? '盤中即時' : '收盤價'}</div>`;
+        container.innerHTML = _favTs + html;
         if (this.sortableFav) { try { this.sortableFav.destroy(); } catch (_) {} this.sortableFav = null; }   // V62.7 主清單不再拖曳排序(移到編輯頁)
 
         // 📸 V63.2 先用全市場快照瞬間補上所有列的現價(免等 Fugle,開頁不再滿排「--」)
@@ -37450,7 +37456,7 @@ ${_chuPosPlan}
             const cell = (lbl, v, cls, cond) => { const d = dpct(v); const rv = this._roundTick(v); return `<div class="bg-[#21262d] border border-[#30363d] rounded p-2 text-center"><div class="text-[9px] text-gray-400 mb-0.5">${lbl}</div><div class="text-sm font-black font-mono ${cls}">${_f2(v)}</div><div class="text-[9px] text-gray-500">${d == null ? '' : (d >= 0 ? '+' : '') + d.toFixed(1) + '%'}${cond ? ` <button onclick="app._dtAddAlert(${rv},'${cond}'); event.stopPropagation();" class="text-amber-400" title="設到價提醒">🔔</button>` : ''}</div></div>`; };
             detail.push(`
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-                <div class="text-[12px] font-black text-gray-100 mb-2">📏 今日必守價位 <span class="text-[9px] text-gray-500 font-normal">昨天高低收+整數關卡</span></div>
+                <div class="text-[12px] font-black text-gray-100 mb-2">📏 今日必守價位 <span class="text-[9px] text-gray-500 font-normal">${yBar && yBar.date ? `${this._dW(yBar.date)} 高低收` : '昨天高低收'}+整數關卡</span></div>
                 <div class="grid grid-cols-4 gap-2 mb-2">
                     ${cell('昨高', yH, 'text-red-300', 'gte')}
                     ${cell('昨低', yL, 'text-green-300', 'lte')}
