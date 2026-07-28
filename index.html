@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1718,7 +1718,6 @@
 
 <div id="subContentLive" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[50vh]">
                 <!-- ⚠️ V45.7 — 假漲/假跌判讀卡搬到最上面(使用者要求:先看誘多risk 再看K) -->
-                <div id="intradayTruthBox" class="hidden"></div>
                 <!-- 🎯 V68.1.0 — 盤中作戰室(VWAP生命線+斜率+乖離/量價背離/缺口回補/大單/主力成本) -->
                 <div id="dayTradeLight" class="hidden"></div>
                 <div id="intradayWarRoom" class="hidden"></div>
@@ -1771,7 +1770,6 @@
                 <!-- 🗣️ V62.3 朱老師這樣看 + 主升段體檢 合併為一張卡(scroll-snap 目標,滑動會卡住) -->
                 <div id="chuMergedCard" class="flex flex-col gap-1 kline-snap">
                     <div id="chuVerdictCard" class="hidden"></div>
-                    <div id="mainRiseCard" class="hidden"></div>
                     <div id="sixMeridianCard" class="hidden"></div>
 
                 </div>
@@ -6547,8 +6545,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.4',
+    _APP_VERSION: 'V69.9.5',
     _CHANGELOG: [
+        { v: 'V69.9.5', dt: '2026-07-28', t: '🧹 再清 2 個殭屍卡殘留', d: [
+            '「即時真假判讀」「主升段體檢」兩張卡早已併入其他卡片,留下的空函式與隱藏容器一併清除(功能都在盤中作戰室/朱老師卡裡,零影響)。',
+        ]},
         { v: 'V69.9.4', dt: '2026-07-28', t: '🧭 持股「該抱該跑」只留一套指令', d: [
             '進場體檢卡原本自帶第二套抱跑門檻,可能跟最上方「現在怎麼做」主卡同時給相反指令 → 現在它只顯示你的損益(%+實際金額),行動指令統一看主卡,邏輯不再打架。',
         ]},
@@ -18214,37 +18215,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return { stage, stageCol, stageBar, stageMsg, stageBias, maBull, ma20Up, eff, trend, pos52, athPct, inst: { instLots10, instStreak, instDays } };
         } catch (_) { return null; }
     },
-    // 🎢 V48.0 主升段體檢卡(V65.1 起改用 _mainRiseStage helper;已 fold-in 朱老師卡,預設不再單獨渲染)
-    renderMainRiseCard(data) {
-        const el = document.getElementById('mainRiseCard');
-        if (!el) return;
-        const st = this._mainRiseStage(data);
-        if (!st) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-        try {
-            const { stage, stageCol, stageBar, stageMsg, maBull, ma20Up, eff, trend, pos52, athPct, inst } = st;
-            const { instLots10, instStreak, instDays } = inst;
-            const _metric = (label, val, col) => `<div class="bg-[#0d1117] rounded px-2 py-1"><div class="text-gray-500">${label}</div><div class="font-bold ${col} mt-0.5 leading-tight">${val}</div></div>`;
-            el.className = 'bg-[#161b22] border-l-4 ' + stageBar + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg mb-2';
-            el.innerHTML = `
-                <div class="flex items-center justify-between mb-1.5">
-                    <div class="text-base font-black ${stageCol}">🎢 主升段體檢:${stage}</div>
-                    
-                </div>
-                <div class="grid grid-cols-2 gap-1.5 mb-2 text-[10px]">
-                    ${_metric('均線排列', maBull ? (ma20Up ? '多頭+月線揚' : '多頭排列') : '未站多頭', maBull ? 'text-red-300' : 'text-gray-400')}
-                    ${_metric('趨勢效率', (eff * 100).toFixed(0) + '%' + (eff >= 0.3 ? ' 強趨勢' : ''), eff >= 0.3 ? 'text-red-300' : 'text-gray-400')}
-                    ${_metric('波段結構', trend === 'bull' ? '頭頭高底底高' : trend === 'bear' ? '頭頭低底底低' : '盤整', trend === 'bull' ? 'text-red-300' : trend === 'bear' ? 'text-green-300' : 'text-gray-400')}
-                    ${_metric('位階', Math.round(pos52 * 100) + '%' + (athPct > -3 ? ' 近歷史高' : ''), pos52 >= 0.85 ? 'text-orange-300' : pos52 <= 0.35 ? 'text-green-300' : 'text-gray-300')}
-                </div>
-                <div id="mainRiseFuel" class="text-[10px] text-gray-500 mb-1.5">⛽ 獲利燃料檢查中…</div>
-                <div class="bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-[12px] text-gray-200 leading-relaxed"><b class="${stageCol}">💡 操作:</b>${stageMsg}</div>
-                <div class="text-[9px] text-gray-600 mt-1.5">🎢 主升段=獲利跳、法人評價跳升的順勢段;技術判階段+基本面看燃料,純公式非投資建議。</div>`;
-            el.classList.remove('hidden');
-            // 燃料(基本面)非同步補,不卡渲染
-            const sym = this.currentSymbolId;
-            this._injectMainRiseFuel(sym, { instLots10, instStreak, instDays }).catch(() => {});
-        } catch (e) { console.warn('[mainRise]', e); el.classList.add('hidden'); }
-    },
     // 🎢 V48.0 — 主升段「獲利燃料」燈(三率三升 + 營收YoY + 創新高 + 法人買超),async 讀 fundamentals 後注入
     async _injectMainRiseFuel(sym, inst) {
       try {
@@ -26527,8 +26497,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             sumEl.innerHTML = parts.join('');
             sumEl.classList.remove('hidden');
         }
-        // 🎯 V68.0.7 真假判讀已併入盤中作戰室(單一結論,不再兩卡各說各話)→ truthBox 容器隱藏
-        try { const tb = document.getElementById('intradayTruthBox'); if (tb) { tb.classList.add('hidden'); tb.innerHTML = ''; } } catch (_) {}
         // 📊 V45.1/V69.1.0 五檔 + 量價/分時 分頁 + 作戰室即時訊號:一次抓逐筆/量價,存快取共用
         try {
             const vpD = (q && q.price) ? this._chuVolumeProgress(q, this.baseRawData || this.rawDailyData || []) : null;
@@ -28124,24 +28092,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             cta = '💡 對策:別急著動作,等帶量站上或跌破均價給明確方向再說。';
         }
         return { tone, title, msg, cta, chips };
-    },
-
-    _renderIntradayTruthBox(box, judge) {
-        if (!box) return;
-        if (!judge) { box.classList.add('hidden'); box.innerHTML = ''; return; }
-        const bar = { bull: 'border-red-500', bear: 'border-green-500', warn: 'border-yellow-500', flat: 'border-gray-500' }[judge.tone] || 'border-gray-500';
-        const tCls = { bull: 'text-red-300', bear: 'text-green-300', warn: 'text-yellow-300', flat: 'text-gray-300' }[judge.tone] || 'text-gray-300';
-        const chipCls = { red: 'text-red-300 border-red-700/50', green: 'text-green-300 border-green-700/50', yellow: 'text-yellow-300 border-yellow-700/50', gray: 'text-gray-400 border-gray-600' };
-        const chipsHtml = (judge.chips || []).map(c => `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${chipCls[c.c] || chipCls.gray}">${c.t}</span>`).join('');
-        box.classList.remove('hidden');
-        box.innerHTML = `
-            <div class="bg-[#161b22] border-l-4 ${bar} border-y border-r border-[#30363d] rounded-r p-2.5">
-                <div class="text-sm font-black ${tCls} mb-1">${judge.title}</div>
-                <div class="flex flex-wrap gap-1 mb-1.5">${chipsHtml}</div>
-                <div class="text-[11px] text-gray-300 leading-relaxed">${judge.msg}</div>
-                <div class="text-[11px] text-gray-200 leading-relaxed mt-1">${judge.cta}</div>
-                <div class="text-[9px] text-gray-600 mt-1.5 leading-tight">⚠️ 盤中機率參考(免費內外盤+量價估算),主力可能反向騙線,真正確認要收盤K線+隔日分點。</div>
-            </div>`;
     },
 
     _renderIntradayChart(el, candles, tf) {

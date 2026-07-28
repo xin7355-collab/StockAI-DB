@@ -263,9 +263,9 @@ V69.7.5 只改了「總覽 vs 觀察頁」兩處,還有 5 處沒動:
 | [ ] U-9 | 🎯朱式買點 | `renderChuActionCard`:17574 | 1472 | ~130 |
 | [ ] U-10 | ⚔️朱家泓策略狀態 | `renderChuStrategyCard`:5583 | 1581 | ~100 |
 | [ ] U-11 | 第一/第二目標價 | DOM 1588 寫死 hidden | 1588 | 仍每次 refresh 計算 |
-| [ ] U-12 | 即時真假判讀 | `_renderIntradayTruthBox` 0 呼叫 | 1721 | ~17 |
-| [ ] U-13 | 主升段體檢 | `renderMainRiseCard` 0 呼叫 | 1774 | ~65 |
-| [ ] U-14 | AI 首席總評 | 父層 1486 `class="hidden"` | 1486–1500 | 仍花 AI 額度寫進去 |
+| [x] U-12 | 即時真假判讀 | ✅ V69.9.5 函式+hidden DOM+清理殘留全刪(功能在盤中作戰室)| — | — |
+| [x] U-13 | 主升段體檢 | ✅ V69.9.5 函式+hidden DOM 刪(_mainRiseStage helper 保留,朱老師卡在用)| — | — |
+| [~] U-14 | AI 首席總評 | **「仍花額度」是過期描述**:V51.4 已把 runUnifiedGroqAnalysis no-op(entry 即 return,0 額度);真正待辦=刪整條死鏈(no-op 函式體 ~400 行 + _renderUnifiedAIResult/renderSummaryCard/updateAITranslator/analyzeStockPredict + hidden DOM),⚠️ **check_prompt_vars.py 硬依賴此函式存在**,刪除須連驗證腳本一起改 → 留獨立批次 | 1486 | — |
 
 ⚠️ **U-8 決策點**:ATR 部位管理是全 App 唯一回答「該買幾張」的地方,刪掉後這個問題沒人回答。**建議復活而非刪除**(順便讓 `settings.accountSize` / `riskPct` 兩個設定項有用)。
 ⚠️ **U-11 附帶**:`tpSlReason`(為什麼目標價被停用)是唯一說明文字,寫進了永遠不顯示的容器 → 搬進 `chuExitSopCard`。
