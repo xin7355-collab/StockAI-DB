@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1452,8 +1452,6 @@
             </div>
 
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
-                <!-- 📋 V42.5 — 今日操作重點(盤前一眼:空手給買點、持股給賣點+損益,純公式合成) -->
-                <div id="todayOrderCard" class="hidden"></div>
                 <!-- 🗂️ V65.7 總覽四頁籤(使用者規格):現在怎麼做/庫存/進場/出場;預設落在「現在怎麼做」(答案已自動依身分切換),
                      緊急時對應頁籤亮紅點;持有時「進場」自動改名「加碼」(進場引擎當加碼評估用) -->
                 <div id="ovTabBar" class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5 sticky top-0 z-30 bg-[#0d1117]/95 backdrop-blur pt-1">
@@ -1578,7 +1576,6 @@
                         </div><!-- /data-ovpane=entry -->
 
                         <!-- ⚔️ V50.7 朱家泓策略狀態(距 5MA/20MA/-5% 停損 + 燈號)移至首席頁(使用者要求) -->
-                        <div id="chuStrategyCard" class="hidden bg-[#161b22] border border-pink-700/40 rounded-lg p-3 shadow-lg"></div>
 
                         <!-- 🚦 V68.3.5 ETF 跟車狀態 + 🧩 ETF 成分股(從籌碼頁移來總覽:個股被哪些 ETF 換入/加碼 + 進場價 vs 今價;是 ETF 才顯成分股)-->
                         <div id="etfFollowCard" class="hidden bg-[#161b22] border border-amber-700/40 rounded-lg p-3 shadow-lg"></div>
@@ -5591,94 +5588,6 @@ ${list}
         card.classList.remove('hidden');
     },
 
-    // V18.8 — 朱家泓策略狀態卡(個股頁籌碼 tab):距離 5MA/20MA/-5% 停損各還多少 + 燈號
-    //          資料源全用 activeData(零網路),無進場價時自動隱藏停損列
-    renderChuStrategyCard(sym) {
-        const card = document.getElementById('chuStrategyCard');
-        if (!card) return;
-        // V53.x — 5MA/20MA/鐵血停損已併入「出場總表」(chuExitSopCard),此卡停用避免重複顯示
-        card.classList.add('hidden'); card.innerHTML = ''; return;
-        if (!sym || !Array.isArray(this.activeData) || this.activeData.length < 20) { card.classList.add('hidden'); return; }
-        const arr = this.activeData;
-        const last20 = arr.slice(-20);
-        const ma5  = arr.slice(-5).reduce((s, b) => s + (b.close ?? b.c ?? 0), 0) / 5;
-        const ma20 = last20.reduce((s, b) => s + (b.close ?? b.c ?? 0), 0) / 20;
-        const nowPx = arr[arr.length - 1].close ?? arr[arr.length - 1].c;
-        if (!nowPx) { card.classList.add('hidden'); return; }
-        // 從 inventory 抓進場資料(沒在庫存就提示加入)
-        const inv = app._getInventory();
-        const invItem = inv.find(i => i.symbol === sym);
-        const entryCost = invItem ? +invItem.cost : null;
-        const entryDate = invItem?.buyDate || '';
-        const stopPx = entryCost ? entryCost * 0.95 : null;
-        // 距離計算
-        const distMa5  = ((nowPx - ma5)  / ma5  * 100);
-        const distMa20 = ((nowPx - ma20) / ma20 * 100);
-        const distStop = stopPx ? ((nowPx - stopPx) / stopPx * 100) : null;
-        const distEntry = entryCost ? ((nowPx - entryCost) / entryCost * 100) : null;
-        // 燈號:距離為正(在上方)=安全,負=已跌破
-        const lamp = (dist, dangerThreshold = 0) => {
-            if (dist == null) return { ic: '⚪', cls: 'text-gray-500', txt: '無資料' };
-            if (dist > 3)       return { ic: '🟢', cls: 'text-green-400', txt: '安全' };
-            if (dist > dangerThreshold) return { ic: '🟡', cls: 'text-yellow-400', txt: '接近' };
-            return                 { ic: '🔴', cls: 'text-red-400', txt: '已跌破' };
-        };
-        const m5L = lamp(distMa5);
-        const m20L = lamp(distMa20);
-        const stopL = lamp(distStop);
-        const pctTxt = (v) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
-
-        // V26.17 — Empty State:未填進場成本 → 整卡切換為「尚未建立庫存」CTA,
-        //          避免 5MA/20MA 已跌破紅標誤導 + 砍技術術語(「需開啟通知權限」)
-        if (!entryCost) {
-            card.innerHTML = `
-                <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-pink-700/40">
-                    <h4 class="text-pink-300 font-bold text-sm">⚔️ 朱家泓策略狀態</h4>
-                </div>
-                <div class="flex flex-col items-center justify-center py-6 px-3">
-                    <div class="text-5xl text-gray-700 mb-2">📦</div>
-                    <div class="text-sm text-gray-300 font-bold mb-1">尚未建立此持股庫存</div>
-                    <div class="text-[10px] text-gray-500 mb-4 text-center leading-relaxed">輸入進場成本後即解鎖<br>5MA · 20MA · 鐵血停損 完整燈號 + PWA 推播</div>
-                    <button onclick="app.switchAppTab('inv'); app.vibrate(20);" class="px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white text-xs font-black rounded-lg shadow-md transition-colors">
-                        ＋ 輸入持股成本
-                    </button>
-                </div>`;
-            card.classList.remove('hidden');
-            return;
-        }
-
-        // 有進場成本 → 顯完整數據
-        const entryHeader = `<div class="text-[10px] text-pink-300/80">進場 <span class="font-mono text-white">${entryCost.toFixed(2)}</span>${entryDate ? `(${entryDate})` : ''} → 現價 <span class="font-mono text-white">${nowPx.toFixed(2)}</span> <span class="${distEntry > 0 ? 'text-red-300' : 'text-green-300'} font-bold">${pctTxt(distEntry)}</span></div>`;
-        const stopRow = stopPx
-            ? `<div class="grid grid-cols-[1fr_auto_72px] gap-2 items-center py-1 border-b border-[#21262d]">
-                <span class="text-[11px]"><b class="text-pink-300">鐵血停損</b> <span class="text-[10px] text-gray-500">成本 -5%</span></span>
-                <span class="font-mono text-[11px] text-gray-300">${stopPx.toFixed(2)}</span>
-                <span class="${stopL.cls} font-mono font-bold text-[11px] text-right">${stopL.ic} ${pctTxt(distStop)}</span>
-            </div>`
-            : '';
-        card.innerHTML = `
-            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-pink-700/40">
-                <h4 class="text-pink-300 font-bold text-sm">⚔️ 朱家泓策略狀態</h4>
-                <span class="text-[9px] text-gray-500">5MA停利 / 20MA停損 / -5% 鐵血</span>
-            </div>
-            ${entryHeader}
-            <div class="mt-2">
-                <div class="grid grid-cols-[1fr_auto_72px] gap-2 items-center py-1 border-b border-[#21262d]">
-                    <span class="text-[11px]"><b class="text-green-200">5MA 短線</b> <span class="text-[10px] text-gray-500">5日均</span></span>
-                    <span class="font-mono text-[11px] text-gray-300">${ma5.toFixed(2)}</span>
-                    <span class="${m5L.cls} font-mono font-bold text-[11px] text-right">${m5L.ic} ${pctTxt(distMa5)}</span>
-                </div>
-                <div class="grid grid-cols-[1fr_auto_72px] gap-2 items-center py-1 border-b border-[#21262d]">
-                    <span class="text-[11px]"><b class="text-blue-200">20MA 中線</b> <span class="text-[10px] text-gray-500">月線</span></span>
-                    <span class="font-mono text-[11px] text-gray-300">${ma20.toFixed(2)}</span>
-                    <span class="${m20L.cls} font-mono font-bold text-[11px] text-right">${m20L.ic} ${pctTxt(distMa20)}</span>
-                </div>
-                ${stopRow}
-            </div>
-            <div class="text-[9px] text-gray-500 mt-2 leading-relaxed">💡 跌破 5MA 短停利 · 跌破 20MA 中停損 · 跌破 -5% 鐵血認賠 · 觸發即 PWA 推播</div>
-        `;
-        card.classList.remove('hidden');
-    },
 
     async renderEtfTab() {
         const box = document.getElementById('tabContentEtf');
@@ -6419,8 +6328,6 @@ ${list}
             // V18.6 — ETF 跟車狀態卡(個股被哪些 ETF 動 + 進場價 vs 今價 ±%)
             this.renderEtfFollowCard(this.currentSymbolId);
             this.renderEtfHoldingsCard?.(this.currentSymbolId);   // V34.0 ETF 成分股
-            // V18.8 — 朱家泓策略狀態卡(5MA/20MA/-5% 距離 + 燈號)
-            this.renderChuStrategyCard(this.currentSymbolId);
         }
         // V20.5 — 處置 tab(從籌碼搬出)— 3 卡 + 實戰秘訣
         if (tab === 'disposed' && this.currentSymbolId) {
@@ -6543,8 +6450,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.9',
+    _APP_VERSION: 'V70.0.0',
     _CHANGELOG: [
+        { v: 'V70.0.0', dt: '2026-07-28', t: '💰 「該買幾張」風控卡復活 + 殭屍卡清畢', d: [
+            '復活「💰 該買幾張」卡(總覽):用這檔的波動度(ATR)+ 你在設定填的帳戶總資金,算出買幾張才不會一次虧超過帳戶 1%;含吊燈停損價、單檔上限 25%、已持倉超標警告。沒填資金會顯示引導。',
+            '順手清掉 3 張早已停用的殘留卡(今日掛單/朱式買點 UI 尾段/朱家泓策略狀態,功能都併進主卡了),~250 行殭屍碼再見。',
+        ]},
         { v: 'V69.9.9', dt: '2026-07-28', t: '🧭 當沖多空傾向與即時頁同引擎', d: [
             '當沖頁「今日偏多/偏空」過去自己用 3 個因子粗算,可能跟即時頁的當沖燈給相反方向 → 現在優先用同一顆引擎(分鐘K+報價 8 因子),兩頁結論一致;抓不到分鐘K才退回舊算法。',
         ]},
@@ -16861,43 +16772,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   仲裁 verdict 已存好,UI 永久隱藏(引擎照跑,別刪上面的判定邏輯)
         el.classList.add('hidden'); el.innerHTML = '';
         return;
-        // 💼 V56.2 持倉感知:有庫存 → 主卡切「出場管理」視角(數字中樞給兩條防線 + 今天動作 + 損益元);
-        //   空手才顯進場判。進場面結論降為小字(供加碼參考),仲裁 stash 不變(分批計畫照舊被 gate)。
-        let title = '🎯 現在該怎麼做(朱式買點・🌊 波段)';
-        let entryLine = '';
-        try {
-            const _inv = app._getInventory();
-            const _pos = _inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0);
-            if (_pos && pC > 0) {
-                const _cost = +_pos.cost, _sh = +_pos.shares || 0;
-                const uni = this._unifiedExitPlan(data, _cost);
-                const pnlPct = (pC - _cost) / _cost * 100;
-                const pnlNTD = _sh > 0 ? Math.round((pC - _cost) * _sh * 1000) : null;
-                const _m = v => v == null ? '' : `・${v >= 0 ? '+' : ''}${v.toLocaleString()} 元${v >= 0 ? '(獲利)' : '(虧損)'}`;
-                const tpS = uni?.takeShort, tpL = uni?.takeLong, slF = uni?.stopFinal;
-                entryLine = `<div class="text-[9px] text-gray-500 mt-1.5">📎 進場/加碼面:${big}(想加碼看下方分批計畫)</div>`;
-                title = '🎯 現在該怎麼做(你的庫存)';
-                head = `成本 ${_cost} ・ 損益 ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%${_m(pnlNTD)}`;
-                if (pnlPct <= -10) { big = '🚨 立刻停損出場'; cls = 'orange'; cta = `已虧超過 10% = 朱式「絕對停損」:非走不可、別凹單,留住本金才有下一次(小賠賺回容易、大賠很難)。`; }   // 🎨 V68.5.8 出場=橙警示色
-                else if (slF && pC <= slF) { big = '🚪 已破停損線・出場'; cls = 'orange'; cta = `現價 ${pC.toFixed(2)} 已跌破停損線 <b>${slF.toFixed(2)}</b>(發動K低 vs 成本-5% 取較高)→ 按紀律出場,別等反彈。`; }
-                else if (tpS && pC < tpS) { big = pnlPct > 0 ? '🟡 破5日線・先賣一半停利' : '🟡 破5日線・警戒'; cls = 'yellow'; cta = `⚡短線紀律:已跌破 5 日線 ${tpS.toFixed(2)} → ${pnlPct > 0 ? '先賣一半鎖住獲利,剩的看月線' : `盯緊停損線 <b>${slF ? slF.toFixed(2) : '—'}</b>,破了全出`};🌊 波段客可改守月線 ${tpL ? tpL.toFixed(2) : '—'}(跌破才出)。`; }
-                else { big = '🟢 續抱・兩張單掛好'; cls = 'green'; cta = `掛好就不用盯盤:①⚡短線停利 → 跌破 5 日線 <b>${tpS ? tpS.toFixed(2) : '—'}</b> 賣一半;②🛡️停損 → 跌破 <b>${slF ? slF.toFixed(2) : '—'}</b> 全部出。🌊 想抱波段大段改守月線 ${tpL ? tpL.toFixed(2) : '—'}。`; }
-            }
-        } catch (_) {}
-        const map = { green: ['text-green-400', 'border-green-500'], yellow: ['text-yellow-300', 'border-yellow-500'], red: ['text-red-400', 'border-red-500'], orange: ['text-orange-400', 'border-orange-500'], gray: ['text-gray-300', 'border-gray-500'] };
-        const [tc, bc] = map[cls];
-        el.className = `bg-[#161b22] border-2 ${bc} rounded-lg p-3 shadow-lg`;
-        el.innerHTML = `
-            <div class="flex items-center justify-between mb-1">
-                <div class="text-[11px] font-black text-gray-400">${title}</div>
-                <div class="text-[9px] text-gray-500">現價 ${pC ? pC.toFixed(2) : '—'}</div>
-            </div>
-            <div class="text-2xl font-black ${tc} mb-0.5">${big}</div>
-            <div class="text-[11px] font-bold text-gray-200 mb-1.5">${head}</div>
-            <div class="bg-[#0d1117] border-l-4 ${bc} pl-2.5 py-1.5 rounded-r"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${cta}</div></div>
-            ${entryLine}
-            <details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer list-none">📖 什麼是「回後買上漲」?勝率為何高?</summary><div class="text-[10px] text-gray-400 leading-relaxed mt-1">回後買上漲=<b>上升趨勢中</b>股價回檔到支撐(5日線/前低),<b>止穩再往上</b>那一刻買 —— 不是抄「近期新低」(那叫破底翻,風險高)。順著既有多頭趨勢、又等回檔便宜點進場,所以勝率高;朱家泓高勝率版再要求「紅K實體≥2% + 量增 + 收盤過昨高」三條件齊(約8成)。停損固定跌破 5 日線或前低,虧損小、賺賠比好。</div></details>`;
-        el.classList.remove('hidden');
     },
 
     // 🌡️ V57.3 — 盤中 vs 大盤判讀:這檔的漲跌是「大盤害的」還是「自己出事」?
@@ -17128,81 +17002,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         setTimeout(() => { try { paint(this._patternFitBacktest(data) || []); } catch (_) { el.classList.add('hidden'); } }, 60);
     },
 
-    renderTodayOrder(data) {
-        const el = document.getElementById('todayOrderCard');
-        if (!el) return;
-        // V44.5 — 已合併到「🩺 進場體檢」(含具體掛單價),此獨立卡永久隱藏(避免與進場體檢重複)
-        el.classList.add('hidden'); el.innerHTML = ''; return;
-        if (!Array.isArray(data) || data.length < 25) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-        const last = data.length - 1;
-        const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0);
-        const pC = C(data[last]); if (!pC) { el.classList.add('hidden'); return; }
-        const ma = k => { const s = data.slice(last - k + 1, last + 1); return s.length === k ? s.reduce((a, b) => a + C(b), 0) / k : null; };
-        const ma5 = ma(5), ma20 = ma(20);
-        const prevHigh = H(data[last]);                                  // 昨日最高(盤前=進場觸發參考)
-        const prevLow = Math.min(...data.slice(-15).map(L));             // 近期前低(停損參考)
-        const f = n => n == null ? '—' : (n >= 100 ? n.toFixed(0) : n.toFixed(2));
-        // 買賣訊號(朱式回後買上漲引擎)
-        let chu = []; try { chu = this._detectChuLongEntry(data) || []; } catch (_) {}
-        const hi = chu.find(s => s.tone === 'bull' && /高勝率做多買點/.test(s.title || ''));
-        const weak = chu.find(s => s.tone === 'bull' && /做多買點/.test(s.title || ''));
-        const wait = chu.find(s => /回檔等買點|多頭回檔/.test(s.title || ''));
-        const chase = chu.find(s => /追高/.test(s.title || ''));
-        const head = chu.find(s => /做頭/.test(s.title || ''));
-        // 持股(成本/張數)
-        const inInv = (this.inventory || []).find(i => i.symbol === this.currentSymbolId);
-        const costEl = document.getElementById('costInput');
-        const cv = costEl ? parseFloat((costEl.value || '').trim()) : NaN;
-        const cost = (!isNaN(cv) && cv > 0) ? cv : (inInv && inInv.cost > 0 ? inInv.cost : 0);
-        const lots = (inInv && inInv.shares > 0) ? inInv.shares : 1;     // 張(1張=1000股)
-        const held = cost > 0;
-        const amt = px => Math.round((px - cost) * lots * 1000);         // 以 X 價出場的損益金額
-        const moneyTxt = v => `${v >= 0 ? '+' : ''}${v.toLocaleString()} 元${v >= 0 ? '(獲利)' : '(虧損)'}`;
-
-        let light, action, tone, lines = [];
-        if (held) {
-            const pnl = amt(pC), pnlPct = cost > 0 ? (pC - cost) / cost * 100 : 0;
-            const belowMa5 = ma5 && pC < ma5, belowMa20 = ma20 && pC < ma20;
-            if (belowMa20) { light = '🔴'; tone = 'green'; action = '減碼 / 出場'; lines = [`已跌破月線 ${f(ma20)} = 波段轉弱,今天開盤沒站回就<b>減碼或出場</b>,別凹單。`, `目前損益:<b>${moneyTxt(pnl)}</b>(${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%,成本 ${f(cost)}×${lots}張)`]; }
-            else if (belowMa5) { light = '🟡'; tone = 'yellow'; action = '停利防守'; lines = [`跌破 5 日線 ${f(ma5)} = 短線轉弱,朱式:<b>今天沒站回 5MA 先出一趟</b>(落袋為安,回檔再接)。`, `硬防線:跌破月線 ${f(ma20)} 一定走。目前損益:<b>${moneyTxt(pnl)}</b>(${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)`]; }
-            else { light = '🟢'; tone = 'red'; action = '續抱'; const slPnl = ma5 ? amt(ma5) : null; lines = [`站穩 5 日線 ${f(ma5)}、月線 ${f(ma20)} = 續抱。<b>停利防線:跌破 5MA ${f(ma5)} 先跑一趟</b>${slPnl != null ? `(那時約 ${moneyTxt(slPnl)})` : ''}。`, `硬停損:跌破月線 ${f(ma20)} 或成本 −5% ${f(cost * 0.95)}。目前損益:<b>${moneyTxt(pnl)}</b>(${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)`]; }
-        } else {
-            // 空手:給買點或叫你等
-            const stopPct = (pC - prevLow) / pC * 100;
-            if (head) { light = '🔴'; tone = 'green'; action = '別買 · 觀望'; lines = ['高檔出現做頭訊號(大量長紅平均成本被跌破)= 主力出貨,<b>今天別追</b>,等重新帶量站回再說。']; }
-            else if (hi) { light = '🟢'; tone = 'red'; action = '可進場'; lines = [`朱式高勝率買點成型(約8成)。<b>買點:紅K站上 5 日線 ${f(ma5)} 且過昨高 ${f(prevHigh)} 就進</b>。`, `停損:跌破前低 ${f(prevLow)}(約 −${stopPct.toFixed(1)}%);目標:前高。`]; }
-            else if (weak) { light = '🟡'; tone = 'yellow'; action = '小量試單'; lines = [`站上 5 日線但攻擊力道未滿 → <b>可小量試</b>,別重壓。`, `站上 ${f(ma5)}、過昨高 ${f(prevHigh)} 加碼;停損跌破前低 ${f(prevLow)}。`]; }
-            else if (wait) { light = '⏳'; tone = 'yellow'; action = '等買點'; lines = [`波段多頭回檔中、<b>還沒到買點</b>。等紅K站回 5 日線 ${f(ma5)} 且不破前低 ${f(prevLow)} 再進,現在別急。`]; }
-            else if (chase) { light = '🟡'; tone = 'yellow'; action = '別追高'; lines = [`多頭但已到追高區 → 買低不追高。<b>等回檔到 5 日線 ${f(ma5)} 附近、不破前低 ${f(prevLow)} 再找買點。</b>`]; }
-            else { light = '⛔'; tone = 'gray'; action = '不建議做多'; lines = [`非波段多頭(或訊號不足),今天<b>不建議做多</b>。等站穩月線 ${f(ma20)} 且帶量突破再看。`]; }
-        }
-        // 💰 V42.6 具體掛單參考價(白話直接給價):空手給掛買價、持股給掛賣停利/停損價
-        let orderLine = '';
-        if (held) {
-            orderLine = `💰 <b>掛賣參考價</b>:停利 → 跌破 5 日線 <b>${f(ma5)}</b> 就掛賣;硬停損 → 跌破月線 <b>${f(ma20)}</b> 或成本−5% <b>${f(cost * 0.95)}</b> 一定要賣。`;
-        } else if (!head && (hi || weak || wait || chase)) {
-            orderLine = `💰 <b>掛買參考價</b>:穩健 → 掛在 5 日線 <b>${f(ma5)}</b> 附近等拉回接;積極 → 站上昨高 <b>${f(prevHigh)}</b> 追進。買到後停損掛 <b>${f(prevLow)}</b>。`;
-        } else if (!held) {
-            orderLine = `💰 <b>現在別掛買</b>:等站上月線 <b>${f(ma20)}</b>、或紅K站回 5 日線 <b>${f(ma5)}</b> 再考慮。`;
-        }
-        if (orderLine) lines.push(orderLine);
-        const tc = tone === 'red' ? 'text-red-200' : tone === 'green' ? 'text-green-200' : tone === 'yellow' ? 'text-yellow-200' : 'text-gray-300';
-        const bc = tone === 'red' ? 'border-red-500 bg-red-900/25' : tone === 'green' ? 'border-green-500 bg-green-900/25' : tone === 'yellow' ? 'border-yellow-500 bg-yellow-900/15' : 'border-gray-600 bg-[#161b22]';
-        el.className = `w-full rounded-lg border-2 ${bc} p-3 shadow-lg`;
-        el.innerHTML = `
-            <div class="flex items-center justify-between mb-1.5">
-                <span class="text-[12px] font-black text-gray-100">📋 今日這檔怎麼做 <span class="text-[9px] text-gray-500 font-normal">盤前一眼</span></span>
-                <button onclick="alert('【今日操作重點】\\n\\n把 App 算好的訊號合成一句「今天怎麼做」,盤前看昨收就知道:\\n\\n・空手 → 給你買點價位 + 進場條件 + 停損。\\n・持股(有填成本)→ 給你停利/停損價 + 損益金額試算。\\n\\n用的是朱老師方法:多頭回後站上 5 日線買、跌破 5 日線停利、跌破月線/前低停損。\\n\\n⚠️ 純公式僅供參考;實際以開盤量價為準,嚴守停損。填成本(上方成本價欄或加入庫存)才會顯示持股賣點。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖</button>
-            </div>
-            <div class="flex items-center gap-2.5 mb-1.5">
-                <div class="text-3xl flex-shrink-0">${light}</div>
-                <div class="text-lg font-black ${tc} leading-tight">${action}</div>
-                <div class="ml-auto text-right text-[9px] text-gray-500 leading-tight">參考價 <span class="font-mono font-bold text-gray-300">${f(pC)}</span><br>${held ? `成本 ${f(cost)}` : '空手'}</div>
-            </div>
-            ${lines.map(t => `<div class="text-[11px] text-gray-200 leading-relaxed mb-1">・${t}</div>`).join('')}
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 5MA=短線防守、月線=波段防守、前低=硬停損。${held ? '' : '想看持股賣點 → 填上方「成本價」或加入庫存。'}純公式僅供參考,實際以開盤量價為準。</div>`;
-        el.classList.remove('hidden');
-    },
 
     // 📊 V42.2 — 位階溫度計(純公式):距歷史高折價 + 52週價格位階 → 強勢主流 vs 低基期落後
     _priceRankData(data) {
@@ -22079,7 +21878,6 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // V19.6 — 三張 detail 卡 reactive 刷新(必須在 activeData 更新「之後」,否則讀到舊股資料)
         try { this.renderEtfFollowCard(targetSym); } catch(_) {}
         try { this.renderEtfHoldingsCard?.(targetSym); } catch(_) {}   // 🚦 V68.3.5 ETF 卡移到總覽 → 每次 refresh 都渲染(不再只在籌碼 sub-tab)
-        try { this.renderChuStrategyCard(targetSym); } catch(_) {}
         try { this.renderAttentionDetailCard(targetSym); } catch(_) {}
         // V20.0 — 注意股 8 款掃描器
         try { this.renderAttentionScanCard(targetSym); } catch(_) {}
@@ -23425,9 +23223,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     // 🎯 V66.9 — ATR 波動率部位管理 + 吊燈停損(散戶最缺的機構級風控:算「這檔該買幾張」把單筆虧損控在風險% 內)
     // 🧭 V68.4.6 — 使用者反映「該買幾張」看不懂 → 改由總覽「總評儀表板 → 部位水位」取代(不用填資金,看總分+波動決定水位);此卡停用
     _renderPositionSizer(data) {
+        // 🎯 V70.0.0 U-8 復活:全 App 唯一回答「該買幾張」的卡(ATR 風控;未填帳戶資金顯 CTA 引導)
         const box = document.getElementById('positionSizerCard');
-        if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
-        return;
+        if (!box) return;
         try {
             const ind = this.indicators || {}, last = (Array.isArray(data) ? data.length : 0) - 1;
             if (last < 22) { box.classList.add('hidden'); box.innerHTML = ''; return; }
@@ -29620,7 +29418,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // V43.7 移除:📐 K線分析報告(AI) + 🕯️ K線型態+量評分 → 由上方朱老師口吻總評取代
         try { this.renderPriceRankCard(data); } catch (_) {}   // 📊 V42.2 位階溫度計(基本頁)
         try { this._renderStockEarningsReminder(this.currentSymbolId); } catch (_) {}   // 📢 V51.6 法說會提醒(現價下方,2 交易日內)
-        try { this.renderTodayOrder(data); } catch (_) {}      // 📋 V42.5 今日操作重點(首席頁置頂)
         try { this.renderChuActionCard(data); } catch (_) {}   // 🎯 V55.4 現在該怎麼做(朱式買點直判)
         try { this._renderPositionSizer(data); } catch (_) {}  // 🎯 V66.9 ATR 波動率部位管理(該買幾張)
         try { this.renderMktCompare(data); } catch (_) {}      // 🌡️ V57.3 本股 vs 大盤(async 自跑,不卡主流程)
