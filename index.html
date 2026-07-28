@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6545,8 +6545,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.6',
+    _APP_VERSION: 'V69.9.7',
     _CHANGELOG: [
+        { v: 'V69.9.7', dt: '2026-07-28', t: '🏷️ 「主力成本」正名:三種算法三個名字', d: [
+            '過去三種不同算法都叫「主力成本」→ 不同卡片數字對不上。現在:K 線上那條線(買超王均價)才叫「主力成本」;分點動向卡的改叫「吸籌加權成本」;K 棒訊號那個改叫「外資估算成本」。',
+            '算法都沒動,只是讓每個數字有自己的名字,看到不同數字不再以為 App 算錯。',
+        ]},
         { v: 'V69.9.6', dt: '2026-07-28', t: '⛏️ 網站空間瘦身 18.5MB', d: [
             '一個只有採礦機自己用的中介快取檔(18.5MB)過去每天跟著網站一起發布 → 改存到資料備份分支,網站空間直接省 18.5MB,離 GitHub 1GB 上限更遠。',
         ]},
@@ -15464,8 +15468,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             : '<span class="text-gray-400">方向未連續</span>';
         const costTxt = cost ? `<span class="font-mono font-black text-gray-100">${cost.toFixed(1)}</span>` : '<span class="text-gray-500">—</span>';
         const costVs = (cost && lastClose) ? (lastClose >= cost
-            ? `<span class="text-red-400 text-[10px]">現價高於主力成本 +${((lastClose - cost) / cost * 100).toFixed(1)}%（主力帳面獲利,支撐較穩）</span>`
-            : `<span class="text-green-400 text-[10px]">現價低於主力成本 ${((lastClose - cost) / cost * 100).toFixed(1)}%（主力套牢,留意解套賣壓）</span>`) : '';
+            ? `<span class="text-red-400 text-[10px]">現價高於吸籌成本 +${((lastClose - cost) / cost * 100).toFixed(1)}%（主力帳面獲利,支撐較穩）</span>`
+            : `<span class="text-green-400 text-[10px]">現價低於吸籌成本 ${((lastClose - cost) / cost * 100).toFixed(1)}%（主力套牢,留意解套賣壓）</span>`) : '';
         const concTxt = conc != null ? `<span class="font-mono font-black ${conc >= 40 ? 'text-red-400' : 'text-gray-200'}">${conc.toFixed(0)}%</span>` : '—';
         el.innerHTML = `
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
@@ -15476,7 +15480,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     <div class="text-[11px]">${streakTxt}</div>
                 </div>
                 <div class="bg-[#0d1117] rounded p-2 text-center">
-                    <div class="text-[9px] text-gray-500 mb-1">主力成本估</div>
+                    <div class="text-[9px] text-gray-500 mb-1">吸籌加權成本</div>
                     <div class="text-base">${costTxt}</div>
                 </div>
                 <div class="bg-[#0d1117] rounded p-2 text-center">
@@ -15485,7 +15489,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 </div>
             </div>
             ${costVs ? `<div class="mt-2 text-center">${costVs}</div>` : ''}
-            <div class="text-[9px] text-gray-600 mt-2 leading-snug">💡 主力成本=買超日收盤依量加權・集中度≥40%=主力鎖籌・全公式計算非 AI・僅供參考</div>
+            <div class="text-[9px] text-gray-600 mt-2 leading-snug">💡 吸籌加權成本=買超日收盤依量加權(跟 K 線「主力成本」線=買超王均價是不同算法,故不同名)・集中度≥40%=主力鎖籌・全公式計算非 AI・僅供參考</div>
         </div>`;
     },
 
@@ -16468,7 +16472,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
-    // 🎯 V66.6 — 主力成本乖離(現價 vs 外資 60 日 |淨額|-加權估算成本):貼近=安全加碼區,乖離過大=主力大賺易跑。自足。
+    // 🎯 V66.6 — 外資估算成本乖離(V69.9.7 U-1 改名,原誤稱「主力成本」;現價 vs 外資 60 日 |淨額|-加權估算成本):貼近=安全加碼區,乖離過大=主力大賺易跑。自足。
     _detectInstCostBias(data) {
         const out = [];
         if (!Array.isArray(data) || data.length < 20) return out;
@@ -16479,9 +16483,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         for (let j = Math.max(0, n - 60); j < n; j++) { const fn = +data[j].foreign_net; if (fn != null && !isNaN(fn)) { const w = Math.abs(fn), px = C(data[j]); if (w > 0 && px > 0) { sw += w; swp += w * px; has = true; } } }
         if (!has || sw <= 0) return out;
         const cost = swp / sw, bias = (c - cost) / cost * 100;
-        if (bias >= 25) out.push({ tone: 'warn', title: '⚠️ 主力成本乖離過大', val: cost,
-            msg: `現價離外資估算成本 ${cost.toFixed(2)} 已 <b>+${bias.toFixed(0)}%</b>=外資帳上大賺,隨時可獲利了結;別在主力成本上方太遠處追高。` });
-        else if (bias >= -3 && bias <= 8) out.push({ tone: 'bull', title: '🎯 貼近主力成本(加碼區)', val: cost,
+        if (bias >= 25) out.push({ tone: 'warn', title: '⚠️ 外資估算成本乖離過大', val: cost,
+            msg: `現價離外資估算成本 ${cost.toFixed(2)} 已 <b>+${bias.toFixed(0)}%</b>=外資帳上大賺,隨時可獲利了結;別在外資估算成本上方太遠處追高。` });
+        else if (bias >= -3 && bias <= 8) out.push({ tone: 'bull', title: '🎯 貼近外資估算成本(加碼區)', val: cost,
             msg: `現價貼近外資估算成本 ${cost.toFixed(2)}(乖離 ${bias >= 0 ? '+' : ''}${bias.toFixed(0)}%)=跟主力同一區進場,風險相對低的佈局/加碼位,守成本區不破。` });
         return out;
     },
@@ -27092,7 +27096,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch (_) {}
         // 🧱 五檔壓力盤(V68.0.7 由五檔卡移入)
         let obp = null; try { obp = this._orderBookPressure(q.bids, q.asks, px); } catch (_) {}
-        // 🧲 主力成本(短版:只取結論+價位)
+        // 🧲 外資估算成本(短版:轉引 _detectInstCostBias,只取結論+價位)
         let costShort = null; try { const cb = this._detectInstCostBias(this.activeData || []); if (cb && cb[0]) costShort = `${cb[0].title} · 成本約 ${(+cb[0].val).toFixed(2)}`; } catch (_) {}
         // 🚦 唯一結論:真假判讀(真漲/假漲誘多/真跌/假跌洗盤/漲跌停鎖死/觀望)
         let judge = null;
