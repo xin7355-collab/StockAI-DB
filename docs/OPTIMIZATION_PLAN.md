@@ -263,7 +263,7 @@ V69.7.5 只改了「總覽 vs 觀察頁」兩處,還有 5 處沒動:
 | [x] U-8 | 💰該買幾張(ATR 部位管理) | ✅ V70.0.0 **依建議復活**(kill-switch 移除;headless 真渲染驗證 CTA/張數/隱藏三路徑,風控數學對:1% 帳戶=單筆最大虧)| 1471 | — |
 | [x] U-9 | 🎯朱式買點 | ✅ V70.0.0 **修正原計畫:是活引擎非殭屍**(_chuActionVerdict 仲裁 3 個消費者)→ 只刪 return 後死 UI 尾段 ~37 行,引擎保留 | 1472 | — |
 | [x] U-10 | ⚔️朱家泓策略狀態 | ✅ V70.0.0 函式+2 呼叫點+DOM 全刪(V53.x 已併出場總表)| — | — |
-| [ ] U-11 | 第一/第二目標價 | DOM 1588 寫死 hidden | 1588 | 仍每次 refresh 計算 |
+| [x] U-11 | 第一/第二目標價 | ✅ V70.0.2 tpSlReason 搬進出場總表頂端(琥珀警示框,per-stock 守門);計算本身是活的(供出場總表 stash 目標值,комment L1583 明寫)不可刪 | 1588 | — |
 | [x] U-12 | 即時真假判讀 | ✅ V69.9.5 函式+hidden DOM+清理殘留全刪(功能在盤中作戰室)| — | — |
 | [x] U-13 | 主升段體檢 | ✅ V69.9.5 函式+hidden DOM 刪(_mainRiseStage helper 保留,朱老師卡在用)| — | — |
 | [~] U-14 | AI 首席總評 | **「仍花額度」是過期描述**:V51.4 已把 runUnifiedGroqAnalysis no-op(entry 即 return,0 額度);真正待辦=刪整條死鏈(no-op 函式體 ~400 行 + _renderUnifiedAIResult/renderSummaryCard/updateAITranslator/analyzeStockPredict + hidden DOM),⚠️ **check_prompt_vars.py 硬依賴此函式存在**,刪除須連驗證腳本一起改 → 留獨立批次 | 1486 | — |

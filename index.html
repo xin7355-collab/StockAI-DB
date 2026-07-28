@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.0.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6450,8 +6450,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.0.1',
+    _APP_VERSION: 'V70.0.2',
     _CHANGELOG: [
+        { v: 'V70.0.2', dt: '2026-07-28', t: '📤 出場總表補「為什麼目標價被停用」', d: [
+            '島狀反轉/大黑K破月線/空頭環境時,雙目標會被停用 — 原因說明過去寫進一張看不見的舊卡,現在直接顯示在出場總表頂端(琥珀色警示框,有觸發才出現)。',
+        ]},
         { v: 'V70.0.1', dt: '2026-07-28', t: '🚧 即時圖漲跌停線 + 板塊數字抓包修正 + LINE 備份指引', d: [
             '【即時K線】分時/1分/5分圖加「漲停/跌停」紅綠虛線(價格靠近才看得到,平時不干擾);1分/5分的昨收基準改用真昨收(跳空日不再偏)。',
             '【板塊修正】你抓到的沒錯:①盤中更新過去每板塊只抓 1 檔(南亞科跌停→DRAM 顯 -10%)→ 改每板塊 3 檔成分股平均 ②矽晶圓等新板塊過去顯「昨天的值」卻標今日(+1.8% 假逆勢抗跌)→ 過期值改灰字標「昨」且不給訊號,按「盤中即時更新」就有全板塊今日真值。',
@@ -25105,6 +25108,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const x = this._chuExitRules(data, ind, last, cost);
         if (!x) { box.classList.add('hidden'); return; }
         box.classList.remove('hidden');
+        // 🧭 V70.0.2 U-11:「為什麼雙目標被停用」搬到這裡(原寫進永久 hidden 的目標價卡,從沒人看到)
+        const _tpsl = (this._tpSlReason && this._tpSlReason.sym === this.currentSymbolId) ? this._tpSlReason.txt : null;
+        const tpSlReasonHtml = _tpsl ? `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r px-2.5 py-1.5 mb-2 text-[10px] text-amber-300 leading-relaxed">${_tpsl}</div>` : '';
 
         // V19.7 — 大改版:分「📤 出場(停利)」+「🛡️ 守底(停損)」兩區,加每條「賣的話損益多少元」
         //          shares 預設 1 張(1000 股),若庫存有 shares 用實際持股算
@@ -25259,6 +25265,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span>🎯 出場總表 <span class="text-[10px] text-gray-500 font-normal">(劇本+有效價位・點看心法)</span></span>
                 <span class="text-[10px] text-gray-500 font-normal">現價 ${x.pC.toFixed(2)}</span>
             </div>
+            ${tpSlReasonHtml}
             ${mirrorHtml}
             ${targetSection}
             ${statusSection}
@@ -29471,6 +29478,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
+        // 🧭 V70.0.2 U-11:原容器在永久 hidden 的卡裡,使用者從沒看過「為什麼雙目標被停用」
+        //   → 同步存到 this._tpSlReason,由出場總表(chuExitSopCard)頂部顯示
+        this._tpSlReason = tpSlReason ? { sym: this.currentSymbolId, txt: tpSlReason } : null;
         const _tpSlReasonEl = document.getElementById('tpSlReason');
         if (_tpSlReasonEl) {
             if (tpSlReason) { _tpSlReasonEl.textContent = tpSlReason; _tpSlReasonEl.classList.remove('hidden'); }
