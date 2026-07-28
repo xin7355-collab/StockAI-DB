@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6591,8 +6591,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.1',
+    _APP_VERSION: 'V71.0.2',
     _CHANGELOG: [
+        { v: 'V71.0.2', dt: '2026-07-28', t: '⚡ 切股變順:一次切股從重畫 2-3 次圖改成只畫 1 次', d: [
+            '以前每切一檔股票,K 線圖會被完整重建 2-3 次(雲端運算回來一次、即時報價補上再一次、除權息資料回來又一次)→ 手機上會覺得卡一下。',
+            '現在同一瞬間的多次重畫會自動合併成一次;而且「這檔股票根本沒有除權息紀錄」或「你把除權息旗標關掉」時,就完全不再多畫那一次(重看看過的股票也一樣省下)。',
+            '你自己勾疊圖、切週期、拉十字線的重畫維持原本的即時反應,不會有延遲感。',
+        ]},
         { v: 'V71.0.1', dt: '2026-07-28', t: '🛡️ 防守價一覽:一眼看出「會先破哪一道」', d: [
             '個股頁 → 出場 → 防守出場,最上方新增「🛡️ 防守價一覽」:把下面各張卡各自算出的防守價(5MA/20MA/60MA 保衛價、突破棒防守價、突破棒最低價、停損價)排成一條尺,由近到遠 — 最先會碰到的排最上面並標 ⚠️。',
             '已經跌破的價位會自動移到「⬆️ 已跌破(現在變成上方壓力)」區,提醒你反彈到那附近容易遇賣壓。',
@@ -22564,7 +22569,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             document.getElementById('chipCostInput').value = '';
             this.fetchCorpEvents(targetSym);
             // ✂️ V53.x — 抓除權息日期,完成後重繪 K 線插「息」旗標(每檔快取,不重複抓)
-            this._loadExDividends(targetSym).then(() => { if (this.currentSymbolId === targetSym) { try { this.renderChart(); } catch (_) {} } }).catch(() => {});
+            // ⚡ V71.0.2 P1-4:原本無條件重繪整張圖 —— 但多數股票沒有除權息紀錄(或使用者關掉了旗標),
+            //   那一次重建是純浪費(重訪已快取的股票也照樣觸發)。改成「真的有旗標要插」才重繪,且走合流器。
+            this._loadExDividends(targetSym).then(list => {
+                if (this.currentSymbolId !== targetSym) return;
+                if (!list || !list.length) return;
+                if (!document.getElementById('toggleExDiv')?.checked) return;   // 關掉時本來就不畫旗標
+                this._scheduleChart();
+            }).catch(() => {});
             this.fetchChipCost(targetSym);
             masterWorker.postMessage({ activeData: this.activeData, marketCtx: this._buildMarketCtx() });
             // ⚡ V46.3 — 報價/名稱/概念已顯即早收 loading 遮罩,指標卡由 worker 回來(onWorkerMessage)再補,切股不再卡「雲端運算中」
@@ -30550,7 +30562,21 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch (_) {}
     },
 
+    // ⚡ V71.0.2 P1-4 — renderChart 合流器:一次切股原本會觸發 2-3 次「整份 option 重建」
+    //   (worker 回傳 ×1~2 + 除權息 fetch 回來 ×1)。同一幀內的多次呼叫合併成一次。
+    //   renderChart 每次都重讀 this.activeData / this.indicators,所以延後一幀畫出來的必定是最新狀態。
+    //   ⚠️ 使用者主動操作(勾選疊圖/切週期/十字準星)仍直接呼叫 renderChart(),保持同步手感。
+    _scheduleChart() {
+        if (this._chartRaf) return;
+        const _raf = window.requestAnimationFrame || (fn => setTimeout(fn, 16));
+        this._chartRaf = _raf(() => { this._chartRaf = null; try { this.renderChart(); } catch (_) {} });
+    },
+
     renderChart() {
+        if (this._chartRaf) {   // 已有排程 → 這次直接畫,取消排程避免同內容再畫一次
+            try { (window.cancelAnimationFrame || clearTimeout)(this._chartRaf); } catch (_) {}
+            this._chartRaf = null;
+        }
         if (!this.activeData.length || !this.chartInstance) return;
         let currentZoomStart = 70, currentZoomEnd = 100;
         try { const currentOption = this.chartInstance.getOption(); if (currentOption && currentOption.dataZoom && currentOption.dataZoom.length > 0) { currentZoomStart = currentOption.dataZoom[0].start; currentZoomEnd = currentOption.dataZoom[0].end; } } catch(e) {}
@@ -32148,7 +32174,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this.updateFavIcon();
         this.updateMonitorIcon();
         this.refreshStrategy();
-        this.renderChart();
+        this._scheduleChart();   // ⚡ V71.0.2 P1-4:與同幀的除權息/報價升級重繪合流,一次切股只重建一次圖
 
         // 🤖 全自動 AI 分析：股票載入完成後即觸發(同股 5 分鐘 cache,且僅在有快取時自動)
         this._triggerAIRecalcIfDirty('autoload').catch(e => console.warn('[AI autoload]', e));

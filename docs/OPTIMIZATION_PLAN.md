@@ -105,9 +105,17 @@
 - `_loadFmx`(12968)一個呼叫展開成 **7 個檔案**;`fetchMacroData` 另有 7 個
 - **修法**:非首屏必要的延後到 `requestIdleCallback` 或該分頁真被打開才拉;`_loadFmx` 的 7 檔請後端合併成單一 `fmx_pack.json`
 
-### [ ] P1-4 一次切股觸發 2–3 次完整圖表重建
-- `23040/23044` post #1 → `23055` 真報價回來再 post #2 → `_loadExDividends().then()`(23038)第 3 次 `renderChart`
-- **修法**:第二輪只做 series data 局部 merge,不重建整份 option;用 `requestAnimationFrame` 合併成一幀
+### [x] P1-4 一次切股觸發 2–3 次完整圖表重建 ✅ V71.0.2
+- 三條路徑:worker post #1 → `onWorkerMessage` renderChart / 報價升級 post #2 → 再一次 / `_loadExDividends().then()` 第三次
+- **實作(修正原計畫:沒做 series 局部 merge)**:
+  1. 新增合流器 `_scheduleChart()` — rAF 合併同幀多次呼叫;`renderChart()` 進入時若有排程就取消(手動操作優先、且不會同內容再畫一次)。
+     使用者主動操作(勾疊圖 / 切週期 / 十字準星)仍走同步 `renderChart()`,手感不變。
+  2. **除權息那次改成有條件**:原本無條件重繪,但多數股票沒有除權息紀錄、或使用者關掉旗標 → 那次是純浪費;
+     而且 `_exDivCache` 命中(重訪同一檔)時 `.then` 照樣觸發 → 每次重訪都白畫一張。
+     改成 `list.length > 0 && #toggleExDiv:checked` 才排程。
+- **為何不做 series 局部 merge**:renderChart 的 option 是整份動態組出來的(markPoint/markLine/visualMap/graphic 隨疊圖選項變),
+  局部 merge 要維護「哪些欄位這輪沒變」的對照表,風險遠高於收益;合流 + 條件化已把常見情況從 3 次降到 1 次。
+- headless 驗證:同幀 3 呼叫→實跑 1 次 / 排程中手動呼叫→總共 1 次 / 無排程時同步照跑 / rAF flag 清乾淨可再排程。
 
 ### [x] P1-5 `_renderChipTimeline` 裸 `echarts.init` 洩漏
 - **證據**:`11002`、`11032` 沒有 `getInstanceByDom() ||` 保護(同檔其他 6 處都有);從不 dispose
