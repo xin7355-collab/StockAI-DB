@@ -29,6 +29,27 @@ self.addEventListener('fetch', e => {
         return;
     }
 
+    // ⚡ V69.8.5 P1-2:index.html(導覽請求)改 stale-while-revalidate —
+    //   先吐快取「秒開畫面」,背景抓新版寫回快取。版本更新不受影響:deploy 時 sw.js 的
+    //   CACHE_NAME 被注入 commit SHA → 新 SW install→activate→controllerchange→自動 reload
+    //   (既有機制,見 CLAUDE.md)。原本 network-first 每次開 PWA 都重新下載 1MB 才有畫面。
+    if (e.request.mode === 'navigate' || reqUrl.pathname.endsWith('/index.html')) {
+        e.respondWith((async () => {
+            const cached = await caches.match(e.request);
+            const fetchP = fetch(e.request).then(res => {
+                if (res && res.ok) {
+                    const clone = res.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+                }
+                return res;
+            }).catch(() => null);
+            if (cached) { fetchP.catch(() => {}); return cached; }   // 有快取:秒回,背景更新
+            const net = await fetchP;                                 // 首次:等網路
+            return net || new Response('offline', { status: 503 });
+        })());
+        return;
+    }
+
     // 【修復 K 線缺資料】動態資料（K線/籌碼/各式 cache JSON）一律走純網路，永不快取，
     // 杜絕手機 PWA 吃到舊的採礦結果。斷網時才退而求其次拿舊快取。
     // V18.2 — fetch 加 18 秒 hard timeout(防 iOS PWA 網路堆疊偶爾 hang 不返,

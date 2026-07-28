@@ -4,7 +4,7 @@
 > 方法:5 個平行代理掃描(前端死碼 / 資料流對帳 / 採礦效率 / UI 卡片 / 效能)+ **逐條人工讀原始碼驗證**
 > ⚠️ 代理 findings 約 1/3 是誤報,本文件只保留**已人工驗證通過**的項目;誤報另列於文末留紀錄。
 >
-> **進度**:✅ P0 全部 8 條已於 V69.8.4 修復(Batch A+B+C 合併執行)。
+> **進度**:✅ P0 全部 8 條已於 V69.8.4 修復;✅ P1 六條(P1-1/2/5/6/7/8)已於 V69.8.5 修復,剩 P1-3(fmx_pack 合併)與 P1-4(圖表局部更新,較大重構)。
 > **接手方式**:從 P0 開始,一次做一個 Batch,每個 Batch 跑完四驗證再 push。做完一項就在下面打勾。
 
 ---
@@ -86,7 +86,7 @@
 
 ## 🟠 P1 — 效能(使用者感覺得到卡)
 
-### [ ] P1-1 盤中每 10 秒全量重跑分析 ← **最有感的卡頓,一個字元的修法**
+### [x] P1-1 盤中每 10 秒全量重跑分析 ← **最有感的卡頓,一個字元的修法**
 - **證據(已驗)**:`index.html:3974` `this.analyze(this.currentSymbolId, true, true, true)`;
   簽名 `analyze(symCode, skipCheck, forceRefresh, silent)`(22856)→ 第 3 個 `true` = forceRefresh;
   `fetchHistoricalData:10032` `if (!forceRefresh)` → **跳過 IndexedDB 快取**。
@@ -94,7 +94,7 @@
 - **修法**:第 3 參數改 `false`(30 分 TTL 生效),只用 `fetchFugleData` 更新最後一根 K 棒 + 輕量價格 DOM 更新。
 - **預期**:盤中主執行緒佔用降 90%+,行動數據用量降一個量級。
 
-### [ ] P1-2 首屏白畫面 3–6 秒
+### [x] P1-2 首屏白畫面 3–6 秒
 - `index.html:40307` `window.onload = () => app.init()` → 要等 3 支 CDN script 全下載完才開始
 - `index.html:3846` init 尾端 `await analyze('2330')` 跑完**才**切到庫存頁(3864)— 使用者要看的排最後
 - `sw.js:45-60` 對 index.html 是 network-first → 每次開 PWA 都重下載 1.01 MB
@@ -109,21 +109,21 @@
 - `23040/23044` post #1 → `23055` 真報價回來再 post #2 → `_loadExDividends().then()`(23038)第 3 次 `renderChart`
 - **修法**:第二輪只做 series data 局部 merge,不重建整份 option;用 `requestAnimationFrame` 合併成一幀
 
-### [ ] P1-5 `_renderChipTimeline` 裸 `echarts.init` 洩漏
+### [x] P1-5 `_renderChipTimeline` 裸 `echarts.init` 洩漏
 - **證據**:`11002`、`11032` 沒有 `getInstanceByDom() ||` 保護(同檔其他 6 處都有);從不 dispose
 - **影響**:每次切股在籌碼頁 +2 個殘留 canvas + resize listener;切 20 檔 = 40 個洩漏實例
 - **修法**:改成 `echarts.getInstanceByDom(el) || echarts.init(el)`。順帶檢查 `22247`、`29760`
 
-### [ ] P1-6 localStorage 淘汰清單幾乎全打不中 → iOS 5MB 爆掉會靜默丟持股
+### [x] P1-6 localStorage 淘汰清單幾乎全打不中 → iOS 5MB 爆掉會靜默丟持股
 - **證據**:`3690` 的 5 個前綴中,`proTerm_kline_` 實際在 IndexedDB、`proTerm_chips_` 從沒被寫過
 - **沒列入的真兇**:`chipTimeline_${sym}`、`brokerChips_v2_${sym}`、`industryReport_${sym}`、`aiCache_stockPredict_${sym}`、`aiCache_dispExit_${sym}`、`gnewsAi_*`、`evImpact_*`(其中數個存的是**渲染好的 HTML 字串**)
 - **修法**:補上 7 個前綴 + 改成依 `ts` 由舊到新刪;HTML 快取改存原始 data
 
-### [ ] P1-7 IndexedDB `klineCache` 從不清理
+### [x] P1-7 IndexedDB `klineCache` 從不清理
 - **證據**:`idb.put`(10039)有,但全檔 `idb.delete` / `idb.clear` = **0 處**
 - **修法**:啟動時 prune >7 天,或 200 檔 LRU
 
-### [ ] P1-8 `_huntAutoTimer` 有 start 沒 stop
+### [x] P1-8 `_huntAutoTimer` 有 start 沒 stop
 - **證據**:`40056` start,但全檔無 `_stopHuntAutoScan`;其他 4 個輪詢在 `switchAppTab` 都有對應 stop
 - **修法**:`switchAppTab` 加 `if (tabId !== 'hunt') this._stopHuntAutoScan()`
 
