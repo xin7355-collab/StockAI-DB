@@ -21,7 +21,7 @@ permissions:
 
 # 🔒 避免跟 daily_miner.yml 同時 force-push gh-pages 互相打架
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages-push   # 🩹 V69.8.4 P0-7:原拼成 gh-pages-deploy(全專案其他 13 支都是 gh-pages-push)→ 完全沒序列化,09:00 UTC 那輪必被 daily_miner force-push 蓋掉白跑
   cancel-in-progress: false
 
 jobs:

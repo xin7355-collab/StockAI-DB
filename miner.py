@@ -4187,9 +4187,9 @@ def fetch_daytrade_ratio():
     if not detect_finmind_paid():
         print("  ⏭️ 當沖比:未付費,跳過(降版)")
         return
-    if not Path(DB_PATH).exists():
-        print("  ⚠️ 當沖比:SQLite 不在(需總量算比率)— 保留舊檔")
-        return
+    # 🩹 V69.8.4 P0-5:改讀 data/{sym}.json 的 volume 算總量。原版依賴 SQLite,
+    #    但 chips job 沒有 stock_hunter.db → 永遠「保留舊檔」跳過,daytrade.json 從未產出。
+    #    data/ 由 workflow 從 origin/data 還原(昨日 K),比率最多落後一天,誠實可接受。
     rows = _fm_bulk_days('TaiwanStockDayTrading', 6, 12)
     if not rows:
         print("  ⚠️ 當沖比:bulk 無資料 — 保留舊檔")
@@ -4210,28 +4210,40 @@ def fetch_daytrade_ratio():
     if not all_dates:
         print("  ⚠️ 當沖比:0 檔 — 保留舊檔")
         return
-    conn = get_db_conn()
-    vol_map: dict = {}
-    try:
-        q = conn.execute("SELECT symbol, trade_date, volume FROM stock_history WHERE trade_date >= ?", (all_dates[0],))
-        for sym, d, vol in q.fetchall():
-            if vol and vol > 0:
-                vol_map[(str(sym), str(d)[:10])] = vol
-    finally:
-        conn.close()
+    # 總量來源:data/{sym}.json(日K,date 格式 YYYY/MM/DD,volume 單位=股,與 FinMind 同)
     out: dict = {}
     for sid, m in dt.items():
+        kf = Path(DATA_DIR) / f"{sid}.json"
+        if not kf.exists():
+            continue
+        try:
+            krows = json.loads(kf.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        if not isinstance(krows, list):
+            continue
+        vol_map = {}
+        for r in krows[-30:]:   # 只看近 30 根,夠涵蓋 6 個交易日
+            d = str((r or {}).get('date') or '').replace('/', '-')
+            try:
+                v = int(float(r.get('volume') or 0))
+            except Exception:
+                continue
+            if d and v > 0:
+                vol_map[d] = v
         ds = sorted(m.keys())
         ratios = []
+        last_d = None
         for d in ds:
-            tot = vol_map.get((sid, d))
+            tot = vol_map.get(d)
             if tot and tot > 0:
                 ratios.append(min(100.0, m[d] / tot * 100))
+                last_d = d
         if not ratios:
             continue
-        out[sid] = {'d': ds[-1], 'r': round(ratios[-1], 1), 'r5': round(sum(ratios[-5:]) / len(ratios[-5:]), 1)}
+        out[sid] = {'d': last_d, 'r': round(ratios[-1], 1), 'r5': round(sum(ratios[-5:]) / len(ratios[-5:]), 1)}
     if len(out) < 50:
-        print(f"  ⚠️ 當沖比只算到 {len(out)} 檔(SQLite 未還原?)— 保留舊檔")
+        print(f"  ⚠️ 當沖比只算到 {len(out)} 檔(data/*.json 未還原?)— 保留舊檔")
         return
     hot = sum(1 for v in out.values() if v['r5'] >= 50)
     _fm_write_json('daytrade.json', out, '當沖比率', f"(5日均當沖比≥50% {hot} 檔)")

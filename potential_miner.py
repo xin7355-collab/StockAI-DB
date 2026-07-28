@@ -278,6 +278,10 @@ def main():
         "count": len(top),
         "rows": top,
     }
+    # 🛡️ V69.8.4 P0-8 鐵律守門:掃到 0-9 檔=上游 K 線資料不完整,不寫檔保留舊榜
+    if len(top) < 10:
+        print(f"❌ 潛力榜只掃到 {len(top)} 檔(<10,疑似上游資料不完整)→ 不寫檔,保留舊榜")
+        return
     out = DATA / "potential_picks.json"
     DATA.mkdir(exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

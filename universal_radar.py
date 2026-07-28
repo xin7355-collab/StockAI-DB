@@ -422,6 +422,11 @@ def fetch_global_news():
         if (i + 1) % 5 == 0:
             print(f"  進度: {i+1}/{min(len(items), 20)}")
 
+    # 🛡️ V69.8.4 P0-8 鐵律守門:RSS 全被擋/Groq 全冷卻時 analyzed 會是空的,
+    #    寫出去等於用空檔蓋掉好資料(還會被 news_express 與 daily_miner 部署擴散)。
+    if len(analyzed) < 5:
+        print(f"❌ 全球新聞只有 {len(analyzed)} 篇(<5,疑似來源被擋)→ 不寫檔,保留舊檔")
+        return
     output = {
         "updated": now_utc.strftime("%Y-%m-%d %H:%M UTC"),
         "items": analyzed,
@@ -574,6 +579,11 @@ def build_stock_news(news_items):
         for code, arr in stocks.items():
             arr.sort(key=lambda x: 0 if x['tone'] != 'neu' else 1)
             out_stocks[code] = {'items': arr[:6]}
+        # 🛡️ V69.8.4 P0-8 鐵律守門:全市場新聞掃描正常日至少幾十檔有新聞;
+        #    <20 檔 = RSS/名單來源異常,不寫檔保留舊檔(自選/庫存焦點新聞靠這檔)。
+        if len(out_stocks) < 20:
+            print(f"  ❌ 個股消息面只有 {len(out_stocks)} 檔(<20,疑似來源被擋)→ 不寫檔,保留舊檔")
+            return
         out = {'updated': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'), 'stocks': out_stocks}
         (DATA_DIR / 'stock_news.json').write_text(
             json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')

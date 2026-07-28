@@ -4,6 +4,7 @@
 > 方法:5 個平行代理掃描(前端死碼 / 資料流對帳 / 採礦效率 / UI 卡片 / 效能)+ **逐條人工讀原始碼驗證**
 > ⚠️ 代理 findings 約 1/3 是誤報,本文件只保留**已人工驗證通過**的項目;誤報另列於文末留紀錄。
 >
+> **進度**:✅ P0 全部 8 條已於 V69.8.4 修復(Batch A+B+C 合併執行)。
 > **接手方式**:從 P0 開始,一次做一個 Batch,每個 Batch 跑完四驗證再 push。做完一項就在下面打勾。
 
 ---
@@ -27,7 +28,7 @@
 
 ## 🔴 P0 — 正在壞、使用者看得到(先修這些)
 
-### [ ] P0-1 `bubble_warning.json` 被兩支程式用不同 schema 互相覆寫 → 泡沫預警卡永遠空白
+### [x] P0-1 `bubble_warning.json` 被兩支程式用不同 schema 互相覆寫 → 泡沫預警卡永遠空白
 - **證據(已驗)**:線上檔實際內容只有 3 個中文 key
   `["大盤融資餘額_億元", "融資槓桿水位狀態", "警報說明"]`
   但 `miner.py:3685 build_bubble_warning()` 寫的是富 schema
@@ -37,7 +38,7 @@
 - **症狀**:🫧 Bubble Burst Sniffer 四格永遠是 HTML 佔位字;盤前 AI 報告那四行永遠 `--`。
 - **修法**:移除 `macro_miner.py:2146` 的 `generate_bubble_warning()` 呼叫(融資水位 miner.py 的 `margin_leverage` 已更完整,含絕對值)。
 
-### [ ] P0-2 `insider.json` 完全不存在 → 董監質押卡 + 我新做的「持股身份分布」董監段全空
+### [x] P0-2 `insider.json` 完全不存在 → 董監質押卡 + 我新做的「持股身份分布」董監段全空
 - **證據(已驗)**:`git ls-tree origin/gh-pages | grep insider` → **空**;`origin/data` → **空**。兩個分支都沒有。
 - **根因**:`insider_cron.yml:58-72` 只 `git push origin gh-pages`,**沒推 data 分支**。
   而 daily_miner deploy 是 `git archive origin/data` + orphan force-push → 每輪把它抹掉。
@@ -45,7 +46,7 @@
 - **修法**:比照 `theme_news.yml:104-106` / `tdcc_sweep.yml:103-104` 的雙分支樣板,加 `deploy_branch data`。
 - **同類**:`tick_flow.yml:55-68` 也只推 gh-pages → 盤後逐筆內外盤卡 404,建議一併補。
 
-### [ ] P0-3 `this._tdccCache` 被兩個不同 shape 的檔案搶用 → 集保相關卡「忽有忽無」
+### [x] P0-3 `this._tdccCache` 被兩個不同 shape 的檔案搶用 → 集保相關卡「忽有忽無」
 - **證據(已驗)**:
   - `index.html:11618` `this._tdccCache = tdcc`(來源 `data/tdcc.json`,shape = `{updated,date,data:{sym:…}}`)
   - `index.html:12954` `this._tdccCache = await r.json()`(來源 `data/tdcc_holders.json`,shape = 扁平 `{sym:{t,n,h}}`)
@@ -55,26 +56,26 @@
   **直接影響 V69.8.1 新功能**:🐘 大戶連週吃貨、🥧 持股身份分布(兩者都用扁平 shape)。
 - **修法**:`_loadTdccHolders` 的快取改名 `this._tdccHoldersCache`,同步改 `12736 / 20182 / 20971 / 35438` 四個讀取點;`_ensureBullBearCaches` 保留 `_tdccCache`。
 
-### [ ] P0-4 幽靈欄位 `margin_balance_billion` → 風險分數少算一項、Telegram 融資警報從沒發過
+### [x] P0-4 幽靈欄位 `margin_balance_billion` → 風險分數少算一項、Telegram 融資警報從沒發過
 - **證據(已驗)**:`index.html` 讀 1 次、`alert_system.py:220` 讀 1 次,**全 repo 沒有任何程式寫這個 key**。
 - **症狀**:① 今日風險分數的融資水位項永遠 +0 分(系統性偏低)② Telegram「🚨 融資爆量警報」上線至今 0 次。
 - **修法**:兩處改讀 `bubble.margin_leverage?.total_100m`(**必須在 P0-1 修完後**才有這個欄位)。
 
-### [ ] P0-5 `daytrade.json` 採礦永遠跳過(當沖比因子失效)
+### [x] P0-5 `daytrade.json` 採礦永遠跳過(當沖比因子失效)
 - **證據(已驗)**:`fetch_daytrade_ratio` 開頭 `if not Path(DB_PATH).exists(): return`,而 `stock_hunter.db` 在 chips job **不存在**(`grep stock_hunter.db daily_miner.yml` = 0;`origin/data` 也沒有)。
 - **修法**:不要依賴 SQLite。改讀 `data/{sym}.json` 的 `volume`(已驗證該欄存在,單位=股),data/ 在 chips job 有還原。
 
-### [ ] P0-6 `tw_vix` 永遠 null(台指 VIX 沒進風險分數)
+### [x] P0-6 `tw_vix` 永遠 null(台指 VIX 沒進風險分數)
 - **證據(已驗)**:線上 `macro_risk.json` 的 `tw_vix_error = "no-token"`。
 - **根因**:`macro_cron.yml` 的 `run: python macro_miner.py` **完全沒有 `env:` 區塊**,FINMIND_TOKENS 沒傳進去。且它每 4 小時覆寫一次 macro_risk.json,會蓋掉 daily_miner 那次的結果。
 - **修法**:`macro_cron.yml` 補 `env: FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}`。
 
-### [ ] P0-7 `news_express.yml` concurrency group 拼錯 → 每週約 5 次白工
+### [x] P0-7 `news_express.yml` concurrency group 拼錯 → 每週約 5 次白工
 - **證據(已驗)**:`news_express.yml:24` 是 `gh-pages-deploy`,其他 13 支全是 `gh-pages-push` → **完全沒序列化**。
 - **症狀**:cron `0 1,5,9,13 * * 1-5` 的 09:00 UTC 那輪必落在 daily_miner deploy 窗內,非 force push 打不贏 orphan force-push → 整個 job(Groq 翻譯 20+ 篇)白燒。
 - **修法**:改成 `group: gh-pages-push`(改一個字串)。
 
-### [ ] P0-8 三個新聞檔缺「命中不足保留舊檔」守門(違反專案鐵律)
+### [x] P0-8 三個新聞檔缺「命中不足保留舊檔」守門(違反專案鐵律)
 - **證據(已驗)**:`universal_radar.py:429`(global_news)、`:578`(stock_news)寫檔前**無任何筆數 gate**。
   (`:639` radar_news **有** `if len(keep) < 5` 守門 — 這條是代理誤報,已排除)
 - **正確範本**:`theme_news.py:99` 的 `THEME_MIN_HIT`。

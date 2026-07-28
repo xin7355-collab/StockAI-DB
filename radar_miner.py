@@ -1294,6 +1294,12 @@ def main():
         }
     }
 
+    # 🛡️ V69.8.4 P0-8 鐵律守門:radar_matrix 是前端選股池最大來源,
+    #    採礦異常時(K線批次大量失敗)各策略全空 → 不寫檔保留舊檔。
+    _total_hits = sum(len(v) for v in output['data'].values() if isinstance(v, list))
+    if _total_hits < 20:
+        print(f"❌ radar_matrix 全策略合計只有 {_total_hits} 檔(<20,疑似採礦異常)→ 不寫檔,保留舊檔")
+        return
     DATA_DIR.mkdir(exist_ok=True)
     OUTPUT_FILE.write_text(
         json.dumps(output, ensure_ascii=False, separators=(',', ':')),

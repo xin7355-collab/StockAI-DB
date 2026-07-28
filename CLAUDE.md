@@ -314,7 +314,7 @@ END { if (bal>0) print "❌ tabContentMarket 少 "bal" 個 </div>!" }' index.htm
 | **新增 data/*.json 檔** | ① daily_miner deploy 底層 `git archive origin/data` 會保留(append 類檔靠這保命,如 risk_history)② 前端 fetch 用動態 `ghBase` + `?t=${Date.now()}` ③ 確認 daily_miner.yml push paths 是否需納入觸發 |
 | **新計分因子**(獵鷹/主力出貨/多空) | ① 卡片「因子來源」說明文字同步 ② 首席 AI 若注入該訊號要更新 ③ 數值單位確認(億/張/口/%,記取 `fi_spot_net`=億) |
 | **改燈號/verdict 文案** | 同一決策的多張卡(首席/綜合評分/系統燈號)語義要一致,別紅綠相反(V27.5 已統一改「寫字不靠色」) |
-| **加新偵測器/型態**(朱家泓/林穎 K 棒) | 務必**同時**加進三處清單:`renderKbarTactics` + `renderKbarScore` patSigs + `runKlineAudit` grab list(V41.29 教訓,漏一處該訊號就不同步) |
+| **加新偵測器/型態**(朱家泓/林穎 K 棒) | 加進 `renderKbarTactics`(V69.8.4 更新:原「三處清單」的 `renderKbarScore`/`runKlineAudit` 已是死碼無呼叫端,只剩這一處是活的;死碼待 OPTIMIZATION_PLAN P2-4 清除) |
 | **新增 setCell 純公式卡**(取代 AI) | ① 指標暫存 `this._xrayMetrics` 逐項寫入 ② 末端統一產結論(如 `_renderXrayVerdict`)③ **資料充足度守門**:缺關鍵維度顯「整備中」別硬判 ④ 切股競態守門 `currentSymbolId!==sym` return |
 | **夜間 fund_sweep 改欄位**(fund_yoy_gm.json) | ① 前端 `_loadFundYoyGm()` fallback 讀取欄名一致 ② X 光機 YoY/毛利 fallback 鏈 ③ fund_sweep.py 輸出欄名跟前端**完全一致** ④ 獨立檔靠 daily_miner `git archive origin/data` 保留,勿併回 fundamentals_cache.json(會被下午重建洗掉) |
 
@@ -755,8 +755,30 @@ done
 - **不能完整回填的原因**:`data/chips/*.json` 是**滾動 20 日快照**,沒逐日保存過往每天的分點,免費分點史又被付費牆/BSR 擋 → 過去每日訊號無從重建。
 - **可做的近似回推(待評估)**:把現有 chips 的 5d/10d/20d 買超均價當「-5/-10/-20 交易日的合成訊號」forward-test 到今日 → 立刻有短線/波段樣本(近似,非逐日精確)。屬 miner 改動,上前先確認。
 
+## 🗣️ 使用者近期反覆強調的鐵則(2026-07-27 彙整,使用者要求記錄)
+
+以下是使用者在 2026-07 下旬**多次重複**講的話,每次做功能前先過這份清單:
+
+1. **「邏輯不打架、資訊不爆炸」**(講最多次的一句):
+   - 同一個名詞全 App 只能有一個數字;不同公式就要不同名字(V69.7.5 主力成本教訓)
+   - 主結論最大(單一劇本原則):所有卡片的行動指令以「現在怎麼做」為準,其他卡只解讀不下指令
+   - ⚠️ 全 App 尚有 5 處「主力成本」、3 處「籌碼綜合評分」、2 處「½價」同名不同值,清單見 `docs/OPTIMIZATION_PLAN.md` P1.5
+2. **「合併卡片,不要加新卡」**:新資料一律併入既有卡片;重複的卡合併;要刪就刪,大改版面也沒關係
+3. **「條件觸發、自動出現」**:訊號到了才顯示,沒事完全隱藏(不留空格、不顯紅警誤導);最好全自動,使用者不用思考要點哪裡
+4. **「對標專業付費 App」**(籌碼K線/挖寶區/XQ):有用、能更厲害的才加;**沒用不要亂加**;資料撐不起的功能誠實不做(如買賣家數差),不做假數字
+5. **「新增功能要考慮連動」**:改 A 之前先想 A 連到哪些 B/C/D(說明文字、AI prompt、評分、快取、fallback 鏈、artifact 清單),一次補齊
+6. **「一直做不要停、不用問」**:建議過的就直接做;只有大重構/刪資料/改核心 workflow 邏輯才問
+7. **「白話+實際金額」**:所有 % 順便給元;數字千分位逗號(會計格式);重要結論放頁面最上方第一眼位置
+8. **「資料要最新的,老舊沒意義的刪掉」**(概念標籤教訓):寫死的對照表要有採礦更新機制,否則過期
+9. **「盤後要讓持股人看懂今天」**:敘事型解讀(短線/波段雙視角),不是只丟數字
+10. **圖表類改動必須用「真引擎」headless 渲染驗證**(V69.7.7 教訓:stub 測試全過,真 ECharts 直接 throw,使用者看到空白圖)
+
+## 📋 全盤體檢待辦(2026-07-27)
+
+`docs/OPTIMIZATION_PLAN.md` 有 45 條已人工驗證的優化清單(P0 資料流修復 → P1 效能 → P1.5 卡片打架/殭屍卡 → P2 瘦身 → P3 採礦效率),含證據行號與勾選框。**Batch A(P0 全部)已於 V69.8.4 完成**;接手者從 Batch D(P1 效能)繼續,每 Batch 一次 commit + 四驗證。
+
 ## GitHub 帳號
 - 帳號:`xin7355-collab`
 - 主要 repo:`StockAI-DB`(此專案)
 - 其他:`gdp-dashboard`(保留)、`pro-terminal-v4`(已刪除)
-- GitHub Pages 1GB 限制:目前使用約 100MB,無虞
+- GitHub Pages 1GB 限制:**2026-07-27 實測 388MB**(最大宗:inst_cache_stock.json 18.5MB 前端從不讀,見 docs/OPTIMIZATION_PLAN.md P3-7)

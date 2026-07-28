@@ -217,7 +217,9 @@ def build_watch_alerts():
     SEP = '━━━━━━━━━━━━━━━━━━━━'
 
     # 融資 > 3200 億 ★★★
-    m = bubble.get('margin_balance_billion')
+    # 🩹 V69.8.4 P0-4:原 margin_balance_billion 是幽靈欄位(無程式寫過→警報從沒發過),
+    #    改讀 miner.py build_bubble_warning 真實輸出的 margin_leverage.total_100m(億)
+    m = (bubble.get('margin_leverage') or {}).get('total_100m')
     if m is not None and m >= 3200:
         alerts.append(
             f"🚨 *【融資爆量警報 ★★★】*\n{SEP}\n"

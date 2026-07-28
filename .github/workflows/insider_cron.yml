@@ -82,3 +82,31 @@ jobs:
 
           echo "❌ 連 3 次失敗,放棄(明天 cron 再試)"
           exit 0
+
+      # 🩹 V69.8.4 P0-2:同步到 data 分支。daily_miner deploy 底層是 git archive origin/data +
+      #    orphan force-push gh-pages → 只在 gh-pages 的檔案每輪被抹掉(insider.json 之前每天
+      #    18:00-04:00 台北整晚 404,董監質押卡/持股身份分布的董監段全空)。推 data 才會被保留。
+      - name: 📡 同步 data/insider.json 到 data 分支(daily_miner archive 保留用)
+        run: |
+          set -e
+          [ -f /tmp/insider/insider.json ] || { echo "無產出,跳過"; exit 0; }
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          # ⚠️ checkout@v4 只設觸發分支 refspec → 顯式 refspec 才會建 origin/data(V69.6.4 實測)
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+          git checkout -f -B data origin/data 2>/dev/null || { echo "⚠️ 無 data 分支,跳過"; exit 0; }
+          mkdir -p data
+          cp /tmp/insider/insider.json data/insider.json
+          git add -f data/insider.json
+          git diff --cached --quiet && { echo "無變化"; exit 0; }
+          git commit -q -m "🏛️ insider → data 分支 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/insider.json
+          for i in 1 2 3 4 5; do
+            git push origin data && { echo "✅ data 分支 push 成功"; exit 0; }
+            [ "$i" -eq 5 ] && { echo "❌ 連 5 次失敗(明天再試)"; exit 0; }
+            sleep $((i*5))
+            git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+            git reset --hard -q origin/data 2>/dev/null || true
+            cp /tmp/insider/insider.json data/insider.json
+            git add -f data/insider.json
+            git commit -q -m "🏛️ insider → data 分支 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/insider.json 2>/dev/null || true
+          done

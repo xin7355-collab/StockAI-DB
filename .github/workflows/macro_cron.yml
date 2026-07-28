@@ -33,6 +33,10 @@ jobs:
         run: pip install requests yfinance --quiet
 
       - name: 🌍 執行總經採礦
+        env:
+          # 🩹 V69.8.4 P0-6:原本沒傳 token → fetch_tw_vix 永遠 no-token,台指 VIX 恆 null
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          FINMIND_TOKEN:  ${{ secrets.FINMIND_TOKEN }}
         run: python macro_miner.py
 
       - name: 📡 同步 data/macro_risk.json 到 gh-pages

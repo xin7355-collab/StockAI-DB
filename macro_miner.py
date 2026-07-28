@@ -2055,6 +2055,13 @@ def main():
         if isinstance(v, list):
             return [_sanitize_nan(x) for x in v]
         return v
+    # 🛡️ V69.8.4 P0-8 鐵律守門:外部源全掛時 out 幾乎全 None。macro_cron 每 4 小時
+    #    reset --hard 後整檔覆蓋上線,空殼會直接蓋掉好資料且 4 小時後才有機會修 → 不寫檔。
+    _key_fields = ['us10y_yield', 'fi_futures_net', 'fear_greed', 'sp500', 'vix', 'nikkei', 'usdtwd', 'gold_usd']
+    _alive = sum(1 for k in _key_fields if out.get(k) is not None)
+    if _alive < 3:
+        print(f"❌ macro_risk 關鍵欄位只有 {_alive}/8 有值(疑似外部源全掛)→ 不寫檔,保留舊檔")
+        sys.exit(0)
     try:
         OUTPUT_FILE.write_text(
             json.dumps(_sanitize_nan(out), ensure_ascii=False, indent=2, allow_nan=False),
@@ -2141,10 +2148,12 @@ if __name__ == "__main__":
     try:
         # 第一引擎：抓取總經三大指標
         main()
-        
-        # 第二引擎：抓取大盤融資槓桿 (就在這裡被呼叫！)
-        generate_bubble_warning()
-        
+
+        # ⛔ V69.8.4 P0-1:generate_bubble_warning() 已移除 —— 它用「3 個中文 key」的舊 schema
+        #    整檔覆寫 miner.py build_bubble_warning() 的富 schema(broker_heat/junk_count/
+        #    margin_leverage/kline_status),導致泡沫預警卡四格永遠空白。融資水位 miner.py
+        #    的 margin_leverage 已含 total_100m 絕對值,功能完全覆蓋。函式保留但不再呼叫。
+
     except Exception as e:
         print(f"💥 macro_miner 頂層異常：{e}")
         traceback.print_exc()
