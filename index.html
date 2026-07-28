@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.8.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.8.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6544,8 +6544,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.8.9',
+    _APP_VERSION: 'V69.9.0',
     _CHANGELOG: [
+        { v: 'V69.9.0', dt: '2026-07-28', t: '📏 RSI 全 App 統一成同一把尺', d: [
+            '原本 4 個地方各自算 RSI,其中 2 處用了不同演算法 → 同一檔股票在不同卡片會看到不同 RSI 值。',
+            '現在統一成券商標準算法(Wilder):副圖、背離偵測、盤勢解讀、歷史勝率回測全部同源,數字不再打架。',
+        ]},
         { v: 'V69.8.9', dt: '2026-07-28', t: '⚡ 大盤頁小加速', d: [
             '大盤頁頂部行情列同步(台指期/美股 15 組數字)改成「內容沒變就不重寫」,切進大盤頁更順。',
         ]},
@@ -16172,20 +16176,28 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // 📊 V69.9.0 P2-6:全 App 唯一 RSI 演算法(Wilder 平滑,同券商 App 標準)。
+    //   原本 4 處各自實作且兩處用 SMA 版 → 同一檔股票不同卡給不同 RSI 值(違反「同名詞一個數字」鐵則)。
+    //   worker 端(副圖 rsi5/rsi10)已是 Wilder 同式,主執行緒統一走這裡。
+    _rsiSeries(closes, period) {
+        const out = new Array(closes.length).fill(null);
+        let ag = 0, al = 0;
+        for (let i = 1; i < closes.length; i++) {
+            const ch = closes[i] - closes[i - 1], g = ch > 0 ? ch : 0, l = ch < 0 ? -ch : 0;
+            if (i <= period) { ag += g; al += l; if (i === period) { ag /= period; al /= period; out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al); } }
+            else { ag = (ag * (period - 1) + g) / period; al = (al * (period - 1) + l) / period; out[i] = al === 0 ? (ag === 0 ? 50 : 100) : 100 - 100 / (1 + ag / al); }
+        }
+        return out;
+    },
+
     // 📊 V66.4 RSI 頂/底背離(相對強弱版,承上版「RSI 副圖」使用者要求延伸):價創新高但 RSI 沒跟著創高=頂背離(噴出末段轉折);
-    //   價創新低但 RSI 沒跟著創低=底背離(跌深轉折)。自足算 RSI(6),只在超買/超賣區才認列(更可靠);零採礦。
+    //   價創新低但 RSI 沒跟著創低=底背離(跌深轉折)。RSI(6) 走共用 _rsiSeries,只在超買/超賣區才認列(更可靠);零採礦。
     _detectRsiDivergence(data) {
         const out = [];
         if (!Array.isArray(data) || data.length < 30) return out;
         const C = b => +((b?.close ?? b?.c) || 0);
         const n = data.length, period = 6;
-        const rsi = new Array(n).fill(null);
-        let ag = 0, al = 0;
-        for (let i = 1; i < n; i++) {
-            const ch = C(data[i]) - C(data[i - 1]), g = ch > 0 ? ch : 0, l = ch < 0 ? -ch : 0;
-            if (i <= period) { ag += g; al += l; if (i === period) { ag /= period; al /= period; rsi[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al); } }
-            else { ag = (ag * (period - 1) + g) / period; al = (al * (period - 1) + l) / period; rsi[i] = al === 0 ? (ag === 0 ? 50 : 100) : 100 - 100 / (1 + ag / al); }
-        }
+        const rsi = this._rsiSeries(data.map(C), period);
         const last = n - 1, SW = 3, from = Math.max(SW + period, n - 60);
         const peaks = [], troughs = [];
         for (let i = from; i <= last - SW; i++) {
@@ -17712,9 +17724,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const dif = closes.map((_, i) => e12[i] - e26[i]);
             const sig = ema(dif, 9);
             const hist = dif[n - 1] - sig[n - 1], histPrev = dif[n - 2] - sig[n - 2];
-            // RSI14(今/昨)
-            const rsiAt = end => { const p = 14; if (end < p) return null; let g = 0, l = 0; for (let i = end - p + 1; i <= end; i++) { const d = closes[i] - closes[i - 1]; if (d >= 0) g += d; else l -= d; } const ag = g / p, al = l / p; if (al === 0) return 100; return 100 - 100 / (1 + ag / al); };
-            const rsi = rsiAt(n - 1), rsiPrev = rsiAt(n - 2);
+            // RSI14(今/昨)— V69.9.0 P2-6:原 SMA 版改走共用 _rsiSeries(Wilder),跟副圖/背離同一把尺
+            const _rsiArr = this._rsiSeries(closes, 14);
+            const rsi = _rsiArr[n - 1], rsiPrev = _rsiArr[n - 2];
             // 量能情境
             const vma5 = (n >= 6) ? (() => { let s = 0; for (let i = n - 6; i < n - 1; i++) s += V(data[i]); return s / 5; })() : null;
             const vr = (vma5 && vma5 > 0) ? V(last) / vma5 : null;
@@ -31541,7 +31553,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const e12 = ema(closes, 12), e26 = ema(closes, 26), dif = closes.map((_, i) => e12[i] - e26[i]), sg = ema(dif, 9), hist = closes.map((_, i) => dif[i] - sg[i]);
                 const ma = (k, i) => { if (i < k - 1) return null; let s = 0; for (let j = i - k + 1; j <= i; j++) s += C(j); return s / k; };
                 const avgV = (k, i) => { if (i < k) return null; let s = 0; for (let j = i - k; j < i; j++) s += V(j); return s / k; };
-                const rsiAt = i => { const p = 14; if (i < p) return null; let g = 0, l = 0; for (let j = i - p + 1; j <= i; j++) { const x = C(j) - C(j - 1); if (x >= 0) g += x; else l -= x; } const al = l / p; if (al === 0) return 100; return 100 - 100 / (1 + (g / p) / al); };
+                const _rsiArr = this._rsiSeries(closes, 14);   // V69.9.0 P2-6:改共用 Wilder 版並預算整條(原每根 O(14) 重算)
+                const rsiAt = i => _rsiArr[i];
                 let used = false;
                 for (let i = 60; i < n - 5; i++) {
                     const c = C(i), ma5 = ma(5, i), ma20 = ma(20, i), ma60 = ma(60, i), ma5p = ma(5, i - 1), ma20p = ma(20, i - 1), v5 = avgV(5, i);

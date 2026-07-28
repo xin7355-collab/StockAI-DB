@@ -161,7 +161,7 @@
 清單見代理原始報告;建議分批 commit 便於 revert。**每一個刪除前務必用 `grep -oE "\bNAME\b" index.html | wc -l` 複驗**,並確認出現位置是「定義+註解」而非「定義+呼叫」。
 
 ### [ ] P2-6 重複邏輯合併
-- **RSI 被實作 4 次**(3079 / 16606 / 18228 / 32225),其中兩種算法(Wilder vs SMA)**對同一檔股票會給出不同 RSI 值** → 統一成 `_rsiSeries()`
+- [x] **RSI 被實作 4 次**(3079 / 16606 / 18228 / 32225),其中兩種算法(Wilder vs SMA)**對同一檔股票會給出不同 RSI 值** → ✅ V69.9.0 已統一 `_rsiSeries()`(Wilder):背離(6)/盤勢解讀(14)/回測(14)改共用,worker 副圖本就同式保留;回測順帶從每根 O(14) 改預算整條
 - 波段轉折偵測迴圈重複 4 次 → 抽 `_swingPoints()`
 - `_detectBlackCandleLevels` / `_detectRedCandleLevels` 逐行鏡像(~55 行)→ 合併帶 dir 參數
 - `^TWII.json` 抓取邏輯複製兩份(13776 / 14468)
