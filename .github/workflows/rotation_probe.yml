@@ -6,7 +6,7 @@ name: 🔄 全市場基本面輪動採礦
 # 持久化:推到 data 分支 → daily_miner deploy 的 `git archive origin/data` 會保留它,force-push 不會蓋掉。
 on:
   schedule:
-    - cron: '23 * * * *'   # 每小時 :23(避開整點高載)
+    - cron: '23 1,4,7,13 * * 1-5'   # ⚡ V69.8.6 P3-1:原每小時 24/7(月營收月更/財報季更卻每小時輪詢,每週 ~75,600 次 FinMind 呼叫);改交易日 4 輪仍 3 天滾完全市場,額度降 ~85%
   workflow_dispatch:
     inputs:
       batch:

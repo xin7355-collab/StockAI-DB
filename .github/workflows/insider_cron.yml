@@ -6,7 +6,7 @@ name: 🏛️ 董監質押採礦同步 (insider daily)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 20 * * *'   # 台北凌晨 04:00(董監持股每日出表,一天一次足夠)
+    - cron: '0 20 * * 0-4'   # 台北凌晨 04:00,僅交易日翌晨(⚡ V69.8.6:TWSE 週末不出表,原週末 2 輪白跑)
   push:
     branches: [main]
     paths:

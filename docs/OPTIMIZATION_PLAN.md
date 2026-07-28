@@ -4,7 +4,7 @@
 > 方法:5 個平行代理掃描(前端死碼 / 資料流對帳 / 採礦效率 / UI 卡片 / 效能)+ **逐條人工讀原始碼驗證**
 > ⚠️ 代理 findings 約 1/3 是誤報,本文件只保留**已人工驗證通過**的項目;誤報另列於文末留紀錄。
 >
-> **進度**:✅ P0 全部 8 條已於 V69.8.4 修復;✅ P1 六條(P1-1/2/5/6/7/8)已於 V69.8.5 修復,剩 P1-3(fmx_pack 合併)與 P1-4(圖表局部更新,較大重構)。
+> **進度**:✅ P0 全部 8 條已於 V69.8.4 修復;✅ P1 七條(P1-1/2/3/5/6/7/8)已修復(V69.8.5-6),剩 P1-4(圖表局部更新,較大重構);✅ P3 五條+TDCC 去重已於 V69.8.6 修復(剩當沖四合一/company_profile/P3-7 gh-pages 瘦身)。
 > **接手方式**:從 P0 開始,一次做一個 Batch,每個 Batch 跑完四驗證再 push。做完一項就在下面打勾。
 
 ---
@@ -101,7 +101,7 @@
 - **修法**:① `init` 改綁 `DOMContentLoaded` ② `switchAppTab('inv')` 提到 `analyze` 前,`analyze('2330')` 改背景預熱不 await ③ SW 對 index.html 改 stale-while-revalidate
 - **預期**:第二次以後開 App 首屏 3–6 秒 → <0.5 秒
 
-### [ ] P1-3 啟動轟出 ≥35 個 HTTP 請求
+### [x] P1-3 啟動轟出 ≥35 個 HTTP 請求
 - `_loadFmx`(12968)一個呼叫展開成 **7 個檔案**;`fetchMacroData` 另有 7 個
 - **修法**:非首屏必要的延後到 `requestIdleCallback` 或該分頁真被打開才拉;`_loadFmx` 的 7 檔請後端合併成單一 `fmx_pack.json`
 
@@ -173,31 +173,31 @@
 
 ## 🟢 P3 — 採礦效率(省額度、省時間)
 
-### [ ] P3-1 `rotation_probe` 每小時跑 24/7 → 每週浪費約 45,000 次 FinMind 呼叫
+### [x] P3-1 `rotation_probe` 每小時跑 24/7 → 每週浪費約 45,000 次 FinMind 呼叫
 - **證據**:`rotation_probe.yml:9` `cron: '23 * * * *'`;`BATCH_N=150` × 3 endpoint = 450 次/小時 × 168 小時
 - 抓的是月營收(月更)/財報(季更)/PER(日更),用每小時輪詢完全沒必要
 - **修法**:cron 改 `23 1,4,7,13 * * 1-5` → 額度立降 ~85%
 
-### [ ] P3-2 `fund_sweep` 每檔 `sleep(3.0)` 序列 → 每晚 4 shard 共睡 90 分鐘
+### [x] P3-2 `fund_sweep` 每檔 `sleep(3.0)` 序列 → 每晚 4 shard 共睡 90 分鐘
 - 每個 shard 已綁專屬 token(額度獨立),卻單執行緒逐檔 sleep
 - **修法**:每 shard 開 3-4 thread + Semaphore 控速,QPS 不變但 wall-clock 降到 1/3
 
-### [ ] P3-3 `macro_cron` 每 4 小時跑全天全週(含週末)
+### [x] P3-3 `macro_cron` 每 4 小時跑全天全週(含週末)
 - 一週 42 輪,其中 12 輪在週末(台股/taifex/NDC 都不更新);08:00 UTC 那輪還跟 daily_miner 撞
 - **修法**:`0 0,4,8,12 * * 1-5`
 
-### [ ] P3-4 重複抓取去重
+### [~] P3-4 重複抓取去重(V69.8.6:✅TDCC 已改讀 tdcc_holders 零下載;❌台指期「抓三次」是誤報 — TXF vs MTX 不同商品、CSV 只是 fallback;當沖四合一與 company_profile 未做,風險較高留待後批)
 - **TDCC 股權分散表**同一份 CSV 被 `extras_miner.py:128` 每日抓 + `tdcc_sweep.py:32` 每週抓 → extras 改讀 tdcc_sweep 的產出
 - **當沖資料有 4 套平行實作**(extras_miner / daytrade_data_miner / daytrade_probe / miner.py)打 3 個端點 → 留 `daytrade_probe.py`(唯一有多端點 fallback)當單一真相源
 - **公司基本資料 t187ap03** 被 miner.py / universal_radar.py / theme_news.py 各抓一次 → 落成 `data/company_profile.json` 共用
 - **台指期三大法人** 一輪內抓 3 次(macro_miner 自己就抓兩次)→ module 級 memo cache
 
-### [ ] P3-5 `miner.py:5136` 移除 ONLY_CHIPS 流程裡的 `os.system("python3 macro_miner.py")`
+### [x] P3-5 `miner.py:5136` 移除 ONLY_CHIPS 流程裡的 `os.system("python3 macro_miner.py")`
 - 產出的 `macro_risk.json` / `risk_history.json` **不在 chips-data artifact 清單** → 整支白跑
 - deploy job 的並行階段已經會跑一次
 - 順便治好 P0-1 在 chips job 那次的覆寫
 
-### [ ] P3-6 刪死 workflow
+### [x] P3-6 刪死 workflow(V69.8.6:改 dispatch-only 不刪檔 — orb 的 CLAUDE.md 明文要保留手動重驗,四支 probe 統一拿掉 push 觸發)
 - `orb_probe.yml`(ORB 已定案不做,`grep orb_ index.html` = 0)
 - `etf_probe.yml`(寫死單一標的的一次性診斷,功能已由 etf_miner 正式實作)
 - `insider_probe.yml`(端點探索早已定案)
@@ -303,6 +303,11 @@ V69.7.5 只改了「總覽 vs 觀察頁」兩處,還有 5 處沒動:
 | 7 個新資料檔欄名不一致 | **全部一致**,逐欄比對通過 |
 
 > 教訓:「函式全檔出現 ≤2 次 = 死」這個啟發法**會誤判**,必須看出現位置是「定義+呼叫」還是「定義+註解」。
+
+| 誤報內容(續) | 實際情況 |
+|---|---|
+| 台指期三大法人「一輪抓三次」 | miner 抓 TXF、macro 的 CSV 是 OpenAPI 失敗才用的 fallback、_taifex_oi_rows 抓的是 MTX(小台,不同商品)— 不是重複 |
+| setupAutoRefresh 只有一處 forceRefresh=true | 還有 visibilitychange 切回前景那條(L4022)— 但那是合理設計(一次性補刷),保留 |
 
 ---
 

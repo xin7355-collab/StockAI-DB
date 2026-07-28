@@ -4473,6 +4473,30 @@ def fetch_warrant_premium():
     _fm_write_json('warrant_premium.json', out, '權證溢價', f"(中位溢價≥30% {hot} 檔)")
 
 
+def build_fmx_pack():
+    """⚡ V69.8.6 P1-3:把付費第二彈 7 個小檔合併成單一 data/fmx_pack.json,
+    前端啟動從 7 個 HTTP 請求降為 1 個(行動網路省 6 次 RTT)。
+    各檔缺就略過該 key(前端有逐檔 fallback,不會壞)。"""
+    files = {'dt': 'daytrade.json', 'fh': 'foreign_hold.json', 'bt': 'blocktrade.json',
+             'cb': 'cb_overview.json', 'wp': 'warrant_premium.json', 'disp': 'disposition.json',
+             'chain': 'industry_chain.json'}
+    pack = {}
+    for k, fname in files.items():
+        f = Path(DATA_DIR) / fname
+        if not f.exists():
+            continue
+        try:
+            j = json.loads(f.read_text(encoding='utf-8'))
+            if isinstance(j, dict) and j.get('data'):
+                pack[k] = j['data']
+        except Exception:
+            continue
+    if len(pack) < 3:
+        print(f"  ⚠️ fmx_pack:只湊到 {len(pack)}/7 檔 — 保留舊檔")
+        return
+    _fm_write_json('fmx_pack.json', pack, 'fmx七合一', f"({len(pack)}/7 檔)")
+
+
 def fetch_holder_distribution():
     """📊 集保股權持股分級 → data/holders.json(籌碼分佈:千張大戶/散戶 + 週趨勢)。
     欄位經 finmind_check 探針對 2330 實測:level(more than 1,000,001=千張大戶)/people/percent/unit;週頻(每週五結算)。
@@ -5144,8 +5168,9 @@ if __name__ == '__main__':
         _safe_step("泡沫預警 build_bubble_warning", build_bubble_warning)
         _safe_step("板塊熱度 build_sector_heat", build_sector_heat)
         _safe_step("三位一體選股 generate_top_picks", generate_top_picks)
-        print("🌍 啟動全局宏觀風險採礦 (macro_miner)...")
-        _safe_step("宏觀風險 macro_miner", lambda: os.system("python3 macro_miner.py"))
+        # ⛔ V69.8.6 P3-5:此處的 macro_miner 呼叫已移除 — 產出的 macro_risk.json/risk_history.json
+        #    不在 chips-data artifact 清單 → 跑完即丟(整支白燒 3-5 分);deploy job 並行階段本來就會跑一次。
+        _safe_step("fmx七合一 build_fmx_pack", build_fmx_pack)   # ⚡ P1-3:前端啟動 7 個請求 → 1 個
         print("✅ ONLY_CHIPS 完成")
         sys.exit(0)
 

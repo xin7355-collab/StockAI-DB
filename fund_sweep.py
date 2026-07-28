@@ -143,9 +143,12 @@ def main():
     never = sum(1 for s in universe if s not in existing)
     print(f"🌙 全市場 {len(universe)} 檔 | 從未補 {never} 檔 | 本晚預算 {BUDGET} → 實抓 {len(targets)} 檔 | 節流 {SLEEP}s/檔")
 
-    hits = 0
-    t_start = time.time()
-    for i, sym in enumerate(targets, 1):
+    # ⚡ V69.8.6 P3-2:執行緒化。原單執行緒每檔 sleep 3s → 每 shard 純睡 ~22 分,4 shard 每晚
+    #   共燒 90 分 runner 在 sleep()。改 FUND_WORKERS(預設 3)條 thread,每條自己 sleep(SLEEP)
+    #   → 整體 QPS ≈ WORKERS/SLEEP = 1/s(遠低於付費 6000/hr=1.67/s 上限),wall-clock 降到 1/3。
+    #   結果寫回(existing/hits)全在主執行緒做,零共享狀態競態。
+    def _process_one(sym):
+        """抓一檔,回 (sym, entry|None)。entry=None 代表沒抓到(主執行緒記 miss ts)。純函式不碰共享 dict。"""
         try:
             fund = miner.fetch_finmind_fundamentals(sym) or {}
         except Exception as e:
@@ -181,43 +184,60 @@ def main():
         # 有效條件放寬:只要拿到「YoY / 毛利 / 或任一擴充欄位」都算補到(冷門股常只有股利/PBR)
         has_ext = (pb is not None or payout is not None or div4q is not None
                    or fillp is not None or (isinstance(qeps, list) and len(qeps) >= 1))
-        if yoy is not None or gmt or has_ext:
-            entry = {'ts': _now_iso()}
-            if yoy is not None:
-                try:
-                    entry['yoy'] = round(float(yoy), 1)
-                except Exception:
-                    pass
-            if gmt:
-                entry['gmt'] = gmt
-            if gm is not None:
-                entry['gm'] = gm
-            if rec:
-                entry['rec'] = True
-            if tri:
-                entry['tri'] = tri
-            # 擴充欄位(有才存,省空間;前端 X 光 fallback 讀 pb/payout/div/fillp/filld/qeps)
+        if not (yoy is not None or gmt or has_ext):
+            return sym, None
+        entry = {'ts': _now_iso()}
+        if yoy is not None:
             try:
-                if pb is not None:     entry['pb'] = round(float(pb), 2)
-                if payout is not None: entry['payout'] = round(float(payout), 1)
-                if div4q is not None:  entry['div'] = round(float(div4q), 2)
-                if fillp is not None:  entry['fillp'] = fillp
-                if filld is not None:  entry['filld'] = filld
-                if isinstance(qeps, list) and qeps: entry['qeps'] = qeps[-8:]   # PEG 需 ≥6 季,存近 8 季夠且控大小
+                entry['yoy'] = round(float(yoy), 1)
             except Exception:
                 pass
-            existing[sym] = entry
-            hits += 1
-        else:
-            # 沒抓到也記個 ts,避免下一晚又優先重抓同一批死檔(下次自然排到後面)
-            prev = existing.get(sym) if isinstance(existing.get(sym), dict) else {}
-            prev = dict(prev)
-            prev['ts'] = _now_iso()
-            existing[sym] = prev
-        if i % 25 == 0:
-            el = int(time.time() - t_start)
-            print(f"  … {i}/{len(targets)} 檔 | 命中 {hits} | 已跑 {el}s")
-        time.sleep(SLEEP)
+        if gmt:
+            entry['gmt'] = gmt
+        if gm is not None:
+            entry['gm'] = gm
+        if rec:
+            entry['rec'] = True
+        if tri:
+            entry['tri'] = tri
+        # 擴充欄位(有才存,省空間;前端 X 光 fallback 讀 pb/payout/div/fillp/filld/qeps)
+        try:
+            if pb is not None:     entry['pb'] = round(float(pb), 2)
+            if payout is not None: entry['payout'] = round(float(payout), 1)
+            if div4q is not None:  entry['div'] = round(float(div4q), 2)
+            if fillp is not None:  entry['fillp'] = fillp
+            if filld is not None:  entry['filld'] = filld
+            if isinstance(qeps, list) and qeps: entry['qeps'] = qeps[-8:]   # PEG 需 ≥6 季,存近 8 季夠且控大小
+        except Exception:
+            pass
+        return sym, entry
+
+    import concurrent.futures as _cf
+    WORKERS = max(1, int(os.getenv('FUND_WORKERS', '3')))
+    hits = 0
+    t_start = time.time()
+
+    def _worker(sym):
+        r = _process_one(sym)
+        time.sleep(SLEEP)   # 每條 worker 自己節流(整體 QPS = WORKERS/SLEEP)
+        return r
+
+    done_n = 0
+    with _cf.ThreadPoolExecutor(max_workers=WORKERS) as ex:
+        for sym, entry in ex.map(_worker, targets):
+            done_n += 1
+            if entry is not None:
+                existing[sym] = entry
+                hits += 1
+            else:
+                # 沒抓到也記個 ts,避免下一晚又優先重抓同一批死檔(下次自然排到後面)
+                prev = existing.get(sym) if isinstance(existing.get(sym), dict) else {}
+                prev = dict(prev)
+                prev['ts'] = _now_iso()
+                existing[sym] = prev
+            if done_n % 25 == 0:
+                el = int(time.time() - t_start)
+                print(f"  … {done_n}/{len(targets)} 檔 | 命中 {hits} | 已跑 {el}s | {WORKERS} 執行緒")
 
     # 🚀 分片模式:只輸出「本 shard 處理過的股」的 partial 檔給 merge job 合併,不自己 gate/部署。
     #    (即使命中少也照寫 partial;merge job 統一 gate 總命中數,漏抓的股保留舊 partition)

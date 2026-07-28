@@ -125,6 +125,47 @@ def fetch_tdcc_holdings():
     取「15. 1000張以上」級距佔比 = 千張大戶持股 %
     跟上次比對算 top_pct_week_chg。
     """
+    # ⚡ V69.8.6 P3-4:優先改讀 tdcc_sweep 已產出的 data/tdcc_holders.json(同一份 TDCC id=1-5,
+    #    它每週六抓、進 data 分支、deploy 已還原)→ 免再下載數十 MB CSV(原本每交易日重抓一次,
+    #    每週多 100+ MB 傳輸 + 30-90 秒 parse,而內容一週只變一次)。讀不到才 fallback 下載。
+    try:
+        th_file = DATA_DIR / 'tdcc_holders.json'
+        if th_file.exists():
+            th = json.loads(th_file.read_text(encoding='utf-8'))
+            data_by_sym = {}
+            latest_d8 = None
+            for sym, v in th.items():
+                if sym.startswith('_') or not isinstance(v, dict):
+                    continue
+                h = v.get('h')
+                if not isinstance(h, list) or not h:
+                    continue
+                last = h[-1]
+                try:
+                    pct = float(last[1])
+                    d8 = str(last[0])
+                except Exception:
+                    continue
+                if not (0 < pct <= 100):
+                    continue
+                prev_pct = None
+                if len(h) >= 2:
+                    try: prev_pct = float(h[-2][1])
+                    except Exception: pass
+                data_by_sym[sym] = {'top_pct': round(pct, 3),
+                                    'top_pct_week_chg': round(pct - prev_pct, 3) if prev_pct is not None else 0.0}
+                if not latest_d8 or d8 > latest_d8: latest_d8 = d8
+            if len(data_by_sym) >= 100:
+                out = {'updated': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                       'date': latest_d8 or date.today().strftime('%Y%m%d'),
+                       'data': data_by_sym, 'src': 'tdcc_holders'}
+                (DATA_DIR / 'tdcc.json').write_text(json.dumps(out, ensure_ascii=False), encoding='utf-8')
+                print(f'✅ tdcc.json 已從 tdcc_holders.json 轉出({len(data_by_sym)} 檔,零下載)')
+                return
+            print(f'⚠️ tdcc_holders.json 只轉出 {len(data_by_sym)} 檔 → fallback 下載 CSV')
+    except Exception as e:
+        print(f'⚠️ tdcc_holders 轉換失敗({e})→ fallback 下載 CSV')
+
     url = 'https://smart.tdcc.com.tw/opendata/getOD.ashx?id=1-5'
     try:
         r = requests.get(url, timeout=30, headers=UA)

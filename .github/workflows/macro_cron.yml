@@ -7,7 +7,7 @@ name: 🌍 總經採礦定時同步 (macro 4hr cron)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '0 0,4,12,16,20 * * 1-5'   # ⚡ V69.8.6 P3-3:原每 4 小時全天全週(週末 12 輪抓不更新的資料);改交易日 5 輪並避開 08:00(daily_miner 08:30 自帶一輪)
 
 permissions:
   contents: write

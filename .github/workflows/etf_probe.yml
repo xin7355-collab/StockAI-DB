@@ -3,12 +3,7 @@ name: 🔎 ETF 持股來源探針 (純診斷)
 # 用途：在雲端(有外網)dump ETF 持股候選端點的真實回應，供寫對解析器。
 # 純診斷：不部署、不寫 gh-pages/data、不與 daily_miner / deploy_pages 競爭。
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'etf_probe.py'
-      - '.github/workflows/etf_probe.yml'
+  workflow_dispatch:   # ⚡ V69.8.6 P3-6:改純手動(一次性診斷腳本,功能已由 etf_miner 正式實作)
 
 permissions:
   contents: read

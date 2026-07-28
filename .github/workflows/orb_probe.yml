@@ -4,12 +4,7 @@ name: 🔬 開盤區間突破(ORB)分K回測探針
 # 不碰 gh-pages / data 分支,零部署風險。push orb_probe.py / 本檔即自動跑;也可 Actions UI 手動 Run。
 # 目的:確認 ORB(分K)可行性 → 可行再正式建 orb_miner 滾動回測全清單。
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "orb_probe.py"
-      - ".github/workflows/orb_probe.yml"
+  workflow_dispatch:   # ⚡ V69.8.6 P3-6:改純手動(原 push 觸發每次改檔白跑一輪;ORB 已定案不上,保留手動重驗)
 
 permissions:
   contents: read

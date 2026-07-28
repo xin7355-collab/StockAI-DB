@@ -231,6 +231,7 @@ jobs:
             data/industry_chain.json
             data/cb_overview.json
             data/warrant_premium.json
+            data/fmx_pack.json
             data/broker_radar.json
             data/broker_perf.json
             data/broker_book.json

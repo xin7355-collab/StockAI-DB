@@ -4,12 +4,7 @@ name: 🔬 董監質押資料源探針 (insider probe)
 # 不碰 gh-pages / data 分支,零部署風險。push insider_probe.py / 本檔即自動跑。
 # 目的:確認 B 案(董監質押)資料源可行性 → 結果看 log + artifact,可行再正式做採礦。
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "insider_probe.py"
-      - ".github/workflows/insider_probe.yml"
+  workflow_dispatch:   # ⚡ V69.8.6 P3-6:改純手動(端點探索已定案,insider_miner 已寫死答案)
 
 permissions:
   contents: read

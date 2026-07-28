@@ -4,12 +4,7 @@ name: 🔬 總經採礦驗證探針 (macro probe)
 # 不碰 gh-pages / data 分支，零部署風險。供快速確認每一欄是否真的抓到值（~2 分鐘）。
 # push macro_miner.py / 本檔即自動跑（免 dispatch 權限），方便快速迭代收斂 TAIFEX schema。
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "macro_miner.py"
-      - ".github/workflows/macro_probe.yml"
+  workflow_dispatch:   # ⚡ V69.8.6 P3-6:改純手動(原每次 push macro_miner.py 就對十幾個外部 API 打一輪完整採礦)
 
 permissions:
   contents: read
