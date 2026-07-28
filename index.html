@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6547,8 +6547,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.3',
+    _APP_VERSION: 'V69.9.4',
     _CHANGELOG: [
+        { v: 'V69.9.4', dt: '2026-07-28', t: '🧭 持股「該抱該跑」只留一套指令', d: [
+            '進場體檢卡原本自帶第二套抱跑門檻,可能跟最上方「現在怎麼做」主卡同時給相反指令 → 現在它只顯示你的損益(%+實際金額),行動指令統一看主卡,邏輯不再打架。',
+        ]},
         { v: 'V69.9.3', dt: '2026-07-28', t: '🏷️ 「½價」改名:同名不同值問題根治', d: [
             '過去兩種不同公式都叫「½價」→ 兩張卡數字不同看起來像打架。現在正名:突破棒那條叫「突破棒防守價」((開+收)÷2),K棒戰法/盤勢解讀那條叫「當日平均成本」((高+低)÷2)。',
             '公式完全沒動,只改名字;全 App 32 處文案同步,不再出現「½價」。',
@@ -19072,25 +19075,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const shares = +pos.shares || 0;
                 const pnlNTD = shares > 0 ? Math.round((pC - cost) * shares * 1000) : null;
                 const pnlTxt = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%${pnlNTD !== null ? `(${pnlNTD >= 0 ? '+' : ''}${pnlNTD.toLocaleString()} 元${pnlNTD >= 0 ? '獲利' : '虧損'})` : ''}`;
-                // 💼 V38.1 停損種類(朱):固定5%停損價 + 5日線停利防線;獲利≥7%轉停利;虧≥10%絕對停損
-                // 🧮 V56.1 改引用數字中樞 _unifiedExitPlan(與出場總表同源),不再自算 → 全頁數字一致;中樞沒資料才 fallback 自算
-                const _uni = this._unifiedExitPlan(data, cost);
-                const ma5v = _uni?.takeShort ?? (data.slice(-5).reduce((a, b) => a + (+((b?.close ?? b?.c) || 0)), 0) / 5);
-                const slPrice = _uni?.stopB ?? (cost * 0.95);   // 固定比例 5% 停損價
-                let hv, hc, ha;
-                if (pnlPct <= -10) { hv = '🚨 絕對停損'; hc = 'green'; ha = `已虧逾 10% → 朱式「絕對停損」:非走不可、別再凹,留住 9 成資金才有翻身機會(小賠賺回易、大賠難)。`; }
-                else if (c === 'green' || pnlPct <= -5) { hv = '🏃 該跑/減碼'; hc = 'green'; ha = `型態偏空或已破固定停損價 ${slPrice.toFixed(2)}(成本-5%)→ 停損保命別凹單,砍掉重練比抱著歸零好。`; }
-                else if (pnlPct >= 7) { hv = '💰 轉停利'; hc = 'red'; ha = `已獲利 ${pnlPct.toFixed(1)}%(>7%,離停損已遠)→ 朱式:放棄固定停損、改「停利」:守 5 日線 ${ma5v.toFixed(2)},跌破就走鎖住獲利,別讓賺的吐回去。`; }
-                else if (c === 'red' && pnlPct >= 0) { hv = '✊ 該抱'; hc = 'red'; ha = `型態偏多且帳上有賺 → 沿 5 日線 ${ma5v.toFixed(2)} 續抱,跌破 5 日線或前低再分批停利。`; }
-                else { hv = '👀 續抱觀察'; hc = 'yellow'; ha = `方向未明 → 設好防線:跌破 5 日線 ${ma5v.toFixed(2)} 或固定停損價 ${slPrice.toFixed(2)}(成本-5%)就先走。`; }
-                const hsc = hc === 'red' ? 'text-red-300' : hc === 'green' ? 'text-green-300' : 'text-yellow-300';
-                // 💼 V38.2 K線戰法防線(朱):守前一日最低點(標股離5日線遠時用此最跟得上)
-                const pYLow = +((data[data.length - 2]?.low ?? data[data.length - 2]?.l) || 0);
-                const isHotStock = ma5v > 0 && pC >= ma5v * 1.12;   // 離5日線>12% = 標股,K線戰法較貼
-                heldHtml = `<div class="bg-[#161b22] border-l-4 border-${hc}-500 border-y border-r border-[#30363d] rounded-r p-2 mt-2">
-                    <div class="flex items-center justify-between mb-0.5"><span class="text-[10px] font-bold ${hsc}">💼 你的庫存 ${hv}</span><span class="font-mono text-[10px] ${pnlPct >= 0 ? 'text-red-300' : 'text-green-300'}">${pnlTxt}</span></div>
-                    <div class="text-[10px] text-gray-300 leading-relaxed">${ha}</div>
-                    <div class="text-[9px] text-gray-500 mt-1 font-mono leading-relaxed">🛡️ 固定停損 ${slPrice.toFixed(2)}(成本-5%) ・ 停利防線 5日線 ${ma5v.toFixed(2)}${pYLow > 0 ? ` ・ K線戰法守昨低 ${pYLow.toFixed(2)}` : ''}${isHotStock ? '(標股離5日線遠,建議改用K線戰法守昨低)' : ''}${(_uni?.stopFinal && _uni.stopFinal > slPrice + 0.01) ? `<br>⚠️ 出場總表建議守更高的 <b class="text-yellow-300">${_uni.stopFinal.toFixed(2)}</b>(發動K最低點,先到先守)` : ''}</div></div>`;
+                // 🧭 V69.9.4 U-6:原本這裡自帶第二套「該抱該跑」門檻(−10%/−5%/+7%),跟主卡(現在怎麼做)
+                //   可能同時給相反指令 → 依「單一劇本原則」收斂:此處只顯損益事實,行動指令一律看主卡。
+                heldHtml = `<div class="bg-[#161b22] border-l-4 border-[#30363d] border-y border-r border-[#30363d] rounded-r p-2 mt-2">
+                    <div class="flex items-center justify-between"><span class="text-[10px] font-bold text-gray-300">💼 你的庫存</span><span class="font-mono text-[10px] ${pnlPct >= 0 ? 'text-red-300' : 'text-green-300'}">${pnlTxt}</span></div>
+                    <div class="text-[9px] text-gray-500 mt-1 leading-relaxed">該抱或該跑,以最上方「現在怎麼做」主卡為準(防守價與出場總表同源,全 App 只此一套行動指令)。</div></div>`;
             }
         } catch (_) {}
         // 📊 V38.4 交叉參照綜合操作評分(籌碼+基本面),技術面 vs 籌碼面分歧時標示(使用者指定:引用評分對齊)
