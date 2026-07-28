@@ -1738,6 +1738,11 @@ if __name__ == '__main__':
         build_sector_chip_flow()
     except Exception as e:
         print(f"💥 板塊籌碼掃描頂層異常(不影響其他):{e}")
+    # 📐 V71.1.0 全市場因子分位門檻(前端「隔夜資金足跡」用,避免門檻寫死過期)
+    try:
+        build_factor_quantiles()
+    except Exception as e:
+        print(f"💥 因子分位計算頂層異常(不影響其他):{e}")
     # 🦅 獵鷹建倉分:全市場空手建倉評分(獨立 try,需 macro_risk.json 已產出)
     try:
         build_falcon_scores()
@@ -1910,6 +1915,75 @@ SECTOR_MEMBERS = {
     "asic":      ["3661", "3443", "6533", "4966", "5269"],
     "security":  ["6690", "3029", "6214", "2480"],
 }
+
+
+def build_factor_quantiles():
+    """📐 V71.1.0 全市場因子分位門檻 → data/factor_quantiles.json
+
+    前端「🌙 隔夜資金足跡」要標「全市場前 20% / 中段 / 最後 20%」,
+    需要當下的全市場分位。⛔ 不可寫死在前端 —— CLAUDE.md 鐵則:
+    「寫死的對照表要有採礦更新機制,否則過期」(概念標籤那次的教訓)。
+
+    因子選擇依據 edge_probe.py 實測(2,220 檔 × 約 3 年日K):
+      ・on60   隔夜報酬60日  — Q1→Q5 單調遞增(−0.06% → +1.43%),行為最乾淨
+      ・prox52 距52週高      — Q5−Q1 +1.84%,價差最大
+    (「隔夜減盤中」實測 Q5−Q1 僅 +0.25% 無效 → 刻意不發布,免得前端拿去當訊號。)
+
+    純公式、零 API、只讀 data/*.json。命中不足不覆寫(保留舊檔,遵守自我修復鐵則)。
+    """
+    print("\n📐 啟動【因子分位門檻】全市場計算...")
+    try:
+        on60, prox52 = [], []
+        for p in sorted(DATA_DIR.glob("*.json")):
+            sym = p.stem
+            if not sym.isdigit() or len(sym) < 4:
+                continue
+            try:
+                rows = json.loads(p.read_text(encoding='utf-8'))
+            except Exception:
+                continue
+            if not isinstance(rows, list) or len(rows) < 260:
+                continue
+            try:
+                o = [float(r["open"]) for r in rows[-260:]]
+                c = [float(r["close"]) for r in rows[-260:]]
+                h = [float(r["high"]) for r in rows[-260:]]
+            except Exception:
+                continue
+            if min(c) <= 0 or min(o) <= 0:
+                continue
+            i = len(c) - 1
+            try:
+                on60.append(sum((o[k] - c[k - 1]) / c[k - 1] for k in range(i - 59, i + 1)) * 100)
+                hi = max(h[i - 249:i + 1])
+                if hi > 0:
+                    prox52.append(c[i] / hi * 100)
+            except Exception:
+                continue
+
+        if len(on60) < 300 or len(prox52) < 300:
+            print(f"   ⚠️ 命中僅 on60={len(on60)} / prox52={len(prox52)}(<300)→ 不覆寫,保留舊檔")
+            return
+
+        def q(arr, pct):
+            a = sorted(arr)
+            return round(a[min(len(a) - 1, int(len(a) * pct))], 2)
+
+        payload = {
+            "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "_at": datetime.now().strftime("%Y-%m-%d"),
+            "n": len(on60),
+            # 20 / 40 / 60 / 80 分位(前端 _factorCuts 直接吃這個格式)
+            "on60":   [q(on60, .2), q(on60, .4), q(on60, .6), q(on60, .8)],
+            "prox52": [q(prox52, .2), q(prox52, .4), q(prox52, .6), q(prox52, .8)],
+        }
+        (DATA_DIR / "factor_quantiles.json").write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print(f"   ✅ 因子分位:{len(on60)} 檔 → factor_quantiles.json "
+              f"(隔夜60日 20/80 分位 = {payload['on60'][0]} / {payload['on60'][3]};"
+              f"距52週高 = {payload['prox52'][0]} / {payload['prox52'][3]})")
+    except Exception as e:
+        print(f"   ❌ 因子分位計算失敗(不影響其他):{e}")
 
 
 def build_sector_chip_flow():
