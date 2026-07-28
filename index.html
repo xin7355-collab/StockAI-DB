@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6533,8 +6533,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.1.3',
+    _APP_VERSION: 'V70.1.4',
     _CHANGELOG: [
+        { v: 'V70.1.4', dt: '2026-07-28', t: '🎨 分時圖大漲/大跌日不再一整片色海', d: [
+            '你問的「綠色在上面對嗎」:語意是對的(那片色=現價與昨收之間的距離),但大跌日昨收跑到圖外,整個上半部被填滿確實難讀 → 改成:昨收在圖內維持原樣(紅上綠下以昨收為界);昨收在圖外(大漲/大跌日)改「線下漸層淡出」,跟專業看盤 App 同款。',
+            '順修:價格軸出現 98.697 這種長小數(漲跌停納入後沒進位)→ 一律兩位小數。',
+        ]},
         { v: 'V70.1.3', dt: '2026-07-28', t: '🌡️ 溫度計加高 + 標籤搬左欄 + 共振對帳加戰績', d: [
             '溫度計格子上下加高(整張圖 300→340),柱子看得更清楚。',
             '「做多區/避開區」標籤搬到圖左側空白欄,旁邊加「盤中六脈」標題 — 那裡永遠沒有柱子,徹底不會被擋。',
@@ -28095,7 +28099,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     { type: 'category', data: grid, gridIndex: 2, boundaryGap: false, axisLabel: { color: '#8b949e', fontSize: 9, interval: 59 }, axisLine: { lineStyle: { color: '#30363d' } } },
                 ],
                 yAxis: [
-                    { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 9 } ,
+                    { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 9, formatter: v => String(+(+v).toFixed(2)) } ,
                       // 🚧 V70.0.3 靠近停板(2.5% 內)才把停板線納入軸範圍,平時維持自動縮放不被撐扁
                       min: ({ min }) => (_ld != null && min <= _ld * 1.025) ? Math.min(min, _ld * 0.998) : min,
                       max: ({ max }) => (_lu != null && max >= _lu * 0.975) ? Math.max(max, _lu * 1.002) : max },
@@ -28114,7 +28118,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                               { xAxis: grid[Math.max(0, Math.min(270, b))] },
                           ]) };
                       } catch (_) { return undefined; } })(),
-                      areaStyle: prevC != null ? { origin: prevC, opacity: 0.22 } : undefined, z: 3,
+                      // 🎨 V70.1.4:昨收在可視範圍內→填到昨收基準(紅上綠下);昨收在圖外(大漲跌日)→
+                      //   舊版整個上/下半部被填成單色大海(使用者:綠色在上面對嗎?)→ 改線下漸層(專業 App 式)
+                      areaStyle: (() => {
+                          if (prevC == null) return undefined;
+                          const _valid = closes.filter(c => c != null);
+                          if (!_valid.length) return undefined;
+                          const _inRange = prevC >= Math.min(..._valid) * 0.998 && prevC <= Math.max(..._valid) * 1.002;
+                          if (_inRange) return { origin: prevC, opacity: 0.22 };
+                          const _down = _valid[_valid.length - 1] < prevC;
+                          const _c = _down ? '74,222,128' : '248,113,113';
+                          return { origin: 'start', color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+                              { offset: 0, color: `rgba(${_c},0.28)` }, { offset: 1, color: `rgba(${_c},0.02)` }] } };
+                      })(), z: 3,
                       markPoint: { symbol: 'circle', symbolSize: 2, silent: true,
                           data: [
                               { type: 'max', name: '高', label: { show: true, position: 'top', color: '#fca5a5', fontSize: 9, formatter: p => (+p.value).toFixed(2) } },
