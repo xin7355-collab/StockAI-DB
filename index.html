@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4851,6 +4851,50 @@ const app = {
         this.vibrate?.(40);
     },
 
+    // 📅 V70.2.0 全 App 統一「資料日期」格式(使用者要求:每張卡都要看得出是哪天的資料)
+    //   _dW('2026/07/28') → '07/28(二)';_dW(x,{y:1}) → '2026/07/28(二)';_dW(x,{rel:1}) 會加「今日/昨日/N日前」
+    //   吃 'YYYY/MM/DD'、'YYYY-MM-DD'、ISO、Date、時間戳;解析不出來回原字串前 10 碼(絕不顯示 Invalid)
+    _WD: ['日', '一', '二', '三', '四', '五', '六'],
+    _dW(raw, opt = {}) {
+        if (raw == null || raw === '') return '';
+        let d;
+        if (raw instanceof Date) d = raw;
+        else {
+            const s = String(raw).trim();
+            const m = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+            if (m) d = new Date(+m[1], +m[2] - 1, +m[3]);
+            else { const t = new Date(s); d = isNaN(t.getTime()) ? null : t; }
+        }
+        if (!d || isNaN(d.getTime())) return String(raw).slice(0, 10);
+        const mm = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+        let out = (opt.y ? `${d.getFullYear()}/` : '') + `${mm}/${dd}(${this._WD[d.getDay()]})`;
+        if (opt.rel) {
+            const t0 = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+            t0.setHours(0, 0, 0, 0);
+            const dd0 = new Date(d); dd0.setHours(0, 0, 0, 0);
+            const diff = Math.round((t0 - dd0) / 86400000);
+            const rel = diff === 0 ? '今日' : diff === 1 ? '昨日' : diff === -1 ? '明日' : diff > 1 ? `${diff} 天前` : `${-diff} 天後`;
+            out += ` ${rel}`;
+        }
+        return out;
+    },
+    // 📅 資料新鮮度徽章:今日=灰、昨日=灰、≥2 天=黃字提醒「可能過期」
+    _dChip(raw, label = '資料', opt = {}) {
+        if (!raw) return '';
+        const txt = this._dW(raw, opt);
+        if (!txt) return '';
+        let stale = 0;
+        try {
+            const s = String(raw).trim().match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+            const d = s ? new Date(+s[1], +s[2] - 1, +s[3]) : new Date(raw);
+            const t0 = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+            t0.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
+            stale = Math.round((t0 - d) / 86400000);
+        } catch (_) {}
+        const cls = stale >= 4 ? 'text-yellow-300' : 'text-gray-500';
+        return `<span class="text-[9px] ${cls} font-normal whitespace-nowrap">${label} ${txt}${stale >= 4 ? ' ⚠️' : ''}</span>`;
+    },
+
     // 📅 V35 — 新聞時間統一台灣格式 + Asia/Taipei 時區換算(取代英文 ISO 切片)
     //   有時間 → 「6/29 14:30」;只有日期 → 「6/29」;解析失敗 → 原字串前段
     _fmtNewsTime(raw) {
@@ -5648,7 +5692,7 @@ ${list}
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
                 <h4 class="text-amber-300 font-bold text-sm">🚦 ETF 跟車狀態</h4>
-                <span class="text-[10px] text-gray-500 font-mono">變動日 ${updated}${entryDate && entryDate !== updated ? `(進場價取 ${entryDate} 收盤)` : ''}</span>
+                <span class="text-[10px] text-gray-500 font-mono">變動日 ${this._dW(updated)}${entryDate && entryDate !== updated ? `(進場價取 ${entryDate} 收盤)` : ''}</span>
             </div>
             ${trustWidget}
             <div class="bg-[#0d1117] border border-[#30363d] rounded p-2 mb-2">
@@ -5666,7 +5710,7 @@ ${list}
             <div class="text-[10px] text-gray-500 mb-1">📊 動作明細 ・ 換入 ${cntIn} ・ 加碼 ${cntUp} ・ 減碼 ${cntDn} ・ 換出 ${cntOut}</div>
             <div>${rowsHtml}</div>
             <div class="mt-2 px-2 py-1.5 rounded border ${verdict.cls} text-[11px] leading-snug">${verdict.txt}</div>
-            <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 進場價為「主動 ETF 換股當日(${updated})該股收盤價」近似。${isDay0 ? '今天剛換股→進場價=今收,當日漲跌已含在「換股當日漲幅」(當天若已大漲=跟車就是追在當日高點),明起才有相對 ETF 的後續走勢可追蹤。' : '若你開股當天還沒採礦完整,等盤後或重整再看。'}</div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 進場價為「主動 ETF 換股當日(${this._dW(updated)})該股收盤價」近似。${isDay0 ? '今天剛換股→進場價=今收,當日漲跌已含在「換股當日漲幅」(當天若已大漲=跟車就是追在當日高點),明起才有相對 ETF 的後續走勢可追蹤。' : '若你開股當天還沒採礦完整,等盤後或重整再看。'}</div>
         `;
         card.classList.remove('hidden');
     },
@@ -6191,7 +6235,7 @@ ${list}
             ${head}
             <div class="text-[10px] text-gray-500 mb-1.5 leading-snug">📌 ${meta.label}(${meta.sub})近 5 日買超最多的 10 檔 = <b class="text-amber-300">大戶資金往哪跑</b>。點一檔看它現在能不能跟。</div>
             ${rows}
-            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">近 5 交易日法人買賣超累計(單位張=1000 股)・更新 ${((rank.updated || '') + '').slice(0, 10)}・投信是主動式 ETF/基金的實際買手,比單看「主動式 ETF」更全。僅供參考、非投資建議。</div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">近 5 交易日法人買賣超累計(單位張=1000 股)・📅 ${this._dW(rank.updated)}・投信是主動式 ETF/基金的實際買手,比單看「主動式 ETF」更全。僅供參考、非投資建議。</div>
         </div>`;
     },
 
@@ -6533,8 +6577,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.1.6',
+    _APP_VERSION: 'V70.2.0',
     _CHANGELOG: [
+        { v: 'V70.2.0', dt: '2026-07-28', t: '📅 全 App 卡片加上「資料日期+星期」(第一批)', d: [
+            '你反映的「不知道是今天還是上個交易日的資料」→ 全面補日期,格式統一 07/28(二),重要的還會直接寫「今日/昨日/N 天前」。',
+            '這批已補:現價旁(盤中/收盤 + 哪一天)、大戶籌碼總結(法人資料日)、K線頁六脈(日K日)、今日盤勢解讀、券商分點(分點日)、持股身份分布(集保結算日)、注意股掃描(官方名單日)、盤前體檢、基本面X光機(採礦日)、選股雷達三榜、盤中產業指數、大戶vs散戶(加日期)、法人排行、ETF換股日。',
+            '資料超過 4 天沒更新會自動變黃字加 ⚠️,一眼看出這張卡的數字過期了。',
+        ]},
         { v: 'V70.1.6', dt: '2026-07-28', t: '🐛 修「設定中心一直自己跳出來」(安卓回報)', d: [
             '根因:大盤頁宏觀事件卡會背景自動 AI 判讀,遇到「這台裝置沒存 AI key」就自動打開設定中心 → 每次刷新跳一次。已改:背景自動流程永遠不彈設定,只有你親手點按鈕才會提示。',
             '📌 重要觀念:金鑰存在手機瀏覽器裡「不跨裝置同步」— iPhone 填過的 key,安卓要嘛重填一次,要嘛用備份:iPhone 設定 →「只備份 API 金鑰」傳到安卓 →「還原備份」即可整組帶過去。',
@@ -11151,6 +11200,7 @@ const marginByDate = {};
             const j = await r.json();
             if (j?.stocks && typeof j.stocks === 'object') {
                 this.attentionStatus = j.stocks;
+                this._attentionUpdated = j.updated || j.date || null;   // 📅 V70.2.0 官方名單日期(供卡片標示)
                 console.log(`[處置神器] 已載入 ${Object.keys(j.stocks).length} 檔注意/處置股`);
                 // 若已渲染過雷達或自選股,觸發重畫讓 badge 補上
                 if (this.radarMatrix) this.renderRadarMatrix?.(this.radarStrategy || 'layup');
@@ -12102,7 +12152,7 @@ const marginByDate = {};
 
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
-                <h4 class="text-amber-300 font-bold text-sm">🔍 注意股 8 款掃描</h4>
+                <h4 class="text-amber-300 font-bold text-sm">🔍 注意股 8 款掃描 ${this._dChip(this._attentionUpdated, '官方名單')}</h4>
                 <button onclick="app._showAttentionRulesHelp()" class="text-[11px] text-cyan-300 hover:text-cyan-200 px-1.5 py-0.5 rounded border border-cyan-700/40">📖 教學</button>
             </div>
             <!-- 處置預測 banner -->
@@ -12601,6 +12651,7 @@ const marginByDate = {};
                 <div class="flex items-start justify-between gap-2 mb-1.5">
                     <div class="min-w-0">
                         <span class="text-[12px] font-black text-gray-100">🐘 大戶籌碼總結 <button onclick="alert('🔬 籌碼綜合評分怎麼算\\n\\n把所有籌碼因子加權成一個分數(50=中性、越高越偏多):\\n・外資 1/3/5/10 日買賣超 + 連續方向(權重最高)\\n・投信＋自營\\n・融資券(散戶指標)\\n・主力分點集中度\\n・法人反轉(賣轉買/買轉賣)\\n・投信季底做帳\\n・借券空方壓力\\n\\n純公式、零 AI。籌碼為輔,進出仍以 K 線為主。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button></span>
+                        <div class="mt-0.5">${this._dChip(arr[arr.length - 1]?.date, '法人資料日')}</div>
                         <div class="text-2xl font-black ${bigCls} leading-tight mt-1">${big}</div>
                     </div>
                     <div class="flex flex-col items-center flex-shrink-0 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-1.5">
@@ -14128,8 +14179,8 @@ const marginByDate = {};
 
         // 📅 V41.34 — 資料基準日:採礦時間(台北)+ 台股最新收盤日,讓使用者知道「現在看的是哪一天的資料」
         const _updRaw = String(mr.updated || '');
-        const _updShow = _updRaw.length >= 16 ? `${_updRaw.slice(5, 10).replace('-', '/')} ${_updRaw.slice(11, 16)}` : '';
-        const _twiiDate = (Array.isArray(usm.twii_history) && usm.twii_history.length) ? String(usm.twii_history[usm.twii_history.length - 1].date || '').replace(/-/g, '/').slice(-5) : '';
+        const _updShow = _updRaw.length >= 16 ? `${this._dW(_updRaw.slice(0, 10), { rel: 1 })} ${_updRaw.slice(11, 16)}` : '';   // V70.2.0 加星期+今日/昨日
+        const _twiiDate = (Array.isArray(usm.twii_history) && usm.twii_history.length) ? this._dW(usm.twii_history[usm.twii_history.length - 1].date) : '';
         const _basis = _updShow || _twiiDate || '—';
 
         // 🎯 V43.2 大盤融資餘額行(bubble_warning.json)
@@ -17581,7 +17632,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         els.forEach(x => x.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg mt-1');
         const _smHtml = `
             <div class="flex items-center justify-between gap-2">
-                <div class="text-[13px] font-black text-gray-100">⚔️ 新六脈・共振計分 <button onclick="alert('⚔️ 新六脈共振計分\\n\\n把「六脈神劍」去繁從簡:剔除同質又滯後的 BBI/MTM/LWR,精簡成 3 個不同時間尺度的劍 + 加入市場靈魂(量能+籌碼):\\n\\n① 趨勢:站上 20MA(月線=多空分水嶺)\\n② MACD:柱狀翻紅/金叉(中期波段)\\n③ RSI:動能偏強且非超買(短線)\\n④ 量能:突破要放量(≥1.5倍)、回檔要量縮(洗盤才是好買點)——分情境\\n⑤ 籌碼:外資近3日連買\\n\\nADX 趨勢強度過濾盤整假金叉(<20 盤整、≥25 強趨勢)。\\n\\n右側分批:3脈翻多=第1點試單、4-5脈共振=加碼。早出場:RSI高檔下彎或跌破5日線先減碼(寧早勿晚)。\\n\\n純公式、日K盤後,非投資建議,一律守停損。');event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button></div>
+                <div class="text-[13px] font-black text-gray-100">⚔️ 新六脈・共振計分 <button onclick="alert('⚔️ 新六脈共振計分\\n\\n把「六脈神劍」去繁從簡:剔除同質又滯後的 BBI/MTM/LWR,精簡成 3 個不同時間尺度的劍 + 加入市場靈魂(量能+籌碼):\\n\\n① 趨勢:站上 20MA(月線=多空分水嶺)\\n② MACD:柱狀翻紅/金叉(中期波段)\\n③ RSI:動能偏強且非超買(短線)\\n④ 量能:突破要放量(≥1.5倍)、回檔要量縮(洗盤才是好買點)——分情境\\n⑤ 籌碼:外資近3日連買\\n\\nADX 趨勢強度過濾盤整假金叉(<20 盤整、≥25 強趨勢)。\\n\\n右側分批:3脈翻多=第1點試單、4-5脈共振=加碼。早出場:RSI高檔下彎或跌破5日線先減碼(寧早勿晚)。\\n\\n純公式、日K盤後,非投資建議,一律守停損。');event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button> ${this._dChip(data[data.length - 1]?.date, '日K')}</div>
                 <div class="flex items-baseline gap-0.5"><span class="font-mono font-black text-2xl ${tcls} leading-none">${v.okN}</span><span class="text-[10px] text-gray-500">/5</span></div>
             </div>
             <div class="text-base font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
@@ -19685,7 +19736,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             </div>`;
             return `
                 <div class="mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
-                    <div class="text-[11px] font-black text-gray-100 mb-1.5">🥧 持股身份分布 <span class="text-[9px] text-gray-500 font-normal">這檔股票誰拿著(總發行 ${totLots.toLocaleString()} 張)</span></div>
+                    <div class="text-[11px] font-black text-gray-100 mb-1.5">🥧 持股身份分布 <span class="text-[9px] text-gray-500 font-normal">這檔股票誰拿著(總發行 ${totLots.toLocaleString()} 張)</span>${(() => { const _d8 = (td && Array.isArray(td.h) && td.h.length) ? String(td.h[td.h.length - 1][0]) : ''; return _d8.length === 8 ? ` <span class="text-[9px] text-gray-500 font-normal">・集保結算 ${this._dW(`${_d8.slice(0,4)}/${_d8.slice(4,6)}/${_d8.slice(6,8)}`)}</span>` : ''; })()}</div>
                     <div class="flex w-full h-3 rounded overflow-hidden bg-[#0d1117] border border-[#30363d] mb-2">${barSegs}</div>
                     <div class="flex flex-col gap-1 text-[11px]">${rows}</div>
                     <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">⚠️ 身份可能重疊(董監同時可能是外資身份),合計可能超過 100%;投信/自營持股庫存無免費官方資料,併入「其他」。董監=TWSE 月報、外資=官方持股比率、融資券=每日餘額,全官方資料。</div>
@@ -20189,7 +20240,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 let daysAgo = null;
                 try { const dt = new Date(+m[1], +m[2] - 1, +m[3]); daysAgo = Math.floor((Date.now() - dt.getTime()) / 86400e3); } catch (_) {}
                 const stale = daysAgo != null && daysAgo >= 5;   // ≥5 天(跨週末)才提醒可能過期
-                ddChip = `<span class="text-[9px] font-mono font-bold ${stale ? 'text-orange-300' : 'text-cyan-300'} bg-[#0d1117] border ${stale ? 'border-orange-700/50' : 'border-[#30363d]'} rounded px-1.5 py-0.5">📅 分點日 ${m[2]}/${m[3]}${stale ? ` ⚠️ ${daysAgo}天前` : ''}</span>`;
+                ddChip = `<span class="text-[9px] font-mono font-bold ${stale ? 'text-orange-300' : 'text-cyan-300'} bg-[#0d1117] border ${stale ? 'border-orange-700/50' : 'border-[#30363d]'} rounded px-1.5 py-0.5">📅 分點日 ${this._dW(_dd)}${stale ? ` ⚠️ ${daysAgo}天前` : ''}</span>`;
             }
         }
 
@@ -20533,7 +20584,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             }
         }
         const dateEl = document.getElementById('xrayDataDate');
-        if (dateEl) dateEl.textContent = fund.generated ? `採礦日 ${fund.generated}` : '';
+        if (dateEl) dateEl.textContent = fund.generated ? `採礦日 ${this._dW(fund.generated, { rel: 1 })}` : '';
 
         // EPS QoQ（從 quarterly_eps 快取計算，供自動載入路徑使用）
         const epsQoQEl2 = document.getElementById('xrayEpsQoQ');
@@ -21820,7 +21871,7 @@ ${lightExplain[queryType]}
             // 標示資料日期(精確到分,使用者看得到「最後更新」而非每次切 tab 都跳同樣日期)
             const dateEl2 = document.getElementById('xrayDataDate');
             const _now = new Date();
-            const _ts = `${_now.getMonth()+1}/${_now.getDate()} ${String(_now.getHours()).padStart(2,'0')}:${String(_now.getMinutes()).padStart(2,'0')}`;
+            const _ts = `${this._dW(_now)} ${String(_now.getHours()).padStart(2,'0')}:${String(_now.getMinutes()).padStart(2,'0')}`;
             if (dateEl2) dateEl2.textContent = `最後更新 ${_ts}`;
             // 💾 持久化:存到 localStorage 供下次切 tab/開股直接顯示,免重抓
             try {
@@ -23702,7 +23753,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         ];
         if (washHint && trendUp) swingRows.splice(1, 0, bullet('text-cyan-400', `長下影+多頭格局 → 偏<b class="text-cyan-300">「盤中洗籌碼」</b>:主力下探 ${fp(L)} 清洗信心不足的浮額,尾盤再收回;洗完籌碼反而更乾淨。`));
         const liveTag = this.isMarketOpen?.() ? ' <span class="text-yellow-500/80">盤中暫定,收盤定案</span>' : '';
-        const dStr = String(last.date || '').replace(/-/g, '/').slice(-5);
+        const dStr = this._dW(last.date, { rel: 1 });   // V70.2.0 加星期+今日/昨日
         box.className = 'w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2 mb-1">
@@ -26264,7 +26315,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="font-black ${vColor} text-sm mb-1">${verdict}</div>
                 <div class="text-gray-300">即時 <b class="${chgPct>=0?'text-red-300':'text-green-300'}">${q.price}(${chgPct>=0?'+':''}${chgPct.toFixed(2)}%)</b></div>
                 <div class="text-gray-400">五檔掛單:${pressLine}</div>
-                <div class="text-[9px] text-gray-500 mt-1">${inSession ? `盤中 ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')} 即時估算` : '⚠️ 非盤中,為最近成交快照'} · 僅供參考,以收盤後真實分點為準</div>`;
+                <div class="text-[9px] text-gray-500 mt-1">${inSession ? `盤中 ${this._dW(tpe)} ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')} 即時估算` : '⚠️ 非盤中,為最近一個交易日成交快照'} · 僅供參考,以收盤後真實分點為準</div>`;
         }
         if (btn) { btn.disabled = false; btn.textContent = '🔄 盤中即時更新(Fugle)'; }
         if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
@@ -26529,7 +26580,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!A || A.sym !== String(sym) || A.pts.length < 5) { card.classList.add('hidden'); return; }
         // 🕐 V70.1.0 紀錄區間(使用者要求:寫清楚累積了什麼時間到什麼時間)
         const _t2 = ms => { const d = new Date(new Date(ms).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
-        const _rangeTxt = `紀錄 ${_t2(A.t0)}~${_t2(Date.now())}`;
+        const _rangeTxt = `${this._dW(new Date())} 紀錄 ${_t2(A.t0)}~${_t2(Date.now())}`;
         const big = Math.round(A.big), retail = Math.round(A.retail);
         const bigCls = big > 0 ? 'text-red-300' : big < 0 ? 'text-green-300' : 'text-gray-300';
         const rCls = retail > 0 ? 'text-red-300' : retail < 0 ? 'text-green-300' : 'text-gray-300';
@@ -27751,7 +27802,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🧙 V68.5.1 神分點在下拉選單前面標 ⭐,方便一眼挑「厲害的分點」跟單
         const opts = brokers.map(b => { const g = this._brokerGodTag(b); return `<option value="${b.replace(/"/g, '')}">${g ? '⭐ ' : ''}${b}${g ? ' · ' + g : ''}</option>`; }).join('');
         body.innerHTML = `
-          <div class="text-[10px] text-gray-500 mb-2">更新 ${(d.updated || '').replace('T', ' ').slice(0, 16)} · 點股名跳個股 · 條長=金額大小 · 資料=收盤後真實分點</div>
+          <div class="text-[10px] text-gray-500 mb-2">📅 資料日 ${this._dW(d.updated, { rel: 1 })} · 點股名跳個股 · 條長=金額大小 · 資料=收盤後真實分點</div>
           ${this._followPicksHtml()}
           <div class="grid grid-cols-2 gap-3">
             <div><div class="text-[11px] font-bold text-red-300 mb-1">🔴 主力買超榜</div>${mkRows(d.buy_rank, true)}</div>
@@ -28350,7 +28401,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         };
         const tpe = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
         el.className = 'mb-2 bg-[#0d1117] border border-[#30363d] rounded-lg p-2';
-        el.innerHTML = `<div class="text-[9px] text-gray-500 font-bold mb-1">🏭 官方產業指數 <span class="font-normal">(證交所即時 ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2, '0')} ・ 強→弱排,錢往哪流一眼看)</span></div><div class="flex flex-wrap gap-1">${out.map(chip).join('')}</div>`;
+        el.innerHTML = `<div class="text-[9px] text-gray-500 font-bold mb-1">🏭 官方產業指數 <span class="font-normal">(證交所即時 ${this._dW(tpe)} ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2, '0')} ・ 強→弱排,錢往哪流一眼看)</span></div><div class="flex flex-wrap gap-1">${out.map(chip).join('')}</div>`;
         el.classList.remove('hidden');
     },
 
@@ -28410,7 +28461,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // V22.2 — 台股 .sector-heat 已更新,重算每張卡的同步 chip + 頂部摘要卡
         if (this._macroRiskCache?.sector_etfs) this._renderSectorEtfs(this._macroRiskCache.sector_etfs);
         const srcEl = document.getElementById('sectorSource');
-        if (srcEl) { srcEl.textContent = `(盤中 ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')})`; srcEl.classList.remove('opacity-60'); }
+        if (srcEl) { srcEl.textContent = `(盤中 ${this._dW(tpe)} ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')})`; srcEl.classList.remove('opacity-60'); }
 
         if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
         const got = Object.keys(liveChg).length;
@@ -31756,7 +31807,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     const volTxt = curVol >= 10000 ? (curVol / 10000).toFixed(1) + '萬張' : curVol.toLocaleString() + '張';
                     let extra = '';
                     if (deltaPct != null) { const up = deltaPct >= 0; extra = ` · <span class="${up ? 'text-red-300' : 'text-green-300'}">量${up ? '增' : '縮'}${Math.abs(deltaPct).toFixed(0)}%</span>`; }
-                    vEl.innerHTML = `📊 ${isEst ? '估量' : '總量'} <b class="text-gray-200">${volTxt}</b>${extra}`;
+                    // 📅 V70.2.0 現價是「哪一天」的:盤中=即時、盤後=該交易日收盤(使用者:分不清今日還是上個交易日)
+                    const _dRow = String((raw[raw.length - 1] || {}).date || '');
+                    const _dTag = _dRow ? `<div class="text-[9px] text-gray-500 font-normal">📅 ${this._dW(_dRow, { rel: 1 })}${this.isMarketOpen?.() ? ' 盤中' : ' 收盤'}</div>` : '';
+                    vEl.innerHTML = `<div>📊 ${isEst ? '估量' : '總量'} <b class="text-gray-200">${volTxt}</b>${extra}</div>${_dTag}`;
                     vEl.classList.remove('hidden');
                 } else vEl.classList.add('hidden');
             }
@@ -33990,7 +34044,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
         if (updated) {
             const d = this.radarMatrix?.updated || '';
-            updated.innerHTML = `更新時間:${d} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考進場` +
+            updated.innerHTML = `📅 資料日 ${this._dW(d, { rel: 1 })} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考進場` +
                 (picks.length ? `<br><span class="text-[10px]">🟢 無警示 ${noWarnCount} 檔 · 🟡 位階過高 ${yellowCount} 檔 · 🔴 高檔出貨 ${redCount} 檔</span>` : '');
         }
         if (!picks.length) {
@@ -34066,7 +34120,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 🎯 V41.18 — 期望值榜專屬渲染(回測統計:期望值/勝率/賺賠比/累積,依期望值排序)
     _renderChuBacktestList(body, updated, picks) {
-        if (updated) updated.innerHTML = `更新時間:${this.radarMatrix?.updated || ''} · 共 ${picks.length} 檔 · 依「每趟期望值」由高到低`;
+        if (updated) updated.innerHTML = `📅 資料日 ${this._dW(this.radarMatrix?.updated, { rel: 1 })} · 共 ${picks.length} 檔 · 依「每趟期望值」由高到低`;
         if (!picks.length) {
             body.innerHTML = `<div class="text-center py-8 text-gray-500 text-[12px]">⚠️ 目前沒有符合的股<br><span class="text-gray-600 text-[10px]">(只收「正期望值 + 歷史 ≥5 趟」的股,寧缺勿濫;採礦後更新)</span></div>`;
             return;
@@ -34100,7 +34154,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🎯 建議2 — 回後買上漲/葛蘭碧/橫盤突破/背離:status 字串型全市場訊號的輕量列表
     _renderChuSignalList(body, updated, picks, key) {
         const themeC = { chu_entry: 'rose', chu_granville: 'teal', chu_box: 'lime', chu_diverge: 'violet' }[key] || 'purple';
-        if (updated) updated.innerHTML = `更新時間:${this.radarMatrix?.updated || ''} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考`;
+        if (updated) updated.innerHTML = `📅 資料日 ${this._dW(this.radarMatrix?.updated, { rel: 1 })} · 共 ${picks.length} 檔 · 盤後採礦,隔日參考`;
         if (!picks.length) {
             body.innerHTML = `<div class="text-center py-8 text-gray-500 text-[12px]">⚠️ 今日無股票符合此訊號<br><span class="text-gray-600 text-[10px]">(純公式全市場掃描,0 檔代表市場沒有符合的標的,別硬找)</span></div>`;
             return;
