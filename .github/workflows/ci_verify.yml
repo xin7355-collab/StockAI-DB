@@ -50,6 +50,9 @@ jobs:
       - name: 3️⃣ DOM id 唯一性(check_dom_ids.py)
         run: python3 scripts/check_dom_ids.py
 
+      - name: 2️⃣b 採礦進入點順序(check_main_order.py)
+        run: python3 scripts/check_main_order.py
+
       - name: 4️⃣ HTML div 平衡(tabContentMarket 不巢狀)
         run: |
           awk '/id="tabContentMarket"/{start=NR; bal=0}

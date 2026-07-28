@@ -1711,43 +1711,6 @@ def build_falcon_scores():
         print(f"   ❌ falcon_scores.json 寫檔失敗:{e}")
 
 
-if __name__ == '__main__':
-    main()
-    # 🚨 雷達矩陣完成後,順手抓注意/處置股名單(獨立 try,失敗不影響雷達)
-    try:
-        fetch_attention_disposal_status()
-    except Exception as e:
-        print(f"💥 處置神器頂層異常(不影響雷達矩陣):{e}")
-    # 🚨 戰區二:處置門檻價預估(純算式,失敗也不影響上面兩個)
-    try:
-        build_attention_forecast()
-    except Exception as e:
-        print(f"💥 處置門檻預估頂層異常(不影響其他):{e}")
-    # 🧊 V70.3.1 低基期爆發選股(獨立 try,失敗不影響其他)
-    try:
-        build_lowbase_picks()
-    except Exception as e:
-        print(f"💥 低基期掃描頂層異常(不影響其他):{e}")
-    # 💎 V71.0.0 錯殺股(跌深但基本面創高)
-    try:
-        build_wrongkill_picks()
-    except Exception as e:
-        print(f"💥 錯殺股掃描頂層異常(不影響其他):{e}")
-    # 🧭 V71.0.0 板塊籌碼輪動(法人 + 券商分點)
-    try:
-        build_sector_chip_flow()
-    except Exception as e:
-        print(f"💥 板塊籌碼掃描頂層異常(不影響其他):{e}")
-    # 📐 V71.1.0 全市場因子分位門檻(前端「隔夜資金足跡」用,避免門檻寫死過期)
-    try:
-        build_factor_quantiles()
-    except Exception as e:
-        print(f"💥 因子分位計算頂層異常(不影響其他):{e}")
-    # 🦅 獵鷹建倉分:全市場空手建倉評分(獨立 try,需 macro_risk.json 已產出)
-    try:
-        build_falcon_scores()
-    except Exception as e:
-        print(f"💥 獵鷹建倉分頂層異常(不影響其他):{e}")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -2153,3 +2116,52 @@ def build_wrongkill_picks():
         print(f"   ✅ 錯殺股:{len(rows_out)} 檔 → wrongkill_picks.json")
     except Exception as e:
         print(f"   ❌ 錯殺股掃描失敗(不影響其他):{e}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# ⚠️ 進入點必須放在檔案「最後面」
+#    Python 由上而下執行:這個區塊若放在中間,它下方才定義的函式在執行到這裡時
+#    還不存在 → NameError。而每個呼叫都包在 try/except 裡 → 會被「靜靜吞掉」,
+#    workflow 照樣 rc=0、看起來一切正常,但檔案根本沒產出。
+#    (V71.1.1 實際踩過:build_lowbase_picks / build_wrongkill_picks /
+#     build_sector_chip_flow / build_factor_quantiles 四支全部空轉一整天才發現。)
+#    ⛔ 新增採礦函式一律往「這個區塊之前」加,不要把進入點往上搬。
+#    🛡️ scripts/check_main_order.py 會自動擋這種錯,已納入 push 前驗證。
+# ═══════════════════════════════════════════════════════════════
+if __name__ == '__main__':
+    main()
+    # 🚨 雷達矩陣完成後,順手抓注意/處置股名單(獨立 try,失敗不影響雷達)
+    try:
+        fetch_attention_disposal_status()
+    except Exception as e:
+        print(f"💥 處置神器頂層異常(不影響雷達矩陣):{e}")
+    # 🚨 戰區二:處置門檻價預估(純算式,失敗也不影響上面兩個)
+    try:
+        build_attention_forecast()
+    except Exception as e:
+        print(f"💥 處置門檻預估頂層異常(不影響其他):{e}")
+    # 🧊 V70.3.1 低基期爆發選股(獨立 try,失敗不影響其他)
+    try:
+        build_lowbase_picks()
+    except Exception as e:
+        print(f"💥 低基期掃描頂層異常(不影響其他):{e}")
+    # 💎 V71.0.0 錯殺股(跌深但基本面創高)
+    try:
+        build_wrongkill_picks()
+    except Exception as e:
+        print(f"💥 錯殺股掃描頂層異常(不影響其他):{e}")
+    # 🧭 V71.0.0 板塊籌碼輪動(法人 + 券商分點)
+    try:
+        build_sector_chip_flow()
+    except Exception as e:
+        print(f"💥 板塊籌碼掃描頂層異常(不影響其他):{e}")
+    # 📐 V71.1.0 全市場因子分位門檻(前端「隔夜資金足跡」用,避免門檻寫死過期)
+    try:
+        build_factor_quantiles()
+    except Exception as e:
+        print(f"💥 因子分位計算頂層異常(不影響其他):{e}")
+    # 🦅 獵鷹建倉分:全市場空手建倉評分(獨立 try,需 macro_risk.json 已產出)
+    try:
+        build_falcon_scores()
+    except Exception as e:
+        print(f"💥 獵鷹建倉分頂層異常(不影響其他):{e}")
