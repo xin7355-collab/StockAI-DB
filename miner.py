@@ -21,7 +21,7 @@ import random
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 
-from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
+from common import is_finite_num, SECTOR_MEMBERS   # 🧩 共用工具 + 板塊成分股(單一真相來源,見 common.py)
 
 # ── 🎯 分點 Sniper 選用相依(雲端 batch 0 才裝;裝不到就靜默退回 FinMind)──
 # Pillow 10+ 移除 ANTIALIAS 會讓 ddddocr 啟動崩潰,先補相容墊片
@@ -2664,7 +2664,10 @@ def fetch_broker_chips():
     # 熱門集合:精選清單 + 成交值 Top N(→ 中華電這類中大型必進熱門、天天深度採)
     _top_by_tv = sorted((s for s in universe if s in turnover),
                         key=lambda s: -turnover[s])[:HOT_TURNOVER_TOP]
-    hot_set = ({s for s in (set(CHIP_WATCHLIST) | set(_top_by_tv)) if s in universe})
+    # 🧭 V71.1.5 板塊成分股一律進熱門:它們餵「板塊籌碼輪動 → 券商群聚」,
+    #   但實測 73 檔裡有 20 檔成交值排 225~1816 名,照純成交值排會排到很後面 → 那段永遠用舊分點。
+    _sector_syms = {x for v in SECTOR_MEMBERS.values() for x in v}
+    hot_set = ({s for s in (set(CHIP_WATCHLIST) | set(_top_by_tv) | _sector_syms) if s in universe})
     if paid:
         # 排序:熱門優先(成交值高→低),再冷門(成交值高→低);無成交值者殿後(字典序)
         ordered = sorted(universe, key=lambda s: (0 if s in hot_set else 1, -turnover.get(s, 0.0), s))
@@ -2783,6 +2786,29 @@ def fetch_broker_chips():
     _fund_extra: dict = {}      # V35.8 — 收集觀察清單已算好的 {sym:{rev_yoy,gross_margin}},迴圈後併入全市場快取
     _chips_start = time.time()
     _chips_budget = int(os.getenv('CHIPS_TIME_BUDGET', '2400'))   # V68.9.8 預設 40 分,到點收工續抓
+    # 🐛 V71.1.5 全市場「目前最新的分點日」= 現有 chips 檔裡最大的那個日期。
+    #    當跳過判斷的基準:自己的分點日還沒追上這個日期 → 代表它拿到的是舊資料,本輪要重抓。
+    #    (取 P95 而非最大值,避免單一髒檔的未來日期把門檻拉高害全部重抓。)
+    _corpus_latest_dt = ''
+    try:
+        _all_dt = []
+        for _f in chips_dir.glob('*.json'):
+            try:
+                _o = json.loads(_f.read_text(encoding='utf-8'))
+                # 舊檔可能是純 list(見下方 existing_obj 的同樣兼容處理),不吃這種會靜靜漏算
+                _c = (_o if isinstance(_o, list) else (_o.get('chips') or []))
+                if _c:
+                    _d = str(_c[-1].get('date') or '')
+                    if _d:
+                        _all_dt.append(_d)
+            except Exception:
+                continue
+        if len(_all_dt) >= 20:
+            _all_dt.sort()
+            _corpus_latest_dt = _all_dt[int(len(_all_dt) * 0.95)]
+        print(f"  📅 全市場最新分點日基準:{_corpus_latest_dt or '(無現有分點檔,不啟用追新判斷)'}")
+    except Exception as _e:
+        print(f"  ⚠️ 分點日基準計算失敗(退回舊行為:只看今日是否抓過):{_e}")
     for sym in watchlist:
         # ⏱️ V68.9.8 時間預算到 → 本輪收工(已抓存檔;下輪「今日已抓→跳過」續抓未完成的股)
         if time.time() - _chips_start > _chips_budget:
@@ -2801,9 +2827,24 @@ def fetch_broker_chips():
 
         # 🔁 V68.9.8 今日已抓過分點 → 跳過(滾動續抓核心:時間預算內往未抓的股推進)
         #    marker=chips_fetched_on(今日曆日),不靠交易日,盤中資料未出時也能正確跳過
+        # 🐛 V71.1.5 修「越熱門越拿不到新資料」:
+        #    舊條件只看「今天有沒有抓過」,不看「抓到的是不是最新那天」。
+        #    實際發生的事:傍晚那輪先跑熱門股,當時 FinMind 還沒出當日分點 → 拿到前一交易日,
+        #    卻被標記「今天抓過」→ 之後每一輪都跳過它;冷門股排在後面,輪到時當日分點已出 → 反而最新。
+        #    實測結果完全顛倒:成交值前 100 名「全部」是舊的,冷門股 633 檔卻是最新的(5483 中美晶排第 34 也中招)。
+        #    修法:再多比一個條件 —— 這檔自己的分點日必須「已經追上全市場最新分點日」才准跳過。
+        _own_dt = ''
+        try:
+            _ec = existing_obj.get('chips') or []
+            if _ec:
+                _own_dt = str(_ec[-1].get('date') or '')
+        except Exception:
+            pass
+        _is_current = (not _corpus_latest_dt) or (_own_dt and _own_dt >= _corpus_latest_dt)
         if (os.environ.get('FORCE_CHIPS_REFRESH') != '1'
                 and existing_obj.get('chips_fetched_on') == today_str
-                and existing_obj.get('periods')):
+                and existing_obj.get('periods')
+                and _is_current):
             _skipped_today += 1
             continue
 

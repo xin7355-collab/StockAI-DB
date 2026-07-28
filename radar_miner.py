@@ -14,7 +14,7 @@ import math
 import requests
 from pathlib import Path
 
-from common import is_finite_num   # 🧩 共用工具:NaN/±Inf 防呆的單一真相來源(見 common.py)
+from common import is_finite_num, SECTOR_MEMBERS   # 🧩 共用工具 + 板塊成分股(單一真相來源,見 common.py)
 from strategy_sim import (chu_long_entry, chu_eliminate,   # 🎯 回後買上漲(旗艦)+ 淘汰13條
                           granville, box_breakout, divergence, volume_signals,   # 建議2:葛蘭碧/橫盤突破/背離/量能 全市場 port
                           reversal_candle, half_price_signal)   # 第2-6/2-7章單根變盤線 + 2-9章½價多空分界
@@ -1862,22 +1862,6 @@ def build_lowbase_picks():
 # ═══════════════════════════════════════════════════════════════
 _IND_MAP = {}   # 🏭 V71.0.0 產業別對照(build_lowbase_picks 填)
 
-SECTOR_MEMBERS = {
-    "server":    ["2382", "6669", "3231", "2376", "2356", "2317"],
-    "power":     ["1519", "1503", "1513", "1504", "1609"],
-    "packaging": ["2330", "3711", "3131", "6187", "3583", "6552"],
-    "cpo":       ["4979", "3450", "3363", "3081", "6869", "3234"],
-    "cooling":   ["3017", "3324", "3653", "6230", "8996"],
-    "robot":     ["2049", "1590", "2359", "6188", "4506"],
-    "finance":   ["2881", "2882", "2891", "2886", "2884"],
-    "leo":       ["3491", "2313", "6285", "8011", "2314"],
-    "dram":      ["2408", "2344", "8299", "3006", "4967"],
-    "defense":   ["2634", "8033", "6753", "8222", "3178", "8383"],
-    "wafer":     ["6488", "5483", "6182", "3532", "3016"],
-    "pcb":       ["3037", "8046", "3189", "2368", "6269"],
-    "asic":      ["3661", "3443", "6533", "4966", "5269"],
-    "security":  ["6690", "3029", "6214", "2480"],
-}
 
 
 def build_factor_quantiles():

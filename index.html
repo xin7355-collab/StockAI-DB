@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6519,8 +6519,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.1.4',
+    _APP_VERSION: 'V71.1.5',
     _CHANGELOG: [
+        { v: 'V71.1.5', dt: '2026-07-28', t: '🐛 找到「籌碼是舊的」真正原因(不是輪不到)+ 表格再精簡', d: [
+            '【真相跟我上次講的不一樣】你問中美晶為什麼沒有最新分點,我上次說「輪流還沒輪到它」— 查證後是錯的。5483 本來就在最優先名單,成交值排第 34 名。',
+            '真正原因:採礦判斷「要不要跳過」是看「今天有沒有抓過」,不是看「抓到的是不是最新那天的」。傍晚那輪先跑熱門股,當時證交所當日分點還沒出 → 拿到前一天的,卻被記成「今天抓過」→ 之後每輪都跳過它;冷門股排後面,輪到時當日分點已經出來 → 反而是最新的。實測完全顛倒:成交值前 100 名「全部」是舊的,冷門股 633 檔卻是最新的。',
+            '已修:多加一個條件 — 這檔的分點日必須「追上全市場最新分點日」才准跳過。用今天的資料試算,新條件下會重抓 946 檔(舊條件是 0 檔全跳過)。',
+            '【你的提議也做了,但理由不同】板塊輪動的成分股共 73 檔,其中 20 檔成交值排在 225~1816 名,原本會排到很後面 →「券商群聚」那段一直用舊分點。現在這 73 檔一律進優先名單。(這修的是那 20 檔,不是 5483。)',
+            '【再精簡】券商列從 77 字 → 48 字(比上一版再少 20%):去掉括號與「+」號、買超金額改紅字表示、萬張以上自動縮寫。表尾說明 121 → 83 字。',
+        ]},
         { v: 'V71.1.4', dt: '2026-07-28', t: '🧹 資金輪動表瘦身:文字砍到剩四分之一', d: [
             '你反映字太多 → 券商那列原本每個名字後面都掛一長串說明(例「美商美林(⚡外資最大隔日沖/常大買大賣)」佔 20 個字,一列吃掉 3 行),現在只留那顆 emoji 當性格記號:⚡🔥=快進快出/隔日沖、🏛️=波段、🛡️=權證避險 → 同一個名字從 20 字變 5 字。',
             '前綴「同時布局多檔的券商:」改成「🏦 券商(張)」,單位只講一次。',
@@ -14918,7 +14925,7 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                 const e = (String(inner).match(/\p{Extended_Pictographic}\uFE0F?/u) || [''])[0];
                 return e || '';
             });
-            const _brokerHtml = _cfB.length ? `<div class="px-1 pb-1.5 text-[9px] text-cyan-300/90 leading-snug">🏦 <span class="text-gray-500">券商(張)</span> ${_cfB.map(b => `<b>${_bkShort(b.name)}</b> ${b.n}檔${b.lots > 0 ? ` +${b.lots.toLocaleString()}` : ''}`).join(' ・ ')}</div>` : '';
+            const _brokerHtml = _cfB.length ? `<div class="px-1 pb-1.5 text-[9px] text-cyan-300/90 leading-snug">🏦<span class="text-gray-500">同買</span> ${_cfB.map(b => `<b>${_bkShort(b.name)}</b><span class="text-gray-500">${b.n}檔</span>${b.lots > 0 ? `<span class="text-red-300/80"> ${b.lots >= 10000 ? (b.lots / 10000).toFixed(1) + '萬' : b.lots.toLocaleString()}</span>` : ''}`).join('　')}<span class="text-gray-600 text-[8px]"> 張</span></div>` : '';
             const stkHtml = stocks.length ? `<div id="secStk_${sk}" class="hidden flex flex-wrap gap-1.5 pb-2 pt-0.5 px-1">
                 ${stocks.map(([sym, nm]) => `<button onclick="event.stopPropagation(); app._pickGlobalSearch('${sym}'); app.vibrate(15);" class="flex items-center gap-1 bg-[#161b22] border border-[#30363d] hover:border-cyan-500 active:bg-[#21262d] rounded-lg px-2 py-1 text-[11px] transition-colors"><span class="font-mono font-bold text-cyan-300">${sym}</span><span class="text-gray-200">${nm}</span><span class="text-gray-600">›</span></button>`).join('')}
             </div>` : '';
@@ -14949,7 +14956,7 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                 </div>`;
         }
         const _cfUp = this._sectorChipFlow?.updated ? `　籌碼資料:${this._dW(this._sectorChipFlow.updated, { rel: 1 })}` : '';
-        html += `<div class="text-[9px] text-gray-600 text-center mt-1.5 leading-snug">👆 點板塊名稱看成分股與券商。<b class="text-cyan-300">🕵️布局</b>=板塊在跌但外資5日買超(價跌籌碼進);<b class="text-amber-300">🕵️深蹲</b>=再加已跌深(距60日高≥12%),實測較強。券商名後的 ⚡🔥=快進快出/隔日沖,🏛️=波段,🛡️=權證避險。${_cfUp}</div>`;
+        html += `<div class="text-[9px] text-gray-600 text-center mt-1.5 leading-snug">👆 點板塊看成分股。<b class="text-cyan-300">🕵️布局</b>=價跌但外資5日買超;<b class="text-amber-300">🕵️深蹲</b>=再加已跌深(較強)。券商後 ⚡🔥隔日沖・🏛️波段・🛡️避險。${_cfUp}</div>`;
         html += '</div>';   // V30.1 — 底部 💡 長圖例已移除,改標題 ⓘ popover(showJargon('板塊輪動訊號'))
         result.innerHTML = html;
     },
