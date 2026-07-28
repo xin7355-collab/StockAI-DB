@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6525,8 +6525,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.8',
+    _APP_VERSION: 'V71.0.9',
     _CHANGELOG: [
+        { v: 'V71.0.9', dt: '2026-07-28', t: '🌙 隔夜資金足跡:把實測有效的兩個因子做進籌碼卡', d: [
+            '個股頁「大戶籌碼總結」卡片裡新增一段「🌙 隔夜資金足跡」(沒有新開卡片,是併進去的)。它把每天漲跌拆兩段看:「隔夜段」(昨收→今開)是機構、外資進出的痕跡;「盤中段」(今開→今收)是散戶當沖的戰場。',
+            '為什麼是這兩個:我拿 2,220 檔、約 3 年日K 實測 8 個法人常用因子,只有「隔夜段報酬」和「距 52 週高」站得住。隔夜段由低到高分 5 組,之後 20 天報酬完美一組比一組高;距 52 週高則是價差最大的(散戶都覺得創新高太貴要等回檔,實測完全相反)。',
+            '每一項都標「全市場前 20% / 中段 / 最後 20%」讓你一眼知道相對位置。點 ❓ 有完整白話教學。',
+            '⚠️ 卡片上直接寫明限制:這是「選股加分項」不是進出訊號 — 實測期間是多頭、前 20% 那組勝率也只有約 43%(靠少數大贏家拉平均)、扣掉來回成本約 0.4% 後空間有限。另外「隔夜減盤中」的差值我也測了,幾乎沒預測力,所以卡片只拿它當現象描述,不下任何指令。',
+        ]},
         { v: 'V71.0.8', dt: '2026-07-28', t: '🗜️ 網頁瘦身 33%:手機開啟更快、更省流量', d: [
             '從現在起,上傳到網站的版本會自動壓縮(你的原始程式碼不動,註解都還在)。實測 3,113 KB → 2,084 KB,實際傳輸量(壓縮後)從 942 KB 降到 686 KB,少 256 KB —— 手機開 App、4G 環境下最有感。',
             '安全機制:壓縮完會自動做 4 道檢查(能不能執行、體積有沒有異常、關鍵功能字串在不在、版面有沒有被動到),任何一道沒過就自動改用未壓縮的原檔上線,絕不會推出壞掉的版本。',
@@ -12659,13 +12665,135 @@ const marginByDate = {};
                     ${lines.map(l => `<div>${l}</div>`).join('')}
                 </div>
                 <div id="chipCleanSlot" class="mt-2"></div>
+                <div id="chipOvernightSlot" class="mt-2"></div>
                 <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[12px] text-gray-100 leading-relaxed"><b class="${bigCls}">💡 操作:</b>${act}</div>
                 <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📊 純公式綜合:外資/投信/自營買賣超 + 連續方向 + 融資券 + 主力分點 + 法人反轉 + 投信做帳 + 借券空方,零 AI 零額度;籌碼為輔,進出以 K 線為主。</div>`;
             box.classList.remove('hidden');
         } catch (e) { console.warn('[chipVerdict]', e); box.classList.add('hidden'); }
         // 🧹 V69.6.8 乾淨度併入本卡(chipCleanSlot):重繪本卡會清掉 slot → 立即補渲染,確保合併卡完整
         try { this.renderChipCleanliness(sym); } catch (_) {}
+        try { this._renderOvernightFootprint(sym); } catch (_) {}   // 🌙 V71.0.9 隔夜資金足跡(同 slot 模式併入本卡)
         try { this._updateChipResoViews(); } catch (_) {}   // 💼 V69.6.5 方向分算完 → 同步刷新總覽/K線的籌碼一句話
+    },
+
+    // 🌙 V71.0.9 — 隔夜資金足跡(併入「大戶籌碼總結」卡,不另開新卡)
+    //   把每天漲跌拆兩段:隔夜(昨收→今開)偏機構/資訊交易者的痕跡,盤中(今開→今收)偏散戶當沖戰場。
+    //   ⭐ 為什麼放這個:edge_probe.py 拿 2,220 檔 × 約 3 年日K 實測 8 個因子,
+    //      「隔夜報酬60日」Q1→Q5 為 −0.06% → +1.43%(前瞻20日),**單調遞增、最乾淨**;
+    //      「逼近52週高」Q5−Q1 +1.84% 最大。這兩個是實測中唯二站得住的。
+    //   ⚠️ 實測同時證偽了一個直覺:「隔夜減盤中」的差值 Q5−Q1 只有 +0.25%(無效)→
+    //      所以本卡以「隔夜的絕對水位」為主結論,差值只當敘述,**不可拿差值下指令**。
+    //   純公式零採礦(只吃 rawDailyData 的 open/close/high),禁 AI。
+    _OVERNIGHT_FALLBACK: {   // 全市場分位門檻備援值(2026-07-28 對 2,280 檔實測)
+        _at: '2026-07-28',
+        on60: [-3.2, 6.9, 16.4, 28.9],     // 20/40/60/80 分位
+        prox52: [55.5, 64.8, 73.7, 82.6],
+    },
+    _factorCuts() {
+        // 優先用採礦發布的門檻(會隨市場更新),沒有才用備援值 —— 避免寫死表過期
+        const q = this._factorQuantiles;
+        if (q === undefined) {
+            this._factorQuantiles = null;
+            (async () => {
+                try {
+                    const gb = window.location.href.split('?')[0].split('#')[0];
+                    const r = await fetch(new URL('data/factor_quantiles.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+                    if (r.ok) { this._factorQuantiles = await r.json(); this._renderOvernightFootprint?.(this.currentSymbolId); }
+                } catch (_) {}
+            })();
+        }
+        return (q && q.on60 && q.prox52) ? q : this._OVERNIGHT_FALLBACK;
+    },
+    _renderOvernightFootprint(sym) {
+        const box = document.getElementById('chipOvernightSlot');
+        if (!box) return;
+        const arr = this.rawDailyData || [];
+        if (!sym || this.currentSymbolId !== sym || arr.length < 70) { box.innerHTML = ''; return; }
+        const O = b => +(b.open ?? b.o) || 0, C = b => +(b.close ?? b.c) || 0, H = b => +(b.high ?? b.h) || 0;
+        const i = arr.length - 1;
+        let on = 0, idr = 0, n = 0;
+        for (let k = i - 59; k <= i; k++) {
+            const o = O(arr[k]), c = C(arr[k]), pc = C(arr[k - 1]);
+            if (!(o > 0 && c > 0 && pc > 0)) continue;
+            on += (o - pc) / pc * 100; idr += (c - o) / o * 100; n++;
+        }
+        if (n < 40) { box.innerHTML = ''; return; }
+        const hiWin = arr.slice(Math.max(0, i - 249));
+        const hi250 = Math.max(...hiWin.map(H).filter(v => v > 0));
+        const px = C(arr[i]);
+        const prox = (hi250 > 0 && px > 0) ? px / hi250 * 100 : null;
+        const cuts = this._factorCuts();
+        const rank = (v, cs) => v == null ? null : (v < cs[0] ? 1 : v < cs[1] ? 2 : v < cs[2] ? 3 : v < cs[3] ? 4 : 5);
+        const rOn = rank(on, cuts.on60), rPx = rank(prox, cuts.prox52);
+        const rTxt = r => r == null ? '—' : ['', '全市場最後 20%', '偏後段', '中段', '偏前段', '全市場前 20%'][r];
+        // 台股色:數字本身照漲紅跌綠;強弱等級用非顏色圖示(⭐/➖/⏳)避免跟漲跌混淆
+        const rIcon = r => r >= 5 ? '⭐⭐' : r === 4 ? '⭐' : r === 1 ? '⚠️' : '➖';
+        const numCls = v => v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-300';
+        const f1 = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+        // 主結論看「隔夜絕對水位」(實測有效),差值只當敘述
+        let verdict, vIcon;
+        if (rOn >= 5) { vIcon = '⭐⭐'; verdict = '隔夜段特別強 — 開盤前後持續有人在收,是這 3 年實測最乾淨的偏多跡象之一。'; }
+        else if (rOn === 4) { vIcon = '⭐'; verdict = '隔夜段偏強,開盤前後買盤穩定。'; }
+        else if (rOn === 1) { vIcon = '⚠️'; verdict = '隔夜段是全市場最弱那 20% — 開盤前後持續有人在倒貨,留意。'; }
+        else { vIcon = '➖'; verdict = '隔夜段普通,沒有明顯的機構足跡。'; }
+        const gap = on - idr;
+        const gapTxt = Math.abs(gap) < 5 ? ''
+            : (gap > 0 ? '型態上是「夜漲日跌」(開盤前後買、盤中被賣壓壓著)' : '型態上是「夜跌日漲」(開盤前後賣、盤中才被拉)')
+              + ' — ⚠️ 這個差值本身實測沒有預測力(Q5−Q1 僅 +0.25%),只當現象描述,別當訊號。';
+        const row = (label, val, cls, r, sub) => `<div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center py-1 border-b border-[#21262d] last:border-0">
+            <span class="text-[10px] text-gray-300">${label}<span class="text-[9px] text-gray-600 ml-1">${sub}</span></span>
+            <span class="font-mono text-[12px] font-black ${cls}">${val}</span>
+            <span class="text-[9px] text-gray-400 w-[92px] text-right">${r == null ? '' : rIcon(r) + ' ' + rTxt(r)}</span>
+        </div>`;
+        box.innerHTML = `<div class="bg-[#0d1117] border border-[#30363d] rounded p-2.5">
+            <div class="flex items-center gap-1.5 mb-1.5">
+                <span class="text-[11px] font-bold text-gray-200">🌙 隔夜資金足跡</span>
+                <span class="text-[9px] text-gray-600">近 60 日</span>
+                <button onclick="app._helpOvernight()" class="text-[10px] text-gray-500 hover:text-blue-300 ml-auto">❓</button>
+            </div>
+            ${row('隔夜段(昨收→今開)', f1(on), numCls(on), rOn, '機構/資訊交易痕跡')}
+            ${row('盤中段(今開→今收)', f1(idr), numCls(idr), null, '散戶當沖戰場')}
+            ${prox != null ? row('距 52 週高', prox.toFixed(0) + '%', 'text-gray-100', rPx, '越接近高點,實測後續越強') : ''}
+            <div class="text-[10px] text-gray-200 leading-relaxed mt-1.5 bg-[#161b22] border-l-2 border-[#30363d] pl-2 py-1 rounded-r">${vIcon} ${verdict}${gapTxt ? '<br><span class="text-gray-400">' + gapTxt + '</span>' : ''}</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">分位門檻 ${cuts._at ? `(${this._dW(cuts._at)} 全市場實測)` : ''}・⚠️ 這是「加分項」不是進出訊號:實測 3 年多頭期、前 20% 那組的 20 日勝率也只有約 43%(靠少數大贏家拉平均),扣掉來回成本約 0.4% 後空間有限。</div>
+        </div>`;
+    },
+    _helpOvernight() {
+        alert(`🌙 隔夜資金足跡 — 這是什麼?
+
+把每天的漲跌拆成兩段看:
+
+【隔夜段】昨天收盤 → 今天開盤
+機構、外資、有資訊優勢的人多半在這裡進出(收盤後撮合、開盤前掛單)。
+
+【盤中段】今天開盤 → 今天收盤
+這是散戶跟當沖客的戰場。
+
+━━━━━━━━━━━━━━━━━━━━
+【為什麼要看這個?】
+我拿 2,220 檔股票、約 3 年日K 實測了 8 個法人常用因子。
+「隔夜段累計報酬」是表現最乾淨的一個 —— 由低到高分 5 組,
+之後 20 天的報酬完美地一組比一組高(−0.06% → +1.43%)。
+
+台股散戶幾乎沒人拆這兩段看,但這是完全免費的資訊,
+你的 K 線資料裡本來就有。
+
+━━━━━━━━━━━━━━━━━━━━
+【距 52 週高】
+實測價差最大的因子(+1.84%)。
+散戶直覺是「創新高了太貴,等回檔」—— 實測完全相反:
+越接近 52 週高點的,之後 20 天表現越好。
+
+━━━━━━━━━━━━━━━━━━━━
+【⚠️ 老實說的限制】
+1. 這 3 年是多頭。空頭環境很可能翻轉。
+2. 前 20% 那組的勝率也只有約 43% — 多數個股還是賠的,
+   平均報酬靠少數大贏家拉上來。不能只買一兩檔就期待這個結果。
+3. 台股來回成本約 0.4%,這點價差空間有限。
+   → 當「選股加分項」用,不要當進出訊號。
+4. 「隔夜減盤中」的差值我也測了,幾乎沒有預測力(+0.25%),
+   所以本卡不拿那個差值下任何指令。`);
+        this.vibrate?.(20);
     },
 
     // 🧹 V69.5.9 — 籌碼乾淨度(量條看「亂不亂」)。與「大戶籌碼總結」不同軸:那張看【方向(偏多偏空)】,這張看【集中/一致 vs 分散/亂】。
