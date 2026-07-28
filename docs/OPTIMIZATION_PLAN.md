@@ -235,7 +235,7 @@ V69.7.5 只改了「總覽 vs 觀察頁」兩處,還有 5 處沒動:
 - **失敗情境**:外資買超但景氣紅燈 → 一張顯 72「大戶站買方」、另外兩處顯 41「偏空別碰」
 - **修法**:刪 `masterScoreCard` 整卡(它 5 個因子只有 2 個是籌碼面),把「外資反轉/投信做帳」併進 `chipVerdictCard`;總覽改引 `chipVerdictCard` 的 score100
 
-### [ ] U-3 盤中多空有三套引擎,可同時給相反結論
+### [~] U-3 盤中多空有三套引擎,可同時給相反結論(V69.9.9 部分完成:當沖頁 biasLine 已改優先走 _dayTradeVerdict 同引擎(當沖頁本就抓分鐘K,留下 dtBars 即可),無分鐘K才退回 3 因子;剩「_intradayTruthJudge hero 降級只出因子」— 真假判讀與當沖方向語意不同,降級與否屬設計取捨,留待使用者反映再動)
 - `_intradayTruthJudge`(28720,即時頁 hero)/ `_dayTradeVerdict`(27586,#dayTradeLight)/ 當沖頁 `biasLine` 自算(38768)
 - **失敗情境**:同樣的盤 → hero 顯「假漲別追高」、正上方顯「別碰區間震盪」、當沖頁顯「今日偏多優先做多」。**前兩張是上下相鄰的**
 - **修法**:當沖頁 `biasLine` 刪掉改讀 `_dayTradeVerdict`;`_intradayTruthJudge` 降級為只出因子 chips 不出結論

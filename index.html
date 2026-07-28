@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6543,8 +6543,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.8',
+    _APP_VERSION: 'V69.9.9',
     _CHANGELOG: [
+        { v: 'V69.9.9', dt: '2026-07-28', t: '🧭 當沖多空傾向與即時頁同引擎', d: [
+            '當沖頁「今日偏多/偏空」過去自己用 3 個因子粗算,可能跟即時頁的當沖燈給相反方向 → 現在優先用同一顆引擎(分鐘K+報價 8 因子),兩頁結論一致;抓不到分鐘K才退回舊算法。',
+        ]},
         { v: 'V69.9.8', dt: '2026-07-28', t: '🐘 籌碼評分全 App 一把尺', d: [
             '過去有三個「籌碼評分」各算各的(可能一張說 72 偏多、另一張說 41 偏空)→ 現在全部統一用籌碼頁「大戶籌碼總結」那一個分數,進場體檢引用的也是它。',
             '兩個早已看不到的舊評分卡(隱藏殘留)一併清除,~230 行殭屍運算不再每次切股白跑。',
@@ -37031,7 +37034,7 @@ ${_chuPosPlan}
 
         // VWAP(分時均價)+ ORB(開盤 15 分區間)— 同一份分鐘K 一次算完
         //   ⚡ V54.6 加速刷價的「快 tick」不重抓分鐘K(VWAP 慢、ORB 09:15 後固定),沿用上次值省額度;整點 tick 才重抓
-        let vwap = null, orb = null, dtAtrPct = null, volStreak = null;   // dtAtrPct:ATR 卡算完會回填,供頂部作戰指令;volStreak:連量近似
+        let vwap = null, orb = null, dtAtrPct = null, volStreak = null, dtBars = null;   // dtAtrPct:ATR 卡算完會回填,供頂部作戰指令;volStreak:連量近似;dtBars:分鐘K(U-3 供 _dayTradeVerdict 同引擎)
         const cachedOrb = (this._dtLastOrb && this._dtLastOrb.sym === sym) ? this._dtLastOrb : null;
         if (marketOpen && opts.fast && this._dtLastVwap && this._dtLastVwap.sym === sym) {
             vwap = this._dtLastVwap.v; orb = cachedOrb;
@@ -37041,6 +37044,7 @@ ${_chuPosPlan}
                 // 🐛 V69.1.2 分鐘K 也限時 2.8 秒:VWAP/ORB 是次要資訊,慢就先 null(下一次完整刷再補),別阻塞首次出畫面
                 const cs = await Promise.race([this._fetchFugleCandles(sym, (this._intradayTF === 'ts' ? '1' : this._intradayTF) || '1'), new Promise(r => setTimeout(() => r(null), 2800))]);
                 if (Array.isArray(cs) && cs.length) {
+                    dtBars = cs;   // 🧭 V69.9.9 U-3:留分鐘K給多空傾向走與即時頁同一顆引擎
                     vwap = +cs[cs.length - 1].average;
                     try { volStreak = this._detectVolStreak(cs); this._dtLastVolStreak = { sym, v: volStreak }; } catch (_) {}   // 🔴 V68.0 盤中連量近似
                     // ORB:09:00–09:15 的最高/最低(1分K 取 540~554,5分K 取 540/545/550)
@@ -37399,15 +37403,22 @@ ${_chuPosPlan}
             const longWin = _dtNet(longEntry, longTgt), longLoss = _dtNet(longEntry, longStop);
             const shortWin = _dtNet(shortTgt, shortEntry), shortLoss = _dtNet(shortStop, shortEntry);
             const refTxt = useOrb ? '開盤15分' : '昨日高低';
-            // 🎯 V55.5 今日多空傾向(盤中:現價vs昨收 + vs VWAP + vs 大盤,同向≥2 才表態)
+            // 🧭 V69.9.9 U-3:多空傾向優先走「與即時頁同一顆引擎」_dayTradeVerdict(分鐘K+報價),
+            //   兩頁不再各算各的給相反結論;拿不到分鐘K(快取路徑/盤後)才退回舊 3 因子近似
             let biasLine = '';
             if (showPlan && marketOpen && price > 0) {
-                let bs = 0;
-                if (chgPct != null) { if (chgPct >= 0.3) bs++; else if (chgPct <= -0.3) bs--; }
-                if (vwap && price) bs += (price >= vwap ? 1 : -1);
-                if (chgPct != null && twiiPct != null && Number.isFinite(twiiPct)) { const r = chgPct - twiiPct; if (r >= 0.2) bs++; else if (r <= -0.2) bs--; }
-                const bt = bs >= 2 ? ['📈 今日偏多 → 優先做多', 'text-red-400'] : bs <= -2 ? ['📉 今日偏空 → 優先做空', 'text-green-400'] : ['➖ 多空未定 → 等站上/跌破 VWAP 表態', 'text-gray-300'];
-                biasLine = `<div class="text-[13px] font-black ${bt[1]} mt-0.5">${bt[0]}</div>`;
+                let dv = null; try { dv = (dtBars && dtBars.length >= 5 && q && +q.price > 0) ? this._dayTradeVerdict(dtBars, q, sym) : null; } catch (_) {}
+                if (dv) {
+                    const dvc = dv.tone === 'red' ? 'text-red-400' : dv.tone === 'green' ? 'text-green-400' : 'text-yellow-300';
+                    biasLine = `<div class="text-[13px] font-black ${dvc} mt-0.5">${dv.verdict}<span class="text-[9px] text-gray-500 font-normal ml-1">(與即時頁同引擎)</span></div>`;
+                } else {
+                    let bs = 0;
+                    if (chgPct != null) { if (chgPct >= 0.3) bs++; else if (chgPct <= -0.3) bs--; }
+                    if (vwap && price) bs += (price >= vwap ? 1 : -1);
+                    if (chgPct != null && twiiPct != null && Number.isFinite(twiiPct)) { const r = chgPct - twiiPct; if (r >= 0.2) bs++; else if (r <= -0.2) bs--; }
+                    const bt = bs >= 2 ? ['📈 今日偏多 → 優先做多', 'text-red-400'] : bs <= -2 ? ['📉 今日偏空 → 優先做空', 'text-green-400'] : ['➖ 多空未定 → 等站上/跌破 VWAP 表態', 'text-gray-300'];
+                    biasLine = `<div class="text-[13px] font-black ${bt[1]} mt-0.5">${bt[0]}</div>`;
+                }
             }
             // ✅ V55.5 進場觸價狀態(盤中即時):現價達進場價=閃綠「已達進場」,否則顯距離
             const _stat = (hit, dist) => hit
