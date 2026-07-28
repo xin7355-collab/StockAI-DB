@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1727,6 +1727,8 @@
                         <button id="intradayKlineBtn" onclick="app.loadIntradayKline(app.currentSymbolId); app.vibrate(20);" class="flex-1 text-xs font-bold text-cyan-200 bg-cyan-900/30 border border-cyan-700/50 rounded py-1.5 hover:bg-cyan-900/50 transition-colors">🔄 更新</button>
                     </div>
                     <div id="intradayKlineChart" class="w-full h-[220px]"></div>
+                    <!-- ⚡ V70.0.7 盤中六脈(使用者指定:大戶vs散戶累積流向的正上方) -->
+                    <div id="intradaySixCard" class="hidden mt-1.5"></div>
                     <!-- 🐋 V69.7.3 盤中大戶vs散戶累積流向(逐筆回推,對標付費籌碼App「大戶控盤」) -->
                     <div id="whaleFlowCard" class="hidden mt-1.5"></div>
                     <div id="intradayVolBar" class="hidden mt-1"></div>
@@ -1741,8 +1743,6 @@
                     <div id="intradayDepthBox" class="hidden"></div>
                     <div id="intradayHint" class="hidden"></div>
                 </div>
-                <!-- ⚡ V70.0.6 盤中六脈(移到分時圖下方,使用者要求;箭頭版 5分聚合) -->
-                <div id="intradaySixCard" class="hidden"></div>
             </div>
 
 <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
@@ -3991,7 +3991,11 @@ const app = {
                 && this.navStack[this.navStack.length - 1] === 'diag'
                 && this._intradayLoadedSym === this.currentSymbolId) {
                 const _now = Date.now();
-                if (!this._intradayLastAuto || _now - this._intradayLastAuto > 27000) {
+                // ⚡ V70.0.7 使用者要求越快越好:間隔隨 Fugle 金鑰數自動調(1把=27s、2把=15s、3把以上=10s=主迴圈極限)
+                //   每輪 = 分鐘K+逐筆+量價 ~3 請求,10s 一輪 × 多把輪動遠低於 60/min/把;1分K新棒每分鐘才生,
+                //   但最後一根的現價/箭頭/內外盤每輪都會更新
+                const _autoMs = Math.max(10000, Math.min(27000, Math.round(30000 / this._fugleKeyCount())));
+                if (!this._intradayLastAuto || _now - this._intradayLastAuto > _autoMs) {
                     this._intradayLastAuto = _now;
                     this.loadIntradayKline(this.currentSymbolId, true);
                 }
@@ -6452,8 +6456,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.0.6',
+    _APP_VERSION: 'V70.0.7',
     _CHANGELOG: [
+        { v: 'V70.0.7', dt: '2026-07-28', t: '⚡ 盤中六脈:位置調整 + 黃框標多空 + 更新加速', d: [
+            '【位置】盤中六脈移到「大戶 vs 散戶累積流向」正上方(分時圖 → 六脈 → 大戶散戶)。',
+            '【黃框看得懂】每個黃框左上直接標「▲多 / ▼空」:黃框=6個燈幾乎同向的順勢時段(順著做),框外=分歧觀望;圖例同步改白話。',
+            '【更新變快】即時頁盤中自動刷新從固定 27 秒改「隨你的 Fugle 金鑰數自動加速」:1 把=27 秒、2 把=15 秒、3 把以上=10 秒(免費額度限制下的極限;1分K新棒每分鐘才生,但現價/箭頭/內外盤每輪都更新)。多填金鑰=更快。',
+        ]},
         { v: 'V70.0.6', dt: '2026-07-28', t: '⚡ 盤中六脈 3.0:箭頭版看得懂了(依你的回饋)', d: [
             '【圖看得懂】色帶圖改「上下箭頭」:紅▲偏多、綠▼偏空、灰–中性,每格=5分鐘(跟傳統六脈神劍副圖同款);圖下加圖例。',
             '【黃框不再碎】共振段中途鬆掉 1~2 分鐘不算斷、不足 5 分鐘的短段不畫 → 黃框變成幾塊有意義的窗口,不再滿版細框。',
@@ -17547,7 +17556,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             </div>
             <div class="bg-[#0d1117] border-l-4 ${hero[2]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <canvas id="intradaySixCanvas" class="w-full mt-2 rounded" style="height:88px"></canvas>
-            <div class="text-[9px] text-gray-500 mt-1">紅▲偏多・綠▼偏空・灰–中性(每格=5分鐘)・<span class="text-yellow-300">黃框=共振段(≥5維同向)</span></div>
+            <div class="text-[9px] text-gray-500 mt-1">紅▲偏多・綠▼偏空・灰–中性(每格=5分鐘)・<span class="text-yellow-300">黃框=順勢時段(6個燈幾乎同向,框上標▲多/▼空,順著做)</span>;框外=多空分歧觀望</div>
             <div class="flex flex-wrap gap-1 mt-1.5">${chips}</div>
             ${winRows ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 mt-2"><div class="text-[9px] text-gray-500 font-bold mb-0.5">今日共振段(段內實際漲跌,誠實對帳)</div>${winRows}</div>` : '<div class="text-[9px] text-gray-600 mt-1.5">今日尚無共振段(分歧盤,當沖少動)。</div>'}
             <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・3根平滑去雜訊・黃框=≥5維同向。只跟「段」不跟「單根」;隔日定調看日K六脈。</div>`;
@@ -17587,13 +17596,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const bi = Math.min(NB - 1, Math.floor(m / 5));
                 for (let k = 0; k < 6; k++) bucket[k][bi] = (bucket[k][bi] || 0) + v.dims[k][i];
             }
-            // 共振段黃底+黃框(畫在箭頭下層)
+            // 共振段黃底+黃框(畫在箭頭下層)+ V70.0.7 框上直接標「▲多 / ▼空」(使用者:黃框看不懂)
             for (const w of v.wins) {
                 const ma = v.mins[w.a], mb = v.mins[w.b];
                 if (ma == null || mb == null) continue;
                 const x1 = xOf(ma), x2 = xOf(mb) + BW * 0.6;
                 g.fillStyle = 'rgba(250,204,21,0.10)'; g.fillRect(x1, top - 1, x2 - x1, rowH * 6);
                 g.strokeStyle = '#facc15'; g.lineWidth = 1; g.strokeRect(x1, top - 1, x2 - x1, rowH * 6);
+                if ((x2 - x1) >= 20) {   // 框夠寬才放徽章
+                    g.fillStyle = w.dir === 1 ? '#dc2626' : '#16a34a';
+                    g.fillRect(x1, top - 1, 19, 10);
+                    g.fillStyle = '#fff'; g.font = 'bold 8px sans-serif';
+                    g.fillText(w.dir === 1 ? '▲多' : '▼空', x1 + 2, top + 4);
+                    g.font = '9px sans-serif';
+                }
             }
             // 六列箭頭
             g.font = '9px sans-serif'; g.textBaseline = 'middle';
