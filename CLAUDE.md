@@ -64,7 +64,7 @@
 ### Claude 的部署工作流（自動化）⭐ 使用者要求:每次介面做好就自動發佈到前端
 - **Claude 修改 `index.html` 後直接 push 到 `main`，不開 PR** → `deploy_pages.yml` ~1 分鐘部署，使用者硬重新整理即可看到
 - **若在 feature branch 開發,完成後必須 merge 回 main 並 push main**，否則 gh-pages 永遠看不到（push trigger 只認 main）
-- 每次 push 前必跑三驗證：`node --check`（index.html inline JS）+ `python3 -m py_compile *.py` + `python3 scripts/check_prompt_vars.py`
+- 每次 push 前必跑三驗證：`node --check`（index.html inline JS）+ `python3 -m py_compile *.py` + `python3 scripts/check_dom_ids.py`
 - 出錯時使用者可以 `git revert HEAD` 回退，或叫 Claude 修
 
 ### ⭐ Claude 永久授權（使用者明示:看不懂程式碼,壞了再修就好）
@@ -252,7 +252,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 
 ### 開發流程
 - **直接 push main**:純前端改 → `deploy_pages.yml` ~1 分鐘上線
-- **改完三驗證**:`node --check`(inline JS) + `python3 -m py_compile`(py) + `scripts/check_prompt_vars.py`
+- **改完三驗證**:`node --check`(inline JS) + `python3 -m py_compile`(py) + `scripts/check_dom_ids.py`
 - **commit 用 HEREDOC**:多行 commit message + Co-Authored-By
 - **PR 寫測試清單**:每張 PR body 給 Test plan(使用者上線後可逐項勾)
 - **PR rebase**:撞 main conflict 時 `git rebase origin/main` + `git push --force`
@@ -271,7 +271,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 **每次 push main 前必跑的「四驗證」**(原三驗證 + 新增第 4 個):
 1. `node --check`(抽 inline JS 語法)
 2. `python3 -m py_compile *.py`(後端語法)
-3. `python3 scripts/check_prompt_vars.py`(prompt 變數齊全)
+3. `python3 scripts/check_dom_ids.py`(DOM id 唯一性 — V71.0.7 起取代已失效的 check_prompt_vars.py)
 4. **`awk '...' index.html`** 確認 7 個 `tabContent*` 容器 div 開合平衡(防 V25.0 那種 HTML 巢狀 bug 重演 — `tabContentMarket` 少 1 個 `</div>` 導致 5 tab 被巢狀其中,8 次嘗試才修到)
 
 **驗證 HTML div 平衡腳本**(每次改 main HTML 結構必跑):
