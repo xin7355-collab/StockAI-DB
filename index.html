@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6454,8 +6454,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.0.4',
+    _APP_VERSION: 'V70.0.5',
     _CHANGELOG: [
+        { v: 'V70.0.5', dt: '2026-07-28', t: '⚡ 盤中六脈 2.0:一眼會操作 + 推播 + 疊進分時圖', d: [
+            '【怎麼操作】卡片大字結論下面直接給一句行動指令:多方共振=順多沿均價做/空方共振=別接刀持股減碼/差1維=先掛好單等亮/分歧=休息;📖 教學改「30 秒上手」三句話版。',
+            '【自動叫你】共振一形成自動推播一則(同一段只推一次,不吵)。',
+            '【圖上看得到】分時圖直接疊上共振段底色(淡紅=多方窗口/淡綠=空方窗口),看走勢圖就知道什麼時段該做、什麼時段休息。',
+        ]},
         { v: 'V70.0.4', dt: '2026-07-28', t: '⚡ 盤中六脈上線(對標六脈神劍副圖的即時版)', d: [
             '即時頁新增「⚡ 盤中六脈」:6 個維度(價vs均價/均價斜率/短趨勢/MACD/RSI/價vs昨收)逐分鐘判多空,畫成紅綠色帶圖 — 就是你截圖那種六脈神劍副圖的盤中版。',
             '≥5 維同向=「共振」自動框黃框;下方列出今天每段共振的時間與段內實際漲跌%(誠實對帳,不吹牛)。',
@@ -17507,6 +17512,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                      v.nowBull >= 4 ? ['🔺 偏多(差1維)', 'text-red-300', 'border-red-700/60'] :
                      v.nowBear >= 4 ? ['🔻 偏空(差1維)', 'text-green-300', 'border-green-700/60'] :
                      ['⚪ 多空分歧・觀望', 'text-gray-300', 'border-[#30363d]'];
+        // 🎯 V70.0.5 一眼知道怎麼做(使用者要求:簡單明瞭+可操作)
+        const act = nowReso === 1 ? '順多:沿均價做多、回踩均價不破可續抱;<b>共振熄滅或跌破均價=先出</b>,別戀棧。'
+                  : nowReso === -1 ? '別接刀:空方主控,<b>持股反彈到均價附近先減碼</b>;要空的等反彈不過均價再空。'
+                  : v.nowBull >= 4 ? '再亮 1 顆紅燈就是多方共振 → 先想好要買的價位,<b>等第 5 維亮再進</b>,別搶跑。'
+                  : v.nowBear >= 4 ? '再亮 1 顆綠燈就是空方共振 → <b>持股先設好防守價</b>,亮了就減碼。'
+                  : '燈號各說各話 → <b>當沖先休息</b>,等圖上出現黃框(≥5 維同向)再順勢做。';
         // 今日共振段清單(最多 4 段,最新在前;進行中標 LIVE)
         const t2s = i => { const m = v.mins[i]; if (m == null) return '--:--'; const h = Math.floor((m + 540) / 60), mm = (m + 540) % 60; return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`; };
         const winRows = v.wins.slice(-4).reverse().map(w => {
@@ -17520,14 +17531,31 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         box.className = 'bg-[#161b22] border-l-4 ' + hero[2] + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2">
-                <div class="text-[13px] font-black text-gray-100">⚡ 盤中六脈 <span class="text-[9px] text-gray-500 font-normal">1分K即時</span> <button onclick="alert('⚡ 盤中六脈 — 怎麼看\n\n把日K的六脈搬到盤中:6 個維度(價vs均價 / 均價斜率 / 短趨勢EMA5vs20 / MACD柱 / RSI14 / 價vs昨收)逐分鐘判多空。\n\n🔴 紅=該維度偏多、🟢 綠=偏空、灰=中性。\n⭐ 共振(黃框):≥5 維同向 → 順勢段,順著做別逆勢;共振結束=動能退潮訊號。\n\n已做 3 根多數決平滑(單根翻色不算),仍屬盤中短訊號:只在共振「段」出手,單維翻色別追。下方清單顯示今天每段共振期間實際漲跌%(誠實對帳)。')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button></div>
-                <div class="text-sm font-black ${hero[1]}">${hero[0]} <span class="font-mono text-[11px]">${v.nowBull}多/${v.nowBear}空</span></div>
+                <div class="text-[12px] font-black text-gray-100">⚡ 盤中六脈 <button onclick="alert('⚡ 盤中六脈 — 30 秒上手\n\n【看什麼】6 個維度逐分鐘判多空:均價(價在均價上/下)、斜率(均價翻揚/下彎)、趨勢(短均多空排列)、MACD、RSI、昨收(今天紅盤/黑盤)。\n\n【怎麼操作,三句話】\n① 黃框(≥5 維同向=共振)出現 → 順著方向做,別逆勢\n② 黃框內回踩均價不破 = 加碼點;黃框熄滅 = 動能退,先出\n③ 沒黃框(分歧)= 當沖休息,別硬做\n\n【防呆】已做 3 根平滑,單根翻色不算;下方清單是今天每段共振的實際漲跌%,靈不靈自己看得到。隔日方向以日K六脈(上面那張)為準。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></div>
+                <div class="text-base font-black ${hero[1]}">${hero[0]} <span class="font-mono text-[11px] text-gray-500">${v.nowBull}多/${v.nowBear}空</span></div>
             </div>
-            <div class="flex flex-wrap gap-1 mt-1.5">${chips}</div>
+            <div class="bg-[#0d1117] border-l-4 ${hero[2]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <canvas id="intradaySixCanvas" class="w-full mt-2 rounded" style="height:64px"></canvas>
-            ${winRows ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 mt-2"><div class="text-[9px] text-gray-500 font-bold mb-0.5">今日共振段(段內實際漲跌,誠實對帳)</div>${winRows}</div>` : '<div class="text-[9px] text-gray-600 mt-1.5">今日尚無 ≥5 維共振段(分歧盤,當沖少動)。</div>'}
-            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式逐分鐘計算・3根多數決去雜訊・共振=≥5維同向(黃框)。盤中訊號快雜訊也多,只跟「段」不跟「單根」;隔日以日K六脈定調為準。</div>`;
+            <div class="flex flex-wrap gap-1 mt-1.5">${chips}</div>
+            ${winRows ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 mt-2"><div class="text-[9px] text-gray-500 font-bold mb-0.5">今日共振段(段內實際漲跌,誠實對帳)</div>${winRows}</div>` : '<div class="text-[9px] text-gray-600 mt-1.5">今日尚無共振段(分歧盤,當沖少動)。</div>'}
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・3根平滑去雜訊・黃框=≥5維同向。只跟「段」不跟「單根」;隔日定調看日K六脈。</div>`;
         box.classList.remove('hidden');
+        // 📣 V70.0.5 共振開始推播(進行中的新段,每段每股只推一次;盤中才推)
+        try {
+            const lw = v.wins[v.wins.length - 1];
+            if (lw && lw.live && this.isMarketOpen?.()) {
+                const _sym = String(this.currentSymbolId || '');
+                const key = `isix|${_sym}|${lw.dir}|${v.mins[lw.a]}`;
+                if (this._isixAlertKey !== key) {
+                    this._isixAlertKey = key;
+                    const nm = this.getStockName?.(_sym) || _sym;
+                    this._fireAlert?.(`⚡ ${nm} 盤中${lw.dir === 1 ? '多方' : '空方'}共振`,
+                        `${t2s(lw.a)} 起 ≥5 維同向。${lw.dir === 1 ? '順多做、跌破均價出' : '別接刀、持股反彈減碼'}(盤中六脈)`, '');
+                }
+            }
+        } catch (_) {}
+        // 🖼️ V70.0.5 共振段存起來 → 分時圖疊半透明底色(紅多綠空),圖上直接看得到「什麼時候該做」
+        try { this._isixShade = { sym: String(this.currentSymbolId || ''), at: Date.now(), segs: v.wins.map(w => [v.mins[w.a], v.mins[w.b], w.dir]).filter(s => s[0] != null && s[1] != null) }; } catch (_) {}
         // ── canvas heatmap:6 列 × 271 分鐘,紅/綠/灰;共振段畫黃框 ──
         try {
             const cv = document.getElementById('intradaySixCanvas');
@@ -27905,6 +27933,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 series: [
                     { name: '分時價', type: 'line', data: closes, xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.1, connectNulls: false,
                       lineStyle: { width: 2 },
+                      // 🖼️ V70.0.5 盤中六脈共振段底色(紅多綠空,極淡):圖上直接看到「順勢窗口」在哪
+                      markArea: (() => { try {
+                          const sh = this._isixShade;
+                          if (!sh || sh.sym !== this._intradayLoadedSym || (Date.now() - sh.at) > 1800000 || !sh.segs.length) return undefined;
+                          return { silent: true, data: sh.segs.map(([a, b, dir]) => [
+                              { xAxis: grid[Math.max(0, Math.min(270, a))], itemStyle: { color: dir === 1 ? 'rgba(248,113,113,0.08)' : 'rgba(74,222,128,0.08)' } },
+                              { xAxis: grid[Math.max(0, Math.min(270, b))] },
+                          ]) };
+                      } catch (_) { return undefined; } })(),
                       areaStyle: prevC != null ? { origin: prevC, opacity: 0.22 } : undefined, z: 3,
                       markPoint: { symbol: 'circle', symbolSize: 2, silent: true,
                           data: [
