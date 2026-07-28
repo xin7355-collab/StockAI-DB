@@ -243,6 +243,9 @@ jobs:
             data/broker_book.json
             data/broker_signals.json
             data/holders.json
+            data/lowbase_picks.json
+            data/wrongkill_picks.json
+            data/sector_chip_flow.json
             broker_names.json
             futures_cache.json
             macro_cache.json

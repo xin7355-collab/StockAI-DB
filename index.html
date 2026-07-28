@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.3.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2758,6 +2758,7 @@
                         <button onclick="app.switchRadarStrategy('revenue')" id="radarTabRevenue" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">營收動能</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">YoY爆發</span></button>
                         <button onclick="app.switchRadarStrategy('tdcceat')" id="radarTabTdccEat" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">🐘 大戶吃貨</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">連週增持</span></button>
                         <button onclick="app.switchRadarStrategy('lowbase')" id="radarTabLowbase" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">🧊 低基期</span><span class="block text-[9px] font-normal opacity-70">跌深打底</span></button>
+                        <button onclick="app.switchRadarStrategy('divergent')" id="radarTabDivergent" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">💎 跌深績優</span><span class="block text-[9px] font-normal opacity-70">賺更多卻更便宜</span></button>
                         <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">K棒轉多</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找買點</span></button>
                         <button onclick="app.switchRadarStrategy('potential')" id="radarTabPotential" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">潛力黑馬</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">長線/中線</span></button>
                         <button onclick="app.switchRadarStrategy('wrongkill')" id="radarTabWrongkill" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">錯殺便宜</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">大跌抗性</span></button>
@@ -4500,6 +4501,33 @@ const app = {
                                 trigger('sixFire', '⚡ 六脈點火(盤中)', `盤中共振 ${nowV.okN} 分 + 估量 ${volRatio.toFixed(1)}× → 低檔齊發參考買進;鐵律:停損=今日最低 ${_lo},收盤跌破就走(誘多)`);
                             } else if (_needOut && prevs.length && Math.max(...prevs) >= 4 && nowV.okN <= 2) {
                                 trigger('sixOut', '🧯 六脈熄火(盤中)', `共振 ${Math.max(...prevs)} 分 → 盤中僅剩 ${nowV.okN} 分且跌 ${_chgNow.toFixed(1)}% → 持股先減碼/停利,別等全翻空`);
+                            }
+                        }
+                    }
+                } catch (_) {}
+
+                // 🧊 V71.0.0 低基期起漲推播(使用者建議 #2:底部量縮枯竭 → 第一根爆量長紅)
+                //   只對「低基期」股推(位階 ≤35% 且距一年高點 ≥25%),避免高檔追高被套
+                try {
+                    const _w = kdata.slice(-250);
+                    if (_w.length >= 120) {
+                        const _hi = Math.max(..._w.map(r => +r.high || +r.close || 0));
+                        const _lo = Math.min(..._w.map(r => +r.low || +r.close || Infinity).filter(v => v > 0));
+                        const _pos = (_hi > _lo) ? (nowPrice - _lo) / (_hi - _lo) * 100 : 50;
+                        const _dd = _hi > 0 ? (_hi - nowPrice) / _hi * 100 : 0;
+                        if (_pos <= 35 && _dd >= 25) {
+                            const _V = b => +b.volume || 0;
+                            const _v20 = kdata.slice(-21, -1).reduce((s, b) => s + _V(b), 0) / 20;
+                            const _v5p = kdata.slice(-6, -1).reduce((s, b) => s + _V(b), 0) / 5;   // 前 5 日(不含今)
+                            const _dry = _v20 > 0 && _v5p <= _v20 * 0.75;                          // 量縮枯竭
+                            const _q = this._chuVolumeProgress(fugle, kdata);
+                            const _est = (_q && _q.estimated) ? _q.estimated : null;
+                            const _v20lots = _v20 >= 1e6 ? _v20 / 1000 : _v20;
+                            const _burst = _est && _v20lots > 0 && _est >= _v20lots * 2;            // 今日估量 ≥2× 月均量
+                            const _chg = (nowPrice - prevClose) / prevClose * 100;
+                            if (_dry && _burst && _chg >= 3.5) {
+                                trigger('lowbaseIgnite', '🧊 低基期起漲',
+                                    `位階 ${_pos.toFixed(0)}%(距高點 −${_dd.toFixed(0)}%)長期量縮後今日爆量 ${(_est / _v20lots).toFixed(1)}× + 漲 ${_chg.toFixed(1)}% → 跌深打底第一根攻擊量;鐵律:停損設今日最低,收盤跌破就走`);
                             }
                         }
                     }
@@ -6561,8 +6589,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.3.1',
+    _APP_VERSION: 'V71.0.0',
     _CHANGELOG: [
+        { v: 'V71.0.0', dt: '2026-07-28', t: '🧭 板塊「籌碼輪動」上線:除了看錢在哪,更早一步看籌碼在哪', d: [
+            '【🕵️ 偷布局(你問的重點)】板塊輪動表新增「外資5日」欄:每個板塊成分股的外資近5日買賣超合計(張)。當一個板塊「股價還在跌、但外資已經在買」時,自動標 🕵️ 偷布局 — 這就是主力還沒拉抬前的偷偷卡位,比只看今天漲跌早一步。',
+            '【券商群聚】展開板塊列會顯示「同一家券商在這個板塊買了幾檔、幾張」(例:摩根大通 買 3 檔 5,200 張)。單一分點買一檔可能是散單,買整個板塊 3 檔以上就是有計劃的布局。',
+            '【💎 跌深績優】選股頁新增一榜:股價跌深(距高點≥25%、位階≤40%)但「EPS 近4季創新高 或 營收 YoY≥15%」= 基本面沒壞只是被錯殺,每檔都寫明「為什麼是錯殺」。',
+            '【🧊 低基期起漲推播】自選股盤中背景掃描:低基期股「長期量縮枯竭 → 今日爆量≥2倍 + 漲≥3.5%」自動推播,附停損鐵律(今日最低)。跌深打底的第一根攻擊量不會再錯過。',
+        ]},
         { v: 'V70.3.1', dt: '2026-07-28', t: '🧊 低基期爆發選股上線 + 處置頁瘦身 + 底部改「券商」', d: [
             '【🧊 低基期(你問的重點)】① 個股頁股名下方新增基期標籤:🧊低基期/📊中基期/⛰️高基期 + 位階%(現價在近1年高低區間的第幾%),點了有白話教學。② 選股頁新增「🧊 低基期」榜:全市場掃「跌深(距高點≥25%)+位階≤35%」再加打底分(月線翻揚/站回月線/底部抬高/量能回溫/外資回補/跌勢收斂/營收仍成長),已排除營收崩壞、10元以下、日均量<500張。',
             '【處置頁】查證後:官方注意/處置名單其實是免費且每天正常更新的,所以「整頁刪掉」會丟掉最有用的防呆 → 改成:刪掉整個分頁(8款推估那些資料撐不起的),但保留現價旁的處置badge + 官方明細卡(移到總覽,有被列管才顯)。',
@@ -14885,12 +14919,24 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
         try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
               if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
         const _shTw = this._sectorHeatCache?.sectors || {};
+        // 🧭 V71.0.0 板塊籌碼流(採礦端 sector_chip_flow.json;使用者要求:除了看錢在哪,也要看籌碼在哪)
+        const _cf = (this._sectorChipFlow && this._sectorChipFlow.sectors) || {};
+        if (this._sectorChipFlow === undefined) {
+            this._sectorChipFlow = null;
+            (async () => {
+                try {
+                    const gb = window.location.href.split('?')[0].split('#')[0];
+                    const r = await fetch(new URL('data/sector_chip_flow.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+                    if (r.ok) { this._sectorChipFlow = await r.json(); this.renderSectorGapTable?.(); }
+                } catch (_) {}
+            })();
+        }
         // 🐛 V70.0.1:挖礦 sector_heat 若不是「今天」的資料,不可假裝「台股今日」→ 標「昨」+ 不給訊號
         //   (使用者實測抓包:矽晶圓顯 +1.8%「逆勢抗跌」,其實是昨天的值,當天該板塊 -7%)
         const _shFresh = (() => { try { return (this._sectorHeatCache?.updated || '') === new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).toISOString().slice(0, 10); } catch (_) { return false; } })();
         let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2">';
         // V30.1 — 四欄表頭(只出現一次,取代每列重複的「美」「台」前綴 → 數字垂直對齊)
-        html += '<div class="grid grid-cols-[1fr_50px_50px_82px] gap-1.5 items-center text-[9px] text-gray-500 font-bold pb-1 mb-1 border-b border-[#30363d]"><span>板塊</span><span class="text-right">美股昨收</span><span class="text-right">台股今日</span><span class="text-right">訊號</span></div>';
+        html += '<div class="grid grid-cols-[1fr_46px_46px_58px_76px] gap-1.5 items-center text-[9px] text-gray-500 font-bold pb-1 mb-1 border-b border-[#30363d]"><span>板塊</span><span class="text-right">美股昨收</span><span class="text-right">台股今日</span><span class="text-right">外資5日<span class="text-gray-600">(張)</span></span><span class="text-right">訊號</span></div>';
         for (const [sk, sl] of Object.entries(sectorLabels)) {
             const etf = etfMap[sk];
             // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
@@ -14933,21 +14979,33 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
             const _twTxt = twChg != null ? `${_twStale ? '昨' : ''}${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
             // 🏭 V69.5.0 成分股(點板塊展開,點成分股直接開個股頁)
             const stocks = this._sectorStocks[sk] || [];
+            const _cfB = (_cf[sk] && _cf[sk].brokers) || [];
+            const _brokerHtml = _cfB.length ? `<div class="px-1 pb-1.5 text-[9px] text-cyan-300/90 leading-snug">🏦 同時布局多檔的券商:${_cfB.map(b => `<b>${b.name}</b>(${b.n}檔${b.lots > 0 ? ` +${b.lots.toLocaleString()}張` : ''})`).join('・')}</div>` : '';
             const stkHtml = stocks.length ? `<div id="secStk_${sk}" class="hidden flex flex-wrap gap-1.5 pb-2 pt-0.5 px-1">
                 ${stocks.map(([sym, nm]) => `<button onclick="event.stopPropagation(); app._pickGlobalSearch('${sym}'); app.vibrate(15);" class="flex items-center gap-1 bg-[#161b22] border border-[#30363d] hover:border-cyan-500 active:bg-[#21262d] rounded-lg px-2 py-1 text-[11px] transition-colors"><span class="font-mono font-bold text-cyan-300">${sym}</span><span class="text-gray-200">${nm}</span><span class="text-gray-600">›</span></button>`).join('')}
             </div>` : '';
             html += `
                 <div class="border-b border-[#21262d] last:border-0">
-                    <div onclick="app._toggleSectorRow('${sk}')" class="grid grid-cols-[1fr_50px_50px_82px] gap-1.5 items-center py-1.5 cursor-pointer hover:bg-white/5 rounded">
+                    <div onclick="app._toggleSectorRow('${sk}')" class="grid grid-cols-[1fr_46px_46px_58px_76px] gap-1.5 items-center py-1.5 cursor-pointer hover:bg-white/5 rounded">
                         <span class="text-gray-200 font-bold truncate text-[11px] flex items-center gap-1"><span id="secChev_${sk}" class="text-gray-500 text-[9px] transition-transform inline-block">▶</span>${sl}</span>
                         <span class="${usCls} font-mono text-right text-[11px]">${_usTxt}</span>
                         <span class="${twCls} font-mono text-right text-[11px]">${_twTxt}</span>
+                        ${(() => {   // 🧭 V71.0.0 外資近 5 日買賣超(張)+ 偷布局徽章
+                            const f = _cf[sk];
+                            if (!f) return '<span class="text-right text-[10px] text-gray-600">—</span>';
+                            const v = +f.fi5 || 0;
+                            const cls = v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
+                            const txt = Math.abs(v) >= 10000 ? `${(v / 10000).toFixed(1)}萬` : v.toLocaleString();
+                            return `<span class="text-right font-mono text-[10px] ${cls}">${v > 0 ? '+' : ''}${txt}${f.stealth ? '<br><span class="text-[8px] text-cyan-300 font-bold">🕵️偷布局</span>' : ''}</span>`;
+                        })()}
                         <span class="text-right">${gapBadge}</span>
                     </div>
                     ${stkHtml}
+                    ${_brokerHtml}
                 </div>`;
         }
-        html += '<div class="text-[9px] text-gray-600 text-center mt-1.5 leading-snug">👆 點板塊名稱展開成分股,點成分股直接看個股。🆕 軍工/矽晶圓/PCB/ASIC/資安 的美股對標數字採礦補齊中,先給成分股。</div>';
+        const _cfUp = this._sectorChipFlow?.updated ? `　籌碼資料:${this._dW(this._sectorChipFlow.updated, { rel: 1 })}` : '';
+        html += `<div class="text-[9px] text-gray-600 text-center mt-1.5 leading-snug">👆 點板塊名稱展開成分股 + 該族群「同時布局多檔的券商」。🕵️偷布局=近5日板塊在跌但外資合計買超(價跌籌碼進)。${_cfUp}<br>🆕 軍工/矽晶圓/PCB/ASIC/資安 的美股對標數字採礦補齊中,先給成分股。</div>`;
         html += '</div>';   // V30.1 — 底部 💡 長圖例已移除,改標題 ⓘ popover(showJargon('板塊輪動訊號'))
         result.innerHTML = html;
     },
@@ -33811,6 +33869,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         revenue:   { id: 'radarTabRevenue',   active: 'bg-rose-600/25 text-rose-200 border-rose-500' },
         tdcceat:   { id: 'radarTabTdccEat',   active: 'bg-violet-600/25 text-violet-200 border-violet-500' },
         lowbase:   { id: 'radarTabLowbase',   active: 'bg-cyan-600/25 text-cyan-200 border-cyan-500' },
+        divergent: { id: 'radarTabDivergent', active: 'bg-teal-600/25 text-teal-200 border-teal-500' },
         wrongkill: { id: 'radarTabWrongkill', active: 'bg-emerald-600/25 text-emerald-200 border-emerald-500' },
         theme:     { id: 'radarTabTheme',     active: 'bg-amber-600/25 text-amber-200 border-amber-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
@@ -33828,6 +33887,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         foreign3:  '🏦 外資連買｜外資連續 3 天都買超的個股,按 3 日累計買超張數排行。外資是最大咖的長線資金,連買=看好;搭配站上月線再進更穩。',
         trust3:    '🏛️ 投信連買｜投信連續 3 天都買超的個股,按 3 日累計張數排行。投信愛鎖中小型股+季底作帳行情,連買常是波段起漲訊號;但投信一轉賣要跟著跑。',
         dual:      '🤝 雙主力共識｜外資「連3買」∩ 投信「連3買」的交集股 — 兩大法人同時押同一檔=雙主力共識,續航與勝率遠高於單邊。按外資+投信合計買超排行。一方轉賣就要留意。純公式(取現有兩榜交集),零採礦。',
+        divergent: '💎 跌深績優｜股價與基本面「背離」的股:股價跌到近 1 年區間下 40%、距高點 ≥25%,但 EPS 近 4 季創高 或 營收 YoY ≥15%。白話:公司賺更多、股價卻更便宜。⚠️ 跟「🩹 錯殺撿便宜」不同 — 那個看「今天單日大跌」,這個看「跌了大半年但基本面在變好」。仍要確認利空原因(產業循環 vs 公司出事)。',
         lowbase:   '🧊 低基期爆發｜分析師常講的「低基期」量化版:股價在近 1 年區間的下 35% 且距高點回檔 ≥25%(真的跌深),再加「打底跡象」評分(月線翻揚/站回月線/底部抬高/量能回溫/外資回補/跌勢收斂/營收仍成長)。⚠️ 誠實說:低基期≠會漲,單純還在跌的不列入(分數 <30 剔除);已排除營收崩 30% 以上、10 元以下雞蛋股、日均量 <500 張的沒量股。',
         tdcceat:   '🐘 大戶連週吃貨｜集保結算所官方週資料全市場掃:千張大戶持股比連 3 週增加 + 散戶比同步下降 = 大咖默默吃、散戶默默丟(對標付費 App「大股東狂吃貨」)。按 3 週增幅排行。⚠️ 集保每週六更新(非即時);大戶吃貨是「波段底氣」不是「明天就漲」,搭配技術面找進場點。',
         revenue:   '🚀 營收動能｜月營收 YoY 大爆發(年增率排行)。這叫「盈餘公布後漂移(PEAD)」— 營收超預期後股價常續漲一段,是全球最穩健的異常之一。⚠️ 這裡只排 YoY,點進去要再確認「技術有沒有起漲(站上均線/剛突破)」才進,別買基本面好但線型還在跌的。',
@@ -33990,6 +34050,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             // 🚀 V69.1.23 營收動能(月營收 YoY 榜,讀 fund_yoy_gm,零採礦)
             if (tableWrap) tableWrap.classList.remove('hidden');
             this._renderRevenueList();
+        } else if (key === 'divergent') {
+            if (tableWrap) tableWrap.classList.remove('hidden');
+            this._renderDivergentList();
         } else if (key === 'lowbase') {
             // 🧊 V70.3.1 低基期爆發(採礦端全市場掃 → lowbase_picks.json)
             if (tableWrap) tableWrap.classList.remove('hidden');
@@ -34831,6 +34894,43 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🐘 V69.8.1 大戶連週吃貨(對標付費 App「大股東狂吃貨」,集保官方週資料全市場前端掃,零採礦)
     //   條件:千張大戶持股比「連 3 週遞增」且 3 週累計 ≥+0.4pp + 散戶比同步下降;按 3 週增幅排行取前 40。
     //   排除:ETF/非4碼、單一持有人(大戶=100%)、散戶人數過少的殭屍股。
+    // 💎 V71.0.0 跌深績優榜(wrongkill_picks.json:股價跌深但 EPS/營收創高 = 基本面背離)
+    async _renderDivergentList() {
+        const body = document.getElementById('radarMatrixBody');
+        const updatedEl = document.getElementById('radarMatrixUpdated');
+        if (!body) return;
+        body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm animate-pulse">跌深績優掃描載入中…</td></tr>`;
+        if (this._divergentCache === undefined) {
+            this._divergentCache = null;
+            try {
+                const gb = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/wrongkill_picks.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+                if (r.ok) this._divergentCache = await r.json();
+            } catch (_) {}
+        }
+        if (this.radarStrategy !== 'divergent') return;
+        const j = this._divergentCache;
+        const rows = (j && Array.isArray(j.rows)) ? j.rows : [];
+        if (updatedEl) updatedEl.innerHTML = rows.length ? `📅 ${this._dW(j.updated ? String(j.updated).slice(0, 10) : null, { rel: 1 })} · 命中 ${j.total || rows.length} 檔` : '';
+        if (!rows.length) {
+            body.innerHTML = `<tr><td colspan="3" class="text-center py-10 text-gray-500 text-sm">💎 名單整備中<br><span class="text-[10px] text-gray-600">每日盤後採礦產出(需基本面季報快取)</span></td></tr>`;
+            return;
+        }
+        body.innerHTML = rows.map((m, i) => {
+            const name = this.getStockName(m.sym) || m.sym;
+            const why = (m.why || []).slice(0, 2).join(' · ');
+            return `<tr class="border-b border-[#21262d] hover:bg-[#161b22] transition-colors cursor-pointer" onclick="app.analyze('${m.sym}'); app.switchAppTab('diag'); app.vibrate(30);">
+                ${this._radarStockTd(m.sym, name, i)}
+                <td class="py-2.5 px-1 text-right align-middle"><div class="flex flex-col items-end">
+                    <span class="font-mono font-bold text-teal-300 text-[12px]">位階 ${m.pos}%</span>
+                    <span class="text-[9px] text-gray-500">距高點 −${m.dd}%</span></div></td>
+                <td class="py-2.5 px-2 text-right align-middle"><div class="flex flex-col items-end gap-0.5">
+                    <span class="font-mono font-black text-red-300 text-[13px]">背離 ${m.score}</span>
+                    <span class="text-[9px] text-gray-500 max-w-[130px] truncate" title="${why}">${why || '—'}</span></div></td>
+            </tr>`;
+        }).join('');
+    },
+
     // 🧊 V70.3.1 低基期爆發榜(採礦端 lowbase_picks.json;純公式零 AI)
     async _renderLowbaseList() {
         const body = document.getElementById('radarMatrixBody');

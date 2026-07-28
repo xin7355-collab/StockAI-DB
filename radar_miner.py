@@ -1728,6 +1728,16 @@ if __name__ == '__main__':
         build_lowbase_picks()
     except Exception as e:
         print(f"💥 低基期掃描頂層異常(不影響其他):{e}")
+    # 💎 V71.0.0 錯殺股(跌深但基本面創高)
+    try:
+        build_wrongkill_picks()
+    except Exception as e:
+        print(f"💥 錯殺股掃描頂層異常(不影響其他):{e}")
+    # 🧭 V71.0.0 板塊籌碼輪動(法人 + 券商分點)
+    try:
+        build_sector_chip_flow()
+    except Exception as e:
+        print(f"💥 板塊籌碼掃描頂層異常(不影響其他):{e}")
     # 🦅 獵鷹建倉分:全市場空手建倉評分(獨立 try,需 macro_risk.json 已產出)
     try:
         build_falcon_scores()
@@ -1749,6 +1759,16 @@ if __name__ == '__main__':
 def build_lowbase_picks():
     print("\n🧊 啟動【低基期爆發】全市場掃描...")
     try:
+        # 🏭 V71.0.0 產業別(供前端「同產業誰跌最深但體質最好」比較)— 使用者建議 #4
+        global _IND_MAP
+        _IND_MAP = {}
+        try:
+            _ij = json.loads((DATA_DIR / "industry_map.json").read_text(encoding='utf-8'))
+            _IND_MAP = _ij.get('data') if isinstance(_ij, dict) and 'data' in _ij else (_ij if isinstance(_ij, dict) else {})
+        except Exception:
+            for _sk, _syms in SECTOR_MEMBERS.items():   # 退而求其次:用板塊表當粗分類
+                for _s in _syms:
+                    _IND_MAP.setdefault(_s, _sk)
         fund_cache = {}
         for _fn in ("fund_yoy_gm.json", "fundamentals_cache.json"):
             try:
@@ -1821,6 +1841,15 @@ def build_lowbase_picks():
                 fi10 = sum(float(r.get('foreign_net') or 0) for r in rows[-10:])
                 if fi10 > 0:
                     score += 15; reasons.append(f"外資近10日買超 {int(fi10 / 1000):,} 張")
+                # 🏦 V71.0.0 法人連買天數(低檔連買勝率高於高檔連買)— 使用者建議 #3
+                streak = 0
+                for r in reversed(rows[-15:]):
+                    if float(r.get('foreign_net') or 0) > 0:
+                        streak += 1
+                    else:
+                        break
+                if streak >= 3:
+                    score += min(15, streak * 4); reasons.append(f"外資連買 {streak} 天")
                 # 跌幅收斂(近 20 日跌幅 < 近 60 日跌幅的一半)
                 r20 = (closes[-1] - closes[-21]) / closes[-21] * 100 if len(closes) >= 21 else 0
                 r60 = (closes[-1] - closes[-61]) / closes[-61] * 100 if len(closes) >= 61 else 0
@@ -1831,7 +1860,7 @@ def build_lowbase_picks():
                 if score < 30:
                     continue   # 只有低基期、完全沒打底跡象 → 還在跌,不列入
                 picks.append({
-                    "sym": sym, "close": round(c, 2),
+                    "sym": sym, "close": round(c, 2), "ind": _IND_MAP.get(sym, ""), "fistreak": streak,
                     "pos": round(pos_pct, 1),          # 位階百分位(越低越低基期)
                     "dd": round(dd_pct, 1),            # 距一年高點回檔%
                     "score": min(100, score),
@@ -1854,3 +1883,186 @@ def build_lowbase_picks():
         print(f"   ✅ 低基期爆發:{len(picks)} 檔 → lowbase_picks.json(前3:{[p['sym'] for p in picks[:3]]})")
     except Exception as e:
         print(f"   ❌ 低基期掃描失敗(不影響其他):{e}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# 🧭 V71.0.0 板塊「籌碼」輪動(使用者要求:現有輪動只看當天漲跌=錢在哪,
+#    要再看「籌碼在哪」→ 提早發現法人/券商偷偷布局的板塊)
+#    ① 法人面(全市場都有):各板塊成分股 外資/投信 1/5/20 日買超合計(張)
+#    ② 券商分點面(data/chips 涵蓋約 1500 檔):板塊內「同一家券商跨多檔買超」= 疑似整族群布局
+#    ③ ⭐ 偷布局偵測:板塊近 5 日「股價跌」但「法人買超為正」= 價跌籌碼進(最有價值的訊號)
+# ═══════════════════════════════════════════════════════════════
+_IND_MAP = {}   # 🏭 V71.0.0 產業別對照(build_lowbase_picks 填)
+
+SECTOR_MEMBERS = {
+    "server":    ["2382", "6669", "3231", "2376", "2356", "2317"],
+    "power":     ["1519", "1503", "1513", "1504", "1609"],
+    "packaging": ["2330", "3711", "3131", "6187", "3583", "6552"],
+    "cpo":       ["4979", "3450", "3363", "3081", "6869", "3234"],
+    "cooling":   ["3017", "3324", "3653", "6230", "8996"],
+    "robot":     ["2049", "1590", "2359", "6188", "4506"],
+    "finance":   ["2881", "2882", "2891", "2886", "2884"],
+    "leo":       ["3491", "2313", "6285", "8011", "2314"],
+    "dram":      ["2408", "2344", "8299", "3006", "4967"],
+    "defense":   ["2634", "8033", "6753", "8222", "3178", "8383"],
+    "wafer":     ["6488", "5483", "6182", "3532", "3016"],
+    "pcb":       ["3037", "8046", "3189", "2368", "6269"],
+    "asic":      ["3661", "3443", "6533", "4966", "5269"],
+    "security":  ["6690", "3029", "6214", "2480"],
+}
+
+
+def build_sector_chip_flow():
+    print("\n🧭 啟動【板塊籌碼輪動】掃描(法人 + 券商分點)...")
+    try:
+        out = {}
+        for sk, syms in SECTOR_MEMBERS.items():
+            fi = {1: 0.0, 5: 0.0, 20: 0.0}
+            ti = {1: 0.0, 5: 0.0, 20: 0.0}
+            px5 = []           # 各成分股近 5 日漲跌%
+            hit = 0
+            for sym in syms:
+                p = DATA_DIR / f"{sym}.json"
+                if not p.exists():
+                    continue
+                try:
+                    raw = json.loads(p.read_text(encoding='utf-8'))
+                    rows = raw if isinstance(raw, list) else (raw.get('data') or [])
+                    if not isinstance(rows, list) or len(rows) < 21:
+                        continue
+                    hit += 1
+                    for n in (1, 5, 20):
+                        seg = rows[-n:]
+                        fi[n] += sum(float(r.get('foreign_net') or 0) for r in seg) / 1000.0   # 股→張
+                        ti[n] += sum(float(r.get('trust_net') or 0) for r in seg) / 1000.0
+                    c0, c1 = float(rows[-6]['close']), float(rows[-1]['close'])
+                    if c0 > 0:
+                        px5.append((c1 - c0) / c0 * 100)
+                except Exception:
+                    continue
+            if hit < 2:
+                continue
+            avg_px5 = sum(px5) / len(px5) if px5 else 0.0
+            # ⭐ 偷布局:近 5 日板塊平均跌 ≥1.5% 但外資合計買超 > 0
+            stealth = (avg_px5 <= -1.5 and fi[5] > 0)
+            # 券商分點:板塊內同一家券商在 ≥2 檔都買超 → 疑似整族群布局
+            broker_cnt = {}
+            for sym in syms:
+                cp = DATA_DIR / "chips" / f"{sym}.json"
+                if not cp.exists():
+                    continue
+                try:
+                    cj = json.loads(cp.read_text(encoding='utf-8'))
+                    chips = cj.get('chips') or []
+                    if not chips:
+                        continue
+                    for b in (chips[-1].get('buyers') or [])[:5]:
+                        nm = str(b.get('bnm') or '').strip()
+                        net = float(b.get('net') or 0)
+                        if nm and net > 0:
+                            e = broker_cnt.setdefault(nm, {"n": 0, "lots": 0.0, "syms": []})
+                            e["n"] += 1
+                            e["lots"] += net / 1000.0
+                            if sym not in e["syms"]:
+                                e["syms"].append(sym)
+                except Exception:
+                    continue
+            multi = sorted([{"name": k, "n": v["n"], "lots": int(v["lots"]), "syms": v["syms"][:4]}
+                            for k, v in broker_cnt.items() if v["n"] >= 2],
+                           key=lambda x: (-x["n"], -x["lots"]))[:3]
+            out[sk] = {
+                "fi1": int(fi[1]), "fi5": int(fi[5]), "fi20": int(fi[20]),
+                "ti5": int(ti[5]), "px5": round(avg_px5, 2),
+                "stealth": stealth, "n": hit, "brokers": multi,
+            }
+        if len(out) < 5:
+            print(f"   ⚠️ 板塊籌碼命中僅 {len(out)} 個(<5)→ 不覆寫")
+            return
+        payload = {"updated": datetime.now().strftime("%Y-%m-%d %H:%M"), "sectors": out}
+        (DATA_DIR / "sector_chip_flow.json").write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        _st = [k for k, v in out.items() if v.get("stealth")]
+        print(f"   ✅ 板塊籌碼輪動:{len(out)} 板塊 → sector_chip_flow.json(偷布局:{_st or '無'})")
+    except Exception as e:
+        print(f"   ❌ 板塊籌碼掃描失敗(不影響其他):{e}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# 💎 V71.0.0 錯殺股(跌深但基本面創高)— 使用者建議清單 #1
+#   股價位階低(≤40%)+ 距高點跌 ≥25%,但 EPS/營收「近 4 季創高」或 YoY 強 → 股價與基本面背離
+# ═══════════════════════════════════════════════════════════════
+def build_wrongkill_picks():
+    print("\n💎 啟動【錯殺股】掃描(跌深 × 基本面創高)...")
+    try:
+        fmap = {}
+        try:
+            _j = json.loads((DATA_DIR / "fund_yoy_gm.json").read_text(encoding='utf-8'))
+            fmap = _j.get('data') if isinstance(_j, dict) and 'data' in _j else (_j if isinstance(_j, dict) else {})
+        except Exception:
+            pass
+        rows_out = []
+        for sym, fd in (fmap or {}).items():
+            if not (len(sym) == 4 and sym.isdigit()) or sym.startswith('00') or not isinstance(fd, dict):
+                continue
+            p = DATA_DIR / f"{sym}.json"
+            if not p.exists():
+                continue
+            try:
+                raw = json.loads(p.read_text(encoding='utf-8'))
+                rows = raw if isinstance(raw, list) else (raw.get('data') or [])
+                if not isinstance(rows, list) or len(rows) < 130:
+                    continue
+                win = rows[-250:]
+                closes = [float(r['close']) for r in win if r.get('close')]
+                highs = [float(r.get('high') or r.get('close') or 0) for r in win]
+                lows = [float(r.get('low') or r.get('close') or 1e9) for r in win]
+                c, hi, lo = closes[-1], max(highs), min(lows)
+                if not (c >= 8 and hi > lo > 0):
+                    continue
+                pos = (c - lo) / (hi - lo) * 100
+                dd = (hi - c) / hi * 100
+                if pos > 40 or dd < 25:
+                    continue
+                # 基本面創高:qeps 近 4 季 EPS 最新 = 最大;或營收 YoY ≥ 15%
+                qeps = fd.get('qeps') or []
+                eps_hi, eps_txt = False, ""
+                try:
+                    es = [float(q.get('eps')) for q in qeps[-4:] if q.get('eps') is not None]
+                    if len(es) >= 3 and es[-1] == max(es) and es[-1] > 0:
+                        eps_hi = True
+                        eps_txt = f"EPS {es[-1]:.2f} 近4季新高"
+                except Exception:
+                    pass
+                yoy = fd.get('yoy')
+                try:
+                    yoy = float(yoy) if yoy is not None else None
+                except Exception:
+                    yoy = None
+                yoy_hi = yoy is not None and yoy >= 15
+                if not (eps_hi or yoy_hi):
+                    continue
+                gm = fd.get('gm')
+                score = 40 + (25 if eps_hi else 0) + (min(25, int((yoy or 0) / 2)) if yoy_hi else 0)
+                if pos <= 20:
+                    score += 10
+                # YoY 破 300% 多半是「去年基期趨近於零」的失真值,照實寫會誤導 → 標為基期極低
+                _yoy_txt = (("營收 YoY +300% 以上(去年基期極低)" if yoy >= 300 else f"營收 YoY +{yoy:.0f}%") if yoy_hi else "")
+                why = [w for w in [eps_txt, _yoy_txt,
+                                   (f"毛利 {gm:.1f}%" if isinstance(gm, (int, float)) else "")] if w]
+                rows_out.append({"sym": sym, "close": round(c, 2), "pos": round(pos, 1), "dd": round(dd, 1),
+                                 "yoy": round(yoy, 1) if yoy is not None else None,
+                                 "score": min(100, score), "why": why[:3]})
+            except Exception:
+                continue
+        rows_out.sort(key=lambda x: (-x['score'], x['pos']))
+        rows_out = rows_out[:30]
+        if len(rows_out) < 2:
+            print(f"   ⚠️ 錯殺股命中僅 {len(rows_out)} 檔 → 不覆寫")
+            return
+        (DATA_DIR / "wrongkill_picks.json").write_text(
+            json.dumps({"updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "total": len(rows_out), "rows": rows_out},
+                       ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print(f"   ✅ 錯殺股:{len(rows_out)} 檔 → wrongkill_picks.json")
+    except Exception as e:
+        print(f"   ❌ 錯殺股掃描失敗(不影響其他):{e}")
