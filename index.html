@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -952,9 +952,10 @@
             </div>
             <div class="text-[10px] text-gray-500 space-y-1 border-t border-gray-800 pt-2">
                 <div><span class="text-green-400 font-bold">✅ 多方無憂</span>：淨口數 > -10,000</div>
-                <div><span class="text-yellow-300 font-bold">⚠️ 暗流湧動</span>：-25,000 ~ -10,000</div>
-                <div><span class="text-orange-400 font-bold">⛔ 紅色警戒</span>：-40,000 ~ -25,000</div>
-                <div><span class="text-red-400 font-bold">🚨 黑天鵝警報</span>：≤ -40,000</div>
+                <div><span class="text-yellow-300 font-bold">⚠️ 空單增加中</span>：5 日多空 3,000 口以上</div>
+                <div><span class="text-orange-400 font-bold">⛔ 空單近期最重</span>：落在近 20 日區間最空的 15%</div>
+                <div><span class="text-red-400 font-bold">🚨 急遽加空</span>：5 日多空 8,000 口以上</div>
+                <div class="text-gray-500 mt-1">📌 V71.1.6 起改看「相對自己近期」而非絕對口數 — 小台/微台上市後未平倉總量放大,舊的 −40,000 門檻已經天天成立,亮了等於沒亮。</div>
             </div>
         </div>
     </div>
@@ -6519,8 +6520,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.1.5',
+    _APP_VERSION: 'V71.1.6',
     _CHANGELOG: [
+        { v: 'V71.1.6', dt: '2026-07-28', t: '🚨 修:外資期貨門檻整組過期,7 個地方一起失真', d: [
+            '你問反攻條件雷達的條件對不對 → 查出一個大問題:所有跟「外資台指期空單」有關的判斷,用的都是舊市場規模訂的絕對口數門檻(−10,000 / −25,000 / −40,000)。但小台、微台上市後未平倉總量放大,實測近 22 個交易日淨額區間是 −86,189 ~ −75,198 — 每一天都超過 −40,000。',
+            '後果:①「🚨 黑天鵝核彈」加閃爍每天都在亮,你早就免疫了 ② 風險指數有個 0~30 分的因子天天滿分,等於常數,完全失去鑑別力 ③ 反攻雷達那條「回補到 −25,000 以內」永遠不可能轉綠 ④ 還有「外資沒大空」的但書天天掛著。總共 7 個地方同時失真。',
+            '已全部改成看「相對自己近期」:近 20 日區間位階 + 5 日增減。市場規模再變也不會失效,而且抽成同一個函式,以後不會再各處各寫一套。',
+            '【你問的順逆價差 — 對,而且資料早就有】新增「📐 價差翻正」條件(台指期收盤 vs 加權)。重點:外資的期貨空單有一部分是「現貨多+期貨空」的避險對沖,單看口數會把避險誤判成看空 → 空單大但還是正價差=多半在避險;空單大又深度逆價差=才是真的在殺。',
+            '【順手修】採礦端「期現比」一直顯示 0.0 — 因為程式把一口台指期的合約價值當成 5 萬元,實際是「指數×200」(約 873 萬),差了 175 倍。修好後是 7.9,那條判斷才真的有作用。',
+            '【燈號】這張卡的 🔴🟢 改成 ✅⚠️⛔ — 它回答的是「能不能進場」(風險),不是漲跌方向。原本 🟢=別接刀、🔴=可進場,視覺上剛好讀反。',
+        ]},
         { v: 'V71.1.5', dt: '2026-07-28', t: '🐛 找到「籌碼是舊的」真正原因(不是輪不到)+ 表格再精簡', d: [
             '【真相跟我上次講的不一樣】你問中美晶為什麼沒有最新分點,我上次說「輪流還沒輪到它」— 查證後是錯的。5483 本來就在最優先名單,成交值排第 34 名。',
             '真正原因:採礦判斷「要不要跳過」是看「今天有沒有抓過」,不是看「抓到的是不是最新那天的」。傍晚那輪先跑熱門股,當時證交所當日分點還沒出 → 拿到前一天的,卻被記成「今天抓過」→ 之後每輪都跳過它;冷門股排後面,輪到時當日分點已經出來 → 反而是最新的。實測完全顛倒:成交值前 100 名「全部」是舊的,冷門股 633 檔卻是最新的。',
@@ -9807,10 +9816,9 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         let fiLabel = '', fiColor = 'text-gray-400', fiDisplay = '--';
         if (fiNet !== null && fiNet !== undefined) {
             fiDisplay = fiNet.toLocaleString();
-            if (fiNet > -10000)       { fiLabel = '✅ 多方無憂';      fiColor = 'text-[#4ade80]'; }
-            else if (fiNet > -25000)  { fiLabel = '⚠️ 暗流湧動';  fiColor = 'text-yellow-300'; }
-            else if (fiNet > -40000)  { fiLabel = '⛔ 紅色警戒';  fiColor = 'text-orange-400'; }
-            else                      { fiLabel = '🚨 黑天鵝核彈'; fiColor = 'text-[#f87171] animate-pulse'; }
+            // 🏦 V71.1.6 改走 _fiFutState()(相對水位),不再用會永遠亮紅的絕對門檻
+            const _fs = this._fiFutState();
+            fiLabel = _fs.label || '⏳ 基準累積中'; fiColor = _fs.color;
         }
         document.getElementById('mktFI').innerHTML = `<span class="${fiColor} font-bold">${fiDisplay}口</span>`;
         document.getElementById('mktFI_label').innerHTML = `<span class="${fiColor}">${fiLabel}</span>`;
@@ -13642,13 +13650,17 @@ const marginByDate = {};
         }
 
         // V25.7 — 7️⃣ 外資期貨未平倉淨口(<-25000 = 黑天鵝警報 / >+10000 = 法人看多 counters)
-        const fiFut = this._futuresCache?.fi_net;
-        if (typeof fiFut === 'number') {
-            if (fiFut <= -40000)     { score += 30; reasons.push(`🚨 外資期貨深度看空 ${fiFut.toLocaleString()} 口`); }
-            else if (fiFut <= -25000){ score += 20; reasons.push(`外資期貨大空單 ${fiFut.toLocaleString()} 口`); }
-            else if (fiFut <= -10000){ score += 10; reasons.push(`外資期貨偏空 ${fiFut.toLocaleString()} 口`); }
-            else if (fiFut >= 15000) { score -= 12; counters.push(`外資期貨大多 +${fiFut.toLocaleString()} 口 (法人看多)`); }
-            else if (fiFut >= 5000)  { score -= 6;  counters.push(`外資期貨偏多 +${fiFut.toLocaleString()} 口`); }
+        // 🏦 V71.1.6 改走 _fiFutState()(相對水位)。舊碼用絕對口數:fi_net ≤ −40,000 → +30 分,
+        //   但實測近 22 日**每天**都 ≤ −40,000 → 風險分數等於被無條件墊高 30 分,失去鑑別力。
+        const _fsR = this._fiFutState();
+        if (_fsR.level !== 'unknown') {
+            const _fmt = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+            if (_fsR.chg5 != null && _fsR.chg5 <= -8000)      { score += 25; reasons.push(`🚨 外資期貨 5 日急加空 ${_fmt(_fsR.chg5)} 口`); }
+            else if (_fsR.chg5 != null && _fsR.chg5 <= -3000) { score += 12; reasons.push(`外資期貨空單增加 ${_fmt(_fsR.chg5)} 口`); }
+            else if (_fsR.chg5 != null && _fsR.chg5 >= 8000)  { score -= 15; counters.push(`外資期貨大幅回補 ${_fmt(_fsR.chg5)} 口`); }
+            else if (_fsR.chg5 != null && _fsR.chg5 >= 3000)  { score -= 8;  counters.push(`外資期貨回補中 ${_fmt(_fsR.chg5)} 口`); }
+            if (_fsR.pct != null && _fsR.pct <= 15)      { score += 10; reasons.push(`外資空單在近20日最重區(第 ${Math.round(_fsR.pct)} 百分位)`); }
+            else if (_fsR.pct != null && _fsR.pct >= 85) { score -= 8;  counters.push(`外資空單在近20日最輕區(第 ${Math.round(_fsR.pct)} 百分位)`); }
         }
 
         // V27.6 — 8️⃣ 外資現貨買賣超(三大法人現貨方向,fi_spot_net 單位:億元):賣超=出貨壓力、買超=法人挺
@@ -13963,6 +13975,38 @@ const marginByDate = {};
     // 🧭 V70.2.7 反攻條件雷達(使用者需求:「何時什麼情形台股才會上漲?把假設情形寫進來;
     //   若全面黑天鵝就叫我立即停損;把我沒想到的可能性都告訴我」)
     //   全純公式,吃 macro_risk / bubble_warning / twii_history 既有資料;每條件標「現值 + 何時轉綠」。
+    // 🏦 V71.1.6 外資台指期「相對水位」單一真相來源(⛔ 別再各處自己寫絕對口數門檻)
+    //   為什麼要改:舊的絕對門檻(−10,000 / −25,000 / −40,000)是舊市場規模訂的。
+    //   小台/微台上市後未平倉總量放大,實測近 22 個交易日淨額區間 −86,189 ~ −75,198 —
+    //   **每一天都 ≤ −40,000** → 顯示層永遠亮「🚨 黑天鵝核彈」+閃爍、風險分數永遠被無條件 +30、
+    //   反攻雷達那條永遠不可能轉綠。三個地方同時失真,而且使用者完全被鈍化。
+    //   改成看「相對自己」:近 20 日區間位階 + 5 日增減。市場規模再變也不會失效。
+    //   回傳 {net, chg5, pct, level, label, color};沒有歷史可比時 level='unknown',
+    //   寧可誠實說「基準累積中」也不要拿過時門檻亂判。
+    _fiFutState() {
+        const N = v => (v == null || isNaN(+v)) ? null : +v;
+        const net = N(this._futuresCache?.fi_net) ?? N(this._macroRiskCache?.fi_futures_net);
+        const hist = (this._riskHistCache || []).map(r => N(r.fi_futures_net)).filter(v => v != null);
+        let chg5 = null, pct = null;
+        if (hist.length >= 6) chg5 = hist[hist.length - 1] - hist[hist.length - 6];
+        const win = hist.slice(-20);
+        if (win.length >= 8 && net != null) {
+            const lo = Math.min(...win), hi = Math.max(...win);
+            if (hi > lo) pct = (net - lo) / (hi - lo) * 100;
+        }
+        if (net == null) return { net: null, chg5, pct, level: 'unknown', label: '', color: 'text-gray-400' };
+        if (chg5 == null && pct == null)
+            return { net, chg5, pct, level: 'unknown', label: '⏳ 基準累積中', color: 'text-gray-400' };
+        // 🚨 只在「急遽加空」時才報緊急 —— 不是看絕對口數
+        if (chg5 != null && chg5 <= -8000) return { net, chg5, pct, level: 'danger', label: '🚨 急遽加空', color: 'text-[#f87171] animate-pulse' };
+        if (chg5 != null && chg5 >= 8000)  return { net, chg5, pct, level: 'good',   label: '✅ 大幅回補', color: 'text-[#4ade80]' };
+        if (pct != null && pct <= 15)      return { net, chg5, pct, level: 'warn',   label: '⛔ 空單近期最重', color: 'text-orange-400' };
+        if (pct != null && pct >= 85)      return { net, chg5, pct, level: 'good',   label: '✅ 空單近期最輕', color: 'text-[#4ade80]' };
+        if (chg5 != null && chg5 <= -3000) return { net, chg5, pct, level: 'warn',   label: '⚠️ 空單增加中', color: 'text-yellow-300' };
+        if (chg5 != null && chg5 >= 3000)  return { net, chg5, pct, level: 'good',   label: '✅ 回補中', color: 'text-[#4ade80]' };
+        return { net, chg5, pct, level: 'neutral', label: '➖ 區間震盪', color: 'text-gray-300' };
+    },
+
     _renderReboundRadar() {
         const box = document.getElementById('reboundRadarCard');
         if (!box) return;
@@ -13999,10 +14043,41 @@ const marginByDate = {};
         add('🇺🇸', '美股止穩', vix == null ? '—' : `VIX ${f1(vix)}`, vix != null && vix < 25 && (sp == null || sp > -0.5), 'VIX 回到 25 以下且標普止跌', vix == null);
         add('💱', '台幣止貶', twd5 == null ? '—' : `5日 ${twd5 >= 0 ? '貶' : '升'} ${Math.abs(twd5).toFixed(2)}%`, twd5 != null && twd5 <= 0.1, '台幣 5 日不再連貶(外資停止提款,匯率 ' + (twd != null ? twd.toFixed(2) : '—') + ')', twd5 == null);
         add('🇰🇷', '日韓同盤翻紅', `韓 ${f1(kospi)}% / 日 ${f1(nikkei)}%`, (kospi != null && kospi > 0) || (nikkei != null && nikkei > 0), '韓股或日經翻紅(台股開盤最直接的風向)', kospi == null && nikkei == null);
-        add('🏦', '外資期貨回補', fifu == null ? '—' : `${Math.round(fifu).toLocaleString()} 口`, fifu != null && fifu > -25000, '空單回補到 -25,000 口以內(現在每口都是壓力)', fifu == null);
+        // 🐛 V71.1.6 修「永遠不可能通過」的死條件:
+        //   舊門檻寫「回補到 −25,000 口以內」,但實測近 22 個交易日外資期貨淨額區間是
+        //   −86,189 ~ −75,198 —— 從來沒有一天接近 −25,000。那是舊市場規模的門檻(小台/微台
+        //   上市後未平倉總量放大),留著等於掛一顆永遠亮不了的燈。
+        //   改成看「有沒有真的在回補」(相對自己 5 日前),這才符合條件名稱,且不受市場規模變化影響。
+        //   另附「近 20 日位階」給脈絡:0%=史上最空、100%=最不空。
+        let fiChg5 = null, fiPct = null;
+        try {
+            const fh = (this._riskHistCache || []).map(r => N(r.fi_futures_net)).filter(v => v != null);
+            if (fh.length >= 6) fiChg5 = fh[fh.length - 1] - fh[fh.length - 6];
+            const win = fh.slice(-20);
+            if (win.length >= 8 && fifu != null) {
+                const lo = Math.min(...win), hi = Math.max(...win);
+                if (hi > lo) fiPct = (fifu - lo) / (hi - lo) * 100;
+            }
+        } catch (_) {}
+        add('🏦', '外資期貨回補',
+            fifu == null ? '—' : `${Math.round(fifu).toLocaleString()} 口${fiChg5 != null ? `(5日 ${fiChg5 >= 0 ? '回補+' : '加空'}${Math.abs(Math.round(fiChg5)).toLocaleString()})` : ''}`,
+            fiChg5 != null && fiChg5 >= 3000,
+            `外資空單較 5 日前回補 ≥3,000 口(空單縮才是轉多前兆)${fiPct != null ? ` ・目前在近20日的第 ${Math.round(fiPct)} 百分位(0=最空)` : ''}`,
+            fiChg5 == null);
         add('🛢️', '油價不走極端', wti == null ? '—' : `${wti >= 0 ? '+' : ''}${f1(wti)}%`, wti != null && Math.abs(wti) < 3, '單日 ±3% 內(暴漲=通膨恐慌、暴跌=衰退恐慌,兩頭都空)', wti == null);
         add('💴', '日圓不急升', jpy3 == null ? '—' : `3日 ${jpy3 >= 0 ? '+' : ''}${f1(jpy3)}%`, jpy3 != null && jpy3 > -2, '日圓 3 日升值 <2%(急升=全球套利平倉賣壓,2024/8/5 式崩盤主因 — 多數人沒想到的)', jpy3 == null);
         add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '加權收盤站回 5MA=止跌第一步;站回季線' + (twiiMa60 ? `(${Math.round(twiiMa60).toLocaleString()})` : '') + '才算轉多', twiiC == null);
+        // 📐 V71.1.6 順逆價差(使用者建議,採礦端 taifex_backwardation 早就有,只是沒被用):
+        //   定義 = 台指期近月收盤 − 加權指數收盤;負值=逆價差(避險/看空),正值=正價差(偏多)。
+        //   ⚠️ 為什麼要跟外資空單一起看:外資期貨空單有一部分是「現貨多 + 期貨空」的避險對沖,
+        //      單看口數會把「避險」誤判成「看空」。若空單很大**但仍是正價差** → 多半是避險/套利,
+        //      不是真的看壞;若空單大**又深度逆價差** → 才是真的在殺。
+        const bwd = N(mr.taifex_backwardation);
+        add('📐', '價差翻正',
+            bwd == null ? '—' : `${bwd >= 0 ? '正價差 +' : '逆價差 '}${Math.round(bwd)} 點`,
+            bwd != null && bwd >= 0,
+            '台指期收盤回到加權之上(正價差)=避險需求退潮;深度逆價差(<-200)代表市場還在搶避險 — 但恐慌末端的極深逆價差,反而常是反轉的領先訊號,要配合 VIX 一起看',
+            bwd == null);
         add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30, '台指 VIX 回 30 以下(>30=期權市場仍在避險搶購)', twvix == null);
         add('📉', '機構停止倒貨', dist == null ? '—' : `派發日 ${dist} 天`, dist != null && dist <= 2, '25 日內派發日 ≤2(≥5=機構連續出貨未歇)', dist == null);
         // 融資斷頭(反指標:跌市中融資大減=賣壓宣洩,反而接近底)
@@ -14021,7 +14096,10 @@ const marginByDate = {};
         // ── 黑天鵝判定(立即停損訊號)──
         const swanHits = [];
         if (vix != null && vix >= 32) swanHits.push(`VIX ${f1(vix)} 恐慌爆表`);
-        if (fifu != null && fifu <= -40000) swanHits.push(`外資期貨空單 ${Math.round(fifu).toLocaleString()} 口`);
+        // 🐛 V71.1.6:舊門檻 −40,000 在現在的市場規模下**每天都成立**(近22日區間 −86,189~−75,198),
+        //   等於永遠掛著一顆假的黑天鵝因子 → 改成「相對自己急遽加空」:5 日內多空 ≥8,000 口才算異常。
+        if (fiChg5 != null && fiChg5 <= -8000) swanHits.push(`外資期貨 5 日急加空 ${Math.abs(Math.round(fiChg5)).toLocaleString()} 口`);
+        if (bwd != null && bwd <= -300) swanHits.push(`台指深度逆價差 ${Math.round(bwd)} 點`);
         if (jpy3 != null && jpy3 <= -4) swanHits.push(`日圓 3 日急升 ${f1(jpy3)}%(套利平倉)`);
         if ((kospi != null && kospi <= -5) || (nikkei != null && nikkei <= -5)) swanHits.push('日韓股單日 -5% 級重挫');
         if (sp != null && sp <= -3) swanHits.push(`標普 ${f1(sp)}%`);
@@ -14034,14 +14112,16 @@ const marginByDate = {};
             heroIcon = '🚨'; heroTxt = '全面黑天鵝'; heroCls = 'text-red-300 border-red-500';
             act = `<b class="text-red-300">立即行動:持股先砍到「跌停也睡得著」的量,別凹單、別攤平。</b>觸發:${swanHits.join('、')}。現金也是部位,活著才有下一波。`;
         } else if (passN >= Math.max(6, judged.length - 2)) {
-            heroIcon = '🔴'; heroTxt = '反攻條件成形'; heroCls = 'text-red-300 border-red-500';
+            // 🚦 V71.1.6 依 V70.2.8 燈號鐵則:這張卡回答「能不能進場」= 風險,不是漲跌方向
+            //   → 一律用 ✅⚠️⛔🚨,不用 🔴🟢(原本 🟢=別接刀、🔴=可進場,視覺上剛好讀反)
+            heroIcon = '✅'; heroTxt = '反攻條件成形'; heroCls = 'text-red-300 border-red-500';
             act = `${passN}/${judged.length} 條件轉綠 → 可<b class="text-red-300">分批回場(先 1/3 資金)</b>,買強勢股不買反彈弱股;跌破今日低點就停損重來。`;
         } else if (passN >= Math.ceil(judged.length / 2)) {
-            heroIcon = '🟡'; heroTxt = '打底觀察中'; heroCls = 'text-yellow-300 border-yellow-500';
+            heroIcon = '⚠️'; heroTxt = '打底觀察中'; heroCls = 'text-yellow-300 border-yellow-500';
             act = `已過 ${passN}/${judged.length} 條,<b class="text-yellow-300">還缺:${missing.slice(0, 3).map(c => c.name).join('、')}</b>${missing.length > 3 ? ` 等 ${missing.length} 條` : ''} → 空手再等等,持股只留核心不加碼。`;
         } else {
-            heroIcon = '🟢'; heroTxt = '空方主控・別接刀'; heroCls = 'text-green-300 border-green-500';
-            act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波不是買點</b>;下面每一條寫著「何時轉綠」,綠燈過半前不進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
+            heroIcon = '⛔'; heroTxt = '空方主控・別接刀'; heroCls = 'text-green-300 border-green-500';
+            act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波不是買點</b>;下面每一條寫著「何時會過」,過半前不進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
         }
         // 📣 黑天鵝當日推播一次
         try {
@@ -14058,8 +14138,8 @@ const marginByDate = {};
         box.className = 'bg-[#161b22] border-l-4 ' + heroCls.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2">
-                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="alert('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n・綠燈過半=打底中,空手準備\n・綠燈幾乎全亮=分批回場(先1/3)\n・觸發黑天鵝(VIX爆表/外資空單4萬口/日圓急升/日韓股-5%)=先停損保命\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
-                <span class="text-sm font-black ${heroCls.split(' ')[0]}">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}</span></span>
+                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="alert('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n・✅ 過半=打底中,空手準備\n・✅ 幾乎全亮=分批回場(先1/3)\n・觸發黑天鵝(VIX爆表/外資空單4萬口/日圓急升/日韓股-5%)=先停損保命\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
+                <span class="text-sm font-black ${heroCls.split(' ')[0]}">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}${C.length > judged.length ? `<span class="text-gray-600">(+${C.length - judged.length}⏳)</span>` : ''}</span></span>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
@@ -14195,7 +14275,10 @@ const marginByDate = {};
         s += sign(tsmChg) * 2;                                          // 台積電 ADR(權重最高)
         const vixN = parseFloat((vix || '').replace(/[^0-9.]/g, ''));
         if (Number.isFinite(vixN)) { if (vixN < 20) s += 1; else if (vixN > 30) s -= 2; else if (vixN > 25) s -= 1; }
-        if (fi !== null && fi !== undefined) { if (fi > -10000) s += 1; else if (fi <= -40000) s -= 2; else if (fi <= -25000) s -= 1; }
+        // 🏦 V71.1.6 相對水位(舊絕對門檻天天成立 → 這條等於固定 -2 分)
+        { const _f5 = this._fiFutState();
+          if (_f5.chg5 != null) { if (_f5.chg5 <= -8000) s -= 2; else if (_f5.chg5 <= -3000) s -= 1; else if (_f5.chg5 >= 8000) s += 2; else if (_f5.chg5 >= 3000) s += 1; }
+          else if (_f5.pct != null) { if (_f5.pct <= 15) s -= 1; else if (_f5.pct >= 85) s += 1; } }
         if (Number.isFinite(+fiSpot)) { if (+fiSpot > 0) s += 1; else if (+fiSpot < -200) s -= 1; }
         if (asxChg != null) s += asxChg > 0 ? 0.5 : asxChg < 0 ? -0.5 : 0;   // 日月光 ADR
         if (umcChg != null) s += umcChg > 0 ? 0.5 : umcChg < 0 ? -0.5 : 0;   // 聯電 ADR
@@ -14234,8 +14317,12 @@ const marginByDate = {};
         if (Number.isFinite(_cny5) && _cny5 >= 1.2) s -= 0.5;
 
         // 🐛 V40.0 外資台指期極空(≤-4萬口)時不可硬說「外資沒大空」(實測 -83,063 口卻顯偏多致矛盾)→ 動態加註
-        const _fiBigShort = (fi != null && fi <= -40000);
-        const _fiNote = _fiBigShort ? `惟外資台指期 ${(fi / 10000).toFixed(1)} 萬口仍極空` : '外資沒大空';
+        // 🏦 V71.1.6 相對水位:舊寫法 ≤-4萬口 天天成立 → 永遠掛「仍極空」的但書,反而變雜訊
+        const _fsN = this._fiFutState();
+        const _fiBigShort = (_fsN.level === 'danger' || (_fsN.pct != null && _fsN.pct <= 15));
+        const _fiNote = _fiBigShort
+            ? `惟外資台指期 ${fi != null ? (fi / 10000).toFixed(1) + ' 萬口' : ''}${_fsN.chg5 != null && _fsN.chg5 <= -3000 ? `近5日再加空 ${Math.abs(Math.round(_fsN.chg5)).toLocaleString()} 口` : '處近期最空區'}`
+            : '外資期貨無異常加空';
         s = Math.round(s * 10) / 10;   // 🐛 V57.7 順便修:0.5 權重連加的浮點誤差(避免顯示 -7.000000000000001)
         // 📊 V57.9 使用者要求「分數簡單一點」:內部 s(約 ±10)換算成「開盤風向 0~100」,50=中性,量條直接填到幾分,數字與條完全對得上
         const sPct = Math.max(0, Math.min(100, Math.round(50 + s * 5)));
@@ -23192,10 +23279,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const fi = this.fiShortQty;
         let sentiLabel = '--', sentiColor = 'text-gray-400';
         if (fi != null) {
-            if (fi <= -40000)      { sentiLabel = '極空'; sentiColor = 'text-red-400 animate-pulse'; }
-            else if (fi <= -25000) { sentiLabel = '偏空'; sentiColor = 'text-orange-300'; }
-            else if (fi <= -10000) { sentiLabel = '中性'; sentiColor = 'text-yellow-300'; }
-            else                   { sentiLabel = '偏多'; sentiColor = 'text-green-400'; }
+            // 🏦 V71.1.6 相對水位(舊絕對門檻讓「極空 + 閃爍」天天亮 → 完全鈍化)
+            const _fsS = this._fiFutState();
+            sentiLabel = _fsS.label ? _fsS.label.replace(/^[^\s]*\s*/, '') : '待採';
+            sentiColor = _fsS.color;
         } else sentiLabel = '待採';
         setDim('dim_senti', sentiLabel, sentiColor);
 
@@ -34832,11 +34919,21 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         }
 
         // External futures: 0-30 points
-        if (fi !== null) {
-            if      (fi <= -40000) score += 30;
-            else if (fi <= -25000) score += 22;
-            else if (fi <= -10000) score += 13;
-            else if (fi <  0)      score += 6;
+        // 🏦 V71.1.6 改走 _fiFutState()(相對水位)。舊碼 fi <= −40,000 → +30,
+        //   但實測近 22 日每天都 ≤ −40,000 → 這個 0-30 分的因子天天滿分,等於常數,
+        //   風險指數完全失去鑑別力(第 4 個中招的地方,前三個是顯示層/主力指數/反攻雷達)。
+        {
+            const _fsK = this._fiFutState();
+            if (_fsK.level !== 'unknown') {
+                if      (_fsK.chg5 != null && _fsK.chg5 <= -8000) score += 26;
+                else if (_fsK.chg5 != null && _fsK.chg5 <= -3000) score += 14;
+                else if (_fsK.chg5 != null && _fsK.chg5 >=  8000) score += 0;
+                else if (_fsK.chg5 != null && _fsK.chg5 >=  3000) score += 2;
+                else score += 8;   // 區間震盪:給中性基底,不歸零也不滿分
+                if (_fsK.pct != null && _fsK.pct <= 15) score += 4;
+            } else if (fi !== null && fi < 0) {
+                score += 8;        // 沒有歷史可比 → 給中性基底,不用過時門檻硬判
+            }
         }
 
         // DXY change: rising = bad for Taiwan (0-12 points)

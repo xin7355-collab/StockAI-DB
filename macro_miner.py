@@ -1656,10 +1656,17 @@ def _taifex_openapi_tx_close_change():
     return best_close, best_pct
 
 
+# 📌 V71.1.6 副產物:fetch_taifex_backwardation 內部本來就抓了 ^TWII 現貨收盤,
+#    順手存起來給 fi_ratio_alert_level 算「一口台指期的合約價值(指數×200)」用,
+#    免得為了同一個數字再打一次 yfinance。
+_LAST_TWII_SPOT = None
+
+
 def fetch_taifex_backwardation():
     """台指逆價差 = 臺股期貨(TX)近月收盤 − 加權指數(^TWII)現貨收盤（負值＝逆價差）
     期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML regex
     """
+    global _LAST_TWII_SPOT
     try:
         import re
         # 1) ^TWII 現貨收盤(用 dropna 取最後有效值,避免休市 NaN 害整個逆價差變 null)
@@ -1673,6 +1680,7 @@ def fetch_taifex_backwardation():
                     v = float(closes.iloc[-1])
                     if v == v:   # 非 NaN
                         spot = v
+                        _LAST_TWII_SPOT = v   # V71.1.6 給期現比用
         except Exception as e:
             return None, f"^TWII 取得失敗：{str(e)[:60]}"
         if spot is None:
@@ -1731,10 +1739,18 @@ def judge_fi_complex(net_futures, net_spot):
     return "外資動向中性"
 
 
-def fi_ratio_alert_level(fi_spot, fi_futures):
-    """⚠️ 期現比警示:外資期貨絕對淨額 / 現貨絕對淨額。
-    fi_spot:外資現貨淨額(億)、fi_futures:外資台指期淨口數
-    比值 > 3 且期貨大空 → 主力先用期貨佈空,現貨將跟跌(警戒)
+def fi_ratio_alert_level(fi_spot, fi_futures, twii_spot=None):
+    """⚠️ 期現比警示:外資期貨淨額換算成「相當於幾億現貨」後,跟現貨買賣超比。
+
+    fi_spot:外資現貨淨額(億)、fi_futures:外資台指期淨口數、twii_spot:加權指數點數
+    比值 > 2.5 且期貨大空 → 主力先用期貨佈空,現貨恐跟跌(警戒)
+
+    🐛 V71.1.6 修「期現比永遠顯示 0.0」:
+       舊碼 `spot_equiv = abs(fi_spot * 1e8 / 50000)` 把一口台指期的合約價值當成 5 萬元,
+       但台指期一口 = 指數 × 200 元(指數 43,000 時約 860 萬),**差了約 175 倍**
+       → 分母被灌大 175 倍 → ratio 恆為 0.0x,顯示成 0.0,而且 ratio 那兩個分支永遠不會觸發
+       (之所以還會亮警戒,是靠 OR 的 `fi_futures < -30000` 那條,等於比值本身完全沒作用)。
+       改用真實合約乘數;拿不到指數時退回近似值 43,000(寧可粗估也不要 175 倍的錯)。
     任一資料源缺值時回字串「⏳ 期現比待採」(而非 None),讓前端顯示提示而非空白。
     """
     # 任一缺值 → 不返回 None,改成提示字串(避免前端 fi_ratio_alert 顯示空白)
@@ -1746,7 +1762,9 @@ def fi_ratio_alert_level(fi_spot, fi_futures):
         return "⏳ 期現比待採(外資台指期未平倉尚無資料)"
     if fi_spot == 0:
         return "✅ 期現比 — 外資現貨持平(無顯著買賣超)"
-    spot_equiv = abs(fi_spot * 1e8 / 50000)  # 億 → 約等量期貨口數
+    # 億 → 元 → 除以「一口台指期的合約價值(指數 × 200)」= 約等量期貨口數
+    _idx = twii_spot if (twii_spot and twii_spot > 1000) else 43000.0
+    spot_equiv = abs(fi_spot * 1e8) / (_idx * 200.0)
     ratio = abs(fi_futures) / max(spot_equiv, 1)
     # 改 OR:期現大幅背離(ratio>2.5) 或 期貨超級空(< -30000) 任一觸發即警戒,避免漏報
     if (ratio > 2.5 and fi_futures < 0) or fi_futures < -30000:
@@ -2137,8 +2155,10 @@ def main():
         out["m1b_yoy"] = None
         out["fed_assets_chg_pct"] = None
     try:
+        # V71.1.6 傳入加權指數,合約乘數才算得對(見 fi_ratio_alert_level 的說明)
         out["fi_ratio_alert"] = fi_ratio_alert_level(
-            out.get("fi_spot_net"), out.get("fi_futures_net"))
+            out.get("fi_spot_net"), out.get("fi_futures_net"), _LAST_TWII_SPOT)
+        out["twii_close"] = _LAST_TWII_SPOT   # V71.1.6 一併吐給前端(反攻雷達的價差說明可引用)
         if out["fi_ratio_alert"]:
             print(f"  📊 {out['fi_ratio_alert']}")
     except Exception as e:
