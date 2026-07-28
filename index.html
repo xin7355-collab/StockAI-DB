@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6533,8 +6533,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.1.4',
+    _APP_VERSION: 'V70.1.5',
     _CHANGELOG: [
+        { v: 'V70.1.5', dt: '2026-07-28', t: '🐛 十字線小視窗不再蓋住頂部股名列', d: [
+            '分時/1分/5分圖的查價小視窗(十字線資訊框)層級過高,捲動後會壓在最上面的股名列上 → 已壓到置頂列之下,捲動時會自然被頂列遮住。',
+        ]},
         { v: 'V70.1.4', dt: '2026-07-28', t: '🎨 分時圖大漲/大跌日不再一整片色海', d: [
             '你問的「綠色在上面對嗎」:語意是對的(那片色=現價與昨收之間的距離),但大跌日昨收跑到圖外,整個上半部被填滿確實難讀 → 改成:昨收在圖內維持原樣(紅上綠下以昨收為界);昨收在圖外(大漲/大跌日)改「線下漸層淡出」,跟專業看盤 App 同款。',
             '順修:價格軸出現 98.697 這種長小數(漲跌停納入後沒進位)→ 一律兩位小數。',
@@ -28077,6 +28080,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 //   → 改 continuous + 極窄過渡帶(±0.001)= 一樣的硬紅綠分界,不炸。別改回 pieces 寫法!
                 visualMap: prevC != null ? [{ type: 'continuous', show: false, seriesIndex: 0, min: prevC - 0.001, max: prevC + 0.001, inRange: { color: ['#4ade80', '#f87171'] } }] : [],
                 tooltip: { trigger: 'axis', confine: true, backgroundColor: 'rgba(13,17,23,0.95)', borderColor: '#30363d', textStyle: { color: '#c9d1d9', fontSize: 11 },
+                    extraCssText: 'z-index:40;',   // 🐛 V70.1.5 預設 z 蓋過置頂列(使用者截圖:小視窗壓在股名上)→ 壓到 header 之下
                     formatter: (ps) => {
                         const p = (ps || []).find(x => Number.isInteger(x.dataIndex) && byT.get(grid[x.dataIndex]));
                         if (!p) return '';
@@ -28168,7 +28172,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         chart.setOption({
             animation: false, backgroundColor: 'transparent',
             visualMap: [],   // 📈 V69.7.6 清掉分時模式殘留的紅綠分段(否則會蓋掉K棒紅綠)
-            tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'cross' }, backgroundColor: 'rgba(13,17,23,0.95)', borderColor: '#30363d', textStyle: { color: '#c9d1d9', fontSize: 11 },
+            tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'cross' }, backgroundColor: 'rgba(13,17,23,0.95)', borderColor: '#30363d', extraCssText: 'z-index:40;', textStyle: { color: '#c9d1d9', fontSize: 11 },
                 formatter: (ps) => {
                     if (!ps || !ps.length) return '';
                     // 🐛 V42.9 tooltip 可能掃到昨收 markLine(dataIndex=undefined)→ candles[i] undefined → c.close 崩
