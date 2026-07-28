@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6577,8 +6577,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.2.1',
+    _APP_VERSION: 'V70.2.2',
     _CHANGELOG: [
+        { v: 'V70.2.2', dt: '2026-07-28', t: '📅 資料日期第三批 + 寫進開發規則', d: [
+            '題材熱度榜補採礦日;並把「所有卡片都要標資料日期、統一格式、禁自己拼字串」寫成開發鐵則,以後新增卡片一律照做,不會再有「不知道是哪天資料」的卡。',
+        ]},
         { v: 'V70.2.1', dt: '2026-07-28', t: '📅 資料日期第二批(籌碼乾淨度/明日劇本/黑馬潛力/新聞)', d: [
             '再補 7 處:籌碼乾淨度(付費資料採礦日)、明日劇本(用哪天的分點推估)、中線黑馬/長線潛力(採礦日+今日/昨日)、鉅額交易日、全球情報更新時間、盤後零股盤點推播標題,全部帶星期。',
         ]},
@@ -33880,7 +33883,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const leaders = radar?.data?.concept_leaders || {};
             const lkeys = Object.keys(leaders);
             const top = themes.slice(0, 12);
-            if (sum) sum.innerHTML = `🔥 題材熱度榜 <span class="text-amber-300">最熱:${top[0].kw} ${top[0].heat}則</span>`;
+            if (sum) sum.innerHTML = `🔥 題材熱度榜 <span class="text-amber-300">最熱:${top[0].kw} ${top[0].heat}則</span>${tn && tn.updated ? ` <span class="text-[9px] text-gray-500 font-normal">📅 ${this._dW(tn.updated, { rel: 1 })}</span>` : ''}`;
             // 🐛 V57.5 修:①新聞標題改可點開原文(原本整列都開 AI 查,標題點了卻不是看新聞) ②標題跳脫防含 <> 破版 ③整列 onclick 移除防誤觸
             const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             body.innerHTML = top.map(t => {
