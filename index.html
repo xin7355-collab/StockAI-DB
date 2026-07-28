@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1601,6 +1601,8 @@
                                 <span class="flex items-center gap-1.5 min-w-0"><span id="lightGuard" class="text-[11px] font-bold text-gray-500 truncate">—</span><span class="text-gray-500 text-[10px] flex-shrink-0" data-chevron>▾</span></span>
                             </div>
                             <div id="ovBodyExit" class="ov-body hidden flex flex-col gap-2 px-2 pb-2">
+                                <!-- 🛡️ V71.0.1 防守價一覽:彙整下方各卡算出的防守價,由近到遠排序(使用者:邏輯不打架、一眼看完) -->
+                                <div id="guardRuler" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
                                 <!-- 📌 出場總表(目標/停利/停損 + 永豐智慧單 SOP,實際下單依據) -->
                                 <div id="chuExitSopCard" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-xl p-3 text-xs text-gray-300"></div>
                                 <!-- 📐 明日均線保衛(扣抵價):盤中跌破即在均線正式下彎前 1-2 天示警 -->
@@ -6589,8 +6591,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.0',
+    _APP_VERSION: 'V71.0.1',
     _CHANGELOG: [
+        { v: 'V71.0.1', dt: '2026-07-28', t: '🛡️ 防守價一覽:一眼看出「會先破哪一道」', d: [
+            '個股頁 → 出場 → 防守出場,最上方新增「🛡️ 防守價一覽」:把下面各張卡各自算出的防守價(5MA/20MA/60MA 保衛價、突破棒防守價、突破棒最低價、停損價)排成一條尺,由近到遠 — 最先會碰到的排最上面並標 ⚠️。',
+            '已經跌破的價位會自動移到「⬆️ 已跌破(現在變成上方壓力)」區,提醒你反彈到那附近容易遇賣壓。',
+            '這張卡不自己算任何數字,全部沿用下面各卡已經算好的值和名字 → 不會出現「同一個名詞兩個數字」的老問題。想知道每一道的意義,下面各卡照舊有完整說明。',
+        ]},
         { v: 'V71.0.0', dt: '2026-07-28', t: '🧭 板塊「籌碼輪動」上線:除了看錢在哪,更早一步看籌碼在哪', d: [
             '【🕵️ 偷布局(你問的重點)】板塊輪動表新增「外資5日」欄:每個板塊成分股的外資近5日買賣超合計(張)。當一個板塊「股價還在跌、但外資已經在買」時,自動標 🕵️ 偷布局 — 這就是主力還沒拉抬前的偷偷卡位,比只看今天漲跌早一步。',
             '【券商群聚】展開板塊列會顯示「同一家券商在這個板塊買了幾檔、幾張」(例:摩根大通 買 3 檔 5,200 張)。單一分點買一檔可能是散單,買整個板塊 3 檔以上就是有計劃的布局。',
@@ -16962,6 +16969,43 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 out.push({ tone: 'bull', title: '艾略特 第3浪推進(推估)', val: P1.v, msg: `推估正走第 3 浪主升段(第1浪上攻、第2浪回檔未破起點 ${L0.v.toFixed(2)}、現價過第1浪高 ${P1.v.toFixed(2)})→ 第3浪通常最強最長,順勢做多;跌破第2浪低 ${L2.v.toFixed(2)} 才轉弱。純結構推估。` });
         }
         return out;
+    },
+
+    // 🛡️ V71.0.1 — 防守價一覽(U-18):把下方 4 張卡各自算出的防守價彙整成一條「由近到遠」的尺。
+    //   使用者鐵則「邏輯不打架、資訊不爆炸」:各卡照舊解釋「為什麼」,這裡只回答「先破哪一個」。
+    //   ⛔ 不自己算任何價位 — 全部讀既有 stash(_guardStash / _dynExit),避免同名不同值再生。
+    _renderGuardRuler(pC) {
+        const el = document.getElementById('guardRuler');
+        if (!el) return;
+        const gs = this._guardStash || {}, dx = this._dynExit || {};
+        if (!(pC > 0)) { el.classList.add('hidden'); return; }
+        // name 必須跟來源卡片用字一致(V69.9.3 正名結果),否則使用者會以為是另一個數字
+        const cand = [
+            { n: '5MA 保衛價',    v: gs.g5,    src: '明日均線保衛' },
+            { n: '20MA 保衛價',   v: gs.g20,   src: '明日均線保衛' },
+            { n: '60MA 保衛價',   v: gs.g60,   src: '明日均線保衛' },
+            { n: '突破棒防守價',  v: gs.boMid, src: '突破棒防守' },
+            { n: '突破棒最低價',  v: gs.boLow, src: '突破棒防守(跌破=多空易位)' },
+            { n: '停損價',        v: dx.def,   src: '出場總表(實際下單依據)' },
+        ].filter(x => Number.isFinite(+x.v) && +x.v > 0).map(x => ({ ...x, v: +x.v, d: (pC - +x.v) / pC * 100 }));
+        if (cand.length < 2) { el.classList.add('hidden'); return; }
+        // 下方防守價:由近到遠(距離小的先破);上方的是壓力,分開列
+        const below = cand.filter(x => x.d >= 0).sort((a, b) => a.d - b.d);
+        const above = cand.filter(x => x.d < 0).sort((a, b) => b.d - a.d);
+        const _row = (x, first) => `<div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center py-1 border-b border-[#21262d] last:border-0">
+            <span class="text-[11px] ${first ? 'text-gray-100 font-bold' : 'text-gray-300'} truncate">${first ? '⚠️ ' : ''}${x.n}<span class="text-[9px] text-gray-600 ml-1">${x.src}</span></span>
+            <span class="font-mono text-[12px] font-black ${x.d >= 0 ? 'text-gray-100' : 'text-gray-400'}">${x.v.toFixed(2)}</span>
+            <span class="font-mono text-[10px] w-[52px] text-right ${x.d >= 0 ? 'text-green-300' : 'text-red-300'}">${x.d >= 0 ? '−' : '+'}${Math.abs(x.d).toFixed(1)}%</span>
+        </div>`;
+        const nearest = below[0];
+        const hero = nearest
+            ? `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-amber-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">最先碰到的是 <b class="text-amber-300">${nearest.n} ${nearest.v.toFixed(2)}</b>(現價下方 ${Math.abs(nearest.d).toFixed(1)}%)。跌破它就往下一道找支撐;下面每一道的意義,看本頁各卡說明。</div>`
+            : `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-green-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">現價已在所有防守價之下 — 這些價位現在全都變成上方壓力,反彈到那附近容易遇賣壓。</div>`;
+        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">🛡️</span><span class="text-[12px] font-black text-gray-100">防守價一覽</span><span class="text-[9px] text-gray-500">由近到遠</span><span class="text-[9px] text-gray-600 ml-auto font-mono">現價 ${pC.toFixed(2)}</span></div>
+            ${hero}
+            ${below.length ? `<div class="text-[9px] text-gray-500 mb-0.5">⬇️ 下方防守(先破的在最上面)</div>${below.map((x, i) => _row(x, i === 0)).join('')}` : ''}
+            ${above.length ? `<div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 已跌破(現在變成上方壓力)</div>${above.map(x => _row(x, false)).join('')}` : ''}`;
+        el.classList.remove('hidden');
     },
 
     // 📐 V36.0 — 朱家泓 K棒 ½價戰法(純公式,½=(高+低)/2=當天平均成本):
@@ -30103,6 +30147,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const _guard = (N) => { const i = last - (N - 1); return (i >= 0 && data[i]) ? (data[i].close ?? data[i].c) : null; };
             const g5 = _guard(5), g20 = _guard(20), g60 = _guard(60);
             this._guardStash.g20 = g20;
+            this._guardStash.g5 = g5; this._guardStash.g60 = g60;   // 🛡️ V71.0.1 供「防守價一覽」由近到遠排序
             const _row = (label, g) => {
                 if (g == null) return '';
                 // 🎨 V56.2 台股色統一:續揚(漲)=紅、恐下彎(跌)=綠(原本紅綠相反,使用者指正)
@@ -30173,6 +30218,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         // 📐 V36.0 — K棒 ½價戰法(止跌/假突破/收盤轉強弱),純公式,接在突破棒下方
         try { this.renderFourGuardians(data); } catch (_) {}   // ⚡ V41.15 四大金剛(趨勢+均線+K線+量)
+        try { this._renderGuardRuler(pC); } catch (_) {}       // 🛡️ V71.0.1 防守價一覽(彙整上面各卡的價位,由近到遠)
         try { this.renderKbarTactics(data); } catch (_) {}
         try { this.renderHeavyReboundCard(data); } catch (_) {}  // 🏋️ V44.1 權值股超跌反彈告警
         try { this.renderChuKbarVerdict(data); } catch (_) {}  // 🗣️ V65.1 朱老師這樣看=唯一技術面總評(合併 技術面總評+主升段體檢+型態勝率+多空仲裁,分數說話)
