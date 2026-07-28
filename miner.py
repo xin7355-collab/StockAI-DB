@@ -21,7 +21,7 @@ import random
 from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 
-from common import is_finite_num, SECTOR_MEMBERS   # 🧩 共用工具 + 板塊成分股(單一真相來源,見 common.py)
+from common import is_finite_num, SECTOR_MEMBERS, parse_twse_margin_ms   # 🧩 共用工具 / 板塊成分股 / TWSE 融資解析(皆單一真相來源)
 
 # ── 🎯 分點 Sniper 選用相依(雲端 batch 0 才裝;裝不到就靜默退回 FinMind)──
 # Pillow 10+ 移除 ANTIALIAS 會讓 ddddocr 啟動崩潰,先補相容墊片
@@ -3483,60 +3483,11 @@ def _fetch_market_margin_total_ms(d: date, max_fallback_days: int = 5):
         if j.get('stat') != 'OK':
             # 假日/未開市常見:stat='很抱歉,沒有符合條件的資料!'
             continue
-        tables = j.get('tables', []) or []
-        if not tables:
-            continue
-        # 兩種 schema 都見過:tables[0] 直接是 MS 表;有時 tables 多張要找含「融資」+「今日餘額」的
-        target_table = None
-        for t in tables:
-            fields = t.get('fields', []) or []
-            if any('融資' in (f or '') and '今日餘額' in (f or '') for f in fields):
-                target_table = t
-                break
-        if target_table is None:
-            target_table = tables[0]   # 退一步:就用第一張(MS 常規)
-        fields = target_table.get('fields', []) or []
-        data_rows = target_table.get('data', []) or []
-        if not data_rows:
-            continue
-        # 解析兩種可能的 schema(防 TWSE 隨時改版):
-        # Schema A — MS 二維表:row[0] 含「融資金額」標籤、col 含「今日餘額」(常見)
-        # Schema B — ALL flat:單一 col 名稱即「融資今日餘額」(總計列在最末)
-        max_val_k = 0
-
-        # Schema A 嘗試
-        idx_today_simple = next((i for i, f in enumerate(fields)
-                                 if ('今日餘額' in (f or '')) or ('現在餘額' in (f or ''))), None)
-        if idx_today_simple is not None:
-            for r in data_rows:
-                if not r or len(r) <= idx_today_simple: continue
-                row_label = str(r[0] or '')
-                if '融資' in row_label and '融券' not in row_label and '券' not in row_label:
-                    try:
-                        v = int(str(r[idx_today_simple]).replace(',', '').replace(' ', '') or 0)
-                        if v > max_val_k: max_val_k = v
-                    except Exception: continue
-
-        # Schema B 嘗試(若 A 沒命中)
-        if max_val_k <= 0:
-            idx_today_combined = next((i for i, f in enumerate(fields)
-                                       if '融資' in (f or '') and ('今日餘額' in (f or '') or '現在餘額' in (f or ''))), None)
-            if idx_today_combined is not None:
-                for r in data_rows:
-                    if not r or len(r) <= idx_today_combined: continue
-                    try:
-                        v = int(str(r[idx_today_combined]).replace(',', '').replace(' ', '') or 0)
-                        if v > max_val_k: max_val_k = v
-                    except Exception: continue
-
-        if max_val_k <= 0:
-            print(f"  ⚠️ [融資MS] {d8} 解析失敗 fields={fields[:6]} sample_row={data_rows[0][:4] if data_rows else '無'}")
-            continue
-        # 仟元 → 億元 (÷ 100,000)
-        total_100m = max_val_k / 100000.0
-        # 合理性檢查:全市場融資餘額正常在 1500~4000 億區間,小於 500 或大於 8000 視為解析錯誤
-        if total_100m < 500 or total_100m > 8000:
-            print(f"  ⚠️ [融資MS] {d8} 解析數字 {total_100m:.0f} 億超出合理區間,可能抓錯欄位")
+        # 🧩 V71.1.7 解析改走 common.parse_twse_margin_ms(單一真相來源)
+        #    —— macro_miner 的「歷史回補」要解同一份 JSON,兩邊各留一份 schema A/B 解析必然漂移。
+        total_100m = parse_twse_margin_ms(j)
+        if total_100m is None:
+            print(f"  ⚠️ [融資MS] {d8} 解析失敗或數字超出合理區間")
             continue
         if offset > 0:
             print(f"  ℹ️ [融資MS] 採用 {try_d.isoformat()} 資料(回退 {offset} 日)")

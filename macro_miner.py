@@ -13,12 +13,14 @@ macro_miner.py — 輕量級總經風險採礦機
 import os
 import json
 import sys
+import time      # 🕐 V71.1.7 融資歷史回補的節流 sleep(原本只在某函式內 import,模組層級缺)
 import traceback
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from common import parse_twse_margin_ms   # 🧩 TWSE 融資餘額解析(與 miner.py 共用同一份)
 import yfinance
 
 DATA_DIR = Path("data")
@@ -1739,6 +1741,43 @@ def judge_fi_complex(net_futures, net_spot):
     return "外資動向中性"
 
 
+
+def backfill_margin_history(hist: list) -> int:
+    """💰 V71.1.7 回補 risk_history 裡缺 margin_100m 的舊日期(使用者問:能不能先補前 6 天?)
+
+    背景:V70.2.7 才開始把「全市場融資餘額」寫進每日快照,所以歷史只有最近幾天有值,
+    前端「融資斷頭宣洩」要 5 日增減 → 得空等約 6 個交易日。
+    但 TWSE 的 MI_MARGN **本來就吃 date 參數可查歷史**,沒有理由乾等 —— 直接回補。
+
+    ・只補 margin_100m 為 None 的日期,已有值的不動(不重打、不覆寫)
+    ・每檔之間 sleep 1.2s,對 TWSE 客氣一點(一次最多補 MAX_BACKFILL 天)
+    ・任何一天失敗就跳過該天,不中斷整體(週末/休市本來就會回 stat != OK)
+    回傳實際補上幾天。
+    """
+    MAX_BACKFILL = 30
+    todo = [h for h in hist if isinstance(h, dict) and h.get('margin_100m') is None and h.get('date')]
+    if not todo:
+        return 0
+    todo = todo[-MAX_BACKFILL:]
+    print(f"\n💰 回補融資餘額歷史:{len(todo)} 天待補(TWSE MI_MARGN 支援指定日期查詢)")
+    filled = 0
+    for h in todo:
+        d8 = str(h['date']).replace('-', '')
+        if len(d8) != 8:
+            continue
+        try:
+            url = f'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&date={d8}&selectType=MS'
+            j = http.get(url, headers=HEADERS, timeout=15).json()
+            v = parse_twse_margin_ms(j)
+            if v is not None:
+                h['margin_100m'] = round(v, 2)
+                filled += 1
+        except Exception as e:
+            print(f"   ⚠️ {d8} 回補失敗:{str(e)[:60]}")
+        time.sleep(1.2)   # 對 TWSE 客氣
+    print(f"   ✅ 融資歷史回補完成:{filled}/{len(todo)} 天")
+    return filled
+
 def fi_ratio_alert_level(fi_spot, fi_futures, twii_spot=None):
     """⚠️ 期現比警示:外資期貨淨額換算成「相當於幾億現貨」後,跟現貨買賣超比。
 
@@ -2255,6 +2294,12 @@ def main():
                 snap['margin_100m'] = _m
         except Exception:
             pass
+        # 💰 V71.1.7 使用者問「能不能先補前 6 天?」→ 可以,TWSE MI_MARGN 支援指定日期。
+        #    在 append 今日之前先把舊日期補齊,前端「融資 5 日增減」當天就能用,不用空等 6 個交易日。
+        try:
+            backfill_margin_history(hist)
+        except Exception as _e:
+            print(f"  ⚠️ 融資歷史回補略過(不影響今日快照):{_e}")
         hist = [h for h in hist if isinstance(h, dict) and h.get('date') != today_str]  # 同日去重
         hist.append(snap)
         hist = hist[-90:]   # 留最近 90 筆(約一季)

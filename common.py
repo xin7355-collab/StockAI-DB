@@ -75,3 +75,67 @@ SECTOR_MEMBERS = {
     "asic":      ["3661", "3443", "6533", "4966", "5269"],
     "security":  ["6690", "3029", "6214", "2480"],
 }
+
+def parse_twse_margin_ms(j) -> float | None:
+    """解析 TWSE `MI_MARGN?selectType=MS` 的回應 → 全市場融資餘額(億元);解析不出來回 None。
+
+    為什麼放這裡:miner.py(每日抓當天)與 macro_miner.py(回補歷史)都要解同一份 JSON,
+    而 TWSE 這支 API **見過兩種 schema**,解析規則複雜到不能各寫一份(改一邊忘另一邊必壞)。
+    ⛔ 純解析、不碰網路(common.py 只依賴標準函式庫的原則)—— 呼叫端自己負責發 HTTP。
+    """
+    try:
+        if not isinstance(j, dict) or j.get('stat') != 'OK':
+            return None
+        tables = j.get('tables') or []
+        if not tables:
+            return None
+        target = None
+        for t in tables:
+            fs = t.get('fields') or []
+            if any('融資' in (f or '') and '今日餘額' in (f or '') for f in fs):
+                target = t
+                break
+        if target is None:
+            target = tables[0]
+        fields = target.get('fields') or []
+        rows = target.get('data') or []
+        max_val_k = 0
+
+        # Schema A:欄名只有「今日餘額/現在餘額」,靠列標籤含「融資」且不含「券」來認
+        i_a = next((i for i, f in enumerate(fields)
+                    if ('今日餘額' in (f or '')) or ('現在餘額' in (f or ''))), None)
+        if i_a is not None:
+            for r in rows:
+                if not r or len(r) <= i_a:
+                    continue
+                label = str(r[0] or '')
+                if '融資' in label and '融券' not in label and '券' not in label:
+                    try:
+                        v = int(str(r[i_a]).replace(',', '').replace(' ', '') or 0)
+                        max_val_k = max(max_val_k, v)
+                    except Exception:
+                        continue
+
+        # Schema B:欄名本身就寫「融資…今日餘額」
+        if max_val_k <= 0:
+            i_b = next((i for i, f in enumerate(fields)
+                        if '融資' in (f or '') and ('今日餘額' in (f or '') or '現在餘額' in (f or ''))), None)
+            if i_b is not None:
+                for r in rows:
+                    if not r or len(r) <= i_b:
+                        continue
+                    try:
+                        v = int(str(r[i_b]).replace(',', '').replace(' ', '') or 0)
+                        max_val_k = max(max_val_k, v)
+                    except Exception:
+                        continue
+
+        if max_val_k <= 0:
+            return None
+        total_100m = max_val_k / 100000.0   # 仟元 → 億元
+        # 合理性守門:全市場融資餘額正常 1500~4000 億,超出視為抓錯欄位
+        if total_100m < 500 or total_100m > 8000:
+            return None
+        return total_100m
+    except Exception:
+        return None

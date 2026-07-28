@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6520,8 +6520,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.1.6',
+    _APP_VERSION: 'V71.1.7',
     _CHANGELOG: [
+        { v: 'V71.1.7', dt: '2026-07-28', t: '💰 融資斷頭那條不用再等 6 天了(直接回補歷史)', d: [
+            '你問「不能先補前 6 天嗎?」→ 可以,而且本來就該這樣做。證交所那支融資餘額 API 本來就吃日期參數、查得到歷史,沒理由乾等。',
+            '已加自動回補:每次採礦會把過去缺資料的日期(最多 30 天)一次補齊,只補空的、已有的不動,每筆間隔 1.2 秒不去打擾證交所。下次採礦跑完,「融資斷頭宣洩」這條就直接有 5 日增減可判,不用再空等。',
+            '順手把融資餘額的解析程式抽成共用(原本抓當日和補歷史會各留一份,規則又複雜,遲早改一邊忘另一邊)。',
+        ]},
         { v: 'V71.1.6', dt: '2026-07-28', t: '🚨 修:外資期貨門檻整組過期,7 個地方一起失真', d: [
             '你問反攻條件雷達的條件對不對 → 查出一個大問題:所有跟「外資台指期空單」有關的判斷,用的都是舊市場規模訂的絕對口數門檻(−10,000 / −25,000 / −40,000)。但小台、微台上市後未平倉總量放大,實測近 22 個交易日淨額區間是 −86,189 ~ −75,198 — 每一天都超過 −40,000。',
             '後果:①「🚨 黑天鵝核彈」加閃爍每天都在亮,你早就免疫了 ② 風險指數有個 0~30 分的因子天天滿分,等於常數,完全失去鑑別力 ③ 反攻雷達那條「回補到 −25,000 以內」永遠不可能轉綠 ④ 還有「外資沒大空」的但書天天掛著。總共 7 個地方同時失真。',
@@ -14088,7 +14093,7 @@ const marginByDate = {};
             mgPass = mgChg5 <= -30;
             mgWhen = '融資 5 日大減 ≥30 億=斷頭賣壓已宣洩(反指標:洗完才有底);融資沒退+續跌=多殺多還沒完';
         } else {
-            mgWhen = '融資餘額歷史今晚起開始累積,約 6 個交易日後可判「斷頭宣洩了沒」;⚠️ 個人「維持率130%追繳」是券商對帳戶的通知,公開資料抓不到,只能用全市場融資增減當替代指標';
+            mgWhen = '融資歷史回補中(V71.1.7 起改為向證交所直接查歷史日期,不再空等 6 個交易日)→ 下次採礦完成後這條就會有數字;⚠️ 個人「維持率130%追繳」是券商對帳戶的通知,公開資料抓不到,只能用全市場融資增減當替代指標';
         }
         C.push({ icon: '💰', name: '融資斷頭宣洩', now: mgTxt, pass: mgPass, when: mgWhen });
         // 恐慌極端(反指標,單獨顯示)
