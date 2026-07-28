@@ -1920,6 +1920,7 @@ def build_sector_chip_flow():
             fi = {1: 0.0, 5: 0.0, 20: 0.0}
             ti = {1: 0.0, 5: 0.0, 20: 0.0}
             px5 = []           # 各成分股近 5 日漲跌%
+            dd60 = []          # 各成分股距 60 日高點回檔%(V71.0.5 深蹲判定)
             hit = 0
             for sym in syms:
                 p = DATA_DIR / f"{sym}.json"
@@ -1938,13 +1939,25 @@ def build_sector_chip_flow():
                     c0, c1 = float(rows[-6]['close']), float(rows[-1]['close'])
                     if c0 > 0:
                         px5.append((c1 - c0) / c0 * 100)
+                    # 🔬 V71.0.5 距 60 日高點回檔%(sector_flow_probe 實測:加這條的版本每個天期都更好)
+                    if len(rows) >= 60 and c1 > 0:
+                        hi60 = max(float(r.get('high') or 0) for r in rows[-60:])
+                        if hi60 > 0:
+                            dd60.append((hi60 - c1) / hi60 * 100)
                 except Exception:
                     continue
             if hit < 2:
                 continue
             avg_px5 = sum(px5) / len(px5) if px5 else 0.0
+            avg_dd60 = sum(dd60) / len(dd60) if dd60 else 0.0
             # ⭐ 偷布局:近 5 日板塊平均跌 ≥1.5% 但外資合計買超 > 0
             stealth = (avg_px5 <= -1.5 and fi[5] > 0)
+            # ⭐⭐ 深蹲版(V71.0.5):再加「板塊已跌深(距 60 日高點 ≥12%)」。
+            #   sector_flow_probe.py 實測(2026/05-07,15 個獨立事件):相對「跌但外資在賣」的對照組,
+            #   +5/+10/+20 日各 +1.73 / +2.43 / +3.81 個百分點,20 日勝率 75%(基本版 70.2%),
+            #   三個天期全面優於基本版 → 前端把這一層標成更強的訊號。
+            #   ⚠️ 樣本仍薄(外資資料只回溯到 2026/05),當參考不當保證。
+            stealth_deep = bool(stealth and avg_dd60 >= 12)
             # 券商分點:板塊內同一家券商在 ≥2 檔都買超 → 疑似整族群布局
             broker_cnt = {}
             for sym in syms:
@@ -1972,8 +1985,8 @@ def build_sector_chip_flow():
                            key=lambda x: (-x["n"], -x["lots"]))[:3]
             out[sk] = {
                 "fi1": int(fi[1]), "fi5": int(fi[5]), "fi20": int(fi[20]),
-                "ti5": int(ti[5]), "px5": round(avg_px5, 2),
-                "stealth": stealth, "n": hit, "brokers": multi,
+                "ti5": int(ti[5]), "px5": round(avg_px5, 2), "dd60": round(avg_dd60, 1),
+                "stealth": stealth, "stealth_deep": stealth_deep, "n": hit, "brokers": multi,
             }
         if len(out) < 5:
             print(f"   ⚠️ 板塊籌碼命中僅 {len(out)} 個(<5)→ 不覆寫")

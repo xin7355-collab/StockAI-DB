@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6525,8 +6525,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.4',
+    _APP_VERSION: 'V71.0.5',
     _CHANGELOG: [
+        { v: 'V71.0.5', dt: '2026-07-28', t: '🔬 把「偷布局」拿去實測,升級成兩層(深蹲版比較強)', d: [
+            '你問「板塊籌碼輪動有沒有用」→ 我沒用猜的,寫了一支回測程式拿真實資料驗。結果:同樣是跌下來的板塊,「外資還在買」的那些,20 個交易日後平均多賺 3.2 個百分點、勝率 70%(對照組 56%)。',
+            '再試了 4 種改良版,最好的是「偷布局 + 已經跌深(距 60 日高點 ≥12%)」→ 20 日多賺 3.8 個百分點、勝率 75%。已經做進去,表上會標琥珀色的「🕵️偷布局·深蹲」,比青色那層更值得看。',
+            '⚠️ 老實說:外資資料目前只回溯到今年 5 月,只有 18 次獨立事件,樣本很薄,當參考不當保證。等資料滿一年我會再跑一次驗證。',
+            '另外我原本猜「投信應該比外資更靈」→ 實測是錯的,投信版 10/20 日反而變負,所以沒採用。',
+        ]},
         { v: 'V71.0.4', dt: '2026-07-28', t: '🧹 大掃除:清掉 815 行沒人用的舊程式,App 變輕', d: [
             '清掉 40 個「以前的功能改版後就沒人用、但程式碼還留著」的區塊(舊庫存彈窗、舊自選編輯、舊搜尋框、已改純公式後留下的 AI 殘骸等)共 815 行、52 KB → 開啟速度更快、手機更省流量。',
             '安全做法:先把全部 954 個功能區塊掃一遍,只挑「全站完全沒有任何地方會用到」的才刪;另外四種「搜尋容易漏看」的呼叫方式也一一實測排除過。刪完四項驗證 + 四支功能測試全數通過。',
@@ -14764,7 +14770,11 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                             const v = +f.fi5 || 0;
                             const cls = v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
                             const txt = Math.abs(v) >= 10000 ? `${(v / 10000).toFixed(1)}萬` : v.toLocaleString();
-                            return `<span class="text-right font-mono text-[10px] ${cls}">${v > 0 ? '+' : ''}${txt}${f.stealth ? '<br><span class="text-[8px] text-cyan-300 font-bold">🕵️偷布局</span>' : ''}</span>`;
+                            // 🔬 V71.0.5 兩層:深蹲版(已跌深)實測每個天期都優於基本版 → 標更醒目
+                            const badge = f.stealth_deep
+                                ? `<br><span class="text-[8px] text-amber-300 font-bold">🕵️偷布局·深蹲</span>`
+                                : (f.stealth ? `<br><span class="text-[8px] text-cyan-300 font-bold">🕵️偷布局</span>` : '');
+                            return `<span class="text-right font-mono text-[10px] ${cls}">${v > 0 ? '+' : ''}${txt}${badge}</span>`;
                         })()}
                         <span class="text-right">${gapBadge}</span>
                     </div>
@@ -14773,7 +14783,7 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                 </div>`;
         }
         const _cfUp = this._sectorChipFlow?.updated ? `　籌碼資料:${this._dW(this._sectorChipFlow.updated, { rel: 1 })}` : '';
-        html += `<div class="text-[9px] text-gray-600 text-center mt-1.5 leading-snug">👆 點板塊名稱展開成分股 + 該族群「同時布局多檔的券商」。🕵️偷布局=近5日板塊在跌但外資合計買超(價跌籌碼進)。${_cfUp}<br>🆕 軍工/矽晶圓/PCB/ASIC/資安 的美股對標數字採礦補齊中,先給成分股。</div>`;
+        html += `<div class="text-[9px] text-gray-600 text-center mt-1.5 leading-snug">👆 點板塊名稱展開成分股 + 該族群「同時布局多檔的券商」。🕵️偷布局=近5日板塊在跌但外資合計買超(價跌籌碼進);<b class="text-amber-300">🕵️偷布局·深蹲</b>=再加「已跌深(距60日高點≥12%)」,實測這層比較強。${_cfUp}<br>🆕 軍工/矽晶圓/PCB/ASIC/資安 的美股對標數字採礦補齊中,先給成分股。</div>`;
         html += '</div>';   // V30.1 — 底部 💡 長圖例已移除,改標題 ⓘ popover(showJargon('板塊輪動訊號'))
         result.innerHTML = html;
     },
