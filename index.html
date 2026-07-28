@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6520,8 +6520,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.1.7',
+    _APP_VERSION: 'V71.1.8',
     _CHANGELOG: [
+        { v: 'V71.1.8', dt: '2026-07-28', t: '✂️ 反攻雷達文字砍半 + 全 App 資料連動盤查', d: [
+            '【精簡】反攻條件雷達每一條的說明都砍短(17 句),整張卡的字大約少一半,手機上不用一直往下捲。',
+            '【盤查結果 — 你要的】用程式把網站上 287 個資料檔的欄位,跟前端程式全部交叉比對,兩個方向都查:',
+            '① 前端讀了但資料沒有(這種會讓卡片靜默空白)→ **0 個,乾淨**。',
+            '② 採礦有產但前端沒人看 → 約 40 個欄位。不會壞,但代表白算。最有價值的一批在總經檔裡,其中「外資期現一句話結論」(例:外資期現同步倒貨=真實偏空警戒)這次直接接上外資期貨那條,不增加字數。',
+            '其餘清單(櫃買指數歷史、當沖限制/停牌、AI核心族群熱度等)寫進 docs/DATA_LINKAGE_AUDIT.md,附重跑指令,以後每次加功能可以再掃一次。',
+        ]},
         { v: 'V71.1.7', dt: '2026-07-28', t: '💰 融資斷頭那條不用再等 6 天了(直接回補歷史)', d: [
             '你問「不能先補前 6 天嗎?」→ 可以,而且本來就該這樣做。證交所那支融資餘額 API 本來就吃日期參數、查得到歷史,沒理由乾等。',
             '已加自動回補:每次採礦會把過去缺資料的日期(最多 30 天)一次補齊,只補空的、已有的不動,每筆間隔 1.2 秒不去打擾證交所。下次採礦跑完,「融資斷頭宣洩」這條就直接有 5 日增減可判,不用再空等。',
@@ -14045,9 +14052,9 @@ const marginByDate = {};
         // ── 條件表(pass=轉多必要件;每條寫白話門檻)──
         const C = [];
         const add = (icon, name, now, pass, when, na) => C.push({ icon, name, now, pass: na ? null : !!pass, when });
-        add('🇺🇸', '美股止穩', vix == null ? '—' : `VIX ${f1(vix)}`, vix != null && vix < 25 && (sp == null || sp > -0.5), 'VIX 回到 25 以下且標普止跌', vix == null);
-        add('💱', '台幣止貶', twd5 == null ? '—' : `5日 ${twd5 >= 0 ? '貶' : '升'} ${Math.abs(twd5).toFixed(2)}%`, twd5 != null && twd5 <= 0.1, '台幣 5 日不再連貶(外資停止提款,匯率 ' + (twd != null ? twd.toFixed(2) : '—') + ')', twd5 == null);
-        add('🇰🇷', '日韓同盤翻紅', `韓 ${f1(kospi)}% / 日 ${f1(nikkei)}%`, (kospi != null && kospi > 0) || (nikkei != null && nikkei > 0), '韓股或日經翻紅(台股開盤最直接的風向)', kospi == null && nikkei == null);
+        add('🇺🇸', '美股止穩', vix == null ? '—' : `VIX ${f1(vix)}`, vix != null && vix < 25 && (sp == null || sp > -0.5), 'VIX <25 且標普止跌', vix == null);
+        add('💱', '台幣止貶', twd5 == null ? '—' : `5日 ${twd5 >= 0 ? '貶' : '升'} ${Math.abs(twd5).toFixed(2)}%`, twd5 != null && twd5 <= 0.1, '5 日不再貶(外資停提款・' + (twd != null ? twd.toFixed(2) : '—') + ')', twd5 == null);
+        add('🇰🇷', '日韓同盤翻紅', `韓 ${f1(kospi)}% / 日 ${f1(nikkei)}%`, (kospi != null && kospi > 0) || (nikkei != null && nikkei > 0), '韓或日翻紅(台股開盤風向)', kospi == null && nikkei == null);
         // 🐛 V71.1.6 修「永遠不可能通過」的死條件:
         //   舊門檻寫「回補到 −25,000 口以內」,但實測近 22 個交易日外資期貨淨額區間是
         //   −86,189 ~ −75,198 —— 從來沒有一天接近 −25,000。那是舊市場規模的門檻(小台/微台
@@ -14067,11 +14074,14 @@ const marginByDate = {};
         add('🏦', '外資期貨回補',
             fifu == null ? '—' : `${Math.round(fifu).toLocaleString()} 口${fiChg5 != null ? `(5日 ${fiChg5 >= 0 ? '回補+' : '加空'}${Math.abs(Math.round(fiChg5)).toLocaleString()})` : ''}`,
             fiChg5 != null && fiChg5 >= 3000,
-            `外資空單較 5 日前回補 ≥3,000 口(空單縮才是轉多前兆)${fiPct != null ? ` ・目前在近20日的第 ${Math.round(fiPct)} 百分位(0=最空)` : ''}`,
+            // 🔗 V71.1.8 連動盤查接上 fi_complex_conclusion:採礦端算好的期現一句話結論
+            //   (如「外資期現同步倒貨:真實偏空警戒」),一直有產但全 App 沒人讀。
+            //   取代原本的位階數字放後面,不增加字數。
+            `5 日回補 ≥3,000 口(空單縮才是轉多前兆)${mr.fi_complex_conclusion ? ` ・${mr.fi_complex_conclusion}` : (fiPct != null ? ` ・近20日位階 ${Math.round(fiPct)}%` : '')}`,
             fiChg5 == null);
-        add('🛢️', '油價不走極端', wti == null ? '—' : `${wti >= 0 ? '+' : ''}${f1(wti)}%`, wti != null && Math.abs(wti) < 3, '單日 ±3% 內(暴漲=通膨恐慌、暴跌=衰退恐慌,兩頭都空)', wti == null);
-        add('💴', '日圓不急升', jpy3 == null ? '—' : `3日 ${jpy3 >= 0 ? '+' : ''}${f1(jpy3)}%`, jpy3 != null && jpy3 > -2, '日圓 3 日升值 <2%(急升=全球套利平倉賣壓,2024/8/5 式崩盤主因 — 多數人沒想到的)', jpy3 == null);
-        add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '加權收盤站回 5MA=止跌第一步;站回季線' + (twiiMa60 ? `(${Math.round(twiiMa60).toLocaleString()})` : '') + '才算轉多', twiiC == null);
+        add('🛢️', '油價不走極端', wti == null ? '—' : `${wti >= 0 ? '+' : ''}${f1(wti)}%`, wti != null && Math.abs(wti) < 3, '單日 ±3% 內(暴漲暴跌兩頭都是恐慌)', wti == null);
+        add('💴', '日圓不急升', jpy3 == null ? '—' : `3日 ${jpy3 >= 0 ? '+' : ''}${f1(jpy3)}%`, jpy3 != null && jpy3 > -2, '3 日升值 <2%(急升=套利平倉,2024/8/5 崩盤主因)', jpy3 == null);
+        add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '收盤站回 5MA;站回季線' + (twiiMa60 ? ` ${Math.round(twiiMa60).toLocaleString()}` : '') + ' 才算轉多', twiiC == null);
         // 📐 V71.1.6 順逆價差(使用者建議,採礦端 taifex_backwardation 早就有,只是沒被用):
         //   定義 = 台指期近月收盤 − 加權指數收盤;負值=逆價差(避險/看空),正值=正價差(偏多)。
         //   ⚠️ 為什麼要跟外資空單一起看:外資期貨空單有一部分是「現貨多 + 期貨空」的避險對沖,
@@ -14081,19 +14091,19 @@ const marginByDate = {};
         add('📐', '價差翻正',
             bwd == null ? '—' : `${bwd >= 0 ? '正價差 +' : '逆價差 '}${Math.round(bwd)} 點`,
             bwd != null && bwd >= 0,
-            '台指期收盤回到加權之上(正價差)=避險需求退潮;深度逆價差(<-200)代表市場還在搶避險 — 但恐慌末端的極深逆價差,反而常是反轉的領先訊號,要配合 VIX 一起看',
+            '期貨收回加權之上=避險退潮。深逆價差(<-200)=還在搶避險,但恐慌末端的極深逆價差常是反轉先兆(要配 VIX 看)',
             bwd == null);
-        add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30, '台指 VIX 回 30 以下(>30=期權市場仍在避險搶購)', twvix == null);
-        add('📉', '機構停止倒貨', dist == null ? '—' : `派發日 ${dist} 天`, dist != null && dist <= 2, '25 日內派發日 ≤2(≥5=機構連續出貨未歇)', dist == null);
+        add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30, '回 30 以下(>30=仍在搶避險)', twvix == null);
+        add('📉', '機構停止倒貨', dist == null ? '—' : `派發日 ${dist} 天`, dist != null && dist <= 2, '25 日內派發 ≤2(≥5=出貨未歇)', dist == null);
         // 融資斷頭(反指標:跌市中融資大減=賣壓宣洩,反而接近底)
         let mgTxt = mgNow == null ? '—' : `${Math.round(mgNow).toLocaleString()} 億`;
         let mgPass = null, mgWhen = '';
         if (mgChg5 != null) {
             mgTxt += `(5日 ${mgChg5 >= 0 ? '+' : ''}${Math.round(mgChg5)} 億)`;
             mgPass = mgChg5 <= -30;
-            mgWhen = '融資 5 日大減 ≥30 億=斷頭賣壓已宣洩(反指標:洗完才有底);融資沒退+續跌=多殺多還沒完';
+            mgWhen = '5 日大減 ≥30 億=斷頭賣壓已宣洩(洗完才有底);沒退又續跌=多殺多沒完';
         } else {
-            mgWhen = '融資歷史回補中(V71.1.7 起改為向證交所直接查歷史日期,不再空等 6 個交易日)→ 下次採礦完成後這條就會有數字;⚠️ 個人「維持率130%追繳」是券商對帳戶的通知,公開資料抓不到,只能用全市場融資增減當替代指標';
+            mgWhen = '歷史回補中,下次採礦後就有數字;⚠️ 個人維持率追繳是券商私訊,公開資料抓不到,只能用全市場融資增減替代';
         }
         C.push({ icon: '💰', name: '融資斷頭宣洩', now: mgTxt, pass: mgPass, when: mgWhen });
         // 恐慌極端(反指標,單獨顯示)
@@ -14115,18 +14125,18 @@ const marginByDate = {};
         let heroIcon, heroTxt, heroCls, act;
         if (isSwan) {
             heroIcon = '🚨'; heroTxt = '全面黑天鵝'; heroCls = 'text-red-300 border-red-500';
-            act = `<b class="text-red-300">立即行動:持股先砍到「跌停也睡得著」的量,別凹單、別攤平。</b>觸發:${swanHits.join('、')}。現金也是部位,活著才有下一波。`;
+            act = `<b class="text-red-300">立即砍到「跌停也睡得著」的量,別凹單別攤平。</b>觸發:${swanHits.join('、')}。現金也是部位。`;
         } else if (passN >= Math.max(6, judged.length - 2)) {
             // 🚦 V71.1.6 依 V70.2.8 燈號鐵則:這張卡回答「能不能進場」= 風險,不是漲跌方向
             //   → 一律用 ✅⚠️⛔🚨,不用 🔴🟢(原本 🟢=別接刀、🔴=可進場,視覺上剛好讀反)
             heroIcon = '✅'; heroTxt = '反攻條件成形'; heroCls = 'text-red-300 border-red-500';
-            act = `${passN}/${judged.length} 條件轉綠 → 可<b class="text-red-300">分批回場(先 1/3 資金)</b>,買強勢股不買反彈弱股;跌破今日低點就停損重來。`;
+            act = `${passN}/${judged.length} 條通過 → 可<b class="text-red-300">分批回場(先 1/3)</b>,買強不買弱;跌破今日低點停損。`;
         } else if (passN >= Math.ceil(judged.length / 2)) {
             heroIcon = '⚠️'; heroTxt = '打底觀察中'; heroCls = 'text-yellow-300 border-yellow-500';
-            act = `已過 ${passN}/${judged.length} 條,<b class="text-yellow-300">還缺:${missing.slice(0, 3).map(c => c.name).join('、')}</b>${missing.length > 3 ? ` 等 ${missing.length} 條` : ''} → 空手再等等,持股只留核心不加碼。`;
+            act = `${passN}/${judged.length} 條,<b class="text-yellow-300">缺:${missing.slice(0, 3).map(c => c.name).join('、')}</b>${missing.length > 3 ? `等${missing.length}條` : ''} → 空手再等,持股只留核心。`;
         } else {
             heroIcon = '⛔'; heroTxt = '空方主控・別接刀'; heroCls = 'text-green-300 border-green-500';
-            act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波不是買點</b>;下面每一條寫著「何時會過」,過半前不進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
+            act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波</b>,過半前不進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
         }
         // 📣 黑天鵝當日推播一次
         try {
@@ -14148,7 +14158,7 @@ const marginByDate = {};
             </div>
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
-            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・${this._dW(mr.updated ? String(mr.updated).slice(0, 10) : new Date(), { rel: 1 })} 資料・門檻=歷史台股止跌共同條件;黑天鵝觸發會自動推播(每日一次)。非投資建議。</div>`;
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・${this._dW(mr.updated ? String(mr.updated).slice(0, 10) : new Date(), { rel: 1 })}・門檻=歷史台股止跌共同條件・黑天鵝會自動推播。非投資建議。</div>`;
         box.classList.remove('hidden');
     },
 
