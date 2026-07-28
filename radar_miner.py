@@ -1723,8 +1723,134 @@ if __name__ == '__main__':
         build_attention_forecast()
     except Exception as e:
         print(f"💥 處置門檻預估頂層異常(不影響其他):{e}")
+    # 🧊 V70.3.1 低基期爆發選股(獨立 try,失敗不影響其他)
+    try:
+        build_lowbase_picks()
+    except Exception as e:
+        print(f"💥 低基期掃描頂層異常(不影響其他):{e}")
     # 🦅 獵鷹建倉分:全市場空手建倉評分(獨立 try,需 macro_risk.json 已產出)
     try:
         build_falcon_scores()
     except Exception as e:
         print(f"💥 獵鷹建倉分頂層異常(不影響其他):{e}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# 🧊 V70.3.1 低基期爆發選股(使用者要求:分析師常講「低基期」,App 要看得到)
+#   定義(全部純公式,禁任何 AI):
+#     ① 低基期 = 現價在「近 1 年區間」的相對位置低(位階百分位 ≤ 35)
+#        且距近 1 年高點回檔 ≥ 25%(真的跌很多,不是牛皮股)
+#     ② 不是地雷 = 基本面沒崩(營收 YoY > -30% 或無資料不扣)+ 不是雞蛋水餃股(股價 ≥ 8 元)
+#        + 有流動性(近 20 日均量 ≥ 500 張)
+#     ③ 打底跡象(爆發力來源,加分):止跌(20MA 走平/翻揚)、量能回溫、外資近 10 日轉買、
+#        底部抬高(近 20 日低點 > 近 60 日低點)、跌幅收斂
+#   ⚠️ 誠實:低基期 ≠ 會漲。沒有打底跡象的低基期只是「還在跌」,分數會低。
+# ═══════════════════════════════════════════════════════════════
+def build_lowbase_picks():
+    print("\n🧊 啟動【低基期爆發】全市場掃描...")
+    try:
+        fund_cache = {}
+        for _fn in ("fund_yoy_gm.json", "fundamentals_cache.json"):
+            try:
+                _j = json.loads((DATA_DIR / _fn).read_text(encoding='utf-8'))
+                _d = _j.get('data') if isinstance(_j, dict) and 'data' in _j else _j
+                if isinstance(_d, dict):
+                    for k, v in _d.items():
+                        if isinstance(v, dict) and not k.startswith('__'):
+                            fund_cache.setdefault(k, {}).update(v)
+            except Exception:
+                pass
+
+        picks = []
+        for f in DATA_DIR.glob("*.json"):
+            sym = f.stem
+            if not (len(sym) == 4 and sym.isdigit()) or sym.startswith('00'):
+                continue   # ETF 不算低基期(它跟大盤走,沒有「基期」概念)
+            try:
+                raw = json.loads(f.read_text(encoding='utf-8'))
+                rows = raw if isinstance(raw, list) else (raw.get('data') or [])
+                if not isinstance(rows, list) or len(rows) < 130:
+                    continue   # 至少要半年資料才談基期
+                win = rows[-250:] if len(rows) >= 250 else rows
+                closes = [float(r['close']) for r in win if r.get('close')]
+                highs = [float(r.get('high') or r.get('close') or 0) for r in win]
+                lows = [float(r.get('low') or r.get('close') or 0) for r in win if (r.get('low') or r.get('close'))]
+                vols = [float(r.get('volume') or 0) for r in win]
+                if len(closes) < 120 or not lows:
+                    continue
+                c = closes[-1]
+                hi, lo = max(highs), min(lows)
+                if not (c > 0 and hi > lo > 0):
+                    continue
+                # ① 位階與回檔
+                pos_pct = (c - lo) / (hi - lo) * 100
+                dd_pct = (hi - c) / hi * 100
+                if pos_pct > 35 or dd_pct < 25:
+                    continue
+                # ② 排除地雷/沒量
+                if c < 8:
+                    continue
+                v20 = sum(vols[-20:]) / 20 if len(vols) >= 20 else 0
+                lots20 = v20 / 1000 if v20 >= 1e6 else v20   # 股/張 auto
+                if lots20 < 500:
+                    continue
+                fd = fund_cache.get(sym) or {}
+                yoy = fd.get('revenue_yoy', fd.get('rev_yoy'))
+                try:
+                    yoy = float(yoy) if yoy is not None else None
+                except Exception:
+                    yoy = None
+                if yoy is not None and yoy < -30:
+                    continue   # 營收崩 30% 以上 = 基本面壞掉,不是低基期是衰退
+                # ③ 打底跡象評分(0-100)
+                score, reasons = 0, []
+                ma20 = sum(closes[-20:]) / 20
+                ma20p = sum(closes[-25:-5]) / 20 if len(closes) >= 25 else ma20
+                ma60 = sum(closes[-60:]) / 60 if len(closes) >= 60 else ma20
+                if ma20 >= ma20p:
+                    score += 22; reasons.append("月線止跌翻揚")
+                if c >= ma20:
+                    score += 18; reasons.append("站回月線")
+                lo20 = min(lows[-20:]) if len(lows) >= 20 else lo
+                lo60 = min(lows[-60:]) if len(lows) >= 60 else lo
+                if lo20 > lo60 * 1.02:
+                    score += 18; reasons.append("底部抬高(不再破底)")
+                v5 = sum(vols[-5:]) / 5 if len(vols) >= 5 else 0
+                if v20 > 0 and v5 >= v20 * 1.3:
+                    score += 15; reasons.append(f"量能回溫 {v5 / v20:.1f}×")
+                fi10 = sum(float(r.get('foreign_net') or 0) for r in rows[-10:])
+                if fi10 > 0:
+                    score += 15; reasons.append(f"外資近10日買超 {int(fi10 / 1000):,} 張")
+                # 跌幅收斂(近 20 日跌幅 < 近 60 日跌幅的一半)
+                r20 = (closes[-1] - closes[-21]) / closes[-21] * 100 if len(closes) >= 21 else 0
+                r60 = (closes[-1] - closes[-61]) / closes[-61] * 100 if len(closes) >= 61 else 0
+                if r60 < -10 and r20 > r60 / 2:
+                    score += 12; reasons.append("跌勢收斂")
+                if yoy is not None and yoy > 0:
+                    score += 10; reasons.append(f"營收仍成長 +{yoy:.0f}%")
+                if score < 30:
+                    continue   # 只有低基期、完全沒打底跡象 → 還在跌,不列入
+                picks.append({
+                    "sym": sym, "close": round(c, 2),
+                    "pos": round(pos_pct, 1),          # 位階百分位(越低越低基期)
+                    "dd": round(dd_pct, 1),            # 距一年高點回檔%
+                    "score": min(100, score),
+                    "yoy": round(yoy, 1) if yoy is not None else None,
+                    "lots20": int(lots20),
+                    "why": reasons[:4],
+                })
+            except Exception:
+                continue
+
+        picks.sort(key=lambda x: (-x['score'], x['pos']))
+        picks = picks[:40]
+        if len(picks) < 3:
+            print(f"   ⚠️ 低基期命中僅 {len(picks)} 檔(<3)→ 保留舊檔不覆寫")
+            return
+        payload = {"updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                   "total": len(picks), "rows": picks}
+        (DATA_DIR / "lowbase_picks.json").write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print(f"   ✅ 低基期爆發:{len(picks)} 檔 → lowbase_picks.json(前3:{[p['sym'] for p in picks[:3]]})")
+    except Exception as e:
+        print(f"   ❌ 低基期掃描失敗(不影響其他):{e}")
