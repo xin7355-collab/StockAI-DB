@@ -782,4 +782,4 @@ done
 - 帳號:`xin7355-collab`
 - 主要 repo:`StockAI-DB`(此專案)
 - 其他:`gdp-dashboard`(保留)、`pro-terminal-v4`(已刪除)
-- GitHub Pages 1GB 限制:**2026-07-27 實測 388MB**(最大宗:inst_cache_stock.json 18.5MB 前端從不讀,見 docs/OPTIMIZATION_PLAN.md P3-7)
+- GitHub Pages 1GB 限制:**2026-07-27 實測 388MB**;V69.9.6 起 inst_cache_stock.json(18.5MB 採礦中介)已移出 gh-pages 改存 data 分支(P3-7),下次 daily_miner 後約 370MB

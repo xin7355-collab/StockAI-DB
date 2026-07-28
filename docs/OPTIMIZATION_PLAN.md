@@ -205,7 +205,7 @@
 - `insider_probe.yml`(端點探索早已定案)
 - `macro_probe.yml` 改 `workflow_dispatch:` only(現在每次 push macro_miner.py 就跑一輪完整總經採礦)
 
-### [ ] P3-7 gh-pages 瘦身(388 MB / 1 GB)
+### [x] P3-7 gh-pages 瘦身(388 MB / 1 GB)
 - `inst_cache_stock.json` **18.5 MB**,前端 `grep` = **0 次引用**(是採礦端 cache 借放在 gh-pages)→ 改只推 data 分支
 - `broker_signals.json`、`delisted_stocks.json` 同理
 
@@ -215,6 +215,7 @@
 
 > 統計:**個股頁總覽有 28 個卡片槽位,其中 6 個是永遠不顯示的殭屍卡**;約 400 行 unreachable UI 程式碼。
 > 真正造成困惑的不是卡片多,是**同一個名詞在不同卡有不同數字**。
+- ✅ V69.9.6 已修:gh-pages deploy 不再 cp/add inst_cache_stock;data 分支 push 補上;兩處 restore 改「data 優先(git show + [ -s ] 防空檔,/tmp 實測)→ gh-pages 過渡 fallback」。下次 daily_miner 跑完 gh-pages 即 −18.5MB。
 
 ### 同名不同數字(優先修,這是使用者最痛的)
 

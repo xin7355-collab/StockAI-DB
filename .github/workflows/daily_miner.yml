@@ -79,7 +79,10 @@ jobs:
           git checkout origin/gh-pages -- futures_cache.json      2>/dev/null || true
           git checkout origin/gh-pages -- macro_cache.json        2>/dev/null || true
           git checkout origin/gh-pages -- margin_cache_stock.json 2>/dev/null || true
-          git checkout origin/gh-pages -- inst_cache_stock.json   2>/dev/null || true
+          # 🧹 V69.9.6 P3-7:inst_cache_stock(18.5MB,前端從不讀)改存 data 分支;先試 data、過渡期 fallback gh-pages
+          #    ⚠️ git show 失敗會留空檔,必須 [ -s ] 驗非空,否則法人快取整份歸零(V49.4 實測模式)
+          (git show origin/data:inst_cache_stock.json > inst_cache_stock.json 2>/dev/null && [ -s inst_cache_stock.json ]) \
+            || { rm -f inst_cache_stock.json; git checkout origin/gh-pages -- inst_cache_stock.json 2>/dev/null || true; }
 
       - name: ⛏️ 執行採礦 (專屬節點 ${{ matrix.batch }})
         env:
@@ -183,7 +186,10 @@ jobs:
           git checkout origin/gh-pages -- futures_cache.json      2>/dev/null || true
           git checkout origin/gh-pages -- macro_cache.json        2>/dev/null || true
           git checkout origin/gh-pages -- margin_cache_stock.json 2>/dev/null || true
-          git checkout origin/gh-pages -- inst_cache_stock.json   2>/dev/null || true
+          # 🧹 V69.9.6 P3-7:inst_cache_stock(18.5MB,前端從不讀)改存 data 分支;先試 data、過渡期 fallback gh-pages
+          #    ⚠️ git show 失敗會留空檔,必須 [ -s ] 驗非空,否則法人快取整份歸零(V49.4 實測模式)
+          (git show origin/data:inst_cache_stock.json > inst_cache_stock.json 2>/dev/null && [ -s inst_cache_stock.json ]) \
+            || { rm -f inst_cache_stock.json; git checkout origin/gh-pages -- inst_cache_stock.json 2>/dev/null || true; }
 
       - name: 🎯 執行 chips/fundamentals/futures/macro 採礦
         env:
@@ -439,7 +445,7 @@ jobs:
           cp /tmp/mine/apple-touch-icon.jpg /tmp/mine/icon-192.jpg /tmp/mine/icon-512.jpg . 2>/dev/null || true   # ⚡ V69.8.7
           cp /tmp/mine/broker_names.json    .               2>/dev/null || true
           cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
-          cp /tmp/mine/inst_cache_stock.json   . 2>/dev/null || true
+          # 🧹 V69.9.6 P3-7:inst_cache_stock 不再上 gh-pages(18.5MB 純採礦中介、前端 0 引用)→ 改隨 data 分支保存
 
           # 🆕 注入 CACHE_NAME（與 deploy_pages.yml 同邏輯）→ 每次部署 sw.js 內容必變
           #    瀏覽器/PWA 自動接管新 SW + reload，杜絕卡舊版
@@ -479,7 +485,6 @@ jobs:
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true
           [ -f margin_cache_stock.json ] && git add -f margin_cache_stock.json || true
-          [ -f inst_cache_stock.json ]   && git add -f inst_cache_stock.json   || true
           git commit -m "📡 網站更新 ${DATE}（平行宇宙合併 | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock(雙保險,搭配 concurrency group)
           for i in 1 2 3 4 5; do
@@ -509,6 +514,7 @@ jobs:
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/        2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/  2>/dev/null || true
+          cp /tmp/mine/inst_cache_stock.json .           2>/dev/null || true   # 🧹 V69.9.6 P3-7:法人中介快取改存這裡(不再上 gh-pages)
 
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
@@ -519,6 +525,7 @@ jobs:
           fi
 
           git add -f data/
+          [ -f inst_cache_stock.json ] && git add -f inst_cache_stock.json || true   # 🧹 V69.9.6 P3-7
           git commit -m "🤖 籌碼快照 ${DATE}（平行宇宙合併，共 ${STOCKS} 檔）"
           # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
           for i in 1 2 3 4 5; do
