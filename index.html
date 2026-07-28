@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2119,6 +2119,8 @@
 
             <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
             <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
+            <!-- 🧭 V70.2.7 反攻條件雷達(使用者要求:告訴我還差什麼條件台股才會漲/現在是不是黑天鵝該停損) -->
+            <div id="reboundRadarCard" class="hidden"></div>
 
             <!-- 🔄 V67.4 市場狀態機 Regime(大盤現在是趨勢盤/盤整盤/崩跌盤 → 該用什麼策略) -->
             <div id="marketRegimeCard" class="hidden"></div>
@@ -6577,8 +6579,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.2.6',
+    _APP_VERSION: 'V70.2.7',
     _CHANGELOG: [
+        { v: 'V70.2.7', dt: '2026-07-28', t: '🧭 反攻條件雷達:告訴你「還差什麼台股才會漲」', d: [
+            '你問的做出來了:盤前體檢正下方新卡,10 個條件逐一檢查(美股止穩/台幣止貶/日韓翻紅/外資期貨回補/油價不極端/日圓不急升=套利平倉這種多數人沒想到的/站回5日線/台指VIX退燒/機構停止倒貨/融資斷頭宣洩),每條寫「現值+何時轉綠」。',
+            '結論四檔:🚨全面黑天鵝(立即減碼停損,並自動推播)/🔴空方主控別接刀/🟡打底中(直接列出還缺哪幾條)/🟢反攻成形(分批回場先1/3)。',
+            '融資追繳誠實說明:個人「維持率130%追繳」是券商私訊抓不到,改用全市場融資增減當斷頭偵測;融資餘額歷史今晚起自動累積,幾天後就能判「賣壓宣洩了沒」。',
+        ]},
         { v: 'V70.2.6', dt: '2026-07-28', t: '📅 資料日期收尾批(掃描剩下的全部處理完)', d: [
             '再補 7 處:自選清單頂部(這批報價是盤中即時還是收盤)、當沖「今日必守價位」(昨高低收是哪一天)、朱老師四關通關卡、朱式波段回測(回測區間起訖)、處置股風控狀態(名單日)、法說會提醒日期加星期。',
             '掃描剩下未標的都是「不需要日期」的(K線圖本體/型態標籤/即時逐筆卡本來就有時間/隱藏容器),已逐一確認。',
@@ -13890,6 +13897,113 @@ const marginByDate = {};
             </div>`;
         } catch (_) { return ''; }
     },
+    // 🧭 V70.2.7 反攻條件雷達(使用者需求:「何時什麼情形台股才會上漲?把假設情形寫進來;
+    //   若全面黑天鵝就叫我立即停損;把我沒想到的可能性都告訴我」)
+    //   全純公式,吃 macro_risk / bubble_warning / twii_history 既有資料;每條件標「現值 + 何時轉綠」。
+    _renderReboundRadar() {
+        const box = document.getElementById('reboundRadarCard');
+        if (!box) return;
+        const mr = this._macroRiskCache || {};
+        const usm = this.usMacroCache || {};
+        if (mr.vix == null && mr.fi_futures_net == null) { box.classList.add('hidden'); return; }
+        const N = v => (v == null || isNaN(+v)) ? null : +v;
+        const f1 = v => v == null ? '—' : (+v).toFixed(1);
+        // 台股 5MA / 季線(twii_history)
+        let twiiC = null, twiiMa5 = null, twiiMa60 = null;
+        try {
+            const h = Array.isArray(usm.twii_history) ? usm.twii_history : [];
+            if (h.length >= 5) {
+                const cl = h.map(r => +r.close).filter(v => v > 0);
+                twiiC = cl[cl.length - 1];
+                twiiMa5 = cl.slice(-5).reduce((a, b) => a + b, 0) / 5;
+                if (cl.length >= 60) twiiMa60 = cl.slice(-60).reduce((a, b) => a + b, 0) / 60;
+            }
+        } catch (_) {}
+        // 融資 5 日增減(risk_history 快照,V70.2.7 起後端才記 → 沒資料就誠實顯示)
+        let mgNow = N(this._bubbleCache?.margin_leverage?.total_100m), mgChg5 = null;
+        try {
+            const rh = this._riskHistCache || [];
+            const ms = rh.map(r => N(r.margin_100m)).filter(v => v != null);
+            if (ms.length >= 6) mgChg5 = ms[ms.length - 1] - ms[ms.length - 6];
+        } catch (_) {}
+        const vix = N(mr.vix), sp = N(mr.sp500_chg_pct), twd5 = N(mr.usdtwd_chg_5d), twd = N(mr.usdtwd);
+        const kospi = N(mr.kospi_chg_pct), nikkei = N(mr.nikkei_chg_pct), wti = N(mr.wti_chg_pct);
+        const jpy3 = N(mr.jpy_chg_3d), fg = N(mr.fear_greed), fifu = N(mr.fi_futures_net), twvix = N(mr.tw_vix);
+        const dist = N(this._distDayCount);
+        // ── 條件表(pass=轉多必要件;每條寫白話門檻)──
+        const C = [];
+        const add = (icon, name, now, pass, when, na) => C.push({ icon, name, now, pass: na ? null : !!pass, when });
+        add('🇺🇸', '美股止穩', vix == null ? '—' : `VIX ${f1(vix)}`, vix != null && vix < 25 && (sp == null || sp > -0.5), 'VIX 回到 25 以下且標普止跌', vix == null);
+        add('💱', '台幣止貶', twd5 == null ? '—' : `5日 ${twd5 >= 0 ? '貶' : '升'} ${Math.abs(twd5).toFixed(2)}%`, twd5 != null && twd5 <= 0.1, '台幣 5 日不再連貶(外資停止提款,匯率 ' + (twd != null ? twd.toFixed(2) : '—') + ')', twd5 == null);
+        add('🇰🇷', '日韓同盤翻紅', `韓 ${f1(kospi)}% / 日 ${f1(nikkei)}%`, (kospi != null && kospi > 0) || (nikkei != null && nikkei > 0), '韓股或日經翻紅(台股開盤最直接的風向)', kospi == null && nikkei == null);
+        add('🏦', '外資期貨回補', fifu == null ? '—' : `${Math.round(fifu).toLocaleString()} 口`, fifu != null && fifu > -25000, '空單回補到 -25,000 口以內(現在每口都是壓力)', fifu == null);
+        add('🛢️', '油價不走極端', wti == null ? '—' : `${wti >= 0 ? '+' : ''}${f1(wti)}%`, wti != null && Math.abs(wti) < 3, '單日 ±3% 內(暴漲=通膨恐慌、暴跌=衰退恐慌,兩頭都空)', wti == null);
+        add('💴', '日圓不急升', jpy3 == null ? '—' : `3日 ${jpy3 >= 0 ? '+' : ''}${f1(jpy3)}%`, jpy3 != null && jpy3 > -2, '日圓 3 日升值 <2%(急升=全球套利平倉賣壓,2024/8/5 式崩盤主因 — 多數人沒想到的)', jpy3 == null);
+        add('📊', '站回 5 日線', twiiC != null && twiiMa5 != null ? `${Math.round(twiiC).toLocaleString()} vs ${Math.round(twiiMa5).toLocaleString()}` : '—', twiiC != null && twiiMa5 != null && twiiC >= twiiMa5, '加權收盤站回 5MA=止跌第一步;站回季線' + (twiiMa60 ? `(${Math.round(twiiMa60).toLocaleString()})` : '') + '才算轉多', twiiC == null);
+        add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30, '台指 VIX 回 30 以下(>30=期權市場仍在避險搶購)', twvix == null);
+        add('📉', '機構停止倒貨', dist == null ? '—' : `派發日 ${dist} 天`, dist != null && dist <= 2, '25 日內派發日 ≤2(≥5=機構連續出貨未歇)', dist == null);
+        // 融資斷頭(反指標:跌市中融資大減=賣壓宣洩,反而接近底)
+        let mgTxt = mgNow == null ? '—' : `${Math.round(mgNow).toLocaleString()} 億`;
+        let mgPass = null, mgWhen = '';
+        if (mgChg5 != null) {
+            mgTxt += `(5日 ${mgChg5 >= 0 ? '+' : ''}${Math.round(mgChg5)} 億)`;
+            mgPass = mgChg5 <= -30;
+            mgWhen = '融資 5 日大減 ≥30 億=斷頭賣壓已宣洩(反指標:洗完才有底);融資沒退+續跌=多殺多還沒完';
+        } else {
+            mgWhen = '融資餘額歷史今晚起開始累積,約 6 個交易日後可判「斷頭宣洩了沒」;⚠️ 個人「維持率130%追繳」是券商對帳戶的通知,公開資料抓不到,只能用全市場融資增減當替代指標';
+        }
+        C.push({ icon: '💰', name: '融資斷頭宣洩', now: mgTxt, pass: mgPass, when: mgWhen });
+        // 恐慌極端(反指標,單獨顯示)
+        const fgExtreme = fg != null && fg <= 20;
+        // ── 黑天鵝判定(立即停損訊號)──
+        const swanHits = [];
+        if (vix != null && vix >= 32) swanHits.push(`VIX ${f1(vix)} 恐慌爆表`);
+        if (fifu != null && fifu <= -40000) swanHits.push(`外資期貨空單 ${Math.round(fifu).toLocaleString()} 口`);
+        if (jpy3 != null && jpy3 <= -4) swanHits.push(`日圓 3 日急升 ${f1(jpy3)}%(套利平倉)`);
+        if ((kospi != null && kospi <= -5) || (nikkei != null && nikkei <= -5)) swanHits.push('日韓股單日 -5% 級重挫');
+        if (sp != null && sp <= -3) swanHits.push(`標普 ${f1(sp)}%`);
+        const isSwan = swanHits.length >= 2 || (swanHits.length >= 1 && vix != null && vix >= 32);
+        const judged = C.filter(c => c.pass !== null);
+        const passN = judged.filter(c => c.pass).length;
+        const missing = judged.filter(c => !c.pass);
+        let heroIcon, heroTxt, heroCls, act;
+        if (isSwan) {
+            heroIcon = '🚨'; heroTxt = '全面黑天鵝'; heroCls = 'text-red-300 border-red-500';
+            act = `<b class="text-red-300">立即行動:持股先砍到「跌停也睡得著」的量,別凹單、別攤平。</b>觸發:${swanHits.join('、')}。現金也是部位,活著才有下一波。`;
+        } else if (passN >= Math.max(6, judged.length - 2)) {
+            heroIcon = '🟢'; heroTxt = '反攻條件成形'; heroCls = 'text-red-300 border-red-500';
+            act = `${passN}/${judged.length} 條件轉綠 → 可<b class="text-red-300">分批回場(先 1/3 資金)</b>,買強勢股不買反彈弱股;跌破今日低點就停損重來。`;
+        } else if (passN >= Math.ceil(judged.length / 2)) {
+            heroIcon = '🟡'; heroTxt = '打底觀察中'; heroCls = 'text-yellow-300 border-yellow-500';
+            act = `已過 ${passN}/${judged.length} 條,<b class="text-yellow-300">還缺:${missing.slice(0, 3).map(c => c.name).join('、')}</b>${missing.length > 3 ? ` 等 ${missing.length} 條` : ''} → 空手再等等,持股只留核心不加碼。`;
+        } else {
+            heroIcon = '🔴'; heroTxt = '空方主控・別接刀'; heroCls = 'text-green-300 border-green-500';
+            act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波不是買點</b>;下面每一條寫著「何時轉綠」,綠燈過半前不進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
+        }
+        // 📣 黑天鵝當日推播一次
+        try {
+            if (isSwan) {
+                const dk = `swanAlert_${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })}`;
+                if (!localStorage.getItem(dk)) { localStorage.setItem(dk, '1'); this._fireAlert?.('🚨 全面黑天鵝訊號', `${swanHits.join('、')} → 持股先減碼停損,現金為王(反攻條件雷達)`, ''); }
+            }
+        } catch (_) {}
+        const row = c => `<div class="grid grid-cols-[16px_64px_1fr_14px] gap-1.5 items-start py-1 border-b border-[#21262d] last:border-0">
+            <span class="text-[11px]">${c.icon}</span>
+            <span class="text-[10px] text-gray-200 font-bold leading-tight">${c.name}<div class="text-[9px] text-gray-500 font-mono font-normal">${c.now}</div></span>
+            <span class="text-[9px] text-gray-500 leading-snug">${c.when}</span>
+            <span class="text-[11px] text-right">${c.pass === null ? '⏳' : c.pass ? '🟢' : '🔴'}</span></div>`;
+        box.className = 'bg-[#161b22] border-l-4 ' + heroCls.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
+        box.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="alert('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n・綠燈過半=打底中,空手準備\n・綠燈幾乎全亮=分批回場(先1/3)\n・觸發黑天鵝(VIX爆表/外資空單4萬口/日圓急升/日韓股-5%)=先停損保命\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
+                <span class="text-sm font-black ${heroCls.split(' ')[0]}">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}</span></span>
+            </div>
+            <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
+            <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・${this._dW(mr.updated ? String(mr.updated).slice(0, 10) : new Date(), { rel: 1 })} 資料・門檻=歷史台股止跌共同條件;黑天鵝觸發會自動推播(每日一次)。非投資建議。</div>`;
+        box.classList.remove('hidden');
+    },
+
     async renderMarketBriefing() {
         const el = document.getElementById('marketBriefing');
         if (!el) return;
@@ -14204,6 +14318,7 @@ const marginByDate = {};
                 <div class="text-[8px] text-gray-700 mt-1 leading-snug">💡 避險資產(金/油/美元)大漲=資金轉保守,對高位科技股偏空;亞股是台股同盤最直接的開盤風向;台幣「貶」=外資把台股換美金匯出(提款機)、「升」=匯入偏多;台幣+韓元同貶=亞幣競貶(外資整批撤亞洲);日圓相反:圓升=套息平倉黑天鵝;📈 美債10Y殖利率飆升=資金成本升、科技股估值壓力(對台積電等權值股偏空)。</div>
             </div>`;
 
+        try { this._renderReboundRadar(); } catch (_) {}   // 🧭 V70.2.7 反攻條件雷達(同資料同節奏刷新)
         // 📅 V41.34 — 資料基準日:採礦時間(台北)+ 台股最新收盤日,讓使用者知道「現在看的是哪一天的資料」
         const _updRaw = String(mr.updated || '');
         const _updShow = _updRaw.length >= 16 ? `${this._dW(_updRaw.slice(0, 10), { rel: 1 })} ${_updRaw.slice(11, 16)}` : '';   // V70.2.0 加星期+今日/昨日

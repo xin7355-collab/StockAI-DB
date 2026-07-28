@@ -2096,6 +2096,14 @@ def main():
             'business_signal': (out.get('business_signal') or {}).get('light'),
             'blackswan_flags': sum(1 for v in (out.get('blackswan') or {}).values() if v),
         }
+        # 💰 V70.2.7 大盤融資餘額(億)一併入每日快照 → 前端可算「融資 N 日增減」偵測斷頭賣壓宣洩
+        try:
+            _bw = json.loads((DATA_DIR / 'bubble_warning.json').read_text(encoding='utf-8'))
+            _m = ((_bw or {}).get('margin_leverage') or {}).get('total_100m')
+            if _m is not None:
+                snap['margin_100m'] = _m
+        except Exception:
+            pass
         hist = [h for h in hist if isinstance(h, dict) and h.get('date') != today_str]  # 同日去重
         hist.append(snap)
         hist = hist[-90:]   # 留最近 90 筆(約一季)
