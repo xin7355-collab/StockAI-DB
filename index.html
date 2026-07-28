@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3436,12 +3436,12 @@ const app = {
         this.vibrate?.(15);
     },
 
-    showToast(msg, type = 'error') {
+    showToast(msg, type = 'error', ms = 4500) {   // V70.0.1 加選填第三參數:長訊息(如 LINE 備份指引)可停久一點
         const el = document.createElement('div');
         el.className = `fixed top-20 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-lg shadow-xl font-bold text-xs max-w-xs text-center transition-opacity duration-500 ${type === 'error' ? 'bg-red-900 border border-red-500 text-red-200' : 'bg-gray-800 border border-gray-600 text-white'}`;
         el.textContent = msg;
         document.body.appendChild(el);
-        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }, 4500);
+        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }, ms);
     },
 
     speakAlert(text) {
@@ -6450,8 +6450,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.0.0',
+    _APP_VERSION: 'V70.0.1',
     _CHANGELOG: [
+        { v: 'V70.0.1', dt: '2026-07-28', t: '🚧 即時圖漲跌停線 + 板塊數字抓包修正 + LINE 備份指引', d: [
+            '【即時K線】分時/1分/5分圖加「漲停/跌停」紅綠虛線(價格靠近才看得到,平時不干擾);1分/5分的昨收基準改用真昨收(跳空日不再偏)。',
+            '【板塊修正】你抓到的沒錯:①盤中更新過去每板塊只抓 1 檔(南亞科跌停→DRAM 顯 -10%)→ 改每板塊 3 檔成分股平均 ②矽晶圓等新板塊過去顯「昨天的值」卻標今日(+1.8% 假逆勢抗跌)→ 過期值改灰字標「昨」且不給訊號,按「盤中即時更新」就有全板塊今日真值。',
+            '【LINE 備份】LINE 內建瀏覽器本身擋檔案下載(它跳的提示)→ 現在不硬試下載,備份自動複製到剪貼簿+白話教你「貼給自己就是備份/用外部瀏覽器才能存檔」。',
+            '【Fugle 金鑰】填好 key 按儲存後,紅色「Token 未設定」橫幅立刻消失(舊版要等下次抓報價才消,讓人以為沒吃到)。',
+        ]},
         { v: 'V70.0.0', dt: '2026-07-28', t: '💰 「該買幾張」風控卡復活 + 殭屍卡清畢', d: [
             '復活「💰 該買幾張」卡(總覽):用這檔的波動度(ATR)+ 你在設定填的帳戶總資金,算出買幾張才不會一次虧超過帳戶 1%;含吊燈停損價、單檔上限 25%、已持倉超標警告。沒填資金會顯示引導。',
             '順手清掉 3 張早已停用的殘留卡(今日掛單/朱式買點 UI 尾段/朱家泓策略狀態,功能都併進主卡了),~250 行殭屍碼再見。',
@@ -8129,6 +8135,14 @@ ${list}
 
     saveAndCloseSettings() {
         this.saveSettings();
+        // 🐛 V70.0.1:填好 Fugle key 存檔後,紅色「Token 未設定」橫幅要立刻消失
+        //   (舊版旗標要等下一次報價抓取才重算 → 使用者以為 key 沒吃到)
+        try {
+            const hasFugle = (this._getFugleKeys() || []).filter(k => k && k.trim()).length > 0;
+            if (hasFugle) this._fugleNoToken = false;
+            const _bnr = document.getElementById('fugleNoTokenBanner');
+            if (_bnr && hasFugle) _bnr.classList.add('hidden');
+        } catch (_) {}
         const modal = document.getElementById('settingsModal');
         modal.classList.add('hidden'); modal.style.display = 'none';
     },
@@ -8359,6 +8373,12 @@ ${list}
                     this._downloadBackupFile(encoded, fileName);
                     _copyPromise.then(c => this.showToast((c ? '✅ 已下載 .txt + 複製剪貼簿・' : '✅ 已下載 .txt 備份・') + descPart, 'info'));
                 });
+        } else if (/Line\/|FBAV|FB_IAB|Instagram|MicroMessenger/i.test(navigator.userAgent)) {
+            // 📵 V70.0.1:LINE/FB/IG 內建瀏覽器擋檔案下載(會跳「不支援檔案下載功能」)→ 不硬試,
+            //   改「剪貼簿為主」+ 白話指引(貼給自己就是備份;要存檔用外部瀏覽器開)
+            _copyPromise.then(copied => this.showToast(copied
+                ? `✅ 備份已複製到剪貼簿・${descPart}\n📵 LINE 內建瀏覽器不能下載檔案 → 直接「貼」到 LINE 傳給自己就是備份;想存成檔案請點右下「⋯」用外部瀏覽器開啟`
+                : `⚠️ LINE 內建瀏覽器不能下載也複製失敗 → 請點右下「⋯」選「用預設瀏覽器開啟」再備份一次`, 'info', 6500));
         } else {
             // 桌機 / 不支援分享 → 下載 .txt + 剪貼簿
             this._downloadBackupFile(encoded, fileName);
@@ -14521,14 +14541,19 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
         try { const _c = JSON.parse(localStorage.getItem('sectorIntradayLastGood') || 'null');
               if (_c && _c.chg && (Date.now() - _c.at) < 21600000) _intraTw = _c.chg; } catch (_) {}
         const _shTw = this._sectorHeatCache?.sectors || {};
+        // 🐛 V70.0.1:挖礦 sector_heat 若不是「今天」的資料,不可假裝「台股今日」→ 標「昨」+ 不給訊號
+        //   (使用者實測抓包:矽晶圓顯 +1.8%「逆勢抗跌」,其實是昨天的值,當天該板塊 -7%)
+        const _shFresh = (() => { try { return (this._sectorHeatCache?.updated || '') === new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).toISOString().slice(0, 10); } catch (_) { return false; } })();
         let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2">';
         // V30.1 — 四欄表頭(只出現一次,取代每列重複的「美」「台」前綴 → 數字垂直對齊)
         html += '<div class="grid grid-cols-[1fr_50px_50px_82px] gap-1.5 items-center text-[9px] text-gray-500 font-bold pb-1 mb-1 border-b border-[#30363d]"><span>板塊</span><span class="text-right">美股昨收</span><span class="text-right">台股今日</span><span class="text-right">訊號</span></div>';
         for (const [sk, sl] of Object.entries(sectorLabels)) {
             const etf = etfMap[sk];
             // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
-            const twChg = (_intraTw && _intraTw[sk] != null) ? _intraTw[sk]
+            const _fromLive = !!(_intraTw && _intraTw[sk] != null);
+            const twChg = _fromLive ? _intraTw[sk]
                         : (_shTw[sk] && _shTw[sk].chg != null ? _shTw[sk].chg : null);
+            const _twStale = !_fromLive && twChg != null && !_shFresh;   // 非即時 + 挖礦值不是今天 = 過期
             const usChg = etf?.chg_pct != null ? parseFloat(etf.chg_pct) : null;
             const gap = (usChg != null && twChg != null) ? (usChg - twChg) : null;
             // V31.2 — Pill 膠囊訊號徽章(無 emoji,文字自帶語意)
@@ -14545,6 +14570,8 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
             let gapBadge;
             if (usChg == null || twChg == null) {
                 gapBadge = _pill('—', _C.gray);
+            } else if (_twStale) {
+                gapBadge = _pill('⏱ 按盤中更新', _C.gray);   // 過期值不給訊號,避免假「逆勢抗跌」
             } else {
                 const usUp = usChg > 0.3, usDn = usChg < -0.3;
                 if (twChg <= -3 && gap > 0.5)              gapBadge = _pill('台股獨弱', _C.orange);        // 台股自身大跌,別跟美股做多
@@ -14557,9 +14584,9 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                 else                                       gapBadge = _pill('同步', _C.gray);
             }
             const usCls = usChg != null ? (usChg > 0.3 ? 'text-red-300' : usChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
-            const twCls = twChg != null ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500';
+            const twCls = _twStale ? 'text-gray-600' : (twChg != null ? (twChg > 0.3 ? 'text-red-300' : twChg < -0.3 ? 'text-green-300' : 'text-gray-400') : 'text-gray-500');
             const _usTxt = usChg != null ? `${usChg >= 0 ? '+' : ''}${usChg.toFixed(1)}%` : '--';
-            const _twTxt = twChg != null ? `${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
+            const _twTxt = twChg != null ? `${_twStale ? '昨' : ''}${twChg >= 0 ? '+' : ''}${twChg.toFixed(1)}%` : '--';
             // 🏭 V69.5.0 成分股(點板塊展開,點成分股直接開個股頁)
             const stocks = this._sectorStocks[sk] || [];
             const stkHtml = stocks.length ? `<div id="secStk_${sk}" class="hidden flex flex-wrap gap-1.5 pb-2 pt-0.5 px-1">
@@ -27729,7 +27756,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                               { type: 'max', name: '高', label: { show: true, position: 'top', color: '#fca5a5', fontSize: 9, formatter: p => p.value } },
                               { type: 'min', name: '低', label: { show: true, position: 'bottom', color: '#86efac', fontSize: 9, formatter: p => p.value } },
                           ] },
-                      markLine: prevC != null ? { symbol: ['none', 'none'], silent: true, data: [{ yAxis: prevC, lineStyle: { type: 'dashed', color: '#8b949e', width: 1, opacity: 0.7 }, label: { show: true, position: 'insideStartTop', formatter: `昨收 ${prevC}`, color: '#8b949e', fontSize: 9 } }] } : undefined },
+                      // 🚧 V70.0.1 漲停/跌停虛線(依昨收 ±10% + tick 進位;價格靠近才會進到可視範圍,平時不干擾)
+                      markLine: prevC != null ? { symbol: ['none', 'none'], silent: true, data: [
+                          { yAxis: prevC, lineStyle: { type: 'dashed', color: '#8b949e', width: 1, opacity: 0.7 }, label: { show: true, position: 'insideStartTop', formatter: `昨收 ${prevC}`, color: '#8b949e', fontSize: 9 } },
+                          ...(() => { const lu = this._dtLimitPrice(prevC, 1), ld = this._dtLimitPrice(prevC, -1); return [
+                              lu ? { yAxis: lu, lineStyle: { type: 'dashed', color: '#f87171', width: 1.2, opacity: 0.85 }, label: { show: true, position: 'insideEndTop', formatter: `漲停 ${lu}`, color: '#fca5a5', fontSize: 9 } } : null,
+                              ld ? { yAxis: ld, lineStyle: { type: 'dashed', color: '#4ade80', width: 1.2, opacity: 0.85 }, label: { show: true, position: 'insideEndBottom', formatter: `跌停 ${ld}`, color: '#86efac', fontSize: 9 } } : null,
+                          ].filter(Boolean); })(),
+                      ] } : undefined },
                     { name: '均價', type: 'line', data: avgs, xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.1, connectNulls: false, lineStyle: { color: '#e5e7eb', width: 1.2, opacity: 0.95 }, z: 4, tooltip: { show: false } },
                     { name: '量', type: 'bar', data: volsTs, xAxisIndex: 1, yAxisIndex: 1 },
                 ],
@@ -27746,7 +27780,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const bandW = _devs.length ? (_devs.reduce((a, b) => a + b, 0) / _devs.length) * 2 : 0;
         const upBand = candles.map(c => (c.average > 0 && bandW > 0) ? +(c.average + bandW).toFixed(2) : null);
         const loBand = candles.map(c => (c.average > 0 && bandW > 0) ? +(c.average - bandW).toFixed(2) : null);
-        const prevClose = candles[0] ? candles[0].open : null;
+        // 🐛 V70.0.1:原本拿「第一根的開盤」當昨收(跳空日整條基準都偏)→ 優先用真昨收(載入時記錄),抓不到才退回今開近似
+        const _pcRec = this._intradayPrevClose;
+        const prevClose = (_pcRec && _pcRec.sym === this._intradayLoadedSym && _pcRec.v > 0) ? _pcRec.v : (candles[0] ? candles[0].open : null);
         chart.setOption({
             animation: false, backgroundColor: 'transparent',
             visualMap: [],   // 📈 V69.7.6 清掉分時模式殘留的紅綠分段(否則會蓋掉K棒紅綠)
@@ -27776,7 +27812,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             series: [
                 { name: '分鐘K', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0,
                   itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' },
-                  markLine: prevClose != null ? { symbol: ['none', 'none'], silent: true, data: [{ yAxis: prevClose, lineStyle: { type: 'dashed', color: '#8b949e', width: 1, opacity: 0.7 }, label: { show: true, position: 'insideStartTop', formatter: `昨收 ${prevClose}`, color: '#8b949e', fontSize: 9 } }] } : undefined },
+                  // 🚧 V70.0.1 漲停/跌停虛線(同分時模式)
+                  markLine: prevClose != null ? { symbol: ['none', 'none'], silent: true, data: [
+                      { yAxis: prevClose, lineStyle: { type: 'dashed', color: '#8b949e', width: 1, opacity: 0.7 }, label: { show: true, position: 'insideStartTop', formatter: `昨收 ${prevClose}`, color: '#8b949e', fontSize: 9 } },
+                      ...(() => { const lu = this._dtLimitPrice(prevClose, 1), ld = this._dtLimitPrice(prevClose, -1); return [
+                          lu ? { yAxis: lu, lineStyle: { type: 'dashed', color: '#f87171', width: 1.2, opacity: 0.85 }, label: { show: true, position: 'insideEndTop', formatter: `漲停 ${lu}`, color: '#fca5a5', fontSize: 9 } } : null,
+                          ld ? { yAxis: ld, lineStyle: { type: 'dashed', color: '#4ade80', width: 1.2, opacity: 0.85 }, label: { show: true, position: 'insideEndBottom', formatter: `跌停 ${ld}`, color: '#86efac', fontSize: 9 } } : null,
+                      ].filter(Boolean); })(),
+                  ] } : undefined },
                 { name: 'VWAP上帶', type: 'line', data: upBand, xAxisIndex: 0, yAxisIndex: 0, smooth: false, showSymbol: false, lineStyle: { color: '#8b949e', width: 1, type: 'dashed', opacity: 0.4 }, z: 1, tooltip: { show: false }, silent: true },
                 { name: 'VWAP下帶', type: 'line', data: loBand, xAxisIndex: 0, yAxisIndex: 0, smooth: false, showSymbol: false, lineStyle: { color: '#8b949e', width: 1, type: 'dashed', opacity: 0.4 }, z: 1, tooltip: { show: false }, silent: true },
                 { name: '分時均價', type: 'line', data: candles.map(c => c.average), xAxisIndex: 0, yAxisIndex: 0, smooth: false, showSymbol: false, lineStyle: { color: '#ffffff', width: 1.5, opacity: 0.9 }, z: 3, tooltip: { show: false } },
@@ -27926,24 +27969,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const hm = tpe.getHours() * 60 + tpe.getMinutes();
         const inSession = (tpe.getDay() >= 1 && tpe.getDay() <= 5) && hm >= 540 && hm <= 810;
         if (!inSession) this.showToast('非盤中時段,顯示的是最近成交價', 'info');
-        // 各板塊領頭股(美股板塊 Fugle 抓不到,跳過;其餘 9 個台股板塊)
-        const leads = { server:'2382', power:'1519', packaging:'2330', cpo:'3081',
-                        cooling:'3017', robot:'2359', finance:'2881', leo:'3491', dram:'2408' };
+        // 🐛 V70.0.1 修(使用者實測抓包):舊版只蓋 9 板塊、每板塊只抓 1 檔領頭股 →
+        //   ① DRAM 顯 -10% 其實是南亞科一檔跌停 ② 矽晶圓等新板塊沒領頭股,回退「昨日挖礦值」卻標成今日
+        //   → 改:全部板塊都更新,每板塊取前 3 檔成分股「平均」,才是板塊的真實今日臉色
         const keys = this._getFugleKeys().filter(k => k && k.trim());
         if (!keys.length) { this.showToast('請先到 ⚙️ 設定填 Fugle token 才能盤中即時更新'); return; }
 
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 即時抓取中...'; }
         if (bar) bar.classList.remove('hidden');
-        const entries = Object.entries(leads);
+        const entries = Object.entries(this._sectorStocks).map(([sk, arr]) => [sk, (arr || []).slice(0, 3).map(x => x[0])]);
         let done = 0;
         const liveChg = {};
-        for (const [sector, sym] of entries) {
-            try {
-                const q = await this.fetchFugleData(sym);
-                if (q && q.price && q.prevClose) {
-                    liveChg[sector] = (q.price - q.prevClose) / q.prevClose * 100;
-                }
-            } catch (_) {}
+        for (const [sector, syms] of entries) {
+            const chgs = [];
+            // 同板塊 3 檔並發(fetchFugleData 自帶 60s 快取 + token 輪動;3 檔一批不會撞限流)
+            await Promise.all(syms.map(async (sym) => {
+                try {
+                    const q = await this.fetchFugleData(sym);
+                    if (q && q.price && q.prevClose) chgs.push((q.price - q.prevClose) / q.prevClose * 100);
+                } catch (_) {}
+            }));
+            if (chgs.length) liveChg[sector] = chgs.reduce((a, b) => a + b, 0) / chgs.length;
             done++;
             if (fill) fill.style.width = `${Math.round(done / entries.length * 100)}%`;
         }
