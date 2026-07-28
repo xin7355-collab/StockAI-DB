@@ -230,7 +230,7 @@ V69.7.5 只改了「總覽 vs 觀察頁」兩處,還有 5 處沒動:
 | 設定頁說明 | 563 | 寫「區間均價」 |
 - **修法**:固定一個為「主力成本」(建議分點買超王加權均價),其餘改名 —— 外資估算的叫「**外資估算成本**」、K線那條線標「**買超王均價(5日)**」。
 
-### [ ] U-2 「籌碼綜合評分」三處三個數字
+### [x] U-2 「籌碼綜合評分」三處三個數字 ✅ V69.9.8:masterScoreCard 早在 V68.4.4 已是 hidden stub(殭屍運算)→ renderMasterScoreCard(105行)+ renderInstReverseCard(121行,_lastInstSignal 唯一活消費者就是前者;反轉/做帳資訊 chipVerdict 已自算)+ 2 個 stub div + 呼叫點全刪;進場體檢 xref 改讀 _lastChipScore(大戶籌碼總結同分,sym 守門,分帶 57/45);aiCacheKey sigState 同步。死掉的首席 AI 函式體內 2 個殘留引用留待 U-14 死鏈批
 - `renderChipVerdict`(12523,籌碼頁最上方)vs `renderMasterScoreCard`(13012–13102,收在 details 內)vs 總覽進場體檢(19673–19682,引用的是被收合那張)
 - **失敗情境**:外資買超但景氣紅燈 → 一張顯 72「大戶站買方」、另外兩處顯 41「偏空別碰」
 - **修法**:刪 `masterScoreCard` 整卡(它 5 個因子只有 2 個是籌碼面),把「外資反轉/投信做帳」併進 `chipVerdictCard`;總覽改引 `chipVerdictCard` 的 score100

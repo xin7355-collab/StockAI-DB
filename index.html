@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1656,9 +1656,7 @@
                     </summary>
                     <div class="flex flex-col gap-3 px-2 pb-3 pt-1">
 
-                <!-- 🗑️ V68.4.4 綜合評分卡/法人反轉卡已併入上方「🐘 大戶籌碼總結」(評分寫在標題右、反轉/做帳/借券當總結因子);hidden stub 保留供 JS null-safe -->
-                <div id="masterScoreCard" class="hidden"></div>
-                <div id="instReverseCard" class="hidden"></div>
+                <!-- 🗑️ V68.4.4 綜合評分卡/法人反轉卡已併入「🐘 大戶籌碼總結」;V69.9.8 U-2 殭屍函式+stub 已清除 -->
 
                 <!-- 【指揮中樞】週期切換器(V65.9 移除🤖AI解析,改上方純公式「大戶籌碼總結」)-->
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
@@ -6545,8 +6543,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.7',
+    _APP_VERSION: 'V69.9.8',
     _CHANGELOG: [
+        { v: 'V69.9.8', dt: '2026-07-28', t: '🐘 籌碼評分全 App 一把尺', d: [
+            '過去有三個「籌碼評分」各算各的(可能一張說 72 偏多、另一張說 41 偏空)→ 現在全部統一用籌碼頁「大戶籌碼總結」那一個分數,進場體檢引用的也是它。',
+            '兩個早已看不到的舊評分卡(隱藏殘留)一併清除,~230 行殭屍運算不再每次切股白跑。',
+        ]},
         { v: 'V69.9.7', dt: '2026-07-28', t: '🏷️ 「主力成本」正名:三種算法三個名字', d: [
             '過去三種不同算法都叫「主力成本」→ 不同卡片數字對不上。現在:K 線上那條線(買超王均價)才叫「主力成本」;分點動向卡的改叫「吸籌加權成本」;K 棒訊號那個改叫「外資估算成本」。',
             '算法都沒動,只是讓每個數字有自己的名字,看到不同數字不再以為 App 算錯。',
@@ -12372,131 +12374,6 @@ const marginByDate = {};
         this.renderDisposedPlaybookCard();
     },
 
-    // V20.8 — 三大法人反轉訊號 + 投信做帳行情(全用 activeData 純前端算)
-    //   反轉訊號:外資 / 投信 個別判,昨日相反方向 + 今日反向 + 變化量大
-    //   投信做帳:距季底(3/6/9/12 末) ≤ 10 天 + 投信近期買超 → 拉抬機率高
-    renderInstReverseCard(sym) {
-        const box = document.getElementById('instReverseCard');
-        if (!box) return;
-        // 🐛 V41.27 修:每次進來先清空,避免早退時殘留「上一檔」的反轉/做帳訊號被綜合評分誤用(跨股污染)
-        this._lastInstSignal = null;
-        if (!Array.isArray(this.activeData) || this.activeData.length < 10) { box.classList.add('hidden'); return; }
-        const arr = this.activeData;
-        const n = arr.length;
-        const fi = (i) => Number(arr[i]?.foreign_net || 0) / 1000;   // 張
-        const ti = (i) => Number(arr[i]?.trust_net || 0) / 1000;
-        const today_fi = fi(n - 1), today_ti = ti(n - 1);
-        const fi5 = arr.slice(-5).reduce((s, b) => s + (Number(b.foreign_net) || 0), 0) / 1000;
-        const ti5 = arr.slice(-5).reduce((s, b) => s + (Number(b.trust_net) || 0), 0) / 1000;
-        const fi5_prev = arr.slice(-10, -5).reduce((s, b) => s + (Number(b.foreign_net) || 0), 0) / 1000;
-        const ti5_prev = arr.slice(-10, -5).reduce((s, b) => s + (Number(b.trust_net) || 0), 0) / 1000;
-
-        // ── 反轉訊號(近 5 日 vs 前 5 日)─────────
-        const fiReverse = (() => {
-            if (fi5_prev < -200 && fi5 > 200) return { dir: '🟢 賣轉買', cls: 'text-red-300', desc: `外資前 5 日賣超 ${Math.round(-fi5_prev).toLocaleString()} 張 → 近 5 日轉買超 ${Math.round(fi5).toLocaleString()} 張`, action: '反轉訊號,可能起漲' };
-            if (fi5_prev > 200 && fi5 < -200) return { dir: '🔴 買轉賣', cls: 'text-green-300', desc: `外資前 5 日買超 ${Math.round(fi5_prev).toLocaleString()} 張 → 近 5 日轉賣超 ${Math.round(-fi5).toLocaleString()} 張`, action: '反轉訊號,可能拉回' };
-            return null;
-        })();
-        const tiReverse = (() => {
-            if (ti5_prev < -50 && ti5 > 50) return { dir: '🟢 投信賣轉買', cls: 'text-red-300', desc: `投信前 5 日賣 ${Math.round(-ti5_prev)} 張 → 近 5 日買 ${Math.round(ti5)} 張`, action: '投信回頭買,常見起漲訊號' };
-            if (ti5_prev > 50 && ti5 < -50) return { dir: '🔴 投信買轉賣', cls: 'text-green-300', desc: `投信前 5 日買 ${Math.round(ti5_prev)} 張 → 近 5 日賣 ${Math.round(-ti5)} 張`, action: '投信獲利了結,小心拉回' };
-            return null;
-        })();
-
-        // ── 投信做帳行情(季底/年底)──────────────
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const month = today.getMonth() + 1, day = today.getDate();
-        // 找下個季末(3/6/9/12 月底)
-        const seasonEnds = [
-            new Date(today.getFullYear(), 2, 31), new Date(today.getFullYear(), 5, 30),
-            new Date(today.getFullYear(), 8, 30), new Date(today.getFullYear(), 11, 31)
-        ];
-        const nextSeasonEnd = seasonEnds.find(d => d.getTime() >= today.getTime()) || seasonEnds[0];
-        const daysToSeason = Math.ceil((nextSeasonEnd.getTime() - today.getTime()) / 86400000);
-        const isYearEnd = nextSeasonEnd.getMonth() === 11;
-        // V26.16 — Card Streamlining:口語化驚嘆 → 金融術語,⚠️/❌ 收 Alert Box,只留動作結論
-        let dressUp = null;
-        if (daysToSeason <= 10 && daysToSeason >= 0) {
-            const hasTrustPos = ti5 > 100;
-            const seasonLbl = isYearEnd ? '年底' : '季底';
-            if (hasTrustPos) {
-                dressUp = {
-                    borderCls: 'border-amber-500',
-                    textCls: 'text-amber-300',
-                    title: `${seasonLbl}做帳行情(剩 ${daysToSeason} 日)`,
-                    action: '🟢 多方策略:持股續抱至月底前 2-3 日內出場',
-                    detail: `投信近 5 日買超 ${Math.round(ti5)} 張,距${seasonLbl} ${daysToSeason} 日,拉抬機率高。退場條件:投信轉賣 &lt; -100 張立即停利。`,
-                };
-            } else if (ti5 < -100) {
-                dressUp = {
-                    borderCls: 'border-orange-500',
-                    textCls: 'text-orange-300',
-                    title: `${seasonLbl}投信獲利了結(剩 ${daysToSeason} 日)`,
-                    action: '🔴 空方策略:勿追高,等下季度重新建倉週期',
-                    detail: `投信近 5 日賣超 ${Math.round(-ti5)} 張,接近${seasonLbl}已開始獲利了結。`,
-                };
-            } else {
-                dressUp = {
-                    borderCls: 'border-gray-600',
-                    textCls: 'text-gray-300',
-                    title: `${seasonLbl}行情中性期(剩 ${daysToSeason} 日)`,
-                    action: '⚪ 觀察策略:等明日投信動向確認方向',
-                    detail: `投信近 5 日淨額 ${Math.round(ti5)} 張(中性區),需後續方向訊號。`,
-                };
-            }
-        }
-
-        // ② V68.8.6 → 投信首次卡位(純公式,合併進投信段)
-        //   trust_holding_pct 無資料源(見選股規則 C5),故用投信買賣超累計做「持股比從 ~0 跳升」的 proxy:
-        //   長期投信幾乎沒參與(前段累計淨額接近 0)+ 近 8 日首次明顯連續買超 → 機構首次建倉,常是波段起漲點
-        const trustFirstEntry = (() => {
-            if (n < 30) return null;
-            const recent = arr.slice(-8).reduce((s, b) => s + (Number(b.trust_net) || 0), 0) / 1000;   // 近 8 日投信淨額(張)
-            const earlier = arr.slice(0, -8).reduce((s, b) => s + (Number(b.trust_net) || 0), 0) / 1000; // 更早整段累計(張)
-            const posDays = arr.slice(-8).filter(b => (Number(b.trust_net) || 0) > 0).length;
-            if (Math.abs(earlier) < 300 && recent > 150 && posDays >= 3) {
-                return { recent: Math.round(recent), earlier: Math.round(earlier), posDays };
-            }
-            return null;
-        })();
-
-        if (!fiReverse && !tiReverse && !dressUp && !trustFirstEntry) { box.classList.add('hidden'); return; }
-        box.classList.remove('hidden');
-
-        const reverseRow = (r) => r ? `<div class="bg-[#161b22] border-l-4 ${r.cls.includes('red') ? 'border-red-500' : 'border-green-500'} border-y border-r border-[#30363d] rounded-r px-2.5 py-1.5 mb-1.5">
-            <div class="flex justify-between items-baseline mb-0.5">
-                <span class="${r.cls} font-bold text-[12px]">${r.dir}</span>
-                <span class="text-[10px] text-gray-400 font-bold">${r.action}</span>
-            </div>
-            <div class="text-[10px] text-gray-500 leading-snug">${r.desc}</div>
-        </div>` : '';
-
-        box.innerHTML = `
-            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-emerald-700/40">
-                <h4 class="text-emerald-300 font-bold text-sm">🔄 法人反轉 + 投信做帳</h4>
-                <span class="text-[10px] text-gray-500">近 5 日 vs 前 5 日</span>
-            </div>
-            ${reverseRow(fiReverse)}
-            ${reverseRow(tiReverse)}
-            ${trustFirstEntry ? `<div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r px-2.5 py-1.5 mb-1.5">
-                <div class="flex justify-between items-baseline mb-0.5">
-                    <span class="text-red-300 font-bold text-[12px]">🚀 投信剛上車 · 波段起漲</span>
-                    <span class="text-[10px] text-gray-400 font-bold">首次卡位,可留意</span>
-                </div>
-                <div class="text-[10px] text-gray-500 leading-snug">投信長期幾乎沒參與(前段累計 ${trustFirstEntry.earlier} 張),近 8 日首次明顯買超 ${trustFirstEntry.recent} 張(${trustFirstEntry.posDays}/8 日買)。機構首次建倉常是波段起漲點,可搭均線位階與量能確認。</div>
-            </div>` : ''}
-            ${dressUp ? `<div class="bg-[#161b22] border-l-4 ${dressUp.borderCls} border-y border-r border-[#30363d] rounded-r px-2.5 py-2 mb-1.5">
-                <div class="${dressUp.textCls} font-bold text-[12px] mb-1">💼 ${dressUp.title}</div>
-                <div class="text-[11px] text-gray-200 font-bold mb-1">${dressUp.action}</div>
-                <div class="text-[9px] text-gray-500 leading-snug">ⓘ ${dressUp.detail}</div>
-            </div>` : ''}
-            ${!fiReverse && !tiReverse && !trustFirstEntry ? '<div class="text-[10px] text-gray-500 text-center py-1">📍 法人方向暫無明顯反轉</div>' : ''}
-            <div class="text-[9px] text-gray-500 mt-1.5 leading-relaxed">ⓘ <b>反轉訊號</b>:法人連賣轉連買(或反之) → 主力換手,股價方向常跟著轉</div>`;
-
-        // 把結果存到 instance 給綜合評分用
-        this._lastInstSignal = { fiReverse, tiReverse, dressUp, trustFirstEntry };
-    },
-
     // V20.8 — 綜合操作評分卡(整合所有訊號)
     //   收 6 大訊號:Falcon / 注意股掃描 / 越關大尾 / 法人反轉 / 投信做帳 / 景氣燈號
     //   加權算總分 0-100,給 1 行白話操作結論
@@ -13004,112 +12881,6 @@ const marginByDate = {};
 
     // ⛔ V65.9 原🤖AI籌碼解析已改純公式「大戶籌碼總結」(renderChipVerdict);此函式保留為 no-op 防舊 onclick 殘留報錯
     analyzeChipUnified() { try { this.renderChipVerdict(this.currentSymbolId); } catch (_) {} },
-
-    renderMasterScoreCard(sym) {
-        const box = document.getElementById('masterScoreCard');
-        if (!box) return;
-        const factors = [];
-        let totalScore = 0, weightSum = 0;
-
-        // 1. 🦅 V39.2 Falcon 建倉分已連根拔除;其餘因子靠 weightSum 正規化,分數不受影響
-
-        // 2. 注意股掃描(逆向加分:hit 越少越好;權重 15)
-        const scan = (Array.isArray(this.activeData) && this.activeData.length >= 30) ? this._calcAttentionScan(sym) : null;
-        if (scan) {
-            const scanScore = scan.predictText.startsWith('🚨') ? 10 : scan.predictText.startsWith('⚠️') ? 30 : scan.predictText.startsWith('💡') ? 60 : 90;
-            factors.push({ icon: '🔍', name: '注意股風險', score: scanScore, max: 100, weight: 15, txt: scan.predictText.slice(0, 16) });
-            totalScore += scanScore * 15; weightSum += 15 * 100;
-        }
-
-        // 3. 越關越大尾(只在處置時加,權重 10)
-        const info = this.attentionStatus?.[sym];
-        if (info && (info.status || '').match(/處置|注意/) && scan) {
-            // 從 dispBigShotCard 算法借過來(複製簡化)
-            const arr = this.activeData;
-            const v60 = arr.length >= 60 ? arr.slice(-60).reduce((s, b) => s + (b.volume || 0), 0) / 60 : null;
-            const v5 = arr.slice(-5).reduce((s, b) => s + (b.volume || 0), 0) / 5;
-            const volRatio = (v60 && v60 > 0) ? v5 / v60 : 1;
-            const volScore = Math.max(0, Math.min(100, Math.round((1 - volRatio) * 200)));
-            factors.push({ icon: '📈', name: '越關大尾', score: volScore, max: 100, weight: 10, txt: `量縮度 ${(volRatio * 100).toFixed(0)}%` });
-            totalScore += volScore * 10; weightSum += 10 * 100;
-        }
-
-        // 4. 法人反轉(只在有訊號時加,權重 20)
-        if (this._lastInstSignal?.fiReverse) {
-            const fiScore = this._lastInstSignal.fiReverse.dir.includes('賣轉買') ? 85 : 15;
-            factors.push({ icon: '🏛️', name: '外資反轉', score: fiScore, max: 100, weight: 20, txt: this._lastInstSignal.fiReverse.dir });
-            totalScore += fiScore * 20; weightSum += 20 * 100;
-        }
-
-        // 5. 投信做帳(權重 15)
-        if (this._lastInstSignal?.dressUp) {
-            const dupTitle = this._lastInstSignal.dressUp.title;
-            // 🐛 V41.27 修:對齊實際 dressUp 標題(獲利了結/做帳行情/行情中性期),舊字串「落袋/做帳行情啟動」永遠不匹配 → 分數恆 50 失效
-            const dupScore = dupTitle.includes('獲利了結') ? 25 : dupTitle.includes('做帳行情') ? 80 : 50;
-            factors.push({ icon: '💼', name: '投信做帳', score: dupScore, max: 100, weight: 15, txt: dupTitle.slice(0, 16) });
-            totalScore += dupScore * 15; weightSum += 15 * 100;
-        }
-
-        // 6. 景氣燈號(權重 15)
-        if (this._twBsiScore != null) {
-            // 12-41 線性映射到 0-100;藍燈底部進場好(逆向高分);紅燈過熱低分
-            // 但長線投資:綠/黃紅 = 中性高分;藍/紅 = 兩極(看情境)
-            // 簡化:藍 80(底部進場好) / 黃藍 60 / 綠 70 / 黃紅 65 / 紅 30
-            const bsiMap = { 12: 80, 19: 60, 27: 70, 34: 65, 41: 30 };
-            const bsiScore = bsiMap[this._twBsiScore] || 60;
-            const bsiLbl = this._twBsiLight === 'blue' ? '🔵 藍 底部進場' : this._twBsiLight === 'red' ? '🔴 紅 過熱' : (this._twBsiLight || '');
-            factors.push({ icon: '🌡️', name: '景氣燈號', score: bsiScore, max: 100, weight: 15, txt: bsiLbl });
-            totalScore += bsiScore * 15; weightSum += 15 * 100;
-        }
-
-        if (!factors.length) { box.classList.add('hidden'); return; }
-        box.classList.remove('hidden');
-
-        const finalScore = Math.round(totalScore / weightSum * 100);
-
-        // 結論(V27.5 — 不靠紅綠燈,改方向箭頭 ⬆→⬇ + 大字動作詞,避免與首席 emoji 互相打架)
-        let verdict, verdictCls, action;
-        if (finalScore >= 80)       { verdict = '⬆⬆ 強烈買進';   verdictCls = 'border-red-600 bg-red-900/40 text-red-200 animate-pulse'; action = '多重訊號一致看多 → <b>分批進場 ・ 嚴守 5MA 停利</b>'; }
-        else if (finalScore >= 65)  { verdict = '⬆ 可以買進';     verdictCls = 'border-red-700 bg-red-900/25 text-red-200';                action = '訊號偏多 → <b>逢回測月線進場 ・ 設停損</b>'; }
-        else if (finalScore >= 45)  { verdict = '→ 觀望為主';     verdictCls = 'border-yellow-600 bg-yellow-900/30 text-yellow-200';       action = '訊號分歧 → <b>持股可抱 ・ 空手等明確訊號</b>'; }
-        else if (finalScore >= 30)  { verdict = '⬇ 偏空 別碰';     verdictCls = 'border-green-700 bg-green-900/30 text-green-300';          action = '空方訊號多 → <b>持股分批停利 ・ 空手不接刀</b>'; }
-        else                        { verdict = '⬇⬇ 強烈賣出';    verdictCls = 'border-green-600 bg-green-900/40 text-green-200 animate-pulse'; action = '多重訊號一致看空 → <b>持股全出 ・ 空手嚴禁進場</b>'; }
-        this._lastMasterScore = { score: finalScore, verdict };   // V27.5 — 供首席 AI 總指揮注入,結論一致化
-
-        // V26.15 — Progress Row Grid:3 欄(因子名+權重 / 進度條+評語 / 大字分數)取代原 flex 易錯位排版
-        const factorRows = factors.map(f => {
-            const scoreColor = f.score >= 70 ? 'text-red-300' : f.score >= 40 ? 'text-yellow-300' : 'text-green-300';
-            const barColor   = f.score >= 70 ? 'bg-red-400'    : f.score >= 40 ? 'bg-yellow-400'   : 'bg-green-400';
-            return `
-            <div class="grid grid-cols-[1fr_auto_44px] gap-2 items-center py-1.5 border-b border-[#21262d]">
-                <div>
-                    <div class="text-[11px] text-gray-200 font-bold flex items-center gap-1"><span>${f.icon}</span>${f.name}</div>
-                    <div class="text-[9px] text-gray-500 font-mono">權重 ${f.weight}%</div>
-                </div>
-                <div class="flex flex-col items-end gap-0.5">
-                    <span class="text-[9px] text-gray-400 truncate max-w-[120px] text-right" title="${f.txt}">${f.txt}</span>
-                    <div class="w-[100px] h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${barColor} transition-all" style="width:${Math.min(f.score, 100)}%"></div></div>
-                </div>
-                <div class="font-mono font-black text-right text-base ${scoreColor}">${f.score}</div>
-            </div>`;
-        }).join('');
-
-        const formulaTxt = '各因子權重\\n• Falcon 建倉  ×25%\\n• 外資反轉      ×20%\\n• 投信做帳      ×15%\\n• 注意股風險  ×15%\\n• 景氣燈號      ×15%\\n• 越關大尾      ×10%\\n\\n總分 = Σ(各因子分數 × 權重) / 100';
-
-        box.innerHTML = `
-            <div class="flex items-center justify-between mb-1 pb-1.5 border-b border-blue-700/40">
-                <h4 class="text-blue-300 font-bold text-sm">🔬 籌碼綜合評分</h4>
-                <button onclick="alert('${formulaTxt}')" class="text-[9px] text-gray-500 hover:text-blue-300 flex items-center gap-1">${factors.length} 因子加權 ⓘ</button>
-            </div>
-            <div class="text-[9px] text-gray-500 mb-2">👇 純公式加權參考訊號(非投資建議)</div>
-            <div class="rounded-lg border ${verdictCls} px-3 py-2.5 mb-2 text-center">
-                <div class="text-3xl font-black font-mono leading-none mb-0.5">${finalScore}<span class="text-base text-gray-400">/100</span></div>
-                <div class="text-[13px] font-bold mt-1">${verdict}</div>
-            </div>
-            <div class="rounded border border-[#30363d] bg-[#0d1117] px-3 py-2 mb-2 text-[11px] text-gray-300 leading-snug">${action}</div>
-            <div class="text-[10px] text-gray-500 mb-1 leading-tight">📊 各因子分數明細</div>
-            <div>${factorRows}</div>`;
-    },
 
     // V21.7 — Q2 修嚴重 BUG:此函式原誤寫為 `_showAttentionRulesHelp`(跟 L7964 真正的注意股教學同名,JS 後定義覆寫前定義),
     //         導致使用者點景氣燈號 dropdown 時 `app.setBsiLight is not a function`,自動/手動皆失效。
@@ -19062,15 +18833,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📊 V38.4 交叉參照綜合操作評分(籌碼+基本面),技術面 vs 籌碼面分歧時標示(使用者指定:引用評分對齊)
         let xrefHtml = '';
         try {
-            const ms = this._lastMasterScore;
+            // 🧭 V69.9.8 U-2:原「籌碼綜合評分」(masterScoreCard,已刪)是第三個同名數字 → 改引大戶籌碼總結
+            //   同一分數全 App 一把尺;_lastChipScore 帶 sym,跨股守門
+            const ms = (this._lastChipScore && this._lastChipScore.sym === this.currentSymbolId) ? this._lastChipScore : null;
             if (ms && typeof ms.score === 'number') {
                 const m = ms.score;
-                const mDir = m >= 65 ? 'bull' : m <= 44 ? 'bear' : 'mid';   // 綜合評分(籌碼+基本面)方向
+                const mDir = m >= 57 ? 'bull' : m <= 45 ? 'bear' : 'mid';   // 大戶籌碼總結同款分帶
                 const eDir = c === 'red' ? 'bull' : c === 'green' ? 'bear' : 'mid';   // 進場體檢(技術)方向
                 const diverge = (eDir === 'bull' && mDir === 'bear') || (eDir === 'bear' && mDir === 'bull');
-                const mc = m >= 65 ? 'text-red-300' : m <= 44 ? 'text-green-300' : 'text-yellow-300';
+                const mc = m >= 57 ? 'text-red-300' : m <= 45 ? 'text-green-300' : 'text-yellow-300';
                 xrefHtml = `<div class="text-[10px] text-gray-400 mb-2 flex items-center gap-x-1.5 gap-y-0.5 flex-wrap">
-                    <span>🔬 籌碼綜合評分 <span class="font-mono font-black ${mc}">${m}</span>/100 <span class="text-gray-600 text-[9px]">(含籌碼+基本面)</span></span>
+                    <span>🐘 大戶籌碼總結 <span class="font-mono font-black ${mc}">${m}</span>/100 <span class="text-gray-600 text-[9px]">(與籌碼頁同分)</span></span>
                     ${diverge ? `<span class="text-yellow-300 font-bold text-[9px]">⚠️ 與技術面分歧(一面多一面空)→ 保守看待、別重押</span>` : `<span class="text-gray-600 text-[9px]">・與技術面方向一致 ✓</span>`}</div>`;
             }
         } catch (_) {}
@@ -22181,7 +21954,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this.latestYoyCache = '';
         this.latestFinancialAICache = '';
         this._fuglePrevClose = null;
-        this._lastMasterScore = null;   // 🐛 V55.8 切股必清:否則進場體檢的「籌碼綜合評分」交叉參照會把 A 股分數當 B 股顯示
+        this._lastChipScore = null;   // 🐛 V55.8 切股必清(V69.9.8 改為大戶籌碼總結分;xref 端另有 sym 守門雙保險)
         this._chuActionVerdict = null;  // ⚖️ V56.0 仲裁結論也是 per-stock,切股必清
         if(!silent) document.getElementById('symbolInput').value = '';
 
@@ -22314,9 +22087,6 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         try { this.renderDoubleSwordCard(targetSym); } catch(_) {}
         // V20.7 — 越關越大尾預測卡(處置/即將處置時觸發)
         try { this.renderDispBigShotCard(targetSym); } catch(_) {}
-        // V20.8 — 法人反轉 + 投信做帳 + 綜合操作評分(順序重要:先反轉算 _lastInstSignal,評分才能用)
-        try { this.renderInstReverseCard(targetSym); } catch(_) {}
-        try { this.renderMasterScoreCard(targetSym); } catch(_) {}
         try { this.renderChipVerdict(targetSym); } catch(_) {}   // 🐘 V65.9 純公式大戶籌碼總結(取代AI)
         try { this.renderChipCleanliness(targetSym); } catch(_) {}   // 🧹 V69.5.9 籌碼乾淨度(亂不亂量條)
         // 🐛 V41.28 修:籌碼/多空 sub-tab 的載入器原本只在「切 tab」時跑,切股沒補 → 停在該 tab 換股會殘留舊股資料。
@@ -29086,7 +28856,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const d = new Date();
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         // V27.5 — 快取鍵加入「綜合評分 + 系統燈號」狀態:輸入訊號變動即自動失效重抽,避免首席顯舊結論 vs 各卡即時不同步
-        const sigState = `${this._lastMasterScore?.score ?? ''}|${this.unifiedSignal?.level ?? ''}`;
+        const sigState = `${this._lastChipScore?.score ?? ''}|${this.unifiedSignal?.level ?? ''}`;
         // 🐛 V41.28 修:加入 AI 引擎 → 切引擎(gemini/groq…)重跑同股不再吃到舊引擎的快取
         return `aiCache_v3|${sym}|${(costKey || 'empty')}|${dateStr}|${this.settings.aiEngine || 'groq'}|${this._hashStr((this.settings.aiPrompt || '') + sigState)}`;
     },
