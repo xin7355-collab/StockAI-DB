@@ -29,6 +29,8 @@ self.addEventListener('fetch', e => {
         return;
     }
 
+    const reqUrl = new URL(e.request.url);   // 🐛 V69.8.7 修:原宣告在下方,上面的 navigate 分支先用到 → TDZ ReferenceError,SWR 完全沒生效
+
     // ⚡ V69.8.5 P1-2:index.html(導覽請求)改 stale-while-revalidate —
     //   先吐快取「秒開畫面」,背景抓新版寫回快取。版本更新不受影響:deploy 時 sw.js 的
     //   CACHE_NAME 被注入 commit SHA → 新 SW install→activate→controllerchange→自動 reload
@@ -54,7 +56,6 @@ self.addEventListener('fetch', e => {
     // 杜絕手機 PWA 吃到舊的採礦結果。斷網時才退而求其次拿舊快取。
     // V18.2 — fetch 加 18 秒 hard timeout(防 iOS PWA 網路堆疊偶爾 hang 不返,
     //         頁面 AbortSignal 在 SW 範圍內救不到 → 整個 e.respondWith 卡死 → 卡 loading)
-    const reqUrl = new URL(e.request.url);
     if (reqUrl.pathname.includes('/data/') || reqUrl.pathname.endsWith('.json')) {
         const fetchWithTimeout = Promise.race([
             fetch(e.request),
@@ -86,7 +87,7 @@ self.addEventListener('push', e => {
     const data  = e.data ? e.data.json() : {};
     const title = data.title || '首席 AI';
     const body  = data.body  || '請立刻檢視您的持倉！';
-    const icon  = data.icon  || '/icon-192.png';
+    const icon  = data.icon  || 'icon-192.jpg';   // ⚡ V69.8.7:相對路徑(自動解析到 SW scope)+ 檔案已實體化
     const tag   = data.tag   || 'stockai-alert';
     
     // 【修復】使用 self.registration.scope 取代 '/'，完美適應 GitHub Pages 路徑
@@ -181,8 +182,8 @@ async function checkPriceAlerts() {
 
                 await self.registration.showNotification('🚨 首席停損', {
                     body: `${name} 現價 ${priceFmt}，已跌破防守底線 ${defFmt}！請立刻執行紀律停損！`,
-                    icon:  `${ghRoot}icon-192.png`,
-                    badge: `${ghRoot}icon-192.png`,
+                    icon:  `${ghRoot}icon-192.jpg`,
+                    badge: `${ghRoot}icon-192.jpg`,
                     tag:   `alert-${alert.symbol}`,   // 同檔只保留最新一則通知
                     requireInteraction: true,
                     vibrate: [300, 100, 300, 100, 600],

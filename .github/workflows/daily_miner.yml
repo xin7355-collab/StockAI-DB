@@ -406,6 +406,7 @@ jobs:
           git fetch origin main --depth=1
           git checkout origin/main -- index.html sw.js 2>/dev/null || true
           git checkout origin/main -- manifest.json 2>/dev/null || true   # V17.0 PWA manifest
+          git checkout origin/main -- apple-touch-icon.jpg icon-192.jpg icon-512.jpg 2>/dev/null || true   # ⚡ V69.8.7 P2-2
 
           # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips
@@ -419,6 +420,7 @@ jobs:
           cp index.html            /tmp/mine/               2>/dev/null || true
           cp sw.js                 /tmp/mine/               2>/dev/null || true
           cp manifest.json         /tmp/mine/               2>/dev/null || true   # V17.0 PWA
+          cp apple-touch-icon.jpg icon-192.jpg icon-512.jpg /tmp/mine/ 2>/dev/null || true   # ⚡ V69.8.7
 
           # 切換到發布分支
           git checkout main 2>/dev/null || true
@@ -434,6 +436,7 @@ jobs:
           cp /tmp/mine/index.html           .               2>/dev/null || true
           cp /tmp/mine/sw.js                .               2>/dev/null || true
           cp /tmp/mine/manifest.json        .               2>/dev/null || true   # V17.0 PWA
+          cp /tmp/mine/apple-touch-icon.jpg /tmp/mine/icon-192.jpg /tmp/mine/icon-512.jpg . 2>/dev/null || true   # ⚡ V69.8.7
           cp /tmp/mine/broker_names.json    .               2>/dev/null || true
           cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
           cp /tmp/mine/inst_cache_stock.json   . 2>/dev/null || true

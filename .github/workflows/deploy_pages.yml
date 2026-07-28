@@ -40,6 +40,7 @@ jobs:
           cp sw.js      /tmp/deploy/
           # V17.0 — PWA manifest 一併部署(若不存在則跳過,不阻塞舊版部署)
           [ -f manifest.json ] && cp manifest.json /tmp/deploy/ || true
+          for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && cp "$f" /tmp/deploy/ || true; done   # ⚡ V69.8.7 P2-2 icon 外部化
 
           # 切到現有的 gh-pages（保留所有資料，不用 --orphan）
           git fetch origin gh-pages 2>/dev/null || true
@@ -54,6 +55,7 @@ jobs:
           cp /tmp/deploy/index.html .
           cp /tmp/deploy/sw.js      .
           [ -f /tmp/deploy/manifest.json ] && cp /tmp/deploy/manifest.json . || true
+          for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "/tmp/deploy/$f" ] && cp "/tmp/deploy/$f" . || true; done
 
           # 🆕 每次部署把 Service Worker 的 CACHE_NAME 注入 commit SHA，
           #     讓 sw.js 內容隨每次部署改變 → 瀏覽器認得新 SW → 自動接管+reload，杜絕使用者卡舊版

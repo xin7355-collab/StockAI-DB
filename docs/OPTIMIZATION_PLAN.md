@@ -131,11 +131,11 @@
 
 ## 🟡 P2 — 瘦身(不改行為,純減法)
 
-### [ ] P2-1 第 18 行版本註解 93.5 KB → 搬到 CHANGELOG.md
-- gzip 省 45 KB。**這是每次 bump 版本累積出來的**,建議改規則:只留當前版本一行。
+### [x] P2-1 第 18 行版本註解 93.5 KB → 搬到 CHANGELOG.md ✅ V69.8.7
+- gzip 省 45 KB。歷史已搬 `CHANGELOG.md`,line 18 只留當前版本一行,CLAUDE.md 版本規則已同步改。
 
-### [ ] P2-2 第 12 行 icon base64 22.3 KB → 改外部 .png
-- gzip 省 19 KB;`manifest.json` 77 KB 中 76 KB 也是 base64 icon,一併改 → 合計每次冷啟省 ~95 KB
+### [x] P2-2 第 12 行 icon base64 22.3 KB → 改外部 .png ✅ V69.8.7
+- 實作為 .jpg:`apple-touch-icon.jpg`/`icon-192.jpg`/`icon-512.jpg` 實體檔,manifest.json 77KB→982B;deploy_pages.yml + daily_miner.yml 都已加 3 檔搬運;sw.js icon 路徑同步改。**順手修 sw.js TDZ bug**(V69.8.5 的 navigate SWR 分支在 `const reqUrl` 宣告前使用 → 每次導覽 ReferenceError,SWR 從未生效)。
 
 ### [ ] P2-3 加 build step(minify)產 `index.min.html` 部署
 - 註解+縮排佔主 script **26.1%**;實測只刪整行註解 gzip 就從 1,057,610 → 897,179(**省 160 KB**)
