@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -311,6 +311,8 @@
         /* V44.3 — 頂部跑馬燈(風險+regime+黑天鵝合併捲動),內容重複2份 + translateX(-50%) 無縫
            V57.7 — 使用者要求:跑一趟就自動收起 → iteration 改 1(animationend 由 JS 收 banner,內容變了才再播) */
         .marquee-track { display: inline-block; white-space: nowrap; animation: ticker 38s linear 1 forwards; will-change: transform; }
+        .marquee-wrap { min-width: 0; max-width: 100%; }   /* 📐 V70.1.0 flex 子項 min-width:auto 會被跑馬燈內容撐開 → 橫版整頁橫向溢出的元凶 */
+        html, body { overflow-x: hidden; }                  /* 📐 V70.1.0 橫向溢出總保險(寬內容一律在自己的容器內滾) */
         @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .marquee-wrap:active .marquee-track { animation-play-state: paused; }
 
@@ -632,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4000,6 +4002,8 @@ const app = {
                     this.loadIntradayKline(this.currentSymbolId, true);
                 }
             }
+            // 🌇 V70.1.0 每交易日 13:32 後跑一次盤後零股盤點(方法內自帶時窗+每日一次 gate)
+            try { this._afterCloseOddLotSweep(); } catch (_) {}
             if (this.isMarketOpen()) {
                 this.refreshUSMarketBar();
             }
@@ -4375,6 +4379,43 @@ const app = {
             }
             return '';
         } catch (_) { return ''; }
+    },
+
+    // 🌇 V70.1.0 13:30 盤後零股盤點(使用者要求):收盤後對每檔庫存算「今日收盤版六脈分數」+
+    //   大戶淨(只有今天開過該股即時頁才有逐筆紀錄,誠實標示)→ 一則推播給「要不要零股加碼」建議。
+    //   時窗 13:32~14:10(零股盤後 13:40 起可下單、14:30 撮合);每交易日只推一次。
+    async _afterCloseOddLotSweep() {
+        const tpe = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+        const day = tpe.getDay(), hm = tpe.getHours() * 60 + tpe.getMinutes();
+        if (day < 1 || day > 5 || hm < 812 || hm > 850) return;
+        const dkey = `oddlotSweep_${tpe.getFullYear()}-${tpe.getMonth() + 1}-${tpe.getDate()}`;
+        if (localStorage.getItem(dkey)) return;
+        const inv = app._getInventory().filter(i => i && i.symbol).slice(0, 8);
+        localStorage.setItem(dkey, '1');   // 先佔位防重入
+        if (!inv.length) return;
+        const lines = [];
+        for (const p of inv) {
+            const sym = String(p.symbol);
+            try {
+                const cached = await this.idb.get(`proTerm_kline_${sym}`);
+                const kdata = cached?.data; if (!kdata || kdata.length < 40) continue;
+                const q = await this.fetchFugleData(sym).catch(() => null);
+                if (!q || !(+q.price > 0)) continue;
+                const chg = +q.prevClose > 0 ? (q.price - q.prevClose) / q.prevClose * 100 : 0;
+                const _avg5v = kdata.slice(-5).reduce((s, b) => s + (+b.volume || 0), 0) / 5;
+                const synthVol = _avg5v >= 1e6 ? (+q.volume || 0) * 1000 : (+q.volume || 0);   // 張→跟 kdata 單位對齊
+                const _dstr = `${tpe.getFullYear()}/${String(tpe.getMonth() + 1).padStart(2, '0')}/${String(tpe.getDate()).padStart(2, '0')}`;
+                const synth = { date: _dstr, open: +q.open || q.price, high: +q.dayHigh || q.price, low: +q.dayLow || q.price, close: +q.price, volume: synthVol, foreign_net: 0 };
+                const v = this._sixMeridianCalc([...kdata, synth]); if (!v) continue;
+                const A = this._tickAcc;
+                const whale = (A && A.sym === sym && A.pts && A.pts.length >= 5)
+                    ? (() => { const b = Math.round(A.big), r = Math.abs(b) + Math.abs(Math.round(A.retail)); return `・大戶淨 ${b >= 0 ? '+' : ''}${b} 張(主導 ${r > 0 ? Math.round(Math.abs(b) / r * 100) : 0}%)`; })() : '';
+                const nm = this.getStockName?.(sym) || sym;
+                const verdict = (v.okN >= 4 && chg > 0) ? '🟢 可考慮零股分批' : v.okN === 3 ? '🟡 觀望再看' : '🔴 先不要加碼';
+                lines.push(`${nm} 收 ${(+q.price).toFixed(2)}(${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%)・六脈 ${v.okN} 分${whale} → ${verdict}`);
+            } catch (_) {}
+        }
+        if (lines.length) this._fireAlert('🌇 13:30 盤後零股盤點', lines.join('\n') + '\n(盤後零股 13:40~14:30 可掛單、14:30 撮合;純公式參考非建議)', '');
     },
 
     async _watchlistPulse() {
@@ -6485,8 +6526,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.0.9',
+    _APP_VERSION: 'V70.1.0',
     _CHANGELOG: [
+        { v: 'V70.1.0', dt: '2026-07-28', t: '⚔️ 六脈整併進分時圖 + 橫版修復 + 13:30 零股盤點', d: [
+            '【時間對照】六脈箭頭直接併入分時圖「第 3 格」:跟價格、成交量共用同一條時間軸,長按十字線逐分鐘對照,不用再自己對時間;圖高加高、下方卡片留結論+行動+共振段清單。',
+            '【橫版修復】抓到整頁橫向怪怪的元凶(頂部跑馬燈把頁面撐寬 1.5 倍)已修,並加整頁橫向保險;橫版檢查已寫入開發鐵則,以後每次改版面必測。',
+            '【大戶vs散戶】卡上直接顯示「紀錄 HH:MM~HH:MM」,累積區間一目了然。',
+            '【13:30 盤後零股盤點】收盤後自動推播:每檔庫存的收盤價、今日六脈分數、大戶淨張數與主導比(當天有開該股即時頁才有)→ 給「🟢 可零股分批 / 🟡 觀望 / 🔴 先不要」建議(零股盤後 13:40~14:30 可掛單)。',
+        ]},
         { v: 'V70.0.9', dt: '2026-07-28', t: '📣 壓箱寶:盤中買賣訊號自動推(不用盯盤)', d: [
             '「⚡ 六脈點火 / 🧯 熄火」加入背景掃描:你的自選+庫存+觀察全清單,盤中每分鐘輪掃,誰點火(低檔共振+爆量=參考買進,附當日低停損價)/誰熄火(持股動能退潮=減碼)直接推播到手機,不用一檔一檔盯。',
             '同股同訊號 30 分鐘冷卻不吵;需開啟「盤中自動通知」(設定內)與系統通知權限。',
@@ -17620,8 +17667,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-base font-black ${hero[1]}">${hero[0]} <span class="font-mono text-[11px] text-gray-500">${v.nowBull}多/${v.nowBear}空</span></div>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${hero[2]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
-            <canvas id="intradaySixCanvas" class="w-full mt-2 rounded" style="height:88px"></canvas>
-            <div class="text-[9px] text-gray-500 mt-1">紅▲偏多・綠▼偏空・灰–中性(每格=5分鐘)・<span class="text-yellow-300">黃框=順勢時段(6個燈幾乎同向,框上標▲多/▼空,順著做)</span>;框外=多空分歧觀望</div>
+            <div class="text-[9px] text-gray-500 mt-1.5">⬆ 六脈箭頭已整併進上方分時圖第 3 格(同一條時間軸,長按十字線可逐分鐘對照時間):紅▲偏多・綠▼偏空・<span class="text-yellow-300">價格圖底色=順勢段(淡紅多/淡綠空)</span></div>
             <div class="flex flex-wrap gap-1 mt-1.5">${chips}</div>
             ${winRows ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 mt-2"><div class="text-[9px] text-gray-500 font-bold mb-0.5">今日共振段(段內實際漲跌,誠實對帳)</div>${winRows}</div>` : '<div class="text-[9px] text-gray-600 mt-1.5">今日尚無共振段(分歧盤,當沖少動)。</div>'}
             <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・3根平滑去雜訊・黃框=≥5維同向。只跟「段」不跟「單根」;隔日定調看日K六脈。</div>`;
@@ -17642,57 +17688,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) {}
         // 🖼️ V70.0.5 共振段存起來 → 分時圖疊半透明底色(紅多綠空),圖上直接看得到「什麼時候該做」
         try { this._isixShade = { sym: String(this.currentSymbolId || ''), at: Date.now(), segs: v.wins.map(w => [v.mins[w.a], v.mins[w.b], w.dir]).filter(s => s[0] != null && s[1] != null) }; } catch (_) {}
-        // ── canvas 箭頭圖(V70.0.6 改版,使用者:原本上下箭頭比較看得懂):
-        //   1分K 聚合成 5 分鐘一格(54 格,手機可讀),每格一顆箭頭:紅▲偏多 / 綠▼偏空 / 灰-中性;
-        //   共振段畫「黃底+黃框」一整塊(已去碎化,不再滿版細框)
+        // ⚔️ V70.1.0 完整 6 維逐分鐘資料 → 分時圖第 3 格畫箭頭(共用時間軸=天然時間對照);存好立刻重繪圖
         try {
-            const cv = document.getElementById('intradaySixCanvas');
-            const dpr = window.devicePixelRatio || 1;
-            const W = Math.max(280, cv.clientWidth || 320), H = 88;
-            cv.width = W * dpr; cv.height = H * dpr;
-            const g = cv.getContext('2d'); g.scale(dpr, dpr);
-            g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H);
-            const L = 32, top = 3, rowH = 12, NB = 54, BW = (W - L - 4) / NB;
-            const xOf = m => L + (Math.max(0, Math.min(270, m)) / 270) * (W - L - 4);
-            // 5 分鐘聚合:格內各分鐘多空相加取方向
-            const bucket = Array.from({ length: 6 }, () => new Array(NB).fill(null));
-            for (let i = 0; i < v.n; i++) {
-                const m = v.mins[i]; if (m == null || m < 0 || m > 270) continue;
-                const bi = Math.min(NB - 1, Math.floor(m / 5));
-                for (let k = 0; k < 6; k++) bucket[k][bi] = (bucket[k][bi] || 0) + v.dims[k][i];
+            this._isixDims = { sym: String(this.currentSymbolId || ''), at: Date.now(), mins: v.mins, dims: v.dims };
+            if ((this._intradayTF || 'ts') === 'ts') {
+                const ce = document.getElementById('intradayKlineChart');
+                if (ce && Array.isArray(bars) && bars.length >= 5) this._renderIntradayChart(ce, bars, 'ts');
             }
-            // 共振段黃底+黃框(畫在箭頭下層)+ V70.0.7 框上直接標「▲多 / ▼空」(使用者:黃框看不懂)
-            for (const w of v.wins) {
-                const ma = v.mins[w.a], mb = v.mins[w.b];
-                if (ma == null || mb == null) continue;
-                const x1 = xOf(ma), x2 = xOf(mb) + BW * 0.6;
-                g.fillStyle = 'rgba(250,204,21,0.10)'; g.fillRect(x1, top - 1, x2 - x1, rowH * 6);
-                g.strokeStyle = '#facc15'; g.lineWidth = 1; g.strokeRect(x1, top - 1, x2 - x1, rowH * 6);
-                if ((x2 - x1) >= 20) {   // 框夠寬才放徽章
-                    g.fillStyle = w.dir === 1 ? '#dc2626' : '#16a34a';
-                    g.fillRect(x1, top - 1, 19, 10);
-                    g.fillStyle = '#fff'; g.font = 'bold 8px sans-serif';
-                    g.fillText(w.dir === 1 ? '▲多' : '▼空', x1 + 2, top + 4);
-                    g.font = '9px sans-serif';
-                }
-            }
-            // 六列箭頭
-            g.font = '9px sans-serif'; g.textBaseline = 'middle';
-            const half = Math.min(3.4, BW * 0.4), ah = 5;
-            for (let k = 0; k < 6; k++) {
-                const cy = top + k * rowH + rowH / 2;
-                g.fillStyle = '#8b949e'; g.fillText(v.dimDef[k].nm, 1, cy);
-                for (let bi = 0; bi < NB; bi++) {
-                    const s = bucket[k][bi]; if (s == null) continue;
-                    const cx = L + bi * BW + BW / 2;
-                    if (s > 0) { g.fillStyle = '#f87171'; g.beginPath(); g.moveTo(cx, cy - ah / 2); g.lineTo(cx - half, cy + ah / 2); g.lineTo(cx + half, cy + ah / 2); g.closePath(); g.fill(); }
-                    else if (s < 0) { g.fillStyle = '#4ade80'; g.beginPath(); g.moveTo(cx, cy + ah / 2); g.lineTo(cx - half, cy - ah / 2); g.lineTo(cx + half, cy - ah / 2); g.closePath(); g.fill(); }
-                    else { g.fillStyle = '#4b5563'; g.fillRect(cx - 1.5, cy - 0.5, 3, 1); }
-                }
-            }
-            // 時間刻度
-            g.fillStyle = '#6b7280'; g.font = '8px monospace';
-            [['09', 0], ['10', 60], ['11', 120], ['12', 180], ['13', 240]].forEach(([t, m]) => g.fillText(t, xOf(m), H - 5));
         } catch (_) {}
     },
 
@@ -26484,6 +26486,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!card) return;
         const A = this._tickAcc;
         if (!A || A.sym !== String(sym) || A.pts.length < 5) { card.classList.add('hidden'); return; }
+        // 🕐 V70.1.0 紀錄區間(使用者要求:寫清楚累積了什麼時間到什麼時間)
+        const _t2 = ms => { const d = new Date(new Date(ms).toLocaleString('en-US', { timeZone: 'Asia/Taipei' })); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+        const _rangeTxt = `紀錄 ${_t2(A.t0)}~${_t2(Date.now())}`;
         const big = Math.round(A.big), retail = Math.round(A.retail);
         const bigCls = big > 0 ? 'text-red-300' : big < 0 ? 'text-green-300' : 'text-gray-300';
         const rCls = retail > 0 ? 'text-red-300' : retail < 0 ? 'text-green-300' : 'text-gray-300';
@@ -26504,7 +26509,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2">
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-[11px] font-black text-gray-100">🐋 大戶 vs 🐑 散戶 累積流向 <button onclick="alert('🐋 大戶控盤(逐筆回推)\\n\\n每一筆成交:成交在賣價=主動買(+)、成交在買價=主動賣(−)。\\n單筆 ≥50 張=大戶手筆;<10 張=散戶。\\n\\n・大戶累積線向上=主力邊拉邊買(偏多)\\n・大戶賣、散戶買=倒貨給散戶(危險)\\n・付費籌碼 App 的「大戶控盤」同原理\\n\\n⚠️ 免費資料一次只給最近 100 筆 → 從你開頁起持續累積,開越久越完整(非全日);確認以收盤後真實分點為準。'); event.stopPropagation();" class="text-[10px] text-gray-500">ⓘ</button></span>
-                    <span class="text-[9px] text-gray-500">開頁後累積・逐筆回推</span>
+                    <span class="text-[9px] text-gray-500">${_rangeTxt}・逐筆回推</span>
                 </div>
                 <div class="flex h-2.5 rounded-full overflow-hidden bg-[#21262d] mb-1">
                     <div class="${big >= 0 ? 'bg-red-500' : 'bg-green-500'} h-full" style="width:${bigShare}%"></div>
@@ -27984,6 +27989,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     _renderIntradayChart(el, candles, tf) {
+        // ⚔️ V70.1.0 分時模式整併六脈箭頭(第 3 格),圖高 220→300;1/5分維持 220
+        try { const _h = tf === 'ts' ? '300px' : '220px'; if (el.style.height !== _h) el.style.height = _h; } catch (_) {}
         const chart = echarts.getInstanceByDom(el) || echarts.init(el, 'dark');
         // 時間標籤:date 為 ISO(含 +08:00)→ 取 HH:MM
         const labels = candles.map(c => {
@@ -28008,6 +28015,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const closes = grid.map(t => { const c = byT.get(t); return c ? +c.close : null; });
             const avgs = grid.map(t => { const c = byT.get(t); return (c && c.average > 0) ? +c.average : null; });
             const volsTs = grid.map(t => { const c = byT.get(t); return c ? { value: +c.volume || 0, itemStyle: { color: c.close >= c.open ? '#f87171' : '#4ade80' } } : null; });
+            // ⚔️ V70.1.0 六脈箭頭整併(使用者:要時間對照)— 與價/量共用同一條時間軸,十字線直接對照
+            const _six = (this._isixDims && this._isixDims.sym === this._intradayLoadedSym && (Date.now() - this._isixDims.at) < 1800000) ? this._isixDims : null;
+            const _rowNames = ['昨收', 'RSI', 'MACD', '趨勢', '斜率', '均價'];   // yAxis category 底→頂
+            const _sixSeries = _six ? _six.dims.map((serie, k) => ({
+                name: _rowNames[5 - k], type: 'scatter', xAxisIndex: 2, yAxisIndex: 2, silent: true, z: 4, symbolSize: 5.5,
+                data: serie.map((d, i) => { const m = _six.mins[i]; if (!d || m == null || m < 0 || m > 270) return null;
+                    return { value: [m, 5 - k], symbol: 'triangle', symbolRotate: d === 1 ? 0 : 180, itemStyle: { color: d === 1 ? '#f87171' : '#4ade80' } }; }).filter(Boolean),
+            })) : [];
             // 🚧 V70.0.3:漲跌停價;當日高/低進到停板 2.5% 內時,y 軸自動把停板線納入(不然 markLine 在軸外看不到)
             const _lu = prevC != null ? this._dtLimitPrice(prevC, 1) : null, _ld = prevC != null ? this._dtLimitPrice(prevC, -1) : null;
             chart.setOption({
@@ -28024,10 +28039,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         const bias = c.average > 0 ? (c.close - c.average) / c.average * 100 : null;
                         return `${grid[p.dataIndex]}<br>價 <b>${c.close}</b> (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%)${bias != null ? `<br>離均價 ${bias >= 0 ? '+' : ''}${bias.toFixed(2)}%` : ''}<br>量 ${(+c.volume || 0).toLocaleString()}`;
                     } },
-                grid: [{ left: '13%', right: '3%', top: '5%', height: '62%' }, { left: '13%', right: '3%', top: '73%', height: '20%' }],
+                axisPointer: { link: [{ xAxisIndex: 'all' }] },
+                grid: [{ left: '13%', right: '3%', top: '4%', height: '44%' }, { left: '13%', right: '3%', top: '53%', height: '13%' }, { left: '13%', right: '3%', top: '71%', height: '23%' }],
                 xAxis: [
                     { type: 'category', data: grid, gridIndex: 0, boundaryGap: false, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#30363d' } } },
-                    { type: 'category', data: grid, gridIndex: 1, boundaryGap: false, axisLabel: { color: '#8b949e', fontSize: 9, interval: 59 }, axisLine: { lineStyle: { color: '#30363d' } } },
+                    { type: 'category', data: grid, gridIndex: 1, boundaryGap: false, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#30363d' } } },
+                    { type: 'category', data: grid, gridIndex: 2, boundaryGap: false, axisLabel: { color: '#8b949e', fontSize: 9, interval: 59 }, axisLine: { lineStyle: { color: '#30363d' } } },
                 ],
                 yAxis: [
                     { scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#21262d' } }, axisLabel: { color: '#8b949e', fontSize: 9 } ,
@@ -28035,6 +28052,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                       min: ({ min }) => (_ld != null && min <= _ld * 1.025) ? Math.min(min, _ld * 0.998) : min,
                       max: ({ max }) => (_lu != null && max >= _lu * 0.975) ? Math.max(max, _lu * 1.002) : max },
                     { scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { color: '#8b949e', fontSize: 9 } },
+                    { type: 'category', gridIndex: 2, data: _rowNames, axisLabel: { color: '#8b949e', fontSize: 8 }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } },
                 ],
                 series: [
                     { name: '分時價', type: 'line', data: closes, xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.1, connectNulls: false,
@@ -28064,6 +28082,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                       ] } : undefined },
                     { name: '均價', type: 'line', data: avgs, xAxisIndex: 0, yAxisIndex: 0, showSymbol: false, smooth: 0.1, connectNulls: false, lineStyle: { color: '#e5e7eb', width: 1.2, opacity: 0.95 }, z: 4, tooltip: { show: false } },
                     { name: '量', type: 'bar', data: volsTs, xAxisIndex: 1, yAxisIndex: 1 },
+                    ..._sixSeries,
                 ],
             }, { replaceMerge: ['series', 'visualMap'] });
             setTimeout(() => { try { chart.resize(); } catch (_) {} }, 50);
