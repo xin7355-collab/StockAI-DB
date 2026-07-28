@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3009,7 +3009,7 @@ const AI_PROMPT_TEMPLATES = {
 - 🚫 任何狀況禁建議「下跌攤平」或「倒金字塔」(底部 1 張、噴上去才一口氣大量追)，違反視為無效輸出。
 
 最後獨立一行，僅輸出以下其中一種燈號（不加其他文字）：
-🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退`,
+✅強力買進 或 ⚠️觀望或減碼 或 ⛔強制撤退`,
 
     dualBlade: `你是「台股首席策略長」，融合籌碼流與技術位階學。說話語氣霸氣、幽默且切中要害，完全基於提供的數據分析，拒絕過度延伸的幻想。
 
@@ -3026,7 +3026,7 @@ const AI_PROMPT_TEMPLATES = {
 1. **【戰況與消息體檢】**：點破籌碼面與基本面是否有背離現象。
 2. **【關鍵價位與雙刀流策略】**：給出具體操作建議（針對目前庫存狀態與連動族群）。
 3. **【操盤指令】**：用一句霸氣的話定調今日操作。
-4. **【最終判定燈號】**：最後獨立一行，僅輸出：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。`
+4. **【最終判定燈號】**：最後獨立一行，僅輸出：✅強力買進 或 ⚠️觀望或減碼 或 ⛔強制撤退。`
 };
 
 const masterWorkerCode = `
@@ -6579,8 +6579,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.2.8',
+    _APP_VERSION: 'V70.2.9',
     _CHANGELOG: [
+        { v: 'V70.2.9', dt: '2026-07-28', t: '🚦 燈號統一收尾:AI 判定與採礦端也一起改', d: [
+            '把同一條規則延伸到 AI 提示詞與採礦端:AI 最終判定改「✅強力買進 / ⚠️觀望或減碼 / ⛔強制撤退」;順手修 AI 結論的上色是反的(強力買進以前顯綠色、撤退顯紅色)→ 改回台股慣例(買進紅、撤退綠),且新舊格式都相容不會漏上色。',
+            '採礦端(融資水位/雷達避開/回測穩健度/後端 AI 提示)11 處同步。',
+        ]},
         { v: 'V70.2.8', dt: '2026-07-28', t: '🚦 燈號大統一:紅綠只代表漲跌,不再兼職「安全/危險」', d: [
             '你點出的衝突全 App 修正:過去 🟢 有時是「安全」有時是「下跌」、🔴 有時是「危險」有時是「上漲」→ 現在 🔴🟢 只表示漲跌方向(紅漲綠跌),安全/危險改用 ✅ 安全 ・ ⚠️ 警戒 ・ ⛔ 危險 ・ 🚨 緊急,不會再看反。',
             '共修 60 處(注意股8款掃描、處置、風險指數、外資期貨警戒、質押、估值、AI 操作建議、選股雷達排序、教學文案…)。',
@@ -29070,7 +29074,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="text-xs text-teal-300 font-black mb-1.5 flex items-center gap-1">
                 🔬 樣本外驗證(防 overfit) <span class="text-gray-500 font-normal text-[10px]">(訓練 ${Math.round(wf.train_ratio*100)}% / 驗證 ${Math.round(wf.test_ratio*100)}%)</span>
             </div>
-            <div class="text-[9px] text-gray-500 mb-1.5">|gap| ≤ 5pp 🟢 穩健 / 5-10pp 🟡 中性 / &gt; 10pp 🔴 疑似 overfit(別信)。樣本 &lt; 30 統計顯著性低。</div>
+            <div class="text-[9px] text-gray-500 mb-1.5">|gap| ≤ 5pp ✅ 穩健 / 5-10pp ⚠️ 中性 / &gt; 10pp ⛔ 疑似 overfit(別信)。樣本 &lt; 30 統計顯著性低。</div>
             <div class="grid grid-cols-2 gap-1.5">${rowsHtml}</div>
         </div>`;
         box.querySelector('#signalAccuracyBody').insertAdjacentHTML('beforeend', sectionHtml);
@@ -29406,8 +29410,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             .replace(/🔥可以買/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded text-sm shadow-[0_0_10px_rgba(248,113,113,0.4)]">🔥可以買</span>')
             .replace(/🟢不能買/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.4)] text-sm">🟢不能買</span>')
             .replace(/🟡觀望/g,   '<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">🟡觀望</span>')
-            .replace(/🟢強力買進/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm">🟢強力買進</span>')
-            .replace(/🔴強制撤退/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded text-sm">🔴強制撤退</span>')
+            .replace(/[🟢✅]強力買進/g, '<span class="text-red-400 font-bold bg-red-900/30 border border-red-700 px-1.5 py-0.5 rounded text-sm">✅強力買進</span>')
+            .replace(/[🔴⛔]強制撤退/g, '<span class="text-green-400 font-bold bg-green-900/30 border border-green-700 px-1.5 py-0.5 rounded text-sm">⛔強制撤退</span>')
+            .replace(/[🟡⚠️]觀望或減碼/g, '<span class="text-yellow-400 font-bold bg-yellow-900/30 border border-yellow-700 px-1.5 py-0.5 rounded text-sm">⚠️觀望或減碼</span>')
             .replace(/\n/g, '<br>');
 
         const bb = (bottom_bar || '').trim();

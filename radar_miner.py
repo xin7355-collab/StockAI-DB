@@ -1689,7 +1689,7 @@ def build_falcon_scores():
             if score >= 75:   label = "🦅 強力建倉"
             elif score >= 60: label = "✅ 可建倉"
             elif score >= 45: label = "🟡 觀望"
-            else:             label = "🔴 避開"
+            else:             label = "⛔ 避開"
 
             scores[sym] = {"score": score, "base": base, "label": label,
                            "factors": factors[:6], "stale": stale, "close": round(c, 2)}

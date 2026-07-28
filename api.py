@@ -92,7 +92,7 @@ HEDGE_FUND_SYSTEM_PROMPT = (
     "若有持股→精算防守底線與停利目標的具體數字，下達『分批出貨🤑鎖利』或『跌破 XX 元紀律清倉』的軍令狀。\\n"
     "【🔥 首席操盤手終極喊話】籌碼技術俱佳→堅定信心喊話『別被主力洗盤甩轎，抱緊處理』；"
     "主力倒貨或大盤崩壞→無情點醒『別抱著空氣泡泡做夢，立刻撤退』。"
-    '最後獨立一行輸出最終判定：🟢強力買進 或 🟡觀望或減碼 或 🔴強制撤退。"\n'
+    '最後獨立一行輸出最終判定：✅強力買進 或 ⚠️觀望或減碼 或 ⛔強制撤退。"\n'
     "}"
 )
 
@@ -894,7 +894,7 @@ async def morning_brief(db: sqlite3.Connection = Depends(get_db)):
     fi_net    = macro.get("fi_net") or 0
     fi_label  = ("多方無憂" if fi_net > -10000
                  else "⚠️ 暗流湧動" if fi_net > -25000
-                 else "🔴 紅色警戒" if fi_net > -40000
+                 else "⛔ 紅色警戒" if fi_net > -40000
                  else "🚨 黑天鵝")
 
     vix_val   = macro.get("vix") or 0
@@ -1221,7 +1221,7 @@ _CHAT_SYSTEM_PROMPT = (
     "  3. query_broker_chips   — 個股主力分點 Top10 買 / Top10 賣（含中文券商名）\n"
     "  4. search_latest_news   — 個股最新 3 則新聞\n"
     "個股分析時建議的工具呼叫順序：query_stock_data → query_broker_chips → search_latest_news。\n"
-    "回答用權證小哥白話文，附具體數字與點位，標出🟢/🟡/🔴 操作燈號。\n"
+    "回答用權證小哥白話文，附具體數字與點位，標出✅可買/⚠️觀望/⛔避開 操作燈號(紅綠只代表漲跌,不可用於安全危險)。\n"
     "禁止『根據資料』『以下為您分析』等罐頭廢話，要像戰場參謀直接下令。"
 )
 

@@ -3,9 +3,9 @@
 
 把過去 480 天切成「訓練集 384 天 + 驗證集 96 天」(8:2),分別計算每訊號的勝率,
 比對「訓練 vs 驗證」差距 (gap):
-- gap ≤ 5pp = 🟢 穩健(訊號真的有效)
+- gap ≤ 5pp = ✅ 穩健(訊號真的有效)
 - 5 < gap ≤ 10pp = 🟡 中性(略有差異,可保留觀察)
-- gap > 10pp = 🔴 疑似 overfit(歷史好不代表未來會好,別信)
+- gap > 10pp = ⛔ 疑似 overfit(歷史好不代表未來會好,別信)
 
 輸出 data/walk_forward.json 供前端「回測」tab 顯示。
 """
@@ -54,9 +54,9 @@ def _scan_split(rows, sym, attention_set, idx_start, idx_end):
 def _classify_gap(gap):
     if gap is None: return None, '?'
     a = abs(gap)
-    if a <= 5: return '🟢 穩健', '#34d399'
+    if a <= 5: return '✅ 穩健', '#34d399'
     if a <= 10: return '🟡 中性', '#facc15'
-    return '🔴 疑似 overfit', '#f87171'
+    return '⛔ 疑似 overfit', '#f87171'
 
 
 def main():

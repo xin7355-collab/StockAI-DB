@@ -2127,9 +2127,9 @@ def generate_bubble_warning():
         margin_value_k = int(margin_str.replace(',', ''))
         margin_value_100m = margin_value_k / 100000  # 轉換為億元
 
-        status = "🟢 健康 (散戶槓桿安定)"
+        status = "✅ 健康 (散戶槓桿安定)"
         if margin_value_100m > 3200:
-            status = "🔴 極度危險 (融資餘額破3200億，散戶槓桿過熱，提防多殺多斷頭潮)"
+            status = "⛔ 極度危險 (融資餘額破3200億，散戶槓桿過熱，提防多殺多斷頭潮)"
         elif margin_value_100m > 2800:
             status = "🟡 警戒 (融資水位偏高，盤勢易震盪)"
 

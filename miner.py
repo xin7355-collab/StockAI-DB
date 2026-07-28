@@ -3565,7 +3565,7 @@ def build_bubble_warning():
     if total_100m is not None:
         # 主來源成功:用絕對值 + (有的話) 相對水位 雙判定取較嚴格訊號
         # 絕對值門檻參考使用者建議:>3200 億極度危險、>2800 億警戒
-        abs_status = '🔴 極度危險' if total_100m > 3200 else '🟡 警戒' if total_100m > 2800 else '🟢 健康'
+        abs_status = '⛔ 極度危險' if total_100m > 3200 else '⚠️ 警戒' if total_100m > 2800 else '✅ 健康'
         abs_level  = 'red'         if total_100m > 3200 else 'orange'  if total_100m > 2800 else 'gray'
         if level_pct is not None:
             rel_level = 'red' if level_pct >= 80 else 'orange' if level_pct >= 60 else 'gray'
