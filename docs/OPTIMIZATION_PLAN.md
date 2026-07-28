@@ -168,8 +168,8 @@
 - `fav + inv → allSyms` 樣板複製 4 次(4050/4091/4183/4307);`JSON.parse(localStorage.getItem('proTerminalInv'))` 全檔 **25 次** → 抽 `_getInventory()`
 - `stockToSector` 硬編碼表複製 3 份,且 14658 那份**自身有重複 key**(3017/2474/6669/2317 各寫兩次)
 
-### [ ] P2-7 `_syncMarketTab` 做 30 次 `innerHTML` DOM→DOM 複製
-- `6488-6493` 的 `copy()` × 30 次,每次進大盤頁全跑一遍;內容都是純數字 → 改 `textContent`
+### [x] P2-7 `_syncMarketTab` 做 30 次 `innerHTML` DOM→DOM 複製 ✅ V69.8.9(修正原計畫)
+- **「內容都是純數字」是誤報**:來源(mktFI/mktTWII_chg 等)是 `<span class="顏色">` 標記,改 `textContent` 會掉色 → 實作改「內容相同就跳過寫入」,免 30 次無謂 re-parse,行為零改變
 
 ---
 
@@ -283,14 +283,14 @@ V69.7.5 只改了「總覽 vs 觀察頁」兩處,還有 5 處沒動:
 
 ## 📝 文件修正(CLAUDE.md 已過期處)
 
-### [ ] D-1 「三處清單」鐵律已過期
+### [x] D-1 「三處清單」鐵律已過期 ✅ V69.8.4 表格列 + V69.8.9 L676 段落都已改
 - CLAUDE.md:317 / 676 說新增 K 棒偵測器要同步加進 `renderKbarTactics` + `renderKbarScore` + `runKlineAudit` 三處
 - **實測**:`renderKbarTactics` 活的 ✅、`renderKbarScore` 死的 ❌、`runKlineAudit` 死的 ❌
 - **改成**:只需加進 `renderKbarTactics`
 
-### [ ] D-2 「GitHub Pages 目前使用約 100MB」→ 實際 **388 MB**
+### [x] D-2 「GitHub Pages 目前使用約 100MB」→ 實際 **388 MB** ✅ V69.8.4 已改
 
-### [ ] D-3 加一條新鐵律:**版本註解不再累加**
+### [x] D-3 加一條新鐵律:**版本註解不再累加** ✅ V69.8.7 已寫進版本號規則
 第 18 行已 93.5 KB,是每次 bump 累積出來的。改成只留當前版本,歷史進 CHANGELOG.md。
 
 ---
