@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1832,25 +1832,6 @@
                     <div class="text-center text-[9px] text-gray-500 mt-1">進頁自動分析 ・ 當日快取</div>
                 </div>
                 <div id="predictionAuditCard" class="hidden"></div>
-                <div id="predictionPanel" class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-cyan-500">
-                    <!-- 🎯 V41.19 回測頁精簡:移除「AI 雲端多維掃描」+「5MA/20MA 長線波段回測」,只留朱老師方式波段回測(卡片自帶標題與結論) -->
-                    <div id="chuBacktestCard" class="hidden"></div>
-                    <div id="chuBacktestEmpty" class="text-[11px] text-gray-500 text-center py-3">📊 朱老師方式波段回測載入中(資料 ≥60 根才算)…</div>
-                </div>
-                <div class="panel p-4 border border-[#30363d] rounded-lg bg-[#0d1117] shadow-sm">
-                    <h2 class="text-base font-black text-white mb-1 border-b border-gray-700 pb-2 flex items-center gap-1.5 cursor-pointer" onclick="alert('【朱老師機率(四大金剛逐日判讀)】\n\n這張表不再是「隔日相似 K 線」的接近五五波統計。V41.20 起底層換成朱家泓四大金剛,逐日用純公式判讀:\n\n👑 趨勢:波段頭頭高+底底高=多 / 頭頭低+底底低=空\n📈 均線:MA5>MA10>MA20>MA60 多頭排列\n🕯️ K線:強勢發動棒(長紅破昨高)/ 三星・兩根轉折\n📊 成交量:價漲量增=配合 / 量增黑K=出貨\n\n• 金剛欄 = 當日「幾個金剛同方向」→ 🟢偏多(多≥3)/ 🔴偏空(空≥3)/ 🟡分歧\n• 回後買上漲:當日是否出現朱老師進場點 → 🎯高勝率(三條件齊,約8成)/ ⚡力道弱(可小量試)/ 🚫做頭(別追)\n• 隔日實際漲跌:從 K 線比對該日收盤 vs 隔日收盤\n• 命中欄:金剛偏多且隔日漲(或偏空且隔日跌)= ● 對;方向反 = ○ 反;分歧 = — 觀望(朱老師教條:四大金剛不同調就不下單)\n\n⚠️ 這仍是「隔日」對照,朱老師本質是波段(賺大賠小),真正該看的是上方「朱老師方式波段回測」的期望值與賺賠比。\n🟢 偏多｜🔴 偏空｜🟡 分歧觀望')">🎯 朱老師機率 <span class="text-[10px] text-gray-500 font-normal ml-1">(點擊看說明)</span></h2>
-                    <!-- 🎯 V41.20 底層換成四大金剛逐日判讀(取代隔日相似 K 線統計) -->
-                    <div class="text-[9px] text-gray-500 mb-2 leading-tight">ⓘ 金剛欄=朱老師四大金剛(趨勢/均線/K線/量)當日同方向數 ・ 回後買上漲=當日是否出現朱式進場點(🎯高勝率/⚡力道弱/🚫做頭),皆純公式非 AI</div>
-                    <div class="text-[9px] text-gray-500 mb-1.5 flex items-center gap-3 flex-wrap">
-                        <span class="flex items-center gap-1">📖 <span class="inline-block bg-green-500/10 text-green-400 border border-green-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">● 對</span> = 金剛方向命中隔日</span>
-                        <span class="flex items-center gap-1"><span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">○ 反</span> = 方向反了</span>
-                        <span class="flex items-center gap-1"><span class="inline-block bg-gray-500/10 text-gray-400 border border-gray-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded">— 觀望</span> = 分歧不下單</span>
-                    </div>
-                    <table class="w-full text-left border-collapse">
-                        <thead><tr class="border-b border-[#30363d] text-gray-400 text-[10px] tracking-wider"><th class="py-1.5 px-1 font-bold">日期</th><th class="py-1.5 px-1 font-bold text-right">收盤</th><th class="py-1.5 px-1 font-bold text-center">四大金剛</th><th class="py-1.5 px-1 font-bold text-center">回後買上漲</th><th class="py-1.5 px-1 font-bold text-center">隔日實際</th></tr></thead>
-                        <tbody id="backtestTableBody" class="text-sm font-mono"><tr><td colspan="5" class="text-center py-6 text-gray-500">運算中...</td></tr></tbody>
-                    </table>
-                </div>
             </div>
 
             <!-- 🚨 V20.5 — 處置股 tab(從籌碼 tab 搬過來 + 加實戰操作秘訣) -->
@@ -6525,8 +6506,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.1.0',
+    _APP_VERSION: 'V71.1.2',
     _CHANGELOG: [
+        { v: 'V71.1.2', dt: '2026-07-28', t: '🗑️ 回測頁刪掉兩張沒用的卡(你要求的)', d: [
+            '刪除「🎯 朱老師方式波段回測」和「朱老師機率(四大金剛逐日判讀)」兩張卡,連同背後只有它們在用的運算一併清掉,共 244 行。',
+            '回測頁保留「判斷準確率記分卡」(對帳你過去的判斷準不準),選股頁的「期望值榜」也不受影響 — 那是另一個功能,讀採礦資料,只是名字很像。',
+        ]},
         { v: 'V71.1.0', dt: '2026-07-28', t: '📐 隔夜足跡的比較基準改成「會自動更新」', d: [
             '「🌙 隔夜資金足跡」用來判斷「全市場前 20% / 中段 / 最後 20%」的門檻,改成由採礦機每天重算,不再寫死在程式裡(寫死的數字過幾個月就失真了)。卡片下方會標出門檻是哪一天、用幾檔股票算的。',
             '順手把量測日期改成有顯示年份 — 跨年時才不會把去年的門檻誤看成今年的。',
@@ -29881,7 +29866,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const _prevClose = (this.rawDailyData && this.rawDailyData.length >= 2)
             ? this.rawDailyData[this.rawDailyData.length - 2].close : pC;
         this.fetchInstitutionTarget(this.currentSymbolId, _prevClose);
-        this.renderBacktest();
+        try { this.renderPredictionAudit(); } catch (_) {}   // 🗑️ V71.1.2 朱老師機率/波段回測兩卡已刪,只留判斷準確率記分卡
         // 📌 朱老師心法刷新:用 _computeChuTechProfile 取真 sigCount/trendJudge
         //     (alpha 不含這兩欄,V14.13 之前永遠卡黃「訊號運算中」)
         try {
@@ -30560,151 +30545,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
 
-    // 🎯 V41.17 — 朱老師方式波段回測(純公式,逐根模擬):
-    //   進場=回後買上漲(波段多頭 + 剛站上5MA + 紅K實體≥2% + 量增 + 收破昨高)
-    //   出場=紀律停利停損(收盤跌破5MA=停利 / 跌破進場K最低或 -5%=硬停損)
-    //   → 回報 勝率/賺賠比/每趟期望值/最大回撤/累積報酬,才是朱老師「賺大賠小」該看的指標(非隔日準確度)
-    _chuSwingBacktest(data) {
-        const ind = this.indicators || {};
-        if (!Array.isArray(data) || data.length < 60 || !Array.isArray(ind.ma5) || !Array.isArray(ind.ma20)) return null;
-        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
-        const ma5 = ind.ma5, ma20 = ind.ma20;
-        const trades = [];
-        let pos = null;
-        for (let i = 21; i < data.length; i++) {
-            const m5 = ma5[i], m20 = ma20[i], m5p = ma5[i - 1];
-            if (m5 == null || m20 == null || m5p == null) continue;
-            const c = C(data[i]), o = O(data[i]), pc = C(data[i - 1]), ph = H(data[i - 1]);
-            if (!pos) {
-                const uptrend = c > m20 && m5 >= m20;                       // 波段多頭(站月線+5>20)
-                const reclaim5 = pc < m5p && c >= m5;                       // 剛站回 5MA
-                const body = o > 0 ? (c - o) / o * 100 : 0;                 // 紅K實體%
-                const volUp = V(data[i]) > V(data[i - 1]);
-                if (uptrend && reclaim5 && body >= 2 && volUp && c > ph) {
-                    pos = { idx: i, px: c, stop: Math.min(L(data[i]), c * 0.95) };   // 停損=進場K低 或 -5%
-                }
-            } else {
-                const hitStop = c <= pos.stop, break5 = c < m5;
-                if (hitStop || break5) {
-                    trades.push({ profit: (c - pos.px) / pos.px * 100, bars: i - pos.idx, reason: hitStop ? '停損' : '跌破5MA' });
-                    pos = null;
-                }
-            }
-        }
-        if (!trades.length) return { count: 0 };
-        const wins = trades.filter(t => t.profit > 0), losses = trades.filter(t => t.profit <= 0);
-        const winRate = wins.length / trades.length * 100;
-        const avg = arr => arr.length ? arr.reduce((a, t) => a + t.profit, 0) / arr.length : 0;
-        const avgProfit = avg(trades), avgWin = avg(wins), avgLoss = avg(losses);
-        const plRatio = avgLoss !== 0 ? Math.abs(avgWin / avgLoss) : (avgWin > 0 ? 99 : 0);
-        let eq = 0, peak = 0, maxDD = 0, comp = 1;
-        for (const t of trades) { eq += t.profit; peak = Math.max(peak, eq); maxDD = Math.min(maxDD, eq - peak); comp *= (1 + t.profit / 100); }
-        return { count: trades.length, winRate, avgProfit, avgWin, avgLoss, plRatio, maxDD, totalReturn: (comp - 1) * 100, avgBars: trades.reduce((a, t) => a + t.bars, 0) / trades.length };
-    },
 
-    _renderChuBacktest() {
-        const el = document.getElementById('chuBacktestCard');
-        if (!el) return;
-        const emptyEl = document.getElementById('chuBacktestEmpty');
-        const r = this._chuSwingBacktest(this.activeData);
-        if (!r) { el.classList.add('hidden'); el.innerHTML = ''; if (emptyEl) { emptyEl.classList.remove('hidden'); emptyEl.textContent = '📊 歷史資料不足(需 ≥60 根 K 線),無法跑波段回測'; } return; }
-        if (emptyEl) emptyEl.classList.add('hidden');
-        if (!r.count) {
-            el.classList.remove('hidden');
-            el.innerHTML = `<div class="text-xs text-gray-500 mb-1.5">🎯【朱老師方式波段回測】(回後買上漲 + 跌破5MA停利)${(() => { const a = this.activeData || []; return a.length >= 2 ? ` <span class="text-[9px] text-gray-600">${this._dW(a[0].date)}~${this._dW(a[a.length - 1].date)}</span>` : ''; })()}</div><div class="bg-[#161b22] border border-[#30363d] rounded p-3 text-[11px] text-gray-400">此股歷史區間內沒出現符合「回後買上漲」的進場點(嚴格紀律,寧缺勿濫);換強勢波段股再看。</div>`;
-            return;
-        }
-        const pos = v => v >= 0 ? 'text-red-300' : 'text-green-300';   // 台股色
-        const g = (label, val, cls) => `<div class="bg-[#161b22] border border-[#30363d] rounded p-2"><div class="text-[10px] text-gray-400">${label}</div><div class="font-black text-base mt-0.5 font-mono ${cls || 'text-gray-100'}">${val}</div></div>`;
-        // 綜合評語:期望值>0 + 賺賠比>1.5 = 朱式紀律有效
-        const goodExp = r.avgProfit > 0, goodPL = r.plRatio >= 1.5;
-        let verdict, vc;
-        if (goodExp && goodPL) { verdict = '✅ 正期望值 + 賺大賠小 → 這股適合照朱老師紀律做波段'; vc = 'text-red-300'; }
-        else if (goodExp) { verdict = '🟡 正期望但賺賠比普通 → 可做,但要嚴守停損別凹單'; vc = 'text-yellow-300'; }
-        else { verdict = '🔴 歷史期望值為負 → 這股用此紀律不好賺,別硬做(換股或等更明確訊號)'; vc = 'text-green-300'; }
-        el.classList.remove('hidden');
-        el.innerHTML = `
-            <div class="text-xs text-gray-500 mb-1.5">🎯【朱老師方式波段回測】<span class="text-[10px]">回後買上漲進場 · 跌破5MA停利 · 破進場K低/-5%停損</span></div>
-            <div class="grid grid-cols-3 gap-1.5 mb-1.5">
-                ${g('交易次數', r.count + ' 次')}
-                ${g('勝率', r.winRate.toFixed(0) + '%', r.winRate >= 50 ? 'text-red-300' : 'text-yellow-300')}
-                ${g('賺賠比', r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(2), r.plRatio >= 1.5 ? 'text-red-300' : 'text-gray-100')}
-                ${g('每趟期望值', (r.avgProfit >= 0 ? '+' : '') + r.avgProfit.toFixed(2) + '%', pos(r.avgProfit))}
-                ${g('累積報酬', (r.totalReturn >= 0 ? '+' : '') + r.totalReturn.toFixed(0) + '%', pos(r.totalReturn))}
-                ${g('最大回撤', r.maxDD.toFixed(0) + '%', 'text-gray-300')}
-            </div>
-            <div class="text-[10px] text-gray-500 mb-1.5">平均賺 <b class="text-red-300">+${r.avgWin.toFixed(1)}%</b> / 平均賠 <b class="text-green-300">${r.avgLoss.toFixed(1)}%</b> · 平均抱 ${r.avgBars.toFixed(0)} 天</div>
-            <div class="bg-[#161b22] border-l-4 ${vc.replace('text-', 'border-').replace('-300', '-500')} border-y border-r border-[#30363d] rounded-r p-2">
-                <div class="text-[11px] font-bold ${vc}">${verdict}</div>
-            </div>
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 重點看「每趟期望值」與「賺賠比」——朱老師是靠「高勝率進場 + 嚴格停損」賺大賠小,不是靠猜隔日漲跌。純公式歷史回測,過去績效不代表未來。</div>`;
-    },
 
-    // 🎯 V41.20 — 朱老師四大金剛「歷史逐日」計算(給回測表底層用):對任一歷史 bar index i 算趨勢/均線/K線/量
-    //   與 renderFourGuardians 完全同邏輯,差別只在吃 index(讀 this.indicators[i] 對齊,_matchStarAt/_match2BarAt 傳 i)。
-    //   回 {bull,bear,verdict,states};verdict:多3+=bull / 空3+=bear / 其餘 neutral(分歧=朱老師不下單)。純公式零 AI。
-    _fourGuardianScoreAt(data, i) {
-        if (!Array.isArray(data) || i < 20 || i > data.length - 1) return null;
-        const ind = this.indicators || {};
-        if (!Array.isArray(ind.ma5)) return null;
-        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
-              H = b => +((b?.high ?? b?.h) || 0), V = b => +((b?.volume ?? 0) || 0);
-        const G = [];
-        // ① 👑 趨勢:±8 fractal(data[0..i]),頭頭高+底底高=多 / 頭頭低+底底低=空
-        {
-            const SW = 8, from = Math.max(0, i - 120), peaks = [], troughs = [];
-            for (let j = from + SW; j <= i - SW; j++) {
-                const w = data.slice(j - SW, j + SW + 1), mx = Math.max(...w.map(C)), mn = Math.min(...w.map(C));
-                if (C(data[j]) === mx) peaks.push(C(data[j]));
-                if (C(data[j]) === mn) troughs.push(C(data[j]));
-            }
-            let st = 'neutral';
-            if (peaks.length >= 2 && troughs.length >= 2) {
-                const ph = peaks[peaks.length - 1] > peaks[peaks.length - 2], th = troughs[troughs.length - 1] > troughs[troughs.length - 2];
-                const pl = peaks[peaks.length - 1] < peaks[peaks.length - 2], tl = troughs[troughs.length - 1] < troughs[troughs.length - 2];
-                if (ph && th) st = 'bull'; else if (pl && tl) st = 'bear';
-            }
-            G.push(st);
-        }
-        // ② 📈 均線:多頭排列 MA5>MA10>MA20>MA60(index 對齊 this.indicators)
-        {
-            const ma5 = ind.ma5?.[i], ma10 = ind.ma10?.[i], ma20 = ind.ma20?.[i], ma60 = ind.ma60?.[i], pC = C(data[i]);
-            let st = 'neutral';
-            if ([ma5, ma10, ma20, ma60].every(x => x != null)) {
-                if (ma5 >= ma10 && ma10 >= ma20 && ma20 >= ma60) st = 'bull';
-                else if (ma5 < ma10 && ma10 < ma20) st = 'bear';
-            } else if (ma5 != null && ma20 != null) {
-                st = pC >= ma5 && ma5 >= ma20 ? 'bull' : (pC < ma5 && ma5 < ma20 ? 'bear' : 'neutral');
-            }
-            G.push(st);
-        }
-        // ③ 🕯️ K線:發動棒(長紅≥3%破昨高)+ 三星/兩根轉折 tone(單一引擎 _matchStarAt/_match2BarAt at i)
-        {
-            const body = O(data[i]) > 0 ? (C(data[i]) - O(data[i])) / O(data[i]) * 100 : 0;
-            const launch = body >= 3 && i > 0 && C(data[i]) > H(data[i - 1]);
-            let kb = 0;
-            try { const m = this._matchStarAt(data, i); if (m) kb += m.tone === 'bull' ? 1 : -1; } catch (_) {}
-            try { const m = this._match2BarAt(data, i); if (m) kb += m.tone === 'bull' ? 1 : -1; } catch (_) {}
-            let st = 'neutral';
-            if (launch && kb >= 0) st = 'bull';
-            else if (kb > 0) st = 'bull';
-            else if (kb < 0) st = 'bear';
-            G.push(st);
-        }
-        // ④ 📊 成交量:價漲量增=多 / 量增黑K(出貨)=空 / 其餘中性
-        {
-            const vma5 = ind.vma5?.[i], vCur = V(data[i]), vPrev = i > 0 ? V(data[i - 1]) : 0, red = C(data[i]) >= O(data[i]);
-            const volUp = vPrev > 0 && vCur >= vPrev * 1.2, bigVol = vma5 > 0 && vCur >= vma5 * 1.5;
-            let st = 'neutral';
-            if (red && (volUp || bigVol)) st = 'bull';
-            else if (!red && (volUp || bigVol)) st = 'bear';
-            G.push(st);
-        }
-        const bull = G.filter(x => x === 'bull').length, bear = G.filter(x => x === 'bear').length;
-        let verdict = 'neutral';
-        if (bull >= 3) verdict = 'bull'; else if (bear >= 3) verdict = 'bear';
-        return { bull, bear, verdict, states: G };
-    },
 
     // 🎯 V41.31 — 個股性格分類(純公式):趨勢波段股 / 箱型區間股 / 高波動飆股 / 牛皮存股型
     _stockPersonality(data) {
@@ -31412,88 +31254,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!s && !running) { this._backtest5DaySignals().then(() => this.renderPredictionAudit()).catch(() => {}); }
     },
 
-    renderBacktest() {
-        try { this.renderPredictionAudit(); } catch (_) {}   // 🎯 V69.5.0 判斷準確率記分卡
-        try { this._renderChuBacktest(); } catch (_) {}   // 🎯 V41.17 朱老師方式波段回測
-        const tbody = document.getElementById('backtestTableBody');
-        const data = this.activeData, last = data.length - 1;
-        if (last < 10) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-500">歷史資料不足</td></tr>`; return; }
-
-        let html = '';
-        for (let i = last; i >= Math.max(0, last - 9); i--) {
-            const pC = data[i].close;
-            const prevC = i > 0 ? data[i-1].close : pC;
-            const diff = pC - prevC;
-            const pct = prevC > 0 ? (diff / prevC) * 100 : 0;
-            const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500');
-            const sign = diff > 0 ? '+' : '';
-            const dShort = this._dW(data[i].date);   // 📅 V70.2.4 加星期
-
-            // 🎯 V41.20 底層換掉:「我的機率」欄 → 朱老師四大金剛(趨勢/均線/K線/量)逐日判讀
-            const g = this._fourGuardianScoreAt(data, i);
-            let gVerdict = null, wrHtml;
-            if (g) {
-                gVerdict = g.verdict;
-                const light = g.verdict === 'bull' ? '🟢' : (g.verdict === 'bear' ? '🔴' : '🟡');
-                const label = g.verdict === 'bull' ? '偏多' : (g.verdict === 'bear' ? '偏空' : '分歧');
-                const col = g.verdict === 'bull' ? 'text-red-400' : (g.verdict === 'bear' ? 'text-green-400' : 'text-yellow-400');
-                wrHtml = `<span class="${col} text-base font-black" title="趨勢/均線/K線/成交量 四大金剛,同方向 ${g.bull} 個做多、${g.bear} 個做空">${light} ${g.bull}/4</span><div class="text-[9px] text-gray-500">${label}</div>`;
-            } else {
-                wrHtml = '<span class="text-gray-600 text-[10px]">📝 資料不足</span>';
-            }
-
-            // 🎯 V41.20 回後買上漲訊號(取代看不懂的 Alpha 分):當日是否出現朱老師「回後買上漲」進場點
-            //   逐日切 data[0..i] 丟同一顆 _detectChuLongEntry(個股頁 K棒戰法/期望值榜用的那顆),純公式零 AI
-            let chuHtml;
-            try {
-                const sigs = this._detectChuLongEntry(data.slice(0, i + 1)) || [];
-                const buy  = sigs.find(s => s.tone === 'bull' && /高勝率做多買點/.test(s.title || ''));
-                const weak = sigs.find(s => s.tone === 'bull' && /做多買點/.test(s.title || ''));
-                const head = sigs.find(s => /做頭不建議/.test(s.title || ''));
-                if (buy)       chuHtml = '<span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="回檔後站上5MA + 紅K實體≥2% + 量增 + 收破昨高 = 朱老師約8成勝率買點">🎯 高勝率</span>';
-                else if (weak) chuHtml = '<span class="inline-block bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="站上5MA但攻擊力道未滿(紅K/量/過昨高缺一),可小量試">⚡ 力道弱</span>';
-                else if (head) chuHtml = '<span class="inline-block bg-gray-500/10 text-gray-400 border border-gray-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="高檔大量長紅½被跌破=做頭,朱:此後不要再回後買上漲">🚫 做頭</span>';
-                else           chuHtml = '<span class="text-gray-600 text-[10px]">—</span>';
-            } catch (_) {
-                chuHtml = '<span class="text-gray-600 text-[10px]">—</span>';
-            }
-
-            // 隔日實際漲跌(已過了的歷史日才能算,今日該行尚未發生 → '明日待定')
-            let nextHtml, hitHtml;
-            if (i < last && data[i+1]) {
-                const nC = data[i+1].close;
-                const nDiff = nC - pC;
-                const nPct = pC > 0 ? (nDiff / pC) * 100 : 0;
-                const nColor = nDiff > 0 ? 'text-[#f87171]' : nDiff < 0 ? 'text-[#4ade80]' : 'text-gray-500';
-                const nSign = nDiff > 0 ? '+' : '';
-                nextHtml = `<span class="${nColor} text-xs font-mono font-bold">${nSign}${nPct.toFixed(2)}%</span>`;
-                // 🎯 V41.20 對/反:依朱老師四大金剛方向 vs 隔日實際;分歧(neutral)=朱老師不下單 → 觀望不計對錯
-                if (gVerdict === 'bull' || gVerdict === 'bear') {
-                    const predUp = gVerdict === 'bull';
-                    const actualUp = nDiff > 0;
-                    const hit = predUp === actualUp;
-                    // V26.22 — Pill Badge 化(取代純文字 ✅/❌,Bloomberg 風)
-                    hitHtml = hit
-                        ? '<span class="inline-block bg-green-500/10 text-green-400 border border-green-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="四大金剛方向命中隔日">● 對</span>'
-                        : '<span class="inline-block bg-red-500/10 text-red-400 border border-red-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="四大金剛方向與隔日相反">○ 反</span>';
-                } else {
-                    hitHtml = '<span class="inline-block bg-gray-500/10 text-gray-400 border border-gray-500/30 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap" title="四大金剛分歧,朱老師教條=不下單">— 觀望</span>';
-                }
-            } else {
-                nextHtml = '<span class="text-gray-500 text-[10px]">明日待定</span>';
-                hitHtml = '<span class="text-gray-600">—</span>';
-            }
-
-            html += `<tr class="border-b border-[#21262d] hover:bg-[#1c2128]">
-                <td class="py-2 px-1 text-gray-300 text-xs">${dShort}</td>
-                <td class="py-2 px-1 text-right"><span class="font-bold text-white text-sm">${pC.toFixed(2)}</span><div class="text-[10px] mt-0.5 ${pColor}">(${sign}${pct.toFixed(2)}%)</div></td>
-                <td class="py-2 px-1 text-center">${wrHtml}</td>
-                <td class="py-2 px-1 text-center">${chuHtml}</td>
-                <td class="py-2 px-1 text-center">${nextHtml}<div class="text-[9px] mt-0.5">${hitHtml}</div></td>
-            </tr>`;
-        }
-        tbody.innerHTML = html;
-    },
 
     onWorkerMessage(data) {
         if(!data) return;
