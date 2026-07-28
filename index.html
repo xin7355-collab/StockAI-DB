@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6591,8 +6591,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.2',
+    _APP_VERSION: 'V71.0.3',
     _CHANGELOG: [
+        { v: 'V71.0.3', dt: '2026-07-28', t: '🐛 修:主力雷達裡點分點「按了沒反應」', d: [
+            '「🕵️ 全市場主力雷達」彈窗裡選券商 / 點排行榜的分點名時,有時候完全沒反應 — 原因是那份內容被寫進了「彈窗背後的券商頁」,你當然看不到。',
+            '(技術上:券商頁和彈窗用了同一組元件編號,程式只會找到排在前面的那個。)已改成彈窗開著時只找彈窗裡的,關掉才找頁面的。',
+            '順手做了一次全站巡邏:另外兩組看起來重複的編號經人工確認是安全的(同一個位置輪流顯示,不會同時存在),沒有亂改。',
+        ]},
         { v: 'V71.0.2', dt: '2026-07-28', t: '⚡ 切股變順:一次切股從重畫 2-3 次圖改成只畫 1 次', d: [
             '以前每切一檔股票,K 線圖會被完整重建 2-3 次(雲端運算回來一次、即時報價補上再一次、除權息資料回來又一次)→ 手機上會覺得卡一下。',
             '現在同一瞬間的多次重畫會自動合併成一次;而且「這檔股票根本沒有除權息紀錄」或「你把除權息旗標關掉」時,就完全不再多畫那一次(重看看過的股票也一樣省下)。',
@@ -27880,8 +27885,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             setTimeout(() => {
                 this._radarBrokerPeriod = '1d';
                 this._renderRadarBroker(name);
-                const s = document.getElementById('radarBrokerSel'); if (s) s.value = name;
-                const det = document.getElementById('radarBrokerDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                const s = this._brokerEl('radarBrokerSel'); if (s) s.value = name;
+                const det = this._brokerEl('radarBrokerDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 40);
         } else { this._pendingBroker = name; this.openBrokerRadar(); }
     },
@@ -28034,7 +28039,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const bn = (r.broker || '').replace(/'/g, '');
             return `<div class="flex items-center gap-2 py-1 border-b border-[#21262d]">
                 <span class="text-[10px] font-mono text-gray-600 w-4 flex-shrink-0">${i + 1}</span>
-                <button onclick="app._renderRadarBroker('${bn}'); { const s=document.getElementById('radarBrokerSel'); if(s) s.value='${bn}'; }" class="flex-1 min-w-0 text-left text-[11px] font-bold text-gray-200 truncate hover:underline">${r.broker}${g ? ` <span class="text-[8px] text-amber-300">${g}</span>` : ''}</button>
+                <button onclick="app._renderRadarBroker('${bn}'); { const s=app._brokerEl('radarBrokerSel'); if(s) s.value='${bn}'; }" class="flex-1 min-w-0 text-left text-[11px] font-bold text-gray-200 truncate hover:underline">${r.broker}${g ? ` <span class="text-[8px] text-amber-300">${g}</span>` : ''}</button>
                 <span class="text-[11px] font-mono font-black ${wrCls} flex-shrink-0 w-10 text-right">${wr}%</span>
                 <span class="text-[10px] font-mono ${retCls} flex-shrink-0 w-12 text-right">${r.avg_ret >= 0 ? '+' : ''}${r.avg_ret}%</span>
                 <span class="text-[9px] text-gray-600 flex-shrink-0 w-8 text-right">${r.count}筆</span>
@@ -28049,7 +28054,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 ${isFloat ? '前瞻回測累積中,暫顯「即時浮動戰績」(買超均價 vs 現價)。' : `前瞻回測:分點「買超那天的均價」→ ${cfg[3]} 個交易日後收盤,算勝率(賺的比例)+ 平均報酬。每天累積、逐日更準。`}${(!isFloat && (p.backfill?.[mode] || 0) > 0 && (mode === 'short' || mode === 'swing')) ? `<span class="text-amber-500/70"> ※ 含約 ${p.backfill[mode]} 筆歷史回推近似(過渡用,不用等;真實訊號逐日累積後自動轉純前瞻)。</span>` : ''}點分點名可看它今天全市場買賣。參考跟單方向,非投資建議。</div>`;
     },
     _renderBrokerPerfInto() {
-        const el = document.getElementById('brokerPerfBox');
+        const el = this._brokerEl('brokerPerfBox');
         if (el) el.innerHTML = this._renderBrokerPerfHtml();
     },
     _fmtEok(v) {   // 元 → 億/萬 白話
@@ -28124,8 +28129,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🎛️ V69.1.14 買/賣超改分頁區隔(使用者要求:兩欄併排改一次只看一邊,版面較清爽、股名不再被截斷)
     _radarBrokerSide: 'buy',
     _setRadarBrokerSide(s) { this._radarBrokerSide = (s === 'sell' ? 'sell' : 'buy'); if (this._radarBrokerCur) this._renderRadarBroker(this._radarBrokerCur); },
+    // 🐛 V71.0.3 巡邏修:radarBrokerSel / radarBrokerDetail / brokerPerfBox 這三個 id 在
+    //   「券商頁(#brokerCatBody)」與「🕵️ 全市場主力雷達 modal」各存在一份。modal 掛在 document.body
+    //   常駐(只 hidden 不刪),兩份會同時在 DOM 裡 → getElementById 永遠只抓到 DOM 順序較前的券商頁那份,
+    //   於是 modal 開著時點分點,內容被寫進背後看不到的頁面,使用者以為「按了沒反應」。
+    //   修法:modal 開著時把查詢範圍限縮在 modal 內(它是全螢幕覆蓋,此時使用者操作的必定是 modal)。
+    _brokerEl(id) {
+        const m = document.getElementById('brokerRadarModal');
+        if (m && !m.classList.contains('hidden')) { const inM = m.querySelector('#' + id); if (inM) return inM; }
+        return document.getElementById(id);
+    },
     _renderRadarBroker(bn) {
-        const el = document.getElementById('radarBrokerDetail');
+        const el = this._brokerEl('radarBrokerDetail');
         if (!el) return;
         this._radarBrokerCur = bn;
         const nm = (s) => (this.getStockName ? (this.getStockName(s) || s) : s);
@@ -28239,8 +28254,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 從排行榜/聯軍點分點 → 開它的檔案(同步下拉選單)
         this._radarBrokerPeriod = '1d';
         this._renderRadarBroker(name);
-        const s = document.getElementById('radarBrokerSel'); if (s) s.value = name;
-        const det = document.getElementById('radarBrokerDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const s = this._brokerEl('radarBrokerSel'); if (s) s.value = name;
+        const det = this._brokerEl('radarBrokerDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'center' });
     },
     // 🏆 V68.9.9 分點排行榜 + 🤝 聯軍(來自 broker_book;沒生效就整段不顯)
     _brokerBookExtraHtml() {
