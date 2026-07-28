@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3412,24 +3412,6 @@ const app = {
             ${rows}`;
     },
 
-    // 🧭 V53.x — 分段錨點:平滑捲動到指定卡片(hidden 無資料的卡不跳,改提示)
-    _scrollToCard(id) {
-        const el = document.getElementById(id);
-        if (!el) { this.showToast?.('該區塊目前無資料', 'info'); return; }
-        // 🚦 V55.9 目標卡若被收在折疊殼(ov-body)裡,先自動展開再捲動(否則 offsetParent===null 會誤判無資料)
-        let p = el.parentElement;
-        while (p && p.id !== 'subContentStrategy') {
-            if (p.classList?.contains('ov-body') && p.classList.contains('hidden')) {
-                p.classList.remove('hidden');
-                const chev = p.previousElementSibling?.querySelector?.('[data-chevron]');
-                if (chev) chev.textContent = '▴';
-            }
-            p = p.parentElement;
-        }
-        if (el.offsetParent === null) { this.showToast?.('該區塊目前無資料', 'info'); return; }
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        this.vibrate?.(15);
-    },
 
     showToast(msg, type = 'error', ms = 4500) {   // V70.0.1 加選填第三參數:長訊息(如 LINE 備份指引)可停久一點
         const el = document.createElement('div');
@@ -3467,11 +3449,6 @@ const app = {
                 }
             } catch(_) {}
         });
-    },
-    dismissOnboard(key) {
-        const el = document.getElementById(`onboard_${key}`);
-        if (el) el.classList.add('hidden');
-        try { localStorage.setItem(`onboard_${key}_dismissed`, '1'); } catch(_) {}
     },
 
     // 📨 Telegram 雲端推送(Cloudflare Worker + 個人 chat_id 綁定)
@@ -5260,34 +5237,8 @@ ${list}
         } catch (_) {}
     },
 
-    toggleManualPriceInput() {
-        const wrap = document.getElementById('manualPriceInputWrap');
-        wrap.classList.toggle('hidden');
-        if (!wrap.classList.contains('hidden')) document.getElementById('manualPriceInput').focus();
-    },
 
-    onManualPriceInput() {
-        const val = parseFloat(document.getElementById('manualPriceInput').value);
-        if (!isNaN(val) && val > 0 && this.baseRawData?.length > 0) {
-            this.applyLatestPrice(null, val);
-            this.refreshStrategy();
-            document.getElementById('dataSourceText').textContent = '手動現價';
-            document.getElementById('dataSourceDot').className = 'w-1.5 h-1.5 rounded-full bg-yellow-400';
-            document.getElementById('livePriceText').textContent = val.toFixed(2);
-            document.getElementById('livePriceText').className = 'text-3xl font-black font-mono text-yellow-400 leading-none tracking-tighter transition-all duration-200';
-        }
-    },
 
-    clearManualPrice() {
-        document.getElementById('manualPriceInput').value = '';
-        document.getElementById('manualPriceInputWrap').classList.add('hidden');
-        document.getElementById('dataSourceText').textContent = '限價';
-        document.getElementById('dataSourceDot').className = 'w-1.5 h-1.5 rounded-full bg-gray-500';
-        if (this.baseRawData?.length > 0) {
-            this.applyLatestPrice(this._getHistoricalLatestAsPrice());
-            this.refreshStrategy();
-        }
-    },
 
     forceStopLoading() { document.getElementById('loadingOverlay').style.display = 'none'; },
 
@@ -5352,23 +5303,6 @@ ${list}
     },
     // V17.18 — Falcon 建倉分(0-100,含技術+籌碼+板塊+大盤)+ factors 內已 bake 主力連N日買超
     _falconScoresCache: null,
-    // V18.3 — 改名避免被 line 5978 同名 method 覆蓋(JS object literal 後者覆蓋前者);
-    //          line 5978 那個 _loadFalconScores 有渲染 side effect 但 return undefined,
-    //          ETF tab 需要純 map → 這版專供 _calcEtfFollowSignal 用
-    async _loadFalconScoresMap() {
-        if (this._falconScoresCache) return this._falconScoresCache;
-        try {
-            const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const r = await fetch(new URL('data/falcon_scores.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(15000) });
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            const d = await r.json();
-            this._falconScoresCache = (d && d.stocks) || {};
-        } catch (e) {
-            console.warn('[ETF] falcon_scores 載入失敗:', e?.message || e);
-            this._falconScoresCache = {};
-        }
-        return this._falconScoresCache;
-    },
     // V17.18 — 跟單訊號 3-gate 評分:ETF 共識 + Falcon ≥ 70 + 主力連 N 日買超
     // 🚦 V39.4 ETF 跟車訊號重新設計(純 ETF 資料,禁 AI):三維度 + 雙向(跟對做加碼 / 對著做減碼)
     //   ① 廣度 etf_count(幾檔 ETF 同步動作=共識) ② 方向 shares_delta(淨加碼/淨減碼)
@@ -6591,8 +6525,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.3',
+    _APP_VERSION: 'V71.0.4',
     _CHANGELOG: [
+        { v: 'V71.0.4', dt: '2026-07-28', t: '🧹 大掃除:清掉 815 行沒人用的舊程式,App 變輕', d: [
+            '清掉 40 個「以前的功能改版後就沒人用、但程式碼還留著」的區塊(舊庫存彈窗、舊自選編輯、舊搜尋框、已改純公式後留下的 AI 殘骸等)共 815 行、52 KB → 開啟速度更快、手機更省流量。',
+            '安全做法:先把全部 954 個功能區塊掃一遍,只挑「全站完全沒有任何地方會用到」的才刪;另外四種「搜尋容易漏看」的呼叫方式也一一實測排除過。刪完四項驗證 + 四支功能測試全數通過。',
+            '順帶檢查兩處「看起來重複可以合併」的程式:實際比對後發現它們的判斷門檻本來就不同,硬合併會讓訊號結果改變 → 決定不動,並把理由寫進文件,免得以後又有人想合。',
+        ]},
         { v: 'V71.0.3', dt: '2026-07-28', t: '🐛 修:主力雷達裡點分點「按了沒反應」', d: [
             '「🕵️ 全市場主力雷達」彈窗裡選券商 / 點排行榜的分點名時,有時候完全沒反應 — 原因是那份內容被寫進了「彈窗背後的券商頁」,你當然看不到。',
             '(技術上:券商頁和彈窗用了同一組元件編號,程式只會找到排在前面的那個。)已改成彈窗開著時只找彈窗裡的,關掉才找頁面的。',
@@ -7886,13 +7825,6 @@ ${list}
         alert('✅ 已清除');
     },
 
-    resetPrompt(type) {
-        this.settings.aiPrompt = AI_PROMPT_TEMPLATES[type];
-        const _apEl = document.getElementById('set_aiPrompt');
-        if (_apEl) _apEl.value = this.settings.aiPrompt;
-        this.saveSettings();
-        this.vibrate(30);
-    },
 
     cancelSettings() { 
         this.saveSettings(); 
@@ -8496,35 +8428,6 @@ ${list}
         }
     },
 
-    async verifyFugleKeys() {
-        this.saveSettings();
-        const keys = [
-            { id: 'fugle1', token: this.settings.fugleToken1 },
-            { id: 'fugle2', token: this.settings.fugleToken2 },
-            { id: 'fugle3', token: this.settings.fugleToken3 },
-            { id: 'fugle4', token: this.settings.fugleToken4 },
-            { id: 'fugle5', token: this.settings.fugleToken5 }
-        ];
-
-        for (let k of keys) {
-            const led = document.getElementById(`led_${k.id}`);
-            if(!k.token) {
-                led.className = "w-3 h-3 rounded-full flex-shrink-0 bg-gray-600 ring-2 ring-gray-500/60";
-                continue;
-            }
-            led.className = "w-3 h-3 rounded-full flex-shrink-0 animate-pulse bg-yellow-400";
-            try {
-                const res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/2330`, { headers: { 'X-API-KEY': k.token } });
-                if(res.status === 200) {
-                    const json = await res.json();
-                    if (json && (json.symbolId || json.data || json.type)) led.className = "w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(74,222,128,0.8)] bg-green-500";
-                    else throw new Error('invalid response');
-                } else throw new Error(`HTTP ${res.status}`);
-            } catch(e) {
-                led.className = "w-3 h-3 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(248,113,113,0.8)] bg-red-500";
-            }
-        }
-    },
 
     // V16.8 — 一鍵備份:直接複製剪貼簿 + 自動下載 .txt 檔(不再先展 textarea 兩段式)
     // 🔐 V48.4 — 備份輕度混淆(非軍事級,目的:一般人用文字編輯器打開是亂碼、看不到你的持股/金鑰)
@@ -8842,15 +8745,6 @@ ${list}
         return scored.slice(0, limit).map(x => x.s);
     },
 
-    handleSearchInput(event) {
-        const val = event.target.value.trim().toLowerCase(), dropdown = document.getElementById('searchDropdown');
-        if (!val || this.allStockList.length === 0) { dropdown.classList.add('hidden'); return; }
-        const matches = this._filterStockList(val, 8);
-        if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(m => `<li class="px-4 py-3 border-b border-[#30363d] text-white cursor-pointer hover:bg-blue-600 flex items-center transition-colors" onclick="document.getElementById('symbolInput').value='${m.stock_id}'; document.getElementById('searchDropdown').classList.add('hidden'); app.analyze(); document.getElementById('symbolInput').value='';"><span class="font-bold text-blue-400 w-16 text-sm">${m.stock_id}</span> <span class="ml-1 font-bold text-sm">${m.stock_name}</span>${this._renderAttentionBadge(m.stock_id)}</li>`).join('');
-            dropdown.classList.remove('hidden');
-        } else dropdown.classList.add('hidden');
-    },
 
     // V18.9 — 全螢幕搜尋 modal:open / close / 即時聯想 / Enter 送出 / 最近搜尋
     openGlobalSearchModal() {
@@ -10863,12 +10757,6 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         } catch(e) { return null; }
     },
 
-    // Read US market from cache (max 2 min old) or fetch fresh
-    async getUSMarketData() {
-        const cached = JSON.parse(localStorage.getItem('proTerminalUSMarket') || 'null');
-        if (cached && (Date.now() - cached.fetchedAt) < 120000) return cached;
-        return await this.fetchMassiveUSMarket();
-    },
 
     async fetchStockList() {
         // 24 小時 cache 過期,讓新上市股票(如 00402A)有機會被加進對照表
@@ -13099,8 +12987,6 @@ const marginByDate = {};
         box.classList.remove('hidden');
     },
 
-    // ⛔ V65.9 原🤖AI籌碼解析已改純公式「大戶籌碼總結」(renderChipVerdict);此函式保留為 no-op 防舊 onclick 殘留報錯
-    analyzeChipUnified() { try { this.renderChipVerdict(this.currentSymbolId); } catch (_) {} },
 
     // V21.7 — Q2 修嚴重 BUG:此函式原誤寫為 `_showAttentionRulesHelp`(跟 L7964 真正的注意股教學同名,JS 後定義覆寫前定義),
     //         導致使用者點景氣燈號 dropdown 時 `app.setBsiLight is not a function`,自動/手動皆失效。
@@ -13799,50 +13685,6 @@ const marginByDate = {};
         }
     },
 
-    // 🌤️ V50.9 — 置頂「大盤天氣」點擊彈窗:說明怎麼看/怎麼操作 + 即時抓加權指數算短/中/長趨勢 + 白話結論(純公式,零 AI)
-    async showMarketWeatherPopup() {
-        this.vibrate?.(30);
-        try {
-            // 確保 ^TWII 加權日K 有載入(沿用天氣快取,30 分內免重抓)
-            let rows = this._twiiKlineCache?.rows;
-            const fresh = this._twiiKlineCache?.at && (Date.now() - this._twiiKlineCache.at) < 1800000;
-            if (!rows || !fresh) { await this._renderMarketWeatherTrend(); rows = this._twiiKlineCache?.rows; }
-            if (!Array.isArray(rows) || rows.length < 30) { alert('🌤️ 大盤天氣資料抓取中,稍等幾秒再點一次。'); return; }
-            const nameMap = { bull: '☀️ 偏多(多頭排列)', chop: '☁️ 震盪(均線糾結)', bear: '🌧️ 偏空(空頭排列)' };
-            const tfs = [
-                { label: '短期(日線)', v: this._weatherVerdict(rows, 5, 20) },
-                { label: '中期(週線)', v: this._weatherVerdict(this.aggregateData(rows, 'W'), 5, 20) },
-                { label: '長期(月線)', v: this._weatherVerdict(this.aggregateData(rows, 'M'), 3, 12) },
-            ];
-            const lines = tfs.map(t => {
-                if (!t.v) return `・${t.label}:🌫️ 資料不足`;
-                const bias = (t.v.bias > 0 ? '+' : '') + t.v.bias + '%';
-                return `・${t.label}:${nameMap[t.v.key] || '—'} ・乖離 ${bias}`;
-            }).join('\n');
-            // 🎯 V51.5 建議操作改用大盤風控 regime(_chuPositionAdvice)= 置頂跑馬燈同一套邏輯 → 不再自相矛盾
-            //   (原 V51.1 只看均線多頭排列就喊 6-7 成,忽略「年線乖離過大/過熱」,跟跑馬燈的「多頭過熱 3~5 成」打架)
-            let advBlock;
-            try {
-                const adv = this._chuPositionAdvice();
-                advBlock = (adv && adv.pct) ? `${adv.regimeLabel} · 建議 ${adv.pct}\n${adv.advice}` : '資料整備中(年線位階待補),先看短中長天氣方向、別重押。';
-            } catch (_) { advBlock = '資料整備中,先看短中長天氣方向、別重押。'; }
-            // 📌 短長背離補充(多頭裡的回檔 vs 空頭反彈)— 純天氣觀察,輔助用
-            const shortV = tfs[0].v, longV = tfs[2].v;
-            let nuance = '';
-            if (longV && shortV) {
-                if (longV.key === 'bull' && shortV.key === 'bear')      nuance = '\n\n📌 長多頭 + 短回檔 = 多頭裡的回檔,守住月線再找買點、別怕。';
-                else if (longV.key === 'bear' && shortV.key === 'bull') nuance = '\n\n📌 長空頭 + 短反彈 = 多半是空頭反彈,彈到壓力先減碼、別追。';
-            }
-            alert('🌤️ 大盤天氣 → 台股現在怎麼操作\n\n'
-                + '📊 目前(即時):\n' + lines + '\n\n'
-                + '🎯 建議操作(對齊置頂大盤風險指數):\n' + advBlock + nuance + '\n\n'
-                + '🛡️ 不管晴雨都要:設好停損、別單押一檔、順勢比預測重要。\n'
-                + '(加權指數均線天氣 + 大盤風控 regime,非投資建議;搭配個股「進場體檢」一起看)');
-        } catch (e) {
-            console.warn('[marketWeatherPopup]', e);
-            alert('🌤️ 大盤天氣資料抓取中,稍等幾秒再點一次。');
-        }
-    },
 
     // 🌅 V36.8 — 盤前大盤體檢:朱老師盤前儀表板的純公式版。讀已載入的指數值 + 對 ^TWII 跑進場體檢,
     //   彙總成「今天開盤偏多/偏空」一句話總結。禁 AI 算數,全 JS 計分。缺的資料源標「採集中」。
@@ -14695,97 +14537,6 @@ const marginByDate = {};
         </div>`;
     },
 
-    // V23.0 — 🤖 處置股出獄策略 AI(Gemini 深度判讀「乘勢追打 vs 等回檔」,個股級快取)
-    async analyzeDispExitAI(opts = {}) {
-        const sym = this.currentSymbolId;
-        if (!sym) return;
-        const btn = document.getElementById('dispExitAiBtn');
-        const result = document.getElementById('dispExitAiResult');
-        if (!btn || !result) return;
-        const cacheKey = `aiCache_dispExit_${sym}`;
-        if (!opts.force) {
-            try {
-                const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-                if (c && (Date.now() - c.at) < 24 * 3600e3) {
-                    result.innerHTML = c.html;
-                    this.showToast('💾 24h 內快取(雙擊強制重抽)', 'info');
-                    return;
-                }
-            } catch(_){}
-        }
-        const a = this.attentionStatus?.[String(sym).trim()];
-        if (!a) {
-            result.innerHTML = '<div class="text-yellow-300 text-[11px]">⚠️ 本檔目前無處置/注意股紀錄(資料來自 TWSE OpenAPI,可能尚未公告)</div>';
-            return;
-        }
-        const today = new Date();
-        const daysToEnd = a.end_date ? Math.round((new Date(a.end_date) - today) / 86400000) : '?';
-        const macroRisk = this._macroRiskCache?.risk_score ?? '?';
-        const bigShotEl = document.getElementById('dispBigShotCard');
-        const bigShotText = bigShotEl?.textContent?.replace(/\s+/g, ' ').slice(0, 400) || '無資料';
-        const prompt = `你是台股研究員「哲哲」,白話親民國中生看得懂,禁廢話「根據資料」「以下為您分析」。
-
-【處置股資訊】
-代號:${sym}
-狀態:${a.status || '注意/處置'}
-分盤撮合:${a.interval || '?'} 分鐘
-出獄日:${a.end_date || '?'}(距今 ${daysToEnd} 天)
-原因:${a.reason || '未知'}
-
-【越關越大尾 5 因子摘要(系統已算好)】
-${bigShotText}
-
-【大盤狀態】
-市場風險指數:${macroRisk}(0=底/100=頂)
-
-請嚴格輸出純 JSON、禁 \`\`\`json 標籤,格式:
-{
-  "verdict": "🟢 出獄噴發機率高 / 🟡 不確定須看當天 / 🔴 出獄即崩",
-  "verdict_why": "(40字內)主要判讀理由,具體點出 5 因子哪幾項好/壞",
-  "before_exit": "(40字內)出獄前 1 天該做什麼(進場/觀望/賣出 + 具體點位)",
-  "exit_day": "(40字內)出獄當日該做什麼(看開盤 30 分爆量/量縮)",
-  "after_exit_7d": "(40字內)出獄後 7 天該做什麼(續抱/分批停利/停損)",
-  "playbook": "🎯 乘勢追打 / 🐢 等回檔再低接 / ⏸️ 直接觀望別碰"
-}`;
-        btn.disabled = true;
-        btn.textContent = '⏳ AI 分析中...';
-        try {
-            const text = await this._callDeepAI({ prompt, max_tokens: 600, temperature: 0.4, chain: 'gemini-openrouter' });
-            const p = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
-            const html = `
-                <div class="text-center mb-3 pb-2 border-b border-[#30363d]">
-                    <div class="text-base font-black mb-1">${p.verdict || '--'}</div>
-                    <div class="text-[11px] text-gray-300 leading-relaxed">${p.verdict_why || ''}</div>
-                </div>
-                <div class="grid grid-cols-1 gap-2 mb-2">
-                    <div class="bg-[#0d1117] rounded p-2 border-l-4 border-orange-500">
-                        <div class="text-[9px] text-orange-300 font-bold mb-0.5">📅 出獄前 1 天</div>
-                        <div class="text-[11px] text-gray-200">${p.before_exit || '--'}</div>
-                    </div>
-                    <div class="bg-[#0d1117] rounded p-2 border-l-4 border-red-500">
-                        <div class="text-[9px] text-red-300 font-bold mb-0.5">🚨 出獄當日</div>
-                        <div class="text-[11px] text-gray-200">${p.exit_day || '--'}</div>
-                    </div>
-                    <div class="bg-[#0d1117] rounded p-2 border-l-4 border-cyan-500">
-                        <div class="text-[9px] text-cyan-300 font-bold mb-0.5">📆 出獄後 7 天</div>
-                        <div class="text-[11px] text-gray-200">${p.after_exit_7d || '--'}</div>
-                    </div>
-                </div>
-                <div class="bg-purple-900/30 rounded p-2 text-center">
-                    <div class="text-[9px] text-purple-300 font-bold mb-0.5">⚔️ 操作手冊</div>
-                    <div class="text-[13px] font-black text-purple-100">${p.playbook || '--'}</div>
-                </div>
-                <div class="text-[8px] text-gray-600 mt-2 text-right">🤖 Gemini ${new Date().toLocaleString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div>
-            `;
-            result.innerHTML = html;
-            try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch(_){}
-        } catch (e) {
-            result.innerHTML = `<div class="text-amber-300 text-[11px]">${this._humanizeError(e, 'AI 分析')}<br><span class="text-gray-500 text-[10px]">若持續失敗,請至 ⚙️ 設定確認 Gemini / OpenRouter key</span></div>`;
-        } finally {
-            btn.disabled = false;
-            btn.textContent = '🎯 分析出獄前/中/後策略(雙擊強制重抽)';
-        }
-    },
 
     // V24.2 — 🔮 此股預判 AI(focus 單股,隔日漲跌機率 + 進場時機 + 具體價位)
     async analyzeStockPredict(opts = {}) {
@@ -18943,12 +18694,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this.switchAppTab('diag');
         this.vibrate?.(30);
     },
-    aiGodQuick(q) {
-        const sym = this._aiGodSelectedSym || (this.inventory?.[0]?.symbol);
-        if (!sym) { this._freeAiOpen(`台股 ${q}`); return; }
-        const name = this.getStockName(sym) || sym;
-        this._freeAiOpen(`${name}(${sym}) ${q}`);
-    },
     _openFreeAiForSym(sym) {
         const name = this.getStockName(sym) || sym;
         this._freeAiOpen(`${name}(${sym}) 這檔台股最新消息、為何漲跌、近期利多利空與法人動向?請附日期與來源`);
@@ -19161,9 +18906,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this.vibrate?.(20);
     },
 
-    showFreeAiHelp() {
-        alert('🔎 免費查公司 — 怎麼運作?\n\n把「股名 + 固定問題」丟給外部免費 AI 網頁(預設 Perplexity),直接在那邊跑出答案。\n\n✅ 用外部網頁的免費額度,完全不扣我們自家的 AI API(不會像 Gemini 一下就爆)。\n✅ 點按鈕會另開分頁/App;手機會開對應網頁。\n\n適合查:公司在做什麼、最新新聞、營收獲利、產業供應鏈、風險地雷等「文字型」問題。\n\n⚠️ K線、均線、籌碼、法人這些「數字」還是看 App 內我們自己算好的卡(那些才精準,外部 AI 不會算)。\n\n🔧 想換引擎(Perplexity / Google / ChatGPT)→ 右上 ⚙️ 設定頁 →「🔎 免費查公司 引擎」。');
-    },
 
     // 🩺 V36.6 — 進場體檢(初學者一目了然):把 K棒戰法/三星轉折/吞噬/橫盤/量能 + 均線結構
     //   全部純公式訊號彙總成「該不該進場」紅綠燈總結。禁 AI 算數,純 JS 計分,僅供參考。
@@ -21001,16 +20743,6 @@ ${lightExplain[queryType]}
         }
     },
 
-    openGlobalAIModal() {
-        const modal = document.getElementById('globalAIModal');
-        if (!modal) return;
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-        // 若尚未分析（顯示佔位文字），自動觸發
-        const body = document.getElementById('globalAIModalBody');
-        const isPlaceholder = !body || body.innerHTML.includes('按「解析」') || body.innerHTML.trim() === '';
-        if (isPlaceholder) this.runGlobalMarketAI();
-    },
     closeGlobalAIModal() {
         const modal = document.getElementById('globalAIModal');
         if (!modal) return;
@@ -21018,12 +20750,6 @@ ${lightExplain[queryType]}
         modal.style.display = 'none';
     },
 
-    openFiFuturesModal() {
-        const modal = document.getElementById('fiFuturesModal');
-        if (!modal) return;
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-    },
     closeFiFuturesModal() {
         const modal = document.getElementById('fiFuturesModal');
         if (!modal) return;
@@ -21080,23 +20806,6 @@ ${lightExplain[queryType]}
     //    全部股票皆可生成;結果存 localStorage(標日期),重新點擊「重新生成」才覆蓋
     _industryCacheKey(sym) { return `industryReport_${sym}`; },
 
-    _evictIndustryCache() {
-        // localStorage 防爆:報告快取 >100 檔刪最舊
-        try {
-            const keys = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                if (k && k.startsWith('industryReport_')) {
-                    const v = JSON.parse(localStorage.getItem(k) || '{}');
-                    keys.push({ k, ts: v.ts || 0 });
-                }
-            }
-            if (keys.length > 100) {
-                keys.sort((a, b) => a.ts - b.ts);
-                keys.slice(0, keys.length - 100).forEach(x => localStorage.removeItem(x.k));
-            }
-        } catch(_) {}
-    },
 
     // 開卡時呼叫:有快取就直接顯示(標日期),沒有則顯示提示等使用者點生成
     showIndustryReportCache(sym) {
@@ -22379,22 +22088,6 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         } catch(_) { this.latestNewsCache = ""; }
     },
 
-    async manualDataRefresh() {
-        this.apiRateLimited = false;
-        document.getElementById('loadingText').innerText = "強制同步最新雲端資料...";
-        document.getElementById('loadingOverlay').style.display = 'flex';
-        const safety = setTimeout(() => {
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('loadingText').innerText = "雲端大數據運算中...";
-        }, 15000);
-        try {
-            await this.analyze(this.currentSymbolId, true, true);
-        } finally {
-            clearTimeout(safety);
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('loadingText').innerText = "雲端大數據運算中...";
-        }
-    },
 
     async analyze(symCode = null, skipCheck = false, forceRefresh = false, silent = false) {
         if(!silent) document.getElementById('loadingOverlay').style.display = 'flex';
@@ -23016,14 +22709,6 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         return { icon: '🔄', name: '整', style: 'text-gray-400 bg-gray-800 border-gray-600 cursor-pointer' };
     },
 
-    wrapJargon(text) {
-        let result = text;
-        for (let term in this.jargonDict) {
-            const regex = new RegExp(`\\[${term}\\]`, 'g');
-            result = result.replace(regex, `<span class="text-blue-400 cursor-pointer border-b border-dashed border-blue-400 hover:text-blue-300 transition-colors font-bold mx-0.5" onclick="app.showJargon('${term}')">${term}</span>`);
-        }
-        return result;
-    },
 
     showJargon(term) {
         const desc = this.jargonDict[term]; if(!desc) return;
@@ -26583,51 +26268,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
     },
 
-    // 🔴 盤中主力動向估算(Fugle 即時內外盤 + 量價,誠實標示為估算非分點)
-    async estimateIntradayFlow(sym) {
-        sym = sym || this.currentSymbolId;
-        const btn = document.getElementById('intradayFlowBtn');
-        const bar = document.getElementById('intradayFlowBar');
-        const fill = document.getElementById('intradayFlowBarFill');
-        const out = document.getElementById('intradayFlowResult');
-        if (!out) return;
-        const keys = this._getFugleKeys().filter(k => k && k.trim());
-        if (!keys.length) { this.showToast('請先到 ⚙️ 設定填 Fugle token 才能盤中即時估算'); return; }
-        const tpe = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-        const hm = tpe.getHours() * 60 + tpe.getMinutes();
-        const inSession = (tpe.getDay() >= 1 && tpe.getDay() <= 5) && hm >= 540 && hm <= 810;
-
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ 即時抓取中...'; }
-        if (bar) { bar.classList.remove('hidden'); if (fill) fill.style.width = '40%'; }
-        let q = null;
-        try { q = await this.fetchFugleData(sym); } catch (_) {}
-        if (fill) fill.style.width = '100%';
-
-        if (!q || !q.price) {
-            out.classList.remove('hidden');
-            out.innerHTML = '<div class="text-gray-500">⚠️ Fugle 無回應或額度用盡,稍後再試</div>';
-        } else {
-            const chgPct = (q.prevClose > 0) ? (q.price - q.prevClose) / q.prevClose * 100 : 0;
-            const bid = q.bidVol || 0, ask = q.askVol || 0, tot = bid + ask;
-            const buyPressure = tot > 0 ? bid / tot * 100 : null;
-            let verdict, vColor;
-            if (chgPct > 1 && (buyPressure == null || buyPressure >= 50)) { verdict = '🔺 主力偏多承接'; vColor = 'text-red-300'; }
-            else if (chgPct < -1 && (buyPressure == null || buyPressure < 50)) { verdict = '🔻 主力偏空調節'; vColor = 'text-green-300'; }
-            else { verdict = '➖ 多空拉鋸觀望'; vColor = 'text-gray-300'; }
-            const pressLine = buyPressure != null
-                ? `委買 ${buyPressure.toFixed(0)}% vs 委賣 ${(100-buyPressure).toFixed(0)}%`
-                : '內外盤資料不足';
-            out.classList.remove('hidden');
-            out.innerHTML = `
-                <div class="font-black ${vColor} text-sm mb-1">${verdict}</div>
-                <div class="text-gray-300">即時 <b class="${chgPct>=0?'text-red-300':'text-green-300'}">${q.price}(${chgPct>=0?'+':''}${chgPct.toFixed(2)}%)</b></div>
-                <div class="text-gray-400">五檔掛單:${pressLine}</div>
-                <div class="text-[9px] text-gray-500 mt-1">${inSession ? `盤中 ${this._dW(tpe)} ${tpe.getHours()}:${String(tpe.getMinutes()).padStart(2,'0')} 即時估算` : '⚠️ 非盤中,為最近一個交易日成交快照'} · 僅供參考,以收盤後真實分點為準</div>`;
-        }
-        if (btn) { btn.disabled = false; btn.textContent = '🔄 盤中即時更新(Fugle)'; }
-        if (bar) setTimeout(() => bar.classList.add('hidden'), 800);
-        this.vibrate(15);
-    },
 
     // ⚡ V42.7 — 盤中即時分鐘K線面板(免費 Fugle candles 端點,零採礦)
     // 切 1分/5分:改狀態 + 重繪按鈕 + 若已載過就重新拉一次
@@ -27012,13 +26652,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (outPct <= 35 && bigSell >= 1 && falling) return { tone: 'bear', title: '🔻 空單出貨', msg: `近 ${N} 筆主動賣佔 ${(100 - outPct).toFixed(0)}%、${bigSell} 筆大單賣、價走弱 → 主力出貨,弱勢;有貨顧停損別凹。` };
             return null;
         } catch (_) { return null; }
-    },
-    _tickMomentumHtml(arr, ref) {
-        const m = this._tickMomentum(arr, ref);
-        if (!m) return '';
-        const c = m.tone === 'bull' ? 'red' : m.tone === 'bear' ? 'green' : 'yellow';
-        this._fireTickMomentumAlert(m);
-        return `<div class="bg-[#161b22] border-l-4 border-${c}-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2"><div class="text-[12px] font-black text-${c}-300">${m.title}</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">${m.msg}</div></div>`;
     },
     _fireTickMomentumAlert(m) {
         try {
@@ -29776,55 +29409,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return out;
     },
 
-    // 🦅 獵鷹建倉儀表板:當前股的建倉分 + 因子 + 🌍 全球宏觀黑天鵝防禦矩陣(JS 即時,不需 AI)
-    // 🌍 V39.2 全球宏觀黑天鵝防禦矩陣(原長在獵鷹卡,改純讀 macro_risk.json,搬到盤前大盤體檢內)
-    //   旗標門檻對齊 macro_miner.py:日圓 USDJPY 3日<-1.5%、金/油單日>3%、KOSPI<-1.5%、年線乖離>20%
-    _blackSwanMatrixHtml() {
-        const mr = this._macroRiskCache || {};
-        const _fmtSigned = v => (v == null || isNaN(v)) ? '?' : (+v >= 0 ? `+${(+v).toFixed(1)}%` : `${(+v).toFixed(1)}%`);
-        const warns = [];
-        const jpy3 = mr.jpy_chg_3d, gold = mr.gold_chg_pct, wti = mr.wti_chg_pct, kospi = mr.kospi_chg_pct, bias = mr.taiex_ma240_bias;
-        if (typeof jpy3 === 'number' && jpy3 < -1.5)
-            warns.push(['💴', `日圓 3 日急升 USDJPY ${_fmtSigned(jpy3)}(日圓走強),套息交易急迫平倉,外資恐拋售權值股!`, 'bg-red-900/40 border-red-600 text-red-200']);
-        {
-            const goldSurge = typeof gold === 'number' && gold > 3;
-            const wtiSurge  = typeof wti  === 'number' && wti  > 3;
-            if (goldSurge || wtiSurge) {
-                let msg;
-                if (goldSurge && wtiSurge) msg = `黃金 ${_fmtSigned(gold)} / 原油 ${_fmtSigned(wti)} 雙雙單日異常暴漲,地緣政治+通膨同步升溫,避開高位科技股!`;
-                else if (goldSurge)        msg = `黃金單日異常暴漲 ${_fmtSigned(gold)}(避險資金湧入),地緣政治風險升高,避開高位科技股!`;
-                else                       msg = `原油單日異常暴漲 ${_fmtSigned(wti)}(通膨/地緣風險),避開高位科技股!`;
-                warns.push(['🛢️', msg, 'bg-orange-900/40 border-orange-600 text-orange-200']);
-            }
-        }
-        if (typeof kospi === 'number' && kospi < -1.5)
-            warns.push(['🇰🇷', `韓股 KOSPI 單日重挫 ${_fmtSigned(kospi)},亞股遭外資集體提款,台股留意跟跌!`, 'bg-orange-900/40 border-orange-600 text-orange-200']);
-        if (typeof bias === 'number' && bias > 20)
-            warns.push(['📈', `台股年線乖離率 ${_fmtSigned(bias)},市場處於極端貪婪泡沫區,空手買入請極度克制!`, 'bg-yellow-900/40 border-yellow-600 text-yellow-200']);
-
-        // 朱老師建議部位 chip(大盤 regime,讀 taiex_ma240_bias,非個股)
-        let regimeChip = '';
-        try {
-            const a = this._chuPositionAdvice?.();
-            if (a) regimeChip = `<div class="flex items-center gap-1.5 mt-2 text-[11px] flex-wrap">
-                <span class="font-bold ${a.color} px-2 py-0.5 rounded border">${a.regimeLabel}</span>
-                <span class="font-bold text-blue-300">建議 ${a.pct}</span>
-                <span class="text-gray-400">${a.advice}</span>
-                ${typeof a.bias === 'number' ? `<span class="text-[9px] text-gray-600 font-mono">(年線乖離 ${a.bias >= 0 ? '+' : ''}${a.bias.toFixed(1)}%)</span>` : ''}
-            </div>`;
-        } catch (_) {}
-
-        const warnsHtml = warns.length
-            ? warns.map(([ic, msg, cls]) => `<div class="${cls} border rounded px-2 py-1 text-[10px] font-bold leading-snug mb-1 animate-pulse">${ic} 警報:${msg}</div>`).join('')
-            : `<div class="text-[10px] text-green-300/70">無黑天鵝警報,全球環境正常 ✅</div>`;
-
-        return `<div class="mt-2 pt-2 border-t border-[#30363d]">
-            <div class="text-[10px] font-black text-red-300 mb-1">🌍 全球宏觀黑天鵝防禦矩陣</div>
-            ${warnsHtml}
-            ${regimeChip}
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">📌 盤後採礦判定(macro_risk.json),每觸發 1 個併入「台股風險指數」+5(上限 +20)・標「?」者下次 16:30 採礦後補</div>
-        </div>`;
-    },
 
     refreshStrategy() {
         if (!this.activeData || !this.activeData.length || !this.indicators.ma20) return;
@@ -30497,24 +30081,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch (_) {}
     },
 
-    // 清掉 7 天前的 consensusCache_* 防止 localStorage 撐爆(5MB 上限)
-    _purgeStaleConsensusCache() {
-        const today = this.getTodayStr();
-        try {
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-                const k = localStorage.key(i);
-                if (!k || !k.startsWith('consensusCache_')) continue;
-                const parts = k.split('_');
-                const datePart = parts[parts.length - 1];
-                if (datePart !== today) {
-                    const d = new Date(datePart.replace(/\//g, '-'));
-                    if (!isNaN(d) && (Date.now() - d.getTime()) > 7 * 24 * 60 * 60 * 1000) {
-                        localStorage.removeItem(k);
-                    }
-                }
-            }
-        } catch(_) {}
-    },
 
     renderChartHud(index) {
       try {
@@ -31038,105 +30604,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
     },
 
-    // 🔁 與 worker 內 patternStats 同算法的 main-thread 版,接受任意 targetIdx 對歷史日重算
-    //     ⚠️ 改 worker patternStats 時這個函式必須同步改,否則上方 60% 跟下方歷史會對不起來
-    // V14.4:加 4 層降級補算 — full → 去法人 → 去大盤 → 寬 sim;LOOKBACK 240 → 800
-    _computePatWinRateAt(data, ind, targetIdx, marketCtx) {
-        if (!data || !ind || !ind.ma20 || targetIdx < 30 || targetIdx >= data.length) return null;
-        const closes = data.map(d => d.close), vols = data.map(d => d.volume);
-        const { ma20, k, upperBB, lowerBB, osc } = ind;
-        if (!ma20 || !k || !upperBB || !lowerBB || !osc) return null;
-
-        const lastIdx = targetIdx;
-        const last5 = data.slice(targetIdx - 4, targetIdx + 1);
-        const last5Vol = vols.slice(targetIdx - 4, targetIdx + 1);
-        const avgV = last5Vol.reduce((a, b) => a + b, 0) / 5;
-        const last5VPct = last5Vol.map(v => avgV > 0 ? v / avgV : 1);
-        const last5Pct = [];
-        for (let j = 1; j < 5; j++) last5Pct.push((last5[j].close - last5[j - 1].close) / last5[j - 1].close);
-
-        if (ma20[lastIdx] == null) return null;
-        const currentIsAboveMA20 = closes[lastIdx] > ma20[lastIdx];
-        const curK = k[lastIdx] != null ? k[lastIdx] : 50;
-        const curBBu = upperBB[lastIdx], curBBl = lowerBB[lastIdx];
-        const curBBB = (curBBu != null && curBBl != null && curBBu > curBBl)
-            ? (closes[lastIdx] - curBBl) / (curBBu - curBBl) : 0.5;
-        const curOscPos = osc[lastIdx] != null ? (osc[lastIdx] > 0 ? 1 : 0) : 0.5;
-
-        const fiToday = (data[lastIdx].foreign_net ?? data[lastIdx].foreign_inv ?? 0)
-                      + (data[lastIdx].trust_net   ?? data[lastIdx].invest_trust ?? 0);
-        const fiSideToday = fiToday > 0 ? 1 : (fiToday < 0 ? -1 : 0);
-        const hasFi = fiSideToday !== 0;
-
-        const LOOKBACK = 800;
-        const scanStart = Math.max(20, lastIdx + 1 - LOOKBACK);
-        const recentVolSorted = vols.slice(scanStart, lastIdx + 1).filter(v => v > 0).sort((a, b) => a - b);
-        const volMedian = recentVolSorted.length ? recentVolSorted[Math.floor(recentVolSorted.length / 2)] : 0;
-        const volFloor = volMedian * 0.3;
-
-        const ctxToday = marketCtx?.dateMap?.[data[lastIdx].date] ?? null;
-        const hasMkt = marketCtx && ctxToday !== null;
-
-        // ① 一次掃描:把所有候選樣本算 dist + 記下「fiPass / mktPass」狀態,後續再分層篩
-        const matches = [];
-        for (let i = scanStart; i < targetIdx - 5; i++) {
-            if (ma20[i + 4] == null) continue;
-            if (currentIsAboveMA20 !== (closes[i + 4] > ma20[i + 4])) continue;
-            // 量能 sanity 仍硬性 — 0 量噪點對相似度比對無意義
-            if (vols[i + 4] <= 0 || vols[i + 4] < volFloor) continue;
-
-            // 法人同向 — 記下不過濾,後面分層篩
-            let fiPass = true;
-            if (hasFi) {
-                const hf = (data[i + 4].foreign_net ?? data[i + 4].foreign_inv ?? 0)
-                         + (data[i + 4].trust_net   ?? data[i + 4].invest_trust ?? 0);
-                const hfSide = hf > 0 ? 1 : (hf < 0 ? -1 : 0);
-                if (hfSide !== 0 && hfSide !== fiSideToday) fiPass = false;
-            }
-            // 大盤同向 — 記下
-            let mktPass = true;
-            if (hasMkt) {
-                const hctx = marketCtx.dateMap[data[i + 4].date];
-                if (hctx !== undefined && hctx !== null && hctx !== ctxToday) mktPass = false;
-            }
-
-            let dist = 0, vDist = 0;
-            const histAvgV = data.slice(i, i + 5).reduce((a, b) => a + b.volume, 0) / 5;
-            for (let j = 1; j < 5; j++) {
-                const pct = (data[i + j].close - data[i + j - 1].close) / data[i + j - 1].close;
-                dist += Math.pow(pct - last5Pct[j - 1], 2);
-                const vPct = histAvgV > 0 ? data[i + j].volume / histAvgV : 1;
-                vDist += Math.pow(vPct - last5VPct[j - 1], 2);
-            }
-            const histK = k[i + 4] != null ? k[i + 4] : 50;
-            const histBBu = upperBB[i + 4], histBBl = lowerBB[i + 4];
-            const histBBB = (histBBu != null && histBBl != null && histBBu > histBBl)
-                ? (closes[i + 4] - histBBl) / (histBBu - histBBl) : 0.5;
-            const histOscPos = osc[i + 4] != null ? (osc[i + 4] > 0 ? 1 : 0) : 0.5;
-            const kdContrib = Math.pow((curK - histK) / 100, 2) * 0.02;
-            const bbContrib = Math.pow(curBBB - histBBB, 2) * 0.02;
-            const macdContrib = curOscPos !== histOscPos ? 0.0002 : 0;
-            dist = dist + (vDist * 0.3) + kdContrib + bbContrib + macdContrib;
-            matches.push({ dist, nextRet: ((data[i + 5].close - data[i + 4].close) / data[i + 4].close) * 100, fiPass, mktPass });
-        }
-        if (!matches.length) return null;
-        matches.sort((a, b) => a.dist - b.dist);
-
-        // ② 4 層降級篩選 — 任一層拿到 ≥3 樣本就回傳
-        const tryFilter = (predicate, simMult, source) => {
-            const candidates = matches.filter(predicate);
-            if (!candidates.length) return null;
-            const simThreshold = Math.max(candidates[0].dist * simMult, 0.00015);
-            const top = candidates.filter(m => m.dist <= simThreshold).slice(0, 25);
-            if (top.length < 3) return null;
-            const wins = top.filter(m => m.nextRet > 0).length;
-            return { count: top.length, winRate: ((wins / top.length) * 100).toFixed(1), source };
-        };
-        return tryFilter(m => m.fiPass && m.mktPass, 2.5, 'full')
-            || tryFilter(m => m.mktPass,              2.5, 'no_fi')
-            || tryFilter(() => true,                  2.5, 'no_fi_mkt')
-            || tryFilter(() => true,                  5.0, 'loose_sim');
-    },
 
     // 🎯 V41.17 — 朱老師方式波段回測(純公式,逐根模擬):
     //   進場=回後買上漲(波段多頭 + 剛站上5MA + 紅K實體≥2% + 量增 + 收破昨高)
@@ -32505,12 +31972,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
     },
 
-    toggleFavEditMode() {
-        this.isFavEditMode = !this.isFavEditMode;
-        document.getElementById('btnFavEdit').innerText = this.isFavEditMode ? '✅' : '✏️';
-        document.getElementById('btnFavEdit').className = this.isFavEditMode ? 'ml-1 text-white bg-blue-600 transition-colors flex-shrink-0 text-xl font-bold px-2 py-1 rounded border border-[#30363d]' : 'ml-1 text-gray-400 hover:text-white transition-colors flex-shrink-0 text-xl font-bold bg-[#161b22] px-2 py-1 rounded border border-[#30363d]';
-        this.renderFavTabs();
-    },
 
     // 🐛 V57.2 離開自選頁自動退出編輯模式(使用者:切走再回來編輯筆應該恢復)
     _resetFavEditMode() {
@@ -32723,26 +32184,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return chips.join(' ');
     },
 
-    _getQuickSeasonTag(data) {
-        if (!data || data.length < 21) return '';
-        const len = data.length, last = len - 1;
-        const pC = data[last].close, pO = data[last].open;
-        const ma5 = data.slice(len-5,len).reduce((a,d)=>a+d.close,0)/5;
-        const ma10 = data.slice(len-10,len).reduce((a,d)=>a+d.close,0)/10;
-        const ma20 = data.slice(len-20,len).reduce((a,d)=>a+d.close,0)/20;
-        const ma20prev = data.slice(len-21,len-1).reduce((a,d)=>a+d.close,0)/20;
-        const vma5 = data.slice(len-5,len).reduce((a,d)=>a+d.volume,0)/5;
-        const curVol = data[last].volume;
-        const isBreakdown = pC < ma20 && ma20 < ma20prev;
-        const isUptrend = ma5 > ma10 && ma10 > ma20 && ma20 > ma20prev;
-        const isAboveMa20 = pC > ma20;
-        const isVolumeBreakout = curVol > vma5 * 1.5 && pC > pO;
-        if (isBreakdown) return `<span class="text-xs bg-blue-900/40 text-blue-300 border border-blue-800 px-2 py-0.5 rounded-full font-bold">❄️ 冬</span>`;
-        if (isUptrend && isVolumeBreakout) return `<span class="text-xs bg-red-900/40 text-red-300 border border-red-700 px-2 py-0.5 rounded-full font-bold">🔥 飆</span>`;
-        if (isUptrend) return `<span class="text-xs bg-red-900/30 text-red-400 border border-red-800 px-2 py-0.5 rounded-full font-bold">☀️ 夏</span>`;
-        if (isAboveMa20) return `<span class="text-xs bg-pink-900/30 text-pink-400 border border-pink-800 px-2 py-0.5 rounded-full font-bold">🌸 春</span>`;
-        return `<span class="text-xs bg-gray-800 text-gray-400 border border-gray-600 px-2 py-0.5 rounded-full font-bold">🔄</span>`;
-    },
 
     async renderFavList() {
         const list = this.favGroups[this.activeGroupName] || [];
@@ -33028,29 +32469,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }).join('') + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">分數=進場友善度 0-100・🟢偏多🟡觀望🔴偏空・<b class="text-amber-400/80">ETF 改看「趨勢」(型態偵測對 ETF 較不精準)</b>・純公式僅供參考,進場務必設停損</div>`;
     },
 
-    removeFromFav(sym) {
-        let list = this.favGroups[this.activeGroupName];
-        const idx = list.indexOf(sym);
-        if(idx > -1) {
-            list.splice(idx, 1);
-            localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups));
-            this.renderFavTabs();
-            if(sym === this.currentSymbolId) this.updateFavIcon();
-        }
-    },
 
-    openInvModal() {
-        const modal = document.getElementById('invModal');
-        modal.dataset.editIdx = '-1';
-        document.getElementById('invModalTitle').innerText = '➕ 新增持倉部位';
-        document.getElementById('invModalConfirmBtn').innerText = '確認建倉';
-        document.getElementById('invModalInput').value = this.currentSymbolId;
-        document.getElementById('invBuyDateInput').value = this.getTodayStr().replace(/\//g, '-');
-        const existingCost = document.getElementById('costInput').value.trim();
-        document.getElementById('invCostInput').value = existingCost || '';
-        document.getElementById('invSharesInput').value = '';
-        modal.classList.remove('hidden'); modal.style.display='flex';
-    },
 
     // V17.11 — 全頁編輯庫存(取代左右滑刪除/修改),參考籌碼K線 App 的編輯庫存股頁
     openInventoryEditPage() {
@@ -33313,19 +32732,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this._invEditDraft = null;
     },
 
-    openInvEditModal(idx) {
-        const item = this.inventory[idx];
-        if (!item) return;
-        const modal = document.getElementById('invModal');
-        modal.dataset.editIdx = String(idx);
-        document.getElementById('invModalTitle').innerText = '✏️ 修改持倉部位';
-        document.getElementById('invModalConfirmBtn').innerText = '確認修改';
-        document.getElementById('invModalInput').value = item.symbol;
-        document.getElementById('invBuyDateInput').value = (item.buyDate || '').replace(/\//g, '-');
-        document.getElementById('invCostInput').value = item.cost;
-        document.getElementById('invSharesInput').value = Math.round((item.shares || 0) * 1000);
-        modal.classList.remove('hidden'); modal.style.display = 'flex';
-    },
     
     closeInvModal() {
         const m = document.getElementById('invModal');
@@ -33912,27 +33318,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         });
     },
 
-    _computeQuickIndicators(data) {
-        const len = data.length;
-        if (len < 22) return null;
-        const last = len - 1;
-        const safeClose = (d) => (d && isFinite(d.close) ? d.close : null);
-        const safeVol   = (d) => (d && isFinite(d.volume) ? d.volume : 0);
-        const slice = (n) => data.slice(len-n, len);
-        const ma = (n) => { const vals = slice(n).map(d => safeClose(d)).filter(v => v !== null); return vals.length === n ? vals.reduce((a,v)=>a+v,0)/n : null; };
-        const prevMa = (n) => { const vals = data.slice(len-n-1, len-1).map(d => safeClose(d)).filter(v => v !== null); return vals.length === n ? vals.reduce((a,v)=>a+v,0)/n : null; };
-        const ma5=ma(5), ma10=ma(10), ma20=ma(20);
-        if (!ma5 || !ma10 || !ma20) return null;
-        const prevMa5=prevMa(5), prevMa10=prevMa(10), prevMa20=prevMa(20);
-        const vma5 = slice(5).reduce((a,d)=>a+safeVol(d),0)/5;
-        const variance = slice(20).reduce((a,d)=>{ const c=safeClose(d); return a+(c!==null ? Math.pow(c-ma20,2) : 0); },0)/20;
-        const upperBB = ma20 + 2*Math.sqrt(variance);
-        const close = safeClose(data[last]), prevClose = safeClose(data[last-1]);
-        if (!close || !prevClose) return null;
-        const recentVols = data.slice(last-2, last+1).map(d=>safeVol(d));
-        return { ma5, ma10, ma20, prevMa5, prevMa10, prevMa20, vma5, upperBB,
-                 close, open: data[last].open || close, prevClose, recentVols };
-    },
 
     // ===== 🎯 選股池（原「首席戰略雷達矩陣」;三大戰區：動能 / 波段 / 籌碼）=====
     radarStrategy: 'momentum',
@@ -34066,14 +33451,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch (_) {}
     },
 
-    // 🎛️ V59.2 選股種類抽屜開合(修拉扯:類別藏起來,點鈕才彈)
-    _toggleRadarRail() {
-        const d = document.getElementById('radarRailDrawer'), c = document.getElementById('radarRailChevron');
-        if (!d) return;
-        const open = d.classList.toggle('hidden') === false;
-        if (c) c.style.transform = open ? 'rotate(180deg)' : '';
-        this.vibrate?.(15);
-    },
     _closeRadarRail() {
         const d = document.getElementById('radarRailDrawer'), c = document.getElementById('radarRailChevron');
         if (d && !d.classList.contains('hidden')) { d.classList.add('hidden'); if (c) c.style.transform = ''; }
@@ -34213,10 +33590,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             this._bizProfileAll = { ts: Date.now(), data: d || {} };
             return d || {};
         } catch (_) { return {}; }
-    },
-    _themePulseToggle(header) {   // (V57.5 收合卡已改為選股池類別,保留供相容)
-        this.toggleCollapse('themePulseBody', header);
-        this._themePulseFresh();
     },
     // 🐛 V57.5 修:原 dataset.rendered 一設永不過期 → 改時間戳,超過 30 分自動重抓
     _themePulseFresh() {
@@ -34631,32 +34004,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this.showToast(`🎯 已加入 ${added} 檔監控${skippedMsg}${failedMsg} · 明早 9:00 開 App 會自動掃 5MA + 紅 K + 量增,觸發跳通知`, 'info');
     },
 
-    // ===== 🗑️ 模組 C 淘汰選股法(前端 — 套用自選股 / 庫存頁) =====
-    // 從 K 線資料判定 3 個淘汰訊號,回傳 HTML chip 串或 ''
-    _renderEliminationBadge(klineData) {
-        if (!Array.isArray(klineData) || klineData.length < 25) return '';
-        try {
-            const closes = klineData.map(r => +r.close || 0).filter(v => v > 0);
-            if (closes.length < 25) return '';
-            const c = closes[closes.length - 1];
-            const ma20 = closes.slice(-20).reduce((a, v) => a + v, 0) / 20;
-            const ma20_5ago = closes.slice(-25, -5).reduce((a, v) => a + v, 0) / 20;
-            const low5_excl_today = Math.min(...closes.slice(-6, -1));  // 過去 5 日(不含今日)最低
-            const badges = [];
-            // 跌破月線
-            if (c < ma20) badges.push({ cls: 'bg-orange-900/40 text-orange-300 border-orange-700/60', text: '⚠️ 跌破月線' });
-            // 月線下彎
-            if (ma20 < ma20_5ago) badges.push({ cls: 'bg-yellow-900/40 text-yellow-300 border-yellow-700/60', text: '📉 月線下彎' });
-            // 跌破前低
-            if (c < low5_excl_today) badges.push({ cls: 'bg-red-900/40 text-red-300 border-red-700/60', text: '🗑️ 跌破前低' });
-            if (badges.length === 0) return '';
-            // 多重警報(>= 2)時加閃爍紅色 header
-            const header = badges.length >= 2
-                ? `<span class="inline-block px-1.5 py-0.5 rounded text-[9px] bg-red-700/60 text-white border border-red-400 font-bold animate-pulse mr-1">🚨 多重警報</span>`
-                : '';
-            return header + badges.map(b => `<span class="inline-block px-1.5 py-0.5 rounded text-[9px] border ${b.cls} font-bold mr-1">${b.text}</span>`).join('');
-        } catch (_) { return ''; }
-    },
 
     // 🚨 處置股 view:注意/處置(幾分盤+出關日)/即將出關 + 明日恐達門檻預警
     async renderAttentionView() {
@@ -35101,34 +34448,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }).join('');
     },
 
-    // V15.6 — 新聞 AI 前端 on-demand fallback(V14.16 SKIP_AI=1 後採礦端不寫 ai_reason)
-    async _ensureNewsAI(items) {
-        if (!Array.isArray(items) || !items.length) return items;
-        const cacheKey = 'newsAICache_v1';
-        let cache = {};
-        try { cache = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch(_){}
-        // 快取命中先補上
-        items.forEach(n => {
-            if (!n.ai_reason && n.title && cache[n.title]) n.ai_reason = cache[n.title];
-        });
-        const needs = items.filter(n => !n.ai_reason && n.title && !cache[n.title]);
-        if (!needs.length) return items;
-        // 一次只跑前 5 則(省 Groq 配額),失敗不擾流程
-        for (const n of needs.slice(0, 5)) {
-            try {
-                // V27.6 — 升級為「邏輯判讀」:不只看標題情緒,要看背後(誰得利/帶風向/該信幾分)
-                const prompt = `你是資深台股研究員。下面新聞用白話 60 字內做「邏輯判讀」(不只標題情緒):①利多/利空/中性 ②誰得利或受害(點名族群/供應鏈)③是否在帶風向(來源動機、誘多誘空)④該信幾分。純文字無前綴:\n${n.title}\n${(n.summary||'').slice(0,220)}`;
-                const txt = await this._callAI({ prompt, max_tokens: 160 });
-                if (txt) {
-                    const trimmed = txt.trim().replace(/^[「『"]/, '').replace(/[」』"]$/, '').slice(0, 90);
-                    cache[n.title] = trimmed;
-                    n.ai_reason = trimmed;
-                }
-            } catch(_){}
-        }
-        try { localStorage.setItem(cacheKey, JSON.stringify(cache)); } catch(_){}
-        return items;
-    },
 
     // 📰 即時情報新聞：優先讀採礦機產出的 data/radar_news.json，失敗則 fallback 範例頭條
     // TODO: 未來可換接「籌碼K線」等專業新聞 API（保持同一渲染介面即可）
@@ -35285,86 +34604,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         setTimeout(() => element.style.opacity = 1, 50);
     },
 
-    // 🎨 V32.9 — 朱家泓技術審計 JSON → 卡片渲染（數字皆 JS 權威值）
-    _renderKlineAuditCards(v, extra = {}) {
-        const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-        const sc = v.overall_score;
-        const scoreCls = sc >= 70 ? 'text-red-300' : sc >= 45 ? 'text-yellow-300' : 'text-green-300';
-        const act = v.actionable_sop?.tactical_action || '';
-        const actCls = /加碼|進場/.test(act) ? 'text-red-300 bg-red-900/30 border-red-700/50'
-                     : /停損|清倉/.test(act) ? 'text-green-300 bg-green-900/30 border-green-700/50'
-                     : /停利/.test(act) ? 'text-yellow-300 bg-yellow-900/30 border-yellow-700/50'
-                     : 'text-gray-300 bg-white/5 border-[#30363d]';
-        const chip = (label, val) => `<div class="flex flex-col gap-0.5"><span class="text-[9px] text-gray-500">${label}</span><span class="text-[11px] font-bold text-gray-200">${esc(val)}</span></div>`;
-        const ta = v.trend_architecture || {}, md = v.ma_deduction_prediction || {}, sd = v.signal_detector || {}, ff = v.fold_filter || {}, wb = v.w_bottom || {}, sop = v.actionable_sop || {};
-        const sigList = (arr, color, emptyTxt) => (Array.isArray(arr) && arr.length)
-            ? arr.map(s => `<div class="flex items-start gap-1.5 text-[11px] ${color} leading-snug"><span class="flex-shrink-0">•</span><span class="text-gray-200">${esc(s)}</span></div>`).join('')
-            : `<div class="text-[10px] text-gray-600">${emptyTxt}</div>`;
-        const defLine = sop.structural_defense_line;
-        const _vr = extra.volRatio;
-        return `
-        <div class="flex flex-col gap-2.5 text-gray-200">
-          <!-- Hero:評分 + 行動 -->
-          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="text-[10px] text-gray-500 mb-0.5">📐 技術面系統精算分（JS 客觀計算）</div>
-              <div class="text-[12px] font-bold ${actCls.split(' ')[0]}">${esc(act)}</div>
-              <div class="text-[10px] text-gray-400 mt-1 leading-snug">${esc(sop.ai_core_summary || '')}</div>
-            </div>
-            <div class="flex-shrink-0 text-center">
-              <div class="text-3xl font-black font-mono ${scoreCls} leading-none">${sc}</div>
-              <div class="text-[8px] text-gray-500 mt-0.5">/ 100</div>
-            </div>
-          </div>
-          <!-- 趨勢架構 -->
-          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-            <div class="text-[10px] text-gray-400 font-bold mb-2">🏗️ 趨勢架構（日週對照）</div>
-            <div class="grid grid-cols-3 gap-2">
-              ${chip('日線趨勢', ta.daily_trend)}
-              ${chip('週線保護傘', ta.weekly_umbrella)}
-              ${chip('位階', ta.position_stage)}
-            </div>
-          </div>
-          <!-- 扣抵預測 -->
-          <div class="bg-[#161b22] border-l-4 border-blue-500 border-y border-r border-[#30363d] rounded-r p-3">
-            <div class="text-[10px] text-blue-300 font-bold mb-1">📉 均線扣抵預測（明日月線）</div>
-            <div class="grid grid-cols-3 gap-2">
-              ${chip('月線斜率明日', md.ma20_slope_tomorrow)}
-              ${chip('月線保衛價', md.ma20_defense_price ?? '--')}
-              ${chip('距扣抵', md.distance_to_ma20_deduction)}
-            </div>
-          </div>
-          <!-- 訊號偵測 -->
-          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-            <div class="text-[10px] text-gray-400 font-bold mb-2">🎯 訊號偵測器</div>
-            <div class="grid grid-cols-2 gap-3">
-              <div><div class="text-[10px] text-red-400 font-bold mb-1">📈 多方訊號</div><div class="flex flex-col gap-1">${sigList(sd.bullish_signals, 'text-red-300', '無')}</div></div>
-              <div><div class="text-[10px] text-green-400 font-bold mb-1">📉 危險訊號</div><div class="flex flex-col gap-1">${sigList(sd.bearish_signals, 'text-green-300', '無')}</div></div>
-            </div>
-          </div>
-          <!-- 郭榮哲折數 -->
-          <div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
-            <div class="text-[10px] text-amber-300 font-bold mb-1">📐 郭榮哲折數過濾（大拍賣解析）</div>
-            <div class="flex items-baseline gap-2 mb-1"><span class="text-lg font-black font-mono text-amber-200">${esc(ff.fold_pct)} 折</span><span class="text-[10px] text-gray-400">${esc(ff.fold_zone)}</span></div>
-            ${ff.verdict ? `<div class="text-[11px] text-gray-200 leading-relaxed">${esc(ff.verdict)}</div>` : ''}
-          </div>
-          ${wb.detected ? `
-          <!-- W 底 -->
-          <div class="bg-[#161b22] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-3">
-            <div class="text-[10px] text-cyan-300 font-bold mb-1">🅆 W 底 / 第二隻腳偵測</div>
-            <div class="text-[11px] text-gray-200 leading-relaxed">${esc(wb.message)}</div>
-            ${wb.second_leg_buying ? '<div class="text-[10px] text-cyan-300 font-bold mt-1">→ 現價貼近二底 + 止跌訊號，可分批承接</div>' : ''}
-          </div>` : ''}
-          <!-- 戰術 SOP -->
-          <div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-3">
-            <div class="text-[10px] text-red-300 font-bold mb-1">📋 操作 SOP</div>
-            <div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] px-2 py-0.5 rounded font-bold border ${actCls}">${esc(act)}</span><span class="text-[10px] text-gray-400">結構防守線 <b class="text-gray-200 font-mono">${defLine ?? '--'}</b></span></div>
-            <div class="text-[11px] text-gray-200 leading-relaxed">${esc(sop.ai_core_summary || '')}</div>
-            ${extra.posCost ? `<div class="text-[10px] text-gray-400 mt-1.5">你的部位:成本 ${extra.posCost}、損益 <b class="${extra.posPnl >= 0 ? 'text-red-300' : 'text-green-300'}">${extra.posPnl >= 0 ? '+' : ''}${extra.posPnl}%</b></div>` : ''}
-          </div>
-          <div class="text-[9px] text-gray-600 text-center pt-1">數字由系統 JS 精算，AI 僅負責型態判讀與操作文字 · 僅供參考非投資建議</div>
-        </div>`;
-    },
 
     async runGlobalMarketAI() {
         // Support modal (header button) and legacy inline result
@@ -36638,34 +35877,6 @@ ${_chuPosPlan}
             </div>`;
     },
 
-    renderSparkline(canvasId, dataPoints) {
-        const canvas = document.getElementById(canvasId);
-        if(!canvas || !dataPoints || dataPoints.length < 2) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width;
-        const h = canvas.height;
-        
-        ctx.clearRect(0, 0, w, h);
-        
-        const min = Math.min(...dataPoints);
-        const max = Math.max(...dataPoints);
-        const range = max - min === 0 ? 1 : max - min;
-        
-        const stepX = w / (dataPoints.length - 1);
-        
-        ctx.beginPath();
-        dataPoints.forEach((val, i) => {
-            const x = i * stepX;
-            const y = h - ((val - min) / range) * (h - 4) - 2; 
-            if(i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
-        
-        const isUp = dataPoints[dataPoints.length-1] >= dataPoints[0];
-        ctx.strokeStyle = isUp ? '#f87171' : '#4ade80';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    },
 
     async registerServiceWorker() {
         if (!('serviceWorker' in navigator)) return;
@@ -38284,13 +37495,6 @@ ${_chuPosPlan}
         }
     },
 
-    // ⚡ V56.5 — 今日當沖候選掃描:自選+庫存 → ①官方可當沖 ②近5日均振幅≥2%(有肉) ③昨量≥1000張(跑得掉)
-    //   資料:IndexedDB 快取優先、缺的才抓 data/{sym}.json(上限20檔防爆流量);零採礦零 AI
-    _dtScanToggle(header) {
-        this.toggleCollapse('dtScanBody', header);
-        const body = document.getElementById('dtScanBody');
-        if (body && !body.classList.contains('hidden') && !body.dataset.scanned) this._dtScanRun();
-    },
     async _dtScanRun() {
         const body = document.getElementById('dtScanBody'), sum = document.getElementById('dtScanSummary');
         if (!body) return;
@@ -38393,14 +37597,6 @@ ${_chuPosPlan}
         }
     },
 
-    // 🩹 V56.6 — 錯殺撿便宜掃描:自選+庫存「今天大跌(≤-4%)但體質沒壞」→ 錯殺分排行(全純公式)
-    //   體質三關:①基本面(營收YoY>0) ②法人近5日沒跑 ③原本多頭、跌完剛好回測月線/季線支撐
-    //   排除:注意/處置股、本來就空頭排列(那叫趨勢延續不是錯殺);真利空靠「🔎查利空」人腦把關
-    _wkScanToggle(header) {
-        this.toggleCollapse('wkScanBody', header);
-        const body = document.getElementById('wkScanBody');
-        if (body && !body.classList.contains('hidden') && !body.dataset.scanned) this._wkScanRun();
-    },
     _wkAskWhy(sym) {
         const name = this.getStockName(sym) || sym;
         this._freeAiOpen(`${name}(${sym}) 這檔台股今天股價大跌的原因是什麼?是「公司自身利空」(財報爆雷/砍單/處分/董監出事)還是「大盤或族群系統性下跌」拖累?請條列並附日期與來源;若查不到個股利空請明講「無個股利空」`);
@@ -38525,12 +37721,6 @@ ${_chuPosPlan}
     _dtAccelOn: false,
     _dtAccelTimer: null,
     _dtAccelCount: 0,
-    _toggleDtAccel() {
-        if (this._dtAccelOn) { this._stopDtAccel(); try { localStorage.removeItem('proTerm_dtAccel'); } catch (_) {} return; }   // 使用者手動關 → 清持久化旗標
-        if (!this.currentSymbolId) { this.showToast?.('請先搜尋一檔股票再開加速', 'info'); return; }
-        if (!this.isMarketOpen()) { this.showToast?.('非盤中(09:00–13:30)不需加速刷價', 'info'); return; }
-        this._startDtAccel();
-    },
     _startDtAccel() {
         this._stopDtAccel();
         this._dtAccelOn = true;
