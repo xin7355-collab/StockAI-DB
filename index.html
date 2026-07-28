@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.1.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6533,8 +6533,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.1.2',
+    _APP_VERSION: 'V70.1.3',
     _CHANGELOG: [
+        { v: 'V70.1.3', dt: '2026-07-28', t: '🌡️ 溫度計加高 + 標籤搬左欄 + 共振對帳加戰績', d: [
+            '溫度計格子上下加高(整張圖 300→340),柱子看得更清楚。',
+            '「做多區/避開區」標籤搬到圖左側空白欄,旁邊加「盤中六脈」標題 — 那裡永遠沒有柱子,徹底不會被擋。',
+            '共振段對帳有用在哪?它是這檔股票的「訊號成績單」:現在會直接告訴你「今日 N 段已結束,方向對 M 段」,一眼判斷這檔的共振靈不靈、值不值得照做。',
+        ]},
         { v: 'V70.1.2', dt: '2026-07-28', t: '📐 橫屏根治 + 溫度計文字不再被擋', d: [
             '【橫屏根因】轉橫後圖表卡在直屏寬度(右半邊空白)= 只有主K線圖有跟著轉,其他圖沒有 → 加全域機制:轉向/縮放時「所有」圖表一起重新適應寬度,以後新圖也自動照顧。',
             '【文字被擋】溫度計「做多區/做空/避開區」標籤加深色底,柱子再多也蓋不住。',
@@ -17685,7 +17690,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="bg-[#0d1117] border-l-4 ${hero[2]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="text-[9px] text-gray-500 mt-1.5">⬆ 上方分時圖第 3 格=<b class="text-gray-300">六脈多空溫度計</b>(同一條時間軸):<span class="text-red-300">紅柱向上=偏多,衝進上紅區=做多時機</span>;<span class="text-green-300">綠柱向下=偏空,跌進下綠區=做空/避開</span>;柱子短=分歧觀望。價格圖底色=同一件事的順勢段。</div>
             <div class="flex flex-wrap gap-1 mt-1.5">${chips}</div>
-            ${winRows ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 mt-2"><div class="text-[9px] text-gray-500 font-bold mb-0.5">今日共振段(段內實際漲跌,誠實對帳)</div>${winRows}</div>` : '<div class="text-[9px] text-gray-600 mt-1.5">今日尚無共振段(分歧盤,當沖少動)。</div>'}
+            ${winRows ? (() => {
+                const closed = v.wins.filter(w => !w.live);
+                const hit = closed.filter(w => (w.dir === 1 && w.chg > 0) || (w.dir === -1 && w.chg < 0)).length;
+                const rec = closed.length ? `<span class="ml-1 ${hit / closed.length >= 0.5 ? 'text-red-300' : 'text-yellow-300'}">今日 ${closed.length} 段已結束,方向對 ${hit} 段</span>` : '';
+                return `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 mt-2"><div class="text-[9px] text-gray-500 font-bold mb-0.5">今日共振段對帳(這檔訊號靈不靈,看這裡)${rec}</div>${winRows}</div>`;
+            })() : '<div class="text-[9px] text-gray-600 mt-1.5">今日尚無共振段(分歧盤,當沖少動)。</div>'}
             <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・3根平滑去雜訊・黃框=≥5維同向。只跟「段」不跟「單根」;隔日定調看日K六脈。</div>`;
         box.classList.remove('hidden');
         // 📣 V70.0.5 共振開始推播(進行中的新段,每段每股只推一次;盤中才推)
@@ -28006,7 +28016,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     _renderIntradayChart(el, candles, tf) {
         // ⚔️ V70.1.0 分時模式整併六脈箭頭(第 3 格),圖高 220→300;1/5分維持 220
-        try { const _h = tf === 'ts' ? '300px' : '220px'; if (el.style.height !== _h) el.style.height = _h; } catch (_) {}
+        try { const _h = tf === 'ts' ? '340px' : '220px'; if (el.style.height !== _h) el.style.height = _h; } catch (_) {}   // V70.1.3 溫度計加高
         const chart = echarts.getInstanceByDom(el) || echarts.init(el, 'dark');
         // 時間標籤:date 為 ISO(含 +08:00)→ 取 HH:MM
         const labels = candles.map(c => {
@@ -28048,9 +28058,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     markLine: { symbol: ['none', 'none'], silent: true, data: [
                         { yAxis: 0, lineStyle: { color: '#4b5563', width: 1 } },
                     ] },
+                    // V70.1.3 標籤改畫在左側空白欄(graphic),柱子永遠蓋不到;這裡只留區域底色
                     markArea: { silent: true, data: [
-                        [{ yAxis: 5, itemStyle: { color: 'rgba(248,113,113,0.10)' }, label: { show: true, position: 'insideTopRight', color: '#fca5a5', fontSize: 9, formatter: '▲ 做多區(多方共振)', backgroundColor: 'rgba(13,17,23,0.85)', padding: [2, 4], borderRadius: 3 } }, { yAxis: 6.5 }],
-                        [{ yAxis: -6.5, label: { show: true, position: 'insideBottomRight', color: '#86efac', fontSize: 9, formatter: '▼ 做空/避開區(空方共振)', backgroundColor: 'rgba(13,17,23,0.85)', padding: [2, 4], borderRadius: 3 } }, { yAxis: -5, itemStyle: { color: 'rgba(74,222,128,0.10)' } }],
+                        [{ yAxis: 5, itemStyle: { color: 'rgba(248,113,113,0.10)' } }, { yAxis: 6.5 }],
+                        [{ yAxis: -6.5 }, { yAxis: -5, itemStyle: { color: 'rgba(74,222,128,0.10)' } }],
                     ] },
                 };
             })()] : [];
@@ -28071,7 +28082,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         return `${grid[p.dataIndex]}<br>價 <b>${c.close}</b> (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%)${bias != null ? `<br>離均價 ${bias >= 0 ? '+' : ''}${bias.toFixed(2)}%` : ''}<br>量 ${(+c.volume || 0).toLocaleString()}`;
                     } },
                 axisPointer: { link: [{ xAxisIndex: 'all' }] },
-                grid: [{ left: '13%', right: '3%', top: '4%', height: '44%' }, { left: '13%', right: '3%', top: '53%', height: '13%' }, { left: '13%', right: '3%', top: '71%', height: '23%' }],
+                // 📛 V70.1.3 左側空白欄註記(使用者要求):溫度計標題+上下區意義,永不被柱子擋
+                graphic: _six ? [
+                    { type: 'text', left: 3, top: '64.5%', style: { text: '▲做多區', fill: '#fca5a5', fontSize: 9, fontWeight: 'bold' } },
+                    { type: 'text', left: 3, top: '76.5%', style: { text: '盤中\n六脈', fill: '#c9d1d9', fontSize: 11, fontWeight: 'bold', lineHeight: 14 } },
+                    { type: 'text', left: 3, top: '90%', style: { text: '▼避開區', fill: '#86efac', fontSize: 9, fontWeight: 'bold' } },
+                ] : [],
+                grid: [{ left: '13%', right: '3%', top: '4%', height: '40%' }, { left: '13%', right: '3%', top: '48%', height: '12%' }, { left: '13%', right: '3%', top: '64%', height: '30%' }],
                 xAxis: [
                     { type: 'category', data: grid, gridIndex: 0, boundaryGap: false, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#30363d' } } },
                     { type: 'category', data: grid, gridIndex: 1, boundaryGap: false, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#30363d' } } },
@@ -28115,7 +28132,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     { name: '量', type: 'bar', data: volsTs, xAxisIndex: 1, yAxisIndex: 1 },
                     ..._sixSeries,
                 ],
-            }, { replaceMerge: ['series', 'visualMap'] });
+            }, { replaceMerge: ['series', 'visualMap', 'graphic'] });
             setTimeout(() => { try { chart.resize(); } catch (_) {} }, 50);
             return;
         }
