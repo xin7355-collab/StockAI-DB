@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.2.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6577,8 +6577,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.2.3',
+    _APP_VERSION: 'V70.2.4',
     _CHANGELOG: [
+        { v: 'V70.2.4', dt: '2026-07-28', t: '📅 資料日期第五批(大盤/籌碼/回測補完)', d: [
+            '再補 9 處:全球巨頭脈動(美股是昨收,最容易誤會)、總經出貨指數、本股vs大盤、主力分點動向、借券/官股卡、概念標籤採礦日、產業鏈定位、回測明細每列加星期。',
+        ]},
         { v: 'V70.2.3', dt: '2026-07-28', t: '📅 資料日期第四批(全卡片系統性掃描補完)', d: [
             '你說「感覺還有沒做好的」— 對,我做了程式化全掃描(把每張會吃資料的卡列出來逐一比對),又補了 8 張:處置三卡(離被關幾步/雙刀流/越關越大尾,標官方名單日)、處置股總覽(證交所名單日)、風險紀錄(每筆加星期)、三大法人長條、融資融券長條(標是哪個交易日收盤的數字)。',
         ]},
@@ -9015,7 +9018,12 @@ ${list}
         if (industry) parts.push(`<span class="text-[10px] font-bold text-gray-300 bg-white/5 border border-[#30363d] rounded px-1.5 py-0.5 whitespace-nowrap">🏭 ${industry}</span>`);
         concepts.forEach(c => parts.push(`<span onclick="app._openFreeAiConcept('${c}')" title="點我用免費 AI 查「${c}」題材與同族群主流股" class="cursor-pointer text-[10px] font-bold text-cyan-300 bg-cyan-900/20 border border-cyan-700/40 rounded px-1.5 py-0.5 whitespace-nowrap hover:bg-cyan-900/40 transition-colors">#${c}</span>`));
         if (!parts.length) { el.classList.add('hidden'); el.innerHTML = ''; }
-        else { el.classList.remove('hidden'); el.innerHTML = parts.join(''); }
+        else {
+            el.classList.remove('hidden');
+            // 📅 V70.2.4 概念/產業標籤的採礦日(使用者要求:老舊資料要看得出來)
+            const _cu = (this._conceptCache && this._conceptCache.updated) ? `<span class="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0 self-center ml-0.5">${this._dW(this._conceptCache.updated)}</span>` : '';
+            el.innerHTML = parts.join('') + _cu;
+        }
         // 🏭 V57.1 官方本業(biz_profile.json 夜間採礦):公司到底在做什麼,以官方登記為準;非同步補一行,切股守門
         try {
             this._loadBizProfile().then(bp => {
@@ -13021,7 +13029,7 @@ const marginByDate = {};
             return `<div class="text-[11px] text-gray-300 leading-relaxed">🔗 <b class="text-gray-100">${ind}</b>${sub ? ` › ${sub}` : ''}${peerTxt}</div>`;
         }).join('');
         box.className = 'mb-2 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5';
-        box.innerHTML = `<div class="text-[10px] text-gray-500 font-bold mb-1">🔗 產業鏈定位 <span class="font-normal">(官方產業鏈對照;同鏈同業點股名直接跳)</span></div>${rows}`;
+        box.innerHTML = `<div class="text-[10px] text-gray-500 font-bold mb-1">🔗 產業鏈定位 <span class="font-normal">(官方產業鏈對照;同鏈同業點股名直接跳)${this._fmxUpdated ? ` · 📅 ${this._dW(this._fmxUpdated)}` : ''}</span></div>${rows}`;
         box.classList.remove('hidden');
     },
 
@@ -13665,6 +13673,7 @@ const marginByDate = {};
                     <div class="min-w-0 flex-1">
                         <div class="text-base font-black ${scoreCls} leading-tight">${verdict}</div>
                         <div class="text-[10px] text-gray-300 leading-snug mt-0.5">📋 ${advice}</div>
+                        ${(j && j.updated) ? `<div class="text-[9px] text-gray-500 mt-0.5">📅 總經資料 ${this._dW(j.updated, { rel: 1 })}</div>` : ''}
                     </div>
                     <div class="flex-shrink-0 text-center">
                         <div class="text-2xl font-black font-mono ${scoreCls} leading-none">${dispScore}</div>
@@ -15397,7 +15406,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const concTxt = conc != null ? `<span class="font-mono font-black ${conc >= 40 ? 'text-red-400' : 'text-gray-200'}">${conc.toFixed(0)}%</span>` : '—';
         el.innerHTML = `
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-            <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1.5">🎯 主力分點動向</div>
+            <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1.5">🎯 主力分點動向 ${this._dChip(this._fenDataDate, '分點')}</div>
             <div class="grid grid-cols-3 gap-2">
                 <div class="bg-[#0d1117] rounded p-2 text-center">
                     <div class="text-[9px] text-gray-500 mb-1">主力方向</div>
@@ -17134,7 +17143,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             el.innerHTML = `
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[11px] font-black text-gray-200 whitespace-nowrap">🌡️ 本股 vs 大盤</span>
-                    <span class="text-[8px] text-gray-600 flex-shrink-0">${this.isMarketOpen() ? (mktLive ? '盤中即時' : '盤中・大盤延遲') : '以最近收盤計'}</span>
+                    <span class="text-[8px] text-gray-600 flex-shrink-0">${this._dW(data[data.length - 1]?.date)} ${this.isMarketOpen() ? (mktLive ? '盤中即時' : '盤中・大盤延遲') : '收盤'}</span>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5 mb-1.5">
                     ${cell('本股', stkPct)}${cell('大盤', mktPct)}${cell(grpName ? `族群・${grpName}` : '族群', grpPct)}
@@ -26286,7 +26295,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const srcEl = $('bigPlayerSource');
         if (srcEl) {
             const allNull = nullCnt === ITEMS.length;
-            srcEl.textContent = allNull ? '(範例)' : (nullCnt === 0 ? '(實時)' : `(實時·${nullCnt}欄待採)`);
+            // 📅 V70.2.4 標資料日(美股是「昨收」,使用者最容易誤以為是今天的)
+            const _mu = (this.usMacroCache && (this.usMacroCache.updated || this.usMacroCache.date)) || (this._macroRiskCache && this._macroRiskCache.updated) || null;
+            const _mt = _mu ? `📅 ${this._dW(_mu, { rel: 1 })} ` : '';
+            srcEl.textContent = _mt + (allNull ? '(範例)' : (nullCnt === 0 ? '(實時)' : `(實時·${nullCnt}欄待採)`));
             srcEl.classList.toggle('opacity-60', nullCnt > 0);
         }
     },
@@ -27360,7 +27372,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             cards.push(`
               <div class="bg-[#161b22] border-l-4 border-${tone}-500 border-y border-r border-[#30363d] rounded-r p-3">
                 <div class="flex items-center justify-between mb-1">
-                  <div class="text-[11px] font-bold text-${tone}-300">🩳 借券空方壓力${hot ? ' · ⚠️ 借券暴增' : ''}</div>
+                  <div class="text-[11px] font-bold text-${tone}-300">🩳 借券空方壓力${hot ? ' · ⚠️ 借券暴增' : ''} <span class="text-[9px] text-gray-500 font-normal">${this._dW((this._lendingCache || {}).updated)}</span></div>
                   <button onclick="alert('【借券空方壓力】\\n\\n借券=有人「借股票來賣」(看跌才借券放空)。借券賣出量暴增,代表空方在布局、賣壓變重。\\n\\n近5日借券量 vs 前5日 = 暴增倍數,≥1.5 倍亮紅燈。借券費率越高=空方越搶著借、越積極。\\n\\n對策:借券暴增別追高;但若股價卻不跌,可能軋空(空單被迫回補)反噬向上。')" class="text-[9px] text-gray-500 hover:text-red-300">📖</button>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center">
@@ -27374,7 +27386,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (gov) {
             const net = +gov.net || 0, net5 = +gov.net5 || 0;
             const tone = net > 0 ? 'red' : (net < 0 ? 'green' : 'gray');
-            const verdict = net > 0 ? '🛡️ 官股護盤(買超)' : (net < 0 ? '🏦 官股調節(賣超)' : '官股中性');
+            const verdict = (net > 0 ? '🛡️ 官股護盤(買超)' : (net < 0 ? '🏦 官股調節(賣超)' : '官股中性')) + `<span class="text-[9px] text-gray-500 font-normal"> ${this._dW((this._govbankCache || {}).updated)}</span>`;
             cards.push(`
               <div class="bg-[#161b22] border-l-4 border-${tone}-500 border-y border-r border-[#30363d] rounded-r p-3">
                 <div class="flex items-center justify-between mb-1">
@@ -31663,7 +31675,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const pct = prevC > 0 ? (diff / prevC) * 100 : 0;
             const pColor = diff > 0 ? 'text-[#f87171]' : (diff < 0 ? 'text-[#4ade80]' : 'text-gray-500');
             const sign = diff > 0 ? '+' : '';
-            const dShort = String(data[i].date || '').replace(/^\d{4}\//, '');
+            const dShort = this._dW(data[i].date);   // 📅 V70.2.4 加星期
 
             // 🎯 V41.20 底層換掉:「我的機率」欄 → 朱老師四大金剛(趨勢/均線/K線/量)逐日判讀
             const g = this._fourGuardianScoreAt(data, i);
