@@ -2282,6 +2282,11 @@ def main():
             'retail_ls_pct': out.get('retail_ls_pct'),
             'taifex_backwardation': out.get('taifex_backwardation'),
             'jpy_chg_pct': out.get('jpy_chg_pct'),
+            # 🇰🇷 V71.1.9 開始存韓/日:反攻雷達「韓股翻紅」目前是結構性推理(韓股半導體權重高、
+            #   日經由日圓主導),**沒有回測依據**。存起來累積 3-6 個月後就能真的驗證
+            #   「韓股 vs 日經 誰對台股次日開盤更有預測力」,而不是繼續用推理。
+            'kospi_chg_pct': out.get('kospi_chg_pct'),
+            'nikkei_chg_pct': out.get('nikkei_chg_pct'),
             'fear_greed': out.get('fear_greed'),
             'business_signal': (out.get('business_signal') or {}).get('light'),
             'blackswan_flags': sum(1 for v in (out.get('blackswan') or {}).values() if v),

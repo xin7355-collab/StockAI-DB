@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6520,8 +6520,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.1.8',
+    _APP_VERSION: 'V71.1.9',
     _CHANGELOG: [
+        { v: 'V71.1.9', dt: '2026-07-28', t: '🎨 反攻雷達版面重排 + 日韓改成「韓股為準」', d: [
+            '【版面】舊版名稱欄固定只有 64px,「日韓同盤翻紅」「外資期貨回補」這種長名字全部斷成兩行,現值又塞在名字底下 → 每列高度忽高忽低(外資那列高到 4 行),整張卡參差不齊。改成每列固定兩行:上排「圖示 名稱 …… 現值 ✅」名字不斷行、數字靠右對齊;下排才是條件說明,佔滿整行不再被擠。左邊多一條細色帶,一眼掃得出哪幾條沒過。',
+            '【你問日韓要不要分開看 → 不該一起看,韓股才是主角】韓股半導體權重極高(三星、SK海力士),跟台股同一條供應鏈,連動最直接;日經權重偏汽車/機械/金融,而且漲跌主要由日圓匯率決定(日圓貶→日經漲),原因常跟台股無關 — 而日圓這張卡本來就另外單獨判了,再讓日經進來等於同一件事算兩次。',
+            '舊寫法是「韓或日任一翻紅就算過」,所以會出現「韓股 −4.8% 但日經 +0.5% → 判過」這種明顯失真。已改成以韓股為準、日經只當佐證顯示;真的抓不到韓股才退回用日經。',
+            '⚠️ 誠實說:這是從「指數成分結構」推理來的,不是回測結論 — 目前沒存韓/日歷史,無法回測。本版起開始存,累積幾個月後我會真的驗一次「韓股 vs 日經 誰對台股更有預測力」,而不是繼續用推理。',
+        ]},
         { v: 'V71.1.8', dt: '2026-07-28', t: '✂️ 反攻雷達文字砍半 + 全 App 資料連動盤查', d: [
             '【精簡】反攻條件雷達每一條的說明都砍短(17 句),整張卡的字大約少一半,手機上不用一直往下捲。',
             '【盤查結果 — 你要的】用程式把網站上 287 個資料檔的欄位,跟前端程式全部交叉比對,兩個方向都查:',
@@ -14054,7 +14060,21 @@ const marginByDate = {};
         const add = (icon, name, now, pass, when, na) => C.push({ icon, name, now, pass: na ? null : !!pass, when });
         add('🇺🇸', '美股止穩', vix == null ? '—' : `VIX ${f1(vix)}`, vix != null && vix < 25 && (sp == null || sp > -0.5), 'VIX <25 且標普止跌', vix == null);
         add('💱', '台幣止貶', twd5 == null ? '—' : `5日 ${twd5 >= 0 ? '貶' : '升'} ${Math.abs(twd5).toFixed(2)}%`, twd5 != null && twd5 <= 0.1, '5 日不再貶(外資停提款・' + (twd != null ? twd.toFixed(2) : '—') + ')', twd5 == null);
-        add('🇰🇷', '日韓同盤翻紅', `韓 ${f1(kospi)}% / 日 ${f1(nikkei)}%`, (kospi != null && kospi > 0) || (nikkei != null && nikkei > 0), '韓或日翻紅(台股開盤風向)', kospi == null && nikkei == null);
+        // 🇰🇷 V71.1.9 使用者問「韓國跟日股要一起看還是分開?」→ **不該一起看,韓股才是主角**:
+        //   ・韓股(KOSPI)半導體權重極高(三星/SK海力士),跟台股同一條供應鏈 → 連動最直接
+        //   ・日經權重偏汽車/機械/金融/商社,而且**由日圓匯率主導**(日圓貶→日經漲),
+        //     漲跌原因常跟台股無關;日圓那條本卡已另外單獨判,再讓日經進來等於重複計票
+        //   舊寫法是 OR:韓股 −4.8% 但日經 +0.5% 也會判「過」→ 明顯失真。
+        //   改成韓股為準、日經只當佐證顯示;沒有韓股資料才退回用日經。
+        //   ⚠️ 誠實說:此判斷來自「指數成分結構」的推理,**不是回測結論** —
+        //      目前 risk_history 沒存韓/日歷史,無法回測(本版起開始存,累積後可驗證)。
+        const _asiaPrimary = kospi != null ? kospi : nikkei;
+        const _asiaSrc = kospi != null ? '韓' : '日';
+        add('🇰🇷', '韓股翻紅',
+            `韓 ${f1(kospi)}%${nikkei != null ? ` ・日 ${f1(nikkei)}%` : ''}`,
+            _asiaPrimary != null && _asiaPrimary > 0,
+            `以${_asiaSrc}股為準(半導體同供應鏈,連動最直接);日經受日圓匯率主導,只當佐證不列入判定`,
+            _asiaPrimary == null);
         // 🐛 V71.1.6 修「永遠不可能通過」的死條件:
         //   舊門檻寫「回補到 −25,000 口以內」,但實測近 22 個交易日外資期貨淨額區間是
         //   −86,189 ~ −75,198 —— 從來沒有一天接近 −25,000。那是舊市場規模的門檻(小台/微台
@@ -14145,11 +14165,29 @@ const marginByDate = {};
                 if (!localStorage.getItem(dk)) { localStorage.setItem(dk, '1'); this._fireAlert?.('🚨 全面黑天鵝訊號', `${swanHits.join('、')} → 持股先減碼停損,現金為王(反攻條件雷達)`, ''); }
             }
         } catch (_) {}
-        const row = c => `<div class="grid grid-cols-[16px_64px_1fr_14px] gap-1.5 items-start py-1 border-b border-[#21262d] last:border-0">
-            <span class="text-[11px]">${c.icon}</span>
-            <span class="text-[10px] text-gray-200 font-bold leading-tight">${c.name}<div class="text-[9px] text-gray-500 font-mono font-normal">${c.now}</div></span>
-            <span class="text-[9px] text-gray-500 leading-snug">${c.when}</span>
-            <span class="text-[11px] text-right">${c.pass === null ? '⏳' : c.pass ? '✅' : '❌'}</span></div>`;
+        // 🎨 V71.1.9 版面重排(使用者:很醜):
+        //   舊版是 4 欄 grid,名稱欄固定 64px → 「日韓同盤翻紅」「外資期貨回補」這種長名字全部斷成兩行,
+        //   而且現值塞在名稱底下 → 每列高度忽高忽低(外資那列高達 4 行),整張卡參差不齊。
+        //   改兩行式:第 1 行「圖示 名稱 …… 現值 狀態」(名稱 truncate 不斷行、現值靠右對齊),
+        //   第 2 行才是條件說明(整行寬度,不再被擠在窄欄裡)。每列固定 2 行,節奏一致。
+        //   左側細色條依狀態上色,一眼掃得出哪幾條沒過。
+        const row = c => {
+            const st = c.pass === null ? '⏳' : c.pass ? '✅' : '❌';
+            const bar = c.pass === null ? 'bg-[#30363d]' : c.pass ? 'bg-green-500/60' : 'bg-red-500/60';
+            const nameCls = c.pass === false ? 'text-gray-100' : 'text-gray-300';
+            return `<div class="flex gap-2 py-1.5 border-b border-[#21262d] last:border-0">
+                <span class="w-0.5 rounded-full ${bar} flex-shrink-0"></span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] flex-shrink-0">${c.icon}</span>
+                        <span class="text-[11px] font-bold ${nameCls} truncate">${c.name}</span>
+                        <span class="ml-auto font-mono text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">${c.now}</span>
+                        <span class="text-[11px] w-4 text-right flex-shrink-0">${st}</span>
+                    </div>
+                    <div class="text-[9px] text-gray-500 leading-snug mt-0.5">${c.when}</div>
+                </div>
+            </div>`;
+        };
         box.className = 'bg-[#161b22] border-l-4 ' + heroCls.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2">
