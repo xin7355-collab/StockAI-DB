@@ -64,11 +64,11 @@
 ### Claude 的部署工作流（自動化）⭐ 使用者要求:每次介面做好就自動發佈到前端
 - **Claude 修改 `index.html` 後直接 push 到 `main`，不開 PR** → `deploy_pages.yml` ~1 分鐘部署，使用者硬重新整理即可看到
 - **若在 feature branch 開發,完成後必須 merge 回 main 並 push main**，否則 gh-pages 永遠看不到（push trigger 只認 main）
-- 每次 push 前必跑三驗證：`node --check`（index.html inline JS）+ `python3 -m py_compile *.py` + `python3 scripts/check_dom_ids.py`
+- 每次 push 前必跑**四驗證**（清單見下方「每次 push main 前必跑的四驗證」一節,以那節為準）
 - 出錯時使用者可以 `git revert HEAD` 回退，或叫 Claude 修
 
 ### ⭐ Claude 永久授權（使用者明示:看不懂程式碼,壞了再修就好）
-- **純前端 / 小邏輯改動完成、三驗證通過後**：**不需問使用者**,直接 `git checkout main && git merge <feature-branch> --ff-only && git push origin main`,讓 `deploy_pages.yml` 自動上線
+- **純前端 / 小邏輯改動完成、四驗證通過後**：**不需問使用者**,直接 `git checkout main && git merge <feature-branch> --ff-only && git push origin main`,讓 `deploy_pages.yml` 自動上線
 - **採礦 `*.py` 改動**:同上,直接 merge main + push,由 `daily_miner.yml` 接手
 - **無需先開 PR**;若 web session 開在 feature branch,完成就 fast-forward 合併回 main
 - ⛔ **仍須先問使用者**的例外:① 大規模重構/架構大改 ② 刪檔/刪資料 ③ 改 GitHub Actions workflow 邏輯 ④ 動 `data/` 內快取 ⑤ 不確定是否會壞時
@@ -260,7 +260,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 
 ### 開發流程
 - **直接 push main**:純前端改 → `deploy_pages.yml` ~1 分鐘上線
-- **改完三驗證**:`node --check`(inline JS) + `python3 -m py_compile`(py) + `scripts/check_dom_ids.py`
+- **改完跑四驗證**(清單見「每次 push main 前必跑的四驗證」一節)
 - **commit 用 HEREDOC**:多行 commit message + Co-Authored-By
 - **PR 寫測試清單**:每張 PR body 給 Test plan(使用者上線後可逐項勾)
 - **PR rebase**:撞 main conflict 時 `git rebase origin/main` + `git push --force`
@@ -276,8 +276,8 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
   4. 四驗證 + 分 Batch commit,每個 Batch 版本 +0.1。
 - **git/workflow 類 bug 要「實測」不要用猜的**:改 workflow 的 git 流程時,開 `/tmp` 小 repo 實測 `git checkout -f` / `git add -f` / gitignore 交互(如 V49.4 實測 `checkout -f` 可越過 gitignore untracked 衝突),別靠推理。
 
-**每次 push main 前必跑的「四驗證」**(原三驗證 + 新增第 4 個):
-1. `node --check`(抽 inline JS 語法)
+**每次 push main 前必跑的「四驗證」**(⚠️ 全專案以這份為準,別處若寫「三驗證」是過期敘述):
+1. `node scripts/smoke_test.mjs`(headless 真載入:app init / 43 個偵測器 / render 函式 / 無 pageerror。比舊的 `node --check` 只驗語法強得多)
 2. `python3 -m py_compile *.py`(後端語法)
 3. `python3 scripts/check_dom_ids.py`(DOM id 唯一性 — V71.0.7 起取代已失效的 check_prompt_vars.py)
 4. **`awk '...' index.html`** 確認 7 個 `tabContent*` 容器 div 開合平衡(防 V25.0 那種 HTML 巢狀 bug 重演 — `tabContentMarket` 少 1 個 `</div>` 導致 5 tab 被巢狀其中,8 次嘗試才修到)
@@ -847,7 +847,22 @@ done
 
 ## 📋 全盤體檢待辦(2026-07-27)
 
-`docs/OPTIMIZATION_PLAN.md` 有 45 條已人工驗證的優化清單(P0 資料流修復 → P1 效能 → P1.5 卡片打架/殭屍卡 → P2 瘦身 → P3 採礦效率),含證據行號與勾選框。**Batch A(P0 全部)已於 V69.8.4 完成**;接手者從 Batch D(P1 效能)繼續,每 Batch 一次 commit + 四驗證。
+`docs/OPTIMIZATION_PLAN.md` 的 45 條優化清單(P0 資料流 → P1 效能 → P1.5 卡片打架/殭屍卡 → P2 瘦身 → P3 採礦效率)**已於 V71.0.8 全數完成**。
+該文件現在的價值是**決策紀錄**而非待辦:每一條都寫了「做了什麼 / 為什麼這樣做 / 哪些原計畫是錯的」。
+接手前務必讀,尤其這幾條**「驗證後決定不做」**的,別再重做一次:
+- **P2-6**「兩支長黑/長紅 K 偵測器合併」「波段轉折抽共用」→ 門檻與回傳型別本來就不同,合併會改變訊號輸出。
+- **U-15** 當沖燈 + 作戰室 hero 合併 → 兩卡語意不同(方向 vs 真假),互補非重複。
+- **U-16** 不併「🔴 盤中連量偵測」→ 它在常顯區且是即時警訊,搬進摺疊區是退步。
+- **U-18** 不刪 4 張防守卡 → 各卡的「為什麼」說明是使用者要的教學,改成上方加一條「由近到遠」的尺。
+- **U-14** `updateAITranslator` / `analyzeStockPredict` **是活的**,原清單誤列為死碼,照抄會刪掉功能。
+
+### 🧪 兩支探針(只讀 data/、不打 API、不花額度,隨時可重跑)
+| 腳本 | 回答什麼 | 何時該重跑 |
+|------|---------|-----------|
+| `sector_flow_probe.py` | 板塊「偷布局」訊號有沒有用 | 外資資料滿 1 年後(目前只回溯到 2026/05,僅 18 個獨立事件) |
+| `edge_probe.py` | 8 個機構因子在台股有沒有效 | 走完一次空頭後(目前結論來自 3 年多頭,低波動/反轉/流動性三個因子當時是反向的) |
+
+⚠️ **結論會過期**:若重跑後邊際消失,就把對應功能降級為參考資訊或移除,別留著誤導使用者。
 
 ## GitHub 帳號
 - 帳號:`xin7355-collab`

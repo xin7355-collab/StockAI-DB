@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.0.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.1.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6525,8 +6525,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.0.9',
+    _APP_VERSION: 'V71.1.0',
     _CHANGELOG: [
+        { v: 'V71.1.0', dt: '2026-07-28', t: '📐 隔夜足跡的比較基準改成「會自動更新」', d: [
+            '「🌙 隔夜資金足跡」用來判斷「全市場前 20% / 中段 / 最後 20%」的門檻,改成由採礦機每天重算,不再寫死在程式裡(寫死的數字過幾個月就失真了)。卡片下方會標出門檻是哪一天、用幾檔股票算的。',
+            '順手把量測日期改成有顯示年份 — 跨年時才不會把去年的門檻誤看成今年的。',
+        ]},
         { v: 'V71.0.9', dt: '2026-07-28', t: '🌙 隔夜資金足跡:把實測有效的兩個因子做進籌碼卡', d: [
             '個股頁「大戶籌碼總結」卡片裡新增一段「🌙 隔夜資金足跡」(沒有新開卡片,是併進去的)。它把每天漲跌拆兩段看:「隔夜段」(昨收→今開)是機構、外資進出的痕跡;「盤中段」(今開→今收)是散戶當沖的戰場。',
             '為什麼是這兩個:我拿 2,220 檔、約 3 年日K 實測 8 個法人常用因子,只有「隔夜段報酬」和「距 52 週高」站得住。隔夜段由低到高分 5 組,之後 20 天報酬完美一組比一組高;距 52 週高則是價差最大的(散戶都覺得創新高太貴要等回檔,實測完全相反)。',
@@ -12755,7 +12759,7 @@ const marginByDate = {};
             ${row('盤中段(今開→今收)', f1(idr), numCls(idr), null, '散戶當沖戰場')}
             ${prox != null ? row('距 52 週高', prox.toFixed(0) + '%', 'text-gray-100', rPx, '越接近高點,實測後續越強') : ''}
             <div class="text-[10px] text-gray-200 leading-relaxed mt-1.5 bg-[#161b22] border-l-2 border-[#30363d] pl-2 py-1 rounded-r">${vIcon} ${verdict}${gapTxt ? '<br><span class="text-gray-400">' + gapTxt + '</span>' : ''}</div>
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">分位門檻 ${cuts._at ? `(${this._dW(cuts._at)} 全市場實測)` : ''}・⚠️ 這是「加分項」不是進出訊號:實測 3 年多頭期、前 20% 那組的 20 日勝率也只有約 43%(靠少數大贏家拉平均),扣掉來回成本約 0.4% 後空間有限。</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">分位門檻 ${cuts._at ? `(${this._dW(cuts._at, { y: 1 })} 全市場實測${cuts.n ? ` ${cuts.n.toLocaleString()} 檔` : ''})` : ''}・⚠️ 這是「加分項」不是進出訊號:實測 3 年多頭期、前 20% 那組的 20 日勝率也只有約 43%(靠少數大贏家拉平均),扣掉來回成本約 0.4% 後空間有限。</div>
         </div>`;
     },
     _helpOvernight() {
