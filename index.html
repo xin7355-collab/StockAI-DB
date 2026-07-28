@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V70.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V70.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V70.0.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4440,6 +4440,35 @@ const app = {
                     this._fireAlert(title, `${name}(${sym}) ${body}`, sym);
                 };
 
+                // ⚡ V70.0.9 壓箱寶:六脈點火/熄火「全庫存+自選」背景掃描(60s 輪掃自動推,不用盯盤)
+                //   便宜前濾(漲 ≥2% 才驗點火 / 跌 ≤-1.5% 且持股才驗熄火)→ 才跑 4 次六脈重算,CPU 無感
+                //   今日合成棒:現價當收盤、Fugle 高低、量=前5日均量×估量倍率(單位跟 kdata 自身一致)
+                try {
+                    const _chgNow = (nowPrice - prevClose) / prevClose * 100;
+                    const _needFire = _chgNow >= 2, _needOut = _chgNow <= -1.5 && !!costBy[sym];
+                    if (_needFire || _needOut) {
+                        const vp = this._chuVolumeProgress(fugle, kdata);
+                        const volRatio = (vp && vp.estimated && vp.prevVol) ? vp.estimated / vp.prevVol : 0;
+                        const _avg5v = kdata.slice(-5).reduce((s, b) => s + (+b.volume || 0), 0) / 5;
+                        const _tpe = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+                        const _dstr = `${_tpe.getFullYear()}/${String(_tpe.getMonth() + 1).padStart(2, '0')}/${String(_tpe.getDate()).padStart(2, '0')}`;
+                        const synth = { date: _dstr, open: +fugle.open || nowPrice, high: +fugle.dayHigh || nowPrice,
+                                        low: +fugle.dayLow || nowPrice, close: nowPrice,
+                                        volume: Math.round(_avg5v * Math.max(0.2, volRatio || 1)), foreign_net: 0 };
+                        const nowV = this._sixMeridianCalc([...kdata, synth]);
+                        if (nowV) {
+                            const prevs = [];
+                            for (let k = 0; k <= 2; k++) { const pv = this._sixMeridianCalc(k === 0 ? kdata : kdata.slice(0, kdata.length - k)); if (pv) prevs.push(pv.okN); }
+                            if (_needFire && prevs.length && Math.min(...prevs) <= 2 && nowV.okN >= 4 && volRatio >= 1.5) {
+                                const _lo = (+fugle.dayLow || nowPrice).toFixed(2);
+                                trigger('sixFire', '⚡ 六脈點火(盤中)', `盤中共振 ${nowV.okN} 分 + 估量 ${volRatio.toFixed(1)}× → 低檔齊發參考買進;鐵律:停損=今日最低 ${_lo},收盤跌破就走(誘多)`);
+                            } else if (_needOut && prevs.length && Math.max(...prevs) >= 4 && nowV.okN <= 2) {
+                                trigger('sixOut', '🧯 六脈熄火(盤中)', `共振 ${Math.max(...prevs)} 分 → 盤中僅剩 ${nowV.okN} 分且跌 ${_chgNow.toFixed(1)}% → 持股先減碼/停利,別等全翻空`);
+                            }
+                        }
+                    }
+                } catch (_) {}
+
                 if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🔴 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}(停利訊號)${upTag}`);
                 // V18.8 — 朱家泓:跌破 5MA = 短線停利/停損(原本只監突破,缺賣訊)
                 if (prevClose >= ma5 && nowPrice < ma5)  trigger('dn5',     '🟡 跌破 5MA',   `現價 ${nowPrice.toFixed(2)} 跌破 5MA ${ma5.toFixed(2)}(朱:短線停利/停損)${dnTag}`);
@@ -6456,8 +6485,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V70.0.8',
+    _APP_VERSION: 'V70.0.9',
     _CHANGELOG: [
+        { v: 'V70.0.9', dt: '2026-07-28', t: '📣 壓箱寶:盤中買賣訊號自動推(不用盯盤)', d: [
+            '「⚡ 六脈點火 / 🧯 熄火」加入背景掃描:你的自選+庫存+觀察全清單,盤中每分鐘輪掃,誰點火(低檔共振+爆量=參考買進,附當日低停損價)/誰熄火(持股動能退潮=減碼)直接推播到手機,不用一檔一檔盯。',
+            '同股同訊號 30 分鐘冷卻不吵;需開啟「盤中自動通知」(設定內)與系統通知權限。',
+        ]},
         { v: 'V70.0.8', dt: '2026-07-28', t: '⚡ 六脈點火/熄火訊號(取材你提供的腳本,修正後上車)', d: [
             'K線頁六脈卡新增「⚡ 六脈點火」:前 1~3 天只有 ≤2 分 → 今天跳到 ≥4 分 + 爆量 1.5 倍以上 = 低檔多脈齊發強啟動,紅框閃爍提示,並附鐵律「無條件停損設今日K線最低點」。',
             '鏡像「🧯 六脈熄火」:前幾天 ≥4 分 → 今天掉到 ≤2 分 = 動能快速退潮,持股先減碼別等全翻空。',
