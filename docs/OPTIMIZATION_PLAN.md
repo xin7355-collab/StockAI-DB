@@ -164,7 +164,7 @@
 - [x] **RSI 被實作 4 次**(3079 / 16606 / 18228 / 32225),其中兩種算法(Wilder vs SMA)**對同一檔股票會給出不同 RSI 值** → ✅ V69.9.0 已統一 `_rsiSeries()`(Wilder):背離(6)/盤勢解讀(14)/回測(14)改共用,worker 副圖本就同式保留;回測順帶從每根 O(14) 改預算整條
 - 波段轉折偵測迴圈重複 4 次 → 抽 `_swingPoints()`
 - `_detectBlackCandleLevels` / `_detectRedCandleLevels` 逐行鏡像(~55 行)→ 合併帶 dir 參數
-- `^TWII.json` 抓取邏輯複製兩份(13776 / 14468)
+- [x] `^TWII.json` 抓取邏輯複製兩份(13776 / 14468)→ ✅ V69.9.1 實際找到 **4 處**(天氣趨勢/盤前簡報/派發日/年線乖離),統一 `_getTwiiRows()`(30 分快取 + 併發去重)
 - `fav + inv → allSyms` 樣板複製 4 次(4050/4091/4183/4307);`JSON.parse(localStorage.getItem('proTerminalInv'))` 全檔 **25 次** → 抽 `_getInventory()`
 - `stockToSector` 硬編碼表複製 3 份,且 14658 那份**自身有重複 key**(3017/2474/6669/2317 各寫兩次)
 

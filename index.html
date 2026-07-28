@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V69.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V69.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -632,7 +632,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V69.9.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6544,8 +6544,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V69.9.0',
+    _APP_VERSION: 'V69.9.1',
     _CHANGELOG: [
+        { v: 'V69.9.1', dt: '2026-07-28', t: '📥 大盤 K 線改單一載入口', d: [
+            '原本 4 個卡片各自去抓加權指數 K 線 → 統一走同一個 30 分鐘快取,開大盤頁少 3 次重複下載,多卡同時要也只發一次請求。',
+        ]},
         { v: 'V69.9.0', dt: '2026-07-28', t: '📏 RSI 全 App 統一成同一把尺', d: [
             '原本 4 個地方各自算 RSI,其中 2 處用了不同演算法 → 同一檔股票在不同卡片會看到不同 RSI 值。',
             '現在統一成券商標準算法(Wilder):副圖、背離偵測、盤勢解讀、歷史勝率回測全部同源,數字不再打架。',
@@ -13747,17 +13750,7 @@ const marginByDate = {};
             bear: { icon: '🌧️', txt: '偏空', cls: 'text-green-300', sub: '空頭排列' },
         };
         try {
-            let rows = this._twiiKlineCache?.rows;
-            const fresh = this._twiiKlineCache?.at && (Date.now() - this._twiiKlineCache.at) < 1800000;
-            if (!rows || !fresh) {
-                const ghBase = window.location.href.split('?')[0].split('#')[0];
-                const url = new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`;
-                const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
-                if (!r.ok) throw new Error('TWII ' + r.status);
-                rows = await r.json();
-                if (!Array.isArray(rows) || rows.length < 30) throw new Error('TWII 資料不足');
-                this._twiiKlineCache = { rows, at: Date.now() };
-            }
+            const rows = await this._getTwiiRows();   // V69.9.1 P2-6:共用載入口
             const tfs = [
                 { label: '短期', unit: '日', v: this._weatherVerdict(rows, 5, 20) },
                 { label: '中期', unit: '週', v: this._weatherVerdict(this.aggregateData(rows, 'W'), 5, 20) },
@@ -14054,13 +14047,7 @@ const marginByDate = {};
         let tech = null, techStale = false;
         try {
             let rows = (Array.isArray(usm.twii_history) && usm.twii_history.length >= 20) ? usm.twii_history : null;
-            if (!rows) {
-                rows = this._twiiKlineCache?.rows;
-                if (!rows) {
-                    const r = await fetch(new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(12000) });
-                    if (r.ok) { rows = await r.json(); if (Array.isArray(rows) && rows.length >= 30) this._twiiKlineCache = { rows, at: Date.now() }; }
-                }
-            }
+            if (!rows) rows = await this._getTwiiRows().catch(() => null);   // V69.9.1 P2-6:共用載入口
             if (Array.isArray(rows) && rows.length >= 20) {
                 // 末根若為今日未收量=0,複製前一根量避免量能偵測器誤判「量縮」
                 const _r = rows.map(x => ({ ...x }));
@@ -14439,17 +14426,7 @@ const marginByDate = {};
         const box = document.getElementById('distDayCard');
         if (!box) return;
         try {
-            let rows = this._twiiKlineCache?.rows;
-            const fresh = this._twiiKlineCache?.at && (Date.now() - this._twiiKlineCache.at) < 1800000;
-            if (!rows || !fresh) {
-                const ghBase = window.location.href.split('?')[0].split('#')[0];
-                const url = new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`;
-                const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
-                if (!r.ok) throw new Error('TWII ' + r.status);
-                rows = await r.json();
-                if (!Array.isArray(rows) || rows.length < 30) throw new Error('TWII 資料不足');
-                this._twiiKlineCache = { rows, at: Date.now() };
-            }
+            const rows = await this._getTwiiRows();   // V69.9.1 P2-6:共用載入口
             const dd = this._calcDistributionDays(rows, 25);
             this._distDayCount = dd;   // 供 _calcRiskScore 連動
             if (dd == null) throw new Error('資料不足');
@@ -15172,13 +15149,29 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   來源:data/^TWII.json(miner.py mine batch 0 yfinance period='2y' + TWSE 官方 2 個月覆蓋)
     //   gh-pages 確認有 ~500 筆 OHLCV(2024/06 起),MA240 計算充裕
     //   寫進 _macroRiskCache.taiex_ma240_bias,_detectMarketRegime() 完全不必改邏輯
+    // 📥 V69.9.1 P2-6:全 App 唯一的加權指數 K 線載入口(原 4 處各自 fetch data/^TWII.json)。
+    //   30 分鐘記憶體快取 + 併發去重(啟動時多卡同時要 → 只發一次網路請求)。
+    async _getTwiiRows() {
+        const c = this._twiiKlineCache;
+        if (c?.rows && (Date.now() - c.at) < 1800000) return c.rows;
+        if (this._twiiFetchP) return this._twiiFetchP;
+        this._twiiFetchP = (async () => {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(12000) });
+                if (!r.ok) throw new Error('TWII ' + r.status);
+                const rows = await r.json();
+                if (!Array.isArray(rows) || rows.length < 30) throw new Error('TWII 資料不足');
+                this._twiiKlineCache = { rows, at: Date.now() };
+                return rows;
+            } finally { this._twiiFetchP = null; }
+        })();
+        return this._twiiFetchP;
+    },
+
     async _loadTaiexMA240Bias() {
         try {
-            const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const url = new URL('data/^TWII.json', ghBase).href + `?t=${Date.now()}`;
-            const r = await fetch(url, { signal: AbortSignal.timeout(12000) });   // V17.15 — 8s→12s,CDN 抖動容錯
-            if (!r.ok) return;
-            const rows = await r.json();
+            const rows = await this._getTwiiRows();
             if (!Array.isArray(rows) || rows.length < 240) {
                 console.log(`[TAIEX MA240] 資料 ${rows?.length || 0} 筆 < 240,等下次採礦補滿`);
                 return;
