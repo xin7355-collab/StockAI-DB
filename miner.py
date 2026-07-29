@@ -10,6 +10,8 @@ import os, sys
 import random
 import re
 import signal
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import traceback
 import sqlite3
 import requests
@@ -119,7 +121,16 @@ FINMIND_TOKEN  = FINMIND_TOKENS[0] if FINMIND_TOKENS else ''  # 向下相容舊�
 _finmind_token_idx: int  = 0      # 目前使用的 Token 索引
 _FINMIND_BLOCKED:   bool = False   # 所有 Token 均耗盡時觸發，保護程式不當機
 FINMIND_PAID = None                # 💰 None=未偵測 / True=付費有效 / False=免費或付費失效(自動降版)
-FINMIND_PAID_TOKEN = ''            # 💰 探測時哪一把 token 通過付費 → 之後付費專屬端點固定用這把(Bearer)
+FINMIND_PAID_TOKEN = ''            # 💰 探測時第一把通過付費的 token(向下相容,單把用途仍讀這個)
+# 🚀 V71.2.7 付費 token 池 —— 這是全市場分點採礦真正的天花板所在。
+#   舊寫法 fm_paid_get() **從頭到尾只用 FINMIND_PAID_TOKEN 一把**,
+#   等於不管 Secrets 放幾把,分點永遠只吃得到「單把 6000 req/hr = 100 req/min」。
+#   實測:35 分鐘預算跑約 4,000~4,500 次呼叫 ≈ 每分鐘 120 次 —— 剛好卡在單把的額度天花板,
+#   所以「跑不完全市場」不是程式慢,是額度只用了 1/N。
+#   改成把所有驗證過付費的 token 收進池子輪流用 → 上限變成 N × 6000/hr。
+FINMIND_PAID_TOKENS: list = []
+_fm_paid_idx = 0
+_fm_paid_lock = threading.Lock()
 
 
 def detect_finmind_paid() -> bool:
@@ -155,16 +166,21 @@ def detect_finmind_paid() -> bool:
             tok_status, tok_msg = j.get('status'), str(j.get('msg', ''))[:80]
             if j.get('status') == 200 and (j.get('data') or []):
                 FINMIND_PAID = True
-                FINMIND_PAID_TOKEN = tok
-                break
+                if not FINMIND_PAID_TOKEN:
+                    FINMIND_PAID_TOKEN = tok
+                # 🚀 V71.2.7:不再「找到一把就 break 整個迴圈」——每把都要驗,
+                #   全部收進池子才能把額度乘上去(見 FINMIND_PAID_TOKENS 註解)。
+                if tok not in FINMIND_PAID_TOKENS:
+                    FINMIND_PAID_TOKENS.append(tok)
+                break   # 這把已確認可用,不用再試其他日期;外層繼續驗下一把
             if tok_status in (402, 403) or (tok_msg and 'illegal' in tok_msg.lower()):
                 break   # 這把 token 就是不行(非付費/貼錯),不用再試其他日期
         mask = (tok[:6] + '…' + tok[-4:]) if len(tok) > 12 else '(短)'
         per_token.append((mask, tok_status, tok_msg))
         last_status, last_msg = tok_status, tok_msg
-        if FINMIND_PAID:
-            print(f'💰 FinMind:付費(Sponsor)有效 → 分點/擴充覆蓋全開(token #{ti+1} {mask} status=200)')
-            break
+    if FINMIND_PAID:
+        print(f'💰 FinMind:付費(Sponsor)有效 → {len(FINMIND_PAID_TOKENS)}/{len(FINMIND_TOKENS)} 把 token 可用'
+              f'(理論額度 {len(FINMIND_PAID_TOKENS) * 6000:,} req/hr;舊版只用 1 把 = 6,000)')
     if not FINMIND_PAID:
         illegal = any('illegal' in (m or '').lower() for _, _, m in per_token)
         need_pay = any(s in (402, 403) for _, s, _ in per_token)
@@ -188,7 +204,15 @@ def fm_paid_get(endpoint: str, params: str, timeout: int = 15):
     """💰 付費專屬端點統一入口(Bearer 標頭 + 探測時通過的付費 token)。
     endpoint 例:'taiwan_stock_trading_daily_report'。params 例:'data_id=5483&date=2026-07-16'。
     回 dict(FinMind 標準 {status,data,msg}) 或 None。未偵測到付費 token 時回 None。"""
-    tok = FINMIND_PAID_TOKEN or (FINMIND_TOKENS[0] if FINMIND_TOKENS else '')
+    # 🚀 V71.2.7 從付費池輪流取(thread-safe),把額度乘上 token 把數;
+    #   池子空(還沒偵測/只有一把)時退回原本的單把行為,行為不變。
+    global _fm_paid_idx
+    if FINMIND_PAID_TOKENS:
+        with _fm_paid_lock:
+            tok = FINMIND_PAID_TOKENS[_fm_paid_idx % len(FINMIND_PAID_TOKENS)]
+            _fm_paid_idx += 1
+    else:
+        tok = FINMIND_PAID_TOKEN or (FINMIND_TOKENS[0] if FINMIND_TOKENS else '')
     if not tok:
         return None
     url = f'https://api.finmindtrade.com/api/v4/{endpoint}?{params}'
@@ -2742,6 +2766,65 @@ def _fetch_chips_bulk(dates, need_days=11, top_per_day=25, min_syms=200):
     return idx
 
 
+def _prefetch_chips_parallel(syms_days, budget_s):
+    """🚀 V71.2.7 逐檔模式的併發預抓(批次那條路走不通時的第二條路)。
+
+    【為什麼單純「跑久一點」沒用】
+    舊的逐檔迴圈是單執行緒 + 只用一把 token。FinMind 付費是 6,000 req/hr/把 = 100 req/min,
+    實測 35 分鐘跑約 4,000~4,500 次呼叫 ≈ 120 次/分 —— 剛好貼在單把額度天花板上。
+    也就是說慢的原因不是程式,是**額度只用到 1/N**(Secrets 裡有 N 把卻只用 1 把)。
+
+    【修法】
+    ・fm_paid_get 改成付費池輪流(見 FINMIND_PAID_TOKENS)→ 上限變 N × 6,000/hr
+    ・這裡再用執行緒池把「等網路回應」的時間疊起來,worker 數綁 token 把數
+      (每把 ~2 條,再夾在 2~12 之間),不會超抽額度
+    ・只平行「抓」,不平行「解析/寫檔」—— 回傳的索引形狀跟 _fetch_chips_bulk 完全一樣,
+      交給原本的序列迴圈處理,共用同一套解析與污染防呆,不新增併發寫檔的風險
+
+    syms_days: [(sym, need_days, lookback), ...]
+    回 {sym: [row, ...]};時間預算到就把已完成的先回(未完成的下輪再補)。
+    """
+    if not syms_days:
+        return {}
+    ntok = max(1, len(FINMIND_PAID_TOKENS))
+    workers = max(2, min(12, ntok * 2))
+    idx: dict = {}
+    t0 = time.time()
+    stop = {'flag': False}
+
+    def one(item):
+        sym, need_days, lookback = item
+        if stop['flag']:
+            return sym, None
+        rows_all = []
+        seen = set()
+        for d in _recent_finmind_dates(lookback):
+            if stop['flag'] or len(seen) >= need_days:
+                break
+            j = fm_paid_get('taiwan_stock_trading_daily_report', f'data_id={sym}&date={d}') or {}
+            st, rows = j.get('status'), j.get('data') or []
+            if st in (402, 403):
+                return sym, None
+            if st == 200 and rows:
+                if not any(k in rows[0] for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+                    return sym, None          # 污染防呆(同逐檔路徑)
+                rows_all.extend(rows)
+                seen.add(d)
+        return sym, rows_all
+
+    print(f"  🧵 分點逐檔併發預抓:{len(syms_days)} 檔 / {workers} 執行緒 / "
+          f"{ntok} 把付費 token(上限 {ntok * 6000:,} req/hr)")
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for sym, rows in ex.map(one, syms_days):
+            if rows:
+                idx[sym] = rows
+            if time.time() - t0 > budget_s and not stop['flag']:
+                stop['flag'] = True
+                print(f"  ⏳ 併發預抓達時間預算 {budget_s}s,已取得 {len(idx)} 檔,其餘下輪續抓")
+    print(f"  🧵 併發預抓完成:{len(idx)}/{len(syms_days)} 檔,耗時 {time.time() - t0:.0f} 秒")
+    return idx
+
+
 def fetch_broker_chips():
     """
     分點籌碼採礦：由於台灣官方無免費分點 API，
@@ -2973,6 +3056,41 @@ def fetch_broker_chips():
     if _bulk_idx:
         # 批次模式下時間預算沒有意義(資料都在記憶體裡了),放寬到 job timeout 之前
         _chips_budget = max(_chips_budget, int(os.getenv('CHIPS_TIME_BUDGET_BULK', '3300')))
+    elif paid and os.getenv('CHIPS_PARALLEL', '1') == '1':
+        # 🚀 V71.2.7 批次走不通 → 第二條路:逐檔但「多 token 併發」。
+        #   先濾掉「今天已抓過且已追上最新分點日」的,只預抓真正需要的那些。
+        _todo = []
+        for _s in watchlist:
+            _f = chips_dir / f'{_s}.json'
+            _eo: dict = {}
+            if _f.exists():
+                try:
+                    _raw = json.loads(_f.read_text(encoding='utf-8'))
+                    _eo = {'chips': _raw} if isinstance(_raw, list) else _raw
+                except Exception:
+                    _eo = {}
+            _od = ''
+            try:
+                _ec = _eo.get('chips') or []
+                if _ec:
+                    _od = str(_ec[-1].get('date') or '')
+            except Exception:
+                pass
+            _cur = (not _corpus_latest_dt) or (_od and _od >= _corpus_latest_dt)
+            if (os.environ.get('FORCE_CHIPS_REFRESH') != '1'
+                    and _eo.get('chips_fetched_on') == today_str
+                    and _eo.get('periods') and _cur):
+                continue
+            _hot = _s in hot_set
+            _todo.append((_s, 11 if _hot else 3, 16 if _hot else 6))
+        try:
+            _bulk_idx = _prefetch_chips_parallel(_todo, budget_s=_chips_budget)
+            if _bulk_idx:
+                # 預抓已花掉大部分預算,後面只剩解析寫檔(不打網路)→ 放寬避免白抓
+                _chips_budget = max(_chips_budget, int(os.getenv('CHIPS_TIME_BUDGET_BULK', '3300')))
+        except Exception as _e:
+            print(f"  ⚠️ 併發預抓例外(退回原本單執行緒逐檔):{str(_e)[:80]}")
+            _bulk_idx = None
 
     for sym in watchlist:
         # ⏱️ V68.9.8 時間預算到 → 本輪收工(已抓存檔;下輪「今日已抓→跳過」續抓未完成的股)
