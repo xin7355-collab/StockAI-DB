@@ -242,6 +242,7 @@ jobs:
             data/industry_map.json
             data/concept_stocks.json
             data/market_stats.json
+            data/breadth.json          # 📊 V71.3.8 市場廣度歷史(累積騰落線 ADL 的資料源,漏傳就永遠累積不起來)
             data/miner_status.json
             data/govbank.json
             data/lending.json

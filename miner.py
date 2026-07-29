@@ -4040,7 +4040,21 @@ def build_bubble_warning():
                                       'level': 'gray', 'desc': '待 TWSE MS 或 60 日融資累積'}
 
     # ── 3. 🧟‍♂️ 群魔亂舞指數（全市場漲停家數）───────────────────────────
+    # 📊 V71.3.8 順手把「市場廣度」整組算出來並存歷史。
+    #
+    #   為什麼要存歷史(使用者問「廣度要不要跟前一天比」):
+    #   ・前端的廣度卡是「當下快照」——今天上漲幾家、下跌幾家,看完就沒了。
+    #   ・真正有用的是**累積騰落線(ADL)**:每天把 (上漲家數 − 下跌家數) 累加起來畫成一條線。
+    #     指數創新高、但 ADL 沒跟著創新高 = 只有權值股在撐、多數股票已經在跌 = 頂部背離,
+    #     這是機構在用的經典領先訊號,單看「今天 vs 昨天」看不出來。
+    #   ・沒有歷史就永遠算不出這條線,所以從今天開始存(滾動 250 個交易日 ≈ 1 年)。
+    #
+    #   為什麼放在這個迴圈:它本來就已經走訪全市場每一檔的最新兩根 K 棒算漲停家數,
+    #   順便統計上漲/下跌/跌停/強弱勢是零成本(不多打任何一次 API)。
+    #   而且用的是**收盤價**,比前端那份 15:41 的盤中快照更準。
     limit_up = 0
+    _b_up = _b_down = _b_flat = _b_limdn = _b_strong = _b_weak = 0
+    _b_date = ''
     for f in Path(DATA_DIR).glob('*.json'):
         sym = f.stem
         if not (len(sym) == 4 and sym.isdigit()):
@@ -4050,10 +4064,57 @@ def build_bubble_warning():
             if not isinstance(raw, list) or len(raw) < 2:
                 continue
             c, pc = float(raw[-1]['close']), float(raw[-2]['close'])
-            if pc > 0 and (c - pc) / pc * 100 >= 9.0:
-                limit_up += 1
+            if pc > 0:
+                _chg = (c - pc) / pc * 100
+                if _chg >= 9.0:
+                    limit_up += 1
+                elif _chg <= -9.0:
+                    _b_limdn += 1
+                if _chg > 0.05:
+                    _b_up += 1
+                elif _chg < -0.05:
+                    _b_down += 1
+                else:
+                    _b_flat += 1
+                if _chg >= 3:
+                    _b_strong += 1
+                elif _chg <= -3:
+                    _b_weak += 1
+                if not _b_date:
+                    _b_date = str(raw[-1].get('date') or '')
         except Exception:
             continue
+    # 廣度歷史(獨立檔,append 不覆蓋;靠 daily deploy 的 git archive origin/data 保留)
+    try:
+        _bd_total = _b_up + _b_down + _b_flat
+        if _bd_total >= 500:      # 少於 500 檔代表資料還沒鋪好,不記(避免髒點汙染 ADL)
+            _bd_path = Path(DATA_DIR) / 'breadth.json'
+            _bd = {}
+            if _bd_path.exists():
+                try:
+                    _bd = json.loads(_bd_path.read_text(encoding='utf-8')) or {}
+                except Exception:
+                    _bd = {}
+            _hist = _bd.get('history')
+            if not isinstance(_hist, list):
+                _hist = []
+            _dkey = (_b_date or date.today().strftime('%Y/%m/%d')).replace('-', '/')
+            _row = {'d': _dkey, 'up': _b_up, 'dn': _b_down, 'flat': _b_flat,
+                    'lu': limit_up, 'ld': _b_limdn, 'st': _b_strong, 'wk': _b_weak,
+                    'total': _bd_total}
+            _hist = [h for h in _hist if isinstance(h, dict) and h.get('d') != _dkey]
+            _hist.append(_row)
+            _hist.sort(key=lambda x: str(x.get('d') or ''))
+            _hist = _hist[-250:]          # 滾動約一年
+            _bd_path.write_text(json.dumps(
+                {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
+                 'history': _hist}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+            print(f"  📊 市場廣度 {_dkey}:漲 {_b_up} / 跌 {_b_down} / 漲停 {limit_up} / 跌停 {_b_limdn}"
+                  f"(共 {_bd_total} 檔)→ breadth.json 累積 {len(_hist)} 日")
+        else:
+            print(f"  ⏭️ 市場廣度只算到 {_bd_total} 檔(<500),本輪不記錄(避免髒點汙染累積線)")
+    except Exception as _e:
+        print(f"  ⚠️ 市場廣度歷史寫入失敗(不影響其他):{str(_e)[:80]}")
     out['junk_count'] = {
         'value': limit_up,
         'label': f'{limit_up} 家漲停',

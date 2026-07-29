@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6319,6 +6319,8 @@ ${list}
             this._syncMarketTab();
             try { this.renderMarketRegime(); } catch(_) {}    // 🔄 V67.4 市場狀態機
             try { this.renderMarketBreadth(); } catch(_) {}   // 📊 V67.2 市場廣度(批5 perl \$1 誤植修回)
+            // 📈 V71.3.8 廣度歷史載好再重繪一次(累積騰落線才畫得出來)
+            try { this._loadBreadthHist().then(() => { try { this.renderMarketBreadth(); } catch(_) {} }); } catch(_) {}
             try { this.renderVolSurgeRadar(); } catch(_) {}   // 🚨 V67.3 爆量雷達
             try { this.updateMarketWeather({ ctx: this.currentStrategyContext || {} }); } catch(_) {}
             // V25.5 — 切 tab 快取:避免每次切過去都 refetch(news 30 分 / macro 24h)
@@ -6576,8 +6578,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.7',
+    _APP_VERSION: 'V71.3.8',
     _CHANGELOG: [
+        { v: 'V71.3.8', dt: '2026-07-29', t: '📈 市場廣度加上「累積騰落線」', d: [
+            '你問廣度要不要跟前一天比 —— 要,而且有比「跟昨天比」更強的做法:把每天的(上漲家數−下跌家數)一路累加成一條線。',
+            '重點在背離:指數創新高但這條線沒跟上 = 只剩少數大股在撐、多數股早就在跌(頭部前兆);指數創新低但這條線沒破底 = 賣壓在收斂(打底跡象)。只看今天跟昨天永遠看不出這件事。',
+            '以前完全沒有存廣度歷史,所以算不出來。現在每天收盤後會記一次(用收盤價,比盤中快照準),滾動存一年。剛開始累積,滿 10 個交易日才會開始判讀,在那之前會誠實顯示「累積中」,不會硬猜。',
+        ] },
         { v: 'V71.3.7', dt: '2026-07-29', t: '🔍 分點跟單:加搜尋框 + 修好怪名字', d: [
             '「怎麼沒有永豐」—— 其實有 13 家,是 442 家用電腦排序埋在後面,你捲不到。現在加了搜尋框,打「永豐」就只剩永豐的分點;排序也改成中文順序,純數字代號一律排最後。',
             '「9182 / 9887 / 9A95」這種只有代號的:分點代號前兩碼就是券商總公司,已改成顯示「群益(9182)」「元大(9887)」「永豐(9A95)」。有些前綴不只一家券商(例如玉山和國泰混在一起),那種就維持顯示代號,不亂猜。',
@@ -35782,6 +35789,52 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
     // 📊 V67.2 — 市場廣度儀表板(機構級大盤健康度):用全市場即時快照算漲跌家數/騰落/漲跌停分布。
     //   核心洞見:指數是「權值股」表現,廣度是「多數股」表現。指數漲但廣度弱=少數大牛扛、多數在跌=危險。
+    // 📈 V71.3.8 累積騰落線(ADL)—— 使用者問「廣度要不要跟前一天比才有用」。
+    //   答案:要,但正確做法比「跟昨天比」更強 —— 把每天的(上漲家數 − 下跌家數)一路累加成一條線。
+    //   關鍵用法是**背離**:指數創新高、ADL 卻沒創新高 = 只剩少數權值股在撐、多數股早就在跌,
+    //   這是機構在用的頭部領先訊號;反過來指數創新低但 ADL 沒破底 = 賣壓在收斂,打底跡象。
+    //   單看「今天 vs 昨天」看不出這件事,一定要累積線。
+    //   資料源:data/breadth.json(miner.py 每日收盤後寫,滾動 250 個交易日)。
+    //   ⚠️ 這是新開始累積的,樣本 <10 天時不顯示結論(誠實標「累積中」),不硬判。
+    async _loadBreadthHist() {
+        if (this._breadthHist) return this._breadthHist;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/breadth.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
+            if (r.ok) {
+                const j = await r.json();
+                this._breadthHist = Array.isArray(j?.history) ? j.history : [];
+            } else { this._breadthHist = []; }
+        } catch (_) { this._breadthHist = []; }
+        return this._breadthHist;
+    },
+    _adlState() {
+        const h = this._breadthHist;
+        if (!Array.isArray(h) || h.length < 3) return null;
+        let cum = 0;
+        const adl = h.map(r => { cum += (+r.up || 0) - (+r.dn || 0); return { d: r.d, v: cum }; });
+        const n = adl.length;
+        const days = Math.min(20, n);
+        const win = adl.slice(-days);
+        const cur = win[win.length - 1].v;
+        const hi = Math.max(...win.map(x => x.v)), lo = Math.min(...win.map(x => x.v));
+        const chg5 = n >= 6 ? cur - adl[n - 6].v : null;
+        // 指數同期高低(twii_history)→ 背離判斷
+        let div = null;
+        try {
+            const th = Array.isArray(this.usMacroCache?.twii_history) ? this.usMacroCache.twii_history : [];
+            const cl = th.map(r => +r.close).filter(v => v > 0).slice(-days);
+            if (cl.length >= Math.min(10, days)) {
+                const pxNow = cl[cl.length - 1], pxHi = Math.max(...cl), pxLo = Math.min(...cl);
+                const nearHi = pxHi > 0 && (pxHi - pxNow) / pxHi < 0.01;   // 指數在近期高點 1% 內
+                const nearLo = pxLo > 0 && (pxNow - pxLo) / pxLo < 0.01;   // 指數在近期低點 1% 內
+                if (nearHi && cur < hi) div = { tone: 'warn', txt: '指數在近期高點,但累積騰落線沒跟上 → 少數權值股在撐,多數股已轉弱' };
+                else if (nearLo && cur > lo) div = { tone: 'good', txt: '指數在近期低點,但累積騰落線沒破底 → 賣壓在收斂,打底跡象' };
+            }
+        } catch (_) {}
+        return { n, cur, chg5, days, ready: n >= 10, div };
+    },
+
     renderMarketBreadth() {
         const box = document.getElementById('marketBreadthCard');
         if (!box) return;
@@ -35835,6 +35888,14 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                     <span>上漲占比 <b class="font-mono ${upPctAll >= 50 ? 'text-red-300' : 'text-green-300'}">${upPctAll.toFixed(0)}%</b></span>
                     <span>強勢(≥3%) <b class="text-red-300">${strong}</b> / 弱勢 <b class="text-green-300">${weak}</b></span>
                 </div>
+                ${(() => {   // 📈 V71.3.8 累積騰落線併進本卡(不另開新卡)
+                    const a = this._adlState();
+                    if (!a) return '';
+                    if (!a.ready) return `<div class="text-[10px] text-gray-500 mb-1.5">📈 累積騰落線:資料累積中(已 ${a.n}/10 個交易日,滿 10 天開始判讀)</div>`;
+                    const arrow = a.chg5 == null ? '' : (a.chg5 >= 0 ? `<b class="text-red-300">↑ 近5日 +${Math.round(a.chg5).toLocaleString()}</b>` : `<b class="text-green-300">↓ 近5日 ${Math.round(a.chg5).toLocaleString()}</b>`);
+                    const dv = a.div ? `<div class="text-[11px] ${a.div.tone === 'warn' ? 'text-yellow-300' : 'text-red-300'} leading-relaxed mt-1">${a.div.tone === 'warn' ? '⚠️' : '💡'} <b>${a.div.txt}</b></div>` : '';
+                    return `<div class="text-[10px] text-gray-400 mb-1.5">📈 累積騰落線(近 ${a.days} 日)${arrow}${dv}</div>`;
+                })()}
                 <div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[11px] text-gray-200 leading-relaxed">${msg}</div>
                 ${divWarn ? `<div class="text-[11px] text-yellow-300 leading-relaxed mt-1.5">${divWarn}</div>` : ''}
                 <div class="text-[9px] text-gray-600 mt-1.5">💡 指數看權值股、廣度看多數股;兩者背離時,廣度更接近真相。純快照,非投資建議。</div>`;
