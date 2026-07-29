@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6533,8 +6533,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.0',
+    _APP_VERSION: 'V71.3.1',
     _CHANGELOG: [
+        { v: 'V71.3.1', dt: '2026-07-29', t: '⚡ 自選頁報價變快:7 把金鑰終於派上用場', d: [
+            '找到你說「盤中好像 10 秒才動一次」的原因了,而且比想像中更慢 —— 自選頁的報價其實最多 60 秒才會變。',
+            '兩個原因都跟金鑰數無關,所以你加再多把也沒感覺:①更新間隔寫死 15 秒,庫存頁跟當沖頁都會隨金鑰數變快,只有自選頁沒接上;②抓價時吃到 60 秒的舊資料快取,等於輪詢再快也拿到同一筆舊價;③每輪只刷 10 檔,自選 30 檔要 45 秒才輪完一圈。',
+            '現在改成隨金鑰數自動加速:你 7 把 → 30 檔全部每 4.7 秒刷一次(以前是 60 秒),而且速率控制在每把每分鐘 54 次,不會被擋。加金鑰當場變快,不用按任何按鈕。',
+        ] },
         { v: 'V71.3.0', dt: '2026-07-29', t: '⛔ 設定頁警語:付費金鑰別填在 App 裡', d: [
             'FinMind 的額度是算在「金鑰」上,不是算裝置。付費那把如果填在手機 App 的設定裡,你每開一次 App 就會吃掉盤後分點採礦的額度。',
             '設定中心的 FinMind 欄位加了醒目提醒:這裡只填免費金鑰,付費那把只放採礦機。',
@@ -32436,35 +32441,60 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (row) this._applyFavPrice(row, sym, lq.p, (lq.c != null ? +lq.c : null));
         });
     },
+    // ⚡ V71.3.1 自選頁輪詢間隔:比照庫存頁隨 Fugle 金鑰數自動調(使用者要的「裝幾把就自動加速」)。
+    //   每檔每把 key 預留 1,100ms → 速率 ≈ k/1.1 req/s ÷ k 把 = 54.5 次/分/把,
+    //   穩穩低於 Fugle 免費版的 60 次/分/把,不會撞 429。
+    //   (庫存頁用 900ms;自選清單通常更長,這裡取較保守的 1,100ms。)
+    _favPollMs() {
+        const k = this._fugleKeyCount();
+        const n = Math.max(1, (this.favGroups?.[this.activeGroupName] || []).length);
+        return Math.min(12000, Math.max(1500, Math.ceil(n / k * 1100)));
+    },
     _startFavPricePoll() {
         this._stopFavPricePoll();
-        this._favPollTimer = setInterval(async () => {
-            const favVisible = document.getElementById('tabContentFav')?.style.display !== 'none';
-            if (!favVisible || document.hidden || !(this.isMarketOpen ? this.isMarketOpen() : true)) return;
-            this._patchFavPrices();   // 全列快照 patch(免網路,瞬間跳動)
-            // + Fugle round-robin 一小段 → 你當下在看的清單即時 tick,大清單輪流刷避免 429
-            const list = this.favGroups?.[this.activeGroupName] || [];
-            const container = document.getElementById('favListContainer');
-            if (!list.length || !container) return;
-            const N = Math.min(10, list.length);
-            this._favRRCursor = (this._favRRCursor || 0) % list.length;
-            const slice = [];
-            for (let i = 0; i < N; i++) slice.push(list[(this._favRRCursor + i) % list.length]);
-            this._favRRCursor = (this._favRRCursor + N) % list.length;
-            await Promise.all(slice.map(async sym => {
-                try {
-                    const fugle = await this.fetchFugleData(sym).catch(() => null);
-                    if (!fugle || !(Number(fugle.price) > 0)) return;
-                    const row = container.querySelector(`[data-fav-row="${CSS.escape(String(sym))}"]`);
-                    if (!row) return;
-                    const base = fugle.prevClose;
-                    const pct = (Number(base) > 0) ? (fugle.price - base) / base * 100 : null;
-                    this._applyFavPrice(row, sym, fugle.price, pct);
-                } catch (_) {}
-            }));
-        }, 15000);
+        // ⚡ V71.3.1 改 setTimeout 自我重排:每輪重算間隔 → 換分組/加金鑰當場生效
+        const tick = async () => {
+            try {
+                const favVisible = document.getElementById('tabContentFav')?.style.display !== 'none';
+                if (favVisible && !document.hidden && (this.isMarketOpen ? this.isMarketOpen() : true)) {
+                    this._patchFavPrices();   // 全列快照 patch(免網路,瞬間跳動)
+                    const list = this.favGroups?.[this.activeGroupName] || [];
+                    const container = document.getElementById('favListContainer');
+                    if (list.length && container) {
+                        // 🐛 V71.3.1 兩個真正的元凶(都跟金鑰數無關,所以加金鑰一直沒感覺):
+                        //   ① 間隔寫死 15,000ms —— 庫存頁/當沖頁都會隨金鑰數變快,只有這裡沒接上
+                        //   ② fetchFugleData(sym) 沒傳 maxAgeMs → 吃 **預設 60 秒快取**,
+                        //      等於就算 15 秒輪一次,拿到的還是同一筆最多 60 秒前的舊價
+                        //      (庫存頁 V58.3 就踩過同一個坑並修掉了,自選頁漏了)
+                        //   ③ 每輪固定只刷 10 檔 → 自選 30 檔時每檔要 45 秒才輪到一次
+                        const ms = this._favPollMs();
+                        const per = Math.max(10, this._fugleKeyCount() * 5);   // 每輪刷幾檔:隨金鑰數放大
+                        const N = Math.min(per, list.length);
+                        this._favRRCursor = (this._favRRCursor || 0) % list.length;
+                        const slice = [];
+                        for (let i = 0; i < N; i++) slice.push(list[(this._favRRCursor + i) % list.length]);
+                        this._favRRCursor = (this._favRRCursor + N) % list.length;
+                        await Promise.all(slice.map(async sym => {
+                            try {
+                                // 快取上限跟輪詢間隔對齊 → 每輪都拿得到新價,不會被 60 秒快取擋住
+                                const fugle = await this.fetchFugleData(sym, Math.max(1000, ms - 200)).catch(() => null);
+                                if (!fugle || !(Number(fugle.price) > 0)) return;
+                                const row = container.querySelector(`[data-fav-row="${CSS.escape(String(sym))}"]`);
+                                if (!row) return;
+                                const base = fugle.prevClose;
+                                const pct = (Number(base) > 0) ? (fugle.price - base) / base * 100 : null;
+                                this._applyFavPrice(row, sym, fugle.price, pct);
+                            } catch (_) {}
+                        }));
+                    }
+                }
+            } catch (_) {}
+            this._favPollTimer = setTimeout(tick, this._favPollMs());
+        };
+        this._favPollTimer = setTimeout(tick, this._favPollMs());
     },
-    _stopFavPricePoll() { if (this._favPollTimer) { clearInterval(this._favPollTimer); this._favPollTimer = null; } },
+    // ⚡ V71.3.1 已改 setTimeout 自我重排 → 這裡必須用 clearTimeout,用 clearInterval 停不掉會變雙倍輪詢
+    _stopFavPricePoll() { if (this._favPollTimer) { clearTimeout(this._favPollTimer); this._favPollTimer = null; } },
 
     // 📢 V31.9 多頭待發射:掃自選清單,重用 _chuResistanceZones 取「距最近上方壓力%」,由近到遠排序
     async _scanBreakoutCandidates(force = false) {
