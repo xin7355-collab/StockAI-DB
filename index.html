@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3682,10 +3682,53 @@ const app = {
     },
 
     async init() {
-        // 動態設定真實視窗高度（解決 iOS Safari URL bar 顯示/隱藏時版面跳動）
-        const setRealVh = () => document.documentElement.style.setProperty('--real-vh', `${window.innerHeight * 0.01}px`);
-        setRealVh();
-        window.addEventListener('resize', setRealVh);
+        // 📱 動態設定真實視窗高度(解決 iOS Safari URL bar 顯示/隱藏時版面跳動)
+        // 🐛 V71.3.5 修「畫面下半變全黑」——使用者回報「有時螢幕會變成一半黑的」。
+        //   根因:body 是 `height: calc(var(--real-vh) * 100)` + `overflow:hidden`,
+        //   而 --real-vh 只在 window 的 'resize' 事件更新。iOS 有好幾種情況會讓
+        //   window.innerHeight 變了卻**不觸發 resize**,或觸發時量到的是「轉場中的暫時值」:
+        //     ・轉向(orientationchange):resize 可能在新尺寸底定前就先燒掉
+        //     ・PWA / Safari 從背景切回前景:不發 resize
+        //     ・鍵盤收合、網址列縮放:走的是 visualViewport 事件,不是 window.resize
+        //   一旦量到偏小的值,body 就被鎖成比螢幕短 → 下方那截露出的是 body 背景,
+        //   看起來就是「內容被切一半、下面全黑」,而且**要等下次 resize 才會自己好**
+        //   (所以是「有時」發生、又會自己恢復)。
+        //
+        //   修法三件事:
+        //   ① 補上所有會改變可視高度的事件(orientationchange / pageshow / 切回前景 / visualViewport)
+        //   ② 轉向與回前景後「延遲再量一次」,避開轉場中的暫時值
+        //   ③ 防縮水守門:新值比現值小超過 12% 時先不套用,等 350ms 複量確認是真的才寫進去
+        let _vhLast = 0;
+        const _measureVh = () => Math.max(
+            window.innerHeight || 0,
+            window.visualViewport ? window.visualViewport.height : 0,
+            document.documentElement.clientHeight || 0
+        );
+        const _applyVh = (h) => {
+            if (!(h > 0)) return;
+            _vhLast = h;
+            document.documentElement.style.setProperty('--real-vh', `${h * 0.01}px`);
+        };
+        const setRealVh = (opts) => {
+            const h = _measureVh();
+            if (!(h > 0)) return;
+            // ③ 明顯縮水 → 可能是轉場中的暫時值,先複量再決定(避免把 body 鎖成半截)
+            if (!(opts && opts.force) && _vhLast && h < _vhLast * 0.88) {
+                clearTimeout(this._vhRecheck);
+                this._vhRecheck = setTimeout(() => { _applyVh(_measureVh()); }, 350);
+                return;
+            }
+            _applyVh(h);
+        };
+        const setRealVhSoon = () => { setRealVh(); [120, 400, 900].forEach(d => setTimeout(() => setRealVh({ force: true }), d)); };
+        setRealVh({ force: true });
+        window.addEventListener('resize', () => setRealVh());
+        window.addEventListener('orientationchange', setRealVhSoon);            // ① 轉向
+        window.addEventListener('pageshow', setRealVhSoon);                     // ① 從 bfcache / PWA 回來
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) setRealVhSoon(); });   // ① 切回前景
+        try {                                                                    // ① 鍵盤/網址列(iOS 只走這條)
+            window.visualViewport?.addEventListener('resize', () => setRealVh());
+        } catch (_) {}
         // V24.6 — V24.5 init 強塞段已刪(改用 HTML 寫死救援頭,5 個 tab 開頭直接 hardcoded)
         this._initOnboard();
         try { this._initSubChartSel(); } catch (_) {}   // 🎛️ V61.9 還原雙副圖選擇
@@ -6533,8 +6576,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.4',
+    _APP_VERSION: 'V71.3.5',
     _CHANGELOG: [
+        { v: 'V71.3.5', dt: '2026-07-29', t: '🖤 修「螢幕下半變全黑」', d: [
+            '找到原因了:App 的畫面高度是用程式量出來寫死的,而那個量測只在「視窗大小改變」時才跑一次。但 iPhone 有幾種情況會讓高度變了卻不通知 —— 轉向、從背景切回來、鍵盤收起來。一旦剛好量到轉場中的暫時值,畫面就被鎖成半截,下面那塊露出的是背景色,看起來就是一半全黑。',
+            '這也解釋了為什麼是「有時」發生、而且滑一滑或轉一下又會自己好。',
+            '現在補上所有會改變高度的情況都重新量,轉向和切回前景還會延遲再量一次避開轉場中的假值;而且新量到的值如果突然縮水超過一成,會先複查確認才套用,不會再被暫時值鎖成半截。',
+        ] },
         { v: 'V71.3.4', dt: '2026-07-29', t: '🐛 券商名稱對照表:資料集名字一直是錯的', d: [
             '採礦 log 抓到:向 FinMind 要券商代碼對照表時,用的資料集名稱根本不存在(對方回「這個名字不在清單裡」),所以那份「全台券商完整對照表」從來沒載入成功過。',
             '這就是為什麼有些分點只顯示數字代號 —— 只能靠每天採礦碰到誰才記住誰的名字,沒碰過的就沒名字。前端也是同一個錯,一併改掉。',
