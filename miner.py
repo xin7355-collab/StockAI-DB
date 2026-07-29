@@ -3100,9 +3100,33 @@ def fetch_broker_chips():
         if len(_all_dt) >= 20:
             _all_dt.sort()
             _corpus_latest_dt = _all_dt[int(len(_all_dt) * 0.95)]
-        print(f"  📅 全市場最新分點日基準:{_corpus_latest_dt or '(無現有分點檔,不啟用追新判斷)'}")
+        print(f"  📅 全市場最新分點日基準(由現有檔推估):{_corpus_latest_dt or '(無現有分點檔)'}")
     except Exception as _e:
         print(f"  ⚠️ 分點日基準計算失敗(退回舊行為:只看今日是否抓過):{_e}")
+    # 🎯 V71.3.6 用「上游真的出到哪一天」當基準,而不是「我手上最新是哪一天」。
+    #
+    #   為什麼非改不可 —— 沒有這段,晚上那輪會 100% 空轉:
+    #     下午 16:30 那輪跑的時候,證交所當日分點還沒出 → 全市場都只拿到前一交易日,
+    #     於是 _corpus_latest_dt(由現有檔推估)= 前一交易日。
+    #     晚上 20:00 那輪起跑時,雖然當日分點已經出來了,但基準還是停在前一交易日
+    #     → 每一檔都判定「我已經追上基準了」→ 全部跳過 → 一檔都不會更新。
+    #
+    #   修法:開跑前用台積電探一次「最新有資料的日期」(1 次呼叫)。
+    #   探到比手上更新的日期,就把基準拉上去 → 所有還停在舊日期的股票自動重抓。
+    #   附帶好處:下午那輪若剛好資料早出,也會立刻抓到當日,不必等隔天。
+    if paid:
+        try:
+            for _pd in _recent_finmind_dates(4):
+                _pj = fm_paid_get('taiwan_stock_trading_daily_report', f'data_id=2330&date={_pd}') or {}
+                if _pj.get('status') == 200 and (_pj.get('data') or []):
+                    if _pd > (_corpus_latest_dt or ''):
+                        print(f"  🎯 上游最新分點日 {_pd} 比手上的 {_corpus_latest_dt or '(無)'} 新 → 基準拉到 {_pd},落後的股票本輪重抓")
+                        _corpus_latest_dt = _pd
+                    else:
+                        print(f"  🎯 上游最新分點日 {_pd},與手上基準一致")
+                    break
+        except Exception as _e:
+            print(f"  ⚠️ 上游分點日探測略過(沿用現有檔推估的基準):{str(_e)[:60]}")
     # 🚀 V71.2.6 先試「單日全市場批次」:成功的話全市場只要 ~11 次呼叫,當天就能全部採完;
     #    失敗(帳號不支援/回傳不像全市場)自動退回原本的逐檔模式,不影響既有行為。
     _bulk_idx = None

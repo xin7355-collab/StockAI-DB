@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6576,8 +6576,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.5',
+    _APP_VERSION: 'V71.3.6',
     _CHANGELOG: [
+        { v: 'V71.3.6', dt: '2026-07-29', t: '🌙 分點不再慢一天:晚上加跑一輪', d: [
+            '以前分點永遠慢一個交易日 —— 因為採礦是下午 16:30 跑,那時候證交所當天的分點還沒公布,只抓得到前一天的。所以你週三晚上看到的是週二的籌碼。',
+            '現在晚上 20:00 會再跑一輪,那時分點已經出來了。時間表變成:18:30 左右先有 K 線/法人/選股,20:30 左右分點更新成當天的。',
+            '順帶修掉一個會讓晚上那輪白跑的問題:採礦機以前是用「我手上最新是哪一天」當基準,晚上跑會判定「都追上了」而全部跳過。改成先探一次「上游到底出到哪一天」,落後的才重抓,已經最新的不重複抓、不浪費額度。',
+        ] },
         { v: 'V71.3.5', dt: '2026-07-29', t: '🖤 修「螢幕下半變全黑」', d: [
             '找到原因了:App 的畫面高度是用程式量出來寫死的,而那個量測只在「視窗大小改變」時才跑一次。但 iPhone 有幾種情況會讓高度變了卻不通知 —— 轉向、從背景切回來、鍵盤收起來。一旦剛好量到轉場中的暫時值,畫面就被鎖成半截,下面那塊露出的是背景色,看起來就是一半全黑。',
             '這也解釋了為什麼是「有時」發生、而且滑一滑或轉一下又會自己好。',
