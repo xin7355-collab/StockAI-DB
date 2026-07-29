@@ -1639,7 +1639,17 @@ def fetch_taifex_tx_now():
                 prev = float(closes.iloc[-2])
                 if last == last and prev == prev and prev != 0:
                     chg = round((last - prev) / prev * 100, 2)
-                    return {"price": round(last, 2), "chg": chg, "est": False, "error": None}
+                    # 🐛 V71.4.9 一定要回「這個價是哪一天的」:yfinance 的 ^TXF=F 實測會落後一個交易日
+                    #   (2026-07-30 04:42 抓到的還是 07/28 的 41,613),前端卻把它跟當天的加權指數並排顯示
+                    #   → 看起來像 +1,574 點的巨大正價差,而正逆價差是判讀外資空單的關鍵配套,會直接誤導。
+                    #   有日期,前端才能誠實標「07/28 收盤」而不是假裝即時。
+                    _d = None
+                    try:
+                        _d = str(closes.index[-1].date())
+                    except Exception:
+                        pass
+                    return {"price": round(last, 2), "chg": chg, "est": False,
+                            "date": _d, "src": "yfinance ^TXF=F", "error": None}
     except Exception as e:
         print(f"   ⚠️ 台指期 yfinance 失敗:{str(e)[:80]} → 改用 TAIFEX 官方 OpenAPI")
     # ② V27.3 — yfinance 失敗 → TAIFEX 官方 OpenAPI 近月收盤
@@ -1650,9 +1660,11 @@ def fetch_taifex_tx_now():
         if off and off > 0:
             if off_pct is not None:
                 print(f"   ✅ 台指期 OpenAPI 收盤 {off}、漲跌 {off_pct}% → 夜盤可計分")
-                return {"price": round(float(off), 2), "chg": off_pct, "est": False, "error": None}
+                return {"price": round(float(off), 2), "chg": off_pct, "est": False,
+                        "date": None, "src": "TAIFEX OpenAPI", "error": None}
             print(f"   ✅ 台指期改用 TAIFEX 官方 OpenAPI 收盤:{off}(無漲跌欄,顯純價)")
-            return {"price": round(float(off), 2), "chg": None, "est": True, "error": None}
+            return {"price": round(float(off), 2), "chg": None, "est": True,
+                    "date": None, "src": "TAIFEX OpenAPI", "error": None}
     except Exception as e:
         return {"price": None, "chg": None, "est": False, "error": f"both failed: {str(e)[:60]}"}
     return {"price": None, "chg": None, "est": False, "error": "yfinance+openapi both empty"}
@@ -1752,6 +1764,7 @@ def _taifex_openapi_tx_close_change():
 #    順手存起來給 fi_ratio_alert_level 算「一口台指期的合約價值(指數×200)」用,
 #    免得為了同一個數字再打一次 yfinance。
 _LAST_TWII_SPOT = None
+_LAST_TX_FUT_DATE = None   # V71.4.9 期貨那條腿的資料日期(判斷是否與現貨同一天)
 
 
 def fetch_taifex_backwardation():
@@ -1761,22 +1774,44 @@ def fetch_taifex_backwardation():
     global _LAST_TWII_SPOT
     try:
         import re
-        # 1) ^TWII 現貨收盤(用 dropna 取最後有效值,避免休市 NaN 害整個逆價差變 null)
-        spot = None
+        # 1) ^TWII 現貨收盤
+        #   🐛 V71.4.9 改「本地 data/^TWII.json 優先」:那份是 miner.py 直接抓證交所的權威收盤,
+        #      當天下午就有;yfinance 的 ^TWII 實測會落後一個交易日
+        #      (2026-07-30 04:42 抓到的還是 07/28 的 41,603,而證交所 07/29 早就是 40,039)。
+        #      落後的現貨配上落後的期貨,逆價差算出來「數字自洽但整組是昨天的」,
+        #      前端又把它跟當天的指數並排 → 使用者讀到不存在的價差。yfinance 留作備援。
+        spot, spot_date = None, None
         try:
-            import yfinance as yf
-            hist = yf.Ticker("^TWII").history(period="5d", auto_adjust=False)
-            if hist is not None and not hist.empty:
-                closes = hist["Close"].dropna()
-                if len(closes) >= 1:
-                    v = float(closes.iloc[-1])
-                    if v == v:   # 非 NaN
-                        spot = v
-                        _LAST_TWII_SPOT = v   # V71.1.6 給期現比用
+            _tf = DATA_DIR / '^TWII.json'
+            if _tf.exists():
+                _rows = json.loads(_tf.read_text(encoding='utf-8'))
+                if isinstance(_rows, list) and _rows:
+                    _c = float(_rows[-1].get('close') or 0)
+                    if _c > 0:
+                        spot = _c
+                        spot_date = str(_rows[-1].get('date') or '').replace('/', '-')[:10]
+                        print(f"  [台指逆價差] 現貨用本地證交所收盤 {spot:.0f}({spot_date})")
         except Exception as e:
-            return None, f"^TWII 取得失敗：{str(e)[:60]}"
+            print(f"  [台指逆價差] 本地 ^TWII.json 讀取失敗({str(e)[:50]}),改用 yfinance")
+        if spot is None:
+            try:
+                import yfinance as yf
+                hist = yf.Ticker("^TWII").history(period="5d", auto_adjust=False)
+                if hist is not None and not hist.empty:
+                    closes = hist["Close"].dropna()
+                    if len(closes) >= 1:
+                        v = float(closes.iloc[-1])
+                        if v == v:   # 非 NaN
+                            spot = v
+                            try:
+                                spot_date = str(closes.index[-1].date())
+                            except Exception:
+                                pass
+            except Exception as e:
+                return None, f"^TWII 取得失敗：{str(e)[:60]}"
         if spot is None:
             return None, "^TWII 無有效現貨收盤(休市/NaN)"
+        _LAST_TWII_SPOT = spot   # V71.1.6 給期現比用(合約價值=指數×200)
         # 2) 期貨收盤：① 官方 OpenAPI JSON ② yfinance ^TXF=F ③ TAIFEX HTML
         fut_close = _taifex_openapi_tx_fut_close()
         if fut_close is not None:
@@ -1787,7 +1822,12 @@ def fetch_taifex_backwardation():
                 fut_hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
                 if fut_hist is not None and not fut_hist.empty:
                     fut_close = float(fut_hist["Close"].iloc[-1])
-                    print(f"  [台指逆價差] yfinance ^TXF=F 期貨收盤 = {fut_close}")
+                    try:
+                        globals()['_LAST_TX_FUT_DATE'] = str(fut_hist["Close"].dropna().index[-1].date())
+                    except Exception:
+                        pass
+                    print(f"  [台指逆價差] yfinance ^TXF=F 期貨收盤 = {fut_close}"
+                          f"({_LAST_TX_FUT_DATE or '日期未知'})")
             except Exception as e:
                 print(f"  [台指逆價差] yfinance 期貨失敗，退到 TAIFEX HTML：{str(e)[:60]}")
         if fut_close is None:
@@ -1803,8 +1843,19 @@ def fetch_taifex_backwardation():
             if not m:
                 return None, "TX 近月收盤未匹配（yfinance + TAIFEX 雙失敗）"
             fut_close = float(m.group(1))
+        # 🐛 V71.4.9 兩條腿必須是同一天,否則算出來的價差是假的。
+        #   實例:期貨 41,613(07/28 夜盤)− 現貨 40,039(07/29 收盤)= +1,574 點「正價差」,
+        #   而真相是兩者相隔一個交易日。正逆價差是判讀外資空單真假的關鍵配套
+        #   (空單大但正價差=避險;空單大又深逆價差=真的在殺),算錯會把避險誤判成看空。
+        #   對不上日期就誠實回 None,讓前端顯「整備中」——不硬給一個看起來合理的假數字。
+        fut_date = _LAST_TX_FUT_DATE
+        if spot_date and fut_date and spot_date != fut_date:
+            msg = f"期貨({fut_date})與現貨({spot_date})不同交易日,不計價差"
+            print(f"  [台指逆價差] ⏭️ {msg}")
+            return None, msg
         back = round(fut_close - spot, 0)
-        print(f"  [台指逆價差] 期貨{fut_close} − 現貨{spot:.0f} = {back:+.0f} 點")
+        print(f"  [台指逆價差] 期貨{fut_close} − 現貨{spot:.0f} = {back:+.0f} 點"
+              f"({spot_date or '日期未知'})")
         return back, None
     except Exception as e:
         print(f"  ⚠️ 台指逆價差抓取失敗: {e}")

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.8',
+    _APP_VERSION: 'V71.4.9',
     _CHANGELOG: [
+        { v: 'V71.4.9', dt: '2026-07-30', t: '🚨 加權指數個股頁停在 3 個月前(38,926)已修好', d: [
+            '你截圖裡最嚴重的一個:點進加權指數,現價顯 38,926「04/30 收盤・91 天前」,而大盤頁明明是 40,039。同一個指數兩個數字。',
+            '原因:程式有一道「假日幽靈棒」過濾,會把成交量異常小的 K 棒當假資料刪掉。但加權指數的資料來源(證交所那個端點)本來就不提供成交量,5/4 之後每一根量都是 0 → 近 61 根全被當成假日棒整批刪掉,只剩到 4/30。所以月線、波段多空、關鍵價位、進出場建議全部是用 3 個月前的資料算的。',
+            '已修:資料來源根本不給量的時候就不做這道過濾(近 60 根有兩成以上是零量就判定「這個來源沒有量」)。一般股票的假日幽靈棒照樣濾得掉。',
+            '台指電子盤那格現在會標資料日期。之前顯 41,613 配加權 40,039,看起來像 +1,574 點的巨大正價差,其實那是前一個交易日的價 —— 採礦用的來源會落後一天。正逆價差是判斷外資空單是「真的看空」還是「只是避險」的關鍵,算錯結論會整個反過來,所以現在不是今天的資料會直接標「⚠️ 非今日」。',
+            '採礦端也修了:逆價差的現貨改用證交所權威收盤(當天下午就有),而且期貨跟現貨日期對不上就誠實不給數字,不硬算一個看起來合理的假價差。',
+        ] },
         { v: 'V71.4.8', dt: '2026-07-29', t: '📊 市場廣度歷史:再修一層,這次連「被中途砍掉」也不會丟', d: [
             '上一版修好了「檔案沒被送上網站」,結果晚上實測發現還有第二層問題:那份統計排在採礦流程的最後面,前面卡著一段要跑 35 分鐘的分點採礦。今晚排程延遲兩小時觸發,把前一輪砍在分點中途 → 後面全部沒跑到,廣度還是沒產出。',
             '已把這段搬到採礦一開始就做。它只讀本機檔案、不連網、幾秒跑完,本來就沒理由排在後面等。以後就算分點被砍,廣度也已經先存好了。',
@@ -13676,7 +13683,25 @@ const marginByDate = {};
                 if (daysTo === 1) return '📅 明結算';
                 return `📆 結算剩 ${daysTo} 天`;
             })();
-            sub.innerHTML = `<span class="${cls} font-bold">${sign}${chg.toFixed(2)}%</span> ・ <span class="text-gray-500">${settleCalc}</span>`;
+            // 🐛 V71.4.9 一定要標「這是哪一天的價」。
+            //   採礦端(yfinance ^TXF=F)實測會落後一個交易日:2026/07/30 清晨抓到的還是 07/28 的 41,613,
+            //   而當天加權指數是 40,039 —— 兩格並排就變成「+1,574 點正價差」這種不存在的畫面。
+            //   正逆價差是判讀外資空單真假的關鍵配套(空單大但正價差=避險 / 空單大又深逆價差=真殺),
+            //   所以寧可標清楚是舊資料,也不能讓它假裝即時。
+            const _fd = tx.date ? String(tx.date).slice(0, 10) : null;
+            let _dateTxt = '';
+            if (_fd) {
+                const _todayISO = this.getTodayStr().replace(/\//g, '-');
+                if (_fd === _todayISO) {
+                    _dateTxt = `<span class="text-gray-500">${this._dW ? this._dW(_fd) : _fd} 收盤</span>`;
+                } else {
+                    // 不是今天 → 明講,並且不讓它跟今天的指數被誤讀成價差
+                    _dateTxt = `<span class="text-yellow-300">⚠️ ${this._dW ? this._dW(_fd) : _fd} 收盤(非今日)</span>`;
+                }
+            } else {
+                _dateTxt = `<span class="text-gray-500">收盤價</span>`;
+            }
+            sub.innerHTML = `<span class="${cls} font-bold">${sign}${chg.toFixed(2)}%</span> ・ ${_dateTxt} ・ <span class="text-gray-500">${settleCalc}</span>`;
             return;
         }
         // V21.8 — fallback:無實時點時顯結算時間點(原邏輯)
@@ -23013,11 +23038,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         //   (端午 6/19 量 178245 vs 中位量 ~1億 = 0.18%;假日尾棒 volume=0)。用「量 < 近期中位量 × 2%」判定幽靈,
         //   整根移除(不留空日),K線只留真實交易日 → 修正最後交易日錯位 + 量/OBV/MA 不被假 K 污染。
         //   相對門檻(對中位量):冷門股全天量都低但一致,中位量也低 → 比例接近 1 不會被誤刪,只砍真正異常小量的假日棒。
+        // 🐛 V71.4.9 守門:資料源根本不給成交量時,整段不要濾 —— 否則會把「所有近期 K 棒」當幽靈棒刪掉。
+        //   實際踩到的事:data/^TWII.json 從 2026/05/04 起每一根 volume 都是 0(指數量抓不到),
+        //   於是中位量取自 5 月以前的真實量(~500 萬)、門檻 10 萬,近 61 根全部低於門檻被整批刪除
+        //   → 486 根被砍成 424 根,加權指數個股頁的「最新收盤」停在 2026/04/30(整整 91 天前),
+        //     現價顯 38,926 而大盤頁顯 40,039(同一個指數兩個數字),月線/波段/關鍵價位全用 3 個月前的資料算。
+        //   判準:近 60 根有 ≥20% 量=0 → 這個資料源不給量,無法用量分辨幽靈棒 → 不濾(寧可多留一根,
+        //   也不能砍掉三個月)。一般個股不會有 20% 的零量棒,所以假日幽靈棒照樣濾得掉(下方測試有驗)。
         if (this.rawDailyData.length >= 30) {
-            const _vs = this.rawDailyData.map(d => Number(d.volume) || 0).filter(v => v > 0).sort((a, b) => a - b);
-            if (_vs.length >= 20) {
-                const _floor = _vs[Math.floor(_vs.length / 2)] * 0.02;
-                this.rawDailyData = this.rawDailyData.filter(d => (Number(d.volume) || 0) >= _floor);
+            const _recent = this.rawDailyData.slice(-60);
+            const _zeroRatio = _recent.filter(d => !(Number(d.volume) > 0)).length / _recent.length;
+            if (_zeroRatio < 0.2) {
+                const _vs = this.rawDailyData.map(d => Number(d.volume) || 0).filter(v => v > 0).sort((a, b) => a - b);
+                if (_vs.length >= 20) {
+                    const _floor = _vs[Math.floor(_vs.length / 2)] * 0.02;
+                    this.rawDailyData = this.rawDailyData.filter(d => (Number(d.volume) || 0) >= _floor);
+                }
             }
         }
         const todayStr = this.getTodayStr(); let lastIdx = this.rawDailyData.length - 1;

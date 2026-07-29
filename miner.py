@@ -2379,6 +2379,14 @@ def _fetch_twii_history_official(months_back=2):
                     def _flt(s):
                         return float(str(s).replace(',', ''))
                     o, h, l, c = _flt(row[1]), _flt(row[2]), _flt(row[3]), _flt(row[4])
+                    # ⚠️ volume 只能給 0:MI_5MINS_HIST 這個端點只有 OHLC,沒有成交量。
+                    #   這不是 bug,是資料源限制 —— 但下游務必知道:
+                    #   ① 前端 applyLatestPrice 的「幽靈棒過濾」不能用量門檻砍指數 K 棒,
+                    #      否則會把整段近期資料當假日棒刪掉(V71.4.9 實測 ^TWII 486→424 根,
+                    #      個股頁停在 3 個月前、現價跟大盤頁對不上)。前端已加「零量佔比 ≥20% 就不濾」守門。
+                    #   ② 指數頁的量能類判讀(量價背離/OBV/均量)拿不到真量,只能當沒有。
+                    #      若日後要補真量:TWSE FMTQIK(每日市場成交資訊)有成交股數/金額,
+                    #      可另抓月份檔按日期併進來(本沙箱連不到 TWSE,未實測前不要盲寫)。
                     rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
                                      'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
                 except Exception:
