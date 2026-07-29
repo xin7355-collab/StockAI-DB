@@ -26,6 +26,17 @@ jobs:
         run: pip install requests yfinance --quiet
 
       - name: 🌐 執行總經採礦
+        # 🐛 V71.5.3 補上機密 —— 這支的用途是「純驗證,把每一欄印出來查」,
+        #   但原本一把 key 都沒給,於是 fetch_tw_vix 一律回 'no-token'、行事曆 AI 一律跳過
+        #   → 探針永遠驗不出真正的問題(台指 VIX 到底是資料集改名還是沒 token,查不出來)。
+        #   探針要能重現正式環境才有意義,env 對齊 macro_cron.yml。
+        env:
+          FINMIND_TOKENS:  ${{ secrets.FINMIND_TOKENS }}
+          FINMIND_TOKEN:   ${{ secrets.FINMIND_TOKEN }}
+          GROQ_API_KEYS:   ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:    ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          GEMINI_API_KEY:  ${{ secrets.GEMINI_API_KEY }}
         run: python macro_miner.py || echo "⚠️ macro_miner.py 非零退出（仍印出結果）"
 
       - name: 🔎 印出 macro_risk.json（驗證每一欄）

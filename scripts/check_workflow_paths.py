@@ -93,7 +93,89 @@ def check_outputs_uploaded():
     return True
 
 
+
+
+
+def _script_secret_needs():
+    """每支根目錄 *.py 讀了哪些「像機密」的環境變數(TOKEN/KEY/SECRET)。"""
+    need = {}
+    for f in sorted(ROOT.glob('*.py')):
+        src = f.read_text(encoding='utf-8', errors='ignore')
+        names = set(re.findall(r"os\.(?:getenv|environ\.get)\(\s*['\"]([A-Z][A-Z0-9_]*)['\"]", src))
+        names |= set(re.findall(r"os\.environ\[\s*['\"]([A-Z][A-Z0-9_]*)['\"]\s*\]", src))
+        need[f.name] = {n for n in names if re.search(r'TOKEN|KEY|SECRET', n)}
+    return need
+
+
+def _steps_running_scripts():
+    """回 [(workflow, job, step_name, {script.py}, {可用的 env 名})]。"""
+    import yaml
+    out = []
+    for wf in sorted(WF_DIR.glob('*.yml')):
+        try:
+            doc = yaml.safe_load(wf.read_text(encoding='utf-8')) or {}
+        except Exception:
+            continue
+        wf_env = set((doc.get('env') or {}).keys())
+        for jname, job in (doc.get('jobs') or {}).items():
+            if not isinstance(job, dict):
+                continue
+            job_env = set((job.get('env') or {}).keys())
+            for step in (job.get('steps') or []):
+                if not isinstance(step, dict):
+                    continue
+                run = step.get('run') or ''
+                if not isinstance(run, str) or not run:
+                    continue
+                scripts = set(re.findall(r'python3?\s+(?:-u\s+)?([\w./-]+\.py)', run))
+                scripts = {Path(x).name for x in scripts}
+                if not scripts:
+                    continue
+                env = wf_env | job_env | set((step.get('env') or {}).keys())
+                out.append((wf.name, jname, step.get('name') or '(unnamed)', scripts, env))
+    return out
+
+
+def check_script_secrets():
+    """擋「同一支腳本在 A workflow 有給某機密、在 B workflow 卻漏給」的不一致。
+
+    為什麼只比「不一致」而不比「腳本讀到的全部機密」:
+      有些機密本來就是選用的(沒給就跳過該功能),全報會很吵。
+      但「同一支腳本、同一個機密,一邊給一邊不給」幾乎一定是漏了 —— 實例:
+      macro_cron.yml 跑 macro_miner.py 有給 FINMIND_TOKENS,
+      daily_miner.yml 的並行 deploy step 也跑 macro_miner.py 卻只給 GROQ
+      → 台指 VIX 每次 daily_miner 跑完就被寫成 null(fetch_tw_vix 回 'no-token'),
+        而 daily_miner 正是最後 force-push gh-pages 的那個 → 使用者看到「VIX 沒有資料」。
+        整條鏈上沒有任何錯誤訊息,workflow 全綠。
+    """
+    need = _script_secret_needs()
+    steps = _steps_running_scripts()
+    # script → 該機密曾在哪些 step 被提供
+    provided = {}
+    for wfn, jn, sn, scripts, env in steps:
+        for sc in scripts:
+            for secret in need.get(sc, ()):
+                if secret in env:
+                    provided.setdefault((sc, secret), []).append(f'{wfn}:{jn}')
+    missing = []
+    for wfn, jn, sn, scripts, env in steps:
+        for sc in scripts:
+            for secret in need.get(sc, ()):
+                if (sc, secret) in provided and secret not in env:
+                    missing.append((wfn, jn, sn, sc, secret, provided[(sc, secret)][0]))
+    if missing:
+        print('❌ 同一支腳本的機密給法不一致(一邊給、一邊漏 → 該功能會靜默失效):')
+        for wfn, jn, sn, sc, secret, where in missing:
+            print(f'   • {wfn} / {jn} / {sn}')
+            print(f'     跑 {sc} 但沒給 {secret}(在 {where} 有給)')
+        print('   → 補上該 env,或確認這支 step 真的不需要(需要就別讓它靜默跑出 null)。')
+        return False
+    print('✅ 各 workflow 給同一支腳本的機密一致')
+    return True
+
+
 if __name__ == '__main__':
     ok = check_inline_comments()
     ok = check_outputs_uploaded() and ok
+    ok = check_script_secrets() and ok
     sys.exit(0 if ok else 1)
