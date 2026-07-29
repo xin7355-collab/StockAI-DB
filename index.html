@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -914,7 +914,7 @@
             </div><!-- V19.5 — 結束 flex-1 overflow-y-auto 滾動區 -->
             <div class="sticky bottom-0 bg-[#0d1117] flex justify-end gap-2 border-t border-[#30363d] px-4 py-3 rounded-b-lg">
                 <button onclick="app.saveAndCloseSettings()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded transition-colors w-2/3 shadow-sm">💾 儲存並關閉</button>
-                <button onclick="app.cancelSettings()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 text-sm font-bold rounded transition-colors w-1/3 shadow-sm">❌ 取消</button>
+                <button onclick="app.cancelSettings()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-600 text-sm font-bold rounded transition-colors w-1/3 shadow-sm" title="還原這次進來後改過的所有設定(含誤刪的金鑰)">↩️ 取消還原</button>
             </div>
         </div>
     </div>
@@ -6533,8 +6533,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.1',
+    _APP_VERSION: 'V71.3.2',
     _CHANGELOG: [
+        { v: 'V71.3.2', dt: '2026-07-29', t: '↩️ 設定的「取消」現在真的會還原', d: [
+            '你的直覺是對的,而且是程式的錯 —— 那顆「取消」鈕以前第一行就是「儲存」,兩顆鈕做的是同一件事,難怪按了沒感覺。',
+            '現在進設定會先拍一份備份:誤刪金鑰、數字改錯,按「↩️ 取消還原」就整包救回來,連手機裡存的那份也一起還原。',
+            '按「💾 儲存並關閉」才算真的確定。右上角 ✕ 和點旁邊關掉維持原本行為(改了就留著),避免手滑點到旁邊就把剛打的字弄丟。',
+        ] },
         { v: 'V71.3.1', dt: '2026-07-29', t: '⚡ 自選頁報價變快:7 把金鑰終於派上用場', d: [
             '找到你說「盤中好像 10 秒才動一次」的原因了,而且比想像中更慢 —— 自選頁的報價其實最多 60 秒才會變。',
             '兩個原因都跟金鑰數無關,所以你加再多把也沒感覺:①更新間隔寫死 15 秒,庫存頁跟當沖頁都會隨金鑰數變快,只有自選頁沒接上;②抓價時吃到 60 秒的舊資料快取,等於輪詢再快也拿到同一筆舊價;③每輪只刷 10 檔,自選 30 檔要 45 秒才輪完一圈。',
@@ -7879,6 +7884,9 @@ ${list}
     },
 
     openSettings() {
+        // ↩️ V71.3.2 進設定先拍快照 → 「取消」才真的救得回誤刪的金鑰/誤改的數字。
+        //   仍維持「改了就即時存」(關 App / 當機不會丟),但多一條明確的反悔路。
+        try { this._settingsSnapshot = JSON.stringify(this.settings || {}); } catch (_) { this._settingsSnapshot = null; }
         // 🗑️ V51.1 set_aiPrompt UI 已刪 → null-guard(人設仍走 settings.aiPrompt 預設)
         const _apEl = document.getElementById('set_aiPrompt');
         if (_apEl) _apEl.value = this.settings.aiPrompt || AI_PROMPT_TEMPLATES.default;
@@ -7976,10 +7984,30 @@ ${list}
     },
 
 
-    cancelSettings() { 
-        this.saveSettings(); 
+    // ↩️ V71.3.2 使用者回報:「有沒有按儲存,離開都是儲存,誤刪了想取消也救不回來」。
+    //   查了原因 —— 這個「取消」鈕以前**第一行就是 this.saveSettings()**,
+    //   也就是按「取消」其實是「儲存」,兩顆鈕做同一件事,難怪覺得怪。
+    //   現在:開設定時拍一份快照,按取消就整包還原(含金鑰列被誤刪的情況)。
+    //   ⚠️ 這裡不可以呼叫 saveSettings() —— 那會把畫面上「還沒還原的舊 DOM 值」再讀回去,
+    //      等於還原完又被蓋掉。改成直接寫入 localStorage。
+    cancelSettings() {
+        const snap = this._settingsSnapshot;
         const modal = document.getElementById('settingsModal');
-        modal.classList.add('hidden'); modal.style.display = 'none';
+        if (snap) {
+            try {
+                this.settings = JSON.parse(snap);
+                localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings));
+                ['groq', 'openrouter', 'gemini', 'fugle', 'finmind'].forEach(p => {
+                    try { this._renderKeyRows(p); } catch (_) {}
+                });
+                this.showToast?.('↩️ 已還原,本次修改全部取消');
+            } catch (_) {
+                this.showToast?.('⚠️ 還原失敗,設定維持現狀');
+            }
+        }
+        this._settingsSnapshot = null;
+        if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+        this.vibrate?.(20);
     },
 
     saveSettings() {
@@ -8493,6 +8521,7 @@ ${list}
 
     saveAndCloseSettings() {
         this.saveSettings();
+        this._settingsSnapshot = null;   // ↩️ V71.3.2 明確儲存 = 提交,丟掉還原點
         // 🐛 V70.0.1:填好 Fugle key 存檔後,紅色「Token 未設定」橫幅要立刻消失
         //   (舊版旗標要等下一次報價抓取才重算 → 使用者以為 key 沒吃到)
         try {
