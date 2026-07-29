@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6533,8 +6533,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.3',
+    _APP_VERSION: 'V71.3.4',
     _CHANGELOG: [
+        { v: 'V71.3.4', dt: '2026-07-29', t: '🐛 券商名稱對照表:資料集名字一直是錯的', d: [
+            '採礦 log 抓到:向 FinMind 要券商代碼對照表時,用的資料集名稱根本不存在(對方回「這個名字不在清單裡」),所以那份「全台券商完整對照表」從來沒載入成功過。',
+            '這就是為什麼有些分點只顯示數字代號 —— 只能靠每天採礦碰到誰才記住誰的名字,沒碰過的就沒名字。前端也是同一個錯,一併改掉。',
+            '櫃買指數也再進一步:官方端點其實是活的、日期也吃得下,問題出在資料放的欄位名跟預期不同。已改成自動辨識,下輪見真章。',
+        ] },
         { v: 'V71.3.3', dt: '2026-07-29', t: '🕵️ 講清楚「盤中分點」到底看不看得到', d: [
             '盤中沒有真實的券商分點,這是證交所的制度 —— 分點資料收盤後才公布,付費看盤軟體標的「即時主力」同樣是推估出來的,沒有例外。',
             '但盤中可以推估,而且 App 早就有兩層:熱門股(當日量前 80 名)在「⚡當沖」作戰室,用真實逐筆成交算全日累計主動買賣量 + 大單,每 10 分鐘更新;其他股票在「分時逐筆」的 🐋 大單流向,看大單 vs 散戶誰在買賣。',
@@ -15748,7 +15753,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const ghBase = window.location.href.split('?')[0].split('#')[0];
         const localUrl = new URL('data/broker_names.json', ghBase).href
                        + `?v=${Math.floor(Date.now()/3600000)}`;
-        const finmindUrl = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo';
+        // 🐛 V71.3.4 同 miner.py:FinMind 沒有 TaiwanBrokerInfo 這個資料集(回 enum 錯誤),
+        //   正確名稱是 TaiwanSecuritiesTraderInfo → 券商代碼對照表以前前端也一直抓不到。
+        const finmindUrl = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanSecuritiesTraderInfo';
 
         const [localMap, finmindMap] = await Promise.all([
             fetch(localUrl, { signal: AbortSignal.timeout(4000) })

@@ -1302,8 +1302,17 @@ def _load_broker_info_map() -> dict:
     一次取得全台 ~900 家券商代碼 → 中文名稱對照表。
     優先順序：TACTICAL_TAGS > FinMind 回傳的 raw_nm > 此對照表 > 數字代碼。
     """
-    url = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo'
+    # 🐛 V71.3.4 資料集名稱打錯 —— 實測 log:
+    #   ⚠️ TaiwanBrokerInfo 回傳異常: {'detail': [{'type': 'enum', 'loc': ['query','dataset'], ...
+    #   FinMind 根本沒有 TaiwanBrokerInfo 這個資料集(回 enum 錯誤 = 名稱不在合法清單裡)。
+    #   正確名稱是 TaiwanSecuritiesTraderInfo(證券商資訊,免費層)。
+    #   影響:券商代碼→中文名的「官方完整對照表」從來沒載入過,分點顯示只能靠
+    #   逐日採礦累積的名稱,沒出現過的分點就顯示數字代號。
+    #   舊名保留當備援(萬一哪天又被 FinMind 加回來),先試新名。
     for attempt in range(3):
+        url = ('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanSecuritiesTraderInfo'
+               if attempt < 2 else
+               'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanBrokerInfo')
         try:
             res = http_session.get(url, headers=_rnd_hdrs(), timeout=15)
             body = res.text.strip()
@@ -1317,13 +1326,13 @@ def _load_broker_info_map() -> dict:
                     nm  = str(b.get('broker_name') or b.get('securities_trader') or '').strip()
                     if bid and nm and not nm.isdigit():
                         mapping[bid] = nm
-                print(f"  📖 TaiwanBrokerInfo 載入：{len(mapping)} 家券商代碼→中文名")
+                print(f"  📖 券商對照表載入:{len(mapping)} 家券商代碼→中文名")
                 return mapping
             else:
-                print(f"  ⚠️ TaiwanBrokerInfo 回傳異常: {str(j)[:80]}")
+                print(f"  ⚠️ 券商對照表回傳異常({url.split('dataset=')[-1]}): {str(j)[:100]}")
                 break
         except Exception as e:
-            print(f"  ⚠️ TaiwanBrokerInfo 第{attempt+1}次失敗: {e}")
+            print(f"  ⚠️ 券商對照表第{attempt+1}次失敗: {e}")
             if attempt < 2:
                 time.sleep(5)
     return {}
@@ -2446,15 +2455,29 @@ def _fetch_otc_history_official(months_back=2):
                     continue
                 # 🔍 V71.2.5:tables 不一定只有一張、也不一定在第 0 張有 data → 逐張找第一張有 data 的
                 data = j.get('aaData') or j.get('data') or []
+                # 🔍 V71.3.4 實測 log 進一步縮小範圍:
+                #   /www/zh-tw/... 四種日期格式**全部**回 stat='ok' 且 tables=1
+                #   → 端點活著、日期也吃得下,問題出在「那張表裡裝資料的欄位不叫 data」。
+                #   所以不再只認 't["data"]',改成掃過表內每個欄位,取第一個「像資料列」的陣列
+                #   (元素是 list、且長度 ≥5 → 日期+開高低收)。
+                _tbl_keys = []
                 if not data and isinstance(j.get('tables'), list):
                     for _t in j['tables']:
-                        if isinstance(_t, dict) and _t.get('data'):
-                            data = _t['data']
+                        if not isinstance(_t, dict):
+                            continue
+                        _tbl_keys = list(_t.keys())
+                        for _k, _v in _t.items():
+                            if _k in ('fields', 'notes', 'hints'):      # 這些是欄位名/說明,不是資料
+                                continue
+                            if isinstance(_v, list) and _v and isinstance(_v[0], (list, tuple)) and len(_v[0]) >= 5:
+                                data = _v
+                                break
+                        if data:
                             break
                 if not data:
-                    # stat 是官方寫給人看的訊息(例:日期格式錯誤 / 查無資料),印原文比印 keys 有用得多
-                    why.append(f"{tag}→200 但無資料(stat={str(j.get('stat'))[:50]!r}, "
-                               f"tables={len(j.get('tables') or [])})")
+                    # 連表內欄位名一起印出來,下一輪就能直接看出資料到底放在哪個 key
+                    why.append(f"{tag}→200 但無資料(stat={str(j.get('stat'))[:30]!r}, "
+                               f"tables={len(j.get('tables') or [])}, 表內欄位={_tbl_keys[:8]})")
                     continue
                 added = 0
                 for row in data:
