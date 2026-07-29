@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2071,7 +2071,7 @@
         <!-- 🌐 市場總覽 (top-level tab) -->
         <div id="tabContentMarket" class="hidden flex-col gap-3 p-2 pb-4">
 
-            <!-- V31.4 — 「台股預判」+「9 板塊跨市場板塊輪動」已搬至下方「🇹🇼 台股實戰」sub-tab 最上(原常駐於此 sub-tab 之上) -->
+            <!-- V71.4.4 — 「市場板塊輪動」現位於「📈 行情」分頁(指數列/廣度/狀態機之下);「台股預判」卡已於 V43.8 刪除 -->
 
 
             <!-- 【區 1】台股風險指數半圓 — V31.0 已融合進「台股實戰」綜合指揮中心頂部 Header(與出貨指數結論並排);全球大環境分頁不再常駐半圓 -->
@@ -2094,23 +2094,51 @@
                     違反使用者自己定的「資訊不爆炸」。所以是把原本的兩格擴成三格。 -->
             <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md mb-2">
                 <button onclick="app.switchMarketSubTab('idx')" id="subTab_idx"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-amber-300 border border-transparent">📊 大盤</button>
+                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-amber-300 border border-transparent">📈 行情</button>
                 <button onclick="app.switchMarketSubTab('tw')" id="subTab_tw2"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent">💡 建議</button>
+                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent">🌅 盤前檢視</button>
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global2"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 新聞</button>
+                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 消息面</button>
             </div>
 
-            <!-- ════════ 📊 大盤:三大指數 + 市場體質(純行情數據,不含判斷)════════ -->
+            <!-- ════════ 📈 行情:三大指數 + 市場廣度 + 狀態機 + 板塊輪動(盤中在發生什麼)════════ -->
             <div id="subContent_idx" class="hidden flex-col gap-3">
                 <div id="mktIndexRow" class="grid grid-cols-3 gap-1.5"></div>
                 <!-- 📊 V67.2 市場廣度儀表板(機構級大盤健康度:漲跌家數/騰落/漲跌停) -->
                 <div id="marketBreadthCard" class="hidden"></div>
                 <!-- 🔄 V67.4 市場狀態機 Regime(趨勢盤/盤整盤/崩跌盤) -->
                 <div id="marketRegimeCard" class="hidden"></div>
+            <!-- 📊 V26.14/V31.4 — 9 板塊跨市場板塊輪動整合卡;V43.8 order:2(中) -->
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                <div class="flex items-center gap-1.5 mb-1">
+                    <span class="text-base">📊</span>
+                    <span class="text-[12px] font-black text-purple-300 tracking-wide">市場板塊輪動</span>
+                    <button onclick="app.showJargon('板塊輪動訊號'); event.stopPropagation();" class="text-[11px] text-gray-500 hover:text-blue-300 transition-colors leading-none" title="訊號說明">ⓘ</button>
+                    <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
+                </div>
+                <div class="text-[10px] text-gray-400 mb-2">美股昨夜 vs 台股今日 · <span class="text-red-300">🔴 跟漲</span> <span class="text-amber-300">🟡 委屈</span> <span class="text-green-300">🟢 補跌</span> <span class="text-orange-300">🟠 獨弱</span>(跟漲須美股真漲)</div>
+
+                <!-- V69.8.0 🤖 AI 白話判讀按鈕已刪(使用者要求);盤中更新改滿版 -->
+                <div class="mb-2">
+                    <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="w-full text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors">🔄 盤中即時更新</button>
+                </div>
+                <!-- 🔎 V41.26 免費查:為何某類股/題材今天大漲(外部 AI,不耗額度) -->
+                <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" title="開外部免費 AI 查最近類股/題材輪動原因,不耗自家額度" class="w-full mb-2 text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded py-1.5 transition-colors">🔎 免費查:為何類股/題材輪動 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
+
+                <!-- 進度條 + AI 結果 -->
+                <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
+                <!-- 🏭 V69.7.8 官方產業指數盤中快照(有填 FinMind 付費 key 才顯;證交所指數非個股 proxy) -->
+                <div id="sectorIdxStrip" class="hidden mb-2"></div>
+                <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
+
+                <!-- V27.6 — 標題已在 renderSectorGapTable 卡片內,此處不再重複(刪冗餘小標題) -->
+                <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
+
+                <!-- V69.8.0 「📖 美股對標 ETF 速查表」摺疊卡已刪(使用者要求) -->
+            </div>
             </div>
 
-            <!-- ════════ 💡 建議:盤前體檢 + 反攻雷達 + 財經行事曆(會下判斷的都在這)════════ -->
+            <!-- ════════ 🌅 盤前檢視:盤前體檢 + 反攻雷達 + 指揮中心(會下判斷的都在這)════════ -->
             <div id="subContent_advice" class="hidden flex-col gap-3">
                 <!-- 🌅 V36.8 盤前大盤體檢(加權技術+美股+ADR+外資 → 開盤方向總結) -->
                 <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
@@ -2121,23 +2149,12 @@
             <!-- <div id="volSurgeRadarCard" class="hidden"></div> -->
 
 
-            <!-- 📅 V50.3 財經行事曆(原「即將引爆」,移到盤前體檢下方常駐;未來 14 日核彈事件+法說會,出自 macro_risk.json.upcoming_macro_events) -->
-            <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-[11px] font-black text-amber-300">📅 財經行事曆 <span class="text-[9px] text-gray-500 font-normal">未來 14 日 · 核彈事件 + 法說會</span></div>
-                    <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
-                </div>
-                <!-- 🤖 V70.3.0 後端 Groq 行事曆解讀(採礦端產,無資料自動隱藏) -->
-                <div id="macroEventsAi" class="hidden mb-2"></div>
-                <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
-                    <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
-                </div>
-            </div>
+            <!-- 📅 V71.4.4 財經行事曆已搬到「🗞️ 消息面」分頁(使用者要求:行事曆＝未來的消息,跟新聞放一起才是同一件事) -->
 
-            </div><!-- /subContent_advice 之 上半(盤前體檢/反攻雷達/財經行事曆)-->
+            </div><!-- /subContent_advice 之 上半(盤前體檢/反攻雷達)-->
             <!-- 🗑️ V71.4.2 舊的兩格分頁列已被上方三格取代(避免兩層選單) -->
 
-            <!-- ════════ 【區 3-A】🗞️ 盤前新聞 ════════ -->
+            <!-- ════════ 【區 3-A】🗞️ 消息面(盤前新聞 + 財經行事曆)════════ -->
             <div id="subContent_global" class="flex flex-col gap-3">
 
             <!-- 🗞️ V50.3 盤前新聞重點(移到本 tab 最上方;AI 分析 localStorage 按日快取,關頁不清、一天 1 次省額度;每則右側 🔎 查=Perplexity) -->
@@ -2156,7 +2173,20 @@
                 </div>
             </div>
 
-            <!-- 📅 即將引爆 → 已改名「財經行事曆」並移到盤前體檢卡下方(V50.3) -->
+            <!-- 📅 V71.4.4 財經行事曆搬進本分頁(使用者要求)。
+                 為什麼放這裡:新聞＝已經發生的消息,行事曆＝還沒發生的消息,同一個「消息面」腦袋看。
+                 深度 AI 按鈕(macroDeepBtn)跟著卡片一起搬,DOM id 全不變 → JS 零改動。 -->
+            <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-[11px] font-black text-amber-300">📅 財經行事曆 <span class="text-[9px] text-gray-500 font-normal">未來 14 日 · 核彈事件 + 法說會</span></div>
+                    <div id="macroEventsTs" class="text-[9px] text-gray-600">--</div>
+                </div>
+                <!-- 🤖 V70.3.0 後端 Groq 行事曆解讀(採礦端產,無資料自動隱藏) -->
+                <div id="macroEventsAi" class="hidden mb-2"></div>
+                <div id="macroEventsList" class="space-y-1 max-h-56 overflow-y-auto scrollbar-hide">
+                    <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
+                </div>
+            </div>
 
             <!-- V35 — 「今日全球彙整(AI 摘要)」卡已移除(使用者要求取消新聞 AI 分析) -->
 
@@ -2325,34 +2355,7 @@
 
             <!-- 🔮 台股預判卡 V43.8 已刪除(使用者要求);analyzePredictCenter/analyzeMarketAnomaly 函式已於 V69.8.8 死碼清除 -->
 
-            <!-- 📊 V26.14/V31.4 — 9 板塊跨市場板塊輪動整合卡;V43.8 order:2(中) -->
-            <div style="order:2" class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-                <div class="flex items-center gap-1.5 mb-1">
-                    <span class="text-base">📊</span>
-                    <span class="text-[12px] font-black text-purple-300 tracking-wide">市場板塊輪動</span>
-                    <button onclick="app.showJargon('板塊輪動訊號'); event.stopPropagation();" class="text-[11px] text-gray-500 hover:text-blue-300 transition-colors leading-none" title="訊號說明">ⓘ</button>
-                    <span id="sectorSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span>
-                </div>
-                <div class="text-[10px] text-gray-400 mb-2">美股昨夜 vs 台股今日 · <span class="text-red-300">🔴 跟漲</span> <span class="text-amber-300">🟡 委屈</span> <span class="text-green-300">🟢 補跌</span> <span class="text-orange-300">🟠 獨弱</span>(跟漲須美股真漲)</div>
-
-                <!-- V69.8.0 🤖 AI 白話判讀按鈕已刪(使用者要求);盤中更新改滿版 -->
-                <div class="mb-2">
-                    <button id="sectorIntradayBtn" onclick="app.refreshSectorIntraday()" class="w-full text-[10px] font-bold text-purple-200 bg-purple-900/30 border border-purple-700/50 rounded py-1.5 hover:bg-purple-900/50 transition-colors">🔄 盤中即時更新</button>
-                </div>
-                <!-- 🔎 V41.26 免費查:為何某類股/題材今天大漲(外部 AI,不耗額度) -->
-                <button onclick="app._openFreeAiMacro('sector'); app.vibrate(30);" title="開外部免費 AI 查最近類股/題材輪動原因,不耗自家額度" class="w-full mb-2 text-[10px] font-bold text-amber-300 bg-[#0d1117] hover:bg-amber-900/20 border border-amber-700/40 hover:border-amber-600/60 rounded py-1.5 transition-colors">🔎 免費查:為何類股/題材輪動 <span class="text-[8px] text-gray-500 font-normal">(不耗額度)</span></button>
-
-                <!-- 進度條 + AI 結果 -->
-                <div id="sectorIntradayBar" class="hidden w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden"><div id="sectorIntradayBarFill" class="bg-cyan-500 h-full transition-all" style="width:0%"></div></div>
-                <!-- 🏭 V69.7.8 官方產業指數盤中快照(有填 FinMind 付費 key 才顯;證交所指數非個股 proxy) -->
-                <div id="sectorIdxStrip" class="hidden mb-2"></div>
-                <div id="sectorAiResult" class="hidden mb-2 bg-[#0d1117] rounded-lg border border-purple-700/40 p-3"></div>
-
-                <!-- V27.6 — 標題已在 renderSectorGapTable 卡片內,此處不再重複(刪冗餘小標題) -->
-                <div id="predictGapTableResult" class="text-[11px] text-gray-200 mb-2"></div>
-
-                <!-- V69.8.0 「📖 美股對標 ETF 速查表」摺疊卡已刪(使用者要求) -->
-            </div>
+            <!-- 📊 V71.4.4 市場板塊輪動已搬到「📈 行情」分頁(使用者要求:它是盤中行情資訊,跟指數/廣度同一個腦袋看)-->
 
             <!-- 📰 即時情報與新聞解析（內嵌版）;V49.7 隱藏 — 已整合為上方「🗞️ 盤前新聞重點」(使用者要求,減少雜訊) -->
             <div style="order:3" class="hidden bg-[#010409] rounded-xl border border-amber-900/50 p-3">
@@ -6589,8 +6592,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.3',
+    _APP_VERSION: 'V71.4.4',
     _CHANGELOG: [
+        { v: 'V71.4.4', dt: '2026-07-29', t: '🗂️ 大盤頁三個分頁重新分類 + 改名', d: [
+            '分頁改名:「📊 大盤」→「📈 行情」(跟下面那排的「大盤」同名很容易搞混)、「💡 建議」→「🌅 盤前檢視」、「🗞️ 新聞」→「🗞️ 消息面」。',
+            '「市場板塊輪動」搬到 📈 行情 —— 它講的是今天盤中哪些類股在動,跟指數、漲跌家數是同一件事,放一起看才連得起來。',
+            '「📅 財經行事曆」搬到 🗞️ 消息面 —— 新聞是已經發生的消息,行事曆是還沒發生的消息,同一個腦袋看。「🧠 用深度 AI 再分析一次」按鈕跟著一起搬,位置在行事曆下面。',
+            '深度 AI 按鈕的字變短了,不再有後面那串括號。',
+            '順手修一個對接錯位:原本要點進「消息面」才會刷新盤前體檢、點進「盤前檢視」才會拉新聞,兩邊寫反了。現在各自刷各自的。',
+        ] },
         { v: 'V71.4.3', dt: '2026-07-29', t: '🎯 台指電子盤終於有即時價了(清掉死碼)', d: [
             '之前說的那個死碼清掉了 —— 有兩個同名的函式,程式只會執行後面那個,前面 40 行從來沒跑過。而台指電子盤的即時報價就寫在那 40 行裡面,所以那格長期只有結算倒數。',
             '已把即時報價搬進真正在跑的那一份,現在台指電子盤會顯示即時價;抓不到就用加權加減價差推估並標「估」,兩層都拿不到才維持結算倒數,不會硬掰數字。',
@@ -6608,7 +6618,7 @@ ${list}
         ] },
         { v: 'V71.4.0', dt: '2026-07-29', t: '🧠 深度分析改成「你想要才按」', d: [
             '照你說的改:晚上排程每天自動跑,用便宜的 Groq 給一版快速解讀就好,不燒貴的額度。',
-            '白天你看到某件事覺得重要,財經行事曆下面有一顆「🧠 用深度 AI 再分析一次」,按了才叫 Gemini 做深度判讀,結果放在最上面當主結論。',
+            '白天你看到某件事覺得重要,「🗞️ 消息面」分頁的財經行事曆下面有一顆「🧠 用深度 AI 再分析一次」,按了才叫 Gemini 做深度判讀,結果放在最上面當主結論。',
             '⚠️ 快速版那段完整保留、不會被折疊或蓋掉 —— 兩個都看得到你才能自己比對。深度結果當天存著,切頁回來還在,不會重複花額度。',
         ] },
         { v: 'V71.3.9', dt: '2026-07-29', t: '🚨 亞股重挫會跳出來了 + 財經行事曆 AI 其實一直是壞的', d: [
@@ -23486,8 +23496,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
 
     // 📊 全球頁分頁切替（🌍 全球大環境 / 🇹🇼 台股實戰）
-    // 📑 V71.4.2 大盤頁三格平行分頁:📊 大盤(純行情)/ 💡 建議(會下判斷的)/ 🗞️ 新聞
-    //   ⚠️ 「建議」同時顯示 subContent_advice(盤前體檢/反攻雷達/行事曆)
+    // 📑 V71.4.4 大盤頁三格平行分頁:📈 行情(盤中在發生什麼)/ 🌅 盤前檢視(會下判斷的)/ 🗞️ 消息面(新聞+行事曆)
+    //   ⚠️ 「盤前檢視」同時顯示 subContent_advice(盤前體檢/反攻雷達)
     //      與既有的 subContent_tw(資金輪動)—— 兩者都是「解讀與建議」性質,
     //      合在同一格才不會又多一層選單。
     switchMarketSubTab(tab) {
@@ -23510,9 +23520,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         styleBtn('subTab_global2', tab === 'global', 'cyan');
         if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} try { this.renderMarketRegime(); } catch (_) {} }
         try { localStorage.setItem('mktSubTab', tab); } catch(_) {}
-        // 進入台股實戰自動拉一次即時情報（_newsCache 1 分鐘內會走快取，不會狂打）
-        if (tab === 'tw') { this.loadNewsHeadlines(); try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} }
-        if (tab === 'global') { try { this.renderMarketBriefing(); } catch(_){} }
+        // 🐛 V71.4.4 修對接錯位:盤前體檢(#marketBriefing)在「盤前檢視」格,新聞清單在「消息面」格,
+        //    但原本寫反了(進消息面才刷體檢、進盤前檢視才拉新聞)。分頁改名後一併校正。
+        if (tab === 'tw') { try { this.renderMarketBriefing(); } catch(_){} try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} }
+        if (tab === 'global') { this.loadNewsHeadlines(); }   // _newsCache 1 分鐘內走快取,不會狂打
     },
 
     // 📑 V32.1 大盤指揮中心次級頁籤(天氣/因子/風控):切換 + 淡入 + 左右滑動
@@ -24007,7 +24018,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         } finally {
             this._macroDeepRunning = false;
             const b2 = document.getElementById('macroDeepBtn');
-            if (b2) { b2.disabled = false; b2.textContent = '🧠 用深度 AI 再分析一次(這幾件事我很在意)'; b2.className = 'mt-2 w-full px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors'; }
+            if (b2) { b2.disabled = false; b2.textContent = '🧠 用深度 AI 再分析一次'; b2.className = 'mt-2 w-full px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors'; }
         }
     },
 
@@ -24044,7 +24055,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         </div>
                         <div class="text-[11px] text-gray-200 leading-relaxed">${String(ai.summary).replace(/</g, '&lt;')}</div>
                         ${rows ? `<div class="mt-1.5 bg-[#0d1117] rounded p-1.5">${rows}</div>` : ''}
-                        <button id="macroDeepBtn" onclick="app._deepAnalyzeMacro()" class="mt-2 w-full px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors">🧠 用深度 AI 再分析一次(這幾件事我很在意)</button>
+                        <button id="macroDeepBtn" onclick="app._deepAnalyzeMacro()" class="mt-2 w-full px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors">🧠 用深度 AI 再分析一次</button>
                         <div class="text-[8px] text-gray-600 mt-1.5">🧮 事件與市場數字由系統精算後餵給 AI,AI 只做影響判讀;非投資建議</div>`;
                     try { this._restoreMacroDeep(); } catch (_) {}
                     aiBox.classList.remove('hidden');
