@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.9',
+    _APP_VERSION: 'V71.5.0',
     _CHANGELOG: [
+        { v: 'V71.5.0', dt: '2026-07-30', t: '🌡️ 台指 VIX 沒資料的原因抓出來了(先讓它自己說話)', d: [
+            '你說「VIX 沒有資料」—— 查清楚了:美股 VIX(20.66)是正常的,沒資料的是「台指 VIX」,也就是台股自己的恐慌指數。它的資料來源回了錯誤,所以那一條一直是「—」。',
+            '真正的問題是:程式只記下「失敗」,把對方回的錯誤訊息整個丟掉了 → 只知道壞了,不知道為什麼,所以一直沒得修。這次改成把錯誤原文完整記下來,而且會依序試幾個可能的資料集名稱(過去券商名冊也踩過同一種「對方改名稱」的雷)。下一輪採礦跑完就會直接告訴我們正確名稱,再對症修。',
+            '在修好之前,那一條不再只給一個「—」:會明講「資料源維護中、此條暫不計分,先看上方美股 VIX 當替代參考」,你就不用猜是還沒抓到還是壞掉。',
+            '(這條沒資料不會影響反攻雷達的其他判斷,它本來就設計成缺資料的項目不計分,不會拿 0 分硬拉低結論。)',
+        ] },
         { v: 'V71.4.9', dt: '2026-07-30', t: '🚨 加權指數個股頁停在 3 個月前(38,926)已修好', d: [
             '你截圖裡最嚴重的一個:點進加權指數,現價顯 38,926「04/30 收盤・91 天前」,而大盤頁明明是 40,039。同一個指數兩個數字。',
             '原因:程式有一道「假日幽靈棒」過濾,會把成交量異常小的 K 棒當假資料刪掉。但加權指數的資料來源(證交所那個端點)本來就不提供成交量,5/4 之後每一根量都是 0 → 近 61 根全被當成假日棒整批刪掉,只剩到 4/30。所以月線、波段多空、關鍵價位、進出場建議全部是用 3 個月前的資料算的。',
@@ -14431,7 +14437,14 @@ const marginByDate = {};
             bwd != null && bwd >= 0,
             '期貨收回加權之上=避險退潮。深逆價差(<-200)=還在搶避險,但恐慌末端的極深逆價差常是反轉先兆(要配 VIX 看)',
             bwd == null);
-        add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30, '回 30 以下(>30=仍在搶避險)', twvix == null);
+        // 🌡️ V71.5.0 台指 VIX 沒資料時要講原因 —— 使用者反映「VIX 沒有資料」但只看到一個「—」,
+        //   分不出是「還沒抓到」還是「這條壞掉了」。有 tw_vix_error 就明說資料源在維護,
+        //   並提示美股 VIX 可以先當替代參考(同一件事只給一個結論,不另開卡)。
+        add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30,
+            twvix == null && mr.tw_vix_error
+                ? '⚠️ 台股自己的恐慌指數資料源維護中(已自動回報),此條暫不計分;先看上方美股 VIX 當替代參考'
+                : '回 30 以下(>30=仍在搶避險)',
+            twvix == null);
         add('📉', '機構停止倒貨', dist == null ? '—' : `派發日 ${dist} 天`, dist != null && dist <= 2, '25 日內派發 ≤2(≥5=出貨未歇)', dist == null);
         // 融資斷頭(反指標:跌市中融資大減=賣壓宣洩,反而接近底)
         let mgTxt = mgNow == null ? '—' : `${Math.round(mgNow).toLocaleString()} 億`;

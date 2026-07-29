@@ -1081,14 +1081,35 @@ def fetch_tw_vix():
     if not toks:
         return None, None, 'no-token'
     sd = (datetime.now(timezone.utc) - timedelta(days=20)).strftime('%Y-%m-%d')
+    # 🐛 V71.5.0 之前這裡只記 `empty(status=400)`,把 FinMind 回的 msg 整個丟掉
+    #   → 只知道「失敗」不知道「為什麼」,台指 VIX 從上線就是空的卻無從下手。
+    #   FinMind 改資料集名稱是已知的踩雷模式(V71.3.4 的 TaiwanBrokerInfo →
+    #   TaiwanSecuritiesTraderInfo 就是同一種),而名稱錯時它會在 msg 裡回 enum 清單。
+    #   所以:① 依序試幾個候選名稱 ② 把每個名稱拿到的 msg 原文記下來,
+    #   下一輪採礦的 tw_vix_error 就會直接告訴我們正確名稱是什麼。
+    CANDIDATES = ['TaiwanOptionVix', 'TaiwanOptionVIX', 'TaiwanVIX', 'TaiwanFuturesVIX']
+    tried = []
     try:
-        res = requests.get('https://api.finmindtrade.com/api/v4/data',
-                           params={'dataset': 'TaiwanOptionVix', 'start_date': sd},
-                           headers={'Authorization': f'Bearer {toks[0]}'}, timeout=15)
-        j = res.json()
-        rows = j.get('data') or []
+        rows, used = [], None
+        for _ds in CANDIDATES:
+            try:
+                res = requests.get('https://api.finmindtrade.com/api/v4/data',
+                                   params={'dataset': _ds, 'start_date': sd},
+                                   headers={'Authorization': f'Bearer {toks[0]}'}, timeout=15)
+                j = res.json()
+            except Exception as _e:
+                tried.append(f"{_ds}:{str(_e)[:40]}")
+                continue
+            _rows = j.get('data') or []
+            if _rows:
+                rows, used = _rows, _ds
+                print(f"  [台指VIX] dataset={_ds} 命中 {len(_rows)} 筆")
+                break
+            # 把原文 msg 留下來(這是唯一能告訴我們正確名稱的線索)
+            tried.append(f"{_ds}:{j.get('status')}/{str(j.get('msg') or '')[:90]}")
+            print(f"  [台指VIX] dataset={_ds} 回空 status={j.get('status')} msg={str(j.get('msg'))[:120]}")
         if not rows:
-            return None, None, f"empty(status={j.get('status')})"
+            return None, None, ' | '.join(tried)[:300]
         # 每日可能多筆(含 time)→ 取每日最後一筆,再取近 6 個交易日
         by_day = {}
         for r in rows:
@@ -1105,6 +1126,7 @@ def fetch_tw_vix():
         cur = by_day[ds[-1]]
         base = by_day[ds[-6]] if len(ds) >= 6 else by_day[ds[0]]
         chg5 = round((cur - base) / base * 100, 1) if base > 0 else None
+        print(f"  [台指VIX] {ds[-1]} = {cur:.2f}(5 日 {chg5}%),來源 dataset={used}")
         return round(cur, 2), chg5, None
     except Exception as e:
         return None, None, str(e)[:80]
