@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6520,8 +6520,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.2.1',
+    _APP_VERSION: 'V71.2.2',
     _CHANGELOG: [
+        { v: 'V71.2.2', dt: '2026-07-29', t: '💰 融資「去槓桿進度」併進反攻雷達', d: [
+            '「融資斷頭宣洩」那條升級:除了原本的 5 日增減,再多算一個法人常看的指標 —— 從融資高點到現在,融資餘額掉了幾 %,對比同期加權指數掉了幾 %。',
+            '融資減幅追上指數跌幅(≥90%)= 散戶槓桿被洗出、籌碼乾淨;還落後 = 凹單的人還很多,多殺多沒完,這條就不算過(反彈多半是逃命波)。',
+            '餘額回到 5,000 億以下會額外標註。沒新增卡片,直接寫在原本那一條裡。',
+        ] },
         { v: 'V71.2.1', dt: '2026-07-29', t: '🩹 修破圖 + 盤前體檢接上反攻雷達', d: [
             '【破圖】上一版那句「加權指數落後」警告被我接在標題同一行,而那個區塊設了不可壓縮 → 文字一長就把整張卡撐爆,「盤前體檢」四個字被壓成一字一行、右側被裁掉。已改成獨立一行放標題下方,直式橫式都測過不再溢出。',
             '【你問兩張卡有沒有連動 → 原本沒有,現在有了】它們吃同一份資料所以結論會同向(我用三種極端情境實測:偏多 85 分對 8/9、震盪 55 分對 5/9、偏空 10 分對 1/9,完全一致),但程式上是各算各的、互不引用。',
@@ -14061,6 +14066,46 @@ const marginByDate = {};
         return { net, chg5, pct, level: 'neutral', label: '➖ 區間震盪', color: 'text-gray-300' };
     },
 
+    // 💰 V71.2.2 融資去槓桿進度(唯一真相來源,別在別處再算一次)
+    //   法人常用的判斷:「融資減幅仍落後加權指數跌幅 → 去槓桿未結束」。
+    //   邏輯:從近期融資高點算起,融資餘額掉了幾 %,對比同期加權指數掉了幾 %。
+    //   ・ratio ≥1 = 融資殺得比指數兇 → 散戶槓桿已被洗出(籌碼乾淨)
+    //   ・ratio <1 = 融資還撐著沒退 → 凹單者眾,多殺多還有柴燒
+    //   資料源:risk_history.margin_100m(V71.1.7 起可回補 30 天)+ macro_cache.twii_history
+    //   ⚠️ 兩邊都沒有就回 null,誠實顯「累積中」,不用估的。
+    _deleverProgress() {
+        const N = v => (v == null || isNaN(+v)) ? null : +v;
+        try {
+            const rh = (this._riskHistCache || []).filter(r => r && r.date && N(r.margin_100m) != null);
+            if (rh.length < 4) return null;
+            const th = Array.isArray(this.usMacroCache?.twii_history) ? this.usMacroCache.twii_history : [];
+            if (th.length < 4) return null;
+            // 加權收盤查表(日期統一成 YYYY-MM-DD)
+            const norm = s => String(s).slice(0, 10).replace(/\//g, '-');
+            const tMap = {}, tDates = [];
+            th.forEach(r => { const d = norm(r.date), c = N(r.close); if (d && c > 0) { tMap[d] = c; tDates.push(d); } });
+            tDates.sort();
+            const twiiOn = d => {                       // 取「≤ 該日」最近的收盤(避開休市日)
+                if (tMap[d]) return tMap[d];
+                let best = null;
+                for (const x of tDates) { if (x <= d) best = x; else break; }
+                return best ? tMap[best] : null;
+            };
+            // 近期融資高點(整段可用視窗內的最大值)
+            let peak = null, peakDate = null;
+            rh.forEach(r => { const m = N(r.margin_100m); if (peak == null || m > peak) { peak = m; peakDate = norm(r.date); } });
+            const last = rh[rh.length - 1];
+            const mgNow = N(last.margin_100m), nowDate = norm(last.date);
+            if (peak == null || mgNow == null || peak <= 0 || peakDate === nowDate) return null;
+            const tPeak = twiiOn(peakDate), tNow = twiiOn(nowDate);
+            if (!(tPeak > 0) || !(tNow > 0)) return null;
+            const mgDrop = (peak - mgNow) / peak * 100;      // 融資減幅 %(正=減少)
+            const idxDrop = (tPeak - tNow) / tPeak * 100;    // 指數跌幅 %(正=下跌)
+            if (idxDrop < 1) return null;                    // 指數沒怎麼跌,比值沒有意義
+            return { mgNow, peak, peakDate, mgDrop, idxDrop, ratio: mgDrop / idxDrop, days: rh.length };
+        } catch (_) { return null; }
+    },
+
     _renderReboundRadar() {
         const box = document.getElementById('reboundRadarCard');
         if (!box) return;
@@ -14155,12 +14200,24 @@ const marginByDate = {};
         // 融資斷頭(反指標:跌市中融資大減=賣壓宣洩,反而接近底)
         let mgTxt = mgNow == null ? '—' : `${Math.round(mgNow).toLocaleString()} 億`;
         let mgPass = null, mgWhen = '';
+        // 💰 V71.2.2 併入「去槓桿進度」(不新增卡,直接強化這一條)
+        const dl = this._deleverProgress();
         if (mgChg5 != null) {
             mgTxt += `(5日 ${mgChg5 >= 0 ? '+' : ''}${Math.round(mgChg5)} 億)`;
             mgPass = mgChg5 <= -30;
-            mgWhen = '5 日大減 ≥30 億=斷頭賣壓已宣洩(洗完才有底);沒退又續跌=多殺多沒完';
+            mgWhen = '5 日大減 ≥30 億=斷頭賣壓已宣洩;沒退又續跌=多殺多沒完';
         } else {
             mgWhen = '歷史回補中,下次採礦後就有數字;⚠️ 個人維持率追繳是券商私訊,公開資料抓不到,只能用全市場融資增減替代';
+        }
+        if (dl) {
+            mgTxt += ` ・去槓桿 ${Math.round(dl.ratio * 100)}%`;
+            const done = dl.ratio >= 0.9;
+            mgWhen += `。融資自高點 -${dl.mgDrop.toFixed(1)}% vs 指數 -${dl.idxDrop.toFixed(1)}%` +
+                      `,${done ? '減幅已追上=散戶槓桿洗出' : '減幅落後=凹單者眾,去槓桿未結束'}` +
+                      (mgNow != null && mgNow <= 5000 ? ';餘額已回 5,000 億以下(籌碼相對乾淨)' : '');
+            // 減幅落後 → 這條不算過(法人口徑:去槓桿沒走完,反彈多是逃命波)
+            if (mgPass === true && !done) mgPass = false;
+            if (mgPass === null) mgPass = done;
         }
         C.push({ icon: '💰', name: '融資斷頭宣洩', now: mgTxt, pass: mgPass, when: mgWhen });
         // 恐慌極端(反指標,單獨顯示)
