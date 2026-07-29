@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -793,6 +793,12 @@
                     <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-yellow-400 mb-1">🔑 FinMind Token 輪動池 (籌碼/基本面)</label>
                         <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">多組免費帳號輪流用,每小時額度耗盡自動切換,杜絕採礦中斷。可 <b class="text-yellow-300">➕新增 / 🗑️刪除</b>、勾選啟用、單列「驗」測有效。免費申請:<span class="text-yellow-400">finmindtrade.com</span></p>
+                        <!-- ⛔ V71.3.0 這裡只准填免費金鑰。額度是綁在「金鑰」上、不是綁裝置,
+                             付費那把填進來 = 你每開一次 App 就在吃掉盤後分點採礦的額度。 -->
+                        <div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mb-1">
+                            <div class="text-[10px] font-bold text-orange-300 mb-0.5">⛔ 這裡只填「免費」金鑰</div>
+                            <div class="text-[10px] text-gray-300 leading-relaxed">付費(Sponsor)那把請<b class="text-orange-300">只放在採礦機</b>。額度是算在金鑰上、不是算裝置,付費金鑰填在這裡的話,你每開一次 App 就會吃掉盤後分點採礦的額度。<br>這頁用到的資料(法人、融資券、營收、財報、股利、外資期貨、櫃買指數)<b class="text-gray-200">免費金鑰就抓得到</b>,不必用付費的。</div>
+                        </div>
                         <div id="keyRows_finmind"></div>
                     </div>
 
@@ -6527,8 +6533,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.2.9',
+    _APP_VERSION: 'V71.3.0',
     _CHANGELOG: [
+        { v: 'V71.3.0', dt: '2026-07-29', t: '⛔ 設定頁警語:付費金鑰別填在 App 裡', d: [
+            'FinMind 的額度是算在「金鑰」上,不是算裝置。付費那把如果填在手機 App 的設定裡,你每開一次 App 就會吃掉盤後分點採礦的額度。',
+            '設定中心的 FinMind 欄位加了醒目提醒:這裡只填免費金鑰,付費那把只放採礦機。',
+            'App 這邊用到的資料(法人、融資券、營收、財報、股利、外資期貨、櫃買指數)免費金鑰全都抓得到,不需要用付費的。',
+        ] },
         { v: 'V71.2.9', dt: '2026-07-29', t: '⚡ 分點改「只補新的那一天」,呼叫量砍九成', d: [
             '原本每天都把每檔的 3~11 天資料整個重抓一次,但其中只有最新那天是新的,其餘前幾天早就抓過也存在本地 —— 等於每天重複買同樣的資料 2~10 次。',
             '改成只補「本地沒有的那一天」,舊的日子直接用本地存的算。全市場所需次數從約 1 萬次降到約 2,700 次,一把付費金鑰就跑得完。',
