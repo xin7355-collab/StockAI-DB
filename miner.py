@@ -2348,13 +2348,23 @@ def _fetch_otc_history_official(months_back=2):
         return float(str(s).replace(',', '').replace('--', 'nan'))
 
     for y, m in months_to_fetch:
-        roc = f"{y - 1911}/{m:02d}"       # 民國 114/06(舊 web 端點格式)
-        ce_first = f"{y:04d}{m:02d}01"    # 西元 20260601(新 rwd/openapi 端點格式)
-        # 🐛 V43.3 — TPEX 2024 改版,舊 /web/...st41_result.php 多半已死;新站改 /rwd/ (對齊 TWSE)。
-        #   多端點輪試 + 相容多種回傳格式(aaData 舊 / data 或 tables[0].data 新)。全失敗才回 None 讓 yfinance/磁碟 fallback。
+        roc = f"{y - 1911}/{m:02d}"       # 民國 115/07(舊 web 端點格式)
+        ce_first = f"{y:04d}{m:02d}01"    # 西元 20260701
+        # 🔍 V71.2.5 —— 靠 V71.2.3 加的診斷,終於查出櫃買指數為何從沒抓成功過(實測 log):
+        #   ・/rwd/zh/...        → 回 `<!DOCTYPE html>`(不是 JSON,端點已死)
+        #   ・/www/zh-tw/...     → **HTTP 200 且是 JSON**,keys=['tables','date','flagField','stat']
+        #                          → 這台是活的,只是 tables 空 ⇒ 日期參數格式不對
+        #   ・/web/...st41_result.php → 也回 HTML(2024 改版後死透)
+        #   所以正解不是「換一台主機」,是「在這台活的端點上換對日期格式」。
+        #   下面把 4 種常見寫法都試一次(西元無分隔 / 西元帶斜線 / 民國帶日 / 民國到月),
+        #   哪個成功就停;全失敗時新版診斷會把 stat 原文印出來,直接看官方怎麼說。
+        _www = "https://www.tpex.org.tw/www/zh-tw/afterTrading/otc/st41"
         url_candidates = [
+            f"{_www}?date={ce_first}&response=json",
+            f"{_www}?date={y:04d}/{m:02d}/01&response=json",
+            f"{_www}?date={y - 1911}/{m:02d}/01&response=json",
+            f"{_www}?date={roc}&response=json",
             f"https://www.tpex.org.tw/rwd/zh/afterTrading/otc/st41?date={ce_first}&response=json",
-            f"https://www.tpex.org.tw/www/zh-tw/afterTrading/otc/st41?date={ce_first}&response=json",
             f"https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php?l=zh-tw&d={roc}",
         ]
         got = False
@@ -2374,9 +2384,17 @@ def _fetch_otc_history_official(months_back=2):
                 except Exception:
                     why.append(f"{tag}→非 JSON({(r.text or '')[:40].strip()!r})")
                     continue
-                data = j.get('aaData') or j.get('data') or (j.get('tables', [{}])[0].get('data') if isinstance(j.get('tables'), list) and j['tables'] else None) or []
+                # 🔍 V71.2.5:tables 不一定只有一張、也不一定在第 0 張有 data → 逐張找第一張有 data 的
+                data = j.get('aaData') or j.get('data') or []
+                if not data and isinstance(j.get('tables'), list):
+                    for _t in j['tables']:
+                        if isinstance(_t, dict) and _t.get('data'):
+                            data = _t['data']
+                            break
                 if not data:
-                    why.append(f"{tag}→200 但無資料(keys={list(j.keys())[:6]})")
+                    # stat 是官方寫給人看的訊息(例:日期格式錯誤 / 查無資料),印原文比印 keys 有用得多
+                    why.append(f"{tag}→200 但無資料(stat={str(j.get('stat'))[:50]!r}, "
+                               f"tables={len(j.get('tables') or [])})")
                     continue
                 added = 0
                 for row in data:
