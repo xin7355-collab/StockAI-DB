@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.0',
+    _APP_VERSION: 'V71.5.1',
     _CHANGELOG: [
+        { v: 'V71.5.1', dt: '2026-07-30', t: '🛡️ 舊資料不准再蓋掉新資料(你拿籌碼K線對照抓到的)', d: [
+            '你給的對照圖幫大忙。逐項比對後發現一整組數字都慢一天:韓股我顯 6,024(−10.84%)、籌碼K線 5,663(−5.98%);日經、恆指、台指電子盤也都一樣。',
+            '最嚴重的是美股期貨:我顯三大期貨全綠(下跌),實際上清晨已經翻紅。盤前看期貨就是為了判斷今天開盤方向,方向講反等於誤導。',
+            '真因不是「慢」而是「倒退」:採礦程式原本只在「完全抓不到」時才保留舊值,但資料來源有時會「成功回一筆前一天的資料」—— 那種情況會直接把已經抓對的新值蓋掉。前一晚存的韓股本來是正確的 −5.98%,清晨那輪就被 −10.84% 蓋回去了。',
+            '已加守門:每筆資料都記下「這是哪一天的」,新抓到的比已存的還舊就直接不覆蓋,保留正確的那筆。台指期也套同一道(它顯 41,613,真值 39,645,而且正逆價差方向剛好相反)。',
+            '守門刻意保守:同一天重抓照樣更新、拿不到日期就不擋,不會變成「永遠不更新」。',
+        ] },
         { v: 'V71.5.0', dt: '2026-07-30', t: '🌡️ 台指 VIX 沒資料的原因抓出來了(先讓它自己說話)', d: [
             '你說「VIX 沒有資料」—— 查清楚了:美股 VIX(20.66)是正常的,沒資料的是「台指 VIX」,也就是台股自己的恐慌指數。它的資料來源回了錯誤,所以那一條一直是「—」。',
             '真正的問題是:程式只記下「失敗」,把對方回的錯誤訊息整個丟掉了 → 只知道壞了,不知道為什麼,所以一直沒得修。這次改成把錯誤原文完整記下來,而且會依序試幾個可能的資料集名稱(過去券商名冊也踩過同一種「對方改名稱」的雷)。下一輪採礦跑完就會直接告訴我們正確名稱,再對症修。',

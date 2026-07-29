@@ -973,6 +973,30 @@ def fetch_us2y_yield():
 
 
 # ════════ 🌍 全球巨頭脈動採集（8 大國際資金真實流向）════════
+_YF_LAST_DATE: dict = {}   # V71.5.1 ticker → 該筆收盤的資料日期(擋「成功但過期」的覆蓋)
+
+
+def _should_keep_old(new_val, new_date, old_val, old_date):
+    """V71.5.1 「日期不可倒退」判斷:這次抓到的資料是不是比上次存的還舊?
+
+    背景(2026-07-30 實測):既有的 last-good 只在新值是 None 時沿用舊值,
+    擋不住 yfinance「成功回應但是舊的」——
+      ・韓股:前一輪存 −5.98%(07/29 正確),04:42 那輪回 −10.84%(07/28)直接蓋掉
+      ・美股三大期貨:07/28 收綠、07/30 清晨其實翻紅,方向整個反過來,
+        而盤前看期貨就是為了判斷今天開盤方向,方向錯等於誤導
+    所以只要「新資料日期 < 已存日期」就保留舊的。
+
+    刻意保守 —— 以下情況都**不擋**(寧可放過也不要誤擋成永遠不更新):
+      ・新值是 None(交給既有 last-good 機制處理)
+      ・任一邊沒有日期(拿不到日期就無法比較)
+      ・沒有舊值可留
+      ・日期相同或更新(正常情況)
+    """
+    if new_val is None or not new_date or not old_date or old_val is None:
+        return False
+    return str(new_date) < str(old_date)
+
+
 def _fetch_yf_close(ticker, name):
     """通用 yfinance 收盤 + 日漲幅%。
     🛡️ 根治日經/恆生「休市回 NaN → 一直 null」:用 dropna() 取「最後兩筆有效收盤」,
@@ -1001,6 +1025,17 @@ def _fetch_yf_close(ticker, name):
                 last_err = f"{name} Close 仍含 NaN(資料髒,period={period})"
                 continue
             chg_pct = round((last - prev) / prev * 100, 2) if prev > 0 else 0
+            # 🐛 V71.5.1 記下「這筆收盤是哪一天的」。
+            #   為什麼:yfinance 實測會回落後一個交易日的資料,而且是「成功回應」——
+            #   既有的 last-good 機制只擋 None,擋不住「成功但是舊的」,於是舊值會直接覆蓋新值。
+            #   2026-07-30 實測:23:xx 那輪存進去的韓股是 −5.98%(07/29 正確值),
+            #   04:42 那輪 yfinance 回 07/28 的 −10.84% 就把它蓋掉了 → 使用者看到的是前一天。
+            #   美股期貨更嚴重:07/28 三大期貨收綠、07/30 清晨其實翻紅,方向剛好相反,
+            #   而盤前看期貨就是為了判斷今天開盤方向。
+            try:
+                _YF_LAST_DATE[ticker] = str(closes.index[-1].date())
+            except Exception:
+                _YF_LAST_DATE.pop(ticker, None)
             return round(last, 2), chg_pct, None
         except Exception as e:
             last_err = str(e)[:100]
@@ -2122,23 +2157,65 @@ def main():
         ("那指期貨",       "nq_fut", fetch_nq_fut),
         ("美債10Y",       "ust10y", fetch_ust10y),      # 💡 V68.8.2 美債殖利率
     ]
+    # V71.5.1 key → yfinance ticker(給「日期不可倒退」守門查 _YF_LAST_DATE 用;
+    #   必須與上方 big_player_fns 各 fetch_* 實際使用的 ticker 完全一致)
+    _BIG_PLAYER_TICKERS = {
+        "gold": "GC=F", "wti": "CL=F", "dxy": "DX-Y.NYB", "btc": "BTC-USD", "vix": "^VIX",
+        "nikkei": "^N225", "hsi": "^HSI", "kospi": "^KS11", "sp500": "^GSPC", "nasdaq": "^IXIC",
+        "dji": "^DJI", "sox": "^SOX", "tsm": "TSM", "asx": "ASX", "umc": "UMC",
+        "es_fut": "ES=F", "ym_fut": "YM=F", "nq_fut": "NQ=F", "ust10y": "^TNX",
+    }
     key_alias = {"gold": "gold_usd", "wti": "wti_oil", "dxy": "dxy",
                  "btc": "btc_usd", "vix": "vix", "nikkei": "nikkei",
                  "hsi": "hsi", "kospi": "kospi",
                  "sp500": "sp500", "nasdaq": "nasdaq",
                  "dji": "dji", "sox": "sox", "tsm": "tsm", "asx": "asx", "umc": "umc",
                  "es_fut": "es_fut", "ym_fut": "ym_fut", "nq_fut": "nq_fut", "ust10y": "ust10y"}
+    # 🐛 V71.5.1「日期不可倒退」守門(anti-regression)
+    #   既有的 last-good 只在新值是 None 時沿用舊值,擋不住「yfinance 成功回應但是舊的」。
+    #   實測 2026-07-30:前一輪存的韓股 −5.98%(07/29 正確)被 04:42 那輪的 −10.84%(07/28)蓋掉;
+    #   美股三大期貨更嚴重 —— 07/28 收綠、07/30 清晨其實翻紅,方向整個反過來,
+    #   而盤前看期貨就是為了判斷今天開盤方向,方向錯等於誤導。
+    #   守門邏輯:新資料的日期若「明確早於」上次存的日期 → 保留舊值,不覆蓋,並記進 *_error 說明。
+    _prev_json = {}
+    try:
+        _pp = DATA_DIR / 'macro_risk.json'
+        if _pp.exists():
+            _prev_json = json.loads(_pp.read_text(encoding='utf-8')) or {}
+    except Exception:
+        _prev_json = {}
+    _ticker_of = {k: t for k, t in _BIG_PLAYER_TICKERS.items()}
+    _stale_kept = []
     for i, (name, key, fn) in enumerate(big_player_fns, 9):
         print(f"[{i}] {name}…")
         val, chg, err = fn()
+        _tk = _ticker_of.get(key)
+        _new_d = _YF_LAST_DATE.get(_tk) if _tk else None
+        _old_d = _prev_json.get(f"{key}_date")
+        _old_v = _prev_json.get(key_alias[key])
+        if _should_keep_old(val, _new_d, _old_v, _old_d):
+            # 這次抓到的比上次存的還舊 → 不覆蓋
+            _stale_kept.append(f"{name}({_new_d}<{_old_d})")
+            print(f"     ⏭️ 抓到 {_new_d} 的舊資料(已存 {_old_d})→ 保留舊值 {_old_v},不倒退")
+            out[key_alias[key]]   = _old_v
+            out[f"{key}_chg_pct"] = _prev_json.get(f"{key}_chg_pct")
+            out[f"{key}_date"]    = _old_d
+            out[f"{key}_error"]   = f"來源回舊資料({_new_d}),已保留 {_old_d} 的值"
+            continue
         out[key_alias[key]]      = val
         out[f"{key}_chg_pct"]    = chg
         out[f"{key}_error"]      = err
+        if _new_d:
+            out[f"{key}_date"]   = _new_d
+        elif _old_d and val is None:
+            out[f"{key}_date"]   = _old_d
         if val is not None:
             sign = "+" if (chg or 0) > 0 else ""
-            print(f"     → {val} ({sign}{chg}%)")
+            print(f"     → {val} ({sign}{chg}%){f' [{_new_d}]' if _new_d else ''}")
         else:
             print(f"     → 失敗:{err}")
+    if _stale_kept:
+        print(f"  🛡️ 擋掉 {len(_stale_kept)} 個「成功但過期」的覆蓋:{', '.join(_stale_kept)}")
 
     # ── 🌡️ 國發會景氣對策信號(Q2 自動抓取,每月 27 號發布)──
     print("─" * 50)
@@ -2197,6 +2274,19 @@ def main():
     print("─" * 50)
     print("🌃 抓取台指期 TX 近月實時點(yfinance ^TXF=F)…")
     tx_now = fetch_taifex_tx_now()
+    # 🐛 V71.5.1 台指期同樣套「日期不可倒退」:實測 07/30 清晨抓到的是 07/28 的 41,613,
+    #   而真值是 39,645(對加權 40,039 是逆價差 −394)。差 1,968 點、而且正逆價差方向相反 ——
+    #   正逆價差是判讀外資空單「真看空 vs 只是避險」的關鍵,不能讓舊值蓋掉新值。
+    try:
+        _pt = (_prev_json or {}).get('taifex_tx_now') or {}
+        if _should_keep_old((tx_now or {}).get('price'), (tx_now or {}).get('date'),
+                            _pt.get('price'), _pt.get('date')):
+            print(f"     ⏭️ 台指期抓到 {(tx_now or {}).get('date')} 的舊資料"
+                  f"(已存 {_pt.get('date')})→ 保留舊值 {_pt.get('price')},不倒退")
+            tx_now = dict(_pt)
+            tx_now['error'] = f"來源回舊資料({(tx_now or {}).get('date')}),已保留較新的值"
+    except Exception as _e:
+        print(f"     ⚠️ 台指期日期守門例外(不影響主流程):{str(_e)[:60]}")
     out["taifex_tx_now"] = tx_now
     if tx_now.get("price") is not None:
         # 🛡️ V36.9 修:OpenAPI fallback 時 chg=None,舊 f-string {None:+.2f} 會頂層崩潰
@@ -2285,6 +2375,11 @@ def main():
                         # 🌍 全球巨頭脈動 10 指標斷崖防護(V21 加 SP500/NASDAQ)
                         "gold_usd", "gold_chg_pct", "wti_oil", "wti_chg_pct",
                         "dxy", "dxy_chg_pct", "btc_usd", "btc_chg_pct",
+                        # V71.5.1 各來源的資料日期(「不可倒退」守門下一輪要靠它比較)
+                        "gold_date", "wti_date", "dxy_date", "btc_date", "vix_date",
+                        "nikkei_date", "hsi_date", "kospi_date", "sp500_date", "nasdaq_date",
+                        "dji_date", "sox_date", "tsm_date", "asx_date", "umc_date",
+                        "es_fut_date", "ym_fut_date", "nq_fut_date", "ust10y_date",
                         "vix", "vix_chg_pct", "nikkei", "nikkei_chg_pct",
                         "hsi", "hsi_chg_pct", "kospi", "kospi_chg_pct",
                         "sp500", "sp500_chg_pct", "nasdaq", "nasdaq_chg_pct",
