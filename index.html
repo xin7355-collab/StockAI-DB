@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2087,19 +2087,35 @@
                                 → 點下去給明確說明,不做假頁面
                    ・台指電子盤 → 期貨沒有 K 線檔可讀 → 同上
                  報價來源已存在:_refreshLiveTwIndices()(Yahoo ^TWII / ^TXF=F,每 30 秒) -->
-            <div id="mktIndexRow" class="grid grid-cols-3 gap-1.5 mb-2"></div>
-            <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
-            <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
-            <!-- 🧭 V70.2.7 反攻條件雷達(使用者要求:告訴我還差什麼條件台股才會漲/現在是不是黑天鵝該停損) -->
-            <div id="reboundRadarCard" class="hidden"></div>
-            <!-- 🗑️ V71.4.1 使用者要求刪除「🏦 ETF 專區」入口。ETF 本體沒刪,
-                 仍在「選股 → 🏦 ETF」(V71.2.4 搬過去的),只是大盤頁不再放捷徑。 -->
+            <!-- ════════ V71.4.2 大盤頁改「三個平行分頁」(使用者要求:最上面做分頁,
+                 一個是大盤(三大指數)、一個是給建議)。
+                 ⚠️ 刻意做成**平行三格**而不是「在現有分頁之上再加一層」——
+                    現有已有 盤前新聞/資金輪動 兩個分頁,再疊一層會變兩層選單、更難找,
+                    違反使用者自己定的「資訊不爆炸」。所以是把原本的兩格擴成三格。 -->
+            <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md mb-2">
+                <button onclick="app.switchMarketSubTab('idx')" id="subTab_idx"
+                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-amber-300 border border-transparent">📊 大盤</button>
+                <button onclick="app.switchMarketSubTab('tw')" id="subTab_tw2"
+                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent">💡 建議</button>
+                <button onclick="app.switchMarketSubTab('global')" id="subTab_global2"
+                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 新聞</button>
+            </div>
 
-            <!-- 🔄 V67.4 市場狀態機 Regime(大盤現在是趨勢盤/盤整盤/崩跌盤 → 該用什麼策略) -->
-            <div id="marketRegimeCard" class="hidden"></div>
+            <!-- ════════ 📊 大盤:三大指數 + 市場體質(純行情數據,不含判斷)════════ -->
+            <div id="subContent_idx" class="hidden flex-col gap-3">
+                <div id="mktIndexRow" class="grid grid-cols-3 gap-1.5"></div>
+                <!-- 📊 V67.2 市場廣度儀表板(機構級大盤健康度:漲跌家數/騰落/漲跌停) -->
+                <div id="marketBreadthCard" class="hidden"></div>
+                <!-- 🔄 V67.4 市場狀態機 Regime(趨勢盤/盤整盤/崩跌盤) -->
+                <div id="marketRegimeCard" class="hidden"></div>
+            </div>
 
-            <!-- 📊 V67.2 市場廣度儀表板(機構級大盤健康度:漲跌家數/騰落/漲跌停,用全市場即時快照算) -->
-            <div id="marketBreadthCard" class="hidden"></div>
+            <!-- ════════ 💡 建議:盤前體檢 + 反攻雷達 + 財經行事曆(會下判斷的都在這)════════ -->
+            <div id="subContent_advice" class="hidden flex-col gap-3">
+                <!-- 🌅 V36.8 盤前大盤體檢(加權技術+美股+ADR+外資 → 開盤方向總結) -->
+                <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
+                <!-- 🧭 V70.2.7 反攻條件雷達(還差什麼條件台股才會漲 / 是不是黑天鵝該停損) -->
+                <div id="reboundRadarCard" class="hidden"></div>
 
             <!-- 🚨 V68.3.2 盤中爆量雷達已從大盤頁移除(使用者要求);renderVolSurgeRadar 因 box 不存在自動 no-op,函式保留 -->
             <!-- <div id="volSurgeRadarCard" class="hidden"></div> -->
@@ -2118,18 +2134,8 @@
                 </div>
             </div>
 
-            <!-- ════════ 【區 3】V57.2 — 「展開更多」摺疊取消(使用者要求):盤前新聞/資金輪動直接顯示 ════════ -->
-            <!-- ════════ 分頁切替:🌍 全球大環境 / 🇹🇼 台股實戰(V25.9 sticky)════════ -->
-            <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md">
-                <button onclick="app.switchMarketSubTab('global')" id="subTab_global"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors bg-cyan-700/40 text-cyan-200 border border-cyan-500/50">
-                    🗞️ 盤前新聞
-                </button>
-                <button onclick="app.switchMarketSubTab('tw')" id="subTab_tw"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent">
-                    🔄 資金輪動
-                </button>
-            </div>
+            </div><!-- /subContent_advice 之 上半(盤前體檢/反攻雷達/財經行事曆)-->
+            <!-- 🗑️ V71.4.2 舊的兩格分頁列已被上方三格取代(避免兩層選單) -->
 
             <!-- ════════ 【區 3-A】🗞️ 盤前新聞 ════════ -->
             <div id="subContent_global" class="flex flex-col gap-3">
@@ -6583,8 +6589,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.1',
+    _APP_VERSION: 'V71.4.2',
     _CHANGELOG: [
+        { v: 'V71.4.2', dt: '2026-07-29', t: '📑 大盤頁改成三個分頁', d: [
+            '大盤頁最上面改成三格分頁:「📊 大盤」放三大指數與市場體質(純行情數字)、「💡 建議」放盤前體檢、反攻雷達、財經行事曆、資金輪動(會下判斷的都在這)、「🗞️ 新聞」放盤前新聞。',
+            '刻意做成三格平行,不是在原本的分頁上面再疊一層 —— 原本已經有兩個分頁,再加一層會變兩層選單、東西更難找。',
+            '切到「大盤」那格會自動重畫指數與廣度,不用等。',
+        ] },
         { v: 'V71.4.1', dt: '2026-07-29', t: '📊 大盤頁最上面加三大指數 + 刪 ETF 專區入口', d: [
             '大盤頁最上方加了三格:加權指數、櫃買指數、台指電子盤,都是即時的。加權可以直接點進去看完整 K 線(跟個股頁一樣)。',
             '櫃買和台指電子盤點下去會告訴你「為什麼還不能看線圖」—— 櫃買的歷史 K 線官方端點改版中(修正已排隊驗證)、台指期本來就沒有歷史線圖資料。不做假頁面。',
@@ -23504,21 +23515,29 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
 
     // 📊 全球頁分頁切替（🌍 全球大環境 / 🇹🇼 台股實戰）
+    // 📑 V71.4.2 大盤頁三格平行分頁:📊 大盤(純行情)/ 💡 建議(會下判斷的)/ 🗞️ 新聞
+    //   ⚠️ 「建議」同時顯示 subContent_advice(盤前體檢/反攻雷達/行事曆)
+    //      與既有的 subContent_tw(資金輪動)—— 兩者都是「解讀與建議」性質,
+    //      合在同一格才不會又多一層選單。
     switchMarketSubTab(tab) {
         const g = document.getElementById('subContent_global');
         const t = document.getElementById('subContent_tw');
+        const ix = document.getElementById('subContent_idx');
+        const ad = document.getElementById('subContent_advice');
         if (!g || !t) return;
-        if (tab === 'global') {
-            g.classList.remove('hidden'); g.classList.add('flex');
-            t.classList.add('hidden');    t.classList.remove('flex');
-        } else {
-            t.classList.remove('hidden'); t.classList.add('flex');
-            g.classList.add('hidden');    g.classList.remove('flex');
-        }
-        const gBtn = document.getElementById('subTab_global');
-        const tBtn = document.getElementById('subTab_tw');
-        if (gBtn) gBtn.className = `flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors ${tab === 'global' ? 'bg-cyan-700/40 text-cyan-200 border border-cyan-500/50' : 'text-gray-500 hover:text-cyan-300 border border-transparent'}`;
-        if (tBtn) tBtn.className = `flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors ${tab === 'tw' ? 'bg-purple-700/40 text-purple-200 border border-purple-500/50' : 'text-gray-500 hover:text-purple-300 border border-transparent'}`;
+        const show = (el, on) => { if (!el) return; el.classList.toggle('hidden', !on); el.classList.toggle('flex', !!on); };
+        show(ix, tab === 'idx');
+        show(ad, tab === 'tw');
+        show(t,  tab === 'tw');
+        show(g,  tab === 'global');
+        const styleBtn = (id, on, color) => {
+            const b = document.getElementById(id);
+            if (b) b.className = `flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors ${on ? `bg-${color}-700/40 text-${color}-200 border border-${color}-500/50` : `text-gray-500 hover:text-${color}-300 border border-transparent`}`;
+        };
+        styleBtn('subTab_idx', tab === 'idx', 'amber');
+        styleBtn('subTab_tw2', tab === 'tw', 'purple');
+        styleBtn('subTab_global2', tab === 'global', 'cyan');
+        if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} try { this.renderMarketRegime(); } catch (_) {} }
         try { localStorage.setItem('mktSubTab', tab); } catch(_) {}
         // 進入台股實戰自動拉一次即時情報（_newsCache 1 分鐘內會走快取，不會狂打）
         if (tab === 'tw') { this.loadNewsHeadlines(); try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} }
