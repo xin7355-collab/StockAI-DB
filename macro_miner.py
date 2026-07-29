@@ -66,7 +66,12 @@ def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
                "temperature": temperature, "max_tokens": max_tokens}
     for i, key in enumerate(GROQ_KEYS_MM):
         try:
-            r = http_session.post(GROQ_URL_MM, json=payload,
+            # 🐛 V71.3.9 這裡原本寫 http_session —— macro_miner 根本沒有這個名字
+            #    (本檔的 session 叫 http,定義在 L455)。每次呼叫都 NameError,
+            #    又剛好被下面的 `except Exception` 吞掉只印「例外 NameError」,
+            #    所以財經行事曆的 AI 解讀**從上線到現在一次都沒成功過**
+            #    (實測 gh-pages 的 macro_risk.json:macro_events_ai 一直是空的)。
+            r = http.post(GROQ_URL_MM, json=payload,
                                   headers={"Authorization": f"Bearer {key}",
                                            "Content-Type": "application/json"}, timeout=45)
             if r.status_code == 429:
@@ -78,6 +83,56 @@ def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
             return (r.json().get("choices") or [{}])[0].get("message", {}).get("content", "").strip()
         except Exception as e:
             print(f"  ⚠️ [Groq] 例外 key#{i+1}: {type(e).__name__}")
+    return None
+
+
+# ═══ 🧠 V71.3.9 Gemini 2.5 Flash(財經行事曆「深度判讀」主力,Groq 退居備援)═══
+#   為什麼換:專案 AI 分工鐵則寫得很清楚 —— 輕量翻譯/簡訊走 Groq,**深度判讀走 Gemini**。
+#   財經行事曆是「看未來兩週的事件 × 當下市場狀態 → 給具體操作建議」,屬深度判讀,
+#   本來就該用 Gemini,之前用 llama-3.3-70b 是將就。
+#   規格照專案既有 Gemini 慣例:safetySettings 四大類全 BLOCK_NONE(財經字眼常被誤攔)
+#   + thinkingBudget=0(省預算、避免 2.5 Thinking 把 token 吃光導致輸出爆短)
+#   + systemInstruction(避免廢話開場)。
+#   ⚠️ 拿不到 key 或呼叫失敗一律回 None → 上層自動退回 Groq,不會讓行事曆解讀開天窗。
+GEMINI_KEYS_MM = [t.strip() for t in (os.environ.get("GEMINI_API_KEYS")
+                                      or os.environ.get("GEMINI_API_KEY", "")).split(",") if t.strip()]
+GEMINI_MODEL_MM = "gemini-2.5-flash"
+
+
+def _gemini_chat_mm(sys_msg, user_msg, label="", max_tokens=1400, temperature=0.4):
+    if not GEMINI_KEYS_MM:
+        return None
+    payload = {
+        "systemInstruction": {"parts": [{"text": sys_msg}]},
+        "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
+        "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens,
+                             "thinkingConfig": {"thinkingBudget": 0}},
+        "safetySettings": [{"category": c, "threshold": "BLOCK_NONE"} for c in (
+            "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT")],
+    }
+    for i, key in enumerate(GEMINI_KEYS_MM):
+        try:
+            url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+                   f"{GEMINI_MODEL_MM}:generateContent?key={key}")
+            r = http.post(url, json=payload,
+                          headers={"Content-Type": "application/json"}, timeout=60)
+            if r.status_code == 429:
+                print(f"  ⏳ [Gemini] key#{i+1} 429,換下一把")
+                continue
+            if r.status_code != 200:
+                print(f"  ⚠️ [Gemini] HTTP {r.status_code} key#{i+1}: {r.text[:120]}")
+                continue
+            j = r.json()
+            parts = ((j.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
+            txt = "".join(p.get("text", "") for p in parts).strip()
+            if txt:
+                print(f"  🧠 [Gemini {GEMINI_MODEL_MM}] {label} 成功")
+                return txt
+            print(f"  ⚠️ [Gemini] key#{i+1} 回空(finishReason="
+                  f"{(j.get('candidates') or [{}])[0].get('finishReason')})")
+        except Exception as e:
+            print(f"  ⚠️ [Gemini] 例外 key#{i+1}: {type(e).__name__}")
     return None
 
 
@@ -129,8 +184,13 @@ def build_macro_events_ai(out):
         '"action":"具體操作建議(留倉與否/部位幾成/盯什麼價位或指標)","level":"✅或⚠️或⛔"}]}\n'
         "focus 只挑最重要的 3-5 個事件(依重要度與逼近程度),不要全列。"
     )
-    raw = _groq_chat_mm([{"role": "system", "content": sys_msg},
-                         {"role": "user", "content": user_msg}], label="財經行事曆解讀")
+    # 🧠 V71.3.9 深度判讀走 Gemini,失敗才退回 Groq(兩條都掛才放棄,保留上次解讀)
+    _engine = "gemini"
+    raw = _gemini_chat_mm(sys_msg, user_msg, label="財經行事曆解讀")
+    if not raw:
+        _engine = "groq"
+        raw = _groq_chat_mm([{"role": "system", "content": sys_msg},
+                             {"role": "user", "content": user_msg}], label="財經行事曆解讀(Gemini 失敗,退 Groq)")
     if not raw:
         return None
     # JSON 防呆:剝除可能的 markdown 圍欄
@@ -155,7 +215,8 @@ def build_macro_events_ai(out):
     focus = [f for f in (data.get("focus") or []) if isinstance(f, dict) and f.get("event")][:5]
     return {
         "updated": datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"),
-        "model": GROQ_MODEL_MM,
+        # 🧠 V71.3.9 誠實標示實際用哪個引擎產的(前端/日後除錯要看得出來)
+        "model": (GEMINI_MODEL_MM if _engine == "gemini" else GROQ_MODEL_MM),
         "summary": str(data.get("summary", ""))[:400],
         "focus": [{
             "date": str(f.get("date", ""))[:10],
@@ -165,6 +226,30 @@ def build_macro_events_ai(out):
             "level": f.get("level") if f.get("level") in ("✅", "⚠️", "⛔") else "⚠️",
         } for f in focus],
     }
+
+
+def _warn_schedule_expiry(today):
+    """📅 V71.3.9 硬編碼排程表到期自我提醒。
+
+    FOMC / BOJ 的開會日期是寫死的清單(federalreserve.gov / boj.or.jp 公開排程),
+    排到 2027 年底就沒了。到期後不會報錯 —— 行事曆只是「靜靜地」再也不出現
+    FOMC 和日銀,而這兩個剛好是影響最大的事件。這種靜默失效最難發現,
+    所以剩不到 120 天就開始在 log 大聲喊,提醒回來補下一年度排程。
+    (對應使用者定的鐵則:寫死的對照表要有更新機制,否則會過期。)
+    """
+    try:
+        for nm, sched in (('FOMC', FOMC_SCHEDULE), ('BOJ', BOJ_SCHEDULE)):
+            ds = sorted(d for d in sched if isinstance(d, str))
+            if not ds:
+                continue
+            last = datetime.strptime(ds[-1], '%Y-%m-%d').date()
+            left = (last - today).days
+            if left < 0:
+                print(f"  🚨 {nm} 排程表已於 {ds[-1]} 用完 —— 財經行事曆從此不再出現 {nm},請補下一年度排程!")
+            elif left <= 120:
+                print(f"  ⚠️ {nm} 排程表只排到 {ds[-1]}(剩 {left} 天)→ 請盡快補下一年度,否則到期後行事曆會靜靜少掉 {nm}")
+    except Exception as _e:
+        print(f"  ⚠️ 排程到期檢查略過:{str(_e)[:60]}")
 
 
 def _compute_upcoming_macro_events(today, window_days=14):
@@ -2207,6 +2292,7 @@ def main():
     # ── 📅 全球重大財經事件日曆(純演算法,絕不拋例外)──
     try:
         from datetime import date as _date
+        _warn_schedule_expiry(_date.today())   # 📅 V71.3.9 硬編碼 FOMC/BOJ 排程快用完就大聲喊
         out["upcoming_macro_events"] = _compute_upcoming_macro_events(_date.today(), window_days=14)
         # 📞 併入 TWSE 法說會逐檔日期(失敗回 [] 不影響演算法事件)
         try:

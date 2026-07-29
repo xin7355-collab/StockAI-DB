@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6578,8 +6578,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.8',
+    _APP_VERSION: 'V71.3.9',
     _CHANGELOG: [
+        { v: 'V71.3.9', dt: '2026-07-29', t: '🚨 亞股重挫會跳出來了 + 財經行事曆 AI 其實一直是壞的', d: [
+            '你說「韓股今天慘了但這些資訊都沒出現」—— 查出來資料一直都有(今天韓股 -16.17%、日經 -5.39%),問題是不管跌 1% 還是跌 16%,都只顯示同一行灰色小字,等於有跟沒有一樣。現在改成分三級:小跌維持小字、明顯走弱跳警示框、重挫直接 🚨 閃爍加對策。',
+            '順著你問的 AI 升級查下去,挖到一個更嚴重的:財經行事曆的 AI 解讀從上線到現在「一次都沒成功過」。程式呼叫網路的物件名字打錯(從別支檔案複製過來,那邊叫 A 這邊叫 B),每次都出錯又剛好被錯誤處理吃掉,所以只是靜靜地什麼都不產出。已修好。',
+            '行事曆 AI 也照你要求換成更強的 Gemini(Groq 留著當備援,兩條都掛才放棄)。另外 FOMC 和日銀的開會日期是寫死排到 2027 年底的,到期後行事曆會靜靜少掉這兩個最重要的事件 —— 現在剩不到 120 天就會在採礦紀錄大聲提醒。',
+        ] },
         { v: 'V71.3.8', dt: '2026-07-29', t: '📈 市場廣度加上「累積騰落線」', d: [
             '你問廣度要不要跟前一天比 —— 要,而且有比「跟昨天比」更強的做法:把每天的(上漲家數−下跌家數)一路累加成一條線。',
             '重點在背離:指數創新高但這條線沒跟上 = 只剩少數大股在撐、多數股早就在跌(頭部前兆);指數創新低但這條線沒破底 = 賣壓在收斂(打底跡象)。只看今天跟昨天永遠看不出這件事。',
@@ -14755,11 +14760,31 @@ const marginByDate = {};
             ? `<span class="font-mono font-bold ${_fg >= 75 ? 'text-red-300' : _fg <= 25 ? 'text-green-300' : 'text-gray-200'}">${Math.round(_fg)}</span> <span class="text-[9px] ${_fg >= 75 ? 'text-red-400' : _fg <= 25 ? 'text-green-400' : 'text-gray-500'}">${_fg >= 75 ? '過熱' : _fg <= 25 ? '極恐' : '中性'}</span>`
             : '<span class="text-gray-500 text-[9px]">採集中</span>';
         let asiaNote = '';
+        // 🌏 V71.3.9 亞股異動改「分級顯示」——使用者回報「韓股今天慘了,這些資訊都沒出現」。
+        //   查了才發現:資料一直有(今天 KOSPI -16.17%、日經 -5.39%),但不管跌 1% 還是跌 16%
+        //   都只顯同一行 9px 灰字,極端值完全沒有被突顯 → 等於有跟沒有一樣。
+        //   改成三級:一般走弱維持小字;單一市場 ≤-3% 或兩邊都 ≤-2% 升級成 Alert Box;
+        //   ≤-5% 直接 🚨 緊急(依 V70.2.8 燈號鐵則:講風險用 ⚠️/🚨,不用紅綠燈)。
         { const nk = +mr.nikkei_chg_pct, ks = +mr.kospi_chg_pct;
-          const weak = (Number.isFinite(nk) && nk <= -1) || (Number.isFinite(ks) && ks <= -1);
-          const strong = (Number.isFinite(nk) && nk >= 1) && (Number.isFinite(ks) && ks >= 1);
-          if (weak) asiaNote = '<div class="text-[9px] text-green-400/80 mt-1 leading-snug">📉 亞股同盤走弱 → 台股開盤同步承壓,別追多</div>';
-          else if (strong) asiaNote = '<div class="text-[9px] text-red-400/80 mt-1 leading-snug">📈 亞股同盤走強 → 台股開盤氣氛偏多</div>'; }
+          const okN = Number.isFinite(nk), okK = Number.isFinite(ks);
+          const worst = Math.min(okN ? nk : 99, okK ? ks : 99);
+          const both2 = okN && okK && nk <= -2 && ks <= -2;
+          const nm = (okK && ks <= (okN ? nk : 99)) ? '🇰🇷 韓股' : '🇯🇵 日經';
+          const fmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+          const strong = okN && okK && nk >= 1 && ks >= 1;
+          if (worst <= -5) {
+              asiaNote = `<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1">
+                  <div class="text-[11px] font-bold text-orange-300 mb-0.5 animate-pulse">🚨 亞股重挫 ${nm} ${fmt(worst)}</div>
+                  <div class="text-[10px] text-gray-200 leading-relaxed">同區域市場級崩跌,台股很難自外於此。<b>今天別接刀</b>,先確認是哪一國自己的事還是全區域事件(對照 VIX:VIX 沒動=亞洲區域性)。</div></div>`;
+          } else if (worst <= -3 || both2) {
+              asiaNote = `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1">
+                  <div class="text-[11px] font-bold text-yellow-300 mb-0.5">⚠️ 亞股明顯走弱${okK ? ` ・韓 ${fmt(ks)}` : ''}${okN ? ` ・日 ${fmt(nk)}` : ''}</div>
+                  <div class="text-[10px] text-gray-200 leading-relaxed">台股開盤大機率同步承壓,別追多;有持股先想好停損價再開盤。</div></div>`;
+          } else if (worst <= -1) {
+              asiaNote = '<div class="text-[9px] text-green-400/80 mt-1 leading-snug">📉 亞股同盤走弱 → 台股開盤同步承壓,別追多</div>';
+          } else if (strong) {
+              asiaNote = '<div class="text-[9px] text-red-400/80 mt-1 leading-snug">📈 亞股同盤走強 → 台股開盤氣氛偏多</div>';
+          } }
         const globalRiskHtml = `
             <div class="border-t border-[#21262d] pt-1.5">
                 <div class="text-[9px] text-gray-600 font-bold mb-1">🌍 全球風險快讀 <span class="text-gray-700 font-normal">亞股連動 · 避險 · 情緒</span></div>

@@ -40,6 +40,10 @@ jobs:
           # 🤖 V70.3.0 財經行事曆 Groq 解讀(沒 key 就跳過,不影響其他總經欄位)
           GROQ_API_KEYS:  ${{ secrets.GROQ_API_KEYS }}
           GROQ_API_KEY:   ${{ secrets.GROQ_API_KEY }}
+          # 🧠 V71.3.9 財經行事曆改用 Gemini 2.5 Flash 深度判讀(Groq 退居備援)
+          #   沒設 GEMINI_API_KEY 也不會壞:_gemini_chat_mm 直接回 None → 自動退回 Groq
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          GEMINI_API_KEY:  ${{ secrets.GEMINI_API_KEY }}
         run: python macro_miner.py
 
       - name: 📡 同步 data/macro_risk.json 到 gh-pages
