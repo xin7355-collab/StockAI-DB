@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2080,16 +2080,20 @@
 
             <!-- ════════ 【區 2】🚀 盤前速報按鈕已移除(V41.3 使用者要求);盤前體檢純公式卡保留為主要盤前資訊 ════════ -->
 
+            <!-- 📊 V71.4.1 三大指數即時列(使用者要求:大盤頁最上方要有加權/櫃買/台指電子盤)
+                 ⚠️ 誠實標示可點性 —— 使用者說「要能點進去看個股頁,做不到就不用加」:
+                   ・加權指數 → data/^TWII.json 有完整 5 年 K 線 → 可以點進個股頁 ✅
+                   ・櫃買指數 → data/^TWOII.json 目前不存在(TPEX 官方端點改版,V71.3.4 已修待驗)
+                                → 點下去給明確說明,不做假頁面
+                   ・台指電子盤 → 期貨沒有 K 線檔可讀 → 同上
+                 報價來源已存在:_refreshLiveTwIndices()(Yahoo ^TWII / ^TXF=F,每 30 秒) -->
+            <div id="mktIndexRow" class="grid grid-cols-3 gap-1.5 mb-2"></div>
             <!-- 🌅 V36.8 盤前大盤體檢:朱老師盤前儀表板的純公式版(加權技術+美股+ADR+外資 → 開盤方向總結) -->
             <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
             <!-- 🧭 V70.2.7 反攻條件雷達(使用者要求:告訴我還差什麼條件台股才會漲/現在是不是黑天鵝該停損) -->
             <div id="reboundRadarCard" class="hidden"></div>
-            <!-- 🏦 V70.3.1 ETF 專區入口(底部 nav 已換成「券商」,ETF 改由此進) -->
-            <button onclick="app.switchAppTab('radar'); app.switchRadarMode('etf'); app.vibrate(20);" class="w-full bg-[#161b22] border border-[#30363d] hover:border-amber-600/60 rounded-lg px-3 py-2 text-left transition-colors">
-                <span class="text-[12px] font-black text-amber-300">🏦 ETF 專區</span>
-                <span class="text-[10px] text-gray-500 ml-1">主動式 ETF 換股追蹤 · 成分股 · 折溢價</span>
-                <span class="float-right text-gray-500 text-[11px]">›</span>
-            </button>
+            <!-- 🗑️ V71.4.1 使用者要求刪除「🏦 ETF 專區」入口。ETF 本體沒刪,
+                 仍在「選股 → 🏦 ETF」(V71.2.4 搬過去的),只是大盤頁不再放捷徑。 -->
 
             <!-- 🔄 V67.4 市場狀態機 Regime(大盤現在是趨勢盤/盤整盤/崩跌盤 → 該用什麼策略) -->
             <div id="marketRegimeCard" class="hidden"></div>
@@ -6318,6 +6322,7 @@ ${list}
             try { this.switchMarketSubTab(localStorage.getItem('mktSubTab') || 'tw'); } catch(_) {}
             this._syncMarketTab();
             try { this.renderMarketRegime(); } catch(_) {}    // 🔄 V67.4 市場狀態機
+            try { this._renderIndexRow(); } catch(_) {}      // 📊 V71.4.1 三大指數列(讀既有 DOM,零額外請求)
             try { this.renderMarketBreadth(); } catch(_) {}   // 📊 V67.2 市場廣度(批5 perl \$1 誤植修回)
             // 📈 V71.3.8 廣度歷史載好再重繪一次(累積騰落線才畫得出來)
             try { this._loadBreadthHist().then(() => { try { this.renderMarketBreadth(); } catch(_) {} }); } catch(_) {}
@@ -6578,8 +6583,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.0',
+    _APP_VERSION: 'V71.4.1',
     _CHANGELOG: [
+        { v: 'V71.4.1', dt: '2026-07-29', t: '📊 大盤頁最上面加三大指數 + 刪 ETF 專區入口', d: [
+            '大盤頁最上方加了三格:加權指數、櫃買指數、台指電子盤,都是即時的。加權可以直接點進去看完整 K 線(跟個股頁一樣)。',
+            '櫃買和台指電子盤點下去會告訴你「為什麼還不能看線圖」—— 櫃買的歷史 K 線官方端點改版中(修正已排隊驗證)、台指期本來就沒有歷史線圖資料。不做假頁面。',
+            '「🏦 ETF 專區」入口已依你要求刪除(ETF 本體沒動,仍在 選股 → 🏦 ETF)。',
+        ] },
         { v: 'V71.4.0', dt: '2026-07-29', t: '🧠 深度分析改成「你想要才按」', d: [
             '照你說的改:晚上排程每天自動跑,用便宜的 Groq 給一版快速解讀就好,不燒貴的額度。',
             '白天你看到某件事覺得重要,財經行事曆下面有一顆「🧠 用深度 AI 再分析一次」,按了才叫 Gemini 做深度判讀,結果放在最上面當主結論。',
@@ -26844,8 +26854,48 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (tw) this._applyLiveIndex('mktTWII', tw.price, tw.pct, 0);
             const otc = await pull('IX0043', 50, 1500);          // 櫃買
             if (otc) this._applyLiveIndex('mktTWOII', otc.price, otc.pct, 2);
+            try { this._renderIndexRow(); } catch (_) {}        // 📊 V71.4.1 值更新後同步大盤頁三格列
         } catch (_) {}
     },
+    // 📊 V71.4.1 三大指數即時列(大盤頁最上方,仿專業看盤 App 三格卡)
+    //   ⚠️ 刻意「不自己抓資料」:數值直接讀既有那條扁平指數列的 DOM
+    //   (mktTWII_main / mktTWOII_main / taiexFuturesInfo)——它們已由這支
+    //   _refreshLiveTwIndices()(Fugle 指數 API,每 30 秒)與 processMacroData 維護。
+    //   同一個名詞全 App 只有一個數字來源,不會出現「上面一個值、下面另一個值」。
+    _renderIndexRow() {
+        const row = document.getElementById('mktIndexRow');
+        if (!row) return;
+        const pick = (id) => (document.getElementById(id)?.innerText || '').trim();
+        const pickChg = (id) => {
+            const t = (document.getElementById(id)?.innerText || '').trim();
+            const m = t.match(/([+-]?\d+(?:\.\d+)?)%/);
+            return { txt: t, pct: m ? parseFloat(m[1]) : null };
+        };
+        const cell = (label, val, chg, opt) => {
+            const has = val && val !== '--' && val !== '計算中…' && val !== '—';
+            const pct = chg.pct;
+            const cls = pct == null ? 'text-gray-300' : pct > 0 ? 'text-[#f87171]' : pct < 0 ? 'text-[#4ade80]' : 'text-gray-300';
+            const arrow = pct == null ? '' : pct > 0 ? '▲' : pct < 0 ? '▼' : '';
+            const go = opt.onclick
+                ? `onclick="${opt.onclick}"`
+                : `onclick="app.showJargonText &amp;&amp; app.showJargonText('${label}', '${opt.why}') || alert('${opt.why}')"`;
+            return `<div ${go} class="bg-[#161b22] border ${opt.onclick ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg px-2 py-2 text-center cursor-pointer active:bg-[#21262d] transition-colors">
+                <div class="text-[10px] text-gray-400 mb-0.5">${label}${opt.onclick ? ' <span class="text-amber-400/70">›</span>' : ''}</div>
+                <div class="text-base font-black font-mono ${cls} leading-tight truncate">${has ? val : '--'}</div>
+                <div class="text-[10px] font-mono ${cls} leading-tight truncate">${has && chg.txt ? `${arrow}${chg.txt.replace('+', '')}` : '—'}</div>
+            </div>`;
+        };
+        try {
+            row.innerHTML =
+                cell('加權指數', pick('mktTWII_main'), pickChg('mktTWII_chg_main'),
+                     { onclick: "app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);" }) +
+                cell('櫃買指數', pick('mktTWOII_main'), pickChg('mktTWOII_chg_main'),
+                     { why: '櫃買指數的即時報價正常,但歷史 K 線目前抓不到(官方端點改版中,修正已排隊驗證),所以還不能點進去看線圖。' }) +
+                cell('台指電子盤', pick('taiexFuturesInfo'), { txt: '', pct: null },
+                     { why: '台指期沒有歷史 K 線資料可看線圖,這格只顯示即時價與結算倒數。' });
+        } catch (_) {}
+    },
+
     _applyLiveIndex(id, price, pct, dec) {
         const color = pct == null ? 'text-gray-400' : pct > 0 ? 'text-[#f87171]' : pct < 0 ? 'text-[#4ade80]' : 'text-gray-400';
         const el = document.getElementById(id), chg = document.getElementById(id + '_chg');
