@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.4',
+    _APP_VERSION: 'V71.5.5',
     _CHANGELOG: [
+        { v: 'V71.5.5', dt: '2026-07-30', t: '📈 騰落線不用等了:直接回算 303 個交易日', d: [
+            '你說「要馬上能用,不是等好幾天」—— 對,不用等。每支股票的資料裡本來就存了 2~3 年的日 K(台積電有 762 筆、回溯到 2023 年 6 月),所以過去每一天的漲跌家數本來就算得出來。',
+            '已改成一次回算:實測拿到 303 個交易日(2025/05 ~ 2026/07),採礦跑完騰落線圖立刻就有一年多的線可看,不必再等 10 天。',
+            '回算有四道防護:標記哪些是推算的、已經實跑過的日子不覆蓋、每天樣本不足 500 檔就略過(不讓早期稀疏資料把線拉歪)、並誠實說明「只算目前還在清單裡的股票,已下市的沒算」—— 所以看方向可以,絕對數字不要拿去跟證交所官方歷史對比。',
+            '另外做了一支「全盤資料體檢」工具:以後你只要說「跑資料體檢」,我就一次查完 52 個資料檔的「有沒有、新不新、前端讀的欄位後端有沒有產、同一個數字在不同檔會不會打架」。首跑就抓到 5 個檔有問題、4 個指標在兩個檔不一致。',
+            '誠實講一句:那支工具抓不到「某個數字本身是錯的」(檔案內部自洽時看不出來)。台指期 41,613 那種錯,只有你給籌碼K線截圖才抓得到 —— 所以截圖是最有價值的輸入,請繼續給。',
+        ] },
         { v: 'V71.5.4', dt: '2026-07-30', t: '⚡ 多空計分卡的「當沖比」復活(空了一個多月沒人發現)', d: [
             '順著剛才的思路把所有資料檔掃了一遍,抓到一個:多空頁計分卡的「當沖比」因子從 6/27 起就一直是「無資料」。',
             '原因是當沖比其實有兩個檔案,程式讀的是那個已經壞掉的(內容是空的、一個多月沒更新);另一個由完整採礦每天產出、全市場都有的,反而沒人讀。',

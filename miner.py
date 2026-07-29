@@ -3931,91 +3931,130 @@ def _fetch_market_margin_total_ms(d: date, max_fallback_days: int = 5):
 
 
 def build_breadth_history():
-    """全市場漲跌家數統計 → data/breadth.json(累積騰落線 ADL 的資料源),回傳漲停家數。
+    """全市場漲跌家數 → data/breadth.json,**同時回算歷史**(累積騰落線 ADL 的資料源)。
+    回傳「今日漲停家數」給 build_bubble_warning 用。
 
     ⚠️ V71.4.8 為什麼要獨立成一支、而且要排在分點採礦「之前」跑:
       這段原本長在 build_bubble_warning 裡,而 ONLY_CHIPS 流程是
-      「分點籌碼(🐢 最慢 ~35 分)→ … → 泡沫預警」。
+      「分點籌碼(🐢 ~35 分)→ … → 泡沫預警」。
       只要 chips job 在分點那步被砍(逾時、或被新一輪 daily_miner 的
       cancel-in-progress 取消),後面全部不會跑 → breadth.json 就寫不出來。
-      2026-07-29 實測就是這樣:20:00 的排程延遲到 22:01 才觸發,
-      把 21:00 那輪砍在分點中途,廣度歷史整晚沒產出。
-      這段只讀本地 data/*.json、零 API、幾秒就跑完,沒有理由排在網路重活後面。
+      這段只讀本地 data/*.json、零 API,沒有理由排在網路重活後面。
 
-    📌 資料來源要知道的一件事:chips job 的 data/ 是從 origin/data 還原的
-      (= 上一輪 deploy 的產物),不是本輪 20 個 OHLCV 節點剛採的(那些要到 deploy 才合併)。
-      所以下午 16:30 那輪算到的可能還是前一交易日的收盤 —— 但不影響正確性:
-      日期 key 取自 K 線自己的 date,寫進去的就是那一天的數字,晚上那輪再補上當天。
-      同一天重跑會覆蓋不會重複記(見 scripts/test_breadth_real.py ②)。
+    🆕 V71.5.5 **回算歷史(backfill)**,不再「從今天開始累積」:
+      使用者明示「要馬上能用,不是等好幾天」。data/{sym}.json 本身就存了 2~3 年日 K
+      (2330 有 762 筆、回溯 2023/06),所以每一個過去交易日的漲跌家數都算得出來 ——
+      不需要等它一天一天長。實測可回算 303 個交易日(2025/05/07 ~ 2026/07/29,
+      檔數 ≥500 的天數),ADL 立刻就有一年以上可看。
+
+      誠實揭露(寫進資料裡的 bf 旗標):
+      ・回算只涵蓋「目前還在 data/ 裡的股票」→ 已下市的不算,有倖存者偏誤。
+        對 ADL 的**方向**影響很小(每天的 up/dn 都用同一批股票),
+        但**絕對水位**不能拿去跟證交所官方歷史家數對比。
+      ・當天實跑寫入的那筆(live)優先,回算只補「歷史上缺的日子」,不覆蓋既有值。
     """
-    limit_up = 0
-    _b_up = _b_down = _b_flat = _b_limdn = _b_strong = _b_weak = 0
-    _b_date = ''
+    import collections
+    LOOKBACK_ROWS = 320        # 夠回算約 300 個交易日
+    KEEP_DAYS = 250            # 檔案滾動保留(約一年)
+    MIN_TOTAL = 500            # 少於這麼多檔代表資料沒鋪好,不記(避免髒點汙染 ADL)
+
+    by_date = collections.defaultdict(
+        lambda: dict(up=0, dn=0, flat=0, lu=0, ld=0, st=0, wk=0, total=0))
     for f in Path(DATA_DIR).glob('*.json'):
         sym = f.stem
         if not (len(sym) == 4 and sym.isdigit()):
             continue
         # 🐛 V71.4.8 排除 4 碼 ETF(0050/0056/0061…):漲跌家數統計的是「公司」,
         #   ETF 是一籃子、本來就跟著指數走,算進去等於把指數自己的方向重複計一次,
-        #   會讓廣度略微偏向指數(掩蓋「指數漲但多數個股在跌」這種背離 —— 而那正是 ADL 要抓的)。
-        #   證交所的上漲/下跌家數也不含 ETF。5 碼以上的新 ETF(00878 等)本來就被 len==4 擋掉了。
-        #   ⏱️ 現在改代價最低:breadth.json 還沒有任何歷史,不會前後不一致。
+        #   會讓廣度略微偏向指數(掩蓋「指數漲但多數個股在跌」—— 而那正是 ADL 要抓的)。
+        #   證交所的上漲/下跌家數也不含 ETF。5 碼以上的新 ETF(00878 等)本來就被 len==4 擋掉。
         if sym.startswith('00'):
             continue
         try:
             raw = json.loads(f.read_text(encoding='utf-8'))
             if not isinstance(raw, list) or len(raw) < 2:
                 continue
-            c, pc = float(raw[-1]['close']), float(raw[-2]['close'])
-            if pc > 0:
-                _chg = (c - pc) / pc * 100
-                if _chg >= 9.0:
-                    limit_up += 1
-                elif _chg <= -9.0:
-                    _b_limdn += 1
-                if _chg > 0.05:
-                    _b_up += 1
-                elif _chg < -0.05:
-                    _b_down += 1
+            rows = raw[-LOOKBACK_ROWS:]
+            for _a, _b in zip(rows, rows[1:]):
+                try:
+                    pc = float(_a['close'])
+                    c = float(_b['close'])
+                    d = str(_b.get('date') or '')
+                except Exception:
+                    continue
+                if pc <= 0 or not d:
+                    continue
+                chg = (c - pc) / pc * 100
+                r = by_date[d.replace('-', '/')]
+                if chg >= 9.0:
+                    r['lu'] += 1
+                elif chg <= -9.0:
+                    r['ld'] += 1
+                if chg > 0.05:
+                    r['up'] += 1
+                elif chg < -0.05:
+                    r['dn'] += 1
                 else:
-                    _b_flat += 1
-                if _chg >= 3:
-                    _b_strong += 1
-                elif _chg <= -3:
-                    _b_weak += 1
-                if not _b_date:
-                    _b_date = str(raw[-1].get('date') or '')
+                    r['flat'] += 1
+                if chg >= 3:
+                    r['st'] += 1
+                elif chg <= -3:
+                    r['wk'] += 1
+                r['total'] += 1
         except Exception:
             continue
-    # 廣度歷史(獨立檔,append 不覆蓋;靠 daily deploy 的 git archive origin/data 保留)
+
+    dates = sorted(by_date)
+    if not dates:
+        print("  ⏭️ 市場廣度:data/*.json 讀不到任何個股 K 線,本輪不記錄")
+        return 0
+    today_key = dates[-1]
+    today = by_date[today_key]
+    limit_up = today['lu']
+
     try:
-        _bd_total = _b_up + _b_down + _b_flat
-        if _bd_total >= 500:      # 少於 500 檔代表資料還沒鋪好,不記(避免髒點汙染 ADL)
-            _bd_path = Path(DATA_DIR) / 'breadth.json'
-            _bd = {}
-            if _bd_path.exists():
-                try:
-                    _bd = json.loads(_bd_path.read_text(encoding='utf-8')) or {}
-                except Exception:
-                    _bd = {}
-            _hist = _bd.get('history')
-            if not isinstance(_hist, list):
-                _hist = []
-            _dkey = (_b_date or date.today().strftime('%Y/%m/%d')).replace('-', '/')
-            _row = {'d': _dkey, 'up': _b_up, 'dn': _b_down, 'flat': _b_flat,
-                    'lu': limit_up, 'ld': _b_limdn, 'st': _b_strong, 'wk': _b_weak,
-                    'total': _bd_total}
-            _hist = [h for h in _hist if isinstance(h, dict) and h.get('d') != _dkey]
-            _hist.append(_row)
-            _hist.sort(key=lambda x: str(x.get('d') or ''))
-            _hist = _hist[-250:]          # 滾動約一年
-            _bd_path.write_text(json.dumps(
-                {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
-                 'history': _hist}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-            print(f"  📊 市場廣度 {_dkey}:漲 {_b_up} / 跌 {_b_down} / 漲停 {limit_up} / 跌停 {_b_limdn}"
-                  f"(共 {_bd_total} 檔)→ breadth.json 累積 {len(_hist)} 日")
-        else:
-            print(f"  ⏭️ 市場廣度只算到 {_bd_total} 檔(<500),本輪不記錄(避免髒點汙染累積線)")
+        _bd_path = Path(DATA_DIR) / 'breadth.json'
+        _bd = {}
+        if _bd_path.exists():
+            try:
+                _bd = json.loads(_bd_path.read_text(encoding='utf-8')) or {}
+            except Exception:
+                _bd = {}
+        _hist = _bd.get('history')
+        if not isinstance(_hist, list):
+            _hist = []
+        # 既有(實跑寫入)的日期優先,回算只補缺的
+        have = {str(h.get('d')) for h in _hist if isinstance(h, dict)}
+        added = 0
+        for d in dates:
+            r = by_date[d]
+            if r['total'] < MIN_TOTAL:
+                continue
+            if d == today_key:
+                # 今天這筆一律用最新算出來的覆蓋(同日重跑要能更新)
+                _hist = [h for h in _hist if isinstance(h, dict) and str(h.get('d')) != d]
+                _hist.append({'d': d, **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
+                continue
+            if d in have:
+                continue
+            _hist.append({'d': d, 'bf': 1,
+                          **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
+            added += 1
+        if today['total'] < MIN_TOTAL and added == 0:
+            print(f"  ⏭️ 市場廣度只算到 {today['total']} 檔(<{MIN_TOTAL}),且無歷史可補,本輪不記錄")
+            return limit_up
+        _hist.sort(key=lambda x: str(x.get('d') or ''))
+        _hist = _hist[-KEEP_DAYS:]
+        _bd_path.write_text(json.dumps(
+            {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
+             'history': _hist}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        _adl = 0
+        for h in _hist:
+            _adl += (h.get('up') or 0) - (h.get('dn') or 0)
+        print(f"  📊 市場廣度 {today_key}:漲 {today['up']} / 跌 {today['dn']} / 漲停 {limit_up}"
+              f" / 跌停 {today['ld']}(共 {today['total']} 檔)")
+        print(f"     → breadth.json 共 {len(_hist)} 日"
+              f"(本輪回算補了 {added} 日歷史)・累積騰落線 ADL = {_adl:+,}")
     except Exception as _e:
         print(f"  ⚠️ 市場廣度歷史寫入失敗(不影響其他):{str(_e)[:80]}")
     return limit_up

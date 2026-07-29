@@ -128,3 +128,76 @@ with tempfile.TemporaryDirectory() as tmp:
     print('✅ ⑥ 超過 250 筆自動裁掉最舊的,最新一筆仍在尾端')
 
 print('\n🎉 build_breadth_history() 真函式 六項測試全過')
+
+# ══════════════════════════════════════════════════════════════════
+# V71.5.5 回算歷史(backfill)—— 使用者明示「要馬上能用,不是等好幾天」
+#   data/{sym}.json 本身就有 2~3 年日 K,每個過去交易日的漲跌家數都算得出來。
+#   實測 origin/data:可回算 303 個交易日(2025/05/07 ~ 2026/07/29)。
+# ══════════════════════════════════════════════════════════════════
+
+def seed_hist(tmp, days, n_stocks=600, pattern=None):
+    """造 n_stocks 檔、各 days+1 根 K 線的假資料。pattern(i, day) → 當日漲跌幅%。"""
+    dd = Path(tmp) / 'data'
+    dd.mkdir(parents=True, exist_ok=True)
+    for i in range(n_stocks):
+        sym = str(2000 + i)
+        rows, px = [], 100.0
+        for k in range(days + 1):
+            if k:
+                px *= (1 + (pattern(i, k) if pattern else 1.0) / 100)
+            rows.append({'date': f'2026/01/{k+1:02d}' if k < 30 else f'2026/02/{k-29:02d}',
+                         'close': round(px, 4)})
+        (dd / f'{sym}.json').write_text(json.dumps(rows), encoding='utf-8')
+    return dd
+
+
+# ⑦ 一次就回算出多天歷史(不是只有今天一筆)
+with tempfile.TemporaryDirectory() as tmp:
+    dd = seed_hist(tmp, days=12, pattern=lambda i, k: 1.0 if i % 3 else -1.0)
+    run(dd)
+    h = load(dd)['history']
+    assert len(h) == 12, f'⑦ 12 個交易日都該回算出來,實際 {len(h)} 筆'
+    assert sum(1 for x in h if x.get('bf')) == 11, '⑦ 除了最新那天,其餘應標記 bf=1(回算)'
+    assert not h[-1].get('bf'), '⑦ 最新那天是實算,不該標 bf'
+    print(f'✅ ⑦ 一次回算出 {len(h)} 個交易日(11 筆標記為回算 bf=1、最新那筆是實算)')
+
+# ⑧ ADL 立刻算得出來,而且方向正確(2/3 漲、1/3 跌 → 應為正)
+with tempfile.TemporaryDirectory() as tmp:
+    dd = seed_hist(tmp, days=12, pattern=lambda i, k: 1.0 if i % 3 else -1.0)
+    run(dd)
+    h = load(dd)['history']
+    adl = sum(x['up'] - x['dn'] for x in h)
+    assert h[0]['up'] == 400 and h[0]['dn'] == 200, f"⑧ 每日應 400 漲 / 200 跌,實際 {h[0]}"
+    assert adl == 12 * 200, f'⑧ ADL 應為 12×200,實際 {adl}'
+    print(f'✅ ⑧ 回算完 ADL 立刻可用 = {adl:+,}(每日 漲400/跌200,方向正確)')
+
+# ⑨ 既有的實算資料不可被回算覆蓋(live 優先)
+with tempfile.TemporaryDirectory() as tmp:
+    dd = seed_hist(tmp, days=6, pattern=lambda i, k: 1.0)
+    (Path(dd) / 'breadth.json').write_text(json.dumps({'updated': 'x', 'history': [
+        {'d': '2026/01/03', 'up': 999, 'dn': 1, 'flat': 0, 'lu': 0, 'ld': 0, 'st': 0, 'wk': 0, 'total': 1000},
+    ]}), encoding='utf-8')
+    run(dd)
+    h = {x['d']: x for x in load(dd)['history']}
+    assert h['2026/01/03']['up'] == 999, '⑨ 既有實算值被回算蓋掉了'
+    assert 'bf' not in h['2026/01/03'], '⑨ 既有實算值不該被標成回算'
+    print('✅ ⑨ 既有實算(live)那幾天不會被回算覆蓋,只補歷史上缺的日子')
+
+# ⑩ 檔數不足的歷史日子不記(避免早期資料稀疏汙染 ADL)
+with tempfile.TemporaryDirectory() as tmp:
+    dd = Path(tmp) / 'data'; dd.mkdir(parents=True)
+    # 600 檔只有最後 3 天有資料;另外 40 檔有 10 天 → 早期只有 40 檔 <500
+    for i in range(600):
+        rows = [{'date': f'2026/01/{k:02d}', 'close': 100.0 + k} for k in (8, 9, 10, 11)]
+        (dd / f'{2000+i}.json').write_text(json.dumps(rows), encoding='utf-8')
+    for i in range(40):
+        rows = [{'date': f'2026/01/{k:02d}', 'close': 100.0 + k} for k in range(1, 12)]
+        (dd / f'{5000+i}.json').write_text(json.dumps(rows), encoding='utf-8')
+    run(dd)
+    h = load(dd)['history']
+    assert all(x['total'] >= 500 for x in h), f'⑩ 有檔數 <500 的日子被記進去:{[x for x in h if x["total"]<500]}'
+    assert len(h) == 3, f'⑩ 只有 3 天檔數夠,實際記了 {len(h)} 天'
+    print('✅ ⑩ 早期只有 40 檔的日子自動略過(檔數 <500 不記,不讓稀疏資料汙染 ADL)')
+
+print('\n🎉 回算歷史 四項測試全過(合計 10 項)')
+
