@@ -2666,6 +2666,82 @@ def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
 
 
 # ── 分點籌碼（混合雙擎：TWSE Sniper + TPEX FinMind）──────────────────────
+def _fetch_chips_bulk(dates, need_days=11, top_per_day=25, min_syms=200):
+    """🚀 V71.2.6 分點「單日全市場批次」——把全市場採礦從 1 萬次呼叫壓成 11 次。
+
+    【為什麼要做】
+    舊做法是「逐檔 × 逐日」:熱門股 11 天 = 11 次呼叫、冷門股 3 天 = 3 次,
+    全市場 2,620 檔 ≈ **每天 1 萬次 HTTP**。即使付費額度夠(6000/hr/把 × 多把),
+    卡住的是「單執行緒逐次來回」的牆鐘時間 —— 實測 40 分鐘只跑得完約 6 成,
+    而且每輪都從成交值最高的開始排,**排在後面的長尾永遠輪不到**
+    (實測抽樣 300 檔:39% 還停在 2026-05-20 的舊格式,兩個多月沒更新過)。
+
+    【正解】
+    FinMind 官方規則:「省略 data_id、只給日期 → 回該日全市場」(需 Backer/Sponsor)。
+    使用者是 Sponsor,所以一天一次呼叫就能拿到**全市場所有分點**。
+    11 個交易日 = 11 次呼叫,取代原本的 ~10,000 次。
+
+    【安全設計(拿不到就退回舊路,不能讓全市場分點開天窗)】
+    ・第一天就失敗 → 立刻回 None(只浪費 1 次呼叫),上層走原本的逐檔路徑
+    ・回來的股票數 < min_syms → 判定「不是真的全市場」(可能只回了單一檔或錯誤格式)→ 回 None
+    ・每 (股票, 日期) 只留淨額絕對值前 top_per_day 家分點 → 記憶體有上限
+      (2,620 檔 × 11 日 × 25 家 ≈ 72 萬列,GitHub runner 吃得下)
+    ・環境變數 CHIPS_BULK=0 可一鍵關掉回舊行為
+
+    回傳 {stock_id: [row, ...]},row 的欄位與逐檔端點完全一致 → 下游解析不用改。
+    拿不到回 None。
+    """
+    idx: dict = {}
+    got_dates: list = []
+    t0 = time.time()
+    for d in dates:
+        if len(got_dates) >= need_days:
+            break
+        j = fm_paid_get('taiwan_stock_trading_daily_report', f'date={d}', timeout=180) or {}
+        st = j.get('status')
+        rows = j.get('data') or []
+        if st != 200 or not rows:
+            if not got_dates:
+                print(f"  ℹ️ 分點全市場批次:{d} 回 status={st} msg={str(j.get('msg',''))[:60]!r}"
+                      f" → 這個帳號/端點不支援省略 data_id,改用逐檔模式(只花掉 1 次呼叫)")
+                return None
+            continue   # 已經成功過 → 這天可能不是交易日,跳過就好
+        # 污染防呆(對齊逐檔路徑):欄位必須真的是分點,否則整份丟掉,不讓髒資料進 chips
+        if not any(k in rows[0] for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+            print(f"  ⚠️ 分點全市場批次:{d} 欄位不對 keys={list(rows[0].keys())[:8]}"
+                  f" → 放棄批次改用逐檔(避免污染)")
+            return None
+        # 分桶 + 防呆:必須看得到多檔不同股票,才算真的全市場
+        bucket: dict = {}
+        for r in rows:
+            sid = str(r.get('stock_id') or '').strip()
+            if not sid:
+                continue
+            bucket.setdefault(sid, []).append(r)
+        if len(bucket) < min_syms:
+            print(f"  ⚠️ 分點全市場批次:{d} 只回 {len(bucket)} 檔股票(<{min_syms})"
+                  f" → 不像全市場,保險起見改用逐檔模式")
+            return None
+        # 每檔當日只留淨額最大的前 N 家(記憶體上限;下游本來也只取 top15)
+        for sid, rs in bucket.items():
+            if len(rs) > top_per_day:
+                def _net(x):
+                    try:
+                        return abs(int(x.get('buy', 0)) - int(x.get('sell', 0)))
+                    except Exception:
+                        return 0
+                rs = sorted(rs, key=_net, reverse=True)[:top_per_day]
+            idx.setdefault(sid, []).extend(rs)
+        got_dates.append(d)
+        print(f"  📦 分點全市場批次 {d}:{len(bucket)} 檔 / {len(rows)} 列(累計 {len(got_dates)}/{need_days} 日)")
+    if not got_dates:
+        return None
+    print(f"  🚀 分點全市場批次完成:{len(idx)} 檔 × {len(got_dates)} 個交易日,"
+          f"共 {len(got_dates)} 次呼叫、{time.time() - t0:.0f} 秒"
+          f"(舊逐檔模式同樣覆蓋需約 1 萬次呼叫)")
+    return idx
+
+
 def fetch_broker_chips():
     """
     分點籌碼採礦：由於台灣官方無免費分點 API，
@@ -2724,8 +2800,29 @@ def fetch_broker_chips():
     _sector_syms = {x for v in SECTOR_MEMBERS.values() for x in v}
     hot_set = ({s for s in (set(CHIP_WATCHLIST) | set(_top_by_tv) | _sector_syms) if s in universe})
     if paid:
-        # 排序:熱門優先(成交值高→低),再冷門(成交值高→低);無成交值者殿後(字典序)
-        ordered = sorted(universe, key=lambda s: (0 if s in hot_set else 1, -turnover.get(s, 0.0), s))
+        # 🐛 V71.2.6 修「長尾永遠輪不到」:
+        #   舊排序是「熱門 → 冷門(成交值高→低)」,而且**每天都從同一個位置開始**。
+        #   時間預算 40 分鐘只跑得完約 6 成 → 排在後面那 4 成天天被砍在同一刀口上,
+        #   永遠輪不到。實測抽樣 300 檔:39% 還停在 2026-05-20 的舊格式,兩個多月沒更新。
+        #   註解寫「滾動續抓」是誤會 —— 那要靠「同一天跑很多輪」才成立,
+        #   但 daily_miner 一天只跑一次,所以根本沒有下一輪來接。
+        #   修法:冷門股改「分點資料最舊的排最前面」(同 fund_sweep 的滾動哲學),
+        #   這樣就算預算中途收工,下一次跑會換一批最舊的先做 → 長尾一定輪得到。
+        _own_dt_cache: dict = {}
+        for _f in chips_dir.glob('*.json'):
+            try:
+                _o = json.loads(_f.read_text(encoding='utf-8'))
+                _c = (_o if isinstance(_o, list) else (_o.get('chips') or []))
+                if _c:
+                    _own_dt_cache[_f.stem] = str(_c[-1].get('date') or '')
+            except Exception:
+                continue
+        # 熱門:維持成交值高→低(大盤主力天天要新鮮)
+        # 冷門:分點日期舊的優先(''=從沒抓過 → 排最前),同日期再比成交值
+        #   (兩組的 key 一律 4 元組、型別逐位對齊,避免長度不一造成的比較地雷)
+        ordered = sorted(universe, key=lambda s: (
+            (0, '', -turnover.get(s, 0.0), s) if s in hot_set
+            else (1, _own_dt_cache.get(s, ''), -turnover.get(s, 0.0), s)))
     else:
         # 免費(BSR only):維持小清單避免限流(全市場需付費 token)
         ordered = sorted(set(CHIP_WATCHLIST) & universe)[:100]
@@ -2864,6 +2961,19 @@ def fetch_broker_chips():
         print(f"  📅 全市場最新分點日基準:{_corpus_latest_dt or '(無現有分點檔,不啟用追新判斷)'}")
     except Exception as _e:
         print(f"  ⚠️ 分點日基準計算失敗(退回舊行為:只看今日是否抓過):{_e}")
+    # 🚀 V71.2.6 先試「單日全市場批次」:成功的話全市場只要 ~11 次呼叫,當天就能全部採完;
+    #    失敗(帳號不支援/回傳不像全市場)自動退回原本的逐檔模式,不影響既有行為。
+    _bulk_idx = None
+    if paid and os.getenv('CHIPS_BULK', '1') == '1':
+        try:
+            _bulk_idx = _fetch_chips_bulk(_recent_finmind_dates(16), need_days=11)
+        except Exception as _e:
+            print(f"  ⚠️ 分點全市場批次例外(退回逐檔):{str(_e)[:80]}")
+            _bulk_idx = None
+    if _bulk_idx:
+        # 批次模式下時間預算沒有意義(資料都在記憶體裡了),放寬到 job timeout 之前
+        _chips_budget = max(_chips_budget, int(os.getenv('CHIPS_TIME_BUDGET_BULK', '3300')))
+
     for sym in watchlist:
         # ⏱️ V68.9.8 時間預算到 → 本輪收工(已抓存檔;下輪「今日已抓→跳過」續抓未完成的股)
         if time.time() - _chips_start > _chips_budget:
@@ -2931,7 +3041,16 @@ def fetch_broker_chips():
                 _need_days = 11 if _is_hot else 3
                 _lookback = 16 if _is_hot else 6
                 seen_dates: set = set()
-                for _d in _recent_finmind_dates(_lookback):
+                if _bulk_idx is not None:
+                    # 🚀 V71.2.6 批次模式:資料已在記憶體,零 HTTP。
+                    #   冷門股仍只留最近 3 個交易日(維持既有 JSON 大小,不讓 gh-pages 暴增),
+                    #   熱門股拿滿 11 日 → 週期深度與舊行為一致。
+                    _all = _bulk_idx.get(sym) or []
+                    if _all:
+                        _keep = sorted({str(r.get('date') or '') for r in _all})[-_need_days:]
+                        data_rows = [r for r in _all if str(r.get('date') or '') in _keep]
+                        seen_dates = set(_keep)
+                for _d in ([] if _bulk_idx is not None else _recent_finmind_dates(_lookback)):
                     if len(seen_dates) >= _need_days:
                         break
                     j = fm_paid_get('taiwan_stock_trading_daily_report', f'data_id={sym}&date={_d}') or {}
