@@ -25,6 +25,7 @@ DOM 順序較前的那份 → modal 開著時點分點,內容寫進背後看不�
 """
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 HTML = Path(__file__).resolve().parent.parent / "index.html"
@@ -79,6 +80,37 @@ def main():
 
     print(f"✅ DOM id 唯一性 OK(掃 {len(seen)} 個 id;"
           f"{len(dups)} 個已知安全重複:{', '.join(sorted(dups)) or '無'})")
+    check_dup_methods()
+
+
+def check_dup_methods():
+    """🔁 V71.4.3 app 物件同名方法偵測。
+
+    【為什麼要有這支 —— 真實踩過的坑】
+    index.html 的 app 是一個巨大的物件字面量。若同一個方法名被定義兩次,
+    JS **不會報錯**,只是後者靜靜覆蓋前者 —— 前面那份變成永遠不會執行的死碼。
+
+    實際發生:_refreshLiveTwIndices 被定義兩次(L13729 Yahoo 版 / L26852 Fugle 版)。
+    Yahoo 那版才有的「台指電子盤即時價 + 升貼水估算」整整 40 行從未執行,
+    所以那一格長期只有結算倒數、沒有即時價。因為不報錯,查了很久才發現。
+
+    這支掃「縮排 4 空格的 method 定義」,同名出現 >1 次就擋下來。
+    """
+    src = HTML.read_text(encoding="utf-8")
+    # 只認 app 物件層級(縮排剛好 4 空格)的 `name(` / `async name(`
+    names = re.findall(r"^ {4}(?:async +)?([_a-zA-Z][\w]*) *\(", src, re.M)
+    ban = {"if", "for", "while", "switch", "catch", "return", "typeof"}
+    cnt = Counter(n for n in names if n not in ban)
+    dup = {k: v for k, v in cnt.items() if v > 1}
+    if dup:
+        print("\n❌ 發現同名方法(後者會靜靜覆蓋前者,前面那份變成永不執行的死碼):")
+        for k, v in sorted(dup.items()):
+            lines = [i + 1 for i, l in enumerate(src.split("\n"))
+                     if re.match(rf"^ {{4}}(?:async +)?{re.escape(k)} *\(", l)]
+            print(f"   • {k}  定義 {v} 次 → L{', L'.join(map(str, lines))}")
+        print("\n   修法:刪掉沒在用的那份,或改名。JS 不會報錯,只會讓前面那份永遠跑不到。")
+        sys.exit(1)
+    print(f"✅ 同名方法檢查 OK(掃 {len(cnt)} 個 app 方法,無重複定義)")
 
 
 if __name__ == "__main__":

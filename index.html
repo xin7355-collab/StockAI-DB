@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6589,8 +6589,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.2',
+    _APP_VERSION: 'V71.4.3',
     _CHANGELOG: [
+        { v: 'V71.4.3', dt: '2026-07-29', t: '🎯 台指電子盤終於有即時價了(清掉死碼)', d: [
+            '之前說的那個死碼清掉了 —— 有兩個同名的函式,程式只會執行後面那個,前面 40 行從來沒跑過。而台指電子盤的即時報價就寫在那 40 行裡面,所以那格長期只有結算倒數。',
+            '已把即時報價搬進真正在跑的那一份,現在台指電子盤會顯示即時價;抓不到就用加權加減價差推估並標「估」,兩層都拿不到才維持結算倒數,不會硬掰數字。',
+            '順手把「同名函式偵測」加進每次上線前的自動檢查 —— 這種錯不會報錯只會靜靜失效,以後再發生會被直接擋下來。已實測有效。',
+        ] },
         { v: 'V71.4.2', dt: '2026-07-29', t: '📑 大盤頁改成三個分頁', d: [
             '大盤頁最上面改成三格分頁:「📊 大盤」放三大指數與市場體質(純行情數字)、「💡 建議」放盤前體檢、反攻雷達、財經行事曆、資金輪動(會下判斷的都在這)、「🗞️ 新聞」放盤前新聞。',
             '刻意做成三格平行,不是在原本的分頁上面再疊一層 —— 原本已經有兩個分頁,再加一層會變兩層選單、東西更難找。',
@@ -13724,46 +13729,12 @@ const marginByDate = {};
         return null;
     },
 
-    // V27.2 — 盤中即時:加權(Yahoo ^TWII,正確 ✓)+ 台指電子盤(Yahoo ^TXF=F)
-    //   櫃買移除:V27.1 用 ^TWOII 回錯值(269 vs 正確 415)→ 改保留 processMacroData 的 FinMind 正確日值
-    async _refreshLiveTwIndices() {
-        const apply = (mainId, chgId, q, label) => {
-            const m = document.getElementById(mainId);
-            if (!m || !q) return false;
-            const color = q.chgPct > 0 ? 'text-[#f87171]' : q.chgPct < 0 ? 'text-[#4ade80]' : 'text-gray-400';
-            const dp = mainId.includes('TWOII') ? 2 : 0;
-            m.innerText = q.price.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
-            m.className = `text-[11px] font-black font-mono ${color}`;
-            const c = document.getElementById(chgId);
-            if (c) c.innerHTML = `<span class="${color}">${q.chgPct > 0 ? '+' : ''}${q.chgPct.toFixed(2)}%</span> <span class="text-cyan-400/70 text-[8px]">${label}</span>`;
-            return true;
-        };
-        const [twii, txf] = await Promise.all([
-            this._fetchLiveIndexYahoo('^TWII').catch(() => null),
-            this._fetchLiveIndexYahoo('^TXF=F').catch(() => null),
-        ]);
-        const t = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-        let got = 0;
-        // 加權:Yahoo 即時(正確);櫃買不碰,保留 FinMind 日值
-        if (apply('mktTWII_main', 'mktTWII_chg_main', twii, `即時 ${t}`)) got++;
-        // 台指電子盤三層 fallback(保證有數字):① Yahoo ^TXF=F 實價 → ② 加權即時 + 升貼水(back)估算 → ③ 維持結算倒數
-        try {
-            this._macroRiskCache = this._macroRiskCache || {};
-            if (txf && txf.price > 0) {
-                this._macroRiskCache.taifex_tx_now = { price: txf.price, chg: txf.chgPct, est: false };
-                this._renderTaiexFutures();
-                got++;
-            } else if (twii && twii.price > 0) {   // ^TXF=F 抓不到 → 加權即時 + 升貼水估算(夜盤僅供參考,標「估」)
-                const back = parseFloat(this._macroRiskCache.taifex_backwardation);
-                if (!isNaN(back)) {
-                    this._macroRiskCache.taifex_tx_now = { price: twii.price + back, chg: null, est: true };
-                    this._renderTaiexFutures();
-                    got++;
-                }
-            }
-        } catch (_) {}
-        return got;
-    },
+    // 🗑️ V71.4.3 這裡原本有第二個 _refreshLiveTwIndices(Yahoo 版,40 行)。
+    //   JS 物件字面量同名鍵後者覆蓋前者 → 它**從未被執行過**。
+    //   後果:那版才有的「台指電子盤即時價」整段從沒生效,那格只剩結算倒數。
+    //   已刪除;其中唯一有價值的「台指電子盤兩層 fallback」搬進下方仍在運作的
+    //   Fugle 版(見該函式內 V71.4.3 區塊)。
+    //   ⚠️ 教訓:同名方法不會報錯、只會靜靜失效 —— 新增方法前先 grep 一次名字。
 
     // V21.8 — 重點時間自動更新檢查(在 init setInterval 每 30 秒呼叫,符合條件才動作 + 防重複觸發)
     _maybeAutoRefreshIndices() {
@@ -26873,6 +26844,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (tw) this._applyLiveIndex('mktTWII', tw.price, tw.pct, 0);
             const otc = await pull('IX0043', 50, 1500);          // 櫃買
             if (otc) this._applyLiveIndex('mktTWOII', otc.price, otc.pct, 2);
+            // 🎯 V71.4.3 台指電子盤即時價 —— 這段原本寫在上面那個「同名死碼」裡,從沒執行過。
+            //   兩層 fallback:① Yahoo ^TXF=F 實價 → ② 加權即時 + 升貼水(taifex_backwardation)估算;
+            //   兩層都拿不到就維持原本的結算倒數,不硬掰數字。
+            try {
+                this._macroRiskCache = this._macroRiskCache || {};
+                const txf = await this._fetchLiveIndexYahoo('^TXF=F').catch(() => null);
+                if (txf && txf.price > 0) {
+                    this._macroRiskCache.taifex_tx_now = { price: txf.price, chg: txf.chgPct, est: false };
+                    this._renderTaiexFutures();
+                } else if (tw && tw.price > 0) {
+                    const back = parseFloat(this._macroRiskCache.taifex_backwardation);
+                    if (!isNaN(back)) {   // 估算值標 est:true,前端顯「估」不假裝是實價
+                        this._macroRiskCache.taifex_tx_now = { price: tw.price + back, chg: null, est: true };
+                        this._renderTaiexFutures();
+                    }
+                }
+            } catch (_) {}
             try { this._renderIndexRow(); } catch (_) {}        // 📊 V71.4.1 值更新後同步大盤頁三格列
         } catch (_) {}
     },
