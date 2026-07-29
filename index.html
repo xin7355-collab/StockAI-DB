@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6520,8 +6520,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.2.2',
+    _APP_VERSION: 'V71.2.3',
     _CHANGELOG: [
+        { v: 'V71.2.3', dt: '2026-07-29', t: '⛏️ 修採礦節點 0 卡 90 分鐘 + 加權指數落後的真正原因', d: [
+            '加權指數停在 7/27 的原因找到了:不是資料源壞,是採礦跑到一半被連續的程式更新砍掉三次,負責抓指數的節點(要 45 分鐘)從來沒跑完過。官方來源本身正常,本輪已抓到 7/28 收盤 41,603.36(-4.65%)。',
+            '採礦節點 0 以前要一個人扛下「當天所有新上市股」的完整回補(每檔都要抓兩年份),常常卡到 90 分鐘被系統砍掉;改成 20 個節點平均分攤,每個只分 6~7 檔。',
+            '官方指數來源如果抓不到,以前是安靜地退回備援(你會看到舊收盤卻沒人告訴你);現在會大聲記錄失敗原因,櫃買指數長期抓不到的問題下一輪就能定位。',
+        ] },
         { v: 'V71.2.2', dt: '2026-07-29', t: '💰 融資「去槓桿進度」併進反攻雷達', d: [
             '「融資斷頭宣洩」那條升級:除了原本的 5 日增減,再多算一個法人常看的指標 —— 從融資高點到現在,融資餘額掉了幾 %,對比同期加權指數掉了幾 %。',
             '融資減幅追上指數跌幅(≥90%)= 散戶槓桿被洗出、籌碼乾淨;還落後 = 凹單的人還很多,多殺多沒完,這條就不算過(反彈多半是逃命波)。',
