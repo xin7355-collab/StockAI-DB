@@ -1667,15 +1667,30 @@ def get_batch_symbols(inst_cache: dict, batch_idx: int = 0, total: int = 1) -> l
         # 行為不變:union = 全市場(無重疊、無遺漏);batch 0 仍是 sorted_syms[0]
         base = [sorted_syms[i] for i in range(batch_idx, len(sorted_syms), total)]
 
-    # batch 0 額外納入「今日活躍但尚無 JSON」的新上市股（只在 batch 0，避免重疊）
-    if batch_idx == 0 and inst_cache:
+    # 「今日活躍但尚無 JSON」的新上市股 —— V71.2.3 起改「所有 batch 均分」
+    #
+    # 🐛 為什麼要改(實測 run 30407318252 的根因):
+    #    舊寫法把新上市股「全部」塞給 batch 0。這些股在 data/ 沒有任何 JSON
+    #    → 每一檔都是「冷啟動」:現有 0 筆 < 480,要回溯 24 個月 TWSE 月檔 + yfinance 730d,
+    #    是所有情況裡最慢的一種。實測 batch 0 拿到 265 檔(基本盤 ~128 + 新上市 ~137),
+    #    其他 19 個節點都是 2~5 分鐘跑完,只有 batch 0 卡 90 分鐘被 timeout 砍。
+    #    連鎖後果:整個 run 被拖到 1.5 小時、artifact 被截斷、deploy 拖延。
+    #
+    # ✅ 修法:new_listings 也走 round-robin。所有節點都從**同一份** data 分支快照算出
+    #    相同的 universe / inst_cache → sorted() 後的 new_listings 完全一致 →
+    #    切片彼此不重疊、也不遺漏(跟上面 base 的分法同一個道理)。
+    #    某節點的 inst_cache 還原失敗時只會少拿,不會跟別人重疊。
+    if inst_cache:
         actives: set = set()
         for day_data in inst_cache.values():
             actives.update(day_data.keys())
         new_listings = sorted({s for s in actives if _valid_stock(s)} - universe)
         if new_listings:
-            base = list(base) + new_listings
-            print(f"  🆕 batch 0 額外納入 {len(new_listings)} 檔新上市股")
+            mine = new_listings if total <= 1 else \
+                [new_listings[i] for i in range(batch_idx, len(new_listings), total)]
+            if mine:
+                base = list(base) + mine
+                print(f"  🆕 batch {batch_idx} 分到 {len(mine)}/{len(new_listings)} 檔新上市股(冷啟動,已均分給 {total} 個節點)")
 
     return list(base)
 
@@ -2281,8 +2296,11 @@ def _fetch_twii_history_official(months_back=2):
                 continue
             j = r.json()
             if j.get('stat') and j.get('stat') != 'OK':
+                print(f"  [TWSE TAIEX] {y}/{m:02d} stat={str(j.get('stat'))[:60]}")
                 continue
             data = j.get('data') or []
+            if not data:
+                print(f"  [TWSE TAIEX] {y}/{m:02d} 回 200 但 data 空")
             for row in data:
                 try:
                     mtch = _re.match(r'(\d{2,3})/(\d{1,2})/(\d{1,2})', str(row[0]))
@@ -2340,16 +2358,25 @@ def _fetch_otc_history_official(months_back=2):
             f"https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php?l=zh-tw&d={roc}",
         ]
         got = False
+        why = []          # 🔊 V71.2.3 每個候選端點失敗的真正原因(以前全部靜默 continue,
+                          #    log 只留一句「全端點抓取失敗」,完全無從判斷是被擋、改版還是格式變了)
         for url in url_candidates:
             if got:
                 break
+            tag = url.split('tpex.org.tw')[-1][:42]
             try:
                 r = requests.get(url, headers=HEADERS, timeout=10)
                 if r.status_code != 200:
+                    why.append(f"{tag}→HTTP {r.status_code}")
                     continue
-                j = r.json()
+                try:
+                    j = r.json()
+                except Exception:
+                    why.append(f"{tag}→非 JSON({(r.text or '')[:40].strip()!r})")
+                    continue
                 data = j.get('aaData') or j.get('data') or (j.get('tables', [{}])[0].get('data') if isinstance(j.get('tables'), list) and j['tables'] else None) or []
                 if not data:
+                    why.append(f"{tag}→200 但無資料(keys={list(j.keys())[:6]})")
                     continue
                 added = 0
                 for row in data:
@@ -2368,10 +2395,13 @@ def _fetch_otc_history_official(months_back=2):
                         continue
                 if added:
                     got = True
-            except Exception:
+                else:
+                    why.append(f"{tag}→有 data 但沒解出任何一列(欄位格式可能改了)")
+            except Exception as _e:
+                why.append(f"{tag}→{type(_e).__name__}: {str(_e)[:40]}")
                 continue
         if not got:
-            print(f"  [TPEX OTC] {y}/{m:02d} 全端點抓取失敗")
+            print(f"  [TPEX OTC] {y}/{m:02d} 全端點抓取失敗 ・ {' | '.join(why)}")
     seen, uniq = set(), []
     for r in rows_out:
         if r['date'] not in seen:
@@ -2463,8 +2493,15 @@ def fetch_us_macro_cache():
                         official_rows = _fetch_otc_history_official(months_back=2)
                 except Exception as _e:
                     print(f"  ⚠️ 官方來源 {key} 抓取例外: {str(_e)[:80]}")
+                # 🔊 V71.2.3:官方來源掛掉時要「大聲講」,不能靜靜退回 yfinance。
+                #    這條線斷掉時 ^TWII.json 會停在舊日期(加權指數整整落後一天,前端所有
+                #    「站回 5 日線 / 指數跌幅 / M 頭頸線」全部用到錯的收盤),但以前只印一行
+                #    小小的 HTTP code,淹沒在 2 千行 log 裡完全看不到。
                 if official_rows:
-                    print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆")
+                    print(f"  🏛️ 官方來源 {key}: {len(official_rows)} 筆(最新 {official_rows[-1]['date']})")
+                else:
+                    print(f"  🚨 官方來源 {key} 掛了(0 筆)→ 只能退回 yfinance/磁碟,"
+                          f"指數收盤可能落後一天。查上方 [TWSE TAIEX]/[TPEX OTC] 訊息找原因")
                 fname = '^TWOII.json' if key == 'twoii' else f"^{key.upper()}.json"
                 # yfinance 逾時/空時,讀磁碟既有 ^*.json(origin/data restore)當長歷史底,官方鮮值疊上 → 保歷史又即時
                 base_rows = yf_rows
