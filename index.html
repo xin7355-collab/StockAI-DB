@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -351,7 +351,7 @@
         .typewriter-text { overflow: hidden; white-space: pre-wrap; margin: 0 auto; letter-spacing: 0.05em; }
         /* V24.9 — 5 tab 強制顯示 .tab-active(用 !important + classList toggle 雙保險) */
         #tabContentFav.tab-active, #tabContentInv.tab-active, #tabContentRadar.tab-active,
-        #tabContentHunt.tab-active, #tabContentEtf.tab-active {
+        #tabContentHunt.tab-active, #tabContentBroker.tab-active {
             display: flex !important;
             flex-direction: column !important;
             min-height: 80vh !important;
@@ -362,7 +362,7 @@
         /* V69.1.21 改用 flex 撐滿(不再固定 calc(100dvh-172px)):讓左右兩欄高度自動貼合可視區,底部不被 nav 蓋住 → 券商榜/朱家泓 滑得到、不回彈 */
         .scrollable-main:has(> #tabContentRadar.tab-active) { overflow: hidden !important; display: flex; flex-direction: column; }
         #tabContentRadar.tab-active { min-height: 0 !important; flex: 1 1 auto; overflow: hidden !important; }
-        #radarModeStrategy, #radarModeBroker { overscroll-behavior: contain; }
+        #radarModeStrategy, #radarModeEtf, #tabContentBroker { overscroll-behavior: contain; }
 
         .swipe-container { position: relative; overflow: hidden; background: #dc2626; border-radius: 0.5rem; }
         .swipe-content { position: relative; z-index: 10; width: 100%; transition: transform 0.2s ease-out; }
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2079,7 +2079,7 @@
             <!-- 🧭 V70.2.7 反攻條件雷達(使用者要求:告訴我還差什麼條件台股才會漲/現在是不是黑天鵝該停損) -->
             <div id="reboundRadarCard" class="hidden"></div>
             <!-- 🏦 V70.3.1 ETF 專區入口(底部 nav 已換成「券商」,ETF 改由此進) -->
-            <button onclick="app.switchAppTab('etf'); app.vibrate(20);" class="w-full bg-[#161b22] border border-[#30363d] hover:border-amber-600/60 rounded-lg px-3 py-2 text-left transition-colors">
+            <button onclick="app.switchAppTab('radar'); app.switchRadarMode('etf'); app.vibrate(20);" class="w-full bg-[#161b22] border border-[#30363d] hover:border-amber-600/60 rounded-lg px-3 py-2 text-left transition-colors">
                 <span class="text-[12px] font-black text-amber-300">🏦 ETF 專區</span>
                 <span class="text-[10px] text-gray-500 ml-1">主動式 ETF 換股追蹤 · 成分股 · 折溢價</span>
                 <span class="float-right text-gray-500 text-[11px]">›</span>
@@ -2720,7 +2720,9 @@
             <!-- 🔀 V69.0.2 頂部 策略/券商 切換(仿 CMoney 官方/券商;只在雷達頁顯,離開頁自然消失) -->
             <div class="flex gap-2 mb-2 px-0.5">
                 <button id="radarModeStrategyBtn" onclick="app.switchRadarMode('strategy')" class="flex-1 py-2 rounded-lg text-[13px] font-black border transition-all bg-amber-600/25 text-amber-200 border-amber-500/60">📊 策略</button>
-                <button id="radarModeBrokerBtn" onclick="app.switchRadarMode('broker')" class="flex-1 py-2 rounded-lg text-[13px] font-black border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏦 券商</button>
+                <!-- 🔀 V71.2.4 使用者要求:券商整套搬到底部「券商」tab(跟策略一樣是完整一頁),
+                     選股頁這一格改成 ETF —— 選股情境下要看的是「ETF 在買什麼」,不是券商分點。 -->
+                <button id="radarModeEtfBtn" onclick="app.switchRadarMode('etf')" class="flex-1 py-2 rounded-lg text-[13px] font-black border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏦 ETF</button>
             </div>
             <div id="radarModeStrategy" class="panel border border-[#30363d] bg-[#0d1117] flex flex-col relative flex-1 min-h-0">
                 <!-- 🗑️ V58.4 「🎯 選股池 + ℹ️ 說明書」標題列已刪除(使用者要求省空間);radarManualModal DOM 保留但無觸發鈕 -->
@@ -2750,7 +2752,8 @@
                         <button onclick="app.switchRadarStrategy('monster')" id="radarTabMonster" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">妖股雷達</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高風險</span></button>
                         <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">K棒轉空</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找賣點</span></button>
                         <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">處置股</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">風控</span></button>
-                        <button onclick="app.openBrokerRadar(); app.vibrate(20);" id="radarTabBroker" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="全市場主力雷達 + 券商勝率榜"><span class="block text-[11px]">券商榜</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高手勝率</span></button>
+                        <!-- 🏦 V71.2.4 券商內容統一收在底部「券商」tab(使用者要求),這裡改成導覽鈕,避免同樣的榜單散在兩處 -->
+                        <button onclick="app.switchAppTab('broker'); app.vibrate(20);" id="radarTabBroker" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="前往底部「券商」頁:跟單精選 / 高手券商 / 分點榜 / 券商勝率…"><span class="block text-[11px]">券商榜</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">前往券商頁</span></button>
                         <button onclick="app.openChuMasterModal(); app.vibrate(20);" id="radarTabChu" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="朱家泓五大選股法"><span class="block text-[11px]">朱家泓</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">選股法</span></button>
                     </div>
 
@@ -2835,17 +2838,17 @@
                 </div><!-- /左右欄 flex -->
             </div><!-- /radarModeStrategy -->
 
-            <!-- 🏦 V69.0.2 券商模式(仿 CMoney):高手券商(勝率排行) / 重要券商(分點損益) -->
-            <div id="radarModeBroker" class="hidden flex flex-col flex-1 min-h-0">
-                <!-- 🏦 V69.0.7 券商左欄直排分類(仿專業 App 焦點股版型)+ 右側內容 -->
-                <div class="flex flex-row gap-1.5 flex-1 min-h-0">
-                    <div class="flex flex-col gap-1 w-[70px] flex-shrink-0 overflow-y-auto min-h-0 pr-0.5" style="scrollbar-width:none" id="brokerCatCol"></div>
-                    <div id="brokerCatBody" class="flex-1 min-w-0 overflow-y-auto min-h-0 pb-4"><div class="text-center py-8 text-gray-600 text-xs animate-pulse">📡 載入券商資料…</div></div>
-                </div>
-            </div>
+            <!-- 🏦 V71.2.4 ETF 模式(原本的 ETF 專區整頁搬進來,由 renderEtfTab() 動態填充) -->
+            <div id="radarModeEtf" class="hidden flex-col flex-1 min-h-0 overflow-y-auto pb-4"></div>
         </div>
 
-        <div id="tabContentEtf" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
+        <!-- 🏦 V71.2.4 券商 tab(底部 nav「券商」)—— 原本擠在選股頁的二選一裡,
+             使用者要求:券商要跟策略一樣是完整的一整頁。8 個分類左欄 + 右側內容。 -->
+        <div id="tabContentBroker" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
+            <div class="flex flex-row gap-1.5 flex-1 min-h-0">
+                <div class="flex flex-col gap-1 w-[70px] flex-shrink-0 overflow-y-auto min-h-0 pr-0.5" style="scrollbar-width:none" id="brokerCatCol"></div>
+                <div id="brokerCatBody" class="flex-1 min-w-0 overflow-y-auto min-h-0 pb-4"><div class="text-center py-8 text-gray-600 text-xs animate-pulse">📡 載入券商資料…</div></div>
+            </div>
         </div>
         <!-- 💎 V46.4 — 長線潛力股(renderPotentialTab 動態填充) -->
         <div id="tabContentPotential" class="flex-col p-2 pb-4" style="display:none;min-height:80vh;">
@@ -2937,9 +2940,9 @@
             <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-xl drop-shadow">💼</span><span class="text-[11px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[11px] mt-0.5 font-bold">自選</span></button>
             <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">大盤</span></button>
-            <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span></button>
+            <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span><!-- 🏦 V71.2.4 ETF 換股紅點跟著 ETF 搬到選股頁(id 保留,免動 _initEtfAlert) --><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
             <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">👀</span><span class="text-[11px] mt-0.5 font-bold">觀察</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
-            <button onclick="app.openBrokerTab(); app.vibrate(30);" id="navBtnEtf" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">券商</span><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
+            <button onclick="app.switchAppTab('broker'); app.vibrate(30);" id="navBtnBroker" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">券商</span></button>
             <!-- 💎 V59.1 潛力頁已併入「選股」→ 選股池左欄「💎 潛力黑馬」;底部 tab 移除,空出導覽空間 -->
             <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="hidden"></button>
         </nav>
@@ -5664,7 +5667,9 @@ ${list}
 
 
     async renderEtfTab() {
-        const box = document.getElementById('tabContentEtf');
+        // 🏦 V71.2.4 ETF 從獨立 app-tab 搬進「選股 → 🏦 ETF」;容器改 #radarModeEtf。
+        //   舊 #tabContentEtf 留一行 fallback,避免任何沒改到的舊入口變成整頁空白。
+        const box = document.getElementById('radarModeEtf') || document.getElementById('tabContentEtf');
         if (!box) return;
         // V18.1 — 立刻顯 loading,避免 fetch 期間 box 全黑(falcon 300KB + etf JSON 弱網最多 15 秒)
         box.innerHTML = `
@@ -6232,7 +6237,7 @@ ${list}
         const _potElNow = document.getElementById('tabContentPotential');
         if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = window.scrollY || 0;
 
-        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Etf', 'Potential'].forEach(tab => {
+        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Broker', 'Potential'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             const _el = document.getElementById(`tabContent${tab}`);
             if (_el) {
@@ -6281,7 +6286,9 @@ ${list}
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 觀察', e); }
             // ⚡ V69.7.5 盤中自動重掃(每 5 分):觀察頁開著就保持即時,不用一直點「立即掃描」
             try { this._startHuntAutoScan(); } catch (_) {} }
-        if (tabId === 'etf') { try { this.renderEtfTab(); } catch(e) { this._handleTabRenderError('etf', '🏦 ETF', e); } }
+        // 🏦 V71.2.4 ETF 已搬進「選股 → 🏦 ETF」;舊的 switchAppTab('etf') 呼叫一律導過去,不留空白頁
+        if (tabId === 'etf') { try { this.switchAppTab('radar'); this.switchRadarMode('etf'); } catch(e) { this._handleTabRenderError('radar', '🏦 ETF', e); } return; }
+        if (tabId === 'broker') { try { this._loadBrokerData().then(() => { this._buildBrokerCatCol(); this.switchBrokerCat(this._brokerCat || 'follow'); }); } catch(e) { this._handleTabRenderError('broker', '🏦 券商', e); } }
         if (tabId === 'potential') { try { this._potentialRestoreScroll = true; this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
         // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
         } catch (e) {   // V24.5 — switchAppTab 整段 try/catch 結尾
@@ -6520,8 +6527,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.2.3',
+    _APP_VERSION: 'V71.2.4',
     _CHANGELOG: [
+        { v: 'V71.2.4', dt: '2026-07-29', t: '🏦 券商升格成完整一頁,選股頁那格換成 ETF', d: [
+            '底部「券商」以前按下去只是跳到某一支股票的籌碼分頁,還會把底部導覽藏起來;現在是完整的一整頁,跟單精選/高手券商/重要券商/買賣排行/分點榜/分點聯軍/券商勝率/分點跟單 八個分類全都在。',
+            '選股頁上面的「策略｜券商」改成「策略｜ETF」—— 選股的時候要看的是 ETF 在買什麼,券商分點統一去底部券商頁看,同樣的榜單不再散在兩個地方。',
+            '大盤頁的「ETF 專區」按鈕、選股左欄的「券商榜」都已改成導到新位置;舊的入口也都自動轉向,不會出現空白頁。ETF 換股紅點跟著搬到「選股」。',
+        ] },
         { v: 'V71.2.3', dt: '2026-07-29', t: '⛏️ 修採礦節點 0 卡 90 分鐘 + 加權指數落後的真正原因', d: [
             '加權指數停在 7/27 的原因找到了:不是資料源壞,是採礦跑到一半被連續的程式更新砍掉三次,負責抓指數的節點(要 45 分鐘)從來沒跑完過。官方來源本身正常,本輪已抓到 7/28 收盤 41,603.36(-4.65%)。',
             '採礦節點 0 以前要一個人扛下「當天所有新上市股」的完整回補(每檔都要抓兩年份),常常卡到 90 分鐘被系統砍掉;改成 20 個節點平均分攤,每個只分 6~7 檔。',
@@ -19920,14 +19932,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // 🕵️ V68.2.9 籌碼頁三分頁切換:券商分點 / 籌碼進出 / 籌碼分佈
     // 🏦 V70.3.1 底部「券商」入口(使用者要求:ETF 與券商位置互換 — 券商分點是每天在看的,ETF 很少看)
     //   直達目前個股的「籌碼 → 券商分點」;沒選股就開台積電當預設。
+    // 🏦 V71.2.4 使用者要求:底部「券商」要是完整的一整頁(跟「策略」同級),
+    //   不再是「跳去個股頁 → 籌碼 → 券商分點」那種只看單一支股票、還會把底部導覽藏起來的行為。
+    //   函式保留供舊呼叫點相容,直接轉進新的券商 tab。
     openBrokerTab() {
-        const sym = this.currentSymbolId || '2330';
-        try { this.switchAppTab('diag'); } catch (_) {}
-        try { if (this.currentSymbolId !== sym) this.analyze(sym, true).catch(() => {}); } catch (_) {}
-        setTimeout(() => {
-            try { this.switchSubTab('chip'); } catch (_) {}
-            try { this.switchChipTab('broker'); } catch (_) {}
-        }, 60);
+        try { this.switchAppTab('broker'); } catch (_) {}
     },
 
     switchChipTab(tab) {
@@ -27765,16 +27774,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🕵️ V68.2.7 全市場主力雷達:今日主力買超/賣超榜 + 分點跨股跟單(讀 data/broker_radar.json)
     // 🔀 V69.0.2 雷達頁「策略/券商」頂部切換(仿 CMoney)
     _radarMode: 'strategy',
+    // 🔀 V71.2.4 第二格由「券商」改「ETF」(券商已獨立成底部 tab)
     switchRadarMode(mode) {
+        if (mode === 'broker') { this.switchAppTab('broker'); return; }   // 舊入口相容:直接送去券商 tab
         this._radarMode = mode;
-        const st = document.getElementById('radarModeStrategy'), bk = document.getElementById('radarModeBroker');
-        const stB = document.getElementById('radarModeStrategyBtn'), bkB = document.getElementById('radarModeBrokerBtn');
+        const st = document.getElementById('radarModeStrategy'), ef = document.getElementById('radarModeEtf');
+        const stB = document.getElementById('radarModeStrategyBtn'), efB = document.getElementById('radarModeEtfBtn');
         if (st) st.classList.toggle('hidden', mode !== 'strategy');
-        if (bk) bk.classList.toggle('hidden', mode !== 'broker');
+        if (ef) ef.classList.toggle('hidden', mode !== 'etf');
         if (stB) stB.className = `flex-1 py-2 rounded-lg text-[13px] font-black border transition-all ${mode === 'strategy' ? 'bg-amber-600/25 text-amber-200 border-amber-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
-        if (bkB) bkB.className = `flex-1 py-2 rounded-lg text-[13px] font-black border transition-all ${mode === 'broker' ? 'bg-purple-600/25 text-purple-200 border-purple-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
+        if (efB) efB.className = `flex-1 py-2 rounded-lg text-[13px] font-black border transition-all ${mode === 'etf' ? 'bg-amber-600/25 text-amber-200 border-amber-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
         this.vibrate(12);
-        if (mode === 'broker') this._loadBrokerData().then(() => { this._buildBrokerCatCol(); this.switchBrokerCat(this._brokerCat || 'follow'); });
+        if (mode === 'etf') { try { this.renderEtfTab(); } catch (e) { console.error('[ETF]', e); } }
     },
     async _loadBrokerData() {
         if (this._brokerPerf && this._brokerBook && this._radarData) return;
@@ -27950,7 +27961,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
     _openBrokerFromNameFromPage(name) {
         // 券商頁內:切到「🔍 分點跟單」並顯示該分點完整檔案
-        if (this._radarMode === 'broker') {
+        // 🏦 V71.2.4 券商從「選股頁的第二格」升格為底部獨立 tab → 判斷改看券商 tab 是否正顯示
+        const _bkTab = document.getElementById('tabContentBroker');
+        if (_bkTab && _bkTab.style.display !== 'none') {
             this.switchBrokerCat('pick');
             setTimeout(() => {
                 this._radarBrokerPeriod = '1d';
