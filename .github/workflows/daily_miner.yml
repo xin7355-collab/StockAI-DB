@@ -228,6 +228,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chips-data
+          # ⚠️ 以下是 YAML block scalar(path: |),裡面每一行都是「字面路徑」——
+          #    行尾寫 # 註解不會被當註解,會變成路徑的一部分導致該檔靜默漏傳。
+          #    (V71.3.8 的 data/breadth.json 就是這樣漏了,市場廣度歷史一直沒上 gh-pages。)
+          #    要註解請寫在這裡(block 之外),或用 scripts/check_workflow_paths.py 擋。
           path: |
             data/chips/
             data/radar.json
@@ -242,7 +246,7 @@ jobs:
             data/industry_map.json
             data/concept_stocks.json
             data/market_stats.json
-            data/breadth.json          # 📊 V71.3.8 市場廣度歷史(累積騰落線 ADL 的資料源,漏傳就永遠累積不起來)
+            data/breadth.json
             data/miner_status.json
             data/govbank.json
             data/lending.json

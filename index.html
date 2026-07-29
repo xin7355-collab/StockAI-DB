@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.6',
+    _APP_VERSION: 'V71.4.7',
     _CHANGELOG: [
+        { v: 'V71.4.7', dt: '2026-07-29', t: '📊 市場廣度「跟昨天比」終於會有資料了', d: [
+            '你之前問「市場廣度有沒有比對前一天比較有用」,我做了騰落線(把每天上漲家數減下跌家數累加起來,看買氣是變強還是變弱)。查證後發現:它讀的那個檔案,採礦機其實一直沒有送上網站,所以那張圖從上線到現在都是空的。',
+            '原因是採礦設定檔裡那一行後面多打了一個註解,而那個位置的註解不會被當註解,會被當成檔名的一部分 → 找不到檔案 → 但系統只會警告不會報錯,所以每天都顯示採礦成功,東西卻沒送出去。',
+            '已修好。今晚這輪採礦跑完就會開始累積,大約 10 個交易日後圖就會有東西看(需要幾天的資料才畫得出趨勢)。',
+            '也加了一道自動檢查:以後只要有採礦產出的資料沒被送上網站,上線前就會直接被擋下來,不會再靜靜消失。',
+        ] },
         { v: 'V71.4.6', dt: '2026-07-29', t: '🚦 修 5 處會讓人看反的紅綠燈 + 大盤頁預設落在「行情」', d: [
             '你定過一條規矩:🔴🟢 只能代表「漲跌」,不能代表「安全/危險」,不然同一顆紅燈在這張卡是危險、在那張卡是上漲,一定會看反。這次抓到 5 處還在犯規的,全部改掉。',
             '改成:✅ 安全或可以做 ・ ⚠️ 要注意 ・ ⛔ 別做或危險。例如盤後零股盤點的「🟢 可考慮零股分批 / 🔴 先不要加碼」→「✅ / ⛔」;頂部跑馬燈的「🟢 風險偏低」→「✅ 風險偏低」。',
