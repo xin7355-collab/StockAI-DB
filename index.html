@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3340,8 +3340,8 @@ const app = {
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、振幅太大已噴/崩、或「均線空頭排列(現價還在 5日線+月線之下的逆勢股)」都會自動排除 — 這種首席頁會判偏空、要你別接刀,不會再列來這裡跟首席打架。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
-        '盤中主力估算': '⚠️ 重要:台灣證交所「券商分點進出」只在收盤後(約 15:30)才公布,盤中根本沒有真實分點資料。這裡的「盤中主力動向」是用 Fugle 即時「內外盤掛單 + 漲跌量價」估算的方向參考,不是官方分點,可能與收盤後真實分點有出入。盤中當參考、收盤後看下方真實分點才準。',
-        '分點限制': '⚠️ 為什麼看不到真實券商分點?TWSE 官方 BSR 系統對雲端 IP 全面封鎖,本站採礦伺服器無法即時取得每日真實分點資料,已自動切換至 T+1 備份備援。免費替代方案:(1) 上方「盤中主力動向」用 Fugle 內外盤估算盤中即時方向、(2) 三大法人買賣超 T+1 可看、(3) 融資融券走勢 T+1 可看。需要 TWSE 官方分點請至 bsr.twse.com.tw 手動查詢(一次一檔,須過驗證碼)。',
+        '盤中主力估算': '⚠️ 先講清楚:「哪一家券商分點在買賣」證交所只在收盤後才公布,盤中全世界都拿不到 —— 這是制度限制,不是資料沒買到。付費看盤軟體標的「即時主力」同樣是推估的,沒有例外。\n\n盤中能做的是「推估」,本 App 分兩層:\n① 熱門股(當日成交量前 80 名)→ 用真實逐筆成交算全日累計主動買賣量 + 大單(單筆 ≥50 張),盤中每 10 分鐘更新,在「⚡當沖」作戰室。這層最接近真相。\n② 其他股票 → 用即時逐筆成交累積推估,開著頁面越久越完整,在「分時逐筆」頁的「🐋 大單流向」。\n\n兩層都是推估方向,可能與收盤後的真實分點有出入。盤中當參考、收盤後看真實分點才準。',
+        '分點限制': '⚠️ 為什麼有時看不到最新的券商分點?\n\n① 時間差:證交所的分點資料收盤後才出,而且不是一收盤就有,通常要等到傍晚。所以下午看到的常是前一個交易日的。\n② 涵蓋順序:全市場約 2,600 檔要逐檔更新,熱門股每天優先,冷門股輪流補,可能會晚個一兩天。\n\n盤中想看主力動向,改看這兩個(都在個股頁):\n・「⚡當沖」作戰室 → 熱門股的真實逐筆內外盤 + 大單\n・「分時逐筆」頁的「🐋 大單流向」 → 大單 vs 散戶誰在買、誰在賣\n\n另外三大法人買賣超、融資融券走勢收盤後也都看得到。要查官方原始分點,可到 bsr.twse.com.tw 手動查(一次一檔,要過驗證碼)。',
         '融券為0': '融券 = 跟券商「借股票來賣」(看空、賭它跌)。很多股票融券是 0,代表「沒人放空」,這是常態不是壞掉 —— 大型權值股 / ETF 多是長線投資人,小型冷門股則是借不到券。融券突然爆增才要小心(空方大舉進場),融券是 0 就單純代表大家沒在賭它跌。',
         '融券需付費': '台灣證交所(TWSE)從 2026/06 起,將 MI_MARGN 端點改回市場彙總表,**不再免費提供個股級融資融券明細**;FinMind 免費額度也未涵蓋融券,yfinance 對台股也僅少量個股可查。若要查個股融券明細,需付費資料源(FinMind 付費版、CMoney、TEJ 等)。系統會持續嘗試多條備援,有資料時自動顯示。',
         '法人成本估算': '這是用「區間內法人買超那幾天的收盤價,依買超張數加權平均」算出來的「估算建倉成本」,讓你看大戶大概在哪個價位進貨。⚠️ 只是粗估(法人實際成交價我們拿不到),且只統計買超日;若法人是賣超,改顯示「出脫均價」。當參考用,別當精準成本。',
@@ -6533,8 +6533,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.2',
+    _APP_VERSION: 'V71.3.3',
     _CHANGELOG: [
+        { v: 'V71.3.3', dt: '2026-07-29', t: '🕵️ 講清楚「盤中分點」到底看不看得到', d: [
+            '盤中沒有真實的券商分點,這是證交所的制度 —— 分點資料收盤後才公布,付費看盤軟體標的「即時主力」同樣是推估出來的,沒有例外。',
+            '但盤中可以推估,而且 App 早就有兩層:熱門股(當日量前 80 名)在「⚡當沖」作戰室,用真實逐筆成交算全日累計主動買賣量 + 大單,每 10 分鐘更新;其他股票在「分時逐筆」的 🐋 大單流向,看大單 vs 散戶誰在買賣。',
+            '順手把過期的說明改掉 —— 舊文案還寫著「切換至 T+1 備份備援資料庫」,那是還沒付費時代的敘述,現在分點正常採礦,顯示不出來只是當天還沒公布而已。',
+        ] },
         { v: 'V71.3.2', dt: '2026-07-29', t: '↩️ 設定的「取消」現在真的會還原', d: [
             '你的直覺是對的,而且是程式的錯 —— 那顆「取消」鈕以前第一行就是「儲存」,兩顆鈕做的是同一件事,難怪按了沒感覺。',
             '現在進設定會先拍一份備份:誤刪金鑰、數字改錯,按「↩️ 取消還原」就整包救回來,連手機裡存的那份也一起還原。',
@@ -19823,19 +19828,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                    </div>`
                 : `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-3">
                        <div class="text-yellow-300 text-[11px] font-bold mb-1.5 flex items-center gap-1">
-                           ⚠️ 部分即時數據維護中
+                           ⚠️ 今日分點尚未公布
                            <button onclick="app.showJargon('分點限制'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button>
                        </div>
+                       <!-- 🗣️ V71.3.3 舊文案寫「切換至 T+1 備份備援資料庫」是早期免費版時代的敘述,現在已付費、
+                            分點正常採礦;而且「即時分點」本來就不存在(收盤後才公布)。改成講實話 + 指路。 -->
                        <div class="text-gray-300 text-[10px] leading-relaxed mb-2">
-                           已自動切換至 T+1 備份備援資料庫。即時主力分點明細暫不可用,請改用下列替代方案:
+                           這檔今天的券商分點還沒進來(分點資料收盤後才公布,通常要等到傍晚)。<b class="text-gray-200">盤中沒有真實分點</b>,這是制度限制,付費軟體也一樣。想看主力動向請改看:
                        </div>
                        <div class="text-[10px] leading-relaxed space-y-1 ml-1 mb-2">
-                           <div class="text-red-300">• 上方「🔴 盤中主力動向」(Fugle 內外盤)— <span class="text-gray-400">盤中即時</span></div>
-                           <div class="text-green-300">• 三大法人買賣超 — <span class="text-gray-400">T+1 收盤後</span></div>
-                           <div class="text-purple-300">• 融資餘額走勢 — <span class="text-gray-400">T+1 收盤後</span></div>
+                           <div class="text-red-300">• 「⚡ 當沖」作戰室 — <span class="text-gray-400">熱門股真實逐筆內外盤 + 大單,盤中每 10 分更新</span></div>
+                           <div class="text-red-300">• 「分時逐筆」的 🐋 大單流向 — <span class="text-gray-400">大單 vs 散戶誰在買賣,盤中即時</span></div>
+                           <div class="text-green-300">• 三大法人買賣超 — <span class="text-gray-400">收盤後</span></div>
+                           <div class="text-purple-300">• 融資餘額走勢 — <span class="text-gray-400">收盤後</span></div>
                        </div>
                        <div class="text-gray-500 text-[9px] mt-2 pt-2 border-t border-gray-700/40">
-                           如需官方分點即時查詢:<a href="https://bsr.twse.com.tw/bshtm/bsMain.aspx" target="_blank" rel="noopener" class="text-blue-300 hover:text-blue-100 underline">bsr.twse.com.tw</a>(一次一檔,須過驗證碼)
+                           要查官方原始分點:<a href="https://bsr.twse.com.tw/bshtm/bsMain.aspx" target="_blank" rel="noopener" class="text-blue-300 hover:text-blue-100 underline">bsr.twse.com.tw</a>(一次一檔,須過驗證碼)
                        </div>
                    </div>`;
             box.innerHTML = msg;
