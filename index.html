@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.2.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6520,8 +6520,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.2.0',
+    _APP_VERSION: 'V71.2.1',
     _CHANGELOG: [
+        { v: 'V71.2.1', dt: '2026-07-29', t: '🩹 修破圖 + 盤前體檢接上反攻雷達', d: [
+            '【破圖】上一版那句「加權指數落後」警告被我接在標題同一行,而那個區塊設了不可壓縮 → 文字一長就把整張卡撐爆,「盤前體檢」四個字被壓成一字一行、右側被裁掉。已改成獨立一行放標題下方,直式橫式都測過不再溢出。',
+            '【你問兩張卡有沒有連動 → 原本沒有,現在有了】它們吃同一份資料所以結論會同向(我用三種極端情境實測:偏多 85 分對 8/9、震盪 55 分對 5/9、偏空 10 分對 1/9,完全一致),但程式上是各算各的、互不引用。',
+            '問題在於兩張都在下操作指令 — 萬一哪天分歧,你會收到兩套矛盾的指示。而且它們講的其實是不同時間尺度:盤前體檢講「今天開盤」,反攻雷達講「這波跌完沒、能不能進場」。',
+            '現在盤前體檢的標題下方會直接顯示反攻雷達的中期結論(如「⛔ 空方主控 4/9 ← 反攻條件雷達」),短期中期一起看,不用在兩張卡之間來回比對。只引用結論不重算,不會生出第三個版本的分數。',
+        ]},
         { v: 'V71.2.0', dt: '2026-07-28', t: '⚠️ 加權指數落後會主動警告(你抓到的 07/27 問題)', d: [
             '你發現盤前體檢寫「台股 07/27 收盤」,但個股 K 線已經有 07/28 → 查證後確認:那個標籤是誠實的,真正的問題是加權指數的資料源本身落後(而且 07/24 那天整天缺)。',
             '真正危險的是:沒有人提醒你這是舊的 → 於是「站回 5 日線」「關鍵壓力支撐」「分析師解讀」全都拿舊收盤在算,你不知道。',
@@ -14189,6 +14195,11 @@ const marginByDate = {};
             heroIcon = '⛔'; heroTxt = '空方主控・別接刀'; heroCls = 'text-green-300 border-green-500';
             act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波</b>,過半前不進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
         }
+        // 🔗 V71.2.1 存下結論供「盤前體檢」引用 —— 兩張卡時間尺度不同(盤前=今天開盤、雷達=這波跌完沒),
+        //   本來就該一起看;而且兩張都在下操作指令,不接起來萬一分歧會給出兩套矛盾指示(違反單一劇本原則)。
+        //   ⛔ 只存結論不重算,避免又生出第三個版本的分數。
+        this._reboundVerdict = { icon: heroIcon, txt: heroTxt, passN, total: judged.length };
+
         // 📣 黑天鵝當日推播一次
         try {
             if (isSwan) {
@@ -14558,8 +14569,13 @@ const marginByDate = {};
         const _updShow = _updRaw.length >= 16 ? `${this._dW(_updRaw.slice(0, 10), { rel: 1 })} ${_updRaw.slice(11, 16)}` : '';   // V70.2.0 加星期+今日/昨日
         const _twiiDate = (Array.isArray(usm.twii_history) && usm.twii_history.length) ? this._dW(usm.twii_history[usm.twii_history.length - 1].date) : '';
         const _lagI2 = this._twiiLag();
-        const _basis = (_updShow || _twiiDate || '—')
-            + (_lagI2.lag > 0 ? ` <span class="text-amber-300 font-bold">⚠️ 加權指數落後 ${_lagI2.lag} 天(最新交易日 ${this._dW(_lagI2.mktD)})</span>` : '');
+        const _basis = _updShow || _twiiDate || '—';
+        // 🐛 V71.2.1 破圖修:V71.2.0 把這句警告接在 _basis 後面,而它所在的容器是 flex-shrink-0
+        //   → 文字一長就撐爆,左邊「盤前體檢」被壓成一字一行、右側被裁掉(CLAUDE.md 記載的 flex 子項陷阱)。
+        //   改成獨立整行放在標題列下方,不參與那個 flex 的寬度競爭。
+        const _lagWarn = _lagI2.lag > 0
+            ? `<div class="mt-1 text-[10px] text-amber-300 bg-amber-900/15 border-l-2 border-amber-500 pl-2 py-1 rounded-r leading-snug">⚠️ 加權指數資料落後 ${_lagI2.lag} 天(最新交易日 ${this._dW(_lagI2.mktD)})— 下方點位與解讀用的是 ${this._dW(_lagI2.twiiD)} 收盤</div>`
+            : '';
 
         // 🎯 V43.2 大盤融資餘額行(bubble_warning.json)
         let marginLine = '<span class="text-gray-500">採集中</span>';
@@ -14606,16 +14622,29 @@ const marginByDate = {};
 
         el.className = `w-full rounded-lg p-3 border ${bg}`;
         el.innerHTML = `
-            <div class="flex items-start justify-between gap-2 mb-2 border-b border-[#21262d] pb-1.5">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-xl leading-none">🌅</span>
-                    <span class="text-lg font-black text-gray-100 leading-none">盤前體檢</span>
-                    <button onclick="app.showJargon('盤前體檢')" class="text-[13px] text-gray-500 hover:text-blue-300 leading-none">❓</button>
+            <div class="mb-2 border-b border-[#21262d] pb-1.5">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-xl leading-none flex-shrink-0">🌅</span>
+                        <span class="text-lg font-black text-gray-100 leading-none truncate">盤前體檢</span>
+                        <button onclick="app.showJargon('盤前體檢')" class="text-[13px] text-gray-500 hover:text-blue-300 leading-none flex-shrink-0">❓</button>
+                    </div>
+                    <div class="text-[9px] text-gray-500 text-right leading-tight min-w-0">
+                        <div>📅 資料採集 <b class="text-gray-300">${_basis}</b></div>
+                        ${_twiiDate ? `<div class="text-gray-600">(台股 ${_twiiDate} 收盤)</div>` : ''}
+                    </div>
                 </div>
-                <div class="text-[9px] text-gray-500 text-right leading-tight flex-shrink-0">
-                    <div>📅 資料採集 <b class="text-gray-300">${_basis}</b></div>
-                    ${_twiiDate ? `<div class="text-gray-600">(台股 ${_twiiDate} 收盤)</div>` : ''}
-                </div>
+                ${_lagWarn}
+                ${(() => {   // 🔗 V71.2.1 中期視角:引用反攻條件雷達的結論,短中期一起看
+                    const rv = this._reboundVerdict;
+                    if (!rv) return '';
+                    return `<div class="mt-1 flex items-center gap-1.5 text-[10px]">
+                        <span class="text-gray-500">中期(這波跌完沒)</span>
+                        <span class="font-bold text-gray-200">${rv.icon} ${rv.txt}</span>
+                        <span class="font-mono text-gray-500">${rv.passN}/${rv.total}</span>
+                        <span class="text-gray-600 text-[9px]">← 反攻條件雷達</span>
+                    </div>`;
+                })()}
             </div>
             <!-- 🎯 V50.0 開盤預判 + 一句話總結 合併卡 -->
             <div class="mb-2 bg-[#0d1117]/50 rounded-lg p-2.5 border ${bg.split(' ').find(c => c.startsWith('border-')) || 'border-[#30363d]'}">
