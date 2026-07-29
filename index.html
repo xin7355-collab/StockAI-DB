@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6563,37 +6563,22 @@ ${list}
         copy('mktTWII_chg', 'mktTWII_chg_main');
         copy('mktTWOII', 'mktTWOII_main');
         copy('mktTWOII_chg', 'mktTWOII_chg_main');
-        copy('usBar_spx', 'usBar_spx_main');
-        copy('usBar_spx_chg', 'usBar_spx_chg_main');
-        copy('usBar_ndx', 'usBar_ndx_main');
-        copy('usBar_ndx_chg', 'usBar_ndx_chg_main');
-        copy('usBar_vix', 'usBar_vix_main');
-        copy('usBar_vix_chg', 'usBar_vix_chg_main');
-        copy('usBar_tsm', 'usBar_tsm_main');
-        copy('usBar_tsm_chg', 'usBar_tsm_chg_main');
-        copy('usBar_dji', 'usBar_dji_main');
-        copy('usBar_dji_chg', 'usBar_dji_chg_main');
-        copy('usBar_sox', 'usBar_sox_main');
-        copy('usBar_sox_chg', 'usBar_sox_chg_main');
-        copy('usBar_nvda', 'usBar_nvda_main');
-        copy('usBar_nvda_chg', 'usBar_nvda_chg_main');
-        copy('usBar_aapl', 'usBar_aapl_main');
-        copy('usBar_aapl_chg', 'usBar_aapl_chg_main');
-        copy('usBar_msft', 'usBar_msft_main');
-        copy('usBar_msft_chg', 'usBar_msft_chg_main');
-        copy('usBar_us02y', 'usBar_us02y_main');
-        copy('usBar_us02y_chg', 'usBar_us02y_chg_main');
-        copy('usBar_ukoil', 'usBar_ukoil_main');
-        copy('usBar_ukoil_chg', 'usBar_ukoil_chg_main');
-        copy('usBar_dxy', 'usBar_dxy_main');
-        copy('usBar_dxy_chg', 'usBar_dxy_chg_main');
+        // 🗑️ V71.4.5 這裡原本還有 24 行 copy(usBar_* → usBar_*_main) —— 目的地 usBar_*_main
+        //    早就隨舊版大盤頁一起刪掉了,等於每次刷新白做 48 次 getElementById + 24 次字串比對。
+        //    美股那排仍在「全球大環境」頁用 usBar_* 正常顯示,只是不再往大盤頁鏡射一份。
     },
 
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.4',
+    _APP_VERSION: 'V71.4.5',
     _CHANGELOG: [
+        { v: 'V71.4.5', dt: '2026-07-29', t: '🏷️ 本益比旁多一句「跟同業比貴還便宜」', d: [
+            '基本面 X 光機的「本益比 PE」旁邊本來留了一個空位、一直沒東西。現在會顯示這檔跟同業比起來貴還是便宜,例如「✅ 比同業便宜 33%」「⚠️ 比同業貴 30%」。',
+            '為什麼要跟同業比:金融股本益比 10 倍很正常、IC 設計 30 倍也很正常。用「低於 15 就是便宜」那種一刀切,跨產業一定判反。所以改成跟同一個產業的中位數比。',
+            '對不到產業的股票會誠實顯「無同業可比」,虧損或沒本益比的就完全不顯,不硬掰。滑鼠移上去(手機長按)有一句提醒:便宜不等於好,有時候是市場預期它以後會賺更少。',
+            '順手清掉 24 行從來沒作用的程式(要複製資料過去的目標早就被刪了),每次刷新少做 48 次無謂查詢。',
+        ] },
         { v: 'V71.4.4', dt: '2026-07-29', t: '🗂️ 大盤頁三個分頁重新分類 + 改名', d: [
             '分頁改名:「📊 大盤」→「📈 行情」(跟下面那排的「大盤」同名很容易搞混)、「💡 建議」→「🌅 盤前檢視」、「🗞️ 新聞」→「🗞️ 消息面」。',
             '「市場板塊輪動」搬到 📈 行情 —— 它講的是今天盤中哪些類股在動,跟指數、漲跌家數是同一件事,放一起看才連得起來。',
@@ -10327,6 +10312,49 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             if (fund) this._localFundLast = { sym, data: fund };
             return fund || ((this._localFundLast?.sym === sym) ? this._localFundLast.data : null);
         } catch(e) { return (this._localFundLast?.sym === sym) ? this._localFundLast.data : null; }
+    },
+
+    // 🏷️ V71.4.5 本益比「跟同業比」標籤(填 #xrayPeTag 這個一直空著的版位)
+    //   為什麼不用絕對門檻:金融股 PE 10 倍是常態、IC 設計 30 倍也是常態,
+    //   「<15 便宜 / >40 貴」跨產業一定判反 → 一律拿 industry_pe.json 的**產業中位 PE** 當基準。
+    //   ⚠️ 燈號鐵則(V70.2.8):這條軸是「貴/便宜」不是「漲/跌」,所以不准用 🔴🟢,
+    //      文字色也刻意避開紅綠(用琥珀/紫/灰),免得跟旁邊的漲跌色搞混。
+    _clearXrayPeTag() {
+        const el = document.getElementById('xrayPeTag');
+        if (el) { el.textContent = ''; el.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded'; el.removeAttribute('title'); }
+    },
+    async _renderXrayPeTag(sym, pe) {
+        const el = document.getElementById('xrayPeTag');
+        if (!el) return;
+        this._clearXrayPeTag();
+        if (pe == null || !(pe > 0)) return;          // 虧損/無資料 → 不掛標籤,別硬判
+        let ind = null, mPe = null;
+        try {
+            const d = await this._loadIndustryPeData();
+            ind = d?.map?.[sym];
+            const m = ind && d?.industries?.[ind]?.median_pe;
+            if (typeof m === 'number' && m > 0) mPe = m;
+        } catch (_) {}
+        if (this.currentSymbolId !== sym) return;     // 🐛 切股競態守門:等產業資料期間切股就不要畫錯股
+        const set = (txt, cls, tip) => {
+            el.textContent = txt;
+            el.className = `text-[10px] font-mono px-1.5 py-0.5 rounded ${cls}`;
+            el.title = tip;
+        };
+        if (mPe == null) {
+            set('⏳ 無同業可比', 'bg-white/5 text-gray-500',
+                '這檔還沒對應到產業中位本益比,所以不做貴/便宜判斷(誠實不亂猜)');
+            return;
+        }
+        const diff = (pe - mPe) / mPe * 100;
+        const d0 = Math.abs(diff).toFixed(0);
+        const tip = `${ind} 同業中位本益比 ${mPe} 倍,這檔 ${pe.toFixed(1)} 倍。`
+                  + '⚠️ 便宜不等於好:本益比低有時是市場預期它以後會賺更少;貴也不等於不能買,成長股常年偏貴。這格只告訴你「相對同業站在哪」。';
+        if (diff <= -30)      set(`✅ 比同業便宜 ${d0}%`, 'bg-violet-900/40 text-violet-200 font-bold', tip);
+        else if (diff <= -10) set(`✅ 略低於同業 ${d0}%`, 'bg-violet-900/25 text-violet-300', tip);
+        else if (diff <  10)  set('➖ 與同業相當',        'bg-white/5 text-gray-400', tip);
+        else if (diff <  50)  set(`⚠️ 比同業貴 ${d0}%`,  'bg-amber-900/30 text-amber-300', tip);
+        else                  set(`⛔ 遠高於同業 ${d0}%`, 'bg-amber-900/45 text-amber-200 font-bold', tip);
     },
 
     // 🏷️ 產業相對 PE 資料(產業中位數 PE + 個股→產業對照),24 hr client cache
@@ -21663,6 +21691,7 @@ ${lightExplain[queryType]}
         // 🧩 V34.0 — ETF 不適用個股本益比/EPS/營收 → 顯說明、跳過抓財報(改看成分股卡)
         if (this._isETF && this._isETF(sym)) {
             ['xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout','xrayEpsYoY','xrayEpsQoQ','xrayPb','xrayPeg'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+            this._clearXrayPeTag();   // 🏷️ V71.4.5 ETF 不適用本益比 → 同業比價標籤一併清掉,別留上一檔的殘影
             ['xrayFinStruct','xrayCashFlow','xrayExpectation','xrayTriRate'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.add('hidden'); el.innerHTML = ''; } });   // 🛡️ V68.3.7 ETF 無個股財報 → 隱藏財務結構/現金流/預期/三率
             const _vet = document.getElementById('xrayVerdict'); if (_vet) _vet.innerHTML = '';   // ETF 無個股體質總評,清空避免卡「計算中…」
             const box = document.getElementById('xrayAIBox'), res = document.getElementById('xrayAIResult');
@@ -21998,6 +22027,10 @@ ${lightExplain[queryType]}
             } else { momEl.textContent = ''; }
         }
         setCell('xrayPe', pe, 'x', pe==null?null:pe<15?'text-green-400':pe>40?'text-red-400':'text-yellow-400');
+        // 🏷️ V71.4.5 本益比旁的「跟同業比」標籤 —— xrayPeTag 那個 span 一直是空的(有版位沒內容)。
+        //    用 industry_pe.json 的產業中位 PE 比,不用「PE<15 就是便宜」那種絕對門檻
+        //    (金融股 10 倍是常態、IC 設計 30 倍也是常態,絕對門檻跨產業會判反)。
+        this._renderXrayPeTag(sym, pe);
         // V14.15:PE 標來源(TWSE 用 TTM,跟競品 forward 算法不同,避免使用者誤會)
         const peSrcEl = document.getElementById('xrayPeSrc');
         if (peSrcEl) {
