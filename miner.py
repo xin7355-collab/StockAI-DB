@@ -3922,6 +3922,97 @@ def _fetch_market_margin_total_ms(d: date, max_fallback_days: int = 5):
     return None
 
 
+def build_breadth_history():
+    """全市場漲跌家數統計 → data/breadth.json(累積騰落線 ADL 的資料源),回傳漲停家數。
+
+    ⚠️ V71.4.8 為什麼要獨立成一支、而且要排在分點採礦「之前」跑:
+      這段原本長在 build_bubble_warning 裡,而 ONLY_CHIPS 流程是
+      「分點籌碼(🐢 最慢 ~35 分)→ … → 泡沫預警」。
+      只要 chips job 在分點那步被砍(逾時、或被新一輪 daily_miner 的
+      cancel-in-progress 取消),後面全部不會跑 → breadth.json 就寫不出來。
+      2026-07-29 實測就是這樣:20:00 的排程延遲到 22:01 才觸發,
+      把 21:00 那輪砍在分點中途,廣度歷史整晚沒產出。
+      這段只讀本地 data/*.json、零 API、幾秒就跑完,沒有理由排在網路重活後面。
+
+    📌 資料來源要知道的一件事:chips job 的 data/ 是從 origin/data 還原的
+      (= 上一輪 deploy 的產物),不是本輪 20 個 OHLCV 節點剛採的(那些要到 deploy 才合併)。
+      所以下午 16:30 那輪算到的可能還是前一交易日的收盤 —— 但不影響正確性:
+      日期 key 取自 K 線自己的 date,寫進去的就是那一天的數字,晚上那輪再補上當天。
+      同一天重跑會覆蓋不會重複記(見 scripts/test_breadth_real.py ②)。
+    """
+    limit_up = 0
+    _b_up = _b_down = _b_flat = _b_limdn = _b_strong = _b_weak = 0
+    _b_date = ''
+    for f in Path(DATA_DIR).glob('*.json'):
+        sym = f.stem
+        if not (len(sym) == 4 and sym.isdigit()):
+            continue
+        # 🐛 V71.4.8 排除 4 碼 ETF(0050/0056/0061…):漲跌家數統計的是「公司」,
+        #   ETF 是一籃子、本來就跟著指數走,算進去等於把指數自己的方向重複計一次,
+        #   會讓廣度略微偏向指數(掩蓋「指數漲但多數個股在跌」這種背離 —— 而那正是 ADL 要抓的)。
+        #   證交所的上漲/下跌家數也不含 ETF。5 碼以上的新 ETF(00878 等)本來就被 len==4 擋掉了。
+        #   ⏱️ 現在改代價最低:breadth.json 還沒有任何歷史,不會前後不一致。
+        if sym.startswith('00'):
+            continue
+        try:
+            raw = json.loads(f.read_text(encoding='utf-8'))
+            if not isinstance(raw, list) or len(raw) < 2:
+                continue
+            c, pc = float(raw[-1]['close']), float(raw[-2]['close'])
+            if pc > 0:
+                _chg = (c - pc) / pc * 100
+                if _chg >= 9.0:
+                    limit_up += 1
+                elif _chg <= -9.0:
+                    _b_limdn += 1
+                if _chg > 0.05:
+                    _b_up += 1
+                elif _chg < -0.05:
+                    _b_down += 1
+                else:
+                    _b_flat += 1
+                if _chg >= 3:
+                    _b_strong += 1
+                elif _chg <= -3:
+                    _b_weak += 1
+                if not _b_date:
+                    _b_date = str(raw[-1].get('date') or '')
+        except Exception:
+            continue
+    # 廣度歷史(獨立檔,append 不覆蓋;靠 daily deploy 的 git archive origin/data 保留)
+    try:
+        _bd_total = _b_up + _b_down + _b_flat
+        if _bd_total >= 500:      # 少於 500 檔代表資料還沒鋪好,不記(避免髒點汙染 ADL)
+            _bd_path = Path(DATA_DIR) / 'breadth.json'
+            _bd = {}
+            if _bd_path.exists():
+                try:
+                    _bd = json.loads(_bd_path.read_text(encoding='utf-8')) or {}
+                except Exception:
+                    _bd = {}
+            _hist = _bd.get('history')
+            if not isinstance(_hist, list):
+                _hist = []
+            _dkey = (_b_date or date.today().strftime('%Y/%m/%d')).replace('-', '/')
+            _row = {'d': _dkey, 'up': _b_up, 'dn': _b_down, 'flat': _b_flat,
+                    'lu': limit_up, 'ld': _b_limdn, 'st': _b_strong, 'wk': _b_weak,
+                    'total': _bd_total}
+            _hist = [h for h in _hist if isinstance(h, dict) and h.get('d') != _dkey]
+            _hist.append(_row)
+            _hist.sort(key=lambda x: str(x.get('d') or ''))
+            _hist = _hist[-250:]          # 滾動約一年
+            _bd_path.write_text(json.dumps(
+                {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
+                 'history': _hist}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+            print(f"  📊 市場廣度 {_dkey}:漲 {_b_up} / 跌 {_b_down} / 漲停 {limit_up} / 跌停 {_b_limdn}"
+                  f"(共 {_bd_total} 檔)→ breadth.json 累積 {len(_hist)} 日")
+        else:
+            print(f"  ⏭️ 市場廣度只算到 {_bd_total} 檔(<500),本輪不記錄(避免髒點汙染累積線)")
+    except Exception as _e:
+        print(f"  ⚠️ 市場廣度歷史寫入失敗(不影響其他):{str(_e)[:80]}")
+    return limit_up
+
+
 def build_bubble_warning():
     out = {'updated': date.today().isoformat()}
 
@@ -4052,69 +4143,7 @@ def build_bubble_warning():
     #   為什麼放在這個迴圈:它本來就已經走訪全市場每一檔的最新兩根 K 棒算漲停家數,
     #   順便統計上漲/下跌/跌停/強弱勢是零成本(不多打任何一次 API)。
     #   而且用的是**收盤價**,比前端那份 15:41 的盤中快照更準。
-    limit_up = 0
-    _b_up = _b_down = _b_flat = _b_limdn = _b_strong = _b_weak = 0
-    _b_date = ''
-    for f in Path(DATA_DIR).glob('*.json'):
-        sym = f.stem
-        if not (len(sym) == 4 and sym.isdigit()):
-            continue
-        try:
-            raw = json.loads(f.read_text(encoding='utf-8'))
-            if not isinstance(raw, list) or len(raw) < 2:
-                continue
-            c, pc = float(raw[-1]['close']), float(raw[-2]['close'])
-            if pc > 0:
-                _chg = (c - pc) / pc * 100
-                if _chg >= 9.0:
-                    limit_up += 1
-                elif _chg <= -9.0:
-                    _b_limdn += 1
-                if _chg > 0.05:
-                    _b_up += 1
-                elif _chg < -0.05:
-                    _b_down += 1
-                else:
-                    _b_flat += 1
-                if _chg >= 3:
-                    _b_strong += 1
-                elif _chg <= -3:
-                    _b_weak += 1
-                if not _b_date:
-                    _b_date = str(raw[-1].get('date') or '')
-        except Exception:
-            continue
-    # 廣度歷史(獨立檔,append 不覆蓋;靠 daily deploy 的 git archive origin/data 保留)
-    try:
-        _bd_total = _b_up + _b_down + _b_flat
-        if _bd_total >= 500:      # 少於 500 檔代表資料還沒鋪好,不記(避免髒點汙染 ADL)
-            _bd_path = Path(DATA_DIR) / 'breadth.json'
-            _bd = {}
-            if _bd_path.exists():
-                try:
-                    _bd = json.loads(_bd_path.read_text(encoding='utf-8')) or {}
-                except Exception:
-                    _bd = {}
-            _hist = _bd.get('history')
-            if not isinstance(_hist, list):
-                _hist = []
-            _dkey = (_b_date or date.today().strftime('%Y/%m/%d')).replace('-', '/')
-            _row = {'d': _dkey, 'up': _b_up, 'dn': _b_down, 'flat': _b_flat,
-                    'lu': limit_up, 'ld': _b_limdn, 'st': _b_strong, 'wk': _b_weak,
-                    'total': _bd_total}
-            _hist = [h for h in _hist if isinstance(h, dict) and h.get('d') != _dkey]
-            _hist.append(_row)
-            _hist.sort(key=lambda x: str(x.get('d') or ''))
-            _hist = _hist[-250:]          # 滾動約一年
-            _bd_path.write_text(json.dumps(
-                {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
-                 'history': _hist}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-            print(f"  📊 市場廣度 {_dkey}:漲 {_b_up} / 跌 {_b_down} / 漲停 {limit_up} / 跌停 {_b_limdn}"
-                  f"(共 {_bd_total} 檔)→ breadth.json 累積 {len(_hist)} 日")
-        else:
-            print(f"  ⏭️ 市場廣度只算到 {_bd_total} 檔(<500),本輪不記錄(避免髒點汙染累積線)")
-    except Exception as _e:
-        print(f"  ⚠️ 市場廣度歷史寫入失敗(不影響其他):{str(_e)[:80]}")
+    limit_up = build_breadth_history()
     out['junk_count'] = {
         'value': limit_up,
         'label': f'{limit_up} 家漲停',
@@ -5627,6 +5656,10 @@ if __name__ == '__main__':
         # ⚡ V68.3.1 順序修正:govbank/借券「快」(各~1-2分)先跑,避免被最慢的分點迴圈(~29分)
         #    卡到 chips job 的 30 分 timeout 外(前版 govbank 排分點後→從沒跑到就超時,govbank.json 一直缺)
         _safe_step("八大行庫 fetch_govbank_buysell", fetch_govbank_buysell)   # 💎 付費:官股護盤(先跑,快)
+        # 📊 V71.4.8 市場廣度歷史排在最前面 —— 它只讀本地 data/*.json、零 API、幾秒跑完,
+        #    但原本長在最後面的 build_bubble_warning 裡,分點那步被砍就整晚寫不出來(2026-07-29 實測)。
+        #    build_bubble_warning 之後還會再呼叫一次,同一天的 key 會覆蓋不會重複記,跑兩次無害。
+        _safe_step("市場廣度歷史 build_breadth_history", build_breadth_history)
         _safe_step("借券空方 fetch_securities_lending", fetch_securities_lending)  # 💎 付費:借券做空(先跑,快)
         _safe_step("集保分級 fetch_holder_distribution", fetch_holder_distribution)  # 📊 付費:籌碼分佈大戶/散戶(先跑,快)
         # 💎 V69.7.8 付費第二彈(全部快步驟,合計 ~90 次 bulk ≈3-4 分,放分點慢迴圈前)

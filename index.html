@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.7',
+    _APP_VERSION: 'V71.4.8',
     _CHANGELOG: [
+        { v: 'V71.4.8', dt: '2026-07-29', t: '📊 市場廣度歷史:再修一層,這次連「被中途砍掉」也不會丟', d: [
+            '上一版修好了「檔案沒被送上網站」,結果晚上實測發現還有第二層問題:那份統計排在採礦流程的最後面,前面卡著一段要跑 35 分鐘的分點採礦。今晚排程延遲兩小時觸發,把前一輪砍在分點中途 → 後面全部沒跑到,廣度還是沒產出。',
+            '已把這段搬到採礦一開始就做。它只讀本機檔案、不連網、幾秒跑完,本來就沒理由排在後面等。以後就算分點被砍,廣度也已經先存好了。',
+            '順手修正:0050、0056 這種 4 碼 ETF 之前被算進「上漲/下跌家數」。ETF 是一籃子、本來就跟著大盤走,算進去會讓廣度偏向指數,剛好蓋掉這張卡最想抓的「指數漲但多數股票在跌」。證交所的家數統計也不含 ETF。趁歷史還是空的現在改,不會前後不一致。',
+            '騰落線那一行前 2 天原本整段不顯示(會讓人以為又壞了),改成從第 1 天就顯「已累積 N/10 天」。天數不夠時也不會硬報背離訊號。',
+            '另外修一個小的:廣度資料抓失敗時會被記住整個 App 開著的期間都不再重試 → 現在只擋 2 分鐘就自動再試。',
+        ] },
         { v: 'V71.4.7', dt: '2026-07-29', t: '📊 市場廣度「跟昨天比」終於會有資料了', d: [
             '你之前問「市場廣度有沒有比對前一天比較有用」,我做了騰落線(把每天上漲家數減下跌家數累加起來,看買氣是變強還是變弱)。查證後發現:它讀的那個檔案,採礦機其實一直沒有送上網站,所以那張圖從上線到現在都是空的。',
             '原因是採礦設定檔裡那一行後面多打了一個註解,而那個位置的註解不會被當註解,會被當成檔名的一部分 → 找不到檔案 → 但系統只會警告不會報錯,所以每天都顯示採礦成功,東西卻沒送出去。',
@@ -36002,20 +36009,28 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     //   資料源:data/breadth.json(miner.py 每日收盤後寫,滾動 250 個交易日)。
     //   ⚠️ 這是新開始累積的,樣本 <10 天時不顯示結論(誠實標「累積中」),不硬判。
     async _loadBreadthHist() {
-        if (this._breadthHist) return this._breadthHist;
+        // 🐛 V71.4.8 原本抓失敗也會把空陣列存進 this._breadthHist,而 [] 在 JS 是 truthy
+        //   → 這一整個 session 都不會再試一次。檔案剛開始產出的那幾天(或部署延遲)
+        //   會卡成「永遠沒有廣度歷史」,除非使用者自己重開 App。
+        //   改成:只有真的拿到資料才長期快取;失敗只擋 2 分鐘,之後自動重試。
+        if (Array.isArray(this._breadthHist) && this._breadthHist.length) return this._breadthHist;
+        if (this._breadthHistFailAt && (Date.now() - this._breadthHistFailAt) < 120000) return this._breadthHist || [];
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
             const r = await fetch(new URL('data/breadth.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
-            if (r.ok) {
-                const j = await r.json();
-                this._breadthHist = Array.isArray(j?.history) ? j.history : [];
-            } else { this._breadthHist = []; }
-        } catch (_) { this._breadthHist = []; }
+            const j = r.ok ? await r.json() : null;
+            const hist = Array.isArray(j?.history) ? j.history : [];
+            this._breadthHist = hist;
+            this._breadthHistFailAt = hist.length ? null : Date.now();
+        } catch (_) { this._breadthHist = this._breadthHist || []; this._breadthHistFailAt = Date.now(); }
         return this._breadthHist;
     },
     _adlState() {
         const h = this._breadthHist;
-        if (!Array.isArray(h) || h.length < 3) return null;
+        // 🐛 V71.4.8 原本 <3 天直接回 null → 卡上「什麼都不顯示」。
+        //   breadth.json 從 V71.4.7 才真的開始累積,第 1~2 天剛好落在這個盲區,
+        //   使用者會以為功能還是壞的。改成 1 天就回,由 ready 旗標決定顯「累積中」還是真判讀。
+        if (!Array.isArray(h) || h.length < 1) return null;
         let cum = 0;
         const adl = h.map(r => { cum += (+r.up || 0) - (+r.dn || 0); return { d: r.d, v: cum }; });
         const n = adl.length;
@@ -36029,7 +36044,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         try {
             const th = Array.isArray(this.usMacroCache?.twii_history) ? this.usMacroCache.twii_history : [];
             const cl = th.map(r => +r.close).filter(v => v > 0).slice(-days);
-            if (cl.length >= Math.min(10, days)) {
+            // ⚠️ V71.4.8 背離判讀一律等滿 10 天(n>=10)。天數少時 hi/lo 幾乎等於 cur,
+            //   會判出「指數在高點但 ADL 沒跟上」這種毫無資訊量的假背離。
+            if (n >= 10 && cl.length >= Math.min(10, days)) {
                 const pxNow = cl[cl.length - 1], pxHi = Math.max(...cl), pxLo = Math.min(...cl);
                 const nearHi = pxHi > 0 && (pxHi - pxNow) / pxHi < 0.01;   // 指數在近期高點 1% 內
                 const nearLo = pxLo > 0 && (pxNow - pxLo) / pxLo < 0.01;   // 指數在近期低點 1% 內
