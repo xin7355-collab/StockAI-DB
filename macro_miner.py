@@ -184,13 +184,18 @@ def build_macro_events_ai(out):
         '"action":"具體操作建議(留倉與否/部位幾成/盯什麼價位或指標)","level":"✅或⚠️或⛔"}]}\n'
         "focus 只挑最重要的 3-5 個事件(依重要度與逼近程度),不要全列。"
     )
-    # 🧠 V71.3.9 深度判讀走 Gemini,失敗才退回 Groq(兩條都掛才放棄,保留上次解讀)
-    _engine = "gemini"
-    raw = _gemini_chat_mm(sys_msg, user_msg, label="財經行事曆解讀")
+    # ⚡ V71.4.0 夜間自動採礦走「輕量」Groq,深度 Gemini 留給白天手動觸發。
+    #   使用者的用法:晚上採礦每天都跑,用便宜的 Groq 先給一版「快速解讀」就夠;
+    #   白天真的看到某件事覺得重要,再由前端按鈕手動叫 Gemini 深度分析覆蓋。
+    #   這樣 Gemini 額度只花在「你真的在意的那幾次」,不會被每天 5 次的排程燒光。
+    #   (V71.3.9 曾把順序反過來 —— 那會讓每天自動跑都吃 Gemini 額度,不符實際用法。)
+    #   Gemini 仍留著當備援:Groq 全掛時頂上,行事曆解讀不開天窗。
+    _engine = "groq"
+    raw = _groq_chat_mm([{"role": "system", "content": sys_msg},
+                         {"role": "user", "content": user_msg}], label="財經行事曆解讀(夜間輕量)")
     if not raw:
-        _engine = "groq"
-        raw = _groq_chat_mm([{"role": "system", "content": sys_msg},
-                             {"role": "user", "content": user_msg}], label="財經行事曆解讀(Gemini 失敗,退 Groq)")
+        _engine = "gemini"
+        raw = _gemini_chat_mm(sys_msg, user_msg, label="財經行事曆解讀(Groq 失敗,退 Gemini)")
     if not raw:
         return None
     # JSON 防呆:剝除可能的 markdown 圍欄

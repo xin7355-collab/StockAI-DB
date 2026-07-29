@@ -6,11 +6,14 @@
       「深度判讀走 Gemini、輕量翻譯走 Groq」,這一段屬深度判讀,本來就該用 Gemini。
       V71.3.9 改成 Gemini 2.5 Flash 主力 + Groq 備援。
 
+V71.4.0 再修正:使用者實際用法是「夜間排程用便宜的 Groq、白天手動才叫 Gemini」,
+      所以採礦端順序改回 Groq 優先,Gemini 只當備援(深度分析改由前端按鈕觸發)。
+
 驗:
-  ① Gemini 成功 → 用 Gemini,不打 Groq,model 欄標 gemini
-  ② Gemini 失敗 → 自動退 Groq,model 欄標 groq(不能開天窗)
+  ① Groq 成功 → 用 Groq,不打 Gemini(夜間不燒 Gemini 額度)
+  ② Groq 失敗 → 自動退 Gemini(不能開天窗)
   ③ 兩個都失敗 → 回 None(上層保留上次解讀)
-  ④ 沒設 GEMINI key → 直接跳過 Gemini 走 Groq(不浪費一次呼叫)
+  ④ 沒設 Gemini key 且 Groq 掛掉 → 回 None,不亂寫
   ⑤ Gemini 規格正確:safetySettings 四類全 BLOCK_NONE + thinkingBudget=0 + systemInstruction
   ⑥ 回傳被 markdown 圍欄包住也要解析得出來
 """
@@ -92,31 +95,31 @@ def run(gem, groq, gkeys=('g1',), qkeys=('q1',)):
 GROQ_OK = R(200, {"choices": [{"message": {"content": GOOD}}]})
 FAIL = R(500, {"error": "boom"})
 
-# ① Gemini 成功
+# ① Groq 成功(夜間常態)→ 不可動用 Gemini 額度
 r = run(gem_ok(), GROQ_OK)
-assert r and r['model'].startswith('gemini'), f"① model 應標 gemini,實際 {r and r.get('model')}"
-assert calls['groq'] == 0, "① Gemini 成功時不該再打 Groq"
-print(f"✅ ① Gemini 成功 → 用 Gemini({r['model']}),完全不打 Groq")
+assert r and 'llama' in r['model'], f"① model 應標 groq,實際 {r and r.get('model')}"
+assert calls['gemini'] == 0, "① Groq 成功時不該打 Gemini(夜間排程不燒 Gemini 額度)"
+print(f"✅ ① 夜間 Groq 成功({r['model']})→ 完全不碰 Gemini 額度")
 
-# ② Gemini 失敗 → 退 Groq
-r = run(FAIL, GROQ_OK)
-assert r and 'llama' in r['model'], f"② 應退回 Groq,實際 {r and r.get('model')}"
-assert calls['gemini'] >= 1 and calls['groq'] >= 1
-print(f"✅ ② Gemini 掛掉 → 自動退回 Groq({r['model']}),行事曆不開天窗")
+# ② Groq 失敗 → 退 Gemini
+r = run(gem_ok(), FAIL)
+assert r and r['model'].startswith('gemini'), f"② 應退回 Gemini,實際 {r and r.get('model')}"
+assert calls['groq'] >= 1 and calls['gemini'] >= 1
+print(f"✅ ② Groq 掛掉 → 自動退回 Gemini({r['model']}),行事曆不開天窗")
 
 # ③ 兩個都失敗
 r = run(FAIL, FAIL)
 assert r is None, "③ 兩個都失敗應回 None(上層保留上次解讀)"
 print("✅ ③ 兩條都掛 → 回 None,上層保留上次解讀不亂寫")
 
-# ④ 沒設 Gemini key → 不浪費呼叫
-r = run(gem_ok(), GROQ_OK, gkeys=())
+# ④ 沒設 Gemini key 且 Groq 掛掉 → 回 None,不浪費呼叫也不亂寫
+r = run(gem_ok(), FAIL, gkeys=())
 assert calls['gemini'] == 0, "④ 沒 key 不該發出 Gemini 請求"
-assert r and 'llama' in r['model']
-print("✅ ④ 沒設 Gemini 金鑰 → 直接走 Groq,不浪費一次呼叫")
+assert r is None, "④ 兩條都不可用應回 None"
+print("✅ ④ 沒設 Gemini 金鑰 + Groq 掛掉 → 回 None,不浪費呼叫也不亂寫")
 
-# ⑤ Gemini 規格
-run(gem_ok(), GROQ_OK)
+# ⑤ Gemini 規格(走備援路徑時仍須符合專案 Gemini 慣例)
+run(gem_ok(), FAIL)
 p = captured['payload']
 cats = {s['category'] for s in p['safetySettings']}
 assert len(cats) == 4 and all(s['threshold'] == 'BLOCK_NONE' for s in p['safetySettings']), "⑤ safetySettings 不符"

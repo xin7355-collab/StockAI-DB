@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6578,8 +6578,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.9',
+    _APP_VERSION: 'V71.4.0',
     _CHANGELOG: [
+        { v: 'V71.4.0', dt: '2026-07-29', t: '🧠 深度分析改成「你想要才按」', d: [
+            '照你說的改:晚上排程每天自動跑,用便宜的 Groq 給一版快速解讀就好,不燒貴的額度。',
+            '白天你看到某件事覺得重要,財經行事曆下面有一顆「🧠 用深度 AI 再分析一次」,按了才叫 Gemini 做深度判讀,結果放在最上面當主結論。',
+            '⚠️ 快速版那段完整保留、不會被折疊或蓋掉 —— 兩個都看得到你才能自己比對。深度結果當天存著,切頁回來還在,不會重複花額度。',
+        ] },
         { v: 'V71.3.9', dt: '2026-07-29', t: '🚨 亞股重挫會跳出來了 + 財經行事曆 AI 其實一直是壞的', d: [
             '你說「韓股今天慘了但這些資訊都沒出現」—— 查出來資料一直都有(今天韓股 -16.17%、日經 -5.39%),問題是不管跌 1% 還是跌 16%,都只顯示同一行灰色小字,等於有跟沒有一樣。現在改成分三級:小跌維持小字、明顯走弱跳警示框、重挫直接 🚨 閃爍加對策。',
             '順著你問的 AI 升級查下去,挖到一個更嚴重的:財經行事曆的 AI 解讀從上線到現在「一次都沒成功過」。程式呼叫網路的物件名字打錯(從別支檔案複製過來,那邊叫 A 這邊叫 B),每次都出錯又剛好被錯誤處理吃掉,所以只是靜靜地什麼都不產出。已修好。',
@@ -23941,6 +23946,71 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     // 📅 全球重大財經事件日曆渲染(資料來源:macro_risk.json.upcoming_macro_events)
     //    每筆事件兩個按鈕:📚 操作教學(寫死劇本) + 🔍 影響族群(AI 點擊才呼叫,省配額)
     //    🚨 D-1/D-0 高 severity 事件:渲染前自動跳紅色 banner + 預先 fire AI(下次點開即顯快取)
+    // 🧠 V71.4.0 財經行事曆「手動深度分析」
+    //   分工:夜間排程 Groq(便宜、每天跑)→ 白天你覺得重要才按這顆叫 Gemini(貴、只花在刀口上)。
+    //   結果存 localStorage 當天有效,切頁回來不用重跑、也不重複燒額度。
+    _macroDeepKey() {
+        const d = new Date();
+        return `proTerm_macroDeep_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    },
+    _renderMacroDeep(txt, ts) {
+        const box = document.getElementById('macroDeepBox');
+        if (!box || !txt) return;
+        box.innerHTML = `
+            <div class="bg-[#0d1117] border-l-4 border-purple-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="text-[11px] font-black text-purple-200">🧠 深度分析 <span class="text-[9px] text-gray-500 font-normal">你手動要求的·以此為主</span></span>
+                    <span class="text-[9px] text-gray-600">${ts || ''}</span>
+                </div>
+                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>
+            </div>`;
+    },
+    _restoreMacroDeep() {
+        try {
+            const raw = localStorage.getItem(this._macroDeepKey());
+            if (!raw) return;
+            const o = JSON.parse(raw);
+            if (o && o.txt) this._renderMacroDeep(o.txt, o.ts);
+        } catch (_) {}
+    },
+    async _deepAnalyzeMacro() {
+        const btn = document.getElementById('macroDeepBtn');
+        if (this._macroDeepRunning) return;
+        this._macroDeepRunning = true;
+        if (btn) { btn.disabled = true; btn.textContent = '🧠 深度分析中…(約 10-20 秒)'; btn.className = btn.className.replace('hover:bg-purple-800/50', '') + ' opacity-60'; }
+        try {
+            const mr = this._macroRiskCache || {};
+            const evs = (mr.upcoming_macro_events || []).slice(0, 12)
+                .map(e => `・${e.date} ${e.event}(重要度 ${e.level || '中'}${e.days != null ? `,還有 ${e.days} 天` : ''})`).join('\n');
+            if (!evs) { this.showToast?.('⚠️ 目前沒有近期事件可分析'); return; }
+            const N = v => (v == null || isNaN(+v)) ? '—' : (+v);
+            // 🛑 禁 AI 算數鐵則:數字一律由前端算好再塞進 prompt
+            const state = [
+                `加權指數 ${N(this._taiexToday) || '—'}`,
+                `VIX ${N(mr.vix)}`,
+                `韓股 ${N(mr.kospi_chg_pct)}%`,
+                `日經 ${N(mr.nikkei_chg_pct)}%`,
+                `外資現貨 ${N(mr.fi_spot_net)} 億`,
+                `外資台指期 ${N(mr.fi_futures_net)} 口`,
+                `恐懼貪婪 ${N(mr.fear_greed)}`,
+            ].join('、');
+            const rb = this._reboundVerdict ? `反攻條件雷達:${this._reboundVerdict.txt}(${this._reboundVerdict.passN}/${this._reboundVerdict.total} 條通過)` : '';
+            const prompt = `你是台股資深策略分析師,講白話文。\n\n【未來兩週事件】\n${evs}\n\n【目前市場狀態(實測數字,直接引用,禁止自己計算或杜撰任何數字)】\n${state}${rb ? '\n' + rb : ''}\n\n請深度分析(比一般摘要更深入):\n1. 這些事件裡,以「現在這個市場狀態」來看,最該提防的是哪一件?為什麼(講清楚傳導路徑:事件→影響什麼→影響台股哪些族群)。\n2. 有沒有兩件以上的事件會疊加放大風險?時間點怎麼排?\n3. 具體操作:未來兩週的部位建議(幾成)、要盯什麼數字當轉折訊號、什麼情況要立刻降部位。\n\n用條列,每點 2-3 句,講具體不要空話。不確定就說不確定,不要編造市場預期數據。`;
+            const txt = await this._callDeepAI({ prompt, max_tokens: 1400, temperature: 0.4, chain: 'gemini-openrouter' });
+            if (!txt) throw new Error('AI 回空');
+            const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            try { localStorage.setItem(this._macroDeepKey(), JSON.stringify({ txt, ts })); } catch (_) {}
+            this._renderMacroDeep(txt, ts);
+            this.vibrate?.(30);
+        } catch (e) {
+            this.showToast?.('⚠️ 深度分析失敗:' + String(e?.message || e).slice(0, 40));
+        } finally {
+            this._macroDeepRunning = false;
+            const b2 = document.getElementById('macroDeepBtn');
+            if (b2) { b2.disabled = false; b2.textContent = '🧠 用深度 AI 再分析一次(這幾件事我很在意)'; b2.className = 'mt-2 w-full px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors'; }
+        }
+    },
+
     _renderUpcomingMacroEvents(events) {
         const list = document.getElementById('macroEventsList');
         const ts = document.getElementById('macroEventsTs');
@@ -23962,14 +24032,21 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                             ${f.action ? `<div class="text-[10px] text-cyan-300/90 leading-snug mt-0.5">👉 ${String(f.action).replace(/</g, '&lt;')}</div>` : ''}
                         </div>`).join('');
                     aiBox.className = 'mb-2 bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-2.5';
+                    // 🧠 V71.4.0 深度分析(手動):夜間排程用便宜的 Groq 先給快速版,
+                    //   白天你看到某件事覺得重要,再按這顆用 Gemini 深度分析。
+                    //   ⚠️ 依使用者明示:Gemini 結果放最上面當主結論,但**Groq 那段完整保留、不折疊**,
+                    //      兩個都看得到才能自己比對(不是替換掉、也不是收起來)。
                     aiBox.innerHTML = `
+                        <div id="macroDeepBox"></div>
                         <div class="flex items-center justify-between gap-2 mb-1">
-                            <span class="text-[11px] font-black text-amber-300">🤖 這兩週怎麼看 <span class="text-[9px] text-gray-500 font-normal">採礦端 AI 解讀</span></span>
+                            <span class="text-[11px] font-black text-amber-300">⚡ 這兩週怎麼看 <span class="text-[9px] text-gray-500 font-normal">夜間自動·快速版</span></span>
                             <span class="text-[9px] text-gray-600">${this._dW(ai.updated ? String(ai.updated).slice(0, 10) : null, { rel: 1 })}</span>
                         </div>
                         <div class="text-[11px] text-gray-200 leading-relaxed">${String(ai.summary).replace(/</g, '&lt;')}</div>
                         ${rows ? `<div class="mt-1.5 bg-[#0d1117] rounded p-1.5">${rows}</div>` : ''}
+                        <button id="macroDeepBtn" onclick="app._deepAnalyzeMacro()" class="mt-2 w-full px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors">🧠 用深度 AI 再分析一次(這幾件事我很在意)</button>
                         <div class="text-[8px] text-gray-600 mt-1.5">🧮 事件與市場數字由系統精算後餵給 AI,AI 只做影響判讀;非投資建議</div>`;
+                    try { this._restoreMacroDeep(); } catch (_) {}
                     aiBox.classList.remove('hidden');
                 } else { aiBox.classList.add('hidden'); aiBox.innerHTML = ''; }
             }
