@@ -3195,6 +3195,19 @@ def fetch_broker_chips():
                 _need_days = 11 if _is_hot else 3
                 _lookback = 16 if _is_hot else 6
                 seen_dates: set = set()
+                # 🚀 V71.2.9【增量採礦】只補「本地還沒有的日期」——這是 1 把付費金鑰下當天採完的唯一解。
+                #   實測(run 30423842005)證明:
+                #     ・單日全市場批次被官方擋掉 → FinMind 回
+                #       status=400 "parameter data_id can't be none on TaiwanStockTradingDailyReport"
+                #     ・逐檔模式 35 分鐘只更新 143 檔(≈14.7 秒/檔),全市場 2,696 檔要 11 小時
+                #   舊做法每天把 3~11 天「整個窗」重抓一次,但其中只有最新那 1 天是新的,
+                #   其餘早在前幾輪就抓過、也已經存在本地 hist 裡 → 等於每天重複買 2~10 次同樣的資料。
+                #   改成只抓缺的:穩定狀態下每檔每天 1 次 → 全市場 2,696 次 ≈ 28 分(95 次/分),裝得進預算。
+                _have_dates = set()
+                if os.environ.get('FORCE_CHIPS_REFRESH') != '1':
+                    for _h in (existing_obj.get('hist') or []):
+                        if isinstance(_h, dict) and _h.get('d'):
+                            _have_dates.add(str(_h['d']))
                 if _bulk_idx is not None:
                     # 🚀 V71.2.6 批次模式:資料已在記憶體,零 HTTP。
                     #   冷門股仍只留最近 3 個交易日(維持既有 JSON 大小,不讓 gh-pages 暴增),
@@ -3207,6 +3220,11 @@ def fetch_broker_chips():
                 for _d in ([] if _bulk_idx is not None else _recent_finmind_dates(_lookback)):
                     if len(seen_dates) >= _need_days:
                         break
+                    if _d in _have_dates:
+                        # 已經有這天的本地快照 → 不重複買。算進 seen_dates 讓「湊滿 N 天」正確收斂,
+                        # 否則會一路往回翻到 _lookback 底,把省下來的呼叫又花掉。
+                        seen_dates.add(_d)
+                        continue
                     j = fm_paid_get('taiwan_stock_trading_daily_report', f'data_id={sym}&date={_d}') or {}
                     st = j.get('status'); rows = j.get('data') or []
                     if st in (402, 403):
@@ -3225,6 +3243,28 @@ def fetch_broker_chips():
                     time.sleep(0.12)   # 溫柔節流(付費額度高,仍防打太快)
             if data_rows:
                 by_date: dict = {}
+                # 🚀 V71.2.9 增量採礦的另一半:只抓新的一天,舊的日子從本地 hist 還原,
+                #   3/5/10 日週期才算得出來(否則只有 1 天資料,10d 會退化成 1d 完全失真)。
+                #   hist 每天存的是當日前 N 名買/賣分點 [名稱, net, 均價];
+                #   把 avg 還原成 pv/vol(以 |net| 當權重),下面既有的加權均價算式就能一體適用。
+                for _h in (existing_obj.get('hist') or []):
+                    if not isinstance(_h, dict) or not _h.get('d'):
+                        continue
+                    _hd = str(_h['d'])
+                    _slot = by_date.setdefault(_hd, {})
+                    for _arr in list(_h.get('b') or []) + list(_h.get('s') or []):
+                        try:
+                            _nm = str(_arr[0]); _nt = int(_arr[1])
+                            _av = float(_arr[2]) if len(_arr) > 2 and _arr[2] is not None else None
+                        except Exception:
+                            continue
+                        if not _nm or not _nt:
+                            continue
+                        _e = _slot.setdefault(_nm, {'broker_id': '', 'broker_name': _nm,
+                                                    'net': 0, 'buy': 0, 'sel': 0, 'pv': 0.0, 'vol': 0})
+                        _e['net'] += _nt
+                        if _av is not None:
+                            _e['pv'] += _av * abs(_nt); _e['vol'] += abs(_nt)
                 for r in data_rows:
                     d   = r.get('date') or today_str
                     bid = str(r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or '').strip()
@@ -3261,13 +3301,21 @@ def fetch_broker_chips():
                         agg: dict = {}
                         for wd in wdates:
                             for b, e in by_date[wd].items():
-                                a = agg.setdefault(b, {'broker_id': b, 'broker_name': e['broker_name'], 'net': 0, 'buy': 0, 'sel': 0, 'pv': 0.0, 'vol': 0})
+                                # 🚀 V71.2.9 彙總鍵一律正規化成「分點名稱」——
+                                #   新抓的日子以 broker_id 為鍵、從 hist 還原的日子以名稱為鍵,
+                                #   不統一的話同一家分點會被當成兩筆各自累加(淨額直接腰斬/灌水)。
+                                _k = (e.get('broker_name') or b) if not str(e.get('broker_name') or '').isdigit() else b
+                                a = agg.setdefault(_k, {'broker_id': e.get('broker_id') or b,
+                                                        'broker_name': e['broker_name'],
+                                                        'net': 0, 'buy': 0, 'sel': 0, 'pv': 0.0, 'vol': 0})
                                 a['net'] += e['net']
                                 a['buy'] += e.get('buy', 0)
                                 a['sel'] += e.get('sel', 0)
                                 a['pv'] += e.get('pv', 0.0); a['vol'] += e.get('vol', 0)
                                 if e['broker_name'] and not str(e['broker_name']).isdigit():
                                     a['broker_name'] = e['broker_name']
+                                if not a.get('broker_id') and e.get('broker_id'):
+                                    a['broker_id'] = e['broker_id']   # hist 還原的沒有 id,補上新抓到的
                         vals = list(agg.values())
                         for a in vals:   # 💎 均價 + 清掉中間累加欄(縮小 JSON)
                             a['avg'] = round(a['pv'] / a['vol'], 2) if a.get('vol') else None
@@ -3444,7 +3492,10 @@ def fetch_broker_chips():
         try:
             def _compact_side(lst):
                 out = []
-                for x in (lst or [])[:15]:
+                # 🚀 V71.2.9 15 → 25:hist 現在不只給前端看「昨日 vs 今日」,
+                #   還要當增量採礦的「本地歷史底」重算 3/5/10 日週期。
+                #   只留前 15 名的話,長天期彙總會漏掉常駐第 16~25 名的分點。
+                for x in (lst or [])[:25]:
                     nm = x.get('broker_name') or str(x.get('broker_id') or '')
                     net = int(x.get('net') or 0)
                     if nm and not str(nm).isdigit() and net:
@@ -3466,7 +3517,7 @@ def fetch_broker_chips():
                     _hist[-1] = _snap        # 同一交易日重跑 → 覆蓋,不重複
                 else:
                     _hist.append(_snap)
-                _hist = _hist[-10:]          # 只留最近 10 個交易日
+                _hist = _hist[-12:]          # 🚀 V71.2.9 10 → 12:10 日週期要算得完整,得多留 2 天緩衝
             if _hist:
                 output['hist'] = _hist
         except Exception:
