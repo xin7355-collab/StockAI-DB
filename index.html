@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.1',
+    _APP_VERSION: 'V71.5.2',
     _CHANGELOG: [
+        { v: 'V71.5.2', dt: '2026-07-30', t: '📈 美股期貨/台指期改抓「現在的價」(上一版我診斷錯了一半)', d: [
+            '先更正我上一版說錯的地方:我說美股期貨方向反了是因為「舊資料蓋掉新資料」—— 不對。你這次的對照圖裡,美股現貨四雄(道瓊 −2.19%、NASDAQ −1.74%、S&P −1.52%、費半 −5.33%)跟籌碼K線**完全一致**,證明採礦抓到的是最新的,不是舊的。',
+            '真正的原因是取法錯:美股期貨幾乎 24 小時在跑,而程式抓的是「日線最後一根收盤」= 上一個結算價,不是「現在的盤中價」。所以我顯 −1.69%(昨天結算),籌碼K線顯 +0.26%(現在盤中)—— 兩個都是真的,但一個是昨天、一個是現在,而盤前看期貨要的就是現在。',
+            '已改成抓盤中現價,再跟上一個結算價比。台指期同一個毛病(我顯 41,613、真值 39,645,差 1,968 點),一起改。',
+            '這對正逆價差影響很大:41,613 對加權 40,039 算出來是「正價差 +10」(看起來是避險退潮),用真值 39,645 才是「逆價差 −394」(還在搶避險)—— 結論完全相反。',
+            '改法有保險:抓不到盤中就自動退回原本的日線做法,不會變成空白。',
+            '(上一版的「舊資料不准蓋新資料」守門仍然有用 —— 亞股日經/韓股/恆指確實是被舊資料蓋掉的,那條沒有診斷錯。)',
+        ] },
         { v: 'V71.5.1', dt: '2026-07-30', t: '🛡️ 舊資料不准再蓋掉新資料(你拿籌碼K線對照抓到的)', d: [
             '你給的對照圖幫大忙。逐項比對後發現一整組數字都慢一天:韓股我顯 6,024(−10.84%)、籌碼K線 5,663(−5.98%);日經、恆指、台指電子盤也都一樣。',
             '最嚴重的是美股期貨:我顯三大期貨全綠(下跌),實際上清晨已經翻紅。盤前看期貨就是為了判斷今天開盤方向,方向講反等於誤導。',

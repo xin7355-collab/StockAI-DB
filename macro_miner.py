@@ -976,6 +976,76 @@ def fetch_us2y_yield():
 _YF_LAST_DATE: dict = {}   # V71.5.1 ticker → 該筆收盤的資料日期(擋「成功但過期」的覆蓋)
 
 
+def _fetch_yf_future(ticker, name):
+    """期貨/近月合約專用:現在盤中價 vs 上一個結算價。簽章與 _fetch_yf_close 相同(val, chg, err)。
+
+    取法:日線抓結算、30 分 K 抓盤中現價,再由 _pick_live_vs_settle 決定怎麼配對。
+    任何一步失敗都會退回 _fetch_yf_close(等同舊行為,不會比現在更糟)。
+    """
+    import time
+    try:
+        import yfinance as yf
+        time.sleep(0.4)
+        tk = yf.Ticker(ticker)
+        daily = []
+        try:
+            dh = tk.history(period="7d", auto_adjust=False)
+            if dh is not None and not dh.empty:
+                dc = dh["Close"].dropna()
+                daily = [(str(ix.date()), float(v)) for ix, v in dc.items() if v == v]
+        except Exception:
+            daily = []
+        intra = []
+        try:
+            ih = tk.history(period="2d", interval="30m", auto_adjust=False)
+            if ih is not None and not ih.empty:
+                ic = ih["Close"].dropna()
+                intra = [(str(ix.date()), float(v)) for ix, v in ic.items() if v == v]
+        except Exception:
+            intra = []
+        picked = _pick_live_vs_settle(daily, intra)
+        if picked:
+            last, prev, dstr, src = picked
+            if prev and prev > 0 and last == last:
+                chg = round((last - prev) / prev * 100, 2)
+                _YF_LAST_DATE[ticker] = dstr
+                print(f"     [{name}] {src} {last} vs 前結算 {prev} → {chg:+.2f}% ({dstr})")
+                return round(last, 2), chg, None
+    except Exception as e:
+        print(f"     [{name}] 盤中取價失敗({str(e)[:60]}),退回日線")
+    return _fetch_yf_close(ticker, name)
+
+
+def _pick_live_vs_settle(daily, intra):
+    """期貨要的是「現在盤中價 vs 上一個結算價」,不是「上一根日線收盤」。純函式,好測。
+
+    參數:daily / intra 皆為 [(date_str, close)],由舊到新。
+    回傳:(last, prev, date_str, src) 或 None。
+
+    ⚠️ 為什麼需要這支(2026-07-30 使用者拿籌碼K線對照抓到):
+      _fetch_yf_close 用的是 history(period='5d') 的**日線**收盤。
+      美股期貨幾乎 24 小時交易,日線最後一根給的是「上一個結算」,
+      而盤前要看的是「現在這個盤中時段」——兩者方向常常相反:
+        我的值   es_fut 7,339(−1.69%) / nq_fut 27,266(−2.35%) / ym_fut 51,800(−2.16%)
+        真實值   小S&P 7,370(+0.26%) / 小那指 27,447(+0.39%) / 小道瓊 51,899(+0.26%)
+      同一時間美股**現貨**四雄(道瓊/NASDAQ/S&P/費半)全部正確 → 證明不是採礦跑太早,
+      而是「期貨拿日線」這個取法本身就錯。專案註解寫「美股期貨=盤後即時,
+      比昨收更新的隔日開盤風向」,拿結算價等於完全失去這個功能,而且會把方向講反。
+    """
+    if not daily:
+        return None
+    d_date, d_close = daily[-1]
+    if intra:
+        i_date, i_close = intra[-1]
+        if str(i_date) > str(d_date):
+            # 盤中已經進到「比最後一根日線更新的交易日」→ 現在價 vs 上一個結算
+            return (i_close, d_close, str(i_date), 'intraday')
+    # 沒有更新的盤中資料 → 退回日線兩根相比(等同舊行為,不會比現在更糟)
+    if len(daily) >= 2:
+        return (d_close, daily[-2][1], str(d_date), 'daily')
+    return None
+
+
 def _should_keep_old(new_val, new_date, old_val, old_date):
     """V71.5.1 「日期不可倒退」判斷:這次抓到的資料是不是比上次存的還舊?
 
@@ -1185,9 +1255,9 @@ def fetch_tsm_adr():  return _fetch_yf_close("TSM",      "台積電ADR")    # NY
 def fetch_asx_adr():  return _fetch_yf_close("ASX",      "日月光ADR")    # NYSE:ASX(ASE Tech)
 def fetch_umc_adr():  return _fetch_yf_close("UMC",      "聯電ADR")      # NYSE:UMC
 # 💡 V68.8.2 使用者要求:美股期貨(盤後即時風向,比昨收更即時)+ 美債 10 年殖利率(升=科技股壓力)
-def fetch_es_fut():   return _fetch_yf_close("ES=F",     "標普500期貨")   # 小 S&P 期貨
-def fetch_ym_fut():   return _fetch_yf_close("YM=F",     "道瓊期貨")     # 小道瓊期貨
-def fetch_nq_fut():   return _fetch_yf_close("NQ=F",     "那斯達克期貨")  # 小那斯達克期貨(半導體最連動)
+def fetch_es_fut():   return _fetch_yf_future("ES=F",    "標普500期貨")   # 🐛 V71.5.2 改抓盤中現價(日線=上一個結算,方向會相反)
+def fetch_ym_fut():   return _fetch_yf_future("YM=F",    "道瓊期貨")     # 🐛 V71.5.2 同上
+def fetch_nq_fut():   return _fetch_yf_future("NQ=F",    "那斯達克期貨")  # 🐛 V71.5.2 同上(半導體最連動)
 def fetch_ust10y():   return _fetch_yf_close("^TNX",     "美債10年殖利率") # close 值即殖利率%(如 4.25=4.25%)
 
 
@@ -1685,7 +1755,19 @@ def fetch_taifex_tx_now():
     來源:① yfinance ^TXF=F(夜盤含實時報價)→ ② V27.3 TAIFEX 官方 OpenAPI 近月收盤(可靠 fallback)
     回傳:{price, chg, est, error}(est=True 代表只有收盤價、無可靠漲跌方向 → 前端顯「估」)
     """
-    # ① yfinance ^TXF=F(實時 + 含漲跌%)
+    # ① yfinance ^TXF=F
+    #   🐛 V71.5.2 改用 _fetch_yf_future(盤中現價 vs 上一個結算),原本拿日線收盤
+    #      → 台指期電子盤幾乎整晚在跑,日線給的是上一個結算。實測 07/30 清晨顯 41,613(−5.17%),
+    #        真值是 39,645(−1.69%),差 1,968 點;對加權 40,039 從「正價差 +10」變成「逆價差 −394」,
+    #        而正逆價差正是判讀外資空單「真看空 vs 只是避險」的關鍵,方向反了結論會整個反過來。
+    try:
+        _v, _c, _e = _fetch_yf_future("^TXF=F", "台指期TX")
+        if _v is not None and _c is not None:
+            return {"price": round(float(_v), 2), "chg": _c, "est": False,
+                    "date": _YF_LAST_DATE.get("^TXF=F"), "src": "yfinance ^TXF=F(盤中)",
+                    "error": None}
+    except Exception as e:
+        print(f"   ⚠️ 台指期盤中取價失敗:{str(e)[:70]} → 改試日線")
     try:
         import yfinance as yf
         hist = yf.Ticker("^TXF=F").history(period="5d", auto_adjust=False)
