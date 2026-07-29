@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.3.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6576,8 +6576,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.3.6',
+    _APP_VERSION: 'V71.3.7',
     _CHANGELOG: [
+        { v: 'V71.3.7', dt: '2026-07-29', t: '🔍 分點跟單:加搜尋框 + 修好怪名字', d: [
+            '「怎麼沒有永豐」—— 其實有 13 家,是 442 家用電腦排序埋在後面,你捲不到。現在加了搜尋框,打「永豐」就只剩永豐的分點;排序也改成中文順序,純數字代號一律排最後。',
+            '「9182 / 9887 / 9A95」這種只有代號的:分點代號前兩碼就是券商總公司,已改成顯示「群益(9182)」「元大(9887)」「永豐(9A95)」。有些前綴不只一家券商(例如玉山和國泰混在一起),那種就維持顯示代號,不亂猜。',
+            '「?亞 / ?亞網路」是犇亞證券,「犇」是罕用字在資料源那邊就變成問號了,已用對照表補回正確名字。',
+        ] },
         { v: 'V71.3.6', dt: '2026-07-29', t: '🌙 分點不再慢一天:晚上加跑一輪', d: [
             '以前分點永遠慢一個交易日 —— 因為採礦是下午 16:30 跑,那時候證交所當天的分點還沒公布,只抓得到前一天的。所以你週三晚上看到的是週二的籌碼。',
             '現在晚上 20:00 會再跑一輪,那時分點已經出來了。時間表變成:18:30 左右先有 K 線/法人/選股,20:30 左右分點更新成當天的。',
@@ -28088,14 +28093,41 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _brokerPickHtml() {
         const bk = this._brokerBook;
         if (!bk || !bk.brokers) return this._brokerEmpty('🔍 分點資料整備中(採礦完成後顯示)。');
-        const names = [...new Set(Object.values(bk.brokers).map(b => b.name))].sort();
+        // 🔍 V71.3.7 使用者回報「怎麼沒有永豐」—— 其實有 13 家,是被字典序埋在後面找不到。
+        //   ① 排序改中文筆畫/注音(localeCompare zh-Hant),數字代號類一律排到最後
+        //   ② 加搜尋框:打「永豐」就只剩永豐的分點(442 家用捲的根本找不到)
+        //   ③ 名稱經 _brokerDisplayName 修補(純代號補母公司、問號名查修正表)
+        const _rows = Object.entries(bk.brokers)
+            .map(([code, v]) => ({ code, name: this._brokerDisplayName(code, v?.name) }))
+            .filter(x => x.name);
+        const _seen = new Set();
+        const names = _rows.filter(x => !_seen.has(x.name) && _seen.add(x.name)).map(x => x.name)
+            .sort((a, b) => {
+                const na = /^[0-9A-Za-z]/.test(a), nb = /^[0-9A-Za-z]/.test(b);
+                if (na !== nb) return na ? 1 : -1;      // 純代號/英文開頭殿後
+                return a.localeCompare(b, 'zh-Hant');
+            });
         const opts = names.map(n => { const g = this._brokerGodTag(n); return `<option value="${String(n).replace(/"/g, '')}">${g ? '⭐ ' : ''}${this._shortBroker(n)}${g ? ' · ' + g : ''}</option>`; }).join('');
         return `<div class="panel border border-[#30363d] bg-[#0d1117] rounded-lg p-2.5">
             <div class="text-[12px] font-black text-gray-100 mb-1">🔍 分點跟單</div>
             <div class="text-[9px] text-gray-500 mb-1.5">選一家分點,看它的完整檔案:身分標籤 / 歷史勝率 / 今日·5日·10日在買什麼 / 布局vs隔日沖 / 認養股 / 跟單建議</div>
+            <input id="radarBrokerSearch" type="search" inputmode="search" placeholder="🔍 打券商名找,例如:永豐、凱基、元大" oninput="app._filterBrokerSel(this.value)" class="w-full bg-[#161b22] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 mb-1.5 outline-none focus:border-purple-500">
             <select id="radarBrokerSel" onchange="app._renderRadarBroker(this.value)" class="w-full bg-[#161b22] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 mb-2"><option value="">— 選分點(共 ${names.length} 家)—</option>${opts}</select>
             <div id="radarBrokerDetail"><div class="text-[10px] text-gray-600 py-4 text-center">👆 選一家分點,或從其他榜點券商名進來</div></div>
         </div>`;
+    },
+    // 🔍 V71.3.7 分點搜尋:即時過濾下拉選項(442 家用捲的找不到)
+    _filterBrokerSel(kw) {
+        const sel = this._brokerEl('radarBrokerSel'); if (!sel) return;
+        const q = String(kw || '').trim().toLowerCase();
+        let shown = 0;
+        Array.from(sel.options).forEach((o, i) => {
+            if (i === 0) return;                       // 第一個是提示列,永遠留著
+            const hit = !q || o.textContent.toLowerCase().includes(q) || o.value.toLowerCase().includes(q);
+            o.hidden = !hit;                            // hidden 比 display 可靠(iOS Safari 的 select)
+            if (hit) shown++;
+        });
+        if (sel.options[0]) sel.options[0].textContent = q ? `— 符合「${kw}」共 ${shown} 家 —` : `— 選分點(共 ${sel.options.length - 1} 家)—`;
     },
     _openBrokerFromNameFromPage(name) {
         // 券商頁內:切到「🔍 分點跟單」並顯示該分點完整檔案
@@ -28440,6 +28472,55 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🎯 V69.0.1 跟單精選榜:今日最值得跟的主力買盤(合成 行為+勝率+身分+集中度,多家好分點疊加)
     // 券商名精簡:去掉括號戰術註解(摩根大通(⚡小摩…)→摩根大通),不撐版不亂
     _shortBroker(n) { return String(n || '').replace(/[(（].*$/, '').replace(/[-－]總公司$/, '').trim() || String(n || ''); },
+
+    // 🏷️ V71.3.7 分點名稱修補 —— 使用者回報下拉選單裡有「9182 / 9887 / 9A95」純代號、
+    //   還有「?亞 / ?亞網路」這種開頭是問號的怪名字。
+    //
+    //   查出來的兩種成因:
+    //   ① 純代號:資料源沒回名稱 → 我們就原樣存代號。但台股分點代號的**前 2 碼就是券商總公司**,
+    //      實測驗證:9A=永豐金、92=凱基、96=富邦、98=元大、91=群益 都成立。
+    //      → 用「同前綴、已經有名字」的那些反推母公司,顯示成「群益(9182)」而不是光禿禿的數字。
+    //      ⚠️ 但不是每個前綴都單一母公司(實測 88 同時有玉山和國泰)→ 只在「某一家佔七成以上
+    //         且樣本 ≥3」時才敢標,否則維持顯示代號,寧可少標也不標錯。
+    //   ② 問號名:6010/6012 是「犇亞證券」,犇 是罕用字,資料源那邊就已經變成問號了。
+    //      這種只能用已知修正表補;之後若遇到別家同樣狀況,加進 _BROKER_NAME_FIX 即可。
+    _BROKER_NAME_FIX: { '6010': '犇亞', '6012': '犇亞網路' },
+    _brokerParentMap() {
+        if (this._brokerParentCache) return this._brokerParentCache;
+        const bk = this._brokerBook?.brokers || {};
+        const byPrefix = {};
+        Object.entries(bk).forEach(([code, v]) => {
+            const nm = String(v?.name || '').trim();
+            if (!nm || /^[0-9A-Za-z]{3,5}$/.test(nm) || nm.includes('?') || nm.includes('�')) return;
+            // 取名稱最前面「兩個中文字」當母公司代表(永豐/凱基/元大/群益/富邦…)
+            // ⚠️ 不能用 {2,4} 貪婪:「永豐金鳳山」會被抓成「永豐金鳳」,跟「永豐金」分成兩組
+            //    → 每組都湊不到七成,母公司就認不出來(第一版實測就是栽在這)
+            const m = nm.match(/^[一-鿿]{2}/);
+            if (!m) return;
+            const p = String(code).slice(0, 2).toUpperCase();
+            (byPrefix[p] = byPrefix[p] || []).push(m[0]);
+        });
+        const out = {};
+        Object.entries(byPrefix).forEach(([p, arr]) => {
+            if (arr.length < 3) return;
+            const cnt = {};
+            arr.forEach(x => { cnt[x] = (cnt[x] || 0) + 1; });
+            const [best, n] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+            if (n / arr.length >= 0.7) out[p] = best;   // 七成以上同一家才敢認
+        });
+        this._brokerParentCache = out;
+        return out;
+    },
+    // 顯示用名稱:代號沒名字 → 標母公司;問號名 → 查修正表;都沒有就原樣顯示(不編造)
+    _brokerDisplayName(code, name) {
+        const raw = String(name || '').trim();
+        const cd = String(code || '').trim();
+        const fix = this._BROKER_NAME_FIX[cd];
+        if (fix) return raw.includes('?') || !raw ? fix : raw;
+        if (raw && !/^[0-9A-Za-z]{3,5}$/.test(raw) && !raw.includes('?') && !raw.includes('�')) return raw;
+        const parent = this._brokerParentMap()[cd.slice(0, 2).toUpperCase()];
+        return parent ? `${parent}(${cd})` : (raw || cd);
+    },
     _followPicksHtml() {
         const bk = this._brokerBook;
         const picks = (bk && bk.follow_picks) || [];
