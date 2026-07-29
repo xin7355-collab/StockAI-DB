@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.3',
+    _APP_VERSION: 'V71.5.4',
     _CHANGELOG: [
+        { v: 'V71.5.4', dt: '2026-07-30', t: '⚡ 多空計分卡的「當沖比」復活(空了一個多月沒人發現)', d: [
+            '順著剛才的思路把所有資料檔掃了一遍,抓到一個:多空頁計分卡的「當沖比」因子從 6/27 起就一直是「無資料」。',
+            '原因是當沖比其實有兩個檔案,程式讀的是那個已經壞掉的(內容是空的、一個多月沒更新);另一個由完整採礦每天產出、全市場都有的,反而沒人讀。',
+            '兩個檔算法一樣(當沖成交量 ÷ 總成交量),只是欄位名稱不同。已改成優先讀有資料的那個,舊的留作備援。',
+            '寫測試時順手抓到自己的一個坑:程式判斷「有沒有數字」時,空值會被當成 0 → 沒資料的股票會顯示「當沖比 0%」,反而被讀成「浮額極乾淨」,比顯示無資料更糟。已修掉。',
+        ] },
         { v: 'V71.5.3', dt: '2026-07-30', t: '🔑 台指 VIX 真正的原因找到了:採礦機沒拿到金鑰', d: [
             '昨天我猜是「資料來源改名稱」—— 猜錯了。這輪採礦的錯誤訊息從「400」變成「沒有金鑰」,一路追下去發現:每 4 小時的那支採礦有給 FinMind 金鑰、抓得到台指 VIX,但完整採礦那支**沒給**,而完整採礦才是最後把資料推上網站的那個 → 有值的版本每次都被蓋成空的。',
             '所以不是抓不到,是「抓到了又被沒抓到的那版蓋掉」。已補上金鑰。',
@@ -12068,16 +12074,48 @@ const marginByDate = {};
                     return await r.json();
                 } catch { return null; }
             };
-            const [rank, tdcc, dt] = await Promise.all([
+            // 🐛 V71.5.4 當沖比有兩個來源,原本只讀那個「已經死掉」的:
+            //   ・data/day_trade.json (extras_miner,TWSE TWTB4U)→ 實測 payload 是 {} 且
+            //     停在 2026-06-27,多空計分卡的「當沖比」因子從那天起就一直顯示「無資料」。
+            //   ・data/daytrade.json  (miner.py,FinMind 付費 bulk ÷ 日K總量)→ 全市場、每天更新。
+            //   兩者定義相同(當沖成交量 ÷ 總成交量 × 100),單位都是 %,可以直接互換,
+            //   只是欄名不同(ratio_pct vs r)→ 用 _normDayTrade 統一成 ratio_pct。
+            const [rank, tdcc, dtOld, dtNew] = await Promise.all([
                 fetchJson('data/inst_rank.json'),
                 fetchJson('data/tdcc.json'),
                 fetchJson('data/day_trade.json'),
+                fetchJson('data/daytrade.json'),
             ]);
             this._instRankCache = rank;
             this._tdccCache = tdcc;
-            this._dayTradeCache = dt;
+            this._dayTradeCache = this._normDayTrade(dtNew, dtOld);
         })();
         return this._bullBearCachesPromise;
+    },
+
+    // 🔀 V71.5.4 當沖比來源統一:優先用 miner.py 的 daytrade.json(全市場、每天更新),
+    //   抓不到才退回 extras_miner 的 day_trade.json。輸出一律 {data:{sym:{ratio_pct,r5,d}}},
+    //   下游(多空計分卡讀 dt.ratio_pct)零改動。
+    //   ⚠️ 只認「真的有內容」的來源 —— day_trade.json 目前是 {} 但檔案存在,
+    //      若只判 truthy 會挑到空的那個,等於沒修。
+    _normDayTrade(fresh, legacy) {
+        const nz = o => (o && o.data && Object.keys(o.data).length) ? o.data : null;
+        const F = nz(fresh);
+        if (F) {
+            const out = {};
+            for (const k in F) {
+                const r = F[k] || {};
+                // ⚠️ 不可寫 Number(r.r):Number(null)===0、Number('')===0 都會通過 isFinite,
+                //   於是「沒有當沖比」會變成「當沖比 0%」→ 反而被讀成「浮額極乾淨」,比沒資料更糟。
+                const v = (r.r === null || r.r === undefined || r.r === '') ? NaN : Number(r.r);
+                if (Number.isFinite(v)) {
+                    out[k] = { ratio_pct: v, r5: Number.isFinite(+r.r5) ? +r.r5 : null, d: r.d || null };
+                }
+            }
+            if (Object.keys(out).length) return { data: out, src: 'daytrade.json', updated: fresh.updated || null };
+        }
+        const L = nz(legacy);
+        return L ? { data: L, src: 'day_trade.json', updated: legacy.updated || null } : null;
     },
 
     async renderBullBearCard(sym) {
