@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.4.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.4.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.4.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1059,7 +1059,7 @@
                         <li><b class="text-red-300">跌破 5MA</b> → 短線停利出場（夏季趨勢股紀律）</li>
                         <li><b class="text-orange-300">守穩月線</b> → 波段續抱（多頭持股紀律）</li>
                         <li><b class="text-purple-300">跌破月線</b> → 🟠 減碼觀望（剩 1/3 倉）</li>
-                        <li><b class="text-red-300">跌破月線 + 大黑K/島狀反轉</b> → 🔴 全部出場</li>
+                        <li><b class="text-red-300">跌破月線 + 大黑K/島狀反轉</b> → ⛔ 全部出場</li>
                         <li><b class="text-cyan-300">13:25 集合撮合防線</b>：尾盤 5 分鐘觀察大單湧入方向,確認收盤是否站穩防守均線</li>
                     </ul>
                 </div>
@@ -4446,7 +4446,7 @@ const app = {
                 const whale = (A && A.sym === sym && A.pts && A.pts.length >= 5)
                     ? (() => { const b = Math.round(A.big), r = Math.abs(b) + Math.abs(Math.round(A.retail)); return `・大戶淨 ${b >= 0 ? '+' : ''}${b} 張(主導 ${r > 0 ? Math.round(Math.abs(b) / r * 100) : 0}%)`; })() : '';
                 const nm = this.getStockName?.(sym) || sym;
-                const verdict = (v.okN >= 4 && chg > 0) ? '🟢 可考慮零股分批' : v.okN === 3 ? '🟡 觀望再看' : '🔴 先不要加碼';
+                const verdict = (v.okN >= 4 && chg > 0) ? '✅ 可考慮零股分批' : v.okN === 3 ? '⚠️ 觀望再看' : '⛔ 先不要加碼';
                 lines.push(`${nm} 收 ${(+q.price).toFixed(2)}(${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%)・六脈 ${v.okN} 分${whale} → ${verdict}`);
             } catch (_) {}
         }
@@ -4822,17 +4822,10 @@ const app = {
         setBar('dji', data.dji); setBar('sox', data.sox);
         setBar('nvda', data.nvda); setBar('aapl', data.aapl); setBar('msft', data.msft);
         setBar('us02y', data.us02y); setBar('ukoil', data.ukoil); setBar('dxy', data.dxy);
-        // VIX annotation update (same logic as _renderUSBar)
-        if (data.vix?.price != null) {
-            const v = parseFloat(data.vix.price);
-            const annEl = document.getElementById('usBar_vix_annotation_main');
-            if (annEl) {
-                if (v > 30)       { annEl.textContent = '🚨 恐慌！市場極度不安'; annEl.className = 'text-[10px] font-bold text-[#f87171] animate-pulse'; }
-                else if (v > 25)  { annEl.textContent = '🟠 警戒：波動偏大'; annEl.className = 'text-[10px] font-bold text-orange-400'; }
-                else if (v >= 15) { annEl.textContent = '🟡 正常波動'; annEl.className = 'text-[10px] font-bold text-yellow-300'; }
-                else              { annEl.textContent = '🟢 市場平靜'; annEl.className = 'text-[10px] font-bold text-[#4ade80]'; }
-            }
-        }
+        // 🗑️ V71.4.6 這裡原本有一段 VIX 白話註解(恐慌/警戒/正常/平靜),
+        //   但目標元素 usBar_vix_annotation_main 早就隨舊版全球 tab 卡片一起刪了 → 從來沒顯示過。
+        //   不補回來的理由:VIX 的白話解讀在「頂部風險指數跑馬燈」與「盤前體檢」已經各講一次,
+        //   再加第三處就違反使用者的「同一件事只講一次、邏輯不打架」。
         this._checkMarketAlerts();
         // Merge Massive API data into _marketSnapshot for war room
         if (data) {
@@ -5266,8 +5259,8 @@ ${list}
         const segs = [];
         segs.push(score >= 80 ? `🚨 極度恐慌 · 風險指數 ${score}/100 · 嚴控倉位、別接刀`
                 : score >= 60 ? `⛔ 高度風險 · 風險指數 ${score}/100 · 市場壓力明顯,謹慎操作、收緊停利`
-                : score >= 40 ? `🟠 警戒 · 風險指數 ${score}/100 · 別追高、嚴設停損`
-                : `🟢 風險偏低 · 風險指數 ${score}/100 · 環境相對乾淨`);
+                : score >= 40 ? `⚠️ 警戒 · 風險指數 ${score}/100 · 別追高、嚴設停損`
+                : `✅ 風險偏低 · 風險指數 ${score}/100 · 環境相對乾淨`);
         try { const a = this._chuPositionAdvice?.(); if (a) segs.push(`${a.regimeLabel} 建議 ${a.pct} · ${a.advice}`); } catch (_) {}
         try {
             if (typeof mr.jpy_chg_3d === 'number' && mr.jpy_chg_3d < -1.5) segs.push(`💴 日圓3日急升 ${_fs(mr.jpy_chg_3d)},套息平倉,外資恐拋權值股`);
@@ -5675,7 +5668,7 @@ ${list}
             // 跟車總評
             if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 5)  return { txt: '🟢 多檔 ETF 共識加碼,且還沒漲過 → <b>適合跟車</b>',  cls: 'text-green-300 bg-green-900/30 border-green-700' };
             if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 15) return { txt: '🟡 多檔 ETF 加碼但已漲一段,跟車要小心 <b>追高風險</b>', cls: 'text-yellow-300 bg-yellow-900/30 border-yellow-700' };
-            if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct > 15)  return { txt: '🔴 ETF 雖加碼但 <b>抬轎已完</b>,追高勝率低', cls: 'text-red-300 bg-red-900/30 border-red-700' };
+            if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct > 15)  return { txt: '⚠️ ETF 雖加碼但 <b>抬轎已完</b>,追高勝率低', cls: 'text-red-300 bg-red-900/30 border-red-700' };
             if (cntDn + cntOut >= 2 && (cntIn + cntUp) === 0)              return { txt: '⚠️ ETF 在 <b>減碼/換出</b>,法人撤退中,別逆勢', cls: 'text-orange-300 bg-orange-900/30 border-orange-700' };
             return { txt: '💡 訊號分歧或單一 ETF 動作,參考用即可', cls: 'text-gray-300 bg-[#0d1117] border-[#30363d]' };
         })();
@@ -6328,7 +6321,10 @@ ${list}
         if (tabId === 'diag' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
         if (tabId === 'market') {
             // 🧠 還原上次選的子分頁(全球/台股實戰),首次預設台股實戰(本地 App)
-            try { this.switchMarketSubTab(localStorage.getItem('mktSubTab') || 'tw'); } catch(_) {}
+            // 📑 V71.4.6 沒選過時的預設分頁改成「📈 行情」(原本落在中間那格)。
+            //   理由:改版後第一格才是「現在市場在發生什麼」(指數/廣度/狀態機/板塊輪動),
+            //   一進來就落在第二格會讓人以為前面那格沒東西。選過的人照舊記住上次那格。
+            try { this.switchMarketSubTab(localStorage.getItem('mktSubTab') || 'idx'); } catch(_) {}
             this._syncMarketTab();
             try { this.renderMarketRegime(); } catch(_) {}    // 🔄 V67.4 市場狀態機
             try { this._renderIndexRow(); } catch(_) {}      // 📊 V71.4.1 三大指數列(讀既有 DOM,零額外請求)
@@ -6571,8 +6567,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.4.5',
+    _APP_VERSION: 'V71.4.6',
     _CHANGELOG: [
+        { v: 'V71.4.6', dt: '2026-07-29', t: '🚦 修 5 處會讓人看反的紅綠燈 + 大盤頁預設落在「行情」', d: [
+            '你定過一條規矩:🔴🟢 只能代表「漲跌」,不能代表「安全/危險」,不然同一顆紅燈在這張卡是危險、在那張卡是上漲,一定會看反。這次抓到 5 處還在犯規的,全部改掉。',
+            '改成:✅ 安全或可以做 ・ ⚠️ 要注意 ・ ⛔ 別做或危險。例如盤後零股盤點的「🟢 可考慮零股分批 / 🔴 先不要加碼」→「✅ / ⛔」;頂部跑馬燈的「🟢 風險偏低」→「✅ 風險偏低」。',
+            '大盤頁一進去現在會落在第一格「📈 行情」(以前落在中間那格,會讓人以為前面那格沒東西)。你如果自己點過別格,還是記住你上次那格。',
+            '清掉一段從來沒顯示過的程式(恐慌指數的白話說明,它要寫的位置早就被刪了)。VIX 數字本身照常顯示,解讀在跑馬燈跟盤前體檢本來就各有一份,不再重複第三份。',
+        ] },
         { v: 'V71.4.5', dt: '2026-07-29', t: '🏷️ 本益比旁多一句「跟同業比貴還便宜」', d: [
             '基本面 X 光機的「本益比 PE」旁邊本來留了一個空位、一直沒東西。現在會顯示這檔跟同業比起來貴還是便宜,例如「✅ 比同業便宜 33%」「⚠️ 比同業貴 30%」。',
             '為什麼要跟同業比:金融股本益比 10 倍很正常、IC 設計 30 倍也很正常。用「低於 15 就是便宜」那種一刀切,跨產業一定判反。所以改成跟同一個產業的中位數比。',
@@ -10104,18 +10106,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const vEl = document.getElementById('usBar_vix'), vcEl = document.getElementById('usBar_vix_chg');
             if (vEl) vEl.innerHTML = `<span class="${col}">${m.vix.close.toFixed(2)}</span>`;
             if (vcEl) { const sign = m.vix.chg_pct > 0 ? '+' : ''; vcEl.innerHTML = `<span class="${col}">${sign}${m.vix.chg_pct.toFixed(2)}%</span>`; }
-            // 全球 tab
-            const vM = document.getElementById('usBar_vix_main'), vcM = document.getElementById('usBar_vix_chg_main');
-            if (vM) { vM.innerText = m.vix.close.toFixed(2); vM.className = `text-xl font-black font-mono ${col}`; }
-            if (vcM) { const sign = m.vix.chg_pct > 0 ? '+' : ''; vcM.innerText = `${sign}${m.vix.chg_pct.toFixed(2)}%`; vcM.className = `text-xs font-bold mt-0.5 ${col}`; }
-            const annEl = document.getElementById('usBar_vix_annotation_main');
-            if (annEl) {
-                const v = m.vix.close;
-                if (v > 30)       { annEl.textContent = '🚨 恐慌！市場極度不安'; annEl.className = 'text-[9px] font-bold mt-1 text-[#f87171] animate-pulse'; }
-                else if (v > 25)  { annEl.textContent = '🟠 警戒：波動偏大'; annEl.className = 'text-[9px] font-bold mt-1 text-orange-400'; }
-                else if (v >= 15) { annEl.textContent = '🟡 正常波動'; annEl.className = 'text-[9px] font-bold mt-1 text-yellow-300'; }
-                else              { annEl.textContent = '🟢 市場平靜'; annEl.className = 'text-[9px] font-bold mt-1 text-[#4ade80]'; }
-            }
+            // 🗑️ V71.4.6 這裡原本有一段 VIX 白話註解(恐慌/警戒/正常/平靜),
+            //   但目標元素 usBar_vix_annotation_main 早就隨舊版全球 tab 卡片一起刪了 → 從來沒顯示過。
+            //   不補回來的理由:VIX 的白話解讀在「頂部風險指數跑馬燈」與「盤前體檢」已經各講一次,
+            //   再加第三處就違反使用者的「同一件事只講一次、邏輯不打架」。
+            //   同理,上面對 usBar_vix_main / usBar_vix_chg_main 的兩行寫入也一併刪(元素同樣不存在);
+            //   VIX 數字本身仍由上方 usBar_vix / usBar_vix_chg 正常顯示。
         }
         this._updateWarRoom();
         this._marketSnapshot = m;   // 🐛 V38.6 確保 ADR(asx/umc)等就緒供盤前大盤體檢
