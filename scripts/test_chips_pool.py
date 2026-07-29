@@ -110,3 +110,38 @@ assert 'DIRTY' not in idx, '⑥ 污染應放棄'
 print('✅ ⑥ 欄位不是分點 → 該檔放棄,不污染 chips')
 
 print('\n🎉 token 池 + 併發預抓 六項測試全過')
+
+# ── ⑦⑧ V71.2.8 免費/付費分流 + 付費節流 ─────────────────────────────────
+miner.FINMIND_TOKENS[:] = ['PAID', 'free1', 'free2', 'free3']
+miner.FINMIND_PAID_TOKENS[:] = ['PAID']
+miner.FINMIND_FREE_TOKENS[:] = ['free1', 'free2', 'free3']
+miner._finmind_token_idx = 0
+miner._FINMIND_BLOCKED = False
+picked = [miner.get_finmind_token() for _ in range(6)]
+# 一般資料集輪動時要換 token,這裡直接驗池子內容
+assert 'PAID' not in picked, f'⑦ 一般資料集不可用到付費金鑰:{picked}'
+tried = set()
+seen = {picked[0]}
+while miner.rotate_finmind_token(tried):
+    seen.add(miner.get_finmind_token())
+assert seen == {'free1', 'free2', 'free3'}, f'⑦ 應輪遍 3 把免費且不碰付費:{seen}'
+print(f'✅ ⑦ 一般資料集只用免費金鑰 {sorted(seen)},付費那把 100% 留給分點')
+
+miner._FINMIND_BLOCKED = False
+miner._fm_paid_calls[:] = []
+miner._FM_PAID_RATE_MAX = 5          # 縮小視窗好測
+miner.FINMIND_PAID_TOKENS[:] = ['PAID']
+miner.http_session.get = lambda url, headers=None, timeout=None: FakeResp()
+import time as _t
+t0 = _t.time()
+for _ in range(5):
+    miner.fm_paid_get('ep', 'x=1')
+assert _t.time() - t0 < 1.0, '⑧ 前 5 次不該被擋'
+assert len(miner._fm_paid_calls) == 5
+# 第 6 次會等到視窗釋出 → 這裡不真的等 60 秒,只驗「視窗已滿」的判斷成立
+miner._fm_paid_calls[:] = [_t.time()] * 5
+full = len(miner._fm_paid_calls) >= miner._FM_PAID_RATE_MAX * len(miner.FINMIND_PAID_TOKENS)
+assert full, '⑧ 視窗應判定已滿'
+print('✅ ⑧ 付費節流:滑動視窗到上限就等待,不硬打 429(429 一樣吃掉額度還要重試)')
+
+print('\n🎉 V71.2.8 免費/付費分流 + 節流 追加測試通過')

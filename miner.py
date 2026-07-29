@@ -131,6 +131,14 @@ FINMIND_PAID_TOKEN = ''            # 💰 探測時第一把通過付費的 toke
 FINMIND_PAID_TOKENS: list = []
 _fm_paid_idx = 0
 _fm_paid_lock = threading.Lock()
+# 🔑 V71.2.8 免費/付費分流(使用者:1 把付費 999 + 3 把免費)
+#   分點(TaiwanStockTradingDailyReport)是 Sponsor 專屬,免費金鑰**抓不到** → 付費那把是硬天花板。
+#   所以要做的不是「用免費抓分點」(做不到),而是「把免費金鑰扛得動的通通接手」,
+#   讓付費那把的 6,000 req/hr **一滴都不浪費在別的資料集上**。
+#   舊版 fm_request() 是對「全部」token 輪動 → 每 4 次就有 1 次在吃付費額度。
+FINMIND_FREE_TOKENS: list = []      # 探測後:非付費(免費層)的 token
+_FM_PAID_RATE_MAX = int(os.getenv('FM_PAID_RATE_MAX', '95'))   # 付費單把 6000/hr=100/min,留 5% 安全邊
+_fm_paid_calls: list = []           # 最近一分鐘的呼叫時間戳(節流用)
 
 
 def detect_finmind_paid() -> bool:
@@ -178,9 +186,13 @@ def detect_finmind_paid() -> bool:
         mask = (tok[:6] + '…' + tok[-4:]) if len(tok) > 12 else '(短)'
         per_token.append((mask, tok_status, tok_msg))
         last_status, last_msg = tok_status, tok_msg
+    # 🔑 V71.2.8 沒通過付費驗證的 = 免費層 token → 專門去扛「免費也能抓」的資料集,
+    #   把付費那把整整 6,000 req/hr 全部留給分點(Sponsor 專屬,免費金鑰抓不到)。
+    FINMIND_FREE_TOKENS[:] = [t for t in FINMIND_TOKENS if t not in FINMIND_PAID_TOKENS]
     if FINMIND_PAID:
-        print(f'💰 FinMind:付費(Sponsor)有效 → {len(FINMIND_PAID_TOKENS)}/{len(FINMIND_TOKENS)} 把 token 可用'
-              f'(理論額度 {len(FINMIND_PAID_TOKENS) * 6000:,} req/hr;舊版只用 1 把 = 6,000)')
+        print(f'💰 FinMind:付費(Sponsor)有效 → 付費 {len(FINMIND_PAID_TOKENS)} 把 / 免費 {len(FINMIND_FREE_TOKENS)} 把'
+              f'(分點可用額度 {len(FINMIND_PAID_TOKENS) * 6000:,} req/hr;'
+              f'一般資料集改由免費金鑰扛,不再吃掉分點額度)')
     if not FINMIND_PAID:
         illegal = any('illegal' in (m or '').lower() for _, _, m in per_token)
         need_pay = any(s in (402, 403) for _, s, _ in per_token)
@@ -215,6 +227,19 @@ def fm_paid_get(endpoint: str, params: str, timeout: int = 15):
         tok = FINMIND_PAID_TOKEN or (FINMIND_TOKENS[0] if FINMIND_TOKENS else '')
     if not tok:
         return None
+    # 🚦 V71.2.8 付費額度節流:單把 6,000 req/hr = 100 req/min。
+    #   只有 1 把付費金鑰時,超打就是 429 —— 而 429 一樣消耗掉這一分鐘的機會、還要重試,
+    #   等於「打越快、拿到越少」。這裡用滑動視窗把速率壓在 95/min/把,寧可等也不要撞牆。
+    _cap = _FM_PAID_RATE_MAX * max(1, len(FINMIND_PAID_TOKENS))
+    while True:
+        with _fm_paid_lock:
+            _now = time.time()
+            _fm_paid_calls[:] = [t for t in _fm_paid_calls if _now - t < 60.0]
+            if len(_fm_paid_calls) < _cap:
+                _fm_paid_calls.append(_now)
+                break
+            _wait = 60.0 - (_now - _fm_paid_calls[0]) + 0.05
+        time.sleep(max(0.05, min(_wait, 5.0)))
     url = f'https://api.finmindtrade.com/api/v4/{endpoint}?{params}'
     hdrs = {**_rnd_hdrs(), 'Authorization': f'Bearer {tok}'}
     try:
@@ -225,10 +250,16 @@ def fm_paid_get(endpoint: str, params: str, timeout: int = 15):
 
 
 def get_finmind_token() -> str:
-    """[Token 輪動] 取得目前輪動中的 FinMind Token；斷路器觸發後回傳空字串"""
+    """[Token 輪動] 取得目前輪動中的 FinMind Token；斷路器觸發後回傳空字串。
+
+    🔑 V71.2.8:一般資料集(法人/融資券/營收/財報/PER/股利…)**優先用免費金鑰**,
+       把付費那把的 6,000 req/hr 完整留給 Sponsor 專屬的分點。
+       沒有免費金鑰時才退回全部 token(行為同舊版)。
+    """
     if _FINMIND_BLOCKED or not FINMIND_TOKENS:
         return ''
-    return FINMIND_TOKENS[_finmind_token_idx % len(FINMIND_TOKENS)]
+    pool = FINMIND_FREE_TOKENS or FINMIND_TOKENS
+    return pool[_finmind_token_idx % len(pool)]
 
 
 def rotate_finmind_token(tried: set) -> bool:
@@ -238,14 +269,19 @@ def rotate_finmind_token(tried: set) -> bool:
     回傳 False 表示所有 Token 均已嘗試（觸發斷路器）。
     """
     global _finmind_token_idx, _FINMIND_BLOCKED
-    tried.add(_finmind_token_idx % len(FINMIND_TOKENS))
-    _finmind_token_idx = (_finmind_token_idx + 1) % len(FINMIND_TOKENS)
-    if len(tried) >= len(FINMIND_TOKENS):
-        # [Token 輪動] 終極斷路器：4 組 Token 全數耗盡，停止 FinMind 呼叫
+    # 🔑 V71.2.8 輪動範圍要跟 get_finmind_token() 用同一個池子(免費優先),
+    #    否則會出現「取 free 池、卻用 all 池的長度取模」→ 有些 token 永遠輪不到、
+    #    斷路器也會在錯的次數觸發。
+    pool = FINMIND_FREE_TOKENS or FINMIND_TOKENS
+    n = max(1, len(pool))
+    tried.add(_finmind_token_idx % n)
+    _finmind_token_idx = (_finmind_token_idx + 1) % n
+    if len(tried) >= n:
+        # [Token 輪動] 終極斷路器:池內 token 全數耗盡,停止 FinMind 呼叫
         _FINMIND_BLOCKED = True
-        print(f'  🚫 [Token 輪動] 所有 {len(FINMIND_TOKENS)} 組 FinMind Token 均已耗盡，觸發斷路器')
+        print(f'  🚫 [Token 輪動] 所有 {n} 組 FinMind Token 均已耗盡，觸發斷路器')
         return False
-    print(f'  🔄 [Token 輪動] 切換至 Token #{_finmind_token_idx + 1}（共 {len(FINMIND_TOKENS)} 組）')
+    print(f'  🔄 [Token 輪動] 切換至 Token #{_finmind_token_idx + 1}（共 {n} 組）')
     return True
 
 
