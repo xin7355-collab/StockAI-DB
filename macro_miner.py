@@ -600,6 +600,129 @@ def fetch_us10y_yield():
         return None, str(e)[:100]
 
 
+def _bfi82u_parse_rwd(j):
+    """把 rwd BFI82U 的 JSON(array-of-arrays)解成 [(單位名稱, 買賣差額_元)]。
+
+    抽成純函式的理由:本機沙箱連不到 twse.com.tw(Host not in allowlist),
+    只有把「解析」跟「連線」切開,解析邏輯才測得到(同 _pick_live_vs_settle 的做法)。
+    """
+    data = (j or {}).get("data") or []
+    if not data:
+        return []
+    fields = j.get("fields") or []
+    diff_idx = None
+    for i, f in enumerate(fields):
+        f = (f or "").replace(" ", "")
+        if "差額" in f or "買賣超" in f:
+            diff_idx = i
+            break
+    if diff_idx is None:
+        diff_idx = len(data[0]) - 1 if len(data[0]) > 1 else None
+    if diff_idx is None:
+        return []
+    rows = []
+    for row in data:
+        try:
+            rows.append(((row[0] or "").replace(" ", ""), int(str(row[diff_idx]).replace(",", ""))))
+        except (ValueError, IndexError, TypeError):
+            pass
+    return rows
+
+
+def _foreign_net_100m(rows):
+    """rows → (外資買賣超_億元, 命中的列)。找不到外資列回 (None, [])。
+    寬鬆比對「外資」字頭,含「外資及陸資」「外資自營商」(跟 fetch_foreign_spot_net 同規則)。"""
+    import re
+    hit = [(n, v) for n, v in (rows or []) if re.search(r"外資", n or "")]
+    if not hit:
+        return None, []
+    return round(sum(v for _, v in hit) / 1e8, 2), hit
+
+
+def _month_weekdays(tw):
+    """當月 1 號 ~ tw(含)的所有平日(YYYYMMDD)。純函式,供月累計備援逐日加總用。
+    只濾週末;國定假日靠 TWSE 回「沒有符合條件的資料」自行辨識。"""
+    out = []
+    d = tw.replace(day=1)
+    while d.date() <= tw.date():
+        if d.weekday() < 5:
+            out.append(d.strftime("%Y%m%d"))
+        d += timedelta(days=1)
+    return out
+
+
+def fetch_foreign_month_net(today=None):
+    """📅 V71.6.1 — 外資現貨「當月累計」買賣超(億元)。
+
+    為什麼要有:單看「今天賣 222 億」看不出輕重,法人**月累計**才是市場最常引用的
+    水位指標(理財達人秀 2026/07 引用約 −7,500 億)。
+
+    ⛔ 為什麼不能自己把 risk_history.json 的每日值加總:
+       那份是「每天跑採礦時的快照」,上游當天還沒更新就會沿用前值 —— 實測 07/09、
+       07/10、07/13 都是 −472.53,07/29、07/30 都是 −222.52。加總會重複計算、
+       嚴重灌水。所以一律向 TWSE 官方要月報的累計值。
+
+    回 (net_100m, month_str, source, days, error)。
+    拿不到就回 None —— **寧可不顯示,也不給半套的假累計**(使用者鐵則:不做假數字)。
+    """
+    tw = datetime.now(timezone(timedelta(hours=8))) if today is None else today
+    ym = tw.strftime("%Y%m")
+
+    # ① 官方月報:一次就回「該月累計」,最準也最省請求
+    for p in ("monthDate", "date"):
+        try:
+            url = (f"https://www.twse.com.tw/rwd/zh/fund/BFI82U"
+                   f"?{p}={ym}01&type=month&response=json")
+            r = http.get(url, headers=HEADERS, timeout=12, allow_redirects=True)
+            if r.status_code != 200:
+                print(f"  [BFI82U月報/{p}] HTTP {r.status_code}")
+                continue
+            j = r.json()
+            net, hit = _foreign_net_100m(_bfi82u_parse_rwd(j))
+            if net is not None:
+                print(f"  [BFI82U月報/{p}] {ym} 外資累計 {net} 億(命中 {hit})")
+                return net, ym, f"twse-month:{p}", None, None
+            print(f"  [BFI82U月報/{p}] 解析不到外資列,stat={j.get('stat')} "
+                  f"fields={j.get('fields')}")
+        except Exception as e:
+            print(f"  ⚠️ BFI82U 月報({p}) 失敗:{e}")
+
+    # ② 備援:逐日加總。**只有「一天都沒漏」才回傳** ——
+    #    少抓幾天會讓累計偏小(把賣超少算),那比「顯示不出來」更糟。
+    days = _month_weekdays(tw)
+    total, ok, holiday, fail = 0.0, 0, 0, 0
+    for d in days:
+        try:
+            url = (f"https://www.twse.com.tw/rwd/zh/fund/BFI82U"
+                   f"?dayDate={d}&type=day&response=json")
+            r = http.get(url, headers=HEADERS, timeout=10, allow_redirects=True)
+            if r.status_code != 200:
+                fail += 1
+                continue
+            j = r.json()
+            rows = _bfi82u_parse_rwd(j)
+            if not rows:
+                # TWSE 對休市日會回 stat「沒有符合條件的資料」→ 那是正常的空,不是失敗
+                if "沒有" in str(j.get("stat") or "") or (j.get("stat") or "").upper() != "OK":
+                    holiday += 1
+                else:
+                    fail += 1
+                continue
+            net, _ = _foreign_net_100m(rows)
+            if net is None:
+                fail += 1
+                continue
+            total += net
+            ok += 1
+        except Exception as e:
+            fail += 1
+            print(f"  ⚠️ BFI82U 日報 {d} 失敗:{e}")
+    print(f"  [BFI82U月累計/逐日] {ym} ok={ok} 休市={holiday} 失敗={fail}")
+    if ok and not fail:
+        return round(total, 2), ym, "twse-daily-sum", ok, None
+    return None, ym, None, ok, f"月累計不完整(成功{ok}/失敗{fail})"
+
+
 def _fetch_bfi82u_rows():
     """🌅 V41.3 — TWSE 三大法人買賣金額統計表(BFI82U)統一抓取器。
     回 ([(單位名稱, 買賣差額_元), ...], date_str, error)。
@@ -645,22 +768,7 @@ def _fetch_bfi82u_rows():
         date_str = j.get("date") or datetime.now(timezone(timedelta(hours=8))).strftime("%Y%m%d")  # 🐛 修:台北時區
         if not data:
             return None, date_str, "BFI82U 回 0 列"
-        fields = j.get("fields") or []
-        diff_idx = None
-        for i, f in enumerate(fields):
-            f = (f or "").replace(" ", "")
-            if "差額" in f or "買賣超" in f:
-                diff_idx = i
-                break
-        if diff_idx is None:
-            diff_idx = len(data[0]) - 1 if data and len(data[0]) > 1 else None
-        rows = []
-        for row in data:
-            name = (row[0] or "").replace(" ", "")
-            try:
-                rows.append((name, int(str(row[diff_idx]).replace(",", ""))))
-            except (ValueError, IndexError, TypeError):
-                pass
+        rows = _bfi82u_parse_rwd(j)   # V71.6.1 抽成純函式共用(月累計也走同一支解析)
         if not rows:
             return None, date_str, "解析 0 列"
         print(f"  [BFI82U/rwd] 命中 {len(rows)} 列")
@@ -673,21 +781,15 @@ def _fetch_bfi82u_rows():
 def fetch_foreign_spot_net():
     """TWSE 三大法人買賣超 — 外資（買賣差額，單位：億元）。
     寬鬆比對「外資」字頭,累加所有外資相關列(含「外資及陸資」「外資自營商」)。"""
-    import re
     rows, date_str, err = _fetch_bfi82u_rows()
     if not rows:
         return None, date_str, err
-    total_net_yuan = 0
-    matched_rows = []
-    for name, val in rows:
-        if re.search(r"外資", name):
-            total_net_yuan += val
-            matched_rows.append((name, val))
-    if not matched_rows:
+    net, matched_rows = _foreign_net_100m(rows)   # V71.6.1 抽成純函式共用
+    if net is None:
         print(f"  [BFI82U] 找不到外資列,全部 names={[n for n, _ in rows]}")
         return None, date_str, "找不到外資列"
-    print(f"  [BFI82U] 外資命中:{matched_rows}（合計 {total_net_yuan / 1e8:.2f} 億）")
-    return round(total_net_yuan / 1e8, 2), date_str, None  # 億元
+    print(f"  [BFI82U] 外資命中:{matched_rows}（合計 {net:.2f} 億）")
+    return net, date_str, None  # 億元
 
 
 def fetch_three_inst_net():
@@ -2132,6 +2234,12 @@ def main():
         "us10y_yield": None,
         "us10y_error": None,
         "fi_spot_net":     None,   # 億元
+        # 📅 V71.6.1 外資現貨「當月累計」(億元)。單日看不出輕重,月累計才是市場常引用的水位
+        "fi_spot_mtd":       None,
+        "fi_spot_mtd_month": None,   # YYYYMM
+        "fi_spot_mtd_days":  None,   # 逐日加總時的交易日數(月報路徑為 None)
+        "fi_spot_mtd_src":   None,   # twse-month:* / twse-daily-sum
+        "fi_spot_mtd_error": None,
         "fi_spot_date":    None,
         "fi_spot_error":   None,
         "fi_futures_net":  None,   # 口數（淨）
@@ -2202,6 +2310,12 @@ def main():
     spot, sdate, serr = fetch_foreign_spot_net()
     out["fi_spot_net"], out["fi_spot_date"], out["fi_spot_error"] = spot, sdate, serr
     print(f"     → {spot} 億（{sdate}, err={serr}）")
+
+    # 📅 V71.6.1 外資「當月累計」(向官方月報要,不自己加總每日快照 —— 快照會沿用前值造成重複計算)
+    _mtd, _mym, _msrc, _mdays, _merr = fetch_foreign_month_net()
+    out["fi_spot_mtd"], out["fi_spot_mtd_month"] = _mtd, _mym
+    out["fi_spot_mtd_src"], out["fi_spot_mtd_days"], out["fi_spot_mtd_error"] = _msrc, _mdays, _merr
+    print(f"     → {_mym} 月累計 {_mtd} 億（src={_msrc}, err={_merr}）")
 
     # 🌅 V36.8 — 三大法人(投信/自營商/合計)買賣超,供盤前大盤體檢
     inst3, idate, ierr = fetch_three_inst_net()
@@ -2482,6 +2596,8 @@ def main():
                         # 🌅 V41.13 三大法人(投信/自營/合計)也納入斷崖防護(V36.8 加了欄位卻漏加保護 → 單次 307 就消失)
                         "fi_trust_net", "fi_dealer_net", "fi_total_net",
                         "fi_spot_date", "fi_three_date",
+                        # 📅 V71.6.1 月累計也要斷崖防護(單次 307 就消失的話,卡片會忽有忽無)
+                        "fi_spot_mtd", "fi_spot_mtd_month", "fi_spot_mtd_src", "fi_spot_mtd_days",
                         "usdtwd", "usdtwd_chg_pct", "usdtwd_chg_5d",
                         "krw", "krw_chg_pct", "krw_chg_5d", "cny", "cny_chg_pct", "cny_chg_5d",
                         "fear_greed", "fear_greed_label",
@@ -2511,6 +2627,16 @@ def main():
                 if out.get(key) is None and prev.get(key) is not None:
                     out[key] = prev[key]
                     patched.append(key)
+            # 📅 V71.6.1 月累計的斷崖防護只能在「同一個月內」沿用。
+            #    跨月了還沿用上個月的累計 → 8/3 會顯示「7月累計 −7,582 億」,月份對但語意錯
+            #    (使用者要的是「這個月賣多少」)。跨月且本輪沒抓到 → 整組清空,卡片自己隱藏。
+            _now_ym = datetime.now(timezone(timedelta(hours=8))).strftime("%Y%m")
+            if out.get("fi_spot_mtd_month") and out["fi_spot_mtd_month"] != _now_ym:
+                print(f"  📅 月累計是 {out['fi_spot_mtd_month']} 而非本月 {_now_ym} → 清空不沿用")
+                for _k in ("fi_spot_mtd", "fi_spot_mtd_month", "fi_spot_mtd_src", "fi_spot_mtd_days"):
+                    out[_k] = None
+                    if _k in patched:
+                        patched.remove(_k)
             if patched:
                 out["_from_cache_yesterday"] = patched
                 print(f"  🛡️ 斷崖防護：{len(patched)} 個欄位用昨天 cache 補值 → {patched}")
@@ -2651,6 +2777,11 @@ def main():
             'vix': out.get('vix'),
             'sp500_chg_pct': out.get('sp500_chg_pct'),
             'fi_spot_net': out.get('fi_spot_net'),
+            # 📅 V71.6.1 也存「當月累計」官方值。
+            #   ⚠️ 存這欄不是為了日後加總(那會重複計算,見 fetch_foreign_month_net 的說明),
+            #      而是為了日後能看「同一個月內累計怎麼一天一天堆上去」的軌跡。
+            'fi_spot_mtd': out.get('fi_spot_mtd'),
+            'fi_spot_mtd_month': out.get('fi_spot_mtd_month'),
             'fi_futures_net': out.get('fi_futures_net'),
             'retail_ls_pct': out.get('retail_ls_pct'),
             'taifex_backwardation': out.get('taifex_backwardation'),

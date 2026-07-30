@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.6.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6578,8 +6578,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.6.0',
+    _APP_VERSION: 'V71.6.1',
     _CHANGELOG: [
+        { v: 'V71.6.1', dt: '2026-07-30', t: '📅 外資「這個月累計買賣超」上線(單日數字看不出輕重)', d: [
+            '外資現貨那格多一行「7月累計賣超 X,XXX 億」—— 只看今天賣 222 億看不出輕重,月累計才看得出這個月外資是不是一直在撤。',
+            '數字向證交所官方「月報」要,不是把每天的值自己加起來 —— 每日快照遇到上游沒更新會沿用前一天,加總會重複計算(實測 7/9、7/10、7/13 都是同一個數字)。',
+            '首席 AI、新聞綜合分析、事件深度分析都吃到這個水位,判外資態度不會再只看單日。',
+            '抓不到就完全不顯示,不給半套的累計數字。',
+        ] },
         { v: 'V71.6.0', dt: '2026-07-30', t: '🧠 新聞加「綜合分析」+ 改名 + 修一個利多利空顏色反了的 bug', d: [
             '① 你要的綜合分析做好了:新聞清單上方多一顆「🧠 綜合分析:這些新聞對台股的意思」。原本每則右邊的「🔎 查」是一則一則問,看不出主線;這顆是把**全部新聞 + 當下已經算好的盤面數字**(加權漲跌、上漲/下跌家數、漲停跌停、成交金額、外資現貨期貨、融資去槓桿、反攻雷達結論)一起餵給深度 AI。',
             '它會回答五件事:一句話定調偏多偏空 → 主線是哪一條(還是各自獨立)→ 實質影響哪些族群(而且要分清「整個族群」還是「只有個別公司」)→ **有沒有「新聞利多但盤面沒反映」的落差** → 哪幾則其實是雜訊不用理。',
@@ -15056,6 +15062,11 @@ const marginByDate = {};
         }
         // 🎯 V43.2 外資現貨連續買/賣超天數 badge
         const fiStreakTxt = fiStreak ? ` <span class="text-[9px] ${fiStreak.dir > 0 ? 'text-red-400' : 'text-green-400'} font-bold">・連${fiStreak.dir > 0 ? '買' : '賣'}${fiStreak.days}天</span>` : '';
+        // 📅 V71.6.1 外資「當月累計」— 唯一真相來源 _fiMtdStr()(卡片/首席AI/新聞綜合分析共用同一支)
+        const _mtd = this._fiMtdStr?.();
+        const fiMtdTxt = _mtd
+            ? `<div class="text-[9px] ${_mtd.n >= 0 ? 'text-red-300' : 'text-green-300'} font-mono mt-0.5">${_mtd.txt}</div>`
+            : '';
 
         // 🎯 V43.1 大盤關鍵壓力/支撐(從 twii_history 算,對標專業盤前圖)
         let levelsHtml = '';
@@ -15186,7 +15197,7 @@ const marginByDate = {};
                 <div class="border-t border-[#21262d] pt-1.5">
                     <div class="text-[9px] text-gray-600 font-bold mb-1">🏦 外資/法人籌碼</div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                        ${chipCell('🌐 外資現貨', fiSpotLine + fiStreakTxt)}
+                        ${chipCell('🌐 外資現貨', fiSpotLine + fiStreakTxt + fiMtdTxt)}
                         ${chipCell('🎯 外資台指期', fiLine)}
                         ${chipCell('🏦 投信', yiLine(fiTrust))}
                         ${chipCell('🏢 自營商', yiLine(fiDealer))}
@@ -24318,6 +24329,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const adl = this._adlState?.();
         if (adl && adl.ready && adl.chg5 != null) f.push(`累積騰落線近 5 日 ${adl.chg5 >= 0 ? '+' : ''}${Math.round(adl.chg5)}`);
         if (N(mr.fi_spot_net) != null) f.push(`外資現貨 ${N(mr.fi_spot_net)} 億`);
+        const _fmtd = this._fiMtdStr?.();
+        if (_fmtd) f.push(`外資${_fmtd.txt}`);   // 📅 V71.6.1 月累計水位(單日看不出輕重)
         if (N(mr.fi_futures_net) != null) f.push(`外資台指期未平倉 ${N(mr.fi_futures_net)} 口`);
         const dl = this._deleverProgress?.();
         if (dl) f.push(`融資自高點 ${dl.mgDrop.toFixed(1)}% vs 指數 ${dl.idxDrop.toFixed(1)}%(去槓桿比 ${dl.ratio.toFixed(2)})`);
@@ -24417,6 +24430,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 `韓股 ${N(mr.kospi_chg_pct)}%`,
                 `日經 ${N(mr.nikkei_chg_pct)}%`,
                 `外資現貨 ${N(mr.fi_spot_net)} 億`,
+                ...(this._fiMtdStr?.() ? [`外資${this._fiMtdStr().txt}`] : []),   // 📅 V71.6.1
                 `外資台指期 ${N(mr.fi_futures_net)} 口`,
                 `恐懼貪婪 ${N(mr.fear_greed)}`,
             ].join('、');
@@ -35674,7 +35688,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 💱 V57.8 台幣附 5 日趨勢(貶=外資提款風向),讓首席 AI 判讀有據
         const twdStr    = fmtMr(mr.usdtwd) + (Number.isFinite(+mr.usdtwd_chg_5d) ? `(5日${+mr.usdtwd_chg_5d > 0 ? '貶' : '升'}${Math.abs(+mr.usdtwd_chg_5d).toFixed(1)}%${+mr.usdtwd_chg_5d >= 1 ? ',外資匯出提款風向' : ''})` : '');
         const backStr   = fmtMr(mr.taifex_backwardation);
-        const fiSpotStr = mr.fi_spot_net == null ? '待採' : `${mr.fi_spot_net > 0 ? '+' : ''}${mr.fi_spot_net} 億`;
+        // 📅 V71.6.1 附「當月累計」:首席 AI 判外資態度時,單日數字沒有水位參考會判太輕
+        const fiSpotStr = (mr.fi_spot_net == null ? '待採' : `${mr.fi_spot_net > 0 ? '+' : ''}${mr.fi_spot_net} 億`)
+                        + (this._fiMtdStr?.() ? `(${this._fiMtdStr().txt})` : '');
         // 🌍 全球 8 巨頭脈動（macro_risk.json 新採欄位）
         const bigPlayerLines = [
             `🪙 黃金 ${fmtMr(mr.gold)} ${fmtChg(mr.gold_chg_pct)}`,
@@ -36428,6 +36444,25 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             this._breadthHistFailAt = hist.length ? null : Date.now();
         } catch (_) { this._breadthHist = this._breadthHist || []; this._breadthHistFailAt = Date.now(); }
         return this._breadthHist;
+    },
+    // 📅 V71.6.1 外資「當月累計」買賣超 —— macro_risk.json 的 fi_spot_mtd(億,TWSE 官方月報)
+    //   為什麼要有:單日「賣 222 億」看不出輕重,月累計「賣超 7,582 億」才看得出這個月外資一直在撤。
+    //   ⛔ 唯一真相來源就是這支 —— 卡片、首席 AI、新聞綜合分析全部呼叫它,
+    //      避免「同一個數字全 App 有三種寫法」(使用者鐵則:邏輯不打架)。
+    //   ⛔ 也不可自己加總 risk_history 的每日值:那是快照,上游沒更新會沿用前值
+    //      (實測 07/09·07/10·07/13 都是 −472.53)→ 加總會重複計算。
+    //   拿不到 → 回 null,呼叫端完全不顯示(不做半套假累計)。
+    _fiMtdStr() {
+        const mr = this._macroRiskCache || {};
+        const v = mr.fi_spot_mtd, ym = String(mr.fi_spot_mtd_month || '');
+        if (v == null || v === '' || !Number.isFinite(+v) || !/^\d{6}$/.test(ym)) return null;
+        const n = +v;
+        return {
+            n,
+            month: +ym.slice(4, 6),
+            txt: `${+ym.slice(4, 6)}月累計${n >= 0 ? '買超' : '賣超'} `
+               + `${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })} 億`,
+        };
     },
     // 💰 V71.5.6 大盤量能(全市場成交金額)—— 資料源 breadth.json 的 amt(單位:億)
     //   為什麼需要:^TWII 的 volume 一律 0(證交所端點只給 OHLC),大盤量能本來算不出來。
