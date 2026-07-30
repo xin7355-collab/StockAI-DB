@@ -1239,18 +1239,41 @@ def aggregate_industry_pe(fund_cache: dict, industry_map: dict) -> dict:
 
 # V16.2 — 全市場 P/B 分位數(供前端動態判斷取代固定 <2/>5 門檻)
 def compute_market_pb_percentiles(fund_cache: dict) -> dict:
-    pbs = []
-    for fund in (fund_cache or {}).values():
+    """全市場 P/B 分位數。樣本 < 50 回 {}(呼叫端就不寫檔,保留舊值)。
+
+    ⚠️ V71.6.2:原本樣本不足只印「< 50」不印**實際數字**,所以
+    「一直是 0 檔」跟「今天只有 40 檔」長得一樣 → market_stats.json 從上線到現在
+    一次都沒產出,卻沒人看得出來(真因是 fund_cache 組裝時把 pbr 丟掉了)。
+    現在一律印出「掃了幾檔 / 有 pb 欄幾檔 / 過範圍幾檔」,下次一眼就知道卡在哪一關。
+    """
+    total = len([k for k in (fund_cache or {}) if not str(k).startswith('__')])
+    has_field, pbs = 0, []
+    for key, fund in (fund_cache or {}).items():
+        if str(key).startswith('__'):
+            continue
         pb = (fund or {}).get('pb') or (fund or {}).get('pbr')
-        if pb is not None and 0 < pb < 50:
+        if pb is None:
+            continue
+        has_field += 1
+        try:
+            pb = float(pb)
+        except (TypeError, ValueError):
+            continue
+        if 0 < pb < 50:
             pbs.append(pb)
     if len(pbs) < 50:
+        print(f"  ⏭️ 全市場 P/B 樣本不足:掃 {total} 檔 → 有 pb/pbr 欄 {has_field} 檔 "
+              f"→ 落在 0~50 合理區間 {len(pbs)} 檔(需 ≥50)")
         return {}
     sorted_pbs = sorted(pbs)
     n = len(sorted_pbs)
     return {
         'updated': date.today().isoformat(),
         'count': n,
+        # 📊 覆蓋率一起存進 market_stats.json:下次懷疑「分位數怪怪的」時,
+        #    看得出是「只有 60 檔算得出來」還是「800 檔都有」,不用再回頭猜。
+        'scanned': total,
+        'has_pb_field': has_field,
         'p25': round(sorted_pbs[max(0, int(n * 0.25) - 1)], 2),
         'p50': round(sorted_pbs[n // 2], 2),
         'p75': round(sorted_pbs[min(n - 1, int(n * 0.75))], 2),
@@ -2340,6 +2363,133 @@ def fetch_futures_cache():
 
 
 # ── 🏛️ TWSE/TPEX 官方台股指數(主要來源,優先於 yfinance)──────────────────
+def _roc_to_iso(s):
+    """民國日期 '114/07/29' / '1140729' → '2026/07/29';解不出回 None。
+    抽成純函式讓沙箱測得到(TWSE 在沙箱被 proxy 擋,只能測解析)。"""
+    import re as _re
+    m = _re.match(r'^\s*(\d{2,3})[/\-]?(\d{1,2})[/\-]?(\d{1,2})\s*$', str(s or ''))
+    if not m:
+        return None
+    y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if not (1 <= mo <= 12 and 1 <= d <= 31):
+        return None
+    return f"{y + 1911:04d}/{mo:02d}/{d:02d}"
+
+
+def _parse_fmtqik(j):
+    """TWSE FMTQIK(每日市場成交資訊)月份檔 → {ISO日期: (成交股數, 成交金額_元)}。
+
+    欄位實測:['日期','成交股數','成交金額','成交筆數','發行量加權股價指數','漲跌點數']
+    但欄序在官方改版時動過,所以一律用**欄名**定位,不寫死 index。
+    """
+    out = {}
+    fields = [str(f or '').replace(' ', '') for f in ((j or {}).get('fields') or [])]
+
+    def _fi(*kws):
+        for i, f in enumerate(fields):
+            if any(k in f for k in kws):
+                return i
+        return None
+
+    i_d, i_v, i_a = _fi('日期'), _fi('成交股數'), _fi('成交金額')
+    if i_d is None or (i_v is None and i_a is None):
+        return out
+    for row in ((j or {}).get('data') or []):
+        try:
+            iso = _roc_to_iso(row[i_d])
+            if not iso:
+                continue
+
+            def _num(i):
+                if i is None:
+                    return None
+                v = str(row[i]).replace(',', '').strip()
+                return float(v) if v not in ('', '--', '-') else None
+            vol, amt = _num(i_v), _num(i_a)
+            if vol is None and amt is None:
+                continue
+            out[iso] = (vol, amt)
+        except (IndexError, TypeError, ValueError):
+            continue
+    return out
+
+
+def _months_span(rows, cap=30):
+    """rows 的日期範圍涵蓋哪些 (年, 月) —— 由舊到新,最多 cap 個月(從最新往回算)。
+    純函式,給 FMTQIK 決定要抓幾個月份檔用。"""
+    ms = []
+    seen = set()
+    for r in (rows or []):
+        d = str(r.get('date') or '')
+        if len(d) < 7:
+            continue
+        try:
+            y, m = int(d[0:4]), int(d[5:7])
+        except ValueError:
+            continue
+        if 1 <= m <= 12 and (y, m) not in seen:
+            seen.add((y, m))
+            ms.append((y, m))
+    ms.sort()
+    return ms[-cap:] if cap else ms
+
+
+def _merge_twii_volume(rows, vol_map):
+    """把 FMTQIK 的官方成交股數/金額併進 MI_5MINS_HIST 的 OHLC 列。
+
+    ⛔ **絕對不要寫進 `volume` 欄**(V71.6.2 差點踩下去,實測擋下來的):
+       `^TWII.json` 裡既有的 423 列 volume 來自 yfinance,中位數 **3,734,300**;
+       FMTQIK 的「成交股數」是 **~54 億** —— 兩者差約 1,500 倍,根本不是同一個東西
+       (yfinance 對指數的 volume 一向可疑)。混進同一欄會產生 1000 倍斷崖:
+       均量 / OBV / 量價背離 全部算出垃圾,而且前端會畫出一根天柱 —— **比現在的 0 更糟**。
+       更危險的是前端 V71.4.9 的「幽靈棒過濾」只看**最後 60 根**的零量佔比:
+       一旦近 3 個月被填滿,佔比從 ~100% 掉到 ~0% → 過濾器對整個 486 列陣列生效
+       → 更舊的零量列可能被整批刪掉(就是 V71.4.9 那個「486→424 根」的老 bug 復活)。
+
+    所以官方值一律寫**獨立欄位**,`volume` 原封不動:
+      ・`mkt_vol`  集中市場成交股數(股)
+      ・`amount`   集中市場成交金額(元)—— 電視上講的「今天量能站回一兆」就是這個
+    回 (rows, 補到幾列),讓呼叫端印覆蓋率 —— 「補了 0 列」跟「來源掛了」必須看得出差別
+    (market_stats.json 躲過診斷那麼久就是因為訊息分不出這兩件事)。
+    """
+    hit = 0
+    for r in (rows or []):
+        pair = (vol_map or {}).get(r.get('date'))
+        if not pair:
+            continue
+        vol, amt = pair
+        if vol is not None:
+            r['mkt_vol'] = int(vol)
+        if amt is not None:
+            r['amount'] = int(amt)
+        if vol is not None or amt is not None:
+            hit += 1
+    return rows, hit
+
+
+def _fetch_fmtqik_months(months):
+    """抓 FMTQIK 月份檔並合併成 {ISO日期: (股數, 金額)}。連不到就回空 dict(呼叫端維持 volume=0)。"""
+    vol_map = {}
+    for y, m in months:
+        url = f"https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?response=json&date={y:04d}{m:02d}01"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                print(f"  [TWSE FMTQIK] {y}/{m:02d} HTTP {r.status_code}")
+                continue
+            j = r.json()
+            if j.get('stat') and j.get('stat') != 'OK':
+                print(f"  [TWSE FMTQIK] {y}/{m:02d} stat={str(j.get('stat'))[:60]}")
+                continue
+            got = _parse_fmtqik(j)
+            if not got:
+                print(f"  [TWSE FMTQIK] {y}/{m:02d} 解析 0 列,fields={j.get('fields')}")
+            vol_map.update(got)
+        except Exception as e:
+            print(f"  [TWSE FMTQIK] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
+    return vol_map
+
+
 def _fetch_twii_history_official(months_back=2):
     """TWSE 加權指數 OHLC 官方歷史 — MI_5MINS_HIST 月份檔。
     回傳 list of OHLC dict(date='YYYY/MM/DD');網路失敗/空白回 None,讓 yfinance fallback。
@@ -2384,9 +2534,12 @@ def _fetch_twii_history_official(months_back=2):
                     #   ① 前端 applyLatestPrice 的「幽靈棒過濾」不能用量門檻砍指數 K 棒,
                     #      否則會把整段近期資料當假日棒刪掉(V71.4.9 實測 ^TWII 486→424 根,
                     #      個股頁停在 3 個月前、現價跟大盤頁對不上)。前端已加「零量佔比 ≥20% 就不濾」守門。
-                    #   ② 指數頁的量能類判讀(量價背離/OBV/均量)拿不到真量,只能當沒有。
-                    #      若日後要補真量:TWSE FMTQIK(每日市場成交資訊)有成交股數/金額,
-                    #      可另抓月份檔按日期併進來(本沙箱連不到 TWSE,未實測前不要盲寫)。
+                    #   ② 指數頁的量能類判讀(量價背離/OBV/均量)拿不到真量。
+                    #      ✅ V71.6.2 已補官方量能,但寫在**獨立欄位** mkt_vol / amount,
+                    #         `volume` 這欄刻意保持 0 —— 因為既有列的 volume 來自 yfinance,
+                    #         跟官方成交股數差約 1,500 倍,混同一欄會做出 1000 倍斷崖,
+                    #         也會讓前端「零量佔比 ≥20% 就不濾」那道守門失效(詳見
+                    #         _merge_twii_volume 的說明)。
                     rows_out.append({'date': iso, 'open': round(o, 2), 'high': round(h, 2),
                                      'low': round(l, 2), 'close': round(c, 2), 'volume': 0})
                 except Exception:
@@ -2401,7 +2554,20 @@ def _fetch_twii_history_official(months_back=2):
             seen.add(r['date'])
             uniq.append(r)
     uniq.sort(key=lambda x: x['date'])
-    return uniq if uniq else None
+    if not uniq:
+        return None
+    # 📊 V71.6.2 補官方量能:MI_5MINS_HIST 只有 OHLC,成交股數/金額另向 FMTQIK 要。
+    #   寫進獨立欄位 mkt_vol / amount,**不動 volume**(理由見 _merge_twii_volume 的說明:
+    #   yfinance 的 volume 跟官方股數差 1,500 倍,混在一起會做出 1000 倍斷崖)。
+    #   ⛔ 併不到就整列沒有那兩個欄位(誠實),不要用鄰近日期硬湊。
+    try:
+        _months = _months_span(uniq, cap=30) or months_to_fetch
+        uniq, _hit = _merge_twii_volume(uniq, _fetch_fmtqik_months(_months))
+        print(f"  [TWSE TAIEX] 官方量能(mkt_vol/amount)併入 {_hit}/{len(uniq)} 列"
+              f"(FMTQIK,{len(_months)} 個月份檔)")
+    except Exception as e:
+        print(f"  ⚠️ FMTQIK 量能併入失敗(不影響 OHLC): {str(e)[:80]}")
+    return uniq
 
 
 def _fetch_otc_history_official(months_back=2):
@@ -2993,7 +3159,16 @@ def fetch_broker_chips():
         fc_path = Path('data', 'fundamentals_cache.json')
         # 基底 PE/殖利率:TWSE 成功用新值;TWSE 回空則沿用既有快取(不洗掉),YoY/毛利照樣補
         if twse_fund:
-            fund_cache = {s: {'pe': v.get('pe'), 'yield_rate': v.get('yield_rate')}
+            # 🐛 V71.6.2 修「market_stats.json 從上線到現在一次都沒產出」:
+            #   這裡只挑 pe / yield_rate,**把 pbr 丟掉了** —— 而 fetch_twse_fundamentals
+            #   明明抓得到(BWIBBU_d 有「股價淨值比」欄)。
+            #   下游 compute_market_pb_percentiles 讀 fund['pb'] or fund['pbr'],永遠拿到 None
+            #   → 樣本數恆為 0 < 50 → 恆回 {} → market_stats.json 永遠不寫
+            #   → 前端 X 光機 P/B 判斷退回固定 <2 / >5 門檻(有 silent catch,所以零錯誤訊息)。
+            #   實證:gh-pages 的 fundamentals_cache.json 876 檔,pe 833 / yield_rate 833,
+            #        pb+pbr 合計 **0** 檔。
+            fund_cache = {s: {'pe': v.get('pe'), 'yield_rate': v.get('yield_rate'),
+                              'pbr': v.get('pbr')}
                           for s, v in twse_fund.items() if isinstance(v, dict)}
             base_src = 'TWSE'
         else:
@@ -3066,7 +3241,8 @@ def fetch_broker_chips():
                         ms_path.write_text(json.dumps(existing_ms, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
                         print(f"  💾 全市場 P/B 分位 → data/market_stats.json(P25/P50/P75/P90 = {pb_pct['p25']}/{pb_pct['p50']}/{pb_pct['p75']}/{pb_pct['p90']},{pb_pct['count']} 檔)")
                     else:
-                        print("  ⏭️ 全市場 P/B 樣本不足(< 50),不寫 market_stats.json")
+                        # 明細已由 compute_market_pb_percentiles 印出(掃幾檔/有欄幾檔/合理區間幾檔)
+                        print("  ⏭️ 不寫 market_stats.json(保留既有值)")
                 except Exception as e:
                     print(f"  ⚠️ 全市場 P/B 分位失敗(不影響主流程):{e}")
             except Exception as e:

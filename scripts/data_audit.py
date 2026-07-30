@@ -69,6 +69,19 @@ CADENCE_H = {
 
 META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version', 'count', 'total'}
 
+# 📌 「刻意不在 gh-pages」的檔:報成缺口會誤導,把「為什麼」寫在這裡當活文件。
+#    2026-07-30 首跑時我把這幾條都寫成「缺口待修」,逐條讀原始碼才發現是刻意的 ——
+#    照著修會把已經下架的東西又接回來。工具只知道「檔案不在」,不知道「本來就不該在」。
+#    ⚠️ 新增項目前務必先 grep 過:`rm -f`、`= False`、「退役」「停用」「暫停」。
+DELIBERATELY_ABSENT = {
+    'chief_ai_cache.json':
+        'chief_ai_batch.py 2026-06 退役,daily_miner.yml 每次部署都 rm -f 這個檔;'
+        '前端 V16.7 已有 stale 判定(>2 天視同無 cache)並自動 fallback radar_matrix',
+    'biz_profile.json':
+        'theme_news.py::main() 的 ok_b=False 是寫死的 —— run#3 已印出 TWSE/TPEX '
+        '「公司基本資料」全部欄位確認官方 API 沒有業務說明文字欄。要做是先找來源,不是改程式',
+}
+
 
 def sh(*a):
     return subprocess.run(a, capture_output=True, text=True).stdout
@@ -194,7 +207,10 @@ def audit(ref):
         j, err = read_json(ref, f'data/{f}')
         cache[f] = j
         if err == 'MISSING':
-            add('❌', 'A', f'data/{f} 在 {ref} 不存在,但前端會去 fetch')
+            if f in DELIBERATELY_ABSENT:
+                print(f'   ➖ data/{f} 不在 {ref} —— 刻意的,不是缺口:{DELIBERATELY_ABSENT[f]}')
+            else:
+                add('❌', 'A', f'data/{f} 在 {ref} 不存在,但前端會去 fetch')
             continue
         if err:
             add('❌', 'A', f'data/{f} {err}')
@@ -247,10 +263,18 @@ def audit(ref):
     if isinstance(mr, dict):
         have = set(mr.keys())
         read = macro_fields_read()
+        # ⚠️ V71.6.2 誤報修正:有些欄位是**前端自己算完寫進 `_macroRiskCache`** 的
+        #    (如 taiex_ma240_bias / taiex_bubble_msg,`_loadTaiexMA240Bias` 用 ^TWII K 線純算式算),
+        #    後端本來就不該有 → 報成「後端沒產出」是誤報,而且會把真的斷點淹掉。
+        #    做法:凡是 index.html 裡出現 `_macroRiskCache.X =` 的欄位,一律視為前端自算。
+        html = (ROOT / 'index.html').read_text(encoding='utf-8')
+        self_computed = set(re.findall(r'_macroRiskCache(?:\s*\|\|\s*\{\})?\.([a-z][\w]*)\s*=', html))
         # 只報「看起來像後端欄位」的(有底線或已知前綴),避免誤傷區域變數
-        suspicious = sorted(x for x in (read - have) if '_' in x)
+        suspicious = sorted(x for x in (read - have - self_computed) if '_' in x)
         for x in suspicious:
             add('⚠️', 'D', f'前端讀 macro_risk 的 {x},但檔案裡沒有這個欄位(可能改名或從沒產出)')
+        if self_computed & read - have:
+            print(f'   ➖ 前端自算(不算斷點):{sorted(self_computed & read - have)}')
         print(f'   前端讀 {len(read)} 個欄名 / 檔案有 {len(have)} 個 → 對不上的 {len(suspicious)} 個')
     else:
         add('❌', 'D', 'macro_risk.json 讀不到,無法做對接檢查')

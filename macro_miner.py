@@ -1303,6 +1303,34 @@ def fetch_m1b_and_fed_assets():
 
 
 # ── 🌪️ V69.7.8 台指選擇權 VIX(FinMind TaiwanOptionVix,Backer;台股自己的恐慌溫度計)──
+def _classify_finmind_fail(tried):
+    """把 FinMind 一整串嘗試紀錄壓成「一句看得懂的結論」+ 原文附在後面。
+
+    為什麼要有(V71.6.2):V71.5.7 補上全 token 輪動後,`tw_vix_error` 變成 400 字的原始堆疊:
+      tok1/TaiwanOptionVix:400/Token is illegal. | tok1/TaiwanOptionVIX:400/Token is illegal. |
+      tok2/TaiwanOptionVix:400/Your level is register. Please update your user level. | …
+    真正的關鍵訊息(**tok2 是有效的,但帳號等級是免費層**)夾在中間,一眼看不出來,
+    很容易又被誤診成「資料集改名」或「程式沒輪動」而白改一輪程式。
+
+    分三類,因為**處置方式完全不同**:
+      ・`level`  金鑰有效但帳號等級不足 → 這是**帳號問題,改程式沒用**(要升級或換付費金鑰)
+      ・`illegal` 金鑰無效/過期/貼錯 → 換金鑰
+      ・其他     可能真的是資料集名稱或網路問題 → 才值得動程式
+    ⛔ 安全:全程只出現「第幾把」,不含任何 token 值。
+    """
+    joined = ' | '.join(tried)
+    lvl = sorted({t.split('/')[0] for t in tried if 'level is' in t or 'user level' in t})
+    ill = sorted({t.split('/')[0] for t in tried if 'illegal' in t.lower()})
+    head = []
+    if lvl:
+        head.append(f"{'/'.join(lvl)} 金鑰有效但帳號等級不足(免費層無此資料集)—— 需升級或改用付費金鑰,改程式無效")
+    if ill:
+        head.append(f"{'/'.join(ill)} 金鑰無效或已過期")
+    if not head:
+        head.append('全部候選資料集名稱都回空(可能改名或連線問題)')
+    return ('；'.join(head) + ' ｜ 原文:' + joined)[:400]
+
+
 def fetch_tw_vix():
     """回 (最新 vix, 5日變化%, error)。用 GitHub Secrets FINMIND_TOKENS 第一把;未設/失敗回 None 不崩。"""
     toks = [t.strip() for t in (os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN') or '').split(',') if t.strip()]
@@ -1348,7 +1376,7 @@ def fetch_tw_vix():
             if rows:
                 break
         if not rows:
-            return None, None, ' | '.join(tried)[:400]
+            return None, None, _classify_finmind_fail(tried)
         # 每日可能多筆(含 time)→ 取每日最後一筆,再取近 6 個交易日
         by_day = {}
         for r in rows:

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.6.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.6.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6578,8 +6578,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.6.1',
+    _APP_VERSION: 'V71.6.2',
     _CHANGELOG: [
+        { v: 'V71.6.2', dt: '2026-07-30', t: '🔧 修兩個「工具說沒問題、其實從沒運作過」的採礦缺口', d: [
+            '基本面 X 光機的 P/B 判斷,從上線到現在一直用固定門檻(<2 便宜 / >5 貴)—— 因為全市場 P/B 分位數那個檔案「一次都沒產出過」。真因是採礦時把 P/B 這欄丟掉了,不是抓不到。修好後 P/B 會改用「全市場排在第幾名」來判,AI 行情下不會再全部顯示貴。',
+            '大盤 K 線補上證交所官方成交股數與成交金額(近 30 個月),之前近三個月一直是 0。',
+            '順手把「樣本不足」的訊息改成印出實際數字 —— 舊訊息只寫「不足」,所以「一直是 0」跟「今天剛好少」長得一模一樣,這才是它躲了這麼久沒被發現的原因。',
+            '加權指數「今天漲跌幾 %」補上了 —— 這個數字後端從來沒產出過,所以新聞綜合分析在判今天盤勢時,其實一直看不到「今天到底漲跌多少」。改成前端用大盤 K 線自己算,不用等採礦。',
+            '台指 VIX 的錯誤訊息改成一句白話結論。查證結果:是金鑰的帳號等級不夠(免費層開不了這個資料集),不是程式問題 —— 改程式不會有值,詳情見下方說明。',
+        ] },
         { v: 'V71.6.1', dt: '2026-07-30', t: '📅 外資「這個月累計買賣超」上線(單日數字看不出輕重)', d: [
             '外資現貨那格多一行「7月累計賣超 X,XXX 億」—— 只看今天賣 222 億看不出輕重,月累計才看得出這個月外資是不是一直在撤。',
             '數字向證交所官方「月報」要,不是把每天的值自己加起來 —— 每日快照遇到上游沒更新會沿用前一天,加總會重複計算(實測 7/9、7/10、7/13 都是同一個數字)。',
@@ -15940,8 +15947,24 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     async _loadTaiexMA240Bias() {
         try {
             const rows = await this._getTwiiRows();
-            if (!Array.isArray(rows) || rows.length < 240) {
-                console.log(`[TAIEX MA240] 資料 ${rows?.length || 0} 筆 < 240,等下次採礦補滿`);
+            if (!Array.isArray(rows) || rows.length < 2) return;
+            // 📈 V71.6.2 加權「今天漲跌 %」—— 資料體檢抓到的對接斷點:
+            //   前端有兩處讀 mr.taiex_chg_pct,但 macro_risk.json **從來沒有這個欄位**
+            //   (實證:gh-pages 的 macro_risk.json 裡 taiex 相關欄位一個都沒有)。
+            //   後果:新聞綜合分析的事實包裡「加權漲跌」那一行永遠被跳過 ——
+            //   等於 AI 判讀今天盤勢時,拿不到「今天到底漲跌幾 %」這個最基本的數字。
+            //   ⭐ 這個不用等採礦:^TWII K 線就在手上,純算式算得出來(禁 AI 算數鐵律)。
+            //   放在 MA240 的 240 筆門檻**之前**,少於 240 筆時漲跌 % 照樣算得出來。
+            {
+                const _c1 = +rows[rows.length - 1]?.close, _c0 = +rows[rows.length - 2]?.close;
+                if (Number.isFinite(_c1) && Number.isFinite(_c0) && _c0 > 0) {
+                    this._macroRiskCache = this._macroRiskCache || {};
+                    this._macroRiskCache.taiex_chg_pct = +((_c1 - _c0) / _c0 * 100).toFixed(2);
+                    this._macroRiskCache.taiex_chg_date = String(rows[rows.length - 1]?.date || '');
+                }
+            }
+            if (rows.length < 240) {
+                console.log(`[TAIEX MA240] 資料 ${rows.length} 筆 < 240,年線乖離等下次採礦補滿(漲跌 % 已算出)`);
                 return;
             }
             // 🐛 V49.5 — ^TWII.json 曾停更(實測卡 6/10);用 macro_cache 的新鮮加權序列 merge 蓋過 → 年線乖離不再卡舊值
@@ -15956,6 +15979,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             let mergedNew = 0, freshMax = '';
             for (const row of fresh) { const d = _norm(row.date), c = +row.close; if (d && Number.isFinite(c) && c > 0) { if (!byDate.has(d)) mergedNew++; byDate.set(d, c); if (d > freshMax) freshMax = d; } }
             const closes = [...byDate.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(e => e[1]);
+            // 📈 V71.6.2 ^TWII.json 落後時(V49.5 實測曾卡 6/10),漲跌 % 也要改用 merge 後的新鮮序列重算,
+            //   否則會顯示「上個交易日的漲跌」跟大盤頁對不上(同 MA240 用 merged 的理由)。
+            if (mergedNew > 0 && closes.length >= 2) {
+                const _m1 = closes[closes.length - 1], _m0 = closes[closes.length - 2];
+                if (Number.isFinite(_m1) && Number.isFinite(_m0) && _m0 > 0) {
+                    this._macroRiskCache = this._macroRiskCache || {};
+                    this._macroRiskCache.taiex_chg_pct = +((_m1 - _m0) / _m0 * 100).toFixed(2);
+                    this._macroRiskCache.taiex_chg_date = freshMax || this._macroRiskCache.taiex_chg_date;
+                }
+            }
             if (closes.length < 240) return;
             const histMax = _norm(rows[rows.length - 1]?.date);
             const staleDays = (freshMax && histMax && freshMax > histMax) ? mergedNew : 0;   // ^TWII.json 落後的交易日數(靠 macro 補上)
