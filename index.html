@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.7',
+    _APP_VERSION: 'V71.5.8',
     _CHANGELOG: [
+        { v: 'V71.5.8', dt: '2026-07-30', t: '🚨 你問 5483 的 166 止損 —— 那是我的 bug,不是你看錯', d: [
+            '你問「量價密集區 162-167 附近會不會止跌?你叫我 166 止損對嗎?」查完:那條 166.5 是錯的,而且量價密集區也不該顯示。',
+            '① 166.5 就是 7/29 那天自己的最低點(那天跌停鎖死,開 183 收 166.5 收在最低)。程式算「近 10 日低」時把今天這根也算進去 → 防線變成當天的極端值。隔天現價 167.5 只高它 0.6%,盤中隨便一動就碰到。而它上面那條寫「反彈到 5 日線 194.5 先減碼一半」—— 兩條互相矛盾:被 166.5 掃出場就永遠等不到 194.5。已改成排除今天那根。',
+            '② 排除今天後真正的近 10 日低是 184.5,而現價 166.5 早就跌破它 9.8%,季線 179.3 也破了。所以正確講法是「近期支撐已經全破、下方沒有結構支撐可守」,不是「再破 166.5 才出場」。已改成這樣講,並把今天的低點降級成「續弱確認線」,明講它是當天極端值、不是支撐。',
+            '③ 量價密集區「162.1~167.6」也是假精確:這 60 天股價從 137 衝到 278 再殺回 166,從來沒盤整過,成交量幾乎平均散開 —— 最集中的那一段也只占 8.5%,第 2、3、4 名是 7.8%、7.6%、6.8%,四段幾乎並列,根本分不出主峰。現在這種情況會直接顯「無明顯量價密集區」並說明原因,不再印一個精確到小數的區間讓人拿去當支撐。',
+            '通則:防線一律要用「之前的低點」,不能用當根自己的極端值;任何精確數字都要先過「這個數字撐得起來嗎」的檢查,撐不起就誠實說沒有。',
+        ] },
         { v: 'V71.5.7', dt: '2026-07-30', t: '🔍 採礦跑完逐項對數字,又抓出三件事', d: [
             '這次不看綠燈,拿你給的籌碼K線數字逐欄對帳。結果:美股現貨四雄全對、期貨價格修對了(7,376 vs 真值 7,370),但還有三個沒好,而且錯誤訊息給了新線索。',
             '① 台指 VIX:金鑰確實傳進去了(訊息從「沒有金鑰」變成「金鑰不被接受」),所以是那一把有問題。你的金鑰是「付費1把+免費3把」,程式卻只試第一把 → 第一把壞掉整個功能就死。已改成每一把都試,哪一把能用就用哪一把。',
@@ -24876,14 +24883,21 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             // 🕳️ V69.6.9 阿呆谷守門(使用者洞察:停損建議「過期了還在喊」會害新手砍在最低點):
             //   停損的黃金時機=「剛破停損價」;若現價已遠低於停損價(>5%)且短線超賣(乖離深/連跌多天),
             //   恐慌市價砍=高機率砍在阿呆谷 → 改「反彈減碼」出場法:不凹單,但不在最恐慌的一根砍光。
-            let valleyMode = false, _vBias5 = 0, _vDownDays = 0, _vLow20 = null;
+            let valleyMode = false, _vBias5 = 0, _vDownDays = 0, _vLow20 = null, _vLowToday = null;   // V71.5.8 _vLowToday=今天自己的低點,只講續弱不當防線
             try {
                 if (cost && pnlPct != null && pnlPct < 0 && slF != null && slF > 0 && C <= slF * 0.95) {
                     _vBias5 = (ma5 != null && ma5 > 0) ? (C - ma5) / ma5 * 100 : 0;
                     for (let i = data.length - 1; i > 0 && +data[i].close < +data[i - 1].close; i--) _vDownDays++;
                     // V69.7.0 防線改「近10日低」:20 日窗可能撈到崩盤時的極深低點(如 -21%),拿它當防線=變相叫人凹單
-                    const _lows = data.slice(-10).map(b => +b.low || +b.close).filter(v => v > 0);
+                    // 🐛 V71.5.8 **必須排除今天這根**(slice(-11,-1) 而非 slice(-10))。
+                    //   使用者實例 5483 中美晶 2026/07/29:當天跌停鎖死(開183 高183 低166.5 收166.5),
+                    //   含今天算 → 防線 = 166.5 = **今天自己的低點**;隔天現價 167.5 只高它 0.6%
+                    //   → 這條「最後防線」一定會被盤中雜訊碰到,而它上面那條指令是
+                    //     「反彈到 5 日線 194.5 先減碼一半」→ 兩條互相矛盾:被 166.5 掃出場就永遠到不了 194.5。
+                    //   防線的定義是「**之前**的支撐被跌破才算轉弱」,拿當根極端值當防線邏輯上就是錯的。
+                    const _lows = data.slice(-11, -1).map(b => +b.low || +b.close).filter(v => v > 0);
                     _vLow20 = _lows.length ? Math.min(..._lows) : null;
+                    _vLowToday = (+data[data.length - 1].low || +data[data.length - 1].close) || null;
                     valleyMode = _vBias5 <= -5 || _vDownDays >= 4;
                 }
             } catch (_) {}
@@ -24891,7 +24905,18 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 if (valleyMode) { big = '🕳️ 跌深了・反彈再出'; bigCls = 'text-orange-400'; cmdBorder = 'border-orange-500';
                     why = `最佳停損點在 <b>${nfP(slF)}</b>,現價已低它 <b>${((slF - C) / slF * 100).toFixed(0)}%</b> — 那個時機已錯過。現在${_vBias5 <= -5 ? `短線乖離 <b>${_vBias5.toFixed(1)}%</b>` : ''}${_vDownDays >= 4 ? `${_vBias5 <= -5 ? '、' : ''}連跌 <b>${_vDownDays} 天</b>` : ''},屬超賣區,恐慌市價砍最容易<b class="text-orange-300">砍在阿呆谷</b>。不凹單、但改「反彈減碼」出,別在最恐慌的一根砍光。`;
                     if (ma5 != null && ma5 > C) rules.push(`🔺 反彈到 5 日線 ${nfP(ma5)} → 先減碼一半(比現在賣、每張約少虧 ${Math.round((ma5 - C) * 1000).toLocaleString()} 元)`);
-                    if (_vLow20 != null) rules.push(`🔻 最後防線:再破近 10 日低 ${nfP(_vLow20)} → 不等反彈,全部出場(這條不能凹)`);
+                    // 🐛 V71.5.8 分三種情況講,不再一律「再破 X 就全出」:
+                    //   ① 防線在下方 → 正常防線;太貼近現價(<2%)要明講「盤中雜訊就會碰到」
+                    //   ② 防線已被跌破 → 誠實說「近期支撐已全破、下方沒有結構支撐」,
+                    //      不要硬湊一條線假裝還有防守點(5483 實例:184.5 早就破了,卻顯 166.5 當防線)
+                    if (_vLow20 != null && C >= _vLow20) {
+                        const _gapPct = (C - _vLow20) / C * 100;
+                        rules.push(`🔻 最後防線:再破近 10 日低 ${nfP(_vLow20)} → 不等反彈,全部出場(這條不能凹)`
+                            + (_gapPct < 2 ? `<br><span class="text-[10px] text-yellow-300">⚠️ 這條線離現價只有 ${_gapPct.toFixed(1)}%,盤中雜訊就會碰到 — 不想被洗出去就改用「收盤價跌破」才算破</span>` : ''));
+                    } else if (_vLow20 != null) {
+                        rules.push(`⛔ 近 10 日低 ${nfP(_vLow20)} <b>已經跌破</b>(現價低它 ${((_vLow20 - C) / _vLow20 * 100).toFixed(1)}%)→ 下方已無近期結構支撐可守`
+                            + (_vLowToday ? `<br><span class="text-[10px] text-gray-400">續弱確認線 = 今天最低 ${nfP(_vLowToday)};再破代表跌勢未歇。但它是「今天的極端值」不是支撐,別當防守點掛單</span>` : ''));
+                    }
                     rules.push(`🔺 若站回停損價 ${nfP(slF)} 之上 → 解除警報,重新評估`);
                     if (instFled) rules.push('⚠️ 大戶還在倒貨 → 反彈到位就走,別戀棧');
                     else if (hasInst) rules.push('💡 大戶沒明顯倒貨 → 較可能是洗盤/補跌,反彈機率較高(仍要守最後防線)');
@@ -25447,7 +25472,19 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     const NB = 24, w = (mx - mn) / NB, buckets = new Array(NB).fill(0);
                     win.forEach(b => { const p = ((+b.high || +b.close) + (+b.low || +b.close) + +b.close) / 3; buckets[Math.min(NB - 1, Math.floor((p - mn) / w))] += +b.volume; });
                     let bi = 0; buckets.forEach((v, i) => { if (v > buckets[bi]) bi = i; });
-                    pocLo = mn + bi * w; pocHi = pocLo + w;
+                    // 🐛 V71.5.8 「最大那一格」不等於「密集」——必須真的集中才准叫密集區。
+                    //   使用者實例 5483 中美晶:60 天內從 137 衝到 278 再殺回 166,**從來沒盤整過**,
+                    //   量幾乎平均散在整個區間:最大格只佔總量 8.5%,而第 2/3/4 名是 7.8%/7.6%/6.8%
+                    //   —— 四格幾乎並列,根本分不出主峰。但程式照樣印出「162.1~167.6」這種精確到小數的區間,
+                    //   使用者就會拿它當支撐推論「是不是會止跌」→ 假精確比沒有更危險。
+                    //   門檻:最大格要佔 60 日總量 ≥12%(24 格平均分佈是 4.2%,即需 ≈3 倍於均勻)才算有主峰。
+                    const _tot = buckets.reduce((a, v) => a + v, 0);
+                    if (_tot > 0 && buckets[bi] / _tot >= 0.12) {
+                        pocLo = mn + bi * w; pocHi = pocLo + w;
+                    } else {
+                        pocLo = null; pocHi = null;
+                        this._pocFlat = _tot > 0 ? buckets[bi] / _tot : null;   // 供文案說明用
+                    }
                 }
             }
             const nf = v => (+v >= 100 ? (+v).toFixed(1) : (+v).toFixed(2));
@@ -25501,6 +25538,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     ${pocLo != null ? cell('🧲', '量價密集區(60日)', `${nf(pocLo)}~${nf(pocHi)}`, pocRel, pocFar ? 'text-gray-400' : pocIn ? 'text-yellow-300' : (C > pocHi ? 'text-red-300' : 'text-green-300')) : ''}
                     ${slPx != null ? cell('🛑', '停損防守', nf(slPx) + ' ' + pctTxt(slPx), slLb, 'text-green-300') : ''}
                 </div>
+                ${pocLo == null && this._pocFlat != null ? `<div class="text-[10px] text-gray-400 mt-1 leading-snug bg-[#0d1117] rounded px-2 py-1.5">🧲 <b>無明顯量價密集區</b> — 這 60 天成交量幾乎平均散在整個價格區間(最集中的那一段也只占 ${(this._pocFlat * 100).toFixed(1)}%),代表<b>從來沒有盤整過</b>,所以沒有「大家的成本都堆在哪裡」這種支撐可用。⚠️ 這種情況下任何「密集區會止跌」的推論都沒有依據。</div>` : ''}
                 <div class="text-[9px] text-gray-600 mt-1 leading-snug">🧲 量價密集區=近60日成交量最密集的價區(全市場換手成本,非分點):現價在其上,拉回到區間上緣最容易有買盤接;跌破=套牢反壓。與觀察頁「10日均價」是不同東西(長 vs 短週期)。⚠️ 距現價 >12% 時只是遠期量堆積,別當進出依據;隔日跳空要重看。</div>
             </div>`;
         } catch (_) { return ''; }
