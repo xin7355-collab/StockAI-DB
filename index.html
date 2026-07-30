@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.6.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6578,8 +6578,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.6.7',
+    _APP_VERSION: 'V71.6.8',
     _CHANGELOG: [
+        { v: 'V71.6.8', dt: '2026-07-30', t: '📈 你截圖問的那兩格:說明改白話 + 櫃買 K 線查出真因', d: [
+            '點櫃買/台指電子盤跳出的說明,原本寫「官方端點改版中,修正已排隊驗證」—— 那是我自己的內部用語,而且「改版中」還是沒查證的猜測。已改成白話,並告訴你現在可以去哪裡看。',
+            '台指期那格補上真正的理由:它是每月換一次合約的商品,不同月份接成一條線會有假跳空,所以刻意不做線圖,不是漏做。想看趨勢請點左邊的加權指數。',
+            '櫃買歷史 K 線的真因也查出來了:官方管道其實是通的(回 200、狀態正常),是我們解析時只認一種資料格式。已放寬並補上診斷,下一輪採礦就會知道有沒有成功。',
+        ] },
         { v: 'V71.6.7', dt: '2026-07-30', t: '🔧 修上一版自己種下的問題(個股新聞會慢慢又卡住)', d: [
             '上一版加的「比現有的少就不覆蓋」其實是個只進不退的棘輪 —— 檔數哪天衝到 40,之後正常的清淡日就永遠寫不進去,過一陣子又會卡住,跟原本要修的毛病一模一樣。',
             '改成只擋「崩塌」(掉到不足三分之一才算異常),日常多寡照常更新;而且舊檔超過 12 小時一律覆蓋 —— 一份新鮮的小檔,永遠好過一份三天前的大檔。',
@@ -27425,9 +27430,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 cell('加權指數', pick('mktTWII_main'), pickChg('mktTWII_chg_main'),
                      { onclick: "app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);" }) +
                 cell('櫃買指數', pick('mktTWOII_main'), pickChg('mktTWOII_chg_main'),
-                     { why: '櫃買指數的即時報價正常,但歷史 K 線目前抓不到(官方端點改版中,修正已排隊驗證),所以還不能點進去看線圖。' }) +
+                     { why: '櫃買指數的即時報價是正常的(上面這個數字可以放心看),但它的歷史 K 線目前抓不到,所以還不能點進去看線圖。\n\n原因:提供上櫃指數歷史資料的官方管道回的格式跟以前不一樣,還在調整讀取方式。抓到就會自動開放,不用你做任何事。\n\n想先看櫃買走勢:可以看「盤前檢視」裡的櫃買漲跌幅,或用券商 App 看線圖。' }) +
                 cell('台指電子盤', pick('taiexFuturesInfo'), { txt: '', pct: null },
-                     { why: '台指期沒有歷史 K 線資料可看線圖,這格只顯示即時價與結算倒數。' });
+                     { why: '台指期這格只顯示即時價和結算倒數,沒有歷史線圖。\n\n原因:台指期是「每個月換一次合約」的商品,不同月份的合約價格不能直接接成一條連續的線(接起來會有假跳空),所以這裡不做線圖,避免誤導。\n\n想看台股趨勢:點左邊的「加權指數」,那個才是連續的。' });
         } catch (_) {}
     },
 

@@ -2652,24 +2652,52 @@ def _fetch_otc_history_official(months_back=2):
                 #   → 端點活著、日期也吃得下,問題出在「那張表裡裝資料的欄位不叫 data」。
                 #   所以不再只認 't["data"]',改成掃過表內每個欄位,取第一個「像資料列」的陣列
                 #   (元素是 list、且長度 ≥5 → 日期+開高低收)。
-                _tbl_keys = []
+                # 🔍 V71.6.8 —— 上一輪 log 已經把表內欄位印出來了,關鍵線索是:
+                #     表內欄位=['title','date','category','totalCount','fields','data','summary','notes']
+                #   **`data` 明明就在裡面**,卻還是判成「無資料」→ 代表不是「資料放在別的 key」,
+                #   而是 `data` 的**列不是 list**(TPEX 新版 API 很可能回 dict 列),
+                #   被 `isinstance(_v[0], (list, tuple))` 這個條件擋掉了。
+                #   所以:① 也接受 dict 列(轉成 [日期,開,高,低,收] 再走同一套解析)
+                #         ② 診斷改印 totalCount + 第一列的**長相**(型別/鍵名/長度)
+                #            —— 舊訊息只印欄位名,分不出「那個月真的沒資料(totalCount=0)」
+                #            跟「有資料但格式不同」,這正是它卡了好幾版沒解掉的原因。
+                _tbl_keys, _diag = [], ''
                 if not data and isinstance(j.get('tables'), list):
                     for _t in j['tables']:
                         if not isinstance(_t, dict):
                             continue
                         _tbl_keys = list(_t.keys())
+                        _tc = _t.get('totalCount')
+                        _raw = _t.get('data')
+                        if isinstance(_raw, list) and _raw:
+                            _first = _raw[0]
+                            _diag = (f"totalCount={_tc}, data 共 {len(_raw)} 列, "
+                                     f"首列型別={type(_first).__name__}, "
+                                     f"首列={(list(_first.keys())[:8] if isinstance(_first, dict) else _first)!r}"[:220])
+                        else:
+                            _diag = f"totalCount={_tc}, data={type(_raw).__name__}(空)"
                         for _k, _v in _t.items():
                             if _k in ('fields', 'notes', 'hints'):      # 這些是欄位名/說明,不是資料
                                 continue
-                            if isinstance(_v, list) and _v and isinstance(_v[0], (list, tuple)) and len(_v[0]) >= 5:
+                            if not (isinstance(_v, list) and _v):
+                                continue
+                            _f = _v[0]
+                            if isinstance(_f, (list, tuple)) and len(_f) >= 5:
                                 data = _v
+                                break
+                            # dict 列 → 照 fields 的順序攤平成 list,再走同一套解析
+                            if isinstance(_f, dict) and len(_f) >= 5:
+                                _fields = _t.get('fields') or list(_f.keys())
+                                data = [[r.get(fd) for fd in _fields] if isinstance(r, dict) else r
+                                        for r in _v]
+                                print(f"  [TPEX OTC] {tag} data 是 dict 列 → 依 fields 攤平({len(data)} 列)")
                                 break
                         if data:
                             break
                 if not data:
-                    # 連表內欄位名一起印出來,下一輪就能直接看出資料到底放在哪個 key
                     why.append(f"{tag}→200 但無資料(stat={str(j.get('stat'))[:30]!r}, "
-                               f"tables={len(j.get('tables') or [])}, 表內欄位={_tbl_keys[:8]})")
+                               f"tables={len(j.get('tables') or [])}, 表內欄位={_tbl_keys[:8]}"
+                               + (f", {_diag}" if _diag else '') + ")")
                     continue
                 added = 0
                 for row in data:
