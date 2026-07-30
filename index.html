@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.7.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.7.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1699,6 +1699,8 @@
                         <div id="chipMarginVisualBars" class="pl-2 space-y-1.5" style="min-height:90px">
                             <div class="text-center text-gray-700 text-xs pt-4">載入中...</div>
                         </div>
+                        <!-- 🚨 V71.7.1 融資追繳/斷頭距離(條件觸發:安全時完全隱藏,不留空格) -->
+                        <div id="marginCallBox" class="hidden mt-2 pl-2"></div>
                     </div>
                 </div>
 
@@ -4262,6 +4264,118 @@ const app = {
         if (alerts.length > 3) this._fireAlert('🕵️ 內部人籌碼盤點', `你有 ${alerts.length} 檔內部人籌碼轉弱(高質押/大戶減碼),點🔔看歷史`, '');
     },
 
+    // 🚨 V71.7.1 融資「追繳/斷頭距離」—— 唯一有**硬性強制賣出規則**的風控線
+    //
+    //   使用者問「投信/大戶跌多少一定要賣?」→ 查證後:投信**沒有**這種停損線
+    //   (法規是「股票型基金最低持股 70%」+「單一個股不超過淨值 10%」= 部位上限,
+    //    不是停損;所以他們是換股不是清倉)。
+    //   真正有**明文硬規則**的是散戶融資:
+    //     整戶擔保維持率 = 股票市值 ÷ 融資金額
+    //     < 130% → 券商發追繳令 → 2 個營業日內沒補 → **第 3 個營業日斷頭賣出**
+    //   由融資成數反推「從成本跌多少會摸到追繳線」:
+    //     上市(融資 6 成):市值/(0.6×成本) = 1.3 → 價 = 0.78×成本 → **跌 22.0%**
+    //     上櫃(融資 5 成):市值/(0.5×成本) = 1.3 → 價 = 0.65×成本 → **跌 35.0%**
+    //
+    //   ⚠️ 誠實限制(一定要跟使用者講,否則會被當成精準預測):
+    //     ① 我們**看不到每個人的成本**,只能用「融資餘額增加那幾天的價格」加權推估
+    //        → 這是「融資族群的平均成本區」,不是任何一個人的成本。
+    //     ② 融資餘額資料只有近 ~55 天,更早進場的融資不計入。
+    //     ③ 處置股/警示股會被**調降融資成數甚至停資**,那時公式會失準。
+    //     ④ 維持率是「整戶」不是「單股」—— 手上有其他股票的人不會因為這一檔就被斷頭。
+    //   所以文案一律寫「壓力區/參考」,⛔ 不可寫成「X 元一定斷頭」。
+    _marginCallState(data, sym) {
+        const rows = (Array.isArray(data) ? data : []).filter(r => +r?.margin_balance > 0);
+        if (rows.length < 8) return null;                   // 資料太少,推估沒意義
+        // 融資族群平均成本:用「餘額增加量」當權重,加權當日代表價((高+低+收)/3)
+        let wsum = 0, psum = 0;
+        for (let i = 1; i < rows.length; i++) {
+            const dq = (+rows[i].margin_balance) - (+rows[i - 1].margin_balance);
+            if (!(dq > 0)) continue;                        // 只算「增加」的那幾天 = 新進場的融資
+            const h = +rows[i].high, l = +rows[i].low, c = +rows[i].close;
+            const px = (h > 0 && l > 0 && c > 0) ? (h + l + c) / 3 : c;
+            if (!(px > 0)) continue;
+            wsum += dq; psum += dq * px;
+        }
+        if (!(wsum > 0)) return null;                       // 這段期間融資只減沒增 → 無法推成本
+        const cost = psum / wsum;
+        const last = rows[rows.length - 1];
+        const price = +last.close;
+        if (!(price > 0)) return null;
+        // 上市 6 成 / 上櫃 5 成(FinMind TaiwanStockInfo 的 type:twse / tpex)
+        const info = (this.allStockList || []).find(x => x.stock_id === String(sym));
+        const isOtc = String(info?.type || '').toLowerCase().includes('tpex');
+        const known = !!info?.type;
+        const ratio = isOtc ? 0.65 : 0.78;                  // 追繳線 ÷ 成本
+        const callLine = cost * ratio;
+        const distPct = (price - callLine) / price * 100;   // 現價距追繳線還有幾 %
+        // 融資餘額近 5 日變化 → 是不是「已經在斷頭/退場中」
+        const n = rows.length;
+        const m0 = +rows[Math.max(0, n - 6)].margin_balance, m1 = +last.margin_balance;
+        const mgChg = (m0 > 0) ? (m1 - m0) / m0 * 100 : null;
+        let level;                                          // 只在有意義時才顯示(條件觸發)
+        if (distPct <= 0) level = 'broken';                 // 已跌破推估追繳線
+        else if (distPct <= 8) level = 'near';              // 逼近
+        else if (distPct <= 15) level = 'watch';
+        else level = 'safe';
+        return {
+            cost, callLine, price, distPct, level, isOtc, known,
+            marginLots: m1, mgChg,
+            perLot: (price - callLine) * 1000,              // 每張距離多少元(使用者要求:%要配金額)
+            days: rows.length, date: String(last.date || ''),
+        };
+    },
+
+    _renderMarginCall(data, sym) {
+        const box = document.getElementById('marginCallBox');
+        if (!box) return;
+        const st = this._marginCallState?.(data, sym);
+        // 條件觸發:安全(距離 >15%)或算不出來 → 完全隱藏,不留空格
+        if (!st || st.level === 'safe') { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        box.classList.remove('hidden');
+        const M = { broken: { ico: '⛔', c: 'red', t: '已進入融資賣壓區' },
+                    near:   { ico: '🚨', c: 'orange', t: '逼近融資追繳區' },
+                    watch:  { ico: '⚠️', c: '::yellow', t: '融資壓力區在下方不遠' } }[st.level];
+        const col = M.c.replace('::', '');
+        const f0 = v => Math.round(v).toLocaleString('en-US');
+        const f2 = v => v.toFixed(2);
+        const mg = st.mgChg == null ? ''
+            : `<div class="text-[10px] text-gray-400 mt-1">融資餘額近 5 日 `
+              + `<b class="${st.mgChg < 0 ? 'text-green-300' : 'text-red-300'}">${st.mgChg >= 0 ? '+' : ''}${st.mgChg.toFixed(1)}%</b>`
+              + `(${f0(st.marginLots)} 張)`
+              + (st.mgChg <= -8 ? ' ・<b class="text-green-300">已在大量退場/斷頭中</b>'
+                 : st.mgChg >= 8 ? ' ・<b class="text-red-300">槓桿還在加,壓力未解</b>' : '') + '</div>';
+        const act = st.level === 'broken'
+            ? '這裡通常是「賣到不想賣」的區域,反彈也容易再被壓。<b>不要在這裡攤平</b>;要進場等融資餘額連續數日不再減少(賣壓宣洩完)。'
+            : st.level === 'near'
+            ? '接近融資族群的壓力區,一旦跌破容易出現連續賣壓(被迫賣、不看基本面)。<b>手上有的先減碼</b>,空手的別急著接。'
+            : '壓力區還在下方一段距離,先記著這個價位當觀察點就好,不用現在動作。';
+        box.innerHTML = `
+            <div class="bg-[#161b22] border-l-4 border-${col}-500 border-y border-r border-[#30363d] rounded-r p-2.5">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="text-[11px] font-black text-${col}-300">${M.ico} ${M.t}</span>
+                    <button onclick="app.showJargonText &amp;&amp; app.showJargonText('融資追繳是什麼', '${'借錢買股票(融資)時,券商只借你一部分,其餘要自備。當股價跌到「你的股票市值 ÷ 借款金額」低於 130% 時,券商會通知你補錢(追繳);兩個營業日內沒補,第三天券商會直接幫你賣掉(斷頭)。\n\n這是全市場一致的硬規則,所以當很多人的融資成本集中在同一區,跌到那附近就會出現「不看好壞、被迫賣」的連續賣壓。\n\n⚠️ 這裡的成本是「推估」:我們看不到每個人的買價,只能用融資餘額增加那幾天的價格加權推算,而且只回溯約兩個多月。處置股會被調降融資成數,公式也會失準。所以請當成「壓力區參考」,不是精準預測。'}')" class="text-[9px] text-gray-500 underline shrink-0">📖 這是什麼</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center my-1.5">
+                    <div><div class="text-[9px] text-gray-500">融資族群成本</div>
+                         <div class="text-sm font-black font-mono text-gray-200">${f2(st.cost)}</div></div>
+                    <div><div class="text-[9px] text-gray-500">推估追繳區</div>
+                         <div class="text-sm font-black font-mono text-${col}-300">${f2(st.callLine)}</div></div>
+                    <div><div class="text-[9px] text-gray-500">現價距離</div>
+                         <div class="text-sm font-black font-mono text-${col}-300">${st.distPct >= 0 ? '' : ''}${f2(st.distPct)}%</div></div>
+                </div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">
+                    現價 <b class="font-mono">${f2(st.price)}</b>,距離推估追繳區
+                    <b class="font-mono text-${col}-300">${st.distPct >= 0 ? '還有 ' + f2(st.distPct) + '%' : '已跌破 ' + f2(-st.distPct) + '%'}</b>
+                    (每張約 <b class="font-mono">${st.perLot >= 0 ? '' : '-'}${f0(Math.abs(st.perLot))} 元</b>)。
+                </div>${mg}
+                <div class="text-[10px] text-gray-300 leading-relaxed mt-1.5 pt-1.5 border-t border-[#21262d]">💡 <b>對策</b>:${act}</div>
+                <div class="text-[9px] text-gray-600 mt-1 leading-snug">
+                    以${st.known ? (st.isOtc ? '上櫃融資 5 成' : '上市融資 6 成') : '上市融資 6 成(未取得上市櫃別,若為上櫃壓力區會更低)'}、維持率 130% 推算;
+                    成本取近 ${st.days} 個交易日「融資餘額增加日」的加權均價 —— <b>是族群平均的推估,不是任何人的實際成本</b>。
+                </div>
+            </div>`;
+    },
+
     // 🛡️ V71.6.9 — localStorage 讀 JSON 的唯一安全入口(使用者回報的「JS 錯誤」根因)
     //
     //   症狀:iOS PWA 每次開 App 都跳紅框「SyntaxError: Unexpected EOF」。
@@ -6607,8 +6721,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.7.0',
+    _APP_VERSION: 'V71.7.1',
     _CHANGELOG: [
+        { v: 'V71.7.1', dt: '2026-07-31', t: '🚨 融資「快被斷頭」壓力區(你問風控,這是唯一有硬規則的那個)', d: [
+            '你問「跌多少一定會被迫賣」—— 投信其實沒有這種停損線(法規只規定他們最低要持股 7 成、單一個股不超過 1 成,所以他們是換股不是清倉)。真正有明文硬規則的是散戶融資:市值除以借款低於 130% 就被追繳,兩天沒補第三天券商直接幫你賣。',
+            '所以籌碼頁的融資卡下面多一塊:這檔的「融資族群成本區」和「推估追繳區」在哪、現價還差幾 %(順便給每張差多少元),以及融資餘額最近是不是已經在大量退場。',
+            '只有在壓力區靠近(15% 內)才會出現,安全就完全不顯示,不用你去找。',
+            '⚠️ 誠實說:我們看不到每個人的買價,是用「融資餘額增加那幾天的價格」推估的族群平均,只回溯兩個多月,處置股被降成數時也會失準 —— 請當壓力區參考,不是精準預測。',
+        ] },
         { v: 'V71.7.0', dt: '2026-07-31', t: '💰 台指 VIX 不用花錢 —— 改跟期交所拿(免費)', d: [
             '你問「台指金鑰要付費嗎?」答案是:走 FinMind 那條路要付費,但台指 VIX 本來就是期交所自己公布的公開資料,期交所不用金鑰也不用付錢。',
             '已改成先跟期交所拿,拿不到才退回 FinMind。所以你不需要為了這個功能訂閱任何東西。',
@@ -11592,6 +11712,16 @@ const marginByDate = {};
         const marginDate = marginData ? latestNonZero(marginData, ['margin_balance','short_balance','margin','short']) : null;
         if (instDateEl)   instDateEl.textContent   = instDate   ? `資料日期: ${instDate}`   : '';
         if (marginDateEl) marginDateEl.textContent = marginDate ? `資料日期: ${marginDate}` : '';
+        // 🚨 V71.7.1 融資追繳/斷頭距離(併入既有融資卡,不新增卡片;安全時自己隱藏)
+        //    ⛔ 切股競態守門:算完才發現已經切到別檔就不要畫上去
+        try {
+            const _sym = this.currentSymbolId;
+            this._renderMarginCall?.(this.rawDailyData, _sym);
+            if (this.currentSymbolId !== _sym) {
+                const _b = document.getElementById('marginCallBox');
+                if (_b) { _b.classList.add('hidden'); _b.innerHTML = ''; }
+            }
+        } catch (_) {}
 
         const allInstZero = !instData || instData.length === 0 ||
             instData.every(d => d.foreign === 0 && d.trust === 0 && d.dealer === 0);
