@@ -201,3 +201,65 @@ with tempfile.TemporaryDirectory() as tmp:
 
 print('\n🎉 回算歷史 四項測試全過(合計 10 項)')
 
+# ══════════════════════════════════════════════════════════════════
+# V71.5.6 成交金額(amt)—— 大盤量能
+#   為什麼要有:^TWII.json 的 volume 一律 0(證交所端點只給 OHLC),大盤量能算不出來,
+#   而它是止跌判斷的第一個條件(2026-07-30 理財達人秀開場第一問:「量能有沒有站回 1 兆」)。
+#   實測驗算(origin/data):07/29=1.129兆 / 07/27=0.881兆 / 07/28=0.916兆 → 數量級正確。
+# ══════════════════════════════════════════════════════════════════
+
+def seed_amt(tmp, days, n_stocks=600, px=100.0, vol=1_000_000, etf_vol=None):
+    dd = Path(tmp) / 'data'
+    dd.mkdir(parents=True, exist_ok=True)
+    for i in range(n_stocks):
+        rows = [{'date': f'2026/03/{k+1:02d}', 'close': px, 'volume': vol} for k in range(days + 1)]
+        (dd / f'{str(2000 + i)}.json').write_text(json.dumps(rows), encoding='utf-8')
+    if etf_vol:
+        rows = [{'date': f'2026/03/{k+1:02d}', 'close': px, 'volume': etf_vol} for k in range(days + 1)]
+        (dd / '0050.json').write_text(json.dumps(rows), encoding='utf-8')
+    return dd
+
+
+# ⑪ amt 算得對(元 → 存成「億」)
+with tempfile.TemporaryDirectory() as tmp:
+    dd = seed_amt(tmp, days=3, n_stocks=600, px=100.0, vol=1_000_000)
+    run(dd)
+    h = load(dd)['history'][-1]
+    # 600 檔 × 100 元 × 100 萬股 = 600 億
+    assert h['amt'] == 600.0, f"⑪ 應為 600 億,實際 {h['amt']}"
+    print(f"✅ ⑪ 成交金額算對:600 檔 × 100 元 × 100 萬股 = {h['amt']} 億(存成億,前端再換兆)")
+
+# ⑫ 家數排除 ETF,但金額**要含** ETF(0050 的成交額是真金白銀,排掉會低估量能)
+with tempfile.TemporaryDirectory() as tmp:
+    dd = seed_amt(tmp, days=3, n_stocks=600, px=100.0, vol=1_000_000, etf_vol=5_000_000)
+    run(dd)
+    h = load(dd)['history'][-1]
+    assert h['total'] == 600, f"⑫ 家數不該含 ETF,實際 {h['total']}"
+    # 算式:個股 600 檔 × 100 元 × 100 萬股 = 600 億;ETF 1 檔 × 100 元 × 500 萬股 = 5 億
+    #   (⚠️ 第一版測試把 ETF 那筆誤算成 500 億 → 紅了一次才發現是測試的算術錯,程式是對的)
+    assert h['amt'] == 605.0, f"⑫ 金額應為 600+5=605 億,實際 {h['amt']}"
+    print(f"✅ ⑫ 家數排除 ETF(total={h['total']})但金額含 ETF(amt={h['amt']} 億 = 個股600+ETF5)")
+
+# ⑬ 沒有 volume 欄位 → amt=0,不可炸也不可變 NaN
+with tempfile.TemporaryDirectory() as tmp:
+    dd = Path(tmp) / 'data'; dd.mkdir(parents=True)
+    for i in range(600):
+        rows = [{'date': f'2026/03/{k+1:02d}', 'close': 100.0} for k in range(3)]   # 無 volume
+        (dd / f'{2000+i}.json').write_text(json.dumps(rows), encoding='utf-8')
+    run(dd)
+    h = load(dd)['history'][-1]
+    assert h['amt'] == 0.0 and h['total'] == 600, f"⑬ 無量時 amt 應為 0,實際 {h}"
+    print('✅ ⑬ K 線沒有 volume 欄位 → amt=0(不炸、不變 NaN),家數照算')
+
+# ⑭ 回算的歷史也要有 amt(不然歷史量能比較做不了)
+with tempfile.TemporaryDirectory() as tmp:
+    dd = seed_amt(tmp, days=6, n_stocks=600)
+    run(dd)
+    hist = load(dd)['history']
+    assert all('amt' in x for x in hist), '⑭ 每一筆(含回算)都要有 amt'
+    assert sum(1 for x in hist if x.get('bf')) >= 5, '⑭ 回算列應標 bf'
+    print(f'✅ ⑭ 回算出的 {len(hist)} 筆歷史每一筆都有 amt(可以比「今天 vs 5 日均量能」)')
+
+print('\n🎉 成交金額 四項測試全過(合計 14 項)')
+
+

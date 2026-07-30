@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.5',
+    _APP_VERSION: 'V71.5.6',
     _CHANGELOG: [
+        { v: 'V71.5.6', dt: '2026-07-30', t: '🕯️ 把節目裡「能算的」做進來:量能站回1兆 + 朱家泓連三黑', d: [
+            '你給的理財達人秀逐字稿,我挑「有資料能算、而且我還沒有」的三件事做了,其他(利多不漲、國安基金、地板股)資料撐不起或已經有了就不硬做。',
+            '① 大盤量能終於算得出來:主持人開場第一問就是「今天量能有沒有站回 1 兆」,但我原本完全算不出來 —— 因為加權指數的資料源不給成交量。改成把全市場每檔的「收盤×成交量」加總,實測 07/29 = 1.13 兆、07/27 = 0.88 兆、07/28 = 0.92 兆,跟節目講的「今天站回 1 兆」完全對上。已加進反攻雷達當一個條件,而且回算了歷史,可以比「今天 vs 5 日均量」。',
+            '② 朱家泓「連三黑之後的第一根紅K」:連 3 根實體黑K後出現紅K → 但**一定要帶量**才算訊號(無量紅K會明白告訴你「沒人接手,先別追」)。還沒等到紅K時會顯示「連三黑進行中,現在是等不是接」。',
+            '③ 整數關卡地板價:朱老師說「4 萬盤中破了、收盤又站上,跟上次一模一樣」。現在會自動判斷「盤中破但收盤站回=買盤有接」還是「今天剛跌破=地板失守」。另外會算「現價距月線還有幾 %」,因為朱老師強調反彈壓力在月線、距離太近搶反彈根本沒利潤。',
+            '文案有守住底線:這些一律寫「反彈訊號」不寫「翻多」,因為它們本來就只是反彈條件。',
+        ] },
         { v: 'V71.5.5', dt: '2026-07-30', t: '📈 騰落線不用等了:直接回算 303 個交易日', d: [
             '你說「要馬上能用,不是等好幾天」—— 對,不用等。每支股票的資料裡本來就存了 2~3 年的日 K(台積電有 762 筆、回溯到 2023 年 6 月),所以過去每一天的漲跌家數本來就算得出來。',
             '已改成一次回算:實測拿到 303 個交易日(2025/05 ~ 2026/07),採礦跑完騰落線圖立刻就有一年多的線可看,不必再等 10 天。',
@@ -14506,6 +14513,18 @@ const marginByDate = {};
         // 🌡️ V71.5.0 台指 VIX 沒資料時要講原因 —— 使用者反映「VIX 沒有資料」但只看到一個「—」,
         //   分不出是「還沒抓到」還是「這條壞掉了」。有 tw_vix_error 就明說資料源在維護,
         //   並提示美股 VIX 可以先當替代參考(同一件事只給一個結論,不另開卡)。
+        // 💰 V71.5.6 量能條件(理財達人秀開場第一問「今天量能有沒有站回 1 兆」;
+        //   朱家泓:連三黑後要有「帶量」紅K才算止跌訊號 → 沒量的紅K不算)
+        const _amt = this._amtState();
+        add('💰', '量能站回 1 兆',
+            _amt == null ? '—' : `${_amt.tn.toFixed(2)} 兆`,
+            _amt == null ? null : _amt.over1tn,
+            _amt == null
+                ? '全市場成交金額(上市+上櫃);資料整備中'
+                : `全市場成交金額(上市+上櫃)・5 日均 ${(_amt.ma5E / 10000).toFixed(2)} 兆`
+                  + (_amt.vsMa5 == null ? '' : `(${_amt.vsMa5 >= 0 ? '+' : ''}${_amt.vsMa5.toFixed(0)}%)`)
+                  + '。量縮反彈=無人接手,帶量才算真表態',
+            _amt == null);
         add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30,
             twvix == null && mr.tw_vix_error
                 ? '⚠️ 台股自己的恐慌指數資料源維護中(已自動回報),此條暫不計分;先看上方美股 VIX 當替代參考'
@@ -16216,6 +16235,75 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return null;
     },
     // 卡片用:三根K棒轉折(讀單一引擎,取最近確認 K 在最後 1-3 根)
+    // 🕯️ V71.5.6 朱家泓「連三黑之後的第一根紅K」+「整數關卡地板價」
+    //   出處:2026-07-30 理財達人秀,朱老師對 4 萬點的判斷,原話重點:
+    //     ・「這已經叫連三黑…如果出現帶量紅K的話,那就有機會反彈」
+    //     ・「4 萬是地板價。盤中破了、收盤又站上了,跟上次一模一樣」
+    //     ・「反彈的壓力在月線」——「這次距離比較遠,所以有空間」(上次太近所以搶反彈沒利潤)
+    //   全部純公式,零 API。⚠️ 誠實定位:這是「反彈訊號」不是「翻多訊號」,文案不可寫成轉多。
+    _detectChuThreeBlack(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 25) return out;
+        const n = data.length, last = n - 1;
+        const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
+              H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
+        const body = b => (O(b) > 0 ? (C(b) - O(b)) / O(b) * 100 : 0);
+        const isBlack = b => body(b) <= -0.3;      // 實體黑K(-0.3% 以內算十字/變盤線,不算)
+        const isRed   = b => body(b) >= 0.3;
+        const avgVol = (j, k) => { const a = data.slice(Math.max(0, j - k), j).map(V).filter(v => v > 0);
+                                   return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; };
+
+        // ── ① 連三黑 → 等紅K ────────────────────────────────────────
+        const cur = data[last];
+        const b1 = data[last - 1], b2 = data[last - 2], b3 = data[last - 3];
+        const av5 = avgVol(last, 5);
+        const volOk = av5 > 0 && V(cur) >= av5;      // 「帶量」= 至少回到 5 日均量
+        if (isRed(cur) && isBlack(b1) && isBlack(b2) && isBlack(b3)) {
+            out.push(volOk
+                ? { tone: 'bull', title: '連三黑後帶量紅K', val: C(cur),
+                    msg: `連 3 根實體黑K之後出現帶量紅K(量 ${(V(cur) / av5).toFixed(1)}× 5日均)→ 朱家泓「搶反彈」的基本成立條件。⚠️ 這是反彈訊號不是翻多,反彈壓力看月線。` }
+                : { tone: 'flat', title: '連三黑後紅K但沒量', val: C(cur),
+                    msg: `連 3 根實體黑K後收紅,但量只有 5 日均量的 ${av5 > 0 ? (V(cur) / av5).toFixed(1) : '?'} 倍 → 無量反彈=沒人接手,朱家泓要的是「帶量」紅K,先別追。` });
+        } else if (isBlack(cur) && isBlack(b1) && isBlack(b2)) {
+            out.push({ tone: 'bear', title: '連三黑進行中', val: C(cur),
+                msg: `已連 3 根實體黑K(累計 ${(body(cur) + body(b1) + body(b2)).toFixed(1)}%)→ 朱家泓:連三黑之後容易反彈,但要等「帶量紅K」才算訊號。現在是等,不是接。` });
+        }
+
+        // ── ② 整數關卡地板價:盤中破、收盤站回 ──────────────────────
+        //   取「離現價最近、且量級相稱」的整數關卡(如 40000 / 4000 / 400 / 40)
+        const px = C(cur), prevC = C(b1);
+        if (px > 0) {
+            // ⚠️ 不能只用 Math.floor 取關卡:收盤跌破時 floor 會抓到**下面**那一個
+            //   (39,800 → floor 得 30,000,而剛跌破的其實是 40,000)→ 整數關卡失守永遠報不出來。
+            //   正確做法:同時看上下兩個關卡,取離現價最近、且在 2% 以內的那個。
+            const mag = Math.pow(10, Math.floor(Math.log10(px)));   // 40039 / 39800 → 10000
+            const lo = Math.floor(px / mag) * mag, hi = lo + mag;
+            const lvl = (Math.abs(px - lo) <= Math.abs(px - hi)) ? lo : hi;
+            const nearPct = lvl > 0 ? Math.abs(px - lvl) / lvl * 100 : 99;
+            if (lvl > 0 && nearPct <= 2) {
+                if (L(cur) < lvl && px >= lvl) {
+                    out.push({ tone: 'bull', title: '整數關卡守住', val: lvl,
+                        msg: `盤中跌破 ${lvl.toLocaleString()} 但收盤站回(最低 ${L(cur).toFixed(0)})→ 朱家泓的「地板價」訊號:破了又站上來,買盤在這裡有接。跌破且收不回才是真的破。` });
+                } else if (px < lvl && prevC >= lvl) {
+                    // 加 prevC 條件 = 只報「今天剛跌破」;否則長期在關卡下方的股票會天天報一次
+                    out.push({ tone: 'bear', title: '整數關卡失守', val: lvl,
+                        msg: `收盤 ${px.toFixed(0)} 跌破整數關卡 ${lvl.toLocaleString()}(前一日還在之上)→ 地板價失守,下一個心理支撐往下看。要站回 ${lvl.toLocaleString()} 之上才算重新站穩。` });
+                }
+            }
+        }
+
+        // ── ③ 反彈壓力:月線還有多遠(朱:這次距離遠所以有空間)──────
+        if (n >= 21) {
+            const ma20 = data.slice(-20).reduce((a, b) => a + C(b), 0) / 20;
+            if (ma20 > 0 && px > 0 && px < ma20) {
+                const gap = (ma20 - px) / px * 100;
+                out.push({ tone: 'flat', title: '反彈空間到月線', val: ma20,
+                    msg: `現價距月線 ${ma20.toFixed(0)} 還有 ${gap.toFixed(1)}%${gap >= 4 ? '(空間夠,反彈才有利潤可搶)' : '(空間偏小,搶反彈幾乎沒利潤 —— 朱家泓上次就是這樣)'}。月線是反彈的第一道壓力,不是目標價。` });
+            }
+        }
+        return out;
+    },
+
     _detectStarPatterns(data) {
         const out = [];
         if (!Array.isArray(data) || data.length < 5) return out;
@@ -17638,6 +17726,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const pC = C(data[last]);
         const sigs = [];
         const bigVol = (j) => { const pv = data.slice(Math.max(0, j - 5), j).map(V); const av = pv.length ? pv.reduce((a, x) => a + x, 0) / pv.length : V(data[j]); return av > 0 && V(data[j]) >= av * 1.5; };
+        // 🕯️ V71.5.6 朱家泓 連三黑/整數關卡/月線反彈空間(2026-07-30 節目)—— 置頂,這是當下最關鍵的判斷
+        try { (this._detectChuThreeBlack(data) || []).forEach(x => sigs.push(x)); } catch (_) {}
 
         // ① 大量長黑 ½ 止跌訊號(回掃 ≤25 根)
         for (let j = last; j >= Math.max(1, last - 25); j--) {
@@ -36140,6 +36230,31 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         } catch (_) { this._breadthHist = this._breadthHist || []; this._breadthHistFailAt = Date.now(); }
         return this._breadthHist;
     },
+    // 💰 V71.5.6 大盤量能(全市場成交金額)—— 資料源 breadth.json 的 amt(單位:億)
+    //   為什麼需要:^TWII 的 volume 一律 0(證交所端點只給 OHLC),大盤量能本來算不出來。
+    //   而它是止跌判斷的第一個條件 —— 2026-07-30 理財達人秀開場第一問就是
+    //   「今天量能有沒有站回 1 兆」;朱家泓也講「連三黑後要有帶量紅K才算止跌訊號」。
+    //   ⚠️ 這是「上市+上櫃」全市場加總,不是證交所公布的「加權指數成交值」(那只含上市)
+    //      → 文案一律寫「全市場成交金額」,不可標成加權成交值。
+    _amtState() {
+        const h = this._breadthHist;
+        if (!Array.isArray(h) || !h.length) return null;
+        const withAmt = h.filter(r => Number(r.amt) > 0);
+        if (!withAmt.length) return null;
+        const last = withAmt[withAmt.length - 1];
+        const amtE = Number(last.amt);                 // 億
+        const tn = amtE / 10000;                       // 兆
+        const prev5 = withAmt.slice(-6, -1);
+        const ma5 = prev5.length ? prev5.reduce((a, r) => a + Number(r.amt), 0) / prev5.length : null;
+        const vsMa5 = (ma5 && ma5 > 0) ? (amtE / ma5 - 1) * 100 : null;
+        return {
+            d: last.d, amtE, tn,
+            ma5E: ma5, vsMa5,
+            over1tn: tn >= 1,                          // 站回 1 兆
+            n: withAmt.length,
+        };
+    },
+
     _adlState() {
         const h = this._breadthHist;
         // 🐛 V71.4.8 原本 <3 天直接回 null → 卡上「什麼都不顯示」。

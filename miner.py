@@ -3958,8 +3958,16 @@ def build_breadth_history():
     KEEP_DAYS = 250            # 檔案滾動保留(約一年)
     MIN_TOTAL = 500            # 少於這麼多檔代表資料沒鋪好,不記(避免髒點汙染 ADL)
 
+    # 🆕 V71.5.6 amt = 全市場成交金額(元)= Σ(收盤 × 成交量)。
+    #   為什麼要自己加總:^TWII.json 的 volume 一律是 0(證交所 MI_5MINS_HIST 只給 OHLC),
+    #   所以「大盤量能」這件事本來完全算不出來 —— 而它是止跌判斷的第一個條件
+    #   (2026-07-30 理財達人秀,主持人開場第一個問題就是「今天量能有沒有站回 1 兆」)。
+    #   實測驗算:07/29 = 1.129 兆、07/27 = 0.881 兆、07/28 = 0.916 兆
+    #   → 跟節目講的「今天站回 1 兆」完全對上,數量級正確。
+    #   ⚠️ 這是「上市+上櫃」全市場加總(data/ 兩者都有),不等於證交所公布的「加權指數成交值」
+    #      (那只含上市)→ UI 文案必須寫「全市場成交金額」,不可標成加權成交值。
     by_date = collections.defaultdict(
-        lambda: dict(up=0, dn=0, flat=0, lu=0, ld=0, st=0, wk=0, total=0))
+        lambda: dict(up=0, dn=0, flat=0, lu=0, ld=0, st=0, wk=0, total=0, amt=0.0))
     for f in Path(DATA_DIR).glob('*.json'):
         sym = f.stem
         if not (len(sym) == 4 and sym.isdigit()):
@@ -3968,8 +3976,10 @@ def build_breadth_history():
         #   ETF 是一籃子、本來就跟著指數走,算進去等於把指數自己的方向重複計一次,
         #   會讓廣度略微偏向指數(掩蓋「指數漲但多數個股在跌」—— 而那正是 ADL 要抓的)。
         #   證交所的上漲/下跌家數也不含 ETF。5 碼以上的新 ETF(00878 等)本來就被 len==4 擋掉。
-        if sym.startswith('00'):
-            continue
+        # ⚠️ ETF 排除只適用「家數」統計;成交金額(amt)不排除 ——
+        #   量能看的是市場總周轉,0050 的成交額是真金白銀,排掉會低估。
+        #   所以下面把 amt 的累加寫在 is_etf 判斷之外。
+        is_etf = sym.startswith('00')
         try:
             raw = json.loads(f.read_text(encoding='utf-8'))
             if not isinstance(raw, list) or len(raw) < 2:
@@ -3984,8 +3994,17 @@ def build_breadth_history():
                     continue
                 if pc <= 0 or not d:
                     continue
+                dk = d.replace('-', '/')
+                try:
+                    _v = float(_b.get('volume') or 0)
+                except Exception:
+                    _v = 0.0
+                if _v > 0 and c > 0:
+                    by_date[dk]['amt'] += c * _v      # 金額:含 ETF
+                if is_etf:
+                    continue                          # 家數:排除 ETF
                 chg = (c - pc) / pc * 100
-                r = by_date[d.replace('-', '/')]
+                r = by_date[dk]
                 if chg >= 9.0:
                     r['lu'] += 1
                 elif chg <= -9.0:
@@ -4033,11 +4052,12 @@ def build_breadth_history():
             if d == today_key:
                 # 今天這筆一律用最新算出來的覆蓋(同日重跑要能更新)
                 _hist = [h for h in _hist if isinstance(h, dict) and str(h.get('d')) != d]
-                _hist.append({'d': d, **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
+                _hist.append({'d': d, 'amt': round(r['amt'] / 1e8, 1),
+                              **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
                 continue
             if d in have:
                 continue
-            _hist.append({'d': d, 'bf': 1,
+            _hist.append({'d': d, 'bf': 1, 'amt': round(r['amt'] / 1e8, 1),
                           **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
             added += 1
         if today['total'] < MIN_TOTAL and added == 0:
@@ -4052,7 +4072,8 @@ def build_breadth_history():
         for h in _hist:
             _adl += (h.get('up') or 0) - (h.get('dn') or 0)
         print(f"  📊 市場廣度 {today_key}:漲 {today['up']} / 跌 {today['dn']} / 漲停 {limit_up}"
-              f" / 跌停 {today['ld']}(共 {today['total']} 檔)")
+              f" / 跌停 {today['ld']}(共 {today['total']} 檔)"
+              f"・成交金額 {today['amt'] / 1e12:.3f} 兆")
         print(f"     → breadth.json 共 {len(_hist)} 日"
               f"(本輪回算補了 {added} 日歷史)・累積騰落線 ADL = {_adl:+,}")
     except Exception as _e:
