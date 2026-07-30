@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.8',
+    _APP_VERSION: 'V71.5.9',
     _CHANGELOG: [
+        { v: 'V71.5.9', dt: '2026-07-30', t: '📈 騰落線 250 天上線了,順手修一個「只有最新那天錯」的坑', d: [
+            '回算成功:騰落線已經有 **250 個交易日**(2025/07/22 ~ 2026/07/29),不用再等。累積騰落線目前 −35,510,而且每天都有成交金額可以比量能。',
+            '但驗數字時發現一個很陰的錯:07/27、07/28 的成交金額都對,**只有最新的 07/29 是 0**。原因是資料裡有 5 檔股票已經寫入了 07/30 的盤中列 → 程式把「今天」認成 07/30(它樣本不足被略過),於是 07/29 走到「已經有了就跳過」那條路,保留了上一版還沒有成交金額的舊資料。前幾天對、只有最新那天錯,這種最難發現。',
+            '已修兩件:①「今天」改成取「樣本數足夠的最新交易日」,不是資料裡的最大日期 ② 舊資料缺新欄位時會自動補齊 —— 這第二件已經咬過兩次了,所以這次做成通則,以後新增欄位不會再只有「往後才有」。',
+        ] },
         { v: 'V71.5.8', dt: '2026-07-30', t: '🚨 你問 5483 的 166 止損 —— 那是我的 bug,不是你看錯', d: [
             '你問「量價密集區 162-167 附近會不會止跌?你叫我 166 止損對嗎?」查完:那條 166.5 是錯的,而且量價密集區也不該顯示。',
             '① 166.5 就是 7/29 那天自己的最低點(那天跌停鎖死,開 183 收 166.5 收在最低)。程式算「近 10 日低」時把今天這根也算進去 → 防線變成當天的極端值。隔天現價 167.5 只高它 0.6%,盤中隨便一動就碰到。而它上面那條寫「反彈到 5 日線 194.5 先減碼一半」—— 兩條互相矛盾:被 166.5 掃出場就永遠等不到 194.5。已改成排除今天那根。',

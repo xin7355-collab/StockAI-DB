@@ -4027,9 +4027,20 @@ def build_breadth_history():
     if not dates:
         print("  ⏭️ 市場廣度:data/*.json 讀不到任何個股 K 線,本輪不記錄")
         return 0
-    today_key = dates[-1]
+    # 🐛 V71.5.9 「今天」要取**樣本數足夠的最新交易日**,不能直接用 dates[-1]。
+    #   踩到的事(2026-07-30 09:47 那輪):data/ 裡有少數股票已經有 07/30 的盤中列
+    #   → dates[-1] = 07/30,但它樣本不足(<500)被 `continue` 略過;
+    #     而真正的最新交易日 07/29 就落到「d in have → 跳過」那條路,
+    #     保留了上一輪寫的舊列 → **07/29 的成交金額永遠是 0**(前兩天卻是對的,超難察覺)。
+    #   通則:任何「今天/最新」的判斷都不能用『資料裡的最大日期』,
+    #   要用『通得過品質門檻的最大日期』—— 否則一筆稀疏的部分資料就會把整個判斷帶偏。
+    _qualified = [d for d in dates if by_date[d]['total'] >= MIN_TOTAL]
+    today_key = _qualified[-1] if _qualified else dates[-1]
     today = by_date[today_key]
     limit_up = today['lu']
+    if _qualified and dates[-1] != today_key:
+        print(f"  ℹ️ 最新日期 {dates[-1]} 樣本只有 {by_date[dates[-1]]['total']} 檔(<{MIN_TOTAL},"
+              f"盤中/部分資料)→ 以 {today_key} 當最新交易日")
 
     try:
         _bd_path = Path(DATA_DIR) / 'breadth.json'
@@ -4045,6 +4056,7 @@ def build_breadth_history():
         # 既有(實跑寫入)的日期優先,回算只補缺的
         have = {str(h.get('d')) for h in _hist if isinstance(h, dict)}
         added = 0
+        _healed = 0
         for d in dates:
             r = by_date[d]
             if r['total'] < MIN_TOTAL:
@@ -4056,6 +4068,16 @@ def build_breadth_history():
                               **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
                 continue
             if d in have:
+                # 🐛 V71.5.9 舊列缺新欄位時要補齊(schema self-heal)。
+                #   這是第二次被「新欄位只有往後才有」咬到(第一次是 breadth 本身),
+                #   所以做成通則:已存在的日期若缺 amt 而本輪算得出來 → 就地補,
+                #   其餘既有數值不動(仍遵守「實跑寫入優先」)。
+                if r['amt'] > 0:
+                    for _h in _hist:
+                        if isinstance(_h, dict) and str(_h.get('d')) == d and not _h.get('amt'):
+                            _h['amt'] = round(r['amt'] / 1e8, 1)
+                            _healed += 1
+                            break
                 continue
             _hist.append({'d': d, 'bf': 1, 'amt': round(r['amt'] / 1e8, 1),
                           **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
@@ -4075,7 +4097,8 @@ def build_breadth_history():
               f" / 跌停 {today['ld']}(共 {today['total']} 檔)"
               f"・成交金額 {today['amt'] / 1e12:.3f} 兆")
         print(f"     → breadth.json 共 {len(_hist)} 日"
-              f"(本輪回算補了 {added} 日歷史)・累積騰落線 ADL = {_adl:+,}")
+              f"(本輪回算補了 {added} 日歷史"
+              f"{f'、補齊 {_healed} 日缺的成交金額' if _healed else ''})・累積騰落線 ADL = {_adl:+,}")
     except Exception as _e:
         print(f"  ⚠️ 市場廣度歷史寫入失敗(不影響其他):{str(_e)[:80]}")
     return limit_up

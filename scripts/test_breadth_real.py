@@ -263,3 +263,46 @@ with tempfile.TemporaryDirectory() as tmp:
 print('\n🎉 成交金額 四項測試全過(合計 14 項)')
 
 
+
+
+# ══════════════════════════════════════════════════════════════════
+# V71.5.9 「今天」要取樣本足夠的最新交易日 + 舊列缺欄位要自我補齊
+#   踩到的事(2026-07-30 09:47 實跑):breadth.json 的 07/27、07/28 成交金額都對,
+#   只有最新的 07/29 是 0.000 兆 —— 因為 data/ 裡有少數股票已有 07/30 盤中列,
+#   dates[-1] 變成 07/30(樣本不足被略過),07/29 就落到「已經有了→跳過」分支,
+#   保留了上一輪寫的、還沒有 amt 欄位的舊列。前兩天對、只有最新那天錯,極難察覺。
+# ══════════════════════════════════════════════════════════════════
+
+# ⑮ 少數股票有「明天」的盤中列 → 不可把它當成最新交易日
+with tempfile.TemporaryDirectory() as tmp:
+    dd = Path(tmp) / 'data'; dd.mkdir(parents=True)
+    for i in range(600):                    # 600 檔到 07/29
+        rows = [{'date': '2026/07/28', 'close': 100.0, 'volume': 1_000_000},
+                {'date': '2026/07/29', 'close': 101.0, 'volume': 1_000_000}]
+        (dd / f'{2000+i}.json').write_text(json.dumps(rows), encoding='utf-8')
+    for i in range(5):                      # 只有 5 檔有 07/30 盤中列
+        rows = [{'date': '2026/07/29', 'close': 101.0, 'volume': 1_000_000},
+                {'date': '2026/07/30', 'close': 102.0, 'volume': 500}]
+        (dd / f'{7000+i}.json').write_text(json.dumps(rows), encoding='utf-8')
+    run(dd)
+    h = load(dd)['history']
+    last = h[-1]
+    assert last['d'] == '2026/07/29', f"⑮ 最新交易日應是 07/29(07/30 樣本只有 5 檔),實際 {last['d']}"
+    assert last['amt'] > 0, f"⑮ 最新那天的成交金額不可是 0,實際 {last['amt']}"
+    assert not any(x['d'] == '2026/07/30' for x in h), '⑮ 樣本不足的 07/30 不該被記進去'
+    print(f"✅ ⑮ 只有 5 檔有隔日盤中列 → 仍以 07/29 當最新交易日,且金額正確({last['amt']} 億)")
+
+# ⑯ 舊列缺 amt(上一版寫的)→ 本輪要自我補齊,不是永遠是 0
+with tempfile.TemporaryDirectory() as tmp:
+    dd = seed_amt(tmp, days=4, n_stocks=600, px=100.0, vol=1_000_000)
+    hist_old = [{'d': '2026/03/03', 'up': 600, 'dn': 0, 'flat': 0,
+                 'lu': 0, 'ld': 0, 'st': 600, 'wk': 0, 'total': 600}]   # 故意沒有 amt
+    (Path(dd) / 'breadth.json').write_text(
+        json.dumps({'updated': 'x', 'history': hist_old}), encoding='utf-8')
+    run(dd)
+    h = {x['d']: x for x in load(dd)['history']}
+    assert h['2026/03/03'].get('amt', 0) > 0, f"⑯ 缺 amt 的舊列應被補齊,實際 {h['2026/03/03']}"
+    assert h['2026/03/03']['up'] == 600, '⑯ 補欄位時不可動到既有數值'
+    print(f"✅ ⑯ 舊列缺成交金額 → 自我補齊({h['2026/03/03']['amt']} 億),其餘既有數值不動")
+
+print('\n🎉 最新交易日判斷 + 欄位自我補齊 兩項測試全過(合計 16 項)')
