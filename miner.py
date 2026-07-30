@@ -2467,33 +2467,55 @@ def _merge_twii_volume(rows, vol_map):
     return rows, hit
 
 
-def _fetch_fmtqik_months(months):
+FMTQIK_TRIES = 3
+
+
+def _fetch_fmtqik_months(months, _get=None):
     """抓 FMTQIK 月份檔並合併成 {ISO日期: (股數, 金額)}。連不到就回空 dict(呼叫端就是沒有那兩個欄位)。
 
-    ⚠️ 節流:一次可能要抓 ~30 個月份檔。TWSE 對連續快速請求會回 403/擋 IP
-       (同 fetch_twse_fundamentals 已經在 sleep 的理由),所以每檔之間停一下。
-       ~30 檔 × 0.35s ≈ 11 秒,一天只跑一次,可接受。
+    ⚠️ 為什麼要重試(V71.6.4,看 log 才知道的):首次上線實測 25 個月份檔中,
+       **2024/07、2026/06、2026/07 三個月回 HTTP 307**,其餘 22 個月正常 →
+       442/486 列拿到值,而且缺的正好是「最近兩個月」這段最該有的。
+       307 是這專案已知的老問題(見 _fetch_bfi82u_rows 的說明:
+       「原本只打 www.twse.com.tw 的 rwd 端點,GHA runner 常被回 HTTP 307(WAF/轉址)」),
+       **是間歇性的、不是這幾個月份沒資料** —— 同一支 URL 對其他 22 個月都通。
+       所以照這支檔案既有的反 WAF 做法處理:`_rnd_hdrs()` 隨機 UA + 重試 3 次遞增退避。
+
+    ⚠️ 節流:一次可能要抓 ~30 個月份檔,TWSE 對連續快速請求會擋
+       (同 fetch_twse_fundamentals 已經在 sleep 的理由),每檔之間停一下。
+
+    `_get` 只給測試注入用(沙箱連不到 twse),正式路徑一律用 requests。
     """
+    getter = _get or (lambda url: requests.get(
+        url, headers={**HEADERS, **_rnd_hdrs()}, timeout=10, allow_redirects=True))
     vol_map = {}
     for _i, (y, m) in enumerate(months):
         if _i:
             time.sleep(random.uniform(0.25, 0.45))
         url = f"https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?response=json&date={y:04d}{m:02d}01"
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=10)
-            if r.status_code != 200:
-                print(f"  [TWSE FMTQIK] {y}/{m:02d} HTTP {r.status_code}")
-                continue
-            j = r.json()
-            if j.get('stat') and j.get('stat') != 'OK':
-                print(f"  [TWSE FMTQIK] {y}/{m:02d} stat={str(j.get('stat'))[:60]}")
-                continue
-            got = _parse_fmtqik(j)
-            if not got:
-                print(f"  [TWSE FMTQIK] {y}/{m:02d} 解析 0 列,fields={j.get('fields')}")
-            vol_map.update(got)
-        except Exception as e:
-            print(f"  [TWSE FMTQIK] {y}/{m:02d} 抓取失敗: {str(e)[:60]}")
+        for _try in range(1, FMTQIK_TRIES + 1):
+            try:
+                r = getter(url)
+                if r.status_code != 200:
+                    print(f"  [TWSE FMTQIK] {y}/{m:02d} HTTP {r.status_code}"
+                          f"(第 {_try}/{FMTQIK_TRIES} 次)")
+                    if _try < FMTQIK_TRIES:
+                        time.sleep(_try * 1.5)     # 307/403 多半是間歇 WAF,退避後換 UA 再試
+                        continue
+                    break
+                j = r.json()
+                if j.get('stat') and j.get('stat') != 'OK':
+                    print(f"  [TWSE FMTQIK] {y}/{m:02d} stat={str(j.get('stat'))[:60]}")
+                    break                          # 官方明講沒資料 → 重試也沒用
+                got = _parse_fmtqik(j)
+                if not got:
+                    print(f"  [TWSE FMTQIK] {y}/{m:02d} 解析 0 列,fields={j.get('fields')}")
+                vol_map.update(got)
+                break
+            except Exception as e:
+                print(f"  [TWSE FMTQIK] {y}/{m:02d} 抓取失敗(第 {_try}/{FMTQIK_TRIES} 次): {str(e)[:60]}")
+                if _try < FMTQIK_TRIES:
+                    time.sleep(_try * 1.5)
     return vol_map
 
 

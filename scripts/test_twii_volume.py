@@ -128,8 +128,76 @@ eq('⑧ 壞日期跳過不 throw',
    [(2026, 7)])
 eq('⑧ 空 rows', M._months_span([]), [])
 
+# ── ⑨ 307 重試(V71.6.4)—— 實測 25 個月份檔有 3 個回 307,而且缺的正好是最近兩個月 ──
+#    307 是 GHA runner 打 twse rwd 端點的已知間歇問題(見 _fetch_bfi82u_rows 說明),
+#    同一支 URL 對其他 22 個月都通 → 一定要重試,不能一次失敗就放棄。
+import types as _t
+
+M.time.sleep = lambda *_a, **_k: None      # 測試不要真的睡
+
+
+class _Resp:
+    def __init__(self, code, payload=None):
+        self.status_code = code
+        self._p = payload or {}
+
+    def json(self):
+        return self._p
+
+
+_GOOD = {'stat': 'OK', 'fields': ['日期', '成交股數', '成交金額'],
+         'data': [['115/07/29', '6,800,000,000', '1,129,000,000,000']]}
+
+calls = []
+
+
+def _flaky(url):
+    """前兩次回 307,第三次成功 —— 模擬實測到的間歇 WAF。"""
+    calls.append(url)
+    return _Resp(200, _GOOD) if len([c for c in calls if c == url]) >= 3 else _Resp(307)
+
+
+got = M._fetch_fmtqik_months([(2026, 7)], _get=_flaky)
+eq('⑨ 307 兩次後第三次成功', '2026/07/29' in got, True)
+eq('⑨ 確實重試了 3 次', len(calls), 3)
+
+# 一直 307 → 放棄但不 throw、不回髒資料
+calls.clear()
+eq('⑨ 一直 307 → 回空', M._fetch_fmtqik_months([(2026, 7)], _get=lambda u: (calls.append(u), _Resp(307))[1]), {})
+eq('⑨ 一直 307 只試 FMTQIK_TRIES 次(不無限重試)', len(calls), M.FMTQIK_TRIES)
+
+# 官方明講「沒有符合條件的資料」(休市月/未來月)→ 不該浪費重試
+calls.clear()
+_stat = {'stat': '很抱歉，沒有符合條件的資料!'}
+M._fetch_fmtqik_months([(2030, 1)], _get=lambda u: (calls.append(u), _Resp(200, _stat))[1])
+eq('⑨ 官方說沒資料就不重試(只打 1 次)', len(calls), 1)
+
+# 連線例外也要重試,且不讓整批掛掉
+calls.clear()
+
+
+def _boom(url):
+    calls.append(url)
+    raise RuntimeError('connection reset')
+
+
+eq('⑨ 例外也重試且回空不 throw', M._fetch_fmtqik_months([(2026, 7)], _get=_boom), {})
+eq('⑨ 例外重試次數', len(calls), M.FMTQIK_TRIES)
+
+# 多個月份:一個掛掉不影響其他
+calls.clear()
+
+
+def _mixed(url):
+    calls.append(url)
+    return _Resp(307) if '202606' in url else _Resp(200, _GOOD)
+
+
+got2 = M._fetch_fmtqik_months([(2026, 6), (2026, 7)], _get=_mixed)
+eq('⑨ 一個月掛掉,其他月照樣拿到', '2026/07/29' in got2, True)
+
 print()
 if fails:
     print(f'❌ TWII_VOLUME_TEST_FAIL: {fails}')
     sys.exit(1)
-print('✅ TWII_VOLUME_TEST_PASS')
+print('✅ TWII_VOLUME_TEST_PASS (含 307 重試)')
