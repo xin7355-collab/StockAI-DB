@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.7.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.7.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6721,8 +6721,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.7.1',
+    _APP_VERSION: 'V71.7.2',
     _CHANGELOG: [
+        { v: 'V71.7.2', dt: '2026-07-31', t: '🕵️ 分點「隔日沖」標籤改用實測 —— 原本寫死的那份有錯', d: [
+            '之前分點旁邊的「⚡外資最兇隔日沖」那類標籤,是人工寫死的。拿真實資料驗證後發現有錯:被標成「外資最兇隔日沖」的美商美林,實際上幾乎沒有隔日沖傾向。',
+            '改成採礦端每天實測:比較「今天買的人」和「其他天買的人」誰更常出現在隔天的賣超名單 —— 差多少才是真的慣性。有實測就以實測為準,人工標籤降為備援並加「?」提醒還沒驗證。',
+            '實測沒有慣性的分點,標籤會直接消失(不會再給你錯的印象)。反而是一些沒沒無聞的小分點最明顯。',
+            '⚠️ 目前只有 8 天資料,小分點樣本才 20~30 筆。過一兩個月我會重驗,如果效果消失就把功能拿掉,不留著誤導。',
+        ] },
         { v: 'V71.7.1', dt: '2026-07-31', t: '🚨 融資「快被斷頭」壓力區(你問風控,這是唯一有硬規則的那個)', d: [
             '你問「跌多少一定會被迫賣」—— 投信其實沒有這種停損線(法規只規定他們最低要持股 7 成、單一個股不超過 1 成,所以他們是換股不是清倉)。真正有明文硬規則的是散戶融資:市值除以借款低於 130% 就被追繳,兩天沒補第三天券商直接幫你賣。',
             '所以籌碼頁的融資卡下面多一塊:這檔的「融資族群成本區」和「推估追繳區」在哪、現價還差幾 %(順便給每張差多少元),以及融資餘額最近是不是已經在大量退場。',
@@ -29212,11 +29218,35 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         '群益金鼎大安': '🧙波段高勝率大戶', '凱基板橋': '🧙低接高手', '宏遠綜合': '🧙波段發動點',
         '永豐金忠孝': '🧙波段勝率極高', '富邦台南': '🧙抄底王', '凱基市政': '🐋中台灣大鯨魚', '凱基復興': '🎯關鍵波段大戶',
     },
+    // 🕵️ V71.7.2 分點「隔日沖真效果」實測值(採礦端 broker_perf.json 的 flip)
+    //   為什麼要有:上面的 _BROKER_GOD 是**人工寫死**的標籤,實測證明會錯 ——
+    //   「美商美林」被標成「⚡外資最兇隔日沖」,但同股換日對照算出來真效果 ≈ 0;
+    //   反而一堆沒標籤的小分點(大昌桃園 +31、華南大甲 +31)才明顯。
+    //   ⛔ 鐵則:**有實測就以實測為準**,人工標籤只在「沒量到」時當備援,且要標明未實測。
+    _flipEdge(name) {
+        const list = this._brokerPerf?.flip;
+        if (!Array.isArray(list) || !list.length || !name) return null;
+        if (!this._flipMap) {
+            this._flipMap = new Map();
+            const key = x => String(x).replace(/[（(].*$/, '').replace(/[-－\s]/g, '');
+            for (const r of list) if (r?.broker) this._flipMap.set(key(r.broker), r);
+        }
+        const k = String(name).replace(/[（(].*$/, '').replace(/[-－\s]/g, '');
+        return this._flipMap.get(k) || null;
+    },
     _brokerGodTag(name) {
         if (!name) return '';
+        // ① 實測優先:真效果 ≥10pp 且樣本足夠才敢講(低於門檻代表「沒有慣性」,不給標籤)
+        const f = this._flipEdge?.(name);
+        if (f && f.n >= 20) {
+            if (f.edge >= 20) return `⚡隔日沖強 +${f.edge}`;
+            if (f.edge >= 10) return `⚡隔日沖 +${f.edge}`;
+            return '';           // 實測沒慣性 → **不給標籤**(不可拿人工標籤蓋過實測)
+        }
+        // ② 沒量到才退回人工標籤,並標「?」提醒未經實測
         const norm = String(name).replace(/[-－\s（(].*$/, '').replace(/[-－\s]/g, '');   // 去券商名括號註解 + 正規化去符號
         const full = String(name).replace(/[-－\s]/g, '');
-        for (const k in this._BROKER_GOD) { if (norm.includes(k) || full.includes(k)) return this._BROKER_GOD[k]; }
+        for (const k in this._BROKER_GOD) { if (norm.includes(k) || full.includes(k)) return this._BROKER_GOD[k] + '?'; }
         return '';
     },
     _renderBrokerRadar(d) {

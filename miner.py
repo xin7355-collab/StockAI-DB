@@ -5776,6 +5776,132 @@ def build_broker_book():
     print(f"  ✅ 分點檔案:{len(brokers)} 家(id 併檔) / 排行 {len(buy_today)} / 聯軍 {len(alliances)} 組 → data/broker_book.json")
 
 
+def compute_flip_edge(hist_by_sym, min_n=20):
+    """🕵️ V71.7.2 分點「隔日沖真效果」—— 純函式,可離線測。
+
+    使用者問「隔日沖分點有沒有慣性」。broker_habit_probe.py 實測後有兩個結論:
+      ① 慣性確實存在,但**名單跟人工標籤對不上**(實測:美商美林 −0.4pp = 幾乎沒有,
+         而它在前端 _BROKER_GOD 被標成「⚡外資最兇隔日沖」)→ 標籤不該當事實用。
+      ② 「開高就倒」「賺 X% 才出」**都被否定**,所以這裡不算那兩個,只算配對慣性。
+
+    ⚠️ 方法論(探針踩過兩次的坑,不可簡化掉):
+      ・**必須有同股換日對照組**。第一版用「所有分點出現在賣方的機率」當基準,
+        算出來剛好 50.0% —— 那是「每天 15 買 + 15 賣」的結構必然值,毫無意義。
+        正解:同一檔股票、同一組隔日賣方名單,比較「當天買方」vs「其他日買方」。
+      ・報酬**必須扣掉同期個股自己的漲跌**。不扣的話,崩盤期會看到「大家都賠 3%」,
+        那是行情不是行為(實測 2026/07/22~30 大盤 −8.4%,扣完中位變 −0.06%)。
+
+    輸入 hist_by_sym: {sym: [{'d':日期, 'b':[[名,張,均價]...], 's':[...], 'ret':同期個股漲跌%}]}
+    回 [{broker, n, rate, ctrl, edge, med_ex, win, nret}, ...] 依 edge 由大到小。
+    """
+    from collections import defaultdict
+    import statistics as _st
+    hit, tot, chit, ctot, ex = (defaultdict(int), defaultdict(int),
+                                defaultdict(int), defaultdict(int), defaultdict(list))
+    for rows in (hist_by_sym or {}).values():
+        rows = [r for r in (rows or []) if isinstance(r, dict)]
+        if len(rows) < 2:
+            continue
+        for i in range(len(rows) - 1):
+            nxt = rows[i + 1]
+            sellers = {}
+            for r0 in (nxt.get('s') or []):
+                if isinstance(r0, (list, tuple)) and len(r0) >= 3:
+                    try:
+                        sellers[r0[0]] = float(r0[2])
+                    except (TypeError, ValueError):
+                        pass
+            if not sellers:
+                continue
+            stock_ret = nxt.get('ret')
+            for r0 in (rows[i].get('b') or []):
+                if not (isinstance(r0, (list, tuple)) and len(r0) >= 3):
+                    continue
+                nm = r0[0]
+                try:
+                    buy_p = float(r0[2])
+                except (TypeError, ValueError):
+                    continue
+                tot[nm] += 1
+                if nm in sellers and buy_p > 0:
+                    hit[nm] += 1
+                    sp = sellers[nm]
+                    if sp > 0 and stock_ret is not None:
+                        ex[nm].append((sp - buy_p) / buy_p * 100 - float(stock_ret))
+                elif nm in sellers:
+                    hit[nm] += 1
+            # 對照組:同一組 sellers,換成「其他日」的買方名單
+            for j in range(len(rows) - 1):
+                if j == i:
+                    continue
+                for r0 in (rows[j].get('b') or []):
+                    if isinstance(r0, (list, tuple)) and r0:
+                        ctot[r0[0]] += 1
+                        if r0[0] in sellers:
+                            chit[r0[0]] += 1
+    out = []
+    for nm, n in tot.items():
+        if n < min_n:
+            continue
+        rate = hit[nm] / n * 100
+        ctrl = (chit[nm] / ctot[nm] * 100) if ctot.get(nm) else None
+        if ctrl is None:
+            continue
+        rets = ex[nm]
+        out.append({
+            'broker': nm, 'n': n,
+            'rate': round(rate, 1), 'ctrl': round(ctrl, 1), 'edge': round(rate - ctrl, 1),
+            'med_ex': round(_st.median(rets), 2) if rets else None,
+            'win': round(sum(1 for r in rets if r > 0) / len(rets) * 100) if rets else None,
+            'nret': len(rets),
+        })
+    out.sort(key=lambda x: -x['edge'])
+    return out
+
+
+def build_broker_flip():
+    """讀 data/chips/*.json 的 hist,算「隔日沖真效果」→ 回 (list, days)。純後處理零 API。"""
+    cdir = Path(DATA_DIR) / 'chips'
+    if not cdir.exists():
+        return [], 0
+    hist_by_sym, days = {}, 0
+    for f in sorted(cdir.glob('*.json')):
+        try:
+            d = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        if not isinstance(d, dict):
+            continue
+        rows = [r for r in (d.get('hist') or []) if isinstance(r, dict)]
+        if len(rows) < 2:
+            continue
+        days = max(days, len(rows))
+        # 同期個股漲跌%(代表價 (高+低+收)/3),供「超額報酬」扣除行情
+        by_date = {}
+        try:
+            arr = json.loads((Path(DATA_DIR) / f'{f.stem}.json').read_text(encoding='utf-8'))
+            for r in arr if isinstance(arr, list) else []:
+                dt = str(r.get('date') or '').replace('/', '-')
+                if dt:
+                    by_date[dt] = r
+        except Exception:
+            pass
+
+        def _tp(dt):
+            r = by_date.get(str(dt))
+            try:
+                return (float(r['high']) + float(r['low']) + float(r['close'])) / 3
+            except Exception:
+                return None
+        for k in range(1, len(rows)):
+            p0, p1 = _tp(rows[k - 1].get('d')), _tp(rows[k].get('d'))
+            rows[k]['ret'] = ((p1 - p0) / p0 * 100) if (p0 and p1) else None
+        hist_by_sym[f.stem] = rows
+    res = compute_flip_edge(hist_by_sym)
+    print(f"  🕵️ 隔日沖真效果:{len(hist_by_sym)} 檔 × {days} 天 → {len(res)} 個分點達樣本門檻")
+    return res, days
+
+
 def build_broker_perf():
     """🧙 券商分點勝率榜 → data/broker_perf.json(前瞻回測 + 即時浮動雙軌)
     ① 累積:每日把各股當日(1d)分點買超(broker, sym, 買超均價)存進 data/broker_signals.json(滾動 ~45 交易日)。
@@ -5952,6 +6078,12 @@ def build_broker_perf():
         rows.sort(key=lambda r: (-r['win_rate'], -r['avg_ret']))
         return rows[:30]
 
+    try:
+        _flip_list, _flip_days = build_broker_flip()
+    except Exception as _e:
+        print(f"  ⚠️ 隔日沖真效果計算失敗(不影響其他榜):{type(_e).__name__}: {str(_e)[:60]}")
+        _flip_list, _flip_days = [], 0
+
     payload = {
         'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'daytrade': rank(fwd['daytrade'], 12),
@@ -5960,6 +6092,9 @@ def build_broker_perf():
         'float_short': rank(float_short, 8),
         'float_swing': rank(float_swing, 8),
         'signals': len(hist), 'days': len(keep_dates),
+        # 🕵️ V71.7.2 隔日沖「真效果」(配對率 − 同股換日對照)。前端用它取代人工標籤 ——
+        #   實測證明人工標籤會錯(美商美林標「外資最兇隔日沖」,真效果只有 −0.4pp)。
+        'flip': _flip_list, 'flip_days': _flip_days,
         'backfill': bf_added,   # 短線/波段榜含幾筆歷史回推近似(前端標註;真實累積後占比自然下降)
     }
     Path(DATA_DIR).mkdir(exist_ok=True)
