@@ -2468,9 +2468,16 @@ def _merge_twii_volume(rows, vol_map):
 
 
 def _fetch_fmtqik_months(months):
-    """抓 FMTQIK 月份檔並合併成 {ISO日期: (股數, 金額)}。連不到就回空 dict(呼叫端維持 volume=0)。"""
+    """抓 FMTQIK 月份檔並合併成 {ISO日期: (股數, 金額)}。連不到就回空 dict(呼叫端就是沒有那兩個欄位)。
+
+    ⚠️ 節流:一次可能要抓 ~30 個月份檔。TWSE 對連續快速請求會回 403/擋 IP
+       (同 fetch_twse_fundamentals 已經在 sleep 的理由),所以每檔之間停一下。
+       ~30 檔 × 0.35s ≈ 11 秒,一天只跑一次,可接受。
+    """
     vol_map = {}
-    for y, m in months:
+    for _i, (y, m) in enumerate(months):
+        if _i:
+            time.sleep(random.uniform(0.25, 0.45))
         url = f"https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?response=json&date={y:04d}{m:02d}01"
         try:
             r = requests.get(url, headers=HEADERS, timeout=10)
@@ -2554,20 +2561,9 @@ def _fetch_twii_history_official(months_back=2):
             seen.add(r['date'])
             uniq.append(r)
     uniq.sort(key=lambda x: x['date'])
-    if not uniq:
-        return None
-    # 📊 V71.6.2 補官方量能:MI_5MINS_HIST 只有 OHLC,成交股數/金額另向 FMTQIK 要。
-    #   寫進獨立欄位 mkt_vol / amount,**不動 volume**(理由見 _merge_twii_volume 的說明:
-    #   yfinance 的 volume 跟官方股數差 1,500 倍,混在一起會做出 1000 倍斷崖)。
-    #   ⛔ 併不到就整列沒有那兩個欄位(誠實),不要用鄰近日期硬湊。
-    try:
-        _months = _months_span(uniq, cap=30) or months_to_fetch
-        uniq, _hit = _merge_twii_volume(uniq, _fetch_fmtqik_months(_months))
-        print(f"  [TWSE TAIEX] 官方量能(mkt_vol/amount)併入 {_hit}/{len(uniq)} 列"
-              f"(FMTQIK,{len(_months)} 個月份檔)")
-    except Exception as e:
-        print(f"  ⚠️ FMTQIK 量能併入失敗(不影響 OHLC): {str(e)[:80]}")
-    return uniq
+    # 📌 官方量能(FMTQIK)**不在這裡併** —— 這支只回最近 3 個月,在這裡併只會蓋到那 63 列。
+    #    要涵蓋 ^TWII.json 完整 486 列,必須在 _merge_official_over_yf 之後再併(見下方呼叫處)。
+    return uniq if uniq else None
 
 
 def _fetch_otc_history_official(months_back=2):
@@ -2789,6 +2785,20 @@ def fetch_us_macro_cache():
                     except Exception as _e:
                         print(f"  ⚠️ 讀既有 {fname} 失敗:{_e}")
                 long_rows = _merge_official_over_yf(base_rows, official_rows) if official_rows else base_rows
+                # 📊 V71.6.2 官方量能(成交股數/金額)併入 —— 放在**合併之後**,才蓋得到完整長歷史。
+                #   踩過的坑:一開始寫在 _fetch_twii_history_official 裡面,但那支只回最近 3 個月
+                #   → 只有最新 63 列拿到 amount,舊的 423 列永遠沒有,量能類指標算不出一年趨勢。
+                #   ⛔ 只有 twii(集中市場)適用;twoii 是櫃買,FMTQIK 不含它,不可套用。
+                #   ⛔ 一律寫獨立欄位 mkt_vol / amount,**不動 volume**(volume 來自 yfinance,
+                #      跟官方股數差約 1,500 倍,混同一欄會做出 1000 倍斷崖 —— 詳見 _merge_twii_volume)。
+                if key == 'twii' and long_rows:
+                    try:
+                        _mo = _months_span(long_rows, cap=30)
+                        long_rows, _hit = _merge_twii_volume(long_rows, _fetch_fmtqik_months(_mo))
+                        print(f"  📊 官方量能(mkt_vol/amount)併入 {_hit}/{len(long_rows)} 列"
+                              f"(FMTQIK {len(_mo)} 個月份檔)")
+                    except Exception as _e:
+                        print(f"  ⚠️ FMTQIK 量能併入失敗(不影響 OHLC): {str(_e)[:80]}")
                 # 個股格式檔
                 if long_rows:
                     try:
