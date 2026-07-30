@@ -1331,11 +1331,109 @@ def _classify_finmind_fail(tried):
     return ('；'.join(head) + ' ｜ 原文:' + joined)[:400]
 
 
+def _taifex_list_endpoints(keyword=''):
+    """列出 TAIFEX OpenAPI 目前有哪些端點(找不到正確名稱時,讓 log 自己說答案)。
+
+    這支的用途是**診斷**:候選名稱全猜錯時,與其下一輪再猜,不如把官方的清單印出來。
+    同專案 V71.3.4 的教訓(FinMind 根本沒有 TaiwanBrokerInfo 這個資料集)就是這樣解掉的。
+    """
+    for idx in ('swagger/v1/swagger.json', 'swagger.json', ''):
+        try:
+            r = http.get(TAIFEX_OPENAPI_BASE + idx, headers=_TAIFEX_OPENAPI_UA, timeout=20)
+            if r.status_code != 200:
+                continue
+            j = r.json()
+            names = []
+            if isinstance(j, dict) and isinstance(j.get('paths'), dict):
+                names = [k.strip('/').split('/')[-1] for k in j['paths']]
+            elif isinstance(j, list):
+                names = [str(x.get('name') or x.get('path') or x) for x in j if x]
+            if names:
+                hit = [n for n in names if keyword.lower() in n.lower()] if keyword else names
+                print(f"  [TAIFEX OpenAPI] 端點清單 {len(names)} 個"
+                      f"{f',含「{keyword}」的:{hit[:12]}' if keyword else f':{names[:20]}'}")
+                return hit or names
+        except Exception as e:
+            print(f"  [TAIFEX OpenAPI] 端點清單 {idx or '(root)'} 失敗:{str(e)[:50]}")
+    return []
+
+
+def _fetch_tw_vix_taifex():
+    """📊 V71.7.0 台指 VIX 改先問**期交所官方**(免費,不需要任何金鑰)。
+
+    ⭐ 為什麼要有這條(使用者問「台指金鑰要付費嗎?」):
+       走 FinMind 的話,`TaiwanOptionVix` 需要付費會員層級 —— 實測回
+       「Your level is register. Please update your user level.」。
+       但**台指選擇權波動率指數(台指 VIX)本來就是期交所自己公布的公開資料**,
+       期交所 OpenAPI 不需要金鑰、也不需要付費。所以正解是換來源,不是花錢。
+
+    回 (rows, err):rows 為 [{'date':'YYYY-MM-DD','vix':float}, ...](由舊到新)。
+    ⚠️ 沙箱連不到 taifex,候選端點名稱是推測的 → 全失敗時會把官方端點清單印進 log,
+       下一輪採礦就能直接看到正確名稱(同 V71.3.4 解 FinMind 資料集名的做法)。
+    """
+    CAND = [
+        'TaiwanIndexOptionsVolatilityIndex',
+        'OptionsVolatilityIndex',
+        'TaiwanIndexOptionVolatilityIndex',
+        'VolatilityIndex',
+        'TaiwanVIX',
+    ]
+    data, diag = _taifex_openapi(CAND)
+    if not data:
+        # 猜不到 → 讓官方清單自己說話(只印含 vol/vix 的,避免洗版)
+        found = _taifex_list_endpoints('vol') + _taifex_list_endpoints('vix')
+        extra = f";官方端點含 vol/vix 的:{sorted(set(found))[:10]}" if found else ''
+        return None, f'TAIFEX:{diag}{extra}'
+    rows = []
+    for r0 in data:
+        if not isinstance(r0, dict):
+            continue
+        dk, dv = _find_key(r0, ('Date', '日期'))
+        vk, vv = _find_key(r0, ('VIX', 'Vix', '波動率', 'Volatility'))
+        if dv is None or vv is None:
+            continue
+        try:
+            v = float(str(vv).replace(',', '').strip())
+        except (ValueError, TypeError):
+            continue
+        d = str(dv).strip().replace('/', '-')
+        if len(d) == 8 and d.isdigit():          # 20260730 → 2026-07-30
+            d = f'{d[:4]}-{d[4:6]}-{d[6:]}'
+        if len(d) >= 10 and v > 0:
+            rows.append({'date': d[:10], 'vix': v})
+    if not rows:
+        _k = list(data[0].keys()) if isinstance(data[0], dict) else None
+        return None, f'TAIFEX:端點有回應但解不出日期/VIX 欄(keys={_k})'
+    rows.sort(key=lambda x: x['date'])
+    print(f"  [台指VIX] ✅ 期交所官方(免費)命中 {len(rows)} 列,最新 {rows[-1]['date']}={rows[-1]['vix']}")
+    return rows, None
+
+
 def fetch_tw_vix():
-    """回 (最新 vix, 5日變化%, error)。用 GitHub Secrets FINMIND_TOKENS 第一把;未設/失敗回 None 不崩。"""
+    """回 (最新 vix, 5日變化%, error)。
+
+    來源優先序(V71.7.0 起):
+      ① **期交所官方 OpenAPI** —— 免費、不需金鑰。台指 VIX 本來就是期交所公布的公開資料。
+      ② FinMind —— 需付費會員層級(免費層回 "Your level is register"),只當備援。
+    """
+    # ① 先問期交所(免費)
+    try:
+        _rows, _terr = _fetch_tw_vix_taifex()
+        if _rows:
+            _by = {r['date']: r['vix'] for r in _rows}
+            _ds = sorted(_by)
+            _cur = _by[_ds[-1]]
+            _base = _by[_ds[-6]] if len(_ds) >= 6 else _by[_ds[0]]
+            _chg = round((_cur - _base) / _base * 100, 2) if _base else None
+            return round(_cur, 2), _chg, None
+    except Exception as _e:
+        _terr = f'TAIFEX 例外:{type(_e).__name__}: {str(_e)[:60]}'
+    print(f"  [台指VIX] 期交所那條沒拿到({_terr})→ 改試 FinMind(需付費層)")
+
+    # ② 備援:FinMind(需付費會員層級)
     toks = [t.strip() for t in (os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN') or '').split(',') if t.strip()]
     if not toks:
-        return None, None, 'no-token'
+        return None, None, f'{_terr};FinMind 無 token'
     sd = (datetime.now(timezone.utc) - timedelta(days=20)).strftime('%Y-%m-%d')
     # 🐛 V71.5.0 之前這裡只記 `empty(status=400)`,把 FinMind 回的 msg 整個丟掉
     #   → 只知道「失敗」不知道「為什麼」,台指 VIX 從上線就是空的卻無從下手。
@@ -1376,7 +1474,9 @@ def fetch_tw_vix():
             if rows:
                 break
         if not rows:
-            return None, None, _classify_finmind_fail(tried)
+            # 兩條路都掛 → 錯誤訊息要同時交代「免費那條為什麼沒拿到」與「付費那條為什麼不給」,
+            #   否則使用者只會看到 FinMind 的等級問題,誤以為非付費不可(其實期交所是免費的)。
+            return None, None, (f'免費源:{_terr}｜' + _classify_finmind_fail(tried))[:400]
         # 每日可能多筆(含 time)→ 取每日最後一筆,再取近 6 個交易日
         by_day = {}
         for r in rows:

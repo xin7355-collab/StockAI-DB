@@ -85,8 +85,50 @@ else:
 ok('⑥ Illegal 大寫也認', '無效或已過期' in C(['tok9/X:400/TOKEN IS ILLEGAL']))
 ok('⑥ user level 措辭也認', '等級不足' in C(['tok9/X:400/please update your user level']))
 
+# ── ⑦ V71.7.0:台指 VIX 改「先免費(期交所)、後付費(FinMind)」──────────
+#    使用者問「台指金鑰要付費嗎?」→ 走 FinMind 要付費層,但台指 VIX 本來就是
+#    期交所公布的公開資料、不需金鑰。這裡守住優先序與解析,別日後被改回只走 FinMind。
+import types as _t2
+
+_calls = []
+
+
+def _fake_openapi(paths):
+    _calls.append(list(paths))
+    return ([{'Date': '20260728', 'VIX': '19.80'},
+             {'Date': '20260729', 'VIX': '21.35'},
+             {'Date': '20260730', 'VIX': '20.66'}], None)
+
+
+_orig_oa, _orig_ls = M._taifex_openapi, M._taifex_list_endpoints
+M._taifex_openapi = _fake_openapi
+rows, err = M._fetch_tw_vix_taifex()
+ok('⑦ 期交所路徑解得出列', bool(rows) and len(rows) == 3, f'{rows=} {err=}')
+ok('⑦ 民國/西元 8 碼日期轉得對', rows and rows[-1]['date'] == '2026-07-30', str(rows and rows[-1]))
+ok('⑦ 由舊到新排序', rows and [r['date'] for r in rows] == sorted(r['date'] for r in rows))
+
+# fetch_tw_vix 要優先用期交所,且**完全不碰 token**(免費源成功就不該再問 FinMind)
+os.environ.pop('FINMIND_TOKENS', None)
+os.environ.pop('FINMIND_TOKEN', None)
+v, chg, e = M.fetch_tw_vix()
+ok('⑦ ⭐ 沒有任何 token 也拿得到值(證明不必付費)', v == 20.66 and e is None, f'{v=} {chg=} {e=}')
+
+# 欄名換成中文也要吃
+M._taifex_openapi = lambda paths: ([{'日期': '2026/07/30', '波動率指數': '20.66'}], None)
+rows2, _ = M._fetch_tw_vix_taifex()
+ok('⑦ 中文欄名也吃', bool(rows2) and rows2[0]['vix'] == 20.66, str(rows2))
+
+# 期交所掛掉 + 沒 token → 錯誤訊息要同時交代兩條路(不可讓使用者以為只能付費)
+M._taifex_openapi = lambda paths: (None, 'HTTP404')
+M._taifex_list_endpoints = lambda kw='': []
+v3, _, e3 = M.fetch_tw_vix()
+ok('⑦ 兩條都掛時值為 None', v3 is None)
+ok('⑦ 錯誤訊息要提到免費源(不可只講 FinMind 付費)', '免費' in str(e3) or 'TAIFEX' in str(e3), str(e3)[:90])
+
+M._taifex_openapi, M._taifex_list_endpoints = _orig_oa, _orig_ls
+
 print()
 if fails:
     print(f'❌ FINMIND_DIAG_TEST_FAIL: {fails}')
     sys.exit(1)
-print('✅ FINMIND_DIAG_TEST_PASS')
+print('✅ FINMIND_DIAG_TEST_PASS (含台指 VIX 免費源優先)')
