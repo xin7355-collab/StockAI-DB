@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.6.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4262,6 +4262,35 @@ const app = {
         if (alerts.length > 3) this._fireAlert('🕵️ 內部人籌碼盤點', `你有 ${alerts.length} 檔內部人籌碼轉弱(高質押/大戶減碼),點🔔看歷史`, '');
     },
 
+    // 🛡️ V71.6.9 — localStorage 讀 JSON 的唯一安全入口(使用者回報的「JS 錯誤」根因)
+    //
+    //   症狀:iOS PWA 每次開 App 都跳紅框「SyntaxError: Unexpected EOF」。
+    //   「Unexpected EOF」是 **Safari/WebKit 對 JSON.parse 讀到半截內容**的說法
+    //   (Chrome 會說 "Expected ',' or ']' ..." / "Unexpected end of JSON input")。
+    //   已用「把 localStorage 灌成半截 JSON 再載入」重現成功。
+    //   為什麼會有半截值:iOS 對 PWA 的儲存空間有限額,寫到一半被中斷 / 系統回收時,
+    //   `setItem` 可能只寫進部分內容 —— 之後每次開 App 讀到它就再炸一次。
+    //
+    //   ⭐ 關鍵不只是 try/catch,而是**壞掉就把那個 key 刪掉** ——
+    //      只 catch 不刪,錯誤會每次開 App 重演(使用者看到的正是這個);
+    //      刪掉之後那格快取自然重建,對使用者零影響。
+    //   ⛔ 新增任何「讀 localStorage 的 JSON」一律走這支,別再自己 JSON.parse。
+    _lsJson(key, fallback = null) {
+        let raw = null;
+        try { raw = localStorage.getItem(key); } catch (_) { return fallback; }
+        if (raw == null || raw === '') return fallback;
+        try {
+            const v = JSON.parse(raw);
+            return (v == null) ? fallback : v;
+        } catch (_) {
+            try {
+                localStorage.removeItem(key);
+                console.warn(`[快取修復] ${key} 內容損毀(可能是儲存空間不足寫到一半)→ 已清除並重建`);
+            } catch (__) {}
+            return fallback;
+        }
+    },
+
     // 🧙 V68.5.6 — 神分點跟單訂閱(localStorage)+ 每日開 App sweep 推「訂閱分點今天買超哪些股」
     _brokerFollowSubs() { try { const a = JSON.parse(localStorage.getItem('brokerFollowSubs') || '[]'); return Array.isArray(a) ? a : []; } catch (_) { return []; } },
     _isBrokerFollowed(bn) { return this._brokerFollowSubs().includes(bn); },
@@ -6578,8 +6607,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.6.8',
+    _APP_VERSION: 'V71.6.9',
     _CHANGELOG: [
+        { v: 'V71.6.9', dt: '2026-07-31', t: '🐛 修你截圖的「JS 錯誤」紅框(每次開 App 都跳的那個)', d: [
+            '真因:App 存在手機裡的「全市場股票對照表」(約 2,000 檔,是存最大的一筆)被寫成半截。iPhone 對 App 的儲存空間有限額,寫到一半被中斷就會這樣。',
+            '而那筆壞掉的資料永遠不會被清掉,所以你每次開 App 都會再跳一次 —— 這才是它一直出現的原因。',
+            '已修:讀到壞掉的快取會自動清除並重抓,對你完全沒有影響(不用做任何事,也不會掉資料)。',
+            '順便把全 App 讀手機快取的地方統一走同一道防護,以後任何一格壞掉都只會安靜重建,不會再跳紅框。',
+        ] },
         { v: 'V71.6.8', dt: '2026-07-30', t: '📈 你截圖問的那兩格:說明改白話 + 櫃買 K 線查出真因', d: [
             '點櫃買/台指電子盤跳出的說明,原本寫「官方端點改版中,修正已排隊驗證」—— 那是我自己的內部用語,而且「改版中」還是沒查證的猜測。已改成白話,並告訴你現在可以去哪裡看。',
             '台指期那格補上真正的理由:它是每月換一次合約的商品,不同月份接成一條線會有假跳空,所以刻意不做線圖,不是漏做。想看趨勢請點左邊的加權指數。',
@@ -8191,7 +8226,7 @@ ${list}
     _renderPredHistSummary() {
         const el = document.getElementById('predHistSummary');
         if (!el) return;
-        const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
+        const all = this._lsJson('proTerminalPredHist', {}) || {};   // 🛡️ V71.6.9 走安全入口
         const syms = Object.keys(all);
         if (syms.length === 0) { el.innerHTML = '尚未累積任何快照（每次跑 K 線分析會自動記錄）'; return; }
         let total = 0, verified = 0, hits = 0, high = 0, highHits = 0;
@@ -8226,7 +8261,7 @@ ${list}
 
     // 🗑️ 清除預測歷史（雙確認）
     clearPredHist() {
-        const all = JSON.parse(localStorage.getItem('proTerminalPredHist') || '{}');
+        const all = this._lsJson('proTerminalPredHist', {}) || {};   // 🛡️ V71.6.9 走安全入口
         const cnt = Object.values(all).reduce((s, arr) => s + arr.length, 0);
         if (cnt === 0) { alert('目前沒有任何歷史快照'); return; }
         if (!confirm(`確定清除 ${cnt} 筆歷史快照？此操作無法復原（建議先匯出備份）`)) return;
@@ -8599,7 +8634,7 @@ ${list}
         const box = document.getElementById('aiKeyStatsBox');
         if (!box) return;
         const today = new Date().toISOString().slice(0, 10);
-        const stats = JSON.parse(localStorage.getItem(`aiStats_${today}`) || '{}');
+        const stats = this._lsJson(`aiStats_${today}`, {}) || {};   // 🛡️ V71.6.9 走安全入口
         const providers = [
             { id: 'gemini',     name: '🤖 Gemini',     cls: 'text-amber-300' },
             { id: 'groq',       name: '💜 Groq',       cls: 'text-purple-300' },
@@ -11227,10 +11262,21 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     async fetchStockList() {
         // 24 小時 cache 過期,讓新上市股票(如 00402A)有機會被加進對照表
         // 過去 cache 永久存活 → 新股一直顯示「未知」
-        const cached = localStorage.getItem('proTerm_stockList');
+        //
+        // 🐛 V71.6.9 修使用者回報的「每次開 App 都跳 JS 錯誤紅框」——
+        //   原本這裡有 3 個裸 `JSON.parse(cached)`,其中最要命的那個**寫在 catch 區塊裡面**,
+        //   所以它自己爆掉時沒有任何東西接得住 → unhandledrejection → 紅框。
+        //   而 `proTerm_stockList` 是全 App 寫進 localStorage **最大的一筆**(全市場約 2,000 檔),
+        //   正好是 iOS PWA 儲存空間不足時最容易被寫成半截的那一個;
+        //   半截值又永遠不會被清掉 → **每次開 App 都重演一次**(使用者看到的正是這個)。
+        //   實測重現:把 proTerm_stockList 灌成 '{"a":1,"b":[1,2' 再載入 → 必現。
+        //   (Safari 對這種情況說 "Unexpected EOF",Chrome 說 "Expected ',' or ']'",同一件事。)
+        //   → 三處全改走 _lsJson():壞掉自動清除該 key,下次自然重抓,對使用者零影響。
+        const cached = this._lsJson('proTerm_stockList', null);
         const cachedAt = parseInt(localStorage.getItem('proTerm_stockList_at') || '0', 10);
-        const fresh = cached && cachedAt && (Date.now() - cachedAt) < 86400000;  // 24 hr
-        if (fresh) { this.allStockList = JSON.parse(cached); return; }
+        const fresh = Array.isArray(cached) && cached.length && cachedAt
+                      && (Date.now() - cachedAt) < 86400000;  // 24 hr
+        if (fresh) { this.allStockList = cached; return; }
         try {
             const res = await this.safeFetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo', {}, { timeout: 10000, maxRetries: 2 });
             const json = await res.json();
@@ -11238,14 +11284,20 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 const map = new Map();
                 json.data.forEach(s => { if (s.stock_id.length >= 4 && !map.has(s.stock_id)) map.set(s.stock_id, s); });
                 this.allStockList = Array.from(map.values());
-                localStorage.setItem('proTerm_stockList', JSON.stringify(this.allStockList));
-                localStorage.setItem('proTerm_stockList_at', String(Date.now()));
-            } else if (cached) {
+                try {
+                    localStorage.setItem('proTerm_stockList', JSON.stringify(this.allStockList));
+                    localStorage.setItem('proTerm_stockList_at', String(Date.now()));
+                } catch (_) {
+                    // 🛡️ 儲存空間不足時 setItem 會 throw —— 不可讓它把「已經抓好的清單」一起帶走。
+                    //   寫不進去就算了(下次再抓),但也要把可能只寫一半的殘骸清掉。
+                    try { localStorage.removeItem('proTerm_stockList'); localStorage.removeItem('proTerm_stockList_at'); } catch (__) {}
+                }
+            } else if (Array.isArray(cached) && cached.length) {
                 // FinMind 回應異常 → 退回舊 cache,不要把對照表洗掉
-                this.allStockList = JSON.parse(cached);
+                this.allStockList = cached;
             }
-        } catch(e) {
-            if (cached) this.allStockList = JSON.parse(cached);   // 網路失敗也退回舊 cache
+        } catch (e) {
+            if (Array.isArray(cached) && cached.length) this.allStockList = cached;   // 網路失敗也退回舊 cache
         }
     },
 
