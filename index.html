@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2160,7 +2160,7 @@
             <!-- 🗞️ V50.3 盤前新聞重點(移到本 tab 最上方;AI 分析 localStorage 按日快取,關頁不清、一天 1 次省額度;每則右側 🔎 查=Perplexity) -->
             <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
                 <div class="flex items-center justify-between mb-1.5">
-                    <div class="text-[11px] font-black text-amber-300">🗞️ 盤前新聞重點</div>
+                    <div class="text-[11px] font-black text-amber-300">📰 台股新聞焦點 <span class="text-[9px] text-gray-500 font-normal">盤前+盤中,依時間排序</span></div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="app._searchNewsKeyword(); app.vibrate(30);" class="text-[9px] text-cyan-300 bg-cyan-900/30 border border-cyan-700/60 hover:bg-cyan-800/40 rounded px-2 py-0.5 font-bold transition-colors">🔍 搜尋關鍵字</button>
                         <div id="globalNewsTs" class="text-[9px] text-gray-600">--</div>
@@ -2168,6 +2168,11 @@
                 </div>
                 <div class="text-[8px] text-gray-600 mb-1.5">💡 標題已由採礦機翻成中文(免額度);每則右側「🔎 查」開 Perplexity 問對台股影響 → 分析結果<b class="text-gray-500">存整天、關頁不消失、不燒額度</b></div>
                 <div id="globalNewsSummary" class="hidden bg-[#0d1117] border border-amber-900/40 rounded-lg p-2.5 mb-2 text-[11px]"></div>
+                <!-- 🧠 V71.6.0 新聞「綜合」深度分析(使用者要求):每則右側的 🔎 查是「單則問外部 AI」,
+                     但一則一則看不出主線 → 這顆是把**所有新聞 + 當下已算好的盤面數字**一起餵給深度 AI,
+                     產出「這些新聞合起來對台股是什麼意思」。結果放在清單上方當主結論,存整天不重複燒額度。 -->
+                <div id="newsDeepBox"></div>
+                <button id="newsDeepBtn" onclick="app._deepAnalyzeNews()" class="w-full mb-2 px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors">🧠 綜合分析:這些新聞對台股的意思</button>
                 <div id="globalNewsList" class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-hide">
                     <div class="text-[10px] text-gray-600 text-center py-3">載入中...</div>
                 </div>
@@ -4991,7 +4996,11 @@ const app = {
             if (!merged.length) { list.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>'; return; }
             this._globalNewsItems = merged;
             const srcColor = { Reuters: 'bg-orange-900/60 text-orange-300', MarketWatch: 'bg-blue-900/60 text-blue-300', CNBC: 'bg-red-900/60 text-red-300' };
-            const impColor = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-gray-400' };
+            // 🐛 V71.6.0 顏色反了:原本 bullish=綠 / bearish=紅 是**美股慣例**,
+            //   但本專案是台股 App,鐵則是「紅=漲=好、綠=跌=壞」(CLAUDE.md 顏色慣例)。
+            //   使用者截圖:『利多』顯綠、『利空』顯紅 → 掃一眼會完全看反,
+            //   而且跟同一個 App 其他每一張卡的紅綠語意互相打架。
+            const impColor = { bullish: 'text-red-400', bearish: 'text-green-400', neutral: 'text-gray-400' };
             // 即使 Groq AI 加值未生效（impact = '暫無分析'）也要顯示新聞本身，
             // 只過濾掉完全沒標題的空項目
             const rows = merged.filter(item => item.title_zh || item.title).map(item => {
@@ -5020,6 +5029,7 @@ const app = {
                 </div>`;
             });
             list.innerHTML = rows.length ? rows.join('') : '<div class="text-[10px] text-gray-600 text-center py-3">暫無最新消息</div>';
+            try { this._restoreNewsDeep(); } catch (_) {}   // 🧠 V71.6.0 有存過就還原,不重複燒額度
             if (ts) ts.textContent = `${this._dW(new Date())} ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} 更新`;   // 📅 V70.2.1
 
             // V21.2:AI 翻譯改成手動才跑(原本拉新聞自動 silent 觸發已取消)
@@ -5207,7 +5217,8 @@ ${list}
         const list2 = document.getElementById('globalNewsList');
         if (!list2) return;
         const srcColor = { Reuters: 'bg-orange-900/60 text-orange-300', MarketWatch: 'bg-blue-900/60 text-blue-300', CNBC: 'bg-red-900/60 text-red-300' };
-        const impColor = { bullish: 'text-green-400', bearish: 'text-red-400', neutral: 'text-gray-500' };
+        // 🐛 V71.6.0 同上:台股慣例 紅=漲=好、綠=跌=壞,原本是美股慣例寫反了
+        const impColor = { bullish: 'text-red-400', bearish: 'text-green-400', neutral: 'text-gray-500' };
         list2.innerHTML = items.filter(it => it.title_zh || it.title).map(item => {
             const sc = srcColor[item.source] || 'bg-gray-800 text-gray-400';
             const ic = impColor[item.impact_level] || 'text-gray-500';
@@ -6567,8 +6578,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.9',
+    _APP_VERSION: 'V71.6.0',
     _CHANGELOG: [
+        { v: 'V71.6.0', dt: '2026-07-30', t: '🧠 新聞加「綜合分析」+ 改名 + 修一個利多利空顏色反了的 bug', d: [
+            '① 你要的綜合分析做好了:新聞清單上方多一顆「🧠 綜合分析:這些新聞對台股的意思」。原本每則右邊的「🔎 查」是一則一則問,看不出主線;這顆是把**全部新聞 + 當下已經算好的盤面數字**(加權漲跌、上漲/下跌家數、漲停跌停、成交金額、外資現貨期貨、融資去槓桿、反攻雷達結論)一起餵給深度 AI。',
+            '它會回答五件事:一句話定調偏多偏空 → 主線是哪一條(還是各自獨立)→ 實質影響哪些族群(而且要分清「整個族群」還是「只有個別公司」)→ **有沒有「新聞利多但盤面沒反映」的落差** → 哪幾則其實是雜訊不用理。',
+            '守住兩條鐵則:所有數字都由程式算好才餵進去(不讓 AI 自己算),而且明確要求它用「偏多/偏空」文字而不是紅綠符號。資料不足時要它直說「無法判斷」,不准硬掰。結果存整天,切頁回來自動還原不重複燒額度。',
+            '② 名稱改了:原本叫「盤前新聞重點」,但你截圖是中午 12:42,裡面全是 11:38、11:35、10:48 的盤中新聞 —— 叫「盤前」根本不對。改成「📰 台股新聞焦點(盤前+盤中,依時間排序)」。',
+            '③ 順手修一個顏色反了的 bug:「利多」原本顯**綠色**、「利空」顯**紅色** —— 那是美股慣例。這是台股 App,紅=漲=好、綠=跌=壞,所以掃一眼會完全看反,而且跟其他每一張卡的紅綠語意打架。兩處都改了。',
+        ] },
         { v: 'V71.5.9', dt: '2026-07-30', t: '📈 騰落線 250 天上線了,順手修一個「只有最新那天錯」的坑', d: [
             '回算成功:騰落線已經有 **250 個交易日**(2025/07/22 ~ 2026/07/29),不用再等。累積騰落線目前 −35,510,而且每天都有成交金額可以比量能。',
             '但驗數字時發現一個很陰的錯:07/27、07/28 的成交金額都對,**只有最新的 07/29 是 0**。原因是資料裡有 5 檔股票已經寫入了 07/30 的盤中列 → 程式把「今天」認成 07/30(它樣本不足被略過),於是 07/29 走到「已經有了就跳過」那條路,保留了上一版還沒有成交金額的舊資料。前幾天對、只有最新那天錯,這種最難發現。',
@@ -24247,6 +24265,116 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     // 🧠 V71.4.0 財經行事曆「手動深度分析」
     //   分工:夜間排程 Groq(便宜、每天跑)→ 白天你覺得重要才按這顆叫 Gemini(貴、只花在刀口上)。
     //   結果存 localStorage 當天有效,切頁回來不用重跑、也不重複燒額度。
+    // ══════════════════════════════════════════════════════════════
+    // 🧠 V71.6.0 新聞「綜合」深度分析(使用者要求)
+    //   每則右側的「🔎 查」是「單則丟外部 AI」—— 一則一則看不出主線。
+    //   這支把**所有新聞標題 + 利多/利空標記 + 當下已算好的盤面數字**一起餵給深度 AI,
+    //   問的是「這些新聞合起來對台股是什麼意思」,不是逐則翻譯。
+    //   🛑 禁 AI 算數鐵則:所有數字都在 JS 算好後當變數塞進 prompt,不給 AI 原始資料自己算。
+    //   ⚠️ 燈號鐵則:要求 AI 用「偏多/偏空/中性」文字,不要用 🔴🟢 表示安全或風險。
+    // ══════════════════════════════════════════════════════════════
+    _newsDeepKey() {
+        const d = new Date();
+        return `proTerm_newsDeep_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    },
+    _renderNewsDeep(txt, ts) {
+        const box = document.getElementById('newsDeepBox');
+        if (!box || !txt) return;
+        box.innerHTML = `
+            <div class="bg-[#0d1117] border-l-4 border-purple-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="text-[11px] font-black text-purple-200">🧠 新聞綜合判讀 <span class="text-[9px] text-gray-500 font-normal">你手動要求的·以此為主</span></span>
+                    <span class="text-[9px] text-gray-600">${ts || ''}</span>
+                </div>
+                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>
+            </div>`;
+    },
+    _restoreNewsDeep() {
+        try {
+            const raw = localStorage.getItem(this._newsDeepKey());
+            if (!raw) return;
+            const o = JSON.parse(raw);
+            if (o && o.txt) this._renderNewsDeep(o.txt, o.ts);
+        } catch (_) {}
+    },
+    // 把「當下盤面」整理成一段已算好的事實(給 prompt 用),全部取自既有快取,不重算
+    _newsDeepFacts() {
+        const mr = this._macroRiskCache || {};
+        const N = v => (v == null || isNaN(+v)) ? null : +v;
+        const f = [];
+        const bd = Array.isArray(this._breadthHist) && this._breadthHist.length
+            ? this._breadthHist[this._breadthHist.length - 1] : null;
+        if (this._taiexToday) f.push(`加權指數 ${Math.round(this._taiexToday).toLocaleString()}`);
+        const tw = N(mr.taiex_chg_pct);
+        if (tw != null) f.push(`加權漲跌 ${tw >= 0 ? '+' : ''}${tw.toFixed(2)}%`);
+        if (bd) {
+            const tot = bd.total || (bd.up + bd.dn + bd.flat);
+            f.push(`全市場上漲 ${bd.up} 家 / 下跌 ${bd.dn} 家(上漲占比 ${tot ? (bd.up / tot * 100).toFixed(0) : '—'}%)`);
+            f.push(`漲停 ${bd.lu} 家 / 跌停 ${bd.ld} 家`);
+        }
+        const amt = this._amtState?.();
+        if (amt) f.push(`全市場成交金額 ${amt.tn.toFixed(2)} 兆`
+            + (amt.vsMa5 == null ? '' : `(較 5 日均 ${amt.vsMa5 >= 0 ? '+' : ''}${amt.vsMa5.toFixed(0)}%)`));
+        const adl = this._adlState?.();
+        if (adl && adl.ready && adl.chg5 != null) f.push(`累積騰落線近 5 日 ${adl.chg5 >= 0 ? '+' : ''}${Math.round(adl.chg5)}`);
+        if (N(mr.fi_spot_net) != null) f.push(`外資現貨 ${N(mr.fi_spot_net)} 億`);
+        if (N(mr.fi_futures_net) != null) f.push(`外資台指期未平倉 ${N(mr.fi_futures_net)} 口`);
+        const dl = this._deleverProgress?.();
+        if (dl) f.push(`融資自高點 ${dl.mgDrop.toFixed(1)}% vs 指數 ${dl.idxDrop.toFixed(1)}%(去槓桿比 ${dl.ratio.toFixed(2)})`);
+        if (N(mr.vix) != null) f.push(`美股 VIX ${N(mr.vix)}`);
+        if (this._reboundVerdict) f.push(`反攻條件雷達:${this._reboundVerdict.txt}(${this._reboundVerdict.passN}/${this._reboundVerdict.total} 條通過)`);
+        return f;
+    },
+    async _deepAnalyzeNews() {
+        const btn = document.getElementById('newsDeepBtn');
+        if (this._newsDeepRunning) return;
+        const items = (this._globalNewsItems || []).filter(x => x.title_zh || x.title);
+        if (!items.length) { this.showToast?.('⚠️ 新聞還沒載入,稍等一下再點'); return; }
+        this._newsDeepRunning = true;
+        if (btn) { btn.disabled = true; btn.textContent = '🧠 綜合分析中…(約 10-20 秒)'; btn.className += ' opacity-60'; }
+        try {
+            const lvMap = { bullish: '利多', bearish: '利空', neutral: '中性' };
+            const list = items.slice(0, 25).map((x, i) => {
+                const t = (x.title_zh || x.title || '').slice(0, 80);
+                const lv = lvMap[x.impact_level] || '';
+                return `${i + 1}. ${t}${lv ? `(採礦端標記:${lv})` : ''}`;
+            }).join('\n');
+            const facts = this._newsDeepFacts();
+            const prompt = `你是台股資深策略分析師,講白話文,國中生也看得懂。\n\n`
+                + `【今天的新聞(共 ${items.length} 則,以下列出前 ${Math.min(25, items.length)} 則)】\n${list}\n\n`
+                + `【當下盤面(這些數字是系統實際算好的,直接引用,🛑 禁止自己計算或杜撰任何數字)】\n`
+                + (facts.length ? facts.map(x => '・' + x).join('\n') : '・(盤面數據整備中)')
+                + `\n\n【請回答這五件事,每項 2-3 句,總共不超過 500 字】\n`
+                + `1. 一句話總結:這些新聞合起來,對台股是偏多、偏空、還是中性?(只講方向,不要用顏色符號)\n`
+                + `2. 主線是什麼:這些新聞是同一件事的不同面向,還是各自獨立?如果有主線,主線是哪一條?\n`
+                + `3. 實質影響哪些族群:對照新聞內容講具體族群(如半導體/記憶體/CPO/被動元件),`
+                + `並說明是「整個族群」還是「只有個別公司」。\n`
+                + `4. 最重要的落差:有沒有「新聞是利多但盤面沒反映」或反過來的情況?`
+                + `如果有,用上面的盤面數字說明落差在哪。\n`
+                + `5. 哪些是雜訊:明確點出哪幾則其實不影響大盤,不要每則都當重點。\n\n`
+                + `⚠️ 規則:① 不要用「根據資料」「以下為您分析」這類開場廢話,直接講結論。`
+                + `② 不要自己算任何數字,只能引用上面給你的。`
+                + `③ 判斷用「偏多/偏空/中性」文字表達,不要用 🔴🟢 這類顏色符號(本 App 紅綠只代表漲跌方向)。`
+                + `④ 如果盤面數據不足以支持某個判斷,直接說「這點資料不夠,無法判斷」,不要硬掰。`;
+            const txt = await this._callDeepAI({ prompt, max_tokens: 1400, temperature: 0.4, chain: 'gemini-openrouter' });
+            if (!txt) throw new Error('AI 回空');
+            const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            try { localStorage.setItem(this._newsDeepKey(), JSON.stringify({ txt, ts })); } catch (_) {}
+            this._renderNewsDeep(txt, ts);
+            this.vibrate?.(30);
+        } catch (e) {
+            this.showToast?.('⚠️ 綜合分析失敗:' + String(e?.message || e).slice(0, 40));
+        } finally {
+            this._newsDeepRunning = false;
+            const b2 = document.getElementById('newsDeepBtn');
+            if (b2) {
+                b2.disabled = false;
+                b2.textContent = '🧠 綜合分析:這些新聞對台股的意思';
+                b2.className = 'w-full mb-2 px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors';
+            }
+        }
+    },
+
     _macroDeepKey() {
         const d = new Date();
         return `proTerm_macroDeep_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
