@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.6.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.6.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.6.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6578,8 +6578,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.6.4',
+    _APP_VERSION: 'V71.6.5',
     _CHANGELOG: [
+        { v: 'V71.6.5', dt: '2026-07-30', t: '💰 成交金額改用證交所官方數字(對得上電視上講的「站回一兆」)', d: [
+            '之前顯示的是我自己把每檔股票加總出來的「上市+上櫃」金額,比電視/券商講的數字系統性偏高。實測 7/29 官方 1.149 兆、我自算 1.191 兆。',
+            '現在以證交所官方的「集中市場成交值」為主 —— 這才是新聞和老師們口中的那個一兆。官方拿不到時才退回自算,而且名字會跟著換,不會出現「官方的數字配全市場的名字」。',
+            '兩個數字不是誰算錯,是不同的東西(一個只含上市、一個含上櫃),所以名字一定不同。',
+        ] },
         { v: 'V71.6.4', dt: '2026-07-30', t: '📊 大盤官方成交量:補上「缺的正好是最近兩個月」那個坑', d: [
             '上線後去看採礦紀錄才發現:25 個月份檔裡有 3 個被證交所擋掉(HTTP 307),而且缺的正好是 2026/06、2026/07 —— 最該有的那兩個月。',
             '這是證交所對雲端主機的間歇性阻擋,不是那幾個月沒資料(同一支網址對其他 22 個月都通)。已加重試 3 次 + 每次換一組瀏覽器識別,照這個專案原本就在用的做法。',
@@ -14578,8 +14583,8 @@ const marginByDate = {};
             _amt == null ? '—' : `${_amt.tn.toFixed(2)} 兆`,
             _amt == null ? null : _amt.over1tn,
             _amt == null
-                ? '全市場成交金額(上市+上櫃);資料整備中'
-                : `全市場成交金額(上市+上櫃)・5 日均 ${(_amt.ma5E / 10000).toFixed(2)} 兆`
+                ? '成交金額資料整備中'
+                : `${_amt.label}・5 日均 ${(_amt.ma5E / 10000).toFixed(2)} 兆`
                   + (_amt.vsMa5 == null ? '' : `(${_amt.vsMa5 >= 0 ? '+' : ''}${_amt.vsMa5.toFixed(0)}%)`)
                   + '。量縮反彈=無人接手,帶量才算真表態',
             _amt == null);
@@ -24366,7 +24371,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             f.push(`漲停 ${bd.lu} 家 / 跌停 ${bd.ld} 家`);
         }
         const amt = this._amtState?.();
-        if (amt) f.push(`全市場成交金額 ${amt.tn.toFixed(2)} 兆`
+        // 📊 V71.6.5 名稱跟著來源走(官方集中市場 vs 自算全市場是不同的東西,不可混用同一個名字)
+        if (amt) f.push(`${amt.label} ${amt.tn.toFixed(2)} 兆`
             + (amt.vsMa5 == null ? '' : `(較 5 日均 ${amt.vsMa5 >= 0 ? '+' : ''}${amt.vsMa5.toFixed(0)}%)`));
         const adl = this._adlState?.();
         if (adl && adl.ready && adl.chg5 != null) f.push(`累積騰落線近 5 日 ${adl.chg5 >= 0 ? '+' : ''}${Math.round(adl.chg5)}`);
@@ -36513,22 +36519,37 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     //   ⚠️ 這是「上市+上櫃」全市場加總,不是證交所公布的「加權指數成交值」(那只含上市)
     //      → 文案一律寫「全市場成交金額」,不可標成加權成交值。
     _amtState() {
+        // 📊 V71.6.5 改用**證交所官方成交值**為主(^TWII.json 的 amount,V71.6.2 起由 FMTQIK 併入)。
+        //   為什麼換:電視/券商講的「今天量能站回一兆」指的是**集中市場(上市)成交值**,
+        //   我們原本用的是自算的「上市+上櫃」全市場加總 —— 系統性偏高,對不上使用者聽到的數字。
+        //   實測對照(兆):07/29 官方 1.149 / 自算 1.191;07/30 官方 1.133 / 自算 1.151。
+        //   ⚠️ 兩個是**不同的東西,不是誰算錯**,所以名字也不同(使用者鐵則:不同公式就不同名字,
+        //      同一個名詞全 App 只能有一個數字)→ 回傳帶 label,呼叫端一律顯 label,不要自己寫死。
+        const _mk = (rows, getE, getD, src, label) => {
+            const ok = rows.filter(r => getE(r) > 0);
+            if (!ok.length) return null;
+            const last = ok[ok.length - 1];
+            const amtE = getE(last);                       // 億
+            const prev5 = ok.slice(-6, -1);
+            const ma5 = prev5.length ? prev5.reduce((a, r) => a + getE(r), 0) / prev5.length : null;
+            return {
+                d: getD(last), amtE, tn: amtE / 10000,     // 兆
+                ma5E: ma5,
+                vsMa5: (ma5 && ma5 > 0) ? (amtE / ma5 - 1) * 100 : null,
+                over1tn: amtE / 10000 >= 1,                // 站回 1 兆
+                n: ok.length, src, label,
+            };
+        };
+        // ① 官方(集中市場)—— 首選。_twiiKlineCache 由 _loadTaiexMA240Bias 在 init 就載好
+        const tw = this._twiiKlineCache?.rows;
+        if (Array.isArray(tw) && tw.length) {
+            const r = _mk(tw, x => Number(x.amount) / 1e8, x => x.date, 'official', '集中市場成交值(證交所官方)');
+            if (r) return r;
+        }
+        // ② 備援:自算全市場(官方那條沒載到 / 舊檔還沒有 amount 時)
         const h = this._breadthHist;
         if (!Array.isArray(h) || !h.length) return null;
-        const withAmt = h.filter(r => Number(r.amt) > 0);
-        if (!withAmt.length) return null;
-        const last = withAmt[withAmt.length - 1];
-        const amtE = Number(last.amt);                 // 億
-        const tn = amtE / 10000;                       // 兆
-        const prev5 = withAmt.slice(-6, -1);
-        const ma5 = prev5.length ? prev5.reduce((a, r) => a + Number(r.amt), 0) / prev5.length : null;
-        const vsMa5 = (ma5 && ma5 > 0) ? (amtE / ma5 - 1) * 100 : null;
-        return {
-            d: last.d, amtE, tn,
-            ma5E: ma5, vsMa5,
-            over1tn: tn >= 1,                          // 站回 1 兆
-            n: withAmt.length,
-        };
+        return _mk(h, x => Number(x.amt), x => x.d, 'allmarket', '全市場成交金額(上市+上櫃,自行加總)');
     },
 
     _adlState() {
