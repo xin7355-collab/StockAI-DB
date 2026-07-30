@@ -605,13 +605,34 @@ def build_stock_news(news_items):
         if not n_out:
             print(f"  ❌ {n_in} 篇新聞一檔都沒命中(股名比對邏輯異常)→ 不寫檔,保留舊檔")
             return
-        # 不准退步:比現有檔還少就保留舊的
+        # 🛡️ 防「崩塌」,不是防「變少」(V71.6.7 修 V71.6.6 自己種下的棘輪)
+        #
+        #   V71.6.6 寫成「比現有檔少就不覆蓋」—— 那會變成**只進不退的棘輪**:
+        #   檔數哪天衝到 40,之後所有正常的清淡日(15、20 檔)都寫不進去 → 檔案又卡死,
+        #   跟原本要修的病一模一樣。**這是我自己種的,不是原本就有的。**
+        #
+        #   真正要防的是「RSS 掛了一半,只剩 2 檔」這種崩塌,不是日常波動:
+        #     ・崩到剩不到 1/3(且舊檔本身有一定規模)→ 才判定異常、保留舊檔
+        #     ・**但舊檔太舊(>12 小時)一律覆蓋** —— 一份新鮮的小檔,
+        #       永遠好過一份三天前的大檔(這就是 07/27 卡住那次的教訓)。
+        COLLAPSE_RATIO, STALE_H = 3, 12
         try:
             _old = json.loads((DATA_DIR / 'stock_news.json').read_text(encoding='utf-8'))
             _n_old = len(_old.get('stocks') or {})
-            if _n_old > n_out:
-                print(f"  ⏭️ 算出 {n_out} 檔 < 現有 {_n_old} 檔 → 不覆蓋,保留舊檔")
+            _age_h = None
+            try:
+                _age_h = (datetime.utcnow() - datetime.strptime(
+                    str(_old.get('updated', ''))[:16], '%Y-%m-%d %H:%M')).total_seconds() / 3600
+            except Exception:
+                pass
+            _stale = (_age_h is None) or (_age_h > STALE_H)
+            if _n_old >= 10 and n_out * COLLAPSE_RATIO < _n_old and not _stale:
+                print(f"  ⏭️ 算出 {n_out} 檔,不到現有 {_n_old} 檔的 1/{COLLAPSE_RATIO}"
+                      f"(舊檔僅 {_age_h:.1f} 小時前)→ 疑似來源崩塌,保留舊檔")
                 return
+            if _stale and _n_old > n_out:
+                print(f"  ♻️ 舊檔已 {'?' if _age_h is None else f'{_age_h:.1f}'} 小時"
+                      f"(>{STALE_H}h)→ 即使只有 {n_out} 檔(舊 {_n_old})仍以新鮮為優先,覆蓋")
         except Exception:
             pass
         print(f"  📊 個股消息面守門:新聞 {n_in} 篇 / 股名表 {n_names} 檔 → 命中 {n_out} 檔")
