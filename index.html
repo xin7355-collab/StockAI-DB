@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.5.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.5.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6567,8 +6567,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.5.6',
+    _APP_VERSION: 'V71.5.7',
     _CHANGELOG: [
+        { v: 'V71.5.7', dt: '2026-07-30', t: '🔍 採礦跑完逐項對數字,又抓出三件事', d: [
+            '這次不看綠燈,拿你給的籌碼K線數字逐欄對帳。結果:美股現貨四雄全對、期貨價格修對了(7,376 vs 真值 7,370),但還有三個沒好,而且錯誤訊息給了新線索。',
+            '① 台指 VIX:金鑰確實傳進去了(訊息從「沒有金鑰」變成「金鑰不被接受」),所以是那一把有問題。你的金鑰是「付費1把+免費3把」,程式卻只試第一把 → 第一把壞掉整個功能就死。已改成每一把都試,哪一把能用就用哪一把。',
+            '② 美股期貨的漲跌%還是反的:查出來是因為凌晨已經進到新的交易時段,但世界標準時間還算前一天,所以程式判斷不出來。更關鍵的是 —— 資料來源裡**根本沒有**正確的比較基準(真值的基準價兩根都不是)。所以我的決定是:**拿不到可信基準就不給方向**,只顯價格。盤前看期貨是為了判斷開盤方向,給反的比不給更糟。',
+            '③ 亞股(日經/韓股/恆指)還是舊的 —— 資料來源對亞洲指數穩定落後,我改不了。但至少現在會標出「這是哪一天的收盤」,而且如果比上一個交易日還舊會直接顯「⚠️ 比上個交易日還舊」,不會再讓你以為是最新的。',
+        ] },
         { v: 'V71.5.6', dt: '2026-07-30', t: '🕯️ 把節目裡「能算的」做進來:量能站回1兆 + 朱家泓連三黑', d: [
             '你給的理財達人秀逐字稿,我挑「有資料能算、而且我還沒有」的三件事做了,其他(利多不漲、國安基金、地板股)資料撐不起或已經有了就不硬做。',
             '① 大盤量能終於算得出來:主持人開場第一問就是「今天量能有沒有站回 1 兆」,但我原本完全算不出來 —— 因為加權指數的資料源不給成交量。改成把全市場每檔的「收盤×成交量」加總,實測 07/29 = 1.13 兆、07/27 = 0.88 兆、07/28 = 0.92 兆,跟節目講的「今天站回 1 兆」完全對上。已加進反攻雷達當一個條件,而且回算了歷史,可以比「今天 vs 5 日均量」。',
@@ -14932,6 +14938,28 @@ const marginByDate = {};
         //   都只顯同一行 9px 灰字,極端值完全沒有被突顯 → 等於有跟沒有一樣。
         //   改成三級:一般走弱維持小字;單一市場 ≤-3% 或兩邊都 ≤-2% 升級成 Alert Box;
         //   ≤-5% 直接 🚨 緊急(依 V70.2.8 燈號鐵則:講風險用 ⚠️/🚨,不用紅綠燈)。
+        // 📅 V71.5.7 亞股要標資料日期 —— 實測 2026-07-30 08:00 我的韓股是 07/28 收盤(−10.84%),
+        //   但真值是 07/29 收盤(−5.98%),整整落後兩個交易日還完全沒標。
+        //   採礦端(yfinance ^KS11/^N225/^HSI)對亞洲指數穩定落後,V71.5.1 的守門只能防「倒退」、
+        //   沒辦法讓資料變新 → 至少要讓使用者看得出這是哪一天的,不要以為是最新收盤。
+        //   ⚠️ 亞股在台股開盤前顯示「前一交易日收盤」是正常的;真正要警示的是「比前一交易日還舊」。
+        const _asiaStale = (() => {
+            const d = String(mr.kospi_date || mr.nikkei_date || '').slice(0, 10);
+            if (!d) return null;
+            const t = new Date(d + 'T00:00:00+08:00');
+            if (isNaN(t)) return null;
+            // 算「上一個交易日」(粗略:週末往前推),資料日比它更舊 → 過期
+            const now = new Date();
+            let prev = new Date(now); prev.setDate(prev.getDate() - 1);
+            while (prev.getDay() === 0 || prev.getDay() === 6) prev.setDate(prev.getDate() - 1);
+            const dayGap = Math.round((prev - t) / 86400000);
+            return { d, stale: dayGap >= 1, dayGap };
+        })();
+        const _asiaDateTag = _asiaStale
+            ? (_asiaStale.stale
+                ? `<span class="text-yellow-300">⚠️ ${this._dW ? this._dW(_asiaStale.d) : _asiaStale.d} 收盤(比上個交易日還舊)</span>`
+                : `<span class="text-gray-500">${this._dW ? this._dW(_asiaStale.d) : _asiaStale.d} 收盤</span>`)
+            : '';
         { const nk = +mr.nikkei_chg_pct, ks = +mr.kospi_chg_pct;
           const okN = Number.isFinite(nk), okK = Number.isFinite(ks);
           const worst = Math.min(okN ? nk : 99, okK ? ks : 99);
@@ -14941,16 +14969,16 @@ const marginByDate = {};
           const strong = okN && okK && nk >= 1 && ks >= 1;
           if (worst <= -5) {
               asiaNote = `<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1">
-                  <div class="text-[11px] font-bold text-orange-300 mb-0.5 animate-pulse">🚨 亞股重挫 ${nm} ${fmt(worst)}</div>
+                  <div class="text-[11px] font-bold text-orange-300 mb-0.5 animate-pulse">🚨 亞股重挫 ${nm} ${fmt(worst)} <span class="text-[9px] font-normal">${_asiaDateTag}</span></div>
                   <div class="text-[10px] text-gray-200 leading-relaxed">同區域市場級崩跌,台股很難自外於此。<b>今天別接刀</b>,先確認是哪一國自己的事還是全區域事件(對照 VIX:VIX 沒動=亞洲區域性)。</div></div>`;
           } else if (worst <= -3 || both2) {
               asiaNote = `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1">
-                  <div class="text-[11px] font-bold text-yellow-300 mb-0.5">⚠️ 亞股明顯走弱${okK ? ` ・韓 ${fmt(ks)}` : ''}${okN ? ` ・日 ${fmt(nk)}` : ''}</div>
+                  <div class="text-[11px] font-bold text-yellow-300 mb-0.5">⚠️ 亞股明顯走弱${okK ? ` ・韓 ${fmt(ks)}` : ''}${okN ? ` ・日 ${fmt(nk)}` : ''} <span class="text-[9px] font-normal">${_asiaDateTag}</span></div>
                   <div class="text-[10px] text-gray-200 leading-relaxed">台股開盤大機率同步承壓,別追多;有持股先想好停損價再開盤。</div></div>`;
           } else if (worst <= -1) {
-              asiaNote = '<div class="text-[9px] text-green-400/80 mt-1 leading-snug">📉 亞股同盤走弱 → 台股開盤同步承壓,別追多</div>';
+              asiaNote = `<div class="text-[9px] text-green-400/80 mt-1 leading-snug">📉 亞股同盤走弱 → 台股開盤同步承壓,別追多 ${_asiaDateTag}</div>`;
           } else if (strong) {
-              asiaNote = '<div class="text-[9px] text-red-400/80 mt-1 leading-snug">📈 亞股同盤走強 → 台股開盤氣氛偏多</div>';
+              asiaNote = `<div class="text-[9px] text-red-400/80 mt-1 leading-snug">📈 亞股同盤走強 → 台股開盤氣氛偏多 ${_asiaDateTag}</div>`;
           } }
         const globalRiskHtml = `
             <div class="border-t border-[#21262d] pt-1.5">

@@ -1006,6 +1006,11 @@ def _fetch_yf_future(ticker, name):
         picked = _pick_live_vs_settle(daily, intra)
         if picked:
             last, prev, dstr, src = picked
+            if last == last and prev is None and src == 'inprogress':
+                # 現價可信、方向不可信 → 只給價,不給 %(前端會標「盤中價・漲跌待確認」)
+                _YF_LAST_DATE[ticker] = dstr
+                print(f"     [{name}] {src} {last}({dstr})→ 盤中現價可信,但拿不到當日結算基準,不給漲跌%")
+                return round(last, 2), None, None
             if prev and prev > 0 and last == last:
                 chg = round((last - prev) / prev * 100, 2)
                 _YF_LAST_DATE[ticker] = dstr
@@ -1040,6 +1045,22 @@ def _pick_live_vs_settle(daily, intra):
         if str(i_date) > str(d_date):
             # 盤中已經進到「比最後一根日線更新的交易日」→ 現在價 vs 上一個結算
             return (i_close, d_close, str(i_date), 'intraday')
+        if str(i_date) == str(d_date) and d_close:
+            # 🐛 V71.5.7 同一天的情況(實測 2026-07-30 清晨就是這種):
+            #   美股期貨在 22:40 UTC 已經進到新的交易時段,但 UTC 日期還是 07/29,
+            #   所以「盤中日期 > 日線日期」永遠不成立,舊版就退回日線兩根相比
+            #   → 價格抓對了(7,376 vs 真值 7,370)但 % 是「07/29 settle vs 07/28 settle」
+            #     = −1.2%,而真實的盤中方向是 +0.26% —— **方向剛好相反**。
+            #   判斷方式:如果日線最後一根的 close 幾乎等於盤中現價,
+            #   那根日線就是「還在跑的這一盤」(close 會跟著現價動),不是已完成的結算。
+            if abs(i_close - d_close) / d_close < 0.001:
+                # 現價是可信的,但「上一個結算」拿不到 ——
+                # yfinance 日線裡沒有 CME 的當日結算價(實測真值基準 7,351.25 兩根都不是)。
+                # → prev 回 None,呼叫端不要給漲跌%。**寧可不給方向,也不能給反的**
+                #   (盤前看期貨就是為了判斷開盤方向,方向錯比沒有更糟;
+                #    專案本來就規定「有真實漲跌% 才計分」,沒有就不計分)。
+                return (i_close, None, str(i_date), 'inprogress')
+            return (i_close, d_close, str(i_date), 'intraday-same-day')
     # 沒有更新的盤中資料 → 退回日線兩根相比(等同舊行為,不會比現在更糟)
     if len(daily) >= 2:
         return (d_close, daily[-2][1], str(d_date), 'daily')
@@ -1196,25 +1217,36 @@ def fetch_tw_vix():
     tried = []
     try:
         rows, used = [], None
-        for _ds in CANDIDATES:
-            try:
-                res = requests.get('https://api.finmindtrade.com/api/v4/data',
-                                   params={'dataset': _ds, 'start_date': sd},
-                                   headers={'Authorization': f'Bearer {toks[0]}'}, timeout=15)
-                j = res.json()
-            except Exception as _e:
-                tried.append(f"{_ds}:{str(_e)[:40]}")
-                continue
-            _rows = j.get('data') or []
-            if _rows:
-                rows, used = _rows, _ds
-                print(f"  [台指VIX] dataset={_ds} 命中 {len(_rows)} 筆")
+        # 🐛 V71.5.7 **每一把 token 都試**,不要只試 toks[0]。
+        #   V71.5.3 補上 env 之後,錯誤訊息從 'no-token' 變成 'Token is illegal' ——
+        #   代表 token 有傳進來但那一把不被接受。使用者的 FINMIND_TOKENS 是
+        #   「付費 1 把 + 免費 3 把」逗號分隔,順序不保證付費的在第一個,
+        #   而且其中可能有過期/貼錯的。只試第一把 → 一把壞掉整個功能就死。
+        #   miner.py 早就在做 token 輪動(fm_paid_get / rotate_finmind_token),這裡補上同樣的做法。
+        #   ⛔ 安全:只記「第幾把」,絕不把 token 值印進 log 或寫進 JSON。
+        for _ti, _tok in enumerate(toks, 1):
+            for _ds in CANDIDATES:
+                try:
+                    res = requests.get('https://api.finmindtrade.com/api/v4/data',
+                                       params={'dataset': _ds, 'start_date': sd},
+                                       headers={'Authorization': f'Bearer {_tok}'}, timeout=15)
+                    j = res.json()
+                except Exception as _e:
+                    tried.append(f"tok{_ti}/{_ds}:{str(_e)[:30]}")
+                    continue
+                _rows = j.get('data') or []
+                if _rows:
+                    rows, used = _rows, f'{_ds}(第{_ti}把)'
+                    print(f"  [台指VIX] dataset={_ds} 用第 {_ti} 把 token 命中 {len(_rows)} 筆")
+                    break
+                # 把原文 msg 留下來(這是唯一能告訴我們真因的線索)
+                tried.append(f"tok{_ti}/{_ds}:{j.get('status')}/{str(j.get('msg') or '')[:60]}")
+                print(f"  [台指VIX] dataset={_ds} 第 {_ti} 把 token 回空"
+                      f" status={j.get('status')} msg={str(j.get('msg'))[:100]}")
+            if rows:
                 break
-            # 把原文 msg 留下來(這是唯一能告訴我們正確名稱的線索)
-            tried.append(f"{_ds}:{j.get('status')}/{str(j.get('msg') or '')[:90]}")
-            print(f"  [台指VIX] dataset={_ds} 回空 status={j.get('status')} msg={str(j.get('msg'))[:120]}")
         if not rows:
-            return None, None, ' | '.join(tried)[:300]
+            return None, None, ' | '.join(tried)[:400]
         # 每日可能多筆(含 time)→ 取每日最後一筆,再取近 6 個交易日
         by_day = {}
         for r in rows:
