@@ -69,6 +69,10 @@ CADENCE_H = {
 
 META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version', 'count', 'total'}
 
+# 🕐 盤中才產出的檔:收盤後/假日不在 gh-pages 是正常的,不是缺口。
+#    ⚠️ 要驗這幾個檔,必須**盤中**再跑一次體檢 —— 收盤後跑再久都不會出現。
+INTRADAY_ONLY = {'live_quotes.json', 'tick_flow.json', 'daytrade_pack.json'}
+
 # 📌 「刻意不在 gh-pages」的檔:報成缺口會誤導,把「為什麼」寫在這裡當活文件。
 #    2026-07-30 首跑時我把這幾條都寫成「缺口待修」,逐條讀原始碼才發現是刻意的 ——
 #    照著修會把已經下架的東西又接回來。工具只知道「檔案不在」,不知道「本來就不該在」。
@@ -207,7 +211,12 @@ def audit(ref):
         j, err = read_json(ref, f'data/{f}')
         cache[f] = j
         if err == 'MISSING':
-            if f in DELIBERATELY_ABSENT:
+            # 🕐 盤中才產的檔:收盤/假日不在 gh-pages 是正常的,報成 ❌ 只是噪音
+            #    (跟 B 類新鮮度用同一份名單:CADENCE_H 標 None 且列在盤中清單裡的)
+            if f in INTRADAY_ONLY:
+                print(f'   ➖ data/{f} 不在 {ref} —— 盤中才產出,收盤/假日沒有是正常的'
+                      f'(要驗這個檔必須**盤中**再跑一次)')
+            elif f in DELIBERATELY_ABSENT:
                 print(f'   ➖ data/{f} 不在 {ref} —— 刻意的,不是缺口:{DELIBERATELY_ABSENT[f]}')
             else:
                 add('❌', 'A', f'data/{f} 在 {ref} 不存在,但前端會去 fetch')

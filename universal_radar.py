@@ -579,11 +579,42 @@ def build_stock_news(news_items):
         for code, arr in stocks.items():
             arr.sort(key=lambda x: 0 if x['tone'] != 'neu' else 1)
             out_stocks[code] = {'items': arr[:6]}
-        # 🛡️ V69.8.4 P0-8 鐵律守門:全市場新聞掃描正常日至少幾十檔有新聞;
-        #    <20 檔 = RSS/名單來源異常,不寫檔保留舊檔(自選/庫存焦點新聞靠這檔)。
-        if len(out_stocks) < 20:
-            print(f"  ❌ 個股消息面只有 {len(out_stocks)} 檔(<20,疑似來源被擋)→ 不寫檔,保留舊檔")
+        # 🛡️ 守門(V71.6.6 重新校準)——**改看「上游有沒有真的壞掉」,不是看輸出檔數**。
+        #
+        #   為什麼要改(實測抓到的,不是理論):V69.8.4 訂的是「<20 檔就不寫檔」,理由寫
+        #   「正常日至少幾十檔有新聞」。但這支拿到的輸入是 **CAP=25 篇**已判讀新聞 ——
+        #   25 篇新聞本來就很難命中 20 檔以上的不同股票,門檻跟實際流程對不起來。
+        #   後果:`stock_news.json` 從 2026/07/27 卡住整整 3 天,每輪都印「疑似來源被擋」。
+        #   2026/07/30 那輪的真實數字是:
+        #       📇 股名表 上市 +1092 / 上櫃 +890(名單來源完全正常)
+        #       ❌ 個股消息面只有 16 檔(<20)→ 不寫檔,保留舊檔
+        #   而「保留」的那份舊檔**只有 7 檔** —— 守門在用更差的資料取代更好的資料。
+        #
+        #   新規則:名單來源正常(≥500)且有新聞可比對 → 就寫。真正該擋的是:
+        #     ① 股名表沒載到(名單來源掛)② 完全沒有新聞(RSS 全掛)③ 一檔都沒命中(比對邏輯壞)
+        #   另外加一條「不准退步」:算出來的比現有檔還少 → 保留舊的(這才是原本想防的事)。
+        #   ⚠️ 訊息一律印出實際數字 —— 舊訊息只寫「<20」,「一直被擋」跟「今天剛好少」
+        #      長得一模一樣,這正是它卡了 3 天沒被發現的原因。
+        n_in, n_names, n_out = len(news_items or []), len(name_map), len(out_stocks)
+        if n_names < 500:
+            print(f"  ❌ 股名表只有 {n_names} 檔(<500,名單來源被擋)→ 不寫檔,保留舊檔")
             return
+        if not n_in:
+            print("  ❌ 完全沒有新聞可比對(RSS 全掛)→ 不寫檔,保留舊檔")
+            return
+        if not n_out:
+            print(f"  ❌ {n_in} 篇新聞一檔都沒命中(股名比對邏輯異常)→ 不寫檔,保留舊檔")
+            return
+        # 不准退步:比現有檔還少就保留舊的
+        try:
+            _old = json.loads((DATA_DIR / 'stock_news.json').read_text(encoding='utf-8'))
+            _n_old = len(_old.get('stocks') or {})
+            if _n_old > n_out:
+                print(f"  ⏭️ 算出 {n_out} 檔 < 現有 {_n_old} 檔 → 不覆蓋,保留舊檔")
+                return
+        except Exception:
+            pass
+        print(f"  📊 個股消息面守門:新聞 {n_in} 篇 / 股名表 {n_names} 檔 → 命中 {n_out} 檔")
         out = {'updated': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'), 'stocks': out_stocks}
         (DATA_DIR / 'stock_news.json').write_text(
             json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
