@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.7.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.7.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1732,6 +1732,8 @@
                 <div id="intradayWarRoom" class="hidden"></div>
                 <!-- ⚡ V69.0.9 — 盤中即時分鐘K(精簡)+ 五檔/分時/量價 分頁(Fugle 免費即時) -->
                 <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-2 shadow-lg">
+                    <!-- ⚡ V71.7.4 現價更新速度控制(與當沖頁共用 _renderSpeedBar) -->
+                    <div id="liveSpeedBar" class="hidden mb-1.5"></div>
                     <div class="flex items-center gap-2 mb-1.5">
                         <div class="flex bg-[#0d1117] rounded border border-[#30363d] overflow-hidden flex-shrink-0">
                             <button id="intraTF_ts" onclick="app.setIntradayTF('ts')" class="px-3 py-1 text-xs font-bold bg-cyan-700 text-white transition-colors">分時</button>
@@ -4264,6 +4266,102 @@ const app = {
         if (alerts.length > 3) this._fireAlert('🕵️ 內部人籌碼盤點', `你有 ${alerts.length} 檔內部人籌碼轉弱(高質押/大戶減碼),點🔔看歷史`, '');
     },
 
+    // ⚡ V71.7.4 現價更新速度:共用狀態 + 控制列(即時頁 & 當沖頁)
+    //
+    //   使用者要求「即時及當沖頁面新增加速現價跳動的功能」。查了現況才發現兩件事:
+    //     ① 當沖頁的加速**是自動開的,但按鈕(dtAccelBtn)根本沒有 HTML** ——
+    //        JS 一直在 getElementById 一個不存在的元素 → 使用者既關不掉也看不到現在多快。
+    //     ② 即時頁**完全沒有加速機制**:有 Fugle 金鑰才有 WebSocket 毫秒級,
+    //        沒金鑰就只能吃全市場快照(採礦端產出,約 15 秒重讀一次)。
+    //
+    //   ⚠️ 誠實原則:**沒有金鑰就是快不了**,不能假裝有加速。
+    //      全市場快照是採礦端幾分鐘才更新一次的檔案,前端縮短重讀間隔也不會更新,
+    //      所以那種情況直接顯示「需要 Fugle 金鑰」並引導去設定,不給假的加速鈕。
+    _speedState() {
+        const keys = this._fugleKeyCount ? this._fugleKeyCount() : 0;
+        const hasKey = !!(this.getFugleToken && this.getFugleToken());
+        const wsLive = !!(this._fugleWs && this._fugleWs.readyState === 1
+                          && String(this._fugleWsSym || '') === String(this.currentSymbolId || ''));
+        const on = !!this._accelOn;
+        const ms = this._dtAccelMs ? this._dtAccelMs() : 3000;
+        if (!hasKey) {
+            return { canAccel: false, on: false, ms: null, keys: 0,
+                     label: '約 15 秒(全市場快照)',
+                     why: '要毫秒級跳動需要 Fugle 免費金鑰。到「設定 → 金鑰」貼上即可,不用付費。' };
+        }
+        return {
+            canAccel: true, on, ms, keys, wsLive,
+            label: wsLive ? '毫秒級(即時串流)' : (on ? `每 ${(ms / 1000).toFixed(1)} 秒` : '每 15 秒'),
+            why: wsLive
+                ? `即時串流連線中;加速另外每 ${(ms / 1000).toFixed(1)} 秒補抓一次,串流萬一斷掉也不會停住。`
+                : `加速後每 ${(ms / 1000).toFixed(1)} 秒抓一次(金鑰越多越快,你目前 ${keys} 把)。`,
+        };
+    },
+
+    // 控制列:兩個頁面共用同一支(⛔ 別再各寫一份,速度顯示會不一致)
+    _renderSpeedBar(id) {
+        const box = document.getElementById(id);
+        if (!box) return;
+        const st = this._speedState();
+        box.classList.remove('hidden');
+        if (!st.canAccel) {
+            box.innerHTML = `<div class="flex items-center justify-between gap-2 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5">
+                <div class="text-[10px] text-gray-400 leading-snug">⏱️ 現價更新:<b class="text-gray-200">${st.label}</b>
+                    <div class="text-[9px] text-gray-500 mt-0.5">${st.why}</div></div>
+                <button onclick="app.openSettings &amp;&amp; app.openSettings(); app.vibrate &amp;&amp; app.vibrate(20);"
+                    class="text-[11px] font-bold text-cyan-200 bg-cyan-900/40 border border-cyan-700/60 rounded px-2.5 py-1 flex-shrink-0">去設定</button>
+            </div>`;
+            return;
+        }
+        const c = st.on ? 'text-amber-100 bg-amber-600/70 border-amber-400/60'
+                        : 'text-gray-300 bg-[#21262d] border-[#30363d]';
+        box.innerHTML = `<div class="flex items-center justify-between gap-2 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5">
+            <div class="text-[10px] text-gray-400 leading-snug">⏱️ 現價更新:<b class="${st.on || st.wsLive ? 'text-amber-200' : 'text-gray-200'}">${st.label}</b>
+                <div class="text-[9px] text-gray-500 mt-0.5">${st.why}</div></div>
+            <button onclick="app.toggleAccel()" class="text-[11px] font-bold ${c} border rounded px-2.5 py-1 flex-shrink-0 active:scale-95 transition-transform">
+                ⚡ 加速 ${st.on ? 'ON' : 'OFF'}</button>
+        </div>`;
+    },
+
+    // 使用者偏好:預設開(維持既有行為);關掉後會被記住,切頁回來不會被強制打開
+    _accelPref() {
+        try { const v = localStorage.getItem('proTerm_dtAccel'); return v === null ? true : v === '1'; }
+        catch (_) { return true; }
+    },
+    toggleAccel() {
+        // ⚠️ _accelOn 可能還沒初始化(沒進過當沖頁)→ 用偏好當基準,否則第一次點會反向
+        if (typeof this._accelOn !== 'boolean') this._accelOn = this._accelPref();
+        this._accelOn = !this._accelOn;
+        try { localStorage.setItem('proTerm_dtAccel', this._accelOn ? '1' : '0'); } catch (_) {}
+        this.vibrate?.(20);
+        if (this._accelOn) { this._startDtAccel?.(); this._startLiveAccel?.(); }
+        else { this._stopDtAccel?.(); this._stopLiveAccel?.(); }
+        this._renderSpeedBar('liveSpeedBar');
+        this._renderSpeedBar('dtAccelBar');
+        this.showToast?.(this._accelOn ? '⚡ 加速已開啟' : '已關閉加速(省流量)', 'info');
+    },
+
+    // 即時頁加速:用 REST 補現價(WebSocket 是主力,這條是「串流斷了也不會停住」的保險)
+    _liveAccelTimer: null,
+    _startLiveAccel() {
+        this._stopLiveAccel();
+        if (!this._speedState().canAccel) return;
+        const ms = this._dtAccelMs ? this._dtAccelMs() : 3000;
+        this._liveAccelTimer = setInterval(async () => {
+            // 守門:即時 sub-tab 顯示中 + 盤中 + 有選股 + App 在前景;任一不成立自動停
+            const vis = this._activeSubTab === 'live'
+                     && document.getElementById('subContentLive')?.style.display !== 'none';
+            if (document.hidden || !vis || !this.currentSymbolId || !(this.isMarketOpen?.() ?? true)) {
+                this._stopLiveAccel(); return;
+            }
+            try {
+                const q = await this.fetchFugleData(this.currentSymbolId, Math.max(800, ms - 200));
+                if (q && +q.price > 0) this._applyWsTick(this.currentSymbolId, +q.price);
+            } catch (_) {}
+        }, ms);
+    },
+    _stopLiveAccel() { if (this._liveAccelTimer) { clearInterval(this._liveAccelTimer); this._liveAccelTimer = null; } },
+
     // 🚨 V71.7.1 融資「追繳/斷頭距離」—— 唯一有**硬性強制賣出規則**的風控線
     //
     //   使用者問「投信/大戶跌多少一定要賣?」→ 查證後:投信**沒有**這種停損線
@@ -6634,11 +6732,23 @@ ${list}
             this.renderBullBearCard(this.currentSymbolId);
         }
         // ⚡ V55.2 — 當沖作戰台 sub-tab(即時右側)
+        // ⚡ V71.7.4 即時頁:顯示現價更新速度控制列,並依使用者偏好決定要不要加速
+        if (tab === 'live') {
+            try {
+                this._renderSpeedBar('liveSpeedBar');
+                if (this._accelPref() && this.isMarketOpen?.()) this._startLiveAccel();
+            } catch (_) {}
+        } else { try { this._stopLiveAccel?.(); } catch (_) {} }
         if (tab === 'daytrade' && this.currentSymbolId) {
             this._dtMarkUsed();   // ⏰ 標記今天用過當沖頁 → 13:25 才提醒平倉
             this.renderDayTradeTab(this.currentSymbolId);
-            // ⚡ V69.0.8 全自動加速:盤中一進當沖頁就自動加速刷價(取消手動按鈕),盤後自動關
-            try { if (this.isMarketOpen && this.isMarketOpen() && !this._dtAccelOn) this._startDtAccel(); } catch (_) {}
+            // ⚡ V69.0.8 全自動加速:盤中一進當沖頁就自動加速刷價,盤後自動關
+            //   V71.7.4:改成尊重使用者的開關(localStorage;預設開)。原本無條件自動開又沒有按鈕,
+            //   等於使用者關不掉;現在關掉後切頁回來也不會被強制打開。
+            try {
+                if (this._accelPref() && this.isMarketOpen && this.isMarketOpen() && !this._dtAccelOn) this._startDtAccel();
+                else this._renderSpeedBar('dtAccelBar');
+            } catch (_) {}
             // 🔍 V69.5.5 — 09:15~09:45 進場窗自動掃當沖候選(免手動點,每 5 分最多跑一次省額度)
             try {
                 if (this.isMarketOpen && this.isMarketOpen()) {
@@ -6721,8 +6831,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.7.3',
+    _APP_VERSION: 'V71.7.4',
     _CHANGELOG: [
+        { v: 'V71.7.4', dt: '2026-07-31', t: '⚡ 即時/當沖:現價跳動加速,而且終於看得到也關得掉', d: [
+            '你要的加速功能加好了 —— 查的時候發現兩個問題:當沖頁的加速其實**一直是自動開著的,但那顆按鈕根本沒做出來**(程式一直在找一個不存在的元素),所以你既看不到也關不掉;即時頁則完全沒有加速。',
+            '現在兩頁上方都有一條:直接告訴你「現價多久更新一次」(毫秒級/每 N 秒/約 15 秒),右邊一顆開關自己決定要不要加速。關掉會被記住,切頁回來不會又自己打開。',
+            '速度會隨你填的 Fugle 金鑰數自動變快(1 把 3 秒、7 把 1 秒)。即時串流連線中會顯示「毫秒級」,加速另外每幾秒補抓一次,串流萬一斷掉畫面也不會停住。',
+            '⚠️ 誠實說:**沒有填 Fugle 金鑰就是快不了**(只能吃全市場快照,約 15 秒)。那種情況不會給你一顆按了沒用的加速鈕,而是直接告訴你去哪裡填 —— Fugle 免費金鑰就夠,不用付費。',
+        ] },
         { v: 'V71.7.3', dt: '2026-07-31', t: '⚡ 盤中六脈:進場離場給「數字」+ 共振帶終於看得見', d: [
             '你說看不到「黃色框框」—— 查了才發現框其實有畫,但**透明度只有 0.08,幾乎等於透明**。已調到看得清楚並加虛線邊界,現在圖上一眼就看到順勢窗口在哪一段。',
             '順便修一個名詞打架:文字寫「黃框」但畫面畫的是紅綠色。統一改成「紅帶(做多)/綠帶(做空)」,說的跟看到的一致。',
@@ -38438,19 +38554,20 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         try { localStorage.setItem('proTerm_dtAccel', '1'); } catch (_) {}   // ⚡ V68.9.0 記住開關 → 切頁回來自動續跑(速度不還原)
         this._dtAccelCount = 0;
         const ms = this._dtAccelMs();   // 隨 key 數自動調(你 7 隻→1 秒;別人 1 隻→3 秒)
-        const btn = document.getElementById('dtAccelBtn');
-        if (btn) { btn.textContent = '⚡ 加速 ON'; btn.className = 'text-[11px] font-bold text-amber-100 bg-amber-600/70 border border-amber-400/60 rounded px-2.5 py-1.5 transition-colors animate-pulse'; }
-        // 🐛 V69.1.3 使用者要求移除「加速刷價中…」提示橫幅(雜訊);加速照常運作,只是不再顯示這條字
-        document.getElementById('dtAccelBar')?.classList.add('hidden');
+        // ⚠️ V71.7.4:原本這裡操作 `dtAccelBtn`,但那個 id **全專案沒有任何 HTML 定義** ——
+        //   等於使用者既看不到加速狀態、也關不掉(這正是使用者要求「新增加速功能」的原因)。
+        //   改成統一渲染控制列;即時頁用 liveSpeedBar,當沖頁用 dtAccelBar,同一支函式。
+        this._accelOn = true;
+        try { this._renderSpeedBar('dtAccelBar'); } catch (_) {}
         this._dtAccelTick(true);   // 立刻刷一次(含 VWAP)
         this._dtAccelTimer = setInterval(() => this._dtAccelTick(false), ms);
     },
     _stopDtAccel() {
         this._dtAccelOn = false;
         if (this._dtAccelTimer) { clearInterval(this._dtAccelTimer); this._dtAccelTimer = null; }
-        const btn = document.getElementById('dtAccelBtn');
-        if (btn) { btn.textContent = '⚡ 加速 OFF'; btn.className = 'text-[11px] font-bold text-gray-300 bg-[#21262d] border border-[#30363d] rounded px-2.5 py-1.5 hover:bg-[#2d333b] transition-colors'; }
-        document.getElementById('dtAccelBar')?.classList.add('hidden');
+        // ⚠️ 只停計時器,**不要把控制列藏起來** —— 藏起來使用者就再也找不到開關
+        //   (舊版 classList.add('hidden') 正是這個問題)。改成重繪成 OFF 狀態。
+        try { this._renderSpeedBar('dtAccelBar'); } catch (_) {}
     },
     _dtAccelTick(full) {
         if (!this._dtAccelOn) return;
