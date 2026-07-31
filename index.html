@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.7.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.7.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6831,8 +6831,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.7.4',
+    _APP_VERSION: 'V71.7.5',
     _CHANGELOG: [
+        { v: 'V71.7.5', dt: '2026-07-31', t: '🧹 板塊輪動表變乾淨了(你說很亂,主因找到了)', d: [
+            '主因:每個板塊其實佔了**兩行** —— 數字一行、下面還有一行「同買券商」。券商名長度不固定,重電基建和低軌衛星都被擠成兩行,所以每一列高度都不一樣,整張表看起來就是破碎的。',
+            '現在主列固定一行、永遠對得齊;券商跟成分股一起收進「點板塊才展開」的地方,要看再點。',
+            '「🕵️深蹲」原本硬塞在外資張數下面,也會把那一列撐高 → 移到板塊名旁邊。',
+            '順便修一個講反的標籤:美股 +5.4%、台股 +8.0% 原本會顯「逆勢抗跌」,但那明明是**跟著漲而且更強**。你截圖裡 9 個板塊有 6 個都是這個紅徽章,等於沒有資訊量。現在分成「領漲」(美漲台漲更多)和「逆勢抗跌」(美股沒漲台股還撐住)。',
+        ] },
         { v: 'V71.7.4', dt: '2026-07-31', t: '⚡ 即時/當沖:現價跳動加速,而且終於看得到也關得掉', d: [
             '你要的加速功能加好了 —— 查的時候發現兩個問題:當沖頁的加速其實**一直是自動開著的,但那顆按鈕根本沒做出來**(程式一直在找一個不存在的元素),所以你既看不到也關不掉;即時頁則完全沒有加速。',
             '現在兩頁上方都有一條:直接告訴你「現價多久更新一次」(毫秒級/每 N 秒/約 15 秒),右邊一顆開關自己決定要不要加速。關掉會被記住,切頁回來不會又自己打開。',
@@ -15938,7 +15944,12 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                 else if (usUp && twChg > 0.3 && gap > 0.6) gapBadge = _pill('跟漲機會', _C.red);           // 美漲+台漲落後
                 else if (usUp && twChg <= 0.3)             gapBadge = _pill('委屈待補', _C.amber);         // 美漲台股卻收黑 → 相對弱勢觀望
                 else if (usDn && gap > 0.8)                gapBadge = _pill('補跌風險', _C.green);          // 美跌+台跌更多
-                else if (gap < -0.8)                       gapBadge = _pill('逆勢抗跌', _C.red);            // 台股比美股強
+                // 🐛 V71.7.5 修誤標:原本 gap<-0.8 一律叫「逆勢抗跌」,但「逆勢」的語意是
+                //   **美股跌、台股撐住**。美股 +5.4% 台股 +8.0% 那是「跟著漲而且更強」= 領漲。
+                //   使用者截圖裡 9 個板塊有 6 個都顯「逆勢抗跌」→ 全是紅徽章、毫無鑑別度,
+                //   而且講反了(那天美股是大漲的)。拆成兩種語意。
+                else if (gap < -0.8 && usUp)               gapBadge = _pill('領漲', _C.strong);            // 美漲、台股漲更多 = 最強
+                else if (gap < -0.8)                       gapBadge = _pill('逆勢抗跌', _C.red);            // 美股沒漲,台股仍比美股強
                 else if (gap > 0.8)                        gapBadge = _pill('台股偏弱', _C.green);          // 美平+台跌
                 else                                       gapBadge = _pill('同步', _C.gray);
             }
@@ -15958,13 +15969,27 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                 return e || '';
             });
             const _brokerHtml = _cfB.length ? `<div class="px-1 pb-1.5 text-[9px] text-cyan-300/90 leading-snug">🏦<span class="text-gray-500">同買</span> ${_cfB.map(b => `<b>${_bkShort(b.name)}</b><span class="text-gray-500">${b.n}檔</span>${b.lots > 0 ? `<span class="text-red-300/80"> ${b.lots >= 10000 ? (b.lots / 10000).toFixed(1) + '萬' : b.lots.toLocaleString()}</span>` : ''}`).join('　')}<span class="text-gray-600 text-[8px]"> 張</span></div>` : '';
-            const stkHtml = stocks.length ? `<div id="secStk_${sk}" class="hidden flex flex-wrap gap-1.5 pb-2 pt-0.5 px-1">
+            // 🧹 V71.7.5 版面改「主列一行 + 點開才看細節」——
+            //   使用者回報「很亂」。真因:每個板塊常駐**兩行**(數字一行 + 同買券商一行),
+            //   而券商行長度不固定,實測「重電基建」「低軌衛星」都折成 2 行 →
+            //   每列高度都不一樣,整張表看起來破碎。
+            //   改成:主列永遠一行(對得齊),券商跟成分股一起收進展開層,要看再點。
+            const stkHtml = (stocks.length || _cfB.length) ? `<div id="secStk_${sk}" class="hidden pb-2 pt-0.5 px-1">
+                ${_brokerHtml}
+                <div class="flex flex-wrap gap-1.5">
                 ${stocks.map(([sym, nm]) => `<button onclick="event.stopPropagation(); app._pickGlobalSearch('${sym}'); app.vibrate(15);" class="flex items-center gap-1 bg-[#161b22] border border-[#30363d] hover:border-cyan-500 active:bg-[#21262d] rounded-lg px-2 py-1 text-[11px] transition-colors"><span class="font-mono font-bold text-cyan-300">${sym}</span><span class="text-gray-200">${nm}</span><span class="text-gray-600">›</span></button>`).join('')}
+                </div>
             </div>` : '';
             html += `
                 <div class="border-b border-[#21262d] last:border-0">
                     <div onclick="app._toggleSectorRow('${sk}')" class="grid grid-cols-[1fr_46px_46px_58px_76px] gap-1.5 items-center py-1.5 cursor-pointer hover:bg-white/5 rounded">
-                        <span class="text-gray-200 font-bold truncate text-[11px] flex items-center gap-1"><span id="secChev_${sk}" class="text-gray-500 text-[9px] transition-transform inline-block">▶</span>${sl}</span>
+                        <span class="text-gray-200 font-bold truncate text-[11px] flex items-center gap-1"><span id="secChev_${sk}" class="text-gray-500 text-[9px] transition-transform inline-block">▶</span>${sl}${(() => {
+                            // 🕵️ V71.7.5 偷布局徽章改放板塊名旁(原本用 <br> 塞在外資數字下面 → 撐高該列)
+                            const f = _cf[sk];
+                            if (f?.stealth_deep) return '<span class="text-[8px] text-amber-300 font-bold whitespace-nowrap flex-shrink-0">🕵️深蹲</span>';
+                            if (f?.stealth) return '<span class="text-[8px] text-cyan-300 font-bold whitespace-nowrap flex-shrink-0">🕵️布局</span>';
+                            return '';
+                        })()}</span>
                         <span class="${usCls} font-mono text-right text-[11px]">${_usTxt}</span>
                         <span class="${twCls} font-mono text-right text-[11px]">${_twTxt}</span>
                         ${(() => {   // 🧭 V71.0.0 外資近 5 日買賣超(張)+ 偷布局徽章
@@ -15976,15 +16001,13 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                             // 🔬 V71.0.5 兩層:深蹲版(已跌深)實測每個天期都優於基本版 → 標更醒目
                             // 🧹 V71.1.4 欄寬只有 58px,原「偷布局·深蹲」會被斷字換行(截圖實測斷成「偷布局·深/蹲」)
                             //   → 縮成 2 字 + whitespace-nowrap;完整定義寫在表尾圖例
-                            const badge = f.stealth_deep
-                                ? `<br><span class="text-[8px] text-amber-300 font-bold whitespace-nowrap">🕵️深蹲</span>`
-                                : (f.stealth ? `<br><span class="text-[8px] text-cyan-300 font-bold whitespace-nowrap">🕵️布局</span>` : '');
-                            return `<span class="text-right font-mono text-[10px] ${cls}">${v > 0 ? '+' : ''}${txt}${badge}</span>`;
+                            // 🧹 V71.7.5 原本用 <br> 把「🕵️深蹲」塞在數字下面 → 那一列被撐高,
+                            //   整張表高度參差(使用者說「很亂」的原因之一)。改放板塊名旁邊(nameBadge)。
+                            return `<span class="text-right font-mono text-[10px] ${cls}">${v > 0 ? '+' : ''}${txt}</span>`;
                         })()}
                         <span class="text-right">${gapBadge}</span>
                     </div>
                     ${stkHtml}
-                    ${_brokerHtml}
                 </div>`;
         }
         const _cfUp = this._sectorChipFlow?.updated ? `　籌碼資料:${this._dW(this._sectorChipFlow.updated, { rel: 1 })}` : '';
