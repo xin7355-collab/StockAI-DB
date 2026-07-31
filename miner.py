@@ -1656,6 +1656,101 @@ def compute_dividend_fill_history(quarterly_dividends, ohlcv_rows):
 
 
 # ── SQLite ↔ JSON 橋接（gh-pages 靜態部署用）────────────────────────────────
+def _backadjust_splits(records, sym='', verbose=False):
+    """🔧 V71.7.9 股票分割 / 減資 → 回溯調整舊 K 線,讓歷史連續。
+
+    為什麼需要(2026-07-31 在回答使用者「分析師買 0050」時撈出來的真 bug):
+      yfinance 那邊刻意用 `auto_adjust=False`(原始價),這樣才對得上證交所官方收盤 —— 這個
+      選擇是對的,不要改。但副作用是:**股票分割/減資當天,價格會斷崖,而且已經存進
+      SQLite / JSON 的舊列不會回頭調整**。
+      實測 `data/0050.json`:2024/07/01 46.61→186.60(×4.00)、2025/06/11 188.65→47.16(÷4.00)
+      → 中間整整一年的價位是別的尺標,K線、均線、位階溫度計、回測全部歪掉。
+      而 0050 正是最多人看的 ETF。全市場掃出 **23 檔**同樣中招(0050/2327 國巨/8422/2607/
+      1808/6919/4763/5904/00674R/00715L… 含正二反一槓桿 ETF)。
+
+    判斷依據:台股上市櫃單日漲跌幅上限 **±10%** → 相鄰交易日出現 ×2/×3/×4/×5/×10
+    (或其倒數)這種整數倍跳空,**物理上不可能是真實漲跌**,只能是分割/減資/反分割。
+      ・只比「相鄰交易日」(日期差 ≤5 天),中間停牌很久的不算(那是缺資料不是分割)
+      ・只認整數倍且誤差 <3%(避免把興櫃無漲跌停的暴漲誤判成分割)
+      ・調整方向:**保留最新的價,回頭改舊的**(最新價要等於官方收盤,不能動)
+      ・成交量同步反向調整(分割後股數變多,量才可比)
+    ⛔ 不動 foreign_net / margin_balance 等「張數」欄位 —— 那些是當日實際成交張數,
+       不是價格尺標,改了反而失真(法人買超張數本來就該是當時的張數)。
+    """
+    if not records or len(records) < 3:
+        return records
+    RATIOS = (2, 3, 4, 5, 10)
+    events = []
+    for i in range(1, len(records)):
+        try:
+            c0 = float(records[i - 1].get('close') or 0)
+            c1 = float(records[i].get('close') or 0)
+        except (TypeError, ValueError):
+            continue
+        if c0 <= 0 or c1 <= 0:
+            continue
+        d0 = str(records[i - 1].get('date') or '').replace('/', '-')
+        d1 = str(records[i].get('date') or '').replace('/', '-')
+        try:
+            gap = (date.fromisoformat(d1) - date.fromisoformat(d0)).days
+        except ValueError:
+            continue
+        if gap > 5:                      # 中間缺很多天 → 不是「單日」跳空
+            continue
+        rat = c1 / c0
+        if 0.8 < rat < 1.25:             # 正常波動(含除權息小缺口)不碰
+            continue
+        # 台股上市櫃單日漲跌幅上限 ±10% → 跨 n 個交易日最多也只能到 1.1^n。
+        # 超出這個「物理上限」就不可能是真實漲跌,只能是分割/減資/反分割。
+        # (gap 是日曆天,含週末 → 用 gap 當交易日數是**高估**,對判定偏保守,不會亂認。)
+        limit = 1.10 ** max(1, gap)
+        if (1.0 / limit) <= rat <= limit:
+            continue                     # 還在漲跌停能解釋的範圍內 → 不是分割
+        # 找最接近的整數倍(或其倒數),殘差要落在漲跌停容許範圍內才算數;
+        # ⚠️ 用「最接近的整數倍」而不是直接拿 rat 當倍率,是為了**不誤傷興櫃**
+        #    (興櫃無漲跌幅限制,真的可能單日翻倍,但不會剛好是整數倍 ±漲跌停)。
+        best = None
+        for k in RATIOS:
+            for cand in (float(k), 1.0 / k):
+                resid = rat / cand                       # 扣掉分割後剩下的「真實漲跌」
+                if (1.0 / limit) <= resid <= limit:
+                    err = abs(resid - 1.0)
+                    if best is None or err < best[1]:
+                        best = (cand, err)
+        if best:
+            events.append((i, best[0]))
+    if not events:
+        return records
+    # 先算出「每一列的累積倍率」,最後只乘一次再四捨五入。
+    # ⚠️ 別寫成「每個事件各跑一輪、每輪都 round(…, 2)」—— 連兩次分割時,第一輪的
+    #    四捨五入誤差會被第二輪放大(實測 46.61 ÷4 ×4 會變成 46.60),看起來像資料髒掉。
+    cum = [1.0] * len(records)
+    for idx, factor in events:
+        for i in range(idx):
+            cum[i] *= factor
+    for i, r in enumerate(records):
+        k = cum[i]
+        if k == 1.0:
+            continue
+        for f in ('open', 'high', 'low', 'close'):
+            try:
+                v = float(r.get(f) or 0)
+                if v > 0:
+                    r[f] = round(v * k, 2)
+            except (TypeError, ValueError):
+                pass
+        try:
+            v = float(r.get('volume') or 0)
+            if v > 0:
+                r['volume'] = int(round(v / k))   # 股數與價格反向
+        except (TypeError, ValueError):
+            pass
+    if verbose:
+        desc = '、'.join(f"{records[i].get('date')} ×{f:.4g}" for i, f in events)
+        print(f"  🔧 {sym} 偵測到 {len(events)} 次分割/減資,已回溯調整舊 K 線:{desc}")
+    return records
+
+
 def export_json(inst_cache: dict = None, margin_cache: dict = None):
     """
     從 SQLite stock_history 匯出每支股票的 JSON 檔案。
@@ -1710,6 +1805,13 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
                     if marg_day:
                         rec['margin_balance'] = marg_day.get('margin_balance', 0)
                         rec['short_balance']  = marg_day.get('short_balance',  0)
+
+        # 🔧 V71.7.9 分割/減資回溯調整(見 _backadjust_splits 的說明)。
+        #    放在寫檔前的最後一步 → 全市場 2,700 檔都會過這關,而且最新那筆價格不會被動到。
+        try:
+            records = _backadjust_splits(records, sym, verbose=True)
+        except Exception as e:
+            print(f"  ⚠️ {sym} 分割調整失敗(不影響匯出): {e}")
 
         p = Path(DATA_DIR) / f'{sym}.json'
         p.write_text(
