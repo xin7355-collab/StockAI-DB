@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.7.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.7.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6831,8 +6831,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.7.5',
+    _APP_VERSION: 'V71.7.6',
     _CHANGELOG: [
+        { v: 'V71.7.6', dt: '2026-07-31', t: '🚨 修「換股後下面沒跟著換」(你截圖抓到的,這個很危險)', d: [
+            '你截圖裡標題是大成鋼(−1.37%),下面的分時圖卻是另一檔漲停的股票(+9.30%),連盤中六脈也跟著算成「多方共振」—— 等於你在用**別檔股票的判讀**。',
+            '根因兩層:① 換股時只清掉 2 個 AI 結果框,其他要等資料回來才填的卡完全沒清;② 分時圖有四種情況會載入失敗(沒填金鑰、抓不到、額度用盡、當日沒資料),而這四種都是**直接放棄但不清畫面**,所以上一檔的圖就留在那裡,而且沒有任何提示。',
+            '現在:換股當下先清空(不是等資料回來)、失敗時會明講「⚠️ 大成鋼 的盤中資料抓不到」讓你知道是誰的問題、抓資料途中你又切走的話舊資料也不會畫上去。',
+            '順便全 App 掃了一遍同類問題:43 個「換股會重畫」的地方逐一分類,把個股頁 8 張會非同步載入的卡全部納入換股清空清單(ETF 跟車、此股預判、主升段燃料、法人排行、融資追繳區等)。',
+        ] },
         { v: 'V71.7.5', dt: '2026-07-31', t: '🧹 板塊輪動表變乾淨了(你說很亂,主因找到了)', d: [
             '主因:每個板塊其實佔了**兩行** —— 數字一行、下面還有一行「同買券商」。券商名長度不固定,重電基建和低軌衛星都被擠成兩行,所以每一列高度都不一樣,整張表看起來就是破碎的。',
             '現在主列固定一行、永遠對得齊;券商跟成分股一起收進「點板塊才展開」的地方,要看再點。',
@@ -23547,12 +23553,27 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this._chuActionVerdict = null;  // ⚖️ V56.0 仲裁結論也是 per-stock,切股必清
         if(!silent) document.getElementById('symbolInput').value = '';
 
-        // Clear AI result boxes when switching stocks (avoids stale results misleading user)
+        // 🧹 V71.7.6 切股「統一清空」——(使用者截圖抓到:標題是大成鋼,分時圖卻是另一檔漲停股)
+        //   原本這裡**只清 2 個 AI 結果框**,其他「非同步渲染」的個股卡完全沒清。
+        //   只要那些卡的載入失敗(額度用盡/無資料/網路斷),就會**原封不動留著上一檔的內容**,
+        //   而且畫面上沒有任何提示 —— 使用者會拿別檔的判讀來做決定,這是最危險的一種 bug。
+        //   ⛔ 鐵則:個股頁只要是「async 才填的卡」,切股就要進這份清單。
+        //      新增這類卡片時務必補進來(測試 test_switchclean.mjs 會擋)。
         if (isNewStock) {
-            ['geminiResultBox', 'klineAuditResult'].forEach(id => {
+            [
+                'geminiResultBox', 'klineAuditResult',   // AI 結果
+                'etfFollowCard',                          // ETF 跟車(V19.6 曾因同樣原因顯舊股)
+                'stockPredictResult',                     // 此股預判
+                'mainRiseFuel',                           // 主升段燃料
+                'instLeaderBox',                          // 法人排行
+                'aiGodNewsBox',                           // 首席 AI 新聞
+                'marginCallBox',                          // 融資追繳壓力區(V71.7.1)
+            ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
             });
+            // 即時頁那一整組(分時圖 / 盤中六脈 / 大戶散戶 / 五檔…)一起清
+            try { this._clearLivePanels?.(); this._intradayLoadedSym = null; } catch (_) {}
         }
 
         // Auto-sync inventory cost: if stock is in inventory, pre-fill the cost input
@@ -28020,6 +28041,35 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return null;   // 所有 token 都 429
     },
 
+    // 🧹 V71.7.6 切股必須先「清乾淨」——(使用者截圖抓到的嚴重 bug)
+    //   症狀:標題已經是大成鋼(−1.37%),下面的分時圖卻是另一檔漲停的股票(100→102.8、+9.30%),
+    //         連盤中六脈也跟著算出「多方共振 6多/0空」—— 整組判讀都是別檔的。
+    //   根因:loadIntradayKline 有四條路會**直接 return 而不清畫面**
+    //         (沒金鑰 / Fugle 無回應 / 額度用盡 / 當日無盤中資料),
+    //         舊股票的圖與六脈就原封不動留著,而且沒有任何提示說「這不是你現在看的股票」。
+    //   ⛔ 鐵則:**任何「換股後可能失敗」的渲染,都要先清空再載入**;
+    //      清空要比載入早,失敗時畫面才不會停在上一檔。
+    _clearLivePanels(reason) {
+        try {
+            const el = document.getElementById('intradayKlineChart');
+            if (el && typeof echarts !== 'undefined') {
+                const inst = echarts.getInstanceByDom(el);
+                if (inst) { try { inst.clear(); } catch (_) {} }
+            }
+        } catch (_) {}
+        // 這幾張都吃分鐘K / 逐筆,換股沒清就會顯示上一檔的判讀
+        ['intradaySixCard', 'whaleFlowCard', 'intradayVolBar', 'intradaySummary', 'intradayDepthBox']
+            .forEach(id => { const e = document.getElementById(id); if (e) { e.innerHTML = ''; e.classList.add('hidden'); } });
+        // 六脈相關快取也要作廢,否則分時圖的共振帶/箭頭會沿用上一檔
+        this._isixShade = null; this._isixDims = null;
+        this._isixAlertKey = null; this._isixEndKey = null;
+        const hint = document.getElementById('intradayHint');
+        if (hint) {
+            if (reason) { hint.innerHTML = reason; hint.classList.remove('hidden'); }
+            else { hint.innerHTML = ''; hint.classList.add('hidden'); }
+        }
+    },
+
     async loadIntradayKline(sym, silent) {
         sym = sym || this.currentSymbolId;
         const btn = document.getElementById('intradayKlineBtn');
@@ -28027,9 +28077,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const sumEl = document.getElementById('intradaySummary');
         const chartEl = document.getElementById('intradayKlineChart');
         if (!chartEl) return;
+        // ⭐ 換股(或還沒載過)→ 先清空,再開始載。清空一定要在 await 之前。
+        if (this._intradayLoadedSym !== sym) {
+            this._intradayLoadedSym = null;
+            this._clearLivePanels('⏳ 載入中…');
+        }
         const keys = this._getFugleKeys().filter(k => k && k.trim());
         if (!keys.length) {
-            if (hint) hint.innerHTML = '⚠️ 請先到 <b>⚙️ 設定 → Fugle token</b> 填一組免費金鑰,才能拉盤中分鐘K。<br>(Fugle 官網免費申請行情 API 金鑰)';
+            this._clearLivePanels('⚠️ 請先到 <b>⚙️ 設定 → Fugle token</b> 填一組免費金鑰,才能拉盤中分鐘K。<br>(Fugle 官網免費申請行情 API 金鑰)');
             this.showToast('請先到 ⚙️ 設定填 Fugle token');
             return;
         }
@@ -28039,15 +28094,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try { candles = await this._fetchFugleCandles(sym, tf === 'ts' ? '1' : tf); } catch (_) {}
         if (btn && !silent) { btn.disabled = false; btn.textContent = '🔄 載入 / 更新盤中K'; }
 
+        const _nm = (this.getStockName?.(sym) || sym);
         if (!candles) {
-            if (hint) hint.innerHTML = '⚠️ Fugle 無回應或免費額度用盡,稍後再按一次。';
+            this._clearLivePanels(`⚠️ <b>${_nm}</b> 的盤中資料抓不到(免費額度用盡或連線異常),稍後再按一次。`);
             return;
         }
         if (!candles.length) {
-            if (hint) hint.innerHTML = 'ℹ️ 目前無盤中分鐘資料(可能尚未開盤或當日休市),請盤中(09:00–13:30)再試。';
+            this._clearLivePanels(`ℹ️ <b>${_nm}</b> 目前沒有盤中分鐘資料(可能尚未開盤或當日休市),請盤中(09:00–13:30)再試。`);
             return;
         }
+        // ⭐ 切股競態:await 回來時若已經切到別檔,這份資料是舊的,畫上去就是「圖文不符」
+        if (String(this.currentSymbolId || '') !== String(sym)) return;
         this._intradayLoadedSym = sym;
+        if (hint) { hint.innerHTML = ''; hint.classList.add('hidden'); }
         try { if (this._tickAcc && this._tickAcc.sym !== sym) { const wc = document.getElementById('whaleFlowCard'); if (wc) wc.classList.add('hidden'); } } catch (_) {}   // 🐋 切股清殘留
         this._renderIntradayChart(chartEl, candles, tf);
         // 🔬 V68.2.5 盤中先載真實逐筆內外盤(熱門股才有,冷門股 fallback 估算)
