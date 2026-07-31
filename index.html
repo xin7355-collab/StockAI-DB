@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.7.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.7.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6831,8 +6831,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.7.6',
+    _APP_VERSION: 'V71.7.7',
     _CHANGELOG: [
+        { v: 'V71.7.7', dt: '2026-07-31', t: '🩹 修「每次開 App 都跳紅框」的真正原因 + 反攻雷達講清楚要幾條才算過', d: [
+            '【紅框】上一次我修的是「手機存的設定被寫到一半」,那個確實是問題之一,但你回報還在跳 → 追下去發現另一個更根本的:**存在手機裡的那份網頁本身是半截的**。',
+            '網頁上線前會被壓成一整行,所以錯誤訊息才會寫「第 1 行」——「讀到一半就沒了」指的是整份檔案。iPhone 對 App 的儲存空間有上限,存到一半被中斷時,存進去的是不完整的網頁,而且系統不會報錯;之後每次開 App 都先拿那份壞的 → 每次必跳,而且**自己永遠好不了**。',
+            '現在每次要拿手機裡那份之前,會先檢查結尾完不完整;不完整就直接丟掉改連網路重抓。',
+            '紅框本身也加了版本號跟出錯位置 —— 下次你截圖給我,我一眼就看得出你手機跑的是哪一版,不用再猜是「還沒更新到」還是「真的沒修好」。',
+            '【反攻雷達】你問「7/10 何時才是反攻,要等到 10/10 嗎?」→ **不用**,門檻是 8/10(允許 2 條沒過)。原本卡上只寫 7/10 沒寫要幾條,難怪會誤會。',
+            '現在標題旁直接標「進場門檻 8/10」,下面那句也改成「這 3 條裡再亮 1 條就翻『反攻條件成形』,不用等全亮」,並把缺的條件全部列出來(原本只列前 3 條)。',
+            '【順便修一個打架】你截圖裡「分析師盤勢解讀」寫「偏多格局,可偏多操作」,但同一畫面反攻雷達寫「打底觀察中」、跑馬燈寫「多頭轉弱」—— 三個結論互相矛盾。原因是時間尺度不同(前者算短線技術分數,後者看這波跌完沒)。現在中期還沒過門檻時,那段只會說「短線轉強但中期未過關,先當反彈、做短不加碼」,不會再叫你加碼。',
+        ] },
         { v: 'V71.7.6', dt: '2026-07-31', t: '🚨 修「換股後下面沒跟著換」(你截圖抓到的,這個很危險)', d: [
             '你截圖裡標題是大成鋼(−1.37%),下面的分時圖卻是另一檔漲停的股票(+9.30%),連盤中六脈也跟著算成「多方共振」—— 等於你在用**別檔股票的判讀**。',
             '根因兩層:① 換股時只清掉 2 個 AI 結果框,其他要等資料回來才填的卡完全沒清;② 分時圖有四種情況會載入失敗(沒填金鑰、抓不到、額度用盡、當日沒資料),而這四種都是**直接放棄但不清畫面**,所以上一檔的圖就留在那裡,而且沒有任何提示。',
@@ -14716,8 +14725,18 @@ const marginByDate = {};
             // 🌙 盤勢注記(夜盤/情緒/匯率,原開盤預判 💡 段併入)
             if (Array.isArray(notes) && notes.length) parts.push(notes.join(' '));
             // ④ 結論/操作
+            // ⚖️ V71.7.7 跟反攻雷達對齊,避免「兩張卡下相反的指令」——
+            //    使用者截圖抓到:這裡寫「偏多格局,可偏多操作」,但同一畫面的反攻雷達寫
+            //    「打底觀察中 7/10」、跑馬燈寫「多頭轉弱(破月季線)」,三個結論打架。
+            //    根因是**時間尺度不同**:這段算的是加權指數當下的技術分數(短線),
+            //    反攻雷達看的是「這一波跌完沒」(中期)。短線轉強不代表中期可以回場。
+            //    → 中期還沒過門檻時,這裡只准描述「短線轉強」,**不准下加碼指令**(單一劇本原則)。
+            const _rv = this._reboundVerdict;
+            const _midWeak = _rv && _rv.total > 0 && _rv.passN < Math.max(6, _rv.total - 2);
             if (sPct <= 35) parts.push('<b class="text-green-300">總結：偏空格局</b>，策略保守——有貨顧好停損、空手別急著接刀，反彈多視為逃命波；等季線站回或支撐帶量止穩再找買點。');
-            else if (sPct >= 65) parts.push('<b class="text-red-300">總結：偏多格局</b>，可偏多操作——回檔不破支撐找買點，留意追高、設好停利。');
+            else if (sPct >= 65) parts.push(_midWeak
+                ? `<b class="text-yellow-300">總結：短線轉強、但中期未過關</b>——技術分數 ${Math.round(sPct)} 分偏多，惟反攻條件雷達僅 ${_rv.passN}/${_rv.total}（門檻 ${Math.max(6, _rv.total - 2)}）→ 先當<b class="text-yellow-300">反彈</b>看，做短不加碼、原有停損照守；雷達過關再談回場。`
+                : '<b class="text-red-300">總結：偏多格局</b>，可偏多操作——回檔不破支撐找買點，留意追高、設好停利。');
             else parts.push('<b class="text-yellow-300">總結：多空拉鋸</b>，區間操作——壓力附近減、支撐附近加，別追殺追高，等方向表態。');
             if (!parts.length) return '';
             return `<div class="mb-2 bg-[#161b22] border-l-4 border-blue-500 border-y border-r border-[#30363d] rounded-r p-2.5">
@@ -14974,21 +14993,32 @@ const marginByDate = {};
         const judged = C.filter(c => c.pass !== null);
         const passN = judged.filter(c => c.pass).length;
         const missing = judged.filter(c => !c.pass);
+        // 🎯 V71.7.7 把「門檻」算出來明講 —— 使用者問「7/10 何時才是反攻,要等到 10/10 嗎?」
+        //    答案是不用:門檻是 max(6, 全部−2),10 條時 = 8 條,也就是「允許有 2 條沒過」。
+        //    原本卡上只寫「7/10」,沒寫要幾條才算過,才會讓人以為要全亮。
+        //    ⛔ 這兩個數字必須從同一個式子來,別在文案裡另外寫死,否則條件數變動就會對不上。
+        const needN = Math.max(6, judged.length - 2);          // 「反攻條件成形」門檻
+        const halfN = Math.ceil(judged.length / 2);            // 「打底觀察中」門檻
         let heroIcon, heroTxt, heroCls, act;
         if (isSwan) {
             heroIcon = '🚨'; heroTxt = '全面黑天鵝'; heroCls = 'text-red-300 border-red-500';
             act = `<b class="text-red-300">立即砍到「跌停也睡得著」的量,別凹單別攤平。</b>觸發:${swanHits.join('、')}。現金也是部位。`;
-        } else if (passN >= Math.max(6, judged.length - 2)) {
+        } else if (passN >= needN) {
             // 🚦 V71.1.6 依 V70.2.8 燈號鐵則:這張卡回答「能不能進場」= 風險,不是漲跌方向
             //   → 一律用 ✅⚠️⛔🚨,不用 🔴🟢(原本 🟢=別接刀、🔴=可進場,視覺上剛好讀反)
             heroIcon = '✅'; heroTxt = '反攻條件成形'; heroCls = 'text-red-300 border-red-500';
             act = `${passN}/${judged.length} 條通過 → 可<b class="text-red-300">分批回場(先 1/3)</b>,買強不買弱;跌破今日低點停損。`;
-        } else if (passN >= Math.ceil(judged.length / 2)) {
+        } else if (passN >= halfN) {
             heroIcon = '⚠️'; heroTxt = '打底觀察中'; heroCls = 'text-yellow-300 border-yellow-500';
-            act = `${passN}/${judged.length} 條,<b class="text-yellow-300">缺:${missing.slice(0, 3).map(c => c.name).join('、')}</b>${missing.length > 3 ? `等${missing.length}條` : ''} → 空手再等,持股只留核心。`;
+            // 「還差幾條」講清楚:缺的那幾條裡,**任意** needN−passN 條轉綠就翻成「反攻條件成形」,
+            // 不必等全部亮(這正是使用者會誤會的地方)。
+            const gap = Math.max(1, needN - passN);
+            act = `${passN}/${judged.length} 條,<b class="text-yellow-300">缺:${missing.map(c => c.name).join('、')}</b>`
+                + ` → <b class="text-yellow-300">這 ${missing.length} 條裡再亮 ${gap} 條(湊到 ${needN}/${judged.length})就翻「反攻條件成形」,不用等全亮</b>;`
+                + `在那之前空手再等,持股只留核心。`;
         } else {
             heroIcon = '⛔'; heroTxt = '空方主控・別接刀'; heroCls = 'text-green-300 border-green-500';
-            act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波</b>,過半前不進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
+            act = `只過 ${passN}/${judged.length} 條 → <b class="text-green-300">反彈是逃命波</b>,先到 ${halfN}/${judged.length} 才算打底、${needN}/${judged.length} 才進場。${fgExtreme ? '(恐懼貪婪已極端恐慌 ' + fg + ',歷史上離底不遠,但「便宜」不等於「止跌」,等訊號)' : ''}`;
         }
         // 🔗 V71.2.1 存下結論供「盤前體檢」引用 —— 兩張卡時間尺度不同(盤前=今天開盤、雷達=這波跌完沒),
         //   本來就該一起看;而且兩張都在下操作指令,不接起來萬一分歧會給出兩套矛盾指示(違反單一劇本原則)。
@@ -15028,8 +15058,8 @@ const marginByDate = {};
         box.className = 'bg-[#161b22] border-l-4 ' + heroCls.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2">
-                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="alert('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n・✅ 過半=打底中,空手準備\n・✅ 幾乎全亮=分批回場(先1/3)\n・觸發黑天鵝(VIX爆表/外資空單4萬口/日圓急升/日韓股-5%)=先停損保命\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
-                <span class="text-sm font-black ${heroCls.split(' ')[0]}">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}${C.length > judged.length ? `<span class="text-gray-600">(+${C.length - judged.length}⏳)</span>` : ''}</span></span>
+                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="alert('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n🎯 要幾條才算過?不用全亮:\n・過半(${halfN}/${judged.length})=打底中,空手準備\n・${needN}/${judged.length}=反攻條件成形,分批回場(先1/3)\n  → 門檻是「全部條件數 −2」(至少 6 條),也就是容許 2 條沒過;條件數變動時門檻自動跟著算。\n・觸發黑天鵝(VIX爆表/外資空單4萬口/日圓急升/日韓股-5%)=先停損保命\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
+                <span class="text-sm font-black ${heroCls.split(' ')[0]} text-right">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}${C.length > judged.length ? `<span class="text-gray-600">(+${C.length - judged.length}⏳)</span>` : ''}</span><br><span class="font-mono text-[9px] text-gray-600 font-normal">進場門檻 ${needN}/${judged.length}</span></span>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
@@ -39787,7 +39817,11 @@ window.addEventListener('error', e => {
         const t = document.createElement('div');
         t.id = '_globalErrToast';
         t.className = 'fixed top-14 left-2 right-2 bg-red-900/95 text-red-100 text-[10px] p-2 rounded z-[10000] font-mono shadow-2xl border border-red-600';
-        t.innerHTML = `⚠️ <b>JS 錯誤(請截圖回報給 Claude)</b><br>${e.message}<br><span class="text-[9px] text-red-300">位置:${(e.filename || '?').split('/').pop()}:${e.lineno}</span><br><button onclick="this.parentNode.remove()" class="text-red-200 underline text-[9px] mt-1">關閉</button>`;
+        // 🩺 V71.7.7 加版本號 + 堆疊第一行 —— 使用者回報同一則錯誤時,原本的訊息看不出
+        //    「他手機上跑的到底是哪一版」,導致無法分辨是「還沒更新到修好的版本」還是「真的沒修好」。
+        const _ver = (typeof app !== 'undefined' && app._APP_VERSION) ? app._APP_VERSION : '?';
+        const _stk = (e.error && e.error.stack ? String(e.error.stack).split('\n')[1] || '' : '').trim().slice(0, 90);
+        t.innerHTML = `⚠️ <b>JS 錯誤(請截圖回報給 Claude)</b><br>${e.message}<br><span class="text-[9px] text-red-300">位置:${(e.filename || '?').split('/').pop()}:${e.lineno} ・ 版本 ${_ver}</span>${_stk ? `<br><span class="text-[9px] text-red-300/80">${_stk.replace(/</g, '&lt;')}</span>` : ''}<br><button onclick="this.parentNode.remove()" class="text-red-200 underline text-[9px] mt-1">關閉</button>`;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 30000);
     } catch(_){}

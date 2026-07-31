@@ -38,16 +38,31 @@ self.addEventListener('fetch', e => {
     if (e.request.mode === 'navigate' || reqUrl.pathname.endsWith('/index.html')) {
         e.respondWith((async () => {
             const cached = await caches.match(e.request);
-            const fetchP = fetch(e.request).then(res => {
+            const fetchP = fetch(e.request).then(async res => {
                 if (res && res.ok) {
                     const clone = res.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+                    // ⛔ 只有「完整」的頁面才准寫進快取(見下方 _isWholePage 的說明)
+                    if (await _isWholePage(clone.clone())) {
+                        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone))
+                            .catch(() => {});   // 空間不足會 reject,不可讓它變成未處理的拒絕
+                    }
                 }
                 return res;
             }).catch(() => null);
-            if (cached) { fetchP.catch(() => {}); return cached; }   // 有快取:秒回,背景更新
-            const net = await fetchP;                                 // 首次:等網路
-            return net || new Response('offline', { status: 503 });
+            // 🐛 V71.7.7 快取完整性守門 —— 使用者回報「每次開 App 都跳 JS 錯誤紅框:
+            //   SyntaxError: Unexpected EOF,位置 ?source=pwa:1」。
+            //   部署產物是壓縮過的**單行** HTML,所以「文件第 1 行」= 整份檔案;
+            //   而 Unexpected EOF 的意思就是「script 讀到一半就沒了」——
+            //   也就是快取裡那份 index.html 是**半截的**(iOS 對 PWA 有儲存空間上限,
+            //   cache.put 寫到一半被中止時,存進去的是不完整的 body,而且不會報錯)。
+            //   一旦存成半截,SWR 每次都先吐快取 → 每次開 App 都必爆,而且**自己永遠好不了**。
+            //   → 回傳快取之前先驗尾巴;不完整就當作沒有快取,改等網路,並把壞的那份刪掉。
+            if (cached) {
+                if (await _isWholePage(cached.clone())) { fetchP.catch(() => {}); return cached; }
+                try { const c = await caches.open(CACHE_NAME); await c.delete(e.request); } catch (_) {}
+            }
+            const net = await fetchP;                                 // 首次(或快取壞掉):等網路
+            return net || cached || new Response('offline', { status: 503 });
         })());
         return;
     }
@@ -81,6 +96,23 @@ self.addEventListener('fetch', e => {
             })
     );
 });
+
+// ─── 3.5 頁面完整性檢查 ────────────────────────────────────────────────────
+// 一份完整的 index.html 一定以 </html> 作結(部署壓縮也不會動到結尾)。
+// 只驗尾巴 512 bytes,不整份讀進記憶體(1MB × 每次導覽太貴)。
+// 讀取失敗一律回 false → 寧可多走一次網路,也不要把半截頁面端給使用者。
+async function _isWholePage(res) {
+    try {
+        if (!res) return false;
+        const buf = await res.arrayBuffer();
+        if (!buf || buf.byteLength < 1024) return false;         // 太小 = 不可能是完整頁面
+        const tail = new TextDecoder('utf-8', { fatal: false })
+            .decode(new Uint8Array(buf.slice(Math.max(0, buf.byteLength - 512))));
+        return /<\/html>\s*$/i.test(tail);
+    } catch (_) {
+        return false;
+    }
+}
 
 // ─── 4. Push 通知：由伺服器主動推送觸發（WebPush 協議）─────────────────────
 self.addEventListener('push', e => {
