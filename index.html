@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.7.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.7.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6831,8 +6831,20 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.7.8',
+    _APP_VERSION: 'V71.8.0',
     _CHANGELOG: [
+        { v: 'V71.8.0', dt: '2026-08-01', t: '🪜 「跌到哪裡才敢買」階梯 + 修好那兩條說「沒有資料」的', d: [
+            '你問「為何分析師禮拜三敢說破 4 萬就買 0050,為何買得那麼準」→ 答案是**他沒有預測低點**,他做的是「定價不定時」:先設好價位、跌到就分批買。事後看像抄底,其實是紀律。',
+            '這件事可以變成程式,所以做進反攻雷達下方(不另開新卡):🪜「跌到哪裡才敢買」階梯。用加權現價、年線、近一年最低、千點整數關、從高點回檔 15%/20%,算出最多 4 個檔位。',
+            '每一檔都標:加權點數、距現在還要跌幾%、到那時等於從一年高點回檔幾%、**對應的 0050 大約多少錢、一張要準備多少錢**。分批成數(3成/3成/4成)也標出來。',
+            '⚠️ 誠實講三件事:① 這張表不預測低點,跌到不代表會反彈 ② 0050 價位是用加權比例換算的約略值,不是報價 ③ 分析師敢買是因為他買的是一籃子 ETF、而且那 1 億是配置的一小塊 —— 那個條件你我都學不來。',
+            '',
+            '【你說「價差翻正」沒有資料】查出來是真 bug:期貨那條腿走官方管道時**沒記下資料日期**,所以「期貨跟加權必須是同一天」的檢查根本沒生效 → 差一天照算 → 算出離譜數字後被系統默默丟掉,而且**沒留下任何原因**,所以你只看到「沒有資料」。已修,並且現在會把期貨、加權兩邊的數字跟日期都存下來,查得出來為什麼。',
+            '有數字的時候,那行會直接顯示「期 40,270 vs 現 40,039」,你可以自己對。',
+            '',
+            '【你說「台指 VIX」沒有資料】台指 VIX 本來就是期交所公開資料、**不用付費**,之前卡住是因為走了要付費會員的那條路,改走官方免費管道後又猜錯網址名稱。已改成「猜不到就把官方的清單抓回來記著」,下次採礦就會知道正確名稱。',
+            '在那之前,說明文字改成講進度(而不是「維護中」三個字),並明講此條不計分、不影響雷達其他判斷,先看美股 VIX 當替代。',
+        ] },
         { v: 'V71.7.8', dt: '2026-07-31', t: '💰 「我現在買,還有多少空間?」一張表看完(你問的)', d: [
             '你問「上方壓力區不是有還差多少價格?能不能用一個,直接告訴我現在買還有多少利潤空間%」→ 做好了。',
             '原本「防守價一覽」只講**下面**會先破哪一道(賠多少),現在同一張卡上半部補上**上面**:改名「📐 上檔空間 ・ 防守價」,一張表看完賺跟賠。',
@@ -14854,12 +14866,92 @@ const marginByDate = {};
         } catch (_) { return null; }
     },
 
+    // 🪜 V71.8.0 「跌到哪裡才敢買」階梯(使用者問:分析師為何能買在低點?)
+    //   答案是**他沒有預測低點**,他是「定價不定時」—— 先設好價位、跌到就分批進。
+    //   這支把那套做法變成算得出來的東西:用加權現價 + 年線 + 近兩年低點 + 整數關卡,
+    //   算出三個檔位,各標「距現在 %」「從高點回檔 %」「對應的 0050 價位與一張多少錢」。
+    //   ⛔ 只用既有資料(twii_history + 0050 最新收盤),不預測、不編目標價。
+    _dipLadder() {
+        const h = Array.isArray(this.usMacroCache?.twii_history) ? this.usMacroCache.twii_history : [];
+        const cl = h.map(r => +r.close).filter(v => v > 0);
+        if (cl.length < 60) return null;
+        const now = cl[cl.length - 1];
+        const hi250 = Math.max(...cl.slice(-250));
+        const lo250 = Math.min(...cl.slice(-250));
+        const ma240 = cl.length >= 240 ? cl.slice(-240).reduce((a, b) => a + b, 0) / 240 : null;
+        // 整數關卡:現價下方最近的千點整數(如 40,270 → 40,000)
+        const round1k = Math.floor((now - 1) / 1000) * 1000;
+        const cand = [
+            { n: `${(round1k / 1000).toFixed(0)} 千點整數關`, v: round1k, why: '心理關卡,大單常掛在這' },
+            ma240 ? { n: '年線(240 日均)', v: ma240, why: '長線多空分界,法人常在此接' } : null,
+            // 📉 從高點回檔 −15% / −20%:機構口中的「修正」與「熊市」門檻,
+            //    price 已經跌破年線時,上面那兩檔會消失 → 這兩檔保證階梯不會只剩一格。
+            { n: '高點回檔 15%(修正)', v: hi250 * 0.85, why: '一般「修正」的深度,常見的第一個承接區' },
+            { n: '高點回檔 20%(熊市)', v: hi250 * 0.80, why: '跌破 20% 才叫熊市,長線資金多在這附近分批' },
+            { n: '近一年最低', v: lo250, why: '前一次的止跌位置' },
+        ].filter(Boolean)
+         .filter(x => x.v > 0 && x.v < now * 0.999)          // 只留還在下方的
+         .sort((a, b) => b.v - a.v);                          // 由近到遠(先碰到的在上)
+        if (!cand.length) return null;
+        // 去重(相差 <1% 視為同一檔,保留名字較具體的那個)
+        const steps = [];
+        for (const c of cand) if (!steps.some(s => Math.abs(s.v - c.v) / c.v < 0.01)) steps.push(c);
+        const PORTION = ['3 成', '3 成', '4 成'];
+        // 最多列 4 檔:再多就變成「資訊爆炸」,而且太深的價位參考性也低
+        steps.length = Math.min(steps.length, 4);
+        const p0050 = +this._d0050Close || null;              // 0050 最新收盤(比例換算用)
+        steps.forEach((s, i) => {
+            s.portion = PORTION[i] || '';
+            s.pct = (s.v - now) / now * 100;                  // 負值=還要跌多少
+            s.ddHi = (s.v - hi250) / hi250 * 100;             // 到那時等於從一年高點回檔多少
+            s.etf = p0050 ? p0050 * (s.v / now) : null;       // 0050 約略對應價
+            s.lot = s.etf ? Math.round(s.etf * 1000) : null;  // 一張約要多少錢
+        });
+        return { now, hi250, steps, p0050 };
+    },
+
+    _dipLadderHtml() {
+        const L = this._dipLadder();
+        if (!L) return '';
+        const cma = v => Math.round(v).toLocaleString('en-US');
+        const rows = L.steps.map((s, i) => `<div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center py-1 border-b border-[#21262d] last:border-0">
+            <div class="min-w-0">
+                <div class="text-[11px] ${i === 0 ? 'text-gray-100 font-bold' : 'text-gray-300'} truncate">${s.portion ? `<span class="text-[9px] text-gray-500 mr-1">第${i + 1}批 ${s.portion}</span>` : ''}${s.n}</div>
+                <div class="text-[9px] text-gray-500 truncate">${s.why}${s.lot ? ` ・0050 約 ${s.etf.toFixed(1)} 元(一張 ${cma(s.lot)} 元)` : ''}</div>
+            </div>
+            <span class="font-mono text-[12px] font-black text-gray-100">${cma(s.v)}</span>
+            <span class="font-mono text-[10px] w-[92px] text-right"><span class="text-green-300">${s.pct.toFixed(1)}%</span><br><span class="text-gray-500 text-[9px]">高點 ${s.ddHi.toFixed(0)}%</span></span>
+        </div>`).join('');
+        return `<div class="mt-2.5 pt-2 border-t border-[#30363d]">
+            <div class="text-[11px] font-black text-gray-100 mb-1">🪜 跌到哪裡才敢買(定價不定時)
+                <button onclick="alert('🪜 定價不定時 — 這張表在幹嘛\\n\\n電視上分析師講「破 4 萬我就敢買 0050」,常被誤會成他預測到低點。\\n其實他做的是「定價不定時」:先設好價位,跌到就分批買,不猜什麼時候到。\\n\\n・事後看像抄底,實際上是紀律\\n・他買 0050(一籃子、不會下市),所以敢在下跌途中接\\n・他的 1 億是配置的一小塊,套半年也不影響生活 —— 這點你我都學不來\\n\\n這張表只做「算得出來的部分」:用加權現價、年線、近一年最低、千點整數關,\\n列出三個檔位與各自要準備多少錢。⛔ 它不預測低點,也不保證跌到就會反彈。\\n\\n💡 搭配上面的條件雷達看:價位到了、雷達也過門檻,才是比較完整的進場理由。')" class="text-[9px] text-gray-500 hover:text-blue-300 font-normal">📖 教學</button>
+            </div>
+            <div class="text-[9px] text-gray-500 leading-snug mb-1.5">分析師不是預測低點,是<b class="text-gray-300">先設價位、跌到就分批進</b>。目前加權 ${cma(L.now)}(一年高 ${cma(L.hi250)})。</div>
+            ${rows}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">※ 0050 價位是用「加權比例」換算的約略值,非報價;分批成數是常見做法,不是建議。跌到價位不代表會反彈,務必配合上方條件雷達與自己的停損。</div>
+        </div>`;
+    },
+
     _renderReboundRadar() {
         const box = document.getElementById('reboundRadarCard');
         if (!box) return;
         const mr = this._macroRiskCache || {};
         const usm = this.usMacroCache || {};
         if (mr.vix == null && mr.fi_futures_net == null) { box.classList.add('hidden'); return; }
+        // 🪜 V71.8.0 接刀階梯要用 0050 最新收盤做比例換算 → 背景抓一次就好(抓到再重畫一次)
+        if (this._d0050Close === undefined) {
+            this._d0050Close = null;
+            (async () => {
+                try {
+                    const gh = window.location.href.split('?')[0].split('#')[0];
+                    const r = await fetch(new URL('data/0050.json', gh).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+                    if (!r.ok) return;
+                    const a = await r.json();
+                    const c = Array.isArray(a) && a.length ? +a[a.length - 1].close : 0;
+                    if (c > 0) { this._d0050Close = c; this._renderReboundRadar(); }   // 只重畫這張卡
+                } catch (_) {}
+            })();
+        }
         const N = v => (v == null || isNaN(+v)) ? null : +v;
         const f1 = v => v == null ? '—' : (+v).toFixed(1);
         // 台股 5MA / 季線(twii_history)
@@ -14938,11 +15030,21 @@ const marginByDate = {};
         //      單看口數會把「避險」誤判成「看空」。若空單很大**但仍是正價差** → 多半是避險/套利,
         //      不是真的看壞;若空單大**又深度逆價差** → 才是真的在殺。
         const bwd = N(mr.taifex_backwardation);
+        // 🩹 V71.8.0 沒資料時要說**為什麼**(使用者回報這條長期顯「沒有資料」)。
+        //   真因已在採礦端修:期貨那條腿走官方 OpenAPI 時沒記資料日期 → 「兩條腿必須同一天」
+        //   的守門失效 → 差一天照算 → 算出離譜值被默默丟掉,而且不留原因。
+        //   現在後端會把兩條腿(taifex_near / taiex_close 與各自日期)與原因一起輸出。
+        const _bwWhy = (() => {
+            if (bwd != null) return '期貨收回加權之上=避險退潮。深逆價差(<-200)=還在搶避險,但恐慌末端的極深逆價差常是反轉先兆(要配 VIX 看)'
+                + (mr.taifex_near && mr.taiex_close ? ` ・期 ${Math.round(mr.taifex_near).toLocaleString()} vs 現 ${Math.round(mr.taiex_close).toLocaleString()}` : '');
+            const e = String(mr.taifex_backwardation_error || '');
+            if (e.includes('不同交易日')) return `⏳ 期貨與加權還不是同一天的收盤(${e.replace(/,不計價差/, '')}),硬算會把避險誤判成看空 → 這條暫不計分,等兩邊對齊就會自動出現`;
+            if (e) return `⏳ 暫時算不出來:${e.slice(0, 60)}。此條不計分,不影響其他判斷`;
+            return '⏳ 期貨或加權收盤還沒到齊,此條暫不計分(不影響其他條件)';
+        })();
         add('📐', '價差翻正',
             bwd == null ? '—' : `${bwd >= 0 ? '正價差 +' : '逆價差 '}${Math.round(bwd)} 點`,
-            bwd != null && bwd >= 0,
-            '期貨收回加權之上=避險退潮。深逆價差(<-200)=還在搶避險,但恐慌末端的極深逆價差常是反轉先兆(要配 VIX 看)',
-            bwd == null);
+            bwd != null && bwd >= 0, _bwWhy, bwd == null);
         // 🌡️ V71.5.0 台指 VIX 沒資料時要講原因 —— 使用者反映「VIX 沒有資料」但只看到一個「—」,
         //   分不出是「還沒抓到」還是「這條壞掉了」。有 tw_vix_error 就明說資料源在維護,
         //   並提示美股 VIX 可以先當替代參考(同一件事只給一個結論,不另開卡)。
@@ -14958,11 +15060,19 @@ const marginByDate = {};
                   + (_amt.vsMa5 == null ? '' : `(${_amt.vsMa5 >= 0 ? '+' : ''}${_amt.vsMa5.toFixed(0)}%)`)
                   + '。量縮反彈=無人接手,帶量才算真表態',
             _amt == null);
+        // 🌡️ V71.8.0 沒資料時講**進度**而不是「維護中」——使用者反映看不出到底會不會好。
+        //   現況(2026-08-01 實測):走 FinMind 需要付費會員層級;台指 VIX 本來就是期交所公開資料、
+        //   不必付費,但候選端點名稱全猜錯。採礦端已改成「猜不到就把官方端點清單抓回來寫進 JSON」,
+        //   下一輪就會知道正確名稱 → 這裡照實講,不要只丟一句「維護中」。
+        const _vxWhy = (() => {
+            if (twvix != null) return '回 30 以下(>30=仍在搶避險)';
+            const e = String(mr.tw_vix_error || '');
+            if (e.includes('等級不足') || e.includes('付費')) return `⏳ 走的那個資料源要付費會員才給;台指 VIX 本來是期交所公開資料,已改抓官方免費源,下次採礦會自動帶回。此條不計分,先看上方美股 VIX ${vix != null ? f1(vix) : ''} 當替代`;
+            if (e) return `⏳ 官方免費源的名稱還在確認中(採礦會自動把正確名稱抓回來),此條不計分;先看上方美股 VIX ${vix != null ? f1(vix) : ''} 當替代`;
+            return '⏳ 尚未取得,此條不計分;先看上方美股 VIX 當替代參考';
+        })();
         add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30,
-            twvix == null && mr.tw_vix_error
-                ? '⚠️ 台股自己的恐慌指數資料源維護中(已自動回報),此條暫不計分;先看上方美股 VIX 當替代參考'
-                : '回 30 以下(>30=仍在搶避險)',
-            twvix == null);
+            _vxWhy, twvix == null);
         add('📉', '機構停止倒貨', dist == null ? '—' : `派發日 ${dist} 天`, dist != null && dist <= 2, '25 日內派發 ≤2(≥5=出貨未歇)', dist == null);
         // 融資斷頭(反指標:跌市中融資大減=賣壓宣洩,反而接近底)
         let mgTxt = mgNow == null ? '—' : `${Math.round(mgNow).toLocaleString()} 億`;
@@ -15073,6 +15183,7 @@ const marginByDate = {};
             </div>
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mt-2">${C.map(row).join('')}</div>
+            ${this._dipLadderHtml()}
             <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 純公式・${this._dW(mr.updated ? String(mr.updated).slice(0, 10) : new Date(), { rel: 1 })}・門檻=歷史台股止跌共同條件・黑天鵝會自動推播。非投資建議。</div>`;
         box.classList.remove('hidden');
     },

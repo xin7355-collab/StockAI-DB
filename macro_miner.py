@@ -1337,17 +1337,26 @@ def _taifex_list_endpoints(keyword=''):
     這支的用途是**診斷**:候選名稱全猜錯時,與其下一輪再猜,不如把官方的清單印出來。
     同專案 V71.3.4 的教訓(FinMind 根本沒有 TaiwanBrokerInfo 這個資料集)就是這樣解掉的。
     """
-    for idx in ('swagger/v1/swagger.json', 'swagger.json', ''):
+    import re as _re
+    # 🐛 V71.8.0 實測(2026-08-01 gh-pages 的 tw_vix_error):所有候選端點都回「HTTP 200 但不是 JSON」,
+    #    連 swagger.json 也一樣 → 期交所對未知路徑是回**網頁**而不是 404。
+    #    所以只試 JSON 是問不出答案的,必須連**首頁 HTML** 一起掃、把 /v1/<名稱> 抓出來。
+    #    (同 V71.3.4 解 FinMind 資料集名的做法:與其一輪一輪猜,不如讓官方自己說。)
+    for idx in ('swagger/v1/swagger.json', 'swagger.json', '', '../'):
         try:
             r = http.get(TAIFEX_OPENAPI_BASE + idx, headers=_TAIFEX_OPENAPI_UA, timeout=20)
             if r.status_code != 200:
                 continue
-            j = r.json()
             names = []
-            if isinstance(j, dict) and isinstance(j.get('paths'), dict):
-                names = [k.strip('/').split('/')[-1] for k in j['paths']]
-            elif isinstance(j, list):
-                names = [str(x.get('name') or x.get('path') or x) for x in j if x]
+            try:
+                j = r.json()
+                if isinstance(j, dict) and isinstance(j.get('paths'), dict):
+                    names = [k.strip('/').split('/')[-1] for k in j['paths']]
+                elif isinstance(j, list):
+                    names = [str(x.get('name') or x.get('path') or x) for x in j if x]
+            except ValueError:
+                # 不是 JSON(網頁)→ 從 HTML 把 /v1/<端點名> 撈出來
+                names = sorted(set(_re.findall(r'/v1/([A-Za-z][A-Za-z0-9_]{3,})', r.text or '')))
             if names:
                 hit = [n for n in names if keyword.lower() in n.lower()] if keyword else names
                 print(f"  [TAIFEX OpenAPI] 端點清單 {len(names)} 個"
@@ -1380,10 +1389,14 @@ def _fetch_tw_vix_taifex():
     ]
     data, diag = _taifex_openapi(CAND)
     if not data:
-        # 猜不到 → 讓官方清單自己說話(只印含 vol/vix 的,避免洗版)
-        found = _taifex_list_endpoints('vol') + _taifex_list_endpoints('vix')
-        extra = f";官方端點含 vol/vix 的:{sorted(set(found))[:10]}" if found else ''
-        return None, f'TAIFEX:{diag}{extra}'
+        # 猜不到 → 讓官方清單自己說話。⭐ 一定要寫進**回傳字串**(會進 macro_risk.json),
+        #    只印在 workflow log 的話我下一輪還是看不到(log 要翻 job、而且會過期)。
+        found = (_taifex_list_endpoints('vol') + _taifex_list_endpoints('vix')
+                 + _taifex_list_endpoints('option'))
+        if not found:
+            found = _taifex_list_endpoints('')[:40]      # 全清單也好過沒有
+        extra = f";⭐官方端點清單:{sorted(set(found))[:24]}" if found else ';(官方端點清單也抓不到)'
+        return None, f'TAIFEX:{diag[:120]}{extra}'
     rows = []
     for r0 in data:
         if not isinstance(r0, dict):
@@ -2078,7 +2091,7 @@ def _taifex_openapi_tx_fut_close():
     if not data:
         print(f"  [台指逆價差 OpenAPI] 期貨行情端點失敗：{err}")
         return None
-    best_close, best_oi = None, -1.0
+    best_close, best_oi, best_date = None, -1.0, None
     seen = set()
     for row in data:
         if not isinstance(row, dict):
@@ -2105,8 +2118,23 @@ def _taifex_openapi_tx_fut_close():
               or _row_pick(row, '未平倉') or 0)
         if oi >= best_oi:
             best_oi, best_close = oi, close
+            # 🐛 V71.8.0 也要記下「這筆期貨是哪一天的」——
+            #   V71.4.9 加的「兩條腿必須同一天」守門只有 yfinance 那條腿會設 _LAST_TX_FUT_DATE,
+            #   而 OpenAPI 才是**主要**來源 → 主線根本沒被守到,期貨/現貨差一天照算,
+            #   算出離譜價差後又被下游的「離譜值守門」默默設成 None(而且不留原因)
+            #   → 前端只看到「沒有資料」,完全查不出為什麼。
+            _, _d = _find_key(row, ['Date', '日期', 'TradeDate'])
+            if _d is not None:
+                _ds = str(_d).strip().replace('/', '-')
+                if len(_ds) == 8 and _ds.isdigit():
+                    _ds = f"{_ds[:4]}-{_ds[4:6]}-{_ds[6:]}"
+                if len(_ds) >= 10:
+                    best_date = _ds[:10]
     if best_close is None:
         print(f"  [台指逆價差 OpenAPI] 未匹配 TX 列；keys={list(data[0].keys())}；契約={sorted(seen)[:20]}")
+    elif best_date:
+        globals()['_LAST_TX_FUT_DATE'] = best_date
+        print(f"  [台指逆價差 OpenAPI] TX 近月收盤 {best_close}(資料日 {best_date})")
     return best_close
 
 
@@ -2166,6 +2194,7 @@ def _taifex_openapi_tx_close_change():
 #    免得為了同一個數字再打一次 yfinance。
 _LAST_TWII_SPOT = None
 _LAST_TX_FUT_DATE = None   # V71.4.9 期貨那條腿的資料日期(判斷是否與現貨同一天)
+_LAST_BACK_LEGS = {}       # V71.8.0 價差的兩條腿(期貨收盤/日期、加權收盤/日期),供輸出與診斷
 
 
 def fetch_taifex_backwardation():
@@ -2250,11 +2279,20 @@ def fetch_taifex_backwardation():
         #   (空單大但正價差=避險;空單大又深逆價差=真的在殺),算錯會把避險誤判成看空。
         #   對不上日期就誠實回 None,讓前端顯「整備中」——不硬給一個看起來合理的假數字。
         fut_date = _LAST_TX_FUT_DATE
+        globals()['_LAST_BACK_LEGS'] = {
+            'taifex_near': round(float(fut_close), 2), 'taifex_fut_date': fut_date,
+            'taiex_close': round(float(spot), 2),      'taiex_date': spot_date,
+        }
         if spot_date and fut_date and spot_date != fut_date:
             msg = f"期貨({fut_date})與現貨({spot_date})不同交易日,不計價差"
             print(f"  [台指逆價差] ⏭️ {msg}")
             return None, msg
         back = round(fut_close - spot, 0)
+        # 🔎 V71.8.0 把兩條腿存起來一起輸出:沒有這兩個數字,價差是空的時候永遠查不出原因
+        globals()['_LAST_BACK_LEGS'] = {
+            'taifex_near': round(float(fut_close), 2), 'taifex_fut_date': fut_date,
+            'taiex_close': round(float(spot), 2),      'taiex_date': spot_date,
+        }
         print(f"  [台指逆價差] 期貨{fut_close} − 現貨{spot:.0f} = {back:+.0f} 點"
               f"({spot_date or '日期未知'})")
         return back, None
@@ -2389,6 +2427,10 @@ def main():
         "retail_ls_error": None,
         "taifex_backwardation":       None,   # 台指逆價差（點，負值＝逆價差）
         "taifex_backwardation_error": None,
+        "taifex_near":      None,   # V71.8.0 價差的兩條腿(分開輸出才查得出為何是空的)
+        "taifex_fut_date":  None,
+        "taiex_close":      None,
+        "taiex_date":       None,
         "m1b_pct":     None,                                 # 由 m1b_yoy 換算(FRED M1SL),null=待採
         "m1b_label":   "待採",
         "m1b_note":    "由 FRED M1SL 年增率換算流動性熱度;FRED 失敗時為 null",
@@ -2487,6 +2529,8 @@ def main():
     print("[8/16] 抓取台指逆價差 (TX − ^TWII)…")
     back, backerr = fetch_taifex_backwardation()
     out["taifex_backwardation"], out["taifex_backwardation_error"] = back, backerr
+    out.update(_LAST_BACK_LEGS or {'taifex_near': None, 'taifex_fut_date': None,
+                                   'taiex_close': None, 'taiex_date': None})
     print(f"     → {back} 點（err={backerr}）")
 
     # ── 🌍 全球巨頭脈動(10 大國際指標,V21 加 SP500 + NASDAQ)──
@@ -2798,8 +2842,15 @@ def main():
                 out[f"{_k}_chg_pct"] = None
         _tb = out.get('taifex_backwardation')
         if isinstance(_tb, (int, float)) and abs(_tb) > 600:
-            print(f"  ⚠️ taifex_backwardation={_tb} 離譜(正常 ±300)→ 設 None")
+            # 🐛 V71.8.0 一定要留原因 —— 舊寫法只把值設成 None、error 仍是 None,
+            #   前端就只顯「沒有資料」,而我從 JSON 也看不出是「抓不到」還是「抓到但被擋掉」。
+            #   這是本專案重複踩過的同一種坑(只印結論、不印數字)。
+            _r = (f"算出 {_tb:+.0f} 點離譜(正常 ±300)→ 不顯示。"
+                  f"多半是期貨({out.get('taifex_fut_date') or '?'})與現貨"
+                  f"({out.get('taiex_date') or '?'})不是同一個交易日")
+            print(f"  ⚠️ taifex_backwardation={_tb} {_r}")
             out['taifex_backwardation'] = None
+            out['taifex_backwardation_error'] = _r
     except Exception as e:
         print(f"  ⚠️ 離譜值守門失敗(不影響):{e}")
 
