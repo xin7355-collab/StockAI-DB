@@ -36,9 +36,21 @@ from datetime import datetime, timedelta, timezone
 
 TW = timezone(timedelta(hours=8))
 
-# 觀察清單:涵蓋大中小型 + 高低波動,才看得出鑑別度(同 ORB 探針的取樣精神)
-TEST_SYMS = ['2330', '2317', '2454', '3037', '3231', '2382', '6531', '3661',
-             '5483', '8069', '2376', '3035', '1519', '6438', '2603', '2609']
+# ⭐ V2(使用者質疑後重做):第一版把 16 檔 pooled 在一起測,是**錯的做法** ——
+#    他自己明說「標的要**大波**,不要中華電信、不要中鋼,太牛」,
+#    而實測發現我第一版用的 2330/2317/2454 按年化波動率其實落在**低波動組**,
+#    等於拿他明說「不要碰」的股票在測他的方法 → 結論當然難看。
+# ⭐ 改成**三組分層**(從 data/ 實測波動率 + 日成交額 >3 億挑出,才有分 K 流動性):
+TEST_GROUPS = {
+    '⭐ 高波動(他說適合)': ['5386', '6182', '3595', '6727', '2472', '8150',
+                            '2327', '8064', '2493', '6683', '4939', '3163'],
+    '➖ 中波動':          ['3105', '3661', '3135', '2379', '3653', '6139',
+                            '1815', '8069', '3693', '4927', '5243', '6805'],
+    '🐢 低波動(他說不要碰)': ['5388', '2385', '2883', '1795', '2354', '3005',
+                            '2885', '2330', '0056', '5876', '2886', '3045'],
+}
+TEST_SYMS = [s for g in TEST_GROUPS.values() for s in g]
+_SYM_GROUP = {s: g for g, syms in TEST_GROUPS.items() for s in syms}
 
 HOLD_MINS = (5, 10, 20, 30)      # 進場後持有幾分鐘(當沖尺度)
 TOPN = (1, 2, 3, 5)              # 「第 N 次量」的 N
@@ -154,7 +166,8 @@ def main():
 
     # bucket: (rank, kind) -> {hold: [淨報酬%]}
     from collections import defaultdict
-    buk = defaultdict(lambda: defaultdict(list))
+    buk = defaultdict(lambda: defaultdict(list))       # (組別, rank, kind) -> {hold: [淨%]}
+    gross = defaultdict(lambda: defaultdict(list))    # 同鍵 -> {hold: [毛%]} (看是不是被成本吃掉)
     per_sym = defaultdict(lambda: defaultdict(list))
     topn_set = set(TOPN)
     total_days = 0
@@ -203,7 +216,9 @@ def main():
                         net = -raw - COST_PCT      # 空單
                     else:
                         net = raw - COST_PCT       # 多單
-                    buk[(e['rank'], e['kind'])][hm].append(net)
+                    g = _SYM_GROUP.get(sym, '?')
+                    buk[(g, e['rank'], e['kind'])][hm].append(net)
+                    gross[(g, e['rank'], e['kind'])][hm].append(-raw if e['kind'] in ('stall_up', 'same_up') else raw)
                     if e['kind'] in ('stall_up', 'stall_dn'):
                         per_sym[sym][e['kind']].append(net if hm == 10 else None)
         total_days = max(total_days, nday)
@@ -220,47 +235,59 @@ def main():
         return 0
 
     _line('')
-    _line(f'📊 結果(分 K 深度最多 {total_days} 交易日;報酬皆為**扣 {COST_PCT}% 成本後**的淨值)')
-    _line(f'{"第N次量":<8}{"型態":<28}{"n":>7}' + ''.join(f'{f"{m}分中位":>10}' for m in HOLD_MINS) + f'{"10分勝率":>10}')
-    label = {'stall_up': '⭐ 爆量漲不動(他說空)', 'stall_dn': '⭐ 爆量跌不動(他說買)',
-             'same_up': '量價同漲(對照·同樣做空)', 'same_dn': '量價同跌(對照·同樣做多)'}
+    _line(f'📊 結果(分 K 深度最多 {total_days} 交易日;淨值 = 已扣 {COST_PCT}% 當沖成本)')
+    _line('⭐ 依「該股波動率」分三組報 —— 他明說「標的要大波,不要中華電/中鋼太牛」,')
+    _line('   所以 pooled 在一起測是錯的,必須分組才問得出「是不是只對特定股票有用」。')
+    label = {'stall_up': '爆量漲不動(他說空)', 'stall_dn': '爆量跌不動(他說買)',
+             'same_up': '量價同漲(對照·做空)', 'same_dn': '量價同跌(對照·做多)'}
     best = None
-    for rank in TOPN:
-        for kind in ('stall_up', 'stall_dn', 'same_up', 'same_dn'):
-            v = buk.get((rank, kind)) or {}
-            n = len(v.get(10) or [])
-            if n < MIN_EVT:
-                continue
-            meds = {m: statistics.median(v[m]) for m in HOLD_MINS if v.get(m)}
-            w = sum(1 for x in v[10] if x > 0) / n * 100
-            _line(f'{rank:<8}{label[kind]:<28}{n:>7}'
-                  + ''.join(f'{meds.get(m, 0):>+9.3f}%' for m in HOLD_MINS) + f'{w:>9.1f}%')
-            result['rows'].append({'rank': rank, 'kind': kind, 'n': n,
-                                   'med': meds, 'win10': round(w, 1)})
-            if kind.startswith('stall'):
-                key10 = meds.get(10, -99)
-                if best is None or key10 > best[0]:
-                    best = (key10, rank, kind, n, w)
+    for g in TEST_GROUPS:
+        _line('')
+        _line(f'── {g} ' + '─' * 46)
+        _line(f'{"第N次":<6}{"型態":<26}{"n":>6}{"毛10分":>9}{"淨10分":>9}{"淨30分":>9}{"10分勝率":>9}')
+        any_row = False
+        for rank in TOPN:
+            for kind in ('stall_up', 'stall_dn', 'same_up', 'same_dn'):
+                v = buk.get((g, rank, kind)) or {}
+                gv = gross.get((g, rank, kind)) or {}
+                n = len(v.get(10) or [])
+                if n < MIN_EVT:
+                    continue
+                any_row = True
+                net10 = statistics.median(v[10])
+                net30 = statistics.median(v[30]) if v.get(30) else 0
+                gr10 = statistics.median(gv[10]) if gv.get(10) else 0
+                w = sum(1 for x in v[10] if x > 0) / n * 100
+                _line(f'{rank:<6}{label[kind]:<26}{n:>6}{gr10:>+8.3f}%{net10:>+8.3f}%{net30:>+8.3f}%{w:>8.1f}%')
+                result['rows'].append({'group': g, 'rank': rank, 'kind': kind, 'n': n,
+                                       'gross10': round(gr10, 4), 'net10': round(net10, 4),
+                                       'net30': round(net30, 4), 'win10': round(w, 1)})
+                if kind.startswith('stall') and (best is None or net10 > best[0]):
+                    best = (net10, g, rank, kind, n, w, gr10)
+        if not any_row:
+            _line('   (樣本不足,略過)')
 
     _line('')
     _line('📌 結論')
     if best is None:
         _line('   ⏳ 「漲不動 / 跌不動」樣本不足,無法下結論。')
     else:
-        v, rank, kind, n, w = best
-        _line(f'   最好的一組:第 {rank} 次量 × {label[kind]} → 持有 10 分淨報酬中位 {v:+.3f}%'
-              f'(n={n}、勝率 {w:.1f}%)')
+        v, g, rank, kind, n, w, gr = best
+        _line(f'   全部組別裡最好的一組:{g} × 第 {rank} 次量 × {label[kind]}')
+        _line(f'   → 毛 10 分 {gr:+.3f}% ・**淨 10 分 {v:+.3f}%** ・勝率 {w:.1f}%(n={n})')
         if v > 0.05:
-            _line('   ✅ **扣成本後仍為正** → 值得建 volseq_miner 正式做')
+            _line(f'   ✅ **扣成本後仍為正** → 這一組值得做(⚠️ 只對「{g}」,⛔ 別套到其他股票)')
         elif v > -0.05:
             _line('   ➖ 扣成本後約略打平 → 邊際被成本吃掉,⛔ 先不做(同 ORB 的結論)')
         else:
-            _line('   ❌ 扣成本後為負 → ⛔ 不做')
+            _line('   ❌ 連最好的一組扣成本後都是負的 → ⛔ 不做')
     _line('')
-    _line('⚠️ 提醒(ORB 那次的教訓):')
-    _line('   ・pooled 平均會蓋掉個股差異,要看各檔鑑別度再決定是否只對特定股票用。')
-    _line('   ・分 K 深度有限(Shioaji 免費約 81 交易日),涵蓋的行情型態有限;')
-    _line('     震盪盤沒有邊際不代表趨勢盤也沒有,反之亦然。')
+    _line('⭐ 怎麼讀「毛」和「淨」的差:')
+    _line('   毛 ≈ 0 → 訊號出現後價格根本沒動(方向性不存在),不是被成本吃掉而已。')
+    _line('   毛 > 0 但淨 < 0 → 有方向但賺不過成本(ORB 那次就是這種)。')
+    _line('')
+    _line('⚠️ 限制:分 K 深度有限(Shioaji 免費約 100 交易日),涵蓋的行情型態有限;')
+    _line('   震盪盤沒有邊際不代表趨勢盤也沒有。每組 12 檔,組內 pooled。')
     result['ok'] = True
     _save(result)
     return 0
