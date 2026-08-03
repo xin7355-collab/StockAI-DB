@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1621,6 +1621,10 @@
                                 <div id="playbookRadarCard" class="hidden"></div>
                                 <!-- 📐 朱老師分批進場計畫器(3-3-4 三批,JS 精算) -->
                                 <div id="chuPositionPlanCard" class="hidden w-full bg-[#0d1117] border border-orange-700/40 rounded-xl p-3 text-xs text-gray-300"></div>
+                                <!-- 📈 V71.8.8 上檔空間(含「上方套牢區」)—— 使用者回報「找不到」:
+                                     它本來跟防守價擠在**出場**頁籤,但「我現在買還有多少賺頭」明明是**進場**才問的事。
+                                     ⚠️ 必須放在 data-ovpane="entry" 這個 div **裡面**,放在兩個 pane 中間會變成不管切哪頁都顯示。 -->
+                                <div id="upsideRoomCard" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
                             </div>
                         </div>
                         </div><!-- /data-ovpane=entry -->
@@ -6772,6 +6776,8 @@ ${list}
             if (btn) btn.classList.toggle('active', t.toLowerCase() === tab);
         });
         if (tab === 'chart' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
+        // 🧹 V71.8.8 切到 K線/籌碼時,那兩頁的卡才剛渲染 → 稍後掃一次空殼
+        if (tab === 'chart' || tab === 'chip') setTimeout(() => { try { this._sweepEmptyShells?.(); } catch (_) {} }, 800);
         // 📡 即時 tab:進頁自動拉當日分鐘K(換股/首次進入才重抓,省 Fugle 額度);已載過同股只 resize
         if (tab === 'live' && this.currentSymbolId) {
             if (this._intradayLoadedSym !== this.currentSymbolId) {
@@ -6899,8 +6905,18 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.7',
+    _APP_VERSION: 'V71.8.8',
     _CHANGELOG: [
+        { v: 'V71.8.8', dt: '2026-08-03', t: '📈 上檔空間搬到「進場」頁籤(你找不到是我放錯地方)', d: [
+            '你說找不到「上方套牢區」—— 不是沒做,是**我把它放在總覽的「出場」頁籤裡**。但「我現在買還有多少賺頭」明明是**進場**才會問的事,放在出場當然找不到。',
+            '已拆成兩張卡:',
+            '・📈 **上檔空間**(含上方套牢區)→ 總覽 → **進場** 頁籤',
+            '・🛡️ **防守價一覽** → 總覽 → **出場** 頁籤(下面加一行指路,告訴你上檔在進場那邊)',
+            '國巨那三層(613~705 / 773~865 / 957~980)現在會出現在進場頁籤那張卡裡。',
+            '',
+            '【三頁清空殼】新增自動清掃:整塊沒有任何文字的「外殼卡」會自動收起來,不再留一塊帶邊框的空白讓你以為是壞掉或還在載入。目前清掉的是 K線的總評外殼、籌碼的雷達面板/分點作戰室/情境插槽、總覽的分批計畫摺疊區 —— 有內容時會自動回來。',
+            '⚠️ 這裡我第一版做錯過一次:原本用「程式碼裡沒人參照這個 id」去猜哪些是空殼,結果選到三個**包住整段活內容的外殼**(進場明細、四關卡、位階溫度計都在裡面),掃下去會整段消失。改成**實際量字數**才敢列入,而且測試把這條釘死。',
+        ] },
         { v: 'V71.8.7', dt: '2026-08-03', t: '🧱 「上方套牢區」—— 你問的國巨 800，現在看得到了', d: [
             '你問分析師說國巨壓力在 800 是籌碼看出來的還是 K 線 → **是 K 線+成交量**,跟籌碼(法人/分點)沒關係。原理:800~850 那一帶當初成交了很多量,買在那裡的人被套,股價彈回去他們就想解套 → 變成賣壓。',
             '查完發現我這邊確實看不到,而且是**兩個限制**造成的:',
@@ -18457,6 +18473,37 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return Math.round((sell - buy) * shares - (buy + sell) * shares * 0.001425 * fd - sell * shares * 0.003);
     },
 
+    // 🧹 V71.8.8 空殼卡清掃(使用者:「該出現的顯示出來,不需要看的就隱藏」)。
+    //   問題:有些容器是「外殼」—— 裡面的內容卡全部 hidden 時,外殼自己還帶著 padding/border,
+    //   在畫面上留下一塊什麼都沒有的空白(使用者會以為是壞掉或載入中)。
+    //   ⛔ 只掃**白名單**上的純外殼,絕不整頁亂掃 —— 有些卡是 async 稍後才填,亂掃會把它們藏掉。
+    //   ⛔ 也不動含 <canvas>/<img>/<input> 的容器(圖表沒有文字但不是空的)。
+    //   ⛔ 已經會顯「誠實空狀態文字」的卡不列入(如借券那張會寫「此股非觀察清單」)——
+    //      那是有用的說明,不是裸空殼;而且它非同步才填,掃太早會被誤藏。
+    //   ⚠️ 白名單是**實測**出來的,不是用「沒有 JS 參照」猜的 —— 第一版靠靜態掃描選了
+    //      directActionBox / ovBodyEntry / ovBodyExit,實測發現它們是**包住整段活內容的外殼**
+    //      (裡面有進場明細、四關卡、位階溫度計…),掃了會把整段藏掉。加進來前一定要先量字數。
+    _EMPTY_SHELLS: [
+        'chuMergedCard',      // K線:朱老師總評 + 六脈的外殼,兩張都沒訊號時整塊空白
+        'chipRadarPanel',     // 籌碼:雷達面板,無資料時空
+        'brokerWarRoom',      // 籌碼:分點作戰室
+        'chipScenarioSlot',   // 籌碼:情境卡插槽
+        'ovBodyPlan',         // 總覽:分批計畫摺疊區
+    ],
+    _sweepEmptyShells() {
+        try {
+            this._EMPTY_SHELLS.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.querySelector('canvas, img, input, select, button')) return;   // 有互動/圖形元件 → 不是空的
+                // ⚠️ 不能只看「直接子層是不是都 hidden」—— 外殼裡常還包著一層沒 hidden 但本身空的 wrapper
+                //    (實測 directActionBox 就是這樣,第一版因此掃不掉)。改成看「整塊有沒有文字」。
+                const txt = (el.innerText || '').replace(/\s/g, '');
+                el.classList.toggle('hidden', txt.length === 0);
+            });
+        } catch (_) {}
+    },
+
     // 🧱 V71.8.7 上方「套牢區」(overhead supply)—— 使用者問:分析師說國巨壓力在 800 左右,
     //   這是籌碼看出來的還是 K 線?**是 K 線+成交量**:800~850 那一帶當初成交了很多量,
     //   買在那裡的人套牢,股價彈回去他們就想解套 → 形成賣壓。這叫套牢區/量價堆積。
@@ -18600,7 +18647,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const up = this._upsideRoom(pC, data, last);
         const upHtml = this._upsideRoomHtml(up);
         this._upsideStash = up;   // 供「上方壓力區」那塊引用同一組數字(⛔ 不重算)
-        if (cand.length < 2 && !upHtml) { el.classList.add('hidden'); return; }
+        if (cand.length < 2 && !upHtml) {
+            el.classList.add('hidden');
+            const _u = document.getElementById('upsideRoomCard');
+            if (_u) { _u.innerHTML = ''; _u.classList.add('hidden'); }
+            return;
+        }
         // 下方防守價:由近到遠(距離小的先破);上方的是壓力,分開列
         const below = cand.filter(x => x.d >= 0).sort((a, b) => a.d - b.d);
         const above = cand.filter(x => x.d < 0).sort((a, b) => b.d - a.d);
@@ -18613,12 +18665,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const hero = nearest
             ? `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-amber-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">最先碰到的是 <b class="text-amber-300">${nearest.n} ${nearest.v.toFixed(2)}</b>(現價下方 ${Math.abs(nearest.d).toFixed(1)}%)。跌破它就往下一道找支撐;下面每一道的意義,看本頁各卡說明。</div>`
             : `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-green-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">現價已在所有防守價之下 — 這些價位現在全都變成上方壓力,反彈到那附近容易遇賣壓。</div>`;
-        // ⛔ 已跌破的防守價已經被 _upsideRoom 收進「上檔空間」當壓力了 → 下半段不再重列一次,
-        //    否則同一個價位在同一張卡出現兩次(資訊爆炸)。upHtml 拿不到時才退回舊的列法。
-        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">上檔空間 ・ 防守價</span><span class="text-[9px] text-gray-500">一張表看完賺賠</span><span class="text-[9px] text-gray-600 ml-auto font-mono">現價 ${pC.toFixed(2)}</span></div>
-            ${upHtml}
-            ${below.length ? `<div class="text-[9px] text-gray-500 mt-2.5 mb-0.5">⬇️ 下方防守(先破的在最上面)</div>${hero}${below.map((x, i) => _row(x, i === 0)).join('')}` : ''}
-            ${(!upHtml && above.length) ? `<div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 已跌破(現在變成上方壓力)</div>${above.map(x => _row(x, false)).join('')}` : ''}`;
+        // 📈 V71.8.8 拆成兩張卡(使用者:「找不到上方套牢區」)——
+        //   上檔空間 → **進場**頁籤(問的是「我現在買還有多少賺頭」);防守價 → 留在出場頁籤。
+        //   ⛔ 已跌破的防守價已被 _upsideRoom 收進上檔當壓力 → 防守那張不再重列一次。
+        const upEl = document.getElementById('upsideRoomCard');   // ⚠️ 這個函式上面已經有 const up = _upsideRoom(...),別撞名
+        if (upEl) {
+            if (upHtml) {
+                upEl.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📈</span><span class="text-[12px] font-black text-gray-100">上檔空間</span><span class="text-[9px] text-gray-500">還能賺多少</span><span class="text-[9px] text-gray-600 ml-auto font-mono">現價 ${pC.toFixed(2)}</span></div>${upHtml}`;
+                upEl.classList.remove('hidden');
+            } else { upEl.innerHTML = ''; upEl.classList.add('hidden'); }
+        }
+        if (!below.length && !above.length) { el.classList.add('hidden'); return; }
+        el.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">🛡️</span><span class="text-[12px] font-black text-gray-100">防守價一覽</span><span class="text-[9px] text-gray-500">先破哪一個</span><span class="text-[9px] text-gray-600 ml-auto font-mono">現價 ${pC.toFixed(2)}</span></div>
+            ${below.length ? `<div class="text-[9px] text-gray-500 mb-0.5">⬇️ 下方防守(先破的在最上面)</div>${hero}${below.map((x, i) => _row(x, i === 0)).join('')}` : ''}
+            ${(!upHtml && above.length) ? `<div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 已跌破(現在變成上方壓力)</div>${above.map(x => _row(x, false)).join('')}` : ''}
+            ${upHtml ? `<div class="text-[9px] text-gray-600 mt-2 leading-snug">📈 上檔空間(含上方套牢區)在「<b class="text-gray-400">進場</b>」頁籤 —— 那裡回答「現在買還能賺多少」。</div>` : ''}`;
         el.classList.remove('hidden');
     },
 
@@ -32327,6 +32388,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ind._sigCount   = _chu.sigCount;   // 0-3,從不 null
             this._chuRenderAll(data, ind, last);
         } catch(e) { console.warn('[chu] render fail:', e); }
+        // 🧹 V71.8.8 全部渲染完才掃空殼(要在最後,否則會把還沒填的卡誤藏)
+        try { this._sweepEmptyShells?.(); } catch (_) {}
     },
 
     // 🗂️ V65.7 總覽四頁籤:現在怎麼做/庫存/進場(持有時=加碼)/出場;pane 用 data-ovpane wrapper 的 display 切,

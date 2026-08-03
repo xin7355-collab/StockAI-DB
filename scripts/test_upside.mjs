@@ -45,8 +45,12 @@ const R = await pg.evaluate(() => {
     const u = app._upsideRoom(pC, data, last);
     out.u = u ? { list: u.list.map(x => ({ n: x.n, v: +x.v.toFixed(2), pct: +x.pct.toFixed(2), ntd: x.ntd })), rr: u.rr, stop: u.stop, risk: u.risk } : null;
     app._renderGuardRuler(pC, data, last);
+    // 📈 V71.8.8 拆成兩張:上檔空間在 #upsideRoomCard(進場頁籤)、防守價在 #guardRuler(出場頁籤)
+    const up = document.getElementById('upsideRoomCard');
     const el = document.getElementById('guardRuler');
-    out.ruler = el.innerText;
+    out.ruler = (up.innerText || '') + '\n' + (el.innerText || '');
+    out.upTxt = up.innerText; out.guardTxt = el.innerText;
+    out.upHidden = up.classList.contains('hidden');
     out.hidden = el.classList.contains('hidden');
     out.zoneHtml = app._renderChuResistanceZonesHtml(data, last);
     // 手算一次淨損益對照(不可跟程式算的差)
@@ -57,7 +61,8 @@ const R = await pg.evaluate(() => {
     hi[last] = { ...hi[last], close: 200, high: 200, low: 199 };
     app._dynExit = { def: 190, pC: 200 }; app._guardStash = {};
     app._renderGuardRuler(200, hi, last);
-    out.topHtml = document.getElementById('guardRuler').innerText;
+    out.topHtml = (document.getElementById('upsideRoomCard').innerText || '')
+                + (document.getElementById('guardRuler').innerText || '');
     return out;
 });
 await b.close();
@@ -76,7 +81,10 @@ ok('③ 淨額有扣費稅(跟手算一致,且小於帳面價差 6,000)',
    t1 && t1.ntd === R.manual106 && t1.ntd < 6000, `${t1 && t1.ntd} vs 手算 ${R.manual106}`);
 ok('④ 風報比用出場總表的停損 95', u.stop === 95 && u.risk < 0, `stop=${u.stop} risk=${u.risk}`);
 ok('④ 風報比 = 第一道淨賺 ÷ 停損淨賠', Math.abs(u.rr - (u.list[0].ntd / -u.risk)) < 1e-9, String(u.rr));
-ok('⑤ 卡片標題已改成「上檔空間 ・ 防守價」', R.ruler.includes('上檔空間') && R.ruler.includes('防守價'), R.ruler.slice(0, 60));
+ok('⑤ 上檔空間自成一張卡(在進場頁籤,使用者才找得到)',
+   !R.upHidden && R.upTxt.includes('上檔空間'), `hidden=${R.upHidden} ${R.upTxt.slice(0,40)}`);
+ok('⑤ 防守價仍是另一張卡(出場頁籤)', R.guardTxt.includes('防守價一覽'), R.guardTxt.slice(0, 40));
+ok('⑤ 防守價那張要指路到進場頁籤看上檔空間', R.guardTxt.includes('進場'), R.guardTxt.slice(-120));
 ok('⑤ 卡上有白話那句「現在買,先碰到的是」', R.ruler.includes('現在買,先碰到的是'), R.ruler.slice(0, 200));
 ok('⑤ 卡上有風報比', R.ruler.includes('風報比'), '');
 ok('⑤ 金額有千分位逗號', /[+−]\d{1,3},\d{3} 元/.test(R.ruler), (R.ruler.match(/[+−][\d,]+ 元/g) || []).slice(0, 3).join(' '));
