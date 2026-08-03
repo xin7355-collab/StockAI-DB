@@ -1086,10 +1086,36 @@ CYCLICAL_INDUSTRIES = {
 }
 
 
+_COMPANY_GEO: dict = {}   # 🗺️ V71.9.8 {sym: 縣市},由 fetch_industry_map 順便填(零額外 API)
+
+# 🗺️ V71.9.8 地緣分點用:公司住址 → 縣市。逐字稿說「關鍵分點常常就是**地緣分點**」
+#    (公司在彰化,關鍵分點常在台中;「入港的分點怎麼都在買股票」)。
+# ⭐ 零額外 API:`t187ap03_L/O` 就是我本來在抓產業別的那一支,它同時有「住址」欄。
+_GEO_CITIES = ('台北市', '臺北市', '新北市', '基隆市', '桃園市', '新竹市', '新竹縣', '苗栗縣',
+               '台中市', '臺中市', '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣',
+               '台南市', '臺南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '臺東縣',
+               '澎湖縣', '金門縣', '連江縣')
+
+
+def _addr_city(addr: str) -> str:
+    """從住址字串取出縣市;取不到回 ''。台/臺 統一成「台」。"""
+    a = str(addr or '').strip()
+    if not a:
+        return ''
+    for c in _GEO_CITIES:
+        if c in a:
+            return c.replace('臺', '台')
+    return ''
+
+
 def fetch_industry_map() -> dict:
     """從 TWSE openapi 抓上市公司「產業別」對照表,輸出 {sym: industry_name}。
-    上市 t187ap03_L + 上櫃 t187ap03_O 兩個資料集,免費無 token。"""
+    上市 t187ap03_L + 上櫃 t187ap03_O 兩個資料集,免費無 token。
+    ⭐ V71.9.8 順便把「住址→縣市」收進全域 _COMPANY_GEO(地緣分點用,零額外 API)。"""
     industry_map = {}
+    global _COMPANY_GEO
+    _COMPANY_GEO = {}
+    _geo_miss_keys = None
     for url, label in [
         ('https://openapi.twse.com.tw/v1/opendata/t187ap03_L', 'TWSE 上市'),
         ('https://openapi.twse.com.tw/v1/opendata/t187ap03_O', 'TPEX 上櫃'),
@@ -1114,6 +1140,14 @@ def fetch_industry_map() -> dict:
                     if sym and ind and sym.isdigit() and 4 <= len(sym) <= 6:
                         industry_map[sym] = ind
                         added += 1
+                    # 🗺️ 地緣:同一列順便取住址縣市(欄名兩種寫法都吃)
+                    if sym and sym.isdigit() and 4 <= len(sym) <= 6:
+                        _city = _addr_city(row.get('住址') or row.get('地址')
+                                           or row.get('Address') or row.get('CompanyAddress') or '')
+                        if _city:
+                            _COMPANY_GEO[sym] = _city
+                        elif _geo_miss_keys is None:
+                            _geo_miss_keys = sorted(row.keys())[:25]   # 只記一次,供診斷欄名
                 print(f"  ✅ {label} 產業別:本次 +{added} / 累計 {len(industry_map)} (回應 {len(data)} 列,前 3:{[r.get('公司代號') or r.get('SecuritiesCompanyCode') for r in data[:3]]})")
                 ok = True
                 break
@@ -1123,6 +1157,11 @@ def fetch_industry_map() -> dict:
         if not ok:
             print(f"  ❌ {label} 產業別 3 次重試皆失敗,跳過此源")
         time.sleep(random.uniform(1.0, 2.0))
+    # 🗺️ 地緣診斷:抓不到縣市時把**實際欄名**印出來(同陷阱 #23:別讓人猜欄名)
+    if _COMPANY_GEO:
+        print(f"  🗺️ 公司所在縣市:{len(_COMPANY_GEO)} 檔(地緣分點用)")
+    else:
+        print(f"  ⚠️ 公司所在縣市:0 檔 — 住址欄可能改名。實際欄名 = {_geo_miss_keys}")
     return industry_map
 
 
@@ -3378,6 +3417,21 @@ def fetch_broker_chips():
                 else:
                     print("  ⏭️ 產業對照表為空,保留既有 industry_map.json(若有)")
 
+                # 🗺️ V71.9.8 公司所在縣市(地緣分點用)— 跟 industry_map 同一次 API 產出
+                #    ⛔ 空的時候不覆蓋(同「保留舊檔」原則),否則上游一次抽風就整份消失
+                try:
+                    _geo_path = Path('data', 'company_geo.json')
+                    if _COMPANY_GEO and len(_COMPANY_GEO) >= 500:
+                        _geo_path.write_text(json.dumps(
+                            {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                             'n': len(_COMPANY_GEO), 'data': _COMPANY_GEO},
+                            ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                        print(f"  💾 公司所在縣市 → data/company_geo.json({len(_COMPANY_GEO)} 檔)")
+                    else:
+                        print(f"  ⏭️ 公司縣市僅 {len(_COMPANY_GEO)} 檔(<500)— 保留既有 company_geo.json")
+                except Exception as _e_geo:
+                    print(f"  ⚠️ company_geo.json 寫入失敗:{str(_e_geo)[:80]}")
+
                 industries = aggregate_industry_pe(fund_cache, industry_map)
                 if industries:
                     ipe_path.write_text(json.dumps({
@@ -3921,6 +3975,72 @@ def fetch_broker_chips():
                 _hist = _hist[-12:]          # 🚀 V71.2.9 10 → 12:10 日週期要算得完整,得多留 2 天緩衝
             if _hist:
                 output['hist'] = _hist
+
+            # 🧙 V71.9.8 「關鍵分點」長期累計(bstat)—— 逐字稿說的「低檔大買 / 高檔大賣」需要**長歷史**,
+            #    但逐日快照存 60 天要多花約 157MB(實測 hist 每天每檔約 1,100 bytes × 2,384 檔),
+            #    GitHub Pages 只有 1GB、已用 388MB → ⛔ 不能硬存。
+            # ⭐ 改用**增量聚合**:每家分點只存 [累計淨股數, 累計金額, 出現天數],
+            #    可算出「這家自 d0 以來的加權平均成本」→ 再跟同期價格區間比,就知道他買在高檔還低檔。
+            #    空間約 17MB(實測 200 家 × 35 bytes × 2,384 檔),而且**歷史深度沒有上限**、每天自動變深。
+            # ⭐ 回算種子:第一次跑時直接把現有 `hist`(12 天)灌進去,不用從 0 開始等。
+            try:
+                _bs = existing_obj.get('bstat')
+                if not isinstance(_bs, dict) or not isinstance(_bs.get('b'), dict):
+                    _bs = {'d0': None, 'days': 0, 'seen': [], 'b': {}}
+                _seen = _bs.get('seen')
+                if not isinstance(_seen, list):
+                    _seen = []
+
+                def _accum(snap):
+                    """把一天的分點快照併進累計;同一天只算一次(靠 seen 清單)。"""
+                    dd = snap.get('d')
+                    if not dd or dd in _seen:
+                        return False
+                    for side in ('b', 's'):
+                        for e in (snap.get(side) or []):
+                            try:
+                                nm, net = str(e[0]), int(e[1])
+                                av = float(e[2]) if len(e) > 2 and e[2] is not None else None
+                            except (IndexError, TypeError, ValueError):
+                                continue
+                            if not nm or not net or av is None or av <= 0:
+                                continue
+                            r = _bs['b'].get(nm)
+                            if not r:
+                                r = [0, 0.0, 0]
+                                _bs['b'][nm] = r
+                            r[0] += net                 # 累計淨股數(可正可負)
+                            r[1] += net * av            # 累計金額(同號,相除即加權均價)
+                            r[2] += 1                   # 出現天數
+                    _seen.append(dd)
+                    return True
+
+                # ① 回算種子:把現有 hist 全部灌進去(已算過的日子會被 seen 擋掉)
+                for _sn in (_hist or []):
+                    if isinstance(_sn, dict):
+                        _accum(_sn)
+                # ② 本輪新的一天
+                if _dd and (_p1.get('buy') or _p1.get('sell')):
+                    _accum({'d': _dd, 'b': _compact_side(_p1.get('buy')), 's': _compact_side(_p1.get('sell'))})
+
+                if _bs['b']:
+                    _seen = sorted(set(_seen))[-400:]        # 交易日清單上限(約 1.5 年)
+                    _bs['seen'] = _seen
+                    _bs['d0'] = _seen[0] if _seen else None
+                    _bs['days'] = len(_seen)
+                    # 空間守門:只留淨額絕對值前 150 家(冷門分點對判斷沒幫助)
+                    if len(_bs['b']) > 150:
+                        _top = sorted(_bs['b'].items(), key=lambda kv: -abs(kv[1][0]))[:150]
+                        _bs['b'] = dict(_top)
+                    # 金額四捨五入到整數,省空間
+                    for _k, _v in _bs['b'].items():
+                        _v[1] = round(_v[1])
+                    output['bstat'] = _bs
+            except Exception as _e_bs:
+                # ⛔ 失敗不可讓舊值消失(同 V49.4 「git show 失敗留空檔」的教訓)
+                if isinstance(existing_obj.get('bstat'), dict):
+                    output['bstat'] = existing_obj['bstat']
+                print(f"  ⚠️ bstat 累計失敗({str(_e_bs)[:60]})— 保留舊值")
         except Exception:
             if existing_obj.get('hist'):
                 output['hist'] = existing_obj['hist']

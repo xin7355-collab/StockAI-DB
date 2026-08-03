@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,24 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.7',
+    _APP_VERSION: 'V71.9.8',
     _CHANGELOG: [
+        { v: 'V71.9.8', dt: '2026-08-03', t: '🧙🗺️ 關鍵分點(低檔大買/高檔大賣)+ 地緣分點', d: [
+            '你要的三件事,兩件做好了,一件驗完發現不能做(下面說明)。',
+            '',
+            '🧙 **關鍵分點** —— 他的 SOP:「找**高檔大賣**的分點、找**低檔大買**的分點」。',
+            '這跟我原本的「券商勝率榜」問的不是同一件事:勝率榜看「買了之後有沒有漲」,這個看「他**買在這檔價格區間的哪個位置**」。買在低檔的人不是追價來的,續抱意願比較高。',
+            '📍 個股 → 籌碼 → 券商分點,有符合的才出現。',
+            '',
+            '🗺️ **地緣分點** —— 他說「關鍵分點常常就是地緣分點」,公司在彰化、關鍵分點常在台中。',
+            '我從證交所的公司住址抓出**公司所在縣市**(跟本來就在抓的產業別同一支 API,不多花額度),再從券商分點名字解析出所在地,同縣市或鄰近縣市就標出來。',
+            '⛔ 有歧義的地名(中山、中正、信義、民權、和平、建國…好幾個縣市都有同名的路)**一律不對照** —— 寧可判不出來也不判錯。',
+            '⚠️ 誠實說:地緣這條我**沒有回測過**它的預測力,只是參考資訊。',
+            '',
+            '⏳ **關於歷史深度**:分點的逐日快照存 60 天要多花約 157MB(空間不夠)。所以我改成**每天累積**每家分點的成本與天數 —— 上線當天先用近 20 日的資料頂著,之後**每天自動變深**,不用等。',
+            '',
+            '❌ **連次量:驗完不做**。他說「空在爆量漲不動、買在爆量跌不動」,我用 64,990 個爆量事件驗日線版:漲不動比對照組只差 +0.14%、跌不動差 −0.45%,**兩個方向都在雜訊裡**,而且跌不動那個還跟他說的相反。真正的「連次量」是盤中第幾次爆量,要分 K 歷史才驗得了 —— 沒驗過的東西我不會上。',
+        ] },
         { v: 'V71.9.7', dt: '2026-08-03', t: '🧑‍🤝‍🧑 補上他說的第三個必看指標:集保戶數', d: [
             '新逐字稿裡他說:「我最喜歡看籌碼,最喜歡看這**三個指標**:主力買超、主力買散戶賣、**集保戶數**」。',
             '前兩個我早就有,第三個「集保戶數」(股東人數)其實**資料裡本來就有,但我從來沒用過**。',
@@ -15253,6 +15269,188 @@ const marginByDate = {};
     // → 所以這裡**只做單位換算、不下任何方向判斷**,並在文案上寫明「還沒驗證過預測力」。
     //   ⛔ 日後要加方向,必須先讓 trust_net 累積滿 1 年、重跑 trust_probe.py 確認有邊際。
     //   ⛔ 也別改成他反對的「投本比」—— 那要股本、要另外採礦,而且他自己說那是錯的用法。
+    // 🗺️ V71.9.8 地緣分點 —— 逐字稿:「關鍵分點常常就是**地緣分點**」
+    //   「彰化的公司,關鍵分點常常都在台中」「入港的分點怎麼都在買股票」
+    //   「地緣大買 + 股價又在地板 → 我們叫**雙地概念股**」
+    //
+    // 資料兩邊:公司縣市來自採礦 `company_geo.json`(TWSE t187ap03 的住址欄,零額外 API);
+    //          分點縣市從券商分點名稱裡的地名解析。
+    //
+    // ⛔ **只收「不會有歧義」的地名**。實測 568 個分點名裡,地名多半是**區名/路名**,
+    //    而 中山・中正・信義・民權・和平・建國・忠孝・復興・民生・成功・光復 這些
+    //    **好幾個縣市都有同名的路**(台北有中山北路、台中也有中山路)→ 一律**不對照**,
+    //    寧可判不出來也不要判錯(同「寧可不給方向」原則)。
+    _BROKER_CITY: {
+        // 台北市(行政區 + 唯一性夠高的路名)
+        '台北': '台北市', '臺北': '台北市', '士林': '台北市', '內湖': '台北市', '南港': '台北市',
+        '北投': '台北市', '大安': '台北市', '松山': '台北市', '文山': '台北市', '萬華': '台北市',
+        '敦南': '台北市', '敦北': '台北市', '敦化': '台北市', '景美': '台北市', '古亭': '台北市',
+        '大直': '台北市', '木柵': '台北市', '天母': '台北市', '西門': '台北市', '館前': '台北市',
+        // 新北市
+        '板橋': '新北市', '新莊': '新北市', '三重': '新北市', '永和': '新北市', '中和': '新北市',
+        '雙和': '新北市', '新店': '新北市', '蘆洲': '新北市', '淡水': '新北市', '林口': '新北市',
+        '樹林': '新北市', '鶯歌': '新北市', '汐止': '新北市', '土城': '新北市', '五股': '新北市',
+        // 基隆・宜蘭・花東
+        '基隆': '基隆市', '羅東': '宜蘭縣', '宜蘭': '宜蘭縣', '花蓮': '花蓮縣', '台東': '台東縣', '臺東': '台東縣',
+        // 桃園
+        '桃園': '桃園市', '中壢': '桃園市', '龍潭': '桃園市', '楊梅': '桃園市', '大園': '桃園市',
+        '八德': '桃園市', '內壢': '桃園市', '平鎮': '桃園市', '南崁': '桃園市',
+        // 竹苗
+        '新竹': '新竹市', '竹科': '新竹市', '科園': '新竹市', '竹北': '新竹縣', '竹東': '新竹縣',
+        '新豐': '新竹縣', '苗栗': '苗栗縣', '頭份': '苗栗縣', '竹南': '苗栗縣',
+        // 台中
+        '台中': '台中市', '臺中': '台中市', '南屯': '台中市', '西屯': '台中市', '北屯': '台中市',
+        '豐原': '台中市', '市政': '台中市', '文心': '台中市', '大里': '台中市', '沙鹿': '台中市',
+        '清水': '台中市', '大甲': '台中市', '東大': '台中市',
+        // 彰投雲嘉
+        '彰化': '彰化縣', '員林': '彰化縣', '鹿港': '彰化縣', '和美': '彰化縣',
+        '南投': '南投縣', '草屯': '南投縣', '埔里': '南投縣',
+        '虎尾': '雲林縣', '斗六': '雲林縣', '北港': '雲林縣', '西螺': '雲林縣',
+        '嘉義': '嘉義市', '朴子': '嘉義縣', '民雄': '嘉義縣',
+        // 台南
+        '台南': '台南市', '臺南': '台南市', '永康': '台南市', '新營': '台南市', '歸仁': '台南市',
+        '麻豆': '台南市', '善化': '台南市', '佳里': '台南市', '仁德': '台南市', '開元': '台南市',
+        // 高屏
+        '高雄': '高雄市', '鳳山': '高雄市', '岡山': '高雄市', '楠梓': '高雄市', '左營': '高雄市',
+        '前鎮': '高雄市', '苓雅': '高雄市', '小港': '高雄市', '旗山': '高雄市', '亞灣': '高雄市',
+        '屏東': '屏東縣', '潮州': '屏東縣', '東港': '屏東縣',
+    },
+    // 相鄰生活圈(他的例子:彰化的公司 → 台中的分點也算地緣)
+    _CITY_NEAR: {
+        '台北市': ['新北市', '基隆市'], '新北市': ['台北市', '基隆市', '桃園市'],
+        '基隆市': ['台北市', '新北市'], '桃園市': ['新北市', '新竹縣', '新竹市'],
+        '新竹市': ['新竹縣', '桃園市', '苗栗縣'], '新竹縣': ['新竹市', '桃園市', '苗栗縣'],
+        '苗栗縣': ['新竹縣', '新竹市', '台中市'], '台中市': ['彰化縣', '南投縣', '苗栗縣'],
+        '彰化縣': ['台中市', '南投縣', '雲林縣'], '南投縣': ['台中市', '彰化縣', '雲林縣'],
+        '雲林縣': ['彰化縣', '嘉義市', '嘉義縣', '南投縣'],
+        '嘉義市': ['嘉義縣', '台南市', '雲林縣'], '嘉義縣': ['嘉義市', '台南市', '雲林縣'],
+        '台南市': ['高雄市', '嘉義縣', '嘉義市'], '高雄市': ['台南市', '屏東縣'],
+        '屏東縣': ['高雄市'], '宜蘭縣': ['新北市', '花蓮縣'], '花蓮縣': ['宜蘭縣', '台東縣'],
+        '台東縣': ['花蓮縣', '屏東縣'],
+    },
+    // 分點名 → 縣市(取不到回 '';⛔ 歧義地名一律不猜)
+    _brokerCity(name) {
+        try {
+            const n = String(name || '').replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '').trim();
+            if (!n) return '';
+            const T = this._BROKER_CITY;
+            // 由長到短比對,避免「台北」先吃掉「台北大安」之類
+            if (!this._bcKeys) this._bcKeys = Object.keys(T).sort((a, b) => b.length - a.length);
+            for (const k of this._bcKeys) if (n.includes(k)) return T[k];
+            return '';
+        } catch (_) { return ''; }
+    },
+    async _loadCompanyGeo() {
+        if (this._companyGeo !== undefined) return;
+        this._companyGeo = null;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/company_geo.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+            if (r.ok) { const j = await r.json(); this._companyGeo = (j && j.data) || null; }
+        } catch (_) {}
+    },
+    // 回傳這檔的地緣分點分析(沒有公司縣市 / 沒有分點 → null)
+    _geoBrokers(sym, buyList) {
+        try {
+            const geo = this._companyGeo;
+            const city = geo ? geo[String(sym)] : null;
+            if (!city || !Array.isArray(buyList) || !buyList.length) return null;
+            const near = this._CITY_NEAR[city] || [];
+            const same = [], adj = [];
+            let sameNet = 0, adjNet = 0, totalNet = 0;
+            for (const x of buyList) {
+                const net = Math.abs(x.net || 0);
+                if (net <= 0) continue;
+                totalNet += net;
+                const bc = this._brokerCity(x.broker_name || x.name || '');
+                if (!bc) continue;
+                if (bc === city) { sameNet += net; if (same.length < 4) same.push(x); }
+                else if (near.includes(bc)) { adjNet += net; if (adj.length < 4) adj.push(x); }
+            }
+            if (!same.length && !adj.length) return null;
+            return { city, same, adj, sameNet, adjNet, totalNet,
+                     pct: totalNet > 0 ? (sameNet + adjNet) / totalNet * 100 : 0 };
+        } catch (_) { return null; }
+    },
+
+    // 🧙 V71.9.8 「關鍵分點」低檔大買 / 高檔大賣 —— 逐字稿給的 SOP:
+    //   「第一個找**高檔大賣**分點、第二個找**低檔大買**分點、第三個**低買高賣**最喜歡」
+    //   「我統計了 200 多家,都是**關鍵分點比外資厲害**,都低買高賣」
+    //
+    // ⭐ 這跟我既有的「券商勝率榜」問的**不是同一件事**,兩個互補:
+    //   ・勝率榜 = 這家買了之後**有沒有漲**(前瞻報酬)
+    //   ・本條   = 這家**買在這檔自己價格區間的哪個位置**(進出點位的品質)
+    //   短歷史下後者更穩(不需要等未來報酬實現)。
+    //
+    // 📐 資料來源兩層(先用能用的,深的自動接手):
+    //   ① **立即可用**:`periods['20d']` 的買超均價 vs 近 20 日價格區間 → 20 日尺度的位階
+    //   ② **越用越深**:採礦端 V71.9.8 起累計 `bstat`(每家分點的累計淨股數/金額/天數),
+    //      可算「自 d0 以來的加權平均成本」→ 拿來跟同期區間比,歷史深度每天自動增加。
+    //      ⛔ 之所以不存逐日快照:實測每天每檔約 1,100 bytes × 2,384 檔 × 60 天 ≈ 157MB,
+    //         GitHub Pages 只有 1GB(已用 388MB)→ 存不起。累計聚合只要約 17MB。
+    //
+    // ⚠️ 位階用「該股自己的區間」(同 V71.1.6 外資期貨、V71.8.1 波動率的原則),⛔ 不寫死價格門檻。
+    _keyBrokers(sym) {
+        try {
+            const arr = this.rawDailyData || [];
+            if (arr.length < 25) return null;
+            const P = this._fenPeriods;
+            if (!P) return null;
+            const out = { buyLow: [], sellHigh: [], src: '', win: 0 };
+
+            const rangeOf = n => {
+                const seg = arr.slice(-n).map(b => +((b?.close ?? b?.c) || 0)).filter(v => v > 0);
+                if (seg.length < Math.min(10, n)) return null;
+                const mn = Math.min(...seg), mx = Math.max(...seg);
+                return mx > mn ? { mn, mx } : null;
+            };
+            const posOf = (av, r) => (av - r.mn) / (r.mx - r.mn) * 100;
+
+            // ② 優先用 bstat(歷史最深);沒有才退回 20d periods
+            const bs = this._bstat && this._bstat[sym];
+            if (bs && bs.b && bs.days >= 15) {
+                const r = rangeOf(Math.min(arr.length, bs.days + 5));
+                if (r) {
+                    out.src = 'bstat'; out.win = bs.days;
+                    for (const [nm, v] of Object.entries(bs.b)) {
+                        const net = +v[0], amt = +v[1], cnt = +v[2] || 0;
+                        if (!net || !amt || cnt < 3) continue;
+                        const av = amt / net;                       // 同號相除 = 加權均價
+                        if (!(av > 0) || av < r.mn * 0.8 || av > r.mx * 1.2) continue;
+                        const pos = posOf(av, r);
+                        const lots = Math.round(Math.abs(net) / 1000);
+                        if (lots < 100) continue;
+                        if (net > 0 && pos <= 30) out.buyLow.push({ nm, av, pos, lots, cnt });
+                        else if (net < 0 && pos >= 70) out.sellHigh.push({ nm, av, pos, lots, cnt });
+                    }
+                }
+            }
+            // ① 回退:20 日 periods(上線當天就有)
+            if (!out.buyLow.length && !out.sellHigh.length) {
+                const p20 = P['20d'] || P['10d'] || null;
+                const win = P['20d'] ? 20 : 10;
+                const r = rangeOf(win);
+                if (!p20 || !r) return null;
+                out.src = 'periods'; out.win = win;
+                for (const x of (p20.buy || []).slice(0, 12)) {
+                    const av = +x.avg, lots = Math.round(Math.abs(x.net || 0) / 1000);
+                    if (!(av > 0) || lots < 100 || av < r.mn * 0.8 || av > r.mx * 1.2) continue;
+                    const pos = posOf(av, r);
+                    if (pos <= 30) out.buyLow.push({ nm: x.broker_name || '', av, pos, lots, cnt: null });
+                }
+                for (const x of (p20.sell || []).slice(0, 12)) {
+                    const av = +x.avg, lots = Math.round(Math.abs(x.net || 0) / 1000);
+                    if (!(av > 0) || lots < 100 || av < r.mn * 0.8 || av > r.mx * 1.2) continue;
+                    const pos = posOf(av, r);
+                    if (pos >= 70) out.sellHigh.push({ nm: x.broker_name || '', av, pos, lots, cnt: null });
+                }
+            }
+            out.buyLow.sort((a, b) => a.pos - b.pos);
+            out.sellHigh.sort((a, b) => b.pos - a.pos);
+            return (out.buyLow.length || out.sellHigh.length) ? out : null;
+        } catch (_) { return null; }
+    },
+
     _trustVolRatioNote() {
         try {
             const arr = this.rawDailyData || [];
@@ -22406,6 +22604,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const periods = (raw && raw.periods && Object.keys(raw.periods).length) ? raw.periods : null;
             if (!periods) return false;
             this._fenPeriods = periods; this._fenSym = sym; this._fenDataDate = (raw && raw.data_date) || null;
+            // 🧙 V71.9.8 關鍵分點長期累計(採礦端增量聚合,歷史深度每天自動增加)
+            if (!this._bstat) this._bstat = {};
+            if (raw && raw.bstat && raw.bstat.b) this._bstat[sym] = raw.bstat;
+            try { this._loadCompanyGeo(); } catch (_) {}   // 🗺️ 地緣分點(背景載一次)
             this._fenHist = (raw && Array.isArray(raw.hist)) ? raw.hist : null;   // 📅 V69.1.6 逐日分點快照(真實昨日vs今日)
             return true;
         } catch (_) { return false; }
@@ -22709,6 +22911,36 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 }
             } catch (_) {}
         }
+        // 🧙 V71.9.8 關鍵分點(低檔大買 / 高檔大賣)+ 🗺️ 地緣分點
+        try {
+            const kb = this._keyBrokers(sym);
+            if (kb) {
+                const srcTxt = kb.src === 'bstat'
+                    ? `累計 ${kb.win} 個交易日` : `近 ${kb.win} 日`;
+                const one = (x) => `<b>${shortName({ broker_name: x.nm })}</b> <span class="font-mono">@${x.av.toFixed(2)}</span><span class="text-gray-500">(區間 ${x.pos.toFixed(0)}%・${x.lots.toLocaleString()} 張)</span>`;
+                if (kb.buyLow.length) {
+                    insights.push({ c: 'main', h: `🧙 <b class="text-red-300">低檔大買分點</b>(${srcTxt})— ${kb.buyLow.slice(0, 3).map(one).join('、')}`
+                        + `<br><span class="text-gray-400">他的平均成本落在這檔<b>價格區間的低端</b>(0% = 區間最低、100% = 最高)。他原話是「找**低檔大買**的分點」,因為買在低檔的人不是追價來的,續抱的意願比較高。</span>`
+                        + `<br><span class="text-[9px] text-gray-600">⚠️ 這只說明「他買在哪個位置」,不保證後續會漲;而且區間只算${srcTxt},不是長期成本。</span>` });
+                }
+                if (kb.sellHigh.length) {
+                    insights.push({ c: 'cost', h: `🏔️ <b class="text-green-300">高檔大賣分點</b>(${srcTxt})— ${kb.sellHigh.slice(0, 3).map(one).join('、')}`
+                        + `<br><span class="text-gray-400">他的平均賣出價落在<b>區間高端</b>。他說「先找**高檔大賣**的分點」——這種分點通常對高點比較敏感,他在賣的時候值得留意。</span>` });
+                }
+            }
+        } catch (_) {}
+        try {
+            const gb = this._geoBrokers(sym, buy);
+            if (gb && (gb.same.length || gb.adj.length)) {
+                const nm = x => shortName(x);
+                const parts = [];
+                if (gb.same.length) parts.push(`<b class="text-cyan-300">同縣市</b>:${gb.same.slice(0, 3).map(nm).join('、')}`);
+                if (gb.adj.length) parts.push(`<span class="text-gray-400">鄰近</span>:${gb.adj.slice(0, 3).map(nm).join('、')}`);
+                insights.push({ c: 'main', h: `🗺️ <b class="text-cyan-300">地緣分點在買</b>(公司在 ${gb.city})— ${parts.join(' ・ ')}`
+                    + `<br><span class="text-gray-400">他說「**關鍵分點常常就是地緣分點**」——公司所在地附近的營業點,買的常是員工、供應商、在地大戶,他們對公司狀況知道得比較早。這幾家合計佔今天買超 <b>${gb.pct.toFixed(0)}%</b>。</span>`
+                    + `<br><span class="text-[9px] text-gray-600">⚠️ 地名是從分點名稱推的,<b>會有歧義的路名(中山/中正/信義/民權等)一律不對照</b>,寧可判不出來也不判錯。這是**參考資訊**,我沒有回測過它的預測力。</span>` });
+            }
+        } catch (_) {}
         // 🔀 V68.4.5 分點與股價背離:主力大買股價卻跌=誘多出貨;大賣股價卻漲=洗盤
         if (arrN2.length >= 2) {
             const pc = (+arrN2[arrN2.length - 1].close - +arrN2[0].close) / (+arrN2[0].close || 1) * 100;

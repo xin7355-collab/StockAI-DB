@@ -244,6 +244,7 @@ jobs:
             data/fundamentals_cache.json
             data/industry_pe.json
             data/industry_map.json
+            data/company_geo.json
             data/concept_stocks.json
             data/market_stats.json
             data/breadth.json
