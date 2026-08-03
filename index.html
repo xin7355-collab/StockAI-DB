@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,29 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.0',
+    _APP_VERSION: 'V72.0.1',
     _CHANGELOG: [
+        { v: 'V72.0.1', dt: '2026-08-03', t: '⚡ 當沖:漲停隔天真的有動能,但只有一天', d: [
+            '你給的當沖影片裡,他說「**當沖必看三個指標:週轉率、連次量、籌碼**」。我對照了一下我的程式:',
+            '・**連次量** → 我已經驗過兩次(日線 + 真的分 K),**兩次都不成立**,所以不做',
+            '・**籌碼** → 上兩版剛做完(追價買 vs 低檔吃貨、隔日沖占比、手牽手)',
+            '・**週轉率** → ⭐ 這個我完全沒有,而且資料其實早就有(集保的總股數)',
+            '',
+            '所以我把週轉率拿去回測 —— **2,402 檔、22 萬個事件**。結果跟他說的**不一樣**:',
+            '',
+            '❌ 他說「昨天小漲小跌 + 今天週轉率高 = 今天不錯」→ **不成立**(次日 −0.09~−0.20%)',
+            '⭐ 但挖到一個真的有東西的:**漲停的隔天有動能**,而且週轉率決定強弱:',
+            '・週轉率 1~3%(中)→ 次日 **+1.54%**、勝率 **56.7%** ← 最強',
+            '・週轉率 3~8%(高)→ +1.13%、56.1%',
+            '・週轉率 ≥8%(換手太兇)→ 掉到 +0.78%、53.9%',
+            '（隨便挑一天只有 44.3%,所以 56.7% 是明顯贏的）',
+            '',
+            '⭐ 有意思的是:他說「漲停後要看是不是在出貨」—— **這半句是對的**,換手 ≥8% 確實明顯衰減。只是「小漲小跌比較好」那半句不成立。',
+            '',
+            '⚠️ **最重要的限制**:這個訊號**只有隔天有效**。3 日、5 日的邊際就轉負了(+1.54 → +0.78 → −0.19)。⛔ 千萬別拿它當波段理由。而且沒扣當沖來回成本(約 0.25%)。',
+            '',
+            '📍 位置:個股 → 當沖頁**最上面**,只有漲停(或換手 ≥8%)才出現,平常完全不佔版面。',
+        ] },
         { v: 'V72.0.0', dt: '2026-08-03', t: '🎯 總覽也收斂了 —— 進場分數不再被沒用的訊號稀釋', d: [
             '接續上一版,總覽的「進場體檢」也照實測分級改了。',
             '',
@@ -39641,6 +39662,87 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         box.innerHTML = wrHtml + radarHtml;
     },
 
+    // ⚡ V72.0.1 「漲停隔日動能」+ 今日週轉率 —— 當沖三大指標裡我唯一缺的那個
+    //
+    // 逐字稿【當沖必看的三大指標】:「週轉率、連次量、籌碼,這三個都要看」
+    //   ・連次量 → 已驗兩次(日線 + 分K)**都不成立**,⛔ 不做
+    //   ・籌碼   → V71.9.4/V71.9.6 已做
+    //   ・**週轉率** → 只有這個是缺的。資料其實有:總股數在 `tdcc_holders.json` 的 `t`(零採礦)。
+    //
+    // ⛔ 但他那條規則我實測是**反的**。`turnover_probe.py` 跑 2,402 檔、227,412 個事件
+    //    (報酬扣同期加權、同檔 5 日內只算一次、對照組 = 隨便挑一天 勝率 44.3%):
+    //
+    //   他說「昨天**小漲小跌** + 今天高週轉 = 今天不錯」→ ❌ 實測 −0.09~−0.20pp,**不成立**
+    //   他說「昨天**漲停** → 要小心是不是在出貨」    → ⚠️ 方向不對,但**半句是對的**(見下)
+    //
+    //   ⭐ 真正有東西的是「**漲停隔日動能**」,而且週轉率決定強弱:
+    //   ┌──────────────┬───────┬──────────┬──────────┐
+    //   │ 昨漲停 × 今日週轉率│   n   │ 次日邊際  │ 次日勝率  │
+    //   ├──────────────┼───────┼──────────┼──────────┤
+    //   │ 低  <1%       │ 1,232 │  +0.82%  │  53.5%   │
+    //   │ **中 1~3%**   │ 1,130 │ **+1.54%**│ **56.7%**│ ← 最強
+    //   │ 高  3~8%      │   993 │  +1.13%  │  56.1%   │
+    //   │ 極高 ≥8%      │   720 │  +0.78%  │  53.9%   │ ← 換手太兇會衰減
+    //   └──────────────┴───────┴──────────┴──────────┘
+    //   → 他「換手太兇要小心出貨」那半句**是對的**(≥8% 明顯衰減),
+    //     但「小漲小跌比較好」那半句**不成立**。
+    //
+    // ⚠️ 只有**次日**有效:3 日、5 日邊際都轉負(+1.54 → +0.78 → −0.19)。
+    //    → 這是**當沖/隔日沖尺度**的訊號,⛔ 不可拿來當波段理由,文案必須寫明。
+    // ⚠️ 未扣交易成本(當沖來回約 0.25%);1.54% 扣完仍為正,但低週轉那格 0.82% 就很薄。
+    _limitUpMomentum(sym, baseRaw) {
+        try {
+            const d = Array.isArray(baseRaw) ? baseRaw : [];
+            if (d.length < 3) return null;
+            const C = b => +((b?.close ?? b?.c) || 0);
+            const last = d.length - 1;
+            const c0 = C(d[last]), c1 = C(d[last - 1]);
+            if (!(c0 > 0) || !(c1 > 0)) return null;
+            const chg = (c0 - c1) / c1 * 100;
+            // 總股數(集保);沒有就只講漲停不講週轉率(⛔ 不硬算)
+            let turn = null;
+            try {
+                const t = +((this._tdccHoldersCache || {})[sym] || {}).t || 0;
+                const v = +(d[last].volume || 0);
+                if (t > 1e6 && v > 0) turn = v / t * 100;
+            } catch (_) {}
+            if (chg < 9) {
+                // 沒漲停 → 只在週轉率極高時提醒(實測極高週轉本身略偏負)
+                if (turn != null && turn >= 8) {
+                    return { kind: 'hot', turn, chg,
+                        t: '⚠️ 今日換手過熱',
+                        s: `今日週轉率 <b class="font-mono">${turn.toFixed(1)}%</b>(全部股票換手一輪要 ${(100 / turn).toFixed(0)} 天)。實測極高週轉率本身<b>沒有</b>正邊際(次日 −0.11%),而且昨天沒有漲停 → 這種只是<b>單純換手激烈</b>,不是動能。`,
+                        tip: '別因為「量很大」就進場,實測那不構成理由。' };
+                }
+                return null;
+            }
+            // 昨天(=最新這根)漲停 → 隔日動能,依週轉率分級
+            const z = turn == null ? { e: 1.1, w: 55, lab: '(沒有股數資料,無法算週轉率)' }
+                : turn < 1 ? { e: 0.82, w: 53.5, lab: `週轉率 ${turn.toFixed(1)}%(低)` }
+                : turn < 3 ? { e: 1.54, w: 56.7, lab: `週轉率 ${turn.toFixed(1)}%(中 ⭐ 實測最強)` }
+                : turn < 8 ? { e: 1.13, w: 56.1, lab: `週轉率 ${turn.toFixed(1)}%(高)` }
+                : { e: 0.78, w: 53.9, lab: `週轉率 ${turn.toFixed(1)}%(極高·換手太兇會衰減)` };
+            return { kind: 'limitup', turn, chg, z,
+                t: '🚀 漲停隔日動能',
+                s: `今天漲停(+${chg.toFixed(1)}%)・${z.lab}。實測 227,412 個事件:同樣情況隔天的超額報酬中位 <b class="text-red-300">+${z.e}%</b>、勝率 <b class="text-red-300">${z.w}%</b>(隨便挑一天只有 44.3%)。`,
+                tip: '⚠️ 這是<b>只有隔天有效</b>的訊號 —— 實測 3 日、5 日邊際就轉負了,⛔ 別拿它當波段理由。未扣當沖來回成本約 0.25%。' };
+        } catch (_) { return null; }
+    },
+    _limitUpMomentumHtml(sym, baseRaw) {
+        const r = this._limitUpMomentum(sym, baseRaw);
+        if (!r) return '';
+        const isUp = r.kind === 'limitup';
+        return `<div class="bg-[#161b22] border-l-4 ${isUp ? 'border-red-500' : 'border-yellow-500'} border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[12px] font-black ${isUp ? 'text-red-300' : 'text-yellow-300'}">${r.t}</span>
+                <button onclick="app._showEdgeHelp()" class="text-[9px] text-gray-600 hover:text-blue-300">ⓘ 怎麼看</button>
+            </div>
+            <div class="text-[11px] text-gray-200 leading-relaxed">${r.s}</div>
+            <div class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">💡 ${r.tip}</div>
+            <div class="text-[8px] text-gray-600 mt-1 leading-snug">🧮 週轉率 = 今日成交量 ÷ 總發行股數(集保)。⚠️ 用總股數不是流通股數,數值略低估。歷史統計非保證。</div>
+        </div>`;
+    },
+
     async renderDayTradeTab(sym, opts = {}) {
         sym = sym || this.currentSymbolId;
         const box = document.getElementById('dayTradeBody');
@@ -39755,6 +39857,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const dtEligible = dtListReady && (dtStatsMap[sym] != null);
 
         const cards = [];
+        // ⚡ V72.0.1 漲停隔日動能 / 換手過熱 —— 置頂(條件觸發,沒命中完全不顯,不佔版面)
+        //   ⭐ 使用者要「一看就知道怎麼操作勝率才會高」→ 有實測數字的訊號放最前面。
+        try { const _lu = this._limitUpMomentumHtml(sym, baseRaw); if (_lu) cards.push(_lu); } catch (_) {}
         const detail = [];   // ⚡ V55.3 折疊「進階分析」卡
         // 🧩 V71.0.6 U-16/U-17 合併卡(使用者鐵則「合併卡片,不要加新卡、資訊不爆炸」):
         //   原本 5 張各自獨立的小卡 → 收成 2 組共用外框,標題只出現一次,內部用分隔線分列。
