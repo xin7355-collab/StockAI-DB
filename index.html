@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6905,8 +6905,22 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.9',
+    _APP_VERSION: 'V71.9.0',
     _CHANGELOG: [
+        { v: 'V71.9.0', dt: '2026-08-03', t: '🧊 「兩上兩下」選股法實測 + 修好一張從沒顯示過的卡', d: [
+            '逐字稿裡另一個講得出順序的方法:**大戶↑、散戶↓、融資↓**(他說觀察半年到一年)。一樣先實測再決定要不要做。',
+            '拿你的集保資料跑了 7,221 個事件、8 種組合(報酬全部扣掉同期加權指數):',
+            '・「大戶↑・散戶↓・融資↓」確實是 8 組裡**第 1 名**(20 日 +0.00%、勝率 50.1%)',
+            '・⚠️ 但第 1 名只是**打平大盤**,不是會賺 —— 同期中位數個股其實輸大盤 1.85%,所以「打平」已經是前段班了。',
+            '',
+            '⭐ 拆開看更有意思:**融資那一項做掉大部分的工作**。四個「融資↓」的組合全排前段,四個「融資↑」的全部墊底(−2.21~−2.60%),不管大戶散戶怎麼動都救不回來。',
+            '→ 白話:**融資還在增加的時候,這套選股法基本上無效**;先看融資有沒有退,再看大戶散戶。',
+            '',
+            '📍 已做成「🧊 兩上兩下・籌碼四因子」卡,在個股 → 籌碼 → 分佈頁,三項各自打勾,結論直接寫實測數字。',
+            '⚠️ 集保只有 13 週、全落在同一個市場環境、不含已下市個股 → 只能當方向參考。累積到一年後我會重跑,邊際不見就把這張卡拿掉。',
+            '',
+            '🐛 順手修:「持股身份分布」(董監/外資/融資券佔比)那張卡因為一個變數宣告寫錯,錯誤被靜默吞掉,**從 V69.8.1 上線到現在一次都沒顯示過**。現在會出現了。',
+        ] },
         { v: 'V71.8.9', dt: '2026-08-03', t: '🏚️ 「跌到地板 95% 會反彈」—— 我拿你的資料驗了,不成立', d: [
             '你給的 113 份逐字稿裡,「地板股 SOP」是少數講得出**具體規則**的:跌到某條線「統計上 95% 會反彈」、要 20 日均量 2 倍以上才算、反彈要跑沒反彈也要跑。',
             '照規矩先寫探針實測(2,515 檔、5,310 次同樣情況,報酬全部扣掉同期大盤):',
@@ -21613,6 +21627,87 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // 📊 V68.4.0 籌碼分佈頁(集保股權持股分級,前端免費抓 TaiwanStockHoldingSharesPer;欄位經探針實測)
     //   千張大戶(>1000張=>1,000,000股)/ 中實戶(10~1000張)/ 散戶(<10張);週頻,算大戶增持減持趨勢
+    // 🧊 V71.9.0 「兩上兩下」籌碼四因子 —— 逐字稿裡權證小哥自述的選股順序:
+    //   大戶(≥400張)↑ ・主力(前15大PK)↑ ・散戶(<100張)↓ ・融資↓。
+    //   ⛔ 照鐵則先用 `tdcc_probe.py` 拿自己的資料驗(4,015 檔集保 × 13 週 = 7,221 個事件,
+    //      報酬全部扣掉同期加權指數,每檔每週最多算一次):
+    //      ┌────────────────────┬─────┬───────────┬──────────┐
+    //      │ 組合               │  n  │ 20日超額  │ 20日勝率 │
+    //      │ 大戶↑・散戶↓・融資↓ │ 407 │  **+0.00%** │  50.1%   │ ← 8 種組合裡**第 1**
+    //      │ 大戶↓・散戶↑・融資↓ │ 532 │   −1.49%  │  41.9%   │
+    //      │ 大戶↑・散戶↓・融資↑ │1506 │   −2.21%  │  39.1%   │
+    //      │ 大戶↓・散戶↑・融資↑ │1640 │   −2.60%  │  38.4%   │
+    //      └────────────────────┴─────┴───────────┴──────────┘
+    //   ⭐ 拆解後的真相(這才是重點):**融資方向做掉大部分的工作** ——
+    //      四個「融資↓」全排在前段(+0.00 ~ −1.49),四個「融資↑」全在後段(−2.21 ~ −2.60)。
+    //      大戶↑散戶↓ 只有在**融資也↓**時才再加約 1.5pp;融資↑時只加 0.4pp。
+    //   ⚠️ 而且注意:最好的組合也只是 **+0.00%**(打平大盤),不是贏大盤 ——
+    //      這個窗口裡中位數個股輸大盤 1.85%,所以「打平」已經是前段班。⛔ 別寫成「會賺」。
+    //   ⚠️ 硬限制:集保只有 13 週、同一個市場環境、倖存者樣本 → 只能當方向參考。
+    //      累積到 1 年以上要重跑 `tdcc_probe.py`;邊際消失就把這張卡降級或移除。
+    _tdccFourFactor(sym) {
+        try {
+            const td = (this._tdccHoldersCache && this._tdccHoldersCache[sym]) || null;
+            const h = (td && Array.isArray(td.h)) ? td.h : null;
+            if (!h || h.length < 2) return null;
+            const a = h[h.length - 1], b = h[h.length - 2];
+            const bigNow = +a[1], bigPrev = +b[1], retNow = +a[3], retPrev = +b[3];
+            if (!(bigNow > 0) || !(bigPrev > 0)) return null;
+            // 融資方向:用日 K 的 margin_balance,最新 vs 約一週前
+            let mgDir = null, mgNow = null, mgPrev = null;
+            const d = this.rawDailyData || [];
+            if (d.length >= 7) {
+                const mv = i => +(d[i]?.margin_balance || 0);
+                mgNow = mv(d.length - 1); mgPrev = mv(d.length - 6);
+                if (mgNow > 0 && mgPrev > 0) mgDir = mgNow < mgPrev ? 'down' : 'up';
+            }
+            const bigUp = bigNow > bigPrev, retDown = retNow < retPrev;
+            const hits = [bigUp, retDown, mgDir === 'down'].filter(Boolean).length;
+            return {
+                bigNow, bigDelta: +(bigNow - bigPrev).toFixed(2), bigUp,
+                retNow, retDelta: +(retNow - retPrev).toFixed(2), retDown,
+                mgDir, mgPct: (mgNow && mgPrev) ? (mgNow - mgPrev) / mgPrev * 100 : null,
+                hits, date: String(a[0] || ''),
+            };
+        } catch (_) { return null; }
+    },
+
+    _tdccFourFactorHtml(sym) {
+        const f = this._tdccFourFactor(sym);
+        if (!f) return '';
+        const row = (ok, name, val, why) => `<div class="flex items-center gap-2 py-1 border-b border-[#21262d] last:border-0">
+            <span class="text-[11px] w-4">${ok === null ? '⏳' : ok ? '✅' : '❌'}</span>
+            <span class="text-[11px] ${ok ? 'text-gray-100 font-bold' : 'text-gray-400'} flex-1 truncate">${name}</span>
+            <span class="font-mono text-[11px] ${ok ? 'text-red-300' : 'text-gray-500'}">${val}</span>
+            <span class="text-[9px] text-gray-600 w-[86px] text-right">${why}</span>
+        </div>`;
+        const mgTxt = f.mgDir == null ? '—' : `${f.mgPct >= 0 ? '+' : ''}${f.mgPct.toFixed(1)}%`;
+        // 結論用**實測**講,⛔ 不可寫成「會賺」
+        const verdict = f.hits === 3
+            ? { ic: '✅', t: '三項全過(實測最佳組合)', c: 'text-red-300 border-red-500',
+                s: '這是實測 8 種組合裡表現最好的一組:20 日<b>打平大盤</b>(中位 +0.00%、勝率 50.1%)。⚠️ 是「打平」不是「會賺」—— 同期中位數個股其實輸大盤 1.85%,所以打平已算前段。' }
+            : f.mgDir === 'down'
+            ? { ic: '⚠️', t: `過 ${f.hits}/3(融資有退)`, c: 'text-yellow-300 border-yellow-500',
+                s: '實測顯示<b>融資方向做掉大部分的工作</b>:融資退潮的四組都排在前段(20 日 +0.00~−1.49%)。大戶/散戶那兩項只有在融資也退時才再加約 1.5 個百分點。' }
+            : { ic: '⛔', t: `過 ${f.hits}/3(融資還在增)`, c: 'text-green-300 border-green-500',
+                s: '實測裡「融資↑」的四組全部墊底(20 日 −2.21~−2.60%),不管大戶散戶怎麼動都一樣。<b>融資還在增加時,這套選股法基本上無效</b>。' };
+        return `<div class="bg-[#161b22] border-l-4 ${verdict.c.split(' ')[1]} border-y border-r border-[#30363d] rounded-r p-3 mt-2">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-[12px] font-black text-gray-100">🧊 兩上兩下・籌碼四因子</span>
+                <span class="text-[9px] text-gray-500 font-mono">集保 ${this._dW ? this._dW(`${f.date.slice(0,4)}-${f.date.slice(4,6)}-${f.date.slice(6,8)}`) : f.date}</span>
+            </div>
+            <div class="text-sm font-black ${verdict.c.split(' ')[0]} mb-1">${verdict.ic} ${verdict.t}</div>
+            <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1 mb-2">
+                ${row(f.bigUp, '大戶持股(≥400張)要↑', `${f.bigNow.toFixed(1)}% (${f.bigDelta >= 0 ? '+' : ''}${f.bigDelta})`, '週增=大戶進場')}
+                ${row(f.retDown, '散戶持股(<100張)要↓', `${f.retNow.toFixed(1)}% (${f.retDelta >= 0 ? '+' : ''}${f.retDelta})`, '週減=散戶離場')}
+                ${row(f.mgDir == null ? null : f.mgDir === 'down', '融資餘額要↓', mgTxt, '⭐ 最關鍵那項')}
+            </div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">${verdict.s}</div>
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 實測樣本:4,015 檔集保 × 13 週 = 7,221 個事件,報酬已扣同期加權指數,每檔每週最多算一次。
+                ⚠️ 集保只有 13 週、同一個市場環境、且不含已下市個股 → 只能當方向參考,不是保證。非投資建議。</div>
+        </div>`;
+    },
+
     async _renderChipDistribution(sym) {
         const box = document.getElementById('chipPaneDist');
         if (!box) return;
@@ -21737,7 +21832,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 return `<div class="flex flex-col items-center justify-end" style="height:48px"><div class="${isLast ? 'bg-red-500' : 'bg-gray-600'} rounded-sm" style="width:8px;height:${h}px"></div></div>`;
             }).join('');
             const dStr = String(latest).slice(5);
-            const html = `
+            // ⚠️ V71.9.0 修:這裡本來寫 const,但下面 L+48 有 `html += idHtml`(包在 try/catch 裡)
+            //    → 每次都丟 TypeError 被靜默吞掉,V69.8.1 的「持股身份分布」從上線到現在一次都沒顯示過。
+            //    教訓同 CLAUDE.md「rc=0 不等於有跑」:被 catch(_) 吞掉的錯誤 = 零錯誤訊息的功能失蹤。
+            let html = `
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-[11px] text-gray-400 font-bold flex items-center gap-1">🧊 集保籌碼分佈 <button onclick="alert('【集保籌碼分佈】\\n\\n集保結算每週五公布「每個持股張數級距各有多少人、佔多少股權」。\\n\\n千張大戶(>1000張)是外資/投信/主力等大咖;散戶(<10張)是一般人。\\n\\n看「大戶持股比例的週變化」最重要:\\n・大戶↑加碼 = 籌碼集中、通常偏多\\n・大戶↓減碼 = 大戶出貨、通常偏空\\n\\n資料為週頻,非每日。')" class="text-gray-600 hover:text-blue-300">ⓘ</button></span>
@@ -21767,6 +21865,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                         <div><span class="inline-block w-2 h-2 rounded-sm bg-amber-500 align-middle mr-0.5"></span>散戶 <b class="text-gray-200 font-mono">${retailNow}%</b></div>
                     </div>
                 </div>
+                ${this._tdccFourFactorHtml(sym)}
                 ${(loosenHtml || pledgeHtml) ? insiderVerdict : ''}
                 ${loosenHtml}
                 ${pledgeHtml}
