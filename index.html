@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6905,8 +6905,25 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.0',
+    _APP_VERSION: 'V71.9.1',
     _CHANGELOG: [
+        { v: 'V71.9.1', dt: '2026-08-03', t: '💳 可轉債:算出「公司還有沒有動機拉股價」', d: [
+            '逐字稿有整整一集在講可轉債。核心一句話:**公司發可轉債最想要的是「不還錢」** —— 想辦法把股價拉過「轉換價」,讓債主換成股票就不用還了。',
+            '所以轉換價是一條很重要的線:**股價還沒過轉換價 → 公司還有動機拉;過了 → 當初拿到債的特定人換成股票就有賺,是最想倒貨的時候。**',
+            '',
+            '我本來就有採到每檔的轉換價,但一直沒用到。這次先實測(306 檔、9,977 次,報酬全扣同期大盤):',
+            '・股價在**高檔**又**過了轉換價** → 往後 20 日 −5.76%、60 日 −14.92%,60 日只有 **24%** 會贏大盤',
+            '・其中 120~150 那段最慘:20 日 **−7.20%**、60 日 **−17.57%**',
+            '・高檔但**還沒過**轉換價 → 20 日 −0.29%(約略打平)、勝率 45.2%',
+            '',
+            '⭐ 兩個修正(跟他影片講的不一樣,我以實測為準):',
+            '・他說門檻是 120 → 實測**一過 100(轉換價)就開始變差**,不用等到 120。',
+            '・他說「85~100 快摸到轉換價」是甜蜜點 → **實測不成立**,那格反而比更低的還差。',
+            '・而且這條**只有在股價高檔時才算數**;低檔的股票過轉換價沒有明顯影響,所以低檔我不報警,免得吵。',
+            '',
+            '📍 已併進「籌碼乾淨度」的可轉債那一行(不另開新卡),條件觸發。⛔ 沒過轉換價那格我特別註明**不是買訊** —— 實測只是打平,不能當理由進場。',
+            '⚠️ 限制:我的可轉債名單是今天的快照,當年真被拉過轉換價、換完股下市的債已經不在裡面 → 這個訊號的效果實際上是被**低估**的。',
+        ] },
         { v: 'V71.9.0', dt: '2026-08-03', t: '🧊 「兩上兩下」選股法實測 + 修好一張從沒顯示過的卡', d: [
             '逐字稿裡另一個講得出順序的方法:**大戶↑、散戶↓、融資↓**(他說觀察半年到一年)。一樣先實測再決定要不要做。',
             '拿你的集保資料跑了 7,221 個事件、8 種組合(報酬全部扣掉同期加權指數):',
@@ -13825,6 +13842,69 @@ const marginByDate = {};
 
     // 🧹 V69.5.9 — 籌碼乾淨度(量條看「亂不亂」)。與「大戶籌碼總結」不同軸:那張看【方向(偏多偏空)】,這張看【集中/一致 vs 分散/亂】。
     //   純公式零採礦:三大法人近5日進出一致性(核心)+ 分點前10集中度(熱門股)+ 融資(散戶)變化。定位=勝率加分項,不吹一定漲。
+    // 💳 V71.9.1 可轉債「離轉換價還差多少」× 股價位階 —— ⚠️ 這是**警示**訊號,不是買訊。
+    //
+    // 逐字稿【哥有籌必爆S2】第2集整集在講可轉債,把公式講死了:
+    //   轉換張數 = 100 ÷ 轉換價 ・CB 市值(parity)= 股價 ÷ 轉換價 × 100
+    //   公司發 CB 最想要的是**不還錢** → 拉股價過轉換價讓人換股;
+    //   「高檔 + 市值 >120 + 融券大增 + 現券償還 → 行情告一個段落」
+    //
+    // ⛔ 照鐵則探針先行:`cb_probe.py` 用 306 檔有 CB 的股票、9,977 個事件實測
+    //    (報酬全扣同期加權、同檔 20 交易日內只算一次)。三件事:
+    //
+    //  ❌ 逐字稿的「85~100 快摸到轉換價是甜蜜點」**不成立** ——
+    //     B 桶(85~100)20 日 −3.31%,比 A 桶(<85)的 −2.94% 還差。
+    //  ➖ 「發 CB 的公司小股東吃虧」**看不出來** —— 有 CB −10.63% vs 沒 CB −12.13%(60 日),
+    //     ⚠️ 兩者都很負是因為加權指數是市值加權(台積電拉著),中位數個股本來就跑輸,不是 CB 害的。
+    //  ✅ **真正有東西的是 parity × 位階的交互作用**,而且方向跟他的 SOP 完全對得上:
+    //       同位階內「低於轉換價 − 高於轉換價」= 低位階 +0.55pp・中位階 +1.58pp・高位階 **+5.65pp**
+    //     高位階(近一年 ≥67% 位階)再切細 parity:
+    //       ┌────────────────────┬─────┬──────────┬──────────┬──────────┐
+    //       │ 高位階 × parity     │  n  │ 20 日中位 │ 60 日中位 │ 60 日勝率 │
+    //       ├────────────────────┼─────┼──────────┼──────────┼──────────┤
+    //       │ <100 還沒過轉換價   │ 762 │  −0.29%  │  −2.87%  │  45.2%   │
+    //       │ 100~120 剛過        │ 383 │  −5.76%  │ −14.92%  │  24.0%   │
+    //       │ 120~150 他說的出貨區│ 198 │  **−7.20%** │ **−17.57%** │ 24.7% │
+    //       │ ≥150 大幅超過       │ 171 │  −4.72%  │ −14.47%  │  29.2%   │
+    //       └────────────────────┴─────┴──────────┴──────────┴──────────┘
+    //     → **門檻就是 100**(一過轉換價就變差),不是他說的 120。⭐ 而且只有在**高位階**才成立。
+    //
+    // ⚠️ 已知偏誤(方向已知,不可省略):`cb_overview.json` 是**今天的快照**,只含還沒轉換完的 CB,
+    //    當年真的拉過轉換價、換股贖回的已經消失 → 樣本偏向「拉失敗的」→ 系統性**低估**這個訊號。
+    //    轉換價也會因反稀釋向下調整,用今天的 cp 回推過去會略微高估距離。
+    // ⛔ 低於轉換價那格是 −0.29%(接近打平)→ 只能說「不在危險區」,**不可寫成買訊**。
+    _cbParityState(sym, cb, arr) {
+        try {
+            const cp = cb ? +cb.cp : 0;
+            if (!(cp > 0) || !Array.isArray(arr) || arr.length < 60) return null;
+            const closes = arr.slice(-240).map(d => +d.close).filter(v => v > 0);
+            if (closes.length < 60) return null;
+            const px = closes[closes.length - 1];
+            const mn = Math.min(...closes), mx = Math.max(...closes);
+            const pos = mx > mn ? (px - mn) / (mx - mn) * 100 : 50;
+            const parity = px / cp * 100;
+            const gap = (cp - px) / px * 100;          // 還差幾 % 才碰到轉換價
+            const hi = pos >= 67;
+            const d = `轉換價 <b class="font-mono">${cp.toLocaleString('en-US')}</b> ・ 現價 ${px.toLocaleString('en-US')}(位階 ${pos.toFixed(0)}%)`;
+            if (hi && parity >= 100) {
+                const zone = parity < 120 ? { s: -14, t: '剛過轉換價', r: '20 日 −5.76%、60 日 −14.92%,60 日只有 24.0% 會贏大盤' }
+                    : parity < 150 ? { s: -18, t: '換股出貨區', r: '20 日 −7.20%、60 日 −17.57%(實測最差的一格)' }
+                    : { s: -14, t: '大幅超過轉換價', r: '20 日 −4.72%、60 日 −14.47%' };
+                return { score: zone.s, line: `💳 <b>可轉債換股期</b>:⛔ <b class="text-orange-300">${zone.t}</b>(已達轉換價的 <b class="font-mono">${parity.toFixed(0)}%</b>)・${d}<br>`
+                    + `<span class="text-gray-400">股價在高檔又過了轉換價 → 當初拿到可轉債的特定人現在換成股票就有賺,是最有動機倒貨的時候。`
+                    + `實測 306 檔、9,977 次:同樣位置往後 ${zone.r}。</span><br>`
+                    + `💡 <b>對策</b>:別追高;手上有的話把停利點抓緊一點,看到爆量長黑或融券大增就先減。` };
+            }
+            if (hi && parity < 100) {
+                return { score: 0, line: `💳 <b>可轉債</b>:➖ 股價在高檔但<b>還沒過轉換價</b>(${parity.toFixed(0)}%,還差 <b class="font-mono">${gap.toFixed(1)}%</b>)・${d}<br>`
+                    + `<span class="text-gray-400">公司發可轉債最想要的是「用股票還」而不是還錢,所以股價沒過轉換價前通常還有拉抬動機。`
+                    + `實測這一格往後 20 日 −0.29%(約略打平)。<b class="text-gray-300">⛔ 這不是買訊</b>,只代表「不在倒貨區」—— 一旦過了轉換價就要提高警覺。</span>` };
+            }
+            return { score: 0, line: `💳 <b>可轉債</b>:${d} → 目前為轉換價的 ${parity.toFixed(0)}%。`
+                + `<span class="text-gray-500">實測顯示「過轉換價」只有在股價**高檔**時才是明顯的倒貨訊號,現在位階不高,先不列入判斷。</span>` };
+        } catch (_) { return null; }
+    },
+
     async renderChipCleanliness(sym) {
         const box = document.getElementById('chipCleanCard');
         if (!box) return;
@@ -13923,11 +14003,14 @@ const marginByDate = {};
                 else if (d20 <= -0.5) { fhScore = -6; fhLine = `🌐 <b>外資持股水位</b>:${_fh.r}%,20日 <b class="text-green-300">↓${d20}pp</b> → 外資水位下滑、趨勢性撤出。`; }
                 else fhLine = `🌐 <b>外資持股水位</b>:${_fh.r}%(20日持平)。`;
             }
+            // 💳 可轉債:餘額變化(既有)+ V71.9.1 離轉換價多遠 × 股價位階(實測後才加,見下方註)
             const _cb = this._fmx('cb', sym);
             if (_cb && Number.isFinite(+_cb.chg) && +_cb.chg <= -10) {
                 cbScore = -6;
                 cbLine = `💳 <b>可轉債餘額</b>:近月 <b class="text-orange-300">${_cb.chg}%</b>(剩 ${_cb.out} 億)→ 大戶把可轉債換成股票,常見出貨/套利賣壓前兆。`;
             }
+            const _cbs = this._cbParityState(sym, _cb, arr);
+            if (_cbs && _cbs.line) { cbScore = Math.min(cbScore, _cbs.score); cbLine = _cbs.line; }
             const _bt = this._fmx('bt', sym);
             if (_bt && _bt.last) {
                 btLine = `🐘 <b>鉅額交易</b>:近月 ${_bt.n} 筆共 ${_bt.m} 億(最近 ${this._dW(_bt.last.d)} @${_bt.last.p})→ 大股東/法人大筆移轉,籌碼在大搬家,配合方向觀察。`;
