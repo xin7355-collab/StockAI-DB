@@ -5384,22 +5384,49 @@ def fetch_warrant_premium():
                 time.sleep(0.12)
     if not rows:
         print("  ⚠️ 權證溢價:兩種端點形式皆無資料(需下次實測)— 跳過,前端規則8維持隱藏")
+        _fm_write_json('warrant_premium.json',
+                       {'__error': '兩種端點形式皆無資料(bulk 與 data_id 都空)'},
+                       '權證溢價(診斷)', '(無資料)')
         return
+    # 🔍 V71.9.3 自我診斷:實測 log 顯示「抓得到 rows 但解析出 0 檔」→ 代表**欄位名對不上**,
+    #    而舊版只印一句「僅 0 檔」就 return,完全沒留線索 → 從上線到現在這檔一次都沒產出過。
+    #    ⭐ 照 CLAUDE.md 陷阱 #23 的教訓:光印進 log 沒用(job log 會過期、要翻很久),
+    #       必須把**實際觀察到的欄位名**寫進 JSON,下一輪就能 `git show origin/gh-pages:...` 直接讀到。
+    _probe = {'cols': sorted(rows[0].keys())[:40], 'n_rows': len(rows),
+              'sample': {k: str(v)[:40] for k, v in list(rows[0].items())[:12]}}
+    print(f"  🔍 權證溢價診斷:回 {len(rows)} 列,欄位 = {_probe['cols']}")
     by_target: dict = {}
+    # ⭐ 欄位名容錯:FinMind 各 dataset 的欄名不一致(實測 target_stock_id 這組全對不上),
+    #    一次吃多個候選名,並統計「每個欄位各缺幾筆」→ 缺哪一欄一目了然。
+    def _pick(r, *names):
+        for nm in names:
+            v = r.get(nm)
+            if v not in (None, '', '-'):
+                return v
+        return None
+    _miss = {'target': 0, 'wc': 0, 'tc': 0, 'ratio': 0, 'strike': 0, 'invalid_sym': 0}
     for r in rows:
-        tgt_id = str(r.get('target_stock_id') or '').strip()
-        if not _valid_stock(tgt_id):
+        tgt_id = str(_pick(r, 'target_stock_id', 'underlying_stock_id', 'target_id',
+                           'underlying_id', 'stock_id_target') or '').strip()
+        if not tgt_id:
+            _miss['target'] += 1
             continue
-        typ = str(r.get('type') or '')
+        if not _valid_stock(tgt_id):
+            _miss['invalid_sym'] += 1
+            continue
+        typ = str(_pick(r, 'type', 'warrant_type', 'call_put') or '')
         if typ and ('售' in typ or 'put' in typ.lower()):
             continue   # 只算認購(溢價率過熱訊號)
         try:
-            wc = float(r.get('close') or 0)          # 權證價
-            tc = float(r.get('target_close') or 0)   # 標的價
-            ratio = float(r.get('exercise_ratio') or 0)
-            strike = float(r.get('fulfillment_price') or 0)
-        except Exception:
+            wc = float(_pick(r, 'close', 'warrant_close', 'price') or 0)            # 權證價
+            tc = float(_pick(r, 'target_close', 'underlying_close', 'stock_close') or 0)  # 標的價
+            ratio = float(_pick(r, 'exercise_ratio', 'conversion_ratio', 'ratio') or 0)
+            strike = float(_pick(r, 'fulfillment_price', 'exercise_price', 'strike_price', 'strike') or 0)
+        except (TypeError, ValueError):
             continue
+        for k, v in (('wc', wc), ('tc', tc), ('ratio', ratio), ('strike', strike)):
+            if v <= 0:
+                _miss[k] += 1
         if wc <= 0 or tc <= 0 or ratio <= 0 or strike <= 0:
             continue
         prem = (wc / ratio + strike - tc) / tc * 100
@@ -5412,7 +5439,14 @@ def fetch_warrant_premium():
         ps.sort()
         out[sid] = {'n': len(ps), 'prem': round(ps[len(ps) // 2], 1)}
     if len(out) < 20:
-        print(f"  ⚠️ 權證溢價僅 {len(out)} 檔 — 保留舊檔")
+        # ⛔ 不可只印一句就 return(舊版就是這樣,結果從沒有人知道為什麼是 0)。
+        #    把診斷寫進 JSON,下一輪 `git show origin/gh-pages:data/warrant_premium.json` 直接看真因。
+        print(f"  ⚠️ 權證溢價僅 {len(out)} 檔 — 保留舊檔;缺欄統計 {_miss}")
+        print(f"     實際欄位 = {_probe['cols']}")
+        _fm_write_json('warrant_premium.json',
+                       {'__error': f'解析後只有 {len(out)} 檔(門檻 20)',
+                        '__probe': _probe, '__missing': _miss},
+                       '權證溢價(診斷)', f"(解析 {len(out)} 檔)")
         return
     hot = sum(1 for v in out.values() if v['prem'] >= 30)
     _fm_write_json('warrant_premium.json', out, '權證溢價', f"(中位溢價≥30% {hot} 檔)")
