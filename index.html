@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1290,6 +1290,7 @@
             <div class="bg-red-900/15 border-l-4 border-red-500 pl-3 pr-2 py-2 rounded-r mt-3 text-[11px] leading-relaxed text-gray-300">
                 <div class="font-black text-red-300 mb-1">🗑️ 模組 C 淘汰選股法(已內建)</div>
                 自選股 / 庫存頁的股票若做出 3 種破綻(<b class="text-orange-300">跌破月線</b> / <b class="text-yellow-300">月線下彎</b> / <b class="text-red-300">跌破前低</b>)會自動標紅警示。**警報響不等於必賣**,而是告訴你該注意了。
+                <div class="mt-1.5 pt-1.5 border-t border-red-500/20 text-[10px] text-gray-400">⚠️ <b class="text-gray-300">「跌破月線」我實測過,別把它當賣訊</b>:2,227 檔、38,923 次跌破,<b class="text-gray-200">69% 在 10 個交易日內就站回月線</b>;跌破組往後 20 天也只比沒跌破的差 0.11%(幾乎沒差別)。每次跌破就砍、站回再買,來回手續費稅金約 0.44%,砍越多次虧越多。<br>💡 <b class="text-gray-300">建議</b>:把它當「該注意了」,配合位階、量、法人一起看,別單看這一條做決定。</div>
             </div>
         </div>
     </div>
@@ -4865,7 +4866,11 @@ const app = {
                 if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🔴 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}(停利訊號)${upTag}`);
                 // V18.8 — 朱家泓:跌破 5MA = 短線停利/停損(原本只監突破,缺賣訊)
                 if (prevClose >= ma5 && nowPrice < ma5)  trigger('dn5',     '🟡 跌破 5MA',   `現價 ${nowPrice.toFixed(2)} 跌破 5MA ${ma5.toFixed(2)}(朱:短線停利/停損)${dnTag}`);
-                if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🟢 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}(中線停損警告)${dnTag}`);
+                // ⚠️ V71.9.2 文案改寫:實測 2,227 檔、38,923 次跌破月線,**69% 在 10 個交易日內就站回去**,
+                //    而且跌破組往後 20 日只比沒跌破差 0.11pp(幾乎沒有鑑別力)。舊文案寫「中線停損警告」
+                //    會讓人一收到推播就砍,實際上多半是被巴假動作(還要付來回約 0.44% 成本)。
+                //    ⛔ 別改回「停損警告」—— 依據見 CLAUDE.md「跌破月線實測」與 ma20_probe.py。
+                if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🟢 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}(⚠️ 提醒不是賣訊:實測 69% 會在 10 天內站回)${dnTag}`);
                 if (nowPrice > hi20)                      trigger('hi20',   '🚀 創 20 日新高', `現價 ${nowPrice.toFixed(2)} 突破 ${hi20.toFixed(2)}${upTag}`);
                 if (nowPrice < lo20)                      trigger('lo20',   '⚠️ 創 20 日新低', `現價 ${nowPrice.toFixed(2)} 跌破 ${lo20.toFixed(2)}${dnTag}`);
                 // V18.8 — 朱家泓鐵血停損:跌破進場成本 -5%(只對庫存股,SW 已有 background 推同邏輯,此處盤中即時補)
@@ -6905,8 +6910,21 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.1',
+    _APP_VERSION: 'V71.9.2',
     _CHANGELOG: [
+        { v: 'V71.9.2', dt: '2026-08-03', t: '📉 「跌破月線就該停損」是錯的 —— 我用 38,923 次驗給你看', d: [
+            '逐字稿裡他整段在嗆這條:「站上月線買進、跌破月線賣出,你不知道停損多少次」。我拿全市場資料驗了一次(2,227 檔、38,923 次跌破,報酬全扣同期大盤):',
+            '',
+            '⭐ **69% 的跌破,10 個交易日內又站回月線**(5 天內就有 55%)。',
+            '⭐ 而且跌破之後往後 20 天,只比「沒跌破」的差 **0.11%** —— 幾乎沒有差別。',
+            '⭐ 每次跌破就砍、站回再買,來回手續費+證交稅約 **0.44%**。砍越多次虧越多。',
+            '',
+            '📍 所以我把盤中推播的文案改了:原本寫「中線停損警告」→ 現在寫「⚠️ 提醒不是賣訊:實測 69% 會在 10 天內站回」。收到推播請不要直接砍。',
+            '📍 教學卡也把這三個數字寫上去了,並建議配合位階、量、法人一起看,別單看這一條做決定。',
+            '',
+            '⚠️ 但他另一句「低檔破月線反而是買點」→ **我實測不成立**,低檔跌破(−4.27%)其實比高檔跌破(−3.65%)還差一點。所以我沒有照抄,也不會叫你去接。',
+            '⚠️ 另外**大盤**破月線我沒動:大盤自己跌破月線的次數只有 6 次,樣本太少不能下結論,個股的結論不能直接套到大盤上。',
+        ] },
         { v: 'V71.9.1', dt: '2026-08-03', t: '💳 可轉債:算出「公司還有沒有動機拉股價」', d: [
             '逐字稿有整整一集在講可轉債。核心一句話:**公司發可轉債最想要的是「不還錢」** —— 想辦法把股價拉過「轉換價」,讓債主換成股票就不用還了。',
             '所以轉換價是一條很重要的線:**股價還沒過轉換價 → 公司還有動機拉;過了 → 當初拿到債的特定人換成股票就有賺,是最想倒貨的時候。**',
