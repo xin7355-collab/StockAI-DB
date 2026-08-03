@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -634,7 +634,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6831,8 +6831,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.0',
+    _APP_VERSION: 'V71.8.1',
     _CHANGELOG: [
+        { v: 'V71.8.1', dt: '2026-08-03', t: '🌡️ 那格「沒有資料」的:改用算得出來的台股波動率', d: [
+            '你回報第二次了,所以不再讓那一格空著等。台指 VIX 的官方免費來源我還在確認網址(上一輪連官方的清單都抓不到),但**台股怕不怕這件事,我自己就算得出來**。',
+            '改用「台股波動率」:加權指數近 20 天實際振幅年化,再跟自己過去一年比出位階。回到前 70% 以內就算退燒。現在那一格會顯示像「14.2%(近一年位階 38%)」這種真數字,而且**會計分**,不再是灰色的 ⏳。',
+            '⚠️ 名字故意不一樣,因為它跟台指 VIX 不是同一個東西:台指 VIX 是從選擇權價格反推的「大家預期未來會多震」,我這個是「過去 20 天實際震了多少」。一個看未來、一個看過去。等官方那條通了會自動換回台指 VIX,不會兩個並存。',
+            '為什麼門檻用「位階」不用寫死的數字:同 V71.1.6 外資期貨那次的教訓 —— 寫死的門檻會隨市場結構失效,跟自己比才不會過幾年就整條失真。',
+            '',
+            '【價差翻正修好了】上一版的修正生效了,現在有數字:正價差 +558 點,而且那行會同時顯示「期 43,678 vs 現 43,120」讓你自己對。',
+            '【端點診斷再加強】官方端點清單上一輪還是抓不到 —— 查出來是我只掃了帶 /v1/ 的網址,而清單其實在網站根目錄。已改成掃一組完整網址,而且抓不到時會把「每個網址各自回了什麼(狀態碼、長度)」記下來,下一輪就分得出是連不到、被擋、還是格式不同。',
+        ] },
         { v: 'V71.8.0', dt: '2026-08-01', t: '🪜 「跌到哪裡才敢買」階梯 + 修好那兩條說「沒有資料」的', d: [
             '你問「為何分析師禮拜三敢說破 4 萬就買 0050,為何買得那麼準」→ 答案是**他沒有預測低點**,他做的是「定價不定時」:先設好價位、跌到就分批買。事後看像抄底,其實是紀律。',
             '這件事可以變成程式,所以做進反攻雷達下方(不另開新卡):🪜「跌到哪裡才敢買」階梯。用加權現價、年線、近一年最低、千點整數關、從高點回檔 15%/20%,算出最多 4 個檔位。',
@@ -14866,6 +14875,40 @@ const marginByDate = {};
         } catch (_) { return null; }
     },
 
+    // 🌡️ V71.8.1 台股自己的「怕不怕」指標 —— 用加權日 K 自算的**實現波動率**。
+    //   為什麼要有這個:台指 VIX(選擇權隱含波動率)卡在資料源,使用者已經反映兩次
+    //   「沒有資料」。與其讓那一格永遠空著,不如給一個**今天就算得出來**的替代品。
+    //   ⚠️ 兩者不是同一個東西,所以**名字一定要不一樣**(專案鐵則:不同公式就要不同名字):
+    //     ・台指 VIX  = 選擇權price 反推的「市場預期未來波動」(前瞻)
+    //     ・實現波動率 = 加權指數過去 20 天實際的振幅年化(回顧)
+    //   門檻用「自己的歷史百分位」而不是寫死數字(同 V71.1.6 外資期貨那次的教訓:
+    //   絕對門檻會隨市場結構失效)。回 {vol, pct, n} 或 null。
+    _twRealizedVol() {
+        const h = Array.isArray(this.usMacroCache?.twii_history) ? this.usMacroCache.twii_history : [];
+        const cl = h.map(r => +r.close).filter(v => v > 0);
+        if (cl.length < 40) return null;
+        const lr = [];                                   // 日對數報酬
+        for (let i = 1; i < cl.length; i++) lr.push(Math.log(cl[i] / cl[i - 1]));
+        const volAt = end => {                           // end 為 lr 的結束索引(含)
+            const w = lr.slice(Math.max(0, end - 19), end + 1);
+            if (w.length < 15) return null;
+            const m = w.reduce((a, b) => a + b, 0) / w.length;
+            const v = w.reduce((a, b) => a + (b - m) * (b - m), 0) / (w.length - 1);
+            return Math.sqrt(v * 252) * 100;             // 年化 %
+        };
+        const vol = volAt(lr.length - 1);
+        if (vol == null || !isFinite(vol)) return null;
+        // 百分位:跟自己過去(最多 250 個交易日)比,0%=最平靜、100%=最恐慌
+        const hist = [];
+        for (let i = Math.max(19, lr.length - 250); i < lr.length; i++) {
+            const v = volAt(i);
+            if (v != null && isFinite(v)) hist.push(v);
+        }
+        if (hist.length < 30) return { vol, pct: null, n: hist.length };
+        const below = hist.filter(v => v < vol).length;
+        return { vol, pct: below / hist.length * 100, n: hist.length };
+    },
+
     // 🪜 V71.8.0 「跌到哪裡才敢買」階梯(使用者問:分析師為何能買在低點?)
     //   答案是**他沒有預測低點**,他是「定價不定時」—— 先設好價位、跌到就分批進。
     //   這支把那套做法變成算得出來的東西:用加權現價 + 年線 + 近兩年低點 + 整數關卡,
@@ -15064,15 +15107,26 @@ const marginByDate = {};
         //   現況(2026-08-01 實測):走 FinMind 需要付費會員層級;台指 VIX 本來就是期交所公開資料、
         //   不必付費,但候選端點名稱全猜錯。採礦端已改成「猜不到就把官方端點清單抓回來寫進 JSON」,
         //   下一輪就會知道正確名稱 → 這裡照實講,不要只丟一句「維護中」。
-        const _vxWhy = (() => {
-            if (twvix != null) return '回 30 以下(>30=仍在搶避險)';
-            const e = String(mr.tw_vix_error || '');
-            if (e.includes('等級不足') || e.includes('付費')) return `⏳ 走的那個資料源要付費會員才給;台指 VIX 本來是期交所公開資料,已改抓官方免費源,下次採礦會自動帶回。此條不計分,先看上方美股 VIX ${vix != null ? f1(vix) : ''} 當替代`;
-            if (e) return `⏳ 官方免費源的名稱還在確認中(採礦會自動把正確名稱抓回來),此條不計分;先看上方美股 VIX ${vix != null ? f1(vix) : ''} 當替代`;
-            return '⏳ 尚未取得,此條不計分;先看上方美股 VIX 當替代參考';
-        })();
-        add('🌡️', '台指 VIX 退燒', twvix == null ? '—' : f1(twvix), twvix != null && twvix < 30,
-            _vxWhy, twvix == null);
+        // 🌡️ V71.8.1 台指 VIX 拿不到就改用「自算的實現波動率」,不要再讓這一格空著。
+        //   ⛔ 名字必須不同(不同公式不同名字):有 VIX 就叫「台指 VIX」,沒有就叫「台股波動率」。
+        if (twvix != null) {
+            add('🌡️', '台指 VIX 退燒', f1(twvix), twvix < 30, '回 30 以下(>30=仍在搶避險)', false);
+        } else {
+            const rv = this._twRealizedVol();
+            if (rv && rv.pct != null) {
+                add('🌡️', '台股波動率退燒',
+                    `${rv.vol.toFixed(1)}%(近一年位階 ${Math.round(rv.pct)}%)`,
+                    rv.pct <= 70,
+                    `加權近 20 日實際振幅年化,跟自己過去 ${rv.n} 天比;回到前 70% 以內=市場不再劇烈跳動。`
+                    + `⚠️ 這是「已經發生的波動」,跟台指 VIX(選擇權反推的「預期波動」)不是同一個東西,`
+                    + `所以名字也不一樣。台指 VIX 的官方免費來源仍在確認中,拿到就會自動換回去`,
+                    false);
+            } else {
+                add('🌡️', '台股波動率退燒', '—', null,
+                    `⏳ 加權日 K 還不夠算(需 40 根以上);台指 VIX 的官方免費來源也還在確認中。`
+                    + `此條不計分,先看上方美股 VIX ${vix != null ? f1(vix) : ''} 當替代`, true);
+            }
+        }
         add('📉', '機構停止倒貨', dist == null ? '—' : `派發日 ${dist} 天`, dist != null && dist <= 2, '25 日內派發 ≤2(≥5=出貨未歇)', dist == null);
         // 融資斷頭(反指標:跌市中融資大減=賣壓宣洩,反而接近底)
         let mgTxt = mgNow == null ? '—' : `${Math.round(mgNow).toLocaleString()} 億`;

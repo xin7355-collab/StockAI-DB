@@ -1342,9 +1342,23 @@ def _taifex_list_endpoints(keyword=''):
     #    連 swagger.json 也一樣 → 期交所對未知路徑是回**網頁**而不是 404。
     #    所以只試 JSON 是問不出答案的,必須連**首頁 HTML** 一起掃、把 /v1/<名稱> 抓出來。
     #    (同 V71.3.4 解 FinMind 資料集名的做法:與其一輪一輪猜,不如讓官方自己說。)
-    for idx in ('swagger/v1/swagger.json', 'swagger.json', '', '../'):
+    # 🐛 V71.8.1 上一版只掃 `TAIFEX_OPENAPI_BASE + idx`(也就是永遠帶著 /v1/),
+    #    實測回報「官方端點清單也抓不到」——**端點索引在網站根目錄,不在 /v1/ 底下**。
+    #    改成一組**絕對網址**,把根目錄與官網的 OpenAPI 說明頁都掃進來。
+    CANDS = [
+        'https://openapi.taifex.com.tw/',
+        'https://openapi.taifex.com.tw/swagger/index.html',
+        'https://openapi.taifex.com.tw/swagger/v1/swagger.json',
+        TAIFEX_OPENAPI_BASE + 'swagger/v1/swagger.json',
+        TAIFEX_OPENAPI_BASE + 'swagger.json',
+        TAIFEX_OPENAPI_BASE,
+    ]
+    probe = []           # 每個網址的實測結果,失敗時一併回報(才知道是連不到還是格式不同)
+    for idx in CANDS:
         try:
-            r = http.get(TAIFEX_OPENAPI_BASE + idx, headers=_TAIFEX_OPENAPI_UA, timeout=20)
+            r = http.get(idx, headers=_TAIFEX_OPENAPI_UA, timeout=20)
+            probe.append(f"{idx.split('taifex.com.tw')[-1] or '/'}:{r.status_code}"
+                         f"/{len(r.text or '')}b")
             if r.status_code != 200:
                 continue
             names = []
@@ -1355,15 +1369,24 @@ def _taifex_list_endpoints(keyword=''):
                 elif isinstance(j, list):
                     names = [str(x.get('name') or x.get('path') or x) for x in j if x]
             except ValueError:
-                # 不是 JSON(網頁)→ 從 HTML 把 /v1/<端點名> 撈出來
-                names = sorted(set(_re.findall(r'/v1/([A-Za-z][A-Za-z0-9_]{3,})', r.text or '')))
+                # 不是 JSON(網頁)→ 從 HTML 把端點名撈出來。
+                # 兩種寫法都吃:`/v1/Name`(連結)與 `"Name"`(swagger UI 的設定區塊)。
+                _t = r.text or ''
+                names = sorted(set(_re.findall(r'/v1/([A-Za-z][A-Za-z0-9_]{3,})', _t)))
+                if not names:
+                    names = sorted(set(_re.findall(r'["\'>/]([A-Z][A-Za-z0-9_]{8,60})["\'<]', _t)))[:80]
             if names:
                 hit = [n for n in names if keyword.lower() in n.lower()] if keyword else names
                 print(f"  [TAIFEX OpenAPI] 端點清單 {len(names)} 個"
                       f"{f',含「{keyword}」的:{hit[:12]}' if keyword else f':{names[:20]}'}")
                 return hit or names
         except Exception as e:
+            probe.append(f"{idx.split('taifex.com.tw')[-1] or '/'}:{type(e).__name__}")
             print(f"  [TAIFEX OpenAPI] 端點清單 {idx or '(root)'} 失敗:{str(e)[:50]}")
+    # ⭐ 一個都沒撈到時,把「每個網址各自回了什麼」帶出去 —— 不然下一輪還是只知道「抓不到」,
+    #    分不出是連不到(0/例外)、被擋(403)、還是拿到網頁但格式不同(200 但沒 match)。
+    globals()['_TAIFEX_PROBE'] = probe
+    print(f"  [TAIFEX OpenAPI] 端點清單全失敗;各網址實測:{probe}")
     return []
 
 
@@ -1395,7 +1418,9 @@ def _fetch_tw_vix_taifex():
                  + _taifex_list_endpoints('option'))
         if not found:
             found = _taifex_list_endpoints('')[:40]      # 全清單也好過沒有
-        extra = f";⭐官方端點清單:{sorted(set(found))[:24]}" if found else ';(官方端點清單也抓不到)'
+        _probe = globals().get('_TAIFEX_PROBE') or '無'
+        extra = (f";⭐官方端點清單:{sorted(set(found))[:24]}" if found
+                 else f";(端點清單也抓不到,各網址實測:{_probe})")
         return None, f'TAIFEX:{diag[:120]}{extra}'
     rows = []
     for r0 in data:
@@ -2194,6 +2219,7 @@ def _taifex_openapi_tx_close_change():
 #    免得為了同一個數字再打一次 yfinance。
 _LAST_TWII_SPOT = None
 _LAST_TX_FUT_DATE = None   # V71.4.9 期貨那條腿的資料日期(判斷是否與現貨同一天)
+_TAIFEX_PROBE = []         # V71.8.1 端點索引各網址的實測結果(全失敗時寫進 JSON 回報)
 _LAST_BACK_LEGS = {}       # V71.8.0 價差的兩條腿(期貨收盤/日期、加權收盤/日期),供輸出與診斷
 
 
