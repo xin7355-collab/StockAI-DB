@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,20 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.4',
+    _APP_VERSION: 'V71.9.5',
     _CHANGELOG: [
+        { v: 'V71.9.5', dt: '2026-08-03', t: '👩 投信買 40 張很少?可能佔了當天成交量兩成', d: [
+            '逐字稿裡他特別更正一個常見誤用:「坊間一堆**投本比**(投信買超占**股本**比)…但這是占**成交量**,那叫**投量比**」。',
+            '',
+            '他舉的例子很好懂:某檔那天總共只成交 **205 張**,投信買了 **40 張**。40 張根本上不了投信買超排行榜,你在榜上完全看不到它——但那 40 張其實佔了當天成交量的 **20%**。',
+            '反過來,大型股投信買 1,000 張看起來很多,可能連當天成交量的 0.5% 都不到。',
+            '',
+            '📍 已加在:個股 → 籌碼 →「三大法人」圖表的日期那一行(小字,沒開新卡)。佔比 ≥10% 會標成琥珀色。',
+            '',
+            '⚠️ **我要很誠實地說一件事**:這只是把張數換算成佔比,幫你判斷這筆買超相對這檔算不算大。',
+            '「投量比高會不會漲」我**還沒驗證過** —— 因為法人買賣超的資料要 2026 年才開始有(全市場 169 萬列裡只有 8,818 列是投信買超日),樣本根本不夠做統計。',
+            '所以它現在**不計分、不是買賣訊號**,只是參考資訊。等資料累積滿一年我會回頭驗,有效果才會拿來計分,沒效果就拿掉。',
+        ] },
         { v: 'V71.9.4', dt: '2026-08-03', t: '🎯 這家主力是「追著買」還是「壓低接」?', d: [
             '逐字稿裡他看盤時講過一句很實用的話:「買超第一名是大摩,**它就不一定是隔日沖,因為它的買超均價並不是漲停板**」——他是拿「主力的買進均價 vs 當天的高低點」在判這家的性質。',
             '',
@@ -12115,7 +12127,7 @@ const marginByDate = {};
         };
         const instDate   = instData   ? latestNonZero(instData,   ['foreign','trust','dealer']) : null;
         const marginDate = marginData ? latestNonZero(marginData, ['margin_balance','short_balance','margin','short']) : null;
-        if (instDateEl)   instDateEl.textContent   = instDate   ? `資料日期: ${instDate}`   : '';
+        if (instDateEl)   instDateEl.innerHTML     = (instDate   ? `資料日期: ${instDate}`   : '') + this._trustVolRatioNote();
         if (marginDateEl) marginDateEl.textContent = marginDate ? `資料日期: ${marginDate}` : '';
         // 🚨 V71.7.1 融資追繳/斷頭距離(併入既有融資卡,不新增卡片;安全時自己隱藏)
         //    ⛔ 切股競態守門:算完才發現已經切到別檔就不要畫上去
@@ -15198,6 +15210,46 @@ const marginByDate = {};
     //     ・實現波動率 = 加權指數過去 20 天實際的振幅年化(回顧)
     //   門檻用「自己的歷史百分位」而不是寫死數字(同 V71.1.6 外資期貨那次的教訓:
     //   絕對門檻會隨市場結構失效)。回 {vol, pct, n} 或 null。
+    // 👩 V71.9.5 投量比 = 投信買超股數 ÷ 當日成交量 —— ⚠️ 這是**描述性換算**,刻意不給方向。
+    //
+    // 逐字稿【哥有籌必爆】他特別更正了一個常見誤用:
+    //   「坊間一堆**投本比**(投信買賣超占**股本**比)…但這是占成交量,那叫**投量比**」
+    //   「成交量 205 張、投信買 40 張,40 張怎麼可能進榜?你看不到投信買超排行榜,
+    //     可是 **40 張就佔了 20%**」
+    // → 他的論點是「絕對張數的排行榜會漏掉小型股」。這點**在邏輯上就成立**
+    //   (同樣 40 張,在日成交 205 張和 20 萬張的股票意義完全不同),不需要回測就能講。
+    //
+    // ⛔ 但「投量比高 → 會漲」這個**預測性**主張,我目前**驗不了**:
+    //    `trust_probe.py` 實測發現 `trust_net > 0` 的列**全部落在 2026 年**
+    //    (全市場 169 萬列裡只有 8,818 列),法人欄位是近期才開始存的
+    //    → 每桶都不到 200 筆,連分桶比較都做不出來(同 short_probe 券資比那次)。
+    // → 所以這裡**只做單位換算、不下任何方向判斷**,並在文案上寫明「還沒驗證過預測力」。
+    //   ⛔ 日後要加方向,必須先讓 trust_net 累積滿 1 年、重跑 trust_probe.py 確認有邊際。
+    //   ⛔ 也別改成他反對的「投本比」—— 那要股本、要另外採礦,而且他自己說那是錯的用法。
+    _trustVolRatioNote() {
+        try {
+            const arr = this.rawDailyData || [];
+            if (!arr.length) return '';   // 本函式不需要前一根,只要有 1 根就算得出來
+            // 找最近一根「投信有買超且有成交量」的 K 棒(法人資料常落後,不硬取最後一根)
+            for (let i = arr.length - 1; i >= Math.max(0, arr.length - 6); i--) {
+                const tn = +(arr[i].trust_net || 0), vol = +(arr[i].volume || 0);
+                if (!(tn > 0) || !(vol > 0)) continue;
+                const ratio = tn / vol * 100;
+                if (!(ratio > 0) || ratio > 100) return '';
+                // ⚠️ 不足 1 張(<1000 股)不顯示 —— Math.round 會把 500 股捧成「1 張」,那是誤導
+                if (tn < 1000) return '';
+                const lots = Math.round(tn / 1000);
+                const strong = ratio >= 10;
+                return `<span class="block mt-0.5 text-[9px] ${strong ? 'text-amber-300' : 'text-gray-500'}">`
+                    + `👩 投量比 <b class="font-mono">${ratio.toFixed(1)}%</b>`
+                    + `<span class="text-gray-600">(${this._dW ? this._dW(arr[i].date) : String(arr[i].date).slice(5)} 投信買 ${lots.toLocaleString()} 張 ÷ 當日成交量)</span>`
+                    + (strong ? ' ← 佔比不低' : '')
+                    + `<button onclick="alert('【投量比】投信買超股數 ÷ 當天成交量\\n\\n為什麼看這個而不是看張數?\\n\\n因為「買幾張」在不同股票意義差很多。舉例:某檔當天只成交 205 張,投信買了 40 張——40 張根本上不了投信買超排行榜,你在榜上完全看不到它,但那 40 張其實佔了當天成交量的 20%。\\n\\n反過來,大型股投信買 1,000 張看起來很多,可能連當天成交量的 0.5% 都不到。\\n\\n所以投量比是拿來「補排行榜看不到的地方」,特別是冷門小型股。\\n\\n⚠️ 誠實說明:這只是把張數換算成佔比,幫你判斷這筆買超相對這檔股票算不算大。\\n「投量比高會不會漲」我目前【還沒驗證過】——因為法人買賣超資料要 2026 年才開始有,樣本還不夠做統計。\\n等資料累積滿一年我會回頭驗,有效果才會拿來計分。在那之前它只是參考資訊,不是買賣訊號。')" class="ml-1 text-gray-600 hover:text-blue-300">ⓘ</button></span>`;
+            }
+            return '';
+        } catch (_) { return ''; }
+    },
+
     _twRealizedVol() {
         const h = Array.isArray(this.usMacroCache?.twii_history) ? this.usMacroCache.twii_history : [];
         const cl = h.map(r => +r.close).filter(v => v > 0);
