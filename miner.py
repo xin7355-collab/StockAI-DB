@@ -1472,6 +1472,11 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             result['gross_margin_trend'] = (
                 '→'.join(f'{g}%' for g in gms) + f'（{arrow}{abs(diff)}pp）')
         # 🆕 三率三升:營業利益率 + 淨利率 趨勢(與毛利率同法,供前端三率三升卡 + 多空計分 F 系列因子)
+        # 🔢 V71.8.5 除了「趨勢箭頭」,把**最新一季的實際數值**也存下來。
+        #   為什麼:趨勢只能回答「變好還變壞」,回答不了「這個水準在同業裡算高還算低」。
+        #   而「同業比較」正是判斷體質的關鍵 —— 封測毛利 20% 是正常,IC 設計 20% 是警訊,
+        #   用同一條 40% 的線去量兩者一定有一邊被誤判。
+        #   數值本來就在下面算出來了(ms[-1]),以前只是沒存 → 幾乎零成本。
         def _margin_trend(type_names):
             num_rows = sorted([r for r in rows if r.get('type') in type_names], key=lambda x: x.get('date', ''))
             num_by_q = {r['date']: float(r.get('value', 0) or 0) for r in num_rows[-6:]}
@@ -1479,12 +1484,15 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             ms = [round(num_by_q[q] / rev_by_q[q] * 100, 1) for q in cq if rev_by_q.get(q, 0) > 0]
             if len(ms) >= 2:
                 d = round(ms[-1] - ms[0], 1)
-                return '→'.join(f'{m}%' for m in ms) + f'（{"↑" if d > 0 else "↓"}{abs(d)}pp）'
-            return None
-        op_trend  = _margin_trend({'OperatingIncome'})
-        net_trend = _margin_trend({'IncomeAfterTaxes', 'ProfitAfterTax', 'NetIncome'})
+                return '→'.join(f'{m}%' for m in ms) + f'（{"↑" if d > 0 else "↓"}{abs(d)}pp）', ms[-1]
+            return None, (ms[-1] if ms else None)
+        op_trend,  op_val  = _margin_trend({'OperatingIncome'})
+        net_trend, net_val = _margin_trend({'IncomeAfterTaxes', 'ProfitAfterTax', 'NetIncome'})
         if op_trend:  result['op_margin_trend']  = op_trend
         if net_trend: result['net_margin_trend'] = net_trend
+        if op_val  is not None: result['op_margin_pct']  = op_val    # 最新一季營業利益率(%)
+        if net_val is not None: result['net_margin_pct'] = net_val   # 最新一季淨利率(%)
+        if gms:                 result['gross_margin_pct'] = gms[-1]  # 最新一季毛利率(%)
         # 最近4季 EPS + Revenue 摘要（季別格式：date 欄直接用）
         rev_sorted = sorted([r for r in rows if r.get('type') == 'Revenue'],
                             key=lambda x: x.get('date', ''))
