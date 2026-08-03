@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6899,8 +6899,19 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.6',
+    _APP_VERSION: 'V71.8.7',
     _CHANGELOG: [
+        { v: 'V71.8.7', dt: '2026-08-03', t: '🧱 「上方套牢區」—— 你問的國巨 800，現在看得到了', d: [
+            '你問分析師說國巨壓力在 800 是籌碼看出來的還是 K 線 → **是 K 線+成交量**,跟籌碼(法人/分點)沒關係。原理:800~850 那一帶當初成交了很多量,買在那裡的人被套,股價彈回去他們就想解套 → 變成賣壓。',
+            '查完發現我這邊確實看不到,而且是**兩個限制**造成的:',
+            '① 上方壓力區只收「現價 +15% 以內」的前高 —— 國巨從 1,220 殺到 502,最近的前高在 +46%,**全部被濾掉**,那格一片空白。偏偏暴跌後正是最需要知道上面套牢在哪的時候。已放寬到 +60%。',
+            '② 量價密集區只挑「最大的那一格」—— 國巨最大那格是暴漲前的底部(250~325),現在在下方,所以上面那幾層完全沒被提到。',
+            '',
+            '新增「🧱 上方套牢區」:用近 120 天的成交量分布,找出現價**上方**所有量堆積的價區,由近到遠最多列 3 層,每層標「多少成交量卡在這」。',
+            '實測國巨(現價 502):613~705(9.3%)、**773~865(9.7%)** ← 就是分析師講的 800、957~980(2.5%)。',
+            '這幾層會直接併進「📐 上檔空間 ・ 防守價」那張表,跟前高、目標價一起由近到遠排,每層照樣標「距現價幾%」和「一張淨賺幾元」。',
+            '💡 怎麼用:彈到套牢區容易遇賣壓 → 那裡先減碼;**帶量站上去**才算真突破。這也解釋了為什麼分析師說「這個區間可以重複操作」。',
+        ] },
         { v: 'V71.8.6', dt: '2026-08-03', t: '🎲 「這個勝率是不是運氣?」現在算得出來', d: [
             '看完你給的多代理分析包後,唯一補進來的東西(其餘見下方說明)。',
             '原本「今天這檔怎麼做」只會說「此打法只出現過 6 次,樣本少、勝率別當真」—— 但沒回答**幾次才算數**。',
@@ -18446,6 +18457,52 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return Math.round((sell - buy) * shares - (buy + sell) * shares * 0.001425 * fd - sell * shares * 0.003);
     },
 
+    // 🧱 V71.8.7 上方「套牢區」(overhead supply)—— 使用者問:分析師說國巨壓力在 800 左右,
+    //   這是籌碼看出來的還是 K 線?**是 K 線+成交量**:800~850 那一帶當初成交了很多量,
+    //   買在那裡的人套牢,股價彈回去他們就想解套 → 形成賣壓。這叫套牢區/量價堆積。
+    //   ⛔ 為什麼我原本看不到(兩個限制,都在這版放寬):
+    //     ① `_chuResistanceZones` 只收「現價 +15% 以內」的前高 —— 國巨從 1,220 殺到 502,
+    //        最近的前高在 +46%、+69%,**全部被濾掉**,「上方壓力區」一片空白。
+    //        偏偏暴跌後正是最需要知道「上面套牢在哪」的時候。
+    //     ② 量價密集區只挑**單一最大格**,而且要 ≥12% 才顯示。國巨最大的一格是暴漲前的
+    //        底部區(250~325,現在在下方),上方那四層(650/700/825/850 各 3~4%)完全沒被提到。
+    //   → 這支專門找「現價上方」的量堆積層,回傳由近到遠的區間。
+    _overheadSupply(data, last, pC) {
+        if (!Array.isArray(data) || last == null || !(pC > 0)) return [];
+        const win = data.slice(Math.max(0, last - 119), last + 1)
+            .filter(b => +b.close > 0 && +b.volume > 0);
+        if (win.length < 40) return [];
+        const tp = b => ((+b.high || +b.close) + (+b.low || +b.close) + +b.close) / 3;
+        let mn = Infinity, mx = -Infinity;
+        win.forEach(b => { const p = tp(b); if (p < mn) mn = p; if (p > mx) mx = p; });
+        if (!(mx > mn)) return [];
+        const NB = 40, w = (mx - mn) / NB, buckets = new Array(NB).fill(0);
+        win.forEach(b => { buckets[Math.min(NB - 1, Math.floor((tp(b) - mn) / w))] += +b.volume; });
+        const tot = buckets.reduce((a, v) => a + v, 0);
+        if (!(tot > 0)) return [];
+        // 只看現價上方(留 1% 緩衝,免得把現價那一格也算成壓力)
+        const MIN_SHARE = 0.02;                       // 單格至少佔 2% 才算「有量」
+        const hot = [];
+        for (let i = 0; i < NB; i++) {
+            const lo = mn + i * w;
+            if (lo <= pC * 1.01) continue;
+            if (buckets[i] / tot >= MIN_SHARE) hot.push({ i, lo, hi: lo + w, v: buckets[i] });
+        }
+        if (!hot.length) return [];
+        // 相鄰的格子併成一層(中間最多容忍隔 1 格)
+        const layers = [];
+        hot.forEach(b => {
+            const L = layers[layers.length - 1];
+            if (L && b.i - L.iEnd <= 2) { L.hi = b.hi; L.v += b.v; L.iEnd = b.i; }
+            else layers.push({ lo: b.lo, hi: b.hi, v: b.v, iEnd: b.i });
+        });
+        return layers.map(L => ({
+            lo: L.lo, hi: L.hi, mid: (L.lo + L.hi) / 2,
+            pct: L.v / tot * 100,                      // 佔近 120 日總量幾 %
+            dist: ((L.lo + L.hi) / 2 - pC) / pC * 100, // 距現價 %
+        })).sort((a, b) => a.lo - b.lo).slice(0, 3);   // 由近到遠,最多 3 層(免得資訊爆炸)
+    },
+
     // 📈 V71.7.8 —「我現在買,還有多少空間?」單一真相源(使用者要求)。
     //   使用者原話:「個股不是有上方壓力區還有多少價格?是不是用一個?我現在買還有多少利潤空間%,
     //   這樣我也清楚知道還有多少空間」→ 把散在各卡的上檔價位彙整成一條由近到遠的尺,
@@ -18466,6 +18523,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try {
             (this._chuResistanceZones(data, last) || []).forEach(z =>
                 add(z.count >= 2 ? '雙重壓力區' : '上方壓力區', z.price, `近120日前高・${z.daysAgo} 日前`));
+        } catch (_) {}
+        // ①-b 上方「套牢區」(量堆積)—— V71.8.7。前高只是「一個價位」,套牢區是「一整片有量的區間」,
+        //   對「彈上去會不會被賣壓壓下來」更有解釋力(使用者問的國巨 800 就是這種)。
+        try {
+            (this._overheadSupply(data, last, pC) || []).forEach(L =>
+                add(`套牢區 ${Math.round(L.lo)}~${Math.round(L.hi)}`, L.mid,
+                    `近120日 ${L.pct.toFixed(0)}% 成交量卡在這`));
         } catch (_) {}
         // ② 出場總表的第一/第二目標(實際下單依據,不另算)
         add(String(dx.t1L || '🎯 第一目標').replace(/^[^一-龥A-Za-z0-9]+/, ''), dx.t1, '出場總表');
@@ -27129,7 +27193,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 zones.push({ price: p.price, daysAgo: p.daysAgo, count: 1 });
             }
         }
-        return zones.filter(z => (z.price - pC) / pC < 0.15)
+        // 🔧 V71.8.7 上限 15% → 60%:國巨從 1,220 殺到 502 時,最近的前高在 +46%,
+        //   舊的 15% 會把**每一個**上方前高都濾掉 → 「上方壓力區」在最需要的時候反而全空。
+        return zones.filter(z => (z.price - pC) / pC < 0.60)
                     .map(z => ({ ...z, distancePct: ((z.price - pC) / pC * 100) }))
                     .slice(0, 3);
     },
