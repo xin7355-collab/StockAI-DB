@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,22 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.5',
+    _APP_VERSION: 'V71.9.6',
     _CHANGELOG: [
+        { v: 'V71.9.6', dt: '2026-08-03', t: '🌡️ 今天買的人裡面,有幾成是明天就要跑的?', d: [
+            '新的逐字稿裡他講了一個很實用的算法:「他會幫你算一下**隔日沖的占比**,那個買超在**漲停板附近**的」。',
+            '',
+            '白話:今天總共有人買進 1,000 張,如果其中 600 張都是**買在當天最高價附近**,那這 600 張的人成本都很貴——股價一回落他們就沒賺,通常**隔天就要走**。所以這個占比越高,明天的賣壓越大。',
+            '',
+            '📍 已加在:個股 → 籌碼 → 券商分點(1 日)。占比 ≥40% 才會出現,分三級:',
+            '・40~55% ⚠️ 要留意 ・55~70% ⚠️ 偏高 ・**≥70% 🚨 極高**',
+            '💡 對策也寫在上面:別在隔天開高時追;想跟就等這批賣壓出完(量縮止穩)再說。',
+            '',
+            '🤝 另外還有「**盤中手牽手、盤後下毒手**」:他說好幾家隔日沖同一天一起買,隔天只要有一家先跑,其他家會跟著砍,容易互相踩踏。所以我也會標出「今天有幾家隔日沖同時在買」。',
+            '⭐ 判斷誰是隔日沖用的是**實測值**(這家隔天出現在賣方的機率比平常高多少),⛔ 不是用寫死的標籤——之前實測就發現標籤會錯(被標「最兇隔日沖」的美商美林,實際上幾乎沒有隔日沖傾向)。',
+            '',
+            '⚠️ 我沒有照他寫死「漲停附近」,改成「當天 K 棒的高檔區」——因為不是每檔都會漲停,寫死漲停這條大部分時候會失效。',
+        ] },
         { v: 'V71.9.5', dt: '2026-08-03', t: '👩 投信買 40 張很少?可能佔了當天成交量兩成', d: [
             '逐字稿裡他特別更正一個常見誤用:「坊間一堆**投本比**(投信買超占**股本**比)…但這是占**成交量**,那叫**投量比**」。',
             '',
@@ -22601,6 +22615,67 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                                 + `<br><span class="text-gray-400">不追高、專門壓在盤中低檔接 = 比較像真的在收貨;成本低${cc > av ? `,目前收盤 ${cc.toFixed(2)} 已在他成本之上` : ''}。⚠️ 但這只說明「買法」,不保證後續會漲。</span>` });
                         }
                         break;   // 只講買超王那一家,避免洗版
+                    }
+                }
+            } catch (_) {}
+        }
+        // 🌡️ V71.9.6 「隔日沖占比」—— 今天的買超裡,有多少是**買在高檔的追價盤**?
+        //
+        // 逐字稿【深度解析隔日沖】原話:「他會幫你算一下**隔日沖的占比**…那個**買超在漲停板附近**的,
+        //   他會去大概評估一下他的隔沖的比例」
+        // 另一段:「盤中手牽手、盤後下毒手」「隔天有一家隔日沖跑了、另外一家還不跑,這是最傻的」
+        //
+        // ⭐ 這跟 V71.9.4 不是同一件事,兩者互補、刻意都留:
+        //   ・V71.9.4 回答「**誰**」在追價(只看買超王那一家)
+        //   ・本條回答「**多少**」—— 全部買超裡有幾成是追高的 = 明天的賣壓有多大
+        //   ・再加「幾家一起」—— 手牽手的家數越多,隔天互相踩踏的風險越高
+        //
+        // 判定用「買在當日 K 棒高檔區(≥75%)」而不是寫死「漲停附近」——
+        //   ⛔ 因為不是每檔都會漲停,寫死漲停會讓這條大部分時候失效(同 V71.1.6 絕對門檻的教訓)。
+        // 「手牽手家數」用 `_flipEdge()` 的**實測**隔日沖慣性,⛔ 不用人工寫死的標籤
+        //   (V71.7.2 已證明人工標籤會錯:「美商美林」被標最兇隔日沖,實測效果 ≈ 0)。
+        if (period === '1d' && Array.isArray(this.rawDailyData) && this.rawDailyData.length) {
+            try {
+                const _dn = s => String(s || '').replace(/\//g, '-').slice(0, 10);
+                const want = _dn(this._fenDataDate);
+                const bar = want ? this.rawDailyData.find(b => _dn(b.date) === want) : null;
+                const hi = bar ? +bar.high : 0, lo = bar ? +bar.low : 0, rng = hi - lo;
+                // 同 V71.9.4:振幅太小時 avg 必然貼著高點,是數學必然不是訊號 → 不判
+                if (bar && hi > 0 && lo > 0 && rng > 0 && (rng / lo * 100) >= 1.5) {
+                    let chaseNet = 0, totalNet = 0, chaseNames = [], flipN = 0, flipNames = [];
+                    for (const x of buy) {
+                        const net = Math.abs(x.net || 0);
+                        if (net <= 0) continue;
+                        totalNet += net;
+                        const av = +x.avg;
+                        if (av > 0 && av >= lo * 0.98 && av <= hi * 1.02 && (av - lo) / rng >= 0.75) {
+                            chaseNet += net;
+                            if (chaseNames.length < 4) chaseNames.push(shortName(x));
+                        }
+                        // 實測有隔日沖慣性的分點(⛔ 不用人工標籤)
+                        try {
+                            const fe = this._flipEdge ? this._flipEdge(nameOf(x)) : null;
+                            if (fe && +fe.edge >= 10 && net >= 100000) {
+                                flipN++;
+                                if (flipNames.length < 4) flipNames.push(`${shortName(x)}<span class="text-gray-600">(+${(+fe.edge).toFixed(0)}pp)</span>`);
+                            }
+                        } catch (_) {}
+                    }
+                    const pct = totalNet > 0 ? chaseNet / totalNet * 100 : 0;
+                    const totLots = Math.round(totalNet / 1000);
+                    if (totLots >= 200 && pct >= 40) {
+                        const lv = pct >= 70 ? { ic: '🚨', c: 'text-orange-300', t: '極高' }
+                            : pct >= 55 ? { ic: '⚠️', c: 'text-yellow-300', t: '偏高' }
+                            : { ic: '⚠️', c: 'text-yellow-300', t: '要留意' };
+                        insights.push({ c: 'dt', h: `🌡️ <b class="${lv.c}">隔日沖占比 ${pct.toFixed(0)}%(${lv.t})</b> ${lv.ic} — 今天買超 ${totLots.toLocaleString()} 張裡,約 <b>${Math.round(chaseNet / 1000).toLocaleString()} 張</b>是買在當日高檔區(K 棒 75% 以上)。${chaseNames.length ? `主要是 ${chaseNames.join('、')}。` : ''}`
+                            + `<br><span class="text-gray-400">買在高檔的這些人成本很高,<b>股價一回落就沒賺</b>,通常隔天就要走 → 占比越高,明天的賣壓越大。</span>`
+                            + `<br>💡 <b>對策</b>:別在隔天開高時追;想跟就等這批賣壓出完(量縮止穩)再說。` });
+                    }
+                    // 「盤中手牽手,盤後下毒手」—— 多家實測隔日沖同時在買方
+                    if (flipN >= 2) {
+                        insights.push({ c: 'dt', h: `🤝 <b class="text-yellow-300">${flipN} 家隔日沖同時在買(手牽手)</b> — ${flipNames.join('、')}`
+                            + `<br><span class="text-gray-400">好幾家有隔日沖慣性的分點同一天一起買。他原話是「盤中手牽手、盤後下毒手」——<b>隔天只要有一家先跑,其他家會跟著砍</b>,容易互相踩踏。</span>`
+                            + `<br><span class="text-[9px] text-gray-600">括號內是實測值:這家隔天出現在賣方的機率比同股其他日高出幾個百分點(⛔ 不是人工標籤)。</span>` });
                     }
                 }
             } catch (_) {}
