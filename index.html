@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,22 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.2',
+    _APP_VERSION: 'V71.9.3',
     _CHANGELOG: [
+        { v: 'V71.9.3', dt: '2026-08-03', t: '🎫 想用權證做這檔?先看它夠不夠會動', d: [
+            '逐字稿裡挑權證的 5 字訣是「大波・小波・穩・夠・優」。我老實說:**5 條裡我只有第 1 條的資料**,所以只做這一條,其他四條在卡上直接告訴你要去券商 App 看,不做假數字。',
+            '',
+            '① **標的要夠會動** ← 這條我算得出來(近 60 天年化波動率,純公式、不用等採礦)',
+            '他原話是「不要中華電信、不要中鋼,太牛」。我拿全市場 2,315 檔實測驗證他:',
+            '・中華電 **18.8%**(全市場位階 8.6%)、中鋼 **26.7%**(19.7%)→ 真的都在最底層,他說得對',
+            '・台積電 33.4% ・鴻海 42.7% ・聯發科 80.4% ・國巨 101.4%(位階 96.5%)',
+            '→ 所以判斷門檻不是我猜的,是實測分位數:全市場中位數 46.6%、前 10% 要 85% 以上。',
+            '',
+            '📍 位置:個股 → 總覽 →「💰 該買幾張」卡裡面,**收合的一行**(沒開新卡、不佔版面),點開才展開。',
+            '⚠️ 卡上有一句最重要的提醒:**權證有到期日、每天扣時間價值,不能像股票一樣放著不管**,放到最後會歸零。',
+            '',
+            '🔧 另外修了採礦端:權證溢價那個檔案其實**從上線到現在一次都沒產出過**(抓得到資料但欄位名對不上,而且失敗時不留任何線索)。已補上自我診斷,下輪採礦就查得出真因。',
+        ] },
         { v: 'V71.9.2', dt: '2026-08-03', t: '📉 「跌破月線就該停損」是錯的 —— 我用 38,923 次驗給你看', d: [
             '逐字稿裡他整段在嗆這條:「站上月線買進、跌破月線賣出,你不知道停損多少次」。我拿全市場資料驗了一次(2,227 檔、38,923 次跌破,報酬全扣同期大盤):',
             '',
@@ -26162,6 +26176,66 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     //   查表給一句「現在做什麼」+ 具體價位;持倉感知(有庫存=出場紀律優先)。純公式零 AI。
     // 🎯 V66.9 — ATR 波動率部位管理 + 吊燈停損(散戶最缺的機構級風控:算「這檔該買幾張」把單筆虧損控在風險% 內)
     // 🧭 V68.4.6 — 使用者反映「該買幾張」看不懂 → 改由總覽「總評儀表板 → 部位水位」取代(不用填資金,看總分+波動決定水位);此卡停用
+    // 🎫 V71.9.3 「這檔適不適合玩權證」—— 只回答**我真的有資料**的那一條,零採礦、零 API。
+    //
+    // 逐字稿【哥有籌必爆S2】第11集講了挑權證的 5 字訣(大波・小波・穩・夠・優):
+    //   ① 標的要**大波**(波動夠大)—— 他原話:「不要中華電信、不要中鋼,太牛」
+    //   ② 權證隱含波動率要**小** ③ 而且要**穩**(買 53% 隔天剩 51% 就吃虧)
+    //   ④ 委買量要**夠**(造市好) ⑤ 有效**槓桿**要優(<2 很爛、認售 <1 是「以大博小」)
+    //
+    // ⛔ 誠實面對資料:②③④⑤ 全都要「逐檔權證的即時報價 + 希臘字母」,我沒有,FinMind 這層也拿不到
+    //    (`warrant_premium.json` 至今從未產出,V71.9.3 已補上自我診斷)。
+    //    照鐵則「資料撐不起的功能誠實不做」→ **只做第 ① 條**,並在卡上明說其他四條要自己去券商 App 看。
+    //
+    // ⭐ 第 ① 條我做得到,而且是純公式:標的近 60 日**年化波動率**(對數報酬標準差 × √252)。
+    //    門檻不是我猜的,是 2026-08-03 拿全市場 2,315 檔實測出來的分位數:
+    //      P5=15.9% ・P10=20.1% ・P25=30.3% ・P50=46.6% ・P75=66.0% ・P90=85.1% ・P95=97.1%
+    //    ⭐ 而且**驗證了他點名的兩檔**:中華電 18.8%(全市場位階 8.6%)、中鋼 26.7%(19.7%)
+    //       —— 都在最底層,所以他說「太牛不要玩」是對的,不是隨口講。
+    //    (台積電 33.4%/29.8% ・鴻海 42.7%/44.2% ・聯發科 80.4%/86.7% ・國巨 101.4%/96.5%)
+    // ⚠️ 這裡用**絕對分位數**而不是「該股自己的歷史」是刻意的 —— 問題本身就是橫斷面比較
+    //    (「這檔比中華電活潑嗎」),自己跟自己比答不出來。數字是實測的、且已寫在上面可覆核。
+    _warrantFitLine(data) {
+        try {
+            if (!Array.isArray(data) || data.length < 80) return '';
+            const cl = data.slice(-61).map(b => +((b?.close ?? b?.c) || 0)).filter(v => v > 0);
+            if (cl.length < 41) return '';
+            const rets = [];
+            for (let i = 1; i < cl.length; i++) rets.push(Math.log(cl[i] / cl[i - 1]));
+            const m = rets.reduce((s, x) => s + x, 0) / rets.length;
+            const sd = Math.sqrt(rets.reduce((s, x) => s + (x - m) * (x - m), 0) / (rets.length - 1));
+            const vol = sd * Math.sqrt(252) * 100;
+            if (!(vol > 0) || vol > 400) return '';
+            // 全市場實測分位(見上方註解)
+            const Q = [[15.9, 5], [20.1, 10], [30.3, 25], [46.6, 50], [66.0, 75], [85.1, 90], [97.1, 95]];
+            let pct = 97;
+            for (const [v, p] of Q) { if (vol <= v) { pct = p; break; } }
+            const v = vol < 20.1
+                ? { ic: '⛔', t: '太牛,不適合玩權證', c: 'text-gray-300',
+                    s: `波動只有全市場最低的 ${pct}%(跟中華電 18.8%、中鋼 26.7% 同一級)。權證每天都在扣時間價值,標的不動的話<b>光放著就慢慢虧掉</b>——這種標的直接買股票就好。` }
+                : vol < 46.6
+                ? { ic: '⚠️', t: '波動普通,權證優勢不大', c: 'text-yellow-300',
+                    s: `波動在全市場約 ${pct}% 位階。不是不能做,但漲跌幅度不夠大時,賺的價差常常被時間價值和買賣價差吃掉。` }
+                : { ic: '✅', t: '波動夠大,才有權證的意義', c: 'text-red-300',
+                    s: `波動在全市場約 ${pct}% 位階,屬於活潑股。標的夠會動,權證的槓桿才有發揮空間。` };
+            return `<details class="mt-2 border-t border-[#30363d] pt-1.5">
+                <summary class="text-[10px] text-gray-500 cursor-pointer list-none flex items-center justify-between">
+                    <span>🎫 想用權證做這檔?先看這個</span>
+                    <span class="${v.c} font-bold">${v.ic} ${v.t}</span></summary>
+                <div class="text-[10px] text-gray-300 leading-relaxed mt-1.5">
+                    📐 <b>標的年化波動率 <span class="font-mono ${v.c}">${vol.toFixed(1)}%</span></b>(近 60 日,全市場位階約 ${pct}%)。${v.s}
+                    <div class="mt-1.5 pt-1.5 border-t border-[#30363d]/60 text-gray-400">
+                        ⚠️ <b class="text-gray-300">我只算得出這一條,另外四條請到券商 App 自己看</b>:
+                        ②隱含波動率要小 ③而且要穩(買進 53% 隔天剩 51% 就是你吃虧)
+                        ④委買量要足夠(造市好才賣得掉;價差被拉大代表他不想賣你)
+                        ⑤有效槓桿要 &gt;2(低於 2 還不如直接融資;認售低於 1 是「以大博小」)。
+                        <br>逐檔權證的隱波、委買量、槓桿是即時報價資料,我的資料源沒有,<b>不做假數字</b>。
+                    </div>
+                    <div class="mt-1.5 text-orange-300">⏳ <b>最重要的提醒</b>:權證有到期日、每天扣時間價值,<b>絕對不能像股票一樣放著不管</b>,放到最後會歸零。</div>
+                </div></details>`;
+        } catch (_) { return ''; }
+    },
+
     _renderPositionSizer(data) {
         // 🎯 V70.0.0 U-8 復活:全 App 唯一回答「該買幾張」的卡(ATR 風控;未填帳戶資金顯 CTA 引導)
         const box = document.getElementById('positionSizerCard');
@@ -26187,7 +26261,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 box.className = 'bg-[#161b22] border border-[#30363d] rounded-lg p-3';
                 box.innerHTML = `<div class="flex items-center justify-between mb-1"><span class="text-[12px] font-black text-gray-100">💰 該買幾張(風控部位)</span><button onclick="app.switchAppTab('settings')" class="text-[9px] text-red-300 border border-red-700/50 rounded px-1.5 py-0.5">去設定 →</button></div>
                     <div class="text-[11px] text-gray-300 leading-relaxed">先到 ⚙️ 設定填「帳戶總資金」,系統就會用 <b class="text-red-300">ATR 波動率</b>幫你算:這檔該買幾張才不會爆倉(單筆最多虧帳戶的 1~2%)。<b>散戶九成虧在買太多,這比進場點更重要。</b></div>
-                    <div class="text-[10px] text-gray-500 mt-1.5">📊 這檔波動 ATR ${atr.toFixed(2)} 元/日(${atrPct.toFixed(1)}%)· 建議停損 ${stop.toFixed(2)}(${stopPct.toFixed(1)}%)</div>`;
+                    <div class="text-[10px] text-gray-500 mt-1.5">📊 這檔波動 ATR ${atr.toFixed(2)} 元/日(${atrPct.toFixed(1)}%)· 建議停損 ${stop.toFixed(2)}(${stopPct.toFixed(1)}%)</div>
+                    ${this._warrantFitLine(data)}`;
                 box.classList.remove('hidden'); return;
             }
             const riskAmt = acc * riskPct / 100;
@@ -26229,7 +26304,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 ${lots <= 0 ? `<div class="text-[11px] text-orange-300 leading-relaxed">⚠️ 以你的風控(單筆 ${riskPct}%),這檔停損距離 ${stopPct.toFixed(1)}% 下連 1 張都嫌重——代表<b>波動太大或停損太遠</b>,這檔對你的資金偏大,別勉強做,或等回檔縮小停損距離。</div>`
                 : `<div class="text-[10px] text-gray-400 leading-relaxed">📊 這檔日均波動(ATR)${atr.toFixed(2)} 元(${atrPct.toFixed(1)}%)。買 <b class="text-red-300">${lots} 張</b>(投入 ${investPct.toFixed(0)}% 帳戶)= 萬一跌到停損 ${stop.toFixed(2)} 只虧 <b>${_nf(maxLoss)} 元(帳戶 ${(maxLoss / acc * 100).toFixed(1)}%)</b>。${capped ? '<b class="text-orange-300">(已受單檔 25% 上限限制)</b>' : ''}`}</div>
                 ${heldWarn}
-                <div class="text-[9px] text-gray-600 mt-1.5">💡 停損跟著波動走(不死板 -5%);先控虧損再談獲利,活得久才有複利。非投資建議。</div>`;
+                <div class="text-[9px] text-gray-600 mt-1.5">💡 停損跟著波動走(不死板 -5%);先控虧損再談獲利,活得久才有複利。非投資建議。</div>
+                ${this._warrantFitLine(data)}`;
             box.classList.remove('hidden');
         } catch (e) { console.warn('[posSizer]', e); box.classList.add('hidden'); }
     },
