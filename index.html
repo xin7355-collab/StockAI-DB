@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6738,11 +6738,14 @@ ${list}
     //   ・基本:指數沒有 EPS/本益比/營收,那整頁對它是空的
     //   ・當沖:指數不能下單
     //   ・回測:回測的是「這檔的買賣訊號」,指數不能買 → 誤導
-    //   留下:總覽(改成指數版位置解讀)/即時/K線/籌碼(三大法人是大盤本來就要看的)/多空
-    _idxHiddenSubTabs: ['corp', 'daytrade', 'backtest'],
+    //   ・即時(V71.8.3 追加):報價商只提供**個股**逐筆/五檔,指數要不到 —— 使用者截圖顯
+    //     「⚠️ 加權指數 的盤中資料抓不到」,那不是暫時故障,是**永遠拿不到**。留著只會
+    //     讓人一直重按。而且「五檔買賣」對指數本來就不存在(指數沒有掛單簿)。
+    //   留下:總覽(指數版位置解讀)/K線/籌碼(只留三大法人)/多空
+    _idxHiddenSubTabs: ['corp', 'daytrade', 'backtest', 'live'],
     _syncIndexSubTabs() {
         const idx = this._isIndexSym?.();
-        const MAP = { corp: 'Corp', daytrade: 'DayTrade', backtest: 'Backtest' };
+        const MAP = { corp: 'Corp', daytrade: 'DayTrade', backtest: 'Backtest', live: 'Live' };
         Object.entries(MAP).forEach(([k, t]) => {
             const btn = document.getElementById(`subTabBtn${t}`);
             if (btn) btn.classList.toggle('hidden', !!(idx && this._idxHiddenSubTabs.includes(k)));
@@ -6890,8 +6893,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.2',
+    _APP_VERSION: 'V71.8.3',
     _CHANGELOG: [
+        { v: 'V71.8.3', dt: '2026-08-03', t: '🏛️ 加權指數其餘分頁也清乾淨 + 修一個會給假信心的計分', d: [
+            '上一版只改好加權的「總覽」,你截圖的其他分頁還是個股邏輯,這次一起清。',
+            '【多空頁 —— 最要命的那個】你截圖顯示「多方 1 項・1 分 / 0 項 空方 → 多方優勢 100%」。那個 100% 是「1÷1」算出來的 —— 28 條規則只命中 1 條就敢下結論,而同一畫面總覽寫「高檔回檔中」、六脈寫「訊號不足」,三個結論互相打架。現在**命中少於 4 條就不給方向**,改顯「訊號不足(命中 1/28)」並說明原因。⚠️ 這不只影響指數,任何籌碼/基本面資料不齊的冷門股都會踩到,一起修好了。',
+            '【籌碼頁】指數沒有「券商分點」也沒有「籌碼分佈」(那是逐檔股票的概念),你看到的「此股分點尚未輪到」其實**永遠不會輪到**。現在指數只留「籌碼進出」(三大法人買賣超,大盤本來就要看的),另兩個藏起來。',
+            '【即時頁】報價商只提供個股的逐筆和五檔,指數要不到 —— 那個「盤中資料抓不到」不是暫時故障,是永遠拿不到,留著只會讓你一直重按。而且「五檔買賣」對指數本來就不存在(指數沒有掛單簿)。已整個藏起來。',
+            '【K線頁六脈】加權指數的資料來源不提供成交量,結果「量能」那條被算成「條件沒過」,等於還沒開始比就先扣一分。現在沒資料的條件標成「—」不計分,分母也跟著縮(不再永遠是 /5)。這條同樣是全 App 通用的修正。',
+            '',
+            '目前加權指數只剩 4 個分頁:總覽(位置解讀)/ K線 / 籌碼(三大法人)/ 多空。換回個股時全部自動復原。',
+        ] },
         { v: 'V71.8.2', dt: '2026-08-03', t: '🏛️ 加權指數改成「指數該看的」+ 那個紅框改成會自己修', d: [
             '【加權指數版面】你說得對 —— 之前加權指數整頁都在用**個股**的版面:「這檔在盤整,先等它表態」「帶量突破前高 45323 → 買進」「跌破前低 → 這檔不做」「停損防守」。但**指數根本不能買**,這些價位你也下不了單,看了只會誤導。',
             '改成「🏛️ 加權指數・現在什麼位置」:一年位階(距一年高回檔幾%)、年線在上還在下、月線季線、成交量能、台股波動率、外資現貨與台指期 —— 都是看大盤真正該看的東西。',
@@ -12575,6 +12587,21 @@ const marginByDate = {};
         const total = bullScore + bearScore;
         const ratio = total > 0 ? bullScore / total : 0.5;
         let verdict, verdictTone, oneLiner;
+        // 🐛 V71.8.3 樣本守門(使用者截圖抓到):加權指數只命中 **1 條**規則,占比就變成
+        //   「多方 100% ・多方優勢」——而同一畫面總覽寫「高檔回檔中」、六脈寫「0/5 訊號不足」,
+        //   三個結論打架,而且 100% 完全是「1÷1」算出來的假信心。
+        //   ⚠️ 這不只影響指數:任何冷門股(籌碼/基本面資料少)都會踩到同一個坑。
+        //   → 命中數太少就**不給方向**,誠實說「訊號不足」(同「寧可不給方向」的既有原則)。
+        const HITS_MIN = 4;
+        const hits = bullCount + bearCount;
+        if (hits < HITS_MIN) {
+            verdict = '訊號不足'; verdictTone = 'neutral';
+            oneLiner = `28 條規則只命中 ${hits} 條(至少要 ${HITS_MIN} 條才判方向)`
+                     + `${this._isIndexSym?.() ? ' —— 指數沒有籌碼/基本面資料,本來就只有技術面幾條會亮' : ',多半是這檔的籌碼或基本面資料還沒到齊'}`
+                     + `。先看上方各面向的明細,別用這個占比下判斷。`;
+            return { sym, rules, cats, bullScore, bearScore, bullCount, bearCount, ratio, hits,
+                     lowSample: true, verdict, verdictTone, oneLiner };
+        }
         if (ratio >= 0.65) {
             verdict = '多方優勢'; verdictTone = 'bull';
             const top = ['chip','price','fund','tech'].filter(c => cats[c].bull > cats[c].bear);
@@ -12587,7 +12614,8 @@ const marginByDate = {};
             verdict = '均衡拉鋸'; verdictTone = 'neutral';
             oneLiner = '多空各有訊號,等突破/跌破均線再表態';
         }
-        return { sym, rules, cats, bullScore, bearScore, bullCount, bearCount, ratio, verdict, verdictTone, oneLiner };
+        return { sym, rules, cats, bullScore, bearScore, bullCount, bearCount, ratio, hits,
+                 lowSample: false, verdict, verdictTone, oneLiner };
     },
 
     async _ensureBullBearCaches() {
@@ -12708,7 +12736,7 @@ const marginByDate = {};
             </div>
             <!-- Verdict(動態發光)-->
             <div class="rounded-lg border ${verdictColor} ${glowCls} px-3 py-2.5 text-center transition-shadow">
-                <div class="text-lg font-black tracking-wider">${scan.verdict}<span class="text-sm font-mono opacity-80 ml-2">多方 ${pct}%</span></div>
+                <div class="text-lg font-black tracking-wider">${scan.verdict}${scan.lowSample ? `<span class="text-sm font-mono opacity-80 ml-2">命中 ${scan.hits}/28</span>` : `<span class="text-sm font-mono opacity-80 ml-2">多方 ${pct}%</span>`}</div>
                 <div class="text-[11px] mt-1 opacity-90 leading-relaxed">${scan.oneLiner}</div>
             </div>
         `;
@@ -19257,7 +19285,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             else if (isBreakout) { c4 = vr >= 1.5; v4 = c4 ? `突破放量 ${vr.toFixed(1)} 倍(有效)` : `突破無量 ${vr.toFixed(1)} 倍(易假突破)`; }
             else if (isPullback) { c4 = vr <= 0.85; v4 = c4 ? `回檔量縮 ${vr.toFixed(1)} 倍(洗盤・好買點)` : `回檔帶量 ${vr.toFixed(1)} 倍(留意出貨)`; }
             else { c4 = vr >= 1.2; v4 = c4 ? `量能溫和放大 ${vr.toFixed(1)} 倍` : `量能平淡 ${vr.toFixed(1)} 倍`; }
-            cond.push({ k: '量能', ok: c4, txt: v4 });
+            cond.push({ k: '量能', ok: c4, na: (vr == null), txt: v4 });   // 🐛 V71.8.3 沒資料要標 na,不可當「條件沒過」(加權指數的資料源不給成交量,原本被算成一條失分)
             let c5 = false, hasF = false, v5 = '';
             { const f3 = data.slice(-3).map(F); hasF = f3.some(v => v !== 0); const sum3 = f3.reduce((a, b) => a + b, 0); const posDays = f3.filter(v => v > 0).length; const lots = Math.round(sum3 / 1000);
               if (!hasF) v5 = '外資分點無資料'; else { c5 = sum3 > 0 && posDays >= 2; v5 = c5 ? `外資近3日買超 ${lots.toLocaleString()} 張(連買)` : sum3 < 0 ? `外資近3日賣超 ${Math.abs(lots).toLocaleString()} 張` : '外資近3日買賣互見'; } }
@@ -19267,10 +19295,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const adx = adxObj ? adxObj.adx : null, diUp = adxObj ? adxObj.pdi > adxObj.mdi : null;
             const trendStrong = adx != null && adx >= 25, trendForming = adx != null && adx >= 20, ranging = adx != null && adx < 20;
             let tone, verdict, sop;
-            if (okN >= 4 && !ranging && diUp !== false) { tone = 'red'; verdict = `🔴 ${okN}/5 強共振・買點`; sop = '多數條件同向偏多、且有趨勢 → 右側加碼區:突破帶量可追、回檔量縮可承接;一律守 5 日線。'; }
-            else if (okN >= 3) { tone = 'red'; verdict = `🟡 ${okN}/5 右側第1點・試單`; sop = '三脈翻多=右側起漲第一段,先試單(半量);等其餘條件(RSI/量/籌碼)補齊全面共振再加碼。' + (ranging ? ' ⚠️ ADX<20 盤整中,金叉易騙,更要嚴設停損。' : ''); }
-            else if (okN <= 1) { tone = 'green'; verdict = `🟢 ${okN}/5 訊號不足・觀望`; sop = '多方條件太少 → 別進場,等站上月線 + MACD 翻紅再看。'; }
-            else { tone = 'yellow'; verdict = `⚖️ ${okN}/5 多空未定`; sop = '條件半數 → 方向未明,等再多一脈翻多(尤其量能 + 籌碼)再動。'; }
+            // 🐛 V71.8.3 分母改用 applicable(算得出來的條件數),原本寫死 5 →
+            //   指數沒有量能也沒有分點,等於先扣兩分才開始比,永遠不可能達標。
+            const _N = applicable || 5;
+            if (okN >= Math.max(3, _N - 1) && !ranging && diUp !== false) { tone = 'red'; verdict = `🔴 ${okN}/${_N} 強共振・買點`; sop = '多數條件同向偏多、且有趨勢 → 右側加碼區:突破帶量可追、回檔量縮可承接;一律守 5 日線。'; }
+            else if (okN >= Math.max(2, Math.ceil(_N * 0.6))) { tone = 'red'; verdict = `🟡 ${okN}/${_N} 右側第1點・試單`; sop = '三脈翻多=右側起漲第一段,先試單(半量);等其餘條件(RSI/量/籌碼)補齊全面共振再加碼。' + (ranging ? ' ⚠️ ADX<20 盤整中,金叉易騙,更要嚴設停損。' : ''); }
+            else if (okN <= 1) { tone = 'green'; verdict = `🟢 ${okN}/${_N} 訊號不足・觀望`; sop = '多方條件太少 → 別進場,等站上月線 + MACD 翻紅再看。'; }
+            else { tone = 'yellow'; verdict = `⚖️ ${okN}/${_N} 多空未定`; sop = '條件半數 → 方向未明,等再多一脈翻多(尤其量能 + 籌碼)再動。'; }
             // ── 早出場(寧早勿晚)──
             const exits = [];
             if (rsi != null && rsiPrev != null && rsi >= 70 && rsi < rsiPrev) exits.push('RSI 高檔(≥70)開始下彎 → 短線過熱轉弱,先減碼獲利。');
@@ -19328,7 +19359,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const _smHtml = `
             <div class="flex items-center justify-between gap-2">
                 <div class="text-[13px] font-black text-gray-100">⚔️ 新六脈・共振計分 <button onclick="alert('⚔️ 新六脈共振計分\\n\\n把「六脈神劍」去繁從簡:剔除同質又滯後的 BBI/MTM/LWR,精簡成 3 個不同時間尺度的劍 + 加入市場靈魂(量能+籌碼):\\n\\n① 趨勢:站上 20MA(月線=多空分水嶺)\\n② MACD:柱狀翻紅/金叉(中期波段)\\n③ RSI:動能偏強且非超買(短線)\\n④ 量能:突破要放量(≥1.5倍)、回檔要量縮(洗盤才是好買點)——分情境\\n⑤ 籌碼:外資近3日連買\\n\\nADX 趨勢強度過濾盤整假金叉(<20 盤整、≥25 強趨勢)。\\n\\n右側分批:3脈翻多=第1點試單、4-5脈共振=加碼。早出場:RSI高檔下彎或跌破5日線先減碼(寧早勿晚)。\\n\\n純公式、日K盤後,非投資建議,一律守停損。');event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button> ${this._dChip(data[data.length - 1]?.date, '日K')}</div>
-                <div class="flex items-baseline gap-0.5"><span class="font-mono font-black text-2xl ${tcls} leading-none">${v.okN}</span><span class="text-[10px] text-gray-500">/5</span></div>
+                <div class="flex items-baseline gap-0.5"><span class="font-mono font-black text-2xl ${tcls} leading-none">${v.okN}</span><span class="text-[10px] text-gray-500">/${v.applicable || 5}</span></div>
             </div>
             <div class="text-base font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
             ${ignite ? (ignite.type === 'fire'
@@ -21270,6 +21301,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     switchChipTab(tab) {
+        // 🏛️ V71.8.3 指數沒有「券商分點」也沒有「籌碼分佈」(那是逐檔股票的概念)。
+        //   使用者截圖:加權指數的籌碼頁停在券商分點,顯「此股分點尚未輪到」—— 但它永遠不會輪到。
+        //   → 指數只留「籌碼進出」(三大法人買賣超,大盤本來就要看的),另兩個分頁藏起來。
+        const _idx = this._isIndexSym?.();
+        if (_idx && tab !== 'flow') tab = 'flow';
         this._activeChipTab = tab;
         const panes = { broker: 'chipPaneBroker', flow: 'chipPaneFlow', dist: 'chipPaneDist' };
         Object.entries(panes).forEach(([k, id]) => {
@@ -21280,7 +21316,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const btn = document.getElementById('chipTabBtn-' + k);
             if (!btn) return;
             const on = k === tab;
-            btn.className = 'flex-1 py-2 rounded-lg text-xs font-black border transition-all '
+            // ⚠️ 這裡是整個 className 重寫 → hidden 必須寫進同一個字串(同 switchOvTab 的坑)
+            btn.className = ((_idx && k !== 'flow') ? 'hidden ' : '')
+                + 'flex-1 py-2 rounded-lg text-xs font-black border transition-all '
                 + (on ? 'border-amber-600 bg-amber-900/30 text-amber-200'
                       : 'border-[#30363d] text-gray-400 hover:bg-[#21262d]');
         });
