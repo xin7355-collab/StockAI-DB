@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6899,8 +6899,18 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.4',
+    _APP_VERSION: 'V71.8.6',
     _CHANGELOG: [
+        { v: 'V71.8.6', dt: '2026-08-03', t: '🎲 「這個勝率是不是運氣?」現在算得出來', d: [
+            '看完你給的多代理分析包後,唯一補進來的東西(其餘見下方說明)。',
+            '原本「今天這檔怎麼做」只會說「此打法只出現過 6 次,樣本少、勝率別當真」—— 但沒回答**幾次才算數**。',
+            '現在會直接算:假設這個打法其實沒優勢(等於丟銅板),純靠運氣要出現這種成績的機率有多少。',
+            '・12 次 8 勝(67%)→ 運氣也有 19% 機率長這樣 → ⚠️ 參考就好',
+            '・40 次 27 勝(68%)→ 運氣只有 1.9% → ✅ 統計上站得住腳',
+            '・50 次 26 勝(52%)→ 運氣有 44% → ⛔ 跟丟銅板差不多,別當依據',
+            '同樣一個 67%,12 次跟 40 次的可信度差很多 —— 以前這件事你看不出來。',
+            '⚠️ 誠實話:它只檢定「跟丟銅板比有沒有差」,不代表未來會延續,也還沒扣交易成本(那個在賺賠元裡另外算)。',
+        ] },
         { v: 'V71.8.4', dt: '2026-08-03', t: '🏛️ 加權指數:籌碼/多空刪掉 + K線的量終於有東西', d: [
             '你問「籌碼、多空是否需要刪除」→ **要,已刪**。理由就在你的截圖裡:',
             '・籌碼三張卡**全是空的,而且是永久的**:「三大法人動態:籌碼資料尚未採礦」(法人買賣超是**逐檔**資料,指數沒有自己的一份)、「融資券:此股極少交易」、「付費籌碼:非觀察清單」。大盤層級的三大法人本來就在「大盤」頁看得到,不必在這裡再開一個空殼。',
@@ -18383,6 +18393,44 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // 🎲 V71.8.6 「這個勝率是不是運氣?」—— 二項式檢定(純公式,零 API)。
+    //   來源:使用者提供的多代理股票分析包,它的回測指南列了蒙地卡羅/穩健性檢定。
+    //   ⛔ 那包大部分東西我已經有(且更好),但**這一條是真缺口**:
+    //     我原本只寫「樣本少,勝率別當真」,沒有回答「到底幾次才算數」。
+    //   做法:假設這個打法其實沒有優勢(勝率=50%),算出「純靠運氣也能出現這麼好(或更好)」
+    //   的機率 p。p 越小 = 越不像運氣。
+    //   例:12 次 8 勝(67%)→ p≈19%,五次裡有一次會這樣 → **不夠有說服力**;
+    //       40 次 27 勝(68%)→ p≈1.9% → 才算有統計意義;50 次 26 勝(52%)→ p≈44% → 等同丟銅板。
+    //   ⚠️ 誠實話:這只檢定「跟丟銅板比有沒有差」,不代表未來會延續,更沒扣交易成本。
+    _winRateP(wins, n) {
+        wins = Math.round(+wins); n = Math.round(+n);
+        if (!(n > 0) || wins < 0 || wins > n) return null;
+        // P(X >= wins | n, 0.5) = Σ C(n,k) / 2^n ,用對數階乘避免大數溢位
+        const lg = [0];
+        for (let i = 1; i <= n; i++) lg[i] = lg[i - 1] + Math.log(i);
+        const lchoose = (a, b) => lg[a] - lg[b] - lg[a - b];
+        let p = 0;
+        for (let k = wins; k <= n; k++) p += Math.exp(lchoose(n, k) - n * Math.LN2);
+        return Math.min(1, Math.max(0, p));
+    },
+
+    // 回一句白話結論(給任何「勝率 X% ・N 次」的地方共用)
+    _winRateConfidence(winRatePct, n) {
+        const p = this._winRateP(Math.round((+winRatePct || 0) / 100 * (+n || 0)), n);
+        if (p == null) return null;
+        const pctTxt = `${(p * 100).toFixed(p < 0.01 ? 2 : 0)}%`;
+        if (n < 10) return { p, ok: false, icon: '⏳',
+            txt: `只出現過 ${n} 次 —— 樣本太少,<b>這個勝率還不能當結論</b>(純靠運氣也有 ${pctTxt} 機率長這樣)。只能小量試。` };
+        if (p <= 0.05) return { p, ok: true, icon: '✅',
+            txt: `${n} 次樣本,純靠運氣要出現這種成績的機率只有 ${pctTxt} → <b>統計上站得住腳</b>(仍非保證,且未計交易成本)。` };
+        // ⚠️ 門檻用 0.25 而不是 0.15:p=19%(如 12 次 8 勝)意思是「五次裡有一次是運氣」,
+        //    那叫「證據偏弱」,不是「跟丟銅板一樣」—— 講太重會讓人連參考價值都不看。
+        if (p <= 0.25) return { p, ok: null, icon: '⚠️',
+            txt: `${n} 次樣本,但純靠運氣也有 ${pctTxt} 機率長這樣 → <b>參考就好</b>,再多累積幾次才敢當依據。` };
+        return { p, ok: false, icon: '⛔',
+            txt: `${n} 次樣本,純靠運氣有 ${pctTxt} 機率就能出現這種成績 → <b>跟丟銅板差不多,別當依據</b>。` };
+    },
+
     // 💰 V71.7.8 手續費折數 + 「一張的淨賺賠」單一真相源。
     //   ⛔ 全 App 只准用這兩支算淨損益;原本「今天這檔怎麼做」卡裡有一份 inline 的同款公式,
     //      已改為呼叫這裡 —— 不然折數規則一改就會有兩個版本的金額(使用者鐵則:同一個名詞只能有一個數字)。
@@ -18938,7 +18986,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const pctTo = v => `${v >= buyRef ? '+' : ''}${((v - buyRef) / buyRef * 100).toFixed(1)}%`;   // 🎨 V56.2 高價股一張數十萬,改 % 為主、元/張縮括號
                 inner = `
                 <div class="text-[10px] text-gray-400 font-mono mb-1.5">${stat(hit.r)}(本股歷史)</div>
-                ${hit.r.count < 8 ? `<div class="text-[9px] text-yellow-300/90 mb-1.5">⚠️ 此打法在本股只出現過 ${hit.r.count} 次,樣本少、統計參考性低 → 只能小量試,勝率別當真。</div>` : ''}
+                ${(() => {   // 🎲 V71.8.6 改成講「幾次才算數」,不再只是「樣本少」
+                    const c = this._winRateConfidence?.(hit.r.winRate, hit.r.count);
+                    if (!c) return '';
+                    const cls = c.ok === true ? 'text-green-300/90' : c.ok === null ? 'text-yellow-300/90' : 'text-orange-300/90';
+                    return `<div class="text-[9px] ${cls} mb-1.5 leading-snug">${c.icon} ${c.txt}</div>`;
+                })()}
                 <div class="grid grid-cols-3 gap-1.5 mb-1.5">
                     ${cell('進場', buyRef.toFixed(2), 'text-red-300', hit.ago === 0 ? '直接買/市價' : '不追高於此')}
                     ${cell('停損', stop.toFixed(2), 'text-green-300', `${pctTo(stop)}<span class="text-[8px]">(${net(buyRef, stop).toLocaleString()}/張)</span>`)}
