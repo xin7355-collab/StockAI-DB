@@ -151,6 +151,87 @@ def main():
               f'(n={tgt[20][2]}、勝率 {tgt[20][1]:.1f}%)')
         print(f'   全部組合的中位數當基準 = {base:+.2f}% → 這個組合的邊際 {edge:+.2f}pp')
         print(f'   → {"✅ 有邊際,值得做" if edge > 0.5 else ("➖ 邊際很小,做了也沒差" if edge > -0.5 else "❌ 反而更差,別做")}')
+    # ── ⭐ V71.9.7 追加:位階 × 股東人數(新逐字稿的兩個線索)────────────────
+    # 逐字稿【第23集 2種再見股】:「壞的再見股…股價在**高檔**主力賣散戶買,後面會跌一段」
+    #   → 「兩上兩下」卡目前**沒有位階守門**,而 cb_probe 那次證明位階常常是決定性的。
+    # 另一段:「我最喜歡看這三個指標:主力買超、主力買散戶賣、**集保戶數**」
+    #   → `h` 每列第 5 欄就是股東人數,一直沒用。人數減少 = 同樣股票被更少人拿著 = 籌碼集中。
+    print('\n' + '=' * 66)
+    print('⭐ 追加測試①:位階 × 大戶散戶方向(他說「高檔主力賣散戶買」最慘)')
+    st = defaultdict(lambda: defaultdict(list))
+    st2 = defaultdict(lambda: defaultdict(list))
+    for sym, v in tdcc.items():
+        if sym.startswith('__') or not isinstance(v, dict):
+            continue
+        h = v.get('h') or []
+        if len(h) < 4:
+            continue
+        px, days = daily(load(DATA / f'{sym}.json') or [])
+        if len(days) < 300:
+            continue
+        for wi in range(1, len(h) - 1):
+            try:
+                d_cur = str(h[wi][0])
+                big_now, big_prev = float(h[wi][1]), float(h[wi - 1][1])
+                ret_now, ret_prev = float(h[wi][3]), float(h[wi - 1][3])
+                ppl_now = float(h[wi][4]) if len(h[wi]) > 4 else 0
+                ppl_prev = float(h[wi - 1][4]) if len(h[wi - 1]) > 4 else 0
+            except (IndexError, TypeError, ValueError):
+                continue
+            iso = f'{d_cur[:4]}-{d_cur[4:6]}-{d_cur[6:8]}'
+            fut = [d for d in days if d > iso]
+            past = [d for d in days if d <= iso]
+            if len(fut) < max(HORIZONS) + 1 or len(past) < 250:
+                continue
+            d0 = fut[0]
+            win = [px[d][0] for d in past[-250:]]
+            mn, mx = min(win), max(win)
+            cur = px[d0][0]
+            pos = (cur - mn) / (mx - mn) * 100 if mx > mn else 50
+            pb = '低位階' if pos < 33 else ('中位階' if pos < 67 else 'HI 高位階')
+            bad = (big_now < big_prev) and (ret_now > ret_prev)
+            good = (big_now > big_prev) and (ret_now < ret_prev)
+            lab = '大戶↓散戶↑(他說最慘)' if bad else ('大戶↑散戶↓' if good else '其他')
+            pk = None
+            if ppl_now > 0 and ppl_prev > 0:
+                pk = '股東人數↓(集中)' if ppl_now < ppl_prev else '股東人數↑(分散)'
+            for hz in HORIZONS:
+                d1 = fut[hz]
+                if d0 in px and d1 in px and d0 in twii_map and d1 in twii_map:
+                    ex = ((px[d1][0] - px[d0][0]) / px[d0][0]
+                          - (twii_map[d1][0] - twii_map[d0][0]) / twii_map[d0][0]) * 100
+                    st[(pb, lab)][hz].append(ex)
+                    if pk:
+                        st2[pk][hz].append(ex)
+
+    print(f'{"位階":<10}{"大戶/散戶方向":<24}{"n":>6}{"20日中位":>10}{"20日勝率":>10}')
+    for pb in ('低位階', '中位階', 'HI 高位階'):
+        for lab in ('大戶↑散戶↓', '大戶↓散戶↑(他說最慘)'):
+            v = st.get((pb, lab)) or {}
+            n = len(v.get(20) or [])
+            if n < MIN_BUCKET:
+                print(f'{pb:<10}{lab:<24}{n:>6}   樣本不足')
+                continue
+            w = sum(1 for x in v[20] if x > 0) / n * 100
+            print(f'{pb:<10}{lab:<24}{n:>6}{statistics.median(v[20]):>+9.2f}%{w:>9.1f}%')
+
+    print('\n⭐ 追加測試②:股東人數方向(他的第三個指標「集保戶數」)')
+    print(f'{"":<24}{"n":>6}' + ''.join(f'{f"{h}日中位":>10}' for h in HORIZONS) + f'{"20日勝率":>10}')
+    got = {}
+    for pk in ('股東人數↓(集中)', '股東人數↑(分散)'):
+        v = st2.get(pk) or {}
+        n = len(v.get(20) or [])
+        if n < MIN_BUCKET:
+            print(f'{pk:<24}{n:>6}   樣本不足')
+            continue
+        got[pk] = statistics.median(v[20])
+        w = sum(1 for x in v[20] if x > 0) / n * 100
+        print(f'{pk:<24}{n:>6}' + ''.join(f'{statistics.median(v[hh]):>+9.2f}%' for hh in HORIZONS) + f'{w:>9.1f}%')
+    if len(got) == 2:
+        d = got['股東人數↓(集中)'] - got['股東人數↑(分散)']
+        print(f'   -> 集中 - 分散 = {d:+.2f}pp'
+              f' -> {"OK 有邊際,值得用" if d > 0.8 else "-- 沒有明顯邊際" if d > -0.8 else "XX 反而更差"}')
+
     print(f'\n⚠️ 硬限制:集保只有 {weeks} 週(約 {weeks // 4} 個月),全部落在同一個市場環境,')
     print('   而且是倖存者樣本(已下市的不在裡面)。累積到 1 年以上再重跑才有統計意義。')
     return 0

@@ -29,8 +29,8 @@ const ok = (name, cond, extra = '') => {
 };
 
 // 集保列格式:[YYYYMMDD, 大戶%, 中實戶%, 散戶%, 股東數]
-const mkTdcc = (bigPrev, bigNow, retPrev, retNow) => ({
-    '2330': { t: 25930000000, h: [[20260718, bigPrev, 10, retPrev, 500000], [20260725, bigNow, 10, retNow, 499000]] },
+const mkTdcc = (bigPrev, bigNow, retPrev, retNow, pplPrev = 500000, pplNow = 499000) => ({
+    '2330': { t: 25930000000, h: [[20260718, bigPrev, 10, retPrev, pplPrev], [20260725, bigNow, 10, retNow, pplNow]] },
 });
 const mkDaily = (mgNow, mgPrev) => Array.from({ length: 8 }, (_, i) => ({
     date: `2026/07/${String(20 + i).padStart(2, '0')}`, open: 100, high: 101, low: 99, close: 100, volume: 10000,
@@ -57,7 +57,8 @@ let r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8), mkDaily(900, 1000));
 ok('① 大戶上升 → bigUp=true', r.f && r.f.bigUp === true, JSON.stringify(r.f));
 ok('① 散戶下降 → retDown=true', r.f && r.f.retDown === true, JSON.stringify(r.f));
 ok('① 融資減少 → mgDir=down', r.f && r.f.mgDir === 'down', JSON.stringify(r.f));
-ok('① hits=3', r.f && r.f.hits === 3, JSON.stringify(r.f));
+// ⚠️ V71.9.7 起 hits 是**四項**的命中數(第 4 項=股東人數↓);判定門檻另用 core3(前三項)。
+ok('① hits=4(四項全過)', r.f && r.f.hits === 4, JSON.stringify(r.f));
 ok('① 三項全過時三個 ✅', (r.html.match(/✅/g) || []).length >= 3, r.html.slice(0, 200));
 
 // ⭐ 最重要的一條:結論必須帶實測數字,而且⛔不可講成「會賺」
@@ -77,14 +78,14 @@ ok('④ 必須寫非投資建議', /非投資建議/.test(r.html));
 
 // ── ⑤ 融資還在增 → 最差那組,文案要講「基本上無效」──────────────
 r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8), mkDaily(1100, 1000));
-ok('⑤ 融資增加 → mgDir=up、hits=2', r.f.mgDir === 'up' && r.f.hits === 2, JSON.stringify(r.f));
+ok('⑤ 融資增加 → mgDir=up、hits=3(大戶/散戶/股東人數過)', r.f.mgDir === 'up' && r.f.hits === 3, JSON.stringify(r.f));
 ok('⑤ 融資↑ 要帶實測墊底數字(−2.21~−2.60)',
    /2\.21/.test(r.html) && /2\.60/.test(r.html), r.html.slice(0, 500));
 ok('⑤ 融資↑ 要明說這套選股法無效', /無效/.test(r.html), r.html.slice(0, 500));
 
 // ── ⑥ 大戶↓散戶↑ 但融資↓ → 中間那檔,不可顯示成三項全過 ────────
 r = await run(mkTdcc(61.5, 60.0, 23.8, 25.0), mkDaily(900, 1000));
-ok('⑥ 大戶下降/散戶上升 → hits=1', r.f.hits === 1 && !r.f.bigUp && !r.f.retDown, JSON.stringify(r.f));
+ok('⑥ 大戶下降/散戶上升 → hits=2(只剩融資↓與股東人數↓)', r.f.hits === 2 && !r.f.bigUp && !r.f.retDown, JSON.stringify(r.f));
 ok('⑥ 不可誤標成三項全過', !/三項全過/.test(r.html), r.html.slice(0, 200));
 
 // ── ⑦ 沒有融資資料 → ⏳ 而不是判成過關 ─────────────────────
@@ -113,6 +114,28 @@ ok('⑨ _renderChipDistribution 有呼叫 _tdccFourFactorHtml', wired.call);
 ok('⑨ ⭐ html 必須是 let(後面有 html += idHtml,const 會被靜默吞掉)', wired.letHtml);
 
 ok('⑩ 全程無 pageerror', errs.length === 0, errs.join(' | '));
+
+// ── ⑪ V71.9.7 第 4 因子:股東人數(集保戶數)────────────────────────
+r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8, 500000, 499000), mkDaily(900, 1000));
+ok('⑪ 股東人數減少 → pplDown=true', r.f.pplDown === true, JSON.stringify(r.f));
+ok('⑪ 要顯示人數與變化%', /499,000 人/.test(r.html) && /-0\.2%/.test(r.html), r.html.slice(0, 900));
+ok('⑪ ⭐ 要誠實標「加分不多」(實測只有 +0.88pp)', /加分不多/.test(r.html), r.html.slice(0, 900));
+ok('⑪ 要帶第 4 因子的實測數字', /0\.88/.test(r.html), r.html.slice(-600));
+r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8, 490000, 500000), mkDaily(900, 1000));
+ok('⑪ 股東人數增加 → pplDown=false', r.f.pplDown === false, JSON.stringify(r.f));
+// ⭐ 最關鍵:第 4 項沒過,但前三項全過 → 仍然要判「三項全過」
+ok('⑪ ⭐ 第 4 項沒過但前三項全過 → 仍判「三項全過」(⛔ 不可改成四項全過才算)',
+   /三項全過/.test(r.html), r.html.slice(0, 300));
+// ⑫ 沒有股東人數欄位 → ⏳,不可當作沒過
+r = await page.evaluate(() => {
+    app._tdccHoldersCache = { '2330': { t: 1e9, h: [[20260718, 60, 10, 25], [20260725, 61.5, 10, 23.8]] } };
+    app.rawDailyData = Array.from({ length: 8 }, (_, i) => ({ date: `2026/07/2${i}`, open: 1, high: 1, low: 1, close: 1, volume: 1, margin_balance: i === 7 ? 900 : 1000 }));
+    return { f: app._tdccFourFactor('2330'), html: app._tdccFourFactorHtml('2330') };
+});
+ok('⑫ 沒有股東人數欄 → pplDown=null(不是 false)', r.f.pplDown === null, JSON.stringify(r.f));
+ok('⑫ 仍要判三項全過(⛔ 缺資料不等於沒通過)', /三項全過/.test(r.html), r.html.slice(0, 300));
+// ⑬ 位階守門:實測不成立,⛔ 不可加
+ok('⑬ ⭐ 要寫明「高檔才算數」驗過但不成立', /不成立/.test(r.html) || /不加位階限制/.test(r.html), r.html.slice(-700));
 
 await browser.close();
 console.log('');
