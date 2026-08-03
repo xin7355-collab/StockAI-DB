@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,26 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.8',
+    _APP_VERSION: 'V71.9.9',
     _CHANGELOG: [
+        { v: 'V71.9.9', dt: '2026-08-03', t: '📊 我把每個訊號都回測過了 —— 六成其實沒用', d: [
+            '你說「不要所有資料都打出來,根本不知道看哪一個」。所以我把 App 裡**每一個 K 線訊號都拿去回測**:250 檔股票、3 年歷史,訊號出現後 10 個交易日表現如何(已扣掉同期大盤)。',
+            '',
+            '⭐ **最重要的一件事先講**:基準勝率是 **34.6%**,不是 50%。',
+            '因為加權指數是「市值加權」(台積電權重超大),中位數的個股本來就跑輸大盤。所以一個訊號勝率 41%,**已經是贏過隨便挑一天**。',
+            '',
+            '🏅 **實測結果(122 個訊號)**:',
+            '・✅ **A 級(統計上站得住腳)只有 29 個**',
+            '・⚠️ B 級(證據偏弱)20 個',
+            '・**C 級(跟隨機完全沒差)73 個 —— 佔六成**',
+            '',
+            '📍 所以 K 線頁改成:**A/B 級置頂並標出實測勝率**(例如「✅ 勝率 44.6%・130 次」),其餘的全部收進下面的摺疊區,標明「觀察用,別當進場理由」。',
+            '',
+            '🎯 目前實測最強的幾個:底部頸線突破(+1.47%)、晨星轉折(+1.36%)、極端超跌有量(+1.23%)、葛蘭碧買3 回測月線(+1.05%)、站上長黑K高點(+0.87%)。',
+            '',
+            '⚠️ **我沒有把 C 級刪掉** —— 裡面有些是風險提醒(像長黑棒),刪掉會讓你以為沒風險,收起來但點得開才誠實。',
+            '⚠️ 這是歷史統計、不是保證,而且**沒有扣交易成本**。點訊號旁邊的「ⓘ 怎麼看」有完整說明。',
+        ] },
         { v: 'V71.9.8', dt: '2026-08-03', t: '🧙🗺️ 關鍵分點(低檔大買/高檔大賣)+ 地緣分點', d: [
             '你要的三件事,兩件做好了,一件驗完發現不能做(下面說明)。',
             '',
@@ -18923,15 +18941,65 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   例:12 次 8 勝(67%)→ p≈19%,五次裡有一次會這樣 → **不夠有說服力**;
     //       40 次 27 勝(68%)→ p≈1.9% → 才算有統計意義;50 次 26 勝(52%)→ p≈44% → 等同丟銅板。
     //   ⚠️ 誠實話:這只檢定「跟丟銅板比有沒有差」,不代表未來會延續,更沒扣交易成本。
-    _winRateP(wins, n) {
+    // ⚠️ V71.9.9 加第 3 參數 p0(基準勝率),**預設 0.5 → 既有呼叫端行為完全不變**。
+    //   為什麼要加:全訊號回測(scripts/signal_backtest.mjs)實測發現,
+    //   「隨便挑一天」的基準勝率是 **36.4%** 而不是 50%
+    //   (超額報酬是對**市值加權**的加權指數算的,中位數個股本來就跑輸 —— 同 cb_probe 那次)。
+    //   拿 50% 當虛無假設會把訊號評得太好 → 回測一律傳入實測基準。
+    //   ⛔ 顯示給使用者的「勝率 X% ・N 次」仍用 0.5(那問的是「有沒有比丟銅板好」,是另一個問題)。
+    // 📊 V71.9.9 全訊號實測勝率表 —— 使用者要求「只顯示有用、勝率高的,不要全部打出來」
+    //
+    // 產生方式:`node scripts/signal_backtest.mjs 250`
+    //   ⭐ **跑真正的 JS 偵測器**跑歷史(⛔ 不另外複製一份判定邏輯 —— 那會變成第二份真相)
+    //   250 檔 × 每 2 根 K 掃一次 × 40 個偵測器,報酬**已扣同期加權指數**,同檔同訊號 5 日內只算一次。
+    //
+    // ⚠️ 兩個容易誤讀的地方,寫在這裡免得日後有人改壞:
+    //   ① **基準勝率是 34.6% 不是 50%** —— 超額報酬是對**市值加權**的加權指數算的,
+    //      中位數個股本來就跑輸(同 cb_probe 那次)。所以 41% 勝率**已經是贏基準**。
+    //      統計檢定一律用 34.6% 當虛無假設,⛔ 用 50% 會把訊號評得太好。
+    //   ② 「邊際」= 這個訊號的報酬 **減掉**「隨便挑一天」的報酬,⛔ 不是絕對報酬。
+    //      絕對值多半是負的(中位數個股就是輸大盤),但那不是訊號的錯。
+    //
+    // 🏅 分級:A = p≤0.05(統計上站得住腳)・B = p≤0.25(偏弱)・C = 跟隨機沒差
+    //   實測結果:**A 只有 29 個、B 20 個,而 C 有 73 個(佔 60%)**
+    //   → 這就是「資訊爆炸」的根因:六成的訊號其實沒有鑑別力。
+    //
+    // ⛔ 這張表是**偵測器的屬性**(跟程式碼綁),不是每日資料 → 刻意嵌在這裡跟版本一起走,
+    //    不走採礦。改了任何 _detectXxx 的判定邏輯,**必須重跑回測更新這張表**。
+    // 格式:key -> [分級, n, 10日邊際%, 10日勝率%, p值, 20日邊際%]
+    _SIGNAL_EDGE_META: {"base_win":34.59052281385207,"base_med":-2.005202039605873,"syms":250,"n_base":58013,"A":29,"B":20,"C":73},
+    _SIGNAL_EDGE: {"_detectBottomBreakout｜底部頸線突破(形態)":["A",229,1.471,44.1,0.0018,3.048],"_detectStarPatterns｜晨星轉折":["A",130,1.357,44.6,0.0114,3.414],"_detectFloorBounce｜極端超跌・有量(接刀請看實測)":["A",500,1.229,45.4,0,1.911],"_detectGap｜向上跳空未回補":["A",1072,1.091,39.8,0.0002,1.067],"_detectChuLongEntry｜多頭但追高":["A",992,1.062,40.3,0.0001,1.12],"_detectGranville｜葛蘭碧買3(回測月線支撐)":["A",1577,1.046,41.7,0,1.262],"_detectStarPatterns｜晨星轉折+爆量":["A",46,1.042,47.8,0.0438,3.482],"_detectBottomBreakout｜W底(雙重底)(形態)":["A",302,0.894,42.1,0.0042,0.53],"_detectBlackCandleLevels｜🕯️ 站上長黑K高點(壓力變支撐)":["A",590,0.871,43.2,0,0.985],"_detectMaGoldenCross｜月線黃金交叉季線":["A",573,0.867,40.1,0.0032,0.273],"_detectMaDeviation｜負乖離過大":["A",335,0.849,42.1,0.0026,2.619],"_detectVolPriceScenario｜🔴 高檔出貨量":["A",377,0.835,41.1,0.0049,1.155],"_detectVolPriceDiverge｜無量創高(量價背離)":["A",982,0.797,39.1,0.0018,1.418],"_detectBottomBreakout｜三重底(形態)":["A",341,0.741,42.5,0.0014,0.469],"_detectKbarStrength｜強中透弱(出貨警訊)":["A",916,0.659,39.3,0.0017,0.52],"_detectPocketPivot｜💰 口袋支點(主力偷買)":["A",1451,0.489,39.8,0,0.882],"_detectPressureTest｜測壓有壓(前高賣壓)":["A",625,0.447,40.3,0.0016,0.822],"_detectBlackCandleLevels｜🕯️ 站上長黑K平均成本(空單套牢)":["A",789,0.393,37.8,0.0335,0.496],"_detectGap｜向下缺口已回補":["A",1869,0.35,36.9,0.0186,-0.013],"_detectGap｜向下跳空未回補":["A",3064,0.339,36.3,0.0252,0.336],"_detectVolPriceScenario｜🟢 回後買點到了·加碼":["A",816,0.304,40.7,0.0002,0.105],"_detectKbarStrength｜高檔變盤線":["A",2082,0.224,37.8,0.0012,0.109],"_detectHeavyResistance｜壓力沉重‧反覆過不了":["A",4016,0.206,36,0.0311,0.294],"_detectNBottom｜N字底(黃金右腳)":["A",455,0.201,40.7,0.0041,0.558],"_detectVolumeSignals｜攻擊量(主力進貨)":["A",4973,0.087,36.3,0.0061,0.138],"_detectKbarStrength｜長上影線(賣壓)":["A",1364,0.039,38.3,0.0025,0.039],"_detectGap｜向上突破缺口(帶量)":["A",1089,0.033,37.6,0.0218,-0.14],"_detectChuOverheat｜急漲過熱(高檔留意)":["A",261,-0.482,40.6,0.0248,-3.264],"_detectKbarStrength｜實體長黑棒(最強空壓)":["A",340,-0.505,39.4,0.0359,-0.781],"_detectVolumeSignals｜換手量(洗籌續攻)":["B",132,1.013,41.7,0.0543,2.426],"_detectVolumeSignals｜高檔出貨量":["B",293,0.754,38.9,0.0687,1.235],"_detectVolPriceDiverge｜價漲量縮(高檔背離)":["B",385,0.657,37.1,0.1588,1.078],"_detectChuShortTrend｜空頭反彈空點":["B",352,0.543,37.8,0.1148,0.341],"_detectVCP｜🎯 VCP波動收縮·突破在即":["B",545,0.465,37.8,0.0638,0.954],"_detectObvDivergence｜OBV 頂背離":["B",845,0.435,36.6,0.1208,0.76],"_detectElliott｜艾略特 第3浪推進(推估)":["B",1410,0.159,36.3,0.0919,-0.109],"_detectConsolidation｜盤整觀望":["B",2925,0.149,35.5,0.1586,0.213],"_detectFloorBounce｜極端超跌・沒量(更不該接)":["B",1821,0.148,35.6,0.1927,0.362],"_detectStall｜高檔直漲停頓(力竭前兆)":["B",1545,0.094,36.6,0.0543,-0.126],"_detectChuLongEntry｜朱式做多買點(力道偏弱)":["B",819,0.074,36.4,0.1484,0.434],"_detectPressureTest｜測壓有壓(前高賣壓)+爆量":["B",290,0.032,38.3,0.1049,1.14],"_detectWyckoffPhase｜🌊 威科夫·拉抬段":["B",1917,0.007,35.5,0.2015,-0.141],"_detectChuShortTrend｜空頭轉多訊號":["B",868,-0.13,36.2,0.172,-0.217],"_detectChuOverheat｜連漲過熱停利":["B",518,-0.418,37.1,0.1278,-1.3],"_detectChuThreeBlack｜連三黑後帶量紅K":["B",674,-0.44,36.4,0.1786,-0.499],"_detectBlackCandleLevels｜🕯️ 壓在長黑K最低價下(最強壓力)":["B",1464,-0.495,35.7,0.1881,-0.779],"_detectGap｜疑似竭盡缺口(高檔)":["B",418,-0.631,38.3,0.0634,-2.79],"_detectKbarStrength｜實體長紅棒(最強力道)":["B",570,-1.028,36.1,0.2309,-1.066],"_detectMaDeviation｜正乖離過大":["B",488,-2.028,37.1,0.133,-4.118],"_detectStarPatterns｜群星晨星+爆量":["C",50,0.883,40,0.2534,0.784],"_detectWyckoffPhase｜🌊 威科夫·出貨段":["C",124,0.82,36.3,0.3775,1.075],"_detectChuShortTrend｜空頭急跌爆量":["C",132,0.309,37.1,0.2993,0.831],"_detectBottomBreakout｜圓弧底(碗型)(形態)":["C",68,0.225,35.3,0.4969,4.979],"_detectTrendline｜突破下降趨勢線":["C",1572,0.196,35.1,0.34,-0.268],"_detectReversalConfirm｜低檔轉折確認(開高)":["C",2686,0.143,35.1,0.2929,0.147],"_detectTopBreakdown｜頭部頸線跌破(形態)":["C",1567,0.142,35.2,0.3069,0.702],"_detectConsolidation｜三角收斂盤整":["C",3710,0.136,34.3,0.6449,0.145],"_detectMaCluster｜均線糾結(一字底)":["C",7930,0.127,34.2,0.7715,0.211],"_detectChuLongEntry｜多頭回檔等買點":["C",2255,0.123,35.1,0.305,-0.05],"_detectWyckoffPhase｜🌊 威科夫·下跌段":["C",3991,0.121,34.7,0.4465,0.255],"_detectReversalConfirm｜高檔轉折確認(開低)":["C",488,0.119,35.7,0.326,0.705],"_detectKbarStrength｜低檔變盤線":["C",4859,0.099,34.4,0.6209,-0.02],"_detectChuShortTrend｜並排紅K假跌破":["C",330,0.058,36.1,0.3058,-0.627],"_detectKbarStrength｜長下影線(支撐)":["C",2664,0.044,34.5,0.5477,-0.007],"_detectChuThreeBlack｜整數關卡守住":["C",1383,0.014,34.6,0.4963,-0.188],"_detectChuShortTrend｜空頭趨勢(別接刀)":["C",4527,-0.005,34.1,0.7579,-0.131],"_detectGranville｜葛蘭碧買1(突破月線)":["C",1008,-0.031,33.6,0.7491,-0.007],"_detectChuThreeBlack｜反彈空間到月線":["C",12891,-0.055,33.6,0.9915,-0.031],"_detectGranville｜葛蘭碧賣3(反彈受阻月線)":["C",3013,-0.063,32.2,0.9974,0],"_detectGranville｜葛蘭碧買2(假跌破站回)":["C",1627,-0.086,33.7,0.7869,0.053],"_detectPressureTest｜測撐有撐(前低支撐)":["C",1418,-0.086,32.6,0.9478,-0.562],"_detectVolPriceScenario｜🟡 量縮洗盤·回後買醞釀":["C",2700,-0.108,33.8,0.8071,-0.131],"_detectGap｜向上缺口已回補":["C",1651,-0.112,33.7,0.7898,-0.07],"_detectMaKoudi｜月線(20MA)恐轉弱":["C",1856,-0.113,34.4,0.586,0.35],"_detectGranville｜葛蘭碧賣2(假突破跌回)":["C",2432,-0.131,33.5,0.873,-0.311],"_detectFibRetrace｜📐 費波納契回撤買點":["C",2635,-0.146,34,0.7429,0.03],"_detectTrendline｜跌破上升趨勢線":["C",1353,-0.16,35,0.3758,0.13],"_detectChuThreeBlack｜整數關卡失守":["C",854,-0.162,33.6,0.7384,-0.008],"_detect2BarReversal｜低檔母子懷抱":["C",681,-0.179,33.9,0.657,-0.245],"_detectKbarStrength｜弱中透強(止跌)":["C",1435,-0.22,31.4,0.9948,-0.137],"_detect2BarReversal｜長紅遭遇(一日封口)":["C",160,-0.233,33.8,0.6174,-1.073],"_detectWyckoffPhase｜🌊 威科夫·吸籌段":["C",2947,-0.236,31.6,0.9997,-0.29],"_detectMaKoudi｜季線(60MA)即將翻揚":["C",893,-0.254,30.5,0.996,0.425],"_detectGranville｜葛蘭碧賣1(跌破月線)":["C",1357,-0.259,32.1,0.974,0.05],"_detectChuShortTrend｜反彈過半不宜空":["C",542,-0.267,31,0.9653,-0.422],"_detectVolumeSignals｜止跌量(量縮窒息)":["C",2994,-0.271,29.7,1,-0.081],"_detectAvoidFlags｜圖形雜亂(淘汰)":["C",6604,-0.281,32.8,0.999,-0.12],"_detectChuThreeBlack｜連三黑進行中":["C",4222,-0.286,34,0.799,-0.137],"_detectVolPriceScenario｜🟣 低檔換手·止跌訊號":["C",346,-0.29,34.1,0.5953,-0.743],"_detectVolumeSignals｜強反彈量(非多頭)":["C",358,-0.296,34.9,0.4683,-0.378],"_detectChuShortTrend｜高勝率做空點":["C",99,-0.296,31.3,0.7843,-1.791],"_detectObvDivergence｜OBV 底背離":["C",1279,-0.308,32.1,0.9702,-0.699],"_detectBoxBreakout｜K線橫盤跌破":["C",3414,-0.31,33.7,0.8632,-0.117],"_detectStarPatterns｜群星夜星":["C",50,-0.372,32,0.6992,-1.021],"_detectMaGoldenCross｜月線死亡交叉季線":["C",587,-0.407,31.7,0.9369,0.097],"_detectChuThreeBlack｜連三黑後紅K但沒量":["C",1337,-0.421,32.5,0.9467,-1.136],"_detectChuOverheat｜爆量隔天跌(賣訊)":["C",2452,-0.424,33.4,0.8963,-0.196],"_detectMaKoudi｜月線(20MA)即將翻揚":["C",1516,-0.437,31.9,0.9868,-0.423],"_detectVolPriceScenario｜⛔ 出貨確認·崩盤風險":["C",343,-0.492,32.1,0.8505,-0.191],"_detectBlackCandleLevels｜🕯️ 卡在長黑K下半段(空方略強)":["C",1310,-0.501,33.2,0.8606,-0.6],"_detectMaKoudi｜季線(60MA)恐轉弱":["C",1061,-0.513,30.9,0.9949,-0.203],"_detectBoxBreakout｜K線橫盤突破":["C",3197,-0.62,33.8,0.8271,-0.781],"_detectElliott｜艾略特 完成五浪(推估)":["C",303,-0.635,31,0.9149,-0.013],"_detectRedCandleLevels｜🕯️ 跌破長紅K最低價(多空易位)":["C",898,-0.661,34.6,0.502,0.023],"_detectChuShortTrend｜空頭連跌過深(易反彈)":["C",214,-0.705,32.7,0.7408,-0.101],"_detectAbcBreakout｜ABC下降切線突破":["C",166,-0.75,36.1,0.3644,-0.197],"_detectRedCandleLevels｜🕯️ 站穩長紅K高點(多方最強)":["C",1437,-0.835,34.9,0.4018,-1.475],"_detectRedCandleLevels｜🕯️ 回測長紅K上半段(支撐仍在)":["C",1716,-0.852,34.4,0.5809,-1.104],"_detect2BarReversal｜高檔母子懷抱":["C",481,-0.897,30.6,0.9726,-0.977],"_detectRedCandleLevels｜🕯️ 跌破長紅K平均成本(多方轉弱)":["C",1552,-0.904,32.2,0.9773,-1.003],"_detect2BarReversal｜長黑覆蓋(烏雲罩頂)":["C",218,-0.922,32.6,0.7564,-0.975],"_detectVolPriceScenario｜🟢 起漲攻擊量":["C",174,-1.084,32.8,0.7198,-1.041],"_detectPressureTest｜測撐有撐(前低支撐)+量縮":["C",677,-1.198,25,1,-1.028],"_detect2BarReversal｜長黑遭遇(一日封口)":["C",190,-1.208,32.1,0.7862,-1.545],"_detect2BarReversal｜長紅貫穿(旭日東升)":["C",65,-1.211,26.2,0.9435,0.169],"_detectStarPatterns｜群星晨星":["C",49,-1.248,26.5,0.9117,-3.342],"_detectChuLongEntry｜回後買上漲‧做頭不建議":["C",123,-1.31,33.3,0.6478,-1.038],"_detectChuLongEntry｜高勝率做多買點":["C",160,-1.451,35,0.4863,-2.01],"_detectStarPatterns｜夜星轉折":["C",83,-1.557,33.7,0.6056,0.507],"_detect2BarReversal｜長黑遭遇(一日封口)+爆量":["C",158,-1.864,35.4,0.4404,-1.745],"_detect2BarReversal｜長黑吞噬(主力出貨)":["C",53,-2.127,28.3,0.8667,-3.558],"_detect2BarReversal｜長黑吞噬(主力出貨)+爆量":["C",45,-3.031,33.3,0.6251,-4.335]},
+
+    // 查某個訊號的實測成績(查不到回 null → 前端一律當「未驗證」處理,⛔ 不假裝有成績)
+    // 收訊號時順便記下「是哪個偵測器產生的」→ 才查得到它的實測成績
+    _tagPush(arr, detName, data) {
+        try {
+            const r = this[detName](data);
+            if (!Array.isArray(r)) return;
+            for (const s of r) { if (s) { s._d = detName; arr.push(s); } }
+        } catch (_) {}
+    },
+
+    _sigEdge(detName, title) {
+        try {
+            const k = `${detName}｜${String(title || '').slice(0, 28)}`;
+            const v = this._SIGNAL_EDGE[k];
+            if (!v) return null;
+            return { grade: v[0], n: v[1], e10: v[2], w10: v[3], p: v[4], e20: v[5] };
+        } catch (_) { return null; }
+    },
+
+    _winRateP(wins, n, p0 = 0.5) {
         wins = Math.round(+wins); n = Math.round(+n);
         if (!(n > 0) || wins < 0 || wins > n) return null;
-        // P(X >= wins | n, 0.5) = Σ C(n,k) / 2^n ,用對數階乘避免大數溢位
+        if (!(p0 > 0 && p0 < 1)) p0 = 0.5;
+        // P(X >= wins | n, p0) = Σ C(n,k) p0^k (1-p0)^(n-k) ,用對數階乘避免大數溢位
         const lg = [0];
         for (let i = 1; i <= n; i++) lg[i] = lg[i - 1] + Math.log(i);
         const lchoose = (a, b) => lg[a] - lg[b] - lg[a - b];
+        const l0 = Math.log(p0), l1 = Math.log(1 - p0);
         let p = 0;
-        for (let k = wins; k <= n; k++) p += Math.exp(lchoose(n, k) - n * Math.LN2);
+        for (let k = wins; k <= n; k++) p += Math.exp(lchoose(n, k) + k * l0 + (n - k) * l1);
         return Math.min(1, Math.max(0, p));
     },
 
@@ -19284,7 +19352,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
               H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
         const pC = C(data[last]);
-        const sigs = [];
+        let sigs = [];   // ⚠️ V71.9.9 必須是 let:下面依實測成績重排時會整個重新指派(陷阱 #33:const + 賦值會被 catch 吞掉)
         const bigVol = (j) => { const pv = data.slice(Math.max(0, j - 5), j).map(V); const av = pv.length ? pv.reduce((a, x) => a + x, 0) / pv.length : V(data[j]); return av > 0 && V(data[j]) >= av * 1.5; };
         // 🕯️ V71.5.6 朱家泓 連三黑/整數關卡/月線反彈空間(2026-07-30 節目)—— 置頂,這是當下最關鍵的判斷
         try { (this._detectChuThreeBlack(data) || []).forEach(x => sigs.push(x)); } catch (_) {}
@@ -19321,22 +19389,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.unshift(...this._detectStarPatterns(data), ...this._detect2BarReversal(data), ...this._detectBoxBreakout(data)); } catch (_) {}
         try { sigs.unshift(...this._detectChuLongEntry(data)); } catch (_) {}   // ⭐ V37.0/37.2 朱式等做多買點(置頂,高勝率分級)
         try { sigs.unshift(...this._detectChuShortTrend(data)); } catch (_) {}  // ⭐ V37.3 空頭辨別/別接刀/轉多抄底(置頂)
-        try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}     // ⭐ V37.1 盤整觀望/三角收斂
-        try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}       // ⭐ V37.2 多頭過熱停利
-        try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}      // ⭐ V37.6 K棒強弱(弱中透強/強中透弱/長影線)
-        try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}        // ⭐ V37.8 葛蘭碧乖離過大(遛狗理論)
-        try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}         // ⭐ V37.9 淘汰法(圖形雜亂)
+        this._tagPush(sigs, '_detectConsolidation', data);     // ⭐ V37.1 盤整觀望/三角收斂
+        this._tagPush(sigs, '_detectChuOverheat', data);       // ⭐ V37.2 多頭過熱停利
+        this._tagPush(sigs, '_detectKbarStrength', data);      // ⭐ V37.6 K棒強弱(弱中透強/強中透弱/長影線)
+        this._tagPush(sigs, '_detectMaDeviation', data);        // ⭐ V37.8 葛蘭碧乖離過大(遛狗理論)
+        this._tagPush(sigs, '_detectAvoidFlags', data);         // ⭐ V37.9 淘汰法(圖形雜亂)
         try { sigs.unshift(...this._detectBottomBreakout(data)); } catch (_) {}  // ⭐ V38.0 底部頸線突破+目標價(置頂)
         try { sigs.unshift(...this._detectNBottom(data)); } catch (_) {}          // ⭐ V60.x N字底/黃金右腳(置頂,強買訊)
-        try { sigs.push(...this._detectAbcBreakout(data)); } catch (_) {}         // ⭐ V60.x ABC下降切線突破(6-5)
+        this._tagPush(sigs, '_detectAbcBreakout', data);         // ⭐ V60.x ABC下降切線突破(6-5)
         try { sigs.unshift(...this._detectReversalConfirm(data)); } catch (_) {}  // ⭐ V61.x 轉折K次日開盤確認(2-9,置頂)
-        try { sigs.push(...this._detectStall(data)); } catch (_) {}               // ⭐ V61.x 高檔直漲停頓力竭前兆(2-9)
-        try { sigs.push(...this._detectElliott(data)); } catch (_) {}             // ⭐ V61.x 艾略特波浪(推估,使用者要求)
-        try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}          // ⭐ V38.0 均線糾結(一字底)
-        try { sigs.push(...this._detectPressureTest(data)); } catch (_) {}       // ⭐ V41.4 測壓有壓/測撐有撐(最高最低價測前波,V41.6 配量)
-        try { sigs.push(...this._detectVolPriceDiverge(data)); } catch (_) {}    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮)
-        try { sigs.push(...this._detectHeavyResistance(data)); } catch (_) {}    // ⭐ V41.9 壓力沉重反覆過不了(朱:過不了的股票別選)
-        try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
+        this._tagPush(sigs, '_detectStall', data);               // ⭐ V61.x 高檔直漲停頓力竭前兆(2-9)
+        this._tagPush(sigs, '_detectElliott', data);             // ⭐ V61.x 艾略特波浪(推估,使用者要求)
+        this._tagPush(sigs, '_detectMaCluster', data);          // ⭐ V38.0 均線糾結(一字底)
+        this._tagPush(sigs, '_detectPressureTest', data);       // ⭐ V41.4 測壓有壓/測撐有撐(最高最低價測前波,V41.6 配量)
+        this._tagPush(sigs, '_detectVolPriceDiverge', data);    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮)
+        this._tagPush(sigs, '_detectHeavyResistance', data);    // ⭐ V41.9 壓力沉重反覆過不了(朱:過不了的股票別選)
+        this._tagPush(sigs, '_detectVolumeSignals', data);
         try { sigs.unshift(...this._detectIndicatorDivergence(data)); } catch (_) {}  // ⭐ V41.29 KD/MACD 頂底背離(置頂,轉折訊號)
         try { sigs.unshift(...this._detectObvDivergence(data)); } catch (_) {}         // 📊 V61.8 OBV 頂底背離(置頂,量價轉折)
         try { sigs.unshift(...this._detectRsiDivergence(data)); } catch (_) {}         // 📊 V66.4 RSI 頂底背離(置頂,噴出末段/跌深轉折)
@@ -19345,14 +19413,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { sigs.unshift(...this._detectWyckoffPhase(data)); } catch (_) {}          // 🌊 V67.5 Wyckoff 量價階段(吸籌/拉抬/出貨/下跌,置頂)
         try { sigs.unshift(...this._detectFibRetrace(data), ...this._detectPocketPivot(data), ...this._detectRelativeStrength(data), ...this._detectInstCostBias(data)); } catch (_) {}   // 🎯 V66.6 費波納契/口袋支點/RS強弱/主力成本乖離
         try { sigs.unshift(...this._detectMomentumLaunch(data)); } catch (_) {}         // 📊 V64.9 OBV×MACD×量 動能發動/轉弱(置頂)
-        try { sigs.unshift(...this._detectGap(data)); } catch (_) {}                  // ⭐ V41.29 缺口跳空+分類(置頂)
-        try { sigs.push(...this._detectMaKoudi(data)); } catch (_) {}                 // ⭐ V41.29 均線扣抵值(明日均線揚/抑領先預警)
-        try { sigs.unshift(...this._detectTopBreakdown(data)); } catch (_) {}         // ⭐ V41.30 頭部頸線跌破+目標價(置頂)
-        try { sigs.push(...this._detectGranville(data)); } catch (_) {}               // ⭐ V41.30 葛蘭碧八大買賣點(月線)
-        try { sigs.push(...this._detectBlackCandleLevels(data)); } catch (_) {}       // 🕯️ V69.1.27 長黑K三價位壓力/支撐追蹤
-        try { sigs.push(...this._detectRedCandleLevels(data)); } catch (_) {}         // 🕯️ V69.1.28 長紅K三價位支撐/壓力追蹤(鏡像)
-        try { sigs.push(...this._detectTrendline(data)); } catch (_) {}               // ⭐ V41.30 趨勢線突破/跌破
-        try { sigs.push(...this._detectMaGoldenCross(data)); } catch (_) {}           // ⭐ V60.x 月線穿季線黃金/死亡交叉事件
+        try { const _r = this._detectGap(data) || []; _r.forEach(x => { if (x) x._d = '_detectGap'; }); sigs.unshift(..._r); } catch (_) {}                  // ⭐ V41.29 缺口跳空+分類(置頂)
+        this._tagPush(sigs, '_detectMaKoudi', data);                 // ⭐ V41.29 均線扣抵值(明日均線揚/抑領先預警)
+        try { const _r = this._detectTopBreakdown(data) || []; _r.forEach(x => { if (x) x._d = '_detectTopBreakdown'; }); sigs.unshift(..._r); } catch (_) {}         // ⭐ V41.30 頭部頸線跌破+目標價(置頂)
+        this._tagPush(sigs, '_detectGranville', data);               // ⭐ V41.30 葛蘭碧八大買賣點(月線)
+        this._tagPush(sigs, '_detectBlackCandleLevels', data);       // 🕯️ V69.1.27 長黑K三價位壓力/支撐追蹤
+        this._tagPush(sigs, '_detectRedCandleLevels', data);         // 🕯️ V69.1.28 長紅K三價位支撐/壓力追蹤(鏡像)
+        this._tagPush(sigs, '_detectTrendline', data);               // ⭐ V41.30 趨勢線突破/跌破
+        this._tagPush(sigs, '_detectMaGoldenCross', data);           // ⭐ V60.x 月線穿季線黃金/死亡交叉事件
 
         if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; try { this._setLight('lightKbar', '無訊號'); } catch (_) {} return; }
         // 🚦 V58.4 收合列燈號:訊號數 + 多空傾向(拆自「更多守價」後這卡有自己的收合殼)
@@ -19363,11 +19431,39 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // ⭐ V41.4 開盤定生死:出現變盤/轉折K時,提醒「次日開盤定強弱」(朱家泓鐵律)
         const hasTurn = sigs.some(s => /變盤|遭遇|吞噬|覆蓋|貫穿|母子|夜星|晨星|測壓|測撐|紅黑|執掌|背離/.test(s.title || ''));
         const sty = { bull: { c: 'text-red-300', b: 'border-red-500', tag: '🔺偏多' }, bear: { c: 'text-green-300', b: 'border-green-500', tag: '🔻偏空' }, flat: { c: 'text-gray-300', b: 'border-gray-500', tag: '⚪中性' }, warn: { c: 'text-yellow-300', b: 'border-yellow-500', tag: '⚠️留意' } };
-        const MAXROWS = 10;   // 🐛 V38.3 防訊號過載:最多顯 10 條(已 unshift 把最重要的轉折/買賣點置頂)
-        const more = sigs.length - MAXROWS;
-        const rows = sigs.slice(0, MAXROWS).map(s => { const t = sty[s.tone] || sty.flat; const _tt = String(s.title || '').replace(/'/g, '’'); return `<div onclick="app.showKbarSignalHelp('${_tt}')" class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5 cursor-pointer hover:bg-white/5 transition-colors">
-            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}<span class="text-[9px] text-amber-400/70 font-normal ml-1">👆教學</span></div>
-            <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; }).join('') + (more > 0 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${more} 條次要訊號(以上方進場體檢總結為準)</div>` : '');
+        // 📊 V71.9.9 依**實測成績**排序、分區 —— 使用者要求「只顯示有用的,不要全部打出來」
+        //   A 級(實測站得住腳)置頂並標勝率;B 級次之;C 級(實測跟隨機沒差)+ 未驗證的收進摺疊區。
+        //   ⛔ **不直接刪掉 C 級** —— 有些是「⚠️ 留意」型的風險提醒(如長黑棒),
+        //      刪掉會讓人以為沒風險;收合但仍看得到才誠實。
+        const _rank = { A: 0, B: 1 };
+        for (const x of sigs) {
+            const e = this._sigEdge(x._d, x.title);
+            x._e = e;
+            x._rk = e ? (_rank[e.grade] ?? 2) : 3;      // 3 = 沒驗過(新訊號/樣本不足)
+        }
+        const _stable = sigs.map((x, i) => [x, i]);
+        _stable.sort((a, b) => (a[0]._rk - b[0]._rk) || (a[1] - b[1]));   // 穩定排序,同級維持原順序
+        sigs = _stable.map(x => x[0]);
+        const good = sigs.filter(x => x._rk <= 1);
+        const rest = sigs.filter(x => x._rk > 1);
+        const MAXROWS = 10;
+        const _card = (s, showEdge) => { const t = sty[s.tone] || sty.flat; const _tt = String(s.title || '').replace(/'/g, '’');
+            const e = s._e;
+            // 勝率徽章:⭐ 基準是 34.6%(不是 50%),所以 41% 已經是贏基準 → 一定要把基準寫出來
+            const badge = (showEdge && e) ? `<span class="ml-1 text-[9px] font-mono px-1 rounded ${e.grade === 'A' ? 'bg-red-900/40 text-red-300' : 'bg-amber-900/30 text-amber-300'}" title="實測 ${e.n} 次:10 日超額報酬中位 ${e.e10 >= 0 ? '+' : ''}${e.e10}%、勝率 ${e.w10}%(隨便挑一天只有 ${this._SIGNAL_EDGE_META.base_win.toFixed(1)}%);p=${e.p}">${e.grade === 'A' ? '✅' : '⚠️'} 勝率 ${e.w10}%・${e.n} 次</span>` : '';
+            return `<div onclick="app.showKbarSignalHelp('${_tt}')" class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5 cursor-pointer hover:bg-white/5 transition-colors">
+            <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}${badge}<span class="text-[9px] text-amber-400/70 font-normal ml-1">👆教學</span></div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; };
+        const _bw = this._SIGNAL_EDGE_META.base_win.toFixed(1);
+        const rows = (good.length
+            ? `<div class="text-[10px] text-red-300 font-bold mb-1 flex items-center gap-1">🎯 實測有效的訊號(${good.length})
+                 <button onclick="event.stopPropagation();alert('【為什麼有些訊號有徽章、有些沒有?】\n\n我拿 250 檔股票、3 年的歷史資料,把 App 裡每一個訊號都回測過一次:訊號出現之後 10 個交易日,股價表現如何(已扣掉同期大盤漲跌)。\n\n⭐ 最重要的一件事:【基準勝率是 ${_bw}%,不是 50%】。\n因為加權指數是「市值加權」(台積電權重超大),中位數的個股本來就跑輸大盤。所以一個訊號勝率 41%,其實【已經是贏過隨便挑一天】。\n\n🏅 分級:\n・✅ A 級 = 統計上站得住腳(純靠運氣長這樣的機率 ≤5%)\n・⚠️ B 級 = 有一點,但證據偏弱\n・沒有徽章 = 實測跟隨機沒有差別,或樣本不足還沒驗過\n\n實測結果:全部 122 個訊號裡,A 級只有 29 個、B 級 20 個,而【C 級有 73 個(六成)】——所以我把沒驗過的收進下面的摺疊區,不再一次全部倒給你。\n\n⚠️ 但【沒有把 C 級刪掉】:裡面有些是風險提醒(例如長黑棒),刪掉會讓你以為沒風險。\n\n⚠️ 這是歷史統計,不是保證;也【沒有扣交易成本】。')" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button></div>`
+              + good.slice(0, MAXROWS).map(s => _card(s, true)).join('')
+            : `<div class="text-[10px] text-gray-500 mb-1.5">➖ 今天沒有出現「實測有效」的訊號(下面是其餘觀察用訊號)。</div>`)
+            + (rest.length ? `<details class="mt-1">
+                <summary class="text-[10px] text-gray-500 cursor-pointer list-none py-1">▸ 其餘 ${rest.length} 條(實測跟隨機沒差 / 尚未驗證)—— 觀察用,別當進場理由</summary>
+                <div class="mt-1">${rest.slice(0, 12).map(s => _card(s, false)).join('')}
+                ${rest.length > 12 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${rest.length - 12} 條</div>` : ''}</div></details>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
         el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
