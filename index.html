@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,22 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.9',
+    _APP_VERSION: 'V72.0.0',
     _CHANGELOG: [
+        { v: 'V72.0.0', dt: '2026-08-03', t: '🎯 總覽也收斂了 —— 進場分數不再被沒用的訊號稀釋', d: [
+            '接續上一版,總覽的「進場體檢」也照實測分級改了。',
+            '',
+            '📍 **體檢卡最上面新增一區**:「今天出現實測有效的訊號」,直接列出訊號名 + 實測勝率 + 出現過幾次。今天沒有的話會**誠實說沒有**,並提醒「別硬找理由進場」。',
+            '',
+            '📊 **進場分數的算法也改了**(這是重點):',
+            '・**看多**的訊號如果沒被驗證過,計分時只算**三折** —— 不該拿沒驗過的東西當進場理由。A 級全額、B 級七折。',
+            '・**但看空/警示的訊號一律不打折** ⛔ —— 風險提醒就算統計上沒被證實,**忽略它的代價(住套房)遠大於多看一眼的代價**。寧可多提醒,不可少提醒。',
+            '',
+            '→ 白話:以前 60% 是雜訊的訊號跟真訊號等權計分,分數會虛高。現在看多的分數只算「有證據的」,但風險照樣全額提醒。',
+            '',
+            '📖 K 線頁和總覽的「ⓘ 怎麼看」是**同一份說明**,不會兩邊講不一樣。',
+            '⚠️ 一樣提醒:基準勝率是 34.6% 不是 50%(加權指數是市值加權,中位數個股本來就跑輸),所以 41% 已經算贏。歷史統計非保證,未扣交易成本。',
+        ] },
         { v: 'V71.9.9', dt: '2026-08-03', t: '📊 我把每個訊號都回測過了 —— 六成其實沒用', d: [
             '你說「不要所有資料都打出來,根本不知道看哪一個」。所以我把 App 裡**每一個 K 線訊號都拿去回測**:250 檔股票、3 年歷史,訊號出現後 10 個交易日表現如何(已扣掉同期大盤)。',
             '',
@@ -18972,6 +18986,30 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // 查某個訊號的實測成績(查不到回 null → 前端一律當「未驗證」處理,⛔ 不假裝有成績)
     // 收訊號時順便記下「是哪個偵測器產生的」→ 才查得到它的實測成績
+    // 📖 V72.0.0 「實測勝率」教學 —— K 線頁與總覽共用同一份(⛔ 不寫兩份,免得日後改一邊忘另一邊)
+    _showEdgeHelp() {
+        const m = this._SIGNAL_EDGE_META || {};
+        alert('【這些勝率是怎麼來的?】\n\n'
+            + `我把 App 裡每一個 K 線訊號都拿去回測:${m.syms || 250} 檔股票、3 年歷史,`
+            + '看訊號出現之後 10 個交易日股價表現如何(已扣掉同期大盤漲跌)。\n\n'
+            + '⭐【最重要,不看會誤讀】\n'
+            + `基準勝率是 ${(m.base_win || 34.6).toFixed(1)}%,不是 50%。\n`
+            + '因為加權指數是「市值加權」(台積電權重超大),中位數的個股本來就跑輸大盤。\n'
+            + '所以一個訊號勝率 41%,其實【已經是贏過隨便挑一天】。\n\n'
+            + '🏅【分級】\n'
+            + '・✅ A 級 = 統計上站得住腳(純靠運氣長這樣的機率 ≤5%)\n'
+            + '・⚠️ B 級 = 有一點,但證據偏弱\n'
+            + '・沒有標示 = 實測跟隨機沒差,或樣本不足還沒驗過\n\n'
+            + `實測結果:${(m.A || 0) + (m.B || 0) + (m.C || 0)} 個訊號裡,A 級只有 ${m.A || 0} 個、B 級 ${m.B || 0} 個,`
+            + `而【C 級有 ${m.C || 0} 個】—— 六成的訊號其實沒有鑑別力。\n\n`
+            + '📊【進場分數也跟著改了】\n'
+            + '看多的訊號如果沒被驗證過,計分時只算三折(不該拿沒驗過的東西當進場理由)。\n'
+            + '但【看空/警示的訊號一律不打折】—— 風險提醒就算統計上沒被證實,\n'
+            + '忽略它的代價(住套房)遠大於多看一眼的代價。\n\n'
+            + '⚠️ 這是歷史統計,不是保證;而且【沒有扣交易成本】。');
+        this.vibrate?.(20);
+    },
+
     _tagPush(arr, detName, data) {
         try {
             const r = this[detName](data);
@@ -21513,38 +21551,55 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
         // ① 收集所有純公式型態訊號
         let sigs = [];
-        try { sigs.push(...this._detectStarPatterns(data)); } catch (_) {}
-        try { sigs.push(...this._detect2BarReversal(data)); } catch (_) {}
-        try { sigs.push(...this._detectBoxBreakout(data)); } catch (_) {}
-        try { sigs.push(...this._detectChuLongEntry(data)); } catch (_) {}   // ⭐ V37.0 朱式等做多買點
-        try { sigs.push(...this._detectChuShortTrend(data)); } catch (_) {}  // ⭐ V37.3 空頭(別接刀/轉多)
-        try { sigs.push(...this._detectConsolidation(data)); } catch (_) {}  // ⭐ V37.1 盤整觀望(中性,推 verdict 往觀望)
-        try { sigs.push(...this._detectChuOverheat(data)); } catch (_) {}    // ⭐ V37.2 過熱停利(warn,壓低進場分)
-        try { sigs.push(...this._detectKbarStrength(data)); } catch (_) {}   // ⭐ V37.6 K棒強弱(弱中透強/強中透弱)
-        try { sigs.push(...this._detectMaDeviation(data)); } catch (_) {}    // ⭐ V37.8 乖離過大(warn)
-        try { sigs.push(...this._detectFloorBounce(data)); } catch (_) {}    // 🏚️ V71.8.9 極端超跌接刀(附實測數字,⛔ 不是看多訊號)
-        try { sigs.push(...this._detectAvoidFlags(data)); } catch (_) {}     // ⭐ V37.9 淘汰法(圖形雜亂,bear)
-        try { sigs.push(...this._detectBottomBreakout(data)); } catch (_) {} // ⭐ V38.0 底部頸線突破(bull)
-        try { sigs.push(...this._detectMaCluster(data)); } catch (_) {}      // ⭐ V38.0 均線糾結(flat)
-        try { sigs.push(...this._detectPressureTest(data)); } catch (_) {}   // ⭐ V41.4 測壓有壓(warn)/測撐有撐(bull)
-        try { sigs.push(...this._detectVolPriceDiverge(data)); } catch (_) {} // ⭐ V41.6 量價背離(warn,壓低進場分)
-        try { sigs.push(...this._detectHeavyResistance(data)); } catch (_) {} // ⭐ V41.9 壓力沉重反覆過不了(warn)
-        try { sigs.push(...this._detectVolumeSignals(data)); } catch (_) {}
+        this._tagPush(sigs, '_detectStarPatterns', data);
+        this._tagPush(sigs, '_detect2BarReversal', data);
+        this._tagPush(sigs, '_detectBoxBreakout', data);
+        this._tagPush(sigs, '_detectChuLongEntry', data);   // ⭐ V37.0 朱式等做多買點
+        this._tagPush(sigs, '_detectChuShortTrend', data);  // ⭐ V37.3 空頭(別接刀/轉多)
+        this._tagPush(sigs, '_detectConsolidation', data);  // ⭐ V37.1 盤整觀望(中性,推 verdict 往觀望)
+        this._tagPush(sigs, '_detectChuOverheat', data);    // ⭐ V37.2 過熱停利(warn,壓低進場分)
+        this._tagPush(sigs, '_detectKbarStrength', data);   // ⭐ V37.6 K棒強弱(弱中透強/強中透弱)
+        this._tagPush(sigs, '_detectMaDeviation', data);    // ⭐ V37.8 乖離過大(warn)
+        this._tagPush(sigs, '_detectFloorBounce', data);    // 🏚️ V71.8.9 極端超跌接刀(附實測數字,⛔ 不是看多訊號)
+        this._tagPush(sigs, '_detectAvoidFlags', data);     // ⭐ V37.9 淘汰法(圖形雜亂,bear)
+        this._tagPush(sigs, '_detectBottomBreakout', data); // ⭐ V38.0 底部頸線突破(bull)
+        this._tagPush(sigs, '_detectMaCluster', data);      // ⭐ V38.0 均線糾結(flat)
+        this._tagPush(sigs, '_detectPressureTest', data);   // ⭐ V41.4 測壓有壓(warn)/測撐有撐(bull)
+        this._tagPush(sigs, '_detectVolPriceDiverge', data); // ⭐ V41.6 量價背離(warn,壓低進場分)
+        this._tagPush(sigs, '_detectHeavyResistance', data); // ⭐ V41.9 壓力沉重反覆過不了(warn)
+        this._tagPush(sigs, '_detectVolumeSignals', data);
         const weight = t => /夜星|晨星|孤島|群星|做多買點|轉多訊號/.test(t) ? 3 : (/吞噬|出貨量|攻擊量|換手量|突破|跌破|假突破|假跌破|做空點|空頭趨勢/.test(t) ? 2 : 1);
 
         let bull = 0, bear = 0; const goodR = [], badR = [];
         let bkCounted = false;   // 🐛 V38.3 防重複加分:同一次「突破」(橫盤突破/底部頸線突破)只計一次
+        // 📊 V72.0.0 依**實測分級**加權 —— 使用者要求「只看有用的、勝率高的」。
+        //   回測發現 122 個訊號裡 C 級(跟隨機沒差)佔六成 → 等權計分等於讓雜訊稀釋掉真訊號。
+        //
+        // ⭐ 但**多空不對稱處理**(這是刻意的,⛔ 別「統一」成同一套):
+        //   ・**看多訊號**:沒被驗證過就不該拿來當進場理由 → A 全額、B 七折、C/未驗證**三折**
+        //   ・**看空/警示訊號**:⛔ **一律不打折** —— 風險提醒就算統計上沒被證實,
+        //     忽略它的代價(住套房)遠大於多看一眼的代價。寧可多提醒,不可少提醒。
+        const _gw = { A: 1, B: 0.7 };
         for (const s of sigs) {
             const t = s.title || '';
             if (s.tone === 'bull' && /突破/.test(t) && !/假突破/.test(t)) {
                 if (bkCounted) continue;   // 第二個突破訊號不再加分(避免分數虛高),卡片仍照顯
                 bkCounted = true;
             }
+            const e = this._sigEdge(s._d, t);
+            s._e = e;
             const w = weight(t);
-            if (s.tone === 'bull') { bull += w; goodR.push(t); }
-            else if (s.tone === 'bear') { bear += w; badR.push(t); }
+            if (s.tone === 'bull') {
+                const k = e ? (_gw[e.grade] ?? 0.3) : 0.3;      // 看多才打折
+                bull += w * k;
+                goodR.push(t);
+            } else if (s.tone === 'bear') { bear += w; badR.push(t); }   // ⛔ 風險不打折
             else if (s.tone === 'warn') { bear += 1; badR.push(t); }
         }
+        bull = Math.round(bull * 10) / 10;
+        // 供顯示層排序/標徽章用(A 級的進場理由要能被看見)
+        const _sigByGrade = sigs.filter(x => x._e && (x._e.grade === 'A' || x._e.grade === 'B'))
+            .sort((a, b) => (a._e.grade === b._e.grade ? b._e.e10 - a._e.e10 : a._e.grade === 'A' ? -1 : 1));
 
         // ② 均線結構(初學者最該懂:站上 5MA/月線 + 多頭排列 + 5MA 上彎)
         let struct = 0; const maParts = [];
@@ -21581,7 +21636,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         badR.slice(0, 3).forEach(t => pushB(false, t));
         bullets.push({ ma: true, good: struct >= 0, txt: `${trendTxt}(${maParts.join('・')})` });
 
-        return { score, light, verdict, vColor, action, bullets, bull, bear };
+        return { score, light, verdict, vColor, action, bullets, bull, bear, proven: _sigByGrade.slice(0, 4) };
     },
 
     renderEntryCheckup(data) {
@@ -21598,6 +21653,31 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const tc = b.good ? 'text-red-300' : 'text-green-300';
             return `<div class="flex items-center gap-1.5 text-[11px] ${tc}"><span>${icon}</span><span class="text-gray-200">${b.txt}</span></div>`;
         }).join('');
+        // 📊 V72.0.0 把「今天有哪些**實測有效**的訊號」直接放在體檢卡最上面(總覽第一眼看得到)
+        //   ⭐ 使用者要的是「一看就知道怎麼操作勝率才會高」→ 有驗證過的訊號要獨立標出來,
+        //     ⛔ 別再跟其他幾十條混在一起。沒有的時候要**誠實說沒有**,不可硬湊。
+        let provenHtml = '';
+        try {
+            const pv = r.proven || [];
+            const bw = this._SIGNAL_EDGE_META.base_win.toFixed(1);
+            if (pv.length) {
+                provenHtml = `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2 mb-2">
+                    <div class="text-[10px] text-gray-400 font-bold mb-1 flex items-center justify-between">
+                        <span>🎯 今天出現「實測有效」的訊號(${pv.length})</span>
+                        <button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-[9px] text-gray-600 hover:text-blue-300">ⓘ 怎麼看</button></div>
+                    ${pv.map(x => { const e = x._e; const tone = x.tone === 'bull' ? 'text-red-300' : x.tone === 'bear' ? 'text-green-300' : 'text-yellow-300';
+                        return `<div class="flex items-center justify-between gap-2 py-0.5">
+                            <span class="text-[11px] ${tone} truncate">${e.grade === 'A' ? '✅' : '⚠️'} ${x.title}</span>
+                            <span class="text-[9px] font-mono text-gray-400 flex-shrink-0">勝率 ${e.w10}%<span class="text-gray-600">・${e.n} 次</span></span>
+                        </div>`; }).join('')}
+                    <div class="text-[8px] text-gray-600 mt-1 leading-snug">實測 250 檔 × 3 年。⭐ 基準是<b class="text-gray-500">隨便挑一天只有 ${bw}%</b>(加權指數市值加權,中位數個股本來就跑輸)→ 所以 41% 已經算贏。非保證、未扣交易成本。</div>
+                </div>`;
+            } else {
+                provenHtml = `<div class="text-[10px] text-gray-500 bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1.5 mb-2">
+                    ➖ 今天<b class="text-gray-400">沒有</b>出現實測有效的訊號。下面的判讀只能當觀察,<b class="text-gray-400">別硬找理由進場</b>。
+                    <button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-[9px] text-gray-600 hover:text-blue-300 ml-1">ⓘ 怎麼看</button></div>`;
+            }
+        } catch (_) {}
         // 💼 V36.7 — 庫存股:結合進場體檢 + 你的成本,給「該抱還是該跑」白話判讀
         let heldHtml = '';
         try {
@@ -21663,6 +21743,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     <div class="text-[10px] text-gray-400">進場友善度 <span class="font-mono font-black ${sc} text-sm">${r.score}</span>/100 ・ 偏多訊號 ${r.bull} / 偏空訊號 ${r.bear}</div>
                 </div>
             </div>
+            ${provenHtml}
             ${xrefHtml}
             <div class="bg-[#0d1117]/60 rounded p-2 mb-2 space-y-1">${rows}</div>
             <div class="bg-[#161b22] border-l-4 border-${c}-500 border-y border-r border-[#30363d] rounded-r p-2">

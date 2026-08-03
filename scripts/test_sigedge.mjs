@@ -107,6 +107,40 @@ ok('⑦ ⭐ 預設仍是跟 50% 比(向後相容)', Math.abs(wp.old - 56 / 1024)
 ok('⑦ 傳 0.5 跟不傳結果相同', Math.abs(wp.old - wp.withP0) < 1e-12, JSON.stringify(wp));
 ok('⑦ 基準降到 34.6% → p 值變小(更容易顯著)', wp.lower < wp.old, JSON.stringify(wp));
 
+// ── ⑨ V72.0.0 總覽「進場體檢」也依實測分級 ──────────────────────
+const ec = await page.evaluate(() => {
+    const a = []; let c = 100;
+    for (let i = 0; i < 300; i++) { c = i < 200 ? c * 1.002 : c * 0.985;
+        a.push({ date: `2026/01/${String((i % 28) + 1).padStart(2, '0')}`, open: c, high: c * 1.02, low: c * 0.98, close: c, volume: 1e6 }); }
+    const p0 = a[a.length - 1].close;
+    a.push({ date: '2026/07/29', open: p0 * 0.99, high: p0 * 0.995, low: p0 * 0.94, close: p0 * 0.95, volume: 3e6 });
+    a.push({ date: '2026/07/30', open: p0 * 0.95, high: p0 * 0.96, low: p0 * 0.94, close: p0 * 0.952, volume: 1e6 });
+    a.push({ date: '2026/07/31', open: p0 * 0.955, high: p0 * 1.03, low: p0 * 0.95, close: p0 * 1.02, volume: 5e6 });
+    let el = document.getElementById('entryCheckup');
+    if (!el) { el = document.createElement('div'); el.id = 'entryCheckup'; document.body.appendChild(el); }
+    el.innerHTML = ''; app.currentSymbolId = 'T'; app.rawDailyData = a;
+    const res = app._entryCheckup(a);
+    try { app.renderEntryCheckup(a); } catch (e) { return { err: e.message }; }
+    return { res, html: el.innerHTML };
+});
+ok('⑨ _entryCheckup 有回 proven 清單', ec.res && Array.isArray(ec.res.proven), JSON.stringify(ec.res && Object.keys(ec.res || {})));
+ok('⑨ 渲染成功', !ec.err && ec.html && ec.html.length > 300, String(ec.err || '').slice(0, 120));
+ok('⑨ ⭐ 有「實測有效」專區或誠實說今天沒有',
+   /實測有效|沒有.{0,3}出現實測有效/.test(ec.html), ec.html.slice(0, 500));
+ok('⑨ 沒有時要勸阻「別硬找理由進場」或有清單', /別硬找理由進場|勝率 /.test(ec.html), ec.html.slice(0, 600));
+ok('⑨ ⭐ 要標明基準勝率', new RegExp(String(meta.base_win.toFixed(1))).test(ec.html), ec.html.slice(0, 900));
+ok('⑨ 有共用教學按鈕 _showEdgeHelp', /_showEdgeHelp/.test(ec.html));
+
+// ⑩ ⭐ 多空不對稱:看多打折、看空⛔不打折(風險寧可多提醒)
+const wsrc = await page.evaluate(() => app._entryCheckup.toString());
+ok('⑩ ⭐ 看多訊號依分級打折', /_gw/.test(wsrc) && /0\.3/.test(wsrc), '');
+ok('⑩ ⭐⛔ 看空/警示不可打折(註解要寫明理由)', /風險不打折|一律不打折/.test(wsrc), '');
+ok('⑩ bear 分支沒有乘上分級係數',
+   /else if \(s\.tone === 'bear'\) \{ bear \+= w;/.test(wsrc), '');
+
+// ⑪ 教學只有一份(⛔ 別寫兩套文案)
+ok('⑪ ⭐ K線頁與總覽共用同一份教學', /_showEdgeHelp/.test(await page.evaluate(() => app.renderEntryCheckup.toString())));
+
 ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
