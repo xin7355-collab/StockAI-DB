@@ -1,5 +1,11 @@
 # 台股歷史數據 JSON（由 miner.py 自動生成，不需要進 git）
 data/*.json
+# ⚠️ 上面那行只蓋 data/ 第一層,蓋不到子目錄 → 分點籌碼(約 37MB)會變成 untracked 一直被提醒。
+#    這些採礦產物屬於 data / gh-pages 分支,⛔ 不該進 main。
+data/chips/
+# ⛔ 採礦中介檔(約 19MB)。V69.9.6(P3-7)已刻意把它移出 gh-pages 改存 data 分支以省空間,
+#    絕對不可再被提交進 main。跑探針時 git archive origin/data 還原到本機會產生它。
+inst_cache_stock.json
 # 但人工編輯的一次性事件清單必須進 git(macro_miner.py 會讀取它合併進 upcoming_macro_events)
 !data/manual_events.json
 
