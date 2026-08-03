@@ -48,14 +48,11 @@ const R = await pg.evaluate(() => {
     out.idxTxt = box.innerText;
     out.idxHidden = box.classList.contains('hidden');
     out.tabsHidden = ['entry', 'exit'].map(k => document.querySelector(`[data-ovtab="${k}"]`)?.classList.contains('hidden'));
-    // V71.8.3:即時也藏(報價商只給個股逐筆/五檔,指數永遠拿不到,不是暫時故障)
-    out.subHidden = ['Corp', 'DayTrade', 'Backtest', 'Live'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
-    out.subShown = ['Strategy', 'Chart', 'Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
-    // 籌碼:指數只留「籌碼進出」(三大法人),券商分點/籌碼分佈藏起來
-    app.switchChipTab('broker');
-    out.chipTab = app._activeChipTab;
-    out.chipBtnHidden = ['broker', 'dist'].map(k => document.getElementById('chipTabBtn-' + k)?.classList.contains('hidden'));
-    out.chipFlowShown = document.getElementById('chipTabBtn-flow')?.classList.contains('hidden');
+    // V71.8.4:籌碼與多空也整個藏掉(使用者問「是否需要刪除」→ 是)。
+    //   籌碼三張卡對指數永遠是空的(法人買賣超是逐檔資料、指數沒有融資券也沒有借券);
+    //   多空 28 條有 27 條需要籌碼/基本面/價量 → 永遠「訊號不足 1/28」。
+    out.subHidden = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
+    out.subShown = ['Strategy', 'Chart'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
     // 多空:命中太少不可給「多方 100%」
     const few = { sym: '^TWII', rules: [], cats: { chip: { bull:0,bear:0,rules:[] }, price: { bull:0,bear:0,rules:[] }, fund: { bull:0,bear:0,rules:[] }, tech: { bull:0,bear:0,rules:[] } } };
     out.lowSample = (() => {
@@ -71,10 +68,11 @@ const R = await pg.evaluate(() => {
     app._syncIndexSubTabs(); app.switchOvTab('now', { auto: true });
     out.stockTxt = document.getElementById('trendCommandCard').innerText;
     out.tabsBack = ['entry', 'exit'].map(k => document.querySelector(`[data-ovtab="${k}"]`)?.classList.contains('hidden'));
-    out.subBack = ['Corp', 'DayTrade', 'Backtest', 'Live'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
+    out.subBack = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
     app.switchChipTab('broker');
     out.chipBack = ['broker', 'flow', 'dist'].map(k => document.getElementById('chipTabBtn-' + k)?.classList.contains('hidden'));
     out.chipTabBack = app._activeChipTab;
+    out.subShownBack = ['Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
     return out;
 });
 await b.close();
@@ -97,16 +95,14 @@ ok('⑤ 要白話講「指數不能直接買,要買就買 0050」',
    R.idxTxt.includes('指數不能直接買') && R.idxTxt.includes('0050'), '');
 ok('⑤ 要註明刻意不給買賣價位', R.idxTxt.includes('不給買賣價位'), '');
 ok('⑥ 進場/出場頁籤要藏起來', R.tabsHidden.every(v => v === true), JSON.stringify(R.tabsHidden));
-ok('⑥ 基本/當沖/回測/即時分頁要藏起來', R.subHidden.every(v => v === true), JSON.stringify(R.subHidden));
-ok('⑥ 總覽/K線/籌碼/多空要留著', R.subShown.every(v => v === false), JSON.stringify(R.subShown));
-ok('⑧ 籌碼:點券商分點要被導到「籌碼進出」(指數沒有分點)', R.chipTab === 'flow', String(R.chipTab));
-ok('⑧ 籌碼:券商分點/籌碼分佈按鈕藏起來', R.chipBtnHidden.every(v => v === true), JSON.stringify(R.chipBtnHidden));
-ok('⑧ 籌碼:籌碼進出要留著(三大法人是大盤該看的)', R.chipFlowShown === false, String(R.chipFlowShown));
+ok('⑥ 基本/當沖/回測/即時/籌碼/多空分頁都要藏起來', R.subHidden.every(v => v === true), JSON.stringify(R.subHidden));
+ok('⑥ 只留總覽 + K線', R.subShown.every(v => v === false), JSON.stringify(R.subShown));
 ok('⑥ 點到被藏的分頁要導回總覽', R.redirected === 'strategy', String(R.redirected));
 ok('⑦ 換回個股:恢復個股版面(有買賣指令)',
    /買進|停損|掛單|表態|進場/.test(R.stockTxt) && !R.stockTxt.includes('現在什麼位置'), R.stockTxt.slice(0, 80));
 ok('⑦ 換回個股:進場/出場頁籤要回來', R.tabsBack.every(v => v === false), JSON.stringify(R.tabsBack));
 ok('⑦ 換回個股:基本/當沖/回測/即時要回來', R.subBack.every(v => v === false), JSON.stringify(R.subBack));
+ok('⑦ 換回個股:籌碼/多空分頁要回來', R.subShownBack.every(v => v === false), JSON.stringify(R.subShownBack));
 ok('⑦ 換回個股:三個籌碼分頁都要回來', R.chipBack.every(v => v === false), JSON.stringify(R.chipBack));
 ok('⑦ 換回個股:券商分點點得進去', R.chipTabBack === 'broker', String(R.chipTabBack));
 

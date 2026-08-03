@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6741,11 +6741,17 @@ ${list}
     //   ・即時(V71.8.3 追加):報價商只提供**個股**逐筆/五檔,指數要不到 —— 使用者截圖顯
     //     「⚠️ 加權指數 的盤中資料抓不到」,那不是暫時故障,是**永遠拿不到**。留著只會
     //     讓人一直重按。而且「五檔買賣」對指數本來就不存在(指數沒有掛單簿)。
-    //   留下:總覽(指數版位置解讀)/K線/籌碼(只留三大法人)/多空
-    _idxHiddenSubTabs: ['corp', 'daytrade', 'backtest', 'live'],
+    //   ・籌碼(V71.8.4 追加,使用者問「籌碼、多空是否需要刪除」→ 答案是要):
+    //     使用者截圖顯示三張卡**全是空的**,而且是永久的 ——「三大法人動態:籌碼資料尚未採礦」
+    //     (法人買賣超是**逐檔**資料,指數沒有自己的)、「融資券:此股融資券極少交易」、
+    //     「付費籌碼:此股非觀察清單」。⭐ 大盤層級的三大法人本來就在「大盤」頁,不必在這裡再開一個空殼。
+    //   ・多空(V71.8.4 追加):28 條規則有 27 條要籌碼/基本面/價量資料,指數都沒有
+    //     → 永遠是「訊號不足 命中 1/28」。留著只會像壞掉。
+    //   留下:總覽(指數版位置解讀)+ K線(指數的技術面本來就有意義)
+    _idxHiddenSubTabs: ['corp', 'daytrade', 'backtest', 'live', 'chip', 'bullbear'],
     _syncIndexSubTabs() {
         const idx = this._isIndexSym?.();
-        const MAP = { corp: 'Corp', daytrade: 'DayTrade', backtest: 'Backtest', live: 'Live' };
+        const MAP = { corp: 'Corp', daytrade: 'DayTrade', backtest: 'Backtest', live: 'Live', chip: 'Chip', bullbear: 'BullBear' };
         Object.entries(MAP).forEach(([k, t]) => {
             const btn = document.getElementById(`subTabBtn${t}`);
             if (btn) btn.classList.toggle('hidden', !!(idx && this._idxHiddenSubTabs.includes(k)));
@@ -6893,8 +6899,20 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.3',
+    _APP_VERSION: 'V71.8.4',
     _CHANGELOG: [
+        { v: 'V71.8.4', dt: '2026-08-03', t: '🏛️ 加權指數:籌碼/多空刪掉 + K線的量終於有東西', d: [
+            '你問「籌碼、多空是否需要刪除」→ **要,已刪**。理由就在你的截圖裡:',
+            '・籌碼三張卡**全是空的,而且是永久的**:「三大法人動態:籌碼資料尚未採礦」(法人買賣超是**逐檔**資料,指數沒有自己的一份)、「融資券:此股極少交易」、「付費籌碼:非觀察清單」。大盤層級的三大法人本來就在「大盤」頁看得到,不必在這裡再開一個空殼。',
+            '・多空 28 條規則有 27 條要籌碼/基本面/價量資料,指數都沒有 → 永遠是「訊號不足 1/28」。留著只會像壞掉。',
+            '→ 加權指數現在只剩 **總覽 + K線** 兩個分頁。換回個股全部自動復原。',
+            '',
+            '【K線的問題找到了】加權指數的資料裡,**最近 44 根的成交量都是 0** —— 所以量柱是空的、量能判斷失效、六脈的「量能」那條也算不出來。',
+            '但證交所官方的「集中市場成交值」(就是電視上講的「今天量能站回一兆」那個數字)我們**每一根都有**。已改成用它當指數的量:量柱回來了、量能判斷回來了、六脈的分母也從 3 條變回 4 條。',
+            '⚠️ 單位跟名稱一起換成「成交金額(兆)」—— 不會再看到「1149185.3K張」這種鬼數字。個股照舊用張數,兩邊不會混。',
+            '',
+            '【順手修】上一版多空頁雖然改顯「訊號不足」了,但上面那條「多方 1 項・多方 100%」的長條還在,等於同一張卡自己打架。現在樣本不足時整條藏起來,改顯「多方命中 N 條 / 空方命中 N 條」的中性說明。',
+        ] },
         { v: 'V71.8.3', dt: '2026-08-03', t: '🏛️ 加權指數其餘分頁也清乾淨 + 修一個會給假信心的計分', d: [
             '上一版只改好加權的「總覽」,你截圖的其他分頁還是個股邏輯,這次一起清。',
             '【多空頁 —— 最要命的那個】你截圖顯示「多方 1 項・1 分 / 0 項 空方 → 多方優勢 100%」。那個 100% 是「1÷1」算出來的 —— 28 條規則只命中 1 條就敢下結論,而同一畫面總覽寫「高檔回檔中」、六脈寫「訊號不足」,三個結論互相打架。現在**命中少於 4 條就不給方向**,改顯「訊號不足(命中 1/28)」並說明原因。⚠️ 這不只影響指數,任何籌碼/基本面資料不齊的冷門股都會踩到,一起修好了。',
@@ -12718,8 +12736,11 @@ const marginByDate = {};
                 <div class="text-xs text-gray-400 font-bold tracking-widest">⚖️ 多空優勢</div>
                 <div class="text-[10px] text-gray-500 font-mono">28 條規則 ・ 加權計分</div>
             </div>
-            <!-- V26.27 VS 對決條(加高 h-10 + 中央戰線分界 + 兩端戰力)-->
-            <div class="relative h-10 rounded-full overflow-hidden border border-[#30363d] bg-[#0d1117] mb-1.5">
+            <!-- V26.27 VS 對決條(加高 h-10 + 中央戰線分界 + 兩端戰力)
+                 🐛 V71.8.4:樣本不足時整條**藏起來** —— 使用者截圖:下面已經寫「訊號不足 命中 1/28」,
+                 上面卻還掛著「多方 1 項・1 分」「多方 100%」,等於同一張卡自己打架。
+                 V71.8.3 只改了結論字,忘了這條(對決條 + 占比帶)。 -->
+            <div class="${scan.lowSample ? 'hidden ' : ''}relative h-10 rounded-full overflow-hidden border border-[#30363d] bg-[#0d1117] mb-1.5">
                 <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 to-red-500/85" style="width:${pct}%"></div>
                 <div class="absolute inset-y-0 right-0 bg-gradient-to-l from-green-600 to-green-500/85" style="width:${100 - pct}%"></div>
                 <!-- 戰線分界(多空交鋒處,隨占比移動)-->
@@ -12729,11 +12750,16 @@ const marginByDate = {};
                     <span>${scan.bearScore} 分・${scan.bearCount} 項 空方 🟢</span>
                 </div>
             </div>
-            <!-- 占比百分比帶 -->
-            <div class="flex items-center justify-between text-[10px] font-mono mb-2 px-1">
+            <!-- 占比百分比帶(樣本不足時一併藏起來,那個 % 正是誤導來源)-->
+            <div class="${scan.lowSample ? 'hidden ' : ''}flex items-center justify-between text-[10px] font-mono mb-2 px-1">
                 <span class="text-red-400 font-bold">▶ 多方 ${pct}%</span>
                 <span class="text-green-400 font-bold">${100 - pct}% 空方 ◀</span>
             </div>
+            ${scan.lowSample ? `<div class="flex items-center justify-between text-[11px] font-mono mb-2 px-2 py-1.5 rounded-lg border border-[#30363d] bg-[#0d1117]">
+                <span class="text-gray-400">🔴 多方命中 <b class="text-gray-200">${scan.bullCount}</b> 條</span>
+                <span class="text-gray-600">共 28 條規則</span>
+                <span class="text-gray-400"><b class="text-gray-200">${scan.bearCount}</b> 條 空方命中 🟢</span>
+            </div>` : ''}
             <!-- Verdict(動態發光)-->
             <div class="rounded-lg border ${verdictColor} ${glowCls} px-3 py-2.5 text-center transition-shadow">
                 <div class="text-lg font-black tracking-wider">${scan.verdict}${scan.lowSample ? `<span class="text-sm font-mono opacity-80 ml-2">命中 ${scan.hits}/28</span>` : `<span class="text-sm font-mono opacity-80 ml-2">多方 ${pct}%</span>`}</div>
@@ -24175,6 +24201,21 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     applyLatestPrice(fugleData, manualPrice) {
         this.rawDailyData = JSON.parse(JSON.stringify(this.baseRawData));
         if (!this.rawDailyData || this.rawDailyData.length === 0) return;
+        // 📊 V71.8.4 指數的「量」改用**成交金額**(使用者:K線部分有問題)。
+        //   實測 data/^TWII.json:486 根裡有 44 根 volume=0(而且正好是最近 44 根),
+        //   但 `amount`(證交所官方集中市場成交值,元)**486 根全都有**。
+        //   → K線的量柱、量能判斷、六脈的「量能」那條,對指數全部失效。
+        //   ⚠️ 照 CLAUDE.md 陷阱 #17(兩個來源塞同一個欄位、單位不同 → 雙峰分布):
+        //     這裡**整條序列一次全換成 amount**,不是只補缺的那幾根 —— 混著補才會出現兩種尺標。
+        //     另外標記 `_volIsAmount`,顯示端要把名稱改成「成交金額」,⛔ 不可還叫「成交量(張)」。
+        this._volIsAmount = false;
+        if (this._isIndexSym?.()) {
+            const hasAmt = this.rawDailyData.filter(d => Number(d.amount) > 0).length;
+            if (hasAmt >= this.rawDailyData.length * 0.9) {   // 幾乎每根都有才換,免得換出一半空的
+                this.rawDailyData.forEach(d => { d.volume = Number(d.amount) || 0; });
+                this._volIsAmount = true;
+            }
+        }
         // 🐛 V62.4 濾掉「非交易日幽靈棒」:台灣節日(如端午 6/19)/ 假日前快照補丁被採礦端寫成一根量體極小的假 K
         //   (端午 6/19 量 178245 vs 中位量 ~1億 = 0.18%;假日尾棒 volume=0)。用「量 < 近期中位量 × 2%」判定幽靈,
         //   整根移除(不留空日),K線只留真實交易日 → 修正最後交易日錯位 + 量/OBV/MA 不被假 K 污染。
@@ -32620,7 +32661,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             yax.min = null; yax.max = null;
             yax.axisLabel = { color: '#8b949e', fontSize: 10, formatter: v => v >= 1000 ? (v / 1000).toFixed(1) + 'K' : Math.round(v) };
             const vols = data.map(d => ({ value: Math.round((d.volume || 0) / 1000), itemStyle: { color: d.close >= d.open ? '#f87171' : '#4ade80' } }));
-            option.series.push({ name: '成交量(張)', type: 'bar', data: vols, xAxisIndex: X, yAxisIndex: Y });
+            // 📊 V71.8.4 指數的量是成交金額 → 圖例名稱也要換(⛔ 同一個數字不可掛兩種單位)
+            option.series.push({ name: this._volIsAmount ? '成交金額(元)' : '成交量(張)', type: 'bar', data: vols, xAxisIndex: X, yAxisIndex: Y });
             // 📊 V66.4 均張:5MA(藍)/20MA(綠)/60MA(橙)成交量均線(對標券商成交量副圖「均張」)
             const toLot = arr => (arr || []).map(v => v == null ? null : Math.round(v / 1000));
             option.series.push({ name: '均張5', type: 'line', data: toLot(ind.vma5), smooth: true, showSymbol: false, lineStyle: { color: '#60a5fa', width: 1 }, xAxisIndex: X, yAxisIndex: Y });
@@ -32669,7 +32711,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try {
             const i = (index != null && data[index]) ? index : data.length - 1;
             const fmt = n => Math.abs(n) >= 1000 ? (n / 1000).toFixed(1) + 'K' : Math.round(n);
-            if (mode === 'VOL') { const v = Math.round((+data[i].volume || 0) / 1000); const kk = x => x == null ? '--' : Math.round(x / 1000).toLocaleString(); return `<span class="flex flex-col leading-tight"><span class="text-gray-300 font-bold">${fmt(v)}張</span><span class="text-[8px]"><span class="text-blue-400">5MA ${kk(ind.vma5?.[i])}</span> <span class="text-green-400">20MA ${kk(ind.vma20?.[i])}</span> <span class="text-amber-400">60MA ${kk(ind.vma60?.[i])}</span></span></span>`; }
+            if (mode === 'VOL') {
+                // 📊 V71.8.4 指數的量其實是**成交金額(元)** → 單位與名稱都要換,
+                //    ⛔ 不可還顯「張」(1.1 兆元 ÷1000 會變成「1149185.3K張」這種鬼數字)。
+                if (this._volIsAmount) {
+                    const tn = x => (x == null || !(x > 0)) ? '--' : (x / 1e12).toFixed(2) + '兆';
+                    return `<span class="flex flex-col leading-tight"><span class="text-gray-300 font-bold">${tn(+data[i].volume)}</span><span class="text-[8px]"><span class="text-blue-400">5MA ${tn(ind.vma5?.[i])}</span> <span class="text-green-400">20MA ${tn(ind.vma20?.[i])}</span> <span class="text-amber-400">60MA ${tn(ind.vma60?.[i])}</span></span></span>`;
+                }
+                const v = Math.round((+data[i].volume || 0) / 1000); const kk = x => x == null ? '--' : Math.round(x / 1000).toLocaleString();
+                return `<span class="flex flex-col leading-tight"><span class="text-gray-300 font-bold">${fmt(v)}張</span><span class="text-[8px]"><span class="text-blue-400">5MA ${kk(ind.vma5?.[i])}</span> <span class="text-green-400">20MA ${kk(ind.vma20?.[i])}</span> <span class="text-amber-400">60MA ${kk(ind.vma60?.[i])}</span></span></span>`;
+            }
             if (mode === 'INST') { const net = ((+data[i].foreign_net || 0) + (+data[i].trust_net || 0)) / 1000; const c = net >= 0 ? 'text-red-400' : 'text-green-400'; return `<span class="${c}">${net >= 0 ? '買超' : '賣超'} ${fmt(Math.abs(net))}張</span>`; }
             if (mode === 'KD') { const k = ind.k?.[i], d = ind.d?.[i]; if (k == null || d == null) return ''; const c = k > d ? 'text-red-400' : 'text-green-400'; return `<span class="${c}">K${Math.round(k)} D${Math.round(d)}</span>`; }
             if (mode === 'MACD') { const o = ind.osc?.[i]; if (o == null) return ''; const c = o >= 0 ? 'text-red-400' : 'text-green-400'; return `<span class="${c}">OSC ${(+o).toFixed(2)}</span>`; }
