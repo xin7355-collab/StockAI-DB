@@ -15,13 +15,53 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.8.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.8.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- 🧩 朱家泓策略共用模組(前端單一真相):與後端 strategy_sim.py 逐條對齊。
          偵測器逐步遷移為「呼叫此模組算邏輯 + 前端只組 UI 訊息」,避免前後端漂移。 -->
+    <!-- 🩺 V71.8.2 自我修復哨兵:必須是**獨立且最早**的 script —— 放在主程式裡的話,
+         主程式被截斷時它自己也活不了(實測驗證過),那就永遠修不好。 -->
+    <script>
+// 自我修復:文件被截斷時,清掉快取重載一次(而不是每次開 App 都跳紅框)
+//   背景:iOS 對 PWA 有儲存空間上限,Cache Storage 寫到一半被中止時存進去的是**不完整的 body,
+//   而且不會報錯**。V71.7.7 已在 sw.js 加了「回傳快取前先驗尾巴有沒有 </html>」,
+//   但使用者在 V71.8.0 仍回報同一個錯誤 → 代表還有漏網路徑(例如 sw.js 本身還沒換新、
+//   或是 iOS 把 HTTP 快取那層的半截內容吐給了頁面)。
+//   ⛔ 只靠 SW 那一層不夠 —— 頁面自己也要能發現「我沒被載完」並修好。
+//   ⚠️ 只修一次:用 sessionStorage 上鎖,避免「壞的 → reload → 還是壞的 → 無限重整」。
+(function _selfHealTruncated() {
+    const LOCK = '_healTrunc';
+    setTimeout(async () => {
+        if (window.__pageComplete) {                        // 完整載入 → 把鎖清掉,下次還能修
+            try { sessionStorage.removeItem(LOCK); } catch (_) {}
+            return;
+        }
+        console.error('[自我修復] 文件沒載完(尾端哨兵未執行)→ 清快取重載');
+        let tried = null;
+        try { tried = sessionStorage.getItem(LOCK); } catch (_) {}
+        if (tried) {                                        // 修過一次還是壞 → 不再重整,改提示使用者
+            const t = document.createElement('div');
+            t.className = 'fixed top-14 left-2 right-2 bg-red-900/95 text-red-100 text-[11px] p-2.5 rounded z-[10000] shadow-2xl border border-red-600 leading-relaxed';
+            t.innerHTML = '⚠️ <b>這一頁沒有載完整</b>(通常是手機儲存空間不足,存到一半被中斷)。<br>已自動清過一次快取仍未改善 → 請<b>完全關閉 App 再重開</b>;還是不行的話,清一下手機儲存空間。'
+                        + '<br><button onclick="this.parentNode.remove()" class="text-red-200 underline text-[10px] mt-1">關閉</button>';
+            document.body.appendChild(t);
+            return;
+        }
+        try { sessionStorage.setItem(LOCK, '1'); } catch (_) {}
+        try { if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } } catch (_) {}
+        try {
+            if (navigator.serviceWorker) {
+                const rs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(rs.map(r => r.unregister()));
+            }
+        } catch (_) {}
+        location.reload();
+    }, 4000);   // 給 CDN + inline script 充足時間跑完,避免慢網路誤判
+})();
+    </script>
     <script>
     window.StrategySim = (function () {
         'use strict';
@@ -634,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.8.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6694,7 +6734,26 @@ ${list}
         }
     },
 
+    // 🏛️ V71.8.2 指數(加權/櫃買)藏掉沒有意義的分頁 —— 使用者:「加權要簡化,看符合加權的東西」。
+    //   ・基本:指數沒有 EPS/本益比/營收,那整頁對它是空的
+    //   ・當沖:指數不能下單
+    //   ・回測:回測的是「這檔的買賣訊號」,指數不能買 → 誤導
+    //   留下:總覽(改成指數版位置解讀)/即時/K線/籌碼(三大法人是大盤本來就要看的)/多空
+    _idxHiddenSubTabs: ['corp', 'daytrade', 'backtest'],
+    _syncIndexSubTabs() {
+        const idx = this._isIndexSym?.();
+        const MAP = { corp: 'Corp', daytrade: 'DayTrade', backtest: 'Backtest' };
+        Object.entries(MAP).forEach(([k, t]) => {
+            const btn = document.getElementById(`subTabBtn${t}`);
+            if (btn) btn.classList.toggle('hidden', !!(idx && this._idxHiddenSubTabs.includes(k)));
+        });
+        // 正停在被藏起來的分頁 → 拉回總覽,免得看到一片空白
+        if (idx && this._idxHiddenSubTabs.includes(this._activeSubTab)) this.switchSubTab('strategy');
+    },
+
     switchSubTab(tab) {
+        // 指數點到被藏起來的分頁(舊按鈕/程式呼叫)→ 導回總覽
+        if (this._isIndexSym?.() && this._idxHiddenSubTabs.includes(tab)) tab = 'strategy';
         this._activeSubTab = tab;   // 🐛 V41.28 記錄當前 sub-tab,切股時 analyze 才知道要補跑哪個載入器
         if (tab !== 'daytrade') { try { this._stopDtAccel?.(); } catch (_) {} }   // ⚡ V55.2 離開當沖 sub-tab 停加速刷價
         ['Strategy', 'Live', 'DayTrade', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
@@ -6831,8 +6890,19 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.8.1',
+    _APP_VERSION: 'V71.8.2',
     _CHANGELOG: [
+        { v: 'V71.8.2', dt: '2026-08-03', t: '🏛️ 加權指數改成「指數該看的」+ 那個紅框改成會自己修', d: [
+            '【加權指數版面】你說得對 —— 之前加權指數整頁都在用**個股**的版面:「這檔在盤整,先等它表態」「帶量突破前高 45323 → 買進」「跌破前低 → 這檔不做」「停損防守」。但**指數根本不能買**,這些價位你也下不了單,看了只會誤導。',
+            '改成「🏛️ 加權指數・現在什麼位置」:一年位階(距一年高回檔幾%)、年線在上還在下、月線季線、成交量能、台股波動率、外資現貨與台指期 —— 都是看大盤真正該看的東西。',
+            '中期結論直接引用反攻雷達(不再自己算第二套),下面一句白話:**指數不能直接買,想跟著大盤走就是買 0050 / 006208;想買個股,把這裡當「環境」看** —— 大盤在修正區時,個股跌得比大盤兇是常態,買點要更嚴、部位要更小。',
+            '順手把對指數沒意義的分頁藏掉:進場/出場頁籤、基本(指數沒有本益比營收)、當沖(不能下單)、回測(回測的是買賣訊號)。留下總覽/即時/K線/籌碼/多空。換回個股時全部自動復原。',
+            '',
+            '【那個紅框】你這次的截圖幫了大忙 —— 上面顯示**版本 V71.8.0**,證明不是「舊版沒更新」,是這一份網頁在你手機上真的少了一截。',
+            '所以改成會自己修:網頁最後面放一個「我載完了」的記號,開 App 4 秒後檢查,沒看到記號就自動清快取重載一次。修一次還是壞就不再重整(避免無限轉圈),改跳白話提示叫你完全關閉 App 再開。',
+            '⭐ 這段修復程式**放在網頁最前面而且獨立** —— 實測發現放在主程式裡的話,主程式壞掉時它自己也活不了,那就永遠修不好。現在連整個 App 都掛掉的情況也修得起來。',
+            '紅框本身也會多顯示「文件完整/未載完(幾KB)」,下次萬一還有問題,一張截圖我就分得出是網頁破了還是程式真的有 bug。',
+        ] },
         { v: 'V71.8.1', dt: '2026-08-03', t: '🌡️ 那格「沒有資料」的:改用算得出來的台股波動率', d: [
             '你回報第二次了,所以不再讓那一格空著等。台指 VIX 的官方免費來源我還在確認網址(上一輪連官方的清單都抓不到),但**台股怕不怕這件事,我自己就算得出來**。',
             '改用「台股波動率」:加權指數近 20 天實際振幅年化,再跟自己過去一年比出位階。回到前 70% 以內就算退燒。現在那一格會顯示像「14.2%(近一年位階 38%)」這種真數字,而且**會計分**,不再是灰色的 ⏳。',
@@ -23869,6 +23939,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             });
             // 即時頁那一整組(分時圖 / 盤中六脈 / 大戶散戶 / 五檔…)一起清
             try { this._clearLivePanels?.(); this._intradayLoadedSym = null; } catch (_) {}
+            // 🏛️ V71.8.2 指數/個股切換時同步分頁可見性(指數藏基本/當沖/回測 + 進場/出場頁籤)
+            try { this._syncIndexSubTabs?.(); this.switchOvTab?.(this._ovTab || 'now', { auto: true }); } catch (_) {}
         }
 
         // Auto-sync inventory cost: if stock is in inventory, pre-fill the cost input
@@ -25711,9 +25783,119 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         box.classList.remove('hidden');
     },
 
+    // 🏛️ V71.8.2 指數(加權/櫃買)專用 —— 使用者:「加權指數應該簡化,用符合加權在看的東西」。
+    //   問題:^TWII 一直沿用**個股**版面,寫「這檔在盤整,先等它表態」「帶量突破前高 → 買進」
+    //   「跌破前低 → 這檔不做」「停損防守」…… 但**加權指數根本不能買**,這些指令對它沒有意義,
+    //   而且會讓人以為那是可以下單的價位。指數該看的是位階、量能、廣度、法人、波動。
+    _isIndexSym(sym) {
+        return String(sym || this.currentSymbolId || '').startsWith('^');
+    },
+
+    _renderIndexCommand(data, ind, last) {
+        const box = document.getElementById('trendCommandCard');
+        if (!box || !data || last == null || last < 20) return false;
+        const C = +data[last].close;
+        if (!(C > 0)) return false;
+        const cl = data.map(r => +r.close).filter(v => v > 0);
+        const w = cl.slice(-250);
+        const hi = Math.max(...w), lo = Math.min(...w);
+        const ddHi = (C - hi) / hi * 100;                       // 距一年高(負值=回檔)
+        const upLo = (C - lo) / lo * 100;                       // 距一年低
+        const at = (a, i) => (Array.isArray(a) && a[i] != null) ? +a[i] : null;
+        const ma20 = at(ind?.ma20, last), ma60 = at(ind?.ma60, last);
+        const ma240 = cl.length >= 240 ? cl.slice(-240).reduce((a, b) => a + b, 0) / 240 : null;
+        const cma = v => Math.round(v).toLocaleString('en-US');
+        const pos = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+        const nm = this.currentSymbolId === '^TWO' ? '櫃買指數' : '加權指數';
+
+        // ── 主結論:只講「大盤在哪個位置」,⛔ 不下買賣指令(那是個股的事)──
+        let icon, head, tone, why;
+        if (ddHi > -3)        { icon = '🔺'; head = '在相對高檔'; tone = 'text-red-300 border-red-500';    why = `距一年高只有 ${pos(ddHi)},離頂不遠 — 這時候買個股,追高的風險比較大。`; }
+        else if (ddHi > -10)  { icon = '➖'; head = '高檔回檔中'; tone = 'text-yellow-300 border-yellow-500'; why = `從一年高回檔 ${pos(ddHi)},還在「正常回檔」的範圍(10% 內)。`; }
+        else if (ddHi > -20)  { icon = '⚠️'; head = '修正區'; tone = 'text-yellow-300 border-yellow-500';   why = `從一年高回檔 ${pos(ddHi)},一般叫「修正」。這種時候個股跌得比大盤兇很正常。`; }
+        else                  { icon = '⛔'; head = '熊市區'; tone = 'text-green-300 border-green-500';      why = `從一年高回檔 ${pos(ddHi)},已進入一般定義的熊市(−20%)。`; }
+
+        const cell = (lb, val, sub, cls) => `<div class="bg-[#0d1117] border border-[#30363d] rounded p-2">
+            <div class="text-[9px] text-gray-500 mb-0.5 truncate">${lb}</div>
+            <div class="text-sm font-black font-mono ${cls || 'text-gray-100'} leading-tight">${val}</div>
+            ${sub ? `<div class="text-[9px] text-gray-500 leading-snug mt-0.5">${sub}</div>` : ''}</div>`;
+
+        const cells = [];
+        cells.push(cell('📍 一年位階', pos(ddHi),
+            `一年高 ${cma(hi)} ・低 ${cma(lo)}(距低 ${pos(upLo)})`,
+            ddHi > -3 ? 'text-red-300' : ddHi < -20 ? 'text-green-300' : 'text-yellow-300'));
+        if (ma240 != null) cells.push(cell('📉 年線(240日)', cma(ma240),
+            C >= ma240 ? `現價在年線<b class="text-red-300">之上</b> ${pos((C - ma240) / ma240 * 100)}(長多未破)`
+                       : `現價在年線<b class="text-green-300">之下</b> ${pos((C - ma240) / ma240 * 100)}(長線轉弱)`,
+            C >= ma240 ? 'text-red-300' : 'text-green-300'));
+        if (ma20 != null && ma60 != null) cells.push(cell('📈 月線 / 季線', `${cma(ma20)} / ${cma(ma60)}`,
+            `現價 ${C >= ma20 ? '站上月線' : '在月線下'}・${C >= ma60 ? '站上季線' : '在季線下'}`,
+            (C >= ma20 && C >= ma60) ? 'text-red-300' : (C < ma20 && C < ma60) ? 'text-green-300' : 'text-yellow-300'));
+        // 量能(用既有的單一真相源,連名稱一起帶出來,⛔ 不自己寫死名字)
+        try {
+            const a = this._amtState?.();
+            if (a) cells.push(cell(`💰 ${a.label}`, `${a.tn.toFixed(2)} 兆`,
+                `5 日均 ${(a.ma5E / 10000).toFixed(2)} 兆${a.vsMa5 == null ? '' : `(${a.vsMa5 >= 0 ? '+' : ''}${a.vsMa5.toFixed(0)}%)`}・${a.over1tn ? '量能有到' : '量能不足'}`,
+                a.over1tn ? 'text-red-300' : 'text-gray-300'));
+        } catch (_) {}
+        // 波動(同一支函式,名字跟反攻雷達一致)
+        try {
+            const rv = this._twRealizedVol?.();
+            if (rv && rv.pct != null) cells.push(cell('🌡️ 台股波動率', `${rv.vol.toFixed(1)}%`,
+                `近一年位階 ${Math.round(rv.pct)}%・${rv.pct > 70 ? '還在劇烈跳動' : '已經緩下來'}`,
+                rv.pct > 70 ? 'text-orange-300' : 'text-gray-300'));
+        } catch (_) {}
+        // 法人/外資期貨(讀既有快取,沒有就不顯)
+        const mr = this._macroRiskCache || {};
+        const fiSpot = (mr.fi_spot_net == null || isNaN(+mr.fi_spot_net)) ? null : +mr.fi_spot_net;
+        if (fiSpot != null) cells.push(cell('🏦 外資現貨', `${fiSpot >= 0 ? '+' : ''}${Math.round(fiSpot).toLocaleString('en-US')} 億`,
+            fiSpot >= 0 ? '買超,法人站在買方' : '賣超,法人還在調節',
+            fiSpot >= 0 ? 'text-red-300' : 'text-green-300'));
+        try {
+            const fs = this._fiFutState?.();
+            if (fs && fs.net != null) cells.push(cell('📊 外資台指期', `${Math.round(fs.net).toLocaleString('en-US')} 口`,
+                fs.label || '', fs.color || 'text-gray-300'));
+        } catch (_) {}
+
+        // 中期結論:⛔ 只引用反攻雷達,不自己再算一份(避免同一件事兩個答案)
+        const rv2 = this._reboundVerdict;
+        const midHtml = (rv2 && rv2.total > 0)
+            ? `<div class="bg-[#0d1117] border-l-4 border-[#30363d] pl-2.5 py-1.5 rounded-r mt-2 text-[11px] text-gray-200 leading-relaxed">
+                 🧭 中期:<b>${rv2.icon} ${rv2.txt}</b>(反攻條件 ${rv2.passN}/${rv2.total},門檻 ${Math.max(6, rv2.total - 2)})
+                 <span class="text-gray-500">— 完整條件在「大盤 → 💡 建議 → 反攻條件雷達」</span></div>`
+            : `<div class="bg-[#0d1117] border-l-4 border-[#30363d] pl-2.5 py-1.5 rounded-r mt-2 text-[11px] text-gray-400 leading-relaxed">
+                 🧭 中期結論在「大盤 → 💡 建議 → 反攻條件雷達」,那裡有 11 個條件逐條檢查。</div>`;
+
+        box.className = 'w-full bg-[#161b22] border-l-4 ' + tone.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
+        box.innerHTML = `
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+                <span class="text-[12px] font-black text-gray-100">🏛️ ${nm}・現在什麼位置</span>
+                <span class="text-[9px] text-gray-500 font-mono">${this._dW((data[last] || {}).date, { rel: 1 })}</span>
+            </div>
+            <div class="text-xl font-black ${tone.split(' ')[0]} leading-tight mb-1">${icon} ${head}</div>
+            <div class="text-[11px] text-gray-300 leading-relaxed mb-2">${why}</div>
+            <div class="grid grid-cols-2 gap-1.5">${cells.join('')}</div>
+            ${midHtml}
+            <div class="bg-[#0d1117] border-l-4 border-blue-500 pl-2.5 py-1.5 rounded-r mt-2 text-[11px] text-gray-200 leading-relaxed">
+                💡 <b>指數不能直接買</b> —— 想跟著大盤走就是買 <b class="text-blue-300">0050 / 006208</b> 這類 ETF(點代號可查);
+                想買個股,把這裡當<b>環境</b>看:大盤在修正區時,個股跌得比大盤兇是常態,買點要更嚴、部位要更小。
+            </div>
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 全部純公式即時算。⛔ 這張卡刻意<b>不給買賣價位</b> —— 指數沒有「掛單價」,個股的進出場請到個股頁看。非投資建議。</div>`;
+        box.classList.remove('hidden');
+        return true;
+    },
+
     _renderTrendCommand(data, ind, last) {
         const box = document.getElementById('trendCommandCard');
         if (!box) return;
+        // 🏛️ V71.8.2 指數走專用版面(個股那套「買進/停損/掛單」對指數沒有意義)
+        if (this._isIndexSym()) {
+            try {
+                const okIdx = this._renderIndexCommand(data, ind, last);
+                try { const b = document.getElementById('invTabCard'); if (b) { b.classList.add('hidden'); b.innerHTML = ''; } } catch (_) {}
+                if (okIdx) return;
+            } catch (e) { console.warn('[指數版面] 失敗,退回個股版面', e); }
+        }
         try {
             const _hideInvTab = () => { try { const b = document.getElementById('invTabCard'); if (b) { b.classList.add('hidden'); b.innerHTML = ''; } this._updateOvTabBadges(null, null, ''); } catch (_) {} };   // 🗂️ V65.7/65.8 早退時清庫存頁 + 重設頁籤(換股回「現在怎麼做」),防跨股殘留
             if (!data || !ind || !ind.ma20 || last == null || last < 25) { box.classList.add('hidden'); _hideInvTab(); return; }
@@ -31953,12 +32135,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //    不動內部卡片的 classList hidden(渲染器照常控制自己的卡),避免互相打架
     switchOvTab(name, opts) {
         if (name === 'inv') name = 'now';   // 🗂️ V68.7.2 庫存頁併入「現在怎麼做」,舊呼叫導向 now
+        // 🏛️ V71.8.2 指數(加權/櫃買)沒有「進場/出場」可言 —— 那兩個頁籤整組藏起來,只留位置解讀。
+        //   (使用者:加權要看符合加權的東西;⛔ 指數不能買,給進出場價位會誤導)
+        const _idx = this._isIndexSym?.();
+        if (_idx && (name === 'entry' || name === 'exit')) name = 'now';
         this._ovTab = name;
         try {
             document.querySelectorAll('[data-ovpane]').forEach(el => { el.style.display = el.dataset.ovpane === name ? '' : 'none'; });
             document.querySelectorAll('[data-ovtab]').forEach(b => {
                 const on = b.dataset.ovtab === name;
-                b.className = `flex-shrink-0 text-[12px] font-bold rounded-full px-3.5 py-1.5 border transition-colors ${on ? 'bg-blue-600/20 text-blue-200 border-blue-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
+                // ⚠️ 這裡是整個 className 重寫 → 藏頁籤的 hidden 必須**寫在同一個字串裡**,
+                //    不能先 classList.add('hidden') 再跑到這裡(會被這行洗掉,V71.8.2 第一版就中招)。
+                const stockOnly = b.dataset.ovtab === 'entry' || b.dataset.ovtab === 'exit';
+                b.className = `${(_idx && stockOnly) ? 'hidden ' : ''}flex-shrink-0 text-[12px] font-bold rounded-full px-3.5 py-1.5 border transition-colors ${on ? 'bg-blue-600/20 text-blue-200 border-blue-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
             });
         } catch (_) {}
         if (!opts || !opts.auto) this.vibrate?.(20);
@@ -40094,7 +40283,14 @@ window.addEventListener('error', e => {
         //    「他手機上跑的到底是哪一版」,導致無法分辨是「還沒更新到修好的版本」還是「真的沒修好」。
         const _ver = (typeof app !== 'undefined' && app._APP_VERSION) ? app._APP_VERSION : '?';
         const _stk = (e.error && e.error.stack ? String(e.error.stack).split('\n')[1] || '' : '').trim().slice(0, 90);
-        t.innerHTML = `⚠️ <b>JS 錯誤(請截圖回報給 Claude)</b><br>${e.message}<br><span class="text-[9px] text-red-300">位置:${(e.filename || '?').split('/').pop()}:${e.lineno} ・ 版本 ${_ver}</span>${_stk ? `<br><span class="text-[9px] text-red-300/80">${_stk.replace(/</g, '&lt;')}</span>` : ''}<br><button onclick="this.parentNode.remove()" class="text-red-200 underline text-[9px] mt-1">關閉</button>`;
+        // 🩺 V71.8.2 附上「文件有沒有載完」+ 文件大小 —— 語法錯誤(SyntaxError)時 e.error 是 null、
+        //    拿不到堆疊,這兩個數字才是分辨「文件被截斷」vs「程式真的有 bug」的關鍵線索。
+        let _doc = '';
+        try {
+            const len = (document.documentElement.outerHTML || '').length;
+            _doc = ` ・文件${window.__pageComplete ? '完整' : '未載完⚠️'}(${Math.round(len / 1024)}KB)`;
+        } catch (_) {}
+        t.innerHTML = `⚠️ <b>JS 錯誤(請截圖回報給 Claude)</b><br>${e.message}<br><span class="text-[9px] text-red-300">位置:${(e.filename || '?').split('/').pop()}:${e.lineno} ・ 版本 ${_ver}${_doc}</span>${_stk ? `<br><span class="text-[9px] text-red-300/80">${_stk.replace(/</g, '&lt;')}</span>` : ''}<br><button onclick="this.parentNode.remove()" class="text-red-200 underline text-[9px] mt-1">關閉</button>`;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 30000);
     } catch(_){}
@@ -40102,6 +40298,8 @@ window.addEventListener('error', e => {
 window.addEventListener('unhandledrejection', e => {
     console.error('[Promise 未處理拒絕]', e.reason);
 });
+
+
 
 // ⚡ V69.8.5 P1-2:onload → DOMContentLoaded。原本要等 3 支 CDN script + base64 icon 全下載完
 //   才開始 init;DOMContentLoaded 在 DOM 就緒即觸發(head 內同步 script 已保證執行完,echarts 可用)。
@@ -40124,6 +40322,14 @@ document.addEventListener('touchend', (e) => {
         }
     }
 }, { passive: true });
+
+// 🩺 V71.8.2 —「這一頁有沒有被載完」的哨兵(必須是全檔最後一行可執行程式碼)。
+//    使用者連續回報 JS 錯誤紅框「SyntaxError: Unexpected EOF ・ 位置 ?source=pwa:1」,
+//    而版本號顯示 V71.8.0 → 證明**不是舊快取沒更新**,是這一份文件本身被截斷。
+//    部署產物是壓縮過的單行 HTML,所以「第 1 行」= 整份檔案;App 其他功能正常,
+//    代表斷點在**尾巴**(前面的 script 都跑完了,最後這段沒跑完)。
+//    有了這個哨兵就分得出來:沒設到 = 文件真的少一截 → 自我修復(見 _selfHealTruncated)。
+window.__pageComplete = 1;
 </script>
 </body>
 </html>
