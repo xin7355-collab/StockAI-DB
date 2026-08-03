@@ -34,6 +34,17 @@ ok('① 成績表有載入(122 個訊號)', meta.n >= 100, JSON.stringify(meta))
 ok('① ⭐ 基準勝率記錄下來且 ≠ 50%', meta.base_win > 25 && meta.base_win < 45, String(meta.base_win));
 ok('① 分級數量合理(A 少、C 多)', meta.A > 0 && meta.C > meta.A, JSON.stringify(meta));
 ok('① 回測涵蓋 ≥200 檔', meta.syms >= 200, String(meta.syms));
+// ⭐ V72.0.2 踩過的坑:更新成績表時只換了 meta 沒換資料(regex 沒對到)→ meta 說 500 檔 A=42,
+//    但資料還是 250 檔那版。這種不一致最難發現,因為兩邊各自看起來都對。⛔ 一定要交叉驗。
+const cross = await page.evaluate(() => {
+    const v = Object.values(app._SIGNAL_EDGE);
+    return { A: v.filter(x => x[0] === 'A').length, B: v.filter(x => x[0] === 'B').length,
+             C: v.filter(x => x[0] === 'C').length, tot: v.length };
+});
+ok('① ⭐ meta 的 A/B/C 數量必須跟資料表對得起來(防「只更新一半」)',
+   cross.A === meta.A && cross.B === meta.B && cross.C === meta.C,
+   `meta=${JSON.stringify({A:meta.A,B:meta.B,C:meta.C})} 實際=${JSON.stringify(cross)}`);
+ok('① meta 總數 = 資料筆數', cross.tot === meta.A + meta.B + meta.C, JSON.stringify(cross));
 
 // ── ② 查表 ────────────────────────────────────────────────
 const e1 = await page.evaluate(() => app._sigEdge('_detectStarPatterns', '晨星轉折'));

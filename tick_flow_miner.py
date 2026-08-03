@@ -178,6 +178,41 @@ def main():
         json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
     print(f'✅ 逐筆內外盤採礦完成:{len(out)} 檔 → tick_flow.json')
 
+    # 📚 V72.0.2 開始累積**逐日歷史** → data/tick_hist.json
+    #
+    # 為什麼要做:逐字稿【當沖神器「買盤竭盡」】講的是「每 5 秒比一次內外盤,多方連 N 次獲勝後
+    #   出現第一次內盤大量 = 買盤竭盡」。我沒有盤中逐秒序列,但有**收盤的內外盤與大單結構**,
+    #   可以做它的本質版本:「**外盤佔優(小單在追買)但大單淨賣(大戶在倒)**」。
+    # ⛔ 但 `tick_flow.json` 是**每天覆蓋的快照**,沒有歷史 → **現在無法回測**。
+    #   照鐵則「沒驗過不下方向」,前端只能誠實描述、不計分。
+    # ⭐ 所以這裡先把歷史存起來,累積夠了才驗得了(同 bstat 的做法)。
+    #   空間:80 檔 × 約 55 bytes × 250 個交易日 ≈ 1.2MB,很便宜。
+    try:
+        hist_path = 'tick_hist.json'
+        try:
+            with open(hist_path, 'r', encoding='utf-8') as f:
+                hist = json.load(f)
+        except Exception:
+            hist = {}
+        if not isinstance(hist, dict) or not isinstance(hist.get('d'), dict):
+            hist = {'d': {}}
+        today_key = datetime.now(TW).strftime('%Y-%m-%d')
+        # 只留判斷「買盤竭盡」需要的四個欄位,省空間([out, in, bb, bs])
+        hist['d'][today_key] = {k: [v['out'], v['in'], v['bb'], v['bs']] for k, v in out.items()}
+        # 保留最近 250 個交易日(約一年);⛔ 用日期排序不是插入順序
+        keys = sorted(hist['d'].keys())[-250:]
+        hist['d'] = {k: hist['d'][k] for k in keys}
+        hist['updated'] = payload['updated']
+        hist['days'] = len(keys)
+        hist['big_lots'] = BIG_LOTS
+        with open(hist_path, 'w', encoding='utf-8') as f:
+            json.dump(hist, f, ensure_ascii=False, separators=(',', ':'))
+        print(f'📚 逐日歷史累積:{len(keys)} 個交易日 → tick_hist.json'
+              f'(滿約 60 日後可跑回測驗「買盤竭盡」)')
+    except Exception as e:
+        # ⛔ 失敗不可影響主產物(tick_flow.json 已寫完)
+        print(f'⚠️ tick_hist 累積失敗(不影響主檔):{str(e)[:80]}')
+
 
 if __name__ == '__main__':
     main()

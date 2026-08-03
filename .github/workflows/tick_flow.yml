@@ -37,6 +37,18 @@ jobs:
       - name: 📦 安裝 shioaji
         run: pip install "shioaji<1.7"   # 📌 1.7.0 移除 login(fetch_contract=) → 釘在 1.6.x 保留既有登入寫法
 
+      # 📚 V72.0.2 tick_hist 是**累積型**檔案 → 必須先從 data 分支還原,否則每輪都從零開始
+      #    ⚠️ 用 git show 而不是 git checkout(後者會把檔案 stage 進 index 弄髒工作區,V49.4 教訓)
+      #    ⚠️ 必須 [ -s ] 驗非空,git show 失敗會留下空檔 → 歷史整份歸零
+      - name: 📚 還原逐日歷史(tick_hist)
+        run: |
+          git fetch origin data --depth=1 2>/dev/null || true
+          if git rev-parse --verify -q origin/data >/dev/null; then
+            (git show origin/data:data/tick_hist.json > tick_hist.json 2>/dev/null && [ -s tick_hist.json ]) \
+              || { rm -f tick_hist.json; echo "ℹ️ data 分支尚無 tick_hist.json(第一次跑)"; }
+          fi
+          [ -f tick_hist.json ] && echo "📚 已還原 $(wc -c < tick_hist.json) bytes" || echo "📚 從零開始累積"
+
       - name: 🔬 採盤中逐筆內外盤/大單
         env:
           SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
@@ -50,13 +62,16 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           cp tick_flow.json /tmp/tf.json
+          [ -f tick_hist.json ] && cp tick_hist.json /tmp/th.json || true
 
           git fetch origin gh-pages 2>/dev/null || true
           git checkout gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; exit 1; }
 
           mkdir -p data
           cp /tmp/tf.json data/tick_flow.json
+          [ -f /tmp/th.json ] && cp /tmp/th.json data/tick_hist.json || true
           git add data/tick_flow.json
+          [ -f data/tick_hist.json ] && git add data/tick_hist.json || true
           git diff --cached --quiet && echo "無變更,跳過" || {
             git commit -m "🔬 盤中逐筆內外盤 $(date -u '+%Y-%m-%d %H:%M UTC')"
             for i in 1 2 3 4 5; do
@@ -75,9 +90,11 @@ jobs:
           if git checkout -f -B data origin/data 2>/dev/null; then
             mkdir -p data
             cp /tmp/tf.json data/tick_flow.json
+            [ -f /tmp/th.json ] && cp /tmp/th.json data/tick_hist.json || true
             git add -f data/tick_flow.json
+            [ -f data/tick_hist.json ] && git add -f data/tick_hist.json || true
             if ! git diff --cached --quiet; then
-              git commit -q -m "🔬 tick_flow → data 分支 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/tick_flow.json
+              git commit -q -m "🔬 tick_flow → data 分支 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/tick_flow.json $([ -f data/tick_hist.json ] && echo data/tick_hist.json)
               git push origin data 2>/dev/null && echo "✅ data 分支也已同步" || echo "⚠️ data 分支 push 失敗(不擋主流程)"
             fi
           else
