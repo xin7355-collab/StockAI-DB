@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V71.9.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V71.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V71.9.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6910,8 +6910,20 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V71.9.3',
+    _APP_VERSION: 'V71.9.4',
     _CHANGELOG: [
+        { v: 'V71.9.4', dt: '2026-08-03', t: '🎯 這家主力是「追著買」還是「壓低接」?', d: [
+            '逐字稿裡他看盤時講過一句很實用的話:「買超第一名是大摩,**它就不一定是隔日沖,因為它的買超均價並不是漲停板**」——他是拿「主力的買進均價 vs 當天的高低點」在判這家的性質。',
+            '',
+            '白話:同樣是買 1,000 張,**買在當天最高附近 vs 買在當天最低附近,意思完全不同**:',
+            '・🏃 **追價買**(成本落在當天 K 棒 75% 以上)= 追著紅盤進場,常見於隔日沖短打。他的成本很高,股價一回落他就沒賺,**賣壓來得快**。⛔ 別把這種買超當成「大咖看好」。',
+            '・🧲 **低檔吃貨**(落在 25% 以下)= 不追高、專門壓在盤中低檔接,比較像真的在收貨。',
+            '',
+            '📍 位置:個股 → 籌碼 → 券商分點,切到「1 日」才會出現(併進既有的主力動向解讀,沒開新卡)。',
+            '⚠️ 這跟本來就有的「🌏 精準低接」不一樣,兩個問的問題不同:精準低接比的是**這段期間**買得便不便宜,這條比的是**當天**是追高還是壓低,可以同時出現。',
+            '',
+            '🔒 三個守門免得誤報:①只在「1 日」算(5/10 日的均價橫跨好幾天,拿去比單一天沒意義)②一定抓**分點那一天**的 K 棒(分點資料常慢一天)③當天振幅不到 1.5% 就不判(盤太窄時均價本來就會貼著高點,那是數學必然不是訊號)。',
+        ] },
         { v: 'V71.9.3', dt: '2026-08-03', t: '🎫 想用權證做這檔?先看它夠不夠會動', d: [
             '逐字稿裡挑權證的 5 字訣是「大波・小波・穩・夠・優」。我老實說:**5 條裡我只有第 1 條的資料**,所以只做這一條,其他四條在卡上直接告訴你要去券商 App 看,不做假數字。',
             '',
@@ -22496,6 +22508,50 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     break;
                 }
             }
+        }
+        // 🎯 V71.9.4 買超均價落在「當日 K 棒」的哪個位置 —— 追價買 vs 低檔吃貨
+        //
+        // 逐字稿【哥有籌必爆】原話:「買超第一名是大摩,**它就不一定是隔日沖,
+        //   因為它的買超均價並不是漲停板**」→ 他是拿「買超均價 vs 當天的高點」在判性質。
+        //
+        // ⚠️ 這跟上面那條「精準低接」**不是同一件事**,別合併:
+        //   ・精準低接 = avg vs **區間均價**(這段期間買得便不便宜)
+        //   ・這一條   = avg vs **當天那根 K 棒**(當天是追著紅盤買、還是壓在低檔接)
+        //   兩個問的問題不同,同時成立時資訊互補。
+        //
+        // ⛔ 三個必要守門(少一個就會算錯):
+        //   ① **只在 1 日**成立 —— 5/10 日的 avg 橫跨多天,拿去比單一根 K 棒沒有意義
+        //   ② **要用分點那天的 K 棒**,不是 rawDailyData 的最後一根 —— 分點資料常落後 1 天
+        //      (同陷阱 #10/#14 的教訓:判斷要綁「資料的日期」,不是「最新」)
+        //   ③ 當天振幅太小(<1.5%)直接不判 —— 一字盤/窄幅時 avg 必然貼著高點,
+        //      那是**數學上的必然**不是行為訊號,硬判會天天誤報(同「1÷1=100%」那類假信心)
+        if (period === '1d' && Array.isArray(this.rawDailyData) && this.rawDailyData.length) {
+            try {
+                const _dnorm = s => String(s || '').replace(/\//g, '-').slice(0, 10);
+                const want = _dnorm(this._fenDataDate);
+                // 綁日期找那根 K 棒;找不到就不判(⛔ 不退而求其次拿最後一根)
+                const bar = want ? this.rawDailyData.find(b => _dnorm(b.date) === want) : null;
+                const hi = bar ? +bar.high : 0, lo = bar ? +bar.low : 0, cc = bar ? +bar.close : 0;
+                const rng = hi - lo;
+                if (bar && hi > 0 && lo > 0 && rng > 0 && (rng / lo * 100) >= 1.5) {
+                    for (const x of buy.slice(0, 5)) {
+                        const av = +x.avg;
+                        const lots = Math.round(Math.abs(x.net || 0) / 1000);
+                        if (!(av > 0) || lots < 100) continue;
+                        if (av < lo * 0.98 || av > hi * 1.02) continue;   // avg 落在 K 棒外 → 資料對不上,跳過
+                        const posPct = Math.max(0, Math.min(100, (av - lo) / rng * 100));
+                        const dTxt = this._dW ? this._dW(this._fenDataDate) : want;
+                        if (posPct >= 75) {
+                            insights.push({ c: 'dt', h: `🏃 <b class="text-yellow-300">追價買(當天買在相對高檔)</b> — <b>${shortName(x)}</b> 買 ${lots.toLocaleString()} 張,成本 <b class="font-mono">@${av.toFixed(2)}</b> 落在 ${dTxt} 那根 K 棒的 <b>${posPct.toFixed(0)}%</b> 位置(當日 ${lo.toFixed(2)}~${hi.toFixed(2)})。`
+                                + `<br><span class="text-gray-400">買在盤中高檔 = 追著紅盤進場,常見於隔日沖或短打;他的成本很高,<b>股價一回落他就沒賺</b>,賣壓來得快。⛔ 別把這種買超當成「大咖看好」。</span>` });
+                        } else if (posPct <= 25) {
+                            insights.push({ c: 'main', h: `🧲 <b class="text-red-300">低檔吃貨(當天壓低接)</b> — <b>${shortName(x)}</b> 買 ${lots.toLocaleString()} 張,成本 <b class="font-mono">@${av.toFixed(2)}</b> 落在 ${dTxt} 那根 K 棒的 <b>${posPct.toFixed(0)}%</b> 位置(當日 ${lo.toFixed(2)}~${hi.toFixed(2)})。`
+                                + `<br><span class="text-gray-400">不追高、專門壓在盤中低檔接 = 比較像真的在收貨;成本低${cc > av ? `,目前收盤 ${cc.toFixed(2)} 已在他成本之上` : ''}。⚠️ 但這只說明「買法」,不保證後續會漲。</span>` });
+                        }
+                        break;   // 只講買超王那一家,避免洗版
+                    }
+                }
+            } catch (_) {}
         }
         // 🔀 V68.4.5 分點與股價背離:主力大買股價卻跌=誘多出貨;大賣股價卻漲=洗盤
         if (arrN2.length >= 2) {
