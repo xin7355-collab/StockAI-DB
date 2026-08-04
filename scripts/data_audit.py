@@ -319,6 +319,20 @@ def audit(ref):
                         and not any(t in str(v) for t in _intentional)):
                     add('❌', 'C', f'data/{f} 的 {base} 有值({str(bv)[:28]})但 {k} 說有問題'
                                    f' → 兩者矛盾,多半是守門清掉後又被 last-good 填回昨天的值(陷阱 #34)')
+            # 🆕 V72.3.2 ⭐ **巢狀** error:C 類原本只掃頂層 → 把錯誤包在 dict 裡的完全看不見。
+            #   實例:`macro_risk.json` 的 `business_signal` = {'light':None,'score':None,
+            #   'error':'Expecting value: line 1 column 1'} —— 景氣對策信號抓不到(陷阱 #23,
+            #   拿到 HTML 去 parse JSON),而頂層 `business_signal_error` 是 None
+            #   → **體檢從上線到 V72.3.2 一路放過它**。
+            #   ⛔ 只往下走一層(再深就會開始誤報,而誤報會讓人養成忽略體檢的習慣)。
+            elif isinstance(v, dict):
+                for kk, vv in v.items():
+                    if not vv:
+                        continue
+                    lk = str(kk).lower()
+                    if lk == 'err' or lk.endswith('error'):
+                        add('⚠️', 'C', f'data/{f} 的 {k}.{kk} = {str(vv)[:70]}'
+                                       f'(⭐ 巢狀 error —— 頂層 {k}_error 是空的,所以以前掃不到)')
     print(f'   完成,問題 {sum(1 for p in problems if p[1] == "C")} 件')
 
     # ── D. 前後端對接 ────────────────────────────────────────────────

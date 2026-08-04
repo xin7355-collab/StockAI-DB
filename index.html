@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6936,8 +6936,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.3.1',
+    _APP_VERSION: 'V72.3.2',
     _CHANGELOG: [
+        { v: 'V72.3.2', dt: '2026-08-04', t: '🔬 體檢工具漏看的一種錯,現在抓得到了(景氣燈號其實壞很久)', d: [
+            '看別人的開源專案時,順手拿它的宏觀資料清單來對帳,結果照出我自己的問題:**國發會景氣對策信號一直抓不到**,而且錯誤訊息正是「拿到網頁去當 JSON 解析」那一種。',
+            '🚨 更要命的是:每天在跑的「資料體檢」**看不到這個錯** —— 因為錯誤被包在一層裡面,而體檢只看最外層。等於這格壞了很久都沒人知道。',
+            '兩邊都修好了:體檢現在會往內多看一層;抓取失敗時也會把「到底拿到什麼東西」跟官方頁面上找得到的候選網址一起記下來,下次跑就查得出真因。',
+            '📚 順帶說明那份開源專案:它是 A 股的、跟本 App 架構完全不同,而且**整包沒有回測**(卻宣稱年化 100%+)、券商評分是寫死名單加拍腦袋的權重。所以沒有照抄任何東西,判斷都記進開發筆記免得日後重看一遍。',
+        ] },
         { v: 'V72.3.1', dt: '2026-08-04', t: '🚦 修好 ETF 跟車「天天喊換入」+ 法人成本卡 + 乖離年線實測', d: [
             '🐛 你回報的「ETF 跟車怪怪的」抓到根因:採礦機只存每檔 ETF 前 15 大持股,但比對換股時卻拿**完整持股清單**去跟「截斷後的昨天」比 → 排名 16 名以後的股票**每天**被重新標成「🆕換入」(實測一天冒出 243 筆假換入),長抱幾個月的股票也天天顯「共識加碼適合跟車」。已從採礦端治本 + 前端加守門,舊的假資料也不會再顯示。',
             '跟車燈號同步照規矩改:✅ 可跟 / ⚠️ 注意 / ⛔ 別追(原本的 🟢🟡 跟「紅漲綠跌」撞色,會看反)。「適合跟車」現在也會先看中期趨勢 —— 空頭時只描述、不叫你進場。',

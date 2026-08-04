@@ -1859,7 +1859,18 @@ def fetch_business_signal():
                 else:              light = 'red'
                 return (light, score, month, None)
             except Exception as e:
-                last_err_box['val'] = str(e)[:120]
+                # 🐛 V72.3.2 陷阱 #23:`Expecting value: line 1 column 1` = 拿到 **HTML** 去 parse JSON
+                #   (站方對不存在的路徑回 HTTP 200 + 網頁,不回 404)。光記這句話查不出真因,
+                #   所以把 content-type + 前 120 字一起記下來,寫進 macro_risk.json 才讀得到。
+                msg = str(e)[:100]
+                if 'Expecting value' in msg:
+                    try:
+                        ct = (r.headers.get('Content-Type') or '?')[:40]
+                        body = (r.text or '')[:120].replace('\n', ' ')
+                        msg = f"{msg} | 拿到的不是JSON(content-type={ct}) | 開頭={body}"
+                    except Exception:
+                        pass
+                last_err_box['val'] = msg[:400]
                 continue
         return None
 
@@ -1872,7 +1883,22 @@ def fetch_business_signal():
         result = _one_attempt()
         if result is not None:
             return result
-    return (None, None, None, last_err_box['val'] or 'all retries failed')
+    # ⭐ 全部失敗 → 照 `_taifex_list_endpoints()`(陷阱 #23)的做法:**讓官方自己說端點叫什麼**。
+    #   ⛔ 沙箱連不到 index.ndc.gov.tw,候選網址是猜的 → 猜錯時至少要把線索留下來,
+    #      而且要寫進 JSON(只印在 log 沒用,job log 會過期、還會被 5,000 行上限擠掉)。
+    err = last_err_box['val'] or 'all retries failed'
+    try:
+        import re as _re
+        pr = _req.get('https://index.ndc.gov.tw/n/zh_tw', headers=headers, timeout=15)
+        if pr.status_code == 200 and pr.text:
+            paths = sorted(set(_re.findall(r'["\'](/(?:n/)?(?:json|api)/[\w/\-.]+)["\']', pr.text)))[:12]
+            if paths:
+                err = f"{err} || 官方頁面上找到的候選端點:{', '.join(paths)}"
+            else:
+                err = f"{err} || 官方頁面沒撈到 /json/ 或 /api/ 路徑(可能是前端動態組出來的)"
+    except Exception as _pe:
+        err = f"{err} || 端點列舉也失敗:{str(_pe)[:60]}"
+    return (None, None, None, err[:600])
 
 
 def _yf_chg_3d(ticker, name):
