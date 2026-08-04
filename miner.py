@@ -10,6 +10,7 @@ import os, sys
 import random
 import re
 import signal
+import statistics
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import traceback
@@ -4559,8 +4560,14 @@ def build_breadth_history():
     #   → 跟節目講的「今天站回 1 兆」完全對上,數量級正確。
     #   ⚠️ 這是「上市+上櫃」全市場加總(data/ 兩者都有),不等於證交所公布的「加權指數成交值」
     #      (那只含上市)→ UI 文案必須寫「全市場成交金額」,不可標成加權成交值。
+    # ⭐ V72.0.4 多收一個 `chgs`(當日每檔漲跌幅)→ 算「中位數個股漲跌幅」med。
+    #   為什麼要:加權指數是**市值加權**,台積電一檔就佔約四成(實測 2,676 檔市值加總
+    #   150.7 兆、2330 佔 37.95%)→ 常出現「大盤紅、但多數人手上是綠的」。
+    #   ⛔ 我**不去推估官方權重**(官方用流通股數/free float,我只有總股數,推出來會錯);
+    #      改用「中位數個股漲跌幅」—— 零假設、零推估,而且它才是「你隨便挑一檔」的真實基準。
+    #   ⭐ 這跟 `_SIGNAL_EDGE` 基準勝率只有 36%(不是 50%)是同一件事的一體兩面。
     by_date = collections.defaultdict(
-        lambda: dict(up=0, dn=0, flat=0, lu=0, ld=0, st=0, wk=0, total=0, amt=0.0))
+        lambda: dict(up=0, dn=0, flat=0, lu=0, ld=0, st=0, wk=0, total=0, amt=0.0, chgs=[]))
     for f in Path(DATA_DIR).glob('*.json'):
         sym = f.stem
         if not (len(sym) == 4 and sym.isdigit()):
@@ -4612,6 +4619,7 @@ def build_breadth_history():
                     r['st'] += 1
                 elif chg <= -3:
                     r['wk'] += 1
+                r['chgs'].append(chg)
                 r['total'] += 1
         except Exception:
             continue
@@ -4635,6 +4643,29 @@ def build_breadth_history():
         print(f"  ℹ️ 最新日期 {dates[-1]} 樣本只有 {by_date[dates[-1]]['total']} 檔(<{MIN_TOTAL},"
               f"盤中/部分資料)→ 以 {today_key} 當最新交易日")
 
+    # ⭐ V72.0.4 當日加權指數漲跌% —— 跟 med 存在同一列,前端就不必再 fetch 一次 ^TWII。
+    #   ⛔ 別在前端自己算:^TWII.json 有幽靈棒/零量列要過濾,採礦端這裡讀一次就好,
+    #      而且「大盤 vs 中位數個股」這條落差線要有歷史才有意義,存進來才回算得到。
+    _idx_chg = {}
+    try:
+        _tw_rows = json.loads((Path(DATA_DIR) / '^TWII.json').read_text(encoding='utf-8'))
+        _tw = {}
+        for _r in _tw_rows if isinstance(_tw_rows, list) else []:
+            try:
+                _c = float(_r.get('close') or 0)
+                _d = str(_r.get('date') or '').replace('-', '/')
+            except (TypeError, ValueError):
+                continue
+            if _c > 0 and _d:
+                _tw[_d] = _c
+        _tds = sorted(_tw)
+        for _i in range(1, len(_tds)):
+            _p = _tw[_tds[_i - 1]]
+            if _p > 0:
+                _idx_chg[_tds[_i]] = round((_tw[_tds[_i]] - _p) / _p * 100, 2)
+    except Exception as _e:
+        print(f"  ⚠️ 市場廣度:讀不到 ^TWII 日 K,本輪不寫 idx 欄({str(_e)[:60]})")
+
     try:
         _bd_path = Path(DATA_DIR) / 'breadth.json'
         _bd = {}
@@ -4654,10 +4685,17 @@ def build_breadth_history():
             r = by_date[d]
             if r['total'] < MIN_TOTAL:
                 continue
+            _med = round(statistics.median(r['chgs']), 2) if r['chgs'] else None
+            _idx = _idx_chg.get(d)
+            _extra = {}
+            if _med is not None:
+                _extra['med'] = _med
+            if _idx is not None:
+                _extra['idx'] = _idx
             if d == today_key:
                 # 今天這筆一律用最新算出來的覆蓋(同日重跑要能更新)
                 _hist = [h for h in _hist if isinstance(h, dict) and str(h.get('d')) != d]
-                _hist.append({'d': d, 'amt': round(r['amt'] / 1e8, 1),
+                _hist.append({'d': d, 'amt': round(r['amt'] / 1e8, 1), **_extra,
                               **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
                 continue
             if d in have:
@@ -4665,14 +4703,22 @@ def build_breadth_history():
                 #   這是第二次被「新欄位只有往後才有」咬到(第一次是 breadth 本身),
                 #   所以做成通則:已存在的日期若缺 amt 而本輪算得出來 → 就地補,
                 #   其餘既有數值不動(仍遵守「實跑寫入優先」)。
-                if r['amt'] > 0:
-                    for _h in _hist:
-                        if isinstance(_h, dict) and str(_h.get('d')) == d and not _h.get('amt'):
-                            _h['amt'] = round(r['amt'] / 1e8, 1)
+                #   ⭐ V72.0.4 med(中位數個股漲跌幅)是第三個新欄位,照同一條通則補;
+                #      ⛔ 別只補 amt —— 不補的話 med 永遠只有「往後」才有,
+                #      而「大盤 vs 中位數個股」的落差圖就永遠畫不出歷史。
+                for _h in _hist:
+                    if not (isinstance(_h, dict) and str(_h.get('d')) == d):
+                        continue
+                    if r['amt'] > 0 and not _h.get('amt'):
+                        _h['amt'] = round(r['amt'] / 1e8, 1)
+                        _healed += 1
+                    for _k, _v in _extra.items():
+                        if _h.get(_k) is None:
+                            _h[_k] = _v
                             _healed += 1
-                            break
+                    break
                 continue
-            _hist.append({'d': d, 'bf': 1, 'amt': round(r['amt'] / 1e8, 1),
+            _hist.append({'d': d, 'bf': 1, 'amt': round(r['amt'] / 1e8, 1), **_extra,
                           **{k: r[k] for k in ('up', 'dn', 'flat', 'lu', 'ld', 'st', 'wk', 'total')}})
             added += 1
         if today['total'] < MIN_TOTAL and added == 0:
@@ -4688,10 +4734,12 @@ def build_breadth_history():
             _adl += (h.get('up') or 0) - (h.get('dn') or 0)
         print(f"  📊 市場廣度 {today_key}:漲 {today['up']} / 跌 {today['dn']} / 漲停 {limit_up}"
               f" / 跌停 {today['ld']}(共 {today['total']} 檔)"
-              f"・成交金額 {today['amt'] / 1e12:.3f} 兆")
+              f"・成交金額 {today['amt'] / 1e12:.3f} 兆"
+              + (f"・中位數個股 {statistics.median(today['chgs']):+.2f}%" if today['chgs'] else ''))
         print(f"     → breadth.json 共 {len(_hist)} 日"
               f"(本輪回算補了 {added} 日歷史"
-              f"{f'、補齊 {_healed} 日缺的成交金額' if _healed else ''})・累積騰落線 ADL = {_adl:+,}")
+              f"{f'、補齊 {_healed} 個舊列缺的欄位(成交金額/中位數漲跌幅)' if _healed else ''})"
+              f"・累積騰落線 ADL = {_adl:+,}")
     except Exception as _e:
         print(f"  ⚠️ 市場廣度歷史寫入失敗(不影響其他):{str(_e)[:80]}")
     return limit_up

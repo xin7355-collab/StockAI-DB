@@ -97,8 +97,22 @@ ok('④ 有「怎麼看」教學按鈕', /怎麼看/.test(html), html.slice(0, 6
 // ⭐ ① 的延伸:教學裡一定要寫明基準不是 50%
 ok('④ ⭐ 教學必須寫明基準勝率(否則 41% 會被誤讀成輸)',
    new RegExp(String(meta.base_win.toFixed(1))).test(html), html.slice(0, 1200));
-ok('④ 教學要說明沒扣交易成本', /沒有扣交易成本|未扣交易成本|沒有.{0,4}扣.{0,4}交易成本/.test(html), '');
-ok('④ ⭐ 教學要說明「不是保證」', /不是保證/.test(html), '');
+// ⭐ V72.0.4:K線頁那顆「ⓘ 怎麼看」原本是**第三份**內嵌 alert 文案,而且數字停在
+//    250 檔那版(說 122 個訊號 / A=29,實際已是 500 檔 / A=42)——正是 CLAUDE.md
+//    「教學兩頁共用同一份,別寫兩套」那條鐵則在講的東西。已改成呼叫 _showEdgeHelp()。
+//    ⛔ 所以教學內容一律驗**共用那一份**,別再驗 render 出來的 HTML 字串。
+const helpTxt = await page.evaluate(() => {
+    let t = ''; const o = window.alert; window.alert = s => { t = s; };
+    app._showEdgeHelp(); window.alert = o; return t;
+});
+ok('④ ⭐ K線頁的教學鈕必須呼叫共用的 _showEdgeHelp(⛔ 不可再內嵌第二份文案)',
+   /_showEdgeHelp\(\)/.test(html) && !/我拿 \d+ 檔股票/.test(html), html.slice(0, 600));
+ok('④ 教學要說明沒扣交易成本', /沒有扣交易成本|未扣交易成本|沒有.{0,4}扣.{0,4}交易成本/.test(helpTxt), helpTxt.slice(-300));
+ok('④ ⭐ 教學要說明「不是保證」', /不是保證/.test(helpTxt), helpTxt.slice(-300));
+// ⭐ 內嵌那份的數字曾經對不上 meta → 共用版一律從 meta 帶入,這裡交叉驗一次
+ok('④ ⭐ 教學的檔數/分級數必須跟 _SIGNAL_EDGE_META 一致(⛔ 別寫死)',
+   new RegExp(`${meta.syms} 檔`).test(helpTxt) && new RegExp(`A 級只有 ${meta.A} 個`).test(helpTxt),
+   helpTxt.slice(0, 700));
 
 // ── ⑤ ⛔ C 級不可被刪掉(裡面有風險提醒)────────────────────
 const src = await page.evaluate(() => app.renderKbarTactics.toString());

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,24 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.3',
+    _APP_VERSION: 'V72.0.4',
     _CHANGELOG: [
+        { v: 'V72.0.4', dt: '2026-08-04', t: '🎯 「大盤漲,為什麼我的股票沒漲?」—— 這版直接算給你看', d: [
+            '逐字稿裡他說「**加權指數幾乎就等於台積電**」。這句話其實回答了一個你可能問過很多次的問題:大盤明明是紅的,為什麼我手上那檔是綠的?',
+            '',
+            '因為加權指數是**市值加權**的 —— 台積電一檔就佔掉非常大的比重。所以指數比較像「台積電 + 幾檔權值股」的成績單,**不是「多數股票」的成績單**。',
+            '',
+            '**所以我加了「中位數個股漲跌幅」**:把今天全市場每一檔的漲跌幅排隊,站中間那一檔的漲跌 —— 那才是「你隨便挑一檔,最典型會遇到的結果」。',
+            '',
+            '📊 **實測近 248 個交易日**:大盤**平均每天贏中位數個股 0.40 個百分點**、**60% 的天數大盤贏**。所以「贏大盤」本來就比你想的難很多。',
+            '例如 7/21 那天大盤 +4.20%,但中位數個股只有 +1.12% —— 差了 3.08 個百分點,那天指數就是被權值股拉上去的。',
+            '',
+            '📍 位置:大盤頁「市場廣度」卡裡(沒開新卡)。盤中就會即時算,收盤後看當日結果。',
+            '',
+            '⚠️ 我**沒有去推估台積電的官方權重** —— 官方權重用的是流通股數,我手上只有總股數,推出來的數字會錯而且很難察覺。用中位數是零假設、零推估的做法。',
+            '',
+            '🔧 順手修一個 bug:K 線頁那顆「ⓘ 怎麼看」的說明,數字還停在舊版(寫 250 檔、A 級 29 個),但實際早就擴大到 500 檔、A 級 42 個了。原因是那份說明被複製成第三份 —— 已經改成跟其他頁共用同一份,以後不會再各說各話。',
+        ] },
         { v: 'V72.0.3', dt: '2026-08-04', t: '⭐ 勝率不是重點,賺賠比才是 + 全市場融資維持率', d: [
             '這版來自你給的巨人傑逐字稿,他有一句話直接打到我程式的痛點:**「賺賠比遠比勝率重要」**。',
             '',
@@ -19656,10 +19672,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return `<div onclick="app.showKbarSignalHelp('${_tt}')" class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5 cursor-pointer hover:bg-white/5 transition-colors">
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}${badge}<span class="text-[9px] text-amber-400/70 font-normal ml-1">👆教學</span></div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; };
-        const _bw = this._SIGNAL_EDGE_META.base_win.toFixed(1);
         const rows = (good.length
             ? `<div class="text-[10px] text-red-300 font-bold mb-1 flex items-center gap-1">🎯 實測有效的訊號(${good.length})
-                 <button onclick="event.stopPropagation();alert('【為什麼有些訊號有徽章、有些沒有?】\n\n我拿 250 檔股票、3 年的歷史資料,把 App 裡每一個訊號都回測過一次:訊號出現之後 10 個交易日,股價表現如何(已扣掉同期大盤漲跌)。\n\n⭐ 最重要的一件事:【基準勝率是 ${_bw}%,不是 50%】。\n因為加權指數是「市值加權」(台積電權重超大),中位數的個股本來就跑輸大盤。所以一個訊號勝率 41%,其實【已經是贏過隨便挑一天】。\n\n🏅 分級:\n・✅ A 級 = 統計上站得住腳(純靠運氣長這樣的機率 ≤5%)\n・⚠️ B 級 = 有一點,但證據偏弱\n・沒有徽章 = 實測跟隨機沒有差別,或樣本不足還沒驗過\n\n實測結果:全部 122 個訊號裡,A 級只有 29 個、B 級 20 個,而【C 級有 73 個(六成)】——所以我把沒驗過的收進下面的摺疊區,不再一次全部倒給你。\n\n⚠️ 但【沒有把 C 級刪掉】:裡面有些是風險提醒(例如長黑棒),刪掉會讓你以為沒風險。\n\n⚠️ 這是歷史統計,不是保證;也【沒有扣交易成本】。')" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button></div>`
+                 <button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button></div>`
               + good.slice(0, MAXROWS).map(s => _card(s, true)).join('')
             : `<div class="text-[10px] text-gray-500 mb-1.5">➖ 今天沒有出現「實測有效」的訊號(下面是其餘觀察用訊號)。</div>`)
             + (rest.length ? `<details class="mt-1">
@@ -38978,6 +38993,95 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         return _mk(h, x => Number(x.amt), x => x.d, 'allmarket', '全市場成交金額(上市+上櫃,自行加總)');
     },
 
+    // ⭐ V72.0.4 「大盤 vs 你手上那檔」—— 巨人傑逐字稿「加權指數幾乎等於台積電」的誠實量化版。
+    //   ⛔ 我**不去推估台積電的官方權重**:官方用流通股數/free float,我只有總股數,
+    //      推出來的數字會錯,而且錯得很難察覺(實測我自己加總 2,676 檔市值是 150.7 兆、
+    //      2330 佔 37.95%,但那含上櫃+ETF,跟官方口徑不同)。
+    //   ⭐ 改用「中位數個股漲跌幅」—— 零假設、零推估,而且它才是「你隨便挑一檔」的真實基準。
+    //      實測近 248 個交易日:大盤平均每天贏中位數個股 **+0.40pp**、**60% 的天數大盤贏**。
+    //      這正好解釋了為什麼 `_SIGNAL_EDGE` 的基準勝率只有 36% 而不是 50%(同一件事的一體兩面)。
+    //   資料源:breadth.json 的 `med`(中位數)+ `idx`(當日大盤漲跌%),採礦端一起算好。
+    //   ⚠️ 盤中優先用 `_liveQuotes` 現算(比收盤檔新),盤後退回 breadth 最後一筆。
+    _medGapState() {
+        const h = this._breadthHist;
+        const hist = (Array.isArray(h) ? h : []).filter(x => x && typeof x.med === 'number' && typeof x.idx === 'number');
+        let med = null, idx = null, live = false, n = 0;
+        // 盤中:用即時快照現算中位數(比 breadth 收盤檔新)
+        const q = this._liveQuotes;
+        if (q && typeof q === 'object') {
+            const cs = [];
+            for (const k in q) { const c = +(q[k] && q[k].c); if (Number.isFinite(c)) cs.push(c); }
+            if (cs.length >= 500) {
+                cs.sort((a, b) => a - b);
+                const m = cs.length >> 1;
+                med = cs.length % 2 ? cs[m] : (cs[m - 1] + cs[m]) / 2;
+                n = cs.length; live = true;
+            }
+        }
+        if (live) idx = (typeof this._taiexTodayPct === 'number') ? this._taiexTodayPct : null;
+        else if (hist.length) { const last = hist[hist.length - 1]; med = last.med; idx = last.idx; n = last.total || 0; }
+        if (med == null || idx == null) return null;
+        // 歷史基準:大盤平均贏中位數個股多少、贏的天數佔比
+        let avgGap = null, winPct = null, days = hist.length;
+        if (days >= 20) {
+            const gs = hist.map(x => x.idx - x.med);
+            avgGap = gs.reduce((s, v) => s + v, 0) / gs.length;
+            winPct = gs.filter(v => v > 0).length / gs.length * 100;
+        }
+        return { med, idx, gap: idx - med, live, n, avgGap, winPct, days };
+    },
+
+    _medGapHtml() {
+        const s = this._medGapState();
+        if (!s) return '';
+        const f = v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+        const cc = v => v >= 0 ? 'text-red-300' : 'text-green-300';
+        // ⛔ 這裡的 gap 是「方向差」不是「漲跌」→ ⛔ 不可用紅綠(會跟台股漲跌語意打架),用中性色。
+        let note;
+        if (s.gap >= 1) note = `⚠️ <b class="text-gray-100">今天大盤是「被權值股拉上去的」</b> —— 指數比中位數個股多了 ${s.gap.toFixed(2)} 個百分點。指數好看,不代表你手上那檔有跟到。`;
+        else if (s.gap <= -1) note = `💡 <b class="text-gray-100">今天指數被權值股拖累</b> —— 中位數個股其實比指數強 ${Math.abs(s.gap).toFixed(2)} 個百分點。看指數會低估個股行情。`;
+        else note = `➖ 今天指數與多數個股方向一致(差 ${Math.abs(s.gap).toFixed(2)} pp 以內),指數這時候還算能代表你手上的股票。`;
+        const base = (s.avgGap != null)
+            ? `<div class="text-[9px] text-gray-500 mt-1 leading-relaxed">📐 近 ${s.days} 個交易日實測:大盤<b class="text-gray-300">平均每天贏中位數個股 ${s.avgGap >= 0 ? '+' : ''}${s.avgGap.toFixed(2)} pp</b>、<b class="text-gray-300">${s.winPct.toFixed(0)}% 的天數大盤贏</b>。所以「贏大盤」本來就比想像中難 —— 這也是為什麼訊號回測的基準勝率只有 36%,不是 50%。</div>`
+            : `<div class="text-[9px] text-gray-500 mt-1">📐 歷史基準累積中(已 ${s.days} 日,滿 20 日開始給長期落差)。</div>`;
+        return `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 mb-1.5">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-gray-400">🎯 大盤 vs 你手上那檔 <span class="text-[9px] text-gray-600">${s.live ? `盤中即時 ${s.n} 檔` : `收盤 ${s.n} 檔`}</span></span>
+                <button onclick="event.stopPropagation();app._showMedGapHelp()" class="text-[9px] text-gray-600 hover:text-cyan-300">ⓘ 怎麼看</button>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 mb-1">
+                <div class="text-center"><div class="text-[9px] text-gray-500">加權指數</div><div class="font-mono font-black text-base ${cc(s.idx)}">${f(s.idx)}</div></div>
+                <div class="text-center"><div class="text-[9px] text-gray-500">中位數個股</div><div class="font-mono font-black text-base ${cc(s.med)}">${f(s.med)}</div></div>
+                <div class="text-center"><div class="text-[9px] text-gray-500">落差</div><div class="font-mono font-black text-base text-gray-200">${s.gap >= 0 ? '+' : ''}${s.gap.toFixed(2)}<span class="text-[9px] font-normal text-gray-500"> pp</span></div></div>
+            </div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">${note}</div>${base}</div>`;
+    },
+
+    _showMedGapHelp() {
+        const s = this._medGapState() || {};
+        alert('【大盤 vs 你手上那檔】\n\n'
+            + '常有人問:「大盤明明漲,為什麼我的股票沒漲?」\n'
+            + '答案是 —— 加權指數是【市值加權】的,台積電一檔就佔了非常大的比重。\n'
+            + '所以指數其實比較像「台積電 + 幾檔權值股」的成績單,不是「多數股票」的成績單。\n\n'
+            + '📊【中位數個股】\n'
+            + '把今天全市場每一檔的漲跌幅排隊,站中間那一檔就是中位數。\n'
+            + '它代表「你隨便挑一檔,最典型會遇到的結果」——【這才是你該比的對象】。\n\n'
+            + '📐【實測數字】\n'
+            + (s.avgGap != null
+                ? `近 ${s.days} 個交易日:大盤平均每天贏中位數個股 ${s.avgGap >= 0 ? '+' : ''}${s.avgGap.toFixed(2)} 個百分點,${s.winPct.toFixed(0)}% 的天數大盤贏。\n`
+                : '歷史基準還在累積中。\n')
+            + '→ 所以「贏大盤」本來就比一般人想的難很多。\n'
+            + 'App 裡訊號回測的基準勝率是 36% 而不是 50%,就是同一個原因。\n\n'
+            + '🎯【怎麼用】\n'
+            + '・落差 ≥ +1pp:指數是被權值股拉上去的 → 指數好看不代表你有跟到,別急著追。\n'
+            + '・落差 ≤ −1pp:權值股在拖累指數,個股其實比較強 → 看指數會低估行情。\n'
+            + '・落差在 ±1pp 內:指數這時候還算能代表多數股票。\n\n'
+            + '⚠️【我沒有做什麼】\n'
+            + '我【沒有去推估台積電的官方權重】。官方權重用的是流通股數,我手上只有總股數,\n'
+            + '推出來的數字會錯而且很難察覺。用中位數是零假設、零推估的做法。\n\n'
+            + '⚠️ 中位數含上市+上櫃、不含 ETF;這是描述今天長什麼樣,不是買賣訊號。');
+    },
+
     _adlState() {
         const h = this._breadthHist;
         // 🐛 V71.4.8 原本 <3 天直接回 null → 卡上「什麼都不顯示」。
@@ -39063,6 +39167,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                     <span>上漲占比 <b class="font-mono ${upPctAll >= 50 ? 'text-red-300' : 'text-green-300'}">${upPctAll.toFixed(0)}%</b></span>
                     <span>強勢(≥3%) <b class="text-red-300">${strong}</b> / 弱勢 <b class="text-green-300">${weak}</b></span>
                 </div>
+                ${this._medGapHtml()}
                 ${(() => {   // 📈 V71.3.8 累積騰落線併進本卡(不另開新卡)
                     const a = this._adlState();
                     if (!a) return '';
