@@ -24,6 +24,9 @@ import path from 'path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
 const MAX_SYMS = +(process.argv[2] || 99999);
+// 榜單細節列的上限。⚠️ 不只是檔案大小考量 —— 前端「👜 你手上那幾檔也在榜上」是拿這份清單去比對,
+//   上限太低會讓排名靠後的持股**被默默漏掉**。實測每筆約 135 bytes → 200 筆約 27 KB,可接受。
+const BULL_CAP = 200;
 const t0 = Date.now();
 const log = (...a) => console.log(...a);
 
@@ -123,7 +126,15 @@ const out = {
     base_win: meta.base_win || null,
     // ⚠️ 顯示端一定要寫:期望值未扣交易成本(來回約 0.44%)
     cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)',
-    bull: bull.slice(0, 60),
+    // ⛔ **有截斷就要講**(CLAUDE.md「no silent caps」):只給 `bull` 的話,
+    //   顯示端會把「被 slice 剩下的筆數」當成「今天的總數」。
+    //   實測 2026-08-04 就剛好卡在 60(= 舊上限)→ 前端顯「只有 60 檔」,而真值不是 60。
+    //   ⚠️ 而且 `bull` 是**逐筆訊號**不是逐檔股票(同一檔可能命中多個訊號,實測 60 筆只有 56 檔)
+    //      → 兩個數字都要輸出,顯示端才不會把「筆」講成「檔」。
+    bull_total: bull.length,                                   // 截斷前的總筆數
+    bull_syms: new Set(bull.map(b => b.s)).size,               // 截斷前的不重複股票數
+    bull_cap: BULL_CAP,
+    bull: bull.slice(0, BULL_CAP),
     // ⛔ **刻意不輸出風險股清單** —— 全市場實測有 6,158 筆風險訊號,
     //   取前 60 只是**任意截斷**(同一個訊號的期望值完全一樣,排序沒有意義),
     //   而且「全市場哪些股票有風險」對使用者沒有可操作性 ——
@@ -134,7 +145,8 @@ const out = {
 };
 fs.writeFileSync(path.join(DATA, 'today_signals.json'), JSON.stringify(out), 'utf-8');
 log(`\n✅ ${used} 檔 ・${((Date.now() - t0) / 1000).toFixed(0)}s`);
-log(`   🎯 正期望值看多訊號:${bull.length} 筆(取前 ${out.bull.length})`);
+log(`   🎯 正期望值看多訊號:${bull.length} 筆 / ${out.bull_syms} 檔(輸出前 ${out.bull.length} 筆)`);
+if (bull.length > out.bull.length) log(`   ⚠️ 有截斷:${bull.length} → ${out.bull.length}(上限 ${BULL_CAP});bull_total/bull_syms 已寫進 JSON,顯示端要用那兩個講總數`);
 log(`   ⚠️ 風險提醒:${out.risk_n} 筆 / ${out.risk_syms} 檔(⛔ 不輸出清單,只給總數當大盤氛圍)`);
 if (out.bull.length) {
     log('\n🏆 期望值最高的 8 檔:');

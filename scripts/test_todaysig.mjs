@@ -74,6 +74,27 @@ ok('② ⭐ 風險只給檔數、⛔ 不逐檔列', /檔出現風險訊號/.test
 ok('② ⛔ 代號不可重複顯示兩次(getStockName 沒載入時會回代號本身)',
    !/\b(\d{4})\s+\1\b/.test(t), (t.match(/\b(\d{4})\s+\1\b/) || []).join(','));
 
+
+// ── ②b ⛔ 不可把「截斷後的筆數」當成「今天有幾檔」(V72.2.7)────────
+//   實測 2026-08-04:採礦端 slice 上限剛好被打滿(60 筆),而畫面寫「只有 60 檔」——
+//   ① 那是**截斷後**的數字 ② `bull` 是逐筆訊號不是逐檔股票(60 筆只有 56 檔)。
+const R2 = await render({ ...(real || {}), scanned: 2316, bull_total: 137, bull_syms: 96, bull_cap: 200,
+    bull: (real && real.bull ? real.bull : []).slice(0, 5).length ? real.bull.slice(0, 5)
+        : [{ s: '2511', c: 8.5, t: 'x', g: 'A', n: 100, w: 42, exp: 0.68 }],
+    base_win: 36.4, data_date: '2026-08-04', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 1, risk_syms: 1 });
+const t2 = txt(R2.html);
+ok('②b ⭐ 「幾檔」要用不重複股票數(⛔ 不是 bull 陣列長度)', /只有 96 檔/.test(t2), t2.slice(0, 200));
+ok('②b ⭐⛔ 有截斷要講出來(⛔ silent cap = 假裝「這就是全部」)',
+   /共 137 筆訊號/.test(t2) && /列期望值最高的 \d+ 筆/.test(t2), t2.slice(0, 260));
+const R3 = await render({ ...(real || {}), bull_total: 3, bull_syms: 3,
+    bull: [{ s: '1', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '2', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '3', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }],
+    scanned: 2316, base_win: 36.4, data_date: '2026-08-04', cost_note: '未扣交易成本', risk_n: 1, risk_syms: 1 });
+ok('②b ⛔ 沒截斷時不可出現「共 N 筆」那段贅字', !/共 \d+ 筆訊號/.test(txt(R3.html)), txt(R3.html).slice(0, 200));
+const scanSrc2 = fs.readFileSync(path.join(ROOT, 'scripts/daily_signal_scan.mjs'), 'utf8');
+ok('②b ⭐ 採礦端要輸出 bull_total / bull_syms(截斷前的真值)',
+   /bull_total: bull\.length/.test(scanSrc2) && /bull_syms: new Set\(bull\.map/.test(scanSrc2), '');
+ok('②b ⭐ 有截斷要在 log 講(no silent caps)', /有截斷:/.test(scanSrc2), '');
+
 // ── ③ 沒資料 → 整條不顯示(⛔ 不留空殼)───────────────────
 for (const [name, d] of [['bull 是空陣列', { bull: [], scanned: 2315 }], ['整包 null', null], ['沒有 bull 欄位', { scanned: 1 }]]) {
     const r = await render(d);

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.6',
+    _APP_VERSION: 'V72.2.7',
     _CHANGELOG: [
+        { v: 'V72.2.7', dt: '2026-08-04', t: '🔢 「今天只有 N 檔」那個數字之前是錯的', d: [
+            '採礦機今天第一次真的跑出全市場榜單,一驗就抓到兩個數字錯誤:',
+            '① 榜單有上限,而今天剛好被打滿 → 畫面寫「只有 60 檔」,那其實是**被截斷後**的數字,不是今天真的只有 60 檔。現在會誠實寫「共 N 筆訊號,下面列期望值最高的 12 筆」。',
+            '② 同一檔股票可能同時命中好幾個訊號(今天 60 筆其實只有 56 檔)→ 講「檔」是錯的。現在「檔數」用不重複股票數,「筆數」另外講。',
+            '榜單上限也從 60 拉到 200 —— 不只是數字問題:「👜 你手上那幾檔也在榜上」是拿這份清單去比對的,上限太低會讓排名靠後的持股被默默漏掉。',
+            '✅ 融資維持率(145.6%)與今日訊號榜都已確認上線,手機上看得到了。',
+        ] },
         { v: 'V72.2.6', dt: '2026-08-04', t: '👜 「今天實測會賺的訊號」會先點名你手上那幾檔', d: [
             '選股頁最上方那條「全市場只有 N 檔」對你來說還是有點遠 —— 你真正關心的是自己手上/自選那幾檔有沒有中。',
             '現在會先對一次:有中就在最上面點名「👜 你手上/自選的 XXXX 今天也在榜上 —— 先看這幾檔」,榜單裡那幾列也會標 👜 + 琥珀底。',
@@ -36412,6 +36419,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         //   ⚠️⚠️ 這段註解**一定要寫在模板字串外面** —— 第一版寫進 `...` 裡面,
         //      而註解本身含反引號(包 _wrTag 那個)→ 提前結束模板字串 →
         //      整份 index.html 語法錯、App 完全起不來。smoke_test 當場擋下。
+        // ⛔ **不可拿 `list.length` 當「今天有幾檔」**(V72.2.7 實測抓到):
+        //   ① `list` 已被採礦端 slice 過 —— 2026-08-04 那天剛好卡在上限 60,
+        //      畫面就會寫「只有 60 檔」,而那其實是**截斷後**的數字。
+        //   ② `list` 是**逐筆訊號**不是逐檔股票 —— 同一檔可能命中多個訊號
+        //      (實測 60 筆只有 56 檔),講「檔」就是錯的。
+        //   → 一律用採礦端輸出的 `bull_syms`(不重複檔數)與 `bull_total`(總筆數)。
+        const nRows = Number.isFinite(+j.bull_total) ? +j.bull_total : list.length;
+        const nSyms = Number.isFinite(+j.bull_syms) ? +j.bull_syms : new Set(list.map(x => String(x.s))).size;
+        const shown = Math.min(12, list.length);
         const rows = list.slice(0, 12).map(x => `
             <div onclick="app.analyze('${x.s}')" class="flex items-center justify-between gap-2 px-2 py-1.5 rounded ${mine.has(String(x.s)) ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
                 <div class="min-w-0 flex items-baseline gap-1.5">
@@ -36429,7 +36445,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         box.className = 'mb-2 bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5';
         box.innerHTML = `
             <div class="flex items-center justify-between mb-1.5">
-                <span class="text-[12px] font-black text-gray-100">🎯 今天出現「實測會賺」的訊號 <span class="text-[10px] text-gray-500 font-normal">全市場 ${(j.scanned || 0).toLocaleString()} 檔只有 <b class="text-red-300">${list.length}</b> 檔</span></span>
+                <span class="text-[12px] font-black text-gray-100">🎯 今天出現「實測會賺」的訊號 <span class="text-[10px] text-gray-500 font-normal">全市場 ${(j.scanned || 0).toLocaleString()} 檔只有 <b class="text-red-300">${nSyms}</b> 檔${nRows > shown ? `<span class="text-gray-600">(共 ${nRows} 筆訊號,下面列期望值最高的 ${shown} 筆)</span>` : ''}</span></span>
                 <button onclick="event.stopPropagation();app._showTodaySigHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼看</button>
             </div>
             ${mineLine}
