@@ -163,6 +163,48 @@ ok('⑩ ⭐⛔ 看空/警示不可打折(註解要寫明理由)', /風險不打�
 ok('⑩ bear 分支沒有乘上分級係數',
    /else if \(s\.tone === 'bear'\) \{ bear \+= w;/.test(wsrc), '');
 
+// ── ⑫ 💰 V72.0.6 期望值也要進計分(⛔ 光看分級會給「常對但不賺」的訊號滿分)──
+ok('⑫ ⭐ 看多計分要乘上期望值係數', /_gw\[e\.grade\][^\n]*_expK\(e\)/.test(wsrc), '');
+ok('⑫ ⭐ 期望值 ≤0 才打折(>0 不打)', /exp <= 0\) \? 0\.7 : 1/.test(wsrc), '');
+ok('⑫ ⭐⛔ 看空/警示仍不受期望值影響(多空不對稱)',
+   !/bear \+= w \* /.test(wsrc) && !/bear \+= [^;\n]*_expK/.test(wsrc), '');
+ok('⑫ 註解要說明「這不違反⛔不可降級那條」(改的是計分不是顯示)',
+   /改的是\*\*計分權重\*\*|講的是\*\*顯示\*\*/.test(wsrc), '');
+// ⭐ 實跑驗證 —— ⛔ 用**真實 K 線**,不用合成資料。
+//   第一版用合成的等差 K 線,結果 bull 恆為 0 → 那條斷言變成**空過**(看起來綠的,
+//   其實什麼都沒驗到)。這正是「測試要呼叫真的函式、別讓它空過」那條鐵則。
+//   實測 2330 全期資料:bull 4.0 → 2.8、score 61 → 53(剛好 ×0.7)。
+//   ⚠️ 不能寫死切點:哪一天有看多訊號會隨資料更新而變 → 往回掃到第一個有 bull 的切點,
+//      掃不到才算失敗(那代表偵測器整組壞了,本來就該紅)。
+const _real2330 = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2330.json'), 'utf8'));
+const expScore = await page.evaluate(rows => {
+    const real = app._sigEdge;
+    const mk = exp => () => ({ grade: 'A', n: 500, e10: 1.0, w10: 45, p: 0.01, e20: 1.0, payoff: 1.2, exp });
+    let out = { pos: null, neg: null, bullP: 0, bullN: 0, cut: null };
+    for (let cut = rows.length; cut > 150; cut -= 3) {
+        const d = rows.slice(0, cut);
+        app._sigEdge = mk(0.5); const pos = app._entryCheckup(d);
+        if (!(pos && pos.bull > 0)) continue;
+        app._sigEdge = mk(-0.5); const neg = app._entryCheckup(d);
+        out = { pos: pos.score, neg: neg.score, bullP: pos.bull, bullN: neg.bull, cut };
+        break;
+    }
+    app._sigEdge = real;
+    return out;
+}, _real2330);
+ok('⑫ ⭐ 這組真實資料真的有看多訊號(⛔ 否則下面兩條會空過)',
+   expScore.bullP > 0, JSON.stringify(expScore));
+ok('⑫ ⭐ 期望值為正的分數 > 為負的(實跑驗證,⛔ 不是只看程式碼)',
+   expScore.pos > expScore.neg, JSON.stringify(expScore));
+ok('⑫ ⭐ bull 分數要剛好差 ×0.7(係數真的有接上)',
+   Math.abs(expScore.bullN - Math.round(expScore.bullP * 0.7 * 10) / 10) < 0.11, JSON.stringify(expScore));
+
+// ── ⑬ 🐛 V72.0.6 修排序:看空訊號不可用「漲最多」排最前面 ────────────
+ok('⑬ ⭐ 排序要用「訊號有沒有兌現」(看多 +exp、看空 −exp)',
+   /_deliver/.test(wsrc) && /tone === 'bull' \? v : -v/.test(wsrc), '');
+ok('⑬ ⛔ 不可再用單純的 e10 遞減排全部', !/a\._e\.grade === b\._e\.grade \? b\._e\.e10 - a\._e\.e10/.test(wsrc), '');
+ok('⑬ exp 拿不到時要退回 e10(⛔ 不可整筆濾掉)', /exp != null\) \? x\._e\.exp : \(x\._e \? x\._e\.e10/.test(wsrc), '');
+
 // ⑪ 教學只有一份(⛔ 別寫兩套文案)
 ok('⑪ ⭐ K線頁與總覽共用同一份教學', /_showEdgeHelp/.test(await page.evaluate(() => app.renderEntryCheckup.toString())));
 

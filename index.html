@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,19 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.5',
+    _APP_VERSION: 'V72.0.6',
     _CHANGELOG: [
+        { v: 'V72.0.6', dt: '2026-08-04', t: '💰 進場分數也改看期望值(把上一版發現的打架修掉)', d: [
+            '上一版我發現「**42 個 A 級訊號裡有 36 個期望值是負的**」,徽章上也照實顯示了。',
+            '',
+            '⛔ **但總覽「進場體檢」的分數還是只看分級** —— A 級一律給滿分。結果就是:一堆「常常對、但其實不賺錢」的訊號,照樣把你的進場分數拱高。**這兩件事在打架**,而且是我自己造成的。',
+            '',
+            '✅ 修法:看多訊號的計分改成 **分級 × 期望值** —— 期望值是負的再打七折。實測台積電那組資料,進場分數從 61 掉到 53(看多分 4.0 → 2.8),差別是實在的。',
+            '',
+            '⚠️ **看空與警示訊號一樣不打折**(這條沒變)—— 風險提醒就算統計上沒被證實,忽略它的代價遠大於多看一眼。寧可多提醒,不可少提醒。',
+            '',
+            '🐛 順手修一個沒人發現的排序 bug:「實測有效的訊號」清單原本一律用「後續漲最多」排序。對**看多**訊號那是對的,但對**看空**訊號剛好相反 —— 看空訊號後面漲最多,代表它**最沒講中**,舊寫法卻把它排在最前面。現在兩邊都改成「這個訊號當初講對得越多、排越前面」。',
+        ] },
         { v: 'V72.0.5', dt: '2026-08-04', t: '🔮 美股期貨只有價位沒有方向 —— 這是刻意的,但我之前沒說', d: [
             '逐字稿裡他提到「要看海外期貨」。我去對了一遍自己的資料,結果抓到一個**我自己的問題**:',
             '',
@@ -21782,7 +21793,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   ・**看多訊號**:沒被驗證過就不該拿來當進場理由 → A 全額、B 七折、C/未驗證**三折**
         //   ・**看空/警示訊號**:⛔ **一律不打折** —— 風險提醒就算統計上沒被證實,
         //     忽略它的代價(住套房)遠大於多看一眼的代價。寧可多提醒,不可少提醒。
+        //
+        // 💰 V72.0.6 再加一層:**期望值為負的看多訊號要再打七折**。
+        //   V72.0.3 補算賺賠比後發現:**42 個 A 級訊號裡有 36 個期望值是負的** ——
+        //   它們「贏的次數確實比隨機多」(所以 p 值過關拿到 A),但**輸的時候輸更大**。
+        //   ⛔ 原本的計分只看分級 → 一堆「常對但不賺」的訊號照樣給滿分,
+        //      使用者會拿到一個虛高的進場分數,那正是「邏輯打架」。
+        //   ⚠️ 這**不違反**「⛔ 不可因為期望值負就把訊號刪掉/降級」那條 ——
+        //      那條講的是**顯示**(訊號照顯、照標成績),這裡改的是**計分權重**。
+        //      而且維持多空不對稱:**看空/警示一樣不打折**(下面 bear 分支沒有係數)。
         const _gw = { A: 1, B: 0.7 };
+        const _expK = e => (e && e.exp != null && e.exp <= 0) ? 0.7 : 1;
         for (const s of sigs) {
             const t = s.title || '';
             if (s.tone === 'bull' && /突破/.test(t) && !/假突破/.test(t)) {
@@ -21793,7 +21814,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             s._e = e;
             const w = weight(t);
             if (s.tone === 'bull') {
-                const k = e ? (_gw[e.grade] ?? 0.3) : 0.3;      // 看多才打折
+                const k = e ? (_gw[e.grade] ?? 0.3) * _expK(e) : 0.3;   // 看多才打折(分級 × 期望值)
                 bull += w * k;
                 goodR.push(t);
             } else if (s.tone === 'bear') { bear += w; badR.push(t); }   // ⛔ 風險不打折
@@ -21801,8 +21822,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         bull = Math.round(bull * 10) / 10;
         // 供顯示層排序/標徽章用(A 級的進場理由要能被看見)
+        // 🐛 V72.0.6 修既有排序 bug:原本一律 `b.e10 - a.e10`(超額報酬遞減)。
+        //   對**看多**訊號那是對的,但對**看空/警示**訊號剛好相反 ——
+        //   看空訊號後面「漲最多」代表它**最沒兌現**,舊寫法卻把它排最前面。
+        //   ⭐ 改用「訊號有沒有兌現」當強度:看多用 +exp、看空/警示用 −exp,
+        //      兩邊都變成「數字越大 = 這個訊號當初講對得越多」。
+        //   ⚠️ exp(期望值)拿不到時退回 e10(舊行為),⛔ 不可因此把整筆濾掉。
+        const _deliver = x => {
+            const v = (x._e && x._e.exp != null) ? x._e.exp : (x._e ? x._e.e10 : 0);
+            return x.tone === 'bull' ? v : -v;
+        };
         const _sigByGrade = sigs.filter(x => x._e && (x._e.grade === 'A' || x._e.grade === 'B'))
-            .sort((a, b) => (a._e.grade === b._e.grade ? b._e.e10 - a._e.e10 : a._e.grade === 'A' ? -1 : 1));
+            .sort((a, b) => (a._e.grade === b._e.grade ? _deliver(b) - _deliver(a) : a._e.grade === 'A' ? -1 : 1));
 
         // ② 均線結構(初學者最該懂:站上 5MA/月線 + 多頭排列 + 5MA 上彎)
         let struct = 0; const maParts = [];
