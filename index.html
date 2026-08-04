@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5826,7 +5826,12 @@ ${list}
             const pl = prem > 0 ? '溢價' : prem < 0 ? '折價' : '平價';
             metaChips.push(`<span class="text-[10px] text-gray-400">折溢價 <b class="${pc} font-mono">${pl} ${prem > 0 ? '+' : ''}${prem.toFixed(2)}%</b></span>`);
         }
+        if (typeof etf?.nav === 'number') metaChips.push(`<span class="text-[10px] text-gray-400">淨值 <b class="text-gray-200 font-mono">${etf.nav.toFixed(2)}</b></span>`);
+        if (typeof etf?.expense_ratio === 'number') metaChips.push(`<span class="text-[10px] text-gray-400">費用率 <b class="text-gray-200 font-mono">${etf.expense_ratio.toFixed(2)}%</b></span>`);
         const metaHtml = metaChips.length ? `<div class="flex gap-3 flex-wrap mb-2 pb-2 border-b border-[#21262d]">${metaChips.join('')}</div>` : '';
+        // 🧠 V72.4.1 使用者要求:「那裡數字還要分析出他到底有什麼作用」——
+        //   採了一堆數字卻只是排出來,使用者不知道要拿它做什麼。下面這段把每個數字翻成「所以呢?」
+        const readHtml = this._etfNumbersMeaning(etf);
 
         if (!holdings.length) {
             card.innerHTML = `<div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-blue-700/40"><h4 class="text-blue-300 font-bold text-sm">🧩 ETF 資訊</h4></div>${metaHtml}<div class="text-[11px] text-gray-500 leading-relaxed">此 ETF 暫無成分股權重資料（目前僅約 20 檔<b class="text-gray-400">主動式 ETF</b>有抓持股；0050/0056 等被動 ETF 可至投信官網或 MoneyDJ 查）。</div>`;
@@ -5865,10 +5870,135 @@ ${list}
                 <span class="text-[10px] text-gray-500 font-mono">前${top.length}佔 ${totalW.toFixed(1)}%</span>
             </div>
             ${metaHtml}
+            ${readHtml}
+            ${this._etfManagerMoves(etf)}
             ${indHtml}
             <div class="text-[10px] text-gray-400 font-bold mb-1">📋 前 ${top.length} 大持股</div>
             ${rowsHtml}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">💡 點成分股可跳該股診斷 ・ 權重來源:投信/TWSE 申購買回清單(每日盤後)。</div>`;
+    },
+
+    // 🧠 V72.4.1 「這些數字到底有什麼用」——⭐ 使用者原話:「那裡數字還要分析出他到底有什麼作用」
+    //   採了一堆欄位(規模/費用率/現金水位/集中度/換股頻率/折溢價)卻只是把數字排出來,
+    //   使用者不知道要拿它做什麼 → 這裡每個數字都翻成一句「所以呢?」。
+    //   ⛔ 全部純公式,零 AI;⛔ 沒有那個欄位就整條不顯示(條件觸發、不留空殼)。
+    //   ⚠️ 折溢價/規模要跟**這檔自己的歷史**比才有意義(同外資期貨 V71.1.6 的教訓:
+    //      寫死絕對門檻會失真)→ 吃採礦端 V72.4.1 開始累積的 `hist`。
+    _etfNumbersMeaning(etf) {
+        if (!etf) return '';
+        const rows = [];
+        const push = (icon, label, val, mean) => rows.push(
+            `<div class="grid grid-cols-[auto_1fr] gap-1.5 py-1 border-b border-[#21262d] last:border-0">
+                <span class="text-[11px] flex-shrink-0">${icon}</span>
+                <div class="min-w-0">
+                    <div class="text-[10px] text-gray-200"><b>${label}</b> <span class="font-mono text-gray-300">${val}</span></div>
+                    <div class="text-[9px] text-gray-500 leading-snug mt-0.5">${mean}</div>
+                </div>
+             </div>`);
+
+        const hist = Array.isArray(etf.hist) ? etf.hist : [];
+
+        // ① 折溢價 —— ⭐ 最實用的一個:它直接決定「你今天買貴了沒」
+        const prem = etf.premium;
+        if (typeof prem === 'number') {
+            const ps = hist.map(r => r.p).filter(x => typeof x === 'number');
+            let pos = null;
+            if (ps.length >= 20) pos = ps.filter(x => x < prem).length / ps.length * 100;
+            const meanTxt = prem > 0.5
+                ? `你付的價格比它<b class="text-gray-300">實際持股的價值</b>貴 ${prem.toFixed(2)}%。⚠️ 溢價買等於先虧這個數;主動式 ETF 溢價一高,申購湧入還會逼經理人追高買成分股。`
+                : prem < -0.5
+                ? `現在買比它實際持股的價值<b class="text-gray-300">便宜</b> ${Math.abs(prem).toFixed(2)}%,這是相對有利的位置(但便宜通常代表大家在賣)。`
+                : `跟實際持股價值幾乎一樣(±0.5% 內),買賣沒有吃虧或佔便宜,這是正常狀態。`;
+            const posTxt = pos != null
+                ? ` 近 ${ps.length} 天裡有 ${pos.toFixed(0)}% 的日子比今天低 → ${pos >= 85 ? '<b class="text-gray-300">目前是這段期間偏貴的位置</b>' : pos <= 15 ? '<b class="text-gray-300">目前是這段期間偏便宜的位置</b>' : '算中間水位'}。`
+                : ` <span class="text-gray-600">(歷史還在累積中,滿 20 天後會告訴你「現在算高還低」)</span>`;
+            push('💰', '折溢價', `${prem > 0 ? '+' : ''}${prem.toFixed(2)}%`, meanTxt + posTxt);
+        }
+
+        // ② 規模變化 —— ⭐ 這是我原本採了卻完全沒用的:規模「絕對值」沒意義,「變化」才有
+        const fsNow = typeof etf.fund_size === 'number' ? etf.fund_size / 1e8 : null;
+        const ss = hist.map(r => r.s).filter(x => typeof x === 'number');
+        if (fsNow != null && ss.length >= 5) {
+            const base = ss[Math.max(0, ss.length - 21)];
+            const chg = base > 0 ? (fsNow - base) / base * 100 : null;
+            if (chg != null) {
+                push('🏦', '規模(近 20 日變化)', `${fsNow.toFixed(0)} 億(${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%)`,
+                    chg >= 15 ? '資金明顯湧入 → 經理人手上多了錢<b class="text-gray-300">必須買進成分股</b>,對前幾大持股是實質買盤。'
+                  : chg <= -15 ? '資金明顯流出 → 經理人得<b class="text-gray-300">賣股票換現金應付贖回</b>,對前幾大持股是賣壓。'
+                  : '規模穩定,沒有明顯的申購或贖回壓力。');
+            }
+        } else if (fsNow != null) {
+            push('🏦', '規模', `${fsNow.toFixed(0)} 億`,
+                '規模的<b class="text-gray-300">變化</b>比絕對值重要(暴增=經理人被迫買股、暴減=被迫賣股)。<span class="text-gray-600">歷史累積中,約 20 個交易日後會顯示變化。</span>');
+        }
+
+        // ③ 現金水位 —— 主動 ETF 才有的訊號
+        if (typeof etf.cash_ratio === 'number') {
+            push('💵', '現金水位', `${etf.cash_ratio.toFixed(1)}%`,
+                etf.cash_ratio >= 15 ? '經理人保留較多現金 = <b class="text-gray-300">偏防守</b>,代表他認為現在不好買。⚠️ 這是他的看法不是預測。'
+              : etf.cash_ratio <= 3 ? '幾乎滿倉 = 經理人<b class="text-gray-300">看好、火力全開</b>;但也代表跌的時候沒有現金可以接。'
+              : '現金水位正常。');
+        }
+
+        // ④ 集中度 —— ⭐ 我沒想到但很重要:第一大持股佔太高,買這檔 ETF 等於買那一檔股票
+        const t1 = etf.top1;
+        if (t1 && typeof t1.weight === 'number') {
+            push('🎯', '最大持股集中度', `${t1.name || t1.sym} ${t1.weight.toFixed(1)}%`,
+                t1.weight >= 25 ? `這檔 ETF <b class="text-gray-300">有四分之一以上壓在同一檔</b> —— 它的漲跌很大一部分就是 ${t1.name || t1.sym} 的漲跌,想分散風險的話效果有限。`
+              : t1.weight >= 15 ? `單一持股佔 ${t1.weight.toFixed(0)}%,影響不小但還在合理範圍。`
+              : '持股分散,不會被單一檔綁架。');
+        }
+
+        // ⑤ 換股頻率 —— 決定「你跟車要跟多緊」
+        if (typeof etf.turnover_score === 'number' && etf.turnover_score > 0) {
+            push('🔄', '換股頻率', etf.turnover_score.toFixed(1),
+                etf.turnover_score >= 5 ? '經理人<b class="text-gray-300">很常換股</b>(接近天天調整)→ 你看到的持股清單很快就會過期,跟車要跟得緊。'
+              : etf.turnover_score >= 2 ? '大約每週調整一次,持股清單有一定參考期限。'
+              : '很少換股 = <b class="text-gray-300">偏長期持有型</b>,持股清單可以放心參考比較久。');
+        }
+
+        // ⑥ 費用率 —— 跟殖利率放一起講才有感
+        if (typeof etf.expense_ratio === 'number' && etf.expense_ratio > 0) {
+            const cost1e5 = Math.round(etf.expense_ratio / 100 * 100000);
+            push('🧾', '費用率(年)', `${etf.expense_ratio.toFixed(2)}%`,
+                `每放 10 萬元,<b class="text-gray-300">一年被扣約 ${cost1e5.toLocaleString()} 元</b>(不管賺賠都要付)。${etf.expense_ratio >= 1 ? '主動式 ETF 費用普遍較高,長抱要先賺回這一段。' : '屬於偏低的水準。'}`);
+        }
+
+        if (!rows.length) return '';
+        return `<div class="mb-2 pb-2 border-b border-[#21262d]">
+            <div class="text-[10px] text-gray-400 font-bold mb-1">🧠 這些數字代表什麼(不只給數字)</div>
+            ${rows.join('')}
+        </div>`;
+    },
+
+    // 🕵️ V72.4.1 「經理人最近在加碼/減碼誰」——⭐ 使用者沒提但這是主動式 ETF 最值錢的資訊。
+    //   ⚠️ App 原本只有**反查**(`_etfActionsForStock`:開個股頁看「哪些 ETF 買了我這檔」),
+    //      ⛔ 但站在 ETF 自己的頁面上,反而看不到「這檔 ETF 最近動了誰」——
+    //      而「跟著專業經理人的最新動作」正是買主動式 ETF 的人最想知道的事。
+    //   ⛔ 只顯示真的有動作的;沒動作整段不顯示(條件觸發、不留空殼)。
+    _etfManagerMoves(etf) {
+        const c = etf?.changes || {};
+        const rows = [];
+        const mk = (arr, icon, label, cls, key) => (arr || []).slice(0, 4).forEach(x => {
+            if (!x?.sym) return;
+            const d = key && typeof x[key] === 'number' ? x[key] : null;
+            rows.push(`<div onclick="app.analyze('${x.sym}'); app.switchAppTab('diag');" class="flex items-center justify-between py-0.5 text-[10px] cursor-pointer hover:bg-[#21262d] rounded px-1">
+                <span class="min-w-0 truncate"><span class="font-mono text-gray-500 mr-1">${x.sym}</span><span class="text-gray-200">${x.name || ''}</span></span>
+                <span class="flex-shrink-0 ml-2"><b class="${cls}">${icon} ${label}</b>${d != null ? `<span class="text-gray-500 font-mono ml-1">${d >= 0 ? '+' : ''}${d.toFixed(2)}pp</span>` : ''}</span>
+            </div>`);
+        });
+        // ⚠️ 沿用 V72.3.1 的基準重建守門:整批 added 而且沒有任何換出/加減碼 = 採礦端基準重建,不是真換股
+        const rebuilt = (c.added || []).length >= 8 && !(c.removed || []).length && !(c.weight_up || []).length && !(c.weight_down || []).length;
+        if (!rebuilt) mk(c.added, '🆕', '新買進', 'text-red-300');
+        mk(c.weight_up, '📈', '加碼', 'text-red-300', 'dw');
+        mk(c.weight_down, '📉', '減碼', 'text-green-300', 'dw');
+        mk(c.removed, '❌', '出清', 'text-green-300');
+        if (!rows.length) return '';
+        return `<div class="mb-2 pb-2 border-b border-[#21262d]">
+            <div class="text-[10px] text-gray-400 font-bold mb-1">🕵️ 經理人最近動了誰 <span class="text-[8px] font-normal text-gray-600">(這是買主動式 ETF 最該看的:專業經理人的最新動作)</span></div>
+            ${rows.join('')}
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 點任一列可跳去看那檔股票。⚠️ 這是<b>經理人的判斷不是保證</b>,而且清單有一天的時間差(盤後才公布)。</div>
+        </div>`;
     },
 
     // V18.6 — 個股頁籌碼 tab 的「ETF 跟車狀態」卡片(進場價追蹤近似版,零採礦)
@@ -6950,8 +7080,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.0',
+    _APP_VERSION: 'V72.4.1',
     _CHANGELOG: [
+        { v: 'V72.4.1', dt: '2026-08-05', t: '🧩 ETF 不再套用個股版面 + 每個數字都告訴你「有什麼用」', d: [
+            '🐛 你截圖抓到的:打開 00981A 這種 ETF,基本頁竟然顯示「毛利率 +3.0pp」「每季 EPS 2.64」「投資屬性 52/75/80」—— **ETF 根本沒有毛利率和 EPS**,那些全是**上一檔個股留下來沒清掉的數字**。切到 ETF 時只清了一部分格子,圖表和雷達整個沒清,而且畫面上完全沒有錯誤訊息。已修,測試會擋住再犯。',
+            '🧭 順手抓到指路指錯地方:那段說明寫「請看籌碼分頁」,但 ETF 那兩張卡其實在**總覽 → 進場**。已改。',
+            '🧠 ⭐ 你說「數字還要分析出到底有什麼作用」—— 現在每個數字都配一句「所以呢」:折溢價講**你今天買貴了沒**、規模變化講**經理人會被迫買股還是賣股**、集中度講**這檔會不會等於買一檔股票**、換股頻率講**跟車要跟多緊**、費用率直接換算成**每放 10 萬一年被扣幾元**。',
+            '🕵️ 新增「**經理人最近動了誰**」:新買進 / 加碼 / 減碼 / 出清,附權重變動幅度,點一下就跳去看那檔股票。⭐ 這是我認為買主動式 ETF 最該看的東西 —— 以前只能從個股頁反查「哪些 ETF 買了我這檔」,站在 ETF 自己的頁面反而看不到它動了誰。',
+            '⛏️ 採礦端開始存**折溢價、淨值、規模的歷史**(滾動 250 天)。有了歷史才能回答「現在這個折溢價算高還低」—— 只給今天一個數字是沒辦法判讀的。約 20 個交易日後就會出現位階提示。',
+            '📋 配息那塊(季配、殖利率)先不做:目前**沒有 ETF 配息的資料源**,已寫好一支探針去問官方有哪些端點。⛔ 沒確定之前不憑猜加欄位 —— 猜的欄位會永遠是空的,而且連體檢都查不出來。',
+        ] },
         { v: 'V72.4.0', dt: '2026-08-05', t: '🧠 新增「深度診斷」:個股+籌碼+大盤總經一起看,告訴你該怎麼做', d: [
             '總覽頁新增一張卡,回答你三個問題:**現在這檔該用什麼方式操作**、**大戶有沒有在出貨的跡象**、**接下來要盯什麼**。',
             '🎯 操作方式是**算出來的**不是猜的:低檔布局(位階在一年低段但沒破季線太遠)/ 區間操作(近 60 天在一個窄箱子裡來回)/ 順勢做多(站上月線且月線在季線之上)/ 先不做(中期還是空頭)。每一種都附白話理由。',
@@ -23824,11 +23962,27 @@ ${lightExplain[queryType]}
         // 🧩 V34.0 — ETF 不適用個股本益比/EPS/營收 → 顯說明、跳過抓財報(改看成分股卡)
         if (this._isETF && this._isETF(sym)) {
             ['xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout','xrayEpsYoY','xrayEpsQoQ','xrayPb','xrayPeg'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+            // 🐛 V72.4.1 陷阱 #19 再犯(使用者截圖抓到):ETF 早退**只清了上面那幾格**,
+            //   於是「毛利率 +3.0pp(從 2 季前 20.2%)」「每季 EPS 2.64」「投資屬性 52/75/80」
+            //   會原封不動留著**上一檔個股**的數字 —— ETF 根本沒有毛利率/EPS/本益比,
+            //   使用者會拿別檔的財報數字去判斷這檔 ETF,而且畫面上零錯誤訊息。
+            //   ⛔ 早退前必須把「這一整頁 async 才填的東西」全部清掉,不是只清好清的那幾格。
+            ['xrayGmCompare', 'xrayInvBest', 'xrayInvSwing', 'xrayInvHold', 'xrayInvShort', 'xrayInvFactors']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+            ['xrayGmSpark', 'xrayEpsTrend', 'xrayInvRadar'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                try { window.echarts?.getInstanceByDom?.(el)?.dispose?.(); } catch (_) { }   // ECharts 圖要 dispose,只清 innerHTML 會留 canvas
+                el.innerHTML = '';
+            });
             this._clearXrayPeTag();   // 🏷️ V71.4.5 ETF 不適用本益比 → 同業比價標籤一併清掉,別留上一檔的殘影
             ['xrayFinStruct','xrayCashFlow','xrayExpectation','xrayTriRate'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.add('hidden'); el.innerHTML = ''; } });   // 🛡️ V68.3.7 ETF 無個股財報 → 隱藏財務結構/現金流/預期/三率
             const _vet = document.getElementById('xrayVerdict'); if (_vet) _vet.innerHTML = '';   // ETF 無個股體質總評,清空避免卡「計算中…」
             const box = document.getElementById('xrayAIBox'), res = document.getElementById('xrayAIResult');
-            if (box && res) { box.classList.remove('hidden'); res.innerHTML = '🧩 <b class="text-blue-300">這是 ETF</b>,不適用個股本益比 / EPS / 營收 / 毛利率。<br>ETF 看的是<b class="text-gray-200">成分股比重、折溢價、配息、追蹤指數</b> — 請看籌碼分頁的<b class="text-blue-300">「🧩 ETF 成分股比重」</b>與<b class="text-amber-300">「🚦 ETF 跟車 / 投信動能」</b>卡。'; }
+            // 🧭 V72.4.1 指路修正:這兩張卡在**總覽 → 進場**(`data-ovpane="entry"`),⛔ 不在籌碼分頁。
+            //   舊文案指到籌碼分頁 → 使用者照著找會找不到(陷阱 #32「功能存在 ≠ 使用者找得到」的變形:
+            //   卡片沒放錯,是**指路指錯地方**)。⚠️ 日後搬動這兩張卡,這句話要一起改。
+            if (box && res) { box.classList.remove('hidden'); res.innerHTML = '🧩 <b class="text-blue-300">這是 ETF</b>,不適用個股本益比 / EPS / 營收 / 毛利率(ETF 沒有自己的財報)。<br>ETF 要看的是<b class="text-gray-200">成分股比重、經理人最近加減碼、折溢價、規模變化、費用率</b> — 請到<b class="text-blue-300">「總覽 → 進場」</b>頁籤看<b class="text-blue-300">「🧩 ETF 成分股 / 產業」</b>與<b class="text-amber-300">「🚦 ETF 跟車狀態」</b>兩張卡。'; }
             this._xrayInFlightSym = null;
             return;
         }

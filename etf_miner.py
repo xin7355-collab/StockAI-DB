@@ -542,7 +542,14 @@ def fetch_etf_premium():
             if sym and g not in (None, "", "-", "未結出"):
                 f = _to_float(str(g).replace("%", "").replace(",", "").strip())
                 if f is not None:
-                    out[sym] = round(f, 2)
+                    # 🆕 V72.4.1 同一包回應裡本來就有 f=預估淨值、e=成交價,以前只取 g(折溢價%)就丟掉。
+                    #   ⭐ 淨值是 ETF 專屬、個股沒有的東西,而且**有了歷史才知道「現在的折溢價算高還低」**
+                    #      (同外資期貨 V71.1.6 的教訓:絕對門檻會失真,要看相對自己的位階)。
+                    nav = _to_float(str(it.get("f", "")).replace(",", "").strip())
+                    px = _to_float(str(it.get("e", "")).replace(",", "").strip())
+                    out[sym] = {"prem": round(f, 2),
+                                "nav": round(nav, 4) if nav and nav > 0 else None,
+                                "px": round(px, 4) if px and px > 0 else None}
         if out:
             _PREMIUM_STATUS = f"命中 {len(out)} 檔(例:{list(out.items())[:3]})"
         else:
@@ -705,9 +712,33 @@ def main():
     # 🪙 V34.1 — 折溢價(best-effort TWSE;抓不到自動略過,前端 graceful)
     try:
         premiums = fetch_etf_premium()
+        # 📈 V72.4.1 折溢價/淨值/規模「歷史」—— ⛔ 只有當日一個數字是沒辦法判讀的
+        #   (0.5% 溢價到底算高還低?要跟這檔自己的歷史比才知道)。滾動保留 250 個交易日。
+        #   ⚠️ 這是**累積型**欄位:從 prev(上一版 etf_tracking.json)讀回來再往後接,
+        #      workflow 的 `git archive origin/data` 會把舊檔鋪好,所以接得起來。
+        prev_hist = {e["symbol"]: (e.get("hist") or []) for e in prev.get("etfs", [])}
         for _e in etfs:
-            if _e.get("symbol") in premiums:
-                _e["premium"] = premiums[_e["symbol"]]
+            s = _e.get("symbol")
+            p = premiums.get(s)
+            if isinstance(p, dict):
+                _e["premium"] = p.get("prem")
+                _e["nav"] = p.get("nav")
+            elif isinstance(p, (int, float)):     # 舊格式相容
+                _e["premium"] = p
+            h = list(prev_hist.get(s) or [])
+            # 同一天只留一筆(重跑不重複);⛔ 用 today 當鍵,不用 len 判斷
+            h = [r for r in h if isinstance(r, dict) and r.get("d") != today]
+            rec = {"d": today}
+            if _e.get("premium") is not None:
+                rec["p"] = _e["premium"]
+            if _e.get("nav") is not None:
+                rec["n"] = _e["nav"]
+            if _e.get("fund_size"):
+                rec["s"] = round(_e["fund_size"] / 1e8, 2)   # 規模(億),⛔ 存億不存元,省一半體積
+            if len(rec) > 1:                                  # 只有日期就別存了
+                h.append(rec)
+            h.sort(key=lambda r: r.get("d") or "")
+            _e["hist"] = h[-250:]
     except Exception as _pe:
         premiums = {}
         print(f"  ⚠️ 折溢價附加失敗: {_pe}")

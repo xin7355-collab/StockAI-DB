@@ -1,0 +1,25 @@
+name: 🔍 ETF 配息資料源探針
+
+# ⛔ 純診斷、手動觸發。沙箱連不到 TWSE/TPEX,只能在 Actions 跑才問得到官方端點。
+#    ⚠️ 它**不寫任何檔案、不部署** —— 只把候選端點印出來,確定名字之後才准接進 etf_miner.py。
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests --quiet
+      - run: python3 etf_div_probe.py 2>&1 | tee /tmp/probe.log
+      - name: 📋 寫進 Actions Summary(log 有 5000 行上限,會被擠掉)
+        if: always()
+        run: |
+          echo '## 🔍 ETF 配息資料源探針結果' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -200 /tmp/probe.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
