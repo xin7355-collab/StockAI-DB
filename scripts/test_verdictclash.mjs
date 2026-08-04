@@ -113,9 +113,13 @@ ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏�
     await p3.goto('file://' + ROOT + '/index.html', { waitUntil: 'domcontentloaded' });
     await p3.waitForFunction(() => typeof app !== 'undefined' && !!app.renderMktCompare, null, { timeout: 20000 });
     const src3 = await p3.evaluate(() => app.renderMktCompare.toString());
-    ok('⑩ ⭐ vs大盤 有讀主結論 _ovTrend', /_ovTrend/.test(src3), '');
-    ok('⑩ ⭐ 空頭時才改寫,且要綁 sym(防切股殘留)',
-       /_ovTrend\.sym === String\(sym\)/.test(src3) && /_ovTrend\.trend === 'bear'/.test(src3), '');
+    ok('⑩ ⭐ vs大盤 有走共用守門 _bearGate', /_bearGate\(sym\)/.test(src3), '');
+    // ⭐ V72.0.9:守門抽成共用函式後,改驗**那一份**有綁 sym(防切股殘留)
+    const gateSrc = await p3.evaluate(() => app._bearGate.toString());
+    ok('⑩ ⭐ 共用守門要綁 sym + 只在 bear 觸發',
+       /t\.sym === String\(/.test(gateSrc) && /t\.trend === 'bear'/.test(gateSrc), gateSrc);
+    ok('⑩ ⭐ 守門要能容忍不傳 sym(退回 currentSymbolId)',
+       /currentSymbolId/.test(gateSrc), gateSrc);
     ok('⑩ ⭐⛔ 只改 act(指令),不可動 diag(事實描述)',
        /act = `⚠️/.test(src3) && !/diag = `⚠️/.test(src3), '');
     ok('⑩ ⭐ 改寫後要說「不是抱牢或加碼的理由」', /不是抱牢或加碼的理由/.test(src3), '');
@@ -154,6 +158,40 @@ ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏�
     } else {
         ok('⑫ 波動率那行取不到(函式名可能改了)→ 需人工確認', false, 'app._stockHabitLine 回 null');
     }
+
+    // ⭐ V72.0.9 第 4 處:「⭐ 重點判讀」在**常顯區**,比摺疊區裡的更該守
+    const src6 = await p3.evaluate(() => app._ovStrongSignals.toString());
+    ok('⑬ ⭐ 重點判讀的「明日劇本偏多」也要走守門', /_bearGate\(sym\)/.test(src6), '');
+    ok('⑬ ⭐ 空頭時要改講「反彈減碼用,不是買點」', /反彈減碼用/.test(src6), '');
+    ok('⑬ ⛔ 空頭時不可再說「開低量縮是較好買點」',
+       /_bearGate\(sym\)[\s\S]{0,400}?不是買點/.test(src6), '');
+
+    // 🏷️ V72.0.9 「大戶站買方(大戶倒貨給散戶)」自相矛盾
+    const src7 = await p3.evaluate(() => app._chipAnalystLine.toString());
+    ok('⑭ ⭐ 負面 driver ⛔ 不可用括號跟「站買方」並排(會自相矛盾)',
+       /_drvBad/.test(src7) && /倒貨\|撤退\|出貨/.test(src7), '');
+    ok('⑭ ⭐ 相反時要改成「但…」明講', /dBut/.test(src7) && /但\$\{_drv\}/.test(src7), '');
+    ok('⑭ ⭐ 空頭時⛔ 不可說「放心做 / 別自己嚇自己提前下車」',
+       /_bullAct/.test(src7) && /不是進場或抱牢的理由/.test(src7), '');
+    // 實跑:餵「分數偏多 + driver 是倒貨」→ 不可出現並排的矛盾句
+    const clash = await p3.evaluate(() => {
+        app.currentSymbolId = 'T1';
+        app._lastChipScore = { sym: 'T1', score: 62 };
+        app._lastChipClean = { sym: 'T1', clean: 75, driver: '大戶倒貨給散戶' };
+        app._ovTrend = { sym: 'T1', trend: 'bear', txt: '空頭' };
+        const bear = app._chipAnalystLine();
+        app._ovTrend = { sym: 'T1', trend: 'bull', txt: '多頭' };
+        const bull = app._chipAnalystLine();
+        return { bear: bear && bear.txt, bull: bull && bull.txt };
+    });
+    ok('⑭ ⭐⛔ 實跑:不可出現「站買方(大戶倒貨給散戶)」這種並排',
+       !/站買方[^—]*\(大戶倒貨給散戶\)/.test(String(clash.bear)) && !/站買方[^—]*\(大戶倒貨給散戶\)/.test(String(clash.bull)),
+       JSON.stringify(clash));
+    ok('⑭ ⭐ 實跑:矛盾要用「但」講出來', /但大戶倒貨給散戶/.test(String(clash.bull)), String(clash.bull));
+    ok('⑭ ⭐ 實跑:空頭時不可出現「放心做」',
+       !/放心做/.test(String(clash.bear)), String(clash.bear));
+    ok('⑭ ⛔ 多頭時維持原本的打氣話(別把正常情境弄壞)',
+       /放心做/.test(String(clash.bull)), String(clash.bull));
     await b3.close();
 }
 

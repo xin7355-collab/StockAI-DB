@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,21 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.8',
+    _APP_VERSION: 'V72.0.9',
     _CHANGELOG: [
+        { v: 'V72.0.9', dt: '2026-08-04', t: '🚦 「講反話」的第 4 處(這次在最顯眼的地方)+ 一句自相矛盾的話', d: [
+            '再往下查你那張截圖,又抓到兩個:',
+            '',
+            '**① 「⭐ 重點判讀」也在下相反指令 —— 而且它在最顯眼的位置**',
+            '前三處(分析師解讀、明日劇本、本股vs大盤)都在下面或收合區,這一處在**常顯的重點判讀**裡,寫「大戶站買方 → 籌碼在你這邊,**順勢操作、別自己嚇自己提前下車**」、「明日劇本偏多 · **開低量縮是較好買點**」—— 但上面總評寫的是「空方・避開」。',
+            '',
+            '⭐ 這是同一個錯誤的**第 4 次**,所以這版把它做成**一個共用的守門**:以後任何會講「進場/抱好/加碼/順勢做多」的卡,一律先問「中期趨勢怎麼說」。四處已全部改用同一份,以後不會再各說各話。',
+            '⚠️ 守門只改**叫你怎麼做**那句,**事實描述不動**(「今天比大盤強」是真的)。',
+            '',
+            '**② 「大戶站買方(大戶倒貨給散戶)」—— 這句話本身就自相矛盾**',
+            '站買方又倒貨?查出來是:括號裡那個是「籌碼**乾淨度**」的主因,方向卻是另一個指標算的,兩個被直接黏在一起。',
+            '✅ 現在如果括號內容跟前面方向相反,會改成「大戶站買方、籌碼乾淨,**但大戶倒貨給散戶**」—— 把矛盾明講出來,而不是黏成一句看不懂的話。',
+        ] },
         { v: 'V72.0.8', dt: '2026-08-04', t: '🏷️ 三個「主力」其實是三件事 + 再修兩處講反話', d: [
             '接著你那張國巨截圖繼續修,這版三件:',
             '',
@@ -14367,24 +14380,48 @@ const marginByDate = {};
         try { this._updateChipResoViews(); } catch (_) {}   // 💼 乾淨度算完 → 同步刷新總覽/K線的籌碼一句話
     },
 
+    // ⭐ V72.0.9 「主結論是空頭時,不准下多方指令」的**唯一守門**。
+    //   ⚠️ 這個錯誤已經犯 4 次(V71.7.7 分析師解讀 → V72.0.7 明日劇本 →
+    //      V72.0.8 本股vs大盤 → V72.0.9 重點判讀),每次都各寫一份判斷式 →
+    //      這次抽成共用函式,⛔ 新增任何會講「進場/抱好/加碼/順勢做多」的卡一律呼叫它。
+    //   ⚠️ 守門只改**操作指令**,⛔ 不改**事實描述**(「今天比大盤強」是真的,不可竄改)。
+    _bearGate(sym) {
+        const t = this._ovTrend;
+        return !!(t && t.sym === String(sym == null ? this.currentSymbolId : sym) && t.trend === 'bear');
+    },
+
     // 💼 V69.6.5 — 籌碼一句話(專業分析師口吻):方向(大戶籌碼總結)× 乾淨度 → 一句重點/打氣,總覽用
+    //   🐛 V72.0.9 修兩件(使用者 2327 截圖):
+    //     ① `driver` 是「籌碼**乾淨度**」的主因,可能跟「方向」相反 →
+    //        直接用括號並排會生出「大戶站買方(大戶倒貨給散戶)」這種**自相矛盾**的句子。
+    //        → 相反時改成明講「但…」,⛔ 不並排。
+    //     ② 主結論空頭時,⛔ 不可再說「順勢操作、別自己嚇自己提前下車」「放心做」。
     _chipAnalystLine() {
         const sym = this.currentSymbolId;
         const cs = this._lastChipScore, cc = this._lastChipClean;
         if (!cs || cs.sym !== sym || !Number.isFinite(cs.score)) return null;
         const s = cs.score;
         const clean = (cc && cc.sym === sym) ? cc.clean : null;
-        const d = (cc && cc.sym === sym && cc.driver) ? `(${cc.driver})` : '';
+        const _drv = (cc && cc.sym === sym && cc.driver) ? String(cc.driver) : '';
+        // ① driver 若是**負面**主因,跟「大戶站買方」並排會自相矛盾 → 改成「但…」
+        const _drvBad = /倒貨|撤退|出貨|賣超|混亂|偏亂|散戶/.test(_drv);
+        const d = _drv ? (_drvBad ? '' : `(${_drv})`) : '';
+        const dBut = (_drv && _drvBad) ? `,<b>但${_drv}</b>` : '';
+        // ② 主結論空頭 → 多方打氣話一律換成「反彈減碼」口吻(⛔ 事實不動,只改指令)
+        const _bg = this._bearGate(sym);
+        const _bullAct = _bg
+            ? '⚠️ 但中期趨勢是空頭 → 這只能用來挑<b>反彈到哪裡減碼</b>,⛔ 不是進場或抱牢的理由。'
+            : null;
         if (s >= 57) {
-            if (clean != null && clean >= 70) return { cls: 'text-red-300', txt: `大戶站買方、籌碼乾淨${d}——有人扛轎,回檔是機會不是風險,守好停損放心做。` };
-            if (clean != null && clean < 45) return { cls: 'text-orange-300', txt: `大戶偏買但籌碼偏亂${d}——方向對、車廂擠,倉位放小、等拉回再上。` };
-            return { cls: 'text-red-300', txt: `大戶站買方${d}——籌碼在你這邊,順勢操作、別自己嚇自己提前下車。` };
+            if (clean != null && clean >= 70) return { cls: _bg ? 'text-yellow-300' : 'text-red-300', txt: `大戶站買方、籌碼乾淨${d}${dBut}——${_bullAct || '有人扛轎,回檔是機會不是風險,守好停損放心做。'}` };
+            if (clean != null && clean < 45) return { cls: 'text-orange-300', txt: `大戶偏買但籌碼偏亂${d}${dBut}——${_bullAct || '方向對、車廂擠,倉位放小、等拉回再上。'}` };
+            return { cls: _bg ? 'text-yellow-300' : 'text-red-300', txt: `大戶站買方${d}${dBut}——${_bullAct || '籌碼在你這邊,順勢操作、別自己嚇自己提前下車。'}` };
         }
         if (s <= 45) {
-            if (clean != null && clean < 45) return { cls: 'text-green-300', txt: `大戶撤退、籌碼混亂${d}——最弱組合,反彈當逃命波,現金也是一種部位。` };
-            return { cls: 'text-green-300', txt: `大戶站賣方${d}——籌碼不在你這邊,持股緊守停損、空手別接刀。` };
+            if (clean != null && clean < 45) return { cls: 'text-green-300', txt: `大戶撤退、籌碼混亂${d}${dBut}——最弱組合,反彈當逃命波,現金也是一種部位。` };
+            return { cls: 'text-green-300', txt: `大戶站賣方${d}${dBut}——籌碼不在你這邊,持股緊守停損、空手別接刀。` };
         }
-        if (clean != null && clean >= 70) return { cls: 'text-yellow-300', txt: `大戶按兵不動、籌碼安定${d}——變盤前的醞釀,等技術面表態再進場。` };
+        if (clean != null && clean >= 70) return { cls: 'text-yellow-300', txt: `大戶按兵不動、籌碼安定${d}${dBut}——變盤前的醞釀,等技術面表態再進場。` };
         return { cls: 'text-yellow-300', txt: `籌碼無明顯方向——這檔現在技術面說了算,別單靠籌碼進出。` };
     },
     // ⚡ V69.6.5 — K線頁「價量籌碼共振」:技術 tone × 籌碼方向(同向=可信度加成/背離=防假動作,最實用的直覺判斷)
@@ -19925,8 +19962,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   這張卻寫「🔥 主流資金正在買的股 → 沿 5 日線抱好,別提早下車」。
             //   ⚠️ diag(今天比大盤強)是**事實描述,不動**;要改的是 act(操作指令)。
             //      單日比大盤強 ≠ 中期轉多 —— 國巨那天是從 456 反彈,中期仍空頭。
-            if (this._ovTrend && this._ovTrend.sym === String(sym) && this._ovTrend.trend === 'bear'
-                && /抱好|別提早下車|抱著|加碼/.test(act)) {
+            if (this._bearGate(sym) && /抱好|別提早下車|抱著|加碼/.test(act)) {   // ⭐ V72.0.9 共用守門
                 act = `⚠️ <b>但中期趨勢仍是空頭</b>(上面總評:反彈是給你出場用的)→ `
                     + `今天的相對強勢<b>只能用來挑「反彈到哪裡減碼」</b>,⛔ 不是抱牢或加碼的理由。`
                     + (slPrice ? `有貨的守好 ${slPrice},破了就走。` : `有貨的守好上方主卡給的防守價。`);
@@ -23032,7 +23068,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   下面這張卻寫「🟡 明日偏多」+「開高站上昨高 583 → 可順勢做多/抱單」。
             //   ⚠️ 這張看的是**明天一天**、總評看的是**中期趨勢**,兩個都沒算錯 ——
             //      錯在**兩張卡都在下操作指令**。修法是讓短線那張改口,不是改它的分數。
-            const _mainBear = this._ovTrend && this._ovTrend.sym === String(sym) && this._ovTrend.trend === 'bear';
+            const _mainBear = this._bearGate(sym);   // ⭐ V72.0.9 改用共用守門(⛔ 別再各寫一份)
             if (_mainBear && total >= 1) {
                 verdict = verdict.replace(/明日偏多[^·]*/, m => m.trim() + ' ・僅限短線');
                 headSop = `⚠️ <b>短線是轉強,但中期趨勢仍是空頭</b>(上面總評:反彈是給你出場用的)→ `
@@ -28130,7 +28166,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 let chipScore = 0;
                 if (this._fenSym === sym && this._fenPeriods) { try { const cv = this._chipScenarioCalc(this._fenPeriods, C, this._fenHist); if (cv) chipScore = cv.score; } catch (_) {} }
                 const tot = tech.score + chipScore;
-                if (tot >= 3) rows.push({ ic: '🔮', cls: 'text-red-300', txt: '明日劇本 <b>偏多</b> · 開低量縮是較好買點' });
+                // 🐛 V72.0.9 第 4 處:這條在**常顯區**,比摺疊區裡的更該守
+                if (tot >= 3) rows.push(this._bearGate(sym)
+                    ? { ic: '🔮', cls: 'text-yellow-300', txt: '明日劇本 <b>短線偏多</b> · ⚠️ 但中期是空頭 → 反彈減碼用,⛔ 不是買點' }
+                    : { ic: '🔮', cls: 'text-red-300', txt: '明日劇本 <b>偏多</b> · 開低量縮是較好買點' });
                 else if (tot <= -3) rows.push({ ic: '🔮', cls: 'text-green-300', txt: '明日劇本 <b>偏空</b> · 反彈逃命、別接刀' });
             }
             // 🏔️ 過高濾網(非中性才顯)
