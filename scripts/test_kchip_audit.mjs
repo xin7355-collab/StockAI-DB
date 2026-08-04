@@ -71,10 +71,33 @@ ok('① ⭐⛔ 標題不可再叫「實測有效的訊號」(那三個期望值�
 ok('① ⭐ 改叫「值得參考的進場訊號」並註明「實測期望值為正」',
    /值得參考的進場訊號|沒有.{0,4}「?實測期望值為正/.test(kt), kt.slice(0, 260));
 
-// ⭐ 這組真實資料今天剛好**沒有**正期望值的看多訊號 → 必須誠實說,並勸阻
-ok('① ⭐ 沒有正期望值訊號時要誠實說「沒有」', /沒有.{0,20}進場訊號/.test(kt), kt.slice(0, 300));
-ok('① ⭐ 要勸阻「別硬找理由進場」', /別硬找理由進場/.test(kt), kt.slice(0, 300));
-ok('① ⭐ 風險提醒要標「不是賣出指令」', /不是賣出指令/.test(kt), kt.slice(0, 460));
+// ⚠️ V72.1.8:原本這裡直接斷言「2327 今天沒有正期望值訊號」——
+//   但**成績表一更新,那個前提就變了**(全市場回測後 2327 多了一個 exp>0 的訊號),
+//   測試就假失敗。⛔ 測試不可綁死會浮動的資料。
+//   ⭐ 改用 stub 控制 `_sigEdge`,**兩種情境各驗一次**。
+const kbar = (expMap) => page.evaluate(a => {
+    const real = app._sigEdge;
+    app._sigEdge = (det, title) => {
+        const e = a.expMap[`${det}｜${title}`];
+        return e === undefined ? null : { grade: 'A', n: 500, e10: 1, w10: 42, p: 0.01, e20: 1, payoff: 1.2, exp: e };
+    };
+    app.currentSymbolId = '2327'; app.rawDailyData = a.rows; app.activeData = a.rows;
+    const cl = a.rows.map(x => +x.close);
+    const ma = k => cl.map((_, i) => i < k - 1 ? null : cl.slice(i - k + 1, i + 1).reduce((s, v) => s + v, 0) / k);
+    app.indicators = { ma5: ma(5), ma20: ma(20), ma60: ma(60), k: [], d: [], dif: [], macd: [] };
+    app._ovTrend = a.tr ? { sym: '2327', trend: a.tr, txt: 'x' } : null;
+    app.renderKbarTactics(a.rows);
+    app._sigEdge = real;
+    const el = document.getElementById('kbarHalfTactics');
+    return el ? el.innerHTML : '';
+}, { rows, expMap: expMap.map, tr: expMap.tr || null });
+
+// ⓐ 全部訊號期望值皆 ≤0(等同「今天沒有值得進場的」)→ 必須誠實說 + 勸阻
+const ktNone = txt(await kbar({ map: {} }));   // 查不到成績 = 未驗證 → 不會進 good
+ok('① ⭐ 沒有正期望值訊號時要誠實說「沒有」', /沒有.{0,20}進場訊號/.test(ktNone), ktNone.slice(0, 300));
+ok('① ⭐ 要勸阻「別硬找理由進場」', /別硬找理由進場/.test(ktNone), ktNone.slice(0, 300));
+ok('① ⭐ 風險提醒要標「不是賣出指令」(有風險訊號時)',
+   !/風險提醒/.test(kt) || /不是賣出指令/.test(kt), kt.slice(0, 460));
 
 // ⛔ 最關鍵:置頂區裡⛔ 不可出現任何負期望值的**看多**訊號
 const head = kt.split('其餘')[0];
@@ -154,8 +177,20 @@ ok('③ ⭐ 三種趨勢下都要有「一句話結論」',
    /一句話結論/.test(hb) && /一句話結論/.test(hu) && /一句話結論/.test(hn), hb.slice(0, 160));
 ok('③ ⭐ 結論要放在訊號清單**之前**(第一眼看到)',
    hb.indexOf('一句話結論') < hb.indexOf('進場訊號'), `${hb.indexOf('一句話結論')} vs ${hb.indexOf('進場訊號')}`);
-ok('③ ⭐ 空頭時要點出「中期趨勢也是空頭 → 觀望或減碼」',
-   /中期趨勢也是空頭/.test(hb) && /觀望或減碼/.test(hb), hb.slice(0, 400));
+// ⚠️ V72.1.8:空頭時的結論句有**兩個分支**(有無正期望值訊號),各驗一次,
+//   ⛔ 別假設實際資料一定落在其中一邊。
+// ⓐ 只有風險訊號(看空/警示有成績、看多沒有)→ 走「沒進場訊號 + 有風險提醒」那條
+const hbRisk = txt(await kbar({ map: { '_detectMaDeviation｜負乖離過大': -0.8 }, tr: 'bear' }));
+ok('③ ⭐ 空頭 + 只有風險提醒 → 要說「中期趨勢也是空頭 → 觀望或減碼」',
+   /中期趨勢也是空頭/.test(hbRisk) && /觀望或減碼/.test(hbRisk), hbRisk.slice(0, 400));
+// ⓑ 完全沒有通過實測的訊號 → 措辭要精確(⛔ 不可說「今天沒有明確訊號」,摺疊區還有一堆)
+const hbNone = txt(await kbar({ map: {}, tr: 'bear' }));
+ok('③ ⭐ 完全沒通過實測時,措辭要說「沒有通過實測的訊號」而非「沒有明確訊號」',
+   /沒有通過實測的訊號/.test(hbNone) && !/今天沒有明確訊號/.test(hbNone), hbNone.slice(0, 300));
+ok('③ ⭐ 並要交代摺疊區還有幾條(⛔ 別讓人以為什麼都沒偵測到)',
+   /另有 \d+ 條未驗證/.test(hbNone), hbNone.slice(0, 300));
+ok('③ ⭐ 空頭 + 有正期望值訊號 → 要說「只能挑反彈減碼,不是進場理由」',
+   !/1 個正期望值訊號/.test(hb) || (/反彈到哪裡減碼/.test(hb) && /不是進場理由/.test(hb)), hb.slice(0, 400));
 ok('③ ⭐ 空頭時要標「(中期空頭)」', /中期空頭/.test(hb), hb.slice(0, 300));
 ok('③ ⭐ 多頭時⛔ 不可硬套空頭文案', !/中期趨勢也是空頭/.test(hu), hu.slice(0, 400));
 ok('③ ⭐ 總覽還沒算出趨勢時仍要能出結論(⛔ 不可空白或 throw)',
