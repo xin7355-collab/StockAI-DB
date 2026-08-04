@@ -153,6 +153,39 @@ for (const sym of SYMS) {
         }
     }
 }
+
+// ── 底部主分頁(大盤 / 選股 / 觀察 / 券商)也掃一遍 ────────────────
+//   ⚠️ 個股頁只佔全 App 的一部分 —— 陷阱 #32(「卡片放錯頁籤 → 使用者找不到」)
+//      跟 V72.1.0(實測訊號只在進場頁籤)都是**跨分頁**的問題,只掃個股頁看不到。
+//   ⭐ 這些頁不綁個股 → `_ovTrend` 不適用,**只掃缺值與空殼**(⛔ 不掃講反話,大盤層級的
+//      建議本來就跟個股趨勢無關,掃了全是誤報 —— 見報告尾巴的誤報說明)。
+process.stdout.write('\n🌐 主分頁 ');
+for (const tab of ['market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
+    const cards = await page.evaluate(async t => {
+        try { app.switchAppTab(t); } catch (_) { return []; }
+        await new Promise(r => setTimeout(r, 1800));
+        const seen = [], out = [];
+        for (const el of document.querySelectorAll('[id]')) {
+            if (!el.id || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+            if (!el.offsetParent && el.tagName !== 'BODY') continue;
+            if (seen.some(p => p.contains(el))) continue;
+            const x = (el.innerText || '').replace(/\s+/g, ' ').trim();
+            if (x.length < 12 || x.length > 4000) continue;
+            seen.push(el); out.push({ id: el.id, t: x });
+        }
+        return out;
+    }, tab);
+    for (const c of cards) {
+        for (const m of c.t.matchAll(RE_MISSING)) add('(全站)', tab, '💥缺值', c.id, m[0], ctxOf(c.t, m.index));
+        for (const m of c.t.matchAll(RE_PCT)) {
+            const ctx = ctxOf(c.t, m.index);
+            if (/勝率|優勢|佔比|占比|命中/.test(ctx)) add('(全站)', tab, '📉極端占比', c.id, m[1], ctx);
+        }
+    }
+    scanned += cards.length;
+    // 印出每頁掃到幾張 —— ⭐ 「掃很少」跟「壞掉」長得一樣,不印就分不出來
+    process.stdout.write(`${tab}:${cards.length} `);
+}
 await browser.close();
 
 function ctxOf(t, i) { return t.slice(Math.max(0, i - 45), i + 55).replace(/\s+/g, ' '); }
