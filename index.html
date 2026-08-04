@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.5',
+    _APP_VERSION: 'V72.2.6',
     _CHANGELOG: [
+        { v: 'V72.2.6', dt: '2026-08-04', t: '👜 「今天實測會賺的訊號」會先點名你手上那幾檔', d: [
+            '選股頁最上方那條「全市場只有 N 檔」對你來說還是有點遠 —— 你真正關心的是自己手上/自選那幾檔有沒有中。',
+            '現在會先對一次:有中就在最上面點名「👜 你手上/自選的 XXXX 今天也在榜上 —— 先看這幾檔」,榜單裡那幾列也會標 👜 + 琥珀底。',
+            '⛔ 沒有中就完全不顯示這一行(不留空格、也不會寫「你今天沒有命中」)。沒有開新卡,只是併進既有那條。',
+            '🩺 資料體檢新增一類:「檔案在、能解析,但少了該有的那半」—— 融資維持率那次(檔案只有 P/B 沒有融資)就是這樣躲過檢查的,現在會直接抓出來。',
+        ] },
         { v: 'V72.2.5', dt: '2026-08-04', t: '🔎 把「勝率」的漏網之魚一次抓完(五處,含最嚴重的那個)', d: [
             '總覽的「打法雷達」寫「主打 N字底黃金右腳 勝率 100%・3 次(本股歷史最會賺)」,但同一支程式的回測頁已經把它標成「⏳樣本不足」→ 兩頁各說各話。現在會優先挑樣本夠的當主打,真的都不夠就直說「先別把它當依據」。',
             '⚠️ 最嚴重的一處:K線頁「多空訊號打架 → 看本股股性誰勝率高」的裁決,原本**完全沒有樣本門檻** —— 打過 1 次的型態也能拿來決定「以偏多為主」。',
@@ -36388,9 +36394,21 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // ⚠️ `getStockName` 在股票清單還沒載入時會**回傳代號本身** → 直接用會變成「8464 8464」
         //   (實測就長這樣)。名稱等於代號時當作「還沒有名稱」,不顯示。
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
+        // 👜 V72.2.6 ——「全市場 17 檔」對使用者還是有點遠;**他真正關心的是自己手上那幾檔**。
+        //   → 把庫存/自選跟榜單對一次,有交集才顯示一行(⛔ 沒交集完全不顯示,不留空殼)。
+        //   ⛔ 沒有開新卡,只是在既有這條裡多一行 + 命中的那列加個徽章。
+        const mine = new Set();
+        try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) mine.add(String(i.symbol)); } catch (_) { }
+        try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
+        const hitMine = list.filter(x => mine.has(String(x.s)));
+        const mineLine = hitMine.length ? `<div class="mb-1.5 bg-amber-900/20 border-l-4 border-amber-500 rounded-r px-2 py-1.5 text-[11px] text-amber-100 leading-snug">
+                👜 <b>你手上/自選的 ${hitMine.map(x => `${x.s}${nm(x.s) ? ' ' + nm(x.s) : ''}`).join('、')}</b> 今天也在榜上
+                <span class="text-[10px] text-amber-200/70">—— 先看這幾檔,下面是全市場的。</span>
+            </div>` : '';
         const rows = list.slice(0, 12).map(x => `
-            <div onclick="app.analyze('${x.s}')" class="flex items-center justify-between gap-2 px-2 py-1.5 rounded bg-[#0d1117] border border-[#30363d] cursor-pointer hover:bg-white/5 transition-colors">
+            <div onclick="app.analyze('${x.s}')" class="flex items-center justify-between gap-2 px-2 py-1.5 rounded ${mine.has(String(x.s)) ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
                 <div class="min-w-0 flex items-baseline gap-1.5">
+                    ${mine.has(String(x.s)) ? '<span class="text-[9px] font-black text-amber-300 flex-shrink-0">👜</span>' : ''}
                     <span class="font-mono font-black text-[12px] text-gray-100">${x.s}</span>
                     <span class="text-[11px] text-gray-300 truncate">${nm(x.s)}</span>
                     <span class="font-mono text-[10px] text-gray-500">${(+x.c).toLocaleString()}</span>
@@ -36406,6 +36424,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[12px] font-black text-gray-100">🎯 今天出現「實測會賺」的訊號 <span class="text-[10px] text-gray-500 font-normal">全市場 ${(j.scanned || 0).toLocaleString()} 檔只有 <b class="text-red-300">${list.length}</b> 檔</span></span>
                 <button onclick="event.stopPropagation();app._showTodaySigHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼看</button>
             </div>
+            ${mineLine}
             <div class="space-y-1">${rows}</div>
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
                 📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤資料。

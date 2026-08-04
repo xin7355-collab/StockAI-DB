@@ -110,7 +110,35 @@ ok('⑥ ⭐⛔ 註解要寫明「不輸出風險股清單」的理由', /刻意�
 ok('⑥ ⛔ 不可在採礦端重複存股票名稱(前端已有 getStockName)',
    /刻意\*\*不存股票名稱\*\*/.test(scan), '');
 
-ok('⑦ 無 pageerror', errs.length === 0, errs.join(' | '));
+
+// ── ⑧ 👜 庫存/自選命中(V72.2.6)⛔ 沒交集要完全不顯示 ────────────
+const withMine = (syms, d) => page.evaluate(async a => {
+    const realInv = app._getInventory, realFav = app.favGroups;
+    app._getInventory = () => a.syms.map(s => ({ symbol: s, cost: 1, shares: 1000 }));
+    app.favGroups = { 預設: [] };
+    app._todaySig = a.d;
+    await app._renderTodaySignalBar();
+    const el = document.getElementById('todaySignalBar');
+    const out = { hidden: el.classList.contains('hidden'), html: el.innerHTML };
+    app._getInventory = realInv; app.favGroups = realFav;
+    return out;
+}, { syms, d });
+
+const SAMPLE = real && real.bull && real.bull.length ? real : { bull: [{ s: '8464', c: 382.5, t: '換手量', g: 'A', n: 1309, w: 42.4, exp: 0.68 }], scanned: 2315, base_win: 36.4, data_date: '2026-08-03', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 6158, risk_syms: 2079 };
+const onList = String(SAMPLE.bull[0].s);
+
+const M1 = await withMine([onList], SAMPLE);
+const m1 = txt(M1.html);
+ok('⑧ ⭐ 手上有榜上的股 → 要在最上面點名', /👜/.test(m1) && new RegExp(`你手上/自選的[^。]*${onList}`).test(m1), m1.slice(0, 220));
+ok('⑧ ⭐ 要指路「先看這幾檔」', /先看這幾檔/.test(m1), m1.slice(0, 260));
+
+const M0 = await withMine(['9999'], SAMPLE);
+const m0 = txt(M0.html);
+ok('⑧ ⭐⛔ 沒交集時整行不顯示(⛔ 不留空殼、不寫「你沒有命中」)',
+   !/👜/.test(m0) && !/你手上/.test(m0), m0.slice(0, 220));
+ok('⑧ 沒交集時榜單本身照顯示', !M0.hidden && m0.length > 80, `hidden=${M0.hidden}`);
+
+ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
 console.log('');
