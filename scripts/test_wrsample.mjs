@@ -32,7 +32,8 @@ const txt = h => String(h == null ? '' : h).replace(/<[^>]+>/g, ' ').replace(/\s
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox', '--disable-gpu'],
+    // ⚠️ 少了 `--allow-file-access-from-files`,analyze() 會**靜默**抓不到 data/*.json → 測試假綠
+    args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
 });
 const page = await browser.newPage();
 await page.addInitScript(() => {
@@ -41,7 +42,7 @@ await page.addInitScript(() => {
     Object.defineProperty(window, 'echarts', { value: new Proxy({}, { get: (_t, k) => k === 'init' ? (() => inst) : (k === 'graphic' ? {} : noop) }), writable: true, configurable: true });
 });
 const errs = [];
-const benign = t => /Failed to load resource|net::ERR_|CORS|Cross origin|vibrate|chromestatus|Access to fetch|echarts is not defined/i.test(t);
+const benign = t => /Failed to load resource|net::ERR_|CORS|Cross origin|vibrate|chromestatus|Access to fetch|echarts is not defined|scheme 'file' is unsupported/i.test(t);
 page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); if (!benign(t)) errs.push(t); });
 await page.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._wrTag, null, { timeout: 25000 });
@@ -165,7 +166,85 @@ ok('④ ⭐⛔ 推播門檻要用 `_wrEnough`,不可寫死 `count >= 5`',
    /this\._wrEnough\(r\.count\)/.test(alertSrc) && !/r\.count >= 5/.test(alertSrc),
    (alertSrc.match(/if \(!\(r\.expectancy[^\n]*/) || [''])[0]);
 
-ok('⑤ 無 pageerror', errs.length === 0, errs.join(' | '));
+
+// ══ ⑤ 多空計分卡:一邊掛零 / 命中不夠 / 空頭 三道守門 ══════════
+//   `page_sweep` 掃到 1101:「多方 7 項・14 分 / **0 項** 空方 → 多方 100%
+//    → **四面向同步攻擊,可放心做多**」。⚠️ 一邊掛零多半是「那類資料還沒到齊」
+//    而不是「真的沒有利空」(陷阱 #28),7/28 條就給最強多方指令太滿。
+//   ⛔ 而且它一直沒過 `_bearGate` —— ratio 講的是「規則命中比」不是「價格趨勢」,兩者會背離。
+//
+// ⚠️ 規則是在函式裡就地組出來的(沒有可以 stub 的 `_bullBearRules`)→
+//    ⭐ 一律用**真實資料跑真的函式**(同 test_lowsample 的原則:⛔ 不在測試裡複製判定邏輯),
+//    只有「主結論趨勢」用 `_ovTrend` 覆寫 —— 那本來就是外部狀態,不是判定邏輯。
+const bbPage = await browser.newPage();
+await bbPage.addInitScript(() => {
+    const noop = () => inst;
+    const inst = new Proxy({}, { get: (_t, k) => (k === 'getWidth' || k === 'getHeight') ? (() => 300) : noop });
+    Object.defineProperty(window, 'echarts', { value: new Proxy({}, { get: (_t, k) => k === 'init' ? (() => inst) : (k === 'graphic' ? {} : noop) }), writable: true, configurable: true });
+});
+await bbPage.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded' });
+await bbPage.waitForFunction(() => typeof app !== 'undefined' && !!app._calcBullBearScan, null, { timeout: 25000 });
+
+const scanOf = (sym, trend) => bbPage.evaluate(async a => {
+    app.switchAppTab('diag');
+    await app.analyze(a.sym, true, false, true);
+    // ⚠️ 籌碼/基本面快取是**非同步**載入的 —— 沒等它,第一次掃只會命中技術面那 2~3 條,
+    //    結論變成「訊號不足」→ 測試會驗到錯的分支(第一版就踩到:第 1 次 2多/1空、第 2 次才 7多/0空)。
+    try { await app._ensureBullBearCaches(); } catch (_) { }
+    await new Promise(r => setTimeout(r, 1500));
+    app._ovTrend = a.trend ? { sym: a.sym, trend: a.trend, txt: 'x' } : app._ovTrend;
+    const r = app._calcBullBearScan(a.sym);
+    return r && { verdict: r.verdict, hits: r.hits, bull: r.bullCount, bear: r.bearCount, low: r.lowSample, one: r.oneLiner, n: (app.rawDailyData || []).length };
+}, { sym, trend });
+
+// ⚠️ ⛔ **不可綁死「1101 一定是 7多/0空」** —— 命中數會隨採礦資料浮動(V72.1.8 的教訓)。
+//    → 掃幾檔,找到「真的一邊掛零」的那檔再驗;找不到就誠實略過(下面另有原始碼層的守門)。
+let zeroCase = null, anyCase = null;
+for (const sym of ['1101', '6919', '2881', '2327', '2330']) {
+    const r = await scanOf(sym, null);
+    if (!r || !(r.n >= 100)) continue;
+    anyCase = anyCase || { sym, ...r };
+    console.log(`   ↳ ${sym}:${r.verdict}・${r.bull}多/${r.bear}空｜${txt(r.one).slice(0, 70)}`);
+    if (!r.low && (r.bull === 0 || r.bear === 0)) { zeroCase = { sym, ...r }; break; }
+}
+ok('⑤ 測資有效(至少有一檔真的載到資料)', !!anyCase, 'analyze 全部沒載到 data/');
+if (zeroCase) {
+    ok(`⑤ ⭐⛔ 一邊掛零(${zeroCase.sym} ${zeroCase.bull}多/${zeroCase.bear}空)時不可寫「可放心做多」`,
+       !/可放心做多/.test(zeroCase.one), txt(zeroCase.one));
+    ok('⑤ ⭐ 要主動點出「一邊掛零可能只是資料沒到齊,不等於沒有風險」',
+       /一條都沒亮/.test(zeroCase.one) && /不等於沒有風險/.test(zeroCase.one), txt(zeroCase.one));
+} else {
+    console.log('   ⏭️ 今天掃的這幾檔都沒有「一邊掛零」的情況 → 該情境改由下面的原始碼守門把關');
+}
+if (anyCase && !anyCase.low) {
+    ok('⑤ ⭐ 判方向時要把命中數寫進結論(⛔ 別只留一個 100%)',
+       new RegExp(`命中 ${anyCase.hits} 條`).test(txt(anyCase.one)) || /四面向同步攻擊/.test(anyCase.one), txt(anyCase.one));
+    // 同一檔強制主結論空頭 → 多方指令必須收掉,但**方向判定本身不動**
+    if (anyCase.verdict === '多方優勢') {
+        const BB = await scanOf(anyCase.sym, 'bear');
+        ok('⑤ ⭐⛔ 主結論空頭時不可下多方指令(講反話第 8 處)',
+           !/可順勢操作|可放心做多/.test(BB.one), txt(BB.one));
+        ok('⑤ ⭐ 空頭時改講「當反彈看待、別加碼」,但 verdict 本身不動(事實不竄改)',
+           /別加碼/.test(BB.one) && BB.verdict === anyCase.verdict, `${BB.verdict} vs ${anyCase.verdict}｜${txt(BB.one)}`);
+    }
+}
+await bbPage.close();
+
+const bbSrc = await page.evaluate(() => app._calcBullBearScan.toString());
+ok('⑤ ⭐⛔ 空頭判斷一律走 `_bearGate`(⛔ 別自己寫一份判斷式)', /_bearGate\?\.\(sym\)/.test(bbSrc), '');
+ok('⑤ ⭐⛔ 原始碼要有「一邊掛零」的提醒(⛔ 這條不可因為今天剛好沒命中就被刪掉)',
+   /const _zero = \(bullCount === 0 \|\| bearCount === 0\)/.test(bbSrc) && /不等於沒有風險/.test(bbSrc),
+   (bbSrc.match(/const _zero = [^\n]*/) || [''])[0]);
+ok('⑤ ⭐ 「可順勢操作」要同時滿足「四面向多數」與「命中夠多」',
+   /top\.length >= 3 && hits >= STRONG_HITS/.test(bbSrc), (bbSrc.match(/top\.length >= 3[^\n]*/) || [''])[0]);
+ok('⑤ ⭐⛔ 空方(風險)那側不加樣本門檻 —— 多空不對稱,寧可多提醒',
+   /bad\.length >= 3 \? '多面向警訊齊發/.test(bbSrc) && !/bad\.length >= 3 && hits/.test(bbSrc), '');
+const rendSrc = await page.evaluate(() => app._renderBullBearCardSync.toString());
+ok('⑤ ⭐ 百分比旁一定要同時顯示「命中 N/28」(⛔ 100% 不可孤零零出現)',
+   /多方 \$\{pct\}%<\/span><span[^>]*>\(命中 \$\{scan\.hits\}\/28\)/.test(rendSrc),
+   (rendSrc.match(/多方 \$\{pct\}%[^\n]{0,120}/) || [''])[0]);
+
+ok('⑥ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
 console.log('');

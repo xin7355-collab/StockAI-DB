@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.2',
+    _APP_VERSION: 'V72.2.3',
     _CHANGELOG: [
+        { v: 'V72.2.3', dt: '2026-08-04', t: '🧊 多空頁「多方 100%・可放心做多」其實只命中 7/28 條', d: [
+            '同一支渲染巡邏工具再抓一件:多空計分卡出現「多方 7 項・14 分 / 0 項 空方 → 多方 100% → 四面向同步攻擊,可放心做多」。',
+            '⚠️ 空方一條都沒亮,多半是「那類資料還沒到齊」而不是「真的沒有利空」→ 現在會直接寫出這句提醒。',
+            '百分比旁一律同時顯示「命中 N/28」,100% 不再孤零零出現;最強的那句「可放心做多」改成要四面向多數 + 命中夠多才給。',
+            '空頭時多空頁也不再叫人順勢做多(同一個錯的第 8 處),但「多方優勢」這個事實判定本身不改。',
+        ] },
         { v: 'V72.2.2', dt: '2026-08-04', t: '🎲 「勝率 100%・3 次」不算數 + 當沖勝率終於有了對照組', d: [
             '新工具 `scripts/page_sweep.mjs`:用真實資料把個股頁 8 個分頁全部渲染出來、掃畫面上的字 —— 這兩個 bug 用搜程式碼永遠找不到,因為問題是「數字湊在一起很荒謬」。',
             '打法適配儀原本會顯示「勝率 100%・賺賠比 全贏・只有 3 次」還掛 ⭐主打 + 閃爍,上面寫「可依紀律進場」→ 3 次不是好用,是還不知道。現在一律配「⏳ 只有 N 次」徽章,不到 10 次不准下進場指令。',
@@ -11768,14 +11774,32 @@ const marginByDate = {};
             return { sym, rules, cats, bullScore, bearScore, bullCount, bearCount, ratio, hits,
                      lowSample: true, verdict, verdictTone, oneLiner };
         }
+        // 🎲 V72.2.2 —— `page_sweep` 實際渲染掃到 1101:「多方 7 項・14 分 / **0 項** 空方
+        //   → 多方 100% → **四面向同步攻擊,可放心做多**」。三個問題疊在一起:
+        //   ① 一邊掛零多半是「**那些資料還沒到齊**」而不是「真的沒有利空」(陷阱 #28)
+        //   ② 「可放心做多」是全 App 最強的多方指令,7/28 條就給太滿
+        //   ③ ⛔ 它沒有過 `_bearGate` —— CLAUDE.md 曾判定「ratio≥0.65 天然安全」,
+        //      但 ratio 講的是**規則命中比**、不是**價格趨勢**,兩者可以背離(空頭股照樣可能籌碼面全亮)。
+        const _zero = (bullCount === 0 || bearCount === 0)
+            ? `⚠️ ${bullCount === 0 ? '多' : '空'}方一條都沒亮 —— 多半是那一類資料還沒到齊,<b>不等於沒有風險</b>。` : '';
+        const _bg = this._bearGate?.(sym);
+        // 「可放心做多」的門檻:四面向多數同步 **且** 命中夠多(⛔ 別只看面向數)
+        const STRONG_HITS = 8;
         if (ratio >= 0.65) {
             verdict = '多方優勢'; verdictTone = 'bull';
             const top = ['chip','price','fund','tech'].filter(c => cats[c].bull > cats[c].bear);
-            oneLiner = top.length >= 3 ? '四面向同步攻擊,可放心做多(留意大盤)' : '局部優勢明顯,沿月線操作不破不出';
+            oneLiner = _bg
+                // ⛔ 主結論空頭 → 只准描述,不准下多方指令(講反話第 8 處,一律走 `_bearGate`)
+                ? `多方訊號較多,<b>但上方主結論是空頭</b> → 先當反彈看待、別加碼,想做只能小量搶短。`
+                : (top.length >= 3 && hits >= STRONG_HITS)
+                    ? '四面向同步攻擊,可順勢操作(留意大盤)'
+                    : `局部優勢明顯(28 條命中 ${hits} 條),沿月線操作不破不出`;
+            oneLiner = _zero + oneLiner;
         } else if (ratio <= 0.35) {
             verdict = '空方優勢'; verdictTone = 'bear';
             const bad = ['chip','price','fund','tech'].filter(c => cats[c].bear > cats[c].bull);
-            oneLiner = bad.length >= 3 ? '多面向警訊齊發,空手觀望或反向操作' : '弱勢明顯,持股分批停利、空手不接刀';
+            // ⛔ 空方(風險)那側**不加樣本門檻** —— 多空不對稱:少提醒的代價遠大於多提醒
+            oneLiner = _zero + (bad.length >= 3 ? '多面向警訊齊發,空手觀望或反向操作' : '弱勢明顯,持股分批停利、空手不接刀');
         } else {
             verdict = '均衡拉鋸'; verdictTone = 'neutral';
             oneLiner = '多空各有訊號,等突破/跌破均線再表態';
@@ -11910,7 +11934,7 @@ const marginByDate = {};
             </div>` : ''}
             <!-- Verdict(動態發光)-->
             <div class="rounded-lg border ${verdictColor} ${glowCls} px-3 py-2.5 text-center transition-shadow">
-                <div class="text-lg font-black tracking-wider">${scan.verdict}${scan.lowSample ? `<span class="text-sm font-mono opacity-80 ml-2">命中 ${scan.hits}/28</span>` : `<span class="text-sm font-mono opacity-80 ml-2">多方 ${pct}%</span>`}</div>
+                <div class="text-lg font-black tracking-wider">${scan.verdict}${scan.lowSample ? `<span class="text-sm font-mono opacity-80 ml-2">命中 ${scan.hits}/28</span>` : `<span class="text-sm font-mono opacity-80 ml-2">多方 ${pct}%</span><span class="text-[11px] font-mono opacity-60 ml-1">(命中 ${scan.hits}/28)</span>`}</div>
                 <div class="text-[11px] mt-1 opacity-90 leading-relaxed">${scan.oneLiner}</div>
             </div>
         `;
