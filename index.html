@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.3',
+    _APP_VERSION: 'V72.2.4',
     _CHANGELOG: [
+        { v: 'V72.2.4', dt: '2026-08-04', t: '⭐ 「主打」的星星本身也要樣本夠 + 跌停板要講白話', d: [
+            '「⭐主打」那顆星的視覺份量壓過旁邊的「⏳ 只有 3 次」→ 現在樣本不到 10 次就不給星,改標「⏳樣本不足」。⛔ 那一列的資料照顯示,只是不再叫它主打。',
+            '「⚠️避開」那側刻意不加樣本門檻 —— 風險提醒寧可多提醒。',
+            '⚡ 當沖頁「🔻 跌停 距0.0%」看起來像「還有 0.0% 才到」,其實是**已經躺在跌停板上**(實測 2382 就長這樣)→ 現在直接顯「已鎖跌停」白字紅/綠底,一眼看得出來。',
+        ] },
         { v: 'V72.2.3', dt: '2026-08-04', t: '🧊 多空頁「多方 100%・可放心做多」其實只命中 7/28 條', d: [
             '同一支渲染巡邏工具再抓一件:多空計分卡出現「多方 7 項・14 分 / 0 項 空方 → 多方 100% → 四面向同步攻擊,可放心做多」。',
             '⚠️ 空方一條都沒亮,多半是「那類資料還沒到齊」而不是「真的沒有利空」→ 現在會直接寫出這句提醒。',
@@ -20193,7 +20198,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🔇 V67.1 訊號通膨治理:在本股回測「負期望」的型態明確標「別用」+ 型態名劃掉變灰(不再只是柔性的「參考」)
         let badCount = 0;
         const rows = hits.map(r => {
-            const isStar = top3.has(r.key) && r.expectancy > 0;
+            // 🎲 V72.2.4 ⭐主打(還會 animate-pulse)要樣本夠才給 —— 同 analyzeStockPlaybook
+            const isStar = top3.has(r.key) && r.expectancy > 0 && this._wrEnough(r.count);
             const isBad = r.expectancy <= -0.3 && r.count >= 4;   // 樣本夠 + 明顯負期望 = 這招在本股沒用
             if (isBad) badCount++;
             const wr = r.winRate.toFixed(0), pl = r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1), ev = (r.expectancy >= 0 ? '+' : '') + r.expectancy.toFixed(1);
@@ -33871,7 +33877,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const eCol = e => e > 0.5 ? 'text-red-300' : e >= 0 ? 'text-yellow-300' : 'text-green-300';
                 this._lastPlaybook = { ranked, per };   // 供點型態看教學時取用(含快取還原)
                 const rows = ranked.map((r, idx) => {
-                    const star = (idx < 3 && r.expectancy > 0) ? ' <span class="text-amber-300">⭐主打</span>' : (r.expectancy <= -0.3 && r.count >= 4 ? ' <span class="text-green-400">⚠️避開</span>' : '');
+                    // 🎲 V72.2.4 ⭐主打**要樣本夠才給** —— 實測 2603 的「晨星轉折 勝率 100%・3 次」
+                    //   排進 top3 就掛 ⭐主打,而它旁邊的「⏳ 只有 3 次」根本搶不過那顆星的視覺份量。
+                    //   ⛔ 不刪掉那一列(資料照顯示),只是把星拿掉、改標「⏳ 樣本不足」。
+                    //   ⚠️ 「⚠️避開」那側**不加樣本門檻**(多空不對稱:風險提醒不打折)。
+                    const star = (idx < 3 && r.expectancy > 0)
+                        ? (this._wrEnough(r.count) ? ' <span class="text-amber-300">⭐主打</span>'
+                                                   : ' <span class="text-orange-300/90">⏳樣本不足</span>')
+                        : (r.expectancy <= -0.3 && r.count >= 4 ? ' <span class="text-green-400">⚠️避開</span>' : '');
                     // 🔔 V47.2 今日觸發標記(主打+正期望才綠燈亮眼,否則灰提示)
                     const todayTag = r.firedToday
                         ? ((idx < 3 && r.expectancy > 0) ? ' <span class="text-[9px] font-bold bg-red-900/40 text-red-300 border border-red-700/50 rounded px-1 animate-pulse">🔔今日觸發</span>' : ' <span class="text-[9px] font-bold text-gray-400 border border-gray-700 rounded px-1">🔔今日觸發</span>')
@@ -39627,10 +39640,16 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const distDown = (limitDown && price > 0) ? (price - limitDown) / price * 100 : null;
         const chgCls = chgPct == null ? 'text-gray-300' : chgPct >= 0 ? 'text-red-400' : 'text-green-400';
         // ⚡ V64.6 當沖儀表板獨立卡已移除 → 漲停/振幅/跌停三格併入作戰指令 hero;可當沖 badge 也移到 hero 標題列
+        // 🎯 V72.2.4 「距 0.0%」= **已經鎖住了**,但畫面上長得跟「還有 0.0% 才到」一樣 ——
+        //   實測 2382(2026/07/30 收 279 = 跌停)就顯示「🔻 跌停 距0.0% 279.00」,
+        //   使用者看不出來自己手上這檔今天是**躺在跌停板**上。⛔ 這是當沖頁最關鍵的一格,不能含糊。
+        const _lim = (d, word) => d == null ? ''
+            : (d <= 0.05 ? `<span class="text-[9px] font-black text-white bg-${word === '漲停' ? 'red' : 'green'}-600 rounded px-1">已鎖${word}</span>`
+                         : `<span class="text-gray-500">距${d.toFixed(1)}%</span>`);
         const dashGrid = `<div class="grid grid-cols-3 gap-2 mt-1.5">
-                <div class="bg-red-900/25 border border-red-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-red-300">🔺 漲停 ${distUp == null ? '' : '<span class="text-gray-500">距' + distUp.toFixed(1) + '%</span>'}</div><div class="text-sm font-black font-mono text-red-300">${_f2(limitUp)}</div></div>
+                <div class="bg-red-900/25 border border-red-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-red-300">🔺 漲停 ${_lim(distUp, '漲停')}</div><div class="text-sm font-black font-mono text-red-300">${_f2(limitUp)}</div></div>
                 <div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">📊 振幅</div><div class="text-sm font-black font-mono text-gray-100">${amp == null ? '—' : amp.toFixed(1) + '%'}</div></div>
-                <div class="bg-green-900/25 border border-green-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-green-300">🔻 跌停 ${distDown == null ? '' : '<span class="text-gray-500">距' + distDown.toFixed(1) + '%</span>'}</div><div class="text-sm font-black font-mono text-green-300">${_f2(limitDown)}</div></div>
+                <div class="bg-green-900/25 border border-green-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-green-300">🔻 跌停 ${_lim(distDown, '跌停')}</div><div class="text-sm font-black font-mono text-green-300">${_f2(limitDown)}</div></div>
             </div>`;
 
         // ── 昨日 K(供 CDP/Pivot/關卡):最後一根「非今日」的日K ──

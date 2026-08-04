@@ -244,7 +244,38 @@ ok('⑤ ⭐ 百分比旁一定要同時顯示「命中 N/28」(⛔ 100% 不可�
    /多方 \$\{pct\}%<\/span><span[^>]*>\(命中 \$\{scan\.hits\}\/28\)/.test(rendSrc),
    (rendSrc.match(/多方 \$\{pct\}%[^\n]{0,120}/) || [''])[0]);
 
-ok('⑥ 無 pageerror', errs.length === 0, errs.join(' | '));
+
+// ══ ⑥ ⭐主打 的星星本身也要樣本夠(V72.2.4)═══════════════════
+//   實測 2603:「🌅 晨星轉折 ⭐主打 勝率 100% ・3 次」—— 旁邊雖然有 ⏳ 徽章,
+//   但那顆星的視覺份量壓過一切,使用者只會看到「主打」。⛔ 不刪那一列,只是拿掉星。
+const S3 = txt(await play(3, 'flat'));
+ok('⑥ ⭐⛔ 只有 3 次不可掛 ⭐主打', !/⭐主打/.test(S3), S3.slice(0, 300));
+ok('⑥ ⭐ 改標「⏳樣本不足」(⛔ 不可整列刪掉,資料照顯示)',
+   /⏳樣本不足/.test(S3) && /測試型態/.test(S3), S3.slice(0, 300));
+const S20 = txt(await play(20, 'flat'));
+ok('⑥ ⭐ 樣本夠就照掛 ⭐主打(⛔ 別矯枉過正)', /⭐主打/.test(S20), S20.slice(0, 300));
+const firedSrc = await page.evaluate(() => {
+    for (const k of Object.keys(app)) {
+        if (typeof app[k] === 'function' && /⭐主打<\/span>/.test(app[k].toString()) && /animate-pulse/.test(app[k].toString())) return app[k].toString();
+    }
+    return '';
+});
+ok('⑥ 另一處會閃爍的 ⭐主打 也要接上樣本門檻',
+   /top3\.has\(r\.key\) && r\.expectancy > 0 && this\._wrEnough\(r\.count\)/.test(firedSrc),
+   (firedSrc.match(/const isStar = [^\n]*/) || [''])[0]);
+
+// ⑦ 當沖儀表板:「距 0.0%」= 已經鎖住了,不可跟「還差 0.0%」長一樣
+const dtSrc = await page.evaluate(() => {
+    for (const k of Object.keys(app)) {
+        if (typeof app[k] === 'function' && /🔺 漲停/.test(app[k].toString())) return app[k].toString();
+    }
+    return '';
+});
+ok('⑦ 找得到當沖儀表板三格', dtSrc.length > 0, '');
+ok('⑦ ⭐ 距離 ≈0 時要明寫「已鎖漲停/已鎖跌停」(⛔ 別只顯「距0.0%」)',
+   /已鎖\$\{word\}/.test(dtSrc) && /d <= 0\.05/.test(dtSrc), (dtSrc.match(/const _lim = [^\n]*/) || [''])[0]);
+
+ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
 console.log('');
