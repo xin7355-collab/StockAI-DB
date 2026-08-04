@@ -100,6 +100,63 @@ ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏�
     await b2.close();
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 🌡️ V72.0.8 第三處同類打架:「本股 vs 大盤」也在下多方指令
+//   截圖:總評「空方・避開 —— 反彈是給你出場用的」,
+//         這張卻「🔥 主流資金正在買的股 → 沿 5 日線抱好,別提早下車」。
+//   ⚠️ diag(今天比大盤強)是**事實描述,不可動**;要改的只有 act(操作指令)。
+//   ⭐ 這是同一個錯誤的第三次 → 已當成通則寫進 CLAUDE.md。
+// ══════════════════════════════════════════════════════════════════
+{
+    const b3 = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+    const p3 = await b3.newPage();
+    await p3.goto('file://' + ROOT + '/index.html', { waitUntil: 'domcontentloaded' });
+    await p3.waitForFunction(() => typeof app !== 'undefined' && !!app.renderMktCompare, null, { timeout: 20000 });
+    const src3 = await p3.evaluate(() => app.renderMktCompare.toString());
+    ok('⑩ ⭐ vs大盤 有讀主結論 _ovTrend', /_ovTrend/.test(src3), '');
+    ok('⑩ ⭐ 空頭時才改寫,且要綁 sym(防切股殘留)',
+       /_ovTrend\.sym === String\(sym\)/.test(src3) && /_ovTrend\.trend === 'bear'/.test(src3), '');
+    ok('⑩ ⭐⛔ 只改 act(指令),不可動 diag(事實描述)',
+       /act = `⚠️/.test(src3) && !/diag = `⚠️/.test(src3), '');
+    ok('⑩ ⭐ 改寫後要說「不是抱牢或加碼的理由」', /不是抱牢或加碼的理由/.test(src3), '');
+    ok('⑩ 條件要涵蓋原本的多方用詞(抱好/別提早下車/加碼)',
+       /抱好\|別提早下車\|抱著\|加碼/.test(src3), '');
+
+    // 🏷️ V72.0.8 同名不同義:三個「主力/大戶」
+    const src4 = await p3.evaluate(() => app._overviewChipSnapInner.toString());
+    const src5 = await p3.evaluate(() => app._renderTrendCommand.toString());
+    ok('⑪ ⭐ 官方三大法人那格改叫「法人」(它算的是 foreign_net+trust_net,不是分點大戶)',
+       /法人 5 日買超/.test(src5) && !/大戶 5 日買超/.test(src5), '');
+    ok('⑪ ⭐ 分點那格要叫「分點主力」並標明近5日', /分點主力/.test(src4) && /近5日/.test(src4), '');
+    ok('⑪ ⭐ 要有 title 說明「跟法人不是同一批人」', /跟上面「法人」不是同一批人/.test(src4), '');
+    ok('⑪ ⭐⛔ 方向相反時要主動點出來(⛔ 不可讓使用者自己發現)',
+       /方向相反,不是算錯/.test(src4), '');
+    ok('⑪ 說明要講清楚差別(身分別 vs 哪家券商)',
+       /身分別/.test(src4) && /哪家券商/.test(src4), '');
+    ok('⑪ ⛔ 不可硬統一成一個數字(那會失真)', /不是硬統一成一個數字/.test(src4), '');
+
+    // 📐 V72.0.8 波動率金額必須跟顯示的 % 自洽(使用者會拿畫面數字驗算)
+    const vol = await p3.evaluate(() => {
+        // per.vol = 7.375 → 顯示 7.4%,金額必須用 7.4 算(565×7.4% = 41.81)
+        const real = app._stockPersonality;
+        app._stockPersonality = () => ({ tag: '⚡ 高波動飆股', vol: 7.375, gaps: 0 });
+        const d = Array.from({ length: 80 }, (_, i) => ({ date: `2026-06-${String(i % 28 + 1).padStart(2, '0')}`, open: 565, high: 570, low: 560, close: 565, volume: 1e6 }));
+        const h = app._stockHabitLine ? app._stockHabitLine(d, 565) : null;
+        app._stockPersonality = real;
+        return h;
+    });
+    if (vol) {
+        const m1 = String(vol).match(/震約 <b[^>]*>([\d.]+)%/);
+        const m2 = String(vol).match(/±([\d.,]+) 元/);
+        ok('⑫ ⭐ 顯示的 % 與金額必須自洽(使用者會拿畫面數字驗算)',
+           m1 && m2 && Math.abs(565 * (+m1[1]) / 100 - (+m2[1].replace(/,/g, ''))) < 0.02,
+           `顯示 ${m1 && m1[1]}% / ±${m2 && m2[1]} 元;565×${m1 && m1[1]}% = ${m1 ? (565 * +m1[1] / 100).toFixed(2) : '?'}`);
+    } else {
+        ok('⑫ 波動率那行取不到(函式名可能改了)→ 需人工確認', false, 'app._stockHabitLine 回 null');
+    }
+    await b3.close();
+}
+
 console.log();
 if (fails.length) { console.log('❌ VERDICT_CLASH_TEST_FAIL:', fails); process.exit(1); }
 console.log('✅ VERDICT_CLASH_TEST_PASS');

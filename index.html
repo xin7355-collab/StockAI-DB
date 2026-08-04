@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,28 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.7',
+    _APP_VERSION: 'V72.0.8',
     _CHANGELOG: [
+        { v: 'V72.0.8', dt: '2026-08-04', t: '🏷️ 三個「主力」其實是三件事 + 再修兩處講反話', d: [
+            '接著你那張國巨截圖繼續修,這版三件:',
+            '',
+            '**① 🏷️ 同一畫面三個「主力/大戶」,數字還互相矛盾**',
+            '你看到的是:「大戶 5 日買超 **2,126** 張(在收貨)」、「主力 **偏賣 −19,503** 張」、「主力今日整體**大買 4,914** 張」。',
+            '',
+            '查完的結論:**三個都沒算錯,是三件不同的事** ——',
+            '・第一個其實是**官方三大法人**(外資+投信),看的是「身分別」→ 已改名叫「**法人**」',
+            '・第二個是**券商分點前 15 大**,看的是「哪家券商」→ 已改名「**分點主力・近5日**」',
+            '・第三個是**分點今日**(本來就有寫「今日」)',
+            '',
+            '⭐ 但光改名不夠 —— **方向相反本身就是有用的訊息**。所以現在兩者打架時會**主動跳一行白話說明**:「法人在買但整體券商賣壓更大 → 可能是中實戶/散戶在倒,或外資分散到其他券商賣」。⛔ 我沒有硬把它們統一成一個數字,那樣會失真。',
+            '',
+            '**② 「本股 vs 大盤」也在下相反指令**',
+            '總評寫「反彈是給你出場用的」,這張卻寫「🔥 主流資金正在買的股 → **沿 5 日線抱好,別提早下車**」。',
+            '單日比大盤強 ≠ 中期轉多(國巨那天是從 456 反彈上來)。現在中期空頭時會改成「這只能用來挑反彈到哪裡減碼,**不是抱牢或加碼的理由**」。⚠️「今天比大盤強」這個**事實描述我沒有動**,改的只有那句操作指令。',
+            '',
+            '**③ 📐 波動率的 % 跟金額對不上**',
+            '寫「震約 **7.4%**(以現價 565.00 算 **±41.67** 元)」,但你拿 565×7.4% 會算出 41.81。真因是實際值是 7.375%,顯示時四捨五入成 7.4,金額卻用沒進位的算。現在兩個數字一律用**畫面上顯示的那個 %** 算,你驗算得起來。',
+        ] },
         { v: 'V72.0.7', dt: '2026-08-04', t: '🛡️ 你截圖抓到的兩個錯誤:防守價比成本還高 + 兩張卡講反話', d: [
             '你傳的國巨(2327)截圖,我逐格對過,抓到**兩個真的會害你做錯決定的錯誤**,都修好了。',
             '',
@@ -19899,6 +19919,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 diag = `本股與大盤同步,沒有特別強弱。`;
                 act = `依上方主卡的訊號操作即可。`;
             }
+            // 🐛 V72.0.8 ⛔ 主結論是空頭時,這張卡也只准描述、不准下「抱好別下車」這種多方指令
+            //   (同 V72.0.7「明日劇本」那處,第三次犯案 → 這條要當成通則)。
+            //   使用者 2327 截圖:總評「🟢 空方・避開 —— 反彈是給你出場用的」,
+            //   這張卻寫「🔥 主流資金正在買的股 → 沿 5 日線抱好,別提早下車」。
+            //   ⚠️ diag(今天比大盤強)是**事實描述,不動**;要改的是 act(操作指令)。
+            //      單日比大盤強 ≠ 中期轉多 —— 國巨那天是從 456 反彈,中期仍空頭。
+            if (this._ovTrend && this._ovTrend.sym === String(sym) && this._ovTrend.trend === 'bear'
+                && /抱好|別提早下車|抱著|加碼/.test(act)) {
+                act = `⚠️ <b>但中期趨勢仍是空頭</b>(上面總評:反彈是給你出場用的)→ `
+                    + `今天的相對強勢<b>只能用來挑「反彈到哪裡減碼」</b>,⛔ 不是抱牢或加碼的理由。`
+                    + (slPrice ? `有貨的守好 ${slPrice},破了就走。` : `有貨的守好上方主卡給的防守價。`);
+                tone = '⚠️'; bcls = 'border-yellow-500';
+            }
             const cell = (label, v) => `<div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center min-w-0">
                 <div class="text-[9px] text-gray-500 truncate">${label}</div>
                 <div class="text-sm font-black font-mono ${v != null ? vc(v) : 'text-gray-600'}">${v != null ? f1(v) : '—'}</div>
@@ -27510,7 +27543,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const lineTxt = trend === 'bull' ? (sigType !== '無明確訊號' ? `多頭・買點出現(${sigType})` : bias20 > 12 ? '多頭・但短線漲太多' : '多頭・行進間') : trend === 'bear' ? '空頭・還在跌' : '盤整・方向不明';
             const lineCls = trend === 'bull' ? 'text-red-300' : trend === 'bear' ? 'text-green-300' : 'text-yellow-300';
             // 🆓 V66.0 免費資料:法人撈不到就整條略過(chipTxt=null → 不顯「大戶」那格,不放「資料整備中」噪音)
-            const chipTxt = !hasInst ? null : instBuy ? `大戶 5 日買超 ${Math.round(inst5).toLocaleString()} 張${instStreak >= 2 ? `・連 ${instStreak} 天買` : ''}(在收貨)` : instFled ? `大戶 5 日賣超 ${Math.abs(Math.round(inst5)).toLocaleString()} 張(在出貨)` : `大戶 5 日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張(沒大動作)`;
+            const chipTxt = !hasInst ? null : instBuy ? `法人 5 日買超 ${Math.round(inst5).toLocaleString()} 張${instStreak >= 2 ? `・連 ${instStreak} 天買` : ''}(在收貨)` : instFled ? `法人 5 日賣超 ${Math.abs(Math.round(inst5)).toLocaleString()} 張(在出貨)` : `法人 5 日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張(沒大動作)`;
             const chipCls = instBuy ? 'text-red-300' : instFled ? 'text-green-300' : 'text-gray-300';
             // ── 大字答案 + 白話一句 + 觸價指令(碰到價位就動作)──
             //    gridMode(V65.6 修巡邏 bug):'full'=顯目標/停損/賺賠比三格(現在就能動作,從現價算才有意義);
@@ -27875,12 +27908,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const fmt = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
         const cls = v => v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
         // 主力方向(分點)
-        let forceCell = '', sameBoat = '';
+        let forceCell = '', sameBoat = '', _mainNet = null;
         if (this._fenSym === sym && this._fenPeriods) {
             const m = this._chipMainForce(this._fenPeriods, curPx);
             if (m) {
+                _mainNet = m.net;   // 供下方「方向相反」比對(同為近 5 日,可比)
                 const wCls = /大買|偏買/.test(m.word) ? 'text-red-400' : /大賣|偏賣/.test(m.word) ? 'text-green-400' : 'text-gray-300';
-                forceCell = `<div class="flex items-center gap-1.5"><span class="text-gray-500">主力</span><b class="${wCls}">${m.word}</b><span class="font-mono ${cls(m.net)}">${fmt(m.net)}張</span>${m.unlockPx ? `<span class="text-gray-600">·上壓~<b class="text-orange-300 font-mono">${m.unlockPx.toFixed(0)}</b></span>` : ''}</div>`;
+                forceCell = `<div class="flex items-center gap-1.5"><span class="text-gray-500" title="券商分點前 15 大買方 − 前 15 大賣方,近 5 日。⚠️ 跟上面「法人」不是同一批人:法人是外資/投信的官方身分別,這裡是「哪家券商」,兩者方向可以不同。">分點主力<span class="text-[8px] text-gray-600">近5日</span></span><b class="${wCls}">${m.word}</b><span class="font-mono ${cls(m.net)}">${fmt(m.net)}張</span>${m.unlockPx ? `<span class="text-gray-600">·上壓~<b class="text-orange-300 font-mono">${m.unlockPx.toFixed(0)}</b></span>` : ''}</div>`;
                 // 🤝 跟主力同成本:你的成本 ≈ 主力買超王均價(差 ≤3%)→ 判斷能不能跟著等
                 let myCost = null; try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === sym && +i.cost > 0); if (p) myCost = +p.cost; } catch (_) {}
                 if (myCost && m.topBuyAvg && Math.abs(myCost - m.topBuyAvg) / m.topBuyAvg <= 0.03) {
@@ -27900,12 +27934,40 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const scLbl = sc >= 70 ? '強力偏多' : sc >= 57 ? '偏多' : sc > 45 ? '中性' : sc > 30 ? '偏空' : '強力偏空';
             scoreCell = `<span class="flex items-center gap-1"><span class="text-gray-500">籌碼分</span><b class="${scCls} font-mono">${sc}</b><span class="${scCls}">${scLbl}</span></span>`;
         }
+        // 🐛 V72.0.8 ⭐ 「法人」與「分點主力」方向相反時**主動點出來**,別讓使用者自己發現。
+        //   使用者 2327 截圖同一畫面出現三個看起來同義、數字卻打架的詞:
+        //     「大戶 5 日買超 2,126 張(在收貨)」/「主力 偏賣 −19,503 張」/
+        //     「主力今日整體大買 4,914 張」
+        //   ⛔ 三個**都沒算錯**,是三件不同的事:
+        //     ① 官方三大法人(外資+投信)近 5 日 —— 看的是「身分別」
+        //     ② 券商分點前 15 大買方 − 前 15 大賣方,近 5 日 —— 看的是「哪家券商」
+        //     ③ 分點**今日**淨額
+        //   錯在**名字讓人以為是同一批人**(已改名:①法人 ②分點主力·近5日 ③已有「今日」)。
+        //   ⭐ 但改名不夠 —— 方向相反本身是有意義的訊息(外資可透過多家券商分散下單,
+        //      或官方掛名在買、實際整體券商賣壓更大)→ 直接講白話,這才是「邏輯不打架」的正解:
+        //      ⛔ 不是硬統一成一個數字(那會失真),是誠實說明兩者為什麼不同。
+        let clashNote = '';
+        try {
+            const _inst5 = fi5 + ti5;
+            if (_mainNet != null && Math.abs(_inst5) >= 300 && Math.abs(_mainNet) >= 300
+                && (_inst5 > 0) !== (_mainNet > 0)) {
+                clashNote = `<div class="text-[10px] text-gray-300 leading-relaxed bg-[#161b22] border-l-2 border-yellow-500 pl-2 py-1 rounded-r">`
+                    + `⚠️ <b class="text-gray-100">這兩個方向相反,不是算錯</b> —— 法人近 5 日`
+                    + `<b class="${cls(_inst5)}">${fmt(_inst5)}張</b>、分點主力近 5 日`
+                    + `<b class="${cls(_mainNet)}">${fmt(_mainNet)}張</b>。`
+                    + `「法人」看的是<b>身分別</b>(外資/投信),「分點主力」看的是<b>哪家券商</b>(只取前 15 大)。`
+                    + `${_inst5 > 0 ? '官方掛名的法人在買,但整體券商賣壓更大 → 可能是中實戶/散戶在倒,或外資分散到其他券商賣。'
+                                    : '法人在賣,但券商分點買盤較強 → 可能是本土資金在承接。'}`
+                    + `<b class="text-gray-100">兩個都要看,別只挑順眼的那個。</b></div>`;
+            }
+        } catch (_) {}
         return `<div class="flex items-center justify-between mb-1">
                 <span class="text-[11px] font-bold text-gray-300">📊 主力籌碼快照</span>
                 <button onclick="event.stopPropagation(); app.switchSubTab('chip');" class="text-[9px] text-cyan-400 hover:text-cyan-300 flex-shrink-0">詳看分點/天秤 →</button>
             </div>
             <div class="flex flex-col gap-1 text-[11px] text-gray-300">
                 ${forceCell}
+                ${clashNote}
                 ${sameBoat}
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
                     <span><span class="text-gray-500">外資5日</span> <b class="font-mono ${cls(fi5)}">${fmt(fi5)}張</b></span>
@@ -34477,7 +34539,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try {
             const per = this._stockPersonality(data);
             if (!per || !(pC > 0)) return '';
-            const swing = pC * per.vol / 100;                 // 日均振幅換算成元(±)
+            // 🐛 V72.0.8 用「**顯示出來的那個 %**」回算金額,使用者才驗算得起來。
+            //   使用者 2327 截圖:寫「震約 7.4%(以現價 565.00 算 ±41.67 元)」,
+            //   但 565 × 7.4% = 41.81 → 對不上。真因是 per.vol 實際是 7.375%,
+            //   顯示時 toFixed(1) 進位成 7.4,金額卻用未進位的算。
+            //   ⭐ 使用者數學不好、會拿畫面上的數字驗算 → 兩個數字必須自洽,
+            //      ⛔ 別讓他以為程式算錯(同「白話+實際金額」那條偏好)。
+            const _volShown = +per.vol.toFixed(1);
+            const swing = pC * _volShown / 100;               // 日均振幅換算成元(±)
             const noteMap = [
                 ['飆股', '快漲快跌、隔日容易開高走低,只順勢短打、停損設緊,別重壓過夜'],
                 ['強趨勢', '習慣一路墊高,順勢抱波段最賺,別在半路高出低進做價差,會被巴'],
@@ -34486,7 +34555,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ];
             const note = (noteMap.find(([k]) => per.tag.includes(k)) || ['', '順著趨勢做、停損設好就對了'])[1];
             const gapNote = per.gaps >= 6 ? ` 這檔近 60 天有 <b class="text-gray-100">${per.gaps}</b> 次跳空,開盤價常大跳,掛單留意。` : '';
-            return `⚠️ <b>這檔的脾氣</b>:${per.tag} — 平常一天上下震約 <b class="text-gray-100">${per.vol.toFixed(1)}%</b>(以現價 ${pC.toFixed(2)} 算 <b class="text-gray-100">±${swing.toFixed(2)} 元</b>)。請注意:${note}。${gapNote}`;
+            return `⚠️ <b>這檔的脾氣</b>:${per.tag} — 平常一天上下震約 <b class="text-gray-100">${_volShown.toFixed(1)}%</b>(以現價 ${pC.toFixed(2)} 算 <b class="text-gray-100">±${swing.toFixed(2)} 元</b>)。請注意:${note}。${gapNote}`;
         } catch (_) { return ''; }
     },
 
