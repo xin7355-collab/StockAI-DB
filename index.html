@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6918,8 +6918,23 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.0',
+    _APP_VERSION: 'V72.2.1',
     _CHANGELOG: [
+        { v: 'V72.2.1', dt: '2026-08-04', t: '🐛 融資維持率「修完還是沒出來」—— 同一個坑修了兩次才對', d: [
+            '你說挖礦挖完了，我去對資料，發現**融資維持率還是沒有產出**。採礦全綠、檔案也在，就是少了那一半。',
+            '',
+            '去翻採礦紀錄，答案就一句話：**「⏭️ TWSE 基本面回空，跳過產業 PE 聚合」**。',
+            '',
+            '⚠️ 前一版我拆掉了一層巢狀（`if P/B 算得出來`），但**外面還有一層**（`if 基本面抓得到`）我沒看到 —— 所以整段程式連進都沒進去，等於白修一次。',
+            '',
+            '✅ 這次往上追到最外層，確認融資維持率**完全不依賴基本面**（它只讀融資餘額跟收盤價，那個函式連參數都不收）。實跑確認 **127.9%（1,827 檔有效）**。',
+            '',
+            '🔒 測試也加強了：現在會**由內而外追出所有包住它的條件**，只要再被任何「基本面相關」的判斷包住就會擋下來。',
+            '',
+            '⭐ 兩個教訓記下來：**拆巢狀要往上追到最外層**，別只拆看得到的那一層；還有**「修完沒生效」時要去看採礦紀錄的實際輸出** —— 那句「跳過產業 PE 聚合」就是答案，比再讀十遍程式碼快得多。',
+            '',
+            '📌 另外把「今日實測訊號」正式接進採礦流程了，下一輪採礦後選股頁就會有資料。',
+        ] },
         { v: 'V72.2.0', dt: '2026-08-04', t: '🎯 選股頁新增「今天出現實測會賺的訊號」—— 全市場只有 17 檔', d: [
             '你一直說「**只要給我最好、勝率最高的資料**」。之前那些實測成績有個大問題：**只能在個股頁看到** —— 你得先想到要看哪一檔，才知道它今天有沒有訊號。等於要你自己翻 2,315 檔。',
             '',

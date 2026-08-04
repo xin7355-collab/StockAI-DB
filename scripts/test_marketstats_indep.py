@@ -77,6 +77,30 @@ ok('⑥ ⛔ 函式內不可讀 fund_cache / fundamentals_cache',
    'fund_cache' not in fsrc and 'fundamentals_cache' not in fsrc, '')
 ok('⑥ 它讀的是 margin_balance(這才是它真正的依賴)', 'margin_balance' in fsrc, '')
 
+# ── ⑥b ⭐ V72.2.1 **往上追到函式頂層**:不可被任何「基本面相關」的 if 包住 ──
+#   V72.1.1 只拆了內層 `if pb_pct:`,但外面還有一層 `if twse_fund:` ——
+#   實跑 workflow log 寫著「⏭️ TWSE 基本面回空,跳過產業 PE 聚合」,
+#   整段連進都沒進去,所以那次修完**仍然一次都沒產出過**。
+#   ⭐ 通用:拆巢狀要往上追到函式頂層,別只拆看得到的那一層。
+_lines = src.split('\n')
+_i = next(i for i, l in enumerate(_lines) if "ms_path = Path('data', 'market_stats.json')" in l)
+_cur = len(_lines[_i]) - len(_lines[_i].lstrip())
+_guards = []
+for _k in range(_i, -1, -1):
+    _l = _lines[_k]
+    if not _l.strip():
+        continue
+    _ind = len(_l) - len(_l.lstrip())
+    if _ind < _cur and re.match(r'^\s*(if|elif|else|for|while|def)\b', _l):
+        _guards.append(_l.strip())
+        _cur = _ind
+    if _ind == 0 and _l.strip():
+        break
+_bad = [g for g in _guards if re.search(r'twse_fund|fund_cache|fundamentals|pb_pct', g)]
+ok('⑥b ⭐⛔ market_stats 區塊不可被任何「基本面」條件包住(要追到函式頂層)',
+   not _bad, f'被這些條件包住:{_bad}｜完整鏈:{_guards}')
+print(f'   ↳ 由內而外的守門鏈:{_guards}')
+
 # ── ⑦ 實跑:拿真實 data/ 算一次,確認它真的算得出來 ───────────────
 #   ⛔ 不能只驗程式碼結構 —— 那驗不出「其實根本算不出來」
 try:

@@ -439,6 +439,26 @@ jobs:
         run: |
           python3 momentum_miner.py || echo "⚠️ momentum_miner 失敗(不擋部署)"
 
+      # 🎯 V72.2.0 今日實測訊號:全市場掃「今天出現了哪些期望值為正的訊號」
+      #   ⚠️ 必須排在**所有 OHLCV 合併完之後**(前面 20 個平行節點各採一部分),
+      #      而且要用 **main 最新版的 index.html**(偵測器 + _SIGNAL_EDGE 都在裡面)
+      #      → 下一步的部署會 checkout origin/main -- index.html,這裡先自己拉一次。
+      #   實測:2,315 檔 / 177 秒 / 產出僅 3.6 KB。
+      #   ⛔ 失敗一律不擋部署(它是加值資料,前端讀不到就整條不顯示)。
+      - name: 🎯 今日實測訊號掃描(daily_signal_scan)
+        continue-on-error: true
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          git checkout origin/main -- index.html 2>/dev/null || true
+          npm i -D playwright@1.49.1 >/dev/null 2>&1 || { echo "⚠️ playwright 安裝失敗,略過"; exit 0; }
+          npx playwright install --with-deps chromium >/dev/null 2>&1 || { echo "⚠️ chromium 安裝失敗,略過"; exit 0; }
+          # 腳本內硬編的 playwright 路徑是本機開發環境用的 → CI 走 node_modules
+          sed -i "s#/opt/node22/lib/node_modules/playwright/index.mjs#playwright#" scripts/daily_signal_scan.mjs
+          sed -i "s#executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'##" scripts/daily_signal_scan.mjs
+          node scripts/daily_signal_scan.mjs || echo "⚠️ 今日訊號掃描失敗(不擋部署)"
+          git checkout -- scripts/daily_signal_scan.mjs 2>/dev/null || true
+          [ -s data/today_signals.json ] && echo "✅ today_signals.json $(wc -c < data/today_signals.json) bytes" || echo "⚠️ 沒產出 today_signals.json"
+
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |
           git config user.name  "github-actions[bot]"
