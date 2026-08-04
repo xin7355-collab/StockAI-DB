@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1546,6 +1546,11 @@
                         <div class="text-center text-[8px] text-gray-500 -mt-1">15 分鐘內快取 ・ 雙擊強制重抽</div>
                         <div id="stockPredictResult" class="text-[11px] text-gray-200 leading-relaxed"></div>
                         </div><!-- /隱藏 首席AI + 此股預判AI -->
+
+                        <!-- 🧠 V72.4.0 深度診斷(使用者要求:個股資料 + 總經 + 大盤一起看)
+                             ⭐ 純公式摘要「自動出現」不用點、不燒額度;AI 白話解讀是加值層,點了才跑。
+                             ⛔ 沒有新增卡片 —— 這裡就是原本「此股預判 AI」那個位置(它整塊被 hidden 很久了)。 -->
+                        <div id="deepBriefCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-xl p-2.5"></div>
                         <!-- 🔎 V45.12 免費查最新消息按鈕已刪除(🤖 AI 股神已涵蓋「你可能還想問」免費查) -->
                         <!-- 🚥 V39.3 戰術訊號燈卡已移除(使用者要求);computeUnifiedSignal 仍餵首席 AI + 頂部指揮部 LED,updateConfidenceLed 對 confLed/confText 已 null-guard -->
 
@@ -3338,6 +3343,8 @@ const app = {
     confidenceMsgCache: "等待運算",
 
     jargonDict: {
+        '深度診斷': '這張卡把「這檔的資料 + 籌碼 + 大盤總經」湊在一起,回答三件事:現在該用什麼方式操作、大戶有沒有在出貨的跡象、接下來要盯什麼。\n\n【最重要的一點】上半部那些結論是**程式算出來的**,不是 AI 講的。AI 只負責最下面那段「白話解讀」,而且它拿到的每一個數字都是程式先算好再交給它的 —— 因為語言模型不會算數學,讓它自己算均線、算報酬率一定會出錯(這是本 App 的鐵律)。\n\n【操作方式怎麼判的】\n・低檔布局 = 位階在一年裡的低段(≤30%)、而且還沒跌破季線太遠 → 適合分批慢慢接\n・區間操作 = 近 60 天在一個不寬的箱子裡來回(區間 ≤22%、月線上下穿 ≥4 次)→ 靠下緣接、靠上緣減\n・順勢做多 = 站上月線、月線又在季線之上 → 回檔找點,別追高\n・先不做 = 中期趨勢還是空頭 → 位階再低也先不進,反彈是減碼機會\n\n【大戶出貨徵兆】8 條檢查表:量價背離、高檔爆量收黑、外資轉賣、分點主力賣超、集保大戶減散戶增、融資大增、貼近上方套牢區、乖離年線過熱。\n⚠️ 這是**徵兆不是預測** —— 沒有人算得出大戶哪一天出貨。亮的條數只代表「該多留意的程度」,⛔ 不是「幾條以上就會跌」。有些條目需要分點或集保資料,冷門股可能顯示「無資料」,那不是壞掉。\n\n【AI 那段刻意不給買賣價位】進場價、停損價、目標價都由下方各張卡片精算(扣過手續費),讓 AI 另外講一組會跟它們打架。',
+
         '法人成本連買': '這張卡在算「三大法人最近 20 天買的股票,平均買在多少錢」。\n\n成本算法:只看法人「淨買超」的日子,用當天收盤價加權平均 —— 是推估值,不是官方公布(官方不公布法人成本)。\n\n右邊的 % = 現價比法人成本高或低:現價還在法人成本之下,代表法人這批平均還沒賺錢,通常比較不會急著賣。\n\n下半的「連續 N 日買超/賣超」= 法人連續同方向幾天(連 2 天以上才顯示)。連買天數越多代表越有耐心的佈局,連賣則相反。\n\n⚠️ 資料用你自己填的 FinMind 金鑰即時抓;沒填金鑰或該股近 20 日法人都沒淨買超時,這張卡整張隱藏(不是壞掉)。',
         '板塊輪動訊號': '美股昨夜先收、台股今天接著走。鐵則:「跟漲」只有在美股真的上漲時才算數(美股沒漲就沒得跟):\n\n• 強烈跟漲(紅閃):美股大漲、台股也漲只是落後很多 → 補漲動能最強。\n• 跟漲機會(紅):美股漲、台股漲幅落後 → 有補漲空間。\n• 委屈待補(黃):美股漲、台股卻收黑(跌<3%)→ 相對弱勢,可能補漲也可能有隱憂,先觀望別追。\n• 台股獨弱(橙):台股自己大跌≥3% → 台股自身利空,別跟美股做多。\n• 補跌風險(綠):美股跌、台股跌更多 → 跟跌/超跌。\n• 逆勢抗跌(紅):台股比美股強(美股跌台股守住,或台股漲更多)→ 相對強勢。\n• 同步(灰):兩市齊步,無明顯落差。\n\n色彩:紅=偏強(跟漲/抗跌)、黃=委屈觀望、綠=偏弱(補跌)、橙=台股獨弱。',
         '大盤天氣趨勢': '用加權指數的均線排列,把大盤分「短期(日)/ 中期(週)/ 長期(月)」三個時間判斷方向(全部由程式算,不靠 AI):\n\n• ☀️ 偏多:收盤 > 短均 > 長均(多頭排列),順勢做多較有利。\n• ☁️ 震盪:均線糾結或交叉,方向不明,別重押、等表態。\n• 🌧️ 偏空:收盤 < 短均 < 長均(空頭排列),反彈偏空、控好部位。\n\n短期=日K MA5/MA20、中期=週K MA5/MA20、長期=月K MA3/MA12;乖離=收盤離長均的百分比。三個天期同方向(如全 ☀️)趨勢最明確;打架(☀️☁️🌧️ 混)代表轉折或盤整,操作要更保守。',
@@ -6943,8 +6950,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.3.4',
+    _APP_VERSION: 'V72.4.0',
     _CHANGELOG: [
+        { v: 'V72.4.0', dt: '2026-08-05', t: '🧠 新增「深度診斷」:個股+籌碼+大盤總經一起看,告訴你該怎麼做', d: [
+            '總覽頁新增一張卡,回答你三個問題:**現在這檔該用什麼方式操作**、**大戶有沒有在出貨的跡象**、**接下來要盯什麼**。',
+            '🎯 操作方式是**算出來的**不是猜的:低檔布局(位階在一年低段但沒破季線太遠)/ 區間操作(近 60 天在一個窄箱子裡來回)/ 順勢做多(站上月線且月線在季線之上)/ 先不做(中期還是空頭)。每一種都附白話理由。',
+            '📤 **大戶出貨徵兆 8 條檢查表**:量價背離、高檔爆量收黑、外資轉賣、分點主力賣超、集保大戶減散戶增、融資大增、貼近上方套牢區、乖離年線過熱。每一條都附**實際數字**,亮幾條一目了然。',
+            '⚠️ 但要講清楚:這是**徵兆清單不是預測** —— 沒有人算得出大戶哪一天出貨,亮的條數只代表「該多留意的程度」,不是「幾條以上就會跌」。',
+            '🤖 最下面有一顆 AI 按鈕,把上面這些串成白話,還會多講「什麼情況代表判斷錯了」跟「這份分析看不到什麼」。⭐ 關鍵:**所有數字都是程式先算好才交給 AI 的** —— 語言模型不會算數學,讓它自己算一定出錯,所以它只負責翻譯不負責計算。而且 AI **刻意不給買賣價位**,那些由下方卡片精算(已扣手續費),不然兩邊會打架。',
+            '💡 不點 AI 也有東西看 —— 上半部純算式的部分是自動出現的,不花額度。空頭的時候不管位階多低都會改口成「先不做」,不會叫你進場。',
+        ] },
         { v: 'V72.3.4', dt: '2026-08-05', t: '🗂️ 新聞多了 8 種類別:火災、地震停電、缺貨漲價、出口管制…', d: [
             '你要的「缺貨、延遲交貨、火災、最新技術」都加進去了,而且每則新聞現在會標**類型徽章**,一眼看得出是哪一種事(🔥事故天災・🌍地緣管制・⚡供需價格・🧪技術突破・💱匯率成本・📊財務事件・🛡️資安法律・📈股價異動)。',
             '⭐ 你沒提但我加了、而且我認為是**台股最該抓的**:🔥 **地震、停電、限電、缺水** —— 台灣就在地震帶上,2024 花蓮地震台積電停機、2021 兩次大停電、2021 大旱竹科限水,這幾件對台股的殺傷力比火災更大更常見。',
@@ -15745,6 +15760,146 @@ const marginByDate = {};
 
 
     // V24.2 — 🔮 此股預判 AI(focus 單股,隔日漲跌機率 + 進場時機 + 具體價位)
+    // ══════════════════════════════════════════════════════════════════════
+    // 🧠 V72.4.0 深度診斷 —— 顯示層
+    //   ⭐ 兩段式:①純公式摘要(自動出現、零 API)②AI 白話解讀(點了才跑)
+    //   ⛔ AI 那段**不給任何買賣價位** —— 價位由既有的 JS 卡精算(單一劇本原則),
+    //      AI 只負責「把一堆數字串成看得懂的話」。
+    // ══════════════════════════════════════════════════════════════════════
+    renderDeepBrief(data) {
+        const el = document.getElementById('deepBriefCard');
+        if (!el) return;
+        const sym = this.currentSymbolId;
+        if (!sym || !Array.isArray(data) || data.length < 60) {
+            el.classList.add('hidden'); el.innerHTML = ''; return;
+        }
+        let f = null;
+        try { f = this._deepBriefFacts(data, sym); } catch (e) { console.warn('[深度診斷] facts 失敗', e); }
+        if (!f || !f.play) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        this._deepFacts = f;
+        el.classList.remove('hidden');
+
+        const d = f.dist;
+        const distRows = d ? d.items.map(x =>
+            `<div class="flex items-start gap-1.5 py-0.5 text-[10px] ${x.on ? 'text-gray-200' : 'text-gray-600'}">
+                <span class="flex-shrink-0">${x.on ? '⚠️' : '➖'}</span>
+                <span class="flex-1 min-w-0"><b>${x.name}</b> <span class="text-gray-500">${x.why}</span></span>
+             </div>`).join('') : '';
+
+        el.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-[#30363d]">
+                <h4 class="font-bold text-sm text-gray-100">🧠 深度診斷 <span class="text-[9px] text-gray-500 font-normal">個股 + 籌碼 + 大盤總經</span></h4>
+                <button onclick="app.showJargon('深度診斷')" class="text-[9px] text-gray-500 hover:text-blue-300">ⓘ 說明</button>
+            </div>
+
+            <!-- ① 該怎麼做(純公式,⛔ 不是 AI 講的)-->
+            <div class="bg-[#0d1117] border-l-4 ${f.play.bear ? 'border-orange-500' : 'border-cyan-500'} border-y border-r border-[#30363d] rounded-r p-2 mb-2">
+                <div class="text-[9px] text-gray-500 mb-0.5">現在這檔適合的操作方式</div>
+                <div class="text-sm font-black text-gray-100 mb-1">${f.play.mode}</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${f.play.why}</div>
+            </div>
+
+            <!-- ② 大戶出貨徵兆檢查表 -->
+            ${d ? `<div class="mb-2">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] font-bold text-gray-300">📤 大戶出貨徵兆</span>
+                    <span class="text-[11px] font-black font-mono text-gray-100">${d.level} <span class="text-gray-500 font-normal">${d.hits}/${d.total}</span></span>
+                </div>
+                ${distRows}
+                <div class="text-[9px] text-gray-600 mt-1 leading-snug">⚠️ 這是<b>徵兆清單不是預測</b> —— 沒有人算得出大戶哪一天出貨。亮的條數只代表「該多留意的程度」,⛔ 不是「幾條以上就會跌」。</div>
+            </div>` : ''}
+
+            <!-- ③ AI 白話解讀(加值層,點了才跑)-->
+            <button onclick="app.analyzeStockDeep(); app.vibrate(40);" ondblclick="app.analyzeStockDeep({force:true});" class="w-full bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 py-2 transition-colors">🤖 讓 AI 把上面這些串成白話(含未來要盯什麼)</button>
+            <div class="text-center text-[8px] text-gray-600 mt-0.5">30 分鐘內快取 ・ 雙擊強制重抽 ・ ⛔ AI 不給買賣價位(那些下方卡片已精算)</div>
+            <div id="deepBriefAi" class="text-[11px] text-gray-200 leading-relaxed"></div>
+        `;
+    },
+
+    async analyzeStockDeep(opts = {}) {
+        const sym = this.currentSymbolId;
+        const box = document.getElementById('deepBriefAi');
+        if (!sym || !box) return;
+        const f = this._deepFacts;
+        if (!f || f.sym !== sym) { box.innerHTML = '<div class="mt-2 p-2 text-yellow-300 text-[11px]">⚠️ 資料還在載入,稍後再點</div>'; return; }
+        const cacheKey = `aiCache_deepBrief_${sym}`;
+        if (!opts.force) {
+            try {
+                const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+                if (c && (Date.now() - c.at) < 30 * 60 * 1000) {
+                    box.innerHTML = c.html; this.showToast('💾 30 分鐘內快取(雙擊強制重抽)', 'info'); return;
+                }
+            } catch (_) { }
+        }
+        const n = (v, d = 1) => (v == null || isNaN(v)) ? '無資料' : (+v).toFixed(d);
+        const k = v => (v == null || isNaN(v)) ? '無資料' : Math.round(v).toLocaleString();
+        const e = f.entry || {};
+        const proven = (e.proven || []).map(p => `${p.title}(勝率 ${p.wr != null ? p.wr + '%' : '?'}・扣成本期望 ${p.exp != null ? p.exp.toFixed(2) + '%' : '?'})`).join('、') || '今天沒有實測過的訊號';
+        const distTxt = f.dist ? f.dist.items.filter(x => x.on).map(x => `${x.name}(${x.why})`).join('、') || '目前一條都沒亮' : '資料不足';
+
+        // ⛔⛔ 所有數字都是 JS 算好的,AI 一個都不准自己算(禁 AI 算數鐵律)
+        const prompt = `你是台股研究員,講話白話、國中生看得懂,禁廢話禁客套。
+以下**所有數字都已經由程式精算完成**,你的工作是「解讀與串連」,⛔ 絕對不要自己做任何加減乘除或推算新數字,也⛔ 不要給任何買賣價位(那些由程式另外算)。
+
+【這檔】${f.name}(${f.sym}) 現價 ${n(f.pC, 2)}(今日 ${f.chg >= 0 ? '+' : ''}${n(f.chg, 2)}%)
+量能:${n(f.volX, 1)}× 20日均量
+均線:5MA ${n(f.ma5, 2)} / 月線 ${n(f.ma20, 2)} / 季線 ${n(f.ma60, 2)} / 年線 ${n(f.ma240, 2)}
+位階:${f.rank ? `${f.rank.tag}・52週位階 ${n(f.rank.pos, 0)}%・距歷史高 −${n(f.rank.discount, 0)}%` : '無資料'}
+
+【程式已下的操作結論(⚠️ 你必須跟它一致,不可改口)】
+${f.play.mode} —— ${f.play.why}
+
+【進場體檢】分數 ${e.score ?? '?'} / ${e.verdict || '?'};看多 ${e.bull ?? '?'} 分・看空 ${e.bear ?? '?'} 分
+今天出現的實測訊號:${proven}
+
+【籌碼】外資近5日 ${k(f.fi5)} 張 / 近20日 ${k(f.fi20)} 張;投信近5日 ${k(f.tr5)} 張 / 近20日 ${k(f.tr20)} 張
+${f.tdcc ? `集保:大戶 ${f.tdcc.bigDelta >= 0 ? '+' : ''}${f.tdcc.bigDelta}pp、散戶 ${f.tdcc.retDelta >= 0 ? '+' : ''}${f.tdcc.retDelta}pp(${f.tdcc.date})` : '集保:無資料'}
+${f.margin ? `融資族群推估成本 ${n(f.margin.cost, 1)},斷頭壓力區約 ${n(f.margin.callPx, 1)}` : '融資:無資料'}
+
+【大戶出貨徵兆】${f.dist ? `${f.dist.level} ${f.dist.hits}/${f.dist.total} 條` : '資料不足'} — 亮的是:${distTxt}
+
+【大盤與總經】台股風險指數 ${f.market.risk ?? '?'}/100;VIX ${f.market.vix ?? '?'};費半 ${f.market.sox ?? '?'}%;標普 ${f.market.sp500 ?? '?'}%
+外資台指期 ${f.market.fiFut || '無資料'};期現價差 ${f.market.basis ?? '無資料'};美元兌台幣 ${f.market.usdtwd ?? '?'};西德州原油 ${f.market.oil ?? '?'}
+
+請嚴格輸出純 JSON(⛔ 禁 \`\`\`json 標籤),每個欄位都用繁體中文白話:
+{
+ "headline":"(35字內)一句話講完這檔現在的狀況,語氣要跟上面的操作結論一致",
+ "watch":["(每條30字內)現在最該注意的 3 件事,要引用上面給的具體數字"],
+ "distribution":"(60字內)用白話解釋大戶出貨徵兆那幾條代表什麼,⛔ 不可預測哪一天出貨,要說明這是徵兆不是預測",
+ "future":"(60字內)接下來這檔的關鍵在哪(要看什麼催化或風險),⛔ 不要預測價格",
+ "invalidate":"(40字內)什麼情況代表上面的判斷錯了、該重新評估",
+ "blindspot":"(40字內)這份分析看不到的東西是什麼(哪些資料沒有/樣本不足)"
+}`;
+        const btn = document.querySelector('[onclick*="analyzeStockDeep"]');
+        if (btn) btn.disabled = true;
+        box.innerHTML = '<div class="mt-2 p-2 text-purple-300 text-[11px]">⏳ AI 解讀中…</div>';
+        try {
+            const text = await this._callDeepAI({ prompt, max_tokens: 1200, temperature: 0.4, chain: 'gemini-openrouter' });
+            if (this.currentSymbolId !== sym) return;   // 🛡️ 切股競態守門
+            const p = JSON.parse(String(text).replace(/```json\s*|\s*```/g, '').trim());
+            const li = (arr) => (Array.isArray(arr) ? arr : [arr]).filter(Boolean).slice(0, 3)
+                .map(x => `<div class="flex gap-1.5 py-0.5"><span class="text-gray-600">•</span><span class="flex-1 text-[11px] text-gray-200 leading-relaxed">${x}</span></div>`).join('');
+            const sec = (icon, title, body, cls = 'text-gray-200') =>
+                body ? `<div class="mt-2 pt-2 border-t border-[#21262d]"><div class="text-[10px] text-gray-400 font-bold mb-0.5">${icon} ${title}</div><div class="text-[11px] ${cls} leading-relaxed">${body}</div></div>` : '';
+            const html = `
+                <div class="mt-2 bg-[#0d1117] border border-purple-800/40 rounded-lg p-2.5">
+                    <div class="text-[12px] font-black text-purple-200 leading-snug mb-1.5">${p.headline || '--'}</div>
+                    ${p.watch ? `<div class="text-[10px] text-gray-400 font-bold mb-0.5">👀 現在最該注意</div>${li(p.watch)}` : ''}
+                    ${sec('📤', '大戶出貨徵兆怎麼看', p.distribution)}
+                    ${sec('🔭', '接下來的關鍵', p.future)}
+                    ${sec('🛑', '什麼情況代表判斷錯了', p.invalidate, 'text-amber-200')}
+                    ${sec('🕳️', '這份分析看不到什麼', p.blindspot, 'text-gray-400')}
+                    <div class="text-[8px] text-gray-600 mt-2 pt-1.5 border-t border-[#21262d] leading-snug">🤖 所有數字都是程式算好再交給 AI 解讀(AI 不會算數,不讓它算)。⛔ 進出場價請看下方各卡精算值。${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>`;
+            box.innerHTML = html;
+            try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch (_) { }
+        } catch (err) {
+            box.innerHTML = `<div class="mt-2 p-2 bg-amber-900/30 rounded text-amber-300 text-[11px]">${this._humanizeError(err, 'AI 深度診斷')}</div>`;
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    },
+
     async analyzeStockPredict(opts = {}) {
         const sym = this.currentSymbolId;
         if (!sym) return;
@@ -21093,6 +21248,197 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return { score, light, verdict, vColor, action, bullets, bull, bear, proven: _sigByGrade.slice(0, 4) };
     },
 
+    // ══════════════════════════════════════════════════════════════════════
+    // 🧠 V72.4.0 深度診斷 —— 純公式層(使用者要求:個股+總經+大盤一起看,
+    //    告訴我要注意什麼、怎麼做、大戶什麼時候可能出貨、區間操作還是低檔布局)
+    //
+    // ⛔⛔ 最重要的設計決定:**所有數字都在這裡算完**,AI 只負責把它們串成白話。
+    //    參考的那個開源專案是 6 個 AI agent 各自拿原始資料自己推理 + 開會 + 下決策
+    //    (7+ 次 API 呼叫),那正好違反本專案「禁 AI 算數」鐵律 —— 語言模型不會算均線,
+    //    讓它自己算就是在生成幻覺。這裡反過來:JS 算好 → 一次呼叫 → AI 只做翻譯與串連。
+    // ⭐ 而且**沒有 AI 金鑰也要能用** —— 下面三支純公式自己就有價值,AI 是加值層。
+    // ══════════════════════════════════════════════════════════════════════
+
+    // 📤 大戶出貨徵兆檢查表(8 條,全部純公式)
+    //   ⛔ 這是**徵兆清單不是預測** —— 誰也算不出「大戶哪一天出貨」。
+    //      能做的是:把「歷史上出貨前後常一起出現的跡象」攤開,亮幾條就講幾條。
+    //   ⚠️ 每一條都要附**佐證數字**,不然使用者無從判斷可信度(同陷阱 #22 的精神)。
+    _distributionWatch(data, sym) {
+        if (!Array.isArray(data) || data.length < 60) return null;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0),
+              O = b => +((b?.open ?? b?.o) || 0), V = b => +(b?.volume || 0);
+        const pC = C(data[last]); if (!(pC > 0)) return null;
+        const items = [];
+        const add = (on, name, why) => items.push({ on: !!on, name, why });
+
+        // ① 量價背離(價創高但量縮 / 爆量不漲)—— 既有偵測器
+        let dv = [];
+        try { dv = this._detectVolPriceDiverge(data) || []; } catch (_) { }
+        add(dv.length > 0, '量價背離', dv.length ? (dv[0].msg || dv[0].title || '').slice(0, 48)
+            : '價量同步,沒有背離');
+
+        // ② 高檔爆量長黑 / 長上影(出貨最典型的單日型態)
+        const v20 = data.slice(-21, -1).reduce((a, b) => a + V(b), 0) / 20;
+        const bigVol = v20 > 0 && V(data[last]) >= v20 * 2;
+        const body = pC - O(data[last]);
+        const upperShadow = H(data[last]) - Math.max(pC, O(data[last]));
+        const range = H(data[last]) - +((data[last]?.low ?? data[last]?.l) || 0);
+        const longUpper = range > 0 && upperShadow / range >= 0.5;
+        const hi60 = Math.max(...data.slice(-60).map(H));
+        const nearHi = hi60 > 0 && pC >= hi60 * 0.9;
+        add(nearHi && bigVol && (body < 0 || longUpper),
+            '高檔爆量收黑/長上影',
+            nearHi && bigVol ? `量 ${(V(data[last]) / v20).toFixed(1)}× 均量、${body < 0 ? '收黑' : '留長上影'}`
+                : '沒有高檔爆量下影特徵');
+
+        // ③ 外資近 5 日由買轉賣(用日 K 的 foreign_net,單位股→張)
+        const fnet = n => data.slice(-n).reduce((a, b) => a + (+b.foreign_net || 0), 0) / 1000;
+        const fi5 = fnet(5), fi20 = fnet(20);
+        add(fi5 < 0 && fi20 > 0, '外資近 5 日轉賣(20 日仍是買)',
+            `近5日 ${Math.round(fi5).toLocaleString()} 張 / 近20日 ${Math.round(fi20).toLocaleString()} 張`);
+
+        // ④ 分點主力近 5 日賣超(券商分點,只有觀察清單股才有)
+        let mf = null;
+        try {
+            const P = this._chipPeriods; if (P) mf = this._chipMainForce(P, pC);
+        } catch (_) { }
+        add(!!(mf && mf.net5 < 0), '分點主力近 5 日賣超',
+            mf ? `前 15 大分點近 5 日 ${Math.round(mf.net5 || 0).toLocaleString()} 張`
+               : '此股無分點資料(只追約 50 檔熱門股)');
+
+        // ⑤ 集保大戶減、散戶增(四因子反向)
+        const td = this._tdccFourFactor?.(sym) || null;
+        add(!!(td && !td.bigUp && !td.retDown),
+            '大戶持股減、散戶增',
+            td ? `大戶 ${td.bigDelta >= 0 ? '+' : ''}${td.bigDelta}pp・散戶 ${td.retDelta >= 0 ? '+' : ''}${td.retDelta}pp(${td.date})`
+               : '集保資料未載入');
+
+        // ⑥ 融資大增(散戶追進,常是主力出貨的對手盤)
+        let mgPct = null;
+        if (data.length >= 11) {
+            const m0 = +(data[last]?.margin_balance || 0), m1 = +(data[last - 10]?.margin_balance || 0);
+            if (m0 > 0 && m1 > 0) mgPct = (m0 - m1) / m1 * 100;
+        }
+        add(mgPct != null && mgPct >= 10, '融資 10 日大增 ≥10%',
+            mgPct != null ? `融資餘額 10 日 ${mgPct >= 0 ? '+' : ''}${mgPct.toFixed(1)}%` : '無融資資料');
+
+        // ⑦ 逼近上方套牢區(彈上去容易被壓)
+        let ovh = [];
+        try { ovh = this._overheadSupply(data, last, pC) || []; } catch (_) { }
+        const near = ovh.length ? ovh[0] : null;
+        add(!!(near && near.lo && (near.lo - pC) / pC <= 0.05),
+            '正貼近上方套牢區',
+            near ? `最近一層 ${near.lo?.toFixed?.(1)}~${near.hi?.toFixed?.(1)}(距 ${(((near.lo - pC) / pC) * 100).toFixed(1)}%)`
+                 : '上方沒有明顯量堆積');
+
+        // ⑧ 乖離年線過熱(V72.3.1 實測:60 日邊際 −6.24pp)
+        let b240 = [];
+        try { b240 = this._detectBias240(data) || []; } catch (_) { }
+        add(b240.length > 0, '乖離年線過熱(150%+)',
+            b240.length ? (b240[0].title || '') : '沒有離年線太遠');
+
+        const hits = items.filter(x => x.on).length;
+        // ⛔ 誠實分級:⚠️ 不是「幾條以上就會跌」,只是「該多留意的程度」
+        const level = hits >= 5 ? '⛔ 徵兆偏多' : hits >= 3 ? '⚠️ 有幾條要留意' : hits >= 1 ? '➖ 零星徵兆' : '✅ 目前沒有明顯徵兆';
+        return { hits, total: items.length, items, level };
+    },
+
+    // 🎯 操作型態:低檔布局 / 區間操作 / 順勢做多 / 先觀望(純公式)
+    //   ⭐ 使用者問的「是區間操作還是低檔布局」—— 這件事**算得出來**,不必問 AI:
+    //      位階(在一年裡的高低)× 中期趨勢 × 有沒有明確箱型。
+    //   ⛔ 一律先過 `_bearGate` —— 空頭時不管位階多低都不給「布局」這種進場指令。
+    _playbookMode(data, sym) {
+        if (!Array.isArray(data) || data.length < 60) return null;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0),
+              L = b => +((b?.low ?? b?.l) || 0);
+        const pC = C(data[last]); if (!(pC > 0)) return null;
+        const rank = this._priceRankData?.(data) || null;
+        const pos = rank ? rank.pos : null;                       // 52 週位階 0~100
+        const ma = n => data.slice(-n).reduce((a, b) => a + C(b), 0) / Math.min(n, data.length);
+        const ma20 = ma(20), ma60 = ma(60);
+        const bear = !!this._bearGate?.(sym);
+        const trend = (this._ovTrend && this._ovTrend.sym === String(sym)) ? this._ovTrend.txt : null;
+
+        // 箱型:近 60 日高低區間寬度 ≤ 22%,且現價在區間中段 → 明顯箱型整理
+        const hi60 = Math.max(...data.slice(-60).map(H)), lo60 = Math.min(...data.slice(-60).map(L));
+        const bandPct = lo60 > 0 ? (hi60 - lo60) / lo60 * 100 : null;
+        // 近 20 日「站上/跌破 20MA」翻來覆去的次數 → 越多越像盤整
+        let flip = 0;
+        for (let i = data.length - 20; i < data.length; i++) {
+            if (i < 20) continue;
+            const m = data.slice(i - 19, i + 1).reduce((a, b) => a + C(b), 0) / 20;
+            const pm = data.slice(i - 20, i).reduce((a, b) => a + C(b), 0) / 20;
+            if ((C(data[i]) > m) !== (C(data[i - 1]) > pm)) flip++;
+        }
+        const boxed = bandPct != null && bandPct <= 22 && flip >= 4;
+
+        let mode, why, range = null;
+        if (bear) {
+            mode = '⛔ 先不做(等趨勢翻多)';
+            why = `中期趨勢仍偏空${trend ? `(主結論:${trend})` : ''} → 位階再低也先不進場,反彈是減碼機會不是買點。`;
+        } else if (boxed) {
+            mode = '📦 區間操作';
+            range = { lo: lo60, hi: hi60 };
+            why = `近 60 日在 ${lo60.toFixed(1)}~${hi60.toFixed(1)} 之間來回(區間寬 ${bandPct.toFixed(0)}%、20MA 上下穿 ${flip} 次)→ 靠近下緣分批接、靠近上緣減碼,⛔ 別在中間追。`;
+        } else if (pos != null && pos <= 30 && pC >= ma60 * 0.92) {
+            mode = '🧊 低檔布局(分批)';
+            why = `位階只有 ${pos.toFixed(0)}%(一年裡的低段)、但還沒跌破季線太遠 → 適合分批慢慢接,⛔ 一次全押;沒有題材催化前別期待急漲。`;
+        } else if (pos != null && pos <= 30) {
+            mode = '🔪 低位階但仍在破線(別接刀)';
+            why = `位階 ${pos.toFixed(0)}% 很低,但價格已在季線下方 ${(((ma60 - pC) / ma60) * 100).toFixed(0)}% → 便宜不等於可以買,等站回季線或出現帶量紅 K 再說。`;
+        } else if (pC > ma20 && ma20 > ma60) {
+            mode = '📈 順勢做多(回檔找點)';
+            why = `站上月線、月線又在季線之上 = 多頭結構完整 → 順勢操作,回檔到 5MA/月線附近找點,⛔ 別追高。`;
+        } else {
+            mode = '➖ 方向不明,先觀望';
+            why = `位階 ${pos != null ? pos.toFixed(0) + '%' : '未知'}、均線糾結(月線 ${ma20.toFixed(1)} / 季線 ${ma60.toFixed(1)})→ 等表態:帶量突破 = 轉強、破前低 = 轉弱。`;
+        }
+        return { mode, why, range, pos, bear, boxed, bandPct, ma20, ma60, hi60, lo60 };
+    },
+
+    // 📦 把「已經算好的一切」收成一包 —— 給 AI 當輸入,也給前端直接顯示
+    //   ⛔ 這裡只做**蒐集與格式化**,不做任何新的判斷(判斷都在上面兩支和既有函式裡)。
+    _deepBriefFacts(data, sym) {
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        const pC = C(data[last]);
+        const prev = C(data[last - 1]);
+        const chg = prev > 0 ? (pC - prev) / prev * 100 : null;
+        const ma = n => data.length >= n ? data.slice(-n).reduce((a, b) => a + C(b), 0) / n : null;
+        const v20 = data.slice(-21, -1).reduce((a, b) => a + (+b.volume || 0), 0) / 20;
+        const macro = this._macroRiskCache || {};
+        const fnet = n => data.slice(-n).reduce((a, b) => a + (+b.foreign_net || 0), 0) / 1000;
+        const tnet = n => data.slice(-n).reduce((a, b) => a + (+b.trust_net || 0), 0) / 1000;
+        let entry = null, rank = null, risk = null, upside = null, fiFut = null, xray = null;
+        try { entry = this._entryCheckup(data); } catch (_) { }
+        try { rank = this._priceRankData(data); } catch (_) { }
+        try { risk = this._calcRiskScore(); } catch (_) { }
+        try { upside = this._upsideRoom(pC, data, last); } catch (_) { }
+        try { fiFut = this._fiFutState?.(); } catch (_) { }
+        try { xray = this._xrayMetrics || null; } catch (_) { }
+        return {
+            sym, name: this.getStockName?.(sym) || sym,
+            pC, chg, volX: v20 > 0 ? (+data[last].volume || 0) / v20 : null,
+            ma5: ma(5), ma20: ma(20), ma60: ma(60), ma240: ma(240),
+            rank, entry, upside, xray,
+            fi5: fnet(5), fi20: fnet(20), tr5: tnet(5), tr20: tnet(20),
+            dist: this._distributionWatch(data, sym),
+            play: this._playbookMode(data, sym),
+            margin: (() => { try { return this._marginCallState(data, sym); } catch (_) { return null; } })(),
+            tdcc: (() => { try { return this._tdccFourFactor(sym); } catch (_) { return null; } })(),
+            market: {
+                risk, vix: macro.vix ?? null, sox: macro.sox_chg_pct ?? null,
+                sp500: macro.sp500_chg_pct ?? null, usdtwd: macro.usdtwd ?? null,
+                twii: macro.twii_close ?? macro.taiex_close ?? null,
+                basis: macro.taifex_backwardation ?? null,
+                fiFut: fiFut ? `${fiFut.label}(${Math.round(fiFut.net || 0).toLocaleString()} 口)` : null,
+                oil: macro.wti_oil ?? null,
+            },
+        };
+    },
+
     renderEntryCheckup(data) {
         const el = document.getElementById('entryCheckup');
         if (!el) return;
@@ -24609,6 +24955,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 'aiGodNewsBox',                           // 首席 AI 新聞
                 'marginCallBox',                          // 融資追繳壓力區(V71.7.1)
                 'chipRadarPanel',                         // 法人成本/連買連賣(V72.3.1,async 抓 FinMind 才填)
+                'deepBriefCard', 'deepBriefAi',           // 🧠 深度診斷(V72.4.0;AI 段是 async,不清會顯上一檔的解讀)
             ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
@@ -32926,6 +33273,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try { this.renderPlaybookRadar(data); } catch (_) {}   // 🃏 V55.7 打法雷達(主打打法觸發了沒+點位算好)
         // 🩺 V36.6 — 進場體檢:彙總全訊號成紅綠燈總結(置頂,初學者一眼看該不該進場)
         try { this.renderEntryCheckup(data); } catch (_) {}
+        try { this.renderDeepBrief(data); } catch (_) {}      // 🧠 V72.4.0 深度診斷(純公式段自動出現)
         // 📌 觸發避險/止跌/逃命時顯示原因，正常情況隱藏(島狀反轉/大黑K/冬季)
         // 🧭 V70.0.2 U-11:原容器在永久 hidden 的卡裡,使用者從沒看過「為什麼雙目標被停用」
         //   → 同步存到 this._tpSlReason,由出場總表(chuExitSopCard)頂部顯示
