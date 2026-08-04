@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,23 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.4',
+    _APP_VERSION: 'V72.0.5',
     _CHANGELOG: [
+        { v: 'V72.0.5', dt: '2026-08-04', t: '🔮 美股期貨只有價位沒有方向 —— 這是刻意的,但我之前沒說', d: [
+            '逐字稿裡他提到「要看海外期貨」。我去對了一遍自己的資料,結果抓到一個**我自己的問題**:',
+            '',
+            '盤前體檢的「🔮 標普期 / 道瓊期 / 那指期」三格,**長期都只有價位、沒有漲跌%**。',
+            '',
+            '查下去發現「不給方向」其實是**刻意的**:美股期貨幾乎 24 小時交易,有時候抓不到「上一個結算價」當基準,這時候硬算出來的方向**會是反的**(這個坑之前踩過,7 月底你拿籌碼 K 線對照時抓到的)。所以程式選擇了「寧可不給方向,也不給反的」。',
+            '',
+            '⛔ **但問題是我沒告訴你** —— 你看到一個光禿禿的價位,不知道是「還沒抓到」還是「刻意不給」,而那句「期貨=隔日開盤風向」沒有方向根本等於沒用。',
+            '',
+            '✅ 修好了兩件事:',
+            '・畫面上現在會標「**・方向待確認**」,點住還有說明。',
+            '・後台也會把「為什麼不給方向」跟判斷用的原始數字一起記下來,以後查得出真因。',
+            '',
+            '📌 另外順便回答他說的「觀察日韓中美期貨」:**日韓中的部分我已經有了**(日經、韓股、恆生每天都抓),美股期貨也有。真正缺的是「亞洲股指期貨」,但那個免費資料源拿不到 —— 拿不到就不做假的。',
+        ] },
         { v: 'V72.0.4', dt: '2026-08-04', t: '🎯 「大盤漲,為什麼我的股票沒漲?」—— 這版直接算給你看', d: [
             '逐字稿裡他說「**加權指數幾乎就等於台積電**」。這句話其實回答了一個你可能問過很多次的問題:大盤明明是紅的,為什麼我手上那檔是綠的?',
             '',
@@ -16206,11 +16221,20 @@ const marginByDate = {};
         const gPct = v => (v == null || isNaN(v)) ? null : `${+v >= 0 ? '+' : ''}${(+v).toFixed(2)}%`;
         // 🔮 V68.8.8 — 美股期貨直式堆疊小卡(原橫排 justify-between 塞 5 位數指數+漲跌% 會爆出右邊界)
         // 🧹 V69.0.4 改單列版:原本是置中三行小卡(擠、亂)→ 改「名稱 … 數值 漲跌%」一列到底(同美股隔夜/匯率格),折疊裡快速掃過用
+        // 🐛 V72.0.5 期貨格:**有價位但沒有漲跌%** 時要誠實說「方向待確認」,⛔ 不可靜默。
+        //   實測 gh-pages:es/nq/ym 三支的 chg_pct 長期都是 null —— 那是採礦端**刻意**的
+        //   (拿不到「上一個結算」基準時,寧可不給方向也不給反的,見 macro_miner
+        //    `_pick_live_vs_settle` 的 'inprogress' 分支)。但前端原本只顯一個光禿禿的價位,
+        //   使用者根本不知道那是「還沒抓到」還是「刻意不給」——
+        //   而「🔮 美股期貨=隔日開盤風向」這句話沒有方向就等於失效。
+        //   ⭐ 同陷阱 #22 的前端版:守門把值拿掉時,一定要讓使用者看得到原因。
         const gCell = (label, val, chg) => {
             const vv = (val != null && !isNaN(val)) ? (+val >= 1000 ? (+val).toLocaleString('en-US', { maximumFractionDigits: 0 }) : (+val).toFixed(2)) : '';
             const p = gPct(chg);
             const right = (vv || p)
-                ? `<span class="font-mono font-bold text-gray-200">${vv || '--'}</span>${p ? ` <span class="font-mono text-[9px] ${+chg >= 0 ? 'text-red-300' : 'text-green-300'}">${p}</span>` : ''}`
+                ? `<span class="font-mono font-bold text-gray-200">${vv || '--'}</span>${p
+                    ? ` <span class="font-mono text-[9px] ${+chg >= 0 ? 'text-red-300' : 'text-green-300'}">${p}</span>`
+                    : (vv ? ` <span class="text-[8px] text-gray-500" title="盤中價可信,但拿不到「上一個結算」當基準,所以不給漲跌方向 —— 寧可不給,也不給反的">・方向待確認</span>` : '')}`
                 : '<span class="text-gray-500 text-[9px]">採集中</span>';
             return `<div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">${label}</span><span class="text-right">${right}</span></div>`;
         };

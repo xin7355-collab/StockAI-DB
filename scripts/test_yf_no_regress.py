@@ -183,4 +183,36 @@ r = P([('2026-07-29', 7339.25)], [('2026-07-30', 7370.5)])
 assert r == (7370.5, 7339.25, '2026-07-30', 'intraday'), f'⑰ 實際 {r}'
 print('✅ ⑰ 盤中日期真的比日線新 → 現價 vs 上一個結算(最理想的配對)')
 
-print('\n🎉 盤中/結算配對 三項測試全過(合計 17 項)')
+# ══════════════════════════════════════════════════════════════════
+# V72.0.5 陷阱 #22 的第二次犯案:**把值設成 None 卻不寫原因**
+#   實測 2026-08-04 讀 gh-pages 的 macro_risk.json:
+#     es_fut = 7479.5 / es_fut_chg_pct = None / es_fut_error = None   ← 零線索
+#     nq_fut、ym_fut 一模一樣。
+#   「不給方向」本身是**正確的設計**(上面 ⑮ 已釘住,寧可不給也不給反的),
+#   但沒有寫原因就等於:從 JSON 完全查不出是「抓不到」還是「刻意不給」,
+#   前端也只能顯一個光禿禿的價位,而「期貨=隔日開盤風向」沒有方向就等於失效。
+#   ⭐ 鐵則:任何守門把值拿掉,都必須 ① 寫 *_error ② 把判斷用的原始數字一起輸出。
+# ══════════════════════════════════════════════════════════════════
+import re as _re
+_fsrc = inspect.getsource(mm._fetch_yf_future)
+_ip = _fsrc.split("src == 'inprogress'")[1].split('return')[1] if "src == 'inprogress'" in _fsrc else ''
+assert 'None, None' not in _ip, \
+    '⑱ inprogress 分支不可再回 err=None —— 必須寫明「為什麼不給漲跌%」'
+assert '_why' in _ip, f'⑱ 應回傳原因字串,實際 return{_ip[:80]}'
+print('✅ ⑱ inprogress 分支必須把「為什麼不給方向」寫進 *_error(⛔ 不可回 None)')
+
+# ⑲ 原因字串必須包含**判斷用的原始數字**(否則永遠查不出是差多少才被判定的)
+_why_src = _fsrc.split('_why = (')[1].split('print(')[0] if '_why = (' in _fsrc else ''
+for _need, _desc in (('round(last', '盤中現價'), ('daily[-1][1]', '日線末根收盤'),
+                     ('daily[-1][0]', '日線末根日期'), ('_gapbp', '兩者差幾個基點')):
+    assert _need in _why_src, f'⑲ 原因字串缺少「{_desc}」({_need}) —— 沒有它就查不出真因'
+assert '寧可不給方向也不給反的' in _why_src, '⑲ 要寫明這是刻意的設計,不是故障'
+print('✅ ⑲ 原因字串含判斷用的原始數字(盤中價/日線末根+日期/差幾個基點)+ 說明這是刻意的')
+
+# ⑳ ⛔ 值本身不可因為有 err 就被丟掉(呼叫端 out[key]=val 與 err 是分開寫的)
+_msrc = inspect.getsource(mm)
+assert 'out[f"{key}_error"]      = err' in _msrc and 'out[key_alias[key]]      = val' in _msrc, \
+    '⑳ 呼叫端必須「值與原因分開寫」,有 err 不代表要丟掉價位'
+print('✅ ⑳ 有原因字串也不會丟掉價位(值與 error 分開寫)')
+
+print('\n🎉 盤中/結算配對 + 守門必留原因 全過(合計 20 項)')

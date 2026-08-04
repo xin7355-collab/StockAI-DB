@@ -1110,9 +1110,20 @@ def _fetch_yf_future(ticker, name):
             last, prev, dstr, src = picked
             if last == last and prev is None and src == 'inprogress':
                 # 現價可信、方向不可信 → 只給價,不給 %(前端會標「盤中價・漲跌待確認」)
+                # 🐛 V72.0.5 陷阱 #22:**把值設成 None 卻不寫原因**。
+                #   實測 2026-08-04 讀 gh-pages:es/nq/ym 三支的 `*_chg_pct` 全是 None,
+                #   而 `*_error` **也是 None** → 從 JSON 完全查不出是「抓不到」還是
+                #   「抓到但刻意不給方向」,前端也只能靜默顯一個沒有漲跌的價位。
+                #   ⭐ 而且照鐵則要把**判斷用的原始數字一起輸出**,否則永遠查不出
+                #      是「兩根太接近」還是別的原因。
                 _YF_LAST_DATE[ticker] = dstr
-                print(f"     [{name}] {src} {last}({dstr})→ 盤中現價可信,但拿不到當日結算基準,不給漲跌%")
-                return round(last, 2), None, None
+                _gapbp = abs(last - daily[-1][1]) / daily[-1][1] * 1e4 if daily and daily[-1][1] else -1
+                _why = (f"盤中現價可信但拿不到「上一個結算」基準,刻意不給漲跌%"
+                        f"(寧可不給方向也不給反的):盤中 {round(last, 2)} vs 日線末根 "
+                        f"{round(daily[-1][1], 2) if daily else 'n/a'}({daily[-1][0] if daily else 'n/a'})"
+                        f",差 {_gapbp:.1f} 個基點 < 10 → 判定那根日線就是「還在跑的這一盤」")
+                print(f"     [{name}] {src} {last}({dstr})→ {_why}")
+                return round(last, 2), None, _why
             if prev and prev > 0 and last == last:
                 chg = round((last - prev) / prev * 100, 2)
                 _YF_LAST_DATE[ticker] = dstr
