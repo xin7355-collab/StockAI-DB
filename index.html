@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.7',
+    _APP_VERSION: 'V72.2.8',
     _CHANGELOG: [
+        { v: 'V72.2.8', dt: '2026-08-04', t: '🏦 券商分點其實一直是壞的(而且假裝成「資料還沒出來」)', d: [
+            '🚨 抓到一個躲很久的:「券商分點」那張卡對**每一檔股票**都載入失敗,但畫面顯的是「⚠️ 今日分點尚未公布」—— 看起來像資料還沒進來,其實是程式錯誤被 try/catch 吞掉了。',
+            '真因:一個變數宣告在 if 區塊裡面、卻在區塊外面被用到 → 每次都丟 ReferenceError。修好後 2330 立刻正常顯示 20 天分點、四個週期都在。',
+            '⭐ 修好才看得到第二個錯:主力買賣超的數字單位是「股」,除以 1000 才是「張」,但畫面把它寫成「23630K 張」= 實際的 1000 倍。現在正確顯「+23,630 張」(千分位逗號)。',
+            '🩺 資料體檢新增一類:今日訊號榜的價格/日期要跟原始 K 線對得上 —— 抓的是「掃描排在合併之前」這種時序問題,檔案本身自洽時其他檢查都看不出來。實跑抽驗 40 筆全對。',
+        ] },
         { v: 'V72.2.7', dt: '2026-08-04', t: '🔢 「今天只有 N 檔」那個數字之前是錯的', d: [
             '採礦機今天第一次真的跑出全市場榜單,一驗就抓到兩個數字錯誤:',
             '① 榜單有上限,而今天剛好被打滿 → 畫面寫「只有 60 檔」,那其實是**被截斷後**的數字,不是今天真的只有 60 檔。現在會誠實寫「共 N 筆訊號,下面列期望值最高的 12 筆」。',
@@ -21146,6 +21152,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             let records = null;
             let objDate = null;
             let chipPeriods = null;
+            // 🐛 V72.2.8 `raw` 必須宣告在**函式層**。
+            //   原本是 `const raw` 寫在下面 `if (!records) { … }` **區塊裡**,
+            //   卻在區塊外(資料日期標籤那段)被引用 → **每一檔都 `ReferenceError: raw is not defined`**,
+            //   而整段包在 try/catch 裡 → 例外被吞掉、直接掉到 catch,畫面顯「⚠️ 今日分點尚未公布」。
+            //   ⛔ 那句話看起來像「資料還沒出來」的正常狀態,所以**券商分點其實對所有股票都是壞的**,
+            //      而且完全沒有錯誤訊息(只有 console 那行 `[分點] loadBrokerChips 失敗` 看得到)。
+            //   ⚠️ 同陷阱 #33 的親戚:區塊作用域 + 空/寬 catch = 靜默失效。
+            let raw = null;
             const apiBase = this._apiBase;
 
             // Strategy 1: backend api.py (if configured) — SQLite, instant
@@ -21172,7 +21186,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const url = new URL(`data/chips/${sym}.json`, ghBase).href;
                 const res = await fetch(url + `?v=${Date.now()}`, { signal: AbortSignal.timeout(6000) });
                 if (!res.ok) throw new Error('no_data');
-                const raw = await res.json();
+                raw = await res.json();          // ⛔ 別加 const/let(要用函式層那個,見上面註解)
                 // 新增：新格式為 {fundamentals, chips}，舊格式為純陣列
                 records = Array.isArray(raw) ? raw : (raw.chips || []);
                 objDate = (!Array.isArray(raw) && raw.data_date) ? raw.data_date : null;
@@ -21287,7 +21301,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const pct  = Math.round(val / maxVal * 100);
                 const col  = isBuy ? 'bg-red-500/70' : 'bg-green-500/70';
                 const tcol = isBuy ? 'text-red-300' : 'text-green-300';
-                const valK = val >= 1000 ? (val/1000).toFixed(0)+'K' : val.toString();
+                // 🐛 V72.2.8 單位:`net` 是**股**,÷1000 才是張。原本 `(val/1000)+'K'` 配「張」的表頭
+                //   會讀成「23,630 千張」= 實際的 1000 倍。改成直接給張 + 千分位(使用者要求會計格式)。
+                const valK = Math.round(val / 1000).toLocaleString();
                 return `<div class="flex items-center gap-1.5 py-0.5">
                     <span class="text-xs text-gray-300 w-16 truncate flex-shrink-0 font-medium">${label}</span>
                     <div class="flex-1 bg-gray-800 rounded-sm h-2.5 overflow-hidden">
@@ -21302,7 +21318,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
             const html = `
             <div class="flex items-center justify-between mb-2">
-                <div class="text-[10px] text-gray-500">近 ${days} 日累積主力動向（股）</div>
+                <div class="text-[10px] text-gray-500">近 ${days} 日累積主力動向（張）</div>
                 <div class="px-2 py-0.5 rounded-full text-xs font-bold ${verdictBg} ${verdictText}">${verdict}</div>
             </div>
             <div class="flex gap-2 text-[10px] text-gray-500 mb-2">
@@ -21470,7 +21486,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const col  = isBuy ? 'bg-red-500/70' : 'bg-green-500/70';
             const tcol = isBuy ? 'text-red-300' : 'text-green-300';
             const sign = isBuy ? '+' : '-';
-            const valK = val >= 1000 ? (val/1000).toFixed(0)+'K' : val.toString();
+            // 🐛 V72.2.8 同上:`x.net` 是股,÷1000 = 張。⛔ 別再加 'K'(表頭寫「張」會差 1000 倍)。
+            //   ⚠️ 這個 bug 之所以躲到現在,是因為上面那個 `raw is not defined` 讓整張卡從來沒渲染出來過。
+            const valK = Math.round(val / 1000).toLocaleString();
             // 直接讀 broker_name；缺漏才回退對照表（徹底消滅純數字代號）
             const label = x.broker_name && !String(x.broker_name).match(/^\d+$/)
                 ? x.broker_name
