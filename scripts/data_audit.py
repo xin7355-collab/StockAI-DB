@@ -21,6 +21,7 @@
   D. 前後端對接                            (前端讀的欄名,後端到底有沒有產)← 連接錯誤
   D2. 關鍵欄位缺漏                          (檔案在、能解析,但「該有的那半沒有」)← V72.2.6
   E. 連動一致性                            (同一個指標出現在多個檔,值要一致)← 連動
+  E2. 榜單 vs 原始資料                      (今日訊號榜的價格/日期,跟 data/{sym}.json 對不對得上)
 
 資料來源:gh-pages 分支(= 使用者手機真正讀到的那份),用 git 讀,不打網路。
 用法:python3 scripts/data_audit.py [--ref origin/gh-pages]
@@ -385,6 +386,52 @@ def audit(ref):
         except Exception:
             add('⚠️', 'E', f'{name}:值不是數字({va} / {vb})')
     print(f'   對帳 {checked} 組')
+
+    # ── E2. 榜單 vs 原始 K 線:價格與日期要對得上(V72.2.8)──────────
+    #   ⭐ 這抓的是**流程時序**問題,不是數值問題:
+    #      `daily_signal_scan` 排在 deploy job 裡、20 個平行採礦節點合併「之後」才跑。
+    #      萬一哪天順序被動過(或某節點 artifact 沒到齊),榜單就會拿**舊價**去掃 ——
+    #      使用者在選股頁第一眼看到的價格會跟點進去的個股頁**對不起來**,
+    #      而檔案本身完全自洽、A/C/D 四類全都看不出來。
+    #   ⚠️ 只抽前 40 筆(每檔要 `git show` 一次,全掃太慢);對不上就一定要人工看。
+    ts = cache.get('today_signals.json')
+    if ts is None:
+        ts, _e = read_json(ref, 'data/today_signals.json')
+    if isinstance(ts, dict) and isinstance(ts.get('bull'), list) and ts['bull']:
+        n_ok = n_bad = 0
+        for b in ts['bull'][:40]:
+            sym = str(b.get('s') or '')
+            kd, _e = read_json(ref, f'data/{sym}.json')
+            if not isinstance(kd, list) or not kd:
+                add('⚠️', 'E2', f'今日訊號榜有 {sym},但 data/{sym}.json 讀不到 → 點進去會沒資料')
+                n_bad += 1
+                continue
+            last = kd[-1]
+            try:
+                c_k = round(float(last.get('close')), 2)
+                c_s = round(float(b.get('c')), 2)
+            except Exception:
+                add('⚠️', 'E2', f'{sym} 收盤價不是數字(榜單 {b.get("c")} / K線 {last.get("close")})')
+                n_bad += 1
+                continue
+            d_k = str(last.get('date') or '').replace('/', '-')
+            if abs(c_k - c_s) > 0.011:
+                add('❌', 'E2', f'{sym} 榜單價 {c_s} ≠ K線最後一根 {c_k} → 榜單可能是用**舊價**掃的(掃描排在合併之前?)')
+                n_bad += 1
+            elif d_k != str(ts.get('data_date') or ''):
+                add('⚠️', 'E2', f'{sym} K線最後日期 {d_k} ≠ 榜單宣稱的 {ts.get("data_date")}')
+                n_bad += 1
+            else:
+                n_ok += 1
+        print(f'\n── E2. 今日訊號榜 vs 原始 K 線 ─────────────────────────')
+        print(f'   抽驗 {n_ok + n_bad} 筆:對得上 {n_ok} ・對不上 {n_bad}')
+        # ⛔ 截斷要誠實(no silent caps):沒有 bull_total 就代表採礦端還是舊版
+        if ts.get('bull_total') is None:
+            add('⚠️', 'E2', 'today_signals.json 沒有 bull_total/bull_syms → 顯示端算不出「今天總共幾檔/幾筆」,'
+                            '只能拿截斷後的長度充數(採礦端還是 V72.2.7 之前的版本,下輪採礦後會有)')
+        elif ts['bull_total'] > len(ts['bull']):
+            print(f"   ℹ️ 榜單有截斷:{ts['bull_total']} 筆 → 輸出 {len(ts['bull'])} 筆(上限 {ts.get('bull_cap')});"
+                  f"不重複 {ts.get('bull_syms')} 檔 —— 顯示端要用 bull_total/bull_syms 講總數")
 
     # ── 總結 ─────────────────────────────────────────────────────────
     print('\n' + '═' * 66)
