@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4641,7 +4641,9 @@ const app = {
         const top3 = new Set(ranked.slice(0, 3).filter(r => r.expectancy > 0).map(r => r.key));
         for (const r of ranked) {
             if (!firedSet.has(r.key)) continue;
-            if (!(r.expectancy > 0 && r.count >= 5 && top3.has(r.key))) continue;   // 只推主打+正期望+樣本足
+            // 🎲 V72.2.2 樣本門檻 5 → `_wrEnough`(10):推播是**主動叫人進場**,門檻不可比畫面上還鬆。
+            //   ⛔ 別寫死數字 —— 全 App 只有 `_wrEnough` 一份(改一處就好)。
+            if (!(r.expectancy > 0 && this._wrEnough(r.count) && top3.has(r.key))) continue;   // 只推主打+正期望+樣本足
             const dkey = `wr_${sym}_${r.key}`;
             if (this._kbarFiredToday(dkey)) continue;
             const nm = r.key.replace(/^\S+\s/, '');
@@ -6918,8 +6920,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.1',
+    _APP_VERSION: 'V72.2.2',
     _CHANGELOG: [
+        { v: 'V72.2.2', dt: '2026-08-04', t: '🎲 「勝率 100%・3 次」不算數 + 當沖勝率終於有了對照組', d: [
+            '新工具 `scripts/page_sweep.mjs`:用真實資料把個股頁 8 個分頁全部渲染出來、掃畫面上的字 —— 這兩個 bug 用搜程式碼永遠找不到,因為問題是「數字湊在一起很荒謬」。',
+            '打法適配儀原本會顯示「勝率 100%・賺賠比 全贏・只有 3 次」還掛 ⭐主打 + 閃爍,上面寫「可依紀律進場」→ 3 次不是好用,是還不知道。現在一律配「⏳ 只有 N 次」徽章,不到 10 次不准下進場指令。',
+            '⚡ 當沖「隔日沖勝率回測」:0050 竟然顯示「🏆 這檔最高勝率:爆量突破 0%」+「成功率最高的做法(鐵律)」。真因是沒有對照組 —— 現在會算「這檔隨便挑一天做同一套是幾%」當基準(0050 是 7%、鴻海 29%、緯創 37%),沒贏基準就誠實說「這檔沒有值得做的隔日沖型態」,並建議換股或改做波段。',
+            '勝率的顏色與可信度改成「相對這檔自己的基準」—— 鴻海爆量長紅 47% 對 50% 會被當成丟銅板,但它其實贏基準 18 個百分點。',
+            '主打型態的手機推播門檻從 5 次提高到 10 次(推播是主動叫人進場,門檻不該比畫面上鬆)。',
+            '空頭時打法適配儀也不再叫人「可依紀律進場」—— 這是同一個錯的第 7 處。',
+        ] },
         { v: 'V72.2.1', dt: '2026-08-04', t: '🐛 融資維持率「修完還是沒出來」—— 同一個坑修了兩次才對', d: [
             '你說挖礦挖完了，我去對資料，發現**融資維持率還是沒有產出**。採礦全綠、檔案也在，就是少了那一半。',
             '',
@@ -18184,21 +18194,46 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // 回一句白話結論(給任何「勝率 X% ・N 次」的地方共用)
-    _winRateConfidence(winRatePct, n) {
-        const p = this._winRateP(Math.round((+winRatePct || 0) / 100 * (+n || 0)), n);
+    // ⭐ V72.2.2 加第 3 個參數 `p0` = **這個場景的基準勝率**(預設 0.5 不變,既有呼叫端零影響)。
+    //   ⛔ 用 50% 當基準會誤判 —— 實測 2317「爆量長紅 47%」對上這檔自己的基準 **29%** 明明是好的,
+    //      拿 50% 去檢定卻會標成 ⛔「跟丟銅板差不多」。同 `_SIGNAL_EDGE` 基準是 36.4% 不是 50% 那條教訓。
+    _winRateConfidence(winRatePct, n, p0 = 0.5) {
+        const p = this._winRateP(Math.round((+winRatePct || 0) / 100 * (+n || 0)), n, p0);
         if (p == null) return null;
         const pctTxt = `${(p * 100).toFixed(p < 0.01 ? 2 : 0)}%`;
+        // 基準不是 50% 時,文案要講「贏過基準」而不是「純靠運氣」(不然使用者對不上畫面上的基準數字)
+        const b = (p0 > 0 && p0 < 1) ? p0 : 0.5;
+        const luck = Math.abs(b - 0.5) < 1e-9 ? '純靠運氣' : `就算這招沒用(只有基準 ${Math.round(b * 100)}%)`;
         if (n < 10) return { p, ok: false, icon: '⏳',
-            txt: `只出現過 ${n} 次 —— 樣本太少,<b>這個勝率還不能當結論</b>(純靠運氣也有 ${pctTxt} 機率長這樣)。只能小量試。` };
+            txt: `只出現過 ${n} 次 —— 樣本太少,<b>這個勝率還不能當結論</b>(${luck}也有 ${pctTxt} 機率長這樣)。只能小量試。` };
         if (p <= 0.05) return { p, ok: true, icon: '✅',
-            txt: `${n} 次樣本,純靠運氣要出現這種成績的機率只有 ${pctTxt} → <b>統計上站得住腳</b>(仍非保證,且未計交易成本)。` };
+            txt: `${n} 次樣本,${luck}要出現這種成績的機率只有 ${pctTxt} → <b>統計上站得住腳</b>(仍非保證,且未計交易成本)。` };
         // ⚠️ 門檻用 0.25 而不是 0.15:p=19%(如 12 次 8 勝)意思是「五次裡有一次是運氣」,
         //    那叫「證據偏弱」,不是「跟丟銅板一樣」—— 講太重會讓人連參考價值都不看。
         if (p <= 0.25) return { p, ok: null, icon: '⚠️',
-            txt: `${n} 次樣本,但純靠運氣也有 ${pctTxt} 機率長這樣 → <b>參考就好</b>,再多累積幾次才敢當依據。` };
+            txt: `${n} 次樣本,但${luck}也有 ${pctTxt} 機率長這樣 → <b>參考就好</b>,再多累積幾次才敢當依據。` };
         return { p, ok: false, icon: '⛔',
-            txt: `${n} 次樣本,純靠運氣有 ${pctTxt} 機率就能出現這種成績 → <b>跟丟銅板差不多,別當依據</b>。` };
+            txt: `${n} 次樣本,${luck}有 ${pctTxt} 機率就能出現這種成績 → <b>跟${Math.abs(b - 0.5) < 1e-9 ? '丟銅板' : '基準'}差不多,別當依據</b>。` };
     },
+
+    // 🎲 V72.2.2 —— 一顆「樣本強度」小徽章,配在**任何**顯示「勝率 X% ・N 次」的旁邊。
+    //   CLAUDE.md V71.8.6 就寫了「任何顯示勝率的地方都該配 `_winRateConfidence`」,
+    //   但實際上全 App **只接了 1 處**(作戰室 hero),打法適配儀那 3 處都沒接 ——
+    //   於是「📐 ABC下降切線突破 勝率 100% ・賺賠比 全贏 ・**3 次**」照樣掛 ⭐主打 + 閃爍。
+    //   (V72.2.2 由 `scripts/page_sweep.mjs` 實際渲染後掃出來的,靜態 grep 看不到。)
+    //   ⭐ 抽成共用函式 = 這個門檻全 App 只有一份,⛔ 別在顯示端各寫一套判斷。
+    _wrTag(winRatePct, n, p0) {
+        const c = this._winRateConfidence?.(winRatePct, n, p0);
+        if (!c) return '';
+        // ✅/⚠️/⛔/⏳ 走燈號鐵則(非顏色圖示表示可信度),⛔ 不用 🔴🟢(那只准表示漲跌方向)
+        const cls = c.ok === true ? 'text-green-300/90 border-green-700/40'
+            : c.ok === null ? 'text-yellow-300/90 border-yellow-700/40'
+            : 'text-orange-300/90 border-orange-700/40';
+        const tip = String(c.txt).replace(/<[^>]+>/g, '').replace(/"/g, '');
+        return ` <span class="text-[9px] font-bold border rounded px-1 ${cls}" title="${tip}">${c.icon}${n < 10 ? ` 只有 ${n} 次` : ''}</span>`;
+    },
+    // 樣本夠不夠「敢下指令」的統一門檻(⛔ 別在各處寫死數字 —— 一改就會有兩套)
+    _wrEnough(n) { return (+n || 0) >= 10; },
 
     // 💰 V71.7.8 手續費折數 + 「一張的淨賺賠」單一真相源。
     //   ⛔ 全 App 只准用這兩支算淨損益;原本「今天這檔怎麼做」卡裡有一份 inline 的同款公式,
@@ -20145,7 +20180,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 : (r.expectancy > 0 ? '<span class="text-[9px] font-bold text-yellow-300">正期望</span>' : '<span class="text-[9px] text-gray-500">參考</span>');
             return `<div class="flex items-center justify-between gap-2 py-1 border-b border-[#21262d]">
                 <div class="text-[12px] font-bold ${nameCls}">${r.key} ${tag}</div>
-                <div class="text-[10px] font-mono ${col}">勝率${wr}% · 賺賠${pl} · 期望${ev}%<span class="text-gray-600"> (${r.count}次)</span></div>
+                <div class="text-[10px] font-mono ${col}">勝率${wr}% · 賺賠${pl} · 期望${ev}%<span class="text-gray-600"> (${r.count}次)</span>${this._wrTag(r.winRate, r.count)}</div>
             </div>`;
         }).join('');
         return `<div class="mt-2.5 bg-[#0d1117] border border-amber-700/40 rounded-lg p-2.5">
@@ -33821,7 +33856,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     const barC = r.expectancy > 0.5 ? 'bg-red-400' : r.expectancy >= 0 ? 'bg-yellow-400' : 'bg-green-400';
                     return `<div onclick="app.showPlaybookPatternHelp(${idx})" class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors">
                         <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star}${todayTag} <span class="text-[9px] text-amber-400/80 font-normal">👆點看怎麼做</span></div>
-                            <div class="text-[9px] text-gray-500 font-mono">勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次</div>
+                            <div class="text-[9px] text-gray-500 font-mono">勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次${this._wrTag(r.winRate, r.count)}</div>
                             <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full ${barC}" style="width:${barW}%"></div></div></div>
                         <div class="font-mono font-black text-right text-sm ${eCol(r.expectancy)}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</div>
                     </div>`;
@@ -33840,9 +33875,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 let nowCard;
                 if (_firedMain.length) {
                     const r0 = _firedMain[0];
-                    nowCard = `<div class="bg-red-900/25 border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
-                        <div class="text-sm font-black text-red-200 mb-0.5">🔔 現在觸發:${_nm(r0)} <span class="text-[10px] font-normal">(這檔主打 +${r0.expectancy.toFixed(1)}%/趟)</span></div>
-                        <div class="text-[10px] text-gray-200 leading-relaxed">今天 K 線出現這檔<b>歷史最會賺</b>的型態 → 可依紀律進場。<b class="text-amber-300">👇 點下面「${_nm(r0)}」那一列</b>會即時算頸線/停損/目標給你。目前 ${_regime}。</div></div>`;
+                    // 🎲 V72.2.2 兩道守門(⛔ 這裡原本無條件寫「可依紀律進場」):
+                    //   ① **樣本守門**:3 次 100% 勝率也會排進 top3 → 不准下進場指令(陷阱 #27)
+                    //   ② **空頭守門**:主結論空頭時只准描述,不准叫人做多
+                    //      —— 這是「講反話」的**第 7 處**,前 6 處見 CLAUDE.md。⛔ 一律走 `_bearGate`,別自己寫判斷式。
+                    const _en = this._wrEnough(r0.count);
+                    const _bg = this._bearGate?.(sym);
+                    const _act = !_en
+                        ? `但這個型態在這檔<b>只出現過 ${r0.count} 次</b> —— <b class="text-orange-300">次數太少還不能當結論</b>,想做只能小量試。`
+                        : _bg
+                            ? `但上方主結論目前是<b class="text-green-300">空頭</b> → <b>先別加碼</b>,這只是短線型態、反彈仍偏減碼,想做只能小量搶短。`
+                            : `→ 可依紀律進場。`;
+                    nowCard = `<div class="bg-red-900/25 border-l-4 ${_en && !_bg ? 'border-red-500' : 'border-yellow-500'} border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+                        <div class="text-sm font-black text-red-200 mb-0.5">🔔 現在觸發:${_nm(r0)} <span class="text-[10px] font-normal">(這檔主打 +${r0.expectancy.toFixed(1)}%/趟・${r0.count} 次)</span>${this._wrTag(r0.winRate, r0.count)}</div>
+                        <div class="text-[10px] text-gray-200 leading-relaxed">今天 K 線出現這檔<b>歷史期望值最高</b>的型態 ${_act}<b class="text-amber-300">👇 點下面「${_nm(r0)}」那一列</b>會即時算頸線/停損/目標給你。目前 ${_regime}。</div></div>`;
                 } else if (_firedAvoid.length) {
                     const r0 = _firedAvoid[0];
                     nowCard = `<div class="bg-green-900/20 border-l-4 border-green-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
@@ -34010,11 +34056,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const h = H[name] || { what: '這個型態的白話說明整理中。', spot: '—', how: '進場=訊號日收盤、停損=跌破5日線或−5%。', tip: '—' };
         // 📖 V42.3 全部型態改用格式化「型態百科」彈窗(比照葛蘭碧),不再用擠一團的 alert
         const sec = (lb, tx, c) => tx ? `<div class="mb-2"><div class="text-[11px] font-bold ${c || 'text-amber-300'} mb-0.5">${lb}</div><div class="text-[11px] text-gray-200 leading-relaxed">${tx}</div></div>` : '';
+        // 🎲 V72.2.2 樣本不足時**不准說「好用、可列主打」** —— 3 次 100% 勝率不是好用,是還不知道。
+        //   ⭐ 但「這招在這檔是賠的」那句照留(⛔ 風險提醒不打折,同多空不對稱鐵則)。
+        const _wrOk = this._wrEnough(r.count);
         const verdict = r.expectancy > 0
-            ? `這檔用「${name}」歷史【正期望值 +${r.expectancy.toFixed(1)}%/趟】,${r.expectancy > 0.5 ? '相對好用、可列主打' : '小賺、可搭配用'}。`
+            ? (_wrOk
+                ? `這檔用「${name}」歷史【正期望值 +${r.expectancy.toFixed(1)}%/趟】,${r.expectancy > 0.5 ? '相對好用、可列主打' : '小賺、可搭配用'}。`
+                : `這檔用「${name}」歷史只出現過 <b>${r.count} 次</b> —— 期望值雖然是正的(+${r.expectancy.toFixed(1)}%/趟),但<b>次數太少還不能當結論</b>,先當參考、要做也只能小量。`)
             : `這檔用「${name}」歷史【負期望值 ${r.expectancy.toFixed(1)}%/趟】→ 這招在這檔不好賺,建議避開、換主打型態。`;
         const vc = r.expectancy > 0 ? 'text-red-300' : 'text-green-300';
-        const stats = `<div class="bg-[#0d1117] border-l-4 ${r.expectancy > 0 ? 'border-red-500' : 'border-green-500'} border-y border-r border-[#30363d] rounded-r p-2 mt-1 text-[10px] leading-relaxed"><b class="text-gray-200">📊 這檔的成績:</b>勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次 ・ 期望值 <b class="${vc}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</b><br><span class="text-gray-300">→ ${verdict}</span></div>`;
+        const _conf = this._winRateConfidence?.(r.winRate, r.count);
+        const stats = `<div class="bg-[#0d1117] border-l-4 ${r.expectancy > 0 ? 'border-red-500' : 'border-green-500'} border-y border-r border-[#30363d] rounded-r p-2 mt-1 text-[10px] leading-relaxed"><b class="text-gray-200">📊 這檔的成績:</b>勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次 ・ 期望值 <b class="${vc}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</b>${_conf ? `<br><span class="${_conf.ok === true ? 'text-green-300/90' : _conf.ok === null ? 'text-yellow-300/90' : 'text-orange-300/90'}">${_conf.icon} ${_conf.txt}</span>` : ''}<br><span class="text-gray-300">→ ${verdict}</span></div>`;
         // 🎯 V51.8 帶入現價 + 你的庫存成本,把打法算成「實際數字」(現價/5MA停損/每張風險/期望金額/庫存停損損益)
         let priceBlock = '';
         try {
@@ -38787,17 +38839,39 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             return { key: p.key, n, wr: n ? Math.round(win / n * 100) : 0, avgGain: n ? gainSum / n : 0, avgDD: n ? ddSum / n : 0, openHiR: n ? Math.round(openHi / n * 100) : 0 };
         }).filter(r => r.n >= 5);
         if (!results.length) return '';
+        // ⭐ V72.2.2 **乾淨對照組**(CLAUDE.md 鐵則:不能只跟 0 比,要跟「隨便挑一天」比)。
+        //   同一條勝負定義(隔天開盤買、盤中最高賣能不能賺 ≥1.5%)套用在**每一天**上 →
+        //   這檔本身波動大的話,基準本來就很高;波動小的基準接近 0。
+        //   ⛔ 沒有這條,就會出現實測抓到的荒謬畫面:0050「🏆 這檔最高勝率:爆量突破 **0%**」
+        //      配上「成功率最高的做法(**鐵律**)」—— 0% 不是最高勝率,是「這招在這檔不能用」。
+        let bn = 0, bw = 0;
+        for (let i = 6; i < arr.length - 1; i++) {
+            const nb = arr[i + 1], on = O(nb);
+            if (on <= 0) continue;
+            bn++; if ((H(nb) - on) / on * 100 >= 1.5) bw++;
+        }
+        const baseWr = bn ? Math.round(bw / bn * 100) : 0;
         const best = results.slice().sort((a, b) => b.wr - a.wr || b.avgGain - a.avgGain)[0];
-        const wrCls = w => w >= 60 ? 'text-red-300' : w >= 45 ? 'text-yellow-300' : 'text-green-300';
-        const rows = results.map(r => `<div class="grid grid-cols-[64px_1fr_auto] gap-1.5 items-center py-1 border-b border-[#21262d] last:border-0 ${r.key === best.key ? 'bg-red-900/10' : ''}">
-            <span class="text-[11px] font-bold text-gray-200">${r.key === best.key ? '🏆' : ''}${r.key}</span>
-            <span class="text-[9px] text-gray-500 font-mono">${r.n}次·衝高+${r.avgGain.toFixed(1)}%·開高${r.openHiR}%</span>
-            <span class="text-[13px] font-mono font-black ${wrCls(r.wr)} text-right">${r.wr}%</span>
+        // 敢不敢下「鐵律」等級的操作指令:樣本要夠(統一門檻)+ **要贏過基準**
+        const bestOk = this._wrEnough(best.n) && best.wr > baseWr;
+        // 🎨 V72.2.2 顏色也改「相對基準」——⛔ 寫死 60/45 會把 2317「47% vs 基準 29%」染成綠色(看起來很差),
+        //    但它其實明顯贏過基準。同 V71.1.6 外資期貨「絕對門檻失真 → 改看相對自己」那條教訓。
+        const wrCls = w => w >= baseWr + 15 ? 'text-red-300' : w > baseWr ? 'text-yellow-300' : 'text-green-300';
+        const rows = results.map(r => `<div class="grid grid-cols-[64px_1fr_auto] gap-1.5 items-center py-1 border-b border-[#21262d] last:border-0 ${(bestOk && r.key === best.key) ? 'bg-red-900/10' : ''}">
+            <span class="text-[11px] font-bold text-gray-200">${(bestOk && r.key === best.key) ? '🏆' : ''}${r.key}</span>
+            <span class="text-[9px] text-gray-500 font-mono">${r.n}次·衝高+${r.avgGain.toFixed(1)}%·開高${r.openHiR}%${r.wr > baseWr ? '' : '·<span class="text-gray-600">沒贏基準</span>'}</span>
+            <span class="text-[13px] font-mono font-black ${wrCls(r.wr)} text-right">${r.wr}%${this._wrTag(r.wr, r.n, baseWr / 100)}</span>
         </div>`).join('');
-        return `<div class="bg-[#161b22] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-2">
+        // ⛔ 沒贏基準 / 樣本不夠 → **不給操作指令**,誠實說「這檔沒有可用的隔日沖做法」。
+        //   (同「寧可不給方向」原則;⛔ 別為了讓卡片好看而硬推一個 0% 的型態。)
+        const verdict = bestOk
+            ? `🏆 <b class="text-red-300">這檔最高勝率:${best.key} ${best.wr}%</b>(${best.n}次,平均衝高 +${best.avgGain.toFixed(1)}%,開高率 ${best.openHiR}%)—— <b>贏過基準 ${baseWr}%</b>。<br><b class="text-cyan-300">成功率最高的做法(鐵律):</b><br>① 只做「${best.key}」型態,別看到紅就追。<br>② 隔天「<b>開高且不破開盤價</b>」才進;開高走低立刻閃。<br>③ 盤中衝高<b>分批停利</b>(這檔平均衝 +${best.avgGain.toFixed(1)}%),別貪到收盤被倒。<br>④ 停損=開盤價下方,單筆虧損≤本金 1%。<br>⑤ 開低多半已被倒,等止穩量縮再看,別接刀。`
+            : `⛔ <b class="text-gray-200">這檔目前沒有值得做的隔日沖型態。</b><br>最好的「${best.key}」只有 <b>${best.wr}%</b>,而這檔<b>隨便挑一天</b>做同一套(開盤買、盤中高點賣賺 ≥1.5%)就有 <b>${baseWr}%</b>${this._wrEnough(best.n) ? '' : `,而且只出現過 <b>${best.n} 次</b>、樣本還不夠`} → <b>等於沒有優勢</b>,做了只是多付手續費。<br><span class="text-gray-400">💡 換一檔波動大、型態明確的股票,或改用波段做法(上方「K線」頁有實測期望值為正的訊號)。</span>`;
+        return `<div class="bg-[#161b22] border-l-4 ${bestOk ? 'border-cyan-500' : 'border-gray-600'} border-y border-r border-[#30363d] rounded-r p-2">
             <div class="text-[11px] font-bold text-cyan-300 mb-1">🎯 隔日沖勝率回測 <span class="text-[9px] text-gray-500 font-normal">這檔近5年·開盤進盤中高點出</span></div>
             ${rows}
-            <div class="text-[10px] text-gray-300 leading-snug mt-1.5 bg-[#0d1117] rounded p-2">🏆 <b class="text-red-300">這檔最高勝率:${best.key} ${best.wr}%</b>(${best.n}次,平均衝高 +${best.avgGain.toFixed(1)}%,開高率 ${best.openHiR}%)。<br><b class="text-cyan-300">成功率最高的做法(鐵律):</b><br>① 只做「${best.key}」型態,別看到紅就追。<br>② 隔天「<b>開高且不破開盤價</b>」才進;開高走低立刻閃。<br>③ 盤中衝高<b>分批停利</b>(這檔平均衝 +${best.avgGain.toFixed(1)}%),別貪到收盤被倒。<br>④ 停損=開盤價下方,單筆虧損≤本金 1%。<br>⑤ 開低多半已被倒,等止穩量縮再看,別接刀。</div>
+            <div class="text-[9px] text-gray-500 font-mono mt-1 pt-1 border-t border-[#21262d]">📏 基準(隨便挑一天做同一套):<b class="text-gray-300">${baseWr}%</b> ・ ${bn} 天 —— <span class="text-gray-600">要贏過它才叫有優勢</span></div>
+            <div class="text-[10px] text-gray-300 leading-snug mt-1.5 bg-[#0d1117] rounded p-2">${verdict}</div>
             <div class="text-[8px] text-gray-600 mt-1 leading-snug">※ 勝率=隔天開盤買、盤中最高賣能賺≥1.5% 的歷史比例(純日K回測近似,未計手續費/滑價,僅供參考非保證)。</div>
         </div>`;
     },
