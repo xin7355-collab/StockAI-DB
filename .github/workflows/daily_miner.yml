@@ -542,7 +542,15 @@ jobs:
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true
           [ -f margin_cache_stock.json ] && git add -f margin_cache_stock.json || true
-          git commit -m "📡 網站更新 ${DATE}（平行宇宙合併 | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
+          # 📋 V72.3.0 先把「這輪到底產出了什麼」寫進 Actions 的 Summary 面板 ——
+          #   ⭐ 那塊不會被 log 的 5,000 行上限截斷。實測部署 job 的最後 5,000 行
+          #      **全部**是 orphan commit 的 `create mode`(4,976 行、只涵蓋 3 秒),
+          #      把 daily_signal_scan / market_stats 的輸出永久擠出可讀視窗
+          #      → CLAUDE.md 鐵則「修完沒生效先看 log」形同失效。
+          #   ⛔ 純診斷,`|| true` 保證不擋部署。
+          python3 scripts/deploy_summary.py "${STOCKS}" "${CHIPS}" "${DATE}" || true
+          # 🔇 `-q`:orphan commit 逐檔印 `create mode` 正是上面那 4,976 行的來源
+          git commit -q -m "📡 網站更新 ${DATE}（平行宇宙合併 | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
           # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock(雙保險,搭配 concurrency group)
           for i in 1 2 3 4 5; do
             if git push origin HEAD:gh-pages --force; then
@@ -583,7 +591,7 @@ jobs:
 
           git add -f data/
           [ -f inst_cache_stock.json ] && git add -f inst_cache_stock.json || true   # 🧹 V69.9.6 P3-7
-          git commit -m "🤖 籌碼快照 ${DATE}（平行宇宙合併，共 ${STOCKS} 檔）"
+          git commit -q -m "🤖 籌碼快照 ${DATE}（平行宇宙合併，共 ${STOCKS} 檔）"   # 🔇 V72.3.0 同上,別再洗版
           # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
           for i in 1 2 3 4 5; do
             if git push origin HEAD:data --force; then
