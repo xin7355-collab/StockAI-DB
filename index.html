@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,26 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.9',
+    _APP_VERSION: 'V72.1.0',
     _CHANGELOG: [
+        { v: 'V72.1.0', dt: '2026-08-04', t: '🎯 「今天最該看的一件事」—— 你要的「只給勝率最高的」', d: [
+            '你說「**只要給我最好、勝率最高的資料**,不要老是所有資料都打出來,根本不知道看哪一個」。',
+            '',
+            '查下來發現一件事:**實測有效的訊號其實早就做好了,但它躲在「進場」頁籤裡** —— 你連問兩次都沒看到,等於白做。',
+            '',
+            '✅ 現在把**期望值最高的那一個**提到總覽「⭐ 重點判讀」**最上方**,也就是你一打開就會看到的位置。長這樣:',
+            '「✅ 底部頸線突破 ・ 實測 500 次・勝率 42%(基準 36%)・期望 +0.6%」',
+            '',
+            '⭐ 幾個刻意的設計:',
+            '・**只放一個**。整份搬過來就又變成資訊爆炸了,其餘完整清單仍在「進場」頁籤,下面有指路。',
+            '・**看多的訊號必須「期望值為正」才准放這裡** —— 那些「常常對、但其實不賺錢」的不該佔你第一眼(這是上一版才發現的問題)。',
+            '・**⛔ 但看空/警示的訊號不設這個門檻** —— 風險提醒就算統計上沒被證實,漏看的代價比多看一眼大得多。',
+            '',
+            '⚠️ 修一個很容易看錯的地方:期望值那個數字對**看多**和**看空**意思是**相反**的。',
+            '看空訊號寫「−1.4%」代表訊號出現後平均跌 1.4% = **這個警示很準**,不是「你會賠 1.4%」。所以看空的現在改寫成「訊號後 10 日平均 −1.4%(跌得越多代表這個警示越準)」,並註明**這是風險提醒,不是賣出指令**。',
+            '',
+            '🔧 順手修:那張卡下方寫死的「實測 250 檔」也還是舊數字(實際已是 500 檔),改成自動帶入。',
+        ] },
         { v: 'V72.0.9', dt: '2026-08-04', t: '🚦 「講反話」的第 4 處(這次在最顯眼的地方)+ 一句自相矛盾的話', d: [
             '再往下查你那張截圖,又抓到兩個:',
             '',
@@ -21994,7 +22012,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                             <span class="text-[11px] ${tone} truncate">${e.grade === 'A' ? '✅' : '⚠️'} ${x.title}</span>
                             <span class="text-[9px] font-mono ${e.exp != null && e.exp > 0 ? 'text-red-300' : 'text-gray-500'} flex-shrink-0">勝率 ${e.w10}%<span class="text-gray-600">・賺賠 ${e.payoff ?? '—'}・期望 ${e.exp != null ? (e.exp >= 0 ? '+' : '') + e.exp + '%' : '—'}</span></span>
                         </div>`; }).join('')}
-                    <div class="text-[8px] text-gray-600 mt-1 leading-snug">實測 250 檔 × 3 年。⭐ 基準是<b class="text-gray-500">隨便挑一天只有 ${bw}%</b>(加權指數市值加權,中位數個股本來就跑輸)→ 所以 41% 已經算贏。非保證、未扣交易成本。</div>
+                    <div class="text-[8px] text-gray-600 mt-1 leading-snug">實測 ${this._SIGNAL_EDGE_META.syms || 500} 檔 × 3 年。⭐ 基準是<b class="text-gray-500">隨便挑一天只有 ${bw}%</b>(加權指數市值加權,中位數個股本來就跑輸)→ 所以 41% 已經算贏。非保證、未扣交易成本。</div>
                 </div>`;
             } else {
                 provenHtml = `<div class="text-[10px] text-gray-500 bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1.5 mb-2">
@@ -28153,6 +28171,49 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
     // ⭐ V69.1.31 總覽第二層:強訊號浮出(只顯「達門檻」的訊號,中性/雜訊自動收合 → 使用者不用消化一堆)
     //   門檻:明日劇本 |技術+籌碼| ≥3、過高濾網非中性、籌碼分 ≥70 或 ≤30。沒有強訊號就整條不顯。
+    // 🎯 V72.1.0 「今天最該看的一件事」——⭐ 使用者:「只要給我最好、勝率最高的資料」。
+    //   實測有效的訊號本來只出現在**總覽→進場**頁籤(踩到陷阱 #32:功能做好了但使用者找不到,
+    //   他連問兩次「怎麼都是一堆資料不知道看哪個」)。
+    //   → 把**期望值最高的那一個**提到「⭐ 重點判讀」最上方(第一眼位置),並指路完整清單在哪。
+    //   ⛔ 只放一個,不整份搬過來(否則兩頁重複 = 又變成資訊爆炸,違反「合併不重複」鐵則)。
+    //   ⛔ 期望值 ≤0 的不放這裡 —— 那是「常對但不賺」,不該佔第一眼(V72.0.3 的教訓);
+    //      它們仍會出現在進場頁籤的完整清單,只是不搶版面。
+    _ovTopEdge(data, sym) {
+        try {
+            // 小快取:_entryCheckup 會跑 40 個偵測器,同一次渲染別跑兩遍
+            const now = Date.now();
+            if (!(this._ecCache && this._ecCache.sym === sym && (now - this._ecCache.at) < 30000)) {
+                this._ecCache = { sym, at: now, r: this._entryCheckup(data) };
+            }
+            const pv = (this._ecCache.r && this._ecCache.r.proven) || [];
+            // 看多要正期望值才准上第一眼;看空/警示不設期望值門檻(⛔ 風險提醒不打折,同 V72.0.6)
+            const pick = pv.find(x => x._e && (x.tone === 'bull' ? (x._e.exp != null && x._e.exp > 0) : true));
+            if (!pick) return null;
+            const e = pick._e, isBull = pick.tone === 'bull';
+            const tone = isBull ? 'text-red-300' : pick.tone === 'bear' ? 'text-green-300' : 'text-yellow-300';
+            // ⚠️ 期望值對**看多**與**看空**的意思相反,⛔ 不可用同一句話講:
+            //   看多:期望 +X% = 這樣進場平均賺 X%
+            //   看空/警示:期望 −X% = 訊號出現後平均**跌** X% = **這個警示有兌現**
+            //   實測踩到:2330/2327 選到「極端超跌・沒量」顯示「期望 −1.433%」→
+            //   使用者會讀成「會賠 1.4%」,但那其實代表這個警示很準。
+            // ⚠️ 圖示也要分:✅ 在燈號鐵則是「安全/通過」,⛔ 不可拿來標警示訊號。
+            const ic = isBull ? '✅' : '⚠️';
+            const expTxt = e.exp == null ? ''
+                : isBull ? `・期望 <b class="${e.exp > 0 ? 'text-red-300' : 'text-gray-500'}">${e.exp > 0 ? '+' : ''}${e.exp}%</b>`
+                : `・訊號後 10 日平均 <b class="${e.exp < 0 ? 'text-green-300' : 'text-gray-500'}">${e.exp > 0 ? '+' : ''}${e.exp}%</b>`;
+            const tail = isBull
+                ? '其餘實測訊號在「進場」頁籤 · 期望值未扣交易成本(來回約 0.44%)'
+                : '這是<b class="text-gray-400">風險提醒</b>不是賣出指令;跌得越多代表這個警示越準。完整清單在「進場」頁籤';
+            return `<div class="text-[11px] leading-snug flex gap-1.5 items-start">`
+                + `<span class="flex-shrink-0">${ic}</span>`
+                + `<span class="min-w-0"><b class="${tone}">${pick.title}</b>`
+                + `<span class="text-[9px] text-gray-500 font-mono ml-1">實測 ${e.n} 次・勝率 ${e.w10}%`
+                + `<span class="text-gray-600">(基準 ${this._SIGNAL_EDGE_META.base_win.toFixed(0)}%)</span>`
+                + `${expTxt}</span>`
+                + `<span class="text-[9px] text-gray-600 block">${tail}</span></span></div>`;
+        } catch (_) { return null; }
+    },
+
     _ovStrongSignals() {
         try {
             const data = this.rawDailyData || [];
@@ -28160,6 +28221,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const sym = this.currentSymbolId;
             const C = +data[data.length - 1].close || 0;
             const rows = [];
+            // 🎯 V72.1.0 實測有效的訊號**置頂**(這是使用者要的「勝率最高的資料」)
+            const _topEdge = this._ovTopEdge(data, sym);
             // 🔮 明日劇本(技術 + 籌碼)強訊號
             const tech = this._tomorrowTechScore(data);
             if (tech) {
@@ -28179,9 +28242,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             // 💼 V69.6.5 籌碼一句話(專業分析師口吻,方向×乾淨度;取代舊「只在極端分數才顯」的碎句)
             const al = this._chipAnalystLine();
             if (al) rows.push({ ic: '💼', cls: al.cls, txt: al.txt });
-            if (!rows.length) return '';
+            if (!rows.length && !_topEdge) return '';
             return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2.5 py-1.5 mt-1.5 space-y-1">
                 <div class="text-[9px] text-gray-500 font-bold">⭐ 重點判讀(其餘細節已收合在「看更多分析」)</div>
+                ${_topEdge ? `<div class="bg-[#161b22] border-l-2 border-cyan-500 pl-2 py-1 rounded-r">
+                    <div class="text-[9px] text-cyan-400/80 font-bold mb-0.5">🎯 今天最該看的一件事(有實測成績的才放這)</div>
+                    ${_topEdge}</div>` : ''}
                 ${rows.map(r => `<div class="text-[11px] leading-snug flex gap-1.5 items-start"><span class="flex-shrink-0">${r.ic}</span><span class="${r.cls}">${r.txt}</span></div>`).join('')}
             </div>`;
         } catch (_) { return ''; }
