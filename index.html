@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2610,6 +2610,8 @@
                             <div id="bubbleCrashEmptyAction" class="text-[11px] text-gray-200 leading-relaxed">--</div>
                         </div>
                     </div>
+                    <!-- 💳 V72.0.3 全市場融資維持率(危機溫度計);條件觸發,無資料完全不顯 -->
+                    <div id="marginHealthBox" class="mt-2.5"></div>
                     <div id="bubbleCrashSectors" class="hidden mt-2.5 bg-green-900/20 border-l-4 border-green-500 p-2.5 rounded-r">
                         <div class="text-green-300 font-bold text-xs mb-1">🎯 假泡沫送分題族群</div>
                         <div id="bubbleCrashSectorList" class="text-[11px] text-gray-100 leading-relaxed">--</div>
@@ -6910,8 +6912,25 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.2',
+    _APP_VERSION: 'V72.0.3',
     _CHANGELOG: [
+        { v: 'V72.0.3', dt: '2026-08-04', t: '⭐ 勝率不是重點,賺賠比才是 + 全市場融資維持率', d: [
+            '這版來自你給的巨人傑逐字稿,他有一句話直接打到我程式的痛點:**「賺賠比遠比勝率重要」**。',
+            '',
+            '**① 我原本的訊號成績單只看勝率,那是不夠的。**',
+            '舉例:一個訊號勝率 60%,但每次賺 1% 賠 3% → 長期還是賠錢。所以我把 500 檔回測的資料重算,每個訊號多算兩個數字:',
+            '・**賺賠比** = 平均賺的幅度 ÷ 平均賠的幅度(大於 1 才算「賺得比賠得多」)',
+            '・**期望值** = 每出現一次,平均會賺(或賠)多少 %',
+            '',
+            '🚨 **重算後的結果讓我自己也嚇一跳**:通過統計檢定的 **42 個 A 級訊號裡,有 36 個期望值是負的**。也就是說「勝率高」跟「會賺錢」根本是兩回事 —— 那些訊號贏的次數多,但輸的時候輸更大。',
+            '→ 所以現在 K 線頁跟總覽的訊號徽章**都會直接顯示期望值**,期望值是負的會用灰字標出來,讓你一眼看出「這個訊號雖然常對,但不值得為它進場」。',
+            '',
+            '**② 全市場融資維持率(推估)**',
+            '他另一段講「跌破 130% 券商電腦會自動強制斷頭,浮額洗乾淨後常見 V 型反彈」。我把全市場 1,827 檔的融資餘額加權算了一次,**目前是 127.3%,已經在斷頭區**。',
+            '⚠️ 但要講清楚三件事:這是我用「融資餘額增加日的均價」**推估**的成本,**不是官方公布值**,而且我的融資資料只回溯到 2026/05 → 請**看趨勢方向**,別對絕對值太認真。',
+            '⛔ 而且他講的「26 年 85% 勝率」**我沒有驗證過**,不背書 —— 卡片上不會出現那個數字。跌破 130% **不等於「跌破就該買」**,那只是「賣壓正在被強制清出」的觀察指標。',
+            '📍 位置:併進「泡沫風控面板」裡(沒開新卡)。',
+        ] },
         { v: 'V72.0.2', dt: '2026-08-03', t: '🫗 買盤竭盡(用籌碼補)+ 回測擴大到 500 檔', d: [
             '你說「買盤竭盡如果缺成交量那就補籌碼」—— 做了,而且他自己就是這樣講的:**「不能看到買盤竭盡你就空,還要再去研究一下籌碼」**。',
             '',
@@ -19015,7 +19034,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //    不走採礦。改了任何 _detectXxx 的判定邏輯,**必須重跑回測更新這張表**。
     // 格式:key -> [分級, n, 10日邊際%, 10日勝率%, p值, 20日邊際%]
     _SIGNAL_EDGE_META: {"base_win":36.025209866083394,"base_med":-1.922543981951068,"syms":500,"n_base":115669,"A":42,"B":19,"C":67},
-    _SIGNAL_EDGE: {"_detectStarPatterns｜晨星轉折":["A",280,1.499,46.8,0.0001,3.014],"_detectVolumeSignals｜換手量(洗籌續攻)":["A",285,1.287,46.3,0.0002,2.207],"_detectFloorBounce｜極端超跌・有量(接刀請看實測)":["A",929,1.231,45.3,0,1.577],"_detectMaDeviation｜負乖離過大":["A",765,1.173,43.9,0,2.077],"_detectStarPatterns｜晨星轉折+爆量":["A",132,1.045,48.5,0.0022,1.819],"_detectVolPriceDiverge｜無量創高(量價背離)":["A",1905,0.988,42.3,0,1.522],"_detectGap｜向上跳空未回補":["A",2277,0.871,41.7,0,1.197],"_detectBottomBreakout｜底部頸線突破(形態)":["A",563,0.862,41.7,0.0029,2.003],"_detectChuLongEntry｜多頭但追高":["A",2129,0.794,42.5,0,0.937],"_detectBlackCandleLevels｜🕯️ 站上長黑K高點(壓力變支撐)":["A",1478,0.788,44,0,1.043],"_detectGranville｜葛蘭碧買3(回測月線支撐)":["A",2784,0.6,40.3,0,0.823],"_detectBlackCandleLevels｜🕯️ 站上長黑K平均成本(空單套牢)":["A",1905,0.56,41.5,0,0.758],"_detectPressureTest｜測壓有壓(前高賣壓)":["A",1234,0.548,41,0.0002,0.839],"_detectKbarStrength｜強中透弱(出貨警訊)":["A",1985,0.501,40.5,0,0.343],"_detectVCP｜🎯 VCP波動收縮·突破在即":["A",1020,0.46,38.8,0.0342,0.907],"_detectVolPriceScenario｜🔴 高檔出貨量":["A",760,0.46,41.7,0.0007,0.265],"_detectReversalConfirm｜高檔轉折確認(開低)":["A",1083,0.454,40.4,0.0015,1.158],"_detectGap｜向上突破缺口(帶量)":["A",2307,0.383,39.4,0.0004,0.022],"_detectChuOverheat｜急漲過熱(高檔留意)":["A",718,0.356,43.3,0,-0.995],"_detectBottomBreakout｜三重底(形態)":["A",692,0.352,39.3,0.04,0.03],"_detectFloorBounce｜極端超跌・沒量(更不該接)":["A",3646,0.338,38.4,0.0016,0.503],"_detectBottomBreakout｜W底(雙重底)(形態)":["A",589,0.305,41.3,0.0049,-0.1],"_detectWyckoffPhase｜🌊 威科夫·拉抬段":["A",4390,0.294,39.5,0,0.208],"_detectKbarStrength｜高檔變盤線":["A",4775,0.289,39.7,0,0.344],"_detectKbarStrength｜長上影線(賣壓)":["A",3220,0.217,40.2,0,0.198],"_detectPocketPivot｜💰 口袋支點(主力偷買)":["A",2731,0.206,38.8,0.0013,0.417],"_detectVolPriceScenario｜🟢 回後買點到了·加碼":["A",1833,0.183,40.2,0.0001,-0.044],"_detectStall｜高檔直漲停頓(力竭前兆)":["A",3124,0.172,38.7,0.001,-0.101],"_detectHeavyResistance｜壓力沉重‧反覆過不了":["A",7889,0.153,37.3,0.0094,0.25],"_detectElliott｜艾略特 第3浪推進(推估)":["A",3086,0.103,38.2,0.0063,-0.147],"_detectKbarStrength｜實體長黑棒(最強空壓)":["A",882,0.101,42.4,0.0001,0.739],"_detectChuShortTrend｜空頭轉多訊號":["A",1979,0.073,38.6,0.0092,-0.099],"_detectChuLongEntry｜多頭回檔等買點":["A",5034,0.065,37.2,0.0419,0.131],"_detectVolPriceScenario｜🟡 量縮洗盤·回後買醞釀":["A",5658,0.051,37.1,0.048,-0.022],"_detectNBottom｜N字底(黃金右腳)":["A",1084,0.034,40,0.0034,-0.138],"_detectChuLongEntry｜高勝率做多買點":["A",397,-0.078,40.6,0.0346,-0.649],"_detectChuOverheat｜連漲過熱停利":["A",1425,-0.231,39.7,0.0021,-0.253],"_detectBlackCandleLevels｜🕯️ 壓在長黑K最低價下(最強壓力)":["A",3462,-0.231,37.4,0.0473,-0.524],"_detectRedCandleLevels｜🕯️ 站穩長紅K高點(多方最強)":["A",3644,-0.425,37.9,0.0099,-0.87],"_detectKbarStrength｜實體長紅棒(最強力道)":["A",1430,-0.469,41.3,0,-0.699],"_detectGap｜疑似竭盡缺口(高檔)":["A",1186,-0.562,41.4,0.0001,-1.04],"_detectMaDeviation｜正乖離過大":["A",1418,-0.7,42.3,0,-1.231],"_detectStarPatterns｜群星夜星+爆量":["B",34,1.549,44.1,0.2091,0.907],"_detectBottomBreakout｜頭肩底(形態)":["B",34,1.431,47.1,0.1236,1.395],"_detectBottomBreakout｜圓弧底(碗型)(形態)":["B",131,0.598,41.2,0.126,3.145],"_detectVolPriceDiverge｜價漲量縮(高檔背離)":["B",773,0.45,38.3,0.1014,0.469],"_detectChuShortTrend｜並排紅K假跌破":["B",663,0.369,38.2,0.1349,-0.107],"_detect2BarReversal｜長紅遭遇(一日封口)":["B",373,0.326,39.9,0.0646,0.489],"_detectMaGoldenCross｜月線黃金交叉季線":["B",1175,0.312,38.2,0.0633,0.06],"_detectGap｜向下跳空未回補":["B",6161,0.29,36.9,0.08,0.207],"_detectObvDivergence｜OBV 頂背離":["B",1672,0.266,37.7,0.0836,0.446],"_detectReversalConfirm｜低檔轉折確認(開高)":["B",5366,0.126,36.6,0.1937,0.181],"_detectGap｜向下缺口已回補":["B",3927,0.092,36.9,0.1308,-0.014],"_detectChuThreeBlack｜整數關卡守住":["B",3137,0.041,36.9,0.1542,0.019],"_detectVolumeSignals｜攻擊量(主力進貨)":["B",9728,-0.039,36.5,0.1658,-0.061],"_detectGap｜向上缺口已回補":["B",3571,-0.073,37.3,0.0585,-0.034],"_detectChuLongEntry｜朱式做多買點(力道偏弱)":["B",1796,-0.076,37.2,0.157,0.474],"_detectPressureTest｜測壓有壓(前高賣壓)+爆量":["B",589,-0.163,38.4,0.1269,0.691],"_detectChuThreeBlack｜連三黑後帶量紅K":["B",1440,-0.263,37.4,0.1394,-0.077],"_detectVolumeSignals｜高檔出貨量":["B",669,-0.28,37.7,0.1988,0.148],"_detect2BarReversal｜長黑遭遇(一日封口)":["B",519,-0.31,38.9,0.0925,0.214],"_detect2BarReversal｜長紅吞噬(主力進貨)":["C",59,0.646,40.7,0.2688,0.819],"_detectWyckoffPhase｜🌊 威科夫·出貨段":["C",219,0.393,35.2,0.6297,0.008],"_detectStarPatterns｜夜星轉折+爆量":["C",45,0.382,37.8,0.4586,-1.39],"_detectWyckoffPhase｜🌊 威科夫·下跌段":["C",7823,0.204,36.2,0.3771,0.256],"_detectTopBreakdown｜頭部頸線跌破(形態)":["C",3147,0.146,36.4,0.3303,0.685],"_detectChuShortTrend｜空頭反彈空點":["C",621,0.128,35.7,0.572,0.385],"_detectKbarStrength｜低檔變盤線":["C",9429,0.103,35.6,0.8064,0.118],"_detectChuShortTrend｜空頭趨勢(別接刀)":["C",9046,0.101,36,0.52,0.074],"_detectConsolidation｜盤整觀望":["C",5373,0.082,35.8,0.6344,0.101],"_detectGranville｜葛蘭碧買1(突破月線)":["C",2054,0.073,36.5,0.3299,-0.146],"_detectMaCluster｜均線糾結(一字底)":["C",13924,0.034,34.6,0.9998,0.02],"_detectChuThreeBlack｜整數關卡失守":["C",1986,-0.022,36,0.517,0.209],"_detectTrendline｜突破下降趨勢線":["C",3176,-0.027,35.9,0.5677,-0.241],"_detectKbarStrength｜長下影線(支撐)":["C",5184,-0.035,35.1,0.9179,0.055],"_detectChuThreeBlack｜反彈空間到月線":["C",25072,-0.046,34.9,0.9999,-0.068],"_detectConsolidation｜三角收斂盤整":["C",6977,-0.065,34.4,0.9978,-0.085],"_detectBoxBreakout｜K線橫盤跌破":["C",7839,-0.094,36.2,0.3752,0.068],"_detect2BarReversal｜低檔母子懷抱":["C",1458,-0.097,36.4,0.3863,0.032],"_detectMaKoudi｜月線(20MA)恐轉弱":["C",3778,-0.098,35.5,0.7565,0.109],"_detectChuShortTrend｜高勝率做空點":["C",206,-0.111,33,0.8349,-0.061],"_detectGranville｜葛蘭碧賣1(跌破月線)":["C",2574,-0.118,34.6,0.9349,0.003],"_detectTrendline｜跌破上升趨勢線":["C",2847,-0.118,36.1,0.4703,-0.012],"_detectChuThreeBlack｜連三黑進行中":["C",8976,-0.134,36.3,0.2995,-0.073],"_detectGranville｜葛蘭碧賣2(假突破跌回)":["C",4597,-0.159,34.5,0.9851,-0.098],"_detectPressureTest｜測撐有撐(前低支撐)":["C",2375,-0.165,33.8,0.9886,-0.504],"_detectChuThreeBlack｜連三黑後紅K但沒量":["C",2911,-0.172,34.6,0.9487,-0.437],"_detectGranville｜葛蘭碧賣3(反彈受阻月線)":["C",5259,-0.194,32.6,1,-0.131],"_detectAvoidFlags｜圖形雜亂(淘汰)":["C",13701,-0.204,34.5,0.9999,-0.105],"_detectKbarStrength｜弱中透強(止跌)":["C",2581,-0.209,32.8,0.9997,-0.292],"_detect2BarReversal｜長紅貫穿(旭日東升)":["C",160,-0.219,34.4,0.6954,0.949],"_detectGranville｜葛蘭碧買2(假跌破站回)":["C",3089,-0.22,34.3,0.9775,-0.14],"_detectFibRetrace｜📐 費波納契回撤買點":["C",5279,-0.23,35,0.9404,-0.052],"_detectWyckoffPhase｜🌊 威科夫·吸籌段":["C",5020,-0.23,32.9,1,-0.231],"_detectVolumeSignals｜強反彈量(非多頭)":["C",690,-0.243,36.4,0.4379,-0.525],"_detectVolumeSignals｜止跌量(量縮窒息)":["C",5353,-0.251,31.9,1,-0.169],"_detectChuShortTrend｜空頭連跌過深(易反彈)":["C",505,-0.262,36.4,0.4404,-0.154],"_detectObvDivergence｜OBV 底背離":["C",2600,-0.269,34.7,0.9248,-0.296],"_detectMaKoudi｜季線(60MA)恐轉弱":["C",2144,-0.319,34,0.9762,-0.085],"_detectMaGoldenCross｜月線死亡交叉季線":["C",1189,-0.335,33.5,0.9693,0.024],"_detectChuOverheat｜爆量隔天跌(賣訊)":["C",4902,-0.349,34.6,0.9822,-0.237],"_detectBlackCandleLevels｜🕯️ 卡在長黑K下半段(空方略強)":["C",3035,-0.349,35.3,0.8062,-0.289],"_detectMaKoudi｜月線(20MA)即將翻揚":["C",3106,-0.381,33.7,0.9967,-0.338],"_detect2BarReversal｜長紅遭遇(一日封口)+爆量":["C",43,-0.381,39.5,0.3694,1.507],"_detectMaKoudi｜季線(60MA)即將翻揚":["C",1845,-0.389,32.7,0.9988,0.154],"_detect2BarReversal｜長黑吞噬(主力出貨)":["C",134,-0.402,32.8,0.8042,0.181],"_detectChuShortTrend｜反彈過半不宜空":["C",1039,-0.443,31.5,0.9991,-0.66],"_detectVolPriceScenario｜⛔ 出貨確認·崩盤風險":["C",727,-0.491,36.3,0.4495,-0.383],"_detectChuShortTrend｜空頭急跌爆量":["C",304,-0.504,35.5,0.5931,-0.009],"_detectVolPriceScenario｜🟣 低檔換手·止跌訊號":["C",688,-0.514,33.7,0.9034,-1.16],"_detect2BarReversal｜高檔母子懷抱":["C",952,-0.545,34.3,0.8669,-0.481],"_detectStarPatterns｜群星晨星":["C",90,-0.55,30,0.9047,-1.185],"_detectBoxBreakout｜K線橫盤突破":["C",7068,-0.552,35,0.9645,-0.489],"_detectElliott｜艾略特 完成五浪(推估)":["C",679,-0.563,34.8,0.7662,-0.095],"_detectChuShortTrend｜空頭轉強(過前高)":["C",70,-0.605,40,0.2824,-1.65],"_detectRedCandleLevels｜🕯️ 回測長紅K上半段(支撐仍在)":["C",3970,-0.616,36.2,0.4169,-0.498],"_detectStarPatterns｜群星晨星+爆量":["C",130,-0.661,36.9,0.4482,-1.364],"_detect2BarReversal｜長黑覆蓋(烏雲罩頂)":["C",553,-0.68,35.3,0.6608,-1.064],"_detectRedCandleLevels｜🕯️ 跌破長紅K最低價(多空易位)":["C",2091,-0.694,36,0.5135,-0.571],"_detectRedCandleLevels｜🕯️ 跌破長紅K平均成本(多方轉弱)":["C",3516,-0.706,34.5,0.9717,-0.856],"_detectStarPatterns｜群星夜星":["C",142,-0.732,31,0.9108,-1.94],"_detectAbcBreakout｜ABC下降切線突破":["C",348,-0.869,34.8,0.7053,-0.626],"_detectChuLongEntry｜回後買上漲‧做頭不建議":["C",326,-0.925,33.4,0.849,-1.252],"_detectStarPatterns｜夜星轉折":["C",221,-0.961,37.1,0.3936,0.294],"_detectPressureTest｜測撐有撐(前低支撐)+量縮":["C",1160,-0.998,27.9,1,-0.611],"_detectVolPriceScenario｜🟢 起漲攻擊量":["C",390,-1.269,31.3,0.9783,-1.289],"_detect2BarReversal｜長黑遭遇(一日封口)+爆量":["C",413,-1.462,34.1,0.8017,-0.821],"_detect2BarReversal｜長黑吞噬(主力出貨)+爆量":["C",114,-2.147,33.3,0.7553,-3.598]},
+    _SIGNAL_EDGE: {"_detectStarPatterns｜晨星轉折":["A",280,1.499,46.8,0.0001,3.014,1.33,0.417],"_detectVolumeSignals｜換手量(洗籌續攻)":["A",285,1.287,46.3,0.0002,2.207,1.23,0.258],"_detectFloorBounce｜極端超跌・有量(接刀請看實測)":["A",929,1.231,45.3,0,1.577,1.08,-0.314],"_detectMaDeviation｜負乖離過大":["A",765,1.173,43.9,0,2.077,1.01,-0.802],"_detectStarPatterns｜晨星轉折+爆量":["A",132,1.045,48.5,0.0022,1.819,1.11,0.152],"_detectVolPriceDiverge｜無量創高(量價背離)":["A",1905,0.988,42.3,0,1.522,1.17,-0.44],"_detectGap｜向上跳空未回補":["A",2277,0.871,41.7,0,1.197,1.26,-0.295],"_detectBottomBreakout｜底部頸線突破(形態)":["A",563,0.862,41.7,0.0029,2.003,1.22,-0.486],"_detectChuLongEntry｜多頭但追高":["A",2129,0.794,42.5,0,0.937,1.14,-0.597],"_detectBlackCandleLevels｜🕯️ 站上長黑K高點(壓力變支撐)":["A",1478,0.788,44,0,1.043,1.19,-0.224],"_detectGranville｜葛蘭碧買3(回測月線支撐)":["A",2784,0.6,40.3,0,0.823,0.91,-1.172],"_detectBlackCandleLevels｜🕯️ 站上長黑K平均成本(空單套牢)":["A",1905,0.56,41.5,0,0.758,1.36,-0.128],"_detectPressureTest｜測壓有壓(前高賣壓)":["A",1234,0.548,41,0.0002,0.839,1.11,-0.798],"_detectKbarStrength｜強中透弱(出貨警訊)":["A",1985,0.501,40.5,0,0.343,1.11,-0.974],"_detectVCP｜🎯 VCP波動收縮·突破在即":["A",1020,0.46,38.8,0.0342,0.907,1.01,-1.119],"_detectVolPriceScenario｜🔴 高檔出貨量":["A",760,0.46,41.7,0.0007,0.265,1.11,-0.999],"_detectReversalConfirm｜高檔轉折確認(開低)":["A",1083,0.454,40.4,0.0015,1.158,1.15,-0.869],"_detectGap｜向上突破缺口(帶量)":["A",2307,0.383,39.4,0.0004,0.022,1.08,-1.069],"_detectChuOverheat｜急漲過熱(高檔留意)":["A",718,0.356,43.3,0,-0.995,1.18,-0.565],"_detectBottomBreakout｜三重底(形態)":["A",692,0.352,39.3,0.04,0.03,1.2,-0.874],"_detectFloorBounce｜極端超跌・沒量(更不該接)":["A",3646,0.338,38.4,0.0016,0.503,0.95,-1.433],"_detectBottomBreakout｜W底(雙重底)(形態)":["A",589,0.305,41.3,0.0049,-0.1,1.04,-1.129],"_detectWyckoffPhase｜🌊 威科夫·拉抬段":["A",4390,0.294,39.5,0,0.208,1.2,-0.896],"_detectKbarStrength｜高檔變盤線":["A",4775,0.289,39.7,0,0.344,1.1,-1.072],"_detectKbarStrength｜長上影線(賣壓)":["A",3220,0.217,40.2,0,0.198,1.12,-0.999],"_detectPocketPivot｜💰 口袋支點(主力偷買)":["A",2731,0.206,38.8,0.0013,0.417,1.04,-1.149],"_detectVolPriceScenario｜🟢 回後買點到了·加碼":["A",1833,0.183,40.2,0.0001,-0.044,1.27,-0.565],"_detectStall｜高檔直漲停頓(力竭前兆)":["A",3124,0.172,38.7,0.001,-0.101,1.01,-1.326],"_detectHeavyResistance｜壓力沉重‧反覆過不了":["A",7889,0.153,37.3,0.0094,0.25,1.05,-1.316],"_detectElliott｜艾略特 第3浪推進(推估)":["A",3086,0.103,38.2,0.0063,-0.147,1.25,-0.871],"_detectKbarStrength｜實體長黑棒(最強空壓)":["A",882,0.101,42.4,0.0001,0.739,1.15,-0.773],"_detectChuShortTrend｜空頭轉多訊號":["A",1979,0.073,38.6,0.0092,-0.099,1.12,-1.205],"_detectChuLongEntry｜多頭回檔等買點":["A",5034,0.065,37.2,0.0419,0.131,1.18,-1.159],"_detectVolPriceScenario｜🟡 量縮洗盤·回後買醞釀":["A",5658,0.051,37.1,0.048,-0.022,1.12,-1.238],"_detectNBottom｜N字底(黃金右腳)":["A",1084,0.034,40,0.0034,-0.138,1.2,-0.793],"_detectChuLongEntry｜高勝率做多買點":["A",397,-0.078,40.6,0.0346,-0.649,1.57,0.316],"_detectChuOverheat｜連漲過熱停利":["A",1425,-0.231,39.7,0.0021,-0.253,1.25,-0.787],"_detectBlackCandleLevels｜🕯️ 壓在長黑K最低價下(最強壓力)":["A",3462,-0.231,37.4,0.0473,-0.524,1.11,-1.399],"_detectRedCandleLevels｜🕯️ 站穩長紅K高點(多方最強)":["A",3644,-0.425,37.9,0.0099,-0.87,1.26,-1.035],"_detectKbarStrength｜實體長紅棒(最強力道)":["A",1430,-0.469,41.3,0,-0.699,1.43,0.011],"_detectGap｜疑似竭盡缺口(高檔)":["A",1186,-0.562,41.4,0.0001,-1.04,1.36,-0.194],"_detectMaDeviation｜正乖離過大":["A",1418,-0.7,42.3,0,-1.231,1.39,0.128],"_detectStarPatterns｜群星夜星+爆量":["B",34,1.549,44.1,0.2091,0.907,0.59,-1.566],"_detectBottomBreakout｜頭肩底(形態)":["B",34,1.431,47.1,0.1236,1.395,1.55,1.211],"_detectBottomBreakout｜圓弧底(碗型)(形態)":["B",131,0.598,41.2,0.126,3.145,0.94,-1.397],"_detectVolPriceDiverge｜價漲量縮(高檔背離)":["B",773,0.45,38.3,0.1014,0.469,0.92,-1.485],"_detectChuShortTrend｜並排紅K假跌破":["B",663,0.369,38.2,0.1349,-0.107,1.03,-1.147],"_detect2BarReversal｜長紅遭遇(一日封口)":["B",373,0.326,39.9,0.0646,0.489,0.98,-1.212],"_detectMaGoldenCross｜月線黃金交叉季線":["B",1175,0.312,38.2,0.0633,0.06,1.01,-1.408],"_detectGap｜向下跳空未回補":["B",6161,0.29,36.9,0.08,0.207,1.01,-1.396],"_detectObvDivergence｜OBV 頂背離":["B",1672,0.266,37.7,0.0836,0.446,1.02,-1.345],"_detectReversalConfirm｜低檔轉折確認(開高)":["B",5366,0.126,36.6,0.1937,0.181,1.01,-1.37],"_detectGap｜向下缺口已回補":["B",3927,0.092,36.9,0.1308,-0.014,1.07,-1.341],"_detectChuThreeBlack｜整數關卡守住":["B",3137,0.041,36.9,0.1542,0.019,1.2,-1.118],"_detectVolumeSignals｜攻擊量(主力進貨)":["B",9728,-0.039,36.5,0.1658,-0.061,1.08,-1.349],"_detectGap｜向上缺口已回補":["B",3571,-0.073,37.3,0.0585,-0.034,1.22,-1.072],"_detectChuLongEntry｜朱式做多買點(力道偏弱)":["B",1796,-0.076,37.2,0.157,0.474,1.24,-0.989],"_detectPressureTest｜測壓有壓(前高賣壓)+爆量":["B",589,-0.163,38.4,0.1269,0.691,1.08,-1.203],"_detectChuThreeBlack｜連三黑後帶量紅K":["B",1440,-0.263,37.4,0.1394,-0.077,1.1,-1.364],"_detectVolumeSignals｜高檔出貨量":["B",669,-0.28,37.7,0.1988,0.148,1.04,-1.914],"_detect2BarReversal｜長黑遭遇(一日封口)":["B",519,-0.31,38.9,0.0925,0.214,1.49,-0.217],"_detect2BarReversal｜長紅吞噬(主力進貨)":["C",59,0.646,40.7,0.2688,0.819,1.11,-0.899],"_detectWyckoffPhase｜🌊 威科夫·出貨段":["C",219,0.393,35.2,0.6297,0.008,0.54,-2.743],"_detectStarPatterns｜夜星轉折+爆量":["C",45,0.382,37.8,0.4586,-1.39,0.82,-2.016],"_detectWyckoffPhase｜🌊 威科夫·下跌段":["C",7823,0.204,36.2,0.3771,0.256,1,-1.446],"_detectTopBreakdown｜頭部頸線跌破(形態)":["C",3147,0.146,36.4,0.3303,0.685,0.94,-1.575],"_detectChuShortTrend｜空頭反彈空點":["C",621,0.128,35.7,0.572,0.385,1.06,-1.258],"_detectKbarStrength｜低檔變盤線":["C",9429,0.103,35.6,0.8064,0.118,0.99,-1.488],"_detectChuShortTrend｜空頭趨勢(別接刀)":["C",9046,0.101,36,0.52,0.074,0.98,-1.493],"_detectConsolidation｜盤整觀望":["C",5373,0.082,35.8,0.6344,0.101,0.94,-1.528],"_detectGranville｜葛蘭碧買1(突破月線)":["C",2054,0.073,36.5,0.3299,-0.146,1.2,-1.14],"_detectMaCluster｜均線糾結(一字底)":["C",13924,0.034,34.6,0.9998,0.02,0.96,-1.588],"_detectChuThreeBlack｜整數關卡失守":["C",1986,-0.022,36,0.517,0.209,1.07,-1.516],"_detectTrendline｜突破下降趨勢線":["C",3176,-0.027,35.9,0.5677,-0.241,1.09,-1.402],"_detectKbarStrength｜長下影線(支撐)":["C",5184,-0.035,35.1,0.9179,0.055,0.98,-1.617],"_detectChuThreeBlack｜反彈空間到月線":["C",25072,-0.046,34.9,0.9999,-0.068,1,-1.613],"_detectConsolidation｜三角收斂盤整":["C",6977,-0.065,34.4,0.9978,-0.085,0.97,-1.647],"_detectBoxBreakout｜K線橫盤跌破":["C",7839,-0.094,36.2,0.3752,0.068,1.02,-1.556],"_detect2BarReversal｜低檔母子懷抱":["C",1458,-0.097,36.4,0.3863,0.032,1.07,-1.394],"_detectMaKoudi｜月線(20MA)恐轉弱":["C",3778,-0.098,35.5,0.7565,0.109,1.03,-1.544],"_detectChuShortTrend｜高勝率做空點":["C",206,-0.111,33,0.8349,-0.061,0.86,-2.034],"_detectGranville｜葛蘭碧賣1(跌破月線)":["C",2574,-0.118,34.6,0.9349,0.003,1.09,-1.457],"_detectTrendline｜跌破上升趨勢線":["C",2847,-0.118,36.1,0.4703,-0.012,0.99,-1.644],"_detectChuThreeBlack｜連三黑進行中":["C",8976,-0.134,36.3,0.2995,-0.073,1,-1.611],"_detectGranville｜葛蘭碧賣2(假突破跌回)":["C",4597,-0.159,34.5,0.9851,-0.098,1.02,-1.547],"_detectPressureTest｜測撐有撐(前低支撐)":["C",2375,-0.165,33.8,0.9886,-0.504,0.85,-1.955],"_detectChuThreeBlack｜連三黑後紅K但沒量":["C",2911,-0.172,34.6,0.9487,-0.437,1.08,-1.63],"_detectGranville｜葛蘭碧賣3(反彈受阻月線)":["C",5259,-0.194,32.6,1,-0.131,0.85,-1.969],"_detectAvoidFlags｜圖形雜亂(淘汰)":["C",13701,-0.204,34.5,0.9999,-0.105,1.01,-1.704],"_detectKbarStrength｜弱中透強(止跌)":["C",2581,-0.209,32.8,0.9997,-0.292,1,-1.752],"_detect2BarReversal｜長紅貫穿(旭日東升)":["C",160,-0.219,34.4,0.6954,0.949,1.23,-1.38],"_detectGranville｜葛蘭碧買2(假跌破站回)":["C",3089,-0.22,34.3,0.9775,-0.14,1.06,-1.669],"_detectFibRetrace｜📐 費波納契回撤買點":["C",5279,-0.23,35,0.9404,-0.052,1.1,-1.471],"_detectWyckoffPhase｜🌊 威科夫·吸籌段":["C",5020,-0.23,32.9,1,-0.231,0.94,-1.781],"_detectVolumeSignals｜強反彈量(非多頭)":["C",690,-0.243,36.4,0.4379,-0.525,0.97,-1.693],"_detectVolumeSignals｜止跌量(量縮窒息)":["C",5353,-0.251,31.9,1,-0.169,0.99,-1.847],"_detectChuShortTrend｜空頭連跌過深(易反彈)":["C",505,-0.262,36.4,0.4404,-0.154,1.13,-1.496],"_detectObvDivergence｜OBV 底背離":["C",2600,-0.269,34.7,0.9248,-0.296,1.09,-1.553],"_detectMaKoudi｜季線(60MA)恐轉弱":["C",2144,-0.319,34,0.9762,-0.085,1.07,-1.578],"_detectMaGoldenCross｜月線死亡交叉季線":["C",1189,-0.335,33.5,0.9693,0.024,1.09,-1.593],"_detectChuOverheat｜爆量隔天跌(賣訊)":["C",4902,-0.349,34.6,0.9822,-0.237,1.08,-1.682],"_detectBlackCandleLevels｜🕯️ 卡在長黑K下半段(空方略強)":["C",3035,-0.349,35.3,0.8062,-0.289,1.3,-1.244],"_detectMaKoudi｜月線(20MA)即將翻揚":["C",3106,-0.381,33.7,0.9967,-0.338,1.02,-1.777],"_detect2BarReversal｜長紅遭遇(一日封口)+爆量":["C",43,-0.381,39.5,0.3694,1.507,1.15,-0.876],"_detectMaKoudi｜季線(60MA)即將翻揚":["C",1845,-0.389,32.7,0.9988,0.154,1.07,-1.679],"_detect2BarReversal｜長黑吞噬(主力出貨)":["C",134,-0.402,32.8,0.8042,0.181,1.37,-1.573],"_detectChuShortTrend｜反彈過半不宜空":["C",1039,-0.443,31.5,0.9991,-0.66,0.93,-2.084],"_detectVolPriceScenario｜⛔ 出貨確認·崩盤風險":["C",727,-0.491,36.3,0.4495,-0.383,1.15,-1.505],"_detectChuShortTrend｜空頭急跌爆量":["C",304,-0.504,35.5,0.5931,-0.009,1.17,-1.485],"_detectVolPriceScenario｜🟣 低檔換手·止跌訊號":["C",688,-0.514,33.7,0.9034,-1.16,1.27,-1.528],"_detect2BarReversal｜高檔母子懷抱":["C",952,-0.545,34.3,0.8669,-0.481,1.29,-1.287],"_detectStarPatterns｜群星晨星":["C",90,-0.55,30,0.9047,-1.185,1.51,-1.407],"_detectBoxBreakout｜K線橫盤突破":["C",7068,-0.552,35,0.9645,-0.489,1.18,-1.461],"_detectElliott｜艾略特 完成五浪(推估)":["C",679,-0.563,34.8,0.7662,-0.095,1.17,-1.656],"_detectChuShortTrend｜空頭轉強(過前高)":["C",70,-0.605,40,0.2824,-1.65,1.22,-0.689],"_detectRedCandleLevels｜🕯️ 回測長紅K上半段(支撐仍在)":["C",3970,-0.616,36.2,0.4169,-0.498,1.34,-1.027],"_detectStarPatterns｜群星晨星+爆量":["C",130,-0.661,36.9,0.4482,-1.364,1.41,-0.742],"_detect2BarReversal｜長黑覆蓋(烏雲罩頂)":["C",553,-0.68,35.3,0.6608,-1.064,1.4,-1.073],"_detectRedCandleLevels｜🕯️ 跌破長紅K最低價(多空易位)":["C",2091,-0.694,36,0.5135,-0.571,1.16,-1.468],"_detectRedCandleLevels｜🕯️ 跌破長紅K平均成本(多方轉弱)":["C",3516,-0.706,34.5,0.9717,-0.856,1.26,-1.444],"_detectStarPatterns｜群星夜星":["C",142,-0.732,31,0.9108,-1.94,1.34,-1.811],"_detectAbcBreakout｜ABC下降切線突破":["C",348,-0.869,34.8,0.7053,-0.626,1.36,-1.102],"_detectChuLongEntry｜回後買上漲‧做頭不建議":["C",326,-0.925,33.4,0.849,-1.252,1.85,-0.319],"_detectStarPatterns｜夜星轉折":["C",221,-0.961,37.1,0.3936,0.294,1.12,-1.484],"_detectPressureTest｜測撐有撐(前低支撐)+量縮":["C",1160,-0.998,27.9,1,-0.611,0.75,-2.719],"_detectVolPriceScenario｜🟢 起漲攻擊量":["C",390,-1.269,31.3,0.9783,-1.289,0.92,-2.607],"_detect2BarReversal｜長黑遭遇(一日封口)+爆量":["C",413,-1.462,34.1,0.8017,-0.821,1.33,-1.436],"_detect2BarReversal｜長黑吞噬(主力出貨)+爆量":["C",114,-2.147,33.3,0.7553,-3.598,1.29,-2.07]},
 
     // 查某個訊號的實測成績(查不到回 null → 前端一律當「未驗證」處理,⛔ 不假裝有成績)
     // 收訊號時順便記下「是哪個偵測器產生的」→ 才查得到它的實測成績
@@ -19039,6 +19058,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             + '看多的訊號如果沒被驗證過,計分時只算三折(不該拿沒驗過的東西當進場理由)。\n'
             + '但【看空/警示的訊號一律不打折】—— 風險提醒就算統計上沒被證實,\n'
             + '忽略它的代價(住套房)遠大於多看一眼的代價。\n\n'
+            + '💰【最重要的一課:賺賠比 > 勝率】\n'
+            + '有位交易員說「賺賠比遠比勝率來得重要 —— 你就算錯了十次,只要那一次看對來個大行情就夠了」。\n'
+            + '我把這句話拿去驗,結果【打臉了我自己上一版】:\n'
+            + `A 級訊號有 ${m.A || 0} 個,但其中【36 個的「期望值」其實是負的】。\n`
+            + '為什麼?因為勝率和中位數都只看「一半的情況」,沒有算「賠的時候賠多大」。\n\n'
+            + '所以現在每個訊號都會同時給你:\n'
+            + '・勝率 = 贏過大盤的比例\n'
+            + '・賺賠比 = 平均賺多少 ÷ 平均賠多少(>1 才是賺的比賠的大)\n'
+            + '・期望值 = 綜合以上兩者,【這才是最終該看的數字】\n'
+            + '→ 期望值為正才標 ✅,負的標 ➖(灰色),就算它是 A 級也一樣。\n\n'
             + '⚠️ 這是歷史統計,不是保證;而且【沒有扣交易成本】。');
         this.vibrate?.(20);
     },
@@ -19051,12 +19080,109 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) {}
     },
 
+    // 💳 V72.0.3 全市場「融資維持率」—— 危機時刻的溫度計(採礦端 market_stats.json 的 margin)
+    //
+    // 來源:使用者提供的巨人傑逐字稿【恐慌中獲利:130% 融資市場反彈策略】:
+    //   「整戶擔保維持率 = 股票市值 ÷ 融資金額。**跌破 130% 券商追繳,不補隔天電腦強制賣掉**
+    //     —— 這是硬性規定,跟人性恐慌無關。」
+    //   「全市場跌破 130% → 斷頭令一個一個爆 → 券商電腦無情拋售 → 浮額清乾淨 →
+    //     賣壓突然消失 → V 型反彈。這叫**強制去槓桿**。」
+    //   SOP:①接近 **140%** 開始注意 ②挑維持率低於 130% 的股票 ③⛔**不要第一天就衝**,
+    //       要等「長下影線 K 棒」或「隔天強力紅 K」
+    //
+    // ⭐ 為什麼值得做:個股版 `_marginCallState` 早就有,但那是**單股**;
+    //    **全市場整體水位**是完全不同的東西,是判斷「系統性風險/去槓桿到哪了」的關鍵,我原本沒有。
+    //
+    // ⚠️⚠️ 三個誠實揭露(⛔ 文案不可省):
+    //   ① 這是**我自己推估的**,不是官方公布值。成本用「融資餘額增加日的加權均價」推,
+    //      而 `margin_balance` 只回溯到 2026/05 → **更早進場的部位成本抓不到**。
+    //      ⚠️ 偏誤方向:近期若下跌,舊部位成本其實更高 → 我的推估會**偏高**(真實可能更低)。
+    //   ② 融資成數用 6 成概估;個股被降成數/停資時會失準。
+    //   ③ ⛔ 他宣稱「26 年回測勝率 85%、6 個月 27.4%」—— **那是他的數字,我沒有驗證過**,
+    //      我的融資資料窗口(約 55 個交易日)根本不夠驗那種等級的崩盤。
+    //      → 只顯示**現在的水位與機制**,⛔ 絕不可引用那個勝率。
+    _marginHealth() {
+        try {
+            const m = this._marketStats && this._marketStats.margin;
+            if (!m || !(+m.ratio > 0)) return null;
+            const r = +m.ratio;
+            const lv = r < 130 ? { ic: '🚨', t: '已跌破 130%(斷頭區)', c: 'text-orange-300', b: 'border-orange-500' }
+                : r < 140 ? { ic: '⚠️', t: '接近危險線(140% 以下)', c: 'text-yellow-300', b: 'border-yellow-500' }
+                : r < 165 ? { ic: '➖', t: '正常區間', c: 'text-gray-300', b: 'border-gray-600' }
+                : { ic: '✅', t: '槓桿健康', c: 'text-gray-300', b: 'border-gray-600' };
+            // 近期趨勢(歷史有幾筆就用幾筆)
+            const h = (this._marketStats.margin_hist || []).filter(x => x && +x.r > 0);
+            let trend = null;
+            if (h.length >= 6) {
+                const now = +h[h.length - 1].r, ago = +h[Math.max(0, h.length - 6)].r;
+                trend = +(now - ago).toFixed(1);
+            }
+            return { ratio: r, lv, n: m.n, lots: m.lots, valE: m.val_e, amtE: m.amt_e,
+                     date: m.date, trend, days: h.length };
+        } catch (_) { return null; }
+    },
+    _marginHealthHtml() {
+        const m = this._marginHealth();
+        if (!m) return '';
+        const tTxt = m.trend == null ? ''
+            : ` ・近 5 日 <b class="font-mono ${m.trend >= 0 ? 'text-red-300' : 'text-green-300'}">${m.trend >= 0 ? '+' : ''}${m.trend}pp</b>`;
+        return `<div class="bg-[#161b22] border-l-4 ${m.lv.b} border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[12px] font-black text-gray-100">💳 全市場融資維持率<span class="text-[9px] text-gray-500 font-normal ml-1">(推估)</span></span>
+                <button onclick="event.stopPropagation();app._showMarginHelp()" class="text-[9px] text-gray-600 hover:text-blue-300">ⓘ 這是什麼</button>
+            </div>
+            <div class="flex items-end gap-3 mb-1">
+                <div class="text-3xl font-black font-mono ${m.lv.c} leading-none">${m.ratio.toFixed(1)}<span class="text-base">%</span></div>
+                <div class="text-[11px] ${m.lv.c} font-bold pb-0.5">${m.lv.ic} ${m.lv.t}</div>
+            </div>
+            <div class="text-[10px] text-gray-400 leading-relaxed">
+                融資部位現值約 <b class="font-mono">${(+m.valE).toLocaleString()}</b> 億 ÷ 推估融資金額 <b class="font-mono">${(+m.amtE).toLocaleString()}</b> 億${tTxt}
+                <span class="text-gray-600">(${m.n} 檔・${this._dW ? this._dW(m.date) : m.date})</span>
+            </div>
+            <div class="text-[10px] text-gray-300 mt-1.5 leading-relaxed">${
+                m.ratio < 130
+                ? '⚠️ <b>低於 130% 是什麼意思</b>:融資戶的擔保品跌到這條線,券商會打電話追繳;不補錢隔天<b>電腦就自動強制賣掉</b>(斷頭)。所以這個區間會出現「跟情緒無關的機械式賣壓」。歷史上這種強制去槓桿把浮額清乾淨之後,常常跟著一波反彈 —— 但<b class="text-gray-100">⛔ 那不是「跌破就該買」</b>,見下方說明。'
+                : m.ratio < 140
+                ? '⚠️ 接近 130% 那條線了。跌破的話會開始出現「券商電腦自動斷頭」的機械式賣壓,跟情緒無關。先降低槓桿、別再融資加碼。'
+                : '➖ 目前融資槓桿在正常區間,沒有系統性的斷頭壓力。'
+            }</div>
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">⚠️ <b class="text-gray-500">這是我自己推估的,不是官方公布值</b>:成本用「融資餘額增加日的加權均價」推,而融資資料只回溯到 2026/05,更早進場的部位成本抓不到(近期下跌時我的推估會<b class="text-gray-500">偏高</b>,真實可能更低)。融資成數用 6 成概估。<b class="text-gray-500">請看趨勢方向,別跟官方數字逐位元對。</b></div>
+        </div>`;
+    },
+    _showMarginHelp() {
+        alert('【全市場融資維持率】\n\n'
+            + '融資維持率 = 你用融資買的股票現在值多少 ÷ 你跟券商借的錢。\n\n'
+            + '為什麼 130% 這條線很重要?\n'
+            + '因為那是台股的【硬性規定】:跌破 130%,券商會打電話叫你補錢;\n'
+            + '不補的話,隔天【電腦就自動把你的股票強制賣掉】(斷頭)。\n'
+            + '⭐ 重點是「自動、強制」——這種賣壓跟人性恐慌無關,是規則造成的。\n\n'
+            + '所以整個市場的維持率跌破 130% 時,會發生:\n'
+            + '斷頭令一個一個爆 → 券商電腦無情拋售 → 被迫賣的人清光 → 賣壓突然消失。\n'
+            + '歷史上這種「強制去槓桿」結束後,常常跟著一波反彈。\n\n'
+            + '⛔【但千萬不要理解成「跌破就該買」】\n'
+            + '① 我【沒有驗證過】這個策略的勝率——我的融資資料只有 3 個月,\n'
+            + '   根本不夠驗 2000/2008/2020 那種等級的崩盤。網路上流傳的「85% 勝率」\n'
+            + '   不是我算的,我不敢背書。\n'
+            + '② 就算要接,也【不要第一天就衝】。要等市場自己表態——\n'
+            + '   例如出現長下影線的 K 棒,或隔天開出強力紅 K,\n'
+            + '   代表那批強制賣壓已經被更有錢的人接走了。\n'
+            + '③ 這種機會 2~3 年才一次。市場好好的時候用這招,那不是撿鑽石,是接刀子。\n\n'
+            + '⚠️ 我這個數字是【自行推估】不是官方值,方法與偏差寫在卡片下方。請看趨勢,別看絕對值。');
+        this.vibrate?.(20);
+    },
+
     _sigEdge(detName, title) {
         try {
             const k = `${detName}｜${String(title || '').slice(0, 28)}`;
             const v = this._SIGNAL_EDGE[k];
             if (!v) return null;
-            return { grade: v[0], n: v[1], e10: v[2], w10: v[3], p: v[4], e20: v[5] };
+            // ⭐ V72.0.3 加 payoff(賺賠比)與 exp(期望值)——
+            //   巨人傑逐字稿:「**賺賠比遠比勝率來得重要**,錯十次只要那一次大行情就夠了」。
+            //   實測證實他說得對:依期望值排序跟依勝率排序**結果不一樣**,
+            //   而且有些勝率/邊際看起來不錯的訊號,期望值其實是**負的**(賠的時候賠很大)。
+            //   ⛔ 所以顯示層不可以只給勝率。
+            return { grade: v[0], n: v[1], e10: v[2], w10: v[3], p: v[4], e20: v[5],
+                     payoff: v[6] ?? null, exp: v[7] ?? null };
         } catch (_) { return null; }
     },
 
@@ -19521,7 +19647,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const _card = (s, showEdge) => { const t = sty[s.tone] || sty.flat; const _tt = String(s.title || '').replace(/'/g, '’');
             const e = s._e;
             // 勝率徽章:⭐ 基準是 34.6%(不是 50%),所以 41% 已經是贏基準 → 一定要把基準寫出來
-            const badge = (showEdge && e) ? `<span class="ml-1 text-[9px] font-mono px-1 rounded ${e.grade === 'A' ? 'bg-red-900/40 text-red-300' : 'bg-amber-900/30 text-amber-300'}" title="實測 ${e.n} 次:10 日超額報酬中位 ${e.e10 >= 0 ? '+' : ''}${e.e10}%、勝率 ${e.w10}%(隨便挑一天只有 ${this._SIGNAL_EDGE_META.base_win.toFixed(1)}%);p=${e.p}">${e.grade === 'A' ? '✅' : '⚠️'} 勝率 ${e.w10}%・${e.n} 次</span>` : '';
+            // ⭐ V72.0.3 徽章同時給勝率**與期望值** —— 巨人傑:「賺賠比遠比勝率重要」。
+            //   實測打臉了我自己上一版:42 個 A 級裡有 **36 個期望值是負的**
+            //   (中位數為正 ≠ 平均為正,因為賠的時候賠很大)。
+            //   ⛔ 所以只掛「勝率 46%」會誤導 → 期望值為負時必須用不同顏色標出來。
+            const expOk = e && e.exp != null && e.exp > 0;
+            const badge = (showEdge && e) ? `<span class="ml-1 text-[9px] font-mono px-1 rounded ${expOk ? 'bg-red-900/40 text-red-300' : 'bg-gray-700/50 text-gray-400'}" title="實測 ${e.n} 次:10 日超額中位 ${e.e10 >= 0 ? '+' : ''}${e.e10}%、勝率 ${e.w10}%(基準 ${this._SIGNAL_EDGE_META.base_win.toFixed(1)}%)、賺賠比 ${e.payoff ?? '—'}、期望值 ${e.exp ?? '—'}%;p=${e.p}">${expOk ? '✅' : '➖'} 勝率 ${e.w10}%${e.exp != null ? ` ・期望 ${e.exp >= 0 ? '+' : ''}${e.exp}%` : ''}</span>` : '';
             return `<div onclick="app.showKbarSignalHelp('${_tt}')" class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5 cursor-pointer hover:bg-white/5 transition-colors">
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}${badge}<span class="text-[9px] text-amber-400/70 font-normal ml-1">👆教學</span></div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; };
@@ -21701,7 +21832,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     ${pv.map(x => { const e = x._e; const tone = x.tone === 'bull' ? 'text-red-300' : x.tone === 'bear' ? 'text-green-300' : 'text-yellow-300';
                         return `<div class="flex items-center justify-between gap-2 py-0.5">
                             <span class="text-[11px] ${tone} truncate">${e.grade === 'A' ? '✅' : '⚠️'} ${x.title}</span>
-                            <span class="text-[9px] font-mono text-gray-400 flex-shrink-0">勝率 ${e.w10}%<span class="text-gray-600">・${e.n} 次</span></span>
+                            <span class="text-[9px] font-mono ${e.exp != null && e.exp > 0 ? 'text-red-300' : 'text-gray-500'} flex-shrink-0">勝率 ${e.w10}%<span class="text-gray-600">・賺賠 ${e.payoff ?? '—'}・期望 ${e.exp != null ? (e.exp >= 0 ? '+' : '') + e.exp + '%' : '—'}</span></span>
                         </div>`; }).join('')}
                     <div class="text-[8px] text-gray-600 mt-1 leading-snug">實測 250 檔 × 3 年。⭐ 基準是<b class="text-gray-500">隨便挑一天只有 ${bw}%</b>(加權指數市值加權,中位數個股本來就跑輸)→ 所以 41% 已經算贏。非保證、未扣交易成本。</div>
                 </div>`;
@@ -32093,6 +32224,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 📉 真泡沫 vs 假泡沫判讀(純算式,不打 Groq)
     _updateBubbleCrashCard() {
+        // 💳 V72.0.3 全市場融資維持率(併進泡沫風控面板 —— 兩者都是「系統性風險」,⛔ 不另開卡)
+        try {
+            const _mb = document.getElementById('marginHealthBox');
+            if (_mb) _mb.innerHTML = this._marginHealthHtml();
+        } catch (_) {}
         // V21.8 — 改操作內部子 div #bubbleCrashSection(整卡 #bubbleCrashCard 永遠 visible 顯 4 維度燈號)
         const section = document.getElementById('bubbleCrashSection');
         if (!section) return;

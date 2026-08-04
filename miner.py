@@ -1277,6 +1277,115 @@ def aggregate_industry_pe(fund_cache: dict, industry_map: dict) -> dict:
 
 
 # V16.2 — 全市場 P/B 分位數(供前端動態判斷取代固定 <2/>5 門檻)
+def _mf(v) -> float:
+    """寬鬆轉 float(欄位可能是 None / 空字串 / 帶逗號的字串);轉不動回 0.0"""
+    try:
+        if v is None:
+            return 0.0
+        return float(str(v).replace(',', '').strip() or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def compute_market_margin_health() -> dict:
+    """💳 V72.0.3 全市場「融資維持率」—— 危機時刻最關鍵的溫度計,我原本完全沒有。
+
+    來源:使用者提供的巨人傑逐字稿【恐慌中獲利:130% 融資市場反彈策略】:
+      「整戶擔保維持率 = 股票市值 ÷ 融資金額。**跌破 130% 券商就打電話追繳,
+        不補隔天電腦自動強制賣掉** —— 這跟人性恐慌無關,是硬性規定。」
+      「市場一跌破 130%,全市場斷頭令一個一個爆,券商電腦無情自動拋售;
+        等被迫賣出的浮額清乾淨,賣壓突然消失 → V 型反彈。這叫**強制去槓桿**。」
+      SOP:①接近 **140%** 開始注意 ②從維持率低於 130% 的股票挑觀察名單
+          ③⭐**不要第一天就衝**,要等「長下影線 K 棒」或「隔天強力紅 K」
+
+    ⭐ 為什麼值得做:個股版 `_marginCallState`(前端)早就有,但那是**單股**推估;
+       他講的是**全市場整體**水位 —— 那是完全不同的東西,而且是判斷「系統性風險」的關鍵。
+
+    📐 算法(跟前端 `_marginCallState` 同一套,⛔ 不另立第二套):
+       維持率 = 融資部位現值 ÷ 融資金額
+              = Σ(融資張數 × 現價) ÷ Σ(融資張數 × 推估成本 × 融資成數)
+       推估成本用「**融資餘額增加日**的加權均價」(只有增加的那幾天才是新進場的融資)。
+
+    ⚠️⚠️ 誠實揭露(必須跟著數字一起輸出,⛔ 不可省):
+       ① `margin_balance` **只回溯到 2026/05**(約 55 個交易日)→ 更早進場的融資部位
+          成本抓不到,推估會偏向「近期成本」。窗口拉長後會更準。
+       ② 融資成數用 6 成(上市)概估;個股被降成數/停資時會失準。
+       ③ ⛔ 他宣稱「26 年回測勝率 85%、6 個月報酬 27.4%」—— **那是他的數字,我沒有驗證過**,
+          我的融資資料窗口根本不夠驗(需要涵蓋 2000/2008/2020 那種等級的崩盤)。
+          → 前端只能顯示**現在的水位與機制說明**,⛔ 不可引用那個勝率。
+    """
+    data_dir = Path(DATA_DIR)
+    if not data_dir.exists():
+        return {}
+    tot_val = 0.0        # 融資部位現值(元)
+    tot_amt = 0.0        # 推估融資金額(元)
+    n_ok = n_skip = 0
+    tot_lots = 0.0
+    for f in sorted(data_dir.glob('*.json')):
+        sym = f.stem
+        if not (sym.isdigit() and 4 <= len(sym) <= 6):
+            continue
+        try:
+            rows = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        if not isinstance(rows, list) or len(rows) < 10:
+            continue
+        mrows = [r for r in rows if _mf(r.get('margin_balance')) > 0]
+        if len(mrows) < 8:
+            n_skip += 1
+            continue
+        # 成本推估:只算「餘額增加」的那幾天(= 新進場的融資),權重 = 增加量
+        wsum = psum = 0.0
+        for i in range(1, len(mrows)):
+            dq = _mf(mrows[i].get('margin_balance')) - _mf(mrows[i - 1].get('margin_balance'))
+            if dq <= 0:
+                continue
+            h, l, c = _mf(mrows[i].get('high')), _mf(mrows[i].get('low')), _mf(mrows[i].get('close'))
+            px = (h + l + c) / 3 if (h > 0 and l > 0 and c > 0) else c
+            if px <= 0:
+                continue
+            wsum += dq
+            psum += dq * px
+        if wsum <= 0:
+            n_skip += 1
+            continue
+        cost = psum / wsum
+        last = mrows[-1]
+        price = _mf(last.get('close'))
+        lots = _mf(last.get('margin_balance'))
+        if price <= 0 or lots <= 0 or cost <= 0:
+            n_skip += 1
+            continue
+        shares = lots * 1000
+        tot_val += price * shares
+        tot_amt += cost * shares * 0.6      # 上市融資 6 成(概估)
+        tot_lots += lots
+        n_ok += 1
+
+    if n_ok < 200 or tot_amt <= 0:
+        print(f"  ⏭️ 全市場融資維持率:有效樣本僅 {n_ok} 檔(<200)→ 不寫,保留舊值")
+        return {}
+    ratio = tot_val / tot_amt * 100
+    lvl = ('danger' if ratio < 130 else 'warn' if ratio < 140
+           else 'normal' if ratio < 165 else 'high')
+    out = {
+        'ratio': round(ratio, 1),
+        'level': lvl,
+        'n': n_ok,
+        'skipped': n_skip,
+        'lots': int(round(tot_lots)),
+        'val_e': round(tot_val / 1e8, 1),      # 融資部位現值(億)
+        'amt_e': round(tot_amt / 1e8, 1),      # 推估融資金額(億)
+        'date': str((_recent_finmind_dates(1) or [''])[0] or ''),
+        # ⚠️ 誠實欄位:讓前端與日後的我都看得到這個估計的可信度
+        'note': 'margin_balance 只回溯到 2026/05,成本推估偏向近期;融資成數用 6 成概估',
+    }
+    print(f"  💳 全市場融資維持率:{ratio:.1f}%({lvl})・{n_ok} 檔有效/{n_skip} 略過"
+          f"・融資現值 {out['val_e']:,.0f} 億 vs 推估金額 {out['amt_e']:,.0f} 億")
+    return out
+
+
 def compute_market_pb_percentiles(fund_cache: dict) -> dict:
     """全市場 P/B 分位數。樣本 < 50 回 {}(呼叫端就不寫檔,保留舊值)。
 
@@ -3462,6 +3571,24 @@ def fetch_broker_chips():
                             try: existing_ms = json.loads(ms_path.read_text(encoding='utf-8'))
                             except Exception: pass
                         existing_ms['pb'] = pb_pct
+                        # 💳 V72.0.3 全市場融資維持率 + 逐日歷史(危機溫度計;接近 140% 就要注意)
+                        try:
+                            mh = compute_market_margin_health()
+                            if mh:
+                                existing_ms['margin'] = mh
+                                # 歷史:一天一筆(同日重跑覆蓋),留 500 筆
+                                _h = existing_ms.get('margin_hist')
+                                if not isinstance(_h, list):
+                                    _h = []
+                                _d = mh.get('date') or datetime.now(TW).strftime('%Y-%m-%d')
+                                _rec = {'d': _d, 'r': mh['ratio'], 'n': mh['n']}
+                                if _h and _h[-1].get('d') == _d:
+                                    _h[-1] = _rec
+                                else:
+                                    _h.append(_rec)
+                                existing_ms['margin_hist'] = _h[-500:]
+                        except Exception as _e_mh:
+                            print(f"  ⚠️ 全市場融資維持率計算失敗(不影響其他):{str(_e_mh)[:80]}")
                         ms_path.write_text(json.dumps(existing_ms, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
                         print(f"  💾 全市場 P/B 分位 → data/market_stats.json(P25/P50/P75/P90 = {pb_pct['p25']}/{pb_pct['p50']}/{pb_pct['p75']}/{pb_pct['p90']},{pb_pct['count']} 檔)")
                     else:

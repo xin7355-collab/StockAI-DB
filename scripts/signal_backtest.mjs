@@ -177,6 +177,22 @@ for (const [key, a] of acc) {
         r[`w${h}`] = +winPct(a.hits[h]).toFixed(1);
         r[`e${h}`] = +(med(a.hits[h]) - baseMed[h]).toFixed(3);   // 邊際
     }
+    // ⭐ V72.0.3 賺賠比 + 期望值 —— 巨人傑逐字稿:「**賺賠比遠比勝率來得重要**,
+    //   代表你就算錯了十次,只要那一次看對來個驚天動地的大行情就足夠了」。
+    //   這點對我剛做的成績表是**方法論層級的修正**:只報勝率會漏掉「賠小賺大」型的訊號。
+    //   ・payoff  = 平均獲利 ÷ 平均虧損(>1 = 賺的比賠的大)
+    //   ・exp     = 期望值 = 勝率×平均獲利 − 敗率×平均虧損(⭐ 這才是最終該看的數字)
+    //   ⚠️ 都是**超額報酬**口徑(已扣同期加權),所以「獲利/虧損」是相對大盤而言。
+    {
+        const v = a.hits[10];
+        const wins = v.filter(x => x > 0), losses = v.filter(x => x <= 0);
+        const aw = wins.length ? wins.reduce((s, x) => s + x, 0) / wins.length : 0;
+        const al = losses.length ? Math.abs(losses.reduce((s, x) => s + x, 0) / losses.length) : 0;
+        r.aw = +aw.toFixed(3);
+        r.al = +al.toFixed(3);
+        r.payoff = al > 0 ? +(aw / al).toFixed(2) : null;
+        r.exp = +((wins.length / v.length) * aw - (losses.length / v.length) * al).toFixed(3);
+    }
     rows.push(r);
 }
 // ⭐ 用**實測基準勝率**當虛無假設(不是 50%)——
@@ -203,11 +219,23 @@ const fmt = r => `${(r.grade + ' ' + r.key).slice(0, 46).padEnd(48)}`
     + `${((r.e10 >= 0 ? '+' : '') + r.e10.toFixed(2) + '%').padStart(9)}`
     + `${(r.w10.toFixed(1) + '%').padStart(8)}`
     + `${r.p.toFixed(3).padStart(8)}`;
-log(`${'級 訊號'.padEnd(48)}${'n'.padStart(5)}${'10日邊際'.padStart(9)}${'勝率'.padStart(8)}${'p值'.padStart(8)}`);
-for (const r of withP.slice(0, 30)) log(fmt(r));
+log(`${'級 訊號'.padEnd(48)}${'n'.padStart(5)}${'10日邊際'.padStart(9)}${'勝率'.padStart(8)}${'p值'.padStart(8)}${'賺賠比'.padStart(8)}${'期望值'.padStart(9)}`);
+for (const r of withP.slice(0, 30)) log(fmt(r)
+    + `${(r.payoff == null ? '—' : r.payoff.toFixed(2)).padStart(7)}`
+    + `${((r.exp >= 0 ? '+' : '') + r.exp.toFixed(2) + '%').padStart(9)}`);
 log('   …(完整清單見 data/signal_edge.json)');
 log('');
 log(`⚠️ 「勝率」是**超額報酬為正**的比例,基準 = ${baseWin[10].toFixed(1)}%(隨便挑一天)。`);
+log('⭐ 「賺賠比」= 平均獲利 ÷ 平均虧損;「期望值」= 勝率×平均獲利 − 敗率×平均虧損。');
+log('   ⚠️ 低勝率但高賺賠比也可能是好訊號(巨人傑:「賺賠比遠比勝率重要」)→ ⛔ 別只看勝率。');
+{
+    const byExp = [...withP].sort((a, b) => b.exp - a.exp).slice(0, 8);
+    log('');
+    log('🏆 依**期望值**排(跟依勝率排會不一樣 —— 這正是重點):');
+    for (const r of byExp) log(`   ${r.grade} ${r.key.slice(0, 40).padEnd(42)}`
+        + `期望 ${(r.exp >= 0 ? '+' : '') + r.exp.toFixed(2)}%`.padStart(12)
+        + `  勝率 ${r.w10.toFixed(1)}%  賺賠比 ${r.payoff == null ? '—' : r.payoff.toFixed(2)}`);
+}
 log('   p 值 = 假設這個訊號其實沒用,純靠運氣出現這種成績的機率。');
 
 const out = {
