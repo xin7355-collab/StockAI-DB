@@ -3606,7 +3606,11 @@ def fetch_broker_chips():
                     _h = existing_ms.get('margin_hist')
                     if not isinstance(_h, list):
                         _h = []
-                    _d = mh.get('date') or datetime.now(TW).strftime('%Y-%m-%d')
+                    # 🐛 V72.3.0 原本寫 `datetime.now(TW)`,但 miner.py **從來沒有定義過 `TW`** ——
+                    #   `mh['date']` 目前一定有值,所以那條 `or` 分支沒被走到,是顆**未爆彈**:
+                    #   一旦走到就 `NameError`,而它外面正好有 `except Exception as _e_mh` → 被吞成 margin_error。
+                    #   全檔其他地方都是寫 `timezone(timedelta(hours=8))`,統一成一致寫法。
+                    _d = mh.get('date') or datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
                     _rec = {'d': _d, 'r': mh['ratio'], 'n': mh['n']}
                     if _h and _h[-1].get('d') == _d:
                         _h[-1] = _rec
