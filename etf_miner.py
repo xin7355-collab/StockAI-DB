@@ -557,7 +557,12 @@ def fetch_etf_premium():
 
 def main():
     prev = load_prev_tracking() or {}
-    prev_hold = {e["symbol"]: e.get("holdings", []) for e in prev.get("etfs", [])}
+    # 🐛 V72.3.1:diff 基準必須用「完整持股清單」(hold_all)。
+    #   舊版只存前 15 大(holdings 截斷),卻拿完整 curr_h 去 diff 截斷的 prev
+    #   → 排名 16 名以後的持股「每天」被重標 added(實測 added=38 > holdings=15,
+    #     removed/up/down 全 0)→ 前端每檔長抱股都顯 🆕換入 +「共識加碼適合跟車」。
+    prev_hold = {e["symbol"]: (e.get("hold_all") or e.get("holdings", [])) for e in prev.get("etfs", [])}
+    prev_has_full = {e["symbol"]: bool(e.get("hold_all")) for e in prev.get("etfs", [])}
     # 🆕 缺口8(12-4 主動靈活度):換股頻率 EWMA(decay 0.9)。日日換≈10、週換≈2,越高越常調整持股。
     prev_turnover = {e["symbol"]: (e.get("turnover_score") or 0) for e in prev.get("etfs", [])}
     today = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
@@ -590,6 +595,11 @@ def main():
             # 首次建立基準 → 不算換股
             changes, changed = dict(EMPTY_CHANGES), False
             got_holdings += 1
+        elif not prev_has_full.get(s):
+            # 過渡輪:prev 只有截斷的前 15 大(舊 schema 沒 hold_all)→ diff 必然是垃圾,
+            # 視同基準重建、不算換股;下一輪起 hold_all 就有了,diff 恢復正常。
+            changes, changed = dict(EMPTY_CHANGES), False
+            got_holdings += 1
         else:
             changes = diff_holdings(prev_h, curr_h)
             changed = bool(changes["added"] or changes["removed"])
@@ -617,6 +627,10 @@ def main():
             "category": etf_category(s),          # 🆕 缺口4
             "turnover_score": turnover_score,      # 🆕 缺口8
             "holdings": curr_h[:HOLD_TOP],
+            # 完整清單(精簡欄位)只給「明天的 diff」當基準用 —— 前端顯示仍讀 holdings 前 15 大。
+            "hold_all": [{"sym": h.get("sym"), "weight": h.get("weight"),
+                          **({"est_shares": h["est_shares"]} if h.get("est_shares") is not None else {})}
+                         for h in curr_h if h.get("sym")],
             "holdings_count": len(curr_h),
             "changes": changes,
             "changed_today": changed,

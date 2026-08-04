@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1557,9 +1557,17 @@
                         <span id="costInputLabel" class="text-[9px] text-gray-500">空手</span>
                     </div>
                     <input type="hidden" id="chipCostInput" oninput="app.refreshStrategy()">
-                    <div id="chipRadarPanel" class="hidden">
-                        <div id="chipInstTable"></div>
-                        <div id="chipBrokerTable"></div>
+                    <!-- 🏦 V72.3.1 法人成本/連買連賣小卡:補上標題外框(原本兩個裸 table 浮在總覽,
+                         使用者看到六行「無淨買超/無連續方向」完全不知道是什麼功能)。
+                         資料:前端用使用者自己的 FinMind key 抓近 20 日法人買賣超,
+                         成本 = 淨買超日的加權均價(推估,不是官方值)。⛔ 沒資料的列不渲染、全空整卡隱藏。 -->
+                    <div id="chipRadarPanel" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 mx-2 mb-2">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[11px] font-bold text-gray-300">🏦 法人近20日 推估成本・連買連賣</span>
+                            <button onclick="app.showJargon('法人成本連買');event.stopPropagation();" class="text-[10px] text-gray-600 hover:text-blue-300">ⓘ</button>
+                        </div>
+                        <div id="chipInstTable" class="space-y-0.5"></div>
+                        <div id="chipBrokerTable" class="space-y-0.5 mt-1"></div>
                     </div>
                     
                     <!-- V32.6 — 移除筆電 lg:grid 7:5 兩欄:左戰區「大字訊息」內容早已上移到
@@ -3330,6 +3338,7 @@ const app = {
     confidenceMsgCache: "等待運算",
 
     jargonDict: {
+        '法人成本連買': '這張卡在算「三大法人最近 20 天買的股票,平均買在多少錢」。\n\n成本算法:只看法人「淨買超」的日子,用當天收盤價加權平均 —— 是推估值,不是官方公布(官方不公布法人成本)。\n\n右邊的 % = 現價比法人成本高或低:現價還在法人成本之下,代表法人這批平均還沒賺錢,通常比較不會急著賣。\n\n下半的「連續 N 日買超/賣超」= 法人連續同方向幾天(連 2 天以上才顯示)。連買天數越多代表越有耐心的佈局,連賣則相反。\n\n⚠️ 資料用你自己填的 FinMind 金鑰即時抓;沒填金鑰或該股近 20 日法人都沒淨買超時,這張卡整張隱藏(不是壞掉)。',
         '板塊輪動訊號': '美股昨夜先收、台股今天接著走。鐵則:「跟漲」只有在美股真的上漲時才算數(美股沒漲就沒得跟):\n\n• 強烈跟漲(紅閃):美股大漲、台股也漲只是落後很多 → 補漲動能最強。\n• 跟漲機會(紅):美股漲、台股漲幅落後 → 有補漲空間。\n• 委屈待補(黃):美股漲、台股卻收黑(跌<3%)→ 相對弱勢,可能補漲也可能有隱憂,先觀望別追。\n• 台股獨弱(橙):台股自己大跌≥3% → 台股自身利空,別跟美股做多。\n• 補跌風險(綠):美股跌、台股跌更多 → 跟跌/超跌。\n• 逆勢抗跌(紅):台股比美股強(美股跌台股守住,或台股漲更多)→ 相對強勢。\n• 同步(灰):兩市齊步,無明顯落差。\n\n色彩:紅=偏強(跟漲/抗跌)、黃=委屈觀望、綠=偏弱(補跌)、橙=台股獨弱。',
         '大盤天氣趨勢': '用加權指數的均線排列,把大盤分「短期(日)/ 中期(週)/ 長期(月)」三個時間判斷方向(全部由程式算,不靠 AI):\n\n• ☀️ 偏多:收盤 > 短均 > 長均(多頭排列),順勢做多較有利。\n• ☁️ 震盪:均線糾結或交叉,方向不明,別重押、等表態。\n• 🌧️ 偏空:收盤 < 短均 < 長均(空頭排列),反彈偏空、控好部位。\n\n短期=日K MA5/MA20、中期=週K MA5/MA20、長期=月K MA3/MA12;乖離=收盤離長均的百分比。三個天期同方向(如全 ☀️)趨勢最明確;打架(☀️☁️🌧️ 混)代表轉折或盤整,操作要更保守。',
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。就像火箭加速衝刺的階段，遇到務必抱緊處理！',
@@ -5757,7 +5766,11 @@ ${list}
         const target = String(sym).trim();
         for (const e of this._etfCache.etfs) {
             const c = e.changes || {};
-            for (const x of (c.added || []))        if (String(x.sym).trim() === target) out.push({ etf_sym: e.symbol, etf_name: e.name, action: 1, action_label: '🆕 換入',  est_shares_delta: +(x.est_shares || 0) });
+            // 🛡️ V72.3.1 基準重建守門:一天「換入 8 檔以上」且 換出/加碼/減碼 全為 0
+            //   = 採礦端拿完整清單 diff 截斷基準的殘留資料(added=38 那種),不是真換股。
+            //   真換股不可能只進不出又完全不動權重 → 這種整批 added 一律不顯 🆕換入。
+            const _rebuilt = (c.added || []).length >= 8 && !(c.removed || []).length && !(c.weight_up || []).length && !(c.weight_down || []).length;
+            if (!_rebuilt) for (const x of (c.added || [])) if (String(x.sym).trim() === target) out.push({ etf_sym: e.symbol, etf_name: e.name, action: 1, action_label: '🆕 換入',  est_shares_delta: +(x.est_shares || 0) });
             for (const x of (c.weight_up || []))    if (String(x.sym).trim() === target) out.push({ etf_sym: e.symbol, etf_name: e.name, action: 2, action_label: '📈 加碼', est_shares_delta: +(x.est_shares_delta || 0) });
             for (const x of (c.weight_down || [])) if (String(x.sym).trim() === target) out.push({ etf_sym: e.symbol, etf_name: e.name, action: 3, action_label: '📉 減碼', est_shares_delta: +(x.est_shares_delta || 0) });
             for (const x of (c.removed || []))      if (String(x.sym).trim() === target) out.push({ etf_sym: e.symbol, etf_name: e.name, action: 4, action_label: '❌ 換出',  est_shares_delta: -(+(x.est_shares || 0)) });
@@ -5766,14 +5779,14 @@ ${list}
     },
 
     // V18.6 — 進場價跟車燈號(現價 vs 進場價)
-    //          0~+5%=🟢 還沒漲(可跟) | +5~+15%=🟡 漲一段(注意) | >+15%=⛔ 已漲過(別追)
-    //          <0%=🔵 比 ETF 還便宜(查為什麼) | null=⚪ 無資料
+    //          ⚠️ V72.3.1 依燈號鐵則改圖示:這顆燈講的是「跟車風險」不是漲跌方向,
+    //          🔴🟢 只准表示方向 → 改 ✅ 可跟 / ⚠️ 注意 / ⛔ 別追 / 💡 提示 / ⏳ 無資料
     _etfFollowLamp(entryPx, todayPx) {
-        if (entryPx == null || todayPx == null || entryPx <= 0) return { lamp: '⚪', text: '無資料', pct: null, cls: 'text-gray-500' };
+        if (entryPx == null || todayPx == null || entryPx <= 0) return { lamp: '⏳', text: '無資料', pct: null, cls: 'text-gray-500' };
         const pct = (todayPx - entryPx) / entryPx * 100;
-        if (pct < 0)        return { lamp: '🔵', text: '比 ETF 還便宜', pct, cls: 'text-blue-400' };
-        if (pct <= 5)       return { lamp: '🟢', text: '還沒漲(可跟)', pct, cls: 'text-green-400' };
-        if (pct <= 15)      return { lamp: '🟡', text: '漲一段(注意)', pct, cls: 'text-yellow-400' };
+        if (pct < 0)        return { lamp: '💡', text: '比 ETF 還便宜', pct, cls: 'text-blue-400' };
+        if (pct <= 5)       return { lamp: '✅', text: '還沒漲(可跟)', pct, cls: 'text-green-400' };
+        if (pct <= 15)      return { lamp: '⚠️', text: '漲一段(注意)', pct, cls: 'text-yellow-400' };
         return                 { lamp: '⛔', text: '已漲過(別追)', pct, cls: 'text-red-400' };
     },
 
@@ -5959,11 +5972,11 @@ ${list}
         }
         if (isDay0) {
             if (entryDayChg != null && entryDayChg >= 5)
-                lamp = { lamp: '🟡', text: `換股當日已噴 +${entryDayChg.toFixed(1)}% ・ 進場=當日高,追高小心`, pct: 0, cls: 'text-yellow-400' };
+                lamp = { lamp: '⚠️', text: `換股當日已噴 +${entryDayChg.toFixed(1)}% ・ 進場=當日高,追高小心`, pct: 0, cls: 'text-yellow-400' };
             else if (entryDayChg != null && entryDayChg <= -3)
-                lamp = { lamp: '🟢', text: `換股當日回 ${entryDayChg.toFixed(1)}% ・ 進場價偏低可留意`, pct: 0, cls: 'text-green-400' };
+                lamp = { lamp: '💡', text: `換股當日回 ${entryDayChg.toFixed(1)}% ・ 進場價偏低可留意`, pct: 0, cls: 'text-green-400' };
             else
-                lamp = { lamp: '⚪', text: 'ETF 今日才換入 ・ 進場=今收,明起追蹤走勢', pct: 0, cls: 'text-gray-400' };
+                lamp = { lamp: '⏳', text: 'ETF 今日才換入 ・ 進場=今收,明起追蹤走勢', pct: 0, cls: 'text-gray-400' };
         }
         const pctStr = (isDay0 || lamp.pct == null) ? '—' : `${lamp.pct >= 0 ? '+' : ''}${lamp.pct.toFixed(1)}%`;
         // 動作分組計數
@@ -5974,10 +5987,13 @@ ${list}
         const verdict = (() => {
             // 🐛 V40.2 換股當日該股已大漲(+5%↑)→ 進場價=當日高,跟車=追在高點,不可顯「適合跟車」(修台燿 +8% 卻喊可跟 vs 籌碼卡勿追高矛盾)
             if ((cntIn + cntUp) >= 1 && entryDayChg != null && entryDayChg >= 5)
-                return { txt: `🟡 多檔 ETF 換入,但該股換股當日已噴 <b>+${entryDayChg.toFixed(1)}%</b> → 跟車=追在當日高點,<b>留意追高</b>(寧等回測再進)`, cls: 'text-yellow-300 bg-yellow-900/30 border-yellow-700' };
-            // 跟車總評
-            if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 5)  return { txt: '🟢 多檔 ETF 共識加碼,且還沒漲過 → <b>適合跟車</b>',  cls: 'text-green-300 bg-green-900/30 border-green-700' };
-            if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 15) return { txt: '🟡 多檔 ETF 加碼但已漲一段,跟車要小心 <b>追高風險</b>', cls: 'text-yellow-300 bg-yellow-900/30 border-yellow-700' };
+                return { txt: `⚠️ 多檔 ETF 換入,但該股換股當日已噴 <b>+${entryDayChg.toFixed(1)}%</b> → 跟車=追在當日高點,<b>留意追高</b>(寧等回測再進)`, cls: 'text-yellow-300 bg-yellow-900/30 border-yellow-700' };
+            // 跟車總評(⚠️ V72.3.1「適合跟車」是進場指令 → 一律過 _bearGate,空頭時只描述不叫進)
+            if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 5) {
+                if (this._bearGate?.(sym)) return { txt: '➖ 多檔 ETF 共識加碼且還沒漲,但<b>中期趨勢仍偏空</b> → 先觀察,等趨勢翻多再考慮跟車', cls: 'text-gray-300 bg-[#0d1117] border-[#30363d]' };
+                return { txt: '✅ 多檔 ETF 共識加碼,且還沒漲過 → <b>適合跟車</b>',  cls: 'text-green-300 bg-green-900/30 border-green-700' };
+            }
+            if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct <= 15) return { txt: '⚠️ 多檔 ETF 加碼但已漲一段,跟車要小心 <b>追高風險</b>', cls: 'text-yellow-300 bg-yellow-900/30 border-yellow-700' };
             if (cntIn + cntUp >= 3 && lamp.pct != null && lamp.pct > 15)  return { txt: '⚠️ ETF 雖加碼但 <b>抬轎已完</b>,追高勝率低', cls: 'text-red-300 bg-red-900/30 border-red-700' };
             if (cntDn + cntOut >= 2 && (cntIn + cntUp) === 0)              return { txt: '⚠️ ETF 在 <b>減碼/換出</b>,法人撤退中,別逆勢', cls: 'text-orange-300 bg-orange-900/30 border-orange-700' };
             return { txt: '💡 訊號分歧或單一 ETF 動作,參考用即可', cls: 'text-gray-300 bg-[#0d1117] border-[#30363d]' };
@@ -6920,8 +6936,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.3.0',
+    _APP_VERSION: 'V72.3.1',
     _CHANGELOG: [
+        { v: 'V72.3.1', dt: '2026-08-04', t: '🚦 修好 ETF 跟車「天天喊換入」+ 法人成本卡 + 乖離年線實測', d: [
+            '🐛 你回報的「ETF 跟車怪怪的」抓到根因:採礦機只存每檔 ETF 前 15 大持股,但比對換股時卻拿**完整持股清單**去跟「截斷後的昨天」比 → 排名 16 名以後的股票**每天**被重新標成「🆕換入」(實測一天冒出 243 筆假換入),長抱幾個月的股票也天天顯「共識加碼適合跟車」。已從採礦端治本 + 前端加守門,舊的假資料也不會再顯示。',
+            '跟車燈號同步照規矩改:✅ 可跟 / ⚠️ 注意 / ⛔ 別追(原本的 🟢🟡 跟「紅漲綠跌」撞色,會看反)。「適合跟車」現在也會先看中期趨勢 —— 空頭時只描述、不叫你進場。',
+            '🐛 你問的「外資 無淨買超…」六行:那是「法人近20日推估成本」卡壞掉的樣子 —— 沒資料的列現在直接不顯示、整卡沒資料就自動隱藏,而且掛上了卡片標題跟 ⓘ 教學,不會再出現一排「無」。',
+            '📚 權證小哥兩份逐字稿讀完:他講的方法(關鍵分點低檔布局/融資維持率/集保戶數/價籌背離)其實 App 都已經有了。唯一有明確數字的「乖離年線 200% 撐不久」拿 2,227 檔實測:**短線沒差(看到就空會被軋),60 日後平均多跑輸 6.2pp** → K線頁新增這條「中期過熱提醒」,漲到年線 1.5 倍以上才出現。',
+        ] },
         { v: 'V72.3.0', dt: '2026-08-04', t: '💸 「今天會賺的訊號」現在是扣完手續費才算 —— 289 檔變 21 檔', d: [
             '⚠️ 採礦機今天第一次真的跑出全市場榜單,一看就發現問題:297 筆訊號裡有 175 筆的期望值只有 +0.079%,而買賣一趟的手續費+證交稅約 0.38% —— 那些**毛看是賺、扣完是賠**,卻排在榜單最前面。',
             '之前只在最下面寫一行「未扣交易成本」就算交代 → 等於沒講。現在直接幫你扣掉:標題那個檔數是「**扣完成本還會賺**」的,今天全市場 2,316 檔裡只有 **21 檔**(不是 289 檔)。',
@@ -11015,40 +11037,44 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const brokerEl = document.getElementById('chipBrokerTable');
         if (!instEl || !brokerEl) return;
 
-        // Show panel if we have data
-        if ((brokerList.length > 0 || Object.values(instCosts).some(v => v.buyVol > 0)) && panel) {
-            panel.classList.remove('hidden');
-        }
-
-        // Render institutional table
+        // 🧹 V72.3.1 使用者截圖:總覽出現六行「外資 無淨買超 / 外資 無連續方向…」——
+        //   ① 沒資料的列**不渲染**(「沒事完全隱藏,不留空格」鐵則;六行「無」是純噪音)
+        //   ② 全空時整卡 `hidden` + 清空 —— 原本這裡**只會 remove hidden、從不加回去**,
+        //      切到沒法人資料的股票就殘留上一檔的顯示狀態(陷阱 #19 的親戚)
         const instNames = { '外資及陸資': '外資', '投信': '投信', '自營': '自營' };
-        instEl.innerHTML = Object.entries(instCosts).map(([key, val]) => {
+        const instRows = Object.entries(instCosts).map(([key, val]) => {
             const cost = val.buyVol > 0 ? (val.buyAmt / val.buyVol) : 0;
-            if (cost === 0) return `<div class="flex justify-between items-center px-2 py-0.5 rounded text-[10px]"><span class="text-gray-600">${instNames[key]}</span><span class="text-gray-600 font-mono">無淨買超</span></div>`;
+            if (cost === 0) return '';
             const diff = pC > 0 ? ((pC - cost) / cost * 100) : 0;
             const col = diff > 0 ? 'text-[#f87171]' : 'text-[#4ade80]';
             return `<div class="flex justify-between items-center px-2 py-0.5 bg-gray-900/50 rounded text-[10px]">
-                <span class="text-gray-400 font-bold">${instNames[key]}</span>
+                <span class="text-gray-400 font-bold">${instNames[key]}買超成本</span>
                 <span class="font-mono font-black text-orange-300">${cost.toFixed(2)}</span>
-                <span class="font-mono font-bold ${col}">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span>
+                <span class="font-mono font-bold ${col}" title="現價相對法人推估成本">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span>
             </div>`;
-        }).join('');
+        }).filter(Boolean);
 
-        // Render streak table
-        const streakNames = { '外資及陸資': '外資', '投信': '投信', '自營': '自營' };
-        brokerEl.innerHTML = Object.entries(streakNames).map(([key, label]) => {
+        const streakRows = Object.entries(instNames).map(([key, label]) => {
             const s = instStreak[key] || { days: 0, total: 0, direction: 0 };
-            if (s.days === 0) return `<div class="flex justify-between items-center px-2 py-0.5 rounded text-[10px]"><span class="text-gray-600">${label}</span><span class="text-gray-600 font-mono">無連續方向</span></div>`;
+            // ⛔ 連 1 日也不顯(「連續 1 日」= 就只是今天,沒有資訊量)
+            if (s.days < 2) return '';
             const isBuy = s.direction > 0;
             const col = isBuy ? 'text-[#f87171]' : 'text-[#4ade80]';
-            const arrow = isBuy ? '▲' : '▼';
-            const totalK = Math.round(Math.abs(s.total) / 1000);
             return `<div class="flex justify-between items-center px-2 py-0.5 bg-gray-900/50 rounded text-[10px]">
                 <span class="text-gray-400 font-bold">${label}</span>
-                <span class="font-mono font-bold ${col}">${arrow} 連續 ${s.days} 日${isBuy ? '買超' : '賣超'}</span>
-                <span class="font-mono text-gray-500">累計 ${totalK}K</span>
+                <span class="font-mono font-bold ${col}">${isBuy ? '▲' : '▼'} 連續 ${s.days} 日${isBuy ? '買超' : '賣超'}</span>
+                <span class="font-mono text-gray-500">累計 ${Math.round(Math.abs(s.total) / 1000).toLocaleString()} 張</span>
             </div>`;
-        }).join('');
+        }).filter(Boolean);
+
+        if (!instRows.length && !streakRows.length) {
+            if (panel) panel.classList.add('hidden');
+            instEl.innerHTML = ''; brokerEl.innerHTML = '';
+            return;
+        }
+        if (panel) panel.classList.remove('hidden');
+        instEl.innerHTML = instRows.join('');
+        brokerEl.innerHTML = streakRows.join('');
     },
 
     async fetchChipTimeline(sym, forceRefresh) {
@@ -17166,6 +17192,28 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return out;
     },
 
+    // 🌡️ V72.3.1 乖離「年線」過熱 —— 來源:權證小哥直播「乖離年線 200% 以上撐不久/我很少看到可以撐很久」。
+    //   ⛔ 照鐵則探針先行:`bias240_probe.py`(2,227 檔、扣同期加權、事件=向上穿越門檻、去重20日)實測:
+    //     ・短線(10/20日)**沒有邊際**(勝率還比基準高 —— 動能還在,看到就空會被軋)
+    //     ・60 日才顯現壓力:150~200% 邊際 −3.61pp、**200%+ 邊際 −6.24pp**(中位 −17.9% vs 基準 −11.7%)
+    //   → 所以這是「**中期風險提醒**」,⛔ 不是放空指令、更不是叫你現在賣;
+    //     150% 以下不顯示(條件觸發,免得變雜訊)。
+    _detectBias240(data) {
+        const out = [];
+        if (!Array.isArray(data) || data.length < 245) return out;   // 要有年線才算得出來
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0);
+        let s = 0;
+        for (let i = last - 239; i <= last; i++) s += C(data[i]);
+        const ma240 = s / 240;
+        const pC = C(data[last]);
+        if (!(ma240 > 0) || !(pC > 0)) return out;
+        const bias = (pC / ma240 - 1) * 100;
+        if (bias >= 200) out.push({ tone: 'warn', title: '乖離年線 200%+(極端過熱)', val: ma240, msg: `股價已是年線(${ma240.toFixed(2)})的 ${(pC / ma240).toFixed(1)} 倍。實測 2,227 檔:這種位置 60 日後比隨便挑一天再差 6.2pp(中位 −17.9%)。⚠️ 但短線動能常還在(10日勝率反而高於基準)→ 這是「中期別重壓、漲不動就分批下車」的提醒,不是放空或立刻賣的指令。` });
+        else if (bias >= 150) out.push({ tone: 'warn', title: '乖離年線 150%+(過熱)', val: ma240, msg: `股價離年線 +${bias.toFixed(0)}%。實測:此區 60 日邊際 −3.6pp(中期開始跑輸)、短線尚無壓力。抱波段的把停利紀律訂好,別在這個位置加碼重壓。` });
+        return out;
+    },
+
     // 🏚️ V71.8.9 「地板股」超跌接刀 —— ⚠️ 這支的重點是**戳破一個說法**,不是推薦接刀。
     //   來源:使用者提供的 113 份逐字稿,裡面「地板股 SOP」講:跌到某條線「統計上 95% 會反彈」,
     //   而且要 20 日均量 2 倍以上才算(3 倍更強、5 倍最強),反彈要跑、沒反彈也要跑。
@@ -18687,6 +18735,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._tagPush(sigs, '_detectChuOverheat', data);       // ⭐ V37.2 多頭過熱停利
         this._tagPush(sigs, '_detectKbarStrength', data);      // ⭐ V37.6 K棒強弱(弱中透強/強中透弱/長影線)
         this._tagPush(sigs, '_detectMaDeviation', data);        // ⭐ V37.8 葛蘭碧乖離過大(遛狗理論)
+        this._tagPush(sigs, '_detectBias240', data);            // 🌡️ V72.3.1 乖離年線 150/200%+ 中期過熱(權證小哥,附探針實測)
         this._tagPush(sigs, '_detectAvoidFlags', data);         // ⭐ V37.9 淘汰法(圖形雜亂)
         try { sigs.unshift(...this._detectBottomBreakout(data)); } catch (_) {}  // ⭐ V38.0 底部頸線突破+目標價(置頂)
         try { sigs.unshift(...this._detectNBottom(data)); } catch (_) {}          // ⭐ V60.x N字底/黃金右腳(置頂,強買訊)
@@ -20917,6 +20966,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._tagPush(sigs, '_detectChuOverheat', data);    // ⭐ V37.2 過熱停利(warn,壓低進場分)
         this._tagPush(sigs, '_detectKbarStrength', data);   // ⭐ V37.6 K棒強弱(弱中透強/強中透弱)
         this._tagPush(sigs, '_detectMaDeviation', data);    // ⭐ V37.8 乖離過大(warn)
+        this._tagPush(sigs, '_detectBias240', data);        // 🌡️ V72.3.1 乖離年線中期過熱(warn,⛔ 不是放空指令)
         this._tagPush(sigs, '_detectFloorBounce', data);    // 🏚️ V71.8.9 極端超跌接刀(附實測數字,⛔ 不是看多訊號)
         this._tagPush(sigs, '_detectAvoidFlags', data);     // ⭐ V37.9 淘汰法(圖形雜亂,bear)
         this._tagPush(sigs, '_detectBottomBreakout', data); // ⭐ V38.0 底部頸線突破(bull)
@@ -24531,6 +24581,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 'instLeaderBox',                          // 法人排行
                 'aiGodNewsBox',                           // 首席 AI 新聞
                 'marginCallBox',                          // 融資追繳壓力區(V71.7.1)
+                'chipRadarPanel',                         // 法人成本/連買連賣(V72.3.1,async 抓 FinMind 才填)
             ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
