@@ -272,6 +272,11 @@ GLOBAL_NEWS_SOURCES = {
     # 🇰🇷🇯🇵 V50.5 使用者要求:韓/日影響台股的重大新聞(三星/SK海力士=記憶體對手;東京威力=半導體設備;軟銀/Nikkei)
     "韓股記憶體":     "https://news.google.com/rss/search?q=Samsung+OR+%22SK+Hynix%22+OR+Korea+(chip+OR+semiconductor+OR+memory+OR+HBM)&hl=en&gl=US&ceid=US:en",
     "日股半導體":     "https://news.google.com/rss/search?q=Japan+(Nikkei+OR+SoftBank+OR+%22Tokyo+Electron%22+OR+Renesas+OR+chip+OR+semiconductor)&hl=en&gl=US&ceid=US:en",
+    # 🌍 V72.3.3 使用者要求:地緣政治突發(川普說要打伊朗、伊朗打美軍…這類真的會影響股價)。
+    #   ⚠️ 用 when:1d 限最近 24 小時,避免撈到一堆舊分析文;軍事詞配「oil / market / strait」
+    #   收斂在**會傳導到金融市場**的那一類,⛔ 不做純戰報(那是新聞台的事,對股價沒有可操作性)。
+    "🌍 地緣突發":    "https://news.google.com/rss/search?q=(Iran+OR+Israel+OR+%22Middle+East%22+OR+%22Taiwan+Strait%22+OR+Russia+OR+Ukraine)+(strike+OR+missile+OR+attack+OR+war+OR+sanctions+OR+blockade+OR+oil+OR+markets)+when:1d&hl=en&gl=US&ceid=US:en",
+    "🌍 油價航運":    "https://news.google.com/rss/search?q=(%22oil+price%22+OR+Brent+OR+OPEC+OR+%22Strait+of+Hormuz%22+OR+%22Red+Sea%22+OR+shipping)+when:1d&hl=en&gl=US&ceid=US:en",
 }
 GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
 
@@ -300,11 +305,24 @@ TW_RELATED_KEYWORDS = [
     'tariff', 'tariffs', 'fed', 'interest rate', 'inflation', 'cpi', 'gdp',
     'recession', 'rate cut', 'rate hike', 'stock market', 'stocks', 'shares',
     'markets', 'tech', 'equities', 'wall street', 'nasdaq', 'dow jones',
+    # 🌍 V72.3.3 地緣政治 / 軍事 / 能源(使用者要求)——
+    #   ⚠️ **這一整段以前完全沒有** → 像「Israel strikes Iran nuclear site」這種標題
+    #   一個關鍵字都不命中,會被 `_is_tw_relevant()` 直接濾掉。
+    #   ⛔ 所以以前不管 cron 跑多密,地緣突發新聞都不可能出現在 App 上 —— 這才是真因,不是「抓太慢」。
+    'iran', 'israel', 'middle east', 'hormuz', 'red sea', 'houthi',
+    'russia', 'ukraine', 'taiwan strait', 'south china sea', 'north korea',
+    'war', 'military', 'missile', 'airstrike', 'strike on', 'sanctions',
+    'blockade', 'ceasefire', 'nuclear', 'geopolitical',
+    'oil price', 'crude', 'brent', 'opec', 'natural gas', 'shipping', 'freight',
 ]
 
 # V27.8 — 生活/娛樂雜訊黑名單:即使誤含關鍵字也直接排除(BBC Business RSS 夾帶 King's tax bill / power banks / after uni 等生活新聞)
 TW_NEWS_BLACKLIST = ['royal', "king's", 'queen', 'prince', 'recipe', 'football', 'rugby',
-                     'celebrity', 'vape', 'lifestyle', 'after uni', 'wedding', 'weather', 'power bank']
+                     'celebrity', 'vape', 'lifestyle', 'after uni', 'wedding', 'weather', 'power bank',
+                     # 🌍 V72.3.3 配合新加的地緣政治關鍵字補雜訊黑名單 ——
+                     #   加關鍵字必然放大雜訊,不補黑名單就會把電影/遊戲/體育當成戰爭新聞。
+                     'star wars', 'call of duty', 'video game', 'movie', 'film review',
+                     'box office', 'netflix series', 'documentary', 'warriors']
 
 # V27.8 — 關鍵字改「整詞」比對(\b 邊界):修 'ai' 短字當「子字串」誤命中 ag(ai)n / ret(ai)l / cont(ai)n,
 #         導致生活新聞(如「back home after uni ... again」)漏進財經情報的 bug。
@@ -327,12 +345,21 @@ def fetch_global_news():
     TPE = timezone(timedelta(hours=8))
     now_utc = datetime.now(timezone.utc)
     now_tpe = now_utc.astimezone(TPE)
-    # 🕔 V50.5 盤前新聞窗(台北):end=最近已過的 05:00;start=前一交易日 05:00(end 落週一→往前抓到週五,涵蓋週末)
+    # 🕔 V50.5 盤前新聞窗(台北):start=前一交易日 05:00(落週一→往前抓到週五,涵蓋週末)
+    # 🐛 V72.3.3 **這裡本來是新聞「太久」的真因** —— 舊版 `win_end` 寫死成「最近已過的 05:00」,
+    #    於是**今天 05:00 之後發生的新聞全部被丟棄**(舊註解自己寫著「w is False → 盤前窗外
+    #    (太舊/今日盤中),丟棄」)。而 `news_express.yml` 名字叫「即時新聞快訊」、每 4 小時跑一次,
+    #    前端卡片也寫「盤前+盤中,依時間排序」—— **三邊講的是同一件事,只有這一行沒跟上**。
+    #    實測(2026-08-04):檔案 updated 是 12:33 UTC(台北 20:33),最新一則卻是**前一天** 19:54 GMT,
+    #    整整落後 17 小時,而且盤中那三輪等於白跑(只撿得到「無時間戳」的 fallback)。
+    #    → `win_end` 改成 `now`:窗口**只會變大不會變小**,盤前 05:30 那輪結果幾乎不變
+    #      (end≈05:30 vs 舊的 05:00),盤中/週末跑才收得到當下的新聞。
     _five = now_tpe.replace(hour=5, minute=0, second=0, microsecond=0)
-    win_end = _five if now_tpe >= _five else _five - timedelta(days=1)
-    _back = 3 if win_end.weekday() == 0 else 1
-    win_start = win_end - timedelta(days=_back)
-    print(f"  🕔 盤前新聞窗(台北):{win_start:%m/%d %H:%M} → {win_end:%m/%d %H:%M}(截止 05:00)")
+    _anchor = _five if now_tpe >= _five else _five - timedelta(days=1)
+    win_end = now_tpe
+    _back = 3 if _anchor.weekday() == 0 else 1
+    win_start = _anchor - timedelta(days=_back)
+    print(f"  🕔 新聞窗(台北):{win_start:%m/%d %H:%M} → {win_end:%m/%d %H:%M}(end=現在,⛔ 不再截止於 05:00)")
 
     def _in_window(entry):
         pp = entry.get('published_parsed') or entry.get('updated_parsed')
@@ -367,7 +394,7 @@ def fetch_global_news():
                     items.append(rec); count += 1
                 elif w is None:
                     fallback.append(rec)
-                # w is False → 盤前窗外(太舊/今日盤中),丟棄
+                # w is False → 窗外(太舊)丟棄。⛔ V72.3.3 起「今日盤中」不再算窗外(win_end=現在)
                 if count >= 6:  # 每源最多 6 則
                     break
             print(f"  {source}: {count} 篇(窗內)")

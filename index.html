@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6936,8 +6936,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.3.2',
+    _APP_VERSION: 'V72.3.3',
     _CHANGELOG: [
+        { v: 'V72.3.3', dt: '2026-08-05', t: '🌍 地緣政治突發新聞終於進得來了(以前是抓到但被丟掉)', d: [
+            '你問「川普說要打伊朗、伊朗打美軍這種真的會影響股價,能不能更快抓到」—— 查下來**真因不是抓太慢,是抓到之後被程式丟掉**,而且有兩層。',
+            '🐛 第一層:新聞要通過一張「跟台股有沒有關」的字詞表才留下來,而那張表**一個地緣政治/軍事/能源的詞都沒有** → 像「以色列空襲伊朗核設施」這種標題一個字都不命中,直接被丟。⛔ 所以以前不管多久抓一次,這類新聞都不可能出現。現在補了伊朗/以色列/中東/台海/俄烏/飛彈/制裁/油價/荷莫茲海峽等 20 幾個詞,同時補上黑名單(星際大戰、勇士隊那種不要進來)。',
+            '🐛 第二層:抓新聞的時間範圍**寫死到「今天早上 5 點」為止**,今天 5 點之後發生的全部丟掉。所以那張卡明明寫著「盤前+盤中」,實際上盤中三輪等於白跑 —— 實測資料落後 17 小時。現在改成「到此刻為止」。',
+            '⏰ 第三:抓取時間表補洞。以前盤中只有 9 點跟 13 點各一次(中間空 4 小時),**週末完全不跑**(週五晚到週一早空 60 小時,偏偏地緣衝突最愛週末爆)。現在盤中每小時、週末每 6 小時。',
+            '🌍 另外加了兩條專門的新聞來源:地緣突發、油價航運(都只看最近 24 小時,免得撈到舊文章)。',
+        ] },
         { v: 'V72.3.2', dt: '2026-08-04', t: '🔬 體檢工具漏看的一種錯,現在抓得到了(景氣燈號其實壞很久)', d: [
             '看別人的開源專案時,順手拿它的宏觀資料清單來對帳,結果照出我自己的問題:**國發會景氣對策信號一直抓不到**,而且錯誤訊息正是「拿到網頁去當 JSON 解析」那一種。',
             '🚨 更要命的是:每天在跑的「資料體檢」**看不到這個錯** —— 因為錯誤被包在一層裡面,而體檢只看最外層。等於這格壞了很久都沒人知道。',
