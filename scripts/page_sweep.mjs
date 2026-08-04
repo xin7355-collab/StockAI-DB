@@ -63,6 +63,20 @@ const browser = await chromium.launch({
     args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
 });
 const page = await browser.newPage();
+// 👜 種一份假庫存 + 自選 —— ⛔ 不種的話「庫存/自選」兩頁永遠只渲染空狀態,
+//   等於那兩頁(使用者最常看的)根本沒被巡邏到,而輸出上跟「乾淨」長得一樣。
+//   ⚠️ 成本/股數是假的 → 金額本身無意義,但**渲染路徑**是真的
+//      (要抓的是 NaN / `--` / 指令打架,不是金額對不對)。
+await page.addInitScript(() => {
+    try {
+        localStorage.setItem('proTerminalInv', JSON.stringify([
+            { symbol: '2330', cost: 1100, shares: 2000 },
+            { symbol: '2327', cost: 700, shares: 1000 },    // 刻意設在現價之上 → 帳面虧損路徑
+            { symbol: '0050', cost: 40, shares: 5000 },     // 刻意設很低 → 大幅獲利路徑
+        ]));
+        localStorage.setItem('proTerminalFavGroups', JSON.stringify({ 自選清單: ['2317', '3231', '8464'] }));
+    } catch (_) { }
+});
 // ECharts 走 CDN,沙箱連不到 → 用 Proxy stub(同 test_emptyshell 做法,圖表不是這支的重點)
 await page.addInitScript(() => {
     const noop = () => inst;
@@ -79,7 +93,30 @@ page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); 
 await page.route('**/*', r => (r.request().url().startsWith('file://') ? r.continue() : r.abort()));
 await page.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app.analyze, null, { timeout: 25000 });
-await page.waitForTimeout(1500);
+// ⚠️⚠️ **等 init() 落地再開始掃** —— `init()` 尾端有一行 `switchAppTab('inv')`,
+//   而它排在 `await fetchMacroData()` 之後;沙箱抓不到資料要等 timeout(實測十幾秒)。
+//   在那之前切到 diag 會**在幾秒後被切回庫存頁** → 整個個股頁 `display:none`
+//   → 第一檔股票只掃到 4 張卡,而輸出上跟「這頁很乾淨」長得一模一樣。
+//   ⭐ 做法:反覆切 diag,直到它**連續兩次**都還站得住(代表 init 那行已經跑完了)。
+{
+    const t0 = Date.now();
+    let stable = 0;
+    while (Date.now() - t0 < 45000 && stable < 2) {
+        const ok = await page.evaluate(async () => {
+            try { app.switchAppTab('diag'); } catch (_) { }
+            await new Promise(r => setTimeout(r, 1200));
+            const el = document.getElementById('tabContentDiag');
+            return !!el && getComputedStyle(el).display !== 'none';
+        });
+        stable = ok ? stable + 1 : 0;
+    }
+    if (stable < 2) {
+        console.log('❌ 等不到 init() 落地(個股頁一直被切走)—— 這次掃描無效');
+        await browser.close();
+        process.exit(1);
+    }
+    console.log(`⏳ init 已落地(等了 ${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+}
 
 const findings = [];
 let scanned = 0;
@@ -106,6 +143,8 @@ for (const sym of SYMS) {
         process.exit(1);
     }
     await page.waitForTimeout(2200);
+    // 保險:analyze 期間若又被切走(理論上 init 已落地,但別假設),切回來
+    await page.evaluate(() => { try { const e = document.getElementById('tabContentDiag'); if (e && getComputedStyle(e).display === 'none') app.switchAppTab('diag'); } catch (_) { } });
     process.stdout.write(`(${meta.n} 根 K・主結論 ${meta.trend || '未定'}${meta.bear ? '・空頭' : ''}) `);
 
     for (const tab of SUBTABS) {
@@ -117,14 +156,39 @@ for (const sym of SYMS) {
                 try { app.switchSubTab(a.tab); } catch (_) { }
                 if (a.pane) { try { app.switchOvTab(a.pane); } catch (_) { } }
                 await new Promise(r => setTimeout(r, 900));
+                // ⚠️⚠️ **Tailwind 是 CDN(`https://cdn.tailwindcss.com`),沙箱連不到** →
+                //   `.hidden { display:none }` 這條規則根本沒載入 → `offsetParent` 對
+                //   「只靠 class="hidden" 藏起來」的元素**完全失效**(實測 `favEmptyState`
+                //   classList 有 hidden、但 computedStyle 是 block、offsetParent 也不是 null)。
+                //   ⛔ 不補這一段,掃到的會包含**使用者根本看不到的卡**(工具會過度回報)。
+                const _shown = el => {
+                    if (!el.offsetParent && el.tagName !== 'BODY') return false;
+                    for (let n = el; n && n !== document.body; n = n.parentElement) {
+                        const d = n.style && n.style.display;
+                        if (d === 'none') return false;
+                        // ⚠️ `class="hidden"` 只有在**沒有 inline display 覆蓋**時才算藏起來 ——
+                        //   `switchAppTab` 是用 `style.setProperty('display','flex','important')` 顯示的,
+                        //   ⛔ **從來不移除 hidden class** → 只看 class 會把「正在顯示的分頁」誤判成藏起來
+                        //   (第一版就過度修正,卡片數從 121 掉到 50)。
+                        if (!d && n.classList && n.classList.contains('hidden')) return false;
+                    }
+                    return true;
+                };
                 const seen = [], out = [];
                 // 只收「有 id 的卡片容器」,由外而內去重(父層收了就不收子層,免得同一句報三次)
                 for (const el of document.querySelectorAll('[id]')) {
                     if (!el.id || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
-                    if (!el.offsetParent && el.tagName !== 'BODY') continue;          // 看不見的不算
+                    // ⛔ 分頁根容器不算「一張卡」—— 它整段才 3,000 多字會直接通過長度上限,
+                    //   被當成一張卡收走,然後**吃掉底下所有真正的卡**(去重是「父層收了就不收子層」)。
+                    //   結果:一個分頁只報 2 張卡、卡片 id 全無意義、⑤ 跨卡打架偵測也失效。
+                    // ⚠️ `appMainArea` 也是外殼 —— 而且它**沒有 inline display、也沒有 hidden**,
+                    //   所以一路暢通被當成「一張卡」收走 → 之前所有 findings 的 card id 全是 `#appMainArea`,
+                    //   等於整頁只有一張卡:⑤ 跨卡打架偵測**永遠不可能觸發**(它要求兩張**不同**卡)。
+                    if (/^(tabContent|subContent)/.test(el.id) || el.id === 'appMainArea') continue;
+                    if (!_shown(el)) continue;                                        // 看不見的不算
                     if (seen.some(p => p.contains(el))) continue;
                     const t = (el.innerText || '').replace(/\s+/g, ' ').trim();
-                    if (t.length < 12 || t.length > 4000) continue;
+                    if (t.length < 12 || t.length > 2500) continue;   // >2500 多半是外殼,讓給子層
                     seen.push(el); out.push({ id: el.id, t });
                 }
                 // ⭐ 補漏:有些頁(尤其「大盤」)整頁 3 萬字,但幾乎沒有**帶 id 且 12~4000 字**的容器
@@ -134,7 +198,7 @@ for (const sym of SYMS) {
                 //      **display:none** 的元素照樣回傳全文(排查時差點據此誤判成 App bug)。
                 const covered = out.reduce((n, o) => n + o.t.length, 0);
                 for (const root of document.querySelectorAll('[id^="tabContent"], [id^="subContent"]')) {
-                    if (!root.offsetParent) continue;
+                    if (!_shown(root)) continue;
                     const rt = (root.innerText || '').replace(/\s+/g, ' ').trim();
                     if (rt.length < 2000 || covered >= rt.length * 0.5) continue;
                     for (let i = 0; i < rt.length; i += 3000) out.push({ id: `${root.id}(整頁${Math.floor(i / 3000) + 1})`, t: rt.slice(i, i + 3000) });
@@ -169,8 +233,17 @@ for (const sym of SYMS) {
             // ④ 空殼:容器可見但字數 < 8
             const shells = await page.evaluate(() => {
                 const out = [];
+                const _shown2 = el => {
+                    if (!el.offsetParent) return false;
+                    for (let n = el; n && n !== document.body; n = n.parentElement) {
+                        const d = n.style && n.style.display;
+                        if (d === 'none') return false;
+                        if (!d && n.classList && n.classList.contains('hidden')) return false;
+                    }
+                    return true;
+                };
                 for (const el of document.querySelectorAll('[id$="Card"],[id$="Box"],[id$="Panel"]')) {
-                    if (!el.offsetParent) continue;
+                    if (!_shown2(el)) continue;
                     if (el.querySelector('canvas,img,input,button,svg')) continue;   // 圖表/互動不算空
                     const t = (el.innerText || '').replace(/\s/g, '');
                     if (t.length > 0 && t.length < 8) out.push({ id: el.id, t });
@@ -181,7 +254,7 @@ for (const sym of SYMS) {
             // ⭐ 同樣是空過守門:掃到 0 張卡代表分頁沒切成功/內容還沒填,
             //   若不印出來,結果會長得跟「全部乾淨」一模一樣。
             scanned += cards.length;
-            process.stdout.write(cards.length ? '.' : '∅');
+            process.stdout.write(cards.length ? `${cards.length}·` : '∅');
         }
     }
 }
@@ -203,10 +276,19 @@ for (const tab of ['market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
         //    所以「有字」不代表「看得見」,一定要看 computedStyle。)
         const root = document.getElementById('tabContent' + t[0].toUpperCase() + t.slice(1));
         if (root && getComputedStyle(root).display === 'none') return { blocked: true };
+        const _shown = el => {
+            if (!el.offsetParent && el.tagName !== 'BODY') return false;
+            for (let n = el; n && n !== document.body; n = n.parentElement) {
+                const d = n.style && n.style.display;
+                if (d === 'none') return false;
+                if (!d && n.classList && n.classList.contains('hidden')) return false;
+            }
+            return true;
+        };
         const seen = [], out = [];
         for (const el of document.querySelectorAll('[id]')) {
             if (!el.id || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
-            if (!el.offsetParent && el.tagName !== 'BODY') continue;
+            if (!_shown(el)) continue;
             if (seen.some(p => p.contains(el))) continue;
             const x = (el.innerText || '').replace(/\s+/g, ' ').trim();
             if (x.length < 12 || x.length > 4000) continue;
@@ -215,7 +297,7 @@ for (const tab of ['market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
         // ⭐ 同上補漏:大盤頁整頁 3 萬字卻幾乎沒有帶 id 的中型容器 → 切塊補進來
         const covered = out.reduce((n, o) => n + o.t.length, 0);
         for (const root of document.querySelectorAll('[id^="tabContent"]')) {
-            if (!root.offsetParent) continue;
+            if (!_shown(root)) continue;
             const rt = (root.innerText || '').replace(/\s+/g, ' ').trim();
             if (rt.length < 2000 || covered >= rt.length * 0.5) continue;
             for (let i = 0; i < rt.length; i += 3000) out.push({ id: `${root.id}(整頁${Math.floor(i / 3000) + 1})`, t: rt.slice(i, i + 3000) });
