@@ -77,6 +77,13 @@ INTRADAY_ONLY = {'live_quotes.json', 'tick_flow.json', 'daytrade_pack.json'}
 #    2026-07-30 首跑時我把這幾條都寫成「缺口待修」,逐條讀原始碼才發現是刻意的 ——
 #    照著修會把已經下架的東西又接回來。工具只知道「檔案不在」,不知道「本來就不該在」。
 #    ⚠️ 新增項目前務必先 grep 過:`rm -f`、`= False`、「退役」「停用」「暫停」。
+# 🗂️ V72.1.2 「已被取代、payload 空掉是正常的」舊檔 —— ⛔ 別報成錯誤
+#   工具只知道「檔案是空的」,不知道「它已經退休了」。
+#   ⚠️ 誤報留著會讓人養成忽略體檢輸出的習慣,真的壞掉那條就被淹掉了。
+SUPERSEDED = {
+    'day_trade.json': 'V71.5.4 起前端改讀 daytrade.json,這個舊檔只留備援,空掉不影響',
+}
+
 DELIBERATELY_ABSENT = {
     'chief_ai_cache.json':
         'chief_ai_batch.py 2026-06 退役,daily_miner.yml 每次部署都 rm -f 這個檔;'
@@ -226,7 +233,12 @@ def audit(ref):
             continue
         n = payload_size(j)
         if n == 0:
-            add('❌', 'A', f'data/{f} 內容是空的(payload 0 筆)')
+            # ⚠️ V72.1.2 已被取代的舊檔不算錯 —— 每次體檢都報一次會變雜訊,
+            #   真的壞掉的那條反而被淹掉(CLAUDE.md:誤報要標掉,別讓人養成忽略的習慣)。
+            if f in SUPERSEDED:
+                print(f'   ➖ data/{f} payload 是空的 —— 刻意的:{SUPERSEDED[f]}')
+            else:
+                add('❌', 'A', f'data/{f} 內容是空的(payload 0 筆)')
     print(f'   完成,問題 {sum(1 for p in problems if p[1] == "A")} 件')
 
     print('\n── B. 新鮮度(更新時間 vs 預期節奏)─────────────────────')
@@ -264,6 +276,26 @@ def audit(ref):
         for k, v in j.items():
             if str(k).endswith('_error') and v:
                 add('⚠️', 'C', f'data/{f} 的 {k} = {str(v)[:70]}')
+                # 🐛 V72.1.2 ⭐ 新增「值與 error **自相矛盾**」偵測 ——
+                #   體檢原本只會分別報「這個 error 有值」,**看不出值本身還在**,
+                #   所以 taifex_backwardation = -156.0 配「不計價差」那次它漏報了。
+                #   ⛔ 這一類比「那格空著」危險得多:使用者會拿一個不該信的數字去做決定。
+                #   典型成因:守門把值設成 None,但斷崖防護(last-good)又把昨天的填回去
+                #   → 昨天的數字配今天的日期(陷阱 #34)。
+                base = str(k)[:-len('_error')]
+                bv = j.get(base)
+                # ⚠️ 但要先排除**刻意的**情況,否則會誤報(首跑就誤報了 3 個)——
+                #   有些 error 針對的是**衍生欄位**而不是值本身:
+                #   例如 es_fut_error =「不給漲跌%」→ **價位是可信的**,只是不給方向(V72.0.5),
+                #   那不叫矛盾。同理「內插/fallback/已保留舊值」都是有交代的降級,不是壞掉。
+                #   ⭐ 只有 error 針對「值本身不可信」時,值還在才是真矛盾。
+                _intentional = ('不給漲跌', '不給方向', '方向待確認', '內插',
+                                'fallback', '已保留', '沿用', '備援')
+                if (bv is not None
+                        and not (isinstance(bv, (list, dict, str)) and len(bv) == 0)
+                        and not any(t in str(v) for t in _intentional)):
+                    add('❌', 'C', f'data/{f} 的 {base} 有值({str(bv)[:28]})但 {k} 說有問題'
+                                   f' → 兩者矛盾,多半是守門清掉後又被 last-good 填回昨天的值(陷阱 #34)')
     print(f'   完成,問題 {sum(1 for p in problems if p[1] == "C")} 件')
 
     # ── D. 前後端對接 ────────────────────────────────────────────────
