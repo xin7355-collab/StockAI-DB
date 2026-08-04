@@ -19,6 +19,7 @@
   B. 新鮮度                                (更新時間 vs 該檔的預期節奏)
   C. 錯誤欄位                              (任何 *_error 有值)
   D. 前後端對接                            (前端讀的欄名,後端到底有沒有產)← 連接錯誤
+  D2. 關鍵欄位缺漏                          (檔案在、能解析,但「該有的那半沒有」)← V72.2.6
   E. 連動一致性                            (同一個指標出現在多個檔,值要一致)← 連動
 
 資料來源:gh-pages 分支(= 使用者手機真正讀到的那份),用 git 讀,不打網路。
@@ -177,6 +178,27 @@ def macro_fields_read():
     return {f for f in out if f.lower() not in skip}
 
 
+# ── D2. 關鍵欄位缺漏(V72.2.6)────────────────────────────────────────
+# ⭐ 為什麼要有這一類:`market_stats.json` 從 V72.0.3 上線到 V72.2.1 **一直只有 pb 沒有 margin**
+#    —— 檔案在、能解析、118 bytes 也不算「空」,A 類全綠;而 D 類**只檢查 macro_risk.json**,
+#    完全沒看它。於是「全市場融資維持率」做好了卻一次都沒產出過,零錯誤訊息、workflow 全綠。
+#    (真因是採礦端兩層 `if` 巢狀,同一個坑修了兩次才對 —— 見 CLAUDE.md V72.2.1/V72.2.3。)
+#
+# ⛔ 這裡刻意用**明確清單**而不是自動推導:自動掃前端讀哪些欄位會產生大量誤報,
+#    而 CLAUDE.md 鐵則說「誤報留著會讓人養成忽略體檢輸出的習慣」。
+#    ⚠️ 新增任何「一個檔裡有多個互相獨立的區塊」的採礦產物時,記得加進來。
+EXPECTED_KEYS = {
+    # 檔名: (該有的頂層 key, 少了的話是什麼意思)
+    'market_stats.json': [
+        ('pb', '全市場 P/B 分位數(compute_market_pb_percentiles)'),
+        ('margin', '全市場融資維持率(compute_market_margin_health)'),
+    ],
+    'today_signals.json': [
+        ('bull', '今日正期望值訊號榜(daily_signal_scan.mjs)'),
+        ('scanned', '掃了幾檔'),
+    ],
+}
+
 # 同一個指標出現在多個檔 → 值必須一致(連動對帳)
 #  ⚠️ 已知結論(2026-07-30 對照籌碼K線驗過):同一指標在這兩個檔不一致時,
 #     **macro_risk.json 是對的**(每 4 小時 cron,美股收完才抓);
@@ -319,6 +341,29 @@ def audit(ref):
         print(f'   前端讀 {len(read)} 個欄名 / 檔案有 {len(have)} 個 → 對不上的 {len(suspicious)} 個')
     else:
         add('❌', 'D', 'macro_risk.json 讀不到,無法做對接檢查')
+
+    # ── D2. 關鍵欄位缺漏 ─────────────────────────────────────────────
+    #   「檔案在 + 能解析 + 不是空的」全過,但**該有的那半沒有** —— A 類看不出來。
+    print('\n── D2. 關鍵欄位缺漏:檔案在,但少了該有的區塊 ────────────')
+    _d2 = 0
+    for fname, keys in EXPECTED_KEYS.items():
+        j = cache.get(fname)
+        if j is None:
+            j, _e = read_json(ref, f'data/{fname}')
+        if not isinstance(j, dict):
+            continue          # 檔案不存在/不是物件 → A 類已經報過,這裡不重複吵
+        for k, what in keys:
+            v = j.get(k)
+            if v is None or (isinstance(v, (dict, list, str)) and len(v) == 0):
+                err = j.get(f'{k}_error')
+                # ⭐ 有寫原因 = 守門刻意擋掉的(陷阱 #22 的正確做法)→ 降級成警告,不是明確錯誤
+                if err:
+                    add('⚠️', 'D2', f'{fname} 少了 `{k}`({what}),但有寫原因:{str(err)[:90]}')
+                else:
+                    add('❌', 'D2', f'{fname} 少了 `{k}`({what}),而且**沒有 {k}_error** '
+                                    f'→ 查不出是「算不出來」還是「根本沒跑到」(同陷阱 #9/#22)')
+                _d2 += 1
+    print(f'   檢查 {sum(len(v) for v in EXPECTED_KEYS.values())} 個關鍵欄位 → 缺 {_d2} 個')
 
     # ── E. 連動一致性 ────────────────────────────────────────────────
     print('\n── E. 連動一致性:同一指標在多個檔要一致 ────────────────')
