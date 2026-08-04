@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.8',
+    _APP_VERSION: 'V72.2.9',
     _CHANGELOG: [
+        { v: 'V72.2.9', dt: '2026-08-04', t: '🕳️ 再挖出兩個「壞掉但完全看不出來」的地方', d: [
+            '做了一支新工具:把程式裡 1,008 個「錯誤攔截區塊」全部裝上回報器,再把整個 App 走一遍 —— 專門抓那種「壞了但被吃掉、畫面看起來正常」的錯。',
+            '🐛 抓到:頂部報價的「總量 / 量縮」那一格,程式一直在讀一個不存在的變數 → **從來沒顯示過**。',
+            '🐛 抓到:基本面「🔄 採礦更新中」後面那句「· 上次採礦 N 天前」也是同樣原因,一次都沒出現過。',
+            '加上昨天修好的券商分點,同一種錯今天總共抓到 3 個。現在掃 12 檔股票 × 全部分頁 → 0 個。',
+        ] },
         { v: 'V72.2.8', dt: '2026-08-04', t: '🏦 券商分點其實一直是壞的(而且假裝成「資料還沒出來」)', d: [
             '🚨 抓到一個躲很久的:「券商分點」那張卡對**每一檔股票**都載入失敗,但畫面顯的是「⚠️ 今日分點尚未公布」—— 看起來像資料還沒進來,其實是程式錯誤被 try/catch 吞掉了。',
             '真因:一個變數宣告在 if 區塊裡面、卻在區塊外面被用到 → 每次都丟 ReferenceError。修好後 2330 立刻正常顯示 20 天分點、四個週期都在。',
@@ -23403,6 +23409,14 @@ ${lightExplain[queryType]}
         const d2 = new Date(); d2.setMonth(d2.getMonth() - 25);
         const revStart = d2.toISOString().split('T')[0];
 
+        // 🐛 V72.2.9 `localFund` 必須宣告在**這裡**(setCell 的外層)。
+        //   原本它是 `const localFund` 寫在下面的 `try { … }` **區塊內**,而 `setCell` 定義在區塊外
+        //   → `setCell` 的作用域鏈裡根本沒有這個名字 → 每次 `val == null` 都
+        //   **`ReferenceError: localFund is not defined`**,被裡面的 `catch(_) {}` 吞掉,
+        //   於是「🔄 採礦更新中」後面那句「· 上次採礦 N 天前」**從來沒出現過**。
+        //   ⛔ 這是本 session 抓到的第 3 個同類(`raw` / `fugleData` / `localFund`),
+        //      全靠 `scripts/swallow_hunt.mjs`(把每個 catch 包起來記錄)才看得到。
+        let localFund = {};
         const setCell = (id, val, unit, colorClass) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -23432,7 +23446,7 @@ ${lightExplain[queryType]}
         try {
             // 🎯 優先讀本地採礦的 fundamentals（miner.py 對 CHIP_WATCHLIST 已採好，7 天 TTL）
             //    四欄已有就 skip 對應 FinMind 即時呼叫，避免使用者被 token 限流卡住
-            const localFund = (await this._loadLocalFundamentals(sym)) || {};
+            localFund = (await this._loadLocalFundamentals(sym)) || {};   // ⛔ 別加 const(要用上面函式層那個)
             // 🌙 V68.0.1 — 夜間全市場滾動補齊(fund_sweep 擴充版)fallback:非觀察清單股(如中美晶 5483)
             //   的 P/B / 發配率 / 年化股利 / 填息 / 季EPS(PEG) 缺值時,在最前面補進 localFund,
             //   讓下游所有讀取點(qeps/payout/pb/fill…)自動吃到,不必逐點改。只補「缺的」不覆蓋既有。
@@ -34411,7 +34425,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const vEl = document.getElementById('quoteVolInfo');
             if (vEl) {
                 const raw = this.baseRawData || this.rawDailyData || [];
-                const vp = this._chuVolumeProgress(fugleData, raw);
+                // 🐛 V72.2.9 這裡原本直接寫 `fugleData` —— 但那是 `applyLatestPrice(fugleData, …)` 的**參數**,
+                //   `onWorkerMessage(data)` 根本沒有這個變數 → **每次都 `ReferenceError: fugleData is not defined`**,
+                //   被外面的 `catch(_) {}` 吞掉 → 頂部報價的「總量/量縮」**從來沒顯示過**,而且零錯誤訊息。
+                //   ⛔ 這是 V72.2.8 那個 `raw is not defined` 的同類(靠「把 catch 全包起來記錄」跑一遍才抓到)。
+                //   取法比照 L28866 既有寫法:從 `_lastFugleData` 拿當前個股最後一筆即時報價。
+                const _fq = (this._lastFugleData && this._lastFugleData[this.currentSymbolId]) || null;
+                const vp = this._chuVolumeProgress(_fq, raw);
                 let curVol = vp ? vp.cur : null, deltaPct = null, isEst = false;
                 if (vp && vp.pct != null) { deltaPct = vp.pct - 100; isEst = true; }       // 盤中:估量 vs 昨量
                 else if (vp && vp.cur && vp.prevVol) deltaPct = (vp.cur - vp.prevVol) / vp.prevVol * 100;  // 盤後:今量 vs 昨量
