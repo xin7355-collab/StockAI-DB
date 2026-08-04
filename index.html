@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.0.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,29 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.0.6',
+    _APP_VERSION: 'V72.0.7',
     _CHANGELOG: [
+        { v: 'V72.0.7', dt: '2026-08-04', t: '🛡️ 你截圖抓到的兩個錯誤:防守價比成本還高 + 兩張卡講反話', d: [
+            '你傳的國巨(2327)截圖,我逐格對過,抓到**兩個真的會害你做錯決定的錯誤**,都修好了。',
+            '',
+            '**① 🚨 最嚴重:防守價 676,比你的成本 561 還高 115 元**',
+            '卡片一邊寫「你還賺 +280 元」,一邊寫「已跌破防守價 676.00 → 停利出場」。**買在 561、防守價卻設在 676** —— 那等於「一進場就已經破防」,邏輯上根本不可能。',
+            '',
+            '查出來的原因:那個 676 是 **7/22 那根「發動K」的低點**(國巨那時還在 700 以上)。你是 8 月才買在 561 —— **那根 K 是你買進之前的事,跟你完全不相干**,卻被拿來當你的防守價。',
+            '',
+            '✅ 你說的「應該要用時間去判斷」完全正確,而且**買進日期你本來就有填**(建倉時那欄「買進日期(時間風控)」),只是防守價沒去用它。現在加了兩道:',
+            '・**時間**:發動K 如果比你買進日還早 → 不算你的。',
+            '・**一致性**:防守價高於成本、而現價已經在它下面 → 那條線早就破了,它現在是**上方壓力**不是防守價。(這道就算你沒填買進日也擋得住)',
+            '→ 國巨這個例子,防守價現在會是 **532.95**(成本 561 −5%),現價 565 在它之上 → **不會再誤報「停利出場」**。',
+            '',
+            '⚠️ 但我沒有把原本的規則拿掉:如果你買得夠低、發動K低點在你成本之上,那條線**仍然會被用來當移動停利**(那是對的,可以幫你多保住利潤)。',
+            '',
+            '**② 同一畫面兩張卡講反話**',
+            '總評儀表板寫「🟢 空方・避開 —— 反彈是給你出場用的」,下面「🔮 明日劇本」卻寫「明日偏多」+「開高站上昨高 583 → **可順勢做多/抱單**」。',
+            '',
+            '兩張其實都沒算錯 —— 明日劇本看的是**明天一天**,總評看的是**中期趨勢**。錯在**兩張都在下操作指令**。',
+            '✅ 修法:中期是空頭時,明日劇本改口只做描述 —— 開高改成「**反彈減碼**的機會,不是進場點」,並告訴你「站回月線才是中期轉折的第一個條件」。⛔ 不再叫你做多。',
+        ] },
         { v: 'V72.0.6', dt: '2026-08-04', t: '💰 進場分數也改看期望值(把上一版發現的打架修掉)', d: [
             '上一版我發現「**42 個 A 級訊號裡有 36 個期望值是負的**」,徽章上也照實顯示了。',
             '',
@@ -19844,7 +19865,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             try {
                 const inv = app._getInventory();
                 const pos = inv.find(i => i.symbol === sym && +i.cost > 0);
-                if (pos) { const uni = this._unifiedExitPlan(data, +pos.cost); if (uni?.stopFinal) slPrice = uni.stopFinal.toFixed(2); }
+                if (pos) { const uni = this._unifiedExitPlan(data, +pos.cost, pos.buyDate); if (uni?.stopFinal) slPrice = uni.stopFinal.toFixed(2); }
             } catch (_) {}
             // 🎨 V57.4 重設計:三格數字 + 「診斷一句 / 👉 行動一句」兩段式;新增 🟠 族群性回檔情境
             const f1 = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
@@ -21412,13 +21433,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const score = q ? q.score : 50;
             const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
             // 持倉
-            let cost = null, shares = 0, holdDays = null;
+            let cost = null, shares = 0, holdDays = null, _buyDate = null;   // ⏱️ V72.0.7 買進日 → 防守價的時間守門
             try {
                 const inv = app._getInventory();
                 const p = inv.find(i => i.symbol === sym && +i.cost > 0);
-                if (p) { cost = +p.cost; shares = +p.shares || 0; if (p.buyDate) { const bd = new Date(String(p.buyDate).replace(/\//g, '-')); const dd = Math.round((Date.now() - bd.getTime()) / 86400000); if (Number.isFinite(dd) && dd >= 0) holdDays = dd; } }
+                if (p) { cost = +p.cost; shares = +p.shares || 0; _buyDate = p.buyDate || null; if (p.buyDate) { const bd = new Date(String(p.buyDate).replace(/\//g, '-')); const dd = Math.round((Date.now() - bd.getTime()) / 86400000); if (Number.isFinite(dd) && dd >= 0) holdDays = dd; } }
             } catch (_) {}
-            let plan = null; try { plan = this._unifiedExitPlan(rows, cost); } catch (_) {}
+            let plan = null; try { plan = this._unifiedExitPlan(rows, cost, _buyDate); } catch (_) {}
             const tpS = plan?.takeShort, slF = plan?.stopFinal;
             const today = (this.getTodayStr ? this.getTodayStr() : '');
             let big, cls, why; const prices = [];
@@ -22972,13 +22993,34 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             else if (total <= -1) { tone = 'green'; verdict = '🟡 明日偏空(力道普通)'; headSop = '略偏空,反彈到昨高附近偏空看待,跌破昨低減碼。'; }
             else { tone = 'yellow'; verdict = '🟡 明日拉鋸 · 方向未定'; headSop = '多空力道接近,等開盤站上昨高或跌破昨低再動,別預設立場。'; }
             const tmap = { red: ['text-red-300', 'border-red-500', 'bg-red-900/15'], green: ['text-green-300', 'border-green-500', 'bg-green-900/15'], yellow: ['text-yellow-300', 'border-yellow-500', 'bg-yellow-900/15'] };
-            const [tCls, bCls, bgCls] = tmap[tone];
+            // 🐛 V72.0.7 ⛔ **主結論是空頭時,這張卡只准描述、不准下做多指令**
+            //   (同 V71.7.7 的鐵則:短線可以轉強,但中期沒過關就不能叫人做多)
+            //   使用者 2327 截圖:總評「🟢 空方・避開 —— 反彈是給你出場用的」,
+            //   下面這張卻寫「🟡 明日偏多」+「開高站上昨高 583 → 可順勢做多/抱單」。
+            //   ⚠️ 這張看的是**明天一天**、總評看的是**中期趨勢**,兩個都沒算錯 ——
+            //      錯在**兩張卡都在下操作指令**。修法是讓短線那張改口,不是改它的分數。
+            const _mainBear = this._ovTrend && this._ovTrend.sym === String(sym) && this._ovTrend.trend === 'bear';
+            if (_mainBear && total >= 1) {
+                verdict = verdict.replace(/明日偏多[^·]*/, m => m.trim() + ' ・僅限短線');
+                headSop = `⚠️ <b>短線是轉強,但中期趨勢仍是空頭</b>(上面總評:反彈是給你出場用的)→ `
+                    + `這裡的偏多<b>只能用來挑「反彈到哪裡減碼」</b>,⛔ 不是進場理由。有貨的可等反彈出,空手的別接。`;
+                tone = 'yellow';
+            }
+            const tmap2 = { red: ['text-red-300', 'border-red-500', 'bg-red-900/15'], green: ['text-green-300', 'border-green-500', 'bg-green-900/15'], yellow: ['text-yellow-300', 'border-yellow-500', 'bg-yellow-900/15'] };
+            const [tCls, bCls, bgCls] = tmap2[tone] || tmap[tone];
             // 明日開盤劇本(以昨高/昨低/月線當關鍵價)
             const yHigh = lv.yHigh, yLow = lv.yLow, ma20 = lv.ma20;
             const scen = [];
+            if (_mainBear) {
+                // 空頭時「開高」不是買點,是**減碼點** —— ⛔ 別再寫「可順勢做多/抱單」
+                scen.push({ ic: '📈', c: 'yellow', t: `開高站上昨高 <b class="font-mono">${f2(yHigh)}</b>`, d: '中期是空頭 → 這是<b>反彈減碼</b>的機會,不是進場點;有貨的分批出,⛔ 別因為一根紅K就改看多。' });
+                scen.push({ ic: '📉', c: 'green', t: `開低跌破昨低 <b class="font-mono">${f2(yLow)}</b>`, d: '空頭續行 → 減碼/避開,別搶反彈。' });
+                if (ma20) scen.push({ ic: '⚖️', c: 'yellow', t: `站回月線 <b class="font-mono">${f2(ma20)}</b> 並守住`, d: '這才是「中期轉折」的第一個條件 → 在那之前的紅K都當反彈看。' });
+            } else {
             scen.push({ ic: '📈', c: 'red', t: `開高站上昨高 <b class="font-mono">${f2(yHigh)}</b>`, d: '買盤延續、上方無套牢的話續強 → 可順勢做多/抱單,回不破昨高續抱。' });
             scen.push({ ic: '📉', c: 'green', t: `開低跌破昨低 <b class="font-mono">${f2(yLow)}</b>`, d: '賣壓宣洩、支撐失守 → 減碼/避開,別搶反彈;有空單可續抱。' });
             if (ma20) scen.push({ ic: '⚖️', c: 'yellow', t: `開平游走昨高低之間(守月線 <b class="font-mono">${f2(ma20)}</b>)`, d: '方向未定 → 觀望等量表態;守穩月線偏多、跌破月線偏空。' });
+            }
             const scenHtml = scen.map(s => `<div class="flex gap-1.5 items-start"><span class="text-${s.c}-400 flex-shrink-0 text-[11px]">${s.ic}</span><div class="min-w-0"><div class="text-[10px] text-gray-200 leading-snug">${s.t}</div><div class="text-[9px] text-gray-500 leading-snug">${s.d}</div></div></div>`).join('');
             // 因子清單(技術 + 籌碼合併)
             const bulls = [...tech.bull, ...(chip ? chip.bull : [])];
@@ -27373,6 +27415,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const bull = ma5 > ma20 && ma20 > ma60 && ma20Up;
             const bear = ma5 < ma20 && ma20 < ma60 && !ma20Up;
             const trend = bull ? 'bull' : bear ? 'bear' : 'flat';
+            // 🐛 V72.0.7 把主結論的趨勢**曝出來**,給「明日劇本」等其他卡讀
+            //   (同 V71.7.7 `_reboundVerdict` 的做法 —— 短線卡可以描述,
+            //    但**主結論是空頭時不准下做多指令**,否則同一畫面兩張卡講反話)。
+            //   使用者 2327 截圖:總評「🟢 空方・避開・反彈是給你出場用的」,
+            //   下面明日劇本卻寫「🟡 明日偏多」「開高站上昨高 583 → 可順勢做多/抱單」。
+            //   ⚠️ 一定要綁 sym,否則切股會殘留上一檔的結論(切股競態守門)。
+            this._ovTrend = { sym: String(this.currentSymbolId || ''), trend, txt: bull ? '多頭' : bear ? '空頭' : '盤整' };
             const trendTxt = bull ? '多頭' : bear ? '空頭' : '盤整';
             const trendIcon = bull ? '🔴' : bear ? '🟢' : '🟡';
             const trendSub = bull ? '三線多排・月線向上' : bear ? '三線空排・月線下彎' : '均線糾結・方向不明';
@@ -27402,9 +27451,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             else if (vr <= 0.55) { volTxt = trend === 'bull' ? `量縮 ${vr.toFixed(1)}×(多頭量縮照漲,別怕)` : `量縮 ${vr.toFixed(1)}×(下跌量縮=止跌前兆)`; volTone = 'text-gray-300'; }
             else { volTxt = `正常量 ${vr.toFixed(1)}× 基本量`; volTone = 'text-gray-400'; }
             // ④ 照表操課(持倉感知:有庫存=出場紀律優先;空手=進場紀律)
-            let cost = null, shares = 0;
-            try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) { cost = +p.cost; shares = +p.shares || 0; } } catch (_) {}
-            let plan = null; try { plan = this._unifiedExitPlan(data, cost); } catch (_) {}
+            let cost = null, shares = 0, _buyDate = null;   // ⏱️ V72.0.7 買進日 → 防守價的時間守門
+            try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) { cost = +p.cost; shares = +p.shares || 0; _buyDate = p.buyDate || null; } } catch (_) {}
+            let plan = null; try { plan = this._unifiedExitPlan(data, cost, _buyDate); } catch (_) {}
             const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
             const stop5 = nf(ma5);
             const tpS = plan?.takeShort, tpL = plan?.takeLong, slF = plan?.stopFinal;
@@ -28526,13 +28575,48 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🧮 V56.1 — 全頁「停損/停利」單一事實來源(數字中樞):總覽各卡一律引用這裡,嚴禁各卡自算
     //   來源=_chuExitRules(與出場總表同源):停利短=5MA、停利波段=20MA;
     //   stopFinal=「發動K低 vs 成本-5%」取較高者(先到先守,同出場總表 SOP 規則)
-    _unifiedExitPlan(data, cost) {
+    // 🐛 V72.0.7 兩層守門(使用者 2327 國巨截圖抓到,是**整張「現在怎麼做」卡給錯指令**的根因)
+    //   症狀:成本 561、現價 565(還賺 +0.7%),卡上卻寫「已跌破防守價 676.00 → 停利出場」。
+    //         防守價比成本**高 115 元(20%)** → 等於「一進場就已經破防」,邏輯上不可能成立。
+    //   根因:`stopFinal = max(發動K低, 成本×0.95)`,而那根「發動K」是 07/22 前後
+    //         (國巨還在 700 以上)那根,低點 676。使用者 08/01 才買在 561 ——
+    //         **那根 K 是他買進之前的事,跟他完全不相干**,卻被拿來當他的防守價。
+    //   ⛔ 注意 `max()` 本身是對的(移動停利:發動K低在成本之上時可以保住更多利潤),
+    //      ⛔ 別把它改成 `min` 或直接拿掉,那會讓賺很多的部位守回成本-5%、白白吐掉利潤。
+    //      漏的是**兩個守門**:
+    //   ① ⏱️ 時間:發動K 必須在「你買進之後」形成(這正是使用者說的「要用時間判斷」)。
+    //      buyDate 其實一直都有存(建倉 modal 的「買進日期(時間風控)」),只是這裡沒用到。
+    //   ② 📏 一致性:發動K低 > 成本,只有在「**現價還在它之上**」時才算移動停利;
+    //      現價已經跌到它下面 → 那條線早就破了,它現在是**上方壓力**不是防守價
+    //      (`_upsideRoom` L19398 早就這樣認定了,只有這裡沒跟上)。
+    //   ⭐ ② 不需要日期就成立 → buyDate 沒填時仍擋得住,兩條都要有。
+    _unifiedExitPlan(data, cost, buyDate) {
         try {
             const last = (data?.length || 0) - 1;
             const x = this._chuExitRules(data, this.indicators, last, (cost && cost > 0) ? cost : null);
             if (!x) return null;
-            const stops = [x.stopA?.low, x.stopB].filter(v => v != null && v > 0);
-            return { ...x, stopFinal: stops.length ? Number(Math.max(...stops).toFixed(2)) : null };
+            const pC = +x.pC;
+            let trig = x.stopA, dropped = null;
+            if (trig && trig.low > 0) {
+                // ① ⏱️ 時間守門:發動K 早於買進日 → 不是你的防守價
+                if (!dropped && buyDate) {
+                    const bd = String(buyDate).replace(/\//g, '-').slice(0, 10);
+                    const td = String(trig.date || data[trig.idx]?.date || '').replace(/\//g, '-').slice(0, 10);
+                    if (td && bd && td < bd) dropped = `發動K(${td})早於你的買進日(${bd})`;
+                }
+                // ② 📏 一致性守門:高於成本的發動K低,現價已在它下方 → 那條線早就破了
+                if (!dropped && cost > 0 && trig.low > cost && pC > 0 && pC < trig.low) {
+                    dropped = `發動K低 ${trig.low} 高於成本 ${cost},且現價 ${pC} 已在它下方 → 那條線早就破了,現在是上方壓力`;
+                }
+                if (dropped) trig = null;
+            }
+            const stops = [trig?.low, x.stopB].filter(v => v != null && v > 0);
+            return {
+                ...x, stopA: trig,
+                stopFinal: stops.length ? Number(Math.max(...stops).toFixed(2)) : null,
+                // ⭐ 陷阱 #22:把值拿掉一定要留原因,否則日後查不出是「沒有」還是「被擋掉」
+                stopADropped: dropped, stopARaw: x.stopA || null,
+            };
         } catch (_) { return null; }
     },
 
