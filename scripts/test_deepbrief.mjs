@@ -87,6 +87,32 @@ const R = await page.evaluate(async (syms) => {
         app._bearGate = orig;
         out.aiSrc = app.analyzeStockDeep.toString();
         out.jargon = app.jargonDict?.['深度診斷'] || '';
+        // ⑦ V72.4.2 品質守門:拿**使用者實測說「沒什麼屁用」的那一版原文**當測資
+        out.qBad = app._deepBriefQuality({
+            headline: '中美晶目前方向不明,觀望為主',
+            watch: ['量能只有1.0×20日均量,需注意量能是否能夠帶動價格',
+                    '5MA和季線糾結,月線209.60和季線179.78的突破或跌破將是關鍵',
+                    '外資近5日和近20日的減碼行為值得關注'],
+            distribution: '大戶出貨徵兆代表大戶減持和散戶增持的信號,而非預測出貨的時間,需注意大戶持股減少和散戶增持的趨勢',
+            future: '接下來的關鍵在於是否能夠帶量突破或跌破前低,從而轉強或轉弱',
+            invalidate: '如果出現明顯的趨勢和量能支持,則代表上述判斷錯了,需要重新評估',
+            blindspot: '這份分析缺乏公司基本面的資料和國際市場的影響',
+        }).bad;
+        out.qGood = app._deepBriefQuality({
+            headline: '今天+4.93%但月線209.6還在上方15%,是反彈不是轉強',
+            watch: ['季線179.78剛站上,收盤守不守得住是這波關鍵',
+                    '外資近5日賣超1,234張,反彈沒有法人買盤',
+                    '量是昨量的+17%但只有20日均量1.0倍,追價力道不足'],
+            conflict: '今天大漲4.93%但月線還在上方15% → 相信月線,這是反彈',
+            mistake: '把站上季線當成轉強去追,結果在月線209.6前被套',
+            distribution: '目前一條徵兆都沒亮', future: '盯季線179.78收盤守不守得住',
+            invalidate: '收盤跌破季線179.78', blindspot: '此股無券商分點資料',
+        }).bad;
+        // ⚠️ 這裡不可以在 .every() 的箭頭函式裡用 await(不是 async)→ 先把資料備好再比對
+        const _rr = await fetch(`data/${syms[0]}.json`);
+        const _dd = (await _rr.json()).map(x => ({ ...x, close: +x.close, open: +x.open, high: +x.high, low: +x.low, volume: +x.volume }));
+        const _ff = app._deepBriefFacts(_dd, syms[0]) || {};
+        out.factsHasRel = ['relMa5', 'relMa20', 'relMa60', 'relMa240', 'volVsPrev'].every(k => k in _ff);
     } catch (e) { out.err = String(e).slice(0, 300); }
     return out;
 }, SYMS);
@@ -155,6 +181,32 @@ const mk = R.per[SYMS[0]]?.marketKeys || [];
 for (const need of ['risk', 'vix', 'sox', 'sp500', 'usdtwd', 'basis', 'fiFut', 'oil']) {
     ok(`⑥ facts.market 含 \`${need}\``, mk.includes(need), JSON.stringify(mk));
 }
+
+// ── ⑦ V72.4.2 AI 輸出品質守門 ───────────────────────────────────────
+//   ⭐ 測資就是**使用者實測後說「沒什麼屁用」的那一版原文** ——
+//      ⛔ 別用自己編的假廢話,那只會驗到自己想得到的說法(同 V72.1.4 巡邏 grep 的教訓)。
+const qb = R.qBad || [];
+ok('⑦ ⭐⛔ 使用者截圖那版必須被判定為「空泛」', qb.length >= 3, JSON.stringify(qb));
+ok('⑦ 抓得到廢話詞(值得關注/突破或跌破)', qb.some(x => /廢話詞/.test(x)), JSON.stringify(qb));
+ok('⑦ ⭐ 抓得到「在複述規則而不是講這檔」(上一版最致命的毛病)',
+   qb.some(x => /複述規則/.test(x)), JSON.stringify(qb));
+ok('⑦ 抓得到「判斷錯了的條件無法驗證」', qb.some(x => /無法驗證/.test(x)), JSON.stringify(qb));
+ok('⑦ ⛔ 好的版本不可誤報(否則守門只會被無視)', (R.qGood || []).length === 0, JSON.stringify(R.qGood));
+
+// ── ⑧ 提示詞要真的把那幾種廢話寫成禁令 + 補上缺的事實 ────────────
+const s2 = R.aiSrc || '';
+ok('⑧ ⭐ 提示詞明列禁用詞(值得關注/有待觀察/將是關鍵)',
+   /值得關注/.test(s2) && /有待觀察/.test(s2) && /將是關鍵/.test(s2));
+ok('⑧ ⭐ 提示詞禁止「雙向都對」的寫法', /雙向都對|漲也對跌也對/.test(s2));
+ok('⑧ ⭐ 提示詞禁止複述規則/免責', /複述規則|複述.{0,4}免責/.test(s2));
+ok('⑧ ⭐ 要求每條都要有數字', /都必須含具體數字|必須帶至少一個數字/.test(s2));
+ok('⑧ ⭐ 新增「矛盾點」與「常見錯誤」欄位(這才是程式做不到的)',
+   /conflict/.test(s2) && /mistake/.test(s2));
+ok('⑧ ⭐ 均線要連「現價在它上面還下面幾%」一起給(上一版最大缺口)',
+   /現價在它.{0,4}上方|不准只念均線數字/.test(s2));
+ok('⑧ ⭐ 量能兩種定義都給,並警告只提一個會打架',
+   /不同基準|只提其中一個會跟畫面上另一處打架/.test(s2));
+ok('⑧ facts 有均線相對位置與量能兩種定義', R.factsHasRel === true, `factsHasRel=${R.factsHasRel}`);
 
 await browser.close();
 console.log();

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7080,8 +7080,18 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.1',
+    _APP_VERSION: 'V72.4.2',
     _CHANGELOG: [
+        { v: 'V72.4.2', dt: '2026-08-05', t: '🔧 AI 深度診斷大修:你說「沒什麼屁用」是對的,問題出在我的提示詞', d: [
+            '你拿中美晶(5483)實測給我看,那份輸出確實沒用。我逐條看完,問題不在 AI,在**我叫它做的事本身就錯了**:',
+            '🚫 **它在複述我寫給它的規則** —— 「大戶出貨徵兆代表大戶減持和散戶增持的信號,而非預測出貨時間」,那是我給它的免責條款,不是這檔的狀況。已改成「只准講這檔實際亮了哪幾條、數字多少」,一條都沒亮就直接說沒亮。',
+            '🚫 **雙向都對的廢話** —— 「突破或跌破將是關鍵」「轉強或轉弱」,漲也對跌也對等於沒講。現在明列禁用詞(值得關注、需注意、有待觀察、將是關鍵、是否能夠…),而且**每一句都必須是能被證明錯的說法**。',
+            '🚫 **沒有數字** —— 「外資減碼行為值得關注」現在必須寫成「外資近5日賣超 1,234 張」。',
+            '🚫 **只念均線不說現價在哪** —— 上一版給 AI 的資料裡**只有均線數字、沒有現價相對位置**,所以它講出「月線209.60和季線179.78的突破或跌破將是關鍵」卻沒提現價 181 在哪。現在直接餵「現價在月線下方 13.7%」這種話。',
+            '🚫 **量能講法打架** —— 頂部寫「量增17%」(比昨天),AI 說「量能只有1.0×20日均量」(比20日平均)。兩個都對但基準不同,現在兩個一起給並標清楚。',
+            '⭐ **最重要的改變:AI 現在要回答程式答不出來的東西**,而不是把程式的結論用更長更模糊的句子重講一遍。新增兩欄:**「哪些訊號互相矛盾」**(例:今天大漲 4.93% 但月線還在上方 15% → 這是反彈不是轉強)和**「這種盤最常見的錯誤動作」**。',
+            '🔍 另外加了**品質守門**:AI 回來之後程式會檢查有沒有廢話詞、有沒有數字、是不是在複述規則,判定空泛就在下面標紅字「這次 AI 回得很空泛,建議重抽」。⭐ 我拿你截圖那份原文去測,抓到 4 個問題;好的版本 0 個誤報。',
+        ] },
         { v: 'V72.4.1', dt: '2026-08-05', t: '🧩 ETF 不再套用個股版面 + 每個數字都告訴你「有什麼用」', d: [
             '🐛 你截圖抓到的:打開 00981A 這種 ETF,基本頁竟然顯示「毛利率 +3.0pp」「每季 EPS 2.64」「投資屬性 52/75/80」—— **ETF 根本沒有毛利率和 EPS**,那些全是**上一檔個股留下來沒清掉的數字**。切到 ETF 時只清了一部分格子,圖表和雷達整個沒清,而且畫面上完全沒有錯誤訊息。已修,測試會擋住再犯。',
             '🧭 順手抓到指路指錯地方:那段說明寫「請看籌碼分頁」,但 ETF 那兩張卡其實在**總覽 → 進場**。已改。',
@@ -15954,6 +15964,34 @@ const marginByDate = {};
         `;
     },
 
+    // 🔍 V72.4.2 AI 輸出品質守門 —— ⭐ 使用者實測後說「沒什麼屁用」,而那一版**沒有任何檢查**。
+    //   ⛔ 光靠提示詞叫它別講廢話是擋不住的(「沒有報錯」不等於「檢查過了」)→ 回來要驗。
+    //   驗三件事,全部是**這次輸出裡實際可以量的**:
+    //     ① 廢話詞(值得關注/有待觀察/突破或跌破…)—— 雙向都對 = 零資訊
+    //     ② 沒有數字的條目 —— 「外資減碼值得關注」vs「外資近5日賣超 1,234 張」
+    //     ③ 複述規則/免責 —— 「大戶出貨徵兆代表…而非預測出貨時間」那是我的規則不是這檔的事
+    //   ⚠️ 判定為空泛時**照樣顯示內容**(⛔ 不藏),只是在下面標一行提醒 + 建議重抽。
+    _deepBriefQuality(p) {
+        const bad = [];
+        const all = [p?.headline, ...(Array.isArray(p?.watch) ? p.watch : []), p?.conflict,
+                     p?.mistake, p?.distribution, p?.future, p?.invalidate, p?.blindspot]
+            .filter(x => typeof x === 'string').join(' ');
+        const FLUFF = ['值得關注', '需注意', '有待觀察', '將是關鍵', '是否能夠', '密切留意',
+                       '審慎樂觀', '突破或跌破', '轉強或轉弱', '仍需觀察', '後續觀察'];
+        const hitF = FLUFF.filter(w => all.includes(w));
+        if (hitF.length) bad.push(`出現廢話詞「${hitF[0]}」`);
+        // watch 每條都該有數字
+        const ws = (Array.isArray(p?.watch) ? p.watch : []).filter(x => typeof x === 'string');
+        const noNum = ws.filter(x => !/\d/.test(x));
+        if (ws.length && noNum.length >= Math.ceil(ws.length / 2)) bad.push(`${noNum.length}/${ws.length} 條沒有數字`);
+        if (p?.headline && !/\d/.test(p.headline)) bad.push('結論句沒有數字');
+        // 複述規則/免責(⚠️ 這幾句是我提示詞裡的用語,出現在輸出就代表它在複述而不是分析)
+        if (/而非預測|不是預測.{0,6}時間|代表.{0,4}信號,而/.test(all)) bad.push('在複述規則而不是講這檔');
+        // invalidate 要可驗證 → 得有數字
+        if (p?.invalidate && !/\d/.test(p.invalidate)) bad.push('「判斷錯了」的條件無法驗證(沒有具體數字)');
+        return { bad, ok: bad.length === 0 };
+    },
+
     async analyzeStockDeep(opts = {}) {
         const sym = this.currentSymbolId;
         const box = document.getElementById('deepBriefAi');
@@ -15979,10 +16017,16 @@ const marginByDate = {};
         const prompt = `你是台股研究員,講話白話、國中生看得懂,禁廢話禁客套。
 以下**所有數字都已經由程式精算完成**,你的工作是「解讀與串連」,⛔ 絕對不要自己做任何加減乘除或推算新數字,也⛔ 不要給任何買賣價位(那些由程式另外算)。
 
-【這檔】${f.name}(${f.sym}) 現價 ${n(f.pC, 2)}(今日 ${f.chg >= 0 ? '+' : ''}${n(f.chg, 2)}%)
-量能:${n(f.volX, 1)}× 20日均量
-均線:5MA ${n(f.ma5, 2)} / 月線 ${n(f.ma20, 2)} / 季線 ${n(f.ma60, 2)} / 年線 ${n(f.ma240, 2)}
+【這檔】${f.name}(${f.sym}) 現價 ${n(f.pC, 2)}(今日 ${f.chg >= 0 ? '+' : ''}${n(f.chg, 2)}%${f.twChg != null ? `,同日大盤 ${f.twChg >= 0 ? '+' : ''}${n(f.twChg, 2)}%` : ''})
+量能:今量是昨量的 ${f.volVsPrev != null ? (f.volVsPrev >= 0 ? '+' : '') + n(f.volVsPrev, 0) + '%' : '無資料'};同時是 20 日均量的 ${n(f.volX, 1)} 倍
+  ⚠️ 這兩個是**不同基準**(比昨天 vs 比 20 日平均),⛔ 只提其中一個會跟畫面上另一處打架 —— 要提就兩個一起講。
+均線與現價的相對位置(⭐ 這是重點,⛔ 不准只念均線數字而不說現價在它上面還下面):
+  5MA ${n(f.ma5, 2)}(現價在它${f.relMa5 >= 0 ? '上方' : '下方'} ${n(Math.abs(f.relMa5 ?? 0), 1)}%)
+  月線 ${n(f.ma20, 2)}(現價在它${f.relMa20 >= 0 ? '上方' : '下方'} ${n(Math.abs(f.relMa20 ?? 0), 1)}%)
+  季線 ${n(f.ma60, 2)}(現價在它${f.relMa60 >= 0 ? '上方' : '下方'} ${n(Math.abs(f.relMa60 ?? 0), 1)}%)
+  年線 ${n(f.ma240, 2)}(現價在它${f.relMa240 >= 0 ? '上方' : '下方'} ${n(Math.abs(f.relMa240 ?? 0), 1)}%)
 位階:${f.rank ? `${f.rank.tag}・52週位階 ${n(f.rank.pos, 0)}%・距歷史高 −${n(f.rank.discount, 0)}%` : '無資料'}
+基本面:${f.fund ? `本益比 ${f.fund.pe ?? '無'}・殖利率 ${f.fund.yield_rate ?? '無'}%` : '此股基本面快取未載入'}
 
 【程式已下的操作結論(⚠️ 你必須跟它一致,不可改口)】
 ${f.play.mode} —— ${f.play.why}
@@ -15999,14 +16043,29 @@ ${f.margin ? `融資族群推估成本 ${n(f.margin.cost, 1)},斷頭壓力區約
 【大盤與總經】台股風險指數 ${f.market.risk ?? '?'}/100;VIX ${f.market.vix ?? '?'};費半 ${f.market.sox ?? '?'}%;標普 ${f.market.sp500 ?? '?'}%
 外資台指期 ${f.market.fiFut || '無資料'};期現價差 ${f.market.basis ?? '無資料'};美元兌台幣 ${f.market.usdtwd ?? '?'};西德州原油 ${f.market.oil ?? '?'}
 
+🚫🚫 **絕對禁止的寫法(使用者實測後明講「沒什麼屁用」的就是這幾種)**:
+1. ⛔ **雙向都對的廢話** —— 例:「突破或跌破將是關鍵」「能否帶量轉強或轉弱」「後續有待觀察」。
+   漲也對跌也對 = 零資訊。**每一句都必須是「單向、可以被證明錯」的說法。**
+2. ⛔ **複述規則或免責** —— 例:「大戶出貨徵兆代表大戶減持散戶增持的信號,而非預測出貨時間」。
+   那是我給你的規則,不是這檔的狀況。**只准講這一檔實際發生了什麼。**
+3. ⛔ **沒有數字的句子** —— 例:「外資減碼行為值得關注」。要寫成「外資近 5 日賣超 1,234 張」。
+4. ⛔ 這些詞一律不准出現:值得關注、需注意、有待觀察、將是關鍵、是否能夠、密切留意、審慎樂觀。
+5. ⛔ **只念均線數字卻不說現價在它上面還下面幾 %**。
+
+✅ **你真正該做的、而程式做不到的事**:程式已經把結論算好了(上面那段),
+   你不要重講一遍 —— 你要做的是「**把互相矛盾的訊號點出來,並告訴他這代表什麼**」。
+   例:今天大漲但月線還在上方很多 → 這是**反彈不是轉強**,別把反彈當突破。
+
 請嚴格輸出純 JSON(⛔ 禁 \`\`\`json 標籤),每個欄位都用繁體中文白話:
 {
- "headline":"(35字內)一句話講完這檔現在的狀況,語氣要跟上面的操作結論一致",
- "watch":["(每條30字內)現在最該注意的 3 件事,要引用上面給的具體數字"],
- "distribution":"(60字內)用白話解釋大戶出貨徵兆那幾條代表什麼,⛔ 不可預測哪一天出貨,要說明這是徵兆不是預測",
- "future":"(60字內)接下來這檔的關鍵在哪(要看什麼催化或風險),⛔ 不要預測價格",
- "invalidate":"(40字內)什麼情況代表上面的判斷錯了、該重新評估",
- "blindspot":"(40字內)這份分析看不到的東西是什麼(哪些資料沒有/樣本不足)"
+ "headline":"(40字內)一句話講完這檔**現在實際的狀況**,必須帶至少一個數字,語氣跟上面的操作結論一致",
+ "watch":["(每條35字內)3 件事,**每一條都必須含具體數字**(價位/百分比/張數)。⛔ 不准寫『值得關注』這種"],
+ "conflict":"(50字內)**這檔目前哪些訊號互相矛盾**,以及該相信哪一邊(例:今天大漲 vs 月線還在上方 → 是反彈不是轉強)。真的沒有矛盾就寫「目前訊號方向一致」",
+ "mistake":"(40字內)**在這種盤面下最常見的錯誤動作是什麼**(例:把反彈當突破去追、跌到便宜就接刀)。這是程式算不出來的經驗,請具體",
+ "distribution":"(50字內)**只講這檔實際亮了哪幾條徵兆、數字是多少**。一條都沒亮就直接寫「目前一條徵兆都沒亮」。⛔ 不准解釋什麼叫徵兆",
+ "future":"(50字內)接下來**具體要盯哪個數字/哪個價位過了沒**。⛔ 不准寫『突破或跌破』這種兩邊都講",
+ "invalidate":"(40字內)**單一個、可以被證明的條件**(例:收盤跌破季線 179.78)。⛔ 不准寫『如果出現明顯趨勢』這種無法驗證的",
+ "blindspot":"(40字內)這份分析**具體**少了什麼資料。⛔ 不准寫『缺乏基本面和國際市場影響』這種泛泛而談 —— 要指名是哪一項沒有"
 }`;
         const btn = document.querySelector('[onclick*="analyzeStockDeep"]');
         if (btn) btn.disabled = true;
@@ -16015,6 +16074,7 @@ ${f.margin ? `融資族群推估成本 ${n(f.margin.cost, 1)},斷頭壓力區約
             const text = await this._callDeepAI({ prompt, max_tokens: 1200, temperature: 0.4, chain: 'gemini-openrouter' });
             if (this.currentSymbolId !== sym) return;   // 🛡️ 切股競態守門
             const p = JSON.parse(String(text).replace(/```json\s*|\s*```/g, '').trim());
+            const q = this._deepBriefQuality(p);   // 🔍 V72.4.2 輸出品質守門(⛔ 光靠提示詞擋不住)
             const li = (arr) => (Array.isArray(arr) ? arr : [arr]).filter(Boolean).slice(0, 3)
                 .map(x => `<div class="flex gap-1.5 py-0.5"><span class="text-gray-600">•</span><span class="flex-1 text-[11px] text-gray-200 leading-relaxed">${x}</span></div>`).join('');
             const sec = (icon, title, body, cls = 'text-gray-200') =>
@@ -16023,10 +16083,13 @@ ${f.margin ? `融資族群推估成本 ${n(f.margin.cost, 1)},斷頭壓力區約
                 <div class="mt-2 bg-[#0d1117] border border-purple-800/40 rounded-lg p-2.5">
                     <div class="text-[12px] font-black text-purple-200 leading-snug mb-1.5">${p.headline || '--'}</div>
                     ${p.watch ? `<div class="text-[10px] text-gray-400 font-bold mb-0.5">👀 現在最該注意</div>${li(p.watch)}` : ''}
-                    ${sec('📤', '大戶出貨徵兆怎麼看', p.distribution)}
-                    ${sec('🔭', '接下來的關鍵', p.future)}
+                    ${sec('⚔️', '哪些訊號互相矛盾', p.conflict, 'text-cyan-200')}
+                    ${sec('🚫', '這種盤最常見的錯誤動作', p.mistake, 'text-orange-200')}
+                    ${sec('📤', '出貨徵兆實際亮了哪幾條', p.distribution)}
+                    ${sec('🔭', '接下來具體盯什麼', p.future)}
                     ${sec('🛑', '什麼情況代表判斷錯了', p.invalidate, 'text-amber-200')}
                     ${sec('🕳️', '這份分析看不到什麼', p.blindspot, 'text-gray-400')}
+                    ${q.bad.length ? `<div class="mt-2 pt-2 border-t border-red-900/40 text-[10px] text-red-300 leading-snug">⚠️ <b>這次 AI 回得很空泛</b>(${q.bad.join('、')})→ 上面那段參考價值低,<b>建議雙擊按鈕重抽</b>;或直接看上半部程式算的結論就好。</div>` : ''}
                     <div class="text-[8px] text-gray-600 mt-2 pt-1.5 border-t border-[#21262d] leading-snug">🤖 所有數字都是程式算好再交給 AI 解讀(AI 不會算數,不讓它算)。⛔ 進出場價請看下方各卡精算值。${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>`;
             box.innerHTML = html;
@@ -21556,10 +21619,24 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { upside = this._upsideRoom(pC, data, last); } catch (_) { }
         try { fiFut = this._fiFutState?.(); } catch (_) { }
         try { xray = this._xrayMetrics || null; } catch (_) { }
+        // 🐛 V72.4.2 量能有**兩種定義**,同一畫面出現兩個不同的數字會被當成打架(同名不同義鐵則):
+        //   ・頂部報價的「量增 17%」= 今量 vs **昨量**
+        //   ・這裡的 volX = 今量 ÷ **20 日均量**
+        //   使用者截圖:頂部寫「量增17%」、AI 卻說「量能只有 1.0×20日均量」→ 看起來自相矛盾。
+        //   → 兩個都算出來、都標清楚基準,交給 AI 時明寫是哪一種。
+        const vPrev = +(data[last - 1]?.volume || 0);
+        const vNow = +(data[last]?.volume || 0);
+        const volVsPrev = vPrev > 0 ? (vNow - vPrev) / vPrev * 100 : null;
+        // 均線相對位置(%)——⭐ 這是上一版最大的缺口:AI 只拿到均線數字、拿不到「現價在它上面還下面幾%」,
+        //   於是講出「月線209.6和季線179.78的突破或跌破將是關鍵」這種沒講到現價 181 在哪的廢話。
+        const rel = m => (m && m > 0) ? (pC - m) / m * 100 : null;
         return {
             sym, name: this.getStockName?.(sym) || sym,
-            pC, chg, volX: v20 > 0 ? (+data[last].volume || 0) / v20 : null,
+            pC, chg, volX: v20 > 0 ? vNow / v20 : null, volVsPrev,
             ma5: ma(5), ma20: ma(20), ma60: ma(60), ma240: ma(240),
+            relMa5: rel(ma(5)), relMa20: rel(ma(20)), relMa60: rel(ma(60)), relMa240: rel(ma(240)),
+            fund: (this._fundCache?.sym === sym) ? this._fundCache : null,
+            twChg: (() => { const t = this._medGapCache || null; return t?.idx ?? null; })(),
             rank, entry, upside, xray,
             fi5: fnet(5), fi20: fnet(20), tr5: tnet(5), tr20: tnet(20),
             dist: this._distributionWatch(data, sym),
