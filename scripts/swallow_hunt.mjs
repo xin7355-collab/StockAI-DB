@@ -123,6 +123,31 @@ for (const t of ['market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
     process.stdout.write('.');
 }
 
+
+// ── 廣掃:把「零參數的 render/show/update 類方法」全部叫一遍 ────────────
+//   ⭐ 前面那些是「使用者一定會走到」的路徑;這一段是**沒被走到的死角**。
+//   ⛔ 排除會改資料/送出去的(save/delete/clear/export/push/送出/清空…)——
+//      巡邏工具不可以有副作用。
+process.stdout.write('\n🧹 廣掃零參數方法 ');
+const swept = await page.evaluate(async () => {
+    const DANGER = /save|delete|remove|clear|reset|export|import|push|subscribe|unsubscribe|logout|send|submit|register|unregister|write|set[A-Z]|_ls|confirm|alert|reload|analyze$/i;
+    const WANT = /^(render|show|update|refresh|_render|_show|_update|_calc|_build|switch|draw|paint|load)/;
+    const names = Object.keys(app).filter(k => {
+        try {
+            if (typeof app[k] !== 'function') return false;
+            if (app[k].length !== 0) return false;          // 只叫零參數的
+            if (DANGER.test(k)) return false;
+            return WANT.test(k);
+        } catch (_) { return false; }
+    });
+    for (const k of names) {
+        try { const r = app[k](); if (r && typeof r.then === 'function') await r.catch(() => {}); } catch (_) { }
+        await new Promise(r => setTimeout(r, 12));
+    }
+    return names.length;
+});
+process.stdout.write(`(${swept} 個)`);
+
 const sw = await page.evaluate(() => window.__swallowed);
 await browser.close();
 try { fs.unlinkSync(INSTR); } catch (_) { }
