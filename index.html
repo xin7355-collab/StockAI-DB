@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,27 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.2',
+    _APP_VERSION: 'V72.1.3',
     _CHANGELOG: [
+        { v: 'V72.1.3', dt: '2026-08-04', t: '📐🔬 K線頁說「實測有效」其實都不賺 + 籌碼頁兩個主力打架', d: [
+            '照你說的，把 **K 線頁**跟**籌碼頁**用真實資料(國巨 2327 + 真的分點)一筆一筆跑出來看，抓到兩個：',
+            '',
+            '**① 🚨 K線頁標「🎯 實測有效的訊號(3)」，但那三個其實都不賺**',
+            '勝率 41.7% / 43.9% / 44%(基準 36%，看起來都贏)，**但期望值全是負的**：−0.295% / −0.802% / −0.224%。也就是「常常對，但輸的時候輸更大」。',
+            '⛔ 標成「**實測有效**」會讓你以為可以進場 —— 這是誤導。',
+            '',
+            '✅ 改成**三區，各自誠實**：',
+            '・🎯 **值得參考的進場訊號** = 期望值真的為正的(今天國巨**一個都沒有**，就直接寫「沒有，別硬找理由進場」)',
+            '・⚠️ **風險提醒** = 看空/警示訊號，**獨立一區不收合**(漏看的代價比多看一眼大)，並註明「不是賣出指令」',
+            '・➖ 常對但不賺 / 沒驗證過的 → 收進摺疊區。⛔ 沒有刪掉，只是不搶版面。',
+            '',
+            '**② 🔬 籌碼頁同一頁兩個「主力」方向相反**',
+            '「明日劇本」寫「主力今日整體**大買 9,828 張**」，下面「主力動向」卻寫「**偏賣 −15,009 張**」。',
+            '',
+            '兩個都沒算錯 —— 一個是**今天**、一個是**近 5 日**。但名字一樣又沒標範圍，看起來就是兩張卡在吵架。',
+            '✅ 現在會**主動跳一行說明**：「今天跟近 5 日方向相反，不是算錯 —— 今天轉買、但這 5 天整體還是賣超 → 可能只是**單日回補**，還沒轉向；要連續 2~3 天買超才算數。**下面那張看的是近 5 日，兩張不是在吵架。**」',
+            '因子清單也一併標上「今日」。',
+        ] },
         { v: 'V72.1.2', dt: '2026-08-04', t: '📐 順逆價差顯示的是「昨天的數字」(兩個防呆機制打架)', d: [
             '接著做全盤資料體檢,又抓到一個 —— 而且這個是**顯示了不該相信的數字**,比空白更危險:',
             '',
@@ -19817,8 +19836,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const _stable = sigs.map((x, i) => [x, i]);
         _stable.sort((a, b) => (a[0]._rk - b[0]._rk) || (a[1] - b[1]));   // 穩定排序,同級維持原順序
         sigs = _stable.map(x => x[0]);
-        const good = sigs.filter(x => x._rk <= 1);
-        const rest = sigs.filter(x => x._rk > 1);
+        // 🐛 V72.1.3 ⭐ 分組改看「期望值」,⛔ 不是只看統計分級。
+        //   使用者實測 2327 截到的問題:標題寫「🎯 **實測有效**的訊號(3)」,
+        //   但三個的期望值全是負的(−0.295% / −0.802% / −0.224%)——
+        //   勝率 41~44% 確實贏基準 36%,但**輸的時候輸更大**,加起來還是賠。
+        //   ⛔ 把它們標成「實測有效」會讓人以為可以進場,那是誤導
+        //   (V72.0.3 已在總覽修過:看多必須 exp>0 才准當進場理由,K線頁沒跟上)。
+        //   ⭐ 三分區,語意各自誠實:
+        //     ① 🎯 值得參考的進場訊號 = 看多 且 期望值為正
+        //     ② ⚠️ 風險提醒          = 看空/警示(⛔ 不看期望值,風險提醒不打折)
+        //     ③ ➖ 常對但不賺          = 看多但期望值 ≤0(收摺疊,⛔ 不刪)
+        const _exp = x => (x._e && x._e.exp != null) ? x._e.exp : null;
+        const _isBull = x => x.tone === 'bull';
+        const good = sigs.filter(x => x._rk <= 1 && _isBull(x) && _exp(x) != null && _exp(x) > 0);
+        const risk = sigs.filter(x => x._rk <= 1 && !_isBull(x));
+        const dull = sigs.filter(x => x._rk <= 1 && _isBull(x) && !(_exp(x) != null && _exp(x) > 0));
+        const rest = sigs.filter(x => x._rk > 1).concat(dull);
         const MAXROWS = 10;
         const _card = (s, showEdge) => { const t = sty[s.tone] || sty.flat; const _tt = String(s.title || '').replace(/'/g, '’');
             const e = s._e;
@@ -19832,13 +19865,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return `<div onclick="app.showKbarSignalHelp('${_tt}')" class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5 cursor-pointer hover:bg-white/5 transition-colors">
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}${badge}<span class="text-[9px] text-amber-400/70 font-normal ml-1">👆教學</span></div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; };
+        const _help = `<button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button>`;
         const rows = (good.length
-            ? `<div class="text-[10px] text-red-300 font-bold mb-1 flex items-center gap-1">🎯 實測有效的訊號(${good.length})
-                 <button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button></div>`
+            ? `<div class="text-[10px] text-red-300 font-bold mb-1 flex items-center gap-1">🎯 值得參考的進場訊號(${good.length})<span class="text-[9px] text-gray-500 font-normal">實測期望值為正</span>${_help}</div>`
               + good.slice(0, MAXROWS).map(s => _card(s, true)).join('')
-            : `<div class="text-[10px] text-gray-500 mb-1.5">➖ 今天沒有出現「實測有效」的訊號(下面是其餘觀察用訊號)。</div>`)
+            : `<div class="text-[10px] text-gray-400 mb-1.5 bg-[#161b22] border-l-2 border-gray-600 pl-2 py-1 rounded-r">➖ 今天<b class="text-gray-200">沒有</b>「實測期望值為正」的進場訊號。<b class="text-gray-200">別硬找理由進場</b> —— 下面那些是風險提醒與觀察用的。${_help}</div>`)
+            // ⚠️ 風險提醒獨立一區、⛔ 不打折也不收合(漏看的代價比多看一眼大得多)
+            + (risk.length
+                ? `<div class="text-[10px] text-yellow-300 font-bold mb-1 mt-1.5">⚠️ 風險提醒(${risk.length})<span class="text-[9px] text-gray-500 font-normal ml-1">不是賣出指令,是要你多看一眼</span></div>`
+                  + risk.slice(0, MAXROWS).map(s => _card(s, true)).join('')
+                : '')
             + (rest.length ? `<details class="mt-1">
-                <summary class="text-[10px] text-gray-500 cursor-pointer list-none py-1">▸ 其餘 ${rest.length} 條(實測跟隨機沒差 / 尚未驗證)—— 觀察用,別當進場理由</summary>
+                <summary class="text-[10px] text-gray-500 cursor-pointer list-none py-1">▸ 其餘 ${rest.length} 條(常對但不賺 / 跟隨機沒差 / 尚未驗證)—— 觀察用,別當進場理由</summary>
                 <div class="mt-1">${rest.slice(0, 12).map(s => _card(s, false)).join('')}
                 ${rest.length > 12 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${rest.length - 12} 條</div>` : ''}</div></details>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
@@ -22956,10 +22994,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (L(fn1) <= -300) { score -= 2; bear.push(`外資分點今日賣超 <b>${Math.abs(L(fn1)).toLocaleString()}</b> 張`); }
         else if (L(fn1) >= 300) { score += 2; bull.push(`外資分點今日買超 <b>${L(fn1).toLocaleString()}</b> 張`); }
         // 🆕 主力整體淨買超(比單一外資分點更全面 → 抵銷偏誤)
-        if (mainNetLots >= 500) { score += 2; bull.push(`主力今日整體大買 <b>${mainNetLots.toLocaleString()}</b> 張(買盤 > 賣壓)`); }
+        if (mainNetLots >= 500) { score += 2; bull.push(`分點主力<b class="text-gray-400">今日</b>整體大買 <b>${mainNetLots.toLocaleString()}</b> 張(買盤 > 賣壓)`); }
         else if (mainNetLots >= 200) { score += 1; bull.push(`主力今日偏買 <b>${mainNetLots.toLocaleString()}</b> 張`); }
         else if (mainNetLots <= -500) { score -= 2; bear.push(`主力今日整體大賣 <b>${Math.abs(mainNetLots).toLocaleString()}</b> 張`); }
-        else if (mainNetLots <= -200) { score -= 1; bear.push(`主力今日偏賣 <b>${Math.abs(mainNetLots).toLocaleString()}</b> 張`); }
+        else if (mainNetLots <= -200) { score -= 1; bear.push(`分點主力<b class="text-gray-400">今日</b>偏賣 <b>${Math.abs(mainNetLots).toLocaleString()}</b> 張`); }
         if (fn1 < 0 && fn5 < 0 && fn10 < 0) { score -= 1; bear.push('外資 1/5/10 日連續調節(波段偏空)'); }
         else if (fn1 > 0 && fn5 > 0 && fn10 > 0) { score += 1; bull.push('外資 1/5/10 日連續買超(波段偏多)'); }
         if (dtLots >= 300) { score -= 2; bear.push(`隔日沖今買 <b>${dtLots.toLocaleString()}</b> 張 → 明日獲利倒貨賣壓`); }
@@ -23011,6 +23049,31 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!v) return '';
         const _lagI = this._fenLagInfo();
         const { tone, title, sop, bear, bull } = v;
+        // 🐛 V72.1.3 ⭐ 同一頁兩個「主力」方向相反時要主動點出來(同 V72.0.8 總覽那次,
+        //   當時只修了總覽,**籌碼頁沒跟上**)。使用者實測 2327:
+        //     這張卡:「主力今日整體大買 9,828 張」(= periods['1d'],**今天**)
+        //     主力動向卡:「偏賣 −15,009 張」(= periods['5d'],**近 5 日**)
+        //   ⛔ 兩個都沒算錯,是**不同時間範圍** —— 但名字一樣、又沒標範圍,
+        //      使用者只會覺得「這兩張卡在吵架,我要信哪個」。
+        //   ⭐ 修法同前:標清楚範圍 + 方向相反時直接講白話,
+        //      ⛔ 不硬統一成一個數字(那會失真)。
+        let clash5d = '';
+        try {
+            const m5 = this._chipMainForce(P, curPx);
+            const n1 = v.mainNetLots;
+            if (m5 && Number.isFinite(n1) && Math.abs(n1) >= 300 && Math.abs(m5.net) >= 300
+                && (n1 > 0) !== (m5.net > 0)) {
+                const f = x => (x >= 0 ? '+' : '') + Math.round(x).toLocaleString();
+                const c = x => x > 0 ? 'text-red-300' : 'text-green-300';
+                clash5d = `<div class="mt-2 bg-[#0d1117] border-l-4 border-yellow-500 pl-2.5 py-1.5 rounded-r">
+                    <div class="text-[10px] text-gray-200 leading-relaxed">⚠️ <b class="text-gray-100">今天跟近 5 日方向相反,不是算錯</b> ——
+                    分點主力<b class="text-gray-400">今日</b> <b class="font-mono ${c(n1)}">${f(n1)}張</b>、
+                    <b class="text-gray-400">近 5 日</b> <b class="font-mono ${c(m5.net)}">${f(m5.net)}張</b>。
+                    ${n1 > 0 ? '今天轉買、但這 5 天整體還是賣超 → 可能只是<b>單日回補</b>,還沒轉向;要連續 2~3 天買超才算數。'
+                             : '今天轉賣、但這 5 天整體是買超 → 可能只是<b>單日獲利了結</b>;跌破買方成本才算真的轉弱。'}
+                    <b class="text-gray-100">下面「主力動向」那張看的是近 5 日,兩張不是在吵架。</b></div></div>`;
+            }
+        } catch (_) {}
         const tmap = { red: 'text-red-300 border-red-500 bg-red-900/20', green: 'text-green-300 border-green-500 bg-green-900/15', yellow: 'text-yellow-300 border-yellow-500 bg-yellow-900/15' };
         const [tCls, bCls, bgCls] = tmap[tone].split(' ');
         const line = (arr, cls, ic) => arr.length ? `<div class="mt-1.5 space-y-1">${arr.map(t => `<div class="text-[10px] text-gray-300 leading-snug flex gap-1"><span class="${cls} flex-shrink-0">${ic}</span><span>${t}</span></div>`).join('')}</div>` : '';
@@ -23024,6 +23087,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[10px] text-gray-300 leading-relaxed">下面這段是用 <b>${this._dW(this._fenDataDate)}</b> 的分點推估「它的下一個交易日」,而那天<b>已經過完了</b>${_lagI.chg != null ? `,實際收 <b class="${_lagI.chg >= 0 ? 'text-red-300' : 'text-green-300'} font-mono">${_lagI.chg >= 0 ? '+' : ''}${_lagI.chg.toFixed(1)}%</b>` : ''} → 當「事後對帳」看,<b>別當明天的操作依據</b>。<br>分點是全市場輪流更新(每輪約 35 分鐘預算),這檔這輪還沒輪到;下次採礦補上就會變最新。</div>
             </div>` : ''}
             <div class="text-base font-black ${tCls} leading-tight mt-1.5">${_lagI.lag > 0 ? '（已過期）' : ''}${title}</div>
+            ${clash5d}
             ${bear.length ? `<div class="text-[10px] text-green-300 font-bold mt-2">▼ 賣壓 / 偏空因子</div>${line(bear, 'text-green-400', '•')}` : ''}
             ${bull.length ? `<div class="text-[10px] text-red-300 font-bold mt-2">▲ 撐盤 / 偏多因子</div>${line(bull, 'text-red-400', '•')}` : ''}
             ${!bear.length && !bull.length ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">今日分點無明顯偏多/偏空訊號,回歸看量價與大盤方向。</div>` : ''}

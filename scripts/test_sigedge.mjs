@@ -88,8 +88,13 @@ const html = await page.evaluate(() => {
     return box.innerHTML;
 });
 ok('④ 有渲染出東西', html && html.length > 200 && !html.startsWith('ERR:'), String(html).slice(0, 160));
-ok('④ ⭐ 有「實測有效的訊號」分區標題或誠實說今天沒有',
-   /實測有效的訊號|今天沒有出現「實測有效」/.test(html), html.slice(0, 400));
+// ⭐ V72.1.3 分區標題改了:「實測有效」→「值得參考的進場訊號(實測期望值為正)」。
+//   原因:實測 2327 時三個被標成「實測有效」的看多訊號**期望值全是負的**,
+//   標「有效」等於誤導(V72.0.3 已在總覽定調「看多必須 exp>0」,K線頁那時沒跟上)。
+ok('④ ⭐ 有進場訊號分區標題,或誠實說今天沒有',
+   /值得參考的進場訊號|沒有.{0,20}進場訊號/.test(html), html.slice(0, 400));
+ok('④ ⭐⛔ 不可再用「實測有效」當標題(那批期望值是負的)',
+   !/實測有效的訊號/.test(html), html.slice(0, 400));
 ok('④ ⭐ 其餘訊號收在 <details> 摺疊區(不是全部攤開)', /<details/.test(html), html.slice(0, 300));
 ok('④ 摺疊區要說明「觀察用,別當進場理由」', /別當進場理由/.test(html), html.slice(0, 900));
 ok('④ 有「怎麼看」教學按鈕', /怎麼看/.test(html), html.slice(0, 600));
