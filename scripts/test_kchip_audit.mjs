@@ -28,6 +28,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 240)}`}`); if (!c) fails.push(n); };
 const txt = h => String(h == null ? '' : h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+// ⚠️ 「禁止出現某句話」的測試,一律先拿掉**否定形** —— 正確的免責寫法本身就含被禁的字串。
+//   本 session 已踩 7 次(「不是買賣訊號」含賣訊、「沒有推估台積電的官方權重」含權重、
+//   「不是勝率」含勝率…)。⛔ 別因此把 BAD 放寬成不檢查 —— 那才是真正的危險。
+const nono = t => String(t)
+    .replace(/(?:不是|並非|沒有|不可|⛔[^。]{0,12}不)[^。;,]{0,24}(勝率|可信度|保證|準確|會賺|買訊|賣訊|權重)/g, '')
+    .replace(/預測力還沒驗證過/g, '');
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const page = await browser.newPage();
@@ -197,8 +203,19 @@ ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損�
     ok('④ ⭐ 乾淨度差要另外警示(⛔ 但不計入多空,它不是方向)',
        /籌碼偏亂/.test(cl) && !/乾淨度.{0,6}(偏多|偏空)/.test(cl), cl.slice(0, 500));
     ok('④ 乾淨度好時不顯示那句警示', !/籌碼偏亂/.test(txt(CN.clean)), txt(CN.clean).slice(0, 300));
-    ok('④ ⭐ 全部同向時要說「方向一致,可信度較高」',
-       /同向偏多/.test(txt(CN.allBull)) && /方向一致/.test(txt(CN.allBull)), txt(CN.allBull).slice(0, 300));
+    // ⚠️ V72.1.6 自我修正:原本寫「方向一致 → **可信度較高**」是**預測性主張**,
+    //   而籌碼訊號的預測力從沒驗證過(法人非零資料只回溯到 2026/04,約 60 個交易日)。
+    //   ⛔ 違反鐵則「描述可以直接顯示,預測主張一定要先實測」→ 改成純事實描述。
+    ok('④ ⭐ 全部同向時只做事實描述(方向一致)',
+       /方向一致/.test(txt(CN.allBull)), txt(CN.allBull).slice(0, 300));
+    ok('④ ⭐⛔ 不可宣稱「可信度較高 / 勝率」(那是沒驗證過的預測主張)',
+       !/可信度較高|勝率|準確/.test(nono(txt(CN.allBull))) && !/可信度較高|勝率|準確/.test(nono(cl)),
+       (nono(cl).match(/可信度較高|勝率|準確/) || []).join(','));
+    ok('④ ⭐ 必須明說「預測力還沒驗證過」+ 為什麼(樣本只有 60 天)',
+       /預測力還沒驗證過/.test(cl) && /2026\/04/.test(cl) && /60 個交易日/.test(cl), cl.slice(-400));
+    ok('④ ⭐ 要說清楚定位(只是描述今天長什麼樣,不是勝率)',
+       /不是勝率/.test(cl), cl.slice(-400));
+    ok('④ 要指路「K線訊號那邊才有實測成績」', /K線訊號那邊才有實測成績/.test(cl), cl.slice(-300));
     ok('④ ⛔ 沒有分點資料 → 整行不顯示(不留空殼)', CN.noFen === '', String(CN.noFen).slice(0, 120));
     // ⚠️ 註解寫在函式**之前** → toString() 拿不到,必須讀原始檔(同 test_guardtime ⑦ 那次的坑)
     ok('④ ⛔ 註解要寫明「不改子指標數字」',

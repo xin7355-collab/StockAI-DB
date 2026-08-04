@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,21 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.5',
+    _APP_VERSION: 'V72.1.6',
     _CHANGELOG: [
+        { v: 'V72.1.6', dt: '2026-08-04', t: '⚠️ 我自己上一版就寫了一句沒驗證過的話,收回來', d: [
+            '上一版那行「其他籌碼指標怎麼說」，我在方向一致時寫了「**可信度較高**」。',
+            '',
+            '結果我去查資料才發現：**籌碼訊號的預測力我從來沒驗證過**。法人買賣超(外資/投信)的歷史**只回溯到 2026/04**，大約 60 個交易日，而且全部落在同一段下跌行情 —— 樣本根本不夠做回測。',
+            '',
+            '⛔ 那句話違反了我自己訂的規矩:**「邏輯上就成立的描述」可以直接顯示，「A 高會漲」這種預測主張一定要先實測**。',
+            '',
+            '✅ 改成純事實描述:',
+            '・方向一致 → 「**方向一致(都偏多)** —— 至少沒有互相矛盾」(⛔ 不再說可信度)',
+            '・下方固定加一句:「⚠️ 這幾項的**預測力還沒驗證過** —— 歷史只回溯到 2026/04、樣本不夠做回測。這裡只是把**今天的籌碼長什麼樣**講清楚，**不是勝率**。K線訊號那邊才有實測成績。」',
+            '',
+            '📌 順帶說明**為什麼籌碼給不出勝率、K線可以**:K線只需要股價歷史(有 3 年)，籌碼需要法人買賣超歷史(只有 3 個月)。等資料累積滿一年我會回來重跑，有效果才會拿來計分。',
+        ] },
         { v: 'V72.1.5', dt: '2026-08-04', t: '🧭 籌碼頁:三張卡的結論壓成一行,打架就直接講', d: [
             '接著把籌碼頁收斂。籌碼頁最上方本來就有主結論卡（🐘 大戶籌碼總結），但下面還有**明日劇本**、**籌碼乾淨度**、**主力動向**各自在下結論 —— 你看完主結論還要自己去比對三張卡。',
             '',
@@ -14145,9 +14158,16 @@ const marginByDate = {};
             const up = items.filter(x => x.d > 0), dn = items.filter(x => x.d < 0);
             const chip = x => `<span class="inline-block px-1 rounded bg-white/5 ${x.d > 0 ? 'text-red-300' : 'text-green-300'}">${x.n} ${x.t}</span>`;
             const row = items.map(chip).join(' ');
+            // ⚠️ V72.1.6 自我修正:上一版寫「方向一致 → **可信度較高**」——
+            //   那是**預測性主張**,而籌碼訊號的預測力**我從來沒驗證過**
+            //   (實測:foreign_net/trust_net 的非零值只回溯到 2026/04/29,約 60 個交易日,
+            //    而且全落在同一段下跌行情 → 樣本不足以回測)。
+            //   ⛔ 違反自己的鐵則:「邏輯上就成立的**描述**可以直接顯示,
+            //      『A 高會漲』這種**預測主張**一定要先實測」(同 V71.9.5 投量比的處置)。
+            //   → 改成純**事實描述**:「方向一致 / 互相矛盾」,⛔ 不宣稱可信度或勝率。
             let head;
-            if (!dn.length) head = `✅ <b class="text-gray-100">${items.length} 項籌碼指標同向偏多</b> —— 方向一致,可信度較高。`;
-            else if (!up.length) head = `⛔ <b class="text-gray-100">${items.length} 項籌碼指標同向偏空</b> —— 方向一致,別逆著做。`;
+            if (!dn.length) head = `<b class="text-gray-100">${items.length} 項籌碼指標<span class="text-red-300">方向一致(都偏多)</span></b> —— 至少沒有互相矛盾。`;
+            else if (!up.length) head = `<b class="text-gray-100">${items.length} 項籌碼指標<span class="text-green-300">方向一致(都偏空)</span></b> —— 至少沒有互相矛盾。`;
             else head = `⚠️ <b class="text-gray-100">籌碼面分歧:${up.length} 項偏多、${dn.length} 項偏空</b>`
                 + ` —— <b class="text-gray-100">不同時間範圍看到的東西不一樣,不是誰算錯</b>;`
                 + `短天期先轉向很常見,要<b>連續 2~3 天同向</b>才算數,別只挑順眼的那個看。`;
@@ -14156,6 +14176,7 @@ const marginByDate = {};
                 <div class="text-[11px] text-gray-200 leading-relaxed">${head}</div>
                 <div class="text-[10px] mt-1 flex flex-wrap gap-1">${row}</div>
                 ${cleanWarn ? `<div class="text-[10px] text-gray-300 leading-relaxed mt-1">${cleanWarn}</div>` : ''}
+                <div class="text-[9px] text-gray-600 mt-1 leading-snug">⚠️ 這幾項的<b>預測力還沒驗證過</b> —— 法人買賣超的歷史只回溯到 2026/04(約 60 個交易日,而且全在同一段行情),樣本不夠做回測。<b>這裡只是把「今天的籌碼長什麼樣」講清楚,不是勝率</b>。K線訊號那邊才有實測成績。</div>
             </div>`;
         } catch (_) { return ''; }
     },
