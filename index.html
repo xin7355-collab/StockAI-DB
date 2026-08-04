@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,24 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.6',
+    _APP_VERSION: 'V72.1.7',
     _CHANGELOG: [
+        { v: 'V72.1.7', dt: '2026-08-04', t: '🐛「跌破前低 --」+ 回測樣本其實只涵蓋 1~2 開頭的股票', d: [
+            '繼續一張一張看 K 線頁，抓到三個：',
+            '',
+            '**① 🐛「跌破前低 **--** 就撤」—— 你根本不知道要撤在哪**',
+            '「朱老師這樣看」那張卡在找不到波段低點時，直接把空值印出來變成 `--`。現在改成退回**近 20 日低**（一定算得出來），並且**改名**告訴你那不是「前低」；兩個都沒有時就老實說「跌破你自己設的停損就撤」。',
+            '',
+            '**② 同一張卡對空頭股說「現在追要快進快出」**',
+            '這是「講反話」的**第 6 處**。⚠️ 而且我上一版做的巡邏指令**沒抓到它** —— 因為用詞是「快進快出」，不在我當初列的字典裡。字典已補，也記下教訓：**光靠關鍵字搜尋不夠，還是要把卡片實際渲染出來一張張看**。',
+            '',
+            '**③ 🚨 訊號成績表的樣本其實有偏誤**',
+            '成績表寫「500 檔股票」聽起來很多，但我去查才發現：它是**按代號排序取前 500 檔** —— 結果**完全沒有 3xxx~9xxx 開頭的股票**，那是全市場 2,356 檔裡的 **1,744 檔（74%）**。大立光、矽力、緯創這些重要電子股**一檔都沒被測到**。',
+            '',
+            '⚠️ 台股代號本身帶產業意義，按代號取前 N 名 = 等於按產業挑樣本，一定會偏。已改成**全市場都跑**，並且會記錄涵蓋範圍，以後一眼看得出有沒有偏。',
+            '',
+            '⚠️ 順便修：教學裡寫的「3 年歷史」也不對 —— 實際回測窗口受大盤指數資料長度限制，只有 **486 個交易日（約 2 年）**。現在改成自動帶入真實區間，不再寫死。',
+        ] },
         { v: 'V72.1.6', dt: '2026-08-04', t: '⚠️ 我自己上一版就寫了一句沒驗證過的話,收回來', d: [
             '上一版那行「其他籌碼指標怎麼說」，我在方向一致時寫了「**可信度較高**」。',
             '',
@@ -19353,7 +19369,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _showEdgeHelp() {
         const m = this._SIGNAL_EDGE_META || {};
         alert('【這些勝率是怎麼來的?】\n\n'
-            + `我把 App 裡每一個 K 線訊號都拿去回測:${m.syms || 250} 檔股票、3 年歷史,`
+            // ⚠️ V72.1.7 「3 年」是寫死的且**跟實際對不上** —— 回測窗口受 ^TWII 長度限制,
+            //   實測只有 486 個交易日(約 2 年)。改成從 meta 帶入真實窗口,⛔ 別再寫死。
+            + `我把 App 裡每一個 K 線訊號都拿去回測:${m.syms || 250} 檔股票、`
+            + (m.win_bars ? `${m.win_from} ~ ${m.win_to}(${m.win_bars} 個交易日),` : '近 2 年,')
             + '看訊號出現之後 10 個交易日股價表現如何(已扣掉同期大盤漲跌)。\n\n'
             + '⭐【最重要,不看會誤讀】\n'
             + `基準勝率是 ${(m.base_win || 34.6).toFixed(1)}%,不是 50%。\n`
@@ -21186,7 +21205,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             let tone, headline, cta, barCls, headCls;
             if (sc >= 4 && !belowMa20) { tone = 'bull'; headline = '🔴 型態讚!多頭噴相'; cta = '順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
             else if (sc >= 1.5 && !belowMa20) { tone = 'bull'; headline = '🔴 型態偏多成形'; cta = '偏多但力道未滿,等帶量長紅過前高再追,回檔不破月線續抱。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
-            else if (sc >= 1.5 && belowMa20) { tone = 'bull'; headline = '🟠 型態偏多·但月線壓著'; cta = `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下——<b>先站回月線才算真轉強</b>;現在追要快進快出,跌破前低 ${nf(recentLow)} 就撤,別當多頭噴相硬抱。`; barCls = 'border-orange-500'; headCls = 'text-orange-300'; }
+            else if (sc >= 1.5 && belowMa20) { tone = 'bull'; headline = '🟠 型態偏多·但月線壓著';
+                // 🐛 V72.1.7 兩個修:
+                //   ① `recentLow`(波段低點)可能是 null → 原本直接 `nf(null)` 印出
+                //      「跌破前低 **--** 就撤」,使用者根本不知道要撤在哪(實測 2327 就長這樣)。
+                //      → 退回「近 20 日低」(一定算得出來),⛔ 但要**改名**,別把兩種低點混為一談。
+                //   ② 中期空頭時⛔ 不可再說「現在追要快進快出」——「講反話」的第 6 處。
+                //      ⚠️ 我的巡邏 grep 漏掉這處,因為用詞是「快進快出」不在字典裡
+                //      → 字典已補(見 CLAUDE.md 巡邏指令)。
+                const _l20 = (() => { const a = (data || []).slice(-20).map(b => +b.low || +b.close).filter(v => v > 0); return a.length ? Math.min(...a) : null; })();
+                const _stopTxt = (recentLow != null && recentLow > 0) ? `跌破前低 ${nf(recentLow)} 就撤`
+                    : (_l20 != null ? `跌破近 20 日低 ${nf(_l20)} 就撤` : '跌破你自己設的停損就撤');
+                cta = this._bearGate(this.currentSymbolId)
+                    ? `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下,<b>而且中期趨勢是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是進場理由;有貨的趁反彈減碼,${_stopTxt}。`
+                    : `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下——<b>先站回月線才算真轉強</b>;現在追要快進快出,${_stopTxt},別當多頭噴相硬抱。`;
+                barCls = 'border-orange-500'; headCls = 'text-orange-300'; }
             else if (sc > -1.5) { tone = 'flat'; headline = '🟡 型態中性整理'; cta = '多空不明,別急進場,等站穩月線+帶量突破前高再說。'; barCls = 'border-yellow-500'; headCls = 'text-yellow-300'; }
             else if (sc > -4) { tone = 'bear'; headline = '🟢 型態轉弱'; cta = '別追高,持股跌破月線或成本 -5% 鐵血停損,搶反彈快進快出。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
             else { tone = 'bear'; headline = '🟢 型態壞掉·出貨相'; cta = '空手勿接刀,持股分批出,結構破壞別凹。'; barCls = 'border-green-500'; headCls = 'text-green-300'; }
@@ -22231,7 +22264,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                             <span class="text-[11px] ${tone} truncate">${e.grade === 'A' ? '✅' : '⚠️'} ${x.title}</span>
                             <span class="text-[9px] font-mono ${e.exp != null && e.exp > 0 ? 'text-red-300' : 'text-gray-500'} flex-shrink-0">勝率 ${e.w10}%<span class="text-gray-600">・賺賠 ${e.payoff ?? '—'}・期望 ${e.exp != null ? (e.exp >= 0 ? '+' : '') + e.exp + '%' : '—'}</span></span>
                         </div>`; }).join('')}
-                    <div class="text-[8px] text-gray-600 mt-1 leading-snug">實測 ${this._SIGNAL_EDGE_META.syms || 500} 檔 × 3 年。⭐ 基準是<b class="text-gray-500">隨便挑一天只有 ${bw}%</b>(加權指數市值加權,中位數個股本來就跑輸)→ 所以 41% 已經算贏。非保證、未扣交易成本。</div>
+                    <div class="text-[8px] text-gray-600 mt-1 leading-snug">實測 ${this._SIGNAL_EDGE_META.syms || 500} 檔${this._SIGNAL_EDGE_META.win_bars ? ` × ${this._SIGNAL_EDGE_META.win_bars} 個交易日` : ''}。⭐ 基準是<b class="text-gray-500">隨便挑一天只有 ${bw}%</b>(加權指數市值加權,中位數個股本來就跑輸)→ 所以 41% 已經算贏。非保證、未扣交易成本。</div>
                 </div>`;
             } else {
                 provenHtml = `<div class="text-[10px] text-gray-500 bg-[#0d1117] border border-[#30363d] rounded-lg px-2 py-1.5 mb-2">

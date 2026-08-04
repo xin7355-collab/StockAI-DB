@@ -3,7 +3,8 @@
  * 📊 訊號實測成績表 + K線頁分區顯示 測試(V71.9.9)
  *
  * 使用者要求:「K線/總覽只把**有用的、勝率高的**顯示出來,不要全部打出來根本不知道看哪一個」
- * → `scripts/signal_backtest.mjs` 跑真正的偵測器回測 250 檔 × 3 年,結果嵌成 `_SIGNAL_EDGE`。
+ * → `scripts/signal_backtest.mjs` 跑真正的偵測器回測,結果嵌成 `_SIGNAL_EDGE`。
+ * ⚠️ 涵蓋檔數/窗口一律看 `_SIGNAL_EDGE_META`(V72.1.7 起全市場 + 真實窗口),⛔ 別在文件裡寫死。
  *
  * 這支釘住四件最容易被改壞的事:
  *   ① ⭐ **基準勝率是 34.6% 不是 50%** —— 說明文字一定要寫出來,否則 41% 會被誤讀成「輸」
@@ -115,6 +116,10 @@ ok('④ ⭐ K線頁的教學鈕必須呼叫共用的 _showEdgeHelp(⛔ 不可再
 ok('④ 教學要說明沒扣交易成本', /沒有扣交易成本|未扣交易成本|沒有.{0,4}扣.{0,4}交易成本/.test(helpTxt), helpTxt.slice(-300));
 ok('④ ⭐ 教學要說明「不是保證」', /不是保證/.test(helpTxt), helpTxt.slice(-300));
 // ⭐ 內嵌那份的數字曾經對不上 meta → 共用版一律從 meta 帶入,這裡交叉驗一次
+// ⭐ V72.1.7:回測窗口受 ^TWII 長度限制(實測 486 根 ≈ 2 年),
+//   但教學一直寫死「3 年歷史」→ 對不上。改成從 meta 帶入。
+ok('④ ⭐⛔ 教學不可再寫死「3 年」(實際窗口受 ^TWII 長度限制)',
+   !/3 年歷史|檔股票、3 年|× 3 年/.test(helpTxt), helpTxt.slice(0, 300));
 ok('④ ⭐ 教學的檔數/分級數必須跟 _SIGNAL_EDGE_META 一致(⛔ 別寫死)',
    new RegExp(`${meta.syms} 檔`).test(helpTxt) && new RegExp(`A 級只有 ${meta.A} 個`).test(helpTxt),
    helpTxt.slice(0, 700));

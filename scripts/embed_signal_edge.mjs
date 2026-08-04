@@ -45,8 +45,20 @@ const _b10 = (o, k) => {
     if (typeof v !== 'number' || !isFinite(v)) { console.error(`❌ base.${k} 取不到 10 日值:${JSON.stringify(o)}`); process.exit(1); }
     return v;
 };
+// ⭐ V72.1.7 回測的**真實窗口**:受 ^TWII 長度限制(超額報酬要扣同期大盤,
+//   個股再長也只能算到 ^TWII 有的那段)。實測 ^TWII 只有 486 根 ≈ 2 年,
+//   但教學文案一直寫「3 年歷史」→ **對不上**。這裡直接從資料算,⛔ 別再寫死。
+const _win = (() => {
+    try {
+        const t = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', '^TWII.json'), 'utf-8'));
+        const ds = t.map(r => String(r.date || '').replace(/\//g, '-')).filter(Boolean).sort();
+        if (!ds.length) return null;
+        return { from: ds[0], to: ds[ds.length - 1], bars: ds.length };
+    } catch (_) { return null; }
+})();
 const meta = {
     base_win: _b10(j.base.win, 'win'), base_med: _b10(j.base.med, 'med'), syms: j.syms,
+    ...(_win ? { win_from: _win.from, win_to: _win.to, win_bars: _win.bars } : {}),
     n_base: j.base.n, A: j.grades.A, B: j.grades.B, C: j.grades.C,
     ...(j.cover ? { cover: j.cover } : {}),
 };
@@ -78,5 +90,6 @@ const kb = (after[iData].length / 1024).toFixed(1);
 console.log(`✅ 已嵌入:${Object.keys(t2).length} 個訊號(${kb} KB)`);
 console.log(`   涵蓋 ${m2.syms} 檔・基準勝率 ${m2.base_win.toFixed(1)}%・A=${m2.A} B=${m2.B} C=${m2.C}`);
 if (m2.cover) console.log(`   代號開頭分布:${JSON.stringify(m2.cover)}`);
+if (m2.win_bars) console.log(`   回測窗口:${m2.win_from} ~ ${m2.win_to}(${m2.win_bars} 個交易日,受 ^TWII 長度限制)`);
 console.log('   ⭐ 交叉驗證通過(meta 與資料表一致)');
 console.log('   👉 接著跑:node scripts/test_sigedge.mjs');

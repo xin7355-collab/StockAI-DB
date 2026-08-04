@@ -222,7 +222,40 @@ ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損�
        /不改任何一個子指標的數字/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')), '');
 }
 
-ok('⑤ 無 pageerror', errs.length === 0, errs.join(' | '));
+// ══ ⑤ V72.1.7 缺值不可直接印給使用者看 ═══════════════════════
+//   `renderChuKbarVerdict` 的 recentLow(波段低點)可能是 null →
+//   原本印出「跌破前低 **--** 就撤」,使用者根本不知道要撤在哪(實測 2327)。
+{
+    const NP = await page.evaluate(a => {
+        app.currentSymbolId = '2327'; app.rawDailyData = a.rows; app.activeData = a.rows;
+        const cl = a.rows.map(x => +x.close);
+        const ma = k => cl.map((_, i) => i < k - 1 ? null : cl.slice(i - k + 1, i + 1).reduce((s, v) => s + v, 0) / k);
+        app.indicators = { ma5: ma(5), ma20: ma(20), ma60: ma(60), k: [], d: [], dif: [], macd: [] };
+        const o = {};
+        app._ovTrend = null;
+        try { app.renderChuKbarVerdict(a.rows); } catch (e) { o.err = e.message; }
+        o.bull = (document.getElementById('chuVerdictCard') || {}).innerText || '';
+        app._ovTrend = { sym: '2327', trend: 'bear', txt: '空頭' };
+        try { app.renderChuKbarVerdict(a.rows); } catch (e) { o.err2 = e.message; }
+        o.bear = (document.getElementById('chuVerdictCard') || {}).innerText || '';
+        return o;
+    }, { rows });
+    const NULLPX = /(跌破|站上|守住?|突破|回測|停損|目標)[^。;,]{0,10}(--|—)/;
+    ok('⑤ ⭐ 這張卡真的有渲染(⛔ 否則下面空過)', NP.bull.length > 50, String(NP.bull).slice(0, 120));
+    ok('⑤ ⭐⛔ 不可出現「跌破前低 --」這種缺值',
+       !NULLPX.test(NP.bull) && !NULLPX.test(NP.bear),
+       (NP.bull.match(NULLPX) || NP.bear.match(NULLPX) || []).join(','));
+    ok('⑤ ⭐ 沒有波段低點時要退回「近 20 日低」並改名(⛔ 別混為一談)',
+       /近 20 日低 [\d,.]+/.test(NP.bull) || /前低 [\d,.]+/.test(NP.bull), NP.bull.slice(0, 200));
+    ok('⑤ ⭐⛔ 中期空頭時不可說「現在追要快進快出」(講反話第 6 處)',
+       !/現在追要快進快出/.test(NP.bear), NP.bear.slice(0, 260));
+    ok('⑤ ⭐ 空頭時要改講「只能當反彈看,不是進場理由」',
+       /只能當.{0,4}反彈.{0,4}看/.test(NP.bear) && /不是進場理由/.test(NP.bear), NP.bear.slice(0, 300));
+    ok('⑤ ⛔ 非空頭時維持原本文案(別把正常情境弄壞)',
+       /先站回月線才算真轉強/.test(NP.bull), NP.bull.slice(0, 260));
+}
+
+ok('⑥ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
 console.log('');
