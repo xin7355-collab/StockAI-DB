@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,23 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.3',
+    _APP_VERSION: 'V72.1.4',
     _CHANGELOG: [
+        { v: 'V72.1.4', dt: '2026-08-04', t: '🧭 K線頁補上「一句話結論」+ 全檔掃過講反話的地方', d: [
+            '你說「一目了然知道現在要怎麼做，而不是多張卡自己講自己的」—— 這版把 K 線頁補起來：',
+            '',
+            '**① 🧭 K棒戰法卡最上方新增「一句話結論」**',
+            '原本一打開是一堆訊號並列，看完還是不知道結論。現在最上方直接一句人話，例如國巨今天：',
+            '「⚠️ K線這邊**沒有**值得進場的訊號，而且有 **1** 條風險提醒，中期趨勢也是空頭 → 現在是**觀望或減碼**的時候，別找理由進場。」',
+            '',
+            '⭐ 而且它**跟總覽的中期結論同源** —— 不會再出現「總覽說空頭、K線說可以買」這種事。',
+            '⛔ 但這句**刻意不給買賣價位** —— 具體要買要賣以「總覽 →現在怎麼做」那張為準，這頁只負責解讀 K 線。一個畫面只能有一個地方下指令，不然又變成各說各話。',
+            '',
+            '**② 🔍 全檔掃過一遍「講反話」的地方**',
+            '這個錯誤我已經犯過 4 次（分析師解讀、明日劇本、本股vs大盤、重點判讀），所以這次直接**全檔搜一遍**所有會說「順著做 / 抱好 / 可加碼 / 順勢做多」的地方，找到**第 5 處**：籌碼頁「大戶籌碼總結」在偏多時寫「順著做、別跟大戶對作」。已改成中期空頭時講「這只能拿來挑反彈減碼，不是進場理由」。',
+            '',
+            '掃到的其他 30 幾處逐一看過，多數本來就有防護（條件裡本來就要求「多頭排列」或「站上月線」，空頭時根本不會觸發），或是講大盤不是講個股，不需要改。',
+        ] },
         { v: 'V72.1.3', dt: '2026-08-04', t: '📐🔬 K線頁說「實測有效」其實都不賺 + 籌碼頁兩個主力打架', d: [
             '照你說的，把 **K 線頁**跟**籌碼頁**用真實資料(國巨 2327 + 真的分點)一筆一筆跑出來看，抓到兩個：',
             '',
@@ -14031,7 +14046,15 @@ const marginByDate = {};
             if (dressLine) lines.push(dressLine);     // 💼 投信做帳(併入)
             if (lendLine) lines.push(lendLine);       // 🩳 借券空方(併入)
             // ── 一句操作 ──
-            const act = sc >= 1 ? '大戶站買方 → 籌碼面偏多,順著做、別跟大戶對作;搭配「總覽」的價位進出。'
+            // 🐛 V72.1.4 ⛔ 主結論是空頭時,這裡也不准說「順著做」——「講反話」的第 5 處。
+            //   (前 4 處:V71.7.7 分析師解讀 / V72.0.7 明日劇本 / V72.0.8 本股vs大盤 /
+            //    V72.0.9 重點判讀,都已改用共用守門 `_bearGate`。)
+            //   ⚠️ 只改**操作指令**,「大戶站買方」這個**事實描述不動**。
+            const _cvBear = this._bearGate(sym);
+            const act = sc >= 1
+                ? (_cvBear
+                    ? '大戶站買方 → 籌碼面偏多,<b>但中期趨勢是空頭</b>(見總覽)→ 這只能拿來挑「反彈到哪裡減碼」,⛔ 不是進場理由。'
+                    : '大戶站買方 → 籌碼面偏多,順著做、別跟大戶對作;搭配「總覽」的價位進出。')
                 : sc > -1 ? '大戶多空不明 → 籌碼沒方向,別只靠籌碼進場,看「總覽」K線訊號為主。'
                 : '大戶站賣方 → 籌碼面偏空,別接刀;持股跌破停損就走,空手等大戶回頭再看。';
             box.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
@@ -19865,6 +19888,42 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return `<div onclick="app.showKbarSignalHelp('${_tt}')" class="bg-[#0d1117] border-l-2 ${t.b} pl-2.5 py-1.5 rounded-r mb-1.5 cursor-pointer hover:bg-white/5 transition-colors">
             <div class="text-[11px] font-bold ${t.c} mb-0.5">${t.tag} ${s.title} ${(typeof s.val === 'number' && s.val > 0 && s.val < 10000) ? `<span class="font-mono text-gray-500 font-normal text-[10px]">關鍵 ${s.val.toFixed(2)}</span>` : ''}${badge}<span class="text-[9px] text-amber-400/70 font-normal ml-1">👆教學</span></div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${s.msg}</div></div>`; };
+        // 🧭 V72.1.4 ⭐ K線頁主結論一句話 —— 使用者:「一目了然知道現在要怎麼做,
+        //   而不是多個卡片自己講自己的,根本不知道要看哪一張」。
+        //   K棒戰法卡原本是「一堆訊號並列」,看完還是不知道結論是什麼。
+        //   ⛔ 但照「單一劇本原則」,**操作指令一律以總覽『現在怎麼做』為準** ——
+        //      所以這句只做兩件事:① 把訊號狀態翻成人話 ② 引用總覽的中期結論保持一致,
+        //      並指路「要做什麼看總覽」。⛔ 不在這裡另外下一套買賣指令。
+        const _headline = (() => {
+            const bear = this._bearGate(this.currentSymbolId);
+            const tr = (this._ovTrend && this._ovTrend.sym === String(this.currentSymbolId)) ? this._ovTrend.trend : null;
+            const nG = good.length, nR = risk.length;
+            let icon, cls, head, tail;
+            if (nG > 0 && !bear) {
+                icon = '✅'; cls = 'text-red-300';
+                head = `K線這邊有 <b>${nG}</b> 個實測期望值為正的進場訊號`;
+                tail = nR ? `,但同時有 <b>${nR}</b> 條風險提醒 —— 兩邊都看過再決定。` : `,是這頁少見的正面訊號。`;
+            } else if (nG > 0 && bear) {
+                icon = '⚠️'; cls = 'text-yellow-300';
+                head = `K線短線有 <b>${nG}</b> 個正期望值訊號,<b>但中期趨勢是空頭</b>`;
+                tail = `→ 這些只能拿來挑「反彈到哪裡減碼」,⛔ 不是進場理由。`;
+            } else if (nR > 0) {
+                icon = '⚠️'; cls = 'text-yellow-300';
+                head = `K線這邊<b>沒有</b>值得進場的訊號,而且有 <b>${nR}</b> 條風險提醒`;
+                tail = bear ? `,中期趨勢也是空頭 → 現在是<b>觀望或減碼</b>的時候,別找理由進場。`
+                            : `→ 先看清楚風險是什麼,再決定要不要動。`;
+            } else {
+                icon = '➖'; cls = 'text-gray-300';
+                head = `K線這邊<b>今天沒有明確訊號</b>`;
+                tail = bear ? `,而且中期是空頭 → 沒訊號就別硬做。` : `,沒訊號就是「不做」,等它表態。`;
+            }
+            const trTxt = tr ? `<span class="text-[9px] text-gray-500 ml-1">(中期${tr === 'bull' ? '多頭' : tr === 'bear' ? '空頭' : '盤整'})</span>` : '';
+            return `<div class="bg-[#0d1117] border-l-2 ${cls.replace('text-', 'border-')} pl-2.5 py-1.5 rounded-r mb-2">
+                <div class="text-[9px] text-gray-500 font-bold mb-0.5">🧭 一句話結論${trTxt}</div>
+                <div class="text-[11px] ${cls} leading-relaxed">${icon} ${head}${tail}</div>
+                <div class="text-[9px] text-gray-600 mt-0.5">要買要賣的具體價位,以<b class="text-gray-500">總覽 →「現在怎麼做」</b>那張為準(這頁只負責解讀 K 線)。</div>
+            </div>`;
+        })();
         const _help = `<button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button>`;
         const rows = (good.length
             ? `<div class="text-[10px] text-red-300 font-bold mb-1 flex items-center gap-1">🎯 值得參考的進場訊號(${good.length})<span class="text-[9px] text-gray-500 font-normal">實測期望值為正</span>${_help}</div>`
@@ -19880,7 +19939,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="mt-1">${rest.slice(0, 12).map(s => _card(s, false)).join('')}
                 ${rest.length > 12 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${rest.length - 12} 條</div>` : ''}</div></details>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
-        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
     },
 

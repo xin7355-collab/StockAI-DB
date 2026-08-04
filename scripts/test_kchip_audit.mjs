@@ -125,7 +125,44 @@ const same = await page.evaluate(a => {
 ok('② ⭐⛔ 方向一致時不可出現打架提示(避免變雜訊)',
    !/方向相反/.test(txt(same)), txt(same).slice(0, 200));
 
-ok('③ 無 pageerror', errs.length === 0, errs.join(' | '));
+// ══ ③ V72.1.4 K線頁「一句話結論」 ═══════════════════════════
+//   使用者:「一目了然知道現在要怎麼做,而不是多個卡片自己講自己的」。
+//   ⛔ 但照「單一劇本原則」,**操作指令一律以總覽為準** ——
+//      這句只做兩件事:① 把訊號狀態翻成人話 ② 引用總覽的中期結論保持一致。
+//      ⛔ 不可在這頁另外下一套買賣指令。
+const HL = {};
+for (const tr of ['bear', 'bull', null]) {
+    HL[String(tr)] = await page.evaluate(a => {
+        app.currentSymbolId = '2327'; app.rawDailyData = a.rows; app.activeData = a.rows;
+        const cl = a.rows.map(x => +x.close);
+        const ma = k => cl.map((_, i) => i < k - 1 ? null : cl.slice(i - k + 1, i + 1).reduce((s, v) => s + v, 0) / k);
+        app.indicators = { ma5: ma(5), ma20: ma(20), ma60: ma(60), k: [], d: [], dif: [], macd: [] };
+        app._ovTrend = a.tr ? { sym: '2327', trend: a.tr, txt: 'x' } : null;
+        app.renderKbarTactics(a.rows);
+        const el = document.getElementById('kbarHalfTactics');
+        return el ? el.innerHTML : '';
+    }, { rows, tr });
+}
+const hb = txt(HL.bear), hu = txt(HL.bull), hn = txt(HL.null);
+ok('③ ⭐ 三種趨勢下都要有「一句話結論」',
+   /一句話結論/.test(hb) && /一句話結論/.test(hu) && /一句話結論/.test(hn), hb.slice(0, 160));
+ok('③ ⭐ 結論要放在訊號清單**之前**(第一眼看到)',
+   hb.indexOf('一句話結論') < hb.indexOf('進場訊號'), `${hb.indexOf('一句話結論')} vs ${hb.indexOf('進場訊號')}`);
+ok('③ ⭐ 空頭時要點出「中期趨勢也是空頭 → 觀望或減碼」',
+   /中期趨勢也是空頭/.test(hb) && /觀望或減碼/.test(hb), hb.slice(0, 400));
+ok('③ ⭐ 空頭時要標「(中期空頭)」', /中期空頭/.test(hb), hb.slice(0, 300));
+ok('③ ⭐ 多頭時⛔ 不可硬套空頭文案', !/中期趨勢也是空頭/.test(hu), hu.slice(0, 400));
+ok('③ ⭐ 總覽還沒算出趨勢時仍要能出結論(⛔ 不可空白或 throw)',
+   /一句話結論/.test(hn) && !/中期/.test(hn.split('要買要賣')[0]), hn.slice(0, 300));
+ok('③ ⭐⛔ 必須指路「具體價位以總覽為準」(單一劇本原則)',
+   /以\s*總覽\s*→「現在怎麼做」\s*那張為準/.test(hb), hb.slice(0, 500));
+ok('③ ⭐ 要說明這頁的定位(只負責解讀 K 線)', /只負責解讀 K 線/.test(hb), hb.slice(0, 500));
+// ⛔ 這句本身不可出現具體買賣價位指令
+const hlOnly = hb.slice(hb.indexOf('一句話結論'), hb.indexOf('只負責解讀 K 線'));
+ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損價)',
+   !/買進|掛單|停損 \d|目標價/.test(hlOnly), hlOnly.slice(0, 300));
+
+ok('④ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
 console.log('');
