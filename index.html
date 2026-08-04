@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2799,6 +2799,11 @@
                      選股頁這一格改成 ETF —— 選股情境下要看的是「ETF 在買什麼」,不是券商分點。 -->
                 <button id="radarModeEtfBtn" onclick="app.switchRadarMode('etf')" class="flex-1 py-2 rounded-lg text-[13px] font-black border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏦 ETF</button>
             </div>
+            <!-- 🎯 V72.2.0 今日實測訊號條(常駐、條件觸發) —— 使用者:「只給我勝率最高的資料」。
+                 ⛔ 刻意**不做成第 16 個榜**:下面 15 個榜都沒有實測成績,這個是唯一有的,
+                    做成分頁反而會被埋掉(陷阱 #32:功能做好了但使用者找不到)。
+                 ⛔ 沒有資料(還沒採礦 / 今天一檔都沒中)→ 整條不顯示,不留空殼。 -->
+            <div id="todaySignalBar" class="hidden mb-2"></div>
             <div id="radarModeStrategy" class="panel border border-[#30363d] bg-[#0d1117] flex flex-col relative flex-1 min-h-0">
                 <!-- 🗑️ V58.4 「🎯 選股池 + ℹ️ 說明書」標題列已刪除(使用者要求省空間);radarManualModal DOM 保留但無觸發鈕 -->
 
@@ -6646,7 +6651,8 @@ ${list}
         if (tabId !== 'fav') { try { this._resetFavEditMode(); } catch(_) {} }   // 🐛 V57.2 切走自動退出自選編輯模式
         if (tabId === 'fav') { try { this.renderFavTabs(); this._scanBreakoutCandidates(); } catch(e) { this._handleTabRenderError('fav', '⭐ 自選', e); } }   // 🗑️ V57.2 進場體檢榜已刪(_scanWatchlistCheckup 不再呼叫)
         if (tabId === 'inv') { try { this.renderInventory(); window.scrollTo(0, 0); this._startInvPricePoll(); } catch(e) { this._handleTabRenderError('inv', '💼 庫存', e); } }
-        if (tabId === 'radar') { try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } try { this._applyArenaChampion(); } catch(_) {} }
+        if (tabId === 'radar') { try { this._renderTodaySignalBar(); } catch(_) {}   // 🎯 V72.2.0 今日實測訊號條(背景載入,不卡主榜)
+            try { this.loadRadarMatrix(); } catch(e) { this._handleTabRenderError('radar', '🔥 雷達', e); } try { this._applyArenaChampion(); } catch(_) {} }
         if (tabId === 'hunt') { try { this.renderHuntTab(); } catch(e) { this._handleTabRenderError('hunt', '⚔️ 觀察', e); }
             // ⚡ V69.7.5 盤中自動重掃(每 5 分):觀察頁開著就保持即時,不用一直點「立即掃描」
             try { this._startHuntAutoScan(); } catch (_) {} }
@@ -6912,8 +6918,27 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.9',
+    _APP_VERSION: 'V72.2.0',
     _CHANGELOG: [
+        { v: 'V72.2.0', dt: '2026-08-04', t: '🎯 選股頁新增「今天出現實測會賺的訊號」—— 全市場只有 17 檔', d: [
+            '你一直說「**只要給我最好、勝率最高的資料**」。之前那些實測成績有個大問題：**只能在個股頁看到** —— 你得先想到要看哪一檔，才知道它今天有沒有訊號。等於要你自己翻 2,315 檔。',
+            '',
+            '✅ 現在**選股頁最上方**直接列出來：全市場掃過一遍，今天哪幾檔出現了「實測期望值是正的」訊號。',
+            '',
+            '📊 **今天實測結果：全市場 2,315 檔，只有 17 檔命中。** 前幾名：',
+            '・8464 換手量(洗籌續攻) — 期望 **+0.68%**',
+            '・6538 / 3543 / 4577 晨星轉折+爆量 — 期望 **+0.564%**',
+            '・2327 等 站上長黑K高點 — 期望 +0.079%',
+            '',
+            '⭐ **為什麼只有十幾檔？** 因為 129 個訊號裡，**期望值真的為正的只有 9 個** —— 大部分訊號雖然「常常對」，但輸的時候輸更大。能同時滿足「今天有訊號」+「那訊號真的會賺」的股票，本來就很少。**這才是誠實的數字。**',
+            '',
+            '⛔ 幾個刻意的設計：',
+            '・**沒有做成第 16 個榜單** —— 做成分頁反而會被埋掉，就變成「做了但你找不到」。',
+            '・**不逐檔列風險股** —— 全市場有 6,158 筆風險訊號，列出來沒有可操作性(你要看的是自己手上那幾檔)。只告訴你總共幾檔，當作today大盤氛圍參考。',
+            '・**沒中的日子整條不顯示**，不留空殼騙你點。',
+            '',
+            '⚠️ 三個一定要知道的：基準勝率是 **36% 不是 50%**、期望值**沒有扣交易成本**(來回約 0.44%)、這是**歷史統計不是保證**，而且只看 K 線沒看籌碼基本面。',
+        ] },
         { v: 'V72.1.9', dt: '2026-08-04', t: '⚡ App 瘦身:每次開啟少下載約 100 KB', d: [
             '更新紀錄累積到 **343 筆、147 KB**，佔整個 App 檔案的 **5.1%** —— 每次開 App 都要下載，但你實際上不會往回翻 300 個版本。',
             '',
@@ -30198,6 +30223,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const stB = document.getElementById('radarModeStrategyBtn'), efB = document.getElementById('radarModeEtfBtn');
         if (st) st.classList.toggle('hidden', mode !== 'strategy');
         if (ef) ef.classList.toggle('hidden', mode !== 'etf');
+        // 🎯 V72.2.0 今日實測訊號條只在「策略」模式顯(ETF 模式無關) —— 背景載入不卡切換
+        const tsb = document.getElementById('todaySignalBar');
+        if (tsb) {
+            if (mode !== 'strategy') tsb.classList.add('hidden');
+            else this._renderTodaySignalBar().catch(() => {});
+        }
         if (stB) stB.className = `flex-1 py-2 rounded-lg text-[13px] font-black border transition-all ${mode === 'strategy' ? 'bg-amber-600/25 text-amber-200 border-amber-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
         if (efB) efB.className = `flex-1 py-2 rounded-lg text-[13px] font-black border transition-all ${mode === 'etf' ? 'bg-amber-600/25 text-amber-200 border-amber-500/60' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}`;
         this.vibrate(12);
@@ -36209,6 +36240,77 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     // 🔥 V57.1 — 題材脈動:theme_news.json(清晨 RSS 熱度)+ radar.json concept_leaders(族群領頭羊)
+    // 🎯 V72.2.0 今日實測訊號 —— 全市場掃「今天出現了哪些**期望值為正**的訊號」。
+    //   採礦端 `scripts/daily_signal_scan.mjs` 跑**真正的 JS 偵測器**(⛔ 不複製判定邏輯),
+    //   只掃最後一根 K,實測 2,315 檔 / 177 秒 / 產出僅 3.6 KB。
+    //   ⭐ 為什麼需要:`_SIGNAL_EDGE` 的成績本來只在**個股頁**看得到 ——
+    //      使用者得先想到要看哪一檔才知道它有沒有訊號,等於要他自己翻 2,315 檔。
+    //   ⛔ 榜單只收**看多且 exp>0**(常對但不賺的不進榜);
+    //      風險訊號⛔ 不出清單(全市場 6,158 筆沒有可操作性,截斷反而誤導),只給總數當氛圍。
+    async _loadTodaySignals() {
+        if (this._todaySig !== undefined) return this._todaySig;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/today_signals.json', ghBase).href + `?t=${Date.now()}`,
+                                  { signal: AbortSignal.timeout(8000) });
+            this._todaySig = r.ok ? await r.json() : null;
+        } catch (_) { this._todaySig = null; }
+        return this._todaySig;
+    },
+
+    async _renderTodaySignalBar() {
+        const box = document.getElementById('todaySignalBar');
+        if (!box) return;
+        const j = await this._loadTodaySignals();
+        const list = (j && Array.isArray(j.bull)) ? j.bull : [];
+        if (!list.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        // ⚠️ `getStockName` 在股票清單還沒載入時會**回傳代號本身** → 直接用會變成「8464 8464」
+        //   (實測就長這樣)。名稱等於代號時當作「還沒有名稱」,不顯示。
+        const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
+        const rows = list.slice(0, 12).map(x => `
+            <div onclick="app.analyze('${x.s}')" class="flex items-center justify-between gap-2 px-2 py-1.5 rounded bg-[#0d1117] border border-[#30363d] cursor-pointer hover:bg-white/5 transition-colors">
+                <div class="min-w-0 flex items-baseline gap-1.5">
+                    <span class="font-mono font-black text-[12px] text-gray-100">${x.s}</span>
+                    <span class="text-[11px] text-gray-300 truncate">${nm(x.s)}</span>
+                    <span class="font-mono text-[10px] text-gray-500">${(+x.c).toLocaleString()}</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <span class="text-[10px] text-red-300 truncate max-w-[128px]">${x.t}</span>
+                    <span class="font-mono text-[9px] px-1 rounded bg-red-900/40 text-red-300">期望 +${x.exp}%</span>
+                </div>
+            </div>`).join('');
+        box.className = 'mb-2 bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5';
+        box.innerHTML = `
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[12px] font-black text-gray-100">🎯 今天出現「實測會賺」的訊號 <span class="text-[10px] text-gray-500 font-normal">全市場 ${(j.scanned || 0).toLocaleString()} 檔只有 <b class="text-red-300">${list.length}</b> 檔</span></span>
+                <button onclick="event.stopPropagation();app._showTodaySigHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼看</button>
+            </div>
+            <div class="space-y-1">${rows}</div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
+                📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤資料。
+                只列<b class="text-gray-500">實測期望值為正</b>的看多訊號(基準勝率 ${(j.base_win || 36).toFixed(0)}%)。
+                ⚠️ ${j.cost_note || '期望值未扣交易成本'};歷史統計<b class="text-gray-500">不是保證</b>。
+                ${j.risk_syms ? `<br>另有 <b class="text-gray-500">${j.risk_syms.toLocaleString()}</b> 檔出現風險訊號(僅供了解今天大盤氛圍,⛔ 不逐檔列出)。` : ''}
+            </div>`;
+        box.classList.remove('hidden');
+    },
+
+    _showTodaySigHelp() {
+        const j = this._todaySig || {};
+        alert('【今天出現「實測會賺」的訊號】\n\n'
+            + `每天收盤後,我把全市場 ${(j.scanned || 2315).toLocaleString()} 檔股票、每一檔都跑過 App 裡所有 K 線訊號,\n`
+            + '挑出「今天有出現訊號、而且那個訊號的【實測期望值是正的】」的股票。\n\n'
+            + '⭐【為什麼通常只有十幾檔】\n'
+            + `我回測過 ${(j.edge_syms || 2227).toLocaleString()} 檔股票、129 個訊號,\n`
+            + '其中【期望值為正的只有 9 個】—— 大部分訊號雖然「常常對」,但輸的時候輸更大。\n'
+            + '所以能同時滿足「今天有訊號」+「那個訊號真的會賺」的股票,本來就很少。\n\n'
+            + '⚠️【一定要知道的三件事】\n'
+            + `① 基準勝率是 ${(j.base_win || 36).toFixed(0)}%,不是 50%(加權指數是市值加權,中位數個股本來就跑輸)。\n`
+            + '② 期望值【沒有扣交易成本】(來回約 0.44%)—— 實際門檻比表上更高。\n'
+            + '③ 這是【歷史統計,不是保證】,而且只看 K 線,沒有看籌碼與基本面。\n\n'
+            + '👉 點任一檔會跳到個股頁,那裡有完整的判讀與價位。');
+    },
+
     async _loadRadarJson() {
         if (this._radarJsonCache && (Date.now() - this._radarJsonCache.ts) < 30 * 60e3) return this._radarJsonCache.data;
         try {
