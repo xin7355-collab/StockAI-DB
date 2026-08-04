@@ -162,7 +162,50 @@ const hlOnly = hb.slice(hb.indexOf('一句話結論'), hb.indexOf('只負責解�
 ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損價)',
    !/買進|掛單|停損 \d|目標價/.test(hlOnly), hlOnly.slice(0, 300));
 
-ok('④ 無 pageerror', errs.length === 0, errs.join(' | '));
+// ══ ④ V72.1.5 籌碼頁「其他籌碼指標怎麼說」收斂成一行 ═══════════
+//   籌碼頁最上方已有主結論卡(🐘 大戶籌碼總結),但下面明日劇本(分點**今日**)/
+//   籌碼乾淨度 / 分點**近5日** 各自也在下結論 → 使用者不知道要看哪張。
+//   ⭐ 壓成一行放進主結論卡,方向不一致時**直接講出來**。
+//   ⛔ 不新開卡、⛔ 不改任何子指標的數字(那會失真);只做「收斂 + 點出分歧」。
+{
+    const CN = await page.evaluate(a => {
+        app.currentSymbolId = '2327'; app.rawDailyData = a.rows; app.activeData = a.rows;
+        app._fenSym = '2327'; app._fenPeriods = a.chips.periods; app._fenHist = a.chips.hist || null;
+        app._lastChipClean = { sym: '2327', clean: 38, driver: '大戶倒貨給散戶' };
+        const o = { clash: app._chipConsensusLine('2327', -2) };
+        app._lastChipClean = { sym: '2327', clean: 80 };
+        o.clean = app._chipConsensusLine('2327', -2);
+        // 全同向(合成:今日大買 + 近5日大買 + 法人偏多)
+        app._fenPeriods = { '1d': { buy: [{ name: 'A', net: 9e6, avg: 550 }], sell: [] },
+                            '5d': { buy: [{ name: 'A', net: 9e6, avg: 550 }], sell: [] } };
+        o.allBull = app._chipConsensusLine('2327', 2);
+        app._fenPeriods = null;
+        o.noFen = app._chipConsensusLine('2327', 2);
+        o.src = app._chipConsensusLine.toString();
+        o.wired = /_chipConsensusLine\(sym, sc\)/.test(app.renderChipVerdict.toString());
+        return o;
+    }, { rows, chips: chipsRaw || synth });
+    const cl = txt(CN.clash);
+
+    ok('④ ⭐ 有接進「大戶籌碼總結」主結論卡(⛔ 沒開新卡)', CN.wired, '');
+    ok('④ ⭐ 方向分歧時要明說「X 項偏多、Y 項偏空」', /\d+ 項偏多、\d+ 項偏空/.test(cl), cl.slice(0, 300));
+    ok('④ ⭐⛔ 要點出「不同時間範圍,不是誰算錯」', /不同時間範圍.{0,12}不是誰算錯/.test(cl), cl.slice(0, 300));
+    ok('④ ⭐ 要給可操作的判準(連續 2~3 天同向才算數)', /連續 2~3 天同向/.test(cl), cl.slice(0, 400));
+    ok('④ ⭐ 要勸阻「別只挑順眼的那個看」', /別只挑順眼的那個看/.test(cl), cl.slice(0, 400));
+    ok('④ ⭐ 每一項都要標時間範圍(⛔ 這正是 V72.1.3 的教訓)',
+       /法人近10日/.test(cl) && /分點今日/.test(cl) && /分點近5日/.test(cl), cl.slice(0, 400));
+    ok('④ ⭐ 乾淨度差要另外警示(⛔ 但不計入多空,它不是方向)',
+       /籌碼偏亂/.test(cl) && !/乾淨度.{0,6}(偏多|偏空)/.test(cl), cl.slice(0, 500));
+    ok('④ 乾淨度好時不顯示那句警示', !/籌碼偏亂/.test(txt(CN.clean)), txt(CN.clean).slice(0, 300));
+    ok('④ ⭐ 全部同向時要說「方向一致,可信度較高」',
+       /同向偏多/.test(txt(CN.allBull)) && /方向一致/.test(txt(CN.allBull)), txt(CN.allBull).slice(0, 300));
+    ok('④ ⛔ 沒有分點資料 → 整行不顯示(不留空殼)', CN.noFen === '', String(CN.noFen).slice(0, 120));
+    // ⚠️ 註解寫在函式**之前** → toString() 拿不到,必須讀原始檔(同 test_guardtime ⑦ 那次的坑)
+    ok('④ ⛔ 註解要寫明「不改子指標數字」',
+       /不改任何一個子指標的數字/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')), '');
+}
+
+ok('⑤ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
 console.log('');

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,23 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.4',
+    _APP_VERSION: 'V72.1.5',
     _CHANGELOG: [
+        { v: 'V72.1.5', dt: '2026-08-04', t: '🧭 籌碼頁:三張卡的結論壓成一行,打架就直接講', d: [
+            '接著把籌碼頁收斂。籌碼頁最上方本來就有主結論卡（🐘 大戶籌碼總結），但下面還有**明日劇本**、**籌碼乾淨度**、**主力動向**各自在下結論 —— 你看完主結論還要自己去比對三張卡。',
+            '',
+            '✅ 現在主結論卡裡直接多一行「🧭 其他籌碼指標怎麼說」，把它們壓成一句。國巨實測長這樣：',
+            '',
+            '「⚠️ **籌碼面分歧：1 項偏多、2 項偏空** —— **不同時間範圍看到的東西不一樣，不是誰算錯**；短天期先轉向很常見，要**連續 2~3 天同向**才算數，別只挑順眼的那個看。」',
+            '下面再列出三個小標籤：`法人近10日 偏空` `分點今日 偏多` `分點近5日 偏賣`。',
+            '',
+            '⭐ 三個刻意的設計：',
+            '・**每一項都標時間範圍** —— 這正是前一版「今日 vs 近5日 被當成同一件事」的教訓。',
+            '・**方向全部一致時**會改說「方向一致，可信度較高」，讓你知道這時候訊號比較可靠。',
+            '・**籌碼乾淨度另外講** —— 它不是「方向」而是「車廂擠不擠」，所以⛔ 不計入多空票數，只在偏亂時提醒你「容易被洗，倉位放小」。',
+            '',
+            '⛔ 我沒有開新卡，也沒有改任何一個子指標的數字（硬統一會失真）—— 只是把它們收斂起來、把打架講明白。',
+        ] },
         { v: 'V72.1.4', dt: '2026-08-04', t: '🧭 K線頁補上「一句話結論」+ 全檔掃過講反話的地方', d: [
             '你說「一目了然知道現在要怎麼做，而不是多張卡自己講自己的」—— 這版把 K 線頁補起來：',
             '',
@@ -14076,6 +14091,7 @@ const marginByDate = {};
                 <div class="flex flex-col gap-1 text-[12px] text-gray-200 leading-relaxed">
                     ${lines.map(l => `<div>${l}</div>`).join('')}
                 </div>
+                ${(() => { try { return this._chipConsensusLine(sym, sc); } catch (_) { return ''; } })()}
                 <div id="chipCleanSlot" class="mt-2"></div>
                 <div id="chipOvernightSlot" class="mt-2"></div>
                 <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[12px] text-gray-100 leading-relaxed"><b class="${bigCls}">💡 操作:</b>${act}</div>
@@ -14086,6 +14102,62 @@ const marginByDate = {};
         try { this.renderChipCleanliness(sym); } catch (_) {}
         try { this._renderOvernightFootprint(sym); } catch (_) {}   // 🌙 V71.0.9 隔夜資金足跡(同 slot 模式併入本卡)
         try { this._updateChipResoViews(); } catch (_) {}   // 💼 V69.6.5 方向分算完 → 同步刷新總覽/K線的籌碼一句話
+    },
+
+    // 🧭 V72.1.5 籌碼頁「其他指標怎麼說」—— 使用者:「多張卡自己講自己的,不知道看哪張」。
+    //   籌碼頁最上方本來就有主結論卡(🐘 大戶籌碼總結),但下面還有
+    //   明日劇本(分點**今日**)/ 籌碼乾淨度 / 分點**近5日** 各自也在下結論。
+    //   ⭐ 這裡把它們壓成**一行**放進主結論卡,方向不一致時直接講出來 ——
+    //      使用者看主結論卡就知道全貌,不用自己去比對三張卡。
+    //   ⛔ 不新開卡、⛔ 不改任何一個子指標的數字(那會失真);只做「收斂 + 點出分歧」。
+    //   ⚠️ 每一項都要標**時間範圍**(今日 / 近5日 / 近10日)—— 這正是 V72.1.3 那次
+    //      「今日 vs 近5日 被當成同一件事」的教訓。
+    _chipConsensusLine(sym, mainScore) {
+        try {
+            const items = [];
+            const P = (this._fenSym === sym) ? this._fenPeriods : null;
+            const px = (() => { const a = this.rawDailyData || []; return a.length ? +a[a.length - 1].close : 0; })();
+            // ① 明日劇本(分點**今日**)
+            if (P) {
+                try {
+                    const v = this._chipScenarioCalc(P, px, this._fenHist);
+                    if (v && Number.isFinite(v.score) && Math.abs(v.score) >= 2) {
+                        items.push({ n: '分點今日', d: v.score > 0 ? 1 : -1, t: v.score > 0 ? '偏多' : '偏空' });
+                    }
+                } catch (_) {}
+                // ② 分點**近 5 日**
+                try {
+                    const m = this._chipMainForce(P, px);
+                    if (m && Math.abs(m.net) >= 300) {
+                        items.push({ n: '分點近5日', d: m.net > 0 ? 1 : -1, t: m.word });
+                    }
+                } catch (_) {}
+            }
+            // ③ 籌碼乾淨度(不是方向,是「車廂擠不擠」→ 只當警示,⛔ 不計入多空)
+            const cc = this._lastChipClean;
+            const cleanWarn = (cc && cc.sym === sym && Number.isFinite(cc.clean) && cc.clean < 45)
+                ? `⚠️ 但<b class="text-gray-100">籌碼偏亂</b>(乾淨度 ${Math.round(cc.clean)})—— 車廂擠、容易被洗,倉位放小。` : '';
+            if (!items.length) return '';
+            // ④ 主結論(法人近10日為主)也算一票
+            if (Number.isFinite(mainScore) && Math.abs(mainScore) >= 1) {
+                items.unshift({ n: '法人近10日', d: mainScore > 0 ? 1 : -1, t: mainScore > 0 ? '偏多' : '偏空' });
+            }
+            const up = items.filter(x => x.d > 0), dn = items.filter(x => x.d < 0);
+            const chip = x => `<span class="inline-block px-1 rounded bg-white/5 ${x.d > 0 ? 'text-red-300' : 'text-green-300'}">${x.n} ${x.t}</span>`;
+            const row = items.map(chip).join(' ');
+            let head;
+            if (!dn.length) head = `✅ <b class="text-gray-100">${items.length} 項籌碼指標同向偏多</b> —— 方向一致,可信度較高。`;
+            else if (!up.length) head = `⛔ <b class="text-gray-100">${items.length} 項籌碼指標同向偏空</b> —— 方向一致,別逆著做。`;
+            else head = `⚠️ <b class="text-gray-100">籌碼面分歧:${up.length} 項偏多、${dn.length} 項偏空</b>`
+                + ` —— <b class="text-gray-100">不同時間範圍看到的東西不一樣,不是誰算錯</b>;`
+                + `短天期先轉向很常見,要<b>連續 2~3 天同向</b>才算數,別只挑順眼的那個看。`;
+            return `<div class="mt-2 bg-[#0d1117] border-l-4 ${dn.length && up.length ? 'border-yellow-500' : (dn.length ? 'border-green-500' : 'border-red-500')} pl-2.5 py-1.5 rounded-r">
+                <div class="text-[9px] text-gray-500 font-bold mb-0.5">🧭 其他籌碼指標怎麼說</div>
+                <div class="text-[11px] text-gray-200 leading-relaxed">${head}</div>
+                <div class="text-[10px] mt-1 flex flex-wrap gap-1">${row}</div>
+                ${cleanWarn ? `<div class="text-[10px] text-gray-300 leading-relaxed mt-1">${cleanWarn}</div>` : ''}
+            </div>`;
+        } catch (_) { return ''; }
     },
 
     // 🌙 V71.0.9 — 隔夜資金足跡(併入「大戶籌碼總結」卡,不另開新卡)
