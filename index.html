@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5294,6 +5294,7 @@ const app = {
                         const sen = n.ai_sentiment || n.sentiment || '';
                         return { source: n.source || '台股', title: n.title || '', title_zh: n.title || '',
                             url: n.link || n.url || '#', published: n.published_time || n.published || '',
+                            cat: n.cat || '',   // 🗂️ V72.3.4 採礦端分好的類別(火災/缺貨/地緣…)
                             impact: (sen && sen !== '待分析' && sen !== '中立') ? sen : '',
                             impact_level: /利多|bullish/.test(sen) ? 'bullish' : /利空|bearish/.test(sen) ? 'bearish' : 'neutral' };
                     }).filter(n => n.title);
@@ -5324,11 +5325,17 @@ const app = {
                 const _pubLabel = this._fmtNewsTime(item.published);
                 // 🔎 V50.3 — 每則右邊加 Perplexity 深入查(取代原自動 AI 翻譯,點才開、不耗自家額度)
                 const _q = (item.title_zh || item.title || '').replace(/['"\\]/g, '').slice(0, 90);
+                // 🗂️ V72.3.4 類別徽章(採礦端 news_category 分好的)。⛔ 沒分到類就不顯示,不留空殼;
+                //   ⛔ 顏色一律中性灰 —— 它講的是「這是什麼類型的消息」**不是多空方向**,
+                //      用紅綠會跟旁邊那行「利多/利空」的紅綠語意打架(燈號鐵則)。
+                const catHtml = item.cat
+                    ? `<span class="text-[8px] px-1 py-0.5 rounded flex-shrink-0 mt-0.5 bg-[#21262d] text-gray-400 border border-[#30363d]">${item.cat}</span>`
+                    : '';
                 return `<div class="flex items-start gap-1.5 py-1 border-b border-gray-800/60 rounded px-1">
                     <span class="text-[8px] font-bold px-1 py-0.5 rounded flex-shrink-0 mt-0.5 ${sc}">${item.source || ''}</span>
                     <a href="${safeUrl}" target="_blank" rel="noopener" class="flex-1 min-w-0 no-underline hover:bg-gray-800/30 rounded">
                         <div class="text-[10px] text-gray-300 leading-tight">${displayTitle}</div>
-                        <div class="text-[9px] ${ic} mt-0.5">${impact}</div>
+                        <div class="flex items-center gap-1 mt-0.5">${catHtml}<span class="text-[9px] ${ic}">${impact}</span></div>
                     </a>
                     <div class="flex flex-col items-end flex-shrink-0 gap-0.5">
                         <span class="text-[8px] text-gray-600">${_pubLabel}</span>
@@ -6936,8 +6943,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.3.3',
+    _APP_VERSION: 'V72.3.4',
     _CHANGELOG: [
+        { v: 'V72.3.4', dt: '2026-08-05', t: '🗂️ 新聞多了 8 種類別:火災、地震停電、缺貨漲價、出口管制…', d: [
+            '你要的「缺貨、延遲交貨、火災、最新技術」都加進去了,而且每則新聞現在會標**類型徽章**,一眼看得出是哪一種事(🔥事故天災・🌍地緣管制・⚡供需價格・🧪技術突破・💱匯率成本・📊財務事件・🛡️資安法律・📈股價異動)。',
+            '⭐ 你沒提但我加了、而且我認為是**台股最該抓的**:🔥 **地震、停電、限電、缺水** —— 台灣就在地震帶上,2024 花蓮地震台積電停機、2021 兩次大停電、2021 大旱竹科限水,這幾件對台股的殺傷力比火災更大更常見。',
+            '🚨 順手抓到一個很扯的漏洞:舊的字詞表**只有「降價」沒有「漲價」** —— 而記憶體、面板、被動元件、矽晶圓「漲價」才是台股族群行情最典型的起漲點,等於把最會賺的那一類新聞整個漏掉了。',
+            '其他新增:出口管制/實體清單/晶片禁令(直接砍台廠訂單)、台幣升貶與匯損(急升會吃掉出口股毛利)、CoWoS/HBM/先進封裝/2奈米/矽光子、勒索軟體與資安事件(台積電 2018 中毒停機就是前例)、罷工塞港、召回瑕疵。',
+            '英文新聞那邊也同步加了 4 條專門來源(缺貨漲價 / 停產事故 / 出口管制 / 技術突破),而且都綁半導體產業詞,不會撈到一堆無關的社會新聞。',
+        ] },
         { v: 'V72.3.3', dt: '2026-08-05', t: '🌍 地緣政治突發新聞終於進得來了(以前是抓到但被丟掉)', d: [
             '你問「川普說要打伊朗、伊朗打美軍這種真的會影響股價,能不能更快抓到」—— 查下來**真因不是抓太慢,是抓到之後被程式丟掉**,而且有兩層。',
             '🐛 第一層:新聞要通過一張「跟台股有沒有關」的字詞表才留下來,而那張表**一個地緣政治/軍事/能源的詞都沒有** → 像「以色列空襲伊朗核設施」這種標題一個字都不命中,直接被丟。⛔ 所以以前不管多久抓一次,這類新聞都不可能出現。現在補了伊朗/以色列/中東/台海/俄烏/飛彈/制裁/油價/荷莫茲海峽等 20 幾個詞,同時補上黑名單(星際大戰、勇士隊那種不要進來)。',

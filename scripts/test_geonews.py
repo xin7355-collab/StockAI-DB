@@ -138,6 +138,59 @@ ok('⑥ 8 天前的舊新聞仍要被丟掉(窗口只放寬 end,不可變成什�
 ok('⑥ ⚠️ 空過守門:至少要收到 1 則(否則上面的斷言是假綠燈)',
    len(_captured['titles']) >= 1, f'收到 {len(_captured["titles"])} 則')
 
+# ══════════════════════════════════════════════════════════════════════════
+# ⑦ V72.3.4 中文源的「新聞類別」(缺貨/延遲交貨/火災/新技術…)
+#    ⚠️ 中文源(RSS_SOURCES)跟英文源(GLOBAL_NEWS_SOURCES)走的是**兩個不同的過濾器** ——
+#       只改一邊等於只修一半(同「一個修法要掃過所有頁面」那條鐵則)。
+# ══════════════════════════════════════════════════════════════════════════
+print()
+ok('⑦ 類別表有 8 類', len(ur.NEWS_CATEGORIES) == 8, list(ur.NEWS_CATEGORIES))
+_dups = [k for k in set(ur.KEYWORDS) if ur.KEYWORDS.count(k) > 1]
+ok('⑦ ⛔ 關鍵字不可跨類重複(重複會讓分類結果取決於 dict 順序,難以預期)', not _dups, _dups)
+
+# 🚨 舊版**只有「降價」沒有「漲價」** —— 而漲價才是台股族群行情最典型的發動點
+ok('⑦ ⭐ 必須收得到「漲價」(舊版只有降價,漏掉最重要的一類)',
+   any(k in ur.KEYWORDS for k in ('漲價', '調漲')))
+for must in ('火災', '地震', '停電', '限電', '缺水', '缺貨', '延遲交貨', '出口管制', '先進封裝', '匯損'):
+    ok(f'⑦ 關鍵字含 `{must}`', must in ur.KEYWORDS)
+
+
+def _cat(title):
+    return ur.news_category([k for k in ur.KEYWORDS if k in title])
+
+
+CAT_CASES = [
+    ("台積電南科廠傳火警 生產線緊急停機",          "🔥 事故天災"),
+    ("花蓮外海規模6.2地震 竹科部分機台停機檢查",   "🔥 事故天災"),
+    ("美擴大晶片出口管制 新增實體清單",            "🌍 地緣管制"),
+    ("記憶體報價續漲 模組廠喊調漲兩成",            "⚡ 供需價格"),
+    ("ABF載板交期拉長 傳延遲交貨",                 "⚡ 供需價格"),
+    ("新台幣升值衝擊毛利 電子廠喊匯損",            "💱 匯率成本"),
+    ("某公司遭勒索軟體攻擊 生產系統受影響",        "🛡️ 資安法律"),
+    ("法說會上修全年財測",                          "📊 財務事件"),
+    ("今日天氣晴朗適合出遊",                        ""),          # ⛔ 不該分到任何類
+]
+for t, want in CAT_CASES:
+    got = _cat(t)
+    ok(f'⑦ 分類「{want or "(不分類)"}」← {t[:26]}', got == want, f'實際={got}')
+
+# ⭐ 優先序:同時命中「事故天災」與其他類 → 必須取事故(最急)
+ok('⑦ ⭐ 事故天災優先於其他類(同時命中時)',
+   _cat('地震後產能吃緊 報價傳調漲') == '🔥 事故天災', _cat('地震後產能吃緊 報價傳調漲'))
+
+# ⑧ 類別要真的寫進輸出(否則前端徽章永遠是空的)——⛔ 不可只驗函式
+import inspect  # noqa: E402
+_src = inspect.getsource(ur)
+ok('⑧ ⭐ fetch_feed 有把 cat 寫進每筆新聞', '"cat":' in _src and 'news_category(hits)' in _src)
+
+# ⑨ 新增的英文來源(使用者要的四類)
+_s = ' '.join(ur.GLOBAL_NEWS_SOURCES.values())
+for label, token in [('缺貨漲價', 'shortage'), ('停產事故', 'explosion'),
+                     ('出口管制', 'entity+list'), ('技術突破', 'CoWoS')]:
+    ok(f'⑨ 英文源含「{label}」查詢', token in _s)
+ok('⑨ ⭐ 事故/管制類綁產業限定詞(不綁會撈到一堆社會新聞)',
+   'fab+OR+factory' in _s and 'semiconductor' in _s)
+
 print()
 if fails:
     print(f'❌ GEONEWS_TEST_FAIL:{len(fails)} 條')

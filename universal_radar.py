@@ -130,12 +130,59 @@ RSS_SOURCES = {
     # "PTT Stock":      "https://rsshub.app/ptt/stock",
 }
 
-KEYWORDS = [
-    "砍單", "急單", "擴產", "良率", "滿載", "停機",
-    "缺貨", "庫存", "出貨", "轉單", "降價",
-    "漲停", "跌停", "破底", "新高",
-    "處置股", "減資", "增資", "重訊",
-]
+# 🗂️ V72.3.4 關鍵字改「分類表」(使用者要求:缺貨/延遲交貨/火災/新技術…也要抓進來)
+#   ⭐ 為什麼要分類而不只是把字加進同一個 list:
+#      加到 60+ 個字之後,使用者看清單會**分不出這則是火災還是漲價** ——
+#      分類讓前端可以掛一顆小徽章,零額外採礦、零新增卡片(⛔ 使用者鐵則:不新增卡片)。
+#   ⚠️ 用**中文子字串**比對(中文沒有英文那種 \b 邊界問題),但**刻意不收太泛的詞**
+#      (如單獨的「訂單」「認證」「產能」)—— 那種每天上百則,會把真正的訊號淹掉。
+#   ⛔ 分類只是「這是什麼類型的消息」,**不是多空方向**(方向由 ai_sentiment 給)。
+NEWS_CATEGORIES = {
+    # 🔥 事故天災 —— 排最前面:最急、也最可能造成停產(判類別時優先命中)
+    #    ⭐ 台股特有:地震/停電/限電/缺水 比火災更常發生,而且直接打到晶圓廠
+    #      (2024/04 花蓮地震台積電停機、2021 年 513/517 大停電、2021 大旱竹科限水)
+    "🔥 事故天災": ["火災", "火警", "爆炸", "氣爆", "工安", "停工", "停機", "災損", "廠房事故",
+                    "地震", "颱風", "停電", "跳電", "限電", "缺水", "旱象", "斷料"],
+    # 🌍 地緣管制 —— 出口管制/實體清單對台廠訂單是直接砍
+    "🌍 地緣管制": ["制裁", "出口管制", "禁令", "禁售", "實體清單", "關稅", "反傾銷",
+                    "戰爭", "封鎖", "台海", "軍演", "罷工", "塞港", "斷航"],
+    # ⚡ 供需價格 —— 台股族群行情最常見的發動點
+    #    🚨 舊版**只有「降價」沒有「漲價」** —— 而記憶體/面板/被動元件/矽晶圓「漲價」
+    #       才是台股最典型的族群輪動起點,等於把最重要的那一類漏掉了。
+    "⚡ 供需價格": ["缺貨", "漲價", "調漲", "報價", "降價", "跌價", "砍單", "急單", "追加訂單",
+                    "轉單", "滿載", "擴產", "產能吃緊", "交期", "延遲交貨", "延後出貨", "拉貨",
+                    "庫存", "出貨", "良率", "供不應求", "去化"],
+    # 🧪 技術突破 —— 使用者要的「最新科技技術」;用**具體製程/技術名**,不用「創新」這種空詞
+    "🧪 技術突破": ["先進封裝", "CoWoS", "HBM", "玻璃基板", "矽光子", "共同封裝光學", "CPO",
+                    "奈米", "GAA", "固態電池", "量子", "人形機器人", "低軌衛星", "矽晶圓",
+                    "試產", "流片", "點亮", "突破"],
+    # 💱 匯率成本 —— 台幣急升殺出口股毛利,是很多人忽略的
+    "💱 匯率成本": ["台幣升值", "台幣貶值", "匯損", "匯兌", "新台幣升", "新台幣貶", "油價", "運價"],
+    # 📊 財務事件
+    "📊 財務事件": ["財測", "上修", "下修", "法說", "併購", "收購", "合併", "減資", "增資",
+                    "重訊", "庫藏股", "現金增資"],
+    # 🛡️ 資安法律 —— 台積電 2018 中毒停機是前例
+    "🛡️ 資安法律": ["駭客", "勒索軟體", "資安事件", "個資外洩", "專利訴訟", "侵權", "召回", "瑕疵"],
+    # 📈 股價異動(原本就有的那幾個)
+    "📈 股價異動": ["漲停", "跌停", "破底", "新高", "處置股"],
+}
+# 判類別的優先序 = dict 插入序(Python 3.7+ 保證)。⛔ 別改成 sorted(),那會變成字典序。
+_CAT_ORDER = list(NEWS_CATEGORIES.keys())
+# 攤平給既有比對邏輯用(`hits = [k for k in KEYWORDS if k in combined]` 不用改)
+KEYWORDS = [k for cat in _CAT_ORDER for k in NEWS_CATEGORIES[cat]]
+
+
+def news_category(hits):
+    """命中的關鍵字 → 類別標籤(給前端掛徽章)。⛔ 只講「是什麼類型的消息」,不講多空。
+    多個類別都命中時取**優先序最前**的(事故天災 > 地緣管制 > 供需價格 > …)。
+    一個都對不上 → 回空字串(前端就不顯徽章,⛔ 不留空殼)。"""
+    if not hits:
+        return ""
+    hs = set(hits)
+    for cat in _CAT_ORDER:
+        if hs & set(NEWS_CATEGORIES[cat]):
+            return cat
+    return ""
 
 DATA_DIR       = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -245,6 +292,7 @@ def fetch_feed(source_name: str, url: str) -> list:
                 "link":             entry.get("link", ""),
                 "published_time":   entry.get("published", "") or entry.get("updated", ""),
                 "matched_keywords": hits,
+                "cat":              news_category(hits),   # 🗂️ V72.3.4 類別徽章(前端顯示用)
                 "_summary":         summary,
                 "_ts":              _ts,
             })
@@ -277,6 +325,13 @@ GLOBAL_NEWS_SOURCES = {
     #   收斂在**會傳導到金融市場**的那一類,⛔ 不做純戰報(那是新聞台的事,對股價沒有可操作性)。
     "🌍 地緣突發":    "https://news.google.com/rss/search?q=(Iran+OR+Israel+OR+%22Middle+East%22+OR+%22Taiwan+Strait%22+OR+Russia+OR+Ukraine)+(strike+OR+missile+OR+attack+OR+war+OR+sanctions+OR+blockade+OR+oil+OR+markets)+when:1d&hl=en&gl=US&ceid=US:en",
     "🌍 油價航運":    "https://news.google.com/rss/search?q=(%22oil+price%22+OR+Brent+OR+OPEC+OR+%22Strait+of+Hormuz%22+OR+%22Red+Sea%22+OR+shipping)+when:1d&hl=en&gl=US&ceid=US:en",
+    # ⚡🔥🚫🧪 V72.3.4 使用者要求的四類(缺貨/延遲交貨/火災/新技術)+ 出口管制。
+    #   ⚠️ 每條都綁「chip OR semiconductor OR memory…」之類的**產業限定詞** ——
+    #      不綁的話 `fire`/`shortage`/`delay` 會撈到一堆跟台股無關的社會新聞。
+    "⚡ 缺貨漲價":    "https://news.google.com/rss/search?q=(chip+OR+semiconductor+OR+memory+OR+DRAM+OR+NAND+OR+panel+OR+%22passive+component%22+OR+wafer)+(shortage+OR+%22price+hike%22+OR+%22price+increase%22+OR+%22lead+time%22+OR+%22sold+out%22+OR+%22supply+crunch%22+OR+delay)+when:2d&hl=en&gl=US&ceid=US:en",
+    "🔥 停產事故":    "https://news.google.com/rss/search?q=(fab+OR+factory+OR+plant+OR+semiconductor+OR+refinery)+(fire+OR+explosion+OR+outage+OR+shutdown+OR+halt+OR+earthquake+OR+blackout)+when:2d&hl=en&gl=US&ceid=US:en",
+    "🚫 出口管制":    "https://news.google.com/rss/search?q=(%22export+control%22+OR+%22entity+list%22+OR+%22chip+ban%22+OR+%22export+ban%22)+(China+OR+Taiwan+OR+semiconductor+OR+Nvidia+OR+ASML)+when:2d&hl=en&gl=US&ceid=US:en",
+    "🧪 技術突破":    "https://news.google.com/rss/search?q=(CoWoS+OR+HBM4+OR+%22advanced+packaging%22+OR+%22glass+substrate%22+OR+%22silicon+photonics%22+OR+2nm+OR+%22solid-state+battery%22+OR+humanoid+robot)+when:2d&hl=en&gl=US&ceid=US:en",
 }
 GLOBAL_NEWS_FILE = DATA_DIR / "global_news.json"
 
@@ -314,6 +369,17 @@ TW_RELATED_KEYWORDS = [
     'war', 'military', 'missile', 'airstrike', 'strike on', 'sanctions',
     'blockade', 'ceasefire', 'nuclear', 'geopolitical',
     'oil price', 'crude', 'brent', 'opec', 'natural gas', 'shipping', 'freight',
+    # 🗂️ V72.3.4 使用者要求:缺貨 / 延遲交貨 / 火災 / 最新技術 —— 英文源這邊也要收得到
+    #   (中文源走 NEWS_CATEGORIES,兩邊是**不同的過濾器**,⛔ 只改一邊等於只修一半)
+    'shortage', 'sold out', 'supply crunch', 'lead time', 'delay', 'delayed',
+    'backlog', 'price hike', 'price increase', 'capacity', 'sold-out',
+    'fire', 'explosion', 'blast', 'outage', 'blackout', 'shutdown', 'halt',
+    'earthquake', 'typhoon', 'drought', 'flood',
+    'export control', 'entity list', 'export ban', 'blacklist', 'chip ban',
+    'cowos', 'hbm', 'advanced packaging', 'glass substrate', 'silicon photonics',
+    'cpo', '2nm', '3nm', 'gaa', 'solid-state battery', 'humanoid', 'quantum',
+    'recall', 'cyberattack', 'ransomware', 'data breach',
+    'guidance', 'outlook cut', 'outlook raise', 'merger', 'acquisition',
 ]
 
 # V27.8 — 生活/娛樂雜訊黑名單:即使誤含關鍵字也直接排除(BBC Business RSS 夾帶 King's tax bill / power banks / after uni 等生活新聞)
