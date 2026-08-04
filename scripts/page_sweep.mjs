@@ -9,7 +9,7 @@
  *
  * → 這支把「人工看一遍」自動化:用**真實 data/*.json** 跑完整 `analyze()`,
  *   把 8 個分頁 + 3 個總覽 pane 全部切一遍,**掃渲染後的 innerText**(不是原始碼),
- *   找四類已知會咬人的缺陷:
+ *   找五類已知會咬人的缺陷:
  *
  *   ① 💥 **缺值直接印給使用者**:「跌破前低 --」「停損 NaN」「目標 undefined」
  *      → 使用者根本不知道要撤在哪(V72.1.7 實例)
@@ -17,6 +17,9 @@
  *      「可以進場 / 加碼 / 抱好 / 順勢做多」(V72.0.7~V72.0.9 同一個錯犯了四次)
  *   ③ 📉 **占比沒有樣本守門**:「100%」「0%」配上極小的 N(1/1 的假信心,陷阱 #27)
  *   ④ 🫥 **空殼**:容器可見但幾乎沒有字(使用者以為功能壞了)
+ *   ⑤ ⚔️ **同一畫面兩張卡下相反的操作指令** —— 使用者講最多次的那句「**邏輯不打架**」
+ *      (一張叫你進場、另一張叫你出場,他不知道該聽哪個)。⛔ 只比**跨卡**的,
+ *      同一張卡內「可進場,跌破 X 就先出場」是正常寫法。
  *
  * ⛔ 它是**巡邏工具不是測試** —— 報出來的一律要人工讀原始碼驗真偽
  *    (CLAUDE.md 鐵則:代理/工具找到的約 1/3 是誤報)。所以 **exit code 永遠 0**,
@@ -43,6 +46,10 @@ const RE_MISSING = /(跌破|站上|守住?|突破|回測|停損|停利|目標價
 const RE_BULLCMD = /(順勢做多|順著做|可順勢|抱好|別提早下車|放心做|可以進場|順勢操作|抱單|可加碼|快進快出|分批試單|可以追|追要|逢低|進場)/g;
 // ③ 極端占比(100%/0%)—— 要人工去看它旁邊的樣本數
 const RE_PCT = /(?:^|[^\d.])(100(?:\.0)?%|0(?:\.0)?%)/g;
+// ⑤ 同一畫面兩張卡下**相反的操作指令** —— 使用者講最多次的那句「邏輯不打架」。
+//   ⚠️ 只收「叫人怎麼做」的動詞,⛔ 不收方向描述(「偏多格局」跟「跌破就走」並存是正常的)。
+const RE_ACT_BULL = /(可以進場|可依紀律進場|可放心做多|可順勢操作|順勢做多|可加碼|分批試單|可以追)/g;
+const RE_ACT_BEAR = /(空手觀望|反彈減碼|分批停利|先別加碼|別做,?等|不接刀|先出場|全數出場)/g;
 // ⚠️ 否定形先拿掉 —— 正確的免責寫法本身就含被禁字串(本專案已踩 7 次)
 const nono = t => String(t)
     .replace(/(?:不是|並非|沒有|不可|不准|別|禁|⛔)[^。;,\n]{0,26}(進場|加碼|抱好|順勢|追|試單|做多)/g, '')
@@ -76,6 +83,7 @@ await page.waitForTimeout(1500);
 
 const findings = [];
 let scanned = 0;
+const actTally = { bull: 0, bear: 0 };   // ⑤ 偵測器到底有沒有吃到東西(0/0 = 沒驗到,不是沒問題)
 const add = (sym, tab, kind, card, hit, ctx) => findings.push({ sym, tab, kind, card, hit, ctx });
 
 for (const sym of SYMS) {
@@ -122,6 +130,7 @@ for (const sym of SYMS) {
                 return out;
             }, { tab, pane });
 
+            const acts = { bull: [], bear: [] };
             for (const c of cards) {
                 const clean = nono(c.t);
                 // ① 缺值
@@ -132,6 +141,17 @@ for (const sym of SYMS) {
                 for (const m of c.t.matchAll(RE_PCT)) {
                     const ctx = ctxOf(c.t, m.index);
                     if (/勝率|優勢|佔比|占比|命中/.test(ctx)) add(sym, label, '📉極端占比', c.id, m[1], ctx);
+                }
+                // ⑤ 收集「操作指令」,同一畫面看完再判斷有沒有互相打架
+                for (const m of clean.matchAll(RE_ACT_BULL)) { acts.bull.push({ id: c.id, w: m[1], ctx: ctxOf(clean, m.index) }); actTally.bull++; }
+                for (const m of clean.matchAll(RE_ACT_BEAR)) { acts.bear.push({ id: c.id, w: m[1], ctx: ctxOf(clean, m.index) }); actTally.bear++; }
+            }
+            // ⑤ 同一畫面、**不同卡**同時叫人進場又叫人出場 → 使用者不知道該聽誰(單一劇本原則)
+            //   ⚠️ 同一張卡內出現兩者是正常的(「可進場,跌破 X 就先出場」),⛔ 只比跨卡的。
+            if (acts.bull.length && acts.bear.length) {
+                for (const b of acts.bull) {
+                    const opp = acts.bear.find(x => x.id !== b.id);
+                    if (opp) { add(sym, label, '⚔️指令打架', `${b.id} vs ${opp.id}`, `${b.w} ⇄ ${opp.w}`, `${b.ctx}  ‖  ${opp.ctx}`); break; }
                 }
             }
             // ④ 空殼:容器可見但字數 < 8
@@ -191,12 +211,14 @@ await browser.close();
 function ctxOf(t, i) { return t.slice(Math.max(0, i - 45), i + 55).replace(/\s+/g, ' '); }
 
 // ── 報告 ────────────────────────────────────────────────────
-console.log(`\n\n共掃過 ${scanned} 張可見卡片`);
+console.log(`\n\n共掃過 ${scanned} 張可見卡片 ・操作指令收到 ${actTally.bull} 多 / ${actTally.bear} 空`);
+// ⭐ 同一種空過守門:⑤ 完全沒吃到指令時,「0 筆打架」跟「偵測器壞了」長得一模一樣
+if (!actTally.bull && !actTally.bear) console.log('⚠️ ⑤ 一句操作指令都沒收到 —— 可能是字典過時或卡片沒渲染,別把「沒打架」讀成「沒問題」');
 if (!scanned) { console.log('❌ 一張卡都沒掃到 —— 這次掃描無效(⛔ 別讀成沒問題)'); process.exit(1); }
 console.log('═'.repeat(70));
 if (errs.length) console.log(`⚠️ 渲染期間有 ${errs.length} 個 pageerror:\n   ` + errs.slice(0, 5).join('\n   ') + '\n');
 if (!findings.length) {
-    console.log('✅ 四類缺陷都沒掃到(⚠️ 不代表沒問題 —— grep/樣式只抓得到想得到的說法)');
+    console.log('✅ 五類缺陷都沒掃到(⚠️ 不代表沒問題 —— grep/樣式只抓得到想得到的說法)');
 } else {
     const by = {};
     for (const f of findings) (by[f.kind] ||= []).push(f);
