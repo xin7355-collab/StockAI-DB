@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,24 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.1',
+    _APP_VERSION: 'V72.1.2',
     _CHANGELOG: [
+        { v: 'V72.1.2', dt: '2026-08-04', t: '📐 順逆價差顯示的是「昨天的數字」(兩個防呆機制打架)', d: [
+            '接著做全盤資料體檢,又抓到一個 —— 而且這個是**顯示了不該相信的數字**,比空白更危險:',
+            '',
+            '「順逆價差」(判斷外資空單是真看空還是避險的關鍵配套)顯示 **−156 點**,但同一個檔案裡的錯誤欄位寫著「期貨(8/3)與現貨(8/4)**不同交易日,不計價差**」。',
+            '',
+            '**一個說不算、一個卻有值** —— 查出來是兩個防呆機制打架:',
+            '・守門發現期貨跟現貨差一天,誠實地把值清掉(這是對的)',
+            '・但另一個「防止資料忽有忽無」的機制看到空值,就**把昨天的舊值填回去**',
+            '→ 結果你看到的是**昨天的價差,配今天的日期**。',
+            '',
+            '⛔ 價差這種東西昨天 +50、今天可能 −200,沿用昨天的在意義上就是錯的。',
+            '',
+            '✅ 修法:區分兩件事 —— **「今天暫時抓不到」可以沿用昨天**(匯率、金價那種變化慢的),但**「守門判定今天這個數字不可信」就不准沿用**,誠實留空。',
+            '',
+            '(其餘體檢項目逐條查過都是正常的:美股期貨那三個「方向待確認」是上一版刻意加的說明、台指 VIX 是已知的資料源限制、當沖檔是舊檔已有替代。)',
+        ] },
         { v: 'V72.1.1', dt: '2026-08-04', t: '💳 融資維持率其實一次都沒產出過(被另一個功能卡住)', d: [
             '你問「有沒有資料被隱藏、卡片被隱藏起來、應該要出現的」—— 我去對了一次線上的資料檔,抓到一個:',
             '',

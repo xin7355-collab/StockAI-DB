@@ -125,6 +125,56 @@ ok('⑥ 抓不到清單時明說', '端點清單也抓不到' in err6, str(err6)
 #    分不出是連不到、被擋(403)、還是拿到網頁但格式不同(200 卻沒 match)。
 ok('⑥ ⭐ 要附上各網址的實測結果(狀態碼+長度)', '各網址實測' in err6 and '404' in err6, str(err6)[:200])
 
+# ══════════════════════════════════════════════════════════════════
+# 🛡️ V72.1.2 「守門否決過的欄位⛔ 不可沿用昨天的值」
+#   實測 2026-08-04 gh-pages 抓到兩個機制打架:
+#     taifex_backwardation = -156.0(有值)
+#     taifex_backwardation_error = 「期貨(08-03)與現貨(08-04)不同交易日,不計價差」
+#   → 守門誠實回 None,斷崖防護(last-good)卻把**昨天的舊值**填回去
+#     = 昨天的價差配今天的日期,而且 error 說不算、值卻還在。
+#   ⛔ 順逆價差是**當日快照**,沿用昨天在語意上就是錯的(陷阱 #16)。
+#   ⭐ 但「暫時抓不到」仍可沿用(匯率/金價那種變化慢的)—— 兩件事要分開。
+# ══════════════════════════════════════════════════════════════════
+import re as _re
+_src = Path(M.__file__).read_text(encoding='utf-8')
+
+ok('⑦ ⭐ 要有 _NO_CARRY_ON_ERROR 清單', hasattr(M, '_NO_CARRY_ON_ERROR'), '')
+ok('⑦ ⭐ taifex_backwardation 必須在清單裡',
+   'taifex_backwardation' in getattr(M, '_NO_CARRY_ON_ERROR', set()),
+   str(getattr(M, '_NO_CARRY_ON_ERROR', None)))
+ok('⑦ ⭐ 斷崖防護要先檢查 {key}_error 再決定沿不沿用',
+   _re.search(r'if key in _NO_CARRY_ON_ERROR and out\.get\(f"\{key\}_error"\):\s*\n\s*continue', _src) is not None,
+   '')
+# ⭐ 順序很重要:守門檢查必須在「沿用」那兩行**之前**,否則等於沒接上
+_i_gate = _src.find('if key in _NO_CARRY_ON_ERROR')
+_i_carry = _src.find('if out.get(key) is None and prev.get(key) is not None:')
+ok('⑦ ⭐ 守門檢查要排在「沿用」之前(⛔ 排後面等於沒接上)',
+   0 < _i_gate < _i_carry, f'gate={_i_gate} carry={_i_carry}')
+ok('⑦ ⛔ 一般欄位仍要保留斷崖防護(別把整個機制拿掉)',
+   _i_carry > 0 and 'out[key] = prev[key]' in _src, '')
+
+# ⭐ 實跑守門邏輯(⛔ 不只驗程式碼字串)
+def _carry(out, prev, keys, noCarry):
+    for key in keys:
+        if key in noCarry and out.get(f"{key}_error"):
+            continue
+        if out.get(key) is None and prev.get(key) is not None:
+            out[key] = prev[key]
+    return out
+
+_r = _carry({'taifex_backwardation': None,
+             'taifex_backwardation_error': '期貨(08-03)與現貨(08-04)不同交易日,不計價差',
+             'usdtwd': None},
+            {'taifex_backwardation': -156.0, 'usdtwd': 31.5},
+            ['taifex_backwardation', 'usdtwd'], M._NO_CARRY_ON_ERROR)
+ok('⑦ ⭐ 實跑:被守門否決 → 維持 None(⛔ 不可填回 -156)', _r['taifex_backwardation'] is None, _r)
+ok('⑦ ⭐ 實跑:一般欄位(匯率)照樣沿用', _r['usdtwd'] == 31.5, _r)
+
+_r2 = _carry({'taifex_backwardation': None, 'taifex_backwardation_error': None},
+             {'taifex_backwardation': -156.0}, ['taifex_backwardation'], M._NO_CARRY_ON_ERROR)
+ok('⑦ ⭐ 實跑:純粹抓不到(沒有 error)→ 仍可沿用(別矯枉過正)',
+   _r2['taifex_backwardation'] == -156.0, _r2)
+
 print()
 if fails:
     print(f'❌ BASIS_LEGS_TEST_FAIL: {fails}')

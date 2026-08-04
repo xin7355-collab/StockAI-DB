@@ -2233,6 +2233,12 @@ _LAST_TX_FUT_DATE = None   # V71.4.9 期貨那條腿的資料日期(判斷是否
 _TAIFEX_PROBE = []         # V71.8.1 端點索引各網址的實測結果(全失敗時寫進 JSON 回報)
 _LAST_BACK_LEGS = {}       # V71.8.0 價差的兩條腿(期貨收盤/日期、加權收盤/日期),供輸出與診斷
 
+# 🛡️ V72.1.2 「守門否決就別沿用昨天」清單 —— 這些欄位是**當日快照**且有明確守門,
+#   一旦 `{key}_error` 有值就代表「今天這個數字不可信」,⛔ 斷崖防護不可把舊值填回去
+#   (否則會出現「error 說不算、值卻還在」的自相矛盾,而且是**昨天的數字配今天的日期**)。
+#   ⚠️ 新增任何「有守門會把值設成 None」的當日快照欄位,記得加進來。
+_NO_CARRY_ON_ERROR = {'taifex_backwardation'}
+
 
 def fetch_taifex_backwardation():
     """台指逆價差 = 臺股期貨(TX)近月收盤 − 加權指數(^TWII)現貨收盤（負值＝逆價差）
@@ -2833,6 +2839,21 @@ def main():
                         "m1b_yoy", "fed_assets_chg_pct", "fi_ratio_alert",
                         # 🤖 V70.3.0 行事曆 AI 解讀(429/無 key 那次沿用上次,不讓卡片忽有忽無)
                         "macro_events_ai"):
+                # 🐛 V72.1.2 **守門否決過的欄位⛔ 不可沿用昨天的值**。
+                #   實測 2026-08-04 gh-pages:`taifex_backwardation = -156.0` 有值,
+                #   但 `taifex_backwardation_error` 同時寫著「期貨(08-03)與現貨(08-04)
+                #   不同交易日,不計價差」→ **兩個機制打架**:
+                #     ・守門(fetch_taifex_backwardation)判定跨日 → 誠實回 None
+                #     ・斷崖防護看到 None → 把**昨天的舊值**填回去
+                #   結果前端拿到「昨天的價差」配「今天的日期」,而且 error 說不算、值卻還在。
+                #   ⛔ 順逆價差是**當日快照**(昨天 +50 今天可能 −200),沿用昨天在語意上就是錯的
+                #   —— 這正是陷阱 #16「把每日快照沿時間軸用」。
+                #   而 macro_miner 自己的註解本來就寫「不硬給一個看起來合理的假數字」,
+                #   斷崖防護等於推翻了那個明確意圖。
+                #   ⭐ 區分兩件事:**「暫時抓不到」可以沿用**(匯率/金價那種變化慢的),
+                #      **「守門刻意判定不可用」⛔ 不可沿用**。
+                if key in _NO_CARRY_ON_ERROR and out.get(f"{key}_error"):
+                    continue
                 if out.get(key) is None and prev.get(key) is not None:
                     out[key] = prev[key]
                     patched.append(key)
